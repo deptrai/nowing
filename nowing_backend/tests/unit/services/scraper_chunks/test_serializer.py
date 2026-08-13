@@ -161,7 +161,23 @@ def test_to_chunks_splits_oversized_content():
         assert chunk.metadata.chunkIndex == index
         assert chunk.metadata.chunkTotal == len(chunks)
         assert len(chunk.content.split()) <= 8000
-        assert chunk.metadata.sourceId.startswith(base_source_id)
+        assert chunk.metadata.sourceId == f"{base_source_id}:chunk-{index}"
+
+
+def test_to_chunks_single_piece_source_id_has_no_chunk_suffix(sample_bds_listing):
+    """A single chunk uses the base source_id without a :chunk-N suffix."""
+    from app.services.scraper_chunks.serializer import to_chunks
+
+    chunks = to_chunks(
+        domain="bds",
+        data=sample_bds_listing,
+        fetched_at="2026-08-11T00:00:00+00:00",
+        content_type="text/markdown",
+        category="listing",
+    )
+
+    assert len(chunks) == 1
+    assert ":chunk-" not in chunks[0].metadata.sourceId
 
 
 def test_to_chunks_raises_validation_error_for_missing_bds_fields():
@@ -271,3 +287,167 @@ def test_to_chunks_maps_job_domain_and_content_type():
         assert chunk.metadata.url == data["source_url"]
         assert chunk.metadata.canonicalEntityId == data["id"]
         assert "itviec:sha256:" in chunk.metadata.sourceId
+
+
+def test_to_chunks_includes_salary_metadata_when_min_or_max_present():
+    """Salary is emitted only when at least one bound is truthy."""
+    from app.services.scraper_chunks.serializer import to_chunks
+
+    data = {
+        "id": "itviec:data-engineer",
+        "title": "Data Engineer",
+        "company": "Crossian",
+        "location": "Ha Noi",
+        "employment_type": "full_time",
+        "salary": {"min": 30000000, "max": 0, "currency": "VND", "period": "month"},
+        "posted_at": "2026-08-11",
+        "job_description": "Build data pipelines.",
+        "job_requirement": "Python, SQL.",
+        "source_url": "https://itviec.com/it-jobs/data-engineer-crossian",
+    }
+
+    chunks = to_chunks(
+        domain="itviec",
+        data=data,
+        fetched_at="2026-08-11T00:00:00+00:00",
+        content_type="text/markdown",
+        category="job_posting",
+    )
+
+    assert chunks[0].metadata.salary == data["salary"]
+
+
+def test_to_chunks_omits_salary_metadata_when_bounds_are_empty():
+    """Salary is omitted when both min and max are falsy."""
+    from app.services.scraper_chunks.serializer import to_chunks
+
+    data = {
+        "id": "itviec:data-engineer",
+        "title": "Data Engineer",
+        "company": "Crossian",
+        "location": "Ha Noi",
+        "employment_type": "full_time",
+        "salary": {"min": 0, "max": 0, "currency": "VND", "period": "month"},
+        "posted_at": "2026-08-11",
+        "job_description": "Build data pipelines.",
+        "job_requirement": "Python, SQL.",
+        "source_url": "https://itviec.com/it-jobs/data-engineer-crossian",
+    }
+
+    chunks = to_chunks(
+        domain="itviec",
+        data=data,
+        fetched_at="2026-08-11T00:00:00+00:00",
+        content_type="text/markdown",
+        category="job_posting",
+    )
+
+    assert chunks[0].metadata.salary is None
+
+
+def test_to_chunks_treats_whitespace_only_title_as_none():
+    """A whitespace-only title is normalised to None."""
+    from app.services.scraper_chunks.serializer import to_chunks
+
+    data = {
+        "id": "itviec:data-engineer",
+        "title": "   ",
+        "company": "Crossian",
+        "location": "Ha Noi",
+        "employment_type": "full_time",
+        "posted_at": "2026-08-11",
+        "job_description": "Build data pipelines.",
+        "job_requirement": "Python, SQL.",
+        "source_url": "https://itviec.com/it-jobs/data-engineer-crossian",
+    }
+
+    chunks = to_chunks(
+        domain="itviec",
+        data=data,
+        fetched_at="2026-08-11T00:00:00+00:00",
+        content_type="text/markdown",
+        category="job_posting",
+    )
+
+    assert chunks[0].metadata.title is None
+
+
+def test_to_chunks_normalises_non_string_title():
+    """A non-string title is normalised to None."""
+    from app.services.scraper_chunks.serializer import to_chunks
+
+    data = {
+        "id": "itviec:data-engineer",
+        "title": 123,
+        "company": "Crossian",
+        "location": "Ha Noi",
+        "employment_type": "full_time",
+        "posted_at": "2026-08-11",
+        "job_description": "Build data pipelines.",
+        "job_requirement": "Python, SQL.",
+        "source_url": "https://itviec.com/it-jobs/data-engineer-crossian",
+    }
+
+    chunks = to_chunks(
+        domain="itviec",
+        data=data,
+        fetched_at="2026-08-11T00:00:00+00:00",
+        content_type="text/markdown",
+        category="job_posting",
+    )
+
+    assert chunks[0].metadata.title is None
+
+
+def test_to_chunks_ignores_non_list_conflict_flags():
+    """conflict_flags that are not a list are treated as None."""
+    from app.services.scraper_chunks.serializer import to_chunks
+
+    data = {
+        "id": "itviec:data-engineer",
+        "title": "Data Engineer",
+        "company": "Crossian",
+        "location": "Ha Noi",
+        "employment_type": "full_time",
+        "conflict_flags": "not_a_list",
+        "posted_at": "2026-08-11",
+        "job_description": "Build data pipelines.",
+        "job_requirement": "Python, SQL.",
+        "source_url": "https://itviec.com/it-jobs/data-engineer-crossian",
+    }
+
+    chunks = to_chunks(
+        domain="itviec",
+        data=data,
+        fetched_at="2026-08-11T00:00:00+00:00",
+        content_type="text/markdown",
+        category="job_posting",
+    )
+
+    assert chunks[0].metadata.conflict_flags is None
+
+
+def test_to_chunks_warns_and_defaults_for_unknown_domain(caplog):
+    """An unrecognised domain falls back to the listing layout with a warning."""
+    from app.services.scraper_chunks.serializer import to_chunks
+
+    data = {
+        "title": "Mystery item",
+        "description": "Some description.",
+        "canonical_id": "unknown:1",
+        "city": "Hà Nội",
+        "district": "Ba Đình",
+        "price": "10 tỷ",
+    }
+
+    with caplog.at_level("WARNING"):
+        chunks = to_chunks(
+            domain="not_a_domain",
+            data=data,
+            fetched_at="2026-08-11T00:00:00+00:00",
+            content_type="text/markdown",
+            category=None,
+        )
+
+    assert len(chunks) == 1
+    assert "not_a_domain" in caplog.text
