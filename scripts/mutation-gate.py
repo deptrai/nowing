@@ -208,7 +208,7 @@ def ensure_cosmic_ray(backend: Path) -> None:
         sys.exit(2)
 
 
-def generate_toml(backend: Path, service: str, project_root: Path, timeout: float) -> tuple[Path, Path]:
+def generate_toml(backend: Path, service: str, project_root: Path, timeout: float, test_files_override: list[str] | None = None) -> tuple[Path, Path]:
     """Write a cosmic-ray TOML config and session path.
 
     Config is placed in the backend directory so that relative module-path and
@@ -250,7 +250,7 @@ def generate_toml(backend: Path, service: str, project_root: Path, timeout: floa
                         print(f"[warn] module for {service} not found at {module}; using file path anyway")
                         module = backend / "app" / "services" / f"{service}.py"
 
-    test_files = discover_tests(backend, service)
+    test_files = test_files_override or discover_tests(backend, service)
     test_cmd = f'bash -c "COSMIC_RAY=1 .venv/bin/python -m pytest {" ".join(test_files)} -m \\"unit or not integration\\" -x 2>&1"'
 
     toml = f"""[cosmic-ray]
@@ -472,6 +472,7 @@ def main() -> int:
     parser.add_argument("--project-root", default=".", help="Repo root (default: current directory)")
     parser.add_argument("--backend-dir", default="nowing_backend", help="Backend directory name")
     parser.add_argument("--timeout", type=float, default=60.0, help="Per-mutant timeout in seconds")
+    parser.add_argument("--test-files", default="", help="Optional comma-separated focused test file paths (relative to backend). Overrides auto-discovery.")
     args = parser.parse_args()
 
     os.environ["COSMIC_RAY"] = "1"
@@ -482,11 +483,13 @@ def main() -> int:
 
     ensure_cosmic_ray(backend)
 
+    test_files_override = [t.strip() for t in args.test_files.split(",") if t.strip()] or None
+
     all_results = []
     failed = False
     for service in services:
         print(f"\n[mutation] === {service} ===")
-        config, session = generate_toml(backend, service, project_root, args.timeout)
+        config, session = generate_toml(backend, service, project_root, args.timeout, test_files_override)
         print(f"[mutation] config: {config}")
         print(f"[mutation] session: {session}")
 

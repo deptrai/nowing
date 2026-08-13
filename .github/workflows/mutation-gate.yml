@@ -11,6 +11,10 @@ on:
         description: 'Per-mutant timeout in seconds'
         required: false
         default: '120'
+      test-files:
+        description: 'Optional comma-separated focused test file paths (relative to nowing_backend)'
+        required: false
+        default: ''
   schedule:
     # Weekly on Sundays at 04:00 UTC
     - cron: "0 4 * * 0"
@@ -40,7 +44,7 @@ jobs:
     name: Mutation gate ${{ matrix.service }}
     runs-on: ubuntu-latest
     needs: split-services
-    timeout-minutes: 90
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
@@ -85,7 +89,7 @@ jobs:
           echo "service=$SAFE_SERVICE" >> "$GITHUB_OUTPUT"
 
       - name: Run mutation gate
-        run: python scripts/mutation-gate.py --services ${{ matrix.service }} --timeout ${{ github.event.inputs.timeout || '120' }} --project-root .
+        run: python scripts/mutation-gate.py --services ${{ matrix.service }} --timeout ${{ github.event.inputs.timeout || '120' }} --project-root . --test-files "${{ github.event.inputs.test-files || '' }}"
 
       - name: Upload mutation artifacts
         if: always()
