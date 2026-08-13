@@ -18,7 +18,7 @@ import re
 import subprocess
 import sys
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 # Services where Pattern 3/4/6 survivors are P0 blockers.
@@ -129,11 +129,11 @@ def discover_tests(backend: Path, service: str) -> list[str]:
     for exact_dir in candidate_dirs:
         if exact_dir.is_dir():
             candidates = sorted(
-                set(
+                {
                     str(p.relative_to(backend))
                     for p in exact_dir.rglob("test_*.py")
                     if p.stem == f"test_{last_segment}" or p.stem.startswith(f"test_{last_segment}_")
-                )
+                }
             )
             if candidates:
                 return candidates[:20]
@@ -217,7 +217,7 @@ def generate_toml(backend: Path, service: str, project_root: Path, timeout: floa
     """
     out_dir = project_root / "_bmad-output" / "test-artifacts"
     out_dir.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     safe_service = service.replace("/", "-")
 
     config = backend / f"mutation-nowing-{safe_service}-{stamp}.toml"
@@ -266,12 +266,17 @@ name = "local"
     return config, session
 
 
-def run_cosmic_ray(backend: Path, config: Path, session: Path) -> None:
-    """Run baseline, init, exec for a service."""
+def run_cosmic_ray(
+    backend: Path,
+    config: Path,
+    session: Path,
+    project_root: Path,
+    scope_functions: str = "",
+    skip_noise_operators: bool = False,
+) -> None:
+    """Run baseline, init, exec for a service, optionally scoping the session."""
     for step in ("baseline", "init", "exec"):
-        if step == "init":
-            cmd = ["uv", "run", "--no-sync", "cosmic-ray", step, str(config), str(session)]
-        elif step == "exec":
+        if step == "init" or step == "exec":
             cmd = ["uv", "run", "--no-sync", "cosmic-ray", step, str(config), str(session)]
         else:
             cmd = ["uv", "run", "--no-sync", "cosmic-ray", step, str(config)]
@@ -292,6 +297,29 @@ def run_cosmic_ray(backend: Path, config: Path, session: Path) -> None:
                 cwd=backend,
                 timeout=60,
             )
+
+            # Optionally scope the session to changed functions and/or skip
+            # BinaryOperator/UnaryOperator noise from `from __future__ import annotations`.
+            if scope_functions or skip_noise_operators:
+                print(f"[mutation] scope-mutation-session {session.name}")
+                scope_script = project_root / "scripts" / "scope_mutation_session.py"
+                scope_cmd: list[str] = [
+                    "uv",
+                    "run",
+                    "--no-sync",
+                    "python",
+                    str(scope_script),
+                    str(session),
+                ]
+                if scope_functions:
+                    scope_cmd.extend(["--functions", scope_functions])
+                if not skip_noise_operators:
+                    scope_cmd.append("--keep-noise-operators")
+                scope_result = run(scope_cmd, cwd=backend, timeout=120)
+                if scope_result.returncode != 0:
+                    print(scope_result.stdout)
+                    print(scope_result.stderr, file=sys.stderr)
+                    raise RuntimeError("scope_mutation_session failed")
 
 
 def _dump_from_sqlite(session: Path) -> list[dict]:
@@ -459,7 +487,7 @@ def write_report(project_root: Path, service: str, result: dict) -> Path:
     """Write per-service mutation gate report."""
     out_dir = project_root / "_bmad-output" / "test-artifacts"
     out_dir.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     safe_service = service.replace("/", "-")
     path = out_dir / f"mutation-nowing-{safe_service}-{stamp}.json"
     path.write_text(json.dumps(result, indent=2, ensure_ascii=False))
@@ -473,6 +501,8 @@ def main() -> int:
     parser.add_argument("--backend-dir", default="nowing_backend", help="Backend directory name")
     parser.add_argument("--timeout", type=float, default=60.0, help="Per-mutant timeout in seconds")
     parser.add_argument("--test-files", default="", help="Optional comma-separated focused test file paths (relative to backend). Overrides auto-discovery.")
+    parser.add_argument("--functions", default="", help="Comma-separated function definition names to keep (scope all others as SKIPPED).")
+    parser.add_argument("--skip-noise-operators", action="store_true", help="Skip BinaryOperator/UnaryOperator mutants (type-hint noise under `from __future__ import annotations`).")
     args = parser.parse_args()
 
     os.environ["COSMIC_RAY"] = "1"
@@ -484,6 +514,7 @@ def main() -> int:
     ensure_cosmic_ray(backend)
 
     test_files_override = [t.strip() for t in args.test_files.split(",") if t.strip()] or None
+    scope_functions = args.functions.strip()
 
     all_results = []
     failed = False
@@ -494,7 +525,14 @@ def main() -> int:
         print(f"[mutation] session: {session}")
 
         try:
-            run_cosmic_ray(backend, config, session)
+            run_cosmic_ray(
+                backend,
+                config,
+                session,
+                project_root,
+                scope_functions=scope_functions,
+                skip_noise_operators=args.skip_noise_operators,
+            )
             records = dump_session(backend, session)
             result = evaluate_service(service, records)
             report_path = write_report(project_root, service, result)
@@ -522,7 +560,7 @@ def main() -> int:
     # Summary report.
     summary = {
         "dimension": "mutation",
-        "runAt": datetime.now(timezone.utc).isoformat(),
+        "runAt": datetime.now(UTC).isoformat(),
         "services": all_results,
     }
     summary_path = project_root / "_bmad-output" / "test-artifacts" / "mutation-nowing-summary-latest.json"

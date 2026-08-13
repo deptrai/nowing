@@ -30,8 +30,8 @@ def main() -> int:
     parser.add_argument("session", help="Path to the cosmic-ray session sqlite file")
     parser.add_argument(
         "--functions",
-        required=True,
-        help="Comma-separated definition_name values to KEEP (others skipped)",
+        default="",
+        help="Comma-separated definition_name values to KEEP (others skipped); empty keeps all",
     )
     parser.add_argument(
         "--keep-noise-operators",
@@ -40,7 +40,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    keep_functions = {f.strip() for f in args.functions.split(",") if f.strip()}
+    keep_functions = {f.strip() for f in args.functions.split(",") if f.strip()} or None
     noise_prefixes = () if args.keep_noise_operators else (
         "core/ReplaceBinaryOperator",
         "core/ReplaceUnaryOperator",
@@ -56,7 +56,7 @@ def main() -> int:
                 definition = mutation.definition_name
                 operator = mutation.operator_name
 
-                if definition not in keep_functions:
+                if keep_functions and definition not in keep_functions:
                     db.set_result(
                         item.job_id,
                         WorkResult(

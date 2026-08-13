@@ -15,6 +15,14 @@ on:
         description: 'Optional comma-separated focused test file paths (relative to nowing_backend)'
         required: false
         default: ''
+      functions:
+        description: 'Optional comma-separated function names to keep for this service (others skipped)'
+        required: false
+        default: ''
+      skip-noise-operators:
+        description: 'Skip BinaryOperator/UnaryOperator mutants (type-hint noise)'
+        required: false
+        default: 'false'
   schedule:
     # Weekly on Sundays at 04:00 UTC
     - cron: "0 4 * * 0"
@@ -89,7 +97,14 @@ jobs:
           echo "service=$SAFE_SERVICE" >> "$GITHUB_OUTPUT"
 
       - name: Run mutation gate
-        run: python scripts/mutation-gate.py --services ${{ matrix.service }} --timeout ${{ github.event.inputs.timeout || '120' }} --project-root . --test-files "${{ github.event.inputs.test-files || '' }}"
+        run: |
+          python scripts/mutation-gate.py \
+            --services ${{ matrix.service }} \
+            --timeout ${{ github.event.inputs.timeout || '120' }} \
+            --project-root . \
+            --test-files "${{ github.event.inputs.test-files || '' }}" \
+            --functions "${{ github.event.inputs.functions || '' }}" \
+            --skip-noise-operators ${{ github.event.inputs.skip-noise-operators || 'false' }}
 
       - name: Upload mutation artifacts
         if: always()

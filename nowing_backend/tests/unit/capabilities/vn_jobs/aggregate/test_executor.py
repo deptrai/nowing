@@ -60,7 +60,7 @@ async def test_executor_ingests_items_and_sets_ingest_fields():
         ingest_job_id = "job-abc"
         parent_ingest_job_id = None
         ingested_source_ids = ["vw:1"]
-        noop_source_ids = []
+        noop_source_ids = ["vw:2"]
         status = "ok"
 
     with (
@@ -80,7 +80,7 @@ async def test_executor_ingests_items_and_sets_ingest_fields():
     assert output.ingest_job_id == "job-abc"
     assert output.ingest_status == "ok"
     assert output.ingested_count == 1
-    assert output.noop_count == 0
+    assert output.noop_count == 1
 
 
 @pytest.mark.asyncio
