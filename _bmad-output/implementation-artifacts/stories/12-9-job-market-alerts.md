@@ -266,6 +266,40 @@ SWE-1.7 Max
 - [x] [Review][Defer] `SavedSearchDetailContent` falls back to "No runs yet" when linked snapshot is missing — graceful degradation, UX polish only.
 - [x] [Review][Defer] `default_job_alert_query` does not validate `salary_min <= salary_max` — helper not wired to a route yet; validate when consumed.
 
+## Review Findings (re-run 2026-08-13)
+
+### decision-needed
+
+- [ ] [Review][Decision] Should a degraded run with `changed_items_count > 0` (but `new_items_count == 0`) notify? [`nowing_backend/app/alerts/engine/execute.py:210-221`] — `_should_skip_notification` returns `False` when `changed_items_count > 0`. Spec AC-5 says skip "degraded source with no new postings". The current code comment says "degraded runs that DO surface new postings still notify". Need product call on whether `changed` counts as a posting the user cares about.
+
+### patch
+
+- [ ] [Review][Patch] Rule disabled after claim still executes [`nowing_backend/app/alerts/engine/tick.py:58-65`] — `_execute_claimed_rule` re-fetches the rule for the delete race, but does not check `fresh.enabled`. A rule disabled between `_claim_due_rules` and `_execute_claimed_rule` still runs and may notify.
+- [ ] [Review][Patch] Empty `rule_channels` early return ignores subscription channels [`nowing_backend/app/alerts/engine/notify.py:117-119`] — if `alert_rule.notification_channels` is empty, `notify_alert_run` returns before loading subscriptions, so a user with non-empty `AlertSubscription.channels` never receives the notification.
+- [ ] [Review][Patch] Timezone not validated when `schedule="none"` [`nowing_backend/app/alerts/services/crud.py:95-97`] — `derive_cron` (which validates the timezone) is only called when `schedule != "none"`. A rule created with `schedule="none"` and an invalid IANA timezone will fail later when the user switches to a scheduled mode.
+- [ ] [Review][Patch] `list_snapshots` service lacks workspace boundary [`nowing_backend/app/alerts/services/crud.py:219-232`] — only filters by `alert_rule_id`. The route already checks workspace, but the service is a leaky internal API if called elsewhere.
+- [ ] [Review][Patch] Snapshot query param not validated [`nowing_web/app/dashboard/[workspace_id]/research/saved-searches/[alert_rule_id]/saved-search-detail-content.tsx:35-36`] — `snapshot` is read from `useSearchParams` without UUID validation; malformed IDs silently fall back to "Linked snapshot not found" or the latest snapshot.
+
+### defer
+
+- [x] [Review][Defer] Large `degradation_reasons` array can produce a very long notification message [`nowing_backend/app/alerts/engine/notify.py:44-46`] — UX polish; cap/truncate if real sources produce many reasons.
+- [x] [Review][Defer] Snapshot ID from a different alert rule in URL falls back silently [`nowing_web/app/dashboard/[workspace_id]/research/saved-searches/[alert_rule_id]/saved-search-detail-content.tsx:57-60`] — safe fallback, but could show a clearer message.
+- [x] [Review][Defer] Missing/invalid `alert_run_complete` metadata yields no UI fallback [`nowing_web/components/layout/ui/sidebar/NotificationsDropdown.tsx:269-279`] — if `isAlertRunCompleteMetadata` fails, the notification is not handled as an alert. UX polish.
+- [x] [Review][Defer] `_TICK_BATCH` batch limit can delay rules past the first 200 [`nowing_backend/app/alerts/engine/tick.py:25,117`] — documented constant/known limitation.
+- [x] [Review][Defer] Match count overflow in JavaScript for extremely large counts [`nowing_web/lib/alerts/group-inbox-notifications.ts:51`] — theoretical; real job alert counts will never approach `2^53`.
+
+### dismissed
+
+- `next_fire_at` is not advanced when execute skips — it is advanced in `_claim_due_rules` and the `/run` route triggers the full tick.
+- Workspace membership not verified at notification time — the subscription query joins `WorkspaceMembership` and filters by `workspace_id`.
+- `alert_rule_id` in notification metadata not validated — it is built from the same `alert_rule` object; no cross-object bug.
+- Frontend navigation silently fails when `workspace_id` is null — `workspace_id` is set from the alert rule and is non-null in the DB.
+- Missing error handling in `alert-rules-api.service.ts` — `baseApiService.get` throws typed errors handled by React Query.
+- SQL injection risk in `_load_rule` error — the error message is a static string.
+- Test gap for concurrent rule deletion — code review finding, not a code defect.
+- Type mismatch `new_items_count` can be string — backend serializes it as a number; frontend parsing is defensive, not a bug.
+- Integer overflow in `match_count` — Python integers are arbitrary precision; DB column is only for metadata.
+
 ## Status
 
-done
+in-progress

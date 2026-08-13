@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-08"
-last_updated: "2026-08-13"  # 12.9: code review complete, grouped alert view wired, defensive int() patch applied
+last_updated: "2026-08-13"  # 12.9: re-review complete; 1 decision-needed, 5 patch findings
 # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended citation ACs to 3.15 (WEB_RESULT), 9.3 (async delivery), 2.10 (Exa MCP). 3 stories → review.
 # ponytail: 2026-08-08 sprint-planning — added Epic 1, 5 (DONE brownfield); added 9.1a, 9.1b, 4.8a-4.8h, 13.2a-13.2e; upgraded 12.1-12.5 to ready-for-dev (story files exist); 12.0 DONE (legal approved).
 project: Nowing
@@ -244,7 +244,7 @@ development_status:
   # DROPPED 2026-08-08: cross-source entity timeline depends on Nowing canonical entities (Epic 13 dropped).
   12-8: dropped
   # 12.9 depends on 12.6 (Saved Searches) and 6-8 (Generic Alert Engine). AD-33: must be Automation template, NOT standalone scheduler.
-  12-9: done  # Job Market Alerts (P1) — code review complete, AC-4 grouping + defensive patch applied
+  12-9: in-progress  # Job Market Alerts (P1) — re-review 2026-08-13: 1 decision-needed, 5 patch findings
   epic-12-retrospective: optional
 
   # === Epic 13: Canonical Entity Storage & Multi-Domain Indexing ===

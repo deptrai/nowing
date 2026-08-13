@@ -117,6 +117,28 @@
   - **Action:** Marked `[x] [Review][Defer]` in `18-1-public-agent-chat-endpoints.md`.
   - **Reason / when to revisit:** Not in 18.1 ACs; permission vocabulary `agent_chat:thread:read` hints at future scope. Revisit in Story 18.4+ when read surface is defined.
 
+## Deferred from: code review of story-12-9-job-market-alerts (2026-08-13)
+
+- **Finding:** Large `degradation_reasons` array can produce a very long notification message (`nowing_backend/app/alerts/engine/notify.py:44-46`).
+  - **Action:** Marked `[x] [Review][Defer]` in `12-9-job-market-alerts.md`.
+  - **Reason / when to revisit:** UX polish; cap or truncate the reason list if real sources produce many reasons.
+
+- **Finding:** Snapshot ID from a different alert rule in URL falls back silently (`nowing_web/app/dashboard/[workspace_id]/research/saved-searches/[alert_rule_id]/saved-search-detail-content.tsx:57-60`).
+  - **Action:** Marked `[x] [Review][Defer]` in `12-9-job-market-alerts.md`.
+  - **Reason / when to revisit:** Safe fallback; add a clearer message if UX feedback asks for it.
+
+- **Finding:** Missing/invalid `alert_run_complete` metadata yields no UI fallback (`nowing_web/components/layout/ui/sidebar/NotificationsDropdown.tsx:269-279`).
+  - **Action:** Marked `[x] [Review][Defer]` in `12-9-job-market-alerts.md`.
+  - **Reason / when to revisit:** UX polish; render a generic alert message if metadata parsing fails.
+
+- **Finding:** `_TICK_BATCH` batch limit can delay rules past the first 200 (`nowing_backend/app/alerts/engine/tick.py:25,117`).
+  - **Action:** Marked `[x] [Review][Defer]` in `12-9-job-market-alerts.md`.
+  - **Reason / when to revisit:** Known limitation; add metric/log if batch saturation is observed.
+
+- **Finding:** Match count overflow in JavaScript for extremely large counts (`nowing_web/lib/alerts/group-inbox-notifications.ts:51`).
+  - **Action:** Marked `[x] [Review][Defer]` in `12-9-job-market-alerts.md`.
+  - **Reason / when to revisit:** Theoretical; real job alert counts will not approach `2^53`.
+
 # Deferred Work
 
 ## Deferred from: code review of 12-1-vietnamworks-scraper (2026-08-10)
