@@ -84,6 +84,7 @@ class TestJobAlertRule:
             capability_id="vn_jobs.aggregate",
             query={"keyword": "python", "location": "Ho Chi Minh"},
             diff_strategy="new_items",
+            threshold=None,
         )
         assert rule.capability_id == "vn_jobs.aggregate"
         assert rule.query["keyword"] == "python"
@@ -245,6 +246,7 @@ class TestJobAlertDegraded:
             query={"keyword": "python"},
             notification_channels=["in_app"],
             diff_strategy="new_items",
+            threshold=None,
         )
 
         fake_capability = mock.MagicMock()
@@ -268,9 +270,50 @@ class TestJobAlertDegraded:
                 fired_at=__import__("datetime").datetime.now(__import__("datetime").UTC),
             )
 
-        # ATDD: when degraded + no new items, notify_alert_run must be skipped entirely.
-        # Until implemented, the current code calls notify_alert_run for every run.
-        # This assertion documents the desired behavior and will fail until fixed.
+        assert mock_notify.await_count == 0
+
+    @pytest.mark.asyncio
+    async def test_job_alert_skips_when_degraded_and_only_changed_items(self):
+        """When vn_jobs.aggregate returns degraded=true with only changed items, no notification is sent."""
+        prev = _FakeSnapshot(
+            id=uuid4(),
+            snapshot_json={
+                "source_ids": ["job-1"],
+                "items": [{"id": "job-1", "title": "Old title"}],
+            },
+        )
+        rule = _FakeRule(
+            id=uuid4(),
+            workspace_id=1,
+            name="Python jobs",
+            capability_id="vn_jobs.aggregate",
+            query={"keyword": "python"},
+            notification_channels=["in_app"],
+            diff_strategy="new_items",
+            threshold=None,
+        )
+
+        fake_capability = mock.MagicMock()
+        fake_capability.input_schema.model_validate.return_value = rule.query
+        with (
+            mock.patch.object(CapabilityRegistry, "get", return_value=fake_capability),
+            mock.patch("app.alerts.engine.execute.execute_with_context") as mock_run,
+            mock.patch(
+                "app.alerts.engine.execute.notify_alert_run",
+                new=mock.AsyncMock(),
+            ) as mock_notify,
+        ):
+            mock_run.return_value = {
+                "items": [{"id": "job-1", "title": "Updated title"}],
+                "degraded": True,
+                "degradation_reasons": ["topcv.timeout"],
+            }
+            await execute_alert_rule(
+                session=_FakeSession(prev=prev),
+                alert_rule=rule,
+                fired_at=__import__("datetime").datetime.now(__import__("datetime").UTC),
+            )
+
         assert mock_notify.await_count == 0
 
     @pytest.mark.asyncio

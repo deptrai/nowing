@@ -270,7 +270,7 @@ SWE-1.7 Max
 
 ### decision-needed
 
-- [ ] [Review][Decision] Should a degraded run with `changed_items_count > 0` (but `new_items_count == 0`) notify? [`nowing_backend/app/alerts/engine/execute.py:210-221`] — `_should_skip_notification` returns `False` when `changed_items_count > 0`. Spec AC-5 says skip "degraded source with no new postings". The current code comment says "degraded runs that DO surface new postings still notify". Need product call on whether `changed` counts as a posting the user cares about.
+- [x] [Review][Decision] Should a degraded run with `changed_items_count > 0` (but `new_items_count == 0`) notify? [`nowing_backend/app/alerts/engine/execute.py:210-221`] — **Decision:** No. On a degraded source, only new items (`new_items_count > 0`) are trusted enough to notify. Changed items are not reliable because the source was degraded, so they are skipped. `_should_skip_notification` now returns `True` for degraded runs with `new_items_count == 0` regardless of `changed_items_count`, and a new unit test covers this scenario.
 
 ### patch
 
@@ -302,4 +302,4 @@ SWE-1.7 Max
 
 ## Status
 
-in-progress
+done

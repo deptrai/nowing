@@ -213,9 +213,13 @@ def _should_skip_notification(snapshot: AlertSnapshot) -> bool:
     AC-2: no notification when the run surfaced nothing new or changed.
     AC-5: a degraded source with zero new items is skipped (and logged as
     ``degraded_source``); degraded runs that DO surface new postings still
-    notify so nothing real is missed. Failed runs always notify so the user
-    knows their saved search broke.
+    notify so nothing real is missed. Changed items on a degraded source are
+    not trusted because the data source itself was degraded, so they do not
+    trigger a notification. Failed runs always notify so the user knows their
+    saved search broke.
     """
     if snapshot.run_status == "failed":
         return False
+    if snapshot.run_status == "degraded":
+        return snapshot.new_items_count == 0
     return snapshot.new_items_count == 0 and snapshot.changed_items_count == 0
