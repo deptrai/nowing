@@ -32,21 +32,21 @@ def sample_listing() -> VnJobAggregatedListing:
 def test_redact_listing_calls_record_vn_jobs_pii_detected_for_each_pii_type(
     sample_listing,
 ):
-    """_redact_listing calls record_vn_jobs_pii_detected for each PII type."""
+    """_redact_listing calls record_vn_jobs_pii_detected for each PII type with exact counts."""
     with patch(
         "app.services.jobs_aggregator.orchestrator.record_vn_jobs_pii_detected"
     ) as mock_record:
         _redact_listing(sample_listing)
 
     # Should be called for phone, email, and name
-    assert mock_record.call_count >= 3
+    assert mock_record.call_count == 3
 
-    # Verify calls include pii_type parameter
+    # Verify calls include pii_type parameter and exact counts
     call_args_list = [call.kwargs for call in mock_record.call_args_list]
     pii_types = [args.get("pii_type") for args in call_args_list]
-    assert "phone" in pii_types
-    assert "email" in pii_types
-    assert "name" in pii_types
+    assert set(pii_types) == {"phone", "email", "name"}
+    for args in call_args_list:
+        assert args.get("count") == 1
 
 
 def test_redact_listing_logs_pii_counts_as_structured_log_not_values(
@@ -94,11 +94,16 @@ def test_redact_job_pii_returns_zero_counts_when_no_pii():
     assert result.text == text
 
 
-def test_redact_listing_sets_pii_redacted_flag_when_pii_detected(sample_listing):
-    """_redact_listing sets pii_redacted=True when PII is detected."""
-    with patch("app.observability.metrics.record_vn_jobs_pii_detected"):
+def test_redact_listing_masks_pii_values_in_description_and_requirement(
+    sample_listing,
+):
+    """_redact_listing replaces phone, email and name with placeholders."""
+    with patch("app.services.jobs_aggregator.orchestrator.record_vn_jobs_pii_detected"):
         result = _redact_listing(sample_listing)
 
+    assert "0901234567" not in result.job_description
+    assert "hr@example.com" not in result.job_description
+    assert "Nguyễn Văn A" not in result.job_requirement
     assert result.pii_redacted is True
 
 

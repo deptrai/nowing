@@ -1,12 +1,24 @@
 {
   "dimension": "mutation",
-  "runAt": "2026-08-12T19:29:16.625280+00:00",
+  "runAt": "2026-08-13T06:23:59.796364+00:00",
   "services": [
     {
-      "service": "multi_agent_chat",
-      "verdict": "FAIL",
-      "error": "cosmic-ray init failed for mutation-nowing-multi_agent_chat-20260812T192847Z.toml",
-      "traceback": "Traceback (most recent call last):\n  File \"/Users/luisphan/Documents/GitHub/nowing/nowing_backend/../scripts/mutation-gate.py\", line 469, in main\n    run_cosmic_ray(backend, config, session)\n  File \"/Users/luisphan/Documents/GitHub/nowing/nowing_backend/../scripts/mutation-gate.py\", line 259, in run_cosmic_ray\n    raise RuntimeError(f\"cosmic-ray {step} failed for {config.name}\")\nRuntimeError: cosmic-ray init failed for mutation-nowing-multi_agent_chat-20260812T192847Z.toml\n"
+      "service": "services/memory/revalidation_service",
+      "total": 25,
+      "killed": 25,
+      "survived": 0,
+      "timeout": 0,
+      "noTests": 0,
+      "mutationScore": 100.0,
+      "verdict": "PASS",
+      "triage": {
+        "P0": [],
+        "P1": [],
+        "P2": []
+      },
+      "reportPath": "/Users/luisphan/Documents/GitHub/nowing/_bmad-output/test-artifacts/mutation-nowing-services-memory-revalidation_service-20260813T062359Z.json",
+      "sessionPath": "/Users/luisphan/Documents/GitHub/nowing/_bmad-output/test-artifacts/mutation-nowing-services-memory-revalidation_service-20260813T062204Z.sqlite",
+      "configPath": "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/mutation-nowing-services-memory-revalidation_service-20260813T062204Z.toml"
     }
   ]
 }
