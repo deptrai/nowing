@@ -5,7 +5,7 @@ import {
 } from "@/contracts/types/alert-rules.types";
 import { baseApiService } from "./base-api.service";
 
-const BASE = "/api/v1/workspaces";
+const BASE = "/workspaces";
 
 class AlertRulesApiService {
 	/**

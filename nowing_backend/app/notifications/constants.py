@@ -19,5 +19,6 @@ CATEGORY_TYPES: dict[str, tuple[str, ...]] = {
         "auto_reload_failed",
         "deep_research_complete",
         "automation_run_complete",
+        "alert_run_complete",
     ),
 }
