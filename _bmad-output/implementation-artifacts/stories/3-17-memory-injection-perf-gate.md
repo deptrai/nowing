@@ -99,6 +99,13 @@ Focused `cosmic-ray` runs executed against the changed code with targeted test f
 - Verdict: **PASS** — all 4 ACs mapped to unit/benchmark tests and source code; no gaps.
 - Next: NFR audit (4.12) → Human review gate (4.13)
 
+## NFR Evidence Audit (2026-08-13)
+
+- Report: `_bmad-output/test-artifacts/nfr-3.17.md`
+- Verdict: **PASS** — 9 PASS, 1 CONCERNS, 0 FAIL
+- One P2 concern: no dedicated throughput/concurrent-turn benchmark; p95 latency evidence is strong.
+- Next: Human review gate (4.13)
+
 ## EXPLAIN Verification (AC1)
 
 From the Docker benchmark evidence (`3-17-memory-performance.json`):
