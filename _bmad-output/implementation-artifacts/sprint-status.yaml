@@ -117,7 +117,7 @@ development_status:
   6-5: done
   6-6: done
   6-7: done
-  6-8: ready-for-dev  # Generic Alert Engine (AD-33 implementation story)
+  6-8: done  # Generic Alert Engine (AD-33 implementation story)
   6-9: done
   # ponytail: 2026-08-08 readiness audit — epics.md Story 6.6/6.7/6.9 (Playbook Reuse, Schema-Driven Form, Workspace vertical)
   # are BUSINESS-GATED (gated sau pilot BĐS), not technically blocked. Track separately:

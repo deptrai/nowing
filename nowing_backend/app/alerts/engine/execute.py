@@ -14,7 +14,7 @@ from app.capabilities.core.store import CapabilityRegistry
 from app.capabilities.core.types import CapabilityContext
 from app.db import AlertRule, AlertSnapshot
 
-from .diff import diff_new_items
+from .diff import diff_snapshots
 from .notify import notify_alert_run
 
 logger = logging.getLogger(__name__)
@@ -155,17 +155,38 @@ async def execute_alert_rule(
         .first()
     )
 
-    if alert_rule.diff_strategy == "new_items" and prev is not None:
-        delta = diff_new_items(prev.snapshot_json, snapshot.snapshot_json)
-        snapshot.new_items_count = delta["new_items_count"]
-        snapshot.changed_items_count = delta["changed_items_count"]
-        snapshot.removed_items_count = delta["removed_items_count"]
-        # Store delta summary so notifications can reference it without re-diffing.
-        snapshot.snapshot_json["_delta"] = {
-            "new_item_ids": delta["new_item_ids"],
-            "removed_item_ids": delta["removed_item_ids"],
-            "changed_item_ids": delta["changed_item_ids"],
-        }
+    if prev is not None:
+        try:
+            delta = diff_snapshots(
+                alert_rule.diff_strategy,
+                prev.snapshot_json,
+                snapshot.snapshot_json,
+                alert_rule.threshold or {},
+            )
+        except ValueError as exc:
+            logger.warning(
+                "alert rule %s diff strategy %s failed: %s",
+                alert_rule.id,
+                alert_rule.diff_strategy,
+                exc,
+            )
+            snapshot.run_status = "failed"
+            snapshot.snapshot_json["_delta_error"] = str(exc)
+        else:
+            snapshot.new_items_count = delta["new_items_count"]
+            snapshot.changed_items_count = delta["changed_items_count"]
+            snapshot.removed_items_count = delta["removed_items_count"]
+            # Store delta summary so notifications can reference it without re-diffing.
+            snapshot.snapshot_json["_delta"] = {
+                "new_item_ids": delta.get("new_item_ids", []),
+                "removed_item_ids": delta.get("removed_item_ids", []),
+                "changed_item_ids": delta.get("changed_item_ids", []),
+                "matched_item_ids": [
+                    i.get("id") or i.get("source_id") or i.get("canonical_id")
+                    for i in delta.get("matched_items", [])
+                ],
+                "triggered_count": delta.get("triggered_count", 0),
+            }
 
     session.add(snapshot)
     await session.commit()

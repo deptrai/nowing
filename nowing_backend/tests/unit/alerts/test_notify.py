@@ -62,8 +62,8 @@ def test_notification_title_and_message():
         degradation_reasons=None,
     )
 
-    assert _notification_title(rule, snapshot) == "Alert 'Python jobs' 2 new items"
-    assert "2 new item(s)" in _notification_message(rule, snapshot)
+    assert _notification_title(rule, snapshot) == "Alert 'Python jobs' 2 matched items"
+    assert "matched 2 item(s)" in _notification_message(rule, snapshot)
     assert "saved-searches" in _notification_message(rule, snapshot)
 
 

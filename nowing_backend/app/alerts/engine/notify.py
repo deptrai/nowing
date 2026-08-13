@@ -27,9 +27,10 @@ def _status_label(snapshot: AlertSnapshot) -> str:
         return "failed"
     if snapshot.run_status == "degraded":
         return "degraded"
-    if snapshot.new_items_count:
-        return f"{snapshot.new_items_count} new items"
-    return "no new items"
+    triggered = snapshot.new_items_count or snapshot.changed_items_count
+    if triggered:
+        return f"{triggered} matched items"
+    return "no matches"
 
 
 def _notification_title(alert_rule: AlertRule, snapshot: AlertSnapshot) -> str:
@@ -43,13 +44,14 @@ def _notification_message(alert_rule: AlertRule, snapshot: AlertSnapshot) -> str
     if snapshot.run_status == "degraded":
         reasons = snapshot.degradation_reasons or []
         return f"Saved search '{alert_rule.name}' is degraded: {', '.join(reasons)}."
-    if snapshot.new_items_count:
+    triggered = snapshot.new_items_count or snapshot.changed_items_count
+    if triggered:
         return (
-            f"Saved search '{alert_rule.name}' found "
-            f"{snapshot.new_items_count} new item(s)."
+            f"Saved search '{alert_rule.name}' matched "
+            f"{triggered} item(s)."
             f"\nOpen: /dashboard/{alert_rule.workspace_id}/research/saved-searches/{alert_rule.id}"
         )
-    return f"Saved search '{alert_rule.name}' ran — no new items."
+    return f"Saved search '{alert_rule.name}' ran — no matches."
 
 
 async def _in_app(
