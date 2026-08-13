@@ -298,3 +298,69 @@ Scope: commits `fd64d84f4`..`0ba407e10` — 8 files, 1186 lines (deep-research c
 - Token usage: always recorded with `usage_type="deep_research"`
 - Fallback: flat-rate with warning when no costDollars
 - Post-charge balance check: fail-closed with `InsufficientCreditsError`
+
+---
+
+## Regression Fix — `Run.cost_micros` and chat turn token-usage when billing disabled (2026-08-13)
+
+### Symptom
+During real-data E2E verification of Story 12.9 (Job Market Alerts) the ChainLens API key was rotated. After updating `CHAINLENS_API_KEY` and restarting the backend, direct REST calls to `/api/v1/workspaces/11/scrapers/chainlens/research` returned correct `cost_micros` in the JSON body, but the persisted `Run` row showed `cost_micros: 0`. The same symptom appeared when the agent chat path invoked the `chainlens` subagent: `Run.cost_micros` was `0` and the chat turn's `token_usage` breakdown did **not** include the `chainlens.research` tool cost.
+
+### Root cause
+`_charge_chainlens()` in `nowing_backend/app/capabilities/core/billing.py` returned `0` when `config.PLATFORM_SCRAPE_BILLING_ENABLED` was `False`:
+
+```python
+if not billing_enabled:
+    await _record_chainlens_cost_allocation(...)
+    return 0
+```
+
+Callers `record_and_publish_sync_run` (REST sync door) and `record_run` (agent sync door) stored the return value as `Run.cost_micros`. The agent door also fed that `0` into `add_current_turn_tool_cost(...)`, which meant the chat turn token-usage SSE never saw the deep-research cost.
+
+This did **not** affect wallet debits (billing disabled correctly skipped `wallet_credit.apply_debit`), and `TokenUsage` audit rows still recorded the real cost via `_record_chainlens_cost_allocation`. The bug was purely the cost value propagated upstream to `Run` and chat telemetry.
+
+### Fix
+Changed `_charge_chainlens` to return the real `total_cost_micros` even when billing is disabled, while keeping the wallet un-touched:
+
+```python
+if not billing_enabled:
+    await _record_chainlens_cost_allocation(...)
+    # ponytail: return the real engine cost even when billing is disabled so
+    # Run.cost_micros and the chat turn token-usage SSE remain accurate.
+    return total_cost_micros
+```
+
+This is the minimum surgical change: it preserves the existing billing-disable contract (no `apply_debit`) but gives callers the actual cost they need for `Run` metadata and chat turn accounting.
+
+### Files changed
+- `nowing_backend/app/capabilities/core/billing.py` — return `total_cost_micros` when `billing_enabled` is `False`
+- `nowing_backend/tests/unit/capabilities/test_billing.py` — update `test_chainlens_billing_disabled_records_usage_without_debit` assertion from `charged == 0` to `charged == 12300`
+- `nowing_backend/tests/integration/capabilities/chainlens/research/test_research_cost_metering.py` — update `test_charge_capability_records_usage_without_debit_when_billing_disabled` assertion from `charged == 0` to `charged == 12_300`
+
+### Real-data verification (2026-08-13)
+
+| Path | Run id | `Run.cost_micros` | `token_usage` chat breakdown | Wallet debit |
+|---|---|---|---|---|
+| REST sync `/scrapers/chainlens/research` | `run_14ad9732-afd4-487c-b021-eb9fb1f0281e` | `48635` | N/A | None (billing disabled) |
+| Agent chat -> `chainlens` subagent | `run_d4ca86a0-6f0a-4ac9-965e-4aed938af36c` | `119270` | `chainlens.research: 119270` included | None (billing disabled) |
+
+Example chat turn token-usage after fix:
+
+```json
+{
+  "cost_micros": 204406,
+  "model_breakdown": {
+    "chainlens.research": { "cost_micros": 119270 },
+    "agy/gemini-3.6-flash-high": { "cost_micros": 85136 }
+  }
+}
+```
+
+### Tests run
+- `uv run pytest tests/unit/capabilities/test_billing.py -q` -> **86 passed**
+- `uv run pytest tests/unit/capabilities/chainlens/research tests/unit/capabilities/access/test_agent_tools.py tests/unit/capabilities/access/test_rest_router.py -q` -> **283 passed, 1 skipped**
+- `uv run pytest tests/integration/capabilities/chainlens/research/test_research_cost_metering.py -q` -> **5 passed**
+- `uv run ruff check nowing_backend/app/capabilities/core/billing.py nowing_backend/tests/unit/capabilities/test_billing.py nowing_backend/tests/integration/capabilities/chainlens/research/test_research_cost_metering.py` -> **All checks passed**
+
+### Note
+`charge_capability` now returns the *real engine cost* in all cases; the wallet is still protected by `config.PLATFORM_SCRAPE_BILLING_ENABLED`. Callers that need the "amount actually debited" can compare `TokenUsage.call_details` or wallet history; `Run.cost_micros` should be interpreted as the *actual cost incurred by the engine*, which is what the product surface (runs log, chat token usage, analytics) needs.

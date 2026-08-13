@@ -128,7 +128,10 @@ async def test_charge_capability_records_usage_without_debit_when_billing_disabl
 
     charged = await charge_capability(output, BillingUnit.CHAINLENS_QUERY, ctx)
 
-    assert charged == 0
+    # ponytail: charge_capability returns the real engine cost even when billing
+    # is disabled so Run.cost_micros and chat turn usage remain accurate.
+    # The wallet is not debited.
+    assert charged == 12_300
     assert db_user.credit_micros_balance == 1_000_000
 
     rows = (

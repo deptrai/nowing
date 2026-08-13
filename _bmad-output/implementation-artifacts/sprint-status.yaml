@@ -152,6 +152,7 @@ development_status:
   9-1a: done
   9-1b: done
   9-2: done
+  # ponytail: 2026-08-13 regression fix — _charge_chainlens returns real cost_micros even when billing disabled; Run + chat token-usage now correct. See 9-2 artifact.
   9-3: done
   # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended async citation delivery ACs
   9-4: done
@@ -265,8 +266,8 @@ development_status:
   # === Epic 14: News Aggregation (Vietnam) ===
   epic-14: in-progress
   # 14-1 depends on 20.2 (NowingIngestService) and 6.8 (Generic Alert Engine).
-  # Code-review verdict: PASS_WITH_WARNINGS (P0 SSRF/Atom/RSS 1.0 gaps). Keep in progress until P0 closed.
-  14-1: in-progress
+  # Code-review verdict: PASS_WITH_WARNINGS (P0 SSRF/Atom/RSS 1.0 gaps). P0 closed 2026-08-07 (commit 6faee7e07).
+  14-1: review
   14-2: backlog
   14-3: backlog
   14-4: backlog

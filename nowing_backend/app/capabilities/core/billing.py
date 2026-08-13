@@ -483,7 +483,9 @@ async def _charge_chainlens(output: BillableOutput, ctx: CapabilityContext) -> i
             e2e_ms=e2e_ms,
             ttfb_ms=ttfb_ms,
         )
-        return 0
+        # ponytail: return the real engine cost even when billing is disabled so
+        # Run.cost_micros and the chat turn token-usage SSE remain accurate.
+        return total_cost_micros
 
     await wallet_credit.check_balance(ctx.session, owner_user_id, total_cost_micros)
     await _record_chainlens_cost_allocation(
