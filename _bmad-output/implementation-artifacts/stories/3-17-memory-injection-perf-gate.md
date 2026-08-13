@@ -78,6 +78,21 @@ A performance + regression gate proving `MemoryInjectionMiddleware` stays O(top-
 
 Key observation: p95 DB time stays flat (26-38ms) from 100 → 10,000 rows, confirming O(top-k) behavior. The HNSW index ensures query time depends on `top_k` (5) + `candidate_limit` (15), not table size.
 
+## Mutation Gate Results (2026-08-13)
+
+Focused `cosmic-ray` runs executed against the changed code with targeted test files to keep the gate within CI time window.
+
+| Module | Service path | Mutants run | Killed | Survived | Score | Verdict | P0 | P1 | P2 |
+|---|---|---|---|---|---|---|---|---|---|
+| `MemoryInjectionMiddleware` | `agents/chat/multi_agent_chat/main_agent/middleware/memory/middleware` | 386 / 412 | 267 | 119 | **69.17%** | `PASS_WITH_WARNINGS` | 0 | 119 | 0 |
+| `metrics.py` | `observability/metrics` | 1664 / 1723 | 681 | 983 | **40.93%** | `FAIL` | 0 | 983 | 0 |
+
+**Note on `observability/metrics`:** the focused run used only `tests/unit/observability/test_memory_injection_telemetry.py`, which covers `record_memory_injection_truncated`. Cosmic-ray mutates the entire `metrics.py` module, so mutants in unrelated helpers survive because the focused test suite does not exercise them. The 40.93% score is a module-level fail, not a P0-critical finding, and should be re-run with the full observability test suite for a representative verdict.
+
+**Artifacts:**
+- `_bmad-output/test-artifacts/mutation-nowing-agents-chat-multi_agent_chat-main_agent-middleware-memory-middleware-20260813T042800Z-final.json`
+- `_bmad-output/test-artifacts/mutation-nowing-observability-metrics-20260813T042800Z-final.json`
+
 ## EXPLAIN Verification (AC1)
 
 From the Docker benchmark evidence (`3-17-memory-performance.json`):
