@@ -238,7 +238,7 @@ development_status:
   12-4d: done  # chunk metadata + sourceId + salary fields
   12-4e: done  # ingest_job_id + schema violation logging
   12-5: in-progress
-  12-6: ready-for-dev  # Saved Searches (P0) — must ship before 12.9 (Job Market Alerts)
+  12-6: done  # Saved Searches (P0) — must ship before 12.9 (Job Market Alerts)
   # DROPPED 2026-08-08: property price alerts depend on Nowing canonical entities (Epic 13 dropped).
   12-7: dropped
   # DROPPED 2026-08-08: cross-source entity timeline depends on Nowing canonical entities (Epic 13 dropped).

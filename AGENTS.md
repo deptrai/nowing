@@ -102,6 +102,18 @@ pnpm tsc --noEmit
 pnpm exec biome check app/layout.tsx components/seo/json-ld.tsx components/homepage/hero-section.tsx components/homepage/compare-table.tsx 'app/(home)/free/page.tsx' messages/en.json messages/ko.json --diagnostic-level=error
 ```
 
+## Story 12.6 verification commands (Saved Searches / Generic Alert Engine)
+
+Backend (from `nowing_backend/`):
+
+```bash
+ruff check app/alerts app/routes/alert_rules_routes.py alembic/versions/190_add_alert_tables.py app/db.py app/celery_app.py app/app.py tests/unit/alerts tests/integration/alerts
+ruff format app/alerts app/routes/alert_rules_routes.py alembic/versions/190_add_alert_tables.py app/db.py app/celery_app.py app/app.py tests/unit/alerts tests/integration/alerts
+uv run pytest tests/unit/alerts tests/integration/alerts -q
+uv run pytest tests/unit/automations -q
+uv run python -c "from app.app import app; print('app import OK')"
+```
+
 ## Production auth cookie domain
 
 When the Nowing frontend (`nowing.net`), backend (`api.nowing.net`) and Zero cache (`zero.nowing.net`) run on different subdomains, the backend must set auth cookies with a shared parent domain. If `COOKIE_DOMAIN` is left empty, the `nowing_session` and `nowing_refresh` cookies are host-only for `api.nowing.net`; the browser will not send them to `zero.nowing.net`, causing Zero sync to return 401 and the dashboard to log the user out after the auth-retry limit is exhausted.

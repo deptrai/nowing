@@ -3640,19 +3640,19 @@ class ToolOutputSpill(Base, TimestampMixin):
 # Register model packages that live outside this file so their classes
 # are present in Base.metadata before configure_mappers() resolves any
 # string-based relationship() references.
-from app.automations.persistence import (  # noqa: E402, F401
+from app.automations.persistence import (  # noqa: F401
     Automation,
     AutomationRun,
     AutomationTrigger,
     Playbook,
 )
-from app.etl_pipeline.cache.persistence.models import CachedParse  # noqa: E402, F401
-from app.file_storage.persistence import DocumentFile  # noqa: E402, F401
-from app.indexing_pipeline.cache.persistence.models import (  # noqa: E402, F401
+from app.etl_pipeline.cache.persistence.models import CachedParse  # noqa: F401
+from app.file_storage.persistence import DocumentFile  # noqa: F401
+from app.indexing_pipeline.cache.persistence.models import (  # noqa: F401
     CachedEmbeddingSet,
 )
-from app.notifications.persistence import Notification  # noqa: E402, F401
-from app.podcasts.persistence import (  # noqa: E402, F401
+from app.notifications.persistence import Notification  # noqa: F401
+from app.podcasts.persistence import (  # noqa: F401
     Podcast,
     PodcastStatus,
 )
@@ -4224,3 +4224,10 @@ class ChainLensIngestJob(BaseModel, TimestampMixin):
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
     )
+
+
+# Ensure alert persistence models are registered on Base.metadata.
+# ruff: noqa: I001,E402
+from app.alerts.persistence.models.alert_rule import AlertRule  # noqa: F401
+from app.alerts.persistence.models.alert_snapshot import AlertSnapshot  # noqa: F401
+from app.alerts.persistence.models.alert_subscription import AlertSubscription  # noqa: F401

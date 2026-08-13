@@ -59,6 +59,7 @@ from app.observability import metrics as ot_metrics
 from app.observability.bootstrap import init_otel, shutdown_otel
 from app.rate_limiter import get_real_client_ip, limiter
 from app.routes import router as crud_router
+from app.routes.alert_rules_routes import router as alert_rules_router
 from app.routes.auth_routes import (
     resolve_google_user,
     router as auth_router,
@@ -924,6 +925,7 @@ app.include_router(users_router)
 app.include_router(auth_router)
 app.include_router(session_router)
 app.include_router(zero_context_router)
+app.include_router(alert_rules_router)
 
 if config.AUTH_TYPE == "GOOGLE":
     from fastapi.responses import RedirectResponse
