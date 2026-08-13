@@ -274,11 +274,11 @@ SWE-1.7 Max
 
 ### patch
 
-- [ ] [Review][Patch] Rule disabled after claim still executes [`nowing_backend/app/alerts/engine/tick.py:58-65`] — `_execute_claimed_rule` re-fetches the rule for the delete race, but does not check `fresh.enabled`. A rule disabled between `_claim_due_rules` and `_execute_claimed_rule` still runs and may notify.
-- [ ] [Review][Patch] Empty `rule_channels` early return ignores subscription channels [`nowing_backend/app/alerts/engine/notify.py:117-119`] — if `alert_rule.notification_channels` is empty, `notify_alert_run` returns before loading subscriptions, so a user with non-empty `AlertSubscription.channels` never receives the notification.
-- [ ] [Review][Patch] Timezone not validated when `schedule="none"` [`nowing_backend/app/alerts/services/crud.py:95-97`] — `derive_cron` (which validates the timezone) is only called when `schedule != "none"`. A rule created with `schedule="none"` and an invalid IANA timezone will fail later when the user switches to a scheduled mode.
-- [ ] [Review][Patch] `list_snapshots` service lacks workspace boundary [`nowing_backend/app/alerts/services/crud.py:219-232`] — only filters by `alert_rule_id`. The route already checks workspace, but the service is a leaky internal API if called elsewhere.
-- [ ] [Review][Patch] Snapshot query param not validated [`nowing_web/app/dashboard/[workspace_id]/research/saved-searches/[alert_rule_id]/saved-search-detail-content.tsx:35-36`] — `snapshot` is read from `useSearchParams` without UUID validation; malformed IDs silently fall back to "Linked snapshot not found" or the latest snapshot.
+- [x] [Review][Patch] Rule disabled after claim still executes [`nowing_backend/app/alerts/engine/tick.py:58-65`] — `_execute_claimed_rule` now checks `fresh.enabled` and logs `rule_disabled` before skipping.
+- [x] [Review][Patch] Timezone not validated when `schedule="none"` [`nowing_backend/app/alerts/services/crud.py:95-97`] — `create_alert_rule` now validates the timezone via `validate_cron` even when `schedule="none"`.
+- [x] [Review][Patch] `list_snapshots` service lacks workspace boundary [`nowing_backend/app/alerts/services/crud.py:219-232`] — `list_snapshots` now takes `workspace_id` and joins `AlertRule` to enforce the boundary.
+- [x] [Review][Patch] Snapshot query param not validated [`nowing_web/app/dashboard/[workspace_id]/research/saved-searches/[alert_rule_id]/saved-search-detail-content.tsx:35-36`] — `snapshot` is now validated with `UUID_RE` before use.
+- [ ] [Review][Won't fix] Empty `rule_channels` early return ignores subscription channels [`nowing_backend/app/alerts/engine/notify.py:117-119`] — `rule_channels` is the channel whitelist; an empty whitelist correctly means no notifications are sent. Subscriptions inherit channels from the rule at creation time.
 
 ### defer
 
