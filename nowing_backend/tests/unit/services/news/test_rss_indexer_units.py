@@ -239,6 +239,7 @@ class _FakeTaskLog:
         self.starts = 0
         self.successes = 0
         self.failures = []
+        self.success_kwargs: list[dict] = []
 
     async def log_task_start(self, **kwargs):
         self.starts += 1
@@ -246,6 +247,7 @@ class _FakeTaskLog:
 
     async def log_task_success(self, *args, **kwargs):
         self.successes += 1
+        self.success_kwargs.append((args, kwargs))
 
     async def log_task_failure(self, *args, **kwargs):
         self.failures.append(args)
@@ -379,3 +381,375 @@ async def test_index_rss_feeds_skips_articles_without_link_or_title(monkeypatch)
     assert skipped == 0
     assert warning is None
     assert len(indexed_docs) == 1
+
+
+def test_module_constants_pin_retention_and_heartbeat_intervals():
+    import app.tasks.connector_indexers.rss_indexer as mod
+
+    assert mod.HEARTBEAT_INTERVAL_SECONDS == 30
+    assert mod.RSS_RETENTION_DAYS == 30
+
+
+def test_fingerprint_seed_is_title_when_description_empty_or_repeats_title():
+    import hashlib
+
+    import app.tasks.connector_indexers.rss_indexer as mod
+
+    title = "Flood warnings issued in northern Vietnam"
+    expected = hashlib.sha256(
+        mod._normalise_text(title).encode("utf-8")
+    ).hexdigest()
+    assert _news_fingerprint(_article(description="")) == expected
+    assert _news_fingerprint(_article(description=title)) == expected
+
+
+def test_fingerprint_truncates_description_seed_to_80_chars():
+    import hashlib
+
+    import app.tasks.connector_indexers.rss_indexer as mod
+
+    title = mod._normalise_text("Flood warnings issued in northern Vietnam")
+    desc80 = "d" * 80
+    assert _news_fingerprint(_article(description=desc80)) == hashlib.sha256(
+        f"{title}|{desc80}".encode()
+    ).hexdigest()
+    desc81 = "d" * 81
+    assert _news_fingerprint(_article(description=desc81)) == hashlib.sha256(
+        f"{title}|{'d' * 80}".encode()
+    ).hexdigest()
+
+
+def test_source_name_survives_value_error_hostname():
+    article = _article(link="http://[::1", source="vnexpress.net")
+    assert _source_name_for_canonical(article) == "vnexpress.net"
+
+
+async def test_prune_select_uses_equality_and_lt_filters():
+    from sqlalchemy import Select
+
+    session = _PruneSession(rows=[(1, "https://a/b")])
+    await _prune_stale_articles(
+        session, connector_id=7, workspace_id=3, seen_links={"https://x"}
+    )
+    select_stmt = next(
+        stmt for stmt in session.statements if isinstance(stmt, Select)
+    )
+    sql = str(select_stmt)
+    assert "workspace_id = " in sql
+    assert "workspace_id !=" not in sql and "workspace_id IS" not in sql
+    assert "connector_id = " in sql
+    assert "connector_id !=" not in sql and "connector_id IS" not in sql
+    assert "document_type = " in sql
+    assert "document_type !=" not in sql and "document_type IS" not in sql
+    assert "created_at < " in sql
+    assert "created_at >=" not in sql and "created_at <=" not in sql
+
+
+async def _prune_with_canonical_mocked(monkeypatch, rows):
+    import app.tasks.connector_indexers.rss_indexer as mod
+
+    async def _fake_delete_sources(session, workspace_id, record_ids):
+        return None
+
+    async def _fake_orphans(session, workspace_id, **kwargs):
+        return 0
+
+    monkeypatch.setattr(
+        mod, "delete_canonical_sources_by_record_ids", _fake_delete_sources
+    )
+    monkeypatch.setattr(mod, "delete_orphaned_canonical_entities", _fake_orphans)
+    session = _PruneSession(rows=rows)
+    await _prune_stale_articles(
+        session, connector_id=7, workspace_id=3, seen_links=set()
+    )
+    return session
+
+
+async def test_prune_batches_chunk_deletes_in_500s(monkeypatch):
+    from sqlalchemy.sql.dml import Delete
+
+    session = await _prune_with_canonical_mocked(
+        monkeypatch, [(i, f"https://a/{i}") for i in range(1000)]
+    )
+    assert (
+        sum(1 for s in session.statements if isinstance(s, Delete)) == 3
+    )
+
+
+async def test_prune_batches_1001_docs_in_three_chunks(monkeypatch):
+    from sqlalchemy.sql.dml import Delete
+
+    session = await _prune_with_canonical_mocked(
+        monkeypatch, [(i, f"https://a/{i}") for i in range(1001)]
+    )
+    assert (
+        sum(1 for s in session.statements if isinstance(s, Delete)) == 4
+    )
+
+
+async def test_prune_chunk_batches_cover_every_doc_id(monkeypatch):
+    from sqlalchemy.sql.dml import Delete
+
+    session = await _prune_with_canonical_mocked(
+        monkeypatch, [(i, f"https://a/{i}") for i in range(1000)]
+    )
+    chunk_ids = [
+        params
+        for stmt in session.statements
+        if isinstance(stmt, Delete)
+        for params in stmt.compile().params.values()
+        if isinstance(params, list)
+    ]
+    assert len(chunk_ids) == 3
+    assert chunk_ids[0][0] == 0
+    assert chunk_ids[0][1] == 1
+    assert chunk_ids[1] == list(range(500, 1000))
+
+
+async def test_prune_uses_id_and_link_columns(monkeypatch):
+    from sqlalchemy.sql.dml import Delete
+
+    import app.tasks.connector_indexers.rss_indexer as mod
+
+    pruned: list[list] = []
+
+    async def _fake_delete_sources(session, workspace_id, record_ids):
+        pruned.append(list(record_ids))
+
+    async def _fake_orphans(session, workspace_id, **kwargs):
+        return 0
+
+    monkeypatch.setattr(
+        mod, "delete_canonical_sources_by_record_ids", _fake_delete_sources
+    )
+    monkeypatch.setattr(mod, "delete_orphaned_canonical_entities", _fake_orphans)
+
+    session = _PruneSession(rows=[(1, "https://a/b")])
+    await _prune_stale_articles(
+        session, connector_id=7, workspace_id=3, seen_links=set()
+    )
+    doc_delete = [
+        s for s in session.statements if isinstance(s, Delete)
+    ][-1]
+    assert doc_delete.compile().params == {"id_1": [1]}
+    assert pruned == [["https://a/b"]]
+
+
+async def test_index_rss_feeds_respects_update_last_indexed_false(monkeypatch):
+    import app.tasks.connector_indexers.rss_indexer as mod
+
+    flags: list[bool] = []
+
+    async def _fake_update(session, connector, flag):
+        flags.append(flag)
+
+    _patch_index_rss_deps(monkeypatch, connector=_FakeConnector(), feeds=[])
+    monkeypatch.setattr(mod, "update_connector_last_indexed", _fake_update)
+    await index_rss_feeds(
+        _PruneSession(rows=[]),
+        connector_id=1,
+        workspace_id=7,
+        user_id="u1",
+        update_last_indexed=False,
+    )
+    assert flags == [False]
+
+
+async def test_index_rss_feeds_no_feeds_logs_zero_documents(monkeypatch):
+    log = _patch_index_rss_deps(
+        monkeypatch, connector=_FakeConnector(), feeds=[]
+    )
+    await index_rss_feeds(
+        _PruneSession(rows=[]), connector_id=1, workspace_id=7, user_id="u1"
+    )
+    assert log.success_kwargs[-1][0][2]["documents_indexed"] == 0
+
+
+async def test_index_rss_feeds_no_articles_logs_zero_documents(monkeypatch):
+    log = _patch_index_rss_deps(
+        monkeypatch,
+        connector=_FakeConnector(),
+        feeds=["https://a/x"],
+        fetch_result=[],
+    )
+    await index_rss_feeds(
+        _PruneSession(rows=[]), connector_id=1, workspace_id=7, user_id="u1"
+    )
+    assert log.success_kwargs[-1][0][2]["documents_indexed"] == 0
+
+
+async def test_index_rss_feeds_dedup_does_not_break_the_loop(monkeypatch):
+    import app.tasks.connector_indexers.rss_indexer as mod
+
+    first = _article()
+    fetched = [
+        first,
+        _article(link=first.link),
+        _article(title="Second story", link="https://vnexpress.net/article/2"),
+    ]
+    _patch_index_rss_deps(
+        monkeypatch,
+        connector=_FakeConnector(),
+        feeds=["https://a/x"],
+        fetch_result=fetched,
+    )
+    indexed_docs = []
+
+    class _FakePipeline:
+        async def create_placeholder_documents(self, infos):
+            return None
+
+        async def index_batch(self, docs):
+            indexed_docs.extend(docs)
+            return [_ReadyDoc() for _ in docs]
+
+    async def _fake_upsert(session, **kwargs):
+        return None
+
+    async def _fake_prune(session, **kwargs):
+        return 0
+
+    monkeypatch.setattr(mod, "IndexingPipelineService", lambda session: _FakePipeline())
+    monkeypatch.setattr(mod, "upsert_canonical_entity", _fake_upsert)
+    monkeypatch.setattr(mod, "_prune_stale_articles", _fake_prune)
+    indexed, skipped, warning = await index_rss_feeds(
+        _PruneSession(rows=[]), connector_id=1, workspace_id=7, user_id="u1"
+    )
+    assert indexed == 2
+    assert skipped == 0
+    assert warning is None
+    assert len(indexed_docs) == 2
+
+
+async def test_index_rss_feeds_heartbeat_call_counts(monkeypatch):
+    import app.tasks.connector_indexers.rss_indexer as mod
+
+    for count, _expected_calls in [(5, 0), (50, 1), (101, 2), (147, 2)]:
+        calls: list[int] = []
+
+        async def _heartbeat(n, calls=calls):
+            calls.append(n)
+
+        fetched = [
+            _article(
+                title=f"Story {i}",
+                link=f"https://vnexpress.net/article/{i}",
+            )
+            for i in range(count)
+        ]
+        _patch_index_rss_deps(
+            monkeypatch,
+            connector=_FakeConnector(),
+            feeds=["https://a/x"],
+            fetch_result=fetched,
+        )
+
+        class _FakePipeline:
+            async def create_placeholder_documents(self, infos):
+                return None
+
+            async def index_batch(self, docs):
+                return [_ReadyDoc() for _ in docs]
+
+        async def _fake_upsert(session, **kwargs):
+            return None
+
+        async def _fake_prune(session, **kwargs):
+            return 0
+
+        monkeypatch.setattr(
+            mod, "IndexingPipelineService", lambda session: _FakePipeline()
+        )
+        monkeypatch.setattr(mod, "upsert_canonical_entity", _fake_upsert)
+        monkeypatch.setattr(mod, "_prune_stale_articles", _fake_prune)
+        await index_rss_feeds(
+            _PruneSession(rows=[]),
+            connector_id=1,
+            workspace_id=7,
+            user_id="u1",
+            on_heartbeat_callback=_heartbeat,
+        )
+        assert calls == [
+            *range(50, count + 1, 50),
+            count,
+        ], f"count={count}"
+
+
+async def test_index_rss_feeds_fetch_failure_logs_exc_info(monkeypatch):
+    import app.tasks.connector_indexers.rss_indexer as mod
+
+    logged: list[dict] = []
+
+    class _FakeLogger:
+        def warning(self, *args, **kwargs):
+            logged.append(kwargs)
+
+        def info(self, *args, **kwargs):
+            pass
+
+        def error(self, *args, **kwargs):
+            logged.append(kwargs)
+
+    def _boom(url):
+        raise RuntimeError("fetch fail")
+
+    monkeypatch.setattr(mod, "logger", _FakeLogger())
+    _patch_index_rss_deps(
+        monkeypatch,
+        connector=_FakeConnector(),
+        feeds=["https://a/x"],
+        fetch_result=_boom,
+    )
+    await index_rss_feeds(
+        _PruneSession(rows=[]), connector_id=1, workspace_id=7, user_id="u1"
+    )
+    assert logged
+    assert logged[0].get("exc_info") is True
+
+
+async def test_index_rss_feeds_exception_returns_failure_tuple(monkeypatch):
+    import app.tasks.connector_indexers.rss_indexer as mod
+
+    _patch_index_rss_deps(
+        monkeypatch,
+        connector=_FakeConnector(),
+        feeds=["https://a/x"],
+        fetch_result=[_article()],
+    )
+
+    class _BoomPipeline:
+        async def create_placeholder_documents(self, infos):
+            return None
+
+        async def index_batch(self, docs):
+            raise ValueError("boom")
+
+    async def _fake_upsert(session, **kwargs):
+        return None
+
+    async def _fake_prune(session, **kwargs):
+        return 0
+
+    logged: list[dict] = []
+
+    class _FakeLogger:
+        def error(self, *args, **kwargs):
+            logged.append(kwargs)
+
+        def info(self, *args, **kwargs):
+            pass
+
+        def warning(self, *args, **kwargs):
+            pass
+
+    monkeypatch.setattr(mod, "logger", _FakeLogger())
+    monkeypatch.setattr(
+        mod, "IndexingPipelineService", lambda session: _BoomPipeline()
+    )
+    monkeypatch.setattr(mod, "upsert_canonical_entity", _fake_upsert)
+    monkeypatch.setattr(mod, "_prune_stale_articles", _fake_prune)
+    result = await index_rss_feeds(
+        _PruneSession(rows=[]), connector_id=1, workspace_id=7, user_id="u1"
+    )
+    assert result == (0, 0, "Failed to index RSS feeds: boom")
+    assert logged and logged[0].get("exc_info") is True
