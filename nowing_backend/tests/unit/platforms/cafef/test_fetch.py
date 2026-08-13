@@ -62,6 +62,8 @@ def _reset_demo_mode(monkeypatch):
     """Force demo mode off so mocked HTTP routes are exercised."""
     monkeypatch.setattr(config, "CAFEF_DEMO_MODE", False)
     monkeypatch.setattr(config, "CAFEF_TIMEOUT_S", 5.0)
+    monkeypatch.setattr(config, "CAFEF_QUOTE_URL", "https://apiweb.cafef.vn/api/v1/Stock/Quote?symbol={symbol}")
+    monkeypatch.setattr(config, "CAFEF_NEWS_URL", "https://apiweb.cafef.vn/api/v1/News/Search?symbol={symbol}&pageSize={max_news}")
     monkeypatch.setattr(fetch, "_last_request_at", None)
 
 
@@ -101,17 +103,73 @@ async def test_fetch_financials(http_mock) -> None:
 
 
 async def test_fetch_news(http_mock) -> None:
+    rss = """<?xml version="1.0"?>
+<rss version="2.0"><channel>
+  <item>
+    <title>VCB công bố BCTC</title>
+    <link>https://cafef.vn/vcb.chn</link>
+    <pubDate>Fri, 14 Aug 26 00:00:00 +0700</pubDate>
+    <description>VCB tăng trưởng.</description>
+  </item>
+</channel></rss>
+    """
     http_mock(
         {
             (
                 "https://apiweb.cafef.vn/api/v1/News/Search",
                 (("symbol", "VCB"), ("pageSize", 5)),
-            ): (200, _mock_news_response()),
+            ): (200, rss),
         }
     )
     items = await fetch_news("VCB", max_news=5)
     assert len(items) == 1
     assert items[0]["title"] == "VCB công bố BCTC"
+
+
+def test_parse_rss_news() -> None:
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <item>
+      <title><![CDATA[VCB công bố BCTC]]></title>
+      <link>https://cafef.vn/vcb.chn</link>
+      <pubDate>Fri, 14 Aug 26 00:00:00 +0700</pubDate>
+      <description><![CDATA[<a href="https://cafef.vn/vcb.chn">VCB</a> tăng trưởng.]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Tin chung]]></title>
+      <link>https://cafef.vn/general.chn</link>
+      <pubDate>Fri, 14 Aug 26 00:00:00 +0700</pubDate>
+      <description><![CDATA[Thị trường chứng khoán]]></description>
+    </item>
+  </channel>
+</rss>
+    """
+    items = fetch._parse_rss_news(xml, "VCB", 5)
+    assert len(items) == 1
+    assert items[0]["title"] == "VCB công bố BCTC"
+    assert items[0]["url"] == "https://cafef.vn/vcb.chn"
+    assert "VCB" in items[0]["summary"]
+
+
+def test_parse_rss_news_no_symbol_filter() -> None:
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <item>
+      <title>Tin 1</title>
+      <link>https://cafef.vn/1.chn</link>
+    </item>
+    <item>
+      <title>Tin 2</title>
+      <link>https://cafef.vn/2.chn</link>
+    </item>
+  </channel>
+</rss>
+    """
+    items = fetch._parse_rss_news(xml, None, 1)
+    assert len(items) == 1
+    assert items[0]["title"] == "Tin 1"
 
 
 async def test_rate_limit_throttles(monkeypatch, http_mock) -> None:

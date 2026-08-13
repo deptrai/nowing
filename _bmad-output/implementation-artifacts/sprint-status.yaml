@@ -275,9 +275,9 @@ development_status:
 
   # === Epic 15: Financial Data (Vietnam) ===
   epic-15: in-progress
-  # 15-1 depends on 20.2 (NowingIngestService). Code-review: CHANGES_REQUESTED (P0 404/rate-limit/header gaps).
-  # Do not move to done until P0 findings closed.
-  15-1: in-progress
+  # 15-1 depends on 20.2 (NowingIngestService). Code-review: APPROVED.
+  # P0 billing/credit-relevant scraper logic touched; pending human review.
+  15-1: pending-human-review
   15-2: backlog
   15-3: backlog
   15-4: backlog

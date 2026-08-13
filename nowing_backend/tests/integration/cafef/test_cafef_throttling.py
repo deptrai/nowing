@@ -18,6 +18,7 @@ async def test_throttle_enforces_interval(monkeypatch, http_mock) -> None:
     monkeypatch.setattr(config, "CAFEF_DEMO_MODE", False)
     monkeypatch.setattr(config, "CAFEF_RATE_LIMIT_RPS", 2.0)
     monkeypatch.setattr(config, "CAFEF_TIMEOUT_S", 5.0)
+    monkeypatch.setattr(config, "CAFEF_QUOTE_URL", "https://apiweb.cafef.vn/api/v1/Stock/Quote?symbol={symbol}")
     monkeypatch.setattr(fetch, "_last_request_at", None)
 
     http_mock(

@@ -1,6 +1,6 @@
 # Story 15.1: CafeF Financial Data Integration
 
-**Status:** in-progress
+**Status:** pending-human-review
 **Epic:** Epic 15 — Financial Data (Vietnam)
 **Priority:** P0
 

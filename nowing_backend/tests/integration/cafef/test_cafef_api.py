@@ -45,21 +45,25 @@ def _financial_response() -> dict:
     }
 
 
-def _news_response() -> list[dict]:
-    return [
-        {
-            "title": "VCB công bố BCTC",
-            "url": "https://cafef.vn/vcb.chn",
-            "publishedAt": "2026-01-01",
-            "summary": "Tóm tắt",
-        }
-    ]
+def _news_response() -> str:
+    return """<?xml version="1.0"?>
+<rss version="2.0"><channel>
+  <item>
+    <title>VCB công bố BCTC</title>
+    <link>https://cafef.vn/vcb.chn</link>
+    <pubDate>Fri, 01 Jan 26 00:00:00 +0700</pubDate>
+    <description>Tóm tắt</description>
+  </item>
+</channel></rss>
+    """
 
 
 @pytest.fixture(autouse=True)
 def _force_live_mode(monkeypatch):
     monkeypatch.setattr(config, "CAFEF_DEMO_MODE", False)
     monkeypatch.setattr(config, "CAFEF_TIMEOUT_S", 5.0)
+    monkeypatch.setattr(config, "CAFEF_QUOTE_URL", "https://apiweb.cafef.vn/api/v1/Stock/Quote?symbol={symbol}")
+    monkeypatch.setattr(config, "CAFEF_NEWS_URL", "https://apiweb.cafef.vn/api/v1/News/Search?symbol={symbol}&pageSize={max_news}")
     monkeypatch.setattr(fetch, "_last_request_at", None)
 
 

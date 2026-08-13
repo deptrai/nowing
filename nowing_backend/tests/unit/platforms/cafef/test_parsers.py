@@ -162,3 +162,38 @@ def test_parse_news_ignores_missing_title() -> None:
     raw = [{"title": "A"}, {"summary": "no title"}]
     items = parse_news(raw, "VCB")
     assert len(items) == 1
+
+
+def test_parse_price_history_quote() -> None:
+    raw = {
+        "Data": {
+            "Data": [
+                {
+                    "Symbol": "VCB",
+                    "Ngay": "13/08/2026",
+                    "GiaDongCua": 59.5,
+                    "GiaMoCua": 59.9,
+                    "GiaCaoNhat": 60.5,
+                    "GiaThapNhat": 59.1,
+                    "KhoiLuongKhopLenh": 4579700,
+                    "ThayDoi": "-0,20 (-0,34%)",
+                }
+            ]
+        },
+        "Success": True,
+    }
+    q = parse_quote(raw, "VCB")
+    assert q.symbol == "VCB"
+    assert q.current_price == 59.5
+    assert q.open_price == 59.9
+    assert q.high == 60.5
+    assert q.low == 59.1
+    assert q.volume == 4579700
+    assert q.change == -0.2
+    assert q.change_percent == -0.34
+
+
+def test_parse_quote_prefers_non_none_key() -> None:
+    raw = {"current_price": None, "price": 95.2}
+    q = parse_quote(raw, "FPT")
+    assert q.current_price == 95.2

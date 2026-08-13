@@ -94,7 +94,7 @@ class CafeFScrapeInput(BaseModel):
     symbol: str
     include_financials: bool = True
     include_news: bool = False
-    max_news: int = Field(default=10, ge=0)
+    max_news: int = Field(default=10, ge=0, le=50)
 
     @property
     def estimated_units(self) -> int:

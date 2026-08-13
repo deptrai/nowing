@@ -8,9 +8,11 @@ endpoints via env to hit the real CafeF APIs.
 from __future__ import annotations
 
 import asyncio
+import datetime
 import hashlib
 import json
 import logging
+import re
 import time
 from typing import Any
 
@@ -22,8 +24,19 @@ from .schemas import CafeFScrapeInput
 
 logger = logging.getLogger(__name__)
 
-_QUOTE_URL = "https://apiweb.cafef.vn/api/v1/Stock/Quote?symbol={symbol}"
-_NEWS_URL = "https://apiweb.cafef.vn/api/v1/News/Search?symbol={symbol}&pageSize={max_news}"
+# CafeF does not publish a stable quote API. We use the price-history Ajax
+# endpoint that backs https://cafef.vn/du-lieu/lich-su-giao-dich-<symbol>-1.chn.
+# It returns the most recent close/open/high/low/volume for a symbol.
+_QUOTE_URL = (
+    "https://cafef.vn/du-lieu/Ajax/PageNew/DataHistory/PriceHistory.ashx?"
+    "ExchangeType={exchange}&Symbol={symbol}&StartDate={start_date}&"
+    "EndDate={end_date}&PageIndex=1&PageSize=1"
+)
+
+# Market-news RSS for the "Thị trường chứng khoán" category. We fetch it and
+# optionally filter by the requested symbol.
+_NEWS_URL = "https://cafef.vn/thi-truong-chung-khoan.rss"
+
 _FINANCIAL_BASE = "https://apiweb.cafef.vn/api"
 _BALANCE_ENDPOINT = "{base}/v2/BCTC/GetReportCDKT"
 _INCOME_ENDPOINT = "{base}/v1/BCTC/GetReportDetail"
@@ -84,16 +97,31 @@ def _timeout() -> float:
     return float(getattr(config, "CAFEF_TIMEOUT_S", 15.0))
 
 
-def _quote_url(symbol: str) -> str:
+def _quote_date_range(days: int = 30) -> tuple[str, str]:
+    """Return (start, end) formatted as M/D/YYYY for the CafeF Ajax endpoint."""
+    today = datetime.datetime.now(tz=datetime.UTC) + datetime.timedelta(hours=7)
+    start = today - datetime.timedelta(days=days)
+    return start.strftime("%m/%d/%Y"), today.strftime("%m/%d/%Y")
+
+
+def _quote_url(symbol: str, exchange: str = "HOSE") -> str:
     custom = getattr(config, "CAFEF_QUOTE_URL", "")
     template = custom or _QUOTE_URL
-    return template.format(symbol=symbol.upper())
+    start_date, end_date = _quote_date_range()
+    return template.format(
+        exchange=exchange,
+        symbol=symbol.upper(),
+        start_date=start_date,
+        end_date=end_date,
+    )
 
 
 def _news_url(symbol: str, max_news: int) -> str:
     custom = getattr(config, "CAFEF_NEWS_URL", "")
     template = custom or _NEWS_URL
-    return template.format(symbol=symbol.upper(), max_news=max(max_news, 1))
+    if "{symbol}" in template or "{max_news}" in template:
+        return template.format(symbol=symbol.upper(), max_news=max(max_news, 0))
+    return template
 
 
 def _financial_base() -> str:
@@ -216,6 +244,120 @@ def _demo_news(symbol: str, max_news: int) -> list[dict[str, Any]]:
     ]
 
 
+def _parse_price_history(raw: dict[str, Any], symbol: str) -> dict[str, Any] | None:
+    """Extract the most recent OHLCV row from a CafeF PriceHistory response.
+
+    If the payload is already a normalized quote dict (e.g. from tests or a
+    custom CAFEF_QUOTE_URL), return it as-is so the parser can still consume it.
+    """
+    if not isinstance(raw, dict):
+        return None
+
+    # Already a normalized quote dict (demo, custom URL, unit-test fixture).
+    if "Data" not in raw and any(k in raw for k in ("current_price", "price", "GiaDongCua")):
+        return raw
+
+    data = raw.get("Data") or {}
+    rows = data.get("Data") or []
+    if not rows:
+        return None
+    row = rows[0]
+    if not isinstance(row, dict):
+        return None
+
+    def _float(value: Any) -> float | None:
+        if value is None:
+            return None
+        try:
+            return float(str(value).replace(",", ""))
+        except (TypeError, ValueError):
+            return None
+
+    def _parse_change(raw_change: str | None) -> tuple[float | None, float | None]:
+        if not raw_change:
+            return None, None
+        # Example: "-0,20 (-0,34%)" or "+0,60 (+1,01%)"
+        # The comma is the decimal separator in Vietnamese locale.
+        m = re.search(r"([-\d,]+)\s*\(([+-]?[\d,]+)%\)", raw_change)
+        if not m:
+            return None, None
+        change = _float(m.group(1).replace(",", "."))
+        change_percent = _float(m.group(2).replace(",", "."))
+        return change, change_percent
+
+    raw_change = row.get("ThayDoi")
+    change, change_percent = _parse_change(raw_change)
+
+    return {
+        "symbol": symbol.upper(),
+        "name": None,
+        "exchange": row.get("Exchange") or "HOSE",
+        "current_price": _float(row.get("GiaDongCua")),
+        "open_price": _float(row.get("GiaMoCua")),
+        "high": _float(row.get("GiaCaoNhat")),
+        "low": _float(row.get("GiaThapNhat")),
+        "close": _float(row.get("GiaDongCua")),
+        "volume": _float(row.get("KhoiLuongKhopLenh")),
+        "change": change,
+        "change_percent": change_percent,
+        "timestamp": row.get("Ngay"),
+        "key_ratios": {},
+        "source_url": None,
+    }
+
+
+def _parse_rss_news(xml_text: str, symbol: str | None, max_news: int) -> list[dict[str, Any]]:
+    """Parse CafeF market-news RSS and optionally filter by symbol."""
+    items: list[dict[str, Any]] = []
+    try:
+        import xml.etree.ElementTree as ET
+
+        # Strip namespacing for simple parsing.
+        root = ET.fromstring(xml_text)
+    except Exception:
+        return items
+
+    channel = root.find("channel")
+    if channel is None:
+        return items
+
+    for item in channel.findall("item"):
+        title_el = item.find("title")
+        link_el = item.find("link")
+        pub_el = item.find("pubDate")
+        desc_el = item.find("description")
+
+        title = (title_el.text or "").strip() if title_el is not None and title_el.text else ""
+        link = (link_el.text or "").strip() if link_el is not None and link_el.text else ""
+        published = (pub_el.text or "").strip() if pub_el is not None and pub_el.text else ""
+        description = (desc_el.text or "").strip() if desc_el is not None and desc_el.text else ""
+
+        # Extract a plain-text summary from CDATA/description.
+        summary = re.sub(r"<[^>]+>", "", description).strip()
+
+        if not title or not link:
+            continue
+
+        items.append(
+            {
+                "title": title,
+                "url": link,
+                "published_at": published,
+                "summary": summary,
+                "source": "cafef",
+                "symbol": symbol.upper() if symbol else None,
+            }
+        )
+
+    if symbol:
+        sym = symbol.upper()
+        filtered = [it for it in items if sym in (it["title"] + it.get("summary", "")).upper()]
+        if filtered:
+            items = filtered
+
+    return items[:max_news]
+
+
 async def _do_get(url: str, *, params: dict[str, Any] | None = None) -> dict[str, Any]:
     """Make one throttled GET and return the decoded JSON envelope.
 
@@ -278,7 +420,19 @@ async def fetch_quote(symbol: str) -> dict[str, Any]:
     """Return a raw quote dict for *symbol*."""
     if getattr(config, "CAFEF_DEMO_MODE", False):
         return _demo_quote(symbol)
-    return await _do_get(_quote_url(symbol))
+
+    # Try HOSE, then HNX, then UPCOM. The first exchange with data wins.
+    for exchange in ("HOSE", "HNX", "UPCOM"):
+        url = _quote_url(symbol, exchange=exchange)
+        try:
+            raw = await _do_get(url)
+        except CafeFAccessBlockedError:
+            continue
+        parsed = _parse_price_history(raw, symbol)
+        if parsed is not None:
+            return parsed
+
+    raise CafeFAccessBlockedError(f"no price history found for {symbol} on any exchange")
 
 
 async def _fetch_report(
@@ -322,7 +476,27 @@ async def fetch_news(symbol: str | None, *, max_news: int = 10) -> list[dict[str
         return []
     if getattr(config, "CAFEF_DEMO_MODE", False):
         return _demo_news(symbol, max_news)
-    return await _do_get(_news_url(symbol, max_news))
+
+    url = _news_url(symbol or "", max_news)
+    await _throttle()
+    async with httpx.AsyncClient(
+        timeout=_timeout(),
+        headers=_CAFEF_HEADERS,
+        follow_redirects=True,
+    ) as client:
+        try:
+            resp = await client.get(url)
+        except httpx.TimeoutException as exc:
+            raise CafeFAccessBlockedError(f"timeout for {url}") from exc
+        except httpx.ConnectError as exc:
+            raise CafeFAccessBlockedError(f"cannot connect to {url}") from exc
+
+    if resp.status_code == 429:
+        raise CafeFRateLimitedError(f"{url} returned 429")
+    if resp.status_code >= 400:
+        raise CafeFAccessBlockedError(f"{url} returned {resp.status_code}")
+
+    return _parse_rss_news(resp.text, symbol, max(max_news, 0))
 
 
 async def fetch_cafef(input_model: CafeFScrapeInput) -> dict[str, Any]:

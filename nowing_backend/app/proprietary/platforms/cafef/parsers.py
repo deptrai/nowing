@@ -44,14 +44,38 @@ def _as_int(value: Any) -> int | None:
         return None
 
 
-def _build_name_map(templace: list[dict[str, Any]]) -> dict[str, str]:
-    """Flatten grouped or flat templates into ``code -> name``."""
+def _parse_change_string(raw: Any) -> tuple[float | None, float | None]:
+    """Parse a CafeF ``ThayDoi`` string like ``-0,20 (-0,34%)``."""
+    if not raw:
+        return None, None
+    try:
+        import re
+
+        m = re.search(r"([-\d,]+)\s*\(([+-]?[\d,]+)%\)", str(raw))
+        if not m:
+            return None, None
+        change = _as_float(m.group(1).replace(",", "."))
+        change_percent = _as_float(m.group(2).replace(",", "."))
+        return change, change_percent
+    except (TypeError, ValueError):
+        return None, None
+
+
+def _build_name_map(
+    templace: list[dict[str, Any]],
+    data: list[dict[str, Any]],
+) -> dict[str, str]:
+    """Flatten grouped or flat templates into ``code -> name``.
+
+    Codes that appear in the live ``data`` rows but are missing from the
+    template still get a placeholder name so no values are silently dropped.
+    """
     name_map: dict[str, str] = {}
-    if not templace:
+    if not templace and not data:
         return name_map
 
     # Grouped template: list of groups each with a nested ``data`` list.
-    if isinstance(templace[0], dict) and "data" in templace[0] and isinstance(
+    if isinstance(templace[0] if templace else None, dict) and templace and "data" in templace[0] and isinstance(
         templace[0]["data"], list
     ):
         for group in templace:
@@ -67,6 +91,13 @@ def _build_name_map(templace: list[dict[str, Any]]) -> dict[str, str]:
                 code = item.get("code")
                 if code is not None:
                     name_map[str(code)] = item.get("name", "")
+
+    # Ensure codes that only appear in data rows are represented.
+    _, by_period = _extract_period_values(data, name_map)
+    for period_values in by_period.values():
+        for code in period_values:
+            name_map.setdefault(code, str(code))
+
     return name_map
 
 
@@ -144,7 +175,7 @@ def parse_financials(raw: dict[str, Any] | None, symbol: str) -> CafeFFinancials
 
         templace = payload.get("templace") or []
         data = payload.get("data") or []
-        name_map = _build_name_map(templace)
+        name_map = _build_name_map(templace, data)
         periods, by_period = _extract_period_values(data, name_map)
 
         items: list[CafeFFinancialLineItem] = []
@@ -158,10 +189,28 @@ def parse_financials(raw: dict[str, Any] | None, symbol: str) -> CafeFFinancials
                 )
             )
 
+        # Extract a few well-known summary metrics by code.
+        key_metrics: dict[str, list[float | None]] = {}
+        metric_codes = {
+            "tong_tai_san": "270",
+            "no_phai_tra": "300",
+            "von_chu_so_huu": "400",
+            "doanh_thu_thuan": "10",
+            "loi_nhuan_gop": "20",
+            "loi_nhuan_sau_thue": "60",
+            "luu_chuyen_tu_hdkd": "HDKD_20",
+            "tien_cuoi_ky": "HDTC_42",
+        }
+        for metric, code in metric_codes.items():
+            if code in name_map:
+                key_metrics[metric] = [
+                    _as_float(by_period.get(period, {}).get(code)) for period in periods
+                ]
+
         return CafeFFinancialReport(
             periods=periods,
             items=items,
-            key_metrics={},
+            key_metrics=key_metrics,
             unit=payload.get("unit") or "VND",
             source_url=None,
         )
@@ -180,20 +229,25 @@ def parse_quote(raw: dict[str, Any] | None, symbol: str) -> CafeFQuote:
         raise CafeFDecodeError("quote response is None")
 
     # Live envelope, unwrap if present.
-    if isinstance(raw, dict) and "isSuccess" in raw:
-        if raw.get("isSuccess") is False:
-            errors = raw.get("errors")
-            raise CafeFAccessBlockedError(f"CafeF quote API error: {errors}")
-        value = raw.get("value")
-        if not isinstance(value, dict) or not value:
-            raise CafeFAccessBlockedError(
-                f"CafeF quote returned an empty value for {symbol}"
-            )
-        raw = value
+    if isinstance(raw, dict):
+        if "isSuccess" in raw:
+            if raw.get("isSuccess") is False:
+                errors = raw.get("errors")
+                raise CafeFAccessBlockedError(f"CafeF quote API error: {errors}")
+            value = raw.get("value")
+            if not isinstance(value, dict) or not value:
+                raise CafeFAccessBlockedError(
+                    f"CafeF quote returned an empty value for {symbol}"
+                )
+            raw = value
+        elif "Data" in raw and isinstance(raw.get("Data"), dict):
+            # PriceHistory Ajax envelope: {"Data": {"Data": [...]}}
+            rows = raw["Data"].get("Data") or []
+            raw = rows[0] if rows and isinstance(rows[0], dict) else raw["Data"]
 
     def _get(*keys: str) -> Any:
         for key in keys:
-            if key in raw:
+            if key in raw and raw[key] is not None:
                 return raw[key]
         return None
 
@@ -205,15 +259,19 @@ def parse_quote(raw: dict[str, Any] | None, symbol: str) -> CafeFQuote:
         symbol=symbol.upper(),
         name=_get("name", "shortName", "companyName"),
         exchange=_get("exchange", "floor"),
-        current_price=_as_float(_get("current_price", "price", "lastPrice", "close")),
-        open_price=_as_float(_get("open_price", "open", "openPrice")),
-        high=_as_float(_get("high", "highPrice")),
-        low=_as_float(_get("low", "lowPrice")),
-        close=_as_float(_get("close", "closePrice")),
-        volume=_as_float(_get("volume", "totalVolume", "vol")),
-        change=_as_float(_get("change", "changePrice")),
-        change_percent=_as_float(_get("change_percent", "changePercent", "percentChange")),
-        timestamp=_get("timestamp", "tradingDate", "date"),
+        current_price=_as_float(_get("current_price", "price", "lastPrice", "GiaDongCua", "close")),
+        open_price=_as_float(_get("open_price", "open", "openPrice", "GiaMoCua")),
+        high=_as_float(_get("high", "highPrice", "GiaCaoNhat")),
+        low=_as_float(_get("low", "lowPrice", "GiaThapNhat")),
+        close=_as_float(_get("close", "closePrice", "GiaDongCua")),
+        volume=_as_float(_get("volume", "totalVolume", "vol", "KhoiLuongKhopLenh")),
+        change=(_as_float(_get("change", "changePrice"))
+            if _get("change", "changePrice") is not None
+            else _parse_change_string(_get("ThayDoi"))[0]),
+        change_percent=(_as_float(_get("change_percent", "changePercent", "percentChange"))
+                        if _get("change_percent", "changePercent", "percentChange") is not None
+                        else _parse_change_string(_get("ThayDoi"))[1]),
+        timestamp=_get("timestamp", "tradingDate", "date", "Ngay"),
         key_ratios={
             k: _as_float(v)
             for k, v in key_ratios.items()
@@ -239,7 +297,7 @@ def _news_items_from(raw: Any) -> list[dict[str, Any]]:
     return []
 
 
-def parse_news(raw: Any, symbol: str) -> list[CafeFNewsItem]:
+def parse_news(raw: Any, symbol: str, max_news: int | None = None) -> list[CafeFNewsItem]:
     """Map a raw news response to ``CafeFNewsItem`` instances."""
     items: list[CafeFNewsItem] = []
     for article in _news_items_from(raw):
@@ -260,4 +318,6 @@ def parse_news(raw: Any, symbol: str) -> list[CafeFNewsItem]:
                 symbol=symbol.upper(),
             )
         )
+        if max_news is not None and len(items) >= max_news:
+            break
     return items

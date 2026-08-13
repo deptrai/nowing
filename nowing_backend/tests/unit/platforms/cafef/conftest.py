@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from typing import Any
 from urllib.parse import parse_qsl, urlparse
@@ -31,6 +32,12 @@ class FakeResponse:
 
     def json(self) -> Any:
         return self._data
+
+    @property
+    def text(self) -> str:
+        if isinstance(self._data, str):
+            return self._data
+        return json.dumps(self._data)
 
 
 class FakeClient:

@@ -53,11 +53,15 @@ async def scrape_cafef(
         degraded = True
         degradation_reason = "rate_limited"
     except CafeFDecodeError as exc:
-        logger.warning("cafef quote decode failed: %s", exc)
+        logger.warning("cafef quote decode failed", exc_info=exc)
         degraded = True
         degradation_reason = "decode_error"
-    except (CafeFAccessBlockedError, Exception) as exc:
-        logger.warning("cafef quote fetch failed: %s", exc)
+    except CafeFAccessBlockedError as exc:
+        logger.warning("cafef quote fetch failed", exc_info=exc)
+        degraded = True
+        degradation_reason = "api_error"
+    except Exception as exc:
+        logger.exception("cafef quote unexpected error: %s", exc)
         degraded = True
         degradation_reason = "api_error"
 
@@ -69,11 +73,15 @@ async def scrape_cafef(
             degraded = True
             degradation_reason = "rate_limited"
         except CafeFDecodeError as exc:
-            logger.warning("cafef financials decode failed: %s", exc)
+            logger.warning("cafef financials decode failed", exc_info=exc)
             degraded = True
             degradation_reason = "decode_error"
-        except (CafeFAccessBlockedError, Exception) as exc:
-            logger.warning("cafef financials fetch failed: %s", exc)
+        except CafeFAccessBlockedError as exc:
+            logger.warning("cafef financials fetch failed", exc_info=exc)
+            degraded = True
+            degradation_reason = "api_error"
+        except Exception as exc:
+            logger.exception("cafef financials unexpected error: %s", exc)
             degraded = True
             degradation_reason = "api_error"
 
@@ -82,18 +90,18 @@ async def scrape_cafef(
             news_raw = await _news(
                 input_model.symbol, max_news=input_model.max_news
             )
-            news = parse_news(news_raw, input_model.symbol)
+            news = parse_news(
+                news_raw, input_model.symbol, max_news=input_model.max_news
+            )
         except CafeFRateLimitedError:
-            degraded = True
-            degradation_reason = "rate_limited"
+            # News is optional; do not fail the whole scrape for missing news.
+            logger.warning("cafef news rate limited")
         except CafeFDecodeError as exc:
-            logger.warning("cafef news decode failed: %s", exc)
-            degraded = True
-            degradation_reason = "decode_error"
-        except (CafeFAccessBlockedError, Exception) as exc:
-            logger.warning("cafef news fetch failed: %s", exc)
-            degraded = True
-            degradation_reason = "api_error"
+            logger.warning("cafef news decode failed", exc_info=exc)
+        except CafeFAccessBlockedError as exc:
+            logger.warning("cafef news fetch failed", exc_info=exc)
+        except Exception as exc:
+            logger.exception("cafef news unexpected error: %s", exc)
 
     if quote is None and not degraded:
         # No usable quote but no error was raised.
