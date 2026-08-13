@@ -91,11 +91,22 @@ class TestJobAlertRule:
 
     def test_job_alert_rule_query_schema_accepts_keyword_location_salary(self):
         """A job alert query must accept keyword, location, salary_min, salary_max."""
-        query = {"keyword": "Senior Python", "location": "Ho Chi Minh", "salary_min": 2000, "salary_max": 5000}
-        assert query["keyword"]
-        assert query["location"]
-        assert query["salary_min"] >= 0
-        assert query["salary_max"] >= query["salary_min"]
+        from app.alerts.services.crud import default_job_alert_query
+
+        query = default_job_alert_query(
+            keyword="Senior Python", location="Ho Chi Minh", salary_min=2000, salary_max=5000
+        )
+        assert query["keyword"] == "Senior Python"
+        assert query["location"] == "Ho Chi Minh"
+        assert query["salary_min"] == 2000
+        assert query["salary_max"] == 5000
+
+    def test_job_alert_rule_query_rejects_inverted_salary_range(self):
+        """default_job_alert_query must raise when salary_min > salary_max."""
+        from app.alerts.services.crud import default_job_alert_query
+
+        with pytest.raises(ValueError, match="salary_min"):
+            default_job_alert_query(keyword="Python", salary_min=5000, salary_max=2000)
 
 
 class TestJobAlertNotify:

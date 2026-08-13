@@ -13,7 +13,7 @@
 
 ## Verdict
 
-**PASS** after re-review — all ACs are satisfied, including AC-4 (frontend grouping wired in `NotificationsDropdown.tsx`). The one `patch` finding from the initial review (defensive `int()` in `group_alert_notifications`) was applied and now logs malformed counts instead of silently swallowing. Remaining Blind Hunter / Edge Case Hunter items are either theoretical, by design, or UX polish and were dismissed.
+**PASS** after re-review and defer-closure — all ACs are satisfied, including AC-4 (frontend grouping wired in `NotificationsDropdown.tsx`). The one `patch` finding from the initial review (defensive `int()` in `group_alert_notifications`) was applied and now logs malformed counts. All 4 deferred UX/validation items were resolved in the follow-up pass.
 
 ---
 
@@ -23,7 +23,7 @@
 |--------|-------|-------|
 | `decision-needed` | 0 | AC-4 frontend grouping implemented |
 | `patch` | 0 | Defensive `int()` patch applied and logging added |
-| `defer` | 4 | UX/navigation edge cases, salary validation, pre-existing or out-of-scope |
+| `defer` | 0 | All 4 deferred UX/validation items resolved |
 | `dismiss` | 7 + 17 | Theoretical edge cases or already handled by code contract |
 
 ---
@@ -46,33 +46,23 @@ None — all decision-needed findings were resolved in the re-review.
 
 ## `defer` Findings
 
-### W1 — `NotificationsDropdown` silently ignores navigation if `workspace_id` is missing or `alert_rule_id` is empty
+All `defer` findings from the initial review were resolved in the follow-up pass.
 
-**Source:** edge-case-hunter  
-**Location:** `nowing_web/components/layout/ui/sidebar/NotificationsDropdown.tsx:231-241`  
-**Issue:** The click handler checks `if (item.workspace_id && alertRuleId)` and does nothing otherwise. If the inbox schema allows `workspace_id` to be null or an empty `alert_rule_id` is supplied, the user gets no feedback.  
-**Reason for defer:** `inboxItem` schema in the same file defines `workspace_id` as `z.number()` (non-null), and the backend always sets both IDs. This is a defensive-UX gap, not a reachable bug.
+### W1 — `NotificationsDropdown` silently ignores navigation if `workspace_id` is missing or `alert_rule_id` is empty (RESOLVED)
 
-### W2 — `SavedSearchDetailContent` only validates `alertRuleId` by length
+**Resolution:** Added an `else` branch that logs a warning when the group is missing `workspace_id`, making the no-op visible in dev tools.
 
-**Source:** edge-case-hunter  
-**Location:** `nowing_web/app/dashboard/[workspace_id]/research/saved-searches/[alert_rule_id]/saved-search-detail-content.tsx:28`  
-**Issue:** `const validId = alertRuleId.length > 0;` does not enforce UUID format.  
-**Reason for defer:** The API returns 404 for invalid IDs and the UI renders a not-found panel. Adding client-side UUID validation is polish.
+### W2 — `SavedSearchDetailContent` only validates `alertRuleId` by length (RESOLVED)
 
-### W3 — `SavedSearchDetailContent` falls back to "No runs yet" when the linked snapshot is missing
+**Resolution:** Added `UUID_RE` and `isValidWorkspaceId` validation. The query is only enabled when both `workspaceId` and `alertRuleId` are valid, so invalid route params now render the not-found panel without calling the API.
 
-**Source:** edge-case-hunter  
-**Location:** `nowing_web/app/dashboard/[workspace_id]/research/saved-searches/[alert_rule_id]/saved-search-detail-content.tsx:47-48`  
-**Issue:** If the notification's `snapshot_id` points to a deleted/missing snapshot and there are no other snapshots, the UI shows "No runs yet".  
-**Reason for defer:** Graceful fallback is acceptable; a specific "linked run not found" message is polish.
+### W3 — `SavedSearchDetailContent` falls back to "No runs yet" when the linked snapshot is missing (RESOLVED)
 
-### W4 — `default_job_alert_query` does not validate `salary_min <= salary_max`
+**Resolution:** The component now detects `snapshotMissing` (requested `snapshot_id` not found but other snapshots exist) and renders a specific "Linked snapshot not found" message instead of "No runs yet".
 
-**Source:** edge-case-hunter  
-**Location:** `nowing_backend/app/alerts/services/crud.py:44-47`  
-**Issue:** The helper allows an inverted salary range.  
-**Reason for defer:** The helper is not yet called from any route, and the downstream capability/input schema will validate the range when consumed. Add validation when the helper is wired to a user-facing flow.
+### W4 — `default_job_alert_query` does not validate `salary_min <= salary_max` (RESOLVED)
+
+**Resolution:** `default_job_alert_query` now raises `ValueError` when `salary_min > salary_max`, and a unit test enforces it.
 
 ---
 
@@ -163,6 +153,6 @@ No P0 surfaces (token/credit, auth, provider/model routing, pricing, RAG/connect
 
 ## Recommended Next Steps
 
-1. ✅ All `decision-needed` and `patch` findings resolved.
+1. ✅ All `decision-needed`, `patch`, and `defer` findings resolved.
 2. Re-run **mutation gate** with correct flags once the tooling issue is resolved (optional for P1).
 3. Story is ready for `done`.

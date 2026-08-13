@@ -218,6 +218,8 @@ export function NotificationsDropdown({
 					router.push(
 						`/dashboard/${latest.workspace_id}/research/saved-searches/${item.alert_rule_id}${query}`
 					);
+				} else {
+					console.warn("Alert group missing workspace_id, skipping navigation", item);
 				}
 				return;
 			}

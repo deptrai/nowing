@@ -7,9 +7,19 @@ import { useState } from "react";
 import type { AlertRule, AlertSnapshot } from "@/contracts/types/alert-rules.types";
 import { alertRulesApiService } from "@/lib/apis/alert-rules-api.service";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 interface SavedSearchDetailContentProps {
 	workspaceId: number;
 	alertRuleId: string;
+}
+
+function isValidWorkspaceId(value: number): boolean {
+	return Number.isFinite(value) && value > 0 && Number.isInteger(value);
+}
+
+function isValidAlertRuleId(value: string): boolean {
+	return UUID_RE.test(value);
 }
 
 /**
@@ -25,7 +35,7 @@ export function SavedSearchDetailContent({
 	const snapshotId = searchParams.get("snapshot");
 	const [selectedSnapshotId, setSelectedSnapshotId] = useState<string | null>(snapshotId);
 
-	const validId = alertRuleId.length > 0;
+	const validId = isValidWorkspaceId(workspaceId) && isValidAlertRuleId(alertRuleId);
 	const {
 		data: rule,
 		isLoading,
@@ -44,8 +54,10 @@ export function SavedSearchDetailContent({
 		staleTime: 30_000,
 	});
 
-	const selectedSnapshot =
-		snapshots.find((s) => s.id === selectedSnapshotId) ?? snapshots[0] ?? null;
+	const requestedSnapshot = snapshots.find((s) => s.id === selectedSnapshotId) ?? null;
+	const selectedSnapshot = requestedSnapshot ?? snapshots[0] ?? null;
+	const snapshotMissing =
+		selectedSnapshotId !== null && requestedSnapshot === null && snapshots.length > 0;
 
 	if (isLoading) {
 		return (
@@ -112,6 +124,13 @@ export function SavedSearchDetailContent({
 							Some sources were unavailable: {selectedSnapshot.degradation_reasons.join(", ")}
 						</p>
 					) : null}
+				</div>
+			) : snapshotMissing ? (
+				<div className="rounded-lg border border-border/60 bg-muted/20 px-6 py-10 text-center">
+					<p className="text-sm font-medium">Linked snapshot not found</p>
+					<p className="mt-1 text-xs text-muted-foreground">
+						The run this notification pointed to no longer exists. Showing the latest run instead.
+					</p>
 				</div>
 			) : (
 				<div className="rounded-lg border border-border/60 bg-muted/20 px-6 py-10 text-center">

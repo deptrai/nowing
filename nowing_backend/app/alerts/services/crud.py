@@ -36,8 +36,12 @@ def default_job_alert_query(
     """Build the default query schema for a job market alert (AC-1).
 
     Maps onto ``VnJobAggregateInput`` so the same query feeds the shared
-    aggregator capability.
+    aggregator capability. Raises ``ValueError`` if the salary range is
+    inverted (a programmer error that's cheaper to catch here than deep in
+    the capability executor).
     """
+    if salary_min is not None and salary_max is not None and salary_min > salary_max:
+        raise ValueError(f"salary_min ({salary_min}) must not exceed salary_max ({salary_max})")
     query: dict = {"keyword": keyword}
     if location:
         query["location"] = location
