@@ -56,6 +56,10 @@ async def _ingest_vn_jobs_output(
         output.ingest_status = "no_chunks"
         return
 
+    # ponytail: concurrent calls with the same query produce the same sourceId
+    # fingerprints; ChainLens is responsible for deduplication per sourceId.
+    # Upgrade path: add a short-lived workspace-scoped dedup lock if duplicate
+    # ingest jobs become observable (see story 12-4c-4d-4e-pii-ingest-exposure.md).
     result = await NowingIngestService().ingest(
         scraper_id="vn_jobs.aggregate",
         chunks=chunks,

@@ -53,7 +53,10 @@ def test_redact_listing_logs_pii_counts_as_structured_log_not_values(
     sample_listing, caplog
 ):
     """PII counts are logged as structured log (not values)."""
-    with patch("app.services.jobs_aggregator.orchestrator.record_vn_jobs_pii_detected"), caplog.at_level(logging.INFO):
+    with (
+        patch("app.services.jobs_aggregator.orchestrator.record_vn_jobs_pii_detected"),
+        caplog.at_level(logging.INFO),
+    ):
         _redact_listing(sample_listing)
 
     # Check that logs contain count information but not actual PII values
@@ -124,3 +127,19 @@ def test_redact_listing_does_not_set_pii_redacted_flag_when_no_pii():
         result = _redact_listing(listing)
 
     assert result.pii_redacted is False
+
+
+def test_redact_listing_propagates_redact_exception(sample_listing):
+    """_redact_listing does not swallow exceptions from redact_job_pii.
+
+    The caller's source-level try/except is responsible for graceful handling.
+    """
+    with (
+        patch("app.services.jobs_aggregator.orchestrator.record_vn_jobs_pii_detected"),
+        patch(
+            "app.services.jobs_aggregator.orchestrator.redact_job_pii",
+            side_effect=RuntimeError("regex panic"),
+        ),
+        pytest.raises(RuntimeError, match="regex panic"),
+    ):
+        _redact_listing(sample_listing)

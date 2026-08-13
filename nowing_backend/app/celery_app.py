@@ -201,6 +201,7 @@ celery_app = Celery(
         "app.automations.tasks.notify_run_complete",
         "app.automations.triggers.builtin.schedule.selector",
         "app.automations.triggers.builtin.event.selector",
+        "app.alerts.engine.tick",
         "app.automations.triggers.builtin.memory_change.selector",
         "app.canonical.tasks.backfill_canonical_embedding",
         "app.canonical.tasks.process_canonical_persist_outbox",
@@ -351,4 +352,10 @@ celery_app.conf.beat_schedule = {
     # Fire due automation schedule triggers (Beat entry owned by the schedule
     # trigger; see app.automations.triggers.builtin.schedule.source).
     **SCHEDULE_BEAT_SCHEDULE,
+    # Fire due alert rules (saved searches).
+    "alert-engine-tick": {
+        "task": "alert_engine_tick",
+        "schedule": crontab(minute="*"),
+        "options": {"expires": 50},
+    },
 }

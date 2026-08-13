@@ -234,9 +234,9 @@ development_status:
   # ponytail: 2026-08-11 sprint planning — 12.4 split into 12.4a-e (cleanup)
   12-4a: done  # normalization — human review approved; mutation gate 99.5%; P0: data integrity + RAG sync reviewed
   12-4b: done  # deduplication, confidence, conflict — human review approved; mutation gate 99.5%; 52 new tests
-  12-4c: in-review  # PII redaction audit logging
-  12-4d: in-review  # chunk metadata + sourceId + salary fields
-  12-4e: in-review  # ingest_job_id + schema violation logging
+  12-4c: done  # PII redaction audit logging
+  12-4d: done  # chunk metadata + sourceId + salary fields
+  12-4e: done  # ingest_job_id + schema violation logging
   12-5: in-progress
   12-6: ready-for-dev  # Saved Searches (P0) — must ship before 12.9 (Job Market Alerts)
   # DROPPED 2026-08-08: property price alerts depend on Nowing canonical entities (Epic 13 dropped).

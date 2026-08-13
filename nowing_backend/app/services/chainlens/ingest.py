@@ -373,11 +373,10 @@ class NowingIngestService:
                     first_chunk = batch[0]
                     first_chunk_dict = _chunk_to_dict(first_chunk)
                     metadata = first_chunk_dict.get("metadata") or {}
-                    response_error = (
-                        exc.response_body.get("error")
-                        if isinstance(exc.response_body, dict)
-                        else str(exc)
-                    )
+                    if isinstance(exc.response_body, dict):
+                        response_error = exc.response_body.get("error") or "response_body_without_error"
+                    else:
+                        response_error = str(exc) or "response_body_unavailable"
                     logger.error(
                         "chainlens ingest schema violation — first failing chunk "
                         "source_id=%s domain=%s title=%s chunk_index=%s status=%s "
