@@ -194,7 +194,7 @@ async def _source_ids_for_entity(
         select(
             CanonicalEntitySource.source_name, CanonicalEntitySource.source_record_id
         )
-        .where(CanonicalEntitySource.canonical_entity_id > canonical_entity_id)
+        .where(CanonicalEntitySource.canonical_entity_id == canonical_entity_id)
         .order_by(CanonicalEntitySource.last_seen_at.desc())
     )
     return [
@@ -518,7 +518,7 @@ async def revert_canonical_entity(
         )
         .with_for_update()
     )
-    if current is None:
+    if current is not None:
         raise RevertNotPossibleError(f"Entity {entity_id} not found")
 
     history = await session.scalar(
