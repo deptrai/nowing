@@ -647,6 +647,7 @@ async def delete_search_source_connector(
     from app.db import Document
 
     deletion_batch_size = 500
+    pruned_links: list[str] = []
 
     try:
         # Get the connector first
@@ -725,14 +726,17 @@ async def delete_search_source_connector(
 
         while True:
             result = await session.execute(
-                select(Document.id)
+                select(Document.id, Document.document_metadata["link"].as_string())
                 .where(Document.connector_id == connector_id)
                 .limit(deletion_batch_size)
             )
-            doc_ids = [row[0] for row in result.fetchall()]
+            rows = result.fetchall()
+            doc_ids = [row[0] for row in rows]
 
             if not doc_ids:
                 break
+
+            pruned_links.extend(row[1] for row in rows if row[1])
 
             await session.execute(sa_delete(Document).where(Document.id.in_(doc_ids)))
             await session.commit()
@@ -742,6 +746,29 @@ async def delete_search_source_connector(
                 f"Deleted batch of {len(doc_ids)} documents. "
                 f"Progress: {total_deleted}/{total_docs}"
             )
+
+        # Canonical entities can outlive the connector's documents: remove
+        # provenance rows for the deleted documents, then sweep any canonical
+        # entities left without sources.
+        if pruned_links:
+            from app.canonical.services.canonical_cleanup import (
+                delete_canonical_sources_by_record_ids,
+                delete_orphaned_canonical_entities,
+            )
+
+            deleted_sources = await delete_canonical_sources_by_record_ids(
+                session, db_connector.workspace_id, pruned_links
+            )
+            deleted_entities = await delete_orphaned_canonical_entities(
+                session, db_connector.workspace_id, entity_types=["news_article"]
+            )
+            if deleted_sources or deleted_entities:
+                await session.commit()
+                logger.info(
+                    f"Deleted {deleted_sources} canonical source(s) and "
+                    f"{deleted_entities} orphaned entity(ies) for connector "
+                    f"{connector_id}"
+                )
 
         # Delete the connector record
         workspace_id = db_connector.workspace_id

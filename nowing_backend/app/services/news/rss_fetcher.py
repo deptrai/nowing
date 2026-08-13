@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import asyncio
 import html
+import ipaddress
 import logging
 import re
+import socket
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 
@@ -19,8 +23,23 @@ logger = logging.getLogger(__name__)
 # Short timeout so a slow portal does not block the whole polling cycle.
 _FEED_TIMEOUT = 10.0
 
+# Ceiling on a single feed body; protects workers from oversized feeds.
+_FEED_MAX_BYTES = 20 * 1024 * 1024
+
 # Deterministic sentinel for items without a usable publication date.
 _MISSING_PUB_DATE = datetime(1970, 1, 1, tzinfo=UTC)
+
+# Some Vietnamese portals publish naive local times (e.g. Tuổi Trẻ uses
+# "8/13/2026 8:06:00 PM" with no timezone). Only stamp UTC+7 on feeds from
+# those known domains; any other feed with a naive US-format date is treated
+# as UTC so we never silently shift other portals by seven hours.
+_VN_TZ = timezone(timedelta(hours=7))
+_VN_TZ_DOMAINS = {"tuoitre.vn"}
+
+# Many portals return 403/429 to bare httpx default User-Agent strings.
+_FEED_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (compatible; NowingRSS/1.0; +https://nowing.net)",
+}
 
 
 def _strip_html(raw: str) -> str:
@@ -30,27 +49,121 @@ def _strip_html(raw: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def _parse_pub_date(raw: str | None) -> str:
-    """Parse an RFC 822-ish pubDate and return an ISO 8601 UTC string."""
+def _parse_pub_date(raw: str | None, *, tz_hint: timezone | None = None) -> str:
+    """Parse an RFC 822 / ISO 8601 pubDate and return an ISO 8601 UTC string.
+
+    ``tz_hint`` stamps naive US-format dates (e.g. Tuổi Trẻ) with a local
+    timezone; without it naive dates are interpreted as UTC.
+    """
     if not raw:
         return _MISSING_PUB_DATE.isoformat()
+    raw = raw.strip()
+    normalized = raw.replace("\u202f", " ").replace("\u00a0", " ")
+
+    # ISO 8601 (Atom <published>/<updated>, dc:date). parsedate_to_datetime
+    # rejects ISO 8601 on Python 3.12, so try fromisoformat first.
     try:
-        dt = parsedate_to_datetime(raw.strip())
+        dt = datetime.fromisoformat(normalized.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=UTC)
+        return dt.astimezone(UTC).isoformat()
+    except ValueError:
+        pass
+
+    try:
+        dt = parsedate_to_datetime(normalized)
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=UTC)
         return dt.astimezone(UTC).isoformat()
     except (TypeError, ValueError):
-        logger.debug("Could not parse pubDate %r; using epoch sentinel", raw)
-        return _MISSING_PUB_DATE.isoformat()
+        pass
+
+    # Tuổi Trẻ emits "M/d/yyyy h:mm:ss AM/PM" (naive local VN time, with a
+    # U+202F narrow no-break space before the meridiem). Try a few US-format
+    # variants before giving up; tolerate missing seconds and 2-digit years.
+    tz = tz_hint or UTC
+    for fmt in (
+        "%m/%d/%Y %I:%M:%S %p",
+        "%m/%d/%Y %I:%M %p",
+        "%m/%d/%Y %H:%M:%S",
+        "%m/%d/%Y %H:%M",
+        "%m/%d/%y %I:%M:%S %p",
+    ):
+        try:
+            dt = datetime.strptime(normalized, fmt)
+            return dt.replace(tzinfo=tz).astimezone(UTC).isoformat()
+        except ValueError:
+            continue
+
+    logger.debug("Could not parse pubDate %r; using epoch sentinel", raw)
+    return _MISSING_PUB_DATE.isoformat()
 
 
 def _first_text(parent: Any, *tags: str) -> str | None:
-    """Return text from the first matching child element (ignores XML namespaces)."""
+    """Return text from the first matching child element (ignores XML namespaces).
+
+    itertext() joins nested element text, so inline markup inside <title>
+    or <description> is preserved instead of silently dropping the value.
+    """
     for tag in tags:
         child = parent.find(f"{{*}}{tag}")
-        if child is not None and child.text:
-            return child.text.strip()
+        if child is not None:
+            text = "".join(child.itertext()).strip()
+            if text:
+                return text
     return None
+
+
+def _first_category(item: Any) -> str | None:
+    """Return the item category, honouring RSS 2.0 text and Atom term attr."""
+    category = _first_text(item, "category")
+    if category:
+        return category
+    category_el = item.find("{*}category")
+    if category_el is not None:
+        term = (category_el.get("term") or "").strip()
+        if term:
+            return term
+    return None
+
+
+def _extract_link(item: Any, feed_url: str) -> str:
+    """Extract the article URL from an item/entry.
+
+    Prefers rel="alternate"/"canonical" Atom links and skips links that point
+    back at the feed itself (rel="self" href equal to the feed URL), which
+    would otherwise collapse the entire feed into one document after dedup.
+    """
+    text = _first_text(item, "link")
+    if text:
+        return text
+
+    feed_normalized = _normalize_url(feed_url)
+    links = item.findall("{*}link")
+    fallback: str | None = None
+    for link_el in links:
+        href = (link_el.get("href") or "").strip()
+        if not href:
+            continue
+        if _normalize_url(href) == feed_normalized:
+            continue
+        rel = (link_el.get("rel") or "alternate").lower()
+        if rel in ("alternate", "canonical", "self"):
+            return href
+        if fallback is None:
+            fallback = href
+    return fallback or ""
+
+
+def _normalize_url(url: str) -> str:
+    """Normalize a URL for identity comparisons (scheme/host/path only)."""
+    try:
+        parsed = urlparse(url)
+    except ValueError:
+        return url
+    host = (parsed.hostname or "").lower()
+    path = parsed.path.rstrip("/")
+    return f"{parsed.scheme.lower()}://{host}{path}"
 
 
 @dataclass
@@ -65,9 +178,42 @@ class NewsArticle:
     source: str
 
 
+async def _check_dns_ssrf(url: str) -> None:
+    """Reject hostnames that resolve to private or loopback addresses.
+
+    The literal validator only checks the hostname string; wildcard DNS
+    services (nip.io, sslip.io, localtest.me, ...) map arbitrary names to
+    internal IPs, so resolve every address at request time and require each
+    one to be global. Resolution failures fail closed.
+    """
+    hostname = urlparse(url).hostname
+    if not hostname:
+        raise ValueError("RSS feed URL must have a host")
+
+    try:
+        infos = await asyncio.to_thread(socket.getaddrinfo, hostname, None)
+    except socket.gaierror as exc:
+        raise ValueError(f"Could not resolve RSS feed host {hostname}: {exc}") from exc
+
+    addresses = [info[4][0] for info in infos]
+    if not addresses:
+        raise ValueError(f"Could not resolve RSS feed host {hostname}")
+
+    for address in addresses:
+        try:
+            ip = ipaddress.ip_address(address)
+        except ValueError:
+            continue
+        if not ip.is_global:
+            raise ValueError(
+                f"RSS feed host {hostname} resolves to non-public address {address}"
+            )
+
+
 async def _validate_rss_request(request: httpx.Request) -> None:
     """Reject private/internal URLs before any request (including redirects)."""
     validate_rss_feed_url(str(request.url))
+    await _check_dns_ssrf(str(request.url))
 
 
 async def fetch_feed(url: str) -> list[NewsArticle]:
@@ -86,11 +232,24 @@ async def fetch_feed(url: str) -> list[NewsArticle]:
         async with httpx.AsyncClient(
             timeout=_FEED_TIMEOUT,
             follow_redirects=True,
+            headers=_FEED_HEADERS,
             event_hooks={"request": [_validate_rss_request]},
         ) as client:
-            response = await client.get(url)
-            response.raise_for_status()
-            body = response.text
+            async with client.stream("GET", url) as response:
+                response.raise_for_status()
+                chunks: list[bytes] = []
+                total = 0
+                async for chunk in response.aiter_bytes():
+                    total += len(chunk)
+                    if total > _FEED_MAX_BYTES:
+                        logger.warning(
+                            "RSS feed %s exceeds %d bytes; skipping",
+                            url,
+                            _FEED_MAX_BYTES,
+                        )
+                        return []
+                    chunks.append(chunk)
+            body = b"".join(chunks)
     except httpx.HTTPStatusError as exc:
         logger.warning("RSS feed %s returned %s", url, exc.response.status_code)
         return []
@@ -101,9 +260,17 @@ async def fetch_feed(url: str) -> list[NewsArticle]:
         logger.warning("RSS feed URL %s rejected during request: %s", url, exc)
         return []
 
+    # Reject entity-expansion (billion laughs) payloads before parsing.
+    head = body[:4096].lower()
+    if b"<!doctype" in head or b"<!entity" in head:
+        logger.warning("RSS feed %s declares DOCTYPE/ENTITY; skipping", url)
+        return []
+
     try:
         # XML parsers can be picky; use the standard library and recover from
-        # minor feed quirks rather than introducing a new dependency.
+        # minor feed quirks rather than introducing a new dependency. Parsing
+        # raw bytes lets ElementTree honour the XML prolog encoding (UTF-16
+        # feeds are otherwise mis-decoded as str).
         import xml.etree.ElementTree as ET
 
         root = ET.fromstring(body)
@@ -121,6 +288,9 @@ async def fetch_feed(url: str) -> list[NewsArticle]:
 
     source_name = source_name_from_url(url, channel_title)
 
+    host = (urlparse(url).hostname or "").lower()
+    tz_hint = _VN_TZ if host in _VN_TZ_DOMAINS else None
+
     # RSS 2.0 <item>; Atom uses <entry>. {*}
     # ignores default/prefixed namespaces so all feed variants are found.
     items = (
@@ -133,12 +303,7 @@ async def fetch_feed(url: str) -> list[NewsArticle]:
     articles: list[NewsArticle] = []
     for item in items:
         title = _first_text(item, "title") or "Untitled"
-        link = _first_text(item, "link") or ""
-        if not link:
-            # Atom often places the href in a <link href="..."/> attribute.
-            link_el = item.find("{*}link")
-            if link_el is not None:
-                link = link_el.get("href") or ""
+        link = _extract_link(item, url)
 
         description = _strip_html(
             _first_text(item, "description") or _first_text(item, "summary") or ""
@@ -151,8 +316,10 @@ async def fetch_feed(url: str) -> list[NewsArticle]:
             _first_text(item, "pubDate")
             or _first_text(item, "published")
             or _first_text(item, "updated")
+            or _first_text(item, "date"),
+            tz_hint=tz_hint,
         )
-        category = _first_text(item, "category")
+        category = _first_category(item)
 
         articles.append(
             NewsArticle(

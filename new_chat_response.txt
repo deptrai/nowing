@@ -1,0 +1,14 @@
+data: {"type": "start", "messageId": "msg_d0988e09c8354dcdbb1d9869064ca724"}
+
+data: {"type": "start-step"}
+
+data: {"type": "data-turn-info", "data": {"chat_turn_id": "2:1786633983266"}}
+
+data: {"type": "data-turn-status", "data": {"status": "busy"}}
+
+data: {"type": "data-user-message-id", "data": {"message_id": 3, "turn_id": "2:1786633983266"}}
+
+data: {"type": "data-assistant-message-id", "data": {"message_id": 4, "turn_id": "2:1786633983266"}}
+
+data: {"type": "data-thinking-step", "data": {"id": "thinking-1", "title": "Understanding your request", "status": "in_progress", "items": ["Processing: Compare the top 3 AI agent platforms for web research in 2026"]}}
+

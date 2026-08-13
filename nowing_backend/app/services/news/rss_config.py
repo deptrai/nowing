@@ -8,15 +8,22 @@ DEFAULT_VIETNAMESE_FEEDS: list[str] = [
     "https://vnexpress.net/rss/tin-moi-nhat.rss",
     "https://tuoitre.vn/rss/thoi-su.rss",
     "https://dantri.com.vn/rss/tin-moi-nhat.rss",
-    "https://vietnamnet.vn/rss/tin-moi-nhat.rss",
+    "https://vietnamnet.vn/rss/thoi-su.rss",
 ]
 
 
 def get_feeds_for_workspace(connector_config: dict | None) -> list[str]:
-    """Return feed URLs for a workspace, honouring optional connector overrides."""
-    if connector_config and connector_config.get("feed_urls"):
-        return list(connector_config["feed_urls"])
-    return list(DEFAULT_VIETNAMESE_FEEDS)
+    """Return feed URLs for a workspace, honouring optional connector overrides.
+
+    Duplicate or blank URLs are dropped (order preserved) so a misconfigured
+    feed_urls list cannot double-fetch the same feed.
+    """
+    urls = (
+        connector_config.get("feed_urls")
+        if connector_config and connector_config.get("feed_urls")
+        else DEFAULT_VIETNAMESE_FEEDS
+    )
+    return list(dict.fromkeys(url.strip() for url in urls if url and url.strip()))
 
 
 def source_name_from_url(url: str, channel_title: str | None = None) -> str:

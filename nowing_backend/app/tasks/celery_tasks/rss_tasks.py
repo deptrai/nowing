@@ -8,7 +8,12 @@ from app.tasks.celery_tasks import (
 from app.tasks.connector_indexers.rss_indexer import index_rss_feeds
 
 
-@celery_app.task(name="index_rss_feeds", bind=True)
+@celery_app.task(
+    name="index_rss_feeds",
+    bind=True,
+    soft_time_limit=1800,
+    time_limit=2700,
+)
 def index_rss_feeds_task(
     self,
     connector_id: int,
