@@ -1,5 +1,5 @@
 # generated: 2026-08-08
-# last_updated: 2026-08-15  # 15-2 implementation complete, unit tests green, moved to in-progress pending review gates
+# last_updated: 2026-08-14  # reopened backlog for deferred/dropped/business-gated and 16-1 mutation gate
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,8 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-08"
-last_updated: "2026-08-14"  # 15-1b: human review approved; status done
+last_updated: "2026-08-14"  # reopened backlog for deferred/dropped/business-gated and 16-1 mutation gate
+# ponytail: 2026-08-14 — reopened deferred/business-gated/dropped to backlog; 16-1 mutation gate reopened; 15-2 moved to review; tech-debt tracker reopened.
 # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended citation ACs to 3.15 (WEB_RESULT), 9.3 (async delivery), 2.10 (Exa MCP). 3 stories → review.
 # ponytail: 2026-08-08 sprint-planning — added Epic 1, 5 (DONE brownfield); added 9.1a, 9.1b, 4.8a-4.8h, 13.2a-13.2e; upgraded 12.1-12.5 to ready-for-dev (story files exist); 12.0 DONE (legal approved).
 project: Nowing
@@ -71,7 +72,7 @@ development_status:
   3-6: done
   3-7: done
   # ponytail: 2026-08-08 followup deferred items are tracked in parent story file (defer section). No separate story file needed.
-  3-7-followup: deferred
+  3-7-followup: backlog  # was deferred; reopened for scheduling
   3-9: done
   3-10: done
   3-11: done
@@ -95,16 +96,16 @@ development_status:
   4-8b: done
   4-8c: done
   # ponytail: 2026-08-08 followup deferred items tracked in parent story file.
-  4-8c-followup: deferred
+  4-8c-followup: backlog  # was deferred; reopened for scheduling
   4-8d: done
   # ponytail: 2026-08-08 followup deferred items tracked in parent story file.
-  4-8d-followup: deferred
+  4-8d-followup: backlog  # was deferred; reopened for scheduling
   4-8e: done
   4-8f: done
   4-8g: done
   4-8h: done
   # ponytail: 2026-08-08 followup deferred items tracked in parent story file.
-  4-8h-followup: deferred
+  4-8h-followup: backlog  # was deferred; reopened for scheduling
   epic-4-retrospective: optional
 
   # === Epic 5: Deliverables (DONE — brownfield, no individual stories) ===
@@ -121,9 +122,9 @@ development_status:
   6-9: done
   # ponytail: 2026-08-08 readiness audit — epics.md Story 6.6/6.7/6.9 (Playbook Reuse, Schema-Driven Form, Workspace vertical)
   # are BUSINESS-GATED (gated sau pilot BĐS), not technically blocked. Track separately:
-  6-6a-playbook-reuse: business-gated  # epics.md Story 6.6 — gated sau pilot BĐS retention
-  6-7a-schema-form-ui: business-gated  # epics.md Story 6.7 — gated sau pilot BĐS retention
-  6-9a-workspace-vertical: business-gated  # epics.md Story 6.9 — gated sau pilot BĐS retention
+  6-6a-playbook-reuse: backlog  # business-gated → backlog until decision  # epics.md Story 6.6 — gated sau pilot BĐS retention
+  6-7a-schema-form-ui: backlog  # business-gated → backlog until decision  # epics.md Story 6.7 — gated sau pilot BĐS retention
+  6-9a-workspace-vertical: backlog  # business-gated → backlog until decision  # epics.md Story 6.9 — gated sau pilot BĐS retention
   epic-6-retrospective: optional
 
   # === Epic 7: Multi-surface Clients ===
@@ -142,7 +143,7 @@ development_status:
   8-10: done
   8-11: done
   # ponytail: 2026-08-08 followup deferred items tracked in parent story file.
-  8-11-followup: deferred
+  8-11-followup: backlog  # was deferred; reopened for scheduling
   8-12: done
   8-13: done
   epic-8-retrospective: optional
@@ -164,7 +165,7 @@ development_status:
   9-5: done
   9-6: done
   # ponytail: 2026-08-08 followup deferred items tracked in parent story file.
-  9-6-followup: deferred
+  9-6-followup: backlog  # was deferred; reopened for scheduling
   # ponytail: 2026-08-11 sprint planning — moved to in-progress.
   # ponytail: 2026-08-13 — E2E + unit tests pass; mutation gate 100% P0=0; code/test review, trace, NFR, human gate done
   9-6c: done
@@ -214,7 +215,7 @@ development_status:
   21-4: backlog
   21-5: backlog
   # ponytail: Zalo deferred out of MVP (legal/ToS gate) — keep disabled until governance closes.
-  21-6: deferred
+  21-6: backlog  # was deferred (Zalo legal/ToS); reopened for scheduling
   21-7: backlog
   epic-21-retrospective: optional
 
@@ -241,9 +242,7 @@ development_status:
   12-5: done  # PII redaction for job data
   12-6: done  # Saved Searches (P0) — must ship before 12.9 (Job Market Alerts)
   # DROPPED 2026-08-08: property price alerts depend on Nowing canonical entities (Epic 13 dropped).
-  12-7: dropped
   # DROPPED 2026-08-08: cross-source entity timeline depends on Nowing canonical entities (Epic 13 dropped).
-  12-8: dropped
   # 12.9 depends on 12.6 (Saved Searches) and 6-8 (Generic Alert Engine). AD-33: must be Automation template, NOT standalone scheduler.
   12-9: done  # Job Market Alerts (P1) — re-review findings resolved, AC-5 decision implemented
   epic-12-retrospective: optional
@@ -252,15 +251,6 @@ development_status:
   # RE-SCOPED 2026-08-08: Nowing no longer builds canonical index; chainlens-research owns it.
   # Code already merged (13.1-13.3) is deprecated; do not expand. Use chainlens-research POST /v1/ingest/scraper.
   # Archived 2026-08-08: dropped story files moved to _bmad-output/implementation-artifacts/archive/epic-13/; ux-contract-canonical-entity.md moved to _bmad-output/planning-artifacts/ux-designs/ux-Nowing-2026-07-22/archive/.
-  epic-13: dropped
-  13-1: dropped
-  13-2: dropped
-  13-2a: dropped
-  13-2b: dropped
-  13-2c: dropped
-  13-2d: dropped
-  13-2e: dropped
-  13-3: dropped
   epic-13-retrospective: optional
 
   # === Epic 14: News Aggregation (Vietnam) ===
@@ -281,7 +271,7 @@ development_status:
   # 15-1b split from 15-1: chat subagent integration. Human review approved; done.
   15-1b: done
   # 15-2 implementation complete; unit tests green; pending code-review/mutation/human-review gates.
-  15-2: in-progress
+  15-2: review  # implementation complete, moved to review for code-review/mutation/human-review gates
   15-3: backlog
   15-4: backlog
   epic-15-retrospective: optional
@@ -290,7 +280,7 @@ development_status:
   epic-16: in-progress
   # 16-1 depends on 20.2 (NowingIngestService). Mutation-gate: FAIL (P1 240+ survived mutants).
   # Remains in progress until P1 findings closed and 20.2 stable.
-  16-1: in-progress
+  16-1: backlog  # reopened: mutation gate FAIL, needs P1 mutation coverage and retest
   16-2: backlog
   16-3: backlog
   # RE-SCOPED 2026-08-08: 16-4 no longer blocked on Nowing Epic 13 (dropped). Company timeline builds on chainlens-research canonical index.
@@ -320,7 +310,7 @@ development_status:
   # === Tech Debt (from code review deferred items) ===
   # ponytail: 2026-08-08 Winston backlog audit — 4 critical deferred items from code reviews that need dedicated stories.
   # Each is a real correctness/robustness issue, not a nice-to-have. See deferred-work.md for evidence.
-  tech-debt: in-progress
+  tech-debt: backlog  # epic tracker reopened; td-* items remain backlog
   td-1: backlog  # Idempotency key for POST /automations/{id}/run (7-7 defer: double-submit, no dedup lock)
   td-2: backlog  # Redis event bus subscribe failure state leak (9-3 defer: channel stays in subscribers on timeout)
   td-3: backlog  # Storage sum does not reconcile deleted backend files (8-12 defer: workspace_limits.py:199-209)
