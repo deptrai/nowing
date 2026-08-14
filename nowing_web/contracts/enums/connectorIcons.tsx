@@ -5,6 +5,7 @@ import {
 	FileText,
 	Globe,
 	Microscope,
+	Newspaper,
 	Search,
 	Sparkles,
 	Telescope,
@@ -93,6 +94,8 @@ export const getConnectorIcon = (connectorType: EnumConnectorName | string, clas
 			return <Image src="/connectors/google-gmail.svg" alt="Gmail" {...imgProps} />;
 		case EnumConnectorName.COMPOSIO_GOOGLE_CALENDAR_CONNECTOR:
 			return <Image src="/connectors/google-calendar.svg" alt="Google Calendar" {...imgProps} />;
+		case EnumConnectorName.RSS_FEED:
+			return <Newspaper {...iconProps} />;
 		// Additional cases for non-enum connector types
 		case "YOUTUBE_CONNECTOR":
 			return <Image src="/connectors/youtube.svg" alt="YouTube" {...imgProps} />;

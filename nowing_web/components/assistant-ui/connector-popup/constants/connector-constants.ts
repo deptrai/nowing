@@ -242,6 +242,12 @@ export const OTHER_CONNECTORS = [
 		description: "Sync your Obsidian vault on desktop or mobile",
 		connectorType: EnumConnectorName.OBSIDIAN_CONNECTOR,
 	},
+	{
+		id: "rss-feed-connector",
+		title: "RSS",
+		description: "Index Vietnamese news RSS feeds",
+		connectorType: EnumConnectorName.RSS_FEED,
+	},
 ] as const;
 
 // Composio Connectors - Individual entries for each supported toolkit
