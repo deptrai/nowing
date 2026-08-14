@@ -13,7 +13,7 @@ class ScrapeInput(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     category: str = "bds"
-    listing_type: Literal["buy", "rent", "sell", "want_to_buy"] = "buy"
+    listing_type: Literal["buy", "rent", "sell", "want_to_buy"] = "sell"
     property_type: Literal["apartment", "house", "land", "office", "all"] = "all"
     city: str
     district: str | None = None

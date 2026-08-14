@@ -135,6 +135,61 @@ async def test_bot_detected_actor_degrades_with_bot_detected_reason():
 
 
 @pytest.mark.asyncio
+async def test_bds_executor_uses_bds_rate_config():
+    """The deprecated bds alias should compute cost_micros from the BĐS rate."""
+
+    async def bds_scraper(
+        actor_input: ChototBdsScrapeInput, *, limit: int | None = None
+    ) -> dict[str, Any]:
+        return {
+            "items": [{"listing_id": 1, "category": "bds"}],
+            "total_items": 1,
+            "billable_units": 1,
+            "degraded": False,
+        }
+
+    execute = build_scrape_executor(
+        scrape_fn=bds_scraper,
+        rate_attr="CHOTOT_BDS_SCRAPE_MICROS_PER_ITEM",
+    )
+
+    out = await execute(ScrapeInput(city="hanoi", max_items=5))
+
+    assert out.cost_micros == 1 * 3500
+
+
+@pytest.mark.asyncio
+async def test_bds_executor_locks_category_to_bds():
+    """The deprecated bds alias must ignore user-supplied category and use 'bds'."""
+
+    captured: list[ChototBdsScrapeInput] = []
+
+    async def recording_scraper(
+        actor_input: ChototBdsScrapeInput, *, limit: int | None = None
+    ) -> dict[str, Any]:
+        captured.append(actor_input)
+        return {
+            "items": [{"listing_id": 1, "category": "bds"}],
+            "total_items": 1,
+            "billable_units": 1,
+            "degraded": False,
+        }
+
+    execute = build_scrape_executor(
+        scrape_fn=recording_scraper,
+        rate_attr="CHOTOT_BDS_SCRAPE_MICROS_PER_ITEM",
+        locked_category="bds",
+    )
+
+    out = await execute(
+        ScrapeInput(category="cars", city="ho chi minh", max_items=5)
+    )
+
+    assert captured[0].category == "bds"
+    assert out.category == "cars"  # output preserves caller category for traceability
+
+
+@pytest.mark.asyncio
 async def test_all_unknown_category_listings_cost_zero():
     scraper = _FakeScraper(
         [

@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from collections.abc import Callable
 from typing import Any
 
 from .fetch import CategoryConfigError, get_category_config
 from .schemas import ChototBdsListing, ChototListing
+
+logger = logging.getLogger(__name__)
 
 
 def _normalize_whitespace(value: Any) -> str | None:
@@ -609,4 +612,10 @@ def parse_listings(
     """Map a list of raw Chotot ad dicts to typed listings."""
     if not raw_items:
         return []
-    return [parse_listing(item, category) for item in raw_items if isinstance(item, dict)]
+    listings: list[ChototListing] = []
+    for item in raw_items:
+        if isinstance(item, dict):
+            listings.append(parse_listing(item, category))
+        else:
+            logger.warning("skipping non-dict ad item in category=%r: %s", category, type(item))
+    return listings

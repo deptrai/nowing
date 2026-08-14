@@ -32,7 +32,10 @@ CHOTOT_BDS_SCRAPE = Capability(
     ),
     input_schema=ScrapeInput,
     output_schema=ScrapeOutput,
-    executor=build_scrape_executor(),
+    executor=build_scrape_executor(
+        rate_attr="CHOTOT_BDS_SCRAPE_MICROS_PER_ITEM",
+        locked_category="bds",
+    ),
     billing_unit=BillingUnit.CHOTOT_BDS_ITEM,
     docs_url="/docs/connectors/native/chotot",
 )

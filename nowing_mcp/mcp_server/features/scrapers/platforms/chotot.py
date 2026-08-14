@@ -112,7 +112,9 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
         Use this for Vietnamese marketplace research: tracking prices, supply,
         or locations. Returns typed listings with title, price, location, detail
         URL, and category-specific attributes.
-        Example: category='cars', city='ho chi minh', listing_type='buy', max_items=20.
+        Category can be a known slug (e.g. 'cars', 'jobs') or a raw numeric
+        gateway category code (cg). Example: category='cars',
+        city='ho chi minh', listing_type='buy', max_items=20.
         """
         if (
             min_price is not None

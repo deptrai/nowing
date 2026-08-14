@@ -83,14 +83,21 @@ def _unwrap_result(
     return result
 
 
-def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Callable[..., Awaitable[ScrapeOutput]]:
+def build_scrape_executor(
+    scrape_fn: ScrapeFn | None = None,
+    rate_attr: str = "CHOTOT_SCRAPE_MICROS_PER_ITEM",
+    locked_category: str | None = None,
+) -> Callable[..., Awaitable[ScrapeOutput]]:
     """Bind the executor to a scraper fn (defaults to the proprietary actor)."""
     scrape_fn = scrape_fn or scrape_chotot
+    rate_micros = int(getattr(config, rate_attr, 3500))
 
     async def execute(
         payload: ScrapeInput, ctx: CapabilityContext | None = None
     ) -> ScrapeOutput:
         actor_input = ChototScrapeInput(**payload.model_dump())
+        if locked_category is not None:
+            actor_input.category = locked_category
 
         emit_progress(
             "starting",
@@ -175,11 +182,11 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Callable[..., Aw
             _maybe_escalate(ctx, result.get("degradation_reason") or "UNKNOWN")
             cost = 0
         else:
-            cost = billable * getattr(config, "CHOTOT_SCRAPE_MICROS_PER_ITEM", 3500)
+            cost = billable * rate_micros
 
         emit_progress(
             "done",
-            f"Scraped {total} item(s)",
+            f"Scraped {total} item(s), {billable} billable",
             current=total,
             total=payload.max_items,
             unit="item",
