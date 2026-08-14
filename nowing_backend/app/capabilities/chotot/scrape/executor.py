@@ -76,6 +76,7 @@ def _unwrap_result(
         return {
             "items": [item.to_output() for item in result.items],
             "total_items": result.total_items,
+            "billable_units": result.billable_units,
             "degraded": result.degraded,
             "degradation_reason": result.degradation_reason,
         }
@@ -164,12 +165,14 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Callable[..., Aw
         items = result.get("items", []) or []
         total_raw = result.get("total_items", 0)
         total = int(total_raw) if total_raw is not None else 0
+        billable = result.get("billable_units") or total
+        billable = int(billable) if isinstance(billable, (int, float)) else total
         degraded = bool(result.get("degraded", False))
         if degraded:
             _maybe_escalate(ctx, result.get("degradation_reason") or "UNKNOWN")
             cost = 0
         else:
-            cost = total * getattr(config, "CHOTOT_SCRAPE_MICROS_PER_ITEM", 3500)
+            cost = billable * getattr(config, "CHOTOT_SCRAPE_MICROS_PER_ITEM", 3500)
 
         emit_progress(
             "done",

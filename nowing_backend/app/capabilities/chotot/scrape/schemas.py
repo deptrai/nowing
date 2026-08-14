@@ -66,5 +66,11 @@ class ScrapeOutput(BaseModel):
 
     @property
     def billable_units(self) -> int:
-        """One returned listing = one billable unit."""
-        return len(self.items)
+        """One returned listing = one billable unit; unknown-category fallback listings are not billed."""
+        return sum(
+            1
+            for item in self.items
+            if isinstance(item, dict)
+            and item.get("category")
+            and item["category"] != "unknown"
+        )

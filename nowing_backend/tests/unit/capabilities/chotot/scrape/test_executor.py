@@ -34,13 +34,18 @@ class _FakeScraper:
         return {
             "items": self._items,
             "total_items": len(self._items),
+            "billable_units": sum(
+                1 for it in self._items if it.get("category") and it["category"] != "unknown"
+            ),
             "degraded": False,
         }
 
 
 @pytest.mark.asyncio
 async def test_maps_input_and_wraps_items():
-    scraper = _FakeScraper([{"listing_id": 1}, {"listing_id": 2}])
+    scraper = _FakeScraper(
+        [{"listing_id": 1, "category": "bds"}, {"listing_id": 2, "category": "bds"}]
+    )
     execute = build_scrape_executor(scrape_fn=scraper)
 
     out = await execute(
@@ -127,3 +132,20 @@ async def test_bot_detected_actor_degrades_with_bot_detected_reason():
     assert out.degraded is True
     assert out.degradation_reason == "bot_detected"
     assert out.cost_micros == 0
+
+
+@pytest.mark.asyncio
+async def test_unknown_category_listings_are_not_billed():
+    scraper = _FakeScraper(
+        [
+            {"listing_id": 1, "category": "bds"},
+            {"listing_id": 2, "category": "unknown"},
+        ]
+    )
+    execute = build_scrape_executor(scrape_fn=scraper)
+
+    out = await execute(ScrapeInput(category="electronics", city="hanoi", max_items=5))
+
+    assert out.total_items == 2
+    assert out.billable_units == 1
+    assert out.cost_micros == 1 * 3500

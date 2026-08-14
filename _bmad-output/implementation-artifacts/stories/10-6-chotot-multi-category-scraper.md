@@ -56,17 +56,21 @@ So that one scraper foundation returns typed, useful data for each category inst
 
 11. **Given** the gateway returns a `cg` code that is not in the mapping table,
     **When** `parse_listing` runs,
-    **Then** `parse_generic` captures the top-level scalar fields into `attributes`, sets `category="unknown"`, and the executor must mark the run `degraded=true` with `degradation_reason="unknown_category"` and **not bill** the listing.
+    **Then** `parse_generic` captures the top-level scalar fields into `attributes`, sets `category="unknown"`, and the executor must mark the run `degraded=true` with `degradation_reason="unknown_category"` and **not bill** the listing (both `ChototScrapeOutput.billable_units` and `ScrapeOutput.billable_units` exclude `category="unknown"`).
 
 12. **Given** the `phone` fetch endpoint uses the same RSA encryption for all `list_id`s,
     **When** `fetch_phone` is called for a non-BĐS listing,
     **Then** it reuses the existing encryption and returns the public phone number, or `None` if the vertical does not expose phone on the gateway.
 
+13. **Given** a new vertical is discovered during the spike,
+    **When** the vertical is added to `_CATEGORY_CONFIG`,
+    **Then** ToS review for that vertical must pass before it is enabled in production.
+
 ## Tasks / Subtasks
 
 - [ ] Spike: inspect live gateway behavior (AC #1, #2, #4, #5, #12)
   - [ ] Capture `cg` codes for P0 verticals: `cars`, `motorbikes`, `electronics`, `jobs`, `home_goods`, `pets`, `fashion`, `services`.
-  - [ ] Document `st` behavior per vertical (`s`, `k`, `u`, etc.) and confirm `w=1` is universal.
+  - [ ] Document `st` behavior per vertical (default `st=s`; only BĐS supports `st=u` for rent; unsupported values fall back to `s` with warning) and confirm `w=1` is universal.
   - [ ] Verify `loadRegions` returns the same tree for each `cg`; if different, record which category needs a different region endpoint.
   - [ ] Verify detail URL pattern (`/{id}.htm` vs `/{slug}-{id}.htm`) for each vertical and whether bare `/{id}.htm` redirects or 404s.
   - [ ] Test `fetch_phone` with one non-BĐS `list_id` and document if RSA key/endpoint is universal.
@@ -107,20 +111,37 @@ So that one scraper foundation returns typed, useful data for each category inst
   - [ ] Keep `_parse_price_string`, `_format_price`, `_build_address`, `_first_image`, `_seller_type` as shared helpers.
   - [ ] Verify `fetch_phone` does not assume BĐS; document any vertical where phone is unavailable.
 
+- [ ] Capability / MCP surface (boundary with Story 10.7)
+  - [ ] `app/capabilities/chotot/scrape/definition.py` registers `chotot.scrape` with `BillingUnit.CHOTOT_ITEM`.
+  - [ ] `chotot_bds.scrape` is kept as deprecated alias calling `chotot.scrape(category="bds")`.
+  - [ ] `ScrapeOutput.billable_units` excludes `category="unknown"` listings.
+  - [ ] Update MCP tool `nowing_mcp/mcp_server/features/scrapers/platforms/chotot.py` (or rename from `chotot_bds.py`) with the new `category` parameter and pass `mcp_server/selfcheck.py`.
+
 - [ ] Tests
   - [ ] Unit test `category → cg` lookup, `_build_listing_params` `st`, `_build_detail_url` per origin, unsupported category validation.
   - [ ] Unit test each parser against sample raw JSON for vehicle, job, electronics.
-  - [ ] Unit test generic parser for unknown `cg` returns `category="unknown"`.
+  - [ ] Unit test generic parser for unknown `cg` returns `category="unknown"` and is not billed.
+  - [ ] Unit test capability executor: `billable_units` excludes unknown-category listings.
   - [ ] Integration test real `ad-listing` call for one non-BĐS vertical and `parse_listings`.
+
+## Previous Story Learnings
+
+- **Story 10.1 (batdongsan):** License boundary is BSL 1.1 in `app/proprietary/platforms/` and Apache-2.0 in `app/capabilities/`; every platform needs MCP tool registration, `mcp_server/selfcheck.py` update, and a `billable_units` property on the capability output.
+- **Story 10.2 (chotot BĐS):** Region cache (`_REGIONS_CACHE`) must be guarded by `asyncio.Lock`; response size caps and UA rotation prevent anti-bot blocks.
+- **Story 10.5 (anti-bot escalation):** Bot/rate-limit blocks trigger `capture_platform_anti_bot_screenshot_task.delay(...)` with `run_id`, `workspace_id`, `capability`, `domain`, `block_type`.
+- **Epic 10 retrospective:** Keep unit tests hermetic (fixtures, no live network); add parser-regression fixtures for each supported vertical to guard API contract drift.
 
 ## Dev Notes
 
 - Relevant architecture patterns and constraints
   - `AD-3` — scraper capabilities self-register; capability/billing work is Story 10.7.
   - `AD-16` — `app/proprietary/platforms/chotot/` (BSL 1.1) holds mapping + parser; Apache-2.0 wrapper in `app/capabilities/chotot/scrape/` (Story 10.7).
-  - `AD-19` — anti-bot escalation already wired; re-use existing `ChototBdsAccessBlockedError`, `ChototBdsRateLimitedError`, `ChototBdsBotDetectedError`.
-  - `AD-34` / `AD-35` — scraper output is a listing, not a searchable corpus; ingestion into `chainlens-research` uses `NowingIngestService` (Epic 20) if desired.
-  - `AD-25` / `AD-26` — phone numbers are PII; `fetch_phone` returns raw data, downstream `Memory`/ingestion must run redaction if stored. Verify ToS/legal for each new vertical before enabling in production.
+  - `AD-19` — anti-bot escalation already wired; re-use existing `ChototBdsAccessBlockedError`, `ChototBdsRateLimitedError`, `ChototBdsBotDetectedError`. Wire `_maybe_escalate` via `capture_platform_anti_bot_screenshot_task` following the pattern from Story 10.5.
+  - `AD-25` — phone numbers are PII; `fetch_phone` returns raw data, downstream `Memory`/ingestion must run `redact_pii` before storage.
+  - `AD-26` — ToS review is a **hard gate** before any new vertical is enabled in production; record per-vertical ToS approval in the story.
+  - `AD-34` — scraper output must be compatible with `to_chunks()` / `NowingIngestService` (`source: 'nowing_scraper'`, `metadata.domain`); this story does not implement ingestion itself.
+  - `AD-35` — Nowing does not build a public/vertical search corpus; scraper output feeds `chainlens-research` if ingestion is wired later.
+  - `AD-50` — Chợ Tốt Multi-Category Scraper & Capability (authoritative): single generic `scrape_chotot` actor; single `chotot.scrape` capability with `category` required; `BillingUnit.CHOTOT_ITEM` per returned listing; `ChototListing` with `attributes` bag; detail URL origins per vertical; parser dispatch with `parse_generic` fallback; unknown-category fallback listings are **not billed**.
 
 - Source tree components to touch
   - `nowing_backend/app/proprietary/platforms/chotot/fetch.py`
@@ -130,8 +151,8 @@ So that one scraper foundation returns typed, useful data for each category inst
 
 - Testing standards summary
   - `tests/unit/proprietary/platforms/chotot/`
-  - Sample fixtures in `tests/fixtures/chotot/vehicles.json`, `jobs.json`, `electronics.json`
-  - Integration tests gated behind `CHOTOT_INTEGRATION=1` or equivalent.
+  - Sample fixtures in `tests/unit/platforms/chotot/fixtures/sample_ad_listing.json` (BĐS) plus new `vehicles.json`, `jobs.json`, `electronics.json` for non-BĐS parser tests.
+  - Integration tests gated behind `SCRAPE_LIVE=1` or equivalent.
 
 ### References
 
