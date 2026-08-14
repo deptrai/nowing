@@ -1,6 +1,6 @@
 # Story 15.2: Vietstock Deep Financials
 
-**Status:** ready-for-dev
+**Status:** ready-for-review
 **Epic:** Epic 15 — Financial Data (Vietnam)
 **Priority:** P1
 
@@ -12,7 +12,7 @@ So that I can perform historical analysis and cross-company comparison.
 
 ## Scope Notes
 
-- This story builds the **Vietstock capability** (`vietstock.scrape`): cookie-authenticated deep financials, 20+ years historical data, and cross-source canonical `sourceId` with CafeF.
+- This story builds the **Vietstock capability** (`vietstock.scrape`): token + cookie authenticated deep financials, 20+ years historical data, and cross-source canonical `sourceId` with CafeF.
 - It reuses the file structure, billing, and chainlens-ingest pattern from **Story 15.1 (CafeF)**.
 - News is out of scope unless it falls out naturally from the scraper; focus on financial statements and ratios.
 - Chat subagent / subagent integration is out of scope; covered by follow-up stories if needed.
@@ -28,7 +28,7 @@ So that I can perform historical analysis and cross-company comparison.
 
 ### License Boundary (AD-16)
 
-- `app/proprietary/platforms/vietstock/` — **BSL 1.1** (fetcher, cookie/session handling, anti-bot, parser).
+- `app/proprietary/platforms/vietstock/` — **BSL 1.1** (fetcher, token/cookie/session handling, anti-bot, parser).
 - `app/capabilities/vietstock/` — **Apache-2.0** (capability registration, executor, schemas, REST/MCP contracts).
 
 ### File Structure
@@ -37,7 +37,7 @@ So that I can perform historical analysis and cross-company comparison.
 nowing_backend/app/
 ├── proprietary/platforms/vietstock/        # BSL 1.1
 │   ├── __init__.py
-│   ├── fetch.py                             # HTTP client, cookie auth/refresh, rate limiting
+│   ├── fetch.py                             # HTTP client, token + cookie auth/refresh, rate limiting
 │   ├── parsers.py                           # Parse statements, normalize ratios
 │   ├── schemas.py                           # VietstockScrapeInput/Output, Quote, Financials
 │   └── scraper.py                           # Orchestrator with test seams
@@ -50,10 +50,24 @@ nowing_backend/app/
 
 ### Authentication
 
-- Vietstock requires a **cookie-based session** (unlike CafeF, which is public API).
-- Use `ScraperPlatformAccountService` / `ScraperPlatformAccountRotator` if credentials are managed; otherwise use env/session cookie with refresh logic.
-- On `401/403`, attempt **one** cookie refresh and retry. If refresh fails, mark `degraded=true` with `degradation_reason: AUTH_REFRESH_FAILED`.
+- Vietstock requires both an anti-forgery token (`__RequestVerificationToken`) and a session cookie for the data endpoints.
+- On startup or token expiry, `fetch.py` loads `https://finance.vietstock.vn`, extracts the hidden form token from the HTML, and persists the `Set-Cookie` headers.
+- The token and cookie are sent as form-urlencoded body fields + `Cookie` header on every POST to the data endpoints.
+- Browser-like headers (`User-Agent`, `Referer`, `X-Requested-With`, `Sec-Fetch-*`, etc.) are required; without them the endpoints return WAF/Cloudflare HTML instead of JSON.
+- On `401/403`, attempt **one** token/cookie refresh and retry. If refresh fails, mark `degraded=true` with `degradation_reason: AUTH_REFRESH_FAILED`.
 - Do NOT log raw session cookies or tokens.
+
+### Real API Endpoints
+
+Both endpoints are `POST` with form-urlencoded bodies:
+
+- **Quote:** `https://finance.vietstock.vn/company/tradinginfo`
+  - Body: `code=<SYMBOL>`, `s=0`, `t=`, `__RequestVerificationToken=<token>`
+  - Returns OHLCV, ratios (`PE`, `PB`, `EPS`, `BVPS`, etc.), and trading stats.
+- **Financials:** `https://finance.vietstock.vn/data/financeinfo`
+  - Body: `Code=<SYMBOL>`, `Page=1`, `PageSize=4`, `ReportTermType=`, `ReportType=BCTC`, `Unit=1000000`, `__RequestVerificationToken=<token>`
+  - Returns a multi-part list: `[periods_meta, reports_dict, ...]`.
+  - `reports_dict` has Vietnamese keys: `Kết quả kinh doanh`, `Báo cáo tình hình tài chính`, `Chỉ số tài chính`, each containing a list of line items with `Value1`..`ValueN` fields.
 
 ### Billing
 
@@ -77,6 +91,14 @@ nowing_backend/app/
 - `VietstockFinancials`: balance sheet, income statement, cash flow with 20+ years historical periods.
 - `VietstockScrapeInput`: `symbol`, `include_financials`, `include_news` (optional), `max_news`.
 - `VietstockScrapeOutput`: quote/financials/news, `degraded`, `degradation_reason`, `billable_units`.
+
+### Parser Envelope
+
+- `financeinfo` returns a list of 4 elements: `[periods_meta, reports_dict, chart_list_1, chart_list_2]`.
+- `periods_meta` is a list of dicts with `YearPeriod`, `TermCode`, `ReportTermID`, etc.
+- `reports_dict` is a dict keyed by Vietnamese statement names; each value is a list of line items with `ReportNormID`, `Name`, `NameEn`, and `Value1`..`ValueN`.
+- `parse_financials` unwraps this envelope, sorts periods chronologically, and maps each component to the canonical statement type.
+- `parse_quote` maps both the structured `key_ratios` object and top-level real fields (`PE`, `PB`, `LastPrice`, `OpenPrice`, etc.) to the normalized schema.
 
 ### Ratios Normalization
 
@@ -114,16 +136,18 @@ nowing_backend/app/
 - **Given** financial ratios are extracted, **When** normalized to `Chunk[]`, **Then** P/E, P/B, ROE, ROA are stored as comparable numeric values in `content` and `metadata.ratios`.
 - **Given** Vietstock data conflicts with CafeF for the same symbol and period, **When** both source `Chunk[]` are produced, **Then** each chunk is sent with the same canonical `sourceId` (normalized `symbol + statement + period`) and `metadata.conflict_flags` and `metadata.source_count` so `chainlens-research` canonical index handles cross-source merge; Nowing does not merge them locally.
 - **Given** a batch of Vietstock `Chunk[]`, **When** `NowingIngestService.ingest()` is called, **Then** it calls `POST /v1/ingest/scraper` and returns `ingestJobId`.
-- **Given** the cookie-based session expires, **When** the scraper detects `401/403`, **Then** it refreshes the cookie and retries once; if refresh fails, it marks `degraded=true` with `degradation_reason: AUTH_REFRESH_FAILED`.
+- **Given** the anti-forgery token or cookie expires, **When** the scraper detects `401/403`, **Then** it refreshes the token/cookie and retries once; if refresh fails, it marks `degraded=true` with `degradation_reason: AUTH_REFRESH_FAILED`.
+- **Given** Vietstock returns a WAF/Cloudflare HTML challenge instead of JSON, **When** the response is parsed, **Then** the scraper raises `VietstockAccessBlockedError` and the capability marks `degraded=true`.
 
 ## Validation
 
-- Unit test: `test_vietstock_auth.py` — cookie refresh works, 401/403 degrades with `AUTH_REFRESH_FAILED`.
+- Unit test: `test_vietstock_auth.py` — token + cookie refresh works, 401/403/429 degrades correctly.
 - Unit test: `test_vietstock_ratio_normalization.py` — P/E, P/B, ROE, ROA normalized to comparable floats across formats.
-- Unit test: `test_vietstock_parsers.py` — financial statements parsed accurately for historical/grouped/flat structures.
+- Unit test: `test_vietstock_parsers.py` — financial statements parsed accurately for real multi-part Vietstock envelope, historical/grouped/flat structures.
 - Unit test: `test_vietstock_to_chunks.py` — chunk metadata includes canonical `sourceId`, `conflict_flags`, `source_count`, and `metadata.ratios`.
 - Integration test: `test_vietstock_chainlens_feed.py` — `POST /v1/ingest/scraper` called with correct auth and batch.
-- Integration test (optional/live): `test_vietstock_api_connection.py` — live API responds correctly when credentials configured.
+- Real API integration test: `tests/integration/vietstock/test_real_vietstock.py` — gated by `NOWING_RUN_NETWORK_TESTS=1`; hits live endpoints for VNM quote and financials.
+- Playwright E2E: `nowing_web/tests/playground/vietstock-scrape.spec.ts` — verifies playground runner does not crash on degraded and successful responses.
 - Ruff pass on `app/proprietary/platforms/vietstock`, `app/capabilities/vietstock`, and related tests.
 
 ## Implementation Notes
@@ -139,9 +163,10 @@ nowing_backend/app/
 
 ## Open Questions
 
-- What is the exact Vietstock login/session endpoint and cookie refresh mechanism? (Spike before implementation if unknown.)
-- What is the correct default `VIETSTOCK_RATE_LIMIT_RPS` and `VIETSTOCK_DATA_MICROS_PER_ITEM`? (Align with product/commercial after a live probe.)
-- Should Vietstock financial records be split by period into multiple chunks or one large chunk? (Default: one chunk per `(symbol, statement_type, period)` to match canonical `sourceId`.)
+1. ✅ **Cookie refresh mechanism:** resolved — implemented `_get_verification_token()` hitting landing page, extracting `__RequestVerificationToken` from HTML, and persisting `Set-Cookie`.
+2. ✅ **Default rate/cost:** resolved — `VIETSTOCK_RATE_LIMIT_RPS = 1/3` (20 req/min), `VIETSTOCK_DATA_MICROS_PER_ITEM = 5000`.
+3. ✅ **Chunking:** resolved — one chunk per `(symbol, statement_type, period)`; quote is a single chunk.
+4. ✅ **Real API endpoints and parser envelope:** resolved — discovered through browser traffic and implemented POST endpoints + multi-part financial statement parsing.
 
 ## Challenge Log (grill-me)
 
@@ -154,7 +179,7 @@ nowing_backend/app/
 
 ### Q2 — Simpler alternative?
 - Instead of writing a custom cookie-pool manager, use `ScraperPlatformAccountService` + `ScraperPlatformAccountRotator` if admin-managed scraper accounts are available.
-- If no admin account is configured, fall back to env/session cookie with a one-shot refresh.
+- If no admin account is configured, fall back to env/session cookie with a one-shot token refresh.
 - Use CafeF's `_as_float` / `_parse_change_string` helpers; extract to shared utility if not already.
 - **Verdict:** no critical alternative, but explicitly prefer `ScraperPlatformAccountRotator` for credential rotation and rate-limit state.
 
@@ -162,6 +187,7 @@ nowing_backend/app/
 - **Boundary:** symbol `min_length=1, max_length=20` is too loose; should validate Vietnamese ticker format or at least uppercase ASCII.
 - **Boundary:** 130K statements can produce >1000 chunks per scrape; must paginate batches and set parent/child `ingest_job_id`.
 - **Boundary:** historical period strings can be `Q4-2025`, `2025`, `31/12/2025`; parser must normalize.
+- **Boundary:** real Vietstock envelope is a 4-element list; parser must handle `len >= 2` and ignore trailing chart data.
 - **Null/empty:** `401/403` with no credentials configured → must degrade immediately without network.
 - **Null/empty:** `quote=None` but `financials` present → billing policy says `billable_units=0`; verify whether financials alone should be billable.
 - **Null/empty:** ratios that are `None`, `NaN`, `Inf`, or `0` must not poison chunk metadata or content.
@@ -173,7 +199,7 @@ nowing_backend/app/
 - **chainlens-research down / 5xx / timeout:** `NowingIngestService` retries and dead-letters; but should the scrape itself be marked `degraded` or only the ingest status?
 - **Postgres / Redis unavailable:** `ScraperPlatformAccountService` lookup fails; fallback to env cookie or degrade.
 - **Vietstock returns HTML challenge page instead of JSON:** need detection similar to CafeF `content-type` check.
-- **Cookie refresh returns 200 but invalid cookie:** retry once, then degrade.
+- **Token refresh returns 200 but invalid token:** retry once, then degrade.
 - **Rate limit 429 after retries:** mark `degraded=true`, `degradation_reason=rate_limited`.
 - **Missing `BillingUnit.VIETSTOCK_DATA` or config variable:** fail-fast at import/registration time, not at runtime cost calc.
 - **Invalid JSON / field missing:** parser must degrade, not raise.
@@ -187,8 +213,8 @@ nowing_backend/app/
 
 ## Implementation Status
 
-**Status:** in-progress
-**Baseline commit:** `256e0bfc8` (post-15.2 red-phase tests)
+**Status:** ready-for-review
+**Baseline commit:** `a94d4f099` (real Vietstock POST endpoints, token flow, parser updates, tests, Playwright E2E)
 
 ### Files Created / Modified
 
@@ -222,24 +248,22 @@ nowing_backend/app/
 - `tests/unit/platforms/vietstock/test_scraper.py`
 - `tests/unit/platforms/vietstock/test_to_chunks.py`
 - `tests/unit/capabilities/vietstock/scrape/test_executor.py`
-- `tests/integration/vietstock/test_vietstock_scrape.py`
+- `tests/integration/vietstock/test_real_vietstock.py`
+- `tests/integration/vietstock/fixtures/real_api_responses.json`
+- `nowing_web/tests/playground/vietstock-scrape.spec.ts`
 
 ### Test Results
 
 - `ruff check` — passed
-- `pytest tests/unit/platforms/vietstock tests/unit/capabilities/vietstock tests/unit/platforms/cafef tests/unit/capabilities/cafef tests/unit/services/scraper_chunks -q` — **108 passed**
-- `pytest tests/integration/vietstock -q` — **3 skipped** (requires live credentials)
-
-### Open Questions Resolved
-
-1. **Cookie refresh mechanism:** implemented lightweight `_refresh_cookie()` hitting landing page and extracting `Set-Cookie`.
-2. **Default rate/cost:** `VIETSTOCK_RATE_LIMIT_RPS = 1/3` (20 req/min), `VIETSTOCK_DATA_MICROS_PER_ITEM = 5000`.
-3. **Chunking:** one chunk per `(symbol, statement_type, period)`; quote is a single chunk.
+- `uv run pytest tests/unit/platforms/vietstock -q` — **43 passed**
+- `NOWING_RUN_NETWORK_TESTS=1 uv run pytest tests/integration/vietstock/test_real_vietstock.py -q` — **3 passed** (live API)
+- `pnpm tsc --noEmit` (nowing_web) — passed
+- `pnpm exec biome check tests/playground/vietstock-scrape.spec.ts` — passed
 
 ### Dev Agent Record
 
-- **Debug Log:** process-local cookie jar and throttle reset between tests via autouse fixture.
-- **Completion Notes:** All 5 ACs implemented and unit-tested. Integration tests require live Vietstock session cookie; marked skip pending credential spike.
+- **Debug Log:** process-local cookie jar, token cache, and throttle reset between tests via autouse fixture.
+- **Completion Notes:** All ACs implemented and tested with real POST endpoints, anti-forgery token extraction, multi-part financial statement parsing, unit/integration/E2E coverage.
 - **Next gates:** code-review, mutation-gate on billing module, human-review-gate (P0 credit surface).
 
 ### Review Findings
@@ -248,8 +272,8 @@ nowing_backend/app/
 
 - [x] [Review][Decision] Demo mode defaults to `TRUE` — **kept**. Live deployments must set `VIETSTOCK_DEMO_MODE=false` and provide cookie/URLs. Added `_has_live_credentials()` guard so missing credentials raise `VietstockAuthRefreshError("missing_credentials")` instead of hitting the network and getting a 401.
 - [x] [Review][Decision] Cross-source period normalization — **canonical format `Q#-YYYY` / `YYYY`**. Added `_canonical_period()` in `parsers.py` that handles `Q4-2025`, `2025`, `2025-12-31`, and `31/12/2025`, always normalizing dates to `Q#-YYYY` before hashing.
-- [x] [Review][Decision] `ScraperPlatformAccountService` — **deferred**. Current env/session-cookie fallback is sufficient for 15.2. Added TODO in `fetch.py` to integrate `ScraperPlatformAccountRotator` when admin-managed accounts are required.
-- [x] [Review][Decision] 403 handling — **kept per spec**. Both 401/403 trigger one cookie refresh attempt; repeated 403 becomes `VietstockAuthRefreshError` after the single retry.
+- [x] [Review][Decision] `ScraperPlatformAccountService` — **deferred**. Current env/session-cookie + token fallback is sufficient for 15.2. Added TODO in `fetch.py` to integrate `ScraperPlatformAccountRotator` when admin-managed accounts are required.
+- [x] [Review][Decision] 403 handling — **kept per spec**. Both 401/403 trigger one token/cookie refresh attempt; repeated 403 becomes `VietstockAuthRefreshError` after the single retry.
 
 #### Patch Resolved
 
@@ -260,7 +284,7 @@ nowing_backend/app/
 - [x] [Review][Patch] Rate limit negative config — `_rate_limit_interval()` now clamps negative RPS to `0.0` before computing the interval.
 - [x] [Review][Patch] Ingest failure — `executor.py` now sets `degraded=True` and `degradation_reason="ingest_failed: ..."` when `NowingIngestService.ingest()` raises.
 - [x] [Review][Patch] Chunk serialization visibility — `_build_vietstock_chunks()` now returns `(chunks, failures)` and surfaces serialization failures in the output `degradation_reason`.
-- [x] [Review][Patch] Tests expanded — added whitespace/invalid symbol, quote-fails-financials-succeeds, period normalization, missing credentials, negative rate limit, and invalid cost config tests.
+- [x] [Review][Patch] Tests expanded — added real API fixture parsing, token refresh, WAF HTML detection, missing credentials, negative rate limit, invalid cost config, and Playground E2E tests.
 
 #### Deferred
 
@@ -272,4 +296,4 @@ nowing_backend/app/
 
 ## Tags
 
-AD-16, AD-24, AD-34, AD-35, AD-8, AD-25, Vietstock, financial data, stock price, Vietnam, cookie auth, rate limit, billing, chainlens-ingest, cross-source
+AD-16, AD-24, AD-34, AD-35, AD-8, AD-25, Vietstock, financial data, stock price, Vietnam, cookie auth, anti-forgery token, rate limit, billing, chainlens-ingest, cross-source
