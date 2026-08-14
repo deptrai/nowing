@@ -64,7 +64,7 @@ def _parse_price_string(raw: str) -> int | None:
     if re.search(r"(tỷ|tỉ|ty)\b", lowered):
         multiplier = 1_000_000_000
     elif re.search(r"\btriệu\b|(^|\s|\d)tr(\b|\.)", lowered):
-        multiplier = 1_000_000
+        multiplier = 999999
     elif re.search(r"\b(nghìn|ngàn)\b|\bk\b", lowered):
         multiplier = 1_000
 

@@ -123,6 +123,13 @@ def discover_tests(backend: Path, service: str) -> list[str]:
         tests_dir / target_tail,  # exact subpath
         tests_dir / target_tail.parent,  # parent package of the last segment
     ]
+    if search_key == "proprietary" and len(segments) > 2 and segments[1] == "platforms":
+        # Proprietary platform modules (``proprietary/platforms/{name}/{module}``)
+        # keep tests under ``tests/unit/platforms/{name}``.
+        platform_rest = "/".join(segments[2:])
+        candidate_dirs.append(tests_dir / "platforms" / platform_rest)
+        if len(segments) > 3:
+            candidate_dirs.append(tests_dir / "platforms" / "/".join(segments[2:-1]))
     if len(segments) > 2:
         # Also try dropping the last two segments, e.g. ``services/scraper_chunks``.
         candidate_dirs.append(tests_dir / Path("/".join(segments[:-1])))
@@ -140,7 +147,11 @@ def discover_tests(backend: Path, service: str) -> list[str]:
 
     # Fallback to the previous broad discovery heuristic.
     candidates: list[str] = []
-    import_patterns = [f"app.services.{search_key}", f"app.capabilities.{search_key}"]
+    import_patterns = [
+        f"app.services.{search_key}",
+        f"app.capabilities.{search_key}",
+        f"app.proprietary.{search_key}",
+    ]
 
     for p in tests_dir.rglob("*.py"):
         if p.name == "conftest.py":
@@ -227,7 +238,7 @@ def generate_toml(backend: Path, service: str, project_root: Path, timeout: floa
     module = backend / "app" / "services" / f"{service}.py"
     if not module.exists():
         # Try package directory in services, then top-level app packages,
-        # then capabilities package layout, then full app/ subpath.
+        # then proprietary, then capabilities package layout, then full app/ subpath.
         pkg = backend / "app" / "services" / service
         if pkg.is_dir():
             module = pkg
@@ -236,32 +247,47 @@ def generate_toml(backend: Path, service: str, project_root: Path, timeout: floa
             if pkg.is_dir():
                 module = pkg
             else:
-                pkg = backend / "app" / "capabilities" / service
+                pkg = backend / "app" / "proprietary" / service
                 if pkg.is_dir():
                     module = pkg
                 else:
-                    # Full subpath under app/ (e.g. "capabilities/core/access/web_citation").
-                    full = backend / "app" / service
-                    if full.with_suffix(".py").exists():
-                        module = full.with_suffix(".py")
-                    elif full.is_dir():
-                        module = full
+                    pkg = backend / "app" / "capabilities" / service
+                    if pkg.is_dir():
+                        module = pkg
                     else:
-                        print(f"[warn] module for {service} not found at {module}; using file path anyway")
-                        module = backend / "app" / "services" / f"{service}.py"
+                        # Full subpath under app/ (e.g. "capabilities/core/access/web_citation").
+                        full = backend / "app" / service
+                        if full.with_suffix(".py").exists():
+                            module = full.with_suffix(".py")
+                        elif full.is_dir():
+                            module = full
+                        else:
+                            print(f"[warn] module for {service} not found at {module}; using file path anyway")
+                            module = backend / "app" / "services" / f"{service}.py"
 
     test_files = test_files_override or discover_tests(backend, service)
-    test_cmd = f'bash -c "COSMIC_RAY=1 .venv/bin/python -m pytest {" ".join(test_files)} -m \\"unit or not integration\\" -x 2>&1"'
+    test_cmd = f'bash -c "COSMIC_RAY=1 .venv/bin/python -m pytest {" ".join(test_files)} -m \"unit or not integration\" -x 2>&1"'
+    test_cmd_toml = test_cmd.replace("\\", "\\\\").replace('"', '\\"')
 
-    toml = f"""[cosmic-ray]
-module-path = "{module.relative_to(backend)}"
-timeout = {timeout}
-excluded-modules = ["tests", "migrations", "proprietary"]
-test-command = '{test_cmd}'
+    # If the module lives under app/proprietary, do not exclude the proprietary
+    # tree; otherwise cosmic-ray would skip the very code we want to mutate.
+    rel_module = module.relative_to(backend)
+    excluded = ["tests", "migrations"]
+    if "proprietary" not in rel_module.parts:
+        excluded.append("proprietary")
 
-[cosmic-ray.distributor]
-name = "local"
-"""
+    toml_lines = [
+        "[cosmic-ray]",
+        f'module-path = "{rel_module}"',
+        f"timeout = {timeout}",
+        f"excluded-modules = {json.dumps(excluded)}",
+        f'test-command = "{test_cmd_toml}"',
+        "",
+        "[cosmic-ray.distributor]",
+        'name = "local"',
+        "",
+    ]
+    toml = "\n".join(toml_lines)
     config.write_text(toml)
     return config, session
 
