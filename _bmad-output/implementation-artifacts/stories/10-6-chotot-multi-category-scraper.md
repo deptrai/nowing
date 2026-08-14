@@ -4,7 +4,7 @@ baseline_commit: null
 
 # Story 10.6: Chợ Tốt Multi-Category Scraper
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
