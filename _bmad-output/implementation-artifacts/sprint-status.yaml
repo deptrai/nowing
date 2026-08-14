@@ -181,7 +181,7 @@ development_status:
   10-5: done
   # New 2026-08-11 — expand Chợ Tốt from BĐS to all major verticals.
   10-6: review  # gateway mapping + schema + parser + MCP tool + tests; billing bug fixed
-  10-7: ready-for-dev  # chotot.scrape capability + per-category billing; validated 2026-08-14 — schema/billing mostly wired, remaining: category validator, tests, docs, .env.example
+  10-7: review  # chotot.scrape capability + per-category billing; dev complete 2026-08-14
   epic-10-retrospective: optional
 
   # === Epic 20: Nowing Ecosystem Integration (Nowing side of chainlens-research Epic 47) ===

@@ -1,0 +1,77 @@
+---
+title: Chợ Tốt
+description: Scrape listings from Chợ Tốt marketplaces — real estate, vehicles, jobs, electronics, goods, and services
+---
+
+The **Chợ Tốt** connector scrapes public listings from the Chợ Tốt network of marketplaces, including:
+
+- **BĐS / Nhà Tốt** (`nhatot.com`) — real estate
+- **Vehicles** (`xe.chotot.com`) — cars and motorbikes
+- **Jobs** (`vieclamtot.com`)
+- **General goods** (`chotot.com`) — electronics, pets, fashion, home goods, appliances, kitchen, services
+
+Use `chotot.scrape` for any supported category. The legacy `chotot_bds.scrape` capability is kept as a deprecated alias that always sets `category="bds"`.
+
+<Callout type="warning">
+`chotot_bds.scrape` is **deprecated**. New integrations should call `chotot.scrape` with the appropriate `category`.
+</Callout>
+
+## Endpoint
+
+```bash
+POST /api/v1/workspaces/{workspace_id}/scrapers/chotot/scrape
+```
+
+## Inputs (`chotot.scrape`)
+
+| Field | Default | Description |
+|---|---|---|
+| `category` | — | **Required.** Supported slug: `bds`, `cars`, `motorbikes`, `electronics`, `jobs`, `pets`, `fashion`, `home_goods`, `home_appliances`, `kitchen`, `services`, `home_services`. Raw numeric `cg` codes are also accepted. |
+| `listing_type` | `sell` | `buy` (alias for `sell`), `sell`, `rent`, `want_to_buy`. Not all categories support all types. |
+| `property_type` | `all` | For `bds`: `apartment`, `house`, `land`, `office`, `all`. Ignored for other categories. |
+| `city` | — | City name, e.g. `hanoi`, `ho chi minh`. |
+| `district` | — | Optional district or ward name. |
+| `district_id` | — | Optional numeric area id. |
+| `max_items` | `10` | Hard cap `100`. |
+| `max_pages` | `5` | Hard cap `20`. |
+| `min_price` / `max_price` | — | Optional VND price range. |
+| `min_area` / `max_area` | — | Optional area range (m²). |
+
+## Example
+
+```bash
+curl -X POST "$BASE_URL/api/v1/workspaces/1/scrapers/chotot/scrape" \
+  -H "Authorization: Bearer $NOWING_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "category": "cars",
+    "city": "ho chi minh",
+    "district": "Quận 7",
+    "listing_type": "sell",
+    "max_items": 10
+  }'
+```
+
+## Output
+
+- `items`: list of normalized listing dictionaries with `listing_id`, `title`, `price_value`, `location`, `city`, `district`, `detail_url`, `thumbnail_url`, `category`, and category-specific `attributes`.
+- `total_items`: total number of listings found.
+- `cost_micros`: billable cost = `billable_units × CHOTOT_SCRAPE_MICROS_PER_ITEM`.
+- `degraded`: `true` if the gateway blocked, rate-limited, or returned an error.
+- `degradation_reason`: e.g. `rate_limited`, `bot_detected`, `api_error`, `empty`, `unknown_category`.
+- `next_action`: human-escalation hint when an anti-bot block is detected.
+
+## Billing
+
+- Billed per **returned, known-category listing** on the `chotot_item` meter.
+- The rate is controlled by `CHOTOT_SCRAPE_MICROS_PER_ITEM` (default `3500` micro-USD per item).
+- Degraded runs and listings with `category="unknown"` are **not billed**.
+- `chotot_bds.scrape` bills on the `chotot_bds_item` meter for backward compatibility.
+
+## Anti-bot and retries
+
+- The scraper rotates user agents and proxies automatically.
+- 403 / 429 responses trigger escalation tasks and a typed degradation.
+- Phone number enrichment is best-effort; failures are non-fatal.
+
+For the full input and output JSON schemas and generated code snippets, open **API Playground → Chợ Tốt → Scrape** in your workspace.

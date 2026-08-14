@@ -14,6 +14,8 @@ from app.capabilities.chotot.scrape.executor import (
     build_scrape_executor,
 )
 from app.capabilities.chotot.scrape.schemas import ScrapeInput, ScrapeOutput
+from app.capabilities.core.types import BillingUnit
+from app.config import config
 from app.proprietary.platforms.chotot import CategoryConfigError
 from app.proprietary.platforms.chotot.fetch import (
     ChototBdsDecodeError,
@@ -59,7 +61,7 @@ async def test_maps_input_and_wraps_items():
     execute = build_scrape_executor(scrape_fn=scraper)
 
     out = await execute(
-        ScrapeInput(listing_type="buy", city="ho chi minh", max_items=5)
+        ScrapeInput(category="bds", listing_type="buy", city="ho chi minh", max_items=5)
     )
 
     assert isinstance(out, ScrapeOutput)
@@ -84,7 +86,7 @@ async def test_actor_exception_degrades_without_crashing():
 
     execute = build_scrape_executor(scrape_fn=exploding_scraper)
 
-    out = await execute(ScrapeInput(city="hanoi", max_items=5))
+    out = await execute(ScrapeInput(category="bds", city="hanoi", max_items=5))
 
     assert isinstance(out, ScrapeOutput)
     assert out.total_items == 0
@@ -103,7 +105,7 @@ async def test_rate_limited_actor_degrades_with_rate_limited_reason():
 
     execute = build_scrape_executor(scrape_fn=limited_scraper)
 
-    out = await execute(ScrapeInput(city="hanoi", max_items=5))
+    out = await execute(ScrapeInput(category="bds", city="hanoi", max_items=5))
 
     assert out.degraded is True
     assert out.degradation_reason == "rate_limited"
@@ -119,7 +121,7 @@ async def test_decode_error_actor_degrades_with_decode_error_reason():
 
     execute = build_scrape_executor(scrape_fn=broken_scraper)
 
-    out = await execute(ScrapeInput(city="hanoi", max_items=5))
+    out = await execute(ScrapeInput(category="bds", city="hanoi", max_items=5))
 
     assert out.degraded is True
     assert out.degradation_reason == "decode_error"
@@ -137,7 +139,7 @@ async def test_bot_detected_actor_degrades_with_bot_detected_reason():
 
     execute = build_scrape_executor(scrape_fn=blocked_scraper)
 
-    out = await execute(ScrapeInput(city="hanoi", max_items=5))
+    out = await execute(ScrapeInput(category="bds", city="hanoi", max_items=5))
 
     assert out.degraded is True
     assert out.degradation_reason == "bot_detected"
@@ -163,7 +165,7 @@ async def test_bds_executor_uses_bds_rate_config():
         rate_attr="CHOTOT_BDS_SCRAPE_MICROS_PER_ITEM",
     )
 
-    out = await execute(ScrapeInput(city="hanoi", max_items=5))
+    out = await execute(ScrapeInput(category="bds", city="hanoi", max_items=5))
 
     assert out.cost_micros == 1 * 3500
 
@@ -282,7 +284,7 @@ async def test_degraded_result_cost_is_zero():
         }
 
     execute = build_scrape_executor(scrape_fn=degraded_scraper)
-    out = await execute(ScrapeInput(city="hanoi", max_items=5))
+    out = await execute(ScrapeInput(category="bds", city="hanoi", max_items=5))
 
     assert out.degraded is True
     assert out.cost_micros == 0
@@ -297,7 +299,7 @@ async def test_invalid_category_returns_zero_cost():
         raise CategoryConfigError("nope")
 
     execute = build_scrape_executor(scrape_fn=bad_category)
-    out = await execute(ScrapeInput(city="hanoi", max_items=5))
+    out = await execute(ScrapeInput(category="bds", city="hanoi", max_items=5))
 
     assert out.degraded is True
     assert out.cost_micros == 0
@@ -318,7 +320,7 @@ async def test_total_items_none_becomes_zero():
         }
 
     execute = build_scrape_executor(scrape_fn=null_total)
-    out = await execute(ScrapeInput(city="hanoi", max_items=5))
+    out = await execute(ScrapeInput(category="bds", city="hanoi", max_items=5))
 
     assert out.total_items == 0
     assert out.cost_micros == 0
@@ -340,7 +342,7 @@ async def test_total_items_and_billable_fallback_when_absent():
         }
 
     execute = build_scrape_executor(scrape_fn=partial_scraper)
-    out = await execute(ScrapeInput(city="hanoi", max_items=5))
+    out = await execute(ScrapeInput(category="bds", city="hanoi", max_items=5))
 
     assert out.billable_units == 1
     assert out.cost_micros == 0
@@ -363,6 +365,61 @@ async def test_executor_uses_default_rate_when_config_missing():
     execute = build_scrape_executor(
         scrape_fn=one_item, rate_attr="MISSING_RATE_ATTR_XYZ"
     )
-    out = await execute(ScrapeInput(city="hanoi", max_items=5))
+    out = await execute(ScrapeInput(category="bds", city="hanoi", max_items=5))
 
     assert out.cost_micros == 1 * 3500
+
+
+def test_scrape_input_requires_category():
+    with pytest.raises(ValueError, match="category"):
+        ScrapeInput(city="hanoi", max_items=5)
+
+
+def test_scrape_input_rejects_unsupported_category():
+    with pytest.raises(ValueError, match="category_not_supported"):
+        ScrapeInput(category="spaceships", city="hanoi", max_items=5)
+
+
+def test_scrape_input_accepts_raw_cg_code():
+    inp = ScrapeInput(category="12345", city="hanoi", max_items=5)
+    assert inp.category == "12345"
+
+
+def test_scrape_input_estimated_units_is_max_items():
+    inp = ScrapeInput(category="cars", city="hanoi", max_items=20)
+    assert inp.estimated_units == 20
+
+
+@pytest.mark.asyncio
+async def test_gate_chotot_reserves_max_items_times_rate(monkeypatch, mocker):
+    """Pre-flight gate reserves max_items x CHOTOT_SCRAPE_MICROS_PER_ITEM."""
+    from app.capabilities.core.billing import gate_capability
+    from app.capabilities.core.types import CapabilityContext
+    from app.services import wallet_credit
+
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "CHOTOT_SCRAPE_MICROS_PER_ITEM", 3500)
+
+    mock_check = mocker.patch.object(
+        wallet_credit, "check_balance", new_callable=mocker.AsyncMock
+    )
+
+    session = mocker.AsyncMock()
+    session.add = mocker.MagicMock()
+
+    def _result(*_args, **_kwargs):
+        result = mocker.MagicMock()
+        result.scalar_one_or_none.return_value = 1  # owner_id
+        result.first.return_value = (1_000_000, 0)  # spendable micros
+        return result
+
+    session.execute = mocker.AsyncMock(side_effect=_result)
+
+    ctx = CapabilityContext(session=session, workspace_id=1)
+    payload = ScrapeInput(category="cars", city="hanoi", max_items=20)
+
+    await gate_capability(payload, BillingUnit.CHOTOT_ITEM, ctx)
+
+    # 20 items x 3500 micros = 70_000 micros reserved
+    assert mock_check.awaited
+    assert mock_check.await_args.args[2] == 70_000

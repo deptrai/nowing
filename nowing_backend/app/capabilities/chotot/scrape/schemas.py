@@ -4,7 +4,19 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    computed_field,
+    field_validator,
+    model_validator,
+)
+
+from app.proprietary.platforms.chotot.fetch import (
+    CategoryConfigError,
+    get_category_config,
+)
 
 
 class ScrapeInput(BaseModel):
@@ -12,7 +24,7 @@ class ScrapeInput(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    category: str = "bds"
+    category: str
     listing_type: Literal["buy", "rent", "sell", "want_to_buy"] = "sell"
     property_type: Literal["apartment", "house", "land", "office", "all"] = "all"
     city: str
@@ -29,6 +41,16 @@ class ScrapeInput(BaseModel):
     def estimated_units(self) -> int:
         """Worst-case billable items for the pre-flight gate."""
         return self.max_items
+
+    @field_validator("category")
+    @classmethod
+    def _validate_category(cls, value: str) -> str:
+        """Category must be a supported slug or a raw numeric gateway code."""
+        try:
+            get_category_config(value)
+        except CategoryConfigError as exc:
+            raise ValueError(f"category_not_supported: {value}") from exc
+        return value
 
     @model_validator(mode="after")
     def _price_and_area_bounds(self) -> ScrapeInput:
