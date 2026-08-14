@@ -33,6 +33,7 @@ MCP_TOOL_CATALOG: list[dict[str, str]] = [
     {"name": "nowing_batdongsan_scrape", "group": McpToolGroup.SCRAPER},
     {"name": "nowing_cafef_scrape", "group": McpToolGroup.SCRAPER},
     {"name": "nowing_chotot_bds_scrape", "group": McpToolGroup.SCRAPER},
+    {"name": "nowing_chotot_scrape", "group": McpToolGroup.SCRAPER},
     {"name": "nowing_muaban_bds_scrape", "group": McpToolGroup.SCRAPER},
     {"name": "nowing_vietnamworks_scrape", "group": McpToolGroup.SCRAPER},
     {"name": "nowing_topcv_scrape", "group": McpToolGroup.SCRAPER},
