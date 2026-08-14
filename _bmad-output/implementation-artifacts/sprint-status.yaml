@@ -1,5 +1,5 @@
 # generated: 2026-08-08
-# last_updated: 2026-08-13  # 12.4a+4b: human review APPROVED — P0 areas cleared, marked done
+# last_updated: 2026-08-14  # 15-1: human review APPROVED — P0 credit/billing surfaces cleared, marked done
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -277,7 +277,7 @@ development_status:
   epic-15: in-progress
   # 15-1 depends on 20.2 (NowingIngestService). Code-review: APPROVED.
   # P0 billing/credit-relevant scraper logic touched; pending human review.
-  15-1: pending-human-review
+  15-1: done
   # 15-1b split from 15-1: chat subagent integration. Human review approved; done.
   15-1b: done
   15-2: backlog
