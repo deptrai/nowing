@@ -149,6 +149,7 @@ review
 - [x] [Review][Resolved] Pruning uses `Document.created_at` instead of article `pubDate` (medium) — `_prune_stale_articles` now parses `pubDate` from `document_metadata` and falls back to `created_at`; updated integration test to age `pubDate` metadata [rss_indexer.py:199]
 - [x] [Review][Resolved] `fetch_feed` does not log a warning on HTTP 200 with empty body (low) — empty body now logs a warning and returns `[]` [rss_fetcher.py:238]
 - [x] [Review][Resolved] Missing Playwright MCP smoke test (low) — added `tests/smoke/rss-dashboard.spec.ts` verifying the connectors page renders and the RSS card is visible [validation section]
+- [x] [E2E] Playwright `rss-dashboard.spec.ts` passed locally after adding `RSS_FEED` to the web connector catalog (enum, zod schema, display definitions, icon)
 
 ### BMAD code review round 2 (2026-08-14)
 
