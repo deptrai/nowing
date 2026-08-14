@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 
 from app.proprietary.platforms.vietstock.parsers import (
@@ -151,3 +154,29 @@ def test_canonical_period_iso_date() -> None:
 def test_canonical_period_vn_date() -> None:
     """Mirror: '31/12/2025' becomes Q4-2025."""
     assert _canonical_period("31/12/2025") == "Q4-2025"
+
+
+def test_parse_real_quote_fixture() -> None:
+    """Real data: quote response should parse without crashing."""
+    fixture = Path(__file__).parents[3] / "integration" / "vietstock" / "fixtures" / "real_api_responses.json"
+    payload = json.loads(fixture.read_text())
+    raw = json.loads(payload["quote"])
+    quote = parse_quote(raw, "VNM")
+    assert quote.symbol == "VNM"
+    assert quote.current_price is not None
+    assert quote.close is not None
+    assert quote.key_ratios.pe is not None
+    assert quote.key_ratios.pb is not None
+
+
+def test_parse_real_financials_fixture() -> None:
+    """Real data: financials response should parse statements and ratios."""
+    fixture = Path(__file__).parents[3] / "integration" / "vietstock" / "fixtures" / "real_api_responses.json"
+    payload = json.loads(fixture.read_text())
+    raw = json.loads(payload["balance"])
+    financials = parse_financials(raw, "VNM")
+    assert financials.symbol == "VNM"
+    assert financials.balance_sheet.periods
+    assert financials.income_statement.periods
+    assert financials.balance_sheet.items
+    assert financials.income_statement.items

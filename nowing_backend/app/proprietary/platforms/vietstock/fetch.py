@@ -1,8 +1,8 @@
 """Fetch Vietstock stock quotes and financial statements.
 
-Demo mode is the default because Vietstock endpoints require a session cookie
-and are not publicly documented. Set ``VIETSTOCK_DEMO_MODE=false`` and supply
-``VIETSTOCK_SESSION_COOKIE`` to hit the live APIs.
+Demo mode is the default because Vietstock endpoints are not publicly
+documented and require an anti-forgery token from the site. Set
+``VIETSTOCK_DEMO_MODE=false`` to hit the live POST APIs.
 """
 
 from __future__ import annotations
@@ -22,22 +22,28 @@ from .schemas import VietstockScrapeInput
 
 logger = logging.getLogger(__name__)
 
-# Defaults are placeholders; real URLs must be supplied via env vars.
-_QUOTE_URL = "https://finance.vietstock.vn/api/trading/{symbol}"
-_FINANCIAL_URL = (
-    "https://finance.vietstock.vn/api/finance/{statement_type}?symbol={symbol}"
-)
+# Default Vietstock endpoints discovered by real browser traffic.
+_QUOTE_URL = "https://finance.vietstock.vn/company/tradinginfo"
+_FINANCIAL_URL = "https://finance.vietstock.vn/data/financeinfo"
 _REFRESH_URL = "https://finance.vietstock.vn"
 
 # Bounded retry/backoff for transient 429 responses.
 _MAX_429_RETRIES = 2
 _BACKOFF_BASE_S = 1.0
 
-# Headers that help avoid WAF/Cloudflare blocks.
+# Headers that mimic a real browser so the data endpoints return JSON.
 _VIETSTOCK_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (compatible; Nowing/1.0)",
-    "Accept": "application/json",
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "Accept": "application/json, text/javascript, */*; q=0.01",
+    "Accept-Language": "en-US,en;q=0.9,vi;q=0.8",
+    "Accept-Encoding": "gzip, deflate, br",
     "Referer": "https://finance.vietstock.vn/",
+    "X-Requested-With": "XMLHttpRequest",
+    "Origin": "https://finance.vietstock.vn",
+    "Connection": "keep-alive",
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-origin",
 }
 
 # Process-local rate-limit state. Default 20 req/min -> 1 request every 3 s.
@@ -101,14 +107,12 @@ def _demo_mode() -> bool:
     return bool(getattr(config, "VIETSTOCK_DEMO_MODE", True))
 
 
-def _quote_url(symbol: str) -> str:
-    template = getattr(config, "VIETSTOCK_QUOTE_URL", _QUOTE_URL)
-    return template.format(symbol=symbol.upper())
+def _quote_url() -> str:
+    return getattr(config, "VIETSTOCK_QUOTE_URL", _QUOTE_URL)
 
 
-def _financial_url(statement_type: str, symbol: str) -> str:
-    template = getattr(config, "VIETSTOCK_FINANCIAL_URL", _FINANCIAL_URL)
-    return template.format(statement_type=statement_type, symbol=symbol.upper())
+def _financial_url() -> str:
+    return getattr(config, "VIETSTOCK_FINANCIAL_URL", _FINANCIAL_URL)
 
 
 def _get_cookie() -> str | None:
@@ -125,12 +129,100 @@ def _set_cookie(value: str | None) -> None:
     _session_cookie = value or None
 
 
+# Anti-forgery token cache. The token is embedded in every Vietstock page
+# and is required for POSTing to the data endpoints.
+_verification_token: str | None = None
+
+
+async def _get_verification_token() -> str:
+    """Fetch and cache a fresh ``__RequestVerificationToken`` and session cookie.
+
+    Vietstock inlines the token in the HTML of the landing page and also sets
+    a ``__RequestVerificationToken`` cookie that must accompany POSTs. We
+    request the landing page, extract both, and cache them process-locally.
+    """
+    global _verification_token, _session_cookie
+
+    if _verification_token:
+        return _verification_token
+
+    await _throttle()
+    headers = _VIETSTOCK_HEADERS.copy()
+    headers["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+    async with httpx.AsyncClient(
+        timeout=_timeout(),
+        headers=headers,
+        follow_redirects=True,
+    ) as client:
+        try:
+            resp = await client.get(_REFRESH_URL)
+        except httpx.TimeoutException as exc:
+            raise VietstockAuthRefreshError(
+                f"timeout fetching verification token from {_REFRESH_URL}"
+            ) from exc
+        except httpx.ConnectError as exc:
+            raise VietstockAuthRefreshError(
+                f"cannot connect to {_REFRESH_URL} for token"
+            ) from exc
+
+    if resp.status_code >= 400:
+        raise VietstockAuthRefreshError(
+            f"token fetch failed: {_REFRESH_URL} returned {resp.status_code}"
+        )
+
+    token = _extract_verification_token(resp.text)
+    if not token:
+        raise VietstockAuthRefreshError(
+            f"no __RequestVerificationToken found in {_REFRESH_URL}"
+        )
+
+    # Persist cookies (especially __RequestVerificationToken and session) so
+    # subsequent POSTs are authenticated.
+    if resp.cookies:
+        _session_cookie = "; ".join(
+            f"{name}={value}" for name, value in resp.cookies.items()
+        )
+    else:
+        set_cookie = resp.headers.get("set-cookie")
+        if set_cookie:
+            _session_cookie = set_cookie.split(";")[0].strip()
+
+    _verification_token = token
+    return token
+
+
+def _extract_verification_token(html: str) -> str | None:
+    """Parse a ``__RequestVerificationToken`` from an HTML page."""
+    import re
+
+    # Prefer an explicit hidden input. Vietstock omits quotes on some pages,
+    # so match value both with and without surrounding quotes.
+    m = re.search(
+        r'<input[^>]+name=["\']?__RequestVerificationToken["\']?[^>]*>',
+        html,
+        re.IGNORECASE,
+    )
+    if m:
+        value_m = re.search(r'value=["\']?([^\s"\'<>]+)', m.group(0), re.IGNORECASE)
+        if value_m:
+            return value_m.group(1)
+
+    # Fallback: token assigned in inline scripts.
+    m = re.search(r"__RequestVerificationToken\s*=\s*['\"]([^'\"]+)['\"]", html)
+    if m:
+        return m.group(1)
+    return None
+
+
 def _has_live_credentials() -> bool:
-    """Return True when a session cookie and both URLs are configured."""
+    """Return True when both API URLs are configured.
+
+    The real Vietstock endpoints only require a per-request anti-forgery
+    token, not a session cookie, so we only check that URLs are present.
+    """
     return bool(
-        _get_cookie()
-        and getattr(config, "VIETSTOCK_QUOTE_URL", "")
-        and getattr(config, "VIETSTOCK_FINANCIAL_URL", "")
+        _quote_url()
+        and _financial_url()
     )
 
 
@@ -260,6 +352,95 @@ async def _do_get(
     raise VietstockRateLimitedError(f"{url} exceeded 429 retry budget")
 
 
+async def _do_post(
+    url: str,
+    data: dict[str, Any],
+    *,
+    _refreshed: bool = False,
+) -> Any:
+    """Make one throttled POST with form-encoded data and return decoded JSON.
+
+    The Vietstock data endpoints are POST endpoints that expect
+    ``application/x-www-form-urlencoded`` bodies and a
+    ``__RequestVerificationToken``. On 401/403/anti-forgery failures we fetch
+    a fresh token once before giving up. On 429 we apply bounded exponential
+    backoff.
+    """
+    token = await _get_verification_token()
+    body = {**data, "__RequestVerificationToken": token}
+
+    for attempt in range(_MAX_429_RETRIES + 1):
+        await _throttle()
+
+        headers = _VIETSTOCK_HEADERS.copy()
+        headers["Content-Type"] = "application/x-www-form-urlencoded"
+
+        cookie = _get_cookie()
+        if cookie:
+            headers["Cookie"] = cookie
+
+        async with httpx.AsyncClient(
+            timeout=_timeout(),
+            headers=headers,
+            follow_redirects=True,
+        ) as client:
+            try:
+                resp = await client.post(url, data=body)
+            except httpx.TimeoutException as exc:
+                raise VietstockAccessBlockedError(f"timeout for {url}") from exc
+            except httpx.ConnectError as exc:
+                raise VietstockAccessBlockedError(f"cannot connect to {url}") from exc
+
+        # Anti-forgery token rejected or expired: refresh once.
+        if resp.status_code in (401, 403) or "anti-forgery" in (resp.text or "").lower():
+            if _refreshed:
+                raise VietstockAuthRefreshError(
+                    f"{url} returned {resp.status_code} after token refresh"
+                )
+            _verification_token = None
+            try:
+                new_token = await _get_verification_token()
+            except VietstockAuthRefreshError as exc:
+                raise VietstockAuthRefreshError(
+                    f"{url} returned {resp.status_code} and token refresh failed"
+                ) from exc
+            body = {**data, "__RequestVerificationToken": new_token}
+            return await _do_post(url, data, _refreshed=True)
+
+        if resp.status_code == 429:
+            if attempt < _MAX_429_RETRIES:
+                backoff = _BACKOFF_BASE_S * (2**attempt)
+                logger.warning(
+                    "vietstock %s returned 429, backing off %.1fs before retry %d/%d",
+                    url,
+                    backoff,
+                    attempt + 1,
+                    _MAX_429_RETRIES,
+                )
+                await asyncio.sleep(backoff)
+                continue
+            raise VietstockRateLimitedError(f"{url} returned 429")
+
+        if resp.status_code >= 500:
+            raise VietstockAccessBlockedError(f"{url} returned {resp.status_code}")
+        if resp.status_code >= 400:
+            raise VietstockAccessBlockedError(f"{url} returned {resp.status_code}")
+
+        resp_headers = getattr(resp, "headers", None)
+        content_type = ""
+        if resp_headers is not None:
+            content_type = resp_headers.get("content-type", "")
+        if "html" in content_type.lower():
+            raise VietstockAccessBlockedError(f"cloudflare/html response from {url}")
+
+        try:
+            return resp.json()
+        except json.JSONDecodeError as exc:
+            raise VietstockDecodeError(f"cannot decode response from {url}") from exc
+
+    raise VietstockRateLimitedError(f"{url} exceeded 429 retry budget")
+
+
 def _demo_quote(symbol: str) -> dict[str, Any]:
     """Return a stable synthetic quote for tests and demos."""
     seed = symbol.upper()
@@ -292,7 +473,7 @@ def _demo_quote(symbol: str) -> dict[str, Any]:
             "roe": digit(48) % 30,
             "roa": (digit(54) % 30) / 10.0,
         },
-        "source_url": _quote_url(seed),
+        "source_url": _quote_url(),
     }
 
 
@@ -321,7 +502,7 @@ def _demo_financials(symbol: str) -> dict[str, Any]:
                 "von_chu_so_huu": [600, 680, 720, 760],
             },
             "unit": "tỷ VND",
-            "source_url": _financial_url("balance_sheet", symbol),
+            "source_url": _financial_url(),
         },
         "income_statement": {
             "periods": periods,
@@ -344,7 +525,7 @@ def _demo_financials(symbol: str) -> dict[str, Any]:
                 "loi_nhuan_sau_thue": [50, 60, 70, 80],
             },
             "unit": "tỷ VND",
-            "source_url": _financial_url("income_statement", symbol),
+            "source_url": _financial_url(),
         },
         "cash_flow": {
             "periods": periods,
@@ -365,7 +546,7 @@ def _demo_financials(symbol: str) -> dict[str, Any]:
                 "tien_cuoi_ky": [120, 130, 140, 150],
             },
             "unit": "tỷ VND",
-            "source_url": _financial_url("cash_flow", symbol),
+            "source_url": _financial_url(),
         },
     }
 
@@ -377,11 +558,11 @@ async def fetch_quote(symbol: str) -> dict[str, Any]:
 
     if not _has_live_credentials():
         raise VietstockAuthRefreshError(
-            "missing_credentials: VIETSTOCK_SESSION_COOKIE and URLs are required"
+            "missing_credentials: VIETSTOCK_QUOTE_URL and VIETSTOCK_FINANCIAL_URL are required"
         )
 
-    url = _quote_url(symbol)
-    raw = await _do_get(url)
+    url = _quote_url()
+    raw = await _do_post(url, {"code": symbol.upper(), "s": "0", "t": ""})
 
     if isinstance(raw, list) and raw:
         raw = raw[0]
@@ -391,10 +572,24 @@ async def fetch_quote(symbol: str) -> dict[str, Any]:
     return raw
 
 
-async def _fetch_statement(statement_type: str, symbol: str) -> Any:
-    """Fetch one financial statement from the configured endpoint."""
-    url = _financial_url(statement_type, symbol)
-    return await _do_get(url)
+async def _fetch_financial_info(symbol: str) -> Any:
+    """Fetch the consolidated financial statement from the configured endpoint.
+
+    Vietstock's ``financeinfo`` endpoint with ``ReportType=BCTQ`` returns the
+    balance sheet, income statement, and key ratios in a single payload.
+    """
+    url = _financial_url()
+    return await _do_post(
+        url,
+        {
+            "Code": symbol.upper(),
+            "Page": "1",
+            "PageSize": "4",
+            "ReportTermType": "2",
+            "ReportType": "BCTQ",
+            "Unit": "1",
+        },
+    )
 
 
 async def fetch_financials(symbol: str) -> dict[str, Any]:
@@ -404,18 +599,14 @@ async def fetch_financials(symbol: str) -> dict[str, Any]:
 
     if not _has_live_credentials():
         raise VietstockAuthRefreshError(
-            "missing_credentials: VIETSTOCK_SESSION_COOKIE and URLs are required"
+            "missing_credentials: VIETSTOCK_QUOTE_URL and VIETSTOCK_FINANCIAL_URL are required"
         )
 
-    balance, income, cash = await asyncio.gather(
-        _fetch_statement("balance_sheet", symbol),
-        _fetch_statement("income_statement", symbol),
-        _fetch_statement("cash_flow", symbol),
-    )
+    raw = await _fetch_financial_info(symbol)
     return {
-        "balance_sheet": balance,
-        "income_statement": income,
-        "cash_flow": cash,
+        "balance_sheet": raw,
+        "income_statement": raw,
+        "cash_flow": raw,
     }
 
 
