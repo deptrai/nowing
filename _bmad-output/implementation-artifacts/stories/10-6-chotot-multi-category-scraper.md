@@ -154,6 +154,11 @@ So that one scraper foundation returns typed, useful data for each category inst
   - Sample fixtures in `tests/unit/platforms/chotot/fixtures/sample_ad_listing.json` (BĐS) plus new `vehicles.json`, `jobs.json`, `electronics.json` for non-BĐS parser tests.
   - Integration tests gated behind `SCRAPE_LIVE=1` or equivalent.
 
+- Review notes / explicit deferrals
+  - `ChototScrapeInput.subcategory` — **deferred to P1**. No live data shows sub-categories split; add when spike proves need.
+  - `fetch_phone` for non-BĐS — **best-effort only**. Existing RSA/endpoint reused; no live non-BĐS fixture yet, add test when available.
+  - `ScrapeOutput.billable_units` operates on `dict` items — **intentional**. `_unwrap_result` always serializes `ChototListing` to dict before the capability layer; keeps billing contract simple.
+
 ### References
 
 - [Source: `nowing_backend/app/proprietary/platforms/chotot/fetch.py`]
