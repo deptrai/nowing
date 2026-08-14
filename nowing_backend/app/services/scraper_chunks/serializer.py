@@ -24,6 +24,7 @@ except Exception:  # pragma: no cover - tiktoken may be unavailable in minimal e
 # Domain registry. Unknown domains default to listing-style serialization.
 _JOB_DOMAINS = {"vn_jobs", "itviec", "topcv", "vietnamworks"}
 _LISTING_DOMAINS = {"bds", "batdongsan", "chotot", "muaban_bds"}
+_STOCK_DOMAINS = {"cafef", "vietstock"}
 
 # Canonical wire-domain names exposed in ChunkMetadata.domain (Story 12.3 AC-9).
 _DOMAIN_CANONICAL = {
@@ -46,6 +47,11 @@ def _is_job_domain(domain: str) -> bool:
 def _is_listing_domain(domain: str) -> bool:
     """Return True if ``domain`` is a known listing domain."""
     return domain in _LISTING_DOMAINS
+
+
+def _is_stock_domain(domain: str) -> bool:
+    """Return True if ``domain`` is a stock/financial data domain."""
+    return domain in _STOCK_DOMAINS
 
 
 def _to_dict(data: Mapping[str, Any] | BaseModel | object) -> dict[str, Any]:
@@ -107,7 +113,20 @@ def _redact_text(text: str | None, *, domain: str, context: str) -> str:
 def _required_fields(domain: str) -> list[str]:
     if _is_job_domain(domain):
         return ["title", "company", "location"]
+    if _is_stock_domain(domain):
+        return ["symbol"]
     return ["title", "city", "district", "price"]
+
+
+def _fmt(value: Any) -> str:
+    """Format a scalar value for plain-text chunk content."""
+    if value is None:
+        return ""
+    if isinstance(value, dict):
+        return json.dumps(value, ensure_ascii=False, default=str)
+    if isinstance(value, float):
+        return f"{value:g}"
+    return str(value)
 
 
 def _build_content(domain: str, data: dict[str, Any]) -> str:
@@ -150,6 +169,45 @@ def _build_content(domain: str, data: dict[str, Any]) -> str:
             _add_part("Description", description)
         if requirement:
             _add_part("Requirements", requirement)
+    elif _is_stock_domain(domain):
+        # Stock quote or financial-statement record.
+        prebuilt = _get(data, "content")
+        if prebuilt:
+            return _redact_text(str(prebuilt), domain=domain, context="default")
+        else:
+            symbol = _get(data, "symbol") or ""
+            statement_type = _get(data, "statement_type")
+            period = _get(data, "period")
+            if statement_type is not None:
+                _add_part("Symbol", symbol)
+                _add_part("Statement", statement_type)
+                _add_part("Period", period or "")
+                items = data.get("items") or []
+                if items:
+                    parts.append("Items:")
+                    for item in items:
+                        if isinstance(item, dict):
+                            code = item.get("code") or ""
+                            name = item.get("name") or ""
+                            value = item.get("value")
+                            _add_part(f"  {code} {name}", _fmt(value))
+            else:
+                _add_part("Symbol", symbol)
+                _add_part("Current Price", _fmt(_get(data, "current_price")))
+                _add_part("Open", _fmt(_get(data, "open_price", "open")))
+                _add_part("High", _fmt(_get(data, "high")))
+                _add_part("Low", _fmt(_get(data, "low")))
+                _add_part("Close", _fmt(_get(data, "close")))
+                _add_part("Volume", _fmt(_get(data, "volume")))
+                _add_part("Change", _fmt(_get(data, "change")))
+                _add_part("Change %", _fmt(_get(data, "change_percent")))
+                key_ratios = _get(data, "key_ratios", "ratios")
+                if key_ratios:
+                    if isinstance(key_ratios, dict):
+                        key_ratios = {
+                            k: v for k, v in key_ratios.items() if v is not None
+                        }
+                    _add_part("Key Ratios", _fmt(key_ratios))
     else:
         # Default real-estate / listing-style serialization.
         title = _get(data, "title") or ""
@@ -200,6 +258,19 @@ def _part_has_value(part: str) -> bool:
 
 def _identity_fields(domain: str, data: dict[str, Any]) -> dict[str, Any]:
     """Extract the stable fields that should feed the sourceId fingerprint."""
+    # Stock/financial records are canonicalised by symbol + statement + period
+    # so that the same report from different sources (cafef, vietstock) shares
+    # a digest and can be deduplicated in chainlens-research.
+    symbol = _get(data, "symbol")
+    statement_type = _get(data, "statement_type")
+    period = _get(data, "period")
+    if symbol and statement_type and period:
+        return {
+            "symbol": str(symbol).upper(),
+            "statement_type": str(statement_type).lower(),
+            "period": str(period).upper(),
+        }
+
     canonical_id = _get(data, "canonical_id", "id")
     if canonical_id:
         # ponytail: for job domains, still include posted_at in the identity
@@ -224,6 +295,9 @@ def _identity_fields(domain: str, data: dict[str, Any]) -> dict[str, Any]:
             "location": _get(data, "location"),
             "posted_at": _get(data, "posted_at"),
         }
+
+    if _is_stock_domain(domain) and symbol:
+        return {"symbol": str(symbol).upper()}
 
     return {
         "title": _get(data, "title"),
@@ -346,6 +420,18 @@ def _metadata_from_data(
     salary_consistency_score = _get(data, "salary_consistency_score")
     title = _get(data, "title")
     url = _url_from_data(data)
+    key_ratios = data.get("key_ratios") or data.get("ratios")
+    if isinstance(key_ratios, BaseModel):
+        key_ratios = key_ratios.model_dump()
+    if not isinstance(key_ratios, dict):
+        key_ratios = None
+
+    clean_conflict_flags: bool | list[dict[str, Any]] | None = None
+    if isinstance(conflict_flags, bool) or (
+        isinstance(conflict_flags, list)
+        and all(isinstance(item, dict) for item in conflict_flags)
+    ):
+        clean_conflict_flags = conflict_flags
 
     # ponytail: salary is volatile and may be None or negotiable (0 values).
     # Only emit salary metadata when it contains a real range (AC-3).
@@ -366,7 +452,8 @@ def _metadata_from_data(
         category=category,
         confidence_score=_safe_float(confidence_score),
         source_count=_safe_int(source_count),
-        conflict_flags=conflict_flags if isinstance(conflict_flags, list) else None,
+        conflict_flags=clean_conflict_flags,
+        ratios=key_ratios,
         salary=clean_salary,
         salary_consistency_score=_safe_float(salary_consistency_score),
         chunkIndex=chunk_index,
@@ -394,7 +481,7 @@ def to_chunks(
     oversize content at token boundaries while preserving ``chunkIndex`` /
     ``chunkTotal`` metadata.
     """
-    if not _is_job_domain(domain) and not _is_listing_domain(domain):
+    if not _is_job_domain(domain) and not _is_listing_domain(domain) and not _is_stock_domain(domain):
         logger.warning(
             "Domain %s is not in the scraper_chunks registry; defaulting to listing layout",
             domain,

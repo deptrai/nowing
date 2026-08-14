@@ -45,6 +45,7 @@ class BillingUnit(StrEnum):
     WALMART_PRODUCT = "walmart_product"
     WALMART_REVIEW = "walmart_review"
     CAFEF_DATA = "cafef_data"
+    VIETSTOCK_DATA = "vietstock_data"
     MASOTHUE_COMPANY = "masothue_company"
 
 

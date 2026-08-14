@@ -10,6 +10,7 @@ from app.capabilities import (
     masothue as _masothue,  # noqa: F401
     topcv as _topcv,  # noqa: F401
     vietnamworks as _vietnamworks,  # noqa: F401
+    vietstock as _vietstock,  # noqa: F401
     vn_jobs as _vn_jobs,  # noqa: F401
     walmart as _walmart,  # noqa: F401
 )

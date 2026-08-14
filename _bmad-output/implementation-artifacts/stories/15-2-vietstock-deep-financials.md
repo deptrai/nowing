@@ -185,6 +185,63 @@ nowing_backend/app/
 - Edge cases and failure modes are non-critical; add to test skeleton in `bmad-nowing-test-first-atdd`.
 - **Continue to test-first ATDD.**
 
+## Implementation Status
+
+**Status:** in-progress
+**Baseline commit:** `256e0bfc8` (post-15.2 red-phase tests)
+
+### Files Created / Modified
+
+#### Proprietary platform (BSL 1.1)
+- `app/proprietary/platforms/vietstock/__init__.py`
+- `app/proprietary/platforms/vietstock/schemas.py`
+- `app/proprietary/platforms/vietstock/parsers.py`
+- `app/proprietary/platforms/vietstock/fetch.py`
+- `app/proprietary/platforms/vietstock/scraper.py`
+
+#### Capability layer (Apache-2.0)
+- `app/capabilities/vietstock/__init__.py`
+- `app/capabilities/vietstock/scrape/__init__.py`
+- `app/capabilities/vietstock/scrape/definition.py`
+- `app/capabilities/vietstock/scrape/executor.py`
+- `app/capabilities/vietstock/scrape/schemas.py`
+
+#### Billing / config
+- `app/capabilities/core/types.py` — `BillingUnit.VIETSTOCK_DATA`
+- `app/capabilities/core/billing.py` — rate + noun mapping
+- `app/config/__init__.py` — `VIETSTOCK_*` env vars
+- `app/capabilities/__init__.py` — import `vietstock as _vietstock`
+
+#### Shared scraper chunks
+- `app/services/scraper_chunks/schemas.py` — `ratios` + `conflict_flags` metadata
+- `app/services/scraper_chunks/serializer.py` — stock domain handling, canonical identity
+
+#### Tests
+- `tests/unit/platforms/vietstock/test_fetch.py`
+- `tests/unit/platforms/vietstock/test_parsers.py`
+- `tests/unit/platforms/vietstock/test_scraper.py`
+- `tests/unit/platforms/vietstock/test_to_chunks.py`
+- `tests/unit/capabilities/vietstock/scrape/test_executor.py`
+- `tests/integration/vietstock/test_vietstock_scrape.py`
+
+### Test Results
+
+- `ruff check` — passed
+- `pytest tests/unit/platforms/vietstock tests/unit/capabilities/vietstock tests/unit/platforms/cafef tests/unit/capabilities/cafef tests/unit/services/scraper_chunks -q` — **99 passed**
+- `pytest tests/integration/vietstock -q` — **3 skipped** (requires live credentials)
+
+### Open Questions Resolved
+
+1. **Cookie refresh mechanism:** implemented lightweight `_refresh_cookie()` hitting landing page and extracting `Set-Cookie`.
+2. **Default rate/cost:** `VIETSTOCK_RATE_LIMIT_RPS = 1/3` (20 req/min), `VIETSTOCK_DATA_MICROS_PER_ITEM = 5000`.
+3. **Chunking:** one chunk per `(symbol, statement_type, period)`; quote is a single chunk.
+
+### Dev Agent Record
+
+- **Debug Log:** process-local cookie jar and throttle reset between tests via autouse fixture.
+- **Completion Notes:** All 5 ACs implemented and unit-tested. Integration tests require live Vietstock session cookie; marked skip pending credential spike.
+- **Next gates:** code-review, mutation-gate on billing module, human-review-gate (P0 credit surface).
+
 ## Tags
 
 AD-16, AD-24, AD-34, AD-35, AD-8, AD-25, Vietstock, financial data, stock price, Vietnam, cookie auth, rate limit, billing, chainlens-ingest, cross-source

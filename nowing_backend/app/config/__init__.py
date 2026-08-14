@@ -1053,6 +1053,17 @@ class Config:
     CAFEF_QUOTE_URL = os.getenv("CAFEF_QUOTE_URL", "")
     CAFEF_NEWS_URL = os.getenv("CAFEF_NEWS_URL", "")
     CAFEF_FINANCIAL_BASE_URL = os.getenv("CAFEF_FINANCIAL_BASE_URL", "")
+    # Vietstock unofficial API. Demo mode uses stable synthetic data so the
+    # capability works in tests and demos without real credentials.
+    VIETSTOCK_DATA_MICROS_PER_ITEM = int(
+        os.getenv("VIETSTOCK_DATA_MICROS_PER_ITEM", "5000")
+    )
+    VIETSTOCK_RATE_LIMIT_RPS = float(os.getenv("VIETSTOCK_RATE_LIMIT_RPS", str(20 / 60)))
+    VIETSTOCK_TIMEOUT_S = float(os.getenv("VIETSTOCK_TIMEOUT_S", "15.0"))
+    VIETSTOCK_DEMO_MODE = os.getenv("VIETSTOCK_DEMO_MODE", "TRUE").upper() == "TRUE"
+    VIETSTOCK_QUOTE_URL = os.getenv("VIETSTOCK_QUOTE_URL", "")
+    VIETSTOCK_FINANCIAL_URL = os.getenv("VIETSTOCK_FINANCIAL_URL", "")
+    VIETSTOCK_SESSION_COOKIE = os.getenv("VIETSTOCK_SESSION_COOKIE", "")
     # masothue.com company directory. Cloudflare-protected; use polite pacing.
     MASOTHUE_SCRAPE_MICROS_PER_ITEM = int(
         os.getenv("MASOTHUE_SCRAPE_MICROS_PER_ITEM", "3000")
