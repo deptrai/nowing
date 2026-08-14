@@ -358,7 +358,7 @@ async def fetch_listings(
                 logger.warning(
                     "Chotot block on %s, rotating proxy (attempt %s/%s)",
                     url,
-                    attempt + 1,
+                    attempt + 2,
                     _MAX_ROTATIONS,
                 )
                 await asyncio.sleep(_retry_delay(attempt))
