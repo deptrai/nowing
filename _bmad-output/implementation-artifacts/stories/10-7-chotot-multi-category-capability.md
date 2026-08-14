@@ -44,44 +44,43 @@ So that users can research Chợ Tốt vehicles, jobs, electronics, and goods wi
 
 ## Tasks / Subtasks
 
-- [ ] Confirm capability & billing shape (AC #1, #2)
-  - [ ] Architecture decision: single `chotot.scrape` (Option A); record in architecture spine or a short AD note.
-  - [ ] Billing: single `BillingUnit.CHOTOT_ITEM` plus `call_details["category"]`. Avoid per-category `BillingUnit` explosion.
+- [x] Confirm capability & billing shape (AC #1, #2)
+  - [x] Billing unit `BillingUnit.CHOTOT_ITEM` already exists.
+  - [x] `CHOTOT_SCRAPE_MICROS_PER_ITEM` config and `_PLATFORM_RATE_KEYS` / `_UNIT_NOUNS` mapping already wired.
 
-- [ ] Add billing unit and config (AC #2, #5)
-  - [ ] Add `BillingUnit.CHOTOT_ITEM = "chotot_item"` to `app/capabilities/core/types.py`.
-  - [ ] Add `CHOTOT_SCRAPE_MICROS_PER_ITEM` to `app/config/__init__.py`.
-  - [ ] Update `app/capabilities/core/billing.py` `_PLATFORM_RATE_KEYS` and `_UNIT_NOUNS` for `CHOTOT_ITEM`.
-  - [ ] If existing `CHOTOT_BDS_SCRAPE_MICROS_PER_ITEM` is kept, map it to the same rate or add a warning/deprecation note.
-
-- [ ] Implement or update capability definition (AC #1, #6, #7)
-  - [ ] Update `app/capabilities/chotot/scrape/definition.py`:
-    - Register `chotot.scrape` with `BillingUnit.CHOTOT_ITEM`.
-    - Keep `chotot_bds.scrape` as a deprecated alias calling `chotot.scrape` with `category="bds"`.
-  - [ ] Update `app/capabilities/chotot/scrape/executor.py`:
-    - Accept `category` and route to `scrape_chotot`.
-    - Compute `cost_micros = total_returned × CHOTOT_SCRAPE_MICROS_PER_ITEM`.
-    - Skip billing for listings with `category="unknown"` / degraded runs.
-    - Reuse `_maybe_escalate` on bot/rate-limit blocks (`AD-19`).
+- [x] Implement or update capability definition (AC #1, #6, #7)
+  - [x] `app/capabilities/chotot/scrape/definition.py` registers `chotot.scrape` and `chotot_bds.scrape` (deprecated alias).
+  - [x] `app/capabilities/chotot/scrape/executor.py` accepts `category`, computes `cost_micros`, skips degraded/unknown, and calls `_maybe_escalate`.
 
 - [ ] Update capability schemas (AC #7)
-  - [ ] `ScrapeInput` in `app/capabilities/chotot/scrape/schemas.py` adds `category: str` (validated against supported slugs), optional `subcategory`.
-  - [ ] `ScrapeOutput` keeps `cost_micros`, `degraded`, `degradation_reason`, `next_action`.
-  - [ ] `estimated_units` remains `max_items`.
+  - [ ] `ScrapeInput` in `app/capabilities/chotot/scrape/schemas.py` must make `category` required and validate against `app.proprietary.platforms.chotot.fetch._SUPPORTED_CATEGORY_SLUGS` (or raw numeric `cg`). Optional `subcategory` can be deferred.
+  - [x] `ScrapeOutput` already has `cost_micros`, `degraded`, `degradation_reason`, `next_action`.
+  - [x] `estimated_units` is `max_items`.
 
 - [ ] Tests
-  - [ ] Unit test `build_scrape_executor` uses `BillingUnit.CHOTOT_ITEM` and includes `category` in `call_details`.
-  - [ ] Unit test `ScrapeInput` rejects unsupported `category`.
-  - [ ] Unit test pre-flight `gate_capability` reserves `max_items × CHOTOT_SCRAPE_MICROS_PER_ITEM`.
-  - [ ] Unit test `category="unknown"` listings are not billed.
-  - [ ] Integration test `POST /api/v1/capabilities/chotot.scrape` with `category=cars` returns typed listings and correct `cost_micros`.
-  - [ ] Regression test `chotot_bds.scrape` still returns BĐS listings and bills at `CHOTOT_ITEM` rate.
+  - [ ] Unit tests in `tests/unit/capabilities/chotot/scrape/test_executor.py` (note: path is `scrape/test_executor.py`, not `chotot/test_scrape_executor.py`):
+    - `chotot.scrape` is registered with `BillingUnit.CHOTOT_ITEM`.
+    - `ScrapeInput` rejects unsupported `category`.
+    - `gate_capability` reserves `max_items × CHOTOT_SCRAPE_MICROS_PER_ITEM`.
+    - `category="unknown"` listings are not billed.
+    - `chotot_bds.scrape` still works as alias and bills at `CHOTOT_ITEM` rate (or `CHOTOT_BDS_SCRAPE_MICROS_PER_ITEM` if kept).
+  - [ ] Integration test `POST /api/v1/workspaces/{workspace_id}/scrapers/chotot/scrape` (correct REST path) with `category=cars`.
 
 - [ ] Docs and registration
-  - [ ] Add `chotot.scrape` to MCP capability selfcheck list if applicable.
-  - [ ] Update `docs/connectors/native/chotot.md` (or create) with supported categories and billing rate.
-  - [ ] Update `.env.example` with `CHOTOT_SCRAPE_MICROS_PER_ITEM` default.
+  - [x] `nowing_chotot_scrape` already in `app/mcp_tools.py` catalog.
+  - [ ] Create `docs/connectors/native/chotot.md` with supported categories and billing rate.
+  - [ ] Add `CHOTOT_SCRAPE_MICROS_PER_ITEM=3500` to `nowing_backend/.env.example`.
   - [ ] Add deprecation note for `chotot_bds.scrape` in docs and code.
+
+## Validation Notes (2026-08-14)
+
+- Most billing/capability wiring is already in place (likely shipped as part of Story 10.6 or earlier backend work). The remaining delta is:
+  1. `ScrapeInput.category` must be **required** and validated against supported slugs.
+  2. Add missing `.env.example` line and docs file.
+  3. Complete unit/REST tests and deprecate `chotot_bds.scrape` in user-facing docs.
+- Correct unit test path: `tests/unit/capabilities/chotot/scrape/test_executor.py`.
+- Correct REST endpoint path: `POST /api/v1/workspaces/{workspace_id}/scrapers/chotot/scrape`.
+- Supported slugs for validation: import `_SUPPORTED_CATEGORY_SLUGS` from `app.proprietary.platforms.chotot.fetch` (or inline the set: `bds`, `cars`, `motorbikes`, `electronics`, `jobs`, `pets`, `fashion`, `home_goods`, `home_appliances`, `kitchen`, `services`, `home_services`). Raw numeric `cg` strings are also valid.
 
 ## Dev Notes
 
@@ -103,9 +102,9 @@ So that users can research Chợ Tốt vehicles, jobs, electronics, and goods wi
   - `docs/connectors/native/chotot.md` (create if missing)
 
 - Testing standards summary
-  - `tests/unit/capabilities/chotot/test_scrape_executor.py`
+  - `tests/unit/capabilities/chotot/scrape/test_executor.py`
   - `tests/unit/capabilities/test_billing.py` for `BillingUnit` resolution
-  - `tests/integration/capabilities/chotot/test_chotot_scrape.py` (live call optional)
+  - `tests/integration/capabilities/chotot/scrape/test_chotot_scrape.py` (live call optional)
 
 ### References
 

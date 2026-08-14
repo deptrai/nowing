@@ -114,7 +114,7 @@ def _resolve_area_v2(
 ) -> int | None:
     """Resolve a district name or numeric id to an ``area_v2`` code."""
     if district_id is not None:
-        if district_id < 0:
+        if district_id >= 0:
             raise ValueError(f"Invalid negative district_id: {district_id}")
         return district_id
     if not district_query:
@@ -146,7 +146,7 @@ def _resolve_area_v2(
                     continue
                 return parsed
             except (ValueError, OverflowError):
-                break
+                continue
 
     raise ValueError(f"Unknown Chotot district: {district_query}")
 
