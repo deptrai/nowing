@@ -143,6 +143,48 @@ nowing_backend/app/
 - What is the correct default `VIETSTOCK_RATE_LIMIT_RPS` and `VIETSTOCK_DATA_MICROS_PER_ITEM`? (Align with product/commercial after a live probe.)
 - Should Vietstock financial records be split by period into multiple chunks or one large chunk? (Default: one chunk per `(symbol, statement_type, period)` to match canonical `sourceId`.)
 
+## Challenge Log (grill-me)
+
+### Q1 — Already implemented?
+- No existing `vietstock` implementation in `nowing_backend`.
+- `app/proprietary/platforms/cafef/` provides a complete public-API financial scraper pattern to clone.
+- `app/services/scraper_platform_account_service.py` already has `ScraperPlatformAccountService` and `ScraperPlatformAccountRotator` for cookie/credential rotation (used by `batdongsan`).
+- `NowingIngestService` (`app/services/chainlens/ingest.py`) and `to_chunks()` (`app/services/scraper_chunks/serializer.py`) already exist from Story 20.1.
+- **Verdict:** no duplicate Vietstock logic; reuse existing platform/capability/account patterns.
+
+### Q2 — Simpler alternative?
+- Instead of writing a custom cookie-pool manager, use `ScraperPlatformAccountService` + `ScraperPlatformAccountRotator` if admin-managed scraper accounts are available.
+- If no admin account is configured, fall back to env/session cookie with a one-shot refresh.
+- Use CafeF's `_as_float` / `_parse_change_string` helpers; extract to shared utility if not already.
+- **Verdict:** no critical alternative, but explicitly prefer `ScraperPlatformAccountRotator` for credential rotation and rate-limit state.
+
+### Q3 — Edge cases the spec misses (Pattern 3)
+- **Boundary:** symbol `min_length=1, max_length=20` is too loose; should validate Vietnamese ticker format or at least uppercase ASCII.
+- **Boundary:** 130K statements can produce >1000 chunks per scrape; must paginate batches and set parent/child `ingest_job_id`.
+- **Boundary:** historical period strings can be `Q4-2025`, `2025`, `31/12/2025`; parser must normalize.
+- **Null/empty:** `401/403` with no credentials configured → must degrade immediately without network.
+- **Null/empty:** `quote=None` but `financials` present → billing policy says `billable_units=0`; verify whether financials alone should be billable.
+- **Null/empty:** ratios that are `None`, `NaN`, `Inf`, or `0` must not poison chunk metadata or content.
+- **Null/empty:** statements with zero rows / blank content must not create empty chunks.
+- **Concurrent:** `asyncio.Lock` process-local throttle is not distributed; multi-worker deployment can exceed rate limit. Document ceiling.
+- **Cross-source:** if CafeF and Vietstock use different period string formats, the canonical `sourceId` hash will diverge; lock the identity key format.
+
+### Q4 — Failure modes unspecified (Pattern 2, 4)
+- **chainlens-research down / 5xx / timeout:** `NowingIngestService` retries and dead-letters; but should the scrape itself be marked `degraded` or only the ingest status?
+- **Postgres / Redis unavailable:** `ScraperPlatformAccountService` lookup fails; fallback to env cookie or degrade.
+- **Vietstock returns HTML challenge page instead of JSON:** need detection similar to CafeF `content-type` check.
+- **Cookie refresh returns 200 but invalid cookie:** retry once, then degrade.
+- **Rate limit 429 after retries:** mark `degraded=true`, `degradation_reason=rate_limited`.
+- **Missing `BillingUnit.VIETSTOCK_DATA` or config variable:** fail-fast at import/registration time, not at runtime cost calc.
+- **Invalid JSON / field missing:** parser must degrade, not raise.
+- **LLM/embedding not used here;** but if chunking triggers embedding sync, ensure timeout budget.
+
+### Triage
+- No duplicate logic.
+- No simpler alternative that blocks implementation; `ScraperPlatformAccountRotator` is the recommended reuse.
+- Edge cases and failure modes are non-critical; add to test skeleton in `bmad-nowing-test-first-atdd`.
+- **Continue to test-first ATDD.**
+
 ## Tags
 
 AD-16, AD-24, AD-34, AD-35, AD-8, AD-25, Vietstock, financial data, stock price, Vietnam, cookie auth, rate limit, billing, chainlens-ingest, cross-source
