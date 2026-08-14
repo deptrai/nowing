@@ -1,5 +1,5 @@
 # generated: 2026-08-08
-# last_updated: 2026-08-14  # 15-1: human review APPROVED — P0 credit/billing surfaces cleared, marked done
+# last_updated: 2026-08-14  # 15-2 story file created and validated, moved to ready-for-dev
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -280,7 +280,7 @@ development_status:
   15-1: done
   # 15-1b split from 15-1: chat subagent integration. Human review approved; done.
   15-1b: done
-  15-2: backlog
+  15-2: ready-for-dev
   15-3: backlog
   15-4: backlog
   epic-15-retrospective: optional
