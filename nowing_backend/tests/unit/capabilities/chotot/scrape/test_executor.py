@@ -135,6 +135,23 @@ async def test_bot_detected_actor_degrades_with_bot_detected_reason():
 
 
 @pytest.mark.asyncio
+async def test_all_unknown_category_listings_cost_zero():
+    scraper = _FakeScraper(
+        [
+            {"listing_id": 1, "category": "unknown"},
+            {"listing_id": 2, "category": "unknown"},
+        ]
+    )
+    execute = build_scrape_executor(scrape_fn=scraper)
+
+    out = await execute(ScrapeInput(category="electronics", city="hanoi", max_items=5))
+
+    assert out.total_items == 2
+    assert out.billable_units == 0
+    assert out.cost_micros == 0
+
+
+@pytest.mark.asyncio
 async def test_unknown_category_listings_are_not_billed():
     scraper = _FakeScraper(
         [

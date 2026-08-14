@@ -199,6 +199,9 @@ def get_category_config(category: str) -> dict[str, Any]:
 
 def _resolve_st(category: str, listing_type: str) -> str:
     """Map a consumer listing_type to the gateway ``st`` parameter."""
+    # "buy" is a consumer-facing alias for "sell" on the gateway.
+    if listing_type == "buy":
+        listing_type = "sell"
     cfg = get_category_config(category)
     mapping = cfg.get("supported_listing_types", {})
     if listing_type in mapping:
