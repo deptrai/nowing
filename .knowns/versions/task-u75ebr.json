@@ -1,6 +1,6 @@
 {
   "taskId": "u75ebr",
-  "currentVersion": 1,
+  "currentVersion": 3,
   "versions": [
     {
       "id": "v1",
@@ -37,6 +37,74 @@
         "timeSpent": 0,
         "title": "Story 8.7: Auto-Extract Spend/Budget Cap, Wallet Pre-Check \u0026 Rate-Limit (New Gap)",
         "updatedAt": "2026-07-28T15:10:18.987022Z"
+      }
+    },
+    {
+      "id": "v2",
+      "taskId": "u75ebr",
+      "version": 2,
+      "timestamp": "2026-08-14T16:36:15.978493Z",
+      "author": "luisphan",
+      "changes": [
+        {
+          "field": "implementationNotes",
+          "oldValue": null,
+          "newValue": "P0 human-review gate for token/credit tracking still OPEN as of 2026-08-14; gate must close before auto-extract is enabled in production."
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:18.987Z",
+        "createdAt": "2026-07-28T15:10:18.987Z",
+        "description": "code review 2026-07-26 (3-layer adversarial): 2 decisions + 26 patches applied, 4 deferred, 2 dismissed. D1: wallet pre-check đọc số dư mà extraction KHÔNG BAO GIỜ trừ — confirmed nhưng là BY DESIGN (AD-8 loại memory khỏi debit surface; memory_create là observability record của 8.9; free-tier global cost là platform cost không đo có chủ ý; G4 chỉ yêu cầu cap+pre-check TỒN TẠI, containment là kill-switch) ⇒ sửa tài liệu chứ không sửa billing: boxed note trên AC-1, restate R1, sửa tiền đề Dev Note",
+        "id": "u75ebr",
+        "implementationNotes": "P0 human-review gate for token/credit tracking still OPEN as of 2026-08-14; gate must close before auto-extract is enabled in production.",
+        "labels": [
+          "bmad",
+          "bmad-key-8-7-auto-extract-spend-budget-cap",
+          "epic-8"
+        ],
+        "parent": "kaffa6",
+        "priority": "high",
+        "spec": "stories/story-8-7-auto-extract-spend-budget-cap-wallet-pre-check-rate-limit-new-gap",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "Story 8.7: Auto-Extract Spend/Budget Cap, Wallet Pre-Check \u0026 Rate-Limit (New Gap)",
+        "updatedAt": "2026-08-14T16:36:15.978493Z"
+      }
+    },
+    {
+      "id": "v3",
+      "taskId": "u75ebr",
+      "version": 3,
+      "timestamp": "2026-08-14T16:36:56.038726Z",
+      "author": "luisphan",
+      "changes": [
+        {
+          "field": "implementationNotes",
+          "oldValue": "P0 human-review gate for token/credit tracking still OPEN as of 2026-08-14; gate must close before auto-extract is enabled in production.",
+          "newValue": "P0 human-review gate for token/credit tracking still OPEN as of 2026-08-14; gate must close before auto-extract is enabled in production.\nP0 human-review gate for token/credit tracking still OPEN as of 2026-08-14; gate must close before auto-extract is enabled in production."
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:18.987Z",
+        "createdAt": "2026-07-28T15:10:18.987Z",
+        "description": "code review 2026-07-26 (3-layer adversarial): 2 decisions + 26 patches applied, 4 deferred, 2 dismissed. D1: wallet pre-check đọc số dư mà extraction KHÔNG BAO GIỜ trừ — confirmed nhưng là BY DESIGN (AD-8 loại memory khỏi debit surface; memory_create là observability record của 8.9; free-tier global cost là platform cost không đo có chủ ý; G4 chỉ yêu cầu cap+pre-check TỒN TẠI, containment là kill-switch) ⇒ sửa tài liệu chứ không sửa billing: boxed note trên AC-1, restate R1, sửa tiền đề Dev Note",
+        "id": "u75ebr",
+        "implementationNotes": "P0 human-review gate for token/credit tracking still OPEN as of 2026-08-14; gate must close before auto-extract is enabled in production.\nP0 human-review gate for token/credit tracking still OPEN as of 2026-08-14; gate must close before auto-extract is enabled in production.",
+        "labels": [
+          "bmad",
+          "bmad-key-8-7-auto-extract-spend-budget-cap",
+          "epic-8"
+        ],
+        "parent": "kaffa6",
+        "priority": "high",
+        "spec": "stories/story-8-7-auto-extract-spend-budget-cap-wallet-pre-check-rate-limit-new-gap",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "Story 8.7: Auto-Extract Spend/Budget Cap, Wallet Pre-Check \u0026 Rate-Limit (New Gap)",
+        "updatedAt": "2026-08-14T16:36:56.038726Z"
       }
     }
   ]

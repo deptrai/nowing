@@ -146,7 +146,7 @@ def _resolve_area_v2(
                     continue
                 return parsed
             except (ValueError, OverflowError):
-                continue
+                break
 
     raise ValueError(f"Unknown Chotot district: {district_query}")
 

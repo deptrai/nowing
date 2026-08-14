@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-08"
-last_updated: "2026-08-14"  # 10-6 multi-category scraper implementation complete; moved to review
+last_updated: "2026-08-14"  # 10-6 review; 10-7 todo; Knowns synced; 3-13 corrected to ready-for-dev (no impl file)
 # ponytail: 2026-08-14 — reopened deferred/business-gated/dropped to backlog; 16-1 mutation gate reopened; 15-2 moved to review; tech-debt tracker reopened.
 # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended citation ACs to 3.15 (WEB_RESULT), 9.3 (async delivery), 2.10 (Exa MCP). 3 stories → review.
 # ponytail: 2026-08-08 sprint-planning — added Epic 1, 5 (DONE brownfield); added 9.1a, 9.1b, 4.8a-4.8h, 13.2a-13.2e; upgraded 12.1-12.5 to ready-for-dev (story files exist); 12.0 DONE (legal approved).
@@ -77,7 +77,7 @@ development_status:
   3-10: done
   3-11: done
   3-12: done
-  3-13: done
+  3-13: ready-for-dev  # corrected from 'done': spec is ready, implementation file does not yet exist
   3-14: done
   3-15: done
   # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended WEB_RESULT citation ACs for ChainLens sources

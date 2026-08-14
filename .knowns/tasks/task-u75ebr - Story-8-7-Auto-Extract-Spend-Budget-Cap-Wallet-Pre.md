@@ -8,7 +8,7 @@ labels:
   - bmad-key-8-7-auto-extract-spend-budget-cap
   - epic-8
 createdAt: '2026-07-28T15:10:18.987Z'
-updatedAt: '2026-07-28T15:20:16.116Z'
+updatedAt: '2026-08-14T16:36:56.038Z'
 completedAt: '2026-07-28T15:10:18.987Z'
 timeSpent: 0
 parent: kaffa6
@@ -25,4 +25,11 @@ code review 2026-07-26 (3-layer adversarial): 2 decisions + 26 patches applied, 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+P0 human-review gate for token/credit tracking still OPEN as of 2026-08-14; gate must close before auto-extract is enabled in production.
+P0 human-review gate for token/credit tracking still OPEN as of 2026-08-14; gate must close before auto-extract is enabled in production.
+<!-- SECTION:NOTES:END -->
 
