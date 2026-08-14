@@ -7,13 +7,23 @@ from typing import Any
 
 import pytest
 
-from app.capabilities.chotot.scrape.executor import build_scrape_executor
+from app.capabilities.chotot.scrape.executor import (
+    _maybe_escalate,
+    _next_action,
+    _unwrap_result,
+    build_scrape_executor,
+)
 from app.capabilities.chotot.scrape.schemas import ScrapeInput, ScrapeOutput
+from app.proprietary.platforms.chotot import CategoryConfigError
 from app.proprietary.platforms.chotot.fetch import (
     ChototBdsDecodeError,
     ChototBdsRateLimitedError,
 )
-from app.proprietary.platforms.chotot.schemas import ChototBdsScrapeInput
+from app.proprietary.platforms.chotot.schemas import (
+    ChototBdsScrapeInput,
+    ChototListing,
+    ChototScrapeOutput,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -220,4 +230,139 @@ async def test_unknown_category_listings_are_not_billed():
 
     assert out.total_items == 2
     assert out.billable_units == 1
+    assert out.cost_micros == 1 * 3500
+
+
+def test_next_action_returns_escalation_for_bot_reasons():
+    assert _next_action("bot_detected") is not None
+    assert _next_action("rate_limited") is not None
+    assert _next_action("api_error") is None
+    assert _next_action(None) is None
+
+
+def test_maybe_escalate_is_noop_without_context():
+    assert _maybe_escalate(None, "bot_detected") is None
+
+
+def test_unwrap_result_defaults_to_empty_degraded():
+    default = _unwrap_result(None)
+    assert default == {
+        "items": [],
+        "total_items": 0,
+        "degraded": True,
+        "degradation_reason": "unknown",
+    }
+
+
+def test_unwrap_result_unwraps_pydantic_model():
+    item = ChototListing(listing_id=1, title="x", category="cars")
+    out = ChototScrapeOutput(
+        items=[item], total_items=1, degraded=False, degradation_reason=None
+    )
+    assert _unwrap_result(out) == {
+        "items": [item.to_output()],
+        "total_items": 1,
+        "billable_units": 1,
+        "degraded": False,
+        "degradation_reason": None,
+    }
+
+
+@pytest.mark.asyncio
+async def test_degraded_result_cost_is_zero():
+    async def degraded_scraper(
+        actor_input: ChototBdsScrapeInput, *, limit: int | None = None
+    ) -> dict[str, Any]:
+        return {
+            "items": [{"listing_id": 1, "category": "cars"}],
+            "total_items": 1,
+            "billable_units": 1,
+            "degraded": True,
+            "degradation_reason": "bot_detected",
+        }
+
+    execute = build_scrape_executor(scrape_fn=degraded_scraper)
+    out = await execute(ScrapeInput(city="hanoi", max_items=5))
+
+    assert out.degraded is True
+    assert out.cost_micros == 0
+    assert out.next_action is not None
+
+
+@pytest.mark.asyncio
+async def test_invalid_category_returns_zero_cost():
+    async def bad_category(
+        actor_input: ChototBdsScrapeInput, *, limit: int | None = None
+    ) -> dict[str, Any]:
+        raise CategoryConfigError("nope")
+
+    execute = build_scrape_executor(scrape_fn=bad_category)
+    out = await execute(ScrapeInput(city="hanoi", max_items=5))
+
+    assert out.degraded is True
+    assert out.cost_micros == 0
+
+
+@pytest.mark.asyncio
+async def test_total_items_none_becomes_zero():
+    """A None total_items must be coerced to 0, not crash or default to 1."""
+
+    async def null_total(
+        actor_input: ChototBdsScrapeInput, *, limit: int | None = None
+    ) -> dict[str, Any]:
+        return {
+            "items": [],
+            "total_items": None,
+            "billable_units": 0,
+            "degraded": False,
+        }
+
+    execute = build_scrape_executor(scrape_fn=null_total)
+    out = await execute(ScrapeInput(city="hanoi", max_items=5))
+
+    assert out.total_items == 0
+    assert out.cost_micros == 0
+
+
+@pytest.mark.asyncio
+async def test_total_items_and_billable_fallback_when_absent():
+    """If the scraper omits both total_items and billable_units, cost must be zero.
+
+    This kills NumberReplacer mutants that change the default ``.get(..., 0)``
+    to a non-zero value, which would incorrectly bill for items.
+    """
+
+    async def partial_scraper(
+        actor_input: ChototBdsScrapeInput, *, limit: int | None = None
+    ) -> dict[str, Any]:
+        return {
+            "items": [{"listing_id": 1, "category": "cars"}],
+        }
+
+    execute = build_scrape_executor(scrape_fn=partial_scraper)
+    out = await execute(ScrapeInput(city="hanoi", max_items=5))
+
+    assert out.billable_units == 1
+    assert out.cost_micros == 0
+
+
+@pytest.mark.asyncio
+async def test_executor_uses_default_rate_when_config_missing():
+    """If config does not define the rate attribute, executor should still bill 3500."""
+
+    async def one_item(
+        actor_input: ChototBdsScrapeInput, *, limit: int | None = None
+    ) -> dict[str, Any]:
+        return {
+            "items": [{"listing_id": 1, "category": "cars"}],
+            "total_items": 1,
+            "billable_units": 1,
+            "degraded": False,
+        }
+
+    execute = build_scrape_executor(
+        scrape_fn=one_item, rate_attr="MISSING_RATE_ATTR_XYZ"
+    )
+    out = await execute(ScrapeInput(city="hanoi", max_items=5))
+
     assert out.cost_micros == 1 * 3500
