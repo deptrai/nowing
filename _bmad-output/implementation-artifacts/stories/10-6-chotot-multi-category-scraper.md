@@ -111,18 +111,18 @@ So that one scraper foundation returns typed, useful data for each category inst
   - [ ] Keep `_parse_price_string`, `_format_price`, `_build_address`, `_first_image`, `_seller_type` as shared helpers.
   - [ ] Verify `fetch_phone` does not assume BĐS; document any vertical where phone is unavailable.
 
-- [ ] Capability / MCP surface (boundary with Story 10.7)
-  - [ ] `app/capabilities/chotot/scrape/definition.py` registers `chotot.scrape` with `BillingUnit.CHOTOT_ITEM`.
-  - [ ] `chotot_bds.scrape` is kept as deprecated alias calling `chotot.scrape(category="bds")`.
-  - [ ] `ScrapeOutput.billable_units` excludes `category="unknown"` listings.
-  - [ ] Update MCP tool `nowing_mcp/mcp_server/features/scrapers/platforms/chotot.py` (or rename from `chotot_bds.py`) with the new `category` parameter and pass `mcp_server/selfcheck.py`.
+- [x] Capability / MCP surface (boundary with Story 10.7)
+  - [x] `app/capabilities/chotot/scrape/definition.py` registers `chotot.scrape` with `BillingUnit.CHOTOT_ITEM`.
+  - [x] `chotot_bds.scrape` is kept as deprecated alias calling `chotot.scrape(category="bds")`.
+  - [x] `ScrapeOutput.billable_units` excludes `category="unknown"` listings.
+  - [x] Update MCP tool `nowing_mcp/mcp_server/features/scrapers/platforms/chotot.py` with the new `category` parameter and pass `mcp_server/selfcheck.py`.
 
-- [ ] Tests
-  - [ ] Unit test `category → cg` lookup, `_build_listing_params` `st`, `_build_detail_url` per origin, unsupported category validation.
-  - [ ] Unit test each parser against sample raw JSON for vehicle, job, electronics.
-  - [ ] Unit test generic parser for unknown `cg` returns `category="unknown"` and is not billed.
-  - [ ] Unit test capability executor: `billable_units` excludes unknown-category listings.
-  - [ ] Integration test real `ad-listing` call for one non-BĐS vertical and `parse_listings`.
+- [x] Tests
+  - [x] Unit test `category → cg` lookup, `_build_listing_params` `st`, `_build_detail_url` per origin, unsupported category validation.
+  - [x] Unit test each parser against sample raw JSON for vehicle, motorbike, job, electronics.
+  - [x] Unit test generic parser for unknown `cg` returns `category="unknown"` and is not billed.
+  - [x] Unit test capability executor: `billable_units` excludes unknown-category listings.
+  - [ ] Integration test real `ad-listing` call for one non-BĐS vertical and `parse_listings` (requires `SCRAPE_LIVE=1` or fixture recording).
 
 ## Previous Story Learnings
 

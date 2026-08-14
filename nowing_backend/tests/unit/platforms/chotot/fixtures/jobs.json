@@ -1,0 +1,31 @@
+{
+    "ads": [
+        {
+            "ad_id": 177832200,
+            "list_id": 177832200,
+            "subject": "Tuyển lập trình viên Python",
+            "body": "Công ty phần mềm tuyển dụng.",
+            "category": 13000,
+            "category_name": "Việc làm",
+            "price": 25000000,
+            "price_string": "25 triệu/tháng",
+            "region_name": "Tp Hồ Chí Minh",
+            "area_name": "Quận 1",
+            "ward_name": "Phường Bến Nghé",
+            "date": "1 ngày trước",
+            "thumbnail_image": "https://cdn.chotot.com/photo3.jpg",
+            "company_ad": true,
+            "type": "s",
+            "company_name": "TechVN",
+            "job_type": "Toàn thời gian",
+            "contract_type": "Không xác định thời hạn",
+            "min_salary": 20000000,
+            "max_salary": 30000000,
+            "salary_type": "tháng",
+            "preferred_education": "Đại học",
+            "preferred_working_experience": "1-2 năm",
+            "vacancies": 3
+        }
+    ],
+    "total": 1
+}

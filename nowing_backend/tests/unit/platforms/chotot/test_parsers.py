@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from app.proprietary.platforms.chotot.parsers import parse_listing, parse_listings
-from app.proprietary.platforms.chotot.schemas import ChototBdsListing
+from app.proprietary.platforms.chotot.schemas import ChototBdsListing, ChototListing
 
 pytestmark = pytest.mark.unit
 
@@ -19,6 +19,11 @@ def _load_sample() -> list[dict]:
     decoded = json.loads(
         (_FIXTURE_DIR / "sample_ad_listing.json").read_text(encoding="utf-8")
     )
+    return decoded["ads"]
+
+
+def _load_fixture(name: str) -> list[dict]:
+    decoded = json.loads((_FIXTURE_DIR / f"{name}.json").read_text(encoding="utf-8"))
     return decoded["ads"]
 
 
@@ -109,3 +114,93 @@ def test_parse_area_rejects_extreme_values():
     assert _format_area(-5, None) == (None, None, None)
     assert _format_area(1_000_000, None) == (None, None, None)
     assert _format_area(56.7, None) == ("56.7 m²", "56.7 m²", 56.7)
+
+
+def test_parse_vehicle_listing():
+    raw_items = _load_fixture("vehicles")
+
+    listings = parse_listings(raw_items, category="cars")
+
+    assert len(listings) == 1
+    first = listings[0]
+    assert isinstance(first, ChototListing)
+    assert first.category == "cars"
+    assert first.listing_id == 177832100
+    assert first.title == "Toyota Camry 2.5G 2020 màu đen"
+    assert first.price_value == 820_000_000
+    assert first.detail_url == "https://xe.chotot.com/177832100.htm"
+    assert first.attributes["make"] == "Toyota"
+    assert first.attributes["model"] == "Camry"
+    assert first.attributes["year"] == 2020
+    assert first.attributes["mileage"] == 45000
+    assert first.attributes["fuel_type"] == "Xăng"
+    assert first.attributes["transmission"] == "Tự động"
+
+
+def test_parse_motorbike_listing():
+    raw_items = _load_fixture("motorbikes")
+
+    listings = parse_listings(raw_items, category="motorbikes")
+
+    assert len(listings) == 1
+    first = listings[0]
+    assert first.category == "motorbikes"
+    assert first.listing_id == 177832101
+    assert first.detail_url == "https://xe.chotot.com/177832101.htm"
+    assert first.attributes["make"] == "Honda"
+    assert first.attributes["model"] == "SH"
+    assert first.attributes["year"] == 2019
+
+
+def test_parse_job_listing():
+    raw_items = _load_fixture("jobs")
+
+    listings = parse_listings(raw_items, category="jobs")
+
+    assert len(listings) == 1
+    first = listings[0]
+    assert isinstance(first, ChototListing)
+    assert first.category == "jobs"
+    assert first.listing_id == 177832200
+    assert first.title == "Tuyển lập trình viên Python"
+    assert first.detail_url == "https://vieclamtot.com/177832200.htm"
+    assert first.attributes["salary_min"] == 20000000
+    assert first.attributes["salary_max"] == 30000000
+    assert first.attributes["company_name"] == "TechVN"
+    assert first.attributes["job_type"] == "Toàn thời gian"
+
+
+def test_parse_electronics_listing():
+    raw_items = _load_fixture("electronics")
+
+    listings = parse_listings(raw_items, category="electronics")
+
+    assert len(listings) == 1
+    first = listings[0]
+    assert isinstance(first, ChototListing)
+    assert first.category == "electronics"
+    assert first.listing_id == 177832300
+    assert first.title == "iPhone 14 Pro Max 128GB tím"
+    assert first.detail_url == "https://www.chotot.com/177832300.htm"
+    assert first.attributes["brand"] == "Apple"
+    assert first.attributes["model"] == "iPhone 14 Pro Max"
+    assert first.attributes["capacity"] == "128GB"
+    assert first.attributes["color"] == "Tím"
+
+
+def test_parse_unknown_category_is_not_billed():
+    raw = {
+        "list_id": 177832999,
+        "subject": "Unknown item",
+        "price_string": "1 triệu",
+        "region_name": "Hà Nội",
+        "area_name": "Quận Ba Đình",
+        "category": 99999,
+        "category_name": "Không xác định",
+    }
+
+    listing = parse_listing(raw, category="unknown")
+
+    assert isinstance(listing, ChototListing)
+    assert listing.category == "unknown"
+    assert listing.listing_id == 177832999

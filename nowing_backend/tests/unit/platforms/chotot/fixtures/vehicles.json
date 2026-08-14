@@ -1,0 +1,32 @@
+{
+    "ads": [
+        {
+            "ad_id": 177832100,
+            "list_id": 177832100,
+            "subject": "Toyota Camry 2.5G 2020 màu đen",
+            "body": "Xe gia đình sử dụng, bảo dưỡng định kỳ.",
+            "category": 2010,
+            "category_name": "Ô tô",
+            "price": 820000000,
+            "price_string": "820 triệu",
+            "region_name": "Tp Hồ Chí Minh",
+            "area_name": "Quận 7",
+            "ward_name": "Phường Tân Phong",
+            "date": "2 giờ trước",
+            "thumbnail_image": "https://cdn.chotot.com/photo1.jpg",
+            "company_ad": false,
+            "type": "s",
+            "carbrand": "Toyota",
+            "carbrand_name": "Toyota",
+            "carmodel": "Camry",
+            "car_year": 2020,
+            "car_mileage_v2": 45000,
+            "carfuel": "Xăng",
+            "cartransmission": "Tự động",
+            "condition_ad": 1,
+            "condition_ad_name": "Mới",
+            "carorigin": "Nhập khẩu"
+        }
+    ],
+    "total": 1
+}

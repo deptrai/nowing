@@ -8,10 +8,12 @@ from pathlib import Path
 import pytest
 
 from app.proprietary.platforms.chotot.fetch import (
+    CategoryConfigError,
     ChototBdsAccessBlockedError,
     ChototBdsDecodeError,
     ChototBdsRateLimitedError,
     fetch_listings,
+    get_category_config,
 )
 
 pytestmark = pytest.mark.unit
@@ -111,3 +113,83 @@ async def test_fetch_listings_403_raises_blocked(mocker):
             listing_type="buy",
             page=1,
         )
+
+
+def test_get_category_config_returns_correct_cg_for_known_slugs():
+    assert get_category_config("bds")["cg"] == 1000
+    assert get_category_config("cars")["cg"] == 2010
+    assert get_category_config("jobs")["cg"] == 13000
+    assert get_category_config("electronics")["cg"] == 5000
+
+
+def test_get_category_config_accepts_raw_numeric_cg():
+    cfg = get_category_config("12345")
+    assert cfg["cg"] == 12345
+    assert cfg["detail_origin"] == "https://www.chotot.com"
+    assert cfg["supported_listing_types"] == {"sell": "s"}
+
+
+def test_get_category_config_raises_for_unsupported_slug():
+    with pytest.raises(CategoryConfigError, match="category_not_supported: unknown"):
+        get_category_config("unknown")
+
+
+def test_resolve_st_maps_listing_type_to_gateway_st():
+    from app.proprietary.platforms.chotot.fetch import _resolve_st
+
+    assert _resolve_st("bds", "sell") == "s"
+    assert _resolve_st("bds", "rent") == "u"
+    assert _resolve_st("bds", "want_to_buy") == "s"
+    assert _resolve_st("cars", "sell") == "s"
+    assert _resolve_st("cars", "rent") == "s"  # falls back to default
+
+
+def test_build_detail_url_uses_category_origin():
+    from app.proprietary.platforms.chotot.parsers import _build_detail_url
+
+    assert _build_detail_url(177832100, "cars") == "https://xe.chotot.com/177832100.htm"
+    assert _build_detail_url(177832101, "motorbikes") == "https://xe.chotot.com/177832101.htm"
+    assert _build_detail_url(177832200, "jobs") == "https://vieclamtot.com/177832200.htm"
+    assert _build_detail_url(177832300, "electronics") == "https://www.chotot.com/177832300.htm"
+    assert _build_detail_url(133886560, "bds") == "https://www.nhatot.com/133886560.htm"
+
+
+def test_build_listing_params_uses_cg_and_st():
+    from app.proprietary.platforms.chotot.fetch import _build_listing_params
+
+    params = _build_listing_params(
+        region_v2=13000,
+        area_v2=None,
+        category="cars",
+        listing_type="sell",
+        page=1,
+        page_size=20,
+        min_price=None,
+        max_price=None,
+        min_area=None,
+        max_area=None,
+    )
+    assert params["cg"] == 2010
+    assert params["st"] == "s"
+    assert params["w"] == 1
+    assert params["o"] == 0
+
+
+def test_build_listing_params_bds_property_type_overrides_cg():
+    from app.proprietary.platforms.chotot.fetch import _build_listing_params
+
+    params = _build_listing_params(
+        region_v2=13000,
+        area_v2=None,
+        category="bds",
+        listing_type="rent",
+        page=1,
+        page_size=20,
+        min_price=None,
+        max_price=None,
+        min_area=None,
+        max_area=None,
+        property_type="apartment",
+    )
+    assert params["cg"] == 1010
+    assert params["st"] == "u"

@@ -1,0 +1,31 @@
+{
+    "ads": [
+        {
+            "ad_id": 177832300,
+            "list_id": 177832300,
+            "subject": "iPhone 14 Pro Max 128GB tím",
+            "body": "Máy mới 99%, fullbox.",
+            "category": 5000,
+            "category_name": "Điện thoại",
+            "price": 22000000,
+            "price_string": "22 triệu",
+            "region_name": "Hà Nội",
+            "area_name": "Quận Cầu Giấy",
+            "ward_name": "Phường Dịch Vọng",
+            "date": "3 giờ trước",
+            "thumbnail_image": "https://cdn.chotot.com/photo4.jpg",
+            "company_ad": false,
+            "type": "s",
+            "mobile_brand": "Apple",
+            "mobile_brand_name": "Apple",
+            "mobile_model": "iPhone 14 Pro Max",
+            "mobile_capacity": "128GB",
+            "mobile_color_name": "Tím",
+            "condition_ad": 1,
+            "condition_ad_name": "Mới",
+            "official_store": false,
+            "gds_inspected": true
+        }
+    ],
+    "total": 1
+}

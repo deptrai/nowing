@@ -1,0 +1,33 @@
+{
+    "ads": [
+        {
+            "ad_id": 177832101,
+            "list_id": 177832101,
+            "subject": "Honda SH 150i 2019",
+            "body": "Xe chính chủ, biển số Tp HCM.",
+            "category": 2020,
+            "category_name": "Xe máy",
+            "price": 78000000,
+            "price_string": "78 triệu",
+            "region_name": "Tp Hồ Chí Minh",
+            "area_name": "Quận 1",
+            "ward_name": "Phường Bến Nghé",
+            "date": "5 giờ trước",
+            "thumbnail_image": "https://cdn.chotot.com/photo2.jpg",
+            "company_ad": false,
+            "type": "s",
+            "motorbikebrand": "Honda",
+            "motorbikebrand_name": "Honda",
+            "motorbikemodel": "SH",
+            "motorbiketype": "Tay ga",
+            "regdate": 2019,
+            "mileage_v2": 25000,
+            "motorbikefuel": "Xăng",
+            "motorbiketransmission": "Tự động",
+            "condition_ad": 2,
+            "condition_ad_name": "Đã qua sử dụng",
+            "motorbikeorigin": "Lắp ráp trong nước"
+        }
+    ],
+    "total": 1
+}
