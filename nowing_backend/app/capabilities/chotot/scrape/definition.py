@@ -5,7 +5,7 @@ from __future__ import annotations
 from app.capabilities.core import BillingUnit, Capability, register_capability
 
 from .executor import build_scrape_executor
-from .schemas import ScrapeInput, ScrapeOutput
+from .schemas import ChototBdsScrapeInput, ScrapeInput, ScrapeOutput
 
 CHOTOT_SCRAPE = Capability(
     name="chotot.scrape",
@@ -30,7 +30,7 @@ CHOTOT_BDS_SCRAPE = Capability(
         "Deprecated alias for chotot.scrape with category=\"bds\". "
         "Use chotot.scrape instead."
     ),
-    input_schema=ScrapeInput,
+    input_schema=ChototBdsScrapeInput,
     output_schema=ScrapeOutput,
     executor=build_scrape_executor(
         rate_attr="CHOTOT_BDS_SCRAPE_MICROS_PER_ITEM",

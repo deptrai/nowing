@@ -69,6 +69,12 @@ class ScrapeInput(BaseModel):
         return self
 
 
+class ChototBdsScrapeInput(ScrapeInput):
+    """Deprecated alias input — ``category`` defaults to ``bds``."""
+
+    category: str = "bds"
+
+
 class ScrapeOutput(BaseModel):
     """Capability-level output."""
 
