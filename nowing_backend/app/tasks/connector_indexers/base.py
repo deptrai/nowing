@@ -311,7 +311,7 @@ async def update_connector_last_indexed(
         update_last_indexed: Whether to actually update the timestamp
     """
     if update_last_indexed:
-        connector.last_indexed_at = datetime.now()
+        connector.last_indexed_at = datetime.now(UTC)
         logger.info(f"Updated last_indexed_at to {connector.last_indexed_at}")
 
 

@@ -342,8 +342,10 @@ async def fetch_feed(url: str) -> list[NewsArticle]:
             return []
 
     # Reject entity-expansion (billion laughs) payloads before parsing.
-    head = body[:4096].lower()
-    if b"<!doctype" in head or b"<!entity" in head:
+    # ElementTree expands internal entities, so any DTD/ENTITY declaration is
+    # a denial-of-service risk. Scan the whole body, not just the prolog.
+    lowered = body.lower()
+    if b"<!doctype" in lowered or b"<!entity" in lowered:
         logger.warning("RSS feed %s declares DOCTYPE/ENTITY; skipping", url)
         return []
 

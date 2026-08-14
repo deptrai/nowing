@@ -4,7 +4,7 @@ baseline_commit: 22121a1b8
 
 # Story 14.1: RSS Feed Integration
 
-**Status:** review
+**Status:** in-progress
 **Epic:** Epic 14 — News Aggregation (Vietnam)
 **Priority:** P0
 
@@ -149,3 +149,20 @@ review
 - [x] [Review][Resolved] Pruning uses `Document.created_at` instead of article `pubDate` (medium) — `_prune_stale_articles` now parses `pubDate` from `document_metadata` and falls back to `created_at`; updated integration test to age `pubDate` metadata [rss_indexer.py:199]
 - [x] [Review][Resolved] `fetch_feed` does not log a warning on HTTP 200 with empty body (low) — empty body now logs a warning and returns `[]` [rss_fetcher.py:238]
 - [x] [Review][Resolved] Missing Playwright MCP smoke test (low) — added `tests/smoke/rss-dashboard.spec.ts` verifying the connectors page renders and the RSS card is visible [validation section]
+
+### BMAD code review round 2 (2026-08-14)
+
+- [x] [Review][Resolved] ElementTree expands internal entities — `<!DOCTYPE/<!ENTITY` scan only covered first 4 KB; full-body scan prevents billion-laughs DoS [rss_fetcher.py:344]
+- [x] [Review][Resolved] `index_rss_feeds` missing final `session.commit()` — `upsert_canonical_entity` and `update_connector_last_indexed` do not commit internally; added final commit after indexing success [rss_indexer.py:449]
+- [x] [Review][Resolved] `update_connector_last_indexed` uses naive local time — changed to `datetime.now(UTC)` [base.py:314]
+- [x] [Review][Resolved] Articles with empty link/title silently skipped — added warning log so operators can detect malformed feeds [rss_indexer.py:370]
+- [x] [Review][Resolved] `_prune_stale_articles` redundant `None` guard — removed unreachable second fallback after `_parse_meta_date(pub_date) or created_at` [rss_indexer.py:230]
+
+**Deferred / dismissed (noise or pre-existing):**
+- [ ] [Review][Defer] Sequential feed fetching — Celery task `time_limit` already bounds total runtime; concurrency is a future optimization [rss_indexer.py:327]
+- [ ] [Review][Defer] Memory accumulation across many feeds — per-feed cap + Celery limits mitigate; streaming batching is future work [rss_indexer.py:324]
+- [ ] [Review][Defer] Fingerprint collision with short descriptions — current 80-char seed is an intentional design trade-off; revisit if false-merge evidence appears [rss_indexer.py:121]
+- [ ] [Review][Defer] IPv6 SSRF test coverage — logic uses `ipaddress.ip_address(...).is_global`; only unit tests were missing; IPv6 loopback test added [test_rss_fetcher.py]
+- [ ] [Review][Defer] Date parsing misses RFC 2822 numeric timezones — current parser covers default feeds; `dateutil` fallback is future enhancement [rss_fetcher.py]
+- [ ] [Review][Defer] Redirect `max_redirects`, per-connector feed count limit, configurable User-Agent, XML encoding fallback — non-blocking robustness items [rss_fetcher.py]
+- [ ] [Review][Dismiss] DOCTYPE check was already case-insensitive via `.lower()` — finding was based on stale code reading [rss_fetcher.py:345]

@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-08"
-last_updated: "2026-08-14"  # 14-1 patch findings fixed; 14-1 → review
+last_updated: "2026-08-14"  # 14-1 code review round 2; fixed P0/P1 findings
 # ponytail: 2026-08-14 — reopened deferred/business-gated/dropped to backlog; 16-1 mutation gate reopened; 15-2 moved to review; tech-debt tracker reopened.
 # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended citation ACs to 3.15 (WEB_RESULT), 9.3 (async delivery), 2.10 (Exa MCP). 3 stories → review.
 # ponytail: 2026-08-08 sprint-planning — added Epic 1, 5 (DONE brownfield); added 9.1a, 9.1b, 4.8a-4.8h, 13.2a-13.2e; upgraded 12.1-12.5 to ready-for-dev (story files exist); 12.0 DONE (legal approved).
@@ -257,8 +257,10 @@ development_status:
   epic-14: in-progress
   # 14-1 depends on 20.2 (NowingIngestService) and 6.8 (Generic Alert Engine).
   # Code-review verdict: PASS_WITH_WARNINGS (P0 SSRF/Atom/RSS 1.0 gaps). P0 closed 2026-08-07 (commit 6faee7e07).
-  # Re-review 2026-08-14: 7 patch findings fixed, tests green; moved to review.
-  14-1: review
+  # 2026-08-14: BMAD code review round 2 found + fixed P0 entity-expansion DoS,
+  # missing final session.commit(), naive datetime, and empty-link logging.
+  # Remaining quality pipeline: test-review, mutation, trace, NFR, human, E2E.
+  14-1: in-progress
   14-2: backlog
   14-3: backlog
   14-4: backlog

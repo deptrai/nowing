@@ -327,6 +327,42 @@ async def test_fetch_feed_rejects_entity_expansion(monkeypatch):
 
 
 @pytest.mark.unit
+async def test_fetch_feed_rejects_billion_laughs_payload(monkeypatch):
+    """Internal entity expansion that could exhaust memory is rejected."""
+    dtd_lines = ['<!ENTITY lol0 "lol">']
+    prev = "lol0"
+    for i in range(1, 6):
+        dtd_lines.append(
+            f'<!ENTITY lol{i} "&{prev};&{prev};&{prev};&{prev};&{prev};">'
+        )
+        prev = f"lol{i}"
+    dtd = "\n".join(dtd_lines)
+    evil = f"""<?xml version="1.0"?>
+<!DOCTYPE rss [
+{dtd}
+]>
+<rss version="2.0"><channel><title>&{prev};</title></channel></rss>
+"""
+    _patch_fetch(monkeypatch, evil)
+    articles = await fetch_feed("https://example.com/feed.rss")
+    assert articles == []
+
+
+@pytest.mark.unit
+async def test_fetch_feed_rejects_doctype_after_padding(monkeypatch):
+    """DOCTYPE placed beyond the first 4 KB is still rejected."""
+    padding = " " * 5000
+    evil = f"""<?xml version="1.0"?>
+<rss version="2.0"><channel><title>T</title>{padding}
+<!DOCTYPE rss [<!ENTITY x "y">]>
+</channel></rss>
+"""
+    _patch_fetch(monkeypatch, evil)
+    articles = await fetch_feed("https://example.com/feed.rss")
+    assert articles == []
+
+
+@pytest.mark.unit
 async def test_dns_ssrf_check_blocks_internal_resolution(monkeypatch):
     """Wildcard-DNS hostnames resolving to private IPs are rejected."""
     import socket
@@ -349,6 +385,24 @@ async def test_dns_ssrf_check_blocks_internal_resolution(monkeypatch):
         "app.services.news.rss_fetcher.socket.getaddrinfo", _fake_getaddrinfo_public
     )
     await _check_dns_ssrf("http://example.com/feed.rss")
+
+
+@pytest.mark.unit
+async def test_dns_ssrf_check_blocks_ipv6_loopback(monkeypatch):
+    """Wildcard-DNS hostnames resolving to IPv6 loopback are rejected."""
+    import socket
+
+    from app.services.news.rss_fetcher import _check_dns_ssrf
+
+    def _fake_getaddrinfo_ipv6_loopback(host, port):
+        return [(socket.AF_INET6, socket.SOCK_STREAM, 6, "", ("::1", 0, 0, 0))]
+
+    monkeypatch.setattr(
+        "app.services.news.rss_fetcher.socket.getaddrinfo",
+        _fake_getaddrinfo_ipv6_loopback,
+    )
+    with pytest.raises(ValueError, match="non-public"):
+        await _check_dns_ssrf("http://example.com/feed.rss")
 
 
 @pytest.mark.unit

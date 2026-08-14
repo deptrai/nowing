@@ -229,8 +229,6 @@ async def _prune_stale_articles(
     pruned_links: list[str] = []
     for doc_id, link, pub_date, created_at in rows:
         article_date = _parse_meta_date(pub_date) or created_at
-        if article_date is None:
-            article_date = created_at
         if article_date and article_date < cutoff:
             prunable_ids.append(doc_id)
             if link:
@@ -369,6 +367,11 @@ async def index_rss_feeds(
         unique_articles: list[NewsArticle] = []
         for article in all_articles:
             if not article.link or not article.title:
+                logger.warning(
+                    "Skipping RSS article without link/title: title=%r link=%r",
+                    article.title,
+                    article.link,
+                )
                 continue
             if article.link in seen_links:
                 continue
@@ -445,6 +448,8 @@ async def index_rss_feeds(
                 "fetch_errors": len(fetch_errors),
             },
         )
+
+        await session.commit()
 
         if on_heartbeat_callback:
             await on_heartbeat_callback(indexed)
