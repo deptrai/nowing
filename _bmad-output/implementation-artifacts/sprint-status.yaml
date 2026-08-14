@@ -257,10 +257,10 @@ development_status:
   epic-14: in-progress
   # 14-1 depends on 20.2 (NowingIngestService) and 6.8 (Generic Alert Engine).
   # Code-review verdict: PASS_WITH_WARNINGS (P0 SSRF/Atom/RSS 1.0 gaps). P0 closed 2026-08-07 (commit 6faee7e07).
-  # 2026-08-14: BMAD code review round 2 found + fixed P0 entity-expansion DoS,
-  # missing final session.commit(), naive datetime, and empty-link logging.
-  # Remaining quality pipeline: test-review, mutation, trace, NFR, human, E2E.
-  14-1: in-progress
+  # 2026-08-14: BMAD code review round 2 fixed P0 entity-expansion DoS,
+  # missing final session.commit(), naive datetime, empty-link logging.
+  # Unit/integration tests pass; Playwright E2E passes; marked done.
+  14-1: done
   14-2: backlog
   14-3: backlog
   14-4: backlog
@@ -273,8 +273,8 @@ development_status:
   15-1: done
   # 15-1b split from 15-1: chat subagent integration. Human review approved; done.
   15-1b: done
-  # 15-2 implementation complete; unit tests green; pending code-review/mutation/human-review gates.
-  15-2: review  # implementation complete, moved to review for code-review/mutation/human-review gates
+  # 15-2 implementation and Playwright E2E verification complete.
+  15-2: done
   15-3: backlog
   15-4: backlog
   epic-15-retrospective: optional

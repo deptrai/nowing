@@ -4,7 +4,7 @@ baseline_commit: 22121a1b8
 
 # Story 14.1: RSS Feed Integration
 
-**Status:** in-progress
+**Status:** done
 **Epic:** Epic 14 — News Aggregation (Vietnam)
 **Priority:** P0
 

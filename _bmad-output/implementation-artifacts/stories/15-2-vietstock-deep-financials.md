@@ -1,6 +1,6 @@
 # Story 15.2: Vietstock Deep Financials
 
-**Status:** ready-for-review
+**Status:** done
 **Epic:** Epic 15 — Financial Data (Vietnam)
 **Priority:** P1
 
@@ -213,7 +213,7 @@ Both endpoints are `POST` with form-urlencoded bodies:
 
 ## Implementation Status
 
-**Status:** ready-for-review
+**Status:** done
 **Baseline commit:** `a94d4f099` (real Vietstock POST endpoints, token flow, parser updates, tests, Playwright E2E)
 
 ### Files Created / Modified
@@ -259,6 +259,7 @@ Both endpoints are `POST` with form-urlencoded bodies:
 - `NOWING_RUN_NETWORK_TESTS=1 uv run pytest tests/integration/vietstock/test_real_vietstock.py -q` — **3 passed** (live API)
 - `pnpm tsc --noEmit` (nowing_web) — passed
 - `pnpm exec biome check tests/playground/vietstock-scrape.spec.ts` — passed
+- Playwright E2E `tests/playground/vietstock-scrape.spec.ts` — **5 passed** (chromium, local backend)
 
 ### Dev Agent Record
 
