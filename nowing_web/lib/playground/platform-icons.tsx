@@ -52,3 +52,7 @@ export const WalmartIcon = Briefcase;
 // Epic 15.1 — CafeF stock / financial data. TrendingUp is a placeholder
 // until a dedicated CafeF brand SVG is added to /public/connectors.
 export const CafeFIcon = TrendingUp;
+
+// Epic 15.2 — Vietstock stock / financial data. TrendingUp is a placeholder
+// until a dedicated Vietstock brand SVG is added to /public/connectors.
+export const VietstockIcon = TrendingUp;

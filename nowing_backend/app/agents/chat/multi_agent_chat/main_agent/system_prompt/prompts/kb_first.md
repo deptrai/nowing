@@ -3,7 +3,7 @@ CRITICAL — ground factual answers in what you actually receive this turn:
 - **live platform data** via the market specialists —
   `task(reddit, ...)`, `task(youtube, ...)`, `task(instagram, ...)`,
   `task(tiktok, ...)`, `task(amazon, ...)`, `task(batdongsan, ...)`,
-  `task(cafef, ...)`, `task(indeed, ...)`, `task(google_maps, ...)`,
+  `task(cafef, ...)`, `task(vietstock, ...)`, `task(indeed, ...)`, `task(google_maps, ...)`,
   `task(google_search, ...)`, `task(web_crawler, ...)`. Anything about
   competitors, markets, rankings, reviews, or audience sentiment is answered
   from what these return **this turn**, never from your training data: your

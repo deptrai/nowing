@@ -46,6 +46,7 @@ _EXPECTED_SUBAGENTS = frozenset(
         "onedrive",
         "reddit",
         "tiktok",
+        "vietstock",
         "vn_jobs",
         "web_crawler",
         "youtube",

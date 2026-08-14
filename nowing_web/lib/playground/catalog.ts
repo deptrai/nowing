@@ -14,6 +14,7 @@ import {
 	TikTokIcon,
 	TopcvIcon,
 	VietnamworksIcon,
+	VietstockIcon,
 	VnJobsIcon,
 	WalmartIcon,
 	WebIcon,
@@ -168,6 +169,12 @@ export const PLAYGROUND_PLATFORMS: PlaygroundPlatform[] = [
 		label: "CafeF",
 		icon: CafeFIcon,
 		verbs: [{ name: "cafef.scrape", verb: "scrape", label: "Scrape" }],
+	},
+	{
+		id: "vietstock",
+		label: "Vietstock",
+		icon: VietstockIcon,
+		verbs: [{ name: "vietstock.scrape", verb: "scrape", label: "Scrape" }],
 	},
 	{
 		id: "web",

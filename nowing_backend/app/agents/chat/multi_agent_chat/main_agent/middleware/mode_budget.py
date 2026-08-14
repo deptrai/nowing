@@ -75,6 +75,7 @@ _WEB_RESEARCH_SUBAGENTS: frozenset[str] = frozenset(
         "cafef",
         "chotot_bds",
         "muaban_bds",
+        "vietstock",
     }
 )
 
