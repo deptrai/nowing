@@ -4,7 +4,7 @@ baseline_commit: 22121a1b8
 
 # Story 14.1: RSS Feed Integration
 
-**Status:** review
+**Status:** in-progress
 **Epic:** Epic 14 — News Aggregation (Vietnam)
 **Priority:** P0
 
@@ -139,3 +139,13 @@ review
 - [x] [Review][Resolved] Canonical churn: `upsert_canonical_entity` skips version bump / merge history / embedding backfill when content unchanged and source did not move; still refreshes `last_seen_at`/`source_count` [canonical_persist_service.py:271]
 - [x] [Review][Resolved] Epoch sentinel 1970-01-01 — kept in canonical data/metadata (anti-churn); RSS source markdown renders "Unknown" via `_format_pub_date` instead [rss_indexer.py:96]
 - [x] [Review][Resolved] Connector deletion orphans canonical entities — delete route collects document links during batch deletion, then removes canonical sources by record_ids + sweeps orphaned `news_article` entities [search_source_connectors_routes.py:731]
+
+### Re-review findings (2026-08-14)
+
+- [ ] [Review][Patch] `_extract_link` skips relative URLs and `<guid isPermaLink="true">` fallback (high) — relative `<link>/article/123</link>` becomes an invalid absolute URL and breaks dedup/canonical merge; some RSS feeds use `<guid isPermaLink="true">` as the canonical link [rss_fetcher.py:130]
+- [ ] [Review][Patch] No per-feed item-count cap (high) — `_FEED_MAX_BYTES` only limits body size; a feed with thousands of tiny items can still exhaust memory and indexing time inside the poll window [rss_fetcher.py:27]
+- [ ] [Review][Patch] No retry on 429 / 5xx (medium) — rate limits and transient outages are treated as permanent failures for the 15-minute poll cycle; add exponential-backoff retry for idempotent GETs [rss_fetcher.py:253]
+- [ ] [Review][Patch] `socket.getaddrinfo` has no timeout (medium) — slow or unresponsive DNS can block the polling cycle; wrap in `asyncio.wait_for` (~3s) or use `httpx` timeout that covers resolution [rss_fetcher.py:194]
+- [ ] [Review][Patch] Pruning uses `Document.created_at` instead of article `pubDate` (medium) — an old article republished in a feed may get a fresh `created_at` and survive pruning incorrectly; prefer `pubDate` from metadata when available [rss_indexer.py:199]
+- [ ] [Review][Patch] `fetch_feed` does not log a warning on HTTP 200 with empty body (low) — an empty response is silently treated as an empty feed, masking server misconfiguration [rss_fetcher.py:238]
+- [ ] [Review][Patch] Missing Playwright MCP smoke test (low) — validation section requires "dashboard loads after changes"; add a minimal web smoke or remove the AC if already covered elsewhere [validation section]
