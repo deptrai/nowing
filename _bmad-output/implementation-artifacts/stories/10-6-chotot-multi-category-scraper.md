@@ -122,7 +122,7 @@ So that one scraper foundation returns typed, useful data for each category inst
   - [x] Unit test each parser against sample raw JSON for vehicle, motorbike, job, electronics.
   - [x] Unit test generic parser for unknown `cg` returns `category="unknown"` and is not billed.
   - [x] Unit test capability executor: `billable_units` excludes unknown-category listings.
-  - [ ] Integration test real `ad-listing` call for one non-BĐS vertical and `parse_listings` (requires `SCRAPE_LIVE=1` or fixture recording).
+  - [x] Integration test recorded fixture roundtrip for cars, jobs, electronics + billing.
 
 ## Previous Story Learnings
 
