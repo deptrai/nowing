@@ -51,6 +51,8 @@ MANUAL_UPLOAD_PDF_CANARY_FILE = "canary.pdf"
 NO_RELEVANT_CONTENT_SENTINEL = "No relevant indexed content found."
 NO_RELEVANT_CONTENT_QUERY = "E2E_NO_RELEVANT_CONTENT_SMOKE"
 CHAINLENS_RESEARCH_QUERY = "E2E deep research self-host no key"
+CAFEF_CANARY_SYMBOL = "VCB"
+CAFEF_CANARY_TOKEN = "E2E-CAFEF-CANARY-VCB"
 
 
 def _content_to_text(content: Any) -> str:
@@ -107,6 +109,7 @@ class FakeChatLLM(BaseChatModel):
         in_chainlens_subagent = (
             "You are the Nowing ChainLens Research sub-agent" in prompt_text
         )
+        in_cafef_subagent = "You are the Nowing CafeF sub-agent" in prompt_text
         latest_tool = _latest_tool_message(messages)
         latest_tool_name = getattr(latest_tool, "name", None)
         latest_tool_text = _content_to_text(latest_tool.content) if latest_tool else ""
@@ -151,6 +154,49 @@ class FakeChatLLM(BaseChatModel):
             )
         ):
             return "The chainlens_research tool is unavailable; the deep research engine is not configured. Set CHAINLENS_API_KEY to use the hosted engine."
+
+        # CafeF subagent: synthesize a structured result from the (mock) scrape output.
+        if in_cafef_subagent and latest_tool_name == "cafef_scrape":
+            if "degraded" in latest_tool_text or "error" in latest_tool_text:
+                return json.dumps(
+                    {
+                        "status": "partial",
+                        "action_summary": "CafeF data is degraded",
+                        "evidence": {
+                            "findings": ["CafeF returned a degraded response."],
+                            "sources": [],
+                            "confidence": "low",
+                        },
+                        "next_step": "Retry later or verify the symbol.",
+                        "missing_fields": None,
+                        "assumptions": None,
+                    }
+                )
+            return json.dumps(
+                {
+                    "status": "success",
+                    "action_summary": f"CafeF {CAFEF_CANARY_SYMBOL} quote retrieved",
+                    "evidence": {
+                        "findings": [
+                            f"Symbol {CAFEF_CANARY_SYMBOL} price data found.",
+                            f"CafeF canary token: {CAFEF_CANARY_TOKEN}",
+                        ],
+                        "sources": ["https://cafef.vn"],
+                        "confidence": "high",
+                    },
+                    "next_step": None,
+                    "missing_fields": None,
+                    "assumptions": None,
+                }
+            )
+
+        # Main agent: receive and summarize the CafeF subagent result.
+        if (
+            not in_cafef_subagent
+            and latest_tool_name == "task"
+            and ("cafef" in latest_tool_text or CAFEF_CANARY_SYMBOL in latest_tool_text)
+        ):
+            return f"CafeF live data for {CAFEF_CANARY_SYMBOL}: {CAFEF_CANARY_TOKEN}"
 
         if (
             latest_tool_name == "read_gmail_email"
@@ -612,6 +658,7 @@ class FakeChatLLM(BaseChatModel):
         in_chainlens_subagent = (
             "You are the Nowing ChainLens Research sub-agent" in prompt_text
         )
+        in_cafef_subagent = "You are the Nowing CafeF sub-agent" in prompt_text
 
         # Main agent: delegate deep research to the ``chainlens`` subagent.
         if (
@@ -653,6 +700,46 @@ class FakeChatLLM(BaseChatModel):
                         "name": "chainlens_research",
                         "args": {"query": latest_human, "mode": "balanced"},
                         "id": "call_e2e_chainlens_research",
+                    }
+                ],
+            )
+
+        # Main agent: delegate Vietnamese stock questions to the ``cafef`` subagent.
+        if (
+            not in_connector_subagent
+            and not in_chainlens_subagent
+            and not in_cafef_subagent
+            and latest_tool is None
+            and _contains_any(latest_human, ("cafef", "cổ phiếu", "stock", CAFEF_CANARY_SYMBOL))
+        ):
+            return AIMessage(
+                content="",
+                tool_calls=[
+                    {
+                        "name": "task",
+                        "args": {"subagent_type": "cafef", "description": latest_human},
+                        "id": "call_e2e_task_cafef",
+                    }
+                ],
+            )
+
+        # CafeF subagent: call the scrape capability for the requested symbol.
+        if (
+            in_cafef_subagent
+            and latest_tool is None
+            and _contains_any(latest_human, ("cafef", "cổ phiếu", "stock", CAFEF_CANARY_SYMBOL))
+        ):
+            return AIMessage(
+                content="",
+                tool_calls=[
+                    {
+                        "name": "cafef_scrape",
+                        "args": {
+                            "symbol": CAFEF_CANARY_SYMBOL,
+                            "include_financials": False,
+                            "include_news": False,
+                        },
+                        "id": "call_e2e_cafef_scrape",
                     }
                 ],
             )

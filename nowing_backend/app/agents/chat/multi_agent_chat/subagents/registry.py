@@ -18,6 +18,9 @@ from app.agents.chat.multi_agent_chat.subagents.builtins.amazon.agent import (
 from app.agents.chat.multi_agent_chat.subagents.builtins.batdongsan.agent import (
     build_subagent as build_batdongsan_subagent,
 )
+from app.agents.chat.multi_agent_chat.subagents.builtins.cafef.agent import (
+    build_subagent as build_cafef_subagent,
+)
 from app.agents.chat.multi_agent_chat.subagents.builtins.chainlens.agent import (
     build_subagent as build_chainlens_subagent,
 )
@@ -103,6 +106,7 @@ class SubagentBuilder(Protocol):
 SUBAGENT_BUILDERS_BY_NAME: dict[str, SubagentBuilder] = {
     "amazon": build_amazon_subagent,
     "batdongsan": build_batdongsan_subagent,
+    "cafef": build_cafef_subagent,
     "chotot_bds": build_chotot_bds_subagent,
     "chainlens": build_chainlens_subagent,
     "deliverables": build_deliverables_subagent,

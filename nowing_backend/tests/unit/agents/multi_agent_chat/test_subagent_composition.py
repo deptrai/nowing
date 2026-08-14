@@ -29,6 +29,7 @@ _EXPECTED_SUBAGENTS = frozenset(
     {
         "amazon",
         "batdongsan",
+        "cafef",
         "chotot_bds",
         "chainlens",
         "deliverables",
