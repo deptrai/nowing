@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 
@@ -25,6 +25,13 @@ _FEED_TIMEOUT = 10.0
 
 # Ceiling on a single feed body; protects workers from oversized feeds.
 _FEED_MAX_BYTES = 20 * 1024 * 1024
+
+# Ceiling on items per feed; protects the polling cycle from huge rolling feeds.
+_FEED_MAX_ITEMS = 1000
+
+# Retry transient failures: network blips, 5xx, and 429 rate limits.
+_FEED_RETRY_ATTEMPTS = 3
+_FEED_RETRY_BACKOFF = 1.0
 
 # Deterministic sentinel for items without a usable publication date.
 _MISSING_PUB_DATE = datetime(1970, 1, 1, tzinfo=UTC)
@@ -130,29 +137,50 @@ def _first_category(item: Any) -> str | None:
 def _extract_link(item: Any, feed_url: str) -> str:
     """Extract the article URL from an item/entry.
 
-    Prefers rel="alternate"/"canonical" Atom links and skips links that point
-    back at the feed itself (rel="self" href equal to the feed URL), which
-    would otherwise collapse the entire feed into one document after dedup.
+    Resolves relative URLs against the feed URL, prefers rel="alternate"/
+    "canonical" Atom links, skips links that point back at the feed itself
+    (rel="self" href equal to the feed URL), and falls back to a
+    ``<guid isPermaLink="true">`` permalink when no usable ``<link>`` is present.
     """
+    feed_normalized = _normalize_url(feed_url)
+
+    # RSS 2.0 text <link> (may be relative).
     text = _first_text(item, "link")
     if text:
-        return text
+        resolved = _resolve_article_url(text, feed_url)
+        if resolved and _normalize_url(resolved) != feed_normalized:
+            return resolved
 
-    feed_normalized = _normalize_url(feed_url)
+    # Atom <link href="..." rel="..."/>.
     links = item.findall("{*}link")
     fallback: str | None = None
     for link_el in links:
         href = (link_el.get("href") or "").strip()
         if not href:
             continue
-        if _normalize_url(href) == feed_normalized:
+        resolved = _resolve_article_url(href, feed_url)
+        if not resolved or _normalize_url(resolved) == feed_normalized:
             continue
         rel = (link_el.get("rel") or "alternate").lower()
         if rel in ("alternate", "canonical", "self"):
-            return href
+            return resolved
         if fallback is None:
-            fallback = href
-    return fallback or ""
+            fallback = resolved
+
+    if fallback:
+        return fallback
+
+    # RSS 2.0 <guid isPermaLink="true"> fallback.
+    guid_el = item.find("{*}guid")
+    if guid_el is not None:
+        is_permalink = (guid_el.get("isPermaLink") or "true").lower() != "false"
+        guid_text = (guid_el.text or "").strip()
+        if is_permalink and guid_text:
+            resolved = _resolve_article_url(guid_text, feed_url)
+            if resolved and _normalize_url(resolved) != feed_normalized:
+                return resolved
+
+    return ""
 
 
 def _normalize_url(url: str) -> str:
@@ -164,6 +192,26 @@ def _normalize_url(url: str) -> str:
     host = (parsed.hostname or "").lower()
     path = parsed.path.rstrip("/")
     return f"{parsed.scheme.lower()}://{host}{path}"
+
+
+def _resolve_article_url(url: str, feed_url: str) -> str | None:
+    """Resolve a possibly-relative article URL against the feed URL.
+
+    Returns ``None`` if the result is not an http(s) URL or is just a fragment.
+    """
+    if not url:
+        return None
+    url = url.strip()
+    if url.startswith("#"):
+        return None
+    try:
+        resolved = urljoin(feed_url, url)
+        parsed = urlparse(resolved)
+    except ValueError:
+        return None
+    if parsed.scheme not in ("http", "https"):
+        return None
+    return resolved
 
 
 @dataclass
@@ -191,7 +239,12 @@ async def _check_dns_ssrf(url: str) -> None:
         raise ValueError("RSS feed URL must have a host")
 
     try:
-        infos = await asyncio.to_thread(socket.getaddrinfo, hostname, None)
+        infos = await asyncio.wait_for(
+            asyncio.to_thread(socket.getaddrinfo, hostname, None),
+            timeout=_FEED_TIMEOUT,
+        )
+    except TimeoutError as exc:
+        raise ValueError(f"RSS feed host {hostname} DNS resolution timed out") from exc
     except socket.gaierror as exc:
         raise ValueError(f"Could not resolve RSS feed host {hostname}: {exc}") from exc
 
@@ -228,37 +281,65 @@ async def fetch_feed(url: str) -> list[NewsArticle]:
         logger.warning("RSS feed URL %s rejected: %s", url, exc)
         return []
 
-    try:
-        async with httpx.AsyncClient(
-            timeout=_FEED_TIMEOUT,
-            follow_redirects=True,
-            headers=_FEED_HEADERS,
-            event_hooks={"request": [_validate_rss_request]},
-        ) as client:
-            async with client.stream("GET", url) as response:
-                response.raise_for_status()
-                chunks: list[bytes] = []
-                total = 0
-                async for chunk in response.aiter_bytes():
-                    total += len(chunk)
-                    if total > _FEED_MAX_BYTES:
-                        logger.warning(
-                            "RSS feed %s exceeds %d bytes; skipping",
-                            url,
-                            _FEED_MAX_BYTES,
-                        )
-                        return []
-                    chunks.append(chunk)
-            body = b"".join(chunks)
-    except httpx.HTTPStatusError as exc:
-        logger.warning("RSS feed %s returned %s", url, exc.response.status_code)
-        return []
-    except httpx.RequestError as exc:
-        logger.warning("RSS feed %s request error: %s", url, exc)
-        return []
-    except ValueError as exc:
-        logger.warning("RSS feed URL %s rejected during request: %s", url, exc)
-        return []
+    for attempt in range(_FEED_RETRY_ATTEMPTS):
+        try:
+            async with httpx.AsyncClient(
+                timeout=_FEED_TIMEOUT,
+                follow_redirects=True,
+                headers=_FEED_HEADERS,
+                event_hooks={"request": [_validate_rss_request]},
+            ) as client:
+                async with client.stream("GET", url) as response:
+                    response.raise_for_status()
+                    chunks: list[bytes] = []
+                    total = 0
+                    async for chunk in response.aiter_bytes():
+                        total += len(chunk)
+                        if total > _FEED_MAX_BYTES:
+                            logger.warning(
+                                "RSS feed %s exceeds %d bytes; skipping",
+                                url,
+                                _FEED_MAX_BYTES,
+                            )
+                            return []
+                        chunks.append(chunk)
+                body = b"".join(chunks)
+                if not body:
+                    logger.warning("RSS feed %s returned HTTP 200 with empty body", url)
+                    return []
+                break
+        except httpx.HTTPStatusError as exc:
+            status = exc.response.status_code if exc.response is not None else None
+            is_retryable = status is not None and (status == 429 or status >= 500)
+            if not is_retryable or attempt == _FEED_RETRY_ATTEMPTS - 1:
+                logger.warning("RSS feed %s returned %s", url, status)
+                return []
+            wait = _FEED_RETRY_BACKOFF * (2**attempt)
+            logger.warning(
+                "RSS feed %s returned %s (attempt %d/%d); retrying in %.1fs",
+                url,
+                status,
+                attempt + 1,
+                _FEED_RETRY_ATTEMPTS,
+                wait,
+            )
+            await asyncio.sleep(wait)
+        except httpx.RequestError as exc:
+            if attempt == _FEED_RETRY_ATTEMPTS - 1:
+                logger.warning("RSS feed %s request error: %s", url, exc)
+                return []
+            wait = _FEED_RETRY_BACKOFF * (2**attempt)
+            logger.warning(
+                "RSS feed %s request error (attempt %d/%d); retrying in %.1fs",
+                url,
+                attempt + 1,
+                _FEED_RETRY_ATTEMPTS,
+                wait,
+            )
+            await asyncio.sleep(wait)
+        except ValueError as exc:
+            logger.warning("RSS feed URL %s rejected during request: %s", url, exc)
+            return []
 
     # Reject entity-expansion (billion laughs) payloads before parsing.
     head = body[:4096].lower()
@@ -302,6 +383,14 @@ async def fetch_feed(url: str) -> list[NewsArticle]:
 
     articles: list[NewsArticle] = []
     for item in items:
+        if len(articles) >= _FEED_MAX_ITEMS:
+            logger.warning(
+                "RSS feed %s has more than %d items; truncating to first %d",
+                url,
+                _FEED_MAX_ITEMS,
+                _FEED_MAX_ITEMS,
+            )
+            break
         title = _first_text(item, "title") or "Untitled"
         link = _extract_link(item, url)
 

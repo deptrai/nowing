@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import httpx
 import pytest
 
 from app.services.news.rss_config import (
@@ -49,7 +50,11 @@ class _FakeResponse:
 
     def raise_for_status(self):
         if self.status_code >= 400:
-            raise Exception(f"HTTP {self.status_code}")
+            request = httpx.Request("GET", "https://example.com/feed.rss")
+            response = httpx.Response(self.status_code, request=request)
+            raise httpx.HTTPStatusError(
+                f"HTTP {self.status_code}", request=request, response=response
+            )
 
     async def aiter_bytes(self):
         for i in range(0, len(self.content), 1024):
@@ -428,3 +433,107 @@ def test_news_fingerprint_nfc_normalisation():
         source="S",
     )
     assert _news_fingerprint(article) == _news_fingerprint(article_with_desc)
+
+
+@pytest.mark.unit
+async def test_fetch_feed_resolves_relative_link(monkeypatch):
+    """Relative <link> and Atom href are resolved against the feed URL."""
+    feed = """<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Example</title>
+    <link>https://example.com</link>
+    <item>
+      <title>Relative link</title>
+      <link>/article/123</link>
+      <pubDate>Mon, 05 Aug 2024 14:30:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>
+"""
+    _patch_fetch(monkeypatch, feed)
+    articles = await fetch_feed("https://example.com/feed.rss")
+    assert len(articles) == 1
+    assert articles[0].link == "https://example.com/article/123"
+
+
+@pytest.mark.unit
+async def test_fetch_feed_guid_permalink_fallback(monkeypatch):
+    """<guid isPermaLink="true"> is used as the article link when <link> is absent."""
+    feed = """<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Example</title>
+    <link>https://example.com</link>
+    <item>
+      <title>Guid fallback</title>
+      <guid isPermaLink="true">https://example.com/article/guid-fallback</guid>
+      <pubDate>Mon, 05 Aug 2024 14:30:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>
+"""
+    _patch_fetch(monkeypatch, feed)
+    articles = await fetch_feed("https://example.com/feed.rss")
+    assert len(articles) == 1
+    assert articles[0].link == "https://example.com/article/guid-fallback"
+
+
+@pytest.mark.unit
+async def test_fetch_feed_caps_item_count(monkeypatch):
+    """A feed with more than _FEED_MAX_ITEMS items is truncated."""
+    from app.services.news.rss_fetcher import _FEED_MAX_ITEMS
+
+    items = "\n".join(
+        f"<item><title>Item {i}</title><link>https://example.com/article/{i}</link><pubDate>Mon, 05 Aug 2024 14:30:00 GMT</pubDate></item>"
+        for i in range(_FEED_MAX_ITEMS + 10)
+    )
+    feed = f"""<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel><title>Example</title><link>https://example.com</link>{items}</channel>
+</rss>
+"""
+    _patch_fetch(monkeypatch, feed)
+    articles = await fetch_feed("https://example.com/feed.rss")
+    assert len(articles) == _FEED_MAX_ITEMS
+
+
+@pytest.mark.unit
+async def test_fetch_feed_retries_429_then_succeeds(monkeypatch):
+    """A 429 response is retried before giving up."""
+
+    attempts = []
+
+    def _fake_stream_with_retry(self, method, url, **kwargs):
+        attempts.append(url)
+        if len(attempts) == 1:
+            return _FakeStream(_FakeResponse(b"", status_code=429))
+        return _FakeStream(_FakeResponse(SAMPLE_RSS, status_code=200))
+
+    async def _no_dns_check(url):
+        return None
+
+    monkeypatch.setattr(
+        "app.services.news.rss_fetcher.httpx.AsyncClient.stream", _fake_stream_with_retry
+    )
+    monkeypatch.setattr("app.services.news.rss_fetcher._check_dns_ssrf", _no_dns_check)
+
+    # Patch sleep so the test runs fast.
+    async def _noop_sleep(_):
+        return None
+
+    monkeypatch.setattr("app.services.news.rss_fetcher.asyncio.sleep", _noop_sleep)
+
+    articles = await fetch_feed("https://example.com/feed.rss")
+    assert len(articles) == 2
+    assert len(attempts) == 2
+
+
+@pytest.mark.unit
+async def test_fetch_feed_empty_body_logs_warning(monkeypatch, caplog):
+    """An HTTP 200 with an empty body is treated as a failure and logged."""
+    _patch_fetch(monkeypatch, b"")
+    with caplog.at_level("WARNING", logger="app.services.news.rss_fetcher"):
+        articles = await fetch_feed("https://example.com/feed.rss")
+    assert articles == []
+    assert "empty body" in caplog.text

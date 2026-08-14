@@ -30,7 +30,7 @@ from app.indexing_pipeline.indexing_pipeline_service import (
     PlaceholderInfo,
 )
 from app.services.news.rss_config import get_feeds_for_workspace
-from app.services.news.rss_fetcher import NewsArticle, fetch_feed
+from app.services.news.rss_fetcher import _MISSING_PUB_DATE, NewsArticle, fetch_feed
 from app.services.task_logging_service import TaskLoggingService
 
 from .base import get_connector_by_id, logger, update_connector_last_indexed
@@ -183,6 +183,20 @@ async def _persist_canonical_articles(
         )
 
 
+def _parse_meta_date(pub_date: str | None) -> datetime | None:
+    """Return a parsed UTC datetime from stored metadata pubDate.
+
+    Falls back to ``None`` for the epoch sentinel or unparseable values so the
+    caller can use ``Document.created_at`` instead.
+    """
+    if not pub_date or pub_date.startswith(_MISSING_PUB_DATE.isoformat()):
+        return None
+    try:
+        return datetime.fromisoformat(pub_date)
+    except ValueError:
+        return None
+
+
 async def _prune_stale_articles(
     session: AsyncSession,
     *,
@@ -198,12 +212,12 @@ async def _prune_stale_articles(
     """
     cutoff = datetime.now(UTC) - timedelta(days=RSS_RETENTION_DAYS)
     link_expr = Document.document_metadata["link"].as_string()
+    pub_date_expr = Document.document_metadata["pubDate"].as_string()
     result = await session.execute(
-        select(Document.id, link_expr).where(
+        select(Document.id, link_expr, pub_date_expr, Document.created_at).where(
             Document.workspace_id == workspace_id,
             Document.connector_id == connector_id,
             Document.document_type == DocumentType.NEWS_CONNECTOR,
-            Document.created_at < cutoff,
             ~link_expr.in_(seen_links),
         )
     )
@@ -211,8 +225,21 @@ async def _prune_stale_articles(
     if not rows:
         return 0
 
-    doc_ids = [row[0] for row in rows]
-    pruned_links = [row[1] for row in rows if row[1]]
+    prunable_ids: list[int] = []
+    pruned_links: list[str] = []
+    for doc_id, link, pub_date, created_at in rows:
+        article_date = _parse_meta_date(pub_date) or created_at
+        if article_date is None:
+            article_date = created_at
+        if article_date and article_date < cutoff:
+            prunable_ids.append(doc_id)
+            if link:
+                pruned_links.append(link)
+
+    if not prunable_ids:
+        return 0
+
+    doc_ids = prunable_ids
 
     # Chunks first, then the document rows (mirrors delete_document_task).
     batch_size = 500

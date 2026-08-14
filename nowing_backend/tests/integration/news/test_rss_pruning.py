@@ -7,6 +7,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.db import (
     CanonicalEntity,
@@ -95,7 +96,10 @@ async def test_prune_stale_articles_removes_docs_and_canonical(
             Document.document_metadata["link"].as_string() == stale_link
         )
     )
+    stale_pub_date = (datetime.now(UTC) - timedelta(days=40)).isoformat()
+    stale_doc.document_metadata["pubDate"] = stale_pub_date
     stale_doc.created_at = datetime.now(UTC) - timedelta(days=40)
+    flag_modified(stale_doc, "document_metadata")
     await db_session.commit()
 
     # The next poll only sees the second article; the stale one must go.
