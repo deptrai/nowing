@@ -30,11 +30,18 @@ logger = logging.getLogger(__name__)
 ScrapeFn = Callable[..., Awaitable[VietstockScrapeOutput]]
 
 
-def _statement_records(financials: Any, fetched_at: str) -> list[dict[str, Any]]:
+def _statement_records(
+    financials: Any,
+    quote: Any | None,
+) -> list[dict[str, Any]]:
     """Turn typed financial statements into canonical per-period records."""
     records: list[dict[str, Any]] = []
     if financials is None:
         return records
+
+    key_ratios: dict[str, Any] | None = None
+    if quote is not None:
+        key_ratios = quote.key_ratios.model_dump() if quote.key_ratios else None
 
     statements = {
         "balance_sheet": financials.balance_sheet,
@@ -54,30 +61,32 @@ def _statement_records(financials: Any, fetched_at: str) -> list[dict[str, Any]]
                             "value": values[idx],
                         }
                     )
-            records.append(
-                {
-                    "symbol": financials.symbol,
-                    "statement_type": statement_type,
-                    "period": period,
-                    "unit": report.unit,
-                    "items": items,
-                    "conflict_flags": False,
-                    "source_count": 1,
-                }
-            )
+            record: dict[str, Any] = {
+                "symbol": financials.symbol,
+                "statement_type": statement_type,
+                "period": period,
+                "unit": report.unit,
+                "items": items,
+                "conflict_flags": False,
+                "source_count": 1,
+            }
+            if key_ratios:
+                record["key_ratios"] = key_ratios
+            records.append(record)
     return records
 
 
 def _build_vietstock_chunks(
     result: VietstockScrapeOutput,
     fetched_at: str,
-) -> list[Any]:
+) -> tuple[list[Any], list[str]]:
     """Convert a Vietstock scrape result into ChainLens ``Chunk[]``.
 
-    Failures for individual records are swallowed so that one bad record does
-    not block the rest of the batch.
+    Failures for individual records are logged and returned as failure reasons
+    so the caller can decide whether the partial batch is acceptable.
     """
     chunks: list[Any] = []
+    failures: list[str] = []
 
     if result.quote is not None:
         try:
@@ -90,11 +99,12 @@ def _build_vietstock_chunks(
                     category="quote",
                 )
             )
-        except Exception:
+        except Exception as exc:
             logger.exception("vietstock quote chunk serialization failed")
+            failures.append(f"quote serialization failed: {exc}")
 
     if result.financials is not None:
-        for record in _statement_records(result.financials, fetched_at):
+        for record in _statement_records(result.financials, result.quote):
             try:
                 chunks.extend(
                     to_chunks(
@@ -105,13 +115,16 @@ def _build_vietstock_chunks(
                         category="financial_statement",
                     )
                 )
-            except Exception:
+            except Exception as exc:
                 logger.exception(
                     "vietstock financial chunk serialization failed",
                     extra={"symbol": record.get("symbol"), "period": record.get("period")},
                 )
+                failures.append(
+                    f"financial chunk serialization failed for {record.get('symbol')} {record.get('period')}: {exc}"
+                )
 
-    return chunks
+    return chunks, failures
 
 
 async def _ingest_vietstock_output(
@@ -121,7 +134,10 @@ async def _ingest_vietstock_output(
 ) -> None:
     """Ingest quote and financial statement chunks to chainlens-research."""
     fetched_at = datetime.now(UTC).isoformat()
-    chunks = _build_vietstock_chunks(result, fetched_at)
+    chunks, failures = _build_vietstock_chunks(result, fetched_at)
+    if failures:
+        output.degraded = True
+        output.degradation_reason = "; ".join(failures)
     if not chunks:
         output.ingest_status = "noop"
         return
@@ -138,9 +154,11 @@ async def _ingest_vietstock_output(
             ingest_result.ingest_job_id or ingest_result.parent_ingest_job_id
         )
         output.ingest_status = ingest_result.status
-    except Exception:
+    except Exception as exc:
         logger.exception("vietstock.scrape chainlens ingest failed")
         output.ingest_status = "failed"
+        output.degraded = True
+        output.degradation_reason = f"ingest_failed: {exc}"
 
 
 def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
@@ -198,12 +216,13 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
 
         billable = int(raw.billable_units or 0)
         degraded = bool(raw.degraded)
-        cost = (
-            0
-            if degraded
-            else billable
-            * getattr(config, "VIETSTOCK_DATA_MICROS_PER_ITEM", 5000)
-        )
+        rate = getattr(config, "VIETSTOCK_DATA_MICROS_PER_ITEM", 5000)
+        try:
+            rate = int(rate)
+        except (TypeError, ValueError):
+            rate = 5000
+            logger.warning("VIETSTOCK_DATA_MICROS_PER_ITEM is not an integer; using 5000")
+        cost = 0 if degraded else billable * rate
 
         output = ScrapeOutput(
             quote=raw.quote,

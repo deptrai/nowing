@@ -45,6 +45,9 @@ _throttle_lock = asyncio.Lock()
 _last_request_at: float | None = None
 
 # Mutable process-local cookie jar.
+# ponytail: process-local jar is sufficient for demo and single-credential
+# deployments. Replace with ScraperPlatformAccountRotator when admin-managed
+# cookie pools are required (see Story 15.2 review, deferred).
 _session_cookie: str | None = None
 
 
@@ -68,6 +71,7 @@ def _rate_limit_interval() -> float:
     """Seconds between requests for the configured per-process rate limit."""
     rate = getattr(config, "VIETSTOCK_RATE_LIMIT_RPS", 1 / 3)
     rps = float(rate) if rate is not None else 1 / 3
+    rps = max(0.0, rps)
     return 1.0 / max(rps, 1e-6)
 
 
@@ -119,6 +123,15 @@ def _set_cookie(value: str | None) -> None:
     """Update the process-local cookie."""
     global _session_cookie
     _session_cookie = value or None
+
+
+def _has_live_credentials() -> bool:
+    """Return True when a session cookie and both URLs are configured."""
+    return bool(
+        _get_cookie()
+        and getattr(config, "VIETSTOCK_QUOTE_URL", "")
+        and getattr(config, "VIETSTOCK_FINANCIAL_URL", "")
+    )
 
 
 async def _refresh_cookie() -> str:
@@ -362,6 +375,11 @@ async def fetch_quote(symbol: str) -> dict[str, Any]:
     if _demo_mode():
         return _demo_quote(symbol)
 
+    if not _has_live_credentials():
+        raise VietstockAuthRefreshError(
+            "missing_credentials: VIETSTOCK_SESSION_COOKIE and URLs are required"
+        )
+
     url = _quote_url(symbol)
     raw = await _do_get(url)
 
@@ -383,6 +401,11 @@ async def fetch_financials(symbol: str) -> dict[str, Any]:
     """Return raw balance-sheet/income/cash-flow dicts for *symbol*."""
     if _demo_mode():
         return _demo_financials(symbol)
+
+    if not _has_live_credentials():
+        raise VietstockAuthRefreshError(
+            "missing_credentials: VIETSTOCK_SESSION_COOKIE and URLs are required"
+        )
 
     balance, income, cash = await asyncio.gather(
         _fetch_statement("balance_sheet", symbol),

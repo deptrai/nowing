@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from app.proprietary.platforms.vietstock.parsers import (
+    _canonical_period,
     _normalize_ratio,
     _normalize_ratios,
     parse_financials,
@@ -130,3 +131,23 @@ def test_parse_financials_returns_empty_items() -> None:
     }
     financials = parse_financials(raw, "VNM")
     assert financials.balance_sheet.periods == []
+
+
+def test_canonical_period_quarter() -> None:
+    """Mirror: 'Q4-2025' stays canonical."""
+    assert _canonical_period("Q4-2025") == "Q4-2025"
+
+
+def test_canonical_period_year() -> None:
+    """Mirror: '2025' stays as year."""
+    assert _canonical_period("2025") == "2025"
+
+
+def test_canonical_period_iso_date() -> None:
+    """Mirror: '2025-12-31' becomes Q4-2025."""
+    assert _canonical_period("2025-12-31") == "Q4-2025"
+
+
+def test_canonical_period_vn_date() -> None:
+    """Mirror: '31/12/2025' becomes Q4-2025."""
+    assert _canonical_period("31/12/2025") == "Q4-2025"

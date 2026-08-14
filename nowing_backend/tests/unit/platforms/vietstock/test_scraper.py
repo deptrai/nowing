@@ -135,6 +135,8 @@ async def test_scrape_invalid_symbol_degrades() -> None:
 
 async def test_scrape_concurrent_respects_throttle() -> None:
     """Concurrent: two simultaneous scrapes must respect process-local throttle."""
+    import asyncio
+
     calls = []
 
     async def _quote_slow(symbol: str) -> dict:
@@ -142,8 +144,40 @@ async def test_scrape_concurrent_respects_throttle() -> None:
         return _demo_quote_raw(symbol)
 
     inp = VietstockScrapeInput(symbol="VNM")
-    out1 = await scrape_vietstock(inp, quote_fn=_quote_slow)
-    out2 = await scrape_vietstock(inp, quote_fn=_quote_slow)
+    out1, out2 = await asyncio.gather(
+        scrape_vietstock(inp, quote_fn=_quote_slow),
+        scrape_vietstock(inp, quote_fn=_quote_slow),
+    )
     assert out1.quote is not None
     assert out2.quote is not None
     assert len(calls) == 2
+
+
+async def test_scrape_whitespace_symbol_degrades() -> None:
+    """Edge: whitespace-only symbol should degrade without network."""
+    inp = VietstockScrapeInput(symbol="   ")
+    out = await scrape_vietstock(inp)
+    assert out.degraded
+    assert "invalid symbol" in (out.degradation_reason or "").lower()
+
+
+async def test_scrape_invalid_chars_symbol_degrades() -> None:
+    """Edge: symbol with invalid characters should degrade without network."""
+    inp = VietstockScrapeInput(symbol="VNM-XYZ!")
+    out = await scrape_vietstock(inp)
+    assert out.degraded
+    assert "invalid symbol" in (out.degradation_reason or "").lower()
+
+
+async def test_scrape_quote_fails_financials_succeeds() -> None:
+    """Over-Mocking: quote failure degrades the whole scrape."""
+
+    async def _quote_bad(symbol: str) -> dict:
+        raise VietstockRateLimitedError("429")
+
+    inp = VietstockScrapeInput(symbol="VNM", include_financials=True)
+    out = await scrape_vietstock(inp, quote_fn=_quote_bad, financials_fn=_financials_ok)
+    assert out.degraded
+    assert out.degradation_reason == "rate_limited"
+    assert out.quote is None
+    assert out.financials is None

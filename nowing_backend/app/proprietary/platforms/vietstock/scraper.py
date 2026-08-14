@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -23,9 +24,14 @@ QuoteFn = Callable[[str], Awaitable[dict[str, Any]]]
 FinancialsFn = Callable[[str], Awaitable[dict[str, Any]]]
 
 
+_SYMBOL_RE = re.compile(r"^[A-Z0-9]{1,10}$")
+
+
 def _is_valid_symbol(symbol: str | None) -> bool:
-    """A non-empty, non-whitespace symbol is required."""
-    return bool(symbol and symbol.strip())
+    """Validate a Vietnamese stock ticker: 1-10 uppercase letters/digits."""
+    if not symbol:
+        return False
+    return bool(_SYMBOL_RE.match(symbol.strip().upper()))
 
 
 async def scrape_vietstock(

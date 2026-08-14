@@ -227,7 +227,7 @@ nowing_backend/app/
 ### Test Results
 
 - `ruff check` — passed
-- `pytest tests/unit/platforms/vietstock tests/unit/capabilities/vietstock tests/unit/platforms/cafef tests/unit/capabilities/cafef tests/unit/services/scraper_chunks -q` — **99 passed**
+- `pytest tests/unit/platforms/vietstock tests/unit/capabilities/vietstock tests/unit/platforms/cafef tests/unit/capabilities/cafef tests/unit/services/scraper_chunks -q` — **108 passed**
 - `pytest tests/integration/vietstock -q` — **3 skipped** (requires live credentials)
 
 ### Open Questions Resolved
@@ -241,6 +241,34 @@ nowing_backend/app/
 - **Debug Log:** process-local cookie jar and throttle reset between tests via autouse fixture.
 - **Completion Notes:** All 5 ACs implemented and unit-tested. Integration tests require live Vietstock session cookie; marked skip pending credential spike.
 - **Next gates:** code-review, mutation-gate on billing module, human-review-gate (P0 credit surface).
+
+### Review Findings
+
+#### Decision Resolved
+
+- [x] [Review][Decision] Demo mode defaults to `TRUE` — **kept**. Live deployments must set `VIETSTOCK_DEMO_MODE=false` and provide cookie/URLs. Added `_has_live_credentials()` guard so missing credentials raise `VietstockAuthRefreshError("missing_credentials")` instead of hitting the network and getting a 401.
+- [x] [Review][Decision] Cross-source period normalization — **canonical format `Q#-YYYY` / `YYYY`**. Added `_canonical_period()` in `parsers.py` that handles `Q4-2025`, `2025`, `2025-12-31`, and `31/12/2025`, always normalizing dates to `Q#-YYYY` before hashing.
+- [x] [Review][Decision] `ScraperPlatformAccountService` — **deferred**. Current env/session-cookie fallback is sufficient for 15.2. Added TODO in `fetch.py` to integrate `ScraperPlatformAccountRotator` when admin-managed accounts are required.
+- [x] [Review][Decision] 403 handling — **kept per spec**. Both 401/403 trigger one cookie refresh attempt; repeated 403 becomes `VietstockAuthRefreshError` after the single retry.
+
+#### Patch Resolved
+
+- [x] [Review][Patch] Cross-source `sourceId` — `_stable_fingerprint` now uses a shared `stock:sha256:` prefix for all `_STOCK_DOMAINS`, so CafeF and Vietstock chunks for the same `(symbol, statement_type, period)` share the same `sourceId`.
+- [x] [Review][Patch] Domain canonical — added `vietstock` → `vietstock.com` and `cafef` → `cafef.vn` to `_DOMAIN_CANONICAL` in `serializer.py`.
+- [x] [Review][Patch] Symbol validation — `scraper.py` now validates `^[A-Z0-9]{1,10}$`.
+- [x] [Review][Patch] Billing config validation — `executor.py` now falls back to `5000` when `VIETSTOCK_DATA_MICROS_PER_ITEM` is not an integer.
+- [x] [Review][Patch] Rate limit negative config — `_rate_limit_interval()` now clamps negative RPS to `0.0` before computing the interval.
+- [x] [Review][Patch] Ingest failure — `executor.py` now sets `degraded=True` and `degradation_reason="ingest_failed: ..."` when `NowingIngestService.ingest()` raises.
+- [x] [Review][Patch] Chunk serialization visibility — `_build_vietstock_chunks()` now returns `(chunks, failures)` and surfaces serialization failures in the output `degradation_reason`.
+- [x] [Review][Patch] Tests expanded — added whitespace/invalid symbol, quote-fails-financials-succeeds, period normalization, missing credentials, negative rate limit, and invalid cost config tests.
+
+#### Deferred
+
+- [x] [Review][Defer] CafeF financials do not currently go through `to_chunks()` / `NowingIngestService.ingest()`; true cross-source merge requires updating Story 15.1 or a follow-up story.
+- [x] [Review][Defer] Per-request `httpx.AsyncClient` creation — minor performance hit, follows existing CafeF pattern; optimize later if profiling shows it matters.
+- [x] [Review][Defer] `httpx.TimeoutException` / `ConnectError` are mapped to `VietstockAccessBlockedError` — acceptable degradation behavior, no spec change required.
+- [x] [Review][Defer] 5xx server errors raise immediately without bounded retry; spec only requires 429 retry, can add 5xx retry later.
+- [x] [Review][Defer] 20+ years of historical data is a data-availability goal, not a runtime validation requirement.
 
 ## Tags
 

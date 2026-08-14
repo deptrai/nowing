@@ -74,6 +74,13 @@ async def test_executor_degraded_run_is_free(exec, monkeypatch) -> None:
     assert out.cost_micros == 0
 
 
+async def test_executor_cost_micros_invalid_config_defaults(exec, monkeypatch) -> None:
+    """Edge: non-integer cost config should fall back to default 5000."""
+    monkeypatch.setattr(config, "VIETSTOCK_DATA_MICROS_PER_ITEM", "not-an-int")
+    out = await exec(ScrapeInput(symbol="VNM"))
+    assert out.cost_micros == 5000
+
+
 async def test_executor_ingests_to_chainlens(exec, monkeypatch) -> None:
     """Over-Mocking: should call NowingIngestService and return ingestJobId."""
 
@@ -129,5 +136,6 @@ async def test_executor_ingest_failure_degrades(monkeypatch) -> None:
     executor = build_scrape_executor(scrape_fn=_fake_scrape)
     out = await executor(ScrapeInput(symbol="VNM"), ctx)
 
-    assert out.degraded is False
+    assert out.degraded is True
+    assert out.degradation_reason.startswith("ingest_failed")
     assert out.ingest_status == "failed"

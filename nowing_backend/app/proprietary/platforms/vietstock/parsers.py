@@ -36,6 +36,59 @@ def _as_int(value: Any) -> int | None:
         return None
 
 
+def _canonical_period(time: str) -> str:
+    """Normalize a period string to ``Q#-YYYY`` or ``YYYY``.
+
+    Handles the shapes seen from CafeF and Vietstock live APIs:
+    - ``Q4-2025`` -> ``Q4-2025``
+    - ``2025`` -> ``2025``
+    - ``31/12/2025`` or ``2025-12-31`` -> ``Q4-2025``
+    """
+    time = str(time).strip().upper()
+    if not time:
+        return ""
+
+    if time.startswith("Q"):
+        q, y = time[1:].split("-", 1)
+        return f"Q{int(q)}-{int(y)}"
+
+    # ISO date: 2025-12-31
+    iso_match = re.match(r"(\d{4})-(\d{1,2})-(\d{1,2})", time)
+    if iso_match:
+        year, month, _ = iso_match.groups()
+        quarter = (int(month) - 1) // 3 + 1
+        return f"Q{quarter}-{year}"
+
+    # VN date: 31/12/2025
+    vn_match = re.match(r"(\d{1,2})/(\d{1,2})/(\d{4})", time)
+    if vn_match:
+        _, month, year = vn_match.groups()
+        quarter = (int(month) - 1) // 3 + 1
+        return f"Q{quarter}-{year}"
+
+    # Bare year.
+    if re.match(r"^\d{4}$", time):
+        return time
+
+    # Fallback: keep the original string so the caller can still hash it.
+    return time
+
+
+def _sort_periods(periods: list[str]) -> list[str]:
+    """Sort periods by (year, quarter) for stable display."""
+
+    def _key(p: str) -> tuple[int, int]:
+        if p.startswith("Q"):
+            q, y = p[1:].split("-", 1)
+            return int(y), int(q)
+        try:
+            return int(p), 0
+        except ValueError:
+            return 0, 0
+
+    return sorted(periods, key=_key)
+
+
 def _normalize_ratio(value: Any) -> float | None:
     """Parse a human-readable ratio string into a normalized ``float``.
 
@@ -210,7 +263,9 @@ def parse_financial_statement(
 
             return VietstockFinancialReport(
                 statement_type=statement_type,
-                periods=[str(p) for p in raw.get("periods") or []],
+                periods=_sort_periods(
+                    [_canonical_period(p) for p in raw.get("periods") or []]
+                ),
                 items=items,
                 key_metrics=key_metrics,
                 unit=str(raw.get("unit") or "VND"),

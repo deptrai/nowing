@@ -31,6 +31,8 @@ _DOMAIN_CANONICAL = {
     "itviec": "itviec.com",
     "topcv": "topcv.com",
     "vietnamworks": "vietnamworks.com",
+    "vietstock": "vietstock.com",
+    "cafef": "cafef.vn",
 }
 
 
@@ -312,7 +314,13 @@ def _identity_fields(domain: str, data: dict[str, Any]) -> dict[str, Any]:
 
 
 def _stable_fingerprint(domain: str, data: dict[str, Any]) -> str:
-    """Return a deterministic, domain-prefixed fingerprint for a record."""
+    """Return a deterministic, domain-prefixed fingerprint for a record.
+
+    Stock/financial records from multiple sources (cafef, vietstock) share the
+    same canonical identity (symbol + statement_type + period) so the prefix is
+    ``stock:`` instead of the source domain. This lets chainlens-research merge
+    cross-source reports for the same entity (Story 15.2 AC-3, AD-24).
+    """
     identity = _identity_fields(domain, data)
     payload = json.dumps(
         {k: str(v) for k, v in sorted(identity.items()) if v is not None},
@@ -320,7 +328,8 @@ def _stable_fingerprint(domain: str, data: dict[str, Any]) -> str:
         ensure_ascii=False,
     )
     digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()[:32]
-    return f"{domain}:sha256:{digest}"
+    prefix = "stock" if _is_stock_domain(domain) else domain
+    return f"{prefix}:sha256:{digest}"
 
 
 def _word_tokens_for_chunk(encoder: Any, word: str, is_first: bool) -> list[int]:

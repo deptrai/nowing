@@ -24,8 +24,8 @@ def test_quote_to_chunks_has_canonical_source_id() -> None:
         category="quote",
     )
     assert len(chunks) > 0
-    assert chunks[0].metadata.sourceId.startswith("vietstock:sha256:")
-    assert chunks[0].metadata.domain == "vietstock"
+    assert chunks[0].metadata.sourceId.startswith("stock:sha256:")
+    assert chunks[0].metadata.domain == "vietstock.com"
     assert chunks[0].metadata.source == "nowing_scraper"
 
 
@@ -90,4 +90,4 @@ def test_cross_source_source_id_matches_cafef() -> None:
     )
     v_id = vietstock_chunks[0].metadata.sourceId
     c_id = cafef_chunks[0].metadata.sourceId
-    assert v_id.split(":")[2] == c_id.split(":")[2]
+    assert v_id == c_id

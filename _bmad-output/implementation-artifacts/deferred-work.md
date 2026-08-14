@@ -1,3 +1,25 @@
+## Deferred from: code review of story-15-2-vietstock-deep-financials (2026-08-15)
+
+- **Finding:** CafeF financials do not currently go through `to_chunks()` / `NowingIngestService.ingest()`; true cross-source merge requires updating Story 15.1 or a follow-up story.
+  - **Action:** Marked `[x] [Review][Defer]` in `15-2-vietstock-deep-financials.md`.
+  - **Reason / when to revisit:** Pre-existing ingestion pipeline mismatch. Revisit when Story 15.1 financials are migrated to ChainLens ingest or a cross-source reconciliation story is scheduled.
+
+- **Finding:** Per-request `httpx.AsyncClient` creation in `fetch.py`.
+  - **Action:** Marked `[x] [Review][Defer]` in `15-2-vietstock-deep-financials.md`.
+  - **Reason / when to revisit:** Minor performance hit, follows existing CafeF pattern. Revisit if profiling shows connection pooling matters for Vietstock throughput.
+
+- **Finding:** `httpx.TimeoutException` / `ConnectError` mapped to `VietstockAccessBlockedError`.
+  - **Action:** Marked `[x] [Review][Defer]` in `15-2-vietstock-deep-financials.md`.
+  - **Reason / when to revisit:** Acceptable degradation behavior per spec. Revisit if observability needs distinguish network vs. server blocks.
+
+- **Finding:** 5xx server errors raise immediately without bounded retry.
+  - **Action:** Marked `[x] [Review][Defer]` in `15-2-vietstock-deep-financials.md`.
+  - **Reason / when to revisit:** Spec only requires 429 retry. Revisit if live probes show transient 5xx from Vietstock.
+
+- **Finding:** 20+ years of historical data is a data-availability goal, not a runtime validation requirement.
+  - **Action:** Marked `[x] [Review][Defer]` in `15-2-vietstock-deep-financials.md`.
+  - **Reason / when to revisit:** Data coverage depends on source API. Revisit if product requires a minimum period count guard.
+
 ## Deferred from: code review of story-12-4a-4b-normalize-dedupe-conflict round 2 (2026-08-13)
 
 - **Finding:** Location filter fallback for unknown cities — when `resolve_city_code` returns None for both input and item, comparison falls back to raw lowercased strings.

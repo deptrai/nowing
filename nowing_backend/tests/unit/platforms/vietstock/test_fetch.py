@@ -11,6 +11,7 @@ from app.proprietary.platforms.vietstock.fetch import (
     VietstockAuthRefreshError,
     VietstockDecodeError,
     VietstockRateLimitedError,
+    _rate_limit_interval,
     _set_cookie,
     fetch_financials,
     fetch_quote,
@@ -42,6 +43,7 @@ def _fast_config(monkeypatch):
         "app.config.config.VIETSTOCK_FINANCIAL_URL",
         "https://finance.vietstock.vn/api/finance/{statement_type}?symbol={symbol}",
     )
+    monkeypatch.setattr("app.config.config.VIETSTOCK_SESSION_COOKIE", "session=demo")
 
 
 @respx.mock
@@ -73,13 +75,14 @@ async def test_fetch_quote_with_valid_credentials(monkeypatch) -> None:
 
 
 @respx.mock
-async def test_fetch_quote_no_credentials_degrades() -> None:
+async def test_fetch_quote_no_credentials_degrades(monkeypatch) -> None:
     """Edge: no credentials configured should fail with VietstockAuthRefreshError."""
-    url = "https://finance.vietstock.vn/api/trading/VNM"
-    respx.get(url).mock(return_value=httpx.Response(401))
-    respx.get("https://finance.vietstock.vn").mock(return_value=httpx.Response(401))
-    with pytest.raises(VietstockAuthRefreshError):
+    monkeypatch.setattr("app.config.config.VIETSTOCK_SESSION_COOKIE", "")
+    monkeypatch.setattr("app.config.config.VIETSTOCK_QUOTE_URL", "")
+    monkeypatch.setattr("app.config.config.VIETSTOCK_FINANCIAL_URL", "")
+    with pytest.raises(VietstockAuthRefreshError) as exc:
         await fetch_quote("VNM")
+    assert "missing_credentials" in str(exc.value)
 
 
 @respx.mock
@@ -178,3 +181,9 @@ async def test_fetch_quote_invalid_json() -> None:
     )
     with pytest.raises(VietstockDecodeError):
         await fetch_quote("VNM")
+
+
+def test_rate_limit_negative_config_defaults_to_safe_value(monkeypatch) -> None:
+    """Edge: negative rate limit config should clamp to a safe interval."""
+    monkeypatch.setattr("app.config.config.VIETSTOCK_RATE_LIMIT_RPS", -10.0)
+    assert _rate_limit_interval() > 0
