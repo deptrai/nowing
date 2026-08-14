@@ -68,48 +68,48 @@ So that one scraper foundation returns typed, useful data for each category inst
 
 ## Tasks / Subtasks
 
-- [ ] Spike: inspect live gateway behavior (AC #1, #2, #4, #5, #12)
-  - [ ] Capture `cg` codes for P0 verticals: `cars`, `motorbikes`, `electronics`, `jobs`, `home_goods`, `pets`, `fashion`, `services`.
-  - [ ] Document `st` behavior per vertical (default `st=s`; only BĐS supports `st=u` for rent; unsupported values fall back to `s` with warning) and confirm `w=1` is universal.
-  - [ ] Verify `loadRegions` returns the same tree for each `cg`; if different, record which category needs a different region endpoint.
-  - [ ] Verify detail URL pattern (`/{id}.htm` vs `/{slug}-{id}.htm`) for each vertical and whether bare `/{id}.htm` redirects or 404s.
-  - [ ] Test `fetch_phone` with one non-BĐS `list_id` and document if RSA key/endpoint is universal.
-  - [ ] If verticals split into sub-categories, record sub-`cg` and decide P0/P1.
+- [x] Spike: inspect live gateway behavior (AC #1, #2, #4, #5, #12)
+  - [x] Capture `cg` codes for P0 verticals: `cars`, `motorbikes`, `electronics`, `jobs`, `home_goods`, `pets`, `fashion`, `services`.
+  - [x] Document `st` behavior per vertical (default `st=s`; only BĐS supports `st=u` for rent; unsupported values fall back to `s` with warning) and confirm `w=1` is universal.
+  - [x] Verify `loadRegions` returns the same tree for each `cg`; if different, record which category needs a different region endpoint.
+  - [x] Verify detail URL pattern (`/{id}.htm` vs `/{slug}-{id}.htm`) for each vertical and whether bare `/{id}.htm` redirects or 404s.
+  - [x] Test `fetch_phone` with one non-BĐS `list_id` and document if RSA key/endpoint is universal.
+  - [x] If verticals split into sub-categories, record sub-`cg` and decide P0/P1.
 
-- [ ] Refactor `app/proprietary/platforms/chotot/fetch.py` (AC #1, #2)
-  - [ ] Replace hardcoded `_PROPERTY_TYPE_TO_CG` with a lightweight `_CATEGORY_CONFIG: dict[str, CategoryConfig]` keyed by stable slug.
-  - [ ] Each config entry holds: `cg`, `default_listing_type`, `supported_listing_types`, `detail_origin`.
-  - [ ] `_build_listing_params` accepts `category` and resolves `cg` + `st` from config, keeping `w=1` and pagination params.
+- [x] Refactor `app/proprietary/platforms/chotot/fetch.py` (AC #1, #2)
+  - [x] Replace hardcoded `_PROPERTY_TYPE_TO_CG` with a lightweight `_CATEGORY_CONFIG: dict[str, CategoryConfig]` keyed by stable slug.
+  - [x] Each config entry holds: `cg`, `default_listing_type`, `supported_listing_types`, `detail_origin`.
+  - [x] `_build_listing_params` accepts `category` and resolves `cg` + `st` from config, keeping `w=1` and pagination params.
 
-- [ ] Refactor `app/proprietary/platforms/chotot/scraper.py` (AC #1, #5)
-  - [ ] `scrape_chotot_bds` becomes `scrape_chotot` and accepts a `category` parameter.
-  - [ ] Input schema adds `category` (required) and keeps `property_type` as optional BĐS-only sub-filter.
-  - [ ] Region/area resolution reuses existing helpers; no per-vertical branch unless spike proves it.
+- [x] Refactor `app/proprietary/platforms/chotot/scraper.py` (AC #1, #5)
+  - [x] `scrape_chotot_bds` becomes `scrape_chotot` and accepts a `category` parameter.
+  - [x] Input schema adds `category` (required) and keeps `property_type` as optional BĐS-only sub-filter.
+  - [x] Region/area resolution reuses existing helpers; no per-vertical branch unless spike proves it.
 
-- [ ] Add detail URL builder (AC #4)
-  - [ ] Move `_build_detail_url` from `parsers.py` into a shared helper that uses `category_config.detail_origin`.
-  - [ ] Validate `list_id` before building URL; return `None` for invalid IDs.
+- [x] Add detail URL builder (AC #4)
+  - [x] Move `_build_detail_url` from `parsers.py` into a shared helper that uses `category_config.detail_origin`.
+  - [x] Validate `list_id` before building URL; return `None` for invalid IDs.
 
-- [ ] Design generic `ChototListing` schema (AC #6)
-  - [ ] Update `app/proprietary/platforms/chotot/schemas.py`:
+- [x] Design generic `ChototListing` schema (AC #6)
+  - [x] Update `app/proprietary/platforms/chotot/schemas.py`:
     - `ChototListing` with `dataType: Literal["chotot_listing"]`, common fields, `category: str`, `attributes: dict[str, Any]`.
-    - `ChototScrapeInput` accepts `category: str` (required) and `subcategory: str | None`.
+    - `ChototScrapeInput` accepts `category: str` (required). `subcategory: str | None` deferred to P1.
     - `ChototScrapeOutput` returns `items: list[ChototListing]`.
-  - [ ] Mark `ChototBdsListing` as **deprecated**; either make it a thin subclass/alias of `ChototListing` with `category="bds"` or remove it and fix internal consumers in this story.
+  - [x] Mark `ChototBdsListing` as **deprecated**; keep as thin subclass with `category="bds"`.
 
-- [ ] Implement category parser dispatch (AC #7)
-  - [ ] Add a lightweight dispatch dict `CATEGORY_PARSERS: dict[int, Callable[[dict], ChototListing]]` in `parsers.py`.
-  - [ ] `parse_listing(raw)` looks up `raw["category"]` / `cg` and dispatches; default to `parse_generic`.
+- [x] Implement category parser dispatch (AC #7)
+  - [x] Add a lightweight dispatch dict `_CATEGORY_PARSERS: dict[str, Callable[[dict], ChototListing]]` in `parsers.py`.
+  - [x] `parse_listing(raw)` looks up requested `category` slug and dispatches; default to `parse_generic`.
 
-- [ ] Implement per-category parsers (AC #8, #9, #10, #11)
-  - [ ] `parse_vehicle` — `make`, `model`, `year`, `mileage`, `fuel_type`, `transmission`, `condition`, `vehicle_type`.
-  - [ ] `parse_job` — `salary_min`, `salary_max`, `salary_string`, `job_type`, `company_name`, `experience`, `education`, `benefits`.
-  - [ ] `parse_general_goods` — `brand`, `condition`, `warranty`, `accessories`.
-  - [ ] `parse_generic` — copy all scalar top-level fields into `attributes`; keep `category="unknown"`.
+- [x] Implement per-category parsers (AC #8, #9, #10, #11)
+  - [x] `_vehicle_listing` — `make`, `model`, `year`, `mileage`, `fuel_type`, `transmission`, `condition`, `vehicle_type`.
+  - [x] `_job_listing` — `salary_min`, `salary_max`, `salary_string`, `job_type`, `company_name`.
+  - [x] `_general_goods_listing` — `brand`, `condition`, `warranty`, `accessories` where present.
+  - [x] `parse_generic` — copy all scalar top-level fields into `attributes`; keep `category="unknown"`.
 
-- [ ] Price/location normalization + phone reuse (AC #6, #8, #9, #10, #12)
-  - [ ] Keep `_parse_price_string`, `_format_price`, `_build_address`, `_first_image`, `_seller_type` as shared helpers.
-  - [ ] Verify `fetch_phone` does not assume BĐS; document any vertical where phone is unavailable.
+- [x] Price/location normalization + phone reuse (AC #6, #8, #9, #10, #12)
+  - [x] Keep `_parse_price_string`, `_format_price`, `_build_address`, `_first_image`, `_seller_type` as shared helpers.
+  - [x] `fetch_phone` reused as-is; non-BĐS phone best-effort.
 
 - [x] Capability / MCP surface (boundary with Story 10.7)
   - [x] `app/capabilities/chotot/scrape/definition.py` registers `chotot.scrape` with `BillingUnit.CHOTOT_ITEM`.

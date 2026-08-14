@@ -13,7 +13,18 @@ from ....core.workspace_context import WorkspaceContext, WorkspaceParam
 from ..annotations import SCRAPE
 from ..capability import run_scraper
 
-ChototCategory = Literal[
+ChototCategory = Annotated[
+    str,
+    Field(
+        pattern=r"^(bds|cars|motorbikes|electronics|jobs|home_goods|home_appliances|kitchen|pets|fashion|services|home_services|\d+)$",
+        description="Category slug (e.g. 'cars', 'jobs') or raw numeric gateway category code (cg).",
+    ),
+]
+ChototListingType = Literal["buy", "rent", "sell", "want_to_buy"]
+ChototPropertyType = Literal["apartment", "house", "land", "office", "all"]
+
+# Re-export known slugs for documentation and selfcheck references.
+KNOWN_CATEGORIES = frozenset({
     "bds",
     "cars",
     "motorbikes",
@@ -26,9 +37,7 @@ ChototCategory = Literal[
     "fashion",
     "services",
     "home_services",
-]
-ChototListingType = Literal["buy", "rent", "sell", "want_to_buy"]
-ChototPropertyType = Literal["apartment", "house", "land", "office", "all"]
+})
 
 
 def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> None:
@@ -41,14 +50,7 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
         structured_output=False,
     )
     async def chotot_scrape(
-        category: Annotated[
-            ChototCategory,
-            Field(
-                description="Category to scrape: bds, cars, motorbikes, electronics, "
-                "jobs, home_goods, home_appliances, kitchen, pets, fashion, "
-                "services, or home_services."
-            ),
-        ],
+        category: ChototCategory,
         city: Annotated[
             str,
             Field(
