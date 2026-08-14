@@ -60,8 +60,14 @@ export const PLAYGROUND_PLATFORMS: PlaygroundPlatform[] = [
 		verbs: [{ name: "batdongsan.scrape", verb: "scrape", label: "Scrape" }],
 	},
 	{
+		id: "chotot",
+		label: "Chợ Tốt",
+		icon: ChototIcon,
+		verbs: [{ name: "chotot.scrape", verb: "scrape", label: "Scrape" }],
+	},
+	{
 		id: "chotot_bds",
-		label: "Chotot BĐS",
+		label: "Chotot BĐS (legacy)",
 		icon: ChototIcon,
 		verbs: [{ name: "chotot_bds.scrape", verb: "scrape", label: "Scrape" }],
 	},
