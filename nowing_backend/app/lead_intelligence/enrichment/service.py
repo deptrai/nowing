@@ -350,7 +350,7 @@ class EnrichmentService:
     async def _mark_failed(
         self,
         session: AsyncSession,
-        request_id: UUID | str,
+        request_id: UUID | str,  # pragma: no mutate
         workspace_id: int,
         client_id: str | None,  # pragma: no mutate
     ) -> None:
