@@ -102,7 +102,7 @@ class TestReDoSSafety:
         start_time = time.perf_counter()
         phones = extractor.extract_phones(pathological_str, timeout_sec=0.05)
         duration = time.perf_counter() - start_time
-        assert duration < 0.10  # generous headroom for test environments, target <= 50ms logic
+        assert duration < 0.05  # enforce the 50ms spec bound
         assert isinstance(phones, list)
 
     def test_long_random_content_safety(self, extractor):
@@ -166,3 +166,10 @@ class TestEntityExtraction:
         assert any("12.5 tỷ" in p.lower() or "12.5" in p for p in entities["prices"])
         assert any("Hà Nội" in loc or "Cầu Giấy" in loc for loc in entities["locations"])
         assert entities["intent"] == "sell"
+
+    def test_email_regex_rejects_invalid_addresses(self, extractor):
+        """The email regex should not match obviously invalid addresses."""
+        assert extractor.extract_emails("user@.com") == []
+        assert extractor.extract_emails("user@com") == []
+        assert extractor.extract_emails("@nowhere.com") == []
+        assert "valid@example.com" in extractor.extract_emails("valid@example.com")

@@ -74,11 +74,12 @@ class B2BOutreachService:
         sender_company = request.sender_company or "Nowing"
 
         hooks: list[str] = []
+        detail_suffix = f" ({signal_details})" if signal_details else ""
 
         if signal_type == OutreachSignalType.HIRING_SPIKE:
             subject = f"Chiến lược tăng tốc quy mô nhân sự tại {company} cùng {offering}"
-            hook = f"Tôi nhận thấy {company} đang có bước phát triển vượt bậc và mở rộng tuyển dụng mạnh mẽ ({signal_details})."
-            hooks.append(f"Hiring Growth Signal: {signal_details}")
+            hook = f"Tôi nhận thấy {company} đang có bước phát triển vượt bậc và mở rộng tuyển dụng mạnh mẽ{detail_suffix}."
+            hooks.append(f"Hiring Growth Signal: {signal_details}" if signal_details else "Hiring Growth Signal")
             body_intro = (
                 f"Kính gửi Anh/Chị {name} ({title} tại {company}),\n\n"
                 f"{hook}\n\n"
@@ -87,8 +88,8 @@ class B2BOutreachService:
             )
         elif signal_type == OutreachSignalType.TENDER_WIN:
             subject = f"Chúc mừng {company} trúng gói thầu mới & Giải pháp đồng hành cùng {offering}"
-            hook = f"Chúc mừng {company} và Anh/Chị {name} vừa đạt được bước tiến lớn với gói thầu ({signal_details})."
-            hooks.append(f"Tender Win Signal: {signal_details}")
+            hook = f"Chúc mừng {company} và Anh/Chị {name} vừa đạt được bước tiến lớn với gói thầu{detail_suffix}."
+            hooks.append(f"Tender Win Signal: {signal_details}" if signal_details else "Tender Win Signal")
             body_intro = (
                 f"Kính gửi Anh/Chị {name} ({title} tại {company}),\n\n"
                 f"{hook}\n\n"
@@ -97,8 +98,8 @@ class B2BOutreachService:
             )
         elif signal_type == OutreachSignalType.FUNDING_ROUND:
             subject = f"Chúc mừng cột mốc gọi vốn của {company} & Đề xuất hợp tác từ {sender_company}"
-            hook = f"Xin chúc mừng {company} với vòng gọi vốn thành công gần đây ({signal_details})."
-            hooks.append(f"Funding Round Signal: {signal_details}")
+            hook = f"Xin chúc mừng {company} với vòng gọi vốn thành công gần đây{detail_suffix}."
+            hooks.append(f"Funding Round Signal: {signal_details}" if signal_details else "Funding Round Signal")
             body_intro = (
                 f"Kính gửi Anh/Chị {name} ({title} tại {company}),\n\n"
                 f"{hook}\n\n"

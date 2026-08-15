@@ -20,5 +20,5 @@ def test_phone_regex_redos_safety_bound():
         phones = extractor.extract_phones(pathological_str, timeout_sec=0.05)
         duration = time.perf_counter() - start_time
         # In typical runtimes duration should be well below 50ms
-        assert duration < 0.10, f"ReDoS took {duration:.4f}s on input len={len(pathological_str)}"
+        assert duration < 0.05, f"ReDoS took {duration:.4f}s on input len={len(pathological_str)}"
         assert isinstance(phones, list)

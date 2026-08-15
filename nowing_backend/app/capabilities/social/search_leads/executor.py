@@ -73,7 +73,11 @@ def build_search_leads_executor() -> Callable[..., Awaitable[SocialSearchLeadsOu
 
             query = query.where(and_(*filters))
 
-            query = query.order_by(desc(SocialPost.published_at), desc(SocialPost.fit_score)).limit(payload.limit)
+            query = (
+                query.order_by(desc(SocialPost.published_at), desc(SocialPost.fit_score))
+                .offset(payload.offset)
+                .limit(payload.limit)
+            )
             result = await session.execute(query)
             rows = result.scalars().all()
 

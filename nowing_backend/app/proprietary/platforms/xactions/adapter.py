@@ -272,6 +272,13 @@ class XActionsSocialAdapter:
         """AD-SOC-3: Sticky 1-to-1 proxy mapping per platform account."""
         if not account_id or not isinstance(account_id, str):
             raise ValueError("account_id must be a non-empty string")
+        if len(account_id) > 128:
+            raise ValueError("account_id must be 128 characters or fewer")
+        if not re.fullmatch(r"[a-zA-Z0-9_\-:./]+", account_id):
+            raise ValueError(
+                "account_id contains invalid characters; allowed: "
+                "alphanumeric, underscore, hyphen, colon, dot, slash"
+            )
         self._account_proxies[account_id] = proxy_url
 
         client = await self._get_proxy_redis_client()

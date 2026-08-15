@@ -1339,6 +1339,15 @@ class Config:
     CLICKUP_CLIENT_SECRET = os.getenv("CLICKUP_CLIENT_SECRET")
     CLICKUP_REDIRECT_URI = os.getenv("CLICKUP_REDIRECT_URI")
 
+    # Outbound alert / transactional email (optional; when unset, email channel
+    # logs a warning and is skipped). Leave TLS on by default.
+    SMTP_HOST = os.getenv("SMTP_HOST")
+    SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USER = os.getenv("SMTP_USER")
+    SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+    SMTP_FROM = os.getenv("SMTP_FROM")
+    SMTP_TLS = os.getenv("SMTP_TLS", "TRUE").upper() == "TRUE"
+
     # Dropbox OAuth
     DROPBOX_APP_KEY = os.getenv("DROPBOX_APP_KEY")
     DROPBOX_APP_SECRET = os.getenv("DROPBOX_APP_SECRET")

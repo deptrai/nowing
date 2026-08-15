@@ -231,6 +231,46 @@ class TestJobAlertNotify:
         snapshot = session.added[0]
         assert snapshot.new_items_count == 0
 
+    @pytest.mark.asyncio
+    async def test_job_alert_first_run_suppresses_notification(self):
+        """AC-2 baseline: first run stores a baseline snapshot and does not notify."""
+        rule = _FakeRule(
+            id=uuid4(),
+            workspace_id=1,
+            name="Python jobs",
+            capability_id="vn_jobs.aggregate",
+            query={"keyword": "python"},
+            diff_strategy="new_items",
+            notification_channels=["in_app"],
+            threshold={},
+        )
+        session = _FakeSession(prev=None)
+
+        fake_capability = mock.MagicMock()
+        fake_capability.input_schema.model_validate.return_value = rule.query
+        with (
+            mock.patch.object(CapabilityRegistry, "get", return_value=fake_capability),
+            mock.patch("app.alerts.engine.execute.execute_with_context") as mock_run,
+            mock.patch(
+                "app.alerts.engine.execute.notify_alert_run",
+                new=mock.AsyncMock(),
+            ) as mock_notify,
+        ):
+            mock_run.return_value = {
+                "items": [{"id": "job-1"}, {"id": "job-2"}],
+                "degraded": False,
+            }
+            await execute_alert_rule(
+                session=session,
+                alert_rule=rule,
+                fired_at=__import__("datetime").datetime.now(__import__("datetime").UTC),
+            )
+
+        assert mock_notify.await_count == 0
+        snapshot = session.added[0]
+        assert snapshot.new_items_count == 0
+        assert snapshot.snapshot_json["source_ids"] == ["job-1", "job-2"]
+
 
 class TestJobAlertDegraded:
     """AC-5: degraded source / missing rule handling."""

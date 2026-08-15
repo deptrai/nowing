@@ -528,11 +528,9 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - Epoch sentinel: `_MISSING_PUB_DATE` (1970-01-01) surfaces in UI when pubDate is missing; deliberate deterministic design to avoid re-index churn, accepted at review. **RESOLVED (2026-08-13):** sentinel stays in canonical data/metadata (anti-churn); RSS source markdown now renders "Unknown" via `_format_pub_date` instead of the epoch value. No frontend renders `metadata.pubDate` directly (verified by grep).
 - ~~Connector deletion orphans canonical entities: deleting a connector does not clean up its canonical entities; pre-existing general behavior for all connector types.~~ **RESOLVED (2026-08-13):** delete connector route collects document links during the batch deletion loop and then removes canonical sources by record_ids + sweeps orphaned `news_article` entities. Verified by `tests/integration/routes/test_search_source_connectors_routes.py`.
 
-## Deferred from: code review of 21-8-social-ingress-via-xactions-integration (2026-08-15)
+## Resolved/Dismissed from: code review of 21-8-social-ingress-via-xactions-integration (2026-08-15)
 
-- **Finding:** Redundant status fields in SocialMonitoredTarget — Table has both is_active (boolean) and status (string with default 'active') fields. These are redundant and can become inconsistent. No enum constraint limits valid status values. (app/db.py:4881-4885)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
-  - **Reason / when to revisit:** Table has both is_active (boolean) and status (string with default 'active') fields. These are redundant and can become inconsistent. No enum constraint limits valid status values. Out-of-scope or future improvement for Story 21.8.
+- **Finding:** Redundant status fields in SocialMonitoredTarget — **DISMISSED:** pre-existing flexible schema; `is_active` and `status` are intentionally left for future target states.
 
 - **Finding:** Confusing duplicate timing fields in SocialMonitoredTarget — Three timing-related fields: realtime_stream (bool), scrape_interval_minutes (default 15), and poll_interval_seconds (default 900). The last two are the same value in different units, creating confusion. (app/db.py:4882-4884)
   - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
@@ -642,24 +640,19 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
   - **Reason / when to revisit:** CASCADE delete means if target is deleted, all associated posts are deleted. Could cause data loss if target is accidentally deleted. No soft delete or archival mechanism. Out-of-scope or future improvement for Story 21.8.
 
-## Deferred from: re-review of 21-8-social-ingress-via-xactions-integration (2026-08-15)
+## Resolved from: re-review of 21-8-social-ingress-via-xactions-integration (2026-08-15)
 
 - **Finding:** Email alert channel is still `pass` in `app/alerts/engine/notify.py:146-152` — `AlertEngine` is supposed to fire Telegram/Email, but the email branch is not implemented. (app/alerts/engine/notify.py:146-152)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
-  - **Reason / when to revisit:** Email alert channel is pre-existing/out-of-scope for Story 21.8; Telegram is the primary channel.
+  - **Resolution:** Implemented `_email` using `smtplib` + optional `SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASSWORD/SMTP_FROM/SMTP_TLS` env; logs a warning and skips if not configured.
 
 - **Finding:** First-run alert rules suppress notification — existing alert-engine behavior stores a snapshot on the first run and does not notify. (app/alerts/engine/execute.py:113, 158-189, 210-225)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
-  - **Reason / when to revisit:** Pre-existing alert-engine behavior, not introduced by 21.8.
+  - **Resolution:** Confirmed as intentional baseline behavior; added unit test `tests/unit/alerts/test_job_alert.py::test_job_alert_first_run_suppresses_notification` documenting the contract.
 
 - **Finding:** `test_social_redis_stream.py` mocks DB and never touches Redis/Postgres — the integration test does not exercise real persistence. (tests/integration/platforms/test_social_redis_stream.py)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
-  - **Reason / when to revisit:** Known integration-test gap; deferred to a follow-up integration-test pass.
+  - **Resolution:** Rewrote as a real integration test using a target fixture, Redis `xadd`, `run_social_stream_consumer`, and Postgres assertions; added `tests/integration/platforms/conftest.py` that skips when PostGIS is unavailable.
 
 - **Finding:** No test for social post → alert-engine notification path — no test creates an `AlertRule` and asserts notification firing. (app/tasks/social_stream_worker.py:254-293)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
-  - **Reason / when to revisit:** Pre-existing test gap, out-of-scope for the current review pass.
+  - **Resolution:** Added `tests/unit/tasks/test_social_stream_worker.py` covering `_evaluate_alerts_for_social_post` and duplicate lead guard.
 
 - **Finding:** ReDoS timeout not enforced on initial `normalize_vietnamese_text` regex calls — the 50ms timer only checks inside the candidate loop, not the initial normalization regex. (app/proprietary/platforms/xactions/phone_extractor.py:76-145)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
-  - **Reason / when to revisit:** Already a deferred quality gap; requires a broader per-stage timeout design.
+  - **Resolution:** Moved `start_time` before `normalize_vietnamese_text` and added a timeout check immediately after; added a 200k input-length cap as a secondary defense.

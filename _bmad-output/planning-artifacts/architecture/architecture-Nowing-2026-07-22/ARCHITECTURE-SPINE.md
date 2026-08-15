@@ -569,6 +569,17 @@ BSL Additional Use Grant cấm bán Licensed Work — **hoặc sản phẩm mà 
 
 ---
 
+### AD-19.1 — Scraper Anti-Loop & Graceful Degradation Invariant (Universal Scraper & Subagent Resilience)
+- **Binds:** FR-24, FR-38, FR-63..67, NFR-9; Epic 9, Epic 10, Epic 20, Epic 21.
+- **Prevents:** Khi bất kỳ scraper nào (Google Search, LinkedIn, Batdongsan, Vietstock, TikTok, etc.) chạy ở môi trường không có proxy (Zero-Proxy) hoặc gặp anti-bot walling (no SERP HTML, 403, 429, CAPTCHA), subagent rơi vào vòng lặp retry vô tận làm cạn turn budget và khiến Main Agent kết thúc với text rỗng (text=0).
+- **Rule (4 Bất Biến Cốt Lõi):**
+  1. **Zero-Proxy & Anti-Bot Tolerance:** Có proxy (`PROXY_URL`/`PROXY_URLS`) thì tối ưu tỷ lệ thành công, nhưng **không có proxy hoặc bị chặn IP là trạng thái vận hành bình thường (normal runtime state)**. Scraper/Subagent không được crash 500 hay treo vòng lặp.
+  2. **Subagent Anti-Loop Ceiling:** Áp dụng trần tối đa **1 lần retry** khi tool trả về 0 kết quả hoặc bị chặn bot. Ngay sau đó, subagent PHẢI trả về `status: "blocked"` hoặc `status: "partial"` kèm `next_step` và `evidence: {"findings": [], "sources": []}`. CẤM thử lại liên tiếp > 1 lần.
+  3. **Main-Agent Parametric & Knowledge Fallback:** Khi subagent báo `blocked`/`partial`, Main Agent supervisor **tuyệt đối không kết thúc lượt chat với text=0**. Supervisor PHẢI tự động chuyển sang tổng hợp câu trả lời bằng Parametric Memory + Workspace Knowledge Base (theo chuẩn Story 9.1a), nêu rõ giới hạn dữ liệu mạng một cách trung thực cho người dùng.
+  4. **Universal Contract cho mọi Scraper tương lai:** Mọi capability scraper hoặc subagent mới tích hợp vào Nowing BẮT BUỘC tuân thủ `output_contract_base.md` và anti-loop failure policy.
+
+---
+
 ### AD-20 — Screenshot-as-evidence dùng browser tier SẴN CÓ; KHÔNG adopt visual-RAG stack
 - **Binds:** FR-9, FR-12, FR-13, FR-39; NFR-6
 - **Prevents:**

@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đăng ký tài khoản — Nowing AI</title>
+  <!-- Google Fonts: Instrument Serif, Plus Jakarta Sans, JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #10B981;
+      --primary-hover: #059669;
+      --primary-subtle: #ECFDF5;
+      --primary-border: #A7F3D0;
+      --accent-mint: #34D399;
+      
+      --bg: #FFFFFF;
+      --surface-subtle: #F8FAFC;
+      --foreground: #0F172A;
+      --foreground-muted: #475569;
+      --foreground-subtle: #94A3B8;
+      
+      --border: #E2E8F0;
+      --border-subtle: #F1F5F9;
+      --grid-caro: rgba(15, 23, 42, 0.035);
+      
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-xl: 20px;
+      --radius-full: 9999px;
+      
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
+      --shadow-md: 0 4px 20px -2px rgba(16, 185, 129, 0.08), 0 2px 6px rgba(0,0,0,0.04);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      height: 100vh;
+      display: flex;
+      color: var(--foreground);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+
+    .auth-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Left Panel: Social Proof & Testimonial (Origami 1:1) */
+    .left-panel {
+      background: #FAFAFC;
+      background-image: 
+        linear-gradient(to right, var(--grid-caro) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--grid-caro) 1px, transparent 1px);
+      background-size: 24px 24px;
+      border-right: 1px solid var(--border);
+      padding: 64px 56px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+    }
+    .brand-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--foreground);
+      font-size: 20px;
+      font-weight: 800;
+    }
+    .brand-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #34D399, #059669);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 16px;
+    }
+
+    .testimonial-body {
+      max-width: 480px;
+    }
+    .client-logo {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      color: var(--foreground);
+      margin-bottom: 24px;
+    }
+    .testimonial-quote {
+      font-size: 24px;
+      font-weight: 500;
+      line-height: 1.4;
+      color: var(--foreground);
+      margin-bottom: 28px;
+      letter-spacing: -0.01em;
+    }
+    .author-block {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 32px;
+    }
+    .avatar-img {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #E0E7FF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: #4338CA;
+    }
+    .author-name {
+      font-size: 15px;
+      font-weight: 700;
+    }
+    .author-role {
+      font-size: 13px;
+      color: var(--foreground-muted);
+    }
+
+    .feature-tags-group {
+      border-top: 1px solid var(--border);
+      padding-top: 24px;
+    }
+    .tags-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--foreground-subtle);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+    .tags-row {
+      font-size: 13px;
+      color: var(--foreground-muted);
+      display: flex;
+      gap: 16px;
+    }
+
+    .left-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--foreground-subtle);
+    }
+
+    /* Right Panel: Sign Up Form */
+    .right-panel {
+      background: white;
+      background-image: 
+        linear-gradient(to right, var(--grid-caro) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--grid-caro) 1px, transparent 1px);
+      background-size: 24px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px;
+    }
+    .form-card {
+      width: 100%;
+      max-width: 400px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: 36px 32px;
+      box-shadow: var(--shadow-md);
+      text-align: center;
+    }
+    .form-icon {
+      width: 40px;
+      height: 40px;
+      background: var(--primary-subtle);
+      border: 1px solid var(--primary-border);
+      border-radius: var(--radius-sm);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      font-size: 20px;
+      margin-bottom: 20px;
+    }
+    .form-title {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      letter-spacing: -0.01em;
+    }
+    .form-sub {
+      font-size: 14px;
+      color: var(--foreground-muted);
+      margin-bottom: 28px;
+    }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .input-field {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-family: inherit;
+      background: var(--surface-subtle);
+      outline: none;
+      transition: all 0.15s ease;
+      margin-bottom: 12px;
+    }
+    .input-field:focus {
+      background: white;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px var(--primary-subtle);
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 11px;
+      background: var(--primary);
+      color: white;
+      border: 1px solid var(--primary);
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 6px;
+      margin-bottom: 20px;
+      transition: all 0.15s ease;
+    }
+    .btn-submit:hover { background: var(--primary-hover); }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      text-align: center;
+      color: var(--foreground-subtle);
+      font-size: 12px;
+      margin-bottom: 20px;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      border-bottom: 1px solid var(--border);
+    }
+    .divider:not(:empty)::before { margin-right: .5em; }
+    .divider:not(:empty)::after { margin-left: .5em; }
+
+    .btn-google {
+      width: 100%;
+      padding: 10px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--foreground);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: all 0.15s ease;
+    }
+    .btn-google:hover { background: var(--surface-subtle); }
+
+    .legal-text {
+      font-size: 11px;
+      color: var(--foreground-subtle);
+      margin-top: 24px;
+      line-height: 1.4;
+    }
+    .legal-text a { color: var(--foreground-muted); text-decoration: none; }
+    .legal-text a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+  <div class="auth-container">
+    
+    <!-- Left Panel: Testimonial & Social Proof -->
+    <div class="left-panel">
+      <a href="landing-page.html" class="brand-top">
+        <div class="brand-icon">🌿</div>
+        <span>Nowing</span>
+      </a>
+
+      <div class="testimonial-body">
+        <div class="client-logo">SAIGON REALTY GROUP</div>
+        <div class="testimonial-quote">
+          “Đội ngũ 35 môi giới của chúng tôi chốt thêm 12 giao dịch nhà phố mỗi tháng nhờ tính năng quét tin chính chủ và giải mã SĐT tự động của Nowing.”
+        </div>
+        <div class="author-block">
+          <div class="avatar-img">TH</div>
+          <div>
+            <div class="author-name">Trần Hoàng Hưng</div>
+            <div class="author-role">Giám đốc Kinh doanh, Saigon Realty</div>
+          </div>
+        </div>
+
+        <div class="feature-tags-group">
+          <div class="tags-label">TÍNH NĂNG ĐƯỢC YÊU THÍCH NHẤT</div>
+          <div class="tags-row">
+            <span>• Quét Batdongsan Real-time</span>
+            <span>• Chấm điểm Fit Score</span>
+            <span>• Tiếp cận Zalo OA</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="left-footer">
+        <span>© 2026 Nowing Inc.</span>
+        <span>Được tin dùng bởi hơn 200+ sàn giao dịch & doanh nghiệp</span>
+      </div>
+    </div>
+
+    <!-- Right Panel: Auth Form -->
+    <div class="right-panel">
+      <div class="form-card">
+        <div class="form-icon">🌿</div>
+        <h2 class="form-title">Tạo tài khoản Nowing</h2>
+        <p class="form-sub">Nhận ngay 500 Credits miễn phí trải nghiệm</p>
+
+        <form action="/dashboard/1/chat">
+          <div class="input-row">
+            <input type="text" class="input-field" placeholder="Họ" required style="margin-bottom: 0;">
+            <input type="text" class="input-field" placeholder="Tên" required style="margin-bottom: 0;">
+          </div>
+          <input type="email" class="input-field" placeholder="Email làm việc của bạn" required style="margin-top: 10px;">
+          <input type="password" class="input-field" placeholder="Mật khẩu (tối thiểu 8 ký tự)" required>
+          
+          <button type="submit" class="btn-submit">Bắt đầu dùng thử miễn phí →</button>
+        </form>
+
+        <div class="divider">hoặc</div>
+
+        <button class="btn-google" onclick="window.location.href='/dashboard/1/chat'">
+          <span>🌐 Tiếp tục với Google</span>
+        </button>
+
+        <div class="legal-text">
+          Bằng việc đăng ký, bạn đồng ý với <a href="#">Điều khoản sử dụng</a> và <a href="#">Chính sách quyền riêng tư</a> của Nowing.
+          <br><br>
+          Đã có tài khoản? <a href="#" style="color: var(--primary); font-weight: 600;">Đăng nhập ngay</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

@@ -1,6 +1,6 @@
 # Story 10.8: Spatial Planning & Land Zoning GIS (PostGIS Map Layers)
 
-Status: ready-for-review
+Status: in-progress
 
 <!-- Governed by architecture-bds-planning-and-dkkd-2026-08-15 (AD-GIS-1 to AD-GIS-7) and UX Widget U5 -->
 

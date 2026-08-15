@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bảng giá dịch vụ — Nowing AI</title>
+  <!-- Google Fonts: Instrument Serif, Plus Jakarta Sans, JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #10B981;
+      --primary-hover: #059669;
+      --primary-subtle: #ECFDF5;
+      --primary-border: #A7F3D0;
+      --accent-mint: #34D399;
+      
+      --bg: #FFFFFF;
+      --surface-subtle: #F8FAFC;
+      --foreground: #0F172A;
+      --foreground-muted: #475569;
+      --foreground-subtle: #94A3B8;
+      
+      --border: #E2E8F0;
+      --border-subtle: #F1F5F9;
+      --grid-caro: rgba(15, 23, 42, 0.035);
+      
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-xl: 20px;
+      --radius-full: 9999px;
+      
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
+      --shadow-md: 0 4px 20px -2px rgba(16, 185, 129, 0.08), 0 2px 6px rgba(0,0,0,0.03);
+      --shadow-lg: 0 20px 30px -10px rgba(0,0,0,0.07), 0 10px 15px -5px rgba(0,0,0,0.03);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: var(--bg);
+      background-image: 
+        linear-gradient(to right, var(--grid-caro) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--grid-caro) 1px, transparent 1px);
+      background-size: 24px 24px;
+      color: var(--foreground);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* Header Nav */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--foreground);
+      font-size: 20px;
+      font-weight: 800;
+    }
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #34D399, #059669);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 16px;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      list-style: none;
+    }
+    .nav-links a {
+      text-decoration: none;
+      color: var(--foreground-muted);
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .btn-start {
+      background: #0F172A;
+      color: white;
+      padding: 8px 18px;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    /* Pricing Hero Header (Origami Style) */
+    .pricing-header {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 72px 24px 48px;
+      text-align: left;
+    }
+    .eyebrow {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: var(--foreground-subtle);
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+    .pricing-title {
+      font-family: 'Instrument Serif', serif;
+      font-size: 64px;
+      font-weight: 400;
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+    }
+    .pricing-title span {
+      color: var(--foreground-subtle);
+    }
+    .pricing-sub {
+      font-size: 17px;
+      color: var(--foreground-muted);
+      max-width: 680px;
+    }
+
+    /* 4-Tier Grid (Origami 1:1) */
+    .pricing-grid {
+      max-width: 1240px;
+      margin: 0 auto 80px;
+      padding: 0 24px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      align-items: stretch;
+    }
+    .pricing-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: 32px 24px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.2s ease;
+    }
+    .pricing-card:hover {
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+    }
+    .pricing-card.recommended {
+      border: 2px solid var(--primary);
+      box-shadow: 0 8px 30px rgba(16, 185, 129, 0.12);
+    }
+    .badge-recommended {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--primary);
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      padding: 4px 14px;
+      border-radius: var(--radius-full);
+    }
+
+    .card-price {
+      font-size: 40px;
+      font-weight: 800;
+      color: var(--foreground);
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+      margin-bottom: 6px;
+      letter-spacing: -0.03em;
+    }
+    .card-period {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--foreground-muted);
+    }
+    .card-plan-name {
+      font-size: 13px;
+      color: var(--foreground-muted);
+      margin-bottom: 24px;
+    }
+
+    .btn-plan {
+      width: 100%;
+      padding: 10px;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      margin-bottom: 20px;
+      transition: all 0.15s ease;
+    }
+    .btn-plan-dark {
+      background: #0F172A;
+      color: white;
+      border: 1px solid #0F172A;
+    }
+    .btn-plan-dark:hover { background: #1E293B; }
+    .btn-plan-primary {
+      background: var(--primary);
+      color: white;
+      border: 1px solid var(--primary);
+    }
+    .btn-plan-primary:hover { background: var(--primary-hover); }
+
+    .credits-dropdown {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--foreground);
+      background: var(--surface-subtle);
+      margin-bottom: 24px;
+      cursor: pointer;
+    }
+
+    .features-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      font-size: 13px;
+      color: var(--foreground-muted);
+    }
+    .features-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .features-list .check {
+      color: var(--primary);
+      font-weight: bold;
+    }
+
+    /* Floating Credit Calculator Trigger */
+    .credit-calc-trigger {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 96px;
+    }
+    .btn-calc-pill {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-full);
+      padding: 10px 24px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--foreground);
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-calc-pill:hover {
+      border-color: var(--primary-border);
+      background: var(--primary-subtle);
+      color: var(--primary-hover);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="nav-inner">
+      <a href="landing-page.html" class="logo">
+        <div class="logo-icon">🌿</div>
+        <span>Nowing</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="landing-page.html#showcase">Sản phẩm</a></li>
+        <li><a href="landing-page.html#verticals">Ngành hàng</a></li>
+        <li><a href="pricing-page.html" style="color: var(--primary); font-weight: 700;">Bảng giá</a></li>
+      </ul>
+      <a href="/dashboard/1/chat" class="btn-start">Bắt đầu dùng thử</a>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="pricing-header">
+    <div class="eyebrow">BẢNG GIÁ DỊCH VỤ</div>
+    <h1 class="pricing-title">Định giá đơn giản. <span>Bắt đầu miễn phí.</span></h1>
+    <p class="pricing-sub">Bắt đầu hoàn toàn miễn phí. Nâng cấp bất cứ lúc nào khi bạn cần thêm Credits để giải mã hàng loạt số điện thoại, chạy crawler nâng cao hoặc tiếp cận qua Zalo OA.</p>
+  </section>
+
+  <!-- 4 Tier Pricing Cards -->
+  <section class="pricing-grid">
+    
+    <!-- Free -->
+    <div class="pricing-card">
+      <div class="card-price">0đ <span class="card-period">/mãi mãi</span></div>
+      <div class="card-plan-name">Gói Khởi Đầu — Trải nghiệm ngay</div>
+      <a href="/login" class="btn-plan btn-plan-dark">Dùng thử miễn phí</a>
+      <div class="credits-dropdown" style="visibility: hidden;">--</div>
+      <ul class="features-list">
+        <li><span class="check">✓</span> ⚡ Nowing Fast AI Engine</li>
+        <li><span class="check">✓</span> <strong>500 Credits</strong> tặng sẵn</li>
+        <li><span class="check">✓</span> Quét Batdongsan & Muaban cơ bản</li>
+        <li><span class="check">✓</span> 1 Workspace, 30 dòng mỗi bảng</li>
+      </ul>
+    </div>
+
+    <!-- Starter -->
+    <div class="pricing-card">
+      <div class="card-price">690.000đ <span class="card-period">/tháng</span></div>
+      <div class="card-plan-name">Starter — Môi giới cá nhân & SDR</div>
+      <a href="/login" class="btn-plan btn-plan-dark">Chọn gói Starter</a>
+      <select class="credits-dropdown">
+        <option>2,500 credits / tháng</option>
+        <option>5,000 credits / tháng (+300k)</option>
+      </select>
+      <ul class="features-list">
+        <li><span class="check">✓</span> ⚡ Nowing Fast + Scraper Runner</li>
+        <li><span class="check">✓</span> Giải mã số điện thoại chính chủ</li>
+        <li><span class="check">✓</span> Quét Batdongsan, Chotot, Muaban</li>
+        <li><span class="check">✓</span> Xuất Excel / CSV không giới hạn</li>
+      </ul>
+    </div>
+
+    <!-- Pro (Recommended) -->
+    <div class="pricing-card recommended">
+      <div class="badge-recommended">PHỔ BIẾN NHẤT</div>
+      <div class="card-price">2.490.000đ <span class="card-period">/tháng</span></div>
+      <div class="card-plan-name">Pro — Đội ngũ kinh doanh & Headhunter</div>
+      <a href="/login" class="btn-plan btn-plan-primary">Chọn gói Pro</a>
+      <select class="credits-dropdown">
+        <option>12,000 credits / tháng</option>
+        <option>25,000 credits / tháng (+1.2tr)</option>
+      </select>
+      <ul class="features-list">
+        <li><span class="check">✓</span> 🧠 <strong>Deep Reason & Research AI</strong></li>
+        <li><span class="check">✓</span> Tự động gửi kịch bản qua <strong>Zalo OA</strong></li>
+        <li><span class="check">✓</span> Quét nhóm sỉ Telegram theo từ khóa</li>
+        <li><span class="check">✓</span> Thông báo lead mới về Telegram Bot tức thì</li>
+        <li><span class="check">✓</span> 5 Thành viên trong Workspace</li>
+      </ul>
+    </div>
+
+    <!-- Scale -->
+    <div class="pricing-card">
+      <div class="card-price">8.900.000đ <span class="card-period">/tháng</span></div>
+      <div class="card-plan-name">Enterprise — Sàn BĐS & Doanh nghiệp lớn</div>
+      <a href="/login" class="btn-plan btn-plan-dark">Liên hệ tư vấn</a>
+      <select class="credits-dropdown">
+        <option>50,000 credits / tháng</option>
+        <option>100,000 credits / tháng</option>
+      </select>
+      <ul class="features-list">
+        <li><span class="check">✓</span> Mọi tính năng của Pro</li>
+        <li><span class="check">✓</span> Dedicated Proxy & Scraping Pool</li>
+        <li><span class="check">✓</span> Tích hợp Webhook CRM tùy chỉnh</li>
+        <li><span class="check">✓</span> SLA Cam kết uptime 99.9%</li>
+      </ul>
+    </div>
+
+  </section>
+
+  <!-- Credit breakdown modal trigger -->
+  <div class="credit-calc-trigger">
+    <button class="btn-calc-pill">
+      <span>💡 Xem bảng quy đổi chi tiết: 1 Credit dùng được những gì?</span>
+      <span>↓</span>
+    </button>
+  </div>
+
+</body>
+</html>

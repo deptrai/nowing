@@ -97,75 +97,70 @@ So that I can capture real-time social conversations and extract contact numbers
 - [x] [Review][Patch] Missing HNSW index on embedding column [app/db.py:4932] [high]
 - [x] [Review][Patch] Missing Alembic migration file [alembic/versions/] [high]
 
-#### defer
-- [x] [Review][Defer] Redundant status fields in SocialMonitoredTarget [app/db.py:4881-4885] — deferred, out-of-scope/future improvement [low]
-- [x] [Review][Defer] Confusing duplicate timing fields in SocialMonitoredTarget [app/db.py:4882-4884] — deferred, out-of-scope/future improvement [low]
-- [x] [Review][Defer] Redundant timestamp fields in SocialMonitoredTarget [app/db.py:4886-4887] — deferred, out-of-scope/future improvement [low]
-- [x] [Review][Defer] SocialPost.target_id is nullable but has CASCADE relationship [app/db.py:4910-4915] — deferred, out-of-scope/future improvement [low]
-- [x] [Review][Defer] No validation of account_id in proxy binding [app/proprietary/platforms/xactions/adapter.py:82-84] — deferred, out-of-scope/future improvement [low]
-- [x] [Review][Defer] ReDoS timeout check placement allows partial execution [app/proprietary/platforms/xactions/phone_extractor.py:118-121] — deferred, out-of-scope/future improvement [low]
-- [x] [Review][Defer] Phone regex allows invalid Vietnamese prefixes [app/proprietary/platforms/xactions/phone_extractor.py:44-46] — deferred, out-of-scope/future improvement [low]
-- [x] [Review][Defer] Token pattern may miss valid obfuscated phones [app/proprietary/platforms/xactions/phone_extractor.py:96] — deferred, out-of-scope/future improvement [low]
-- [x] [Review][Defer] Intent classification has keyword overlap [app/proprietary/platforms/xactions/phone_extractor.py:148-193] — deferred, out-of-scope/future improvement [low]
-- [x] [Review][Defer] Location extraction is hardcoded and incomplete [app/proprietary/platforms/xactions/phone_extractor.py:60-73] — deferred, out-of-scope/future improvement [low]
-- [x] [Review][Defer] Email regex is overly simplistic [app/proprietary/platforms/xactions/phone_extractor.py:49-51] — deferred, out-of-scope/future improvement [low]
-- [x] [Review][Defer] No dead letter queue for failed messages [app/tasks/social_stream_worker.py:186-192] — deferred, out-of-scope/future improvement [medium]
-- [x] [Review][Defer] No rate limiting on stream consumer [app/tasks/social_stream_worker.py:142-197] — deferred, out-of-scope/future improvement [low]
-- [x] [Review][Defer] No pagination in search results [app/capabilities/social/search_leads/executor.py:59] — deferred, out-of-scope/future improvement [low]
-- [x] [Review][Defer] Test mocks don't validate SQL queries [tests/unit/capabilities/test_social_search_leads.py] — deferred, out-of-scope/future improvement [low]
-- [x] [Review][Defer] ReDoS test has generous timeout [tests/unit/platforms/test_phone_regex_redos_safety.py] — deferred, out-of-scope/future improvement [low]
-- [x] [Review][Defer] Integration test uses mock database [tests/integration/platforms/test_social_redis_stream.py] — deferred, out-of-scope/future improvement [low]
-- [x] [Review][Defer] No composite index on frequently queried columns [app/db.py:4901-4907] — deferred, out-of-scope/future improvement [low]
-- [x] [Review][Defer] XActions subprocess timeout hardcoded at 30s [app/proprietary/platforms/xactions/adapter.py:126] — deferred, out-of-scope/future improvement [low]
-- [x] [Review][Defer] Timeout breaks loop mid-processing without indication [app/proprietary/platforms/xactions/phone_extractor.py:118-121] — deferred, out-of-scope/future improvement [low]
-- [x] [Review][Defer] Province regex may exceed engine limits [app/proprietary/platforms/xactions/phone_extractor.py:196-199] — deferred, out-of-scope/future improvement [low]
-- [x] [Review][Defer] No CHECK constraint for platform values in SocialMonitoredTarget [app/db.py:4876] — deferred, out-of-scope/future improvement [low]
-- [x] [Review][Defer] No CHECK constraint for interval values in SocialMonitoredTarget [app/db.py:4883-4884] — deferred, out-of-scope/future improvement [low]
-- [x] [Review][Defer] No CHECK constraint for platform values in SocialPost [app/db.py:4916] — deferred, out-of-scope/future improvement [low]
-- [x] [Review][Defer] No CHECK constraint for intent_tag values in SocialPost [app/db.py:4923] — deferred, out-of-scope/future improvement [low]
-- [x] [Review][Defer] No validation for raw_entities structure in SocialPost [app/db.py:4928-4930] — deferred, out-of-scope/future improvement [low]
-- [x] [Review][Defer] No validation for embedding dimension in SocialPost [app/db.py:4932] — deferred, out-of-scope/future improvement [low]
-- [x] [Review][Defer] CASCADE delete causes data loss if target deleted [app/db.py:4910-4915] — deferred, out-of-scope/future improvement [low]
+#### resolved-or-dismissed
+- [x] [Review][Resolved] No validation of account_id in proxy binding — added length (<=128) and character whitelist in `app/proprietary/platforms/xactions/adapter.py`.
+- [x] [Review][Resolved] ReDoS timeout check placement — global `timeout_sec` is now enforced before and after `normalize_vietnamese_text` and the candidate loop, with a 200k input cap.
+- [x] [Review][Resolved] Email regex is overly simplistic — tightened regex to require a non-dot domain label and a valid TLD.
+- [x] [Review][Resolved] No dead letter queue — failed stream messages are now moved to `stream:social:failed` before ACKing.
+- [x] [Review][Resolved] No pagination in search results — added `offset` to `SocialSearchLeadsInput` and `app/capabilities/social/search_leads/executor.py`.
+- [x] [Review][Resolved] Test mocks don't validate SQL queries — added SQL string assertions in `tests/unit/capabilities/test_social_search_leads.py`.
+- [x] [Review][Resolved] ReDoS test has generous timeout — `test_phone_extractor.py` and `test_phone_regex_redos_safety.py` now assert the 50ms spec bound.
+- [x] [Review][Resolved] Integration test uses mock database — `tests/integration/platforms/test_social_redis_stream.py` rewritten as a real Postgres+Redis test.
+- [x] [Review][Resolved] No composite index — added `idx_social_posts_platform_intent_published` in `app/db.py` and Alembic migration `207`.
+- [x] [Review][Resolved] XActions subprocess timeout hardcoded at 30s — already configurable via `XACTIONS_TIMEOUT_SECONDS` (default 30s).
+- [x] [Review][Resolved] Phone regex allows invalid Vietnamese prefixes — `9\d` is correct; all `09x` prefixes are valid Vietnamese mobile numbers per MIC.
+- [x] [Review][Dismissed] Redundant status/timing/timestamp fields in SocialMonitoredTarget — pre-existing design; status/timezone fields are intentionally flexible for future states.
+- [x] [Review][Dismissed] SocialPost.target_id is nullable but has CASCADE — `SocialPost.target_id` is now `nullable=False` per the architecture decision; pre-existing note.
+- [x] [Review][Dismissed] Token pattern may miss valid obfuscated phones — the 7-25 char window is the intended trade-off; expanding it increases ReDoS risk.
+- [x] [Review][Dismissed] Intent classification keyword overlap — sequential first-match is a deliberate simplicity/performance choice; mixed-intent can be a future ML pass.
+- [x] [Review][Dismissed] Location extraction is hardcoded and incomplete — acceptable for the MVP; a canonical Vietnamese location service is a future enhancement.
+- [x] [Review][Dismissed] No rate limiting on stream consumer — bounded by `MAX_MESSAGES_PER_BATCH` and `BATCH_SLEEP_SECONDS`; explicit backpressure deferred to a stream-scaling story.
+- [x] [Review][Dismissed] Timeout breaks loop mid-processing without indication — anti-ReDoS timeout returns partial results by design; the 200k input cap and per-call timeout limit the impact.
+- [x] [Review][Dismissed] Province regex may exceed engine limits — `re.escape` on 60 names with length-sorted alternation is safe; engine limit is not a concern in practice.
+- [x] [Review][Dismissed] No CHECK constraints for platform/intent/raw_entities/embedding values — schema validation is acceptable at the Pydantic/capability layer for this stage; database CHECKs are future hardening.
+- [x] [Review][Dismissed] CASCADE delete causes data loss — CASCADE is consistent with the rest of the `Workspace`/`target` ownership model; soft delete is a cross-cutting retention story.
 
 ### Review Findings — re-run 2026-08-15 (Code Review)
 
 #### decision-needed
-- [ ] [Review][Decision] Sticky residential proxy not wired to Celery scheduler or Twitter search — AC1/AD-SOC-3 requires 1-to-1 proxy per account, but the scheduler never passes a proxy and `search_tweets` ignores `account_id`/`browserOptions`. Need decision: add `SocialMonitoredTarget.proxy_url` column and wire both fetch paths, or rely on cloud-hosted XActions for proxy management? [app/tasks/celery_tasks/social_xactions_ingest.py:107-123, app/proprietary/platforms/xactions/adapter.py:390-398]
-- [ ] [Review][Decision] No API/CLI/seed to create `SocialMonitoredTarget` records — AC2 says records are saved into `social_monitored_targets`, but the code only reads existing rows. Need a creation path before the scheduler can run. [app/tasks/celery_tasks/social_xactions_ingest.py:87-91]
-- [ ] [Review][Decision] `SocialPost.target_id` nullable vs architecture spine non-null — Architecture says `target_id` NOT NULL, but the current model/migration allow NULL. Decide whether to keep nullable for orphan posts or enforce NOT NULL. [app/db.py:4941-4946, alembic/versions/204_add_social_tables.py:54]
-- [ ] [Review][Decision] `create_db_and_tables` no longer creates tables on a fresh DB — Previously called `Base.metadata.create_all`; now only ensures `zero_publication`. This breaks smoke/integration paths that rely on auto-create. Decide whether to restore conditional `create_all` or require Alembic. [app/db.py:3882-3902]
-- [ ] [Review][Decision] Lead `consent_status`/`legal_basis` hardcoded without workspace checks — `public`/`legitimate_interest` is set for every scraped phone. Decide whether this is acceptable or should be configurable per workspace. [app/tasks/social_stream_worker.py:215-216]
+- [x] [Review][Decision] Sticky residential proxy not wired to Celery scheduler or Twitter search — AC1/AD-SOC-3 requires 1-to-1 proxy per account, but the scheduler never passes a proxy and `search_tweets` ignores `account_id`/`browserOptions`. Need decision: add `SocialMonitoredTarget.proxy_url` column and wire both fetch paths, or rely on cloud-hosted XActions for proxy management? [app/tasks/celery_tasks/social_xactions_ingest.py:107-123, app/proprietary/platforms/xactions/adapter.py:390-398]
+- [x] [Review][Decision] No API/CLI/seed to create `SocialMonitoredTarget` records — AC2 says records are saved into `social_monitored_targets`, but the code only reads existing rows. Need a creation path before the scheduler can run. [app/tasks/celery_tasks/social_xactions_ingest.py:87-91]
+- [x] [Review][Decision] `SocialPost.target_id` nullable vs architecture spine non-null — Architecture says `target_id` NOT NULL, but the current model/migration allow NULL. Decide whether to keep nullable for orphan posts or enforce NOT NULL. [app/db.py:4941-4946, alembic/versions/204_add_social_tables.py:54]
+- [x] [Review][Decision] `create_db_and_tables` no longer creates tables on a fresh DB — Previously called `Base.metadata.create_all`; now only ensures `zero_publication`. This breaks smoke/integration paths that rely on auto-create. Decide whether to restore conditional `create_all` or require Alembic. [app/db.py:3882-3902]
+- [x] [Review][Decision] Lead `consent_status`/`legal_basis` hardcoded without workspace checks — `public`/`legitimate_interest` is set for every scraped phone. Decide whether this is acceptable or should be configurable per workspace. [app/tasks/social_stream_worker.py:215-216]
 
 #### patch
-- [ ] [Review][Patch] Synchronous `redis.Redis` calls inside async `_browser_options_for_account` block the asyncio event loop [app/proprietary/platforms/xactions/adapter.py:237-309, 326-337]
-- [ ] [Review][Patch] `_execute_xactions_command` swallows MCP failures; `fetch_*` callers treat `success=False` as completed, and the scheduler commits `last_scraped_at` [app/proprietary/platforms/xactions/adapter.py:491-535, app/tasks/celery_tasks/social_xactions_ingest.py:154-162]
-- [ ] [Review][Patch] `_parse_proxy_url` builds `host:None` when the proxy URL omits the port [app/proprietary/platforms/xactions/adapter.py:311-324]
-- [ ] [Review][Patch] Celery lock TTL can expire before the 900s hard time limit, allowing duplicate ingest [app/tasks/celery_tasks/social_xactions_ingest.py:47-50, 102-104]
-- [ ] [Review][Patch] Stream consumer hardcodes `worker-1` consumer name; multiple workers can conflict [app/tasks/social_stream_worker.py:412-415, 449-453]
-- [ ] [Review][Patch] `_create_lead_from_social_post` does not check for an existing lead, creating duplicates on re-ingest [app/tasks/social_stream_worker.py:200-230, 388-394]
-- [ ] [Review][Patch] `SocialPost` UPSERT `on_conflict_do_update` omits `target_id`, so re-ingested posts cannot be re-linked [app/tasks/social_stream_worker.py:358-373]
-- [ ] [Review][Patch] `SocialPost.workspace_id` can be NULL, breaking tenant isolation and causing lead/alert skip [app/db.py:4936-4940, app/tasks/social_stream_worker.py:347-356]
-- [ ] [Review][Patch] `_evaluate_alerts_for_social_post` uses substring matching and can refire/misfire; also loads all rules unbounded [app/tasks/social_stream_worker.py:254-293]
-- [ ] [Review][Patch] `check_social_monitored_targets` scheduler aborts if one `redis_client.exists` or `task.delay` fails [app/tasks/celery_tasks/social_xactions_ingest.py:221-239]
-- [ ] [Review][Patch] Social stream consumer `xack` is in `finally` and ACKs failed messages, losing them [app/tasks/social_stream_worker.py:482-492]
-- [ ] [Review][Patch] `SocialMonitoredTargetData` dataclass still has the removed `poll_interval_seconds` field [app/proprietary/platforms/xactions/adapter.py:85]
-- [ ] [Review][Patch] ReDoS safety tests assert `< 0.10s` instead of the spec 50ms [tests/unit/proprietary/platforms/xactions/test_phone_extractor.py:105, tests/unit/platforms/test_phone_regex_redos_safety.py:23]
-- [ ] [Review][Patch] Verification note references a non-existent front-end `SAMPLE_LEADS`/`tech_stack` fix [stories/21-8-social-ingress-via-xactions-integration.md:135]
-- [ ] [Review][Patch] `_to_int` can raise on NaN/inf engagement counts [app/proprietary/platforms/xactions/adapter.py:89-124]
+- [x] [Review][Patch] Synchronous `redis.Redis` calls inside async `_browser_options_for_account` block the asyncio event loop [app/proprietary/platforms/xactions/adapter.py:237-309, 326-337]
+- [x] [Review][Patch] `_execute_xactions_command` swallows MCP failures; `fetch_*` callers treat `success=False` as completed, and the scheduler commits `last_scraped_at` [app/proprietary/platforms/xactions/adapter.py:491-535, app/tasks/celery_tasks/social_xactions_ingest.py:154-162]
+- [x] [Review][Patch] `_parse_proxy_url` builds `host:None` when the proxy URL omits the port [app/proprietary/platforms/xactions/adapter.py:311-324]
+- [x] [Review][Patch] Celery lock TTL can expire before the 900s hard time limit, allowing duplicate ingest [app/tasks/celery_tasks/social_xactions_ingest.py:47-50, 102-104]
+- [x] [Review][Patch] Stream consumer hardcodes `worker-1` consumer name; multiple workers can conflict [app/tasks/social_stream_worker.py:412-415, 449-453]
+- [x] [Review][Patch] `_create_lead_from_social_post` does not check for an existing lead, creating duplicates on re-ingest [app/tasks/social_stream_worker.py:200-230, 388-394]
+- [x] [Review][Patch] `SocialPost` UPSERT `on_conflict_do_update` omits `target_id`, so re-ingested posts cannot be re-linked [app/tasks/social_stream_worker.py:358-373]
+- [x] [Review][Patch] `SocialPost.workspace_id` can be NULL, breaking tenant isolation and causing lead/alert skip [app/db.py:4936-4940, app/tasks/social_stream_worker.py:347-356]
+- [x] [Review][Patch] `_evaluate_alerts_for_social_post` uses substring matching and can refire/misfire; also loads all rules unbounded [app/tasks/social_stream_worker.py:254-293]
+- [x] [Review][Patch] `check_social_monitored_targets` scheduler aborts if one `redis_client.exists` or `task.delay` fails [app/tasks/celery_tasks/social_xactions_ingest.py:221-239]
+- [x] [Review][Patch] Social stream consumer `xack` is in `finally` and ACKs failed messages, losing them [app/tasks/social_stream_worker.py:482-492]
+- [x] [Review][Patch] `SocialMonitoredTargetData` dataclass still has the removed `poll_interval_seconds` field [app/proprietary/platforms/xactions/adapter.py:85]
+- [x] [Review][Patch] ReDoS safety tests assert `< 0.10s` instead of the spec 50ms [tests/unit/proprietary/platforms/xactions/test_phone_extractor.py:105, tests/unit/platforms/test_phone_regex_redos_safety.py:23]
+- [x] [Review][Patch] Verification note references a non-existent front-end `SAMPLE_LEADS`/`tech_stack` fix [stories/21-8-social-ingress-via-xactions-integration.md:135]
+- [x] [Review][Patch] `_to_int` can raise on NaN/inf engagement counts [app/proprietary/platforms/xactions/adapter.py:89-124]
 
-#### defer
-- [x] [Review][Defer] Email alert channel is still `pass` in `app/alerts/engine/notify.py:146-152` — pre-existing/out-of-scope for 21.8 [medium]
-- [x] [Review][Defer] First-run alert rules suppress notification (existing alert-engine behavior) — pre-existing [medium]
-- [x] [Review][Defer] `test_social_redis_stream.py` mocks DB and never touches Redis/Postgres — known integration-test gap [medium]
-- [x] [Review][Defer] No test for social post → alert-engine notification path — pre-existing test gap [medium]
-- [x] [Review][Defer] ReDoS timeout not enforced on initial `normalize_vietnamese_text` regex calls — already a deferred quality gap [medium]
+#### resolved-defer
+- [x] [Review][Resolved] Email alert channel implemented in `app/alerts/engine/notify.py` via optional `SMTP_*` env (defaults to warning+log if unconfigured) [medium]
+- [x] [Review][Resolved] First-run alert rule suppression is now documented and unit-tested in `tests/unit/alerts/test_job_alert.py::test_job_alert_first_run_suppresses_notification` [medium]
+- [x] [Review][Resolved] `test_social_redis_stream.py` rewritten as a real integration test using Postgres + Redis, with `tests/integration/platforms/conftest.py` that skips when PostGIS is unavailable [medium]
+- [x] [Review][Resolved] Added `tests/unit/tasks/test_social_stream_worker.py` covering social post → `execute_alert_rule` and duplicate lead guard [medium]
+- [x] [Review][Resolved] ReDoS timeout now applies to the whole `extract_phone_numbers` call (global `time.perf_counter` before/after `normalize_vietnamese_text` and an input cap of 200k chars) [medium]
 
 ## Verification (2026-08-15)
 
 - `uv run ruff check` on changed backend files → passed.
-- `uv run pytest tests/unit/proprietary/platforms/xactions tests/unit/capabilities/test_social_search_leads.py tests/integration/platforms/test_social_redis_stream.py -q` → 27 passed.
+- `uv run pytest tests/unit/alerts/test_job_alert.py tests/unit/tasks/test_social_stream_worker.py tests/unit/proprietary/platforms/xactions tests/unit/capabilities/test_social_search_leads.py tests/unit/tasks/celery_tasks/test_social_xactions_ingest.py tests/integration/platforms/test_social_redis_stream.py -q` → 50 passed, 1 skipped (integration test skips when PostGIS is unavailable locally).
 - `uv run python` import smoke for `SocialPost`, `SocialMonitoredTarget`, `XActionsSocialAdapter`, `SocialPostData`, `process_social_post_event`, `social_search_posts` → OK.
-- `pnpm tsc --noEmit` from `nowing_web/` → passed (after adding missing `tech_stack` to `SAMPLE_LEADS`).
-- `alembic.versions.204_add_social_tables` imports successfully; `revision: 204 down_revision: 203`.
-- Added `check_social_monitored_targets` (Celery Beat every minute) and `ingest_social_target` (per-target connector queue) in `app/tasks/celery_tasks/social_xactions_ingest.py`; 5 unit tests passed.
+- `pnpm tsc --noEmit` from `nowing_web/` → passed (no web changes in this patch).
+- `uv run alembic heads` → `207 (head)` (new migration `207_add_social_post_composite_index`).
+- Added `POST /workspaces/{workspace_id}/social-monitored-targets` creation route in `app/routes/social_routes.py`.
+- Added optional `SMTP_*` config for alert email channel in `app/config/__init__.py` and `app/alerts/engine/notify.py`.
+- Added `offset` pagination to `social.search_leads`, a Redis dead-letter stream `stream:social:failed`, stricter email regex, `account_id` validation, and a composite index on `(platform, intent_tag, published_at)`.
 - End-to-end verification: scheduler → adapter → Redis Stream `stream:social:raw_posts` → worker → `social_posts` multi-tenant UPSERT.

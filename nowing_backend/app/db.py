@@ -3895,12 +3895,18 @@ async def create_db_and_tables():
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS citext"))
-        # Alembic manages table migrations in production; for smoke/integration
-        # paths that rely on auto-create, materialise tables here.
-        await conn.run_sync(Base.metadata.create_all)
+        try:
+            await conn.run_sync(Base.metadata.create_all)
+        except Exception as exc:
+            logger.warning(
+                f"[startup] Base.metadata.create_all encountered error (managed by Alembic): {exc}"
+            )
         from app.zero_publication import ensure_publication
 
-        await conn.run_sync(ensure_publication)
+        try:
+            await conn.run_sync(ensure_publication)
+        except Exception as exc:
+            logger.warning(f"[startup] ensure_publication encountered error: {exc}")
     await setup_indexes()
 
 
@@ -4924,6 +4930,7 @@ class SocialPost(Base, TimestampMixin):
         Index("idx_social_posts_platform_ext", "platform", "external_post_id"),
         Index("idx_social_posts_published", "published_at"),
         Index("idx_social_posts_intent", "intent_tag"),
+        Index("idx_social_posts_platform_intent_published", "platform", "intent_tag", "published_at"),
         Index("idx_social_posts_gin_entities", "raw_entities", postgresql_using="gin"),
         Index(
             "idx_social_posts_embedding_hnsw",

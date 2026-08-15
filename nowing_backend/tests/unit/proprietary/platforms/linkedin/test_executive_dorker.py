@@ -141,3 +141,48 @@ async def test_executive_dorker_fetch_and_parse() -> None:
     assert isinstance(results[0], ExecutiveProfile)
     assert results[0].full_name == "Nguyen Van B"
     assert results[0].linkedin_slug == "nguyen-van-b-998877"
+
+
+def test_parse_serp_title_pipe_and_vietnamese_prepositions() -> None:
+    """Delimiters like pipe and Vietnamese prepositions ('tại', 'ở') are correctly parsed."""
+    title_1 = "Nguyen Van A | Giám đốc Điều hành tại Tập đoàn FPT | LinkedIn"
+    name, role, comp = parse_serp_title_and_snippet(title_1, "", target_company="FPT")
+    assert name == "Nguyen Van A"
+    assert role == "Giám đốc Điều hành"
+    assert comp == "Tập đoàn FPT"
+
+    title_2 = "Jane Doe • Head of Growth ở Vingroup | LinkedIn"
+    name_2, role_2, comp_2 = parse_serp_title_and_snippet(title_2, "")
+    assert name_2 == "Jane Doe"
+    assert role_2 == "Head of Growth"
+    assert comp_2 == "Vingroup"
+
+
+def test_build_serp_dork_query_sanitizes_injection_and_quotes() -> None:
+    """Dork query builder sanitizes role terms and company names to prevent injection."""
+    query = build_serp_dork_query(
+        'Vingroup "JSC"',
+        roles=['CEO"', 'Founder) OR (site:evil.com'],
+    )
+    assert "site:linkedin.com/in/" in query
+    assert '"Vingroup JSC"' in query
+    assert '("CEO" OR "Founder OR site:evil.com")' in query
+
+
+
+def test_parse_serp_html_ddg_encoded_links_and_unescaped_html() -> None:
+    """Parser handles DuckDuckGo URL-encoded redirect links and unescapes HTML entities."""
+    raw_html = """
+    <div>
+        <a href="/l/?uddg=https%3A%2F%2Fvn.linkedin.com%2Fin%2Fle-hoang-nam-556677&rut=1">
+            <h3>Le Hoang Nam - Founder &amp; CEO - Tiki &amp; Sendo | LinkedIn</h3>
+        </a>
+    </div>
+    """
+    parser = ExecutiveParser()
+    profiles = parser.parse_serp_html(raw_html, "Tiki")
+    assert len(profiles) == 1
+    assert profiles[0].linkedin_slug == "le-hoang-nam-556677"
+    assert profiles[0].full_name == "Le Hoang Nam"
+    assert profiles[0].title == "Founder & CEO"
+

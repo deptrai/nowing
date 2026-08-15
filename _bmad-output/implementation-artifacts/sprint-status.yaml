@@ -205,7 +205,7 @@ development_status:
   21-5: review  # 2026-08-15: code + unit tests ok; missing integration tests; P0 human review
   21-6: ready-for-dev  # was deferred (Zalo legal/ToS); reopened for scheduling
   21-7: ready-for-dev
-  21-8: done  # 2026-08-15: 32 review patches + XActions Celery scheduler/ingestor applied; ruff/pytest/tsc green
+  21-8: done  # 2026-08-15: 32 review patches + XActions Celery scheduler/ingestor applied; ruff/pytest/tsc green. 28 initial code-review findings resolved or dismissed (DLQ, pagination, composite index, email regex, account_id validation, ReDoS hardening, integration test rewrite, etc.).
   21-9: done  # Executive Decision Maker Mapping & B2B Lead Outreach
   epic-21-retrospective: optional
 
@@ -454,3 +454,8 @@ validation_reports:
     type: "code-review"
     verdict: "PASS-with-changes"
     notes: "Adversarial + acceptance review: 10 patch findings applied (client/agent scoping in create/handle/resume/regenerate, platform_metadata persistence, ResumeRequest extension, tenant GUC ordering, NULLIF RLS migration, user_id in set_request_tenant_context). 5 deferred, 1 dismissed. ruff/ruff format pass; pytest tests/unit/schemas/test_new_chat.py (24), tests/unit/tasks/chat/test_new_chat_orchestrator.py (5), tests/integration/routes/test_new_chat_routes.py (4), tests/integration/agent_chat/test_schema_and_guc.py (16), tests/integration/chat/test_thread_visibility.py (5), tests/unit/canonical/test_tenant_context.py (5) all pass."
+  - story: "21-9"
+    type: "code-review"
+    verdict: "PASS-with-changes"
+    reviewed_by: "bmad-code-review"
+    notes: "3-layer adversarial review: 10 patch findings applied (non-blocking DNS MX resolution with LRU cache, Alembic migration 206 for company_decision_makers, dork query injection sanitization, ValueError exception handling in dorker, Western/VN name ordering heuristics, DDG URL-encoded redirect matching, pipe/bullet delimiters & Vietnamese prepositions in title parser, non-dotted honorifics & degree suffix stripping, raw HTML entity unescaping, empty signal details fix). 0 deferred, 7 dismissed. All 30 unit tests pass, ruff clean."

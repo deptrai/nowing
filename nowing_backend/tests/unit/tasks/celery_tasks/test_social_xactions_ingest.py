@@ -215,6 +215,7 @@ async def test_ingest_social_target_facebook_group(
         limit=20,
         account_id=f"fb:{target.id}",
         auth_cookie=None,
+        proxy=None,
     )
     mock_adapter.ingest_raw_post_to_stream.assert_called_once_with(
         post,
@@ -273,6 +274,7 @@ async def test_ingest_social_target_twitter_keyword(
         query=target.target_id,
         limit=20,
         account_id=f"tw:{target.id}",
+        proxy=None,
     )
 
 

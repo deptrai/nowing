@@ -11,12 +11,15 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
+import re
+import socket
 from datetime import UTC, datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 from redis.exceptions import ResponseError
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,7 +27,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.alerts.engine.execute import execute_alert_rule
 from app.alerts.persistence.models.alert_rule import AlertRule
 from app.config import config
-from app.db import Lead, SocialMonitoredTarget, SocialPost, async_session_maker
+from app.db import (
+    Lead,
+    SocialMonitoredTarget,
+    SocialPost,
+    Workspace,
+    async_session_maker,
+)
 from app.proprietary.platforms.xactions.adapter import STREAM_SOCIAL_RAW_POSTS
 from app.proprietary.platforms.xactions.phone_extractor import SocialEntityExtractor
 
@@ -33,6 +42,7 @@ logger = logging.getLogger(__name__)
 CONSUMER_GROUP_NAME = "social_processors"
 MAX_MESSAGES_PER_BATCH = 100
 BATCH_SLEEP_SECONDS = 0.01
+STREAM_SOCIAL_DEAD_LETTER = "stream:social:failed"
 
 SOCIAL_LEAD_CAPABILITY_ID = "social.search_leads"
 SOCIAL_LEAD_INTENTS = {"sell", "buy", "hiring", "seeking"}
@@ -177,12 +187,37 @@ async def _create_lead_from_social_post(
         )
         return None
 
+    # Workspace-level privacy overrides for scraped social leads.
+    workspace = await session.get(Workspace, workspace_id)
+    workspace_settings = (
+        workspace.icp_criteria if isinstance(workspace, Workspace) and workspace.icp_criteria else {}
+    )
+    consent_status = workspace_settings.get("social_lead_consent_status", "public")
+    legal_basis = workspace_settings.get("social_lead_legal_basis", "legitimate_interest")
+
     company_name = (
         event.author_name
         or (target.target_name if isinstance(target, SocialMonitoredTarget) else None)
         or "Unknown social author"
     )[:200]
     source_url = event.post_url or event.author_url
+
+    # Avoid duplicate leads for the same social post/source.
+    existing_id = await session.scalar(
+        select(Lead.id).where(
+            Lead.workspace_id == workspace_id,
+            Lead.source == "social",
+            Lead.source_url == source_url,
+        )
+    )
+    if existing_id is not None:
+        logger.debug(
+            "Lead already exists for %s/%s (id=%s)",
+            event.platform,
+            event.external_post_id,
+            existing_id,
+        )
+        return None
     locations = raw_entities.get("locations", [])
     location = locations[0][:100] if locations else None
 
@@ -212,8 +247,8 @@ async def _create_lead_from_social_post(
         composite_score=fit_score,
         status="new",
         enriched=False,
-        consent_status="public",
-        legal_basis="legitimate_interest",
+        consent_status=consent_status,
+        legal_basis=legal_basis,
     )
 
     session.add(lead)
@@ -252,10 +287,14 @@ async def _evaluate_alerts_for_social_post(
         return
 
     try:
-        stmt = select(AlertRule).where(
-            AlertRule.workspace_id == workspace_id,
-            AlertRule.enabled.is_(True),
-            AlertRule.capability_id == SOCIAL_LEAD_CAPABILITY_ID,
+        stmt = (
+            select(AlertRule)
+            .where(
+                AlertRule.workspace_id == workspace_id,
+                AlertRule.enabled.is_(True),
+                AlertRule.capability_id == SOCIAL_LEAD_CAPABILITY_ID,
+            )
+            .limit(1000)
         )
         result = await session.execute(stmt)
         rules = result.scalars().all()
@@ -263,6 +302,7 @@ async def _evaluate_alerts_for_social_post(
         intent_tag = raw_entities.get("intent", "other")
         content_lower = (event.content or "").lower()
         author_lower = (event.author_name or "").lower()
+        haystack = f"{content_lower} {author_lower}"
 
         for rule in rules:
             query = rule.query or {}
@@ -275,10 +315,12 @@ async def _evaluate_alerts_for_social_post(
                 continue
 
             keyword = query.get("keyword")
-            if keyword and keyword.lower() not in (
-                content_lower + " " + author_lower
-            ):
-                continue
+            if keyword:
+                pattern = re.compile(
+                    r"(?<!\w)" + re.escape(keyword.lower()) + r"(?!\w)"
+                )
+                if not pattern.search(haystack):
+                    continue
 
             logger.info(
                 "Matched alert rule %s for social post %s/%s",
@@ -347,27 +389,49 @@ async def process_social_post_event(
     if session is not None:
         # Resolve workspace context from explicit event or the monitored target.
         workspace_id = event.workspace_id
-        if workspace_id is None and target_id is not None:
+        if target_id is None:
+            logger.warning(
+                "Cannot persist social post %s/%s: target_id is missing",
+                event.platform,
+                event.external_post_id,
+            )
+            return None
+
+        if workspace_id is None:
             target = await session.get(SocialMonitoredTarget, target_id)
             if isinstance(target, SocialMonitoredTarget) and target.workspace_id:
                 workspace_id = target.workspace_id
-        if workspace_id is not None and event.workspace_id is None:
-            event.workspace_id = workspace_id
+
+        if workspace_id is None:
+            logger.warning(
+                "Cannot persist social post %s/%s: workspace_id is missing",
+                event.platform,
+                event.external_post_id,
+            )
+            return None
+
+        event.workspace_id = workspace_id
         result_data["workspace_id"] = workspace_id
 
         stmt = pg_insert(SocialPost).values(**result_data)
         upsert_stmt = stmt.on_conflict_do_update(
             index_elements=["platform", "external_post_id"],
             set_={
+                "target_id": stmt.excluded.target_id,
+                "workspace_id": stmt.excluded.workspace_id,
+                "author_id": stmt.excluded.author_id,
+                "author_name": stmt.excluded.author_name,
+                "author_url": stmt.excluded.author_url,
+                "post_url": stmt.excluded.post_url,
+                "content": stmt.excluded.content,
                 "reactions_count": stmt.excluded.reactions_count,
                 "comments_count": stmt.excluded.comments_count,
                 "shares_count": stmt.excluded.shares_count,
                 "raw_entities": stmt.excluded.raw_entities,
                 "intent_tag": stmt.excluded.intent_tag,
                 "fit_score": stmt.excluded.fit_score,
-                "workspace_id": func.coalesce(
-                    stmt.excluded.workspace_id, SocialPost.workspace_id
-                ),
+                "published_at": stmt.excluded.published_at,
+                "media_urls": stmt.excluded.media_urls,
                 "updated_at": datetime.now(UTC),
             },
         )
@@ -409,9 +473,14 @@ async def get_async_session():
         yield session
 
 
+def _default_consumer_name() -> str:
+    """Return a unique consumer name per process/host for load balancing."""
+    return f"{socket.gethostname()}-{os.getpid()}"
+
+
 async def run_social_stream_consumer(
     redis_client: Any | None = None,
-    consumer_name: str = "worker-1",
+    consumer_name: str | None = None,
     batch_size: int = 10,
     block_ms: int = 2000,
     max_messages_per_batch: int = MAX_MESSAGES_PER_BATCH,
@@ -425,6 +494,8 @@ async def run_social_stream_consumer(
             config.REDIS_APP_URL, decode_responses=True
         )
         created_locally = True
+
+    consumer_name = consumer_name or _default_consumer_name()
 
     try:
         # Ensure consumer group exists, but only swallow "BUSYGROUP".
@@ -472,6 +543,17 @@ async def run_social_stream_consumer(
                         )
                         if result is not None:
                             processed_count += 1
+                            try:
+                                await redis_client.xack(
+                                    STREAM_SOCIAL_RAW_POSTS,
+                                    CONSUMER_GROUP_NAME,
+                                    msg_id,
+                                )
+                            except Exception:
+                                logger.exception(
+                                    "Failed to ACK social stream message %s",
+                                    msg_id,
+                                )
                     except Exception as exc:
                         await session.rollback()
                         logger.exception(
@@ -479,8 +561,16 @@ async def run_social_stream_consumer(
                             msg_id,
                             exc,
                         )
-                    finally:
                         try:
+                            await redis_client.xadd(
+                                STREAM_SOCIAL_DEAD_LETTER,
+                                {
+                                    "original_id": msg_id,
+                                    "payload": json.dumps(payload),
+                                    "error": str(exc),
+                                    "failed_at": datetime.now(UTC).isoformat(),
+                                },
+                            )
                             await redis_client.xack(
                                 STREAM_SOCIAL_RAW_POSTS,
                                 CONSUMER_GROUP_NAME,
@@ -488,7 +578,8 @@ async def run_social_stream_consumer(
                             )
                         except Exception:
                             logger.exception(
-                                "Failed to ACK social stream message %s", msg_id
+                                "Failed to move message %s to dead-letter queue",
+                                msg_id,
                             )
 
                     await asyncio.sleep(BATCH_SLEEP_SECONDS)

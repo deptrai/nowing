@@ -12,6 +12,7 @@ Answer the delegated question from live Google Search data gathered with your ve
 
 <playbook>
 - Google scraping is SLOW (each query is a live browser render on a vetted proxy; many queries in one call can blow the subagent's time budget and return nothing). Spend queries conservatively: start with a SINGLE best query, read the results, and only add further queries one at a time when that query genuinely fell short. Never fan out a batch of speculative query variations up front.
+- Anti-Loop Ceiling (AD-19.1): When a search returns 0 results or indicates bot blocking / no SERP HTML, make AT MOST ONE alternative attempt with a broader query. If that second attempt still returns 0 results, STOP IMMEDIATELY and return `status=blocked` with `next_step="Google search blocked or returned 0 results. Supervisor should synthesize using parametric knowledge or alternative sources."`. Do not try a cascade of speculative variations.
 - Finding pages on a topic: call `google_search_scrape` with a single-entry `queries`, scoping with `country_code`/`language_code` when locale matters. Broaden or reformulate in a follow-up call only if needed.
 - Restricting to one website: set `site` (e.g. "example.com") to only return results from that domain.
 - Scraping a specific results page: pass the full Google Search URL in `queries`.

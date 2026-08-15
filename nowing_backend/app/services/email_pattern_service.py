@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import logging
 import re
 import unicodedata
@@ -10,9 +11,22 @@ logger = logging.getLogger(__name__)
 
 # Prefixes and titles to strip from names before email generation
 _PREFIXES_REGEX = re.compile(
-    r"^(mr\.|mrs\.|ms\.|dr\.|prof\.|ts\.|ths\.|pgs\.|gs\.|ông|bà|anh|chị)\s+",
+    r"^(?:(?:mr|mrs|ms|dr|prof|ts|ths|pgs|gs)\.?|ông|bà|anh|chị)\s+",
     re.IGNORECASE,
 )
+
+# Professional suffixes / degrees to strip (e.g. "Nguyen Van A, CFA, MBA")
+_SUFFIXES_REGEX = re.compile(
+    r"(?:,\s*|\s+)(?:phd|mba|cfa|pmp|acca|cpa|esq|md|bsc|msc|llm|jd)\b.*$",
+    re.IGNORECASE,
+)
+
+_VIETNAMESE_SURNAMES = {
+    "nguyen", "tran", "le", "pham", "hoang", "huynh", "phan", "vu", "vo",
+    "dang", "bui", "do", "ho", "ngo", "duong", "ly", "dinh", "doan",
+    "lam", "trinh", "mai", "dao", "cao", "ha", "luong", "thai", "chau",
+    "ta", "phung", "quan", "ton", "trieu", "nghiem", "luc", "khuong",
+}
 
 
 def _strip_accents_and_normalize(text: str) -> str:
@@ -29,15 +43,22 @@ def _strip_accents_and_normalize(text: str) -> str:
 def normalize_name_for_email(name: str) -> tuple[str, str, str]:
     """Normalize full name into (first_name, last_name, clean_full_name).
 
-    Handles Vietnamese name convention:
-    - Example: "Nguyễn Văn An" -> first="an", last="nguyen", full="nguyen van an"
-    - Example: "John Doe" -> first="john", last="doe", full="john doe"
+    Handles both Vietnamese and Western name conventions:
+    - Vietnamese: "Nguyễn Văn An" -> first="an", last="nguyen", full="nguyen van an"
+    - Western: "John Doe" -> first="john", last="doe", full="john doe"
+    - Western + VN Surname: "David Nguyen" -> first="david", last="nguyen", full="david nguyen"
     """
     if not name:
         return ("", "", "")
 
-    # Strip prefixes
-    cleaned = _PREFIXES_REGEX.sub("", name.strip())
+    # Strip suffixes / professional degrees
+    cleaned = _SUFFIXES_REGEX.sub("", name.strip())
+    # Strip multiple/nested prefixes
+    prev = None
+    while prev != cleaned:
+        prev = cleaned
+        cleaned = _PREFIXES_REGEX.sub("", cleaned.strip())
+
     # Strip diacritics
     ascii_clean = _strip_accents_and_normalize(cleaned)
     # Remove non-alpha characters except spaces and hyphens
@@ -49,11 +70,24 @@ def normalize_name_for_email(name: str) -> tuple[str, str, str]:
     if len(tokens) == 1:
         return (tokens[0], tokens[0], tokens[0])
 
-    # In Vietnamese names: [Last Name] [Middle Name...] [First Name]
-    # For email, both [first.last] and [last.first] are common.
-    # tokens[0] is typically Family Name (Nguyen), tokens[-1] is Given Name (An)
-    first_token = tokens[-1]  # "an"
-    last_token = tokens[0]   # "nguyen"
+    if len(tokens) == 2:
+        # If tokens[0] is a VN surname and tokens[1] is not, it's VN order [Họ Tên]
+        # (e.g. "Nguyen An" -> first="an", last="nguyen")
+        if tokens[0] in _VIETNAMESE_SURNAMES and tokens[1] not in _VIETNAMESE_SURNAMES:
+            first_token = tokens[1]
+            last_token = tokens[0]
+        else:
+            # Western order [Given Family] (e.g. "John Doe", "David Nguyen")
+            first_token = tokens[0]
+            last_token = tokens[1]
+    else:
+        # 3+ tokens: check if first token is a VN surname
+        if tokens[0] in _VIETNAMESE_SURNAMES:
+            first_token = tokens[-1]  # Given name
+            last_token = tokens[0]   # Family name
+        else:
+            first_token = tokens[0]
+            last_token = tokens[-1]
 
     full_clean = " ".join(tokens)
     return (first_token, last_token, full_clean)
@@ -64,11 +98,11 @@ def generate_email_candidates(full_name: str, domain: str) -> list[str]:
     if not full_name or not domain:
         return []
 
-    # Clean domain (strip http/https, www, trailing slashes)
+    # Clean domain (strip http/https, www, trailing slashes, and invalid chars)
     clean_domain = domain.lower().strip()
     clean_domain = re.sub(r"^https?://", "", clean_domain)
     clean_domain = re.sub(r"^www\.", "", clean_domain)
-    clean_domain = clean_domain.split("/")[0].split(":")[0].strip()
+    clean_domain = clean_domain.split("/")[0].split(":")[0].split("@")[-1].strip()
 
     if not clean_domain or "." not in clean_domain:
         return []
@@ -78,40 +112,45 @@ def generate_email_candidates(full_name: str, domain: str) -> list[str]:
         return [f"info@{clean_domain}", f"contact@{clean_domain}"]
 
     tokens = full.split()
+    if len(tokens) == 1:
+        return [f"{first}@{clean_domain}", f"contact@{clean_domain}", f"info@{clean_domain}"]
+
     f_init = first[0] if first else ""
 
     patterns: list[str] = []
 
-    # Pattern 1: first.last@domain (e.g. an.nguyen@company.com)
+    # Pattern 1: first.last@domain (e.g. an.nguyen@company.com / john.doe@company.com)
     patterns.append(f"{first}.{last}@{clean_domain}")
 
-    # Pattern 2: last.first@domain (e.g. nguyen.an@company.com - very common in VN)
+    # Pattern 2: last.first@domain (e.g. nguyen.an@company.com)
     patterns.append(f"{last}.{first}@{clean_domain}")
 
-    # Pattern 3: first@domain (e.g. an@company.com)
+    # Pattern 3: first@domain (e.g. an@company.com / john@company.com)
     patterns.append(f"{first}@{clean_domain}")
 
     # Pattern 4: last@domain (e.g. nguyen@company.com)
     patterns.append(f"{last}@{clean_domain}")
 
-    # Pattern 5: first_initial.last@domain (e.g. a.nguyen@company.com)
+    # Pattern 5: first_initial.last@domain (e.g. a.nguyen@company.com / j.doe@company.com)
     patterns.append(f"{f_init}.{last}@{clean_domain}")
 
-    # Pattern 6: last.first_initial@domain (e.g. nguyen.a@company.com)
+    # Pattern 6: first_initial_last@domain (e.g. jdoe@company.com)
+    patterns.append(f"{f_init}{last}@{clean_domain}")
+
+    # Pattern 7: last.first_initial@domain (e.g. nguyen.a@company.com)
     patterns.append(f"{last}.{f_init}@{clean_domain}")
 
-    # Pattern 7: firstlast@domain (e.g. annguyen@company.com)
+    # Pattern 8: firstlast@domain (e.g. annguyen@company.com)
     patterns.append(f"{first}{last}@{clean_domain}")
 
-    # Pattern 8: lastfirst@domain (e.g. nguyenan@company.com)
+    # Pattern 9: lastfirst@domain (e.g. nguyenan@company.com)
     patterns.append(f"{last}{first}@{clean_domain}")
 
-    # Pattern 9: first_last@domain (e.g. an_nguyen@company.com)
+    # Pattern 10: first_last@domain (e.g. an_nguyen@company.com)
     patterns.append(f"{first}_{last}@{clean_domain}")
 
     # If full name has 3+ parts: e.g. "Nguyen Van An" -> "nguyenva@domain"
     if len(tokens) >= 3:
-        # last name + initials of middle names + first initial
         initials_middle = "".join(t[0] for t in tokens[1:-1])
         patterns.append(f"{last}{initials_middle}{f_init}@{clean_domain}")
         patterns.append(f"{first}.{tokens[1]}@{clean_domain}")
@@ -127,17 +166,18 @@ def generate_email_candidates(full_name: str, domain: str) -> list[str]:
     return deduped
 
 
+@functools.lru_cache(maxsize=1024)
 def check_domain_mx(domain: str, timeout: float = 3.0) -> bool:
-    """Verify if a domain has valid DNS MX records with timeout safety."""
+    """Verify if a domain has valid DNS MX records with LRU cache and timeout safety."""
     if not domain:
         return False
 
     clean_domain = domain.lower().strip()
     clean_domain = re.sub(r"^https?://", "", clean_domain)
     clean_domain = re.sub(r"^www\.", "", clean_domain)
-    clean_domain = clean_domain.split("/")[0].split(":")[0].strip()
+    clean_domain = clean_domain.split("/")[0].split(":")[0].split("@")[-1].strip()
 
-    if not clean_domain:
+    if not clean_domain or "." not in clean_domain:
         return False
 
     try:
@@ -157,6 +197,7 @@ def predict_executive_email(
     full_name: str,
     domain: str,
     check_mx: bool = True,
+    mx_override: bool | None = None,
 ) -> tuple[str | None, list[str], float, bool]:
     """Predict corporate emails and return (best_email, all_candidates, confidence, mx_valid).
 
@@ -169,11 +210,14 @@ def predict_executive_email(
     if not candidates:
         return (None, [], 0.0, False)
 
-    mx_valid = False
-    if check_mx and domain:
+    if mx_override is not None:
+        mx_valid = mx_override
+        confidence = 0.85 if mx_valid else 0.40
+    elif check_mx and domain:
         mx_valid = check_domain_mx(domain)
         confidence = 0.85 if mx_valid else 0.40
     else:
+        mx_valid = False
         confidence = 0.60
 
     best_email = candidates[0] if candidates else None

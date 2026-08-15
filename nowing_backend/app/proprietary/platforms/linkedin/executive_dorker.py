@@ -47,19 +47,19 @@ class ExecutiveDorker:
         if not company_name or not company_name.strip():
             return []
 
-        query = build_serp_dork_query(company_name=company_name, roles=roles, domain=domain)
-        headers = {
-            "User-Agent": random.choice(_USER_AGENTS),
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
-        }
-
         should_close = False
         if client is None:
             client = httpx.AsyncClient(timeout=self.timeout, follow_redirects=True)
             should_close = True
 
         try:
+            query = build_serp_dork_query(company_name=company_name, roles=roles, domain=domain)
+            headers = {
+                "User-Agent": random.choice(_USER_AGENTS),
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
+            }
+
             # Human jitter to avoid burst patterns (AD-LI-2)
             await asyncio.sleep(random.uniform(0.1, 0.3))
 
@@ -84,6 +84,9 @@ class ExecutiveDorker:
 
             return profiles[:limit]
 
+        except ValueError as exc:
+            logger.warning(f"Invalid dork query parameters for '{company_name}': {exc}")
+            return []
         except httpx.RequestError as exc:
             logger.error(f"HTTP error during SERP dorking for '{company_name}': {exc}")
             return []

@@ -86,3 +86,35 @@ def test_predict_executive_email_with_invalid_mx() -> None:
         assert best_email is not None
         assert confidence < 0.6
         assert mx_valid is False
+
+
+def test_normalize_name_western_vs_vietnamese_order() -> None:
+    """Correctly differentiates Vietnamese surname order vs Western name order."""
+    # Vietnamese [Họ Tên]
+    first_vn, last_vn, _ = normalize_name_for_email("Nguyen An")
+    assert first_vn == "an"
+    assert last_vn == "nguyen"
+
+    # Western [Given Family]
+    first_w, last_w, _ = normalize_name_for_email("John Doe")
+    assert first_w == "john"
+    assert last_w == "doe"
+
+    # Western Given + VN Surname
+    first_dw, last_dw, _ = normalize_name_for_email("David Nguyen")
+    assert first_dw == "david"
+    assert last_dw == "nguyen"
+
+
+def test_normalize_name_honorifics_and_degrees_stripping() -> None:
+    """Strips non-dotted honorifics (Mr, Dr) and academic/professional degrees (CFA, MBA, PhD)."""
+    first, last, clean = normalize_name_for_email("Mr Nguyen Van A, CFA, MBA")
+    assert first == "a"
+    assert last == "nguyen"
+    assert "cfa" not in clean and "mba" not in clean and "mr" not in clean
+
+
+def test_generate_email_candidates_single_word_name() -> None:
+    """Single-word names generate clean candidates without duplicated first.first."""
+    candidates = generate_email_candidates("Luan", "tech.vn")
+    assert candidates[0] == "luan@tech.vn"

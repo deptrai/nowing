@@ -21,15 +21,27 @@ class TestXActionsSocialAdapter:
             proxy_url="socks5://user:pass@1.2.3.4:1080",
         )
 
-    def test_sticky_proxy_binding(self):
+    @pytest.mark.asyncio
+    async def test_sticky_proxy_binding(self):
         """AD-SOC-3: 1-to-1 sticky proxy binding per account/target."""
         adapter = XActionsSocialAdapter()
-        adapter.bind_account_proxy(account_id="fb_acc_01", proxy_url="socks5://proxy1.internal:1080")
-        adapter.bind_account_proxy(account_id="fb_acc_02", proxy_url="socks5://proxy2.internal:1080")
+        await adapter.bind_account_proxy(account_id="fb_acc_01", proxy_url="socks5://proxy1.internal:1080")
+        await adapter.bind_account_proxy(account_id="fb_acc_02", proxy_url="socks5://proxy2.internal:1080")
 
-        assert adapter.get_account_proxy("fb_acc_01") == "socks5://proxy1.internal:1080"
-        assert adapter.get_account_proxy("fb_acc_02") == "socks5://proxy2.internal:1080"
-        assert adapter.get_account_proxy("unknown") is None
+        assert await adapter.get_account_proxy("fb_acc_01") == "socks5://proxy1.internal:1080"
+        assert await adapter.get_account_proxy("fb_acc_02") == "socks5://proxy2.internal:1080"
+        assert await adapter.get_account_proxy("unknown") is None
+
+    @pytest.mark.asyncio
+    async def test_bind_account_proxy_rejects_invalid_account_id(self):
+        """AD-SOC-3: account_id must be a non-empty, well-formed identifier."""
+        adapter = XActionsSocialAdapter()
+        with pytest.raises(ValueError):
+            await adapter.bind_account_proxy(account_id="", proxy_url="socks5://proxy:1080")
+        with pytest.raises(ValueError):
+            await adapter.bind_account_proxy(account_id="a" * 129, proxy_url="socks5://proxy:1080")
+        with pytest.raises(ValueError):
+            await adapter.bind_account_proxy(account_id="fb acc 01", proxy_url="socks5://proxy:1080")
 
     @pytest.mark.asyncio
     async def test_fetch_facebook_group_posts_mapped(self, adapter):

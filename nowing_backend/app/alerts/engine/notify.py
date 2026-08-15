@@ -1,8 +1,11 @@
-"""Alert run notification dispatch (in-app + Telegram)."""
+"""Alert run notification dispatch (in-app + Telegram + Email)."""
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import smtplib
+from email.mime.text import MIMEText
 from uuid import UUID
 
 from sqlalchemy import select
@@ -14,7 +17,8 @@ from app.alerts.persistence.models.alert_subscription import AlertSubscription
 from app.automations.services.telegram_notifications import (
     resolve_telegram_binding_for_run,
 )
-from app.db import WorkspaceMembership
+from app.config import config
+from app.db import User, WorkspaceMembership
 from app.gateway.telegram.adapter import TelegramAdapter
 from app.notifications.service import NotificationService
 from app.observability.metrics import record_gateway_outbound
@@ -107,6 +111,40 @@ async def _telegram(
         record_gateway_outbound(platform="telegram", kind="send", status="failed")
 
 
+def _send_email_smtp(to_email: str, subject: str, body: str) -> None:
+    """Synchronous helper: send a plain-text email over SMTP."""
+    msg = MIMEText(body)
+    msg["Subject"] = subject
+    msg["From"] = config.SMTP_FROM or "noreply@nowing.net"
+    msg["To"] = to_email
+
+    server = smtplib.SMTP(config.SMTP_HOST, config.SMTP_PORT)
+    try:
+        if config.SMTP_TLS:
+            server.starttls()
+        if config.SMTP_USER and config.SMTP_PASSWORD:
+            server.login(config.SMTP_USER, config.SMTP_PASSWORD)
+        server.send_message(msg)
+    finally:
+        server.quit()
+
+
+async def _email(
+    session: AsyncSession, alert_rule: AlertRule, snapshot: AlertSnapshot, user_id: UUID
+) -> None:
+    if not config.SMTP_HOST:
+        logger.warning("Email channel selected for alert %s but SMTP_HOST not configured", alert_rule.id)
+        return
+
+    user = await session.get(User, user_id)
+    if user is None or not user.email:
+        return
+
+    subject = _notification_title(alert_rule, snapshot)
+    body = _notification_message(alert_rule, snapshot)
+    await asyncio.to_thread(_send_email_smtp, user.email, subject, body)
+
+
 async def notify_alert_run(
     *,
     session: AsyncSession,
@@ -147,9 +185,14 @@ async def notify_alert_run(
                     await _in_app(session, alert_rule, snapshot, sub.user_id)
                 elif channel == "telegram":
                     await _telegram(session, alert_rule, snapshot, sub.user_id)
+                elif channel == "email":
+                    await _email(session, alert_rule, snapshot, sub.user_id)
                 else:
-                    # email and other channels deferred.
-                    pass
+                    logger.warning(
+                        "Unsupported alert notification channel %r for alert %s",
+                        channel,
+                        alert_rule.id,
+                    )
             except Exception:
                 # One failing subscriber/channel must not abort the others.
                 logger.exception(

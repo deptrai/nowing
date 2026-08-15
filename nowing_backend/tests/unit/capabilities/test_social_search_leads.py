@@ -65,6 +65,29 @@ async def test_social_search_leads_capability_execution(mock_db_session_factory)
     assert output.cost_micros == 4000
     assert not output.degraded
 
+    # Validate the generated SQL carries the workspace filter and a limit.
+    assert mock_db_session.execute.call_count == 1
+    executed_stmt = mock_db_session.execute.call_args.args[0]
+    stmt_str = str(executed_stmt)
+    assert "workspace_id" in stmt_str
+    assert "LIMIT" in stmt_str
+
+
+@pytest.mark.asyncio
+async def test_social_search_leads_uses_offset(mock_db_session_factory):
+    """Pagination offset is applied to the query."""
+    mock_post = MockPost("facebook", "fb_03", "Bán đất", "sell", 0.5, [])
+    mock_db_session = mock_db_session_factory([mock_post])
+    ctx = CapabilityContext(session=mock_db_session, workspace_id=1)
+
+    payload = SocialSearchLeadsInput(keyword="đất", limit=5, offset=10)
+    output = await SOCIAL_SEARCH_LEADS.executor(payload, ctx)
+
+    assert not output.degraded
+    assert mock_db_session.execute.call_count == 1
+    stmt_str = str(mock_db_session.execute.call_args.args[0])
+    assert "OFFSET" in stmt_str
+
 
 @pytest.mark.asyncio
 async def test_social_search_posts_helper(mock_db_session_factory):

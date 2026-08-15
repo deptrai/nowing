@@ -45,9 +45,9 @@ _VN_PHONE_REGEX = re.compile(
     r"(?<!\d)(?:\+?84|0)(?:3[2-9]|5[25689]|7[06-9]|8[1-9]|9\d)\d{7}(?!\d)"
 )
 
-# Email regex
+# Email regex — at least one non-dot local part and a TLD of 2+ letters.
 _EMAIL_REGEX = re.compile(
-    r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
+    r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}"
 )
 
 # Price regex (Vietnamese real estate / commerce)
@@ -104,10 +104,17 @@ def extract_phone_numbers(text: str, timeout_sec: float = 0.05) -> list[str]:
     if not text:
         return []
 
+    # Guard against extreme inputs; the 50ms timeout is the primary defense.
+    # 200k chars comfortably covers the large-content safety test (≈130k).
+    if len(text) > 200000:
+        text = text[:200000]
+
     start_time = time.perf_counter()
 
-    # Pre-normalize
+    # Pre-normalize (initial regex is also subject to the global timeout).
     normalized = normalize_vietnamese_text(text)
+    if (time.perf_counter() - start_time) > timeout_sec:
+        return []
 
     # Clean intermediate delimiters inside potential digit clusters
     # E.g., "090.123.4567", "09 12 34 56 78", "+84 987 654 321"

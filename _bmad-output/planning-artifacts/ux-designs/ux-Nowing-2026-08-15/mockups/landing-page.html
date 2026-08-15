@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nowing | Tìm kiếm khách hàng & bất động sản mục tiêu chỉ với một câu lệnh</title>
+  <!-- Google Fonts: Instrument Serif, Plus Jakarta Sans, JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #10B981;
+      --primary-hover: #059669;
+      --primary-active: #047857;
+      --primary-subtle: #ECFDF5;
+      --primary-border: #A7F3D0;
+      --accent-mint: #34D399;
+      --accent-mint-subtle: #F0FDF4;
+      
+      --bg: #FFFFFF;
+      --surface-subtle: #F8FAFC;
+      --surface-sidebar: #F9FAFB;
+      --foreground: #0F172A;
+      --foreground-muted: #475569;
+      --foreground-subtle: #94A3B8;
+      
+      --border: #E2E8F0;
+      --border-subtle: #F1F5F9;
+      --grid-caro: rgba(15, 23, 42, 0.035);
+      --grid-caro-mint: rgba(16, 185, 129, 0.06);
+      
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-xl: 20px;
+      --radius-full: 9999px;
+      
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
+      --shadow-md: 0 4px 20px -2px rgba(16, 185, 129, 0.08), 0 2px 6px rgba(0,0,0,0.03);
+      --shadow-lg: 0 20px 30px -10px rgba(0,0,0,0.07), 0 10px 15px -5px rgba(0,0,0,0.03);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    /* Global Caro Grid Background */
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: var(--bg);
+      background-image: 
+        linear-gradient(to right, var(--grid-caro) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--grid-caro) 1px, transparent 1px);
+      background-size: 24px 24px;
+      color: var(--foreground);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Ambient radial glow + fine caro mesh */
+    .ambient-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 780px;
+      background: 
+        radial-gradient(circle at 50% 12%, rgba(16, 185, 129, 0.08) 0%, transparent 65%),
+        linear-gradient(to right, var(--grid-caro-mint) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--grid-caro-mint) 1px, transparent 1px);
+      background-size: 100% 100%, 24px 24px, 24px 24px;
+      mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    /* Header Nav (Origami Style) */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--foreground);
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #34D399 0%, #059669 100%);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 16px;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      list-style: none;
+    }
+    .nav-links a {
+      text-decoration: none;
+      color: var(--foreground-muted);
+      font-size: 14px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: color 0.15s ease;
+    }
+    .nav-links a:hover { color: var(--foreground); }
+    .nav-cta-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 8px 18px;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+    .btn-signin {
+      background: white;
+      color: var(--foreground);
+      border: 1px solid var(--border);
+    }
+    .btn-signin:hover { background: var(--surface-subtle); }
+    .btn-start {
+      background: #0F172A;
+      color: white;
+      border: 1px solid #0F172A;
+    }
+    .btn-start:hover {
+      background: #1E293B;
+      transform: translateY(-1px);
+    }
+
+    /* Hero Section */
+    .hero {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 80px 24px 40px;
+      text-align: center;
+    }
+    .hero h1 {
+      font-family: 'Instrument Serif', serif;
+      font-size: 74px;
+      font-weight: 400;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      margin-bottom: 24px;
+    }
+    .hero p {
+      font-size: 19px;
+      color: var(--foreground-muted);
+      line-height: 1.6;
+      max-width: 760px;
+      margin: 0 auto 36px;
+    }
+
+    /* Hero Prompt Input Box (Origami 1:1) */
+    .input-mode-tabs {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .mode-pill-btn {
+      padding: 6px 14px;
+      border-radius: var(--radius-full);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: white;
+      color: var(--foreground);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .mode-pill-btn.active {
+      border-color: var(--primary-border);
+      background: var(--primary-subtle);
+      color: var(--primary-hover);
+    }
+    .badge-auto {
+      font-size: 10px;
+      font-weight: 700;
+      background: #F1F5F9;
+      color: var(--foreground-muted);
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    .hero-input-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: 16px 20px;
+      box-shadow: var(--shadow-md);
+      text-align: left;
+      margin-bottom: 64px;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .hero-input-card:focus-within {
+      border-color: var(--primary-border);
+      box-shadow: 0 4px 24px -2px rgba(16, 185, 129, 0.15);
+    }
+    .hero-input-card textarea {
+      width: 100%;
+      border: none;
+      outline: none;
+      resize: none;
+      font-family: inherit;
+      font-size: 15px;
+      color: var(--foreground);
+      min-height: 52px;
+    }
+    .hero-input-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 12px;
+      border-top: 1px solid var(--border-subtle);
+    }
+    .btn-submit-arrow {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-sm);
+      background: var(--primary);
+      color: white;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      transition: background 0.15s ease;
+    }
+    .btn-submit-arrow:hover { background: var(--primary-hover); }
+
+    /* Interactive 3-Tab Product Showcase */
+    .showcase-section {
+      max-width: 1240px;
+      margin: 0 auto 96px;
+      padding: 0 24px;
+    }
+    .showcase-tabs {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 48px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .tab-trigger {
+      background: transparent;
+      border: none;
+      padding: 12px 4px;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--foreground-muted);
+      cursor: pointer;
+      position: relative;
+      transition: color 0.15s ease;
+    }
+    .tab-trigger.active {
+      color: var(--foreground);
+    }
+    .tab-trigger.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: #0F172A;
+    }
+
+    /* Showcase Frame (Split 2-Panel 1:1 with Origami) */
+    .showcase-frame {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      min-height: 580px;
+    }
+    
+    /* Left Chat/Outreach Pane */
+    .frame-chat {
+      background: #FFFFFF;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+    .frame-chat-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--foreground-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .frame-chat-body {
+      flex: 1;
+      padding: 20px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .bubble-user-origami {
+      align-self: flex-end;
+      background: #F1F5F9;
+      padding: 10px 14px;
+      border-radius: var(--radius-lg) var(--radius-lg) 2px var(--radius-lg);
+      font-size: 13px;
+      color: var(--foreground);
+      max-width: 90%;
+    }
+    .bubble-ai-origami {
+      align-self: flex-start;
+      font-size: 13px;
+      color: var(--foreground);
+      line-height: 1.6;
+    }
+    .suggested-pills-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .suggested-pill {
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      color: var(--foreground);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.15s ease;
+    }
+    .suggested-pill:hover {
+      background: var(--primary-subtle);
+      border-color: var(--primary-border);
+      color: var(--primary-hover);
+    }
+    .frame-chat-input {
+      padding: 14px 18px;
+      border-top: 1px solid var(--border);
+    }
+    .input-box-mini {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: white;
+    }
+    .input-box-mini input {
+      border: none;
+      outline: none;
+      font-family: inherit;
+      font-size: 12px;
+      flex: 1;
+    }
+
+    /* Right Table Pane (Origami Grid Style with Caro Header) */
+    .frame-table {
+      background: #FAFAFC;
+      display: flex;
+      flex-direction: column;
+    }
+    .grid-paper-header {
+      background-color: white;
+      background-image: 
+        linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px), 
+        linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+      background-size: 16px 16px;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .table-top-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .table-main-title {
+      font-size: 18px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .source-badge {
+      font-size: 11px;
+      font-weight: 600;
+      background: #EFF6FF;
+      color: #1D4ED8;
+      border: 1px solid #BFDBFE;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    .metrics-row {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      font-size: 12px;
+    }
+    .metric-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .metric-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+    }
+
+    .table-content-area {
+      flex: 1;
+      overflow-x: auto;
+      background: white;
+    }
+    .origami-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    .origami-table th {
+      background: #F8FAFC;
+      padding: 10px 14px;
+      text-align: left;
+      font-weight: 600;
+      color: var(--foreground-muted);
+      border-bottom: 1px solid var(--border);
+      border-right: 1px solid var(--border-subtle);
+      white-space: nowrap;
+    }
+    .origami-table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border-subtle);
+      border-right: 1px solid var(--border-subtle);
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+    .origami-table tr:hover td {
+      background: var(--primary-subtle);
+    }
+    .fit-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+    }
+    .fit-high {
+      background: var(--primary-subtle);
+      color: var(--primary-hover);
+      border: 1px solid var(--primary-border);
+    }
+    .status-ongoing {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: #059669;
+      font-weight: 600;
+      font-size: 11px;
+    }
+
+    /* Vertical Pills Section */
+    .verticals-section {
+      max-width: 1240px;
+      margin: 0 auto 96px;
+      padding: 0 24px;
+    }
+    .section-headline {
+      font-family: 'Instrument Serif', serif;
+      font-size: 42px;
+      font-weight: 400;
+      margin-bottom: 12px;
+    }
+    .section-sub {
+      color: var(--foreground-muted);
+      margin-bottom: 24px;
+      font-size: 16px;
+    }
+    .vertical-chips-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 36px;
+    }
+    .vert-chip {
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-full);
+      background: white;
+      font-size: 13px;
+      color: var(--foreground);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    }
+    .vert-chip.active, .vert-chip:hover {
+      background: var(--primary-subtle);
+      border-color: var(--primary-border);
+      color: var(--primary-hover);
+    }
+    .vert-count {
+      font-size: 11px;
+      color: var(--foreground-subtle);
+    }
+
+    /* 4 Metric Stats Strip (Origami Style with Caro texture) */
+    .metrics-strip {
+      max-width: 1240px;
+      margin: 0 auto 96px;
+      padding: 0 24px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      background: white;
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+    }
+    .metric-box {
+      padding: 32px 24px;
+      border-right: 1px solid var(--border);
+    }
+    .metric-box:last-child { border-right: none; }
+    .stat-num {
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--foreground);
+      margin-bottom: 4px;
+      letter-spacing: -0.02em;
+    }
+    .stat-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--foreground);
+      margin-bottom: 8px;
+    }
+    .stat-desc {
+      font-size: 13px;
+      color: var(--foreground-muted);
+      line-height: 1.5;
+    }
+
+    /* Waterfall Enrichment Cards */
+    .waterfall-section {
+      max-width: 1240px;
+      margin: 0 auto 96px;
+      padding: 0 24px;
+    }
+    .waterfall-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-top: 32px;
+    }
+    .waterfall-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: 24px;
+      box-shadow: var(--shadow-sm);
+    }
+    .waterfall-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .waterfall-title {
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .waterfall-step {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 56px 24px;
+      background: rgba(248, 250, 252, 0.8);
+      backdrop-filter: blur(8px);
+      text-align: center;
+      font-size: 13px;
+      color: var(--foreground-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="ambient-bg"></div>
+
+  <!-- Header -->
+  <header>
+    <div class="nav-inner">
+      <a href="#" class="logo">
+        <div class="logo-icon">🌿</div>
+        <span>Nowing</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="#showcase">Sản phẩm</a></li>
+        <li><a href="#verticals">Ngành hàng</a></li>
+        <li><a href="#scrapers">Trình quét dữ liệu</a></li>
+        <li><a href="#pricing">Bảng giá</a></li>
+      </ul>
+      <div class="nav-cta-group">
+        <a href="/login" class="btn btn-signin">Đăng nhập</a>
+        <a href="/dashboard/1/chat" class="btn btn-start">Dùng thử miễn phí</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <h1>Tìm kiếm khách hàng mục tiêu.<br>Chỉ với một câu lệnh.</h1>
+    <p>
+      Mô tả chân dung khách hàng hoặc bất động sản bạn cần tìm. AI của Nowing sẽ tự động quét web, chấm điểm độ khớp (Fit Score), trích xuất liên hệ xác thực và tự động tạo kịch bản tiếp cận qua Zalo/Telegram.
+    </p>
+
+    <!-- Mode switch pills -->
+    <div class="input-mode-tabs">
+      <button class="mode-pill-btn active">
+        <span>💬 Nhập yêu cầu tìm kiếm</span>
+      </button>
+      <button class="mode-pill-btn">
+        <span>🌐 Phân tích từ Website / Dự án</span>
+        <span class="badge-auto">Tự động</span>
+      </button>
+    </div>
+
+    <!-- Hero Interactive Input -->
+    <div class="hero-input-card">
+      <textarea placeholder="Tìm các chủ nhà bán gấp nhà phố Quận Tân Bình dưới 6 tỷ đăng trên Batdongsan trong 24h qua, loại bỏ tin môi giới..."></textarea>
+      <div class="hero-input-toolbar">
+        <span style="font-size: 12px; color: var(--foreground-subtle);">📎 Đính kèm danh sách hoặc link</span>
+        <button class="btn-submit-arrow" onclick="window.location.href='/dashboard/1/chat'">↑</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3-Tab Product Showcase (Find / Enrich / Sequence) -->
+  <section class="showcase-section" id="showcase">
+    <div class="showcase-tabs">
+      <button class="tab-trigger active" onclick="switchShowcaseTab(0)">1. Quét tìm Leads mới</button>
+      <button class="tab-trigger" onclick="switchShowcaseTab(1)">2. Làm giàu số điện thoại</button>
+      <button class="tab-trigger" onclick="switchShowcaseTab(2)">3. Kích hoạt tiếp cận Zalo</button>
+    </div>
+
+    <div class="showcase-frame">
+      
+      <!-- Left Chat Stream -->
+      <div class="frame-chat">
+        <div class="frame-chat-header">
+          <span>/ Lead Sequencer Co-pilot</span>
+          <span style="margin-left: auto; color: var(--primary); font-weight: 700;">🟢 Live</span>
+        </div>
+        <div class="frame-chat-body">
+          <div class="bubble-user-origami">
+            Gửi tin nhắn chào giá tự động qua Zalo cho 9 chủ nhà có điểm khớp trên 90%.
+          </div>
+          <div class="bubble-ai-origami">
+            Đã soạn sẵn 9 kịch bản Zalo cá nhân hóa theo từng thông số căn nhà. Bạn có muốn duyệt trước khi gửi không?
+          </div>
+          <div class="suggested-pills-wrap">
+            <div class="suggested-pill">
+              <span>✈️ Bấm để duyệt & gửi toàn bộ qua Zalo</span>
+              <span>→</span>
+            </div>
+            <div class="suggested-pill">
+              <span>✏️ Chỉnh sửa mẫu tin nhắn chào giá</span>
+              <span>→</span>
+            </div>
+          </div>
+        </div>
+        <div class="frame-chat-input">
+          <div class="input-box-mini">
+            <input type="text" placeholder="Nhập câu hỏi tiếp theo...">
+            <span style="font-size: 11px; color: var(--primary); font-weight: 700;">Gửi ↑</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Table Matrix -->
+      <div class="frame-table">
+        <div class="grid-paper-header">
+          <div class="table-top-title-row">
+            <div class="table-main-title">
+              <span>Nhà phố Tân Bình Chính Chủ</span>
+              <span class="source-badge">Batdongsan + Muaban</span>
+            </div>
+            <button class="btn btn-start" style="padding: 6px 12px; font-size: 12px;">+ Thêm Leads</button>
+          </div>
+          <div class="metrics-row">
+            <div class="metric-item">
+              <span style="color: var(--foreground-muted);">Tổng leads:</span>
+              <span class="metric-value">9 leads ⌄</span>
+            </div>
+            <div class="metric-item">
+              <span style="color: var(--foreground-muted);">Chi phí dự kiến:</span>
+              <span class="metric-value" style="color: var(--primary-hover);">1.5 credits / lead ⌄</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-content-area">
+          <table class="origami-table">
+            <thead>
+              <tr>
+                <th style="width: 30px;">#</th>
+                <th>FIT SCORE</th>
+                <th>TIÊU ĐỀ / ĐỊA CHỈ</th>
+                <th>GIÁ BÁN</th>
+                <th>SỐ ĐIỆN THOẠI</th>
+                <th>TRẠNG THÁI ZALO</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td><span class="fit-badge fit-high">🟩 98% ></span></td>
+                <td><strong>Nhà HXH 6m Hoàng Hoa Thám, P.13</strong></td>
+                <td>5.4 Tỷ</td>
+                <td><span style="font-family: 'JetBrains Mono'; font-weight: 600; color: #059669;">0908 123 456</span></td>
+                <td><span class="status-ongoing">🟢 Đang gửi kịch bản</span></td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td><span class="fit-badge fit-high">🟩 95% ></span></td>
+                <td><strong>Bán gấp nhà Trường Chinh, P.14</strong></td>
+                <td>4.85 Tỷ</td>
+                <td><span style="font-family: 'JetBrains Mono'; font-weight: 600; color: #059669;">0912 888 999</span></td>
+                <td><span class="status-ongoing">🟢 Đang gửi kịch bản</span></td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td><span class="fit-badge fit-high">🟩 92% ></span></td>
+                <td><strong>Bán nhà đường Bạch Đằng, P.2</strong></td>
+                <td>5.9 Tỷ</td>
+                <td><span style="font-family: 'JetBrains Mono'; font-weight: 600; color: #059669;">0938 777 666</span></td>
+                <td><span class="status-ongoing">🟢 Đã trả lời</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Verticals Section (Pills) -->
+  <section class="verticals-section" id="verticals">
+    <h2 class="section-headline">Thiết kế cho các ngành cần săn tìm khách hàng khó tiếp cận</h2>
+    <p class="section-sub">Chỉ cần bạn mô tả chân dung khách hàng, Nowing sẽ tìm thấy họ trên mọi ngóc ngách internet.</p>
+    
+    <div class="vertical-chips-grid">
+      <div class="vert-chip active">🏢 Bất động sản Nhà phố <span class="vert-count">1,240 tin</span></div>
+      <div class="vert-chip">📍 Đất nền & Dự án <span class="vert-count">850 tin</span></div>
+      <div class="vert-chip">💼 Tuyển dụng IT & Headhunt <span class="vert-count">3,120 hồ sơ</span></div>
+      <div class="vert-chip">📦 Nguồn sỉ & Nhà phân phối <span class="vert-count">640 shop</span></div>
+      <div class="vert-chip">🏪 Mặt bằng kinh doanh F&B <span class="vert-count">420 tin</span></div>
+      <div class="vert-chip">📊 Nhà đầu tư Chứng khoán/Crypto <span class="vert-count">910 lead</span></div>
+    </div>
+  </section>
+
+  <!-- 4 Metrics Strip -->
+  <section class="metrics-strip">
+    <div class="metric-box">
+      <div class="stat-num">500K+</div>
+      <div class="stat-label">Tin đăng & Hồ sơ / Ngày</div>
+      <div class="stat-desc">Quét trực tiếp từ Batdongsan, Chotot, Muaban, LinkedIn và Telegram theo thời gian thực.</div>
+    </div>
+    <div class="metric-box">
+      <div class="stat-num">100%</div>
+      <div class="stat-label">Dữ liệu tươi mới (Real-time)</div>
+      <div class="stat-desc">Không dùng database cũ. Mọi kết quả đều được crawl và phân tích ngay khi bạn ra lệnh.</div>
+    </div>
+    <div class="metric-box">
+      <div class="stat-num">98%</div>
+      <div class="stat-label">Độ chính xác số điện thoại</div>
+      <div class="stat-desc">Hệ thống giải mã waterfall đa tầng, lọc số rác và số ảo trước khi bàn giao cho bạn.</div>
+    </div>
+    <div class="metric-box">
+      <div class="stat-num">0.1s</div>
+      <div class="stat-label">Đồng bộ Zero-cache</div>
+      <div class="stat-desc">Dữ liệu nhảy tức thì lên màn hình bảng tính mà không cần tải lại trang.</div>
+    </div>
+  </section>
+
+  <!-- Waterfall Enrichment Visualizer -->
+  <section class="waterfall-section" id="scrapers">
+    <h2 class="section-headline">Cơ chế Waterfall: Đào sâu đến số điện thoại thật</h2>
+    <p class="section-sub">Mỗi số điện thoại và email được kiểm tra chéo qua nhiều tầng giải mã trước khi hiển thị trên bảng.</p>
+
+    <div class="waterfall-grid">
+      <div class="waterfall-card">
+        <div class="waterfall-header">
+          <div class="waterfall-title">📱 Phone Waterfall (Việt Nam)</div>
+          <span style="font-size: 11px; color: var(--foreground-subtle);">4 Trình quét</span>
+        </div>
+        <div class="waterfall-step">
+          <span>1. Giải mã số ẩn Batdongsan (Token Pool)</span>
+          <span style="color: var(--primary); font-weight: 700;">✓ Thành công 85%</span>
+        </div>
+        <div class="waterfall-step">
+          <span>2. Quét Chotot Mobile API trực tiếp</span>
+          <span style="color: var(--primary); font-weight: 700;">✓ Fallback</span>
+        </div>
+        <div class="waterfall-step">
+          <span>3. Khớp số định danh Zalo & Telegram</span>
+          <span style="color: var(--primary); font-weight: 700;">✓ Xác minh</span>
+        </div>
+      </div>
+
+      <div class="waterfall-card">
+        <div class="waterfall-header">
+          <div class="waterfall-title">💬 Outreach Waterfall (Tự động hóa)</div>
+          <span style="font-size: 11px; color: var(--foreground-subtle);">Đa kênh</span>
+        </div>
+        <div class="waterfall-step">
+          <span>1. Gửi tin nhắn Zalo OA cá nhân hóa</span>
+          <span style="color: var(--primary); font-weight: 700;">Kênh chính</span>
+        </div>
+        <div class="waterfall-step">
+          <span>2. Đẩy thông báo phản hồi về Telegram Bot</span>
+          <span style="color: var(--primary); font-weight: 700;">Thông báo tức thì</span>
+        </div>
+        <div class="waterfall-step">
+          <span>3. Đồng bộ vào CRM / Google Sheet</span>
+          <span style="color: var(--primary); font-weight: 700;">1-Click Webhook</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div style="max-width: 1240px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center;">
+      <div class="logo">
+        <div class="logo-icon" style="width: 24px; height: 24px; font-size: 12px;">🌿</div>
+        <span>NOWING AI</span>
+      </div>
+      <div>
+        © 2026 Nowing Inc. Chuẩn hóa theo phong cách Origami.chat và Google Labs DESIGN.md.
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    function switchShowcaseTab(index) {
+      const tabs = document.querySelectorAll('.tab-trigger');
+      tabs.forEach((t, i) => {
+        if(i === index) t.classList.add('active');
+        else t.classList.remove('active');
+      });
+    }
+  </script>
+</body>
+</html>

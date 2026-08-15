@@ -1,6 +1,6 @@
 # Story 21.9: Executive Decision Maker Mapping & B2B Lead Outreach
 
-Status: completed
+Status: done
 
 <!-- Note: Governed by architecture-linkedin-b2b-2026-08-15 (AD-LI-1 to AD-LI-7) -->
 
@@ -107,3 +107,19 @@ CREATE INDEX IF NOT EXISTS idx_executives_slug ON company_decision_makers(linked
   - [x] 6.2 `tests/unit/proprietary/platforms/linkedin/test_email_predictor.py`.
   - [x] 6.3 `tests/unit/services/test_outreach_service.py`.
   - [x] 6.4 `tests/unit/capabilities/test_b2b_decision_makers.py`.
+
+### Review Findings
+
+#### patch
+- [x] [Review][Patch] Eliminate blocking sync DNS MX lookup in parser loop & add domain caching [`nowing_backend/app/proprietary/platforms/linkedin/executive_parser.py:124-128`, `nowing_backend/app/services/email_pattern_service.py:130-154`]
+- [x] [Review][Patch] Create Alembic migration script for `company_decision_makers` table [`nowing_backend/alembic/versions/206_add_company_decision_makers.py`]
+- [x] [Review][Patch] Sanitize dork query roles to prevent injection & boolean syntax errors [`nowing_backend/app/proprietary/platforms/linkedin/query_builder.py:33-46`]
+- [x] [Review][Patch] Wrap `build_serp_dork_query` in error handling to prevent uncaught `ValueError` on empty sanitized names [`nowing_backend/app/proprietary/platforms/linkedin/executive_dorker.py:47-50`]
+- [x] [Review][Patch] Fix first/last name inversion for Western and Vietnamese order heuristics [`nowing_backend/app/services/email_pattern_service.py:52-60`]
+- [x] [Review][Patch] Support URL-encoded DuckDuckGo / redirect URLs in CSS selector & href parsing [`nowing_backend/app/proprietary/platforms/linkedin/executive_parser.py:93-98`]
+- [x] [Review][Patch] Support `|`, `•` delimiters and Vietnamese prepositions ('tại', 'ở') in SERP title parsing [`nowing_backend/app/proprietary/platforms/linkedin/executive_parser.py:51-72`]
+- [x] [Review][Patch] Expand title/name honorifics prefix stripping (Mr, Dr) and suffix degrees (CFA, MBA, PhD) [`nowing_backend/app/services/email_pattern_service.py:12-45`]
+- [x] [Review][Patch] Unescape raw HTML entities in SERP title and snippet text [`nowing_backend/app/proprietary/platforms/linkedin/executive_parser.py:103-121`]
+- [x] [Review][Patch] Fix empty parenthesis `()` in B2B outreach draft when `signal_details` is missing [`nowing_backend/app/services/outreach_service.py:78-105`]
+
+

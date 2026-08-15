@@ -14,11 +14,11 @@ from sqlalchemy.orm import selectinload
 
 from app.auth.context import AuthContext
 from app.db import (
+    CompanyDecisionMaker,
     Lead,
     LinkedinJob,
     Permission,
     VerifiedContact,
-    Workspace,
     get_async_session,
 )
 from app.lead_intelligence.schemas import (
@@ -194,7 +194,7 @@ async def list_workspace_leads(
     result = await session.execute(stmt)
     leads = result.scalars().all()
 
-    items = [_map_lead_to_read(l) for l in leads]
+    items = [_map_lead_to_read(lead) for lead in leads]
     return LeadListResponse(
         items=items,
         total=total,
@@ -288,7 +288,7 @@ async def update_lead_status(
 
 
 @router.get(
-    "/workspaces/{workspace_id}/companies/{company_name}/graph",
+    "/workspaces/{workspace_id}/companies/{company_name:path}/graph",
     response_model=CompanyGraphRead,
     status_code=status.HTTP_200_OK,
 )
@@ -298,7 +298,7 @@ async def get_company_graph(
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
 ) -> CompanyGraphRead:
-    """Get aggregated relationship graph for enterprise/company (AC-3 / Widget U4)."""
+    """Get aggregated relationship graph for enterprise/company (AC-3 / Widget U4 / Story 21.9)."""
     await check_permission(
         session,
         auth,
@@ -314,7 +314,9 @@ async def get_company_graph(
             detail="Company name must not be empty",
         )
 
-    escaped_name = _escape_ilike_term(clean_name)
+    # For fuzzy search across names like "Tập đoàn Gelex (Gelex Group / Viglacera)"
+    first_token = clean_name.split("(")[0].strip()
+    escaped_name = _escape_ilike_term(first_token or clean_name)
     ilike_pattern = f"%{escaped_name}%"
 
     # Query verified contacts from database for this company (Story 21.3)
@@ -331,8 +333,11 @@ async def get_company_graph(
     db_contacts = contacts_result.scalars().all()
 
     decision_makers: list[DecisionMakerRead] = []
+    seen_names: set[str] = set()
+
     for c in db_contacts:
-        if c.name:
+        if c.name and c.name not in seen_names:
+            seen_names.add(c.name)
             linkedin_slug = quote(c.name.lower().replace(" ", "-"), safe="")
             decision_makers.append(
                 DecisionMakerRead(
@@ -344,6 +349,33 @@ async def get_company_graph(
                     confidence=c.confidence if c.confidence is not None else 0.95,
                 )
             )
+
+    # Query CompanyDecisionMaker from DB (Story 21.9)
+    try:
+        dm_stmt = (
+            select(CompanyDecisionMaker)
+            .where(
+                CompanyDecisionMaker.company_name.ilike(ilike_pattern, escape="!"),
+            )
+            .limit(10)
+        )
+        async with session.begin_nested():
+            dm_result = await session.execute(dm_stmt)
+            for dm in dm_result.scalars().all():
+                if dm.full_name not in seen_names:
+                    seen_names.add(dm.full_name)
+                    decision_makers.append(
+                        DecisionMakerRead(
+                            name=dm.full_name,
+                            title=dm.title or "Executive",
+                            linkedin_url=dm.linkedin_url or f"https://linkedin.com/in/{dm.linkedin_slug}",
+                            email=dm.email_prediction,
+                            phone=None,
+                            confidence=dm.confidence_score or 0.85,
+                        )
+                    )
+    except Exception:
+        pass
 
     # Query LinkedIn job postings for this company safely with nested savepoint
     db_jobs = []

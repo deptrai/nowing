@@ -7,12 +7,11 @@ import re
 from app.proprietary.platforms.linkedin.schemas import DEFAULT_EXECUTIVE_ROLES
 
 
-def _sanitize_company_name(name: str) -> str:
-    """Sanitize company name by removing unescaped quotes and extra whitespace."""
-    if not name:
+def _sanitize_term(term: str) -> str:
+    """Sanitize a search term by stripping quotes, parenthesis, and extra whitespace."""
+    if not term:
         return ""
-    # Strip inner quotes to avoid broken SERP queries
-    cleaned = re.sub(r'["\r\n\t]+', " ", name).strip()
+    cleaned = re.sub(r'["\(\)\r\n\t]+', " ", term).strip()
     return " ".join(cleaned.split())
 
 
@@ -26,11 +25,12 @@ def build_serp_dork_query(
     Example output:
         site:linkedin.com/in/ "Vingroup" ("CEO" OR "Founder" OR "HR Director" OR "CTO")
     """
-    clean_company = _sanitize_company_name(company_name)
+    clean_company = _sanitize_term(company_name)
     if not clean_company:
         raise ValueError("Company name must not be empty.")
 
-    target_roles = [r.strip() for r in (roles or DEFAULT_EXECUTIVE_ROLES) if r and r.strip()]
+    raw_roles = roles or DEFAULT_EXECUTIVE_ROLES
+    target_roles = [_sanitize_term(r) for r in raw_roles if r and _sanitize_term(r)]
     if not target_roles:
         target_roles = ["CEO", "Founder", "Director"]
 
@@ -44,3 +44,4 @@ def build_serp_dork_query(
     ]
 
     return " ".join(query_parts)
+
