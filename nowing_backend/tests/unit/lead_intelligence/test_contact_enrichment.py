@@ -110,6 +110,7 @@ class _FakeSession:
         self.added.append(obj)
 
     async def execute(self, _stmt: Any, _params: dict[str, Any] | None = None) -> _FakeResult:
+        self.last_stmt = _stmt
         return _FakeResult(None, self._rows)
 
     async def get(self, model: Any, id: Any) -> Any:
@@ -617,6 +618,28 @@ class TestListEnrichmentRequests:
         assert kwdefaults["offset"] == 0
         assert kwdefaults["limit"] == 50
 
+    async def test_list_enrichment_requests_filters_by_workspace_lead_and_client(
+        self, monkeypatch
+    ) -> None:
+        from app.lead_intelligence.enrichment.service import EnrichmentService
+        from sqlalchemy.dialects import postgresql
+
+        session = _FakeSession(rows=[])
+        svc = EnrichmentService()
+        lead_id = _uuid()
+        await svc.list_enrichment_requests(
+            session, workspace_id=1, client_id="acme", lead_id=lead_id
+        )
+
+        compiled = str(
+            session.last_stmt.compile(
+                dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}
+            )
+        )
+        assert "workspace_id = 1" in compiled
+        assert f"lead_id = '{lead_id}'" in compiled
+        assert "client_id = 'acme'" in compiled
+
 
 class TestDegraded:
     """Kill NumberReplacer mutants in _degraded."""
@@ -659,7 +682,7 @@ class TestWriteMemory:
                 "phone": "+84111111111",
                 "verification_status": "verified",
                 "confidence": 0.12345,
-                "source_provider": "cleanlist",
+                "source_provider": "cleanlist 越南",
             },
             {
                 "name": "B",
@@ -669,7 +692,7 @@ class TestWriteMemory:
                 "verification_status": "verified",
                 "confidence": 0.12344,
                 "source_provider": "bettercontact",
-            },
+            }
         ]
 
         svc = EnrichmentService()
@@ -683,7 +706,31 @@ class TestWriteMemory:
 
         # Average confidence of the two contacts, rounded to 4 decimals.
         assert "0.1234" in kwargs["content"]
-        # Provider must be the *first* contact's provider.
-        assert '"provider": "cleanlist"' in kwargs["content"]
+        # Provider must be the *first* contact's provider, using a non-ASCII
+        # name so json.dumps(ensure_ascii=False) is asserted.
+        assert '"provider": "cleanlist 越南"' in kwargs["content"]
         assert "bettercontact" not in kwargs["content"]
         assert kwargs["tags"] == ["enriched_contact"]
+
+    async def test_write_memory_handles_empty_contacts(self, monkeypatch) -> None:
+        from app.lead_intelligence.enrichment.service import EnrichmentService
+
+        spy = _AsyncMockResult(SimpleNamespace(id=1))
+        monkeypatch.setattr(
+            "app.lead_intelligence.enrichment.service.MemoryRepository.create_memory",
+            spy,
+        )
+        monkeypatch.setattr(
+            "app.lead_intelligence.enrichment.service.redact_pii",
+            lambda text, **kw: SimpleNamespace(text=text),
+        )
+
+        request = _FakeEnrichmentRequest()
+        svc = EnrichmentService()
+        await svc._write_memory(None, request, [], _uuid())
+
+        assert spy.awaited_once is True
+        kwargs = spy.last_kwargs
+        assert '"provider": "none"' in kwargs["content"]
+        assert '"contact_count": 0' in kwargs["content"]
+        assert '"confidence": 0.0' in kwargs["content"]
