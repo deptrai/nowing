@@ -75,7 +75,7 @@ def build_linkedin_jobs_executor(
         for job in enriched_jobs:
             if payload.filter_high_intent and not job.high_buying_intent:
                 continue
-            if payload.min_growth_rate > 0 and job.company_growth_rate < payload.min_growth_rate:
+            if payload.min_growth_rate is not None and job.company_growth_rate < payload.min_growth_rate:
                 continue
             filtered_jobs.append(job)
 
@@ -91,17 +91,16 @@ def build_linkedin_jobs_executor(
             )
             for m in company_metrics.values()
             if (not payload.filter_high_intent or m.high_buying_intent)
-            and (payload.min_growth_rate <= 0 or m.hiring_velocity_30d >= payload.min_growth_rate)
+            and (payload.min_growth_rate is None or m.hiring_velocity_30d >= payload.min_growth_rate)
         ]
 
         # Optional DB persistence
         if payload.persist_to_db and postings:
             try:
-                from app.db import get_db
+                from app.db import async_session_maker
 
-                async for session in get_db():
+                async with async_session_maker() as session:
                     await persist_linkedin_jobs(postings, session=session)
-                    break
             except Exception as exc:
                 logger.warning(f"Failed to persist LinkedIn jobs to database: {exc}")
 

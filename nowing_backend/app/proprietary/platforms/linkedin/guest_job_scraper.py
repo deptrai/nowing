@@ -9,6 +9,7 @@ import asyncio
 import logging
 import random
 import re
+import unicodedata
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.parse import unquote
@@ -34,7 +35,7 @@ _USER_AGENTS = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15",
 ]
 
-_JOB_ID_REGEX = re.compile(r"(?:urn:li:jobPosting:|\/jobs\/view\/.*?-|currentJobId=)(\d{8,14})")
+_JOB_ID_REGEX = re.compile(r"(?:urn:li:jobPosting:|\/jobs\/view\/(?:[^\/?#]+-)?|currentJobId=)(\d{8,14})")
 _COMPANY_SLUG_REGEX = re.compile(r"linkedin\.com\/company\/([a-zA-Z0-9\-_]+)", re.IGNORECASE)
 _AGE_REGEX = re.compile(r"(\d+)\s+(minute|minutes|hour|hours|day|days|week|weeks|month|months)\s+ago", re.IGNORECASE)
 
@@ -50,8 +51,9 @@ _COMMON_SKILL_KEYWORDS = [
 
 
 def _slugify(text: str) -> str:
-    """Normalize text into clean URL slug."""
-    text = unquote(text or "").lower()
+    """Normalize text into clean URL slug with Unicode NFKD support."""
+    text = unquote(text or "")
+    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("utf-8").lower()
     text = re.sub(r"[^a-z0-9\s-]", "", text)
     text = re.sub(r"\s+", "-", text.strip())
     return text or "unknown"
@@ -153,7 +155,8 @@ def parse_guest_job_cards(html_content: str) -> list[LinkedInJobPosting]:
             dt_attr = time_node.attributes.get("datetime")
             if dt_attr:
                 try:
-                    posted_at = datetime.fromisoformat(dt_attr).replace(tzinfo=UTC)
+                    dt = datetime.fromisoformat(dt_attr)
+                    posted_at = dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC)
                 except Exception:
                     posted_at = _parse_relative_age(time_node.text())
             else:
@@ -215,11 +218,11 @@ def parse_guest_job_detail(html_content: str) -> dict[str, Any]:
         elif "employment" in header_text:
             employment_type = val
 
-    # Extract skill tags
+    # Extract skill tags with punctuation-safe boundary
     skills: list[str] = []
-    text_to_search = f"{title} {description_text}"
+    text_to_search = f" {title} {description_text} "
     for skill in _COMMON_SKILL_KEYWORDS:
-        pattern = rf"\b{re.escape(skill)}\b"
+        pattern = rf"(?:^|[\s,;./|(){{\}}\[\]<>-]){re.escape(skill)}(?:$|[\s,;./|(){{\}}\[\]<>-])"
         if re.search(pattern, text_to_search, re.IGNORECASE):
             skills.append(skill)
 
@@ -330,7 +333,41 @@ class LinkedInGuestJobScraper:
         client: httpx.AsyncClient | None = None,
     ) -> list[LinkedInJobPosting]:
         """Search public guest jobs by keyword, location, or company slug."""
+        if client is None:
+            async with httpx.AsyncClient(
+                proxy=self.proxy_url,
+                timeout=self.timeout,
+                follow_redirects=True,
+            ) as session_client:
+                return await self._search_jobs_internal(
+                    keyword=keyword,
+                    location=location,
+                    company_slug=company_slug,
+                    limit=limit,
+                    fetch_details=fetch_details,
+                    client=session_client,
+                )
+
+        return await self._search_jobs_internal(
+            keyword=keyword,
+            location=location,
+            company_slug=company_slug,
+            limit=limit,
+            fetch_details=fetch_details,
+            client=client,
+        )
+
+    async def _search_jobs_internal(
+        self,
+        keyword: str = "",
+        location: str = "Vietnam",
+        company_slug: str | None = None,
+        limit: int = 25,
+        fetch_details: bool = False,
+        client: httpx.AsyncClient | None = None,
+    ) -> list[LinkedInJobPosting]:
         all_jobs: list[LinkedInJobPosting] = []
+        seen_job_ids: set[str] = set()
         page_size = 25
         max_pages = (limit + page_size - 1) // page_size
 
@@ -354,7 +391,11 @@ class LinkedInGuestJobScraper:
             if not jobs:
                 break
 
-            all_jobs.extend(jobs)
+            for job in jobs:
+                if job.job_id not in seen_job_ids:
+                    seen_job_ids.add(job.job_id)
+                    all_jobs.append(job)
+
             if len(all_jobs) >= limit:
                 break
 
@@ -397,12 +438,13 @@ async def persist_linkedin_jobs(
     company_id_map: dict[str, int] = {}
 
     for slug, name in companies_dict.items():
+        active_count = len([j for j in jobs if (j.company_slug == slug or _slugify(j.company_name) == slug)])
         stmt = (
             pg_insert(LinkedinCompany)
             .values(
-                company_slug=slug,
+                company_slug=slug[:255],
                 company_name=name,
-                active_jobs_count=len([j for j in jobs if (j.company_slug == slug or _slugify(j.company_name) == slug)]),
+                active_jobs_count=active_count,
                 created_at=now,
                 updated_at=now,
             )
@@ -410,6 +452,7 @@ async def persist_linkedin_jobs(
                 index_elements=[LinkedinCompany.company_slug],
                 set_={
                     "company_name": name,
+                    "active_jobs_count": active_count,
                     "updated_at": now,
                 },
             )
@@ -428,14 +471,14 @@ async def persist_linkedin_jobs(
         job_stmt = (
             pg_insert(LinkedinJob)
             .values(
-                job_id=job.job_id,
+                job_id=str(job.job_id)[:100],
                 company_id=comp_id,
-                company_name=job.company_name,
+                company_name=(job.company_name or "")[:255],
                 title=job.title,
-                location=job.location,
-                workplace_type=job.workplace_type,
-                seniority_level=job.seniority_level,
-                employment_type=job.employment_type,
+                location=(job.location or "")[:255] if job.location else None,
+                workplace_type=(job.workplace_type or "")[:50] if job.workplace_type else None,
+                seniority_level=(job.seniority_level or "")[:50] if job.seniority_level else None,
+                employment_type=(job.employment_type or "")[:50] if job.employment_type else None,
                 description_text=job.description_text,
                 skills=job.skills,
                 posted_at=job.posted_at or now,
@@ -446,8 +489,13 @@ async def persist_linkedin_jobs(
             .on_conflict_do_update(
                 index_elements=[LinkedinJob.job_id],
                 set_={
+                    "company_id": comp_id,
+                    "company_name": (job.company_name or "")[:255],
                     "title": job.title,
-                    "location": job.location,
+                    "location": (job.location or "")[:255] if job.location else None,
+                    "workplace_type": (job.workplace_type or "")[:50] if job.workplace_type else None,
+                    "seniority_level": (job.seniority_level or "")[:50] if job.seniority_level else None,
+                    "employment_type": (job.employment_type or "")[:50] if job.employment_type else None,
                     "description_text": job.description_text,
                     "skills": job.skills,
                     "updated_at": now,

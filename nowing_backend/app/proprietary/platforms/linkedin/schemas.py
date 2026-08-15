@@ -135,9 +135,9 @@ class LinkedInJobSearchInput(BaseModel):
         le=100,
         description="Maximum job postings to return",
     )
-    min_growth_rate: float = Field(
-        default=0.0,
-        description="Minimum 30-day hiring velocity growth rate filter (e.g., 0.20 for 20%)",
+    min_growth_rate: float | None = Field(
+        default=None,
+        description="Optional minimum 30-day hiring velocity growth rate filter (e.g., 0.20 for 20%)",
     )
     filter_high_intent: bool = Field(
         default=False,

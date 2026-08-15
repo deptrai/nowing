@@ -42,6 +42,18 @@ So that I can identify high-growth companies with active purchasing power and ex
   - [x] 4.2 `tests/unit/proprietary/platforms/linkedin/test_velocity_calculator.py`.
   - [x] 4.3 `tests/unit/capabilities/test_linkedin_jobs_capabilities.py`.
 
+### Review Findings
+- [x] [Review][Patch] Fix invalid import `from app.db import get_db` causing silent persistence failures [app/capabilities/recruitment/linkedin_jobs/executor.py:100]
+- [x] [Review][Patch] Eliminate N+1 SQL query loop in `HiringVelocityCalculator.calculate_from_db` using grouped conditional aggregation [app/proprietary/platforms/linkedin/velocity_calculator.py:144]
+- [x] [Review][Patch] Reuse HTTP client context in `LinkedInGuestJobScraper.search_jobs` to prevent connection churn [app/proprietary/platforms/linkedin/guest_job_scraper.py:275]
+- [x] [Review][Patch] Support clean job URLs without title slug in `_JOB_ID_REGEX` [app/proprietary/platforms/linkedin/guest_job_scraper.py:37]
+- [x] [Review][Patch] Unicode normalize Vietnamese company names in `_slugify` to prevent slug collapsing [app/proprietary/platforms/linkedin/guest_job_scraper.py:52]
+- [x] [Review][Patch] Fix skill regex matching for non-word character keywords like C++, C#, .NET [app/proprietary/platforms/linkedin/guest_job_scraper.py:221]
+- [x] [Review][Patch] Fix `min_growth_rate` filtering logic when growth rate is negative or 0 [app/capabilities/recruitment/linkedin_jobs/executor.py:78]
+- [x] [Review][Patch] Update `active_jobs_count` and missing job fields on PostgreSQL upsert conflict [app/proprietary/platforms/linkedin/guest_job_scraper.py:409]
+- [x] [Review][Patch] Normalize naive datetime before comparing with UTC cutoff in velocity calculation [app/proprietary/platforms/linkedin/velocity_calculator.py:106]
+- [x] [Review][Patch] Add unit test coverage for `persist_to_db=True` in `test_linkedin_jobs_capabilities.py` [tests/unit/capabilities/test_linkedin_jobs_capabilities.py]
+
 ## Dev Notes
 
 - **Zero-Login Invariant:** Tuyệt đối không yêu cầu đăng nhập tài khoản cá nhân; khai thác qua Public Guest Job Ingress API.

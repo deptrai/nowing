@@ -80,7 +80,6 @@ async def test_recruitment_search_linkedin_jobs_executor_flow() -> None:
             keyword="Python",
             location="Vietnam",
             limit=10,
-            min_growth_rate=0.0,
             filter_high_intent=False,
         )
 
@@ -135,3 +134,36 @@ async def test_recruitment_search_linkedin_jobs_executor_filtered() -> None:
         assert len(output.jobs) == 1
         assert output.jobs[0].company_name == "Vingroup"
         assert output.jobs[0].high_buying_intent is True
+
+
+@pytest.mark.asyncio
+async def test_recruitment_search_linkedin_jobs_persist_to_db() -> None:
+    """AC 2 & AD-LI-5: Capability executor persists to DB when requested."""
+    mock_postings = [
+        LinkedInJobPosting(
+            job_id="job-persist-1",
+            title="Senior Python Engineer",
+            company_name="Vingroup",
+            company_slug="vingroup",
+        )
+    ]
+
+    with patch(
+        "app.capabilities.recruitment.linkedin_jobs.executor.LinkedInGuestJobScraper.search_jobs",
+        new=AsyncMock(return_value=mock_postings),
+    ), patch(
+        "app.capabilities.recruitment.linkedin_jobs.executor.persist_linkedin_jobs",
+        new=AsyncMock(return_value=1),
+    ) as mock_persist:
+        input_payload = LinkedInJobSearchInput(
+            keyword="Python",
+            location="Vietnam",
+            persist_to_db=True,
+        )
+
+        output: LinkedInJobSearchOutput = await RECRUITMENT_SEARCH_LINKEDIN_JOBS.executor(
+            input_payload
+        )
+
+        assert output.total_found == 1
+        assert mock_persist.called

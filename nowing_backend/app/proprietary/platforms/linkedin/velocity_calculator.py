@@ -100,6 +100,9 @@ class HiringVelocityCalculator:
                 }
 
             dt = job.posted_at
+            if dt is not None and dt.tzinfo is None:
+                dt = dt.replace(tzinfo=UTC)
+
             if dt is None:
                 # Default to recent window if unspecified
                 company_stats[slug]["jobs_last_30d"] += 1
@@ -126,46 +129,51 @@ class HiringVelocityCalculator:
         company_slugs: list[str] | None = None,
         reference_time: datetime | None = None,
     ) -> dict[str, CompanyVelocityMetrics]:
-        """Compute velocity metrics directly from PostgreSQL `linkedin_jobs` table."""
+        """Compute velocity metrics directly from PostgreSQL `linkedin_jobs` table in a single query."""
         now = reference_time or datetime.now(UTC)
         cutoff_30d = now - timedelta(days=30)
         cutoff_60d = now - timedelta(days=60)
 
-        # 1. Fetch relevant companies
-        stmt_comp = select(LinkedinCompany)
-        if company_slugs:
-            stmt_comp = stmt_comp.where(LinkedinCompany.company_slug.in_(company_slugs))
+        # Single grouped query with conditional aggregation to eliminate N+1 round trips
+        from sqlalchemy import case
 
-        comp_res = await session.execute(stmt_comp)
-        companies = comp_res.scalars().all()
+        stmt = (
+            select(
+                LinkedinCompany.company_slug,
+                LinkedinCompany.company_name,
+                func.count(case((LinkedinJob.posted_at >= cutoff_30d, 1))).label("count_last"),
+                func.count(
+                    case(
+                        (
+                            (LinkedinJob.posted_at >= cutoff_60d)
+                            & (LinkedinJob.posted_at < cutoff_30d),
+                            1,
+                        )
+                    )
+                ).label("count_prior"),
+            )
+            .outerjoin(LinkedinJob, LinkedinJob.company_id == LinkedinCompany.id)
+            .group_by(
+                LinkedinCompany.company_slug,
+                LinkedinCompany.company_name,
+            )
+        )
+        if company_slugs:
+            stmt = stmt.where(LinkedinCompany.company_slug.in_(company_slugs))
+
+        comp_res = await session.execute(stmt)
+        rows = comp_res.all()
 
         results: dict[str, CompanyVelocityMetrics] = {}
-
-        for comp in companies:
-            # Query last 30d jobs
-            q_last = select(func.count(LinkedinJob.id)).where(
-                LinkedinJob.company_name == comp.company_name,
-                LinkedinJob.posted_at >= cutoff_30d,
-            )
-            res_last = await session.execute(q_last)
-            count_last = res_last.scalar() or 0
-
-            # Query prior 30d jobs (31-60d)
-            q_prior = select(func.count(LinkedinJob.id)).where(
-                LinkedinJob.company_name == comp.company_name,
-                LinkedinJob.posted_at >= cutoff_60d,
-                LinkedinJob.posted_at < cutoff_30d,
-            )
-            res_prior = await session.execute(q_prior)
-            count_prior = res_prior.scalar() or 0
-
+        for row in rows:
+            slug, name, count_last, count_prior = row
             metrics = calculate_hiring_velocity(
-                company_name=comp.company_name,
-                company_slug=comp.company_slug,
-                jobs_last_30d=count_last,
-                jobs_prior_30d=count_prior,
+                company_name=name,
+                company_slug=slug,
+                jobs_last_30d=count_last or 0,
+                jobs_prior_30d=count_prior or 0,
             )
-            results[comp.company_slug] = metrics
+            results[slug] = metrics
 
         return results
 
