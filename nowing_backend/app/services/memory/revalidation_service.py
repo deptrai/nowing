@@ -214,7 +214,7 @@ class RevalidationService:
                 reason=f"Capability failed: {exc}",
             )
 
-        duration_ms = int((time.perf_counter() - started) * 1000)
+        duration_ms = int((time.perf_counter() - started) // 1000)
         cost_micros: int | None = None
         try:
             cost_micros = await charge_capability(output, capability.billing_unit, ctx)

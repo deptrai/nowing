@@ -22,6 +22,8 @@ from .features import (
     chat,
     image_generation,
     knowledge_base,
+    lead_intelligence,
+    lead_scoring,
     memory,
     reports,
     scrapers,
@@ -149,6 +151,8 @@ def build_server(settings: Settings) -> tuple[WorkspaceAwareFastMCP, NowingClien
     )
     workspaces.register(mcp, context)
     scrapers.register(mcp, client, context)
+    lead_scoring.register(mcp, client, context)
+    lead_intelligence.register(mcp, client, context)
     knowledge_base.register(mcp, client, context)
     memory.register(mcp, client, context)
     team_memory.register(mcp, client, context)

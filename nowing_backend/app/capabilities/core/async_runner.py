@@ -154,7 +154,8 @@ async def _execute_async_run(
                             GapFillRequest(
                                 query=getattr(payload, "query", ""),
                                 workspace_id=workspace_id,
-                                domains=getattr(output, "suggested_domains", None) or [],
+                                domains=getattr(output, "suggested_domains", None)
+                                or [],
                                 source="chainlens.research",
                                 mode="async",
                                 correlation_id=run_id,
@@ -171,7 +172,9 @@ async def _execute_async_run(
                             },
                         )
                     except Exception:
-                        logger.exception("gap-fill trigger failed for async run %s", run_id)
+                        logger.exception(
+                            "gap-fill trigger failed for async run %s", run_id
+                        )
 
                 serialized = serialize_output(output)
                 final_status = "success"
@@ -240,9 +243,7 @@ async def _finalize_async(
                 await set_request_tenant_context(
                     session, workspace_id=0, run_id=str(parsed_id)
                 )
-                result = await session.execute(
-                    select(Run).where(Run.id == parsed_id)
-                )
+                result = await session.execute(select(Run).where(Run.id == parsed_id))
                 run = result.scalar_one_or_none()
                 if run is not None and run.parent_run_id is not None:
                     await open_escalation_after_retry(session, run.parent_run_id)

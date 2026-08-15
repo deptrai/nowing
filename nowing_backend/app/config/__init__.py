@@ -1058,7 +1058,9 @@ class Config:
     VIETSTOCK_DATA_MICROS_PER_ITEM = int(
         os.getenv("VIETSTOCK_DATA_MICROS_PER_ITEM", "5000")
     )
-    VIETSTOCK_RATE_LIMIT_RPS = float(os.getenv("VIETSTOCK_RATE_LIMIT_RPS", str(20 / 60)))
+    VIETSTOCK_RATE_LIMIT_RPS = float(
+        os.getenv("VIETSTOCK_RATE_LIMIT_RPS", str(20 / 60))
+    )
     VIETSTOCK_TIMEOUT_S = float(os.getenv("VIETSTOCK_TIMEOUT_S", "15.0"))
     VIETSTOCK_DEMO_MODE = os.getenv("VIETSTOCK_DEMO_MODE", "TRUE").upper() == "TRUE"
     VIETSTOCK_QUOTE_URL = os.getenv("VIETSTOCK_QUOTE_URL", "")
@@ -1617,6 +1619,16 @@ class Config:
     CANONICAL_EMBEDDING_OUTBOX_FAILURE_THRESHOLD = _env_int(
         "CANONICAL_EMBEDDING_OUTBOX_FAILURE_THRESHOLD", 5
     )
+
+    # Signal detection (Story 21.1)
+    SIGNAL_SCAN_MICROS_PER_SIGNAL = max(0, _env_int("SIGNAL_SCAN_MICROS_PER_SIGNAL", 0))
+    LEAD_SCORING_MICROS_PER_CALL = max(0, _env_int("LEAD_SCORING_MICROS_PER_CALL", 0))
+    CRUNCHBASE_API_KEY = os.getenv("CRUNCHBASE_API_KEY", "")
+    NEWSAPI_KEY = os.getenv("NEWSAPI_KEY", "")
+    SIGNAL_EXECUTIVE_MOVE_ENABLED = (
+        os.getenv("SIGNAL_EXECUTIVE_MOVE_ENABLED", "FALSE").upper() == "TRUE"
+    )
+    SIGNAL_EVENT_RETENTION_DAYS = max(1, _env_int("SIGNAL_EVENT_RETENTION_DAYS", 90))
 
     # Validation Checks
     # Check embedding dimension

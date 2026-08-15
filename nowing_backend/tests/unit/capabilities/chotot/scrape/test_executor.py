@@ -251,6 +251,7 @@ def test_unwrap_result_defaults_to_empty_degraded():
     assert default == {
         "items": [],
         "total_items": 0,
+        "total": 0,
         "degraded": True,
         "degradation_reason": "unknown",
     }
@@ -264,6 +265,7 @@ def test_unwrap_result_unwraps_pydantic_model():
     assert _unwrap_result(out) == {
         "items": [item.to_output()],
         "total_items": 1,
+        "total": 0,
         "billable_units": 1,
         "degraded": False,
         "degradation_reason": None,

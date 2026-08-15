@@ -27,7 +27,7 @@ CHOTOT_SCRAPE = Capability(
 CHOTOT_BDS_SCRAPE = Capability(
     name="chotot_bds.scrape",
     description=(
-        "Deprecated alias for chotot.scrape with category=\"bds\". "
+        'Deprecated alias for chotot.scrape with category="bds". '
         "Use chotot.scrape instead."
     ),
     input_schema=ChototBdsScrapeInput,

@@ -69,6 +69,7 @@ def _unwrap_result(
         return {
             "items": [],
             "total_items": 0,
+            "total": 0,
             "degraded": True,
             "degradation_reason": "unknown",
         }
@@ -76,6 +77,7 @@ def _unwrap_result(
         return {
             "items": [item.to_output() for item in result.items],
             "total_items": result.total_items,
+            "total": result.total,
             "billable_units": result.billable_units,
             "degraded": result.degraded,
             "degradation_reason": result.degradation_reason,
@@ -117,6 +119,7 @@ def build_scrape_executor(
                 degradation_reason="rate_limited",
                 next_action=_next_action("rate_limited"),
                 category=payload.category,
+                total=0,
             )
         except ChototBdsDecodeError:
             logger.exception("chotot.scrape decode error")
@@ -126,6 +129,7 @@ def build_scrape_executor(
                 degraded=True,
                 degradation_reason="decode_error",
                 category=payload.category,
+                total=0,
             )
         except ChototBdsBotDetectedError:
             logger.exception("chotot.scrape bot detected")
@@ -137,17 +141,19 @@ def build_scrape_executor(
                 degradation_reason="bot_detected",
                 next_action=_next_action("bot_detected"),
                 category=payload.category,
+                total=0,
             )
         except ChototBdsAccessBlockedError:
             logger.exception("chotot.scrape access blocked")
-            _maybe_escalate(ctx, "bot_detected")
+            _maybe_escalate(ctx, "access_blocked")
             return ScrapeOutput(
                 items=[],
                 cost_micros=0,
                 degraded=True,
-                degradation_reason="bot_detected",
-                next_action=_next_action("bot_detected"),
+                degradation_reason="access_blocked",
+                next_action=_next_action("access_blocked"),
                 category=payload.category,
+                total=0,
             )
         except CategoryConfigError as exc:
             logger.exception("chotot.scrape invalid category: %s", exc)
@@ -157,6 +163,7 @@ def build_scrape_executor(
                 degraded=True,
                 degradation_reason=f"invalid_input: {exc}",
                 category=payload.category,
+                total=0,
             )
         except Exception as exc:
             logger.exception("chotot.scrape actor failed: %s", exc)
@@ -166,6 +173,7 @@ def build_scrape_executor(
                 degraded=True,
                 degradation_reason="api_error",
                 category=payload.category,
+                total=0,
             )
 
         result = _unwrap_result(raw)
@@ -176,10 +184,28 @@ def build_scrape_executor(
         if billable_raw is None:
             billable = total
         else:
-            billable = int(billable_raw) if isinstance(billable_raw, (int, float)) else total
+            billable = (
+                int(billable_raw) if isinstance(billable_raw, (int, float)) else total
+            )
         degraded = bool(result.get("degraded", False))
-        if degraded:
-            _maybe_escalate(ctx, result.get("degradation_reason") or "UNKNOWN")
+        degradation_reason = result.get("degradation_reason")
+
+        # Detect unknown-category listings and surface the reason while billing only valid items.
+        has_unknown = any(
+            isinstance(item, dict) and item.get("category") == "unknown"
+            for item in items
+        )
+        if has_unknown and not degraded:
+            if billable == 0:
+                degraded = True
+                cost = 0
+            else:
+                cost = billable * rate_micros
+            degradation_reason = "unknown_category"
+        elif degraded:
+            reason = degradation_reason or "UNKNOWN"
+            if reason in _BOT_DEGRADATION_REASONS:
+                _maybe_escalate(ctx, reason)
             cost = 0
         else:
             cost = billable * rate_micros
@@ -195,10 +221,10 @@ def build_scrape_executor(
             items=items,
             cost_micros=cost,
             degraded=degraded,
-            degradation_reason=result.get("degradation_reason"),
-            next_action=result.get("next_action")
-            or _next_action(result.get("degradation_reason")),
+            degradation_reason=degradation_reason,
+            next_action=result.get("next_action") or _next_action(degradation_reason),
             category=payload.category,
+            total=result.get("total") or 0,
         )
 
     return execute

@@ -47,6 +47,7 @@ class BillingUnit(StrEnum):
     CAFEF_DATA = "cafef_data"
     VIETSTOCK_DATA = "vietstock_data"
     MASOTHUE_COMPANY = "masothue_company"
+    LEAD_SCORE = "lead_score"
 
 
 class BillableInput(Protocol):

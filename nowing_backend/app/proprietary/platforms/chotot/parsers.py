@@ -7,10 +7,20 @@ import re
 from collections.abc import Callable
 from typing import Any
 
-from .fetch import CategoryConfigError, get_category_config
+from .fetch import (
+    _CATEGORY_CONFIG,
+    CategoryConfigError,
+    get_category_config,
+)
 from .schemas import ChototBdsListing, ChototListing
 
 logger = logging.getLogger(__name__)
+
+# Reverse lookup from raw ``cg`` codes to supported slugs so unmapped numeric
+# requests can still be parsed by the correct vertical-specific parser.
+_CG_TO_SLUG: dict[str, str] = {
+    str(cfg["cg"]): slug for slug, cfg in _CATEGORY_CONFIG.items() if "cg" in cfg
+}
 
 
 def _normalize_whitespace(value: Any) -> str | None:
@@ -213,67 +223,69 @@ def _extract_common(raw: dict[str, Any], category: str) -> dict[str, Any]:
     }
 
 
-_COMMON_SCALAR_KEYS: frozenset[str] = frozenset({
-    "account_id",
-    "account_name",
-    "account_oid",
-    "ad_features",
-    "ad_id",
-    "ad_labels",
-    "area",
-    "area_name",
-    "area_v2",
-    "avatar",
-    "body",
-    "business_days",
-    "category",
-    "category_name",
-    "company_ad",
-    "contain_videos",
-    "cta_buttons",
-    "date",
-    "fee_type",
-    "full_name",
-    "image",
-    "image_thumbnails",
-    "images",
-    "inspection_images",
-    "is_shop_verified",
-    "is_sticky",
-    "is_zalo_show",
-    "job_tier",
-    "label_campaigns",
-    "latitude",
-    "list_id",
-    "list_time",
-    "location",
-    "longitude",
-    "number_of_images",
-    "params",
-    "price",
-    "price_string",
-    "protection_entitlement",
-    "pty_characteristics",
-    "region",
-    "region_name",
-    "region_name_v3",
-    "region_v2",
-    "seller_info",
-    "special_display",
-    "special_display_images",
-    "specific_service_offered",
-    "state",
-    "status",
-    "sticky_ad_platinum",
-    "subject",
-    "thumbnail_image",
-    "type",
-    "videos",
-    "ward",
-    "ward_name",
-    "ward_name_v3",
-    "webp_image",
-})
+_COMMON_SCALAR_KEYS: frozenset[str] = frozenset(
+    {
+        "account_id",
+        "account_name",
+        "account_oid",
+        "ad_features",
+        "ad_id",
+        "ad_labels",
+        "area",
+        "area_name",
+        "area_v2",
+        "avatar",
+        "body",
+        "business_days",
+        "category",
+        "category_name",
+        "company_ad",
+        "contain_videos",
+        "cta_buttons",
+        "date",
+        "fee_type",
+        "full_name",
+        "image",
+        "image_thumbnails",
+        "images",
+        "inspection_images",
+        "is_shop_verified",
+        "is_sticky",
+        "is_zalo_show",
+        "job_tier",
+        "label_campaigns",
+        "latitude",
+        "list_id",
+        "list_time",
+        "location",
+        "longitude",
+        "number_of_images",
+        "params",
+        "price",
+        "price_string",
+        "protection_entitlement",
+        "pty_characteristics",
+        "region",
+        "region_name",
+        "region_name_v3",
+        "region_v2",
+        "seller_info",
+        "special_display",
+        "special_display_images",
+        "specific_service_offered",
+        "state",
+        "status",
+        "sticky_ad_platinum",
+        "subject",
+        "thumbnail_image",
+        "type",
+        "videos",
+        "ward",
+        "ward_name",
+        "ward_name_v3",
+        "webp_image",
+    }
+)
 
 
 def _extract_attributes(
@@ -288,9 +300,11 @@ def _extract_attributes(
         if isinstance(value, (str, int, float, bool)) and not isinstance(value, bool):
             # bool is an int subclass; keep useful booleans like company_ad.
             attrs[key] = value
-        elif isinstance(value, bool) or (isinstance(value, list) and value and all(
-            isinstance(v, (str, int, float, bool)) for v in value
-        )):
+        elif isinstance(value, bool) or (
+            isinstance(value, list)
+            and value
+            and all(isinstance(v, (str, int, float, bool)) for v in value)
+        ):
             attrs[key] = value
         elif isinstance(value, dict) and value:
             # Shallow dict for things like seller_info / shop.
@@ -470,9 +484,20 @@ def _property_type(raw: dict[str, Any]) -> str | None:
 
 def parse_generic(raw: dict[str, Any], category: str = "unknown") -> ChototListing:
     """Parse an unknown or unmapped category, preserving as much data as possible."""
-    common = _extract_common(raw, category)
-    listing = ChototListing(category=category, **common)
-    listing.attributes = _extract_attributes(raw, category, set())
+    # If the request was a raw numeric cg code, try to resolve the ad's own
+    # category or the requested code to a known slug so billing and detail URLs
+    # are accurate.
+    effective_category = category
+    if category.isdigit():
+        raw_category = raw.get("category")
+        raw_category_str = str(raw_category) if raw_category is not None else None
+        if raw_category_str and raw_category_str in _CG_TO_SLUG:
+            effective_category = _CG_TO_SLUG[raw_category_str]
+        elif category in _CG_TO_SLUG:
+            effective_category = _CG_TO_SLUG[category]
+    common = _extract_common(raw, effective_category)
+    listing = ChototListing(category=effective_category, **common)
+    listing.attributes = _extract_attributes(raw, effective_category, set())
     return listing
 
 
@@ -592,12 +617,15 @@ def parse_listing(raw: dict[str, Any], category: str = "bds") -> ChototListing:
     if not isinstance(raw, dict):
         raise ValueError("raw listing must be a dict")
 
+    # Resolve raw numeric cg codes to their canonical slug when possible.
+    effective_category = _CG_TO_SLUG.get(category, category)
+
     try:
-        get_category_config(category)
+        get_category_config(effective_category)
     except CategoryConfigError:
         return parse_generic(raw, "unknown")
 
-    parser = _CATEGORY_PARSERS.get(category)
+    parser = _CATEGORY_PARSERS.get(effective_category)
     if parser is None:
         # Allow raw numeric cg categories to fall back to generic parsing.
         if category.isdigit():
@@ -617,5 +645,7 @@ def parse_listings(
         if isinstance(item, dict):
             listings.append(parse_listing(item, category))
         else:
-            logger.warning("skipping non-dict ad item in category=%r: %s", category, type(item))
+            logger.warning(
+                "skipping non-dict ad item in category=%r: %s", category, type(item)
+            )
     return listings

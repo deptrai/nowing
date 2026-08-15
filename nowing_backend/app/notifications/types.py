@@ -15,6 +15,7 @@ NotificationType = Literal[
     "deep_research_complete",
     "automation_run_complete",
     "alert_run_complete",
+    "signal_detected",
 ]
 
 NotificationCategory = Literal["comments", "status"]

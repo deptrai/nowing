@@ -73,6 +73,7 @@ _WEB_RESEARCH_SUBAGENTS: frozenset[str] = frozenset(
         "amazon",
         "batdongsan",
         "cafef",
+        "chotot",
         "chotot_bds",
         "muaban_bds",
         "vietstock",

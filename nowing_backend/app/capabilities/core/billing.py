@@ -713,6 +713,9 @@ async def _charge_platform_meter(
     rate = _platform_rate(unit)
     # Stage the audit row before charge's commit flushes both.
     call_details: dict[str, Any] = {"items": items}
+    category = getattr(output, "category", None)
+    if category:
+        call_details["category"] = category
     if getattr(output, "degraded", False):
         call_details["degradation_reason"] = (
             getattr(output, "degradation_reason", None) or "unknown"

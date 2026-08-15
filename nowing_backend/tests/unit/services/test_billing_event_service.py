@@ -1,0 +1,376 @@
+"""Red-phase ATDD tests for Story 21.1 signal-scan billing.
+
+Tests the ``record_signal_scan`` helper / ``BillingEventService`` contract. DB
+and wallet are mocked; no real Postgres or credit card gateway is required.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+from unittest.mock import AsyncMock
+from uuid import uuid4
+
+import pytest
+
+from app.services.etl_credit_service import InsufficientCreditsError
+
+pytestmark = pytest.mark.unit
+
+
+class _FakeResult:
+    def __init__(self, value: Any = None, rows: list[Any] | None = None) -> None:
+        self._value = value
+        self._rows = rows or []
+
+    def scalar_one_or_none(self) -> Any:
+        return self._value
+
+    def scalar(self) -> Any:
+        return self._value
+
+    def first(self) -> Any:
+        return self._value
+
+    def all(self) -> list[Any]:
+        return self._rows
+
+
+class _FakeSession:
+    """AsyncSession stand-in that records staged rows and transaction state."""
+
+    def __init__(self, *, scalar: Any = None, rows: list[Any] | None = None) -> None:
+        self.added: list[Any] = []
+        self.committed = False
+        self.rolled_back = False
+        self.flushed = False
+        self._scalar = scalar
+        self._rows = rows or []
+
+    def add(self, obj: Any) -> None:
+        self.added.append(obj)
+
+    async def execute(self, _stmt: Any) -> _FakeResult:
+        return _FakeResult(self._scalar, self._rows)
+
+    async def commit(self) -> None:
+        self.committed = True
+
+    async def rollback(self) -> None:
+        self.rolled_back = True
+
+    async def refresh(self, _obj: Any) -> None:
+        pass
+
+    async def flush(self) -> None:
+        self.flushed = True
+
+
+def _billing_event_rows(session: _FakeSession) -> list[Any]:
+    return [o for o in session.added if type(o).__name__ == "BillingEvent"]
+
+
+def _patch_wallet(monkeypatch, *, balance_micros: int = 1_000_000) -> dict[str, Any]:
+    """Replace wallet primitives with AsyncMock spies."""
+    calls: dict[str, Any] = {"check": [], "debit": []}
+
+    async def _check_balance(_session: Any, user_id: Any, required_micros: int) -> None:
+        calls["check"].append({"user_id": user_id, "required_micros": required_micros})
+        if required_micros > balance_micros:
+            raise InsufficientCreditsError(
+                message="This run would exceed your available credit.",
+                balance_micros=balance_micros,
+                required_micros=required_micros,
+            )
+
+    async def _apply_debit(_session: Any, user_id: Any, cost_micros: int) -> int:
+        calls["debit"].append({"user_id": user_id, "cost_micros": cost_micros})
+        return balance_micros - cost_micros
+
+    monkeypatch.setattr(
+        "app.services.wallet_credit.check_balance",
+        _check_balance,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "app.services.wallet_credit.apply_debit",
+        _apply_debit,
+        raising=False,
+    )
+    return calls
+
+
+class TestRecordSignalScan:
+    """AC-6: BillingEvent ledger and wallet debit contract."""
+
+    @pytest.mark.asyncio
+    async def test_record_signal_scan_writes_billing_event_with_exact_fields(
+        self, monkeypatch
+    ):
+        from app.services.billing_event_service import record_signal_scan
+
+        _patch_wallet(monkeypatch)
+        session = _FakeSession()
+        signal_event_id = uuid4()
+
+        await record_signal_scan(
+            session,
+            signal_event_id=signal_event_id,
+            workspace_id=1,
+            client_id=None,
+            user_id=uuid4(),
+            cost_micros=3000,
+        )
+
+        rows = _billing_event_rows(session)
+        assert rows
+        row = rows[0]
+        assert row.event_entity_type == "signal_event"
+        assert row.event_type == "signal_scan"
+        assert row.event_id == signal_event_id
+        assert row.cost_micros == 3000
+        assert row.workspace_id == 1
+
+    @pytest.mark.asyncio
+    async def test_record_signal_scan_defaults_currency_and_cost_basis(
+        self, monkeypatch
+    ):
+        from app.services.billing_event_service import record_signal_scan
+
+        _patch_wallet(monkeypatch)
+        session = _FakeSession()
+
+        await record_signal_scan(
+            session,
+            signal_event_id=uuid4(),
+            workspace_id=1,
+            client_id=None,
+            user_id=uuid4(),
+            cost_micros=1000,
+        )
+
+        row = _billing_event_rows(session)[0]
+        assert row.currency == "USD"
+        assert row.cost_basis == "estimated"
+
+    @pytest.mark.asyncio
+    async def test_record_signal_scan_calls_wallet_check_balance_and_apply_debit(
+        self, monkeypatch
+    ):
+        from app.services.billing_event_service import record_signal_scan
+
+        calls = _patch_wallet(monkeypatch)
+        session = _FakeSession()
+        user_id = uuid4()
+
+        await record_signal_scan(
+            session,
+            signal_event_id=uuid4(),
+            workspace_id=1,
+            client_id=None,
+            user_id=user_id,
+            cost_micros=2500,
+        )
+
+        assert len(calls["check"]) == 1
+        assert calls["check"][0]["user_id"] == user_id
+        assert calls["check"][0]["required_micros"] == 2500
+        assert len(calls["debit"]) == 1
+        assert calls["debit"][0]["user_id"] == user_id
+        assert calls["debit"][0]["cost_micros"] == 2500
+
+    @pytest.mark.asyncio
+    async def test_record_signal_scan_cost_micros_equals_computed_value(
+        self, monkeypatch
+    ):
+        from app.config import config
+        from app.services.billing_event_service import record_signal_scan
+
+        monkeypatch.setattr(
+            config, "SIGNAL_SCAN_MICROS_PER_SIGNAL", 1500, raising=False
+        )
+        _patch_wallet(monkeypatch)
+        session = _FakeSession()
+
+        # The helper is expected to compute N * unit_cost when given item count.
+        await record_signal_scan(
+            session,
+            signal_event_id=uuid4(),
+            workspace_id=1,
+            client_id=None,
+            user_id=uuid4(),
+            cost_micros=3 * 1500,
+        )
+
+        row = _billing_event_rows(session)[0]
+        assert row.cost_micros == 4500
+
+    @pytest.mark.asyncio
+    async def test_record_signal_scan_zero_cost_writes_billing_event_with_zero(
+        self, monkeypatch
+    ):
+        from app.config import config
+        from app.services.billing_event_service import record_signal_scan
+
+        monkeypatch.setattr(config, "SIGNAL_SCAN_MICROS_PER_SIGNAL", 0, raising=False)
+        _patch_wallet(monkeypatch)
+        session = _FakeSession()
+
+        await record_signal_scan(
+            session,
+            signal_event_id=uuid4(),
+            workspace_id=1,
+            client_id=None,
+            user_id=uuid4(),
+            cost_micros=0,
+        )
+
+        rows = _billing_event_rows(session)
+        assert rows
+        assert rows[0].cost_micros == 0
+
+    @pytest.mark.asyncio
+    async def test_record_signal_scan_rejects_negative_cost(self):
+        from app.services.billing_event_service import record_signal_scan
+
+        session = _FakeSession()
+
+        with pytest.raises(ValueError, match="cost_micros"):
+            await record_signal_scan(
+                session,
+                signal_event_id=uuid4(),
+                workspace_id=1,
+                client_id=None,
+                user_id=uuid4(),
+                cost_micros=-100,
+            )
+
+    @pytest.mark.asyncio
+    async def test_record_signal_scan_no_signal_event_id_writes_no_billing_event(
+        self, monkeypatch
+    ):
+        from app.services.billing_event_service import record_signal_scan
+
+        _patch_wallet(monkeypatch)
+        session = _FakeSession()
+
+        await record_signal_scan(
+            session,
+            signal_event_id=None,  # type: ignore[arg-type]
+            workspace_id=1,
+            client_id=None,
+            user_id=uuid4(),
+            cost_micros=1000,
+        )
+
+        assert not _billing_event_rows(session)
+
+    @pytest.mark.asyncio
+    async def test_record_signal_scan_insufficient_credits_raises_with_message(
+        self, monkeypatch
+    ):
+        from app.services.billing_event_service import record_signal_scan
+
+        _patch_wallet(monkeypatch, balance_micros=0)
+        session = _FakeSession()
+
+        with pytest.raises(InsufficientCreditsError) as exc_info:
+            await record_signal_scan(
+                session,
+                signal_event_id=uuid4(),
+                workspace_id=1,
+                client_id=None,
+                user_id=uuid4(),
+                cost_micros=1000,
+            )
+
+        assert "exceed your available credit" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_record_signal_scan_apply_debit_failure_rolls_back(self, monkeypatch):
+        from app.services.billing_event_service import record_signal_scan
+
+        async def _apply_debit(_session: Any, _user_id: Any, _cost_micros: int) -> int:
+            raise RuntimeError("debit failed")
+
+        monkeypatch.setattr(
+            "app.services.wallet_credit.apply_debit",
+            _apply_debit,
+            raising=False,
+        )
+        monkeypatch.setattr(
+            "app.services.wallet_credit.check_balance",
+            AsyncMock(),
+            raising=False,
+        )
+
+        session = _FakeSession()
+
+        with pytest.raises(RuntimeError, match="debit failed"):
+            await record_signal_scan(
+                session,
+                signal_event_id=uuid4(),
+                workspace_id=1,
+                client_id=None,
+                user_id=uuid4(),
+                cost_micros=1000,
+            )
+
+        assert session.rolled_back is True
+        assert session.committed is False
+
+    @pytest.mark.asyncio
+    async def test_record_signal_scan_does_not_double_charge_same_signal_event(
+        self, monkeypatch
+    ):
+        from app.services.billing_event_service import record_signal_scan
+
+        _patch_wallet(monkeypatch)
+        session = _FakeSession()
+        signal_event_id = uuid4()
+
+        # First call succeeds.
+        await record_signal_scan(
+            session,
+            signal_event_id=signal_event_id,
+            workspace_id=1,
+            client_id=None,
+            user_id=uuid4(),
+            cost_micros=1000,
+        )
+
+        # Second call for the same signal event should raise or skip.
+        with pytest.raises(ValueError, match="duplicate"):
+            await record_signal_scan(
+                session,
+                signal_event_id=signal_event_id,
+                workspace_id=1,
+                client_id=None,
+                user_id=uuid4(),
+                cost_micros=1000,
+            )
+
+
+class TestBillingEventService:
+    """AC-6: class-based API is also exposed."""
+
+    @pytest.mark.asyncio
+    async def test_billing_event_service_record_scan_exists(self, monkeypatch):
+        from app.services.billing_event_service import BillingEventService
+
+        _patch_wallet(monkeypatch)
+        service = BillingEventService()
+        session = _FakeSession()
+        signal_event_id = uuid4()
+
+        await service.record_scan(
+            session,
+            signal_event_id=signal_event_id,
+            workspace_id=1,
+            client_id=None,
+            user_id=uuid4(),
+            cost_micros=1000,
+        )
+
+        rows = _billing_event_rows(session)
+        assert rows
+        assert rows[0].event_id == signal_event_id

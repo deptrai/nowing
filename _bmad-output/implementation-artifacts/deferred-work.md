@@ -1,3 +1,9 @@
+## Deferred from: code review of 10-7-chotot-multi-category-capability (2026-08-15)
+
+- **Finding:** Inverted `district_id` guard in `app/proprietary/platforms/chotot/scraper.py:116-119` rejects every valid non-negative `district_id`.
+  - **Action:** Marked `[x] [Review][Defer]` in `10-7-chotot-multi-category-capability.md`.
+  - **Reason / when to revisit:** Pre-existing bug; the new `chotot` subagent prompt no longer advertises `district_id` once patched, so it is no longer user-facing through this route. Revisit when district-level filtering is explicitly required for Chợ Tốt multi-category scrapes.
+
 ## Deferred from: code review of story-15-2-vietstock-deep-financials (2026-08-15)
 
 - **Finding:** CafeF financials do not currently go through `to_chunks()` / `NowingIngestService.ingest()`; true cross-source merge requires updating Story 15.1 or a follow-up story.

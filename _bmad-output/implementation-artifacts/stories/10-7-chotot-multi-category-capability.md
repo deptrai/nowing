@@ -144,3 +144,29 @@ So that users can research Chợ Tốt vehicles, jobs, electronics, and goods wi
 - Integration tests: 7 passed, 2 skipped in `tests/integration/capabilities/chotot/`.
 - Ruff clean for modified `app/capabilities/chotot/scrape` and `tests/unit/capabilities/chotot` paths.
 - Full repo `ruff check .` still reports pre-existing violations outside this story's scope.
+
+### Review Findings
+
+Code review of the `chotot` multi-category subagent wiring (2026-08-15).
+
+- [x] [Review][Patch] Missing `chotot` in `test_subagent_composition.py` expected sets — `tests/unit/agents/multi_agent_chat/test_subagent_composition.py:28-54`.
+- [x] [Review][Patch] New subagent `system_prompt.md` advertises `district_id` but the scraper rejects all valid non-negative values — `app/agents/chat/multi_agent_chat/subagents/builtins/chotot/system_prompt.md:17`.
+- [x] [Review][Patch] `evidence.sources` hard-codes `chotot.com` for all categories, but the parser builds category-specific origins — `app/agents/chat/multi_agent_chat/subagents/builtins/chotot/system_prompt.md:66`.
+- [x] [Review][Patch] `listing_type` playbook over-promises `rent` and `want_to_buy` for non-BĐS categories — `app/agents/chat/multi_agent_chat/subagents/builtins/chotot/system_prompt.md:15`.
+- [x] [Review][Patch] `description.md` lists wrong BĐS domain `nha.chotot.com` instead of `nhatot.com` — `app/agents/chat/multi_agent_chat/subagents/builtins/chotot/description.md:1`.
+- [x] [Review][Patch] New subagent uses `tools/__init__.py` instead of the established `tools/index.py` convention — `app/agents/chat/multi_agent_chat/subagents/builtins/chotot/agent.py:17-18`.
+- [x] [Review][Patch] `evidence.findings` template includes `area` for all categories, but `area` is BĐS-specific — `app/agents/chat/multi_agent_chat/subagents/builtins/chotot/system_prompt.md:65`.
+- [x] [Review][Patch] No dedicated tests added for the new `chotot` subagent builder and tool loading.
+- [x] [Review][Patch] Billing `call_details` does not include `category`, violating AC 2 — `app/capabilities/core/billing.py:715`.
+- [x] [Review][Patch] Unknown-category listings do not set `degradation_reason="unknown_category"`, violating AC 4 — `app/capabilities/chotot/scrape/executor.py:194-202`.
+- [x] [Review][Patch] Missing optional `subcategory` field in `ScrapeInput`, violating AC 7 — `app/capabilities/chotot/scrape/schemas.py:22-38`.
+- [x] [Review][Patch] `ScrapeInput` silently drops extra fields (e.g. `subcategory`, `sort`) instead of rejecting or honoring them — `app/capabilities/chotot/scrape/schemas.py:25`.
+- [x] [Review][Patch] Whitespace-padded or formatted raw `cg` codes fail validation — `app/proprietary/platforms/chotot/fetch.py:181-197`.
+- [x] [Review][Patch] Raw numeric `cg` requests keep the requested code as item `category`, so unmapped gateway `cg` listings may still be billed — `app/proprietary/platforms/chotot/parsers.py:471-476`.
+- [x] [Review][Patch] Listings with missing `listing_id` bypass `seen_ids` deduplication — `app/proprietary/platforms/chotot/scraper.py:310-314`.
+- [x] [Review][Patch] `ScrapeOutput.total_items` is `len(items)`, not the gateway total, so the subagent cannot distinguish "no results" from "cap reached" — `app/capabilities/chotot/scrape/schemas.py:90-93`.
+- [x] [Review][Patch] Empty first page is marked `degraded=True` with reason "empty", conflicting with the subagent playbook that instructs broadening and `status=partial` — `app/proprietary/platforms/chotot/scraper.py:301-304`.
+- [x] [Review][Patch] `ChototBdsAccessBlockedError` (5xx / access failure) is reported as `degradation_reason="bot_detected"` — `app/capabilities/chotot/scrape/executor.py:141-151`.
+- [x] [Review][Patch] Any `degraded=True` result triggers the anti-bot screenshot task, not only bot/rate-limit blocks — `app/capabilities/chotot/scrape/executor.py:180-183`.
+- [x] [Review][Patch] `chotot` and `chotot_bds` subagents can both handle BĐS queries with different billing meters; main agent has no guidance on which to pick — `app/agents/chat/multi_agent_chat/subagents/registry.py:116-117`.
+- [x] [Review][Defer] Inverted `district_id` guard in `app/proprietary/platforms/chotot/scraper.py:116-119` — pre-existing; remove from prompt now, fix guard separately.

@@ -118,7 +118,10 @@ def _build_vietstock_chunks(
             except Exception as exc:
                 logger.exception(
                     "vietstock financial chunk serialization failed",
-                    extra={"symbol": record.get("symbol"), "period": record.get("period")},
+                    extra={
+                        "symbol": record.get("symbol"),
+                        "period": record.get("period"),
+                    },
                 )
                 failures.append(
                     f"financial chunk serialization failed for {record.get('symbol')} {record.get('period')}: {exc}"
@@ -169,9 +172,7 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
         payload: ScrapeInput,
         ctx: CapabilityContext | None = None,
     ) -> ScrapeOutput:
-        actor_input = VietstockScrapeInput(
-            **payload.model_dump(exclude_unset=True)
-        )
+        actor_input = VietstockScrapeInput(**payload.model_dump(exclude_unset=True))
 
         emit_progress(
             "starting",
@@ -221,7 +222,9 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
             rate = int(rate)
         except (TypeError, ValueError):
             rate = 5000
-            logger.warning("VIETSTOCK_DATA_MICROS_PER_ITEM is not an integer; using 5000")
+            logger.warning(
+                "VIETSTOCK_DATA_MICROS_PER_ITEM is not an integer; using 5000"
+            )
         cost = 0 if degraded else billable * rate
 
         output = ScrapeOutput(

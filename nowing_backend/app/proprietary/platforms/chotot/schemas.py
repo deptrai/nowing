@@ -95,9 +95,17 @@ class ChototScrapeInput(BaseModel):
 
     @model_validator(mode="after")
     def _price_bounds(self) -> ChototScrapeInput:
-        if self.min_price is not None and self.max_price is not None and self.min_price > self.max_price:
+        if (
+            self.min_price is not None
+            and self.max_price is not None
+            and self.min_price > self.max_price
+        ):
             raise ValueError("min_price cannot exceed max_price")
-        if self.min_area is not None and self.max_area is not None and self.min_area > self.max_area:
+        if (
+            self.min_area is not None
+            and self.max_area is not None
+            and self.min_area > self.max_area
+        ):
             raise ValueError("min_area cannot exceed max_area")
         return self
 
@@ -120,6 +128,7 @@ class ChototScrapeOutput(BaseModel):
 
     items: list[ChototListing] = Field(default_factory=list)
     total_items: int = 0
+    total: int = 0
     degraded: bool = False
     degradation_reason: str | None = None
 

@@ -184,6 +184,7 @@ def get_category_config(category: str) -> dict[str, Any]:
     ``category`` can also be a raw numeric ``cg`` string, in which case it is
     treated as an ad-hoc category with a generic chotot.com detail origin.
     """
+    category = category.strip()
     if category in _CATEGORY_CONFIG:
         return _CATEGORY_CONFIG[category]
     # Allow raw cg codes for forward-compatibility / research use cases.
@@ -278,9 +279,7 @@ def _raise_for_status(status: int, url: str) -> None:
 
 def _decode(raw: bytes) -> dict[str, Any]:
     if len(raw) > _MAX_RESPONSE_BYTES:
-        raise ChototBdsDecodeError(
-            f"response exceeds {_MAX_RESPONSE_BYTES} bytes"
-        )
+        raise ChototBdsDecodeError(f"response exceeds {_MAX_RESPONSE_BYTES} bytes")
     try:
         text = raw.decode("utf-8")
     except UnicodeDecodeError as exc:

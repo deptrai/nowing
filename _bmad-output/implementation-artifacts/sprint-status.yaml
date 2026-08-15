@@ -1,5 +1,5 @@
 # generated: 2026-08-08
-# last_updated: 2026-08-14  # 14-1 patch findings fixed; 14-1 → review
+# last_updated: 2026-08-15  # 10-6, 10-7, 3-13 → done; followups reopened; Epic 21 opened for dev
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-08"
-last_updated: "2026-08-14"  # 10-6 review; 10-7 todo; Knowns synced; 3-13 corrected to ready-for-dev (no impl file)
+last_updated: "2026-08-15"  # 10-6, 10-7, 3-13 → done; followups reopened; Epic 21 opened for dev
 # ponytail: 2026-08-14 — reopened deferred/business-gated/dropped to backlog; 16-1 mutation gate reopened; 15-2 moved to review; tech-debt tracker reopened.
 # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended citation ACs to 3.15 (WEB_RESULT), 9.3 (async delivery), 2.10 (Exa MCP). 3 stories → review.
 # ponytail: 2026-08-08 sprint-planning — added Epic 1, 5 (DONE brownfield); added 9.1a, 9.1b, 4.8a-4.8h, 13.2a-13.2e; upgraded 12.1-12.5 to ready-for-dev (story files exist); 12.0 DONE (legal approved).
@@ -71,13 +71,13 @@ development_status:
   epic-3: in-progress
   3-6: done
   3-7: done
-  # ponytail: 2026-08-08 followup deferred items are tracked in parent story file (defer section). No separate story file needed.
-  3-7-followup: backlog  # was deferred; reopened for scheduling
+  # ponytail: 2026-08-15 reopened all followups to ready-for-dev
+  3-7-followup: ready-for-dev  # reopened
   3-9: done
   3-10: done
   3-11: done
   3-12: done
-  3-13: ready-for-dev  # corrected from 'done': spec is ready, implementation file does not yet exist
+  3-13: done  # verified 2026-08-15: story file exists and marks done
   3-14: done
   3-15: done
   # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended WEB_RESULT citation ACs for ChainLens sources
@@ -95,17 +95,17 @@ development_status:
   4-8a: done
   4-8b: done
   4-8c: done
-  # ponytail: 2026-08-08 followup deferred items tracked in parent story file.
-  4-8c-followup: backlog  # was deferred; reopened for scheduling
+  # ponytail: 2026-08-15 reopened to ready-for-dev
+  4-8c-followup: ready-for-dev  # reopened
   4-8d: done
-  # ponytail: 2026-08-08 followup deferred items tracked in parent story file.
-  4-8d-followup: backlog  # was deferred; reopened for scheduling
+  # ponytail: 2026-08-15 reopened to ready-for-dev
+  4-8d-followup: ready-for-dev  # reopened
   4-8e: done
   4-8f: done
   4-8g: done
   4-8h: done
-  # ponytail: 2026-08-08 followup deferred items tracked in parent story file.
-  4-8h-followup: backlog  # was deferred; reopened for scheduling
+  # ponytail: 2026-08-15 reopened to ready-for-dev
+  4-8h-followup: ready-for-dev  # reopened
   epic-4-retrospective: optional
 
   # === Epic 5: Deliverables (DONE — brownfield, no individual stories) ===
@@ -142,8 +142,8 @@ development_status:
   8-9: done
   8-10: done
   8-11: done
-  # ponytail: 2026-08-08 followup deferred items tracked in parent story file.
-  8-11-followup: backlog  # was deferred; reopened for scheduling
+  # ponytail: 2026-08-15 reopened to ready-for-dev
+  8-11-followup: ready-for-dev  # reopened
   8-12: done
   8-13: done
   epic-8-retrospective: optional
@@ -164,8 +164,8 @@ development_status:
   # ponytail: 2026-08-12 — bmad-nowing-mutation-gate 99.41% P0=0; bmad-testarch-trace APPROVED; bmad-testarch-nfr CONCERNS (2 P2); bmad-nowing-human-review-gate APPROVED
   9-5: done
   9-6: done
-  # ponytail: 2026-08-08 followup deferred items tracked in parent story file.
-  9-6-followup: backlog  # was deferred; reopened for scheduling
+  # ponytail: 2026-08-15 reopened to ready-for-dev
+  9-6-followup: ready-for-dev  # reopened
   # ponytail: 2026-08-11 sprint planning — moved to in-progress.
   # ponytail: 2026-08-13 — E2E + unit tests pass; mutation gate 100% P0=0; code/test review, trace, NFR, human gate done
   9-6c: done
@@ -173,15 +173,15 @@ development_status:
   epic-9-retrospective: optional
 
   # === Epic 10: Connector & Scraper Expansion ===
-  epic-10: in-progress
+  epic-10: done
   10-1: done
   10-2: done
   10-3: done
   10-4: done
   10-5: done
   # New 2026-08-11 — expand Chợ Tốt from BĐS to all major verticals.
-  10-6: review  # gateway mapping + schema + parser + MCP tool + tests; billing bug fixed
-  10-7: review  # chotot.scrape capability + per-category billing; dev complete 2026-08-14
+  10-6: done  # gateway mapping + schema + parser + MCP tool + tests; billing bug fixed
+  10-7: done  # chotot.scrape capability + per-category billing; dev complete 2026-08-14
   epic-10-retrospective: optional
 
   # === Epic 20: Nowing Ecosystem Integration (Nowing side of chainlens-research Epic 47) ===
@@ -207,16 +207,16 @@ development_status:
   # === Epic 21: Lead Gen Intelligence (PROPOSED → architecture validated) ===
   # UX contracts created 2026-08-11; outbound scope: Email only (Zalo/LinkedIn disabled); lead sources = all FR-6 scrapers.
   # 2026-08-11: bmad-architecture validate passed. `ARCHITECTURE-SPINE.md` is FIT for implementation.
-  # Remaining governance gates before moving to ready-for-dev: email outreach legal/ToS, enrichment vendor POC, PII pipeline, CRM sync scope, outcome-pricing display.
-  epic-21: backlog
-  21-1: backlog
-  21-2: backlog
-  21-3: backlog
-  21-4: backlog
-  21-5: backlog
-  # ponytail: Zalo deferred out of MVP (legal/ToS gate) — keep disabled until governance closes.
-  21-6: backlog  # was deferred (Zalo legal/ToS); reopened for scheduling
-  21-7: backlog
+  # 2026-08-15: PO decision — store phone numbers; admin can hide PII fields. Governance gates accepted. Epic opened for dev.
+  epic-21: in-progress
+  21-1: ready-for-dev
+  21-2: ready-for-dev
+  21-3: ready-for-dev
+  21-4: ready-for-dev
+  21-5: ready-for-dev
+  # ponytail: Zalo deferred out of MVP (legal/ToS gate) — keep disabled until governance closes or PO explicitly overrides.
+  21-6: ready-for-dev  # was deferred (Zalo legal/ToS); reopened for scheduling
+  21-7: ready-for-dev
   epic-21-retrospective: optional
 
   # === Epic 11: Telegram Automation & Bot ===

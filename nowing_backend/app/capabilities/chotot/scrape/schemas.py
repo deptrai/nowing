@@ -22,9 +22,10 @@ from app.proprietary.platforms.chotot.fetch import (
 class ScrapeInput(BaseModel):
     """MCP/agent-friendly surface for ``chotot.scrape``."""
 
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="forbid")
 
     category: str
+    subcategory: str | None = None
     listing_type: Literal["buy", "rent", "sell", "want_to_buy"] = "sell"
     property_type: Literal["apartment", "house", "land", "office", "all"] = "all"
     city: str
@@ -46,11 +47,12 @@ class ScrapeInput(BaseModel):
     @classmethod
     def _validate_category(cls, value: str) -> str:
         """Category must be a supported slug or a raw numeric gateway code."""
+        stripped = value.strip()
         try:
-            get_category_config(value)
+            get_category_config(stripped)
         except CategoryConfigError as exc:
             raise ValueError(f"category_not_supported: {value}") from exc
-        return value
+        return stripped
 
     @model_validator(mode="after")
     def _price_and_area_bounds(self) -> ScrapeInput:
@@ -86,6 +88,7 @@ class ScrapeOutput(BaseModel):
     degradation_reason: str | None = None
     next_action: str | None = None
     category: str | None = None
+    total: int = 0
 
     @computed_field
     @property

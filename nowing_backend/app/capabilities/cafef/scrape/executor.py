@@ -69,9 +69,7 @@ async def _index_cafef_news(
     for item in news:
         unique_id = item.url
         if not unique_id:
-            digest = hashlib.md5(
-                f"{symbol}:{item.title}".encode()
-            ).hexdigest()
+            digest = hashlib.md5(f"{symbol}:{item.title}".encode()).hexdigest()
             unique_id = f"cafef:{symbol}:{digest}"
         connector_docs.append(
             ConnectorDocument(
@@ -132,9 +130,7 @@ def build_scrape_executor(
         payload: ScrapeInput,
         ctx: CapabilityContext | None = None,
     ) -> ScrapeOutput:
-        actor_input = CafeFScrapeInput(
-            **payload.model_dump(exclude_unset=True)
-        )
+        actor_input = CafeFScrapeInput(**payload.model_dump(exclude_unset=True))
 
         emit_progress(
             "starting",
@@ -175,8 +171,7 @@ def build_scrape_executor(
         cost = (
             0
             if degraded
-            else billable
-            * getattr(config, "CAFEF_DATA_MICROS_PER_ITEM", 5000)
+            else billable * getattr(config, "CAFEF_DATA_MICROS_PER_ITEM", 5000)
         )
 
         symbol = payload.symbol.upper()
@@ -184,12 +179,7 @@ def build_scrape_executor(
         financials = result.get("financials")
         news = result.get("news") or []
 
-        if (
-            index_news
-            and payload.include_news
-            and ctx is not None
-            and news
-        ):
+        if index_news and payload.include_news and ctx is not None and news:
             await _index_cafef_news(ctx, symbol, news)
 
         emit_progress(

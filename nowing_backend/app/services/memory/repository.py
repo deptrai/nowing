@@ -267,6 +267,8 @@ class MemoryRepository:
         type: str | MemoryType = MemoryType.SEMANTIC,
         source_type: str | MemorySourceType = MemorySourceType.MANUAL,
         source_id: int | None = None,
+        source_uuid: UUID | None = None,
+        source_entity_type: str | None = None,
         source_run_id: UUID | None = None,
         source_capability: str | None = None,
         source_input: Any | None = None,
@@ -334,6 +336,8 @@ class MemoryRepository:
                     corrected_by_id=created_by_id,
                     source_type=source_type,
                     source_id=source_id,
+                    source_uuid=source_uuid,
+                    source_entity_type=source_entity_type,
                     source_run_id=source_run_id,
                     source_capability=source_capability,
                     source_input=source_input,
@@ -365,6 +369,10 @@ class MemoryRepository:
                 # ``source_run_id``. Only overwrite when a run id is supplied so
                 # a chat-origin re-write cannot erase an earlier run's
                 # provenance.
+                if source_uuid is not None:
+                    existing.source_uuid = source_uuid
+                if source_entity_type is not None:
+                    existing.source_entity_type = source_entity_type
                 if source_run_id is not None:
                     existing.source_run_id = source_run_id
                 if source_capability is not None and existing.source_capability is None:
@@ -404,6 +412,8 @@ class MemoryRepository:
             type=type,
             source_type=source_type,
             source_id=source_id,
+            source_uuid=source_uuid,
+            source_entity_type=source_entity_type,
             source_run_id=source_run_id,
             source_capability=source_capability,
             source_input=source_input,
@@ -434,6 +444,8 @@ class MemoryRepository:
         corrected_by_id: UUID | None = None,
         source_type: str | MemorySourceType | None = None,
         source_id: int | None = None,
+        source_uuid: UUID | None = None,
+        source_entity_type: str | None = None,
         source_run_id: UUID | None = None,
         source_capability: str | None = None,
         source_input: Any | None = None,
@@ -492,6 +504,10 @@ class MemoryRepository:
             memory.source_type = source_type
         if source_id is not None:
             memory.source_id = source_id
+        if source_uuid is not None:
+            memory.source_uuid = source_uuid
+        if source_entity_type is not None:
+            memory.source_entity_type = source_entity_type
         # Soft run provenance is only ever set, never cleared, by an update: see
         # the dedupe note in ``create_memory``.
         if source_run_id is not None:

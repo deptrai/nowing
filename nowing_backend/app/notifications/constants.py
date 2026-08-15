@@ -20,5 +20,6 @@ CATEGORY_TYPES: dict[str, tuple[str, ...]] = {
         "deep_research_complete",
         "automation_run_complete",
         "alert_run_complete",
+        "signal_detected",
     ),
 }

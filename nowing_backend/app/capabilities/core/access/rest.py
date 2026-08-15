@@ -170,6 +170,10 @@ def _register_capabilities_list(
             capability.billing_unit,
         )
         for capability in capabilities
+        if isinstance(capability.input_schema, type)
+        and isinstance(capability.output_schema, type)
+        and issubclass(capability.input_schema, BaseModel)
+        and issubclass(capability.output_schema, BaseModel)
     ]
 
     async def list_capabilities(

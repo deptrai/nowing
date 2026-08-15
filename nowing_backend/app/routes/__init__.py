@@ -6,14 +6,19 @@ import app.capabilities.batdongsan
 import app.capabilities.cafef
 import app.capabilities.chainlens
 import app.capabilities.chotot
+import app.capabilities.executive_move
+import app.capabilities.funding
 import app.capabilities.google_maps
 import app.capabilities.google_search
+import app.capabilities.hiring
 import app.capabilities.indeed
 import app.capabilities.instagram
 import app.capabilities.itviec
 import app.capabilities.masothue
 import app.capabilities.muaban_bds
+import app.capabilities.news
 import app.capabilities.reddit
+import app.capabilities.tech_stack
 import app.capabilities.tiktok
 import app.capabilities.topcv
 import app.capabilities.vietnamworks
@@ -21,7 +26,8 @@ import app.capabilities.vn_bds
 import app.capabilities.vn_jobs
 import app.capabilities.walmart
 import app.capabilities.web
-import app.capabilities.youtube  # noqa: F401
+import app.capabilities.youtube
+import app.lead_intelligence.scoring.capability  # noqa: F401
 from app.automations.api import router as automations_router
 from app.capabilities.core.access.rest import build_capabilities_router
 from app.file_storage.api import router as file_storage_router
@@ -80,6 +86,7 @@ from .google_gmail_add_connector_route import (
 from .image_generation_routes import router as image_generation_router
 from .incentive_tasks_routes import router as incentive_tasks_router
 from .jira_add_connector_route import router as jira_add_connector_router
+from .lead_scoring_routes import router as lead_scoring_router
 from .linear_add_connector_route import router as linear_add_connector_router
 from .logs_routes import router as logs_router
 from .luma_add_connector_route import router as luma_add_connector_router
@@ -101,6 +108,7 @@ from .reports_routes import router as reports_router
 from .research_threads_routes import router as research_threads_router
 from .sandbox_routes import router as sandbox_router
 from .search_source_connectors_routes import router as search_source_connectors_router
+from .signals_routes import router as signals_router
 from .slack_add_connector_route import router as slack_add_connector_router
 from .stripe_routes import router as stripe_router
 from .team_memory_routes import router as team_memory_router
@@ -113,6 +121,7 @@ from .youtube_routes import router as youtube_router
 router = APIRouter()
 
 router.include_router(workspaces_router)
+router.include_router(lead_scoring_router)
 router.include_router(canonical_entities_router)  # Canonical merge/revert/review
 router.include_router(rbac_router)  # RBAC routes for roles, members, invites
 router.include_router(editor_router)
@@ -146,6 +155,7 @@ router.include_router(
 router.include_router(reports_router)  # Report CRUD and multi-format export
 router.include_router(image_generation_router)  # Image generation via litellm
 router.include_router(search_source_connectors_router)
+router.include_router(signals_router, prefix="/workspaces")
 router.include_router(google_calendar_add_connector_router)
 router.include_router(google_gmail_add_connector_router)
 router.include_router(google_drive_add_connector_router)

@@ -14,7 +14,18 @@ class CapabilityRegistry:
 
     @classmethod
     def register(cls, capability: Capability) -> None:
-        """Add (or replace) a verb by name."""
+        """Add a verb by name."""
+        if capability.name in _REGISTRY:
+            raise ValueError(f"Action already registered: {capability.name}")
+        if capability.metadata is not None:
+            if "emits_signals" in capability.metadata and not isinstance(
+                capability.metadata["emits_signals"], bool
+            ):
+                raise ValueError("emits_signals must be boolean")
+            if "signal_types" in capability.metadata:
+                signal_types = capability.metadata["signal_types"]
+                if not isinstance(signal_types, list) or not signal_types:
+                    raise ValueError("signal_types must not be empty")
         _REGISTRY[capability.name] = capability
 
     @classmethod

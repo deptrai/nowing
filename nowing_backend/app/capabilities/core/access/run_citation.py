@@ -20,9 +20,7 @@ def attach_run_citation(
         {"run_id": run_external_id},
         {"capability": capability},
     )
-    label = (
-        f"\n\nCite this scraper run as [{n}] after any claim drawn from its data."
-    )
+    label = f"\n\nCite this scraper run as [{n}] after any claim drawn from its data."
     return n, label
 
 

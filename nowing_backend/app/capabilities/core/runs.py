@@ -127,7 +127,7 @@ async def record_run(
             "external_metadata": external_metadata or None,
         }
         if run_id is not None:
-            raw = run_id[len("run_"):] if run_id.startswith("run_") else run_id
+            raw = run_id[len("run_") :] if run_id.startswith("run_") else run_id
             try:
                 run_kwargs["id"] = _uuid.UUID(raw)
             except ValueError:

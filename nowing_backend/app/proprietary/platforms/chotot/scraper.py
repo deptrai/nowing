@@ -240,6 +240,7 @@ async def scrape_chotot(
     seen_ids: set[int] = set()
     degraded = False
     degradation_reason: str | None = None
+    total_available = 0
 
     for page in range(1, max_pages + 1):
         if len(items) >= cap:
@@ -271,6 +272,10 @@ async def scrape_chotot(
                     page_failed = True
                     break
                 page_data = ads
+                # Track the largest reported total across pages for the output contract.
+                gateway_total = int(result.get("total") or 0)
+                if gateway_total > total_available:
+                    total_available = gateway_total
                 break
             except ChototBdsRateLimitedError:
                 if attempt < _MAX_RETRIES:
@@ -299,18 +304,19 @@ async def scrape_chotot(
 
         # An empty first page means the constraints matched nothing.
         if page == 1 and not page_data:
-            degraded = True
-            degradation_reason = "empty"
             break
 
         category = effective_input.category
         for listing in parse_listings(page_data, category=category):
             if len(items) >= cap:
                 break
-            if listing.listing_id is not None:
-                if listing.listing_id in seen_ids:
+            key = listing.listing_id
+            if key is None and listing.ad_id is not None:
+                key = listing.ad_id
+            if key is not None:
+                if key in seen_ids:
                     continue
-                seen_ids.add(listing.listing_id)
+                seen_ids.add(key)
             items.append(listing)
 
         # Stop when we have seen the whole result set.
@@ -338,13 +344,16 @@ async def scrape_chotot(
                     item.phone = await fetch_phone(item.listing_id)
                     await asyncio.sleep(_page_delay())
             except Exception:
-                logger.exception("failed to resolve phone for list_id=%s", item.listing_id)
+                logger.exception(
+                    "failed to resolve phone for list_id=%s", item.listing_id
+                )
 
         await asyncio.gather(*(_resolve_phone(item) for item in items))
 
     return ChototScrapeOutput(
         items=items,
         total_items=len(items),
+        total=total_available if total_available > 0 else len(items),
         degraded=degraded,
         degradation_reason=degradation_reason,
     )
@@ -362,5 +371,7 @@ async def scrape_chotot_bds(
     Deprecated: use ``scrape_chotot`` with ``category="bds"``.
     """
     # The input model already sets ``category="bds"`` and maps listing_type.
-    result = await scrape_chotot(input_model, limit=limit, fetch_fn=fetch_fn, regions_fn=regions_fn)
+    result = await scrape_chotot(
+        input_model, limit=limit, fetch_fn=fetch_fn, regions_fn=regions_fn
+    )
     return ChototBdsScrapeOutput(**result.model_dump())

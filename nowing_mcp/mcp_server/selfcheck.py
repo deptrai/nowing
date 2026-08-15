@@ -78,6 +78,11 @@ EXPECTED_TOOLS = {
     "nowing_report_export",
     # chat
     "nowing_chat",
+    # lead intelligence
+    "nowing_score_leads",
+    "nowing_list_lead_scores",
+    "nowing_detect_signal",
+    "nowing_list_signals",
 }
 
 _MIN_DESCRIPTION_CHARS = 40

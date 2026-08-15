@@ -13,6 +13,12 @@ import pytest
 from app.agents.chat.multi_agent_chat.constants import (
     SUBAGENT_TO_REQUIRED_CONNECTOR_MAP,
 )
+from app.agents.chat.multi_agent_chat.shared.feature_flags import (
+    AgentFeatureFlags,
+)
+from app.agents.chat.multi_agent_chat.subagents.builtins.chotot.agent import (
+    build_subagent as build_chotot_subagent,
+)
 from app.agents.chat.multi_agent_chat.subagents.registry import (
     SUBAGENT_BUILDERS_BY_NAME,
 )
@@ -30,6 +36,7 @@ _EXPECTED_SUBAGENTS = frozenset(
         "amazon",
         "batdongsan",
         "cafef",
+        "chotot",
         "chotot_bds",
         "chainlens",
         "deliverables",
@@ -77,3 +84,11 @@ def test_required_connector_map_covers_connector_subagents():
     assert set(SUBAGENT_TO_REQUIRED_CONNECTOR_MAP) == (
         _EXPECTED_SUBAGENTS - _CONNECTORLESS
     )
+
+
+def test_chotot_subagent_builds_with_scrape_tool():
+    """The new multi-category Chợ Tốt subagent loads and exposes its verb."""
+    spec = build_chotot_subagent(dependencies={"flags": AgentFeatureFlags()})
+    assert spec.spec["name"] == "chotot"
+    tool_names = {t.name for t in spec.spec["tools"]}
+    assert "chotot_scrape" in tool_names

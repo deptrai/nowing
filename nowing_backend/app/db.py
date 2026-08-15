@@ -398,6 +398,14 @@ class Permission(StrEnum):
     MEMORY_UPDATE = "memory:update"
     MEMORY_DELETE = "memory:delete"
 
+    # Leads / lead scoring (Story 21.2)
+    LEADS_READ = "leads:read"
+    LEADS_SCORE = "leads:score"
+
+    # Signal detection (Story 21.1)
+    SIGNALS_READ = "signals:read"
+    SIGNALS_DETECT = "signals:detect"
+
     # Canonical entities (merge history, conflict resolution, revert)
     CANONICAL_ENTITIES_READ = "canonical_entities:read"
     CANONICAL_ENTITIES_WRITE = "canonical_entities:write"
@@ -1912,6 +1920,9 @@ class Workspace(BaseModel, TimestampMixin):
         Boolean, nullable=False, default=True, server_default="true"
     )
 
+    # Epic 21 lead scoring ICP criteria (Story 21.2).
+    icp_criteria = Column(JSONB, nullable=True)
+
     user_id = Column(
         UUID(as_uuid=True), ForeignKey("user.id", ondelete="CASCADE"), nullable=False
     )
@@ -2048,6 +2059,18 @@ class Workspace(BaseModel, TimestampMixin):
         back_populates="workspace",
         cascade="all, delete-orphan",
         uselist=False,
+    )
+    leads = relationship(
+        "Lead",
+        back_populates="workspace",
+        order_by="Lead.created_at.desc()",
+        cascade="all, delete-orphan",
+    )
+    lead_scores = relationship(
+        "LeadScore",
+        back_populates="workspace",
+        order_by="LeadScore.computed_at.desc()",
+        cascade="all, delete-orphan",
     )
 
 
@@ -4223,6 +4246,234 @@ class ChainLensIngestJob(BaseModel, TimestampMixin):
         nullable=False,
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
+    )
+
+
+class SignalEvent(Base, TimestampMixin):
+    """A detected buying-intent signal for a company in a workspace."""
+
+    __tablename__ = "signal_events"
+
+    __table_args__ = (
+        Index(
+            "ix_signal_events_workspace_lookup",
+            "workspace_id",
+            "client_id",
+            "company_name",
+            "signal_type",
+            "detected_at",
+        ),
+        UniqueConstraint(
+            "workspace_id",
+            "client_id",
+            "company_name",
+            "signal_type",
+            "source_url",
+            "detected_at",
+            name="uq_signal_events_unique_signal",
+        ),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    client_id = Column(CITEXT, nullable=True, index=True)
+    company_name = Column(String(200), nullable=False, index=True)
+    signal_type = Column(String(50), nullable=False, index=True)
+    source_url = Column(Text, nullable=True)
+    chunk_id = Column(UUID(as_uuid=True), nullable=True, index=True)
+    confidence = Column(Float, nullable=False, default=0.0, server_default="0")
+    detected_at = Column(TIMESTAMP(timezone=True), nullable=False, index=True)
+    processed = Column(
+        Boolean, nullable=False, default=False, server_default="false", index=True
+    )
+
+    workspace = relationship("Workspace")
+
+
+class SignalSubscription(Base, TimestampMixin):
+    """Workspace-level signal detection subscription defaults."""
+
+    __tablename__ = "signal_subscriptions"
+
+    __table_args__ = (
+        UniqueConstraint("workspace_id", name="uq_signal_subscriptions_workspace"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    client_id = Column(CITEXT, nullable=True, index=True)
+    signal_types = Column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    notification_channels = Column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    created_by_user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    workspace = relationship("Workspace")
+
+
+class BillingEvent(Base, TimestampMixin):
+    """Canonical ledger for non-LLM business events (e.g. signal scans)."""
+
+    __tablename__ = "billing_events"
+
+    __table_args__ = (
+        Index(
+            "ix_billing_events_event_lookup",
+            "event_entity_type",
+            "event_type",
+            "event_id",
+        ),
+        Index(
+            "ix_billing_events_outcome_unique",
+            "event_id",
+            unique=True,
+            postgresql_where=text(
+                "event_entity_type = 'outcome_event' AND event_type = 'outcome'"
+            ),
+        ),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    client_id = Column(CITEXT, nullable=True, index=True)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    event_entity_type = Column(String(50), nullable=False, index=True)
+    event_type = Column(String(50), nullable=False, index=True)
+    event_id = Column(UUID(as_uuid=True), nullable=False)
+    cost_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
+    currency = Column(String(3), nullable=False, default="USD", server_default="USD")
+    cost_basis = Column(
+        String(20), nullable=False, default="estimated", server_default="estimated"
+    )
+
+    workspace = relationship("Workspace")
+    user = relationship("User")
+
+
+class Lead(Base, TimestampMixin):
+    """A lead record imported or created for outbound prospecting (Story 21.2)."""
+
+    __tablename__ = "leads"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    client_id = Column(CITEXT, nullable=True, index=True)
+    source = Column(String(100), nullable=False, index=True)
+    source_url = Column(Text, nullable=True)
+    source_chunk_id = Column(UUID(as_uuid=True), nullable=True, index=True)
+    company_name = Column(String(200), nullable=False, index=True)
+    domain = Column(String(255), nullable=True, index=True)
+    industry = Column(String(100), nullable=True, index=True)
+    company_size = Column(String(50), nullable=True)
+    location = Column(String(100), nullable=True)
+    tech_stack = Column(ARRAY(String), nullable=True, default=list)
+    fit_score = Column(Float, nullable=True)
+    intent_score = Column(Float, nullable=True)
+    composite_score = Column(Float, nullable=True)
+    status = Column(String(50), nullable=False, default="open", server_default="open")
+    enriched = Column(Boolean, nullable=False, default=False, server_default="false")
+    consent_status = Column(String(50), nullable=True)
+    legal_basis = Column(String(50), nullable=True)
+
+    workspace = relationship("Workspace", back_populates="leads")
+    lead_scores = relationship(
+        "LeadScore",
+        back_populates="lead",
+        order_by="LeadScore.computed_at.desc()",
+        cascade="all, delete-orphan",
+    )
+
+
+class LeadScore(Base, TimestampMixin):
+    """Composite lead score snapshot (Story 21.2)."""
+
+    __tablename__ = "lead_scores"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    __table_args__ = (
+        Index(
+            "ix_lead_scores_workspace_lookup",
+            "workspace_id",
+            "client_id",
+            "lead_id",
+            "computed_at",
+        ),
+    )
+
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    client_id = Column(CITEXT, nullable=True, index=True)
+    lead_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("leads.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    previous_score_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("lead_scores.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    company_name = Column(String(200), nullable=False, index=True)
+    score = Column(Float, nullable=False)
+    fit_score = Column(Float, nullable=False)
+    intent_score = Column(Float, nullable=False)
+    classification = Column(String(10), nullable=False)
+    factors_json = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    trend = Column(String(10), nullable=True)
+    converted_similarity = Column(Float, nullable=True)
+    computed_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
+
+    workspace = relationship("Workspace", back_populates="lead_scores")
+    lead = relationship("Lead", back_populates="lead_scores")
+    previous_score = relationship(
+        "LeadScore",
+        remote_side=[id],
+        uselist=False,
     )
 
 
