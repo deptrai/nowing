@@ -24,8 +24,16 @@ ZALO_OAUTH_BASE = "https://oauth.zalo.me"
 ZALO_RATE_LIMIT_PER_MINUTE = 20
 
 
+_VIETNAM_MOBILE_RE = re.compile(
+    r"^(?:0|84)(3[2-9]|5[6-9]|7[0-9]|8[1-9]|9[0-9])\d{7}$"
+)
+
+
 def format_vietnam_phone(phone: str | None) -> dict[str, str]:
-    """Format and normalize a Vietnamese phone number.
+    """Format and normalize a Vietnamese mobile phone number.
+
+    Rejects landlines, VoIP, and malformed numbers. ZNS/Zalo deep links require
+    a valid Vietnamese mobile number.
 
     Returns:
         dict with keys:
@@ -39,25 +47,15 @@ def format_vietnam_phone(phone: str | None) -> dict[str, str]:
     # Strip whitespace, dots, hyphens, parentheses, and letters
     digits = re.sub(r"\D", "", str(phone))
 
-    if not digits:
+    if not _VIETNAM_MOBILE_RE.match(digits):
         return {"clean_phone": "", "international_phone": "", "zalo_url": ""}
 
-    # Normalize to national 0xxx and international 84xxx
-    if digits.startswith("84") and len(digits) in (11, 12):
+    if digits.startswith("84"):
         clean_phone = "0" + digits[2:]
         international_phone = digits
-    elif digits.startswith("0") and len(digits) == 10:
+    else:
         clean_phone = digits
         international_phone = "84" + digits[1:]
-    elif len(digits) == 9:
-        clean_phone = "0" + digits
-        international_phone = "84" + digits
-    else:
-        # Fallback to digits as-is
-        clean_phone = digits
-        international_phone = (
-            digits if digits.startswith("84") else f"84{digits.lstrip('0')}"
-        )
 
     return {
         "clean_phone": clean_phone,
@@ -179,23 +177,22 @@ class ZaloClient:
         secret = config.SECRET_KEY or ""
         enc = TokenEncryption(secret) if secret else None
 
-        access_token = (
-            enc.decrypt_token(connection.access_token_encrypted)
-            if enc and connection.access_token_encrypted
-            else connection.access_token_encrypted
-        )
-        refresh_token = (
-            enc.decrypt_token(connection.refresh_token_encrypted)
-            if enc and connection.refresh_token_encrypted
-            else connection.refresh_token_encrypted
-        )
+        def _decrypt_if_needed(value: str | None) -> str | None:
+            if not value:
+                return value
+            if enc and enc.is_encrypted(value):
+                return enc.decrypt_token(value)
+            return value
+
+        access_token = _decrypt_if_needed(connection.access_token_encrypted)
+        refresh_token = _decrypt_if_needed(connection.refresh_token_encrypted)
+        app_secret = _decrypt_if_needed(connection.app_secret_encrypted) or ""
 
         return cls(
             access_token=access_token,
             refresh_token=refresh_token,
             app_id=connection.app_id or getattr(config, "ZALO_APP_ID", ""),
-            secret_key=connection.webhook_secret
-            or getattr(config, "ZALO_APP_SECRET", ""),
+            secret_key=app_secret or getattr(config, "ZALO_APP_SECRET", ""),
             oa_id=connection.oa_id,
             token_expires_at=connection.token_expires_at,
         )
@@ -253,18 +250,22 @@ class ZaloClient:
             logger.error("Failed to refresh Zalo OA token: %s", exc)
             raise RuntimeError(f"Zalo OAuth token refresh failed: {exc}") from exc
 
-        if "access_token" in res_data:
+        if not isinstance(res_data, dict):
+            logger.error("Unexpected Zalo token refresh response: %s", res_data)
+            raise RuntimeError(
+                f"Unexpected Zalo token refresh response: {type(res_data).__name__}"
+            )
+
+        if res_data.get("access_token"):
             self.access_token = res_data["access_token"]
             self.refresh_token = res_data.get("refresh_token", target_refresh)
             expires_in = int(res_data.get("expires_in", 90000))
             self.token_expires_at = datetime.now(UTC) + timedelta(seconds=expires_in)
             return res_data
-        else:
-            error_msg = (
-                res_data.get("error_name") or res_data.get("message") or "Unknown error"
-            )
-            logger.error("Zalo token refresh error response: %s", res_data)
-            raise RuntimeError(f"Zalo OAuth error: {error_msg}")
+
+        error_msg = res_data.get("error_name") or res_data.get("message") or str(res_data)
+        logger.error("Zalo token refresh error response: %s", res_data)
+        raise RuntimeError(f"Zalo OAuth error: {error_msg}")
 
     async def ensure_valid_token(
         self, session: AsyncSession, connection: ZaloConnection
@@ -347,10 +348,19 @@ class ZaloClient:
 
         return res_json
 
-    async def send_cs_message(self, user_id: str, text: str) -> dict[str, Any]:
+    async def send_cs_message(
+        self,
+        user_id: str,
+        text: str,
+        session: AsyncSession | None = None,
+        connection: ZaloConnection | None = None,
+    ) -> dict[str, Any]:
         """Send Customer Support text message to a follower / existing conversation."""
         if not await self.check_rate_limit():
             raise RuntimeError("Zalo OA rate limit exceeded (max 20 messages/minute)")
+
+        if session is not None and connection is not None:
+            await self.ensure_valid_token(session, connection)
 
         if not self.access_token:
             raise ValueError("Missing access_token for Zalo message")

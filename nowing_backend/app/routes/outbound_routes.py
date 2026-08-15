@@ -74,6 +74,9 @@ class ZnsSendRequest(BaseModel):
         default=False,
         description="Explicit user consent confirmation complying with Decree 356",
     )
+    oa_id: str | None = Field(
+        default=None, description="Optional target Zalo OA id; required if workspace has multiple active OAs"
+    )
     mode: str | None = Field(
         default=None, description="Optional mode, e.g. 'development' for test templates"
     )
@@ -91,6 +94,7 @@ class ZaloConnectionCreate(BaseModel):
     oa_id: str = Field(..., min_length=1, max_length=100)
     oa_name: str | None = Field(default=None, max_length=255)
     app_id: str | None = Field(default=None, max_length=100)
+    app_secret: str | None = Field(default=None)
     access_token: str | None = Field(default=None)
     refresh_token: str | None = Field(default=None)
     webhook_secret: str | None = Field(default=None, max_length=255)
@@ -153,8 +157,6 @@ def _resolve_lead_phone(lead: Lead) -> str:
         return str(lead.phone)
     if getattr(lead, "verified_contacts", None):
         for contact in lead.verified_contacts:
-            if getattr(contact, "phone_number", None):
-                return str(contact.phone_number)
             if getattr(contact, "phone", None):
                 return str(contact.phone)
     return ""
@@ -165,11 +167,6 @@ def _resolve_lead_phone(lead: Lead) -> str:
 # ---------------------------------------------------------------------------
 
 
-@router.post(
-    "/leads/{lead_id}/zalo-draft",
-    response_model=ZaloDraftResponse,
-    summary="Generate Assisted Zalo Outreach draft script and deep-link (Story 21.6)",
-)
 @router.post(
     "/workspaces/{workspace_id}/leads/{lead_id}/zalo-draft",
     response_model=ZaloDraftResponse,
@@ -190,7 +187,7 @@ async def generate_zalo_draft(
     lead = await _get_lead_or_404(session, lead_id, workspace_id)
     target_ws = lead.workspace_id
 
-    await check_permission(auth, target_ws, Permission.VIEW_DOCUMENTS, session=session)
+    await check_permission(session, auth, target_ws, Permission.LEADS_READ)
 
     raw_phone = _resolve_lead_phone(lead)
     phone_meta = format_vietnam_phone(raw_phone)
@@ -242,11 +239,6 @@ async def generate_zalo_draft(
 
 
 @router.post(
-    "/leads/{lead_id}/zns-send",
-    response_model=ZnsSendResponse,
-    summary="Send transactional ZNS message via Zalo OA OpenAPI (Story 21.6)",
-)
-@router.post(
     "/workspaces/{workspace_id}/leads/{lead_id}/zns-send",
     response_model=ZnsSendResponse,
     summary="Send transactional ZNS message via Zalo OA OpenAPI (Workspace scoped)",
@@ -265,18 +257,17 @@ async def send_zns_message(
     lead = await _get_lead_or_404(session, lead_id, workspace_id)
     target_ws = lead.workspace_id
 
-    await check_permission(auth, target_ws, Permission.EDIT_DOCUMENTS, session=session)
+    await check_permission(session, auth, target_ws, Permission.LEADS_WRITE)
 
     # Decree 356 Consent Verification Guardrail
     has_consent = (
         payload.consent_confirmed
         or lead.consent_status in ("consented", "opted_in")
-        or bool(lead.legal_basis)
-    )
+    ) and lead.consent_status != "opted_out"
     if not has_consent:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Decree 356 compliance error: ZNS messages require verified user consent or explicit consent confirmation.",
+            detail="Decree 356 compliance error: ZNS messages require verified user consent or explicit consent confirmation; opted-out leads are blocked.",
         )
 
     raw_phone = _resolve_lead_phone(lead)
@@ -293,14 +284,23 @@ async def send_zns_message(
         ZaloConnection.workspace_id == target_ws,
         ZaloConnection.is_active.is_(True),
     )
-    conn_res = await session.execute(conn_stmt)
-    connection = conn_res.scalar_one_or_none()
+    if payload.oa_id:
+        conn_stmt = conn_stmt.where(ZaloConnection.oa_id == payload.oa_id)
 
-    if not connection:
+    conn_res = await session.execute(conn_stmt)
+    connections = conn_res.unique().scalars().all()
+
+    if len(connections) == 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"No active Zalo OA connection found for workspace {target_ws}. Please configure Zalo OA first.",
+            detail="No active Zalo OA connection found for this workspace. Please configure Zalo OA first.",
         )
+    if len(connections) > 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Workspace has multiple active Zalo OA connections. Please specify oa_id.",
+        )
+    connection = connections[0]
 
     client = ZaloClient.from_connection(connection)
     try:
@@ -341,7 +341,7 @@ async def send_zns_message(
         if isinstance(result.get("data"), dict)
         else None
     )
-    success = error_code == 0
+    success = str(error_code) == "0"
 
     log_entry = ZaloMessageLog(
         workspace_id=target_ws,
@@ -392,7 +392,7 @@ async def get_workspace_zalo_connection(
     session: AsyncSession = Depends(get_async_session),
 ) -> ZaloConnectionRead | None:
     await check_permission(
-        auth, workspace_id, Permission.VIEW_DOCUMENTS, session=session
+        session, auth, workspace_id, Permission.SETTINGS_VIEW
     )
 
     stmt = select(ZaloConnection).where(
@@ -427,7 +427,7 @@ async def upsert_workspace_zalo_connection(
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
 ) -> ZaloConnectionRead:
-    await check_permission(auth, workspace_id, Permission.ADMIN_USERS, session=session)
+    await check_permission(session, auth, workspace_id, Permission.SETTINGS_UPDATE)
 
     secret = config.SECRET_KEY or ""
     enc = TokenEncryption(secret) if secret else None
@@ -441,6 +441,11 @@ async def upsert_workspace_zalo_connection(
         enc.encrypt_token(payload.refresh_token)
         if enc and payload.refresh_token
         else payload.refresh_token
+    )
+    app_secret_enc = (
+        enc.encrypt_token(payload.app_secret)
+        if enc and payload.app_secret
+        else payload.app_secret
     )
 
     expires_at = (
@@ -463,6 +468,8 @@ async def upsert_workspace_zalo_connection(
             conn.access_token_encrypted = access_enc
         if refresh_enc:
             conn.refresh_token_encrypted = refresh_enc
+        if app_secret_enc:
+            conn.app_secret_encrypted = app_secret_enc
         if expires_at:
             conn.token_expires_at = expires_at
         if payload.webhook_secret:
@@ -474,6 +481,7 @@ async def upsert_workspace_zalo_connection(
             oa_id=payload.oa_id,
             oa_name=payload.oa_name,
             app_id=payload.app_id,
+            app_secret_encrypted=app_secret_enc,
             access_token_encrypted=access_enc,
             refresh_token_encrypted=refresh_enc,
             token_expires_at=expires_at,
@@ -497,16 +505,42 @@ async def upsert_workspace_zalo_connection(
     )
 
 
+@router.delete(
+    "/workspaces/{workspace_id}/zalo/connection",
+    summary="Deactivate (soft-delete) the workspace Zalo OA connection",
+)
+async def delete_workspace_zalo_connection(
+    workspace_id: int,
+    auth: AuthContext = Depends(get_auth_context),
+    session: AsyncSession = Depends(get_async_session),
+) -> dict[str, Any]:
+    """Mark the workspace's active Zalo OA connection as inactive (revoke)."""
+    await check_permission(session, auth, workspace_id, Permission.SETTINGS_UPDATE)
+
+    stmt = select(ZaloConnection).where(
+        ZaloConnection.workspace_id == workspace_id,
+        ZaloConnection.is_active.is_(True),
+    )
+    res = await session.execute(stmt)
+    conn = res.scalar_one_or_none()
+
+    if not conn:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No active Zalo OA connection found for workspace {workspace_id}",
+        )
+
+    conn.is_active = False
+    await session.commit()
+
+    return {"status": "deleted", "connection_id": str(conn.id), "is_active": False}
+
+
 # ---------------------------------------------------------------------------
 # Telegram Lead Alert Dispatcher
 # ---------------------------------------------------------------------------
 
 
-@router.post(
-    "/leads/{lead_id}/telegram-alert",
-    response_model=TelegramAlertResponse,
-    summary="Dispatch rich Telegram alert for lead (Story 21.6)",
-)
 @router.post(
     "/workspaces/{workspace_id}/leads/{lead_id}/telegram-alert",
     response_model=TelegramAlertResponse,
@@ -522,7 +556,7 @@ async def dispatch_lead_telegram_alert(
     lead = await _get_lead_or_404(session, lead_id, workspace_id)
     target_ws = lead.workspace_id
 
-    await check_permission(auth, target_ws, Permission.VIEW_DOCUMENTS, session=session)
+    await check_permission(session, auth, target_ws, Permission.LEADS_READ)
 
     raw_phone = _resolve_lead_phone(lead)
     content = (
@@ -579,16 +613,60 @@ async def zalo_inbound_webhook(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON body"
         ) from exc
 
+    if not isinstance(data, dict):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Webhook body must be a JSON object",
+        )
+
     app_id = str(data.get("app_id") or "")
+    oa_id = str(
+        data.get("oa_id") or data.get("recipient", {}).get("id") or ""
+    )
     timestamp = str(data.get("timestamp") or "")
     sig = x_zevent_signature or mac or ""
 
-    secret = getattr(config, "ZALO_APP_SECRET", "") or ""
-    if not verify_zalo_signature(app_id, raw_body, timestamp, sig, secret):
+    # Resolve the ZaloConnection for this OA/app. Fail closed if no match.
+    if not app_id and not oa_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Webhook must include app_id or oa_id",
+        )
+
+    conn_stmt = select(ZaloConnection).where(ZaloConnection.is_active.is_(True))
+    if oa_id:
+        conn_stmt = conn_stmt.where(ZaloConnection.oa_id == oa_id)
+    else:
+        conn_stmt = conn_stmt.where(ZaloConnection.app_id == app_id)
+
+    res = await session.execute(conn_stmt)
+    connection = res.scalar_one_or_none()
+
+    if not connection:
+        logger.warning(
+            "Rejected Zalo webhook for unknown app_id=%s oa_id=%s", app_id, oa_id
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No active Zalo OA connection for this event",
+        )
+
+    secret = connection.webhook_secret or getattr(config, "ZALO_WEBHOOK_SECRET", "") or ""
+    if not secret:
+        logger.warning(
+            "Rejected Zalo webhook for connection %s: webhook_secret not configured",
+            connection.id,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Zalo webhook secret not configured",
+        )
+
+    if not verify_zalo_signature(app_id or oa_id, raw_body, timestamp, sig, secret):
         logger.warning("Rejected Zalo webhook with invalid signature")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid Zalo webhook signature",
         )
 
-    return await handle_zalo_webhook_event(session, data)
+    return await handle_zalo_webhook_event(session, connection, data)

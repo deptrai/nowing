@@ -795,3 +795,21 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - **Finding:** `PhoneResolutionResponse` hard-codes 1.5 credits for async `pending` results. (app/routes/leads_routes.py:595-602)
   - **Action:** Marked `[x] [Review][Defer]` in `21-6-zalo-integration.md`.
   - **Reason / when to revisit:** Return 0/null for pending async results in Story 21.3.
+
+## Deferred from: code review of 21-6-zalo-integration — second pass (2026-08-15)
+
+- **Finding:** Story says "AI Draft" but the implementation is a hard-coded template, not actually LLM-generated. (app/gateway/zalo/client.py:69-152)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-6-zalo-integration.md`.
+  - **Reason / when to revisit:** The template is acceptable as a v1 "Assisted Co-pilot" with manual review/clipboard. Replace with an LLM call when premium message generation and cost tracking are prioritized.
+
+- **Finding:** `TelegramAlertRequest.chat_id` is not validated against workspace-owned chat bindings. (app/routes/outbound_routes.py:111-114,538-548)
+  - **Action:** Marked `[ ] [Review][Patch]` in `21-6-zalo-integration.md`.
+  - **Reason / when to revisit:** Needs a design pass on workspace-to-telegram-chat ownership; do before allowing non-admin users to dispatch alerts.
+
+- **Finding:** ZNS send API exists but the frontend `zalo-outreach-button.tsx` only opens a deep-link; no component calls `sendZns`. (nowing_web/components/leads/zalo-outreach-button.tsx)
+  - **Action:** Marked `[ ] [Review][Patch]` in `21-6-zalo-integration.md`.
+  - **Reason / when to revisit:** Add a ZNS send UI (template selector + explicit consent toggle) when product is ready to ship transactional ZNS.
+
+- **Finding:** `ZaloMessageLog` stores raw `template_data` on outbound ZNS, which may contain PII. (app/routes/outbound_routes.py:341)
+  - **Action:** Marked `[ ] [Review][Patch]` in `21-6-zalo-integration.md`.
+  - **Reason / when to revisit:** Redact known PII keys from `template_data` before logging once consent/PII redaction policy is finalized.

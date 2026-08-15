@@ -32,6 +32,7 @@ def upgrade() -> None:
             oa_id VARCHAR(100) NOT NULL,
             oa_name VARCHAR(255),
             app_id VARCHAR(100),
+            app_secret_encrypted TEXT,
             access_token_encrypted TEXT,
             refresh_token_encrypted TEXT,
             token_expires_at TIMESTAMPTZ,

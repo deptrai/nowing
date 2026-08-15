@@ -153,7 +153,8 @@ export const znsSendRequestSchema = z.object({
 	template_id: z.string(),
 	template_data: z.record(z.string(), z.any()),
 	tracking_id: z.string().optional(),
-	consent_confirmed: z.boolean().default(true),
+	consent_confirmed: z.boolean().default(false),
+	oa_id: z.string().optional(),
 	mode: z.string().optional(),
 });
 
@@ -201,16 +202,28 @@ export const reverseIcpResponseSchema = z.object({
 	domain: z.string(),
 	value_proposition: z.string(),
 	industry: z.string(),
-	target_buyer_personas: z.array(buyerPersonaSchema).default([]),
-	suggested_search_queries: z.array(z.string()).default([]),
-	negative_keywords: z.array(z.string()).default([]),
+	target_buyer_personas: z
+		.array(buyerPersonaSchema)
+		.nullish()
+		.transform((v) => v ?? []),
+	suggested_search_queries: z
+		.array(z.string())
+		.nullish()
+		.transform((v) => v ?? []),
+	negative_keywords: z
+		.array(z.string())
+		.nullish()
+		.transform((v) => v ?? []),
 	filter_presets: filterPresetsSchema.default({
 		platforms: [],
 		intent: "BÁN",
 		target_industries: [],
 		locations: [],
 	}),
-	chat_starter_prompts: z.array(z.string()).default([]),
+	chat_starter_prompts: z
+		.array(z.string())
+		.nullish()
+		.transform((v) => v ?? []),
 	raw_metadata: z.record(z.string(), z.any()).optional().default({}),
 });
 

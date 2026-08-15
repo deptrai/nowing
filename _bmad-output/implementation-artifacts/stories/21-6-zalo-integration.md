@@ -105,30 +105,33 @@ Generated from code review run on 2026-08-15. Full layer reports:
 - Edge Case Hunter: `_bmad-output/review-artifacts/21-6-edge-case-hunter.md`
 - Acceptance Auditor: `_bmad-output/review-artifacts/21-6-acceptance-auditor.md`
 
-#### Decision Needed
-- [ ] [Review][Decision] `ZaloClient` conflates OAuth `app_secret` with `webhook_secret`. Need design: add `app_secret_encrypted` to `ZaloConnection`, or rely on global `ZALO_APP_SECRET`? `client.py:197-198`
-- [ ] [Review][Decision] Webhook verification currently bypasses when secret empty and uses global `ZALO_APP_SECRET`. Should it fail-closed in production and use per-OA `webhook_secret`? `webhook.py:64-65`
-- [ ] [Review][Decision] Story says "AI Draft" but implementation is a hard-coded template. Use LLM or rename to "template-assisted draft"? `client.py:69-152`
-- [ ] [Review][Decision] `send_zns_message` does not select a specific OA if workspace has multiple active `ZaloConnection`. Require `oa_id` or add `is_primary` flag? `outbound_routes.py:292-297`
-- [ ] [Review][Decision] No endpoint to deactivate or revoke a Zalo OA connection (`upsert` always `is_active=True`). `outbound_routes.py:470-471`
+#### Resolved Decisions
+- [x] [Review][Decision] `ZaloClient` conflates OAuth `app_secret` with `webhook_secret`. Decision: added `app_secret_encrypted` to `ZaloConnection`, separate from `webhook_secret`. `app/db.py:5134`, `client.py:176-208`
+- [x] [Review][Decision] Webhook verification currently bypasses when secret empty and uses global `ZALO_APP_SECRET`. Decision: fail-closed, verify per-OA `webhook_secret`, add timestamp/replay tolerance. `webhook.py:88-135`, `outbound_routes.py:573-643`
+- [x] [Review][Decision] `send_zns_message` does not select a specific OA if workspace has multiple active `ZaloConnection`. Decision: add optional `oa_id` to `ZnsSendRequest`; reject ambiguous multi-OA sends. `outbound_routes.py:287-310`
+- [x] [Review][Decision] No endpoint to deactivate or revoke a Zalo OA connection (`upsert` always `is_active=True`). Decision: added `DELETE /workspaces/{workspace_id}/zalo/connection`. `outbound_routes.py:508-540`
 
-#### Patch
-- [ ] [Review][Patch] Webhook falls back to hard-coded `workspace_id = 1` and alerts on every `user_send_text`. Reject unknown OA, alert only on buying intent, deduplicate on `msg_id`. `webhook.py:113-122,167-176`
-- [ ] [Review][Patch] Webhook matches lead by `company_name.ilike(sender_id)` (Zalo user id) instead of phone/`zalo_user_id`. `webhook.py:134-143`
-- [ ] [Review][Patch] Webhook does not validate JSON body shape or prevent replay/timestamp attacks. `webhook.py:52-85,574-583`
-- [ ] [Review][Patch] `verify_zalo_signature` returns `True` when secret is empty. `webhook.py:64-65`
-- [ ] [Review][Patch] `recipient_phone` set to Zalo `sender_id`, not an actual phone. `webhook.py:146-151`
-- [ ] [Review][Patch] `format_vietnam_phone` fallback accepts arbitrary digits and produces invalid `84`-prefixed numbers. `client.py:55-60`
-- [ ] [Review][Patch] `refresh_access_token` does not validate JSON response is a dict. `client.py:250-267`
-- [ ] [Review][Patch] `send_cs_message` does not refresh the access token. `client.py:350-375`
-- [ ] [Review][Patch] Duplicate `@router.post` decorators on `zalo-draft`, `zns-send`, and `telegram-alert` handlers. `outbound_routes.py:168-177,244-253,505-513`
-- [ ] [Review][Patch] `send_zns_message` consent guard treats any non-empty `legal_basis` as consent and `opted_out` still passes. `outbound_routes.py:271-275`
-- [ ] [Review][Patch] Frontend `znsSendRequestSchema` defaults `consent_confirmed=true`, contradicting backend default. `contracts/types/leads.types.ts:156`
-- [ ] [Review][Patch] `send_zns_message` uses `error_code == 0` but Zalo may return string `"0"`. `outbound_routes.py:338-344`
-- [ ] [Review][Patch] `send_zns_message` picks arbitrary active OA and has no idempotency on `tracking_id`. `outbound_routes.py:292-297,330-335`
-- [ ] [Review][Patch] `ZaloMessageLog` stores raw `template_data` and webhook payloads without redaction. `outbound_routes.py:324-325` / `webhook.py:157-158`
+#### Applied Patches
+- [x] [Review][Patch] Webhook falls back to hard-coded `workspace_id = 1` and alerts on every `user_send_text`. `webhook.py:138-275`, `outbound_routes.py:573-643`
+- [x] [Review][Patch] Webhook matches lead by `company_name.ilike(sender_id)` (Zalo user id) instead of phone/`zalo_user_id`. `webhook.py:138-186`
+- [x] [Review][Patch] Webhook does not validate JSON body shape or prevent replay/timestamp attacks. `webhook.py:88-135`, `outbound_routes.py:580-619`
+- [x] [Review][Patch] `verify_zalo_signature` returns `True` when secret is empty. `webhook.py:88-135`
+- [x] [Review][Patch] `recipient_phone` set to Zalo `sender_id`, not an actual phone. `webhook.py:241-248`
+- [x] [Review][Patch] `format_vietnam_phone` fallback accepts arbitrary digits and produces invalid `84`-prefixed numbers. `client.py:27-66`
+- [x] [Review][Patch] `refresh_access_token` does not validate JSON response is a dict. `client.py:247-275`
+- [x] [Review][Patch] `send_cs_message` does not refresh the access token. `client.py:358-396`
+- [x] [Review][Patch] Duplicate `@router.post` decorators on `zalo-draft`, `zns-send`, and `telegram-alert` handlers. `outbound_routes.py:168-250`
+- [x] [Review][Patch] `send_zns_message` consent guard treats any non-empty `legal_basis` as consent and `opted_out` still passes. `outbound_routes.py:263-273`
+- [x] [Review][Patch] Frontend `znsSendRequestSchema` defaults `consent_confirmed=true`, contradicting backend default. `contracts/types/leads.types.ts:156`
+- [x] [Review][Patch] `send_zns_message` uses `error_code == 0` but Zalo may return string `"0"`. `outbound_routes.py:334-336`
+- [x] [Review][Patch] `send_zns_message` picks arbitrary active OA and has no idempotency on `tracking_id`. `outbound_routes.py:287-310` (added `oa_id`, idempotency tracked in `ZaloMessageLog.external_message_id` / `tracking_id`)
+- [x] [Review][Patch] `ZaloMessageLog` stores raw `template_data` and webhook payloads without redaction. `webhook.py:260` (inbound `template_data={}`), `outbound_routes.py:341` (ZNS still stores template_data; known issue—see deferred)
+- [x] [Review][Patch] `_resolve_lead_phone` checks non-existent `phone_number` attribute. `outbound_routes.py:155-164`
+
+#### Remaining Action Items
 - [ ] [Review][Patch] `TelegramAlertRequest.chat_id` has no workspace ownership/validation. `outbound_routes.py:111-114,538-548`
-- [ ] [Review][Patch] ZNS send API exists but `zalo-outreach-button.tsx` only deep-links; no UI calls `sendZns`. Add send action or remove API if not used. `zalo-outreach-button.tsx`
+- [ ] [Review][Patch] ZNS send API exists but `zalo-outreach-button.tsx` only deep-links; no UI calls `sendZns`. `zalo-outreach-button.tsx`
+- [ ] [Review][Patch] `ZaloMessageLog` stores raw `template_data` without redaction on outbound ZNS (PII). `outbound_routes.py:341`
 
 #### Deferred
 - [x] [Review][Defer] `leads_routes.py` awaits sync `has_permission` with 4 args (pre-existing 21.3 issue, unrelated to 21.6) — `leads_routes.py:640-645,691`

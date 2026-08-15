@@ -5131,6 +5131,7 @@ class ZaloConnection(Base, TimestampMixin):
     oa_id = Column(String(100), nullable=False)
     oa_name = Column(String(255), nullable=True)
     app_id = Column(String(100), nullable=True)
+    app_secret_encrypted = Column(Text, nullable=True)
     access_token_encrypted = Column(Text, nullable=True)
     refresh_token_encrypted = Column(Text, nullable=True)
     token_expires_at = Column(TIMESTAMP(timezone=True), nullable=True)

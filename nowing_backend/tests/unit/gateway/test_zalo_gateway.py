@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -117,7 +118,7 @@ class TestZaloSignatureVerifier:
     def test_valid_mac_signature(self):
         app_id = "123456789"
         raw_body = b'{"event_name":"user_send_text","message":{"text":"hello"}}'
-        timestamp = "1723700000"
+        timestamp = str(int(time.time()))
         secret_key = "my_secret_key"
 
         data_to_hash = (
@@ -133,7 +134,7 @@ class TestZaloSignatureVerifier:
     def test_valid_hmac_signature(self):
         app_id = "123456789"
         raw_body = b'{"event_name":"user_send_text"}'
-        timestamp = "1723700000"
+        timestamp = str(int(time.time()))
         secret_key = "my_secret_key"
 
         hmac_sig = hmac.new(
@@ -147,6 +148,20 @@ class TestZaloSignatureVerifier:
     def test_invalid_signature(self):
         assert (
             verify_zalo_signature("123", b"{}", "12345", "invalid_sig_hex", "secret")
+            is False
+        )
+
+    def test_missing_secret_fails_closed(self):
+        assert (
+            verify_zalo_signature("123", b"{}", str(int(time.time())), "sig", "")
+            is False
+        )
+
+    def test_stale_timestamp_rejected(self):
+        assert (
+            verify_zalo_signature(
+                "123", b"{}", "1700000000", "invalid", "secret"
+            )
             is False
         )
 
