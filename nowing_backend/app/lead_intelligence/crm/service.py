@@ -1,7 +1,5 @@
 """CRM connection and sync services (Story 21.5)."""
 
-from __future__ import annotations
-
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
