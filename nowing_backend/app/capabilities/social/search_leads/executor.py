@@ -18,7 +18,9 @@ logger = logging.getLogger(__name__)
 
 RATE_MICROS_PER_ITEM = 2000
 
-GENERIC_DEGRADATION = "Social search is temporarily unavailable. Please try again later."
+GENERIC_DEGRADATION = (
+    "Social search is temporarily unavailable. Please try again later."
+)
 
 
 def _escape_like_pattern(value: str) -> str:
@@ -74,7 +76,9 @@ def build_search_leads_executor() -> Callable[..., Awaitable[SocialSearchLeadsOu
             query = query.where(and_(*filters))
 
             query = (
-                query.order_by(desc(SocialPost.published_at), desc(SocialPost.fit_score))
+                query.order_by(
+                    desc(SocialPost.published_at), desc(SocialPost.fit_score)
+                )
                 .offset(payload.offset)
                 .limit(payload.limit)
             )

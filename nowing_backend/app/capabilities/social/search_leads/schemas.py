@@ -8,12 +8,25 @@ from pydantic import BaseModel, Field
 class SocialSearchLeadsInput(BaseModel):
     """Input payload for searching social leads."""
 
-    platform: str | None = Field(default=None, description="Platform filter: 'facebook', 'twitter', or None for all")
-    intent: str | None = Field(default=None, description="Intent tag: 'sell', 'buy', 'hiring', 'seeking'")
-    keyword: str | None = Field(default=None, description="Search keyword in post content or author")
-    min_fit_score: float = Field(default=0.0, ge=0.0, le=1.0, description="Minimum lead fit score (0.0 to 1.0)")
-    limit: int = Field(default=20, ge=1, le=100, description="Max number of items to return")
-    offset: int = Field(default=0, ge=0, description="Number of items to skip for pagination")
+    platform: str | None = Field(
+        default=None,
+        description="Platform filter: 'facebook', 'twitter', or None for all",
+    )
+    intent: str | None = Field(
+        default=None, description="Intent tag: 'sell', 'buy', 'hiring', 'seeking'"
+    )
+    keyword: str | None = Field(
+        default=None, description="Search keyword in post content or author"
+    )
+    min_fit_score: float = Field(
+        default=0.0, ge=0.0, le=1.0, description="Minimum lead fit score (0.0 to 1.0)"
+    )
+    limit: int = Field(
+        default=20, ge=1, le=100, description="Max number of items to return"
+    )
+    offset: int = Field(
+        default=0, ge=0, description="Number of items to skip for pagination"
+    )
 
     @property
     def estimated_units(self) -> int:

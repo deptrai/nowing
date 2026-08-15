@@ -4,7 +4,6 @@ import pytest
 
 
 @pytest.mark.unit
-@pytest.mark.skip(reason="ATDD Red Phase Scaffold: Viral Draft Generator implementation pending")
 @pytest.mark.asyncio
 async def test_generate_drafts_respects_twitter_length_limit():
     """AC 4: Twitter platform constraint enforces <= 280 characters for standard tweet or thread."""
@@ -18,7 +17,11 @@ async def test_generate_drafts_respects_twitter_length_limit():
         paragraph_cadence="one sentence per line",
         hook_preference="contrarian data hook",
         vocabulary=["pipeline", "growth", "SaaS"],
-        formatting_quirks={"emoji_density": "low", "bullet_style": "bullet", "line_break_frequency": "high"},
+        formatting_quirks={
+            "emoji_density": "low",
+            "bullet_style": "bullet",
+            "line_break_frequency": "high",
+        },
     )
 
     generator = ViralDraftGenerator()
@@ -41,7 +44,6 @@ async def test_generate_drafts_respects_twitter_length_limit():
 
 
 @pytest.mark.unit
-@pytest.mark.skip(reason="ATDD Red Phase Scaffold: Viral Draft Generator implementation pending")
 @pytest.mark.asyncio
 async def test_generate_drafts_incorporates_voice_vocabulary():
     """AC 4: Ensure generated draft uses user's learned tone and vocabulary."""
@@ -55,7 +57,11 @@ async def test_generate_drafts_incorporates_voice_vocabulary():
         paragraph_cadence="short paragraphs",
         hook_preference="data reveal",
         vocabulary=["dòng tiền", "bất động sản triệu đô", "định giá"],
-        formatting_quirks={"emoji_density": "none", "bullet_style": "numbered_list", "line_break_frequency": "high"},
+        formatting_quirks={
+            "emoji_density": "none",
+            "bullet_style": "numbered_list",
+            "line_break_frequency": "high",
+        },
     )
 
     generator = ViralDraftGenerator()

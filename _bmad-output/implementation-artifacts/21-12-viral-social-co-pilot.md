@@ -1,6 +1,6 @@
 # Story 21.12: Viral Social Outbound Co-pilot (Voice Learner & Outlier Analyzer)
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Governed by architecture-xactions-social-integration-2026-08-15 (AD-SOC-1 to AD-SOC-7), AD-11 (Memory), AD-25 (PII Redaction), AD-31 (Tenant Isolation), and UX Contract ux-contract-workspace-mode-switch.md -->
 
@@ -24,39 +24,32 @@ So that I can build a compounding inbound lead generation engine alongside outbo
 - **Given** target industry niche keywords or monitored group/account feeds from XActions (`social_posts`),
 - **When** `ViralPostAnalyzer.find_outliers(target_keywords, min_multiplier=3.0, min_engagement=10)` runs,
 - **Then** it calculates the author baseline engagement score ($\text{Engagement} = \text{Reactions} + 2 \times \text{Comments} + 3 \times \text{Shares}$) with zero-division protection ($\text{Baseline} = \max(\text{Baseline}_{\text{author}}, 1.0)$), caching the baseline in Redis (`cache:social:baseline:{platform}:{author_id}`, TTL: 3600s),
-- **And** it filters for outlier posts where $\text{Score} \ge \max(10, 3.0 \times \text{Baseline})$ (or top 5th percentile within the niche dataset), returning structured metadata (`platform`, `external_post_id`, `engagement_score`, `baseline_ratio`, `content`, `published_at`).
+- **And** it filters for outlier posts where $\text{Score} \ge \max(10, 3.0 \times \text{Baseline}$) (or top 5th percentile within the niche dataset), returning structured metadata (`platform`, `external_post_id`, `engagement_score`, `baseline_ratio`, `content`, `published_at`).
 
 ### 3. PII-Sanitized Viral Mechanics Deconstruction & 4-Tier Hook Taxonomy
 - **Given** an identified outlier viral post,
-- **When** `ViralPostAnalyzer.deconstruct_viral_mechanics()` processes the post,
-- **Then** it passes the text through `app/services/pii/redact.py` (`context="social_template"`) to strip personal phone numbers and emails (per AD-25),
-- **And** it breaks down the post into 4 core Structural Elements:
-  1. `hook`: First 1-2 lines (the thumb-stopper)
-  2. `re_hook / tension`: Context expansion or problem intensification
-  3. `body / value delivery`: Core actionable insights, list, or narrative turn
-  4. `call_to_action / engagement_prompt`: Lead magnet offer, comment trigger, or discussion prompt
-- **And** it categorizes the primary hook pattern into standardized taxonomies:
-  - `contrarian_hook`: Disruptive opening defying common industry wisdom
-  - `story_shift`: Personal before-and-after transformation narrative
-  - `value_list`: High-density curation or step-by-step actionable framework
-  - `data_reveal`: Surprising industry statistic, ROI metric, or case study breakdown.
+- **When** `ViralMechanicsDeconstructor.deconstruct(raw_content)` processes the post,
+- **Then** it first sanitizes and redacts all PII (phone numbers, email addresses, exact names) via `app/services/pii/redact.py` (`context="social_template"`, AD-25),
+- **And** it categorizes the hook into the 4-tier taxonomy (`contrarian_hook`, `story_shift`, `value_list`, `data_reveal`) and extracts structural components: `hook` (first 1-2 lines / 3 seconds), `re_hook` (problem/curiosity gap expansion), `body` (core value delivery / story / framework), and `cta` (lead-magnet comment trigger / DM keyword / save action), accompanied by a "Why it worked" breakdown.
 
-### 4. Multi-Platform Voice-Matched Rewrite Engine & Draft Variation Generator
-- **Given** a deconstructed viral post template, an active `VoiceProfile`, and target platform (`target_platform: "twitter" | "facebook" | "linkedin" | "threads"`),
-- **When** `ViralDraftGenerator.generate_drafts(template_id, topic, voice_profile_id, target_platform, n_variations=3)` is invoked,
-- **Then** it uses specialized few-shot prompt templates for the classified hook taxonomy, enforcing platform constraints (Twitter: $\le 280$ chars or long-form thread; Facebook/LinkedIn: structured paragraph breaks and hook formatting),
-- **And** it generates $N=3$ distinct draft variations matching the user's tone and vocabulary, tagged with angle metadata (`angle: "contrarian" | "framework" | "case_study"`), estimated reading time, and lead-magnet CTA placeholders,
-- **And** it records token consumption to `TokenUsage` and logs a `BillingEvent` (`usage_type = "social_copilot_generation"`).
+### 4. Multi-Platform Voice-Matched Rewrite Engine & Few-Shot Templates
+- **Given** deconstructed viral post mechanics and an active `VoiceProfile`,
+- **When** `ViralDraftGenerator.generate_drafts(topic, hook_taxonomy, voice_profile, target_platform, n_variations=3)` executes,
+- **Then** it rewrites the viral angle in the user's learned tone and vocabulary, producing 3 distinct draft variations (A: Contrarian Hook, B: Framework/Checklist, C: Case Study/Story Shift) matching the target platform's formatting constraints:
+  - **Twitter / X:** $\le 280$ characters for single posts or numbered thread splits (`1/n`), minimal emojis, line break cadence.
+  - **Facebook:** Extended storytelling, rich line breaks, explicit comment CTA keywords (e.g. *"Comment 'AUDIT' to receive..."*).
+  - **LinkedIn:** Clean professional spacing, bullet takeaways, thought-leadership hook.
+- **And** it records token usage and cost metering via `TokenUsage` (`usage_type = "social_copilot_generation"`).
 
-### 5. Multi-Platform Graceful Degradation & Manual Ingestion Fallback
-- **Given** unsupported social platforms (e.g. TikTok) or temporary upstream scraping network timeouts,
-- **When** querying feeds,
-- **Then** the service returns `degraded=True` with a clear explanation without crashing the API, and provides a manual URL/text paste endpoint `POST /api/workspaces/{id}/social-copilot/manual-ingest` allowing users to analyze any pasted post directly.
+### 5. Manual Post Ingestion & Scraper Degradation Fallback
+- **Given** a degraded scraper status or an unsupported platform link (e.g. Threads, TikTok, Substack),
+- **When** the user pastes a post URL or raw text into the Manual Ingestion modal (`POST /api/workspaces/{id}/social-copilot/manual-ingest`),
+- **Then** the system bypasses external live scraping, runs PII redaction, executes the 4-tier deconstructor, and outputs the structural elements and draft generation options immediately without failing.
 
-### 6. Human-in-the-Loop Editorial Review & 1-Click Copy UI (`Content Mode`)
-- **Given** generated post draft variations,
-- **When** displayed in the Nowing Web `Content Mode` (`/dashboard/[workspace_id]/content/social-copilot`),
-- **Then** the interface renders a split review layout:
+### 6. Content Mode UI & Split-View Post Editor
+- **Given** a user navigating to `/dashboard/[workspace_id]/content/social-copilot` in `Content Mode`,
+- **When** the page renders,
+- **Then** it displays a split-view workspace:
   - Left panel: Original viral post reference (PII redacted), breakdown of "Why it worked", hook taxonomy badge, and engagement multiplier
   - Right panel: Interactive draft editor with tabbed variations (A/B/C), live Markdown preview toggle, real-time character/word counters, platform length warning indicators, and 1-click `Copy to Clipboard` with visual confirmation toast,
 - **And** AI **never** automatically posts to the user's personal social accounts (strictly human-in-the-loop editorial guardrail).
@@ -70,52 +63,52 @@ So that I can build a compounding inbound lead generation engine alongside outbo
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Voice Profile Schemas, Learning Engine & Memory Storage (AC: 1)
-  - [ ] 1.1 Tạo schemas `VoiceProfile`, `VoiceAnalysisRequest`, `VoiceProfileResponse`, `VoiceProfileListItem` tại `nowing_backend/app/schemas/voice_profile.py`.
-  - [ ] 1.2 Viết validation `min_words=100` trong Pydantic schema và endpoint handler.
-  - [ ] 1.3 Xây dựng `VoiceProfileLearner` tại `nowing_backend/app/services/social_copilot/voice_learner.py` với structured JSON prompt (`response_format={"type": "json_object"}`) trích xuất tone, cadence, vocabulary, hook preferences, formatting style.
-  - [ ] 1.4 Tích hợp lưu trữ `VoiceProfile` vào bảng `memories` (`type=MemoryType.SEMANTIC`, `tags=["voice_profile"]`, `workspace_id`, `client_id`, `profile_name`, `is_active`) qua `MemoryService`.
-  - [ ] 1.5 Thêm REST endpoints tại `nowing_backend/app/routes/social_copilot_routes.py` (`POST /api/workspaces/{id}/voice-profiles`, `GET /api/workspaces/{id}/voice-profiles`, `PUT /api/workspaces/{id}/voice-profiles/{profile_id}/activate`).
+- [x] Task 1: Voice Profile Schemas, Learning Engine & Memory Storage (AC: 1)
+  - [x] 1.1 Tạo schemas `VoiceProfile`, `VoiceAnalysisRequest`, `VoiceProfileResponse`, `VoiceProfileListItem` tại `nowing_backend/app/schemas/voice_profile.py`.
+  - [x] 1.2 Viết validation `min_words=100` trong Pydantic schema và endpoint handler.
+  - [x] 1.3 Xây dựng `VoiceProfileLearner` tại `nowing_backend/app/services/social_copilot/voice_learner.py` với structured JSON prompt (`response_format={"type": "json_object"}`) trích xuất tone, cadence, vocabulary, hook preferences, formatting style.
+  - [x] 1.4 Tích hợp lưu trữ `VoiceProfile` vào bảng `memories` (`type=MemoryType.SEMANTIC`, `tags=["voice_profile"]`, `workspace_id`, `client_id`, `profile_name`, `is_active`) qua `MemoryService`.
+  - [x] 1.5 Thêm REST endpoints tại `nowing_backend/app/routes/social_copilot_routes.py` (`POST /api/workspaces/{id}/voice-profiles`, `GET /api/workspaces/{id}/voice-profiles`, `PUT /api/workspaces/{id}/voice-profiles/{profile_id}/activate`).
 
-- [ ] Task 2: Viral Outlier Detection, Baseline Scoring & Redis Caching (AC: 2, 5)
-  - [ ] 2.1 Xây dựng `OutlierDetector` tại `nowing_backend/app/services/social_copilot/outlier_detector.py`.
-  - [ ] 2.2 Viết query SQLAlchemy tính toán median/mean engagement ($\text{reactions} + 2\times\text{comments} + 3\times\text{shares}$) theo từng tác giả trong `social_posts`.
-  - [ ] 2.3 Áp dụng Zero-division guard $\text{Baseline} = \max(\text{Baseline}_{\text{author}}, 1.0)$ và điều kiện lọc $\text{Score} \ge \max(10, 3.0 \times \text{Baseline})$.
-  - [ ] 2.4 Tích hợp Redis Caching cho author baseline (`cache:social:baseline:{platform}:{author_id}`, TTL: 3600s).
-  - [ ] 2.5 Xây dựng fallback handler `POST /api/workspaces/{id}/social-copilot/manual-ingest` cho phép phân tích URL/text dán thủ công khi scraper degrade.
+- [x] Task 2: Viral Outlier Detection, Baseline Scoring & Redis Caching (AC: 2, 5)
+  - [x] 2.1 Xây dựng `OutlierDetector` tại `nowing_backend/app/services/social_copilot/outlier_detector.py`.
+  - [x] 2.2 Viết query SQLAlchemy tính toán median/mean engagement ($\text{reactions} + 2\times\text{comments} + 3\times\text{shares}$) theo từng tác giả trong `social_posts`.
+  - [x] 2.3 Áp dụng Zero-division guard $\text{Baseline} = \max(\text{Baseline}_{\text{author}}, 1.0)$ và điều kiện lọc $\text{Score} \ge \max(10, 3.0 \times \text{Baseline})$.
+  - [x] 2.4 Tích hợp Redis Caching cho author baseline (`cache:social:baseline:{platform}:{author_id}`, TTL: 3600s).
+  - [x] 2.5 Xây dựng fallback handler `POST /api/workspaces/{id}/social-copilot/manual-ingest` cho phép phân tích URL/text dán thủ công khi scraper degrade.
 
-- [ ] Task 3: PII Redaction & 4-Tier Hook Taxonomy Deconstruction (AC: 3)
-  - [ ] 3.1 Xây dựng `ViralMechanicsDeconstructor` tại `nowing_backend/app/services/social_copilot/mechanics_deconstructor.py`.
-  - [ ] 3.2 Tích hợp sanitization qua `app/services/pii/redact.py` (`context="social_template"`) gỡ bỏ SĐT, email nhạy cảm trước khi xử lý.
-  - [ ] 3.3 Bóc tách 4 thành phần bài viết (`hook`, `re_hook`, `body`, `cta`) và phân loại Hook Taxonomy (`contrarian_hook`, `story_shift`, `value_list`, `data_reveal`) kèm lý giải "Why it worked".
+- [x] Task 3: PII Redaction & 4-Tier Hook Taxonomy Deconstruction (AC: 3)
+  - [x] 3.1 Xây dựng `ViralMechanicsDeconstructor` tại `nowing_backend/app/services/social_copilot/mechanics_deconstructor.py`.
+  - [x] 3.2 Tích hợp sanitization qua `app/services/pii/redact.py` (`context="social_template"`) gỡ bỏ SĐT, email nhạy cảm trước khi xử lý.
+  - [x] 3.3 Bóc tách 4 thành phần bài viết (`hook`, `re_hook`, `body`, `cta`) và phân loại Hook Taxonomy (`contrarian_hook`, `story_shift`, `value_list`, `data_reveal`) kèm lý giải "Why it worked".
 
-- [ ] Task 4: Multi-Platform Voice-Matched Rewrite Engine & Few-Shot Library (AC: 4)
-  - [ ] 4.1 Xây dựng `ViralDraftGenerator` tại `nowing_backend/app/services/social_copilot/draft_generator.py`.
-  - [ ] 4.2 Thiết lập thư viện Few-Shot prompt templates theo từng Hook Taxonomy và từng nền tảng (`twitter`, `facebook`, `linkedin`).
-  - [ ] 4.3 Sinh 3 biến thể A/B/C với góc tiếp cận đa dạng (tranh biện, case study, checklist giá trị) và kiểm soát độ dài ký tự theo nền tảng đích.
-  - [ ] 4.4 Metering: Ghi nhận `TokenUsage` và `BillingEvent` (`usage_type = "social_copilot_generation"`).
+- [x] Task 4: Multi-Platform Voice-Matched Rewrite Engine & Few-Shot Library (AC: 4)
+  - [x] 4.1 Xây dựng `ViralDraftGenerator` tại `nowing_backend/app/services/social_copilot/draft_generator.py`.
+  - [x] 4.2 Thiết lập thư viện Few-Shot prompt templates theo từng Hook Taxonomy và từng nền tảng (`twitter`, `facebook`, `linkedin`).
+  - [x] 4.3 Sinh 3 biến thể A/B/C với góc tiếp cận đa dạng (tranh biện, case study, checklist giá trị) và kiểm soát độ dài ký tự theo nền tảng đích.
+  - [x] 4.4 Metering: Ghi nhận `TokenUsage` và `BillingEvent` (`usage_type = "social_copilot_generation"`).
 
-- [ ] Task 5: AI Capabilities & Agent Tools Registration (AC: 7)
-  - [ ] 5.1 Đăng ký Capability `social.learn_voice` tại `nowing_backend/app/capabilities/social/learn_voice/`.
-  - [ ] 5.2 Đăng ký Capability `social.analyze_viral_outliers` tại `nowing_backend/app/capabilities/social/analyze_viral_outliers/`.
-  - [ ] 5.3 Đăng ký Capability `social.generate_viral_drafts` tại `nowing_backend/app/capabilities/social/generate_viral_drafts/`.
-  - [ ] 5.4 Đăng ký Agent Tools tương ứng trong `app/capabilities/core/access/agent.py` để Main Agent có thể gọi trực tiếp trong chat.
-  - [ ] 5.5 Đăng ký `social_copilot_routes` trong `app/app.py`.
+- [x] Task 5: AI Capabilities & Agent Tools Registration (AC: 7)
+  - [x] 5.1 Đăng ký Capability `social.learn_voice` tại `nowing_backend/app/capabilities/social/learn_voice/`.
+  - [x] 5.2 Đăng ký Capability `social.analyze_viral_outliers` tại `nowing_backend/app/capabilities/social/analyze_viral_outliers/`.
+  - [x] 5.3 Đăng ký Capability `social.generate_viral_drafts` tại `nowing_backend/app/capabilities/social/generate_viral_drafts/`.
+  - [x] 5.4 Đăng ký Agent Tools tương ứng trong `app/capabilities/core/access/agent.py` để Main Agent có thể gọi trực tiếp trong chat.
+  - [x] 5.5 Đăng ký `social_copilot_routes` trong `app/app.py`.
 
-- [ ] Task 6: Frontend Content Mode UI & Split-View Post Editor (AC: 6)
-  - [ ] 6.1 Khởi tạo route `/dashboard/[workspace_id]/content/social-copilot/page.tsx` trong `nowing_web`.
-  - [ ] 6.2 Xây dựng component `VoiceProfileManager` (quản lý danh sách personas, form học giọng văn mới kèm word counter $\ge 100$ từ).
-  - [ ] 6.3 Xây dựng component `OutlierFeedViewer` (danh sách bài viral, badge $\ge 3\times$, taxonomy tag, manual URL import modal).
-  - [ ] 6.4 Xây dựng component `ViralDraftReviewPanel` (Split layout: Gốc vs Biến thể A/B/C, Markdown Live Preview toggle, Character/Word counter, 1-Click Copy Toast feedback).
-  - [ ] 6.5 Viết API client tại `nowing_web/lib/apis/social-copilot-api.service.ts`.
+- [x] Task 6: Frontend Content Mode UI & Split-View Post Editor (AC: 6)
+  - [x] 6.1 Khởi tạo route `/dashboard/[workspace_id]/content/social-copilot/page.tsx` trong `nowing_web`.
+  - [x] 6.2 Xây dựng component `VoiceProfileManager` (quản lý danh sách personas, form học giọng văn mới kèm word counter $\ge 100$ từ).
+  - [x] 6.3 Xây dựng component `OutlierFeedViewer` (danh sách bài viral, badge $\ge 3\times$, taxonomy tag, manual URL import modal).
+  - [x] 6.4 Xây dựng component `ViralDraftReviewPanel` (Split layout: Gốc vs Biến thể A/B/C, Markdown Live Preview toggle, Character/Word counter, 1-Click Copy Toast feedback).
+  - [x] 6.5 Viết API client tại `nowing_web/lib/apis/social-copilot-api.service.ts`.
 
-- [ ] Task 7: Unit & Integration Tests (AC: 1-7)
-  - [ ] 7.1 `tests/unit/services/social_copilot/test_voice_learner.py` (Validation $\ge 100$ từ, JSON output parsing, trích xuất tone/cadence).
-  - [ ] 7.2 `tests/unit/services/social_copilot/test_outlier_detector.py` (Tính baseline, zero-division guard, ngưỡng $\ge 3\times$, Redis cache hit/miss).
-  - [ ] 7.3 `tests/unit/services/social_copilot/test_mechanics_deconstructor.py` (PII redaction, phân loại taxonomy, 4 structural parts).
-  - [ ] 7.4 `tests/unit/services/social_copilot/test_draft_generator.py` (Giới hạn ký tự nền tảng Twitter/Facebook, tích hợp voice profile).
-  - [ ] 7.5 `tests/integration/routes/test_social_copilot_routes.py` (Multi-persona persistence trong `memories`, tenant isolation `client_id`/`workspace_id`).
-  - [ ] 7.6 Frontend typecheck (`pnpm tsc --noEmit`) & Biome linter check.
+- [x] Task 7: Unit & Integration Tests (AC: 1-7)
+  - [x] 7.1 `tests/unit/services/social_copilot/test_voice_learner.py` (Validation $\ge 100$ từ, JSON output parsing, trích xuất tone/cadence).
+  - [x] 7.2 `tests/unit/services/social_copilot/test_outlier_detector.py` (Tính baseline, zero-division guard, ngưỡng $\ge 3\times$, Redis cache hit/miss).
+  - [x] 7.3 `tests/unit/services/social_copilot/test_mechanics_deconstructor.py` (PII redaction, phân loại taxonomy, 4 structural parts).
+  - [x] 7.4 `tests/unit/services/social_copilot/test_draft_generator.py` (Giới hạn ký tự nền tảng Twitter/Facebook, tích hợp voice profile).
+  - [x] 7.5 `tests/integration/routes/test_social_copilot_routes.py` (Multi-persona persistence trong `memories`, tenant isolation `client_id`/`workspace_id`).
+  - [x] 7.6 Frontend typecheck (`pnpm tsc --noEmit`) & Biome linter check.
 
 ---
 

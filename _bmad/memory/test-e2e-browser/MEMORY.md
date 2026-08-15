@@ -10,8 +10,11 @@ _Curated long-term knowledge for Nowing E2E Browser Testing._
 - **Header Auth Controls:** The `Sign In` link in the main navigation uses `hidden md:block`. When testing with browser MCP tools, always ensure viewport is set to desktop size (e.g. 1440x900 via `browser_resize`) or click the `Get Started` hero link if testing on small viewports.
 - **Chat Prompt & Turn Trace:** Chat prompt input is accessible via `getByRole('textbox')`. Tool trace details and execution steps expand via `getByRole('button', { name: 'Reviewed' })` or `getByRole('button', { name: 'Open agent action log' })`. Modals can be safely dismissed with `keyboard.press('Escape')`.
 - **Suggested Action Pills (Story 21.11):** Suggested execution pills mount directly below assistant messages via container `[data-testid='suggested-action-pills']` and buttons `button[data-action-type]`. Supports 1-click prompt dispatch and keyboard shortcuts `Alt+Digit1`, `Alt+Digit2`, `Alt+Digit3` when composer input is unfocused. Emits window custom event `nowing:action-dispatched` triggering `.cell-pulse` highlight.
+- **Phone Copy Pills & PII Masking (Story 21.3):** Lead phone numbers render inside `button[aria-label^='Copy phone number']`. Non-privileged views strictly display masked format (`0908***456`). Clicking copies normalized digits and temporarily updates state to `(Đã copy)` with a 1500ms reset timer.
+- **Enterprise Company Graph Drawer (Story 21.3 / 21.4):** Triggered by `button[name='Xem Company Graph']`. Displays company registration data (MST, representative, capital), decision-makers list with masked contacts, and recruitment signals.
 
 ## High-Risk User Journeys
+- Vietnam Phone & Contact Waterfall Engine (Story 21.3): 3-tier waterfall phone extraction, PII AES-256 encryption at rest, 1.5 credit billing event, and 24h SLA auto-refund reporting.
 - Chat turns with SSE streaming, tool invocation widgets, and contextual suggested action pills (`data-suggested-actions`).
 - Connector authentication and indexing pipelines.
 - Workspace creation and Zero-cache state synchronization.

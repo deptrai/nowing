@@ -4,11 +4,12 @@ import pytest
 
 
 @pytest.mark.unit
-@pytest.mark.skip(reason="ATDD Red Phase Scaffold: Viral Mechanics Deconstructor implementation pending")
 @pytest.mark.asyncio
 async def test_pii_sanitization_on_viral_post():
     """AC 3: Ensure phone numbers and emails in viral posts are redacted per AD-25."""
-    from app.services.social_copilot.mechanics_deconstructor import ViralMechanicsDeconstructor
+    from app.services.social_copilot.mechanics_deconstructor import (
+        ViralMechanicsDeconstructor,
+    )
 
     raw_content = (
         "Bán gấp lô đất Thảo Điền view sông 500m2 giá 45 tỷ. "
@@ -21,15 +22,18 @@ async def test_pii_sanitization_on_viral_post():
 
     assert "0912.345.678" not in sanitized
     assert "ceo@landinvest.vn" not in sanitized
-    assert "[REDACTED_PHONE]" in sanitized or "[PHONE]" in sanitized or "09xx" in sanitized
+    assert (
+        "[REDACTED_PHONE]" in sanitized or "[PHONE]" in sanitized or "09xx" in sanitized
+    )
 
 
 @pytest.mark.unit
-@pytest.mark.skip(reason="ATDD Red Phase Scaffold: Viral Mechanics Deconstructor implementation pending")
 @pytest.mark.asyncio
 async def test_classify_hook_taxonomy_contrarian():
     """AC 3: Categorize hook into contrarian_hook, story_shift, value_list, data_reveal."""
-    from app.services.social_copilot.mechanics_deconstructor import ViralMechanicsDeconstructor
+    from app.services.social_copilot.mechanics_deconstructor import (
+        ViralMechanicsDeconstructor,
+    )
 
     contrarian_text = (
         "Hầu hết các founder SaaS đang làm marketing sai cách. "
@@ -45,11 +49,12 @@ async def test_classify_hook_taxonomy_contrarian():
 
 
 @pytest.mark.unit
-@pytest.mark.skip(reason="ATDD Red Phase Scaffold: Viral Mechanics Deconstructor implementation pending")
 @pytest.mark.asyncio
 async def test_deconstruct_4_structural_elements():
     """AC 3: Break down post into hook, re_hook, body, cta."""
-    from app.services.social_copilot.mechanics_deconstructor import ViralMechanicsDeconstructor
+    from app.services.social_copilot.mechanics_deconstructor import (
+        ViralMechanicsDeconstructor,
+    )
 
     full_post = (
         "Dừng chạy ads nếu bạn chưa biết điều này.\n\n"
@@ -67,4 +72,6 @@ async def test_deconstruct_4_structural_elements():
     assert "Dừng chạy ads" in elements.hook
     assert "90% ngân sách" in elements.re_hook
     assert "3 bước khắc phục" in elements.body
-    assert "comment 'AUDIT'" in elements.cta.lower() or "thả tim" in elements.cta.lower()
+    assert (
+        "comment 'AUDIT'" in elements.cta.lower() or "thả tim" in elements.cta.lower()
+    )

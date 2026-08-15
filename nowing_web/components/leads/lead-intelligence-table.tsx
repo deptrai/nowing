@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, ExternalLink, MapPin, Share2, Sparkles } from "lucide-react";
+import { Building2, ExternalLink, MapPin, Share2 } from "lucide-react";
 import type React from "react";
 import type { Lead } from "@/contracts/types/leads.types";
 import { cn, isAllowedUrl } from "@/lib/utils";
@@ -43,7 +43,7 @@ export const LeadIntelligenceTable: React.FC<LeadIntelligenceTableProps> = ({
 	leads,
 	workspaceId = "1",
 	onOpenCompanyGraph,
-	onStatusChange,
+	onStatusChange: _onStatusChange,
 	className,
 }) => {
 	if (!leads || leads.length === 0) {
@@ -51,16 +51,33 @@ export const LeadIntelligenceTable: React.FC<LeadIntelligenceTableProps> = ({
 	}
 
 	return (
-		<div className={cn("overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-900/40 backdrop-blur-sm", className)}>
+		<div
+			className={cn(
+				"overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-900/40 backdrop-blur-sm",
+				className
+			)}
+		>
 			<table className="w-full text-left text-xs text-zinc-300">
 				<thead className="bg-zinc-950/80 text-[11px] uppercase tracking-wider text-zinc-400 border-b border-zinc-800">
 					<tr>
-						<th scope="col" className="px-4 py-3 font-semibold">Doanh nghiệp / Nguồn</th>
-						<th scope="col" className="px-4 py-3 font-semibold">Liên hệ (SĐT)</th>
-						<th scope="col" className="px-4 py-3 font-semibold">Fit & Intent</th>
-						<th scope="col" className="px-4 py-3 font-semibold">Địa điểm & Giá</th>
-						<th scope="col" className="px-4 py-3 font-semibold text-center">Tiếp cận Zalo</th>
-						<th scope="col" className="px-4 py-3 font-semibold text-right">Hành động</th>
+						<th scope="col" className="px-4 py-3 font-semibold">
+							Doanh nghiệp / Nguồn
+						</th>
+						<th scope="col" className="px-4 py-3 font-semibold">
+							Liên hệ (SĐT)
+						</th>
+						<th scope="col" className="px-4 py-3 font-semibold">
+							Fit & Intent
+						</th>
+						<th scope="col" className="px-4 py-3 font-semibold">
+							Địa điểm & Giá
+						</th>
+						<th scope="col" className="px-4 py-3 font-semibold text-center">
+							Tiếp cận Zalo
+						</th>
+						<th scope="col" className="px-4 py-3 font-semibold text-right">
+							Hành động
+						</th>
 					</tr>
 				</thead>
 				<tbody className="divide-y divide-zinc-800/60">
@@ -97,15 +114,16 @@ export const LeadIntelligenceTable: React.FC<LeadIntelligenceTableProps> = ({
 
 								{/* Fit Score & Intent */}
 								<td className="px-4 py-3.5 space-y-1">
-									<div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border" style={{ borderColor: "inherit" }}>
+									<div
+										className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border"
+										style={{ borderColor: "inherit" }}
+									>
 										<span className={cn("px-1.5 py-0.5 rounded-md", fit.colorClass)}>
 											{fit.score} • {fit.label}
 										</span>
 									</div>
 									{lead.intent && (
-										<div className="text-[10px] text-blue-400 font-medium">
-											{lead.intent}
-										</div>
+										<div className="text-[10px] text-blue-400 font-medium">{lead.intent}</div>
 									)}
 								</td>
 

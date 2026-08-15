@@ -9,6 +9,7 @@ from uuid import UUID
 
 from celery import shared_task
 
+from app.canonical.tenant_context import set_request_tenant_context
 from app.db import async_session_maker
 from app.services.billing_service import BillingService
 from app.services.phone_waterfall_service import PhoneWaterfallService
@@ -36,6 +37,9 @@ def resolve_phone_waterfall_task(
 
     async def _run() -> dict[str, Any]:
         async with async_session_maker() as session:
+            await set_request_tenant_context(
+                session, workspace_id=workspace_id, client_id=client_id
+            )
             service = PhoneWaterfallService(session)
             res = await service.resolve_lead_phone(
                 workspace_id=workspace_id,
@@ -90,6 +94,9 @@ def auto_refund_lead_task(
 
     async def _run() -> dict[str, Any]:
         async with async_session_maker() as session:
+            await set_request_tenant_context(
+                session, workspace_id=workspace_id, client_id=None
+            )
             billing = BillingService(session)
             return await billing.auto_refund_lead(
                 workspace_id=workspace_id,

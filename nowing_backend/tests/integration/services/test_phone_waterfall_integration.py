@@ -82,7 +82,6 @@ async def test_phone_waterfall_integration_tier_1_batdongsan_persist_and_billing
         contact = contacts_query.scalar_one_or_none()
         assert contact is not None
         assert contact.is_valid is True
-        assert contact.phone_masked == "0908***456"
         assert contact.phone != "0908123456"  # Must be encrypted ciphertext
 
         # Verify PhoneWaterfallLog
@@ -92,6 +91,7 @@ async def test_phone_waterfall_integration_tier_1_batdongsan_persist_and_billing
         log = logs_query.scalar_one_or_none()
         assert log is not None
         assert log.status == "success"
+        assert log.phone_masked == "0908***456"
         assert log.tier_reached == 1
         assert log.provider_used == "batdongsan"
         assert log.cost_micros == PHONE_RESOLUTION_COST_MICROS

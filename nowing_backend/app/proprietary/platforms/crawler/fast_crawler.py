@@ -36,6 +36,7 @@ _BLOCKED_NETWORKS = [
     ipaddress.ip_network("224.0.0.0/4"),  # Multicast
     ipaddress.ip_network("240.0.0.0/4"),  # Reserved
     ipaddress.ip_network("::1/128"),  # IPv6 Loopback
+    ipaddress.ip_network("::ffff:0:0/96"),  # IPv4-mapped IPv6
     ipaddress.ip_network("fc00::/7"),  # IPv6 Unique Local
     ipaddress.ip_network("fe80::/10"),  # IPv6 Link-Local
 ]
@@ -148,11 +149,23 @@ async def validate_safe_ip(hostname: str) -> bool:
         ip_str = sockaddr[0]
         try:
             ip_obj = ipaddress.ip_address(ip_str)
+            if isinstance(ip_obj, ipaddress.IPv6Address) and ip_obj.ipv4_mapped:
+                ip_obj = ip_obj.ipv4_mapped
         except ValueError:
             return False
 
+        if (
+            ip_obj.is_private
+            or ip_obj.is_loopback
+            or ip_obj.is_link_local
+            or ip_obj.is_reserved
+            or ip_obj.is_multicast
+            or ip_obj.is_unspecified
+        ):
+            return False
+
         for blocked in _BLOCKED_NETWORKS:
-            if ip_obj in blocked:
+            if blocked.version == ip_obj.version and ip_obj in blocked:
                 return False
 
     return True
@@ -174,7 +187,14 @@ def _flatten_json_ld_item(item: Any, target_types: set[str]) -> list[dict[str, A
 
         schema_type = item.get("@type")
         if isinstance(schema_type, list):
-            if any(t in target_types for t in schema_type):
+            if any(
+                isinstance(t, str)
+                and (
+                    t in target_types
+                    or any(target.lower() in t.lower() for target in target_types)
+                )
+                for t in schema_type
+            ):
                 results.append(item)
         elif isinstance(schema_type, str) and (
             schema_type in target_types
@@ -277,6 +297,7 @@ class FastCrawler:
 
         current_url = normalized_url
         response = None
+        visited_urls: set[str] = set()
 
         async with httpx.AsyncClient(
             follow_redirects=False,
@@ -284,7 +305,13 @@ class FastCrawler:
             headers=headers,
             verify=True,
         ) as client:
-            for _ in range(_MAX_REDIRECT_HOPS + 1):
+            for hop in range(_MAX_REDIRECT_HOPS + 1):
+                if current_url in visited_urls:
+                    raise ValueError(
+                        f"Circular redirect loop detected for {current_url}"
+                    )
+                visited_urls.add(current_url)
+
                 parsed = urlparse(current_url)
                 if not await validate_safe_ip(parsed.hostname or ""):
                     raise SSRFProtectionError(
@@ -300,6 +327,10 @@ class FastCrawler:
                     307,
                     308,
                 ):
+                    if hop >= _MAX_REDIRECT_HOPS:
+                        raise ValueError(
+                            f"Exceeded maximum redirect limit of {_MAX_REDIRECT_HOPS} hops"
+                        )
                     location = response.headers.get("Location")
                     if not location:
                         break
@@ -311,6 +342,11 @@ class FastCrawler:
 
         if response is None:
             raise RuntimeError("No HTTP response received")
+
+        if response.status_code >= 400:
+            raise ValueError(
+                f"Target website returned HTTP error status {response.status_code}"
+            )
 
         html_text = response.text
         tree = HTMLParser(html_text)

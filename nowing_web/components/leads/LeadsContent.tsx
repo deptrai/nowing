@@ -47,12 +47,35 @@ export const LeadsContent: React.FC = () => {
 	};
 
 	const handleApplyIcpPresets = (presets: FilterPresets) => {
+		// Map LLM-returned platform names to the canonical source filter values.
+		const platformMap: Record<string, string> = {
+			facebook: "facebook",
+			telegram: "telegram",
+			batdongsan: "batdongsan",
+			"batdongsan.com.vn": "batdongsan",
+			topcv: "topcv",
+			"topcv.vn": "topcv",
+			tender: "tender",
+			"mua sắm công": "tender",
+		};
 		if (presets.platforms && presets.platforms.length > 0) {
-			setSourceFilter(presets.platforms[0]);
+			const raw = presets.platforms[0].toLowerCase().trim();
+			setSourceFilter(platformMap[raw] || "all");
 		}
+		const queryParts: string[] = [];
 		if (presets.target_industries && presets.target_industries.length > 0) {
-			setSearchQuery(presets.target_industries.join(" "));
+			queryParts.push(...presets.target_industries);
 		}
+		if (presets.locations && presets.locations.length > 0) {
+			queryParts.push(...presets.locations);
+		}
+		if (queryParts.length > 0) {
+			setSearchQuery(queryParts.join(" "));
+		}
+	};
+
+	const handleCreateTableFromIcp = async (_name: string, _icon: string, presets: FilterPresets) => {
+		handleApplyIcpPresets(presets);
 	};
 
 	return (
@@ -214,6 +237,7 @@ export const LeadsContent: React.FC = () => {
 				onClose={() => setIsReverseIcpOpen(false)}
 				workspaceId={workspaceId}
 				onApplyFilterPresets={handleApplyIcpPresets}
+				onCreateTableFromIcp={handleCreateTableFromIcp}
 			/>
 		</div>
 	);

@@ -1,7 +1,7 @@
 """add phone_waterfall_logs and refund tracking (Story 21.3 / AD-36 / AD-42)
 
-Revision ID: 192_phone_waterfall
-Revises: 211
+Revision ID: 213
+Revises: 212
 Create Date: 2026-08-15 00:00:00.000000
 
 """
@@ -23,8 +23,8 @@ from sqlalchemy.dialects.postgresql import CITEXT, JSONB, UUID
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "192_phone_waterfall"
-down_revision: str | None = "211"
+revision: str = "213"
+down_revision: str | None = "212"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

@@ -41,15 +41,20 @@ class ReverseIcpService:
     def __init__(self, *, crawler: FastCrawler | None = None) -> None:
         self.crawler = crawler or FastCrawler()
 
-    def _get_cache_key(self, url: str) -> str:
-        """Compute stable SHA256 cache key for normalized URL."""
+    def _get_cache_key(
+        self, url: str, custom_instructions: str | None = None, model: str | None = None
+    ) -> str:
+        """Compute stable SHA256 cache key for normalized URL, instructions, and model."""
         norm_url = normalize_target_url(url)
-        url_hash = hashlib.sha256(norm_url.encode("utf-8")).hexdigest()
+        composite = f"{norm_url}::{custom_instructions or ''}::{model or ''}"
+        url_hash = hashlib.sha256(composite.encode("utf-8")).hexdigest()
         return f"icp:cache:{url_hash}"
 
-    async def _get_from_cache(self, url: str) -> dict[str, Any] | None:
+    async def _get_from_cache(
+        self, url: str, custom_instructions: str | None = None, model: str | None = None
+    ) -> dict[str, Any] | None:
         """Fetch cached ReverseIcpResponse dictionary from Redis if available."""
-        cache_key = self._get_cache_key(url)
+        cache_key = self._get_cache_key(url, custom_instructions, model)
         try:
             import redis.asyncio as aioredis
 
@@ -68,10 +73,15 @@ class ReverseIcpService:
         return None
 
     async def _save_to_cache(
-        self, url: str, data: dict[str, Any], ttl: int = 3600
+        self,
+        url: str,
+        data: dict[str, Any],
+        custom_instructions: str | None = None,
+        model: str | None = None,
+        ttl: int = 3600,
     ) -> None:
         """Store ReverseIcpResponse payload in Redis cache."""
-        cache_key = self._get_cache_key(url)
+        cache_key = self._get_cache_key(url, custom_instructions, model)
         try:
             import redis.asyncio as aioredis
 
@@ -206,8 +216,12 @@ Vui lòng xuất kết quả theo định dạng JSON với cấu trúc:
         custom_instructions: str | None = None,
         model: str | None = None,
     ) -> dict[str, Any]:
-        """Invoke LLM to generate ICP response structure."""
-        from litellm import acompletion
+        """Invoke LLM to generate ICP response structure via the global Auto-mode router."""
+        import litellm
+
+        from app.services.llm_router_service import LLMRouterService
+
+        litellm.drop_params = True
 
         user_prompt = self._build_user_prompt(crawl_data, custom_instructions)
         messages = [
@@ -215,12 +229,18 @@ Vui lòng xuất kết quả theo định dạng JSON với cấu trúc:
             {"role": "user", "content": user_prompt},
         ]
 
-        target_model = model or "gpt-4o-mini"
-        response = await acompletion(
+        router = LLMRouterService.get_router()
+        if router is None:
+            raise ValueError("LLM Router is not initialized. Check GLOBAL_LLM_CONFIG configuration.")
+
+        target_model = model or "auto"
+        response = await router.acompletion(
             model=target_model,
             messages=messages,
             temperature=0.2,
-            max_tokens=1500,
+            max_tokens=2000,
+            timeout=25.0,
+            response_format={"type": "json_object"},
         )
 
         choice = response.choices[0]
@@ -235,7 +255,9 @@ Vui lòng xuất kết quả theo định dạng JSON với cấu trúc:
     ) -> ReverseIcpResponse:
         """Run complete 1-Click Reverse-ICP pipeline with caching, crawling, and AI reasoning."""
         # 1. Check Cache
-        cached_data = await self._get_from_cache(url)
+        cached_data = await self._get_from_cache(
+            url, custom_instructions=custom_instructions, model=model
+        )
         if cached_data:
             logger.info(
                 "[ReverseIcpService] Returning cached Reverse-ICP result for %s", url
@@ -263,7 +285,13 @@ Vui lòng xuất kết quả theo định dạng JSON với cấu trúc:
             icp_dict["domain"] = crawl_data.get("domain", "")
 
         # 5. Save to Cache
-        await self._save_to_cache(url, icp_dict, ttl=3600)
+        await self._save_to_cache(
+            url,
+            icp_dict,
+            custom_instructions=custom_instructions,
+            model=model,
+            ttl=3600,
+        )
 
         # 6. Validate & Return
         return ReverseIcpResponse.model_validate(icp_dict)

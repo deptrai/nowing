@@ -30,8 +30,9 @@ class RedactedText:
 _PHONE_PATTERNS = [
     re.compile(r"\+84(?:\s*\d){9,10}"),
     re.compile(r"0\d{9,10}"),
-    re.compile(r"0\d{2}[-\s]\d{3}[-\s]\d{4}"),
-    re.compile(r"0\d{3}[-\s]\d{3}[-\s]\d{3}"),
+    re.compile(r"0\d{2}[-\s.]\d{3}[-\s.]\d{4}"),
+    re.compile(r"0\d{3}[-\s.]\d{3}[-\s.]\d{3,4}"),
+    re.compile(r"0\d{1}[-\s.]\d{4}[-\s.]\d{4}"),
 ]
 
 _EMAIL_PATTERN = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
@@ -82,7 +83,7 @@ def redact_pii(text: str | None, context: str = "default") -> RedactedText:
     if not text:
         return RedactedText(text="")
 
-    if context not in {"job_data", "lead_enrichment", "default"}:
+    if context not in {"job_data", "lead_enrichment", "social_template", "default"}:
         raise ValueError(f"Unknown redaction context: {context}")
 
     return _apply_redaction(text)

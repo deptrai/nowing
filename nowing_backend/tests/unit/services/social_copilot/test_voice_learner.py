@@ -5,7 +5,6 @@ from pydantic import ValidationError
 
 
 @pytest.mark.unit
-@pytest.mark.skip(reason="ATDD Red Phase Scaffold: Voice Profile Learner implementation pending")
 def test_voice_learner_rejects_sample_under_100_words():
     """AC 1: Must validate min_words=100 and raise error/return 422 if sample text is too short."""
     from app.schemas.voice_profile import VoiceAnalysisRequest
@@ -19,7 +18,6 @@ def test_voice_learner_rejects_sample_under_100_words():
 
 
 @pytest.mark.unit
-@pytest.mark.skip(reason="ATDD Red Phase Scaffold: Voice Profile Learner implementation pending")
 @pytest.mark.asyncio
 async def test_voice_learner_extracts_structured_profile():
     """AC 1: Analyzes tone, sentence length, cadence, hooks, and formatting style in JSON."""
@@ -48,13 +46,15 @@ async def test_voice_learner_extracts_structured_profile():
     assert profile.profile_name == "BĐS Chuyên gia"
     assert "authoritative" in profile.tone.lower() or "direct" in profile.tone.lower()
     assert profile.average_sentence_length > 0
-    assert "contrarian" in profile.hook_preference.lower() or "numbers" in profile.hook_preference.lower()
+    assert (
+        "contrarian" in profile.hook_preference.lower()
+        or "numbers" in profile.hook_preference.lower()
+    )
     assert len(profile.vocabulary) > 0
     assert profile.formatting_quirks.bullet_style in ["numbered_list", "bullet", "none"]
 
 
 @pytest.mark.unit
-@pytest.mark.skip(reason="ATDD Red Phase Scaffold: Voice Profile Learner implementation pending")
 def test_voice_profile_json_schema_compliance():
     """AC 1: Strict Pydantic JSON schema compliance with multi-persona attributes."""
     from app.schemas.voice_profile import VoiceProfile

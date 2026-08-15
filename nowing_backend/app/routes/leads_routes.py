@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 from datetime import UTC, datetime, timedelta
 from urllib.parse import quote
 from uuid import UUID
@@ -48,6 +49,8 @@ from app.tasks.phone_waterfall_worker import resolve_phone_waterfall_task
 from app.users import get_auth_context
 from app.utils.rbac import check_permission, has_permission
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 
@@ -68,6 +71,19 @@ def _map_lead_to_read(lead: Lead) -> LeadRead:
     first_phone = (
         raw_contacts[0].phone if raw_contacts else getattr(lead, "phone", None)
     )
+    if first_phone:
+        from app.services.phone_waterfall_service import mask_phone
+        from app.services.pii.verified_contact_encryption import (
+            VerifiedContactEncryption,
+        )
+
+        enc = VerifiedContactEncryption()
+        if enc.is_encrypted(first_phone):
+            try:
+                first_phone = enc.decrypt(first_phone)
+            except Exception:
+                first_phone = None
+        first_phone = mask_phone(first_phone) if first_phone else None
 
     # Derive intent and snippet from available metadata or source
     derived_intent = getattr(lead, "intent", None)
@@ -248,6 +264,81 @@ async def list_workspace_leads(
     )
 
 
+@router.post(
+    "/workspaces/{workspace_id}/leads/reverse-icp",
+    response_model=ReverseIcpResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def reverse_icp_endpoint(
+    workspace_id: int,
+    body: ReverseIcpRequest,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(get_auth_context),
+) -> ReverseIcpResponse:
+    """Analyze a website or landing page URL to generate ICP, buyer personas, and filter presets (Story 21.10)."""
+    await check_permission(
+        session,
+        auth,
+        workspace_id,
+        Permission.LEADS_READ.value,
+        error_message="You don't have permission to access lead intelligence in this workspace",
+    )
+
+    # Rate limiting: Max 10 requests / minute per workspace
+    try:
+        import redis.asyncio as aioredis
+
+        from app.config import config
+
+        redis_client = aioredis.from_url(config.REDIS_APP_URL, decode_responses=True)
+        rl_key = f"rate_limit:reverse_icp:{workspace_id}"
+        req_count = await redis_client.incr(rl_key)
+        if req_count == 1:
+            await redis_client.expire(rl_key, 60)
+        await redis_client.aclose()
+
+        if req_count > 10:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Rate limit exceeded: maximum 10 Reverse-ICP requests per minute per workspace.",
+            )
+    except HTTPException:
+        raise
+    except Exception as rl_exc:
+        logger.debug("[ReverseIcpRoute] Rate limiter check skipped: %s", rl_exc)
+
+    service = ReverseIcpService()
+    try:
+        result = await service.analyze_url(
+            url=body.url,
+            custom_instructions=body.custom_instructions,
+        )
+        return result
+    except SSRFProtectionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"URL rejected by security policy: {exc}",
+        ) from exc
+    except FastCrawlerTimeoutError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail=f"Crawl connection timed out: {exc}",
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    except Exception as exc:
+        logger.exception(
+            "[ReverseIcpRoute] Unexpected error analyzing URL %s: %s", body.url, exc
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to analyze URL due to an internal server error.",
+        ) from exc
+
+
 @router.get(
     "/workspaces/{workspace_id}/leads/{lead_id}",
     response_model=LeadRead,
@@ -384,13 +475,28 @@ async def get_company_graph(
         if c.name and c.name not in seen_names:
             seen_names.add(c.name)
             linkedin_slug = quote(c.name.lower().replace(" ", "-"), safe="")
+            dm_phone = c.phone
+            if dm_phone:
+                from app.services.phone_waterfall_service import mask_phone
+                from app.services.pii.verified_contact_encryption import (
+                    VerifiedContactEncryption,
+                )
+
+                enc = VerifiedContactEncryption()
+                if enc.is_encrypted(dm_phone):
+                    try:
+                        dm_phone = enc.decrypt(dm_phone)
+                    except Exception:
+                        dm_phone = None
+                dm_phone = mask_phone(dm_phone) if dm_phone else None
+
             decision_makers.append(
                 DecisionMakerRead(
                     name=c.name,
                     title=c.title or "Executive",
                     linkedin_url=f"https://linkedin.com/in/{linkedin_slug}",
                     email=c.email if c.email else None,
-                    phone=c.phone,
+                    phone=dm_phone,
                     confidence=c.confidence if c.confidence is not None else 0.95,
                 )
             )
@@ -530,7 +636,7 @@ async def resolve_lead_phone_endpoint(
     Tier 3: Passive Carrier Prefix Validation & HLR / Zalo Lookup
     Debits 1.5 credits (1,500,000 micros) via BillingEvent only upon success.
     """
-    # RBAC: Check LEADS_ENRICH or LEADS_WRITE or LEADS_READ
+    # RBAC: Enforce LEADS_ENRICH or LEADS_WRITE (Viewer LEADS_READ alone cannot trigger paid mutations)
     has_enrich = await has_permission(
         session, auth, workspace_id, Permission.LEADS_ENRICH.value
     )
@@ -538,12 +644,9 @@ async def resolve_lead_phone_endpoint(
         session, auth, workspace_id, Permission.LEADS_WRITE.value
     )
     if not (has_enrich or has_write):
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.LEADS_READ.value,
-            error_message="You don't have permission to resolve lead contacts in this workspace",
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have permission to resolve lead contacts in this workspace (requires LEADS_ENRICH or LEADS_WRITE)",
         )
 
     client_id = auth.current_client_id
@@ -650,52 +753,3 @@ async def report_invalid_phone_endpoint(
         reason=result["reason"],
         message="Auto-refund SLA processed successfully. 100% credits reverted to wallet.",
     )
-
-
-@router.post(
-    "/workspaces/{workspace_id}/leads/reverse-icp",
-    response_model=ReverseIcpResponse,
-    status_code=status.HTTP_200_OK,
-)
-async def reverse_icp_endpoint(
-    workspace_id: int,
-    body: ReverseIcpRequest,
-    session: AsyncSession = Depends(get_async_session),
-    auth: AuthContext = Depends(get_auth_context),
-) -> ReverseIcpResponse:
-    """Analyze a website or landing page URL to generate ICP, buyer personas, and filter presets (Story 21.10)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_READ.value,
-        error_message="You don't have permission to access lead intelligence in this workspace",
-    )
-
-    service = ReverseIcpService()
-    try:
-        result = await service.analyze_url(
-            url=body.url,
-            custom_instructions=body.custom_instructions,
-        )
-        return result
-    except SSRFProtectionError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"URL rejected by security policy: {exc}",
-        ) from exc
-    except FastCrawlerTimeoutError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-            detail=f"Crawl connection timed out: {exc}",
-        ) from exc
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to analyze URL: {exc}",
-        ) from exc

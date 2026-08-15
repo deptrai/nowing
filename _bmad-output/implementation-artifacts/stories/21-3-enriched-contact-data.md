@@ -1,6 +1,6 @@
 ---
 story_key: 21-3-enriched-contact-data
-status: pending-human-review
+status: done
 baseline_commit: 1261fb2a1
 epic: 21
 story: 3
@@ -238,17 +238,17 @@ So that I can reach out to the right decision-makers.
 - [x] 11.5 Target coverage ≥ 90% for enrichment service.
 
 ### Review Findings
-- [ ] [Review][Patch] IDOR & Cross-Tenant Isolation check in resolve_lead_phone [nowing_backend/app/services/phone_waterfall_service.py:5931]
-- [ ] [Review][Patch] Batdongsan Mutex Lock fallback when token lock is busy [nowing_backend/app/services/phone_waterfall_service.py:5754]
-- [ ] [Review][Patch] Sanitize raw_response phone in PhoneWaterfallLog (AD-25/49) [nowing_backend/app/services/phone_waterfall_service.py:6102]
-- [ ] [Review][Patch] Restrict Chợ Tốt regex listing extraction to Chợ Tốt sources only [nowing_backend/app/services/phone_waterfall_service.py:5821]
-- [ ] [Review][Patch] with_for_update() row lock & refund to original payer in auto_refund_lead [nowing_backend/app/services/billing_service.py:6258]
-- [ ] [Review][Patch] Enforce LEADS_ENRICH or LEADS_WRITE permission on resolve-phone endpoint [nowing_backend/app/routes/leads_routes.py:7027]
-- [ ] [Review][Patch] Call set_request_tenant_context in Celery worker tasks [nowing_backend/app/tasks/phone_waterfall_worker.py:6415]
-- [ ] [Review][Patch] Mask phone in get_company_graph and _map_lead_to_read [nowing_backend/app/routes/leads_routes.py:6886]
-- [ ] [Review][Patch] Use VerifiedContactEncryption instead of local PhoneEncryption [nowing_backend/app/services/phone_waterfall_service.py:5673]
-- [ ] [Review][Patch] Fix VerifiedContact.phone_masked assertion in integration tests [nowing_backend/tests/integration/services/test_phone_waterfall_integration.py:8497]
-- [ ] [Review][Patch] Align Alembic migration revision 213 after 212 [nowing_backend/alembic/versions/192_add_phone_waterfall_logs_and_refund.py]
+- [x] [Review][Patch] IDOR & Cross-Tenant Isolation check in resolve_lead_phone [nowing_backend/app/services/phone_waterfall_service.py:5931]
+- [x] [Review][Patch] Batdongsan Mutex Lock fallback when token lock is busy [nowing_backend/app/services/phone_waterfall_service.py:5754]
+- [x] [Review][Patch] Sanitize raw_response phone in PhoneWaterfallLog (AD-25/49) [nowing_backend/app/services/phone_waterfall_service.py:6102]
+- [x] [Review][Patch] Restrict Chợ Tốt regex listing extraction to Chợ Tốt sources only [nowing_backend/app/services/phone_waterfall_service.py:5821]
+- [x] [Review][Patch] with_for_update() row lock & refund to original payer in auto_refund_lead [nowing_backend/app/services/billing_service.py:6258]
+- [x] [Review][Patch] Enforce LEADS_ENRICH or LEADS_WRITE permission on resolve-phone endpoint [nowing_backend/app/routes/leads_routes.py:7027]
+- [x] [Review][Patch] Call set_request_tenant_context in Celery worker tasks [nowing_backend/app/tasks/phone_waterfall_worker.py:6415]
+- [x] [Review][Patch] Mask phone in get_company_graph and _map_lead_to_read [nowing_backend/app/routes/leads_routes.py:6886]
+- [x] [Review][Patch] Use VerifiedContactEncryption instead of local PhoneEncryption [nowing_backend/app/services/phone_waterfall_service.py:5673]
+- [x] [Review][Patch] Fix VerifiedContact.phone_masked assertion in integration tests [nowing_backend/tests/integration/services/test_phone_waterfall_integration.py:8497]
+- [x] [Review][Patch] Align Alembic migration revision 213 after 212 [nowing_backend/alembic/versions/213_add_phone_waterfall_logs_and_refund.py]
 
 ## Dev Notes
 

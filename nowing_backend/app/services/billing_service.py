@@ -77,7 +77,7 @@ class BillingService:
                 detail="Lead not found in this workspace",
             )
 
-        # 2. Find latest successful PhoneWaterfallLog
+        # 2. Find latest successful PhoneWaterfallLog with row lock for update
         stmt = (
             select(PhoneWaterfallLog)
             .where(
@@ -86,6 +86,7 @@ class BillingService:
                 PhoneWaterfallLog.status.in_(["success", "refunded"]),
             )
             .order_by(desc(PhoneWaterfallLog.created_at))
+            .with_for_update()
             .limit(1)
         )
         res = await self.session.execute(stmt)
@@ -122,11 +123,28 @@ class BillingService:
 
         refund_micros = log_entry.cost_micros
         if refund_micros <= 0:
-            refund_micros = 1_500_000  # Fallback default 1.5 credits
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This phone resolution incurred no charges; cannot process a refund.",
+            )
 
-        # 5. Restore credits to User's wallet
-        if user_id is not None:
-            user = await self.session.get(User, user_id)
+        # 5. Determine original payer and restore credits to User's wallet
+        original_event_stmt = (
+            select(BillingEvent.user_id)
+            .where(
+                BillingEvent.workspace_id == workspace_id,
+                BillingEvent.event_entity_type == "contact_enrichment",
+                BillingEvent.event_id == log_entry.id,
+            )
+            .limit(1)
+        )
+        payer_user_id = (
+            await self.session.execute(original_event_stmt)
+        ).scalar_one_or_none()
+        target_refund_user_id = payer_user_id or user_id
+
+        if target_refund_user_id is not None:
+            user = await self.session.get(User, target_refund_user_id)
             if user:
                 user.credit_micros_balance += refund_micros
                 self.session.add(user)
@@ -135,7 +153,7 @@ class BillingService:
         refund_event = BillingEvent(
             workspace_id=workspace_id,
             client_id=lead.client_id,
-            user_id=user_id,
+            user_id=target_refund_user_id,
             event_entity_type="lead_refund",
             event_type="lead_refund",
             event_id=lead_id,

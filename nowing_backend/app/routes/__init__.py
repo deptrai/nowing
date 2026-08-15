@@ -18,6 +18,7 @@ import app.capabilities.masothue
 import app.capabilities.muaban_bds
 import app.capabilities.news
 import app.capabilities.reddit
+import app.capabilities.social
 import app.capabilities.tech_stack
 import app.capabilities.tiktok
 import app.capabilities.topcv
@@ -116,6 +117,7 @@ from .sandbox_routes import router as sandbox_router
 from .search_source_connectors_routes import router as search_source_connectors_router
 from .signals_routes import router as signals_router
 from .slack_add_connector_route import router as slack_add_connector_router
+from .social_copilot_routes import router as social_copilot_router
 from .social_routes import router as social_routes
 from .stripe_routes import router as stripe_router
 from .team_memory_routes import router as team_memory_router
@@ -169,6 +171,7 @@ router.include_router(image_generation_router)  # Image generation via litellm
 router.include_router(search_source_connectors_router)
 router.include_router(signals_router, prefix="/workspaces")
 router.include_router(social_routes)
+router.include_router(social_copilot_router)
 router.include_router(google_calendar_add_connector_router)
 router.include_router(google_gmail_add_connector_router)
 router.include_router(google_drive_add_connector_router)

@@ -74,11 +74,8 @@ class TestReverseIcpRoute:
         """Should return 403 Forbidden if user lacks WORKSPACE_READ permission."""
         from fastapi import HTTPException
 
-        import app.routes.leads_routes as leads_routes
-
-        with patch.object(
-            leads_routes,
-            "check_permission",
+        with patch(
+            "app.routes.leads_routes.check_permission",
             AsyncMock(
                 side_effect=HTTPException(status_code=403, detail="Permission denied")
             ),
@@ -96,10 +93,8 @@ class TestReverseIcpRoute:
         self, test_app: FastAPI, mock_auth: AuthContext
     ) -> None:
         """Should return 400 Bad Request on SSRF target or malformed URL."""
-        import app.routes.leads_routes as leads_routes
-
-        with patch.object(
-            leads_routes, "check_permission", AsyncMock(return_value=True)
+        with patch(
+            "app.routes.leads_routes.check_permission", AsyncMock(return_value=True)
         ):
             test_app.dependency_overrides[get_auth_context] = lambda: mock_auth
             client = TestClient(test_app)
@@ -115,17 +110,15 @@ class TestReverseIcpRoute:
         self, test_app: FastAPI, mock_auth: AuthContext
     ) -> None:
         """Should execute analysis, track usage, and return 200 OK with ReverseIcpResponse."""
-        import app.routes.leads_routes as leads_routes
-
         mock_service = MagicMock()
         mock_service.analyze_url = AsyncMock(return_value=MOCK_REVERSE_ICP_RESPONSE)
 
         with (
-            patch.object(
-                leads_routes, "check_permission", AsyncMock(return_value=True)
+            patch(
+                "app.routes.leads_routes.check_permission", AsyncMock(return_value=True)
             ),
             patch(
-                "app.lead_intelligence.reverse_icp.ReverseIcpService",
+                "app.routes.leads_routes.ReverseIcpService",
                 return_value=mock_service,
             ),
         ):

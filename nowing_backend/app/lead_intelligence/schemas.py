@@ -259,9 +259,11 @@ class FilterPresets(BaseModel):
 class ReverseIcpRequest(BaseModel):
     """Payload for 1-Click Reverse-ICP URL analysis."""
 
-    url: str = Field(..., description="Target website, project, or landing page URL")
+    url: str = Field(
+        ..., max_length=2048, description="Target website, project, or landing page URL"
+    )
     custom_instructions: str | None = Field(
-        default=None, description="Optional custom focus instructions"
+        default=None, max_length=1000, description="Optional custom focus instructions"
     )
 
 

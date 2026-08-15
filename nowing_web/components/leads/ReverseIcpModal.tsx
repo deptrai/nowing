@@ -132,7 +132,11 @@ export const ReverseIcpModal: React.FC<ReverseIcpModalProps> = ({
 	};
 
 	const handleCopyQuery = (text: string) => {
-		navigator.clipboard.writeText(text);
+		try {
+			navigator.clipboard?.writeText(text).catch(() => {});
+		} catch {
+			// Fallback silently
+		}
 		setCopiedQuery(text);
 		setTimeout(() => setCopiedQuery(null), 1500);
 	};

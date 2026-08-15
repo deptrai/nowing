@@ -9,6 +9,7 @@ from app.capabilities import (
     ecommerce as _ecommerce,  # noqa: F401
     indeed as _indeed,  # noqa: F401
     itviec as _itviec,  # noqa: F401
+    leads as _leads,  # noqa: F401
     masothue as _masothue,  # noqa: F401
     procurement as _procurement,  # noqa: F401
     realestate as _realestate,  # noqa: F401
@@ -23,4 +24,3 @@ from app.capabilities import (
 )
 
 __all__: list[str] = []
-

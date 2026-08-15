@@ -21,13 +21,13 @@ from app.db import (
 from app.services.billing_service import BillingService
 from app.services.phone_waterfall_service import (
     PHONE_RESOLUTION_COST_MICROS,
-    PhoneEncryption,
     PhoneWaterfallService,
     get_carrier_name,
     hash_phone,
     mask_phone,
     normalize_vn_phone,
 )
+from app.services.pii.verified_contact_encryption import VerifiedContactEncryption
 
 
 # ─────────────────────────────────────────────────────────────
@@ -111,7 +111,7 @@ def test_carrier_name():
 # ─────────────────────────────────────────────────────────────
 @pytest.mark.unit
 def test_phone_encryption():
-    enc = PhoneEncryption("test-secret-key-must-be-long-enough-12345678")
+    enc = VerifiedContactEncryption("test-secret-key-must-be-long-enough-12345678")
     raw = "0908123456"
     ciphertext = enc.encrypt(raw)
     assert ciphertext != raw
@@ -430,6 +430,9 @@ async def test_auto_refund_lead_success_within_24h():
     mock_log_res = MagicMock()
     mock_log_res.scalar_one_or_none.return_value = log_entry
 
+    mock_payer_res = MagicMock()
+    mock_payer_res.scalar_one_or_none.return_value = user_id
+
     mock_contacts_res = MagicMock()
     mock_contact = VerifiedContact(
         id=uuid4(),
@@ -440,7 +443,7 @@ async def test_auto_refund_lead_success_within_24h():
     )
     mock_contacts_res.scalars.return_value.all.return_value = [mock_contact]
 
-    execute_mock.side_effect = [mock_log_res, mock_contacts_res]
+    execute_mock.side_effect = [mock_log_res, mock_payer_res, mock_contacts_res]
     session.execute = execute_mock
 
     billing = BillingService(session)

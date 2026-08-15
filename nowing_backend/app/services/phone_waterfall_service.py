@@ -39,11 +39,11 @@ from app.proprietary.platforms.xactions.phone_extractor import (
     extract_phone_numbers,
 )
 from app.services import wallet_credit
+from app.services.pii.verified_contact_encryption import VerifiedContactEncryption
 from app.services.scraper_platform_account_service import (
     ScraperPlatformAccountRotator,
     ScraperPlatformAccountService,
 )
-from app.utils.oauth_security import TokenEncryption
 
 logger = logging.getLogger(__name__)
 
@@ -185,26 +185,6 @@ def hash_phone(phone: str | None) -> str | None:
     return hashlib.sha256(phone.encode("utf-8")).hexdigest()
 
 
-class PhoneEncryption:
-    """Fernet AES-256 TokenEncryption wrapper for PII vault."""
-
-    def __init__(self, secret_key: str | None = None) -> None:
-        self._cipher = TokenEncryption(secret_key or config.SECRET_KEY)
-
-    def encrypt(self, raw_phone: str | None) -> str | None:
-        if not raw_phone:
-            return raw_phone
-        return self._cipher.encrypt_token(raw_phone)
-
-    def decrypt(self, encrypted_phone: str | None) -> str | None:
-        if not encrypted_phone:
-            return encrypted_phone
-        if not self._cipher.is_encrypted(encrypted_phone):
-            # Already plaintext or unencrypted
-            return encrypted_phone
-        return self._cipher.decrypt_token(encrypted_phone)
-
-
 @dataclass
 class WaterfallTierResult:
     phone: str | None
@@ -238,7 +218,7 @@ class PhoneWaterfallService:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
-        self.encryption = PhoneEncryption()
+        self.encryption = VerifiedContactEncryption()
 
     # ─────────────────────────────────────────────────────────────
     # Tier 1: Batdongsan Token Pool & Phone Reveal
@@ -274,6 +254,17 @@ class PhoneWaterfallService:
             except Exception as e:
                 logger.warning("Failed to acquire Redis mutex %s: %s", mutex_key, e)
 
+        # If redis mutex is held by another worker, do not collide on the same token session
+        if redis and not acquired_mutex:
+            logger.info("Batdongsan token mutex %s is busy; skipping tier 1", mutex_key)
+            return WaterfallTierResult(
+                phone=None,
+                provider="batdongsan",
+                tier=1,
+                confidence=0.0,
+                raw_response={"reason": "token_mutex_busy"},
+            )
+
         try:
             raw_phone, _ = await fetch_detail_phone(source_url, credentials=creds)
             norm = normalize_vn_phone(raw_phone or "")
@@ -288,7 +279,7 @@ class PhoneWaterfallService:
                     confidence=0.98,
                     carrier=carrier,
                     raw_response={
-                        "phone": norm,
+                        "phone": mask_phone(norm),
                         "account_id": account_id,
                         "source": "detail_phone",
                     },
@@ -319,6 +310,7 @@ class PhoneWaterfallService:
         self,
         source_url: str | None,
         raw_text: str | None,
+        lead_source: str | None = None,
     ) -> WaterfallTierResult:
         """Tier 2: Gọi Chợ Tốt Mobile API với RSA list_id encryption và Device UUID spoofing."""
         listing_id: int | None = None
@@ -333,7 +325,12 @@ class PhoneWaterfallService:
                 if param_match:
                     listing_id = int(param_match.group(1))
 
-        if not listing_id and raw_text:
+        # Restrict raw text listing ID extraction to confirmed Chotot sources only
+        is_chotot_source = bool(
+            (source_url and ("chotot.com" in source_url or "nhatot.com" in source_url))
+            or (lead_source and lead_source == "chotot")
+        )
+        if not listing_id and raw_text and is_chotot_source:
             id_match = re.search(r"\b(\d{7,9})\b", raw_text)
             if id_match:
                 listing_id = int(id_match.group(1))
@@ -360,7 +357,7 @@ class PhoneWaterfallService:
                     carrier=carrier,
                     raw_response={
                         "listing_id": listing_id,
-                        "phone": norm,
+                        "phone": mask_phone(norm),
                         "source": "chotot_rsa_api",
                     },
                 )
@@ -412,7 +409,7 @@ class PhoneWaterfallService:
                     confidence=0.88,
                     carrier=carrier,
                     raw_response={
-                        "phone": norm,
+                        "phone": mask_phone(norm),
                         "carrier": carrier,
                         "hlr_status": "active",
                         "zalo_verified": True,
@@ -442,9 +439,13 @@ class PhoneWaterfallService:
         force_refresh: bool = False,
     ) -> PhoneResolutionResult:
         """Run 3-tier waterfall resolution for a lead."""
-        # 1. Fetch Lead
+        # 1. Fetch Lead with Tenant Isolation (AD-31)
         lead = await self.session.get(Lead, lead_id)
-        if not lead:
+        if (
+            not lead
+            or lead.workspace_id != workspace_id
+            or (client_id is not None and lead.client_id != client_id)
+        ):
             return PhoneResolutionResult(
                 lead_id=lead_id,
                 phone=None,
@@ -530,7 +531,9 @@ class PhoneWaterfallService:
         # 4. Waterfall Tier Execution (1 -> 2 -> 3)
         res = await self._resolve_tier_1_batdongsan(effective_url, effective_text)
         if not res.phone:
-            res = await self._resolve_tier_2_chotot(effective_url, effective_text)
+            res = await self._resolve_tier_2_chotot(
+                effective_url, effective_text, lead_source=lead.source
+            )
         if not res.phone:
             res = await self._resolve_tier_3_carrier_hlr(effective_url, effective_text)
 
@@ -602,6 +605,13 @@ class PhoneWaterfallService:
         lead.consent_status = "legitimate_interest"
         lead.legal_basis = "legitimate_interest"
 
+        # Sanitize raw_response to avoid storing plaintext phone in audit log (AD-25, AD-49)
+        sanitized_raw_response = (
+            dict(res.raw_response) if isinstance(res.raw_response, dict) else {}
+        )
+        if "phone" in sanitized_raw_response:
+            sanitized_raw_response["phone"] = mask_phone(sanitized_raw_response["phone"])
+
         # 6. Create PhoneWaterfallLog
         log_entry = PhoneWaterfallLog(
             workspace_id=workspace_id,
@@ -614,7 +624,7 @@ class PhoneWaterfallService:
             cost_micros=PHONE_RESOLUTION_COST_MICROS,
             phone_hash=p_hash,
             phone_masked=p_masked,
-            raw_response=res.raw_response,
+            raw_response=sanitized_raw_response,
         )
         self.session.add(log_entry)
         await self.session.flush()
