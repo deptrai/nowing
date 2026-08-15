@@ -32,6 +32,10 @@ VN_LAT_MAX = 23.5
 VN_LNG_MIN = 102.0
 VN_LNG_MAX = 109.5
 
+# Cap the number of intersecting planning zones returned per query to avoid
+# memory/DoS issues in dense urban areas with overlapping planning layers.
+MAX_INTERSECTING_ZONES = 50
+
 
 class CoordinateValidationError(ValueError):
     """Raised when latitude/longitude coordinates violate geographical boundary invariants."""
@@ -130,8 +134,10 @@ class SpatialPlanningService:
         # Spatial point in EPSG:4326 (Longitude first)
         point_geom = self.build_point_sql(valid_lat, valid_lng)
 
-        stmt = select(SpatialPlanningZone).where(
-            ST_Intersects(SpatialPlanningZone.polygon_geometry, point_geom)
+        stmt = (
+            select(SpatialPlanningZone)
+            .where(ST_Intersects(SpatialPlanningZone.polygon_geometry, point_geom))
+            .limit(MAX_INTERSECTING_ZONES)
         )
 
         result = await session.scalars(stmt)

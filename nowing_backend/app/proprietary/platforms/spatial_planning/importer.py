@@ -22,7 +22,12 @@ def compute_geometry_hash(geom: MultiPolygon | Polygon) -> str:
 
 
 def normalize_to_multipolygon(geom: Any) -> MultiPolygon:
-    """Ensures geometry is valid and cast to MultiPolygon."""
+    """Ensures geometry is valid and cast to MultiPolygon.
+
+    Client-side normalization is a first-pass safety net. The database trigger
+    `trg_spatial_planning_subdivide` re-runs `ST_MakeValid` + `ST_Subdivide`
+    server-side before storage (AD-GIS-3).
+    """
     if not geom.is_valid:
         geom = make_valid(geom)
 

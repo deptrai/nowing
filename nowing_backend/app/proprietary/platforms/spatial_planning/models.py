@@ -25,7 +25,9 @@ class SpatialPlanningZone(BaseModel, TimestampMixin):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
 
     province = Column(String(100), nullable=False)
-    district = Column(String(100), nullable=True)
+    # district is part of the dedup unique constraint; keep it NOT NULL with an
+    # empty default so PostgreSQL can enforce uniqueness across NULL values.
+    district = Column(String(100), nullable=False, default="", server_default="")
     ward = Column(String(100), nullable=True)
 
     # Zoning classification code (e.g. 'ODT', 'ONT', 'CLN', 'DGT', 'CX', 'TMD')

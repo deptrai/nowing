@@ -4675,6 +4675,7 @@ class VerifiedContact(Base, TimestampMixin):
 from app.alerts.persistence.models.alert_rule import AlertRule  # noqa: F401
 from app.alerts.persistence.models.alert_snapshot import AlertSnapshot  # noqa: F401
 from app.alerts.persistence.models.alert_subscription import AlertSubscription  # noqa: F401
+from app.proprietary.platforms.spatial_planning.models import SpatialPlanningZone  # noqa: F401
 
 
 
