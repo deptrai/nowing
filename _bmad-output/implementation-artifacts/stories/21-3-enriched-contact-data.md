@@ -1,6 +1,6 @@
 ---
 story_key: 21-3-enriched-contact-data
-status: review
+status: pending-human-review
 baseline_commit: 1261fb2a1
 epic: 21
 story: 3
