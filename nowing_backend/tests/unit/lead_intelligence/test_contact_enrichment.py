@@ -109,7 +109,9 @@ class _FakeSession:
     def add(self, obj: Any) -> None:
         self.added.append(obj)
 
-    async def execute(self, _stmt: Any, _params: dict[str, Any] | None = None) -> _FakeResult:
+    async def execute(
+        self, _stmt: Any, _params: dict[str, Any] | None = None
+    ) -> _FakeResult:
         self.last_stmt = _stmt
         return _FakeResult(None, self._rows)
 
@@ -537,9 +539,7 @@ class TestRunWaterfall:
         assert billing.awaited_once is True
         assert billing.last_kwargs["cost_micros"] == output.cost_micros
 
-    async def test_waterfall_sets_consent_true_when_explicit(
-        self, monkeypatch
-    ) -> None:
+    async def test_waterfall_sets_consent_true_when_explicit(self, monkeypatch) -> None:
         from app.db import VerifiedContact
         from app.lead_intelligence.enrichment.service import EnrichmentService
 
@@ -580,9 +580,7 @@ class TestRunWaterfall:
         assert stored[0].consent is True
         assert stored[0].consent_status == consent_status
 
-    async def test_waterfall_keeps_lead_consent_when_present(
-        self, monkeypatch
-    ) -> None:
+    async def test_waterfall_keeps_lead_consent_when_present(self, monkeypatch) -> None:
         from app.lead_intelligence.enrichment.service import EnrichmentService
 
         lead = _FakeLead(consent_status="granted", legal_basis="legitimate_interest")
@@ -662,9 +660,7 @@ class TestRunWaterfall:
         assert lead.consent_status == consent_status
         assert lead.legal_basis == "consent"
 
-    async def test_waterfall_uses_zero_confidence_default(
-        self, monkeypatch
-    ) -> None:
+    async def test_waterfall_uses_zero_confidence_default(self, monkeypatch) -> None:
         from app.db import VerifiedContact
         from app.lead_intelligence.enrichment.service import EnrichmentService
 
@@ -920,7 +916,7 @@ class TestWriteMemory:
                 "verification_status": "verified",
                 "confidence": 0.12344,
                 "source_provider": "bettercontact",
-            }
+            },
         ]
 
         svc = EnrichmentService()

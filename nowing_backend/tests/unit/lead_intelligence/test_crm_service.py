@@ -111,13 +111,16 @@ async def test_create_pending_stores_crm_connection():
     auth = _make_auth()
     service = CrmConnectionService(session)
 
-    with patch(
-        "app.lead_intelligence.crm.service.build_auth_url",
-        return_value="https://auth.url",
-    ), patch(
-        "app.lead_intelligence.crm.service.check_permission",
-        new=AsyncMock(),
-    ) as mock_perm:
+    with (
+        patch(
+            "app.lead_intelligence.crm.service.build_auth_url",
+            return_value="https://auth.url",
+        ),
+        patch(
+            "app.lead_intelligence.crm.service.check_permission",
+            new=AsyncMock(),
+        ) as mock_perm,
+    ):
         url = await service.create_pending(
             auth, 1, "hubspot", None, {"dedup_enabled": True}
         )
@@ -137,9 +140,12 @@ async def test_create_pending_rejects_unknown_provider():
     auth = _make_auth()
     service = CrmConnectionService(session)
 
-    with pytest.raises(Exception) as exc, patch(
-        "app.lead_intelligence.crm.service.check_permission",
-        new=AsyncMock(),
+    with (
+        pytest.raises(Exception) as exc,
+        patch(
+            "app.lead_intelligence.crm.service.check_permission",
+            new=AsyncMock(),
+        ),
     ):
         await service.create_pending(auth, 1, "unknown", None)
 
@@ -198,16 +204,20 @@ async def test_dedup_lead_returns_success_log():
     service._get_connection = AsyncMock(return_value=conn)
     service._get_lead = AsyncMock(return_value=lead)
 
-    with patch(
-        "app.lead_intelligence.crm.service.check_permission",
-        new=AsyncMock(),
-    ) as mock_perm, patch(
-        "app.lead_intelligence.crm.service.decrypt_credentials",
-        return_value={"access_token": "token"},
-    ), patch(
-        "app.lead_intelligence.crm.service._provider_client",
-        return_value=MagicMock(
-            search_contacts=AsyncMock(return_value=MagicMock(contacts=[]))
+    with (
+        patch(
+            "app.lead_intelligence.crm.service.check_permission",
+            new=AsyncMock(),
+        ) as mock_perm,
+        patch(
+            "app.lead_intelligence.crm.service.decrypt_credentials",
+            return_value={"access_token": "token"},
+        ),
+        patch(
+            "app.lead_intelligence.crm.service._provider_client",
+            return_value=MagicMock(
+                search_contacts=AsyncMock(return_value=MagicMock(contacts=[]))
+            ),
         ),
     ):
         result = await service.dedup_lead(auth, 1, conn.id, lead.id)
@@ -252,20 +262,23 @@ async def test_push_lead_creates_sync_log_when_writeback_enabled():
     service._get_connection = AsyncMock(return_value=conn)
     service._get_lead = AsyncMock(return_value=lead)
 
-    with patch(
-        "app.lead_intelligence.crm.service.check_permission",
-        new=AsyncMock(),
-    ) as mock_perm, patch(
-        "app.lead_intelligence.crm.service.decrypt_credentials",
-        return_value={"access_token": "token"},
-    ), patch(
-        "app.lead_intelligence.crm.service._provider_client",
-        return_value=MagicMock(
-            create_lead=AsyncMock(return_value={"id": "123"})
+    with (
+        patch(
+            "app.lead_intelligence.crm.service.check_permission",
+            new=AsyncMock(),
+        ) as mock_perm,
+        patch(
+            "app.lead_intelligence.crm.service.decrypt_credentials",
+            return_value={"access_token": "token"},
         ),
-    ), patch(
-        "app.lead_intelligence.crm.service.MemoryRepository",
-    ) as mock_repo:
+        patch(
+            "app.lead_intelligence.crm.service._provider_client",
+            return_value=MagicMock(create_lead=AsyncMock(return_value={"id": "123"})),
+        ),
+        patch(
+            "app.lead_intelligence.crm.service.MemoryRepository",
+        ) as mock_repo,
+    ):
         instance = mock_repo.return_value
         instance.create_memory = AsyncMock()
         result = await service.push_lead(auth, 1, conn.id, lead.id)

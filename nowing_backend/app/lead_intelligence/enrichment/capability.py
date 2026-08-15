@@ -47,7 +47,10 @@ LEAD_ENRICH = Capability(
     billing_unit=None,
     context_aware=True,
     docs_url="/docs/lead-intelligence/enrichment",
-    metadata={"emits_leads": False, "requires_pii_redaction_context": "lead_enrichment"},
+    metadata={
+        "emits_leads": False,
+        "requires_pii_redaction_context": "lead_enrichment",
+    },
 )
 
 register_capability(LEAD_ENRICH)

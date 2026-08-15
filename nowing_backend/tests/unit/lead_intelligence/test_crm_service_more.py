@@ -102,9 +102,12 @@ async def test_create_pending_rejects_unknown_provider_with_status_400():
     auth = _make_auth()
     service = CrmConnectionService(session)
 
-    with pytest.raises(Exception) as exc, patch(
-        "app.lead_intelligence.crm.service.check_permission",
-        new=AsyncMock(),
+    with (
+        pytest.raises(Exception) as exc,
+        patch(
+            "app.lead_intelligence.crm.service.check_permission",
+            new=AsyncMock(),
+        ),
     ):
         await service.create_pending(auth, 1, "zoho", None)
 
@@ -139,20 +142,22 @@ async def test_dedup_detects_duplicate_by_domain():
         owner_id=None,
     )
 
-    with patch(
-        "app.lead_intelligence.crm.service.check_permission",
-        new=AsyncMock(),
-    ), patch(
-        "app.lead_intelligence.crm.service.decrypt_credentials",
-        return_value={"access_token": "token"},
-    ), patch(
-        "app.lead_intelligence.crm.service._provider_client",
-        return_value=MagicMock(
-            search_contacts=AsyncMock(
-                return_value=MagicMock(
-                    contacts=[matching_contact], has_more=False
+    with (
+        patch(
+            "app.lead_intelligence.crm.service.check_permission",
+            new=AsyncMock(),
+        ),
+        patch(
+            "app.lead_intelligence.crm.service.decrypt_credentials",
+            return_value={"access_token": "token"},
+        ),
+        patch(
+            "app.lead_intelligence.crm.service._provider_client",
+            return_value=MagicMock(
+                search_contacts=AsyncMock(
+                    return_value=MagicMock(contacts=[matching_contact], has_more=False)
                 )
-            )
+            ),
         ),
     ):
         result = await service.dedup_lead(auth, 1, conn.id, lead.id)
@@ -169,9 +174,12 @@ async def test_dedup_connection_not_found_raises_404():
     auth = _make_auth()
     service = CrmSyncService(session)
 
-    with pytest.raises(Exception) as exc, patch(
-        "app.lead_intelligence.crm.service.check_permission",
-        new=AsyncMock(),
+    with (
+        pytest.raises(Exception) as exc,
+        patch(
+            "app.lead_intelligence.crm.service.check_permission",
+            new=AsyncMock(),
+        ),
     ):
         await service.dedup_lead(auth, 1, uuid4(), uuid4())
 
@@ -187,9 +195,12 @@ async def test_dedup_lead_not_found_raises_404():
     auth = _make_auth()
     service = CrmSyncService(session)
 
-    with pytest.raises(Exception) as exc, patch(
-        "app.lead_intelligence.crm.service.check_permission",
-        new=AsyncMock(),
+    with (
+        pytest.raises(Exception) as exc,
+        patch(
+            "app.lead_intelligence.crm.service.check_permission",
+            new=AsyncMock(),
+        ),
     ):
         await service.dedup_lead(auth, 1, conn.id, uuid4())
 
@@ -204,9 +215,12 @@ async def test_push_lead_connection_not_found_raises_404():
     auth = _make_auth()
     service = CrmSyncService(session)
 
-    with pytest.raises(Exception) as exc, patch(
-        "app.lead_intelligence.crm.service.check_permission",
-        new=AsyncMock(),
+    with (
+        pytest.raises(Exception) as exc,
+        patch(
+            "app.lead_intelligence.crm.service.check_permission",
+            new=AsyncMock(),
+        ),
     ):
         await service.push_lead(auth, 1, uuid4(), uuid4())
 
@@ -225,9 +239,12 @@ async def test_push_lead_lead_not_found_raises_404():
     auth = _make_auth()
     service = CrmSyncService(session)
 
-    with pytest.raises(Exception) as exc, patch(
-        "app.lead_intelligence.crm.service.check_permission",
-        new=AsyncMock(),
+    with (
+        pytest.raises(Exception) as exc,
+        patch(
+            "app.lead_intelligence.crm.service.check_permission",
+            new=AsyncMock(),
+        ),
     ):
         await service.push_lead(auth, 1, conn.id, uuid4())
 
