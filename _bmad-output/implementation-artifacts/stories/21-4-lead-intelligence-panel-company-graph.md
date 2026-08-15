@@ -1,6 +1,6 @@
 # Story 21.4: Lead Intelligence Panel & Company Graph
 
-Status: in-progress
+Status: done
 
 <!-- Note: Governed by UX Contract U3 & U4 in ux-contract-scrapers-expansion-and-lead-intelligence.md and Epic 21 Lead Intelligence Architecture -->
 
@@ -76,6 +76,12 @@ So that I can immediately qualify incoming multi-domain leads (BDS, Jobs, Tender
 - [x] Task 5: Quality & Typecheck Verification (AC: 1-5)
   - [x] 5.1 Chạy Backend pytest `uv run pytest tests/unit/routes/test_leads_routes.py -q`.
   - [x] 5.2 Chạy Frontend typecheck `pnpm tsc --noEmit` và format `pnpm exec biome check`.
+
+### Review Findings
+
+- [x] [Review][Patch] Remove hardcoded dummy fake phone defaults in `_map_lead_to_read` [`nowing_backend/app/routes/leads_routes.py:77`]
+- [x] [Review][Patch] Use `getattr` safely for dynamic lead fields to prevent `AttributeError` [`nowing_backend/app/routes/leads_routes.py:60-80`]
+- [x] [Review][Patch] Validate status strings in `LeadStatusUpdate` using Pydantic validator [`nowing_backend/app/lead_intelligence/schemas.py:17-25`]
 
 ## Dev Notes
 
