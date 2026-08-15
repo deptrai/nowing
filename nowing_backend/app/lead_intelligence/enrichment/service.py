@@ -83,7 +83,7 @@ class EnrichmentService:
                 enrichment_request_id=None,
                 lead_id=lead_id,
                 contact_count=len(contacts),
-                cost_micros= 1,
+                cost_micros=0,
                 verified_contact_ids=[c.id for c in contacts],
                 degraded=False,
                 status="completed",

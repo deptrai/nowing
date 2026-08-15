@@ -27,8 +27,8 @@ import app.capabilities.vn_jobs
 import app.capabilities.walmart
 import app.capabilities.web
 import app.capabilities.youtube
+import app.lead_intelligence.enrichment.capability
 import app.lead_intelligence.scoring.capability  # noqa: F401
-import app.lead_intelligence.enrichment.capability  # noqa: F401
 from app.automations.api import router as automations_router
 from app.capabilities.core.access.rest import build_capabilities_router
 from app.file_storage.api import router as file_storage_router
@@ -61,14 +61,15 @@ from .canonical_entities_routes import router as canonical_entities_router
 from .chat_comments_routes import router as chat_comments_router
 from .circleback_webhook_route import router as circleback_webhook_router
 from .clickup_add_connector_route import router as clickup_add_connector_router
-from .crm_oauth_routes import router as crm_oauth_router
-from .crm_routes import router as crm_router
 from .composio_routes import router as composio_router
 from .confluence_add_connector_route import router as confluence_add_connector_router
+from .crm_oauth_routes import router as crm_oauth_router
+from .crm_routes import router as crm_router
 from .discord_add_connector_route import router as discord_add_connector_router
 from .documents_routes import router as documents_router
 from .dropbox_add_connector_route import router as dropbox_add_connector_router
 from .editor_routes import router as editor_router
+from .enrichment_routes import router as enrichment_router
 from .export_routes import router as export_router
 from .folders_routes import router as folders_router
 from .gateway_webhook_routes import (
@@ -90,7 +91,6 @@ from .image_generation_routes import router as image_generation_router
 from .incentive_tasks_routes import router as incentive_tasks_router
 from .jira_add_connector_route import router as jira_add_connector_router
 from .lead_scoring_routes import router as lead_scoring_router
-from .enrichment_routes import router as enrichment_router
 from .linear_add_connector_route import router as linear_add_connector_router
 from .logs_routes import router as logs_router
 from .luma_add_connector_route import router as luma_add_connector_router
