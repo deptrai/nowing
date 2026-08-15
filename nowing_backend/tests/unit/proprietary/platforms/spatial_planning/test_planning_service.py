@@ -13,7 +13,11 @@ from app.proprietary.platforms.spatial_planning.schemas import (
     LandZoningPolarity,
     ZoningCheckResult,
 )
-from app.proprietary.platforms.spatial_planning.service import SpatialPlanningService
+from app.proprietary.platforms.spatial_planning.service import (
+    MAX_RISK_NOTES,
+    MAX_SUMMARY_LENGTH,
+    SpatialPlanningService,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -147,6 +151,41 @@ class TestSpatialPlanningService:
         assert cx_zone.polarity == LandZoningPolarity.WARNING
 
     @pytest.mark.asyncio
+    async def test_check_zoning_caps_summary_and_risk_notes(self):
+        """Large result sets are capped to avoid oversized response strings."""
+        service = SpatialPlanningService()
+        mock_session = AsyncMock()
+
+        mock_zones = [
+            SpatialPlanningZone(
+                id=i,
+                province="Hà Nội",
+                district="Cầu Giấy",
+                ward="Yên Hòa",
+                zone_code="DGT",
+                zone_name=f"Đất giao thông phần {i}",
+                planning_period="2021-2030",
+                polygon_hash=f"hash_{i}",
+            )
+            for i in range(100)
+        ]
+
+        mock_scalars = MagicMock()
+        mock_scalars.all.return_value = mock_zones
+        mock_session.scalars.return_value = mock_scalars
+
+        result = await service.check_zoning(
+            session=mock_session,
+            lat=21.0285,
+            lng=105.8542,
+        )
+
+        assert result.has_road_expansion_risk is True
+        assert len(result.zones) == 100
+        assert len(result.risk_notes) == MAX_RISK_NOTES
+        assert len(result.summary) <= MAX_SUMMARY_LENGTH
+
+    @pytest.mark.asyncio
     async def test_check_zoning_empty_results(self):
         """Test behavior when no spatial zones intersect the given coordinates."""
         service = SpatialPlanningService()
@@ -273,3 +312,63 @@ class TestPlanningDataImporter:
         zones = importer.parse_features(geojson_data, source_srid=4326)
         assert len(zones) == 1
         assert zones[0].zone_code == "ONT"
+
+    def test_parse_features_invalid_json(self):
+        """Invalid JSON string is rejected gracefully."""
+        importer = PlanningDataImporter()
+        with pytest.raises(ValueError):
+            importer.parse_features("not json", source_srid=4326)
+
+    def test_parse_features_missing_zone_code(self):
+        """Features without a zone code are skipped and not silently defaulted."""
+        importer = PlanningDataImporter()
+        poly = Polygon([
+            (105.8500, 21.0200),
+            (105.8600, 21.0200),
+            (105.8600, 21.0300),
+            (105.8500, 21.0300),
+            (105.8500, 21.0200),
+        ])
+        geojson_data = {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": mapping(poly),
+                    "properties": {"province": "Hà Nội", "zone_name": "Đất quy hoạch"},
+                }
+            ],
+        }
+        zones = importer.parse_features(geojson_data, source_srid=4326)
+        assert zones == []
+
+    def test_parse_features_invalid_year(self):
+        """Invalid effective_year/expiry_year values are coerced to None."""
+        importer = PlanningDataImporter()
+        poly = Polygon([
+            (105.8500, 21.0200),
+            (105.8600, 21.0200),
+            (105.8600, 21.0300),
+            (105.8500, 21.0300),
+            (105.8500, 21.0200),
+        ])
+        geojson_data = {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": mapping(poly),
+                    "properties": {
+                        "province": "Hà Nội",
+                        "district": "Cầu Giấy",
+                        "zone_code": "ODT",
+                        "zone_name": "Đất ở đô thị",
+                        "effective_year": "n/a",
+                        "expiry_year": 9999,
+                    },
+                }
+            ],
+        }
+        zones = importer.parse_features(geojson_data, source_srid=4326)
+        assert zones[0].effective_year is None
+        assert zones[0].expiry_year is None

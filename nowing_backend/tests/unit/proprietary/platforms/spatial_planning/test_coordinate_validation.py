@@ -64,6 +64,24 @@ class TestCoordinateValidation:
         err_msg = str(exc_info.value).lower()
         assert "đảo" in err_msg or "swap" in err_msg or "inverted" in err_msg or "thứ tự" in err_msg
 
+    def test_swapped_partial_out_of_bounds(self):
+        """One swapped value in range and one out of range must not falsely report swapped."""
+        # lat is in the longitude range, but lng is outside the latitude range.
+        # The swap heuristic should not fire because both conditions are not met.
+        with pytest.raises(CoordinateValidationError) as exc_info:
+            validate_vietnam_coordinates(105.85, 24.0)
+        assert "Vĩ độ" in str(exc_info.value) or "latitude" in str(exc_info.value).lower()
+
+    def test_boundary_coordinates_accepted(self):
+        """Exact boundary values are valid."""
+        lat, lng = validate_vietnam_coordinates(8.5, 102.0)
+        assert lat == pytest.approx(8.5)
+        assert lng == pytest.approx(102.0)
+
+        lat, lng = validate_vietnam_coordinates(23.5, 109.5)
+        assert lat == pytest.approx(23.5)
+        assert lng == pytest.approx(109.5)
+
     def test_invalid_types_and_nan(self):
         """Handle NaN, infinite values, and non-numeric inputs gracefully."""
         with pytest.raises((CoordinateValidationError, TypeError, ValueError)):

@@ -36,6 +36,11 @@ VN_LNG_MAX = 109.5
 # memory/DoS issues in dense urban areas with overlapping planning layers.
 MAX_INTERSECTING_ZONES = 50
 
+# Avoid extremely long summary strings when many zones intersect or zone names
+# are very long. Risk notes are also capped.
+MAX_SUMMARY_LENGTH = 1000
+MAX_RISK_NOTES = 20
+
 
 class CoordinateValidationError(ValueError):
     """Raised when latitude/longitude coordinates violate geographical boundary invariants."""
@@ -153,10 +158,11 @@ class SpatialPlanningService:
             polarity, color = classify_zone_polarity(z.zone_code, z.zone_name)
             if polarity == LandZoningPolarity.DANGER or z.zone_code == "DGT":
                 has_road_expansion_risk = True
-                note = f"Thửa đất nằm trong chỉ giới quy hoạch: {z.zone_name} (Mã: {z.zone_code})."
-                if z.legal_document_ref:
-                    note += f" Căn cứ: {z.legal_document_ref}."
-                risk_notes.append(note)
+                if len(risk_notes) < MAX_RISK_NOTES:
+                    note = f"Thửa đất nằm trong chỉ giới quy hoạch: {z.zone_name} (Mã: {z.zone_code})."
+                    if z.legal_document_ref:
+                        note += f" Căn cứ: {z.legal_document_ref}."
+                    risk_notes.append(note)
 
             zone_items.append(
                 PlanningZoneItem(
@@ -188,6 +194,8 @@ class SpatialPlanningService:
                 summary += " CẢNH BÁO: Phát hiện rủi ro mở rộng đường / hành lang giao thông (DGT)!"
             else:
                 summary += " Thửa đất an toàn, không phát hiện dính quy hoạch mở đường."
+            if len(summary) > MAX_SUMMARY_LENGTH:
+                summary = summary[:MAX_SUMMARY_LENGTH].rsplit(" ", 1)[0] + "…"
 
         return ZoningCheckResult(
             latitude=valid_lat,
