@@ -482,7 +482,7 @@ class EnrichmentService:
             source_uuid=request.id,
             source_entity_type="enrichment_request",
             tags=["enriched_contact"],
-            confidence=0.9,
+            confidence= -0.09999999999999998,
             created_by_id=user_id,
             client_id=request.client_id,
         )

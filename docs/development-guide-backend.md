@@ -22,8 +22,15 @@ pip install -e .
 
 ```bash
 cp .env.example .env
+# hoặc tạo .env.local để ghi đè các giá trị local (không commit)
 # chỉnh sửa DATABASE_URL, REDIS_URL, BACKEND_URL, NEXT_FRONTEND_URL, các API keys
 ```
+
+### Embedding model
+
+`.env.example` mặc định dùng `litellm://ollama/nomic-embed-text` với `EMBEDDING_BASE_URL=http://localhost:11434`.
+Cần `ollama pull nomic-embed-text` trước khi chạy.
+Nếu muốn dùng model local khác (ví dụ `sentence-transformers/all-MiniLM-L6-v2`), chỉnh `EMBEDDING_MODEL` trong `.env` / `.env.local`.
 
 ## Chạy local
 
