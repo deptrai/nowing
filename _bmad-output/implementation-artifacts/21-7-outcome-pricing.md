@@ -1,6 +1,6 @@
 ---
 story_key: 21-7-outcome-pricing
-status: done
+status: review
 baseline_commit: 591bc6a1672e5ec1f8ffe0afdfdcbb35f8f1a24d
 epic: 21
 story: 7
@@ -8,7 +8,7 @@ story: 7
 
 # Story 21.7: Outcome-Based Pricing & Transparent Credit Ledger ($0 Chat & Credit Pay-as-you-go)
 
-Status: done
+Status: review
 
 <!-- Note: Governed by FR-69, AD-8, AD-10, AD-31, AD-42, AD-48 and Epic 21 Lead Gen Architecture -->
 
@@ -194,21 +194,6 @@ So that software costs directly reflect business value generated and team usage 
   - [x] 9.5 `tests/integration/routes/test_promo_code_routes.py` (3 tests passing green).
   - [x] 9.6 Frontend unit & lint verification (`node --test components/usage/__tests__/*.test.ts` 7/7 passing, `biome check` 0 errors).
 
-### Review Findings
-
-- [x] [Review][Patch] RBAC permission enforcement on PricingPlan update [nowing_backend/app/routes/outcome_pricing_routes.py:51]
-- [x] [Review][Patch] Lead existence & tenant isolation validation in record_meeting_booked [nowing_backend/app/services/outcome_pricing_service.py:102]
-- [x] [Review][Patch] Atomic SQL update for user wallet balance in claim_promo_code [nowing_backend/app/services/promo_code_service.py:124]
-- [x] [Review][Patch] Handle concurrent PricingPlan creation race condition [nowing_backend/app/services/outcome_pricing_service.py:172]
-- [x] [Review][Patch] Deduplication / Idempotency check for recorded outcome events [nowing_backend/app/services/outcome_pricing_service.py:108]
-- [x] [Review][Patch] Catch duplicate code IntegrityError in create_promo_code [nowing_backend/app/services/promo_code_service.py:163]
-- [x] [Review][Patch] Normalize date range & remove deprecated datetime.utcnow() [nowing_backend/app/routes/usage_routes.py:93]
-- [x] [Review][Patch] UTC timezone awareness in promo code expiration check [nowing_backend/app/services/promo_code_service.py:88]
-- [x] [Review][Patch] Input validation & non-negative rates in PricingPlanUpdate [nowing_backend/app/schemas/outcome_pricing.py:44]
-- [x] [Review][Patch] Default cost per meeting to 0 when meeting count is zero [nowing_web/components/usage/outcome-roi-metrics-cards.tsx:21]
-- [x] [Review][Patch] Null coalescing for completed_at in user_incentive_tasks [nowing_backend/app/services/usage_service.py:443]
-- [x] [Review][Patch] Null safety for breakdown items in frontend charts and cards [nowing_web/components/usage/outcome-roi-metrics-cards.tsx:17]
-
 ---
 
 ## Dev Notes
@@ -292,4 +277,3 @@ Antigravity 2.0 (Claude 3.7 Sonnet / Gemini 3.7 Flash)
 - 2026-08-16: Initial ATDD Red-Phase Scaffolds created.
 - 2026-08-16: Implemented Tasks 1-9 (Outcome Pricing, Promo Codes, Unified Ledger, REST routes, Frontend UI components).
 - 2026-08-16: Green-Phase verification completed (20/20 backend tests, 7/7 frontend tests passing). Status changed to `review`.
-

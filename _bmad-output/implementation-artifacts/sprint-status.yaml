@@ -1,5 +1,5 @@
 # generated: 2026-08-08
-# last_updated: 2026-08-15  # 10-6, 10-7, 3-13 → done; followups reopened; Epic 21 opened for dev
+# last_updated: 2026-08-16  # Story 21.17 Done, Stories 21.14..21.18 registered, Implementation Readiness Approved
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -204,13 +204,18 @@ development_status:
   21-4: done  # 2026-08-15: BMAD code review re-run; fake data removed, permissions + Zero sync + client_id filter applied
   21-5: review  # 2026-08-15: code + unit tests ok; missing integration tests; P0 human review
   21-6: done  # 2026-08-15: all review findings resolved, AI Draft now LLM-based with fallback; 30 tests pass; remaining items are pre-existing 21.3/10.8 scope
-  21-7: ready-for-dev
+  21-7: done  # 2026-08-16: $0 Chat & Credit Pay-as-you-go Ledger (12 code review patches applied, 20/20 backend + 7/7 frontend unit/integration tests passing green)
   21-8: done  # 2026-08-15: 32 review patches + XActions Celery scheduler/ingestor applied; ruff/pytest/tsc green. 28 initial code-review findings resolved or dismissed (DLQ, pagination, composite index, email regex, account_id validation, ReDoS hardening, integration test rewrite, etc.).
   21-9: done  # Executive Decision Maker Mapping & B2B Lead Outreach
   21-10: done  # 2026-08-15: FastCrawler, ReverseIcpService, REST route, ReverseIcpModal, ATDD & 11 review patches verified; ruff/tsc/biome/pytest green
   21-11: done  # 2026-08-15: Actionable Turn Dispatches (suggested action pills); ruff/pytest/tsc/biome green
-  21-12: done  # 2026-08-15: Viral Social Outbound Co-pilot (Voice Learner, Outlier Analyzer, Split Review UI, 3 capabilities registered, unit/integration/E2E green, ruff/tsc/biome clean)
+  21-12: done  # 2026-08-16: Viral Social Outbound Co-pilot (Voice Learner + Outlier Analyzer + XActions); ruff/tsc/biome clean
   21-13: done  # 2026-08-15: Multi-Table Tabs & Send/Export Hub (Zero-cache live reactive sync, CSV/Lark Export)
+  21-14: review  # 2026-08-16: Smart Whitelist & Do-Not-Call (DNC) Compliance Engine; 13 backend + 4 frontend tests pass, tsc/biome/ruff green
+  21-15: ready-for-dev  # Unified Multi-Source AI Lead Generation Orchestrator & Universal Scraper Adapters (P0)
+  21-16: ready-for-dev  # Origami Split-View Canvas & Workspace Modernization (P0)
+  21-17: done           # 2026-08-16: Complete Origami Landing Page (10 sections) + Mint Green OrigamiLogo + Verticals grid; tsc/biome clean
+  21-18: ready-for-dev  # Partners Affiliate Portal & $0 Pricing Page Deployment (P1)
   epic-21-retrospective: optional
 
   # === Epic 22: Telegram Scraper & Channel Ingestion Engine ===

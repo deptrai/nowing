@@ -107,7 +107,9 @@ from .notion_add_connector_route import router as notion_add_connector_router
 from .obsidian_plugin_routes import router as obsidian_plugin_router
 from .onedrive_add_connector_route import router as onedrive_add_connector_router
 from .outbound_routes import router as outbound_router
+from .outcome_pricing_routes import router as outcome_pricing_router
 from .personal_access_tokens_routes import router as personal_access_tokens_router
+from .promo_code_routes import router as promo_code_router
 from .prompts_routes import router as prompts_router
 from .public_chat_routes import router as public_chat_router
 from .rbac_routes import router as rbac_router
@@ -132,6 +134,8 @@ router = APIRouter()
 
 router.include_router(workspaces_router)
 router.include_router(workspace_tables_router)
+router.include_router(outcome_pricing_router)
+router.include_router(promo_code_router)
 router.include_router(lead_scoring_router)
 router.include_router(leads_router)
 router.include_router(outbound_router)

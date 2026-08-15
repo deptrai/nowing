@@ -47,16 +47,19 @@ Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Archite
 
 `[DONE]` **FR-63 Intent Signal Detection** → **E21.1** (buying signals: funding, hiring, tech stack, executive moves).
 `[DONE]` **FR-64 Lead Scoring & Prioritization** → **E21.2** (composite score: fit + intent).
-`[REVIEW]` **FR-65 Vietnam Phone & Contact Waterfall Engine** → **E21.3 P0** (3-tier: Batdongsan Token Pool → Chotot API → Zalo UID verification + Auto-refund SLA).
+`[DONE]` **FR-65 Vietnam Phone & Contact Waterfall Engine** → **E21.3 P0** (3-tier: Batdongsan Token Pool → Chotot API → Zalo UID verification + Auto-refund SLA).
 `[DONE]` **FR-66 Outbound Prospecting Automation & Panel** → **E21.4** (email + multi-source lead generation from all scrapers).
 `[REVIEW]` **FR-67 CRM Integration & Lark Base / Google Sheets 1-Click Sync** → **E21.5** (HubSpot, Salesforce, Lark Base, Google Sheets, Pancake/Haravan webhooks).
-`[READY]` **FR-68 Vietnam Outbound Automation (Zalo OA & Telegram Sender)** → **E21.6 P0** (Zalo Assisted Chat Deep-link `zalo.me/{phone}`, Zalo OA ZNS, Telegram Bot alert).
+`[DONE]` **FR-68 Vietnam Outbound Automation (Zalo OA & Telegram Sender)** → **E21.6 P0** (Zalo Assisted Chat Deep-link `zalo.me/{phone}`, Zalo OA ZNS, Telegram Bot alert).
 `[READY]` **FR-69 Outcome-Based Pricing & Transparent Credit Ledger** → **E21.7** ($0 chat & sequencer, pay per verified lead / outcome meeting).
-`[NEW]` **FR-80 1-Click Reverse-ICP from Website / Project URL** → **E21.10** (auto-generate buyer personas, scraper targets & filter presets).
+`[DONE]` **FR-80 1-Click Reverse-ICP from Website / Project URL** → **E21.10** (auto-generate buyer personas, scraper targets & filter presets).
 `[DONE]` **FR-81 Actionable Turn Dispatches (Suggested Action Pills)** → **E21.11** (contextual 1-click execution chips after scrape turns).
-`[NEW]` **FR-82 Viral Social Outbound Co-pilot** → **E21.12** (AI Voice Learner + Viral post analyzer via XActions FB/Twitter).
-`[DONE]` **FR-83 Multi-Table Tabs & Send/Export Hub** → **E21.13** (Zero-cache live reactive sync, tab manager, CSV/Lark export).
-`[NEW]` **FR-84 Smart Whitelist & Do-Not-Call (DNC) Compliance Engine** → **E21.14 P0** (Decree 91/2020/NĐ-CP, CSV import, opt-out protection).
+`[DONE]` **FR-82 Viral Social Outbound Co-pilot** → **E21.12** (AI Voice Learner + Viral post analyzer via XActions FB/Twitter).
+`[READY]` **FR-84 Smart Whitelist & Do-Not-Call (DNC) Compliance Engine** → **E21.14 P0** (Decree 91/2020/NĐ-CP, CSV import, opt-out protection).
+`[READY]` **FR-85 Unified Multi-Source AI Lead Generation Orchestrator** → **E21.15 P0** (1-chat parallel retrieval across all 15+ scrapers into live table).
+`[READY]` **FR-86 Origami Split-View Canvas & Workspace Modernization** → **E21.16 P0** (50% Chat + 50% Table Matrix, Sọc Caro, Mint Green).
+`[DONE]` **FR-87 Complete Origami Landing Page & Public Site Transformation** → **E21.17 P0** (10 sections, Origami Mint Logo, 12 verticals).
+`[READY]` **FR-88 Partners Affiliate Portal & $0 Pricing Page Deployment** → **E21.18 P1** ($0 Free tier, 15% recurring affiliate ledger).
 
 `[READY]` **FR-70 Telegram Web Preview Scraper** → **E22.1** (`t.me/s/{channel}`, no login, zero-risk).
 `[READY]` **FR-71 Telegram MTProto Client Ingestion** → **E22.2** (Telethon, private channels, discussion comments).
@@ -2591,7 +2594,7 @@ _FR-64 · AD-31 · AD-38 · AD-42_
 
 ---
 
-### Story 21.3: Vietnam Phone & Contact Waterfall Engine `[REVIEW / REFACTOR - P0]`
+### Story 21.3: Vietnam Phone & Contact Waterfall Engine `[DONE]`
 
 As an SDR or real estate broker in Vietnam,
 I want a multi-tiered phone resolution engine that unlocks hidden mobile numbers from scraped listings with real-time verification and auto-refund SLA,
@@ -2645,7 +2648,7 @@ _FR-67 · AD-3 · AD-31 · AD-40_
 
 ---
 
-### Story 21.6: Vietnam Outbound Automation (Zalo OA & Telegram Sender) `[READY-FOR-DEV - P0]`
+### Story 21.6: Vietnam Outbound Automation (Zalo OA & Telegram Sender) `[DONE]`
 
 As a Vietnamese sales representative or real estate agent,
 I want 1-click Zalo outreach assistance and Telegram notifications for high-intent leads,
@@ -2714,7 +2717,7 @@ _AD-LI-4 · AD-LI-6_
 
 ---
 
-### Story 21.10: 1-Click Reverse-ICP from Website / Project URL `[NEW - P1]`
+### Story 21.10: 1-Click Reverse-ICP from Website / Project URL `[DONE]`
 
 As a business owner or broker,
 I want to paste my website domain or a real estate project link and have Nowing automatically generate the Ideal Customer Profile (ICP), search filters, and lead table,
@@ -2744,7 +2747,7 @@ _FR-81 · AD-31 · UX-Contract-Lead-Panel_
 
 ---
 
-### Story 21.12: Viral Social Outbound Co-pilot (Voice Learner & Outlier Analyzer) `[NEW - P1]`
+### Story 21.12: Viral Social Outbound Co-pilot (Voice Learner & Outlier Analyzer) `[DONE]`
 
 As a founder or real estate influencer,
 I want AI to analyze high-performing viral posts in my industry across Facebook, X, and TikTok, learn my voice, and rewrite proven formats into original lead-magnet posts,
@@ -2774,7 +2777,7 @@ _FR-83 · AD-31 · AD-40 · Zero-Cache-Publication_
 
 ---
 
-### Story 21.14: Smart Whitelist & Do-Not-Call (DNC) Compliance Engine `[NEW - P0]`
+### Story 21.14: Smart Whitelist & Do-Not-Call (DNC) Compliance Engine `[READY-FOR-DEV - P0]`
 
 As a compliance manager and sales leader,
 I want to manage Do-Not-Call / Exclusion lists for contacts and domains with CSV bulk import,
@@ -2786,6 +2789,83 @@ So that Nowing automatically blocks outreach to existing clients, competitors, a
 - **Given** customer right-to-delete requests (Decree 13/2023/NĐ-CP), **When** admin invokes `DELETE /api/leads/{id}/pii`, **Then** all raw PII records are permanently purged within 60s while preserving anonymous aggregated analytical metrics.
 
 _FR-84 · AD-25 · AD-31 · Nghị định 91/2020/NĐ-CP · Nghị định 13/2023/NĐ-CP_
+
+---
+
+### Story 21.15: Unified Multi-Source AI Lead Generation Orchestrator & Universal Scraper Adapters `[READY-FOR-DEV - P0]`
+
+As an active sales rep or researcher,
+I want to describe my target prospect in natural language in the chat,
+So that Nowing's AI Orchestrator automatically plans and triggers parallel searches across ALL available scrapers (Batdongsan, Chợ Tốt, TopCV, ITviec, Masothue, Mua Sắm Công, Facebook Groups, Twitter, Telegram, Google SERP), deduplicates results, enriches verified phone numbers, and streams a structured Lead Table in real-time.
+
+**Acceptance Criteria:**
+- **Given** the multi-source scraper ecosystem, **When** `LeadSourceAdapter` abstract base class is defined, **Then** it enforces 3 standardized methods: `search_leads(workspace_id, query)`, `normalize_lead(raw_record)`, and `extract_contact_candidates(raw_record)`.
+- **Given** existing implemented scrapers, **When** retrofitted, **Then** 5 concrete adapters are implemented and registered into `LeadSourceAdapterRegistry`:
+  1. `BatdongsanLeadAdapter` (Batdongsan.com.vn & Muaban.net BĐS)
+  2. `ChototLeadAdapter` (Chợ Tốt Nhà, BĐS, Xe, Đồ điện tử)
+  3. `JobMarketLeadAdapter` (TopCV & ITviec recruitment postings)
+  4. `EnterpriseProcurementLeadAdapter` (Masothue & Cổng Mua Sắm Công)
+  5. `SocialLeadAdapter` (Facebook Groups & Twitter Feed via XActions)
+- **Given** a chat prompt (e.g. *"Tìm 30 công ty IT tại Hà Nội và 20 môi giới BĐS Cầu Giấy"*), **When** `LeadGenOrchestrator` executes, **Then** it decomposes the query into sub-tasks and invokes all relevant scraper adapters concurrently via `asyncio.gather(return_exceptions=True)`.
+- **Given** raw multi-source streams, **When** ingested, **Then** `EntityDeduplicationService` unifies duplicates by Phone/Email/TaxID into standard `Lead` records.
+- **Given** lead creation, **When** persisted, **Then** Zero-cache (`zero.nowing.net`) streams rows directly into the active Table tab with cell highlight animation.
+
+_FR-85 · AD-31 · AD-37 · AD-44_
+
+---
+
+### Story 21.16: Origami Split-View Canvas & Workspace Modernization `[READY-FOR-DEV - P0]`
+
+As a workspace user,
+I want a 2-panel split canvas (420px Chat Co-pilot on the left + Resizable Data Matrix on the right) with Mint Green theme and Sọc Caro grid background,
+So that I can interactively chat with AI while inspecting, filtering, and managing hundreds of leads simultaneously.
+
+**Acceptance Criteria:**
+- **Given** `/dashboard/[workspace_id]/leads`, **When** loaded, **Then** it renders a Split-View (Chat Left + Table Right) with a draggable divider (`cursor: col-resize`) and full-screen toggle.
+- **Given** the visual system, **When** rendered, **Then** it applies CSS Design Tokens from `DESIGN.md`: Mint Green `#10B981`, Sọc Caro Grid Paper background, font `Instrument Serif` header, and `JetBrains Mono` numbers.
+- **Given** user navigation, **When** clicking the 3-Mode Switcher, **Then** the canvas switches smoothly between `🎯 Leads`, `🧠 Research`, and `⚡ Scrapers` without losing chat history.
+
+_FR-86 · AD-31 · UX-Contract-Lead-Panel_
+
+---
+
+### Story 21.17: Complete Origami Landing Page & Public Site Transformation `[DONE]`
+
+As a prospective visitor,
+I want a world-class, clean, editorial-style Landing Page with 10 full sections, interactive 3-tab product demo, 12 verticals menu, and clear $0 pricing,
+So that I immediately understand Nowing's value proposition as Vietnam's #1 AI Lead Intelligence Platform.
+
+**Acceptance Criteria:**
+- **Given** `nowing_web/app/(home)/page.tsx`, **When** deployed, **Then** it replaces the old homepage with the 10-section structure from `landing-page.html`:
+  - Section 1: Hero Header with Mint Origami Logo, Badge, Sọc Caro background.
+  - Section 2: Interactive 3-Tab Product Showcase (`Lead Generation`, `Data Enrichment`, `Viral Content`).
+  - Section 3: Value Metrics & Live Data Feed Counter.
+  - Section 4: 12 Industry Verticals Grid (BĐS, Tuyển dụng, Bán sỉ, F&B, Logistics...).
+  - Section 5: Step-by-Step Workflow ("From URL to 1000 Leads in 3 Clicks").
+  - Section 6: Compare Table (Nowing vs. Apollo / Clay / Manual Scraping).
+  - Section 7: Live Pricing Matrix ($0 Chat & Sequencer).
+  - Section 8: Affiliate Partner Banner (15% Recurring Commission).
+  - Section 9: FAQ Accordion & Knowledge Guide Teaser.
+  - Section 10: Final CTA & Editorial Footer.
+- **Given** site branding, **When** loaded, **Then** favicon, open-graph cards, and navbar brand render the new **Origami Mint Green Logo**.
+
+_FR-87 · UX-Design-Landing-Page_
+
+---
+
+### Story 21.18: Partners Affiliate Portal & $0 Pricing Page Deployment `[READY-FOR-DEV - P1]`
+
+As an affiliate partner or agency,
+I want dedicated `/pricing` and `/partners` pages with commission tracking and Stripe/VietQR payout ledger,
+So that I can refer clients and earn 15% lifetime recurring commissions.
+
+**Acceptance Criteria:**
+- **Given** `/pricing`, **When** viewed, **Then** it displays $0 Free Tier (Unlimited Chat, Sequencer, CSV export) and transparent Credit Pay-as-you-go table for Phone Unlock & Deep Research.
+- **Given** `/partners`, **When** an agency applies, **Then** it generates unique referral links with cookie tracking (30 days) and registers a Partner Profile in the database.
+
+_FR-88 · AD-42_
+
+---
 
 ---
 
@@ -2880,6 +2960,10 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 **Given** an administrator accessing `/admin/scraper-accounts` on `nowing_web`,
 **When** viewing the Telegram tab,
 **Then** the UI displays account statuses (`Active`, `Rate-Limited`, `Cooldown` with live countdown timer), token balances, an OTP/2FA onboarding modal, and a channel management table with realtime stream toggles.
+
+**Given** Telegram messages containing lead contacts,
+**When** queried by `LeadGenOrchestrator` (Story 21.15),
+**Then** `TelegramLeadAdapter` implements `LeadSourceAdapter` (AD-44), converting message entities and contacts into standard `Lead` records streamed directly into the Split-View Table Matrix.
 
 ---
 

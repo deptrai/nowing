@@ -8,11 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import (
     INCENTIVE_TASKS_CONFIG,
+    BillingEvent,
     IncentiveTaskType,
     TokenUsage,
     User,
 )
 from app.schemas.usage import (
+    ServiceBreakdownItem,
+    ServiceCategory,
     UsageBreakdownItem,
     UsageSummaryResponse,
     UsageTimeSeriesPoint,
@@ -29,6 +32,43 @@ def _ensure_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=UTC)
     return value.astimezone(UTC)
+
+
+def map_event_to_service_category(
+    usage_type: str | None, event_type: str | None
+) -> str:
+    """Classify usage_type and event_type into 5 standardized service buckets."""
+    type_str = str(usage_type or event_type or "").lower()
+
+    if any(k in type_str for k in ["meeting_booked", "outcome_meeting"]):
+        return ServiceCategory.OUTCOME_MEETINGS
+    if any(
+        k in type_str
+        for k in [
+            "phone",
+            "waterfall",
+            "batdongsan",
+            "chotot",
+            "contact_enrichment",
+            "lead_enriched",
+            "outcome_lead",
+        ]
+    ):
+        return ServiceCategory.PHONE_WATERFALL
+    if any(
+        k in type_str
+        for k in ["social", "xactions", "facebook", "twitter", "fb_group", "signal"]
+    ):
+        return ServiceCategory.SOCIAL_MEDIA
+    if "deep_research" in type_str:
+        return ServiceCategory.AI_GENERATION
+    if any(
+        k in type_str
+        for k in ["crawl", "search", "exa", "serp", "bing", "google", "web"]
+    ):
+        return ServiceCategory.WEB_SEARCH
+
+    return ServiceCategory.AI_GENERATION
 
 
 class UsageService:
@@ -290,10 +330,84 @@ class UsageService:
 
         return UsageTimeSeriesResponse(granularity=granularity, points=points)
 
+    async def get_service_breakdown(
+        self,
+        workspace_id: int,
+        start_date: datetime | None,
+        end_date: datetime | None,
+    ) -> list[ServiceBreakdownItem]:
+        """Aggregate usage across TokenUsage (LLM) and BillingEvent (business events) into 5 service buckets."""
+        start_date, end_date = self._normalize_range(start_date, end_date)
+
+        token_stmt = (
+            select(
+                TokenUsage.usage_type,
+                func.coalesce(func.sum(TokenUsage.total_tokens), 0).label(
+                    "total_tokens"
+                ),
+                func.coalesce(func.sum(TokenUsage.cost_micros), 0).label("cost_micros"),
+                func.count(TokenUsage.id).label("event_count"),
+            )
+            .where(
+                TokenUsage.workspace_id == workspace_id,
+                TokenUsage.created_at >= start_date,
+                TokenUsage.created_at <= end_date,
+            )
+            .group_by(TokenUsage.usage_type)
+        )
+
+        billing_stmt = (
+            select(
+                BillingEvent.event_type,
+                func.coalesce(func.sum(BillingEvent.cost_micros), 0).label(
+                    "cost_micros"
+                ),
+                func.count(BillingEvent.id).label("event_count"),
+            )
+            .where(
+                BillingEvent.workspace_id == workspace_id,
+                BillingEvent.created_at >= start_date,
+                BillingEvent.created_at <= end_date,
+            )
+            .group_by(BillingEvent.event_type)
+        )
+
+        token_res = await self.session.execute(token_stmt)
+        billing_res = await self.session.execute(billing_stmt)
+
+        buckets: dict[str, dict[str, int]] = {
+            ServiceCategory.AI_GENERATION: {"tokens": 0, "cost": 0, "count": 0},
+            ServiceCategory.WEB_SEARCH: {"tokens": 0, "cost": 0, "count": 0},
+            ServiceCategory.SOCIAL_MEDIA: {"tokens": 0, "cost": 0, "count": 0},
+            ServiceCategory.PHONE_WATERFALL: {"tokens": 0, "cost": 0, "count": 0},
+            ServiceCategory.OUTCOME_MEETINGS: {"tokens": 0, "cost": 0, "count": 0},
+        }
+
+        for row in token_res.all():
+            cat = map_event_to_service_category(row.usage_type, None)
+            buckets[cat]["tokens"] += int(row.total_tokens)
+            buckets[cat]["cost"] += int(row.cost_micros)
+            buckets[cat]["count"] += int(row.event_count)
+
+        for row in billing_res.all():
+            cat = map_event_to_service_category(None, row.event_type)
+            buckets[cat]["cost"] += int(row.cost_micros)
+            buckets[cat]["count"] += int(row.event_count)
+
+        return [
+            ServiceBreakdownItem(
+                category=cat,
+                total_tokens=data["tokens"],
+                cost_micros=data["cost"],
+                event_count=data["count"],
+            )
+            for cat, data in buckets.items()
+        ]
+
     async def get_transactions(
         self, limit: int, offset: int
     ) -> UsageTransactionsResponse:
-        """Return a unified, paginated list of credit/page purchases and incentives.
+        """Return a unified, paginated list of credit/page purchases, incentives, and promo codes.
 
         Uses a UNION ALL query with DB-level sorting and pagination so
         transaction history is not loaded entirely into memory.
@@ -324,12 +438,35 @@ class UsageService:
 
             SELECT
                 'incentive' AS type,
-                credit_micros_awarded AS amount_micros,
+                coalesce(credit_micros_awarded, 0) AS amount_micros,
                 task_type::text AS description,
                 'completed' AS status,
-                completed_at AS created_at
+                coalesce(completed_at, created_at) AS created_at
             FROM user_incentive_tasks
-            WHERE user_id = :user_id
+            WHERE user_id = :user_id AND (completed_at IS NOT NULL OR created_at IS NOT NULL)
+
+            UNION ALL
+
+            SELECT
+                'promo_code' AS type,
+                coalesce(pcr.credit_micros_granted, 0) AS amount_micros,
+                concat('Mã quà tặng: ', pc.code) AS description,
+                'completed' AS status,
+                pcr.redeemed_at AS created_at
+            FROM promo_code_redemptions pcr
+            JOIN promo_codes pc ON pc.id = pcr.promo_code_id
+            WHERE pcr.user_id = :user_id
+
+            UNION ALL
+
+            SELECT
+                'outcome_debit' AS type,
+                coalesce(be.cost_micros, 0) * -1 AS amount_micros,
+                concat('Phí dịch vụ: ', be.event_type) AS description,
+                'settled' AS status,
+                be.created_at AS created_at
+            FROM billing_events be
+            WHERE be.user_id = :user_id
             """
         )
 
@@ -340,7 +477,9 @@ class UsageService:
         total = int(total_result.scalar_one())
 
         rows_result = await self.session.execute(
-            text(f"{unified.text} ORDER BY created_at DESC LIMIT :limit OFFSET :offset"),
+            text(
+                f"{unified.text} ORDER BY created_at DESC LIMIT :limit OFFSET :offset"
+            ),
             {
                 "user_id": self.user.id,
                 "limit": limit,

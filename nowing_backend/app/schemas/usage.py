@@ -67,3 +67,29 @@ class UsageTransactionsResponse(BaseModel):
     total: int
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ServiceCategory(str):
+    AI_GENERATION = "AI Generation"
+    WEB_SEARCH = "Web Search"
+    SOCIAL_MEDIA = "Social Media"
+    PHONE_WATERFALL = "Phone Waterfall"
+    OUTCOME_MEETINGS = "Outcome Meetings"
+
+
+class ServiceBreakdownItem(BaseModel):
+    category: str
+    total_tokens: int = 0
+    cost_micros: int = 0
+    event_count: int = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ServiceBreakdownResponse(BaseModel):
+    workspace_id: int
+    start_date: datetime
+    end_date: datetime
+    items: list[ServiceBreakdownItem]
+
+    model_config = ConfigDict(from_attributes=True)
