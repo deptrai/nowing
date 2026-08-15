@@ -374,3 +374,122 @@ class TestBillingEventService:
         rows = _billing_event_rows(session)
         assert rows
         assert rows[0].event_id == signal_event_id
+
+
+class TestRecordContactEnrichment:
+    """AC-7: contact-enrichment billing uses cost_basis='actual'."""
+
+    @pytest.mark.asyncio
+    async def test_writes_billing_event_with_exact_fields(self, monkeypatch):
+        from app.services.billing_event_service import BillingEventService
+
+        service = BillingEventService()
+
+        _patch_wallet(monkeypatch)
+        session = _FakeSession()
+        enrichment_request_id = uuid4()
+        user_id = uuid4()
+
+        await service.record_contact_enrichment(
+            session,
+            enrichment_request_id=enrichment_request_id,
+            workspace_id=1,
+            client_id=None,
+            user_id=user_id,
+            cost_micros=2500,
+        )
+
+        row = _billing_event_rows(session)[0]
+        assert row.event_entity_type == "enrichment_request"
+        assert row.event_type == "contact_enrichment"
+        assert row.event_id == enrichment_request_id
+        assert row.cost_micros == 2500
+        assert row.workspace_id == 1
+
+    @pytest.mark.asyncio
+    async def test_uses_actual_cost_basis_and_currency_usd(self, monkeypatch):
+        from app.services.billing_event_service import BillingEventService
+
+        service = BillingEventService()
+
+        _patch_wallet(monkeypatch)
+        session = _FakeSession()
+
+        await service.record_contact_enrichment(
+            session,
+            enrichment_request_id=uuid4(),
+            workspace_id=1,
+            client_id=None,
+            user_id=uuid4(),
+            cost_micros=1000,
+        )
+
+        row = _billing_event_rows(session)[0]
+        assert row.currency == "USD"
+        assert row.cost_basis == "actual"
+
+    @pytest.mark.asyncio
+    async def test_calls_wallet_check_balance_and_apply_debit(self, monkeypatch):
+        from app.services.billing_event_service import BillingEventService
+
+        service = BillingEventService()
+
+        calls = _patch_wallet(monkeypatch)
+        session = _FakeSession()
+        user_id = uuid4()
+
+        await service.record_contact_enrichment(
+            session,
+            enrichment_request_id=uuid4(),
+            workspace_id=1,
+            client_id=None,
+            user_id=user_id,
+            cost_micros=1000,
+        )
+
+        assert calls["check"] == [
+            {"user_id": user_id, "required_micros": 1000}
+        ]
+        assert calls["debit"] == [{"user_id": user_id, "cost_micros": 1000}]
+
+    @pytest.mark.asyncio
+    async def test_zero_cost_writes_event_without_debit(self, monkeypatch):
+        from app.services.billing_event_service import BillingEventService
+
+        service = BillingEventService()
+
+        calls = _patch_wallet(monkeypatch)
+        session = _FakeSession()
+
+        await service.record_contact_enrichment(
+            session,
+            enrichment_request_id=uuid4(),
+            workspace_id=1,
+            client_id=None,
+            user_id=uuid4(),
+            cost_micros=0,
+        )
+
+        row = _billing_event_rows(session)[0]
+        assert row.cost_micros == 0
+        assert calls["debit"] == []
+
+    @pytest.mark.asyncio
+    async def test_insufficient_credits_raises(self, monkeypatch):
+        from app.services.billing_event_service import BillingEventService
+
+        service = BillingEventService()
+
+        _patch_wallet(monkeypatch, balance_micros=500)
+        session = _FakeSession()
+
+        with pytest.raises(InsufficientCreditsError) as exc_info:
+            await service.record_contact_enrichment(
+                session,
+                enrichment_request_id=uuid4(),
+                workspace_id=1,
+                client_id=None,
+                user_id=uuid4(),
+                cost_micros=1000,
+            )
+        assert "exceed your available credit" in str(exc_info.value)

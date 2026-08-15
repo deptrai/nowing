@@ -1,7 +1,7 @@
 ---
 story_key: 21-3-enriched-contact-data
-status: ready-for-dev
-baseline_commit: db50806a8
+status: review
+baseline_commit: 1261fb2a1
 epic: 21
 story: 3
 ---
@@ -94,7 +94,7 @@ So that I can reach out to the right decision-makers.
 ## Tasks / Subtasks
 
 ### Task 1: Models & Migration
-- [ ] 1.1 Add `EnrichmentRequest` to `nowing_backend/app/db.py` (UUID PK, inherits `Base + TimestampMixin`):
+- [x] 1.1 Add `EnrichmentRequest` to `nowing_backend/app/db.py` (UUID PK, inherits `Base + TimestampMixin`):
   - `id` (UUID, PK, default uuid4)
   - `workspace_id` (Integer, FK `workspaces.id`, index)
   - `client_id` (CITEXT, nullable, index)
@@ -105,7 +105,7 @@ So that I can reach out to the right decision-makers.
   - `contact_count` (Integer, default 0)
   - `created_at` (TIMESTAMP, default now)
   - Composite index `(workspace_id, client_id, lead_id, created_at DESC)`
-- [ ] 1.2 Add `VerifiedContact` to `app/db.py`:
+- [x] 1.2 Add `VerifiedContact` to `app/db.py`:
   - `id` (UUID, PK, default uuid4)
   - `workspace_id` (Integer, FK `workspaces.id`, index)
   - `client_id` (CITEXT, nullable, index)
@@ -122,24 +122,24 @@ So that I can reach out to the right decision-makers.
   - `legal_basis` (String(50), nullable) — `consent / legitimate_interest / contract / legal_obligation`
   - `created_at` (TIMESTAMP, default now)
   - Composite index `(workspace_id, client_id, lead_id, created_at DESC)`
-- [ ] 1.3 Add `Permission.LEADS_ENRICH` and `Permission.CONTACTS_READ` to `app/db.py` `Permission` enum.
-- [ ] 1.4 Verify `MemorySourceType.ENRICHMENT` already exists in `app/db.py` (it does at line 599).
-- [ ] 1.5 Alembic migration `200_add_enrichment_tables.py`:
+- [x] 1.3 Add `Permission.LEADS_ENRICH` and `Permission.CONTACTS_READ` to `app/db.py` `Permission` enum.
+- [x] 1.4 Verify `MemorySourceType.ENRICHMENT` already exists in `app/db.py` (it does at line 599).
+- [x] 1.5 Alembic migration `200_add_enrichment_tables.py`:
   - Create `enrichment_requests` and `verified_contacts` tables with FKs, indexes, RLS-scoped by `workspace_id` + `client_id`.
   - `client_id` uses `CITEXT` and `CheckConstraint` / `ForeignKey` to `vertical_clients.client_id` per AD-45.
   - Add `Lead.enriched`, `Lead.consent_status`, `Lead.legal_basis` if not already present (they exist from Story 21.2).
 
 ### Task 2: PII Encryption Service
-- [ ] 2.1 Create `app/services/pii/verified_contact_encryption.py`:
+- [x] 2.1 Create `app/services/pii/verified_contact_encryption.py`:
   - `VerifiedContactEncryption` wraps `TokenEncryption(config.SECRET_KEY)`.
   - `encrypt(value: str | None) -> str | None`
   - `decrypt(value: str | None) -> str | None`
   - `encrypt_contact(contact: VerifiedContactDict) -> VerifiedContactDict`
   - `decrypt_contact(contact: VerifiedContactDict) -> VerifiedContactDict`
-- [ ] 2.2 Store ciphertext in `VerifiedContact.name/title/email/phone`; decrypt only when returning `VerifiedContactRead` to authorized callers.
+- [x] 2.2 Store ciphertext in `VerifiedContact.name/title/email/phone`; decrypt only when returning `VerifiedContactRead` to authorized callers.
 
 ### Task 3: Enrichment Service
-- [ ] 3.1 Create `app/lead_intelligence/enrichment/__init__.py`, `service.py`, `schemas.py`, `capability.py`, `providers.py`, `fallback.py`:
+- [x] 3.1 Create `app/lead_intelligence/enrichment/__init__.py`, `service.py`, `schemas.py`, `capability.py`, `providers.py`, `fallback.py`:
   - `EnrichmentService.enrich(session, ctx, lead_id: UUID, requested_count: int = 5) -> EnrichmentOutput`
   - Check `Lead` exists and belongs to `(workspace_id, client_id)`.
   - Check cache key `enrichment:v1:{workspace_id}:{client_id}:{lead_id}` in Redis. On hit, return existing `VerifiedContact` IDs and skip billing.
@@ -156,56 +156,56 @@ So that I can reach out to the right decision-makers.
     - Write redacted `Memory` via `MemoryRepository.create_memory`.
     - Set `Lead.enriched=True`, `Lead.consent_status`, `Lead.legal_basis` from first contact.
     - Set Redis cache key with TTL `CONTACT_ENRICHMENT_CACHE_TTL_SECONDS`.
-- [ ] 3.2 Return `EnrichmentOutput` with `enrichment_request_id`, `lead_id`, `contact_count`, `cost_micros`, `verified_contact_ids`, `degraded`, `degradation_reasons`.
+- [x] 3.2 Return `EnrichmentOutput` with `enrichment_request_id`, `lead_id`, `contact_count`, `cost_micros`, `verified_contact_ids`, `degraded`, `degradation_reasons`.
 
 ### Task 4: Waterfall Provider Client
-- [ ] 4.1 Create `app/lead_intelligence/enrichment/providers.py`:
+- [x] 4.1 Create `app/lead_intelligence/enrichment/providers.py`:
   - `CleanlistClient` and `BetterContactClient` with a common `WaterfallProvider` protocol.
   - `primary` / `secondary` resolved from `CONTACT_ENRICHMENT_PRIMARY_PROVIDER`.
   - Methods: `find_contacts(lead: Lead, requested_count: int) -> list[VerifiedContactDict]`.
   - Each `VerifiedContactDict` has `name`, `title`, `email`, `phone`, `verification_status`, `confidence`, `source_provider`.
-- [ ] 4.2 Create `app/lead_intelligence/enrichment/fallback.py`:
+- [x] 4.2 Create `app/lead_intelligence/enrichment/fallback.py`:
   - `FallbackVerifier` with `verify_email(email)` (MX DNS lookup + regex) and `verify_phone(phone)` (E.164 regex).
   - Returns `verification_status="low_confidence"` and `source_provider="fallback"`.
 
 ### Task 5: REST API
-- [ ] 5.1 Create `app/routes/enrichment_routes.py`:
+- [x] 5.1 Create `app/routes/enrichment_routes.py`:
   - `POST /workspaces/{workspace_id}/leads/{lead_id}/enrich` — start or return cached enrichment.
   - `POST /workspaces/{workspace_id}/leads/enrich` — bulk (`lead_ids: list[UUID]`).
   - `GET /workspaces/{workspace_id}/leads/{lead_id}/enrichments` — list requests.
   - `GET /workspaces/{workspace_id}/leads/{lead_id}/contacts` — list contacts.
   - `GET /workspaces/{workspace_id}/leads/enrich/cost` — cost projection.
-- [ ] 5.2 RBAC: `Permission.LEADS_ENRICH` for POSTs, `Permission.LEADS_READ` or `CONTACTS_READ` for GETs.
-- [ ] 5.3 Register `enrichment_routes` in `app/routes/__init__.py`.
+- [x] 5.2 RBAC: `Permission.LEADS_ENRICH` for POSTs, `Permission.LEADS_READ` or `CONTACTS_READ` for GETs.
+- [x] 5.3 Register `enrichment_routes` in `app/routes/__init__.py`.
 
 ### Task 6: Capability Registration
-- [ ] 6.1 Create `app/lead_intelligence/enrichment/capability.py`:
+- [x] 6.1 Create `app/lead_intelligence/enrichment/capability.py`:
   - `LEAD_ENRICH = Capability(name="lead.enrich", billing_unit=None, context_aware=True, metadata={...})`
   - `register_capability(LEAD_ENRICH)`.
-- [ ] 6.2 Create `app/lead_intelligence/enrichment/schemas.py`:
+- [x] 6.2 Create `app/lead_intelligence/enrichment/schemas.py`:
   - `EnrichmentInput(lead_id: UUID, requested_count: int = 5, lead_ids: list[UUID] | None = None for bulk)`
   - `EnrichmentOutput(enrichment_request_id, lead_id, contact_count, cost_micros, verified_contact_ids, degraded, degradation_reasons)`
   - `VerifiedContactRead(id, name, title, email, phone, verification_status, confidence, source_provider, consent_status, legal_basis, created_at)` — Pydantic `from_attributes=True`
   - `EnrichmentRequestRead(id, lead_id, status, contact_count, cost_micros, created_at)`
   - `EnrichmentCostOutput(cost_per_contact_micros, estimated_cost_micros, lead_count)`
-- [ ] 6.3 Import `app.lead_intelligence.enrichment.capability` in `app/routes/__init__.py` for side-effect registration.
+- [x] 6.3 Import `app.lead_intelligence.enrichment.capability` in `app/routes/__init__.py` for side-effect registration.
 
 ### Task 7: MCP Tools
-- [ ] 7.1 Create `nowing_mcp/mcp_server/features/enrichment/__init__.py` and `tools.py`:
+- [x] 7.1 Create `nowing_mcp/mcp_server/features/enrichment/__init__.py` and `tools.py`:
   - `nowing_enrich_lead(lead_id, requested_count=5)`
   - `nowing_list_contacts(lead_id, limit=20, offset=0)`
-- [ ] 7.2 Register in `nowing_mcp/mcp_server/server.py`.
-- [ ] 7.3 Add tool names to `MCP_TOOL_CATALOG` in `app/mcp_tools.py` (group `LEAD_INTELLIGENCE`).
-- [ ] 7.4 Update `EXPECTED_TOOLS` in `nowing_mcp/mcp_server/selfcheck.py`.
+- [x] 7.2 Register in `nowing_mcp/mcp_server/server.py`.
+- [x] 7.3 Add tool names to `MCP_TOOL_CATALOG` in `app/mcp_tools.py` (group `LEAD_INTELLIGENCE`).
+- [x] 7.4 Update `EXPECTED_TOOLS` in `nowing_mcp/mcp_server/selfcheck.py`.
 
 ### Task 8: Billing Service
-- [ ] 8.1 Extend `app/services/billing_event_service.py`:
+- [x] 8.1 Extend `app/services/billing_event_service.py`:
   - `record_contact_enrichment(session, enrichment_request_id, workspace_id, client_id, user_id, cost_micros)`.
   - Calls `_record_business_event` with `event_entity_type="enrichment_request"`, `event_type="contact_enrichment"`, `event_id=enrichment_request_id`.
   - Idempotent: raises `ValueError` on duplicate for the same `enrichment_request_id`.
 
 ### Task 9: Configuration
-- [ ] 9.1 Add to `app/config/__init__.py`:
+- [x] 9.1 Add to `app/config/__init__.py`:
   - `CLEANLIST_API_KEY` (default "")
   - `BETTERCONTACT_API_KEY` (default "")
   - `CONTACT_ENRICHMENT_MICROS_PER_CONTACT` (default 0 — billing off)
@@ -214,16 +214,16 @@ So that I can reach out to the right decision-makers.
   - `CONTACT_ENRICHMENT_MAX_CONTACTS_PER_LEAD` (default 5)
   - `CONTACT_ENRICHMENT_REQUEST_TIMEOUT_SECONDS` (default 30)
   - `CONTACT_ENRICHMENT_RETRY_ATTEMPTS` (default 3)
-- [ ] 9.2 Add `.env.example` entries.
+- [x] 9.2 Add `.env.example` entries.
 
 ### Task 10: Celery Task
-- [ ] 10.1 Create `app/tasks/celery_tasks/enrichment_tasks.py`:
+- [x] 10.1 Create `app/tasks/celery_tasks/enrichment_tasks.py`:
   - `enrich_lead_task(enrichment_request_id: UUID)` shared task.
   - Opens async DB session, calls `EnrichmentService._run_waterfall`, commits.
-- [ ] 10.2 Register task import in `app/celery_app.py` (or ensure it is auto-discovered).
+- [x] 10.2 Register task import in `app/celery_app.py` (or ensure it is auto-discovered).
 
 ### Task 11: Tests
-- [ ] 11.1 Unit tests `tests/unit/lead_intelligence/test_enrichment.py`:
+- [x] 11.1 Unit tests `tests/unit/lead_intelligence/test_enrichment.py`:
   - Mock provider clients and Redis cache.
   - Assert `VerifiedContact` creation with encrypted PII.
   - Assert `BillingEvent` with correct `event_entity_type`/`event_type`.
@@ -231,11 +231,11 @@ So that I can reach out to the right decision-makers.
   - Assert cache hit skips billing and API call.
   - Assert insufficient wallet returns degraded.
   - Assert fallback verifier returns `low_confidence`.
-- [ ] 11.2 Unit tests `tests/unit/capabilities/test_lead_enrich_capability.py`.
-- [ ] 11.3 Integration tests `tests/integration/lead_intelligence/test_enrichment.py`:
+- [x] 11.2 Unit tests `tests/unit/capabilities/test_lead_enrich_capability.py`.
+- [x] 11.3 Integration tests `tests/integration/lead_intelligence/test_enrichment.py`:
   - Create workspace + lead, trigger enrichment with mocked HTTP provider, assert `VerifiedContact` rows, `Memory` provenance, `BillingEvent`, and wallet debit.
-- [ ] 11.4 Migration test for `200_add_enrichment_tables.py`.
-- [ ] 11.5 Target coverage ≥ 90% for enrichment service.
+- [x] 11.4 Migration test for `200_add_enrichment_tables.py`.
+- [x] 11.5 Target coverage ≥ 90% for enrichment service.
 
 ## Dev Notes
 
@@ -474,3 +474,28 @@ nowing_backend/
 
 Created: 2026-08-10
 Last Updated: 2026-08-15
+
+## Dev Agent Record
+
+### Debug Log
+
+- Route mount prefix: routers are mounted under `/api/v1` (app/app.py), so route tests must use `/api/v1/workspaces/...`.
+- 404/402 error bodies: `HTTPException(detail="<code>")` serializes `detail` as a plain string, not `{"code": ...}`.
+- `VerifiedContact.phone` was `String(50)` but Fernet ciphertext is ~120 chars → `StringDataRightTruncationError` on insert. Bumped to `String(200)` in model + migration 200 (pre-release migration, edited in place; test DB table dropped once to regenerate).
+- Enqueue patching: `enqueue_enrichment_request` does not exist in the service module; the real symbol is `EnrichmentService._enqueue`. Integration tests patch `_enqueue` with `AsyncMock` to avoid a live Celery broker.
+- Celery `retry_kwargs={"max_retries": 2}` does not set the task attribute (default is 3) — moved to decorator-level `max_retries=2`.
+- `record_contact_enrichment` is an instance method on `BillingEventService` (unlike module-level `record_signal_scan`); `_record_business_event` does not commit on the positive-cost path (deferred to caller) — tests must not assert `session.committed`.
+- Fallback DNS test: `dns` is imported inside the function, so fake `dns`/`dns.resolver` modules must be injected via `sys.modules` (dotted-path setattr fails with `No module named 'app.lead_intelligence.enrichment.fallback.dns'`).
+- `Identity` is not importable from `mcp_server.core.auth`; MCP tests use `identity.bind_api_key` / `identity.unbind_api_key` and monkeypatch `mcp_server.server.NowingClient`.
+- Pre-existing failures confirmed on pristine baseline (1261fb2a1 worktree): `tests/unit/capabilities/test_registry.py::test_capability_metadata_and_registry_query` (order-dependent registry state pollution) + 4 `test_run_truncation.py` tests (`_FakeSession.execute()` 3-arg call from Story 18.8 tenant-context change) — identical 5 failures, unrelated to this story.
+
+### Completion Notes
+
+- All story tasks 1–11 complete; 31/31 checklist items checked.
+- Unit: `tests/unit/lead_intelligence` (providers 12 + fallback 7 + cache 7 + contact_enrichment 9 = 35) + capability 3 + encryption 4 + billing 5 new (16 file total) + celery task 2 + migration roundtrip 2 — all green; targeted suites 104 passed.
+- Full unit suite: 2153 passed, 5 failed (pre-existing on baseline, see Debug Log).
+- Full integration suite: 892 passed, 12 skipped, 1 xfailed — 0 failures (incl. PAT client-scoped contacts test).
+- MCP: `nowing_mcp/tests` 112 passed (4 new `test_enrichment_tools.py`).
+- ruff check + format clean on all story files.
+- MCP tools `nowing_enrich_lead` / `nowing_list_contacts` added to catalog + `selfcheck.py` EXPECTED_TOOLS.
+- Story 21.1/21.2 had no MCP tool tests; 21.3 adds them (exceeds prior pattern).

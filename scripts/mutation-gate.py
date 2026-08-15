@@ -15,6 +15,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from collections import Counter
@@ -131,8 +132,11 @@ def discover_tests(backend: Path, service: str) -> list[str]:
         if len(segments) > 3:
             candidate_dirs.append(tests_dir / "platforms" / "/".join(segments[2:-1]))
     if len(segments) > 2:
-        # Also try dropping the last two segments, e.g. ``services/scraper_chunks``.
+        # Also try dropping the last two segments, e.g. ``services/scraper_chunks``
+        # (2 segments -> tests/unit/services) or ``services/pii/encryption``
+        # (3 segments -> tests/unit/services, not tests/unit/services/pii).
         candidate_dirs.append(tests_dir / Path("/".join(segments[:-1])))
+        candidate_dirs.append(tests_dir / Path("/".join(segments[:-2])))
     for exact_dir in candidate_dirs:
         if exact_dir.is_dir():
             candidates = sorted(
@@ -328,12 +332,9 @@ def run_cosmic_ray(
             # BinaryOperator/UnaryOperator noise from `from __future__ import annotations`.
             if scope_functions or skip_noise_operators:
                 print(f"[mutation] scope-mutation-session {session.name}")
-                scope_script = project_root / "scripts" / "scope_mutation_session.py"
+                scope_script = (project_root / "scripts" / "scope_mutation_session.py").resolve()
                 scope_cmd: list[str] = [
-                    "uv",
-                    "run",
-                    "--no-sync",
-                    "python",
+                    str((Path(shutil.which("cosmic-ray") or "cosmic-ray").resolve().parent / "python")),
                     str(scope_script),
                     str(session),
                 ]
