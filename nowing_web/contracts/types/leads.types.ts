@@ -136,3 +136,82 @@ export interface ListLeadsParams {
 	limit?: number;
 	offset?: number;
 }
+
+export const zaloDraftResponseSchema = z.object({
+	lead_id: z.string(),
+	phone: z.string(),
+	clean_phone: z.string(),
+	zalo_url: z.string(),
+	draft: z.string(),
+	company_name: z.string(),
+	log_id: z.string().nullable().optional(),
+});
+
+export type ZaloDraftResponse = z.infer<typeof zaloDraftResponseSchema>;
+
+export const znsSendRequestSchema = z.object({
+	template_id: z.string(),
+	template_data: z.record(z.string(), z.any()),
+	tracking_id: z.string().optional(),
+	consent_confirmed: z.boolean().default(true),
+	mode: z.string().optional(),
+});
+
+export type ZnsSendRequest = z.infer<typeof znsSendRequestSchema>;
+
+export const znsSendResponseSchema = z.object({
+	status: z.string(),
+	msg_id: z.string().nullable().optional(),
+	recipient_phone: z.string(),
+	error: z.string().nullable().optional(),
+	log_id: z.string().nullable().optional(),
+});
+
+export type ZnsSendResponse = z.infer<typeof znsSendResponseSchema>;
+
+export const buyerPersonaSchema = z.object({
+	title: z.string(),
+	industry: z.string(),
+	company_size: z.string(),
+	pain_points: z.array(z.string()).default([]),
+	buying_triggers: z.array(z.string()).default([]),
+});
+
+export type BuyerPersona = z.infer<typeof buyerPersonaSchema>;
+
+export const filterPresetsSchema = z.object({
+	platforms: z.array(z.string()).default([]),
+	intent: z.string().default("BÁN"),
+	target_industries: z.array(z.string()).default([]),
+	locations: z.array(z.string()).default([]),
+	company_size_range: z.string().nullable().optional(),
+});
+
+export type FilterPresets = z.infer<typeof filterPresetsSchema>;
+
+export const reverseIcpRequestSchema = z.object({
+	url: z.string().min(1, "URL không được để trống"),
+	custom_instructions: z.string().nullable().optional(),
+});
+
+export type ReverseIcpRequest = z.infer<typeof reverseIcpRequestSchema>;
+
+export const reverseIcpResponseSchema = z.object({
+	company_name: z.string(),
+	domain: z.string(),
+	value_proposition: z.string(),
+	industry: z.string(),
+	target_buyer_personas: z.array(buyerPersonaSchema).default([]),
+	suggested_search_queries: z.array(z.string()).default([]),
+	negative_keywords: z.array(z.string()).default([]),
+	filter_presets: filterPresetsSchema.default({
+		platforms: [],
+		intent: "BÁN",
+		target_industries: [],
+		locations: [],
+	}),
+	chat_starter_prompts: z.array(z.string()).default([]),
+	raw_metadata: z.record(z.string(), z.any()).optional().default({}),
+});
+
+export type ReverseIcpResponse = z.infer<typeof reverseIcpResponseSchema>;

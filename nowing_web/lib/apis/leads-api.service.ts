@@ -6,12 +6,29 @@ import {
 	type ListLeadsParams,
 	leadListResponseSchema,
 	leadSchema,
+	type ReverseIcpResponse,
+	reverseIcpResponseSchema,
+	type ZaloDraftResponse,
+	type ZnsSendRequest,
+	type ZnsSendResponse,
+	zaloDraftResponseSchema,
+	znsSendResponseSchema,
 } from "@/contracts/types/leads.types";
 import { baseApiService } from "./base-api.service";
 
 const base = (workspaceId: number | string) => `/api/v1/workspaces/${workspaceId}`;
 
 class LeadsApiService {
+	analyzeReverseIcp = async (
+		workspaceId: number | string,
+		url: string,
+		customInstructions?: string
+	): Promise<ReverseIcpResponse> => {
+		return baseApiService.post(`${base(workspaceId)}/leads/reverse-icp`, reverseIcpResponseSchema, {
+			body: { url, custom_instructions: customInstructions },
+		});
+	};
+
 	listLeads = async (
 		workspaceId: number | string,
 		params: ListLeadsParams = {}
@@ -55,6 +72,34 @@ class LeadsApiService {
 		return baseApiService.get(
 			`${base(workspaceId)}/companies/${encodeURIComponent(companyName)}/graph`,
 			companyGraphSchema
+		);
+	};
+
+	getZaloDraft = async (
+		workspaceId: number | string,
+		leadId: string,
+		customContext?: string
+	): Promise<ZaloDraftResponse> => {
+		return baseApiService.post(
+			`${base(workspaceId)}/leads/${leadId}/zalo-draft`,
+			zaloDraftResponseSchema,
+			{
+				body: { custom_context: customContext },
+			}
+		);
+	};
+
+	sendZns = async (
+		workspaceId: number | string,
+		leadId: string,
+		data: ZnsSendRequest
+	): Promise<ZnsSendResponse> => {
+		return baseApiService.post(
+			`${base(workspaceId)}/leads/${leadId}/zns-send`,
+			znsSendResponseSchema,
+			{
+				body: data,
+			}
 		);
 	};
 }

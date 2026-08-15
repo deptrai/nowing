@@ -182,6 +182,32 @@ export function processSharedStreamEvent(
 			context.onTokenUsage?.(parsed.data);
 			return true;
 
+		case "data-suggested-actions": {
+			const actions = (
+				Array.isArray(parsed.data)
+					? parsed.data
+					: ((parsed.data as { actions?: unknown[] })?.actions ?? [])
+			) as import("@/contracts/types/chat-messages.types").SuggestedAction[];
+			if (actions.length > 0) {
+				const existingIdx = contentPartsState.contentParts.findIndex(
+					(p) => p.type === "data-suggested-actions"
+				);
+				if (existingIdx >= 0) {
+					contentPartsState.contentParts[existingIdx] = {
+						type: "data-suggested-actions",
+						data: { actions: actions.slice(0, 3) },
+					};
+				} else {
+					contentPartsState.contentParts.push({
+						type: "data-suggested-actions",
+						data: { actions: actions.slice(0, 3) },
+					});
+				}
+				scheduleFlush();
+			}
+			return true;
+		}
+
 		case "data-turn-status":
 			context.onTurnStatus?.(parsed.data);
 			return true;

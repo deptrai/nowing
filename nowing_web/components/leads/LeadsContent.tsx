@@ -4,9 +4,11 @@ import { RefreshCw, Search, Sparkles, Users } from "lucide-react";
 import { useParams } from "next/navigation";
 import type React from "react";
 import { useState } from "react";
+import type { FilterPresets } from "@/contracts/types/leads.types";
 import { useLeads } from "@/lib/hooks/use-leads";
 import { CompanyGraphDrawer } from "./CompanyGraphDrawer";
 import { LeadCard } from "./LeadCard";
+import { ReverseIcpModal } from "./ReverseIcpModal";
 
 export const LeadsContent: React.FC = () => {
 	const params = useParams();
@@ -17,6 +19,7 @@ export const LeadsContent: React.FC = () => {
 	const [searchQuery, setSearchQuery] = useState<string>("");
 	const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
 	const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
+	const [isReverseIcpOpen, setIsReverseIcpOpen] = useState<boolean>(false);
 
 	const {
 		leads: apiLeads,
@@ -41,6 +44,15 @@ export const LeadsContent: React.FC = () => {
 	const handleCloseDrawer = () => {
 		setIsDrawerOpen(false);
 		setSelectedCompany(null);
+	};
+
+	const handleApplyIcpPresets = (presets: FilterPresets) => {
+		if (presets.platforms && presets.platforms.length > 0) {
+			setSourceFilter(presets.platforms[0]);
+		}
+		if (presets.target_industries && presets.target_industries.length > 0) {
+			setSearchQuery(presets.target_industries.join(" "));
+		}
 	};
 
 	return (
@@ -68,6 +80,15 @@ export const LeadsContent: React.FC = () => {
 				</div>
 
 				<div className="flex items-center gap-2">
+					<button
+						type="button"
+						onClick={() => setIsReverseIcpOpen(true)}
+						className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-black transition-colors shadow-sm shadow-emerald-500/20"
+					>
+						<Sparkles className="w-3.5 h-3.5" />
+						<span>1-Click Reverse-ICP</span>
+					</button>
+
 					<button
 						type="button"
 						onClick={() => refetch()}
@@ -185,6 +206,14 @@ export const LeadsContent: React.FC = () => {
 				companyName={selectedCompany}
 				isOpen={isDrawerOpen}
 				onClose={handleCloseDrawer}
+			/>
+
+			{/* 1-Click Reverse-ICP Modal (Story 21.10) */}
+			<ReverseIcpModal
+				isOpen={isReverseIcpOpen}
+				onClose={() => setIsReverseIcpOpen(false)}
+				workspaceId={workspaceId}
+				onApplyFilterPresets={handleApplyIcpPresets}
 			/>
 		</div>
 	);

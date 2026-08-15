@@ -43,6 +43,7 @@ import {
 	useTokenUsage,
 } from "@/components/assistant-ui/token-usage-context";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
+import { SuggestedActionPills } from "@/components/chat/suggested-action-pills";
 import { CommentPanelContainer } from "@/components/chat-comments/comment-panel-container/comment-panel-container";
 import { CommentSheet } from "@/components/chat-comments/comment-sheet/comment-sheet";
 import type { SerializableCitation } from "@/components/tool-ui/citation";
@@ -436,8 +437,34 @@ const BODY_TOOLS = {
 
 const NullBodyTool: ToolCallMessagePartComponent = () => null;
 
+const EMPTY_SUGGESTED_ACTIONS: import("@/contracts/types/chat-messages.types").SuggestedAction[] =
+	[];
+
 const AssistantMessageInner: FC = () => {
 	const isMobile = !useMediaQuery("(min-width: 768px)");
+	const isLast = useAuiState((s) => s.message?.isLast ?? false);
+	const isRunning = useAuiState((s) => s.thread?.isRunning ?? false);
+	const content = useAuiState((s) => s.message?.content);
+
+	const suggestedActions = useMemo(() => {
+		if (!content || !Array.isArray(content)) return EMPTY_SUGGESTED_ACTIONS;
+		for (const part of content) {
+			if (
+				typeof part === "object" &&
+				part !== null &&
+				"type" in part &&
+				part.type === "data-suggested-actions" &&
+				"data" in part
+			) {
+				const d = part.data as
+					| { actions?: import("@/contracts/types/chat-messages.types").SuggestedAction[] }
+					| import("@/contracts/types/chat-messages.types").SuggestedAction[];
+				if (Array.isArray(d)) return d;
+				if (Array.isArray(d?.actions)) return d.actions;
+			}
+		}
+		return EMPTY_SUGGESTED_ACTIONS;
+	}, [content]);
 
 	return (
 		<CitationMetadataProvider>
@@ -454,6 +481,12 @@ const AssistantMessageInner: FC = () => {
 				/>
 				<MessageError />
 			</div>
+
+			{suggestedActions.length > 0 && !isRunning && (
+				<div className="ml-2">
+					<SuggestedActionPills actions={suggestedActions} isLast={isLast} />
+				</div>
+			)}
 
 			<MessageTimestamp className="ml-2 mt-2" />
 
