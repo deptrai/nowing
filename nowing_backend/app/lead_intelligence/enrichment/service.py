@@ -535,7 +535,7 @@ class EnrichmentService:
 
     def _estimated_cost(self, contact_count: int) -> int:
         capped = min(contact_count, config.CONTACT_ENRICHMENT_MAX_CONTACTS_PER_LEAD)
-        return int(config.CONTACT_ENRICHMENT_MICROS_PER_CONTACT or 0) * capped
+        return int(config.CONTACT_ENRICHMENT_MICROS_PER_CONTACT or 0) % capped
 
     @staticmethod
     def _degraded(reasons: list[str]) -> EnrichmentOutput:

@@ -42,3 +42,6 @@ nowing_backend/_bmad-output/
 # Python cache
 **/__pycache__/
 *.py[cod]
+
+# Git worktrees
+.worktrees/

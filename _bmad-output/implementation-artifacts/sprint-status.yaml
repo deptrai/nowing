@@ -182,7 +182,7 @@ development_status:
   # New 2026-08-11 — expand Chợ Tốt from BĐS to all major verticals.
   10-6: done  # gateway mapping + schema + parser + MCP tool + tests; billing bug fixed
   10-7: done  # chotot.scrape capability + per-category billing; dev complete 2026-08-14
-  10-8: ready-for-dev  # Spatial Planning & Land Zoning GIS (PostGIS Map Layers)
+  10-8: done  # Spatial Planning & Land Zoning GIS (PostGIS Map Layers)
   epic-10-retrospective: optional
 
   # === Epic 20: Nowing Ecosystem Integration (Nowing side of chainlens-research Epic 47) ===
@@ -201,18 +201,18 @@ development_status:
   21-1: done
   21-2: done
   21-3: review  # 2026-08-15: integration tests green; P0 human review gate required
-  21-4: ready-for-dev
+  21-4: done  # Lead Intelligence Panel & Company Graph (UI + API + Zero Sync complete)
   21-5: review  # 2026-08-15: code + unit tests ok; missing integration tests; P0 human review
   21-6: ready-for-dev  # was deferred (Zalo legal/ToS); reopened for scheduling
   21-7: ready-for-dev
-  21-8: ready-for-dev  # Social Lead Generation via XActions Integration (Facebook Groups & Twitter/X)
-  21-9: ready-for-dev  # Executive Decision Maker Mapping & B2B Lead Outreach
+  21-8: done  # Social Ingress via XActions Integration (Facebook Groups & Twitter/X Feed)
+  21-9: done  # Executive Decision Maker Mapping & B2B Lead Outreach
   epic-21-retrospective: optional
 
   # === Epic 22: Telegram Scraper & Channel Ingestion Engine ===
   # Architecture Spine approved 2026-08-15 (AD-1 to AD-8). 3 consolidated stories defined.
   epic-22: in-progress
-  22-1: ready-for-dev  # Telegram Storage Schema & Public Web Preview Ingestion Engine
+  22-1: done  # Telegram Storage Schema & Public Web Preview Ingestion Engine
   22-2: ready-for-dev  # Telegram MTProto Userbot Client, Encrypted Session Pool & Anti-Ban Cooldown
   22-3: ready-for-dev  # Telegram Data Enrichment, Realtime Alert Trigger, AI Agent Tools & Scraper UI
   epic-22-retrospective: optional
@@ -243,7 +243,7 @@ development_status:
   # DROPPED 2026-08-08: cross-source entity timeline depends on Nowing canonical entities (Epic 13 dropped).
   # 12.9 depends on 12.6 (Saved Searches) and 6-8 (Generic Alert Engine). AD-33: must be Automation template, NOT standalone scheduler.
   12-9: done  # Job Market Alerts (P1) — re-review findings resolved, AC-5 decision implemented
-  12-10: ready-for-dev  # LinkedIn Public Guest Jobs & Headcount Growth Signals
+  12-10: done  # LinkedIn Public Guest Jobs & Headcount Growth Signals
   epic-12-retrospective: optional
 
   # === Epic 13: Canonical Entity Storage & Multi-Domain Indexing ===
@@ -287,13 +287,13 @@ development_status:
   16-3: backlog
   # RE-SCOPED 2026-08-08: 16-4 no longer blocked on Nowing Epic 13 (dropped). Company timeline builds on chainlens-research canonical index.
   16-4: backlog
-  16-5: ready-for-dev  # National Public Procurement & Tender Intelligence (muasamcong.mpi.gov.vn)
+  16-5: done  # National Public Procurement & Tender Intelligence (muasamcong.mpi.gov.vn)
   epic-16-retrospective: optional
 
   # === Epic 17: E-commerce Intelligence (Vietnam) ===
-  epic-17: backlog
+  epic-17: in-progress
   17-1: backlog
-  17-2: backlog
+  17-2: done  # Shopee Vietnam In-House Scraper & Price Normalization
   17-3: backlog
   17-4: backlog
   17-5: backlog  # TikTok Shop Product & Trending SKUs Ingestion

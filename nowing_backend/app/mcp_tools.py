@@ -35,6 +35,8 @@ MCP_TOOL_CATALOG: list[dict[str, str]] = [
     {"name": "nowing_cafef_scrape", "group": McpToolGroup.SCRAPER},
     {"name": "nowing_chotot_bds_scrape", "group": McpToolGroup.SCRAPER},
     {"name": "nowing_chotot_scrape", "group": McpToolGroup.SCRAPER},
+    {"name": "nowing_ecommerce_search_products", "group": McpToolGroup.SCRAPER},
+    {"name": "nowing_ecommerce_track_price_history", "group": McpToolGroup.SCRAPER},
     {"name": "nowing_muaban_bds_scrape", "group": McpToolGroup.SCRAPER},
     {"name": "nowing_vietnamworks_scrape", "group": McpToolGroup.SCRAPER},
     {"name": "nowing_topcv_scrape", "group": McpToolGroup.SCRAPER},
@@ -49,6 +51,7 @@ MCP_TOOL_CATALOG: list[dict[str, str]] = [
     {"name": "nowing_instagram_details", "group": McpToolGroup.SCRAPER},
     {"name": "nowing_instagram_scrape", "group": McpToolGroup.SCRAPER},
     {"name": "nowing_reddit_scrape", "group": McpToolGroup.SCRAPER},
+    {"name": "nowing_telegram_search_messages", "group": McpToolGroup.SCRAPER},
     {"name": "nowing_tiktok_comments", "group": McpToolGroup.SCRAPER},
     {"name": "nowing_tiktok_scrape", "group": McpToolGroup.SCRAPER},
     {"name": "nowing_tiktok_trending", "group": McpToolGroup.SCRAPER},
@@ -89,10 +92,13 @@ MCP_TOOL_CATALOG: list[dict[str, str]] = [
     {"name": "nowing_list_signals", "group": McpToolGroup.LEAD_INTELLIGENCE},
     {"name": "nowing_enrich_lead", "group": McpToolGroup.LEAD_INTELLIGENCE},
     {"name": "nowing_list_contacts", "group": McpToolGroup.LEAD_INTELLIGENCE},
+    {"name": "nowing_b2b_find_decision_makers", "group": McpToolGroup.LEAD_INTELLIGENCE},
     {"name": "nowing_connect_crm", "group": McpToolGroup.LEAD_INTELLIGENCE},
     {"name": "nowing_list_crm_connections", "group": McpToolGroup.LEAD_INTELLIGENCE},
     {"name": "nowing_sync_crm", "group": McpToolGroup.LEAD_INTELLIGENCE},
     {"name": "nowing_list_crm_sync_logs", "group": McpToolGroup.LEAD_INTELLIGENCE},
+    {"name": "nowing_realestate_check_zoning", "group": McpToolGroup.LEAD_INTELLIGENCE},
+    {"name": "nowing_recruitment_search_linkedin_jobs", "group": McpToolGroup.LEAD_INTELLIGENCE},
 ]
 
 MCP_TOOL_SYSTEM_TOOLS = {"nowing_list_workspaces", "nowing_select_workspace"}

@@ -172,14 +172,14 @@ Người dùng research sâu được mà **không vỡ** khi engine chết (9.1
 >
 > **🆕 2026-08-03 — Epic 11: Telegram Automation & Bot** (notification, write-back, inline keyboard, commands). **Open:** 11.1 notification foundation `[done]`, 11.2 write-back & builder `[done]`, 11.3 interactive bot & commands `[done]`.
 
-### Epic 10: Connector & Scraper Expansion — ✅ DONE
-Vietnam BĐS (batdongsan, chotot, muaban) + broader scraper port. **FRs:** FR-6 variants. **All core stories done:** 10.1–10.4.
+### Epic 10: Connector & Scraper Expansion (Vietnam Real Estate & Spatial GIS) — 🔄 IN PROGRESS
+Vietnam BĐS (batdongsan, chotot, muaban) + PostGIS spatial land zoning (`ONT`/`ODT`/`DGT`/`CX`). **Open:** 10.6–10.8.
 
 ### Epic 11: Telegram Automation & Bot — ✅ DONE
 Notification, write-back, builder UI, inline keyboard, commands. **FRs:** FR-20 variants. **All done.**
 
-### Epic 12: HR/Recruitment Vertical — Vietnam Job Market Pilot — 🔄 IN PROGRESS
-VietnamWorks, TopCV, ITviec scrapers; job listing normalization/dedup/PII/ingest; saved searches + job market alerts. **Open:** 12.1–12.5, 12.4a–e, 12.6, 12.9.
+### Epic 12: HR/Recruitment Vertical — Vietnam Job Market & LinkedIn B2B — 🔄 IN PROGRESS
+VietnamWorks, TopCV, ITviec, Indeed, LinkedIn Public Guest API (`seeMoreJobPostings`); job listing normalization/dedup/PII/ingest; saved searches + job market alerts. **Open:** 12.1–12.5, 12.4a–e, 12.6, 12.9, 12.10.
 
 ### Epic 13: Canonical Entity Storage & Multi-Domain Indexing — 🗑️ DROPPED 2026-08-08
 Canonical index moved to `chainlens-research`; Nowing scrapers feed via `POST /v1/ingest/scraper`.
@@ -190,11 +190,11 @@ RSS feed integration, entity enrichment, alerts, digest/synthesis. **Open:** 14.
 ### Epic 15: Financial Data (Vietnam) — 📋 BACKLOG
 CafeF / Vietstock data, stock price alerts, financial trend detection. **Open:** 15.1–15.4.
 
-### Epic 16: Company Directory (Vietnam) — 📋 BACKLOG
-masothue.com company data, official business registry, company alerts, timeline. **Open:** 16.1–16.4.
+### Epic 16: Company Directory & Public Procurement (Vietnam) — 📋 BACKLOG
+masothue.com company data, official business registry (`dangkykinhdoanh.gov.vn`), national public procurement tenders (`muasamcong.mpi.gov.vn`), company alerts, timeline. **Open:** 16.1–16.5.
 
 ### Epic 17: E-commerce Intelligence (Vietnam) — 📋 BACKLOG
-Lazada/Shopee product data, price-drop alerts, competitor tracking. **Open:** 17.1–17.4.
+Lazada / Shopee Vietnam in-house fast JSON API (`/search_items`) / TikTok Shop product data, price-drop alerts, competitor tracking. **Open:** 17.1–17.5. Governed by `architecture-shopee-ecommerce-2026-08-15`.
 
 ### Epic 18: Vertical Client Platform (Public Agent-Chat) — 🔄 IN PROGRESS
 Public agent-chat endpoints, AgentConfig registry, client_id tenancy, cost traceability, rate limiting + RLS. **Open:** 18.1–18.8.
@@ -202,8 +202,8 @@ Public agent-chat endpoints, AgentConfig registry, client_id tenancy, cost trace
 ### Epic 20: Nowing Ecosystem Integration — Feed & Recall from chainlens-research — ✅ DONE
 `NowingIngestService` + `to_chunks()`, gap-fill caller, `NowingPrivateProvider`, service-to-service auth. **Open:** none.
 
-### Epic 21: Lead Gen Intelligence — ⏸️ PROPOSED
-Intent signals, lead scoring, contact enrichment, outbound sequences, CRM sync, Zalo deferred, outcome pricing. **Gated:** legal/ToS, vendor POC, PII, CRM, outcome pricing. Full scope in `epic21-proposal-2026-08-11.md`.
+### Epic 21: Lead Gen Intelligence & Social Graph (Facebook & X/Twitter) — 🔄 IN PROGRESS
+Social lead generation via XActions integration (`/Users/luisphan/Documents/GitHub/XActions`), Facebook group posts, Twitter searches, intent tagging (`sell`/`buy`/`hiring`), B2B executive mapping, CRM sync, outcome pricing. **Open:** 21.1–21.9.
 
 ### Epic 22: Telegram Scraper & Channel Ingestion Engine — 🚀 READY FOR DEV
 Public channel web preview, MTProto Userbot session pool, distributed mutex lock, FloodWait cooldown state machine, regex entity extractor, S3 media chunk streaming, realtime stream daemon, Alert Engine trigger, AI Agent tools. **Open:** 22.1–22.3. Governed by `architecture-telegram-scraper-2026-08-15`.
@@ -1584,7 +1584,24 @@ So that users can research Chợ Tốt vehicles, jobs, electronics, and goods wi
 
 **Kỹ thuật (không phải AC):** Architecture decision recorded for single `chotot.scrape`; add `BillingUnit.CHOTOT_ITEM` and `CHOTOT_SCRAPE_MICROS_PER_ITEM` config; update `app/capabilities/core/billing.py`; register/alias in `definition.py`, `executor.py`, `schemas.py`; add docs and `.env.example`. Unit + integration + regression tests.
 
-_See full story file: `implementation-artifacts/stories/10-7-chotot-multi-category-capability.md`._
+### Story 10.8: Spatial Planning & Land Zoning GIS (PostGIS Map Layers) `[P1]`
+
+As a real estate researcher, investor, or appraiser,
+I want to query land zoning classifications (`ONT`, `ODT`, `DGT`, `CX`) by GPS coordinates,
+So that I can immediately verify if a property listing in Batdongsan/Chotot/Telegram is in a road expansion or public park planning zone.
+
+**Acceptance Criteria:**
+- **Given** spatial polygon dataset of Vietnam land zoning (Shapefile/GeoJSON in VN-2000 or WGS84), **When** ingested, **Then** geometry is validated with `ST_MakeValid()`, converted to WGS84 via `ST_Transform(geom, 4326)` or `pyproj`, subdivided with `ST_Subdivide()` for fast spatial indexing, and stored in `spatial_planning_zones` with unique constraint `(province, district, zone_code, polygon_hash)` and PostGIS GIST index on `polygon_geometry`.
+- **Given** GPS coordinates (`latitude`, `longitude`), **When** calling `SpatialPlanningService.query_zoning(lat, lng)`, **Then** it validates coordinate bounds (`102.0 <= lng <= 109.5`, `8.5 <= lat <= 23.5`), constructs point `ST_SetSRID(ST_MakePoint(lng, lat), 4326)` (preserving `(X=lng, Y=lat)` ordering), and executes `ST_Intersects()`, returning zoning classification within $\le 10$ms; if outside mapped zones, falls back safely to `zone_code: "UNZONED"` with `status: "NO_PLANNING_RESTRICTION"`.
+- **Given** property listings scraped from Batdongsan, Chotot, or Telegram, **When** geocoded, **Then** the system automatically enriches the listing with spatial zoning tags (`"Dính quy hoạch mở đường"` or `"100% Đất ở đô thị"`).
+- **Given** an AI Agent session, **When** calling `realestate_check_zoning(lat, lng)`, **Then** spatial planning status and confidence level are returned.
+
+**Validation & Testing:**
+- Unit tests: `test_spatial_planning.py` (Coordinate ordering assertion `(lng, lat)`, VN-2000 reprojection).
+- Integration test: `test_postgis_spatial_query.py` (PostGIS `ST_Intersects` query latency $\le 10$ms).
+- Mutation gate target: `SpatialPlanningService` $\ge 85\%$ mutation score.
+
+_AD-GIS-1 · AD-GIS-2 · AD-GIS-4 · AD-GIS-5 · AD-GIS-6 · Governed by `architecture-bds-planning-and-dkkd-2026-08-15`_
 
 ---
 
@@ -1990,6 +2007,28 @@ So that I don't have to manually re-run searches every day.
 
 _AD-33 (Generic Alert Engine — AlertRule template, `new_items` diff strategy)._
 
+### Story 12.10: LinkedIn Public Guest Jobs & Headcount Growth Signals `[P1]`
+
+As an executive recruiter or B2B SaaS founder,
+I want to scrape job listings via LinkedIn Public Guest API (`seeMoreJobPostings`) without login and track hiring velocity,
+So that I can identify expanding companies and source high-level candidates.
+
+**Acceptance Criteria:**
+- **Given** search criteria (keyword, location `geoId`, time filter `f_TPR`), **When** `LinkedInGuestScraper.search_jobs()` runs, **Then** it fetches HTML fragments from `seeMoreJobPostings/search` using rotating residential proxies (`socks5h://` with remote DNS resolution) and token-bucket rate limit $\le 25$ req/min/IP without requiring user credentials.
+- **Given** raw HTML chunks, **When** `selectolax` parser processes `data-entity-urn="urn:li:jobPosting:<id>"` with semantic fallback selectors, **Then** it extracts `title`, `company_name`, `company_slug`, `location`, `posted_at`, and `salary` into `linkedin_jobs` with unique constraint on `job_id`.
+- **Given** recruiter/contact information inside job descriptions, **When** persisted, **Then** it runs through `app/canonical/services/canonical_pii.py` to redact personal emails/phones before vector embedding generation (`vector(1536)`).
+- **Given** new jobs for a target company, **When** ingested, **Then** `linkedin_companies.active_jobs_count` is updated and `hiring_velocity_30d` is recomputed.
+- **Given** HTTP 429 or 302 Authwall challenge, **When** encountered, **Then** it triggers exponential backoff jitter with proxy rotation.
+- **Given** an AI Agent session, **When** calling `linkedin_search_jobs(query, location, limit)`, **Then** matched job postings with company metrics are returned.
+
+**Validation & Testing:**
+- Unit test: `test_linkedin_guest.py` (Hermetic `selectolax` parsing on golden HTML fixtures, 429 backoff).
+- Drift Canary: Periodic 6-hour test verifying selector validity against LinkedIn public guest endpoint.
+
+_AD-LI-1 · AD-LI-2 · AD-LI-3 · AD-LI-5 · Governed by `architecture-linkedin-b2b-2026-08-15`_
+
+---
+
 ## Epic 14: News Aggregation (Vietnam)
 
 ### Story 14.1: RSS Feed Integration `[P0]`
@@ -2184,24 +2223,23 @@ So that I can verify business partners and research market players via the Nowin
 
 _AD-34 · AD-35 · AD-25 · Method: HTML scrape (simple, low anti-bot)_
 
-### Story 16.2: Official Business Registry `[P1]`
+### Story 16.2: Official Business Registry (`dangkykinhdoanh.gov.vn`) `[P1]`
 
-As a compliance researcher,
-I want official company registration data from Vietnamese government portals,
-So that I can verify legal status and regulatory compliance.
+As a compliance researcher, corporate lawyer, or due diligence analyst,
+I want official company registration data, authentic charter capital, founding shareholders, and PDF change declarations from `dangkykinhdoanh.gov.vn`,
+So that I can verify authentic legal data rather than unverified third-party estimates.
 
 **Acceptance Criteria:**
-- **Given** government portal scraper is built, **When** a user queries by tax code, **Then** official registration data is returned: charter capital, business lines, ownership structure.
-- **Given** official data is fetched, **When** normalized to `Chunk[]`, **Then** it uses the same canonical `sourceId` as the masothue record when the tax code matches, and `metadata.source_count` and `metadata.conflict_flags` are set for `chainlens-research` to apply the `most_confident` strategy.
-- **Given** official data contains PII, **When** chunks are built, **Then** AD-25 redaction is applied before ingest.
-- **Given** a batch of official registry `Chunk[]`, **When** `NowingIngestService.ingest()` is called, **Then** it calls `POST /v1/ingest/scraper` and returns `ingestJobId`.
-- **Given** government portal trả về 403/401 do auth expired hoặc tax code không tìm thấy, **When** scraper chạy, **Then** nó trả `degraded=true` với `degradation_reason: auth_expired`/`not_found` và giữ link masothue.
-**Validation:**
-- Integration test: `test_business_gov_vn.py` — official data accessible
-- Unit test: `test_official_source_chunk_metadata.py` — `sourceId` matches masothue and `conflict_flags` present
-- Integration test: `test_business_gov_ingest_chainlens.py` — chunks sent to `chainlens-research`
+- **Given** a Tax Code (MST), **When** `NationalBusinessRegistryScraper.lookup_enterprise(tax_code)` runs, **Then** it queries `dangkykinhdoanh.gov.vn` and downloads official public declaration PDFs.
+- **Given** the declaration PDF, **When** parsed by Nowing PDF Parser, **Then** text is normalized via `unicodedata.normalize('NFC')` and converted from legacy TCVN3/VNI font encodings to UTF-8 (with OCR fallback for scanned image PDFs), and charter capital, founding shareholders, and legal representative history are saved into `official_enterprise_registrations`.
+- **Given** official data is fetched, **When** normalized to `Chunk[]`, **Then** it uses the same canonical `sourceId` as the masothue record with `metadata.conflict_flags` (e.g. `charter_capital_mismatch`) set for `chainlens-research`.
+- **Given** government portal returns 403 or tax code is not found, **When** scraper runs, **Then** it returns `degraded=true` with `not_found` and preserves existing data.
 
-_AD-34 · AD-35 · AD-24 (cross-source sourceId convention)_
+**Validation & Testing:**
+- Unit test: `test_dangkykinhdoanh_pdf.py` — Vietnamese font & Unicode NFC decoding.
+- Integration test: `test_business_gov_vn.py` — official data accessible and stored in `official_enterprise_registrations`.
+
+_AD-GIS-3 · AD-GIS-5 · AD-34 · AD-35 · Governed by `architecture-bds-planning-and-dkkd-2026-08-15`_
 
 ---
 
@@ -2224,6 +2262,8 @@ So that I stay informed about competitors and partners.
 
 _AD-33 (Generic Alert Engine — AlertRule template, `threshold_cross` diff strategy) · AD-34 · AD-35_
 
+---
+
 ### Story 16.4: Company Timeline `[P1]`
 
 As a researcher,
@@ -2242,6 +2282,26 @@ So that I understand its evolution and trajectory.
 - Integration test: `test_company_timeline_degradation.py` — graceful degradation when API unavailable
 
 _AD-34 · AD-35 · Timeline data owned by `chainlens-research`_
+
+---
+
+### Story 16.5: National Public Procurement & Tender Intelligence (`muasamcong.mpi.gov.vn`) `[P1]`
+
+As a business development manager or bid analyst,
+I want to ingest public bidding notices (TBMT), award results (KQLCNT), and parse attached tender dossiers (E-HSMT PDF/ZIP) from `muasamcong.mpi.gov.vn`,
+So that I never miss lucrative government procurement projects and can semantically search tender requirements with AI.
+
+**Acceptance Criteria:**
+- **Given** search filters (field, date range, price), **When** `MuasamcongScraper.search_tenders()` runs, **Then** it queries the e-GP v2.0 REST API with residential VN proxy, throttled by token-bucket rate limit $\le 15$ req/min/IP, and parses structured JSON bidding notices into `procurement_tenders` with composite unique constraint `(bid_code, bid_turn_no)`.
+- **Given** a bidding notice with attached HSMT files (PDF/ZIP/RAR), **When** `download_hsmt_documents_task` runs, **Then** files are streamed into S3 bucket `s3://nowing-procurement-docs/{bid_code}/` in 128KB chunks via `aioboto3` (memory safe, never buffering full file into RAM), ZIP files are safely unarchived decoding CP437/CP1258 filenames, and parsed text is chunked into `procurement_tender_chunks` with `embedding vector(1536)` and HNSW index.
+- **Given** an active `AlertRule` matching enterprise field and price threshold, **When** a matching tender is published, **Then** `AlertEngine` fires an instant alert notification.
+- **Given** an AI Agent session, **When** calling `procurement_search_tenders()` or `procurement_summarize_hsmt(bid_code)`, **Then** the agent extracts key requirements, contractor financial prerequisite (3-year average revenue, similar contracts, bid guarantee), and submission deadlines directly from vector chunks.
+
+**Validation & Testing:**
+- Unit test: `test_muasamcong_client.py` (Rate-limiter throttling, JSON parsing).
+- Integration test: `test_muasamcong_s3_stream.py` (S3 128KB streaming memory safety, MD5 hash verification).
+
+_AD-PROC-1 · AD-PROC-2 · AD-PROC-3 · AD-PROC-4 · AD-PROC-5 · AD-PROC-6 · AD-PROC-7 · Governed by `architecture-muasamcong-procurement-2026-08-15`_
 
 ---
 
@@ -2268,25 +2328,41 @@ So that I can perform pricing analysis and competitor tracking.
 
 _AD-34 · AD-35 · Method: HTML scrape (moderate anti-bot, residential proxies preferred)_
 
-### Story 17.2: Shopee Product Data `[P2]`
+### Story 17.2: Shopee Vietnam In-House Scraper & Price Normalization `[P1]`
 
 As a market intelligence analyst,
-I want product data from Shopee Vietnam (56% market share),
-So that I can track the dominant e-commerce platform.
+I want product data from Shopee Vietnam (70%+ market share) via internal fast JSON API (`/api/v4/search/search_items` and `/api/v4/item/get`),
+So that I can track products, historical units sold, ratings, and price history with high performance (<200ms) without headless browser overhead.
 
 **Acceptance Criteria:**
-- **Given** Shopee data source is connected (third-party API or in-house scraper), **When** a user searches by keyword, **Then** product listings are returned.
-- **Given** product data is fetched, **When** normalized to `Chunk[]`, **Then** `metadata.source: 'nowing_scraper'`, `sourceId` (stable per product + platform), `domain: 'shopee.vn'`, `fetchedAt`, `contentType: 'product'` are set.
-- **Given** Shopee data is fetched, **When** the batch is ingested, **Then** `NowingIngestService` calls `POST /v1/ingest/scraper` with the same canonical `sourceId` pattern as Lazada for cross-platform deduplication.
-- **Given** the same product appears on Lazada and Shopee, **When** `chainlens-research` indexes both, **Then** the `chainlens-research` canonical index handles cross-platform deduplication; Nowing does not merge them locally.
-- **Given** the third-party Shopee data source is unavailable, returns 5xx, or the API quota is exhausted (429), **When** the scraper runs, **Then** it returns `degraded=true` with a `degradation_reason` and does not block Lazada data ingestion.
-**Validation:**
-- Integration test: `test_shopee_data_source.py` — data accessible
-- Unit test: `test_shopee_to_chunks.py` — `sourceId` matches cross-platform convention
-- Integration test: `test_shopee_ingest_chainlens.py` — chunks sent to `chainlens-research`
-- Integration test: `test_cross_platform_dedup_chainlens.py` — `chainlens-research` returns merged product
+- **Given** search parameters (keyword, sort by relevancy/sales/price), **When** `ShopeeScraper.search_items()` is called, **Then** it queries `https://shopee.vn/api/v4/search/search_items` with mobile headers (`User-Agent: Shopee/3.x`, `x-api-source: rsrc`) and residential VN proxy, returning paginated items within $\le 200$ms.
+- **Given** item price from Shopee API, **When** parsed, **Then** the engine divides price by `100,000` using `Decimal(raw_price) / Decimal("100000")` quantized to `NUMERIC(18, 2)` with `ROUND_HALF_UP` (preventing floating point inaccuracies) and saves into `ecommerce_products.current_price` and `original_price`.
+- **Given** item data is fetched, **When** stored in PostgreSQL, **Then** it executes an idempotent UPSERT on `(platform, item_id, shop_id)` and records a new entry into `ecommerce_price_history` ONLY when `new_price != last_recorded_price` (time-series deduplication).
+- **Given** product details request (`item_id`, `shop_id`), **When** calling `ShopeeScraper.get_item_detail()`, **Then** it returns full specs, description, brand, shop location, rating count breakdown, and historical units sold.
+- **Given** Shopee API returns 429 or CAPTCHA, **When** detected, **Then** `ScraperPlatformAccountRotator` rotates proxies with backoff jitter and returns `degraded=true` if all retries are exhausted.
 
-_AD-34 · AD-35 · Method: Third-party API (Apify/Bright Data) recommended; in-house requires 8-12w_
+**Validation & Testing:**
+- Unit test: `test_shopee_price_scaling.py` — verifies `Decimal` division by 100,000 and bounds sanity check.
+- Integration test: `test_shopee_search_and_upsert.py` — checks idempotent PostgreSQL persistence and price deduplication.
+- Mutation gate target: `ShopeeScraper.normalizer` $\ge 85\%$ mutation score.
+
+_AD-EC-1 · AD-EC-2 · AD-EC-3 · AD-EC-4 · Governed by `architecture-shopee-ecommerce-2026-08-15`_
+
+---
+
+### Story 17.5: TikTok Shop Product & Trending SKUs Ingestion `[P2]`
+
+As a social commerce researcher,
+I want product, pricing, and sales volume data from TikTok Shop Vietnam,
+So that I can analyze viral e-commerce trends, top KOC promoted products, and competitive pricing.
+
+**Acceptance Criteria:**
+- **Given** search query or category, **When** `TikTokShopScraper` is executed with anti-tamper signature isolation (`_signature`, `msToken`), **Then** it returns product listings with title, current price (using divisor `1.0`), units sold, shop name, rating, and creator/affiliate metrics.
+- **Given** product data is ingested, **When** stored, **Then** records are saved into `ecommerce_products` with `platform: 'tiktok_shop'` and linked to `ecommerce_price_history`.
+- **Given** historical product runs, **When** analyzed, **Then** the engine calculates sales velocity `(sold_t2 - sold_t1) / delta_days` to classify trending breakout SKUs.
+- **Given** an AI Agent session, **When** calling `ecommerce_search_products(platform='tiktok_shop', query=...)`, **Then** top trending products with sales velocity metrics are returned.
+
+_AD-EC-1 · AD-EC-2 · AD-EC-3 · AD-EC-6_
 
 
 
@@ -2468,18 +2544,46 @@ _Kỹ thuật: Middleware in `app/middleware/tenant_context.py`, rate limiter wi
 ---
 
 
-## Epic 21: Lead Gen Intelligence `[PROPOSED]`
+## Epic 21: Lead Gen Intelligence & Social Graph `[in-progress]`
 
-_This epic is currently a proposal. Full scope, governance gates, stories and UX contracts are maintained in `epic21-proposal-2026-08-11.md`._
+> **Epic Goal:** Trung tâm Xử lý, Chấm điểm và Quản trị Lead tập trung (Lead Intelligence & CRM Hub) của toàn hệ thống Nowing. Tiếp nhận dữ liệu khách hàng tiềm năng từ TẤT CẢ các phễu cào (BĐS Epic 10, Tuyển dụng Epic 12, Đấu thầu/Pháp lý Epic 16, TMĐT Epic 17, Telegram Epic 22 và Mạng xã hội qua `XActions`), bóc tách thông tin liên hệ (SĐT, Email, Tên), phân loại ý định thương mại (Intent Signals), chấm điểm Fit Score, lưu trữ vào Lead CRM và kích hoạt chiến dịch Outbound Automation.
 
-**Status:** `PROPOSED` — cannot be scheduled until governance gates close.
+**Status:** `[in-progress]`  
+**Governed by Architecture Spines:** `architecture-xactions-social-integration-2026-08-15` & `architecture-linkedin-b2b-2026-08-15`.
 
-**Governance gates before scheduling:**
-- Legal / ToS review for email outreach.
-- Vendor contracts and data-quality POC for contact-enrichment providers (Cleanlist / BetterContact).
-- Zalo OA business verification and Decree 356 compliance sign-off — `DEFERRED` out of MVP.
-- PII pipeline design with `consent_status` / `legal_basis` fields.
-- CRM sync scope: read-first, then write-back phased sync and conflict-resolution policy.
+### Story 21.8: Social Ingress via XActions Integration (Facebook Groups & Twitter/X Feed) `[P1]`
+
+As a B2B sales development representative or real estate investor,
+I want to ingest targeted Facebook Group posts and Twitter keyword searches via XActions integration (`/Users/luisphan/Documents/GitHub/XActions`),
+So that I can capture real-time social conversations and extract contact numbers without building scrapers from scratch.
+
+**Acceptance Criteria:**
+- **Given** target groups or search keywords, **When** `XActionsSocialAdapter` calls `x_facebook_group_posts` or `x_search_tweets`, **Then** raw social posts are fetched via XActions stealth session pool with sticky 1-to-1 residential proxy IP binding per account.
+- **Given** raw post data, **When** ingested into PostgreSQL, **Then** records are saved into `social_monitored_targets` and `social_posts` with unique constraint `(platform, external_post_id)` and pushed to Redis Stream `stream:social:raw_posts`.
+- **Given** post content, **When** `SocialEntityExtractor` processes the text, **Then** it runs a 3-step pipeline (pre-normalization of letter-substitutions `o/O->0`, punctuation stripping, Vietnamese regex pattern matching) protected by a 50ms timeout against ReDoS, extracting phone numbers (formats `0912...`, `o9.xx...`, `+84...`), prices, and locations into `raw_entities JSONB`, and assigning `intent_tag: 'sell'`, `'buy'`, `'hiring'`, or `'seeking'`.
+- **Given** new ingested posts, **When** matching active `AlertRule` saved searches, **Then** `AlertEngine` fires instant notifications via Telegram/Email.
+- **Given** an AI Agent session, **When** calling `social_search_posts(platform, intent, keyword)`, **Then** matched posts with extracted contact numbers are returned.
+
+**Validation & Testing:**
+- Unit test: `test_obfuscated_phone_regex.py` — verifies extraction of 10+ obfuscated VN phone variants.
+- Unit test: `test_phone_regex_redos_safety.py` — asserts execution $\le 50$ms on pathological input strings.
+- Integration test: `test_social_redis_stream.py` — verifies Redis Stream ingestion and Celery processing.
+
+_AD-SOC-1 · AD-SOC-2 · AD-SOC-4 · AD-SOC-5 · AD-SOC-6 · AD-SOC-7_
+
+---
+
+### Story 21.9: Executive Decision Maker Mapping & B2B Lead Outreach `[P2]`
+
+As an enterprise sales team or SaaS founder,
+I want to identify C-Level executives and HR leaders of expanding companies,
+So that I can initiate personalized outreach and CRM synchronization.
+
+**Acceptance Criteria:**
+- **Given** a target company (`company_slug` or company name), **When** `LinkedInCompanyService.enrich_executives()` runs, **Then** it executes public Google SERP dorking (`site:linkedin.com/in/ "Company" ("CEO" OR "Director" OR "Founder")`) avoiding login wall, extracting public professional leadership profiles into `linkedin_companies.decision_makers JSONB` in strict compliance with Nghị định 13/2023/NĐ-CP.
+- **Given** an AI Agent session, **When** calling `linkedin_lookup_company_executives(company_name)` or `social_search_posts(platform, intent, keyword)`, **Then** verified leadership names, titles, and public contact signals are returned.
+
+_AD-LI-4 · AD-LI-6_
 
 ---
 

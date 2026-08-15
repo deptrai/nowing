@@ -48,6 +48,12 @@ class BillingUnit(StrEnum):
     VIETSTOCK_DATA = "vietstock_data"
     MASOTHUE_COMPANY = "masothue_company"
     LEAD_SCORE = "lead_score"
+    PROCUREMENT_QUERY = "procurement_query"
+    PROCUREMENT_HSMT = "procurement_hsmt"
+    SOCIAL_LEAD_ITEM = "social_lead_item"
+    TELEGRAM_MESSAGE = "telegram_message"
+    ECOMMERCE_PRODUCT = "ecommerce_product"
+
 
 
 class BillableInput(Protocol):

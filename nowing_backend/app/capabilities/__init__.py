@@ -4,10 +4,17 @@ from __future__ import annotations
 
 from app.capabilities import (
     amazon as _amazon,  # noqa: F401
+    b2b as _b2b,  # noqa: F401
     cafef as _cafef,  # noqa: F401
+    ecommerce as _ecommerce,  # noqa: F401
     indeed as _indeed,  # noqa: F401
     itviec as _itviec,  # noqa: F401
     masothue as _masothue,  # noqa: F401
+    procurement as _procurement,  # noqa: F401
+    realestate as _realestate,  # noqa: F401
+    recruitment as _recruitment,  # noqa: F401
+    social as _social,  # noqa: F401
+    telegram as _telegram,  # noqa: F401
     topcv as _topcv,  # noqa: F401
     vietnamworks as _vietnamworks,  # noqa: F401
     vietstock as _vietstock,  # noqa: F401
@@ -16,3 +23,4 @@ from app.capabilities import (
 )
 
 __all__: list[str] = []
+

@@ -1,0 +1,52 @@
+"""Input and output schemas for realestate.zoning capability (Story 10.8 / AD-GIS-6)."""
+
+from __future__ import annotations
+
+from pydantic import BaseModel, Field
+
+from app.proprietary.platforms.spatial_planning.schemas import PlanningZoneItem
+
+
+class ZoningCheckInput(BaseModel):
+    """Input payload for real estate land zoning verification."""
+
+    latitude: float = Field(
+        ...,
+        description="Latitude coordinate in decimal degrees (e.g. 21.0285 for Hanoi, 10.8231 for HCM)",
+    )
+    longitude: float = Field(
+        ...,
+        description="Longitude coordinate in decimal degrees (e.g. 105.8542 for Hanoi, 106.6297 for HCM)",
+    )
+    address: str | None = Field(
+        default=None,
+        description="Optional human-readable cadastral address for display and reporting context",
+    )
+
+
+class ZoningCheckOutput(BaseModel):
+    """Output payload summarizing land zoning classification and road clearance risks."""
+
+    latitude: float
+    longitude: float
+    address: str | None = None
+    has_road_expansion_risk: bool = Field(
+        default=False,
+        description="True if the coordinates intersect a road widening or transportation zone (DGT)",
+    )
+    zones: list[PlanningZoneItem] = Field(
+        default_factory=list,
+        description="List of all intersecting planning zones with classification polarity",
+    )
+    summary: str = Field(
+        default="",
+        description="Human-readable executive summary of the zoning and legal status in Vietnamese",
+    )
+    risk_notes: list[str] = Field(
+        default_factory=list,
+        description="Detailed legal or infrastructure clearance risk warnings",
+    )
+    query_latency_ms: float | None = Field(
+        default=None,
+        description="Spatial intersection query latency in milliseconds",
+    )

@@ -4765,3 +4765,173 @@ class CrmSyncLog(Base, TimestampMixin):
     workspace = relationship("Workspace", back_populates="crm_sync_logs")
     connection = relationship("CrmConnection", back_populates="sync_logs")
 
+
+class LinkedinCompany(Base, TimestampMixin):
+    """A company ingested from LinkedIn Guest Jobs/Pages (Story 21.9 / AD-LI-1 / AD-LI-5)."""
+
+    __tablename__ = "linkedin_companies"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    company_slug = Column(String(255), nullable=False, unique=True, index=True)
+    company_name = Column(Text, nullable=False, index=True)
+    website = Column(Text, nullable=True)
+    industry = Column(String(255), nullable=True)
+    headcount_range = Column(String(50), nullable=True)
+    headquarters = Column(String(255), nullable=True)
+    active_jobs_count = Column(Integer, nullable=False, default=0, server_default="0")
+    decision_makers = Column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+
+    jobs = relationship(
+        "LinkedinJob",
+        back_populates="company",
+        cascade="all, delete-orphan",
+    )
+    decision_maker_records = relationship(
+        "CompanyDecisionMaker",
+        back_populates="company",
+        cascade="all, delete-orphan",
+    )
+
+
+class LinkedinJob(Base, TimestampMixin):
+    """A job posting ingested from LinkedIn Public Guest API (Story 21.9 / AD-LI-1 / AD-LI-5)."""
+
+    __tablename__ = "linkedin_jobs"
+
+    __table_args__ = (
+        Index("idx_li_jobs_company_name", "company_name"),
+        Index("idx_li_jobs_posted", "posted_at"),
+    )
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    job_id = Column(String(100), nullable=False, unique=True, index=True)
+    company_id = Column(
+        BigInteger,
+        ForeignKey("linkedin_companies.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    company_name = Column(String(255), nullable=False, index=True)
+    title = Column(Text, nullable=False)
+    location = Column(String(255), nullable=True)
+    workplace_type = Column(String(50), nullable=True)
+    seniority_level = Column(String(50), nullable=True)
+    employment_type = Column(String(50), nullable=True)
+    description_text = Column(Text, nullable=True)
+    skills = Column(ARRAY(String), nullable=True, default=list)
+    posted_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
+    raw_entities = Column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+
+    company = relationship("LinkedinCompany", back_populates="jobs")
+
+
+class CompanyDecisionMaker(Base, TimestampMixin):
+    """Executive decision-maker mapped for B2B outreach (Story 21.9 / AD-LI-4 / AD-LI-5)."""
+
+    __tablename__ = "company_decision_makers"
+
+    __table_args__ = (
+        UniqueConstraint("company_id", "linkedin_slug", name="uq_company_executive"),
+        Index("idx_executives_company_title", "company_name", "title"),
+        Index("idx_executives_slug", "linkedin_slug"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(
+        BigInteger,
+        ForeignKey("linkedin_companies.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    company_name = Column(String(255), nullable=False, index=True)
+    full_name = Column(String(255), nullable=False)
+    title = Column(String(255), nullable=True)
+    department = Column(String(100), nullable=True)
+    linkedin_url = Column(Text, nullable=True)
+    linkedin_slug = Column(String(255), nullable=False, index=True)
+    email_prediction = Column(String(255), nullable=True)
+    confidence_score = Column(Float, nullable=False, default=0.0, server_default="0")
+    verified_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
+    company = relationship("LinkedinCompany", back_populates="decision_maker_records")
+
+
+class SocialMonitoredTarget(Base, TimestampMixin):
+    """Monitored social groups, pages, or search terms (Story 21.8 / AD-SOC-1 to AD-SOC-7)."""
+
+    __tablename__ = "social_monitored_targets"
+
+    __table_args__ = (
+        UniqueConstraint("platform", "target_id", name="uq_social_target"),
+        Index("idx_social_targets_platform", "platform"),
+        Index("idx_social_targets_active", "is_active"),
+    )
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    platform = Column(String(50), nullable=False)  # 'facebook_group', 'facebook_page', 'twitter_keyword', 'twitter_user'
+    target_id = Column(String(255), nullable=False)
+    target_name = Column(Text, nullable=False)
+    target_url = Column(Text, nullable=True)
+    category = Column(String(50), nullable=False, default="general", server_default=text("'general'"))
+    is_active = Column(Boolean, nullable=False, default=True, server_default="true")
+    realtime_stream = Column(Boolean, nullable=False, default=False, server_default="false")
+    scrape_interval_minutes = Column(Integer, nullable=False, default=15, server_default="15")
+    poll_interval_seconds = Column(Integer, nullable=False, default=900, server_default="900")
+    status = Column(String(50), nullable=False, default="active", server_default=text("'active'"))
+    last_polled_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    last_scraped_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
+    posts = relationship(
+        "SocialPost",
+        back_populates="target",
+        cascade="all, delete-orphan",
+    )
+
+
+class SocialPost(Base, TimestampMixin):
+    """Ingested social post from Facebook or Twitter (Story 21.8 / AD-SOC-1 to AD-SOC-7)."""
+
+    __tablename__ = "social_posts"
+
+    __table_args__ = (
+        UniqueConstraint("platform", "external_post_id", name="uq_social_post"),
+        Index("idx_social_posts_platform_ext", "platform", "external_post_id"),
+        Index("idx_social_posts_published", "published_at"),
+        Index("idx_social_posts_intent", "intent_tag"),
+        Index("idx_social_posts_gin_entities", "raw_entities", postgresql_using="gin"),
+    )
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    target_id = Column(
+        BigInteger,
+        ForeignKey("social_monitored_targets.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    platform = Column(String(50), nullable=False)  # 'facebook', 'twitter'
+    external_post_id = Column(String(255), nullable=False)
+    author_name = Column(Text, nullable=True)
+    author_id = Column(String(255), nullable=True)
+    author_url = Column(Text, nullable=True)
+    post_url = Column(Text, nullable=True)
+    content = Column(Text, nullable=True)
+    intent_tag = Column(String(50), nullable=True)  # 'sell', 'buy', 'hiring', 'seeking', 'news', 'other'
+    fit_score = Column(Float, nullable=False, default=0.0, server_default="0")
+    reactions_count = Column(Integer, nullable=False, default=0, server_default="0")
+    comments_count = Column(Integer, nullable=False, default=0, server_default="0")
+    shares_count = Column(Integer, nullable=False, default=0, server_default="0")
+    raw_entities = Column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+    media_urls = Column(ARRAY(Text), nullable=True)
+    embedding = Column(Vector(config.embedding_model_instance.dimension), nullable=True)
+    published_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
+    target = relationship("SocialMonitoredTarget", back_populates="posts")
+
+
+

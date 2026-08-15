@@ -91,6 +91,7 @@ from .image_generation_routes import router as image_generation_router
 from .incentive_tasks_routes import router as incentive_tasks_router
 from .jira_add_connector_route import router as jira_add_connector_router
 from .lead_scoring_routes import router as lead_scoring_router
+from .leads_routes import router as leads_router
 from .linear_add_connector_route import router as linear_add_connector_router
 from .logs_routes import router as logs_router
 from .luma_add_connector_route import router as luma_add_connector_router
@@ -126,6 +127,7 @@ router = APIRouter()
 
 router.include_router(workspaces_router)
 router.include_router(lead_scoring_router)
+router.include_router(leads_router)
 router.include_router(enrichment_router)
 router.include_router(crm_router, prefix="/workspaces")
 router.include_router(crm_oauth_router)
