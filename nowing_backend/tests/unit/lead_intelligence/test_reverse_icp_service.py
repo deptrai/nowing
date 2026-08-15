@@ -32,7 +32,11 @@ MOCK_CRAWLED_DATA = {
             "description": "Biệt thự & Chung cư cao cấp",
         }
     ],
-    "headings": ["Vinhomes Ocean Park", "Tiện ích đẳng cấp 5 sao", "Chính sách bán hàng 2026"],
+    "headings": [
+        "Vinhomes Ocean Park",
+        "Tiện ích đẳng cấp 5 sao",
+        "Chính sách bán hàng 2026",
+    ],
     "clean_text": "Vinhomes Ocean Park mang đến chuẩn sống nghỉ dưỡng giữa lòng thủ đô...",
     "crawl_latency_ms": 320,
 }
@@ -48,7 +52,10 @@ MOCK_LLM_JSON_PAYLOAD = {
             "industry": "Kinh doanh tự do / C-Level",
             "company_size": "Cá nhân có tài chính > 5 tỷ",
             "pain_points": ["Thiếu không gian sống xanh", "Áp lực giao thông nội đô"],
-            "buying_triggers": ["Chính sách hỗ trợ lãi suất 0%", "Khai trương Vincom/Trường học"],
+            "buying_triggers": [
+                "Chính sách hỗ trợ lãi suất 0%",
+                "Khai trương Vincom/Trường học",
+            ],
         },
         {
             "title": "Giám đốc Sàn Giao Dịch BĐS",
@@ -100,9 +107,14 @@ class TestReverseIcpService:
 
         service = ReverseIcpService()
 
-        with patch.object(
-            service, "_get_from_cache", AsyncMock(return_value=MOCK_LLM_JSON_PAYLOAD)
-        ), patch.object(service, "_fetch_and_parse_crawl", AsyncMock()) as mock_crawl:
+        with (
+            patch.object(
+                service,
+                "_get_from_cache",
+                AsyncMock(return_value=MOCK_LLM_JSON_PAYLOAD),
+            ),
+            patch.object(service, "_fetch_and_parse_crawl", AsyncMock()) as mock_crawl,
+        ):
             result = await service.analyze_url("https://vinhomes.vn")
 
             assert isinstance(result, ReverseIcpResponse)
@@ -119,11 +131,20 @@ class TestReverseIcpService:
 
         service = ReverseIcpService()
 
-        with patch.object(service, "_get_from_cache", AsyncMock(return_value=None)), patch.object(
-            service, "_fetch_and_parse_crawl", AsyncMock(return_value=MOCK_CRAWLED_DATA)
-        ), patch.object(
-            service, "_call_llm_for_icp", AsyncMock(return_value=MOCK_LLM_JSON_PAYLOAD)
-        ), patch.object(service, "_save_to_cache", AsyncMock()) as mock_save_cache:
+        with (
+            patch.object(service, "_get_from_cache", AsyncMock(return_value=None)),
+            patch.object(
+                service,
+                "_fetch_and_parse_crawl",
+                AsyncMock(return_value=MOCK_CRAWLED_DATA),
+            ),
+            patch.object(
+                service,
+                "_call_llm_for_icp",
+                AsyncMock(return_value=MOCK_LLM_JSON_PAYLOAD),
+            ),
+            patch.object(service, "_save_to_cache", AsyncMock()) as mock_save_cache,
+        ):
             result = await service.analyze_url("https://vinhomes.vn")
 
             assert isinstance(result, ReverseIcpResponse)
@@ -153,7 +174,9 @@ class TestReverseIcpService:
         from app.lead_intelligence.reverse_icp import ReverseIcpService
 
         service = ReverseIcpService()
-        raw_output = f"Analysis result: {json.dumps(MOCK_LLM_JSON_PAYLOAD)} (End of JSON)"
+        raw_output = (
+            f"Analysis result: {json.dumps(MOCK_LLM_JSON_PAYLOAD)} (End of JSON)"
+        )
 
         parsed = service._parse_llm_json_response(raw_output)
         assert parsed["company_name"] == "Vinhomes"

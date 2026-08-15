@@ -668,7 +668,7 @@ async def reverse_icp_endpoint(
         session,
         auth,
         workspace_id,
-        Permission.WORKSPACE_READ.value,
+        Permission.LEADS_READ.value,
         error_message="You don't have permission to access lead intelligence in this workspace",
     )
 
@@ -699,4 +699,3 @@ async def reverse_icp_endpoint(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to analyze URL: {exc}",
         ) from exc
-

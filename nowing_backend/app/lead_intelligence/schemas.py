@@ -260,7 +260,9 @@ class ReverseIcpRequest(BaseModel):
     """Payload for 1-Click Reverse-ICP URL analysis."""
 
     url: str = Field(..., description="Target website, project, or landing page URL")
-    custom_instructions: str | None = Field(default=None, description="Optional custom focus instructions")
+    custom_instructions: str | None = Field(
+        default=None, description="Optional custom focus instructions"
+    )
 
 
 class ReverseIcpResponse(BaseModel):
@@ -278,4 +280,3 @@ class ReverseIcpResponse(BaseModel):
     filter_presets: FilterPresets = Field(default_factory=FilterPresets)
     chat_starter_prompts: list[str] = Field(default_factory=list)
     raw_metadata: dict[str, Any] = Field(default_factory=dict)
-

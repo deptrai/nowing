@@ -53,23 +53,34 @@ class ReverseIcpService:
         try:
             import redis.asyncio as aioredis
 
-            redis_client = aioredis.from_url(config.REDIS_APP_URL, decode_responses=True)
+            redis_client = aioredis.from_url(
+                config.REDIS_APP_URL, decode_responses=True
+            )
             cached_val = await redis_client.get(cache_key)
             await redis_client.aclose()
             if cached_val:
                 return json.loads(cached_val)
         except Exception as exc:
-            logger.debug("[ReverseIcpService] Redis cache lookup failed (skipping cache): %s", exc)
+            logger.debug(
+                "[ReverseIcpService] Redis cache lookup failed (skipping cache): %s",
+                exc,
+            )
         return None
 
-    async def _save_to_cache(self, url: str, data: dict[str, Any], ttl: int = 3600) -> None:
+    async def _save_to_cache(
+        self, url: str, data: dict[str, Any], ttl: int = 3600
+    ) -> None:
         """Store ReverseIcpResponse payload in Redis cache."""
         cache_key = self._get_cache_key(url)
         try:
             import redis.asyncio as aioredis
 
-            redis_client = aioredis.from_url(config.REDIS_APP_URL, decode_responses=True)
-            await redis_client.set(cache_key, json.dumps(data, ensure_ascii=False), ex=ttl)
+            redis_client = aioredis.from_url(
+                config.REDIS_APP_URL, decode_responses=True
+            )
+            await redis_client.set(
+                cache_key, json.dumps(data, ensure_ascii=False), ex=ttl
+            )
             await redis_client.aclose()
         except Exception as exc:
             logger.debug("[ReverseIcpService] Redis cache write failed: %s", exc)
@@ -112,8 +123,13 @@ class ReverseIcpService:
                 try:
                     return json.loads(match.group(1))
                 except json.JSONDecodeError as exc:
-                    logger.warning("[ReverseIcpService] Fallback regex JSON parsing failed: %s", exc)
-            raise ValueError(f"Could not parse valid JSON from LLM response: {raw_text[:200]}") from None
+                    logger.warning(
+                        "[ReverseIcpService] Fallback regex JSON parsing failed: %s",
+                        exc,
+                    )
+            raise ValueError(
+                f"Could not parse valid JSON from LLM response: {raw_text[:200]}"
+            ) from None
 
     def _build_user_prompt(
         self, crawl_data: dict[str, Any], custom_instructions: str | None = None
@@ -134,7 +150,9 @@ class ReverseIcpService:
         ]
 
         if og_tags:
-            prompt_parts.append(f"OpenGraph tags: {json.dumps(og_tags, ensure_ascii=False)}")
+            prompt_parts.append(
+                f"OpenGraph tags: {json.dumps(og_tags, ensure_ascii=False)}"
+            )
 
         if json_ld:
             # Summary of schema types
@@ -148,7 +166,9 @@ class ReverseIcpService:
             prompt_parts.append(f"Nội dung tiêu biểu:\n{clean_text}")
 
         if custom_instructions:
-            prompt_parts.append(f"\nYêu cầu tùy chỉnh bổ sung từ người dùng:\n{custom_instructions}")
+            prompt_parts.append(
+                f"\nYêu cầu tùy chỉnh bổ sung từ người dùng:\n{custom_instructions}"
+            )
 
         prompt_parts.append("""
 Vui lòng xuất kết quả theo định dạng JSON với cấu trúc:
@@ -217,14 +237,18 @@ Vui lòng xuất kết quả theo định dạng JSON với cấu trúc:
         # 1. Check Cache
         cached_data = await self._get_from_cache(url)
         if cached_data:
-            logger.info("[ReverseIcpService] Returning cached Reverse-ICP result for %s", url)
+            logger.info(
+                "[ReverseIcpService] Returning cached Reverse-ICP result for %s", url
+            )
             return ReverseIcpResponse.model_validate(cached_data)
 
         # 2. Fast Crawl
         crawl_data = await self._fetch_and_parse_crawl(url)
 
         # 3. Call LLM Reasoning
-        icp_dict = await self._call_llm_for_icp(crawl_data, custom_instructions, model=model)
+        icp_dict = await self._call_llm_for_icp(
+            crawl_data, custom_instructions, model=model
+        )
 
         # 4. Attach metadata
         if "raw_metadata" not in icp_dict or not icp_dict["raw_metadata"]:

@@ -30,7 +30,9 @@ class TestUrlNormalization:
         from app.proprietary.platforms.crawler.fast_crawler import normalize_target_url
 
         assert normalize_target_url("vinhomes.vn") == "https://vinhomes.vn"
-        assert normalize_target_url("topcv.vn/tuyen-dung") == "https://topcv.vn/tuyen-dung"
+        assert (
+            normalize_target_url("topcv.vn/tuyen-dung") == "https://topcv.vn/tuyen-dung"
+        )
 
     def test_normalize_url_strips_tracking_query_params(self) -> None:
         """Should strip utm_*, fbclid, gclid, and ref tracking parameters."""
@@ -44,7 +46,9 @@ class TestUrlNormalization:
         from app.proprietary.platforms.crawler.fast_crawler import normalize_target_url
 
         url = "https://example.com/search?q=oceanpark&page=2&utm_source=google"
-        assert normalize_target_url(url) == "https://example.com/search?q=oceanpark&page=2"
+        assert (
+            normalize_target_url(url) == "https://example.com/search?q=oceanpark&page=2"
+        )
 
     def test_normalize_url_rejects_non_http_schemes(self) -> None:
         """Should reject file://, gopher://, ftp://, javascript:// schemes."""
@@ -142,7 +146,9 @@ class TestSSRFProtection:
         mock_response_302.headers = {"Location": "http://127.0.0.1:8000/admin"}
 
         with (
-            patch.object(crawler, "_send_raw_request", AsyncMock(return_value=mock_response_302)),
+            patch.object(
+                crawler, "_send_raw_request", AsyncMock(return_value=mock_response_302)
+            ),
             pytest.raises(SSRFProtectionError),
         ):
             await crawler.fetch_and_parse("https://malicious-public-site.com/redirect")

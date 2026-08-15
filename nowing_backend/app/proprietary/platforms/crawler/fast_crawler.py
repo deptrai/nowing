@@ -24,7 +24,9 @@ _BLOCKED_NETWORKS = [
     ipaddress.ip_network("10.0.0.0/8"),
     ipaddress.ip_network("172.16.0.0/12"),
     ipaddress.ip_network("192.168.0.0/16"),
-    ipaddress.ip_network("169.254.0.0/16"),  # Link-local & AWS/GCP Metadata 169.254.169.254
+    ipaddress.ip_network(
+        "169.254.0.0/16"
+    ),  # Link-local & AWS/GCP Metadata 169.254.169.254
     ipaddress.ip_network("0.0.0.0/8"),
     ipaddress.ip_network("100.64.0.0/10"),  # Carrier-grade NAT
     ipaddress.ip_network("192.0.0.0/24"),
@@ -38,7 +40,16 @@ _BLOCKED_NETWORKS = [
     ipaddress.ip_network("fe80::/10"),  # IPv6 Link-Local
 ]
 
-_TRACKING_PARAM_PREFIXES = ("utm_", "fbclid", "gclid", "ref", "ref_", "source", "campaign", "mc_eid")
+_TRACKING_PARAM_PREFIXES = (
+    "utm_",
+    "fbclid",
+    "gclid",
+    "ref",
+    "ref_",
+    "source",
+    "campaign",
+    "mc_eid",
+)
 _MAX_REDIRECT_HOPS = 3
 _MAX_BODY_TEXT_CHARS = 2000
 
@@ -78,7 +89,9 @@ def normalize_target_url(raw_url: str) -> str:
     parsed = urlparse(s)
     scheme = parsed.scheme.lower()
     if scheme not in ("http", "https"):
-        raise ValueError(f"Unsupported URL scheme: {scheme}. Only http and https are allowed.")
+        raise ValueError(
+            f"Unsupported URL scheme: {scheme}. Only http and https are allowed."
+        )
 
     netloc = parsed.netloc.strip().lower()
     if not netloc:
@@ -164,7 +177,8 @@ def _flatten_json_ld_item(item: Any, target_types: set[str]) -> list[dict[str, A
             if any(t in target_types for t in schema_type):
                 results.append(item)
         elif isinstance(schema_type, str) and (
-            schema_type in target_types or any(t.lower() in schema_type.lower() for t in target_types)
+            schema_type in target_types
+            or any(t.lower() in schema_type.lower() for t in target_types)
         ):
             results.append(item)
     return results
@@ -218,22 +232,32 @@ class FastCrawler:
 
     def extract_clean_hero_text(self, tree: HTMLParser, max_chars: int = 2000) -> str:
         """Extract clean body text stripped of boilerplate nav/footer/script."""
-        for unwanted in tree.css("script, style, nav, footer, header, aside, noscript, svg, button, form, iframe"):
+        for unwanted in tree.css(
+            "script, style, nav, footer, header, aside, noscript, svg, button, form, iframe"
+        ):
             unwanted.decompose()
 
         main_node = tree.css_first("main, article, #content, .content, body")
-        raw_clean_text = main_node.text(separator=" ", strip=True) if main_node else tree.text(separator=" ", strip=True)
+        raw_clean_text = (
+            main_node.text(separator=" ", strip=True)
+            if main_node
+            else tree.text(separator=" ", strip=True)
+        )
         clean_text = re.sub(r"\s+", " ", raw_clean_text).strip()
         if len(clean_text) > max_chars:
             clean_text = clean_text[:max_chars]
         return clean_text
 
-    async def _send_raw_request(self, client: httpx.AsyncClient, url: str) -> httpx.Response:
+    async def _send_raw_request(
+        self, client: httpx.AsyncClient, url: str
+    ) -> httpx.Response:
         """Execute raw GET request using client with timeout handling."""
         try:
             return await client.get(url)
         except httpx.TimeoutException as exc:
-            raise FastCrawlerTimeoutError(f"Crawl connection timed out fetching {url}: {exc}") from exc
+            raise FastCrawlerTimeoutError(
+                f"Crawl connection timed out fetching {url}: {exc}"
+            ) from exc
         except httpx.RequestError as exc:
             raise RuntimeError(f"HTTP request error fetching {url}: {exc}") from exc
 
@@ -269,7 +293,13 @@ class FastCrawler:
 
                 response = await self._send_raw_request(client, current_url)
 
-                if response.is_redirect or response.status_code in (301, 302, 303, 307, 308):
+                if response.is_redirect or response.status_code in (
+                    301,
+                    302,
+                    303,
+                    307,
+                    308,
+                ):
                     location = response.headers.get("Location")
                     if not location:
                         break

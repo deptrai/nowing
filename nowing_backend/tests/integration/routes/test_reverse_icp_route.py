@@ -79,7 +79,9 @@ class TestReverseIcpRoute:
         with patch.object(
             leads_routes,
             "check_permission",
-            AsyncMock(side_effect=HTTPException(status_code=403, detail="Permission denied")),
+            AsyncMock(
+                side_effect=HTTPException(status_code=403, detail="Permission denied")
+            ),
         ):
             test_app.dependency_overrides[get_auth_context] = lambda: mock_auth
             client = TestClient(test_app)
@@ -96,7 +98,9 @@ class TestReverseIcpRoute:
         """Should return 400 Bad Request on SSRF target or malformed URL."""
         import app.routes.leads_routes as leads_routes
 
-        with patch.object(leads_routes, "check_permission", AsyncMock(return_value=True)):
+        with patch.object(
+            leads_routes, "check_permission", AsyncMock(return_value=True)
+        ):
             test_app.dependency_overrides[get_auth_context] = lambda: mock_auth
             client = TestClient(test_app)
 
@@ -116,15 +120,24 @@ class TestReverseIcpRoute:
         mock_service = MagicMock()
         mock_service.analyze_url = AsyncMock(return_value=MOCK_REVERSE_ICP_RESPONSE)
 
-        with patch.object(leads_routes, "check_permission", AsyncMock(return_value=True)), patch(
-            "app.lead_intelligence.reverse_icp.ReverseIcpService", return_value=mock_service
+        with (
+            patch.object(
+                leads_routes, "check_permission", AsyncMock(return_value=True)
+            ),
+            patch(
+                "app.lead_intelligence.reverse_icp.ReverseIcpService",
+                return_value=mock_service,
+            ),
         ):
             test_app.dependency_overrides[get_auth_context] = lambda: mock_auth
             client = TestClient(test_app)
 
             response = client.post(
                 "/api/v1/workspaces/1/leads/reverse-icp",
-                json={"url": "https://vinhomes.vn", "custom_instructions": "Tập trung vào phân khu The Crown"},
+                json={
+                    "url": "https://vinhomes.vn",
+                    "custom_instructions": "Tập trung vào phân khu The Crown",
+                },
             )
             assert response.status_code == 200
             data = response.json()

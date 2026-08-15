@@ -16,9 +16,13 @@ logger = logging.getLogger(__name__)
 class ReverseIcpToolInput(BaseModel):
     """Input schema for reverse-ICP agent tool."""
 
-    url: str = Field(..., description="The website domain or project landing page URL to analyze for ICP")
+    url: str = Field(
+        ...,
+        description="The website domain or project landing page URL to analyze for ICP",
+    )
     custom_instructions: str | None = Field(
-        default=None, description="Optional custom focus instructions (e.g. target high-end buyers)"
+        default=None,
+        description="Optional custom focus instructions (e.g. target high-end buyers)",
     )
 
 
@@ -31,12 +35,19 @@ async def leads_reverse_icp(url: str, custom_instructions: str | None = None) ->
     """
     service = ReverseIcpService()
     try:
-        response = await service.analyze_url(url=url, custom_instructions=custom_instructions)
+        response = await service.analyze_url(
+            url=url, custom_instructions=custom_instructions
+        )
         payload = response.model_dump()
         return json.dumps(payload, ensure_ascii=False, indent=2)
     except Exception as exc:
-        logger.warning("[ReverseIcpTool] Error executing leads_reverse_icp for %s: %s", url, exc)
-        return json.dumps({
-            "error": f"Failed to analyze URL for ICP: {exc}",
-            "url": url,
-        }, ensure_ascii=False)
+        logger.warning(
+            "[ReverseIcpTool] Error executing leads_reverse_icp for %s: %s", url, exc
+        )
+        return json.dumps(
+            {
+                "error": f"Failed to analyze URL for ICP: {exc}",
+                "url": url,
+            },
+            ensure_ascii=False,
+        )

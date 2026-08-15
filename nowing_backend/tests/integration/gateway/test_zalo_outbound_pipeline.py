@@ -160,7 +160,7 @@ async def test_zns_send_consent_guardrail_and_dispatch(
         id=uuid4(),
         workspace_id=db_workspace.id,
         lead_id=lead.id,
-        phone_number="0901234567",
+        phone="0901234567",
     )
     db_session.add(contact)
     await db_session.flush()
