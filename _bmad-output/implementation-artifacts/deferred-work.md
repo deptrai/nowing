@@ -799,8 +799,8 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 ## Deferred from: code review of 21-6-zalo-integration — second pass (2026-08-15)
 
 - **Finding:** Story says "AI Draft" but the implementation is a hard-coded template, not actually LLM-generated. (app/gateway/zalo/client.py:69-152)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-6-zalo-integration.md`.
-  - **Reason / when to revisit:** The template is acceptable as a v1 "Assisted Co-pilot" with manual review/clipboard. Replace with an LLM call when premium message generation and cost tracking are prioritized.
+  - **Action:** Marked `[x] [Review][Resolved]` in `21-6-zalo-integration.md`.
+  - **Resolution:** `generate_assisted_outbound_draft` now uses the `LLMRouterService` to generate a personalized Vietnamese Zalo outreach draft; falls back to the deterministic template when the LLM router is unavailable or fails. Token usage is recorded with `UsageType.ASSISTED_DRAFT` via `record_token_usage`. (app/gateway/zalo/client.py:67-207, app/services/token_tracking_service.py, tests/unit/gateway/test_zalo_gateway.py)
 
 - **Finding:** `TelegramAlertRequest.chat_id` is not validated against workspace-owned chat bindings. (app/routes/outbound_routes.py:111-114,538-548)
   - **Action:** Marked `[x] [Review][Patch]` in `21-6-zalo-integration.md`.

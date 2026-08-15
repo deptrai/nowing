@@ -4,16 +4,19 @@ from __future__ import annotations
 
 import logging
 import re
-import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from uuid import UUID, uuid4
 
 import httpx
+import litellm
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import config
 from app.db import ZaloConnection
 from app.gateway.ratelimit import acquire_token
+from app.services.llm_router_service import LLMRouterService
+from app.services.token_tracking_service import UsageType, record_token_usage
 from app.utils.oauth_security import TokenEncryption
 
 logger = logging.getLogger(__name__)
@@ -64,14 +67,42 @@ def format_vietnam_phone(phone: str | None) -> dict[str, str]:
     }
 
 
-def generate_assisted_outbound_draft(
+_PII_KEY_RE = re.compile(
+    r"(phone|mobile|email|name|address|cccd|cmnd|passport|identity|dob|birth|bank|card|salary)",
+    re.IGNORECASE,
+)
+_EMAIL_RE = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
+_PHONE_RE = re.compile(
+    r"\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}\b"
+)
+_ID_RE = re.compile(r"\b\d{9,12}\b")
+
+
+def redact_template_data(template_data: dict[str, Any]) -> dict[str, Any]:
+    """Redact likely PII values from ZNS template_data before logging."""
+    redacted: dict[str, Any] = {}
+    for key, value in template_data.items():
+        if isinstance(value, dict):
+            redacted[key] = redact_template_data(value)
+        elif isinstance(value, list):
+            redacted[key] = [
+                redact_template_data({"_": item})["_"] if isinstance(item, dict) else item
+                for item in value
+            ]
+        elif isinstance(value, str):
+            if _PII_KEY_RE.search(key) or _EMAIL_RE.search(value) or _PHONE_RE.search(value) or _ID_RE.search(value):
+                redacted[key] = "***"
+            else:
+                redacted[key] = value
+        else:
+            redacted[key] = value
+    return redacted
+
+
+def _build_draft_prompt(
     lead_data: dict[str, Any], custom_context: str | None = None
 ) -> str:
-    """Generate high-converting, personalized Vietnamese outreach draft for Assisted Zalo Co-pilot.
-
-    Contextually adapts to Real Estate, Recruitment/Jobs, Tenders, or B2B outreach.
-    100% ToS compliant (rendered for client review/paste).
-    """
+    """Build a structured prompt for the LLM to write a Vietnamese Zalo outreach draft."""
     company_name = str(
         lead_data.get("company_name") or lead_data.get("author") or "bạn"
     ).strip()
@@ -82,7 +113,50 @@ def generate_assisted_outbound_draft(
     price_estimate = lead_data.get("price_estimate") or ""
     snippet = lead_data.get("content_snippet") or ""
 
-    # Real estate focus
+    context_lines = [
+        f"- Tên liên hệ / công ty: {company_name}",
+        f"- Nguồn lead: {source or 'không rõ'}",
+        f"- Intent: {intent or 'tiếp cận bán hàng'}",
+    ]
+    if industry:
+        context_lines.append(f"- Ngành: {industry}")
+    if location:
+        context_lines.append(f"- Địa điểm: {location}")
+    if price_estimate:
+        context_lines.append(f"- Mức giá / ngân sách: {price_estimate}")
+    if snippet:
+        context_lines.append(f"- Nội dung gốc: {snippet[:200]}")
+    if custom_context:
+        context_lines.append(f"- Bối cảnh bổ sung: {custom_context}")
+
+    return (
+        "Bạn là trợ lý bán hàng B2B của Nowing. Hãy viết một tin nhắn tiếp cận ngắn gọn, "
+        "thân thiện, ToS-compliant qua Zalo cho lead sau:\n\n"
+        "\n".join(context_lines)
+        + "\n\nYêu cầu:\n"
+        "- Tiếng Việt, lịch sự, tự nhiên.\n"
+        "- 2-3 câu, tối đa 250 ký tự.\n"
+        "- Không spam, không hứa hẹn quá mức, không yêu cầu thông tin nhạy cảm.\n"
+        "- Tập trung vào giá trị đối tác/mua bán có thể mang lại.\n"
+        "- Kết thúc bằng lời mời trao đổi qua Zalo.\n"
+        "Chỉ trả về nội dung tin nhắn, không giải thích."
+    )
+
+
+def _fallback_template(
+    lead_data: dict[str, Any], custom_context: str | None = None
+) -> str:
+    """Fallback template when LLM is unavailable or fails."""
+    company_name = str(
+        lead_data.get("company_name") or lead_data.get("author") or "bạn"
+    ).strip()
+    source = str(lead_data.get("source") or "").lower()
+    intent = str(lead_data.get("intent") or "").upper()
+    industry = lead_data.get("industry") or ""
+    location = lead_data.get("location") or ""
+    price_estimate = lead_data.get("price_estimate") or ""
+    snippet = lead_data.get("content_snippet") or ""
+
     if (
         any(k in source for k in ("batdongsan", "bds", "muaban", "nhatot", "chotot"))
         or "BÁN" in intent
@@ -101,7 +175,6 @@ def generate_assisted_outbound_draft(
             parts.append(f"\n({custom_context})")
         return " ".join(parts)
 
-    # Job / Recruitment focus
     if (
         any(k in source for k in ("topcv", "itviec", "vietnamworks", "job"))
         or "TUYỂN" in intent
@@ -122,7 +195,6 @@ def generate_assisted_outbound_draft(
             parts.append(f"\n({custom_context})")
         return " ".join(parts)
 
-    # Tender / Mua sắm công focus
     if "tender" in source or "muasamcong" in source or "THẦU" in intent:
         parts = [f"Chào anh/chị đại diện {company_name},"]
         parts.append(
@@ -135,7 +207,6 @@ def generate_assisted_outbound_draft(
             parts.append(f"\n({custom_context})")
         return " ".join(parts)
 
-    # General B2B Prospecting
     parts = [f"Chào {company_name},"]
     parts.append(
         f"Mình liên hệ từ Nowing sau khi tìm hiểu về hoạt động của bên mình{f' trong ngành {industry}' if industry else ''}."
@@ -147,6 +218,93 @@ def generate_assisted_outbound_draft(
     if custom_context:
         parts.append(f"\n({custom_context})")
     return " ".join(parts)
+
+
+async def generate_assisted_outbound_draft(
+    session: AsyncSession,
+    lead_data: dict[str, Any],
+    workspace_id: int,
+    user_id: UUID,
+    custom_context: str | None = None,
+) -> str:
+    """Generate high-converting, personalized Vietnamese outreach draft using an LLM.
+
+    Falls back to a deterministic template if the LLM router is unavailable or the
+    call fails. Token usage is recorded in the workspace's TokenUsage table.
+    """
+    router = LLMRouterService.get_router()
+    if not router:
+        logger.warning("LLM router unavailable; using fallback Zalo draft template")
+        return _fallback_template(lead_data, custom_context=custom_context)
+
+    try:
+        response = await router.acompletion(
+            model="auto",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "Bạn là trợ lý bán hàng B2B tại Việt Nam. "
+                        "Viết tin nhắn tiếp cận khách hàng ngắn gọn, lịch sự, tuân thủ ToS."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": _build_draft_prompt(lead_data, custom_context=custom_context),
+                },
+            ],
+            temperature=0.6,
+            max_tokens=300,
+        )
+    except Exception as exc:
+        logger.warning("LLM draft generation failed: %s; using fallback template", exc)
+        return _fallback_template(lead_data, custom_context=custom_context)
+
+    content = ""
+    try:
+        content = response.choices[0].message.content.strip()
+    except (AttributeError, IndexError, TypeError) as exc:
+        logger.warning("LLM draft response malformed: %s", exc)
+        return _fallback_template(lead_data, custom_context=custom_context)
+
+    if not content:
+        return _fallback_template(lead_data, custom_context=custom_context)
+
+    # Record token usage for cost visibility
+    usage = getattr(response, "usage", None) or {}
+    prompt_tokens = getattr(usage, "prompt_tokens", 0) or 0
+    completion_tokens = getattr(usage, "completion_tokens", 0) or 0
+    total_tokens = getattr(usage, "total_tokens", 0) or 0
+
+    cost_usd = 0.0
+    try:
+        cost_usd = float(litellm.completion_cost(completion_response=response) or 0.0)
+    except Exception:
+        logger.debug("Could not compute draft cost via litellm")
+    cost_micros = round(cost_usd * 1_000_000)
+
+    if total_tokens > 0:
+        model_name = getattr(response, "model", None) or "unknown"
+        await record_token_usage(
+            session,
+            usage_type=UsageType.ASSISTED_DRAFT,
+            workspace_id=workspace_id,
+            user_id=user_id,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=total_tokens,
+            cost_micros=cost_micros,
+            model_breakdown={
+                model_name: {
+                    "provider": "llm_router",
+                    "cost_micros": cost_micros,
+                    "total_tokens": total_tokens,
+                }
+            },
+            call_details={"lead_source": str(lead_data.get("source") or "")},
+        )
+
+    return content
 
 
 class ZaloClient:
@@ -332,7 +490,7 @@ class ZaloClient:
             "phone": int_phone,
             "template_id": template_id,
             "template_data": template_data,
-            "tracking_id": tracking_id or str(uuid.uuid4()),
+            "tracking_id": tracking_id or str(uuid4()),
         }
         if mode:
             payload["mode"] = mode

@@ -108,6 +108,7 @@ Generated from code review run on 2026-08-15. Full layer reports:
 #### Resolved Decisions
 - [x] [Review][Decision] `ZaloClient` conflates OAuth `app_secret` with `webhook_secret`. Decision: added `app_secret_encrypted` to `ZaloConnection`, separate from `webhook_secret`. `app/db.py:5134`, `client.py:176-208`
 - [x] [Review][Decision] Webhook verification currently bypasses when secret empty and uses global `ZALO_APP_SECRET`. Decision: fail-closed, verify per-OA `webhook_secret`, add timestamp/replay tolerance. `webhook.py:88-135`, `outbound_routes.py:573-643`
+- [x] [Review][Decision] Story says "AI Draft" but implementation is a hard-coded template. Decision: implement LLM-based draft via `LLMRouterService` with deterministic template fallback and `TokenUsage` tracking (`UsageType.ASSISTED_DRAFT`). `client.py:67-207`, `token_tracking_service.py`
 - [x] [Review][Decision] `send_zns_message` does not select a specific OA if workspace has multiple active `ZaloConnection`. Decision: add optional `oa_id` to `ZnsSendRequest`; reject ambiguous multi-OA sends. `outbound_routes.py:287-310`
 - [x] [Review][Decision] No endpoint to deactivate or revoke a Zalo OA connection (`upsert` always `is_active=True`). Decision: added `DELETE /workspaces/{workspace_id}/zalo/connection`. `outbound_routes.py:508-540`
 

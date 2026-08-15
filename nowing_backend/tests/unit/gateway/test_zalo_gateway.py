@@ -6,6 +6,7 @@ import hashlib
 import hmac
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import uuid4
 
 import pytest
 from httpx import Response
@@ -14,13 +15,14 @@ from app.gateway.zalo.client import (
     ZaloClient,
     format_vietnam_phone,
     generate_assisted_outbound_draft,
+    redact_template_data,
 )
 from app.gateway.zalo.telegram_alerts import build_lead_telegram_alert
 from app.gateway.zalo.webhook import (
     detect_buying_intent,
     verify_zalo_signature,
 )
-from app.routes.outbound_routes import _redact_template_data
+from app.services.llm_router_service import LLMRouterService
 
 
 @pytest.mark.unit
@@ -68,7 +70,22 @@ class TestZaloPhoneFormatting:
 class TestZaloDraftGenerator:
     """Test AI Assisted Outbound greeting script generation."""
 
-    def test_real_estate_draft(self):
+    @pytest.fixture(autouse=True)
+    def disable_llm_router(self):
+        with patch.object(
+            LLMRouterService, "get_router", return_value=None
+        ):
+            yield
+
+    @pytest.fixture
+    def dummy_session(self):
+        return MagicMock()
+
+    @pytest.fixture
+    def dummy_user_id(self):
+        return uuid4()
+
+    async def test_real_estate_draft(self, dummy_session, dummy_user_id):
         lead_data = {
             "company_name": "Nguyễn Văn A",
             "source": "batdongsan",
@@ -77,39 +94,77 @@ class TestZaloDraftGenerator:
             "price_estimate": "5.2 tỷ",
             "content_snippet": "Bán căn hộ 2PN view sông",
         }
-        draft = generate_assisted_outbound_draft(lead_data)
+        draft = await generate_assisted_outbound_draft(
+            dummy_session, lead_data, workspace_id=1, user_id=dummy_user_id
+        )
         assert "BĐS" in draft
         assert "Quận 2, TP.HCM" in draft
         assert "5.2 tỷ" in draft
         assert "Zalo" in draft
 
-    def test_recruitment_draft(self):
+    async def test_recruitment_draft(self, dummy_session, dummy_user_id):
         lead_data = {
             "company_name": "Công ty Công Nghệ ABC",
             "source": "topcv",
             "intent": "TUYỂN DỤNG",
             "industry": "IT Phần mềm",
         }
-        draft = generate_assisted_outbound_draft(lead_data)
+        draft = await generate_assisted_outbound_draft(
+            dummy_session, lead_data, workspace_id=1, user_id=dummy_user_id
+        )
         assert "Công ty Công Nghệ ABC" in draft
         assert "tuyển dụng" in draft
         assert "IT Phần mềm" in draft
 
-    def test_tender_draft(self):
+    async def test_tender_draft(self, dummy_session, dummy_user_id):
         lead_data = {
             "company_name": "Ban Quản Lý Dự Án X",
             "source": "muasamcong",
             "intent": "ĐẤU THẦU",
         }
-        draft = generate_assisted_outbound_draft(lead_data)
+        draft = await generate_assisted_outbound_draft(
+            dummy_session, lead_data, workspace_id=1, user_id=dummy_user_id
+        )
         assert "gói thầu" in draft or "dự án" in draft
 
-    def test_custom_context_included(self):
+    async def test_custom_context_included(self, dummy_session, dummy_user_id):
         lead_data = {"company_name": "Công ty Y", "source": "other"}
-        draft = generate_assisted_outbound_draft(
-            lead_data, custom_context="Chiết khấu 15% tháng này"
+        draft = await generate_assisted_outbound_draft(
+            dummy_session,
+            lead_data,
+            workspace_id=1,
+            user_id=dummy_user_id,
+            custom_context="Chiết khấu 15% tháng này",
         )
         assert "Chiết khấu 15% tháng này" in draft
+
+    async def test_llm_success_records_usage(self, dummy_session, dummy_user_id):
+        mock_router = AsyncMock()
+        mock_usage = MagicMock()
+        mock_usage.prompt_tokens = 100
+        mock_usage.completion_tokens = 50
+        mock_usage.total_tokens = 150
+        mock_response = MagicMock()
+        mock_response.model = "gpt-4o-mini"
+        mock_response.usage = mock_usage
+        mock_response.choices = [MagicMock(message=MagicMock(content=" Tin nhắn LLM test. "))]
+        mock_router.acompletion.return_value = mock_response
+
+        lead_data = {"company_name": "Công ty Z", "source": "other"}
+        with (
+            patch.object(LLMRouterService, "get_router", return_value=mock_router),
+            patch("app.gateway.zalo.client.record_token_usage") as mock_record,
+        ):
+            draft = await generate_assisted_outbound_draft(
+                dummy_session, lead_data, workspace_id=1, user_id=dummy_user_id
+            )
+
+        assert "Tin nhắn LLM test" in draft
+        mock_record.assert_awaited_once()
+        call_kwargs = mock_record.await_args.kwargs
+        assert call_kwargs["workspace_id"] == 1
+        assert call_kwargs["user_id"] == dummy_user_id
+        assert call_kwargs["usage_type"] == "assisted_draft"
 
 
 @pytest.mark.unit
@@ -178,7 +233,7 @@ class TestZnsTemplateDataRedaction:
             "cccd": "049123456789",
             "normal_key": "public info",
         }
-        redacted = _redact_template_data(raw)
+        redacted = redact_template_data(raw)
         assert redacted["phone"] == "***"
         assert redacted["email"] == "***"
         assert redacted["address"] == "***"
@@ -190,13 +245,13 @@ class TestZnsTemplateDataRedaction:
             "content": "Liên hệ test@example.com hoặc 0901234567",
             "id": "049123456789",
         }
-        redacted = _redact_template_data(raw)
+        redacted = redact_template_data(raw)
         assert redacted["content"] == "***"
         assert redacted["id"] == "***"
 
     def test_nested_dict_redaction(self):
         raw = {"customer": {"name": "A", "phone": "0901234567"}}
-        redacted = _redact_template_data(raw)
+        redacted = redact_template_data(raw)
         assert redacted["customer"]["phone"] == "***"
 
 

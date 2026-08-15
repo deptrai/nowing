@@ -68,6 +68,7 @@ class UsageType(StrEnum):
     VISION_EXTRACTION = "vision_extraction"
     IMAGE_GENERATION = "image_generation"
     LEAD_SCORING_LLM = "lead_scoring_llm"
+    ASSISTED_DRAFT = "assisted_draft"
 
 
 @dataclass
