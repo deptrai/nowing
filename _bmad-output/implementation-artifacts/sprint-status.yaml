@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-08"
-last_updated: "2026-08-15"  # 10-6, 10-7, 3-13 → done; followups reopened; Epic 21 opened for dev
+last_updated: "2026-08-15"  # Epic 21 audit: 21.1, 21.2 → done; 21.3 in-progress (4 integration tests fail); 21.4, 21.5 ready-for-dev
 # ponytail: 2026-08-14 — reopened deferred/business-gated/dropped to backlog; 16-1 mutation gate reopened; 15-2 moved to review; tech-debt tracker reopened.
 # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended citation ACs to 3.15 (WEB_RESULT), 9.3 (async delivery), 2.10 (Exa MCP). 3 stories → review.
 # ponytail: 2026-08-08 sprint-planning — added Epic 1, 5 (DONE brownfield); added 9.1a, 9.1b, 4.8a-4.8h, 13.2a-13.2e; upgraded 12.1-12.5 to ready-for-dev (story files exist); 12.0 DONE (legal approved).
@@ -209,9 +209,9 @@ development_status:
   # 2026-08-11: bmad-architecture validate passed. `ARCHITECTURE-SPINE.md` is FIT for implementation.
   # 2026-08-15: PO decision — store phone numbers; admin can hide PII fields. Governance gates accepted. Epic opened for dev.
   epic-21: in-progress
-  21-1: ready-for-dev
-  21-2: ready-for-dev
-  21-3: pending-human-review  # 2026-08-15: dev complete, all tests+ruff green; P0 areas touched; waiting human review after mutation gate
+  21-1: done
+  21-2: done
+  21-3: in-progress  # 2026-08-15: 4/8 integration tests fail; service.py being edited
   21-4: ready-for-dev
   21-5: ready-for-dev
   # ponytail: Zalo deferred out of MVP (legal/ToS gate) — keep disabled until governance closes or PO explicitly overrides.

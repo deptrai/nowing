@@ -1,6 +1,6 @@
 ---
 story_key: 21-1-intent-signal-detection
-status: ready-for-dev
+status: done
 baseline_commit: db50806a
 epic: 21
 story: 1
