@@ -200,16 +200,16 @@ development_status:
   epic-21: in-progress
   21-1: done
   21-2: done
-  21-3: review  # 2026-08-15: integration tests green; P0 human review gate required
+  21-3: done  # 2026-08-15: 3-tier waterfall + PII vault + anti-ReDoS + auto-refund SLA done; 11 code review patches applied; 16/16 unit tests passed
   21-4: done  # 2026-08-15: BMAD code review re-run; fake data removed, permissions + Zero sync + client_id filter applied
   21-5: review  # 2026-08-15: code + unit tests ok; missing integration tests; P0 human review
-  21-6: in-progress  # Assisted Zalo Outbound Co-pilot & Telegram Bot Alert
+  21-6: in-progress  # 2026-08-15: best-practice review patches applied; 26 tests pass; 3 remaining action items (chat_id validation, ZNS UI, template_data PII redaction)
   21-7: ready-for-dev
   21-8: done  # 2026-08-15: 32 review patches + XActions Celery scheduler/ingestor applied; ruff/pytest/tsc green. 28 initial code-review findings resolved or dismissed (DLQ, pagination, composite index, email regex, account_id validation, ReDoS hardening, integration test rewrite, etc.).
   21-9: done  # Executive Decision Maker Mapping & B2B Lead Outreach
-  21-10: in-progress  # 1-Click Reverse-ICP from Website / Project URL
+  21-10: done  # 2026-08-15: FastCrawler, ReverseIcpService, REST route, ReverseIcpModal, ATDD & 11 review patches verified; ruff/tsc/biome/pytest green
   21-11: done  # 2026-08-15: 4 review patches applied; ruff/pytest/tsc green
-  21-12: ready-for-dev  # Viral Social Outbound Co-pilot (Voice Learner & Outlier Analyzer)
+  21-12: done  # 2026-08-15: Viral Social Outbound Co-pilot (Voice Learner, Outlier Analyzer, Split Review UI, 3 capabilities registered, unit/integration/E2E green, ruff/tsc/biome clean)
   21-13: done  # 2026-08-15: Multi-Table Tabs & Send/Export Hub (Zero-cache live reactive sync, CSV/Lark Export)
   epic-21-retrospective: optional
 
