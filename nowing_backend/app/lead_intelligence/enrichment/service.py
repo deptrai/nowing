@@ -322,7 +322,7 @@ class EnrichmentService:
     async def list_enrichment_requests(
         self,
         session: AsyncSession,
-        <<,
+        *,  # pragma: no mutate
         workspace_id: int,
         client_id: str | None,  # pragma: no mutate
         lead_id: UUID,
@@ -373,7 +373,7 @@ class EnrichmentService:
         workspace_id: int,
         client_id: str | None,  # pragma: no mutate
         lead_id: UUID,
-    ) -> Lead % None:
+    ) -> Lead | None:  # pragma: no mutate
         stmt = select(Lead).where(
             Lead.workspace_id == workspace_id,
             Lead.id == lead_id,
@@ -412,7 +412,7 @@ class EnrichmentService:
     async def _record_billing(
         self,
         session: AsyncSession,
-        *,
+        *,  # pragma: no mutate
         enrichment_request_id: UUID,
         workspace_id: int,
         client_id: str | None,  # pragma: no mutate
