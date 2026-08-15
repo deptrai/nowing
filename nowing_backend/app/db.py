@@ -2119,6 +2119,18 @@ class Workspace(BaseModel, TimestampMixin):
         order_by="SocialPost.id",
         cascade="all, delete-orphan",
     )
+    zalo_connections = relationship(
+        "ZaloConnection",
+        back_populates="workspace",
+        order_by="ZaloConnection.created_at.desc()",
+        cascade="all, delete-orphan",
+    )
+    zalo_message_logs = relationship(
+        "ZaloMessageLog",
+        back_populates="workspace",
+        order_by="ZaloMessageLog.created_at.desc()",
+        cascade="all, delete-orphan",
+    )
 
 
 class WorkspaceMcpToolSetting(BaseModel, TimestampMixin):
@@ -3896,10 +3908,6 @@ async def create_db_and_tables():
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS citext"))
         try:
-            # Ensure all declarative models (including PostGIS) are registered
-            # before create_all runs without creating a circular module import.
-            from app.proprietary.platforms.spatial_planning.models import SpatialPlanningZone  # noqa: F401
-
             await conn.run_sync(Base.metadata.create_all)
         except Exception as exc:
             logger.warning(
@@ -4482,6 +4490,17 @@ class Lead(Base, TimestampMixin):
         back_populates="lead",
         cascade="all, delete-orphan",
     )
+    phone_waterfall_logs = relationship(
+        "PhoneWaterfallLog",
+        back_populates="lead",
+        cascade="all, delete-orphan",
+    )
+    zalo_message_logs = relationship(
+        "ZaloMessageLog",
+        back_populates="lead",
+        order_by="ZaloMessageLog.created_at.desc()",
+        cascade="all, delete-orphan",
+    )
 
 
 class LeadScore(Base, TimestampMixin):
@@ -4589,14 +4608,10 @@ class EnrichmentRequest(Base, TimestampMixin):
         default="pending",
         server_default="pending",
     )
-    provider_results = Column(
-        JSONB, nullable=True, server_default=text("'{}'::jsonb")
-    )
+    provider_results = Column(JSONB, nullable=True, server_default=text("'{}'::jsonb"))
     cost_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
     contact_count = Column(Integer, nullable=False, default=0, server_default="0")
-    requested_count = Column(
-        Integer, nullable=False, default=5, server_default="5"
-    )
+    requested_count = Column(Integer, nullable=False, default=5, server_default="5")
 
     workspace = relationship("Workspace", back_populates="enrichment_requests")
     lead = relationship("Lead", back_populates="enrichment_requests")
@@ -4649,29 +4664,94 @@ class VerifiedContact(Base, TimestampMixin):
     enrichment_request_id = Column(
         UUID(as_uuid=True),
         ForeignKey("enrichment_requests.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
     name = Column(String(200), nullable=True)
     title = Column(String(200), nullable=True)
-    email = Column(CITEXT, nullable=False, index=True)
+    email = Column(CITEXT, nullable=True, index=True)
     phone = Column(String(200), nullable=True)
     verification_status = Column(
         String(20), nullable=False, default="unverified", server_default="unverified"
     )
     confidence = Column(Float, nullable=False, default=0.0, server_default="0")
     source_provider = Column(
-        String(20), nullable=False, default="fallback", server_default="fallback"
+        String(50), nullable=False, default="fallback", server_default="fallback"
     )
     consent = Column(Boolean, nullable=False, default=False, server_default="false")
     consent_status = Column(String(50), nullable=True)
     legal_basis = Column(String(50), nullable=True)
+    is_valid = Column(Boolean, nullable=False, default=True, server_default="true")
+    refunded_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    invalid_reason = Column(String(255), nullable=True)
 
     workspace = relationship("Workspace", back_populates="verified_contacts")
     lead = relationship("Lead", back_populates="verified_contacts")
-    enrichment_request = relationship(
-        "EnrichmentRequest", back_populates="contacts"
+    enrichment_request = relationship("EnrichmentRequest", back_populates="contacts")
+    phone_waterfall_logs = relationship("PhoneWaterfallLog", back_populates="contact")
+
+
+class PhoneWaterfallLog(Base, TimestampMixin):
+    """Log entry for 3-tier phone resolution waterfall (Story 21.3 / AD-36).
+
+    Tracks the exact tier, provider, response envelope, phone hash (SHA-256),
+    masked phone, and refund SLA state without storing raw PII.
+    """
+
+    __tablename__ = "phone_waterfall_logs"
+    __table_args__ = (
+        Index(
+            "ix_phone_waterfall_logs_tenant_lookup",
+            "workspace_id",
+            "client_id",
+            "lead_id",
+            text("created_at DESC"),
+        ),
     )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    client_id = Column(
+        CITEXT,
+        ForeignKey("vertical_clients.client_id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    lead_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("leads.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    contact_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("verified_contacts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    tier_reached = Column(Integer, nullable=False, default=1, server_default="1")
+    provider_used = Column(
+        String(50), nullable=False, default="unknown", server_default="unknown"
+    )
+    status = Column(
+        String(20), nullable=False, default="pending", server_default="pending"
+    )
+    cost_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
+    phone_hash = Column(String(64), nullable=True, index=True)
+    phone_masked = Column(String(50), nullable=True)
+    raw_response = Column(JSONB, nullable=True, server_default=text("'{}'::jsonb"))
+    refunded_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    refund_reason = Column(String(255), nullable=True)
+
+    workspace = relationship("Workspace")
+    lead = relationship("Lead", back_populates="phone_waterfall_logs")
+    contact = relationship("VerifiedContact", back_populates="phone_waterfall_logs")
 
 
 # Ensure alert persistence models are registered on Base.metadata.
@@ -4679,7 +4759,7 @@ class VerifiedContact(Base, TimestampMixin):
 from app.alerts.persistence.models.alert_rule import AlertRule  # noqa: F401
 from app.alerts.persistence.models.alert_snapshot import AlertSnapshot  # noqa: F401
 from app.alerts.persistence.models.alert_subscription import AlertSubscription  # noqa: F401
-
+from app.proprietary.platforms.spatial_planning.models import SpatialPlanningZone  # noqa: F401
 
 
 class CrmConnection(Base, TimestampMixin):
@@ -4925,17 +5005,27 @@ class SocialMonitoredTarget(Base, TimestampMixin):
         ForeignKey("workspaces.id", ondelete="CASCADE"),
         nullable=False,
     )
-    platform = Column(String(50), nullable=False)  # 'facebook_group', 'facebook_page', 'twitter_keyword', 'twitter_user'
+    platform = Column(
+        String(50), nullable=False
+    )  # 'facebook_group', 'facebook_page', 'twitter_keyword', 'twitter_user'
     target_id = Column(String(255), nullable=False)
     target_name = Column(Text, nullable=False)
     target_url = Column(Text, nullable=True)
-    category = Column(String(50), nullable=False, default="general", server_default=text("'general'"))
+    category = Column(
+        String(50), nullable=False, default="general", server_default=text("'general'")
+    )
     is_active = Column(Boolean, nullable=False, default=True, server_default="true")
-    realtime_stream = Column(Boolean, nullable=False, default=False, server_default="false")
+    realtime_stream = Column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
     # scrape_interval_minutes is the canonical scrape/poll cadence. The legacy
     # poll_interval_seconds concept maps to scrape_interval_minutes * 60.
-    scrape_interval_minutes = Column(Integer, nullable=False, default=15, server_default="15")
-    status = Column(String(50), nullable=False, default="active", server_default=text("'active'"))
+    scrape_interval_minutes = Column(
+        Integer, nullable=False, default=15, server_default="15"
+    )
+    status = Column(
+        String(50), nullable=False, default="active", server_default=text("'active'")
+    )
     last_polled_at = Column(TIMESTAMP(timezone=True), nullable=True)
     last_scraped_at = Column(TIMESTAMP(timezone=True), nullable=True)
     proxy_url = Column(Text, nullable=True)
@@ -4958,7 +5048,12 @@ class SocialPost(Base, TimestampMixin):
         Index("idx_social_posts_platform_ext", "platform", "external_post_id"),
         Index("idx_social_posts_published", "published_at"),
         Index("idx_social_posts_intent", "intent_tag"),
-        Index("idx_social_posts_platform_intent_published", "platform", "intent_tag", "published_at"),
+        Index(
+            "idx_social_posts_platform_intent_published",
+            "platform",
+            "intent_tag",
+            "published_at",
+        ),
         Index("idx_social_posts_gin_entities", "raw_entities", postgresql_using="gin"),
         Index(
             "idx_social_posts_embedding_hnsw",
@@ -4989,7 +5084,9 @@ class SocialPost(Base, TimestampMixin):
     author_url = Column(Text, nullable=True)
     post_url = Column(Text, nullable=True)
     content = Column(Text, nullable=True)
-    intent_tag = Column(String(50), nullable=True)  # 'sell', 'buy', 'hiring', 'seeking', 'news', 'other'
+    intent_tag = Column(
+        String(50), nullable=True
+    )  # 'sell', 'buy', 'hiring', 'seeking', 'news', 'other'
     fit_score = Column(Float, nullable=False, default=0.0, server_default="0")
     reactions_count = Column(Integer, nullable=False, default=0, server_default="0")
     comments_count = Column(Integer, nullable=False, default=0, server_default="0")
@@ -5013,4 +5110,115 @@ class SocialPost(Base, TimestampMixin):
     target = relationship("SocialMonitoredTarget", back_populates="posts")
 
 
+class ZaloConnection(Base, TimestampMixin):
+    """Zalo Official Account connection for a workspace (Story 21.6 / AD-41)."""
 
+    __tablename__ = "zalo_connections"
+
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "oa_id", name="uq_workspace_zalo_oa"),
+        Index("idx_zalo_connections_workspace_id", "workspace_id"),
+        Index("idx_zalo_connections_oa_id", "oa_id"),
+        Index("idx_zalo_connections_active", "is_active"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    oa_id = Column(String(100), nullable=False)
+    oa_name = Column(String(255), nullable=True)
+    app_id = Column(String(100), nullable=True)
+    access_token_encrypted = Column(Text, nullable=True)
+    refresh_token_encrypted = Column(Text, nullable=True)
+    token_expires_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True, server_default="true")
+    webhook_secret = Column(String(255), nullable=True)
+    settings = Column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+    created_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
+
+    workspace = relationship("Workspace", back_populates="zalo_connections")
+    message_logs = relationship(
+        "ZaloMessageLog",
+        back_populates="connection",
+        cascade="all, delete-orphan",
+    )
+
+
+class ZaloMessageLog(Base, TimestampMixin):
+    """Audit log of Zalo outreach drafts, ZNS messages, and inbound replies (Story 21.6)."""
+
+    __tablename__ = "zalo_message_logs"
+
+    __table_args__ = (
+        Index("idx_zalo_message_logs_workspace_id", "workspace_id"),
+        Index("idx_zalo_message_logs_lead_id", "lead_id"),
+        Index("idx_zalo_message_logs_phone", "recipient_phone"),
+        Index("idx_zalo_message_logs_created_at", "created_at"),
+        Index("idx_zalo_message_logs_msg_type", "message_type"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    zalo_connection_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("zalo_connections.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    lead_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("leads.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    recipient_phone = Column(String(50), nullable=True)
+    recipient_zalo_id = Column(String(100), nullable=True)
+    message_type = Column(
+        String(50), nullable=False, default="assisted_draft"
+    )  # 'assisted_draft', 'zns', 'oa_chat', 'webhook_inbound'
+    template_id = Column(String(100), nullable=True)
+    template_data = Column(
+        JSONB, nullable=True, default=dict, server_default=text("'{}'::jsonb")
+    )
+    content = Column(Text, nullable=False)
+    status = Column(
+        String(50), nullable=False, default="generated"
+    )  # 'generated', 'sent', 'delivered', 'failed', 'received'
+    external_message_id = Column(String(255), nullable=True)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
+
+    workspace = relationship("Workspace", back_populates="zalo_message_logs")
+    connection = relationship("ZaloConnection", back_populates="message_logs")
+    lead = relationship("Lead", back_populates="zalo_message_logs")
