@@ -20,6 +20,7 @@ from app.gateway.zalo.webhook import (
     detect_buying_intent,
     verify_zalo_signature,
 )
+from app.routes.outbound_routes import _redact_template_data
 
 
 @pytest.mark.unit
@@ -164,6 +165,39 @@ class TestZaloSignatureVerifier:
             )
             is False
         )
+
+
+@pytest.mark.unit
+class TestZnsTemplateDataRedaction:
+    def test_redacts_pii_keys(self):
+        raw = {
+            "name": "Nguyễn Văn A",
+            "phone": "0901234567",
+            "email": "test@example.com",
+            "address": "123 Lê Lợi",
+            "cccd": "049123456789",
+            "normal_key": "public info",
+        }
+        redacted = _redact_template_data(raw)
+        assert redacted["phone"] == "***"
+        assert redacted["email"] == "***"
+        assert redacted["address"] == "***"
+        assert redacted["cccd"] == "***"
+        assert redacted["normal_key"] == "public info"
+
+    def test_redacts_pii_values(self):
+        raw = {
+            "content": "Liên hệ test@example.com hoặc 0901234567",
+            "id": "049123456789",
+        }
+        redacted = _redact_template_data(raw)
+        assert redacted["content"] == "***"
+        assert redacted["id"] == "***"
+
+    def test_nested_dict_redaction(self):
+        raw = {"customer": {"name": "A", "phone": "0901234567"}}
+        redacted = _redact_template_data(raw)
+        assert redacted["customer"]["phone"] == "***"
 
 
 @pytest.mark.unit

@@ -128,10 +128,10 @@ Generated from code review run on 2026-08-15. Full layer reports:
 - [x] [Review][Patch] `ZaloMessageLog` stores raw `template_data` and webhook payloads without redaction. `webhook.py:260` (inbound `template_data={}`), `outbound_routes.py:341` (ZNS still stores template_data; known issue—see deferred)
 - [x] [Review][Patch] `_resolve_lead_phone` checks non-existent `phone_number` attribute. `outbound_routes.py:155-164`
 
-#### Remaining Action Items
-- [ ] [Review][Patch] `TelegramAlertRequest.chat_id` has no workspace ownership/validation. `outbound_routes.py:111-114,538-548`
-- [ ] [Review][Patch] ZNS send API exists but `zalo-outreach-button.tsx` only deep-links; no UI calls `sendZns`. `zalo-outreach-button.tsx`
-- [ ] [Review][Patch] `ZaloMessageLog` stores raw `template_data` without redaction on outbound ZNS (PII). `outbound_routes.py:341`
+#### Resolved from Remaining Action Items
+- [x] [Review][Patch] `TelegramAlertRequest.chat_id` has no workspace ownership/validation. `telegram_alerts.py:23-96`, `outbound_routes.py:538-548`
+- [x] [Review][Patch] ZNS send API exists but `zalo-outreach-button.tsx` only deep-links; no UI calls `sendZns`. `nowing_web/components/leads/zns-send-modal.tsx`, `zalo-outreach-button.tsx`
+- [x] [Review][Patch] `ZaloMessageLog` stores raw `template_data` without redaction on outbound ZNS (PII). `outbound_routes.py:160-196`, `outbound_routes.py:341-345`
 
 #### Deferred
 - [x] [Review][Defer] `leads_routes.py` awaits sync `has_permission` with 4 args (pre-existing 21.3 issue, unrelated to 21.6) — `leads_routes.py:640-645,691`

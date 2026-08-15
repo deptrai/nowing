@@ -803,13 +803,13 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** The template is acceptable as a v1 "Assisted Co-pilot" with manual review/clipboard. Replace with an LLM call when premium message generation and cost tracking are prioritized.
 
 - **Finding:** `TelegramAlertRequest.chat_id` is not validated against workspace-owned chat bindings. (app/routes/outbound_routes.py:111-114,538-548)
-  - **Action:** Marked `[ ] [Review][Patch]` in `21-6-zalo-integration.md`.
-  - **Reason / when to revisit:** Needs a design pass on workspace-to-telegram-chat ownership; do before allowing non-admin users to dispatch alerts.
+  - **Action:** Marked `[x] [Review][Patch]` in `21-6-zalo-integration.md`.
+  - **Resolution:** `send_telegram_lead_alert` now resolves only `ExternalChatBinding` with `state == BOUND` for the workspace; an explicit `target_chat_id` must match `external_thread_id` in that workspace or the alert is skipped with `reason: unauthorized_chat_id`. (app/gateway/zalo/telegram_alerts.py:23-96)
 
 - **Finding:** ZNS send API exists but the frontend `zalo-outreach-button.tsx` only opens a deep-link; no component calls `sendZns`. (nowing_web/components/leads/zalo-outreach-button.tsx)
-  - **Action:** Marked `[ ] [Review][Patch]` in `21-6-zalo-integration.md`.
-  - **Reason / when to revisit:** Add a ZNS send UI (template selector + explicit consent toggle) when product is ready to ship transactional ZNS.
+  - **Action:** Marked `[x] [Review][Patch]` in `21-6-zalo-integration.md`.
+  - **Resolution:** Added `ZnsSendModal` component and a "ZNS" button in `zalo-outreach-button.tsx`; modal calls `leadsApiService.sendZns` with template ID/data, mode, OA ID, and explicit consent checkbox. (nowing_web/components/leads/zns-send-modal.tsx, nowing_web/components/leads/zalo-outreach-button.tsx)
 
 - **Finding:** `ZaloMessageLog` stores raw `template_data` on outbound ZNS, which may contain PII. (app/routes/outbound_routes.py:341)
-  - **Action:** Marked `[ ] [Review][Patch]` in `21-6-zalo-integration.md`.
-  - **Reason / when to revisit:** Redact known PII keys from `template_data` before logging once consent/PII redaction policy is finalized.
+  - **Action:** Marked `[x] [Review][Patch]` in `21-6-zalo-integration.md`.
+  - **Resolution:** `_redact_template_data` redacts values for PII-like keys (phone/email/name/address/cccd/cmnd/passport/identity/dob/birth/bank/card/salary) and any string matching email/phone/VN ID patterns before logging. (app/routes/outbound_routes.py:160-196, tests/unit/gateway/test_zalo_gateway.py)

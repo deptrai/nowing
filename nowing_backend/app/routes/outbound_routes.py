@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
@@ -160,6 +161,36 @@ def _resolve_lead_phone(lead: Lead) -> str:
             if getattr(contact, "phone", None):
                 return str(contact.phone)
     return ""
+
+
+_PII_KEY_RE = re.compile(
+    r"(phone|mobile|email|name|address|cccd|cmnd|passport|identity|dob|birth|bank|card|salary)",
+    re.IGNORECASE,
+)
+_EMAIL_RE = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
+_PHONE_RE = re.compile(r"\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}\b")
+_ID_RE = re.compile(r"\b\d{9,12}\b")
+
+
+def _redact_template_data(template_data: dict[str, Any]) -> dict[str, Any]:
+    """Redact likely PII values from ZNS template_data before logging."""
+    redacted: dict[str, Any] = {}
+    for key, value in template_data.items():
+        if isinstance(value, dict):
+            redacted[key] = _redact_template_data(value)
+        elif isinstance(value, list):
+            redacted[key] = [
+                _redact_template_data({"_": item})["_"] if isinstance(item, dict) else item
+                for item in value
+            ]
+        elif isinstance(value, str):
+            if _PII_KEY_RE.search(key) or _EMAIL_RE.search(value) or _PHONE_RE.search(value) or _ID_RE.search(value):
+                redacted[key] = "***"
+            else:
+                redacted[key] = value
+        else:
+            redacted[key] = value
+    return redacted
 
 
 # ---------------------------------------------------------------------------
@@ -321,7 +352,7 @@ async def send_zns_message(
             recipient_phone=int_phone,
             message_type="zns",
             template_id=payload.template_id,
-            template_data=payload.template_data,
+            template_data=_redact_template_data(payload.template_data),
             content=f"ZNS Template: {payload.template_id}",
             status="failed",
             error_message=str(exc),
@@ -350,7 +381,7 @@ async def send_zns_message(
         recipient_phone=int_phone,
         message_type="zns",
         template_id=payload.template_id,
-        template_data=payload.template_data,
+        template_data=_redact_template_data(payload.template_data),
         content=f"ZNS Template: {payload.template_id}",
         status="sent" if success else "failed",
         external_message_id=str(msg_id) if msg_id else None,

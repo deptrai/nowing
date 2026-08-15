@@ -203,7 +203,7 @@ development_status:
   21-3: done  # 2026-08-15: 3-tier waterfall + PII vault + anti-ReDoS + auto-refund SLA done; 11 code review patches applied; 16/16 unit tests passed
   21-4: done  # 2026-08-15: BMAD code review re-run; fake data removed, permissions + Zero sync + client_id filter applied
   21-5: review  # 2026-08-15: code + unit tests ok; missing integration tests; P0 human review
-  21-6: in-progress  # 2026-08-15: best-practice review patches applied; 26 tests pass; 3 remaining action items (chat_id validation, ZNS UI, template_data PII redaction)
+  21-6: review  # 2026-08-15: all review action items resolved; 29 tests pass; 1 deferred item (AI Draft is hard-coded template, acceptable for v1)
   21-7: ready-for-dev
   21-8: done  # 2026-08-15: 32 review patches + XActions Celery scheduler/ingestor applied; ruff/pytest/tsc green. 28 initial code-review findings resolved or dismissed (DLQ, pagination, composite index, email regex, account_id validation, ReDoS hardening, integration test rewrite, etc.).
   21-9: done  # Executive Decision Maker Mapping & B2B Lead Outreach

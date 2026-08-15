@@ -5,6 +5,7 @@ import type React from "react";
 import { useState } from "react";
 import { leadsApiService } from "@/lib/apis/leads-api.service";
 import { cn } from "@/lib/utils";
+import { ZnsSendModal } from "./zns-send-modal";
 
 export interface ZaloOutreachButtonProps {
 	leadId: string;
@@ -52,6 +53,7 @@ export const ZaloOutreachButton: React.FC<ZaloOutreachButtonProps> = ({
 	const [loading, setLoading] = useState(false);
 	const [copied, setCopied] = useState(false);
 	const [showModal, setShowModal] = useState(false);
+	const [showZnsModal, setShowZnsModal] = useState(false);
 	const [draftText, setDraftText] = useState("");
 
 	const cleanPhone = cleanPhoneForZalo(phone);
@@ -150,6 +152,23 @@ export const ZaloOutreachButton: React.FC<ZaloOutreachButtonProps> = ({
 					title="Xem & chỉnh sửa kịch bản AI trước khi gửi"
 				>
 					<Sparkles className="w-3.5 h-3.5 text-blue-400" />
+				</button>
+
+				<button
+					type="button"
+					onClick={(e) => {
+						e.stopPropagation();
+						setShowZnsModal(true);
+					}}
+					className={cn(
+						"inline-flex items-center gap-1.5 font-semibold rounded-lg transition-all shadow-sm",
+						"bg-emerald-600 hover:bg-emerald-500 text-white",
+						sizeClasses[size]
+					)}
+					title="Gửi tin nhắn ZNS (Zalo Notification Service) với template đã duyệt"
+				>
+					<Send className="w-3.5 h-3.5" />
+					<span>ZNS</span>
 				</button>
 			</div>
 
@@ -272,6 +291,16 @@ export const ZaloOutreachButton: React.FC<ZaloOutreachButtonProps> = ({
 						</div>
 					</div>
 				</div>
+			)}
+
+			{showZnsModal && (
+				<ZnsSendModal
+					leadId={leadId}
+					workspaceId={workspaceId}
+					companyName={companyName}
+					phone={phone}
+					onClose={() => setShowZnsModal(false)}
+				/>
 			)}
 		</>
 	);

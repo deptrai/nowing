@@ -79,6 +79,53 @@ def build_lead_telegram_alert(
     return text, keyboard
 
 
+async def _resolve_telegram_chat_and_token(
+    session: AsyncSession,
+    workspace_id: int,
+    target_chat_id: str | None = None,
+) -> tuple[str | None, str | None]:
+    """Resolve a Telegram chat_id and bot token for the workspace.
+
+    If target_chat_id is provided, it must match an active bound ExternalChatBinding
+    in the workspace (workspace ownership validation). Otherwise the first active
+    bound Telegram binding for the workspace is used.
+    """
+    stmt = (
+        select(ExternalChatBinding, ExternalChatAccount)
+        .join(
+            ExternalChatAccount,
+            ExternalChatBinding.account_id == ExternalChatAccount.id,
+        )
+        .where(
+            ExternalChatBinding.workspace_id == workspace_id,
+            ExternalChatBinding.state == ExternalChatBindingState.BOUND,
+            ExternalChatAccount.platform == ExternalChatPlatform.TELEGRAM,
+        )
+        .limit(1)
+    )
+
+    if target_chat_id:
+        stmt = stmt.where(ExternalChatBinding.external_thread_id == target_chat_id)
+
+    res = await session.execute(stmt)
+    row = res.first()
+    if row:
+        binding, account = row
+        chat_id = binding.external_thread_id or binding.external_peer_id
+        acc_token = account_token(account)
+        return chat_id, (acc_token or config.TELEGRAM_SHARED_BOT_TOKEN or None)
+
+    if target_chat_id:
+        logger.warning(
+            "Telegram alert skipped: chat_id %s is not a bound workspace chat for workspace %s",
+            target_chat_id,
+            workspace_id,
+        )
+        return None, None
+
+    return None, None
+
+
 async def send_telegram_lead_alert(
     session: AsyncSession,
     *,
@@ -107,43 +154,25 @@ async def send_telegram_lead_alert(
         lead_id=lead_id_str,
     )
 
-    # 1. Resolve chat_id and token
-    chat_id = target_chat_id
-    token = config.TELEGRAM_SHARED_BOT_TOKEN
-
-    if not chat_id:
-        # Look for workspace binding or user preferences
-        stmt = (
-            select(ExternalChatBinding, ExternalChatAccount)
-            .join(
-                ExternalChatAccount,
-                ExternalChatBinding.account_id == ExternalChatAccount.id,
-            )
-            .where(
-                ExternalChatBinding.workspace_id == workspace_id,
-                ExternalChatBinding.state == ExternalChatBindingState.ACTIVE,
-                ExternalChatAccount.platform == ExternalChatPlatform.TELEGRAM,
-            )
-            .limit(1)
-        )
-        res = await session.execute(stmt)
-        row = res.first()
-        if row:
-            binding, account = row
-            chat_id = binding.external_chat_id
-            acc_token = account_token(account)
-            if acc_token:
-                token = acc_token
+    # 1. Resolve chat_id and token with workspace ownership validation
+    chat_id, token = await _resolve_telegram_chat_and_token(
+        session, workspace_id, target_chat_id
+    )
 
     if not chat_id or not token:
+        reason = (
+            "unauthorized_chat_id"
+            if target_chat_id and not chat_id
+            else "missing_chat_id_or_token"
+        )
         logger.warning(
-            "Telegram alert skipped: missing chat_id (%s) or bot token for workspace %s",
-            chat_id,
+            "Telegram alert skipped: %s for workspace %s",
+            reason,
             workspace_id,
         )
         return {
             "sent": False,
-            "reason": "missing_chat_id_or_token",
+            "reason": reason,
             "text": text,
             "reply_markup": reply_markup,
         }
