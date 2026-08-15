@@ -1,9 +1,11 @@
-import { LeadsContent } from "@/components/leads/LeadsContent";
+import { OrigamiSplitCanvas } from "@/components/leads/OrigamiSplitCanvas";
 
-export default function LeadsPage() {
+export default async function LeadsPage(props: { params: Promise<{ workspace_id: string }> }) {
+	const { workspace_id } = await props.params;
+
 	return (
-		<div className="mx-auto w-full max-w-6xl py-6 md:py-8">
-			<LeadsContent />
+		<div className="w-full h-full p-2 md:p-4">
+			<OrigamiSplitCanvas workspaceId={workspace_id} />
 		</div>
 	);
 }
