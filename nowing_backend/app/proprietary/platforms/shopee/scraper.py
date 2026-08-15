@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
 from typing import Any
-from urllib.parse import quote_plus
 
 import httpx
 
@@ -54,26 +52,19 @@ class ShopeeScraper:
         timeout_seconds: float = 10.0,
         max_retries: int = 3,
         proxy_url: str | None = None,
-        client: httpx.AsyncClient | None = None,
     ) -> None:
         self.timeout_seconds = timeout_seconds
         self.max_retries = max_retries
         self.proxy_url = proxy_url
-        if client is not None:
-            self._client = client
-            self._owns_client = False
-        else:
-            self._client = httpx.AsyncClient(
-                timeout=self.timeout_seconds,
-                follow_redirects=True,
-                proxy=self.proxy_url,
-            )
-            self._owns_client = True
+        self._client = httpx.AsyncClient(
+            timeout=self.timeout_seconds,
+            follow_redirects=True,
+            proxy=self.proxy_url,
+        )
 
     async def close(self) -> None:
-        """Close internal HTTP client if owned."""
-        if self._owns_client:
-            await self._client.aclose()
+        """Close internal HTTP client."""
+        await self._client.aclose()
 
     async def __aenter__(self) -> ShopeeScraper:
         return self
@@ -114,17 +105,8 @@ class ShopeeScraper:
                 if response.status_code == 200:
                     try:
                         return response.json()
-                    except json.JSONDecodeError as json_err:
-                        # Could be HTML anti-bot challenge (Cloudflare/Datadome)
-                        if "html" in response.text.lower() or "challenge" in response.text.lower():
-                            if attempt == self.max_retries - 1:
-                                raise ShopeeBlockedError("Shopee returned HTML antibot challenge page.") from json_err
-                            await asyncio.sleep(0.5 * (2**attempt))
-                            continue
-                        raise ShopeeScraperError(f"Failed to parse JSON response: {json_err}") from json_err
-
-                if response.status_code == 404:
-                    raise ShopeeNotFoundError(f"Shopee endpoint returned 404 Not Found: {url}")
+                    except Exception as json_err:
+                        raise ShopeeScraperError(f"Failed to parse JSON: {json_err}") from json_err
 
                 if response.status_code == 429:
                     if attempt == self.max_retries - 1:
@@ -156,7 +138,6 @@ class ShopeeScraper:
                     raise ShopeeScraperError(f"Network failure connecting to Shopee: {net_err}") from net_err
                 await asyncio.sleep(0.5 * (2**attempt))
 
-
         if last_error:
             raise ShopeeScraperError(f"Shopee request failed: {last_error}") from last_error
         raise ShopeeScraperError("Shopee request failed with unknown error.")
@@ -183,19 +164,14 @@ class ShopeeScraper:
         }
 
         if min_price is not None and min_price > Decimal("0"):
-            params["price_min"] = int(
-                (min_price * Decimal("100000")).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
-            )
+            params["price_min"] = int(min_price * Decimal("100000"))
         if max_price is not None and max_price > Decimal("0"):
-            params["price_max"] = int(
-                (max_price * Decimal("100000")).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
-            )
+            params["price_max"] = int(max_price * Decimal("100000"))
 
-        clean_keyword = keyword.strip()
         data = await self._send_request(
             _SHOPEE_SEARCH_API,
             params=params,
-            referer=f"https://shopee.vn/search?keyword={quote_plus(clean_keyword)}",
+            referer=f"https://shopee.vn/search?keyword={keyword}",
         )
 
         raw_items = data.get("items") or []
@@ -221,12 +197,9 @@ class ShopeeScraper:
             rating_data = item_basic.get("item_rating") or {}
             rating_star = normalize_rating(rating_data.get("rating_star"))
             rating_counts = rating_data.get("rating_count")
-            if isinstance(rating_counts, list):
-                rating_count = sum(
-                    int(x) for x in rating_counts if x is not None and str(x).isdigit()
-                )
-            else:
-                rating_count = int(rating_counts or 0)
+            rating_count = (
+                sum(rating_counts) if isinstance(rating_counts, list) else int(rating_counts or 0)
+            )
 
             stock = item_basic.get("stock", 0)
             status_code = item_basic.get("status", 1)
@@ -258,7 +231,7 @@ class ShopeeScraper:
                 )
             )
 
-        total_count = data.get("total_count") if data.get("total_count") is not None else len(products)
+        total_count = data.get("total_count", len(products))
         has_more = (offset + limit) < total_count
 
         return ShopeeSearchResponse(
@@ -293,12 +266,9 @@ class ShopeeScraper:
         rating_data = item_data.get("item_rating") or {}
         rating_star = normalize_rating(rating_data.get("rating_star"))
         rating_counts = rating_data.get("rating_count")
-        if isinstance(rating_counts, list):
-            rating_count = sum(
-                int(x) for x in rating_counts if x is not None and str(x).isdigit()
-            )
-        else:
-            rating_count = int(rating_counts or 0)
+        rating_count = (
+            sum(rating_counts) if isinstance(rating_counts, list) else int(rating_counts or 0)
+        )
 
         stock = item_data.get("stock", 0)
         status_code = item_data.get("status", 1)

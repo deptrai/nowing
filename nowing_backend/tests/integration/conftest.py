@@ -49,7 +49,24 @@ async def async_engine():
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS citext"))
-        await conn.run_sync(Base.metadata.create_all)
+
+    has_postgis = False
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
+            has_postgis = True
+    except Exception:
+        has_postgis = False
+
+    async with engine.begin() as conn:
+        if has_postgis:
+            await conn.run_sync(Base.metadata.create_all)
+        else:
+            tables_to_create = [
+                t for t in Base.metadata.sorted_tables
+                if t.name != "spatial_planning_zones"
+            ]
+            await conn.run_sync(lambda sync_conn: Base.metadata.create_all(sync_conn, tables=tables_to_create))
 
     yield engine
 

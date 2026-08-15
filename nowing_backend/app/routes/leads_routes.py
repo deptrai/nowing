@@ -21,18 +21,32 @@ from app.db import (
     VerifiedContact,
     get_async_session,
 )
+from app.lead_intelligence.reverse_icp import ReverseIcpService
 from app.lead_intelligence.schemas import (
     CompanyGraphRead,
     DecisionMakerRead,
     HiringSignalRead,
+    InvalidPhoneReportRequest,
     LeadListResponse,
     LeadRead,
     LeadStatusUpdate,
     LegalEntityRead,
+    PhoneRefundResponse,
+    PhoneResolutionRequest,
+    PhoneResolutionResponse,
+    ReverseIcpRequest,
+    ReverseIcpResponse,
     TenderSummaryRead,
 )
+from app.proprietary.platforms.crawler.fast_crawler import (
+    FastCrawlerTimeoutError,
+    SSRFProtectionError,
+)
+from app.services.billing_service import BillingService
+from app.services.phone_waterfall_service import PhoneWaterfallService
+from app.tasks.phone_waterfall_worker import resolve_phone_waterfall_task
 from app.users import get_auth_context
-from app.utils.rbac import check_permission
+from app.utils.rbac import check_permission, has_permission
 
 router = APIRouter()
 
@@ -47,15 +61,26 @@ def _map_lead_to_read(lead: Lead) -> LeadRead:
     raw_contacts = []
     if getattr(lead, "verified_contacts", None):
         raw_contacts = [
-            c for c in lead.verified_contacts if getattr(c, "phone", None) or getattr(c, "email", None)
+            c
+            for c in lead.verified_contacts
+            if getattr(c, "phone", None) or getattr(c, "email", None)
         ]
-    first_phone = raw_contacts[0].phone if raw_contacts else getattr(lead, "phone", None)
+    first_phone = (
+        raw_contacts[0].phone if raw_contacts else getattr(lead, "phone", None)
+    )
 
     # Derive intent and snippet from available metadata or source
     derived_intent = getattr(lead, "intent", None)
     if not derived_intent:
         source_lower = (lead.source or "").lower()
-        if source_lower in {"batdongsan", "chotot", "muaban_bds", "facebook", "social", "community"}:
+        if source_lower in {
+            "batdongsan",
+            "chotot",
+            "muaban_bds",
+            "facebook",
+            "social",
+            "community",
+        }:
             derived_intent = "BÁN"
         elif source_lower in {"topcv", "itviec", "vietnamworks", "jobs"}:
             derived_intent = "TUYỂN DỤNG"
@@ -86,8 +111,12 @@ def _map_lead_to_read(lead: Lead) -> LeadRead:
         location=getattr(lead, "location", None),
         tech_stack=tech_stack,
         fit_score=float(lead.fit_score) if lead.fit_score is not None else None,
-        intent_score=float(lead.intent_score) if lead.intent_score is not None else None,
-        composite_score=float(lead.composite_score) if lead.composite_score is not None else None,
+        intent_score=float(lead.intent_score)
+        if lead.intent_score is not None
+        else None,
+        composite_score=float(lead.composite_score)
+        if lead.composite_score is not None
+        else None,
         status=lead.status or "new",
         intent=derived_intent,
         phone=first_phone,
@@ -107,13 +136,21 @@ def _map_lead_to_read(lead: Lead) -> LeadRead:
 )
 async def list_workspace_leads(
     workspace_id: int,
-    client_id: str | None = Query(None, description="Multi-vertical client namespace (AD-31)"),
+    client_id: str | None = Query(
+        None, description="Multi-vertical client namespace (AD-31)"
+    ),
     source: str | None = Query(None, description="Filter by scraper platform source"),
     intent: str | None = Query(None, description="Filter by intent tag"),
     min_score: float | None = Query(None, description="Minimum fit or composite score"),
-    status_filter: str | None = Query(None, alias="status", description="Filter by CRM pipeline status"),
-    search: str | None = Query(None, description="Search term for company, location, or industry"),
-    sort: str = Query("-created_at", description="Sort field: created_at, fit_score, score"),
+    status_filter: str | None = Query(
+        None, alias="status", description="Filter by CRM pipeline status"
+    ),
+    search: str | None = Query(
+        None, description="Search term for company, location, or industry"
+    ),
+    sort: str = Query(
+        "-created_at", description="Sort field: created_at, fit_score, score"
+    ),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     session: AsyncSession = Depends(get_async_session),
@@ -129,8 +166,10 @@ async def list_workspace_leads(
     )
 
     # Base query for active workspace
-    stmt = select(Lead).where(Lead.workspace_id == workspace_id).options(
-        selectinload(Lead.verified_contacts)
+    stmt = (
+        select(Lead)
+        .where(Lead.workspace_id == workspace_id)
+        .options(selectinload(Lead.verified_contacts))
     )
 
     if client_id is not None:
@@ -143,11 +182,17 @@ async def list_workspace_leads(
         if "THẦU" in intent_clean or "TENDER" in intent_clean:
             stmt = stmt.where(Lead.source.in_(["muasamcong", "tender"]))
         elif "TUYỂN" in intent_clean or "JOB" in intent_clean:
-            stmt = stmt.where(Lead.source.in_(["topcv", "itviec", "vietnamworks", "jobs"]))
+            stmt = stmt.where(
+                Lead.source.in_(["topcv", "itviec", "vietnamworks", "jobs"])
+            )
         elif "MUA" in intent_clean:
-            stmt = stmt.where(Lead.source.in_(["shopee", "tiktok_shop", "ecommerce", "facebook"]))
+            stmt = stmt.where(
+                Lead.source.in_(["shopee", "tiktok_shop", "ecommerce", "facebook"])
+            )
         elif "BÁN" in intent_clean:
-            stmt = stmt.where(Lead.source.in_(["batdongsan", "chotot", "muaban_bds", "facebook"]))
+            stmt = stmt.where(
+                Lead.source.in_(["batdongsan", "chotot", "muaban_bds", "facebook"])
+            )
     if status_filter:
         stmt = stmt.where(Lead.status == status_filter)
     if min_score is not None:
@@ -368,7 +413,8 @@ async def get_company_graph(
                         DecisionMakerRead(
                             name=dm.full_name,
                             title=dm.title or "Executive",
-                            linkedin_url=dm.linkedin_url or f"https://linkedin.com/in/{dm.linkedin_slug}",
+                            linkedin_url=dm.linkedin_url
+                            or f"https://linkedin.com/in/{dm.linkedin_slug}",
                             email=dm.email_prediction,
                             phone=None,
                             confidence=dm.confidence_score or 0.85,
@@ -428,7 +474,9 @@ async def get_company_graph(
     tenders: list[TenderSummaryRead] = []
 
     if lead_obj:
-        int_seed = int(hashlib.md5(lead_obj.company_name.encode("utf-8")).hexdigest()[:8], 16)
+        int_seed = int(
+            hashlib.md5(lead_obj.company_name.encode("utf-8")).hexdigest()[:8], 16
+        )
         rep_name = db_contacts[0].name if db_contacts else "Chưa cập nhật"
         legal_entity = LegalEntityRead(
             legal_name=lead_obj.company_name,
@@ -461,3 +509,194 @@ async def get_company_graph(
         hiring_velocity_pct=hiring_velocity_pct,
         active_jobs_count=active_jobs_count,
     )
+
+
+@router.post(
+    "/workspaces/{workspace_id}/leads/{lead_id}/resolve-phone",
+    response_model=PhoneResolutionResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def resolve_lead_phone_endpoint(
+    workspace_id: int,
+    lead_id: UUID,
+    body: PhoneResolutionRequest = PhoneResolutionRequest(),
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(get_auth_context),
+) -> PhoneResolutionResponse:
+    """Resolve and verify Vietnam mobile phone for a lead via 3-Tier Waterfall (Story 21.3 / AD-36).
+
+    Tier 1: Batdongsan Token Pool & Phone Reveal
+    Tier 2: Chợ Tốt Mobile API & Device Spoofing
+    Tier 3: Passive Carrier Prefix Validation & HLR / Zalo Lookup
+    Debits 1.5 credits (1,500,000 micros) via BillingEvent only upon success.
+    """
+    # RBAC: Check LEADS_ENRICH or LEADS_WRITE or LEADS_READ
+    has_enrich = await has_permission(
+        session, auth, workspace_id, Permission.LEADS_ENRICH.value
+    )
+    has_write = await has_permission(
+        session, auth, workspace_id, Permission.LEADS_WRITE.value
+    )
+    if not (has_enrich or has_write):
+        await check_permission(
+            session,
+            auth,
+            workspace_id,
+            Permission.LEADS_READ.value,
+            error_message="You don't have permission to resolve lead contacts in this workspace",
+        )
+
+    client_id = auth.current_client_id
+
+    if body.async_mode:
+        task = resolve_phone_waterfall_task.delay(
+            workspace_id=workspace_id,
+            client_id=client_id,
+            lead_id=str(lead_id),
+            user_id=str(auth.user_id) if auth.user_id else None,
+            source_url=body.source_url,
+            raw_text=body.raw_text,
+            force_refresh=body.force_refresh,
+        )
+        return PhoneResolutionResponse(
+            lead_id=lead_id,
+            phone_masked="",
+            phone=None,
+            tier_reached=0,
+            provider_used="async_celery_worker",
+            status="pending",
+            cost_credits=1.5,
+            cost_micros=1500000,
+            confidence=0.0,
+            carrier="Unknown",
+            is_cached=False,
+            task_id=str(task.id),
+        )
+
+    service = PhoneWaterfallService(session)
+    res = await service.resolve_lead_phone(
+        workspace_id=workspace_id,
+        client_id=client_id,
+        lead_id=lead_id,
+        user_id=auth.user_id,
+        source_url=body.source_url,
+        raw_text=body.raw_text,
+        force_refresh=body.force_refresh,
+    )
+
+    # Check if caller is authorized to view plaintext PII (AD-25 / AD-49)
+    can_read_contacts = await has_permission(
+        session, auth, workspace_id, Permission.CONTACTS_READ.value
+    )
+    if not can_read_contacts:
+        can_read_contacts = has_enrich or has_write
+
+    revealed_phone = res.phone if can_read_contacts else None
+
+    return PhoneResolutionResponse(
+        lead_id=res.lead_id,
+        phone_masked=res.phone_masked,
+        phone=revealed_phone,
+        tier_reached=res.tier_reached,
+        provider_used=res.provider_used,
+        status=res.status,
+        cost_credits=res.cost_micros / 1_000_000,
+        cost_micros=res.cost_micros,
+        confidence=res.confidence,
+        carrier=res.carrier,
+        is_cached=res.is_cached,
+        contact_id=res.contact_id,
+        degraded=res.degraded,
+        degradation_reason=res.degradation_reason,
+    )
+
+
+@router.post(
+    "/workspaces/{workspace_id}/leads/{lead_id}/report-invalid-phone",
+    response_model=PhoneRefundResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def report_invalid_phone_endpoint(
+    workspace_id: int,
+    lead_id: UUID,
+    body: InvalidPhoneReportRequest = InvalidPhoneReportRequest(),
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(get_auth_context),
+) -> PhoneRefundResponse:
+    """Report an unreachable/invalid phone number within 24h SLA for 100% credit auto-refund (Story 21.3)."""
+    await check_permission(
+        session,
+        auth,
+        workspace_id,
+        Permission.LEADS_WRITE.value,
+        error_message="You don't have permission to report invalid leads in this workspace",
+    )
+
+    billing = BillingService(session)
+    result = await billing.auto_refund_lead(
+        workspace_id=workspace_id,
+        lead_id=lead_id,
+        user_id=auth.user_id,
+        reason=body.reason,
+    )
+
+    return PhoneRefundResponse(
+        lead_id=UUID(result["lead_id"]),
+        refunded=result["refunded"],
+        refund_amount_credits=result["refund_credits"],
+        refund_micros=result["refund_micros"],
+        refunded_at=result["refunded_at"],
+        status=result["status"],
+        reason=result["reason"],
+        message="Auto-refund SLA processed successfully. 100% credits reverted to wallet.",
+    )
+
+
+@router.post(
+    "/workspaces/{workspace_id}/leads/reverse-icp",
+    response_model=ReverseIcpResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def reverse_icp_endpoint(
+    workspace_id: int,
+    body: ReverseIcpRequest,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(get_auth_context),
+) -> ReverseIcpResponse:
+    """Analyze a website or landing page URL to generate ICP, buyer personas, and filter presets (Story 21.10)."""
+    await check_permission(
+        session,
+        auth,
+        workspace_id,
+        Permission.WORKSPACE_READ.value,
+        error_message="You don't have permission to access lead intelligence in this workspace",
+    )
+
+    service = ReverseIcpService()
+    try:
+        result = await service.analyze_url(
+            url=body.url,
+            custom_instructions=body.custom_instructions,
+        )
+        return result
+    except SSRFProtectionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"URL rejected by security policy: {exc}",
+        ) from exc
+    except FastCrawlerTimeoutError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail=f"Crawl connection timed out: {exc}",
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to analyze URL: {exc}",
+        ) from exc
+

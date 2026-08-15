@@ -19,9 +19,19 @@ class LeadStatusUpdate(BaseModel):
     @classmethod
     def _validate_status(cls, v: str) -> str:
         cleaned = v.strip().lower()
-        allowed = {"new", "open", "contacted", "qualified", "converted", "lost", "pending"}
+        allowed = {
+            "new",
+            "open",
+            "contacted",
+            "qualified",
+            "converted",
+            "lost",
+            "pending",
+        }
         if cleaned not in allowed:
-            raise ValueError(f"Invalid status '{v}'. Must be one of: {', '.join(sorted(allowed))}")
+            raise ValueError(
+                f"Invalid status '{v}'. Must be one of: {', '.join(sorted(allowed))}"
+            )
         return cleaned
 
 
@@ -44,6 +54,7 @@ class LeadRead(BaseModel):
         if v < 0 or v > 100:
             raise ValueError("Score must be between 0 and 100")
         return v
+
     source: str
     source_url: str | None = None
     company_name: str
@@ -168,3 +179,103 @@ class CompanyGraphRead(BaseModel):
         if v < 0:
             raise ValueError("Active jobs count must be non-negative")
         return v
+
+
+class PhoneResolutionRequest(BaseModel):
+    """Payload for resolving a lead's phone via 3-tier waterfall."""
+
+    source_url: str | None = None
+    raw_text: str | None = None
+    force_refresh: bool = False
+    async_mode: bool = False
+
+
+class PhoneResolutionResponse(BaseModel):
+    """Result of 3-tier phone resolution waterfall."""
+
+    lead_id: UUID
+    phone_masked: str
+    phone: str | None = None  # Populated only for authorized callers with CONTACTS_READ
+    tier_reached: int
+    provider_used: str
+    status: str
+    cost_credits: float = 1.5
+    cost_micros: int = 1500000
+    confidence: float = 0.95
+    carrier: str = "Unknown"
+    is_cached: bool = False
+    contact_id: UUID | None = None
+    degraded: bool = False
+    degradation_reason: str | None = None
+    task_id: str | None = None
+
+
+class InvalidPhoneReportRequest(BaseModel):
+    """Payload for reporting an invalid/dead phone number within 24h SLA."""
+
+    reason: str = Field(
+        default="reported_invalid_phone",
+        description="Reason for reporting invalid phone",
+    )
+
+
+class PhoneRefundResponse(BaseModel):
+    """Result of lead auto-refund processing."""
+
+    lead_id: UUID
+    refunded: bool
+    refund_amount_credits: float
+    refund_micros: int
+    refunded_at: str
+    status: str
+    reason: str | None = None
+    message: str
+
+
+class BuyerPersona(BaseModel):
+    """Target buyer persona extracted from website ICP analysis (Story 21.10)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    title: str
+    industry: str
+    company_size: str
+    pain_points: list[str] = Field(default_factory=list)
+    buying_triggers: list[str] = Field(default_factory=list)
+
+
+class FilterPresets(BaseModel):
+    """Auto-configured Multi-Table filter presets (Story 21.10)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    platforms: list[str] = Field(default_factory=list)
+    intent: str = "BÁN"
+    target_industries: list[str] = Field(default_factory=list)
+    locations: list[str] = Field(default_factory=list)
+    company_size_range: str | None = None
+
+
+class ReverseIcpRequest(BaseModel):
+    """Payload for 1-Click Reverse-ICP URL analysis."""
+
+    url: str = Field(..., description="Target website, project, or landing page URL")
+    custom_instructions: str | None = Field(default=None, description="Optional custom focus instructions")
+
+
+class ReverseIcpResponse(BaseModel):
+    """Structured response for 1-Click Reverse-ICP (Story 21.10)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    company_name: str
+    domain: str
+    value_proposition: str
+    industry: str
+    target_buyer_personas: list[BuyerPersona] = Field(default_factory=list)
+    suggested_search_queries: list[str] = Field(default_factory=list)
+    negative_keywords: list[str] = Field(default_factory=list)
+    filter_presets: FilterPresets = Field(default_factory=FilterPresets)
+    chat_starter_prompts: list[str] = Field(default_factory=list)
+    raw_metadata: dict[str, Any] = Field(default_factory=dict)
+

@@ -69,9 +69,7 @@ class EcommerceProduct(BaseModel, TimestampMixin):
 
     @property
     def external_product_id(self) -> str:
-        """Alias for external platform product identifier (format: shop_id_item_id)."""
-        if self.shop_id:
-            return f"{self.shop_id}_{self.item_id}"
+        """Alias for external platform product identifier."""
         return str(self.item_id)
 
     __table_args__ = (
@@ -105,5 +103,5 @@ class EcommercePriceHistory(BaseModel, TimestampMixin):
 
     __table_args__ = (
         Index("idx_ecom_price_history_prod", "product_id", "recorded_at"),
+        Index("idx_shopee_price_history_product_time", "product_id", "recorded_at"),
     )
-

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 
 from app.proprietary.platforms.muasamcong.schemas import ProcurementTenderItem
 
@@ -12,17 +12,11 @@ class ProcurementSearchInput(BaseModel):
 
     keyword: str | None = Field(default=None, description="Từ khóa tìm kiếm gói thầu")
     field: str | None = Field(default=None, description="Lĩnh vực (Xây lắp, Mua sắm hàng hóa, Tư vấn)")
-    min_price: float | None = Field(default=None, ge=0, description="Giá gói thầu tối thiểu (VND)")
-    max_price: float | None = Field(default=None, ge=0, description="Giá gói thầu tối đa (VND)")
+    min_price: float | None = Field(default=None, description="Giá gói thầu tối thiểu (VND)")
+    max_price: float | None = Field(default=None, description="Giá gói thầu tối đa (VND)")
     location: str | None = Field(default=None, description="Tỉnh/Thành phố hoặc địa bàn mời thầu")
     page: int = Field(default=0, ge=0, description="Trang kết quả")
     size: int = Field(default=10, ge=1, le=50, description="Số lượng gói thầu mỗi trang")
-
-    @model_validator(mode="after")
-    def validate_price_range(self) -> ProcurementSearchInput:
-        if self.min_price is not None and self.max_price is not None and self.min_price > self.max_price:
-            raise ValueError(f"min_price ({self.min_price}) cannot exceed max_price ({self.max_price})")
-        return self
 
 
 class ProcurementSearchOutput(BaseModel):

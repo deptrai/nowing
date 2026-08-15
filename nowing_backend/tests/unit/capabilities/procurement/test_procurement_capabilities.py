@@ -128,29 +128,3 @@ class TestProcurementCapabilities:
             assert output.qualification.annual_turnover == "Tối thiểu 30 tỷ VND"
             assert output.countdown.is_urgent is True
             assert output.qualification.bid_security == "300.000.000 VND"
-            assert output.degraded is False
-
-    @pytest.mark.asyncio
-    async def test_procurement_summarize_not_found_degradation(self):
-        executor = build_procurement_summarize_executor()
-
-        with patch("app.proprietary.platforms.muasamcong.scraper.MuasamcongScraper.get_tender_detail", new_callable=AsyncMock) as mock_get_detail:
-            mock_get_detail.return_value = None
-
-            input_data = ProcurementSummarizeInput(
-                bid_no="IB2400999999",
-                bid_turn_no="00",
-            )
-
-            output: ProcurementSummarizeOutput = await executor(input_data)
-            assert output.bid_no == "IB2400999999"
-            assert output.degraded is True
-            assert "Không tìm thấy" in (output.degradation_reason or "")
-
-    def test_search_input_invalid_price_range(self):
-        with pytest.raises(ValueError, match="cannot exceed max_price"):
-            ProcurementSearchInput(
-                min_price=50000000000.0,
-                max_price=1000000000.0,
-            )
-

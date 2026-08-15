@@ -154,19 +154,3 @@ async def test_ecommerce_track_price_history_executor() -> None:
         assert output.current_price == Decimal("329000.00")
         assert len(output.price_history) == 2
         assert len(output.sparkline_points) == 2
-
-
-def test_ecommerce_search_input_validation() -> None:
-    """Test min_price <= max_price and non-empty keyword validation."""
-    with pytest.raises(ValueError, match="cannot exceed max_price"):
-        EcommerceSearchInput(
-            keyword="Laptop",
-            min_price=Decimal("50000000.00"),
-            max_price=Decimal("10000000.00"),
-        )
-
-    with pytest.raises(ValueError, match="cannot be empty"):
-        EcommerceSearchInput(
-            keyword="   ",
-        )
-

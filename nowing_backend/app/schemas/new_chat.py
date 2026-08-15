@@ -462,6 +462,48 @@ class NewChatRequest(BaseModel):
         return self
 
 
+# =============================================================================
+# Suggested Action Schemas (Story 21.11)
+# =============================================================================
+
+
+class SuggestedAction(BaseModel):
+    """Contextual 1-click execution action pill emitted at turn completion."""
+
+    id: str = Field(..., description="Unique identifier for the action pill")
+    label: str = Field(..., description="User-facing label displayed on the pill")
+    icon: str = Field(
+        default="sparkles",
+        description="Icon identifier (e.g. phone, message-square, search, download, sparkles)",
+    )
+    action_type: str = Field(
+        ...,
+        description="Action type classifier (e.g. decode_phones, zalo_draft, find_similar, export_csv, deep_research)",
+    )
+    prompt_template: str = Field(
+        ...,
+        description="Prompt to dispatch immediately when clicked",
+    )
+    cost_credits: float | None = Field(
+        default=None,
+        description="Projected credit cost for executing this action (e.g. 1.5 * N)",
+    )
+    payload: dict[str, Any] | None = Field(
+        default=None,
+        description="Optional structured metadata/parameters for the action dispatch",
+    )
+
+
+class SuggestedActionList(BaseModel):
+    """Validated container for suggested actions, capped at 3 pills."""
+
+    actions: list[SuggestedAction] = Field(
+        default_factory=list,
+        max_length=3,
+        description="List of suggested actions (maximum 3)",
+    )
+
+
 class RegenerateRequest(BaseModel):
     """
     Request schema for regenerating an AI response.

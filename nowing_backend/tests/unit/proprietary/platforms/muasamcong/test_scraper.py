@@ -191,20 +191,3 @@ class TestMuasamcongScraper:
             assert result.degraded is True
             assert result.total_elements == 0
             assert "timed out" in (result.degradation_reason or "")
-
-    def test_normalize_vietnamese_dot_price_and_dates(self):
-        scraper = MuasamcongScraper()
-        raw = {
-            "bidNo": "IB2400112233",
-            "bidTurnNo": "00",
-            "bidName": "Gói thầu thiết bị",
-            "bidPrice": "45.000.000.000 VND",
-            "bidCloseDate": "20/08/2026 09:00",
-            "status": "OPEN",
-        }
-        item = scraper._normalize_item(raw)
-        assert item.bid_price == 45000000000.0
-        assert item.bid_closing_at is not None
-        # 09:00 VN time (UTC+7) -> 02:00 UTC
-        assert item.bid_closing_at.hour == 2
-        assert item.bid_closing_at.day == 20

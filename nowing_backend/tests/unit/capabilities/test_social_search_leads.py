@@ -1,6 +1,6 @@
 """Unit tests for social.search_leads capability & social_search_posts (Story 21.8 / AC 5)."""
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -36,11 +36,26 @@ def mock_db_session_factory():
 
     def _factory(posts):
         mock_db_session = AsyncMock()
-        mock_scalars = AsyncMock()
-        mock_scalars.all = lambda: posts
-        mock_result = AsyncMock()
-        mock_result.scalars = lambda: mock_scalars
-        mock_db_session.execute = AsyncMock(return_value=mock_result)
+
+        def _build_result(stmt):
+            # The executor calls session.execute for the SELECT and
+            # session.scalar for the COUNT. Return a MagicMock for the SELECT
+            # so scalars()/all() are plain sync calls, and a count for scalar.
+            stmt_str = str(stmt)
+            is_count = "count(" in stmt_str
+
+            if is_count:
+                # scalar() should return an int; AsyncMock side_effect does that.
+                return len(posts)
+
+            mock_result = MagicMock()
+            mock_scalars = MagicMock()
+            mock_scalars.all.return_value = posts
+            mock_result.scalars.return_value = mock_scalars
+            return mock_result
+
+        mock_db_session.execute = AsyncMock(side_effect=_build_result)
+        mock_db_session.scalar = AsyncMock(side_effect=_build_result)
         return mock_db_session
 
     return _factory

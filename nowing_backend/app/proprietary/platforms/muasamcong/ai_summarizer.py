@@ -45,8 +45,7 @@ class ProcurementAISummarizer:
         hours = int(diff.seconds // 3600)
         minutes = int((diff.seconds % 3600) // 60)
 
-        # Trigger urgency precisely when total seconds < 48h (AD-PROC-8)
-        is_urgent = total_seconds < (48.0 * 3600.0)
+        is_urgent = hours_remaining < 48.0  # Turn red when < 48h
 
         if days > 0:
             countdown_text = f"Còn {days} ngày {hours} giờ"
@@ -75,30 +74,24 @@ class ProcurementAISummarizer:
         lines = text.split("\n")
         for line in lines:
             line_str = line.strip()
-            if not line_str or len(line_str) < 5:
+            if not line_str:
                 continue
 
-            # Limit criteria length to max 500 chars
-            clean_str = line_str[:500]
-
             # 1. Doanh thu bình quân hàng năm
-            if re.search(r"(doanh\s*thu\s*bình\s*quân|năng\s*lực\s*tài\s*chính|turnover)", clean_str, re.IGNORECASE):
-                # Prefer lines that contain numbers or currency
-                if any(c.isdigit() for c in clean_str) or annual_turnover == "Không có thông tin cụ thể":
-                    annual_turnover = clean_str
+            if re.search(r"(doanh\s*thu\s*bình\s*quân|năng\s*lực\s*tài\s*chính|turnover)", line_str, re.IGNORECASE):
+                annual_turnover = line_str
 
             # 2. Hợp đồng tương tự
-            elif re.search(r"(hợp\s*đồng\s*tương\s*tự|kinh\s*nghiệm\s*thực\s*hiện|similar\s*contract)", clean_str, re.IGNORECASE):
-                if any(c.isdigit() for c in clean_str) or similar_contracts == "Không có thông tin cụ thể":
-                    similar_contracts = clean_str
+            elif re.search(r"(hợp\s*đồng\s*tương\s*tự|kinh\s*nghiệm\s*thực\s*hiện|similar\s*contract)", line_str, re.IGNORECASE):
+                similar_contracts = line_str
 
             # 3. Nhân sự chủ chốt
-            elif re.search(r"(nhân\s*sự\s*chủ\s*chốt|chỉ\s*huy\s*trưởng|chủ\s*nhiệm|key\s*personnel)", clean_str, re.IGNORECASE):
-                key_personnel = clean_str
+            elif re.search(r"(nhân\s*sự\s*chủ\s*chốt|chỉ\s*huy\s*trưởng|chủ\s*nhiệm|key\s*personnel)", line_str, re.IGNORECASE):
+                key_personnel = line_str
 
             # 4. Bảo đảm dự thầu
-            elif re.search(r"(bảo\s*đảm\s*dự\s*thầu|tiền\s*bảo\s*đảm|thư\s*bảo\s*lãnh|bid\s*security)", clean_str, re.IGNORECASE):
-                bid_security = clean_str
+            elif re.search(r"(bảo\s*đảm\s*dự\s*thầu|tiền\s*bảo\s*đảm|thư\s*bảo\s*lãnh|bid\s*security)", line_str, re.IGNORECASE):
+                bid_security = line_str
 
         return QualificationCriteria(
             annual_turnover=annual_turnover,

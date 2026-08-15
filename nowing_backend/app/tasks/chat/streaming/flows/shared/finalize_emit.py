@@ -8,7 +8,7 @@ frontend has no usage to render.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from app.services.new_streaming_service import VercelStreamingService
 from app.utils.perf import get_perf_logger
@@ -52,3 +52,34 @@ def iter_token_usage_frame(
                 "call_details": accumulator.serialized_calls(),
             },
         )
+
+
+def iter_suggested_actions_frame(
+    streaming_service: VercelStreamingService,
+    *,
+    user_query: str = "",
+    assistant_text: str = "",
+    tool_names: list[str] | None = None,
+    selection_count: int | None = None,
+    payload_context: dict[str, Any] | None = None,
+):
+    """Yield zero or one ``data: suggested-actions`` SSE frame (Story 21.11 / AC: 1, 4)."""
+    try:
+        from app.services.chat.suggested_actions_generator import (
+            generate_suggested_actions,
+        )
+
+        actions = generate_suggested_actions(
+            user_query=user_query,
+            assistant_text=assistant_text,
+            tool_names=tool_names,
+            selection_count=selection_count,
+            payload_context=payload_context,
+        )
+        if actions:
+            yield streaming_service.format_suggested_actions(actions)
+    except Exception as exc:
+        logger.warning(
+            "[suggested_actions] Failed to generate suggested actions: %s", exc
+        )
+

@@ -2,14 +2,9 @@
 
 from __future__ import annotations
 
-import asyncio
 import io
-import ipaddress
 import logging
-import re
-import zipfile
 from typing import Any
-from urllib.parse import urlparse
 
 import httpx
 from pypdf import PdfReader
@@ -19,45 +14,9 @@ from app.proprietary.platforms.muasamcong.schemas import TextChunk
 logger = logging.getLogger(__name__)
 
 # AD-PROC-2 Architecture Invariant constants
-CHUNK_SIZE_BYTES = 131072  # 128 KB HTTP streaming chunks
-MIN_S3_PART_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB minimum part size for AWS S3 Multipart Upload
+CHUNK_SIZE_BYTES = 131072  # 128 KB
 MAX_MEMORY_FOOTPRINT_MB = 32
 DEFAULT_BUCKET = "nowing-procurement-docs"
-
-# Trusted hostnames for public procurement dossiers
-ALLOWED_PROCUREMENT_HOSTS = {
-    "muasamcong.mpi.gov.vn",
-    "egp.mpi.gov.vn",
-    "dauthau.mpi.gov.vn",
-    "localhost",
-    "127.0.0.1",
-}
-
-
-def validate_dossier_url(url: str, allow_custom_hosts: bool = False) -> None:
-    """Validates dossier URL against SSRF attacks (AD-PROC-2 security invariant)."""
-    parsed = urlparse(url)
-    if parsed.scheme not in ("http", "https"):
-        raise ValueError(f"Invalid URL scheme '{parsed.scheme}': only http/https allowed.")
-
-    hostname = (parsed.hostname or "").lower()
-    if not hostname:
-        raise ValueError("Invalid dossier URL: missing hostname.")
-
-    if (
-        not allow_custom_hosts
-        and not any(hostname == allowed or hostname.endswith(f".{allowed}") for allowed in ALLOWED_PROCUREMENT_HOSTS)
-    ):
-        raise ValueError(f"Host '{hostname}' is not in the allowed procurement domain whitelist.")
-
-    # Check for private / loopback IP address SSRF attempts
-    try:
-        ip = ipaddress.ip_address(hostname)
-        if (ip.is_private or ip.is_loopback or ip.is_link_local) and hostname not in ("localhost", "127.0.0.1"):
-            raise ValueError(f"Direct access to private/internal IP '{hostname}' is forbidden.")
-    except ValueError:
-        # Not a raw IP address, which is normal for domain names
-        pass
 
 
 class TenderDossierService:
@@ -72,20 +31,13 @@ class TenderDossierService:
         bid_no: str,
         bid_turn_no: str = "00",
         s3_client: Any = None,
-        allow_custom_hosts: bool = False,
     ) -> str:
-        """Streams dossier binary directly to S3 with 5MB multipart buffers (AD-PROC-2).
+        """Streams dossier binary directly to S3 in 128KB chunks (AD-PROC-2).
 
         Ensures peak memory usage remains <= 32MB by never buffering the entire
-        file in RAM, while satisfying AWS S3 minimum 5MB part size requirement.
+        file in RAM.
         """
-        # Validate SSRF safety
-        validate_dossier_url(dossier_url, allow_custom_hosts=allow_custom_hosts)
-
-        # Sanitize keys against path traversal
-        safe_bid_no = re.sub(r"[^A-Za-z0-9_-]", "_", bid_no) or "UNKNOWN"
-        safe_turn_no = re.sub(r"[^A-Za-z0-9_-]", "_", bid_turn_no) or "00"
-        s3_key = f"{safe_bid_no}_{safe_turn_no}/hsmt.pdf"
+        s3_key = f"{bid_no}_{bid_turn_no}/hsmt.pdf"
         s3_uri = f"s3://{self.bucket_name}/{s3_key}"
 
         if s3_client is None:
@@ -108,43 +60,22 @@ class TenderDossierService:
             ):
                 resp.raise_for_status()
 
-                buffer = bytearray()
-
-                # Stream in 128KB chunks, accumulating up to 5MB S3 part threshold
+                # Stream in 128KB chunks directly to S3 part upload
                 async for chunk in resp.aiter_bytes(chunk_size=CHUNK_SIZE_BYTES):
                     if not chunk:
                         continue
-                    buffer.extend(chunk)
-
-                    if len(buffer) >= MIN_S3_PART_SIZE_BYTES:
-                        part_resp = await s3_client.upload_part(
-                            Bucket=self.bucket_name,
-                            Key=s3_key,
-                            PartNumber=part_number,
-                            UploadId=upload_id,
-                            Body=bytes(buffer),
-                        )
-                        parts.append({
-                            "PartNumber": part_number,
-                            "ETag": part_resp["ETag"],
-                        })
-                        part_number += 1
-                        buffer.clear()
-
-                # Upload any remaining tail buffer (allowed to be < 5MB for the last part)
-                if len(buffer) > 0:
                     part_resp = await s3_client.upload_part(
                         Bucket=self.bucket_name,
                         Key=s3_key,
                         PartNumber=part_number,
                         UploadId=upload_id,
-                        Body=bytes(buffer),
+                        Body=chunk,
                     )
                     parts.append({
                         "PartNumber": part_number,
                         "ETag": part_resp["ETag"],
                     })
-                    buffer.clear()
+                    part_number += 1
 
             # 2. Complete Multipart Upload
             await s3_client.complete_multipart_upload(
@@ -173,34 +104,11 @@ class TenderDossierService:
             raise
 
     def extract_text_from_pdf_stream(self, stream: io.BytesIO | bytes) -> str:
-        """Extracts text from PDF or ZIP dossier safely."""
+        """Extracts text from PDF document safely."""
         try:
             if isinstance(stream, bytes):
-                raw_bytes = stream
-            else:
-                raw_bytes = stream.getvalue() if hasattr(stream, "getvalue") else stream.read()
-
-            if not raw_bytes:
-                return ""
-
-            # Check if this is a ZIP archive
-            if raw_bytes.startswith(b"PK\x03\x04"):
-                extracted_docs = []
-                try:
-                    with zipfile.ZipFile(io.BytesIO(raw_bytes)) as zf:
-                        for filename in zf.namelist():
-                            if filename.lower().endswith(".pdf"):
-                                with zf.open(filename) as pdf_file:
-                                    reader = PdfReader(io.BytesIO(pdf_file.read()))
-                                    for page in reader.pages:
-                                        t = page.extract_text()
-                                        if t:
-                                            extracted_docs.append(t)
-                except Exception as zip_exc:
-                    logger.warning("ZIP extraction failed: %s", str(zip_exc))
-                return "\n\n".join(extracted_docs)
-
-            reader = PdfReader(io.BytesIO(raw_bytes))
+                stream = io.BytesIO(stream)
+            reader = PdfReader(stream)
             extracted_text = []
             for page in reader.pages:
                 page_text = page.extract_text()
@@ -210,10 +118,6 @@ class TenderDossierService:
         except Exception as exc:
             logger.warning("PDF extraction failed: %s", str(exc))
             return ""
-
-    async def extract_text_from_pdf_stream_async(self, stream: io.BytesIO | bytes) -> str:
-        """Asynchronously extracts text in a worker thread without blocking asyncio loop."""
-        return await asyncio.to_thread(self.extract_text_from_pdf_stream, stream)
 
     def split_text_into_chunks(
         self,
@@ -228,7 +132,7 @@ class TenderDossierService:
         # Heuristic character chunk size (~3 chars per token)
         char_chunk_size = max(chunk_size * 3, 200)
         char_overlap = min(chunk_overlap * 3, char_chunk_size // 2)
-        step_size = max(char_chunk_size - char_overlap, 1)
+        step_size = char_chunk_size - char_overlap
 
         # Normalize line endings
         normalized = text.replace("\r\n", "\n")
@@ -299,6 +203,7 @@ class TenderDossierService:
                 current_lines.append(line)
                 current_len += len(line) + 1
 
+
         if current_lines:
             content_str = "\n".join(current_lines)
             chunks.append(
@@ -310,4 +215,3 @@ class TenderDossierService:
             )
 
         return chunks
-

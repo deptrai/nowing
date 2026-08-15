@@ -105,6 +105,7 @@ from .notes_routes import router as notes_router
 from .notion_add_connector_route import router as notion_add_connector_router
 from .obsidian_plugin_routes import router as obsidian_plugin_router
 from .onedrive_add_connector_route import router as onedrive_add_connector_router
+from .outbound_routes import router as outbound_router
 from .personal_access_tokens_routes import router as personal_access_tokens_router
 from .prompts_routes import router as prompts_router
 from .public_chat_routes import router as public_chat_router
@@ -129,6 +130,7 @@ router = APIRouter()
 router.include_router(workspaces_router)
 router.include_router(lead_scoring_router)
 router.include_router(leads_router)
+router.include_router(outbound_router)
 router.include_router(enrichment_router)
 router.include_router(crm_router, prefix="/workspaces")
 router.include_router(crm_oauth_router)

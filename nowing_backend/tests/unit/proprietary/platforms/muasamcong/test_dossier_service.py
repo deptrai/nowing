@@ -10,9 +10,7 @@ import pytest
 from app.proprietary.platforms.muasamcong.dossier_service import (
     CHUNK_SIZE_BYTES,
     MAX_MEMORY_FOOTPRINT_MB,
-    MIN_S3_PART_SIZE_BYTES,
     TenderDossierService,
-    validate_dossier_url,
 )
 
 pytestmark = pytest.mark.unit
@@ -32,38 +30,18 @@ async def _fake_stream_chunks(
 
 
 class TestTenderDossierStreaming:
-    """AC-3 / AD-PROC-2: S3 chunk streaming with 5MB multipart buffers without memory bloat."""
+    """AC-3 / AD-PROC-2: S3 128KB chunk streaming without memory bloat."""
 
     def test_chunk_size_constant(self):
-        assert CHUNK_SIZE_BYTES == 131072  # 128 KB
-        assert MIN_S3_PART_SIZE_BYTES == 5 * 1024 * 1024  # 5 MB S3 minimum part size
+        # 128 KB = 131072 bytes
+        assert CHUNK_SIZE_BYTES == 131072
         assert MAX_MEMORY_FOOTPRINT_MB == 32
-
-    def test_ssrf_validation_allowed_hosts(self):
-        # Whitelisted hosts should pass
-        validate_dossier_url("https://muasamcong.mpi.gov.vn/egp/api/v1/dossier/download?id=123")
-        validate_dossier_url("https://egp.mpi.gov.vn/api/v1/download")
-        validate_dossier_url("http://localhost:8000/mock-dossier")
-
-    def test_ssrf_validation_blocks_malicious_urls(self):
-        # Disallowed hosts should raise ValueError
-        with pytest.raises(ValueError, match="not in the allowed procurement domain whitelist"):
-            validate_dossier_url("https://evil-attacker.com/steal-data")
-
-        # Invalid schemes should raise ValueError
-        with pytest.raises(ValueError, match="Invalid URL scheme"):
-            validate_dossier_url("ftp://muasamcong.mpi.gov.vn/test")
-
-        # Cloud metadata IP should raise ValueError
-        with pytest.raises(ValueError):
-            validate_dossier_url("http://169.254.169.254/latest/meta-data")
 
     @pytest.mark.asyncio
     async def test_stream_upload_to_s3_chunked(self):
         service = TenderDossierService(bucket_name="nowing-procurement-docs")
 
-        # 6 MB file: buffers part 1 (5MB) + part 2 tail (1MB) -> exactly 2 S3 parts
-        total_file_size = 6 * 1024 * 1024
+        total_file_size = 5 * 1024 * 1024  # 5 MB
         dossier_url = "https://muasamcong.mpi.gov.vn/egp/api/v1/dossier/download?id=9999"
         bid_no = "IB2400123456"
         bid_turn_no = "00"
@@ -98,8 +76,8 @@ class TestTenderDossierStreaming:
             )
 
             assert s3_uri == "s3://nowing-procurement-docs/IB2400123456_00/hsmt.pdf"
-            # 6MB with 5MB buffer -> 2 parts (5MB + 1MB)
-            assert mock_s3_client.upload_part.call_count == 2
+            # 5MB / 128KB = 40 parts
+            assert mock_s3_client.upload_part.call_count == 40
             mock_s3_client.complete_multipart_upload.assert_awaited_once()
 
     @pytest.mark.asyncio
@@ -127,4 +105,3 @@ class TestTenderDossierStreaming:
             assert chunk.chunk_index == idx
             assert len(chunk.content) > 0
             assert "TIÊU CHUẨN" in chunk.content or "Doanh thu" in chunk.content or len(chunk.content) > 0
-

@@ -34,8 +34,8 @@ ExecutorFn = Callable[..., Awaitable[EcommercePriceHistoryOutput]]
 
 def _resolve_ids(payload: EcommercePriceHistoryInput) -> tuple[int | None, int | None]:
     """Resolve (shop_id, item_id) from explicit params, external ID, or URL."""
-    shop_id = payload.shop_id if (payload.shop_id is not None and payload.shop_id > 0) else None
-    item_id = payload.item_id if (payload.item_id is not None and payload.item_id > 0) else None
+    shop_id = payload.shop_id
+    item_id = payload.item_id
 
     if (item_id is None or shop_id is None) and payload.url:
         u_shop_id, u_item_id = extract_ids_from_url(payload.url)
@@ -76,51 +76,40 @@ async def record_or_get_price_history(
     db_product = result.scalars().first()
 
     if db_product is None:
-        try:
-            async with session.begin_nested():
-                db_product = EcommerceProduct(
-                    platform="shopee",
-                    item_id=item_id,
-                    shop_id=shop_id,
-                    shop_name=product.shop_name,
-                    shop_location=product.shop_location,
-                    title=product.title,
-                    brand=product.brand,
-                    current_price=product.current_price,
-                    original_price=product.original_price,
-                    discount_percent=product.discount_percent,
-                    historical_sold=product.historical_sold,
-                    rating_star=product.rating_star,
-                    rating_count=product.rating_count,
-                    stock=product.stock,
-                    status=product.status,
-                    image_url=product.image_url,
-                    product_url=product.product_url,
-                    raw_specs=product.raw_specs,
-                )
-                session.add(db_product)
-                await session.flush()
+        db_product = EcommerceProduct(
+            platform="shopee",
+            item_id=item_id,
+            shop_id=shop_id,
+            shop_name=product.shop_name,
+            shop_location=product.shop_location,
+            title=product.title,
+            brand=product.brand,
+            current_price=product.current_price,
+            original_price=product.original_price,
+            discount_percent=product.discount_percent,
+            historical_sold=product.historical_sold,
+            rating_star=product.rating_star,
+            rating_count=product.rating_count,
+            stock=product.stock,
+            status=product.status,
+            image_url=product.image_url,
+            product_url=product.product_url,
+            raw_specs=product.raw_specs,
+        )
+        session.add(db_product)
+        await session.flush()
 
-                # Add initial price history snapshot
-                history_row = EcommercePriceHistory(
-                    product_id=db_product.id,
-                    price=product.current_price,
-                    recorded_at=now,
-                )
-                session.add(history_row)
-                await session.flush()
-        except Exception:
-            # Concurrent worker already inserted product; re-query
-            result = await session.execute(stmt)
-            db_product = result.scalars().first()
-
-    if db_product is not None:
+        # Add initial price history snapshot
+        history_row = EcommercePriceHistory(
+            product_id=db_product.id,
+            price=product.current_price,
+            recorded_at=now,
+        )
+        session.add(history_row)
+        await session.flush()
+    else:
         # Update mutable fields
         db_product.title = product.title
-        db_product.brand = product.brand or db_product.brand
-        db_product.shop_name = product.shop_name or db_product.shop_name
-        db_product.shop_location = product.shop_location or db_product.shop_location
-        db_product.product_url = product.product_url or db_product.product_url
         db_product.current_price = product.current_price
         db_product.original_price = product.original_price
         db_product.discount_percent = product.discount_percent
@@ -152,7 +141,7 @@ async def record_or_get_price_history(
             session.add(new_hist)
             await session.flush()
 
-    # Query 90-day history
+    # Query 90-day history (or all history)
     ninety_days_ago = now - timedelta(days=90)
     all_hist_stmt = (
         select(EcommercePriceHistory)
@@ -161,44 +150,21 @@ async def record_or_get_price_history(
             EcommercePriceHistory.recorded_at >= ninety_days_ago,
         )
         .order_by(EcommercePriceHistory.recorded_at.asc())
-        .limit(200)
     )
     all_hist_res = await session.execute(all_hist_stmt)
-    history_records = list(all_hist_res.scalars().all())
-
-    # If no records in 90 days, fetch the last known price before 90 days as baseline
-    if not history_records:
-        baseline_stmt = (
-            select(EcommercePriceHistory)
-            .where(
-                EcommercePriceHistory.product_id == db_product.id,
-                EcommercePriceHistory.recorded_at < ninety_days_ago,
-            )
-            .order_by(EcommercePriceHistory.recorded_at.desc())
-            .limit(1)
-        )
-        baseline_res = await session.execute(baseline_stmt)
-        baseline_row = baseline_res.scalars().first()
-        if baseline_row is not None:
-            history_records.append(baseline_row)
+    history_records = all_hist_res.scalars().all()
 
     snapshots: list[dict[str, Any]] = []
     sparkline: list[Decimal] = []
 
     for h in history_records:
-        rec_dt = h.recorded_at
-        if hasattr(rec_dt, "tzinfo") and rec_dt.tzinfo is None:
-            rec_dt = rec_dt.replace(tzinfo=UTC)
-        rec_time_str = rec_dt.isoformat() if hasattr(rec_dt, "isoformat") else str(rec_dt)
+        rec_time_str = h.recorded_at.isoformat() if hasattr(h.recorded_at, "isoformat") else str(h.recorded_at)
         snapshots.append({"price": h.price, "recorded_at": rec_time_str})
         sparkline.append(h.price)
 
     if not snapshots:
         snapshots.append({"price": product.current_price, "recorded_at": now.isoformat()})
         sparkline.append(product.current_price)
-
-    return product, snapshots, sparkline
-
 
     return product, snapshots, sparkline
 

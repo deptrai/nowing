@@ -197,6 +197,7 @@ celery_app = Celery(
         "app.tasks.celery_tasks.run_memory_extraction_task",
         "app.tasks.celery_tasks.gateway_tasks",
         "app.tasks.celery_tasks.enrichment_tasks",
+        "app.tasks.phone_waterfall_worker",
         "app.etl_pipeline.cache.eviction.task",
         "app.indexing_pipeline.cache.eviction.task",
         "app.automations.tasks.execute_run",
