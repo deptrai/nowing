@@ -32,38 +32,46 @@ USER_AGENTS = [
 
 
 def parse_count(raw: str | None) -> int:
-    """Parse numeric strings with K/M multipliers (e.g. '25.4K' -> 25400)."""
+    """Parse numeric strings with K/M multipliers (e.g. '25.4K' -> 25400, '1,5K' -> 1500)."""
     if not raw:
         return 0
-    raw = raw.strip().upper().replace(",", "")
-    if raw.endswith("K"):
+    cleaned = raw.replace("\xa0", " ").strip().upper()
+    if not cleaned:
+        return 0
+
+    # If it ends with K or M, replace decimal comma with dot (e.g. 1,5K -> 1.5K)
+    if cleaned.endswith("K"):
+        val_str = cleaned[:-1].replace(" ", "").replace(",", ".")
         try:
-            return int(float(raw[:-1]) * 1000)
+            return int(float(val_str) * 1000)
         except ValueError:
             return 0
-    elif raw.endswith("M"):
+    elif cleaned.endswith("M"):
+        val_str = cleaned[:-1].replace(" ", "").replace(",", ".")
         try:
-            return int(float(raw[:-1]) * 1000000)
+            return int(float(val_str) * 1000000)
         except ValueError:
             return 0
+
+    # Otherwise remove commas/dots used as thousand separators
+    val_str = cleaned.replace(" ", "").replace(",", "")
     try:
-        return int(float(raw))
+        return int(float(val_str))
     except ValueError:
         return 0
 
 
 def _extract_text_with_newlines(node: Node) -> str:
-    """Extract text from HTML node while preserving line breaks from <br>."""
-    # Replace <br> with newline in HTML
+    """Extract text from HTML node while preserving line breaks from <br> and <p>."""
     html = node.html or ""
-    # Simple regex conversion of <br> and <p> to newlines
+    # Convert <br> and </p> tags to newline tokens before stripping HTML tags
     text = re.sub(r"<br\s*/?>", "\n", html, flags=re.IGNORECASE)
-    # Strip remaining HTML tags
+    text = re.sub(r"</p>", "\n", text, flags=re.IGNORECASE)
+    # Strip HTML tags
     text = re.sub(r"<[^>]+>", "", text)
-    # Unescape HTML entities
-    import html as html_module
-    text = html_module.unescape(text)
-    return text.strip()
+    # Normalize multiple linebreaks
+    lines = [line.strip() for line in text.split("\n")]
+    return "\n".join(line for line in lines if line)
 
 
 def parse_channel_info(html: str, username: str) -> TelegramChannelInfo:
@@ -88,7 +96,7 @@ def parse_channel_info(html: str, username: str) -> TelegramChannelInfo:
     if counter_node:
         counter_text = counter_node.text(strip=True)
         # Match digits with K/M
-        match = re.search(r"([\d.,]+\s*[KM]?)", counter_text, re.IGNORECASE)
+        match = re.search(r"([\d.,\s]+[KM]?)", counter_text, re.IGNORECASE)
         if match:
             subscribers_count = parse_count(match.group(1))
 
@@ -123,11 +131,13 @@ def parse_messages(html: str, channel_username: str) -> list[TelegramMessagePars
                 href = date_link.attributes["href"]
                 post_attr = href.split("t.me/")[-1]
 
-        if not post_attr or "/" not in post_attr:
+        if not post_attr:
             continue
 
+        raw_id_part = post_attr.split("/")[-1] if "/" in post_attr else post_attr
         try:
-            msg_id_str = post_attr.split("/")[-1]
+            # Strip query params like ?single from grouped media posts
+            msg_id_str = raw_id_part.split("?")[0]
             message_id = int(msg_id_str)
         except (ValueError, IndexError):
             continue
@@ -199,9 +209,44 @@ def parse_messages(html: str, channel_username: str) -> list[TelegramMessagePars
 class TelegramWebPreviewScraper:
     """Stateless public preview scraper with connection pooling and retries."""
 
-    def __init__(self, timeout: float = 15.0, max_retries: int = 3) -> None:
+    def __init__(
+        self,
+        timeout: float = 15.0,
+        max_retries: int = 3,
+        client: httpx.AsyncClient | None = None,
+    ) -> None:
         self.timeout = timeout
         self.max_retries = max_retries
+        self._injected_client = client
+        self._owned_client: httpx.AsyncClient | None = None
+
+    async def __aenter__(self) -> TelegramWebPreviewScraper:
+        if self._injected_client is None and self._owned_client is None:
+            self._owned_client = httpx.AsyncClient(
+                timeout=self.timeout,
+                follow_redirects=True,
+                limits=httpx.Limits(max_connections=50, max_keepalive_connections=10),
+            )
+        return self
+
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        if self._owned_client is not None:
+            await self._owned_client.aclose()
+            self._owned_client = None
+
+    def _get_client(self) -> httpx.AsyncClient:
+        return self._injected_client or self._owned_client or httpx.AsyncClient(
+            timeout=self.timeout, follow_redirects=True
+        )
+
+    @staticmethod
+    def sanitize_username(channel_username: str) -> str:
+        """Extract canonical username from full URL or handle."""
+        cleaned = re.sub(r"^(?:https?://)?(?:www\.)?t\.me/(?:s/)?", "", channel_username.strip())
+        cleaned = cleaned.lstrip("@").strip().strip("/")
+        if not re.match(r"^[a-zA-Z0-9_]{4,32}$", cleaned):
+            raise ValueError(f"Invalid Telegram channel username: '{channel_username}'")
+        return cleaned
 
     async def scrape_channel(
         self,
@@ -210,7 +255,7 @@ class TelegramWebPreviewScraper:
         after: int | None = None,
     ) -> TelegramScrapeResult:
         """Scrape public Telegram channel messages via web preview (https://t.me/s/{channel})."""
-        clean_username = channel_username.lstrip("@").strip()
+        clean_username = self.sanitize_username(channel_username)
         url = f"https://t.me/s/{clean_username}"
         params: dict[str, Any] = {}
         if before:
@@ -225,8 +270,11 @@ class TelegramWebPreviewScraper:
             "Referer": "https://t.me/",
         }
 
-        async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
-            last_err = None
+        client = self._get_client()
+        should_close = (client != self._injected_client and client != self._owned_client)
+
+        try:
+            last_err: Exception | str | None = None
             for attempt in range(1, self.max_retries + 1):
                 try:
                     response = await client.get(url, params=params, headers=headers)
@@ -244,6 +292,7 @@ class TelegramWebPreviewScraper:
                         )
 
                     if response.status_code in (429, 503):
+                        last_err = f"HTTP {response.status_code} (Rate limited / Service unavailable)"
                         backoff = (2 ** attempt) + random.uniform(0.5, 1.5)
                         logger.warning("Telegram rate limit (%d), backing off %.2fs (attempt %d)", response.status_code, backoff, attempt)
                         await asyncio.sleep(backoff)
@@ -260,3 +309,7 @@ class TelegramWebPreviewScraper:
                 channel_info=TelegramChannelInfo(username=clean_username, title=clean_username),
                 messages=[],
             )
+        finally:
+            if should_close:
+                await client.aclose()
+

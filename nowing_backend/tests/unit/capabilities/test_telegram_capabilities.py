@@ -117,3 +117,16 @@ async def test_telegram_search_capability_executor() -> None:
         output_kw: TelegramSearchOutput = await TELEGRAM_SEARCH.executor(payload_kw)
         assert output_kw.total_found == 1
         assert output_kw.messages[0].message_id == 1002
+
+
+def test_telegram_search_billable_units_and_validation() -> None:
+    """Test billable_units is 0 when empty and validation rejects bad username."""
+    empty_output = TelegramSearchOutput(messages=[], total_found=0)
+    assert empty_output.billable_units == 0
+
+    valid_input = TelegramSearchInput(channel_username="https://t.me/s/batdongsanhanoi")
+    assert valid_input.channel_username == "batdongsanhanoi"
+
+    with pytest.raises(ValueError, match="Invalid Telegram channel username"):
+        TelegramSearchInput(channel_username="inv!@#name")
+

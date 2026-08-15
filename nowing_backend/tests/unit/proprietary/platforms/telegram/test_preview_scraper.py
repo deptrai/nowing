@@ -182,5 +182,44 @@ async def test_telegram_web_preview_scraper_not_found() -> None:
 
     scraper = TelegramWebPreviewScraper()
     result = await scraper.scrape_channel("nonexistent_chan_12345")
-    assert len(result.messages) == 0
+
     assert result.channel_info.username == "nonexistent_chan_12345"
+    assert len(result.messages) == 0
+
+
+def test_sanitize_username() -> None:
+    """Test extracting clean username from full URLs or @ handles."""
+    assert TelegramWebPreviewScraper.sanitize_username("@batdongsanhanoi") == "batdongsanhanoi"
+    assert TelegramWebPreviewScraper.sanitize_username("https://t.me/batdongsanhanoi") == "batdongsanhanoi"
+    assert TelegramWebPreviewScraper.sanitize_username("https://t.me/s/diaocsaigon/") == "diaocsaigon"
+    assert TelegramWebPreviewScraper.sanitize_username("t.me/hn_bds_group") == "hn_bds_group"
+
+    with pytest.raises(ValueError, match="Invalid Telegram channel"):
+        TelegramWebPreviewScraper.sanitize_username("inv?bad=param")
+
+
+def test_parse_count_edge_cases() -> None:
+    """Test European format decimal commas and space separators."""
+    from app.proprietary.platforms.telegram.preview_scraper import parse_count
+
+    assert parse_count("1,5K") == 1500
+    assert parse_count("2.5K") == 2500
+    assert parse_count("1,2M") == 1200000
+    assert parse_count("25 400") == 25400
+    assert parse_count("150,000") == 150000
+    assert parse_count("0") == 0
+    assert parse_count(None) == 0
+
+
+def test_parse_messages_album_single_query_param() -> None:
+    """Test parsing message ID from album post with ?single suffix."""
+    html = """
+    <div class="tgme_widget_message_wrap" data-post="testchan/9999?single">
+      <div class="tgme_widget_message" data-post="testchan/9999?single">
+        <div class="tgme_widget_message_text">Album post caption</div>
+      </div>
+    </div>
+    """
+    messages = parse_messages(html, channel_username="testchan")
+    assert len(messages) == 1
+    assert messages[0].message_id == 9999

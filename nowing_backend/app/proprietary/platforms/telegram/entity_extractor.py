@@ -9,8 +9,9 @@ from app.proprietary.platforms.telegram.schemas import ExtractedEntities
 
 # Vietnamese phone number patterns: 03x, 05x, 07x, 08x, 09x, (+84)
 # Supports spacing, dots, dashes: 0912.345.678, 0912 345 678, +84988-123-456
+# Negative lookbehind (?<!\w) prevents false positives inside alphanumeric codes (e.g. SKU0912345678)
 VN_PHONE_REGEX = re.compile(
-    r"(?:\+84|84|0)(?:3[2-9]|5[25689]|7[06-9]|8[1-9]|9[0-9])(?:[.\s-]?[0-9]{1,4}){2,4}\b"
+    r"(?<!\w)(?:\+84|84|0)(?:3[2-9]|5[25689]|7[06-9]|8[1-9]|9[0-9])(?:[.\s-]?[0-9]{1,4}){2,4}\b"
 )
 
 # Email address regex
@@ -19,12 +20,14 @@ EMAIL_REGEX = re.compile(
 )
 
 # Vietnamese real estate & transaction prices regex
-# e.g., "12.5 tỷ", "850 triệu", "15 tr/tháng", "120 triệu/m2", "$2,500/tháng", "5.2 ty"
+# e.g., "12.5 tỷ", "850 triệu", "15 tr/tháng", "120 triệu/m2", "$2,500/tháng", "5.2 ty", "1.500.000 đ", "25.000.000 VND"
 PRICE_REGEX = re.compile(
-    r"(?:\$\s*\d+(?:,\d{3})*(?:\.\d+)?(?:\s*/\s*(?:tháng|m2|m²|month|mo))?|"
-    r"\b\d+(?:[.,]\d+)?\s*(?:tỷ|ty|triệu|trieu|tr|nghìn|ngàn|k|vnd|đ|d)(?:\s*/\s*(?:m2|m²|tháng|thang|th|năm|nam))?)",
+    r"(?:\$\s*\d{1,3}(?:,\d{3})*(?:\.\d+)?(?:\s*/\s*(?:tháng|m2|m²|month|mo))?|"
+    r"\b\d{1,3}(?:[.,]\d{3})+(?:[.,]\d+)?\s*(?:tỷ|ty|triệu|trieu|tr|nghìn|ngàn|k|vnd|vnđ|đ|d)(?:\s*/\s*(?:m2|m²|tháng|thang|th|năm|nam))?|"
+    r"\b\d+(?:[.,]\d+)?\s*(?:tỷ|ty|triệu|trieu|tr|nghìn|ngàn|k|vnd|vnđ|đ|d)(?:\s*/\s*(?:m2|m²|tháng|thang|th|năm|nam))?)",
     re.IGNORECASE,
 )
+
 
 # Hashtags regex (supports Unicode Vietnamese)
 HASHTAG_REGEX = re.compile(r"#[a-zA-Z0-9_\u00C0-\u1EF9]+")

@@ -17,16 +17,19 @@ def test_extract_phone_numbers() -> None:
     text = (
         "Liên hệ chính chủ: 0912345678 hoặc +84988123456 hoặc 84901234567. "
         "Số phụ: 098.765.4321, 093 111 2222, 079-888-9999. "
-        "Không bắt nhầm ngày 20260815 hay mã 123456."
+        "Không bắt nhầm ngày 20260815 hay mã 123456 hay SKU0999999999."
     )
     phones = extract_phone_numbers(text)
     assert "0912345678" in phones
-    assert "0988123456" in phones or "+84988123456" in phones
+    assert "0988123456" in phones
+    assert "0901234567" in phones
     assert "0987654321" in phones
     assert "0931112222" in phones
     assert "0798889999" in phones
     assert "20260815" not in phones
     assert "123456" not in phones
+    assert "0999999999" not in phones
+
 
 
 def test_extract_emails() -> None:
@@ -41,12 +44,16 @@ def test_extract_prices() -> None:
     """Test extracting real estate & transaction prices in VND / USD."""
     text = (
         "Bán nhà 12.5 tỷ, cho thuê 15 triệu/tháng (hoặc 15tr/th). "
-        "Căn hộ 850 triệu. Dự án đơn giá 120 tr/m2. Biệt thự $2,500/tháng."
+        "Căn hộ 850 triệu. Dự án đơn giá 120 tr/m2. Biệt thự $2,500/tháng. "
+        "Đồ thanh lý 1.500.000 đ và xe máy 25.000.000 VND."
     )
     prices = extract_prices(text)
     assert any("12.5 tỷ" in p or "12.5 ty" in p.lower() for p in prices)
     assert any("15 triệu" in p or "15tr" in p.lower() for p in prices)
     assert any("850 triệu" in p or "850tr" in p.lower() for p in prices)
+    assert any("1.500.000" in p for p in prices)
+    assert any("25.000.000" in p for p in prices)
+
 
 
 def test_extract_hashtags() -> None:

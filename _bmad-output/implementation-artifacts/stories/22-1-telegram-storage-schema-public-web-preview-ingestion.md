@@ -1,6 +1,6 @@
 # Story 22.1: Telegram Storage Schema & Public Web Preview Ingestion Engine
 
-Status: completed
+Status: done
 
 <!-- Governed by architecture-telegram-scraper-2026-08-15 (AD-1 to AD-8) -->
 
@@ -26,6 +26,20 @@ So that I can monitor public community discussions, capture broadcast leads, and
 - **AD-4**: Entity & Intent Extraction Pipeline (SĐT VN, Price, Email)
 - **AD-5**: Idempotent Upsert with Unique `(channel_id, message_id)`
 - **AD-6**: AI Agent Tool Registration (`nowing_telegram_search_messages`)
+
+## Review Findings & Fixes Applied (2026-08-15)
+
+- [x] RF-1: Created Alembic migration `210_add_telegram_scraper_tables.py` creating `telegram_channels`, `telegram_messages`, and `telegram_media`.
+- [x] RF-2: Added autoincrement primary key `id` and nullable `peer_id` to `TelegramChannel` to support zero-login web preview ingestion.
+- [x] RF-3: Added `idx_telegram_msg_embedding` (HNSW `vector_cosine_ops`) and `idx_telegram_msg_text_gin` (GIN full-text search) indexes in `TelegramMessage`.
+- [x] RF-4: Added URL and handle sanitization `sanitize_username` in `TelegramWebPreviewScraper` stripping `https://t.me/s/`, `https://t.me/`, `@` and validating `^[a-zA-Z0-9_]{4,32}$`.
+- [x] RF-5: Fixed safe newline extraction in `_extract_text_with_newlines` preserving `<br>` and `</p>` without raw unescape vulnerabilities.
+- [x] RF-6: Supported optional injected `httpx.AsyncClient` and async context manager in `TelegramWebPreviewScraper` for connection pooling.
+- [x] RF-7: Fixed 429/503 backoff logging and tracking `last_err`.
+- [x] RF-8: Handled album post message IDs containing `?single` query parameter.
+- [x] RF-9: Handled European view counts `1,5K` and non-breaking space `\xa0` in `parse_count`.
+- [x] RF-10: Added `(?<!\w)` lookbehind to `VN_PHONE_REGEX` to prevent matching alphanumeric SKU codes, and expanded `PRICE_REGEX` for thousand separators (`1.500.000 đ`).
+- [x] RF-11: Fixed `billable_units` in `TelegramSearchOutput` to return `len(self.messages)` (0 units when no results).
 
 ## Tasks / Subtasks
 
@@ -56,4 +70,5 @@ So that I can monitor public community discussions, capture broadcast leads, and
 
 ### References
 - [Architecture Spine: architecture-telegram-scraper-2026-08-15/ARCHITECTURE-SPINE.md]
+
 

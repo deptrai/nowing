@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+import re
+
+from pydantic import BaseModel, Field, field_validator
 
 from app.proprietary.platforms.telegram.schemas import (
     TelegramChannelInfo,
@@ -15,6 +17,8 @@ class TelegramSearchInput(BaseModel):
 
     channel_username: str = Field(
         ...,
+        min_length=1,
+        max_length=100,
         description="Target public Telegram channel username without @ (e.g. batdongsanhanoi)",
     )
     keyword: str | None = Field(
@@ -32,9 +36,19 @@ class TelegramSearchInput(BaseModel):
         description="Maximum number of matched messages to return",
     )
 
+    @field_validator("channel_username")
+    @classmethod
+    def validate_username(cls, v: str) -> str:
+        cleaned = re.sub(r"^(?:https?://)?(?:www\.)?t\.me/(?:s/)?", "", v.strip())
+        cleaned = cleaned.lstrip("@").strip().strip("/")
+        if not re.match(r"^[a-zA-Z0-9_]{4,32}$", cleaned):
+            raise ValueError(f"Invalid Telegram channel username: '{v}'")
+        return cleaned
+
     @property
     def estimated_units(self) -> int:
         return self.limit
+
 
 
 class TelegramSearchOutput(BaseModel):
@@ -55,4 +69,5 @@ class TelegramSearchOutput(BaseModel):
 
     @property
     def billable_units(self) -> int:
-        return len(self.messages) or 1
+        return len(self.messages)
+

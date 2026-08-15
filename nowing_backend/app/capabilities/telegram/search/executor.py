@@ -24,30 +24,25 @@ async def scrape_telegram_channel(channel_username: str) -> TelegramScrapeResult
     return await scraper.scrape_channel(channel_username)
 
 
-async def search_telegram_messages(
+def _filter_and_paginate(
+    result: TelegramScrapeResult,
     payload: TelegramSearchInput,
-    ctx: CapabilityContext | None = None,
 ) -> TelegramSearchOutput:
-    """Execute telegram search using scrape_telegram_channel."""
-    result: TelegramScrapeResult = await scrape_telegram_channel(payload.channel_username)
-
+    """Filter scraped messages by intent and keyword, then paginate."""
     filtered_messages = result.messages
 
-    # Filter by intent
     if payload.intent:
         target_intent = payload.intent.strip().lower()
         filtered_messages = [
             m for m in filtered_messages if m.intent_tag.lower() == target_intent
         ]
 
-    # Filter by keyword
     if payload.keyword:
         kw = payload.keyword.strip().lower()
         filtered_messages = [
             m for m in filtered_messages if kw in m.text.lower()
         ]
 
-    # Limit results
     total_found = len(filtered_messages)
     matched_messages = filtered_messages[: payload.limit]
 
@@ -56,6 +51,15 @@ async def search_telegram_messages(
         messages=matched_messages,
         total_found=total_found,
     )
+
+
+async def search_telegram_messages(
+    payload: TelegramSearchInput,
+    ctx: CapabilityContext | None = None,
+) -> TelegramSearchOutput:
+    """Execute telegram search using scrape_telegram_channel."""
+    result: TelegramScrapeResult = await scrape_telegram_channel(payload.channel_username)
+    return _filter_and_paginate(result, payload)
 
 
 def build_telegram_search_executor(scraper_fn: Any = None):
@@ -68,28 +72,7 @@ def build_telegram_search_executor(scraper_fn: Any = None):
         ctx: CapabilityContext | None = None,
     ) -> TelegramSearchOutput:
         result: TelegramScrapeResult = await scraper_fn(payload.channel_username)
-
-        filtered_messages = result.messages
-
-        if payload.intent:
-            target_intent = payload.intent.strip().lower()
-            filtered_messages = [
-                m for m in filtered_messages if m.intent_tag.lower() == target_intent
-            ]
-
-        if payload.keyword:
-            kw = payload.keyword.strip().lower()
-            filtered_messages = [
-                m for m in filtered_messages if kw in m.text.lower()
-            ]
-
-        total_found = len(filtered_messages)
-        matched_messages = filtered_messages[: payload.limit]
-
-        return TelegramSearchOutput(
-            channel_info=result.channel_info,
-            messages=matched_messages,
-            total_found=total_found,
-        )
+        return _filter_and_paginate(result, payload)
 
     return _execute
+
