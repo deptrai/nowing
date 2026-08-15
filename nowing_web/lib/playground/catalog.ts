@@ -11,7 +11,9 @@ import {
 	ItviecIcon,
 	MuabanBdsIcon,
 	RedditIcon,
+	TelegramIcon,
 	TikTokIcon,
+
 	TopcvIcon,
 	VietnamworksIcon,
 	VietstockIcon,
@@ -183,11 +185,18 @@ export const PLAYGROUND_PLATFORMS: PlaygroundPlatform[] = [
 		verbs: [{ name: "vietstock.scrape", verb: "scrape", label: "Scrape" }],
 	},
 	{
+		id: "telegram",
+		label: "Telegram",
+		icon: TelegramIcon,
+		verbs: [{ name: "telegram.search", verb: "search", label: "Search" }],
+	},
+	{
 		id: "web",
 		label: "Web",
 		icon: WebIcon,
 		verbs: [{ name: "web.crawl", verb: "crawl", label: "Crawl" }],
 	},
+
 ];
 
 export function findPlatform(platformId: string): PlaygroundPlatform | undefined {

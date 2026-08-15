@@ -1,4 +1,5 @@
-import { Briefcase, Building2, Home, TrendingUp } from "lucide-react";
+import { Briefcase, Building2, Home, Send, TrendingUp } from "lucide-react";
+
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
@@ -56,3 +57,7 @@ export const CafeFIcon = TrendingUp;
 // Epic 15.2 — Vietstock stock / financial data. TrendingUp is a placeholder
 // until a dedicated Vietstock brand SVG is added to /public/connectors.
 export const VietstockIcon = TrendingUp;
+
+// Epic 22.1 — Telegram Public Web Preview & Channel Search
+export const TelegramIcon = Send;
+
