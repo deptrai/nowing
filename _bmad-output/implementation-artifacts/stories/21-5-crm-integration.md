@@ -1,6 +1,6 @@
 ---
 story_key: 21-5-crm-integration
-status: ready-for-dev
+status: pending-human-review
 baseline_commit: db50806a8
 epic: 21
 story: 5
