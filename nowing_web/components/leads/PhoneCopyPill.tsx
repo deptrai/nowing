@@ -20,7 +20,8 @@ export const PhoneCopyPill: React.FC<PhoneCopyPillProps> = ({
 	const [copied, setCopied] = useState(false);
 
 	// Normalize phone for clipboard (digits and + only)
-	const normalizedPhone = phone.replace(/[^\d+]/g, "");
+	const safePhone = phone || "";
+	const normalizedPhone = safePhone.replace(/[^\d+]/g, "");
 
 	const handleCopy = async (e: React.MouseEvent | React.KeyboardEvent) => {
 		e.stopPropagation();
@@ -28,10 +29,10 @@ export const PhoneCopyPill: React.FC<PhoneCopyPillProps> = ({
 
 		if (copied) return;
 
-		const success = await copyToClipboard(normalizedPhone || phone);
+		const success = await copyToClipboard(normalizedPhone || safePhone);
 		if (success) {
 			setCopied(true);
-			toast.success(`Đã copy SĐT ${phone}!`, {
+			toast.success(`Đã copy SĐT ${safePhone}!`, {
 				duration: 1500,
 			});
 
@@ -52,7 +53,7 @@ export const PhoneCopyPill: React.FC<PhoneCopyPillProps> = ({
 	return (
 		<button
 			type="button"
-			aria-label={`Copy phone number ${phone}`}
+			aria-label={`Copy phone number ${safePhone}`}
 			onClick={handleCopy}
 			onKeyDown={handleKeyDown}
 			className={cn(
@@ -72,7 +73,7 @@ export const PhoneCopyPill: React.FC<PhoneCopyPillProps> = ({
 					)}
 				</span>
 			)}
-			<span>{phone}</span>
+			<span>{safePhone}</span>
 			<span className="text-[10px] text-emerald-400/70 font-sans ml-0.5">
 				{copied ? "(Đã copy)" : "(Click to Copy)"}
 			</span>

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
@@ -32,6 +33,17 @@ class LeadRead(BaseModel):
     id: UUID
     workspace_id: int
     client_id: str | None = None
+
+    @field_validator("fit_score", "intent_score", "composite_score", mode="before")
+    @classmethod
+    def _validate_score_range(cls, v: Any) -> Any:
+        if v is None:
+            return v
+        if not isinstance(v, float | int) or not math.isfinite(v):
+            raise ValueError("Score must be a finite number")
+        if v < 0 or v > 100:
+            raise ValueError("Score must be between 0 and 100")
+        return v
     source: str
     source_url: str | None = None
     company_name: str
@@ -74,6 +86,15 @@ class DecisionMakerRead(BaseModel):
     email: str | None = None
     phone: str | None = None
     confidence: float = 1.0
+
+    @field_validator("confidence", mode="before")
+    @classmethod
+    def _validate_confidence(cls, v: Any) -> Any:
+        if not isinstance(v, float | int) or not math.isfinite(v):
+            raise ValueError("Confidence must be a finite number")
+        if v < 0 or v > 1:
+            raise ValueError("Confidence must be between 0 and 1")
+        return v
 
 
 class TenderSummaryRead(BaseModel):
@@ -127,3 +148,25 @@ class CompanyGraphRead(BaseModel):
     hiring_signals: list[HiringSignalRead] = Field(default_factory=list)
     hiring_velocity_pct: float | None = None
     active_jobs_count: int = 0
+
+    @field_validator("hiring_velocity_pct", mode="before")
+    @classmethod
+    def _validate_hiring_velocity(cls, v: Any) -> Any:
+        if v is None:
+            return v
+        if not isinstance(v, float | int) or not math.isfinite(v):
+            raise ValueError("Hiring velocity must be a finite number")
+        if v < 0:
+            raise ValueError("Hiring velocity must be non-negative")
+        return v
+
+    @field_validator("active_jobs_count", mode="before")
+    @classmethod
+    def _validate_active_jobs_count(cls, v: Any) -> Any:
+        if v is None:
+            return 0
+        if not isinstance(v, int) or not math.isfinite(v):
+            raise ValueError("Active jobs count must be a finite integer")
+        if v < 0:
+            raise ValueError("Active jobs count must be non-negative")
+        return v

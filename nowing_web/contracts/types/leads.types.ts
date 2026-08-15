@@ -12,6 +12,10 @@ export const leadStatusSchema = z.enum([
 
 export type LeadStatus = z.infer<typeof leadStatusSchema>;
 
+const scoreField = z.number().refine((v) => Number.isFinite(v) && v >= 0 && v <= 100, {
+	message: "Score must be a finite number between 0 and 100",
+});
+
 export const leadSchema = z.object({
 	id: z.string().uuid(),
 	workspace_id: z.number(),
@@ -24,9 +28,9 @@ export const leadSchema = z.object({
 	company_size: z.string().nullable().optional(),
 	location: z.string().nullable().optional(),
 	tech_stack: z.array(z.string()).default([]),
-	fit_score: z.number().nullable().optional(),
-	intent_score: z.number().nullable().optional(),
-	composite_score: z.number().nullable().optional(),
+	fit_score: scoreField.nullable().optional(),
+	intent_score: scoreField.nullable().optional(),
+	composite_score: scoreField.nullable().optional(),
 	status: z.string().default("new"),
 	intent: z.string().nullable().optional(),
 	phone: z.string().nullable().optional(),
@@ -55,7 +59,12 @@ export const decisionMakerSchema = z.object({
 	linkedin_url: z.string().nullable().optional(),
 	email: z.string().nullable().optional(),
 	phone: z.string().nullable().optional(),
-	confidence: z.number().default(1.0),
+	confidence: z
+		.number()
+		.refine((v) => Number.isFinite(v) && v >= 0 && v <= 1, {
+			message: "Confidence must be a finite number between 0 and 1",
+		})
+		.default(1.0),
 });
 
 export type DecisionMaker = z.infer<typeof decisionMakerSchema>;
@@ -99,13 +108,25 @@ export const companyGraphSchema = z.object({
 	decision_makers: z.array(decisionMakerSchema).default([]),
 	tenders: z.array(tenderSummarySchema).default([]),
 	hiring_signals: z.array(hiringSignalSchema).default([]),
-	hiring_velocity_pct: z.number().nullable().optional(),
-	active_jobs_count: z.number().default(0),
+	hiring_velocity_pct: z
+		.number()
+		.refine((v) => Number.isFinite(v) && v >= 0, {
+			message: "Hiring velocity must be a finite non-negative number",
+		})
+		.nullable()
+		.optional(),
+	active_jobs_count: z
+		.number()
+		.refine((v) => Number.isFinite(v) && v >= 0 && Number.isInteger(v), {
+			message: "Active jobs count must be a finite non-negative integer",
+		})
+		.default(0),
 });
 
 export type CompanyGraph = z.infer<typeof companyGraphSchema>;
 
 export interface ListLeadsParams {
+	client_id?: string;
 	source?: string;
 	intent?: string;
 	min_score?: number;

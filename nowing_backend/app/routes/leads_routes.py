@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-from typing import Any
+from datetime import UTC, datetime, timedelta
+from urllib.parse import quote
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -14,6 +14,7 @@ from sqlalchemy.orm import selectinload
 from app.auth.context import AuthContext
 from app.db import (
     Lead,
+    LinkedinJob,
     Permission,
     VerifiedContact,
     Workspace,
@@ -26,13 +27,18 @@ from app.lead_intelligence.schemas import (
     LeadListResponse,
     LeadRead,
     LeadStatusUpdate,
-    LegalEntityRead,
-    TenderSummaryRead,
 )
 from app.users import get_auth_context
 from app.utils.rbac import check_permission
 
 router = APIRouter()
+
+
+def _escape_ilike_term(term: str | None) -> str | None:
+    """Escape PostgreSQL LIKE wildcard characters in a user-supplied term."""
+    if term is None:
+        return None
+    return term.replace("!", "!!").replace("%", "!%").replace("_", "!_")
 
 
 def _map_lead_to_read(lead: Lead) -> LeadRead:
@@ -71,7 +77,11 @@ def _map_lead_to_read(lead: Lead) -> LeadRead:
         tech_stack=getattr(lead, "tech_stack", None) or [],
         fit_score=fit_score,
         intent_score=getattr(lead, "intent_score", None),
-        composite_score=getattr(lead, "composite_score", None) or fit_score,
+        composite_score=(
+            getattr(lead, "composite_score", None)
+            if getattr(lead, "composite_score", None) is not None
+            else fit_score
+        ),
         status=lead.status,
         intent=intent,
         phone=phone,
@@ -91,6 +101,7 @@ def _map_lead_to_read(lead: Lead) -> LeadRead:
 )
 async def list_workspace_leads(
     workspace_id: int,
+    client_id: str | None = None,
     source: str | None = None,
     intent: str | None = None,
     min_score: float | None = None,
@@ -122,8 +133,11 @@ async def list_workspace_leads(
         selectinload(Lead.verified_contacts)
     )
 
+    if client_id is not None:
+        stmt = stmt.where(Lead.client_id == client_id)
     if source:
-        stmt = stmt.where(Lead.source.ilike(f"%{source}%"))
+        escaped = _escape_ilike_term(source)
+        stmt = stmt.where(Lead.source.ilike(f"%{escaped}%", escape="!"))
     if status_filter:
         stmt = stmt.where(Lead.status == status_filter)
     if min_score is not None:
@@ -134,12 +148,13 @@ async def list_workspace_leads(
             )
         )
     if search:
-        term = f"%{search}%"
+        escaped = _escape_ilike_term(search)
+        term = f"%{escaped}%"
         stmt = stmt.where(
             or_(
-                Lead.company_name.ilike(term),
-                Lead.location.ilike(term),
-                Lead.industry.ilike(term),
+                Lead.company_name.ilike(term, escape="!"),
+                Lead.location.ilike(term, escape="!"),
+                Lead.industry.ilike(term, escape="!"),
             )
         )
 
@@ -162,7 +177,7 @@ async def list_workspace_leads(
     result = await session.execute(stmt)
     leads = result.scalars().all()
 
-    items = [_map_lead_to_read(l) for l in leads]
+    items = [_map_lead_to_read(lead) for lead in leads]
     return LeadListResponse(
         items=items,
         total=total,
@@ -226,7 +241,7 @@ async def update_lead_status(
         session,
         auth,
         workspace_id,
-        Permission.LEADS_READ.value,
+        Permission.LEADS_WRITE.value,
         error_message="You don't have permission to update leads in this workspace",
     )
 
@@ -282,14 +297,18 @@ async def get_company_graph(
             detail="Company name must not be empty",
         )
 
-    # Query verified contacts from database for this company
+    escaped_name = _escape_ilike_term(clean_name)
+    ilike_pattern = f"%{escaped_name}%"
+
+    # Query verified contacts from database for this company (Story 21.3)
     contacts_stmt = (
         select(VerifiedContact)
         .join(Lead, VerifiedContact.lead_id == Lead.id)
         .where(
             Lead.workspace_id == workspace_id,
-            Lead.company_name.ilike(f"%{clean_name}%"),
+            Lead.company_name.ilike(ilike_pattern, escape="!"),
         )
+        .distinct()
     )
     contacts_result = await session.execute(contacts_stmt)
     db_contacts = contacts_result.scalars().all()
@@ -297,82 +316,55 @@ async def get_company_graph(
     decision_makers: list[DecisionMakerRead] = []
     for c in db_contacts:
         if c.name:
+            linkedin_slug = quote(c.name.lower().replace(" ", "-"), safe="")
             decision_makers.append(
                 DecisionMakerRead(
                     name=c.name,
                     title=c.title or "Executive",
-                    linkedin_url=f"https://linkedin.com/in/{c.name.lower().replace(' ', '-')}",
-                    email=str(c.email) if c.email else None,
+                    linkedin_url=f"https://linkedin.com/in/{linkedin_slug}",
+                    email=c.email if c.email else None,
                     phone=c.phone,
-                    confidence=c.confidence or 0.95,
+                    confidence=c.confidence if c.confidence is not None else 0.95,
                 )
             )
 
-    # If no decision makers found in db, provide structured high-confidence entities
-    if not decision_makers:
-        decision_makers = [
-            DecisionMakerRead(
-                name="Lê Hồng Minh",
-                title="Founder & CEO",
-                linkedin_url="https://linkedin.com/in/hongminhle",
-                email="minh.le@enterprise-vn.com",
-                phone="0903.112.233",
-                confidence=0.98,
-            ),
-            DecisionMakerRead(
-                name="Nguyễn Hoàng Nam",
-                title="Head of Procurement / IT",
-                linkedin_url="https://linkedin.com/in/nam-nguyen-hoang",
-                email="nam.nguyen@enterprise-vn.com",
-                phone="0918.445.566",
-                confidence=0.92,
-            ),
-        ]
-
-    legal_entity = LegalEntityRead(
-        tax_id="0102938475",
-        legal_name=f"Công ty Cổ phần {clean_name}",
-        representative=decision_makers[0].name if decision_makers else "Trần Văn Hùng",
-        charter_capital="50,000,000,000 ₫ (50 tỷ VNĐ)",
-        founding_date="2018-05-12",
-        headquarters="Tòa nhà Landmark 72, Mễ Trì, Nam Từ Liêm, Hà Nội",
-        status="active",
+    # Query LinkedIn job postings for this company (Story 21.9 / Story 12.10)
+    thirty_days_ago = datetime.now(UTC) - timedelta(days=30)
+    jobs_stmt = (
+        select(LinkedinJob)
+        .where(
+            LinkedinJob.company_name.ilike(ilike_pattern, escape="!"),
+        )
+        .order_by(LinkedinJob.posted_at.desc().nullslast())
+        .limit(20)
     )
+    jobs_result = await session.execute(jobs_stmt)
+    db_jobs = jobs_result.scalars().all()
 
-    tenders = [
-        TenderSummaryRead(
-            tender_number="IB2400198273",
-            title=f"Gói thầu CNTT & Chuyển đổi số phục vụ {clean_name}",
-            procuring_entity=f"Ban Quản lý Dự án {clean_name}",
-            budget_vnd=15800000000.0,
-            close_date=datetime(2026, 8, 28, 9, 0, 0, tzinfo=UTC),
-            source_url="https://muasamcong.mpi.gov.vn",
-        ),
-    ]
+    active_jobs = [j for j in db_jobs if j.posted_at and j.posted_at >= thirty_days_ago]
+    active_jobs_count = len(active_jobs)
+    hiring_velocity_pct: float | None = None
+    if len(db_jobs) > 0:
+        # Simple velocity: ratio of active (last 30d) jobs to total returned
+        hiring_velocity_pct = round((active_jobs_count / len(db_jobs)) * 100, 1)
 
     hiring_signals = [
         HiringSignalRead(
-            title="Senior AI / ML Research Engineer",
-            department="AI Research Lab",
-            platform="TopCV",
-            posted_date=datetime(2026, 8, 12, 10, 0, 0, tzinfo=UTC),
-            url="https://topcv.vn/job/senior-ai-engineer",
-        ),
-        HiringSignalRead(
-            title="Cloud Infrastructure Architect",
-            department="Cloud Infrastructure",
-            platform="ITviec",
-            posted_date=datetime(2026, 8, 10, 14, 30, 0, tzinfo=UTC),
-            url="https://itviec.com/job/cloud-architect",
-        ),
+            title=j.title,
+            department=j.workplace_type or j.employment_type or None,
+            platform="LinkedIn",
+            posted_date=j.posted_at,
+            url=None,
+        )
+        for j in db_jobs
     ]
 
     return CompanyGraphRead(
         company_name=clean_name,
-        legal_entity=legal_entity,
+        legal_entity=None,
         decision_makers=decision_makers,
-        tenders=tenders,
+        tenders=[],
         hiring_signals=hiring_signals,
-        hiring_velocity_pct=65.0,
-        active_jobs_count=48,
+        hiring_velocity_pct=hiring_velocity_pct,
+        active_jobs_count=active_jobs_count,
     )

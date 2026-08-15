@@ -17,6 +17,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { CompanyGraph } from "@/contracts/types/leads.types";
 import { leadsApiService } from "@/lib/apis/leads-api.service";
+import { isAllowedUrl } from "@/lib/utils";
 import { PhoneCopyPill } from "./PhoneCopyPill";
 
 export interface CompanyGraphDrawerProps {
@@ -196,9 +197,9 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 									</div>
 
 									<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-										{data.decision_makers.map((dm) => (
+										{data.decision_makers.map((dm, index) => (
 											<div
-												key={dm.name}
+												key={`dm-${index}`}
 												className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-3.5 space-y-2 hover:border-zinc-700 transition-colors"
 											>
 												<div className="flex items-start justify-between gap-2">
@@ -221,7 +222,7 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 													)}
 												</div>
 
-												{dm.linkedin_url && (
+												{isAllowedUrl(dm.linkedin_url) && (
 													<a
 														href={dm.linkedin_url}
 														target="_blank"
@@ -260,9 +261,9 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 									</p>
 
 									<div className="space-y-2">
-										{data.hiring_signals.map((hs) => (
+										{data.hiring_signals.map((hs, index) => (
 											<div
-												key={hs.title}
+												key={`hs-${index}`}
 												className="flex items-center justify-between p-2.5 rounded-lg bg-zinc-950/60 border border-zinc-800/60 text-xs"
 											>
 												<div className="flex items-center gap-2">
@@ -289,9 +290,9 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 										</div>
 
 										<div className="space-y-2">
-											{data.tenders.map((tender) => (
+											{data.tenders.map((tender, index) => (
 												<div
-													key={tender.tender_number}
+													key={`tender-${index}`}
 													className="p-3 rounded-lg bg-zinc-950/60 border border-zinc-800/60 space-y-2 text-xs"
 												>
 													<div className="flex items-start justify-between gap-2">
@@ -311,7 +312,7 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 															</strong>
 														</span>
 
-														{tender.source_url && (
+														{isAllowedUrl(tender.source_url) && (
 															<a
 																href={tender.source_url}
 																target="_blank"

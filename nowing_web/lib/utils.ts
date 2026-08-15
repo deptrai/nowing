@@ -5,6 +5,20 @@ export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
 }
 
+/**
+ * Return true if the value is a safe http(s) URL for use in an href.
+ * Rejects javascript:/data: URLs and other non-web protocols.
+ */
+export function isAllowedUrl(url: string | null | undefined): url is string {
+	if (!url) return false;
+	try {
+		const parsed = new URL(url);
+		return parsed.protocol === "http:" || parsed.protocol === "https:";
+	} catch {
+		return false;
+	}
+}
+
 export const formatDate = (date: Date): string => {
 	return date.toLocaleDateString("en-US", {
 		year: "numeric",

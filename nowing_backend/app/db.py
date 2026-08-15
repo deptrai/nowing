@@ -400,6 +400,7 @@ class Permission(StrEnum):
 
     # Leads / lead scoring (Story 21.2)
     LEADS_READ = "leads:read"
+    LEADS_WRITE = "leads:write"
     LEADS_SCORE = "leads:score"
 
     # Lead contact enrichment (Story 21.3)
@@ -4437,7 +4438,7 @@ class Lead(Base, TimestampMixin):
     fit_score = Column(Float, nullable=True)
     intent_score = Column(Float, nullable=True)
     composite_score = Column(Float, nullable=True)
-    status = Column(String(50), nullable=False, default="open", server_default="open")
+    status = Column(String(50), nullable=False, default="new", server_default="new")
     enriched = Column(Boolean, nullable=False, default=False, server_default="false")
     consent_status = Column(String(50), nullable=True)
     legal_basis = Column(String(50), nullable=True)

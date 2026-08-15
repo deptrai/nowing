@@ -131,6 +131,25 @@ CANONICAL_PERSIST_OUTBOX_COLS = [
     "updated_at",
 ]
 
+LEADS_COLS = [
+    "id",
+    "workspace_id",
+    "client_id",
+    "source",
+    "company_name",
+    "domain",
+    "industry",
+    "company_size",
+    "location",
+    "fit_score",
+    "intent_score",
+    "composite_score",
+    "status",
+    "enriched",
+    "created_at",
+    "updated_at",
+]
+
 ZERO_PUBLICATION: Mapping[str, Sequence[str] | None] = {
     "notifications": None,
     "documents": DOCUMENT_COLS,
@@ -148,6 +167,7 @@ ZERO_PUBLICATION: Mapping[str, Sequence[str] | None] = {
     "canonical_entity_sources": CANONICAL_ENTITY_SOURCE_COLS,
     "canonical_merge_history": CANONICAL_MERGE_HISTORY_COLS,
     "canonical_persist_outbox": CANONICAL_PERSIST_OUTBOX_COLS,
+    "leads": LEADS_COLS,
 }
 
 

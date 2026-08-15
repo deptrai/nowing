@@ -17,6 +17,7 @@ class LeadsApiService {
 		params: ListLeadsParams = {}
 	): Promise<LeadListResponse> => {
 		const qs = new URLSearchParams();
+		if (params.client_id) qs.set("client_id", params.client_id);
 		if (params.source) qs.set("source", params.source);
 		if (params.intent) qs.set("intent", params.intent);
 		if (params.min_score !== undefined) qs.set("min_score", String(params.min_score));

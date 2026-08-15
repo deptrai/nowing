@@ -3,7 +3,7 @@
 import { Building2, Clock, ExternalLink, MapPin, Sparkles } from "lucide-react";
 import type React from "react";
 import type { Lead } from "@/contracts/types/leads.types";
-import { cn } from "@/lib/utils";
+import { cn, isAllowedUrl } from "@/lib/utils";
 import { PhoneCopyPill } from "./PhoneCopyPill";
 
 export interface LeadCardProps {
@@ -14,7 +14,8 @@ export interface LeadCardProps {
 }
 
 const getFitScoreBadge = (score: number | null | undefined) => {
-	const val = score ?? 0;
+	const raw = score ?? 0;
+	const val = Number.isFinite(raw) ? raw : 0;
 	if (val >= 80) {
 		return {
 			label: "High Fit",
@@ -138,10 +139,12 @@ export const LeadCard: React.FC<LeadCardProps> = ({
 						className="px-2 py-1 text-xs rounded-md bg-zinc-800/90 text-zinc-300 border border-zinc-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
 					>
 						<option value="new">Mới (New)</option>
+						<option value="open">Mới mở (Open)</option>
 						<option value="contacted">Đã liên hệ</option>
 						<option value="qualified">Tiềm năng cao</option>
 						<option value="converted">Chuyển đổi (Won)</option>
 						<option value="lost">Bỏ qua (Lost)</option>
+						<option value="pending">Chờ xử lý (Pending)</option>
 					</select>
 				</div>
 			</div>
@@ -211,7 +214,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({
 						<span>Xem Company Graph</span>
 					</button>
 
-					{lead.source_url && (
+					{isAllowedUrl(lead.source_url) && (
 						<a
 							href={lead.source_url}
 							target="_blank"

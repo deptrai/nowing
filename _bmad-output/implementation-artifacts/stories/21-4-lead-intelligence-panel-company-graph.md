@@ -83,6 +83,24 @@ So that I can immediately qualify incoming multi-domain leads (BDS, Jobs, Tender
 - [x] [Review][Patch] Use `getattr` safely for dynamic lead fields to prevent `AttributeError` [`nowing_backend/app/routes/leads_routes.py:60-80`]
 - [x] [Review][Patch] Validate status strings in `LeadStatusUpdate` using Pydantic validator [`nowing_backend/app/lead_intelligence/schemas.py:17-25`]
 
+### Review Findings — BMAD Code Review 2026-08-15
+
+#### decision-needed
+- [x] [Review][Decision] `get_company_graph` trả về dữ liệu giả mạo cho bất kỳ doanh nghiệp nào; chưa có bảng `Tender`/`LegalEntity` nên cần quyết định scope fix [nowing_backend/app/routes/leads_routes.py:311-378, tests/unit/routes/test_leads_routes.py:214-227]
+
+#### patch
+- [x] [Review][Patch] PATCH `/leads/{lead_id}/status` dùng `Permission.LEADS_READ.value` thay vì write permission; `Permission` enum chưa có `LEADS_WRITE` [nowing_backend/app/routes/leads_routes.py:225-231, app/db.py:402-407]
+- [x] [Review][Patch] Bảng `leads` chưa được thêm vào `zero_publication`, dẫn đến AC-4 "Zero Cache sync across clients" không hoạt động [nowing_backend/app/zero_publication.py:134-151]
+- [x] [Review][Patch] GET `/leads` thiếu filter `client_id` (AC-5 multi-vertical AD-31) [nowing_backend/app/routes/leads_routes.py:92-101, app/db.py:4694]
+- [x] [Review][Patch] `Lead.status` DB default là `"open"` trong khi schema/UI default là `"new"`, gây mâu thuẫn [nowing_backend/app/db.py:4440, app/lead_intelligence/schemas.py:46, nowing_web/contracts/types/leads.types.ts:30]
+- [x] [Review][Patch] UI `LeadCard` dropdown thiếu các trạng thái `open` và `pending` mà backend cho phép [nowing_web/components/leads/LeadCard.tsx:140-145]
+- [x] [Review][Patch] Unit test `test_get_company_graph` đang assert dữ liệu giả (tax_id, tên, tender_number, v.v.) [nowing_backend/tests/unit/routes/test_leads_routes.py:214-227]
+- [x] [Review][Patch] `PhoneCopyPill` gọi `phone.replace(...)` trực tiếp, có thể crash nếu `phone` undefined/null [nowing_web/components/leads/PhoneCopyPill.tsx:23]
+- [x] [Review][Patch] Tham số `source` và `search` dùng `ilike` không escape wildcard `%`/`_` [nowing_backend/app/routes/leads_routes.py:126,137-143]
+- [x] [Review][Patch] `source_url`, `linkedin_url`, `tender.source_url` render vào `<a href>` mà không validate protocol, tiềm ẩn XSS [nowing_web/components/leads/LeadCard.tsx:215, CompanyGraphDrawer.tsx:225-324]
+- [x] [Review][Patch] `_map_lead_to_read` dùng toán tử `or` nên `confidence=0` bị coi là falsy → 0.95, `composite_score=0` → fit_score [nowing_backend/app/routes/leads_routes.py:74,307]
+- [x] [Review][Patch] Pydantic/Zod schema không validate range/NaN cho `fit_score`, `composite_score`, `confidence`, `hiring_velocity_pct`, `active_jobs_count` [nowing_backend/app/lead_intelligence/schemas.py:43-45,76, nowing_web/contracts/types/leads.types.ts:27-29,58,102-103]
+
 ## Dev Notes
 
 - **UX Contract Alignment:** Tuân thủ 100% Widget U3 & U4 trong `ux-contract-scrapers-expansion-and-lead-intelligence.md` và `ux-contract-lead-intelligence-panel.md`.

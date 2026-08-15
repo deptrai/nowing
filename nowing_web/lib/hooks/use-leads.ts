@@ -23,7 +23,7 @@ export function useLeads(
 	const [loading, setLoading] = useState<boolean>(true);
 	const [error, setError] = useState<string | null>(null);
 
-	const { source, intent, min_score, status, search, sort, limit, offset } = params;
+	const { client_id, source, intent, min_score, status, search, sort, limit, offset } = params;
 
 	const fetchLeads = useCallback(async () => {
 		if (!workspaceId) return;
@@ -31,6 +31,7 @@ export function useLeads(
 		setError(null);
 		try {
 			const res = await leadsApiService.listLeads(workspaceId, {
+				client_id,
 				source,
 				intent,
 				min_score,
@@ -48,7 +49,7 @@ export function useLeads(
 		} finally {
 			setLoading(false);
 		}
-	}, [workspaceId, source, intent, min_score, status, search, sort, limit, offset]);
+	}, [workspaceId, client_id, source, intent, min_score, status, search, sort, limit, offset]);
 
 	useEffect(() => {
 		fetchLeads();
