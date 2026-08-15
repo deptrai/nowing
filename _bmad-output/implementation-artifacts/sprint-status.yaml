@@ -208,7 +208,7 @@ development_status:
   21-8: done  # 2026-08-15: 32 review patches + XActions Celery scheduler/ingestor applied; ruff/pytest/tsc green. 28 initial code-review findings resolved or dismissed (DLQ, pagination, composite index, email regex, account_id validation, ReDoS hardening, integration test rewrite, etc.).
   21-9: done  # Executive Decision Maker Mapping & B2B Lead Outreach
   21-10: done  # 2026-08-15: FastCrawler, ReverseIcpService, REST route, ReverseIcpModal, ATDD & 11 review patches verified; ruff/tsc/biome/pytest green
-  21-11: done  # 2026-08-15: 4 review patches applied; ruff/pytest/tsc green
+  21-11: done  # 2026-08-15: Actionable Turn Dispatches (suggested action pills); ruff/pytest/tsc/biome green
   21-12: done  # 2026-08-15: Viral Social Outbound Co-pilot (Voice Learner, Outlier Analyzer, Split Review UI, 3 capabilities registered, unit/integration/E2E green, ruff/tsc/biome clean)
   21-13: done  # 2026-08-15: Multi-Table Tabs & Send/Export Hub (Zero-cache live reactive sync, CSV/Lark Export)
   epic-21-retrospective: optional

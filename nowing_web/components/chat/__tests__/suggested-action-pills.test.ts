@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { type SuggestedAction, suggestedActionSchema } from "../../../contracts/types/chat-messages.types";
+import {
+	type SuggestedAction,
+	suggestedActionSchema,
+} from "../../../contracts/types/chat-messages.types";
 
 test("suggestedActionSchema validates valid action pill payload (AC: 1)", () => {
 	const validPill = {

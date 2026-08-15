@@ -9,7 +9,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useAtomValue, useSetAtom } from "jotai";
 import dynamic from "next/dynamic";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -172,6 +172,8 @@ function ThreadMessagesSkeleton() {
 
 export default function NewChatPage() {
 	const params = useParams();
+	const searchParams = useSearchParams();
+	const initialPrompt = searchParams.get("q") ?? undefined;
 	const queryClient = useQueryClient();
 	const urlChatId = useMemo(() => parseUrlChatId(params.chat_id), [params.chat_id]);
 	const [threadId, setThreadId] = useState<number | null>(() => (urlChatId > 0 ? urlChatId : null));
@@ -794,7 +796,7 @@ export default function NewChatPage() {
 				>
 					<div key={workspaceId} className="flex h-full overflow-hidden">
 						<div className="relative flex-1 flex flex-col min-w-0 overflow-hidden">
-							<Thread hasActiveThread={!!activeThreadId} />
+							<Thread hasActiveThread={!!activeThreadId} initialPrompt={initialPrompt} />
 							{isThreadMessagesLoading ? (
 								<div className="absolute inset-0 z-10 bg-panel">
 									<ThreadMessagesSkeleton />

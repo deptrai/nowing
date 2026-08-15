@@ -155,13 +155,14 @@ function getComposerSuggestionAnchorPoint(
 
 interface ThreadProps {
 	hasActiveThread?: boolean;
+	initialPrompt?: string;
 }
 
-export const Thread: FC<ThreadProps> = ({ hasActiveThread = false }) => {
-	return <ThreadContent hasActiveThread={hasActiveThread} />;
+export const Thread: FC<ThreadProps> = ({ hasActiveThread = false, initialPrompt }) => {
+	return <ThreadContent hasActiveThread={hasActiveThread} initialPrompt={initialPrompt} />;
 };
 
-const ThreadContent: FC<ThreadProps> = ({ hasActiveThread = false }) => {
+const ThreadContent: FC<ThreadProps> = ({ hasActiveThread = false, initialPrompt }) => {
 	return (
 		<ThreadPrimitive.Root
 			className="aui-root aui-thread-root @container flex h-full min-h-0 flex-col bg-main-panel"
@@ -173,12 +174,12 @@ const ThreadContent: FC<ThreadProps> = ({ hasActiveThread = false }) => {
 				footer={
 					<AuiIf condition={({ thread }) => hasActiveThread || !thread.isEmpty}>
 						<PremiumQuotaPinnedAlert />
-						<Composer />
+						<Composer initialPrompt={initialPrompt} hasActiveThread={hasActiveThread} />
 					</AuiIf>
 				}
 			>
 				<AuiIf condition={({ thread }) => !hasActiveThread && thread.isEmpty}>
-					<ThreadWelcome />
+					<ThreadWelcome initialPrompt={initialPrompt} />
 				</AuiIf>
 
 				<ThreadPrimitive.Messages
@@ -261,7 +262,7 @@ const getTimeBasedGreeting = (user?: { display_name?: string | null; email?: str
 	return firstName ? `${greeting}, ${firstName}!` : `${greeting}!`;
 };
 
-const ThreadWelcome: FC = () => {
+const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }) => {
 	const { data: user } = useAtomValue(currentUserAtom);
 	const greeting = useMemo(() => getTimeBasedGreeting(user), [user]);
 
@@ -274,7 +275,7 @@ const ThreadWelcome: FC = () => {
 					</h1>
 				</div>
 				<div className="flex w-full items-start justify-center">
-					<Composer />
+					<Composer initialPrompt={initialPrompt} hasActiveThread={false} />
 				</div>
 			</section>
 		</div>
@@ -498,7 +499,10 @@ const ChatUnavailableNotice: FC<{ workspaceId: number; canConfigure: boolean }> 
 	);
 };
 
-const Composer: FC = () => {
+const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
+	initialPrompt,
+	hasActiveThread,
+}) => {
 	const [mentionedDocuments, setMentionedDocuments] = useAtom(mentionedDocumentsAtom);
 	const setSubmittedMentions = useSetAtom(submittedMentionsAtom);
 	const [showDocumentPopover, setShowDocumentPopover] = useState(false);
@@ -532,6 +536,27 @@ const Composer: FC = () => {
 			}
 		});
 	}, [electronAPI]);
+
+	const initialPromptAppliedRef = useRef(false);
+	useEffect(() => {
+		if (
+			!initialPrompt ||
+			initialPromptAppliedRef.current ||
+			hasActiveThread ||
+			!editorRef.current
+		) {
+			return;
+		}
+		const text = initialPrompt.trim();
+		if (!text) return;
+		initialPromptAppliedRef.current = true;
+		editorRef.current.setText(text);
+		aui.composer().setText(text);
+		setIsComposerInputEmpty(false);
+		if (isDesktop) {
+			editorRef.current.focus();
+		}
+	}, [initialPrompt, hasActiveThread, aui, isDesktop]);
 
 	const isThreadEmpty = useAuiState(({ thread }) => thread.isEmpty);
 	const isThreadRunning = useAuiState(({ thread }) => thread.isRunning);
