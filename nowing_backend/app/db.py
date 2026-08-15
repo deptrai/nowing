@@ -406,6 +406,13 @@ class Permission(StrEnum):
     LEADS_ENRICH = "leads:enrich"
     CONTACTS_READ = "contacts:read"
 
+    # CRM (Story 21.5)
+    CRM_CONNECT = "crm:connect"
+    CRM_READ = "crm:read"
+    CRM_WRITE = "crm:write"
+    CRM_SYNC = "crm:sync"
+    CRM_DISCONNECT = "crm:disconnect"
+
     # Signal detection (Story 21.1)
     SIGNALS_READ = "signals:read"
     SIGNALS_DETECT = "signals:detect"
@@ -601,6 +608,8 @@ class MemorySourceType(StrEnum):
     LEAD = "lead"
     LEAD_SCORE = "lead_score"
     ENRICHMENT = "enrichment"
+    CRM_CONNECTION = "crm_connection"
+    CRM_SYNC = "crm_sync"
     SEQUENCE_EVENT = "sequence_event"
     OUTCOME_EVENT = "outcome_event"
 
@@ -2084,6 +2093,18 @@ class Workspace(BaseModel, TimestampMixin):
     verified_contacts = relationship(
         "VerifiedContact",
         back_populates="workspace",
+        cascade="all, delete-orphan",
+    )
+    crm_connections = relationship(
+        "CrmConnection",
+        back_populates="workspace",
+        order_by="CrmConnection.created_at.desc()",
+        cascade="all, delete-orphan",
+    )
+    crm_sync_logs = relationship(
+        "CrmSyncLog",
+        back_populates="workspace",
+        order_by="CrmSyncLog.synced_at.desc()",
         cascade="all, delete-orphan",
     )
 
@@ -4745,9 +4766,3 @@ class CrmSyncLog(Base, TimestampMixin):
     workspace = relationship("Workspace", back_populates="crm_sync_logs")
     connection = relationship("CrmConnection", back_populates="sync_logs")
 
-
-# Ensure alert persistence models are registered on Base.metadata.
-# ruff: noqa: I001,E402
-from app.alerts.persistence.models.alert_rule import AlertRule  # noqa: F401
-from app.alerts.persistence.models.alert_snapshot import AlertSnapshot  # noqa: F401
-from app.alerts.persistence.models.alert_subscription import AlertSubscription  # noqa: F401
