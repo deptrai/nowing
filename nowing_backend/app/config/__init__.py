@@ -1630,6 +1630,28 @@ class Config:
     )
     SIGNAL_EVENT_RETENTION_DAYS = max(1, _env_int("SIGNAL_EVENT_RETENTION_DAYS", 90))
 
+    # Contact enrichment (Story 21.3)
+    CLEANLIST_API_KEY = os.getenv("CLEANLIST_API_KEY", "")
+    BETTERCONTACT_API_KEY = os.getenv("BETTERCONTACT_API_KEY", "")
+    CONTACT_ENRICHMENT_MICROS_PER_CONTACT = max(
+        0, _env_int("CONTACT_ENRICHMENT_MICROS_PER_CONTACT", 0)
+    )
+    CONTACT_ENRICHMENT_CACHE_TTL_SECONDS = max(
+        1, _env_int("CONTACT_ENRICHMENT_CACHE_TTL_SECONDS", 30 * 24 * 60 * 60)
+    )
+    CONTACT_ENRICHMENT_PRIMARY_PROVIDER = os.getenv(
+        "CONTACT_ENRICHMENT_PRIMARY_PROVIDER", "cleanlist"
+    ).strip().lower()
+    CONTACT_ENRICHMENT_MAX_CONTACTS_PER_LEAD = max(
+        1, _env_int("CONTACT_ENRICHMENT_MAX_CONTACTS_PER_LEAD", 5)
+    )
+    CONTACT_ENRICHMENT_REQUEST_TIMEOUT_SECONDS = max(
+        1, _env_int("CONTACT_ENRICHMENT_REQUEST_TIMEOUT_SECONDS", 30)
+    )
+    CONTACT_ENRICHMENT_RETRY_ATTEMPTS = max(
+        1, _env_int("CONTACT_ENRICHMENT_RETRY_ATTEMPTS", 3)
+    )
+
     # Validation Checks
     # Check embedding dimension
     if (

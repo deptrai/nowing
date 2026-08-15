@@ -402,6 +402,10 @@ class Permission(StrEnum):
     LEADS_READ = "leads:read"
     LEADS_SCORE = "leads:score"
 
+    # Lead contact enrichment (Story 21.3)
+    LEADS_ENRICH = "leads:enrich"
+    CONTACTS_READ = "contacts:read"
+
     # Signal detection (Story 21.1)
     SIGNALS_READ = "signals:read"
     SIGNALS_DETECT = "signals:detect"
@@ -2070,6 +2074,16 @@ class Workspace(BaseModel, TimestampMixin):
         "LeadScore",
         back_populates="workspace",
         order_by="LeadScore.computed_at.desc()",
+        cascade="all, delete-orphan",
+    )
+    enrichment_requests = relationship(
+        "EnrichmentRequest",
+        back_populates="workspace",
+        cascade="all, delete-orphan",
+    )
+    verified_contacts = relationship(
+        "VerifiedContact",
+        back_populates="workspace",
         cascade="all, delete-orphan",
     )
 
@@ -4415,6 +4429,16 @@ class Lead(Base, TimestampMixin):
         order_by="LeadScore.computed_at.desc()",
         cascade="all, delete-orphan",
     )
+    enrichment_requests = relationship(
+        "EnrichmentRequest",
+        back_populates="lead",
+        cascade="all, delete-orphan",
+    )
+    verified_contacts = relationship(
+        "VerifiedContact",
+        back_populates="lead",
+        cascade="all, delete-orphan",
+    )
 
 
 class LeadScore(Base, TimestampMixin):
@@ -4474,6 +4498,136 @@ class LeadScore(Base, TimestampMixin):
         "LeadScore",
         remote_side=[id],
         uselist=False,
+    )
+
+
+class EnrichmentRequest(Base, TimestampMixin):
+    """A contact-enrichment request and its lifecycle (Story 21.3, AC-3).
+
+    ``provider_results`` records the raw per-provider responses (redacted of
+    PII) plus any degradation reasons; it is never surfaced on non-privileged
+    UI surfaces (AD-25 / AD-49).
+    """
+
+    __tablename__ = "enrichment_requests"
+    __table_args__ = (
+        Index(
+            "ix_enrichment_requests_tenant_lookup",
+            "workspace_id",
+            "client_id",
+            "lead_id",
+            text("created_at DESC"),
+        ),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    client_id = Column(
+        CITEXT,
+        ForeignKey("vertical_clients.client_id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    lead_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("leads.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    status = Column(
+        String(20),
+        nullable=False,
+        default="pending",
+        server_default="pending",
+    )
+    provider_results = Column(
+        JSONB, nullable=True, server_default=text("'{}'::jsonb")
+    )
+    cost_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
+    contact_count = Column(Integer, nullable=False, default=0, server_default="0")
+    requested_count = Column(
+        Integer, nullable=False, default=5, server_default="5"
+    )
+
+    workspace = relationship("Workspace", back_populates="enrichment_requests")
+    lead = relationship("Lead", back_populates="enrichment_requests")
+    contacts = relationship(
+        "VerifiedContact",
+        back_populates="enrichment_request",
+        cascade="all, delete-orphan",
+    )
+
+
+class VerifiedContact(Base, TimestampMixin):
+    """A verified contact discovered by enrichment (Story 21.3, AC-3).
+
+    Raw PII (name/title/email/phone) is encrypted at rest (AD-42/AD-49); this
+    table is the authoritative source for outreach and is never passed through
+    PII redaction.
+    """
+
+    __tablename__ = "verified_contacts"
+    __table_args__ = (
+        Index(
+            "ix_verified_contacts_tenant_lookup",
+            "workspace_id",
+            "client_id",
+            "lead_id",
+            text("created_at DESC"),
+        ),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    client_id = Column(
+        CITEXT,
+        ForeignKey("vertical_clients.client_id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    lead_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("leads.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    enrichment_request_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("enrichment_requests.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name = Column(String(200), nullable=True)
+    title = Column(String(200), nullable=True)
+    email = Column(CITEXT, nullable=False, index=True)
+    phone = Column(String(200), nullable=True)
+    verification_status = Column(
+        String(20), nullable=False, default="unverified", server_default="unverified"
+    )
+    confidence = Column(Float, nullable=False, default=0.0, server_default="0")
+    source_provider = Column(
+        String(20), nullable=False, default="fallback", server_default="fallback"
+    )
+    consent = Column(Boolean, nullable=False, default=False, server_default="false")
+    consent_status = Column(String(50), nullable=True)
+    legal_basis = Column(String(50), nullable=True)
+
+    workspace = relationship("Workspace", back_populates="verified_contacts")
+    lead = relationship("Lead", back_populates="verified_contacts")
+    enrichment_request = relationship(
+        "EnrichmentRequest", back_populates="contacts"
     )
 
 

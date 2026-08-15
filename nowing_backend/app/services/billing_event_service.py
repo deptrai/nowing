@@ -57,6 +57,36 @@ class BillingEventService:
             cost_micros=cost_micros,
         )
 
+    @classmethod
+    async def record_contact_enrichment(
+        cls,
+        session: AsyncSession,
+        *,
+        enrichment_request_id: UUID,
+        workspace_id: int,
+        client_id: str | None = None,
+        user_id: UUID,
+        cost_micros: int,
+    ) -> BillingEvent:
+        """Record a contact-enrichment billing event and debit the owner.
+
+        Uses ``cost_basis="actual"``: enrichment cost is only known after the
+        provider waterfall has returned the verified contacts (Story 21.3,
+        Task 8.1). Idempotent: a duplicate call for the same request id raises
+        ValueError.
+        """
+        return await _record_business_event(
+            session,
+            event_entity_type="enrichment_request",
+            event_type="contact_enrichment",
+            event_id=enrichment_request_id,
+            workspace_id=workspace_id,
+            client_id=client_id,
+            user_id=user_id,
+            cost_micros=cost_micros,
+            cost_basis="actual",
+        )
+
 
 async def record_signal_scan(
     session: AsyncSession,
@@ -98,6 +128,7 @@ async def _record_business_event(
     client_id: str | None,
     user_id: UUID | None,
     cost_micros: int,
+    cost_basis: str = "estimated",
 ) -> BillingEvent:
     """Core path: check duplicate, write BillingEvent, debit wallet."""
     # Idempotency: look for an existing billing row for this event.
@@ -137,7 +168,7 @@ async def _record_business_event(
         event_id=event_id,
         cost_micros=cost_micros,
         currency="USD",
-        cost_basis="estimated",
+        cost_basis=cost_basis,
     )
     session.add(event)
 
