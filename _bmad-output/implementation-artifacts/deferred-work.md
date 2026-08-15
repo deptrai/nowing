@@ -769,3 +769,29 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 
 - **Finding:** Engagement bonus thresholds are strict `>` (off-by-one). (app/tasks/social_stream_worker.py:150-151)
   - **Resolution:** Changed to `>=`.
+
+## Deferred from: code review of 21-6-zalo-integration (2026-08-15)
+
+- **Finding:** `leads_routes.py` awaits sync `has_permission` with 4 args (pre-existing 21.3 issue, unrelated to 21.6). (app/routes/leads_routes.py:640-645,691)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-6-zalo-integration.md`.
+  - **Reason / when to revisit:** Fix when resolving phone-waterfall RBAC in Story 21.3; use `check_permission` or correct `has_permission` helper.
+
+- **Finding:** Phone waterfall worker `asyncio.run` inside a sync Celery task and refund exception swallow. (app/tasks/phone_waterfall_worker.py:69,109-116)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-6-zalo-integration.md`.
+  - **Reason / when to revisit:** Refactor to async Celery task or worker loop in Story 21.3.
+
+- **Finding:** Missing migration for `VerifiedContact`/`PhoneWaterfallLog` model changes. (app/db.py)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-6-zalo-integration.md`.
+  - **Reason / when to revisit:** Add companion migration in Story 21.3 to keep alembic in sync.
+
+- **Finding:** `app/db.py` reintroduces top-level circular `SpatialPlanningZone` import. (app/db.py:4762)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-6-zalo-integration.md`.
+  - **Reason / when to revisit:** Fix in Story 10.8 by moving import inside `create_db_and_tables`.
+
+- **Finding:** SQLAlchemy `cascade="delete-orphan"` for `ZaloMessageLog` conflicts with migration `ON DELETE SET NULL`. (app/db.py:5157-5161,5222-5224)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-6-zalo-integration.md`.
+  - **Reason / when to revisit:** Align ORM/migration delete semantics when finalizing 21.6 data model.
+
+- **Finding:** `PhoneResolutionResponse` hard-codes 1.5 credits for async `pending` results. (app/routes/leads_routes.py:595-602)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-6-zalo-integration.md`.
+  - **Reason / when to revisit:** Return 0/null for pending async results in Story 21.3.

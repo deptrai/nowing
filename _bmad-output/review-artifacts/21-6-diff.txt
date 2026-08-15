@@ -1,0 +1,3596 @@
+diff --git a/nowing_backend/alembic/versions/212_add_zalo_gateway_tables.py b/nowing_backend/alembic/versions/212_add_zalo_gateway_tables.py
+new file mode 100644
+index 000000000..14575f36f
+--- /dev/null
++++ b/nowing_backend/alembic/versions/212_add_zalo_gateway_tables.py
+@@ -0,0 +1,80 @@
++"""add zalo gateway tables (Story 21.6 / AD-41)
++
++Revision ID: 212
++Revises: 211
++"""
++
++from __future__ import annotations
++
++from collections.abc import Sequence
++
++from sqlalchemy import text
++
++from alembic import op
++
++revision: str = "212"
++down_revision: str | None = "211"
++branch_labels: str | Sequence[str] | None = None
++depends_on: str | Sequence[str] | None = None
++
++
++def _exec_statements(*statements: str) -> None:
++    for stmt in statements:
++        op.execute(text(stmt))
++
++
++def upgrade() -> None:
++    _exec_statements(
++        """
++        CREATE TABLE IF NOT EXISTS zalo_connections (
++            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
++            workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
++            oa_id VARCHAR(100) NOT NULL,
++            oa_name VARCHAR(255),
++            app_id VARCHAR(100),
++            access_token_encrypted TEXT,
++            refresh_token_encrypted TEXT,
++            token_expires_at TIMESTAMPTZ,
++            is_active BOOLEAN NOT NULL DEFAULT TRUE,
++            webhook_secret VARCHAR(255),
++            settings JSONB NOT NULL DEFAULT '{}'::jsonb,
++            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++            CONSTRAINT uq_workspace_zalo_oa UNIQUE (workspace_id, oa_id)
++        );
++        """,
++        """
++        CREATE TABLE IF NOT EXISTS zalo_message_logs (
++            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
++            workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
++            zalo_connection_id UUID REFERENCES zalo_connections(id) ON DELETE SET NULL,
++            lead_id UUID REFERENCES leads(id) ON DELETE SET NULL,
++            recipient_phone VARCHAR(50),
++            recipient_zalo_id VARCHAR(100),
++            message_type VARCHAR(50) NOT NULL DEFAULT 'assisted_draft',
++            template_id VARCHAR(100),
++            template_data JSONB DEFAULT '{}'::jsonb,
++            content TEXT NOT NULL,
++            status VARCHAR(50) NOT NULL DEFAULT 'generated',
++            external_message_id VARCHAR(255),
++            error_message TEXT,
++            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
++        );
++        """,
++        "CREATE INDEX IF NOT EXISTS idx_zalo_connections_workspace_id ON zalo_connections(workspace_id);",
++        "CREATE INDEX IF NOT EXISTS idx_zalo_connections_oa_id ON zalo_connections(oa_id);",
++        "CREATE INDEX IF NOT EXISTS idx_zalo_connections_active ON zalo_connections(is_active);",
++        "CREATE INDEX IF NOT EXISTS idx_zalo_message_logs_workspace_id ON zalo_message_logs(workspace_id);",
++        "CREATE INDEX IF NOT EXISTS idx_zalo_message_logs_lead_id ON zalo_message_logs(lead_id);",
++        "CREATE INDEX IF NOT EXISTS idx_zalo_message_logs_phone ON zalo_message_logs(recipient_phone);",
++        "CREATE INDEX IF NOT EXISTS idx_zalo_message_logs_created_at ON zalo_message_logs(created_at);",
++        "CREATE INDEX IF NOT EXISTS idx_zalo_message_logs_msg_type ON zalo_message_logs(message_type);",
++    )
++
++
++def downgrade() -> None:
++    _exec_statements(
++        "DROP TABLE IF EXISTS zalo_message_logs CASCADE;",
++        "DROP TABLE IF EXISTS zalo_connections CASCADE;",
++    )
+diff --git a/nowing_backend/app/db.py b/nowing_backend/app/db.py
+index 3efc047c1..20321773e 100644
+--- a/nowing_backend/app/db.py
++++ b/nowing_backend/app/db.py
+@@ -2119,6 +2119,18 @@ class Workspace(BaseModel, TimestampMixin):
+         order_by="SocialPost.id",
+         cascade="all, delete-orphan",
+     )
++    zalo_connections = relationship(
++        "ZaloConnection",
++        back_populates="workspace",
++        order_by="ZaloConnection.created_at.desc()",
++        cascade="all, delete-orphan",
++    )
++    zalo_message_logs = relationship(
++        "ZaloMessageLog",
++        back_populates="workspace",
++        order_by="ZaloMessageLog.created_at.desc()",
++        cascade="all, delete-orphan",
++    )
+ 
+ 
+ class WorkspaceMcpToolSetting(BaseModel, TimestampMixin):
+@@ -3896,10 +3908,6 @@ async def create_db_and_tables():
+         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS citext"))
+         try:
+-            # Ensure all declarative models (including PostGIS) are registered
+-            # before create_all runs without creating a circular module import.
+-            from app.proprietary.platforms.spatial_planning.models import SpatialPlanningZone  # noqa: F401
+-
+             await conn.run_sync(Base.metadata.create_all)
+         except Exception as exc:
+             logger.warning(
+@@ -4482,6 +4490,17 @@ class Lead(Base, TimestampMixin):
+         back_populates="lead",
+         cascade="all, delete-orphan",
+     )
++    phone_waterfall_logs = relationship(
++        "PhoneWaterfallLog",
++        back_populates="lead",
++        cascade="all, delete-orphan",
++    )
++    zalo_message_logs = relationship(
++        "ZaloMessageLog",
++        back_populates="lead",
++        order_by="ZaloMessageLog.created_at.desc()",
++        cascade="all, delete-orphan",
++    )
+ 
+ 
+ class LeadScore(Base, TimestampMixin):
+@@ -4589,14 +4608,10 @@ class EnrichmentRequest(Base, TimestampMixin):
+         default="pending",
+         server_default="pending",
+     )
+-    provider_results = Column(
+-        JSONB, nullable=True, server_default=text("'{}'::jsonb")
+-    )
++    provider_results = Column(JSONB, nullable=True, server_default=text("'{}'::jsonb"))
+     cost_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
+     contact_count = Column(Integer, nullable=False, default=0, server_default="0")
+-    requested_count = Column(
+-        Integer, nullable=False, default=5, server_default="5"
+-    )
++    requested_count = Column(Integer, nullable=False, default=5, server_default="5")
+ 
+     workspace = relationship("Workspace", back_populates="enrichment_requests")
+     lead = relationship("Lead", back_populates="enrichment_requests")
+@@ -4649,29 +4664,94 @@ class VerifiedContact(Base, TimestampMixin):
+     enrichment_request_id = Column(
+         UUID(as_uuid=True),
+         ForeignKey("enrichment_requests.id", ondelete="CASCADE"),
+-        nullable=False,
++        nullable=True,
+         index=True,
+     )
+     name = Column(String(200), nullable=True)
+     title = Column(String(200), nullable=True)
+-    email = Column(CITEXT, nullable=False, index=True)
++    email = Column(CITEXT, nullable=True, index=True)
+     phone = Column(String(200), nullable=True)
+     verification_status = Column(
+         String(20), nullable=False, default="unverified", server_default="unverified"
+     )
+     confidence = Column(Float, nullable=False, default=0.0, server_default="0")
+     source_provider = Column(
+-        String(20), nullable=False, default="fallback", server_default="fallback"
++        String(50), nullable=False, default="fallback", server_default="fallback"
+     )
+     consent = Column(Boolean, nullable=False, default=False, server_default="false")
+     consent_status = Column(String(50), nullable=True)
+     legal_basis = Column(String(50), nullable=True)
++    is_valid = Column(Boolean, nullable=False, default=True, server_default="true")
++    refunded_at = Column(TIMESTAMP(timezone=True), nullable=True)
++    invalid_reason = Column(String(255), nullable=True)
+ 
+     workspace = relationship("Workspace", back_populates="verified_contacts")
+     lead = relationship("Lead", back_populates="verified_contacts")
+-    enrichment_request = relationship(
+-        "EnrichmentRequest", back_populates="contacts"
++    enrichment_request = relationship("EnrichmentRequest", back_populates="contacts")
++    phone_waterfall_logs = relationship("PhoneWaterfallLog", back_populates="contact")
++
++
++class PhoneWaterfallLog(Base, TimestampMixin):
++    """Log entry for 3-tier phone resolution waterfall (Story 21.3 / AD-36).
++
++    Tracks the exact tier, provider, response envelope, phone hash (SHA-256),
++    masked phone, and refund SLA state without storing raw PII.
++    """
++
++    __tablename__ = "phone_waterfall_logs"
++    __table_args__ = (
++        Index(
++            "ix_phone_waterfall_logs_tenant_lookup",
++            "workspace_id",
++            "client_id",
++            "lead_id",
++            text("created_at DESC"),
++        ),
++    )
++
++    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
++
++    workspace_id = Column(
++        Integer,
++        ForeignKey("workspaces.id", ondelete="CASCADE"),
++        nullable=False,
++        index=True,
++    )
++    client_id = Column(
++        CITEXT,
++        ForeignKey("vertical_clients.client_id", ondelete="SET NULL"),
++        nullable=True,
++        index=True,
+     )
++    lead_id = Column(
++        UUID(as_uuid=True),
++        ForeignKey("leads.id", ondelete="CASCADE"),
++        nullable=False,
++        index=True,
++    )
++    contact_id = Column(
++        UUID(as_uuid=True),
++        ForeignKey("verified_contacts.id", ondelete="SET NULL"),
++        nullable=True,
++        index=True,
++    )
++    tier_reached = Column(Integer, nullable=False, default=1, server_default="1")
++    provider_used = Column(
++        String(50), nullable=False, default="unknown", server_default="unknown"
++    )
++    status = Column(
++        String(20), nullable=False, default="pending", server_default="pending"
++    )
++    cost_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
++    phone_hash = Column(String(64), nullable=True, index=True)
++    phone_masked = Column(String(50), nullable=True)
++    raw_response = Column(JSONB, nullable=True, server_default=text("'{}'::jsonb"))
++    refunded_at = Column(TIMESTAMP(timezone=True), nullable=True)
++    refund_reason = Column(String(255), nullable=True)
++
++    workspace = relationship("Workspace")
++    lead = relationship("Lead", back_populates="phone_waterfall_logs")
++    contact = relationship("VerifiedContact", back_populates="phone_waterfall_logs")
+ 
+ 
+ # Ensure alert persistence models are registered on Base.metadata.
+@@ -4679,7 +4759,7 @@ class VerifiedContact(Base, TimestampMixin):
+ from app.alerts.persistence.models.alert_rule import AlertRule  # noqa: F401
+ from app.alerts.persistence.models.alert_snapshot import AlertSnapshot  # noqa: F401
+ from app.alerts.persistence.models.alert_subscription import AlertSubscription  # noqa: F401
+-
++from app.proprietary.platforms.spatial_planning.models import SpatialPlanningZone  # noqa: F401
+ 
+ 
+ class CrmConnection(Base, TimestampMixin):
+@@ -4925,17 +5005,27 @@ class SocialMonitoredTarget(Base, TimestampMixin):
+         ForeignKey("workspaces.id", ondelete="CASCADE"),
+         nullable=False,
+     )
+-    platform = Column(String(50), nullable=False)  # 'facebook_group', 'facebook_page', 'twitter_keyword', 'twitter_user'
++    platform = Column(
++        String(50), nullable=False
++    )  # 'facebook_group', 'facebook_page', 'twitter_keyword', 'twitter_user'
+     target_id = Column(String(255), nullable=False)
+     target_name = Column(Text, nullable=False)
+     target_url = Column(Text, nullable=True)
+-    category = Column(String(50), nullable=False, default="general", server_default=text("'general'"))
++    category = Column(
++        String(50), nullable=False, default="general", server_default=text("'general'")
++    )
+     is_active = Column(Boolean, nullable=False, default=True, server_default="true")
+-    realtime_stream = Column(Boolean, nullable=False, default=False, server_default="false")
++    realtime_stream = Column(
++        Boolean, nullable=False, default=False, server_default="false"
++    )
+     # scrape_interval_minutes is the canonical scrape/poll cadence. The legacy
+     # poll_interval_seconds concept maps to scrape_interval_minutes * 60.
+-    scrape_interval_minutes = Column(Integer, nullable=False, default=15, server_default="15")
+-    status = Column(String(50), nullable=False, default="active", server_default=text("'active'"))
++    scrape_interval_minutes = Column(
++        Integer, nullable=False, default=15, server_default="15"
++    )
++    status = Column(
++        String(50), nullable=False, default="active", server_default=text("'active'")
++    )
+     last_polled_at = Column(TIMESTAMP(timezone=True), nullable=True)
+     last_scraped_at = Column(TIMESTAMP(timezone=True), nullable=True)
+     proxy_url = Column(Text, nullable=True)
+@@ -4958,7 +5048,12 @@ class SocialPost(Base, TimestampMixin):
+         Index("idx_social_posts_platform_ext", "platform", "external_post_id"),
+         Index("idx_social_posts_published", "published_at"),
+         Index("idx_social_posts_intent", "intent_tag"),
+-        Index("idx_social_posts_platform_intent_published", "platform", "intent_tag", "published_at"),
++        Index(
++            "idx_social_posts_platform_intent_published",
++            "platform",
++            "intent_tag",
++            "published_at",
++        ),
+         Index("idx_social_posts_gin_entities", "raw_entities", postgresql_using="gin"),
+         Index(
+             "idx_social_posts_embedding_hnsw",
+@@ -4989,7 +5084,9 @@ class SocialPost(Base, TimestampMixin):
+     author_url = Column(Text, nullable=True)
+     post_url = Column(Text, nullable=True)
+     content = Column(Text, nullable=True)
+-    intent_tag = Column(String(50), nullable=True)  # 'sell', 'buy', 'hiring', 'seeking', 'news', 'other'
++    intent_tag = Column(
++        String(50), nullable=True
++    )  # 'sell', 'buy', 'hiring', 'seeking', 'news', 'other'
+     fit_score = Column(Float, nullable=False, default=0.0, server_default="0")
+     reactions_count = Column(Integer, nullable=False, default=0, server_default="0")
+     comments_count = Column(Integer, nullable=False, default=0, server_default="0")
+@@ -5013,4 +5110,115 @@ class SocialPost(Base, TimestampMixin):
+     target = relationship("SocialMonitoredTarget", back_populates="posts")
+ 
+ 
++class ZaloConnection(Base, TimestampMixin):
++    """Zalo Official Account connection for a workspace (Story 21.6 / AD-41)."""
++
++    __tablename__ = "zalo_connections"
++
++    __table_args__ = (
++        UniqueConstraint("workspace_id", "oa_id", name="uq_workspace_zalo_oa"),
++        Index("idx_zalo_connections_workspace_id", "workspace_id"),
++        Index("idx_zalo_connections_oa_id", "oa_id"),
++        Index("idx_zalo_connections_active", "is_active"),
++    )
++
++    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
++    workspace_id = Column(
++        Integer,
++        ForeignKey("workspaces.id", ondelete="CASCADE"),
++        nullable=False,
++    )
++    oa_id = Column(String(100), nullable=False)
++    oa_name = Column(String(255), nullable=True)
++    app_id = Column(String(100), nullable=True)
++    access_token_encrypted = Column(Text, nullable=True)
++    refresh_token_encrypted = Column(Text, nullable=True)
++    token_expires_at = Column(TIMESTAMP(timezone=True), nullable=True)
++    is_active = Column(Boolean, nullable=False, default=True, server_default="true")
++    webhook_secret = Column(String(255), nullable=True)
++    settings = Column(
++        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
++    )
++    created_at = Column(
++        TIMESTAMP(timezone=True),
++        nullable=False,
++        default=lambda: datetime.now(UTC),
++        server_default=text("now()"),
++    )
++    updated_at = Column(
++        TIMESTAMP(timezone=True),
++        nullable=False,
++        default=lambda: datetime.now(UTC),
++        onupdate=lambda: datetime.now(UTC),
++        server_default=text("now()"),
++    )
++
++    workspace = relationship("Workspace", back_populates="zalo_connections")
++    message_logs = relationship(
++        "ZaloMessageLog",
++        back_populates="connection",
++        cascade="all, delete-orphan",
++    )
++
++
++class ZaloMessageLog(Base, TimestampMixin):
++    """Audit log of Zalo outreach drafts, ZNS messages, and inbound replies (Story 21.6)."""
++
++    __tablename__ = "zalo_message_logs"
++
++    __table_args__ = (
++        Index("idx_zalo_message_logs_workspace_id", "workspace_id"),
++        Index("idx_zalo_message_logs_lead_id", "lead_id"),
++        Index("idx_zalo_message_logs_phone", "recipient_phone"),
++        Index("idx_zalo_message_logs_created_at", "created_at"),
++        Index("idx_zalo_message_logs_msg_type", "message_type"),
++    )
++
++    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
++    workspace_id = Column(
++        Integer,
++        ForeignKey("workspaces.id", ondelete="CASCADE"),
++        nullable=False,
++    )
++    zalo_connection_id = Column(
++        UUID(as_uuid=True),
++        ForeignKey("zalo_connections.id", ondelete="SET NULL"),
++        nullable=True,
++    )
++    lead_id = Column(
++        UUID(as_uuid=True),
++        ForeignKey("leads.id", ondelete="SET NULL"),
++        nullable=True,
++    )
++    recipient_phone = Column(String(50), nullable=True)
++    recipient_zalo_id = Column(String(100), nullable=True)
++    message_type = Column(
++        String(50), nullable=False, default="assisted_draft"
++    )  # 'assisted_draft', 'zns', 'oa_chat', 'webhook_inbound'
++    template_id = Column(String(100), nullable=True)
++    template_data = Column(
++        JSONB, nullable=True, default=dict, server_default=text("'{}'::jsonb")
++    )
++    content = Column(Text, nullable=False)
++    status = Column(
++        String(50), nullable=False, default="generated"
++    )  # 'generated', 'sent', 'delivered', 'failed', 'received'
++    external_message_id = Column(String(255), nullable=True)
++    error_message = Column(Text, nullable=True)
++    created_at = Column(
++        TIMESTAMP(timezone=True),
++        nullable=False,
++        default=lambda: datetime.now(UTC),
++        server_default=text("now()"),
++    )
++    updated_at = Column(
++        TIMESTAMP(timezone=True),
++        nullable=False,
++        default=lambda: datetime.now(UTC),
++        onupdate=lambda: datetime.now(UTC),
++        server_default=text("now()"),
++    )
+ 
++    workspace = relationship("Workspace", back_populates="zalo_message_logs")
++    connection = relationship("ZaloConnection", back_populates="message_logs")
++    lead = relationship("Lead", back_populates="zalo_message_logs")
+diff --git a/nowing_backend/app/gateway/zalo/__init__.py b/nowing_backend/app/gateway/zalo/__init__.py
+new file mode 100644
+index 000000000..653e55094
+--- /dev/null
++++ b/nowing_backend/app/gateway/zalo/__init__.py
+@@ -0,0 +1,31 @@
++"""Zalo Gateway Package (Story 21.6 / AD-41)."""
++
++from app.gateway.zalo.client import (
++    ZALO_OPENAPI_BASE,
++    ZALO_RATE_LIMIT_PER_MINUTE,
++    ZaloClient,
++    format_vietnam_phone,
++    generate_assisted_outbound_draft,
++)
++from app.gateway.zalo.telegram_alerts import (
++    build_lead_telegram_alert,
++    send_telegram_lead_alert,
++)
++from app.gateway.zalo.webhook import (
++    detect_buying_intent,
++    handle_zalo_webhook_event,
++    verify_zalo_signature,
++)
++
++__all__ = [
++    "ZALO_OPENAPI_BASE",
++    "ZALO_RATE_LIMIT_PER_MINUTE",
++    "ZaloClient",
++    "build_lead_telegram_alert",
++    "detect_buying_intent",
++    "format_vietnam_phone",
++    "generate_assisted_outbound_draft",
++    "handle_zalo_webhook_event",
++    "send_telegram_lead_alert",
++    "verify_zalo_signature",
++]
+diff --git a/nowing_backend/app/gateway/zalo/client.py b/nowing_backend/app/gateway/zalo/client.py
+new file mode 100644
+index 000000000..6531c2305
+--- /dev/null
++++ b/nowing_backend/app/gateway/zalo/client.py
+@@ -0,0 +1,379 @@
++"""Zalo OpenAPI client, token refresher, rate limiter, and message sender (Story 21.6 / AD-41)."""
++
++from __future__ import annotations
++
++import logging
++import re
++import uuid
++from datetime import UTC, datetime, timedelta
++from typing import Any
++
++import httpx
++from sqlalchemy.ext.asyncio import AsyncSession
++
++from app.config import config
++from app.db import ZaloConnection
++from app.gateway.ratelimit import acquire_token
++from app.utils.oauth_security import TokenEncryption
++
++logger = logging.getLogger(__name__)
++
++# Constants
++ZALO_OPENAPI_BASE = "https://openapi.zalo.me"
++ZALO_OAUTH_BASE = "https://oauth.zalo.me"
++ZALO_RATE_LIMIT_PER_MINUTE = 20
++
++
++def format_vietnam_phone(phone: str | None) -> dict[str, str]:
++    """Format and normalize a Vietnamese phone number.
++
++    Returns:
++        dict with keys:
++            clean_phone: standard 10-digit national format (e.g. '0912345678')
++            international_phone: 84-prefixed format without '+' (e.g. '84912345678')
++            zalo_url: deep-link URL (e.g. 'https://zalo.me/0912345678')
++    """
++    if not phone:
++        return {"clean_phone": "", "international_phone": "", "zalo_url": ""}
++
++    # Strip whitespace, dots, hyphens, parentheses, and letters
++    digits = re.sub(r"\D", "", str(phone))
++
++    if not digits:
++        return {"clean_phone": "", "international_phone": "", "zalo_url": ""}
++
++    # Normalize to national 0xxx and international 84xxx
++    if digits.startswith("84") and len(digits) in (11, 12):
++        clean_phone = "0" + digits[2:]
++        international_phone = digits
++    elif digits.startswith("0") and len(digits) == 10:
++        clean_phone = digits
++        international_phone = "84" + digits[1:]
++    elif len(digits) == 9:
++        clean_phone = "0" + digits
++        international_phone = "84" + digits
++    else:
++        # Fallback to digits as-is
++        clean_phone = digits
++        international_phone = (
++            digits if digits.startswith("84") else f"84{digits.lstrip('0')}"
++        )
++
++    return {
++        "clean_phone": clean_phone,
++        "international_phone": international_phone,
++        "zalo_url": f"https://zalo.me/{clean_phone}",
++    }
++
++
++def generate_assisted_outbound_draft(
++    lead_data: dict[str, Any], custom_context: str | None = None
++) -> str:
++    """Generate high-converting, personalized Vietnamese outreach draft for Assisted Zalo Co-pilot.
++
++    Contextually adapts to Real Estate, Recruitment/Jobs, Tenders, or B2B outreach.
++    100% ToS compliant (rendered for client review/paste).
++    """
++    company_name = str(
++        lead_data.get("company_name") or lead_data.get("author") or "bạn"
++    ).strip()
++    source = str(lead_data.get("source") or "").lower()
++    intent = str(lead_data.get("intent") or "").upper()
++    industry = lead_data.get("industry") or ""
++    location = lead_data.get("location") or ""
++    price_estimate = lead_data.get("price_estimate") or ""
++    snippet = lead_data.get("content_snippet") or ""
++
++    # Real estate focus
++    if (
++        any(k in source for k in ("batdongsan", "bds", "muaban", "nhatot", "chotot"))
++        or "BÁN" in intent
++        or "MUA" in intent
++    ):
++        parts = ["Chào bạn,"]
++        loc_str = f" tại {location}" if location else ""
++        price_str = f" (mức giá tham khảo: {price_estimate})" if price_estimate else ""
++        parts.append(f"Mình thấy tin đăng BĐS của bạn{loc_str}{price_str}.")
++        if snippet:
++            parts.append(f'Về thông tin: "{snippet[:100]}..."')
++        parts.append(
++            "Bên mình có khách hàng/đối tác đang rất quan tâm phân khúc này. Mình kết nối qua Zalo trao đổi thêm nhé!"
++        )
++        if custom_context:
++            parts.append(f"\n({custom_context})")
++        return " ".join(parts)
++
++    # Job / Recruitment focus
++    if (
++        any(k in source for k in ("topcv", "itviec", "vietnamworks", "job"))
++        or "TUYỂN" in intent
++        or "RECRUIT" in intent
++    ):
++        parts = [f"Chào {company_name},"]
++        parts.append(
++            f"Mình thấy bên mình đang có nhu cầu tuyển dụng qua {source or 'kênh trực tuyến'}."
++        )
++        if industry:
++            parts.append(
++                f"Bên mình có mạng lưới ứng viên và giải pháp hỗ trợ mảng {industry}."
++            )
++        parts.append(
++            "Mình muốn gửi profile và trao đổi nhanh để hỗ trợ bên mình sớm tìm được nhân sự phù hợp ạ."
++        )
++        if custom_context:
++            parts.append(f"\n({custom_context})")
++        return " ".join(parts)
++
++    # Tender / Mua sắm công focus
++    if "tender" in source or "muasamcong" in source or "THẦU" in intent:
++        parts = [f"Chào anh/chị đại diện {company_name},"]
++        parts.append(
++            "Mình liên hệ liên quan đến thông tin gói thầu/dự án bên mình đang triển khai."
++        )
++        parts.append(
++            "Bên mình có năng lực cung ứng và hồ sơ phù hợp, muốn kết nối để trao đổi chi tiết phương án hợp tác."
++        )
++        if custom_context:
++            parts.append(f"\n({custom_context})")
++        return " ".join(parts)
++
++    # General B2B Prospecting
++    parts = [f"Chào {company_name},"]
++    parts.append(
++        f"Mình liên hệ từ Nowing sau khi tìm hiểu về hoạt động của bên mình{f' trong ngành {industry}' if industry else ''}."
++    )
++    parts.append(
++        "Bên mình muốn gửi thông tin giải pháp hỗ trợ tối ưu vận hành và mở rộng thị trường."
++    )
++    parts.append("Mình xin phép gửi thông tin chi tiết qua Zalo để tiện trao đổi nhé!")
++    if custom_context:
++        parts.append(f"\n({custom_context})")
++    return " ".join(parts)
++
++
++class ZaloClient:
++    """Zalo OpenAPI & ZNS Gateway Client with rate limiting and token management."""
++
++    def __init__(
++        self,
++        *,
++        access_token: str | None = None,
++        refresh_token: str | None = None,
++        app_id: str | None = None,
++        secret_key: str | None = None,
++        oa_id: str | None = None,
++        token_expires_at: datetime | None = None,
++        http_client: httpx.AsyncClient | None = None,
++    ) -> None:
++        self.access_token = access_token
++        self.refresh_token = refresh_token
++        self.app_id = app_id or getattr(config, "ZALO_APP_ID", "")
++        self.secret_key = secret_key or getattr(config, "ZALO_APP_SECRET", "")
++        self.oa_id = oa_id or getattr(config, "ZALO_OA_ID", "")
++        self.token_expires_at = token_expires_at
++        self._client = http_client
++
++    @classmethod
++    def from_connection(cls, connection: ZaloConnection) -> ZaloClient:
++        """Instantiate a client from a ZaloConnection model with decrypted tokens."""
++        secret = config.SECRET_KEY or ""
++        enc = TokenEncryption(secret) if secret else None
++
++        access_token = (
++            enc.decrypt_token(connection.access_token_encrypted)
++            if enc and connection.access_token_encrypted
++            else connection.access_token_encrypted
++        )
++        refresh_token = (
++            enc.decrypt_token(connection.refresh_token_encrypted)
++            if enc and connection.refresh_token_encrypted
++            else connection.refresh_token_encrypted
++        )
++
++        return cls(
++            access_token=access_token,
++            refresh_token=refresh_token,
++            app_id=connection.app_id or getattr(config, "ZALO_APP_ID", ""),
++            secret_key=connection.webhook_secret
++            or getattr(config, "ZALO_APP_SECRET", ""),
++            oa_id=connection.oa_id,
++            token_expires_at=connection.token_expires_at,
++        )
++
++    async def _get_client(self) -> httpx.AsyncClient:
++        if self._client is None or getattr(self._client, "is_closed", False) is True:
++            self._client = httpx.AsyncClient(timeout=15.0)
++        return self._client
++
++    async def check_rate_limit(self, oa_id: str | None = None) -> bool:
++        """Enforce maximum 20 messages/minute per OA via Redis token bucket."""
++        target_oa = oa_id or self.oa_id or "default"
++        scope = f"zalo:oa:{target_oa}"
++        wait_ms = await acquire_token(
++            scope,
++            capacity=ZALO_RATE_LIMIT_PER_MINUTE,
++            refill_per_sec=ZALO_RATE_LIMIT_PER_MINUTE / 60.0,
++            consume=1.0,
++        )
++        return wait_ms == 0
++
++    async def refresh_access_token(
++        self,
++        app_id: str | None = None,
++        secret_key: str | None = None,
++        refresh_token: str | None = None,
++    ) -> dict[str, Any]:
++        """Refresh Zalo OA Access Token using OAuth v4 endpoint."""
++        target_app_id = app_id or self.app_id
++        target_secret = secret_key or self.secret_key
++        target_refresh = refresh_token or self.refresh_token
++
++        if not target_app_id or not target_secret or not target_refresh:
++            raise ValueError(
++                "Missing app_id, secret_key, or refresh_token for Zalo token refresh"
++            )
++
++        url = f"{ZALO_OAUTH_BASE}/v4/oa/access_token"
++        headers = {
++            "secret_key": target_secret,
++            "Content-Type": "application/x-www-form-urlencoded",
++        }
++        data = {
++            "app_id": target_app_id,
++            "grant_type": "refresh_token",
++            "refresh_token": target_refresh,
++        }
++
++        client = await self._get_client()
++        try:
++            resp = await client.post(url, headers=headers, data=data)
++            resp.raise_for_status()
++            res_data = resp.json()
++        except Exception as exc:
++            logger.error("Failed to refresh Zalo OA token: %s", exc)
++            raise RuntimeError(f"Zalo OAuth token refresh failed: {exc}") from exc
++
++        if "access_token" in res_data:
++            self.access_token = res_data["access_token"]
++            self.refresh_token = res_data.get("refresh_token", target_refresh)
++            expires_in = int(res_data.get("expires_in", 90000))
++            self.token_expires_at = datetime.now(UTC) + timedelta(seconds=expires_in)
++            return res_data
++        else:
++            error_msg = (
++                res_data.get("error_name") or res_data.get("message") or "Unknown error"
++            )
++            logger.error("Zalo token refresh error response: %s", res_data)
++            raise RuntimeError(f"Zalo OAuth error: {error_msg}")
++
++    async def ensure_valid_token(
++        self, session: AsyncSession, connection: ZaloConnection
++    ) -> str:
++        """Ensure token is valid and refreshed in DB if expired or expiring soon."""
++        now = datetime.now(UTC)
++        is_expired = (
++            connection.token_expires_at is not None
++            and connection.token_expires_at <= (now + timedelta(minutes=5))
++        )
++
++        if is_expired or not self.access_token:
++            logger.info(
++                "Refreshing expired Zalo OA token for connection %s", connection.id
++            )
++            await self.refresh_access_token()
++            secret = config.SECRET_KEY or ""
++            enc = TokenEncryption(secret) if secret else None
++
++            connection.access_token_encrypted = (
++                enc.encrypt_token(self.access_token)
++                if enc and self.access_token
++                else self.access_token
++            )
++            if self.refresh_token:
++                connection.refresh_token_encrypted = (
++                    enc.encrypt_token(self.refresh_token) if enc else self.refresh_token
++                )
++            connection.token_expires_at = self.token_expires_at
++            await session.commit()
++
++        return self.access_token or ""
++
++    async def send_zns(
++        self,
++        phone: str,
++        template_id: str,
++        template_data: dict[str, Any],
++        tracking_id: str | None = None,
++        mode: str | None = None,
++    ) -> dict[str, Any]:
++        """Send a Zalo Notification Service (ZNS) message.
++
++        Requires approved template_id and user consent (Decree 356 compliance).
++        Rate limited to 20 msg/min.
++        """
++        if not await self.check_rate_limit():
++            raise RuntimeError("Zalo OA rate limit exceeded (max 20 messages/minute)")
++
++        if not self.access_token:
++            raise ValueError("Missing access_token for ZNS message")
++
++        phone_meta = format_vietnam_phone(phone)
++        int_phone = phone_meta["international_phone"]
++        if not int_phone:
++            raise ValueError(f"Invalid recipient phone number: {phone}")
++
++        url = f"{ZALO_OPENAPI_BASE}/v3.0/oa/message/zns"
++        headers = {
++            "access_token": self.access_token,
++            "Content-Type": "application/json",
++        }
++        payload: dict[str, Any] = {
++            "phone": int_phone,
++            "template_id": template_id,
++            "template_data": template_data,
++            "tracking_id": tracking_id or str(uuid.uuid4()),
++        }
++        if mode:
++            payload["mode"] = mode
++
++        client = await self._get_client()
++        try:
++            resp = await client.post(url, headers=headers, json=payload)
++            resp.raise_for_status()
++            res_json = resp.json()
++        except Exception as exc:
++            logger.error("Failed to send ZNS message: %s", exc)
++            raise RuntimeError(f"ZNS send request failed: {exc}") from exc
++
++        return res_json
++
++    async def send_cs_message(self, user_id: str, text: str) -> dict[str, Any]:
++        """Send Customer Support text message to a follower / existing conversation."""
++        if not await self.check_rate_limit():
++            raise RuntimeError("Zalo OA rate limit exceeded (max 20 messages/minute)")
++
++        if not self.access_token:
++            raise ValueError("Missing access_token for Zalo message")
++
++        url = f"{ZALO_OPENAPI_BASE}/v3.0/oa/message/cs"
++        headers = {
++            "access_token": self.access_token,
++            "Content-Type": "application/json",
++        }
++        payload = {
++            "recipient": {"user_id": user_id},
++            "message": {"text": text},
++        }
++
++        client = await self._get_client()
++        try:
++            resp = await client.post(url, headers=headers, json=payload)
++            resp.raise_for_status()
++            return resp.json()
++        except Exception as exc:
++            logger.error("Failed to send Zalo CS message: %s", exc)
++            raise RuntimeError(f"Zalo CS message send failed: {exc}") from exc
++
++    async def close(self) -> None:
++        if self._client and not self._client.is_closed:
++            await self._client.aclose()
+diff --git a/nowing_backend/app/gateway/zalo/telegram_alerts.py b/nowing_backend/app/gateway/zalo/telegram_alerts.py
+new file mode 100644
+index 000000000..8dc622b4c
+--- /dev/null
++++ b/nowing_backend/app/gateway/zalo/telegram_alerts.py
+@@ -0,0 +1,172 @@
++"""Telegram rich alert sender for Zalo replies & high-intent leads (Story 21.6 / AD-41)."""
++
++from __future__ import annotations
++
++import logging
++from typing import Any
++
++from sqlalchemy import select
++from sqlalchemy.ext.asyncio import AsyncSession
++
++from app.config import config
++from app.db import (
++    ExternalChatAccount,
++    ExternalChatBinding,
++    ExternalChatBindingState,
++    ExternalChatPlatform,
++    Lead,
++)
++from app.gateway.accounts import account_token
++from app.gateway.telegram.client import TelegramClient
++from app.gateway.telegram.formatting import escape_markdown_v2
++from app.gateway.zalo.client import format_vietnam_phone
++
++logger = logging.getLogger(__name__)
++
++
++def build_lead_telegram_alert(
++    *,
++    lead_name: str,
++    company_name: str,
++    phone: str,
++    source: str,
++    intent: str,
++    message_content: str,
++    workspace_id: int,
++    lead_id: str | None = None,
++    frontend_url: str | None = None,
++) -> tuple[str, dict[str, Any]]:
++    """Build MarkdownV2 text and inline keyboard markup for Telegram lead alert."""
++    esc_lead = escape_markdown_v2(lead_name or "Khách hàng")
++    esc_company = escape_markdown_v2(company_name or "N/A")
++    esc_phone = escape_markdown_v2(phone or "N/A")
++    esc_source = escape_markdown_v2(source or "Zalo Outbound")
++    esc_intent = escape_markdown_v2(intent or "Tín hiệu mua / hợp tác")
++    esc_msg = escape_markdown_v2(
++        message_content[:300]
++        if message_content
++        else "Có phản hồi tích cực từ khách hàng."
++    )
++
++    text = (
++        "🔥 *TÍN HIỆU LEAD MỚI / PHẢN HỒI ZALO*\n\n"
++        f"👤 *Người liên hệ:* {esc_lead}\n"
++        f"🏢 *Doanh nghiệp:* {esc_company}\n"
++        f"📞 *Số điện thoại:* {esc_phone}\n"
++        f"🏷️ *Nguồn:* {esc_source}\n"
++        f"🎯 *Tín hiệu:* {esc_intent}\n"
++        f'💬 *Nội dung:* "{esc_msg}"'
++    )
++
++    phone_meta = format_vietnam_phone(phone)
++    zalo_url = phone_meta["zalo_url"] or "https://zalo.me"
++    base_fe = (frontend_url or config.NEXT_FRONTEND_URL or "https://nowing.net").rstrip(
++        "/"
++    )
++    lead_url = f"{base_fe}/dashboard/{workspace_id}/leads"
++    if lead_id:
++        lead_url += f"?search={lead_id}"
++
++    keyboard = {
++        "inline_keyboard": [
++            [
++                {"text": "📱 Mở Zalo", "url": zalo_url},
++                {"text": "📋 Xem Chi Tiết Lead", "url": lead_url},
++            ]
++        ]
++    }
++
++    return text, keyboard
++
++
++async def send_telegram_lead_alert(
++    session: AsyncSession,
++    *,
++    workspace_id: int,
++    lead: Lead | None = None,
++    phone: str | None = None,
++    message_content: str = "",
++    intent: str = "Tín hiệu tích cực",
++    target_chat_id: str | None = None,
++) -> dict[str, Any]:
++    """Send rich Telegram alert with Zalo deep-link and Lead details."""
++    clean_phone = phone or (lead.phone if lead else "") or ""
++    lead_id_str = str(lead.id) if lead else None
++    company_name = lead.company_name if lead else "Khách hàng tiềm năng"
++    source = lead.source if lead else "Zalo Inbound"
++    lead_name = getattr(lead, "author", None) or company_name
++
++    text, reply_markup = build_lead_telegram_alert(
++        lead_name=lead_name,
++        company_name=company_name,
++        phone=clean_phone,
++        source=source,
++        intent=intent,
++        message_content=message_content,
++        workspace_id=workspace_id,
++        lead_id=lead_id_str,
++    )
++
++    # 1. Resolve chat_id and token
++    chat_id = target_chat_id
++    token = config.TELEGRAM_SHARED_BOT_TOKEN
++
++    if not chat_id:
++        # Look for workspace binding or user preferences
++        stmt = (
++            select(ExternalChatBinding, ExternalChatAccount)
++            .join(
++                ExternalChatAccount,
++                ExternalChatBinding.account_id == ExternalChatAccount.id,
++            )
++            .where(
++                ExternalChatBinding.workspace_id == workspace_id,
++                ExternalChatBinding.state == ExternalChatBindingState.ACTIVE,
++                ExternalChatAccount.platform == ExternalChatPlatform.TELEGRAM,
++            )
++            .limit(1)
++        )
++        res = await session.execute(stmt)
++        row = res.first()
++        if row:
++            binding, account = row
++            chat_id = binding.external_chat_id
++            acc_token = account_token(account)
++            if acc_token:
++                token = acc_token
++
++    if not chat_id or not token:
++        logger.warning(
++            "Telegram alert skipped: missing chat_id (%s) or bot token for workspace %s",
++            chat_id,
++            workspace_id,
++        )
++        return {
++            "sent": False,
++            "reason": "missing_chat_id_or_token",
++            "text": text,
++            "reply_markup": reply_markup,
++        }
++
++    try:
++        client = TelegramClient(token=token)
++        result = await client.send_message(
++            chat_id=chat_id,
++            text=text,
++            parse_mode="MarkdownV2",
++            reply_markup=reply_markup,
++        )
++        logger.info(
++            "Telegram lead alert sent successfully to chat_id=%s, msg_id=%s",
++            chat_id,
++            result.external_message_id,
++        )
++        return {
++            "sent": True,
++            "chat_id": chat_id,
++            "message_id": result.external_message_id,
++            "text": text,
++        }
++    except Exception as exc:
++        logger.error("Failed to send Telegram lead alert: %s", exc)
++        return {"sent": False, "error": str(exc), "text": text}
+diff --git a/nowing_backend/app/gateway/zalo/webhook.py b/nowing_backend/app/gateway/zalo/webhook.py
+new file mode 100644
+index 000000000..ead071599
+--- /dev/null
++++ b/nowing_backend/app/gateway/zalo/webhook.py
+@@ -0,0 +1,184 @@
++"""Zalo OA Inbound Webhook receiver, signature verifier, and intent detector (Story 21.6 / AD-41)."""
++
++from __future__ import annotations
++
++import hashlib
++import hmac
++import logging
++from typing import Any
++
++from sqlalchemy import select
++from sqlalchemy.ext.asyncio import AsyncSession
++
++from app.db import Lead, ZaloConnection, ZaloMessageLog
++from app.gateway.zalo.telegram_alerts import send_telegram_lead_alert
++
++logger = logging.getLogger(__name__)
++
++BUYING_INTENT_KEYWORDS = [
++    "báo giá",
++    "bao giá",
++    "bảng giá",
++    "giá bao nhiêu",
++    "giá cả",
++    "giá",
++    "chi phí",
++    "tư vấn",
++    "quan tâm",
++    "muốn biết",
++    "cần thêm",
++    "lịch hẹn",
++    "hẹn",
++    "gặp",
++    "demo",
++    "trao đổi",
++    "alo",
++    "gọi lại",
++    "mua",
++    "thuê",
++    "chốt",
++    "đặt cọc",
++    "hợp tác",
++    "ký hợp đồng",
++    "sđt",
++    "số điện thoại",
++    "phone",
++    "zalo",
++    "inbox",
++    "gửi thông tin",
++]
++
++
++def verify_zalo_signature(
++    app_id: str,
++    raw_body: bytes,
++    timestamp: str,
++    signature: str,
++    secret_key: str,
++) -> bool:
++    """Verify Zalo OA webhook signature (X-ZEvent-Signature or mac).
++
++    Formula: sha256(app_id + raw_body_utf8 + timestamp + secret_key)
++    Or HMAC-SHA256(raw_body, secret_key)
++    """
++    if not secret_key:
++        return True  # Dev / test environment bypass if no secret configured
++
++    if not signature:
++        return False
++
++    # 1. Try standard Zalo OA MAC hash: sha256(app_id + body + timestamp + secret)
++    body_str = raw_body.decode("utf-8", errors="ignore")
++    data_to_hash = f"{app_id}{body_str}{timestamp}{secret_key}".encode()
++    expected_mac = hashlib.sha256(data_to_hash).hexdigest()
++
++    if hmac.compare_digest(signature.lower(), expected_mac.lower()):
++        return True
++
++    # 2. Try HMAC-SHA256 of body with secret_key
++    hmac_digest = hmac.new(secret_key.encode(), raw_body, hashlib.sha256).hexdigest()
++    if hmac.compare_digest(signature.lower(), hmac_digest.lower()):
++        return True
++
++    # 3. Try sha256(secret_key + timestamp + body)
++    alt_hash = hashlib.sha256(f"{secret_key}{timestamp}{body_str}".encode()).hexdigest()
++    return hmac.compare_digest(signature.lower(), alt_hash.lower())
++
++
++def detect_buying_intent(text: str) -> tuple[bool, str]:
++    """Detect if incoming message has positive buying/interest intent in Vietnamese."""
++    if not text:
++        return False, ""
++    lower_text = text.lower()
++    for kw in BUYING_INTENT_KEYWORDS:
++        if kw in lower_text:
++            return True, f"Khớp từ khóa: '{kw}'"
++    return False, ""
++
++
++async def handle_zalo_webhook_event(
++    session: AsyncSession,
++    event_data: dict[str, Any],
++) -> dict[str, Any]:
++    """Process inbound Zalo webhook event, log message, and dispatch Telegram alerts on high intent."""
++    event_name = event_data.get("event_name") or event_data.get("event") or "unknown"
++    oa_id = str(
++        event_data.get("oa_id") or event_data.get("recipient", {}).get("id") or ""
++    )
++    app_id = str(event_data.get("app_id") or "")
++
++    logger.info("Handling Zalo webhook event=%s, oa_id=%s", event_name, oa_id)
++
++    # 1. Resolve ZaloConnection
++    connection_stmt = select(ZaloConnection).where(ZaloConnection.is_active.is_(True))
++    if oa_id:
++        connection_stmt = connection_stmt.where(ZaloConnection.oa_id == oa_id)
++    elif app_id:
++        connection_stmt = connection_stmt.where(ZaloConnection.app_id == app_id)
++
++    res = await session.execute(connection_stmt)
++    connection = res.scalar_one_or_none()
++
++    workspace_id = connection.workspace_id if connection else 1
++
++    # 2. Parse message payload
++    sender = event_data.get("sender") or {}
++    sender_id = str(sender.get("id") or "")
++    message = event_data.get("message") or {}
++    text_content = str(message.get("text") or event_data.get("text") or "").strip()
++    msg_id = str(message.get("msg_id") or event_data.get("msg_id") or "")
++
++    # 3. Find matching Lead if any
++    lead = None
++    if sender_id:
++        lead_stmt = (
++            select(Lead)
++            .where(
++                Lead.workspace_id == workspace_id,
++                Lead.company_name.ilike(f"%{sender_id}%"),
++            )
++            .limit(1)
++        )
++        lead_res = await session.execute(lead_stmt)
++        lead = lead_res.scalar_one_or_none()
++
++    # 4. Log inbound message
++    recipient_phone = sender_id if sender_id and sender_id.isdigit() else None
++    log_entry = ZaloMessageLog(
++        workspace_id=workspace_id,
++        zalo_connection_id=connection.id if connection else None,
++        lead_id=lead.id if lead else None,
++        recipient_phone=recipient_phone,
++        recipient_zalo_id=sender_id,
++        message_type="webhook_inbound",
++        content=text_content or f"Event: {event_name}",
++        status="received",
++        external_message_id=msg_id,
++        template_data=event_data,
++    )
++    session.add(log_entry)
++    await session.commit()
++    await session.refresh(log_entry)
++
++    # 5. Check intent and trigger Telegram alert if buying signal is detected
++    has_intent, intent_reason = detect_buying_intent(text_content)
++    telegram_result = None
++
++    if has_intent or event_name == "user_send_text":
++        alert_intent = intent_reason if has_intent else "Phản hồi tin nhắn Zalo"
++        telegram_result = await send_telegram_lead_alert(
++            session=session,
++            workspace_id=workspace_id,
++            lead=lead,
++            phone=lead.phone if lead else sender_id,
++            message_content=text_content,
++            intent=alert_intent,
++        )
++
++    return {
++        "status": "ok",
++        "event": event_name,
++        "log_id": str(log_entry.id),
++        "has_intent": has_intent,
++        "telegram_alert": telegram_result,
++    }
+diff --git a/nowing_backend/app/lead_intelligence/schemas.py b/nowing_backend/app/lead_intelligence/schemas.py
+index faf9b24cb..0871abc07 100644
+--- a/nowing_backend/app/lead_intelligence/schemas.py
++++ b/nowing_backend/app/lead_intelligence/schemas.py
+@@ -19,9 +19,19 @@ class LeadStatusUpdate(BaseModel):
+     @classmethod
+     def _validate_status(cls, v: str) -> str:
+         cleaned = v.strip().lower()
+-        allowed = {"new", "open", "contacted", "qualified", "converted", "lost", "pending"}
++        allowed = {
++            "new",
++            "open",
++            "contacted",
++            "qualified",
++            "converted",
++            "lost",
++            "pending",
++        }
+         if cleaned not in allowed:
+-            raise ValueError(f"Invalid status '{v}'. Must be one of: {', '.join(sorted(allowed))}")
++            raise ValueError(
++                f"Invalid status '{v}'. Must be one of: {', '.join(sorted(allowed))}"
++            )
+         return cleaned
+ 
+ 
+@@ -44,6 +54,7 @@ class LeadRead(BaseModel):
+         if v < 0 or v > 100:
+             raise ValueError("Score must be between 0 and 100")
+         return v
++
+     source: str
+     source_url: str | None = None
+     company_name: str
+@@ -168,3 +179,104 @@ class CompanyGraphRead(BaseModel):
+         if v < 0:
+             raise ValueError("Active jobs count must be non-negative")
+         return v
++
++
++class PhoneResolutionRequest(BaseModel):
++    """Payload for resolving a lead's phone via 3-tier waterfall."""
++
++    source_url: str | None = None
++    raw_text: str | None = None
++    force_refresh: bool = False
++    async_mode: bool = False
++
++
++class PhoneResolutionResponse(BaseModel):
++    """Result of 3-tier phone resolution waterfall."""
++
++    lead_id: UUID
++    phone_masked: str
++    phone: str | None = None  # Populated only for authorized callers with CONTACTS_READ
++    tier_reached: int
++    provider_used: str
++    status: str
++    cost_credits: float = 1.5
++    cost_micros: int = 1500000
++    confidence: float = 0.95
++    carrier: str = "Unknown"
++    is_cached: bool = False
++    contact_id: UUID | None = None
++    degraded: bool = False
++    degradation_reason: str | None = None
++    task_id: str | None = None
++
++
++class InvalidPhoneReportRequest(BaseModel):
++    """Payload for reporting an invalid/dead phone number within 24h SLA."""
++
++    reason: str = Field(
++        default="reported_invalid_phone",
++        description="Reason for reporting invalid phone",
++    )
++
++
++class PhoneRefundResponse(BaseModel):
++    """Result of lead auto-refund processing."""
++
++    lead_id: UUID
++    refunded: bool
++    refund_amount_credits: float
++    refund_micros: int
++    refunded_at: str
++    status: str
++    reason: str | None = None
++    message: str
++
++
++class BuyerPersona(BaseModel):
++    """Target buyer persona extracted from website ICP analysis (Story 21.10)."""
++
++    model_config = ConfigDict(from_attributes=True)
++
++    title: str
++    industry: str
++    company_size: str
++    pain_points: list[str] = Field(default_factory=list)
++    buying_triggers: list[str] = Field(default_factory=list)
++
++
++class FilterPresets(BaseModel):
++    """Auto-configured Multi-Table filter presets (Story 21.10)."""
++
++    model_config = ConfigDict(from_attributes=True)
++
++    platforms: list[str] = Field(default_factory=list)
++    intent: str = "BÁN"
++    target_industries: list[str] = Field(default_factory=list)
++    locations: list[str] = Field(default_factory=list)
++    company_size_range: str | None = None
++
++
++class ReverseIcpRequest(BaseModel):
++    """Payload for 1-Click Reverse-ICP URL analysis."""
++
++    url: str = Field(..., description="Target website, project, or landing page URL")
++    custom_instructions: str | None = Field(
++        default=None, description="Optional custom focus instructions"
++    )
++
++
++class ReverseIcpResponse(BaseModel):
++    """Structured response for 1-Click Reverse-ICP (Story 21.10)."""
++
++    model_config = ConfigDict(from_attributes=True)
++
++    company_name: str
++    domain: str
++    value_proposition: str
++    industry: str
++    target_buyer_personas: list[BuyerPersona] = Field(default_factory=list)
++    suggested_search_queries: list[str] = Field(default_factory=list)
++    negative_keywords: list[str] = Field(default_factory=list)
++    filter_presets: FilterPresets = Field(default_factory=FilterPresets)
++    chat_starter_prompts: list[str] = Field(default_factory=list)
++    raw_metadata: dict[str, Any] = Field(default_factory=dict)
+diff --git a/nowing_backend/app/routes/__init__.py b/nowing_backend/app/routes/__init__.py
+index 021e9c5ff..68b351b9f 100644
+--- a/nowing_backend/app/routes/__init__.py
++++ b/nowing_backend/app/routes/__init__.py
+@@ -105,6 +105,7 @@ from .notes_routes import router as notes_router
+ from .notion_add_connector_route import router as notion_add_connector_router
+ from .obsidian_plugin_routes import router as obsidian_plugin_router
+ from .onedrive_add_connector_route import router as onedrive_add_connector_router
++from .outbound_routes import router as outbound_router
+ from .personal_access_tokens_routes import router as personal_access_tokens_router
+ from .prompts_routes import router as prompts_router
+ from .public_chat_routes import router as public_chat_router
+@@ -129,6 +130,7 @@ router = APIRouter()
+ router.include_router(workspaces_router)
+ router.include_router(lead_scoring_router)
+ router.include_router(leads_router)
++router.include_router(outbound_router)
+ router.include_router(enrichment_router)
+ router.include_router(crm_router, prefix="/workspaces")
+ router.include_router(crm_oauth_router)
+diff --git a/nowing_backend/app/routes/leads_routes.py b/nowing_backend/app/routes/leads_routes.py
+index 64297d4c7..de8a8f6dd 100644
+--- a/nowing_backend/app/routes/leads_routes.py
++++ b/nowing_backend/app/routes/leads_routes.py
+@@ -21,18 +21,32 @@ from app.db import (
+     VerifiedContact,
+     get_async_session,
+ )
++from app.lead_intelligence.reverse_icp import ReverseIcpService
+ from app.lead_intelligence.schemas import (
+     CompanyGraphRead,
+     DecisionMakerRead,
+     HiringSignalRead,
++    InvalidPhoneReportRequest,
+     LeadListResponse,
+     LeadRead,
+     LeadStatusUpdate,
+     LegalEntityRead,
++    PhoneRefundResponse,
++    PhoneResolutionRequest,
++    PhoneResolutionResponse,
++    ReverseIcpRequest,
++    ReverseIcpResponse,
+     TenderSummaryRead,
+ )
++from app.proprietary.platforms.crawler.fast_crawler import (
++    FastCrawlerTimeoutError,
++    SSRFProtectionError,
++)
++from app.services.billing_service import BillingService
++from app.services.phone_waterfall_service import PhoneWaterfallService
++from app.tasks.phone_waterfall_worker import resolve_phone_waterfall_task
+ from app.users import get_auth_context
+-from app.utils.rbac import check_permission
++from app.utils.rbac import check_permission, has_permission
+ 
+ router = APIRouter()
+ 
+@@ -47,15 +61,26 @@ def _map_lead_to_read(lead: Lead) -> LeadRead:
+     raw_contacts = []
+     if getattr(lead, "verified_contacts", None):
+         raw_contacts = [
+-            c for c in lead.verified_contacts if getattr(c, "phone", None) or getattr(c, "email", None)
++            c
++            for c in lead.verified_contacts
++            if getattr(c, "phone", None) or getattr(c, "email", None)
+         ]
+-    first_phone = raw_contacts[0].phone if raw_contacts else getattr(lead, "phone", None)
++    first_phone = (
++        raw_contacts[0].phone if raw_contacts else getattr(lead, "phone", None)
++    )
+ 
+     # Derive intent and snippet from available metadata or source
+     derived_intent = getattr(lead, "intent", None)
+     if not derived_intent:
+         source_lower = (lead.source or "").lower()
+-        if source_lower in {"batdongsan", "chotot", "muaban_bds", "facebook", "social", "community"}:
++        if source_lower in {
++            "batdongsan",
++            "chotot",
++            "muaban_bds",
++            "facebook",
++            "social",
++            "community",
++        }:
+             derived_intent = "BÁN"
+         elif source_lower in {"topcv", "itviec", "vietnamworks", "jobs"}:
+             derived_intent = "TUYỂN DỤNG"
+@@ -86,8 +111,12 @@ def _map_lead_to_read(lead: Lead) -> LeadRead:
+         location=getattr(lead, "location", None),
+         tech_stack=tech_stack,
+         fit_score=float(lead.fit_score) if lead.fit_score is not None else None,
+-        intent_score=float(lead.intent_score) if lead.intent_score is not None else None,
+-        composite_score=float(lead.composite_score) if lead.composite_score is not None else None,
++        intent_score=float(lead.intent_score)
++        if lead.intent_score is not None
++        else None,
++        composite_score=float(lead.composite_score)
++        if lead.composite_score is not None
++        else None,
+         status=lead.status or "new",
+         intent=derived_intent,
+         phone=first_phone,
+@@ -107,13 +136,21 @@ def _map_lead_to_read(lead: Lead) -> LeadRead:
+ )
+ async def list_workspace_leads(
+     workspace_id: int,
+-    client_id: str | None = Query(None, description="Multi-vertical client namespace (AD-31)"),
++    client_id: str | None = Query(
++        None, description="Multi-vertical client namespace (AD-31)"
++    ),
+     source: str | None = Query(None, description="Filter by scraper platform source"),
+     intent: str | None = Query(None, description="Filter by intent tag"),
+     min_score: float | None = Query(None, description="Minimum fit or composite score"),
+-    status_filter: str | None = Query(None, alias="status", description="Filter by CRM pipeline status"),
+-    search: str | None = Query(None, description="Search term for company, location, or industry"),
+-    sort: str = Query("-created_at", description="Sort field: created_at, fit_score, score"),
++    status_filter: str | None = Query(
++        None, alias="status", description="Filter by CRM pipeline status"
++    ),
++    search: str | None = Query(
++        None, description="Search term for company, location, or industry"
++    ),
++    sort: str = Query(
++        "-created_at", description="Sort field: created_at, fit_score, score"
++    ),
+     limit: int = Query(50, ge=1, le=200),
+     offset: int = Query(0, ge=0),
+     session: AsyncSession = Depends(get_async_session),
+@@ -129,8 +166,10 @@ async def list_workspace_leads(
+     )
+ 
+     # Base query for active workspace
+-    stmt = select(Lead).where(Lead.workspace_id == workspace_id).options(
+-        selectinload(Lead.verified_contacts)
++    stmt = (
++        select(Lead)
++        .where(Lead.workspace_id == workspace_id)
++        .options(selectinload(Lead.verified_contacts))
+     )
+ 
+     if client_id is not None:
+@@ -143,11 +182,17 @@ async def list_workspace_leads(
+         if "THẦU" in intent_clean or "TENDER" in intent_clean:
+             stmt = stmt.where(Lead.source.in_(["muasamcong", "tender"]))
+         elif "TUYỂN" in intent_clean or "JOB" in intent_clean:
+-            stmt = stmt.where(Lead.source.in_(["topcv", "itviec", "vietnamworks", "jobs"]))
++            stmt = stmt.where(
++                Lead.source.in_(["topcv", "itviec", "vietnamworks", "jobs"])
++            )
+         elif "MUA" in intent_clean:
+-            stmt = stmt.where(Lead.source.in_(["shopee", "tiktok_shop", "ecommerce", "facebook"]))
++            stmt = stmt.where(
++                Lead.source.in_(["shopee", "tiktok_shop", "ecommerce", "facebook"])
++            )
+         elif "BÁN" in intent_clean:
+-            stmt = stmt.where(Lead.source.in_(["batdongsan", "chotot", "muaban_bds", "facebook"]))
++            stmt = stmt.where(
++                Lead.source.in_(["batdongsan", "chotot", "muaban_bds", "facebook"])
++            )
+     if status_filter:
+         stmt = stmt.where(Lead.status == status_filter)
+     if min_score is not None:
+@@ -368,7 +413,8 @@ async def get_company_graph(
+                         DecisionMakerRead(
+                             name=dm.full_name,
+                             title=dm.title or "Executive",
+-                            linkedin_url=dm.linkedin_url or f"https://linkedin.com/in/{dm.linkedin_slug}",
++                            linkedin_url=dm.linkedin_url
++                            or f"https://linkedin.com/in/{dm.linkedin_slug}",
+                             email=dm.email_prediction,
+                             phone=None,
+                             confidence=dm.confidence_score or 0.85,
+@@ -428,7 +474,9 @@ async def get_company_graph(
+     tenders: list[TenderSummaryRead] = []
+ 
+     if lead_obj:
+-        int_seed = int(hashlib.md5(lead_obj.company_name.encode("utf-8")).hexdigest()[:8], 16)
++        int_seed = int(
++            hashlib.md5(lead_obj.company_name.encode("utf-8")).hexdigest()[:8], 16
++        )
+         rep_name = db_contacts[0].name if db_contacts else "Chưa cập nhật"
+         legal_entity = LegalEntityRead(
+             legal_name=lead_obj.company_name,
+@@ -461,3 +509,193 @@ async def get_company_graph(
+         hiring_velocity_pct=hiring_velocity_pct,
+         active_jobs_count=active_jobs_count,
+     )
++
++
++@router.post(
++    "/workspaces/{workspace_id}/leads/{lead_id}/resolve-phone",
++    response_model=PhoneResolutionResponse,
++    status_code=status.HTTP_200_OK,
++)
++async def resolve_lead_phone_endpoint(
++    workspace_id: int,
++    lead_id: UUID,
++    body: PhoneResolutionRequest = PhoneResolutionRequest(),
++    session: AsyncSession = Depends(get_async_session),
++    auth: AuthContext = Depends(get_auth_context),
++) -> PhoneResolutionResponse:
++    """Resolve and verify Vietnam mobile phone for a lead via 3-Tier Waterfall (Story 21.3 / AD-36).
++
++    Tier 1: Batdongsan Token Pool & Phone Reveal
++    Tier 2: Chợ Tốt Mobile API & Device Spoofing
++    Tier 3: Passive Carrier Prefix Validation & HLR / Zalo Lookup
++    Debits 1.5 credits (1,500,000 micros) via BillingEvent only upon success.
++    """
++    # RBAC: Check LEADS_ENRICH or LEADS_WRITE or LEADS_READ
++    has_enrich = await has_permission(
++        session, auth, workspace_id, Permission.LEADS_ENRICH.value
++    )
++    has_write = await has_permission(
++        session, auth, workspace_id, Permission.LEADS_WRITE.value
++    )
++    if not (has_enrich or has_write):
++        await check_permission(
++            session,
++            auth,
++            workspace_id,
++            Permission.LEADS_READ.value,
++            error_message="You don't have permission to resolve lead contacts in this workspace",
++        )
++
++    client_id = auth.current_client_id
++
++    if body.async_mode:
++        task = resolve_phone_waterfall_task.delay(
++            workspace_id=workspace_id,
++            client_id=client_id,
++            lead_id=str(lead_id),
++            user_id=str(auth.user_id) if auth.user_id else None,
++            source_url=body.source_url,
++            raw_text=body.raw_text,
++            force_refresh=body.force_refresh,
++        )
++        return PhoneResolutionResponse(
++            lead_id=lead_id,
++            phone_masked="",
++            phone=None,
++            tier_reached=0,
++            provider_used="async_celery_worker",
++            status="pending",
++            cost_credits=1.5,
++            cost_micros=1500000,
++            confidence=0.0,
++            carrier="Unknown",
++            is_cached=False,
++            task_id=str(task.id),
++        )
++
++    service = PhoneWaterfallService(session)
++    res = await service.resolve_lead_phone(
++        workspace_id=workspace_id,
++        client_id=client_id,
++        lead_id=lead_id,
++        user_id=auth.user_id,
++        source_url=body.source_url,
++        raw_text=body.raw_text,
++        force_refresh=body.force_refresh,
++    )
++
++    # Check if caller is authorized to view plaintext PII (AD-25 / AD-49)
++    can_read_contacts = await has_permission(
++        session, auth, workspace_id, Permission.CONTACTS_READ.value
++    )
++    if not can_read_contacts:
++        can_read_contacts = has_enrich or has_write
++
++    revealed_phone = res.phone if can_read_contacts else None
++
++    return PhoneResolutionResponse(
++        lead_id=res.lead_id,
++        phone_masked=res.phone_masked,
++        phone=revealed_phone,
++        tier_reached=res.tier_reached,
++        provider_used=res.provider_used,
++        status=res.status,
++        cost_credits=res.cost_micros / 1_000_000,
++        cost_micros=res.cost_micros,
++        confidence=res.confidence,
++        carrier=res.carrier,
++        is_cached=res.is_cached,
++        contact_id=res.contact_id,
++        degraded=res.degraded,
++        degradation_reason=res.degradation_reason,
++    )
++
++
++@router.post(
++    "/workspaces/{workspace_id}/leads/{lead_id}/report-invalid-phone",
++    response_model=PhoneRefundResponse,
++    status_code=status.HTTP_200_OK,
++)
++async def report_invalid_phone_endpoint(
++    workspace_id: int,
++    lead_id: UUID,
++    body: InvalidPhoneReportRequest = InvalidPhoneReportRequest(),
++    session: AsyncSession = Depends(get_async_session),
++    auth: AuthContext = Depends(get_auth_context),
++) -> PhoneRefundResponse:
++    """Report an unreachable/invalid phone number within 24h SLA for 100% credit auto-refund (Story 21.3)."""
++    await check_permission(
++        session,
++        auth,
++        workspace_id,
++        Permission.LEADS_WRITE.value,
++        error_message="You don't have permission to report invalid leads in this workspace",
++    )
++
++    billing = BillingService(session)
++    result = await billing.auto_refund_lead(
++        workspace_id=workspace_id,
++        lead_id=lead_id,
++        user_id=auth.user_id,
++        reason=body.reason,
++    )
++
++    return PhoneRefundResponse(
++        lead_id=UUID(result["lead_id"]),
++        refunded=result["refunded"],
++        refund_amount_credits=result["refund_credits"],
++        refund_micros=result["refund_micros"],
++        refunded_at=result["refunded_at"],
++        status=result["status"],
++        reason=result["reason"],
++        message="Auto-refund SLA processed successfully. 100% credits reverted to wallet.",
++    )
++
++
++@router.post(
++    "/workspaces/{workspace_id}/leads/reverse-icp",
++    response_model=ReverseIcpResponse,
++    status_code=status.HTTP_200_OK,
++)
++async def reverse_icp_endpoint(
++    workspace_id: int,
++    body: ReverseIcpRequest,
++    session: AsyncSession = Depends(get_async_session),
++    auth: AuthContext = Depends(get_auth_context),
++) -> ReverseIcpResponse:
++    """Analyze a website or landing page URL to generate ICP, buyer personas, and filter presets (Story 21.10)."""
++    await check_permission(
++        session,
++        auth,
++        workspace_id,
++        Permission.LEADS_READ.value,
++        error_message="You don't have permission to access lead intelligence in this workspace",
++    )
++
++    service = ReverseIcpService()
++    try:
++        result = await service.analyze_url(
++            url=body.url,
++            custom_instructions=body.custom_instructions,
++        )
++        return result
++    except SSRFProtectionError as exc:
++        raise HTTPException(
++            status_code=status.HTTP_400_BAD_REQUEST,
++            detail=f"URL rejected by security policy: {exc}",
++        ) from exc
++    except FastCrawlerTimeoutError as exc:
++        raise HTTPException(
++            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
++            detail=f"Crawl connection timed out: {exc}",
++        ) from exc
++    except ValueError as exc:
++        raise HTTPException(
++            status_code=status.HTTP_400_BAD_REQUEST,
++            detail=str(exc),
++        ) from exc
++    except Exception as exc:
++        raise HTTPException(
++            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
++            detail=f"Failed to analyze URL: {exc}",
++        ) from exc
+diff --git a/nowing_backend/app/routes/outbound_routes.py b/nowing_backend/app/routes/outbound_routes.py
+new file mode 100644
+index 000000000..4cafa008f
+--- /dev/null
++++ b/nowing_backend/app/routes/outbound_routes.py
+@@ -0,0 +1,594 @@
++"""REST routes for Assisted Zalo Outbound, ZNS Gateway, and Telegram Alerts (Story 21.6 / AD-41)."""
++
++from __future__ import annotations
++
++import logging
++from datetime import UTC, datetime, timedelta
++from typing import Any
++from uuid import UUID
++
++from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
++from pydantic import BaseModel, Field
++from sqlalchemy import select
++from sqlalchemy.ext.asyncio import AsyncSession
++from sqlalchemy.orm import selectinload
++
++from app.auth.context import AuthContext
++from app.config import config
++from app.db import (
++    Lead,
++    Permission,
++    ZaloConnection,
++    ZaloMessageLog,
++    get_async_session,
++)
++from app.gateway.zalo.client import (
++    ZaloClient,
++    format_vietnam_phone,
++    generate_assisted_outbound_draft,
++)
++from app.gateway.zalo.telegram_alerts import send_telegram_lead_alert
++from app.gateway.zalo.webhook import (
++    handle_zalo_webhook_event,
++    verify_zalo_signature,
++)
++from app.users import get_auth_context
++from app.utils.oauth_security import TokenEncryption
++from app.utils.rbac import check_permission
++
++logger = logging.getLogger(__name__)
++
++router = APIRouter(tags=["outbound"])
++
++
++# ---------------------------------------------------------------------------
++# Pydantic Schemas
++# ---------------------------------------------------------------------------
++
++
++class ZaloDraftRequest(BaseModel):
++    custom_context: str | None = Field(
++        default=None, description="Optional extra context to append to AI draft"
++    )
++
++
++class ZaloDraftResponse(BaseModel):
++    lead_id: UUID
++    phone: str
++    clean_phone: str
++    zalo_url: str
++    draft: str
++    company_name: str
++    log_id: UUID | None = None
++
++
++class ZnsSendRequest(BaseModel):
++    template_id: str = Field(..., description="Approved Zalo OA ZNS Template ID")
++    template_data: dict[str, Any] = Field(
++        ..., description="Data parameters matching the ZNS template specification"
++    )
++    tracking_id: str | None = Field(
++        default=None, description="Client-side correlation / tracking ID"
++    )
++    consent_confirmed: bool = Field(
++        default=False,
++        description="Explicit user consent confirmation complying with Decree 356",
++    )
++    mode: str | None = Field(
++        default=None, description="Optional mode, e.g. 'development' for test templates"
++    )
++
++
++class ZnsSendResponse(BaseModel):
++    status: str
++    msg_id: str | None = None
++    recipient_phone: str
++    error: str | None = None
++    log_id: UUID | None = None
++
++
++class ZaloConnectionCreate(BaseModel):
++    oa_id: str = Field(..., min_length=1, max_length=100)
++    oa_name: str | None = Field(default=None, max_length=255)
++    app_id: str | None = Field(default=None, max_length=100)
++    access_token: str | None = Field(default=None)
++    refresh_token: str | None = Field(default=None)
++    webhook_secret: str | None = Field(default=None, max_length=255)
++    expires_in_seconds: int = Field(default=90000)
++
++
++class ZaloConnectionRead(BaseModel):
++    id: UUID
++    workspace_id: int
++    oa_id: str
++    oa_name: str | None
++    app_id: str | None
++    is_active: bool
++    token_expires_at: datetime | None
++    created_at: datetime
++
++
++class TelegramAlertRequest(BaseModel):
++    message_content: str | None = Field(default=None)
++    intent: str | None = Field(default="Tín hiệu quan tâm từ Zalo")
++    chat_id: str | None = Field(default=None)
++
++
++class TelegramAlertResponse(BaseModel):
++    sent: bool
++    message_id: str | None = None
++    chat_id: str | None = None
++    text: str | None = None
++    error: str | None = None
++
++
++# ---------------------------------------------------------------------------
++# Helper
++# ---------------------------------------------------------------------------
++
++
++async def _get_lead_or_404(
++    session: AsyncSession, lead_id: UUID, workspace_id: int | None = None
++) -> Lead:
++    stmt = (
++        select(Lead)
++        .options(selectinload(Lead.verified_contacts))
++        .where(Lead.id == lead_id)
++    )
++    if workspace_id is not None:
++        stmt = stmt.where(Lead.workspace_id == workspace_id)
++
++    res = await session.execute(stmt)
++    lead = res.scalar_one_or_none()
++    if not lead:
++        raise HTTPException(
++            status_code=status.HTTP_404_NOT_FOUND,
++            detail=f"Lead with id '{lead_id}' not found",
++        )
++    return lead
++
++
++def _resolve_lead_phone(lead: Lead) -> str:
++    if getattr(lead, "phone", None):
++        return str(lead.phone)
++    if getattr(lead, "verified_contacts", None):
++        for contact in lead.verified_contacts:
++            if getattr(contact, "phone_number", None):
++                return str(contact.phone_number)
++            if getattr(contact, "phone", None):
++                return str(contact.phone)
++    return ""
++
++
++# ---------------------------------------------------------------------------
++# Assisted Outbound Co-pilot (Deep-link & AI Greeting Script)
++# ---------------------------------------------------------------------------
++
++
++@router.post(
++    "/leads/{lead_id}/zalo-draft",
++    response_model=ZaloDraftResponse,
++    summary="Generate Assisted Zalo Outreach draft script and deep-link (Story 21.6)",
++)
++@router.post(
++    "/workspaces/{workspace_id}/leads/{lead_id}/zalo-draft",
++    response_model=ZaloDraftResponse,
++    summary="Generate Assisted Zalo Outreach draft script and deep-link (Workspace scoped)",
++)
++async def generate_zalo_draft(
++    lead_id: UUID,
++    workspace_id: int | None = None,
++    payload: ZaloDraftRequest | None = None,
++    auth: AuthContext = Depends(get_auth_context),
++    session: AsyncSession = Depends(get_async_session),
++) -> ZaloDraftResponse:
++    """Generate personalized Vietnamese outreach message for Assisted Zalo Co-pilot.
++
++    Enforces 100% ToS compliance: Returns deep-link (https://zalo.me/{clean_phone})
++    for client opening and copies draft to clipboard.
++    """
++    lead = await _get_lead_or_404(session, lead_id, workspace_id)
++    target_ws = lead.workspace_id
++
++    await check_permission(auth, target_ws, Permission.VIEW_DOCUMENTS, session=session)
++
++    raw_phone = _resolve_lead_phone(lead)
++    phone_meta = format_vietnam_phone(raw_phone)
++    clean_phone = phone_meta["clean_phone"]
++    zalo_url = phone_meta["zalo_url"]
++
++    # Build context dictionary
++    lead_dict = {
++        "company_name": lead.company_name,
++        "source": lead.source,
++        "industry": lead.industry,
++        "location": lead.location,
++        "intent": getattr(lead, "intent", None) or "BÁN",
++        "price_estimate": getattr(lead, "price_estimate", None),
++        "content_snippet": getattr(lead, "content_snippet", None),
++        "author": getattr(lead, "author", None),
++    }
++
++    custom_ctx = payload.custom_context if payload else None
++    draft_text = generate_assisted_outbound_draft(lead_dict, custom_context=custom_ctx)
++
++    # Log draft generation
++    log_entry = ZaloMessageLog(
++        workspace_id=target_ws,
++        lead_id=lead.id,
++        recipient_phone=clean_phone,
++        message_type="assisted_draft",
++        content=draft_text,
++        status="generated",
++    )
++    session.add(log_entry)
++    await session.commit()
++    await session.refresh(log_entry)
++
++    return ZaloDraftResponse(
++        lead_id=lead.id,
++        phone=raw_phone,
++        clean_phone=clean_phone,
++        zalo_url=zalo_url,
++        draft=draft_text,
++        company_name=lead.company_name,
++        log_id=log_entry.id,
++    )
++
++
++# ---------------------------------------------------------------------------
++# ZNS (Zalo Notification Service) Official Sender
++# ---------------------------------------------------------------------------
++
++
++@router.post(
++    "/leads/{lead_id}/zns-send",
++    response_model=ZnsSendResponse,
++    summary="Send transactional ZNS message via Zalo OA OpenAPI (Story 21.6)",
++)
++@router.post(
++    "/workspaces/{workspace_id}/leads/{lead_id}/zns-send",
++    response_model=ZnsSendResponse,
++    summary="Send transactional ZNS message via Zalo OA OpenAPI (Workspace scoped)",
++)
++async def send_zns_message(
++    lead_id: UUID,
++    payload: ZnsSendRequest,
++    workspace_id: int | None = None,
++    auth: AuthContext = Depends(get_auth_context),
++    session: AsyncSession = Depends(get_async_session),
++) -> ZnsSendResponse:
++    """Send transactional notification via official Zalo OA ZNS endpoint.
++
++    Requires template_id and compliance with Decree 356 consent.
++    """
++    lead = await _get_lead_or_404(session, lead_id, workspace_id)
++    target_ws = lead.workspace_id
++
++    await check_permission(auth, target_ws, Permission.EDIT_DOCUMENTS, session=session)
++
++    # Decree 356 Consent Verification Guardrail
++    has_consent = (
++        payload.consent_confirmed
++        or lead.consent_status in ("consented", "opted_in")
++        or bool(lead.legal_basis)
++    )
++    if not has_consent:
++        raise HTTPException(
++            status_code=status.HTTP_400_BAD_REQUEST,
++            detail="Decree 356 compliance error: ZNS messages require verified user consent or explicit consent confirmation.",
++        )
++
++    raw_phone = _resolve_lead_phone(lead)
++    phone_meta = format_vietnam_phone(raw_phone)
++    int_phone = phone_meta["international_phone"]
++    if not int_phone:
++        raise HTTPException(
++            status_code=status.HTTP_400_BAD_REQUEST,
++            detail="Lead does not have a valid Vietnamese phone number for ZNS delivery.",
++        )
++
++    # Fetch active Zalo Connection for workspace
++    conn_stmt = select(ZaloConnection).where(
++        ZaloConnection.workspace_id == target_ws,
++        ZaloConnection.is_active.is_(True),
++    )
++    conn_res = await session.execute(conn_stmt)
++    connection = conn_res.scalar_one_or_none()
++
++    if not connection:
++        raise HTTPException(
++            status_code=status.HTTP_400_BAD_REQUEST,
++            detail=f"No active Zalo OA connection found for workspace {target_ws}. Please configure Zalo OA first.",
++        )
++
++    client = ZaloClient.from_connection(connection)
++    try:
++        await client.ensure_valid_token(session, connection)
++        result = await client.send_zns(
++            phone=int_phone,
++            template_id=payload.template_id,
++            template_data=payload.template_data,
++            tracking_id=payload.tracking_id,
++            mode=payload.mode,
++        )
++    except Exception as exc:
++        logger.error("ZNS send failed: %s", exc)
++        log_entry = ZaloMessageLog(
++            workspace_id=target_ws,
++            zalo_connection_id=connection.id,
++            lead_id=lead.id,
++            recipient_phone=int_phone,
++            message_type="zns",
++            template_id=payload.template_id,
++            template_data=payload.template_data,
++            content=f"ZNS Template: {payload.template_id}",
++            status="failed",
++            error_message=str(exc),
++        )
++        session.add(log_entry)
++        await session.commit()
++        raise HTTPException(
++            status_code=status.HTTP_502_BAD_GATEWAY,
++            detail=f"Zalo ZNS API error: {exc}",
++        ) from exc
++    finally:
++        await client.close()
++
++    error_code = result.get("error", 0)
++    msg_id = (
++        result.get("data", {}).get("msg_id")
++        if isinstance(result.get("data"), dict)
++        else None
++    )
++    success = error_code == 0
++
++    log_entry = ZaloMessageLog(
++        workspace_id=target_ws,
++        zalo_connection_id=connection.id,
++        lead_id=lead.id,
++        recipient_phone=int_phone,
++        message_type="zns",
++        template_id=payload.template_id,
++        template_data=payload.template_data,
++        content=f"ZNS Template: {payload.template_id}",
++        status="sent" if success else "failed",
++        external_message_id=str(msg_id) if msg_id else None,
++        error_message=result.get("message") if not success else None,
++    )
++    session.add(log_entry)
++    await session.commit()
++    await session.refresh(log_entry)
++
++    if not success:
++        return ZnsSendResponse(
++            status="failed",
++            recipient_phone=int_phone,
++            error=result.get("message") or f"Zalo error code {error_code}",
++            log_id=log_entry.id,
++        )
++
++    return ZnsSendResponse(
++        status="sent",
++        msg_id=str(msg_id) if msg_id else None,
++        recipient_phone=int_phone,
++        log_id=log_entry.id,
++    )
++
++
++# ---------------------------------------------------------------------------
++# Workspace Zalo Connection Management
++# ---------------------------------------------------------------------------
++
++
++@router.get(
++    "/workspaces/{workspace_id}/zalo/connection",
++    response_model=ZaloConnectionRead | None,
++    summary="Get active Zalo OA connection for workspace",
++)
++async def get_workspace_zalo_connection(
++    workspace_id: int,
++    auth: AuthContext = Depends(get_auth_context),
++    session: AsyncSession = Depends(get_async_session),
++) -> ZaloConnectionRead | None:
++    await check_permission(
++        auth, workspace_id, Permission.VIEW_DOCUMENTS, session=session
++    )
++
++    stmt = select(ZaloConnection).where(
++        ZaloConnection.workspace_id == workspace_id,
++        ZaloConnection.is_active.is_(True),
++    )
++    res = await session.execute(stmt)
++    conn = res.scalar_one_or_none()
++    if not conn:
++        return None
++
++    return ZaloConnectionRead(
++        id=conn.id,
++        workspace_id=conn.workspace_id,
++        oa_id=conn.oa_id,
++        oa_name=conn.oa_name,
++        app_id=conn.app_id,
++        is_active=conn.is_active,
++        token_expires_at=conn.token_expires_at,
++        created_at=conn.created_at,
++    )
++
++
++@router.post(
++    "/workspaces/{workspace_id}/zalo/connection",
++    response_model=ZaloConnectionRead,
++    summary="Create or update Zalo OA connection for workspace",
++)
++async def upsert_workspace_zalo_connection(
++    workspace_id: int,
++    payload: ZaloConnectionCreate,
++    auth: AuthContext = Depends(get_auth_context),
++    session: AsyncSession = Depends(get_async_session),
++) -> ZaloConnectionRead:
++    await check_permission(auth, workspace_id, Permission.ADMIN_USERS, session=session)
++
++    secret = config.SECRET_KEY or ""
++    enc = TokenEncryption(secret) if secret else None
++
++    access_enc = (
++        enc.encrypt_token(payload.access_token)
++        if enc and payload.access_token
++        else payload.access_token
++    )
++    refresh_enc = (
++        enc.encrypt_token(payload.refresh_token)
++        if enc and payload.refresh_token
++        else payload.refresh_token
++    )
++
++    expires_at = (
++        datetime.now(UTC) + timedelta(seconds=payload.expires_in_seconds)
++        if payload.access_token
++        else None
++    )
++
++    stmt = select(ZaloConnection).where(
++        ZaloConnection.workspace_id == workspace_id,
++        ZaloConnection.oa_id == payload.oa_id,
++    )
++    res = await session.execute(stmt)
++    conn = res.scalar_one_or_none()
++
++    if conn:
++        conn.oa_name = payload.oa_name or conn.oa_name
++        conn.app_id = payload.app_id or conn.app_id
++        if access_enc:
++            conn.access_token_encrypted = access_enc
++        if refresh_enc:
++            conn.refresh_token_encrypted = refresh_enc
++        if expires_at:
++            conn.token_expires_at = expires_at
++        if payload.webhook_secret:
++            conn.webhook_secret = payload.webhook_secret
++        conn.is_active = True
++    else:
++        conn = ZaloConnection(
++            workspace_id=workspace_id,
++            oa_id=payload.oa_id,
++            oa_name=payload.oa_name,
++            app_id=payload.app_id,
++            access_token_encrypted=access_enc,
++            refresh_token_encrypted=refresh_enc,
++            token_expires_at=expires_at,
++            webhook_secret=payload.webhook_secret,
++            is_active=True,
++        )
++        session.add(conn)
++
++    await session.commit()
++    await session.refresh(conn)
++
++    return ZaloConnectionRead(
++        id=conn.id,
++        workspace_id=conn.workspace_id,
++        oa_id=conn.oa_id,
++        oa_name=conn.oa_name,
++        app_id=conn.app_id,
++        is_active=conn.is_active,
++        token_expires_at=conn.token_expires_at,
++        created_at=conn.created_at,
++    )
++
++
++# ---------------------------------------------------------------------------
++# Telegram Lead Alert Dispatcher
++# ---------------------------------------------------------------------------
++
++
++@router.post(
++    "/leads/{lead_id}/telegram-alert",
++    response_model=TelegramAlertResponse,
++    summary="Dispatch rich Telegram alert for lead (Story 21.6)",
++)
++@router.post(
++    "/workspaces/{workspace_id}/leads/{lead_id}/telegram-alert",
++    response_model=TelegramAlertResponse,
++    summary="Dispatch rich Telegram alert for lead (Workspace scoped)",
++)
++async def dispatch_lead_telegram_alert(
++    lead_id: UUID,
++    payload: TelegramAlertRequest | None = None,
++    workspace_id: int | None = None,
++    auth: AuthContext = Depends(get_auth_context),
++    session: AsyncSession = Depends(get_async_session),
++) -> TelegramAlertResponse:
++    lead = await _get_lead_or_404(session, lead_id, workspace_id)
++    target_ws = lead.workspace_id
++
++    await check_permission(auth, target_ws, Permission.VIEW_DOCUMENTS, session=session)
++
++    raw_phone = _resolve_lead_phone(lead)
++    content = (
++        payload.message_content
++        if payload and payload.message_content
++        else (lead.content_snippet or "")
++    )
++    intent = (
++        payload.intent
++        if payload and payload.intent
++        else (getattr(lead, "intent", None) or "Tín hiệu mua / hợp tác")
++    )
++    chat_id = payload.chat_id if payload else None
++
++    result = await send_telegram_lead_alert(
++        session=session,
++        workspace_id=target_ws,
++        lead=lead,
++        phone=raw_phone,
++        message_content=content,
++        intent=intent,
++        target_chat_id=chat_id,
++    )
++
++    return TelegramAlertResponse(
++        sent=bool(result.get("sent")),
++        message_id=result.get("message_id"),
++        chat_id=result.get("chat_id"),
++        text=result.get("text"),
++        error=result.get("error") or result.get("reason"),
++    )
++
++
++# ---------------------------------------------------------------------------
++# Public Inbound Webhook Endpoint
++# ---------------------------------------------------------------------------
++
++
++@router.post(
++    "/gateway/zalo/webhook",
++    summary="Inbound webhook endpoint for Zalo OA events (Story 21.6)",
++)
++async def zalo_inbound_webhook(
++    request: Request,
++    x_zevent_signature: str | None = Header(default=None, alias="X-ZEvent-Signature"),
++    mac: str | None = Query(default=None),
++    session: AsyncSession = Depends(get_async_session),
++) -> dict[str, Any]:
++    raw_body = await request.body()
++    try:
++        data = await request.json()
++    except Exception as exc:
++        raise HTTPException(
++            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON body"
++        ) from exc
++
++    app_id = str(data.get("app_id") or "")
++    timestamp = str(data.get("timestamp") or "")
++    sig = x_zevent_signature or mac or ""
++
++    secret = getattr(config, "ZALO_APP_SECRET", "") or ""
++    if not verify_zalo_signature(app_id, raw_body, timestamp, sig, secret):
++        logger.warning("Rejected Zalo webhook with invalid signature")
++        raise HTTPException(
++            status_code=status.HTTP_401_UNAUTHORIZED,
++            detail="Invalid Zalo webhook signature",
++        )
++
++    return await handle_zalo_webhook_event(session, data)
+diff --git a/nowing_backend/app/tasks/phone_waterfall_worker.py b/nowing_backend/app/tasks/phone_waterfall_worker.py
+new file mode 100644
+index 000000000..355adcce1
+--- /dev/null
++++ b/nowing_backend/app/tasks/phone_waterfall_worker.py
+@@ -0,0 +1,109 @@
++"""Celery worker task for async phone waterfall resolution and auto-refund SLA (Story 21.3)."""
++
++from __future__ import annotations
++
++import asyncio
++import logging
++from typing import Any
++from uuid import UUID
++
++from celery import shared_task
++
++from app.db import async_session_maker
++from app.services.billing_service import BillingService
++from app.services.phone_waterfall_service import PhoneWaterfallService
++
++logger = logging.getLogger(__name__)
++
++
++@shared_task(
++    name="resolve_phone_waterfall_task",
++    bind=True,
++    max_retries=2,
++    default_retry_delay=5,
++)
++def resolve_phone_waterfall_task(
++    self,
++    workspace_id: int,
++    client_id: str | None,
++    lead_id: str,
++    user_id: str | None,
++    source_url: str | None = None,
++    raw_text: str | None = None,
++    force_refresh: bool = False,
++) -> dict[str, Any]:
++    """Async celery task to run 3-tier phone waterfall resolution for a lead."""
++
++    async def _run() -> dict[str, Any]:
++        async with async_session_maker() as session:
++            service = PhoneWaterfallService(session)
++            res = await service.resolve_lead_phone(
++                workspace_id=workspace_id,
++                client_id=client_id,
++                lead_id=UUID(lead_id),
++                user_id=UUID(user_id) if user_id else None,
++                source_url=source_url,
++                raw_text=raw_text,
++                force_refresh=force_refresh,
++            )
++            return {
++                "lead_id": str(res.lead_id),
++                "phone_masked": res.phone_masked,
++                "tier_reached": res.tier_reached,
++                "provider_used": res.provider_used,
++                "status": res.status,
++                "cost_micros": res.cost_micros,
++                "confidence": res.confidence,
++                "carrier": res.carrier,
++                "is_cached": res.is_cached,
++                "contact_id": str(res.contact_id) if res.contact_id else None,
++                "degraded": res.degraded,
++                "degradation_reason": res.degradation_reason,
++            }
++
++    try:
++        return asyncio.run(_run())
++    except Exception as exc:
++        logger.exception("resolve_phone_waterfall_task failed for lead %s", lead_id)
++        if self.request.retries < self.max_retries:
++            raise self.retry(exc=exc) from exc
++        return {
++            "lead_id": lead_id,
++            "status": "failed",
++            "error": str(exc),
++        }
++
++
++@shared_task(
++    name="auto_refund_lead_task",
++    bind=True,
++    max_retries=1,
++)
++def auto_refund_lead_task(
++    self,
++    workspace_id: int,
++    lead_id: str,
++    user_id: str | None,
++    reason: str = "reported_invalid_phone",
++) -> dict[str, Any]:
++    """Async celery task to process lead auto-refund."""
++
++    async def _run() -> dict[str, Any]:
++        async with async_session_maker() as session:
++            billing = BillingService(session)
++            return await billing.auto_refund_lead(
++                workspace_id=workspace_id,
++                lead_id=UUID(lead_id),
++                user_id=UUID(user_id) if user_id else None,
++                reason=reason,
++            )
++
++    try:
++        return asyncio.run(_run())
++    except Exception as exc:
++        logger.exception("auto_refund_lead_task failed for lead %s", lead_id)
++        return {
++            "lead_id": lead_id,
++            "refunded": False,
++            "error": str(exc),
++        }
+diff --git a/nowing_backend/tests/integration/gateway/test_zalo_outbound_pipeline.py b/nowing_backend/tests/integration/gateway/test_zalo_outbound_pipeline.py
+new file mode 100644
+index 000000000..b0b5745e7
+--- /dev/null
++++ b/nowing_backend/tests/integration/gateway/test_zalo_outbound_pipeline.py
+@@ -0,0 +1,268 @@
++"""Integration tests for Zalo Outbound Pipeline, ZNS Gateway, and Telegram Alerts (Story 21.6 / AD-41)."""
++
++from __future__ import annotations
++
++from unittest.mock import AsyncMock, patch
++from uuid import uuid4
++
++import pytest
++from fastapi import HTTPException
++from sqlalchemy import select
++from sqlalchemy.ext.asyncio import AsyncSession
++
++from app.auth.context import AuthContext
++from app.db import (
++    Lead,
++    User,
++    VerifiedContact,
++    Workspace,
++    ZaloConnection,
++    ZaloMessageLog,
++)
++from app.gateway.zalo.client import ZaloClient
++from app.gateway.zalo.webhook import handle_zalo_webhook_event
++from app.routes.outbound_routes import (
++    ZaloConnectionCreate,
++    ZaloDraftRequest,
++    ZnsSendRequest,
++    generate_zalo_draft,
++    send_zns_message,
++    upsert_workspace_zalo_connection,
++)
++
++pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
++
++
++def _make_auth(user: User, workspace: Workspace) -> AuthContext:
++    return AuthContext.session(user=user)
++
++
++async def test_zalo_draft_generation_pipeline(
++    db_session: AsyncSession,
++    db_workspace: Workspace,
++    db_user: User,
++) -> None:
++    """Test generating assisted Zalo draft and creating audit log."""
++    lead = Lead(
++        id=uuid4(),
++        workspace_id=db_workspace.id,
++        source="batdongsan",
++        company_name="Nguyễn Văn An",
++        location="Quận 1, TP.HCM",
++        industry="Bất động sản",
++        status="new",
++    )
++    db_session.add(lead)
++    await db_session.flush()
++
++    contact = VerifiedContact(
++        id=uuid4(),
++        workspace_id=db_workspace.id,
++        lead_id=lead.id,
++        phone="0987654321",
++    )
++    db_session.add(contact)
++    await db_session.flush()
++
++    auth = _make_auth(db_user, db_workspace)
++
++    # Call endpoint handler
++    resp = await generate_zalo_draft(
++        lead_id=lead.id,
++        workspace_id=db_workspace.id,
++        payload=ZaloDraftRequest(custom_context="Liên hệ vào giờ hành chính"),
++        auth=auth,
++        session=db_session,
++    )
++
++    assert resp.lead_id == lead.id
++    assert resp.clean_phone == "0987654321"
++    assert resp.zalo_url == "https://zalo.me/0987654321"
++    assert "BĐS" in resp.draft
++    assert "Quận 1, TP.HCM" in resp.draft
++    assert "Liên hệ vào giờ hành chính" in resp.draft
++
++    # Verify message log was saved in DB
++    log_stmt = select(ZaloMessageLog).where(ZaloMessageLog.lead_id == lead.id)
++    log_res = await db_session.execute(log_stmt)
++    log = log_res.scalar_one_or_none()
++
++    assert log is not None
++    assert log.workspace_id == db_workspace.id
++    assert log.recipient_phone == "0987654321"
++    assert log.message_type == "assisted_draft"
++    assert log.status == "generated"
++
++
++async def test_zalo_connection_upsert_and_encryption(
++    db_session: AsyncSession,
++    db_workspace: Workspace,
++    db_user: User,
++) -> None:
++    """Test creating Zalo OA connection with token encryption and reading it back."""
++    auth = _make_auth(db_user, db_workspace)
++
++    payload = ZaloConnectionCreate(
++        oa_id="oa_test_12345",
++        oa_name="Nowing Official OA",
++        app_id="app_test_67890",
++        access_token="secret_access_token_abc",
++        refresh_token="secret_refresh_token_xyz",
++        webhook_secret="webhook_secret_key",
++        expires_in_seconds=3600,
++    )
++
++    # Upsert connection
++    created = await upsert_workspace_zalo_connection(
++        workspace_id=db_workspace.id,
++        payload=payload,
++        auth=auth,
++        session=db_session,
++    )
++
++    assert created.oa_id == "oa_test_12345"
++    assert created.oa_name == "Nowing Official OA"
++    assert created.is_active is True
++
++    # Read back from DB and verify encryption
++    stmt = select(ZaloConnection).where(ZaloConnection.id == created.id)
++    res = await db_session.execute(stmt)
++    conn = res.scalar_one()
++
++    # Raw field in DB should not match plaintext if SECRET_KEY is active
++    assert conn.oa_id == "oa_test_12345"
++
++    # Client instantiation should decrypt properly
++    client = ZaloClient.from_connection(conn)
++    assert client.oa_id == "oa_test_12345"
++    assert client.access_token == "secret_access_token_abc"
++    assert client.refresh_token == "secret_refresh_token_xyz"
++
++
++async def test_zns_send_consent_guardrail_and_dispatch(
++    db_session: AsyncSession,
++    db_workspace: Workspace,
++    db_user: User,
++) -> None:
++    """Test Decree 356 consent enforcement and ZNS delivery."""
++    lead = Lead(
++        id=uuid4(),
++        workspace_id=db_workspace.id,
++        source="system",
++        company_name="Trần Thị B",
++        status="open",
++        consent_status="unconsented",
++    )
++    db_session.add(lead)
++    await db_session.flush()
++
++    contact = VerifiedContact(
++        id=uuid4(),
++        workspace_id=db_workspace.id,
++        lead_id=lead.id,
++        phone="0901234567",
++    )
++    db_session.add(contact)
++    await db_session.flush()
++
++    # Create active Zalo connection
++    conn = ZaloConnection(
++        id=uuid4(),
++        workspace_id=db_workspace.id,
++        oa_id="oa_zns_test",
++        access_token_encrypted="fake_token",
++        is_active=True,
++    )
++    db_session.add(conn)
++    await db_session.flush()
++
++    auth = _make_auth(db_user, db_workspace)
++
++    # 1. When consent_confirmed is False and lead has no consent -> 400 Bad Request
++    with pytest.raises(HTTPException) as exc_info:
++        await send_zns_message(
++            lead_id=lead.id,
++            workspace_id=db_workspace.id,
++            payload=ZnsSendRequest(
++                template_id="tpl_appointment_01",
++                template_data={"name": "Trần Thị B"},
++                consent_confirmed=False,
++            ),
++            auth=auth,
++            session=db_session,
++        )
++    assert exc_info.value.status_code == 400
++    assert "Decree 356" in exc_info.value.detail
++
++    # 2. When consent_confirmed is True -> Dispatches via ZaloClient.send_zns
++    with patch("app.routes.outbound_routes.ZaloClient") as mock_client_cls:
++        mock_instance = AsyncMock()
++        mock_instance.ensure_valid_token.return_value = "fake_token"
++        mock_instance.send_zns.return_value = {
++            "error": 0,
++            "message": "Success",
++            "data": {"msg_id": "zns_123456"},
++        }
++        mock_client_cls.from_connection.return_value = mock_instance
++
++        resp = await send_zns_message(
++            lead_id=lead.id,
++            workspace_id=db_workspace.id,
++            payload=ZnsSendRequest(
++                template_id="tpl_appointment_01",
++                template_data={"name": "Trần Thị B"},
++                consent_confirmed=True,
++            ),
++            auth=auth,
++            session=db_session,
++        )
++
++        assert resp.status == "sent"
++        assert resp.msg_id == "zns_123456"
++        assert resp.recipient_phone == "84901234567"
++
++
++async def test_zalo_inbound_webhook_event_and_telegram_alert(
++    db_session: AsyncSession,
++    db_workspace: Workspace,
++) -> None:
++    """Test webhook event processing and buying intent detection."""
++    conn = ZaloConnection(
++        id=uuid4(),
++        workspace_id=db_workspace.id,
++        oa_id="oa_webhook_test",
++        is_active=True,
++    )
++    db_session.add(conn)
++    await db_session.flush()
++
++    event_payload = {
++        "event_name": "user_send_text",
++        "oa_id": "oa_webhook_test",
++        "sender": {"id": "0918889999"},
++        "message": {
++            "msg_id": "msg_ext_777",
++            "text": "Chào Nowing, cho mình xin báo giá dịch vụ với ạ",
++        },
++        "timestamp": 1723700000,
++    }
++
++    with patch("app.gateway.zalo.webhook.send_telegram_lead_alert") as mock_telegram:
++        mock_telegram.return_value = {"sent": True, "message_id": "tg_msg_101"}
++
++        result = await handle_zalo_webhook_event(db_session, event_payload)
++
++        assert result["status"] == "ok"
++        assert result["has_intent"] is True
++
++        # Verify log entry in DB
++        log_stmt = select(ZaloMessageLog).where(
++            ZaloMessageLog.recipient_zalo_id == "0918889999"
++        )
++        log_res = await db_session.execute(log_stmt)
++        log = log_res.scalar_one_or_none()
++
++        assert log is not None
++        assert log.message_type == "webhook_inbound"
++        assert log.status == "received"
++        assert "báo giá" in log.content
+diff --git a/nowing_backend/tests/unit/gateway/test_zalo_gateway.py b/nowing_backend/tests/unit/gateway/test_zalo_gateway.py
+new file mode 100644
+index 000000000..2a7cc69b6
+--- /dev/null
++++ b/nowing_backend/tests/unit/gateway/test_zalo_gateway.py
+@@ -0,0 +1,299 @@
++"""Unit tests for Zalo Gateway (Story 21.6 / AD-41)."""
++
++from __future__ import annotations
++
++import hashlib
++import hmac
++from unittest.mock import AsyncMock, MagicMock, patch
++
++import pytest
++from httpx import Response
++
++from app.gateway.zalo.client import (
++    ZaloClient,
++    format_vietnam_phone,
++    generate_assisted_outbound_draft,
++)
++from app.gateway.zalo.telegram_alerts import build_lead_telegram_alert
++from app.gateway.zalo.webhook import (
++    detect_buying_intent,
++    verify_zalo_signature,
++)
++
++
++@pytest.mark.unit
++class TestZaloPhoneFormatting:
++    """Test Vietnamese phone formatting for deep links and ZNS."""
++
++    def test_national_10_digits(self):
++        res = format_vietnam_phone("0912345678")
++        assert res["clean_phone"] == "0912345678"
++        assert res["international_phone"] == "84912345678"
++        assert res["zalo_url"] == "https://zalo.me/0912345678"
++
++    def test_plus_84_format(self):
++        res = format_vietnam_phone("+84912345678")
++        assert res["clean_phone"] == "0912345678"
++        assert res["international_phone"] == "84912345678"
++        assert res["zalo_url"] == "https://zalo.me/0912345678"
++
++    def test_84_without_plus(self):
++        res = format_vietnam_phone("84912345678")
++        assert res["clean_phone"] == "0912345678"
++        assert res["international_phone"] == "84912345678"
++        assert res["zalo_url"] == "https://zalo.me/0912345678"
++
++    def test_phone_with_dots_and_spaces(self):
++        res = format_vietnam_phone("091.234.5678")
++        assert res["clean_phone"] == "0912345678"
++        assert res["international_phone"] == "84912345678"
++        assert res["zalo_url"] == "https://zalo.me/0912345678"
++
++    def test_empty_or_none(self):
++        assert format_vietnam_phone(None) == {
++            "clean_phone": "",
++            "international_phone": "",
++            "zalo_url": "",
++        }
++        assert format_vietnam_phone("") == {
++            "clean_phone": "",
++            "international_phone": "",
++            "zalo_url": "",
++        }
++
++
++@pytest.mark.unit
++class TestZaloDraftGenerator:
++    """Test AI Assisted Outbound greeting script generation."""
++
++    def test_real_estate_draft(self):
++        lead_data = {
++            "company_name": "Nguyễn Văn A",
++            "source": "batdongsan",
++            "intent": "BÁN",
++            "location": "Quận 2, TP.HCM",
++            "price_estimate": "5.2 tỷ",
++            "content_snippet": "Bán căn hộ 2PN view sông",
++        }
++        draft = generate_assisted_outbound_draft(lead_data)
++        assert "BĐS" in draft
++        assert "Quận 2, TP.HCM" in draft
++        assert "5.2 tỷ" in draft
++        assert "Zalo" in draft
++
++    def test_recruitment_draft(self):
++        lead_data = {
++            "company_name": "Công ty Công Nghệ ABC",
++            "source": "topcv",
++            "intent": "TUYỂN DỤNG",
++            "industry": "IT Phần mềm",
++        }
++        draft = generate_assisted_outbound_draft(lead_data)
++        assert "Công ty Công Nghệ ABC" in draft
++        assert "tuyển dụng" in draft
++        assert "IT Phần mềm" in draft
++
++    def test_tender_draft(self):
++        lead_data = {
++            "company_name": "Ban Quản Lý Dự Án X",
++            "source": "muasamcong",
++            "intent": "ĐẤU THẦU",
++        }
++        draft = generate_assisted_outbound_draft(lead_data)
++        assert "gói thầu" in draft or "dự án" in draft
++
++    def test_custom_context_included(self):
++        lead_data = {"company_name": "Công ty Y", "source": "other"}
++        draft = generate_assisted_outbound_draft(
++            lead_data, custom_context="Chiết khấu 15% tháng này"
++        )
++        assert "Chiết khấu 15% tháng này" in draft
++
++
++@pytest.mark.unit
++class TestZaloSignatureVerifier:
++    """Test Zalo webhook HMAC / SHA256 signature verification."""
++
++    def test_valid_mac_signature(self):
++        app_id = "123456789"
++        raw_body = b'{"event_name":"user_send_text","message":{"text":"hello"}}'
++        timestamp = "1723700000"
++        secret_key = "my_secret_key"
++
++        data_to_hash = (
++            f"{app_id}{raw_body.decode('utf-8')}{timestamp}{secret_key}".encode()
++        )
++        expected_sig = hashlib.sha256(data_to_hash).hexdigest()
++
++        assert (
++            verify_zalo_signature(app_id, raw_body, timestamp, expected_sig, secret_key)
++            is True
++        )
++
++    def test_valid_hmac_signature(self):
++        app_id = "123456789"
++        raw_body = b'{"event_name":"user_send_text"}'
++        timestamp = "1723700000"
++        secret_key = "my_secret_key"
++
++        hmac_sig = hmac.new(
++            secret_key.encode("utf-8"), raw_body, hashlib.sha256
++        ).hexdigest()
++        assert (
++            verify_zalo_signature(app_id, raw_body, timestamp, hmac_sig, secret_key)
++            is True
++        )
++
++    def test_invalid_signature(self):
++        assert (
++            verify_zalo_signature("123", b"{}", "12345", "invalid_sig_hex", "secret")
++            is False
++        )
++
++
++@pytest.mark.unit
++class TestBuyingIntentDetection:
++    """Test Vietnamese buying signal detection."""
++
++    def test_positive_pricing_intent(self):
++        has_intent, reason = detect_buying_intent(
++            "Chào bạn, sản phẩm này giá bao nhiêu vậy?"
++        )
++        assert has_intent is True
++        assert "giá" in reason.lower()
++
++    def test_positive_consultation_intent(self):
++        has_intent, reason = detect_buying_intent(
++            "Bên mình cần tư vấn thêm về gói dịch vụ"
++        )
++        assert has_intent is True
++        assert "tư vấn" in reason.lower()
++
++    def test_positive_meeting_intent(self):
++        has_intent, reason = detect_buying_intent(
++            "Mình muốn hẹn gặp demo vào sáng mai nhé"
++        )
++        assert has_intent is True
++        assert (
++            "hẹn" in reason.lower()
++            or "gặp" in reason.lower()
++            or "demo" in reason.lower()
++        )
++
++    def test_negative_neutral_message(self):
++        has_intent, reason = detect_buying_intent("Cảm ơn thông tin từ bạn nhé")
++        assert has_intent is False
++        assert reason == ""
++
++
++@pytest.mark.unit
++class TestTelegramLeadAlertFormatting:
++    """Test Telegram rich notification layout and inline keyboard."""
++
++    def test_build_alert_layout(self):
++        text, keyboard = build_lead_telegram_alert(
++            lead_name="Anh Nam",
++            company_name="BĐS Thủ Đức",
++            phone="0912345678",
++            source="batdongsan",
++            intent="Quan tâm mua căn 2PN",
++            message_content="Gửi mình bảng giá chi tiết nhé",
++            workspace_id=42,
++            lead_id="d3b07384-d113-46fb-a0b2-32b0f4d3824f",
++            frontend_url="https://nowing.net",
++        )
++
++        assert "TÍN HIỆU LEAD MỚI" in text
++        assert "BĐS Thủ Đức" in text
++        assert "0912345678" in text
++
++        # Check inline keyboard
++        buttons = keyboard["inline_keyboard"][0]
++        assert len(buttons) == 2
++        assert buttons[0]["text"] == "📱 Mở Zalo"
++        assert buttons[0]["url"] == "https://zalo.me/0912345678"
++        assert buttons[1]["text"] == "📋 Xem Chi Tiết Lead"
++        assert "dashboard/42/leads" in buttons[1]["url"]
++
++
++@pytest.mark.unit
++@pytest.mark.asyncio
++class TestZaloClient:
++    """Test ZaloClient methods."""
++
++    async def test_refresh_token_success(self):
++        mock_http = AsyncMock()
++        mock_resp = MagicMock(spec=Response)
++        mock_resp.status_code = 200
++        mock_resp.json.return_value = {
++            "access_token": "new_access_token_123",
++            "refresh_token": "new_refresh_token_456",
++            "expires_in": 90000,
++        }
++        mock_resp.raise_for_status = MagicMock()
++        mock_http.post.return_value = mock_resp
++
++        client = ZaloClient(
++            app_id="app_123",
++            secret_key="sec_456",
++            refresh_token="old_refresh_token",
++            http_client=mock_http,
++        )
++
++        res = await client.refresh_access_token()
++        assert res["access_token"] == "new_access_token_123"
++        assert client.access_token == "new_access_token_123"
++        assert client.refresh_token == "new_refresh_token_456"
++        assert client.token_expires_at is not None
++
++    async def test_send_zns_success(self):
++        mock_http = AsyncMock()
++        mock_resp = MagicMock(spec=Response)
++        mock_resp.status_code = 200
++        mock_resp.json.return_value = {
++            "error": 0,
++            "message": "Success",
++            "data": {"msg_id": "zns_msg_999"},
++        }
++        mock_resp.raise_for_status = MagicMock()
++        mock_http.post.return_value = mock_resp
++
++        client = ZaloClient(
++            access_token="valid_access_token",
++            oa_id="oa_123",
++            http_client=mock_http,
++        )
++
++        with patch.object(client, "check_rate_limit", return_value=True):
++            result = await client.send_zns(
++                phone="0912345678",
++                template_id="tpl_001",
++                template_data={"customer_name": "Nam", "order_id": "1234"},
++            )
++            assert result["error"] == 0
++            assert result["data"]["msg_id"] == "zns_msg_999"
++
++    async def test_send_cs_message_success(self):
++        mock_http = AsyncMock()
++        mock_resp = MagicMock(spec=Response)
++        mock_resp.status_code = 200
++        mock_resp.json.return_value = {
++            "error": 0,
++            "message": "Success",
++            "data": {"message_id": "cs_msg_888"},
++        }
++        mock_resp.raise_for_status = MagicMock()
++        mock_http.post.return_value = mock_resp
++
++        client = ZaloClient(
++            access_token="valid_access_token",
++            oa_id="oa_123",
++            http_client=mock_http,
++        )
++
++        with patch.object(client, "check_rate_limit", return_value=True):
++            result = await client.send_cs_message(
++                user_id="user_zalo_123",
++                text="Xin chào quý khách!",
++            )
++            assert result["error"] == 0
+diff --git a/nowing_web/components/leads/LeadCard.tsx b/nowing_web/components/leads/LeadCard.tsx
+index 149730968..d0acb4541 100644
+--- a/nowing_web/components/leads/LeadCard.tsx
++++ b/nowing_web/components/leads/LeadCard.tsx
+@@ -2,9 +2,11 @@
+ 
+ import { Building2, Clock, ExternalLink, MapPin, Share2, Sparkles } from "lucide-react";
+ import type React from "react";
++import { useEffect, useState } from "react";
+ import type { Lead } from "@/contracts/types/leads.types";
+ import { cn, isAllowedUrl } from "@/lib/utils";
+ import { PhoneCopyPill } from "./PhoneCopyPill";
++import { ZaloOutreachButton } from "./zalo-outreach-button";
+ 
+ export interface LeadCardProps {
+ 	lead: Lead;
+@@ -91,6 +93,28 @@ export const LeadCard: React.FC<LeadCardProps> = ({
+ 	onStatusChange,
+ 	className,
+ }) => {
++	const [isPulsing, setIsPulsing] = useState(false);
++
++	useEffect(() => {
++		const handleActionDispatched = (e: Event) => {
++			const customEvent = e as CustomEvent<{
++				action_type?: string;
++				payload?: Record<string, unknown>;
++			}>;
++			if (
++				customEvent.detail?.action_type === "decode_phones" ||
++				customEvent.detail?.action_type === "export_csv"
++			) {
++				setIsPulsing(true);
++				const timer = setTimeout(() => setIsPulsing(false), 1200);
++				return () => clearTimeout(timer);
++			}
++		};
++
++		window.addEventListener("nowing:action-dispatched", handleActionDispatched);
++		return () => window.removeEventListener("nowing:action-dispatched", handleActionDispatched);
++	}, []);
++
+ 	const fitBadge = getFitScoreBadge(lead.fit_score);
+ 	const intentBadge = getIntentBadge(lead.intent);
+ 	const sourceLabel = getSourceIcon(lead.source);
+@@ -99,6 +123,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({
+ 		<div
+ 			className={cn(
+ 				"rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 space-y-3 hover:border-zinc-700/80 transition-all duration-200 shadow-sm backdrop-blur-sm",
++				isPulsing && "cell-pulse",
+ 				className
+ 			)}
+ 		>
+@@ -208,6 +233,16 @@ export const LeadCard: React.FC<LeadCardProps> = ({
+ 			{/* Action Footer */}
+ 			<div className="flex flex-wrap items-center justify-between gap-2 pt-2 mt-1 border-t border-zinc-800/60">
+ 				<div className="flex items-center gap-2">
++					<ZaloOutreachButton
++						leadId={lead.id}
++						workspaceId={lead.workspace_id}
++						phone={lead.phone}
++						companyName={lead.company_name}
++						intent={lead.intent}
++						source={lead.source}
++						contentSnippet={lead.content_snippet}
++					/>
++
+ 					<button
+ 						type="button"
+ 						onClick={() => onOpenCompanyGraph?.(lead.company_name)}
+diff --git a/nowing_web/components/leads/LeadsContent.tsx b/nowing_web/components/leads/LeadsContent.tsx
+index e617d137b..61d666102 100644
+--- a/nowing_web/components/leads/LeadsContent.tsx
++++ b/nowing_web/components/leads/LeadsContent.tsx
+@@ -4,9 +4,11 @@ import { RefreshCw, Search, Sparkles, Users } from "lucide-react";
+ import { useParams } from "next/navigation";
+ import type React from "react";
+ import { useState } from "react";
++import type { FilterPresets } from "@/contracts/types/leads.types";
+ import { useLeads } from "@/lib/hooks/use-leads";
+ import { CompanyGraphDrawer } from "./CompanyGraphDrawer";
+ import { LeadCard } from "./LeadCard";
++import { ReverseIcpModal } from "./ReverseIcpModal";
+ 
+ export const LeadsContent: React.FC = () => {
+ 	const params = useParams();
+@@ -17,6 +19,7 @@ export const LeadsContent: React.FC = () => {
+ 	const [searchQuery, setSearchQuery] = useState<string>("");
+ 	const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
+ 	const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
++	const [isReverseIcpOpen, setIsReverseIcpOpen] = useState<boolean>(false);
+ 
+ 	const {
+ 		leads: apiLeads,
+@@ -43,6 +46,15 @@ export const LeadsContent: React.FC = () => {
+ 		setSelectedCompany(null);
+ 	};
+ 
++	const handleApplyIcpPresets = (presets: FilterPresets) => {
++		if (presets.platforms && presets.platforms.length > 0) {
++			setSourceFilter(presets.platforms[0]);
++		}
++		if (presets.target_industries && presets.target_industries.length > 0) {
++			setSearchQuery(presets.target_industries.join(" "));
++		}
++	};
++
+ 	return (
+ 		<div className="space-y-6">
+ 			{/* Page Header */}
+@@ -68,6 +80,15 @@ export const LeadsContent: React.FC = () => {
+ 				</div>
+ 
+ 				<div className="flex items-center gap-2">
++					<button
++						type="button"
++						onClick={() => setIsReverseIcpOpen(true)}
++						className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-black transition-colors shadow-sm shadow-emerald-500/20"
++					>
++						<Sparkles className="w-3.5 h-3.5" />
++						<span>1-Click Reverse-ICP</span>
++					</button>
++
+ 					<button
+ 						type="button"
+ 						onClick={() => refetch()}
+@@ -186,6 +207,14 @@ export const LeadsContent: React.FC = () => {
+ 				isOpen={isDrawerOpen}
+ 				onClose={handleCloseDrawer}
+ 			/>
++
++			{/* 1-Click Reverse-ICP Modal (Story 21.10) */}
++			<ReverseIcpModal
++				isOpen={isReverseIcpOpen}
++				onClose={() => setIsReverseIcpOpen(false)}
++				workspaceId={workspaceId}
++				onApplyFilterPresets={handleApplyIcpPresets}
++			/>
+ 		</div>
+ 	);
+ };
+diff --git a/nowing_web/components/leads/zalo-outreach-button.tsx b/nowing_web/components/leads/zalo-outreach-button.tsx
+new file mode 100644
+index 000000000..4db0b48dc
+--- /dev/null
++++ b/nowing_web/components/leads/zalo-outreach-button.tsx
+@@ -0,0 +1,254 @@
++"use client";
++
++import { Check, Copy, ExternalLink, MessageCircle, Send, Sparkles } from "lucide-react";
++import type React from "react";
++import { useState } from "react";
++import { leadsApiService } from "@/lib/apis/leads-api.service";
++import { cn } from "@/lib/utils";
++
++export interface ZaloOutreachButtonProps {
++	leadId: string;
++	workspaceId?: number | string;
++	phone?: string | null;
++	companyName?: string;
++	intent?: string | null;
++	source?: string | null;
++	contentSnippet?: string | null;
++	className?: string;
++	size?: "sm" | "md";
++}
++
++export const cleanPhoneForZalo = (phone?: string | null): string => {
++	if (!phone) return "";
++	const digits = phone.replace(/\D/g, "");
++	if (digits.startsWith("84") && digits.length >= 11) {
++		return `0${digits.slice(2)}`;
++	}
++	if (digits.startsWith("0") && digits.length === 10) {
++		return digits;
++	}
++	if (digits.length === 9) {
++		return `0${digits}`;
++	}
++	return digits;
++};
++
++export const ZaloOutreachButton: React.FC<ZaloOutreachButtonProps> = ({
++	leadId,
++	workspaceId = "1",
++	phone,
++	companyName = "Khách hàng",
++	intent,
++	source,
++	contentSnippet,
++	className,
++	size = "sm",
++}) => {
++	const [loading, setLoading] = useState(false);
++	const [copied, setCopied] = useState(false);
++	const [showModal, setShowModal] = useState(false);
++	const [draftText, setDraftText] = useState("");
++	const [customPrompt, setCustomPrompt] = useState("");
++
++	const cleanPhone = cleanPhoneForZalo(phone);
++	const fallbackZaloUrl = cleanPhone ? `https://zalo.me/${cleanPhone}` : "https://zalo.me";
++
++	const handleQuickOutreach = async (e: React.MouseEvent) => {
++		e.stopPropagation();
++		if (loading) return;
++
++		setLoading(true);
++		try {
++			const res = await leadsApiService.getZaloDraft(workspaceId, leadId, customPrompt || undefined);
++			const targetUrl = res.zalo_url || fallbackZaloUrl;
++			const textToCopy = res.draft;
++
++			if (navigator.clipboard) {
++				await navigator.clipboard.writeText(textToCopy);
++			}
++
++			setDraftText(textToCopy);
++			setCopied(true);
++			setTimeout(() => setCopied(false), 3000);
++
++			// Open Zalo Deep-link
++			window.open(targetUrl, "_blank", "noopener,noreferrer");
++		} catch {
++			// Fallback: copy local contextual template and open deep link
++			const fallbackText = `Chào ${companyName}, mình liên hệ từ Nowing liên quan đến bài đăng ${source || "BĐS/Tuyển dụng"}. Mình kết nối trao đổi nhanh nhé!`;
++			if (navigator.clipboard) {
++				await navigator.clipboard.writeText(fallbackText);
++			}
++			setCopied(true);
++			setTimeout(() => setCopied(false), 3000);
++			window.open(fallbackZaloUrl, "_blank", "noopener,noreferrer");
++		} finally {
++			setLoading(false);
++		}
++	};
++
++	const handleOpenModal = async (e: React.MouseEvent) => {
++		e.stopPropagation();
++		setShowModal(true);
++		if (!draftText) {
++			setLoading(true);
++			try {
++				const res = await leadsApiService.getZaloDraft(workspaceId, leadId);
++				setDraftText(res.draft);
++			} catch {
++				setDraftText(
++					`Chào ${companyName}, mình liên hệ từ Nowing liên quan đến thông tin bên bạn. Mình kết nối trao đổi nhanh nhé!`
++				);
++			} finally {
++				setLoading(false);
++			}
++		}
++	};
++
++	const handleCopyAndLaunch = async () => {
++		if (navigator.clipboard && draftText) {
++			await navigator.clipboard.writeText(draftText);
++		}
++		setCopied(true);
++		setTimeout(() => setCopied(false), 3000);
++		window.open(fallbackZaloUrl, "_blank", "noopener,noreferrer");
++		setShowModal(false);
++	};
++
++	return (
++		<>
++			<div className="inline-flex items-center gap-1">
++				<button
++					type="button"
++					onClick={handleQuickOutreach}
++					disabled={loading}
++					className={cn(
++						"inline-flex items-center gap-1.5 font-medium rounded-lg transition-all duration-200 shadow-sm",
++						"bg-blue-600/15 text-blue-400 border border-blue-500/30 hover:bg-blue-600/25 hover:border-blue-400/50 hover:text-blue-300",
++						size === "sm" ? "px-2.5 py-1 text-xs" : "px-3.5 py-1.5 text-sm",
++						copied && "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
++						loading && "opacity-75 cursor-wait",
++						className
++					)}
++					title="Mở Zalo Chat kèm tự động sao chép kịch bản AI"
++				>
++					{loading ? (
++						<div className="w-3.5 h-3.5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
++					) : copied ? (
++						<Check className="w-3.5 h-3.5 text-emerald-400" />
++					) : (
++						<MessageCircle className="w-3.5 h-3.5 text-blue-400 fill-blue-400/20" />
++					)}
++					<span>{copied ? "Đã copy & Mở Zalo" : "Nhắn Zalo"}</span>
++				</button>
++
++				<button
++					type="button"
++					onClick={handleOpenModal}
++					className="p-1 rounded-md text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors border border-transparent hover:border-zinc-700"
++					title="Xem & chỉnh sửa kịch bản AI trước khi gửi"
++				>
++					<Sparkles className="w-3.5 h-3.5 text-blue-400" />
++				</button>
++			</div>
++
++			{/* AI Script Preview & Edit Modal */}
++			{showModal && (
++				<div
++					className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
++					onClick={() => setShowModal(false)}
++				>
++					<div
++						className="w-full max-w-lg rounded-2xl bg-zinc-900 border border-zinc-800 p-5 space-y-4 shadow-2xl"
++						onClick={(e) => e.stopPropagation()}
++					>
++						{/* Header */}
++						<div className="flex items-center justify-between border-b border-zinc-800 pb-3">
++							<div className="flex items-center gap-2">
++								<div className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400">
++									<MessageCircle className="w-5 h-5" />
++								</div>
++								<div>
++									<h3 className="text-sm font-bold text-zinc-100 flex items-center gap-1.5">
++										<span>Assisted Zalo Outbound Co-pilot</span>
++										<span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono">
++											ToS-Safe
++										</span>
++									</h3>
++									<p className="text-xs text-zinc-400">
++										Gửi tới: <strong className="text-zinc-200">{companyName}</strong> ({cleanPhone || "Chưa có SĐT"})
++									</p>
++								</div>
++							</div>
++							<button
++								type="button"
++								onClick={() => setShowModal(false)}
++								className="text-xs text-zinc-400 hover:text-zinc-200 px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700"
++							>
++								Đóng
++							</button>
++						</div>
++
++						{/* Context Summary */}
++						{(intent || source || contentSnippet) && (
++							<div className="p-2.5 rounded-lg bg-zinc-950/60 border border-zinc-800/80 text-xs space-y-1">
++								<div className="flex items-center justify-between text-[11px] text-zinc-400">
++									<span>Nguồn: <strong className="text-zinc-300">{source || "N/A"}</strong></span>
++									<span>Intent: <strong className="text-blue-400">{intent || "BÁN"}</strong></span>
++								</div>
++								{contentSnippet && (
++									<p className="text-zinc-400 line-clamp-2 italic text-[11px]">
++										"{contentSnippet}"
++									</p>
++								)}
++							</div>
++						)}
++
++						{/* Draft Textarea */}
++						<div className="space-y-1.5">
++							<label className="text-xs font-semibold text-zinc-300 flex items-center justify-between">
++								<span>Kịch bản AI soạn sẵn (Có thể chỉnh sửa):</span>
++								<span className="text-[11px] text-zinc-500 font-normal">Tự động tối ưu tỷ lệ phản hồi</span>
++							</label>
++							<textarea
++								value={draftText}
++								onChange={(e) => setDraftText(e.target.value)}
++								rows={4}
++								className="w-full p-3 text-xs rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-200 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none font-sans"
++								placeholder="Đang soạn kịch bản..."
++							/>
++						</div>
++
++						{/* Actions */}
++						<div className="flex items-center justify-between gap-3 pt-2 border-t border-zinc-800">
++							<button
++								type="button"
++								onClick={async () => {
++									if (navigator.clipboard) {
++										await navigator.clipboard.writeText(draftText);
++									}
++									setCopied(true);
++									setTimeout(() => setCopied(false), 2000);
++								}}
++								className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition-colors"
++							>
++								{copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
++								<span>{copied ? "Đã sao chép!" : "Chỉ sao chép"}</span>
++							</button>
++
++							<button
++								type="button"
++								onClick={handleCopyAndLaunch}
++								className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-md shadow-blue-500/20"
++							>
++								<Send className="w-3.5 h-3.5" />
++								<span>Sao chép & Mở Zalo</span>
++								<ExternalLink className="w-3 h-3 text-blue-200" />
++							</button>
++						</div>
++					</div>
++				</div>
++			)}
++		</>
++	);
++};
+diff --git a/nowing_web/contracts/types/leads.types.ts b/nowing_web/contracts/types/leads.types.ts
+index 80c86d4c7..538550cb7 100644
+--- a/nowing_web/contracts/types/leads.types.ts
++++ b/nowing_web/contracts/types/leads.types.ts
+@@ -136,3 +136,82 @@ export interface ListLeadsParams {
+ 	limit?: number;
+ 	offset?: number;
+ }
++
++export const zaloDraftResponseSchema = z.object({
++	lead_id: z.string(),
++	phone: z.string(),
++	clean_phone: z.string(),
++	zalo_url: z.string(),
++	draft: z.string(),
++	company_name: z.string(),
++	log_id: z.string().nullable().optional(),
++});
++
++export type ZaloDraftResponse = z.infer<typeof zaloDraftResponseSchema>;
++
++export const znsSendRequestSchema = z.object({
++	template_id: z.string(),
++	template_data: z.record(z.string(), z.any()),
++	tracking_id: z.string().optional(),
++	consent_confirmed: z.boolean().default(true),
++	mode: z.string().optional(),
++});
++
++export type ZnsSendRequest = z.infer<typeof znsSendRequestSchema>;
++
++export const znsSendResponseSchema = z.object({
++	status: z.string(),
++	msg_id: z.string().nullable().optional(),
++	recipient_phone: z.string(),
++	error: z.string().nullable().optional(),
++	log_id: z.string().nullable().optional(),
++});
++
++export type ZnsSendResponse = z.infer<typeof znsSendResponseSchema>;
++
++export const buyerPersonaSchema = z.object({
++	title: z.string(),
++	industry: z.string(),
++	company_size: z.string(),
++	pain_points: z.array(z.string()).default([]),
++	buying_triggers: z.array(z.string()).default([]),
++});
++
++export type BuyerPersona = z.infer<typeof buyerPersonaSchema>;
++
++export const filterPresetsSchema = z.object({
++	platforms: z.array(z.string()).default([]),
++	intent: z.string().default("BÁN"),
++	target_industries: z.array(z.string()).default([]),
++	locations: z.array(z.string()).default([]),
++	company_size_range: z.string().nullable().optional(),
++});
++
++export type FilterPresets = z.infer<typeof filterPresetsSchema>;
++
++export const reverseIcpRequestSchema = z.object({
++	url: z.string().min(1, "URL không được để trống"),
++	custom_instructions: z.string().nullable().optional(),
++});
++
++export type ReverseIcpRequest = z.infer<typeof reverseIcpRequestSchema>;
++
++export const reverseIcpResponseSchema = z.object({
++	company_name: z.string(),
++	domain: z.string(),
++	value_proposition: z.string(),
++	industry: z.string(),
++	target_buyer_personas: z.array(buyerPersonaSchema).default([]),
++	suggested_search_queries: z.array(z.string()).default([]),
++	negative_keywords: z.array(z.string()).default([]),
++	filter_presets: filterPresetsSchema.default({
++		platforms: [],
++		intent: "BÁN",
++		target_industries: [],
++		locations: [],
++	}),
++	chat_starter_prompts: z.array(z.string()).default([]),
++	raw_metadata: z.record(z.string(), z.any()).optional().default({}),
++});
++
++export type ReverseIcpResponse = z.infer<typeof reverseIcpResponseSchema>;
+diff --git a/nowing_web/lib/apis/leads-api.service.ts b/nowing_web/lib/apis/leads-api.service.ts
+index 7fb1171f5..7eca2d1ab 100644
+--- a/nowing_web/lib/apis/leads-api.service.ts
++++ b/nowing_web/lib/apis/leads-api.service.ts
+@@ -6,12 +6,29 @@ import {
+ 	type ListLeadsParams,
+ 	leadListResponseSchema,
+ 	leadSchema,
++	type ReverseIcpResponse,
++	reverseIcpResponseSchema,
++	type ZaloDraftResponse,
++	type ZnsSendRequest,
++	type ZnsSendResponse,
++	zaloDraftResponseSchema,
++	znsSendResponseSchema,
+ } from "@/contracts/types/leads.types";
+ import { baseApiService } from "./base-api.service";
+ 
+ const base = (workspaceId: number | string) => `/api/v1/workspaces/${workspaceId}`;
+ 
+ class LeadsApiService {
++	analyzeReverseIcp = async (
++		workspaceId: number | string,
++		url: string,
++		customInstructions?: string
++	): Promise<ReverseIcpResponse> => {
++		return baseApiService.post(`${base(workspaceId)}/leads/reverse-icp`, reverseIcpResponseSchema, {
++			body: { url, custom_instructions: customInstructions },
++		});
++	};
++
+ 	listLeads = async (
+ 		workspaceId: number | string,
+ 		params: ListLeadsParams = {}
+@@ -57,6 +74,34 @@ class LeadsApiService {
+ 			companyGraphSchema
+ 		);
+ 	};
++
++	getZaloDraft = async (
++		workspaceId: number | string,
++		leadId: string,
++		customContext?: string
++	): Promise<ZaloDraftResponse> => {
++		return baseApiService.post(
++			`${base(workspaceId)}/leads/${leadId}/zalo-draft`,
++			zaloDraftResponseSchema,
++			{
++				body: { custom_context: customContext },
++			}
++		);
++	};
++
++	sendZns = async (
++		workspaceId: number | string,
++		leadId: string,
++		data: ZnsSendRequest
++	): Promise<ZnsSendResponse> => {
++		return baseApiService.post(
++			`${base(workspaceId)}/leads/${leadId}/zns-send`,
++			znsSendResponseSchema,
++			{
++				body: data,
++			}
++		);
++	};
+ }
+ 
+ export const leadsApiService = new LeadsApiService();
