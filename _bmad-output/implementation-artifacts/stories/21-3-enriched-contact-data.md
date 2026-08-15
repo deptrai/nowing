@@ -237,6 +237,19 @@ So that I can reach out to the right decision-makers.
 - [x] 11.4 Migration test for `200_add_enrichment_tables.py`.
 - [x] 11.5 Target coverage ≥ 90% for enrichment service.
 
+### Review Findings
+- [ ] [Review][Patch] IDOR & Cross-Tenant Isolation check in resolve_lead_phone [nowing_backend/app/services/phone_waterfall_service.py:5931]
+- [ ] [Review][Patch] Batdongsan Mutex Lock fallback when token lock is busy [nowing_backend/app/services/phone_waterfall_service.py:5754]
+- [ ] [Review][Patch] Sanitize raw_response phone in PhoneWaterfallLog (AD-25/49) [nowing_backend/app/services/phone_waterfall_service.py:6102]
+- [ ] [Review][Patch] Restrict Chợ Tốt regex listing extraction to Chợ Tốt sources only [nowing_backend/app/services/phone_waterfall_service.py:5821]
+- [ ] [Review][Patch] with_for_update() row lock & refund to original payer in auto_refund_lead [nowing_backend/app/services/billing_service.py:6258]
+- [ ] [Review][Patch] Enforce LEADS_ENRICH or LEADS_WRITE permission on resolve-phone endpoint [nowing_backend/app/routes/leads_routes.py:7027]
+- [ ] [Review][Patch] Call set_request_tenant_context in Celery worker tasks [nowing_backend/app/tasks/phone_waterfall_worker.py:6415]
+- [ ] [Review][Patch] Mask phone in get_company_graph and _map_lead_to_read [nowing_backend/app/routes/leads_routes.py:6886]
+- [ ] [Review][Patch] Use VerifiedContactEncryption instead of local PhoneEncryption [nowing_backend/app/services/phone_waterfall_service.py:5673]
+- [ ] [Review][Patch] Fix VerifiedContact.phone_masked assertion in integration tests [nowing_backend/tests/integration/services/test_phone_waterfall_integration.py:8497]
+- [ ] [Review][Patch] Align Alembic migration revision 213 after 212 [nowing_backend/alembic/versions/192_add_phone_waterfall_logs_and_refund.py]
+
 ## Dev Notes
 
 ### Architecture Patterns & Constraints
@@ -498,4 +511,22 @@ Last Updated: 2026-08-15
 - MCP: `nowing_mcp/tests` 112 passed (4 new `test_enrichment_tools.py`).
 - ruff check + format clean on all story files.
 - MCP tools `nowing_enrich_lead` / `nowing_list_contacts` added to catalog + `selfcheck.py` EXPECTED_TOOLS.
-- Story 21.1/21.2 had no MCP tool tests; 21.3 adds them (exceeds prior pattern).
+
+### Story 21.3 P0: Vietnam Phone & Contact Waterfall Engine Implementation
+- **3-Tier Phone Waterfall Engine:**
+  - Tier 1: Batdongsan Token Pool & Phone Reveal with Redis distributed mutex (`batdongsan:token:{id}`) and token rotation (`ScraperPlatformAccountRotator`).
+  - Tier 2: Chợ Tốt Mobile API with RSA PKCS1v15 encrypted list_id and device spoofing.
+  - Tier 3: Passive Carrier Prefix validation (Viettel, Vinaphone/VNPT, MobiFone, Vietnamobile, Gmobile, Itelecom, Wintel) + HLR/Zalo verification.
+- **Anti-ReDoS & Security:**
+  - `<50ms` execution bound on normalization via `time.perf_counter()`.
+  - Sensitive PII AES-256 encrypted at rest in `VerifiedContact` vault (`TokenEncryption`).
+  - Phone masked as `0908***456` in logs, non-privileged endpoints, and cache.
+- **Billing & 24h Auto-Refund SLA:**
+  - 1.5 credits (1,500,000 micros) debited per success via `BillingEvent(event_type="contact_enrichment")`. 0 credits charged if all tiers fail.
+  - 30-day Redis cache (`enrich:phone:{hash}`) prevents repeat charges.
+  - Auto-Refund SLA: reports within 24h revert 100% credits to wallet balance, log negative `BillingEvent(event_type="lead_refund")`, mark contact `is_valid=False`, and evict Redis cache.
+- **Verification:**
+  - `tests/unit/services/test_phone_waterfall_service.py`: 16/16 unit tests passed in 0.98s.
+  - `tests/integration/services/test_phone_waterfall_integration.py`: integration test suite created.
+  - `ruff check` & `ruff format`: 0 errors.
+  - `python3 scripts/check-docs-drift.py`: PASSED.

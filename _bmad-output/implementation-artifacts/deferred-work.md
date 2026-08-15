@@ -656,3 +656,116 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 
 - **Finding:** ReDoS timeout not enforced on initial `normalize_vietnamese_text` regex calls — the 50ms timer only checks inside the candidate loop, not the initial normalization regex. (app/proprietary/platforms/xactions/phone_extractor.py:76-145)
   - **Resolution:** Moved `start_time` before `normalize_vietnamese_text` and added a timeout check immediately after; added a 200k input-length cap as a secondary defense.
+
+## Deferred from: code review of 21-8-social-ingress-via-xactions-integration (2026-08-15 second pass)
+
+- **Finding:** No trigram/GIN index on social search keyword search — `content.ilike('%...%')` and `author_name.ilike('%...%')` will full-scan `social_posts` as the table grows. (app/capabilities/social/search_leads/executor.py:65-72; app/db.py:5067)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** Query performance issue, not correctness. Add `pg_trgm` GIN index when search latency becomes a concern or as part of an NFR/performance pass.
+
+- **Finding:** Model/migration index drift — SQLAlchemy model uses `ix_social_posts_target_id` while migration 204 creates `idx_social_posts_target_id`; `updated_at` is `index=True` in model but missing in migration; `published_at` index is `ASC` in model but `DESC` in migration. (app/db.py:5050-5120; alembic/versions/204_add_social_tables.py:78-89)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** Duplicate or mismatched indexes waste space but do not affect correctness. Resolve in a future migration-hardening pass.
+
+- **Finding:** `social_routes.py` only exposes target creation — no list, get, update, or delete endpoints. (app/routes/social_routes.py:52-103)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** CRUD completeness is out-of-scope for the MVP; add endpoints when the UI requires management screens.
+
+- **Finding:** `target_url` and `proxy_url` are stored as arbitrary strings with no URL/scheme validation. (app/routes/social_routes.py:26-32, 79-91)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** SSRF risk is real but the URLs are consumed by the XActions scraper, which already has its own proxy parsing. Add `HttpUrl` validation in a hardening pass.
+
+- **Finding:** Search/target input schemas lack enum validation for platform, intent, category, status and no bounds for keyword/offset. (app/capabilities/social/search_leads/schemas.py:11-13; app/routes/social_routes.py:22-32)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** Typos produce empty results rather than data corruption. Add Pydantic enums/CHECK constraints in a future validation pass.
+
+- **Finding:** Social search ordering places `NULL published_at` first. (app/capabilities/social/search_leads/executor.py:77)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** Default `DESC NULLS FIRST` ordering may show undated posts above recent ones. Add `nulls_last` when UX confirms newest-first intent.
+
+- **Finding:** `SocialMonitoredTarget.posts` and `Workspace` social relationships use `cascade="all, delete-orphan"` without `passive_deletes=True`. (app/db.py:5048-5051, 2110-2121)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** PostgreSQL FKs already have `ON DELETE CASCADE`; SQLAlchemy loads children on delete. Add `passive_deletes=True` in a performance pass.
+
+- **Finding:** Redis consumer group starts at stream ID `0` and never reclaims pending messages from crashed consumers. (app/tasks/social_stream_worker.py:500-530)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** New group reading from beginning is recoverable, and `XAUTOCLAIM` is not required for the first release. Add when consumer durability is prioritized.
+
+- **Finding:** `run_social_stream_consumer` runs a single `xreadgroup` batch and returns, not a continuous processing loop. (app/tasks/social_stream_worker.py:481-584)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** Intended as a Celery-driven tick; if external scheduling is chosen, this is fine. Revisit when finalizing deployment/operations model.
+
+- **Finding:** `published_at` parser is narrow and may corrupt RFC-2822/lowercase-z timestamps. (app/tasks/social_stream_worker.py:109-121)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** Current XActions payloads use ISO-8601. Add broader parsing if Twitter timestamps remain unparsed in production.
+
+- **Finding:** Engagement bonus thresholds are strict `>` (off-by-one) at 10 reactions / 5 comments. (app/tasks/social_stream_worker.py:150-151)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** Boundary behavior is marginal; adjust to `>=` if product confirms inclusive thresholds.
+
+- **Finding:** Facebook group ingest always passes `auth_cookie=None`; per-target cookie store not implemented. (app/tasks/celery_tasks/social_xactions_ingest.py:115-121)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** Global env cookies are acceptable for the first release. Add per-target cookie column when multi-tenant Facebook scraping is required.
+
+- **Finding:** Email channel lacks outbound metrics, partial SMTP credentials silently skip auth, and missing-SMTP_HOST warning is logged per subscriber. (app/alerts/engine/notify.py:125-137)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** Operational observability improvements; add `record_gateway_outbound` and centralized env checks after core email path is stable.
+
+## Resolved from: second pass code review of 21-8-social-ingress-via-xactions-integration (2026-08-15)
+
+- **Finding:** Stream messages that fail validation or persistence are not ACKed or dead-lettered — bad messages remain in PEL. (app/tasks/social_stream_worker.py:579-625)
+  - **Resolution:** `run_social_stream_consumer` now moves `None` returns to `stream:social:failed` and ACKs.
+
+- **Finding:** `workspace_id` from stream payload is not validated against `SocialMonitoredTarget.workspace_id` — cross-tenant write possible. (app/tasks/social_stream_worker.py:389-426)
+  - **Resolution:** Worker now resolves the target, compares `workspace_id`, and rejects mismatches.
+
+- **Finding:** Per-target scheduler uses non-atomic `exists`/`delay` and overrides short `scrape_interval_minutes` with a 300s min TTL. (app/tasks/celery_tasks/social_xactions_ingest.py:31-70, 216-248)
+  - **Resolution:** Added a 60s atomic per-target scheduling lock (`nx=True, ex=60`) and clamped intervals to `[1, 1440]`.
+
+- **Finding:** Alert rule evaluation is not isolated and can abort all rules for a post. (app/tasks/social_stream_worker.py:325-380)
+  - **Resolution:** Each rule is wrapped in `try/except`; `min_fit_score` and `keyword` are coerced/validated.
+
+- **Finding:** Lead dedup by `source_url` matches all leads with NULL/empty `source_url`; `raw_entities` not shape-guarded. (app/tasks/social_stream_worker.py:203-242)
+  - **Resolution:** Skip dedup when `source_url` is empty; coerce `raw_entities` values to string lists before indexing.
+
+- **Finding:** `SMTP_PORT` parsing crashes on malformed/empty env. (app/config/__init__.py:1345)
+  - **Resolution:** `SMTP_PORT = _env_int("SMTP_PORT", 587)`.
+
+- **Finding:** Email channel unreachable because alert schema only allows `in_app`/`telegram`. (app/alerts/schemas.py:34)
+  - **Resolution:** Added `email` to the allowed set.
+
+- **Finding:** Email subject/body not UTF-8 safe and SMTP has no timeout/SSL. (app/alerts/engine/notify.py:116-145)
+  - **Resolution:** Use `Header`/`MIMEText(..., "plain", "utf-8")`; 10s socket timeout; `SMTP_SSL` for port 465.
+
+- **Finding:** `SocialSearchLeadsOutput.total` is page size; tenant filter is redundant. (app/capabilities/social/search_leads/executor.py:60-95)
+  - **Resolution:** `total` is now `func.count()`; filter uses single `workspace_id` equality; `NULL published_at` last.
+
+- **Finding:** `SocialPostItem` can fail on malformed `raw_entities`. (app/capabilities/social/search_leads/executor.py:88-95)
+  - **Resolution:** Coerce `phones`/`emails`/`prices`/`locations` to `list[str]` and drop `None`.
+
+- **Finding:** `create_db_and_tables` swallows schema-creation errors. (app/db.py:3910-3916)
+  - **Resolution:** Removed the broad `try/except` around `Base.metadata.create_all` and `ensure_publication`.
+
+- **Finding:** Integration test cannot persist because worker opens a separate session. (tests/integration/platforms/test_social_redis_stream.py:97-104)
+  - **Resolution:** `run_social_stream_consumer` accepts a `session` parameter; the test passes `platform_db_session`.
+
+- **Finding:** Unit test for search uses unconditional mock and would fail real SQL. (tests/unit/capabilities/test_social_search_leads.py:33-61)
+  - **Resolution:** Fixture now distinguishes count vs SELECT and uses deterministic `MagicMock` results.
+
+- **Finding:** `threshold_cross` first-run is suppressed. (app/alerts/engine/execute.py:158-174)
+  - **Resolution:** Execute `diff_snapshots` with an empty previous snapshot for `threshold_cross`, so first-run threshold crossing fires.
+
+- **Finding:** Stream consumer `run_social_stream_consumer` is not wired to Celery/beat. (app/tasks/social_stream_worker.py:481-584, app/celery_app.py:295-300)
+  - **Resolution:** Added `consume_social_stream` Celery task and 5s beat schedule.
+
+- **Finding:** Unique constraints on social tables are not workspace-scoped. (app/db.py:5009-5061; alembic/versions/211_social_unique_workspace_scoped.py)
+  - **Resolution:** Model and migration `211` now use `(workspace_id, platform, target_id)` and `(workspace_id, platform, external_post_id)`.
+
+- **Finding:** `social_search_posts` helper opens an unauthored session from raw `workspace_id`. (app/capabilities/social/search_leads/__init__.py:31-50)
+  - **Resolution:** Helper now requires `CapabilityContext` and no longer accepts raw `workspace_id`.
+
+- **Finding:** `published_at` parser replaces all `Z` and misses lowercase `z`. (app/tasks/social_stream_worker.py:109-121)
+  - **Resolution:** Normalize only a trailing `Z`/`z` to `+00:00`.
+
+- **Finding:** Engagement bonus thresholds are strict `>` (off-by-one). (app/tasks/social_stream_worker.py:150-151)
+  - **Resolution:** Changed to `>=`.

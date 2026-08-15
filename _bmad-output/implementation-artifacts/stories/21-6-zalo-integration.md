@@ -1,6 +1,10 @@
+---
+baseline_commit: b1f688eee31cff54ede82d9a11a836815cdd827f
+---
+
 # Story 21.6: Zalo Integration (Vietnam Market)
 
-Status: ready-for-dev
+Status: in-progress
 
 ## Story
 

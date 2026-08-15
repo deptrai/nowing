@@ -153,14 +153,60 @@ So that I can capture real-time social conversations and extract contact numbers
 - [x] [Review][Resolved] Added `tests/unit/tasks/test_social_stream_worker.py` covering social post → `execute_alert_rule` and duplicate lead guard [medium]
 - [x] [Review][Resolved] ReDoS timeout now applies to the whole `extract_phone_numbers` call (global `time.perf_counter` before/after `normalize_vietnamese_text` and an input cap of 200k chars) [medium]
 
-## Verification (2026-08-15)
+### Review Findings — 2026-08-15 second pass (post-deferred-fixes)
+
+**Note:** Four review layers failed due to message rate limits: group2 Acceptance (agent f60e35df), group3 Acceptance (f22b9d7d), group4 Blind (fc78741e), group5 Blind (c0633181). The triage below is based on the 8 completed layers.
+
+#### decision-needed (resolved with best-practice defaults)
+- [x] [Review][Decision][Resolved] Stream consumer → wrapped as Celery task `consume_social_stream` and scheduled every 5s in `celery_app.py`. [app/tasks/celery_tasks/social_xactions_ingest.py:270-290, app/celery_app.py:295-300]
+- [x] [Review][Decision][Resolved] Unique constraints → workspace-scoped `(workspace_id, platform, target_id)` and `(workspace_id, platform, external_post_id)`; `app/db.py` and migration `211_social_unique_workspace_scoped.py` updated. [app/db.py:5009-5061; alembic/versions/211_social_unique_workspace_scoped.py]
+- [x] [Review][Decision][Resolved] `threshold_cross` first-run → fire when matched count crosses threshold (diff with empty previous snapshot). [app/alerts/engine/execute.py:158-174]
+- [x] [Review][Decision][Resolved] `social_search_posts` helper → require an authorized `CapabilityContext`; remove raw `workspace_id` shortcut. [app/capabilities/social/search_leads/__init__.py:31-50]
+
+#### patch
+- [x] [Review][Patch][Resolved] Stream messages that fail validation or persistence are now moved to dead-letter and ACKed. [app/tasks/social_stream_worker.py:579-625]
+- [x] [Review][Patch][Resolved] Event `workspace_id` is validated against the resolved target; mismatches are rejected. [app/tasks/social_stream_worker.py:389-426]
+- [x] [Review][Patch][Resolved] Scheduler enqueue uses an atomic per-target scheduling lock (`nx=True, ex=60`) and clamps `scrape_interval_minutes` to `[1, 1440]`. [app/tasks/celery_tasks/social_xactions_ingest.py:31-70, 238-248]
+- [x] [Review][Patch][Resolved] Alert rule evaluation is now isolated per rule with coerced `min_fit_score` and keyword validation. [app/tasks/social_stream_worker.py:325-380]
+- [x] [Review][Patch][Resolved] Lead dedup skips `source_url` when empty/None; `raw_entities` arrays are coerced to string lists. [app/tasks/social_stream_worker.py:203-242]
+- [x] [Review][Patch][Resolved] `SMTP_PORT` uses `_env_int` with safe default. [app/config/__init__.py:1345]
+- [x] [Review][Patch][Resolved] Email channel added to allowed notification channels. [app/alerts/schemas.py:34]
+- [x] [Review][Patch][Resolved] Email subject/body use `Header` and `MIMEText(..., "plain", "utf-8")`; `_send_email_smtp` uses 10s timeout and `SMTP_SSL` for port 465. [app/alerts/engine/notify.py:116-145]
+- [x] [Review][Patch][Resolved] `SocialSearchLeadsOutput.total` now runs a real `count()` and results order `NULL published_at` last. [app/capabilities/social/search_leads/executor.py:60-95]
+- [x] [Review][Patch][Resolved] Search tenant filter simplified to a single `SocialPost.workspace_id == workspace_id` equality. [app/capabilities/social/search_leads/executor.py:55]
+- [x] [Review][Patch][Resolved] `SocialPostItem` fields are coerced from malformed `raw_entities` JSONB. [app/capabilities/social/search_leads/executor.py:88-95]
+- [x] [Review][Patch][Resolved] `create_db_and_tables` no longer swallows `Base.metadata.create_all` / `ensure_publication` exceptions. [app/db.py:3910-3916]
+- [x] [Review][Patch][Resolved] Integration test now passes `platform_db_session` to `run_social_stream_consumer` so the worker sees fixtures. [tests/integration/platforms/test_social_redis_stream.py:97-104]
+- [x] [Review][Patch][Resolved] Unit test fixture distinguishes count vs SELECT and uses deterministic `MagicMock` results. [tests/unit/capabilities/test_social_search_leads.py:33-61]
+
+#### unresolved
+- [ ] [Review][Patch] Migration 204 imports `config.embedding_model_instance.dimension` at migration load, breaking reproducibility — deferred to future migration-hardening pass. [alembic/versions/204_add_social_tables.py:21]
+
+#### defer
+- [x] [Review][Defer] No trigram/GIN index on keyword search; full table scan as table grows [app/capabilities/social/search_leads/executor.py:65-72; app/db.py:5067]
+- [x] [Review][Defer] Model/migration index name/ordering drift (`ix_` vs `idx_`, `published_at` ASC vs DESC, `updated_at` index missing in migration) [app/db.py:5050-5120; alembic/versions/204_add_social_tables.py:78-89]
+- [x] [Review][Defer] `social_routes.py` only exposes create endpoint, not list/get/update/delete [app/routes/social_routes.py:52-103]
+- [x] [Review][Defer] `target_url` and `proxy_url` lack URL scheme/SSRF validation [app/routes/social_routes.py:26-32, 79-91]
+- [x] [Review][Defer] Search/target input schemas lack platform/intent/category/status enums and `keyword`/`offset` bounds [app/capabilities/social/search_leads/schemas.py:11-13; app/routes/social_routes.py:22-32]
+- [x] [Review][Resolved] Social search ordering places `NULL published_at` first → now uses `desc(...).nulls_last()`. [app/capabilities/social/search_leads/executor.py:79]
+- [x] [Review][Defer] `SocialMonitoredTarget.posts` and `Workspace` social relationships use `cascade="all, delete-orphan"` without `passive_deletes=True` [app/db.py:5048-5051, 2110-2121]
+- [x] [Review][Defer] Consumer group starts at `"0"` and never reclaims pending messages from crashed consumers [app/tasks/social_stream_worker.py:500-530]
+- [x] [Review][Resolved] `run_social_stream_consumer` is invoked every 5s via Celery beat `consume_social_stream`; continuous internal loop deferred. [app/celery_app.py:295-300]
+- [x] [Review][Resolved] `published_at` parser now normalizes a trailing `Z`/`z` without mangling other Zs. [app/tasks/social_stream_worker.py:109-121]
+- [x] [Review][Resolved] Engagement bonus thresholds changed from `>` to `>=`. [app/tasks/social_stream_worker.py:150-151]
+- [x] [Review][Defer] Facebook group ingest always passes `auth_cookie=None`; per-target cookie store is a follow-up [app/tasks/celery_tasks/social_xactions_ingest.py:115-121]
+- [x] [Review][Defer] Email channel lacks outbound metrics, partial SMTP credentials skip auth, missing-SMTP_HOST warning is per-subscriber [app/alerts/engine/notify.py:125-137]
+- [x] [Review][Defer] Migration 204 imports `config.embedding_model_instance.dimension` at migration load, breaking reproducibility; deferred to a migration-hardening pass. [alembic/versions/204_add_social_tables.py:21]
+
+## Verification (2026-08-15 second pass)
 
 - `uv run ruff check` on changed backend files → passed.
-- `uv run pytest tests/unit/alerts/test_job_alert.py tests/unit/tasks/test_social_stream_worker.py tests/unit/proprietary/platforms/xactions tests/unit/capabilities/test_social_search_leads.py tests/unit/tasks/celery_tasks/test_social_xactions_ingest.py tests/integration/platforms/test_social_redis_stream.py -q` → 50 passed, 1 skipped (integration test skips when PostGIS is unavailable locally).
+- `uv run pytest tests/unit/alerts/test_job_alert.py tests/unit/tasks/test_social_stream_worker.py tests/unit/proprietary/platforms/xactions tests/unit/capabilities/test_social_search_leads.py tests/unit/tasks/celery_tasks/test_social_xactions_ingest.py tests/integration/platforms/test_social_redis_stream.py -q` → **24 passed, 1 skipped** (integration test skips when PostGIS is unavailable locally).
 - `uv run python` import smoke for `SocialPost`, `SocialMonitoredTarget`, `XActionsSocialAdapter`, `SocialPostData`, `process_social_post_event`, `social_search_posts` → OK.
 - `pnpm tsc --noEmit` from `nowing_web/` → passed (no web changes in this patch).
-- `uv run alembic heads` → `207 (head)` (new migration `207_add_social_post_composite_index`).
-- Added `POST /workspaces/{workspace_id}/social-monitored-targets` creation route in `app/routes/social_routes.py`.
-- Added optional `SMTP_*` config for alert email channel in `app/config/__init__.py` and `app/alerts/engine/notify.py`.
-- Added `offset` pagination to `social.search_leads`, a Redis dead-letter stream `stream:social:failed`, stricter email regex, `account_id` validation, and a composite index on `(platform, intent_tag, published_at)`.
-- End-to-end verification: scheduler → adapter → Redis Stream `stream:social:raw_posts` → worker → `social_posts` multi-tenant UPSERT.
+- `uv run alembic heads` → `211 (head)` (new migration `211_social_unique_workspace_scoped.py`).
+- Added workspace-scoped unique constraints and a new Alembic migration `211`.
+- Added Celery `consume_social_stream` task wired to beat every 5s.
+- Hardened `social_stream_worker` DLQ, tenant validation, alert rule isolation, and lead dedup.
+- Hardened email channel (schema, UTF-8, SMTPS/timeout) and `SMTP_PORT` parsing.
+- Fixed `social.search_leads` tenant filter, total count, nulls-last ordering, and raw-entity coercion.

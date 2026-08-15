@@ -45,13 +45,18 @@ Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Archite
 `[PROPOSED]` **FR-46 `vn_jobs.aggregate`** → **E12.4a–e P0 (split: normalization, dedupe/conflict, PII, ingest, exposure)** (cross-source normalization, dedupe, confidence, conflict detection).
 `[PROPOSED]` **FR-47 PII redaction for job data** → **E12.5 P0** (mask/drop phone, email, names before memory).
 
-`[PROPOSED]` **FR-63 Intent Signal Detection** → **E21.1** (buying signals: funding, hiring, tech stack, executive moves).
-`[PROPOSED]` **FR-64 Lead Scoring & Prioritization** → **E21.2** (composite score: fit + intent).
-`[PROPOSED]` **FR-65 Enriched Contact Data** → **E21.3** (verified email/phone via waterfall).
-`[PROPOSED]` **FR-66 Outbound Prospecting Automation** → **E21.4** (email in MVP; LinkedIn/Zalo deferred; multi-source lead generation from all FR-6 scrapers).
-`[PROPOSED]` **FR-67 CRM Integration & Write-Back** → **E21.5** (Salesforce, HubSpot, Pipedrive).
-`[DEFERRED]` **FR-68 Zalo Integration (Vietnam)** → **E21.6** (Zalo OA, 81% VN professionals; disabled in MVP).
-`[PROPOSED]` **FR-69 Outcome-Based Pricing** → **E21.7** (pay per meeting / lead).
+`[DONE]` **FR-63 Intent Signal Detection** → **E21.1** (buying signals: funding, hiring, tech stack, executive moves).
+`[DONE]` **FR-64 Lead Scoring & Prioritization** → **E21.2** (composite score: fit + intent).
+`[REVIEW]` **FR-65 Vietnam Phone & Contact Waterfall Engine** → **E21.3 P0** (3-tier: Batdongsan Token Pool → Chotot API → Zalo UID verification + Auto-refund SLA).
+`[DONE]` **FR-66 Outbound Prospecting Automation & Panel** → **E21.4** (email + multi-source lead generation from all scrapers).
+`[REVIEW]` **FR-67 CRM Integration & Lark Base / Google Sheets 1-Click Sync** → **E21.5** (HubSpot, Salesforce, Lark Base, Google Sheets, Pancake/Haravan webhooks).
+`[READY]` **FR-68 Vietnam Outbound Automation (Zalo OA & Telegram Sender)** → **E21.6 P0** (Zalo Assisted Chat Deep-link `zalo.me/{phone}`, Zalo OA ZNS, Telegram Bot alert).
+`[READY]` **FR-69 Outcome-Based Pricing & Transparent Credit Ledger** → **E21.7** ($0 chat & sequencer, pay per verified lead / outcome meeting).
+`[NEW]` **FR-80 1-Click Reverse-ICP from Website / Project URL** → **E21.10** (auto-generate buyer personas, scraper targets & filter presets).
+`[DONE]` **FR-81 Actionable Turn Dispatches (Suggested Action Pills)** → **E21.11** (contextual 1-click execution chips after scrape turns).
+`[NEW]` **FR-82 Viral Social Outbound Co-pilot** → **E21.12** (AI Voice Learner + Viral post analyzer via XActions FB/Twitter).
+`[DONE]` **FR-83 Multi-Table Tabs & Send/Export Hub** → **E21.13** (Zero-cache live reactive sync, tab manager, CSV/Lark export).
+`[NEW]` **FR-84 Smart Whitelist & Do-Not-Call (DNC) Compliance Engine** → **E21.14 P0** (Decree 91/2020/NĐ-CP, CSV import, opt-out protection).
 
 `[READY]` **FR-70 Telegram Web Preview Scraper** → **E22.1** (`t.me/s/{channel}`, no login, zero-risk).
 `[READY]` **FR-71 Telegram MTProto Client Ingestion** → **E22.2** (Telethon, private channels, discussion comments).
@@ -202,8 +207,8 @@ Public agent-chat endpoints, AgentConfig registry, client_id tenancy, cost trace
 ### Epic 20: Nowing Ecosystem Integration — Feed & Recall from chainlens-research — ✅ DONE
 `NowingIngestService` + `to_chunks()`, gap-fill caller, `NowingPrivateProvider`, service-to-service auth. **Open:** none.
 
-### Epic 21: Lead Gen Intelligence & Social Graph (Facebook & X/Twitter) — 🔄 IN PROGRESS
-Social lead generation via XActions integration (`/Users/luisphan/Documents/GitHub/XActions`), Facebook group posts, Twitter searches, intent tagging (`sell`/`buy`/`hiring`), B2B executive mapping, CRM sync, outcome pricing. **Open:** 21.1–21.9.
+### Epic 21: Lead Gen Intelligence & Social Graph — 🔄 IN PROGRESS
+Toàn diện hóa hệ thống Săn Lead & Tiếp cận Khách hàng Đa kênh: Phone Waterfall 3 tầng (Batdongsan/Chotot/Zalo), Zalo OA & Telegram Outbound Waterfall, XActions Social Ingress (Facebook Groups/Twitter), 1-Click Reverse-ICP từ Website/Dự án, AI Actionable Turn Dispatches, Viral Social Outbound Co-pilot, Multi-Table Tabs & Export Hub (Lark Base, Google Sheets) và DNC Compliance Engine. **Stories:** 21.1–21.14 (21.3, 21.6, 21.14 P0). Governed by `architecture-xactions-social-integration-2026-08-15` & `architecture-linkedin-b2b-2026-08-15`.
 
 ### Epic 22: Telegram Scraper & Channel Ingestion Engine — 🚀 READY FOR DEV
 Public channel web preview, MTProto Userbot session pool, distributed mutex lock, FloodWait cooldown state machine, regex entity extractor, S3 media chunk streaming, realtime stream daemon, Alert Engine trigger, AI Agent tools. **Open:** 22.1–22.3. Governed by `architecture-telegram-scraper-2026-08-15`.
@@ -2546,12 +2551,134 @@ _Kỹ thuật: Middleware in `app/middleware/tenant_context.py`, rate limiter wi
 
 ## Epic 21: Lead Gen Intelligence & Social Graph `[in-progress]`
 
-> **Epic Goal:** Trung tâm Xử lý, Chấm điểm và Quản trị Lead tập trung (Lead Intelligence & CRM Hub) của toàn hệ thống Nowing. Tiếp nhận dữ liệu khách hàng tiềm năng từ TẤT CẢ các phễu cào (BĐS Epic 10, Tuyển dụng Epic 12, Đấu thầu/Pháp lý Epic 16, TMĐT Epic 17, Telegram Epic 22 và Mạng xã hội qua `XActions`), bóc tách thông tin liên hệ (SĐT, Email, Tên), phân loại ý định thương mại (Intent Signals), chấm điểm Fit Score, lưu trữ vào Lead CRM và kích hoạt chiến dịch Outbound Automation.
+> **Epic Goal:** Trung tâm Xử lý, Chấm điểm và Quản trị Lead tập trung (Lead Intelligence & CRM Hub) của toàn hệ thống Nowing. Tiếp nhận dữ liệu khách hàng tiềm năng từ TẤT CẢ các phễu cào (BĐS Epic 10, Tuyển dụng Epic 12, Đấu thầu/Pháp lý Epic 16, TMĐT Epic 17, Telegram Epic 22 và Mạng xã hội qua `XActions`), bóc tách thông tin liên hệ (SĐT, Email, Tên), phân loại ý định thương mại (Intent Signals), chấm điểm Fit Score, lưu trữ vào Lead CRM và kích hoạt chiến dịch Outbound Automation (Zalo OA, Telegram, Email, Lark Base, Google Sheets).
 
 **Status:** `[in-progress]`  
-**Governed by Architecture Spines:** `architecture-xactions-social-integration-2026-08-15` & `architecture-linkedin-b2b-2026-08-15`.
+**Governed by Architecture Spines:** `architecture-xactions-social-integration-2026-08-15`, `architecture-linkedin-b2b-2026-08-15`, `epic21-architecture-update.md` (AD-31 to AD-49).  
+**UX Contracts:** `ux-contract-lead-intelligence-panel.md`, `ux-contract-workspace-mode-switch.md`, `ux-contract-sidebar-onboarding.md`, `ux-contract-positive-reply-notifications.md`.
 
-### Story 21.8: Social Ingress via XActions Integration (Facebook Groups & Twitter/X Feed) `[P1]`
+---
+
+### Story 21.1: Intent Signal Detection `[DONE]`
+
+As a sales development representative or investor,
+I want to detect buying signals from target companies and market posts (funding, hiring surges, tech stack changes, executive moves, social buy/sell requests),
+So that I can reach out at the exact moment of highest conversion intent.
+
+**Acceptance Criteria:**
+- **Given** a monitored company or social feed in workspace, **When** signals are detected, **Then** funding events, job postings, tech stack changes, and executive moves are surfaced with `signal_type`, `confidence` (float 0.0–1.0), `source_url`, and `detected_at` timestamp.
+- **Given** a signal is detected, **When** stored, **Then** it writes a `SignalEvent` row (with `id: UUID`, `workspace_id`, `client_id`) and a redacted `Memory` row of type `semantic` with tag `lead_signal` and `source_uuid: UUID`, `source_entity_type: 'signal_event'` (AD-44).
+- **Given** a signal trigger is configured, **When** it fires, **Then** it uses an AD-33 `AlertRule` template with `capability_id` set to a registered signal capability (e.g. `funding.signal`, `hiring.signal`) and `notification_channels` (`in_app`, `telegram`, `email`).
+- **Given** a signal scan runs, **When** metered, **Then** LLM token costs go to `TokenUsage`, and the business scan event writes to `BillingEvent` with `usage_type = "signal_scan"`.
+
+_FR-63 · AD-31 · AD-33 · AD-37 · AD-44_
+
+---
+
+### Story 21.2: Lead Scoring & Prioritization `[DONE]`
+
+As a sales manager,
+I want leads automatically scored and ranked by conversion likelihood (Fit Score & Intent Score),
+So that my team focuses attention on the highest-value prospects.
+
+**Acceptance Criteria:**
+- **Given** a lead list, **When** scored by `LeadScoringService`, **Then** each lead receives a composite score ($0.0 \le \text{Score} \le 100.0$) calculated as: $\text{Composite} = 0.5 \times \text{FitScore} + 0.5 \times \text{IntentScore}$.
+- **Given** computed scores, **When** displayed on UI, **Then** badges render in 3 color tiers (`🟩 Hot >= 80`, `🟨 Warm 50-79`, `⬜ Cold < 50`) with inline breakdown factors in a clickable popover.
+- **Given** a score calculation completes, **When** persisted, **Then** it writes a `LeadScore` row (`id: UUID`, `workspace_id`, `client_id`, `factors_json`, `computed_at`) and records a `BillingEvent` row with `usage_type = "lead_scoring"`.
+- **Given** vector search is unavailable, **When** scoring runs, **Then** it falls back to heuristic rule-based firmographic scoring without failing the request.
+
+_FR-64 · AD-31 · AD-38 · AD-42_
+
+---
+
+### Story 21.3: Vietnam Phone & Contact Waterfall Engine `[REVIEW / REFACTOR - P0]`
+
+As an SDR or real estate broker in Vietnam,
+I want a multi-tiered phone resolution engine that unlocks hidden mobile numbers from scraped listings with real-time verification and auto-refund SLA,
+So that I obtain verified, callable phone numbers without wasting credits on dead contacts.
+
+**Acceptance Criteria:**
+- **Given** a raw lead or scraped property listing (Batdongsan, Muaban, Chotot), **When** phone resolution is triggered, **Then** `PhoneWaterfallEngine` executes a 3-tier fallback sequence:
+  1. *Tier 1 (Batdongsan/Muaban Token Pool):* Uses internal session token pool with Redis Mutex rotation (`batdongsan:token:{id}`) to decode masked phone numbers (`0908 123 ***` $\to$ `0908 123 456`).
+  2. *Tier 2 (Chotot Mobile API):* Fallbacks to Chotot Mobile API `/v1/public/ad-listing/{id}?phone=true` with device UUID spoofing.
+  3. *Tier 3 (Zalo UID & Carrier Prefix Verification):* Validates carrier prefix (Viettel, VNPT, Mobi) and performs passive HLR/Zalo verification.
+- **Given** successful phone resolution, **When** contact is stored, **Then** raw phone is encrypted via AES-256 in `VerifiedContact` table (PII Vault, AD-25) and masked in standard API responses (`0908***456`).
+- **Given** phone resolution succeeds, **When** billed, **Then** it debits 1.5 credits (1,500đ) into `BillingEvent` with `usage_type = "contact_enrichment"`. If all tiers fail, 0 credits are debited.
+- **Given** a user reports a dead/disconnected number within 24h, **When** verified, **Then** `BillingService.auto_refund_lead()` refunds 100% credits back to `User.credit_micros_balance` and marks the number `invalid`.
+
+**Validation & Testing:**
+- Unit test: `test_waterfall_failover_circuit.py` — verifies transition Tier 1 $\to$ Tier 2 $\to$ Tier 3.
+- Unit test: `test_pii_encryption_at_rest.py` — asserts phone is encrypted in DB and redacted in logs.
+- Integration test: `test_auto_refund_credit_ledger.py` — verifies credit refund on dead number report.
+
+_FR-65 · AD-25 · AD-31 · AD-36 · AD-42 · Nghị định 13/2023/NĐ-CP_
+
+---
+
+### Story 21.4: Outbound Prospecting Automation & Panel `[DONE]`
+
+As a sales team,
+I want to create multi-step outbound email sequences connected to dynamic lead lists in a 2-panel split interface,
+So that I can scale personalized outreach while tracking live delivery, open, and reply rates.
+
+**Acceptance Criteria:**
+- **Given** a lead list, **When** a sequence is created, **Then** it uses independent Bounded Context tables (`Sequence`, `SequenceStep`, `SequenceEnrollment`, `SequenceEvent`, `SequenceRun`) with `id: UUID`, `workspace_id`, `client_id` (AD-39, not polluting `automations` table).
+- **Given** step execution, **When** personalized emails are sent via Amazon SES / SMTP, **Then** Jinja template renders lead attributes (name, company, property details) and records `BillingEvent` (`usage_type = "email_send"`).
+- **Given** inbound email replies, **When** received via SES webhook / IMAP idle, **Then** `ReplyClassifier` detects positive replies and dispatches instant notifications to user's Telegram / In-app inbox.
+
+_FR-66 · AD-31 · AD-33 · AD-39 · AD-42_
+
+---
+
+### Story 21.5: CRM Integration & Lark Base / Google Sheets 1-Click Sync `[REVIEW - P1]`
+
+As a sales operations manager,
+I want to sync lead data bi-directionally with HubSpot, Salesforce, Lark Base, and Google Sheets,
+So that reps work seamlessly within their existing company workflows.
+
+**Acceptance Criteria:**
+- **Given** an authorized CRM connection, **When** lead data changes, **Then** `CrmSyncService` executes read-first deduplication before pushing records to prevent overwriting existing CRM data (AD-40).
+- **Given** a user triggers "Export to Lark Base / Google Sheets", **When** processed by Celery worker, **Then** it batches rows (500 records/chunk) with column type mapping (Text, Phone, SingleSelect, Email) using idempotency header `X-Nowing-Sync-Id`.
+- **Given** local Vietnam CRMs (Pancake, Haravan, KiotViet, Getfly), **When** configured, **Then** webhook payloads are dispatched on lead status update events.
+
+_FR-67 · AD-3 · AD-31 · AD-40_
+
+---
+
+### Story 21.6: Vietnam Outbound Automation (Zalo OA & Telegram Sender) `[READY-FOR-DEV - P0]`
+
+As a Vietnamese sales representative or real estate agent,
+I want 1-click Zalo outreach assistance and Telegram notifications for high-intent leads,
+So that I can communicate with prospects on Vietnam's primary messaging channels (85%+ open rate) safely without account ban risks.
+
+**Acceptance Criteria:**
+- **Given** a verified lead with phone number, **When** SDR clicks `[ 💬 Nhắn Zalo ]` in UI, **Then** the client opens direct deep-link `https://zalo.me/{phone}` with AI pre-composed personalized greeting message based on listing details (Assisted Outbound Co-pilot mode, 100% ToS compliant).
+- **Given** an enterprise workspace with connected Zalo OA, **When** official transactional/meeting notifications are triggered, **Then** backend sends official ZNS (Zalo Notification Service) templates via Zalo OpenAPI.
+- **Given** a lead showing positive buying signal or reply, **When** triggered, **Then** Telegram Bot sends instant rich alert with inline action buttons (`[ Xem Lead ]`, `[ Gọi ngay ]`).
+
+_FR-68 · AD-31 · AD-41 · AD-SOC-7_
+
+---
+
+### Story 21.7: Outcome-Based Pricing & Transparent Credit Ledger `[READY-FOR-DEV - P1]`
+
+As a sales team founder,
+I want a transparent economic model with $0 cost for AI Chat & Sequencer and pay-as-you-go credits for verified leads and booked meetings,
+So that software costs directly reflect business value generated.
+
+**Acceptance Criteria:**
+- **Given** any workspace, **When** using AI Chat, transforming tables, creating sequences, or exporting CSVs, **Then** cost is 0 credits ($0.00).
+- **Given** enrichment or outcome events, **When** recorded, **Then** `BillingEvent` debits `User.credit_micros_balance`:
+  - Verified Phone Unlock: 1.5 credits (1,500đ / $0.06).
+  - Deep Research Dossier: 5.0 credits (5,000đ / $0.20).
+  - Qualified Meeting Booked (`OutcomeEvent`): 50.0 credits (50,000đ / $2.00).
+- **Given** the usage dashboard, **When** viewed, **Then** it renders real-time donut & bar charts breakdown by service (`AI Generation`, `Web Search`, `Social Media`, `Phone Waterfall`) with `[ 🎁 Claim Promo Code ]` input.
+
+_FR-69 · AD-8 · AD-10 · AD-31 · AD-42_
+
+---
+
+### Story 21.8: Social Ingress via XActions Integration (Facebook Groups & Twitter/X Feed) `[DONE]`
 
 As a B2B sales development representative or real estate investor,
 I want to ingest targeted Facebook Group posts and Twitter keyword searches via XActions integration (`/Users/luisphan/Documents/GitHub/XActions`),
@@ -2573,7 +2700,7 @@ _AD-SOC-1 · AD-SOC-2 · AD-SOC-4 · AD-SOC-5 · AD-SOC-6 · AD-SOC-7_
 
 ---
 
-### Story 21.9: Executive Decision Maker Mapping & B2B Lead Outreach `[P2]`
+### Story 21.9: Executive Decision Maker Mapping & B2B Lead Outreach `[DONE]`
 
 As an enterprise sales team or SaaS founder,
 I want to identify C-Level executives and HR leaders of expanding companies,
@@ -2584,6 +2711,81 @@ So that I can initiate personalized outreach and CRM synchronization.
 - **Given** an AI Agent session, **When** calling `linkedin_lookup_company_executives(company_name)` or `social_search_posts(platform, intent, keyword)`, **Then** verified leadership names, titles, and public contact signals are returned.
 
 _AD-LI-4 · AD-LI-6_
+
+---
+
+### Story 21.10: 1-Click Reverse-ICP from Website / Project URL `[NEW - P1]`
+
+As a business owner or broker,
+I want to paste my website domain or a real estate project link and have Nowing automatically generate the Ideal Customer Profile (ICP), search filters, and lead table,
+So that I can launch targeted lead discovery in under 10 seconds without manual prompt writing.
+
+**Acceptance Criteria:**
+- **Given** a valid URL (e.g. `vinhomes.vn`, `topcv.vn`, or project landing page), **When** `ReverseIcpService.analyze_url(url)` executes, **Then** `FastCrawler` extracts OpenGraph tags, schema JSON-LD, and hero content within 2.5s.
+- **Given** extracted metadata, **When** processed by `LLMBundle`, **Then** it generates `ReverseIcpResponse`: Value Proposition, 3 Target Buyer Personas (Title, Industry, Company size), Suggested Search Queries, Negative Keywords, and Auto-configured Filter Presets.
+- **Given** generated ICP response, **When** returned to frontend, **Then** the UI auto-populates the Multi-Table filter bar and pre-fills the chat prompt box with ready-to-run discovery tasks.
+
+_FR-80 · AD-31 · AD-37_
+
+---
+
+### Story 21.11: Actionable Turn Dispatches (Suggested Action Pills) `[DONE]`
+
+As an active user in the split-view chat interface,
+I want AI responses to include contextual 1-click execution chips (Suggested Action Pills),
+So that I can advance lead workflows (decode numbers, trigger Zalo drafts, find similar leads) with zero typing friction.
+
+**Acceptance Criteria:**
+- **Given** any discovery or scraper chat turn completion, **When** `ChatOrchestrator` emits response stream, **Then** it appends structured JSON `suggested_actions`: array of `{ id, label, icon, action_type, prompt_template, cost_credits, payload }` (max 3 pills).
+- **Given** action pills rendered below chat bubble, **When** user clicks a pill (e.g. `[ 📱 Giải mã 9 SĐT (13.5 credits) ]`), **Then** frontend dispatches the linked action immediately without requiring user re-typing.
+- **Given** action execution, **When** table rows update via Zero-cache, **Then** newly affected cells flash a brief green pulse highlight (`1s ease-out`).
+
+_FR-81 · AD-31 · UX-Contract-Lead-Panel_
+
+---
+
+### Story 21.12: Viral Social Outbound Co-pilot (Voice Learner & Outlier Analyzer) `[NEW - P1]`
+
+As a founder or real estate influencer,
+I want AI to analyze high-performing viral posts in my industry across Facebook, X, and TikTok, learn my voice, and rewrite proven formats into original lead-magnet posts,
+So that I can build an organic inbound lead engine alongside outbound prospecting.
+
+**Acceptance Criteria:**
+- **Given** user's social profile handle or sample writings in `Content Mode`, **When** `VoiceProfileLearner` runs, **Then** it analyzes tone, sentence structure, hook patterns, and vocabulary, saving a `VoiceProfile` record in Knowledge Base (`tag: "voice_profile"`).
+- **Given** industry niche keywords, **When** `ViralPostAnalyzer` queries XActions feed, **Then** it identifies outlier posts (engagement $\ge 3\times$ author baseline), categorizes "Why it worked" (`contrarian_hook`, `story_shift`, `value_list`), and generates draft variations matching user's voice.
+- **Given** generated post draft, **When** presented on UI, **Then** the user reviews, edits, and copies the post (Human-in-the-loop: AI never auto-posts to user's personal account).
+
+_FR-82 · AD-SOC-1 · AD-SOC-6_
+
+---
+
+### Story 21.13: Multi-Table Tabs & Send/Export Hub `[DONE]`
+
+As a sales rep managing multiple target campaigns,
+I want a browser-tabbed spreadsheet interface supporting multiple simultaneous lead tables with live Zero-cache sync and multi-format export,
+So that I can switch between property types, industries, and candidate lists without losing filter state.
+
+**Acceptance Criteria:**
+- **Given** a workspace with multiple lead tables, **When** user opens the workspace, **Then** the top toolbar renders scrollable tabs (`TableTabs`), persisting active tab ID in URL query parameter `?table={id}`.
+- **Given** active table view, **When** backend streams new leads from scrapers, **Then** Zero-cache (`zero.nowing.net`) updates the reactive table grid with sub-100ms latency without full-page reload.
+- **Given** table export, **When** clicking `Send & Export ⌄`, **Then** options modal allows: (1) `Download CSV`, (2) `Sync to Lark Base`, (3) `Sync to Google Sheets`, (4) `Share Read-only Team Link`.
+
+_FR-83 · AD-31 · AD-40 · Zero-Cache-Publication_
+
+---
+
+### Story 21.14: Smart Whitelist & Do-Not-Call (DNC) Compliance Engine `[NEW - P0]`
+
+As a compliance manager and sales leader,
+I want to manage Do-Not-Call / Exclusion lists for contacts and domains with CSV bulk import,
+So that Nowing automatically blocks outreach to existing clients, competitors, and opt-out leads, ensuring strict compliance with Decree 91/2020/NĐ-CP.
+
+**Acceptance Criteria:**
+- **Given** a workspace DNC list, **When** importing CSV or adding individual phone/email/domain, **Then** records are persisted in `workspace_dnc_records` with fields `(workspace_id, entity_type, entity_value, reason, added_by_user_id)`.
+- **Given** an active Outbound Sequence, AI Agent session, or phone decode action, **When** a candidate lead matches any DNC rule, **Then** the outreach action is immediately aborted with status `blocked_by_dnc`, and 0 credits are charged.
+- **Given** customer right-to-delete requests (Decree 13/2023/NĐ-CP), **When** admin invokes `DELETE /api/leads/{id}/pii`, **Then** all raw PII records are permanently purged within 60s while preserving anonymous aggregated analytical metrics.
+
+_FR-84 · AD-25 · AD-31 · Nghị định 91/2020/NĐ-CP · Nghị định 13/2023/NĐ-CP_
 
 ---
 
