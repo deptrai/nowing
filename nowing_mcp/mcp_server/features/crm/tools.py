@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any
 
 from mcp.server.fastmcp import FastMCP
 from pydantic import Field
@@ -25,27 +25,33 @@ CRM_WRITE = {
 }
 
 
-def _render_list(payload: list[dict]) -> str:
+def _render_list(payload: Any) -> str:
+    if not isinstance(payload, list):
+        return str(payload)
     if not payload:
         return "No CRM connections."
     lines = ["| Provider | Status | Last sync |", "|---|---|---|"]
     for item in payload:
-        lines.append(
-            f"| {item.get('provider', '—')} | {item.get('status', '—')} | "
-            f"{item.get('last_sync_at') or '—'} |"
-        )
+        if isinstance(item, dict):
+            lines.append(
+                f"| {item.get('provider', '—')} | {item.get('status', '—')} | "
+                f"{item.get('last_sync_at') or '—'} |"
+            )
     return "\n".join(lines)
 
 
-def _render_logs(payload: list[dict]) -> str:
+def _render_logs(payload: Any) -> str:
+    if not isinstance(payload, list):
+        return str(payload)
     if not payload:
         return "No sync logs."
     lines = ["| Direction | Entity | Status | Synced |", "|---|---|---|---|"]
     for item in payload:
-        lines.append(
-            f"| {item.get('direction')} | {item.get('entity_type')} | "
-            f"{item.get('status')} | {item.get('synced_at') or '—'} |"
-        )
+        if isinstance(item, dict):
+            lines.append(
+                f"| {item.get('direction')} | {item.get('entity_type')} | "
+                f"{item.get('status')} | {item.get('synced_at') or '—'} |"
+            )
     return "\n".join(lines)
 
 
@@ -117,7 +123,7 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
         payload = {
             "entity_type": entity_type,
             "direction": "nowing_to_crm",
-            "entity_ids": entity_ids,
+            "entity_ids": entity_ids or [],
         }
         result = await client.request(
             "POST",

@@ -1,34 +1,32 @@
-import Image from "next/image";
 import Link from "next/link";
+import { OrigamiLogo } from "@/components/origami/OrigamiLogo";
 import { cn } from "@/lib/utils";
 
 export const Logo = ({
 	className,
 	disableLink = false,
-	priority = true,
+	showText = false,
 }: {
 	className?: string;
 	disableLink?: boolean;
 	priority?: boolean;
+	showText?: boolean;
 }) => {
-	const image = (
-		<Image
-			src="/icon-128.svg"
-			className={cn("select-none dark:invert", className)}
-			alt="Nowing"
-			width={128}
-			height={128}
-			priority={priority}
+	const content = (
+		<OrigamiLogo
+			size={32}
+			showText={showText}
+			className={cn("select-none", className)}
 		/>
 	);
 
 	if (disableLink) {
-		return image;
+		return content;
 	}
 
 	return (
-		<Link href="/" className="select-none">
-			{image}
+		<Link href="/" className="select-none inline-flex items-center">
+			{content}
 		</Link>
 	);
 };

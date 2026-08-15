@@ -1,12 +1,22 @@
 "use client";
-import { IconPlus } from "@tabler/icons-react";
+import {
+	IconAffiliate,
+	IconArrowRight,
+	IconCoins,
+	IconPhoneCall,
+	IconPlus,
+	IconSearch,
+	IconWorld,
+} from "@tabler/icons-react";
 import { AnimatePresence, motion } from "motion/react";
+import Link from "next/link";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { Pricing } from "@/components/pricing";
 import { FAQJsonLd } from "@/components/seo/json-ld";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { PricingLeadCalculator } from "./PricingLeadCalculator";
 
 const demoPlans = [
 	{
@@ -357,6 +367,154 @@ function PricingFAQ() {
 	);
 }
 
+const unitRates = [
+	{
+		service: "Real Estate Phone Number Unlock",
+		platforms: "Batdongsan, Chotot, MuaBan",
+		rateCredits: "5 credits",
+		rateUsd: "$0.05",
+		rateVnd: "1,270 VND",
+		billingUnit: "Per successfully verified phone",
+		icon: IconPhoneCall,
+	},
+	{
+		service: "Autonomous Deep Research & Briefs",
+		platforms: "ChainLens, Web Citations, Synthesizer",
+		rateCredits: "2 - 5 credits",
+		rateUsd: "$0.02 - $0.05",
+		rateVnd: "508 - 1,270 VND",
+		billingUnit: "Per complete research run",
+		icon: IconSearch,
+	},
+	{
+		service: "B2B & Social Data Scrapers",
+		platforms: "Google Maps, TopCV, VietnamWorks, FB",
+		rateCredits: "0.1 - 0.5 credits",
+		rateUsd: "$0.001 - $0.005",
+		rateVnd: "25 - 127 VND",
+		billingUnit: "Per item / profile returned",
+		icon: IconWorld,
+	},
+	{
+		service: "Document Parsing & Table OCR",
+		platforms: "PDF, Office, Financial Statements",
+		rateCredits: "0.1 - 1 credit",
+		rateUsd: "$0.001 - $0.01",
+		rateVnd: "25 - 254 VND",
+		billingUnit: "Per page extracted (text files free)",
+		icon: IconCoins,
+	},
+];
+
+function PricingUnitRatesTable() {
+	return (
+		<div className="w-full max-w-5xl mx-auto px-4 my-12">
+			<div className="text-center mb-8">
+				<h3 className="text-2xl md:text-3xl font-bold tracking-tight text-neutral-900 dark:text-white">
+					Transparent Pay-As-You-Go Unit Rates
+				</h3>
+				<p className="text-sm md:text-base text-neutral-600 dark:text-neutral-400 mt-2 max-w-2xl mx-auto">
+					No hidden multipliers or bloated seat fees. $1 buys exactly $1 worth of platform credits.
+					Failed queries or empty results are never billed.
+				</p>
+			</div>
+
+			<div className="overflow-hidden rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-sm">
+				<div className="overflow-x-auto">
+					<table className="w-full text-left text-sm">
+						<thead className="bg-neutral-50 dark:bg-neutral-800/60 text-xs uppercase font-semibold text-neutral-500 dark:text-neutral-400 border-b border-neutral-200 dark:border-neutral-800">
+							<tr>
+								<th className="px-6 py-4">Capability & Platform</th>
+								<th className="px-6 py-4">Credit Cost</th>
+								<th className="px-6 py-4">USD Equivalent</th>
+								<th className="px-6 py-4">VND Equivalent</th>
+								<th className="px-6 py-4">Billing Meter</th>
+							</tr>
+						</thead>
+						<tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/80">
+							{unitRates.map((rate) => {
+								const Icon = rate.icon;
+								return (
+									<tr
+										key={rate.service}
+										className="hover:bg-neutral-50/70 dark:hover:bg-neutral-800/40 transition-colors"
+									>
+										<td className="px-6 py-4">
+											<div className="flex items-center gap-3">
+												<div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/40">
+													<Icon className="size-4 shrink-0" />
+												</div>
+												<div>
+													<div className="font-semibold text-neutral-900 dark:text-white">
+														{rate.service}
+													</div>
+													<div className="text-xs text-neutral-500 dark:text-neutral-400">
+														{rate.platforms}
+													</div>
+												</div>
+											</div>
+										</td>
+										<td className="px-6 py-4 font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+											{rate.rateCredits}
+										</td>
+										<td className="px-6 py-4 font-mono text-neutral-800 dark:text-neutral-200">
+											{rate.rateUsd}
+										</td>
+										<td className="px-6 py-4 font-mono text-neutral-500 dark:text-neutral-400">
+											{rate.rateVnd}
+										</td>
+										<td className="px-6 py-4 text-xs text-neutral-600 dark:text-neutral-400">
+											{rate.billingUnit}
+										</td>
+									</tr>
+								);
+							})}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+	);
+}
+
+function PartnerBanner() {
+	return (
+		<div className="w-full max-w-5xl mx-auto px-4 my-16">
+			<div className="relative rounded-3xl bg-neutral-900 dark:bg-neutral-950 border border-neutral-800 p-8 md:p-10 shadow-2xl overflow-hidden">
+				<div
+					className="absolute inset-0 opacity-[0.04] pointer-events-none"
+					style={{
+						backgroundImage: "radial-gradient(#10b981 1px, transparent 1px)",
+						backgroundSize: "20px 20px",
+					}}
+				/>
+				<div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+					<div className="space-y-2 text-center md:text-left">
+						<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-semibold uppercase tracking-wider">
+							<IconAffiliate className="size-3.5" />
+							<span>Nowing Affiliate & Partner Program</span>
+						</div>
+						<h4 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
+							Earn 15% Lifetime Recurring Commission
+						</h4>
+						<p className="text-sm text-neutral-400 max-w-xl">
+							Introduce Nowing to your clients, agency network, or sales team. Get paid 15%
+							recurring lifetime commissions with instant VietQR Napas 24/7 payouts or +10% platform
+							credit bonus.
+						</p>
+					</div>
+					<Link href="/partners">
+						<Button className="bg-emerald-500 hover:bg-emerald-600 text-neutral-950 font-bold px-6 py-6 rounded-2xl flex items-center gap-2 transition-all shrink-0 shadow-lg shadow-emerald-500/20">
+							<span>Become a Partner</span>
+							<IconArrowRight className="size-4" />
+						</Button>
+					</Link>
+				</div>
+			</div>
+		</div>
+	);
+}
+
 function PricingBasic() {
 	return (
 		<>
@@ -365,6 +523,9 @@ function PricingBasic() {
 				title="Nowing Pricing"
 				description="Give your agents the live web. Self-host for free, or start with $5 of credit and pay as you go. No subscriptions."
 			/>
+			<PricingUnitRatesTable />
+			<PricingLeadCalculator />
+			<PartnerBanner />
 			<PricingFAQ />
 		</>
 	);

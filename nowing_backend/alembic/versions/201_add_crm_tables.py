@@ -141,13 +141,13 @@ def upgrade() -> None:
 
 
 def _workspace_predicate(table: str) -> str:
-    return f"{table}.workspace_id IS NOT DISTINCT FROM current_setting('app.workspace_id', true)::int"
+    return f"{table}.workspace_id IS NOT DISTINCT FROM NULLIF(current_setting('app.workspace_id', true), '')::int"
 
 
 def _tenant_predicate(table: str) -> str:
     return f"""
-        {table}.workspace_id IS NOT DISTINCT FROM current_setting('app.workspace_id', true)::int
-        AND {table}.client_id IS NOT DISTINCT FROM current_setting('app.current_client_id', true)
+        {table}.workspace_id IS NOT DISTINCT FROM NULLIF(current_setting('app.workspace_id', true), '')::int
+        AND {table}.client_id IS NOT DISTINCT FROM NULLIF(current_setting('app.current_client_id', true), '')
     """
 
 
@@ -165,7 +165,7 @@ def _create_rls(table: str) -> None:
             AS PERMISSIVE
             FOR SELECT
             TO PUBLIC
-            USING ({_workspace_predicate(table)});
+            USING ({predicate});
     """)
     op.execute(f"""
         CREATE POLICY {table}_tenant_write_policy ON {table}

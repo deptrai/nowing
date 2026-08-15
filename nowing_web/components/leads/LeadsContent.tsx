@@ -1,6 +1,6 @@
 "use client";
 
-import { RefreshCw, Search, Sparkles, Users } from "lucide-react";
+import { RefreshCw, Search, ShieldAlert, Sparkles, Users } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -9,6 +9,7 @@ import type { FilterPresets } from "@/contracts/types/leads.types";
 import { useLeads } from "@/lib/hooks/use-leads";
 import { useWorkspaceTables } from "@/lib/hooks/use-workspace-tables";
 import { CompanyGraphDrawer } from "./CompanyGraphDrawer";
+import { DncManagementModal } from "./DncManagementModal";
 import { LeadCard } from "./LeadCard";
 import { MultiTableTabs } from "./multi-table-tabs";
 import { ReverseIcpModal } from "./ReverseIcpModal";
@@ -54,6 +55,7 @@ export const LeadsContent: React.FC = () => {
 	const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
 	const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
 	const [isReverseIcpOpen, setIsReverseIcpOpen] = useState<boolean>(false);
+	const [isDncModalOpen, setIsDncModalOpen] = useState<boolean>(false);
 	const [activeTableId, setActiveTableId] = useState<string | null>(searchParams.get("table"));
 
 	const {
@@ -233,6 +235,15 @@ export const LeadsContent: React.FC = () => {
 
 					<button
 						type="button"
+						onClick={() => setIsDncModalOpen(true)}
+						className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-950/40 text-red-400 hover:bg-red-900/50 hover:text-red-300 border border-red-800/50 transition-colors shadow-sm"
+					>
+						<ShieldAlert className="w-3.5 h-3.5" />
+						<span>Do-Not-Call (DNC)</span>
+					</button>
+
+					<button
+						type="button"
 						onClick={() => {
 							refetch();
 							refetchTables();
@@ -370,6 +381,13 @@ export const LeadsContent: React.FC = () => {
 				workspaceId={workspaceId}
 				onApplyFilterPresets={handleApplyIcpPresets}
 				onCreateTableFromIcp={handleCreateTableFromIcp}
+			/>
+
+			{/* Do-Not-Call (DNC) Compliance Modal (Story 21.14) */}
+			<DncManagementModal
+				isOpen={isDncModalOpen}
+				onClose={() => setIsDncModalOpen(false)}
+				workspaceId={workspaceId}
 			/>
 		</div>
 	);

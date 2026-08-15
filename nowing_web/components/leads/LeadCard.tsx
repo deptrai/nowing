@@ -144,6 +144,15 @@ export const LeadCard: React.FC<LeadCardProps> = ({
 							{intentBadge.label}
 						</span>
 					)}
+
+					{(lead.blocked_by_dnc || lead.consent_status === "opted_out") && (
+						<span
+							className="text-xs font-semibold px-2 py-0.5 rounded-md bg-red-950/80 text-red-300 border border-red-800/60 inline-flex items-center gap-1"
+							title={lead.dnc_reason || "Liên hệ này nằm trong danh sách Do-Not-Call (DNC)"}
+						>
+							<span>🚫 DNC Blocked</span>
+						</span>
+					)}
 				</div>
 
 				<div className="flex items-center gap-2">
@@ -233,15 +242,24 @@ export const LeadCard: React.FC<LeadCardProps> = ({
 			{/* Action Footer */}
 			<div className="flex flex-wrap items-center justify-between gap-2 pt-2 mt-1 border-t border-zinc-800/60">
 				<div className="flex items-center gap-2">
-					<ZaloOutreachButton
-						leadId={lead.id}
-						workspaceId={lead.workspace_id}
-						phone={lead.phone}
-						companyName={lead.company_name}
-						intent={lead.intent}
-						source={lead.source}
-						contentSnippet={lead.content_snippet}
-					/>
+					{lead.blocked_by_dnc || lead.consent_status === "opted_out" ? (
+						<span
+							className="inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-semibold bg-zinc-800 text-zinc-500 border border-zinc-700/60 cursor-not-allowed"
+							title={lead.dnc_reason || "Liên hệ này nằm trong danh sách Do-Not-Call (DNC)"}
+						>
+							<span>🚫 Chặn liên hệ (DNC)</span>
+						</span>
+					) : (
+						<ZaloOutreachButton
+							leadId={lead.id}
+							workspaceId={lead.workspace_id}
+							phone={lead.phone}
+							companyName={lead.company_name}
+							intent={lead.intent}
+							source={lead.source}
+							contentSnippet={lead.content_snippet}
+						/>
+					)}
 
 					<button
 						type="button"

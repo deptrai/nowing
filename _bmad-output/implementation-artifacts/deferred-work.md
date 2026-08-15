@@ -1,3 +1,13 @@
+## Deferred from: code review of 21-5-crm-integration (2026-08-16)
+
+- **Finding:** Cross-source full CRM historical bi-directional backfill and deal pipeline sync.
+  - **Action:** Marked `[x] [Review][Defer]` in `21-5-crm-integration.md`.
+  - **Reason / when to revisit:** Out of scope for MVP (Spec line 468). Revisit when enterprise pipeline sync is scheduled.
+
+- **Finding:** Dedicated CRM UI tabs in frontend.
+  - **Action:** Marked `[x] [Review][Defer]` in `21-5-crm-integration.md`.
+  - **Reason / when to revisit:** Frontend contracts and UI components are scoped to Story 21.6 (Zalo Integration) and Story 21.13 (Multi-Table Tabs).
+
 ## Deferred from: code review of 10-7-chotot-multi-category-capability (2026-08-15)
 
 - **Finding:** Inverted `district_id` guard in `app/proprietary/platforms/chotot/scraper.py:116-119` rejects every valid non-negative `district_id`.

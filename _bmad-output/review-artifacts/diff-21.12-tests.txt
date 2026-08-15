@@ -1,0 +1,70 @@
+diff --git a/nowing_backend/tests/integration/routes/test_social_copilot_routes.py b/nowing_backend/tests/integration/routes/test_social_copilot_routes.py
+index 62052ba90..1219b191b 100644
+--- a/nowing_backend/tests/integration/routes/test_social_copilot_routes.py
++++ b/nowing_backend/tests/integration/routes/test_social_copilot_routes.py
+@@ -1,13 +1,13 @@
+-"""ATDD Red-Phase Integration Tests: Social Co-pilot REST Routes & Memory Persistence (Story 21.12 / AC 1, 2, 5)."""
++"""Integration Tests: Social Co-pilot REST Routes & Memory Persistence (Story 21.12 / AC 1, 2, 5)."""
++
++from __future__ import annotations
+ 
+ import pytest
+-from httpx import AsyncClient
++
++pytestmark = pytest.mark.integration
+ 
+ 
+-@pytest.mark.integration
+-@pytest.mark.skip(reason="ATDD Red Phase Scaffold: Social Co-pilot Routes implementation pending")
+-@pytest.mark.asyncio
+-async def test_create_and_fetch_voice_profile_endpoint(async_client: AsyncClient, test_user_headers):
++async def test_create_and_fetch_voice_profile_endpoint(client_as_regular_user) -> None:
+     """AC 1: POST /api/workspaces/{id}/voice-profiles saves into memories with tag 'voice_profile'."""
+     payload = {
+         "profile_name": "Executive Founder",
+@@ -25,10 +25,9 @@ async def test_create_and_fetch_voice_profile_endpoint(async_client: AsyncClient
+         "platform": "linkedin",
+     }
+ 
+-    response = await async_client.post(
++    response = await client_as_regular_user.post(
+         "/api/workspaces/1/voice-profiles",
+         json=payload,
+-        headers=test_user_headers,
+     )
+     assert response.status_code == 201
+     data = response.json()
+@@ -37,19 +36,15 @@ async def test_create_and_fetch_voice_profile_endpoint(async_client: AsyncClient
+     assert "id" in data
+ 
+     # Verify listing profiles
+-    list_res = await async_client.get(
++    list_res = await client_as_regular_user.get(
+         "/api/workspaces/1/voice-profiles",
+-        headers=test_user_headers,
+     )
+     assert list_res.status_code == 200
+     items = list_res.json()["items"]
+     assert any(p["profile_name"] == "Executive Founder" for p in items)
+ 
+ 
+-@pytest.mark.integration
+-@pytest.mark.skip(reason="ATDD Red Phase Scaffold: Social Co-pilot Routes implementation pending")
+-@pytest.mark.asyncio
+-async def test_manual_post_ingestion_fallback_endpoint(async_client: AsyncClient, test_user_headers):
++async def test_manual_post_ingestion_fallback_endpoint(client_as_regular_user) -> None:
+     """AC 5: Manual URL/Text ingestion endpoint works for degraded/unsupported platform posts."""
+     payload = {
+         "raw_text": "Top 5 xu hướng công nghệ năm 2026 sẽ thay đổi toàn bộ thị trường BĐS Việt Nam.",
+@@ -57,10 +52,9 @@ async def test_manual_post_ingestion_fallback_endpoint(async_client: AsyncClient
+         "platform": "tiktok",
+     }
+ 
+-    response = await async_client.post(
++    response = await client_as_regular_user.post(
+         "/api/workspaces/1/social-copilot/manual-ingest",
+         json=payload,
+-        headers=test_user_headers,
+     )
+     assert response.status_code == 200
+     res_data = response.json()

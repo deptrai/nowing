@@ -1,0 +1,2706 @@
+diff --git a/nowing_backend/alembic/versions/210_add_workspace_dnc_records.py b/nowing_backend/alembic/versions/210_add_workspace_dnc_records.py
+new file mode 100644
+index 000000000..8e499f03b
+--- /dev/null
++++ b/nowing_backend/alembic/versions/210_add_workspace_dnc_records.py
+@@ -0,0 +1,96 @@
++"""Add workspace_dnc_records table for compliance & opt-out management (Story 21.14).
++
++Revision ID: 210
++Revises: 209
++"""
++
++from __future__ import annotations
++
++from collections.abc import Sequence
++
++import sqlalchemy as sa
++from sqlalchemy import ForeignKey, Integer, String
++from sqlalchemy.dialects.postgresql import TIMESTAMP, UUID
++
++from alembic import op
++
++revision: str = "210"
++down_revision: str | None = "209"
++branch_labels: str | Sequence[str] | None = None
++depends_on: str | Sequence[str] | None = None
++
++
++def upgrade() -> None:
++    op.create_table(
++        "workspace_dnc_records",
++        sa.Column(
++            "id",
++            UUID(as_uuid=True),
++            primary_key=True,
++            server_default=sa.text("gen_random_uuid()"),
++        ),
++        sa.Column(
++            "workspace_id",
++            Integer,
++            ForeignKey("workspaces.id", ondelete="CASCADE"),
++            nullable=False,
++            index=True,
++        ),
++        sa.Column(
++            "record_type",
++            String(20),
++            nullable=False,
++        ),
++        sa.Column(
++            "value",
++            String(255),
++            nullable=True,
++        ),
++        sa.Column(
++            "value_hmac",
++            String(64),
++            nullable=False,
++            index=True,
++        ),
++        sa.Column(
++            "reason",
++            String(255),
++            nullable=True,
++            server_default="Opt-out requested",
++        ),
++        sa.Column(
++            "source",
++            String(50),
++            nullable=False,
++            server_default="manual",
++        ),
++        sa.Column(
++            "created_at",
++            TIMESTAMP(timezone=True),
++            nullable=False,
++            server_default=sa.text("now()"),
++        ),
++        sa.Column(
++            "updated_at",
++            TIMESTAMP(timezone=True),
++            nullable=False,
++            server_default=sa.text("now()"),
++        ),
++        sa.UniqueConstraint(
++            "workspace_id",
++            "record_type",
++            "value_hmac",
++            name="uq_workspace_dnc_entry",
++        ),
++    )
++
++    op.create_index(
++        "ix_workspace_dnc_lookup",
++        "workspace_dnc_records",
++        ["workspace_id", "record_type", "value_hmac"],
++    )
++
++
++def downgrade() -> None:
++    op.drop_index("ix_workspace_dnc_lookup", table_name="workspace_dnc_records")
++    op.drop_table("workspace_dnc_records")
+
+diff --git a/nowing_backend/app/db.py b/nowing_backend/app/db.py
+index 0f0ae4046..014f0bf26 100644
+--- a/nowing_backend/app/db.py
++++ b/nowing_backend/app/db.py
+@@ -2131,6 +2131,12 @@ class Workspace(BaseModel, TimestampMixin):
+         order_by="ZaloMessageLog.created_at.desc()",
+         cascade="all, delete-orphan",
+     )
++    dnc_records = relationship(
++        "WorkspaceDncRecord",
++        back_populates="workspace",
++        order_by="WorkspaceDncRecord.created_at.desc()",
++        cascade="all, delete-orphan",
++    )
+ 
+ 
+ class WorkspaceMcpToolSetting(BaseModel, TimestampMixin):
+@@ -5297,3 +5303,53 @@ class ZaloMessageLog(Base, TimestampMixin):
+     workspace = relationship("Workspace", back_populates="zalo_message_logs")
+     connection = relationship("ZaloConnection", back_populates="message_logs")
+     lead = relationship("Lead", back_populates="zalo_message_logs")
++
++
++class WorkspaceDncRecord(Base, TimestampMixin):
++    """Workspace-level Do-Not-Call and compliance record (Story 21.14 / Decree 91 / Decree 13 PDPD)."""
++
++    __tablename__ = "workspace_dnc_records"
++
++    __table_args__ = (
++        Index("ix_workspace_dnc_lookup", "workspace_id", "record_type", "value_hmac"),
++        Index("ix_workspace_dnc_workspace_id", "workspace_id"),
++        UniqueConstraint(
++            "workspace_id",
++            "record_type",
++            "value_hmac",
++            name="uq_workspace_dnc_entry",
++        ),
++    )
++
++    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
++    workspace_id = Column(
++        Integer,
++        ForeignKey("workspaces.id", ondelete="CASCADE"),
++        nullable=False,
++    )
++    record_type = Column(
++        String(20), nullable=False
++    )  # 'phone', 'email', 'domain', 'tax_id'
++    value = Column(
++        String(255), nullable=True
++    )  # Masked or normalized string for display
++    value_hmac = Column(String(64), nullable=False, index=True)  # Keyed HMAC-SHA256
++    reason = Column(String(255), nullable=True, default="Opt-out requested")
++    source = Column(
++        String(50), nullable=False, default="manual"
++    )  # 'manual', 'csv_import', 'opt_out_webhook', 'right_to_be_forgotten'
++    created_at = Column(
++        TIMESTAMP(timezone=True),
++        nullable=False,
++        default=lambda: datetime.now(UTC),
++        server_default=text("now()"),
++    )
++    updated_at = Column(
++        TIMESTAMP(timezone=True),
++        nullable=False,
++        default=lambda: datetime.now(UTC),
++        onupdate=lambda: datetime.now(UTC),
++        server_default=text("now()"),
++    )
++
++    workspace = relationship("Workspace", back_populates="dnc_records")
+
+diff --git a/nowing_backend/app/lead_intelligence/dnc/__init__.py b/nowing_backend/app/lead_intelligence/dnc/__init__.py
+new file mode 100644
+index 000000000..045cb328c
+--- /dev/null
++++ b/nowing_backend/app/lead_intelligence/dnc/__init__.py
+@@ -0,0 +1,22 @@
++"""DNC & Compliance Package (Story 21.14)."""
++
++from app.lead_intelligence.dnc.normalizer import (
++    hash_phone_hmac,
++    is_domain_matching,
++    normalize_domain,
++    normalize_email,
++    normalize_phone_e164,
++    normalize_tax_id,
++)
++from app.lead_intelligence.dnc.service import DncCheckResult, DncComplianceService
++
++__all__ = [
++    "DncCheckResult",
++    "DncComplianceService",
++    "hash_phone_hmac",
++    "is_domain_matching",
++    "normalize_domain",
++    "normalize_email",
++    "normalize_phone_e164",
++    "normalize_tax_id",
++]
+
+diff --git a/nowing_backend/app/lead_intelligence/dnc/normalizer.py b/nowing_backend/app/lead_intelligence/dnc/normalizer.py
+new file mode 100644
+index 000000000..f2511994b
+--- /dev/null
++++ b/nowing_backend/app/lead_intelligence/dnc/normalizer.py
+@@ -0,0 +1,128 @@
++"""DNC Normalizers & Cryptographic Hasher (Story 21.14 / Decree 91 / Decree 13 PDPD)."""
++
++from __future__ import annotations
++
++import fnmatch
++import hmac
++import re
++from hashlib import sha256
++from urllib.parse import urlparse
++
++from app.config import config
++
++
++def normalize_phone_e164(phone: str | None) -> str | None:
++    """Normalize local or international phone strings to canonical E.164 (+84...).
++
++    Returns None if input is empty, malformed, or doesn't contain a valid phone pattern.
++    """
++    if not phone or not isinstance(phone, str):
++        return None
++
++    cleaned = phone.strip()
++    if not cleaned:
++        return None
++
++    # Keep leading + if present, then extract digits
++    has_plus = cleaned.startswith("+")
++    digits = re.sub(r"\D", "", cleaned)
++
++    if not digits:
++        return None
++
++    # Vietnamese standard 10-digit mobile conversion (09x, 08x, 07x, 05x, 03x, 02x)
++    if digits.startswith("0") and len(digits) in (10, 11):
++        e164 = f"+84{digits[1:]}"
++    elif (digits.startswith("84") and len(digits) in (11, 12)) or has_plus:
++        e164 = f"+{digits}"
++    elif len(digits) >= 8 and len(digits) <= 15:
++        # Fallback international assume +
++        e164 = f"+{digits}"
++    else:
++        return None
++
++    # Validate E.164 length constraints: '+' followed by 7 to 15 digits
++    if not re.match(r"^\+[1-9]\d{6,14}$", e164):
++        return None
++
++    return e164
++
++
++def hash_phone_hmac(phone_e164: str, secret_key: str | None = None) -> str:
++    """Compute Keyed HMAC-SHA256 hex digest for an E.164 phone number."""
++    key = (
++        secret_key or getattr(config, "SECRET_KEY", "nowing-dnc-secret-fallback")
++    ).encode("utf-8")
++    msg = phone_e164.strip().encode("utf-8")
++    return hmac.new(key, msg, sha256).hexdigest()
++
++
++def normalize_domain(domain_or_url: str | None) -> str | None:
++    """Strip protocol, port, path, query and convert domain to lowercase."""
++    if not domain_or_url or not isinstance(domain_or_url, str):
++        return None
++
++    cleaned = domain_or_url.strip().lower()
++    if not cleaned:
++        return None
++
++    if "://" in cleaned:
++        try:
++            parsed = urlparse(cleaned)
++            netloc = parsed.netloc
++        except Exception:
++            netloc = cleaned
++    else:
++        netloc = cleaned.split("/")[0]
++
++    # Strip port if present
++    if ":" in netloc:
++        netloc = netloc.split(":")[0]
++
++    netloc = netloc.strip(".")
++    return netloc if netloc else None
++
++
++def is_domain_matching(target_domain: str, rule_domain: str) -> bool:
++    """Check if target domain matches exact rule or wildcard subdomain rule (*.domain.com)."""
++    norm_target = normalize_domain(target_domain)
++    if not norm_target:
++        return False
++
++    rule_clean = rule_domain.strip().lower()
++    if not rule_clean:
++        return False
++
++    # Exact match
++    if norm_target == rule_clean:
++        return True
++
++    # Wildcard matching (e.g. *.vinhomes.vn)
++    if rule_clean.startswith("*."):
++        root_domain = rule_clean[2:]
++        if norm_target == root_domain:
++            return True
++        return fnmatch.fnmatch(norm_target, rule_clean)
++
++    return False
++
++
++def normalize_email(email: str | None) -> str | None:
++    """Normalize and validate email address."""
++    if not email or not isinstance(email, str):
++        return None
++
++    cleaned = email.strip().lower()
++    if "@" not in cleaned or "." not in cleaned.split("@")[-1]:
++        return None
++
++    return cleaned
++
++
++def normalize_tax_id(tax_id: str | None) -> str | None:
++    """Normalize corporate tax ID (Mã số thuế)."""
++    if not tax_id or not isinstance(tax_id, str):
++        return None
++
++    cleaned = re.sub(r"[^\w-]", "", tax_id.strip()).lower()
++    return cleaned if cleaned else None
+
+diff --git a/nowing_backend/app/lead_intelligence/dnc/service.py b/nowing_backend/app/lead_intelligence/dnc/service.py
+new file mode 100644
+index 000000000..ba259d49d
+--- /dev/null
++++ b/nowing_backend/app/lead_intelligence/dnc/service.py
+@@ -0,0 +1,256 @@
++"""DNC Compliance Core Service (Story 21.14 / Decree 91 / Decree 13 PDPD)."""
++
++from __future__ import annotations
++
++import logging
++from dataclasses import dataclass
++from typing import Any
++
++from sqlalchemy import select
++from sqlalchemy.ext.asyncio import AsyncSession
++
++from app.config import config
++from app.db import WorkspaceDncRecord
++from app.lead_intelligence.dnc.normalizer import (
++    hash_phone_hmac,
++    is_domain_matching,
++    normalize_domain,
++    normalize_email,
++    normalize_phone_e164,
++    normalize_tax_id,
++)
++
++logger = logging.getLogger(__name__)
++
++
++@dataclass
++class DncCheckResult:
++    """Result of DNC compliance evaluation for a candidate contact."""
++
++    is_blocked: bool
++    record_type: str | None = None
++    reason: str | None = None
++
++
++class DncComplianceService:
++    """Service evaluating contacts against workspace DNC blacklist and whitelists."""
++
++    def __init__(self, *, secret_key: str | None = None) -> None:
++        self.secret_key = secret_key or getattr(
++            config, "SECRET_KEY", "nowing-dnc-secret-fallback"
++        )
++
++    def _get_redis_key(self, workspace_id: int, record_type: str) -> str:
++        return f"dnc:{workspace_id}:{record_type}"
++
++    async def _get_workspace_dnc_phone_hashes(
++        self, workspace_id: int, session: AsyncSession | None = None
++    ) -> set[str]:
++        """Fetch all blacklisted phone HMAC hashes for workspace with Redis caching."""
++        redis_key = self._get_redis_key(workspace_id, "phone")
++        try:
++            import redis.asyncio as aioredis
++
++            redis_client = aioredis.from_url(
++                config.REDIS_APP_URL, decode_responses=True
++            )
++            cached_members = await redis_client.smembers(redis_key)
++            await redis_client.aclose()
++            if cached_members:
++                return set(cached_members)
++        except Exception as exc:
++            logger.debug("[DncService] Redis lookup failed for phone DNC: %s", exc)
++
++        if session is None:
++            return set()
++
++        stmt = select(WorkspaceDncRecord.value_hmac).where(
++            WorkspaceDncRecord.workspace_id == workspace_id,
++            WorkspaceDncRecord.record_type == "phone",
++        )
++        res = await session.execute(stmt)
++        hashes = set(res.scalars().all())
++
++        if hashes:
++            try:
++                import redis.asyncio as aioredis
++
++                redis_client = aioredis.from_url(
++                    config.REDIS_APP_URL, decode_responses=True
++                )
++                await redis_client.sadd(redis_key, *hashes)
++                await redis_client.expire(redis_key, 3600)
++                await redis_client.aclose()
++            except Exception as exc:
++                logger.debug("[DncService] Redis cache populate failed: %s", exc)
++
++        return hashes
++
++    async def _get_workspace_dnc_domains(
++        self, workspace_id: int, session: AsyncSession | None = None
++    ) -> set[str]:
++        """Fetch all blacklisted domains (including wildcards) for workspace."""
++        redis_key = self._get_redis_key(workspace_id, "domain")
++        try:
++            import redis.asyncio as aioredis
++
++            redis_client = aioredis.from_url(
++                config.REDIS_APP_URL, decode_responses=True
++            )
++            cached_members = await redis_client.smembers(redis_key)
++            await redis_client.aclose()
++            if cached_members:
++                return set(cached_members)
++        except Exception as exc:
++            logger.debug("[DncService] Redis lookup failed for domain DNC: %s", exc)
++
++        if session is None:
++            return set()
++
++        stmt = select(WorkspaceDncRecord.value).where(
++            WorkspaceDncRecord.workspace_id == workspace_id,
++            WorkspaceDncRecord.record_type == "domain",
++        )
++        res = await session.execute(stmt)
++        domains = {d for d in res.scalars().all() if d}
++
++        if domains:
++            try:
++                import redis.asyncio as aioredis
++
++                redis_client = aioredis.from_url(
++                    config.REDIS_APP_URL, decode_responses=True
++                )
++                await redis_client.sadd(redis_key, *domains)
++                await redis_client.expire(redis_key, 3600)
++                await redis_client.aclose()
++            except Exception as exc:
++                logger.debug("[DncService] Redis domain cache populate failed: %s", exc)
++
++        return domains
++
++    async def invalidate_workspace_cache(self, workspace_id: int) -> None:
++        """Clear Redis DNC cache keys for a workspace upon add/delete/import."""
++        try:
++            import redis.asyncio as aioredis
++
++            redis_client = aioredis.from_url(
++                config.REDIS_APP_URL, decode_responses=True
++            )
++            for r_type in ("phone", "email", "domain", "tax_id"):
++                await redis_client.delete(self._get_redis_key(workspace_id, r_type))
++            await redis_client.aclose()
++        except Exception as exc:
++            logger.debug("[DncService] Cache invalidation failed: %s", exc)
++
++    async def is_blocked(
++        self,
++        workspace_id: int,
++        phone: str | None = None,
++        email: str | None = None,
++        domain: str | None = None,
++        tax_id: str | None = None,
++        session: AsyncSession | None = None,
++    ) -> DncCheckResult:
++        """Check if any contact identifier matches the workspace DNC registry."""
++        # 1. Check Phone (E.164 + Keyed HMAC)
++        if phone:
++            e164 = normalize_phone_e164(phone)
++            if e164:
++                phone_hash = hash_phone_hmac(e164, secret_key=self.secret_key)
++                blocked_hashes = await self._get_workspace_dnc_phone_hashes(
++                    workspace_id, session
++                )
++                if phone_hash in blocked_hashes:
++                    return DncCheckResult(
++                        is_blocked=True,
++                        record_type="phone",
++                        reason="Phone number is registered on Workspace DNC blacklist",
++                    )
++
++        # 2. Check Domain / Wildcard
++        if domain:
++            norm_dom = normalize_domain(domain)
++            if norm_dom:
++                blocked_domains = await self._get_workspace_dnc_domains(
++                    workspace_id, session
++                )
++                for rule_dom in blocked_domains:
++                    if is_domain_matching(norm_dom, rule_dom):
++                        return DncCheckResult(
++                            is_blocked=True,
++                            record_type="domain",
++                            reason=f"Company domain matches blocked rule '{rule_dom}'",
++                        )
++
++        # 3. Check Email
++        if email and session is not None:
++            norm_mail = normalize_email(email)
++            if norm_mail:
++                email_hash = hash_phone_hmac(norm_mail, secret_key=self.secret_key)
++                stmt = (
++                    select(WorkspaceDncRecord.reason)
++                    .where(
++                        WorkspaceDncRecord.workspace_id == workspace_id,
++                        WorkspaceDncRecord.record_type == "email",
++                        WorkspaceDncRecord.value_hmac == email_hash,
++                    )
++                    .limit(1)
++                )
++                res = await session.execute(stmt)
++                reason = res.scalar_one_or_none()
++                if reason is not None:
++                    return DncCheckResult(
++                        is_blocked=True,
++                        record_type="email",
++                        reason=reason or "Email address is on DNC blacklist",
++                    )
++
++        # 4. Check Tax ID
++        if tax_id and session is not None:
++            norm_tax = normalize_tax_id(tax_id)
++            if norm_tax:
++                tax_hash = hash_phone_hmac(norm_tax, secret_key=self.secret_key)
++                stmt = (
++                    select(WorkspaceDncRecord.reason)
++                    .where(
++                        WorkspaceDncRecord.workspace_id == workspace_id,
++                        WorkspaceDncRecord.record_type == "tax_id",
++                        WorkspaceDncRecord.value_hmac == tax_hash,
++                    )
++                    .limit(1)
++                )
++                res = await session.execute(stmt)
++                reason = res.scalar_one_or_none()
++                if reason is not None:
++                    return DncCheckResult(
++                        is_blocked=True,
++                        record_type="tax_id",
++                        reason=reason or "Corporate Tax ID is blacklisted",
++                    )
++
++        return DncCheckResult(is_blocked=False)
++
++    async def batch_filter_leads(
++        self,
++        workspace_id: int,
++        leads: list[dict[str, Any]],
++        session: AsyncSession | None = None,
++    ) -> list[dict[str, Any]]:
++        """Tag in-stream leads with blocked_by_dnc and dnc_reason."""
++        results = []
++        for lead in leads:
++            res = await self.is_blocked(
++                workspace_id=workspace_id,
++                phone=lead.get("phone") or lead.get("first_phone"),
++                email=lead.get("email"),
++                domain=lead.get("domain") or lead.get("company_domain"),
++                tax_id=lead.get("tax_id"),
++                session=session,
++            )
++            updated = dict(lead)
++            updated["blocked_by_dnc"] = res.is_blocked
++            if res.is_blocked:
++                updated["dnc_reason"] = res.reason
++            results.append(updated)
++        return results
+
+diff --git a/nowing_backend/app/routes/dnc_routes.py b/nowing_backend/app/routes/dnc_routes.py
+new file mode 100644
+index 000000000..6eaed676d
+--- /dev/null
++++ b/nowing_backend/app/routes/dnc_routes.py
+@@ -0,0 +1,334 @@
++"""REST routes for Do-Not-Call (DNC) and Compliance Engine (Story 21.14 / Decree 91 / Decree 13)."""
++
++from __future__ import annotations
++
++import csv
++import io
++import logging
++from uuid import UUID
++
++from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
++from sqlalchemy import desc, func, or_, select
++from sqlalchemy.dialects.postgresql import insert as pg_insert
++from sqlalchemy.ext.asyncio import AsyncSession
++
++from app.auth.context import AuthContext
++from app.db import Permission, WorkspaceDncRecord, get_async_session
++from app.lead_intelligence.dnc.normalizer import (
++    hash_phone_hmac,
++    normalize_domain,
++    normalize_email,
++    normalize_phone_e164,
++    normalize_tax_id,
++)
++from app.lead_intelligence.dnc.service import DncComplianceService
++from app.schemas.dnc import (
++    DncCsvImportResponse,
++    DncListResponse,
++    DncRecordCreate,
++    DncRecordRead,
++)
++from app.users import get_auth_context
++from app.utils.rbac import check_permission
++
++logger = logging.getLogger(__name__)
++
++router = APIRouter(tags=["DNC & Compliance"])
++
++
++def _normalize_dnc_value(
++    record_type: str, raw_value: str
++) -> tuple[str | None, str | None]:
++    """Normalize input value and return (normalized_display_value, value_hmac)."""
++    if record_type == "phone":
++        e164 = normalize_phone_e164(raw_value)
++        if not e164:
++            return None, None
++        return e164, hash_phone_hmac(e164)
++    elif record_type == "domain":
++        dom = normalize_domain(raw_value)
++        if not dom:
++            return None, None
++        return dom, hash_phone_hmac(dom)
++    elif record_type == "email":
++        mail = normalize_email(raw_value)
++        if not mail:
++            return None, None
++        return mail, hash_phone_hmac(mail)
++    elif record_type == "tax_id":
++        tax = normalize_tax_id(raw_value)
++        if not tax:
++            return None, None
++        return tax, hash_phone_hmac(tax)
++    return None, None
++
++
++async def create_dnc_record_service(
++    session: AsyncSession,
++    workspace_id: int,
++    body: DncRecordCreate,
++    source: str = "manual",
++) -> dict:
++    """Helper creating a single DNC record with HMAC computation and cache invalidation."""
++    norm_val, val_hmac = _normalize_dnc_value(body.record_type, body.value)
++    if not norm_val or not val_hmac:
++        raise ValueError(f"Invalid format for {body.record_type}: '{body.value}'")
++
++    stmt = (
++        pg_insert(WorkspaceDncRecord)
++        .values(
++            workspace_id=workspace_id,
++            record_type=body.record_type,
++            value=norm_val,
++            value_hmac=val_hmac,
++            reason=body.reason or "Opt-out requested",
++            source=source,
++        )
++        .on_conflict_do_update(
++            constraint="uq_workspace_dnc_entry",
++            set_={
++                "reason": body.reason or "Opt-out requested",
++                "source": source,
++            },
++        )
++        .returning(WorkspaceDncRecord)
++    )
++    result = await session.execute(stmt)
++    record = result.scalar_one()
++    await session.commit()
++
++    dnc_svc = DncComplianceService()
++    await dnc_svc.invalidate_workspace_cache(workspace_id)
++
++    return {
++        "id": record.id,
++        "workspace_id": record.workspace_id,
++        "record_type": record.record_type,
++        "value": record.value,
++        "value_hmac": record.value_hmac,
++        "reason": record.reason,
++        "source": record.source,
++        "created_at": record.created_at,
++        "updated_at": record.updated_at,
++    }
++
++
++async def bulk_import_dnc_csv_service(
++    session: AsyncSession,
++    workspace_id: int,
++    file_bytes: bytes,
++) -> dict:
++    """Helper parsing and inserting bulk DNC entries from CSV."""
++    text_data = file_bytes.decode("utf-8-sig", errors="ignore")
++    reader = csv.DictReader(io.StringIO(text_data))
++
++    imported = 0
++    skipped = 0
++    errors = []
++
++    rows_to_insert = []
++    for line_no, row in enumerate(reader, start=2):
++        r_type = (row.get("type") or row.get("record_type") or "phone").strip().lower()
++        val = (row.get("value") or row.get("contact") or "").strip()
++        reason = (row.get("reason") or "CSV Bulk Import").strip()
++
++        if not val:
++            skipped += 1
++            continue
++
++        norm_val, val_hmac = _normalize_dnc_value(r_type, val)
++        if not norm_val or not val_hmac:
++            errors.append(f"Line {line_no}: Invalid {r_type} '{val}'")
++            skipped += 1
++            continue
++
++        rows_to_insert.append(
++            {
++                "workspace_id": workspace_id,
++                "record_type": r_type,
++                "value": norm_val,
++                "value_hmac": val_hmac,
++                "reason": reason,
++                "source": "csv_import",
++            }
++        )
++
++    if rows_to_insert:
++        stmt = (
++            pg_insert(WorkspaceDncRecord)
++            .values(rows_to_insert)
++            .on_conflict_do_nothing(constraint="uq_workspace_dnc_entry")
++        )
++        await session.execute(stmt)
++        await session.commit()
++        imported = len(rows_to_insert)
++
++        dnc_svc = DncComplianceService()
++        await dnc_svc.invalidate_workspace_cache(workspace_id)
++
++    return {
++        "imported_count": imported,
++        "skipped_count": skipped,
++        "failed_count": len(errors),
++        "errors": errors[:50],  # cap at 50 for response readability
++    }
++
++
++@router.get(
++    "/workspaces/{workspace_id}/dnc",
++    response_model=DncListResponse,
++    status_code=status.HTTP_200_OK,
++)
++async def list_dnc_records(
++    workspace_id: int,
++    record_type: str | None = Query(None, description="Filter by record_type"),
++    search: str | None = Query(None, description="Search query"),
++    page: int = Query(1, ge=1),
++    page_size: int = Query(50, ge=1, le=200),
++    session: AsyncSession = Depends(get_async_session),
++    auth: AuthContext = Depends(get_auth_context),
++) -> DncListResponse:
++    """List and search workspace DNC entries with pagination."""
++    await check_permission(
++        session,
++        auth,
++        workspace_id,
++        Permission.LEADS_READ.value,
++        error_message="You don't have permission to view compliance records in this workspace",
++    )
++
++    query = select(WorkspaceDncRecord).where(
++        WorkspaceDncRecord.workspace_id == workspace_id
++    )
++    count_query = select(func.count(WorkspaceDncRecord.id)).where(
++        WorkspaceDncRecord.workspace_id == workspace_id
++    )
++
++    if record_type:
++        query = query.where(WorkspaceDncRecord.record_type == record_type)
++        count_query = count_query.where(WorkspaceDncRecord.record_type == record_type)
++
++    if search:
++        pattern = f"%{search.strip()}%"
++        search_filter = or_(
++            WorkspaceDncRecord.value.ilike(pattern),
++            WorkspaceDncRecord.reason.ilike(pattern),
++        )
++        query = query.where(search_filter)
++        count_query = count_query.where(search_filter)
++
++    total_count = (await session.execute(count_query)).scalar_one() or 0
++
++    query = (
++        query.order_by(desc(WorkspaceDncRecord.created_at))
++        .offset((page - 1) * page_size)
++        .limit(page_size)
++    )
++    records = (await session.execute(query)).scalars().all()
++
++    return DncListResponse(
++        records=[DncRecordRead.model_validate(r) for r in records],
++        total_count=total_count,
++        page=page,
++        page_size=page_size,
++    )
++
++
++@router.post(
++    "/workspaces/{workspace_id}/dnc",
++    response_model=DncRecordRead,
++    status_code=status.HTTP_200_OK,
++)
++async def create_dnc_record(
++    workspace_id: int,
++    body: DncRecordCreate,
++    session: AsyncSession = Depends(get_async_session),
++    auth: AuthContext = Depends(get_auth_context),
++) -> DncRecordRead:
++    """Add a single phone, email, domain or tax ID to the workspace DNC blacklist."""
++    await check_permission(
++        session,
++        auth,
++        workspace_id,
++        Permission.LEADS_WRITE.value,
++        error_message="You don't have permission to modify compliance records in this workspace",
++    )
++
++    try:
++        data = await create_dnc_record_service(
++            session, workspace_id, body, source="manual"
++        )
++        return DncRecordRead.model_validate(data)
++    except ValueError as exc:
++        raise HTTPException(
++            status_code=status.HTTP_400_BAD_REQUEST,
++            detail=str(exc),
++        ) from exc
++
++
++@router.delete(
++    "/workspaces/{workspace_id}/dnc/{record_id}",
++    status_code=status.HTTP_204_NO_CONTENT,
++)
++async def delete_dnc_record(
++    workspace_id: int,
++    record_id: UUID,
++    session: AsyncSession = Depends(get_async_session),
++    auth: AuthContext = Depends(get_auth_context),
++) -> None:
++    """Remove an entry from the workspace DNC blacklist."""
++    await check_permission(
++        session,
++        auth,
++        workspace_id,
++        Permission.LEADS_WRITE.value,
++        error_message="You don't have permission to modify compliance records in this workspace",
++    )
++
++    stmt = select(WorkspaceDncRecord).where(
++        WorkspaceDncRecord.id == record_id,
++        WorkspaceDncRecord.workspace_id == workspace_id,
++    )
++    res = await session.execute(stmt)
++    record = res.scalar_one_or_none()
++
++    if not record:
++        raise HTTPException(
++            status_code=status.HTTP_404_NOT_FOUND, detail="DNC record not found"
++        )
++
++    await session.delete(record)
++    await session.commit()
++
++    dnc_svc = DncComplianceService()
++    await dnc_svc.invalidate_workspace_cache(workspace_id)
++
++
++@router.post(
++    "/workspaces/{workspace_id}/dnc/import-csv",
++    response_model=DncCsvImportResponse,
++    status_code=status.HTTP_200_OK,
++)
++async def import_dnc_csv(
++    workspace_id: int,
++    file: UploadFile = File(...),
++    session: AsyncSession = Depends(get_async_session),
++    auth: AuthContext = Depends(get_auth_context),
++) -> DncCsvImportResponse:
++    """Bulk import DNC entries from CSV file (up to 5,000 rows)."""
++    await check_permission(
++        session,
++        auth,
++        workspace_id,
++        Permission.LEADS_WRITE.value,
++        error_message="You don't have permission to import compliance records in this workspace",
++    )
++
++    content = await file.read()
++    if not content:
++        raise HTTPException(
++            status_code=status.HTTP_400_BAD_REQUEST, detail="Empty CSV file provided"
++        )
++
++    result = await bulk_import_dnc_csv_service(session, workspace_id, content)
++    return DncCsvImportResponse.model_validate(result)
+
+diff --git a/nowing_backend/app/routes/__init__.py b/nowing_backend/app/routes/__init__.py
+index 6cad1af17..e8f932f07 100644
+--- a/nowing_backend/app/routes/__init__.py
++++ b/nowing_backend/app/routes/__init__.py
+@@ -67,6 +67,7 @@ from .confluence_add_connector_route import router as confluence_add_connector_r
+ from .crm_oauth_routes import router as crm_oauth_router
+ from .crm_routes import router as crm_router
+ from .discord_add_connector_route import router as discord_add_connector_router
++from .dnc_routes import router as dnc_router
+ from .documents_routes import router as documents_router
+ from .dropbox_add_connector_route import router as dropbox_add_connector_router
+ from .editor_routes import router as editor_router
+@@ -134,6 +135,7 @@ router.include_router(workspaces_router)
+ router.include_router(workspace_tables_router)
+ router.include_router(lead_scoring_router)
+ router.include_router(leads_router)
++router.include_router(dnc_router)
+ router.include_router(outbound_router)
+ router.include_router(enrichment_router)
+ router.include_router(crm_router, prefix="/workspaces")
+
+diff --git a/nowing_backend/app/routes/leads_routes.py b/nowing_backend/app/routes/leads_routes.py
+index 2a3d72e19..20d35deba 100644
+--- a/nowing_backend/app/routes/leads_routes.py
++++ b/nowing_backend/app/routes/leads_routes.py
+@@ -20,6 +20,7 @@ from app.db import (
+     LinkedinJob,
+     Permission,
+     VerifiedContact,
++    WorkspaceDncRecord,
+     get_async_session,
+ )
+ from app.lead_intelligence.reverse_icp import ReverseIcpService
+@@ -43,6 +44,7 @@ from app.proprietary.platforms.crawler.fast_crawler import (
+     FastCrawlerTimeoutError,
+     SSRFProtectionError,
+ )
++from app.schemas.dnc import PiiPurgeResponse
+ from app.services.billing_service import BillingService
+ from app.services.phone_waterfall_service import PhoneWaterfallService
+ from app.tasks.phone_waterfall_worker import resolve_phone_waterfall_task
+@@ -753,3 +755,133 @@ async def report_invalid_phone_endpoint(
+         reason=result["reason"],
+         message="Auto-refund SLA processed successfully. 100% credits reverted to wallet.",
+     )
++
++
++async def purge_lead_pii_service(
++    session: AsyncSession,
++    lead_id: UUID,
++    workspace_id: int | None = None,
++) -> dict:
++    """Permanently delete plaintext PII and append phone/email HMAC to workspace DNC blacklist (Decree 13 / GDPR)."""
++    lead = await session.get(Lead, lead_id)
++    if not lead:
++        raise HTTPException(
++            status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found"
++        )
++
++    ws_id = workspace_id or lead.workspace_id
++
++    from app.lead_intelligence.dnc.normalizer import (
++        hash_phone_hmac,
++        normalize_email,
++        normalize_phone_e164,
++    )
++    from app.lead_intelligence.dnc.service import DncComplianceService
++
++    # 1. Collect PII to blacklist in DNC
++    raw_phone = getattr(lead, "phone", None)
++    raw_email = getattr(lead, "email", None)
++
++    vc_stmt = select(VerifiedContact).where(VerifiedContact.lead_id == lead_id)
++    vc_res = await session.execute(vc_stmt)
++    contacts = vc_res.scalars().all()
++
++    dnc_entries = []
++    if raw_phone:
++        e164 = normalize_phone_e164(raw_phone)
++        if e164:
++            dnc_entries.append(
++                {
++                    "workspace_id": ws_id,
++                    "record_type": "phone",
++                    "value": e164,
++                    "value_hmac": hash_phone_hmac(e164),
++                    "reason": "Right-to-be-Forgotten PII Purge",
++                    "source": "right_to_be_forgotten",
++                }
++            )
++    if raw_email:
++        norm_mail = normalize_email(raw_email)
++        if norm_mail:
++            dnc_entries.append(
++                {
++                    "workspace_id": ws_id,
++                    "record_type": "email",
++                    "value": norm_mail,
++                    "value_hmac": hash_phone_hmac(norm_mail),
++                    "reason": "Right-to-be-Forgotten PII Purge",
++                    "source": "right_to_be_forgotten",
++                }
++            )
++
++    if dnc_entries:
++        from sqlalchemy.dialects.postgresql import insert as pg_insert
++
++        stmt = (
++            pg_insert(WorkspaceDncRecord)
++            .values(dnc_entries)
++            .on_conflict_do_nothing(constraint="uq_workspace_dnc_entry")
++        )
++        await session.execute(stmt)
++
++    # 2. Hard-purge plaintext PII on Lead
++    lead.phone = None
++    lead.email = None
++    if hasattr(lead, "contact_name"):
++        lead.contact_name = None
++    if hasattr(lead, "author"):
++        lead.author = None
++    if hasattr(lead, "raw_contacts"):
++        lead.raw_contacts = []
++    lead.consent_status = "opted_out"
++    lead.legal_basis = "right_to_be_forgotten"
++
++    # 3. Hard-purge VerifiedContacts
++    for vc in contacts:
++        await session.delete(vc)
++
++    await session.commit()
++
++    dnc_svc = DncComplianceService()
++    await dnc_svc.invalidate_workspace_cache(ws_id)
++
++    return {
++        "status": "purged",
++        "lead_id": lead_id,
++        "purged_at": datetime.now(UTC),
++        "dnc_appended": bool(dnc_entries),
++    }
++
++
++@router.delete(
++    "/leads/{lead_id}/pii",
++    response_model=PiiPurgeResponse,
++    status_code=status.HTTP_200_OK,
++)
++async def purge_lead_pii_endpoint(
++    lead_id: UUID,
++    session: AsyncSession = Depends(get_async_session),
++    auth: AuthContext = Depends(get_auth_context),
++) -> PiiPurgeResponse:
++    """Hard-purge all personal identifying information (PII) for a lead and append HMAC to DNC (Story 21.14 / Decree 13 PDPD)."""
++    lead = await session.get(Lead, lead_id)
++    if not lead:
++        raise HTTPException(
++            status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found"
++        )
++
++    await check_permission(
++        session,
++        auth,
++        lead.workspace_id,
++        Permission.LEADS_WRITE.value,
++        error_message="You don't have permission to purge PII in this workspace",
++    )
++
++    result = await purge_lead_pii_service(session, lead_id, lead.workspace_id)
++    return PiiPurgeResponse(
++        status=result["status"],
++        lead_id=result["lead_id"],
++        purged_at=result["purged_at"],
++        dnc_appended=result["dnc_appended"],
++    )
+
+diff --git a/nowing_backend/app/routes/workspace_tables_routes.py b/nowing_backend/app/routes/workspace_tables_routes.py
+index 9633813ae..1dd6284c9 100644
+--- a/nowing_backend/app/routes/workspace_tables_routes.py
++++ b/nowing_backend/app/routes/workspace_tables_routes.py
+@@ -2,7 +2,10 @@
+ 
+ from __future__ import annotations
+ 
++import csv
++import io
+ from datetime import UTC, datetime
++from typing import Any
+ from uuid import UUID
+ 
+ from fastapi import APIRouter, Depends, HTTPException, Response, status
+@@ -10,8 +13,11 @@ from sqlalchemy import select
+ from sqlalchemy.ext.asyncio import AsyncSession
+ 
+ from app.auth.context import AuthContext
+-from app.db import Workspace, WorkspaceTable, get_async_session
++from app.db import ExportJob, Lead, Workspace, WorkspaceTable, get_async_session
+ from app.schemas.workspace_table import (
++    AssignLeadsRequest,
++    ExportJobResponse,
++    ExportRequest,
+     WorkspaceTableCreate,
+     WorkspaceTableRead,
+     WorkspaceTableUpdate,
+@@ -198,4 +204,133 @@ async def delete_workspace_table(
+     return Response(status_code=status.HTTP_204_NO_CONTENT)
+ 
+ 
++@router.post(
++    "/workspaces/{workspace_id}/tables/{table_id}/assign-leads",
++    status_code=status.HTTP_200_OK,
++)
++async def assign_leads_to_table(
++    workspace_id: int,
++    table_id: UUID,
++    payload: AssignLeadsRequest,
++    session: AsyncSession = Depends(get_async_session),
++    auth: AuthContext = Depends(get_auth_context),
++) -> dict[str, Any]:
++    """Assign one or more leads to a workspace table (AC-4)."""
++    await check_permission(
++        session,
++        auth,
++        workspace_id,
++        Permission.LEADS_WRITE.value,
++        error_message="You don't have permission to assign leads in this workspace",
++    )
++
++    table = await session.get(WorkspaceTable, table_id)
++    if not table or table.workspace_id != workspace_id:
++        raise HTTPException(
++            status_code=status.HTTP_404_NOT_FOUND,
++            detail=f"Table {table_id} not found in workspace {workspace_id}",
++        )
++
++    if payload.lead_ids:
++        stmt = select(Lead).where(
++            Lead.id.in_(payload.lead_ids), Lead.workspace_id == workspace_id
++        )
++        result = await session.execute(stmt)
++        leads = result.scalars().all()
++        for lead in leads:
++            lead.table_id = table_id
++        await session.commit()
++
++    return {"table_id": table_id, "assigned_count": len(payload.lead_ids)}
++
++
++@router.post(
++    "/workspaces/{workspace_id}/leads/export",
++    response_model=None,
++    status_code=status.HTTP_200_OK,
++)
++async def export_leads(
++    workspace_id: int,
++    payload: ExportRequest,
++    session: AsyncSession = Depends(get_async_session),
++    auth: AuthContext = Depends(get_auth_context),
++) -> Response | ExportJobResponse:
++    """Export leads to CSV or queue a cloud connector export job (AC-5, AC-6)."""
++    await check_permission(
++        session,
++        auth,
++        workspace_id,
++        Permission.LEADS_READ.value,
++        error_message="You don't have permission to export leads in this workspace",
++    )
++
++    if payload.export_type == "csv":
++        stmt = select(Lead).where(Lead.workspace_id == workspace_id)
++        if payload.table_id:
++            stmt = stmt.where(Lead.table_id == payload.table_id)
++        elif payload.lead_ids:
++            stmt = stmt.where(Lead.id.in_(payload.lead_ids))
++
++        result = await session.execute(stmt)
++        leads = result.scalars().all()
++
++        output = io.StringIO()
++        writer = csv.writer(output)
++        writer.writerow(["Company Name", "Domain", "Source", "Industry"])
++        for lead in leads:
++            writer.writerow(
++                [
++                    lead.company_name or "",
++                    lead.domain or "",
++                    lead.source or "",
++                    lead.industry or "",
++                ]
++            )
++
++        return Response(
++            content=output.getvalue(),
++            media_type="text/csv",
++            headers={"Content-Disposition": "attachment; filename=leads.csv"},
++        )
++
++    job = ExportJob(
++        workspace_id=workspace_id,
++        table_id=payload.table_id,
++        export_type=payload.export_type,
++        config=payload.target_config or {},
++    )
++    session.add(job)
++    await session.commit()
++    await session.refresh(job)
++
++    return ExportJobResponse.model_validate(job)
++
++
++@router.get(
++    "/workspaces/{workspace_id}/leads/export/jobs/{job_id}",
++    response_model=ExportJobResponse,
++    status_code=status.HTTP_200_OK,
++)
++async def get_export_job(
++    workspace_id: int,
++    job_id: UUID,
++    session: AsyncSession = Depends(get_async_session),
++    auth: AuthContext = Depends(get_auth_context),
++) -> ExportJobResponse:
++    """Poll the status of a lead export job (AC-6)."""
++    await check_permission(
++        session,
++        auth,
++        workspace_id,
++        Permission.LEADS_READ.value,
++        error_message="You don't have permission to view export jobs in this workspace",
++    )
++
++    job = await session.get(ExportJob, job_id)
++    if not job or job.workspace_id != workspace_id:
++        raise HTTPException(
++            status_code=status.HTTP_404_NOT_FOUND,
++            detail=f"Export job {job_id} not found in workspace {workspace_id}",
++        )
+ 
++    return ExportJobResponse.model_validate(job)
+
+diff --git a/nowing_backend/app/services/phone_waterfall_service.py b/nowing_backend/app/services/phone_waterfall_service.py
+index de148c693..74d29b604 100644
+--- a/nowing_backend/app/services/phone_waterfall_service.py
++++ b/nowing_backend/app/services/phone_waterfall_service.py
+@@ -573,8 +573,57 @@ class PhoneWaterfallService:
+                 degradation_reason="phone_not_found",
+             )
+ 
+-        # 5. Success Path: PII Vault Persistence & Encryption (AD-25, AD-49)
++        # 5. DNC Blacklist Check (Story 21.14 / Decree 91 / Decree 13 PDPD)
+         norm_phone = res.phone
++        from app.lead_intelligence.dnc.service import DncComplianceService
++
++        dnc_service = DncComplianceService()
++        dnc_check = await dnc_service.is_blocked(
++            workspace_id=workspace_id,
++            phone=norm_phone,
++            domain=getattr(lead, "company_domain", None),
++            session=self.session,
++        )
++        if dnc_check.is_blocked:
++            logger.info(
++                "[PhoneWaterfall] Resolved number %s for lead %s is blocked by DNC: %s",
++                mask_phone(norm_phone),
++                lead_id,
++                dnc_check.reason,
++            )
++            dnc_log = PhoneWaterfallLog(
++                workspace_id=workspace_id,
++                client_id=client_id,
++                lead_id=lead_id,
++                contact_id=None,
++                tier_reached=res.tier,
++                provider_used="blocked_by_dnc",
++                status="blocked_by_dnc",
++                cost_micros=0,
++                phone_hash=None,
++                phone_masked="🚫 DNC Blocked",
++                raw_response={"reason": dnc_check.reason or "Blocked by DNC registry"},
++            )
++            self.session.add(dnc_log)
++            await self.session.commit()
++
++            return PhoneResolutionResult(
++                lead_id=lead_id,
++                phone=None,
++                phone_masked="🚫 DNC Blocked",
++                phone_hash=None,
++                tier_reached=res.tier,
++                provider_used="blocked_by_dnc",
++                status="blocked_by_dnc",
++                cost_micros=0,
++                confidence=0.0,
++                carrier="Unknown",
++                is_cached=False,
++                degraded=True,
++                degradation_reason=dnc_check.reason or "blocked_by_dnc",
++            )
++
++        # 6. Success Path: PII Vault Persistence & Encryption (AD-25, AD-49)
+         p_masked = mask_phone(norm_phone)
+         p_hash = hash_phone(norm_phone)
+         encrypted_phone = self.encryption.encrypt(norm_phone)
+@@ -610,7 +659,9 @@ class PhoneWaterfallService:
+             dict(res.raw_response) if isinstance(res.raw_response, dict) else {}
+         )
+         if "phone" in sanitized_raw_response:
+-            sanitized_raw_response["phone"] = mask_phone(sanitized_raw_response["phone"])
++            sanitized_raw_response["phone"] = mask_phone(
++                sanitized_raw_response["phone"]
++            )
+ 
+         # 6. Create PhoneWaterfallLog
+         log_entry = PhoneWaterfallLog(
+
+diff --git a/nowing_backend/app/schemas/dnc.py b/nowing_backend/app/schemas/dnc.py
+new file mode 100644
+index 000000000..75f8d992e
+--- /dev/null
++++ b/nowing_backend/app/schemas/dnc.py
+@@ -0,0 +1,66 @@
++"""Pydantic schemas for DNC & Compliance Engine (Story 21.14)."""
++
++from __future__ import annotations
++
++from datetime import datetime
++from typing import Literal
++from uuid import UUID
++
++from pydantic import BaseModel, ConfigDict, Field
++
++DncRecordType = Literal["phone", "email", "domain", "tax_id"]
++
++
++class DncRecordCreate(BaseModel):
++    """Payload to add a single contact identifier to the DNC blacklist."""
++
++    record_type: DncRecordType = Field(..., description="Type of contact identifier")
++    value: str = Field(
++        ..., min_length=1, max_length=255, description="Phone, email, domain or tax ID"
++    )
++    reason: str | None = Field(
++        default="Opt-out requested", max_length=255, description="Reason for exclusion"
++    )
++
++
++class DncRecordRead(BaseModel):
++    """Schema for returning a DNC record to the client."""
++
++    model_config = ConfigDict(from_attributes=True)
++
++    id: UUID
++    workspace_id: int
++    record_type: str
++    value: str | None
++    value_hmac: str
++    reason: str | None
++    source: str
++    created_at: datetime
++    updated_at: datetime
++
++
++class DncListResponse(BaseModel):
++    """Paginated list of DNC records."""
++
++    records: list[DncRecordRead] = Field(default_factory=list)
++    total_count: int = 0
++    page: int = 1
++    page_size: int = 50
++
++
++class DncCsvImportResponse(BaseModel):
++    """Response returned upon bulk CSV upload."""
++
++    imported_count: int
++    skipped_count: int = 0
++    failed_count: int = 0
++    errors: list[str] = Field(default_factory=list)
++
++
++class PiiPurgeResponse(BaseModel):
++    """Response after executing GDPR / Decree 13 PII hard purge."""
++
++    status: str = "purged"
++    lead_id: UUID
++    purged_at: datetime
++    dnc_appended: bool = True
+
+diff --git a/nowing_backend/tests/unit/dnc/test_dnc_normalizer.py b/nowing_backend/tests/unit/dnc/test_dnc_normalizer.py
+new file mode 100644
+index 000000000..9f0bf5c02
+--- /dev/null
++++ b/nowing_backend/tests/unit/dnc/test_dnc_normalizer.py
+@@ -0,0 +1,76 @@
++"""Unit tests for DNC Normalizer & HMAC Hasher (Story 21.14).
++
++Tests E.164 phone normalization, Keyed HMAC-SHA256 hashing, wildcard domain matching,
++and case-insensitive email/domain matching.
++"""
++
++from __future__ import annotations
++
++import pytest
++
++pytestmark = pytest.mark.unit
++
++
++class TestPhoneNormalization:
++    """Test canonical international E.164 normalization for VN and international numbers."""
++
++    def test_normalize_vietnamese_mobile_formats(self) -> None:
++        """Should convert standard local Vietnamese numbers (0908, 091, 098) to E.164 (+84...)."""
++        from app.lead_intelligence.dnc.normalizer import normalize_phone_e164
++
++        assert normalize_phone_e164("0908123456") == "+84908123456"
++        assert normalize_phone_e164("090.812.3456") == "+84908123456"
++        assert normalize_phone_e164("090 812 3456") == "+84908123456"
++        assert normalize_phone_e164("(090) 812-3456") == "+84908123456"
++        assert normalize_phone_e164("84908123456") == "+84908123456"
++        assert normalize_phone_e164("+84 908 123 456") == "+84908123456"
++
++    def test_normalize_invalid_phone_returns_none(self) -> None:
++        """Should return None on malformed, incomplete or non-phone strings."""
++        from app.lead_intelligence.dnc.normalizer import normalize_phone_e164
++
++        assert normalize_phone_e164("") is None
++        assert normalize_phone_e164("abc") is None
++        assert normalize_phone_e164("123") is None
++        assert normalize_phone_e164("012345") is None
++
++    def test_keyed_hmac_hash_phone(self) -> None:
++        """Should generate deterministic HMAC-SHA256 hex string with secret key."""
++        from app.lead_intelligence.dnc.normalizer import hash_phone_hmac
++
++        phone_e164 = "+84908123456"
++        hash_1 = hash_phone_hmac(phone_e164, secret_key="test-secret-key-123")
++        hash_2 = hash_phone_hmac(phone_e164, secret_key="test-secret-key-123")
++        hash_other = hash_phone_hmac(phone_e164, secret_key="different-secret-key")
++
++        assert len(hash_1) == 64
++        assert hash_1 == hash_2
++        assert hash_1 != hash_other
++
++
++class TestDomainAndEmailNormalization:
++    """Test normalization and wildcard matching for domains and emails."""
++
++    def test_normalize_domain(self) -> None:
++        """Should strip protocol, paths, ports, and lowercase domain names."""
++        from app.lead_intelligence.dnc.normalizer import normalize_domain
++
++        assert normalize_domain("https://Vinhomes.vn/du-an") == "vinhomes.vn"
++        assert normalize_domain("http://sub.company.com:8080/") == "sub.company.com"
++        assert normalize_domain("  HARAVAN.COM  ") == "haravan.com"
++
++    def test_wildcard_domain_match(self) -> None:
++        """Should support exact match and wildcard subdomains (e.g. *.vinhomes.vn)."""
++        from app.lead_intelligence.dnc.normalizer import is_domain_matching
++
++        assert is_domain_matching("vinhomes.vn", "vinhomes.vn") is True
++        assert is_domain_matching("oceanpark.vinhomes.vn", "*.vinhomes.vn") is True
++        assert is_domain_matching("other.vn", "*.vinhomes.vn") is False
++        assert is_domain_matching("vinhomes.vn.fake.com", "vinhomes.vn") is False
++
++    def test_normalize_email(self) -> None:
++        """Should trim and lowercase email addresses."""
++        from app.lead_intelligence.dnc.normalizer import normalize_email
++
++        assert normalize_email("  CEO@Vinhomes.VN  ") == "ceo@vinhomes.vn"
++        assert normalize_email("invalid-email") is None
+
+diff --git a/nowing_backend/tests/unit/dnc/test_dnc_service.py b/nowing_backend/tests/unit/dnc/test_dnc_service.py
+new file mode 100644
+index 000000000..659ef4a54
+--- /dev/null
++++ b/nowing_backend/tests/unit/dnc/test_dnc_service.py
+@@ -0,0 +1,85 @@
++"""Unit tests for DncComplianceService (Story 21.14).
++
++Tests in-stream compliance checking, Redis caching, batch lead filtering,
++and tag application for blocked contacts.
++"""
++
++from __future__ import annotations
++
++from unittest.mock import AsyncMock, patch
++
++import pytest
++
++pytestmark = pytest.mark.unit
++
++
++class TestDncComplianceService:
++    """Test DncComplianceService core matching logic and in-stream filtering."""
++
++    @pytest.mark.asyncio
++    async def test_is_blocked_by_phone_number(self) -> None:
++        """Should detect matching phone number in DNC registry via HMAC hash."""
++        from app.lead_intelligence.dnc.normalizer import hash_phone_hmac
++        from app.lead_intelligence.dnc.service import DncComplianceService
++
++        service = DncComplianceService(secret_key="test-secret-123")
++        expected_hash = hash_phone_hmac("+84908123456", "test-secret-123")
++
++        with patch.object(
++            service,
++            "_get_workspace_dnc_phone_hashes",
++            AsyncMock(return_value={expected_hash}),
++        ):
++            result = await service.is_blocked(
++                workspace_id=1,
++                phone="0908123456",
++            )
++            assert result.is_blocked is True
++            assert result.record_type == "phone"
++
++    @pytest.mark.asyncio
++    async def test_is_blocked_by_wildcard_domain(self) -> None:
++        """Should detect matching wildcard company domain (e.g. *.competitor.vn)."""
++        from app.lead_intelligence.dnc.service import DncComplianceService
++
++        service = DncComplianceService(secret_key="test-secret-123")
++
++        with patch.object(
++            service,
++            "_get_workspace_dnc_domains",
++            AsyncMock(return_value={"*.competitor.vn"}),
++        ):
++            result = await service.is_blocked(
++                workspace_id=1,
++                domain="sales.competitor.vn",
++            )
++            assert result.is_blocked is True
++            assert result.record_type == "domain"
++
++    @pytest.mark.asyncio
++    async def test_batch_filter_leads_tags_blocked_leads(self) -> None:
++        """Should tag matching leads as blocked_by_dnc and keep compliant leads unaffected."""
++        from app.lead_intelligence.dnc.normalizer import hash_phone_hmac
++        from app.lead_intelligence.dnc.service import DncComplianceService
++
++        service = DncComplianceService(secret_key="test-secret-123")
++        blocked_hash = hash_phone_hmac("+84908999888", "test-secret-123")
++
++        leads = [
++            {"id": "lead-1", "phone": "0908111222", "company": "Safe Co"},
++            {"id": "lead-2", "phone": "0908999888", "company": "Blocked Co"},
++        ]
++
++        with patch.object(
++            service,
++            "_get_workspace_dnc_phone_hashes",
++            AsyncMock(return_value={blocked_hash}),
++        ):
++            filtered = await service.batch_filter_leads(workspace_id=1, leads=leads)
++            assert len(filtered) == 2
++
++            assert filtered[0]["blocked_by_dnc"] is False
++            assert filtered[0].get("dnc_reason") is None
++
++            assert filtered[1]["blocked_by_dnc"] is True
++            assert "DNC" in (filtered[1].get("dnc_reason") or "")
+
+diff --git a/nowing_backend/tests/integration/routes/test_dnc_routes.py b/nowing_backend/tests/integration/routes/test_dnc_routes.py
+new file mode 100644
+index 000000000..6313b3403
+--- /dev/null
++++ b/nowing_backend/tests/integration/routes/test_dnc_routes.py
+@@ -0,0 +1,185 @@
++"""Integration tests for DNC REST routes and PII hard purge (Story 21.14).
++
++Tests CRUD operations, CSV bulk import, and Decree 13 PII hard purge endpoint.
++"""
++
++from __future__ import annotations
++
++from datetime import UTC, datetime
++from types import SimpleNamespace
++from unittest.mock import AsyncMock, patch
++from uuid import uuid4
++
++import pytest
++from fastapi import FastAPI
++from fastapi.testclient import TestClient
++
++from app.auth.context import AuthContext
++from app.users import get_auth_context
++
++pytestmark = pytest.mark.integration
++
++
++@pytest.fixture
++def mock_auth() -> AuthContext:
++    """Fixture providing a mock authenticated user with admin context."""
++    user = SimpleNamespace(
++        id=uuid4(),
++        email="admin@nowing.net",
++        is_active=True,
++        is_verified=True,
++        is_superuser=False,
++    )
++    return AuthContext(user=user, method="session")
++
++
++@pytest.fixture
++def test_app() -> FastAPI:
++    """Fixture creating test FastAPI app with DNC routes mounted."""
++    from app.routes.dnc_routes import router as dnc_router
++    from app.routes.leads_routes import router as leads_router
++
++    app = FastAPI()
++    app.include_router(dnc_router, prefix="/api/v1")
++    app.include_router(leads_router, prefix="/api/v1")
++    return app
++
++
++class TestDncRoutes:
++    """Test suite for DNC management and CSV import endpoints."""
++
++    def test_list_dnc_records_requires_permission(
++        self, test_app: FastAPI, mock_auth: AuthContext
++    ) -> None:
++        """Should return 403 Forbidden if user lacks permission."""
++        from fastapi import HTTPException
++
++        import app.routes.dnc_routes as dnc_routes
++
++        with patch.object(
++            dnc_routes,
++            "check_permission",
++            AsyncMock(
++                side_effect=HTTPException(status_code=403, detail="Permission denied")
++            ),
++        ):
++            test_app.dependency_overrides[get_auth_context] = lambda: mock_auth
++            client = TestClient(test_app)
++
++            response = client.get("/api/v1/workspaces/1/dnc")
++            assert response.status_code == 403
++
++    def test_create_dnc_record_success(
++        self, test_app: FastAPI, mock_auth: AuthContext
++    ) -> None:
++        """Should create a new DNC record with normalized HMAC hash."""
++        import app.routes.dnc_routes as dnc_routes
++
++        record_id = uuid4()
++        now = datetime.now(UTC)
++
++        with (
++            patch.object(dnc_routes, "check_permission", AsyncMock(return_value=True)),
++            patch(
++                "app.routes.dnc_routes.create_dnc_record_service",
++                AsyncMock(
++                    return_value={
++                        "id": record_id,
++                        "workspace_id": 1,
++                        "record_type": "phone",
++                        "value": "+84908123456",
++                        "value_hmac": "mock_hmac_sha256_hash",
++                        "reason": "Customer requested opt-out",
++                        "source": "manual",
++                        "created_at": now,
++                        "updated_at": now,
++                    }
++                ),
++            ),
++        ):
++            test_app.dependency_overrides[get_auth_context] = lambda: mock_auth
++            client = TestClient(test_app)
++
++            response = client.post(
++                "/api/v1/workspaces/1/dnc",
++                json={
++                    "record_type": "phone",
++                    "value": "0908123456",
++                    "reason": "Customer requested opt-out",
++                },
++            )
++            assert response.status_code == 200
++            data = response.json()
++            assert data["value"] == "+84908123456"
++            assert data["record_type"] == "phone"
++
++    def test_import_dnc_csv_success(
++        self, test_app: FastAPI, mock_auth: AuthContext
++    ) -> None:
++        """Should bulk-import DNC entries from CSV file."""
++        import app.routes.dnc_routes as dnc_routes
++
++        csv_content = b"type,value,reason\nphone,0908111222,Spam Opt-out\ndomain,*.competitor.vn,Partner Exclude\n"
++
++        with (
++            patch.object(dnc_routes, "check_permission", AsyncMock(return_value=True)),
++            patch(
++                "app.routes.dnc_routes.bulk_import_dnc_csv_service",
++                AsyncMock(
++                    return_value={
++                        "imported_count": 2,
++                        "skipped_count": 0,
++                        "failed_count": 0,
++                        "errors": [],
++                    }
++                ),
++            ),
++        ):
++            test_app.dependency_overrides[get_auth_context] = lambda: mock_auth
++            client = TestClient(test_app)
++
++            response = client.post(
++                "/api/v1/workspaces/1/dnc/import-csv",
++                files={"file": ("dnc_sample.csv", csv_content, "text/csv")},
++            )
++            assert response.status_code == 200
++            assert response.json()["imported_count"] == 2
++
++    def test_hard_purge_lead_pii_endpoint(
++        self, test_app: FastAPI, mock_auth: AuthContext
++    ) -> None:
++        """Should permanently delete plaintext PII and add HMAC to DNC on DELETE /leads/{id}/pii."""
++        import app.routes.leads_routes as leads_routes
++
++        lead_id = uuid4()
++        now = datetime.now(UTC)
++        fake_lead = SimpleNamespace(id=lead_id, workspace_id=1)
++
++        with (
++            patch("app.db.get_async_session"),
++            patch.object(
++                leads_routes, "check_permission", AsyncMock(return_value=True)
++            ),
++            patch(
++                "app.routes.leads_routes.purge_lead_pii_service",
++                AsyncMock(
++                    return_value={
++                        "status": "purged",
++                        "lead_id": lead_id,
++                        "purged_at": now,
++                        "dnc_appended": True,
++                    }
++                ),
++            ),
++            patch(
++                "sqlalchemy.ext.asyncio.AsyncSession.get",
++                AsyncMock(return_value=fake_lead),
++            ),
++        ):
++            test_app.dependency_overrides[get_auth_context] = lambda: mock_auth
++            client = TestClient(test_app)
++
++            response = client.delete(f"/api/v1/leads/{lead_id}/pii")
++            assert response.status_code == 200
++            assert response.json()["status"] == "purged"
++            assert response.json()["dnc_appended"] is True
+
+diff --git a/nowing_web/contracts/types/dnc.types.ts b/nowing_web/contracts/types/dnc.types.ts
+new file mode 100644
+index 000000000..4754467be
+--- /dev/null
++++ b/nowing_web/contracts/types/dnc.types.ts
+@@ -0,0 +1,48 @@
++import { z } from "zod";
++
++export const dncRecordTypeSchema = z.enum(["phone", "email", "domain", "tax_id"]);
++export type DncRecordType = z.infer<typeof dncRecordTypeSchema>;
++
++export const dncRecordSchema = z.object({
++	id: z.string(),
++	workspace_id: z.number(),
++	record_type: z.string(),
++	value: z.string().nullable().optional(),
++	value_hmac: z.string(),
++	reason: z.string().nullable().optional(),
++	source: z.string(),
++	created_at: z.string(),
++	updated_at: z.string(),
++});
++export type DncRecord = z.infer<typeof dncRecordSchema>;
++
++export const dncListResponseSchema = z.object({
++	records: z.array(dncRecordSchema),
++	total_count: z.number(),
++	page: z.number(),
++	page_size: z.number(),
++});
++export type DncListResponse = z.infer<typeof dncListResponseSchema>;
++
++export const dncRecordCreateSchema = z.object({
++	record_type: dncRecordTypeSchema,
++	value: z.string().min(1),
++	reason: z.string().optional().default("Opt-out requested"),
++});
++export type DncRecordCreate = z.infer<typeof dncRecordCreateSchema>;
++
++export const dncCsvImportResponseSchema = z.object({
++	imported_count: z.number(),
++	skipped_count: z.number(),
++	failed_count: z.number(),
++	errors: z.array(z.string()),
++});
++export type DncCsvImportResponse = z.infer<typeof dncCsvImportResponseSchema>;
++
++export const piiPurgeResponseSchema = z.object({
++	status: z.string(),
++	lead_id: z.string(),
++	purged_at: z.string(),
++	dnc_appended: z.boolean(),
++});
++export type PiiPurgeResponse = z.infer<typeof piiPurgeResponseSchema>;
+
+diff --git a/nowing_web/contracts/types/leads.types.ts b/nowing_web/contracts/types/leads.types.ts
+index 537d100fd..618f8c804 100644
+--- a/nowing_web/contracts/types/leads.types.ts
++++ b/nowing_web/contracts/types/leads.types.ts
+@@ -38,6 +38,10 @@ export const leadSchema = z.object({
+ 	content_snippet: z.string().nullable().optional(),
+ 	author: z.string().nullable().optional(),
+ 	enriched: z.boolean().default(false),
++	blocked_by_dnc: z.boolean().optional().default(false),
++	dnc_reason: z.string().nullable().optional(),
++	consent_status: z.string().nullable().optional(),
++	legal_basis: z.string().nullable().optional(),
+ 	created_at: z.string(),
+ 	updated_at: z.string().nullable().optional(),
+ });
+
+diff --git a/nowing_web/lib/apis/dnc-api.service.ts b/nowing_web/lib/apis/dnc-api.service.ts
+new file mode 100644
+index 000000000..a1da72619
+--- /dev/null
++++ b/nowing_web/lib/apis/dnc-api.service.ts
+@@ -0,0 +1,86 @@
++import {
++	type DncCsvImportResponse,
++	type DncListResponse,
++	type DncRecord,
++	type DncRecordCreate,
++	dncCsvImportResponseSchema,
++	dncListResponseSchema,
++	dncRecordSchema,
++	type PiiPurgeResponse,
++	piiPurgeResponseSchema,
++} from "@/contracts/types/dnc.types";
++import { baseApiService } from "./base-api.service";
++
++const base = (workspaceId: number | string) => `/api/v1/workspaces/${workspaceId}`;
++
++class DncApiService {
++	listDncRecords = async (
++		workspaceId: number | string,
++		params: {
++			record_type?: string;
++			search?: string;
++			page?: number;
++			page_size?: number;
++		} = {}
++	): Promise<DncListResponse> => {
++		const qs = new URLSearchParams();
++		if (params.record_type) qs.set("record_type", params.record_type);
++		if (params.search) qs.set("search", params.search);
++		if (params.page) qs.set("page", String(params.page));
++		if (params.page_size) qs.set("page_size", String(params.page_size));
++
++		const query = qs.toString();
++		return baseApiService.get(
++			`${base(workspaceId)}/dnc${query ? `?${query}` : ""}`,
++			dncListResponseSchema
++		);
++	};
++
++	createDncRecord = async (
++		workspaceId: number | string,
++		payload: DncRecordCreate
++	): Promise<DncRecord> => {
++		return baseApiService.post(`${base(workspaceId)}/dnc`, dncRecordSchema, { body: payload });
++	};
++
++	deleteDncRecord = async (workspaceId: number | string, recordId: string): Promise<void> => {
++		await baseApiService.delete(`${base(workspaceId)}/dnc/${recordId}`);
++	};
++
++	importDncCsv = async (
++		workspaceId: number | string,
++		file: File
++	): Promise<DncCsvImportResponse> => {
++		const formData = new FormData();
++		formData.append("file", file);
++
++		const response = await fetch(`/api/v1/workspaces/${workspaceId}/dnc/import-csv`, {
++			method: "POST",
++			body: formData,
++			credentials: "include",
++		});
++
++		if (!response.ok) {
++			const err = await response.json().catch(() => ({ detail: "Failed to import CSV" }));
++			throw new Error(err.detail || "Failed to import CSV");
++		}
++
++		const data = await response.json();
++		return dncCsvImportResponseSchema.parse(data);
++	};
++
++	purgeLeadPii = async (leadId: string): Promise<PiiPurgeResponse> => {
++		const response = await fetch(`/api/v1/leads/${leadId}/pii`, {
++			method: "DELETE",
++			credentials: "include",
++		});
++		if (!response.ok) {
++			const err = await response.json().catch(() => ({ detail: "Failed to purge PII" }));
++			throw new Error(err.detail || "Failed to purge PII");
++		}
++		const data = await response.json();
++		return piiPurgeResponseSchema.parse(data);
++	};
++}
++
++export const dncApiService = new DncApiService();
+
+diff --git a/nowing_web/components/leads/DncManagementModal.tsx b/nowing_web/components/leads/DncManagementModal.tsx
+new file mode 100644
+index 000000000..983f341dc
+--- /dev/null
++++ b/nowing_web/components/leads/DncManagementModal.tsx
+@@ -0,0 +1,541 @@
++"use client";
++
++import {
++	AlertCircle,
++	CheckCircle2,
++	FileSpreadsheet,
++	Filter,
++	Loader2,
++	Plus,
++	RefreshCw,
++	Search,
++	ShieldAlert,
++	Trash2,
++	UploadCloud,
++	X,
++} from "lucide-react";
++import type React from "react";
++import { useCallback, useEffect, useState } from "react";
++import type { DncCsvImportResponse, DncRecord, DncRecordType } from "@/contracts/types/dnc.types";
++import { dncApiService } from "@/lib/apis/dnc-api.service";
++
++interface DncManagementModalProps {
++	isOpen: boolean;
++	onClose: () => void;
++	workspaceId: string | number;
++}
++
++export const DncManagementModal: React.FC<DncManagementModalProps> = ({
++	isOpen,
++	onClose,
++	workspaceId,
++}) => {
++	const [activeTab, setActiveTab] = useState<"list" | "add" | "import">("list");
++	const [records, setRecords] = useState<DncRecord[]>([]);
++	const [totalCount, setTotalCount] = useState<number>(0);
++	const [page, setPage] = useState<number>(1);
++	const [selectedType, setSelectedType] = useState<string>("all");
++	const [searchQuery, setSearchQuery] = useState<string>("");
++	const [loading, setLoading] = useState<boolean>(false);
++	const [actionLoading, setActionLoading] = useState<boolean>(false);
++	const [error, setError] = useState<string | null>(null);
++	const [successMsg, setSuccessMsg] = useState<string | null>(null);
++
++	// New Entry Form State
++	const [newType, setNewType] = useState<DncRecordType>("phone");
++	const [newValue, setNewValue] = useState<string>("");
++	const [newReason, setNewReason] = useState<string>("Opt-out requested");
++
++	// CSV Upload State
++	const [selectedFile, setSelectedFile] = useState<File | null>(null);
++	const [importResult, setImportResult] = useState<DncCsvImportResponse | null>(null);
++
++	const fetchRecords = useCallback(async () => {
++		if (!isOpen) return;
++		setLoading(true);
++		setError(null);
++		try {
++			const res = await dncApiService.listDncRecords(workspaceId, {
++				record_type: selectedType === "all" ? undefined : selectedType,
++				search: searchQuery ? searchQuery.trim() : undefined,
++				page,
++				page_size: 20,
++			});
++			setRecords(res.records);
++			setTotalCount(res.total_count);
++		} catch (err: unknown) {
++			setError(err instanceof Error ? err.message : "An error occurred");
++		} finally {
++			setLoading(false);
++		}
++	}, [isOpen, page, selectedType, searchQuery, workspaceId]);
++
++	useEffect(() => {
++		if (isOpen) {
++			fetchRecords();
++		}
++	}, [isOpen, fetchRecords]);
++
++	const handleAddSingle = async (e: React.FormEvent) => {
++		e.preventDefault();
++		if (!newValue.trim()) return;
++
++		setActionLoading(true);
++		setError(null);
++		setSuccessMsg(null);
++		try {
++			await dncApiService.createDncRecord(workspaceId, {
++				record_type: newType,
++				value: newValue.trim(),
++				reason: newReason.trim(),
++			});
++			setSuccessMsg(`Added ${newType} '${newValue}' to DNC blacklist`);
++			setNewValue("");
++			setActiveTab("list");
++			await fetchRecords();
++		} catch (err: unknown) {
++			setError(err instanceof Error ? err.message : "Failed to add DNC entry");
++		} finally {
++			setActionLoading(false);
++		}
++	};
++
++	const handleDelete = async (recordId: string) => {
++		if (!confirm("Are you sure you want to remove this record from the DNC blacklist?")) {
++			return;
++		}
++		setActionLoading(true);
++		setError(null);
++		try {
++			await dncApiService.deleteDncRecord(workspaceId, recordId);
++			setRecords((prev) => prev.filter((r) => r.id !== recordId));
++			setTotalCount((prev) => Math.max(0, prev - 1));
++			setSuccessMsg("Removed record from DNC blacklist");
++		} catch (err: unknown) {
++			setError(err instanceof Error ? err.message : "Failed to delete record");
++		} finally {
++			setActionLoading(false);
++		}
++	};
++
++	const handleFileUpload = async (e: React.FormEvent) => {
++		e.preventDefault();
++		if (!selectedFile) return;
++
++		setActionLoading(true);
++		setError(null);
++		setImportResult(null);
++		try {
++			const res = await dncApiService.importDncCsv(workspaceId, selectedFile);
++			setImportResult(res);
++			setSuccessMsg(`Successfully imported ${res.imported_count} DNC records`);
++			setSelectedFile(null);
++			await fetchRecords();
++		} catch (err: unknown) {
++			setError(err instanceof Error ? err.message : "CSV import failed");
++		} finally {
++			setActionLoading(false);
++		}
++	};
++
++	if (!isOpen) return null;
++
++	return (
++		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
++			<div className="relative w-full max-w-3xl rounded-2xl bg-zinc-900 border border-zinc-800 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
++				{/* Header */}
++				<div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800 bg-zinc-900/80 sticky top-0 z-10">
++					<div className="flex items-center gap-3">
++						<div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">
++							<ShieldAlert className="w-5 h-5" />
++						</div>
++						<div>
++							<h2 className="text-lg font-semibold text-zinc-100 flex items-center gap-2">
++								Do-Not-Call (DNC) & Compliance Registry
++								<span className="text-xs font-normal px-2 py-0.5 rounded-full bg-red-950/80 text-red-300 border border-red-800/40">
++									NĐ 91/2020 & NĐ 13/2023
++								</span>
++							</h2>
++							<p className="text-xs text-zinc-400">
++								Contacts in this registry are strictly excluded from automated outreach and phone
++								resolution.
++							</p>
++						</div>
++					</div>
++					<button
++						type="button"
++						onClick={onClose}
++						className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
++					>
++						<X className="w-5 h-5" />
++					</button>
++				</div>
++
++				{/* Tabs Navigation */}
++				<div className="flex items-center gap-2 px-6 pt-3 border-b border-zinc-800 bg-zinc-950/40">
++					<button
++						type="button"
++						onClick={() => {
++							setActiveTab("list");
++							setError(null);
++							setSuccessMsg(null);
++						}}
++						className={`px-4 py-2 text-sm font-medium border-b-2 transition-all flex items-center gap-2 ${
++							activeTab === "list"
++								? "border-emerald-500 text-emerald-400"
++								: "border-transparent text-zinc-400 hover:text-zinc-200"
++						}`}
++					>
++						<Filter className="w-4 h-4" />
++						Blacklist Registry ({totalCount})
++					</button>
++					<button
++						type="button"
++						onClick={() => {
++							setActiveTab("add");
++							setError(null);
++							setSuccessMsg(null);
++						}}
++						className={`px-4 py-2 text-sm font-medium border-b-2 transition-all flex items-center gap-2 ${
++							activeTab === "add"
++								? "border-emerald-500 text-emerald-400"
++								: "border-transparent text-zinc-400 hover:text-zinc-200"
++						}`}
++					>
++						<Plus className="w-4 h-4" />
++						Add Single Record
++					</button>
++					<button
++						type="button"
++						onClick={() => {
++							setActiveTab("import");
++							setError(null);
++							setSuccessMsg(null);
++						}}
++						className={`px-4 py-2 text-sm font-medium border-b-2 transition-all flex items-center gap-2 ${
++							activeTab === "import"
++								? "border-emerald-500 text-emerald-400"
++								: "border-transparent text-zinc-400 hover:text-zinc-200"
++						}`}
++					>
++						<UploadCloud className="w-4 h-4" />
++						Bulk CSV Import
++					</button>
++				</div>
++
++				{/* Body Content */}
++				<div className="p-6 overflow-y-auto flex-1 space-y-4">
++					{error && (
++						<div className="flex items-center gap-3 p-3 rounded-lg bg-red-950/50 border border-red-800 text-red-300 text-sm">
++							<AlertCircle className="w-4 h-4 shrink-0" />
++							<span>{error}</span>
++						</div>
++					)}
++					{successMsg && (
++						<div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-950/50 border border-emerald-800 text-emerald-300 text-sm">
++							<CheckCircle2 className="w-4 h-4 shrink-0" />
++							<span>{successMsg}</span>
++						</div>
++					)}
++
++					{/* TAB 1: LIST */}
++					{activeTab === "list" && (
++						<div className="space-y-4">
++							{/* Filters Bar */}
++							<div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
++								<div className="relative w-full sm:w-72">
++									<Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
++									<input
++										type="text"
++										value={searchQuery}
++										onChange={(e) => {
++											setSearchQuery(e.target.value);
++											setPage(1);
++										}}
++										placeholder="Search number, domain, reason..."
++										className="w-full pl-9 pr-3 py-1.5 bg-zinc-800/80 border border-zinc-700 rounded-lg text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
++									/>
++								</div>
++
++								<div className="flex items-center gap-2 w-full sm:w-auto">
++									<select
++										value={selectedType}
++										onChange={(e) => {
++											setSelectedType(e.target.value);
++											setPage(1);
++										}}
++										className="px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-emerald-500"
++									>
++										<option value="all">All Types</option>
++										<option value="phone">Phone (+84)</option>
++										<option value="domain">Domain / Subdomain</option>
++										<option value="email">Email</option>
++										<option value="tax_id">Tax ID (MST)</option>
++									</select>
++									<button
++										type="button"
++										onClick={fetchRecords}
++										disabled={loading}
++										className="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors"
++										title="Refresh"
++									>
++										<RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
++									</button>
++								</div>
++							</div>
++
++							{/* Table */}
++							<div className="border border-zinc-800 rounded-xl overflow-hidden bg-zinc-950/50">
++								<table className="w-full text-left text-sm text-zinc-300">
++									<thead className="bg-zinc-900/60 text-xs font-semibold text-zinc-400 uppercase tracking-wider border-b border-zinc-800">
++										<tr>
++											<th className="px-4 py-3">Type</th>
++											<th className="px-4 py-3">Value / Match</th>
++											<th className="px-4 py-3">Reason</th>
++											<th className="px-4 py-3">Source</th>
++											<th className="px-4 py-3 text-right">Action</th>
++										</tr>
++									</thead>
++									<tbody className="divide-y divide-zinc-800/60">
++										{loading ? (
++											<tr>
++												<td colSpan={5} className="px-4 py-8 text-center text-zinc-400">
++													<Loader2 className="w-6 h-6 animate-spin mx-auto text-emerald-400 mb-2" />
++													Loading compliance records...
++												</td>
++											</tr>
++										) : records.length === 0 ? (
++											<tr>
++												<td colSpan={5} className="px-4 py-8 text-center text-zinc-500">
++													No DNC records found matching your filters.
++												</td>
++											</tr>
++										) : (
++											records.map((r) => (
++												<tr key={r.id} className="hover:bg-zinc-800/30 transition-colors">
++													<td className="px-4 py-3">
++														<span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium bg-zinc-800 border border-zinc-700 text-zinc-300 uppercase">
++															{r.record_type}
++														</span>
++													</td>
++													<td className="px-4 py-3 font-mono text-zinc-200">
++														{r.value || `[HMAC: ${r.value_hmac.slice(0, 10)}...]`}
++													</td>
++													<td className="px-4 py-3 text-zinc-400 text-xs">
++														{r.reason || "Opt-out"}
++													</td>
++													<td className="px-4 py-3 text-xs text-zinc-500">
++														{r.source === "right_to_be_forgotten" ? (
++															<span className="text-amber-400/90 font-medium">
++																Right-to-be-Forgotten
++															</span>
++														) : (
++															r.source
++														)}
++													</td>
++													<td className="px-4 py-3 text-right">
++														<button
++															type="button"
++															onClick={() => handleDelete(r.id)}
++															disabled={actionLoading}
++															className="p-1.5 rounded-md text-zinc-500 hover:text-red-400 hover:bg-red-950/40 transition-colors"
++															title="Remove from DNC"
++														>
++															<Trash2 className="w-4 h-4" />
++														</button>
++													</td>
++												</tr>
++											))
++										)}
++									</tbody>
++								</table>
++							</div>
++
++							{/* Pagination */}
++							{totalCount > 20 && (
++								<div className="flex items-center justify-between text-xs text-zinc-400 px-1">
++									<span>
++										Showing {records.length} of {totalCount} records
++									</span>
++									<div className="flex items-center gap-2">
++										<button
++											type="button"
++											onClick={() => setPage((p) => Math.max(1, p - 1))}
++											disabled={page <= 1 || loading}
++											className="px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50"
++										>
++											Prev
++										</button>
++										<span>Page {page}</span>
++										<button
++											type="button"
++											onClick={() => setPage((p) => p + 1)}
++											disabled={records.length < 20 || loading}
++											className="px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50"
++										>
++											Next
++										</button>
++									</div>
++								</div>
++							)}
++						</div>
++					)}
++
++					{/* TAB 2: ADD SINGLE ENTRY */}
++					{activeTab === "add" && (
++						<form onSubmit={handleAddSingle} className="space-y-4 max-w-xl mx-auto py-4">
++							<div className="space-y-1.5">
++								<label
++									htmlFor="dnc-record-type"
++									className="text-xs font-semibold text-zinc-300 uppercase tracking-wider"
++								>
++									Record Identifier Type
++								</label>
++								<select
++									id="dnc-record-type"
++									value={newType}
++									onChange={(e) => setNewType(e.target.value as DncRecordType)}
++									className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-emerald-500"
++								>
++									<option value="phone">Phone Number (e.g. 0908123456 or +84908123456)</option>
++									<option value="domain">Company Domain (e.g. vinhomes.vn or *.vinhomes.vn)</option>
++									<option value="email">Email Address (e.g. contact@domain.com)</option>
++									<option value="tax_id">Corporate Tax ID / MST (e.g. 0101234567)</option>
++								</select>
++							</div>
++
++							<div className="space-y-1.5">
++								<label
++									htmlFor="dnc-target-val"
++									className="text-xs font-semibold text-zinc-300 uppercase tracking-wider"
++								>
++									Target Value
++								</label>
++								<input
++									id="dnc-target-val"
++									type="text"
++									value={newValue}
++									onChange={(e) => setNewValue(e.target.value)}
++									placeholder={
++										newType === "phone"
++											? "0908123456"
++											: newType === "domain"
++												? "*.vinhomes.vn"
++												: newType === "email"
++													? "ceo@company.com"
++													: "0312345678"
++									}
++									required
++									className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-emerald-500"
++								/>
++							</div>
++
++							<div className="space-y-1.5">
++								<label
++									htmlFor="dnc-legal-context"
++									className="text-xs font-semibold text-zinc-300 uppercase tracking-wider"
++								>
++									Reason / Legal Opt-Out Context
++								</label>
++								<input
++									id="dnc-legal-context"
++									type="text"
++									value={newReason}
++									onChange={(e) => setNewReason(e.target.value)}
++									placeholder="e.g. Customer requested opt-out via phone call"
++									className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-emerald-500"
++								/>
++							</div>
++
++							<div className="pt-2">
++								<button
++									type="submit"
++									disabled={actionLoading || !newValue.trim()}
++									className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50"
++								>
++									{actionLoading && <Loader2 className="w-4 h-4 animate-spin" />}
++									Add to DNC Blacklist
++								</button>
++							</div>
++						</form>
++					)}
++
++					{/* TAB 3: BULK CSV IMPORT */}
++					{activeTab === "import" && (
++						<form onSubmit={handleFileUpload} className="space-y-5 max-w-xl mx-auto py-4">
++							<div className="p-4 rounded-xl bg-zinc-950/60 border border-zinc-800 text-xs text-zinc-400 space-y-2">
++								<p className="font-semibold text-zinc-200 flex items-center gap-2">
++									<FileSpreadsheet className="w-4 h-4 text-emerald-400" />
++									CSV File Structure Guide
++								</p>
++								<p>
++									CSV should contain columns: <code className="text-emerald-300">type</code>,{" "}
++									<code className="text-emerald-300">value</code>, and optional{" "}
++									<code className="text-emerald-300">reason</code>. Supports up to 5,000 records per
++									upload.
++								</p>
++								<pre className="p-2 rounded bg-zinc-900 border border-zinc-800 font-mono text-[11px] text-zinc-300">
++									type,value,reason{"\n"}
++									phone,0908123456,Decree 91 Blacklist{"\n"}
++									domain,*.competitor.com,Competitor Domain{"\n"}
++									email,optout@agency.vn,Customer Opt-Out
++								</pre>
++							</div>
++
++							<div className="border-2 border-dashed border-zinc-700 hover:border-emerald-500 rounded-2xl p-6 text-center transition-colors">
++								<input
++									type="file"
++									accept=".csv"
++									id="dnc-csv-input"
++									onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
++									className="hidden"
++								/>
++								<label
++									htmlFor="dnc-csv-input"
++									className="cursor-pointer flex flex-col items-center gap-2"
++								>
++									<UploadCloud className="w-10 h-10 text-zinc-400 hover:text-emerald-400 transition-colors" />
++									<span className="text-sm font-medium text-zinc-200">
++										{selectedFile ? selectedFile.name : "Click or drag CSV file here to upload"}
++									</span>
++									<span className="text-xs text-zinc-500">
++										{selectedFile
++											? `${(selectedFile.size / 1024).toFixed(1)} KB`
++											: "UTF-8 encoded .csv up to 10MB"}
++									</span>
++								</label>
++							</div>
++
++							{importResult && (
++								<div className="p-3 rounded-lg bg-zinc-900 border border-zinc-800 text-xs space-y-1 text-zinc-300">
++									<p className="font-semibold text-emerald-400">
++										Import Complete: {importResult.imported_count} records inserted
++									</p>
++									<p className="text-zinc-400">
++										Skipped: {importResult.skipped_count} | Failed: {importResult.failed_count}
++									</p>
++									{importResult.errors.length > 0 && (
++										<div className="mt-2 text-red-400 font-mono">
++											{importResult.errors.slice(0, 5).map((e) => (
++												<div key={e}>{e}</div>
++											))}
++										</div>
++									)}
++								</div>
++							)}
++
++							<button
++								type="submit"
++								disabled={actionLoading || !selectedFile}
++								className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50"
++							>
++								{actionLoading && <Loader2 className="w-4 h-4 animate-spin" />}
++								Upload & Process DNC CSV
++							</button>
++						</form>
++					)}
++				</div>
++			</div>
++		</div>
++	);
++};
+
+diff --git a/nowing_web/components/leads/LeadCard.tsx b/nowing_web/components/leads/LeadCard.tsx
+index d0acb4541..380ab448b 100644
+--- a/nowing_web/components/leads/LeadCard.tsx
++++ b/nowing_web/components/leads/LeadCard.tsx
+@@ -144,6 +144,15 @@ export const LeadCard: React.FC<LeadCardProps> = ({
+ 							{intentBadge.label}
+ 						</span>
+ 					)}
++
++					{(lead.blocked_by_dnc || lead.consent_status === "opted_out") && (
++						<span
++							className="text-xs font-semibold px-2 py-0.5 rounded-md bg-red-950/80 text-red-300 border border-red-800/60 inline-flex items-center gap-1"
++							title={lead.dnc_reason || "Liên hệ này nằm trong danh sách Do-Not-Call (DNC)"}
++						>
++							<span>🚫 DNC Blocked</span>
++						</span>
++					)}
+ 				</div>
+ 
+ 				<div className="flex items-center gap-2">
+@@ -233,15 +242,24 @@ export const LeadCard: React.FC<LeadCardProps> = ({
+ 			{/* Action Footer */}
+ 			<div className="flex flex-wrap items-center justify-between gap-2 pt-2 mt-1 border-t border-zinc-800/60">
+ 				<div className="flex items-center gap-2">
+-					<ZaloOutreachButton
+-						leadId={lead.id}
+-						workspaceId={lead.workspace_id}
+-						phone={lead.phone}
+-						companyName={lead.company_name}
+-						intent={lead.intent}
+-						source={lead.source}
+-						contentSnippet={lead.content_snippet}
+-					/>
++					{lead.blocked_by_dnc || lead.consent_status === "opted_out" ? (
++						<span
++							className="inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-semibold bg-zinc-800 text-zinc-500 border border-zinc-700/60 cursor-not-allowed"
++							title={lead.dnc_reason || "Liên hệ này nằm trong danh sách Do-Not-Call (DNC)"}
++						>
++							<span>🚫 Chặn liên hệ (DNC)</span>
++						</span>
++					) : (
++						<ZaloOutreachButton
++							leadId={lead.id}
++							workspaceId={lead.workspace_id}
++							phone={lead.phone}
++							companyName={lead.company_name}
++							intent={lead.intent}
++							source={lead.source}
++							contentSnippet={lead.content_snippet}
++						/>
++					)}
+ 
+ 					<button
+ 						type="button"
+
+diff --git a/nowing_web/components/leads/LeadsContent.tsx b/nowing_web/components/leads/LeadsContent.tsx
+index 8c1e4ec0b..33423ade4 100644
+--- a/nowing_web/components/leads/LeadsContent.tsx
++++ b/nowing_web/components/leads/LeadsContent.tsx
+@@ -1,6 +1,6 @@
+ "use client";
+ 
+-import { RefreshCw, Search, Sparkles, Users } from "lucide-react";
++import { RefreshCw, Search, ShieldAlert, Sparkles, Users } from "lucide-react";
+ import { useParams, useRouter, useSearchParams } from "next/navigation";
+ import type React from "react";
+ import { useCallback, useEffect, useMemo, useState } from "react";
+@@ -9,6 +9,7 @@ import type { FilterPresets } from "@/contracts/types/leads.types";
+ import { useLeads } from "@/lib/hooks/use-leads";
+ import { useWorkspaceTables } from "@/lib/hooks/use-workspace-tables";
+ import { CompanyGraphDrawer } from "./CompanyGraphDrawer";
++import { DncManagementModal } from "./DncManagementModal";
+ import { LeadCard } from "./LeadCard";
+ import { MultiTableTabs } from "./multi-table-tabs";
+ import { ReverseIcpModal } from "./ReverseIcpModal";
+@@ -54,6 +55,7 @@ export const LeadsContent: React.FC = () => {
+ 	const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
+ 	const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
+ 	const [isReverseIcpOpen, setIsReverseIcpOpen] = useState<boolean>(false);
++	const [isDncModalOpen, setIsDncModalOpen] = useState<boolean>(false);
+ 	const [activeTableId, setActiveTableId] = useState<string | null>(searchParams.get("table"));
+ 
+ 	const {
+@@ -231,6 +233,15 @@ export const LeadsContent: React.FC = () => {
+ 						<span>1-Click Reverse-ICP</span>
+ 					</button>
+ 
++					<button
++						type="button"
++						onClick={() => setIsDncModalOpen(true)}
++						className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-950/40 text-red-400 hover:bg-red-900/50 hover:text-red-300 border border-red-800/50 transition-colors shadow-sm"
++					>
++						<ShieldAlert className="w-3.5 h-3.5" />
++						<span>Do-Not-Call (DNC)</span>
++					</button>
++
+ 					<button
+ 						type="button"
+ 						onClick={() => {
+@@ -371,6 +382,13 @@ export const LeadsContent: React.FC = () => {
+ 				onApplyFilterPresets={handleApplyIcpPresets}
+ 				onCreateTableFromIcp={handleCreateTableFromIcp}
+ 			/>
++
++			{/* Do-Not-Call (DNC) Compliance Modal (Story 21.14) */}
++			<DncManagementModal
++				isOpen={isDncModalOpen}
++				onClose={() => setIsDncModalOpen(false)}
++				workspaceId={workspaceId}
++			/>
+ 		</div>
+ 	);
+ };
+
+diff --git a/nowing_web/components/leads/__tests__/DncManagementModal.test.ts b/nowing_web/components/leads/__tests__/DncManagementModal.test.ts
+new file mode 100644
+index 000000000..bdd1a48ba
+--- /dev/null
++++ b/nowing_web/components/leads/__tests__/DncManagementModal.test.ts
+@@ -0,0 +1,77 @@
++import assert from "node:assert/strict";
++import test from "node:test";
++
++/**
++ * Helper to parse and validate CSV rows for DNC import (Story 21.14).
++ */
++export function parseDncCsv(csvText: string): Array<{ record_type: string; value: string; reason?: string }> {
++	const lines = csvText
++		.split(/\r?\n/)
++		.map((l) => l.trim())
++		.filter(Boolean);
++	if (lines.length <= 1) return [];
++
++	const headers = lines[0].toLowerCase().split(",").map((h) => h.trim());
++	const typeIdx = headers.indexOf("type");
++	const valueIdx = headers.indexOf("value");
++	const reasonIdx = headers.indexOf("reason");
++
++	if (typeIdx === -1 || valueIdx === -1) {
++		throw new Error("Invalid CSV headers: must contain 'type' and 'value'");
++	}
++
++	const results = [];
++	for (let i = 1; i < lines.length; i++) {
++		const cols = lines[i].split(",").map((c) => c.trim());
++		if (cols[valueIdx]) {
++			results.push({
++				record_type: cols[typeIdx] || "phone",
++				value: cols[valueIdx],
++				reason: reasonIdx !== -1 ? cols[reasonIdx] : undefined,
++			});
++		}
++	}
++	return results;
++}
++
++/**
++ * Helper to format DNC badge label and color variant.
++ */
++export function formatDncBadge(isBlocked: boolean, reason?: string | null): { label: string; isBlocked: boolean } {
++	if (!isBlocked) {
++		return { label: "Compliant", isBlocked: false };
++	}
++	return {
++		label: reason ? `🚫 DNC: ${reason}` : "🚫 DNC Blocked",
++		isBlocked: true,
++	};
++}
++
++test("parseDncCsv parses valid 3-column CSV text", () => {
++	const sampleCsv = `type,value,reason\nphone,0908123456,Customer Request\ndomain,*.competitor.vn,Competitor\nemail,ceo@blocked.com,Opt-out`;
++	const rows = parseDncCsv(sampleCsv);
++
++	assert.equal(rows.length, 3);
++	assert.equal(rows[0].record_type, "phone");
++	assert.equal(rows[0].value, "0908123456");
++	assert.equal(rows[0].reason, "Customer Request");
++	assert.equal(rows[1].record_type, "domain");
++	assert.equal(rows[1].value, "*.competitor.vn");
++});
++
++test("parseDncCsv throws error on missing required headers", () => {
++	const badCsv = `name,contact\nJohn,0908123456`;
++	assert.throws(() => parseDncCsv(badCsv), /Invalid CSV headers/);
++});
++
++test("formatDncBadge returns compliant badge when lead is not blocked", () => {
++	const badge = formatDncBadge(false);
++	assert.equal(badge.isBlocked, false);
++	assert.equal(badge.label, "Compliant");
++});
++
++test("formatDncBadge returns blocked badge with custom reason", () => {
++	const badge = formatDncBadge(true, "Decree 91 Blacklist");
++	assert.equal(badge.isBlocked, true);
++	assert.equal(badge.label, "🚫 DNC: Decree 91 Blacklist");
++});

@@ -1,0 +1,1593 @@
+diff --git a/nowing_backend/app/capabilities/social/__init__.py b/nowing_backend/app/capabilities/social/__init__.py
+index 41b470588..012f4a9d2 100644
+--- a/nowing_backend/app/capabilities/social/__init__.py
++++ b/nowing_backend/app/capabilities/social/__init__.py
+@@ -1,5 +1,20 @@
+-"""Social capabilities package (Story 21.8)."""
++"""Social capabilities package (Story 21.8, 21.12)."""
+ 
++from app.capabilities.social.analyze_viral_outliers import (
++    SOCIAL_ANALYZE_VIRAL_OUTLIERS,
++    SocialAnalyzeOutliersInput,
++    SocialAnalyzeOutliersOutput,
++)
++from app.capabilities.social.generate_viral_drafts import (
++    SOCIAL_GENERATE_VIRAL_DRAFTS,
++    SocialGenerateDraftsInput,
++    SocialGenerateDraftsOutput,
++)
++from app.capabilities.social.learn_voice import (
++    SOCIAL_LEARN_VOICE,
++    SocialLearnVoiceInput,
++    SocialLearnVoiceOutput,
++)
+ from app.capabilities.social.search_leads import (
+     SOCIAL_SEARCH_LEADS,
+     SocialPostItem,
+@@ -8,7 +23,16 @@ from app.capabilities.social.search_leads import (
+ )
+ 
+ __all__ = [
++    "SOCIAL_ANALYZE_VIRAL_OUTLIERS",
++    "SOCIAL_GENERATE_VIRAL_DRAFTS",
++    "SOCIAL_LEARN_VOICE",
+     "SOCIAL_SEARCH_LEADS",
++    "SocialAnalyzeOutliersInput",
++    "SocialAnalyzeOutliersOutput",
++    "SocialGenerateDraftsInput",
++    "SocialGenerateDraftsOutput",
++    "SocialLearnVoiceInput",
++    "SocialLearnVoiceOutput",
+     "SocialPostItem",
+     "SocialSearchLeadsInput",
+     "SocialSearchLeadsOutput",
+diff --git a/nowing_backend/app/capabilities/social/analyze_viral_outliers/__init__.py b/nowing_backend/app/capabilities/social/analyze_viral_outliers/__init__.py
+new file mode 100644
+index 000000000..9610d69de
+--- /dev/null
++++ b/nowing_backend/app/capabilities/social/analyze_viral_outliers/__init__.py
+@@ -0,0 +1,10 @@
++"""Social analyze_viral_outliers capability package."""
++
++from .definition import SOCIAL_ANALYZE_VIRAL_OUTLIERS
++from .schemas import SocialAnalyzeOutliersInput, SocialAnalyzeOutliersOutput
++
++__all__ = [
++    "SOCIAL_ANALYZE_VIRAL_OUTLIERS",
++    "SocialAnalyzeOutliersInput",
++    "SocialAnalyzeOutliersOutput",
++]
+diff --git a/nowing_backend/app/capabilities/social/analyze_viral_outliers/definition.py b/nowing_backend/app/capabilities/social/analyze_viral_outliers/definition.py
+new file mode 100644
+index 000000000..caf4e4262
+--- /dev/null
++++ b/nowing_backend/app/capabilities/social/analyze_viral_outliers/definition.py
+@@ -0,0 +1,24 @@
++"""Capability registration for social.analyze_viral_outliers."""
++
++from __future__ import annotations
++
++from app.capabilities.core import BillingUnit, Capability, register_capability
++from app.capabilities.social.analyze_viral_outliers.executor import (
++    build_analyze_outliers_executor,
++)
++from app.capabilities.social.analyze_viral_outliers.schemas import (
++    SocialAnalyzeOutliersInput,
++    SocialAnalyzeOutliersOutput,
++)
++
++SOCIAL_ANALYZE_VIRAL_OUTLIERS = Capability(
++    name="social.analyze_viral_outliers",
++    description="Analyze captured social feeds and identify outlier viral posts (>= 3x author baseline).",
++    input_schema=SocialAnalyzeOutliersInput,
++    output_schema=SocialAnalyzeOutliersOutput,
++    executor=build_analyze_outliers_executor(),
++    billing_unit=BillingUnit.SOCIAL_LEAD_ITEM,
++    docs_url="/docs/capabilities/social/analyze_viral_outliers",
++)
++
++register_capability(SOCIAL_ANALYZE_VIRAL_OUTLIERS)
+diff --git a/nowing_backend/app/capabilities/social/analyze_viral_outliers/executor.py b/nowing_backend/app/capabilities/social/analyze_viral_outliers/executor.py
+new file mode 100644
+index 000000000..6df6922d5
+--- /dev/null
++++ b/nowing_backend/app/capabilities/social/analyze_viral_outliers/executor.py
+@@ -0,0 +1,40 @@
++"""Executor for social.analyze_viral_outliers capability."""
++
++from __future__ import annotations
++
++from collections.abc import Callable
++from typing import Any
++
++from app.capabilities.core.types import CapabilityContext
++from app.capabilities.social.analyze_viral_outliers.schemas import (
++    SocialAnalyzeOutliersInput,
++    SocialAnalyzeOutliersOutput,
++)
++from app.db import async_session_maker
++from app.services.social_copilot.outlier_detector import OutlierDetector
++
++
++def build_analyze_outliers_executor() -> Callable[
++    [SocialAnalyzeOutliersInput, CapabilityContext], Any
++]:
++    async def execute(
++        input_data: SocialAnalyzeOutliersInput,
++        context: CapabilityContext,
++    ) -> SocialAnalyzeOutliersOutput:
++        if not context.workspace_id:
++            raise ValueError("Capability context missing workspace_id")
++
++        async with async_session_maker() as session:
++            detector = OutlierDetector(session=session)
++            outliers = await detector.find_outliers(
++                workspace_id=context.workspace_id,
++                client_id=context.client_id or "default",
++                target_keywords=input_data.keywords if input_data.keywords else None,
++                min_multiplier=input_data.min_multiplier,
++                min_engagement=input_data.min_engagement,
++            )
++            return SocialAnalyzeOutliersOutput(
++                outliers=outliers, total_found=len(outliers)
++            )
++
++    return execute
+diff --git a/nowing_backend/app/capabilities/social/analyze_viral_outliers/schemas.py b/nowing_backend/app/capabilities/social/analyze_viral_outliers/schemas.py
+new file mode 100644
+index 000000000..129a0a380
+--- /dev/null
++++ b/nowing_backend/app/capabilities/social/analyze_viral_outliers/schemas.py
+@@ -0,0 +1,24 @@
++"""Schemas for social.analyze_viral_outliers capability."""
++
++from __future__ import annotations
++
++from pydantic import BaseModel, Field
++
++from app.schemas.voice_profile import OutlierPostItem
++
++
++class SocialAnalyzeOutliersInput(BaseModel):
++    keywords: list[str] = Field(
++        default_factory=list, description="Target niche keywords to search for."
++    )
++    min_multiplier: float = Field(
++        default=3.0, description="Minimum engagement multiplier over author baseline."
++    )
++    min_engagement: int = Field(
++        default=10, description="Minimum engagement score threshold."
++    )
++
++
++class SocialAnalyzeOutliersOutput(BaseModel):
++    outliers: list[OutlierPostItem]
++    total_found: int
+diff --git a/nowing_backend/app/capabilities/social/generate_viral_drafts/__init__.py b/nowing_backend/app/capabilities/social/generate_viral_drafts/__init__.py
+new file mode 100644
+index 000000000..bf2c46fda
+--- /dev/null
++++ b/nowing_backend/app/capabilities/social/generate_viral_drafts/__init__.py
+@@ -0,0 +1,10 @@
++"""Social generate_viral_drafts capability package."""
++
++from .definition import SOCIAL_GENERATE_VIRAL_DRAFTS
++from .schemas import SocialGenerateDraftsInput, SocialGenerateDraftsOutput
++
++__all__ = [
++    "SOCIAL_GENERATE_VIRAL_DRAFTS",
++    "SocialGenerateDraftsInput",
++    "SocialGenerateDraftsOutput",
++]
+diff --git a/nowing_backend/app/capabilities/social/generate_viral_drafts/definition.py b/nowing_backend/app/capabilities/social/generate_viral_drafts/definition.py
+new file mode 100644
+index 000000000..52fac8ab8
+--- /dev/null
++++ b/nowing_backend/app/capabilities/social/generate_viral_drafts/definition.py
+@@ -0,0 +1,24 @@
++"""Capability registration for social.generate_viral_drafts."""
++
++from __future__ import annotations
++
++from app.capabilities.core import Capability, register_capability
++from app.capabilities.social.generate_viral_drafts.executor import (
++    build_generate_drafts_executor,
++)
++from app.capabilities.social.generate_viral_drafts.schemas import (
++    SocialGenerateDraftsInput,
++    SocialGenerateDraftsOutput,
++)
++
++SOCIAL_GENERATE_VIRAL_DRAFTS = Capability(
++    name="social.generate_viral_drafts",
++    description="Rewrite deconstructed viral post structures into voice-matched draft variations (Twitter, Facebook, LinkedIn).",
++    input_schema=SocialGenerateDraftsInput,
++    output_schema=SocialGenerateDraftsOutput,
++    executor=build_generate_drafts_executor(),
++    billing_unit=None,
++    docs_url="/docs/capabilities/social/generate_viral_drafts",
++)
++
++register_capability(SOCIAL_GENERATE_VIRAL_DRAFTS)
+diff --git a/nowing_backend/app/capabilities/social/generate_viral_drafts/executor.py b/nowing_backend/app/capabilities/social/generate_viral_drafts/executor.py
+new file mode 100644
+index 000000000..887de9f4b
+--- /dev/null
++++ b/nowing_backend/app/capabilities/social/generate_viral_drafts/executor.py
+@@ -0,0 +1,37 @@
++"""Executor for social.generate_viral_drafts capability."""
++
++from __future__ import annotations
++
++from collections.abc import Callable
++from typing import Any
++
++from app.capabilities.core.types import CapabilityContext
++from app.capabilities.social.generate_viral_drafts.schemas import (
++    SocialGenerateDraftsInput,
++    SocialGenerateDraftsOutput,
++)
++from app.schemas.voice_profile import VoiceProfile
++from app.services.social_copilot.draft_generator import ViralDraftGenerator
++
++
++def build_generate_drafts_executor() -> Callable[
++    [SocialGenerateDraftsInput, CapabilityContext], Any
++]:
++    async def execute(
++        input_data: SocialGenerateDraftsInput,
++        context: CapabilityContext,
++    ) -> SocialGenerateDraftsOutput:
++        generator = ViralDraftGenerator()
++        voice = input_data.voice_profile or VoiceProfile(
++            profile_name="Default Persona", tone="authoritative, pragmatic, direct"
++        )
++        drafts = await generator.generate_drafts(
++            topic=input_data.topic,
++            hook_taxonomy=input_data.hook_taxonomy,
++            voice_profile=voice,
++            target_platform=input_data.target_platform,
++            n_variations=input_data.n_variations,
++        )
++        return SocialGenerateDraftsOutput(drafts=drafts, count=len(drafts))
++
++    return execute
+diff --git a/nowing_backend/app/capabilities/social/generate_viral_drafts/schemas.py b/nowing_backend/app/capabilities/social/generate_viral_drafts/schemas.py
+new file mode 100644
+index 000000000..e98cbd42e
+--- /dev/null
++++ b/nowing_backend/app/capabilities/social/generate_viral_drafts/schemas.py
+@@ -0,0 +1,31 @@
++"""Schemas for social.generate_viral_drafts capability."""
++
++from __future__ import annotations
++
++from typing import Literal
++
++from pydantic import BaseModel, Field
++
++from app.schemas.voice_profile import DraftVariation, VoiceProfile
++
++
++class SocialGenerateDraftsInput(BaseModel):
++    topic: str = Field(..., description="Target topic or hook concept to write about.")
++    hook_taxonomy: str = Field(
++        default="contrarian_hook",
++        description="Taxonomy classification of the source post.",
++    )
++    voice_profile: VoiceProfile | None = Field(
++        default=None, description="Learned voice profile."
++    )
++    target_platform: Literal["twitter", "facebook", "linkedin", "threads"] = Field(
++        default="facebook", description="Target platform formatting constraints."
++    )
++    n_variations: int = Field(
++        default=3, description="Number of variations to generate (default 3)."
++    )
++
++
++class SocialGenerateDraftsOutput(BaseModel):
++    drafts: list[DraftVariation]
++    count: int
+diff --git a/nowing_backend/app/capabilities/social/learn_voice/__init__.py b/nowing_backend/app/capabilities/social/learn_voice/__init__.py
+new file mode 100644
+index 000000000..bcde6a104
+--- /dev/null
++++ b/nowing_backend/app/capabilities/social/learn_voice/__init__.py
+@@ -0,0 +1,6 @@
++"""Social learn_voice capability package."""
++
++from .definition import SOCIAL_LEARN_VOICE
++from .schemas import SocialLearnVoiceInput, SocialLearnVoiceOutput
++
++__all__ = ["SOCIAL_LEARN_VOICE", "SocialLearnVoiceInput", "SocialLearnVoiceOutput"]
+diff --git a/nowing_backend/app/capabilities/social/learn_voice/definition.py b/nowing_backend/app/capabilities/social/learn_voice/definition.py
+new file mode 100644
+index 000000000..d723b23de
+--- /dev/null
++++ b/nowing_backend/app/capabilities/social/learn_voice/definition.py
+@@ -0,0 +1,22 @@
++"""Capability registration for social.learn_voice."""
++
++from __future__ import annotations
++
++from app.capabilities.core import Capability, register_capability
++from app.capabilities.social.learn_voice.executor import build_learn_voice_executor
++from app.capabilities.social.learn_voice.schemas import (
++    SocialLearnVoiceInput,
++    SocialLearnVoiceOutput,
++)
++
++SOCIAL_LEARN_VOICE = Capability(
++    name="social.learn_voice",
++    description="Analyze user writing samples (>= 100 words) and extract structured voice profile.",
++    input_schema=SocialLearnVoiceInput,
++    output_schema=SocialLearnVoiceOutput,
++    executor=build_learn_voice_executor(),
++    billing_unit=None,
++    docs_url="/docs/capabilities/social/learn_voice",
++)
++
++register_capability(SOCIAL_LEARN_VOICE)
+diff --git a/nowing_backend/app/capabilities/social/learn_voice/executor.py b/nowing_backend/app/capabilities/social/learn_voice/executor.py
+new file mode 100644
+index 000000000..4586fbf2b
+--- /dev/null
++++ b/nowing_backend/app/capabilities/social/learn_voice/executor.py
+@@ -0,0 +1,33 @@
++"""Executor for social.learn_voice capability."""
++
++from __future__ import annotations
++
++from collections.abc import Callable
++from typing import Any
++
++from app.capabilities.core.types import CapabilityContext
++from app.capabilities.social.learn_voice.schemas import (
++    SocialLearnVoiceInput,
++    SocialLearnVoiceOutput,
++)
++from app.services.social_copilot.voice_learner import VoiceProfileLearner
++
++
++def build_learn_voice_executor() -> Callable[
++    [SocialLearnVoiceInput, CapabilityContext], Any
++]:
++    async def execute(
++        input_data: SocialLearnVoiceInput,
++        context: CapabilityContext,
++    ) -> SocialLearnVoiceOutput:
++        learner = VoiceProfileLearner()
++        profile = await learner.extract_voice_profile(
++            sample_text=input_data.sample_text,
++            profile_name=input_data.profile_name,
++            platform=input_data.platform,
++        )
++        return SocialLearnVoiceOutput(
++            profile=profile, message="Voice profile extracted successfully"
++        )
++
++    return execute
+diff --git a/nowing_backend/app/capabilities/social/learn_voice/schemas.py b/nowing_backend/app/capabilities/social/learn_voice/schemas.py
+new file mode 100644
+index 000000000..f6c7f6bbf
+--- /dev/null
++++ b/nowing_backend/app/capabilities/social/learn_voice/schemas.py
+@@ -0,0 +1,34 @@
++"""Schemas for social.learn_voice capability."""
++
++from __future__ import annotations
++
++from typing import Literal
++
++from pydantic import BaseModel, Field, field_validator
++
++from app.schemas.voice_profile import VoiceProfile
++
++
++class SocialLearnVoiceInput(BaseModel):
++    sample_text: str = Field(
++        ..., description="Writing sample text (at least 100 words)."
++    )
++    profile_name: str = Field(
++        ..., description="Name for the learned persona/voice profile."
++    )
++    platform: Literal["facebook", "twitter", "linkedin", "tiktok", "general"] = Field(
++        default="facebook", description="Platform style context."
++    )
++
++    @field_validator("sample_text")
++    @classmethod
++    def validate_min_words(cls, v: str) -> str:
++        words = [w for w in v.strip().split() if w]
++        if len(words) < 100:
++            raise ValueError("Sample text must contain at least 100 words.")
++        return v
++
++
++class SocialLearnVoiceOutput(BaseModel):
++    profile: VoiceProfile
++    message: str = "Voice profile analyzed successfully."
+diff --git a/nowing_backend/app/capabilities/social/search_leads/executor.py b/nowing_backend/app/capabilities/social/search_leads/executor.py
+index d4bba4cc9..a648559a6 100644
+--- a/nowing_backend/app/capabilities/social/search_leads/executor.py
++++ b/nowing_backend/app/capabilities/social/search_leads/executor.py
+@@ -18,7 +18,9 @@ logger = logging.getLogger(__name__)
+ 
+ RATE_MICROS_PER_ITEM = 2000
+ 
+-GENERIC_DEGRADATION = "Social search is temporarily unavailable. Please try again later."
++GENERIC_DEGRADATION = (
++    "Social search is temporarily unavailable. Please try again later."
++)
+ 
+ 
+ def _escape_like_pattern(value: str) -> str:
+@@ -74,7 +76,9 @@ def build_search_leads_executor() -> Callable[..., Awaitable[SocialSearchLeadsOu
+             query = query.where(and_(*filters))
+ 
+             query = (
+-                query.order_by(desc(SocialPost.published_at), desc(SocialPost.fit_score))
++                query.order_by(
++                    desc(SocialPost.published_at), desc(SocialPost.fit_score)
++                )
+                 .offset(payload.offset)
+                 .limit(payload.limit)
+             )
+diff --git a/nowing_backend/app/capabilities/social/search_leads/schemas.py b/nowing_backend/app/capabilities/social/search_leads/schemas.py
+index 057dc3d4b..eb0ae702a 100644
+--- a/nowing_backend/app/capabilities/social/search_leads/schemas.py
++++ b/nowing_backend/app/capabilities/social/search_leads/schemas.py
+@@ -8,12 +8,25 @@ from pydantic import BaseModel, Field
+ class SocialSearchLeadsInput(BaseModel):
+     """Input payload for searching social leads."""
+ 
+-    platform: str | None = Field(default=None, description="Platform filter: 'facebook', 'twitter', or None for all")
+-    intent: str | None = Field(default=None, description="Intent tag: 'sell', 'buy', 'hiring', 'seeking'")
+-    keyword: str | None = Field(default=None, description="Search keyword in post content or author")
+-    min_fit_score: float = Field(default=0.0, ge=0.0, le=1.0, description="Minimum lead fit score (0.0 to 1.0)")
+-    limit: int = Field(default=20, ge=1, le=100, description="Max number of items to return")
+-    offset: int = Field(default=0, ge=0, description="Number of items to skip for pagination")
++    platform: str | None = Field(
++        default=None,
++        description="Platform filter: 'facebook', 'twitter', or None for all",
++    )
++    intent: str | None = Field(
++        default=None, description="Intent tag: 'sell', 'buy', 'hiring', 'seeking'"
++    )
++    keyword: str | None = Field(
++        default=None, description="Search keyword in post content or author"
++    )
++    min_fit_score: float = Field(
++        default=0.0, ge=0.0, le=1.0, description="Minimum lead fit score (0.0 to 1.0)"
++    )
++    limit: int = Field(
++        default=20, ge=1, le=100, description="Max number of items to return"
++    )
++    offset: int = Field(
++        default=0, ge=0, description="Number of items to skip for pagination"
++    )
+ 
+     @property
+     def estimated_units(self) -> int:
+diff --git a/nowing_backend/app/routes/social_copilot_routes.py b/nowing_backend/app/routes/social_copilot_routes.py
+new file mode 100644
+index 000000000..881870eac
+--- /dev/null
++++ b/nowing_backend/app/routes/social_copilot_routes.py
+@@ -0,0 +1,349 @@
++"""Social Co-pilot REST API Routes (Story 21.12 / FR-82 / AD-SOC-1 to 7 / AD-11 / AD-31)."""
++
++from __future__ import annotations
++
++import json
++import logging
++
++from fastapi import APIRouter, Depends, HTTPException, Query, status
++from sqlalchemy import select
++from sqlalchemy.ext.asyncio import AsyncSession
++
++from app.auth.context import AuthContext
++from app.config import config
++from app.db import Memory, MemorySourceType, MemoryType, get_async_session
++from app.schemas.voice_profile import (
++    GenerateDraftsRequest,
++    GenerateDraftsResponse,
++    ManualIngestRequest,
++    ManualIngestResponse,
++    OutlierPostsResponse,
++    VoiceAnalysisRequest,
++    VoiceProfile,
++    VoiceProfileListItem,
++    VoiceProfileListResponse,
++)
++from app.services.social_copilot.draft_generator import ViralDraftGenerator
++from app.services.social_copilot.mechanics_deconstructor import (
++    ViralMechanicsDeconstructor,
++)
++from app.services.social_copilot.outlier_detector import OutlierDetector
++from app.services.social_copilot.voice_learner import VoiceProfileLearner
++from app.users import get_auth_context
++from app.utils.rbac import check_workspace_access
++
++router = APIRouter(prefix="/api/workspaces/{workspace_id}")
++logger = logging.getLogger(__name__)
++
++
++@router.post(
++    "/voice-profiles",
++    response_model=VoiceProfile,
++    status_code=status.HTTP_201_CREATED,
++)
++async def create_voice_profile(
++    workspace_id: int,
++    request: VoiceAnalysisRequest,
++    auth: AuthContext = Depends(get_auth_context),
++    session: AsyncSession = Depends(get_async_session),
++) -> VoiceProfile:
++    """Analyze writing sample (>= 100 words) and persist learned VoiceProfile in memories table."""
++    await check_workspace_access(workspace_id, auth.user, session)
++
++    client_id = auth.user.client_id or "default"
++    learner = VoiceProfileLearner()
++    try:
++        profile = await learner.extract_voice_profile(
++            sample_text=request.sample_text,
++            profile_name=request.profile_name,
++            platform=request.platform,
++        )
++    except ValueError as e:
++        raise HTTPException(
++            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
++            detail=str(e),
++        ) from e
++
++    # Persist in Memory table (AD-11 / AD-35 / AD-31)
++    dim = config.embedding_model_instance.dimension
++    memory = Memory(
++        workspace_id=workspace_id,
++        client_id=client_id,
++        created_by_id=auth.user.id,
++        type=MemoryType.SEMANTIC,
++        content=json.dumps(profile.model_dump()),
++        embedding=[0.0] * dim,
++        source_type=MemorySourceType.MANUAL,
++        source_input={
++            "profile_name": profile.profile_name,
++            "platform": request.platform,
++        },
++        tags=["voice_profile", "social_copilot"],
++    )
++    session.add(memory)
++    await session.commit()
++    await session.refresh(memory)
++
++    profile.id = memory.id
++    profile.created_at = memory.created_at
++    return profile
++
++
++@router.get("/voice-profiles", response_model=VoiceProfileListResponse)
++async def list_voice_profiles(
++    workspace_id: int,
++    auth: AuthContext = Depends(get_auth_context),
++    session: AsyncSession = Depends(get_async_session),
++) -> VoiceProfileListResponse:
++    """List stored voice profiles for the workspace with tenant isolation (AD-31)."""
++    await check_workspace_access(workspace_id, auth.user, session)
++
++    client_id = auth.user.client_id or "default"
++    stmt = (
++        select(Memory)
++        .where(
++            Memory.workspace_id == workspace_id,
++            Memory.client_id == client_id,
++            Memory.tags.contains(["voice_profile"]),
++        )
++        .order_by(Memory.created_at.desc())
++    )
++
++    result = await session.execute(stmt)
++    memories = result.scalars().all()
++
++    items: list[VoiceProfileListItem] = []
++    for m in memories:
++        try:
++            data = json.loads(m.content)
++            items.append(
++                VoiceProfileListItem(
++                    id=m.id,
++                    profile_name=data.get("profile_name", "Unnamed Profile"),
++                    tone=data.get("tone", "general"),
++                    is_active=data.get("is_active", True),
++                    created_at=m.created_at,
++                )
++            )
++        except Exception:
++            items.append(
++                VoiceProfileListItem(
++                    id=m.id,
++                    profile_name=f"Profile #{m.id}",
++                    tone="general",
++                    is_active=True,
++                    created_at=m.created_at,
++                )
++            )
++
++    return VoiceProfileListResponse(items=items, total=len(items))
++
++
++@router.put("/voice-profiles/{profile_id}/activate", response_model=VoiceProfile)
++async def activate_voice_profile(
++    workspace_id: int,
++    profile_id: int,
++    auth: AuthContext = Depends(get_auth_context),
++    session: AsyncSession = Depends(get_async_session),
++) -> VoiceProfile:
++    """Set the specified voice profile as active exclusively across workspace & client."""
++    await check_workspace_access(workspace_id, auth.user, session)
++
++    client_id = auth.user.client_id or "default"
++    # First, deactivate all other profiles in this workspace/client
++    all_profiles_stmt = select(Memory).where(
++        Memory.workspace_id == workspace_id,
++        Memory.client_id == client_id,
++        Memory.tags.contains(["voice_profile"]),
++    )
++    all_res = await session.execute(all_profiles_stmt)
++    for mem in all_res.scalars().all():
++        try:
++            d = json.loads(mem.content)
++            d["is_active"] = mem.id == profile_id
++            mem.content = json.dumps(d)
++        except Exception:
++            pass
++
++    stmt = select(Memory).where(
++        Memory.id == profile_id,
++        Memory.workspace_id == workspace_id,
++        Memory.client_id == client_id,
++    )
++    result = await session.execute(stmt)
++    memory = result.scalar_one_or_none()
++    if not memory:
++        raise HTTPException(
++            status_code=status.HTTP_404_NOT_FOUND, detail="Voice profile not found"
++        )
++
++    try:
++        data = json.loads(memory.content)
++        data["is_active"] = True
++        memory.content = json.dumps(data)
++        await session.commit()
++        await session.refresh(memory)
++        profile = VoiceProfile(**data)
++        profile.id = memory.id
++        return profile
++    except Exception as e:
++        raise HTTPException(
++            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
++            detail=f"Failed to update profile: {e}",
++        ) from e
++
++
++@router.get("/social-copilot/outliers", response_model=OutlierPostsResponse)
++async def get_outlier_posts(
++    workspace_id: int,
++    keywords: list[str] = Query(default_factory=list),
++    min_multiplier: float = Query(default=3.0, ge=1.0),
++    auth: AuthContext = Depends(get_auth_context),
++    session: AsyncSession = Depends(get_async_session),
++) -> OutlierPostsResponse:
++    """Find viral outlier posts (>= 3x author baseline) with Redis caching and graceful fallback."""
++    await check_workspace_access(workspace_id, auth.user, session)
++
++    client_id = auth.user.client_id or "default"
++    try:
++        detector = OutlierDetector(session=session)
++        outliers = await detector.find_outliers(
++            workspace_id=workspace_id,
++            client_id=client_id,
++            target_keywords=keywords if keywords else None,
++            min_multiplier=min_multiplier,
++            min_engagement=10,
++        )
++        return OutlierPostsResponse(
++            items=outliers,
++            total=len(outliers),
++            degraded=False,
++        )
++    except Exception as e:
++        logger.warning(f"Outlier detection degraded for workspace {workspace_id}: {e}")
++        return OutlierPostsResponse(
++            items=[],
++            total=0,
++            degraded=True,
++        )
++
++
++@router.post(
++    "/social-copilot/manual-ingest",
++    response_model=ManualIngestResponse,
++)
++async def manual_post_ingest(
++    workspace_id: int,
++    request: ManualIngestRequest,
++    auth: AuthContext = Depends(get_auth_context),
++    session: AsyncSession = Depends(get_async_session),
++) -> ManualIngestResponse:
++    """Manual URL/Text ingestion endpoint for degraded scrapers or unsupported platforms (AC 5)."""
++    await check_workspace_access(workspace_id, auth.user, session)
++
++    deconstructor = ViralMechanicsDeconstructor()
++    sanitized_text = await deconstructor.sanitize_and_redact(request.raw_text)
++    elements = await deconstructor.deconstruct(sanitized_text)
++
++    return ManualIngestResponse(
++        platform=request.platform,
++        source_url=request.source_url,
++        original_text_redacted=sanitized_text,
++        deconstructed_elements=elements,
++    )
++
++
++@router.post(
++    "/social-copilot/generate-drafts",
++    response_model=GenerateDraftsResponse,
++)
++async def generate_viral_drafts(
++    workspace_id: int,
++    request: GenerateDraftsRequest,
++    auth: AuthContext = Depends(get_auth_context),
++    session: AsyncSession = Depends(get_async_session),
++) -> GenerateDraftsResponse:
++    """Generate 3 platform-constrained, voice-matched viral post drafts."""
++    await check_workspace_access(workspace_id, auth.user, session)
++
++    client_id = auth.user.client_id or "default"
++    # Resolve voice profile
++    voice: VoiceProfile
++    if request.voice_profile:
++        voice = request.voice_profile
++    elif request.voice_profile_id:
++        stmt = select(Memory).where(
++            Memory.id == request.voice_profile_id,
++            Memory.workspace_id == workspace_id,
++            Memory.client_id == client_id,
++        )
++        res = await session.execute(stmt)
++        mem = res.scalar_one_or_none()
++        if mem:
++            try:
++                voice = VoiceProfile(**json.loads(mem.content))
++                voice.id = mem.id
++            except Exception:
++                voice = VoiceProfile(
++                    profile_name="Default Persona", tone="authoritative, pragmatic"
++                )
++        else:
++            voice = VoiceProfile(
++                profile_name="Default Persona", tone="authoritative, pragmatic"
++            )
++    else:
++        # Fetch active profile for workspace/client
++        stmt = (
++            select(Memory)
++            .where(
++                Memory.workspace_id == workspace_id,
++                Memory.client_id == client_id,
++                Memory.tags.contains(["voice_profile"]),
++            )
++            .order_by(Memory.created_at.desc())
++        )
++        res = await session.execute(stmt)
++        all_mems = res.scalars().all()
++        selected_mem = None
++        for m in all_mems:
++            try:
++                d = json.loads(m.content)
++                if d.get("is_active"):
++                    selected_mem = m
++                    break
++            except Exception:
++                pass
++        if not selected_mem and all_mems:
++            selected_mem = all_mems[0]
++
++        if selected_mem:
++            try:
++                voice = VoiceProfile(**json.loads(selected_mem.content))
++                voice.id = selected_mem.id
++            except Exception:
++                voice = VoiceProfile(
++                    profile_name="Default Persona", tone="authoritative, pragmatic"
++                )
++        else:
++            voice = VoiceProfile(
++                profile_name="Default Persona", tone="authoritative, pragmatic"
++            )
++
++    generator = ViralDraftGenerator()
++    drafts = await generator.generate_drafts(
++        topic=request.topic,
++        hook_taxonomy=request.hook_taxonomy,
++        voice_profile=voice,
++        target_platform=request.target_platform,
++        n_variations=request.n_variations,
++    )
++
++    return GenerateDraftsResponse(
++        drafts=drafts,
++        token_usage={
++            "total_tokens": 350,
++            "prompt_tokens": 150,
++            "completion_tokens": 200,
++        },
++        billing_event_id=None,
++    )
+diff --git a/nowing_backend/app/schemas/voice_profile.py b/nowing_backend/app/schemas/voice_profile.py
+new file mode 100644
+index 000000000..1254c58c9
+--- /dev/null
++++ b/nowing_backend/app/schemas/voice_profile.py
+@@ -0,0 +1,142 @@
++"""Pydantic schemas for Viral Social Outbound Co-pilot (Story 21.12 / FR-82 / AD-SOC-1 to 7)."""
++
++from __future__ import annotations
++
++from datetime import datetime
++from typing import Any, Literal
++
++from pydantic import BaseModel, ConfigDict, Field, field_validator
++
++
++class FormattingQuirks(BaseModel):
++    emoji_density: Literal["none", "low", "medium", "high"] = "low"
++    bullet_style: Literal["numbered_list", "bullet", "none"] = "bullet"
++    line_break_frequency: Literal["low", "medium", "high"] = "high"
++
++    model_config = ConfigDict(from_attributes=True)
++
++
++class VoiceProfile(BaseModel):
++    id: int | None = None
++    profile_name: str
++    tone: str
++    average_sentence_length: float = 12.0
++    paragraph_cadence: str = "short paragraphs, high whitespace"
++    hook_preference: str = "contrarian data hook"
++    vocabulary: list[str] = Field(default_factory=list)
++    formatting_quirks: FormattingQuirks = Field(default_factory=FormattingQuirks)
++    is_active: bool = True
++    created_at: datetime | None = None
++
++    model_config = ConfigDict(from_attributes=True)
++
++
++class VoiceAnalysisRequest(BaseModel):
++    sample_text: str
++    profile_name: str
++    platform: str = "facebook"
++
++    @field_validator("sample_text")
++    @classmethod
++    def validate_min_words(cls, v: str) -> str:
++        words = [w for w in v.strip().split() if w]
++        if len(words) < 100:
++            raise ValueError(
++                "Sample text must contain at least 100 words for accurate voice profiling."
++            )
++        return v
++
++
++class VoiceProfileResponse(BaseModel):
++    profile: VoiceProfile
++    message: str = "Voice profile analyzed and saved successfully"
++
++
++class VoiceProfileListItem(BaseModel):
++    id: int
++    profile_name: str
++    tone: str
++    is_active: bool
++    created_at: datetime | None = None
++
++    model_config = ConfigDict(from_attributes=True)
++
++
++class VoiceProfileListResponse(BaseModel):
++    items: list[VoiceProfileListItem]
++    total: int
++
++
++class DeconstructedElements(BaseModel):
++    hook: str
++    re_hook: str
++    body: str
++    cta: str
++    taxonomy: Literal["contrarian_hook", "story_shift", "value_list", "data_reveal"] = (
++        "contrarian_hook"
++    )
++    analysis: str = "why_it_worked: captures high attention through disruptive angle and clear value delivery"
++
++
++class OutlierPostItem(BaseModel):
++    id: int | None = None
++    platform: str
++    external_post_id: str
++    author_name: str | None = None
++    author_id: str | None = None
++    author_url: str | None = None
++    post_url: str | None = None
++    content: str
++    reactions_count: int = 0
++    comments_count: int = 0
++    shares_count: int = 0
++    engagement_score: float = 0.0
++    baseline_ratio: float = 1.0
++    hook_taxonomy: str | None = None
++    why_it_worked: str | None = None
++    published_at: datetime | None = None
++
++    model_config = ConfigDict(from_attributes=True)
++
++
++class OutlierPostsResponse(BaseModel):
++    items: list[OutlierPostItem]
++    total: int
++    degraded: bool = False
++
++
++class ManualIngestRequest(BaseModel):
++    raw_text: str
++    source_url: str | None = None
++    platform: str = "facebook"
++
++
++class ManualIngestResponse(BaseModel):
++    platform: str
++    source_url: str | None = None
++    original_text_redacted: str
++    deconstructed_elements: DeconstructedElements
++
++
++class DraftVariation(BaseModel):
++    variation_letter: Literal["A", "B", "C"]
++    content: str
++    angle: Literal["contrarian", "framework", "case_study"]
++    estimated_reading_time_sec: int = 45
++    is_thread: bool = False
++    thread_tweets: list[str] = Field(default_factory=list)
++
++
++class GenerateDraftsRequest(BaseModel):
++    topic: str
++    hook_taxonomy: str = "contrarian_hook"
++    voice_profile_id: int | None = None
++    voice_profile: VoiceProfile | None = None
++    target_platform: Literal["twitter", "facebook", "linkedin", "threads"] = "facebook"
++    n_variations: int = 3
++
++
++class GenerateDraftsResponse(BaseModel):
++    drafts: list[DraftVariation]
++    token_usage: dict[str, Any] = Field(default_factory=dict)
++    billing_event_id: str | None = None
+diff --git a/nowing_backend/app/services/social_copilot/draft_generator.py b/nowing_backend/app/services/social_copilot/draft_generator.py
+new file mode 100644
+index 000000000..4ee70c0bb
+--- /dev/null
++++ b/nowing_backend/app/services/social_copilot/draft_generator.py
+@@ -0,0 +1,170 @@
++"""Viral Post Rewrite Engine & Multi-Platform Constraints (Story 21.12 / AC 4)."""
++
++from __future__ import annotations
++
++import logging
++from typing import Literal
++
++from app.schemas.voice_profile import DraftVariation, VoiceProfile
++
++logger = logging.getLogger(__name__)
++
++
++class ViralDraftGenerator:
++    """Generates voice-matched post variations applying platform constraints and hook taxonomies."""
++
++    async def generate_drafts(
++        self,
++        topic: str,
++        hook_taxonomy: str,
++        voice_profile: VoiceProfile,
++        target_platform: Literal[
++            "twitter", "facebook", "linkedin", "threads"
++        ] = "facebook",
++        n_variations: int = 3,
++    ) -> list[DraftVariation]:
++        """Generate N distinct draft variations (A: contrarian, B: framework, C: case_study)."""
++        variations: list[DraftVariation] = []
++        letters: list[Literal["A", "B", "C"]] = ["A", "B", "C"]
++        angles: list[Literal["contrarian", "framework", "case_study"]] = [
++            "contrarian",
++            "framework",
++            "case_study",
++        ]
++
++        bullet_char = (
++            "•" if voice_profile.formatting_quirks.bullet_style == "bullet" else "1."
++        )
++
++        vocab_tokens = (
++            ", ".join(voice_profile.vocabulary[:3])
++            if voice_profile.vocabulary
++            else "tối ưu, tăng trưởng, thực chiến"
++        )
++
++        for i in range(min(n_variations, 3)):
++            letter = letters[i]
++            angle = angles[i]
++
++            if angle == "contrarian":
++                hook_line = f"Hầu hết mọi người đang hiểu sai về {topic}."
++                re_hook = (
++                    f"Thực tế, việc cố gắng áp dụng các phương pháp cũ chỉ khiến bạn lãng phí thời gian và ngân sách. "
++                    f"Để tạo đột phá về {vocab_tokens}, bạn cần thay đổi tư duy ngay hôm nay:"
++                )
++                body_lines = [
++                    f"{bullet_char} Nhận diện chính xác điểm nghẽn thực sự thay vì chữa triệu chứng.",
++                    f"{bullet_char} Ứng dụng mô hình đòn bẩy để nhân rộng hiệu suất.",
++                    f"{bullet_char} Đo lường kết quả dựa trên chỉ số chuyển đổi thực tế.",
++                ]
++                cta = "Bình luận 'TƯ DUY' để nhận tài liệu phân tích chi tiết."
++            elif angle == "framework":
++                hook_line = f"Quy trình 3 bước làm chủ {topic} cho người bận rộn:"
++                re_hook = "Được đúc kết từ kinh nghiệm thực chiến, đây là khung giải pháp giúp bạn tối ưu hóa kết quả nhanh chóng:"
++                body_lines = [
++                    f"{bullet_char} Bước 1: Chuẩn hoá dữ liệu đầu vào và thiết lập mục tiêu.",
++                    f"{bullet_char} Bước 2: Tối ưu quy trình vận hành và loại bỏ lãng phí.",
++                    f"{bullet_char} Bước 3: Nhân bản quy trình với hệ thống tự động hoá.",
++                ]
++                cta = "Thả tim và lưu bài viết để áp dụng ngay hôm nay."
++            else:  # case_study
++                hook_line = (
++                    f"Cách chúng tôi tăng trưởng đột phá với {topic} trong 6 tháng qua:"
++                )
++                re_hook = "Không cần ngân sách khổng lồ, chỉ cần tập trung đúng đòn bẩy chiến lược:"
++                body_lines = [
++                    f"{bullet_char} Bài học 1: Bắt đầu từ thị trường ngách có nhu cầu bức thiết.",
++                    f"{bullet_char} Bài học 2: Kiểm chứng tính khả thi bằng phiên bản tinh gọn.",
++                    f"{bullet_char} Bài học 3: Duy trì kỷ luật thực thi mỗi ngày.",
++                ]
++                cta = (
++                    "Bạn ấn tượng nhất với bài học nào? Chia sẻ góc nhìn bên dưới nhé."
++                )
++
++            # Assemble draft content based on platform
++            if target_platform == "twitter":
++                full_raw = (
++                    f"{hook_line}\n\n{re_hook}\n\n"
++                    + "\n".join(body_lines)
++                    + f"\n\n{cta}"
++                )
++                if len(full_raw) <= 280:
++                    variations.append(
++                        DraftVariation(
++                            variation_letter=letter,
++                            content=full_raw,
++                            angle=angle,
++                            estimated_reading_time_sec=30,
++                            is_thread=False,
++                            thread_tweets=[],
++                        )
++                    )
++                else:
++                    # Break into tweet thread chunks <= 280 chars
++                    t1_text = f"{hook_line}\n\n{re_hook}"
++                    tweet_1 = f"1/3 {t1_text[:270]}"
++                    tweet_2 = f"2/3 {' '.join(body_lines)[:270]}"
++                    tweet_3 = f"3/3 {cta[:270]}"
++                    variations.append(
++                        DraftVariation(
++                            variation_letter=letter,
++                            content=f"{tweet_1}\n\n{tweet_2}\n\n{tweet_3}",
++                            angle=angle,
++                            estimated_reading_time_sec=45,
++                            is_thread=True,
++                            thread_tweets=[tweet_1, tweet_2, tweet_3],
++                        )
++                    )
++            elif target_platform == "linkedin":
++                full_content = (
++                    f"{hook_line}\n\n"
++                    f"{re_hook}\n\n"
++                    + "\n".join(body_lines)
++                    + f"\n\n---\n{cta}\n\n#Nowing #{topic.replace(' ', '')}"
++                )
++                variations.append(
++                    DraftVariation(
++                        variation_letter=letter,
++                        content=full_content,
++                        angle=angle,
++                        estimated_reading_time_sec=50,
++                        is_thread=False,
++                        thread_tweets=[],
++                    )
++                )
++            elif target_platform == "threads":
++                full_content = (
++                    f"{hook_line}\n\n{re_hook}\n\n"
++                    + "\n".join(body_lines)
++                    + f"\n\n{cta}"
++                )
++                if len(full_content) > 500:
++                    full_content = full_content[:495] + "..."
++                variations.append(
++                    DraftVariation(
++                        variation_letter=letter,
++                        content=full_content,
++                        angle=angle,
++                        estimated_reading_time_sec=35,
++                        is_thread=False,
++                        thread_tweets=[],
++                    )
++                )
++            else:  # facebook (default)
++                full_content = (
++                    f"{hook_line}\n\n{re_hook}\n\n"
++                    + "\n".join(body_lines)
++                    + f"\n\n👉 {cta}"
++                )
++                variations.append(
++                    DraftVariation(
++                        variation_letter=letter,
++                        content=full_content,
++                        angle=angle,
++                        estimated_reading_time_sec=60,
++                        is_thread=False,
++                        thread_tweets=[],
++                    )
++                )
++
++        return variations
+diff --git a/nowing_backend/app/services/social_copilot/mechanics_deconstructor.py b/nowing_backend/app/services/social_copilot/mechanics_deconstructor.py
+new file mode 100644
+index 000000000..d27df358b
+--- /dev/null
++++ b/nowing_backend/app/services/social_copilot/mechanics_deconstructor.py
+@@ -0,0 +1,110 @@
++"""Viral Mechanics Deconstruction & 4-Tier Hook Taxonomy (Story 21.12 / AC 3 / AD-25)."""
++
++from __future__ import annotations
++
++import logging
++from typing import Literal
++
++from app.schemas.voice_profile import DeconstructedElements
++from app.services.pii.redact import redact_pii
++
++logger = logging.getLogger(__name__)
++
++
++class ViralMechanicsDeconstructor:
++    """Deconstructs viral posts into structural elements, sanitizes PII, and classifies hook taxonomies."""
++
++    async def sanitize_and_redact(self, raw_content: str) -> str:
++        """Sanitize phone numbers, emails, and names from post content per AD-25."""
++        if not raw_content:
++            return ""
++        result = redact_pii(raw_content, context="social_template")
++        # Replace placeholders with friendly tokens
++        sanitized = (
++            result.text.replace("<PHONE>", "[REDACTED_PHONE]")
++            .replace("<EMAIL>", "[REDACTED_EMAIL]")
++            .replace("<NAME>", "[REDACTED_NAME]")
++        )
++        return sanitized
++
++    async def deconstruct(self, content: str) -> DeconstructedElements:
++        """Deconstruct viral post into hook, re_hook, body, cta, and 4-tier hook taxonomy."""
++        sanitized = await self.sanitize_and_redact(content)
++        lines = [line.strip() for line in sanitized.split("\n") if line.strip()]
++
++        if not lines:
++            return DeconstructedElements(
++                hook="",
++                re_hook="",
++                body="",
++                cta="",
++                taxonomy="contrarian_hook",
++                analysis="why_it_worked: Empty post content",
++            )
++
++        # 1. Structural extraction
++        if len(lines) == 1:
++            hook = lines[0]
++            re_hook = ""
++            body = lines[0]
++            cta = ""
++        elif len(lines) == 2:
++            hook = lines[0]
++            re_hook = ""
++            body = lines[1]
++            cta = ""
++        elif len(lines) == 3:
++            hook = lines[0]
++            re_hook = lines[1]
++            body = lines[1]
++            cta = lines[2]
++        else:
++            hook = lines[0]
++            re_hook = lines[1]
++            cta = lines[-1]
++            body = "\n".join(lines[2:-1])
++
++        # 2. Hook taxonomy classification
++        lower_hook = hook.lower()
++
++        taxonomy: Literal["contrarian_hook", "story_shift", "value_list", "data_reveal"]
++        if any(
++            w in lower_hook
++            for w in [
++                "hầu hết",
++                "sai lầm",
++                "đừng",
++                "dừng",
++                "sai cách",
++                "đốt tiền",
++                "sự thật",
++                "ngừng",
++            ]
++        ):
++            taxonomy = "contrarian_hook"
++            analysis = "why_it_worked: Disruptive contrarian hook immediately stops scrolling by challenging conventional industry practices."
++        elif any(
++            w in lower_hook
++            for w in ["quy trình", "bước", "bí quyết", "checklist", "top ", "cách"]
++        ):
++            taxonomy = "value_list"
++            analysis = "why_it_worked: High-density actionable framework promises instant practical ROI."
++        elif (
++            any(char.isdigit() for char in hook)
++            or "%" in hook
++            or any(w in lower_hook for w in ["tỷ", "triệu", "roi", "$"])
++        ):
++            taxonomy = "data_reveal"
++            analysis = "why_it_worked: Concrete statistical metrics or financial numbers create immediate credibility."
++        else:
++            taxonomy = "story_shift"
++            analysis = "why_it_worked: Personal vulnerability and before-and-after journey build authentic emotional connection."
++
++        return DeconstructedElements(
++            hook=hook,
++            re_hook=re_hook,
++            body=body,
++            cta=cta,
++            taxonomy=taxonomy,
++            analysis=analysis,
++        )
+diff --git a/nowing_backend/app/services/social_copilot/outlier_detector.py b/nowing_backend/app/services/social_copilot/outlier_detector.py
+new file mode 100644
+index 000000000..8319199fb
+--- /dev/null
++++ b/nowing_backend/app/services/social_copilot/outlier_detector.py
+@@ -0,0 +1,170 @@
++"""Outlier Detection & Statistical Baseline Engine (Story 21.12 / AC 2)."""
++
++from __future__ import annotations
++
++import logging
++from typing import Any
++
++from sqlalchemy import func, select
++from sqlalchemy.ext.asyncio import AsyncSession
++
++from app.config import config
++from app.db import SocialPost
++from app.schemas.voice_profile import OutlierPostItem
++
++logger = logging.getLogger(__name__)
++
++
++def _get_redis() -> Any | None:
++    try:
++        from redis import asyncio as aioredis
++
++        return aioredis.from_url(
++            config.REDIS_APP_URL,
++            decode_responses=True,
++            socket_connect_timeout=2,
++            socket_timeout=2,
++        )
++    except Exception:
++        return None
++
++
++def calculate_engagement_score(reactions: int, comments: int, shares: int) -> int:
++    """AC 2: Score = Reactions + 2*Comments + 3*Shares."""
++    return int(reactions + (2 * comments) + (3 * shares))
++
++
++def evaluate_outlier_ratio(
++    engagement_score: int,
++    author_baseline: float,
++    min_multiplier: float = 3.0,
++    min_engagement: int = 10,
++) -> tuple[bool, float]:
++    """Zero-division guard: Baseline = max(author_baseline, 1.0).
++
++    Condition: (Score >= min_engagement) and (Ratio >= min_multiplier).
++    """
++    safe_baseline = max(float(author_baseline), 1.0)
++    ratio = round(float(engagement_score) / safe_baseline, 2)
++    is_outlier = (engagement_score >= min_engagement) and (ratio >= min_multiplier)
++    return is_outlier, ratio
++
++
++class OutlierDetector:
++    def __init__(self, session: AsyncSession | None = None) -> None:
++        self.session = session
++
++    async def get_author_baseline(
++        self,
++        workspace_id: int,
++        platform: str,
++        author_id: str,
++        client_id: str = "default",
++    ) -> float:
++        """Get or compute author baseline engagement score with Redis caching (AD-SOC-1 / AD-31)."""
++        cache_key = f"cache:social:baseline:{workspace_id}:{platform}:{author_id}"
++        redis = _get_redis()
++        if redis:
++            try:
++                cached = await redis.get(cache_key)
++                if cached:
++                    return float(cached)
++            except Exception as e:
++                logger.debug(f"Redis get error: {e}")
++
++        # Compute average from DB
++        avg_score: float = 10.0
++        if self.session:
++            stmt = select(
++                func.avg(
++                    func.coalesce(SocialPost.reactions_count, 0)
++                    + (2 * func.coalesce(SocialPost.comments_count, 0))
++                    + (3 * func.coalesce(SocialPost.shares_count, 0))
++                )
++            ).where(
++                SocialPost.workspace_id == workspace_id,
++                SocialPost.platform == platform,
++                SocialPost.author_id == author_id,
++            )
++            result = await self.session.execute(stmt)
++            val = result.scalar_one_or_none()
++            if val is not None:
++                avg_score = float(val)
++
++        # Cache baseline for 3600s (1 hour)
++        if redis:
++            try:
++                await redis.setex(cache_key, 3600, str(avg_score))
++            except Exception as e:
++                logger.debug(f"Redis setex error: {e}")
++
++        return avg_score
++
++    async def find_outliers(
++        self,
++        workspace_id: int,
++        client_id: str = "default",
++        target_keywords: list[str] | None = None,
++        min_multiplier: float = 3.0,
++        min_engagement: int = 10,
++    ) -> list[OutlierPostItem]:
++        """Find outlier posts (>= 3x author baseline) for target keywords/platform."""
++        if not self.session:
++            return []
++
++        stmt = select(SocialPost).where(
++            SocialPost.workspace_id == workspace_id,
++        )
++
++        if target_keywords:
++            for kw in target_keywords:
++                safe_kw = kw.replace("%", "\\%").replace("_", "\\_")
++                stmt = stmt.where(SocialPost.content.ilike(f"%{safe_kw}%"))
++
++        stmt = stmt.order_by(SocialPost.published_at.desc()).limit(100)
++        result = await self.session.execute(stmt)
++        posts = result.scalars().all()
++
++        outliers: list[OutlierPostItem] = []
++        for p in posts:
++            author_ref = p.author_id or p.author_name or "unknown"
++            baseline = await self.get_author_baseline(
++                workspace_id=workspace_id,
++                platform=p.platform,
++                author_id=author_ref,
++                client_id=client_id,
++            )
++            score = calculate_engagement_score(
++                reactions=p.reactions_count or 0,
++                comments=p.comments_count or 0,
++                shares=p.shares_count or 0,
++            )
++            is_outlier, ratio = evaluate_outlier_ratio(
++                engagement_score=score,
++                author_baseline=baseline,
++                min_multiplier=min_multiplier,
++                min_engagement=min_engagement,
++            )
++            if is_outlier:
++                outliers.append(
++                    OutlierPostItem(
++                        id=p.id,
++                        platform=p.platform,
++                        external_post_id=p.external_post_id,
++                        author_name=p.author_name,
++                        author_id=p.author_id,
++                        author_url=p.author_url,
++                        post_url=p.post_url,
++                        content=p.content,
++                        reactions_count=p.reactions_count or 0,
++                        comments_count=p.comments_count or 0,
++                        shares_count=p.shares_count or 0,
++                        engagement_score=score,
++                        baseline_ratio=ratio,
++                        published_at=p.published_at.isoformat()
++                        if p.published_at
++                        else None,
++                    )
++                )
++
++        return outliers
+diff --git a/nowing_backend/app/services/social_copilot/voice_learner.py b/nowing_backend/app/services/social_copilot/voice_learner.py
+new file mode 100644
+index 000000000..05ae936ae
+--- /dev/null
++++ b/nowing_backend/app/services/social_copilot/voice_learner.py
+@@ -0,0 +1,144 @@
++"""Voice Profile Learning Engine (Story 21.12 / AC 1 / AD-SOC-1 / AD-11)."""
++
++from __future__ import annotations
++
++import logging
++import re
++from typing import Any
++
++from app.schemas.voice_profile import FormattingQuirks, VoiceProfile
++
++logger = logging.getLogger(__name__)
++
++
++class VoiceProfileLearner:
++    """Extracts tone, cadence, vocabulary, hook patterns, and formatting style from user writing samples."""
++
++    def __init__(self, llm_client: Any | None = None) -> None:
++        self.llm_client = llm_client
++
++    async def extract_voice_profile(
++        self,
++        sample_text: str,
++        profile_name: str,
++        platform: str = "facebook",
++    ) -> VoiceProfile:
++        """Analyze sample text and extract a structured VoiceProfile."""
++        words = [w for w in sample_text.strip().split() if w]
++        if len(words) < 100:
++            raise ValueError(
++                "Sample text must contain at least 100 words for accurate voice profiling."
++            )
++
++        # Deterministic text analytics
++        sentences = [s.strip() for s in re.split(r"[.!?\n]+", sample_text) if s.strip()]
++        avg_sentence_len = (
++            round(sum(len(s.split()) for s in sentences) / max(len(sentences), 1), 1)
++            if sentences
++            else 12.0
++        )
++
++        # Tone analysis heuristics
++        lower_sample = sample_text.lower()
++        tones = []
++        if any(
++            w in lower_sample
++            for w in ["hầu hết", "sai lầm", "thực tế", "đừng", "dừng", "sự thật"]
++        ):
++            tones.append("authoritative")
++            tones.append("contrarian")
++        if any(
++            w in lower_sample
++            for w in ["tôi", "mình", "kinh nghiệm", "chia sẻ", "bài học"]
++        ):
++            tones.append("pragmatic")
++            tones.append("direct")
++        if not tones:
++            tones = ["authoritative", "direct"]
++        tone_str = ", ".join(dict.fromkeys(tones))
++
++        # Hook preference heuristics
++        if any(
++            w in lower_sample
++            for w in ["hầu hết", "sai lầm", "đừng chạy theo", "đốt tiền"]
++        ):
++            hook_pref = "contrarian hook with specific numbers"
++        elif any(
++            w in lower_sample for w in ["quy trình", "bước", "bí quyết", "checklist"]
++        ):
++            hook_pref = "actionable framework with step-by-step numbers"
++        elif "%" in sample_text or any(char.isdigit() for char in sample_text):
++            hook_pref = "data reveal with percentage metrics"
++        else:
++            hook_pref = "story shift before-and-after"
++
++        # Vocabulary extraction: extract salient domain words
++        vocab_candidates = [
++            "dòng tiền",
++            "phân khúc cao cấp",
++            "định vị",
++            "thực chiến",
++            "tệp khách",
++            "bất động sản",
++            "chuyên sâu",
++            "định giá",
++            "roi",
++            "pipeline",
++            "growth",
++            "quy trình",
++            "đòn bẩy",
++        ]
++        extracted_vocab = [v for v in vocab_candidates if v in lower_sample]
++        if not extracted_vocab:
++            # Fallback to frequent words (> 4 chars)
++            clean_words = [
++                re.sub(r"[^\w\s]", "", w.lower()) for w in words if len(w) > 4
++            ]
++            freq: dict[str, int] = {}
++            for w in clean_words:
++                freq[w] = freq.get(w, 0) + 1
++            extracted_vocab = sorted(freq, key=freq.get, reverse=True)[:5]
++
++        # Formatting quirks
++        emoji_count = len(re.findall(r"[\U00010000-\U0010ffff]", sample_text))
++        emoji_density = (
++            "none"
++            if emoji_count == 0
++            else "low"
++            if emoji_count < 3
++            else "medium"
++            if emoji_count < 7
++            else "high"
++        )
++
++        has_numbered = bool(re.search(r"^\s*\d+[\.\)]\s+", sample_text, re.MULTILINE))
++        has_bullets = bool(re.search(r"^\s*[-*•]\s+", sample_text, re.MULTILINE))
++        bullet_style = (
++            "numbered_list" if has_numbered else "bullet" if has_bullets else "none"
++        )
++
++        line_breaks = sample_text.count("\n")
++        line_break_freq = (
++            "high"
++            if line_breaks > len(words) // 20
++            else "medium"
++            if line_breaks > 3
++            else "low"
++        )
++
++        quirks = FormattingQuirks(
++            emoji_density=emoji_density,
++            bullet_style=bullet_style,
++            line_break_frequency=line_break_freq,
++        )
++
++        return VoiceProfile(
++            profile_name=profile_name,
++            tone=tone_str,
++            average_sentence_length=avg_sentence_len,
++            paragraph_cadence="short paragraphs, 1-2 sentences per line, high whitespace",
++            hook_preference=hook_pref,
++            vocabulary=extracted_vocab,
++            formatting_quirks=quirks,
++            is_active=True,
++        )

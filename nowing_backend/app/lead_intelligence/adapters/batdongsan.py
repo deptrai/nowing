@@ -34,9 +34,32 @@ class BatdongsanLeadAdapter(LeadSourceAdapter):
         filters: dict[str, Any] | None = None,
         limit: int = 50,
     ) -> list[dict[str, Any]]:
-        """Call underlying Batdongsan / Muaban scraper routines."""
-        # Standalone scraper call or mocked implementation
-        return []
+        """Call underlying Batdongsan scraper routines."""
+        try:
+            from app.proprietary.platforms.batdongsan.schemas import BatdongsanScrapeInput
+            from app.proprietary.platforms.batdongsan.scraper import scrape_batdongsan
+
+            input_model = BatdongsanScrapeInput(
+                query=query,
+                max_items=min(limit, 20),
+            )
+            output = await scrape_batdongsan(input_model)
+            results = []
+            for item in output.items:
+                results.append({
+                    "id": item.id,
+                    "title": item.title,
+                    "price_vnd": item.price_vnd,
+                    "location": item.location,
+                    "project_name": item.project_name,
+                    "contact_phone": getattr(item, "phone", None) or getattr(item, "contact_phone", None),
+                    "description": item.description,
+                    "url": item.url,
+                })
+            return results
+        except Exception as exc:
+            logger.warning("Live Batdongsan scrape error: %s", exc)
+            return []
 
     async def search_leads(
         self,

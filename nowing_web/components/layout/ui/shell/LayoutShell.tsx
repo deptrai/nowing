@@ -157,7 +157,7 @@ function MainContentPanel({
 				/>
 			)}
 			<div className="relative flex flex-1 flex-col bg-panel overflow-hidden min-w-0">
-				<Header />
+				{!isChatPage && <Header />}
 
 				{showTabs && isDocumentTab && activeTab ? (
 					<div className="flex-1 overflow-hidden">
@@ -328,7 +328,12 @@ export function LayoutShell({
 							disableRightPanelToggle={useWorkspacePanel}
 						/>
 					) : null}
-					<div className="flex min-h-0 flex-1 w-full gap-2 px-2 py-0 overflow-hidden">
+					<div
+						className={cn(
+							"flex min-h-0 flex-1 w-full py-0 overflow-hidden",
+							isChatPage ? "gap-0 px-0" : "gap-2 px-2"
+						)}
+					>
 						<div
 							className={cn(
 								"hidden md:flex overflow-hidden -mr-2 pr-2 bg-rail",

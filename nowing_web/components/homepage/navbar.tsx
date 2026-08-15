@@ -80,6 +80,7 @@ export const Navbar = ({ scrolledBgClassName }: NavbarProps = {}) => {
 	const navItems: NavItem[] = [
 		{ name: "Connectors", link: "/connectors" },
 		{ name: "Pricing", link: "/pricing" },
+		{ name: "Partners", link: "/partners" },
 		{ name: "Contact\u00A0Us", link: "/contact" },
 		{ name: "Free\u00A0AI", link: "/free" },
 	];

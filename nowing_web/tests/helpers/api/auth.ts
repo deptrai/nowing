@@ -99,12 +99,8 @@ export async function registerUser(
 export async function acquireTestToken(request: APIRequestContext): Promise<string> {
 	try {
 		return await mintTestToken(request);
-	} catch (err) {
-		const msg = err instanceof Error ? err.message : String(err);
-		if (msg.includes("(404)") || msg.includes("(405)")) {
-			return loginAsTestUser(request);
-		}
-		throw err;
+	} catch {
+		return loginAsTestUser(request);
 	}
 }
 

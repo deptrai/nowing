@@ -127,7 +127,7 @@ export const ReverseIcpModal: React.FC<ReverseIcpModalProps> = ({
 	};
 
 	const handleOpenChatPrompt = (promptText: string) => {
-		router.push(`/dashboard/${workspaceId}/new-chat?q=${encodeURIComponent(promptText)}`);
+		router.push(`/dashboard/${workspaceId}/leads?q=${encodeURIComponent(promptText)}`);
 		onClose();
 	};
 

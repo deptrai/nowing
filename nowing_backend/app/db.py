@@ -4409,9 +4409,7 @@ class BillingEvent(Base, TimestampMixin):
             "ix_billing_events_outcome_unique",
             "event_id",
             unique=True,
-            postgresql_where=text(
-                "event_entity_type = 'outcome_event' AND event_type = 'outcome'"
-            ),
+            postgresql_where=text("event_entity_type = 'outcome_event'"),
         ),
     )
 
@@ -5297,3 +5295,132 @@ class ZaloMessageLog(Base, TimestampMixin):
     workspace = relationship("Workspace", back_populates="zalo_message_logs")
     connection = relationship("ZaloConnection", back_populates="message_logs")
     lead = relationship("Lead", back_populates="zalo_message_logs")
+
+
+class OutcomeEvent(Base, TimestampMixin):
+    """An outcome event (e.g. meeting booked, verified lead outcome) for outcome-based pricing (Story 21.7 / AD-42)."""
+
+    __tablename__ = "outcome_events"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    client_id = Column(CITEXT, nullable=True, index=True)
+    event_type = Column(
+        String(50), nullable=False, index=True
+    )  # outcome_meeting_booked, outcome_lead_enriched
+    lead_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("leads.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    sequence_id = Column(
+        UUID(as_uuid=True),
+        nullable=True,
+        index=True,
+    )
+    attribution = Column(
+        String(100), nullable=False, default="direct", server_default="direct"
+    )
+    cost_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
+    outcome_metadata = Column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+
+    workspace = relationship("Workspace")
+    lead = relationship("Lead")
+
+
+class PricingPlan(Base, TimestampMixin):
+    """Workspace pricing plan configuration (seat, outcome, hybrid) (Story 21.7 / AD-42)."""
+
+    __tablename__ = "pricing_plans"
+
+    __table_args__ = (
+        UniqueConstraint("workspace_id", name="uq_pricing_plans_workspace_id"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    client_id = Column(CITEXT, nullable=True, index=True)
+    plan_type = Column(
+        String(50), nullable=False, default="outcome", server_default="outcome"
+    )  # seat | outcome | hybrid
+    seat_price = Column(BigInteger, nullable=True)  # micros per seat
+    outcome_rates_json = Column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+    )
+    billing_period = Column(
+        String(20), nullable=True, default="monthly", server_default="monthly"
+    )
+    is_active = Column(Boolean, nullable=False, default=True, server_default="true")
+
+    workspace = relationship("Workspace")
+
+
+class PromoCode(Base, TimestampMixin):
+    """Gift / promotional codes that grant credits to user wallets (Story 21.7 / AC-5)."""
+
+    __tablename__ = "promo_codes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    code = Column(String(50), nullable=False, unique=True, index=True)
+    credit_micros_granted = Column(BigInteger, nullable=False)
+    max_uses = Column(Integer, nullable=True)
+    uses_count = Column(Integer, nullable=False, default=0, server_default="0")
+    expires_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True, server_default="true")
+    created_by_user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+
+class PromoCodeRedemption(Base, TimestampMixin):
+    """Tracks which users have redeemed which promo codes (Story 21.7 / AC-5)."""
+
+    __tablename__ = "promo_code_redemptions"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "promo_code_id", name="uq_promo_code_redemption_user_code"
+        ),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    promo_code_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("promo_codes.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    credit_micros_granted = Column(BigInteger, nullable=False)
+    redeemed_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
+
+    user = relationship("User")
+    promo_code = relationship("PromoCode")

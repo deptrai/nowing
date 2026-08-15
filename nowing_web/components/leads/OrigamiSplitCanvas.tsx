@@ -19,7 +19,6 @@ import { cn } from "@/lib/utils";
 import { CompanyGraphDrawer } from "./CompanyGraphDrawer";
 import { FloatingBulkActionBar } from "./FloatingBulkActionBar";
 import { LeadDetailFlyoutDrawer } from "./LeadDetailFlyoutDrawer";
-import { OrigamiChatCopilot } from "./OrigamiChatCopilot";
 import { OrigamiLeadMatrix } from "./OrigamiLeadMatrix";
 import { ReverseIcpModal } from "./ReverseIcpModal";
 
@@ -29,11 +28,15 @@ const DEFAULT_LEFT_WIDTH = 420;
 
 export interface OrigamiSplitCanvasProps {
 	workspaceId?: string | number;
+	chatSlot?: React.ReactNode;
+	hasActiveThread?: boolean;
 	className?: string;
 }
 
 export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 	workspaceId = "1",
+	chatSlot,
+	hasActiveThread = false,
 	className,
 }) => {
 	const [leftWidth, setLeftWidth] = useAtom(canvasLeftWidthAtom);
@@ -49,6 +52,11 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 	const [selectedCompanyForGraph, setSelectedCompanyForGraph] = useState<string | null>(null);
 	const [isGraphDrawerOpen, setIsGraphDrawerOpen] = useState(false);
 
+	// Tabs & Modes
+	const [activeTabMode, setActiveTabMode] = useState<"new_search" | "saved">(
+		hasActiveThread ? "saved" : "new_search"
+	);
+
 	// Filters
 	const [sourceFilter, setSourceFilter] = useState("all");
 	const [statusFilter, setStatusFilter] = useState("all");
@@ -59,7 +67,7 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 		setSelectedLeadIds([]);
 		setSelectedLeadContext(null);
 		setActiveDrawerLead(null);
-	}, [workspaceId, setSelectedLeadIds, setSelectedLeadContext, setActiveDrawerLead]);
+	}, [setSelectedLeadIds, setSelectedLeadContext, setActiveDrawerLead]);
 
 	// AC-7: Responsive layout & Auto-collapse on small viewport (<1280px)
 	useEffect(() => {
@@ -84,7 +92,11 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 		search: searchQuery || undefined,
 	});
 
-	const displayLeads = apiLeads || [];
+	// In a fresh new chat session, start in clean New Search Canvas until user prompts or selects saved leads
+	const displayLeads =
+		activeTabMode === "new_search" && !searchQuery && sourceFilter === "all"
+			? []
+			: apiLeads || [];
 
 	// Dragging logic for resizer
 	const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -169,7 +181,7 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 			aria-label="Không gian làm việc Origami Split-View"
 			data-testid="origami-split-canvas"
 			className={cn(
-				"relative w-full h-[calc(100vh-4rem)] flex overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl",
+				"relative w-full h-full flex bg-background text-foreground overflow-hidden",
 				isDragging && "select-none cursor-col-resize",
 				className
 			)}
@@ -178,9 +190,9 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 			{!isFullscreen && !isCollapsed && (
 				<div
 					style={{ width: `${leftWidth}px` }}
-					className="h-full shrink-0 flex flex-col transition-all duration-75"
+					className="h-full shrink-0 flex flex-col transition-all duration-75 border-r border-border bg-card overflow-hidden"
 				>
-					<OrigamiChatCopilot workspaceId={workspaceId} onFilterApply={(q) => setSearchQuery(q)} />
+					{chatSlot}
 				</div>
 			)}
 
@@ -205,12 +217,12 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 					}}
 					title="Kéo để điều chỉnh kích thước / Nhấp đúp để đặt lại 420px"
 					className={cn(
-						"relative w-1.5 h-full bg-zinc-900 hover:bg-emerald-500/80 cursor-col-resize flex items-center justify-center transition-colors z-20 group focus:outline-none focus:ring-1 focus:ring-emerald-500",
+						"relative w-1.5 h-full bg-border hover:bg-emerald-500/80 cursor-col-resize flex items-center justify-center transition-colors z-20 group focus:outline-none focus:ring-1 focus:ring-emerald-500",
 						isDragging && "bg-emerald-500 shadow-md shadow-emerald-500/50"
 					)}
 				>
-					<div className="w-4 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
-						<GripVertical className="w-3 h-3 text-zinc-300" />
+					<div className="w-4 h-8 rounded-full bg-card border border-border flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
+						<GripVertical className="w-3 h-3 text-muted-foreground" />
 					</div>
 				</div>
 			)}
@@ -221,7 +233,7 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 					type="button"
 					onClick={() => setIsCollapsed(false)}
 					title="Mở rộng AI Co-pilot"
-					className="h-full w-10 bg-zinc-950 border-r border-zinc-800 flex flex-col items-center py-4 text-zinc-400 hover:text-emerald-400 hover:bg-zinc-900 transition-colors cursor-pointer z-20"
+					className="h-full w-10 bg-card border-r border-border flex flex-col items-center py-4 text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-muted transition-colors cursor-pointer z-20"
 				>
 					<PanelLeftOpen className="w-5 h-5 mb-2" />
 					<span className="[writing-mode:vertical-rl] text-[11px] font-semibold tracking-wider uppercase font-sans">

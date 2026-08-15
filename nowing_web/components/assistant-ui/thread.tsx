@@ -17,6 +17,7 @@ import {
 	Clipboard,
 	Plus,
 	Settings2,
+	Sparkles,
 	SquareIcon,
 	Unplug,
 	Upload,
@@ -50,6 +51,7 @@ import {
 	importConnectorRequestAtom,
 } from "@/atoms/connector-dialog/connector-dialog.atoms";
 import { connectorsAtom } from "@/atoms/connectors/connector-query.atoms";
+import { selectedLeadContextAtom } from "@/atoms/leads/leads-canvas.atoms";
 import { membersAtom } from "@/atoms/members/members-query.atoms";
 import { llmSetupStatusAtomFamily } from "@/atoms/model-connections/model-connections-query.atoms";
 import { currentUserAtom } from "@/atoms/user/user-query.atoms";
@@ -66,7 +68,6 @@ import {
 } from "@/components/assistant-ui/inline-mention-editor";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { UserMessage } from "@/components/assistant-ui/user-message";
-import { ChatExamplePrompts } from "@/components/new-chat/chat-example-prompts";
 import { ChatHeader } from "@/components/new-chat/chat-header";
 import { ComposerSuggestionPopoverContent } from "@/components/new-chat/composer-suggestion-popup";
 import { PromptPicker, type PromptPickerRef } from "@/components/new-chat/prompt-picker";
@@ -167,7 +168,7 @@ const ThreadContent: FC<ThreadProps> = ({ hasActiveThread = false, initialPrompt
 		<ThreadPrimitive.Root
 			className="aui-root aui-thread-root @container flex h-full min-h-0 flex-col bg-main-panel"
 			style={{
-				["--thread-max-width" as string]: "42rem",
+				["--thread-max-width" as string]: "100%",
 			}}
 		>
 			<ChatViewport
@@ -268,11 +269,14 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 
 	return (
 		<div className="aui-thread-welcome-root flex min-h-0 flex-1">
-			<section className="mx-auto grid w-full max-w-(--thread-max-width) content-center gap-6 pt-8 pb-[clamp(5rem,16vh,12rem)]">
+			<section className="mx-auto grid w-full max-w-(--thread-max-width) content-center gap-4 pt-4 pb-[clamp(2rem,6vh,4rem)]">
 				<div className="aui-thread-welcome-message flex flex-col items-center px-4 text-center">
-					<h1 className="aui-thread-welcome-message-inner text-3xl md:text-[2.625rem] select-none">
+					<h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground font-sans select-none">
 						{greeting}
 					</h1>
+					<p className="text-xs text-muted-foreground mt-1 select-none">
+						AI Săn Lead Tự Động &amp; Outreach Đa Kênh
+					</p>
 				</div>
 				<div className="flex w-full items-start justify-center">
 					<Composer initialPrompt={initialPrompt} hasActiveThread={false} />
@@ -561,6 +565,7 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 	const isThreadEmpty = useAuiState(({ thread }) => thread.isEmpty);
 	const isThreadRunning = useAuiState(({ thread }) => thread.isRunning);
 	const [connectToolsTrayVisible, setConnectToolsTrayVisible] = useState(false);
+	const [selectedLeadContext, setSelectedLeadContext] = useAtom(selectedLeadContextAtom);
 
 	const { data: chatSetupStatus } = useAtomValue(llmSetupStatusAtomFamily(workspaceId ?? 0));
 	const isChatUnavailable = !!chatSetupStatus && chatSetupStatus.status !== "ready";
@@ -961,6 +966,18 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 		prevMentionedDocsRef.current = nextDocsMap;
 	}, [mentionedDocuments]);
 
+	const handleApplySuggestedAction = useCallback(
+		(promptText: string) => {
+			if (editorRef.current) {
+				editorRef.current.setText(promptText);
+				aui.composer().setText(promptText);
+				setIsComposerInputEmpty(false);
+				editorRef.current.focus();
+			}
+		},
+		[aui]
+	);
+
 	return (
 		<ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col gap-2 rounded-2xl">
 			<ChatSessionStatus
@@ -969,6 +986,65 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 				currentUserId={currentUser?.id ?? null}
 				members={members ?? []}
 			/>
+
+			{/* Origami Style: Suggested Next Actions Card */}
+			<div className="rounded-2xl border border-border/80 bg-card/95 p-3.5 shadow-xs transition-all backdrop-blur-xs">
+				<div className="flex items-center justify-between mb-2">
+					<div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+						<span className="text-amber-500">💡</span>
+						<span>Suggested Next Actions</span>
+					</div>
+					<Sparkles className="w-3.5 h-3.5 text-muted-foreground opacity-60" />
+				</div>
+				<div className="space-y-1.5">
+					<button
+						type="button"
+						onClick={() =>
+							handleApplySuggestedAction(
+								"Find decision-makers at these companies and set up a sequence to them"
+							)
+						}
+						className="w-full text-left flex items-start gap-2.5 p-2 rounded-xl hover:bg-muted/70 transition-colors text-xs text-foreground group cursor-pointer border border-transparent hover:border-border/60"
+					>
+						<span className="w-5 h-5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5">
+							🚀
+						</span>
+						<span className="font-medium group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors flex-1">
+							Find decision-makers at these companies and set up a sequence to them
+						</span>
+					</button>
+					<button
+						type="button"
+						onClick={() =>
+							handleApplySuggestedAction(
+								"Chỉ giữ các hồ sơ có nội dung thể hiện ý định mua rõ ràng"
+							)
+						}
+						className="w-full text-left flex items-start gap-2.5 p-2 rounded-xl hover:bg-muted/70 transition-colors text-xs text-foreground group cursor-pointer border border-transparent hover:border-border/60"
+					>
+						<span className="w-5 h-5 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5 font-mono">
+							2
+						</span>
+						<span className="font-medium group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors flex-1">
+							Chỉ giữ các hồ sơ có nội dung thể hiện ý định mua rõ ràng
+						</span>
+					</button>
+					<button
+						type="button"
+						onClick={() =>
+							handleApplySuggestedAction("So sánh mức độ ý định mua giữa X, Instagram và TikTok")
+						}
+						className="w-full text-left flex items-start gap-2.5 p-2 rounded-xl hover:bg-muted/70 transition-colors text-xs text-foreground group cursor-pointer border border-transparent hover:border-border/60"
+					>
+						<span className="w-5 h-5 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5 font-mono">
+							3
+						</span>
+						<span className="font-medium group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors flex-1">
+							So sánh mức độ ý định mua giữa X, Instagram và TikTok
+						</span>
+					</button>
+				</div>
+			</div>
 			<Popover open={showDocumentPopover} onOpenChange={handleDocumentPopoverOpenChange}>
 				{suggestionAnchorPoint ? (
 					<>
@@ -1026,6 +1102,35 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 					)}
 				>
 					<PendingScreenImageStrip />
+					{selectedLeadContext && (
+						<div className="mx-4 mt-2 flex items-center justify-between gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/25 px-3 py-1.5 text-xs text-emerald-800 dark:text-emerald-300 animate-in fade-in slide-in-from-top-1 duration-150">
+							<div className="flex items-center gap-2 truncate">
+								<span className="font-semibold text-emerald-600 dark:text-emerald-400 shrink-0">
+									🎯 Lead Context:
+								</span>
+								<span className="truncate font-medium">
+									{selectedLeadContext.company_name || selectedLeadContext.contact_name}
+									{selectedLeadContext.contact_title
+										? ` (${selectedLeadContext.contact_title})`
+										: ""}
+								</span>
+								{selectedLeadContext.fit_score !== undefined && (
+									<span className="shrink-0 rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-mono font-bold text-emerald-700 dark:text-emerald-300">
+										Fit {selectedLeadContext.fit_score}%
+									</span>
+								)}
+							</div>
+							<button
+								type="button"
+								onClick={() => setSelectedLeadContext(null)}
+								className="hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 p-1 rounded-md transition-colors"
+								title="Bỏ chọn ngữ cảnh lead"
+								aria-label="Bỏ chọn ngữ cảnh lead"
+							>
+								<X className="w-3.5 h-3.5" />
+							</button>
+						</div>
+					)}
 					{clipboardInitialText && (
 						<ClipboardChip
 							text={clipboardInitialText}
@@ -1057,11 +1162,6 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 					isThreadEmpty={isThreadEmpty}
 					onVisibleChange={setConnectToolsTrayVisible}
 				/>
-				{isThreadEmpty && isComposerInputEmpty ? (
-					<div className="absolute top-full left-0 right-0 z-20">
-						<ChatExamplePrompts onSelect={handleExampleSelect} />
-					</div>
-				) : null}
 			</div>
 		</ComposerPrimitive.Root>
 	);
@@ -1094,16 +1194,19 @@ const ConnectedScraperIcons: FC<{ workspaceId: number }> = ({ workspaceId }) => 
 
 	if (platforms.length === 0) return null;
 
+	const visiblePlatforms = platforms.slice(0, 3);
+	const remainingCount = platforms.length - 3;
+
 	return (
 		<div className="hidden items-center gap-1 sm:flex">
 			<div aria-hidden className="h-5 w-px shrink-0 bg-border" />
 			<AvatarGroup className="shrink-0">
-				{platforms.map((platform, i) => {
+				{visiblePlatforms.map((platform, i) => {
 					const Icon = platform.icon;
 					return (
 						<Tooltip key={platform.id}>
 							<TooltipTrigger asChild>
-								<Avatar className="size-5" style={{ zIndex: platforms.length - i }}>
+								<Avatar className="size-5" style={{ zIndex: visiblePlatforms.length - i }}>
 									<AvatarFallback className="bg-popover text-[10px]">
 										<Icon className="size-3" />
 									</AvatarFallback>
@@ -1113,6 +1216,18 @@ const ConnectedScraperIcons: FC<{ workspaceId: number }> = ({ workspaceId }) => 
 						</Tooltip>
 					);
 				})}
+				{remainingCount > 0 && (
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<Avatar className="size-5" style={{ zIndex: 0 }}>
+								<AvatarFallback className="bg-muted text-[9px] font-medium text-muted-foreground font-mono">
+									+{remainingCount}
+								</AvatarFallback>
+							</Avatar>
+						</TooltipTrigger>
+						<TooltipContent side="bottom">+{remainingCount} more scrapers connected</TooltipContent>
+					</Tooltip>
+				)}
 			</AvatarGroup>
 		</div>
 	);

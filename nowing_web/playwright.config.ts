@@ -58,7 +58,7 @@ export default defineConfig({
 		navigationTimeout: 30_000,
 		trace: "retain-on-failure",
 		screenshot: "only-on-failure",
-		video: "retain-on-failure",
+		video: "off",
 		extraHTTPHeaders: {
 			"x-playwright-test": "true",
 		},
@@ -67,12 +67,14 @@ export default defineConfig({
 		{
 			name: "setup",
 			testMatch: /.*\.setup\.ts/,
+			use: { channel: "chrome" },
 		},
 		{
 			name: "chromium",
 			dependencies: ["setup"],
 			use: {
 				...devices["Desktop Chrome"],
+				channel: "chrome",
 				storageState: "playwright/.auth/user.json",
 			},
 		},

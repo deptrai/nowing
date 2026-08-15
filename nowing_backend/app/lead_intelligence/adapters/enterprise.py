@@ -35,7 +35,28 @@ class EnterpriseProcurementLeadAdapter(LeadSourceAdapter):
         limit: int = 50,
     ) -> list[dict[str, Any]]:
         """Call underlying Masothue / Mua Sắm Công platform routines."""
-        return []
+        try:
+            from app.proprietary.platforms.masothue.schemas import MasothueSearchInput
+            from app.proprietary.platforms.masothue.scraper import scrape_masothue
+
+            inp = MasothueSearchInput(keyword=query, max_items=min(limit, 20))
+            output = await scrape_masothue(inp)
+            results = []
+            for comp in output.companies:
+                results.append({
+                    "id": comp.tax_code,
+                    "tax_code": comp.tax_code,
+                    "company_name": comp.company_name,
+                    "representative": comp.representative,
+                    "phone": comp.phone,
+                    "address": comp.address,
+                    "industry": comp.industry_name,
+                    "status": comp.status,
+                })
+            return results
+        except Exception as exc:
+            logger.warning("Live Masothue scrape error: %s", exc)
+            return []
 
     async def search_leads(
         self,

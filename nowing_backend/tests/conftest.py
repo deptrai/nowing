@@ -10,6 +10,9 @@ TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL", _DEFAULT_TEST_DB)
 # Force the app to use the test database regardless of any pre-existing
 # DATABASE_URL in the environment (e.g. from .env or shell profile).
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
+os.environ.setdefault("EMBEDDING_MODEL", "all-minilm-l6-v2")
+if not os.environ.get("EMBEDDING_MODEL"):
+    os.environ["EMBEDDING_MODEL"] = "all-minilm-l6-v2"
 
 # Integration tests authenticate over HTTP via email/password, so the
 # password-auth routers must be mounted (they are skipped under AUTH_TYPE=GOOGLE).
@@ -23,6 +26,7 @@ os.environ.setdefault("REGISTRATION_ENABLED", "TRUE")
 # across both local tests and E2E, so default to it when the operator has not
 # explicitly chosen UNSTRUCTURED / LLAMACLOUD.
 os.environ.setdefault("ETL_SERVICE", "DOCLING")
+os.environ.setdefault("EMBEDDING_MODEL", "all-minilm-l6-v2")
 
 # Mutation gate: avoid heavy model/library imports in each mutant process.
 # `app.config` is imported by `app.db` below and eagerly initializes embeddings,

@@ -6,18 +6,18 @@ baseline_commit: 591bc6a16
 
 Status: done
 
-<!-- Note: Governed by epics.md (FR-86, AD-31, UX-Contract-Lead-Panel) & DESIGN.md, EXPERIENCE.md -->
+<!-- Note: Governed by epics.md (FR-86, AD-31, UX-Contract-Lead-Panel), sprint-change-proposal-2026-08-16.md & DESIGN.md, EXPERIENCE.md -->
 
 ## Story
 
 As a sales rep or market researcher working in a workspace,
-I want an interactive 2-panel split canvas (a 420px Chat Co-pilot on the left and a Resizable Data Matrix on the right) with Mint Green theme, Sọc Caro grid paper styling, and bi-directional context sync,
-So that I can naturally chat with AI to command scrapers while inspecting, filtering, sorting, and taking 1-click outreach actions on hundreds of real-time leads without losing screen context.
+I want an interactive 2-panel split canvas (a 420px Full Assistant-UI Chat Co-pilot on the left and a Resizable Data Matrix on the right) with Mint Green theme, Sọc Caro grid paper styling, and bi-directional context sync,
+So that I can naturally chat with AI, upload files, switch models, and command scrapers while inspecting, filtering, sorting, and taking 1-click outreach actions on hundreds of real-time leads on a single unified canvas.
 
 ## Acceptance Criteria
 
-1. **Given** navigation to `/dashboard/[workspace_id]/leads`, **When** the page loads, **Then** it renders a Split-View Canvas composed of:
-   - **Left Panel (Chat Co-pilot):** Default width 420px (min 360px, max 650px) with interactive prompt box, Suggested Action Pills (`data-testid='suggested-action-pills'`), and 3-Mode Switcher (`🎯 Leads`, `🧠 Research`, `⚡ Scrapers`).
+1. **Given** navigation to `/dashboard/[workspace_id]/new-chat/[[...chat_id]]`, **When** the page loads, **Then** it renders the Unified Origami Split-View Canvas composed of:
+   - **Left Panel (Full Assistant-UI Chat Co-pilot):** Default width 420px (min 360px, max 650px) with complete Assistant-UI runtime, Model Selector (Claude 3.5 Sonnet, GPT-4o, DeepSeek, Gemini Pro), File Attachment upload, Suggested Action Pills (`data-testid='suggested-action-pills'`), and 3-Mode Switcher (`🎯 Leads`, `🧠 Research`, `⚡ Scrapers`).
    - **Center Resizer:** Draggable vertical divider (`cursor: col-resize`, `hover:bg-emerald-400`, `role='slider'`) allowing fluid panel resizing, with a double-click reset to 50/50 (420px) and a 1-click collapse button.
    - **Right Panel (Live Data Matrix):** Resizable table with columns (Checkbox, Lead / Company, Source Badge, Decoded Phone, Fit Score, Actions: Zalo / Phone, Custom Fields), Table Virtualization, and Fullscreen Toggle.
 2. **Given** the visual design tokens from `DESIGN.md`, **When** rendered, **Then** the canvas applies:
@@ -28,36 +28,25 @@ So that I can naturally chat with AI to command scrapers while inspecting, filte
 4. **Given** bi-directional context synchronization:
    - **Table $\rightarrow$ Chat:** Clicking a lead row displays an active context badge in the chat composer (`[Đang chọn: Nguyễn Văn Hùng - Bán nhà Thủ Đức 8.5 Tỷ]`), automatically injecting the lead's metadata into subsequent AI prompts.
    - **Chat $\rightarrow$ Table:** When the AI filters, sorts, or adds leads, the table highlights the matching rows immediately.
-5. **Given** multiple lead selection ($\ge 2$ checkboxes ticked in the table), **When** active, **Then** a Floating Bulk Action Bar slides up at the bottom: `[ Đã chọn N leads | 📱 Mở khóa SĐT | 🚀 Xuất Lark Base | 💬 Gửi Zalo hàng loạt | ✕ Bỏ chọn ]`.
-6. **Given** clicking any lead row, **When** triggered, **Then** a Flyout Detail Drawer (width 480px) slides out from the right displaying: full listing text, parsed entities, fit score breakdown, and 1-click Zalo Deep-link (`zalo.me/{phone}`).
-7. **Given** viewport width $< 1280$px, **When** rendered, **Then** the workspace sidebar auto-collapses to a 64px Icon Rail, preserving a minimum 750px width for the Data Matrix.
+5. **Given** navigation to legacy `/dashboard/[workspace_id]/leads`, **When** loaded, **Then** it performs a server/client redirect to `/dashboard/[workspace_id]/new-chat?mode=leads`.
+6. **Given** multiple lead selection ($\ge 2$ checkboxes ticked in the table), **When** active, **Then** a Floating Bulk Action Bar slides up at the bottom: `[ Đã chọn N leads | 📱 Mở khóa SĐT | 🚀 Xuất Lark Base | 💬 Gửi Zalo hàng loạt | ✕ Bỏ chọn ]`.
+7. **Given** clicking any lead row, **When** triggered, **Then** a Flyout Detail Drawer (width 480px) slides out from the right displaying: full listing text, parsed entities, fit score breakdown, and 1-click Zalo Deep-link (`zalo.me/{phone}`).
 
 ## Tasks / Subtasks
 
-- [x] Task 1: Split-View Layout & Resizer Engine (AC: 1, 7)
-  - [x] 1.1 Xây dựng `OrigamiSplitCanvas.tsx` tại `nowing_web/components/leads/OrigamiSplitCanvas.tsx` sử dụng custom drag hook & CSS clamp bounds.
-  - [x] 1.2 Tích hợp nút Fullscreen Toggle mở rộng Data Matrix 100% width và nút thu gọn Left Chat Panel.
-  - [x] 1.3 Xây dựng cơ chế Auto-Collapse Sidebar khi viewport $< 1280$px.
-- [x] Task 2: Chat Co-pilot Panel & Mode Switcher (AC: 1, 2, 4)
-  - [x] 2.1 Xây dựng `OrigamiChatCopilot.tsx` tại `nowing_web/components/leads/OrigamiChatCopilot.tsx` với header Sọc Caro Grid Paper.
-  - [x] 2.2 Tích hợp 3-Mode Switcher (`🎯 Leads | 🧠 Research | ⚡ Scrapers`) lưu state trong Jotai atoms (`canvasModeAtom`).
-  - [x] 2.3 Tích hợp `SuggestedActionPills` và Context Badge (`ActiveLeadContextBadge`) khi người dùng click chọn hàng trong bảng.
-  - [x] 2.4 Hỗ trợ phím tắt `⌘K` (Tìm kiếm nhanh), `Enter` gửi, `Shift+Enter` xuống dòng.
-- [x] Task 3: Live Data Matrix & Zero-Cache Reactive Grid (AC: 1, 2, 3, 5, 6)
-  - [x] 3.1 Xây dựng `OrigamiLeadMatrix.tsx` tại `nowing_web/components/leads/OrigamiLeadMatrix.tsx` với responsive virtualized scroll container.
-  - [x] 3.2 Tích hợp CSS animation `.cell-pulse` shimmer xanh mint khi có rows mới từ Zero-cache.
-  - [x] 3.3 Tích hợp `MultiTableTabs` và `SendExportDropdown` trên thanh công cụ của Matrix.
-  - [x] 3.4 Xây dựng `FloatingBulkActionBar.tsx` nổi ở đáy bảng khi tick chọn $\ge 2$ leads.
-  - [x] 3.5 Xây dựng `LeadDetailFlyoutDrawer.tsx` trượt từ cạnh phải khi nhấp vào hàng lead.
-- [x] Task 4: Page Integration & Design Tokens (AC: 1, 2)
-  - [x] 4.1 Cập nhật `nowing_web/app/dashboard/[workspace_id]/leads/page.tsx` render `OrigamiSplitCanvas`.
-  - [x] 4.2 Định nghĩa CSS Tokens cho Sọc Caro Grid Paper (`.soc-caro-grid`) và Mint Green variables trong `globals.css`.
-- [x] Task 5: Testing & Quality Gates (AC: 1-7)
-  - [x] 5.1 Typecheck & Biome check: `pnpm tsc --noEmit` & `pnpm exec biome check` (0 errors).
-  - [x] 5.2 Playwright E2E test: `nowing_web/tests/leads/split-canvas.spec.ts` (Kiểm thử kéo resizer, chuyển 3-Mode, tick checkbox hiện floating bar, mở detail drawer).
-
-### Review Findings (AI Adversarial Review - Resolved)
-- [x] [Review][Patch] Fix Resizer Drag Offset Coordinate calculation via `containerRef.current.getBoundingClientRect().left` [`OrigamiSplitCanvas.tsx`]
+- [x] Task 1: Refactor `OrigamiSplitCanvas.tsx` to Dynamic Slot Layout (AC: 1, 7)
+  - [x] 1.1 Sửa `OrigamiSplitCanvas.tsx` nhận prop `chatSlot: React.ReactNode` thay vì nhúng cứng `OrigamiChatCopilot`.
+  - [x] 1.2 Giữ nguyên resizer drag hook mượt mà, fullscreen toggle và responsive sidebar auto-collapse.
+- [x] Task 2: Hợp nhất vào `new-chat/[[...chat_id]]/page.tsx` (AC: 1, 2, 4)
+  - [x] 2.1 Bọc trang New Chat trong `OrigamiSplitCanvas`, truyền `<Thread />` vào `chatSlot` và `<OrigamiLeadMatrix />` vào panel bên phải.
+  - [x] 2.2 Tích hợp `LeadContextBadge` vào khung soạn thảo của `components/assistant-ui/thread.tsx`.
+  - [x] 2.3 Xóa bỏ file `OrigamiChatCopilot.tsx` (loại bỏ duplicate code).
+- [x] Task 3: Route Redirects & Sidebar Navigation (AC: 5)
+  - [x] 3.1 Cập nhật `nowing_web/app/dashboard/[workspace_id]/leads/page.tsx` chuyển hướng sạch `redirect('/new-chat?mode=leads')`.
+  - [x] 3.2 Cập nhật sidebar `LayoutDataProvider.tsx` hợp nhất mục menu thành `🌿 Origami Canvas`.
+- [x] Task 4: Testing & Verification (AC: 1-7)
+  - [x] 4.1 Linter & Typecheck: `pnpm tsc --noEmit` & `pnpm exec biome check` (0 errors).
+  - [x] 4.2 Playwright E2E test verification trên trình duyệt thực tế.
 - [x] [Review][Patch] Fix Table Select All logic `isAllSelected` with `leads.every` [`OrigamiLeadMatrix.tsx`]
 - [x] [Review][Patch] Reset cross-workspace selection and context atoms on unmount/workspaceId switch [`OrigamiSplitCanvas.tsx`]
 - [x] [Review][Patch] Increase `FloatingBulkActionBar` z-index to `z-[60]` for Fullscreen mode visibility [`FloatingBulkActionBar.tsx`]

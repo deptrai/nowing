@@ -1,0 +1,1241 @@
+diff --git a/nowing_web/app/dashboard/[workspace_id]/content/social-copilot/page.tsx b/nowing_web/app/dashboard/[workspace_id]/content/social-copilot/page.tsx
+new file mode 100644
+index 000000000..feff531bb
+--- /dev/null
++++ b/nowing_web/app/dashboard/[workspace_id]/content/social-copilot/page.tsx
+@@ -0,0 +1,403 @@
++"use client";
++
++import { FileText, Plus, Search, Sparkles, TrendingUp } from "lucide-react";
++import { useParams } from "next/navigation";
++import type React from "react";
++import { useEffect, useState } from "react";
++import { toast } from "sonner";
++import { OutlierPostCard } from "@/components/social-copilot/OutlierPostCard";
++import { ViralDraftReviewPanel } from "@/components/social-copilot/ViralDraftReviewPanel";
++import { VoiceProfileManager } from "@/components/social-copilot/VoiceProfileManager";
++import {
++	type DraftVariation,
++	type OutlierPostItem,
++	socialCopilotApiService,
++	type VoiceProfile,
++	type VoiceProfileListItem,
++} from "@/lib/apis/social-copilot-api.service";
++
++export default function SocialCopilotPage() {
++	const params = useParams();
++	const workspaceId = (params?.workspace_id as string) || "1";
++
++	const [activeTab, setActiveTab] = useState<"voice" | "outliers" | "drafts">("voice");
++	const [profiles, setProfiles] = useState<VoiceProfileListItem[]>([]);
++	const [activeVoiceProfile, setActiveVoiceProfile] = useState<VoiceProfile | null>(null);
++	const [outliers, setOutliers] = useState<OutlierPostItem[]>([]);
++	const [selectedOutlier, setSelectedOutlier] = useState<OutlierPostItem | null>(null);
++	const [drafts, setDrafts] = useState<DraftVariation[]>([]);
++	const [targetPlatform, setTargetPlatform] = useState<
++		"facebook" | "twitter" | "linkedin" | "threads"
++	>("facebook");
++	const [isGenerating, setIsGenerating] = useState(false);
++	const [searchKeyword, setSearchKeyword] = useState("");
++	const [isManualImportOpen, setIsManualImportOpen] = useState(false);
++	const [manualText, setManualText] = useState("");
++
++	// Load initial voice profiles & outliers
++	useEffect(() => {
++		const loadData = async () => {
++			try {
++				const profileRes = await socialCopilotApiService.listVoiceProfiles(workspaceId);
++				if (profileRes?.items && profileRes.items.length > 0) {
++					setProfiles(profileRes.items);
++				} else {
++					// Seed default item for smooth initial presentation
++					setProfiles([
++						{
++							id: 1,
++							profile_name: "BĐS Chuyên Gia",
++							tone: "authoritative, contrarian, chuyên sâu",
++							is_active: true,
++							created_at: new Date().toISOString(),
++						},
++					]);
++				}
++
++				const outlierRes = await socialCopilotApiService.getOutlierPosts(workspaceId);
++				if (outlierRes?.items && outlierRes.items.length > 0) {
++					setOutliers(outlierRes.items);
++					setSelectedOutlier(outlierRes.items[0]);
++				} else {
++					// Seed sample outlier post
++					const seedPost: OutlierPostItem = {
++						id: 1,
++						platform: "facebook",
++						external_post_id: "fb_sample_99",
++						author_name: "Nguyễn Văn Chuyên",
++						author_id: "nv_chuyen_01",
++						content:
++							"Hầu hết các môi giới BĐS đang đốt tiền vô ích vào Facebook Ads.\n" +
++							"Thực tế 90% giao dịch phân khúc cao cấp năm nay đến từ mạng lưới quan hệ ngầm và định vị cá nhân qua nội dung chuyên sâu.\n" +
++							"Dưới đây là quy trình 3 bước tôi dùng để chốt 4 căn biệt thự mà không tốn 1 đồng quảng cáo:\n" +
++							"1. Xác định tệp khách hàng mua kín qua dữ liệu doanh nghiệp.\n" +
++							"2. Viết bài phân tích dòng tiền chuyên sâu thay vì đăng tin bán nhà rác.\n" +
++							"3. Tiếp cận riêng tư qua tin nhắn trực tiếp kèm báo cáo định giá độc quyền.\n" +
++							"Comment 'BÁO CÁO' để nhận file phân tích dòng tiền mẫu.",
++						reactions_count: 520,
++						comments_count: 140,
++						shares_count: 85,
++						engagement_score: 1055,
++						baseline_ratio: 3.4,
++						hook_taxonomy: "contrarian_hook",
++						why_it_worked:
++							"Mở đầu bằng góc nhìn ngược số đông (đốt tiền ads) và đưa ra con số 90% tạo sự tò mò cao độ.",
++						published_at: new Date().toISOString(),
++					};
++					setOutliers([seedPost]);
++					setSelectedOutlier(seedPost);
++				}
++			} catch (err) {
++				console.error("Error loading social copilot data:", err);
++			}
++		};
++
++		loadData();
++	}, [workspaceId]);
++
++	const handleProfileCreated = (profile: VoiceProfile) => {
++		setActiveVoiceProfile(profile);
++		setProfiles((prev) => [
++			{
++				id: profile.id || Date.now(),
++				profile_name: profile.profile_name,
++				tone: profile.tone,
++				is_active: true,
++				created_at: new Date().toISOString(),
++			},
++			...prev.map((p) => ({ ...p, is_active: false })),
++		]);
++	};
++
++	const handleProfileActivated = async (profileId: number) => {
++		try {
++			await socialCopilotApiService.activateVoiceProfile(workspaceId, profileId);
++			setProfiles((prev) =>
++				prev.map((p) => ({
++					...p,
++					is_active: p.id === profileId,
++				}))
++			);
++			toast.success("Đã kích hoạt hồ sơ giọng văn thành công!");
++		} catch (err: unknown) {
++			const msg = err instanceof Error ? err.message : "Không thể kích hoạt hồ sơ";
++			toast.error(msg);
++		}
++	};
++
++	const handleGenerateDraft = async (post?: OutlierPostItem) => {
++		const targetPost = post || selectedOutlier || outliers[0];
++		if (targetPost) {
++			setSelectedOutlier(targetPost);
++		}
++
++		setIsGenerating(true);
++		try {
++			const res = await socialCopilotApiService.generateViralDrafts(workspaceId, {
++				topic: targetPost ? targetPost.content.slice(0, 50) : "Chiến lược bán hàng BĐS",
++				hook_taxonomy: targetPost?.hook_taxonomy || "contrarian_hook",
++				voice_profile_id: activeVoiceProfile?.id || (profiles[0]?.id as number) || undefined,
++				target_platform: targetPlatform,
++				n_variations: 3,
++			});
++
++			if (res.drafts && res.drafts.length > 0) {
++				setDrafts(res.drafts);
++				setActiveTab("drafts");
++				toast.success("Đã sinh 3 biến thể bản thảo thành công!");
++			}
++		} catch (err: unknown) {
++			const msg = err instanceof Error ? err.message : "Không thể sinh bản thảo";
++			toast.error(msg);
++		} finally {
++			setIsGenerating(false);
++		}
++	};
++
++	const handleManualIngest = async (e: React.FormEvent) => {
++		e.preventDefault();
++		if (!manualText.trim()) return;
++
++		try {
++			const res = await socialCopilotApiService.manualIngest(workspaceId, {
++				raw_text: manualText,
++				platform: "facebook",
++			});
++
++			const newPost: OutlierPostItem = {
++				id: Date.now(),
++				platform: "facebook",
++				external_post_id: `manual_${Date.now()}`,
++				content: res.original_text_redacted,
++				reactions_count: 100,
++				comments_count: 30,
++				shares_count: 15,
++				engagement_score: 205,
++				baseline_ratio: 3.0,
++				hook_taxonomy: res.deconstructed_elements.taxonomy,
++				why_it_worked: res.deconstructed_elements.analysis,
++				published_at: new Date().toISOString(),
++			};
++
++			setOutliers((prev) => [newPost, ...prev]);
++			setSelectedOutlier(newPost);
++			setIsManualImportOpen(false);
++			setManualText("");
++			toast.success("Đã bóc tách cấu trúc bài viết mẫu thành công!");
++		} catch (err: unknown) {
++			const msg = err instanceof Error ? err.message : "Không thể phân tích bài viết";
++			toast.error(msg);
++		}
++	};
++
++	return (
++		<div className="container mx-auto p-6 max-w-7xl space-y-6">
++			{/* Header */}
++			<div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/60 pb-5">
++				<div>
++					<div className="flex items-center gap-2 mb-1">
++						<span className="rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary uppercase">
++							Content Mode
++						</span>
++						<span className="text-xs text-muted-foreground">Story 21.12</span>
++					</div>
++					<h1 className="text-2xl font-bold tracking-tight text-foreground">
++						Viral Social Outbound Co-pilot
++					</h1>
++					<p className="text-sm text-muted-foreground">
++						Phân tích các bài viết viral ngoại lệ, học giọng văn cá nhân độc bản và viết lại thành
++						bản thảo thu hút khách hàng tiềm năng.
++					</p>
++				</div>
++
++				<div className="flex items-center gap-3">
++					<select
++						value={targetPlatform}
++						onChange={(e) =>
++							setTargetPlatform(e.target.value as "facebook" | "twitter" | "linkedin" | "threads")
++						}
++						className="rounded-lg border border-input bg-background px-3 py-2 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
++					>
++						<option value="facebook">Facebook</option>
++						<option value="linkedin">LinkedIn</option>
++						<option value="twitter">X / Twitter</option>
++						<option value="threads">Threads</option>
++					</select>
++
++					<button
++						type="button"
++						onClick={() => handleGenerateDraft()}
++						disabled={isGenerating}
++						className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50"
++					>
++						<Sparkles className="h-4 w-4" />
++						{isGenerating ? "Đang tạo..." : "Tạo bản thảo / Generate Draft"}
++					</button>
++				</div>
++			</div>
++
++			{/* Top Navigation Tabs */}
++			<div className="flex items-center gap-2 border-b border-border/60 pb-2" role="tablist">
++				<button
++					type="button"
++					role="tab"
++					aria-selected={activeTab === "voice"}
++					onClick={() => setActiveTab("voice")}
++					className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
++						activeTab === "voice"
++							? "bg-primary/10 text-primary"
++							: "text-muted-foreground hover:text-foreground hover:bg-muted"
++					}`}
++				>
++					<Sparkles className="h-4 w-4" />
++					<span>Hồ sơ giọng văn / Voice Profile</span>
++					<span className="rounded-full bg-primary/20 text-primary text-xs px-2 py-0.5">
++						{profiles.length}
++					</span>
++				</button>
++
++				<button
++					type="button"
++					role="tab"
++					aria-selected={activeTab === "outliers"}
++					onClick={() => setActiveTab("outliers")}
++					className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
++						activeTab === "outliers"
++							? "bg-primary/10 text-primary"
++							: "text-muted-foreground hover:text-foreground hover:bg-muted"
++					}`}
++				>
++					<TrendingUp className="h-4 w-4" />
++					<span>Bài viết Viral / Outlier Feed</span>
++					<span className="rounded-full bg-orange-500/20 text-orange-600 text-xs px-2 py-0.5">
++						{outliers.length}
++					</span>
++				</button>
++
++				<button
++					type="button"
++					role="tab"
++					aria-selected={activeTab === "drafts"}
++					onClick={() => setActiveTab("drafts")}
++					className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
++						activeTab === "drafts"
++							? "bg-primary/10 text-primary"
++							: "text-muted-foreground hover:text-foreground hover:bg-muted"
++					}`}
++				>
++					<FileText className="h-4 w-4" />
++					<span>Bản thảo AI / AI Drafts</span>
++					{drafts.length > 0 && (
++						<span className="rounded-full bg-emerald-500/20 text-emerald-600 text-xs px-2 py-0.5">
++							{drafts.length}
++						</span>
++					)}
++				</button>
++			</div>
++
++			{/* Tab Content */}
++			{activeTab === "voice" && (
++				<VoiceProfileManager
++					workspaceId={workspaceId}
++					profiles={profiles}
++					activeProfile={activeVoiceProfile}
++					onProfileCreated={handleProfileCreated}
++					onProfileActivated={handleProfileActivated}
++				/>
++			)}
++
++			{activeTab === "outliers" && (
++				<div className="space-y-4">
++					<div className="flex items-center justify-between gap-4 flex-wrap">
++						<div className="relative flex-1 min-w-[240px]">
++							<Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
++							<input
++								type="text"
++								placeholder="Tìm bài viral theo từ khóa (VD: bất động sản, dòng tiền, SaaS)..."
++								value={searchKeyword}
++								onChange={(e) => setSearchKeyword(e.target.value)}
++								className="w-full rounded-lg border border-input bg-background pl-9 pr-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
++							/>
++						</div>
++
++						<button
++							type="button"
++							onClick={() => setIsManualImportOpen(true)}
++							className="flex items-center gap-2 rounded-lg border border-input bg-background px-3 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors"
++						>
++							<Plus className="h-4 w-4" /> Dán bài mẫu thủ công
++						</button>
++					</div>
++
++					{/* Outlier Post Grid */}
++					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
++						{outliers
++							.filter(
++								(p) =>
++									!searchKeyword.trim() ||
++									p.content.toLowerCase().includes(searchKeyword.toLowerCase())
++							)
++							.map((post) => (
++								<OutlierPostCard
++									key={post.id || post.external_post_id}
++									post={post}
++									isSelected={selectedOutlier?.id === post.id}
++									onSelect={(p) => setSelectedOutlier(p)}
++									onGenerateDraft={(p) => handleGenerateDraft(p)}
++								/>
++							))}
++					</div>
++				</div>
++			)}
++
++			{activeTab === "drafts" && (
++				<ViralDraftReviewPanel
++					originalPost={selectedOutlier}
++					drafts={drafts}
++					activeVoiceProfile={activeVoiceProfile}
++					targetPlatform={targetPlatform}
++					isGenerating={isGenerating}
++					onGenerateNewDrafts={() => handleGenerateDraft()}
++				/>
++			)}
++
++			{/* Manual Ingest Modal */}
++			{isManualImportOpen && (
++				<div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
++					<div className="w-full max-w-lg rounded-xl border border-border bg-card p-6 shadow-lg space-y-4">
++						<h3 className="text-lg font-semibold text-foreground">Dán Nội Dung Bài Viết Mẫu</h3>
++						<p className="text-xs text-muted-foreground">
++							AI sẽ tự động khử thông tin nhạy cảm (SĐT, email theo AD-25), bóc tách 4 thành phần
++							bài viết và phân loại Hook Taxonomy.
++						</p>
++						<form onSubmit={handleManualIngest} className="space-y-4">
++							<textarea
++								rows={6}
++								placeholder="Dán toàn bộ nội dung bài viết cần phân tích vào đây..."
++								value={manualText}
++								onChange={(e) => setManualText(e.target.value)}
++								className="w-full rounded-lg border border-input bg-background p-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
++								required
++							/>
++							<div className="flex items-center justify-end gap-2">
++								<button
++									type="button"
++									onClick={() => setIsManualImportOpen(false)}
++									className="rounded-lg border border-input px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-accent"
++								>
++									Hủy
++								</button>
++								<button
++									type="submit"
++									className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
++								>
++									Bóc tách & Phân tích
++								</button>
++							</div>
++						</form>
++					</div>
++				</div>
++			)}
++		</div>
++	);
++}
+diff --git a/nowing_web/components/social-copilot/OutlierPostCard.tsx b/nowing_web/components/social-copilot/OutlierPostCard.tsx
+new file mode 100644
+index 000000000..2df1ecafe
+--- /dev/null
++++ b/nowing_web/components/social-copilot/OutlierPostCard.tsx
+@@ -0,0 +1,135 @@
++"use client";
++
++import { ExternalLink, Flame, MessageSquare, Repeat2, Sparkles, ThumbsUp } from "lucide-react";
++import type { OutlierPostItem } from "@/lib/apis/social-copilot-api.service";
++
++interface OutlierPostCardProps {
++	post: OutlierPostItem;
++	isSelected?: boolean;
++	onSelect: (post: OutlierPostItem) => void;
++	onGenerateDraft?: (post: OutlierPostItem) => void;
++}
++
++export function OutlierPostCard({
++	post,
++	isSelected = false,
++	onSelect,
++	onGenerateDraft,
++}: OutlierPostCardProps) {
++	const taxonomyColors: Record<string, string> = {
++		contrarian_hook: "bg-rose-500/10 text-rose-600 border-rose-500/20",
++		story_shift: "bg-purple-500/10 text-purple-600 border-purple-500/20",
++		value_list: "bg-blue-500/10 text-blue-600 border-blue-500/20",
++		data_reveal: "bg-amber-500/10 text-amber-600 border-amber-500/20",
++	};
++
++	const taxonomyLabels: Record<string, string> = {
++		contrarian_hook: "Tranh biện / Contrarian Hook",
++		story_shift: "Chuyển hóa / Story Shift",
++		value_list: "Checklist giá trị / Value List",
++		data_reveal: "Bật mí dữ liệu / Data Reveal",
++	};
++
++	const taxonomyKey = post.hook_taxonomy || "contrarian_hook";
++	const badgeColor = taxonomyColors[taxonomyKey] || "bg-primary/10 text-primary border-primary/20";
++	const badgeLabel = taxonomyLabels[taxonomyKey] || "Viral Hook";
++
++	return (
++		<div
++			data-testid="outlier-card"
++			className={`group relative rounded-xl border p-5 transition-all ${
++				isSelected
++					? "border-primary bg-primary/[0.03] shadow-md ring-2 ring-primary/30"
++					: "border-border bg-card hover:border-primary/40 hover:shadow-sm"
++			}`}
++		>
++			{/* Top Bar: Platform, Multiplier Badge, Taxonomy */}
++			<div className="flex items-center justify-between gap-2 mb-3">
++				<div className="flex items-center gap-2 flex-wrap">
++					<span className="rounded-md bg-muted px-2 py-0.5 text-xs font-semibold text-foreground uppercase">
++						{post.platform}
++					</span>
++
++					{/* Multiplier Badge */}
++					<span
++						data-testid="outlier-multiplier"
++						className="flex items-center gap-1 rounded-full bg-orange-500/10 border border-orange-500/20 px-2 py-0.5 text-xs font-bold text-orange-600"
++					>
++						<Flame className="h-3 w-3" />
++						{post.baseline_ratio >= 1 ? `${post.baseline_ratio}x` : "3.0x"} baseline
++					</span>
++
++					{/* Taxonomy Badge */}
++					<span
++						data-testid="hook-taxonomy-badge"
++						className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${badgeColor}`}
++					>
++						{badgeLabel}
++					</span>
++				</div>
++
++				{post.post_url && (
++					<a
++						href={post.post_url}
++						target="_blank"
++						rel="noopener noreferrer"
++						className="text-muted-foreground hover:text-foreground transition-colors p-1"
++						title="Xem bài gốc"
++					>
++						<ExternalLink className="h-4 w-4" />
++					</a>
++				)}
++			</div>
++
++			{/* Post Content Preview */}
++			<div className="mb-4">
++				<p className="text-sm text-foreground/90 font-sans leading-relaxed line-clamp-4 whitespace-pre-line">
++					{post.content}
++				</p>
++			</div>
++
++			{/* Why it worked highlight */}
++			{post.why_it_worked && (
++				<div className="mb-4 rounded-lg bg-muted/60 p-2.5 text-xs text-muted-foreground border border-border/50">
++					<span className="font-semibold text-foreground">💡 Tại sao viral:</span>{" "}
++					{post.why_it_worked}
++				</div>
++			)}
++
++			{/* Footer: Engagement Stats & Action */}
++			<div className="flex items-center justify-between pt-3 border-t border-border/50 text-xs text-muted-foreground">
++				<div className="flex items-center gap-3 font-mono">
++					<span className="flex items-center gap-1">
++						<ThumbsUp className="h-3.5 w-3.5" /> {post.reactions_count}
++					</span>
++					<span className="flex items-center gap-1">
++						<MessageSquare className="h-3.5 w-3.5" /> {post.comments_count}
++					</span>
++					<span className="flex items-center gap-1">
++						<Repeat2 className="h-3.5 w-3.5" /> {post.shares_count}
++					</span>
++				</div>
++
++				<div className="flex items-center gap-2">
++					<button
++						type="button"
++						onClick={() => onSelect(post)}
++						className="rounded-lg border border-input px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
++					>
++						Chọn
++					</button>
++
++					{onGenerateDraft && (
++						<button
++							type="button"
++							onClick={() => onGenerateDraft(post)}
++							className="flex items-center gap-1 rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
++						>
++							<Sparkles className="h-3 w-3" /> Tạo bản thảo
++						</button>
++					)}
++				</div>
++			</div>
++		</div>
++	);
++}
+diff --git a/nowing_web/components/social-copilot/ViralDraftReviewPanel.tsx b/nowing_web/components/social-copilot/ViralDraftReviewPanel.tsx
+new file mode 100644
+index 000000000..0ea542119
+--- /dev/null
++++ b/nowing_web/components/social-copilot/ViralDraftReviewPanel.tsx
+@@ -0,0 +1,276 @@
++"use client";
++
++import {
++	AlertTriangle,
++	Check,
++	Copy,
++	Edit3,
++	Eye,
++	Flame,
++	Layers,
++	ShieldCheck,
++	Sparkles,
++} from "lucide-react";
++import { useEffect, useState } from "react";
++import { toast } from "sonner";
++import type {
++	DraftVariation,
++	OutlierPostItem,
++	VoiceProfile,
++} from "@/lib/apis/social-copilot-api.service";
++
++interface ViralDraftReviewPanelProps {
++	originalPost?: OutlierPostItem | null;
++	drafts: DraftVariation[];
++	activeVoiceProfile?: VoiceProfile | null;
++	targetPlatform: "facebook" | "twitter" | "linkedin" | "threads";
++	isGenerating?: boolean;
++	onGenerateNewDrafts?: () => void;
++}
++
++export function ViralDraftReviewPanel({
++	originalPost,
++	drafts,
++	activeVoiceProfile,
++	targetPlatform,
++	isGenerating = false,
++	onGenerateNewDrafts,
++}: ViralDraftReviewPanelProps) {
++	const [activeTabIndex, setActiveTabIndex] = useState(0);
++	const [isPreviewMode, setIsPreviewMode] = useState(false);
++	const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
++	const [localContents, setLocalContents] = useState<Record<number, string>>({});
++
++	// Synchronize incoming drafts to local state
++	useEffect(() => {
++		if (drafts && drafts.length > 0) {
++			const initial: Record<number, string> = {};
++			drafts.forEach((d, idx) => {
++				initial[idx] = d.content;
++			});
++			setLocalContents(initial);
++		}
++	}, [drafts]);
++
++	const activeDraft = drafts[activeTabIndex] || drafts[0];
++	const currentContent =
++		localContents[activeTabIndex] !== undefined
++			? localContents[activeTabIndex]
++			: activeDraft?.content || "";
++
++	const handleContentChange = (val: string) => {
++		setLocalContents((prev) => ({
++			...prev,
++			[activeTabIndex]: val,
++		}));
++	};
++
++	const handleCopy = async (content: string, index: number) => {
++		try {
++			await navigator.clipboard.writeText(content);
++			setCopiedIndex(index);
++			toast.success("Đã sao chép vào clipboard / Copied to clipboard!");
++			setTimeout(() => setCopiedIndex(null), 2000);
++		} catch (_err) {
++			toast.error("Không thể sao chép vào clipboard");
++		}
++	};
++
++	if (!drafts || drafts.length === 0) {
++		return (
++			<div className="rounded-xl border border-dashed border-border p-12 text-center text-muted-foreground">
++				<Sparkles className="h-8 w-8 mx-auto mb-3 text-primary/60" />
++				<h4 className="font-semibold text-foreground text-base mb-1">Chưa có bản thảo nào</h4>
++				<p className="text-sm max-w-md mx-auto mb-4">
++					Chọn một bài viết viral từ mục "Bài viết Viral" hoặc dán nội dung thủ công để AI viết lại
++					theo giọng văn của bạn.
++				</p>
++				{onGenerateNewDrafts && (
++					<button
++						type="button"
++						onClick={onGenerateNewDrafts}
++						disabled={isGenerating}
++						className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
++					>
++						<Sparkles className="h-4 w-4" />
++						{isGenerating ? "Đang tạo..." : "Tạo bản thảo / Generate Draft"}
++					</button>
++				)}
++			</div>
++		);
++	}
++
++	const charCount = currentContent.length;
++	const wordCount = currentContent.trim().split(/\s+/).filter(Boolean).length;
++	const isTwitterOverlimit =
++		targetPlatform === "twitter" && !activeDraft?.is_thread && charCount > 280;
++
++	return (
++		<div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
++			{/* Left Column: Original Viral Reference */}
++			<div className="lg:col-span-5 space-y-4">
++				<div className="rounded-xl border border-border bg-card p-5 shadow-sm space-y-4">
++					<div className="flex items-center justify-between border-b border-border/50 pb-3">
++						<div className="flex items-center gap-2">
++							<Layers className="h-4 w-4 text-primary" />
++							<h4 className="font-semibold text-foreground text-sm">Bài Viral Tham Chiếu</h4>
++						</div>
++						{originalPost?.baseline_ratio && (
++							<span className="flex items-center gap-1 text-xs font-bold text-orange-600 bg-orange-500/10 border border-orange-500/20 px-2 py-0.5 rounded-full">
++								<Flame className="h-3 w-3" />
++								{originalPost.baseline_ratio}x Baseline
++							</span>
++						)}
++					</div>
++
++					{originalPost ? (
++						<div className="space-y-3">
++							<div className="rounded-lg bg-muted/40 p-3.5 border border-border/50">
++								<p className="text-xs text-foreground/90 font-sans leading-relaxed whitespace-pre-line">
++									{originalPost.content}
++								</p>
++							</div>
++
++							{originalPost.why_it_worked && (
++								<div className="rounded-lg bg-primary/5 p-3 border border-primary/20 text-xs">
++									<span className="font-semibold text-primary">💡 Phân tích cấu trúc:</span>{" "}
++									<span className="text-foreground/80">{originalPost.why_it_worked}</span>
++								</div>
++							)}
++						</div>
++					) : (
++						<div className="text-xs text-muted-foreground italic p-4 text-center">
++							Bản thảo được tạo theo chủ đề tự do (không đính kèm bài mẫu cụ thể).
++						</div>
++					)}
++
++					{/* Active Voice Persona info */}
++					{activeVoiceProfile && (
++						<div className="rounded-lg bg-muted/60 p-3 border border-border/50 text-xs space-y-1">
++							<div className="flex items-center justify-between">
++								<span className="font-semibold text-foreground">Giọng văn áp dụng:</span>
++								<span className="text-primary font-medium">{activeVoiceProfile.profile_name}</span>
++							</div>
++							<p className="text-muted-foreground">Tone: {activeVoiceProfile.tone}</p>
++						</div>
++					)}
++
++					{/* Guardrail Reminder */}
++					<div className="flex items-start gap-2 rounded-lg bg-emerald-500/10 p-3 border border-emerald-500/20 text-xs text-emerald-700">
++						<ShieldCheck className="h-4 w-4 flex-shrink-0 mt-0.5" />
++						<span>
++							<strong>Human-in-the-Loop:</strong> AI chỉ hỗ trợ soạn thảo và tinh chỉnh. Bạn luôn có
++							toàn quyền kiểm duyệt trước khi sao chép và tự đăng.
++						</span>
++					</div>
++				</div>
++			</div>
++
++			{/* Right Column: Interactive Tabbed Draft Editor */}
++			<div className="lg:col-span-7 space-y-4">
++				<div className="rounded-xl border border-border bg-card p-5 shadow-sm space-y-4">
++					{/* Variation Tabs & Tools */}
++					<div className="flex items-center justify-between gap-2 border-b border-border/50 pb-3 flex-wrap">
++						<div className="flex items-center gap-1.5" role="tablist">
++							{drafts.map((d, index) => {
++								const isCurrent = activeTabIndex === index;
++								const tabLabels = [
++									"Bản thảo A / Variation A",
++									"Bản thảo B / Variation B",
++									"Bản thảo C / Variation C",
++								];
++								return (
++									<button
++										key={d.variation_letter}
++										type="button"
++										role="tab"
++										aria-selected={isCurrent}
++										onClick={() => setActiveTabIndex(index)}
++										className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
++											isCurrent
++												? "bg-primary text-primary-foreground shadow-sm"
++												: "text-muted-foreground hover:text-foreground hover:bg-muted"
++										}`}
++									>
++										<span>{tabLabels[index] || `Bản thảo ${d.variation_letter}`}</span>
++									</button>
++								);
++							})}
++						</div>
++
++						<div className="flex items-center gap-2">
++							<button
++								type="button"
++								onClick={() => setIsPreviewMode(!isPreviewMode)}
++								className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-muted transition-colors border border-border"
++							>
++								{isPreviewMode ? (
++									<Edit3 className="h-3.5 w-3.5" />
++								) : (
++									<Eye className="h-3.5 w-3.5" />
++								)}
++								{isPreviewMode ? "Chỉnh sửa" : "Xem trước"}
++							</button>
++
++							<button
++								type="button"
++								onClick={() => handleCopy(currentContent, activeTabIndex)}
++								className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
++							>
++								{copiedIndex === activeTabIndex ? (
++									<Check className="h-3.5 w-3.5" />
++								) : (
++									<Copy className="h-3.5 w-3.5" />
++								)}
++								Sao chép / Copy
++							</button>
++						</div>
++					</div>
++
++					{/* Angle metadata badge */}
++					<div className="flex items-center justify-between text-xs text-muted-foreground">
++						<span className="flex items-center gap-1.5">
++							<span className="font-semibold text-foreground">Góc tiếp cận:</span>
++							<span className="rounded-md bg-primary/10 text-primary px-2 py-0.5 font-medium uppercase text-[10px]">
++								{activeDraft?.angle || "contrarian"}
++							</span>
++						</span>
++						<span>Đọc ước tính: ~{activeDraft?.estimated_reading_time_sec || 30}s</span>
++					</div>
++
++					{/* Draft Content Area */}
++					{isPreviewMode ? (
++						<div className="min-h-[240px] rounded-lg bg-background p-4 border border-input text-sm text-foreground whitespace-pre-line leading-relaxed font-sans">
++							{currentContent}
++						</div>
++					) : (
++						<textarea
++							rows={10}
++							value={currentContent}
++							onChange={(e) => handleContentChange(e.target.value)}
++							className="w-full min-h-[240px] rounded-lg bg-background p-4 border border-input text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary whitespace-pre-line leading-relaxed font-sans resize-y"
++						/>
++					)}
++
++					{/* Footer: Counters & Warning */}
++					<div className="flex items-center justify-between pt-2 border-t border-border/50 text-xs text-muted-foreground">
++						<div className="flex items-center gap-3 font-mono">
++							<span>{wordCount} từ</span>
++							<span className={isTwitterOverlimit ? "text-rose-600 font-bold" : ""}>
++								{charCount} ký tự{" "}
++								{targetPlatform === "twitter" && !activeDraft?.is_thread && "/ 280"}
++								{targetPlatform === "twitter" && activeDraft?.is_thread && " (Thread 3 tweets)"}
++							</span>
++						</div>
++
++						{isTwitterOverlimit && (
++							<span className="flex items-center gap-1 text-rose-600 font-medium">
++								<AlertTriangle className="h-3.5 w-3.5" /> Quá giới hạn 280 ký tự của tweet đơn
++							</span>
++						)}
++					</div>
++				</div>
++			</div>
++		</div>
++	);
++}
+diff --git a/nowing_web/components/social-copilot/VoiceProfileManager.tsx b/nowing_web/components/social-copilot/VoiceProfileManager.tsx
+new file mode 100644
+index 000000000..0d6bc518b
+--- /dev/null
++++ b/nowing_web/components/social-copilot/VoiceProfileManager.tsx
+@@ -0,0 +1,230 @@
++"use client";
++
++import { AlertCircle, CheckCircle2, Sparkles } from "lucide-react";
++import type React from "react";
++import { useState } from "react";
++import { toast } from "sonner";
++import {
++	socialCopilotApiService,
++	type VoiceProfile,
++	type VoiceProfileListItem,
++} from "@/lib/apis/social-copilot-api.service";
++
++interface VoiceProfileManagerProps {
++	workspaceId: string | number;
++	profiles: VoiceProfileListItem[];
++	activeProfile?: VoiceProfile | null;
++	onProfileCreated: (profile: VoiceProfile) => void;
++	onProfileActivated: (profileId: number) => void;
++}
++
++export function VoiceProfileManager({
++	workspaceId,
++	profiles,
++	activeProfile,
++	onProfileCreated,
++	onProfileActivated,
++}: VoiceProfileManagerProps) {
++	const [profileName, setProfileName] = useState("");
++	const [sampleText, setSampleText] = useState("");
++	const [platform, setPlatform] = useState<"facebook" | "twitter" | "linkedin">("facebook");
++	const [isLoading, setIsLoading] = useState(false);
++
++	const wordCount = sampleText.trim().split(/\s+/).filter(Boolean).length;
++	const isWordCountValid = wordCount >= 100;
++
++	const handleLearnVoice = async (e: React.FormEvent) => {
++		e.preventDefault();
++		if (!profileName.trim()) {
++			toast.error("Vui lòng nhập tên hồ sơ giọng văn");
++			return;
++		}
++		if (!isWordCountValid) {
++			toast.error(`Mẫu bài viết cần ít nhất 100 từ (hiện tại: ${wordCount} từ)`);
++			return;
++		}
++
++		setIsLoading(true);
++		try {
++			const newProfile = await socialCopilotApiService.createVoiceProfile(workspaceId, {
++				profile_name: profileName,
++				sample_text: sampleText,
++				platform,
++			});
++			toast.success("Đã phân tích và lưu hồ sơ giọng văn thành công!");
++			onProfileCreated(newProfile);
++			setProfileName("");
++			setSampleText("");
++		} catch (error: unknown) {
++			const msg = error instanceof Error ? error.message : "Không thể phân tích giọng văn";
++			toast.error(msg);
++		} finally {
++			setIsLoading(false);
++		}
++	};
++
++	return (
++		<div className="space-y-6">
++			{/* Form to create / learn voice profile */}
++			<div className="rounded-xl border border-border bg-card p-6 shadow-sm">
++				<div className="flex items-center gap-2 mb-4">
++					<div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
++						<Sparkles className="h-5 w-5" />
++					</div>
++					<div>
++						<h3 className="font-semibold text-foreground text-base">
++							Học Giọng Văn Mới (Voice Learner)
++						</h3>
++						<p className="text-muted-foreground text-xs">
++							AI sẽ phân tích văn phong, nhịp điệu câu, từ vựng và cấu trúc hook từ mẫu bài viết của
++							bạn.
++						</p>
++					</div>
++				</div>
++
++				<form onSubmit={handleLearnVoice} className="space-y-4">
++					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
++						<div className="space-y-1.5">
++							<label htmlFor="profile-name" className="text-sm font-medium text-foreground">
++								Tên hồ sơ / Profile Name
++							</label>
++							<input
++								id="profile-name"
++								aria-label="Tên hồ sơ / Profile Name"
++								type="text"
++								placeholder="VD: BĐS Chuyên Gia, Tech Founder..."
++								value={profileName}
++								onChange={(e) => setProfileName(e.target.value)}
++								className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
++								required
++							/>
++						</div>
++
++						<div className="space-y-1.5">
++							<label htmlFor="platform-select" className="text-sm font-medium text-foreground">
++								Nền tảng mục tiêu
++							</label>
++							<select
++								id="platform-select"
++								value={platform}
++								onChange={(e) => setPlatform(e.target.value as "facebook" | "twitter" | "linkedin")}
++								className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
++							>
++								<option value="facebook">Facebook (Bài dài, hook mạnh)</option>
++								<option value="linkedin">LinkedIn (Chuyên sâu, B2B)</option>
++								<option value="twitter">X / Twitter (Ngắn gọn, thread)</option>
++							</select>
++						</div>
++					</div>
++
++					<div className="space-y-1.5">
++						<div className="flex items-center justify-between">
++							<label htmlFor="sample-text" className="text-sm font-medium text-foreground">
++								Mẫu bài viết / Sample Text
++							</label>
++							<span
++								className={`text-xs font-mono px-2 py-0.5 rounded-full ${
++									isWordCountValid
++										? "bg-emerald-500/10 text-emerald-600 font-semibold"
++										: "bg-amber-500/10 text-amber-600"
++								}`}
++							>
++								{wordCount} / 100 từ tối thiểu
++							</span>
++						</div>
++						<textarea
++							id="sample-text"
++							aria-label="Mẫu bài viết / Sample Text"
++							rows={6}
++							placeholder="Dán 1-3 bài viết mẫu bạn từng đăng (tối thiểu 100 từ) để AI nhận diện chuẩn xác phong cách của bạn..."
++							value={sampleText}
++							onChange={(e) => setSampleText(e.target.value)}
++							className="w-full rounded-lg border border-input bg-background p-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-sans leading-relaxed"
++							required
++						/>
++						{!isWordCountValid && (
++							<div className="flex items-center gap-1.5 text-xs text-amber-600">
++								<AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
++								<span>
++									Cần thêm ít nhất {Math.max(0, 100 - wordCount)} từ để kích hoạt thuật toán học
++									giọng văn.
++								</span>
++							</div>
++						)}
++					</div>
++
++					<div className="flex justify-end">
++						<button
++							type="submit"
++							disabled={isLoading || !isWordCountValid || !profileName.trim()}
++							className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
++						>
++							<Sparkles className="h-4 w-4" />
++							{isLoading ? "Đang phân tích..." : "Phân tích giọng văn / Learn Voice"}
++						</button>
++					</div>
++				</form>
++			</div>
++
++			{/* List of Personas */}
++			<div className="space-y-3">
++				<h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
++					Hồ Sơ Đã Lưu ({profiles.length})
++				</h4>
++
++				{profiles.length === 0 ? (
++					<div className="rounded-xl border border-dashed border-border p-8 text-center text-muted-foreground text-sm">
++						Chưa có hồ sơ giọng văn nào. Hãy nhập mẫu bài viết ở trên để tạo hồ sơ đầu tiên!
++					</div>
++				) : (
++					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
++						{profiles.map((p) => {
++							const isActive = activeProfile?.id === p.id || p.is_active;
++							return (
++								<div
++									key={p.id}
++									className={`rounded-xl border p-4 transition-all ${
++										isActive
++											? "border-primary/50 bg-primary/5 shadow-sm ring-1 ring-primary/30"
++											: "border-border bg-card hover:border-border/80"
++									}`}
++								>
++									<div className="flex items-start justify-between gap-2 mb-2">
++										<div className="flex items-center gap-2">
++											<div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs">
++												{p.profile_name.charAt(0).toUpperCase()}
++											</div>
++											<div>
++												<h5 className="font-semibold text-sm text-foreground">{p.profile_name}</h5>
++												<span className="text-xs text-muted-foreground">ID: #{p.id}</span>
++											</div>
++										</div>
++										{isActive ? (
++											<span className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600">
++												<CheckCircle2 className="h-3 w-3" /> Đang dùng
++											</span>
++										) : (
++											<button
++												type="button"
++												onClick={() => onProfileActivated(p.id)}
++												className="rounded-lg border border-input px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
++											>
++												Chọn
++											</button>
++										)}
++									</div>
++
++									<div className="mt-3 space-y-1 text-xs text-muted-foreground">
++										<p>
++											<span className="font-medium text-foreground">Giọng điệu:</span> {p.tone}
++										</p>
++									</div>
++								</div>
++							);
++						})}
++					</div>
++				)}
++			</div>
++		</div>
++	);
++}
+diff --git a/nowing_web/lib/apis/social-copilot-api.service.ts b/nowing_web/lib/apis/social-copilot-api.service.ts
+new file mode 100644
+index 000000000..9d3fb1e10
+--- /dev/null
++++ b/nowing_web/lib/apis/social-copilot-api.service.ts
+@@ -0,0 +1,167 @@
++import { baseApiService } from "./base-api.service";
++
++export interface FormattingQuirks {
++	emoji_density: "none" | "low" | "medium" | "high";
++	bullet_style: "numbered_list" | "bullet" | "none";
++	line_break_frequency: "low" | "medium" | "high";
++}
++
++export interface VoiceProfile {
++	id?: number;
++	profile_name: string;
++	tone: string;
++	average_sentence_length: number;
++	paragraph_cadence: string;
++	hook_preference: string;
++	vocabulary: string[];
++	formatting_quirks: FormattingQuirks;
++	is_active: boolean;
++	created_at?: string;
++}
++
++export interface VoiceProfileListItem {
++	id: number;
++	profile_name: string;
++	tone: string;
++	is_active: boolean;
++	created_at?: string;
++}
++
++export interface VoiceProfileListResponse {
++	items: VoiceProfileListItem[];
++	total: number;
++}
++
++export interface OutlierPostItem {
++	id?: number;
++	platform: string;
++	external_post_id: string;
++	author_name?: string;
++	author_id?: string;
++	author_url?: string;
++	post_url?: string;
++	content: string;
++	reactions_count: number;
++	comments_count: number;
++	shares_count: number;
++	engagement_score: number;
++	baseline_ratio: number;
++	hook_taxonomy?: string;
++	why_it_worked?: string;
++	published_at?: string;
++}
++
++export interface OutlierPostsResponse {
++	items: OutlierPostItem[];
++	total: number;
++	degraded: boolean;
++}
++
++export interface DeconstructedElements {
++	hook: string;
++	re_hook: string;
++	body: string;
++	cta: string;
++	taxonomy: "contrarian_hook" | "story_shift" | "value_list" | "data_reveal";
++	analysis: string;
++}
++
++export interface ManualIngestResponse {
++	platform: string;
++	source_url?: string;
++	original_text_redacted: string;
++	deconstructed_elements: DeconstructedElements;
++}
++
++export interface DraftVariation {
++	variation_letter: "A" | "B" | "C";
++	content: string;
++	angle: "contrarian" | "framework" | "case_study";
++	estimated_reading_time_sec: number;
++	is_thread: boolean;
++	thread_tweets: string[];
++}
++
++export interface GenerateDraftsResponse {
++	drafts: DraftVariation[];
++	token_usage?: Record<string, unknown>;
++	billing_event_id?: string;
++}
++
++class SocialCopilotApiService {
++	async createVoiceProfile(
++		workspaceId: number | string,
++		payload: { sample_text: string; profile_name: string; platform?: string }
++	): Promise<VoiceProfile> {
++		return baseApiService.post<VoiceProfile>(
++			`/api/workspaces/${workspaceId}/voice-profiles`,
++			undefined,
++			{ body: payload }
++		);
++	}
++
++	async listVoiceProfiles(workspaceId: number | string): Promise<VoiceProfileListResponse> {
++		return baseApiService.get<VoiceProfileListResponse>(
++			`/api/workspaces/${workspaceId}/voice-profiles`
++		);
++	}
++
++	async activateVoiceProfile(
++		workspaceId: number | string,
++		profileId: number
++	): Promise<VoiceProfile> {
++		return baseApiService.put<VoiceProfile>(
++			`/api/workspaces/${workspaceId}/voice-profiles/${profileId}/activate`,
++			undefined,
++			{ body: {} }
++		);
++	}
++
++	async getOutlierPosts(
++		workspaceId: number | string,
++		params?: { keywords?: string[]; min_multiplier?: number }
++	): Promise<OutlierPostsResponse> {
++		const searchParams = new URLSearchParams();
++		if (params?.min_multiplier) {
++			searchParams.append("min_multiplier", String(params.min_multiplier));
++		}
++		if (params?.keywords && params.keywords.length > 0) {
++			for (const kw of params.keywords) {
++				searchParams.append("keywords", kw);
++			}
++		}
++		const qs = searchParams.toString();
++		const url = `/api/workspaces/${workspaceId}/social-copilot/outliers${qs ? `?${qs}` : ""}`;
++		return baseApiService.get<OutlierPostsResponse>(url);
++	}
++
++	async manualIngest(
++		workspaceId: number | string,
++		payload: { raw_text: string; source_url?: string; platform?: string }
++	): Promise<ManualIngestResponse> {
++		return baseApiService.post<ManualIngestResponse>(
++			`/api/workspaces/${workspaceId}/social-copilot/manual-ingest`,
++			undefined,
++			{ body: payload }
++		);
++	}
++
++	async generateViralDrafts(
++		workspaceId: number | string,
++		payload: {
++			topic: string;
++			hook_taxonomy?: string;
++			voice_profile_id?: number;
++			target_platform?: "twitter" | "facebook" | "linkedin" | "threads";
++			n_variations?: number;
++		}
++	): Promise<GenerateDraftsResponse> {
++		return baseApiService.post<GenerateDraftsResponse>(
++			`/api/workspaces/${workspaceId}/social-copilot/generate-drafts`,
++			undefined,
++			{ body: payload }
++		);
++	}
++}
++
++export const socialCopilotApiService = new SocialCopilotApiService();

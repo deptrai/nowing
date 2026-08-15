@@ -8,10 +8,14 @@ import { useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { outcomePricingApiService } from "@/lib/apis/outcome-pricing-api.service";
 import { type UsageDateRange, usageApiService } from "@/lib/apis/usage-api.service";
 import { UsageDateRangePicker } from "./date-range-picker";
+import { OutcomeRoiMetricsCards } from "./outcome-roi-metrics-cards";
+import { PromoCodeClaimCard } from "./promo-code-claim-card";
 import { UsageBreakdown } from "./usage-breakdown";
 import { UsageChart } from "./usage-chart";
+import { UsageServiceDonutChart } from "./usage-service-donut-chart";
 import { UsageTransactions } from "./usage-transactions";
 
 function formatUsd(micros: number): string {
@@ -60,6 +64,13 @@ export function UsageContent() {
 	const { data: transactions, isLoading: isTransactionsLoading } = useQuery({
 		queryKey: ["usage", "transactions", workspaceId],
 		queryFn: () => usageApiService.getTransactions(),
+		enabled: workspaceId > 0,
+	});
+
+	const { data: serviceBreakdown } = useQuery({
+		queryKey: ["usage", "service-breakdown", workspaceId, range],
+		queryFn: () =>
+			outcomePricingApiService.getServiceBreakdown(workspaceId, range.start, range.end),
 		enabled: workspaceId > 0,
 	});
 
@@ -113,6 +124,12 @@ export function UsageContent() {
 				/>
 			</div>
 
+			{/* Outcome-based ROI Metrics Section */}
+			<OutcomeRoiMetricsCards items={serviceBreakdown?.items ?? []} />
+
+			{/* Promo code claim card */}
+			<PromoCodeClaimCard />
+
 			{!isSummaryLoading && !hasUsage && (
 				<Card>
 					<CardContent className="flex flex-col items-center justify-center py-12 text-center">
@@ -153,6 +170,9 @@ export function UsageContent() {
 					isLoading={isSummaryLoading}
 				/>
 			</div>
+
+			{/* Service-category distribution breakdown */}
+			<UsageServiceDonutChart items={serviceBreakdown?.items ?? []} />
 
 			<UsageTransactions
 				transactions={transactions?.transactions ?? []}

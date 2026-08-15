@@ -10,6 +10,7 @@ import {
 	Puzzle,
 	Shapes,
 	SquareTerminal,
+	Target,
 } from "lucide-react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -298,6 +299,7 @@ export function LayoutDataProvider({
 	// Automations and Artifacts are rendered explicitly below "New chat"
 	// in the sidebar. Documents is embedded below Recents; notifications and
 	// announcements live in the avatar rail/dropdown.
+	const isLeadsActive = pathname?.includes("/leads") === true;
 	const isAutomationsActive = pathname?.includes("/automations") === true;
 	const isArtifactsActive = pathname?.endsWith("/artifacts") === true;
 	const isPlaybooksActive = pathname?.includes("/playbooks") === true;
@@ -308,6 +310,12 @@ export function LayoutDataProvider({
 		() =>
 			(
 				[
+					{
+						title: "Origami Canvas",
+						url: `/dashboard/${workspaceId}/new-chat?mode=leads`,
+						icon: Target,
+						isActive: isLeadsActive,
+					},
 					{
 						title: tNav("usage"),
 						url: `/dashboard/${workspaceId}/usage`,
@@ -348,6 +356,7 @@ export function LayoutDataProvider({
 			).filter((item): item is NavItem => item !== null),
 		[
 			workspaceId,
+			isLeadsActive,
 			isUsageActive,
 			isConnectorsActive,
 			isAutomationsActive,
@@ -504,21 +513,8 @@ export function LayoutDataProvider({
 	);
 
 	const handleNewChat = useCallback(() => {
-		// Check if router is out of sync (thread created via replaceState but params don't have chat_id)
-		const isOutOfSync = currentThreadState.id !== null && !params?.chat_id;
-
-		if (isOutOfSync) {
-			resetCurrentThread();
-			// Immediately set the browser URL so the page remounts with a clean /new-chat path
-			window.history.replaceState(null, "", `/dashboard/${workspaceId}/new-chat`);
-			// Force-remount the page component to reset all React state synchronously
-			setChatResetKey((k) => k + 1);
-			// Sync Next.js router internals so useParams/usePathname stay correct going forward
-			router.replace(`/dashboard/${workspaceId}/new-chat`);
-		} else {
-			router.push(`/dashboard/${workspaceId}/new-chat`);
-		}
-	}, [router, workspaceId, currentThreadState.id, params?.chat_id, resetCurrentThread]);
+		router.push(`/dashboard/${workspaceId}/new-chat`);
+	}, [router, workspaceId]);
 
 	const handleChatSelect = useCallback(
 		(chat: ChatItem) => {
@@ -721,6 +717,7 @@ export function LayoutDataProvider({
 				theme={theme}
 				setTheme={setTheme}
 				isChatPage={isChatPage}
+				defaultCollapsed={isChatPage}
 				isAllChatsPage={isAllChatsPage}
 				useWorkspacePanel={useWorkspacePanel}
 				showTabs={showTabs}

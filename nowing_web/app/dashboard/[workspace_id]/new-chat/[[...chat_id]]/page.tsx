@@ -38,6 +38,7 @@ import {
 	type TokenUsageData,
 	TokenUsageProvider,
 } from "@/components/assistant-ui/token-usage-context";
+import { OrigamiSplitCanvas } from "@/components/leads/OrigamiSplitCanvas";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSyncChatArtifacts } from "@/features/chat-artifacts";
@@ -794,15 +795,21 @@ export default function NewChatPage() {
 					pendingInterrupts={pendingInterrupts}
 					onSubmit={handleApprovalSubmit}
 				>
-					<div key={workspaceId} className="flex h-full overflow-hidden">
-						<div className="relative flex-1 flex flex-col min-w-0 overflow-hidden">
-							<Thread hasActiveThread={!!activeThreadId} initialPrompt={initialPrompt} />
-							{isThreadMessagesLoading ? (
-								<div className="absolute inset-0 z-10 bg-panel">
-									<ThreadMessagesSkeleton />
+					<div key={workspaceId} className="flex h-full w-full overflow-hidden">
+						<OrigamiSplitCanvas
+							workspaceId={workspaceId}
+							hasActiveThread={!!activeThreadId}
+							chatSlot={
+								<div className="relative h-full flex flex-col min-w-0 overflow-hidden">
+									<Thread hasActiveThread={!!activeThreadId} initialPrompt={initialPrompt} />
+									{isThreadMessagesLoading ? (
+										<div className="absolute inset-0 z-10 bg-panel">
+											<ThreadMessagesSkeleton />
+										</div>
+									) : null}
 								</div>
-							) : null}
-						</div>
+							}
+						/>
 						<MobileReportPanel />
 						<MobileEditorPanel />
 						<MobileHitlEditPanel />

@@ -73,3 +73,25 @@ async def get_usage_transactions(
     """Return the authenticated user's unified credit transaction history."""
     service = UsageService(session, auth.user)
     return await service.get_transactions(limit, offset)
+
+
+@router.get("/service-breakdown")
+async def get_service_breakdown(
+    workspace_id: int = Query(..., ge=1),
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+    auth: AuthContext = Depends(require_session_context),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Return usage breakdown categorized into 5 standardized service buckets."""
+    await check_workspace_access(session, auth, workspace_id)
+    _validate_date_range(start_date, end_date)
+    service = UsageService(session, auth.user)
+    norm_start, norm_end = service._normalize_range(start_date, end_date)
+    items = await service.get_service_breakdown(workspace_id, norm_start, norm_end)
+    return {
+        "workspace_id": workspace_id,
+        "start_date": norm_start,
+        "end_date": norm_end,
+        "items": items,
+    }

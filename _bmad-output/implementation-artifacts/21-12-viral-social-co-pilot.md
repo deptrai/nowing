@@ -1,6 +1,6 @@
 # Story 21.12: Viral Social Outbound Co-pilot (Voice Learner & Outlier Analyzer)
 
-Status: done
+Status: in-progress
 
 <!-- Note: Governed by architecture-xactions-social-integration-2026-08-15 (AD-SOC-1 to AD-SOC-7), AD-11 (Memory), AD-25 (PII Redaction), AD-31 (Tenant Isolation), and UX Contract ux-contract-workspace-mode-switch.md -->
 
@@ -212,3 +212,60 @@ Gemini 3.7 Flash
 
 ### File List
 - `_bmad-output/implementation-artifacts/21-12-viral-social-co-pilot.md`
+
+---
+
+## Review Findings
+
+> Review triggered after completion; 3 automated review layers (Blind Hunter, Edge Case Hunter, Acceptance Auditor) failed due to API rate limiting, so the following is a manual sampling of high-risk files. The review is **not exhaustive** and should be re-run with full adversarial layers when the rate limit resets.
+
+### `patch` findings
+
+- [ ] [Review][Patch] Router path double prefix — `social_copilot_routes.py` declares `APIRouter(prefix="/api/workspaces/{workspace_id}")`, but the main app mounts `crud_router` at `prefix="/api/v1"` (`app/app.py:1175`), producing routes at `/api/v1/api/workspaces/...` and causing integration tests to 404. The convention in `routes/__init__.py` is `prefix="/workspaces"` (e.g. `signals_router`). Remove `/api` from the social-copilot router prefix to match `/api/v1/workspaces/...` and update tests if needed.
+  - `nowing_backend/app/routes/social_copilot_routes.py:35`
+  - `nowing_backend/app/app.py:1175`
+  - `nowing_backend/app/routes/__init__.py:176`
+
+- [ ] [Review][Patch] `check_workspace_access` called with wrong argument order — every endpoint in `social_copilot_routes.py` calls `await check_workspace_access(workspace_id, auth.user, session)`, but the function signature is `async def check_workspace_access(session: AsyncSession, auth: AuthContext, workspace_id: int)`. This will raise a runtime error (or perform no meaningful auth check) once the routes are reachable.
+  - `nowing_backend/app/routes/social_copilot_routes.py:51` and all other route handlers
+  - `nowing_backend/app/utils/rbac.py:177`
+
+- [ ] [Review][Patch] Voice profile and draft endpoints lack token-usage / cost tracking — AC 1, AC 4 and AC 7 require `TokenUsage` recording and `BillingUnit.SOCIAL_LEAD_ITEM` registration. `VoiceProfileLearner` and `ViralDraftGenerator` do not call any LLM and do not record `TokenUsage`; the REST routes (`create_voice_profile`, `generate_viral_drafts`) return `token_usage={}` and `billing_event_id=None`.
+  - `nowing_backend/app/services/social_copilot/voice_learner.py`
+  - `nowing_backend/app/services/social_copilot/draft_generator.py`
+  - `nowing_backend/app/routes/social_copilot_routes.py:81-118`, `260-315`
+  - `nowing_backend/app/capabilities/social/learn_voice/definition.py:18` (`billing_unit=None`)
+  - `nowing_backend/app/capabilities/social/generate_viral_drafts/definition.py:20` (`billing_unit=None`)
+
+- [ ] [Review][Patch] Voice learner and draft generator are deterministic template engines, not LLM — AC 1 explicitly expects `response_format={"type": "json_object"}` and AC 4 expects the draft to be "rewritten" in the learned voice. Both services use hard-coded heuristics/templates with a `llm_client` parameter that is never used. This is the same AC-gap that was deferred for 21.6 and should either be implemented or intentionally deferred.
+  - `nowing_backend/app/services/social_copilot/voice_learner.py:17-110`
+  - `nowing_backend/app/services/social_copilot/draft_generator.py:13-110`
+
+- [ ] [Review][Patch] Draft generator ignores platform-specific length limits — AC 4 requires constraints for Twitter/X (≤ 280), Facebook, LinkedIn, Threads. The generated content is unbounded Vietnamese text, `is_thread` is always `False`, and `estimated_reading_time_sec` is hard-coded `45`.
+  - `nowing_backend/app/services/social_copilot/draft_generator.py`
+
+- [ ] [Review][Patch] Manual-ingest and outlier endpoints return raw `content` without PII redaction — `OutlierPostItem.content` is returned directly from `SocialPost` and `ManualIngestResponse` returns the deconstructed raw text. AD-25 / AC 6 require PII redaction for displayed post content.
+  - `nowing_backend/app/services/social_copilot/outlier_detector.py:149-170`
+  - `nowing_backend/app/routes/social_copilot_routes.py:248-253`
+
+- [ ] [Review][Patch] Voice profile activation has a race condition — `activate_voice_profile` loads all profiles in a loop and mutates each in Python without `SELECT ... FOR UPDATE` or a single atomic update. Concurrent calls can leave multiple active profiles.
+  - `nowing_backend/app/routes/social_copilot_routes.py:142-193`
+
+- [ ] [Review][Patch] Voice profile memory uses a zero vector placeholder — `Memory(embedding=[0.0] * dim)` makes all semantic-memory rows identical, breaking any future vector search over learned voice profiles.
+  - `nowing_backend/app/routes/social_copilot_routes.py:75`
+
+- [ ] [Review][Patch] `VoiceAnalysisRequest.platform` is an unconstrained `str` — should be `Literal["twitter", "facebook", "linkedin", "threads"]` or validated, otherwise downstream platform-specific logic may receive invalid values.
+  - `nowing_backend/app/schemas/voice_profile.py:34-47`
+
+- [ ] [Review][Patch] Outlier keyword filter uses AND semantics — passing multiple `keywords` requires every keyword to appear in the post (`stmt.where(... ilike ...)` is chained for each keyword). The UI/API likely expects OR semantics.
+  - `nowing_backend/app/services/social_copilot/outlier_detector.py:119-122`
+
+### `decision_needed` findings
+
+- [ ] [Review][Decision] AC 1 / AC 4 LLM implementation vs. heuristic V1 — The spec mandates LLM-based voice learning and draft rewriting, but the implementation uses deterministic heuristics and hard-coded templates. Should this be fixed now (re-implement with LLM + token tracking) or formally deferred to a follow-up story?
+  - `nowing_backend/app/services/social_copilot/voice_learner.py`
+  - `nowing_backend/app/services/social_copilot/draft_generator.py`
+
+### `dismissed` / notes
+
+- Integration tests currently fail 404 (`test_social_copilot_routes.py`). This is a symptom of the router-prefix and `check_workspace_access` issues above, not a false positive.

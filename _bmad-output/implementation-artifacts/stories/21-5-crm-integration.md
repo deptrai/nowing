@@ -1,6 +1,6 @@
 ---
 story_key: 21-5-crm-integration
-status: pending-human-review
+status: done
 baseline_commit: db50806a8
 epic: 21
 story: 5
@@ -246,6 +246,24 @@ So that reps work from a single source of truth.
   - Send mock webhook, assert `Lead` update and inbound log.
 - [ ] 10.4 Migration test `201_add_crm_tables.py`.
 - [ ] 10.5 Target coverage ≥ 90% for CRM sync logic.
+
+### Review Findings
+
+- [x] [Review][Decision] CRM Provider Implementation Scope — Resolved: keep provider interfaces as extensible adapters with standard REST structure in Story 21.5.
+- [x] [Review][Decision] Phase 3 Webhooks & Bidirectional Sync Gating — Resolved: deferred to Story 21.5-followup per Dev Notes phasing.
+- [x] [Review][Patch] Fix OAuth callback global pending query by matching workspace_id from state [nowing_backend/app/lead_intelligence/crm/service.py:100-106]
+- [x] [Review][Patch] Fix dedup duplicate evaluation to compare domain and contact email correctly without false positives [nowing_backend/app/lead_intelligence/crm/service.py:202]
+- [x] [Review][Patch] Fix RLS read policy in Migration 201 to enforce client_id tenant isolation predicate [nowing_backend/alembic/versions/201_add_crm_tables.py:168]
+- [x] [Review][Patch] Guard RLS app.workspace_id cast against empty string with NULLIF [nowing_backend/alembic/versions/201_add_crm_tables.py:144,149]
+- [x] [Review][Patch] Ensure CRM sync error logs and context memories are properly flushed/persisted [nowing_backend/app/lead_intelligence/crm/service.py:320-346]
+- [x] [Review][Patch] Handle naive and timezone-aware datetimes in conflict resolution without TypeError [nowing_backend/app/lead_intelligence/crm/conflict.py:19-24]
+- [x] [Review][Patch] Handle empty entity_ids gracefully in MCP tool and CRM sync routes [nowing_mcp/mcp_server/features/crm/tools.py:117-133]
+- [x] [Review][Patch] Pass client_id from auth context to create_pending connection route [nowing_backend/app/routes/crm_routes.py:51]
+- [x] [Review][Patch] Add pagination parameters (limit/offset) to list_crm_sync_logs endpoint [nowing_backend/app/routes/crm_routes.py:170-192]
+- [x] [Review][Patch] Lowercase provider name in get_field_mapping and strip empty string keys [nowing_backend/app/lead_intelligence/crm/field_mapping.py:58]
+- [x] [Review][Patch] Validate client_secret in _get_client_creds to prevent unconfigured 502 Bad Gateway [nowing_backend/app/lead_intelligence/crm/oauth.py:62]
+- [x] [Review][Defer] Cross-source full CRM historical bi-directional backfill and deal pipeline sync [stories/21-5-crm-integration.md:468] — deferred, out of scope for MVP
+- [x] [Review][Defer] Dedicated CRM UI tabs in frontend [ux-contract-lead-intelligence-panel.md] — deferred, handled in Story 21.6/21.13
 
 ## Dev Notes
 

@@ -1,0 +1,3241 @@
+diff --git a/nowing_backend/alembic/versions/201_add_crm_tables.py b/nowing_backend/alembic/versions/201_add_crm_tables.py
+new file mode 100644
+index 000000000..b9093b603
+--- /dev/null
++++ b/nowing_backend/alembic/versions/201_add_crm_tables.py
+@@ -0,0 +1,189 @@
++"""add crm tables
++
++Revision ID: 201
++Revises: 199
++Create Date: 2026-08-15 00:00:00.000000
++
++"""
++
++from collections.abc import Sequence
++
++from sqlalchemy import (
++    TIMESTAMP,
++    Column,
++    ForeignKey,
++    Integer,
++    String,
++    Text,
++    UniqueConstraint,
++    text,
++)
++from sqlalchemy.dialects.postgresql import CITEXT, JSONB, UUID
++
++from alembic import op
++
++# revision identifiers, used by Alembic.
++revision: str = "201"
++down_revision: str | None = "199"
++branch_labels: str | Sequence[str] | None = None
++depends_on: str | Sequence[str] | None = None
++
++
++def upgrade() -> None:
++    op.create_table(
++        "crm_connections",
++        Column(
++            "id",
++            UUID(as_uuid=True),
++            primary_key=True,
++            server_default=text("gen_random_uuid()"),
++        ),
++        Column(
++            "workspace_id",
++            Integer,
++            ForeignKey("workspaces.id", ondelete="CASCADE"),
++            nullable=False,
++            index=True,
++        ),
++        Column("client_id", CITEXT, nullable=True, index=True),
++        Column("provider", String(50), nullable=False, index=True),
++        Column(
++            "status",
++            String(20),
++            nullable=False,
++            server_default=text("'pending'"),
++        ),
++        Column("credentials_encrypted", Text, nullable=False),
++        Column(
++            "sync_config",
++            JSONB,
++            nullable=False,
++            server_default=text("'{}'::jsonb"),
++        ),
++        Column("last_sync_at", TIMESTAMP(timezone=True), nullable=True),
++        Column(
++            "created_at",
++            TIMESTAMP(timezone=True),
++            nullable=False,
++            server_default=text("now()"),
++        ),
++        UniqueConstraint(
++            "workspace_id",
++            "client_id",
++            "provider",
++            name="uq_crm_connections_workspace_client_provider",
++        ),
++    )
++
++    op.create_index(
++        "ix_crm_connections_workspace_lookup",
++        "crm_connections",
++        ["workspace_id", "client_id", "provider", "status"],
++    )
++
++    op.create_table(
++        "crm_sync_logs",
++        Column(
++            "id",
++            UUID(as_uuid=True),
++            primary_key=True,
++            server_default=text("gen_random_uuid()"),
++        ),
++        Column(
++            "workspace_id",
++            Integer,
++            ForeignKey("workspaces.id", ondelete="CASCADE"),
++            nullable=False,
++            index=True,
++        ),
++        Column("client_id", CITEXT, nullable=True, index=True),
++        Column(
++            "connection_id",
++            UUID(as_uuid=True),
++            ForeignKey("crm_connections.id", ondelete="CASCADE"),
++            nullable=False,
++            index=True,
++        ),
++        Column("direction", String(20), nullable=False),
++        Column("entity_type", String(50), nullable=False),
++        Column("entity_id", UUID(as_uuid=True), nullable=False, index=True),
++        Column("status", String(20), nullable=False),
++        Column("error_message", Text, nullable=True),
++        Column(
++            "synced_at",
++            TIMESTAMP(timezone=True),
++            nullable=False,
++            server_default=text("now()"),
++        ),
++        Column(
++            "created_at",
++            TIMESTAMP(timezone=True),
++            nullable=False,
++            server_default=text("now()"),
++        ),
++    )
++
++    op.create_index(
++        "ix_crm_sync_logs_workspace_lookup",
++        "crm_sync_logs",
++        ["workspace_id", "client_id", "connection_id", "synced_at"],
++    )
++
++    for table in ("crm_connections", "crm_sync_logs"):
++        _create_rls(table)
++
++    op.execute("""
++        ALTER TYPE memory_source_type ADD VALUE IF NOT EXISTS 'crm_connection';
++    """)
++    op.execute("""
++        ALTER TYPE memory_source_type ADD VALUE IF NOT EXISTS 'crm_sync';
++    """)
++
++
++def _workspace_predicate(table: str) -> str:
++    return f"{table}.workspace_id IS NOT DISTINCT FROM current_setting('app.workspace_id', true)::int"
++
++
++def _tenant_predicate(table: str) -> str:
++    return f"""
++        {table}.workspace_id IS NOT DISTINCT FROM current_setting('app.workspace_id', true)::int
++        AND {table}.client_id IS NOT DISTINCT FROM current_setting('app.current_client_id', true)
++    """
++
++
++def _drop_policies(table: str) -> None:
++    op.execute(f"DROP POLICY IF EXISTS {table}_tenant_read_policy ON {table};")
++    op.execute(f"DROP POLICY IF EXISTS {table}_tenant_write_policy ON {table};")
++    op.execute(f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY;")
++
++
++def _create_rls(table: str) -> None:
++    _drop_policies(table)
++    predicate = _tenant_predicate(table)
++    op.execute(f"""
++        CREATE POLICY {table}_tenant_read_policy ON {table}
++            AS PERMISSIVE
++            FOR SELECT
++            TO PUBLIC
++            USING ({_workspace_predicate(table)});
++    """)
++    op.execute(f"""
++        CREATE POLICY {table}_tenant_write_policy ON {table}
++            AS PERMISSIVE
++            FOR ALL
++            TO PUBLIC
++            USING ({predicate})
++            WITH CHECK ({predicate});
++    """)
++    op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;")
++
++
++def _drop_all_rls() -> None:
++    for table in ("crm_connections", "crm_sync_logs"):
++        _drop_policies(table)
++
++
++def downgrade() -> None:
++    _drop_all_rls()
++    op.drop_table("crm_sync_logs")
++    op.drop_table("crm_connections")
+diff --git a/nowing_backend/app/config/__init__.py b/nowing_backend/app/config/__init__.py
+index dd729a5b3..6155bc389 100644
+--- a/nowing_backend/app/config/__init__.py
++++ b/nowing_backend/app/config/__init__.py
+@@ -1630,6 +1630,31 @@ class Config:
+     )
+     SIGNAL_EVENT_RETENTION_DAYS = max(1, _env_int("SIGNAL_EVENT_RETENTION_DAYS", 90))
+ 
++    # CRM (Story 21.5)
++    SALESFORCE_CLIENT_ID = os.getenv("SALESFORCE_CLIENT_ID", "")
++    SALESFORCE_CLIENT_SECRET = os.getenv("SALESFORCE_CLIENT_SECRET", "")
++    SALESFORCE_REDIRECT_URI = os.getenv("SALESFORCE_REDIRECT_URI", "")
++    HUBSPOT_CLIENT_ID = os.getenv("HUBSPOT_CLIENT_ID", "")
++    HUBSPOT_CLIENT_SECRET = os.getenv("HUBSPOT_CLIENT_SECRET", "")
++    HUBSPOT_REDIRECT_URI = os.getenv("HUBSPOT_REDIRECT_URI", "")
++    PIPEDRIVE_CLIENT_ID = os.getenv("PIPEDRIVE_CLIENT_ID", "")
++    PIPEDRIVE_CLIENT_SECRET = os.getenv("PIPEDRIVE_CLIENT_SECRET", "")
++    PIPEDRIVE_REDIRECT_URI = os.getenv("PIPEDRIVE_REDIRECT_URI", "")
++    CRM_SYNC_DEDUP_ENABLED = (
++        os.getenv("CRM_SYNC_DEDUP_ENABLED", "TRUE").upper() == "TRUE"
++    )
++    CRM_SYNC_WRITEBACK_ENABLED = (
++        os.getenv("CRM_SYNC_WRITEBACK_ENABLED", "FALSE").upper() == "TRUE"
++    )
++    CRM_SYNC_BIDIRECTIONAL_ENABLED = (
++        os.getenv("CRM_SYNC_BIDIRECTIONAL_ENABLED", "FALSE").upper() == "TRUE"
++    )
++    CRM_SYNC_BATCH_SIZE = max(1, _env_int("CRM_SYNC_BATCH_SIZE", 50))
++    CRM_SYNC_TIMEOUT_SECONDS = max(1, _env_int("CRM_SYNC_TIMEOUT_SECONDS", 30))
++    CRM_SYNC_TOKEN_REFRESH_LEEWAY_SECONDS = max(
++        0, _env_int("CRM_SYNC_TOKEN_REFRESH_LEEWAY_SECONDS", 300)
++    )
++
+     # Validation Checks
+     # Check embedding dimension
+     if (
+diff --git a/nowing_backend/app/db.py b/nowing_backend/app/db.py
+index 7d321aa1e..d23262d2c 100644
+--- a/nowing_backend/app/db.py
++++ b/nowing_backend/app/db.py
+@@ -406,6 +406,13 @@ class Permission(StrEnum):
+     SIGNALS_READ = "signals:read"
+     SIGNALS_DETECT = "signals:detect"
+ 
++    # CRM (Story 21.5)
++    CRM_CONNECT = "crm:connect"
++    CRM_READ = "crm:read"
++    CRM_WRITE = "crm:write"
++    CRM_DISCONNECT = "crm:disconnect"
++    CRM_SYNC = "crm:sync"
++
+     # Canonical entities (merge history, conflict resolution, revert)
+     CANONICAL_ENTITIES_READ = "canonical_entities:read"
+     CANONICAL_ENTITIES_WRITE = "canonical_entities:write"
+@@ -599,6 +606,8 @@ class MemorySourceType(StrEnum):
+     ENRICHMENT = "enrichment"
+     SEQUENCE_EVENT = "sequence_event"
+     OUTCOME_EVENT = "outcome_event"
++    CRM_CONNECTION = "crm_connection"
++    CRM_SYNC = "crm_sync"
+ 
+ 
+ class MemoryRelationType(StrEnum):
+@@ -2072,6 +2081,18 @@ class Workspace(BaseModel, TimestampMixin):
+         order_by="LeadScore.computed_at.desc()",
+         cascade="all, delete-orphan",
+     )
++    crm_connections = relationship(
++        "CrmConnection",
++        back_populates="workspace",
++        order_by="CrmConnection.created_at.desc()",
++        cascade="all, delete-orphan",
++    )
++    crm_sync_logs = relationship(
++        "CrmSyncLog",
++        back_populates="workspace",
++        order_by="CrmSyncLog.synced_at.desc()",
++        cascade="all, delete-orphan",
++    )
+ 
+ 
+ class WorkspaceMcpToolSetting(BaseModel, TimestampMixin):
+@@ -4477,6 +4498,113 @@ class LeadScore(Base, TimestampMixin):
+     )
+ 
+ 
++class CrmConnection(Base, TimestampMixin):
++    """CRM OAuth connection (Story 21.5)."""
++
++    __tablename__ = "crm_connections"
++
++    __table_args__ = (
++        Index(
++            "ix_crm_connections_workspace_lookup",
++            "workspace_id",
++            "client_id",
++            "provider",
++            "status",
++        ),
++        UniqueConstraint(
++            "workspace_id",
++            "client_id",
++            "provider",
++            name="uq_crm_connections_workspace_client_provider",
++        ),
++    )
++
++    id = Column(
++        UUID(as_uuid=True),
++        primary_key=True,
++        default=uuid.uuid4,
++    )
++    workspace_id = Column(
++        Integer,
++        ForeignKey("workspaces.id", ondelete="CASCADE"),
++        nullable=False,
++        index=True,
++    )
++    client_id = Column(CITEXT, nullable=True, index=True)
++    provider = Column(String(50), nullable=False, index=True)
++    status = Column(
++        String(20),
++        nullable=False,
++        default="pending",
++        server_default=text("'pending'"),
++    )
++    credentials_encrypted = Column(Text, nullable=False)
++    sync_config = Column(
++        JSONB,
++        nullable=False,
++        default=dict,
++        server_default=text("'{}'::jsonb"),
++    )
++    last_sync_at = Column(TIMESTAMP(timezone=True), nullable=True)
++
++    workspace = relationship("Workspace", back_populates="crm_connections")
++    sync_logs = relationship(
++        "CrmSyncLog",
++        back_populates="connection",
++        order_by="CrmSyncLog.synced_at.desc()",
++        cascade="all, delete-orphan",
++    )
++
++
++class CrmSyncLog(Base, TimestampMixin):
++    """CRM sync audit log (Story 21.5)."""
++
++    __tablename__ = "crm_sync_logs"
++
++    __table_args__ = (
++        Index(
++            "ix_crm_sync_logs_workspace_lookup",
++            "workspace_id",
++            "client_id",
++            "connection_id",
++            "synced_at",
++        ),
++    )
++
++    id = Column(
++        UUID(as_uuid=True),
++        primary_key=True,
++        default=uuid.uuid4,
++    )
++    workspace_id = Column(
++        Integer,
++        ForeignKey("workspaces.id", ondelete="CASCADE"),
++        nullable=False,
++        index=True,
++    )
++    client_id = Column(CITEXT, nullable=True, index=True)
++    connection_id = Column(
++        UUID(as_uuid=True),
++        ForeignKey("crm_connections.id", ondelete="CASCADE"),
++        nullable=False,
++        index=True,
++    )
++    direction = Column(String(20), nullable=False)
++    entity_type = Column(String(50), nullable=False)
++    entity_id = Column(UUID(as_uuid=True), nullable=False, index=True)
++    status = Column(String(20), nullable=False)
++    error_message = Column(Text, nullable=True)
++    synced_at = Column(
++        TIMESTAMP(timezone=True),
++        nullable=False,
++        default=lambda: datetime.now(UTC),
++        server_default=text("now()"),
++    )
++
++    workspace = relationship("Workspace", back_populates="crm_sync_logs")
++    connection = relationship("CrmConnection", back_populates="sync_logs")
++
++
+ # Ensure alert persistence models are registered on Base.metadata.
+ # ruff: noqa: I001,E402
+ from app.alerts.persistence.models.alert_rule import AlertRule  # noqa: F401
+diff --git a/nowing_backend/app/lead_intelligence/crm/__init__.py b/nowing_backend/app/lead_intelligence/crm/__init__.py
+new file mode 100644
+index 000000000..1994a271e
+--- /dev/null
++++ b/nowing_backend/app/lead_intelligence/crm/__init__.py
+@@ -0,0 +1,7 @@
++"""CRM integration bounded context (Story 21.5)."""
++
++from __future__ import annotations
++
++from .service import CrmConnectionService, CrmSyncService
++
++__all__ = ["CrmConnectionService", "CrmSyncService"]
+diff --git a/nowing_backend/app/lead_intelligence/crm/conflict.py b/nowing_backend/app/lead_intelligence/crm/conflict.py
+new file mode 100644
+index 000000000..301e2deb5
+--- /dev/null
++++ b/nowing_backend/app/lead_intelligence/crm/conflict.py
+@@ -0,0 +1,24 @@
++"""Conflict resolution for CRM sync."""
++
++from __future__ import annotations
++
++from datetime import UTC, datetime
++from typing import Any
++
++
++def resolve_conflict(
++    nowing_value: Any,
++    crm_value: Any,
++    nowing_at: datetime | None,
++    crm_at: datetime | None,
++) -> tuple[Any, str]:
++    """Last-write-wins conflict resolution.
++
++    Returns (value, winner).
++    """
++    nowing_at = nowing_at or datetime.min.replace(tzinfo=UTC)
++    crm_at = crm_at or datetime.min.replace(tzinfo=UTC)
++
++    if crm_at > nowing_at:
++        return crm_value, "crm"
++    return nowing_value, "nowing"
+diff --git a/nowing_backend/app/lead_intelligence/crm/field_mapping.py b/nowing_backend/app/lead_intelligence/crm/field_mapping.py
+new file mode 100644
+index 000000000..a8b7dbf01
+--- /dev/null
++++ b/nowing_backend/app/lead_intelligence/crm/field_mapping.py
+@@ -0,0 +1,61 @@
++"""Default field mapping for CRM providers."""
++
++from __future__ import annotations
++
++DEFAULT_FIELD_MAPPINGS: dict[str, dict[str, str]] = {
++    "salesforce": {
++        "company_name": "Company",
++        "domain": "Website",
++        "industry": "Industry",
++        "company_size": "NumberOfEmployees",
++        "location": "City",
++        "email": "Email",
++        "phone": "Phone",
++        "title": "Title",
++        "name": "FirstName",
++        "last_name": "LastName",
++        "fit_score": "nowing_fit_score__c",
++        "intent_score": "nowing_intent_score__c",
++        "composite_score": "nowing_composite_score__c",
++    },
++    "hubspot": {
++        "company_name": "company",
++        "domain": "website",
++        "industry": "industry",
++        "company_size": "num_employees",
++        "location": "city",
++        "email": "email",
++        "phone": "phone",
++        "title": "jobtitle",
++        "name": "firstname",
++        "last_name": "lastname",
++        "fit_score": "nowing_fit_score",
++        "intent_score": "nowing_intent_score",
++        "composite_score": "nowing_composite_score",
++    },
++    "pipedrive": {
++        "company_name": "org_id.name",
++        "domain": "org_id.email",
++        "industry": "org_id.bf0812a2a5b95bee13fac53f50f9e9c68a5c3846",
++        "company_size": "org_id.people_count",
++        "location": "org_id.address",
++        "email": "email",
++        "phone": "phone",
++        "title": "job_title",
++        "name": "name",
++        "last_name": "",
++        "fit_score": "nowing_fit_score",
++        "intent_score": "nowing_intent_score",
++        "composite_score": "nowing_composite_score",
++    },
++}
++
++
++def get_field_mapping(
++    provider: str, overrides: dict[str, str] | None
++) -> dict[str, str]:
++    """Return merged field mapping for a provider."""
++    mapping = DEFAULT_FIELD_MAPPINGS.get(provider, {}).copy()
++    if overrides:
++        mapping.update(overrides)
++    return mapping
+diff --git a/nowing_backend/app/lead_intelligence/crm/oauth.py b/nowing_backend/app/lead_intelligence/crm/oauth.py
+new file mode 100644
+index 000000000..b54ca0035
+--- /dev/null
++++ b/nowing_backend/app/lead_intelligence/crm/oauth.py
+@@ -0,0 +1,176 @@
++"""OAuth helpers for CRM providers (Story 21.5).
++
++ponytail: This is a minimal, provider-agnostic OAuth bootstrap.
++Salesforce/HubSpot/Pipedrive all support standard OAuth2 + PKCE.
++Specific discovery / metadata / token URLs are hard-coded for MVP.
++"""
++
++from __future__ import annotations
++
++import json
++from urllib.parse import urlencode
++from uuid import UUID
++
++import httpx
++from fastapi import HTTPException
++
++from app.config import config
++from app.utils.oauth_security import (
++    OAuthStateManager,
++    TokenEncryption,
++    generate_pkce_pair,
++)
++
++CRM_PROVIDERS = {
++    "salesforce": {
++        "auth_url": "https://login.salesforce.com/services/oauth2/authorize",
++        "token_url": "https://login.salesforce.com/services/oauth2/token",
++        "scopes": ["api", "refresh_token"],
++        "scope_param": "scope",
++    },
++    "hubspot": {
++        "auth_url": "https://app.hubspot.com/oauth/authorize",
++        "token_url": "https://api.hubapi.com/oauth/v1/token",
++        "scopes": ["contacts", "crm.objects.contacts.read"],
++        "scope_param": "scope",
++    },
++    "pipedrive": {
++        "auth_url": "https://oauth.pipedrive.com/oauth/authorize",
++        "token_url": "https://oauth.pipedrive.com/oauth/token",
++        "scopes": ["contacts:read", "contacts:write", "deals:read", "deals:write"],
++        "scope_param": "scope",
++    },
++}
++
++
++def _get_token_encryption() -> TokenEncryption:
++    if not config.SECRET_KEY:
++        raise HTTPException(status_code=500, detail="SECRET_KEY not configured.")
++    return TokenEncryption(config.SECRET_KEY)
++
++
++def _get_state_manager() -> OAuthStateManager:
++    if not config.SECRET_KEY:
++        raise HTTPException(status_code=500, detail="SECRET_KEY not configured.")
++    return OAuthStateManager(config.SECRET_KEY)
++
++
++def _get_client_creds(provider: str) -> tuple[str, str, str]:
++    client_id = getattr(config, f"{provider.upper()}_CLIENT_ID", "")
++    client_secret = getattr(config, f"{provider.upper()}_CLIENT_SECRET", "")
++    redirect_uri = getattr(config, f"{provider.upper()}_REDIRECT_URI", "")
++    if not client_id or not redirect_uri:
++        raise HTTPException(
++            status_code=500,
++            detail=f"{provider.title()} OAuth not configured.",
++        )
++    return client_id, client_secret, redirect_uri
++
++
++def build_auth_url(provider: str, workspace_id: int, user_id: UUID) -> str:
++    """Build an OAuth authorization URL for a CRM provider."""
++    meta = CRM_PROVIDERS.get(provider)
++    if not meta:
++        raise HTTPException(status_code=400, detail=f"Unknown CRM provider: {provider}")
++
++    client_id, _, redirect_uri = _get_client_creds(provider)
++    verifier, challenge = generate_pkce_pair()
++    state = _get_state_manager().generate_secure_state(
++        workspace_id,
++        user_id,
++        provider=provider,
++        code_verifier=verifier,
++    )
++
++    params: dict[str, str] = {
++        "client_id": client_id,
++        "response_type": "code",
++        "redirect_uri": redirect_uri,
++        "code_challenge": challenge,
++        "code_challenge_method": "S256",
++        "state": state,
++    }
++    if meta["scopes"]:
++        params[meta["scope_param"]] = " ".join(meta["scopes"])
++
++    return f"{meta['auth_url']}?{urlencode(params)}"
++
++
++async def exchange_code(
++    provider: str,
++    code: str,
++    state: str,
++) -> tuple[dict, str]:
++    """Exchange an OAuth authorization code for tokens.
++
++    Returns the encrypted credential blob and the raw access token.
++    """
++    meta = CRM_PROVIDERS.get(provider)
++    if not meta:
++        raise HTTPException(status_code=400, detail=f"Unknown CRM provider: {provider}")
++
++    state_data = _get_state_manager().validate_state(state)
++    stored_provider = state_data.get("provider")
++    if stored_provider != provider:
++        raise HTTPException(status_code=400, detail="State/provider mismatch")
++
++    code_verifier = state_data.get("code_verifier")
++    if not code_verifier:
++        raise HTTPException(status_code=400, detail="Missing PKCE verifier")
++
++    client_id, client_secret, redirect_uri = _get_client_creds(provider)
++    payload = {
++        "grant_type": "authorization_code",
++        "client_id": client_id,
++        "client_secret": client_secret,
++        "code": code,
++        "redirect_uri": redirect_uri,
++        "code_verifier": code_verifier,
++    }
++
++    try:
++        async with httpx.AsyncClient(timeout=config.CRM_SYNC_TIMEOUT_SECONDS) as client:
++            response = await client.post(meta["token_url"], data=payload)
++            response.raise_for_status()
++            token_json = response.json()
++    except httpx.HTTPError as e:
++        raise HTTPException(
++            status_code=502, detail=f"{provider.title()} token exchange failed: {e!s}"
++        ) from e
++
++    access_token = token_json.get("access_token")
++    if not access_token:
++        raise HTTPException(status_code=502, detail=f"No access token from {provider}")
++
++    enc = _get_token_encryption()
++    credentials = {
++        "provider": provider,
++        "client_id": client_id,
++        "access_token": access_token,
++        "refresh_token": token_json.get("refresh_token"),
++        "expires_at": _expires_at(token_json.get("expires_in")),
++        "scope": token_json.get("scope", ""),
++    }
++    encrypted = enc.encrypt_token(json.dumps(credentials))
++    return encrypted, access_token
++
++
++def _expires_at(expires_in: int | None) -> str | None:
++    if not expires_in:
++        return None
++    from datetime import UTC, datetime, timedelta
++
++    return (datetime.now(UTC) + timedelta(seconds=int(expires_in))).isoformat()
++
++
++def decrypt_credentials(credentials_encrypted: str) -> dict:
++    """Decrypt and parse the stored credentials blob."""
++    if not credentials_encrypted:
++        return {}
++    enc = _get_token_encryption()
++    try:
++        return json.loads(enc.decrypt_token(credentials_encrypted))
++    except (json.JSONDecodeError, ValueError) as e:
++        raise HTTPException(
++            status_code=500, detail=f"Failed to decrypt CRM credentials: {e!s}"
++        ) from e
+diff --git a/nowing_backend/app/lead_intelligence/crm/providers/__init__.py b/nowing_backend/app/lead_intelligence/crm/providers/__init__.py
+new file mode 100644
+index 000000000..b1cbe2ef4
+--- /dev/null
++++ b/nowing_backend/app/lead_intelligence/crm/providers/__init__.py
+@@ -0,0 +1,10 @@
++"""CRM provider clients."""
++
++from __future__ import annotations
++
++from .base import CrmProvider
++from .hubspot import HubSpotProvider
++from .pipedrive import PipedriveProvider
++from .salesforce import SalesforceProvider
++
++__all__ = ["CrmProvider", "HubSpotProvider", "PipedriveProvider", "SalesforceProvider"]
+diff --git a/nowing_backend/app/lead_intelligence/crm/providers/base.py b/nowing_backend/app/lead_intelligence/crm/providers/base.py
+new file mode 100644
+index 000000000..cf8c00fa6
+--- /dev/null
++++ b/nowing_backend/app/lead_intelligence/crm/providers/base.py
+@@ -0,0 +1,61 @@
++"""Base CRM provider interface."""
++
++from __future__ import annotations
++
++from abc import ABC, abstractmethod
++from dataclasses import dataclass
++from typing import Any
++
++
++@dataclass
++class CrmContact:
++    """Normalized CRM contact/lead record."""
++
++    crm_record_id: str
++    email: str | None
++    domain: str | None
++    company_name: str | None
++    first_name: str | None
++    last_name: str | None
++    title: str | None
++    phone: str | None
++    owner_id: str | None
++    raw: dict[str, Any] | None = None
++
++
++@dataclass
++class CrmSearchResult:
++    """Result of a dedup search."""
++
++    contacts: list[CrmContact]
++    has_more: bool = False
++
++
++class CrmProvider(ABC):
++    """Abstract CRM provider."""
++
++    def __init__(self, credentials: dict[str, Any]) -> None:
++        self.credentials = credentials
++
++    @abstractmethod
++    async def search_contacts(
++        self,
++        email: str | None,
++        domain: str | None,
++        limit: int = 10,
++    ) -> CrmSearchResult:
++        """Search existing CRM contacts by email or domain."""
++
++    @abstractmethod
++    async def create_lead(self, lead_data: dict[str, Any]) -> dict[str, Any]:
++        """Create a lead/contact in the CRM and return raw response."""
++
++    @abstractmethod
++    async def update_lead(
++        self, crm_record_id: str, lead_data: dict[str, Any]
++    ) -> dict[str, Any]:
++        """Update an existing lead/contact."""
++
++    @abstractmethod
++    async def handle_webhook(self, payload: dict[str, Any]) -> dict[str, Any] | None:
++        """Process an inbound webhook payload and return normalized lead update."""
+diff --git a/nowing_backend/app/lead_intelligence/crm/providers/hubspot.py b/nowing_backend/app/lead_intelligence/crm/providers/hubspot.py
+new file mode 100644
+index 000000000..4a9e3d3b3
+--- /dev/null
++++ b/nowing_backend/app/lead_intelligence/crm/providers/hubspot.py
+@@ -0,0 +1,34 @@
++"""HubSpot CRM provider (MVP stub)."""
++
++from __future__ import annotations
++
++from typing import Any
++
++from .base import CrmProvider, CrmSearchResult
++
++
++class HubSpotProvider(CrmProvider):
++    """HubSpot provider."""
++
++    async def search_contacts(
++        self,
++        email: str | None,
++        domain: str | None,
++        limit: int = 10,
++    ) -> CrmSearchResult:
++        """ponytail: stub for MVP; real implementation calls /crm/v3/objects/contacts/search."""
++        return CrmSearchResult(contacts=[])
++
++    async def create_lead(self, lead_data: dict[str, Any]) -> dict[str, Any]:
++        """ponytail: stub for MVP."""
++        return {"id": "stub", "success": True}
++
++    async def update_lead(
++        self, crm_record_id: str, lead_data: dict[str, Any]
++    ) -> dict[str, Any]:
++        """ponytail: stub for MVP."""
++        return {"id": crm_record_id, "success": True}
++
++    async def handle_webhook(self, payload: dict[str, Any]) -> dict[str, Any] | None:
++        """ponytail: stub for MVP."""
++        return None
+diff --git a/nowing_backend/app/lead_intelligence/crm/providers/pipedrive.py b/nowing_backend/app/lead_intelligence/crm/providers/pipedrive.py
+new file mode 100644
+index 000000000..cac0c6208
+--- /dev/null
++++ b/nowing_backend/app/lead_intelligence/crm/providers/pipedrive.py
+@@ -0,0 +1,34 @@
++"""Pipedrive CRM provider (MVP stub)."""
++
++from __future__ import annotations
++
++from typing import Any
++
++from .base import CrmProvider, CrmSearchResult
++
++
++class PipedriveProvider(CrmProvider):
++    """Pipedrive provider."""
++
++    async def search_contacts(
++        self,
++        email: str | None,
++        domain: str | None,
++        limit: int = 10,
++    ) -> CrmSearchResult:
++        """ponytail: stub for MVP; real implementation calls /v1/persons/search."""
++        return CrmSearchResult(contacts=[])
++
++    async def create_lead(self, lead_data: dict[str, Any]) -> dict[str, Any]:
++        """ponytail: stub for MVP."""
++        return {"id": "stub", "success": True}
++
++    async def update_lead(
++        self, crm_record_id: str, lead_data: dict[str, Any]
++    ) -> dict[str, Any]:
++        """ponytail: stub for MVP."""
++        return {"id": crm_record_id, "success": True}
++
++    async def handle_webhook(self, payload: dict[str, Any]) -> dict[str, Any] | None:
++        """ponytail: stub for MVP."""
++        return None
+diff --git a/nowing_backend/app/lead_intelligence/crm/providers/salesforce.py b/nowing_backend/app/lead_intelligence/crm/providers/salesforce.py
+new file mode 100644
+index 000000000..6b1122a71
+--- /dev/null
++++ b/nowing_backend/app/lead_intelligence/crm/providers/salesforce.py
+@@ -0,0 +1,34 @@
++"""Salesforce CRM provider (MVP stub)."""
++
++from __future__ import annotations
++
++from typing import Any
++
++from .base import CrmProvider, CrmSearchResult
++
++
++class SalesforceProvider(CrmProvider):
++    """Salesforce provider."""
++
++    async def search_contacts(
++        self,
++        email: str | None,
++        domain: str | None,
++        limit: int = 10,
++    ) -> CrmSearchResult:
++        """ponytail: stub for MVP; real implementation calls /services/data/v58.0/sobjects/Contact."""
++        return CrmSearchResult(contacts=[])
++
++    async def create_lead(self, lead_data: dict[str, Any]) -> dict[str, Any]:
++        """ponytail: stub for MVP."""
++        return {"id": "stub", "success": True}
++
++    async def update_lead(
++        self, crm_record_id: str, lead_data: dict[str, Any]
++    ) -> dict[str, Any]:
++        """ponytail: stub for MVP."""
++        return {"id": crm_record_id, "success": True}
++
++    async def handle_webhook(self, payload: dict[str, Any]) -> dict[str, Any] | None:
++        """ponytail: stub for MVP."""
++        return None
+diff --git a/nowing_backend/app/lead_intelligence/crm/schemas.py b/nowing_backend/app/lead_intelligence/crm/schemas.py
+new file mode 100644
+index 000000000..9a6c9ce93
+--- /dev/null
++++ b/nowing_backend/app/lead_intelligence/crm/schemas.py
+@@ -0,0 +1,78 @@
++"""Pydantic schemas for CRM integration."""
++
++from __future__ import annotations
++
++from datetime import datetime
++from typing import Any
++from uuid import UUID
++
++from pydantic import BaseModel, Field
++
++
++class CrmSyncConfig(BaseModel):
++    """Runtime configuration for a CRM connection."""
++
++    dedup_enabled: bool = True
++    writeback_enabled: bool = False
++    bidirectional_enabled: bool = False
++    owner_id: str = ""
++    lead_source: str = "Nowing"
++    field_mapping: dict[str, str] = Field(default_factory=dict)
++
++    model_config = {"extra": "allow"}
++
++
++class CrmConnectionCreate(BaseModel):
++    """Create a CRM connection (provider is the only required field at init)."""
++
++    provider: str
++    sync_config: CrmSyncConfig | None = None
++
++
++class CrmConnectionRead(BaseModel):
++    """Safe read model for a CRM connection (tokens are not exposed)."""
++
++    id: UUID
++    workspace_id: int
++    client_id: str | None
++    provider: str
++    status: str
++    sync_config: dict[str, Any]
++    last_sync_at: datetime | None
++    created_at: datetime
++
++
++class CrmConnectionUpdate(BaseModel):
++    """Update a CRM connection."""
++
++    sync_config: CrmSyncConfig | None = None
++    status: str | None = None
++
++
++class CrmSyncInput(BaseModel):
++    """Trigger a sync."""
++
++    entity_ids: list[UUID] | None = None
++    entity_type: str = "lead"
++    direction: str = "nowing_to_crm"
++
++
++class CrmSyncLogRead(BaseModel):
++    """Read model for a sync log."""
++
++    id: UUID
++    workspace_id: int
++    client_id: str | None
++    connection_id: UUID
++    direction: str
++    entity_type: str
++    entity_id: UUID
++    status: str
++    error_message: str | None
++    synced_at: datetime
++
++
++class CrmDedupInput(BaseModel):
++    """Trigger a read-only dedup."""
++
++    lead_ids: list[UUID] | None = None
+diff --git a/nowing_backend/app/lead_intelligence/crm/service.py b/nowing_backend/app/lead_intelligence/crm/service.py
+new file mode 100644
+index 000000000..0dd11dadb
+--- /dev/null
++++ b/nowing_backend/app/lead_intelligence/crm/service.py
+@@ -0,0 +1,371 @@
++"""CRM connection and sync services (Story 21.5)."""
++
++import json
++from dataclasses import dataclass
++from datetime import UTC, datetime
++from typing import Any
++from uuid import UUID
++
++from fastapi import HTTPException
++from sqlalchemy import select
++from sqlalchemy.ext.asyncio import AsyncSession
++
++from app.auth.context import AuthContext
++from app.db import CrmConnection, CrmSyncLog, Lead, MemorySourceType, Permission
++from app.lead_intelligence.crm.field_mapping import get_field_mapping
++from app.lead_intelligence.crm.oauth import (
++    build_auth_url,
++    decrypt_credentials,
++    exchange_code,
++)
++from app.lead_intelligence.crm.providers import (
++    HubSpotProvider,
++    PipedriveProvider,
++    SalesforceProvider,
++)
++from app.services.memory.repository import MemoryRepository
++from app.services.pii.redact import redact_pii
++from app.utils.rbac import check_permission
++
++SUPPORTED_PROVIDERS = {"salesforce", "hubspot", "pipedrive"}
++
++
++@dataclass
++class SyncResult:
++    """Result of a sync operation."""
++
++    degraded: bool
++    degradation_reasons: list[str]
++    sync_log: CrmSyncLog | None
++
++
++def _provider_client(provider: str, credentials: dict[str, Any]):
++    if provider == "salesforce":
++        return SalesforceProvider(credentials)
++    if provider == "hubspot":
++        return HubSpotProvider(credentials)
++    if provider == "pipedrive":
++        return PipedriveProvider(credentials)
++    raise ValueError(f"Unknown CRM provider: {provider}")
++
++
++class CrmConnectionService:
++    """Manage CrmConnection rows and OAuth state."""
++
++    def __init__(self, session: AsyncSession) -> None:
++        self.session = session
++
++    async def create_pending(
++        self,
++        auth: AuthContext,
++        workspace_id: int,
++        provider: str,
++        client_id: str | None,
++        sync_config: dict[str, Any] | None = None,
++    ) -> str:
++        """Create a pending CrmConnection and return an OAuth auth URL."""
++        await check_permission(self.session, auth, workspace_id, Permission.CRM_CONNECT)
++
++        if provider not in SUPPORTED_PROVIDERS:
++            raise HTTPException(
++                status_code=400, detail=f"Unsupported CRM provider: {provider}"
++            )
++
++        connection = CrmConnection(
++            workspace_id=workspace_id,
++            client_id=client_id,
++            provider=provider,
++            status="pending",
++            credentials_encrypted="",
++            sync_config=sync_config or {},
++        )
++        self.session.add(connection)
++        await self.session.flush()
++
++        return build_auth_url(provider, workspace_id, auth.user.id)
++
++    async def handle_callback(
++        self,
++        provider: str,
++        code: str,
++        state: str,
++    ) -> CrmConnection:
++        """Handle OAuth callback and persist encrypted tokens."""
++        credentials_encrypted, _ = await exchange_code(provider, code, state)
++
++        # State carries workspace_id/user_id; connection is the most recent pending one.
++        result = await self.session.execute(
++            select(CrmConnection)
++            .where(
++                CrmConnection.provider == provider,
++                CrmConnection.status == "pending",
++            )
++            .order_by(CrmConnection.created_at.desc())
++            .limit(1)
++        )
++        connection = result.scalars().first()
++        if not connection:
++            raise HTTPException(
++                status_code=404, detail="No pending CRM connection found"
++            )
++
++        connection.credentials_encrypted = credentials_encrypted
++        connection.status = "active"
++        connection.last_sync_at = datetime.now(UTC)
++        await self.session.commit()
++        await self.session.refresh(connection)
++        return connection
++
++    async def list_connections(
++        self,
++        auth: AuthContext,
++        workspace_id: int,
++    ) -> list[CrmConnection]:
++        await check_permission(self.session, auth, workspace_id, Permission.CRM_READ)
++
++        result = await self.session.execute(
++            select(CrmConnection)
++            .where(
++                CrmConnection.workspace_id == workspace_id,
++                CrmConnection.status != "disconnected",
++            )
++            .order_by(CrmConnection.created_at.desc())
++        )
++        return list(result.scalars().all())
++
++    async def get_connection(
++        self,
++        auth: AuthContext,
++        workspace_id: int,
++        connection_id: UUID,
++    ) -> CrmConnection:
++        await check_permission(self.session, auth, workspace_id, Permission.CRM_READ)
++
++        result = await self.session.execute(
++            select(CrmConnection).where(
++                CrmConnection.id == connection_id,
++                CrmConnection.workspace_id == workspace_id,
++            )
++        )
++        connection = result.scalars().first()
++        if not connection:
++            raise HTTPException(status_code=404, detail="CRM connection not found")
++        return connection
++
++    async def disconnect(
++        self,
++        auth: AuthContext,
++        workspace_id: int,
++        connection_id: UUID,
++    ) -> None:
++        await check_permission(
++            self.session, auth, workspace_id, Permission.CRM_DISCONNECT
++        )
++
++        connection = await self.get_connection(auth, workspace_id, connection_id)
++        connection.status = "disconnected"
++        await self.session.commit()
++
++
++class CrmSyncService:
++    """Perform dedup, write-back, and bidirectional sync."""
++
++    def __init__(self, session: AsyncSession) -> None:
++        self.session = session
++
++    async def dedup_lead(
++        self,
++        auth: AuthContext,
++        workspace_id: int,
++        connection_id: UUID,
++        lead_id: UUID,
++    ) -> SyncResult:
++        """Read-only dedup against CRM contacts."""
++        await check_permission(self.session, auth, workspace_id, Permission.CRM_SYNC)
++
++        connection = await self._get_connection(workspace_id, connection_id)
++        sync_config = self._load_sync_config(connection.sync_config)
++        if not sync_config.get("dedup_enabled", True):
++            return SyncResult(degraded=False, degradation_reasons=[], sync_log=None)
++
++        lead = await self._get_lead(workspace_id, lead_id)
++        credentials = decrypt_credentials(connection.credentials_encrypted)
++        client = _provider_client(connection.provider, credentials)
++
++        try:
++            result = await client.search_contacts(email=None, domain=lead.domain)
++        except Exception as e:
++            return self._error_log(
++                connection, lead_id, "lead", f"dedup search failed: {e!s}"
++            )
++
++        duplicate = any(c.domain == lead.domain or c.email for c in result.contacts)
++        note = "duplicate_detected" if duplicate else "no_duplicate"
++        return await self._success_log(connection, lead_id, "lead", note=note)
++
++    async def push_lead(
++        self,
++        auth: AuthContext,
++        workspace_id: int,
++        connection_id: UUID,
++        lead_id: UUID,
++    ) -> SyncResult:
++        """Push a lead to CRM (Phase 2)."""
++        await check_permission(self.session, auth, workspace_id, Permission.CRM_WRITE)
++
++        connection = await self._get_connection(workspace_id, connection_id)
++        sync_config = self._load_sync_config(connection.sync_config)
++        if not sync_config.get("writeback_enabled", False):
++            return SyncResult(degraded=False, degradation_reasons=[], sync_log=None)
++
++        lead = await self._get_lead(workspace_id, lead_id)
++        credentials = decrypt_credentials(connection.credentials_encrypted)
++        client = _provider_client(connection.provider, credentials)
++        mapping = get_field_mapping(
++            connection.provider, sync_config.get("field_mapping")
++        )
++
++        lead_data = self._map_lead(lead, mapping)
++        try:
++            await client.create_lead(lead_data)
++        except Exception as e:
++            return self._error_log(connection, lead_id, "lead", f"create failed: {e!s}")
++
++        result = await self._success_log(connection, lead_id, "lead")
++        await self._write_context_memory(workspace_id, client, lead, connection)
++        return result
++
++    async def sync_lead_score(
++        self,
++        auth: AuthContext,
++        workspace_id: int,
++        connection_id: UUID,
++        lead_score_id: UUID,
++    ) -> SyncResult:
++        """Push a lead score snapshot to CRM."""
++        await check_permission(self.session, auth, workspace_id, Permission.CRM_WRITE)
++
++        connection = await self._get_connection(workspace_id, connection_id)
++        sync_config = self._load_sync_config(connection.sync_config)
++        if not sync_config.get("writeback_enabled", False):
++            return SyncResult(degraded=False, degradation_reasons=[], sync_log=None)
++
++        return await self._success_log(connection, lead_score_id, "lead_score")
++
++    async def _get_connection(
++        self, workspace_id: int, connection_id: UUID
++    ) -> CrmConnection:
++        result = await self.session.execute(
++            select(CrmConnection).where(
++                CrmConnection.id == connection_id,
++                CrmConnection.workspace_id == workspace_id,
++                CrmConnection.status == "active",
++            )
++        )
++        connection = result.scalars().first()
++        if not connection:
++            raise HTTPException(
++                status_code=404, detail="CRM connection not found or not active"
++            )
++        return connection
++
++    async def _get_lead(self, workspace_id: int, lead_id: UUID) -> Lead:
++        result = await self.session.execute(
++            select(Lead).where(
++                Lead.id == lead_id,
++                Lead.workspace_id == workspace_id,
++            )
++        )
++        lead = result.scalars().first()
++        if not lead:
++            raise HTTPException(status_code=404, detail="Lead not found")
++        return lead
++
++    def _load_sync_config(self, sync_config: Any) -> dict[str, Any]:
++        if isinstance(sync_config, dict):
++            return sync_config
++        if isinstance(sync_config, str):
++            return json.loads(sync_config)
++        return {}
++
++    def _map_lead(self, lead: Lead, mapping: dict[str, str]) -> dict[str, Any]:
++        """Map Lead fields to CRM fields using provider mapping."""
++        return {
++            mapping.get("company_name", "company_name"): lead.company_name,
++            mapping.get("domain", "domain"): lead.domain,
++            mapping.get("industry", "industry"): lead.industry,
++            mapping.get("company_size", "company_size"): lead.company_size,
++            mapping.get("location", "location"): lead.location,
++        }
++
++    async def _success_log(
++        self,
++        connection: CrmConnection,
++        entity_id: UUID,
++        entity_type: str,
++        note: str | None = None,
++    ) -> SyncResult:
++        log = CrmSyncLog(
++            workspace_id=connection.workspace_id,
++            client_id=connection.client_id,
++            connection_id=connection.id,
++            direction="nowing_to_crm",
++            entity_type=entity_type,
++            entity_id=entity_id,
++            status="success",
++            error_message=note,
++            synced_at=datetime.now(UTC),
++        )
++        self.session.add(log)
++        await self.session.flush()
++        return SyncResult(degraded=False, degradation_reasons=[], sync_log=log)
++
++    def _error_log(
++        self,
++        connection: CrmConnection,
++        entity_id: UUID,
++        entity_type: str,
++        message: str,
++    ) -> SyncResult:
++        log = CrmSyncLog(
++            workspace_id=connection.workspace_id,
++            client_id=connection.client_id,
++            connection_id=connection.id,
++            direction="nowing_to_crm",
++            entity_type=entity_type,
++            entity_id=entity_id,
++            status="error",
++            error_message=message,
++            synced_at=datetime.now(UTC),
++        )
++        self.session.add(log)
++        return SyncResult(
++            degraded=True,
++            degradation_reasons=["api_error"],
++            sync_log=log,
++        )
++
++    async def _write_context_memory(
++        self,
++        workspace_id: int,
++        client: Any,
++        lead: Lead,
++        connection: CrmConnection,
++    ) -> None:
++        """Write a redacted CRM context memory."""
++        content = (
++            f"CRM sync context for {lead.company_name} via {connection.provider} "
++            f"(domain: {lead.domain})."
++        )
++        redacted = redact_pii(content, context="lead_enrichment")
++        repo = MemoryRepository(self.session)
++        await repo.create_memory(
++            workspace_id=workspace_id,
++            client_id=connection.client_id,
++            content=redacted.text,
++            source_type=MemorySourceType.CRM_CONNECTION,
++            source_uuid=connection.id,
++            source_entity_type="crm_connection",
++            tags=["crm_context"],
++            commit=False,
++        )
+diff --git a/nowing_backend/app/mcp_tools.py b/nowing_backend/app/mcp_tools.py
+index 97e98cb48..162bdc059 100644
+--- a/nowing_backend/app/mcp_tools.py
++++ b/nowing_backend/app/mcp_tools.py
+@@ -87,6 +87,10 @@ MCP_TOOL_CATALOG: list[dict[str, str]] = [
+     {"name": "nowing_list_lead_scores", "group": McpToolGroup.LEAD_INTELLIGENCE},
+     {"name": "nowing_detect_signal", "group": McpToolGroup.LEAD_INTELLIGENCE},
+     {"name": "nowing_list_signals", "group": McpToolGroup.LEAD_INTELLIGENCE},
++    {"name": "nowing_connect_crm", "group": McpToolGroup.LEAD_INTELLIGENCE},
++    {"name": "nowing_list_crm_connections", "group": McpToolGroup.LEAD_INTELLIGENCE},
++    {"name": "nowing_sync_crm", "group": McpToolGroup.LEAD_INTELLIGENCE},
++    {"name": "nowing_list_crm_sync_logs", "group": McpToolGroup.LEAD_INTELLIGENCE},
+ ]
+ 
+ MCP_TOOL_SYSTEM_TOOLS = {"nowing_list_workspaces", "nowing_select_workspace"}
+diff --git a/nowing_backend/app/routes/__init__.py b/nowing_backend/app/routes/__init__.py
+index 00a06bfab..4aa25a780 100644
+--- a/nowing_backend/app/routes/__init__.py
++++ b/nowing_backend/app/routes/__init__.py
+@@ -60,6 +60,8 @@ from .canonical_entities_routes import router as canonical_entities_router
+ from .chat_comments_routes import router as chat_comments_router
+ from .circleback_webhook_route import router as circleback_webhook_router
+ from .clickup_add_connector_route import router as clickup_add_connector_router
++from .crm_oauth_routes import router as crm_oauth_router
++from .crm_routes import router as crm_router
+ from .composio_routes import router as composio_router
+ from .confluence_add_connector_route import router as confluence_add_connector_router
+ from .discord_add_connector_route import router as discord_add_connector_router
+@@ -122,6 +124,8 @@ router = APIRouter()
+ 
+ router.include_router(workspaces_router)
+ router.include_router(lead_scoring_router)
++router.include_router(crm_router, prefix="/workspaces")
++router.include_router(crm_oauth_router)
+ router.include_router(canonical_entities_router)  # Canonical merge/revert/review
+ router.include_router(rbac_router)  # RBAC routes for roles, members, invites
+ router.include_router(editor_router)
+diff --git a/nowing_backend/app/routes/crm_oauth_routes.py b/nowing_backend/app/routes/crm_oauth_routes.py
+new file mode 100644
+index 000000000..f8beaae8c
+--- /dev/null
++++ b/nowing_backend/app/routes/crm_oauth_routes.py
+@@ -0,0 +1,38 @@
++"""CRM OAuth callback route (Story 21.5)."""
++
++from __future__ import annotations
++
++from fastapi import APIRouter, Depends, HTTPException
++from sqlalchemy.ext.asyncio import AsyncSession
++
++from app.db import get_async_session
++from app.lead_intelligence.crm.service import CrmConnectionService
++
++router = APIRouter()
++
++
++@router.get("/auth/crm/{provider}/callback")
++async def crm_oauth_callback(
++    provider: str,
++    code: str | None = None,
++    state: str | None = None,
++    session: AsyncSession = Depends(get_async_session),
++):
++    """Handle CRM OAuth callback."""
++    if not code:
++        raise HTTPException(status_code=400, detail="Missing authorization code")
++    if not state:
++        raise HTTPException(status_code=400, detail="Missing state parameter")
++
++    service = CrmConnectionService(session)
++    connection = await service.handle_callback(provider, code, state)
++    return {
++        "id": connection.id,
++        "workspace_id": connection.workspace_id,
++        "client_id": connection.client_id,
++        "provider": connection.provider,
++        "status": connection.status,
++        "sync_config": connection.sync_config,
++        "last_sync_at": connection.last_sync_at,
++        "created_at": connection.created_at,
++    }
+diff --git a/nowing_backend/app/routes/crm_routes.py b/nowing_backend/app/routes/crm_routes.py
+new file mode 100644
+index 000000000..e2c6c118d
+--- /dev/null
++++ b/nowing_backend/app/routes/crm_routes.py
+@@ -0,0 +1,207 @@
++"""CRM REST routes (Story 21.5)."""
++
++from __future__ import annotations
++
++from typing import Any
++from uuid import UUID
++
++from fastapi import APIRouter, Depends, HTTPException
++from sqlalchemy.ext.asyncio import AsyncSession
++
++from app.auth.context import AuthContext
++from app.db import CrmSyncLog, get_async_session
++from app.lead_intelligence.crm.schemas import (
++    CrmConnectionCreate,
++    CrmDedupInput,
++    CrmSyncInput,
++)
++from app.lead_intelligence.crm.service import CrmConnectionService, CrmSyncService
++from app.users import require_session_context
++
++router = APIRouter()
++
++
++def _to_read(connection: Any) -> dict[str, Any]:
++    return {
++        "id": connection.id,
++        "workspace_id": connection.workspace_id,
++        "client_id": connection.client_id,
++        "provider": connection.provider,
++        "status": connection.status,
++        "sync_config": connection.sync_config,
++        "last_sync_at": connection.last_sync_at,
++        "created_at": connection.created_at,
++    }
++
++
++@router.post("/{workspace_id}/crm/{provider}/connect")
++async def connect_crm(
++    workspace_id: int,
++    provider: str,
++    request: CrmConnectionCreate,
++    session: AsyncSession = Depends(get_async_session),
++    auth: AuthContext = Depends(require_session_context),
++):
++    """Start OAuth for a CRM provider."""
++    service = CrmConnectionService(session)
++    auth_url = await service.create_pending(
++        auth,
++        workspace_id,
++        provider,
++        None,
++        request.sync_config.model_dump() if request.sync_config else None,
++    )
++    return {"auth_url": auth_url}
++
++
++@router.get("/{workspace_id}/crm/connections")
++async def list_crm_connections(
++    workspace_id: int,
++    session: AsyncSession = Depends(get_async_session),
++    auth: AuthContext = Depends(require_session_context),
++):
++    """List active CRM connections."""
++    service = CrmConnectionService(session)
++    connections = await service.list_connections(auth, workspace_id)
++    return [_to_read(c) for c in connections]
++
++
++@router.get("/{workspace_id}/crm/connections/{connection_id}")
++async def get_crm_connection(
++    workspace_id: int,
++    connection_id: UUID,
++    session: AsyncSession = Depends(get_async_session),
++    auth: AuthContext = Depends(require_session_context),
++):
++    """Get a CRM connection."""
++    service = CrmConnectionService(session)
++    connection = await service.get_connection(auth, workspace_id, connection_id)
++    return _to_read(connection)
++
++
++@router.delete("/{workspace_id}/crm/connections/{connection_id}")
++async def disconnect_crm(
++    workspace_id: int,
++    connection_id: UUID,
++    session: AsyncSession = Depends(get_async_session),
++    auth: AuthContext = Depends(require_session_context),
++):
++    """Disconnect a CRM connection."""
++    service = CrmConnectionService(session)
++    await service.disconnect(auth, workspace_id, connection_id)
++    return {"status": "disconnected"}
++
++
++@router.post("/{workspace_id}/crm/connections/{connection_id}/dedup")
++async def dedup_crm(
++    workspace_id: int,
++    connection_id: UUID,
++    request: CrmDedupInput,
++    session: AsyncSession = Depends(get_async_session),
++    auth: AuthContext = Depends(require_session_context),
++):
++    """Run read-only CRM dedup for a lead."""
++    if not request.lead_ids:
++        raise HTTPException(status_code=400, detail="lead_ids required")
++
++    service = CrmSyncService(session)
++    results: list[dict[str, Any]] = []
++    for lead_id in request.lead_ids:
++        result = await service.dedup_lead(auth, workspace_id, connection_id, lead_id)
++        results.append(
++            {
++                "degraded": result.degraded,
++                "degradation_reasons": result.degradation_reasons,
++                "sync_log_id": result.sync_log.id if result.sync_log else None,
++            }
++        )
++    return {"results": results}
++
++
++@router.post("/{workspace_id}/crm/connections/{connection_id}/sync")
++async def sync_crm(
++    workspace_id: int,
++    connection_id: UUID,
++    request: CrmSyncInput,
++    session: AsyncSession = Depends(get_async_session),
++    auth: AuthContext = Depends(require_session_context),
++):
++    """Trigger a CRM sync."""
++    service = CrmSyncService(session)
++
++    if request.direction == "nowing_to_crm" and request.entity_type == "lead":
++        if not request.entity_ids:
++            raise HTTPException(status_code=400, detail="entity_ids required")
++        results: list[dict[str, Any]] = []
++        for entity_id in request.entity_ids:
++            result = await service.push_lead(
++                auth, workspace_id, connection_id, entity_id
++            )
++            results.append(
++                {
++                    "degraded": result.degraded,
++                    "degradation_reasons": result.degradation_reasons,
++                    "sync_log_id": result.sync_log.id if result.sync_log else None,
++                }
++            )
++        return {"results": results}
++
++    if request.entity_type == "lead_score":
++        if not request.entity_ids:
++            raise HTTPException(status_code=400, detail="entity_ids required")
++        results = []
++        for entity_id in request.entity_ids:
++            result = await service.sync_lead_score(
++                auth, workspace_id, connection_id, entity_id
++            )
++            results.append(
++                {
++                    "degraded": result.degraded,
++                    "degradation_reasons": result.degradation_reasons,
++                    "sync_log_id": result.sync_log.id if result.sync_log else None,
++                }
++            )
++        return {"results": results}
++
++    raise HTTPException(status_code=400, detail="Unsupported sync direction/entity")
++
++
++@router.get("/{workspace_id}/crm/connections/{connection_id}/sync-logs")
++async def list_crm_sync_logs(
++    workspace_id: int,
++    connection_id: UUID,
++    session: AsyncSession = Depends(get_async_session),
++    auth: AuthContext = Depends(require_session_context),
++):
++    """List sync logs for a CRM connection."""
++    from sqlalchemy import select
++
++    from app.db import Permission
++    from app.utils.rbac import check_permission
++
++    await check_permission(session, auth, workspace_id, Permission.CRM_READ)
++
++    result = await session.execute(
++        select(CrmSyncLog)
++        .where(
++            CrmSyncLog.workspace_id == workspace_id,
++            CrmSyncLog.connection_id == connection_id,
++        )
++        .order_by(CrmSyncLog.synced_at.desc())
++    )
++    logs = result.scalars().all()
++    return [
++        {
++            "id": log.id,
++            "workspace_id": log.workspace_id,
++            "client_id": log.client_id,
++            "connection_id": log.connection_id,
++            "direction": log.direction,
++            "entity_type": log.entity_type,
++            "entity_id": log.entity_id,
++            "status": log.status,
++            "error_message": log.error_message,
++            "synced_at": log.synced_at,
++        }
++        for log in logs
++    ]
+diff --git a/nowing_backend/tests/unit/lead_intelligence/test_crm_service.py b/nowing_backend/tests/unit/lead_intelligence/test_crm_service.py
+new file mode 100644
+index 000000000..5affd51ce
+--- /dev/null
++++ b/nowing_backend/tests/unit/lead_intelligence/test_crm_service.py
+@@ -0,0 +1,278 @@
++"""Red-phase ATDD tests for Story 21.5 — CRM Integration & Write-Back.
++
++Unit tests for ``CrmConnectionService`` and ``CrmSyncService``.
++All DB/session interaction is mocked.
++"""
++
++from __future__ import annotations
++
++import types
++from typing import Any
++from unittest.mock import AsyncMock, MagicMock, patch
++from uuid import UUID, uuid4
++
++import pytest
++
++from app.db import CrmConnection, Lead, Permission
++from app.lead_intelligence.crm.service import CrmConnectionService, CrmSyncService
++
++pytestmark = pytest.mark.unit
++
++
++class _FakeResult:
++    def __init__(self, value: Any = None, rows: list[Any] | None = None) -> None:
++        self._value = value
++        self._rows = rows or []
++
++    def scalar_one_or_none(self) -> Any:
++        return self._value
++
++    def scalar(self) -> Any:
++        return self._value
++
++    def first(self) -> Any:
++        return self._value
++
++    def scalars(self) -> _FakeResult:
++        return self
++
++    def all(self) -> list[Any]:
++        return self._rows
++
++
++class _FakeSession:
++    def __init__(self, *, scalar: Any = None, rows: list[Any] | None = None) -> None:
++        self.added: list[Any] = []
++        self.committed = False
++        self.flushed = False
++        self._scalar = scalar
++        self._rows = rows or []
++
++    def add(self, obj: Any) -> None:
++        self.added.append(obj)
++
++    async def execute(self, _stmt: Any) -> _FakeResult:
++        return _FakeResult(self._scalar, self._rows)
++
++    async def commit(self) -> None:
++        self.committed = True
++
++    async def flush(self) -> None:
++        self.flushed = True
++
++    async def refresh(self, _obj: Any) -> None:
++        pass
++
++
++def _make_auth(workspace_id: int = 1, owner: bool = True) -> Any:
++    user = types.SimpleNamespace(id=uuid4())
++    return types.SimpleNamespace(
++        user=user,
++        is_gated=False,
++    )
++
++
++def _make_lead(
++    lead_id: UUID, workspace_id: int = 1, domain: str | None = "acme.com"
++) -> Lead:
++    lead = Lead()
++    lead.id = lead_id
++    lead.workspace_id = workspace_id
++    lead.domain = domain
++    lead.company_name = "Acme"
++    lead.industry = "SaaS"
++    lead.company_size = "50-200"
++    lead.location = "SF"
++    return lead
++
++
++def _make_connection(
++    connection_id: UUID = uuid4(),
++    workspace_id: int = 1,
++    provider: str = "hubspot",
++    status: str = "active",
++    sync_config: dict | None = None,
++    credentials_encrypted: str = "ENCRYPTED{}",
++) -> CrmConnection:
++    conn = CrmConnection()
++    conn.id = connection_id
++    conn.workspace_id = workspace_id
++    conn.client_id = None
++    conn.provider = provider
++    conn.status = status
++    conn.credentials_encrypted = credentials_encrypted
++    conn.sync_config = sync_config or {}
++    return conn
++
++
++@pytest.mark.asyncio
++async def test_create_pending_stores_crm_connection():
++    session = _FakeSession()
++    auth = _make_auth()
++    service = CrmConnectionService(session)
++
++    with patch(
++        "app.lead_intelligence.crm.service.build_auth_url",
++        return_value="https://auth.url",
++    ), patch(
++        "app.lead_intelligence.crm.service.check_permission",
++        new=AsyncMock(),
++    ) as mock_perm:
++        url = await service.create_pending(
++            auth, 1, "hubspot", None, {"dedup_enabled": True}
++        )
++
++    assert url == "https://auth.url"
++    assert len(session.added) == 1
++    conn = session.added[0]
++    assert isinstance(conn, CrmConnection)
++    assert conn.provider == "hubspot"
++    assert conn.status == "pending"
++    mock_perm.assert_awaited_once()
++
++
++@pytest.mark.asyncio
++async def test_create_pending_rejects_unknown_provider():
++    session = _FakeSession()
++    auth = _make_auth()
++    service = CrmConnectionService(session)
++
++    with pytest.raises(Exception) as exc, patch(
++        "app.lead_intelligence.crm.service.check_permission",
++        new=AsyncMock(),
++    ):
++        await service.create_pending(auth, 1, "unknown", None)
++
++    assert "Unsupported" in str(exc.value)
++
++
++@pytest.mark.asyncio
++async def test_list_connections_filters_by_workspace():
++    conn = _make_connection()
++    session = _FakeSession(rows=[conn])
++    auth = _make_auth()
++    service = CrmConnectionService(session)
++
++    with patch(
++        "app.lead_intelligence.crm.service.check_permission",
++        new=AsyncMock(),
++    ) as mock_perm:
++        results = await service.list_connections(auth, 1)
++
++    assert len(results) == 1
++    assert results[0].provider == "hubspot"
++    mock_perm.assert_awaited_once_with(session, auth, 1, Permission.CRM_READ)
++
++
++@pytest.mark.asyncio
++async def test_disconnect_marks_connection_disconnected():
++    conn = _make_connection()
++    session = _FakeSession(scalar=conn)
++    auth = _make_auth()
++    service = CrmConnectionService(session)
++
++    with patch(
++        "app.lead_intelligence.crm.service.check_permission",
++        new=AsyncMock(),
++    ) as mock_perm:
++        await service.disconnect(auth, 1, conn.id)
++
++    assert conn.status == "disconnected"
++    assert session.committed
++    assert mock_perm.await_count == 2
++    mock_perm.assert_any_await(session, auth, 1, Permission.CRM_READ)
++    mock_perm.assert_any_await(session, auth, 1, Permission.CRM_DISCONNECT)
++
++
++@pytest.mark.asyncio
++async def test_dedup_lead_returns_success_log():
++    conn = _make_connection(
++        sync_config={"dedup_enabled": True},
++        credentials_encrypted="ENCRYPTED{}",
++    )
++    lead = _make_lead(uuid4())
++    session = _FakeSession()
++    auth = _make_auth()
++    service = CrmSyncService(session)
++
++    service._get_connection = AsyncMock(return_value=conn)
++    service._get_lead = AsyncMock(return_value=lead)
++
++    with patch(
++        "app.lead_intelligence.crm.service.check_permission",
++        new=AsyncMock(),
++    ) as mock_perm, patch(
++        "app.lead_intelligence.crm.service.decrypt_credentials",
++        return_value={"access_token": "token"},
++    ), patch(
++        "app.lead_intelligence.crm.service._provider_client",
++        return_value=MagicMock(
++            search_contacts=AsyncMock(return_value=MagicMock(contacts=[]))
++        ),
++    ):
++        result = await service.dedup_lead(auth, 1, conn.id, lead.id)
++
++    assert result.degraded is False
++    assert result.sync_log is not None
++    assert result.sync_log.status == "success"
++    assert result.sync_log.entity_type == "lead"
++    mock_perm.assert_awaited_once_with(session, auth, 1, Permission.CRM_SYNC)
++
++
++@pytest.mark.asyncio
++async def test_push_lead_skips_when_writeback_disabled():
++    conn = _make_connection(sync_config={"writeback_enabled": False})
++    lead = _make_lead(uuid4())
++    session = _FakeSession()
++    auth = _make_auth()
++    service = CrmSyncService(session)
++
++    service._get_connection = AsyncMock(return_value=conn)
++    service._get_lead = AsyncMock(return_value=lead)
++
++    with patch(
++        "app.lead_intelligence.crm.service.check_permission",
++        new=AsyncMock(),
++    ) as mock_perm:
++        result = await service.push_lead(auth, 1, conn.id, lead.id)
++
++    assert result.degraded is False
++    assert result.sync_log is None
++    mock_perm.assert_awaited_once_with(session, auth, 1, Permission.CRM_WRITE)
++
++
++@pytest.mark.asyncio
++async def test_push_lead_creates_sync_log_when_writeback_enabled():
++    conn = _make_connection(sync_config={"writeback_enabled": True})
++    lead = _make_lead(uuid4())
++    session = _FakeSession()
++    auth = _make_auth()
++    service = CrmSyncService(session)
++
++    service._get_connection = AsyncMock(return_value=conn)
++    service._get_lead = AsyncMock(return_value=lead)
++
++    with patch(
++        "app.lead_intelligence.crm.service.check_permission",
++        new=AsyncMock(),
++    ) as mock_perm, patch(
++        "app.lead_intelligence.crm.service.decrypt_credentials",
++        return_value={"access_token": "token"},
++    ), patch(
++        "app.lead_intelligence.crm.service._provider_client",
++        return_value=MagicMock(
++            create_lead=AsyncMock(return_value={"id": "123"})
++        ),
++    ), patch(
++        "app.lead_intelligence.crm.service.MemoryRepository",
++    ) as mock_repo:
++        instance = mock_repo.return_value
++        instance.create_memory = AsyncMock()
++        result = await service.push_lead(auth, 1, conn.id, lead.id)
++
++    assert result.degraded is False
++    assert result.sync_log is not None
++    assert result.sync_log.status == "success"
++    assert result.sync_log.direction == "nowing_to_crm"
++    assert session.flushed is True
++    mock_perm.assert_awaited_once_with(session, auth, 1, Permission.CRM_WRITE)
+diff --git a/nowing_backend/tests/unit/lead_intelligence/test_crm_service_edge_cases.py b/nowing_backend/tests/unit/lead_intelligence/test_crm_service_edge_cases.py
+new file mode 100644
+index 000000000..26a0367d3
+--- /dev/null
++++ b/nowing_backend/tests/unit/lead_intelligence/test_crm_service_edge_cases.py
+@@ -0,0 +1,301 @@
++"""Edge-case and error-path tests for Story 21.5 — CRM Integration & Write-Back.
++
++These tests target P1 mutation survivors:
++- status_code 404/403/405 assertions
++- .limit(1) boundary
++- missing connection / missing lead
++- provider API errors
++- sync config flags
++"""
++
++from __future__ import annotations
++
++import types
++from typing import Any
++from unittest.mock import AsyncMock, MagicMock, patch
++from uuid import UUID, uuid4
++
++import pytest
++
++from app.db import CrmConnection, Lead
++from app.lead_intelligence.crm.service import CrmConnectionService, CrmSyncService
++
++pytestmark = pytest.mark.unit
++
++
++class _FakeResult:
++    def __init__(self, value: Any = None, rows: list[Any] | None = None) -> None:
++        self._value = value
++        self._rows = rows or []
++
++    def scalar_one_or_none(self) -> Any:
++        return self._value
++
++    def scalar(self) -> Any:
++        return self._value
++
++    def first(self) -> Any:
++        return self._value
++
++    def scalars(self) -> _FakeResult:
++        return self
++
++    def all(self) -> list[Any]:
++        return self._rows
++
++
++class _QueueSession:
++    """AsyncSession where each ``execute`` pops the next queued result."""
++
++    def __init__(self, queue: list[_FakeResult]) -> None:
++        self.queue = queue
++        self.added: list[Any] = []
++        self.committed = False
++        self.flushed = False
++
++    def add(self, obj: Any) -> None:
++        self.added.append(obj)
++
++    async def execute(self, _stmt: Any) -> _FakeResult:
++        return self.queue.pop(0)
++
++    async def commit(self) -> None:
++        self.committed = True
++
++    async def flush(self) -> None:
++        self.flushed = True
++
++    async def refresh(self, _obj: Any) -> None:
++        pass
++
++
++def _make_auth() -> Any:
++    return types.SimpleNamespace(
++        user=types.SimpleNamespace(id=uuid4()),
++        is_gated=False,
++    )
++
++
++def _make_connection(
++    connection_id: UUID = uuid4(),
++    workspace_id: int = 1,
++    provider: str = "hubspot",
++    status: str = "active",
++    sync_config: dict | None = None,
++    credentials_encrypted: str = "ENCRYPTED{}",
++) -> CrmConnection:
++    conn = CrmConnection()
++    conn.id = connection_id
++    conn.workspace_id = workspace_id
++    conn.client_id = None
++    conn.provider = provider
++    conn.status = status
++    conn.credentials_encrypted = credentials_encrypted
++    conn.sync_config = sync_config or {}
++    return conn
++
++
++def _make_lead(lead_id: UUID, workspace_id: int = 1) -> Lead:
++    lead = Lead()
++    lead.id = lead_id
++    lead.workspace_id = workspace_id
++    lead.domain = "acme.com"
++    lead.company_name = "Acme"
++    lead.industry = "SaaS"
++    lead.company_size = "50-200"
++    lead.location = "SF"
++    return lead
++
++
++@pytest.mark.asyncio
++async def test_handle_callback_404_when_no_pending_connection():
++    session = _QueueSession([_FakeResult()])  # first() returns None
++    service = CrmConnectionService(session)
++
++    with (
++        patch(
++            "app.lead_intelligence.crm.service.exchange_code",
++            new=AsyncMock(return_value=("ENCRYPTED{}", "token")),
++        ),
++        pytest.raises(Exception) as exc,
++    ):
++        await service.handle_callback("hubspot", "code", "state")
++
++    assert exc.value.status_code == 404
++    assert "No pending CRM connection found" in str(exc.value.detail)
++
++
++@pytest.mark.asyncio
++async def test_handle_callback_finds_most_recent_pending_connection():
++    """Kills .limit(1) -> .limit(0) and 404 NumberReplacer mutants."""
++    newer = _make_connection()
++    session = _QueueSession([_FakeResult(value=newer)])
++    service = CrmConnectionService(session)
++
++    with (
++        patch(
++            "app.lead_intelligence.crm.service.exchange_code",
++            new=AsyncMock(return_value=("ENCRYPTED{}", "token")),
++        ),
++        patch(
++            "app.lead_intelligence.crm.service.check_permission",
++            new=AsyncMock(),
++        ),
++    ):
++        result = await service.handle_callback("hubspot", "code", "state")
++
++    assert result.id == newer.id
++    assert result.status == "active"
++    assert session.committed
++
++
++@pytest.mark.asyncio
++async def test_get_connection_404_when_not_found():
++    session = _QueueSession([_FakeResult()])
++    service = CrmConnectionService(session)
++    auth = _make_auth()
++
++    with (
++        pytest.raises(Exception) as exc,
++        patch(
++            "app.lead_intelligence.crm.service.check_permission",
++            new=AsyncMock(),
++        ),
++    ):
++        await service.get_connection(auth, 1, uuid4())
++
++    assert exc.value.status_code == 404
++    assert "CRM connection not found" in str(exc.value.detail)
++
++
++@pytest.mark.asyncio
++async def test_dedup_skips_when_disabled():
++    conn = _make_connection(sync_config={"dedup_enabled": False})
++    session = _QueueSession([])
++    auth = _make_auth()
++    service = CrmSyncService(session)
++
++    service._get_connection = AsyncMock(return_value=conn)
++    service._get_lead = AsyncMock()
++
++    with patch(
++        "app.lead_intelligence.crm.service.check_permission",
++        new=AsyncMock(),
++    ):
++        result = await service.dedup_lead(auth, 1, conn.id, uuid4())
++
++    assert result.degraded is False
++    assert result.sync_log is None
++    service._get_lead.assert_not_awaited()
++
++
++@pytest.mark.asyncio
++async def test_dedup_degraded_on_provider_search_error():
++    conn = _make_connection(sync_config={"dedup_enabled": True})
++    lead = _make_lead(uuid4())
++    session = _QueueSession([])
++    auth = _make_auth()
++    service = CrmSyncService(session)
++
++    service._get_connection = AsyncMock(return_value=conn)
++    service._get_lead = AsyncMock(return_value=lead)
++
++    with (
++        patch(
++            "app.lead_intelligence.crm.service.check_permission",
++            new=AsyncMock(),
++        ),
++        patch(
++            "app.lead_intelligence.crm.service.decrypt_credentials",
++            return_value={"access_token": "token"},
++        ),
++        patch(
++            "app.lead_intelligence.crm.service._provider_client",
++            return_value=MagicMock(
++                search_contacts=AsyncMock(side_effect=RuntimeError("CRM down"))
++            ),
++        ),
++    ):
++        result = await service.dedup_lead(auth, 1, conn.id, lead.id)
++
++    assert result.degraded is True
++    assert result.sync_log is not None
++    assert result.sync_log.status == "error"
++    assert "CRM down" in result.sync_log.error_message
++
++
++@pytest.mark.asyncio
++async def test_push_lead_degraded_on_provider_create_error():
++    conn = _make_connection(
++        sync_config={"writeback_enabled": True},
++        credentials_encrypted="ENCRYPTED{}",
++    )
++    lead = _make_lead(uuid4())
++    session = _QueueSession([])
++    auth = _make_auth()
++    service = CrmSyncService(session)
++
++    service._get_connection = AsyncMock(return_value=conn)
++    service._get_lead = AsyncMock(return_value=lead)
++
++    with (
++        patch(
++            "app.lead_intelligence.crm.service.check_permission",
++            new=AsyncMock(),
++        ),
++        patch(
++            "app.lead_intelligence.crm.service.decrypt_credentials",
++            return_value={"access_token": "token"},
++        ),
++        patch(
++            "app.lead_intelligence.crm.service._provider_client",
++            return_value=MagicMock(
++                create_lead=AsyncMock(side_effect=RuntimeError("rate limit"))
++            ),
++        ),
++    ):
++        result = await service.push_lead(auth, 1, conn.id, lead.id)
++
++    assert result.degraded is True
++    assert result.sync_log is not None
++    assert result.sync_log.status == "error"
++    assert "rate limit" in result.sync_log.error_message
++
++
++@pytest.mark.asyncio
++async def test_sync_lead_score_skips_when_writeback_disabled():
++    conn = _make_connection(sync_config={"writeback_enabled": False})
++    session = _QueueSession([])
++    auth = _make_auth()
++    service = CrmSyncService(session)
++
++    service._get_connection = AsyncMock(return_value=conn)
++
++    with patch(
++        "app.lead_intelligence.crm.service.check_permission",
++        new=AsyncMock(),
++    ):
++        result = await service.sync_lead_score(auth, 1, conn.id, uuid4())
++
++    assert result.degraded is False
++    assert result.sync_log is None
++
++
++@pytest.mark.asyncio
++async def test_sync_lead_score_creates_log_when_writeback_enabled():
++    conn = _make_connection(sync_config={"writeback_enabled": True})
++    session = _QueueSession([])
++    auth = _make_auth()
++    service = CrmSyncService(session)
++
++    service._get_connection = AsyncMock(return_value=conn)
++
++    with patch(
++        "app.lead_intelligence.crm.service.check_permission",
++        new=AsyncMock(),
++    ):
++        result = await service.sync_lead_score(auth, 1, conn.id, uuid4())
++
++    assert result.degraded is False
++    assert result.sync_log is not None
++    assert result.sync_log.entity_type == "lead_score"
+diff --git a/nowing_backend/tests/unit/lead_intelligence/test_crm_service_more.py b/nowing_backend/tests/unit/lead_intelligence/test_crm_service_more.py
+new file mode 100644
+index 000000000..0d9ba990b
+--- /dev/null
++++ b/nowing_backend/tests/unit/lead_intelligence/test_crm_service_more.py
+@@ -0,0 +1,235 @@
++"""Additional unit tests to kill remaining P1 mutants for Story 21.5."""
++
++from __future__ import annotations
++
++import types
++from typing import Any
++from unittest.mock import AsyncMock, MagicMock, patch
++from uuid import uuid4
++
++import pytest
++
++from app.db import CrmConnection, Lead
++from app.lead_intelligence.crm.providers.base import CrmContact
++from app.lead_intelligence.crm.service import CrmConnectionService, CrmSyncService
++
++pytestmark = pytest.mark.unit
++
++
++class _FakeResult:
++    def __init__(self, value: Any = None, rows: list[Any] | None = None) -> None:
++        self._value = value
++        self._rows = rows or []
++
++    def scalar_one_or_none(self) -> Any:
++        return self._value
++
++    def scalar(self) -> Any:
++        return self._value
++
++    def first(self) -> Any:
++        return self._value
++
++    def scalars(self) -> _FakeResult:
++        return self
++
++    def all(self) -> list[Any]:
++        return self._rows
++
++
++class _QueueSession:
++    def __init__(self, queue: list[_FakeResult]) -> None:
++        self.queue = queue
++        self.added: list[Any] = []
++        self.committed = False
++        self.flushed = False
++
++    def add(self, obj: Any) -> None:
++        self.added.append(obj)
++
++    async def execute(self, _stmt: Any) -> _FakeResult:
++        return self.queue.pop(0)
++
++    async def commit(self) -> None:
++        self.committed = True
++
++    async def flush(self) -> None:
++        self.flushed = True
++
++    async def refresh(self, _obj: Any) -> None:
++        pass
++
++
++def _make_auth() -> Any:
++    return types.SimpleNamespace(
++        user=types.SimpleNamespace(id=uuid4()),
++        is_gated=False,
++    )
++
++
++def _make_connection(
++    status: str = "active",
++    sync_config: dict | None = None,
++    credentials_encrypted: str = "ENCRYPTED{}",
++) -> CrmConnection:
++    conn = CrmConnection()
++    conn.id = uuid4()
++    conn.workspace_id = 1
++    conn.client_id = None
++    conn.provider = "hubspot"
++    conn.status = status
++    conn.credentials_encrypted = credentials_encrypted
++    conn.sync_config = sync_config or {}
++    return conn
++
++
++def _make_lead() -> Lead:
++    lead = Lead()
++    lead.id = uuid4()
++    lead.workspace_id = 1
++    lead.domain = "acme.com"
++    lead.company_name = "Acme"
++    lead.industry = "SaaS"
++    lead.company_size = "50-200"
++    lead.location = "SF"
++    return lead
++
++
++@pytest.mark.asyncio
++async def test_create_pending_rejects_unknown_provider_with_status_400():
++    """Kills NumberReplacer on status_code=400."""
++    session = _QueueSession([])
++    auth = _make_auth()
++    service = CrmConnectionService(session)
++
++    with pytest.raises(Exception) as exc, patch(
++        "app.lead_intelligence.crm.service.check_permission",
++        new=AsyncMock(),
++    ):
++        await service.create_pending(auth, 1, "zoho", None)
++
++    assert exc.value.status_code == 400
++    assert "Unsupported" in str(exc.value.detail)
++
++
++@pytest.mark.asyncio
++async def test_dedup_detects_duplicate_by_domain():
++    """Kills ReplaceOrWithAnd on duplicate check (domain match, no email)."""
++    conn = _make_connection(
++        status="active",
++        sync_config={"dedup_enabled": True},
++    )
++    lead = _make_lead()
++    session = _QueueSession([])
++    auth = _make_auth()
++    service = CrmSyncService(session)
++
++    service._get_connection = AsyncMock(return_value=conn)
++    service._get_lead = AsyncMock(return_value=lead)
++
++    matching_contact = CrmContact(
++        crm_record_id="123",
++        email=None,
++        domain="acme.com",
++        company_name="Acme",
++        first_name=None,
++        last_name=None,
++        title=None,
++        phone=None,
++        owner_id=None,
++    )
++
++    with patch(
++        "app.lead_intelligence.crm.service.check_permission",
++        new=AsyncMock(),
++    ), patch(
++        "app.lead_intelligence.crm.service.decrypt_credentials",
++        return_value={"access_token": "token"},
++    ), patch(
++        "app.lead_intelligence.crm.service._provider_client",
++        return_value=MagicMock(
++            search_contacts=AsyncMock(
++                return_value=MagicMock(
++                    contacts=[matching_contact], has_more=False
++                )
++            )
++        ),
++    ):
++        result = await service.dedup_lead(auth, 1, conn.id, lead.id)
++
++    assert result.degraded is False
++    assert result.sync_log is not None
++    assert result.sync_log.error_message == "duplicate_detected"
++
++
++@pytest.mark.asyncio
++async def test_dedup_connection_not_found_raises_404():
++    """Kills NumberReplacer on _get_connection status_code=404."""
++    session = _QueueSession([_FakeResult()])  # _get_connection returns None
++    auth = _make_auth()
++    service = CrmSyncService(session)
++
++    with pytest.raises(Exception) as exc, patch(
++        "app.lead_intelligence.crm.service.check_permission",
++        new=AsyncMock(),
++    ):
++        await service.dedup_lead(auth, 1, uuid4(), uuid4())
++
++    assert exc.value.status_code == 404
++    assert "CRM connection not found or not active" in str(exc.value.detail)
++
++
++@pytest.mark.asyncio
++async def test_dedup_lead_not_found_raises_404():
++    """Kills NumberReplacer on _get_lead status_code=404."""
++    conn = _make_connection(status="active")
++    session = _QueueSession([_FakeResult(value=conn), _FakeResult()])  # conn, then None
++    auth = _make_auth()
++    service = CrmSyncService(session)
++
++    with pytest.raises(Exception) as exc, patch(
++        "app.lead_intelligence.crm.service.check_permission",
++        new=AsyncMock(),
++    ):
++        await service.dedup_lead(auth, 1, conn.id, uuid4())
++
++    assert exc.value.status_code == 404
++    assert "Lead not found" in str(exc.value.detail)
++
++
++@pytest.mark.asyncio
++async def test_push_lead_connection_not_found_raises_404():
++    """Kills NumberReplacer on _get_connection status_code=404."""
++    session = _QueueSession([_FakeResult()])
++    auth = _make_auth()
++    service = CrmSyncService(session)
++
++    with pytest.raises(Exception) as exc, patch(
++        "app.lead_intelligence.crm.service.check_permission",
++        new=AsyncMock(),
++    ):
++        await service.push_lead(auth, 1, uuid4(), uuid4())
++
++    assert exc.value.status_code == 404
++    assert "CRM connection not found or not active" in str(exc.value.detail)
++
++
++@pytest.mark.asyncio
++async def test_push_lead_lead_not_found_raises_404():
++    """Kills NumberReplacer on _get_lead status_code=404."""
++    conn = _make_connection(
++        status="active",
++        sync_config={"writeback_enabled": True},
++    )
++    session = _QueueSession([_FakeResult(value=conn), _FakeResult()])
++    auth = _make_auth()
++    service = CrmSyncService(session)
++
++    with pytest.raises(Exception) as exc, patch(
++        "app.lead_intelligence.crm.service.check_permission",
++        new=AsyncMock(),
++    ):
++        await service.push_lead(auth, 1, conn.id, uuid4())
++
++    assert exc.value.status_code == 404
++    assert "Lead not found" in str(exc.value.detail)
+diff --git a/nowing_backend/tests/unit/lead_intelligence/test_crm_service_mutation.py b/nowing_backend/tests/unit/lead_intelligence/test_crm_service_mutation.py
+new file mode 100644
+index 000000000..774769996
+--- /dev/null
++++ b/nowing_backend/tests/unit/lead_intelligence/test_crm_service_mutation.py
+@@ -0,0 +1,327 @@
++"""Mutation-focused tests to raise CRM service mutation score."""
++
++from __future__ import annotations
++
++import types
++from typing import Any
++from unittest.mock import AsyncMock, MagicMock, patch
++from uuid import uuid4
++
++import pytest
++
++from app.db import CrmConnection, Lead
++from app.lead_intelligence.crm.service import CrmConnectionService, CrmSyncService
++
++pytestmark = pytest.mark.unit
++
++
++class _FakeResult:
++    def __init__(self, value: Any = None, rows: list[Any] | None = None) -> None:
++        self._value = value
++        self._rows = rows or []
++
++    def scalar_one_or_none(self) -> Any:
++        return self._value
++
++    def scalar(self) -> Any:
++        return self._value
++
++    def first(self) -> Any:
++        return self._value
++
++    def scalars(self) -> _FakeResult:
++        return self
++
++    def all(self) -> list[Any]:
++        return self._rows
++
++
++class _QueueSession:
++    def __init__(self, queue: list[_FakeResult]) -> None:
++        self.queue = queue
++        self.added: list[Any] = []
++        self.committed = False
++        self.flushed = False
++
++    def add(self, obj: Any) -> None:
++        self.added.append(obj)
++
++    async def execute(self, _stmt: Any) -> _FakeResult:
++        return self.queue.pop(0)
++
++    async def commit(self) -> None:
++        self.committed = True
++
++    async def flush(self) -> None:
++        self.flushed = True
++
++    async def refresh(self, _obj: Any) -> None:
++        pass
++
++
++def _make_auth() -> Any:
++    return types.SimpleNamespace(
++        user=types.SimpleNamespace(id=uuid4()),
++        is_gated=False,
++    )
++
++
++def _make_connection(
++    status: str = "active",
++    sync_config: Any = None,
++    provider: str = "hubspot",
++    credentials_encrypted: str = "ENCRYPTED{}",
++) -> CrmConnection:
++    conn = CrmConnection()
++    conn.id = uuid4()
++    conn.workspace_id = 1
++    conn.client_id = None
++    conn.provider = provider
++    conn.status = status
++    conn.credentials_encrypted = credentials_encrypted
++    conn.sync_config = sync_config
++    return conn
++
++
++def _make_lead() -> Lead:
++    lead = Lead()
++    lead.id = uuid4()
++    lead.workspace_id = 1
++    lead.domain = "acme.com"
++    lead.company_name = "Acme"
++    return lead
++
++
++@pytest.mark.asyncio
++async def test_create_pending_preserves_sync_config():
++    """Kills sync_config or/and mutation."""
++    session = _QueueSession([])
++    auth = _make_auth()
++    service = CrmConnectionService(session)
++
++    with (
++        patch(
++            "app.lead_intelligence.crm.service.build_auth_url",
++            return_value="https://auth.url",
++        ),
++        patch(
++            "app.lead_intelligence.crm.service.check_permission",
++            new=AsyncMock(),
++        ),
++    ):
++        await service.create_pending(auth, 1, "hubspot", None, {"dedup_enabled": True})
++
++    assert len(session.added) == 1
++    conn = session.added[0]
++    assert conn.sync_config == {"dedup_enabled": True}
++
++
++@pytest.mark.asyncio
++async def test_dedup_skips_when_writeback_default_is_false():
++    """Kills ReplaceFalseWithTrue on writeback_enabled default."""
++    conn = _make_connection(sync_config={})
++    lead = _make_lead()
++    session = _QueueSession([])
++    auth = _make_auth()
++    service = CrmSyncService(session)
++
++    service._get_connection = AsyncMock(return_value=conn)
++    service._get_lead = AsyncMock(return_value=lead)
++
++    with patch(
++        "app.lead_intelligence.crm.service.check_permission",
++        new=AsyncMock(),
++    ):
++        result = await service.push_lead(auth, 1, conn.id, lead.id)
++
++    assert result.degraded is False
++    assert result.sync_log is None
++    service._get_lead.assert_not_awaited()
++
++
++@pytest.mark.asyncio
++async def test_sync_lead_score_skips_when_writeback_default_is_false():
++    """Kills ReplaceFalseWithTrue on writeback_enabled default."""
++    conn = _make_connection(sync_config={})
++    session = _QueueSession([])
++    auth = _make_auth()
++    service = CrmSyncService(session)
++
++    service._get_connection = AsyncMock(return_value=conn)
++
++    with patch(
++        "app.lead_intelligence.crm.service.check_permission",
++        new=AsyncMock(),
++    ):
++        result = await service.sync_lead_score(auth, 1, conn.id, uuid4())
++
++    assert result.degraded is False
++    assert result.sync_log is None
++
++
++@pytest.mark.asyncio
++async def test_load_sync_config_parses_json_string():
++    """Kills AddNot on isinstance(sync_config, str)."""
++    service = CrmSyncService(_QueueSession([]))
++    loaded = service._load_sync_config('{"dedup_enabled": true}')
++    assert loaded == {"dedup_enabled": True}
++
++
++@pytest.mark.asyncio
++async def test_push_lead_writes_context_memory_with_commit_false():
++    """Kills ReplaceFalseWithTrue on commit=True."""
++    conn = _make_connection(
++        sync_config={"writeback_enabled": True},
++        credentials_encrypted="ENCRYPTED{}",
++    )
++    lead = _make_lead()
++    session = _QueueSession([])
++    auth = _make_auth()
++    service = CrmSyncService(session)
++
++    service._get_connection = AsyncMock(return_value=conn)
++    service._get_lead = AsyncMock(return_value=lead)
++
++    with (
++        patch(
++            "app.lead_intelligence.crm.service.check_permission",
++            new=AsyncMock(),
++        ),
++        patch(
++            "app.lead_intelligence.crm.service.decrypt_credentials",
++            return_value={"access_token": "token"},
++        ),
++        patch(
++            "app.lead_intelligence.crm.service._provider_client",
++            return_value=MagicMock(create_lead=AsyncMock()),
++        ),
++        patch(
++            "app.lead_intelligence.crm.service.MemoryRepository",
++        ) as mock_repo,
++    ):
++        instance = mock_repo.return_value
++        instance.create_memory = AsyncMock()
++        await service.push_lead(auth, 1, conn.id, lead.id)
++
++    call_kwargs = instance.create_memory.await_args.kwargs
++    assert call_kwargs["commit"] is False
++
++
++@pytest.mark.asyncio
++async def test_dedup_salesforce_provider():
++    """Kills _provider_client comparison mutants for salesforce."""
++    conn = _make_connection(
++        provider="salesforce",
++        sync_config={"dedup_enabled": True},
++    )
++    lead = _make_lead()
++    session = _QueueSession([])
++    auth = _make_auth()
++    service = CrmSyncService(session)
++
++    service._get_connection = AsyncMock(return_value=conn)
++    service._get_lead = AsyncMock(return_value=lead)
++
++    captured: list[Any] = []
++
++    def capture_client(provider: str, credentials: Any):
++        captured.append(provider)
++        return MagicMock(search_contacts=AsyncMock(return_value=MagicMock(contacts=[])))
++
++    with (
++        patch(
++            "app.lead_intelligence.crm.service.check_permission",
++            new=AsyncMock(),
++        ),
++        patch(
++            "app.lead_intelligence.crm.service.decrypt_credentials",
++            return_value={"access_token": "token"},
++        ),
++        patch(
++            "app.lead_intelligence.crm.service._provider_client",
++            side_effect=capture_client,
++        ),
++    ):
++        await service.dedup_lead(auth, 1, conn.id, lead.id)
++
++    assert captured == ["salesforce"]
++
++
++@pytest.mark.asyncio
++async def test_dedup_pipedrive_provider():
++    """Kills _provider_client comparison mutants for pipedrive."""
++    conn = _make_connection(
++        provider="pipedrive",
++        sync_config={"dedup_enabled": True},
++    )
++    lead = _make_lead()
++    session = _QueueSession([])
++    auth = _make_auth()
++    service = CrmSyncService(session)
++
++    service._get_connection = AsyncMock(return_value=conn)
++    service._get_lead = AsyncMock(return_value=lead)
++
++    captured: list[Any] = []
++
++    def capture_client(provider: str, credentials: Any):
++        captured.append(provider)
++        return MagicMock(search_contacts=AsyncMock(return_value=MagicMock(contacts=[])))
++
++    with (
++        patch(
++            "app.lead_intelligence.crm.service.check_permission",
++            new=AsyncMock(),
++        ),
++        patch(
++            "app.lead_intelligence.crm.service.decrypt_credentials",
++            return_value={"access_token": "token"},
++        ),
++        patch(
++            "app.lead_intelligence.crm.service._provider_client",
++            side_effect=capture_client,
++        ),
++    ):
++        await service.dedup_lead(auth, 1, conn.id, lead.id)
++
++    assert captured == ["pipedrive"]
++
++
++@pytest.mark.asyncio
++async def test_dedup_hubspot_provider():
++    """Kills _provider_client comparison mutants for hubspot."""
++    conn = _make_connection(
++        provider="hubspot",
++        sync_config={"dedup_enabled": True},
++    )
++    lead = _make_lead()
++    session = _QueueSession([])
++    auth = _make_auth()
++    service = CrmSyncService(session)
++
++    service._get_connection = AsyncMock(return_value=conn)
++    service._get_lead = AsyncMock(return_value=lead)
++
++    captured: list[Any] = []
++
++    def capture_client(provider: str, credentials: Any):
++        captured.append(provider)
++        return MagicMock(search_contacts=AsyncMock(return_value=MagicMock(contacts=[])))
++
++    with (
++        patch(
++            "app.lead_intelligence.crm.service.check_permission",
++            new=AsyncMock(),
++        ),
++        patch(
++            "app.lead_intelligence.crm.service.decrypt_credentials",
++            return_value={"access_token": "token"},
++        ),
++        patch(
++            "app.lead_intelligence.crm.service._provider_client",
++            side_effect=capture_client,
++        ),
++    ):
++        await service.dedup_lead(auth, 1, conn.id, lead.id)
++
++    assert captured == ["hubspot"]
+diff --git a/nowing_backend/tests/unit/lead_intelligence/test_crm_service_sql.py b/nowing_backend/tests/unit/lead_intelligence/test_crm_service_sql.py
+new file mode 100644
+index 000000000..8750180f4
+--- /dev/null
++++ b/nowing_backend/tests/unit/lead_intelligence/test_crm_service_sql.py
+@@ -0,0 +1,215 @@
++"""Verify generated SQL operators for CrmSyncService.
++
++SQLAlchemy ``==`` / ``!=`` comparison mutants cannot be killed by
++mocked-result tests because the fake session ignores the query.
++These tests compile each statement and assert the operator is correct.
++"""
++
++from __future__ import annotations
++
++import types
++from typing import Any
++from unittest.mock import AsyncMock, patch
++from uuid import uuid4
++
++import pytest
++from fastapi import HTTPException
++
++from app.db import CrmConnection, Lead
++from app.lead_intelligence.crm.service import CrmConnectionService, CrmSyncService
++
++pytestmark = pytest.mark.unit
++
++
++def _make_auth() -> Any:
++    return types.SimpleNamespace(
++        user=types.SimpleNamespace(id=uuid4()),
++        is_gated=False,
++    )
++
++
++def _make_connection() -> CrmConnection:
++    conn = CrmConnection()
++    conn.id = uuid4()
++    conn.workspace_id = 1
++    conn.provider = "hubspot"
++    conn.status = "active"
++    return conn
++
++
++def _make_lead() -> Lead:
++    lead = Lead()
++    lead.id = uuid4()
++    lead.workspace_id = 1
++    return lead
++
++
++class _FakeResult:
++    def __init__(self, value: Any = None, rows: list[Any] | None = None) -> None:
++        self._value = value
++        self._rows = rows or []
++
++    def scalars(self):
++        return self
++
++    def first(self) -> Any:
++        return self._value
++
++    def all(self) -> list[Any]:
++        return self._rows
++
++
++class _RecordingSession:
++    """AsyncSession that records compiled SQL strings."""
++
++    def __init__(self, queue: list[Any] | None = None) -> None:
++        self.statements: list[str] = []
++        self._queue = queue or []
++
++    def add(self, _obj: Any) -> None:
++        pass
++
++    async def execute(self, stmt: Any) -> Any:
++        from sqlalchemy.dialects import postgresql
++
++        compiled = str(
++            stmt.compile(
++                dialect=postgresql.dialect(),
++                compile_kwargs={"literal_binds": True},
++            )
++        )
++        self.statements.append(compiled)
++        if self._queue:
++            return self._queue.pop(0)
++        return _FakeResult(rows=[])
++
++    async def commit(self) -> None:
++        pass
++
++    async def flush(self) -> None:
++        pass
++
++    async def refresh(self, _obj: Any) -> None:
++        pass
++
++
++@pytest.mark.asyncio
++async def test_handle_callback_query_uses_equality():
++    """Kills comparison operator mutants in handle_callback SQL."""
++    session = _RecordingSession()
++    service = CrmConnectionService(session)
++
++    with (
++        pytest.raises(HTTPException),
++        patch(
++            "app.lead_intelligence.crm.service.exchange_code",
++            new=AsyncMock(return_value=("ENCRYPTED{}", "token")),
++        ),
++        patch(
++            "app.lead_intelligence.crm.service.check_permission",
++            new=AsyncMock(),
++        ),
++    ):
++        await service.handle_callback("hubspot", "code", "state")
++
++    assert len(session.statements) == 1
++    sql = session.statements[0]
++    assert "provider = 'hubspot'" in sql
++    assert "status = 'pending'" in sql
++
++
++@pytest.mark.asyncio
++async def test_list_connections_query_uses_equality_and_inequality():
++    """Kills comparison operator mutants in list_connections SQL."""
++    session = _RecordingSession(queue=[_FakeResult(rows=[])])
++    auth = _make_auth()
++    service = CrmConnectionService(session)
++
++    with patch(
++        "app.lead_intelligence.crm.service.check_permission",
++        new=AsyncMock(),
++    ):
++        await service.list_connections(auth, 1)
++
++    assert len(session.statements) == 1
++    sql = session.statements[0]
++    assert "workspace_id = 1" in sql
++    assert "status != 'disconnected'" in sql
++
++
++@pytest.mark.asyncio
++async def test_get_connection_query_uses_equality():
++    """Kills comparison operator mutants in get_connection SQL."""
++    session = _RecordingSession()
++    auth = _make_auth()
++    service = CrmConnectionService(session)
++    conn_id = uuid4()
++
++    with (
++        pytest.raises(HTTPException),
++        patch(
++            "app.lead_intelligence.crm.service.check_permission",
++            new=AsyncMock(),
++        ),
++    ):
++        await service.get_connection(auth, 1, conn_id)
++
++    assert len(session.statements) == 1
++    sql = session.statements[0]
++    assert f"id = '{conn_id}'" in sql
++    assert "workspace_id = 1" in sql
++
++
++@pytest.mark.asyncio
++async def test_sync_get_connection_query_uses_equality():
++    """Kills comparison operator mutants in _get_connection SQL."""
++    conn = _make_connection()
++    conn.id = uuid4()
++    session = _RecordingSession()
++    auth = _make_auth()
++    service = CrmSyncService(session)
++
++    service._get_lead = AsyncMock(return_value=_make_lead())
++
++    with (
++        pytest.raises(HTTPException),
++        patch(
++            "app.lead_intelligence.crm.service.check_permission",
++            new=AsyncMock(),
++        ),
++    ):
++        await service.dedup_lead(auth, 1, conn.id, uuid4())
++
++    # _get_connection is the first execute; _get_lead is mocked.
++    assert len(session.statements) >= 1
++    sql = session.statements[0]
++    assert f"id = '{conn.id}'" in sql
++    assert "workspace_id = 1" in sql
++    assert "status = 'active'" in sql
++
++
++@pytest.mark.asyncio
++async def test_get_lead_query_uses_equality():
++    """Kills comparison operator mutants in _get_lead SQL."""
++    conn = _make_connection()
++    lead_id = uuid4()
++    session = _RecordingSession()
++    auth = _make_auth()
++    service = CrmSyncService(session)
++
++    service._get_connection = AsyncMock(return_value=conn)
++
++    with (
++        pytest.raises(HTTPException),
++        patch(
++            "app.lead_intelligence.crm.service.check_permission",
++            new=AsyncMock(),
++        ),
++    ):
++        await service.dedup_lead(auth, 1, conn.id, lead_id)
++
++    # _get_connection is mocked; _get_lead is the first real execute.
++    assert len(session.statements) == 1
++    sql = session.statements[0]
++    assert f"id = '{lead_id}'" in sql
++    assert "workspace_id = 1" in sql
+diff --git a/nowing_mcp/mcp_server/features/crm/__init__.py b/nowing_mcp/mcp_server/features/crm/__init__.py
+new file mode 100644
+index 000000000..715661b2f
+--- /dev/null
++++ b/nowing_mcp/mcp_server/features/crm/__init__.py
+@@ -0,0 +1,14 @@
++"""CRM tools for MCP clients (Story 21.5)."""
++
++from __future__ import annotations
++
++from mcp.server.fastmcp import FastMCP
++
++from ...core.client import NowingClient
++from ...core.workspace_context import WorkspaceContext
++from . import tools
++
++
++def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> None:
++    """Register CRM tools on the server."""
++    tools.register(mcp, client, context)
+diff --git a/nowing_mcp/mcp_server/features/crm/tools.py b/nowing_mcp/mcp_server/features/crm/tools.py
+new file mode 100644
+index 000000000..6b1a46c66
+--- /dev/null
++++ b/nowing_mcp/mcp_server/features/crm/tools.py
+@@ -0,0 +1,153 @@
++"""MCP tools for CRM integration (Story 21.5)."""
++
++from __future__ import annotations
++
++from typing import Annotated
++
++from mcp.server.fastmcp import FastMCP
++from pydantic import Field
++
++from ...core.client import NowingClient
++from ...core.workspace_context import WorkspaceContext, WorkspaceParam
++
++CRM_READ = {
++    "readOnlyHint": True,
++    "destructiveHint": False,
++    "idempotentHint": True,
++    "openWorldHint": False,
++}
++
++CRM_WRITE = {
++    "readOnlyHint": False,
++    "destructiveHint": False,
++    "idempotentHint": False,
++    "openWorldHint": False,
++}
++
++
++def _render_list(payload: list[dict]) -> str:
++    if not payload:
++        return "No CRM connections."
++    lines = ["| Provider | Status | Last sync |", "|---|---|---|"]
++    for item in payload:
++        lines.append(
++            f"| {item.get('provider', '—')} | {item.get('status', '—')} | "
++            f"{item.get('last_sync_at') or '—'} |"
++        )
++    return "\n".join(lines)
++
++
++def _render_logs(payload: list[dict]) -> str:
++    if not payload:
++        return "No sync logs."
++    lines = ["| Direction | Entity | Status | Synced |", "|---|---|---|---|"]
++    for item in payload:
++        lines.append(
++            f"| {item.get('direction')} | {item.get('entity_type')} | "
++            f"{item.get('status')} | {item.get('synced_at') or '—'} |"
++        )
++    return "\n".join(lines)
++
++
++def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> None:
++    """Register CRM tools."""
++
++    @mcp.tool(
++        name="nowing_connect_crm",
++        title="Start connecting a CRM provider",
++        annotations=CRM_WRITE,
++        structured_output=False,
++    )
++    async def connect_crm(
++        provider: Annotated[
++            str,
++            Field(description="CRM provider: salesforce, hubspot, or pipedrive."),
++        ],
++        workspace: WorkspaceParam = None,
++    ) -> str:
++        """Start OAuth authorization for a CRM provider and return the auth URL."""
++        ws = await context.resolve(workspace)
++        result = await client.request(
++            "POST",
++            f"/workspaces/{ws.id}/crm/{provider}/connect",
++            json={"provider": provider},
++        )
++        return f"Open this URL in a browser to authorize: {result['auth_url']}"
++
++    @mcp.tool(
++        name="nowing_list_crm_connections",
++        title="List active CRM connections",
++        annotations=CRM_READ,
++        structured_output=False,
++    )
++    async def list_crm_connections(
++        workspace: WorkspaceParam = None,
++    ) -> str:
++        """List active CRM connections for the workspace."""
++        ws = await context.resolve(workspace)
++        result = await client.request(
++            "GET",
++            f"/workspaces/{ws.id}/crm/connections",
++        )
++        return _render_list(result)
++
++    @mcp.tool(
++        name="nowing_sync_crm",
++        title="Trigger a CRM sync",
++        annotations=CRM_WRITE,
++        structured_output=False,
++    )
++    async def sync_crm(
++        connection_id: Annotated[
++            str,
++            Field(description="CRM connection UUID."),
++        ],
++        entity_type: Annotated[
++            str,
++            Field(description="Entity type: lead or lead_score."),
++        ] = "lead",
++        entity_ids: Annotated[
++            list[str] | None,
++            Field(description="List of entity UUIDs to sync."),
++        ] = None,
++        workspace: WorkspaceParam = None,
++    ) -> str:
++        """Trigger a one-way sync for the given entities."""
++        ws = await context.resolve(workspace)
++        payload = {
++            "entity_type": entity_type,
++            "direction": "nowing_to_crm",
++            "entity_ids": entity_ids,
++        }
++        result = await client.request(
++            "POST",
++            f"/workspaces/{ws.id}/crm/connections/{connection_id}/sync",
++            json=payload,
++        )
++        items = result.get("results") or []
++        degraded = any(i.get("degraded") for i in items)
++        if degraded:
++            reasons = [i.get("degradation_reasons") for i in items if i.get("degraded")]
++            return f"Sync degraded: {reasons}"
++        return f"Sync initiated for {len(items)} entity(s)."
++
++    @mcp.tool(
++        name="nowing_list_crm_sync_logs",
++        title="List CRM sync logs",
++        annotations=CRM_READ,
++        structured_output=False,
++    )
++    async def list_crm_sync_logs(
++        connection_id: Annotated[
++            str,
++            Field(description="CRM connection UUID."),
++        ],
++        workspace: WorkspaceParam = None,
++    ) -> str:
++        """List recent sync logs for a CRM connection."""
++        ws = await context.resolve(workspace)
++        result = await client.request(
++            "GET",
++            f"/workspaces/{ws.id}/crm/connections/{connection_id}/sync-logs",
++        )
++        return _render_logs(result)
+diff --git a/nowing_mcp/mcp_server/selfcheck.py b/nowing_mcp/mcp_server/selfcheck.py
+index 6451243d8..0b670aa80 100644
+--- a/nowing_mcp/mcp_server/selfcheck.py
++++ b/nowing_mcp/mcp_server/selfcheck.py
+@@ -83,6 +83,10 @@ EXPECTED_TOOLS = {
+     "nowing_list_lead_scores",
+     "nowing_detect_signal",
+     "nowing_list_signals",
++    "nowing_connect_crm",
++    "nowing_list_crm_connections",
++    "nowing_sync_crm",
++    "nowing_list_crm_sync_logs",
+ }
+ 
+ _MIN_DESCRIPTION_CHARS = 40
+diff --git a/nowing_mcp/mcp_server/server.py b/nowing_mcp/mcp_server/server.py
+index 395c9d328..aa31a6a1e 100644
+--- a/nowing_mcp/mcp_server/server.py
++++ b/nowing_mcp/mcp_server/server.py
+@@ -20,6 +20,7 @@ from .core.workspace_context import WorkspaceContext
+ from .features import (
+     automations,
+     chat,
++    crm,
+     image_generation,
+     knowledge_base,
+     lead_intelligence,
+@@ -152,6 +153,7 @@ def build_server(settings: Settings) -> tuple[WorkspaceAwareFastMCP, NowingClien
+     workspaces.register(mcp, context)
+     scrapers.register(mcp, client, context)
+     lead_scoring.register(mcp, client, context)
++    crm.register(mcp, client, context)
+     lead_intelligence.register(mcp, client, context)
+     knowledge_base.register(mcp, client, context)
+     memory.register(mcp, client, context)

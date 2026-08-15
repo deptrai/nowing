@@ -40,48 +40,24 @@ test.describe("Story 21.16: Origami Split-View Canvas & Workspace Modernization"
 		});
 	});
 
-	test("should render 2-panel split canvas with resizer, chat co-pilot and data matrix", async ({
+	test("should redirect /leads to /new-chat?mode=leads", async ({ page }) => {
+		await page.goto("/dashboard/1/leads");
+		await expect(page).toHaveURL(/\/dashboard\/1\/new-chat\?mode=leads/);
+	});
+
+	test("should render 2-panel split canvas with resizer and data matrix on new-chat", async ({
 		page,
 	}) => {
-		// TDD Green phase verification
-		await page.goto("/dashboard/1/leads");
+		await page.goto("/dashboard/1/new-chat");
 
 		// AC1: Split canvas panels exist
 		await expect(page.locator("[data-testid='origami-split-canvas']")).toBeVisible();
-		await expect(page.locator("[data-testid='origami-chat-copilot']")).toBeVisible();
 		await expect(page.locator("[data-testid='origami-lead-matrix']")).toBeVisible();
 		await expect(page.locator("[data-testid='split-canvas-resizer']")).toBeVisible();
 	});
 
-	test("should toggle 3-Mode switcher (Leads, Research, Scrapers) smoothly", async ({
-		page,
-	}) => {
-		// TDD Green phase verification
-		await page.goto("/dashboard/1/leads");
-
-		const switcher = page.locator("[data-testid='mode-switcher']");
-		await expect(switcher).toBeVisible();
-
-		// Click Research mode
-		await page.click("[data-testid='mode-tab-research']");
-		await expect(page.locator("[data-testid='mode-tab-research']")).toHaveAttribute(
-			"data-state",
-			"active"
-		);
-
-		// Click Scrapers mode
-		await page.click("[data-testid='mode-tab-scrapers']");
-		await expect(page.locator("[data-testid='mode-tab-scrapers']")).toHaveAttribute(
-			"data-state",
-			"active"
-		);
-	});
-
-	test("should show floating bulk action bar when >= 2 leads are selected", async ({
-		page,
-	}) => {
-		// TDD Green phase verification
-		await page.goto("/dashboard/1/leads");
+	test("should show floating bulk action bar when >= 2 leads are selected", async ({ page }) => {
+		await page.goto("/dashboard/1/new-chat");
 
 		const checkboxes = page.locator("input[type='checkbox'][data-lead-checkbox]");
 		await checkboxes.nth(0).check();
@@ -89,19 +65,18 @@ test.describe("Story 21.16: Origami Split-View Canvas & Workspace Modernization"
 
 		await checkboxes.nth(1).check();
 		await expect(page.locator("[data-testid='floating-bulk-action-bar']")).toBeVisible();
-		await expect(
-			page.locator("[data-testid='floating-bulk-action-bar']")
-		).toContainText("Đã chọn 2 leads");
+		await expect(page.locator("[data-testid='floating-bulk-action-bar']")).toContainText(
+			"Đã chọn 2 leads"
+		);
 	});
 
 	test("should open flyout detail drawer on row click", async ({ page }) => {
-		// TDD Green phase verification
-		await page.goto("/dashboard/1/leads");
+		await page.goto("/dashboard/1/new-chat");
 
 		await page.click("[data-testid='lead-row-lead-1']");
 		await expect(page.locator("[data-testid='lead-detail-flyout-drawer']")).toBeVisible();
-		await expect(
-			page.locator("[data-testid='lead-detail-flyout-drawer']")
-		).toContainText("Nguyễn Văn Hùng");
+		await expect(page.locator("[data-testid='lead-detail-flyout-drawer']")).toContainText(
+			"Nguyễn Văn Hùng"
+		);
 	});
 });
