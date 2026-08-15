@@ -186,6 +186,7 @@ celery_app = Celery(
         "app.tasks.celery_tasks.rss_tasks",
         "app.tasks.celery_tasks.obsidian_tasks",
         "app.tasks.celery_tasks.schedule_checker_task",
+        "app.tasks.celery_tasks.social_xactions_ingest",
         "app.tasks.celery_tasks.document_reindex_tasks",
         "app.tasks.celery_tasks.stale_notification_cleanup_task",
         "app.tasks.celery_tasks.stripe_reconciliation_task",
@@ -258,6 +259,7 @@ celery_app.conf.update(
         "index_composio_connector": {"queue": CONNECTORS_QUEUE},
         "index_obsidian_attachment": {"queue": CONNECTORS_QUEUE},
         "index_rss_feeds": {"queue": CONNECTORS_QUEUE},
+        "ingest_social_target": {"queue": CONNECTORS_QUEUE},
         # Everything else (document processing, podcasts, reindexing,
         # schedule checker, cleanup) stays on the default fast queue.
         "gateway.reconcile_inbox": {"queue": f"{CELERY_TASK_DEFAULT_QUEUE}.gateway"},
@@ -283,6 +285,13 @@ celery_app.conf.beat_schedule = {
         "options": {
             "expires": 30,  # Task expires after 30 seconds if not picked up
         },
+    },
+    # Check social targets (Facebook groups, Twitter keywords) and trigger
+    # XActions ingest tasks for any that are due.
+    "check-social-monitored-targets": {
+        "task": "check_social_monitored_targets",
+        "schedule": crontab(minute="*"),
+        "options": {"expires": 50},
     },
     # Cleanup stale connector indexing notifications every 5 minutes
     # This detects tasks that crashed or timed out without proper cleanup

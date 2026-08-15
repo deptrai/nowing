@@ -245,11 +245,15 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 											<TrendingUp className="w-4 h-4 text-emerald-400" />
 											<span>Tín Hiệu Tăng Trưởng Tuyển Dụng (Hiring Velocity)</span>
 										</div>
-										{data.hiring_velocity_pct && (
-											<span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-												+{data.hiring_velocity_pct}% (30 ngày qua)
-											</span>
-										)}
+										{data.hiring_velocity_pct !== null &&
+											data.hiring_velocity_pct !== undefined && (
+												<span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+													{data.hiring_velocity_pct > 0
+														? `+${data.hiring_velocity_pct}`
+														: data.hiring_velocity_pct}
+													% (30 ngày qua)
+												</span>
+											)}
 									</div>
 
 									<p className="text-xs text-zinc-300">

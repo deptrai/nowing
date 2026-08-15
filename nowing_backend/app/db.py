@@ -2107,6 +2107,18 @@ class Workspace(BaseModel, TimestampMixin):
         order_by="CrmSyncLog.synced_at.desc()",
         cascade="all, delete-orphan",
     )
+    social_monitored_targets = relationship(
+        "SocialMonitoredTarget",
+        back_populates="workspace",
+        order_by="SocialMonitoredTarget.id",
+        cascade="all, delete-orphan",
+    )
+    social_posts = relationship(
+        "SocialPost",
+        back_populates="workspace",
+        order_by="SocialPost.id",
+        cascade="all, delete-orphan",
+    )
 
 
 class WorkspaceMcpToolSetting(BaseModel, TimestampMixin):
@@ -3883,9 +3895,9 @@ async def create_db_and_tables():
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS citext"))
+        # Alembic manages table migrations in production; for smoke/integration
+        # paths that rely on auto-create, materialise tables here.
         await conn.run_sync(Base.metadata.create_all)
-        # create_all never creates zero_publication (a migration-only
-        # artifact), and without it zero-cache crash-loops. Idempotent.
         from app.zero_publication import ensure_publication
 
         await conn.run_sync(ensure_publication)
@@ -4870,9 +4882,15 @@ class SocialMonitoredTarget(Base, TimestampMixin):
         UniqueConstraint("platform", "target_id", name="uq_social_target"),
         Index("idx_social_targets_platform", "platform"),
         Index("idx_social_targets_active", "is_active"),
+        Index("idx_social_targets_workspace_id", "workspace_id"),
     )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     platform = Column(String(50), nullable=False)  # 'facebook_group', 'facebook_page', 'twitter_keyword', 'twitter_user'
     target_id = Column(String(255), nullable=False)
     target_name = Column(Text, nullable=False)
@@ -4880,12 +4898,15 @@ class SocialMonitoredTarget(Base, TimestampMixin):
     category = Column(String(50), nullable=False, default="general", server_default=text("'general'"))
     is_active = Column(Boolean, nullable=False, default=True, server_default="true")
     realtime_stream = Column(Boolean, nullable=False, default=False, server_default="false")
+    # scrape_interval_minutes is the canonical scrape/poll cadence. The legacy
+    # poll_interval_seconds concept maps to scrape_interval_minutes * 60.
     scrape_interval_minutes = Column(Integer, nullable=False, default=15, server_default="15")
-    poll_interval_seconds = Column(Integer, nullable=False, default=900, server_default="900")
     status = Column(String(50), nullable=False, default="active", server_default=text("'active'"))
     last_polled_at = Column(TIMESTAMP(timezone=True), nullable=True)
     last_scraped_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    proxy_url = Column(Text, nullable=True)
 
+    workspace = relationship("Workspace", back_populates="social_monitored_targets")
     posts = relationship(
         "SocialPost",
         back_populates="target",
@@ -4904,13 +4925,26 @@ class SocialPost(Base, TimestampMixin):
         Index("idx_social_posts_published", "published_at"),
         Index("idx_social_posts_intent", "intent_tag"),
         Index("idx_social_posts_gin_entities", "raw_entities", postgresql_using="gin"),
+        Index(
+            "idx_social_posts_embedding_hnsw",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+            postgresql_where=text("embedding IS NOT NULL"),
+        ),
+        Index("idx_social_posts_workspace_id", "workspace_id"),
     )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     target_id = Column(
         BigInteger,
         ForeignKey("social_monitored_targets.id", ondelete="CASCADE"),
-        nullable=True,
+        nullable=False,
         index=True,
     )
     platform = Column(String(50), nullable=False)  # 'facebook', 'twitter'
@@ -4931,7 +4965,16 @@ class SocialPost(Base, TimestampMixin):
     media_urls = Column(ARRAY(Text), nullable=True)
     embedding = Column(Vector(config.embedding_model_instance.dimension), nullable=True)
     published_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+        index=True,
+    )
 
+    workspace = relationship("Workspace", back_populates="social_posts")
     target = relationship("SocialMonitoredTarget", back_populates="posts")
 
 

@@ -156,9 +156,7 @@ class CompanyGraphRead(BaseModel):
             return v
         if not isinstance(v, float | int) or not math.isfinite(v):
             raise ValueError("Hiring velocity must be a finite number")
-        if v < 0:
-            raise ValueError("Hiring velocity must be non-negative")
-        return v
+        return float(v)
 
     @field_validator("active_jobs_count", mode="before")
     @classmethod

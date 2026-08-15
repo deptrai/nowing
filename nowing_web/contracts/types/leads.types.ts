@@ -110,8 +110,8 @@ export const companyGraphSchema = z.object({
 	hiring_signals: z.array(hiringSignalSchema).default([]),
 	hiring_velocity_pct: z
 		.number()
-		.refine((v) => Number.isFinite(v) && v >= 0, {
-			message: "Hiring velocity must be a finite non-negative number",
+		.refine((v) => Number.isFinite(v), {
+			message: "Hiring velocity must be a finite number",
 		})
 		.nullable()
 		.optional(),

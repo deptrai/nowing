@@ -527,3 +527,139 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - ~~Canonical churn: upsert_canonical_entity unconditionally bumps version and records merge history even when the entity is unchanged; pre-existing behavior affecting all connectors, not RSS-specific.~~ **RESOLVED (2026-08-13):** `upsert_canonical_entity` now detects content unchanged (title, canonical_data, search_text, conflict_flags, confidence_score) + source moved; version bump, merge history and embedding backfill are skipped when nothing changed, while `last_seen_at`/`source_count` still refresh. Verified by `tests/unit/services/news/test_rss_indexer_units.py` and `tests/integration/news/test_rss_pruning.py`.
 - Epoch sentinel: `_MISSING_PUB_DATE` (1970-01-01) surfaces in UI when pubDate is missing; deliberate deterministic design to avoid re-index churn, accepted at review. **RESOLVED (2026-08-13):** sentinel stays in canonical data/metadata (anti-churn); RSS source markdown now renders "Unknown" via `_format_pub_date` instead of the epoch value. No frontend renders `metadata.pubDate` directly (verified by grep).
 - ~~Connector deletion orphans canonical entities: deleting a connector does not clean up its canonical entities; pre-existing general behavior for all connector types.~~ **RESOLVED (2026-08-13):** delete connector route collects document links during the batch deletion loop and then removes canonical sources by record_ids + sweeps orphaned `news_article` entities. Verified by `tests/integration/routes/test_search_source_connectors_routes.py`.
+
+## Deferred from: code review of 21-8-social-ingress-via-xactions-integration (2026-08-15)
+
+- **Finding:** Redundant status fields in SocialMonitoredTarget — Table has both is_active (boolean) and status (string with default 'active') fields. These are redundant and can become inconsistent. No enum constraint limits valid status values. (app/db.py:4881-4885)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** Table has both is_active (boolean) and status (string with default 'active') fields. These are redundant and can become inconsistent. No enum constraint limits valid status values. Out-of-scope or future improvement for Story 21.8.
+
+- **Finding:** Confusing duplicate timing fields in SocialMonitoredTarget — Three timing-related fields: realtime_stream (bool), scrape_interval_minutes (default 15), and poll_interval_seconds (default 900). The last two are the same value in different units, creating confusion. (app/db.py:4882-4884)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** Three timing-related fields: realtime_stream (bool), scrape_interval_minutes (default 15), and poll_interval_seconds (default 900). The last two are the same value in different units, creating confusion. Out-of-scope or future improvement for Story 21.8.
+
+- **Finding:** Redundant timestamp fields in SocialMonitoredTarget — Both last_polled_at and last_scraped_at exist with no clear distinction in purpose. Could lead to inconsistent tracking. (app/db.py:4886-4887)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** Both last_polled_at and last_scraped_at exist with no clear distinction in purpose. Could lead to inconsistent tracking. Out-of-scope or future improvement for Story 21.8.
+
+- **Finding:** SocialPost.target_id is nullable but has CASCADE relationship — target_id is nullable with a CASCADE foreign key. If a target is deleted, posts with NULL target_id would remain, but posts with a target_id would be deleted. This creates inconsistent behavior. (app/db.py:4910-4915)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** target_id is nullable with a CASCADE foreign key. If a target is deleted, posts with NULL target_id would remain, but posts with a target_id would be deleted. This creates inconsistent behavior. Out-of-scope or future improvement for Story 21.8.
+
+- **Finding:** No validation of account_id in proxy binding — The bind_account_proxy method accepts any account_id string without validation. No checks for format, length, or allowed characters. (app/proprietary/platforms/xactions/adapter.py:82-84)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** The bind_account_proxy method accepts any account_id string without validation. No checks for format, length, or allowed characters. Out-of-scope or future improvement for Story 21.8.
+
+- **Finding:** ReDoS timeout check placement allows partial execution — The timeout check is inside the loop, so if the first candidate is slow, it breaks. But if the regex itself is slow on the normalized string, it may still timeout after the loop. The timeout doesn't protect the normalization step itself. (app/proprietary/platforms/xactions/phone_extractor.py:118-121)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** The timeout check is inside the loop, so if the first candidate is slow, it breaks. But if the regex itself is slow on the normalized string, it may still timeout after the loop. The timeout doesn't protect the normalization step itself. Out-of-scope or future improvement for Story 21.8.
+
+- **Finding:** Phone regex allows invalid Vietnamese prefixes — The regex allows 9\d which matches any digit 0-9 in the third position. Vietnamese mobile prefixes are more specific (e.g., 90, 91, 92, etc., not 93, 94, 95, 96, 97, 98, 99). (app/proprietary/platforms/xactions/phone_extractor.py:44-46)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** The regex allows 9\d which matches any digit 0-9 in the third position. Vietnamese mobile prefixes are more specific (e.g., 90, 91, 92, etc., not 93, 94, 95, 96, 97, 98, 99). Out-of-scope or future improvement for Story 21.8.
+
+- **Finding:** Token pattern may miss valid obfuscated phones — The token pattern requires 7-25 characters. A valid obfuscated phone like 'o9.123.456' (10 chars) would match, but edge cases might not. The pattern is complex and may have blind spots. (app/proprietary/platforms/xactions/phone_extractor.py:96)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** The token pattern requires 7-25 characters. A valid obfuscated phone like 'o9.123.456' (10 chars) would match, but edge cases might not. The pattern is complex and may have blind spots. Out-of-scope or future improvement for Story 21.8.
+
+- **Finding:** Intent classification has keyword overlap — Keywords are checked sequentially without weighting. A post containing 'tìm việc để bán' (find job to sell) would be classified as 'hiring' (first match) rather than the more nuanced intent. No mechanism for mixed intents. (app/proprietary/platforms/xactions/phone_extractor.py:148-193)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** Keywords are checked sequentially without weighting. A post containing 'tìm việc để bán' (find job to sell) would be classified as 'hiring' (first match) rather than the more nuanced intent. No mechanism for mixed intents. Out-of-scope or future improvement for Story 21.8.
+
+- **Finding:** Location extraction is hardcoded and incomplete — The location list is hardcoded with Vietnamese provinces/districts. It's incomplete, unmaintainable, and doesn't handle typos or abbreviations. (app/proprietary/platforms/xactions/phone_extractor.py:60-73)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** The location list is hardcoded with Vietnamese provinces/districts. It's incomplete, unmaintainable, and doesn't handle typos or abbreviations. Out-of-scope or future improvement for Story 21.8.
+
+- **Finding:** Email regex is overly simplistic — The email regex doesn't validate TLDs properly and could match invalid emails like user@com or user@.com. (app/proprietary/platforms/xactions/phone_extractor.py:49-51)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** The email regex doesn't validate TLDs properly and could match invalid emails like user@com or user@.com. Out-of-scope or future improvement for Story 21.8.
+
+- **Finding:** No dead letter queue for failed messages — Failed messages are logged but not moved to a dead letter queue. They're ACKed even on failure, so they're lost forever. (app/tasks/social_stream_worker.py:186-192)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** Failed messages are logged but not moved to a dead letter queue. They're ACKed even on failure, so they're lost forever. Out-of-scope or future improvement for Story 21.8.
+
+- **Finding:** No rate limiting on stream consumer — The consumer has no rate limiting. If the stream has millions of messages, it could overwhelm the database. (app/tasks/social_stream_worker.py:142-197)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** The consumer has no rate limiting. If the stream has millions of messages, it could overwhelm the database. Out-of-scope or future improvement for Story 21.8.
+
+- **Finding:** No pagination in search results — The query uses .limit(payload.limit) but has no offset/cursor. Users can only get the first N results, not page through them. (app/capabilities/social/search_leads/executor.py:59)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** The query uses .limit(payload.limit) but has no offset/cursor. Users can only get the first N results, not page through them. Out-of-scope or future improvement for Story 21.8.
+
+- **Finding:** Test mocks don't validate SQL queries — The test mocks the database session but doesn't verify the SQL query is correct. It could pass even if the query has bugs. (tests/unit/capabilities/test_social_search_leads.py)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** The test mocks the database session but doesn't verify the SQL query is correct. It could pass even if the query has bugs. Out-of-scope or future improvement for Story 21.8.
+
+- **Finding:** ReDoS test has generous timeout — The test asserts duration < 0.10s (100ms) but the spec requires 50ms. This gives 2x headroom and could miss regressions. (tests/unit/platforms/test_phone_regex_redos_safety.py)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** The test asserts duration < 0.10s (100ms) but the spec requires 50ms. This gives 2x headroom and could miss regressions. Out-of-scope or future improvement for Story 21.8.
+
+- **Finding:** Integration test uses mock database — Despite being marked as an integration test, it mocks the database session. This doesn't test actual database persistence. (tests/integration/platforms/test_social_redis_stream.py)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** Despite being marked as an integration test, it mocks the database session. This doesn't test actual database persistence. Out-of-scope or future improvement for Story 21.8.
+
+- **Finding:** No composite index on frequently queried columns — While there are indexes on platform, external_post_id, published_at, intent_tag, and raw_entities, there's no composite index on (platform, intent_tag, published_at) which the search capability likely needs. (app/db.py:4901-4907)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** While there are indexes on platform, external_post_id, published_at, intent_tag, and raw_entities, there's no composite index on (platform, intent_tag, published_at) which the search capability likely needs. Out-of-scope or future improvement for Story 21.8.
+
+- **Finding:** XActions subprocess timeout hardcoded at 30s — Timeout hardcoded at 30s. No configurable timeout for different operations (scraping vs simple queries). Could be too short for large Facebook group scrapes. (app/proprietary/platforms/xactions/adapter.py:126)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** Timeout hardcoded at 30s. No configurable timeout for different operations (scraping vs simple queries). Could be too short for large Facebook group scrapes. Out-of-scope or future improvement for Story 21.8.
+
+- **Finding:** Timeout breaks loop mid-processing without indication — Timeout breaks loop mid-processing, returning partial results. No indication to caller that results are incomplete due to timeout. Could miss valid phone numbers. (app/proprietary/platforms/xactions/phone_extractor.py:118-121)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** Timeout breaks loop mid-processing, returning partial results. No indication to caller that results are incomplete due to timeout. Could miss valid phone numbers. Out-of-scope or future improvement for Story 21.8.
+
+- **Finding:** Province regex may exceed engine limits — Regex built from 60+ province names. Sorted by length (reverse) to match longer names first, but still could have false positives on partial matches. No validation that regex doesn't exceed engine limits. (app/proprietary/platforms/xactions/phone_extractor.py:196-199)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** Regex built from 60+ province names. Sorted by length (reverse) to match longer names first, but still could have false positives on partial matches. No validation that regex doesn't exceed engine limits. Out-of-scope or future improvement for Story 21.8.
+
+- **Finding:** No CHECK constraint for platform values in SocialMonitoredTarget — No validation that platform values are from allowed set ('facebook_group', 'facebook_page', 'twitter_keyword', 'twitter_user'). Could insert invalid platform values. (app/db.py:4876)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** No validation that platform values are from allowed set ('facebook_group', 'facebook_page', 'twitter_keyword', 'twitter_user'). Could insert invalid platform values. Out-of-scope or future improvement for Story 21.8.
+
+- **Finding:** No CHECK constraint for interval values in SocialMonitoredTarget — No CHECK constraint to prevent negative values or unreasonably small intervals (e.g., 0 or 1 second). Could cause excessive polling and rate limiting issues. (app/db.py:4883-4884)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** No CHECK constraint to prevent negative values or unreasonably small intervals (e.g., 0 or 1 second). Could cause excessive polling and rate limiting issues. Out-of-scope or future improvement for Story 21.8.
+
+- **Finding:** No CHECK constraint for platform values in SocialPost — No CHECK constraint or enum to restrict platform to 'facebook' or 'twitter'. Could insert invalid platform values. (app/db.py:4916)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** No CHECK constraint or enum to restrict platform to 'facebook' or 'twitter'. Could insert invalid platform values. Out-of-scope or future improvement for Story 21.8.
+
+- **Finding:** No CHECK constraint for intent_tag values in SocialPost — No CHECK constraint or enum to restrict intent_tag to documented values. Could insert invalid intent tags. (app/db.py:4923)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** No CHECK constraint or enum to restrict intent_tag to documented values. Could insert invalid intent tags. Out-of-scope or future improvement for Story 21.8.
+
+- **Finding:** No validation for raw_entities structure in SocialPost — No validation that raw_entities structure matches expected schema (phones, emails, prices, locations arrays). Could insert malformed JSON. (app/db.py:4928-4930)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** No validation that raw_entities structure matches expected schema (phones, emails, prices, locations arrays). Could insert malformed JSON. Out-of-scope or future improvement for Story 21.8.
+
+- **Finding:** No validation for embedding dimension in SocialPost — No validation that embedding dimension matches configured model. If model changes, existing embeddings could become invalid or cause query errors. (app/db.py:4932)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** No validation that embedding dimension matches configured model. If model changes, existing embeddings could become invalid or cause query errors. Out-of-scope or future improvement for Story 21.8.
+
+- **Finding:** CASCADE delete causes data loss if target deleted — CASCADE delete means if target is deleted, all associated posts are deleted. Could cause data loss if target is accidentally deleted. No soft delete or archival mechanism. (app/db.py:4910-4915)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** CASCADE delete means if target is deleted, all associated posts are deleted. Could cause data loss if target is accidentally deleted. No soft delete or archival mechanism. Out-of-scope or future improvement for Story 21.8.
+
+## Deferred from: re-review of 21-8-social-ingress-via-xactions-integration (2026-08-15)
+
+- **Finding:** Email alert channel is still `pass` in `app/alerts/engine/notify.py:146-152` — `AlertEngine` is supposed to fire Telegram/Email, but the email branch is not implemented. (app/alerts/engine/notify.py:146-152)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** Email alert channel is pre-existing/out-of-scope for Story 21.8; Telegram is the primary channel.
+
+- **Finding:** First-run alert rules suppress notification — existing alert-engine behavior stores a snapshot on the first run and does not notify. (app/alerts/engine/execute.py:113, 158-189, 210-225)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** Pre-existing alert-engine behavior, not introduced by 21.8.
+
+- **Finding:** `test_social_redis_stream.py` mocks DB and never touches Redis/Postgres — the integration test does not exercise real persistence. (tests/integration/platforms/test_social_redis_stream.py)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** Known integration-test gap; deferred to a follow-up integration-test pass.
+
+- **Finding:** No test for social post → alert-engine notification path — no test creates an `AlertRule` and asserts notification firing. (app/tasks/social_stream_worker.py:254-293)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** Pre-existing test gap, out-of-scope for the current review pass.
+
+- **Finding:** ReDoS timeout not enforced on initial `normalize_vietnamese_text` regex calls — the 50ms timer only checks inside the candidate loop, not the initial normalization regex. (app/proprietary/platforms/xactions/phone_extractor.py:76-145)
+  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Reason / when to revisit:** Already a deferred quality gap; requires a broader per-stage timeout design.

@@ -2,7 +2,7 @@
 
 import { Check, Phone } from "lucide-react";
 import type React from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { cn, copyToClipboard } from "@/lib/utils";
 
@@ -18,6 +18,15 @@ export const PhoneCopyPill: React.FC<PhoneCopyPillProps> = ({
 	showIcon = true,
 }) => {
 	const [copied, setCopied] = useState(false);
+	const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	useEffect(() => {
+		return () => {
+			if (timerRef.current) {
+				clearTimeout(timerRef.current);
+			}
+		};
+	}, []);
 
 	// Normalize phone for clipboard (digits and + only)
 	const safePhone = phone || "";
@@ -36,17 +45,14 @@ export const PhoneCopyPill: React.FC<PhoneCopyPillProps> = ({
 				duration: 1500,
 			});
 
-			setTimeout(() => {
+			if (timerRef.current) {
+				clearTimeout(timerRef.current);
+			}
+			timerRef.current = setTimeout(() => {
 				setCopied(false);
 			}, 1500);
 		} else {
 			toast.error("Không thể copy số điện thoại");
-		}
-	};
-
-	const handleKeyDown = (e: React.KeyboardEvent) => {
-		if (e.key === "Enter" || e.key === " ") {
-			handleCopy(e);
 		}
 	};
 
@@ -55,7 +61,6 @@ export const PhoneCopyPill: React.FC<PhoneCopyPillProps> = ({
 			type="button"
 			aria-label={`Copy phone number ${safePhone}`}
 			onClick={handleCopy}
-			onKeyDown={handleKeyDown}
 			className={cn(
 				"inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-medium transition-all duration-200 cursor-pointer select-none focus:outline-none focus:ring-2 focus:ring-emerald-500/50",
 				copied

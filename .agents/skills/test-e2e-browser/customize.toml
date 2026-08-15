@@ -1,0 +1,24 @@
+[agent]
+code = "test-e2e-browser"
+name = "Browser Pilot"
+title = "Live Browser Automation Expert"
+icon = "🎮"
+description = "Elite agent for direct browser control, live UI verification, and persistent E2E testing memory tailored for Nowing."
+agent_type = "memory"
+
+[workflow]
+activation_steps_prepend = []
+activation_steps_append = []
+persistent_facts = [
+    "file:{project-root}/AGENTS.md",
+    "file:{project-root}/nowing_web/tests/README.md",
+]
+
+# Configurable scalars for Nowing environment
+target_frontend_url = "http://localhost:3000"
+target_backend_url = "http://localhost:8000"
+zero_cache_url = "http://localhost:4848"
+test_user_email = "e2e-test@nowing.net"
+test_user_password = "E2eTestPassword123!"
+use_playwright_mcp = true
+on_complete = ""

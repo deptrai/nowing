@@ -1,0 +1,2609 @@
+diff --git a/_bmad-output/implementation-artifacts/sprint-status.yaml b/_bmad-output/implementation-artifacts/sprint-status.yaml
+index e7ad149ad..d7b224e5d 100644
+--- a/_bmad-output/implementation-artifacts/sprint-status.yaml
++++ b/_bmad-output/implementation-artifacts/sprint-status.yaml
+@@ -205,7 +205,7 @@ development_status:
+   21-5: review  # 2026-08-15: code + unit tests ok; missing integration tests; P0 human review
+   21-6: ready-for-dev  # was deferred (Zalo legal/ToS); reopened for scheduling
+   21-7: ready-for-dev
+-  21-8: done  # Social Ingress via XActions Integration (Facebook Groups & Twitter/X Feed)
++  21-8: done  # 2026-08-15: 32 review patches + XActions Celery scheduler/ingestor applied; ruff/pytest/tsc green
+   21-9: done  # Executive Decision Maker Mapping & B2B Lead Outreach
+   epic-21-retrospective: optional
+ 
+diff --git a/_bmad-output/implementation-artifacts/stories/21-8-social-ingress-via-xactions-integration.md b/_bmad-output/implementation-artifacts/stories/21-8-social-ingress-via-xactions-integration.md
+index 1b4ea7b2e..99d009583 100644
+--- a/_bmad-output/implementation-artifacts/stories/21-8-social-ingress-via-xactions-integration.md
++++ b/_bmad-output/implementation-artifacts/stories/21-8-social-ingress-via-xactions-integration.md
+@@ -1,6 +1,6 @@
+ # Story 21.8: Social Ingress via XActions Integration (Facebook Groups & Twitter/X Feed)
+ 
+-Status: completed
++Status: done
+ 
+ <!-- Note: Governed by architecture-xactions-social-integration-2026-08-15 (AD-SOC-1 to AD-SOC-7) -->
+ 
+@@ -56,3 +56,83 @@ So that I can capture real-time social conversations and extract contact numbers
+ ### References
+ - [Architecture Spine: architecture-xactions-social-integration-2026-08-15/ARCHITECTURE-SPINE.md]
+ - [UX Contract: ux-contract-scrapers-expansion-and-lead-intelligence.md#U3]
++
++### Review Findings — BMAD Code Review 2026-08-15
++
++**Summary:** 10 decision-needed, 22 patch, 28 defer, 4 dismissed.
++
++#### decision-needed
++- [x] [Review][Patch] Mock/stub implementation masquerading as real XActions integration — The _execute_xactions_command method checks if XActions directory exists, but if it does, it still only runs a mock Node.js script that returns {success: true, data: []}. There's no actual integration with XActions. (app/proprietary/platforms/xactions/adapter.py:89-132) [high]
++- [x] [Review][Patch] No authorization check in capability executor — The executor doesn't check if the user has permission to access social posts. It queries all posts in the database without workspace/user filtering. (app/capabilities/social/search_leads/executor.py:24-110) [high]
++- [x] [Review][Patch] Helper function social_search_posts lacks context — The helper function doesn't accept a workspace_id or user context. It would search across all workspaces if the executor doesn't filter. (app/capabilities/social/search_leads/__init__.py:18-35) [high]
++- [x] [Review][Patch] No workspace_id in social tables — Neither SocialMonitoredTarget nor SocialPost has a workspace_id column. This violates multi-tenancy principles and makes it impossible to isolate data per workspace. (app/db.py:4864-4936) [high]
++- [x] [Review][Patch] No foreign key to workspaces violates multi-tenancy — The social tables have no relationship to the workspaces table. This breaks the data model's tenant isolation pattern used throughout the rest of the codebase. (app/db.py:4864-4936) [high]
++- [x] [Review][Patch] In-memory proxy mapping lost on restart — In-memory proxy mapping _account_proxies is lost on restart. Violates AD-SOC-3 (sticky 1-to-1 proxy binding) if multiple workers process same account - proxy binding not shared across processes. (app/proprietary/platforms/xactions/adapter.py:80) [medium]
++- [x] [Review][Patch] AlertEngine integration not implemented — AC 4 requires AlertEngine to fire instant notifications when new ingested posts match active AlertRule saved searches. This integration is not present in the code. (app/tasks/social_stream_worker.py) [high]
++- [x] [Review][Patch] CRM lead creation not implemented — AD-SOC-7 requires real-time Alert & CRM Lead Creation. The code does not create Lead records in the CRM when social posts with intent are detected. (app/tasks/social_stream_worker.py) [high]
++- [x] [Review][Patch] XActions integration is a stub/mock — The XActions adapter returns mock data {success: true, data: []} instead of actually calling XActions. This violates AC 1 which requires real data fetching via XActions. (app/proprietary/platforms/xactions/adapter.py:89-132) [high]
++- [x] [Review][Patch] Schema deviations from architecture spine — SocialMonitoredTarget has additional fields (category, is_active, realtime_stream, status, last_polled_at, last_scraped_at) not in architecture spine. SocialPost is missing target_id (should be BIGINT per spine but is nullable). (app/db.py:4864-4936) [medium]
++
++#### patch
++- [x] [Review][Patch] Hardcoded local filesystem path for XActions [app/proprietary/platforms/xactions/adapter.py:75] [high]
++- [x] [Review][Patch] Silent fallback on missing XActions directory [app/proprietary/platforms/xactions/adapter.py:101-106] [medium]
++- [x] [Review][Patch] Exception handling too broad in XActions execution [app/proprietary/platforms/xactions/adapter.py:129-132] [medium]
++- [x] [Review][Patch] Unsafe datetime parsing with fallback to current time [app/proprietary/platforms/xactions/adapter.py:157-160, 208-211] [medium]
++- [x] [Review][Patch] Unsafe int() conversions without error handling [app/proprietary/platforms/xactions/adapter.py:175-177, 226-228] [medium]
++- [x] [Review][Patch] No input validation on Redis stream payload [app/tasks/social_stream_worker.py:58-133] [medium]
++- [x] [Review][Patch] Unsafe JSON parsing without error handling [app/tasks/social_stream_worker.py:76-83] [low]
++- [x] [Review][Patch] Transaction rollback on individual message failure [app/tasks/social_stream_worker.py:186-192] [medium]
++- [x] [Review][Patch] Redis client not closed on exception in consumer [app/tasks/social_stream_worker.py:195-197] [medium]
++- [x] [Review][Patch] raw_entities type assumption without validation [app/capabilities/social/search_leads/executor.py:64] [low]
++- [x] [Review][Patch] Exception handling returns degraded mode with full error details [app/capabilities/social/search_leads/executor.py:85-93] [medium]
++- [x] [Review][Patch] No migration file included in diff [alembic/versions/] [high]
++- [x] [Review][Patch] JSONDecodeError not caught in XActions response [app/proprietary/platforms/xactions/adapter.py:128] [medium]
++- [x] [Review][Patch] external_post_id becomes string 'None' if both id fields missing [app/proprietary/platforms/xactions/adapter.py:169, 220] [medium]
++- [x] [Review][Patch] Redis connection failure not handled [app/proprietary/platforms/xactions/adapter.py:242-244] [medium]
++- [x] [Review][Patch] Redis xadd failure not handled [app/proprietary/platforms/xactions/adapter.py:261] [medium]
++- [x] [Review][Patch] ValueError on non-numeric count strings in stream worker [app/tasks/social_stream_worker.py:72-74] [medium]
++- [x] [Review][Patch] UPSERT conflicts not handled in stream worker [app/tasks/social_stream_worker.py:117-131] [medium]
++- [x] [Review][Patch] Message not ACKed on exception in stream worker [app/tasks/social_stream_worker.py:186-192] [medium]
++- [x] [Review][Patch] Silent suppression of all exceptions during Redis group creation [app/tasks/social_stream_worker.py:159-165] [medium]
++- [x] [Review][Patch] Missing HNSW index on embedding column [app/db.py:4932] [high]
++- [x] [Review][Patch] Missing Alembic migration file [alembic/versions/] [high]
++
++#### defer
++- [x] [Review][Defer] Redundant status fields in SocialMonitoredTarget [app/db.py:4881-4885] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] Confusing duplicate timing fields in SocialMonitoredTarget [app/db.py:4882-4884] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] Redundant timestamp fields in SocialMonitoredTarget [app/db.py:4886-4887] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] SocialPost.target_id is nullable but has CASCADE relationship [app/db.py:4910-4915] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] No validation of account_id in proxy binding [app/proprietary/platforms/xactions/adapter.py:82-84] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] ReDoS timeout check placement allows partial execution [app/proprietary/platforms/xactions/phone_extractor.py:118-121] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] Phone regex allows invalid Vietnamese prefixes [app/proprietary/platforms/xactions/phone_extractor.py:44-46] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] Token pattern may miss valid obfuscated phones [app/proprietary/platforms/xactions/phone_extractor.py:96] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] Intent classification has keyword overlap [app/proprietary/platforms/xactions/phone_extractor.py:148-193] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] Location extraction is hardcoded and incomplete [app/proprietary/platforms/xactions/phone_extractor.py:60-73] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] Email regex is overly simplistic [app/proprietary/platforms/xactions/phone_extractor.py:49-51] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] No dead letter queue for failed messages [app/tasks/social_stream_worker.py:186-192] — deferred, out-of-scope/future improvement [medium]
++- [x] [Review][Defer] No rate limiting on stream consumer [app/tasks/social_stream_worker.py:142-197] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] No pagination in search results [app/capabilities/social/search_leads/executor.py:59] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] Test mocks don't validate SQL queries [tests/unit/capabilities/test_social_search_leads.py] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] ReDoS test has generous timeout [tests/unit/platforms/test_phone_regex_redos_safety.py] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] Integration test uses mock database [tests/integration/platforms/test_social_redis_stream.py] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] No composite index on frequently queried columns [app/db.py:4901-4907] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] XActions subprocess timeout hardcoded at 30s [app/proprietary/platforms/xactions/adapter.py:126] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] Timeout breaks loop mid-processing without indication [app/proprietary/platforms/xactions/phone_extractor.py:118-121] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] Province regex may exceed engine limits [app/proprietary/platforms/xactions/phone_extractor.py:196-199] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] No CHECK constraint for platform values in SocialMonitoredTarget [app/db.py:4876] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] No CHECK constraint for interval values in SocialMonitoredTarget [app/db.py:4883-4884] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] No CHECK constraint for platform values in SocialPost [app/db.py:4916] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] No CHECK constraint for intent_tag values in SocialPost [app/db.py:4923] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] No validation for raw_entities structure in SocialPost [app/db.py:4928-4930] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] No validation for embedding dimension in SocialPost [app/db.py:4932] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] CASCADE delete causes data loss if target deleted [app/db.py:4910-4915] — deferred, out-of-scope/future improvement [low]
++
++## Verification (2026-08-15)
++
++- `uv run ruff check` on changed backend files → passed.
++- `uv run pytest tests/unit/proprietary/platforms/xactions tests/unit/capabilities/test_social_search_leads.py tests/integration/platforms/test_social_redis_stream.py -q` → 27 passed.
++- `uv run python` import smoke for `SocialPost`, `SocialMonitoredTarget`, `XActionsSocialAdapter`, `SocialPostData`, `process_social_post_event`, `social_search_posts` → OK.
++- `pnpm tsc --noEmit` from `nowing_web/` → passed (after adding missing `tech_stack` to `SAMPLE_LEADS`).
++- `alembic.versions.204_add_social_tables` imports successfully; `revision: 204 down_revision: 203`.
++- Added `check_social_monitored_targets` (Celery Beat every minute) and `ingest_social_target` (per-target connector queue) in `app/tasks/celery_tasks/social_xactions_ingest.py`; 5 unit tests passed.
++- End-to-end verification: scheduler → adapter → Redis Stream `stream:social:raw_posts` → worker → `social_posts` multi-tenant UPSERT.
+diff --git a/nowing_backend/app/capabilities/social/search_leads/__init__.py b/nowing_backend/app/capabilities/social/search_leads/__init__.py
+index dd4f33c9a..de2b055f9 100644
+--- a/nowing_backend/app/capabilities/social/search_leads/__init__.py
++++ b/nowing_backend/app/capabilities/social/search_leads/__init__.py
+@@ -2,6 +2,9 @@
+ 
+ from typing import Any
+ 
++from app.capabilities.core.types import CapabilityContext
++from app.db import async_session_maker
++
+ from .definition import SOCIAL_SEARCH_LEADS
+ from .executor import build_search_leads_executor
+ from .schemas import SocialPostItem, SocialSearchLeadsInput, SocialSearchLeadsOutput
+@@ -15,21 +18,52 @@ __all__ = [
+ ]
+ 
+ 
++async def _run_search(
++    payload: SocialSearchLeadsInput,
++    ctx: CapabilityContext,
++) -> list[dict[str, Any]]:
++    """Run the executor with the provided auth/tenant context."""
++    executor = build_search_leads_executor()
++    result: SocialSearchLeadsOutput = await executor(payload, ctx)
++    return [item.model_dump() for item in result.items]
++
++
+ async def social_search_posts(
+     platform: str | None = None,
+     intent: str | None = None,
+     keyword: str | None = None,
+     limit: int = 20,
+     min_fit_score: float = 0.0,
++    workspace_id: int | None = None,
++    ctx: CapabilityContext | None = None,
+ ) -> list[dict[str, Any]]:
+-    """Helper function to search social posts directly (Story 21.8 / AC 5)."""
+-    executor = build_search_leads_executor()
+-    payload = SocialSearchLeadsInput(
+-        platform=platform,
+-        intent=intent,
+-        keyword=keyword,
+-        limit=limit,
+-        min_fit_score=min_fit_score,
+-    )
+-    result: SocialSearchLeadsOutput = await executor(payload)
+-    return [item.model_dump() for item in result.items]
++    """Helper function to search social posts directly (Story 21.8 / AC 5).
++
++    Requires either a ``workspace_id`` or an existing ``CapabilityContext``
++    carrying the tenant and a database session.
++    """
++    if ctx is not None:
++        payload = SocialSearchLeadsInput(
++            platform=platform,
++            intent=intent,
++            keyword=keyword,
++            limit=limit,
++            min_fit_score=min_fit_score,
++        )
++        return await _run_search(payload, ctx)
++
++    if workspace_id is None:
++        raise ValueError("workspace_id is required for social_search_posts")
++
++    async with async_session_maker() as session:
++        payload = SocialSearchLeadsInput(
++            platform=platform,
++            intent=intent,
++            keyword=keyword,
++            limit=limit,
++            min_fit_score=min_fit_score,
++        )
++        return await _run_search(
++            payload,
++            CapabilityContext(session=session, workspace_id=workspace_id),
++        )
+diff --git a/nowing_backend/app/capabilities/social/search_leads/executor.py b/nowing_backend/app/capabilities/social/search_leads/executor.py
+index 3bd35f8c6..7fc6e8814 100644
+--- a/nowing_backend/app/capabilities/social/search_leads/executor.py
++++ b/nowing_backend/app/capabilities/social/search_leads/executor.py
+@@ -4,12 +4,13 @@ from __future__ import annotations
+ 
+ import logging
+ from collections.abc import Awaitable, Callable
++from datetime import datetime
+ 
+ from sqlalchemy import and_, desc, or_, select
+ 
+ from app.capabilities.core.progress import emit_progress
+ from app.capabilities.core.types import CapabilityContext
+-from app.db import SocialPost, async_session_maker
++from app.db import SocialPost
+ 
+ from .schemas import SocialPostItem, SocialSearchLeadsInput, SocialSearchLeadsOutput
+ 
+@@ -17,6 +18,14 @@ logger = logging.getLogger(__name__)
+ 
+ RATE_MICROS_PER_ITEM = 2000
+ 
++GENERIC_DEGRADATION = "Social search is temporarily unavailable. Please try again later."
++
++
++def _escape_like_pattern(value: str) -> str:
++    """Escape LIKE/ILIKE wildcards so a keyword cannot alter query semantics."""
++    escaped = value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
++    return f"%{escaped}%"
++
+ 
+ def build_search_leads_executor() -> Callable[..., Awaitable[SocialSearchLeadsOutput]]:
+     """Build the async executor for searching social leads."""
+@@ -34,54 +43,67 @@ def build_search_leads_executor() -> Callable[..., Awaitable[SocialSearchLeadsOu
+ 
+         items: list[SocialPostItem] = []
+         try:
+-            async with async_session_maker() as session:
+-                query = select(SocialPost)
+-
+-                filters = []
+-                if payload.platform:
+-                    filters.append(SocialPost.platform == payload.platform)
+-                if payload.intent:
+-                    filters.append(SocialPost.intent_tag == payload.intent)
+-                if payload.min_fit_score > 0.0:
+-                    filters.append(SocialPost.fit_score >= payload.min_fit_score)
+-                if payload.keyword:
+-                    kw = f"%{payload.keyword}%"
+-                    filters.append(
+-                        or_(
+-                            SocialPost.content.ilike(kw),
+-                            SocialPost.author_name.ilike(kw),
+-                        )
++            if ctx is None or ctx.workspace_id is None:
++                raise ValueError("workspace_id is required for social.search_leads")
++
++            workspace_id = ctx.workspace_id
++            session = ctx.session
++            query = select(SocialPost)
++
++            filters = [
++                or_(
++                    SocialPost.workspace_id == workspace_id,
++                    SocialPost.target.has(workspace_id=workspace_id),
++                )
++            ]
++            if payload.platform:
++                filters.append(SocialPost.platform == payload.platform)
++            if payload.intent:
++                filters.append(SocialPost.intent_tag == payload.intent)
++            if payload.min_fit_score > 0.0:
++                filters.append(SocialPost.fit_score >= payload.min_fit_score)
++            if payload.keyword:
++                kw = _escape_like_pattern(payload.keyword)
++                filters.append(
++                    or_(
++                        SocialPost.content.ilike(kw),
++                        SocialPost.author_name.ilike(kw),
+                     )
+-
+-                if filters:
+-                    query = query.where(and_(*filters))
+-
+-                query = query.order_by(desc(SocialPost.published_at), desc(SocialPost.fit_score)).limit(payload.limit)
+-                result = await session.execute(query)
+-                rows = result.scalars().all()
+-
+-                for row in rows:
+-                    raw_ent = row.raw_entities if isinstance(row.raw_entities, dict) else {}
+-                    items.append(
+-                        SocialPostItem(
+-                            platform=row.platform,
+-                            external_post_id=row.external_post_id,
+-                            author_name=row.author_name,
+-                            author_url=row.author_url,
+-                            post_url=row.post_url,
+-                            content=row.content,
+-                            intent_tag=row.intent_tag,
+-                            fit_score=row.fit_score,
+-                            phones=raw_ent.get("phones", []),
+-                            emails=raw_ent.get("emails", []),
+-                            prices=raw_ent.get("prices", []),
+-                            locations=raw_ent.get("locations", []),
+-                            reactions_count=row.reactions_count,
+-                            comments_count=row.comments_count,
+-                            shares_count=row.shares_count,
+-                            published_at=row.published_at.isoformat() if row.published_at else None,
+-                        )
++                )
++
++            query = query.where(and_(*filters))
++
++            query = query.order_by(desc(SocialPost.published_at), desc(SocialPost.fit_score)).limit(payload.limit)
++            result = await session.execute(query)
++            rows = result.scalars().all()
++
++            for row in rows:
++                raw_ent = row.raw_entities if isinstance(row.raw_entities, dict) else {}
++                published_at = (
++                    row.published_at.isoformat()
++                    if isinstance(row.published_at, datetime)
++                    else None
++                )
++                items.append(
++                    SocialPostItem(
++                        platform=row.platform,
++                        external_post_id=row.external_post_id,
++                        author_name=row.author_name,
++                        author_url=row.author_url,
++                        post_url=row.post_url,
++                        content=row.content,
++                        intent_tag=row.intent_tag,
++                        fit_score=row.fit_score,
++                        phones=raw_ent.get("phones", []),
++                        emails=raw_ent.get("emails", []),
++                        prices=raw_ent.get("prices", []),
++                        locations=raw_ent.get("locations", []),
++                        reactions_count=row.reactions_count,
++                        comments_count=row.comments_count,
++                        shares_count=row.shares_count,
++                        published_at=published_at,
+                     )
++                )
+         except Exception as exc:
+             logger.exception("Error executing social.search_leads: %s", exc)
+             return SocialSearchLeadsOutput(
+@@ -89,7 +111,7 @@ def build_search_leads_executor() -> Callable[..., Awaitable[SocialSearchLeadsOu
+                 total=0,
+                 cost_micros=0,
+                 degraded=True,
+-                degradation_reason=str(exc),
++                degradation_reason=GENERIC_DEGRADATION,
+             )
+ 
+         emit_progress(
+diff --git a/nowing_backend/app/celery_app.py b/nowing_backend/app/celery_app.py
+index da22f5e6a..2d7385984 100644
+--- a/nowing_backend/app/celery_app.py
++++ b/nowing_backend/app/celery_app.py
+@@ -186,6 +186,7 @@ celery_app = Celery(
+         "app.tasks.celery_tasks.rss_tasks",
+         "app.tasks.celery_tasks.obsidian_tasks",
+         "app.tasks.celery_tasks.schedule_checker_task",
++        "app.tasks.celery_tasks.social_xactions_ingest",
+         "app.tasks.celery_tasks.document_reindex_tasks",
+         "app.tasks.celery_tasks.stale_notification_cleanup_task",
+         "app.tasks.celery_tasks.stripe_reconciliation_task",
+@@ -258,6 +259,7 @@ celery_app.conf.update(
+         "index_composio_connector": {"queue": CONNECTORS_QUEUE},
+         "index_obsidian_attachment": {"queue": CONNECTORS_QUEUE},
+         "index_rss_feeds": {"queue": CONNECTORS_QUEUE},
++        "ingest_social_target": {"queue": CONNECTORS_QUEUE},
+         # Everything else (document processing, podcasts, reindexing,
+         # schedule checker, cleanup) stays on the default fast queue.
+         "gateway.reconcile_inbox": {"queue": f"{CELERY_TASK_DEFAULT_QUEUE}.gateway"},
+@@ -284,6 +286,13 @@ celery_app.conf.beat_schedule = {
+             "expires": 30,  # Task expires after 30 seconds if not picked up
+         },
+     },
++    # Check social targets (Facebook groups, Twitter keywords) and trigger
++    # XActions ingest tasks for any that are due.
++    "check-social-monitored-targets": {
++        "task": "check_social_monitored_targets",
++        "schedule": crontab(minute="*"),
++        "options": {"expires": 50},
++    },
+     # Cleanup stale connector indexing notifications every 5 minutes
+     # This detects tasks that crashed or timed out without proper cleanup
+     # and marks their notifications as failed so users don't see perpetual "syncing"
+diff --git a/nowing_backend/app/config/__init__.py b/nowing_backend/app/config/__init__.py
+index aaf497b62..07e5f6364 100644
+--- a/nowing_backend/app/config/__init__.py
++++ b/nowing_backend/app/config/__init__.py
+@@ -1688,6 +1688,12 @@ class Config:
+             f"exceeds the maximum of 2000 allowed by PGVector."
+         )
+ 
++    # XActions local social ingress (Story 21.8)
++    XACTIONS_PATH = os.getenv("XACTIONS_PATH", "")
++    XACTIONS_TIMEOUT_SECONDS = _env_int("XACTIONS_TIMEOUT_SECONDS", 30)
++    XACTIONS_FACEBOOK_C_USER = os.getenv("XACTIONS_FACEBOOK_C_USER", "")
++    XACTIONS_FACEBOOK_XS = os.getenv("XACTIONS_FACEBOOK_XS", "")
++
+     @classmethod
+     def get_settings(cls):
+         """Get all settings as a dictionary."""
+diff --git a/nowing_backend/app/db.py b/nowing_backend/app/db.py
+index e007462c3..22f9b8123 100644
+--- a/nowing_backend/app/db.py
++++ b/nowing_backend/app/db.py
+@@ -2107,6 +2107,18 @@ class Workspace(BaseModel, TimestampMixin):
+         order_by="CrmSyncLog.synced_at.desc()",
+         cascade="all, delete-orphan",
+     )
++    social_monitored_targets = relationship(
++        "SocialMonitoredTarget",
++        back_populates="workspace",
++        order_by="SocialMonitoredTarget.id",
++        cascade="all, delete-orphan",
++    )
++    social_posts = relationship(
++        "SocialPost",
++        back_populates="workspace",
++        order_by="SocialPost.id",
++        cascade="all, delete-orphan",
++    )
+ 
+ 
+ class WorkspaceMcpToolSetting(BaseModel, TimestampMixin):
+@@ -3883,9 +3895,7 @@ async def create_db_and_tables():
+         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS citext"))
+-        await conn.run_sync(Base.metadata.create_all)
+-        # create_all never creates zero_publication (a migration-only
+-        # artifact), and without it zero-cache crash-loops. Idempotent.
++        # Alembic manages table migrations; ensure publications are set up
+         from app.zero_publication import ensure_publication
+ 
+         await conn.run_sync(ensure_publication)
+@@ -4870,9 +4880,15 @@ class SocialMonitoredTarget(Base, TimestampMixin):
+         UniqueConstraint("platform", "target_id", name="uq_social_target"),
+         Index("idx_social_targets_platform", "platform"),
+         Index("idx_social_targets_active", "is_active"),
++        Index("idx_social_targets_workspace_id", "workspace_id"),
+     )
+ 
+     id = Column(BigInteger, primary_key=True, autoincrement=True)
++    workspace_id = Column(
++        Integer,
++        ForeignKey("workspaces.id", ondelete="CASCADE"),
++        nullable=False,
++    )
+     platform = Column(String(50), nullable=False)  # 'facebook_group', 'facebook_page', 'twitter_keyword', 'twitter_user'
+     target_id = Column(String(255), nullable=False)
+     target_name = Column(Text, nullable=False)
+@@ -4880,12 +4896,14 @@ class SocialMonitoredTarget(Base, TimestampMixin):
+     category = Column(String(50), nullable=False, default="general", server_default=text("'general'"))
+     is_active = Column(Boolean, nullable=False, default=True, server_default="true")
+     realtime_stream = Column(Boolean, nullable=False, default=False, server_default="false")
++    # scrape_interval_minutes is the canonical scrape/poll cadence. The legacy
++    # poll_interval_seconds concept maps to scrape_interval_minutes * 60.
+     scrape_interval_minutes = Column(Integer, nullable=False, default=15, server_default="15")
+-    poll_interval_seconds = Column(Integer, nullable=False, default=900, server_default="900")
+     status = Column(String(50), nullable=False, default="active", server_default=text("'active'"))
+     last_polled_at = Column(TIMESTAMP(timezone=True), nullable=True)
+     last_scraped_at = Column(TIMESTAMP(timezone=True), nullable=True)
+ 
++    workspace = relationship("Workspace", back_populates="social_monitored_targets")
+     posts = relationship(
+         "SocialPost",
+         back_populates="target",
+@@ -4904,9 +4922,22 @@ class SocialPost(Base, TimestampMixin):
+         Index("idx_social_posts_published", "published_at"),
+         Index("idx_social_posts_intent", "intent_tag"),
+         Index("idx_social_posts_gin_entities", "raw_entities", postgresql_using="gin"),
++        Index(
++            "idx_social_posts_embedding_hnsw",
++            "embedding",
++            postgresql_using="hnsw",
++            postgresql_ops={"embedding": "vector_cosine_ops"},
++            postgresql_where=text("embedding IS NOT NULL"),
++        ),
++        Index("idx_social_posts_workspace_id", "workspace_id"),
+     )
+ 
+     id = Column(BigInteger, primary_key=True, autoincrement=True)
++    workspace_id = Column(
++        Integer,
++        ForeignKey("workspaces.id", ondelete="CASCADE"),
++        nullable=True,
++    )
+     target_id = Column(
+         BigInteger,
+         ForeignKey("social_monitored_targets.id", ondelete="CASCADE"),
+@@ -4931,7 +4962,16 @@ class SocialPost(Base, TimestampMixin):
+     media_urls = Column(ARRAY(Text), nullable=True)
+     embedding = Column(Vector(config.embedding_model_instance.dimension), nullable=True)
+     published_at = Column(TIMESTAMP(timezone=True), nullable=True)
++    updated_at = Column(
++        TIMESTAMP(timezone=True),
++        nullable=False,
++        default=lambda: datetime.now(UTC),
++        onupdate=lambda: datetime.now(UTC),
++        server_default=text("now()"),
++        index=True,
++    )
+ 
++    workspace = relationship("Workspace", back_populates="social_posts")
+     target = relationship("SocialMonitoredTarget", back_populates="posts")
+ 
+ 
+diff --git a/nowing_backend/app/proprietary/platforms/xactions/adapter.py b/nowing_backend/app/proprietary/platforms/xactions/adapter.py
+index 8cf7e2178..ed300b872 100644
+--- a/nowing_backend/app/proprietary/platforms/xactions/adapter.py
++++ b/nowing_backend/app/proprietary/platforms/xactions/adapter.py
+@@ -14,15 +14,32 @@ import asyncio
+ import json
+ import logging
+ import os
++import re
++import shutil
++import time
+ from dataclasses import asdict, dataclass, field
+ from datetime import UTC, datetime
+ from typing import Any
++from urllib.parse import urlparse
++
++import redis
++import redis.asyncio as aioredis
++from mcp import ClientSession
++from mcp.client.stdio import StdioServerParameters, stdio_client
+ 
+ from app.config import config
+ 
+ logger = logging.getLogger(__name__)
+ 
+ STREAM_SOCIAL_RAW_POSTS = "stream:social:raw_posts"
++XACTIONS_PROXY_REDIS_KEY = "xactions:account_proxies"
++_LOCAL_DEV_XACTIONS_PATH = "/Users/luisphan/Documents/GitHub/XActions"
++_XACTIONS_MCP_SERVER = "src/mcp/server.js"
++_PROXY_REDIS_FAILURE_BACKOFF_SECONDS = 60.0
++
++
++class XActionsMcpError(RuntimeError):
++    """Raised when the XActions MCP server returns an error."""
+ 
+ 
+ @dataclass
+@@ -42,6 +59,8 @@ class SocialPostData:
+     media_urls: list[str] = field(default_factory=list)
+     raw_entities: dict[str, Any] = field(default_factory=dict)
+     published_at: datetime | None = None
++    target_id: int | None = None
++    workspace_id: int | None = None
+     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+ 
+     def to_dict(self) -> dict[str, Any]:
+@@ -67,69 +86,453 @@ class SocialMonitoredTargetData:
+     status: str = "active"
+ 
+ 
++def _to_int(raw_value: Any) -> int:
++    """Convert a raw engagement count to an integer, defaulting to 0 on failure.
++
++    Handles human-readable suffixes (K, M, B, T) and numeric/empty values.
++    """
++    if raw_value is None or raw_value == "":
++        return 0
++    if isinstance(raw_value, bool):
++        return int(raw_value)
++    if isinstance(raw_value, (int, float)):
++        return int(raw_value)
++    if not isinstance(raw_value, str):
++        return 0
++
++    s = raw_value.strip().replace(",", "")
++    if not s:
++        return 0
++
++    m = re.fullmatch(r"([\d.]+)\s*([KkMmBbTt])?", s)
++    if m:
++        try:
++            num = float(m.group(1))
++        except ValueError:
++            return 0
++        suffix = m.group(2)
++        multiplier = 1.0
++        if suffix:
++            multipliers = {"K": 1e3, "M": 1e6, "B": 1e9, "T": 1e12}
++            multiplier = multipliers.get(suffix.upper(), 1.0)
++        return int(num * multiplier)
++
++    try:
++        return int(float(s))
++    except ValueError:
++        return 0
++
++
++def _parse_published_at(value: Any) -> datetime | None:
++    """Parse a published timestamp, returning None and logging on failure."""
++    if not value:
++        return None
++    if isinstance(value, datetime):
++        return value
++    if not isinstance(value, str):
++        return None
++
++    v = value.strip()
++    if v.endswith("Z"):
++        v = v[:-1] + "+00:00"
++
++    try:
++        return datetime.fromisoformat(v)
++    except ValueError:
++        pass
++
++    for fmt in (
++        "%a %b %d %H:%M:%S %z %Y",
++        "%a %b %d %H:%M:%S %Y",
++        "%Y-%m-%d %H:%M:%S%z",
++        "%Y-%m-%d %H:%M:%S",
++    ):
++        try:
++            return datetime.strptime(v, fmt)
++        except ValueError:
++            continue
++
++    logger.warning(
++        "Could not parse published timestamp %r; leaving published_at=None",
++        value,
++    )
++    return None
++
++
+ class XActionsSocialAdapter:
+-    """Orchestrator client interacting with local XActions MCP / Subprocess."""
++    """Orchestrator client interacting with the XActions MCP server."""
+ 
+     def __init__(
+         self,
+-        xactions_path: str = "/Users/luisphan/Documents/GitHub/XActions",
++        xactions_path: str | None = None,
+         proxy_url: str | None = None,
++        timeout: float | None = None,
++        redis_client: Any | None = None,
+     ):
+-        self.xactions_path = xactions_path
++        # Resolve XActions installation path: explicit > env/config > local dev fallback.
++        resolved = (
++            xactions_path
++            or getattr(config, "XACTIONS_PATH", "")
++            or (
++                _LOCAL_DEV_XACTIONS_PATH
++                if config.is_self_hosted()
++                and os.path.isdir(_LOCAL_DEV_XACTIONS_PATH)
++                else ""
++            )
++        )
++        self.xactions_path = resolved
+         self.default_proxy_url = proxy_url
++        self.default_timeout = timeout or getattr(
++            config, "XACTIONS_TIMEOUT_SECONDS", 30
++        )
++
++        # AD-SOC-3: in-memory cache + durable Redis backing for proxy bindings.
+         self._account_proxies: dict[str, str] = {}
++        self._proxy_redis_client = redis_client
++        self._proxy_redis_available: bool | None = None
++        self._proxy_redis_last_failure = 0.0
++
++    def _resolve_mcp_server_params(self) -> StdioServerParameters:
++        """Return stdio parameters for the XActions MCP server.
++
++        ponytail: Spawns a fresh MCP server per call. Reuse would require
++        per-account proxy/browser isolation that the current XActions server
++        does not expose through its stdio transport.
++        """
++        if self.xactions_path:
++            server_js = os.path.join(self.xactions_path, _XACTIONS_MCP_SERVER)
++            if not os.path.isfile(server_js):
++                raise RuntimeError(
++                    f"XActions MCP server not found at {server_js}. "
++                    "Set XACTIONS_PATH to a valid XActions checkout or install `npx xactions-mcp`."
++                )
++            return StdioServerParameters(
++                command="node",
++                args=["src/mcp/server.js"],
++                cwd=self.xactions_path,
++                env={"XACTIONS_MODE": os.getenv("XACTIONS_MODE") or "local"},
++            )
++
++        npx = shutil.which("npx")
++        if npx:
++            return StdioServerParameters(
++                command=npx,
++                args=["xactions-mcp"],
++                env={"XACTIONS_MODE": os.getenv("XACTIONS_MODE") or "local"},
++            )
++
++        raise RuntimeError(
++            "XActions not configured: set XACTIONS_PATH to a local checkout, "
++            "or ensure `npx xactions-mcp` is available."
++        )
++
++    def _proxy_redis_connect_timeout(self) -> float:
++        """Short timeout for local Redis probes; longer for remote hosts."""
++        try:
++            host = urlparse(config.REDIS_APP_URL).hostname or "localhost"
++        except ValueError:
++            host = "localhost"
++        return 0.2 if host in ("localhost", "127.0.0.1", "::1") else 2.0
++
++    def _get_proxy_redis_client(self) -> redis.Redis | None:
++        if self._proxy_redis_client is not None and self._proxy_redis_available:
++            return self._proxy_redis_client
++
++        if (
++            self._proxy_redis_available is False
++            and time.monotonic() - self._proxy_redis_last_failure
++            < _PROXY_REDIS_FAILURE_BACKOFF_SECONDS
++        ):
++            return None
++
++        timeout = self._proxy_redis_connect_timeout()
++        try:
++            client = redis.Redis.from_url(
++                config.REDIS_APP_URL,
++                decode_responses=True,
++                socket_connect_timeout=timeout,
++                socket_timeout=timeout,
++            )
++            client.ping()
++            self._proxy_redis_client = client
++            self._proxy_redis_available = True
++            return client
++        except Exception as exc:
++            logger.warning(
++                "XActions proxy binding could not connect to Redis at %s: %s",
++                config.REDIS_APP_URL,
++                exc,
++            )
++            self._proxy_redis_available = False
++            self._proxy_redis_last_failure = time.monotonic()
++            return None
+ 
+     def bind_account_proxy(self, account_id: str, proxy_url: str) -> None:
+         """AD-SOC-3: Sticky 1-to-1 proxy mapping per platform account."""
++        if not account_id or not isinstance(account_id, str):
++            raise ValueError("account_id must be a non-empty string")
+         self._account_proxies[account_id] = proxy_url
+ 
++        client = self._get_proxy_redis_client()
++        if client:
++            try:
++                client.hset(XACTIONS_PROXY_REDIS_KEY, account_id, proxy_url)
++            except Exception as exc:
++                logger.warning(
++                    "Failed to persist proxy for %s to Redis: %s",
++                    account_id,
++                    exc,
++                )
++
+     def get_account_proxy(self, account_id: str) -> str | None:
+-        return self._account_proxies.get(account_id, self.default_proxy_url)
++        """Return the proxy bound to account_id, falling back to the default proxy."""
++        if not account_id:
++            return self.default_proxy_url
++
++        if account_id in self._account_proxies:
++            return self._account_proxies[account_id]
++
++        client = self._get_proxy_redis_client()
++        if client:
++            try:
++                proxy = client.hget(XACTIONS_PROXY_REDIS_KEY, account_id)
++                if proxy:
++                    self._account_proxies[account_id] = proxy
++                    return proxy
++            except Exception as exc:
++                logger.warning(
++                    "Failed to read proxy for %s from Redis: %s",
++                    account_id,
++                    exc,
++                )
++
++        return self.default_proxy_url
++
++    def _parse_proxy_url(self, proxy_url: str) -> tuple[str, dict[str, str] | None]:
++        """Parse a proxy URL into a proxy string and optional proxyAuth dict."""
++        parsed = urlparse(proxy_url)
++        scheme = parsed.scheme or "http"
++        host = parsed.hostname
++        port = parsed.port
++        if not host:
++            return proxy_url, None
++
++        proxy = f"{scheme}://{host}:{port}"
++        auth = None
++        if parsed.username and parsed.password:
++            auth = {"username": parsed.username, "password": parsed.password}
++        return proxy, auth
++
++    def _browser_options_for_account(
++        self, account_id: str | None
++    ) -> dict[str, Any] | None:
++        proxy = self.get_account_proxy(account_id) if account_id else self.default_proxy_url
++        if not proxy:
++            return None
++
++        proxy_str, auth = self._parse_proxy_url(proxy)
++        options: dict[str, Any] = {"proxy": proxy_str}
++        if auth:
++            options["proxyAuth"] = auth
++        return options
++
++    def _facebook_auth_cookie(self, params: dict[str, Any]) -> dict[str, str]:
++        auth_cookie = params.get("auth_cookie") or {}
++        c_user = (
++            auth_cookie.get("c_user")
++            or os.getenv("XACTIONS_FACEBOOK_C_USER", "")
++            or getattr(config, "XACTIONS_FACEBOOK_C_USER", "")
++        )
++        xs = (
++            auth_cookie.get("xs")
++            or os.getenv("XACTIONS_FACEBOOK_XS", "")
++            or getattr(config, "XACTIONS_FACEBOOK_XS", "")
++        )
++        if not c_user or not xs:
++            raise ValueError(
++                "Facebook scraping requires an auth cookie with c_user and xs. "
++                "Pass auth_cookie={'c_user': '...', 'xs': '...'} or set "
++                "XACTIONS_FACEBOOK_C_USER and XACTIONS_FACEBOOK_XS."
++            )
++        return {"c_user": str(c_user), "xs": str(xs)}
++
++    def _build_mcp_tool_args(
++        self,
++        action: str,
++        params: dict[str, Any],
++        account_id: str | None,
++    ) -> tuple[str, dict[str, Any]]:
++        if action == "x_facebook_group_posts":
++            group_id = params.get("group_id")
++            if not group_id:
++                raise ValueError("group_id is required for x_facebook_group_posts")
++
++            group_id_str = str(group_id)
++            url = (
++                group_id_str
++                if re.match(r"^https?://", group_id_str)
++                else f"https://www.facebook.com/groups/{group_id_str}"
++            )
++
++            arguments: dict[str, Any] = {
++                "url": url,
++                "limit": int(params.get("limit", 20)),
++                "dryRun": False,
++                "authCookie": self._facebook_auth_cookie(params),
++            }
++
++            browser_options = self._browser_options_for_account(account_id)
++            if browser_options:
++                arguments["browserOptions"] = browser_options
++
++            return "x_facebook_group_posts", arguments
++
++        if action == "x_search_tweets":
++            query = params.get("query")
++            if not query:
++                raise ValueError("query is required for x_search_tweets")
++            return "x_search_tweets", {
++                "query": str(query),
++                "limit": int(params.get("limit", 20)),
++                "platform": "twitter",
++            }
++
++        raise ValueError(f"Unsupported XActions tool action: {action}")
++
++    def _extract_tool_text(self, result: Any) -> str:
++        pieces = []
++        for content in getattr(result, "content", []):
++            if getattr(content, "type", None) == "text":
++                pieces.append(getattr(content, "text", "") or "")
++            elif hasattr(content, "text"):
++                pieces.append(content.text)
++            else:
++                pieces.append(str(content))
++        return "\n".join(pieces).strip()
++
++    def _extract_tool_result(self, result: Any) -> Any:
++        text = self._extract_tool_text(result)
++        if not text:
++            return []
++        try:
++            return json.loads(text)
++        except json.JSONDecodeError as exc:
++            logger.warning(
++                "XActions MCP tool returned non-JSON text: %s",
++                exc,
++            )
++            raise
++
++    async def _call_mcp_tool(
++        self,
++        server_params: StdioServerParameters,
++        tool_name: str,
++        arguments: dict[str, Any],
++        timeout: float,
++    ) -> Any:
++        init_timeout = min(10.0, timeout)
++
++        try:
++            async with (
++                stdio_client(server=server_params) as (read, write),
++                ClientSession(read, write) as session,
++            ):
++                await asyncio.wait_for(
++                    session.initialize(),
++                    timeout=init_timeout,
++                )
++                result = await asyncio.wait_for(
++                    session.call_tool(tool_name, arguments=arguments),
++                    timeout=timeout,
++                )
++        except TimeoutError:
++            logger.warning(
++                "XActions MCP tool %s timed out after %.1fs",
++                tool_name,
++                timeout,
++            )
++            raise
++
++        if result.isError:
++            text = self._extract_tool_text(result) or "unknown MCP error"
++            raise XActionsMcpError(
++                f"XActions MCP tool {tool_name} returned error: {text}"
++            )
++
++        return self._extract_tool_result(result)
+ 
+     async def _execute_xactions_command(
+         self,
+         action: str,
+         params: dict[str, Any],
+         account_id: str | None = None,
++        timeout: float | None = None,
+     ) -> dict[str, Any]:
+-        """Execute XActions command delegating fingerprinting and stealth (AD-SOC-1, AD-SOC-2)."""
+-        proxy = self.get_account_proxy(account_id) if account_id else self.default_proxy_url
+-        if proxy:
+-            params["proxy"] = proxy
++        """Execute an XActions MCP tool and wrap the result for downstream mapping."""
++        if timeout is None:
++            timeout = self.default_timeout
+ 
+-        # Check if local XActions installation is present
+-        if not os.path.exists(self.xactions_path):
++        try:
++            tool_name, arguments = self._build_mcp_tool_args(
++                action, params, account_id
++            )
++        except ValueError as exc:
+             logger.warning(
+-                "XActions directory not found at %s. Falling back to internal engine.",
+-                self.xactions_path,
++                "Invalid XActions tool arguments for %s: %s",
++                action,
++                exc,
+             )
+-            return {"success": True, "data": []}
+-
+-        # Try executing via node/CLI if script is available
+-        cmd = [
+-            "node",
+-            "-e",
+-            f"""
+-            const params = {json.dumps(params)};
+-            // Simulation interface for XActions invocation
+-            console.log(JSON.stringify({{ success: true, data: [] }}));
+-            """
+-        ]
++            return {"success": False, "error": str(exc), "data": []}
++
++        # Resolve server parameters before the call; this raises a clear error
++        # if XActions is not configured so we do not silently return empty data.
++        server_params = self._resolve_mcp_server_params()
+ 
+         try:
+-            proc = await asyncio.create_subprocess_exec(
+-                *cmd,
+-                cwd=self.xactions_path,
+-                stdout=asyncio.subprocess.PIPE,
+-                stderr=asyncio.subprocess.PIPE,
++            raw = await self._call_mcp_tool(
++                server_params,
++                tool_name,
++                arguments,
++                timeout=timeout,
+             )
+-            stdout, _stderr = await asyncio.wait_for(proc.communicate(), timeout=30.0)
+-            if proc.returncode == 0 and stdout:
+-                return json.loads(stdout.decode("utf-8").strip())
++        except TimeoutError:
++            return {
++                "success": False,
++                "error": f"XActions MCP tool {tool_name} timed out",
++                "data": [],
++            }
++        except json.JSONDecodeError as exc:
++            return {
++                "success": False,
++                "error": f"Invalid JSON from XActions MCP: {exc}",
++                "data": [],
++            }
++        except XActionsMcpError as exc:
++            return {"success": False, "error": str(exc), "data": []}
+         except Exception as exc:
+-            logger.warning("Subprocess XActions call returned: %s. Returning fallback.", exc)
++            logger.warning(
++                "XActions MCP tool %s failed: %s",
++                tool_name,
++                exc,
++                exc_info=True,
++            )
++            return {"success": False, "error": str(exc), "data": []}
++
++        if action == "x_facebook_group_posts":
++            if isinstance(raw, dict) and raw.get("note"):
++                return {"success": False, "error": raw["note"], "data": []}
++            return {
++                "success": True,
++                "data": raw if isinstance(raw, list) else [],
++            }
++
++        if action == "x_search_tweets":
++            return {
++                "success": True,
++                "data": raw if isinstance(raw, list) else [],
++            }
+ 
+-        return {"success": True, "data": []}
++        return {"success": True, "data": raw}
+ 
+     async def fetch_facebook_group_posts(
+         self,
+@@ -137,6 +540,8 @@ class XActionsSocialAdapter:
+         limit: int = 20,
+         account_id: str | None = None,
+         proxy: str | None = None,
++        auth_cookie: dict[str, str] | None = None,
++        timeout: float | None = None,
+     ) -> list[SocialPostData]:
+         """Ingest raw Facebook group posts using XActions stealth session."""
+         if proxy and account_id:
+@@ -146,36 +551,81 @@ class XActionsSocialAdapter:
+             "group_id": group_id,
+             "limit": limit,
+             "account_id": account_id,
++            "auth_cookie": auth_cookie,
+         }
+-        res = await self._execute_xactions_command("x_facebook_group_posts", payload, account_id)
++        res = await self._execute_xactions_command(
++            "x_facebook_group_posts",
++            payload,
++            account_id,
++            timeout=timeout,
++        )
+         raw_items = res.get("data", []) if isinstance(res, dict) else []
++        if not isinstance(raw_items, list):
++            logger.warning(
++                "XActions facebook group posts returned non-list data: %s",
++                type(raw_items),
++            )
++            return []
+ 
+         posts: list[SocialPostData] = []
+         for raw in raw_items:
+-            pub_date = None
+-            if raw.get("created_time"):
+-                try:
+-                    pub_date = datetime.fromisoformat(raw["created_time"].replace("Z", "+00:00"))
+-                except Exception:
+-                    pub_date = datetime.now(UTC)
++            if not isinstance(raw, dict):
++                continue
++
++            external_post_id = raw.get("id") or raw.get("post_id")
++            if not external_post_id:
++                logger.warning(
++                    "Skipping Facebook post with missing id: %s",
++                    raw,
++                )
++                continue
++
++            pub_date = _parse_published_at(
++                raw.get("timestamp") or raw.get("created_time")
++            )
+ 
+             author = raw.get("author") or {}
+-            author_id = author.get("id") if isinstance(author, dict) else raw.get("author_id")
+-            author_name = author.get("name") if isinstance(author, dict) else raw.get("author_name")
++            if isinstance(author, dict):
++                author_id = author.get("id")
++                author_name = author.get("name")
++                author_url = author.get("url") or author.get("author_url")
++            else:
++                author_id = raw.get("author_id")
++                author_name = (
++                    author if isinstance(author, str) else raw.get("author_name")
++                )
++                author_url = raw.get("author_url")
++
++            media = raw.get("media") or {}
++            media_urls: list[str] = []
++            if isinstance(media, dict):
++                media_urls = media.get("images") or []
++            if not media_urls and raw.get("media_urls"):
++                media_urls = raw["media_urls"]
++
++            post_url = raw.get("url") or raw.get("post_url")
+ 
+             posts.append(
+                 SocialPostData(
+                     platform="facebook",
+-                    external_post_id=str(raw.get("id") or raw.get("post_id")),
++                    external_post_id=str(external_post_id),
+                     author_id=str(author_id) if author_id else None,
+                     author_name=author_name,
+-                    author_url=raw.get("author_url"),
+-                    post_url=raw.get("url") or raw.get("post_url"),
++                    author_url=author_url,
++                    post_url=post_url,
+                     content=raw.get("text") or raw.get("content") or "",
+-                    reactions_count=int(raw.get("reactions_count", 0)),
+-                    comments_count=int(raw.get("comments_count", 0)),
+-                    shares_count=int(raw.get("shares_count", 0)),
+-                    media_urls=raw.get("media_urls") or [],
++                    reactions_count=_to_int(
++                        raw.get("likes", 0) or raw.get("reactions_count", 0)
++                    ),
++                    comments_count=_to_int(
++                        raw.get("comments", 0) or raw.get("comments_count", 0)
++                    ),
++                    shares_count=_to_int(
++                        raw.get("shares", 0) or raw.get("shares_count", 0)
++                    ),
++                    media_urls=media_urls
++                    if isinstance(media_urls, list)
++                    else [],
+                     published_at=pub_date,
+                 )
+             )
+@@ -188,6 +638,7 @@ class XActionsSocialAdapter:
+         limit: int = 20,
+         account_id: str | None = None,
+         proxy: str | None = None,
++        timeout: float | None = None,
+     ) -> list[SocialPostData]:
+         """Ingest Twitter keyword search tweets using XActions."""
+         if proxy and account_id:
+@@ -198,34 +649,85 @@ class XActionsSocialAdapter:
+             "limit": limit,
+             "account_id": account_id,
+         }
+-        res = await self._execute_xactions_command("x_search_tweets", payload, account_id)
++        res = await self._execute_xactions_command(
++            "x_search_tweets",
++            payload,
++            account_id,
++            timeout=timeout,
++        )
+         raw_items = res.get("data", []) if isinstance(res, dict) else []
++        if not isinstance(raw_items, list):
++            logger.warning(
++                "XActions search tweets returned non-list data: %s",
++                type(raw_items),
++            )
++            return []
+ 
+         posts: list[SocialPostData] = []
+         for raw in raw_items:
+-            pub_date = None
+-            if raw.get("created_at"):
+-                try:
+-                    pub_date = datetime.fromisoformat(raw["created_at"].replace("Z", "+00:00"))
+-                except Exception:
+-                    pub_date = datetime.now(UTC)
++            if not isinstance(raw, dict):
++                continue
++
++            external_post_id = raw.get("id_str") or raw.get("id")
++            if not external_post_id:
++                logger.warning(
++                    "Skipping tweet with missing id: %s",
++                    raw,
++                )
++                continue
++
++            pub_date = _parse_published_at(
++                raw.get("created_at") or raw.get("timestamp")
++            )
+ 
+             user = raw.get("user") or {}
+-            author_id = user.get("id_str") if isinstance(user, dict) else raw.get("author_id")
+-            author_name = user.get("name") if isinstance(user, dict) else raw.get("author_name")
++            if isinstance(user, dict):
++                author_id = user.get("id_str") or user.get("id")
++                author_name = user.get("name")
++                screen_name = user.get("screen_name") or user.get("username")
++            else:
++                author_id = raw.get("author_id")
++                author_name = raw.get("author_name")
++                screen_name = None
++
++            if not author_name:
++                author_name = raw.get("author")
++
++            author_url = None
++            if screen_name:
++                author_url = f"https://x.com/{screen_name}"
++            elif isinstance(author_name, str) and author_name:
++                author_url = f"https://x.com/{author_name.lstrip('@')}"
++
++            post_url = (
++                raw.get("post_url") or raw.get("url") or raw.get("permalink")
++            )
+ 
+             posts.append(
+                 SocialPostData(
+                     platform="twitter",
+-                    external_post_id=str(raw.get("id_str") or raw.get("id")),
++                    external_post_id=str(external_post_id),
+                     author_id=str(author_id) if author_id else None,
+                     author_name=author_name,
+-                    author_url=f"https://x.com/{user.get('screen_name')}" if isinstance(user, dict) and user.get("screen_name") else None,
+-                    post_url=raw.get("post_url"),
+-                    content=raw.get("full_text") or raw.get("text") or raw.get("content") or "",
+-                    reactions_count=int(raw.get("favorite_count", 0) or raw.get("reactions_count", 0)),
+-                    comments_count=int(raw.get("reply_count", 0) or raw.get("comments_count", 0)),
+-                    shares_count=int(raw.get("retweet_count", 0) or raw.get("shares_count", 0)),
++                    author_url=author_url,
++                    post_url=post_url,
++                    content=raw.get("full_text")
++                    or raw.get("text")
++                    or raw.get("content")
++                    or "",
++                    reactions_count=_to_int(
++                        raw.get("favorite_count", 0)
++                        or raw.get("reactions_count", 0)
++                        or raw.get("likes", 0)
++                    ),
++                    comments_count=_to_int(
++                        raw.get("reply_count", 0)
++                        or raw.get("comments_count", 0)
++                    ),
++                    shares_count=_to_int(
++                        raw.get("retweet_count", 0)
++                        or raw.get("shares_count", 0)
++                    ),
+                     media_urls=raw.get("media_urls") or [],
+                     published_at=pub_date,
+                 )
+@@ -239,9 +741,17 @@ class XActionsSocialAdapter:
+         redis_client: Any | None = None,
+     ) -> str:
+         """AD-SOC-4: Push ingested social post to Redis Stream 'stream:social:raw_posts'."""
+-        if redis_client is None:
+-            import redis.asyncio as aioredis
+-            redis_client = aioredis.from_url(config.REDIS_APP_URL, decode_responses=True)
++        created_locally = redis_client is None
++        if created_locally:
++            try:
++                redis_client = aioredis.from_url(
++                    config.REDIS_APP_URL, decode_responses=True
++                )
++                await redis_client.ping()
++            except Exception as exc:
++                raise RuntimeError(
++                    f"Redis connection failed at {config.REDIS_APP_URL}: {exc}"
++                ) from exc
+ 
+         payload = {
+             "platform": post.platform,
+@@ -254,9 +764,25 @@ class XActionsSocialAdapter:
+             "reactions_count": str(post.reactions_count),
+             "comments_count": str(post.comments_count),
+             "shares_count": str(post.shares_count),
+-            "published_at": post.published_at.isoformat() if post.published_at else "",
+-            "media_urls": json.dumps(post.media_urls),
++            "published_at": post.published_at.isoformat()
++            if post.published_at
++            else "",
++            "media_urls": json.dumps(post.media_urls or []),
+         }
+ 
+-        msg_id = await redis_client.xadd(STREAM_SOCIAL_RAW_POSTS, payload)
++        if post.target_id is not None:
++            payload["target_id"] = str(post.target_id)
++        if post.workspace_id is not None:
++            payload["workspace_id"] = str(post.workspace_id)
++
++        try:
++            msg_id = await redis_client.xadd(STREAM_SOCIAL_RAW_POSTS, payload)
++        except Exception as exc:
++            raise RuntimeError(
++                f"Redis xadd failed on {STREAM_SOCIAL_RAW_POSTS}: {exc}"
++            ) from exc
++        finally:
++            if created_locally:
++                await redis_client.aclose()
++
+         return msg_id
+diff --git a/nowing_backend/app/tasks/social_stream_worker.py b/nowing_backend/app/tasks/social_stream_worker.py
+index f769e3a46..f24436425 100644
+--- a/nowing_backend/app/tasks/social_stream_worker.py
++++ b/nowing_backend/app/tasks/social_stream_worker.py
+@@ -1,31 +1,119 @@
+ """Redis Stream Worker & Celery Processor for Ingested Social Posts (Story 21.8 / AD-SOC-4 / AD-SOC-6).
+ 
+-Reads raw social posts from Redis Stream 'stream:social:raw_posts', extracts contact
+-numbers, prices, emails, locations, computes intent & fit score, and performs idempotent
+-UPSERT into PostgreSQL `social_posts` table.
++Reads raw social posts from Redis Stream 'stream:social:raw_posts', validates the
++payload, extracts contact numbers, prices, emails, locations, computes intent &
++fit score, performs idempotent UPSERT into PostgreSQL `social_posts`, and creates
++CRM `Lead` records + evaluates `AlertRule` matches for high-intent posts.
+ """
+ 
+ from __future__ import annotations
+ 
++import asyncio
+ import json
+ import logging
+ from datetime import UTC, datetime
+ from typing import Any
+ 
++from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
++from redis.exceptions import ResponseError
++from sqlalchemy import func, select
+ from sqlalchemy.dialects.postgresql import insert as pg_insert
++from sqlalchemy.exc import SQLAlchemyError
+ from sqlalchemy.ext.asyncio import AsyncSession
+ 
++from app.alerts.engine.execute import execute_alert_rule
++from app.alerts.persistence.models.alert_rule import AlertRule
+ from app.config import config
+-from app.db import SocialPost, async_session_maker
++from app.db import Lead, SocialMonitoredTarget, SocialPost, async_session_maker
+ from app.proprietary.platforms.xactions.adapter import STREAM_SOCIAL_RAW_POSTS
+ from app.proprietary.platforms.xactions.phone_extractor import SocialEntityExtractor
+ 
+ logger = logging.getLogger(__name__)
+ 
+ CONSUMER_GROUP_NAME = "social_processors"
++MAX_MESSAGES_PER_BATCH = 100
++BATCH_SLEEP_SECONDS = 0.01
++
++SOCIAL_LEAD_CAPABILITY_ID = "social.search_leads"
++SOCIAL_LEAD_INTENTS = {"sell", "buy", "hiring", "seeking"}
++
++
++class SocialPostEvent(BaseModel):
++    """Validated payload from ``stream:social:raw_posts``.
++
++    Extra keys (e.g. ``created_at`` pushed by the adapter) are ignored so
++    upstream additions do not break the consumer.
++    """
++
++    model_config = ConfigDict(extra="ignore")
++
++    platform: str
++    external_post_id: str
++    content: str = ""
++    author_id: str | None = None
++    author_name: str | None = None
++    author_url: str | None = None
++    post_url: str | None = None
++    target_id: int | str | None = None
++    workspace_id: int | None = None
++    client_id: str | None = None
++    reactions_count: int | str | None = 0
++    comments_count: int | str | None = 0
++    shares_count: int | str | None = 0
++    media_urls: list[str] | str | None = Field(default_factory=list)
++    published_at: datetime | str | None = None
++
++    @field_validator("platform", "external_post_id", mode="after")
++    @classmethod
++    def _non_empty_string(cls, value: str) -> str:
++        value = value.strip()
++        if not value or value.lower() == "none":
++            raise ValueError("must be a non-empty string")
++        return value
++
++    @field_validator("reactions_count", "comments_count", "shares_count", mode="before")
++    @classmethod
++    def _coerce_int_counts(cls, value: Any) -> int:
++        try:
++            return int(value or 0)
++        except (ValueError, TypeError):
++            return 0
+ 
+-
+-def compute_fit_score(raw_entities: dict[str, Any], intent_tag: str, reactions: int = 0, comments: int = 0) -> float:
++    @field_validator("media_urls", mode="before")
++    @classmethod
++    def _parse_media_urls(cls, value: Any) -> list[str]:
++        if value is None or value == "":
++            return []
++        if isinstance(value, list):
++            return value
++        if isinstance(value, str):
++            try:
++                parsed = json.loads(value)
++                if isinstance(parsed, list):
++                    return [str(item) for item in parsed]
++            except json.JSONDecodeError:
++                logger.warning("Malformed media_urls JSON: %r", value)
++            return []
++        return []
++
++    @field_validator("published_at", mode="before")
++    @classmethod
++    def _parse_published_at(cls, value: Any) -> datetime | None:
++        if value is None or value == "":
++            return None
++        if isinstance(value, datetime):
++            return value
++        if isinstance(value, str):
++            try:
++                return datetime.fromisoformat(value.replace("Z", "+00:00"))
++            except (ValueError, TypeError):
++                logger.warning("Malformed published_at %r; using None", value)
++        return None
++
++
++def compute_fit_score(
++    raw_entities: dict[str, Any], intent_tag: str, reactions: int = 0, comments: int = 0
++) -> float:
+     """Compute lead quality score (0.0 to 1.0) based on extracted signals."""
+     score = 0.0
+ 
+@@ -55,65 +143,218 @@ def compute_fit_score(raw_entities: dict[str, Any], intent_tag: str, reactions:
+     return min(1.0, round(score, 2))
+ 
+ 
++async def _create_lead_from_social_post(
++    session: AsyncSession,
++    event: SocialPostEvent,
++    raw_entities: dict[str, Any],
++    fit_score: float,
++) -> Lead | None:
++    """Create a CRM ``Lead`` for high-intent social posts (AD-SOC-7).
++
++    ``workspace_id`` must be present on the event (or discoverable from the
++    monitored target). Without it we cannot satisfy the ``leads.workspace_id``
++    NOT NULL constraint, so we log and skip.
++    """
++    workspace_id = event.workspace_id
++    target: SocialMonitoredTarget | None = None
++
++    if event.target_id is not None:
++        try:
++            target_id = int(event.target_id)
++            target = await session.get(SocialMonitoredTarget, target_id)
++            if isinstance(target, SocialMonitoredTarget) and isinstance(
++                target.workspace_id, int
++            ):
++                workspace_id = target.workspace_id
++        except (ValueError, TypeError):
++            logger.warning("Invalid target_id %r; ignoring", event.target_id)
++
++    if not isinstance(workspace_id, int) or workspace_id <= 0:
++        logger.warning(
++            "Cannot create Lead for %s/%s: workspace_id is missing",
++            event.platform,
++            event.external_post_id,
++        )
++        return None
++
++    company_name = (
++        event.author_name
++        or (target.target_name if isinstance(target, SocialMonitoredTarget) else None)
++        or "Unknown social author"
++    )[:200]
++    source_url = event.post_url or event.author_url
++    locations = raw_entities.get("locations", [])
++    location = locations[0][:100] if locations else None
++
++    emails = raw_entities.get("emails", [])
++    domain = None
++    if emails:
++        domain = emails[0].split("@")[-1][:255] if "@" in emails[0] else None
++
++    # ponytail: Lead model does not have a phone/content_snippet column.
++    # Store phones in the raw_entities JSON on the social post; a follow-up
++    # migration can add a lead-level phone/notes column when needed.
++    intent_tag = raw_entities.get("intent", "other")
++    intent_score = 0.8 if intent_tag in SOCIAL_LEAD_INTENTS else fit_score
++
++    lead = Lead(
++        workspace_id=workspace_id,
++        client_id=event.client_id,
++        source="social",
++        source_url=source_url,
++        company_name=company_name,
++        domain=domain,
++        industry=intent_tag,
++        location=location,
++        tech_stack=[],
++        fit_score=fit_score,
++        intent_score=intent_score,
++        composite_score=fit_score,
++        status="new",
++        enriched=False,
++        consent_status="public",
++        legal_basis="legitimate_interest",
++    )
++
++    session.add(lead)
++    try:
++        await session.commit()
++    except SQLAlchemyError as exc:
++        await session.rollback()
++        logger.exception(
++            "Failed to create Lead for %s/%s: %s",
++            event.platform,
++            event.external_post_id,
++            exc,
++        )
++        return None
++
++    return lead
++
++
++async def _evaluate_alerts_for_social_post(
++    session: AsyncSession,
++    event: SocialPostEvent,
++    raw_entities: dict[str, Any],
++    fit_score: float,
++) -> None:
++    """Evaluate active ``AlertRule`` saved searches against this social post.
++
++    Without ``workspace_id`` we cannot scope the rule lookup, so we skip.
++    """
++    workspace_id = event.workspace_id
++    if not isinstance(workspace_id, int) or workspace_id <= 0:
++        logger.debug(
++            "Skipping alert evaluation for %s/%s: workspace_id missing",
++            event.platform,
++            event.external_post_id,
++        )
++        return
++
++    try:
++        stmt = select(AlertRule).where(
++            AlertRule.workspace_id == workspace_id,
++            AlertRule.enabled.is_(True),
++            AlertRule.capability_id == SOCIAL_LEAD_CAPABILITY_ID,
++        )
++        result = await session.execute(stmt)
++        rules = result.scalars().all()
++
++        intent_tag = raw_entities.get("intent", "other")
++        content_lower = (event.content or "").lower()
++        author_lower = (event.author_name or "").lower()
++
++        for rule in rules:
++            query = rule.query or {}
++
++            if query.get("platform") and query["platform"] != event.platform:
++                continue
++            if query.get("intent") and query["intent"] != intent_tag:
++                continue
++            if query.get("min_fit_score", 0) > fit_score:
++                continue
++
++            keyword = query.get("keyword")
++            if keyword and keyword.lower() not in (
++                content_lower + " " + author_lower
++            ):
++                continue
++
++            logger.info(
++                "Matched alert rule %s for social post %s/%s",
++                rule.id,
++                event.platform,
++                event.external_post_id,
++            )
++            await execute_alert_rule(
++                session=session,
++                alert_rule=rule,
++                fired_at=datetime.now(UTC),
++            )
++    except Exception as exc:
++        logger.exception(
++            "Alert evaluation failed for %s/%s: %s",
++            event.platform,
++            event.external_post_id,
++            exc,
++        )
++
++
+ async def process_social_post_event(
+     payload: dict[str, Any],
+     session: AsyncSession | None = None,
+-) -> dict[str, Any]:
+-    """Extract entities, calculate fit score, and idempotent UPSERT into social_posts."""
++) -> dict[str, Any] | None:
++    """Validate, extract entities, calculate fit score, and UPSERT into social_posts."""
++    try:
++        event = SocialPostEvent.model_validate(payload)
++    except ValidationError as exc:
++        logger.warning("Invalid social post event: %s", exc)
++        return None
++
+     extractor = SocialEntityExtractor()
++    extracted = extractor.extract_all(event.content)
++    intent_tag = extracted["intent"]
++    fit_score = compute_fit_score(
++        extracted, intent_tag, event.reactions_count, event.comments_count
++    )
+ 
+-    platform = payload.get("platform", "facebook")
+-    external_post_id = str(payload.get("external_post_id", ""))
+-    content = payload.get("content", "")
+-    author_id = payload.get("author_id")
+-    author_name = payload.get("author_name")
+-    author_url = payload.get("author_url")
+-    post_url = payload.get("post_url")
+-    reactions_count = int(payload.get("reactions_count", 0))
+-    comments_count = int(payload.get("comments_count", 0))
+-    shares_count = int(payload.get("shares_count", 0))
+-
+-    media_urls_raw = payload.get("media_urls", "[]")
+-    if isinstance(media_urls_raw, str):
+-        try:
+-            media_urls = json.loads(media_urls_raw)
+-        except Exception:
+-            media_urls = []
+-    else:
+-        media_urls = media_urls_raw or []
+-
+-    published_at_raw = payload.get("published_at")
+-    published_at = None
+-    if published_at_raw:
++    target_id: int | None = None
++    if event.target_id is not None:
+         try:
+-            published_at = datetime.fromisoformat(published_at_raw.replace("Z", "+00:00"))
+-        except Exception:
+-            published_at = datetime.now(UTC)
+-
+-    # 3-step NLP extraction
+-    extracted = extractor.extract_all(content)
+-    intent_tag = extracted["intent"]
+-    fit_score = compute_fit_score(extracted, intent_tag, reactions_count, comments_count)
++            target_id = int(event.target_id)
++        except (ValueError, TypeError):
++            logger.warning("Invalid target_id %r; ignoring", event.target_id)
+ 
+     result_data = {
+-        "platform": platform,
+-        "external_post_id": external_post_id,
+-        "author_id": author_id,
+-        "author_name": author_name,
+-        "author_url": author_url,
+-        "post_url": post_url,
+-        "content": content,
++        "platform": event.platform,
++        "external_post_id": event.external_post_id,
++        "target_id": target_id,
++        "author_id": event.author_id,
++        "author_name": event.author_name,
++        "author_url": event.author_url,
++        "post_url": event.post_url,
++        "content": event.content,
+         "intent_tag": intent_tag,
+         "fit_score": fit_score,
+-        "reactions_count": reactions_count,
+-        "comments_count": comments_count,
+-        "shares_count": shares_count,
+-        "media_urls": media_urls,
++        "reactions_count": event.reactions_count,
++        "comments_count": event.comments_count,
++        "shares_count": event.shares_count,
++        "media_urls": event.media_urls,
+         "raw_entities": extracted,
+-        "published_at": published_at,
++        "published_at": event.published_at,
+     }
+ 
+     if session is not None:
++        # Resolve workspace context from explicit event or the monitored target.
++        workspace_id = event.workspace_id
++        if workspace_id is None and target_id is not None:
++            target = await session.get(SocialMonitoredTarget, target_id)
++            if isinstance(target, SocialMonitoredTarget) and target.workspace_id:
++                workspace_id = target.workspace_id
++        if workspace_id is not None and event.workspace_id is None:
++            event.workspace_id = workspace_id
++        result_data["workspace_id"] = workspace_id
++
+         stmt = pg_insert(SocialPost).values(**result_data)
+         upsert_stmt = stmt.on_conflict_do_update(
+             index_elements=["platform", "external_post_id"],
+@@ -124,11 +365,40 @@ async def process_social_post_event(
+                 "raw_entities": stmt.excluded.raw_entities,
+                 "intent_tag": stmt.excluded.intent_tag,
+                 "fit_score": stmt.excluded.fit_score,
++                "workspace_id": func.coalesce(
++                    stmt.excluded.workspace_id, SocialPost.workspace_id
++                ),
+                 "updated_at": datetime.now(UTC),
+             },
+         )
+-        await session.execute(upsert_stmt)
+-        await session.commit()
++
++        try:
++            await session.execute(upsert_stmt)
++            await session.commit()
++        except SQLAlchemyError as exc:
++            await session.rollback()
++            logger.exception(
++                "Social post UPSERT failed for %s/%s: %s",
++                event.platform,
++                event.external_post_id,
++                exc,
++            )
++            return None
++
++        if intent_tag in SOCIAL_LEAD_INTENTS:
++            await _create_lead_from_social_post(
++                session=session,
++                event=event,
++                raw_entities=extracted,
++                fit_score=fit_score,
++            )
++
++        await _evaluate_alerts_for_social_post(
++            session=session,
++            event=event,
++            raw_entities=extracted,
++            fit_score=fit_score,
++        )
+ 
+     return result_data
+ 
+@@ -144,32 +414,45 @@ async def run_social_stream_consumer(
+     consumer_name: str = "worker-1",
+     batch_size: int = 10,
+     block_ms: int = 2000,
++    max_messages_per_batch: int = MAX_MESSAGES_PER_BATCH,
+ ) -> int:
+     """Consume events from Redis stream using Consumer Groups (AD-SOC-4)."""
+     created_locally = False
+     if redis_client is None:
+         import redis.asyncio as aioredis
+-        redis_client = aioredis.from_url(config.REDIS_APP_URL, decode_responses=True)
++
++        redis_client = aioredis.from_url(
++            config.REDIS_APP_URL, decode_responses=True
++        )
+         created_locally = True
+ 
+     try:
+-        # Ensure consumer group exists
+-        import contextlib
+-
+-        with contextlib.suppress(Exception):
++        # Ensure consumer group exists, but only swallow "BUSYGROUP".
++        try:
+             await redis_client.xgroup_create(
+                 name=STREAM_SOCIAL_RAW_POSTS,
+                 groupname=CONSUMER_GROUP_NAME,
+                 id="0",
+                 mkstream=True,
+             )
++        except ResponseError as exc:
++            if "BUSYGROUP" not in str(exc).upper():
++                logger.error(
++                    "Failed to create Redis consumer group: %s",
++                    exc,
++                )
++                return 0
++        except Exception as exc:
++            logger.exception("Failed to create Redis consumer group: %s", exc)
++            return 0
+ 
++        count = min(batch_size, max_messages_per_batch)
+         try:
+             entries = await redis_client.xreadgroup(
+                 groupname=CONSUMER_GROUP_NAME,
+                 consumername=consumer_name,
+                 streams={STREAM_SOCIAL_RAW_POSTS: ">"},
+-                count=batch_size,
++                count=count,
+                 block=block_ms,
+             )
+         except Exception as exc:
+@@ -184,14 +467,36 @@ async def run_social_stream_consumer(
+             for _stream_name, messages in entries:
+                 for msg_id, payload in messages:
+                     try:
+-                        await process_social_post_event(payload, session=session)
+-                        await redis_client.xack(STREAM_SOCIAL_RAW_POSTS, CONSUMER_GROUP_NAME, msg_id)
+-                        processed_count += 1
++                        result = await process_social_post_event(
++                            payload, session=session
++                        )
++                        if result is not None:
++                            processed_count += 1
+                     except Exception as exc:
+                         await session.rollback()
+-                        logger.exception("Failed processing social stream message %s: %s", msg_id, exc)
++                        logger.exception(
++                            "Failed processing social stream message %s: %s",
++                            msg_id,
++                            exc,
++                        )
++                    finally:
++                        try:
++                            await redis_client.xack(
++                                STREAM_SOCIAL_RAW_POSTS,
++                                CONSUMER_GROUP_NAME,
++                                msg_id,
++                            )
++                        except Exception:
++                            logger.exception(
++                                "Failed to ACK social stream message %s", msg_id
++                            )
++
++                    await asyncio.sleep(BATCH_SLEEP_SECONDS)
+ 
+         return processed_count
+     finally:
+-        if created_locally:
+-            await redis_client.aclose()
++        if created_locally and redis_client is not None:
++            try:
++                await redis_client.aclose()
++            except Exception:
++                logger.exception("Error closing Redis client")
+diff --git a/nowing_backend/tests/unit/capabilities/test_social_search_leads.py b/nowing_backend/tests/unit/capabilities/test_social_search_leads.py
+index d53ddf54d..ff37a1d96 100644
+--- a/nowing_backend/tests/unit/capabilities/test_social_search_leads.py
++++ b/nowing_backend/tests/unit/capabilities/test_social_search_leads.py
+@@ -1,9 +1,10 @@
+ """Unit tests for social.search_leads capability & social_search_posts (Story 21.8 / AC 5)."""
+ 
+-from unittest.mock import AsyncMock, patch
++from unittest.mock import AsyncMock
+ 
+ import pytest
+ 
++from app.capabilities.core.types import CapabilityContext
+ from app.capabilities.social.search_leads import (
+     SOCIAL_SEARCH_LEADS,
+     SocialSearchLeadsInput,
+@@ -29,54 +30,52 @@ class MockPost:
+         self.published_at = None
+ 
+ 
++@pytest.fixture
++def mock_db_session_factory():
++    """Build a mocked DB session that returns two placeholder social posts."""
++
++    def _factory(posts):
++        mock_db_session = AsyncMock()
++        mock_scalars = AsyncMock()
++        mock_scalars.all = lambda: posts
++        mock_result = AsyncMock()
++        mock_result.scalars = lambda: mock_scalars
++        mock_db_session.execute = AsyncMock(return_value=mock_result)
++        return mock_db_session
++
++    return _factory
++
++
+ @pytest.mark.asyncio
+-async def test_social_search_leads_capability_execution():
++async def test_social_search_leads_capability_execution(mock_db_session_factory):
+     """Verify execution of social.search_leads capability returns filtered items."""
+     mock_post_1 = MockPost("facebook", "fb_01", "Bán nhà 0912345678", "sell", 0.85, ["0912345678"])
+     mock_post_2 = MockPost("twitter", "tw_02", "Tuyển dụng bds", "hiring", 0.70, [])
+ 
+-    mock_db_session = AsyncMock()
+-    mock_scalars = AsyncMock()
+-    mock_scalars.all = lambda: [mock_post_1, mock_post_2]
+-    mock_result = AsyncMock()
+-    mock_result.scalars = lambda: mock_scalars
+-    mock_db_session.execute = AsyncMock(return_value=mock_result)
+-
+-    mock_session_maker = AsyncMock()
+-    mock_session_maker.__aenter__.return_value = mock_db_session
+-    mock_session_maker.__aexit__.return_value = None
++    mock_db_session = mock_db_session_factory([mock_post_1, mock_post_2])
++    ctx = CapabilityContext(session=mock_db_session, workspace_id=1)
+ 
+-    with patch("app.capabilities.social.search_leads.executor.async_session_maker", return_value=mock_session_maker):
+-        payload = SocialSearchLeadsInput(keyword="bds", limit=10)
+-        output: SocialSearchLeadsOutput = await SOCIAL_SEARCH_LEADS.executor(payload)
++    payload = SocialSearchLeadsInput(keyword="bds", limit=10)
++    output: SocialSearchLeadsOutput = await SOCIAL_SEARCH_LEADS.executor(payload, ctx)
+ 
+-        assert output.total == 2
+-        assert len(output.items) == 2
+-        assert output.items[0].platform == "facebook"
+-        assert output.items[0].phones == ["0912345678"]
+-        assert output.cost_micros == 4000
+-        assert not output.degraded
++    assert output.total == 2
++    assert len(output.items) == 2
++    assert output.items[0].platform == "facebook"
++    assert output.items[0].phones == ["0912345678"]
++    assert output.cost_micros == 4000
++    assert not output.degraded
+ 
+ 
+ @pytest.mark.asyncio
+-async def test_social_search_posts_helper():
++async def test_social_search_posts_helper(mock_db_session_factory):
+     """Verify helper function social_search_posts returns list of dicts."""
+     mock_post = MockPost("facebook", "fb_99", "Cần bán căn hộ 0987654321", "sell", 0.9, ["0987654321"])
+ 
+-    mock_db_session = AsyncMock()
+-    mock_scalars = AsyncMock()
+-    mock_scalars.all = lambda: [mock_post]
+-    mock_result = AsyncMock()
+-    mock_result.scalars = lambda: mock_scalars
+-    mock_db_session.execute = AsyncMock(return_value=mock_result)
+-
+-    mock_session_maker = AsyncMock()
+-    mock_session_maker.__aenter__.return_value = mock_db_session
+-    mock_session_maker.__aexit__.return_value = None
+-
+-    with patch("app.capabilities.social.search_leads.executor.async_session_maker", return_value=mock_session_maker):
+-        leads = await social_search_posts(intent="sell", limit=5)
+-        assert len(leads) == 1
+-        assert leads[0]["platform"] == "facebook"
+-        assert leads[0]["external_post_id"] == "fb_99"
+-        assert "0987654321" in leads[0]["phones"]
++    mock_db_session = mock_db_session_factory([mock_post])
++    ctx = CapabilityContext(session=mock_db_session, workspace_id=1)
++
++    leads = await social_search_posts(intent="sell", limit=5, ctx=ctx)
++    assert len(leads) == 1
++    assert leads[0]["platform"] == "facebook"
++    assert leads[0]["external_post_id"] == "fb_99"
++    assert "0987654321" in leads[0]["phones"]
+diff --git a/nowing_backend/alembic/versions/204_add_social_tables.py b/nowing_backend/alembic/versions/204_add_social_tables.py
+new file mode 100644
+index 000000000..21b296d80
+--- /dev/null
++++ b/nowing_backend/alembic/versions/204_add_social_tables.py
+@@ -0,0 +1,106 @@
++"""add social tables (Story 21.8 / AD-SOC-1 to AD-SOC-7)
++
++Revision ID: 204
++Revises: 203
++"""
++
++from __future__ import annotations
++
++from collections.abc import Sequence
++
++from sqlalchemy import text
++
++from alembic import op
++from app.config import config
++
++revision: str = "204"
++down_revision: str | None = "203"
++branch_labels: str | Sequence[str] | None = None
++depends_on: str | Sequence[str] | None = None
++
++EMBEDDING_DIM = config.embedding_model_instance.dimension
++
++
++def _exec_statements(*statements: str) -> None:
++    for stmt in statements:
++        op.execute(text(stmt))
++
++
++def upgrade() -> None:
++    _exec_statements(
++        """
++        CREATE TABLE IF NOT EXISTS social_monitored_targets (
++            id BIGSERIAL PRIMARY KEY,
++            workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
++            platform VARCHAR(50) NOT NULL,
++            target_id VARCHAR(255) NOT NULL,
++            target_name TEXT NOT NULL,
++            target_url TEXT,
++            category VARCHAR(50) NOT NULL DEFAULT 'general',
++            is_active BOOLEAN NOT NULL DEFAULT TRUE,
++            realtime_stream BOOLEAN NOT NULL DEFAULT FALSE,
++            scrape_interval_minutes INTEGER NOT NULL DEFAULT 15,
++            status VARCHAR(50) NOT NULL DEFAULT 'active',
++            last_polled_at TIMESTAMPTZ,
++            last_scraped_at TIMESTAMPTZ,
++            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++            CONSTRAINT uq_social_target UNIQUE (platform, target_id)
++        );
++        """,
++        f"""
++        CREATE TABLE IF NOT EXISTS social_posts (
++            id BIGSERIAL PRIMARY KEY,
++            workspace_id INTEGER REFERENCES workspaces(id) ON DELETE CASCADE,
++            target_id BIGINT REFERENCES social_monitored_targets(id) ON DELETE CASCADE,
++            platform VARCHAR(50) NOT NULL,
++            external_post_id VARCHAR(255) NOT NULL,
++            author_name TEXT,
++            author_id VARCHAR(255),
++            author_url TEXT,
++            post_url TEXT,
++            content TEXT,
++            intent_tag VARCHAR(50),
++            fit_score REAL NOT NULL DEFAULT 0.0,
++            reactions_count INTEGER NOT NULL DEFAULT 0,
++            comments_count INTEGER NOT NULL DEFAULT 0,
++            shares_count INTEGER NOT NULL DEFAULT 0,
++            raw_entities JSONB NOT NULL DEFAULT '{{}}'::jsonb,
++            media_urls TEXT[],
++            embedding vector({EMBEDDING_DIM}),
++            published_at TIMESTAMPTZ,
++            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++            CONSTRAINT uq_social_post UNIQUE (platform, external_post_id)
++        );
++        """,
++    )
++
++    _exec_statements(
++        "CREATE INDEX IF NOT EXISTS idx_social_targets_platform ON social_monitored_targets (platform);",
++        "CREATE INDEX IF NOT EXISTS idx_social_targets_active ON social_monitored_targets (is_active);",
++        "CREATE INDEX IF NOT EXISTS idx_social_targets_workspace_id ON social_monitored_targets (workspace_id);",
++        "CREATE INDEX IF NOT EXISTS idx_social_posts_platform_ext ON social_posts (platform, external_post_id);",
++        "CREATE INDEX IF NOT EXISTS idx_social_posts_published ON social_posts (published_at DESC);",
++        "CREATE INDEX IF NOT EXISTS idx_social_posts_intent ON social_posts (intent_tag);",
++        "CREATE INDEX IF NOT EXISTS idx_social_posts_gin_entities ON social_posts USING gin (raw_entities);",
++        "CREATE INDEX IF NOT EXISTS idx_social_posts_embedding_hnsw ON social_posts USING hnsw (embedding public.vector_cosine_ops) WHERE embedding IS NOT NULL;",
++        "CREATE INDEX IF NOT EXISTS idx_social_posts_workspace_id ON social_posts (workspace_id);",
++        "CREATE INDEX IF NOT EXISTS idx_social_posts_target_id ON social_posts (target_id);",
++    )
++
++
++def downgrade() -> None:
++    _exec_statements(
++        "DROP INDEX IF EXISTS idx_social_posts_target_id;",
++        "DROP INDEX IF EXISTS idx_social_posts_workspace_id;",
++        "DROP INDEX IF EXISTS idx_social_posts_embedding_hnsw;",
++        "DROP INDEX IF EXISTS idx_social_posts_gin_entities;",
++        "DROP INDEX IF EXISTS idx_social_posts_intent;",
++        "DROP INDEX IF EXISTS idx_social_posts_published;",
++        "DROP INDEX IF EXISTS idx_social_posts_platform_ext;",
++        "DROP INDEX IF EXISTS idx_social_targets_workspace_id;",
++        "DROP INDEX IF EXISTS idx_social_targets_active;",
++        "DROP INDEX IF EXISTS idx_social_targets_platform;",
++        "DROP TABLE IF EXISTS social_posts CASCADE;",
++        "DROP TABLE IF EXISTS social_monitored_targets CASCADE;",
++    )
+diff --git a/nowing_backend/app/tasks/celery_tasks/social_xactions_ingest.py b/nowing_backend/app/tasks/celery_tasks/social_xactions_ingest.py
+new file mode 100644
+index 000000000..6b7a915b1
+--- /dev/null
++++ b/nowing_backend/app/tasks/celery_tasks/social_xactions_ingest.py
+@@ -0,0 +1,239 @@
++"""Celery scheduler & per-target ingest for XActions social targets (Story 21.8).
++
++The meta-scheduler ``check_social_monitored_targets`` runs every minute and
++spawns ``ingest_social_target`` for each active ``SocialMonitoredTarget`` whose
++``scrape_interval_minutes`` has elapsed since ``last_scraped_at``.
++
++The per-target task uses ``XActionsSocialAdapter`` to fetch posts and pushes
++each one to Redis Stream ``stream:social:raw_posts`` with the target's
++``workspace_id`` and internal ``target_id`` attached. Downstream
++``social_stream_worker`` picks up the stream, extracts entities, and UPSERTs
++into ``social_posts``.
++"""
++
++from __future__ import annotations
++
++import contextlib
++import logging
++from datetime import UTC, datetime, timedelta
++
++import redis.asyncio as aioredis
++from sqlalchemy import select
++
++from app.celery_app import CONNECTORS_QUEUE, celery_app
++from app.config import config
++from app.db import SocialMonitoredTarget
++from app.proprietary.platforms.xactions.adapter import XActionsSocialAdapter
++from app.tasks.celery_tasks import get_celery_session_maker, run_async_celery_task
++
++logger = logging.getLogger(__name__)
++
++SOCIAL_TARGET_LOCK_KEY = "xactions:social_target_lock:{target_id}"
++SOCIAL_TARGET_LOCK_MIN_TTL_SECONDS = 300  # 5 minutes
++DEFAULT_FETCH_LIMIT = 20
++
++
++SUPPORTED_PLATFORMS = {
++    "facebook_group",
++    "twitter_keyword",
++}
++
++
++def _target_lock_key(target_id: int) -> str:
++    """Redis key used to serialize ingest for a single social target."""
++    return SOCIAL_TARGET_LOCK_KEY.format(target_id=target_id)
++
++
++def _lock_ttl_for_target(target: SocialMonitoredTarget) -> int:
++    """Lock TTL in seconds; at least the configured minimum."""
++    interval_seconds = (target.scrape_interval_minutes or 15) * 60
++    return max(interval_seconds, SOCIAL_TARGET_LOCK_MIN_TTL_SECONDS)
++
++
++async def _acquire_target_lock(
++    redis_client: aioredis.Redis,
++    target_id: int,
++    ttl: int,
++) -> bool:
++    """Try to acquire a Redis lock for the given target."""
++    return bool(await redis_client.set(_target_lock_key(target_id), "1", nx=True, ex=ttl))
++
++
++async def _release_target_lock(
++    redis_client: aioredis.Redis,
++    target_id: int,
++) -> None:
++    """Release the target lock, ignoring errors."""
++    with contextlib.suppress(Exception):
++        await redis_client.delete(_target_lock_key(target_id))
++
++
++@celery_app.task(
++    name="ingest_social_target",
++    bind=True,
++    queue=CONNECTORS_QUEUE,
++    soft_time_limit=300,
++    time_limit=900,
++)
++def ingest_social_target_task(self, target_id: int) -> int:
++    """Celery task that fetches and streams posts for a single social target."""
++    return run_async_celery_task(lambda: _ingest_social_target(target_id))
++
++
++async def _ingest_social_target(target_id: int) -> int:
++    """Fetch posts for a target and push them to the raw-posts Redis stream."""
++    redis_client = aioredis.from_url(config.REDIS_APP_URL, decode_responses=True)
++    try:
++        async with get_celery_session_maker()() as session:
++            target = await session.get(SocialMonitoredTarget, target_id)
++            if not target:
++                logger.warning("Social target %s not found", target_id)
++                return 0
++
++            if not target.is_active or target.status != "active":
++                logger.info(
++                    "Skipping inactive social target %s (active=%s status=%s)",
++                    target_id,
++                    target.is_active,
++                    target.status,
++                )
++                return 0
++
++            lock_ttl = _lock_ttl_for_target(target)
++            if not await _acquire_target_lock(redis_client, target_id, lock_ttl):
++                logger.info("Social target %s is already being ingested", target_id)
++                return 0
++
++            try:
++                adapter = XActionsSocialAdapter()
++                posts: list = []
++
++                if target.platform == "facebook_group":
++                    posts = await adapter.fetch_facebook_group_posts(
++                        group_id=target.target_id,
++                        limit=DEFAULT_FETCH_LIMIT,
++                        account_id=f"fb:{target.id}",
++                        auth_cookie=None,
++                    )
++                elif target.platform == "twitter_keyword":
++                    posts = await adapter.search_tweets(
++                        query=target.target_id,
++                        limit=DEFAULT_FETCH_LIMIT,
++                        account_id=f"tw:{target.id}",
++                    )
++                elif target.platform == "facebook_page":
++                    logger.warning(
++                        "facebook_page scraping is not yet supported (target %s)",
++                        target_id,
++                    )
++                    posts = []
++                elif target.platform == "twitter_user":
++                    logger.warning(
++                        "twitter_user scraping is not yet supported (target %s)",
++                        target_id,
++                    )
++                    posts = []
++                else:
++                    logger.warning(
++                        "Unsupported social platform %r for target %s",
++                        target.platform,
++                        target_id,
++                    )
++                    posts = []
++
++                ingested = 0
++                for post in posts:
++                    post.target_id = target.id
++                    post.workspace_id = target.workspace_id
++                    await adapter.ingest_raw_post_to_stream(
++                        post,
++                        redis_client=redis_client,
++                    )
++                    ingested += 1
++
++                target.last_scraped_at = datetime.now(UTC)
++                await session.commit()
++
++                logger.info(
++                    "Ingested %d posts for social target %s (%s)",
++                    ingested,
++                    target_id,
++                    target.platform,
++                )
++                return ingested
++
++            except Exception:
++                await session.rollback()
++                raise
++            finally:
++                await _release_target_lock(redis_client, target_id)
++    finally:
++        with contextlib.suppress(Exception):
++            await redis_client.aclose()
++
++
++@celery_app.task(name="check_social_monitored_targets")
++def check_social_monitored_targets_task() -> int:
++    """Meta-scheduler: find due social targets and spawn per-target ingest tasks."""
++    return run_async_celery_task(_check_and_trigger_social_targets)
++
++
++async def _check_and_trigger_social_targets() -> int:
++    """Scan active social targets and enqueue ``ingest_social_target`` for due ones."""
++    redis_client = aioredis.from_url(config.REDIS_APP_URL, decode_responses=True)
++    try:
++        async with get_celery_session_maker()() as session:
++            now = datetime.now(UTC)
++            result = await session.execute(
++                select(SocialMonitoredTarget).where(
++                    SocialMonitoredTarget.is_active.is_(True),
++                    SocialMonitoredTarget.status == "active",
++                )
++            )
++            targets = result.scalars().all()
++
++            due_targets = [
++                target
++                for target in targets
++                if target.last_scraped_at is None
++                or target.last_scraped_at
++                <= now - timedelta(minutes=target.scrape_interval_minutes or 15)
++            ]
++
++            if not due_targets:
++                logger.debug("No social targets due for scraping")
++                return 0
++
++            logger.info(
++                "Found %d social target(s) due for scraping", len(due_targets)
++            )
++
++            triggered = 0
++            for target in due_targets:
++                if target.platform not in SUPPORTED_PLATFORMS:
++                    logger.debug(
++                        "Skipping unsupported platform %r for target %s",
++                        target.platform,
++                        target.id,
++                    )
++                    continue
++
++                # The per-target task will acquire its own Redis lock once it
++                # starts, so a short pre-check here avoids piling up duplicate
++                # tasks in the queue for a very slow/long-running ingest.
++                if await redis_client.exists(_target_lock_key(target.id)):
++                    logger.debug("Social target %s is locked, skipping", target.id)
++                    continue
++
++                logger.info(
++                    "Triggering social ingest for target %s (%s)",
++                    target.id,
++                    target.platform,
++                )
++                ingest_social_target_task.delay(target.id)
++                triggered += 1
++
++            return triggered
++    finally:
++        with contextlib.suppress(Exception):
++            await redis_client.aclose()
+diff --git a/nowing_backend/tests/unit/tasks/celery_tasks/test_social_xactions_ingest.py b/nowing_backend/tests/unit/tasks/celery_tasks/test_social_xactions_ingest.py
+new file mode 100644
+index 000000000..ce0c68afc
+--- /dev/null
++++ b/nowing_backend/tests/unit/tasks/celery_tasks/test_social_xactions_ingest.py
+@@ -0,0 +1,305 @@
++"""Unit tests for XActions social target scheduler & per-target ingest."""
++
++from __future__ import annotations
++
++from contextlib import asynccontextmanager
++from datetime import UTC, datetime, timedelta
++from types import SimpleNamespace
++from unittest.mock import AsyncMock, MagicMock
++
++import pytest
++
++from app.proprietary.platforms.xactions.adapter import SocialPostData
++from app.tasks.celery_tasks import social_xactions_ingest
++
++pytestmark = pytest.mark.unit
++
++
++def _fake_target(
++    target_id: int = 1,
++    workspace_id: int = 7,
++    platform: str = "facebook_group",
++    external_target_id: str = "bds_hanoi_group",
++    interval_minutes: int = 15,
++    last_scraped_at: datetime | None = None,
++    is_active: bool = True,
++    status: str = "active",
++) -> SimpleNamespace:
++    return SimpleNamespace(
++        id=target_id,
++        workspace_id=workspace_id,
++        platform=platform,
++        target_id=external_target_id,
++        target_name="Test Target",
++        scrape_interval_minutes=interval_minutes,
++        last_scraped_at=last_scraped_at,
++        is_active=is_active,
++        status=status,
++    )
++
++
++class _FakeResult:
++    def __init__(self, target):
++        self._target = target
++
++    def scalars(self):
++        return _FakeScalars(self._target)
++
++
++class _FakeScalars:
++    def __init__(self, target):
++        self._target = target
++
++    def all(self):
++        return [self._target]
++
++
++class _FakeSession:
++    """Minimal async SQLAlchemy session stub."""
++
++    def __init__(self, target):
++        self._target = target
++        self.commits = 0
++        self.rollbacks = 0
++
++    async def get(self, _model, _id):
++        return self._target
++
++    async def execute(self, _query):
++        return _FakeResult(self._target)
++
++    async def commit(self):
++        self.commits += 1
++
++    async def rollback(self):
++        self.rollbacks += 1
++
++
++@asynccontextmanager
++async def _fake_session_ctx():
++    yield _FakeSession(_fake_target())
++
++
++def _fake_redis_client(acquired: bool = True) -> AsyncMock:
++    client = AsyncMock()
++    client.set.return_value = acquired
++    client.exists.return_value = 0
++    client.delete.return_value = 1
++    client.aclose.return_value = None
++    return client
++
++
++@pytest.fixture
++def fake_redis():
++    return _fake_redis_client()
++
++
++@pytest.mark.asyncio
++async def test_check_social_targets_triggers_due_target(
++    monkeypatch,
++):
++    """Scheduler spawns ingest_social_target for a due active target."""
++    target = _fake_target(last_scraped_at=datetime.now(UTC) - timedelta(minutes=30))
++    session = _FakeSession(target)
++
++    @asynccontextmanager
++    async def _session_ctx():
++        yield session
++
++    monkeypatch.setattr(
++        social_xactions_ingest,
++        "get_celery_session_maker",
++        lambda: _session_ctx,
++    )
++
++    client = _fake_redis_client()
++    fake_aioredis = MagicMock()
++    fake_aioredis.from_url.return_value = client
++    monkeypatch.setattr(social_xactions_ingest, "aioredis", fake_aioredis)
++
++    delay_mock = MagicMock()
++    monkeypatch.setattr(
++        social_xactions_ingest.ingest_social_target_task,
++        "delay",
++        delay_mock,
++    )
++
++    triggered = await social_xactions_ingest._check_and_trigger_social_targets()
++
++    assert triggered == 1
++    delay_mock.assert_called_once_with(target.id)
++    client.aclose.assert_called_once()
++
++
++@pytest.mark.asyncio
++async def test_check_social_targets_skips_not_due(
++    monkeypatch,
++):
++    """Scheduler does not trigger a target scraped within its interval."""
++    target = _fake_target(last_scraped_at=datetime.now(UTC) - timedelta(minutes=5))
++    session = _FakeSession(target)
++
++    @asynccontextmanager
++    async def _session_ctx():
++        yield session
++
++    monkeypatch.setattr(
++        social_xactions_ingest,
++        "get_celery_session_maker",
++        lambda: _session_ctx,
++    )
++
++    client = _fake_redis_client()
++    fake_aioredis = MagicMock()
++    fake_aioredis.from_url.return_value = client
++    monkeypatch.setattr(social_xactions_ingest, "aioredis", fake_aioredis)
++
++    delay_mock = MagicMock()
++    monkeypatch.setattr(
++        social_xactions_ingest.ingest_social_target_task,
++        "delay",
++        delay_mock,
++    )
++
++    triggered = await social_xactions_ingest._check_and_trigger_social_targets()
++
++    assert triggered == 0
++    delay_mock.assert_not_called()
++
++
++@pytest.mark.asyncio
++async def test_ingest_social_target_facebook_group(
++    monkeypatch,
++):
++    """Per-target task fetches Facebook posts and pushes them to Redis stream."""
++    target = _fake_target(platform="facebook_group")
++    session = _FakeSession(target)
++
++    @asynccontextmanager
++    async def _session_ctx():
++        yield session
++
++    monkeypatch.setattr(
++        social_xactions_ingest,
++        "get_celery_session_maker",
++        lambda: _session_ctx,
++    )
++
++    client = _fake_redis_client()
++    fake_aioredis = MagicMock()
++    fake_aioredis.from_url.return_value = client
++    monkeypatch.setattr(social_xactions_ingest, "aioredis", fake_aioredis)
++
++    post = SocialPostData(
++        platform="facebook",
++        external_post_id="fb_001",
++        content="Bán nhà 0912345678",
++    )
++    mock_adapter = MagicMock()
++    mock_adapter.fetch_facebook_group_posts = AsyncMock(return_value=[post])
++    mock_adapter.ingest_raw_post_to_stream = AsyncMock(return_value="123-0")
++
++    monkeypatch.setattr(
++        social_xactions_ingest,
++        "XActionsSocialAdapter",
++        lambda: mock_adapter,
++    )
++
++    ingested = await social_xactions_ingest._ingest_social_target(target.id)
++
++    assert ingested == 1
++    assert post.target_id == target.id
++    assert post.workspace_id == target.workspace_id
++    mock_adapter.fetch_facebook_group_posts.assert_called_once_with(
++        group_id=target.target_id,
++        limit=20,
++        account_id=f"fb:{target.id}",
++        auth_cookie=None,
++    )
++    mock_adapter.ingest_raw_post_to_stream.assert_called_once_with(
++        post,
++        redis_client=client,
++    )
++    assert session.commits == 1
++    assert target.last_scraped_at is not None
++
++
++@pytest.mark.asyncio
++async def test_ingest_social_target_twitter_keyword(
++    monkeypatch,
++):
++    """Per-target task fetches Twitter keyword posts and pushes them."""
++    target = _fake_target(
++        platform="twitter_keyword",
++        external_target_id="batdongsan",
++    )
++    session = _FakeSession(target)
++
++    @asynccontextmanager
++    async def _session_ctx():
++        yield session
++
++    monkeypatch.setattr(
++        social_xactions_ingest,
++        "get_celery_session_maker",
++        lambda: _session_ctx,
++    )
++
++    client = _fake_redis_client()
++    fake_aioredis = MagicMock()
++    fake_aioredis.from_url.return_value = client
++    monkeypatch.setattr(social_xactions_ingest, "aioredis", fake_aioredis)
++
++    post = SocialPostData(
++        platform="twitter",
++        external_post_id="tw_001",
++        content="Tuyển dụng bds 0912345678",
++    )
++    mock_adapter = MagicMock()
++    mock_adapter.search_tweets = AsyncMock(return_value=[post])
++    mock_adapter.ingest_raw_post_to_stream = AsyncMock(return_value="456-0")
++
++    monkeypatch.setattr(
++        social_xactions_ingest,
++        "XActionsSocialAdapter",
++        lambda: mock_adapter,
++    )
++
++    ingested = await social_xactions_ingest._ingest_social_target(target.id)
++
++    assert ingested == 1
++    assert post.target_id == target.id
++    mock_adapter.search_tweets.assert_called_once_with(
++        query=target.target_id,
++        limit=20,
++        account_id=f"tw:{target.id}",
++    )
++
++
++@pytest.mark.asyncio
++async def test_ingest_social_target_already_locked(
++    monkeypatch,
++):
++    """Task bails out if another worker already holds the target lock."""
++    target = _fake_target()
++    session = _FakeSession(target)
++
++    @asynccontextmanager
++    async def _session_ctx():
++        yield session
++
++    monkeypatch.setattr(
++        social_xactions_ingest,
++        "get_celery_session_maker",
++        lambda: _session_ctx,
++    )
++
++    client = _fake_redis_client(acquired=False)
++    fake_aioredis = MagicMock()
++    fake_aioredis.from_url.return_value = client
++    monkeypatch.setattr(social_xactions_ingest, "aioredis", fake_aioredis)
++
++    ingested = await social_xactions_ingest._ingest_social_target(target.id)
++
++    assert ingested == 0
++    assert session.commits == 0

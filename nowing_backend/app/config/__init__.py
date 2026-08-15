@@ -1688,6 +1688,12 @@ class Config:
             f"exceeds the maximum of 2000 allowed by PGVector."
         )
 
+    # XActions local social ingress (Story 21.8)
+    XACTIONS_PATH = os.getenv("XACTIONS_PATH", "")
+    XACTIONS_TIMEOUT_SECONDS = _env_int("XACTIONS_TIMEOUT_SECONDS", 30)
+    XACTIONS_FACEBOOK_C_USER = os.getenv("XACTIONS_FACEBOOK_C_USER", "")
+    XACTIONS_FACEBOOK_XS = os.getenv("XACTIONS_FACEBOOK_XS", "")
+
     @classmethod
     def get_settings(cls):
         """Get all settings as a dictionary."""

@@ -205,7 +205,7 @@ development_status:
   21-5: review  # 2026-08-15: code + unit tests ok; missing integration tests; P0 human review
   21-6: ready-for-dev  # was deferred (Zalo legal/ToS); reopened for scheduling
   21-7: ready-for-dev
-  21-8: done  # Social Ingress via XActions Integration (Facebook Groups & Twitter/X Feed)
+  21-8: done  # 2026-08-15: 32 review patches + XActions Celery scheduler/ingestor applied; ruff/pytest/tsc green
   21-9: done  # Executive Decision Maker Mapping & B2B Lead Outreach
   epic-21-retrospective: optional
 

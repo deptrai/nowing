@@ -1,12 +1,24 @@
 {
   "dimension": "mutation",
-  "runAt": "2026-08-15T09:38:50.045785+00:00",
+  "runAt": "2026-08-15T11:46:11.140657+00:00",
   "services": [
     {
       "service": "lead_intelligence/enrichment/service",
-      "verdict": "FAIL",
-      "error": "cosmic-ray baseline failed for mutation-nowing-lead_intelligence-enrichment-service-20260815T093841Z.toml",
-      "traceback": "Traceback (most recent call last):\n  File \"/Users/luisphan/Documents/GitHub/nowing/scripts/mutation-gate.py\", line 555, in main\n    run_cosmic_ray(\n  File \"/Users/luisphan/Documents/GitHub/nowing/scripts/mutation-gate.py\", line 319, in run_cosmic_ray\n    raise RuntimeError(f\"cosmic-ray {step} failed for {config.name}\")\nRuntimeError: cosmic-ray baseline failed for mutation-nowing-lead_intelligence-enrichment-service-20260815T093841Z.toml\n"
+      "total": 56,
+      "killed": 56,
+      "survived": 0,
+      "timeout": 0,
+      "noTests": 0,
+      "mutationScore": 100.0,
+      "verdict": "PASS",
+      "triage": {
+        "P0": [],
+        "P1": [],
+        "P2": []
+      },
+      "reportPath": "/Users/luisphan/Documents/GitHub/nowing/_bmad-output/test-artifacts/mutation-nowing-lead_intelligence-enrichment-service-20260815T114611Z.json",
+      "sessionPath": "/Users/luisphan/Documents/GitHub/nowing/_bmad-output/test-artifacts/mutation-nowing-lead_intelligence-enrichment-service-20260815T114247Z.sqlite",
+      "configPath": "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/mutation-nowing-lead_intelligence-enrichment-service-20260815T114247Z.toml"
     }
   ]
 }
