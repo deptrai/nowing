@@ -53,6 +53,17 @@ Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Archite
 `[DEFERRED]` **FR-68 Zalo Integration (Vietnam)** → **E21.6** (Zalo OA, 81% VN professionals; disabled in MVP).
 `[PROPOSED]` **FR-69 Outcome-Based Pricing** → **E21.7** (pay per meeting / lead).
 
+`[READY]` **FR-70 Telegram Web Preview Scraper** → **E22.1** (`t.me/s/{channel}`, no login, zero-risk).
+`[READY]` **FR-71 Telegram MTProto Client Ingestion** → **E22.2** (Telethon, private channels, discussion comments).
+`[READY]` **FR-72 Telegram Scraper Platform Accounts & Session Onboarding** → **E22.2** (AES-256 encrypted `StringSession` in DB).
+`[READY]` **FR-73 Telegram Rate Limiter & FloodWait Cooldown** → **E22.2** (`ScraperPlatformAccountRotator`, Redis mutex lock).
+`[READY]` **FR-74 Telegram Async S3 Media Streaming** → **E22.3** (128KB chunk stream directly to S3/MinIO).
+`[READY]` **FR-75 Telegram Entity Extraction** → **E22.3** (VN phone, BĐS price, email into `raw_entities` JSONB).
+`[READY]` **FR-76 Telegram Realtime Stream Daemon** → **E22.3** (`events.NewMessage` -> Redis Stream `stream:telegram:raw_events`).
+`[READY]` **FR-77 Telegram Alert Engine Trigger** → **E22.3** (matching Telegram messages trigger `AlertRule`).
+`[READY]` **FR-78 Telegram AI Agent Tools** → **E22.3** (`telegram_search_channel`, `telegram_fetch_recent_posts`).
+`[READY]` **FR-79 Telegram PostgreSQL Storage & Zero Cache Sync** → **E22.1** (composite unique `(channel_id, message_id)`).
+
 `[DONE — NFR]` **NFR-1b/1c/1d Memory latency & injection bound** *(E3.14 done, AD-18)*.
 `[RESOLVED]` FR-36 Legacy memory data-loss (2026-07-25 — không mất dữ liệu; 178 chưa apply prod, `memory_md` rỗng, snapshot đã tạo; guard + backfill + 5 test qua `3-10a`/`3-10b`).
 `[REMOVED]` FR-5 AI File Sorting.
@@ -193,6 +204,9 @@ Public agent-chat endpoints, AgentConfig registry, client_id tenancy, cost trace
 
 ### Epic 21: Lead Gen Intelligence — ⏸️ PROPOSED
 Intent signals, lead scoring, contact enrichment, outbound sequences, CRM sync, Zalo deferred, outcome pricing. **Gated:** legal/ToS, vendor POC, PII, CRM, outcome pricing. Full scope in `epic21-proposal-2026-08-11.md`.
+
+### Epic 22: Telegram Scraper & Channel Ingestion Engine — 🚀 READY FOR DEV
+Public channel web preview, MTProto Userbot session pool, distributed mutex lock, FloodWait cooldown state machine, regex entity extractor, S3 media chunk streaming, realtime stream daemon, Alert Engine trigger, AI Agent tools. **Open:** 22.1–22.3. Governed by `architecture-telegram-scraper-2026-08-15`.
 
 ---
 
@@ -2451,6 +2465,9 @@ _Kỹ thuật: Middleware in `app/middleware/tenant_context.py`, rate limiter wi
 ---
 
 
+---
+
+
 ## Epic 21: Lead Gen Intelligence `[PROPOSED]`
 
 _This epic is currently a proposal. Full scope, governance gates, stories and UX contracts are maintained in `epic21-proposal-2026-08-11.md`._
@@ -2466,12 +2483,107 @@ _This epic is currently a proposal. Full scope, governance gates, stories and UX
 
 ---
 
+## Epic 22: Telegram Scraper & Channel Ingestion Engine `[ready-for-dev]`
+
+> **Epic Goal:** Cung cấp giải pháp trích xuất dữ liệu đa nguồn từ Telegram (kênh công khai, nhóm thảo luận, bài đăng, bình luận, media), tự động phân tích thực thể (SĐT, giá BĐS, email), bảo vệ tài khoản chống khóa (Anti-ban/FloodWait), tích hợp thông báo tức thời (Alert Engine) và cung cấp công cụ tra cứu cho AI Agent.
+
+**Status:** `[ready-for-dev]`
+**Governed by Architecture Spine:** `_bmad-output/planning-artifacts/architecture/architecture-telegram-scraper-2026-08-15/ARCHITECTURE-SPINE.md` (AD-1 to AD-8).
+**UX Contract:** `_bmad-output/planning-artifacts/ux-designs/ux-Nowing-2026-07-22/ux-contract-telegram-scraper-engine.md` (U1 to U7).
+
+### Story 22.1: Telegram Storage Schema & Public Web Preview Ingestion Engine
+
+As a data analyst or automated research agent,
+I want to store Telegram metadata and scrape public channels via HTTP Web Preview (`t.me/s/{channel}`),
+So that I can ingest public channel posts reliably without configuring Telegram phone accounts or risking rate limits.
+
+**Acceptance Criteria:**
+
+**Given** a clean or existing database environment,
+**When** Alembic migrations are executed,
+**Then** tables `telegram_channels`, `telegram_messages`, and `telegram_media` are created with composite unique constraint `(channel_id, message_id)`, `embedding vector(1536)` indexed via HNSW (`vector_cosine_ops`), and appropriate GIN indexes for full-text search and `raw_entities` JSONB.
+
+**Given** a valid public Telegram channel username or URL (e.g. `batdongsan_vietnam` or `https://t.me/s/batdongsan_vietnam`),
+**When** `TelegramWebPreviewScraper.scrape_channel(channel_name, limit=50)` is executed,
+**Then** the HTTP/2 client queries `https://t.me/s/{channel_name}` with custom User-Agent and parses message text, publication date, views count, forward headers, and media thumbnail URLs.
+
+**Given** a public channel with non-text messages (e.g. photos/stickers without caption) or edited posts,
+**When** `TelegramWebPreviewScraper.scrape_channel()` parses the page,
+**Then** it gracefully sets `text=""`, `has_media=True`, extracts media thumbnail URLs, and does not raise unhandled parsing exceptions.
+
+**Given** existing messages in `telegram_messages` for a channel,
+**When** a subsequent scrape processes the same `(channel_id, message_id)`,
+**Then** PostgreSQL executes `ON CONFLICT (channel_id, message_id) DO UPDATE` updating `text`, `views`, and `updated_at` without duplicating rows or raising unique constraint errors.
+
+**Given** a periodic Celery scrape task for registered public channels,
+**When** the scheduler triggers `scrape_telegram_public_channels_task`,
+**Then** it updates `last_scraped_message_id` on `telegram_channels` and syncs new records to Zero Cache.
+
+### Story 22.2: Telegram MTProto Userbot Client, Encrypted Session Pool & Anti-Ban Cooldown
+
+As a system administrator and background worker,
+I want to onboard Telegram phone accounts into encrypted `StringSession` records with distributed mutex locks and automatic `FloodWait` cooldowns,
+So that Nowing workers can securely access private channels and deep discussion threads without risking account bans or session conflicts.
+
+**Acceptance Criteria:**
+
+**Given** an admin supplying phone number, `api_id`, and `api_hash`,
+**When** calling `/api/admin/scraper-accounts/telegram/request-otp` or running `scripts/telegram_auth_helper.py`,
+**Then** Telegram sends an authentication code, and the backend stores `phone_code_hash` and temporary session string in Redis (`telegram:auth_flow:{phone}`, TTL=300s).
+
+**Given** a pending Telegram authentication request with 2FA enabled,
+**When** `/api/admin/scraper-accounts/telegram/verify-otp` is called with valid OTP,
+**Then** if 2FA password is required, the API returns HTTP 200 with `status: "2fa_required"`; upon calling `/api/admin/scraper-accounts/telegram/verify-2fa` with Cloud Password, `TelethonScraperClient` exports a `StringSession`, encrypts it using `TokenEncryption(config.SECRET_KEY)`, and persists it in `scraper_platform_accounts.encrypted_credentials` with `platform="telegram"`.
+
+**Given** an authorized `ScraperPlatformAccount`,
+**When** a worker initializes `TelethonScraperClient.from_credentials(credentials)`,
+**Then** the session string is decrypted in memory, connected over MTProto via SOCKS5 proxy (`socks5h://` with remote DNS resolution), and zero `.session` files are written to the container disk.
+
+**Given** multiple enabled Telegram accounts in `scraper_platform_accounts`,
+**When** `ScraperPlatformAccountRotator.get_credentials()` is requested across distributed Celery workers,
+**Then** it acquires a Redis distributed mutex lock `telegram:session:lock:{account_id}` (TTL 120s) preventing concurrent multi-worker session clashes on the same account.
+
+**Given** Telegram API raises `FloodWaitError(seconds=N)` during an MTProto operation,
+**When** the worker catches the error,
+**Then** it calls `rotator.record_use(account, success=False, error_type="rate_limited")`, sets `banned_until = now + N + uniform(2, 5)`, releases the Redis lock, and rotates to an alternate account without retrying immediately.
+
+### Story 22.3: Telegram Data Enrichment, Realtime Alert Trigger, AI Agent Tools & Scraper UI
+
+As a market intelligence user and AI researcher,
+I want scraped Telegram messages to have entities extracted, media offloaded to S3, real-time alerts fired for matching posts, AI agent search tools enabled, and account status visible on the dashboard,
+So that I receive instant listing leads, query Telegram history via AI chat, and manage scraper channels easily.
+
+**Acceptance Criteria:**
+
+**Given** raw Telegram message text containing Vietnamese phone numbers (`0912.345.678`, `+84987654321`), prices (`12.5 tỷ`, `35 triệu/tháng`), or emails,
+**When** `TelegramEntityExtractor.extract_entities(text)` runs,
+**Then** all detected entities are normalized and stored in `telegram_messages.raw_entities` JSONB, falling back safely to `[]` when message has no text.
+
+**Given** a Telegram message containing media files,
+**When** text ingestion finishes,
+**Then** `download_telegram_media_task` streams media < 5MB directly via single `put_object` (or multipart upload with >= 5MB parts for large files) directly to S3/MinIO using `aiobotocore`, updating `telegram_media` with `storage_url` without buffering the full file on worker disk.
+
+**Given** the `TelegramStreamDaemon` running with Redis leader election (`telegram:daemon:leader`),
+**When** a new message arrives on a monitored channel via `@client.on(events.NewMessage)`,
+**Then** the event is pushed to Redis Stream `stream:telegram:raw_events`, processed by Celery, and evaluated against active `AlertRule` saved searches in `app/alerts/engine/notify.py`.
+
+**Given** a user chatting with Nowing AI Assistant,
+**When** the agent calls `telegram_search_channel(channel, query, limit)` or `telegram_fetch_recent_posts(channel, limit)`,
+**Then** it queries `telegram_messages` and returns formatted post summaries with author, date, views, and extracted phone numbers.
+
+**Given** an administrator accessing `/admin/scraper-accounts` on `nowing_web`,
+**When** viewing the Telegram tab,
+**Then** the UI displays account statuses (`Active`, `Rate-Limited`, `Cooldown` with live countdown timer), token balances, an OTP/2FA onboarding modal, and a channel management table with realtime stream toggles.
+
+---
+
 ## Ghi chú
 - **Mồ côi/defer có chủ đích:** OQ-1 (MCP marketplace), OQ-2 (agent-tool default enable/disable) → backlog.
 - **RS-9** ("project memory" của team = `ResearchThread`?) → resolve trong scope 3.9/3.7.
 - Story `[DONE]` không liệt kê AC (đã implement); chỉ story `[GAP]`/`(mới)` có AC để dev thực thi.
 - **Epic 13 (DROPPED 2026-08-08):** Canonical entity storage / multi-domain indexing moved to `chainlens-research`. Nowing scrapers feed `chainlens-research` via `POST /v1/ingest/scraper` (Epic 20).
 - **Epic 18 (2026-08-08 correct-course):** Public agent-chat API, Agent Registry, vertical `client_id` tenancy, cost attribution and rate limiting live in **Epic 18**. Governed by AD-29/AD-30/AD-31. Entry criteria: AD-29–31 accepted; PAT/RLS threat model reviewed.
+- **Epic 22 (2026-08-15):** Telegram Scraper & Channel Ingestion Engine (Web Preview + MTProto StringSession Pool + Alert Engine + AI Agent Tools). Governed by Architecture Spine `architecture-telegram-scraper-2026-08-15`.
 - **Epic structure:** Epics 12–17 may have Original + Extended sections. Sprint-status tracks all stories under one epic key.
 - **Vision notes:** FR-53/FR-55 covered by existing scrapers; FR-54 deferred (ChainLens). Epics 14–17 are Phase 2 priority unless already in flight.
 
@@ -2500,6 +2612,7 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 | 16.3 Company Alerts | Story 20.1 (`NowingIngestService`), Story 6.8 | company `AlertRule` |
 | 17.3 Price Drop Alerts | Story 20.1 (`NowingIngestService`), Story 6.8 | price-drop `AlertRule` |
 | 17.4 Competitor Tracking | Story 20.1 (`NowingIngestService`), Story 6.8 | competitor `AlertRule` |
+| 22.3 Telegram Alert & Agent Tools | Story 6.8 (Generic Alert Engine), Story 22.1, Story 22.2 | Realtime message matching triggers `AlertRule` & AI Agent tools |
 
 > **Prerequisite definitions:**
 > - **Story 20.1** = `NowingIngestService.to_chunks()` + `POST /v1/ingest/scraper` contract.
@@ -2507,3 +2620,5 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 > - **Story 20.3** = `NowingPrivateProvider` for `POST /v1/private-data/search`.
 > - **Story 20.4** = `ChainLensServiceAuth` + cost ledger sync.
 > - **Story 6.8** = Generic Alert Engine in Epic 6 Automation infrastructure (scheduler + `RunService` + notification dispatch). If no dedicated implementation story exists, treat it as a prerequisite work package before any alert story is scheduled.
+
+

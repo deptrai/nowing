@@ -555,3 +555,121 @@ class _SyncSpy:
         self.last_args = args
         self.last_kwargs = kwargs
         return None
+
+
+class TestEstimatedCost:
+    """Kill arithmetic/number-replacer mutants in _estimated_cost."""
+
+    def test_estimated_cost_multiplies_by_capped_count(self) -> None:
+        from app.lead_intelligence.enrichment.service import EnrichmentService
+
+        svc = EnrichmentService()
+        assert svc._estimated_cost(0) == 0
+        assert svc._estimated_cost(1) == 1000
+        assert svc._estimated_cost(3) == 3000
+
+    def test_estimated_cost_caps_at_max_contacts(self, monkeypatch) -> None:
+        from app.lead_intelligence.enrichment.service import EnrichmentService
+
+        monkeypatch.setattr(
+            "app.lead_intelligence.enrichment.service.config.CONTACT_ENRICHMENT_MAX_CONTACTS_PER_LEAD",
+            2,
+        )
+        svc = EnrichmentService()
+        assert svc._estimated_cost(5) == 2000
+
+    def test_estimated_cost_defaults_to_zero_when_config_unset(
+        self, monkeypatch
+    ) -> None:
+        from app.lead_intelligence.enrichment.service import EnrichmentService
+
+        monkeypatch.setattr(
+            "app.lead_intelligence.enrichment.service.config.CONTACT_ENRICHMENT_MICROS_PER_CONTACT",
+            0,
+        )
+        svc = EnrichmentService()
+        assert svc._estimated_cost(5) == 0
+
+
+class TestListEnrichmentRequests:
+    """Kill NumberReplacer mutants for offset/limit defaults."""
+
+    async def test_list_enrichment_requests_default_offset_is_zero(self) -> None:
+        from app.lead_intelligence.enrichment.service import EnrichmentService
+
+        svc = EnrichmentService()
+        kwdefaults = svc.list_enrichment_requests.__kwdefaults__
+        assert kwdefaults is not None
+        assert kwdefaults["offset"] == 0
+        assert kwdefaults["limit"] == 50
+
+
+class TestDegraded:
+    """Kill NumberReplacer mutants in _degraded."""
+
+    def test_degraded_returns_zero_cost_and_count(self) -> None:
+        from app.lead_intelligence.enrichment.service import EnrichmentService
+
+        output = EnrichmentService._degraded(["insufficient_wallet"])
+        assert output.degraded is True
+        assert output.degradation_reasons == ["insufficient_wallet"]
+        assert output.contact_count == 0
+        assert output.cost_micros == 0
+        assert output.enrichment_request_id is None
+
+
+class TestWriteMemory:
+    """Kill mutants in _write_memory confidence/provider arithmetic."""
+
+    async def test_write_memory_averages_confidence_and_uses_first_provider(
+        self, monkeypatch
+    ) -> None:
+        from app.lead_intelligence.enrichment.service import EnrichmentService
+
+        spy = _AsyncMockResult(SimpleNamespace(id=1))
+        monkeypatch.setattr(
+            "app.lead_intelligence.enrichment.service.MemoryRepository.create_memory",
+            spy,
+        )
+        monkeypatch.setattr(
+            "app.lead_intelligence.enrichment.service.redact_pii",
+            lambda text, **kw: SimpleNamespace(text=text),
+        )
+
+        request = _FakeEnrichmentRequest()
+        contacts = [
+            {
+                "name": "A",
+                "title": "TA",
+                "email": "a@fpt.com",
+                "phone": "+84111111111",
+                "verification_status": "verified",
+                "confidence": 0.12345,
+                "source_provider": "cleanlist",
+            },
+            {
+                "name": "B",
+                "title": "TB",
+                "email": "b@fpt.com",
+                "phone": "+84222222222",
+                "verification_status": "verified",
+                "confidence": 0.12344,
+                "source_provider": "bettercontact",
+            },
+        ]
+
+        svc = EnrichmentService()
+        await svc._write_memory(None, request, contacts, _uuid())
+
+        assert spy.awaited_once is True
+        kwargs = spy.last_kwargs
+        assert kwargs["source_uuid"] == request.id
+        assert kwargs["source_entity_type"] == "enrichment_request"
+        assert kwargs["confidence"] == 0.9
+
+        # Average confidence of the two contacts, rounded to 4 decimals.
+        assert "0.1234" in kwargs["content"]
+        # Provider must be the *first* contact's provider.
+        assert '"provider": "cleanlist"' in kwargs["content"]
+        assert "bettercontact" not in kwargs["content"]
+        assert kwargs["tags"] == ["enriched_contact"]

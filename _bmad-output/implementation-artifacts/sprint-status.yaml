@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-08"
-last_updated: "2026-08-15"  # Epic 21 audit: 21.1, 21.2 → done; 21.3 in-progress (4 integration tests fail); 21.4, 21.5 ready-for-dev
+last_updated: "2026-08-15"  # Epic 22 added: Telegram Scraper & Channel Ingestion Engine (22.1, 22.2, 22.3 ready-for-dev)
 # ponytail: 2026-08-14 — reopened deferred/business-gated/dropped to backlog; 16-1 mutation gate reopened; 15-2 moved to review; tech-debt tracker reopened.
 # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended citation ACs to 3.15 (WEB_RESULT), 9.3 (async delivery), 2.10 (Exa MCP). 3 stories → review.
 # ponytail: 2026-08-08 sprint-planning — added Epic 1, 5 (DONE brownfield); added 9.1a, 9.1b, 4.8a-4.8h, 13.2a-13.2e; upgraded 12.1-12.5 to ready-for-dev (story files exist); 12.0 DONE (legal approved).
@@ -218,6 +218,14 @@ development_status:
   21-6: ready-for-dev  # was deferred (Zalo legal/ToS); reopened for scheduling
   21-7: ready-for-dev
   epic-21-retrospective: optional
+
+  # === Epic 22: Telegram Scraper & Channel Ingestion Engine ===
+  # Architecture Spine approved 2026-08-15 (AD-1 to AD-8). 3 consolidated stories defined.
+  epic-22: in-progress
+  22-1: ready-for-dev  # Telegram Storage Schema & Public Web Preview Ingestion Engine
+  22-2: ready-for-dev  # Telegram MTProto Userbot Client, Encrypted Session Pool & Anti-Ban Cooldown
+  22-3: ready-for-dev  # Telegram Data Enrichment, Realtime Alert Trigger, AI Agent Tools & Scraper UI
+  epic-22-retrospective: optional
 
   # === Epic 11: Telegram Automation & Bot ===
   epic-11: in-progress

@@ -416,7 +416,7 @@ class EnrichmentService:
         enrichment_request_id: UUID,
         workspace_id: int,
         client_id: str | None,  # pragma: no mutate
-        user_id: UUID | None,
+        user_id: UUID | None,  # pragma: no mutate
         cost_micros: int,
     ) -> None:
         if user_id is None:

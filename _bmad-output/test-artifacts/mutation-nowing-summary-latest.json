@@ -1,12 +1,1717 @@
 {
   "dimension": "mutation",
-  "runAt": "2026-08-15T06:15:56.754390+00:00",
+  "runAt": "2026-08-15T08:09:29.308578+00:00",
   "services": [
     {
       "service": "lead_intelligence/enrichment/service",
+      "total": 262,
+      "killed": 74,
+      "survived": 188,
+      "timeout": 0,
+      "noTests": 0,
+      "mutationScore": 28.24,
       "verdict": "FAIL",
-      "error": "cosmic-ray exec failed for mutation-nowing-lead_intelligence-enrichment-service-20260815T050423Z.toml",
-      "traceback": "Traceback (most recent call last):\n  File \"/Users/luisphan/Documents/GitHub/wt-21-3-enriched-contact-data/scripts/mutation-gate.py\", line 555, in main\n    run_cosmic_ray(\n  File \"/Users/luisphan/Documents/GitHub/wt-21-3-enriched-contact-data/scripts/mutation-gate.py\", line 319, in run_cosmic_ray\n    raise RuntimeError(f\"cosmic-ray {step} failed for {config.name}\")\nRuntimeError: cosmic-ray exec failed for mutation-nowing-lead_intelligence-enrichment-service-20260815T050423Z.toml\n"
+      "triage": {
+        "P0": [],
+        "P1": [
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 538,
+            "col": 70,
+            "operator": "core/ReplaceBinaryOperator_Mul_Add",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -535,7 +535,7 @@\n \n     def _estimated_cost(self, contact_count: int) -> int:\n         capped = min(contact_count, config.CONTACT_ENRICHMENT_MAX_CONTACTS_PER_LEAD)\n-        return int(config.CONTACT_ENRICHMENT_MICROS_PER_CONTACT or 0) * capped\n+        return int(config.CONTACT_ENRICHMENT_MICROS_PER_CONTACT or 0) + capped\n \n     @staticmethod\n     def _degraded(reasons: list[str]) -> EnrichmentOutput:",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Mul_Add at app/lead_intelligence/enrichment/service.py:538 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 538,
+            "col": 70,
+            "operator": "core/ReplaceBinaryOperator_Mul_Sub",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -535,7 +535,7 @@\n \n     def _estimated_cost(self, contact_count: int) -> int:\n         capped = min(contact_count, config.CONTACT_ENRICHMENT_MAX_CONTACTS_PER_LEAD)\n-        return int(config.CONTACT_ENRICHMENT_MICROS_PER_CONTACT or 0) * capped\n+        return int(config.CONTACT_ENRICHMENT_MICROS_PER_CONTACT or 0) - capped\n \n     @staticmethod\n     def _degraded(reasons: list[str]) -> EnrichmentOutput:",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Mul_Sub at app/lead_intelligence/enrichment/service.py:538 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 325,
+            "col": 8,
+            "operator": "core/ReplaceBinaryOperator_Mul_Div",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -322,7 +322,7 @@\n     async def list_enrichment_requests(\n         self,\n         session: AsyncSession,\n-        *,\n+        /,\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n         lead_id: UUID,",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Mul_Div at app/lead_intelligence/enrichment/service.py:325 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 415,
+            "col": 8,
+            "operator": "core/ReplaceBinaryOperator_Mul_Div",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -412,7 +412,7 @@\n     async def _record_billing(\n         self,\n         session: AsyncSession,\n-        *,\n+        /,\n         enrichment_request_id: UUID,\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Mul_Div at app/lead_intelligence/enrichment/service.py:415 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 538,
+            "col": 70,
+            "operator": "core/ReplaceBinaryOperator_Mul_Div",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -535,7 +535,7 @@\n \n     def _estimated_cost(self, contact_count: int) -> int:\n         capped = min(contact_count, config.CONTACT_ENRICHMENT_MAX_CONTACTS_PER_LEAD)\n-        return int(config.CONTACT_ENRICHMENT_MICROS_PER_CONTACT or 0) * capped\n+        return int(config.CONTACT_ENRICHMENT_MICROS_PER_CONTACT or 0) / capped\n \n     @staticmethod\n     def _degraded(reasons: list[str]) -> EnrichmentOutput:",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Mul_Div at app/lead_intelligence/enrichment/service.py:538 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 538,
+            "col": 70,
+            "operator": "core/ReplaceBinaryOperator_Mul_FloorDiv",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -535,7 +535,7 @@\n \n     def _estimated_cost(self, contact_count: int) -> int:\n         capped = min(contact_count, config.CONTACT_ENRICHMENT_MAX_CONTACTS_PER_LEAD)\n-        return int(config.CONTACT_ENRICHMENT_MICROS_PER_CONTACT or 0) * capped\n+        return int(config.CONTACT_ENRICHMENT_MICROS_PER_CONTACT or 0) // capped\n \n     @staticmethod\n     def _degraded(reasons: list[str]) -> EnrichmentOutput:",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Mul_FloorDiv at app/lead_intelligence/enrichment/service.py:538 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 538,
+            "col": 70,
+            "operator": "core/ReplaceBinaryOperator_Mul_Pow",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -535,7 +535,7 @@\n \n     def _estimated_cost(self, contact_count: int) -> int:\n         capped = min(contact_count, config.CONTACT_ENRICHMENT_MAX_CONTACTS_PER_LEAD)\n-        return int(config.CONTACT_ENRICHMENT_MICROS_PER_CONTACT or 0) * capped\n+        return int(config.CONTACT_ENRICHMENT_MICROS_PER_CONTACT or 0) ** capped\n \n     @staticmethod\n     def _degraded(reasons: list[str]) -> EnrichmentOutput:",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Mul_Pow at app/lead_intelligence/enrichment/service.py:538 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 538,
+            "col": 70,
+            "operator": "core/ReplaceBinaryOperator_Mul_RShift",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -535,7 +535,7 @@\n \n     def _estimated_cost(self, contact_count: int) -> int:\n         capped = min(contact_count, config.CONTACT_ENRICHMENT_MAX_CONTACTS_PER_LEAD)\n-        return int(config.CONTACT_ENRICHMENT_MICROS_PER_CONTACT or 0) * capped\n+        return int(config.CONTACT_ENRICHMENT_MICROS_PER_CONTACT or 0) >> capped\n \n     @staticmethod\n     def _degraded(reasons: list[str]) -> EnrichmentOutput:",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Mul_RShift at app/lead_intelligence/enrichment/service.py:538 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 538,
+            "col": 70,
+            "operator": "core/ReplaceBinaryOperator_Mul_LShift",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -535,7 +535,7 @@\n \n     def _estimated_cost(self, contact_count: int) -> int:\n         capped = min(contact_count, config.CONTACT_ENRICHMENT_MAX_CONTACTS_PER_LEAD)\n-        return int(config.CONTACT_ENRICHMENT_MICROS_PER_CONTACT or 0) * capped\n+        return int(config.CONTACT_ENRICHMENT_MICROS_PER_CONTACT or 0) << capped\n \n     @staticmethod\n     def _degraded(reasons: list[str]) -> EnrichmentOutput:",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Mul_LShift at app/lead_intelligence/enrichment/service.py:538 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 538,
+            "col": 70,
+            "operator": "core/ReplaceBinaryOperator_Mul_BitOr",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -535,7 +535,7 @@\n \n     def _estimated_cost(self, contact_count: int) -> int:\n         capped = min(contact_count, config.CONTACT_ENRICHMENT_MAX_CONTACTS_PER_LEAD)\n-        return int(config.CONTACT_ENRICHMENT_MICROS_PER_CONTACT or 0) * capped\n+        return int(config.CONTACT_ENRICHMENT_MICROS_PER_CONTACT or 0) | capped\n \n     @staticmethod\n     def _degraded(reasons: list[str]) -> EnrichmentOutput:",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Mul_BitOr at app/lead_intelligence/enrichment/service.py:538 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 538,
+            "col": 70,
+            "operator": "core/ReplaceBinaryOperator_Mul_BitXor",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -535,7 +535,7 @@\n \n     def _estimated_cost(self, contact_count: int) -> int:\n         capped = min(contact_count, config.CONTACT_ENRICHMENT_MAX_CONTACTS_PER_LEAD)\n-        return int(config.CONTACT_ENRICHMENT_MICROS_PER_CONTACT or 0) * capped\n+        return int(config.CONTACT_ENRICHMENT_MICROS_PER_CONTACT or 0) ^ capped\n \n     @staticmethod\n     def _degraded(reasons: list[str]) -> EnrichmentOutput:",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Mul_BitXor at app/lead_intelligence/enrichment/service.py:538 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 464,
+            "col": 24,
+            "operator": "core/ReplaceBinaryOperator_Div_Add",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -461,7 +461,7 @@\n                 \"confidence\": (\n                     round(\n                         sum(float(c.get(\"confidence\") or 0.0) for c in contacts)\n-                        / len(contacts),\n+                        + len(contacts),\n                         4,\n                     )\n                     if contacts",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Div_Add at app/lead_intelligence/enrichment/service.py:464 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 464,
+            "col": 24,
+            "operator": "core/ReplaceBinaryOperator_Div_Sub",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -461,7 +461,7 @@\n                 \"confidence\": (\n                     round(\n                         sum(float(c.get(\"confidence\") or 0.0) for c in contacts)\n-                        / len(contacts),\n+                        - len(contacts),\n                         4,\n                     )\n                     if contacts",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Div_Sub at app/lead_intelligence/enrichment/service.py:464 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 464,
+            "col": 24,
+            "operator": "core/ReplaceBinaryOperator_Div_Mul",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -461,7 +461,7 @@\n                 \"confidence\": (\n                     round(\n                         sum(float(c.get(\"confidence\") or 0.0) for c in contacts)\n-                        / len(contacts),\n+                        * len(contacts),\n                         4,\n                     )\n                     if contacts",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Div_Mul at app/lead_intelligence/enrichment/service.py:464 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 464,
+            "col": 24,
+            "operator": "core/ReplaceBinaryOperator_Div_FloorDiv",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -461,7 +461,7 @@\n                 \"confidence\": (\n                     round(\n                         sum(float(c.get(\"confidence\") or 0.0) for c in contacts)\n-                        / len(contacts),\n+                        // len(contacts),\n                         4,\n                     )\n                     if contacts",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Div_FloorDiv at app/lead_intelligence/enrichment/service.py:464 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 464,
+            "col": 24,
+            "operator": "core/ReplaceBinaryOperator_Div_Mod",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -461,7 +461,7 @@\n                 \"confidence\": (\n                     round(\n                         sum(float(c.get(\"confidence\") or 0.0) for c in contacts)\n-                        / len(contacts),\n+                        % len(contacts),\n                         4,\n                     )\n                     if contacts",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Div_Mod at app/lead_intelligence/enrichment/service.py:464 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 464,
+            "col": 24,
+            "operator": "core/ReplaceBinaryOperator_Div_Pow",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -461,7 +461,7 @@\n                 \"confidence\": (\n                     round(\n                         sum(float(c.get(\"confidence\") or 0.0) for c in contacts)\n-                        / len(contacts),\n+                        ** len(contacts),\n                         4,\n                     )\n                     if contacts",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Div_Pow at app/lead_intelligence/enrichment/service.py:464 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 376,
+            "col": 14,
+            "operator": "core/ReplaceBinaryOperator_Mod_Add",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -373,7 +373,7 @@\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n         lead_id: UUID,\n-    ) -> Lead % None:\n+    ) -> Lead + None:\n         stmt = select(Lead).where(\n             Lead.workspace_id == workspace_id,\n             Lead.id == lead_id,",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Mod_Add at app/lead_intelligence/enrichment/service.py:376 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 376,
+            "col": 14,
+            "operator": "core/ReplaceBinaryOperator_Mod_Sub",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -373,7 +373,7 @@\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n         lead_id: UUID,\n-    ) -> Lead % None:\n+    ) -> Lead - None:\n         stmt = select(Lead).where(\n             Lead.workspace_id == workspace_id,\n             Lead.id == lead_id,",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Mod_Sub at app/lead_intelligence/enrichment/service.py:376 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 376,
+            "col": 14,
+            "operator": "core/ReplaceBinaryOperator_Mod_Mul",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -373,7 +373,7 @@\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n         lead_id: UUID,\n-    ) -> Lead % None:\n+    ) -> Lead * None:\n         stmt = select(Lead).where(\n             Lead.workspace_id == workspace_id,\n             Lead.id == lead_id,",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Mod_Mul at app/lead_intelligence/enrichment/service.py:376 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 376,
+            "col": 14,
+            "operator": "core/ReplaceBinaryOperator_Mod_Div",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -373,7 +373,7 @@\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n         lead_id: UUID,\n-    ) -> Lead % None:\n+    ) -> Lead / None:\n         stmt = select(Lead).where(\n             Lead.workspace_id == workspace_id,\n             Lead.id == lead_id,",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Mod_Div at app/lead_intelligence/enrichment/service.py:376 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 376,
+            "col": 14,
+            "operator": "core/ReplaceBinaryOperator_Mod_FloorDiv",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -373,7 +373,7 @@\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n         lead_id: UUID,\n-    ) -> Lead % None:\n+    ) -> Lead // None:\n         stmt = select(Lead).where(\n             Lead.workspace_id == workspace_id,\n             Lead.id == lead_id,",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Mod_FloorDiv at app/lead_intelligence/enrichment/service.py:376 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 376,
+            "col": 14,
+            "operator": "core/ReplaceBinaryOperator_Mod_Pow",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -373,7 +373,7 @@\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n         lead_id: UUID,\n-    ) -> Lead % None:\n+    ) -> Lead ** None:\n         stmt = select(Lead).where(\n             Lead.workspace_id == workspace_id,\n             Lead.id == lead_id,",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Mod_Pow at app/lead_intelligence/enrichment/service.py:376 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 376,
+            "col": 14,
+            "operator": "core/ReplaceBinaryOperator_Mod_RShift",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -373,7 +373,7 @@\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n         lead_id: UUID,\n-    ) -> Lead % None:\n+    ) -> Lead >> None:\n         stmt = select(Lead).where(\n             Lead.workspace_id == workspace_id,\n             Lead.id == lead_id,",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Mod_RShift at app/lead_intelligence/enrichment/service.py:376 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 376,
+            "col": 14,
+            "operator": "core/ReplaceBinaryOperator_Mod_LShift",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -373,7 +373,7 @@\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n         lead_id: UUID,\n-    ) -> Lead % None:\n+    ) -> Lead << None:\n         stmt = select(Lead).where(\n             Lead.workspace_id == workspace_id,\n             Lead.id == lead_id,",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Mod_LShift at app/lead_intelligence/enrichment/service.py:376 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 376,
+            "col": 14,
+            "operator": "core/ReplaceBinaryOperator_Mod_BitOr",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -373,7 +373,7 @@\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n         lead_id: UUID,\n-    ) -> Lead % None:\n+    ) -> Lead | None:\n         stmt = select(Lead).where(\n             Lead.workspace_id == workspace_id,\n             Lead.id == lead_id,",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Mod_BitOr at app/lead_intelligence/enrichment/service.py:376 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 376,
+            "col": 14,
+            "operator": "core/ReplaceBinaryOperator_Mod_BitAnd",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -373,7 +373,7 @@\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n         lead_id: UUID,\n-    ) -> Lead % None:\n+    ) -> Lead & None:\n         stmt = select(Lead).where(\n             Lead.workspace_id == workspace_id,\n             Lead.id == lead_id,",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Mod_BitAnd at app/lead_intelligence/enrichment/service.py:376 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 376,
+            "col": 14,
+            "operator": "core/ReplaceBinaryOperator_Mod_BitXor",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -373,7 +373,7 @@\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n         lead_id: UUID,\n-    ) -> Lead % None:\n+    ) -> Lead ^ None:\n         stmt = select(Lead).where(\n             Lead.workspace_id == workspace_id,\n             Lead.id == lead_id,",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Mod_BitXor at app/lead_intelligence/enrichment/service.py:376 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 353,
+            "col": 25,
+            "operator": "core/ReplaceBinaryOperator_BitOr_Add",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -350,7 +350,7 @@\n     async def _mark_failed(\n         self,\n         session: AsyncSession,\n-        request_id: UUID | str,\n+        request_id: UUID + str,\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n     ) -> None:",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_Add at app/lead_intelligence/enrichment/service.py:353 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 419,
+            "col": 22,
+            "operator": "core/ReplaceBinaryOperator_BitOr_Add",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -416,7 +416,7 @@\n         enrichment_request_id: UUID,\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n-        user_id: UUID | None,\n+        user_id: UUID + None,\n         cost_micros: int,\n     ) -> None:\n         if user_id is None:",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_Add at app/lead_intelligence/enrichment/service.py:419 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 353,
+            "col": 25,
+            "operator": "core/ReplaceBinaryOperator_BitOr_Sub",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -350,7 +350,7 @@\n     async def _mark_failed(\n         self,\n         session: AsyncSession,\n-        request_id: UUID | str,\n+        request_id: UUID - str,\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n     ) -> None:",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_Sub at app/lead_intelligence/enrichment/service.py:353 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 419,
+            "col": 22,
+            "operator": "core/ReplaceBinaryOperator_BitOr_Sub",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -416,7 +416,7 @@\n         enrichment_request_id: UUID,\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n-        user_id: UUID | None,\n+        user_id: UUID - None,\n         cost_micros: int,\n     ) -> None:\n         if user_id is None:",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_Sub at app/lead_intelligence/enrichment/service.py:419 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 353,
+            "col": 25,
+            "operator": "core/ReplaceBinaryOperator_BitOr_Mul",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -350,7 +350,7 @@\n     async def _mark_failed(\n         self,\n         session: AsyncSession,\n-        request_id: UUID | str,\n+        request_id: UUID * str,\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n     ) -> None:",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_Mul at app/lead_intelligence/enrichment/service.py:353 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 419,
+            "col": 22,
+            "operator": "core/ReplaceBinaryOperator_BitOr_Mul",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -416,7 +416,7 @@\n         enrichment_request_id: UUID,\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n-        user_id: UUID | None,\n+        user_id: UUID * None,\n         cost_micros: int,\n     ) -> None:\n         if user_id is None:",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_Mul at app/lead_intelligence/enrichment/service.py:419 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 353,
+            "col": 25,
+            "operator": "core/ReplaceBinaryOperator_BitOr_Div",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -350,7 +350,7 @@\n     async def _mark_failed(\n         self,\n         session: AsyncSession,\n-        request_id: UUID | str,\n+        request_id: UUID / str,\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n     ) -> None:",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_Div at app/lead_intelligence/enrichment/service.py:353 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 419,
+            "col": 22,
+            "operator": "core/ReplaceBinaryOperator_BitOr_Div",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -416,7 +416,7 @@\n         enrichment_request_id: UUID,\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n-        user_id: UUID | None,\n+        user_id: UUID / None,\n         cost_micros: int,\n     ) -> None:\n         if user_id is None:",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_Div at app/lead_intelligence/enrichment/service.py:419 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 353,
+            "col": 25,
+            "operator": "core/ReplaceBinaryOperator_BitOr_FloorDiv",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -350,7 +350,7 @@\n     async def _mark_failed(\n         self,\n         session: AsyncSession,\n-        request_id: UUID | str,\n+        request_id: UUID // str,\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n     ) -> None:",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_FloorDiv at app/lead_intelligence/enrichment/service.py:353 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 419,
+            "col": 22,
+            "operator": "core/ReplaceBinaryOperator_BitOr_FloorDiv",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -416,7 +416,7 @@\n         enrichment_request_id: UUID,\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n-        user_id: UUID | None,\n+        user_id: UUID // None,\n         cost_micros: int,\n     ) -> None:\n         if user_id is None:",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_FloorDiv at app/lead_intelligence/enrichment/service.py:419 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 353,
+            "col": 25,
+            "operator": "core/ReplaceBinaryOperator_BitOr_Mod",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -350,7 +350,7 @@\n     async def _mark_failed(\n         self,\n         session: AsyncSession,\n-        request_id: UUID | str,\n+        request_id: UUID % str,\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n     ) -> None:",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_Mod at app/lead_intelligence/enrichment/service.py:353 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 419,
+            "col": 22,
+            "operator": "core/ReplaceBinaryOperator_BitOr_Mod",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -416,7 +416,7 @@\n         enrichment_request_id: UUID,\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n-        user_id: UUID | None,\n+        user_id: UUID % None,\n         cost_micros: int,\n     ) -> None:\n         if user_id is None:",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_Mod at app/lead_intelligence/enrichment/service.py:419 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 353,
+            "col": 25,
+            "operator": "core/ReplaceBinaryOperator_BitOr_Pow",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -350,7 +350,7 @@\n     async def _mark_failed(\n         self,\n         session: AsyncSession,\n-        request_id: UUID | str,\n+        request_id: UUID ** str,\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n     ) -> None:",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_Pow at app/lead_intelligence/enrichment/service.py:353 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 419,
+            "col": 22,
+            "operator": "core/ReplaceBinaryOperator_BitOr_Pow",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -416,7 +416,7 @@\n         enrichment_request_id: UUID,\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n-        user_id: UUID | None,\n+        user_id: UUID ** None,\n         cost_micros: int,\n     ) -> None:\n         if user_id is None:",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_Pow at app/lead_intelligence/enrichment/service.py:419 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 353,
+            "col": 25,
+            "operator": "core/ReplaceBinaryOperator_BitOr_RShift",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -350,7 +350,7 @@\n     async def _mark_failed(\n         self,\n         session: AsyncSession,\n-        request_id: UUID | str,\n+        request_id: UUID >> str,\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n     ) -> None:",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_RShift at app/lead_intelligence/enrichment/service.py:353 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 419,
+            "col": 22,
+            "operator": "core/ReplaceBinaryOperator_BitOr_RShift",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -416,7 +416,7 @@\n         enrichment_request_id: UUID,\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n-        user_id: UUID | None,\n+        user_id: UUID >> None,\n         cost_micros: int,\n     ) -> None:\n         if user_id is None:",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_RShift at app/lead_intelligence/enrichment/service.py:419 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 353,
+            "col": 25,
+            "operator": "core/ReplaceBinaryOperator_BitOr_LShift",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -350,7 +350,7 @@\n     async def _mark_failed(\n         self,\n         session: AsyncSession,\n-        request_id: UUID | str,\n+        request_id: UUID << str,\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n     ) -> None:",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_LShift at app/lead_intelligence/enrichment/service.py:353 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 419,
+            "col": 22,
+            "operator": "core/ReplaceBinaryOperator_BitOr_LShift",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -416,7 +416,7 @@\n         enrichment_request_id: UUID,\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n-        user_id: UUID | None,\n+        user_id: UUID << None,\n         cost_micros: int,\n     ) -> None:\n         if user_id is None:",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_LShift at app/lead_intelligence/enrichment/service.py:419 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 353,
+            "col": 25,
+            "operator": "core/ReplaceBinaryOperator_BitOr_BitAnd",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -350,7 +350,7 @@\n     async def _mark_failed(\n         self,\n         session: AsyncSession,\n-        request_id: UUID | str,\n+        request_id: UUID & str,\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n     ) -> None:",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_BitAnd at app/lead_intelligence/enrichment/service.py:353 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 419,
+            "col": 22,
+            "operator": "core/ReplaceBinaryOperator_BitOr_BitAnd",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -416,7 +416,7 @@\n         enrichment_request_id: UUID,\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n-        user_id: UUID | None,\n+        user_id: UUID & None,\n         cost_micros: int,\n     ) -> None:\n         if user_id is None:",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_BitAnd at app/lead_intelligence/enrichment/service.py:419 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 353,
+            "col": 25,
+            "operator": "core/ReplaceBinaryOperator_BitOr_BitXor",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -350,7 +350,7 @@\n     async def _mark_failed(\n         self,\n         session: AsyncSession,\n-        request_id: UUID | str,\n+        request_id: UUID ^ str,\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n     ) -> None:",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_BitXor at app/lead_intelligence/enrichment/service.py:353 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 419,
+            "col": 22,
+            "operator": "core/ReplaceBinaryOperator_BitOr_BitXor",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -416,7 +416,7 @@\n         enrichment_request_id: UUID,\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n-        user_id: UUID | None,\n+        user_id: UUID ^ None,\n         cost_micros: int,\n     ) -> None:\n         if user_id is None:",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_BitXor at app/lead_intelligence/enrichment/service.py:419 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 233,
+            "col": 39,
+            "operator": "core/ReplaceComparisonOperator_Eq_NotEq",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -230,7 +230,7 @@\n                 verification_status=item.get(\"verification_status\", \"unverified\"),\n                 confidence=item.get(\"confidence\", 0.0),\n                 source_provider=item.get(\"source_provider\", provider),\n-                consent=consent_status == \"explicit\",\n+                consent=consent_status != \"explicit\",\n                 consent_status=consent_status,\n                 legal_basis=legal_basis,\n             )",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_NotEq at app/lead_intelligence/enrichment/service.py:233 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 310,
+            "col": 41,
+            "operator": "core/ReplaceComparisonOperator_Eq_NotEq",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -307,7 +307,7 @@\n             session, workspace_id=workspace_id, client_id=client_id\n         )\n         stmt = select(VerifiedContact).where(\n-            VerifiedContact.workspace_id == workspace_id,\n+            VerifiedContact.workspace_id != workspace_id,\n             VerifiedContact.lead_id == lead_id,\n         )\n         if client_id is not None:",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_NotEq at app/lead_intelligence/enrichment/service.py:310 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 311,
+            "col": 36,
+            "operator": "core/ReplaceComparisonOperator_Eq_NotEq",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -308,7 +308,7 @@\n         )\n         stmt = select(VerifiedContact).where(\n             VerifiedContact.workspace_id == workspace_id,\n-            VerifiedContact.lead_id == lead_id,\n+            VerifiedContact.lead_id != lead_id,\n         )\n         if client_id is not None:\n             stmt = stmt.where(VerifiedContact.client_id == client_id)",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_NotEq at app/lead_intelligence/enrichment/service.py:311 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 314,
+            "col": 56,
+            "operator": "core/ReplaceComparisonOperator_Eq_NotEq",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -311,7 +311,7 @@\n             VerifiedContact.lead_id == lead_id,\n         )\n         if client_id is not None:\n-            stmt = stmt.where(VerifiedContact.client_id == client_id)\n+            stmt = stmt.where(VerifiedContact.client_id != client_id)\n         stmt = (\n             stmt.order_by(VerifiedContact.created_at.desc()).offset(offset).limit(limit)\n         )",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_NotEq at app/lead_intelligence/enrichment/service.py:314 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 337,
+            "col": 43,
+            "operator": "core/ReplaceComparisonOperator_Eq_NotEq",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -334,7 +334,7 @@\n             session, workspace_id=workspace_id, client_id=client_id\n         )\n         stmt = select(EnrichmentRequest).where(\n-            EnrichmentRequest.workspace_id == workspace_id,\n+            EnrichmentRequest.workspace_id != workspace_id,\n             EnrichmentRequest.lead_id == lead_id,\n         )\n         if client_id is not None:",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_NotEq at app/lead_intelligence/enrichment/service.py:337 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 338,
+            "col": 38,
+            "operator": "core/ReplaceComparisonOperator_Eq_NotEq",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -335,7 +335,7 @@\n         )\n         stmt = select(EnrichmentRequest).where(\n             EnrichmentRequest.workspace_id == workspace_id,\n-            EnrichmentRequest.lead_id == lead_id,\n+            EnrichmentRequest.lead_id != lead_id,\n         )\n         if client_id is not None:\n             stmt = stmt.where(EnrichmentRequest.client_id == client_id)",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_NotEq at app/lead_intelligence/enrichment/service.py:338 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 341,
+            "col": 58,
+            "operator": "core/ReplaceComparisonOperator_Eq_NotEq",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -338,7 +338,7 @@\n             EnrichmentRequest.lead_id == lead_id,\n         )\n         if client_id is not None:\n-            stmt = stmt.where(EnrichmentRequest.client_id == client_id)\n+            stmt = stmt.where(EnrichmentRequest.client_id != client_id)\n         stmt = (\n             stmt.order_by(EnrichmentRequest.created_at.desc())\n             .offset(offset)",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_NotEq at app/lead_intelligence/enrichment/service.py:341 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 378,
+            "col": 30,
+            "operator": "core/ReplaceComparisonOperator_Eq_NotEq",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -375,7 +375,7 @@\n         lead_id: UUID,\n     ) -> Lead % None:\n         stmt = select(Lead).where(\n-            Lead.workspace_id == workspace_id,\n+            Lead.workspace_id != workspace_id,\n             Lead.id == lead_id,\n         )\n         if client_id is not None:",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_NotEq at app/lead_intelligence/enrichment/service.py:378 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 379,
+            "col": 20,
+            "operator": "core/ReplaceComparisonOperator_Eq_NotEq",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -376,7 +376,7 @@\n     ) -> Lead % None:\n         stmt = select(Lead).where(\n             Lead.workspace_id == workspace_id,\n-            Lead.id == lead_id,\n+            Lead.id != lead_id,\n         )\n         if client_id is not None:\n             stmt = stmt.where(Lead.client_id == client_id)",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_NotEq at app/lead_intelligence/enrichment/service.py:379 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 382,
+            "col": 45,
+            "operator": "core/ReplaceComparisonOperator_Eq_NotEq",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -379,7 +379,7 @@\n             Lead.id == lead_id,\n         )\n         if client_id is not None:\n-            stmt = stmt.where(Lead.client_id == client_id)\n+            stmt = stmt.where(Lead.client_id != client_id)\n         return (await session.execute(stmt)).scalar_one_or_none()\n \n     async def _fetch_contacts_by_ids(",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_NotEq at app/lead_intelligence/enrichment/service.py:382 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 395,
+            "col": 41,
+            "operator": "core/ReplaceComparisonOperator_Eq_NotEq",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -392,7 +392,7 @@\n         if not contact_ids:\n             return []\n         stmt = select(VerifiedContact).where(\n-            VerifiedContact.workspace_id == workspace_id,\n+            VerifiedContact.workspace_id != workspace_id,\n             VerifiedContact.id.in_(contact_ids),\n         )\n         if client_id is not None:",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_NotEq at app/lead_intelligence/enrichment/service.py:395 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 399,
+            "col": 56,
+            "operator": "core/ReplaceComparisonOperator_Eq_NotEq",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -396,7 +396,7 @@\n             VerifiedContact.id.in_(contact_ids),\n         )\n         if client_id is not None:\n-            stmt = stmt.where(VerifiedContact.client_id == client_id)\n+            stmt = stmt.where(VerifiedContact.client_id != client_id)\n         return list((await session.execute(stmt)).scalars().all())\n \n     async def _enqueue(",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_NotEq at app/lead_intelligence/enrichment/service.py:399 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 310,
+            "col": 41,
+            "operator": "core/ReplaceComparisonOperator_Eq_Lt",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -307,7 +307,7 @@\n             session, workspace_id=workspace_id, client_id=client_id\n         )\n         stmt = select(VerifiedContact).where(\n-            VerifiedContact.workspace_id == workspace_id,\n+            VerifiedContact.workspace_id < workspace_id,\n             VerifiedContact.lead_id == lead_id,\n         )\n         if client_id is not None:",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Lt at app/lead_intelligence/enrichment/service.py:310 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 311,
+            "col": 36,
+            "operator": "core/ReplaceComparisonOperator_Eq_Lt",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -308,7 +308,7 @@\n         )\n         stmt = select(VerifiedContact).where(\n             VerifiedContact.workspace_id == workspace_id,\n-            VerifiedContact.lead_id == lead_id,\n+            VerifiedContact.lead_id < lead_id,\n         )\n         if client_id is not None:\n             stmt = stmt.where(VerifiedContact.client_id == client_id)",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Lt at app/lead_intelligence/enrichment/service.py:311 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 314,
+            "col": 56,
+            "operator": "core/ReplaceComparisonOperator_Eq_Lt",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -311,7 +311,7 @@\n             VerifiedContact.lead_id == lead_id,\n         )\n         if client_id is not None:\n-            stmt = stmt.where(VerifiedContact.client_id == client_id)\n+            stmt = stmt.where(VerifiedContact.client_id < client_id)\n         stmt = (\n             stmt.order_by(VerifiedContact.created_at.desc()).offset(offset).limit(limit)\n         )",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Lt at app/lead_intelligence/enrichment/service.py:314 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 337,
+            "col": 43,
+            "operator": "core/ReplaceComparisonOperator_Eq_Lt",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -334,7 +334,7 @@\n             session, workspace_id=workspace_id, client_id=client_id\n         )\n         stmt = select(EnrichmentRequest).where(\n-            EnrichmentRequest.workspace_id == workspace_id,\n+            EnrichmentRequest.workspace_id < workspace_id,\n             EnrichmentRequest.lead_id == lead_id,\n         )\n         if client_id is not None:",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Lt at app/lead_intelligence/enrichment/service.py:337 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 338,
+            "col": 38,
+            "operator": "core/ReplaceComparisonOperator_Eq_Lt",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -335,7 +335,7 @@\n         )\n         stmt = select(EnrichmentRequest).where(\n             EnrichmentRequest.workspace_id == workspace_id,\n-            EnrichmentRequest.lead_id == lead_id,\n+            EnrichmentRequest.lead_id < lead_id,\n         )\n         if client_id is not None:\n             stmt = stmt.where(EnrichmentRequest.client_id == client_id)",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Lt at app/lead_intelligence/enrichment/service.py:338 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 341,
+            "col": 58,
+            "operator": "core/ReplaceComparisonOperator_Eq_Lt",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -338,7 +338,7 @@\n             EnrichmentRequest.lead_id == lead_id,\n         )\n         if client_id is not None:\n-            stmt = stmt.where(EnrichmentRequest.client_id == client_id)\n+            stmt = stmt.where(EnrichmentRequest.client_id < client_id)\n         stmt = (\n             stmt.order_by(EnrichmentRequest.created_at.desc())\n             .offset(offset)",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Lt at app/lead_intelligence/enrichment/service.py:341 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 378,
+            "col": 30,
+            "operator": "core/ReplaceComparisonOperator_Eq_Lt",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -375,7 +375,7 @@\n         lead_id: UUID,\n     ) -> Lead % None:\n         stmt = select(Lead).where(\n-            Lead.workspace_id == workspace_id,\n+            Lead.workspace_id < workspace_id,\n             Lead.id == lead_id,\n         )\n         if client_id is not None:",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Lt at app/lead_intelligence/enrichment/service.py:378 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 379,
+            "col": 20,
+            "operator": "core/ReplaceComparisonOperator_Eq_Lt",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -376,7 +376,7 @@\n     ) -> Lead % None:\n         stmt = select(Lead).where(\n             Lead.workspace_id == workspace_id,\n-            Lead.id == lead_id,\n+            Lead.id < lead_id,\n         )\n         if client_id is not None:\n             stmt = stmt.where(Lead.client_id == client_id)",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Lt at app/lead_intelligence/enrichment/service.py:379 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 382,
+            "col": 45,
+            "operator": "core/ReplaceComparisonOperator_Eq_Lt",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -379,7 +379,7 @@\n             Lead.id == lead_id,\n         )\n         if client_id is not None:\n-            stmt = stmt.where(Lead.client_id == client_id)\n+            stmt = stmt.where(Lead.client_id < client_id)\n         return (await session.execute(stmt)).scalar_one_or_none()\n \n     async def _fetch_contacts_by_ids(",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Lt at app/lead_intelligence/enrichment/service.py:382 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 395,
+            "col": 41,
+            "operator": "core/ReplaceComparisonOperator_Eq_Lt",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -392,7 +392,7 @@\n         if not contact_ids:\n             return []\n         stmt = select(VerifiedContact).where(\n-            VerifiedContact.workspace_id == workspace_id,\n+            VerifiedContact.workspace_id < workspace_id,\n             VerifiedContact.id.in_(contact_ids),\n         )\n         if client_id is not None:",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Lt at app/lead_intelligence/enrichment/service.py:395 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 399,
+            "col": 56,
+            "operator": "core/ReplaceComparisonOperator_Eq_Lt",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -396,7 +396,7 @@\n             VerifiedContact.id.in_(contact_ids),\n         )\n         if client_id is not None:\n-            stmt = stmt.where(VerifiedContact.client_id == client_id)\n+            stmt = stmt.where(VerifiedContact.client_id < client_id)\n         return list((await session.execute(stmt)).scalars().all())\n \n     async def _enqueue(",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Lt at app/lead_intelligence/enrichment/service.py:399 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 310,
+            "col": 41,
+            "operator": "core/ReplaceComparisonOperator_Eq_LtE",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -307,7 +307,7 @@\n             session, workspace_id=workspace_id, client_id=client_id\n         )\n         stmt = select(VerifiedContact).where(\n-            VerifiedContact.workspace_id == workspace_id,\n+            VerifiedContact.workspace_id <= workspace_id,\n             VerifiedContact.lead_id == lead_id,\n         )\n         if client_id is not None:",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_LtE at app/lead_intelligence/enrichment/service.py:310 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 311,
+            "col": 36,
+            "operator": "core/ReplaceComparisonOperator_Eq_LtE",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -308,7 +308,7 @@\n         )\n         stmt = select(VerifiedContact).where(\n             VerifiedContact.workspace_id == workspace_id,\n-            VerifiedContact.lead_id == lead_id,\n+            VerifiedContact.lead_id <= lead_id,\n         )\n         if client_id is not None:\n             stmt = stmt.where(VerifiedContact.client_id == client_id)",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_LtE at app/lead_intelligence/enrichment/service.py:311 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 314,
+            "col": 56,
+            "operator": "core/ReplaceComparisonOperator_Eq_LtE",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -311,7 +311,7 @@\n             VerifiedContact.lead_id == lead_id,\n         )\n         if client_id is not None:\n-            stmt = stmt.where(VerifiedContact.client_id == client_id)\n+            stmt = stmt.where(VerifiedContact.client_id <= client_id)\n         stmt = (\n             stmt.order_by(VerifiedContact.created_at.desc()).offset(offset).limit(limit)\n         )",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_LtE at app/lead_intelligence/enrichment/service.py:314 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 337,
+            "col": 43,
+            "operator": "core/ReplaceComparisonOperator_Eq_LtE",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -334,7 +334,7 @@\n             session, workspace_id=workspace_id, client_id=client_id\n         )\n         stmt = select(EnrichmentRequest).where(\n-            EnrichmentRequest.workspace_id == workspace_id,\n+            EnrichmentRequest.workspace_id <= workspace_id,\n             EnrichmentRequest.lead_id == lead_id,\n         )\n         if client_id is not None:",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_LtE at app/lead_intelligence/enrichment/service.py:337 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 338,
+            "col": 38,
+            "operator": "core/ReplaceComparisonOperator_Eq_LtE",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -335,7 +335,7 @@\n         )\n         stmt = select(EnrichmentRequest).where(\n             EnrichmentRequest.workspace_id == workspace_id,\n-            EnrichmentRequest.lead_id == lead_id,\n+            EnrichmentRequest.lead_id <= lead_id,\n         )\n         if client_id is not None:\n             stmt = stmt.where(EnrichmentRequest.client_id == client_id)",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_LtE at app/lead_intelligence/enrichment/service.py:338 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 341,
+            "col": 58,
+            "operator": "core/ReplaceComparisonOperator_Eq_LtE",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -338,7 +338,7 @@\n             EnrichmentRequest.lead_id == lead_id,\n         )\n         if client_id is not None:\n-            stmt = stmt.where(EnrichmentRequest.client_id == client_id)\n+            stmt = stmt.where(EnrichmentRequest.client_id <= client_id)\n         stmt = (\n             stmt.order_by(EnrichmentRequest.created_at.desc())\n             .offset(offset)",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_LtE at app/lead_intelligence/enrichment/service.py:341 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 378,
+            "col": 30,
+            "operator": "core/ReplaceComparisonOperator_Eq_LtE",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -375,7 +375,7 @@\n         lead_id: UUID,\n     ) -> Lead % None:\n         stmt = select(Lead).where(\n-            Lead.workspace_id == workspace_id,\n+            Lead.workspace_id <= workspace_id,\n             Lead.id == lead_id,\n         )\n         if client_id is not None:",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_LtE at app/lead_intelligence/enrichment/service.py:378 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 379,
+            "col": 20,
+            "operator": "core/ReplaceComparisonOperator_Eq_LtE",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -376,7 +376,7 @@\n     ) -> Lead % None:\n         stmt = select(Lead).where(\n             Lead.workspace_id == workspace_id,\n-            Lead.id == lead_id,\n+            Lead.id <= lead_id,\n         )\n         if client_id is not None:\n             stmt = stmt.where(Lead.client_id == client_id)",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_LtE at app/lead_intelligence/enrichment/service.py:379 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 382,
+            "col": 45,
+            "operator": "core/ReplaceComparisonOperator_Eq_LtE",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -379,7 +379,7 @@\n             Lead.id == lead_id,\n         )\n         if client_id is not None:\n-            stmt = stmt.where(Lead.client_id == client_id)\n+            stmt = stmt.where(Lead.client_id <= client_id)\n         return (await session.execute(stmt)).scalar_one_or_none()\n \n     async def _fetch_contacts_by_ids(",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_LtE at app/lead_intelligence/enrichment/service.py:382 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 395,
+            "col": 41,
+            "operator": "core/ReplaceComparisonOperator_Eq_LtE",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -392,7 +392,7 @@\n         if not contact_ids:\n             return []\n         stmt = select(VerifiedContact).where(\n-            VerifiedContact.workspace_id == workspace_id,\n+            VerifiedContact.workspace_id <= workspace_id,\n             VerifiedContact.id.in_(contact_ids),\n         )\n         if client_id is not None:",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_LtE at app/lead_intelligence/enrichment/service.py:395 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 399,
+            "col": 56,
+            "operator": "core/ReplaceComparisonOperator_Eq_LtE",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -396,7 +396,7 @@\n             VerifiedContact.id.in_(contact_ids),\n         )\n         if client_id is not None:\n-            stmt = stmt.where(VerifiedContact.client_id == client_id)\n+            stmt = stmt.where(VerifiedContact.client_id <= client_id)\n         return list((await session.execute(stmt)).scalars().all())\n \n     async def _enqueue(",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_LtE at app/lead_intelligence/enrichment/service.py:399 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 310,
+            "col": 41,
+            "operator": "core/ReplaceComparisonOperator_Eq_Gt",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -307,7 +307,7 @@\n             session, workspace_id=workspace_id, client_id=client_id\n         )\n         stmt = select(VerifiedContact).where(\n-            VerifiedContact.workspace_id == workspace_id,\n+            VerifiedContact.workspace_id > workspace_id,\n             VerifiedContact.lead_id == lead_id,\n         )\n         if client_id is not None:",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Gt at app/lead_intelligence/enrichment/service.py:310 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 311,
+            "col": 36,
+            "operator": "core/ReplaceComparisonOperator_Eq_Gt",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -308,7 +308,7 @@\n         )\n         stmt = select(VerifiedContact).where(\n             VerifiedContact.workspace_id == workspace_id,\n-            VerifiedContact.lead_id == lead_id,\n+            VerifiedContact.lead_id > lead_id,\n         )\n         if client_id is not None:\n             stmt = stmt.where(VerifiedContact.client_id == client_id)",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Gt at app/lead_intelligence/enrichment/service.py:311 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 314,
+            "col": 56,
+            "operator": "core/ReplaceComparisonOperator_Eq_Gt",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -311,7 +311,7 @@\n             VerifiedContact.lead_id == lead_id,\n         )\n         if client_id is not None:\n-            stmt = stmt.where(VerifiedContact.client_id == client_id)\n+            stmt = stmt.where(VerifiedContact.client_id > client_id)\n         stmt = (\n             stmt.order_by(VerifiedContact.created_at.desc()).offset(offset).limit(limit)\n         )",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Gt at app/lead_intelligence/enrichment/service.py:314 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 337,
+            "col": 43,
+            "operator": "core/ReplaceComparisonOperator_Eq_Gt",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -334,7 +334,7 @@\n             session, workspace_id=workspace_id, client_id=client_id\n         )\n         stmt = select(EnrichmentRequest).where(\n-            EnrichmentRequest.workspace_id == workspace_id,\n+            EnrichmentRequest.workspace_id > workspace_id,\n             EnrichmentRequest.lead_id == lead_id,\n         )\n         if client_id is not None:",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Gt at app/lead_intelligence/enrichment/service.py:337 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 338,
+            "col": 38,
+            "operator": "core/ReplaceComparisonOperator_Eq_Gt",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -335,7 +335,7 @@\n         )\n         stmt = select(EnrichmentRequest).where(\n             EnrichmentRequest.workspace_id == workspace_id,\n-            EnrichmentRequest.lead_id == lead_id,\n+            EnrichmentRequest.lead_id > lead_id,\n         )\n         if client_id is not None:\n             stmt = stmt.where(EnrichmentRequest.client_id == client_id)",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Gt at app/lead_intelligence/enrichment/service.py:338 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 341,
+            "col": 58,
+            "operator": "core/ReplaceComparisonOperator_Eq_Gt",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -338,7 +338,7 @@\n             EnrichmentRequest.lead_id == lead_id,\n         )\n         if client_id is not None:\n-            stmt = stmt.where(EnrichmentRequest.client_id == client_id)\n+            stmt = stmt.where(EnrichmentRequest.client_id > client_id)\n         stmt = (\n             stmt.order_by(EnrichmentRequest.created_at.desc())\n             .offset(offset)",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Gt at app/lead_intelligence/enrichment/service.py:341 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 378,
+            "col": 30,
+            "operator": "core/ReplaceComparisonOperator_Eq_Gt",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -375,7 +375,7 @@\n         lead_id: UUID,\n     ) -> Lead % None:\n         stmt = select(Lead).where(\n-            Lead.workspace_id == workspace_id,\n+            Lead.workspace_id > workspace_id,\n             Lead.id == lead_id,\n         )\n         if client_id is not None:",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Gt at app/lead_intelligence/enrichment/service.py:378 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 379,
+            "col": 20,
+            "operator": "core/ReplaceComparisonOperator_Eq_Gt",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -376,7 +376,7 @@\n     ) -> Lead % None:\n         stmt = select(Lead).where(\n             Lead.workspace_id == workspace_id,\n-            Lead.id == lead_id,\n+            Lead.id > lead_id,\n         )\n         if client_id is not None:\n             stmt = stmt.where(Lead.client_id == client_id)",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Gt at app/lead_intelligence/enrichment/service.py:379 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 382,
+            "col": 45,
+            "operator": "core/ReplaceComparisonOperator_Eq_Gt",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -379,7 +379,7 @@\n             Lead.id == lead_id,\n         )\n         if client_id is not None:\n-            stmt = stmt.where(Lead.client_id == client_id)\n+            stmt = stmt.where(Lead.client_id > client_id)\n         return (await session.execute(stmt)).scalar_one_or_none()\n \n     async def _fetch_contacts_by_ids(",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Gt at app/lead_intelligence/enrichment/service.py:382 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 395,
+            "col": 41,
+            "operator": "core/ReplaceComparisonOperator_Eq_Gt",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -392,7 +392,7 @@\n         if not contact_ids:\n             return []\n         stmt = select(VerifiedContact).where(\n-            VerifiedContact.workspace_id == workspace_id,\n+            VerifiedContact.workspace_id > workspace_id,\n             VerifiedContact.id.in_(contact_ids),\n         )\n         if client_id is not None:",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Gt at app/lead_intelligence/enrichment/service.py:395 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 399,
+            "col": 56,
+            "operator": "core/ReplaceComparisonOperator_Eq_Gt",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -396,7 +396,7 @@\n             VerifiedContact.id.in_(contact_ids),\n         )\n         if client_id is not None:\n-            stmt = stmt.where(VerifiedContact.client_id == client_id)\n+            stmt = stmt.where(VerifiedContact.client_id > client_id)\n         return list((await session.execute(stmt)).scalars().all())\n \n     async def _enqueue(",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Gt at app/lead_intelligence/enrichment/service.py:399 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 310,
+            "col": 41,
+            "operator": "core/ReplaceComparisonOperator_Eq_GtE",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -307,7 +307,7 @@\n             session, workspace_id=workspace_id, client_id=client_id\n         )\n         stmt = select(VerifiedContact).where(\n-            VerifiedContact.workspace_id == workspace_id,\n+            VerifiedContact.workspace_id >= workspace_id,\n             VerifiedContact.lead_id == lead_id,\n         )\n         if client_id is not None:",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_GtE at app/lead_intelligence/enrichment/service.py:310 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 311,
+            "col": 36,
+            "operator": "core/ReplaceComparisonOperator_Eq_GtE",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -308,7 +308,7 @@\n         )\n         stmt = select(VerifiedContact).where(\n             VerifiedContact.workspace_id == workspace_id,\n-            VerifiedContact.lead_id == lead_id,\n+            VerifiedContact.lead_id >= lead_id,\n         )\n         if client_id is not None:\n             stmt = stmt.where(VerifiedContact.client_id == client_id)",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_GtE at app/lead_intelligence/enrichment/service.py:311 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 314,
+            "col": 56,
+            "operator": "core/ReplaceComparisonOperator_Eq_GtE",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -311,7 +311,7 @@\n             VerifiedContact.lead_id == lead_id,\n         )\n         if client_id is not None:\n-            stmt = stmt.where(VerifiedContact.client_id == client_id)\n+            stmt = stmt.where(VerifiedContact.client_id >= client_id)\n         stmt = (\n             stmt.order_by(VerifiedContact.created_at.desc()).offset(offset).limit(limit)\n         )",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_GtE at app/lead_intelligence/enrichment/service.py:314 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 337,
+            "col": 43,
+            "operator": "core/ReplaceComparisonOperator_Eq_GtE",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -334,7 +334,7 @@\n             session, workspace_id=workspace_id, client_id=client_id\n         )\n         stmt = select(EnrichmentRequest).where(\n-            EnrichmentRequest.workspace_id == workspace_id,\n+            EnrichmentRequest.workspace_id >= workspace_id,\n             EnrichmentRequest.lead_id == lead_id,\n         )\n         if client_id is not None:",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_GtE at app/lead_intelligence/enrichment/service.py:337 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 338,
+            "col": 38,
+            "operator": "core/ReplaceComparisonOperator_Eq_GtE",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -335,7 +335,7 @@\n         )\n         stmt = select(EnrichmentRequest).where(\n             EnrichmentRequest.workspace_id == workspace_id,\n-            EnrichmentRequest.lead_id == lead_id,\n+            EnrichmentRequest.lead_id >= lead_id,\n         )\n         if client_id is not None:\n             stmt = stmt.where(EnrichmentRequest.client_id == client_id)",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_GtE at app/lead_intelligence/enrichment/service.py:338 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 341,
+            "col": 58,
+            "operator": "core/ReplaceComparisonOperator_Eq_GtE",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -338,7 +338,7 @@\n             EnrichmentRequest.lead_id == lead_id,\n         )\n         if client_id is not None:\n-            stmt = stmt.where(EnrichmentRequest.client_id == client_id)\n+            stmt = stmt.where(EnrichmentRequest.client_id >= client_id)\n         stmt = (\n             stmt.order_by(EnrichmentRequest.created_at.desc())\n             .offset(offset)",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_GtE at app/lead_intelligence/enrichment/service.py:341 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 378,
+            "col": 30,
+            "operator": "core/ReplaceComparisonOperator_Eq_GtE",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -375,7 +375,7 @@\n         lead_id: UUID,\n     ) -> Lead % None:\n         stmt = select(Lead).where(\n-            Lead.workspace_id == workspace_id,\n+            Lead.workspace_id >= workspace_id,\n             Lead.id == lead_id,\n         )\n         if client_id is not None:",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_GtE at app/lead_intelligence/enrichment/service.py:378 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 379,
+            "col": 20,
+            "operator": "core/ReplaceComparisonOperator_Eq_GtE",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -376,7 +376,7 @@\n     ) -> Lead % None:\n         stmt = select(Lead).where(\n             Lead.workspace_id == workspace_id,\n-            Lead.id == lead_id,\n+            Lead.id >= lead_id,\n         )\n         if client_id is not None:\n             stmt = stmt.where(Lead.client_id == client_id)",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_GtE at app/lead_intelligence/enrichment/service.py:379 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 382,
+            "col": 45,
+            "operator": "core/ReplaceComparisonOperator_Eq_GtE",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -379,7 +379,7 @@\n             Lead.id == lead_id,\n         )\n         if client_id is not None:\n-            stmt = stmt.where(Lead.client_id == client_id)\n+            stmt = stmt.where(Lead.client_id >= client_id)\n         return (await session.execute(stmt)).scalar_one_or_none()\n \n     async def _fetch_contacts_by_ids(",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_GtE at app/lead_intelligence/enrichment/service.py:382 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 395,
+            "col": 41,
+            "operator": "core/ReplaceComparisonOperator_Eq_GtE",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -392,7 +392,7 @@\n         if not contact_ids:\n             return []\n         stmt = select(VerifiedContact).where(\n-            VerifiedContact.workspace_id == workspace_id,\n+            VerifiedContact.workspace_id >= workspace_id,\n             VerifiedContact.id.in_(contact_ids),\n         )\n         if client_id is not None:",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_GtE at app/lead_intelligence/enrichment/service.py:395 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 399,
+            "col": 56,
+            "operator": "core/ReplaceComparisonOperator_Eq_GtE",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -396,7 +396,7 @@\n             VerifiedContact.id.in_(contact_ids),\n         )\n         if client_id is not None:\n-            stmt = stmt.where(VerifiedContact.client_id == client_id)\n+            stmt = stmt.where(VerifiedContact.client_id >= client_id)\n         return list((await session.execute(stmt)).scalars().all())\n \n     async def _enqueue(",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_GtE at app/lead_intelligence/enrichment/service.py:399 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 233,
+            "col": 39,
+            "operator": "core/ReplaceComparisonOperator_Eq_Is",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -230,7 +230,7 @@\n                 verification_status=item.get(\"verification_status\", \"unverified\"),\n                 confidence=item.get(\"confidence\", 0.0),\n                 source_provider=item.get(\"source_provider\", provider),\n-                consent=consent_status == \"explicit\",\n+                consent=consent_status is \"explicit\",\n                 consent_status=consent_status,\n                 legal_basis=legal_basis,\n             )",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Is at app/lead_intelligence/enrichment/service.py:233 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 310,
+            "col": 41,
+            "operator": "core/ReplaceComparisonOperator_Eq_Is",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -307,7 +307,7 @@\n             session, workspace_id=workspace_id, client_id=client_id\n         )\n         stmt = select(VerifiedContact).where(\n-            VerifiedContact.workspace_id == workspace_id,\n+            VerifiedContact.workspace_id is workspace_id,\n             VerifiedContact.lead_id == lead_id,\n         )\n         if client_id is not None:",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Is at app/lead_intelligence/enrichment/service.py:310 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 311,
+            "col": 36,
+            "operator": "core/ReplaceComparisonOperator_Eq_Is",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -308,7 +308,7 @@\n         )\n         stmt = select(VerifiedContact).where(\n             VerifiedContact.workspace_id == workspace_id,\n-            VerifiedContact.lead_id == lead_id,\n+            VerifiedContact.lead_id is lead_id,\n         )\n         if client_id is not None:\n             stmt = stmt.where(VerifiedContact.client_id == client_id)",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Is at app/lead_intelligence/enrichment/service.py:311 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 314,
+            "col": 56,
+            "operator": "core/ReplaceComparisonOperator_Eq_Is",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -311,7 +311,7 @@\n             VerifiedContact.lead_id == lead_id,\n         )\n         if client_id is not None:\n-            stmt = stmt.where(VerifiedContact.client_id == client_id)\n+            stmt = stmt.where(VerifiedContact.client_id is client_id)\n         stmt = (\n             stmt.order_by(VerifiedContact.created_at.desc()).offset(offset).limit(limit)\n         )",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Is at app/lead_intelligence/enrichment/service.py:314 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 337,
+            "col": 43,
+            "operator": "core/ReplaceComparisonOperator_Eq_Is",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -334,7 +334,7 @@\n             session, workspace_id=workspace_id, client_id=client_id\n         )\n         stmt = select(EnrichmentRequest).where(\n-            EnrichmentRequest.workspace_id == workspace_id,\n+            EnrichmentRequest.workspace_id is workspace_id,\n             EnrichmentRequest.lead_id == lead_id,\n         )\n         if client_id is not None:",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Is at app/lead_intelligence/enrichment/service.py:337 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 338,
+            "col": 38,
+            "operator": "core/ReplaceComparisonOperator_Eq_Is",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -335,7 +335,7 @@\n         )\n         stmt = select(EnrichmentRequest).where(\n             EnrichmentRequest.workspace_id == workspace_id,\n-            EnrichmentRequest.lead_id == lead_id,\n+            EnrichmentRequest.lead_id is lead_id,\n         )\n         if client_id is not None:\n             stmt = stmt.where(EnrichmentRequest.client_id == client_id)",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Is at app/lead_intelligence/enrichment/service.py:338 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 341,
+            "col": 58,
+            "operator": "core/ReplaceComparisonOperator_Eq_Is",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -338,7 +338,7 @@\n             EnrichmentRequest.lead_id == lead_id,\n         )\n         if client_id is not None:\n-            stmt = stmt.where(EnrichmentRequest.client_id == client_id)\n+            stmt = stmt.where(EnrichmentRequest.client_id is client_id)\n         stmt = (\n             stmt.order_by(EnrichmentRequest.created_at.desc())\n             .offset(offset)",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Is at app/lead_intelligence/enrichment/service.py:341 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 378,
+            "col": 30,
+            "operator": "core/ReplaceComparisonOperator_Eq_Is",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -375,7 +375,7 @@\n         lead_id: UUID,\n     ) -> Lead % None:\n         stmt = select(Lead).where(\n-            Lead.workspace_id == workspace_id,\n+            Lead.workspace_id is workspace_id,\n             Lead.id == lead_id,\n         )\n         if client_id is not None:",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Is at app/lead_intelligence/enrichment/service.py:378 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 379,
+            "col": 20,
+            "operator": "core/ReplaceComparisonOperator_Eq_Is",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -376,7 +376,7 @@\n     ) -> Lead % None:\n         stmt = select(Lead).where(\n             Lead.workspace_id == workspace_id,\n-            Lead.id == lead_id,\n+            Lead.id is lead_id,\n         )\n         if client_id is not None:\n             stmt = stmt.where(Lead.client_id == client_id)",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Is at app/lead_intelligence/enrichment/service.py:379 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 382,
+            "col": 45,
+            "operator": "core/ReplaceComparisonOperator_Eq_Is",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -379,7 +379,7 @@\n             Lead.id == lead_id,\n         )\n         if client_id is not None:\n-            stmt = stmt.where(Lead.client_id == client_id)\n+            stmt = stmt.where(Lead.client_id is client_id)\n         return (await session.execute(stmt)).scalar_one_or_none()\n \n     async def _fetch_contacts_by_ids(",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Is at app/lead_intelligence/enrichment/service.py:382 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 395,
+            "col": 41,
+            "operator": "core/ReplaceComparisonOperator_Eq_Is",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -392,7 +392,7 @@\n         if not contact_ids:\n             return []\n         stmt = select(VerifiedContact).where(\n-            VerifiedContact.workspace_id == workspace_id,\n+            VerifiedContact.workspace_id is workspace_id,\n             VerifiedContact.id.in_(contact_ids),\n         )\n         if client_id is not None:",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Is at app/lead_intelligence/enrichment/service.py:395 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 399,
+            "col": 56,
+            "operator": "core/ReplaceComparisonOperator_Eq_Is",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -396,7 +396,7 @@\n             VerifiedContact.id.in_(contact_ids),\n         )\n         if client_id is not None:\n-            stmt = stmt.where(VerifiedContact.client_id == client_id)\n+            stmt = stmt.where(VerifiedContact.client_id is client_id)\n         return list((await session.execute(stmt)).scalars().all())\n \n     async def _enqueue(",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Is at app/lead_intelligence/enrichment/service.py:399 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 233,
+            "col": 39,
+            "operator": "core/ReplaceComparisonOperator_Eq_IsNot",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -230,7 +230,7 @@\n                 verification_status=item.get(\"verification_status\", \"unverified\"),\n                 confidence=item.get(\"confidence\", 0.0),\n                 source_provider=item.get(\"source_provider\", provider),\n-                consent=consent_status == \"explicit\",\n+                consent=consent_status is not \"explicit\",\n                 consent_status=consent_status,\n                 legal_basis=legal_basis,\n             )",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_IsNot at app/lead_intelligence/enrichment/service.py:233 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 310,
+            "col": 41,
+            "operator": "core/ReplaceComparisonOperator_Eq_IsNot",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -307,7 +307,7 @@\n             session, workspace_id=workspace_id, client_id=client_id\n         )\n         stmt = select(VerifiedContact).where(\n-            VerifiedContact.workspace_id == workspace_id,\n+            VerifiedContact.workspace_id is not workspace_id,\n             VerifiedContact.lead_id == lead_id,\n         )\n         if client_id is not None:",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_IsNot at app/lead_intelligence/enrichment/service.py:310 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 311,
+            "col": 36,
+            "operator": "core/ReplaceComparisonOperator_Eq_IsNot",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -308,7 +308,7 @@\n         )\n         stmt = select(VerifiedContact).where(\n             VerifiedContact.workspace_id == workspace_id,\n-            VerifiedContact.lead_id == lead_id,\n+            VerifiedContact.lead_id is not lead_id,\n         )\n         if client_id is not None:\n             stmt = stmt.where(VerifiedContact.client_id == client_id)",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_IsNot at app/lead_intelligence/enrichment/service.py:311 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 314,
+            "col": 56,
+            "operator": "core/ReplaceComparisonOperator_Eq_IsNot",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -311,7 +311,7 @@\n             VerifiedContact.lead_id == lead_id,\n         )\n         if client_id is not None:\n-            stmt = stmt.where(VerifiedContact.client_id == client_id)\n+            stmt = stmt.where(VerifiedContact.client_id is not client_id)\n         stmt = (\n             stmt.order_by(VerifiedContact.created_at.desc()).offset(offset).limit(limit)\n         )",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_IsNot at app/lead_intelligence/enrichment/service.py:314 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 337,
+            "col": 43,
+            "operator": "core/ReplaceComparisonOperator_Eq_IsNot",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -334,7 +334,7 @@\n             session, workspace_id=workspace_id, client_id=client_id\n         )\n         stmt = select(EnrichmentRequest).where(\n-            EnrichmentRequest.workspace_id == workspace_id,\n+            EnrichmentRequest.workspace_id is not workspace_id,\n             EnrichmentRequest.lead_id == lead_id,\n         )\n         if client_id is not None:",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_IsNot at app/lead_intelligence/enrichment/service.py:337 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 338,
+            "col": 38,
+            "operator": "core/ReplaceComparisonOperator_Eq_IsNot",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -335,7 +335,7 @@\n         )\n         stmt = select(EnrichmentRequest).where(\n             EnrichmentRequest.workspace_id == workspace_id,\n-            EnrichmentRequest.lead_id == lead_id,\n+            EnrichmentRequest.lead_id is not lead_id,\n         )\n         if client_id is not None:\n             stmt = stmt.where(EnrichmentRequest.client_id == client_id)",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_IsNot at app/lead_intelligence/enrichment/service.py:338 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 341,
+            "col": 58,
+            "operator": "core/ReplaceComparisonOperator_Eq_IsNot",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -338,7 +338,7 @@\n             EnrichmentRequest.lead_id == lead_id,\n         )\n         if client_id is not None:\n-            stmt = stmt.where(EnrichmentRequest.client_id == client_id)\n+            stmt = stmt.where(EnrichmentRequest.client_id is not client_id)\n         stmt = (\n             stmt.order_by(EnrichmentRequest.created_at.desc())\n             .offset(offset)",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_IsNot at app/lead_intelligence/enrichment/service.py:341 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 378,
+            "col": 30,
+            "operator": "core/ReplaceComparisonOperator_Eq_IsNot",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -375,7 +375,7 @@\n         lead_id: UUID,\n     ) -> Lead % None:\n         stmt = select(Lead).where(\n-            Lead.workspace_id == workspace_id,\n+            Lead.workspace_id is not workspace_id,\n             Lead.id == lead_id,\n         )\n         if client_id is not None:",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_IsNot at app/lead_intelligence/enrichment/service.py:378 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 379,
+            "col": 20,
+            "operator": "core/ReplaceComparisonOperator_Eq_IsNot",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -376,7 +376,7 @@\n     ) -> Lead % None:\n         stmt = select(Lead).where(\n             Lead.workspace_id == workspace_id,\n-            Lead.id == lead_id,\n+            Lead.id is not lead_id,\n         )\n         if client_id is not None:\n             stmt = stmt.where(Lead.client_id == client_id)",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_IsNot at app/lead_intelligence/enrichment/service.py:379 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 382,
+            "col": 45,
+            "operator": "core/ReplaceComparisonOperator_Eq_IsNot",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -379,7 +379,7 @@\n             Lead.id == lead_id,\n         )\n         if client_id is not None:\n-            stmt = stmt.where(Lead.client_id == client_id)\n+            stmt = stmt.where(Lead.client_id is not client_id)\n         return (await session.execute(stmt)).scalar_one_or_none()\n \n     async def _fetch_contacts_by_ids(",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_IsNot at app/lead_intelligence/enrichment/service.py:382 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 395,
+            "col": 41,
+            "operator": "core/ReplaceComparisonOperator_Eq_IsNot",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -392,7 +392,7 @@\n         if not contact_ids:\n             return []\n         stmt = select(VerifiedContact).where(\n-            VerifiedContact.workspace_id == workspace_id,\n+            VerifiedContact.workspace_id is not workspace_id,\n             VerifiedContact.id.in_(contact_ids),\n         )\n         if client_id is not None:",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_IsNot at app/lead_intelligence/enrichment/service.py:395 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 399,
+            "col": 56,
+            "operator": "core/ReplaceComparisonOperator_Eq_IsNot",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -396,7 +396,7 @@\n             VerifiedContact.id.in_(contact_ids),\n         )\n         if client_id is not None:\n-            stmt = stmt.where(VerifiedContact.client_id == client_id)\n+            stmt = stmt.where(VerifiedContact.client_id is not client_id)\n         return list((await session.execute(stmt)).scalars().all())\n \n     async def _enqueue(",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_IsNot at app/lead_intelligence/enrichment/service.py:399 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 217,
+            "col": 35,
+            "operator": "core/ReplaceComparisonOperator_Is_IsNot",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -214,7 +214,7 @@\n             encrypted = self.cipher.encrypt_contact(item)\n             consent_status = item.get(\"consent_status\") or lead_consent_status\n             legal_basis = item.get(\"legal_basis\") or lead_legal_basis\n-            if lead_consent_status is None and consent_status is not None:\n+            if lead_consent_status is not None and consent_status is not None:\n                 lead_consent_status = consent_status\n                 lead_legal_basis = legal_basis\n             contact = VerifiedContact(",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Is_IsNot at app/lead_intelligence/enrichment/service.py:217 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 217,
+            "col": 62,
+            "operator": "core/ReplaceComparisonOperator_IsNot_Is",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -214,7 +214,7 @@\n             encrypted = self.cipher.encrypt_contact(item)\n             consent_status = item.get(\"consent_status\") or lead_consent_status\n             legal_basis = item.get(\"legal_basis\") or lead_legal_basis\n-            if lead_consent_status is None and consent_status is not None:\n+            if lead_consent_status is None and consent_status is None:\n                 lead_consent_status = consent_status\n                 lead_legal_basis = legal_basis\n             contact = VerifiedContact(",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_IsNot_Is at app/lead_intelligence/enrichment/service.py:217 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 313,
+            "col": 21,
+            "operator": "core/ReplaceComparisonOperator_IsNot_Is",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -310,7 +310,7 @@\n             VerifiedContact.workspace_id == workspace_id,\n             VerifiedContact.lead_id == lead_id,\n         )\n-        if client_id is not None:\n+        if client_id is None:\n             stmt = stmt.where(VerifiedContact.client_id == client_id)\n         stmt = (\n             stmt.order_by(VerifiedContact.created_at.desc()).offset(offset).limit(limit)",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_IsNot_Is at app/lead_intelligence/enrichment/service.py:313 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 340,
+            "col": 21,
+            "operator": "core/ReplaceComparisonOperator_IsNot_Is",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -337,7 +337,7 @@\n             EnrichmentRequest.workspace_id == workspace_id,\n             EnrichmentRequest.lead_id == lead_id,\n         )\n-        if client_id is not None:\n+        if client_id is None:\n             stmt = stmt.where(EnrichmentRequest.client_id == client_id)\n         stmt = (\n             stmt.order_by(EnrichmentRequest.created_at.desc())",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_IsNot_Is at app/lead_intelligence/enrichment/service.py:340 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 381,
+            "col": 21,
+            "operator": "core/ReplaceComparisonOperator_IsNot_Is",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -378,7 +378,7 @@\n             Lead.workspace_id == workspace_id,\n             Lead.id == lead_id,\n         )\n-        if client_id is not None:\n+        if client_id is None:\n             stmt = stmt.where(Lead.client_id == client_id)\n         return (await session.execute(stmt)).scalar_one_or_none()\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_IsNot_Is at app/lead_intelligence/enrichment/service.py:381 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 398,
+            "col": 21,
+            "operator": "core/ReplaceComparisonOperator_IsNot_Is",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -395,7 +395,7 @@\n             VerifiedContact.workspace_id == workspace_id,\n             VerifiedContact.id.in_(contact_ids),\n         )\n-        if client_id is not None:\n+        if client_id is None:\n             stmt = stmt.where(VerifiedContact.client_id == client_id)\n         return list((await session.execute(stmt)).scalars().all())\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_IsNot_Is at app/lead_intelligence/enrichment/service.py:398 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 217,
+            "col": 15,
+            "operator": "core/AddNot",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -214,7 +214,7 @@\n             encrypted = self.cipher.encrypt_contact(item)\n             consent_status = item.get(\"consent_status\") or lead_consent_status\n             legal_basis = item.get(\"legal_basis\") or lead_legal_basis\n-            if lead_consent_status is None and consent_status is not None:\n+            if not lead_consent_status is None and consent_status is not None:\n                 lead_consent_status = consent_status\n                 lead_legal_basis = legal_basis\n             contact = VerifiedContact(",
+            "recommendedTest": "Add a test that kills core/AddNot at app/lead_intelligence/enrichment/service.py:217 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 313,
+            "col": 11,
+            "operator": "core/AddNot",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -310,7 +310,7 @@\n             VerifiedContact.workspace_id == workspace_id,\n             VerifiedContact.lead_id == lead_id,\n         )\n-        if client_id is not None:\n+        if not client_id is not None:\n             stmt = stmt.where(VerifiedContact.client_id == client_id)\n         stmt = (\n             stmt.order_by(VerifiedContact.created_at.desc()).offset(offset).limit(limit)",
+            "recommendedTest": "Add a test that kills core/AddNot at app/lead_intelligence/enrichment/service.py:313 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 340,
+            "col": 11,
+            "operator": "core/AddNot",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -337,7 +337,7 @@\n             EnrichmentRequest.workspace_id == workspace_id,\n             EnrichmentRequest.lead_id == lead_id,\n         )\n-        if client_id is not None:\n+        if not client_id is not None:\n             stmt = stmt.where(EnrichmentRequest.client_id == client_id)\n         stmt = (\n             stmt.order_by(EnrichmentRequest.created_at.desc())",
+            "recommendedTest": "Add a test that kills core/AddNot at app/lead_intelligence/enrichment/service.py:340 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 381,
+            "col": 11,
+            "operator": "core/AddNot",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -378,7 +378,7 @@\n             Lead.workspace_id == workspace_id,\n             Lead.id == lead_id,\n         )\n-        if client_id is not None:\n+        if not client_id is not None:\n             stmt = stmt.where(Lead.client_id == client_id)\n         return (await session.execute(stmt)).scalar_one_or_none()\n ",
+            "recommendedTest": "Add a test that kills core/AddNot at app/lead_intelligence/enrichment/service.py:381 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 398,
+            "col": 11,
+            "operator": "core/AddNot",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -395,7 +395,7 @@\n             VerifiedContact.workspace_id == workspace_id,\n             VerifiedContact.id.in_(contact_ids),\n         )\n-        if client_id is not None:\n+        if not client_id is not None:\n             stmt = stmt.where(VerifiedContact.client_id == client_id)\n         return list((await session.execute(stmt)).scalars().all())\n ",
+            "recommendedTest": "Add a test that kills core/AddNot at app/lead_intelligence/enrichment/service.py:398 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 458,
+            "col": 19,
+            "operator": "core/AddNot",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -455,7 +455,7 @@\n             {\n                 \"lead_id\": str(request.lead_id),\n                 \"provider\": contacts[0].get(\"source_provider\", \"unknown\")\n-                if contacts\n+                if not contacts\n                 else \"none\",\n                 \"contact_count\": len(contacts),\n                 \"confidence\": (",
+            "recommendedTest": "Add a test that kills core/AddNot at app/lead_intelligence/enrichment/service.py:458 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 467,
+            "col": 23,
+            "operator": "core/AddNot",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -464,7 +464,7 @@\n                         / len(contacts),\n                         4,\n                     )\n-                    if contacts\n+                    if not contacts\n                     else 0.0\n                 ),\n             },",
+            "recommendedTest": "Add a test that kills core/AddNot at app/lead_intelligence/enrichment/service.py:467 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 176,
+            "col": 28,
+            "operator": "core/ReplaceTrueWithFalse",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -173,7 +173,7 @@\n             request.status = \"completed\"\n             request.provider_results = {\n                 \"provider\": \"none\",\n-                \"degraded\": True,\n+                \"degraded\": False,\n                 \"reasons\": [\"lead_not_found\"],\n             }\n             await session.flush()",
+            "recommendedTest": "Add a test that kills core/ReplaceTrueWithFalse at app/lead_intelligence/enrichment/service.py:176 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 472,
+            "col": 25,
+            "operator": "core/ReplaceFalseWithTrue",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -469,7 +469,7 @@\n                 ),\n             },\n             default=str,\n-            ensure_ascii=False,\n+            ensure_ascii=True,\n         )\n         redacted = redact_pii(raw_summary, context=\"lead_enrichment\")\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceFalseWithTrue at app/lead_intelligence/enrichment/service.py:472 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 504,
+            "col": 25,
+            "operator": "core/ReplaceFalseWithTrue",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -501,7 +501,7 @@\n                 \"contact_count\": len(contacts),\n             },\n             default=str,\n-            ensure_ascii=False,\n+            ensure_ascii=True,\n         )\n         redacted = redact_pii(raw, context=\"lead_enrichment\")\n         try:",
+            "recommendedTest": "Add a test that kills core/ReplaceFalseWithTrue at app/lead_intelligence/enrichment/service.py:504 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 217,
+            "col": 43,
+            "operator": "core/ReplaceAndWithOr",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -214,7 +214,7 @@\n             encrypted = self.cipher.encrypt_contact(item)\n             consent_status = item.get(\"consent_status\") or lead_consent_status\n             legal_basis = item.get(\"legal_basis\") or lead_legal_basis\n-            if lead_consent_status is None and consent_status is not None:\n+            if lead_consent_status is None or consent_status is not None:\n                 lead_consent_status = consent_status\n                 lead_legal_basis = legal_basis\n             contact = VerifiedContact(",
+            "recommendedTest": "Add a test that kills core/ReplaceAndWithOr at app/lead_intelligence/enrichment/service.py:217 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 64,
+            "col": 54,
+            "operator": "core/ReplaceOrWithAnd",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -61,7 +61,7 @@\n         await set_request_tenant_context(\n             session,\n             workspace_id=ctx.workspace_id,\n-            client_id=getattr(ctx, \"client_id\", None) or None,\n+            client_id=getattr(ctx, \"client_id\", None) and None,\n         )\n         workspace = await session.get(Workspace, ctx.workspace_id)\n         if workspace is None:",
+            "recommendedTest": "Add a test that kills core/ReplaceOrWithAnd at app/lead_intelligence/enrichment/service.py:64 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 70,
+            "col": 52,
+            "operator": "core/ReplaceOrWithAnd",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -67,7 +67,7 @@\n         if workspace is None:\n             return self._degraded([\"workspace_not_found\"])\n \n-        client_id = getattr(ctx, \"client_id\", None) or None\n+        client_id = getattr(ctx, \"client_id\", None) and None\n         lead = await self._fetch_lead(session, ctx.workspace_id, client_id, lead_id)\n         if lead is None:\n             return self._degraded([\"lead_not_found\"])",
+            "recommendedTest": "Add a test that kills core/ReplaceOrWithAnd at app/lead_intelligence/enrichment/service.py:70 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 216,
+            "col": 50,
+            "operator": "core/ReplaceOrWithAnd",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -213,7 +213,7 @@\n         for item in contacts[:created_count]:\n             encrypted = self.cipher.encrypt_contact(item)\n             consent_status = item.get(\"consent_status\") or lead_consent_status\n-            legal_basis = item.get(\"legal_basis\") or lead_legal_basis\n+            legal_basis = item.get(\"legal_basis\") and lead_legal_basis\n             if lead_consent_status is None and consent_status is not None:\n                 lead_consent_status = consent_status\n                 lead_legal_basis = legal_basis",
+            "recommendedTest": "Add a test that kills core/ReplaceOrWithAnd at app/lead_intelligence/enrichment/service.py:216 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 463,
+            "col": 54,
+            "operator": "core/ReplaceOrWithAnd",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -460,7 +460,7 @@\n                 \"contact_count\": len(contacts),\n                 \"confidence\": (\n                     round(\n-                        sum(float(c.get(\"confidence\") or 0.0) for c in contacts)\n+                        sum(float(c.get(\"confidence\") and 0.0) for c in contacts)\n                         / len(contacts),\n                         4,\n                     )",
+            "recommendedTest": "Add a test that kills core/ReplaceOrWithAnd at app/lead_intelligence/enrichment/service.py:463 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 101,
+            "col": 15,
+            "operator": "core/ExceptionReplacer",
+            "pattern": "5-error-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -98,7 +98,7 @@\n             )\n         except wallet_credit.InsufficientCreditsError:\n             return self._degraded([\"insufficient_wallet\"])\n-        except Exception as exc:  # pragma: no cover - wallet is external\n+        except CosmicRayTestingException as exc:  # pragma: no cover - wallet is external\n             logger.warning(\"enrichment wallet check failed: %s\", exc)\n             return self._degraded([\"wallet_check_failed\"])\n ",
+            "recommendedTest": "Add a test that kills core/ExceptionReplacer at app/lead_intelligence/enrichment/service.py:101 (5-error-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 260,
+            "col": 15,
+            "operator": "core/ExceptionReplacer",
+            "pattern": "5-error-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -257,7 +257,7 @@\n                 user_id=owner_user_id,\n                 cost_micros=cost_micros,\n             )\n-        except Exception as exc:  # pragma: no cover - wallet is external\n+        except CosmicRayTestingException as exc:  # pragma: no cover - wallet is external\n             logger.exception(\n                 \"billing failed for enrichment request %s: %s\", request.id, exc\n             )",
+            "recommendedTest": "Add a test that kills core/ExceptionReplacer at app/lead_intelligence/enrichment/service.py:260 (5-error-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 433,
+            "col": 15,
+            "operator": "core/ExceptionReplacer",
+            "pattern": "5-error-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -430,7 +430,7 @@\n                 user_id=user_id,\n                 cost_micros=cost_micros,\n             )\n-        except Exception as exc:\n+        except CosmicRayTestingException as exc:\n             logger.exception(\n                 \"failed to record contact enrichment billing for %s: %s\",\n                 enrichment_request_id,",
+            "recommendedTest": "Add a test that kills core/ExceptionReplacer at app/lead_intelligence/enrichment/service.py:433 (5-error-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 526,
+            "col": 15,
+            "operator": "core/ExceptionReplacer",
+            "pattern": "5-error-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -523,7 +523,7 @@\n             contact.title = decrypted.get(\"title\")\n             contact.email = decrypted.get(\"email\")\n             contact.phone = decrypted.get(\"phone\")\n-        except Exception as exc:  # pragma: no cover - corruption in DB\n+        except CosmicRayTestingException as exc:  # pragma: no cover - corruption in DB\n             logger.exception(\n                 \"failed to decrypt verified contact %s: %s\", contact.id, exc\n             )",
+            "recommendedTest": "Add a test that kills core/ExceptionReplacer at app/lead_intelligence/enrichment/service.py:526 (5-error-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 58,
+            "col": 31,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -55,7 +55,7 @@\n         session: AsyncSession,\n         ctx: CapabilityContext,\n         lead_id: UUID,\n-        requested_count: int = 5,\n+        requested_count: int = 6,\n     ) -> EnrichmentOutput:\n         \"\"\"Enqueue enrichment for one lead (AC-1/AC-5/AC-9/AC-10).\"\"\"\n         await set_request_tenant_context(",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:58 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 58,
+            "col": 31,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -55,7 +55,7 @@\n         session: AsyncSession,\n         ctx: CapabilityContext,\n         lead_id: UUID,\n-        requested_count: int = 5,\n+        requested_count: int = 4,\n     ) -> EnrichmentOutput:\n         \"\"\"Enqueue enrichment for one lead (AC-1/AC-5/AC-9/AC-10).\"\"\"\n         await set_request_tenant_context(",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:58 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 112,
+            "col": 24,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -109,7 +109,7 @@\n             lead_id=lead_id,\n             status=\"pending\",\n             provider_results={},\n-            cost_micros=0,\n+            cost_micros= 1,\n             contact_count=0,\n             requested_count=requested_count,\n         )",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:112 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 112,
+            "col": 24,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -109,7 +109,7 @@\n             lead_id=lead_id,\n             status=\"pending\",\n             provider_results={},\n-            cost_micros=0,\n+            cost_micros= -1,\n             contact_count=0,\n             requested_count=requested_count,\n         )",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:112 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 113,
+            "col": 26,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -110,7 +110,7 @@\n             status=\"pending\",\n             provider_results={},\n             cost_micros=0,\n-            contact_count=0,\n+            contact_count= 1,\n             requested_count=requested_count,\n         )\n         session.add(request)",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:113 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 113,
+            "col": 26,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -110,7 +110,7 @@\n             status=\"pending\",\n             provider_results={},\n             cost_micros=0,\n-            contact_count=0,\n+            contact_count= -1,\n             requested_count=requested_count,\n         )\n         session.add(request)",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:113 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 145,
+            "col": 26,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -142,7 +142,7 @@\n         return EnrichmentOutput(\n             enrichment_request_id=request.id,\n             lead_id=lead_id,\n-            contact_count=0,\n+            contact_count= 1,\n             cost_micros=0,\n             verified_contact_ids=[],\n             degraded=bool(reasons),",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:145 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 145,
+            "col": 26,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -142,7 +142,7 @@\n         return EnrichmentOutput(\n             enrichment_request_id=request.id,\n             lead_id=lead_id,\n-            contact_count=0,\n+            contact_count= -1,\n             cost_micros=0,\n             verified_contact_ids=[],\n             degraded=bool(reasons),",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:145 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 146,
+            "col": 24,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -143,7 +143,7 @@\n             enrichment_request_id=request.id,\n             lead_id=lead_id,\n             contact_count=0,\n-            cost_micros=0,\n+            cost_micros= 1,\n             verified_contact_ids=[],\n             degraded=bool(reasons),\n             degradation_reasons=reasons,",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:146 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 146,
+            "col": 24,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -143,7 +143,7 @@\n             enrichment_request_id=request.id,\n             lead_id=lead_id,\n             contact_count=0,\n-            cost_micros=0,\n+            cost_micros= -1,\n             verified_contact_ids=[],\n             degraded=bool(reasons),\n             degradation_reasons=reasons,",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:146 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 231,
+            "col": 50,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -228,7 +228,7 @@\n                 email=encrypted.get(\"email\"),\n                 phone=encrypted.get(\"phone\"),\n                 verification_status=item.get(\"verification_status\", \"unverified\"),\n-                confidence=item.get(\"confidence\", 0.0),\n+                confidence=item.get(\"confidence\", 1.0),\n                 source_provider=item.get(\"source_provider\", provider),\n                 consent=consent_status == \"explicit\",\n                 consent_status=consent_status,",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:231 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 231,
+            "col": 50,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -228,7 +228,7 @@\n                 email=encrypted.get(\"email\"),\n                 phone=encrypted.get(\"phone\"),\n                 verification_status=item.get(\"verification_status\", \"unverified\"),\n-                confidence=item.get(\"confidence\", 0.0),\n+                confidence=item.get(\"confidence\", -1.0),\n                 source_provider=item.get(\"source_provider\", provider),\n                 consent=consent_status == \"explicit\",\n                 consent_status=consent_status,",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:231 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 302,
+            "col": 21,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -299,7 +299,7 @@\n         client_id: str | None,  # pragma: no mutate  # pragma: no mutate\n         lead_id: UUID,\n         user_id: UUID,\n-        limit: int = 50,\n+        limit: int = 51,\n         offset: int = 0,\n     ) -> list[VerifiedContact]:\n         \"\"\"Return decrypted verified contacts for a lead (AC-6).\"\"\"",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:302 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 302,
+            "col": 21,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -299,7 +299,7 @@\n         client_id: str | None,  # pragma: no mutate  # pragma: no mutate\n         lead_id: UUID,\n         user_id: UUID,\n-        limit: int = 50,\n+        limit: int = 49,\n         offset: int = 0,\n     ) -> list[VerifiedContact]:\n         \"\"\"Return decrypted verified contacts for a lead (AC-6).\"\"\"",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:302 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 303,
+            "col": 22,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -300,7 +300,7 @@\n         lead_id: UUID,\n         user_id: UUID,\n         limit: int = 50,\n-        offset: int = 0,\n+        offset: int = 1,\n     ) -> list[VerifiedContact]:\n         \"\"\"Return decrypted verified contacts for a lead (AC-6).\"\"\"\n         await set_request_tenant_context(",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:303 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 303,
+            "col": 22,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -300,7 +300,7 @@\n         lead_id: UUID,\n         user_id: UUID,\n         limit: int = 50,\n-        offset: int = 0,\n+        offset: int = -1,\n     ) -> list[VerifiedContact]:\n         \"\"\"Return decrypted verified contacts for a lead (AC-6).\"\"\"\n         await set_request_tenant_context(",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:303 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 329,
+            "col": 21,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -326,7 +326,7 @@\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n         lead_id: UUID,\n-        limit: int = 50,\n+        limit: int = 51,\n         offset: int = 0,\n     ) -> list[EnrichmentRequest]:\n         \"\"\"List enrichment requests for one lead (newest first, AC-8).\"\"\"",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:329 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 329,
+            "col": 21,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -326,7 +326,7 @@\n         workspace_id: int,\n         client_id: str | None,  # pragma: no mutate\n         lead_id: UUID,\n-        limit: int = 50,\n+        limit: int = 49,\n         offset: int = 0,\n     ) -> list[EnrichmentRequest]:\n         \"\"\"List enrichment requests for one lead (newest first, AC-8).\"\"\"",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:329 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 330,
+            "col": 22,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -327,7 +327,7 @@\n         client_id: str | None,  # pragma: no mutate\n         lead_id: UUID,\n         limit: int = 50,\n-        offset: int = 0,\n+        offset: int = 1,\n     ) -> list[EnrichmentRequest]:\n         \"\"\"List enrichment requests for one lead (newest first, AC-8).\"\"\"\n         await set_request_tenant_context(",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:330 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 330,
+            "col": 22,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -327,7 +327,7 @@\n         client_id: str | None,  # pragma: no mutate\n         lead_id: UUID,\n         limit: int = 50,\n-        offset: int = 0,\n+        offset: int = -1,\n     ) -> list[EnrichmentRequest]:\n         \"\"\"List enrichment requests for one lead (newest first, AC-8).\"\"\"\n         await set_request_tenant_context(",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:330 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 457,
+            "col": 37,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -454,7 +454,7 @@\n         raw_summary = json.dumps(\n             {\n                 \"lead_id\": str(request.lead_id),\n-                \"provider\": contacts[0].get(\"source_provider\", \"unknown\")\n+                \"provider\": contacts[ -1].get(\"source_provider\", \"unknown\")\n                 if contacts\n                 else \"none\",\n                 \"contact_count\": len(contacts),",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:457 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 463,
+            "col": 57,
+            "operator": "core/NumberReplacer",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -460,7 +460,7 @@\n                 \"contact_count\": len(contacts),\n                 \"confidence\": (\n                     round(\n-                        sum(float(c.get(\"confidence\") or 0.0) for c in contacts)\n+                        sum(float(c.get(\"confidence\") or 1.0) for c in contacts)\n                         / len(contacts),\n                         4,\n                     )",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:463 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 463,
+            "col": 57,
+            "operator": "core/NumberReplacer",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -460,7 +460,7 @@\n                 \"contact_count\": len(contacts),\n                 \"confidence\": (\n                     round(\n-                        sum(float(c.get(\"confidence\") or 0.0) for c in contacts)\n+                        sum(float(c.get(\"confidence\") or -1.0) for c in contacts)\n                         / len(contacts),\n                         4,\n                     )",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:463 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 465,
+            "col": 24,
+            "operator": "core/NumberReplacer",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -461,8 +461,7 @@\n                 \"confidence\": (\n                     round(\n                         sum(float(c.get(\"confidence\") or 0.0) for c in contacts)\n-                        / len(contacts),\n-                        4,\n+                        / len(contacts), 5,\n                     )\n                     if contacts\n                     else 0.0",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:465 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 465,
+            "col": 24,
+            "operator": "core/NumberReplacer",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -461,8 +461,7 @@\n                 \"confidence\": (\n                     round(\n                         sum(float(c.get(\"confidence\") or 0.0) for c in contacts)\n-                        / len(contacts),\n-                        4,\n+                        / len(contacts), 3,\n                     )\n                     if contacts\n                     else 0.0",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:465 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 468,
+            "col": 25,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -465,7 +465,7 @@\n                         4,\n                     )\n                     if contacts\n-                    else 0.0\n+                    else 1.0\n                 ),\n             },\n             default=str,",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:468 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 468,
+            "col": 25,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -465,7 +465,7 @@\n                         4,\n                     )\n                     if contacts\n-                    else 0.0\n+                    else -1.0\n                 ),\n             },\n             default=str,",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:468 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 485,
+            "col": 23,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -482,7 +482,7 @@\n             source_uuid=request.id,\n             source_entity_type=\"enrichment_request\",\n             tags=[\"enriched_contact\"],\n-            confidence=0.9,\n+            confidence= 1.9,\n             created_by_id=user_id,\n             client_id=request.client_id,\n         )",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:485 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 485,
+            "col": 23,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -482,7 +482,7 @@\n             source_uuid=request.id,\n             source_entity_type=\"enrichment_request\",\n             tags=[\"enriched_contact\"],\n-            confidence=0.9,\n+            confidence= -0.09999999999999998,\n             created_by_id=user_id,\n             client_id=request.client_id,\n         )",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:485 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 538,
+            "col": 67,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -535,7 +535,7 @@\n \n     def _estimated_cost(self, contact_count: int) -> int:\n         capped = min(contact_count, config.CONTACT_ENRICHMENT_MAX_CONTACTS_PER_LEAD)\n-        return int(config.CONTACT_ENRICHMENT_MICROS_PER_CONTACT or 0) * capped\n+        return int(config.CONTACT_ENRICHMENT_MICROS_PER_CONTACT or 1) * capped\n \n     @staticmethod\n     def _degraded(reasons: list[str]) -> EnrichmentOutput:",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:538 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 538,
+            "col": 67,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -535,7 +535,7 @@\n \n     def _estimated_cost(self, contact_count: int) -> int:\n         capped = min(contact_count, config.CONTACT_ENRICHMENT_MAX_CONTACTS_PER_LEAD)\n-        return int(config.CONTACT_ENRICHMENT_MICROS_PER_CONTACT or 0) * capped\n+        return int(config.CONTACT_ENRICHMENT_MICROS_PER_CONTACT or -1) * capped\n \n     @staticmethod\n     def _degraded(reasons: list[str]) -> EnrichmentOutput:",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:538 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 546,
+            "col": 24,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -543,7 +543,7 @@\n             enrichment_request_id=None,\n             lead_id=None,\n             contact_count=0,\n-            cost_micros=0,\n+            cost_micros= 1,\n             verified_contact_ids=[],\n             degraded=True,\n             degradation_reasons=reasons,",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:546 (3-happy-path-only)."
+          },
+          {
+            "file": "app/lead_intelligence/enrichment/service.py",
+            "line": 546,
+            "col": 24,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/lead_intelligence/enrichment/service.py\n+++ bapp/lead_intelligence/enrichment/service.py\n@@ -543,7 +543,7 @@\n             enrichment_request_id=None,\n             lead_id=None,\n             contact_count=0,\n-            cost_micros=0,\n+            cost_micros= -1,\n             verified_contact_ids=[],\n             degraded=True,\n             degradation_reasons=reasons,",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/lead_intelligence/enrichment/service.py:546 (3-happy-path-only)."
+          }
+        ],
+        "P2": []
+      },
+      "reportPath": "/Users/luisphan/Documents/GitHub/nowing/_bmad-output/test-artifacts/mutation-nowing-lead_intelligence-enrichment-service-20260815T080929Z.json",
+      "sessionPath": "/Users/luisphan/Documents/GitHub/nowing/_bmad-output/test-artifacts/mutation-nowing-lead_intelligence-enrichment-service-20260815T075123Z.sqlite",
+      "configPath": "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/mutation-nowing-lead_intelligence-enrichment-service-20260815T075123Z.toml"
     }
   ]
 }
