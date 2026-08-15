@@ -25,14 +25,22 @@ class TestLeadGenOrchestratorIntegration:
         db_user: User,
     ) -> None:
         """Should execute orchestrator and persist deduplicated leads and contacts directly into DB."""
-        from app.db import Lead, VerifiedContact
+        from app.db import Lead, VerifiedContact, WorkspaceTable
         from app.lead_intelligence.adapters.base import NormalizedLead
         from app.lead_intelligence.services.lead_gen_orchestrator import (
             LeadGenOrchestrator,
         )
 
         orchestrator = LeadGenOrchestrator()
-        table_id = str(uuid4())
+        table_uuid = uuid4()
+        ws_table = WorkspaceTable(
+            id=table_uuid,
+            workspace_id=db_workspace.id,
+            name="Default Leads Table",
+        )
+        db_session.add(ws_table)
+        await db_session.flush()
+        table_id = str(table_uuid)
 
         mock_leads = [
             NormalizedLead(
@@ -113,14 +121,22 @@ class TestLeadGenOrchestratorIntegration:
         db_user: User,
     ) -> None:
         """Repeated ingestion of the same entity should update existing row without unique constraint crash."""
-        from app.db import Lead
+        from app.db import Lead, WorkspaceTable
         from app.lead_intelligence.adapters.base import NormalizedLead
         from app.lead_intelligence.services.lead_gen_orchestrator import (
             LeadGenOrchestrator,
         )
 
         orchestrator = LeadGenOrchestrator()
-        table_id = str(uuid4())
+        table_uuid = uuid4()
+        ws_table = WorkspaceTable(
+            id=table_uuid,
+            workspace_id=db_workspace.id,
+            name="Upsert Leads Table",
+        )
+        db_session.add(ws_table)
+        await db_session.flush()
+        table_id = str(table_uuid)
 
         initial_lead = NormalizedLead(
             source_name="batdongsan",
