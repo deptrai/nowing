@@ -1,9 +1,9 @@
 import { atom } from "jotai";
 import type { FilterPresets, Lead } from "@/contracts/types/leads.types";
 
-export type CanvasMode = "leads" | "research" | "scrapers";
+export type CanvasMode = "leads" | "research" | "automations" | "scrapers" | "artifacts";
 
-// 3-Mode Switcher active tab
+// Polymorphic Right Panel Mini-App active mode
 export const canvasModeAtom = atom<CanvasMode>("leads");
 
 // Left Chat Panel width in pixels (clamped: min 360px, max 650px, default 420px)

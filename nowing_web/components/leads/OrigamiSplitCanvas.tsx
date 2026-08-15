@@ -17,6 +17,7 @@ import type { FilterPresets } from "@/contracts/types/leads.types";
 import { useLeads } from "@/lib/hooks/use-leads";
 import { cn } from "@/lib/utils";
 import { CompanyGraphDrawer } from "./CompanyGraphDrawer";
+import { DynamicRightPanelCanvas } from "./DynamicRightPanelCanvas";
 import { FloatingBulkActionBar } from "./FloatingBulkActionBar";
 import { LeadDetailFlyoutDrawer } from "./LeadDetailFlyoutDrawer";
 import { OrigamiLeadMatrix } from "./OrigamiLeadMatrix";
@@ -255,9 +256,9 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 				</button>
 			)}
 
-			{/* Right Panel: Live Data Matrix */}
+			{/* Right Panel: Polymorphic Dynamic Mini-App Canvas */}
 			<div className="flex-1 h-full min-w-[500px] flex flex-col overflow-hidden">
-				<OrigamiLeadMatrix
+				<DynamicRightPanelCanvas
 					leads={displayLeads}
 					isLoading={loading}
 					workspaceId={workspaceId}
