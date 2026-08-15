@@ -3,7 +3,7 @@
 import { useAtom } from "jotai";
 import { GripVertical, PanelLeftOpen } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
 	activeDrawerLeadAtom,
@@ -21,6 +21,7 @@ import { FloatingBulkActionBar } from "./FloatingBulkActionBar";
 import { LeadDetailFlyoutDrawer } from "./LeadDetailFlyoutDrawer";
 import { OrigamiLeadMatrix } from "./OrigamiLeadMatrix";
 import { ReverseIcpModal } from "./ReverseIcpModal";
+import { extractLeadsFromChatMessages } from "./lead-parser";
 
 const MIN_LEFT_WIDTH = 360;
 const MAX_LEFT_WIDTH = 650;
@@ -30,6 +31,7 @@ export interface OrigamiSplitCanvasProps {
 	workspaceId?: string | number;
 	chatSlot?: React.ReactNode;
 	hasActiveThread?: boolean;
+	messages?: Array<{ role: string; content?: unknown }>;
 	className?: string;
 }
 
@@ -37,6 +39,7 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 	workspaceId = "1",
 	chatSlot,
 	hasActiveThread = false,
+	messages = [],
 	className,
 }) => {
 	const [leftWidth, setLeftWidth] = useAtom(canvasLeftWidthAtom);
@@ -81,6 +84,11 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 		return () => window.removeEventListener("resize", checkViewport);
 	}, [setIsCollapsed]);
 
+	// Automatically extract structured leads from live chat messages
+	const chatExtractedLeads = useMemo(() => {
+		return extractLeadsFromChatMessages(messages || [], workspaceId);
+	}, [messages, workspaceId]);
+
 	// Data Fetching
 	const {
 		leads: apiLeads,
@@ -92,11 +100,16 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 		search: searchQuery || undefined,
 	});
 
-	// In a fresh new chat session, start in clean New Search Canvas until user prompts or selects saved leads
-	const displayLeads =
-		activeTabMode === "new_search" && !searchQuery && sourceFilter === "all"
-			? []
-			: apiLeads || [];
+	// Priority: 1. Live Chat Scraped Leads -> 2. Filtered API Leads -> 3. Clean Empty Canvas on fresh new-chat
+	const displayLeads = useMemo(() => {
+		if (chatExtractedLeads.length > 0 && sourceFilter === "all" && !searchQuery) {
+			return chatExtractedLeads;
+		}
+		if (activeTabMode === "new_search" && !searchQuery && sourceFilter === "all" && !hasActiveThread) {
+			return [];
+		}
+		return apiLeads || [];
+	}, [chatExtractedLeads, activeTabMode, searchQuery, sourceFilter, hasActiveThread, apiLeads]);
 
 	// Dragging logic for resizer
 	const handleMouseDown = useCallback((e: React.MouseEvent) => {
