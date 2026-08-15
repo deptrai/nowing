@@ -83,6 +83,10 @@ EXPECTED_TOOLS = {
     "nowing_list_lead_scores",
     "nowing_detect_signal",
     "nowing_list_signals",
+    "nowing_connect_crm",
+    "nowing_list_crm_connections",
+    "nowing_sync_crm",
+    "nowing_list_crm_sync_logs",
 }
 
 _MIN_DESCRIPTION_CHARS = 40

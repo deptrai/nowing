@@ -406,6 +406,13 @@ class Permission(StrEnum):
     SIGNALS_READ = "signals:read"
     SIGNALS_DETECT = "signals:detect"
 
+    # CRM (Story 21.5)
+    CRM_CONNECT = "crm:connect"
+    CRM_READ = "crm:read"
+    CRM_WRITE = "crm:write"
+    CRM_DISCONNECT = "crm:disconnect"
+    CRM_SYNC = "crm:sync"
+
     # Canonical entities (merge history, conflict resolution, revert)
     CANONICAL_ENTITIES_READ = "canonical_entities:read"
     CANONICAL_ENTITIES_WRITE = "canonical_entities:write"
@@ -599,6 +606,8 @@ class MemorySourceType(StrEnum):
     ENRICHMENT = "enrichment"
     SEQUENCE_EVENT = "sequence_event"
     OUTCOME_EVENT = "outcome_event"
+    CRM_CONNECTION = "crm_connection"
+    CRM_SYNC = "crm_sync"
 
 
 class MemoryRelationType(StrEnum):
@@ -2070,6 +2079,18 @@ class Workspace(BaseModel, TimestampMixin):
         "LeadScore",
         back_populates="workspace",
         order_by="LeadScore.computed_at.desc()",
+        cascade="all, delete-orphan",
+    )
+    crm_connections = relationship(
+        "CrmConnection",
+        back_populates="workspace",
+        order_by="CrmConnection.created_at.desc()",
+        cascade="all, delete-orphan",
+    )
+    crm_sync_logs = relationship(
+        "CrmSyncLog",
+        back_populates="workspace",
+        order_by="CrmSyncLog.synced_at.desc()",
         cascade="all, delete-orphan",
     )
 
@@ -4475,6 +4496,113 @@ class LeadScore(Base, TimestampMixin):
         remote_side=[id],
         uselist=False,
     )
+
+
+class CrmConnection(Base, TimestampMixin):
+    """CRM OAuth connection (Story 21.5)."""
+
+    __tablename__ = "crm_connections"
+
+    __table_args__ = (
+        Index(
+            "ix_crm_connections_workspace_lookup",
+            "workspace_id",
+            "client_id",
+            "provider",
+            "status",
+        ),
+        UniqueConstraint(
+            "workspace_id",
+            "client_id",
+            "provider",
+            name="uq_crm_connections_workspace_client_provider",
+        ),
+    )
+
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    client_id = Column(CITEXT, nullable=True, index=True)
+    provider = Column(String(50), nullable=False, index=True)
+    status = Column(
+        String(20),
+        nullable=False,
+        default="pending",
+        server_default=text("'pending'"),
+    )
+    credentials_encrypted = Column(Text, nullable=False)
+    sync_config = Column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+    )
+    last_sync_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
+    workspace = relationship("Workspace", back_populates="crm_connections")
+    sync_logs = relationship(
+        "CrmSyncLog",
+        back_populates="connection",
+        order_by="CrmSyncLog.synced_at.desc()",
+        cascade="all, delete-orphan",
+    )
+
+
+class CrmSyncLog(Base, TimestampMixin):
+    """CRM sync audit log (Story 21.5)."""
+
+    __tablename__ = "crm_sync_logs"
+
+    __table_args__ = (
+        Index(
+            "ix_crm_sync_logs_workspace_lookup",
+            "workspace_id",
+            "client_id",
+            "connection_id",
+            "synced_at",
+        ),
+    )
+
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    client_id = Column(CITEXT, nullable=True, index=True)
+    connection_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("crm_connections.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    direction = Column(String(20), nullable=False)
+    entity_type = Column(String(50), nullable=False)
+    entity_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    status = Column(String(20), nullable=False)
+    error_message = Column(Text, nullable=True)
+    synced_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
+
+    workspace = relationship("Workspace", back_populates="crm_sync_logs")
+    connection = relationship("CrmConnection", back_populates="sync_logs")
 
 
 # Ensure alert persistence models are registered on Base.metadata.

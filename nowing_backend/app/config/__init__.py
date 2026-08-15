@@ -1630,6 +1630,31 @@ class Config:
     )
     SIGNAL_EVENT_RETENTION_DAYS = max(1, _env_int("SIGNAL_EVENT_RETENTION_DAYS", 90))
 
+    # CRM (Story 21.5)
+    SALESFORCE_CLIENT_ID = os.getenv("SALESFORCE_CLIENT_ID", "")
+    SALESFORCE_CLIENT_SECRET = os.getenv("SALESFORCE_CLIENT_SECRET", "")
+    SALESFORCE_REDIRECT_URI = os.getenv("SALESFORCE_REDIRECT_URI", "")
+    HUBSPOT_CLIENT_ID = os.getenv("HUBSPOT_CLIENT_ID", "")
+    HUBSPOT_CLIENT_SECRET = os.getenv("HUBSPOT_CLIENT_SECRET", "")
+    HUBSPOT_REDIRECT_URI = os.getenv("HUBSPOT_REDIRECT_URI", "")
+    PIPEDRIVE_CLIENT_ID = os.getenv("PIPEDRIVE_CLIENT_ID", "")
+    PIPEDRIVE_CLIENT_SECRET = os.getenv("PIPEDRIVE_CLIENT_SECRET", "")
+    PIPEDRIVE_REDIRECT_URI = os.getenv("PIPEDRIVE_REDIRECT_URI", "")
+    CRM_SYNC_DEDUP_ENABLED = (
+        os.getenv("CRM_SYNC_DEDUP_ENABLED", "TRUE").upper() == "TRUE"
+    )
+    CRM_SYNC_WRITEBACK_ENABLED = (
+        os.getenv("CRM_SYNC_WRITEBACK_ENABLED", "FALSE").upper() == "TRUE"
+    )
+    CRM_SYNC_BIDIRECTIONAL_ENABLED = (
+        os.getenv("CRM_SYNC_BIDIRECTIONAL_ENABLED", "FALSE").upper() == "TRUE"
+    )
+    CRM_SYNC_BATCH_SIZE = max(1, _env_int("CRM_SYNC_BATCH_SIZE", 50))
+    CRM_SYNC_TIMEOUT_SECONDS = max(1, _env_int("CRM_SYNC_TIMEOUT_SECONDS", 30))
+    CRM_SYNC_TOKEN_REFRESH_LEEWAY_SECONDS = max(
+        0, _env_int("CRM_SYNC_TOKEN_REFRESH_LEEWAY_SECONDS", 300)
+    )
+
     # Validation Checks
     # Check embedding dimension
     if (
