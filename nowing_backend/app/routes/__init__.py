@@ -60,6 +60,8 @@ from .canonical_entities_routes import router as canonical_entities_router
 from .chat_comments_routes import router as chat_comments_router
 from .circleback_webhook_route import router as circleback_webhook_router
 from .clickup_add_connector_route import router as clickup_add_connector_router
+from .crm_oauth_routes import router as crm_oauth_router
+from .crm_routes import router as crm_router
 from .composio_routes import router as composio_router
 from .confluence_add_connector_route import router as confluence_add_connector_router
 from .discord_add_connector_route import router as discord_add_connector_router
@@ -122,6 +124,8 @@ router = APIRouter()
 
 router.include_router(workspaces_router)
 router.include_router(lead_scoring_router)
+router.include_router(crm_router, prefix="/workspaces")
+router.include_router(crm_oauth_router)
 router.include_router(canonical_entities_router)  # Canonical merge/revert/review
 router.include_router(rbac_router)  # RBAC routes for roles, members, invites
 router.include_router(editor_router)

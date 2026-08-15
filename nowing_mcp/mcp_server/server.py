@@ -20,6 +20,7 @@ from .core.workspace_context import WorkspaceContext
 from .features import (
     automations,
     chat,
+    crm,
     image_generation,
     knowledge_base,
     lead_intelligence,
@@ -152,6 +153,7 @@ def build_server(settings: Settings) -> tuple[WorkspaceAwareFastMCP, NowingClien
     workspaces.register(mcp, context)
     scrapers.register(mcp, client, context)
     lead_scoring.register(mcp, client, context)
+    crm.register(mcp, client, context)
     lead_intelligence.register(mcp, client, context)
     knowledge_base.register(mcp, client, context)
     memory.register(mcp, client, context)
