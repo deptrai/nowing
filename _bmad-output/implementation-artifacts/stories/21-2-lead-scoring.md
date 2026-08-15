@@ -1,6 +1,6 @@
 ---
 story_key: 21-2-lead-scoring
-status: ready-for-dev
+status: done
 baseline_commit: db50806a8
 epic: 21
 story: 2
