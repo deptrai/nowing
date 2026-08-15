@@ -66,6 +66,13 @@ export type ContentPart =
 			 */
 			type: "data-step-separator";
 			data: { stepIndex: number };
+	  }
+	| {
+			/**
+			 * Contextual 1-click execution chips (Suggested Action Pills) for Story 21.11.
+			 */
+			type: "data-suggested-actions";
+			data: { actions: import("@/contracts/types/chat-messages.types").SuggestedAction[] };
 	  };
 
 export interface ContentPartsState {
@@ -413,6 +420,7 @@ export function buildContentForUI(
 			return _toolPasses(toolsWithUI, part.toolName) || _hasInterruptResult(part);
 		if (part.type === "data-thinking-steps") return true;
 		if (part.type === "data-step-separator") return true;
+		if (part.type === "data-suggested-actions") return true;
 		return false;
 	});
 	return filtered.length > 0
@@ -443,6 +451,8 @@ export function buildContentForPersistence(
 		} else if (part.type === "data-thinking-steps") {
 			parts.push(part);
 		} else if (part.type === "data-step-separator") {
+			parts.push(part);
+		} else if (part.type === "data-suggested-actions") {
 			parts.push(part);
 		}
 	}
@@ -645,6 +655,10 @@ export type SSEEvent =
 					cost_micros?: number;
 				}>;
 			};
+	  }
+	| {
+			type: "data-suggested-actions";
+			data: import("@/contracts/types/chat-messages.types").SuggestedAction[];
 	  }
 	| { type: "error"; errorText: string; errorCode?: string };
 

@@ -874,6 +874,14 @@ export async function resumeChat(
 					for (const step of stepsData?.steps ?? []) {
 						currentThinkingSteps.set(step.id, step);
 					}
+				} else if (p.type === "data-suggested-actions") {
+					const actionsData = p.data as
+						| { actions?: import("@/contracts/types/chat-messages.types").SuggestedAction[] }
+						| undefined;
+					contentParts.push({
+						type: "data-suggested-actions",
+						data: { actions: actionsData?.actions ?? [] },
+					});
 				}
 			}
 		}

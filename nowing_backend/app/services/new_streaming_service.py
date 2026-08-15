@@ -450,6 +450,22 @@ class VercelStreamingService:
         """
         return self.format_data("further-questions", {"questions": questions})
 
+    def format_suggested_actions(
+        self, actions: list[dict[str, Any]] | list[Any]
+    ) -> str:
+        """Format suggested action pills as custom data (Story 21.11 / AC: 1).
+
+        Args:
+            actions: List of suggested action dicts or SuggestedAction instances (max 3)
+
+        Returns:
+            str: SSE formatted data-suggested-actions part
+        """
+        payload = [
+            a.model_dump() if hasattr(a, "model_dump") else a for a in actions[:3]
+        ]
+        return self.format_data("suggested-actions", payload)
+
     def format_thinking_step(
         self,
         step_id: str,

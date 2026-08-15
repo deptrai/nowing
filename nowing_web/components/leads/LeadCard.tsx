@@ -2,6 +2,7 @@
 
 import { Building2, Clock, ExternalLink, MapPin, Share2, Sparkles } from "lucide-react";
 import type React from "react";
+import { useEffect, useState } from "react";
 import type { Lead } from "@/contracts/types/leads.types";
 import { cn, isAllowedUrl } from "@/lib/utils";
 import { PhoneCopyPill } from "./PhoneCopyPill";
@@ -91,6 +92,28 @@ export const LeadCard: React.FC<LeadCardProps> = ({
 	onStatusChange,
 	className,
 }) => {
+	const [isPulsing, setIsPulsing] = useState(false);
+
+	useEffect(() => {
+		const handleActionDispatched = (e: Event) => {
+			const customEvent = e as CustomEvent<{
+				action_type?: string;
+				payload?: Record<string, unknown>;
+			}>;
+			if (
+				customEvent.detail?.action_type === "decode_phones" ||
+				customEvent.detail?.action_type === "export_csv"
+			) {
+				setIsPulsing(true);
+				const timer = setTimeout(() => setIsPulsing(false), 1200);
+				return () => clearTimeout(timer);
+			}
+		};
+
+		window.addEventListener("nowing:action-dispatched", handleActionDispatched);
+		return () => window.removeEventListener("nowing:action-dispatched", handleActionDispatched);
+	}, []);
+
 	const fitBadge = getFitScoreBadge(lead.fit_score);
 	const intentBadge = getIntentBadge(lead.intent);
 	const sourceLabel = getSourceIcon(lead.source);
@@ -99,6 +122,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({
 		<div
 			className={cn(
 				"rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 space-y-3 hover:border-zinc-700/80 transition-all duration-200 shadow-sm backdrop-blur-sm",
+				isPulsing && "cell-pulse",
 				className
 			)}
 		>

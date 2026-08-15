@@ -207,6 +207,7 @@ development_status:
   21-7: ready-for-dev
   21-8: done  # 2026-08-15: 32 review patches + XActions Celery scheduler/ingestor applied; ruff/pytest/tsc green. 28 initial code-review findings resolved or dismissed (DLQ, pagination, composite index, email regex, account_id validation, ReDoS hardening, integration test rewrite, etc.).
   21-9: done  # Executive Decision Maker Mapping & B2B Lead Outreach
+  21-11: done  # 2026-08-15: 4 review patches applied; ruff/pytest/tsc green
   epic-21-retrospective: optional
 
   # === Epic 22: Telegram Scraper & Channel Ingestion Engine ===

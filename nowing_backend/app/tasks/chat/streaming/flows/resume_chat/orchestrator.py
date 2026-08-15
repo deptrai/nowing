@@ -56,7 +56,10 @@ from app.tasks.chat.streaming.flows.resume_chat.runtime_context import (
 from app.tasks.chat.streaming.flows.shared.assistant_finalize import (
     finalize_assistant_message,
 )
-from app.tasks.chat.streaming.flows.shared.finalize_emit import iter_token_usage_frame
+from app.tasks.chat.streaming.flows.shared.finalize_emit import (
+    iter_suggested_actions_frame,
+    iter_token_usage_frame,
+)
 from app.tasks.chat.streaming.flows.shared.finally_cleanup import (
     close_session_and_clear_ai_responding,
     run_gc_pass,
@@ -606,6 +609,25 @@ async def stream_resume_chat(
                 accumulator=accumulator,
             )
             premium_reservation = None
+
+        # Emit contextual suggested action pills (Story 21.11 / AC: 1, 4)
+        assistant_text = "".join(
+            p.get("text", "")
+            for p in stream_result.content_builder.parts
+            if p.get("type") == "text"
+        )
+        tool_names = [
+            p.get("toolName", "")
+            for p in stream_result.content_builder.parts
+            if p.get("type") == "tool-call" and p.get("toolName")
+        ]
+
+        for sse in iter_suggested_actions_frame(
+            streaming_service,
+            assistant_text=assistant_text,
+            tool_names=tool_names,
+        ):
+            yield sse
 
         for sse in iter_token_usage_frame(
             streaming_service, accumulator=accumulator, log_label="normal resume_chat"

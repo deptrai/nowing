@@ -20,3 +20,18 @@ export const rawMessage = z.object({
 });
 
 export type RawMessage = z.infer<typeof rawMessage>;
+
+/**
+ * Suggested Action Pill schema for contextual 1-click execution chips (Story 21.11).
+ */
+export const suggestedActionSchema = z.object({
+	id: z.string(),
+	label: z.string(),
+	icon: z.string().default("sparkles"),
+	action_type: z.string(),
+	prompt_template: z.string(),
+	cost_credits: z.number().optional().nullable(),
+	payload: z.record(z.string(), z.unknown()).optional().nullable(),
+});
+
+export type SuggestedAction = z.infer<typeof suggestedActionSchema>;

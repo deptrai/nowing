@@ -275,6 +275,20 @@ button {
 	contain-intrinsic-size: 0 40px;
 }
 
+/* Zero-cache Table Mutation Highlight Animation (Story 21.11 / AC: 3) */
+@keyframes pulse-highlight {
+	0% {
+		background-color: rgba(16, 185, 129, 0.25);
+	}
+	100% {
+		background-color: transparent;
+	}
+}
+
+.cell-pulse {
+	animation: pulse-highlight 1.2s ease-out;
+}
+
 @source "../node_modules/@llamaindex/chat-ui/**/*.{ts,tsx}";
 @source "../node_modules/streamdown/dist/*.js";
 @source "../node_modules/@streamdown/code/dist/*.js";
