@@ -231,7 +231,9 @@ Vui lòng xuất kết quả theo định dạng JSON với cấu trúc:
 
         router = LLMRouterService.get_router()
         if router is None:
-            raise ValueError("LLM Router is not initialized. Check GLOBAL_LLM_CONFIG configuration.")
+            raise ValueError(
+                "LLM Router is not initialized. Check GLOBAL_LLM_CONFIG configuration."
+            )
 
         target_model = model or "auto"
         response = await router.acompletion(

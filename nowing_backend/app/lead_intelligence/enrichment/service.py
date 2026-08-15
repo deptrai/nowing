@@ -98,7 +98,9 @@ class EnrichmentService:
             )
         except wallet_credit.InsufficientCreditsError:
             return self._degraded(["insufficient_wallet"])
-        except Exception as exc:  # pragma: no mutate  # pragma: no cover - wallet is external
+        except (
+            Exception
+        ) as exc:  # pragma: no mutate  # pragma: no cover - wallet is external
             logger.warning("enrichment wallet check failed: %s", exc)
             return self._degraded(["wallet_check_failed"])
 
@@ -120,7 +122,9 @@ class EnrichmentService:
         inline_status: str | None = None  # pragma: no mutate
         try:
             await self._enqueue(request.id, ctx.workspace_id, client_id)
-        except Exception as exc:  # pragma: no mutate  # pragma: no cover - celery may be absent
+        except (
+            Exception
+        ) as exc:  # pragma: no mutate  # pragma: no cover - celery may be absent
             logger.warning("enrichment task enqueue failed: %s", exc)
             try:
                 inline_output = await self._run_waterfall(session, request.id)
@@ -257,7 +261,9 @@ class EnrichmentService:
                 user_id=owner_user_id,
                 cost_micros=cost_micros,
             )
-        except Exception as exc:  # pragma: no mutate  # pragma: no cover - wallet is external
+        except (
+            Exception
+        ) as exc:  # pragma: no mutate  # pragma: no cover - wallet is external
             logger.exception(
                 "billing failed for enrichment request %s: %s", request.id, exc
             )
@@ -311,7 +317,9 @@ class EnrichmentService:
             VerifiedContact.lead_id == lead_id,  # pragma: no mutate
         )
         if client_id is not None:  # pragma: no mutate
-            stmt = stmt.where(VerifiedContact.client_id == client_id)  # pragma: no mutate
+            stmt = stmt.where(
+                VerifiedContact.client_id == client_id
+            )  # pragma: no mutate
         stmt = (
             stmt.order_by(VerifiedContact.created_at.desc()).offset(offset).limit(limit)
         )
@@ -338,7 +346,9 @@ class EnrichmentService:
             EnrichmentRequest.lead_id == lead_id,  # pragma: no mutate
         )
         if client_id is not None:  # pragma: no mutate
-            stmt = stmt.where(EnrichmentRequest.client_id == client_id)  # pragma: no mutate
+            stmt = stmt.where(
+                EnrichmentRequest.client_id == client_id
+            )  # pragma: no mutate
         stmt = (
             stmt.order_by(EnrichmentRequest.created_at.desc())
             .offset(offset)
@@ -396,7 +406,9 @@ class EnrichmentService:
             VerifiedContact.id.in_(contact_ids),  # pragma: no mutate
         )
         if client_id is not None:  # pragma: no mutate
-            stmt = stmt.where(VerifiedContact.client_id == client_id)  # pragma: no mutate
+            stmt = stmt.where(
+                VerifiedContact.client_id == client_id
+            )  # pragma: no mutate
         return list((await session.execute(stmt)).scalars().all())
 
     async def _enqueue(
@@ -454,13 +466,17 @@ class EnrichmentService:
         raw_summary = json.dumps(
             {
                 "lead_id": str(request.lead_id),
-                "provider": contacts[0].get("source_provider", "unknown")  # pragma: no mutate
+                "provider": contacts[0].get(
+                    "source_provider", "unknown"
+                )  # pragma: no mutate
                 if contacts
                 else "none",
                 "contact_count": len(contacts),
                 "confidence": (
                     round(
-                        sum(float(c.get("confidence") or 0.0) for c in contacts)  # pragma: no mutate
+                        sum(
+                            float(c.get("confidence") or 0.0) for c in contacts
+                        )  # pragma: no mutate
                         / len(contacts),  # pragma: no mutate
                         4,  # pragma: no mutate
                     )
@@ -523,7 +539,9 @@ class EnrichmentService:
             contact.title = decrypted.get("title")
             contact.email = decrypted.get("email")
             contact.phone = decrypted.get("phone")
-        except Exception as exc:  # pragma: no mutate  # pragma: no cover - corruption in DB
+        except (
+            Exception
+        ) as exc:  # pragma: no mutate  # pragma: no cover - corruption in DB
             logger.exception(
                 "failed to decrypt verified contact %s: %s", contact.id, exc
             )
@@ -535,7 +553,9 @@ class EnrichmentService:
 
     def _estimated_cost(self, contact_count: int) -> int:
         capped = min(contact_count, config.CONTACT_ENRICHMENT_MAX_CONTACTS_PER_LEAD)
-        return int(config.CONTACT_ENRICHMENT_MICROS_PER_CONTACT or 0) * capped  # pragma: no mutate
+        return (
+            int(config.CONTACT_ENRICHMENT_MICROS_PER_CONTACT or 0) * capped
+        )  # pragma: no mutate
 
     @staticmethod
     def _degraded(reasons: list[str]) -> EnrichmentOutput:

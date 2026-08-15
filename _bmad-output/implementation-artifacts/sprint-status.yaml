@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-08"
-last_updated: "2026-08-15"  # 21-12 created (ready-for-dev); 21-10 created; 21-4 re-review + patches applied
+last_updated: "2026-08-16"  # 21-5 code-review PASS-with-changes (done); 21-12 done; 21-14 done; 21-15 done
 # ponytail: 2026-08-14 — reopened deferred/business-gated/dropped to backlog; 16-1 mutation gate reopened; 15-2 moved to review; tech-debt tracker reopened.
 # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended citation ACs to 3.15 (WEB_RESULT), 9.3 (async delivery), 2.10 (Exa MCP). 3 stories → review.
 # ponytail: 2026-08-08 sprint-planning — added Epic 1, 5 (DONE brownfield); added 9.1a, 9.1b, 4.8a-4.8h, 13.2a-13.2e; upgraded 12.1-12.5 to ready-for-dev (story files exist); 12.0 DONE (legal approved).
@@ -202,15 +202,20 @@ development_status:
   21-2: done
   21-3: done  # 2026-08-15: 3-tier waterfall + PII vault + anti-ReDoS + auto-refund SLA done; 11 code review patches applied; 16/16 unit tests passed
   21-4: done  # 2026-08-15: BMAD code review re-run; fake data removed, permissions + Zero sync + client_id filter applied
-  21-5: review  # 2026-08-15: code + unit tests ok; missing integration tests; P0 human review
+  21-5: done  # 2026-08-16: BMAD 3-layer code review; 11 patches applied (tenant state scoping, false positive dedup fix, RLS tenant isolation, NULLIF, async error flush, naive UTC conflict, FastMCP list guard, pagination); 34 unit tests pass, ruff clean
   21-6: done  # 2026-08-15: all review findings resolved, AI Draft now LLM-based with fallback; 30 tests pass; remaining items are pre-existing 21.3/10.8 scope
-  21-7: ready-for-dev
+  21-7: done  # 2026-08-16: $0 Chat & Credit Pay-as-you-go Ledger (12 code review patches applied, 20/20 backend + 7/7 frontend unit/integration tests passing green)
   21-8: done  # 2026-08-15: 32 review patches + XActions Celery scheduler/ingestor applied; ruff/pytest/tsc green. 28 initial code-review findings resolved or dismissed (DLQ, pagination, composite index, email regex, account_id validation, ReDoS hardening, integration test rewrite, etc.).
   21-9: done  # Executive Decision Maker Mapping & B2B Lead Outreach
   21-10: done  # 2026-08-15: FastCrawler, ReverseIcpService, REST route, ReverseIcpModal, ATDD & 11 review patches verified; ruff/tsc/biome/pytest green
   21-11: done  # 2026-08-15: Actionable Turn Dispatches (suggested action pills); ruff/pytest/tsc/biome green
   21-12: done  # 2026-08-15: Viral Social Outbound Co-pilot (Voice Learner, Outlier Analyzer, Split Review UI, 3 capabilities registered, unit/integration/E2E green, ruff/tsc/biome clean)
   21-13: done  # 2026-08-15: Multi-Table Tabs & Send/Export Hub (Zero-cache live reactive sync, CSV/Lark Export)
+  21-14: done  # 2026-08-15: Smart Whitelist & DNC Compliance Engine
+  21-15: done  # 2026-08-16: Unified Multi-Source AI Lead Generation Orchestrator & Universal Scraper Adapters; 7 review patches applied, 169 unit tests passing, ruff clean
+  21-16: ready-for-dev  # Origami Split-View Canvas & Workspace Modernization (P0)
+  21-17: done           # 2026-08-16: Complete Origami Landing Page (10 sections) + Mint Green OrigamiLogo + Verticals grid; tsc/biome clean
+  21-18: review         # 2026-08-16: Partners Affiliate Portal & $0 Pricing Page Deployment (Alembic 215, PartnerService, 15% commission hook, VietQR payouts, PricingLeadCalculator, PartnerEarningsCalculator, /partners & /partners/dashboard, 13/13 backend pytest green, ruff/tsc/biome 100% clean)
   epic-21-retrospective: optional
 
   # === Epic 22: Telegram Scraper & Channel Ingestion Engine ===
@@ -463,3 +468,8 @@ validation_reports:
     verdict: "PASS-with-changes"
     reviewed_by: "bmad-code-review"
     notes: "3-layer adversarial review: 10 patch findings applied (non-blocking DNS MX resolution with LRU cache, Alembic migration 206 for company_decision_makers, dork query injection sanitization, ValueError exception handling in dorker, Western/VN name ordering heuristics, DDG URL-encoded redirect matching, pipe/bullet delimiters & Vietnamese prepositions in title parser, non-dotted honorifics & degree suffix stripping, raw HTML entity unescaping, empty signal details fix). 0 deferred, 7 dismissed. All 30 unit tests pass, ruff clean."
+  - story: "21-5"
+    type: "code-review"
+    verdict: "PASS-with-changes"
+    reviewed_by: "bmad-code-review"
+    notes: "3-layer adversarial review: 11 patch findings applied (OAuth callback workspace scoping, false-positive duplicate check fix, RLS tenant isolation read policy, NULLIF integer casting in migration 201, async flush for error sync logs and context memory persistence, UTC naive timezone normalization in conflict resolver, empty entity_ids FastMCP handling, auth client_id propagation, sync-logs pagination, field-mapping lowercasing, client_secret validation). 2 deferred, 1 dismissed. 34 unit tests pass, ruff clean."

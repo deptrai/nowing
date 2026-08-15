@@ -282,3 +282,33 @@ class ReverseIcpResponse(BaseModel):
     filter_presets: FilterPresets = Field(default_factory=FilterPresets)
     chat_starter_prompts: list[str] = Field(default_factory=list)
     raw_metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class MultiSourceLeadGenRequest(BaseModel):
+    """Payload for triggering unified multi-source lead generation (Story 21.15)."""
+
+    query: str = Field(
+        ..., min_length=1, description="Natural language search description"
+    )
+    table_id: str | None = Field(
+        default=None, description="Target table ID to stream results into"
+    )
+    locations: list[str] = Field(
+        default_factory=list, description="Target locations or provinces"
+    )
+    limit: int = Field(
+        default=50, ge=1, le=200, description="Maximum total leads to return"
+    )
+
+
+class MultiSourceLeadGenResponse(BaseModel):
+    """Structured response for unified multi-source lead generation."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    status: str = "completed"
+    total_discovered: int = 0
+    total_deduplicated: int = 0
+    leads: list[dict[str, Any]] = Field(default_factory=list)
+    degraded_sources: list[str] = Field(default_factory=list)
+    table_id: str | None = None
