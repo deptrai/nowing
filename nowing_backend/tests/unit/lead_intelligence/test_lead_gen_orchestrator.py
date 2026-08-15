@@ -168,6 +168,7 @@ class TestLeadGenOrchestrator:
     @pytest.mark.asyncio
     async def test_anti_loop_and_max_1_retry_on_failure(self) -> None:
         """When an adapter fails, it retries at most once and never enters an infinite loop."""
+        from app.lead_intelligence.adapters.batdongsan import BatdongsanLeadAdapter
         from app.lead_intelligence.services.lead_gen_orchestrator import (
             LeadGenOrchestrator,
         )
@@ -180,17 +181,16 @@ class TestLeadGenOrchestrator:
             call_count += 1
             raise ConnectionError("Upstream 502 Bad Gateway")
 
-        adapter_failing = MagicMock(
-            source_name="failing_source",
-            search_leads=AsyncMock(side_effect=failing_search),
-            normalize_lead=MagicMock(),
-            extract_contact_candidates=MagicMock(return_value=[]),
-        )
-
-        with patch.object(
-            orchestrator.registry,
-            "resolve_adapters_for_intent",
-            return_value=[adapter_failing],
+        adapter = BatdongsanLeadAdapter()
+        with (
+            patch.object(
+                adapter, "_fetch_raw_listings", AsyncMock(side_effect=failing_search)
+            ),
+            patch.object(
+                orchestrator.registry,
+                "resolve_adapters_for_intent",
+                return_value=[adapter],
+            ),
         ):
             result = await orchestrator.execute_multi_source_lead_gen(
                 workspace_id=1,
@@ -201,7 +201,7 @@ class TestLeadGenOrchestrator:
             assert call_count == 2
             assert result.status == "degraded"
             assert len(result.leads) == 0
-            assert "failing_source" in result.degraded_sources
+            assert "batdongsan" in result.degraded_sources
 
     @pytest.mark.asyncio
     async def test_fail_soft_when_all_adapters_degraded(self) -> None:
@@ -285,4 +285,3 @@ class TestMultiSourceLeadGenAgentTool:
             assert "Đã tìm thấy 8 leads" in tool_output or "8 leads" in tool_output
             assert "tab_lead_123" in tool_output
             assert "batdongsan" in tool_output
-

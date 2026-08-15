@@ -85,6 +85,7 @@ _PHONE_TOKEN_PATTERN = re.compile(
     r"(?:(?<=[^\d])|^)(?:\+84|84|0)[0-9\s\.\-]{8,15}(?:(?=[^\d])|$)"
 )
 _VALID_VN_PREFIXES = (
+    # Viettel / Vinaphone / Mobifone / Vietnamobile / Gmobile / Itelecom / Wintel / FPT
     "032",
     "033",
     "034",
@@ -93,6 +94,8 @@ _VALID_VN_PREFIXES = (
     "037",
     "038",
     "039",
+    "052",
+    "055",
     "056",
     "058",
     "059",
@@ -120,15 +123,24 @@ _VALID_VN_PREFIXES = (
     "097",
     "098",
     "099",
+    # Fixed landline prefixes across 63 provinces in Vietnam (020x to 029x)
+    "020",
+    "021",
+    "022",
+    "023",
     "024",
+    "025",
+    "026",
+    "027",
     "028",
+    "029",
 )
 
 
 def normalize_vietnamese_phone(raw_phone: str) -> str:
     """
-    Standardize a Vietnamese phone number to a 10-digit format starting with '0'.
-    Handles '+84', '84', '.', ' ', '-' separators safely.
+    Standardize a Vietnamese phone number to a 10-digit (mobile) or 11-digit (fixed) format starting with '0'.
+    Handles '+84', '0084', '84', '.', ' ', '-' separators safely.
     """
     if not raw_phone:
         return ""
@@ -136,12 +148,15 @@ def normalize_vietnamese_phone(raw_phone: str) -> str:
     cleaned = _CLEAN_NON_DIGITS.sub("", raw_phone.strip())
     if cleaned.startswith("+84"):
         cleaned = "0" + cleaned[3:]
+    elif cleaned.startswith("0084"):
+        cleaned = "0" + cleaned[4:]
     elif cleaned.startswith("84") and len(cleaned) in (11, 12):
         cleaned = "0" + cleaned[2:]
 
-    # Remove any extra leading zeros if malformed
+    # Remove any extra leading zeros or residual '+' characters
     if cleaned.startswith("00"):
         cleaned = "0" + cleaned[2:]
+    cleaned = cleaned.replace("+", "")
 
     return cleaned
 

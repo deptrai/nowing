@@ -1,6 +1,6 @@
 # Story 21.15: Unified Multi-Source AI Lead Generation Orchestrator & Universal Scraper Adapters
 
-Status: ready-for-review
+Status: done
 
 <!-- Note: Governed by epics.md (FR-85, AD-31, AD-37, AD-44) & 5 Architectural Invariants -->
 
@@ -59,6 +59,17 @@ So that Nowing's AI Orchestrator automatically plans and triggers parallel searc
   4. *Bounded Concurrency:* Max 5 concurrent tasks via `asyncio.Semaphore`.
   5. *Zero-Cache Schema Conformity:* Stream rows directly into `leads` table linked to `table_id`.
 - **Zero Regression:** All existing standalone scraper endpoints and capabilities remain 100% functional.
+
+### Review Findings
+
+- [x] [Review][Patch] Fix Database ORM model conformity and VerifiedContact association in LeadGenOrchestrator.execute_and_persist [app/lead_intelligence/services/lead_gen_orchestrator.py:255-310]
+- [x] [Review][Patch] Expand Vietnamese phone area codes & prefix regex in base.py [app/lead_intelligence/adapters/base.py:87-125]
+- [x] [Review][Patch] Fix Deduplication Attribute Priority Inversion in _merge_cluster [app/lead_intelligence/services/deduplication_service.py:165-200]
+- [x] [Review][Patch] Sanitize Markdown output in Chat Agent Tool against pipe/XSS breaking [app/capabilities/leads/orchestrator_tool.py:75-105]
+- [x] [Review][Patch] Fix Double-Retry in Orchestrator & Prevent Timeout Doubling [app/lead_intelligence/services/lead_gen_orchestrator.py:130-180]
+- [x] [Review][Patch] Expand Free/Public Email Domain Blacklist in Deduplication [app/lead_intelligence/services/deduplication_service.py:80-87]
+- [x] [Review][Patch] Case-insensitive adapter lookup & strip diacritics in Intent Matcher [app/lead_intelligence/adapters/registry.py:58-150]
+- [x] [Review][Defer] Connect Scraper Adapter fetchers to live proprietary crawler/Playwright platform services [app/lead_intelligence/adapters/] — deferred, pre-existing integration under Epic 10 & 21.8/21.9
 
 ### ATDD Artifacts
 - **Checklist:** `_bmad-output/test-artifacts/atdd-checklist-21-15-unified-multi-source-ai-lead-generation-orchestrator.md`

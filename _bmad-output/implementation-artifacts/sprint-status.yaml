@@ -212,7 +212,7 @@ development_status:
   21-12: done  # 2026-08-15: Viral Social Outbound Co-pilot (Voice Learner, Outlier Analyzer, Split Review UI, 3 capabilities registered, unit/integration/E2E green, ruff/tsc/biome clean)
   21-13: done  # 2026-08-15: Multi-Table Tabs & Send/Export Hub (Zero-cache live reactive sync, CSV/Lark Export)
   21-14: done  # 2026-08-15: Smart Whitelist & DNC Compliance Engine
-  21-15: in-progress  # 2026-08-16: Unified Multi-Source AI Lead Generation Orchestrator & Universal Scraper Adapters
+  21-15: done  # 2026-08-16: Unified Multi-Source AI Lead Generation Orchestrator & Universal Scraper Adapters; 7 review patches applied, 169 unit tests passing, ruff clean
   epic-21-retrospective: optional
 
   # === Epic 22: Telegram Scraper & Channel Ingestion Engine ===

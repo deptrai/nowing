@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import logging
 from typing import Any
 
@@ -10,6 +11,17 @@ from app.lead_intelligence.services.lead_gen_orchestrator import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _sanitize_markdown_cell(text: str | None, max_length: int = 80) -> str:
+    """Sanitize cell text against markdown table breaking, HTML injection, and line breaks."""
+    if not text:
+        return "N/A"
+    # Escape HTML
+    escaped = html.escape(str(text).strip())
+    # Replace markdown table pipes and newlines
+    safe = escaped.replace("|", "\\|").replace("\n", " ").replace("\r", "")
+    return (safe[:max_length] + "...") if len(safe) > max_length else safe
 
 
 class MultiSourceLeadGenTool:
@@ -75,13 +87,15 @@ class MultiSourceLeadGenTool:
         ]
 
         if table_id:
+            safe_table_id = html.escape(str(table_id))
             lines.append(
-                f"- **Tab Bảng Dữ Liệu:** [Xem Bảng Dữ Liệu Live](#table_id={table_id})"
+                f"- **Tab Bảng Dữ Liệu:** [Xem Bảng Dữ Liệu Live](#table_id={safe_table_id})"
             )
 
         if result.degraded_sources:
+            safe_degraded = [html.escape(s) for s in result.degraded_sources]
             lines.append(
-                f"- ⚠️ **Nguồn bị gián đoạn/bỏ qua:** {', '.join(result.degraded_sources)}"
+                f"- ⚠️ **Nguồn bị gián đoạn/bỏ qua:** {', '.join(safe_degraded)}"
             )
 
         lines.append("")
@@ -91,12 +105,15 @@ class MultiSourceLeadGenTool:
         lines.append("| :--- | :--- | :--- | :--- | :--- |")
 
         for lead in result.leads[:10]:
-            phone_disp = lead.primary_phone or "Chưa có SĐT"
-            contact_disp = lead.company_name or lead.contact_name or "N/A"
+            phone_disp = _sanitize_markdown_cell(lead.primary_phone, max_length=20)
+            contact_disp = _sanitize_markdown_cell(
+                lead.company_name or lead.contact_name, max_length=40
+            )
+            title_disp = _sanitize_markdown_cell(lead.title, max_length=60)
             conf = f"{lead.confidence_score:.0f}%"
             src = "/".join(lead.sources)
             lines.append(
-                f"| {lead.title or 'N/A'} | {contact_disp} | `{phone_disp}` | {conf} | {src} |"
+                f"| {title_disp} | {contact_disp} | `{phone_disp}` | {conf} | {src} |"
             )
 
         if len(result.leads) > 10:

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+import re
+import unicodedata
 from typing import ClassVar
 
 from app.lead_intelligence.adapters.base import (
@@ -11,6 +13,16 @@ from app.lead_intelligence.adapters.base import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _strip_vietnamese_diacritics(text: str) -> str:
+    """Normalize and remove Vietnamese accents/diacritics."""
+    if not text:
+        return ""
+    normalized = unicodedata.normalize("NFD", text)
+    stripped = "".join(c for c in normalized if unicodedata.category(c) != "Mn")
+    # Replace Vietnamese special 'đ' / 'Đ'
+    return stripped.replace("đ", "d").replace("Đ", "D").lower()
 
 
 class LeadSourceAdapterRegistry:
@@ -48,7 +60,8 @@ class LeadSourceAdapterRegistry:
 
     def register(self, adapter: LeadSourceAdapter) -> None:
         """Register a concrete adapter."""
-        self._adapters[adapter.source_name] = adapter
+        key = adapter.source_name.strip().lower()
+        self._adapters[key] = adapter
         logger.info(
             "Registered lead adapter: %s [%s]",
             adapter.source_name,
@@ -56,10 +69,11 @@ class LeadSourceAdapterRegistry:
         )
 
     def get(self, source_name: str) -> LeadSourceAdapter:
-        """Retrieve an adapter by source_name. Raises KeyError if not found."""
-        if source_name not in self._adapters:
+        """Retrieve an adapter by source_name (case-insensitive). Raises KeyError if not found."""
+        key = (source_name or "").strip().lower()
+        if key not in self._adapters:
             raise KeyError(f"No lead adapter registered for source: '{source_name}'")
-        return self._adapters[source_name]
+        return self._adapters[key]
 
     def list_all(self) -> list[LeadSourceAdapter]:
         """List all currently registered adapters."""
@@ -72,26 +86,40 @@ class LeadSourceAdapterRegistry:
     def resolve_adapters_for_intent(self, prompt: str) -> list[LeadSourceAdapter]:
         """
         Route natural language user query to the most relevant scraper adapters.
+        Supports accented and non-accented Vietnamese with boundary matching.
         Falls back to all available adapters if query is broad or multi-intent.
         """
-        prompt_lower = (prompt or "").lower()
+        raw_lower = (prompt or "").lower()
+        plain_lower = _strip_vietnamese_diacritics(raw_lower)
         matched: list[LeadSourceAdapter] = []
 
-        # Real Estate keywords
+        # Real Estate keywords (accented + unaccented)
         bds_keywords = [
             "bđs",
+            "bds",
             "bất động sản",
+            "bat dong san",
             "nhà đất",
+            "nha dat",
             "chung cư",
+            "chung cu",
             "biệt thự",
+            "biet thu",
             "căn hộ",
+            "can ho",
             "mặt bằng",
+            "mat bang",
             "nhà phố",
+            "nha pho",
             "đất nền",
+            "dat nen",
             "cho thuê",
+            "cho thue",
             "ocean park",
+            "vinhome",
+            "vinhomes",
         ]
-        if any(k in prompt_lower for k in bds_keywords):
+        if any(k in raw_lower or k in plain_lower for k in bds_keywords):
             for a in self.find_by_category(LeadSourceCategory.REAL_ESTATE):
                 if a not in matched:
                     matched.append(a)
@@ -99,17 +127,23 @@ class LeadSourceAdapterRegistry:
         # Recruitment / Hiring keywords
         job_keywords = [
             "tuyển dụng",
-            "tuyển",
+            "tuyen dung",
+            "tuyen",
             "hiring",
             "developer",
             "engineer",
             "nhân sự",
+            "nhan su",
             "việc làm",
+            "viec lam",
             "topcv",
             "itviec",
-            "hr",
+            "recruitment",
         ]
-        if any(k in prompt_lower for k in job_keywords):
+        # Check boundary words or substrings
+        if any(k in raw_lower or k in plain_lower for k in job_keywords) or re.search(
+            r"\bhr\b", raw_lower
+        ):
             for a in self.find_by_category(LeadSourceCategory.JOB_MARKET):
                 if a not in matched:
                     matched.append(a)
@@ -117,16 +151,25 @@ class LeadSourceAdapterRegistry:
         # Enterprise / Public Procurement keywords
         ent_keywords = [
             "công ty",
+            "cong ty",
             "doanh nghiệp",
+            "doanh nghiep",
             "mã số thuế",
-            "mst",
+            "ma so thue",
             "gói thầu",
+            "goi thau",
             "đấu thầu",
+            "dau thau",
             "mua sắm công",
+            "mua sam cong",
             "dự thầu",
+            "du thau",
             "chủ đầu tư",
+            "chu dau tu",
         ]
-        if any(k in prompt_lower for k in ent_keywords):
+        if any(k in raw_lower or k in plain_lower for k in ent_keywords) or re.search(
+            r"\bmst\b", raw_lower
+        ):
             for a in self.find_by_category(LeadSourceCategory.ENTERPRISE):
                 if a not in matched:
                     matched.append(a)
@@ -137,13 +180,18 @@ class LeadSourceAdapterRegistry:
             "twitter",
             "xactions",
             "mạng xã hội",
+            "mang xa hoi",
             "group",
             "nhóm",
+            "nhom",
             "bài đăng",
-            "post",
+            "bai dang",
             "môi giới",
+            "moi gioi",
         ]
-        if any(k in prompt_lower for k in social_keywords):
+        if any(
+            k in raw_lower or k in plain_lower for k in social_keywords
+        ) or re.search(r"\bpost\b", raw_lower):
             for a in self.find_by_category(LeadSourceCategory.SOCIAL):
                 if a not in matched:
                     matched.append(a)

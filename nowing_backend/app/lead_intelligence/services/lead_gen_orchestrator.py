@@ -127,68 +127,59 @@ class LeadGenOrchestrator:
 
         async def _run_single_adapter(
             adapter: LeadSourceAdapter,
-        ) -> list[NormalizedLead]:
+        ) -> tuple[list[NormalizedLead], str | None]:
             async with sem:
-                retries = 1
-                attempt = 0
-                while attempt <= retries:
-                    attempt += 1
-                    try:
-                        raw_records = await asyncio.wait_for(
-                            adapter.search_leads(
-                                workspace_id=workspace_id,
-                                query=query,
-                                filters=filters,
-                                limit=50,
-                            ),
-                            timeout=adapter_timeout_seconds,
-                        )
-                        if (
-                            getattr(adapter, "last_execution_status", "ok")
-                            == "degraded"
-                        ):
-                            degraded_sources.append(adapter.source_name)
+                try:
+                    raw_records = await asyncio.wait_for(
+                        adapter.search_leads(
+                            workspace_id=workspace_id,
+                            query=query,
+                            filters=filters,
+                            limit=50,
+                        ),
+                        timeout=adapter_timeout_seconds,
+                    )
+                    is_degraded = (
+                        getattr(adapter, "last_execution_status", "ok") == "degraded"
+                    )
+                    degraded_name = adapter.source_name if is_degraded else None
 
-                        normalized: list[NormalizedLead] = []
-                        for record in raw_records:
-                            try:
-                                norm = adapter.normalize_lead(record)
-                                normalized.append(norm)
-                            except Exception as norm_err:
-                                logger.warning(
-                                    "Failed to normalize lead from %s: %s",
-                                    adapter.source_name,
-                                    norm_err,
-                                )
-                        return normalized
-                    except TimeoutError:
-                        logger.warning(
-                            "Adapter %s timed out after %.1fs on attempt %d",
-                            adapter.source_name,
-                            adapter_timeout_seconds,
-                            attempt,
-                        )
-                        if attempt > retries:
-                            degraded_sources.append(adapter.source_name)
-                            return []
-                    except Exception as exc:
-                        logger.error(
-                            "Adapter %s failed attempt %d: %s",
-                            adapter.source_name,
-                            attempt,
-                            exc,
-                        )
-                        if attempt > retries:
-                            degraded_sources.append(adapter.source_name)
-                            return []
-                return []
+                    normalized: list[NormalizedLead] = []
+                    for record in raw_records:
+                        try:
+                            norm = adapter.normalize_lead(record)
+                            normalized.append(norm)
+                        except Exception as norm_err:
+                            logger.warning(
+                                "Failed to normalize lead from %s: %s",
+                                adapter.source_name,
+                                norm_err,
+                            )
+                    return normalized, degraded_name
+                except TimeoutError:
+                    logger.warning(
+                        "Adapter %s timed out after %.1fs",
+                        adapter.source_name,
+                        adapter_timeout_seconds,
+                    )
+                    return [], adapter.source_name
+                except Exception as exc:
+                    logger.error(
+                        "Adapter %s failed with error: %s",
+                        adapter.source_name,
+                        exc,
+                    )
+                    return [], adapter.source_name
 
         tasks = [_run_single_adapter(a) for a in adapters]
         batch_results = await asyncio.gather(*tasks, return_exceptions=True)
 
         for res in batch_results:
-            if isinstance(res, list):
-                all_normalized_leads.extend(res)
+            if isinstance(res, tuple):
+                leads_list, degraded_name = res
+                all_normalized_leads.extend(leads_list)
+                if degraded_name:
+                    degraded_sources.append(degraded_name)
 
         total_discovered = len(all_normalized_leads)
 
@@ -226,89 +217,130 @@ class LeadGenOrchestrator:
             },
         )
 
-    async def _execute_adapter_searches(
-        self, workspace_id: int, query: str
-    ) -> list[NormalizedLead]:
-        """Test stub override for adapter execution."""
-        res = await self.execute_multi_source_lead_gen(
-            workspace_id=workspace_id, query=query
-        )
-        return res.leads
-
     async def execute_and_persist(
         self,
         session: AsyncSession,
         workspace_id: int,
         query: str,
-        table_id: str,
+        table_id: str | None = None,
         user_id: UUID | None = None,
         client_id: str | None = None,
     ) -> LeadGenOrchestratorResult:
         """Execute lead generation and atomically upsert records to PostgreSQL database."""
-        from app.db import Lead
+        from app.db import Lead, VerifiedContact
 
-        # Call adapter search routine
-        leads = await self._execute_adapter_searches(
-            workspace_id=workspace_id, query=query
-        )
+        # Safely parse table_id to UUID if provided
+        table_uuid: UUID | None = None
+        if table_id:
+            try:
+                table_uuid = UUID(str(table_id))
+            except (ValueError, TypeError):
+                table_uuid = None
 
-        # Deduplicate before DB write
-        dedup_result = self.deduplication_service.deduplicate_leads(leads)
-        unified_leads = dedup_result.unified_leads
-
-        # Atomic upsert in PostgreSQL
-        for lead in unified_leads:
-            existing_lead = None
-            if lead.primary_phone:
-                stmt = select(Lead).where(
-                    Lead.workspace_id == workspace_id,
-                    Lead.phone == lead.primary_phone,
-                )
-                existing_lead = (await session.execute(stmt)).scalars().first()
-
-            if existing_lead:
-                # Update existing row
-                if lead.contact_name:
-                    existing_lead.contact_name = lead.contact_name
-                if lead.title:
-                    existing_lead.title = lead.title
-                if lead.price:
-                    existing_lead.price_estimate = str(lead.price)
-                if lead.confidence_score:
-                    existing_lead.confidence_score = max(
-                        getattr(existing_lead, "confidence_score", 0.0) or 0.0,
-                        lead.confidence_score,
-                    )
-                if table_id:
-                    existing_lead.table_id = table_id
-            else:
-                # Insert new Lead row
-                new_row = Lead(
-                    id=uuid4(),
-                    workspace_id=workspace_id,
-                    client_id=client_id,
-                    table_id=table_id,
-                    source=",".join(lead.sources) if lead.sources else lead.source_name,
-                    source_url=lead.raw_data.get("url")
-                    or lead.raw_data.get("source_url"),
-                    company_name=lead.company_name or "N/A",
-                    domain=lead.canonical_domain,
-                    phone=lead.primary_phone,
-                    author=lead.contact_name,
-                    title=lead.title,
-                    price_estimate=str(lead.price) if lead.price else None,
-                    fit_score=lead.confidence_score,
-                    confidence_score=lead.confidence_score,
-                    status="new",
-                )
-                session.add(new_row)
-
-        await session.flush()
-
-        return LeadGenOrchestratorResult(
-            status="completed",
-            total_discovered=len(leads),
-            total_deduplicated=len(unified_leads),
-            leads=unified_leads,
+        # Execute lead search and in-stream deduplication
+        search_result = await self.execute_multi_source_lead_gen(
+            workspace_id=workspace_id,
+            query=query,
             table_id=table_id,
         )
+        unified_leads = search_result.leads
+
+        try:
+            for lead in unified_leads:
+                company_name = (
+                    lead.company_name or lead.title or "Doanh nghiệp tiềm năng"
+                )
+                domain = lead.canonical_domain
+
+                # Check if Lead entity already exists by domain or company in this workspace
+                existing_lead = None
+                if domain:
+                    stmt = select(Lead).where(
+                        Lead.workspace_id == workspace_id,
+                        Lead.domain == domain,
+                    )
+                    existing_lead = (await session.execute(stmt)).scalars().first()
+
+                if not existing_lead and company_name:
+                    stmt = select(Lead).where(
+                        Lead.workspace_id == workspace_id,
+                        Lead.company_name == company_name,
+                    )
+                    existing_lead = (await session.execute(stmt)).scalars().first()
+
+                lead_row_id: UUID
+                if existing_lead:
+                    lead_row_id = existing_lead.id
+                    if lead.confidence_score:
+                        existing_lead.fit_score = max(
+                            existing_lead.fit_score or 0.0,
+                            lead.confidence_score,
+                        )
+                    if table_uuid and not existing_lead.table_id:
+                        existing_lead.table_id = table_uuid
+                else:
+                    lead_row_id = uuid4()
+                    new_lead = Lead(
+                        id=lead_row_id,
+                        workspace_id=workspace_id,
+                        client_id=client_id,
+                        table_id=table_uuid,
+                        source=",".join(lead.sources)
+                        if lead.sources
+                        else lead.source_name,
+                        source_url=lead.raw_data.get("url")
+                        or lead.raw_data.get("source_url"),
+                        company_name=company_name,
+                        domain=domain,
+                        fit_score=lead.confidence_score,
+                        status="new",
+                    )
+                    session.add(new_lead)
+
+                # Persist discovered contact in VerifiedContact table
+                if lead.primary_phone or lead.primary_email or lead.contact_name:
+                    contact_stmt = select(VerifiedContact).where(
+                        VerifiedContact.workspace_id == workspace_id,
+                        VerifiedContact.lead_id == lead_row_id,
+                        VerifiedContact.phone == lead.primary_phone,
+                    )
+                    existing_contact = (
+                        (await session.execute(contact_stmt)).scalars().first()
+                    )
+
+                    if not existing_contact and (
+                        lead.primary_phone or lead.primary_email
+                    ):
+                        new_contact = VerifiedContact(
+                            id=uuid4(),
+                            workspace_id=workspace_id,
+                            client_id=client_id,
+                            lead_id=lead_row_id,
+                            name=lead.contact_name or lead.legal_rep,
+                            title=lead.title,
+                            phone=lead.primary_phone,
+                            email=lead.primary_email,
+                            confidence=lead.confidence_score / 100.0,
+                            source_provider=lead.source_name,
+                            verification_status="discovered",
+                        )
+                        session.add(new_contact)
+
+            await session.flush()
+
+        except Exception as exc:
+            logger.error("Failed to persist leads to database: %s", exc)
+            await session.rollback()
+            return LeadGenOrchestratorResult(
+                status="degraded",
+                total_discovered=search_result.total_discovered,
+                total_deduplicated=0,
+                leads=[],
+                degraded_sources=[
+                    *search_result.degraded_sources,
+                    "db_persistence_error",
+                ],
+                table_id=table_id,
+            )
+
+        return search_result

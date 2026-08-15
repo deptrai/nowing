@@ -16,6 +16,25 @@ from app.lead_intelligence.adapters.base import (
 
 logger = logging.getLogger(__name__)
 
+FREE_EMAIL_DOMAINS = frozenset(
+    {
+        "gmail.com",
+        "yahoo.com",
+        "outlook.com",
+        "hotmail.com",
+        "icloud.com",
+        "zoho.com",
+        "mail.com",
+        "proton.me",
+        "protonmail.com",
+        "yandex.com",
+        "gmx.com",
+        "fastmail.com",
+        "live.com",
+        "me.com",
+    }
+)
+
 
 def compute_phone_hmac(phone: str, secret: str = "nowing_default_lead_secret") -> str:
     """
@@ -70,20 +89,19 @@ class EntityDeduplicationService:
                     if k not in keys:
                         keys.append(k)
 
-        # 2. Tax ID key (Mã số thuế)
+        # 2. Tax ID key (Mã số thuế) — must be valid 10-14 chars
         if lead.tax_id:
             cleaned_tax = lead.tax_id.strip().upper()
-            keys.append(f"tax:{cleaned_tax}")
+            if (
+                len(cleaned_tax) in (10, 13, 14)
+                and cleaned_tax.replace("-", "").isalnum()
+            ):
+                keys.append(f"tax:{cleaned_tax}")
 
-        # 3. Canonical Domain key
+        # 3. Canonical Domain key (exclude generic consumer email domains)
         if lead.canonical_domain:
             cleaned_domain = lead.canonical_domain.strip().lower()
-            if cleaned_domain not in (
-                "gmail.com",
-                "yahoo.com",
-                "outlook.com",
-                "hotmail.com",
-            ):
+            if cleaned_domain not in FREE_EMAIL_DOMAINS and "." in cleaned_domain:
                 keys.append(f"domain:{cleaned_domain}")
 
         # 4. Primary Email key
@@ -163,52 +181,54 @@ class EntityDeduplicationService:
 
         # Aggregate unique sources
         all_sources = list(
-            dict.fromkeys(s for item in cluster_leads for s in item.sources)
+            dict.fromkeys(s for item in sorted_by_conf for s in item.sources)
         )
 
         # Union candidate contacts
         all_candidates: list[ContactCandidate] = []
         seen_cand_vals: set[str] = set()
-        for item in cluster_leads:
+        for item in sorted_by_conf:
             for c in item.contact_candidates:
                 if c.value not in seen_cand_vals:
                     seen_cand_vals.add(c.value)
                     all_candidates.append(c)
 
-        # Merge non-null attributes
-        title = next((item.title for item in cluster_leads if item.title), base.title)
+        # Merge non-null attributes strictly preferring highest confidence leads
+        title = next((item.title for item in sorted_by_conf if item.title), base.title)
         company_name = next(
-            (item.company_name for item in cluster_leads if item.company_name),
+            (item.company_name for item in sorted_by_conf if item.company_name),
             base.company_name,
         )
         primary_phone = next(
-            (item.primary_phone for item in cluster_leads if item.primary_phone),
+            (item.primary_phone for item in sorted_by_conf if item.primary_phone),
             base.primary_phone,
         )
         primary_email = next(
-            (item.primary_email for item in cluster_leads if item.primary_email),
+            (item.primary_email for item in sorted_by_conf if item.primary_email),
             base.primary_email,
         )
         tax_id = next(
-            (item.tax_id for item in cluster_leads if item.tax_id), base.tax_id
+            (item.tax_id for item in sorted_by_conf if item.tax_id), base.tax_id
         )
         canonical_domain = next(
-            (item.canonical_domain for item in cluster_leads if item.canonical_domain),
+            (item.canonical_domain for item in sorted_by_conf if item.canonical_domain),
             base.canonical_domain,
         )
         contact_name = next(
-            (item.contact_name for item in cluster_leads if item.contact_name),
+            (item.contact_name for item in sorted_by_conf if item.contact_name),
             base.contact_name,
         )
         legal_rep = next(
-            (item.legal_rep for item in cluster_leads if item.legal_rep), base.legal_rep
+            (item.legal_rep for item in sorted_by_conf if item.legal_rep),
+            base.legal_rep,
         )
         address = next(
-            (item.address for item in cluster_leads if item.address), base.address
+            (item.address for item in sorted_by_conf if item.address), base.address
         )
-        city = next((item.city for item in cluster_leads if item.city), base.city)
+        city = next((item.city for item in sorted_by_conf if item.city), base.city)
         price = next(
-            (item.price for item in cluster_leads if item.price is not None), base.price
+            (item.price for item in sorted_by_conf if item.price is not None),
+            base.price,
         )
 
         # Boost confidence score for multi-source corroboration
