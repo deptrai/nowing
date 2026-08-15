@@ -4802,6 +4802,12 @@ class LinkedinCompany(Base, TimestampMixin):
     decision_makers = Column(
         JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
     )
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
 
     jobs = relationship(
         "LinkedinJob",
@@ -4845,6 +4851,12 @@ class LinkedinJob(Base, TimestampMixin):
     raw_entities = Column(
         JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
     )
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
 
     company = relationship("LinkedinCompany", back_populates="jobs")
 
@@ -4868,12 +4880,24 @@ class CompanyDecisionMaker(Base, TimestampMixin):
         index=True,
     )
     company_name = Column(String(255), nullable=False, index=True)
-    full_name = Column(String(255), nullable=False)
-    title = Column(String(255), nullable=True)
-    department = Column(String(100), nullable=True)
-    linkedin_url = Column(Text, nullable=True)
+    full_name = Column(String(255), nullable=False, index=True)
+    title = Column(Text, nullable=True)
+    department = Column(String(100), nullable=True, default="Executive Leadership")
+    linkedin_url = Column(Text, nullable=False)
     linkedin_slug = Column(String(255), nullable=False, index=True)
-    email_prediction = Column(String(255), nullable=True)
+    corporate_email = Column(String(255), nullable=True, index=True)
+    email_confidence = Column(Float, nullable=False, default=0.7)
+    verified_mx = Column(Boolean, nullable=False, default=False)
+    source_platform = Column(String(50), nullable=False, default="linkedin_guest")
+    raw_entities = Column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
     confidence_score = Column(Float, nullable=False, default=0.0, server_default="0")
     verified_at = Column(TIMESTAMP(timezone=True), nullable=True)
 
