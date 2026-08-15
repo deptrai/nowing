@@ -57,3 +57,35 @@ So that I can verify land usability (Đất ở ODT/ONT vs Đất giao thông DG
 ### References
 - [Architecture Spine: architecture-bds-planning-and-dkkd-2026-08-15/ARCHITECTURE-SPINE.md]
 - [UX Contract: ux-contract-scrapers-expansion-and-lead-intelligence.md#U5]
+
+### Review Findings
+
+- [ ] [Review][Decision] Chấp nhận client-side `shapely.make_valid` thay vì server-side `ST_MakeValid`/`ST_Subdivide`? — Spec AC-1 yêu cầu PostGIS `ST_MakeValid()` + `ST_Subdivide()` trên database. Hiện tại importer.py dùng `shapely.make_valid()` client-side và không gọi `ST_Subdivide()`. Cần quyết định: (a) chuyển pipeline sang server-side, (b) giữ client-side và cập nhật spec, hay (c) thêm `ST_Subdivide()` trong ingestion SQL.
+
+- [ ] [Review][Decision] Frontend Land Zoning Modal (Widget U5) thuộc scope này? — AC-4 và UX U5 bắt buộc UI Mapbox/Leaflet overlay trong `nowing_web`. Hiện diff chỉ có backend. Cần quyết định: split ra story web riêng, hay bổ sung frontend trong story này trước khi done.
+
+- [ ] [Review][Patch] Thiếu Alembic migration cho `spatial_planning_zones` [app/proprietary/platforms/spatial_planning/models.py] — Model tồn tại nhưng không có migration trong `nowing_backend/alembic/versions/` để tạo bảng trên production. Vi phạm AC-1, AD-GIS-1.
+
+- [ ] [Review][Patch] `SpatialPlanningZone` chưa import trong `app/db.py` [app/db.py] — Model chưa được import nên `Base.metadata.create_all()` có thể bỏ qua bảng này trong dev/test. Cần import `SpatialPlanningZone` trong `app/db.py` hoặc đảm bảo module được load trước khi `create_all()` chạy.
+
+- [ ] [Review][Patch] Truy vấn `ST_Intersects` không giới hạn kết quả [app/proprietary/platforms/spatial_planning/service.py:133] — `select(SpatialPlanningZone).where(ST_Intersects(...))` không có `.limit()`. Một điểm trong khu vực nhiều lớp quy hoạch chồng chéo có thể trả về hàng trăm zone, gây tràn RAM và vượt SLA 10ms. Nên thêm `.limit(50)` hoặc `limit` cấu hình + `order_by` ưu tiên zone nguy hiểm.
+
+- [ ] [Review][Patch] Thiếu frontend Land Zoning Modal (Widget U5) [nowing_web/] — AC-4 yêu cầu UI hiển thị overlay Mapbox/Leaflet. Không có file nào trong `nowing_web/` được thêm/sửa. Vi phạm AC-4, AD-GIS-7, UX U5.
+
+- [ ] [Review][Patch] Thiếu integration tests cho truy vấn PostGIS [tests/integration/] — Task 5 yêu cầu integration test với database thật. Chỉ có unit tests với mock. Cần thêm `tests/integration/proprietary/platforms/test_spatial_planning.py` kiểm tra `ST_Intersects` trên PostGIS thật.
+
+- [ ] [Review][Patch] `ZoningCheckInput` không validate range tọa độ [app/capabilities/realestate/zoning/schemas.py:13] — Pydantic schema cho phép `lat=999, lng=-500` đi qua. Validation chỉ xảy ra ở `validate_vietnam_coordinates` trong service. Nên thêm `Field(ge=8.5, le=23.5)` và `Field(ge=102.0, le=109.5)`.
+
+- [ ] [Review][Patch] Unique constraint có cột `district` nullable cho phép duplicate [app/proprietary/platforms/spatial_planning/models.py:49] — PostgreSQL coi `NULL != NULL`, nên hai row cùng `(province, NULL, zone_code, polygon_hash)` không bị chặn. Vi phạm AD-GIS-5 (idempotent dedup). Nên đổi `district` thành `nullable=False` default `""` hoặc dùng `func.coalesce(district, '')` trong constraint.
+
+- [ ] [Review][Patch] `PlanningDataImporter` không xử lý lỗi JSON, CRS, geometry, make_valid [app/proprietary/platforms/spatial_planning/importer.py:75] — `json.loads`, `shape()`, `Transformer.from_crs`, `make_valid()` và `normalize_to_multipolygon` đều có thể raise exception trên dữ liệu xấu, làm crash toàn bộ import. Cần wrap từng bước bằng try/except + log warning và skip feature lỗi.
+
+- [ ] [Review][Patch] Default `zone_code` "ODT" khi thiếu dữ liệu [app/proprietary/platforms/spatial_planning/importer.py:102] — `props.get("zone_code") or props.get("ma_dat", "ODT")` im lặng gán "ODT" nếu cả hai đều thiếu. Có thể gây phân loại sai pháp lý. Nên raise lỗi hoặc log warning và gán "UNKNOWN" thay vì "ODT".
+
+- [ ] [Review][Patch] `_transformers` cache không giới hạn kích thước [app/proprietary/platforms/spatial_planning/importer.py:45] — Dict tăng vô hạn theo số SRID khác nhau. Nếu import nhiều projection khác nhau có thể tăng RAM. Nên dùng `@lru_cache(maxsize=8)` hoặc `functools.lru_cache` cho `get_transformer`.
+
+- [ ] [Review][Patch] Summary string không giới hạn độ dài [app/proprietary/platforms/spatial_planning/service.py:179] — `', '.join(zone_descs)` có thể rất dài khi nhiều zone intersect hoặc `zone_name` dài. Có thể tràn UI/database. Nên giới hạn số zone trong summary hoặc cắt ngắn chuỗi.
+
+- [ ] [Review][Patch] `effective_year`/`expiry_year` từ props không validate [app/proprietary/platforms/spatial_planning/importer.py:105] — Giá trị từ GeoJSON properties đi thẳng vào `Integer` column. Nếu là string/float/None có thể gây lỗi insert. Nên ép kiểu `int()` hoặc bỏ qua nếu không hợp lệ.
+
+- [ ] [Review][Patch] Thiếu test boundary, swap edge cases, large number of zones [tests/unit/proprietary/platforms/spatial_planning/] — Test `test_coordinate_validation.py` chưa cover tọa độ chính xác tại biên `[8.5, 23.5]` x `[102.0, 109.5]`, trường hợp `lat` ở ngoài biên nhưng `lng` ở trong vùng đảo, và trường hợp 100+ zone intersect.
