@@ -3896,6 +3896,10 @@ async def create_db_and_tables():
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS citext"))
         try:
+            # Ensure all declarative models (including PostGIS) are registered
+            # before create_all runs without creating a circular module import.
+            from app.proprietary.platforms.spatial_planning.models import SpatialPlanningZone  # noqa: F401
+
             await conn.run_sync(Base.metadata.create_all)
         except Exception as exc:
             logger.warning(
@@ -4675,7 +4679,6 @@ class VerifiedContact(Base, TimestampMixin):
 from app.alerts.persistence.models.alert_rule import AlertRule  # noqa: F401
 from app.alerts.persistence.models.alert_snapshot import AlertSnapshot  # noqa: F401
 from app.alerts.persistence.models.alert_subscription import AlertSubscription  # noqa: F401
-from app.proprietary.platforms.spatial_planning.models import SpatialPlanningZone  # noqa: F401
 
 
 

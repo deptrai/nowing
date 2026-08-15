@@ -12,6 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.db import Base, User, Workspace
+from app.proprietary.platforms.spatial_planning.models import (
+    SpatialPlanningZone,  # noqa: F401
+)
 from tests.conftest import TEST_DATABASE_URL
 
 
