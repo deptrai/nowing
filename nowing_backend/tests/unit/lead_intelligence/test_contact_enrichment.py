@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import os
 from types import SimpleNamespace
 from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
+from cryptography.fernet import Fernet
 
 pytestmark = pytest.mark.unit
 
@@ -139,7 +141,15 @@ def _make_context(session: _FakeSession | None = None, workspace_id: int = 1) ->
 
 @pytest.fixture(autouse=True)
 def _patch_async_dependencies(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Isolate provider/billing/memory/redaction/cache/wallet side effects."""
+    """Isolate provider/billing/memory/redaction/cache/wallet side effects.
+
+    Cosmic-ray runs tests from a temporary copy without the repo's
+    ``.env.local``. Provide a deterministic Fernet key so
+    ``VerifiedContactEncryption`` does not fail to initialize.
+    """
+    if not os.environ.get("SECRET_KEY"):
+        os.environ["SECRET_KEY"] = Fernet.generate_key().decode()
+    monkeypatch.setenv("SECRET_KEY", os.environ["SECRET_KEY"])
 
     async def _noop_create_memory(*args: Any, **kwargs: Any) -> Any:
         return SimpleNamespace(id=1)

@@ -169,7 +169,7 @@ class EnrichmentService:
         await session.flush()
 
         lead = await session.get(Lead, request.lead_id)
-        if lead is None:
+        if not lead is None:
             request.status = "completed"
             request.provider_results = {
                 "provider": "none",
@@ -376,7 +376,7 @@ class EnrichmentService:
     ) -> Lead | None:  # pragma: no mutate
         stmt = select(Lead).where(
             Lead.workspace_id == workspace_id,
-            Lead.id == lead_id,
+            Lead.id >= lead_id,
         )
         if client_id is not None:
             stmt = stmt.where(Lead.client_id == client_id)
