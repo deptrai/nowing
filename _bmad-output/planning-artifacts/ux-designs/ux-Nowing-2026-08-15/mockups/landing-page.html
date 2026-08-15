@@ -43,7 +43,6 @@
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
     
-    /* Global Caro Grid Background */
     body {
       font-family: 'Plus Jakarta Sans', sans-serif;
       background-color: var(--bg);
@@ -55,10 +54,9 @@
       line-height: 1.5;
       -webkit-font-smoothing: antialiased;
       overflow-x: hidden;
-      position: relative;
     }
 
-    /* Ambient radial glow + fine caro mesh */
+    /* Ambient Hero Texture */
     .ambient-bg {
       position: absolute;
       top: 0;
@@ -76,7 +74,7 @@
       z-index: -1;
     }
 
-    /* Header Nav (Origami Style) */
+    /* Header Nav */
     header {
       position: sticky;
       top: 0;
@@ -166,7 +164,7 @@
       transform: translateY(-1px);
     }
 
-    /* Hero Section */
+    /* Section 1: Hero */
     .hero {
       max-width: 980px;
       margin: 0 auto;
@@ -175,7 +173,7 @@
     }
     .hero h1 {
       font-family: 'Instrument Serif', serif;
-      font-size: 74px;
+      font-size: 76px;
       font-weight: 400;
       line-height: 1.05;
       letter-spacing: -0.03em;
@@ -188,8 +186,6 @@
       max-width: 760px;
       margin: 0 auto 36px;
     }
-
-    /* Hero Prompt Input Box (Origami 1:1) */
     .input-mode-tabs {
       display: inline-flex;
       align-items: center;
@@ -223,7 +219,6 @@
       border-radius: 4px;
       text-transform: uppercase;
     }
-
     .hero-input-card {
       background: white;
       border: 1px solid var(--border);
@@ -267,14 +262,12 @@
       align-items: center;
       justify-content: center;
       font-weight: 700;
-      transition: background 0.15s ease;
     }
-    .btn-submit-arrow:hover { background: var(--primary-hover); }
 
-    /* Interactive 3-Tab Product Showcase */
+    /* Section 2: 3-Tab Product Showcase */
     .showcase-section {
       max-width: 1240px;
-      margin: 0 auto 96px;
+      margin: 0 auto 64px;
       padding: 0 24px;
     }
     .showcase-tabs {
@@ -294,7 +287,6 @@
       color: var(--foreground-muted);
       cursor: pointer;
       position: relative;
-      transition: color 0.15s ease;
     }
     .tab-trigger.active {
       color: var(--foreground);
@@ -308,8 +300,6 @@
       height: 2px;
       background: #0F172A;
     }
-
-    /* Showcase Frame (Split 2-Panel 1:1 with Origami) */
     .showcase-frame {
       background: white;
       border: 1px solid var(--border);
@@ -320,8 +310,6 @@
       grid-template-columns: 360px 1fr;
       min-height: 580px;
     }
-    
-    /* Left Chat/Outreach Pane */
     .frame-chat {
       background: #FFFFFF;
       border-right: 1px solid var(--border);
@@ -404,8 +392,6 @@
       font-size: 12px;
       flex: 1;
     }
-
-    /* Right Table Pane (Origami Grid Style with Caro Header) */
     .frame-table {
       background: #FAFAFC;
       display: flex;
@@ -448,16 +434,10 @@
       gap: 20px;
       font-size: 12px;
     }
-    .metric-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
     .metric-value {
       font-family: 'JetBrains Mono', monospace;
       font-weight: 700;
     }
-
     .table-content-area {
       flex: 1;
       overflow-x: auto;
@@ -485,9 +465,7 @@
       vertical-align: middle;
       white-space: nowrap;
     }
-    .origami-table tr:hover td {
-      background: var(--primary-subtle);
-    }
+    .origami-table tr:hover td { background: var(--primary-subtle); }
     .fit-badge {
       display: inline-flex;
       align-items: center;
@@ -512,7 +490,37 @@
       font-size: 11px;
     }
 
-    /* Vertical Pills Section */
+    /* Section 3: Social Proof Logo Wall */
+    .social-proof-strip {
+      max-width: 1240px;
+      margin: 0 auto 96px;
+      padding: 0 24px;
+      text-align: center;
+    }
+    .proof-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--foreground-subtle);
+      text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+    .logo-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 48px;
+      flex-wrap: wrap;
+      opacity: 0.7;
+    }
+    .proof-logo {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--foreground-muted);
+    }
+
+    /* Section 4: Verticals & Live Examples */
     .verticals-section {
       max-width: 1240px;
       margin: 0 auto 96px;
@@ -520,9 +528,10 @@
     }
     .section-headline {
       font-family: 'Instrument Serif', serif;
-      font-size: 42px;
+      font-size: 48px;
       font-weight: 400;
       margin-bottom: 12px;
+      letter-spacing: -0.02em;
     }
     .section-sub {
       color: var(--foreground-muted);
@@ -554,16 +563,33 @@
       border-color: var(--primary-border);
       color: var(--primary-hover);
     }
-    .vert-count {
-      font-size: 11px;
-      color: var(--foreground-subtle);
-    }
+    .vert-count { font-size: 11px; color: var(--foreground-subtle); }
 
-    /* 4 Metric Stats Strip (Origami Style with Caro texture) */
-    .metrics-strip {
+    /* Section 5: Real-time Web Sources & 4 Metrics Strip */
+    .sources-metrics-section {
       max-width: 1240px;
       margin: 0 auto 96px;
       padding: 0 24px;
+    }
+    .sources-icons-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .source-icon-badge {
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: white;
+      font-size: 14px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    }
+    .metrics-strip {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       border: 1px solid var(--border);
@@ -578,7 +604,7 @@
     }
     .metric-box:last-child { border-right: none; }
     .stat-num {
-      font-size: 32px;
+      font-size: 36px;
       font-weight: 800;
       color: var(--foreground);
       margin-bottom: 4px;
@@ -596,7 +622,7 @@
       line-height: 1.5;
     }
 
-    /* Waterfall Enrichment Cards */
+    /* Section 6: Waterfall Enrichment Cards */
     .waterfall-section {
       max-width: 1240px;
       margin: 0 auto 96px;
@@ -639,15 +665,159 @@
       font-size: 13px;
     }
 
-    /* Footer */
+    /* Section 7: Pricing Section on Giant Caro Grid */
+    .pricing-wrap {
+      max-width: 1240px;
+      margin: 0 auto 96px;
+      padding: 64px 24px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-sm);
+      background-image: 
+        linear-gradient(to right, var(--grid-caro) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--grid-caro) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+    .pricing-intro {
+      margin-bottom: 48px;
+    }
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+    .price-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 32px 24px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+    }
+    .price-card.featured {
+      border: 2px solid var(--primary);
+      box-shadow: 0 8px 30px rgba(16, 185, 129, 0.12);
+    }
+    .price-val {
+      font-size: 36px;
+      font-weight: 800;
+      margin-bottom: 6px;
+      letter-spacing: -0.02em;
+    }
+
+    /* Section 8: FAQ Section */
+    .faq-section {
+      max-width: 980px;
+      margin: 0 auto 96px;
+      padding: 0 24px;
+    }
+    .faq-item {
+      border-bottom: 1px solid var(--border);
+      padding: 24px 0;
+      cursor: pointer;
+    }
+    .faq-q {
+      font-size: 17px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .faq-a {
+      font-size: 14px;
+      color: var(--foreground-muted);
+      margin-top: 10px;
+      line-height: 1.6;
+    }
+
+    /* Section 9: Pre-Footer CTA */
+    .cta-banner-section {
+      max-width: 1240px;
+      margin: 0 auto 96px;
+      padding: 72px 24px;
+      background: #FAFAFC;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      text-align: center;
+      background-image: 
+        linear-gradient(to right, var(--grid-caro) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--grid-caro) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+    .cta-headline {
+      font-family: 'Instrument Serif', serif;
+      font-size: 52px;
+      font-weight: 400;
+      margin-bottom: 16px;
+      letter-spacing: -0.02em;
+    }
+    .cta-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 28px;
+    }
+
+    /* Section 10: Multi-Column Footer with Watermark */
     footer {
       border-top: 1px solid var(--border);
-      padding: 56px 24px;
-      background: rgba(248, 250, 252, 0.8);
-      backdrop-filter: blur(8px);
-      text-align: center;
+      padding: 80px 24px 48px;
+      background: #FFFFFF;
+      position: relative;
+      overflow: hidden;
+    }
+    .footer-watermark {
+      position: absolute;
+      bottom: -20px;
+      left: 0;
+      right: 0;
+      height: 200px;
+      background: radial-gradient(circle at 50% 100%, rgba(16, 185, 129, 0.04) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .footer-grid {
+      max-width: 1240px;
+      margin: 0 auto 56px;
+      display: grid;
+      grid-template-columns: 2fr repeat(5, 1fr);
+      gap: 32px;
+      position: relative;
+      z-index: 2;
+    }
+    .footer-col-title {
       font-size: 13px;
+      font-weight: 700;
+      color: var(--foreground);
+      margin-bottom: 16px;
+    }
+    .footer-links-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .footer-links-list a {
       color: var(--foreground-muted);
+      font-size: 13px;
+      text-decoration: none;
+      transition: color 0.15s ease;
+    }
+    .footer-links-list a:hover { color: var(--primary); }
+    .footer-bottom {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding-top: 32px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--foreground-subtle);
+      position: relative;
+      z-index: 2;
     }
   </style>
 </head>
@@ -655,7 +825,7 @@
 
   <div class="ambient-bg"></div>
 
-  <!-- Header -->
+  <!-- Header Nav -->
   <header>
     <div class="nav-inner">
       <a href="#" class="logo">
@@ -663,29 +833,29 @@
         <span>Nowing</span>
       </a>
       <ul class="nav-links">
-        <li><a href="#showcase">Sản phẩm</a></li>
-        <li><a href="#verticals">Ngành hàng</a></li>
-        <li><a href="#scrapers">Trình quét dữ liệu</a></li>
+        <li><a href="#showcase">Sản phẩm ▾</a></li>
+        <li><a href="#verticals">Ngành hàng ▾</a></li>
         <li><a href="#pricing">Bảng giá</a></li>
+        <li><a href="#faq">Câu hỏi thường gặp</a></li>
       </ul>
       <div class="nav-cta-group">
-        <a href="/login" class="btn btn-signin">Đăng nhập</a>
+        <a href="auth-split.html" class="btn btn-signin">Đăng nhập</a>
         <a href="/dashboard/1/chat" class="btn btn-start">Dùng thử miễn phí</a>
       </div>
     </div>
   </header>
 
-  <!-- Hero Section -->
+  <!-- 1. Hero Section -->
   <section class="hero">
     <h1>Tìm kiếm khách hàng mục tiêu.<br>Chỉ với một câu lệnh.</h1>
     <p>
-      Mô tả chân dung khách hàng hoặc bất động sản bạn cần tìm. AI của Nowing sẽ tự động quét web, chấm điểm độ khớp (Fit Score), trích xuất liên hệ xác thực và tự động tạo kịch bản tiếp cận qua Zalo/Telegram.
+      Mô tả chân dung khách hàng hoặc tiêu chí BĐS bạn cần tìm. AI của Nowing sẽ tự động quét web, chấm điểm độ khớp (Fit Score), trích xuất liên hệ xác thực và tự động tạo kịch bản tiếp cận qua Zalo/Telegram.
     </p>
 
     <!-- Mode switch pills -->
     <div class="input-mode-tabs">
       <button class="mode-pill-btn active">
-        <span>💬 Nhập yêu cầu tìm kiếm</span>
+        <span>💬 Nhập chân dung khách hàng</span>
       </button>
       <button class="mode-pill-btn">
         <span>🌐 Phân tích từ Website / Dự án</span>
@@ -697,13 +867,13 @@
     <div class="hero-input-card">
       <textarea placeholder="Tìm các chủ nhà bán gấp nhà phố Quận Tân Bình dưới 6 tỷ đăng trên Batdongsan trong 24h qua, loại bỏ tin môi giới..."></textarea>
       <div class="hero-input-toolbar">
-        <span style="font-size: 12px; color: var(--foreground-subtle);">📎 Đính kèm danh sách hoặc link</span>
+        <span style="font-size: 12px; color: var(--foreground-subtle);">📎 Đính kèm file danh sách hoặc link</span>
         <button class="btn-submit-arrow" onclick="window.location.href='/dashboard/1/chat'">↑</button>
       </div>
     </div>
   </section>
 
-  <!-- 3-Tab Product Showcase (Find / Enrich / Sequence) -->
+  <!-- 2. 3-Tab Product Showcase (Find / Enrich / Sequence) -->
   <section class="showcase-section" id="showcase">
     <div class="showcase-tabs">
       <button class="tab-trigger active" onclick="switchShowcaseTab(0)">1. Quét tìm Leads mới</button>
@@ -812,7 +982,20 @@
     </div>
   </section>
 
-  <!-- Verticals Section (Pills) -->
+  <!-- 3. Social Proof Logo Wall -->
+  <section class="social-proof-strip">
+    <div class="proof-label">ĐƯỢC TIN DÙNG BỞI CÁC DOANH NGHIỆP & SÀN GIAO DỊCH HÀNG ĐẦU</div>
+    <div class="logo-row">
+      <div class="proof-logo">SAIGON REALTY</div>
+      <div class="proof-logo">DAT XANH SERVICES</div>
+      <div class="proof-logo">TOPCV TALENT</div>
+      <div class="proof-logo">FINTECH VIETNAM</div>
+      <div class="proof-logo">CBRE AGENTS</div>
+      <div class="proof-logo">KHO SỈ TOÀN QUỐC</div>
+    </div>
+  </section>
+
+  <!-- 4. Verticals Section (Pills) -->
   <section class="verticals-section" id="verticals">
     <h2 class="section-headline">Thiết kế cho các ngành cần săn tìm khách hàng khó tiếp cận</h2>
     <p class="section-sub">Chỉ cần bạn mô tả chân dung khách hàng, Nowing sẽ tìm thấy họ trên mọi ngóc ngách internet.</p>
@@ -827,32 +1010,47 @@
     </div>
   </section>
 
-  <!-- 4 Metrics Strip -->
-  <section class="metrics-strip">
-    <div class="metric-box">
-      <div class="stat-num">500K+</div>
-      <div class="stat-label">Tin đăng & Hồ sơ / Ngày</div>
-      <div class="stat-desc">Quét trực tiếp từ Batdongsan, Chotot, Muaban, LinkedIn và Telegram theo thời gian thực.</div>
+  <!-- 5. Real-time Search & 4 Metrics Strip -->
+  <section class="sources-metrics-section">
+    <h2 class="section-headline">Chúng tôi quét toàn bộ internet. Không dùng database cũ.</h2>
+    <p class="section-sub">Mỗi câu lệnh tìm kiếm quét trực tiếp hơn 50+ nguồn dữ liệu trong thời gian thực.</p>
+    
+    <div class="sources-icons-row">
+      <div class="source-icon-badge">📍</div>
+      <div class="source-icon-badge">🏠</div>
+      <div class="source-icon-badge">💼</div>
+      <div class="source-icon-badge">✈️</div>
+      <div class="source-icon-badge">🌐</div>
+      <div class="source-icon-badge">💬</div>
+      <span style="font-size: 12px; color: var(--foreground-subtle); font-weight: 600;">+40 nguồn khác</span>
     </div>
-    <div class="metric-box">
-      <div class="stat-num">100%</div>
-      <div class="stat-label">Dữ liệu tươi mới (Real-time)</div>
-      <div class="stat-desc">Không dùng database cũ. Mọi kết quả đều được crawl và phân tích ngay khi bạn ra lệnh.</div>
-    </div>
-    <div class="metric-box">
-      <div class="stat-num">98%</div>
-      <div class="stat-label">Độ chính xác số điện thoại</div>
-      <div class="stat-desc">Hệ thống giải mã waterfall đa tầng, lọc số rác và số ảo trước khi bàn giao cho bạn.</div>
-    </div>
-    <div class="metric-box">
-      <div class="stat-num">0.1s</div>
-      <div class="stat-label">Đồng bộ Zero-cache</div>
-      <div class="stat-desc">Dữ liệu nhảy tức thì lên màn hình bảng tính mà không cần tải lại trang.</div>
+
+    <div class="metrics-strip">
+      <div class="metric-box">
+        <div class="stat-num">500K+</div>
+        <div class="stat-label">Tin đăng & Hồ sơ / Ngày</div>
+        <div class="stat-desc">Quét trực tiếp từ Batdongsan, Chotot, Muaban, LinkedIn và Telegram theo thời gian thực.</div>
+      </div>
+      <div class="metric-box">
+        <div class="stat-num">100%</div>
+        <div class="stat-label">Dữ liệu tươi mới (Real-time)</div>
+        <div class="stat-desc">Không dùng database cũ. Mọi kết quả đều được crawl và phân tích ngay khi bạn ra lệnh.</div>
+      </div>
+      <div class="metric-box">
+        <div class="stat-num">98%</div>
+        <div class="stat-label">Độ chính xác số điện thoại</div>
+        <div class="stat-desc">Hệ thống giải mã waterfall đa tầng, lọc số rác và số ảo trước khi bàn giao cho bạn.</div>
+      </div>
+      <div class="metric-box">
+        <div class="stat-num">0.1s</div>
+        <div class="stat-label">Đồng bộ Zero-cache</div>
+        <div class="stat-desc">Dữ liệu nhảy tức thì lên màn hình bảng tính mà không cần tải lại trang.</div>
+      </div>
     </div>
   </section>
 
-  <!-- Waterfall Enrichment Visualizer -->
-  <section class="waterfall-section" id="scrapers">
+  <!-- 6. Waterfall Enrichment Visualizer -->
+  <section class="waterfall-section">
     <h2 class="section-headline">Cơ chế Waterfall: Đào sâu đến số điện thoại thật</h2>
     <p class="section-sub">Mỗi số điện thoại và email được kiểm tra chéo qua nhiều tầng giải mã trước khi hiển thị trên bảng.</p>
 
@@ -897,15 +1095,173 @@
     </div>
   </section>
 
-  <!-- Footer -->
-  <footer>
-    <div style="max-width: 1240px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center;">
-      <div class="logo">
-        <div class="logo-icon" style="width: 24px; height: 24px; font-size: 12px;">🌿</div>
-        <span>NOWING AI</span>
+  <!-- 7. Pricing Section with Caro Grid -->
+  <section class="pricing-wrap" id="pricing">
+    <div class="pricing-intro">
+      <div style="font-size: 12px; font-weight: 700; color: var(--foreground-subtle); text-transform: uppercase; margin-bottom: 8px;">ĐỊNH GIÁ ĐƠN GIẢN</div>
+      <h2 class="section-headline">Bắt đầu miễn phí. Nâng cấp khi bạn cần thêm Credits.</h2>
+    </div>
+
+    <div class="pricing-grid">
+      <div class="price-card">
+        <div style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Miễn phí</div>
+        <div class="price-val">0đ <span style="font-size: 14px; font-weight: 500; color: var(--foreground-muted);">/mãi mãi</span></div>
+        <p style="font-size: 13px; color: var(--foreground-muted); margin-bottom: 20px;">Dành cho người dùng mới trải nghiệm sức mạnh AI.</p>
+        <a href="auth-split.html" class="btn btn-signin" style="margin-bottom: 20px;">Dùng thử ngay</a>
+        <ul style="list-style: none; font-size: 12px; color: var(--foreground-muted); display: flex; flex-direction: column; gap: 8px;">
+          <li>✓ 500 Credits trải nghiệm</li>
+          <li>✓ Quét Batdongsan cơ bản</li>
+          <li>✓ 1 Workspace, 30 dòng/bảng</li>
+        </ul>
       </div>
+
+      <div class="price-card featured">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-size: 14px; font-weight: 700; color: var(--primary);">Gói Phổ Biến (Pro)</span>
+          <span style="font-size: 10px; font-weight: 700; background: var(--primary-subtle); color: var(--primary-hover); padding: 2px 8px; border-radius: 4px;">RECOMMENDED</span>
+        </div>
+        <div class="price-val">2.490.000đ <span style="font-size: 14px; font-weight: 500; color: var(--foreground-muted);">/tháng</span></div>
+        <p style="font-size: 13px; color: var(--foreground-muted); margin-bottom: 20px;">Dành cho sàn BĐS, Headhunter và đội ngũ sales.</p>
+        <a href="auth-split.html" class="btn btn-start" style="background: var(--primary); border-color: var(--primary); margin-bottom: 20px;">Bắt đầu với Pro</a>
+        <ul style="list-style: none; font-size: 12px; color: var(--foreground-muted); display: flex; flex-direction: column; gap: 8px;">
+          <li>✓ <strong>12,000 Credits / tháng</strong></li>
+          <li>✓ Tự động gửi kịch bản <strong>Zalo OA</strong></li>
+          <li>✓ Quét nhóm Telegram & Chotot</li>
+          <li>✓ Deep Research & Provenance Canvas</li>
+          <li>✓ 5 Thành viên trong Workspace</li>
+        </ul>
+      </div>
+
+      <div class="price-card">
+        <div style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Doanh nghiệp (Enterprise)</div>
+        <div class="price-val">Tùy biến</div>
+        <p style="font-size: 13px; color: var(--foreground-muted); margin-bottom: 20px;">Hạ tầng riêng biệt cho quy mô dữ liệu lớn.</p>
+        <a href="auth-split.html" class="btn btn-signin" style="margin-bottom: 20px;">Liên hệ tư vấn</a>
+        <ul style="list-style: none; font-size: 12px; color: var(--foreground-muted); display: flex; flex-direction: column; gap: 8px;">
+          <li>✓ Hạn mức Credits không giới hạn</li>
+          <li>✓ Dedicated Proxy & Scraper Pool</li>
+          <li>✓ Tích hợp Webhook CRM riêng biệt</li>
+          <li>✓ Cam kết SLA Uptime 99.9%</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. FAQ Section -->
+  <section class="faq-section" id="faq">
+    <h2 class="section-headline">Câu hỏi thường gặp</h2>
+    
+    <div class="faq-item">
+      <div class="faq-q">
+        <span>Nowing khác gì so với việc tự tra cứu trên Batdongsan hay Chotot?</span>
+        <span>▾</span>
+      </div>
+      <div class="faq-a">
+        Nowing tự động hóa 100% việc lọc tin trùng lặp, loại bỏ tin môi giới ảo, chấm điểm độ khớp (Fit Score) theo đúng tiêu chí của bạn và giải mã số điện thoại chính chủ chỉ trong vài giây thay vì phải mở hàng trăm tab thủ công.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">
+        <span>Hệ thống tính phí Credits như thế nào?</span>
+        <span>▾</span>
+      </div>
+      <div class="faq-a">
+        Mỗi thao tác đều minh bạch: Quét tin đăng và xuất bảng là miễn phí, giải mã số điện thoại xác thực tiêu tốn 1.5 credits (~350đ), và chạy phân tích Deep Research tiêu tốn 5 credits.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">
+        <span>Nowing có hỗ trợ gửi tin nhắn Zalo tự động không?</span>
+        <span>▾</span>
+      </div>
+      <div class="faq-a">
+        Có. Nowing kết nối trực tiếp với Zalo OA của bạn để gửi kịch bản chào giá hoặc chăm sóc khách hàng cá nhân hóa theo từng tin đăng đã được duyệt.
+      </div>
+    </div>
+  </section>
+
+  <!-- 9. Pre-Footer CTA -->
+  <section class="cta-banner-section">
+    <h2 class="cta-headline">Tìm kiếm khách hàng mục tiêu tiếp theo của bạn.</h2>
+    <p style="color: var(--foreground-muted); font-size: 16px;">Gia nhập cùng hàng trăm sàn giao dịch và chuyên gia đang tăng tốc bán hàng bằng AI.</p>
+    <div class="cta-actions">
+      <a href="auth-split.html" class="btn btn-start" style="padding: 12px 28px; font-size: 15px; background: var(--primary); border-color: var(--primary);">Dùng thử miễn phí</a>
+      <a href="#showcase" class="btn btn-signin" style="padding: 12px 24px; font-size: 15px;">Xem demo trực quan</a>
+    </div>
+  </section>
+
+  <!-- 10. Multi-Column Footer -->
+  <footer>
+    <div class="footer-watermark"></div>
+    <div class="footer-grid">
       <div>
-        © 2026 Nowing Inc. Chuẩn hóa theo phong cách Origami.chat và Google Labs DESIGN.md.
+        <div class="logo" style="margin-bottom: 12px;">
+          <div class="logo-icon" style="width: 26px; height: 26px; font-size: 13px;">🌿</div>
+          <span>Nowing</span>
+        </div>
+        <p style="font-size: 13px; color: var(--foreground-muted); line-height: 1.6; max-width: 260px;">
+          Nền tảng trí tuệ dữ liệu & AI Lead Intelligence hàng đầu cho thị trường Việt Nam.
+        </p>
+      </div>
+
+      <div>
+        <div class="footer-col-title">Sản phẩm</div>
+        <ul class="footer-links-list">
+          <li><a href="#">AI Lead Prospecting</a></li>
+          <li><a href="#">Bộ giải mã số điện thoại</a></li>
+          <li><a href="#">Tự động hóa Zalo OA</a></li>
+          <li><a href="#">Deep Research Canvas</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="footer-col-title">Ngành hàng</div>
+        <ul class="footer-links-list">
+          <li><a href="#">Bất động sản Nhà phố</a></li>
+          <li><a href="#">Đất nền & Dự án</a></li>
+          <li><a href="#">Tuyển dụng IT</a></li>
+          <li><a href="#">Nguồn hàng sỉ & F&B</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="footer-col-title">Trình quét</div>
+        <ul class="footer-links-list">
+          <li><a href="#">Batdongsan.com.vn</a></li>
+          <li><a href="#">Muaban.net</a></li>
+          <li><a href="#">Chotot.com</a></li>
+          <li><a href="#">Nhóm Telegram</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="footer-col-title">Tài nguyên</div>
+        <ul class="footer-links-list">
+          <li><a href="pricing-page.html">Bảng giá</a></li>
+          <li><a href="#">Tài liệu Hướng dẫn</a></li>
+          <li><a href="#">API Docs (Beta)</a></li>
+          <li><a href="#">Changelog</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="footer-col-title">Pháp lý & Cty</div>
+        <ul class="footer-links-list">
+          <li><a href="#">Về chúng tôi</a></li>
+          <li><a href="#">Điều khoản sử dụng</a></li>
+          <li><a href="#">Bảo mật dữ liệu</a></li>
+          <li><a href="#">Liên hệ hỗ trợ</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <span>© 2026 Nowing Inc. Bản quyền thuộc về Luisphan. Thiết kế theo tiêu chuẩn Google Labs DESIGN.md.</span>
+      <div style="display: flex; gap: 16px;">
+        <span>Zalo OA: Nowing Official</span>
+        <span>Telegram: @nowing_support</span>
       </div>
     </div>
   </footer>
