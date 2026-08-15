@@ -1,6 +1,6 @@
 # Story 16.5: National Public Procurement & Tender Intelligence (muasamcong.mpi.gov.vn)
 
-Status: review-ready
+Status: done
 
 <!-- Governed by architecture-muasamcong-procurement-2026-08-15 (AD-PROC-1 to AD-PROC-8) -->
 
@@ -28,6 +28,19 @@ So that I can identify high-value bidding opportunities, track bid deadlines, an
 - **AD-PROC-6**: Idempotent Ingestion with Composite Bid ID `(bid_no, bid_turn_no)`
 - **AD-PROC-7**: AI Agent Capability Tools (`procurement_search_tenders`, `procurement_summarize_hsmt`)
 - **AD-PROC-8**: Live Countdown Timer & Deadline Status Tracking ($< 48$h urgency threshold)
+
+## Review Findings & Fixes Applied (2026-08-15)
+
+- [x] RF-1: SSRF Protection for `dossier_url` — Whitelisted `muasamcong.mpi.gov.vn`, `egp.mpi.gov.vn`, blocked internal cloud metadata/private IPs (`validate_dossier_url`).
+- [x] RF-2: AWS S3 Multipart 5MB Part Buffering — Enforced `MIN_S3_PART_SIZE_BYTES = 5 * 1024 * 1024` buffer while maintaining 128KB HTTP stream (peak RAM $\le 32$MB).
+- [x] RF-3: Timezone UTC+7 — Corrected `_parse_iso_datetime` to convert naive Vietnam local timestamps (+07:00) to UTC instead of naive assignment.
+- [x] RF-4: HNSW Vector Indexes — Added `Index("idx_procurement_chunk_embedding_hnsw", "embedding", postgresql_using="hnsw", postgresql_ops={"embedding": "vector_cosine_ops"})`.
+- [x] RF-5: VND Dot Price Parsing — Handled dot-formatted currency (`45.000.000.000 VND`).
+- [x] RF-6: Non-blocking CPU PDF Parsing — Added `extract_text_from_pdf_stream_async` via `asyncio.to_thread`.
+- [x] RF-7: Infinite Loop Guard — Set `step_size = max(char_chunk_size - char_overlap, 1)`.
+- [x] RF-8: ZIP Dossier Support — Added auto-detection and extraction for ZIP dossiers.
+- [x] RF-9: Price & Bid Validation — Added `min_price <= max_price` validator and string bounds.
+- [x] RF-10: Degradation Status — Added `degraded` and `degradation_reason` to `ProcurementSummarizeOutput`.
 
 ## Tasks / Subtasks
 
@@ -63,4 +76,5 @@ So that I can identify high-value bidding opportunities, track bid deadlines, an
 
 ### References
 - [Architecture Spine: _bmad-output/planning-artifacts/architecture/architecture-muasamcong-procurement-2026-08-15/ARCHITECTURE-SPINE.md]
+
 

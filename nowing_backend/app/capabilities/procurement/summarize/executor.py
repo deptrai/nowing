@@ -55,6 +55,12 @@ def build_procurement_summarize_executor(
 
         raw_text = "\n".join(raw_text_parts)
 
+        degraded = False
+        degradation_reason = None
+        if not tender_item:
+            degraded = True
+            degradation_reason = f"Không tìm thấy thông tin gói thầu {input_data.bid_no} ({input_data.bid_turn_no}) hoặc cổng e-GP phản hồi chậm."
+
         # 2. Extract 4 criteria + countdown
         summary = await _summarizer.summarize_hsmt(
             bid_no=input_data.bid_no,
@@ -74,6 +80,8 @@ def build_procurement_summarize_executor(
             qualification=summary.qualification,
             countdown=summary.countdown,
             summary_notes=summary.summary_notes,
+            degraded=degraded,
+            degradation_reason=degradation_reason,
         )
 
     return execute_procurement_summarize

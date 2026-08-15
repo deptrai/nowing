@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import time
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta, timezone
 from typing import Any
 from urllib.parse import urljoin
 
@@ -17,6 +18,9 @@ from app.proprietary.platforms.muasamcong.schemas import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Vietnam Standard Time (UTC+7)
+VN_TZ = timezone(timedelta(hours=7))
 
 # e-GP v2.0 REST Endpoints
 DEFAULT_BASE_URL = "https://muasamcong.mpi.gov.vn"
@@ -60,28 +64,39 @@ class MuasamcongTokenBucket:
             await asyncio.sleep(min(sleep_duration, 5.0))
 
 
+_GLOBAL_TOKEN_BUCKET = MuasamcongTokenBucket()
+
+
 def _parse_iso_datetime(val: Any) -> datetime | None:
-    """Parses various date/time formats into UTC datetime."""
+    """Parses various date/time formats into UTC datetime, treating naive timestamps as Vietnam time (+07:00)."""
     if not val:
         return None
     if isinstance(val, datetime):
-        return val if val.tzinfo else val.replace(tzinfo=UTC)
+        return val.astimezone(UTC) if val.tzinfo else val.replace(tzinfo=VN_TZ).astimezone(UTC)
     if isinstance(val, (int, float)):
         # Handle unix timestamps in ms or s
         ts = val / 1000.0 if val > 1e11 else val
         return datetime.fromtimestamp(ts, tz=UTC)
     if isinstance(val, str):
+        val_clean = val.strip()
         try:
             # Handle standard ISO formats
-            dt = datetime.fromisoformat(val.replace("Z", "+00:00"))
-            return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
+            dt = datetime.fromisoformat(val_clean.replace("Z", "+00:00"))
+            return dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=VN_TZ).astimezone(UTC)
         except ValueError:
             pass
-        # Try custom e-GP format: DD/MM/YYYY HH:MM or YYYY-MM-DD HH:MM:SS
-        for fmt in ("%d/%m/%Y %H:%M", "%d/%m/%Y %H:%M:%S", "%Y-%m-%d %H:%M:%S"):
+        # Try custom e-GP formats
+        for fmt in (
+            "%d/%m/%Y %H:%M:%S",
+            "%d/%m/%Y %H:%M",
+            "%d/%m/%Y",
+            "%Y-%m-%d %H:%M:%S",
+            "%Y-%m-%d %H:%M",
+            "%Y-%m-%d",
+        ):
             try:
-                dt = datetime.strptime(val, fmt)
-                return dt.replace(tzinfo=UTC)
+                dt = datetime.strptime(val_clean, fmt)
+                return dt.replace(tzinfo=VN_TZ).astimezone(UTC)
             except ValueError:
                 continue
     return None
@@ -95,14 +110,12 @@ class MuasamcongScraper:
         base_url: str = DEFAULT_BASE_URL,
         proxy_url: str | None = None,
         timeout_seconds: float = 15.0,
+        rate_limiter: MuasamcongTokenBucket | None = None,
     ) -> None:
         self.base_url = base_url
         self.proxy_url = proxy_url
         self.timeout_seconds = timeout_seconds
-        self.rate_limiter = MuasamcongTokenBucket(
-            rate=DEFAULT_REFILL_RATE,
-            capacity=DEFAULT_CAPACITY,
-        )
+        self.rate_limiter = rate_limiter or _GLOBAL_TOKEN_BUCKET
 
     def _get_headers(self) -> dict[str, str]:
         return {
@@ -127,14 +140,24 @@ class MuasamcongScraper:
         bid_type = raw.get("bidType") or raw.get("bid_type")
         funding_source = raw.get("fundingSource") or raw.get("funding_source")
 
-        # Normalize price
+        # Normalize price with support for VND dot separators (e.g. 45.000.000.000 VND)
         raw_price = raw.get("bidPrice") or raw.get("bid_price") or raw.get("totalAmount")
         bid_price: float | None = None
         if raw_price is not None:
-            try:
-                bid_price = float(str(raw_price).replace(",", "").strip())
-            except (ValueError, TypeError):
-                bid_price = None
+            if isinstance(raw_price, (int, float)):
+                bid_price = float(raw_price)
+            else:
+                try:
+                    cleaned = re.sub(r"[^\d.,]", "", str(raw_price)).strip()
+                    if "." in cleaned and "," in cleaned:
+                        cleaned = cleaned.replace(".", "").replace(",", ".")
+                    elif cleaned.count(".") > 1:
+                        cleaned = cleaned.replace(".", "")
+                    elif cleaned.count(",") > 1:
+                        cleaned = cleaned.replace(",", "")
+                    bid_price = float(cleaned) if cleaned else None
+                except (ValueError, TypeError):
+                    bid_price = None
 
         bid_open_date = _parse_iso_datetime(raw.get("bidOpenDate") or raw.get("bid_open_date"))
         bid_closing_at = _parse_iso_datetime(raw.get("bidCloseDate") or raw.get("bid_close_date") or raw.get("bid_closing_at"))
@@ -164,6 +187,7 @@ class MuasamcongScraper:
             raw_specs=raw_specs,
             status=status,
         )
+
 
     async def search_tenders(
         self,

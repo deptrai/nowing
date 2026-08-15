@@ -60,6 +60,13 @@ class ProcurementTender(BaseModel, TimestampMixin):
         UniqueConstraint("bid_no", "bid_turn_no", name="uq_procurement_tender"),
         Index("idx_procurement_bid_closing", "bid_closing_at"),
         Index("idx_procurement_field", "field"),
+        Index(
+            "idx_procurement_tender_embedding_hnsw",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_with={"m": 16, "ef_construction": 64},
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
     )
 
 
@@ -72,7 +79,6 @@ class ProcurementTenderChunk(BaseModel, TimestampMixin):
         Integer,
         ForeignKey("procurement_tenders.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     chunk_index = Column(Integer, nullable=False)
     content = Column(Text, nullable=False)
@@ -83,4 +89,11 @@ class ProcurementTenderChunk(BaseModel, TimestampMixin):
 
     __table_args__ = (
         Index("idx_procurement_tender_chunk_order", "tender_id", "chunk_index"),
+        Index(
+            "idx_procurement_chunk_embedding_hnsw",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_with={"m": 16, "ef_construction": 64},
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
     )
