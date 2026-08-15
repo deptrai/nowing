@@ -412,7 +412,6 @@ class Permission(StrEnum):
     CRM_WRITE = "crm:write"
     CRM_SYNC = "crm:sync"
     CRM_DISCONNECT = "crm:disconnect"
-
     # Signal detection (Story 21.1)
     SIGNALS_READ = "signals:read"
     SIGNALS_DETECT = "signals:detect"

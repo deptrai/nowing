@@ -87,6 +87,8 @@ MCP_TOOL_CATALOG: list[dict[str, str]] = [
     {"name": "nowing_list_lead_scores", "group": McpToolGroup.LEAD_INTELLIGENCE},
     {"name": "nowing_detect_signal", "group": McpToolGroup.LEAD_INTELLIGENCE},
     {"name": "nowing_list_signals", "group": McpToolGroup.LEAD_INTELLIGENCE},
+    {"name": "nowing_enrich_lead", "group": McpToolGroup.LEAD_INTELLIGENCE},
+    {"name": "nowing_list_contacts", "group": McpToolGroup.LEAD_INTELLIGENCE},
     {"name": "nowing_connect_crm", "group": McpToolGroup.LEAD_INTELLIGENCE},
     {"name": "nowing_list_crm_connections", "group": McpToolGroup.LEAD_INTELLIGENCE},
     {"name": "nowing_sync_crm", "group": McpToolGroup.LEAD_INTELLIGENCE},

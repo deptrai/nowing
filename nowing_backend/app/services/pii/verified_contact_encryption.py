@@ -29,8 +29,6 @@ class VerifiedContactDict(TypedDict, total=False):  # pragma: no mutate
     verification_status: str
     confidence: float
     source_provider: str
-    consent_status: str | None
-    legal_basis: str | None
 
 
 _PII_FIELDS = ("name", "title", "email", "phone")
@@ -60,7 +58,7 @@ class VerifiedContactEncryption:
         """True when the value looks like a Fernet ciphertext."""
         return self._cipher.is_encrypted(value or "")
 
-    def encrypt_contact(self, contact: VerifiedContactDict | dict) -> dict:
+    def encrypt_contact(self, contact: VerifiedContactDict) -> VerifiedContactDict:
         """Return a copy of ``contact`` with PII fields encrypted in place."""
         encrypted = dict(contact)
         for field in _PII_FIELDS:
@@ -69,7 +67,7 @@ class VerifiedContactEncryption:
                 encrypted[field] = self.encrypt(value)
         return encrypted
 
-    def decrypt_contact(self, contact: VerifiedContactDict | dict) -> dict:
+    def decrypt_contact(self, contact: VerifiedContactDict) -> VerifiedContactDict:
         """Return a copy of ``contact`` with PII fields decrypted."""
         decrypted = dict(contact)
         for field in _PII_FIELDS:

@@ -47,8 +47,8 @@ class VerifiedContactRead(BaseModel):
     """A verified contact with decrypted PII for authorized callers."""
 
     id: UUID
-    lead_id: UUID | None = None
-    enrichment_request_id: UUID | None = None
+    lead_id: UUID
+    enrichment_request_id: UUID
     name: str | None = None
     title: str | None = None
     email: str | None = None
@@ -66,7 +66,6 @@ class VerifiedContactRead(BaseModel):
 class EnrichmentOutput(BaseModel):
     """Output of the contact-enrichment capability (AC-9/AC-10)."""
 
-    id: UUID | None = None
     enrichment_request_id: UUID | None = None
     lead_id: UUID | None = None
     status: str = "pending"
@@ -75,7 +74,6 @@ class EnrichmentOutput(BaseModel):
     verified_contact_ids: list[UUID] = Field(default_factory=list)
     degraded: bool = False
     degradation_reasons: list[str] = Field(default_factory=list)
-    created_at: datetime | None = None
 
 
 class EnrichmentCostOutput(BaseModel):

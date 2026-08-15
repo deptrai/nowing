@@ -1676,7 +1676,6 @@ class Config:
     CRM_SYNC_TOKEN_REFRESH_LEEWAY_SECONDS = max(
         0, _env_int("CRM_SYNC_TOKEN_REFRESH_LEEWAY_SECONDS", 300)
     )
-
     # Validation Checks
     # Check embedding dimension
     if (

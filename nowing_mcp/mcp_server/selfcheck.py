@@ -83,6 +83,8 @@ EXPECTED_TOOLS = {
     "nowing_list_lead_scores",
     "nowing_detect_signal",
     "nowing_list_signals",
+    "nowing_enrich_lead",
+    "nowing_list_contacts",
     "nowing_connect_crm",
     "nowing_list_crm_connections",
     "nowing_sync_crm",

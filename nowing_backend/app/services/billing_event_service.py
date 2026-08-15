@@ -57,14 +57,14 @@ class BillingEventService:
             cost_micros=cost_micros,
         )
 
-    @classmethod
     async def record_contact_enrichment(
-        cls,
+        self,
         session: AsyncSession,
         *,
         enrichment_request_id: UUID,
         workspace_id: int,
         client_id: str | None = None,
+
         user_id: UUID,
         cost_micros: int,
     ) -> BillingEvent:

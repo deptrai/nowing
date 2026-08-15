@@ -28,6 +28,7 @@ import app.capabilities.walmart
 import app.capabilities.web
 import app.capabilities.youtube
 import app.lead_intelligence.scoring.capability  # noqa: F401
+import app.lead_intelligence.enrichment.capability  # noqa: F401
 from app.automations.api import router as automations_router
 from app.capabilities.core.access.rest import build_capabilities_router
 from app.file_storage.api import router as file_storage_router
@@ -89,6 +90,7 @@ from .image_generation_routes import router as image_generation_router
 from .incentive_tasks_routes import router as incentive_tasks_router
 from .jira_add_connector_route import router as jira_add_connector_router
 from .lead_scoring_routes import router as lead_scoring_router
+from .enrichment_routes import router as enrichment_router
 from .linear_add_connector_route import router as linear_add_connector_router
 from .logs_routes import router as logs_router
 from .luma_add_connector_route import router as luma_add_connector_router
@@ -124,6 +126,7 @@ router = APIRouter()
 
 router.include_router(workspaces_router)
 router.include_router(lead_scoring_router)
+router.include_router(enrichment_router)
 router.include_router(crm_router, prefix="/workspaces")
 router.include_router(crm_oauth_router)
 router.include_router(canonical_entities_router)  # Canonical merge/revert/review
