@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from types import SimpleNamespace
 from typing import Any
 from uuid import UUID, uuid4
@@ -147,9 +146,10 @@ def _patch_async_dependencies(monkeypatch: pytest.MonkeyPatch) -> None:
     ``.env.local``. Provide a deterministic Fernet key so
     ``VerifiedContactEncryption`` does not fail to initialize.
     """
-    if not os.environ.get("SECRET_KEY"):
-        os.environ["SECRET_KEY"] = Fernet.generate_key().decode()
-    monkeypatch.setenv("SECRET_KEY", os.environ["SECRET_KEY"])
+    from app.config import config as app_config
+
+    secret = Fernet.generate_key().decode()
+    monkeypatch.setattr(app_config, "SECRET_KEY", secret)
 
     async def _noop_create_memory(*args: Any, **kwargs: Any) -> Any:
         return SimpleNamespace(id=1)
@@ -332,10 +332,14 @@ class TestRunWaterfall:
         request: _FakeEnrichmentRequest | None = None,
         workspace: _FakeWorkspace | None = None,
     ) -> _FakeSession:
-        session = _FakeSession()
+        lead = lead or _FakeLead()
+        session = _FakeSession(rows=[lead])
         session.register("Workspace", workspace or _FakeWorkspace())
-        session.register("Lead", lead or _FakeLead())
-        session.register("EnrichmentRequest", request or _FakeEnrichmentRequest())
+        session.register("Lead", lead)
+        session.register(
+            "EnrichmentRequest",
+            request or _FakeEnrichmentRequest(lead_id=lead.id),
+        )
         return session
 
     async def test_waterfall_completes_and_encrypts_pii(self, monkeypatch) -> None:

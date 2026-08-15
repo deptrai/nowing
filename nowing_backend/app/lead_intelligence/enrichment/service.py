@@ -169,7 +169,7 @@ class EnrichmentService:
         await session.flush()
 
         lead = await session.get(Lead, request.lead_id)
-        if not lead is None:
+        if lead is None:
             request.status = "completed"
             request.provider_results = {
                 "provider": "none",

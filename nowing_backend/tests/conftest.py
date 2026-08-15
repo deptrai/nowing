@@ -43,10 +43,10 @@ if os.environ.get("COSMIC_RAY") == "1":
             return str.split
 
         def embed(self, _text):
-            return [0.0] * self.dimension
+            return [0.1] * self.dimension
 
         def embed_batch(self, texts):
-            return [[0.0] * self.dimension for _ in texts]
+            return [[0.1] * self.dimension for _ in texts]
 
     class _CosmicRayAutoEmbeddings:
         @classmethod
