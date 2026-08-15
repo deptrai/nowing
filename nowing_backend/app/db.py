@@ -4502,6 +4502,80 @@ class Lead(Base, TimestampMixin):
         cascade="all, delete-orphan",
     )
 
+    table_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("workspace_tables.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    table = relationship("WorkspaceTable", back_populates="leads")
+
+
+class WorkspaceTable(Base, TimestampMixin):
+    """Saved lead table view with filter preset and column config (Story 21.13)."""
+
+    __tablename__ = "workspace_tables"
+    __table_args__ = (
+        Index("ix_workspace_tables_workspace_created", "workspace_id", "created_at"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name = Column(String(200), nullable=False)
+    icon = Column(
+        String(50), nullable=False, default="table", server_default=text("'table'")
+    )
+    filter_preset = Column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+    columns_config = Column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+    updated_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
+    workspace = relationship("Workspace")
+    leads = relationship("Lead", back_populates="table")
+
+
+class ExportJob(Base, TimestampMixin):
+    """Lead export batch job for CSV / Lark / Google Sheets (Story 21.13)."""
+
+    __tablename__ = "export_jobs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    table_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("workspace_tables.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    export_type = Column(String(50), nullable=False)
+    status = Column(
+        String(50), nullable=False, default="pending", server_default=text("'pending'")
+    )
+    total_rows = Column(Integer, nullable=False, default=0, server_default="0")
+    processed_rows = Column(Integer, nullable=False, default=0, server_default="0")
+    target_url = Column(Text, nullable=True)
+    error_message = Column(Text, nullable=True)
+    config = Column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+    updated_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
+    workspace = relationship("Workspace")
+    table = relationship("WorkspaceTable")
+
 
 class LeadScore(Base, TimestampMixin):
     """Composite lead score snapshot (Story 21.2)."""

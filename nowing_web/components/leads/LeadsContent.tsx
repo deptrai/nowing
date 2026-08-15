@@ -1,17 +1,51 @@
 "use client";
 
 import { RefreshCw, Search, Sparkles, Users } from "lucide-react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import type React from "react";
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import type { FilterPresets } from "@/contracts/types/leads.types";
 import { useLeads } from "@/lib/hooks/use-leads";
+import { useWorkspaceTables } from "@/lib/hooks/use-workspace-tables";
 import { CompanyGraphDrawer } from "./CompanyGraphDrawer";
 import { LeadCard } from "./LeadCard";
+import { MultiTableTabs } from "./multi-table-tabs";
 import { ReverseIcpModal } from "./ReverseIcpModal";
+
+// Map LLM-returned platform names to canonical source filter values.
+const PLATFORM_MAP: Record<string, string> = {
+	facebook: "facebook",
+	telegram: "telegram",
+	batdongsan: "batdongsan",
+	"batdongsan.com.vn": "batdongsan",
+	topcv: "topcv",
+	"topcv.vn": "topcv",
+	tender: "tender",
+	"mua sắm công": "tender",
+};
+
+const resolvePlatform = (platform: string | undefined): string => {
+	if (!platform) return "all";
+	const raw = platform.toLowerCase().trim();
+	return PLATFORM_MAP[raw] || "all";
+};
+
+const buildSearchQuery = (presets: FilterPresets): string => {
+	const parts: string[] = [];
+	if (presets.target_industries && presets.target_industries.length > 0) {
+		parts.push(...presets.target_industries);
+	}
+	if (presets.locations && presets.locations.length > 0) {
+		parts.push(...presets.locations);
+	}
+	return parts.join(" ");
+};
 
 export const LeadsContent: React.FC = () => {
 	const params = useParams();
+	const router = useRouter();
+	const searchParams = useSearchParams();
 	const workspaceId = params?.workspace_id ? String(params.workspace_id) : "1";
 
 	const [sourceFilter, setSourceFilter] = useState<string>("all");
@@ -20,6 +54,7 @@ export const LeadsContent: React.FC = () => {
 	const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
 	const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
 	const [isReverseIcpOpen, setIsReverseIcpOpen] = useState<boolean>(false);
+	const [activeTableId, setActiveTableId] = useState<string | null>(searchParams.get("table"));
 
 	const {
 		leads: apiLeads,
@@ -36,6 +71,93 @@ export const LeadsContent: React.FC = () => {
 	// Server-side filtered leads from PostgreSQL API
 	const displayLeads = apiLeads || [];
 
+	const {
+		tables,
+		createTable,
+		updateTable,
+		deleteTable,
+		refetch: refetchTables,
+	} = useWorkspaceTables(workspaceId);
+
+	const currentFilterPreset = useMemo(
+		() => ({
+			source: sourceFilter !== "all" ? sourceFilter : undefined,
+			status: statusFilter !== "all" ? statusFilter : undefined,
+			search: searchQuery || undefined,
+		}),
+		[sourceFilter, statusFilter, searchQuery]
+	);
+
+	const applyFilterPreset = useCallback((preset: Record<string, unknown> | undefined) => {
+		const p = preset || {};
+		setSourceFilter(typeof p.source === "string" ? p.source : "all");
+		setStatusFilter(typeof p.status === "string" ? p.status : "all");
+		setSearchQuery(typeof p.search === "string" ? p.search : "");
+	}, []);
+
+	const syncUrlToTable = (tableId: string | null) => {
+		if (tableId) {
+			router.replace(`/dashboard/${workspaceId}/leads?table=${tableId}`, { scroll: false });
+		} else {
+			router.replace(`/dashboard/${workspaceId}/leads`, { scroll: false });
+		}
+	};
+
+	const handleSelectTable = (tableId: string | null) => {
+		setActiveTableId(tableId);
+		if (tableId) {
+			const table = tables.find((t) => t.id === tableId);
+			if (table) {
+				applyFilterPreset(table.filter_preset);
+			} else {
+				toast.error("Không tìm thấy bảng đã chọn");
+			}
+		} else {
+			applyFilterPreset({});
+		}
+		syncUrlToTable(tableId);
+	};
+
+	const handleCreateTable = async (name: string, icon: string) => {
+		const created = await createTable({
+			name,
+			icon,
+			filter_preset: currentFilterPreset,
+		});
+		if (created) {
+			setActiveTableId(created.id);
+			syncUrlToTable(created.id);
+			toast.success(`Đã tạo bảng "${created.name}"`);
+		}
+	};
+
+	const handleUpdateTable = async (tableId: string, name: string) => {
+		const updated = await updateTable(tableId, { name });
+		if (updated) {
+			toast.success("Đã cập nhật tên bảng");
+		}
+	};
+
+	const handleDeleteTable = async (tableId: string) => {
+		const ok = await deleteTable(tableId);
+		if (ok) {
+			if (activeTableId === tableId) {
+				handleSelectTable(null);
+			}
+			toast.success("Đã xóa bảng");
+		}
+	};
+
+	// Apply table filter when navigating directly with ?table={id}
+	useEffect(() => {
+		if (activeTableId && tables.length > 0) {
+			const table = tables.find((t) => t.id === activeTableId);
+			if (table) {
+				applyFilterPreset(table.filter_preset);
+			}
+		}
+	}, [activeTableId, tables, applyFilterPreset]);
+
 	const handleOpenGraph = (companyName: string) => {
 		setSelectedCompany(companyName);
 		setIsDrawerOpen(true);
@@ -47,35 +169,32 @@ export const LeadsContent: React.FC = () => {
 	};
 
 	const handleApplyIcpPresets = (presets: FilterPresets) => {
-		// Map LLM-returned platform names to the canonical source filter values.
-		const platformMap: Record<string, string> = {
-			facebook: "facebook",
-			telegram: "telegram",
-			batdongsan: "batdongsan",
-			"batdongsan.com.vn": "batdongsan",
-			topcv: "topcv",
-			"topcv.vn": "topcv",
-			tender: "tender",
-			"mua sắm công": "tender",
-		};
-		if (presets.platforms && presets.platforms.length > 0) {
-			const raw = presets.platforms[0].toLowerCase().trim();
-			setSourceFilter(platformMap[raw] || "all");
-		}
-		const queryParts: string[] = [];
-		if (presets.target_industries && presets.target_industries.length > 0) {
-			queryParts.push(...presets.target_industries);
-		}
-		if (presets.locations && presets.locations.length > 0) {
-			queryParts.push(...presets.locations);
-		}
-		if (queryParts.length > 0) {
-			setSearchQuery(queryParts.join(" "));
-		}
+		const mappedSource = resolvePlatform(presets.platforms?.[0]);
+		setSourceFilter(mappedSource);
+		setSearchQuery(buildSearchQuery(presets));
 	};
 
-	const handleCreateTableFromIcp = async (_name: string, _icon: string, presets: FilterPresets) => {
+	const handleCreateTableFromIcp = async (name: string, icon: string, presets: FilterPresets) => {
 		handleApplyIcpPresets(presets);
+		const icpFilterPreset = {
+			source:
+				resolvePlatform(presets.platforms?.[0]) !== "all"
+					? resolvePlatform(presets.platforms?.[0])
+					: undefined,
+			search: buildSearchQuery(presets) || undefined,
+		};
+		const created = await createTable({
+			name,
+			icon,
+			filter_preset: icpFilterPreset,
+		});
+		if (created) {
+			setActiveTableId(created.id);
+			syncUrlToTable(created.id);
+			toast.success(`Đã tạo tab bảng "${created.name}" từ ICP`);
+		} else {
+			toast.error("Tạo tab bảng thất bại");
+		}
 	};
 
 	return (
@@ -114,7 +233,10 @@ export const LeadsContent: React.FC = () => {
 
 					<button
 						type="button"
-						onClick={() => refetch()}
+						onClick={() => {
+							refetch();
+							refetchTables();
+						}}
 						className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 transition-colors border border-zinc-700"
 					>
 						<RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
@@ -122,6 +244,16 @@ export const LeadsContent: React.FC = () => {
 					</button>
 				</div>
 			</div>
+
+			{/* Multi-Table Tabs */}
+			<MultiTableTabs
+				tables={tables}
+				activeTableId={activeTableId}
+				onSelectTable={handleSelectTable}
+				onCreateTable={handleCreateTable}
+				onUpdateTable={handleUpdateTable}
+				onDeleteTable={handleDeleteTable}
+			/>
 
 			{/* Filter & Search Bar */}
 			<div className="grid grid-cols-1 md:grid-cols-12 gap-3 p-3.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 backdrop-blur-sm">

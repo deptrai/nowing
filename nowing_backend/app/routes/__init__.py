@@ -124,12 +124,14 @@ from .team_memory_routes import router as team_memory_router
 from .teams_add_connector_route import router as teams_add_connector_router
 from .usage_routes import router as usage_router
 from .video_presentations_routes import router as video_presentations_router
+from .workspace_tables_routes import router as workspace_tables_router
 from .workspaces_routes import router as workspaces_router
 from .youtube_routes import router as youtube_router
 
 router = APIRouter()
 
 router.include_router(workspaces_router)
+router.include_router(workspace_tables_router)
 router.include_router(lead_scoring_router)
 router.include_router(leads_router)
 router.include_router(outbound_router)

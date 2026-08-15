@@ -9,6 +9,13 @@ _Curated long-term knowledge for Nowing E2E Browser Testing._
 ## Flaky Selectors & DOM Patterns
 - **Header Auth Controls:** The `Sign In` link in the main navigation uses `hidden md:block`. When testing with browser MCP tools, always ensure viewport is set to desktop size (e.g. 1440x900 via `browser_resize`) or click the `Get Started` hero link if testing on small viewports.
 - **Chat Prompt & Turn Trace:** Chat prompt input is accessible via `getByRole('textbox')`. Tool trace details and execution steps expand via `getByRole('button', { name: 'Reviewed' })` or `getByRole('button', { name: 'Open agent action log' })`. Modals can be safely dismissed with `keyboard.press('Escape')`.
+- **1-Click Reverse-ICP (Story 21.10):**
+  - Trigger button on `/dashboard/{workspace_id}/leads`: `button:has-text('1-Click Reverse-ICP')`.
+  - Modal: `div.fixed.inset-0.z-50`, URL input `#target-url-input`, sample chips inside the modal, analyze button `button:has-text('Phân tích ICP')`.
+  - Result view shows buyer personas, suggested queries, negative keywords, and chat starter prompts.
+  - Action buttons: `button:has-text('Áp dụng vào Bộ lọc')`, `button:has-text('Tạo Tab Bảng Mới')`, and per-prompt `button:has-text('Mở Chat')`.
+  - Filter apply maps LLM platform names (`batdongsan.com.vn`, `topcv.vn`, etc.) to canonical `<select>` values; other platforms fall back to `all`.
+  - Chat starter navigates to `/dashboard/{workspace_id}/new-chat?q=<encoded prompt>`; the new-chat page currently ignores the `q` param (placeholder integration).
 - **Suggested Action Pills (Story 21.11):** Suggested execution pills mount directly below assistant messages via container `[data-testid='suggested-action-pills']` and buttons `button[data-action-type]`. Supports 1-click prompt dispatch and keyboard shortcuts `Alt+Digit1`, `Alt+Digit2`, `Alt+Digit3` when composer input is unfocused. Emits window custom event `nowing:action-dispatched` triggering `.cell-pulse` highlight.
 - **Phone Copy Pills & PII Masking (Story 21.3):** Lead phone numbers render inside `button[aria-label^='Copy phone number']`. Non-privileged views strictly display masked format (`0908***456`). Clicking copies normalized digits and temporarily updates state to `(Đã copy)` with a 1500ms reset timer.
 - **Enterprise Company Graph Drawer (Story 21.3 / 21.4):** Triggered by `button[name='Xem Company Graph']`. Displays company registration data (MST, representative, capital), decision-makers list with masked contacts, and recruitment signals.
