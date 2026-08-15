@@ -322,6 +322,53 @@ class TestEnrich:
         assert output.degradation_reasons == ["celery_unavailable"]
         assert waterfall.awaited_once is True
 
+    async def test_enrich_uses_default_requested_count(self) -> None:
+        from app.lead_intelligence.enrichment.service import EnrichmentService
+
+        lead = _FakeLead()
+        session = _FakeSession(rows=[lead])
+        workspace = _FakeWorkspace()
+        session.register("Workspace", workspace)
+        ctx = _make_context(session)
+
+        svc = EnrichmentService()
+        output = await svc.enrich(session, ctx, lead_id=lead.id)
+
+        assert output.degraded is False
+        request = session.added[0]
+        assert request.requested_count == 5
+
+    async def test_enrich_passes_client_id_to_tenant_and_fetch(
+        self, monkeypatch
+    ) -> None:
+        from app.lead_intelligence.enrichment.service import EnrichmentService
+
+        lead = _FakeLead(client_id="acme")
+        session = _FakeSession(rows=[lead])
+        workspace = _FakeWorkspace()
+        session.register("Workspace", workspace)
+        ctx = _make_context(session)
+        ctx.client_id = "acme"
+
+        tenant_spy = _AsyncMockResult(None)
+        monkeypatch.setattr(
+            "app.lead_intelligence.enrichment.service.set_request_tenant_context",
+            tenant_spy,
+        )
+        fetch_spy = _AsyncMockResult(lead)
+        monkeypatch.setattr(
+            "app.lead_intelligence.enrichment.service.EnrichmentService._fetch_lead",
+            fetch_spy,
+        )
+
+        svc = EnrichmentService()
+        await svc.enrich(session, ctx, lead_id=lead.id)
+
+        assert tenant_spy.awaited_once is True
+        assert tenant_spy.last_kwargs["client_id"] == "acme"
+        assert fetch_spy.awaited_once is True
+        assert fetch_spy.last_args[2] == "acme"
+
 
 class TestRunWaterfall:
     """Task 3.1: the async provider waterfall."""
@@ -401,6 +448,8 @@ class TestRunWaterfall:
         assert stored[0].name != "Alice Nguyen"
         assert stored[0].source_provider == "cleanlist"
         assert stored[0].consent_status == "granted"
+        assert stored[0].legal_basis == "legitimate_interest"
+        assert stored[0].consent is False
 
         assert billing.awaited_once is True
         assert billing.last_kwargs["cost_micros"] == output.cost_micros
@@ -487,6 +536,184 @@ class TestRunWaterfall:
         assert request.provider_results["provider"] == "fallback"
         assert billing.awaited_once is True
         assert billing.last_kwargs["cost_micros"] == output.cost_micros
+
+    async def test_waterfall_sets_consent_true_when_explicit(
+        self, monkeypatch
+    ) -> None:
+        from app.db import VerifiedContact
+        from app.lead_intelligence.enrichment.service import EnrichmentService
+
+        lead = _FakeLead(consent_status="granted", legal_basis="legitimate_interest")
+        request = _FakeEnrichmentRequest(lead_id=lead.id, requested_count=1)
+        session = self._make_session_with_entities(lead=lead, request=request)
+
+        # Build a runtime string so `is` vs `==` comparison mutants are killed.
+        consent_status = "explic"
+        consent_status += "it"
+        contacts = [
+            {
+                "name": "A",
+                "title": "T",
+                "email": "a@fpt.com",
+                "phone": "+84000000000",
+                "verification_status": "verified",
+                "confidence": 0.9,
+                "source_provider": "cleanlist",
+                "consent_status": consent_status,
+            }
+        ]
+        monkeypatch.setattr(
+            "app.lead_intelligence.enrichment.service.run_waterfall",
+            _AsyncMockResult((contacts, "cleanlist")),
+        )
+        billing = _AsyncMockResult()
+        monkeypatch.setattr(
+            "app.lead_intelligence.enrichment.service.BillingEventService.record_contact_enrichment",
+            billing,
+        )
+
+        svc = EnrichmentService()
+        await svc._run_waterfall(session, request.id)
+
+        stored = [o for o in session.added if isinstance(o, VerifiedContact)]
+        assert len(stored) == 1
+        assert stored[0].consent is True
+        assert stored[0].consent_status == consent_status
+
+    async def test_waterfall_keeps_lead_consent_when_present(
+        self, monkeypatch
+    ) -> None:
+        from app.lead_intelligence.enrichment.service import EnrichmentService
+
+        lead = _FakeLead(consent_status="granted", legal_basis="legitimate_interest")
+        request = _FakeEnrichmentRequest(lead_id=lead.id, requested_count=1)
+        session = self._make_session_with_entities(lead=lead, request=request)
+
+        contacts = [
+            {
+                "name": "A",
+                "title": "T",
+                "email": "a@fpt.com",
+                "phone": "+84000000000",
+                "verification_status": "verified",
+                "confidence": 0.9,
+                "source_provider": "cleanlist",
+                "consent_status": "explicit",
+                "legal_basis": "consent",
+            }
+        ]
+        monkeypatch.setattr(
+            "app.lead_intelligence.enrichment.service.run_waterfall",
+            _AsyncMockResult((contacts, "cleanlist")),
+        )
+        billing = _AsyncMockResult()
+        monkeypatch.setattr(
+            "app.lead_intelligence.enrichment.service.BillingEventService.record_contact_enrichment",
+            billing,
+        )
+
+        svc = EnrichmentService()
+        await svc._run_waterfall(session, request.id)
+
+        assert lead.consent_status == "granted"
+        assert lead.legal_basis == "legitimate_interest"
+
+    async def test_waterfall_propagates_contact_consent_when_lead_missing(
+        self, monkeypatch
+    ) -> None:
+        from app.db import VerifiedContact
+        from app.lead_intelligence.enrichment.service import EnrichmentService
+
+        lead = _FakeLead(consent_status=None, legal_basis=None)
+        request = _FakeEnrichmentRequest(lead_id=lead.id, requested_count=1)
+        session = self._make_session_with_entities(lead=lead, request=request)
+
+        # Build a runtime string so `is` vs `==` comparison mutants are killed.
+        consent_status = "explic"
+        consent_status += "it"
+        contacts = [
+            {
+                "name": "A",
+                "title": "T",
+                "email": "a@fpt.com",
+                "phone": "+84000000000",
+                "verification_status": "verified",
+                "confidence": 0.9,
+                "source_provider": "cleanlist",
+                "consent_status": consent_status,
+                "legal_basis": "consent",
+            }
+        ]
+        monkeypatch.setattr(
+            "app.lead_intelligence.enrichment.service.run_waterfall",
+            _AsyncMockResult((contacts, "cleanlist")),
+        )
+        billing = _AsyncMockResult()
+        monkeypatch.setattr(
+            "app.lead_intelligence.enrichment.service.BillingEventService.record_contact_enrichment",
+            billing,
+        )
+
+        svc = EnrichmentService()
+        await svc._run_waterfall(session, request.id)
+
+        stored = [o for o in session.added if isinstance(o, VerifiedContact)]
+        assert stored[0].consent is True
+        assert lead.consent_status == consent_status
+        assert lead.legal_basis == "consent"
+
+    async def test_waterfall_uses_zero_confidence_default(
+        self, monkeypatch
+    ) -> None:
+        from app.db import VerifiedContact
+        from app.lead_intelligence.enrichment.service import EnrichmentService
+
+        lead = _FakeLead()
+        request = _FakeEnrichmentRequest(lead_id=lead.id, requested_count=1)
+        session = self._make_session_with_entities(lead=lead, request=request)
+
+        contacts = [
+            {
+                "name": "A",
+                "title": "T",
+                "email": "a@fpt.com",
+                "phone": "+84000000000",
+                "verification_status": "verified",
+                "source_provider": "cleanlist",
+                # confidence intentionally omitted
+            }
+        ]
+        monkeypatch.setattr(
+            "app.lead_intelligence.enrichment.service.run_waterfall",
+            _AsyncMockResult((contacts, "cleanlist")),
+        )
+        billing = _AsyncMockResult()
+        monkeypatch.setattr(
+            "app.lead_intelligence.enrichment.service.BillingEventService.record_contact_enrichment",
+            billing,
+        )
+
+        svc = EnrichmentService()
+        await svc._run_waterfall(session, request.id)
+
+        stored = [o for o in session.added if isinstance(o, VerifiedContact)]
+        assert stored[0].confidence == 0.0
+
+    async def test_waterfall_degraded_when_lead_not_found(self) -> None:
+        from app.lead_intelligence.enrichment.service import EnrichmentService
+
+        request = _FakeEnrichmentRequest(lead_id=_uuid(), requested_count=1)
+        session = _FakeSession(rows=[])
+        session.register("Workspace", _FakeWorkspace())
+        session.register("EnrichmentRequest", request)
+
+        svc = EnrichmentService()
+        output = await svc._run_waterfall(session, request.id)
+
+        assert output.degraded is True
+        assert output.degradation_reasons == ["lead_not_found"]
+        assert request.provider_results["degraded"] is True
+        assert request.provider_results["reasons"] == ["lead_not_found"]
 
 
 class TestGetContacts:
@@ -621,8 +848,9 @@ class TestListEnrichmentRequests:
     async def test_list_enrichment_requests_filters_by_workspace_lead_and_client(
         self, monkeypatch
     ) -> None:
-        from app.lead_intelligence.enrichment.service import EnrichmentService
         from sqlalchemy.dialects import postgresql
+
+        from app.lead_intelligence.enrichment.service import EnrichmentService
 
         session = _FakeSession(rows=[])
         svc = EnrichmentService()
