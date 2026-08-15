@@ -68,6 +68,9 @@ class TestShopeePriceScaling:
         assert normalize_price(None) is None
         assert normalize_price("") is None
         assert normalize_price("invalid_number") is None
+        assert normalize_price("NaN") is None
+        assert normalize_price("Infinity") is None
+        assert normalize_price("-Infinity") is None
 
     def test_class_helper_method(self):
         normalizer = ShopeePriceNormalizer()
@@ -84,6 +87,8 @@ class TestShopeeFieldNormalizations:
         assert normalize_rating(-1.0) == 0.0
         assert normalize_rating(6.5) == 5.0
         assert normalize_rating(None) == 0.0
+        assert normalize_rating(float("nan")) == 0.0
+        assert normalize_rating(float("inf")) == 0.0
 
     def test_normalize_discount_calculation(self):
         # Current: 150,000, Original: 200,000 -> 25%
@@ -93,6 +98,8 @@ class TestShopeeFieldNormalizations:
 
         # With raw discount provided
         assert normalize_discount(cur, orig, raw_discount=30) == 30
+        assert normalize_discount(cur, orig, raw_discount="25%") == 25
+        assert normalize_discount(cur, orig, raw_discount="-18%") == 18
 
         # Edge cases
         assert normalize_discount(cur, Decimal("0.00")) == 0
@@ -131,7 +138,14 @@ class TestShopeeUrlIdExtraction:
         assert shop_id == 99999
         assert item_id == 88888
 
+    def test_extract_from_query_params(self):
+        url = "https://shopee.vn/product?shop_id=112233&item_id=445566"
+        shop_id, item_id = extract_ids_from_url(url)
+        assert shop_id == 112233
+        assert item_id == 445566
+
     def test_extract_from_invalid_url(self):
         shop_id, item_id = extract_ids_from_url("https://example.com/not-shopee")
         assert shop_id is None
         assert item_id is None
+

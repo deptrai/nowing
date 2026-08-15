@@ -1,6 +1,6 @@
 # Story 17.2: Shopee Vietnam In-House Scraper & Price Normalization
 
-Status: completed
+Status: done
 
 <!-- Governed by architecture-shopee-ecommerce-2026-08-15 (AD-EC-1 to AD-EC-8) and UX Widget U1 -->
 
@@ -27,6 +27,19 @@ So that I can monitor product prices, capture price drops, and analyze merchant 
 - **AD-EC-5**: AI Agent Capability Tools (`ecommerce_search_products`, `ecommerce_track_price_history`)
 - **AD-EC-6**: Idempotent Product Ingestion with Unique `(platform, external_product_id)`
 - **AD-EC-7**: 90-day Sparkline Price Visualization & 1-Click Price Drop Alert (Widget U1)
+
+## Review Findings & Fixes Applied (2026-08-15)
+
+- [x] RF-1: URL-encode Vietnamese keywords in Referer header using `quote_plus` to prevent `UnicodeEncodeError`.
+- [x] RF-2: Atomic PostgreSQL upsert handling in `record_or_get_price_history` using nested transaction savepoints.
+- [x] RF-3: Unified `external_product_id` format to `f"{shop_id}_{item_id}"` and supported single/composite ID resolutions.
+- [x] RF-4: Added `not val.is_finite()` guard against `NaN` and `Infinity` in `normalize_price` and `normalize_rating`.
+- [x] RF-5: Cleaned percentage formatting in `normalize_discount` (`"25%"`, `"-18%"`).
+- [x] RF-6: Safe string/null rating count summation in `scraper.py`.
+- [x] RF-7: Anti-bot HTML challenge retry backoff and mapped HTTP 404 to `ShopeeNotFoundError`.
+- [x] RF-8: Added baseline fallback price query before 90 days when recent history is stable/empty.
+- [x] RF-9: Removed redundant duplicate composite index in `EcommercePriceHistory`.
+- [x] RF-10: Added `min_price <= max_price` and non-empty keyword validators in `EcommerceSearchInput`.
 
 ## Tasks / Subtasks
 
@@ -57,3 +70,4 @@ So that I can monitor product prices, capture price drops, and analyze merchant 
 ### References
 - [Architecture Spine: architecture-shopee-ecommerce-2026-08-15/ARCHITECTURE-SPINE.md]
 - [UX Contract: ux-contract-scrapers-expansion-and-lead-intelligence.md#U1]
+

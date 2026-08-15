@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import re
 import unicodedata
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
@@ -17,7 +18,7 @@ def normalize_price(raw_price: int | float | str | Decimal | None) -> Decimal | 
 
     Applies Decimal(raw_price) / Decimal("100000") with ROUND_HALF_UP rounding.
     Zero and negative inputs clamp to Decimal("0.00").
-    Invalid or None inputs return None.
+    Non-finite (NaN, Infinity) or invalid inputs return None.
     """
     if raw_price is None:
         return None
@@ -38,6 +39,9 @@ def normalize_price(raw_price: int | float | str | Decimal | None) -> Decimal | 
     else:
         return None
 
+    if not val.is_finite():
+        return None
+
     if val <= Decimal("0"):
         return Decimal("0.00")
 
@@ -53,6 +57,9 @@ def normalize_rating(raw_rating: float | int | str | None) -> float:
     try:
         val = float(raw_rating)
     except (ValueError, TypeError):
+        return 0.0
+
+    if math.isnan(val) or math.isinf(val):
         return 0.0
 
     if val < 0.0:
@@ -71,7 +78,8 @@ def normalize_discount(
     """Determine discount percentage (0-100) from raw percentage or calculated price difference."""
     if raw_discount is not None:
         try:
-            d_val = int(raw_discount)
+            cleaned_discount = str(raw_discount).strip().rstrip("%").lstrip("-")
+            d_val = int(cleaned_discount)
             if 0 <= d_val <= 100:
                 return d_val
         except (ValueError, TypeError):
@@ -132,12 +140,14 @@ def extract_ids_from_url(url: str) -> tuple[int | None, int | None]:
     unquoted = unquote(url.strip())
     parsed = urlparse(unquoted)
 
-    # Check query params for itemid & shopid
+    # Check query params for itemid & shopid (or snake_case item_id & shop_id)
     if parsed.query:
         qs = parse_qs(parsed.query)
-        if "itemid" in qs and "shopid" in qs:
+        s_val = qs.get("shopid") or qs.get("shop_id")
+        i_val = qs.get("itemid") or qs.get("item_id")
+        if s_val and i_val:
             try:
-                return int(qs["shopid"][0]), int(qs["itemid"][0])
+                return int(s_val[0]), int(i_val[0])
             except (ValueError, IndexError):
                 pass
 

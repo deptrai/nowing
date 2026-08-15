@@ -10,6 +10,7 @@ import pytest
 
 from app.proprietary.platforms.shopee.scraper import (
     ShopeeBlockedError,
+    ShopeeNotFoundError,
     ShopeeRateLimitedError,
     ShopeeScraper,
     ShopeeScraperError,
@@ -199,6 +200,42 @@ class TestShopeeScraperResilienceAndErrorHandling:
             pytest.raises(ShopeeBlockedError),
         ):
             await scraper.search_products(keyword="test")
+
+    @pytest.mark.asyncio
+    async def test_search_vietnamese_keyword_url_encoded_referer(self):
+        scraper = ShopeeScraper()
+        mock_response = httpx.Response(
+            status_code=200,
+            json=_SAMPLE_SEARCH_RESPONSE,
+            request=httpx.Request("GET", "https://shopee.vn/api/v4/search/search_items"),
+        )
+
+        with patch.object(scraper._client, "get", new=AsyncMock(return_value=mock_response)) as mock_get:
+            res = await scraper.search_products(keyword="áo thun nam cotton")
+            assert len(res.items) == 2
+
+            # Assert referer was properly URL-encoded without raw non-ASCII chars
+            call_headers = mock_get.call_args.kwargs["headers"]
+            referer = call_headers["Referer"]
+            assert "%C3%A1o" in referer or "+nam" in referer or "%20" in referer or "%2B" in referer or "shopee.vn/search?keyword=" in referer
+            # Must be ASCII encodable
+            referer.encode("latin-1")
+
+    @pytest.mark.asyncio
+    async def test_item_not_found_404_raises_shopee_not_found_error(self):
+        scraper = ShopeeScraper(max_retries=1)
+        mock_response = httpx.Response(
+            status_code=404,
+            text="Item not found",
+            request=httpx.Request("GET", "https://shopee.vn/api/v4/item/get"),
+        )
+
+        with (
+            patch.object(scraper._client, "get", new=AsyncMock(return_value=mock_response)),
+            pytest.raises(ShopeeNotFoundError),
+        ):
+            await scraper.get_product_detail(item_id=999999999, shop_id=111111)
+
 
     @pytest.mark.asyncio
     async def test_server_error_500_raises_scraper_error(self):

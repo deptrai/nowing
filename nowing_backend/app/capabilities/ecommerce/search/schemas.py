@@ -5,21 +5,36 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class EcommerceSearchInput(BaseModel):
     """Input payload for searching products on e-commerce platforms."""
 
-    keyword: str = Field(..., min_length=1, description="Search keyword or product name")
-    min_price: Decimal | None = Field(default=None, description="Minimum price filter in VND")
-    max_price: Decimal | None = Field(default=None, description="Maximum price filter in VND")
+    keyword: str = Field(..., min_length=1, max_length=200, description="Search keyword or product name")
+    min_price: Decimal | None = Field(default=None, ge=Decimal("0"), description="Minimum price filter in VND")
+    max_price: Decimal | None = Field(default=None, ge=Decimal("0"), description="Maximum price filter in VND")
     limit: int = Field(default=20, ge=1, le=100, description="Max number of items to return")
     offset: int = Field(default=0, ge=0, description="Pagination offset")
+
+    @field_validator("keyword")
+    @classmethod
+    def validate_keyword(cls, v: str) -> str:
+        cleaned = v.strip()
+        if not cleaned:
+            raise ValueError("keyword cannot be empty or whitespace only")
+        return cleaned
+
+    @model_validator(mode="after")
+    def validate_price_range(self) -> EcommerceSearchInput:
+        if self.min_price is not None and self.max_price is not None and self.min_price > self.max_price:
+            raise ValueError(f"min_price ({self.min_price}) cannot exceed max_price ({self.max_price})")
+        return self
 
     @property
     def estimated_units(self) -> int:
         return self.limit
+
 
 
 class EcommerceProductItem(BaseModel):
