@@ -289,6 +289,19 @@ button {
 	animation: pulse-highlight 1.2s ease-out;
 }
 
+/* Sọc Caro Grid Paper background (Story 21.16 / AC: 2) */
+.soc-caro-grid {
+	background-image: linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+		linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+	background-size: 20px 20px;
+}
+
+.dark .soc-caro-grid {
+	background-image: linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+		linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+	background-size: 20px 20px;
+}
+
 @source "../node_modules/@llamaindex/chat-ui/**/*.{ts,tsx}";
 @source "../node_modules/streamdown/dist/*.js";
 @source "../node_modules/@streamdown/code/dist/*.js";
