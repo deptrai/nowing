@@ -14,7 +14,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 from typing import Any
 from unittest import mock
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import select
@@ -30,6 +30,7 @@ from app.db import (
     MemoryType,
     User,
     VerifiedContact,
+    VerticalClient,
     Workspace,
 )
 from app.lead_intelligence.enrichment.service import EnrichmentService
@@ -75,6 +76,62 @@ def _make_ctx(
     )
 
 
+def _patch_enrichment(
+    monkeypatch: pytest.MonkeyPatch,
+    raw_contacts: list[dict[str, Any]],
+) -> None:
+    """Avoid real external providers, Redis, and Celery in integration tests.
+
+    The service enqueues a Celery task by default; we short-circuit the queue
+    and then call ``_run_waterfall`` synchronously from each test so the
+    database state can be asserted inline.
+    """
+    monkeypatch.setattr(
+        EnrichmentService,
+        "_enqueue",
+        mock.AsyncMock(return_value=None),
+    )
+    monkeypatch.setattr(
+        "app.lead_intelligence.enrichment.service.run_waterfall",
+        mock.AsyncMock(return_value=(raw_contacts, "cleanlist")),
+    )
+    monkeypatch.setattr(
+        "app.lead_intelligence.enrichment.cache.set_cached_contact_ids",
+        lambda *a, **kw: None,
+    )
+
+
+async def _run_enrichment(
+    db_session: AsyncSession,
+    db_workspace: Workspace,
+    db_user: User,
+    lead: Lead,
+    raw_contacts: list[dict[str, Any]],
+    monkeypatch: pytest.MonkeyPatch,
+    client_id: str | None = None,
+    requested_count: int = 1,
+) -> tuple[EnrichmentService, UUID, Any]:
+    """Create an EnrichmentRequest and run the waterfall synchronously.
+
+    Returns the service instance, the created ``EnrichmentRequest.id``,
+    and the final ``EnrichmentOutput``.
+    """
+    _patch_enrichment(monkeypatch, raw_contacts)
+
+    ctx = _make_ctx(db_workspace, db_user, client_id=client_id)
+    svc = EnrichmentService()
+    output = await svc.enrich(db_session, ctx, lead.id, requested_count=requested_count)
+
+    assert output.enrichment_request_id is not None
+    assert output.degraded is False
+
+    completed = await svc._run_waterfall(db_session, output.enrichment_request_id)
+    assert completed.degraded is False
+    assert completed.contact_count == min(len(raw_contacts), requested_count)
+
+    return svc, output.enrichment_request_id, completed
+
+
 async def test_enrichment_persists_request_and_encrypted_contacts_in_db(
     db_session: AsyncSession,
     db_workspace: Workspace,
@@ -99,24 +156,14 @@ async def test_enrichment_persists_request_and_encrypted_contacts_in_db(
         }
     ]
 
-    monkeypatch.setattr(
-        "app.lead_intelligence.enrichment.service.EnrichmentService._run_waterfall_providers",
-        mock.AsyncMock(return_value=raw_contacts),
-    )
-
     with mock.patch.object(config, "CONTACT_ENRICHMENT_MICROS_PER_CONTACT", 0):
-        ctx = _make_ctx(db_workspace, db_user)
-        svc = EnrichmentService()
-        output = await svc.enrich(db_session, ctx, lead.id, requested_count=1)
-
-    assert output.contact_count == 1
-    assert output.degraded is False
+        _, request_id, _ = await _run_enrichment(
+            db_session, db_workspace, db_user, lead, raw_contacts, monkeypatch
+        )
 
     # Check EnrichmentRequest in DB
     req_res = await db_session.execute(
-        select(EnrichmentRequest).where(
-            EnrichmentRequest.id == output.enrichment_request_id
-        )
+        select(EnrichmentRequest).where(EnrichmentRequest.id == request_id)
     )
     req = req_res.scalar_one()
     assert req.workspace_id == db_workspace.id
@@ -173,20 +220,15 @@ async def test_enrichment_memory_provenance_and_redaction(
         }
     ]
 
-    monkeypatch.setattr(
-        "app.lead_intelligence.enrichment.service.EnrichmentService._run_waterfall_providers",
-        mock.AsyncMock(return_value=raw_contacts),
-    )
-
     with mock.patch.object(config, "CONTACT_ENRICHMENT_MICROS_PER_CONTACT", 0):
-        ctx = _make_ctx(db_workspace, db_user)
-        svc = EnrichmentService()
-        output = await svc.enrich(db_session, ctx, lead.id, requested_count=1)
+        _, request_id, _ = await _run_enrichment(
+            db_session, db_workspace, db_user, lead, raw_contacts, monkeypatch
+        )
 
     # Query Memory by source_uuid & source_entity_type
     mem_res = await db_session.execute(
         select(Memory).where(
-            Memory.source_uuid == output.enrichment_request_id,
+            Memory.source_uuid == request_id,
             Memory.source_entity_type == "enrichment_request",
         )
     )
@@ -209,6 +251,14 @@ async def test_enrichment_tenancy_and_client_id_isolation(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """AD-31: Multi-tenancy isolation via workspace_id + client_id (CITEXT)."""
+    db_session.add_all(
+        [
+            VerticalClient(client_id="acme", display_name="Acme Corp"),
+            VerticalClient(client_id="other_client", display_name="Other Corp"),
+        ]
+    )
+    await db_session.flush()
+
     lead_acme = await _make_lead(db_session, db_workspace, client_id="acme")
 
     raw_contacts = [
@@ -225,17 +275,23 @@ async def test_enrichment_tenancy_and_client_id_isolation(
         }
     ]
 
-    monkeypatch.setattr(
-        "app.lead_intelligence.enrichment.service.EnrichmentService._run_waterfall_providers",
-        mock.AsyncMock(return_value=raw_contacts),
-    )
-
     with mock.patch.object(config, "CONTACT_ENRICHMENT_MICROS_PER_CONTACT", 0):
-        ctx = _make_ctx(db_workspace, db_user, client_id="acme")
-        svc = EnrichmentService()
-        output = await svc.enrich(db_session, ctx, lead_acme.id, requested_count=1)
+        _, request_id, _ = await _run_enrichment(
+            db_session,
+            db_workspace,
+            db_user,
+            lead_acme,
+            raw_contacts,
+            monkeypatch,
+            client_id="acme",
+        )
 
-    assert output.contact_count == 1
+    # Verify the request is scoped to the right client
+    req_res = await db_session.execute(
+        select(EnrichmentRequest).where(EnrichmentRequest.id == request_id)
+    )
+    req = req_res.scalar_one()
+    assert req.client_id == "acme"
 
     # Verify query with matching client_id finds contact
     contact_acme = (
@@ -283,10 +339,6 @@ async def test_enrichment_billing_event_persistence(
     ]
 
     monkeypatch.setattr(
-        "app.lead_intelligence.enrichment.service.EnrichmentService._run_waterfall_providers",
-        mock.AsyncMock(return_value=raw_contacts),
-    )
-    monkeypatch.setattr(
         "app.lead_intelligence.enrichment.service.wallet_credit.check_balance",
         mock.AsyncMock(return_value=None),
     )
@@ -296,17 +348,17 @@ async def test_enrichment_billing_event_persistence(
     )
 
     with mock.patch.object(config, "CONTACT_ENRICHMENT_MICROS_PER_CONTACT", 50000):
-        ctx = _make_ctx(db_workspace, db_user)
-        svc = EnrichmentService()
-        output = await svc.enrich(db_session, ctx, lead.id, requested_count=1)
+        _, request_id, completed = await _run_enrichment(
+            db_session, db_workspace, db_user, lead, raw_contacts, monkeypatch
+        )
 
-    assert output.cost_micros == 50000
+    assert completed.cost_micros == 50000
 
     # Verify BillingEvent in DB
     billing_res = await db_session.execute(
         select(BillingEvent).where(
             BillingEvent.event_entity_type == "enrichment_request",
-            BillingEvent.event_id == output.enrichment_request_id,
+            BillingEvent.event_id == request_id,
         )
     )
     billing_event = billing_res.scalar_one()

@@ -211,7 +211,7 @@ development_status:
   epic-21: in-progress
   21-1: done
   21-2: done
-  21-3: in-progress  # 2026-08-15: 4/8 integration tests fail; service.py being edited
+  21-3: review  # 2026-08-15: integration tests green; P0 human review gate required
   21-4: ready-for-dev
   21-5: ready-for-dev
   # ponytail: Zalo deferred out of MVP (legal/ToS gate) — keep disabled until governance closes or PO explicitly overrides.

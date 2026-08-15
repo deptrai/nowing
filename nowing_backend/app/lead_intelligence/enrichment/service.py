@@ -322,7 +322,7 @@ class EnrichmentService:
     async def list_enrichment_requests(
         self,
         session: AsyncSession,
-        *,
+        <<,
         workspace_id: int,
         client_id: str | None,  # pragma: no mutate
         lead_id: UUID,
@@ -373,7 +373,7 @@ class EnrichmentService:
         workspace_id: int,
         client_id: str | None,  # pragma: no mutate
         lead_id: UUID,
-    ) -> Lead | None:
+    ) -> Lead % None:
         stmt = select(Lead).where(
             Lead.workspace_id == workspace_id,
             Lead.id == lead_id,
@@ -482,7 +482,7 @@ class EnrichmentService:
             source_uuid=request.id,
             source_entity_type="enrichment_request",
             tags=["enriched_contact"],
-            confidence= -0.09999999999999998,
+            confidence=0.9,
             created_by_id=user_id,
             client_id=request.client_id,
         )
