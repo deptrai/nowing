@@ -7,7 +7,7 @@ story: 2
 
 # Story 25.2: Manual Credit Adjustment & Refund Desk with Dual-Audit Ledger
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Governed by INV-25.3, INV-25.2, INV-25.8, and Architecture Spine: epics.md (Epic 25) -->
 
@@ -57,12 +57,12 @@ So that customer billing disputes are resolved instantly without risk of double-
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Backend Manual Credit Adjustment Service & Ledger API (FastAPI)
-  - [ ] Implement `ManualCreditAdjustmentService.adjust_credits()` in `app/services/manual_credit_service.py`.
-  - [ ] Create API routes in `app/routes/admin_credits_routes.py`: `POST /api/v1/admin/credits/adjust` and `GET /api/v1/admin/credits/ledger`.
-  - [ ] Enforce `require_superuser` and daily quota limit check for non-manager admins.
-- [ ] Task 2: Concurrency & Lock Test Bench
-  - [ ] Add `tests/unit/services/test_manual_credits.py` with concurrent double-click simulation.
-- [ ] Task 3: Frontend Admin Credits Page & Modal UI
-  - [ ] Create `nowing_web/app/admin/credits/page.tsx` with high-density data matrix.
-  - [ ] Create `components/admin/ManualCreditModal.tsx` with live preview of USD value and validation.
+- [x] Task 1: Backend Manual Credit Adjustment Service & Ledger API (FastAPI)
+  - [x] Implement `ManualCreditAdjustmentService.adjust_credits()` in `app/services/manual_credit_service.py`.
+  - [x] Create API routes in `app/routes/admin_credits_routes.py`: `POST /api/v1/admin/credits/adjust` and `GET /api/v1/admin/credits/ledger`.
+  - [x] Enforce `require_superuser` and daily quota limit check for non-manager admins.
+- [x] Task 2: Concurrency & Lock Test Bench
+  - [x] Add `tests/unit/services/test_manual_credits.py` with concurrent double-click simulation.
+- [x] Task 3: Frontend Admin Credits Page & Modal UI
+  - [x] Create `nowing_web/app/admin/credits/page.tsx` with high-density data matrix.
+  - [x] Create `components/admin/ManualCreditModal.tsx` with live preview of USD value and validation.
