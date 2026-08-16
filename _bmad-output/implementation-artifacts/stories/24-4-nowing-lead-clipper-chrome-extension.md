@@ -1,7 +1,13 @@
-# Story 24.4: Nowing Lead Clipper — Chrome Extension for 1-Click Lead Capturing
+---
+story_key: "24-4"
+epic: "epic-24"
+story: "24.4"
+title: "Nowing Lead Clipper — Chrome Extension for 1-Click Lead Capturing"
+status: "ready-for-dev"
+baseline_commit: "6ac305274"
+---
 
-Status: `ready-for-dev`
-Epic: `epic-24`
+# Story 24.4: Nowing Lead Clipper — Chrome Extension for 1-Click Lead Capturing
 
 ## Story Overview
 
@@ -11,29 +17,59 @@ So that I can capture leads into my active Nowing Workspace without copy-pasting
 
 ---
 
-## Architectural Invariants
-- **INV-24.5 (Clipper Extension Cryptographic Token):** Giao tiếp qua Personal Access Token (PAT) với scope `leads:write` và workspace-scoped CORS validation.
-- **Client Sandbox:** Manifest V3 Content Script chạy trong isolated sandbox, không lưu trữ token người dùng ở storage không bảo mật.
+## Architectural Invariants (INV-24.5)
+- **INV-24.5 (Clipper Extension Isolated Token Architecture):** Manifest V3 Content Script TUYỆT ĐỐI KHÔNG lưu PAT. Mọi API request BẮT BUỘC gửi qua message passing tới **Background Service Worker** (`background.js`) để tránh vi phạm CSP trên Facebook/LinkedIn và chống rò rỉ token.
+- **Deduplication:** Backend thực thi Unique Constraint trên `dedupe_hash = SHA256(workspace_id + source_canonical_url + normalized_phone)`.
 
 ---
 
 ## Acceptance Criteria
 
-1. **Chrome Extension (Manifest V3):**
-   - Đăng nhập 1-click bằng API Key / Personal Access Token của Nowing Workspace.
-   - Hiển thị Workspace Selector để chọn đích lưu dữ liệu.
-2. **Context-Aware Web Extractors:**
-   - **Facebook Groups:** Trích xuất tên tác giả bài viết, link trang cá nhân, SĐT/Zalo trong bài, nội dung tóm tắt.
-   - **Batdongsan / Chợ Tốt:** Trích xuất tiêu đề, giá, diện tích, quận/huyện, số điện thoại người bán.
-   - **TopCV / LinkedIn:** Trích xuất chức danh, công ty, địa điểm, kỹ năng, thông tin liên hệ.
-3. **Instant 1-Click Floating Button:**
-   - Khi lướt qua một tin đăng/bài viết, hiện nút nổi `⚡ Clip to Nowing`.
-   - Bấm nút ➔ Bắn REST payload tới `POST /api/v1/workspaces/{id}/leads/clip` ➔ Đẩy vào bảng Nowing trong < 500ms kèm hiệu ứng Toast báo thành công.
+1. **Manifest V3 Architecture & PAT Security:**
+   - **Given** the extension popup,
+   - **When** the user logs in with a Personal Access Token (`leads:clipper:write`),
+   - **Then** the PAT is encrypted in `chrome.storage.session` / `chrome.storage.local` and only accessed by the Background Service Worker, completely isolated from webpage DOM scripts.
+
+2. **Context-Aware DOM Extractors with Regex Fallbacks:**
+   - **Given** an active listing page on Facebook Groups, Batdongsan, or TopCV,
+   - **When** DOM renders,
+   - **Then** Content Script parses contact name, phone, price, and post content. If classes are obfuscated, it applies Regex/Semantic Fallback scanners to extract Vietnamese phone numbers and emails reliably.
+
+3. **1-Click Floating Clip Action & Debounced Feedback:**
+   - **Given** a detected lead,
+   - **When** the user clicks `⚡ Clip to Nowing`,
+   - **Then** the button shows a loading spinner (debounce 2s), passes data to the Background Service Worker, and posts to `POST /api/v1/workspaces/{id}/leads/clip`, streaming the lead into Nowing within 500ms.
+
+4. **Offline Buffer & Sync Resilience:**
+   - **Given** network disconnection or expired PAT,
+   - **When** clipping fails,
+   - **Then** the extension saves the clipped lead to `chrome.storage.local` pending queue and displays a badge counter for 1-click batch sync once reconnected.
 
 ---
 
 ## Technical Tasks
-- [ ] Extension Package: Khởi tạo project `apps/chrome-extension` (Manifest V3, Vite + React + Tailwind).
-- [ ] Content Scripts: Xây dựng các extractor module cho Facebook Group, Batdongsan, TopCV.
-- [ ] Backend: Endpoint `POST /api/v1/workspaces/{id}/leads/clip` xác thực PAT và ghi trực tiếp vào `leads`.
-- [ ] E2E & Browser Tests: Test extension popup, test trích xuất DOM và đồng bộ về backend.
+
+### Extension Package
+- [ ] Setup: Khởi tạo module `apps/chrome-extension` (Manifest V3, Vite + React + TypeScript + Tailwind).
+- [ ] Service Worker: Xây dựng `background.ts` xử lý PAT storage, message listener và REST dispatch.
+- [ ] Content Scripts: Xây dựng các DOM extractors (`extractors/facebook.ts`, `extractors/batdongsan.ts`, `extractors/topcv.ts`).
+
+### Backend Implementation
+- [ ] Route: Xây dựng endpoint `POST /api/v1/workspaces/{id}/leads/clip` với xác thực PAT và deduplication upsert.
+- [ ] CORS: Cho phép Origin `chrome-extension://*` khi có header Authorization hợp lệ.
+
+---
+
+## Verification Commands
+
+```bash
+# Backend endpoint tests
+cd nowing_backend
+uv run ruff check app/routes/lead_clipper_routes.py tests/unit/routes/test_lead_clipper.py
+uv run pytest tests/unit/routes/test_lead_clipper.py -q
+uv run pytest tests/integration/routes/test_lead_clipper_ingest.py -q
+
+# Extension build & test
+cd ../nowing_web
+pnpm tsc --noEmit
+```

@@ -3080,13 +3080,14 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 *Governed by Strategic Product Plan: 2026-08-16 by Mary (BA), Winston (Arch), Sally (UX), Amelia (Dev), Murat (QA)*
 
 ### Architectural Invariants (INV-24.1 – INV-24.8)
-- **INV-24.1 (Stateful Cadence Scheduler):** Multi-channel outbound drip steps BẮT BUỘC lưu trạng thái execution step trong bảng `campaign_steps` và schedule qua Celery Beat / Redis delayed sets.
-- **INV-24.2 (Opt-Out & Anti-Spam Compliance):** Mọi tin nhắn gửi qua Zalo/Email/Telegram BẮT BUỘC kiểm tra trạng thái Unsubscribe / DNC trước khi dispatch. Khi prospect phản hồi "STOP"/"HUY", chiến dịch tự động hủy ngay lập tức.
-- **INV-24.3 (Waterfall Phone & Tax Code Isolation):** API tra cứu MST và Phone Waterfall BẮT BUỘC có caching Redis (TTL 24h) và Circuit Breaker để tránh quá tải cổng tra cứu.
-- **INV-24.4 (Team Credit Pooling & Quota Locks):** Thành viên trong Workspace dùng chung `Workspace.credit_micros_balance` với Row-level Locking (`SELECT ... FOR UPDATE`), hỗ trợ cấu hình Spend Cap cho từng User.
-- **INV-24.5 (Clipper Extension Cryptographic Token):** Chrome Extension giao tiếp với Nowing qua Personal Access Token (PAT) có scope `leads:write` và workspace-scoped CORS validation.
-- **INV-24.6 (Template Sandbox & AST Security):** Vertical Playbooks BẮT BUỘC khai báo JSON Schema đầu vào (`inputs_schema`) và được validate trước khi khởi chạy.
-- **INV-24.7 (Inbound Auto-Reply Grounding):** AI Auto-Reply Bot chỉ được trả lời dựa trên verified documents trong Knowledge Base của Workspace, tuyệt đối không bịa đặt thông tin giá cả/pháp lý ngoài hợp đồng.
+- **INV-24.1 (Stateful Cadence Scheduler & Quiet Hours Deferral):** Multi-channel outbound drip steps BẮT BUỘC lưu trạng thái execution step trong bảng `campaign_steps` và schedule qua Celery Beat / Redis delayed sets. Khung giờ gửi tin tuân thủ nghiêm ngặt **08:00 – 21:30 (Asia/Ho_Chi_Minh)**; các tin nhắn đến hạn ngoài khung giờ BẮT BUỘC tự động lùi `eta` thực thi sang `08:05` sáng hôm sau kèm Jitter & Leaky Bucket rate limiting.
+- **INV-24.2 (Opt-Out, DNC & ZNS Template Compliance):** Mọi tin nhắn gửi đi BẮT BUỘC kiểm tra trạng thái Unsubscribe, `workspace_dnc_records` và `global_dnc_records` (Fail-closed). Với Zalo ZNS, BẮT BUỘC sử dụng `zns_template_id` đã được VNG duyệt; tin nhắn chat tự do chỉ gửi trong cửa sổ 24h tương tác chủ động từ prospect. Khi nhận phản hồi "STOP"/"HUY", chiến dịch tự động hủy ngay lập tức.
+- **INV-24.3 (Waterfall Phone & Tax Code Isolation):** API tra cứu MST (masothue, dangkykinhdoanh) và Phone Waterfall BẮT BUỘC có caching Redis (TTL 7 ngày cho MST, 24h cho Phone), Circuit Breaker (`circuit_breaker:scraper:masothue`) và Proxy Rotation.
+- **INV-24.4 (Team Credit Pooling & Atomic Quota Locks):** Thành viên trong Workspace dùng chung `Workspace.credit_micros_balance` với Row-level Locking (`SELECT ... FOR UPDATE`), hỗ trợ cấu hình Spend Cap cho từng User qua Atomic SQL Query trên `workspace_memberships.monthly_spent_micros`.
+- **INV-24.5 (Clipper Extension Isolated Token Architecture):** Chrome Extension (Manifest V3) giao tiếp với Nowing qua Personal Access Token (PAT) có scope `leads:clipper:write`. Content Script TUYỆT ĐỐI KHÔNG lưu PAT; mọi API request BẮT BUỘC chuyển tiếp qua Background Service Worker để tránh vi phạm CSP và ngăn ngừa rò rỉ token.
+- **INV-24.6 (Template Sandbox & AST Security):** Vertical Playbooks BẮT BUỘC khai báo JSON Schema đầu vào (`inputs_schema`), có giới hạn cứng `max_leads_per_run` (mặc định <= 200), và được validate trước khi khởi chạy. Community Playbooks phải qua kiểm duyệt `is_approved = True` trước khi xuất hiện trên Marketplace.
+- **INV-24.7 (Inbound Auto-Reply Grounding & Async ACK SLA):** Webhook Zalo/Telegram BẮT BUỘC trả về `HTTP 200 OK` trong `< 100ms` và đẩy payload vào Redis Queue. AI Auto-Reply Bot chạy bất đồng bộ với `temperature = 0.0`, RAG Embedding Cosine Threshold `>= 0.75`, tuyệt đối từ chối tự ý cam kết giá/chiết khấu/hợp đồng ngoài tài liệu tham chiếu.
+- **INV-24.8 (Human Escalation Handover & Auto-Reply Pause):** Khi phát hiện ý định mua hàng (Buying Signals) hoặc khi Sales Rep nhắn tin thủ công/nhận tư vấn, bot tự động tạm dừng (`auto_reply_paused`) 24 giờ cho cuộc hội thoại đó và bắn thông báo khẩn qua Telegram Bot.
 
 ---
 
@@ -3095,13 +3096,13 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 - **Acceptance Criteria:**
   - **Given** an active lead list in Nowing Workspace,  
     **When** a user creates a new Drip Campaign,  
-    **Then** the UI provides a visual cadence editor to configure Step 1 (Instant Zalo ZNS / Telegram message), Step 2 (Conditional Wait 48h if no reply), and Step 3 (Follow-up Email or Sale task creation).
-  - **Given** campaign execution,  
+    **Then** the UI provides a visual cadence editor to configure Step 1 (Approved Zalo ZNS Template / Telegram Bot), Step 2 (Conditional Wait 48h if no reply), and Step 3 (Follow-up Email or Sale task creation).
+  - **Given** campaign execution within 08:00 – 21:30 (Asia/Ho_Chi_Minh),  
     **When** dispatching each step,  
-    **Then** LLM dynamically personalizes greeting, company name, and pain-point based on extracted lead attributes.
-  - **Given** a prospect responding to any step,  
+    **Then** LLM dynamically maps pre-approved template variables based on extracted lead attributes, and defers execution to 08:05 next morning if scheduled during quiet hours.
+  - **Given** a prospect responding to any step or sending "STOP",  
     **When** the inbound webhook event arrives,  
-    **Then** the campaign state for this specific lead automatically transitions to `responded` and halts further automated follow-up steps.
+    **Then** Redis distributed lock and `SELECT FOR UPDATE` prevent race conditions, transitioning the campaign state to `responded` and halting further automated follow-up steps.
 
 ---
 
@@ -3110,10 +3111,10 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 - **Acceptance Criteria:**
   - **Given** raw lead records with business names or addresses,  
     **When** enrichment is triggered,  
-    **Then** `CorporateVerificationService` queries official business registries / masothue API, attaching MST, founding date, legal rep, and active status.
-  - **Given** phone numbers discovered,  
+    **Then** `CorporateVerificationService` queries official business registries / masothue API with proxy rotation and Redis caching (TTL 7d), attaching MST, founding date, legal rep, and active status.
+  - **Given** phone numbers discovered (including legacy 11-digit numbers converted to 2018 10-digit prefixes),  
     **When** the 3-tier Waterfall executes (Listing Phone ➔ Zalo UID Check ➔ Masothue Rep Phone),  
-    **Then** it verifies carrier format, eliminates invalid/disposable numbers, and cross-checks with National DNC blacklist.
+    **Then** it verifies carrier format, eliminates invalid/disposable numbers, and cross-checks with `workspace_dnc_records` and `global_dnc_records` (Fail-closed).
   - **Given** enriched data,  
     **When** saved,  
     **Then** Zero-cache updates the Table Matrix with verified badges (Green Check for MST & Zalo active).
@@ -3125,25 +3126,25 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 - **Acceptance Criteria:**
   - **Given** `/dashboard/[workspace_id]/leads/pipeline`,  
     **When** loaded,  
-    **Then** it renders a reactive Kanban board with stages: `New Lead`, `Contacted`, `Qualified`, `Won`, `Lost`, with drag-and-drop column movement synced via Zero.
+    **Then** it renders a reactive Kanban board with stages: `New Lead`, `Contacted`, `Qualified`, `Won`, `Lost`, with drag-and-drop column movement synced via Zero-cache and protected by Optimistic Concurrency Control (`version` column).
   - **Given** new batch of leads imported from scrapers or chat,  
     **When** auto-assignment is enabled,  
-    **Then** `LeadAssignmentService` distributes leads evenly across active team members using Round-Robin logic.
+    **Then** `LeadAssignmentService` distributes leads evenly across active team members (`is_accepting_leads=True` and `current_leads < capacity`) using Round-Robin logic.
   - **Given** workspace billing,  
     **When** team members initiate scraping or AI enrichment,  
-    **Then** costs debit from the shared workspace credit balance, enforcing individual monthly limits set by Workspace Admin.
+    **Then** costs debit from `workspaces.credit_micros_balance` with Two-Phase Reservation and atomic check against `workspace_memberships.monthly_spend_cap_micros`.
 
 ---
 
 ### Story 24.4: Nowing Lead Clipper — Chrome Extension for 1-Click Lead Capturing `[ready-for-dev]`
 - **User Value:** Sales reps and sourcers browsing Facebook Groups, LinkedIn, Batdongsan.com.vn, or TopCV can capture leads, posts, and contact information directly into their Nowing Workspace table with 1 click.
 - **Acceptance Criteria:**
-  - **Given** the Nowing Chrome Extension (Manifest V3) installed and authenticated with PAT,  
+  - **Given** the Nowing Chrome Extension (Manifest V3) installed and authenticated with `leads:clipper:write` scoped PAT,  
     **When** browsing a supported platform (Facebook Group post, Batdongsan listing, TopCV candidate/company),  
-    **Then** the extension injects a non-intrusive floating `⚡ Clip to Nowing` button.
+    **Then** Content Script injects a non-intrusive floating `⚡ Clip to Nowing` button and sends parsed DOM to Background Service Worker.
   - **Given** the user clicks `Clip to Nowing`,  
-    **When** DOM parser extracts contact info, price, location, and post content,  
-    **Then** it sends a secured REST payload to `POST /api/v1/workspaces/{id}/leads/clip`, streaming the new row into the active Nowing table within 500ms.
+    **When** Background Service Worker dispatches REST payload to `POST /api/v1/workspaces/{id}/leads/clip`,  
+    **Then** backend enforces deduplication hash `SHA256(workspace_id + source_url + phone)`, streams the new row into the active Nowing table within 500ms, and queues offline if disconnected.
 
 ---
 
@@ -3152,10 +3153,10 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 - **Acceptance Criteria:**
   - **Given** `/dashboard/[workspace_id]/playbooks/marketplace`,  
     **When** viewed,  
-    **Then** it displays categorized cards (Bất Động Sản, Tuyển Dụng Nhân Sự, B2B Sales, E-Commerce) with verified tags, run counts, and average lead yields.
+    **Then** it displays categorized cards (Bất Động Sản, Tuyển Dụng Nhân Sự, B2B Sales, E-Commerce) with verified tags, run counts, estimated credit cost preview, and `max_leads_per_run <= 200` safety caps.
   - **Given** a user selects a playbook (e.g. *"Săn nhà phố ngộp giá & tự động gửi Zalo môi giới"*),  
     **When** clicking `Install & Run`,  
-    **Then** it generates a schema-driven input modal, collects parameters (Khu vực, Ngân sách), and initiates the multi-step orchestrator pipeline.
+    **Then** it generates a schema-driven input modal from `inputs_schema`, collects parameters (Khu vực, Ngân sách), and initiates the multi-step orchestrator pipeline.
 
 ---
 
@@ -3163,11 +3164,11 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 - **User Value:** Automated AI Agent that listens to incoming prospect replies on Zalo OA and Telegram, intelligently answers inquiries based on the workspace's uploaded documents/FAQ, and escalates hot leads to human sales reps.
 - **Acceptance Criteria:**
   - **Given** an incoming message from an outreach prospect via Zalo OA or Telegram Bot,  
-    **When** processed by `InboundMessageRouter`,  
-    **Then** `AutoReplyAgent` queries the workspace Knowledge Base for relevant project facts, generating a context-grounded response.
-  - **Given** prospect intent indicating strong buying signal (e.g. *"Báo giá cho tôi"*, *"Hẹn xem nhà"*),  
+    **When** received,  
+    **Then** Webhook returns `HTTP 200 OK` in < 100ms, aggregates rapid-fire messages via Redis Debounce Buffer (3s window), and triggers asynchronous RAG grounding with Cosine Similarity `>= 0.75` and `temperature = 0.0`.
+  - **Given** prospect intent indicating strong buying signal (e.g. *"Báo giá cho tôi"*, *"Hẹn xem nhà"*) or asking ungrounded pricing terms,  
     **When** detected,  
-    **Then** it triggers a high-priority notification to the assigned sales rep on Telegram and marks the lead as `Qualified / High-Intent`.
+    **Then** it triggers a high-priority notification to the assigned sales rep on Telegram with inline `[Nhận Tư Vấn]` button, sets `auto_reply_paused` for 24h, and marks the lead as `Qualified / High-Intent`.
 
 ---
 
@@ -3207,6 +3208,20 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 | 17.3 Price Drop Alerts | Story 20.1 (`NowingIngestService`), Story 6.8 | price-drop `AlertRule` |
 | 17.4 Competitor Tracking | Story 20.1 (`NowingIngestService`), Story 6.8 | competitor `AlertRule` |
 | 22.3 Telegram Alert & Agent Tools | Story 6.8 (Generic Alert Engine), Story 22.1, Story 22.2 | Realtime message matching triggers `AlertRule` & AI Agent tools |
+| 24.1 Drip Outreach Campaign Engine | Story 23.2 (Zalo Webhook/ZNS), Story 6.8 (Scheduler) | Scheduled cadence execution + ZNS template dispatch |
+| 24.2 Waterfall Phone & MST Verification | Story 20.1 (`NowingIngestService`), Story 21.3 (Enriched Contact) | Multi-tier phone & corporate tax registry enrichment |
+| 24.3 Multi-Seat Team CRM Pipeline | Story 23.4 (RLS & Partitioning), Story 8.12 (Workspace Limits) | Multi-seat tenant isolation & shared credit quota locks |
+| 24.4 Nowing Lead Clipper Extension | Story 21.15 (Universal Lead Orchestrator) | Direct REST payload ingest to workspace leads table |
+| 24.5 Vertical Playbook Marketplace | Story 6.6, Story 6.7 (Playbook Reuse & Schema UI) | Schema-driven dynamic modal input & pipeline orchestration |
+| 24.6 Two-Way AI Outreach Auto-Reply | Epic 11 (Telegram Bot), Story 23.2 (Zalo Webhook) | Inbound message webhook processing & RAG-grounded auto-reply |
+
+> **Prerequisite definitions:**
+> - **Story 20.1** = `NowingIngestService.to_chunks()` + `POST /v1/ingest/scraper` contract.
+> - **Story 20.2** = gap-fill caller + cost allocation (Nowing side).
+> - **Story 20.3** = `NowingPrivateProvider` for `POST /v1/private-data/search`.
+> - **Story 20.4** = `ChainLensServiceAuth` + cost ledger sync.
+> - **Story 6.8** = Generic Alert Engine in Epic 6 Automation infrastructure (scheduler + `RunService` + notification dispatch). If no dedicated implementation story exists, treat it as a prerequisite work package before any alert story is scheduled.
+
 
 > **Prerequisite definitions:**
 > - **Story 20.1** = `NowingIngestService.to_chunks()` + `POST /v1/ingest/scraper` contract.
