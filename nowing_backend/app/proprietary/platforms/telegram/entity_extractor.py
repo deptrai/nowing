@@ -50,7 +50,7 @@ _VN_WORDS_COMBINED_REGEX = re.compile(
 
 # Valid Vietnamese mobile prefixes (10 digits total: 03x, 05x, 07x, 08x, 09x)
 _VN_PHONE_REGEX = re.compile(
-    r"(?<!\d)(?:\+?84|0)(?:3[2-9]|5[25689]|7[06-9]|8[1-9]|9\d)\d{7}(?!\d)"
+    r"(?<!\w)(?:\+?84|0)(?:3[2-9]|5[25689]|7[06-9]|8[1-9]|9\d)\d{7}(?!\w)"
 )
 
 # Email regex
@@ -60,12 +60,12 @@ _EMAIL_REGEX = re.compile(
 
 # Complex Vietnamese real estate price patterns
 _PRICE_COMPOUND_REGEX = re.compile(
-    r"(\d+(?:[.,]\d+)?)\s*(tỷ|ty)\s*(\d+(?:[.,]\d+)?)\s*(triệu|trieu|tr|k)?",
+    r"(\d+(?:[.,]\d+)*)\s*(tỷ|ty)\s*(\d+(?:[.,]\d+)*)\s*(triệu|trieu|tr|k)?",
     re.IGNORECASE,
 )
 
 _PRICE_SIMPLE_REGEX = re.compile(
-    r"(\d+(?:[.,]\d+)?)\s*(tỷ|ty|triệu|trieu|tr|k|đ|vnd|đồng|dong)(?:\s*(?:/|\s+mỗi\s+|\s+trên\s*|\s*cho\s*)?\s*(tháng|thang|m2|m²|năm|nam))?",
+    r"(\d+(?:[.,]\d+)*)\s*(tỷ|ty|triệu|trieu|tr|k|đ|vnd|đồng|dong)(?:\s*(?:/|\s+mỗi\s+|\s+trên\s*|\s*cho\s*)?\s*(tháng|thang|m2|m²|năm|nam))?",
     re.IGNORECASE,
 )
 
@@ -194,7 +194,7 @@ def _extract_phones(text: str, timeout_sec: float = 0.05) -> list[str]:
         return []
 
     cleaned_candidates = re.findall(
-        r"(?:\+?\d{1,4}[.\s\-_/:()*]*)?\d{2,4}(?:[.\s\-_/:()*]*\d{2,4}){2,5}",
+        r"(?<!\w)(?:\+?\d{1,4}[.\s\-_/:()*]*)?\d{2,4}(?:[.\s\-_/:()*]*\d{2,4}){2,5}(?!\w)",
         normalized,
     )
 
@@ -337,6 +337,36 @@ def _extract_prices(text: str) -> list[dict[str, Any]]:
     return results
 
 
+def extract_phone_numbers(text: str) -> list[str]:
+    return _extract_phones(text)
+
+
+def extract_emails(text: str) -> list[str]:
+    return sorted(set(_EMAIL_REGEX.findall(text))) if text else []
+
+
+def extract_prices(text: str) -> list[str]:
+    prices = _extract_prices(text)
+    return [p["raw_text"] for p in prices]
+
+
+def extract_hashtags(text: str) -> list[str]:
+    return re.findall(r"#\w+", text) if text else []
+
+
+def classify_intent(text: str) -> str:
+    if not text:
+        return "news"
+    lower = text.lower()
+    if any(w in lower for w in ["bán", "cho thuê", "nhượng", "pass", "bán gấp"]):
+        return "sell"
+    if any(w in lower for w in ["cần mua", "tìm mua", "mua đất", "mua căn"]):
+        return "buy"
+    if any(w in lower for w in ["cần tìm", "tìm thuê", "ở ghép", "cần thuê"]):
+        return "seeking"
+    return "news"
+
+
 class TelegramEntityExtractor:
     """Production entity extraction for Telegram messages and posts."""
 
@@ -347,12 +377,7 @@ class TelegramEntityExtractor:
             return ExtractedEntities()
 
         raw_dict = cls.extract_entities(text)
-        lower = text.lower()
-        intent = "news"
-        if any(w in lower for w in ["bán", "cho thuê", "nhượng", "pass", "bán gấp"]):
-            intent = "sell"
-        elif any(w in lower for w in ["mua", "cần tìm", "tìm mua", "cần thuê"]):
-            intent = "buy"
+        intent = classify_intent(text)
 
         prices_list = []
         for p in raw_dict.get("prices", []):
@@ -361,13 +386,23 @@ class TelegramEntityExtractor:
             elif isinstance(p, str):
                 prices_list.append(p)
 
+        raw_entities = []
+        for ph in raw_dict.get("phones", []):
+            raw_entities.append({"type": "phone", "value": ph})
+        for em in raw_dict.get("emails", []):
+            raw_entities.append({"type": "email", "value": em})
+        for pr in prices_list:
+            raw_entities.append({"type": "price", "value": pr})
+        for ht in re.findall(r"#\w+", text):
+            raw_entities.append({"type": "hashtag", "value": ht})
+
         return ExtractedEntities(
             phone_numbers=raw_dict.get("phones", []),
             emails=raw_dict.get("emails", []),
             prices=prices_list,
             hashtags=re.findall(r"#\w+", text),
             intent_tag=intent,
-            raw_entities=[],
+            raw_entities=raw_entities,
         )
 
     @classmethod
@@ -398,3 +433,4 @@ class TelegramEntityExtractor:
             "emails": emails,
             "locations": locations,
         }
+
