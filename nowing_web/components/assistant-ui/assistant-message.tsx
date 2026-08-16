@@ -356,16 +356,16 @@ const MessageInfoDropdown: FC<{ chatTurnId: string | null | undefined }> = ({ ch
 			</ActionBarMorePrimitive.Trigger>
 			<ActionBarMorePrimitive.Content
 				align="start"
-				className="bg-popover text-popover-foreground z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-[180px] origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md p-1 shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2"
+				className="bg-popover text-popover-foreground z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-[170px] origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-lg p-1 shadow-md border border-border/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2"
 			>
 				{createdAt && (
-					<DropdownMenuLabel className="text-xs text-muted-foreground font-normal select-none">
+					<DropdownMenuLabel className="text-[10px] text-muted-foreground font-medium px-2 py-1 select-none">
 						{formatMessageTimestamp(createdAt)}
 					</DropdownMenuLabel>
 				)}
 				{hasUsage && (
 					<>
-						<ActionBarMorePrimitive.Separator className="bg-popover-border mx-1 my-1 h-px" />
+						<ActionBarMorePrimitive.Separator className="bg-popover-border mx-1 my-0.5 h-px" />
 						{models.length > 0 ? (
 							models.map(([model, counts]) => {
 								const { name, icon } = resolveModel(model, counts);
@@ -373,19 +373,21 @@ const MessageInfoDropdown: FC<{ chatTurnId: string | null | undefined }> = ({ ch
 								return (
 									<ActionBarMorePrimitive.Item
 										key={model}
-										className="focus:bg-accent focus:text-accent-foreground relative flex cursor-default flex-col items-start gap-1 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none"
+										className="focus:bg-accent focus:text-accent-foreground relative flex cursor-default flex-col items-start gap-0.5 rounded-md px-2 py-1 outline-hidden select-none"
 										onSelect={(e) => e.preventDefault()}
 									>
-										<span className="flex items-center gap-1.5 text-xs font-medium">
+										<span className="flex items-center gap-1.5 text-[11px] font-semibold text-foreground">
 											{icon}
-											{name}
+											<span className="truncate max-w-[200px]">{name}</span>
 										</span>
-										<span className="flex items-center text-xs text-muted-foreground">
+										<span className="flex items-center text-[10px] text-muted-foreground font-mono">
 											<span>{counts.total_tokens.toLocaleString()} tokens</span>
 											{costMicros && costMicros > 0 ? (
 												<>
-													<Dot className="size-4 shrink-0" aria-hidden="true" />
-													<span>{formatTurnCost(costMicros)}</span>
+													<Dot className="size-3.5 shrink-0 text-muted-foreground/60" aria-hidden="true" />
+													<span className="font-semibold text-emerald-600 dark:text-emerald-400">
+														{formatTurnCost(costMicros)}
+													</span>
 												</>
 											) : null}
 										</span>
@@ -394,15 +396,17 @@ const MessageInfoDropdown: FC<{ chatTurnId: string | null | undefined }> = ({ ch
 							})
 						) : (
 							<ActionBarMorePrimitive.Item
-								className="focus:bg-accent focus:text-accent-foreground relative flex cursor-default flex-col items-start gap-0.5 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none"
+								className="focus:bg-accent focus:text-accent-foreground relative flex cursor-default flex-col items-start gap-0.5 rounded-md px-2 py-1 outline-hidden select-none"
 								onSelect={(e) => e.preventDefault()}
 							>
-								<span className="flex items-center text-xs text-muted-foreground">
+								<span className="flex items-center text-[10px] text-muted-foreground font-mono">
 									<span>{usage.total_tokens.toLocaleString()} tokens</span>
 									{usage.cost_micros && usage.cost_micros > 0 ? (
 										<>
-											<Dot className="size-4 shrink-0" aria-hidden="true" />
-											<span>{formatTurnCost(usage.cost_micros)}</span>
+											<Dot className="size-3.5 shrink-0 text-muted-foreground/60" aria-hidden="true" />
+											<span className="font-semibold text-emerald-600 dark:text-emerald-400">
+												{formatTurnCost(usage.cost_micros)}
+											</span>
 										</>
 									) : null}
 								</span>
