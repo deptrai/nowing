@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test.describe("Story 21.16: Origami Split-View Canvas & Workspace Modernization", () => {
+test.describe("Story 21.16: Nowing Split-View Canvas & Workspace Modernization", () => {
 	test.beforeEach(async ({ page }) => {
 		// Mock leads endpoint if needed for isolated E2E tests
 		await page.route("**/workspaces/*/leads*", async (route) => {
@@ -51,8 +51,8 @@ test.describe("Story 21.16: Origami Split-View Canvas & Workspace Modernization"
 		await page.goto("/dashboard/1/new-chat");
 
 		// AC1: Split canvas panels exist
-		await expect(page.locator("[data-testid='origami-split-canvas']")).toBeVisible();
-		await expect(page.locator("[data-testid='origami-lead-matrix']")).toBeVisible();
+		await expect(page.locator("[data-testid='nowing-split-canvas']")).toBeVisible();
+		await expect(page.locator("[data-testid='nowing-lead-matrix']")).toBeVisible();
 		await expect(page.locator("[data-testid='split-canvas-resizer']")).toBeVisible();
 	});
 

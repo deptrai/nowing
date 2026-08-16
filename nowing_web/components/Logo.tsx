@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { OrigamiLogo } from "@/components/origami/OrigamiLogo";
+import { NowingLogo } from "@/components/landing/NowingLogo";
 import { cn } from "@/lib/utils";
 
 export const Logo = ({
@@ -13,11 +13,7 @@ export const Logo = ({
 	showText?: boolean;
 }) => {
 	const content = (
-		<OrigamiLogo
-			size={32}
-			showText={showText}
-			className={cn("select-none", className)}
-		/>
+		<NowingLogo size={32} showText={showText} className={cn("select-none", className)} />
 	);
 
 	if (disableLink) {

@@ -1181,7 +1181,7 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 				members={members ?? []}
 			/>
 
-			{/* Origami Style: Suggested Next Actions Card (shown only during active thread) */}
+			{/* Nowing: Suggested Next Actions Card (shown only during active thread) */}
 			{hasActiveThread && (
 				<div className="rounded-xl border border-border/70 bg-card/90 p-2 shadow-2xs transition-all backdrop-blur-xs">
 					<div className="flex items-center justify-between px-1 pb-1">

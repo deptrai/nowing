@@ -117,7 +117,7 @@ export const Timeline: FC<{
 					type="button"
 					onClick={() => setIsOpen((prev) => !prev)}
 					className={cn(
-						"h-auto w-full justify-start gap-1.5 p-0 text-left text-sm font-normal transition-colors hover:bg-transparent",
+						"h-auto w-full justify-start gap-1.5 p-0 text-left text-xs font-normal transition-colors hover:bg-transparent",
 						"text-muted-foreground hover:text-accent-foreground"
 					)}
 				>
@@ -128,7 +128,7 @@ export const Timeline: FC<{
 					)}
 					<ChevronRightIcon
 						data-icon="inline-end"
-						className={cn("transition-transform duration-200", isOpen && "rotate-90")}
+						className={cn("size-3.5 transition-transform duration-200", isOpen && "rotate-90")}
 					/>
 				</Button>
 

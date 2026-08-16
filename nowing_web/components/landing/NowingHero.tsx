@@ -28,7 +28,7 @@ const QUICK_PROMPTS = [
 	},
 ];
 
-export const OrigamiHero: React.FC = () => {
+export const NowingHero: React.FC = () => {
 	const router = useRouter();
 	const [mode, setMode] = useState<"lead_gen" | "enrich" | "viral">("lead_gen");
 	const [prompt, setPrompt] = useState("");
@@ -69,7 +69,7 @@ export const OrigamiHero: React.FC = () => {
 					<span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
 					<span>Nowing 2.0 Lead Intelligence</span>
 					<span className="text-emerald-400">·</span>
-					<span>Phiên bản Origami Việt Nam</span>
+					<span>Nền tảng Săn Lead B2B Đa kênh</span>
 				</div>
 
 				{/* Instrument Serif / Display Headline */}

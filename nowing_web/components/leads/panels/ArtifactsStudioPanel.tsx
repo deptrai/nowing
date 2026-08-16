@@ -28,7 +28,7 @@ export const ArtifactsStudioPanel: React.FC<ArtifactsStudioPanelProps> = ({
     "consultant_name": "Nowing AI Sales Rep",
     "booking_link": "https://nowing.net/bds/meet?ref=lead_4"
   },
-  "tracking_source": "origami_outbound"
+  "tracking_source": "nowing_outbound"
 }`;
 
 	const sampleCrawlerPython = `# Auto-generated Scraper Script for Batdongsan.com.vn

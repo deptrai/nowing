@@ -8,7 +8,7 @@ import {
 	Globe,
 	XCircleIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { NestedScroll } from "@/components/assistant-ui/nested-scroll";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -208,10 +208,7 @@ export const DefaultFallbackCard: TimelineToolComponent = ({
 			(researchResult.degraded === true ||
 				(researchResult.status != null && researchResult.status !== "complete")));
 
-	const [isExpanded, setIsExpanded] = useState(isRunning);
-	useEffect(() => {
-		setIsExpanded(isRunning);
-	}, [isRunning]);
+	const [isExpanded, setIsExpanded] = useState(false);
 
 	const serializedResult = useMemo(
 		() =>
@@ -233,34 +230,27 @@ export const DefaultFallbackCard: TimelineToolComponent = ({
 	return (
 		<Card
 			className={cn(
-				"my-4 max-w-lg overflow-hidden",
+				"my-2 max-w-lg overflow-hidden",
 				isCancelled && "opacity-60",
 				isError && "border-destructive/30",
 				isDegraded && "border-amber-500/50"
 			)}
 		>
-			<Collapsible
-				className="group"
-				open={isExpanded}
-				onOpenChange={(next) => {
-					if (isRunning) return;
-					setIsExpanded(next);
-				}}
-			>
+			<Collapsible className="group" open={isExpanded} onOpenChange={setIsExpanded}>
 				<div className="flex items-stretch transition-colors hover:bg-accent hover:text-accent-foreground">
 					<CollapsibleTrigger asChild>
 						<Button
 							variant="ghost"
 							type="button"
 							className={cn(
-								"h-auto flex-1 min-w-0 justify-start gap-3 rounded-none py-4 pl-5 pr-2 text-left font-normal hover:bg-transparent",
+								"h-auto flex-1 min-w-0 justify-start gap-2.5 rounded-none py-2.5 pl-3.5 pr-2 text-left font-normal hover:bg-transparent",
 								"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
 								"disabled:cursor-default"
 							)}
 						>
 							<div
 								className={cn(
-									"flex size-8 shrink-0 items-center justify-center rounded-lg",
+									"flex size-6 shrink-0 items-center justify-center rounded-md",
 									isError
 										? "bg-destructive/10"
 										: isDegraded
@@ -271,23 +261,23 @@ export const DefaultFallbackCard: TimelineToolComponent = ({
 								)}
 							>
 								{isError ? (
-									<XCircleIcon className="size-4 text-destructive" />
+									<XCircleIcon className="size-3.5 text-destructive" />
 								) : isDegraded ? (
-									<AlertTriangle className="size-4 text-amber-600" />
+									<AlertTriangle className="size-3.5 text-amber-600" />
 								) : isCancelled ? (
-									<XCircleIcon className="size-4 text-muted-foreground" />
+									<XCircleIcon className="size-3.5 text-muted-foreground" />
 								) : isRunning ? (
 									<Spinner size="sm" className="text-primary" />
 								) : (
-									<CheckIcon className="size-4 text-primary" />
+									<CheckIcon className="size-3.5 text-primary" />
 								)}
 							</div>
 
 							<div className="flex flex-1 min-w-0 flex-col gap-0.5">
-								<div className="flex items-center gap-2">
+								<div className="flex items-center gap-1.5">
 									<p
 										className={cn(
-											"text-sm font-semibold truncate",
+											"text-[11.5px] font-medium truncate",
 											isCancelled && "text-muted-foreground line-through",
 											isError && "text-destructive",
 											isDegraded && "text-amber-600 dark:text-amber-400"
@@ -295,13 +285,25 @@ export const DefaultFallbackCard: TimelineToolComponent = ({
 									>
 										{displayName}
 									</p>
-									{isRunning && <Badge variant="secondary">Running</Badge>}
-									{isError && <Badge variant="destructive">Failed</Badge>}
-									{isCancelled && <Badge variant="outline">Cancelled</Badge>}
+									{isRunning && (
+										<Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
+											Running
+										</Badge>
+									)}
+									{isError && (
+										<Badge variant="destructive" className="px-1.5 py-0 text-[10px]">
+											Failed
+										</Badge>
+									)}
+									{isCancelled && (
+										<Badge variant="outline" className="px-1.5 py-0 text-[10px]">
+											Cancelled
+										</Badge>
+									)}
 									{isDegraded && researchResult && (
 										<Badge
 											variant="secondary"
-											className="bg-amber-500/10 text-amber-700 border-amber-500/20 dark:text-amber-400"
+											className="bg-amber-500/10 text-amber-700 border-amber-500/20 dark:text-amber-400 px-1.5 py-0 text-[10px]"
 										>
 											{researchBadge(researchResult)}
 										</Badge>
@@ -310,7 +312,7 @@ export const DefaultFallbackCard: TimelineToolComponent = ({
 								{subtitle && (
 									<p
 										className={cn(
-											"text-xs truncate",
+											"text-[10.5px] truncate",
 											isError
 												? "text-destructive/80"
 												: isDegraded
@@ -325,7 +327,7 @@ export const DefaultFallbackCard: TimelineToolComponent = ({
 						</Button>
 					</CollapsibleTrigger>
 
-					<div className="flex shrink-0 items-center gap-2 pl-2 pr-5">
+					<div className="flex shrink-0 items-center gap-1.5 pl-1.5 pr-3">
 						<ToolCardRevertButton
 							toolCallId={toolCallId}
 							toolName={toolName}
@@ -337,11 +339,11 @@ export const DefaultFallbackCard: TimelineToolComponent = ({
 								variant="ghost"
 								size="icon"
 								aria-label={isExpanded ? "Collapse details" : "Expand details"}
-								className="size-7 shrink-0"
+								className="size-6 shrink-0"
 							>
 								<ChevronDownIcon
 									className={cn(
-										"size-4 transition-transform duration-200",
+										"size-3.5 transition-transform duration-200",
 										"group-data-[state=open]:rotate-180"
 									)}
 								/>

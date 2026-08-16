@@ -52,11 +52,11 @@ export const TimelineGroupRow: FC<{
 				</div>
 			</div>
 
-			<div className="flex-1 min-w-0 pb-4">
+			<div className="flex-1 min-w-0 pb-1.5">
 				{renderItem(group.parent)}
 
 				{hasChildren && (
-					<div className="mt-2 ml-3 space-y-2">
+					<div className="mt-1 ml-2.5 space-y-1">
 						{group.children.map((child) => (
 							<div key={child.id}>{renderItem(child)}</div>
 						))}

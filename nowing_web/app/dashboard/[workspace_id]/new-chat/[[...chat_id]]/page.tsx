@@ -38,7 +38,7 @@ import {
 	type TokenUsageData,
 	TokenUsageProvider,
 } from "@/components/assistant-ui/token-usage-context";
-import { OrigamiSplitCanvas } from "@/components/leads/OrigamiSplitCanvas";
+import { NowingSplitCanvas } from "@/components/leads/NowingSplitCanvas";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSyncChatArtifacts } from "@/features/chat-artifacts";
@@ -797,7 +797,7 @@ export default function NewChatPage() {
 					onSubmit={handleApprovalSubmit}
 				>
 					<div key={workspaceId} className="flex h-full w-full overflow-hidden">
-						<OrigamiSplitCanvas
+						<NowingSplitCanvas
 							workspaceId={workspaceId}
 							threadId={activeThreadId}
 							hasActiveThread={!!activeThreadId}

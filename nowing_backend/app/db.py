@@ -20,8 +20,10 @@ from sqlalchemy import (
     Enum as SQLAlchemyEnum,
     Float,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
+    PrimaryKeyConstraint,
     String,
     Text,
     UniqueConstraint,
@@ -4441,15 +4443,19 @@ class BillingEvent(Base, TimestampMixin):
 
 
 class Lead(Base, TimestampMixin):
-    """A lead record imported or created for outbound prospecting (Story 21.2)."""
+    """A lead record imported or created for outbound prospecting (Story 21.2 / 23.4)."""
 
     __tablename__ = "leads"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", "workspace_id", name="pk_leads"),
+        Index("ix_leads_workspace_created", "workspace_id", "created_at"),
+    )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-
     workspace_id = Column(
         Integer,
         ForeignKey("workspaces.id", ondelete="CASCADE"),
+        primary_key=True,
         nullable=False,
         index=True,
     )
@@ -4475,29 +4481,46 @@ class Lead(Base, TimestampMixin):
     lead_scores = relationship(
         "LeadScore",
         back_populates="lead",
+        primaryjoin="and_(LeadScore.lead_id == Lead.id, LeadScore.workspace_id == Lead.workspace_id)",
         order_by="LeadScore.computed_at.desc()",
         cascade="all, delete-orphan",
+        overlaps="workspace,lead_scores",
     )
     enrichment_requests = relationship(
         "EnrichmentRequest",
         back_populates="lead",
+        primaryjoin="and_(EnrichmentRequest.lead_id == Lead.id, EnrichmentRequest.workspace_id == Lead.workspace_id)",
         cascade="all, delete-orphan",
+        overlaps="workspace,enrichment_requests",
     )
     verified_contacts = relationship(
         "VerifiedContact",
         back_populates="lead",
+        primaryjoin="and_(VerifiedContact.lead_id == Lead.id, VerifiedContact.workspace_id == Lead.workspace_id)",
         cascade="all, delete-orphan",
+        overlaps="workspace,verified_contacts",
     )
     phone_waterfall_logs = relationship(
         "PhoneWaterfallLog",
         back_populates="lead",
+        primaryjoin="and_(PhoneWaterfallLog.lead_id == Lead.id, PhoneWaterfallLog.workspace_id == Lead.workspace_id)",
         cascade="all, delete-orphan",
+        overlaps="workspace,phone_waterfall_logs",
     )
     zalo_message_logs = relationship(
         "ZaloMessageLog",
         back_populates="lead",
+        primaryjoin="and_(ZaloMessageLog.lead_id == Lead.id, ZaloMessageLog.workspace_id == Lead.workspace_id)",
         order_by="ZaloMessageLog.created_at.desc()",
         cascade="all, delete-orphan",
+        overlaps="workspace,zalo_message_logs",
+    )
+    outcome_events = relationship(
+        "OutcomeEvent",
+        back_populates="lead",
+        primaryjoin="and_(OutcomeEvent.lead_id == Lead.id, OutcomeEvent.workspace_id == Lead.workspace_id)",
+        cascade="all, delete-orphan",
+        overlaps="workspace,outcome_events",
     )
 
     table_id = Column(
@@ -4576,7 +4599,7 @@ class ExportJob(Base, TimestampMixin):
 
 
 class LeadScore(Base, TimestampMixin):
-    """Composite lead score snapshot (Story 21.2)."""
+    """Composite lead score snapshot (Story 21.2 / 23.4)."""
 
     __tablename__ = "lead_scores"
 
@@ -4590,6 +4613,12 @@ class LeadScore(Base, TimestampMixin):
             "lead_id",
             "computed_at",
         ),
+        ForeignKeyConstraint(
+            ["lead_id", "workspace_id"],
+            ["leads.id", "leads.workspace_id"],
+            ondelete="CASCADE",
+            name="fk_lead_scores_lead_id_workspace_id",
+        ),
     )
 
     workspace_id = Column(
@@ -4601,7 +4630,6 @@ class LeadScore(Base, TimestampMixin):
     client_id = Column(CITEXT, nullable=True, index=True)
     lead_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("leads.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -4627,7 +4655,13 @@ class LeadScore(Base, TimestampMixin):
     )
 
     workspace = relationship("Workspace", back_populates="lead_scores")
-    lead = relationship("Lead", back_populates="lead_scores")
+    lead = relationship(
+        "Lead",
+        back_populates="lead_scores",
+        primaryjoin="and_(LeadScore.lead_id == Lead.id, LeadScore.workspace_id == Lead.workspace_id)",
+        foreign_keys=[lead_id, workspace_id],
+        overlaps="workspace,lead_scores",
+    )
     previous_score = relationship(
         "LeadScore",
         remote_side=[id],
@@ -4636,7 +4670,7 @@ class LeadScore(Base, TimestampMixin):
 
 
 class EnrichmentRequest(Base, TimestampMixin):
-    """A contact-enrichment request and its lifecycle (Story 21.3, AC-3).
+    """A contact-enrichment request and its lifecycle (Story 21.3, AC-3 / 23.4).
 
     ``provider_results`` records the raw per-provider responses (redacted of
     PII) plus any degradation reasons; it is never surfaced on non-privileged
@@ -4652,64 +4686,11 @@ class EnrichmentRequest(Base, TimestampMixin):
             "lead_id",
             text("created_at DESC"),
         ),
-    )
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-
-    workspace_id = Column(
-        Integer,
-        ForeignKey("workspaces.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-    client_id = Column(
-        CITEXT,
-        ForeignKey("vertical_clients.client_id", ondelete="SET NULL"),
-        nullable=True,
-        index=True,
-    )
-    lead_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("leads.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-    status = Column(
-        String(20),
-        nullable=False,
-        default="pending",
-        server_default="pending",
-    )
-    provider_results = Column(JSONB, nullable=True, server_default=text("'{}'::jsonb"))
-    cost_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
-    contact_count = Column(Integer, nullable=False, default=0, server_default="0")
-    requested_count = Column(Integer, nullable=False, default=5, server_default="5")
-
-    workspace = relationship("Workspace", back_populates="enrichment_requests")
-    lead = relationship("Lead", back_populates="enrichment_requests")
-    contacts = relationship(
-        "VerifiedContact",
-        back_populates="enrichment_request",
-        cascade="all, delete-orphan",
-    )
-
-
-class VerifiedContact(Base, TimestampMixin):
-    """A verified contact discovered by enrichment (Story 21.3, AC-3).
-
-    Raw PII (name/title/email/phone) is encrypted at rest (AD-42/AD-49); this
-    table is the authoritative source for outreach and is never passed through
-    PII redaction.
-    """
-
-    __tablename__ = "verified_contacts"
-    __table_args__ = (
-        Index(
-            "ix_verified_contacts_tenant_lookup",
-            "workspace_id",
-            "client_id",
-            "lead_id",
-            text("created_at DESC"),
+        ForeignKeyConstraint(
+            ["lead_id", "workspace_id"],
+            ["leads.id", "leads.workspace_id"],
+            ondelete="CASCADE",
+            name="fk_enrichment_requests_lead_id_workspace_id",
         ),
     )
 
@@ -4729,7 +4710,76 @@ class VerifiedContact(Base, TimestampMixin):
     )
     lead_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("leads.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    status = Column(
+        String(20),
+        nullable=False,
+        default="pending",
+        server_default="pending",
+    )
+    provider_results = Column(JSONB, nullable=True, server_default=text("'{}'::jsonb"))
+    cost_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
+    contact_count = Column(Integer, nullable=False, default=0, server_default="0")
+    requested_count = Column(Integer, nullable=False, default=5, server_default="5")
+
+    workspace = relationship("Workspace", back_populates="enrichment_requests")
+    lead = relationship(
+        "Lead",
+        back_populates="enrichment_requests",
+        primaryjoin="and_(EnrichmentRequest.lead_id == Lead.id, EnrichmentRequest.workspace_id == Lead.workspace_id)",
+        foreign_keys=[lead_id, workspace_id],
+        overlaps="workspace,enrichment_requests",
+    )
+    contacts = relationship(
+        "VerifiedContact",
+        back_populates="enrichment_request",
+        cascade="all, delete-orphan",
+    )
+
+
+class VerifiedContact(Base, TimestampMixin):
+    """A verified contact discovered by enrichment (Story 21.3, AC-3 / 23.4).
+
+    Raw PII (name/title/email/phone) is encrypted at rest (AD-42/AD-49); this
+    table is the authoritative source for outreach and is never passed through
+    PII redaction.
+    """
+
+    __tablename__ = "verified_contacts"
+    __table_args__ = (
+        Index(
+            "ix_verified_contacts_tenant_lookup",
+            "workspace_id",
+            "client_id",
+            "lead_id",
+            text("created_at DESC"),
+        ),
+        ForeignKeyConstraint(
+            ["lead_id", "workspace_id"],
+            ["leads.id", "leads.workspace_id"],
+            ondelete="CASCADE",
+            name="fk_verified_contacts_lead_id_workspace_id",
+        ),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    client_id = Column(
+        CITEXT,
+        ForeignKey("vertical_clients.client_id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    lead_id = Column(
+        UUID(as_uuid=True),
         nullable=False,
         index=True,
     )
@@ -4758,13 +4808,19 @@ class VerifiedContact(Base, TimestampMixin):
     invalid_reason = Column(String(255), nullable=True)
 
     workspace = relationship("Workspace", back_populates="verified_contacts")
-    lead = relationship("Lead", back_populates="verified_contacts")
+    lead = relationship(
+        "Lead",
+        back_populates="verified_contacts",
+        primaryjoin="and_(VerifiedContact.lead_id == Lead.id, VerifiedContact.workspace_id == Lead.workspace_id)",
+        foreign_keys=[lead_id, workspace_id],
+        overlaps="workspace,verified_contacts",
+    )
     enrichment_request = relationship("EnrichmentRequest", back_populates="contacts")
     phone_waterfall_logs = relationship("PhoneWaterfallLog", back_populates="contact")
 
 
 class PhoneWaterfallLog(Base, TimestampMixin):
-    """Log entry for 3-tier phone resolution waterfall (Story 21.3 / AD-36).
+    """Log entry for 3-tier phone resolution waterfall (Story 21.3 / 23.4 / AD-36).
 
     Tracks the exact tier, provider, response envelope, phone hash (SHA-256),
     masked phone, and refund SLA state without storing raw PII.
@@ -4778,6 +4834,12 @@ class PhoneWaterfallLog(Base, TimestampMixin):
             "client_id",
             "lead_id",
             text("created_at DESC"),
+        ),
+        ForeignKeyConstraint(
+            ["lead_id", "workspace_id"],
+            ["leads.id", "leads.workspace_id"],
+            ondelete="CASCADE",
+            name="fk_phone_waterfall_logs_lead_id_workspace_id",
         ),
     )
 
@@ -4797,7 +4859,6 @@ class PhoneWaterfallLog(Base, TimestampMixin):
     )
     lead_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("leads.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -4822,7 +4883,13 @@ class PhoneWaterfallLog(Base, TimestampMixin):
     refund_reason = Column(String(255), nullable=True)
 
     workspace = relationship("Workspace")
-    lead = relationship("Lead", back_populates="phone_waterfall_logs")
+    lead = relationship(
+        "Lead",
+        back_populates="phone_waterfall_logs",
+        primaryjoin="and_(PhoneWaterfallLog.lead_id == Lead.id, PhoneWaterfallLog.workspace_id == Lead.workspace_id)",
+        foreign_keys=[lead_id, workspace_id],
+        overlaps="workspace,phone_waterfall_logs",
+    )
     contact = relationship("VerifiedContact", back_populates="phone_waterfall_logs")
 
 
@@ -5235,7 +5302,7 @@ class ZaloConnection(Base, TimestampMixin):
 
 
 class ZaloMessageLog(Base, TimestampMixin):
-    """Audit log of Zalo outreach drafts, ZNS messages, and inbound replies (Story 21.6)."""
+    """Audit log of Zalo outreach drafts, ZNS messages, and inbound replies (Story 21.6 / 23.4)."""
 
     __tablename__ = "zalo_message_logs"
 
@@ -5245,6 +5312,12 @@ class ZaloMessageLog(Base, TimestampMixin):
         Index("idx_zalo_message_logs_phone", "recipient_phone"),
         Index("idx_zalo_message_logs_created_at", "created_at"),
         Index("idx_zalo_message_logs_msg_type", "message_type"),
+        ForeignKeyConstraint(
+            ["lead_id", "workspace_id"],
+            ["leads.id", "leads.workspace_id"],
+            ondelete="SET NULL",
+            name="fk_zalo_message_logs_lead_id_workspace_id",
+        ),
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -5260,7 +5333,6 @@ class ZaloMessageLog(Base, TimestampMixin):
     )
     lead_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("leads.id", ondelete="SET NULL"),
         nullable=True,
     )
     recipient_phone = Column(String(50), nullable=True)
@@ -5294,13 +5366,30 @@ class ZaloMessageLog(Base, TimestampMixin):
 
     workspace = relationship("Workspace", back_populates="zalo_message_logs")
     connection = relationship("ZaloConnection", back_populates="message_logs")
-    lead = relationship("Lead", back_populates="zalo_message_logs")
+    lead = relationship(
+        "Lead",
+        back_populates="zalo_message_logs",
+        primaryjoin="and_(ZaloMessageLog.lead_id == Lead.id, ZaloMessageLog.workspace_id == Lead.workspace_id)",
+        foreign_keys=[lead_id, workspace_id],
+        overlaps="workspace,zalo_message_logs",
+    )
+
+
+OutboundMessage = ZaloMessageLog
 
 
 class OutcomeEvent(Base, TimestampMixin):
-    """An outcome event (e.g. meeting booked, verified lead outcome) for outcome-based pricing (Story 21.7 / AD-42)."""
+    """An outcome event (e.g. meeting booked, verified lead outcome) for outcome-based pricing (Story 21.7 / 23.4 / AD-42)."""
 
     __tablename__ = "outcome_events"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["lead_id", "workspace_id"],
+            ["leads.id", "leads.workspace_id"],
+            ondelete="CASCADE",
+            name="fk_outcome_events_lead_id_workspace_id",
+        ),
+    )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     workspace_id = Column(
@@ -5315,7 +5404,6 @@ class OutcomeEvent(Base, TimestampMixin):
     )  # outcome_meeting_booked, outcome_lead_enriched
     lead_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("leads.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -5333,7 +5421,13 @@ class OutcomeEvent(Base, TimestampMixin):
     )
 
     workspace = relationship("Workspace")
-    lead = relationship("Lead")
+    lead = relationship(
+        "Lead",
+        back_populates="outcome_events",
+        primaryjoin="and_(OutcomeEvent.lead_id == Lead.id, OutcomeEvent.workspace_id == Lead.workspace_id)",
+        foreign_keys=[lead_id, workspace_id],
+        overlaps="workspace,outcome_events",
+    )
 
 
 class PricingPlan(Base, TimestampMixin):
@@ -5466,7 +5560,7 @@ class WorkspaceDncRecord(Base, TimestampMixin):
 
 
 class AffiliatePartner(Base, TimestampMixin):
-    """Affiliate Partner account for Nowing referral program (Story 21.18 / AD-44)."""
+    """Affiliate Partner account for Nowing referral program (Story 21.18 / Story 23.3 / AD-44)."""
 
     __tablename__ = "affiliate_partners"
     __table_args__ = (
@@ -5481,13 +5575,13 @@ class AffiliatePartner(Base, TimestampMixin):
         ForeignKey("user.id", ondelete="CASCADE"),
         nullable=False,
         unique=True,
-        index=True,
     )
     referral_code = Column(CITEXT, nullable=False)
     partner_type = Column(String(50), nullable=False, default="agency", server_default=text("'agency'"))
     status = Column(String(30), nullable=False, default="active", server_default=text("'active'"))
     commission_rate = Column(Float, nullable=False, default=0.15, server_default="0.15")
     balance_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
+    hold_balance_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
     total_earned_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
     total_paid_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
     payout_method = Column(String(30), nullable=False, default="vietqr", server_default=text("'vietqr'"))
@@ -5511,6 +5605,14 @@ class AffiliatePartner(Base, TimestampMixin):
     commissions = relationship("PartnerCommission", back_populates="partner", cascade="all, delete-orphan")
     payouts = relationship("PartnerPayout", back_populates="partner", cascade="all, delete-orphan")
 
+    @property
+    def available_balance_micros(self) -> int:
+        return self.balance_micros
+
+    @available_balance_micros.setter
+    def available_balance_micros(self, value: int) -> None:
+        self.balance_micros = value
+
 
 class PartnerReferral(Base, TimestampMixin):
     """Referred user attribution (Story 21.18)."""
@@ -5527,14 +5629,12 @@ class PartnerReferral(Base, TimestampMixin):
         UUID(as_uuid=True),
         ForeignKey("affiliate_partners.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     referred_user_id = Column(
         UUID(as_uuid=True),
         ForeignKey("user.id", ondelete="CASCADE"),
         nullable=False,
         unique=True,
-        index=True,
     )
     attribution_source = Column(String(100), nullable=True, default="direct_ref", server_default=text("'direct_ref'"))
     landing_page = Column(String(255), nullable=True)
@@ -5572,13 +5672,11 @@ class PartnerCommission(Base, TimestampMixin):
         UUID(as_uuid=True),
         ForeignKey("affiliate_partners.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     referral_id = Column(
         UUID(as_uuid=True),
         ForeignKey("partner_referrals.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     credit_purchase_id = Column(
         UUID(as_uuid=True),
@@ -5622,14 +5720,18 @@ class PartnerPayout(Base, TimestampMixin):
         UUID(as_uuid=True),
         ForeignKey("affiliate_partners.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     amount_micros = Column(BigInteger, nullable=False)
     amount_vnd = Column(BigInteger, nullable=False, default=0, server_default="0")
+    tax_deducted_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
+    net_amount_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
+    tax_code = Column(String(50), nullable=True)
     payout_method = Column(String(30), nullable=False, default="vietqr", server_default=text("'vietqr'"))
     payout_details = Column(JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb"))
     status = Column(String(20), nullable=False, default="pending", server_default=text("'pending'"))
     tx_reference = Column(String(100), nullable=True)
+    napas_ref = Column(String(100), nullable=True)
+    hmac_audit_hash = Column(String(128), nullable=True)
     requested_at = Column(TIMESTAMP(timezone=True), nullable=True)
     processed_at = Column(TIMESTAMP(timezone=True), nullable=True)
     created_at = Column(

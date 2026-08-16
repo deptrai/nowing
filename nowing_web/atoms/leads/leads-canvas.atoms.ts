@@ -30,3 +30,9 @@ export const chatHighlightedRowIdsAtom = atom<string[]>([]);
 
 // Active filter preset applied to table
 export const activeFilterPresetAtom = atom<FilterPresets | null>(null);
+
+// Active viewing Artifact / Dataset Card ID (for chat <-> right canvas synchronization)
+export const activeArtifactIdAtom = atom<string | null>("leads-main");
+
+// Ping / Focus trigger timestamp (when user clicks artifact card in chat to ping right panel)
+export const canvasHighlightTriggerAtom = atom<number>(0);

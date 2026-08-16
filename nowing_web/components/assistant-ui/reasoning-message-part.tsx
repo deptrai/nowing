@@ -2,7 +2,7 @@
 
 import type { ReasoningMessagePartComponent } from "@assistant-ui/react";
 import { ChevronRightIcon } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -23,15 +23,7 @@ import { cn } from "@/lib/utils";
  */
 export const ReasoningMessagePart: ReasoningMessagePartComponent = ({ text, status }) => {
 	const isRunning = status?.type === "running";
-	const [isOpen, setIsOpen] = useState(() => isRunning);
-
-	useEffect(() => {
-		if (isRunning) {
-			setIsOpen(true);
-		} else if (status?.type === "complete") {
-			setIsOpen(false);
-		}
-	}, [isRunning, status?.type]);
+	const [isOpen, setIsOpen] = useState(false);
 
 	const headerLabel = useMemo(() => {
 		if (isRunning) return "Thinking";
@@ -51,7 +43,7 @@ export const ReasoningMessagePart: ReasoningMessagePartComponent = ({ text, stat
 					type="button"
 					onClick={() => setIsOpen((prev) => !prev)}
 					className={cn(
-						"h-auto w-full justify-start gap-1.5 p-0 text-left text-sm font-normal transition-colors hover:bg-transparent",
+						"h-auto w-full justify-start gap-1.5 p-0 text-left text-xs font-normal transition-colors hover:bg-transparent",
 						"text-muted-foreground hover:text-accent-foreground"
 					)}
 				>
@@ -62,7 +54,7 @@ export const ReasoningMessagePart: ReasoningMessagePartComponent = ({ text, stat
 					)}
 					<ChevronRightIcon
 						data-icon="inline-end"
-						className={cn("transition-transform duration-200", isOpen && "rotate-90")}
+						className={cn("size-3.5 transition-transform duration-200", isOpen && "rotate-90")}
 					/>
 				</Button>
 
@@ -73,7 +65,7 @@ export const ReasoningMessagePart: ReasoningMessagePartComponent = ({ text, stat
 					)}
 				>
 					<div className="overflow-hidden">
-						<div className="mt-2 border-l border-muted-foreground/30 pl-3 text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap wrap-break-word">
+						<div className="mt-2 border-l border-muted-foreground/30 pl-3 text-[11px] leading-relaxed text-muted-foreground whitespace-pre-wrap wrap-break-word">
 							{text}
 						</div>
 					</div>

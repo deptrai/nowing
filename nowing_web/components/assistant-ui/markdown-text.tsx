@@ -22,6 +22,7 @@ import { MentionChip } from "@/components/assistant-ui/mention-chip";
 import "katex/dist/katex.min.css";
 import { toast } from "sonner";
 import { processChildrenWithCitations } from "@/components/citations/citation-renderer";
+import { TableArtifactCard } from "@/components/leads/TableArtifactCard";
 import {
 	Table,
 	TableBody,
@@ -300,7 +301,7 @@ const defaultComponents = memoizeMarkdownComponents({
 		return (
 			<h1
 				className={cn(
-					"aui-md-h1 mt-3 mb-2 font-bold text-base sm:text-lg tracking-tight first:mt-0 last:mb-0 text-foreground",
+					"aui-md-h1 mt-2.5 mb-1.5 font-bold text-[13.5px] sm:text-sm tracking-tight first:mt-0 last:mb-0 text-foreground",
 					className
 				)}
 				{...props}
@@ -314,7 +315,7 @@ const defaultComponents = memoizeMarkdownComponents({
 		return (
 			<h2
 				className={cn(
-					"aui-md-h2 mt-2.5 mb-1.5 font-semibold text-sm sm:text-base tracking-tight first:mt-0 last:mb-0 text-foreground",
+					"aui-md-h2 mt-2 mb-1 font-semibold text-[12.5px] sm:text-[13px] tracking-tight first:mt-0 last:mb-0 text-foreground",
 					className
 				)}
 				{...props}
@@ -328,7 +329,7 @@ const defaultComponents = memoizeMarkdownComponents({
 		return (
 			<h3
 				className={cn(
-					"aui-md-h3 mt-2 mb-1 font-semibold text-xs sm:text-sm tracking-tight first:mt-0 last:mb-0 text-foreground",
+					"aui-md-h3 mt-1.5 mb-1 font-semibold text-[12px] tracking-tight first:mt-0 last:mb-0 text-foreground",
 					className
 				)}
 				{...props}
@@ -342,7 +343,7 @@ const defaultComponents = memoizeMarkdownComponents({
 		return (
 			<h4
 				className={cn(
-					"aui-md-h4 mt-1.5 mb-1 font-medium text-xs tracking-tight first:mt-0 last:mb-0 text-foreground",
+					"aui-md-h4 my-1 font-medium text-[11.5px] tracking-tight first:mt-0 last:mb-0 text-foreground",
 					className
 				)}
 				{...props}
@@ -356,7 +357,7 @@ const defaultComponents = memoizeMarkdownComponents({
 		return (
 			<h5
 				className={cn(
-					"aui-md-h5 my-1 font-semibold text-xs first:mt-0 last:mb-0 text-foreground",
+					"aui-md-h5 my-1 font-semibold text-[11.5px] first:mt-0 last:mb-0 text-foreground",
 					className
 				)}
 				{...props}
@@ -370,7 +371,7 @@ const defaultComponents = memoizeMarkdownComponents({
 		return (
 			<h6
 				className={cn(
-					"aui-md-h6 my-1 font-semibold text-xs first:mt-0 last:mb-0 text-foreground",
+					"aui-md-h6 my-1 font-semibold text-[11.5px] first:mt-0 last:mb-0 text-foreground",
 					className
 				)}
 				{...props}
@@ -385,7 +386,7 @@ const defaultComponents = memoizeMarkdownComponents({
 		return (
 			<p
 				className={cn(
-					"aui-md-p my-1.5 text-[11.5px] sm:text-xs leading-relaxed text-foreground/90 first:mt-0 last:mb-0",
+					"aui-md-p my-1 text-[11.5px] leading-relaxed text-foreground/90 first:mt-0 last:mb-0",
 					className
 				)}
 				{...props}
@@ -453,9 +454,11 @@ const defaultComponents = memoizeMarkdownComponents({
 		<hr className={cn("aui-md-hr my-5 border-b", className)} {...props} />
 	),
 	table: ({ className, ...props }) => (
-		<div className="aui-md-table-wrapper my-5 overflow-hidden rounded-md border">
-			<Table className={cn("aui-md-table", className)} {...props} />
-		</div>
+		<TableArtifactCard title="Bảng dữ liệu Khách hàng & Leads" type="TABLE" className="my-2.5">
+			<div className="aui-md-table-wrapper overflow-x-auto rounded-md border border-border/70">
+				<Table className={cn("aui-md-table text-[11px]", className)} {...props} />
+			</div>
+		</TableArtifactCard>
 	),
 	thead: ({ className, ...props }) => (
 		<TableHeader className={cn("aui-md-thead", className)} {...props} />

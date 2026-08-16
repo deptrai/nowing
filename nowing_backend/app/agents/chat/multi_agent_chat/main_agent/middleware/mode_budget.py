@@ -82,7 +82,7 @@ _WEB_RESEARCH_SUBAGENTS: frozenset[str] = frozenset(
 
 # Tools that are always allowed and do not count against mode budgets.
 _OTHER_TOOLS: frozenset[str] = frozenset(
-    {"update_memory", "create_automation", "read_run", "search_run"}
+    {"update_memory", "create_automation", "write_todos", "read_run", "search_run"}
 )
 
 

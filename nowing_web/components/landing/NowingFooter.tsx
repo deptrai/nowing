@@ -1,16 +1,16 @@
 import { Heart, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import type React from "react";
-import { OrigamiLogo } from "@/components/origami/OrigamiLogo";
+import { NowingLogo } from "./NowingLogo";
 
-export const OrigamiFooter: React.FC = () => {
+export const NowingFooter: React.FC = () => {
 	return (
 		<footer className="bg-slate-900 text-slate-300 py-16 border-t border-slate-800">
 			<div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 				<div className="grid grid-cols-1 md:grid-cols-5 gap-10 pb-12 border-b border-slate-800">
 					{/* Brand column */}
 					<div className="md:col-span-2 space-y-4">
-						<OrigamiLogo size={36} showText={true} textClassName="text-white" />
+						<NowingLogo size={36} showText={true} textClassName="text-white" />
 						<p className="text-xs sm:text-sm text-slate-400 max-w-sm leading-relaxed">
 							Nowing là nền tảng AI Lead Intelligence hàng đầu Việt Nam. Tự động hóa săn khách hàng,
 							giải mã số điện thoại và tiếp cận đa kênh Zalo & Email.

@@ -260,6 +260,9 @@ class PartnerService:
             balance_micros=partner.balance_micros,
             balance_usd=micros_to_usd(partner.balance_micros),
             balance_vnd=micros_to_vnd(partner.balance_micros),
+            hold_balance_micros=partner.hold_balance_micros,
+            hold_balance_usd=micros_to_usd(partner.hold_balance_micros),
+            hold_balance_vnd=micros_to_vnd(partner.hold_balance_micros),
             total_earned_micros=partner.total_earned_micros,
             total_earned_usd=micros_to_usd(partner.total_earned_micros),
             total_earned_vnd=micros_to_vnd(partner.total_earned_micros),
@@ -466,16 +469,16 @@ class PartnerService:
                 detail=f"Insufficient balance. Available: ${micros_to_usd(partner.balance_micros):.2f}.",
             )
 
-        # Deduct balance
-        partner.balance_micros -= request.amount_micros
-        partner.total_paid_micros += request.amount_micros
-
         payout_details = dict(partner.payout_details or {})
         payout_details.update(request.payout_details or {})
         payout_details["amount_vnd"] = micros_to_vnd(request.amount_micros)
         payout_details["exchange_rate"] = USD_TO_VND_RATE
 
         if request.payout_method == "credit_wallet":
+            # Deduct balance immediately for instant credit conversion
+            partner.balance_micros -= request.amount_micros
+            partner.total_paid_micros += request.amount_micros
+
             # Instant conversion with +10% bonus into user wallet
             user = (
                 await db_session.execute(
@@ -492,6 +495,10 @@ class PartnerService:
                 id=uuid.uuid4(),
                 partner_id=partner.id,
                 amount_micros=request.amount_micros,
+                amount_vnd=micros_to_vnd(request.amount_micros),
+                tax_deducted_micros=0,
+                net_amount_micros=request.amount_micros,
+                tax_code=None,
                 payout_method="credit_wallet",
                 payout_details=payout_details,
                 status="completed",
@@ -502,11 +509,20 @@ class PartnerService:
                 updated_at=now,
             )
         else:
+            # For bank / VietQR payouts: balance is preserved in available_balance until
+            # execute_payout_with_lock moves it to hold_balance_micros (Double-Entry AC-1).
             now = datetime.now(UTC)
+            from app.services.partner_payout_service import PartnerPayoutService
+
+            tax_info = PartnerPayoutService.calculate_pit_tax(request.amount_micros)
             payout = PartnerPayout(
                 id=uuid.uuid4(),
                 partner_id=partner.id,
                 amount_micros=request.amount_micros,
+                amount_vnd=micros_to_vnd(request.amount_micros),
+                tax_deducted_micros=tax_info.tax_deducted_micros,
+                net_amount_micros=tax_info.net_amount_micros,
+                tax_code=tax_info.tax_code,
                 payout_method=request.payout_method or "vietqr",
                 payout_details=payout_details,
                 status="pending",
@@ -525,10 +541,17 @@ class PartnerService:
             amount_micros=payout.amount_micros,
             amount_usd=micros_to_usd(payout.amount_micros),
             amount_vnd=micros_to_vnd(payout.amount_micros),
+            tax_deducted_micros=payout.tax_deducted_micros,
+            tax_deducted_vnd=micros_to_vnd(payout.tax_deducted_micros),
+            net_amount_micros=payout.net_amount_micros,
+            net_amount_vnd=micros_to_vnd(payout.net_amount_micros),
+            tax_code=payout.tax_code,
             payout_method=payout.payout_method,
             payout_details=payout.payout_details,
             status=payout.status,
             tx_reference=payout.tx_reference,
+            napas_ref=payout.napas_ref,
+            hmac_audit_hash=payout.hmac_audit_hash,
             requested_at=payout.requested_at,
             processed_at=payout.processed_at,
             created_at=payout.created_at,
@@ -716,10 +739,17 @@ class PartnerService:
                 amount_micros=p.amount_micros,
                 amount_usd=micros_to_usd(p.amount_micros),
                 amount_vnd=micros_to_vnd(p.amount_micros),
+                tax_deducted_micros=p.tax_deducted_micros or 0,
+                tax_deducted_vnd=micros_to_vnd(p.tax_deducted_micros or 0),
+                net_amount_micros=p.net_amount_micros or p.amount_micros,
+                net_amount_vnd=micros_to_vnd(p.net_amount_micros or p.amount_micros),
+                tax_code=p.tax_code,
                 payout_method=p.payout_method,
                 payout_details=p.payout_details,
                 status=p.status,
                 tx_reference=p.tx_reference,
+                napas_ref=p.napas_ref,
+                hmac_audit_hash=p.hmac_audit_hash,
                 requested_at=p.requested_at,
                 processed_at=p.processed_at,
                 created_at=p.created_at,

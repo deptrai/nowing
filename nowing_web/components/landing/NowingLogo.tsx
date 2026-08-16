@@ -1,14 +1,14 @@
 import type React from "react";
 import { cn } from "@/lib/utils";
 
-interface OrigamiLogoProps {
+interface NowingLogoProps {
 	className?: string;
 	size?: number;
 	showText?: boolean;
 	textClassName?: string;
 }
 
-export const OrigamiLogo: React.FC<OrigamiLogoProps> = ({
+export const NowingLogo: React.FC<NowingLogoProps> = ({
 	className,
 	size = 32,
 	showText = false,
@@ -16,7 +16,7 @@ export const OrigamiLogo: React.FC<OrigamiLogoProps> = ({
 }) => {
 	return (
 		<div className={cn("inline-flex items-center gap-2.5 select-none", className)}>
-			{/* Origami Geometric Icon in Mint & Emerald Green */}
+			{/* Nowing Brand Geometric Icon in Mint & Emerald Green */}
 			<div
 				style={{ width: size, height: size }}
 				className="relative flex items-center justify-center rounded-lg bg-gradient-to-br from-emerald-400 via-teal-500 to-emerald-600 shadow-md shadow-emerald-500/20 text-white flex-shrink-0"
@@ -27,9 +27,8 @@ export const OrigamiLogo: React.FC<OrigamiLogoProps> = ({
 					height={size * 0.65}
 					fill="currentColor"
 					xmlns="http://www.w3.org/2000/svg"
-					aria-label="Nowing Origami Logo"
+					aria-label="Nowing Logo"
 				>
-					{/* Geometric origami facets */}
 					<path d="M12 2L2 9.5L12 17L22 9.5L12 2Z" fill="white" fillOpacity="0.95" />
 					<path d="M12 17L2 9.5L12 22L22 9.5L12 17Z" fill="white" fillOpacity="0.65" />
 					<path d="M12 2L12 17L22 9.5L12 2Z" fill="white" fillOpacity="0.8" />

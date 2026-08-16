@@ -38,8 +38,8 @@ test.describe("Story 21.15: Unified Multi-Source AI Lead Generation Orchestrator
 		await page.goto(`/dashboard/${workspaceId}/leads`);
 		await page.waitForLoadState("domcontentloaded");
 
-		// 3. Verify Origami Matrix container or Lead UI renders
-		const matrixContainer = page.locator("main, div[data-testid='origami-split-canvas']").first();
+		// 3. Verify Nowing Matrix container or Lead UI renders
+		const matrixContainer = page.locator("main, div[data-testid='nowing-split-canvas']").first();
 		await expect(matrixContainer).toBeVisible({ timeout: 15000 });
 
 		// 4. Navigate to New Chat with natural language lead search prompt

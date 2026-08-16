@@ -1,15 +1,20 @@
 story_key: 23-4-postgresql-rls-and-table-partitioning
-status: ready-for-dev
-baseline_commit: a58f90266528e15693a279663ffb73a2a077f13b
+status: review
+baseline_commit: 48380a9c4ca70c14543657a371ab2ad3b5b28033
 epic: 23
 story: 4
 ---
 
 # Story 23.4: PostgreSQL Row-Level Security (RLS) & Table Partitioning for Multi-Million Lead Scale
 
-Status: ready-for-dev
+Status: done
+Owner: Amelia (Lead Dev Agent)
+Epic: 23 - Multi-Million Lead Database Partitioning & Row-Level Security (Scale Phase)
+Branch: `feat/23-4-postgresql-rls-and-table-partitioning`
+Sprint: Phase 4.1 Production Hardening
+Last Updated: 2026-08-16
 
-<!-- Note: Governed by FR-92, INV-23.4, INV-23.5, INV-23.6, and Architecture Spine: architecture-epic23-lead-infrastructure.md -->
+---
 
 ## Story
 
@@ -64,36 +69,36 @@ leads.workspace_id IS NOT DISTINCT FROM NULLIF(current_setting('app.workspace_id
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Alembic Migration `217_partition_leads_table_zero_downtime.py`**
-  - [ ] Write Phase 1 DDL: `leads_partitioned` with `PARTITION BY HASH (workspace_id)`, 16 shards (`leads_p0`..`leads_p15`), and `leads_default`.
-  - [ ] Write Phase 2 DDL: PL/pgSQL function `trg_sync_leads_dual_write()` and trigger `sync_leads_to_partitioned_trg`.
-  - [ ] Write Phase 3 DML: Batched backfill loop with batch size 5,000.
-  - [ ] Write Phase 4 DDL: Atomic table swap transaction with `ACCESS EXCLUSIVE` lock.
-  - [ ] Write Phase 5 DDL: RLS read/write policies (`leads_tenant_read_policy`, `leads_tenant_write_policy`), `FORCE ROW LEVEL SECURITY`, and `ALTER PUBLICATION zero_publication SET (publish_via_partition_root = true);`.
-  - [ ] Implement clean downgrade path (`downgrade()`) restoring unpartitioned structure from `leads_legacy_backup`.
+- [x] **Task 1: Alembic Migration `217_partition_leads_table_zero_downtime.py`**
+  - [x] Write Phase 1 DDL: `leads_partitioned` with `PARTITION BY HASH (workspace_id)`, 16 shards (`leads_p0`..`leads_p15`), and `leads_default`.
+  - [x] Write Phase 2 DDL: PL/pgSQL function `trg_sync_leads_dual_write()` and trigger `sync_leads_to_partitioned_trg`.
+  - [x] Write Phase 3 DML: Batched backfill loop with batch size 5,000.
+  - [x] Write Phase 4 DDL: Atomic table swap transaction with `ACCESS EXCLUSIVE` lock.
+  - [x] Write Phase 5 DDL: RLS read/write policies (`leads_tenant_read_policy`, `leads_tenant_write_policy`), `FORCE ROW LEVEL SECURITY`, and `ALTER PUBLICATION zero_publication SET (publish_via_partition_root = true);`.
+  - [x] Implement clean downgrade path (`downgrade()`) restoring unpartitioned structure from `leads_legacy_backup`.
 
-- [ ] **Task 2: SQLAlchemy ORM Model & Relationship Updates (`nowing_backend/app/db.py`)**
-  - [ ] Update `Lead` model: change `__table_args__` to include composite `PrimaryKeyConstraint('id', 'workspace_id')`.
-  - [ ] Update all 6 child models with composite foreign key definitions:
-    - [ ] `LeadScore` (line 4603): `ForeignKeyConstraint(['lead_id', 'workspace_id'], ['leads.id', 'leads.workspace_id'], ondelete='CASCADE')`
-    - [ ] `VerifiedContact` (line 4672): `ForeignKeyConstraint(['lead_id', 'workspace_id'], ['leads.id', 'leads.workspace_id'], ondelete='CASCADE')`
-    - [ ] `EnrichmentRequest` (line 4731): `ForeignKeyConstraint(['lead_id', 'workspace_id'], ['leads.id', 'leads.workspace_id'], ondelete='CASCADE')`
-    - [ ] `SignalEvent` (line 4799): `ForeignKeyConstraint(['lead_id', 'workspace_id'], ['leads.id', 'leads.workspace_id'], ondelete='CASCADE')`
-    - [ ] `OutboundMessage` (line 5262): `ForeignKeyConstraint(['lead_id', 'workspace_id'], ['leads.id', 'leads.workspace_id'], ondelete='SET NULL')`
-    - [ ] `ZaloMessageLog` (line 5317): `ForeignKeyConstraint(['lead_id', 'workspace_id'], ['leads.id', 'leads.workspace_id'], ondelete='CASCADE')`
-  - [ ] Update SQLAlchemy relationships (`lead`, `scores`, `contacts`, `logs`) with `foreign_keys` and `primaryjoin` specifications.
+- [x] **Task 2: SQLAlchemy ORM Model & Relationship Updates (`nowing_backend/app/db.py`)**
+  - [x] Update `Lead` model: change `__table_args__` to include composite `PrimaryKeyConstraint('id', 'workspace_id')`.
+  - [x] Update all 6 child models with composite foreign key definitions:
+    - [x] `LeadScore`: `ForeignKeyConstraint(['lead_id', 'workspace_id'], ['leads.id', 'leads.workspace_id'], ondelete='CASCADE')`
+    - [x] `VerifiedContact`: `ForeignKeyConstraint(['lead_id', 'workspace_id'], ['leads.id', 'leads.workspace_id'], ondelete='CASCADE')`
+    - [x] `EnrichmentRequest`: `ForeignKeyConstraint(['lead_id', 'workspace_id'], ['leads.id', 'leads.workspace_id'], ondelete='CASCADE')`
+    - [x] `SignalEvent`: `ForeignKeyConstraint(['lead_id', 'workspace_id'], ['leads.id', 'leads.workspace_id'], ondelete='CASCADE')`
+    - [x] `OutboundMessage`: `ForeignKeyConstraint(['lead_id', 'workspace_id'], ['leads.id', 'leads.workspace_id'], ondelete='SET NULL')`
+    - [x] `ZaloMessageLog`: `ForeignKeyConstraint(['lead_id', 'workspace_id'], ['leads.id', 'leads.workspace_id'], ondelete='CASCADE')`
+  - [x] Update SQLAlchemy relationships (`lead`, `scores`, `contacts`, `logs`) with `foreign_keys` and `primaryjoin` specifications.
 
-- [ ] **Task 3: Zero-Cache Publication & Session Middleware Sync**
-  - [ ] Update `nowing_backend/app/zero_publication.py` to ensure `publish_via_partition_root = true` is enforced during database startup.
-  - [ ] Verify database session manager sets `SET LOCAL app.workspace_id = :ws_id` on every transactional query and resets session state upon release.
+- [x] **Task 3: Zero-Cache Publication & Session Middleware Sync**
+  - [x] Update `nowing_backend/app/zero_publication.py` to ensure `publish_via_partition_root = true` is enforced during database startup.
+  - [x] Verify database session manager sets `SET LOCAL app.workspace_id = :ws_id` on every transactional query and resets session state upon release.
 
-- [ ] **Task 4: Automated Testing & Performance Benchmark Suite**
-  - [ ] Unit tests in `tests/unit/db/test_partition_router.py`: hash modulo routing calculation.
-  - [ ] Integration tests in `tests/integration/test_leads_partitioning_and_rls.py`:
+- [x] **Task 4: Automated Testing & Performance Benchmark Suite**
+  - [x] Unit tests in `tests/unit/db/test_partition_router.py`: hash modulo routing calculation.
+  - [x] Integration tests in `tests/integration/test_leads_partitioning_and_rls.py`:
     - RLS multi-tenant fail-closed boundary test (Workspace A cannot see Workspace B data).
     - `EXPLAIN ANALYZE` partition pruning test verifying single-shard scan.
     - Zero-cache publication sync verification test.
-  - [ ] Run full regression suite: `uv run pytest tests/unit/ tests/integration/ -k "leads or dnc or partner" -q`.
+  - [x] Run full regression suite: `uv run pytest tests/unit/ tests/integration/ -k "leads or dnc or partner" -q`.
 
 ---
 
@@ -106,27 +111,24 @@ leads.workspace_id IS NOT DISTINCT FROM NULLIF(current_setting('app.workspace_id
 
 ---
 
-## Verification Commands
+## ATDD Artifacts
 
-```bash
-# 1. Run Alembic Migration
-cd nowing_backend
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5434/nowing uv run alembic upgrade head
+- **Checklist:** [`_bmad-output/test-artifacts/atdd-checklist-23-4-postgresql-rls-and-table-partitioning.md`](file:///Users/luisphan/Documents/GitHub/nowing/_bmad-output/test-artifacts/atdd-checklist-23-4-postgresql-rls-and-table-partitioning.md)
+- **Unit / Static Contract Tests:** [`nowing_backend/tests/unit/db/test_partition_router.py`](file:///Users/luisphan/Documents/GitHub/nowing/nowing_backend/tests/unit/db/test_partition_router.py)
+- **Integration Tests:** [`nowing_backend/tests/integration/test_leads_partitioning_and_rls.py`](file:///Users/luisphan/Documents/GitHub/nowing/nowing_backend/tests/integration/test_leads_partitioning_and_rls.py)
 
-# 2. Run Partitioning & RLS Integration Tests
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5434/nowing uv run pytest tests/integration/test_leads_partitioning_and_rls.py -q
+---
 
-# 3. Verify Zero Publication configuration
-uv run python -c "
-from sqlalchemy import create_engine, text
-engine = create_engine('postgresql+psycopg2://postgres:postgres@localhost:5434/nowing')
-with engine.connect() as conn:
-    res = conn.execute(text(\"SELECT pubname, pubviaroot FROM pg_publication WHERE pubname = 'zero_publication'\")).fetchone()
-    print('Publication status:', res)
-    assert res[1] is True, 'publish_via_partition_root MUST be True'
-"
+## Review Findings
+ 
+- [x] [Review][Patch] Remove invalid `leads_default` DEFAULT partition on HASH partitioned table [alembic/versions/217_partition_leads_table_zero_downtime.py:47]
+- [x] [Review][Patch] Handle `tech_stack` column type compatibility (TEXT[] vs JSONB) during backfill [alembic/versions/217_partition_leads_table_zero_downtime.py:41]
+- [x] [Review][Patch] Include all columns in dual-write trigger UPDATE and handle cross-workspace move [alembic/versions/217_partition_leads_table_zero_downtime.py:84]
+- [x] [Review][Patch] Robust batched backfill loop with UUID cursor advancing safely [alembic/versions/217_partition_leads_table_zero_downtime.py:158]
+- [x] [Review][Patch] Align `zalo_message_logs` composite foreign key to `ON DELETE CASCADE` to match ORM `delete-orphan` [alembic/versions/217_partition_leads_table_zero_downtime.py:231]
+- [x] [Review][Patch] Drop legacy single-column foreign keys on child tables before table swap [alembic/versions/217_partition_leads_table_zero_downtime.py:199]
+- [x] [Review][Patch] Refine RLS policy scope to separate SELECT from INSERT/UPDATE/DELETE [alembic/versions/217_partition_leads_table_zero_downtime.py:250]
+- [x] [Review][Patch] Add reciprocal `Lead.outcome_events` relationship in ORM model [app/db.py:4520]
+- [x] [Review][Patch] Strengthen integration test seed data and boundary assertions [tests/integration/test_leads_partitioning_and_rls.py:70]
 
-# 4. Frontend Typecheck
-cd ../nowing_web
-pnpm tsc --noEmit
-```
+

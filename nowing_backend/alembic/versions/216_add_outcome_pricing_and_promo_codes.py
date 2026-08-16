@@ -138,14 +138,14 @@ def upgrade() -> None:
         )
     )
 
-    # 6. Seed default welcome bonus promo codes (e.g. WELCOME50, ORIGAMIVN)
+    # 6. Seed default welcome bonus promo codes (e.g. WELCOME50, NOWINGVN)
     op.execute(
         sa.text(
             """
             INSERT INTO promo_codes (code, bonus_credit_micros, max_uses, current_uses, is_active)
             VALUES 
                 ('WELCOME50', 50000000, 1000, 0, true),
-                ('ORIGAMIVN', 100000000, 500, 0, true),
+                ('NOWINGVN', 100000000, 500, 0, true),
                 ('BDSNOWING', 50000000, 500, 0, true)
             ON CONFLICT (code) DO NOTHING;
             """

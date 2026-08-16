@@ -41,6 +41,8 @@ def mw() -> ModeBudgetMiddleware:
         (_tool_call("task", {"subagent_type": "chainlens"}), 0, 1, 0),
         (_tool_call("task", {"subagent_type": "google_search"}), 0, 1, 0),
         (_tool_call("update_memory", {"content": "x"}), 0, 0, 1),
+        (_tool_call("create_automation", {"workflow": {}}), 0, 0, 1),
+        (_tool_call("write_todos", {"todos": []}), 0, 0, 1),
         (_tool_call("read_run", {"run_id": 1}), 0, 0, 1),
         (
             _tool_call(

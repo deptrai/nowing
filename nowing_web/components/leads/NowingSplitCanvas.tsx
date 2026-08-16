@@ -1,6 +1,5 @@
 "use client";
 
-import { useIsMobile } from "@/hooks/use-mobile";
 import { useAtom } from "jotai";
 import { GripVertical, MessageSquare, Table } from "lucide-react";
 import type React from "react";
@@ -15,6 +14,7 @@ import {
 	selectedLeadIdsAtom,
 } from "@/atoms/leads/leads-canvas.atoms";
 import type { FilterPresets } from "@/contracts/types/leads.types";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useLeads } from "@/lib/hooks/use-leads";
 import { cn } from "@/lib/utils";
 import { CompanyGraphDrawer } from "./CompanyGraphDrawer";
@@ -29,7 +29,7 @@ const MIN_LEFT_WIDTH = 280;
 const MAX_LEFT_WIDTH = 500;
 const DEFAULT_LEFT_WIDTH = 340;
 
-export interface OrigamiSplitCanvasProps {
+export interface NowingSplitCanvasProps {
 	workspaceId?: string | number;
 	threadId?: string | number | null;
 	chatSlot?: React.ReactNode;
@@ -39,7 +39,7 @@ export interface OrigamiSplitCanvasProps {
 	className?: string;
 }
 
-export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
+export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 	workspaceId = "1",
 	threadId,
 	chatSlot,
@@ -82,13 +82,6 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 		setIsCollapsed(false);
 	}, [setSelectedLeadIds, setSelectedLeadContext, setActiveDrawerLead, setIsCollapsed]);
 
-	// Auto-switch mobile tab to matrix when leads arrive
-	useEffect(() => {
-		if (messages && messages.length > 1 && isMobile) {
-			// keep user context aware
-		}
-	}, [messages, isMobile]);
-
 	// Session-Scoped context parser: derives intent, leads, research, and workflows strictly for THIS thread
 	const threadContext = useMemo(() => {
 		return parseThreadContext(messages || [], threadId || "default", workspaceId);
@@ -101,28 +94,15 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 		search: searchQuery || undefined,
 	});
 
-	// Session-Scoped Leads: Strictly display leads generated in THIS specific chat thread (Zero cross-session pollution)
+	// Merged display leads: prioritize live parsed leads from current thread
 	const displayLeads = useMemo(() => {
-		if (threadContext.leads.length > 0) {
-			let result = threadContext.leads;
-			if (searchQuery) {
-				const q = searchQuery.toLowerCase();
-				result = result.filter(
-					(l) =>
-						l.company_name?.toLowerCase().includes(q) ||
-						l.industry?.toLowerCase().includes(q) ||
-						l.location?.toLowerCase().includes(q)
-				);
-			}
-			if (sourceFilter !== "all") {
-				result = result.filter((l) => l.source === sourceFilter);
-			}
-			return result;
+		if (threadContext.leads && threadContext.leads.length > 0) {
+			return threadContext.leads;
 		}
 		return [];
-	}, [threadContext.leads, searchQuery, sourceFilter]);
+	}, [threadContext.leads]);
 
-	// Dragging logic for resizer
+	// Resizing Handlers (Mouse Dragging)
 	const handleMouseDown = useCallback((e: React.MouseEvent) => {
 		e.preventDefault();
 		setIsDragging(true);
@@ -134,14 +114,9 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 		const handleMouseMove = (e: MouseEvent) => {
 			if (!containerRef.current) return;
 			const containerRect = containerRef.current.getBoundingClientRect();
-			const containerWidth = containerRef.current.clientWidth || 1200;
-			const maxAllowedWidth = Math.min(MAX_LEFT_WIDTH, containerWidth - 320);
-
-			const newWidth = Math.max(
-				MIN_LEFT_WIDTH,
-				Math.min(maxAllowedWidth, e.clientX - containerRect.left)
-			);
-			setLeftWidth(newWidth);
+			const newWidth = e.clientX - containerRect.left;
+			const clamped = Math.min(Math.max(newWidth, MIN_LEFT_WIDTH), MAX_LEFT_WIDTH);
+			setLeftWidth(clamped);
 		};
 
 		const handleMouseUp = () => {
@@ -150,33 +125,30 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 
 		document.addEventListener("mousemove", handleMouseMove);
 		document.addEventListener("mouseup", handleMouseUp);
+
 		return () => {
 			document.removeEventListener("mousemove", handleMouseMove);
 			document.removeEventListener("mouseup", handleMouseUp);
 		};
 	}, [isDragging, setLeftWidth]);
 
+	// Double-click resizer to reset to default 340px width
 	const handleDoubleClickResizer = () => {
 		setLeftWidth(DEFAULT_LEFT_WIDTH);
 	};
 
-	// Drawer close callback memoized
-	const handleCloseDrawer = useCallback(() => {
+	// Modal / Drawer interactions
+	const handleCloseDrawer = () => {
 		setActiveDrawerLead(null);
-	}, [setActiveDrawerLead]);
-
-	// Reverse ICP Callback
-	const handleReverseIcpSuccess = (presets: FilterPresets) => {
-		if (presets.target_industries && presets.target_industries.length > 0) {
-			setSearchQuery(presets.target_industries.join(" "));
-		}
-		if (presets.platforms && presets.platforms.length > 0) {
-			setSourceFilter(presets.platforms[0].toLowerCase());
-		}
-		toast.success("Đã áp dụng bộ lọc Reverse ICP vào Live Data Matrix!");
 	};
 
-	// Company Graph trigger
+	const handleReverseIcpSuccess = (presets: FilterPresets) => {
+		setIsReverseIcpOpen(false);
+		if (presets.min_fit_score) {
+			toast.success(`Đã kích hoạt bộ lọc ICP: Fit Score > ${presets.min_fit_score}`);
+		}
+	};
+
 	const handleOpenCompanyGraph = (companyName: string) => {
 		setSelectedCompanyForGraph(companyName);
 		setIsGraphDrawerOpen(true);
@@ -200,8 +172,8 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 		return (
 			<main
 				ref={containerRef}
-				aria-label="Không gian làm việc Origami Mobile"
-				data-testid="origami-split-canvas-mobile"
+				aria-label="Không gian làm việc Nowing Mobile"
+				data-testid="nowing-split-canvas-mobile"
 				className={cn(
 					"relative w-full h-full flex flex-col bg-background text-foreground overflow-hidden",
 					className
@@ -313,19 +285,19 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 		);
 	}
 
-	// Unified Animated Split Canvas (Morphing from 100% full-width to 420px Split-View over 700ms)
+	// Unified Animated Split Canvas (Morphing from 100% full-width to 340px Split-View)
 	return (
 		<main
 			ref={containerRef}
-			aria-label="Không gian làm việc Origami Split-View"
-			data-testid="origami-split-canvas"
+			aria-label="Không gian làm việc Nowing Split-View"
+			data-testid="nowing-split-canvas"
 			className={cn(
 				"relative w-full h-full flex bg-background text-foreground overflow-hidden",
 				isDragging && "select-none cursor-col-resize",
 				className
 			)}
 		>
-			{/* Left Panel: Chat Co-pilot (Morphs smoothly from 100% to leftWidth) */}
+			{/* Left Panel: Chat Co-pilot */}
 			{!isFullscreen && !isCollapsed && (
 				<div
 					style={{
@@ -359,7 +331,7 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 							setLeftWidth((w) => Math.min(MAX_LEFT_WIDTH, w + 20));
 						}
 					}}
-					title="Kéo để điều chỉnh kích thước / Nhấp đúp để đặt lại 420px"
+					title="Kéo để điều chỉnh kích thước / Nhấp đúp để đặt lại 340px"
 					className={cn(
 						"relative w-1.5 h-full bg-border hover:bg-emerald-500/80 cursor-col-resize flex items-center justify-center transition-colors z-20 group focus:outline-none focus:ring-1 focus:ring-emerald-500",
 						isDragging && "bg-emerald-500 shadow-md shadow-emerald-500/50"
@@ -371,7 +343,7 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 				</div>
 			)}
 
-			{/* Right Panel: Dynamic Context Canvas (Slides in and expands gracefully) */}
+			{/* Right Panel: Dynamic Context Canvas */}
 			{hasActiveThread && (
 				<section
 					aria-label="Dynamic Context Canvas"

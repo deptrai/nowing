@@ -16,6 +16,9 @@ export interface PartnerProfileResponse {
 	balance_micros: number;
 	balance_usd: number;
 	balance_vnd: number;
+	hold_balance_micros?: number;
+	hold_balance_usd?: number;
+	hold_balance_vnd?: number;
 	total_earned_micros: number;
 	total_earned_usd: number;
 	total_earned_vnd: number;
@@ -89,10 +92,17 @@ export interface PartnerPayoutItem {
 	amount_micros: number;
 	amount_usd: number;
 	amount_vnd: number;
+	tax_deducted_micros?: number;
+	tax_deducted_vnd?: number;
+	net_amount_micros?: number;
+	net_amount_vnd?: number;
+	tax_code?: string | null;
 	payout_method: string;
 	payout_details: Record<string, unknown>;
 	status: string;
 	tx_reference?: string | null;
+	napas_ref?: string | null;
+	hmac_audit_hash?: string | null;
 	requested_at: string;
 	processed_at?: string | null;
 	created_at: string;

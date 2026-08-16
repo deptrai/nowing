@@ -2,7 +2,7 @@ import { Check, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import type React from "react";
 
-export const OrigamiPricingSection: React.FC = () => {
+export const NowingPricingSection: React.FC = () => {
 	return (
 		<section
 			className="py-16 md:py-24 bg-slate-50/70 dark:bg-slate-900/40 border-t border-slate-200/80 dark:border-slate-800"

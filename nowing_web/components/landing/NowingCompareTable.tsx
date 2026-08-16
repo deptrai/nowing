@@ -1,7 +1,7 @@
 import { Check } from "lucide-react";
 import type React from "react";
 
-export const OrigamiCompareTable: React.FC = () => {
+export const NowingCompareTable: React.FC = () => {
 	const FEATURES = [
 		{
 			title: "Nguồn dữ liệu BĐS & Doanh nghiệp Việt Nam",
@@ -58,7 +58,7 @@ export const OrigamiCompareTable: React.FC = () => {
 							<tr className="bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-800">
 								<th className="py-4 px-5 font-bold w-1/3">Tính năng & Trải nghiệm</th>
 								<th className="py-4 px-5 font-extrabold text-emerald-700 dark:text-emerald-400 bg-emerald-50/70 dark:bg-emerald-950/40 w-1/4">
-									🌿 Nowing (Origami VN)
+									🌿 Nowing Lead Intelligence
 								</th>
 								<th className="py-4 px-5 font-semibold text-slate-500 w-1/6">Apollo.io</th>
 								<th className="py-4 px-5 font-semibold text-slate-500 w-1/6">Clay.com</th>

@@ -28,7 +28,7 @@ const FAQS = [
 	},
 ];
 
-export const OrigamiFaq: React.FC = () => {
+export const NowingFaq: React.FC = () => {
 	const [openIdx, setOpenIdx] = useState<number | null>(0);
 
 	return (
@@ -59,14 +59,13 @@ export const OrigamiFaq: React.FC = () => {
 									<span>{faq.q}</span>
 									<ChevronDown
 										className={cn(
-											"w-4 h-4 text-slate-400 transition-transform duration-200 flex-shrink-0",
+											"w-4 h-4 text-slate-400 transition-transform duration-200",
 											isOpen && "rotate-180 text-emerald-600"
 										)}
 									/>
 								</button>
-
 								{isOpen && (
-									<div className="px-6 pb-5 text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed border-t border-slate-100 dark:border-slate-800/80 pt-3 animate-in fade-in-50 duration-150">
+									<div className="px-6 pb-4 pt-1 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed border-t border-slate-200/50 dark:border-slate-800/50 animate-in fade-in-50 duration-150">
 										{faq.a}
 									</div>
 								)}

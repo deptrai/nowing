@@ -8,7 +8,6 @@ import {
 	isInterruptResult,
 } from "@/features/chat-messages/hitl";
 import type { TimelineToolComponent } from "../types";
-import { DefaultFallbackCard } from "./default-fallback-card";
 
 /**
  * Mounted by the timeline for any tool name not in the registry. The
@@ -37,5 +36,5 @@ export const FallbackToolBody: TimelineToolComponent = (props) => {
 		}
 		return <GenericHitlApproval {...approvalProps} />;
 	}
-	return <DefaultFallbackCard {...props} />;
+	return null;
 };

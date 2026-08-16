@@ -240,7 +240,7 @@ export function LayoutShell({
 		isDragging: isResizing,
 	} = useSidebarResize();
 
-	// Origami UX: Automatically collapse sidebar into 48px icon rail in active chat sessions or on narrower desktop screens (< 1200px)
+	// Nowing UX: Automatically collapse sidebar into 48px icon rail in active chat sessions or on narrower desktop screens (< 1200px)
 	useEffect(() => {
 		if (isChatPage && activeChatId) {
 			setIsCollapsed(true);

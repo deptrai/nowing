@@ -2,11 +2,11 @@ import { Suspense } from "react";
 import { AuthRedirect } from "@/components/homepage/auth-redirect";
 import { AffiliateBanner } from "@/components/landing/AffiliateBanner";
 import { LiveMetricsCounter } from "@/components/landing/LiveMetricsCounter";
-import { OrigamiCompareTable } from "@/components/landing/OrigamiCompareTable";
-import { OrigamiFaq } from "@/components/landing/OrigamiFaq";
-import { OrigamiFooter } from "@/components/landing/OrigamiFooter";
-import { OrigamiHero } from "@/components/landing/OrigamiHero";
-import { OrigamiPricingSection } from "@/components/landing/OrigamiPricingSection";
+import { NowingCompareTable } from "@/components/landing/NowingCompareTable";
+import { NowingFaq } from "@/components/landing/NowingFaq";
+import { NowingFooter } from "@/components/landing/NowingFooter";
+import { NowingHero } from "@/components/landing/NowingHero";
+import { NowingPricingSection } from "@/components/landing/NowingPricingSection";
 import { ProductShowcaseTabs } from "@/components/landing/ProductShowcaseTabs";
 import { VerticalsMegaGrid } from "@/components/landing/VerticalsMegaGrid";
 import { WorkflowSteps } from "@/components/landing/WorkflowSteps";
@@ -19,7 +19,7 @@ export default function HomePage() {
 			</Suspense>
 
 			{/* Section 1: Hero Section with Sọc Caro Grid & Prompt Input */}
-			<OrigamiHero />
+			<NowingHero />
 
 			{/* Section 2: Interactive 3-Tab Product Showcase (Live Table Matrix) */}
 			<ProductShowcaseTabs />
@@ -34,19 +34,19 @@ export default function HomePage() {
 			<WorkflowSteps />
 
 			{/* Section 6: Direct Comparison Table (Nowing vs Apollo vs Clay) */}
-			<OrigamiCompareTable />
+			<NowingCompareTable />
 
 			{/* Section 7: $0 Pricing Matrix & Pay-as-you-go Credits */}
-			<OrigamiPricingSection />
+			<NowingPricingSection />
 
 			{/* Section 8: Affiliate Partner 15% Banner */}
 			<AffiliateBanner />
 
 			{/* Section 9: FAQ Accordion */}
-			<OrigamiFaq />
+			<NowingFaq />
 
 			{/* Section 10: Editorial Footer */}
-			<OrigamiFooter />
+			<NowingFooter />
 		</div>
 	);
 }

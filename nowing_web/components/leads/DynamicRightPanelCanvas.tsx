@@ -19,7 +19,7 @@ import {
 } from "@/atoms/leads/leads-canvas.atoms";
 import type { Lead } from "@/contracts/types/leads.types";
 import { cn } from "@/lib/utils";
-import { OrigamiLeadMatrix } from "./OrigamiLeadMatrix";
+import { NowingLeadMatrix } from "./NowingLeadMatrix";
 import { AutomationBuilderPanel } from "./panels/AutomationBuilderPanel";
 import { ResearchStudioPanel } from "./panels/ResearchStudioPanel";
 import { ScraperPlatformMonitorPanel } from "./panels/ScraperPlatformMonitorPanel";
@@ -114,7 +114,7 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 				props.className
 			)}
 		>
-			{/* Origami Contextual Top Tab Bar (Session-Scoped & Dynamic, Slim 32px) */}
+			{/* Nowing Contextual Top Tab Bar (Session-Scoped & Dynamic, Slim 32px) */}
 			<header className="h-8 border-b border-border/80 bg-muted/40 flex items-center justify-between px-2.5 shrink-0 select-none">
 				<div className="flex items-center gap-1 overflow-x-auto no-scrollbar flex-1">
 					{isLeftCollapsed && (
@@ -247,7 +247,7 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 			{/* Panel View Switching Router */}
 			<main className="flex-1 min-h-0 relative overflow-hidden">
 				{activeMode === "leads" && (
-					<OrigamiLeadMatrix
+					<NowingLeadMatrix
 						leads={props.leads}
 						isLoading={props.isLoading}
 						workspaceId={props.workspaceId}

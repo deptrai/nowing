@@ -20,8 +20,8 @@ export interface ZaloOutreachButtonProps {
 }
 
 const sizeClasses: Record<"sm" | "md", string> = {
-	sm: "px-2.5 py-1 text-xs",
-	md: "px-3.5 py-1.5 text-sm",
+	sm: "h-6 px-2 text-[11px] gap-1 rounded-md",
+	md: "h-8 px-3 text-xs gap-1.5 rounded-lg",
 };
 
 export const cleanPhoneForZalo = (phone?: string | null): string => {
@@ -129,29 +129,29 @@ export const ZaloOutreachButton: React.FC<ZaloOutreachButtonProps> = ({
 					onClick={handleQuickOutreach}
 					disabled={loading}
 					className={cn(
-						"inline-flex items-center gap-1.5 font-semibold rounded-lg transition-all shadow-sm",
-						"bg-blue-600 hover:bg-blue-500 text-white active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed",
+						"inline-flex items-center font-medium transition-all cursor-pointer select-none",
+						"bg-blue-600 hover:bg-blue-500 text-white active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs",
 						sizeClasses[size]
 					)}
 					title={`Kích hoạt kịch bản AI & Mở Zalo chat (${cleanPhone || "Chưa có SĐT"})`}
 				>
 					{loading ? (
-						<Loader2 className="w-3.5 h-3.5 animate-spin" />
+						<Loader2 className="size-3 animate-spin" />
 					) : copied ? (
-						<Check className="w-3.5 h-3.5 text-emerald-300" />
+						<Check className="size-3 text-emerald-300" />
 					) : (
-						<MessageCircle className="w-3.5 h-3.5" />
+						<MessageCircle className="size-3" />
 					)}
-					<span>{copied ? "Đã copy!" : "Nhắn Zalo"}</span>
+					<span>{copied ? "Đã copy!" : "Zalo"}</span>
 				</button>
 
 				<button
 					type="button"
 					onClick={handleOpenModal}
-					className="p-1 rounded-md text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors border border-transparent hover:border-zinc-700"
+					className="size-6 p-0 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border border-border/60 cursor-pointer"
 					title="Xem & chỉnh sửa kịch bản AI trước khi gửi"
 				>
-					<Sparkles className="w-3.5 h-3.5 text-blue-400" />
+					<Sparkles className="size-3 text-blue-500" />
 				</button>
 
 				<button
@@ -161,13 +161,13 @@ export const ZaloOutreachButton: React.FC<ZaloOutreachButtonProps> = ({
 						setShowZnsModal(true);
 					}}
 					className={cn(
-						"inline-flex items-center gap-1.5 font-semibold rounded-lg transition-all shadow-sm",
-						"bg-emerald-600 hover:bg-emerald-500 text-white",
+						"inline-flex items-center font-medium transition-all cursor-pointer select-none",
+						"bg-emerald-600 hover:bg-emerald-500 text-white active:scale-95 shadow-2xs",
 						sizeClasses[size]
 					)}
 					title="Gửi tin nhắn ZNS (Zalo Notification Service) với template đã duyệt"
 				>
-					<Send className="w-3.5 h-3.5" />
+					<Send className="size-3" />
 					<span>ZNS</span>
 				</button>
 			</div>

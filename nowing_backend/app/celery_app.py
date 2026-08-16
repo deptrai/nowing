@@ -208,6 +208,7 @@ celery_app = Celery(
         "app.automations.triggers.builtin.memory_change.selector",
         "app.canonical.tasks.backfill_canonical_embedding",
         "app.canonical.tasks.process_canonical_persist_outbox",
+        "app.tasks.celery_tasks.partner_payout_reconciliation_task",
     ],
 )
 
@@ -310,6 +311,14 @@ celery_app.conf.beat_schedule = {
         "schedule": crontab(**stripe_reconciliation_schedule_params),
         "options": {
             "expires": 60,
+        },
+    },
+    # Auto-reconcile VietQR / Napas partner payouts stuck in processing (Story 23.3)
+    "reconcile-pending-partner-payouts": {
+        "task": "reconcile_pending_partner_payouts",
+        "schedule": crontab(minute="*/5"),  # Every 5 minutes
+        "options": {
+            "expires": 120,
         },
     },
     "gateway-reconcile-inbox": {
