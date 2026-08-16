@@ -100,11 +100,11 @@ function LoginContent() {
 	}
 
 	return (
-		<div className="relative w-full overflow-hidden">
+		<div className="relative w-full overflow-hidden flex min-h-[calc(100vh-5rem)] items-center justify-center py-8 px-4">
 			<AmbientBackground />
-			<div className="mx-auto flex h-screen max-w-lg flex-col items-center justify-center">
-				<Logo priority className="h-16 w-16 md:h-32 md:w-32 rounded-md transition-all" />
-				<h1 className="mt-4 mb-6 font-serif text-2xl md:text-3xl lg:text-4xl font-normal text-neutral-800 dark:text-neutral-100 md:mt-6 md:mb-6 transition-all tracking-tight">
+			<div className="relative z-10 mx-auto flex w-full max-w-md flex-col items-center justify-center">
+				<Logo priority className="h-16 w-16 md:h-24 md:w-24 rounded-md transition-all" />
+				<h1 className="mt-4 mb-6 font-serif text-2xl md:text-3xl lg:text-4xl font-normal text-neutral-800 dark:text-neutral-100 transition-all tracking-tight text-center">
 					{t("sign_in")}
 				</h1>
 

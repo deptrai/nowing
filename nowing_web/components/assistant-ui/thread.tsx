@@ -278,15 +278,15 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 	}, [user]);
 
 	return (
-		<div className="aui-thread-welcome-root flex min-h-0 flex-1 flex-col justify-between p-6 sm:p-10 overflow-y-auto">
-			<div className="w-full flex items-center justify-end">
+		<div className="aui-thread-welcome-root flex min-h-0 flex-1 flex-col items-center justify-between p-4 sm:p-8 overflow-y-auto overflow-x-hidden">
+			<div className="w-full flex items-center justify-end mb-2">
 				<div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-pink-500/10 dark:bg-pink-500/20 text-pink-600 dark:text-pink-400 text-xs font-semibold border border-pink-500/20 shadow-2xs">
 					<span>🌸</span>
 					<span className="font-mono font-bold">1,420</span> Credits
 				</div>
 			</div>
 
-			<section className="mx-auto w-full max-w-3xl my-auto py-6 space-y-7">
+			<section className="mx-auto w-full max-w-xl lg:max-w-2xl py-4 space-y-6">
 				{/* Welcome Title */}
 				<div className="text-center">
 					<h1 className="text-2xl sm:text-3xl lg:text-[34px] font-serif tracking-tight text-foreground font-normal select-none">
@@ -300,7 +300,7 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 				</div>
 
 				{/* Quick Suggestion Chips */}
-				<div className="flex flex-wrap items-center justify-center gap-2">
+				<div className="flex flex-wrap items-center justify-center gap-2 max-w-full">
 					{[
 						{
 							label: "Give me ideas",
@@ -309,7 +309,7 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 						},
 						{
 							label: "New campaign",
-							icon: "＋",
+							icon: "➕",
 							prompt: "Tạo chiến dịch mới săn 20 doanh nghiệp Bất động sản Hà Nội",
 						},
 						{
@@ -318,7 +318,7 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 							prompt: "Tìm kiếm 10 công ty Bất động sản tại Hà Nội và thêm vào bảng",
 						},
 						{
-							label: "Tín hiệu tuyển dụng Tech",
+							label: "Tuyển dụng Tech",
 							icon: "⚡",
 							prompt: "Quét các công ty công nghệ đang tuyển dụng Senior Developer trên TopCV",
 						},
@@ -339,13 +339,13 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 
 				{/* Beta Outreach Agent Setup Card */}
 				{showBetaCard && (
-					<div className="p-4 rounded-2xl border border-pink-500/20 bg-pink-500/5 dark:bg-pink-500/10 flex items-start sm:items-center justify-between gap-4 relative">
-						<div className="flex items-center gap-3">
-							<div className="w-10 h-10 rounded-2xl bg-pink-500/15 flex items-center justify-center text-xl shrink-0">
+					<div className="p-3.5 sm:p-4 rounded-2xl border border-pink-500/20 bg-pink-500/5 dark:bg-pink-500/10 flex items-start sm:items-center justify-between gap-3 relative">
+						<div className="flex items-center gap-3 min-w-0">
+							<div className="size-9 sm:size-10 rounded-2xl bg-pink-500/15 flex items-center justify-center text-lg sm:text-xl shrink-0">
 								🌸
 							</div>
-							<div>
-								<div className="flex items-center gap-2">
+							<div className="min-w-0">
+								<div className="flex items-center gap-2 flex-wrap">
 									<h4 className="text-xs sm:text-sm font-bold text-foreground">
 										Set up your Outreach Agent
 									</h4>
@@ -353,7 +353,7 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 										BETA
 									</span>
 								</div>
-								<p className="text-xs text-muted-foreground mt-0.5 max-w-xl">
+								<p className="text-xs text-muted-foreground mt-0.5 max-w-xl truncate sm:whitespace-normal">
 									15 minutes of setup, then it maximizes your replies — keeping quality leads
 									flowing and your senders at full speed.
 								</p>
@@ -371,28 +371,22 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 							<button
 								type="button"
 								onClick={() => setShowBetaCard(false)}
-								className="p-1 text-muted-foreground hover:text-foreground rounded-lg transition-colors cursor-pointer"
+								className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+								aria-label="Dismiss"
 							>
-								<X className="w-4 h-4" />
+								✕
 							</button>
 						</div>
 					</div>
 				)}
 
-				{/* Activity & Stats Row */}
-				<div className="flex flex-wrap items-center justify-between gap-3 text-xs pt-2 border-t border-border/40">
-					<div className="text-muted-foreground">
-						Past 7 days <strong className="text-foreground font-mono font-bold">15</strong> new
-						leads
+				{/* Performance Summary Banner */}
+				<div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground border-y border-border/60 py-2.5">
+					<div className="flex items-center gap-1.5">
+						<span className="text-emerald-600 dark:text-emerald-400 font-semibold">Past 7 days</span>
+						<span className="font-bold text-foreground">15 new leads</span>
 					</div>
 					<div className="flex items-center gap-3">
-						<button
-							type="button"
-							onClick={() => toast.info("Kết nối kênh Email")}
-							className="text-muted-foreground hover:text-foreground font-medium transition-colors cursor-pointer"
-						>
-							Connect email →
-						</button>
 						<button
 							type="button"
 							onClick={() => toast.info("Kết nối Zalo OA")}
@@ -417,8 +411,8 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 						August 10 report
 					</div>
 
-					<div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-						<div className="p-4 rounded-2xl border border-border/80 bg-card hover:border-border transition-all flex flex-col justify-between gap-3 shadow-2xs">
+					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+						<div className="p-4 rounded-2xl border border-border/80 bg-card hover:border-border transition-all flex flex-col justify-between gap-3 shadow-2xs min-w-0">
 							<div className="space-y-2">
 								<div className="w-7 h-7 rounded-xl bg-muted flex items-center justify-center text-muted-foreground">
 									↗
@@ -439,7 +433,7 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 							</button>
 						</div>
 
-						<div className="p-4 rounded-2xl border border-border/80 bg-card hover:border-border transition-all flex flex-col justify-between gap-3 shadow-2xs">
+						<div className="p-4 rounded-2xl border border-border/80 bg-card hover:border-border transition-all flex flex-col justify-between gap-3 shadow-2xs min-w-0">
 							<div className="space-y-2">
 								<div className="w-7 h-7 rounded-xl bg-muted flex items-center justify-center text-muted-foreground">
 									↗
@@ -460,13 +454,12 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 							</button>
 						</div>
 
-						<div className="p-4 rounded-2xl border border-border/80 bg-card hover:border-border transition-all flex flex-col justify-between gap-3 shadow-2xs">
+						<div className="p-4 rounded-2xl border border-border/80 bg-card hover:border-border transition-all flex flex-col justify-between gap-3 shadow-2xs sm:col-span-2 lg:col-span-1 min-w-0">
 							<div className="space-y-2">
 								<div className="w-7 h-7 rounded-xl bg-muted flex items-center justify-center text-muted-foreground">
 									✨
 								</div>
 								<h4 className="text-xs font-bold text-foreground leading-snug">
-									Your warmest leads have no contact channel
 								</h4>
 								<p className="text-[11px] text-muted-foreground">
 									grow the reply-able business segment instead

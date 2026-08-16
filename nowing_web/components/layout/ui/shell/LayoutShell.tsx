@@ -240,12 +240,16 @@ export function LayoutShell({
 		isDragging: isResizing,
 	} = useSidebarResize();
 
-	// Origami UX: Automatically collapse sidebar into 48px icon rail in active chat sessions
+	// Origami UX: Automatically collapse sidebar into 48px icon rail in active chat sessions or on narrower desktop screens (< 1200px)
 	useEffect(() => {
 		if (isChatPage && activeChatId) {
 			setIsCollapsed(true);
 		} else if (isChatPage && !activeChatId) {
-			setIsCollapsed(false);
+			if (typeof window !== "undefined" && window.innerWidth < 1200) {
+				setIsCollapsed(true);
+			} else {
+				setIsCollapsed(false);
+			}
 		}
 	}, [isChatPage, activeChatId, setIsCollapsed]);
 

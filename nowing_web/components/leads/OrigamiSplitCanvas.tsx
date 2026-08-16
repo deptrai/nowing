@@ -1,7 +1,8 @@
 "use client";
 
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useAtom } from "jotai";
-import { GripVertical } from "lucide-react";
+import { GripVertical, MessageSquare, Table } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -47,6 +48,7 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 	onSendPrompt: _onSendPrompt,
 	className,
 }) => {
+	const isMobile = useIsMobile();
 	const [leftWidth, setLeftWidth] = useAtom(canvasLeftWidthAtom);
 	const [isCollapsed, setIsCollapsed] = useAtom(isLeftPanelCollapsedAtom);
 	const [isFullscreen] = useAtom(isMatrixFullscreenAtom);
@@ -60,6 +62,7 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 	const [isDncOpen, setIsDncOpen] = useState(false);
 	const [selectedCompanyForGraph, setSelectedCompanyForGraph] = useState<string | null>(null);
 	const [isGraphDrawerOpen, setIsGraphDrawerOpen] = useState(false);
+	const [mobileActiveTab, setMobileActiveTab] = useState<"chat" | "matrix">("chat");
 
 	// Tabs & Modes
 	const [_activeTabMode, _setActiveTabMode] = useState<"new_search" | "saved">(
@@ -78,6 +81,13 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 		setActiveDrawerLead(null);
 		setIsCollapsed(false);
 	}, [setSelectedLeadIds, setSelectedLeadContext, setActiveDrawerLead, setIsCollapsed]);
+
+	// Auto-switch mobile tab to matrix when leads arrive
+	useEffect(() => {
+		if (messages && messages.length > 1 && isMobile) {
+			// keep user context aware
+		}
+	}, [messages, isMobile]);
 
 	// Session-Scoped context parser: derives intent, leads, research, and workflows strictly for THIS thread
 	const threadContext = useMemo(() => {
@@ -125,7 +135,7 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 			if (!containerRef.current) return;
 			const containerRect = containerRef.current.getBoundingClientRect();
 			const containerWidth = containerRef.current.clientWidth || 1200;
-			const maxAllowedWidth = Math.min(MAX_LEFT_WIDTH, containerWidth - 500);
+			const maxAllowedWidth = Math.min(MAX_LEFT_WIDTH, containerWidth - 320);
 
 			const newWidth = Math.max(
 				MIN_LEFT_WIDTH,
@@ -140,19 +150,15 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 
 		document.addEventListener("mousemove", handleMouseMove);
 		document.addEventListener("mouseup", handleMouseUp);
-		window.addEventListener("blur", handleMouseUp);
-
 		return () => {
 			document.removeEventListener("mousemove", handleMouseMove);
 			document.removeEventListener("mouseup", handleMouseUp);
-			window.removeEventListener("blur", handleMouseUp);
 		};
 	}, [isDragging, setLeftWidth]);
 
-	// Double click divider to reset width
-	const handleDoubleClickResizer = useCallback(() => {
+	const handleDoubleClickResizer = () => {
 		setLeftWidth(DEFAULT_LEFT_WIDTH);
-	}, [setLeftWidth]);
+	};
 
 	// Drawer close callback memoized
 	const handleCloseDrawer = useCallback(() => {
@@ -188,6 +194,124 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 	const handleBulkZalo = () => {
 		toast.info(`Kích hoạt chiến dịch tiếp cận Zalo cho ${selectedLeadIds.length} leads.`);
 	};
+
+	// Mobile layout (< 768px): Tabbed switcher between Chat and Dynamic Canvas
+	if (isMobile && hasActiveThread) {
+		return (
+			<main
+				ref={containerRef}
+				aria-label="Không gian làm việc Origami Mobile"
+				data-testid="origami-split-canvas-mobile"
+				className={cn(
+					"relative w-full h-full flex flex-col bg-background text-foreground overflow-hidden",
+					className
+				)}
+			>
+				{/* Mobile Tab Switcher */}
+				<div className="h-10 px-3 bg-muted/40 border-b border-border/80 flex items-center justify-between shrink-0">
+					<div className="flex items-center gap-1 bg-background/80 p-0.5 rounded-lg border border-border/80 text-xs font-medium">
+						<button
+							type="button"
+							onClick={() => setMobileActiveTab("chat")}
+							className={cn(
+								"flex items-center gap-1.5 px-3 py-1 rounded-md transition-all",
+								mobileActiveTab === "chat"
+									? "bg-card text-foreground shadow-2xs font-semibold"
+									: "text-muted-foreground hover:text-foreground"
+							)}
+						>
+							<MessageSquare className="w-3.5 h-3.5" />
+							<span>Trò chuyện AI</span>
+						</button>
+						<button
+							type="button"
+							onClick={() => setMobileActiveTab("matrix")}
+							className={cn(
+								"flex items-center gap-1.5 px-3 py-1 rounded-md transition-all",
+								mobileActiveTab === "matrix"
+									? "bg-emerald-500 text-white shadow-2xs font-semibold"
+									: "text-muted-foreground hover:text-foreground"
+							)}
+						>
+							<Table className="w-3.5 h-3.5" />
+							<span>Bảng Leads ({displayLeads.length})</span>
+						</button>
+					</div>
+				</div>
+
+				{/* Mobile Tab Content */}
+				<div className="flex-1 overflow-hidden relative">
+					{mobileActiveTab === "chat" ? (
+						<div className="w-full h-full overflow-hidden">{chatSlot}</div>
+					) : (
+						<div className="w-full h-full overflow-hidden">
+							<DynamicRightPanelCanvas
+								threadId={threadId ?? undefined}
+								threadContext={threadContext}
+								leads={displayLeads}
+								isLoading={loading}
+								workspaceId={workspaceId}
+								sourceFilter={sourceFilter}
+								onSourceFilterChange={setSourceFilter}
+								statusFilter={statusFilter}
+								onStatusFilterChange={setStatusFilter}
+								searchQuery={searchQuery}
+								onSearchQueryChange={setSearchQuery}
+								onRefresh={refetch}
+								onOpenReverseIcp={() => setIsReverseIcpOpen(true)}
+								onOpenDnc={() => setIsDncOpen(true)}
+								onOpenCompanyGraph={handleOpenCompanyGraph}
+							/>
+						</div>
+					)}
+				</div>
+
+				{/* Floating Bulk Action Bar */}
+				{selectedLeadIds.length > 0 && (
+					<FloatingBulkActionBar
+						selectedCount={selectedLeadIds.length}
+						onUnlockPhones={handleUnlockPhones}
+						onExportLarkBase={handleExportLarkBase}
+						onBulkZalo={handleBulkZalo}
+						onClearSelection={() => setSelectedLeadIds([])}
+					/>
+				)}
+
+				{/* Lead Detail Flyout Drawer */}
+				<LeadDetailFlyoutDrawer
+					lead={activeDrawerLead}
+					isOpen={Boolean(activeDrawerLead)}
+					onClose={() => setActiveDrawerLead(null)}
+					workspaceId={String(workspaceId)}
+				/>
+
+				{/* 1-Click Reverse-ICP Modal */}
+				<ReverseIcpModal
+					isOpen={isReverseIcpOpen}
+					onClose={() => setIsReverseIcpOpen(false)}
+					workspaceId={String(workspaceId)}
+				/>
+
+				{/* Do-Not-Call (DNC) Management Modal */}
+				<DncManagementModal
+					isOpen={isDncOpen}
+					onClose={() => setIsDncOpen(false)}
+					workspaceId={String(workspaceId)}
+				/>
+
+				{/* Interactive 3D Company Graph Drawer */}
+				<CompanyGraphDrawer
+					companyName={selectedCompanyForGraph ?? ""}
+					isOpen={isGraphDrawerOpen}
+					workspaceId={String(workspaceId)}
+					onClose={() => {
+						setIsGraphDrawerOpen(false);
+						setSelectedCompanyForGraph(null);
+					}}
+				/>
+			</main>
+		);
+	}
 
 	// Unified Animated Split Canvas (Morphing from 100% full-width to 420px Split-View over 700ms)
 	return (

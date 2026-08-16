@@ -239,15 +239,16 @@ export const OrigamiLeadMatrix: React.FC<OrigamiLeadMatrixProps> = ({
 					</div>
 				</div>
 
-				<div className="flex items-center gap-2">
+				<div className="flex items-center gap-2 shrink-0">
 					{onOpenReverseIcp && (
 						<button
 							type="button"
 							onClick={onOpenReverseIcp}
 							className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border border-border/80 bg-background hover:bg-muted text-foreground transition-all cursor-pointer shadow-2xs"
+							title="Tìm leads tương tự qua 1-Click Reverse-ICP"
 						>
 							<Search className="w-3.5 h-3.5 text-muted-foreground" />
-							<span>Find similar leads</span>
+							<span className="hidden md:inline">Find similar leads</span>
 						</button>
 					)}
 
@@ -259,7 +260,7 @@ export const OrigamiLeadMatrix: React.FC<OrigamiLeadMatrixProps> = ({
 							title="Quản lý danh sách Do-Not-Call (DNC) & Tuân thủ Nghị định 13 PDPD"
 						>
 							<ShieldAlert className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-							<span>Do-Not-Call (DNC)</span>
+							<span className="hidden md:inline">Do-Not-Call (DNC)</span>
 						</button>
 					)}
 
