@@ -300,7 +300,7 @@ const defaultComponents = memoizeMarkdownComponents({
 		return (
 			<h1
 				className={cn(
-					"aui-md-h1 mb-8 scroll-m-20 font-extrabold text-4xl tracking-tight last:mb-0",
+					"aui-md-h1 mt-3 mb-2 font-bold text-base sm:text-lg tracking-tight first:mt-0 last:mb-0 text-foreground",
 					className
 				)}
 				{...props}
@@ -314,7 +314,7 @@ const defaultComponents = memoizeMarkdownComponents({
 		return (
 			<h2
 				className={cn(
-					"aui-md-h2 mt-8 mb-4 scroll-m-20 font-semibold text-3xl tracking-tight first:mt-0 last:mb-0",
+					"aui-md-h2 mt-2.5 mb-1.5 font-semibold text-sm sm:text-base tracking-tight first:mt-0 last:mb-0 text-foreground",
 					className
 				)}
 				{...props}
@@ -328,7 +328,7 @@ const defaultComponents = memoizeMarkdownComponents({
 		return (
 			<h3
 				className={cn(
-					"aui-md-h3 mt-6 mb-4 scroll-m-20 font-semibold text-2xl tracking-tight first:mt-0 last:mb-0",
+					"aui-md-h3 mt-2 mb-1 font-semibold text-xs sm:text-sm tracking-tight first:mt-0 last:mb-0 text-foreground",
 					className
 				)}
 				{...props}
@@ -342,7 +342,7 @@ const defaultComponents = memoizeMarkdownComponents({
 		return (
 			<h4
 				className={cn(
-					"aui-md-h4 mt-6 mb-4 scroll-m-20 font-semibold text-xl tracking-tight first:mt-0 last:mb-0",
+					"aui-md-h4 mt-1.5 mb-1 font-medium text-xs tracking-tight first:mt-0 last:mb-0 text-foreground",
 					className
 				)}
 				{...props}
@@ -355,7 +355,10 @@ const defaultComponents = memoizeMarkdownComponents({
 		const urlMap = useCitationUrlMap();
 		return (
 			<h5
-				className={cn("aui-md-h5 my-4 font-semibold text-lg first:mt-0 last:mb-0", className)}
+				className={cn(
+					"aui-md-h5 my-1 font-semibold text-xs first:mt-0 last:mb-0 text-foreground",
+					className
+				)}
 				{...props}
 			>
 				{processChildrenWithCitations(children, urlMap)}
@@ -365,7 +368,13 @@ const defaultComponents = memoizeMarkdownComponents({
 	h6: function H6({ className, children, ...props }) {
 		const urlMap = useCitationUrlMap();
 		return (
-			<h6 className={cn("aui-md-h6 my-4 font-semibold first:mt-0 last:mb-0", className)} {...props}>
+			<h6
+				className={cn(
+					"aui-md-h6 my-1 font-semibold text-xs first:mt-0 last:mb-0 text-foreground",
+					className
+				)}
+				{...props}
+			>
 				{processChildrenWithCitations(children, urlMap)}
 			</h6>
 		);
@@ -374,7 +383,13 @@ const defaultComponents = memoizeMarkdownComponents({
 		const urlMap = useCitationUrlMap();
 		const standalonePath = isStandaloneDocumentsPathText(children);
 		return (
-			<p className={cn("aui-md-p mt-5 mb-5 leading-7 first:mt-0 last:mb-0", className)} {...props}>
+			<p
+				className={cn(
+					"aui-md-p mt-2 mb-2 text-xs sm:text-[13px] leading-relaxed text-foreground/90 first:mt-0 last:mb-0",
+					className
+				)}
+				{...props}
+			>
 				{standalonePath ? (
 					<FilePathLink path={standalonePath} />
 				) : (

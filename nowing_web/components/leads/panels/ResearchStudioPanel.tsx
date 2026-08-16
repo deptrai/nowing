@@ -132,7 +132,7 @@ export const ResearchStudioPanel: React.FC<ResearchStudioPanelProps> = ({
 								<Sparkles className="w-3 h-3" />
 								Chainlens Deep Research Synthesis
 							</div>
-							<h1 className="text-2xl sm:text-3xl font-serif font-normal tracking-tight text-foreground">
+							<h1 className="text-lg sm:text-xl font-serif font-medium tracking-tight text-foreground">
 								{reportTitle}
 							</h1>
 							<p className="text-xs text-muted-foreground mt-1">

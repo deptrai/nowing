@@ -198,9 +198,9 @@ export const OrigamiLeadMatrix: React.FC<OrigamiLeadMatrixProps> = ({
 			)}
 		>
 			{/* Main Editorial Header: Title + Primary Actions */}
-			<div className="px-5 py-4 border-b border-border/80 bg-background flex flex-wrap items-center justify-between gap-4">
+			<div className="px-5 py-3 border-b border-border/80 bg-background flex flex-wrap items-center justify-between gap-4">
 				<div className="flex items-center gap-3">
-					<h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground font-sans">
+					<h1 className="text-base sm:text-lg font-bold tracking-tight text-foreground font-sans">
 						{displayTitle}
 					</h1>
 

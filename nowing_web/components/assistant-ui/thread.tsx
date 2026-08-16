@@ -290,7 +290,7 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 			<section className="mx-auto w-full max-w-3xl my-auto py-6 space-y-7">
 				{/* Welcome Title */}
 				<div className="text-center">
-					<h1 className="text-3xl sm:text-4xl lg:text-5xl font-serif tracking-tight text-foreground font-normal select-none">
+					<h1 className="text-2xl sm:text-3xl lg:text-[34px] font-serif tracking-tight text-foreground font-normal select-none">
 						Welcome back, {displayName}.
 					</h1>
 				</div>
