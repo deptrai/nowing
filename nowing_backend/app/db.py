@@ -4498,7 +4498,7 @@ class Lead(Base, TimestampMixin):
         nullable=False,
         index=True,
     )
-    client_id = Column(CITEXT, nullable=True, index=True)
+    client_id = Column(Text, nullable=True, index=True)
     source = Column(String(100), nullable=False, index=True)
     source_url = Column(Text, nullable=True)
     source_chunk_id = Column(UUID(as_uuid=True), nullable=True, index=True)
@@ -4521,6 +4521,11 @@ class Lead(Base, TimestampMixin):
     charter_capital_vnd = Column(BigInteger, nullable=True)
     company_status = Column(String(100), nullable=True)
     is_zalo_active = Column(Boolean, nullable=False, default=False, server_default="false")
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        onupdate=lambda: datetime.now(UTC),
+    )
 
     workspace = relationship("Workspace", back_populates="leads")
     lead_scores = relationship(
@@ -4695,7 +4700,7 @@ class LeadPipelineStage(Base, TimestampMixin):
         nullable=False,
         index=True,
     )
-    client_id = Column(CITEXT, nullable=True, index=True)
+    client_id = Column(Text, nullable=True, index=True)
     name = Column(String(100), nullable=False)
     slug = Column(String(50), nullable=False)
     position = Column(Integer, nullable=False, default=0, server_default="0")
@@ -4747,7 +4752,7 @@ class LeadAssignment(Base, TimestampMixin):
         nullable=False,
         index=True,
     )
-    client_id = Column(CITEXT, nullable=True, index=True)
+    client_id = Column(Text, nullable=True, index=True)
     lead_id = Column(UUID(as_uuid=True), nullable=False, index=True)
     assigned_to_user_id = Column(
         UUID(as_uuid=True),
@@ -4810,7 +4815,7 @@ class LeadActivityLog(Base, TimestampMixin):
         nullable=False,
         index=True,
     )
-    client_id = Column(CITEXT, nullable=True, index=True)
+    client_id = Column(Text, nullable=True, index=True)
     lead_id = Column(UUID(as_uuid=True), nullable=False, index=True)
     actor_user_id = Column(
         UUID(as_uuid=True),

@@ -140,6 +140,7 @@ LEADS_COLS = [
     "domain",
     "industry",
     "company_size",
+    "tech_stack",
     "location",
     "fit_score",
     "intent_score",
