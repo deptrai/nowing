@@ -226,6 +226,15 @@ development_status:
   22-3: ready-for-dev  # Telegram Data Enrichment, Realtime Alert Trigger, AI Agent Tools & Scraper UI
   epic-22-retrospective: optional
 
+  # === Epic 23: Enterprise Lead Infrastructure, Realtime Ingestion & Automated Outreach Engine ===
+  # 2026-08-16: Scalability & Enterprise Automation layer (Celery + Redis Stream, Zalo OA Webhook, VietQR Auto Payout, PostgreSQL RLS Partitioning)
+  epic-23: ready-for-dev
+  23-1: ready-for-dev  # Asynchronous Scraper Worker Pool (Celery + Redis Streams)
+  23-2: ready-for-dev  # Official Zalo OA Webhook & ZNS Template Automation Hub
+  23-3: ready-for-dev  # Automated VietQR Affiliate Payout Reconciliation
+  23-4: ready-for-dev  # PostgreSQL Row-Level Security (RLS) & Table Partitioning for Multi-Million Lead Scale
+  epic-23-retrospective: optional
+
   # === Epic 11: Telegram Automation & Bot ===
   epic-11: in-progress
   11-1: done

@@ -72,6 +72,11 @@ Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Archite
 `[READY]` **FR-78 Telegram AI Agent Tools** → **E22.3** (`telegram_search_channel`, `telegram_fetch_recent_posts`).
 `[READY]` **FR-79 Telegram PostgreSQL Storage & Zero Cache Sync** → **E22.1** (composite unique `(channel_id, message_id)`).
 
+`[READY]` **FR-89 Async Scraper Worker Pool (Celery + Redis Streams)** → **E23.1 P0** (Non-blocking background scraping + live matrix stream).
+`[READY]` **FR-90 Official Zalo OA Webhook & ZNS Template Automation** → **E23.2 P0** (Zalo OpenAPI v3 signature verification + ZNS template delivery).
+`[READY]` **FR-91 Automated VietQR Affiliate Payout Reconciliation** → **E23.3 P1** (Instant 24/7 Napas bank settlement + cryptographic audit receipts).
+`[READY]` **FR-92 PostgreSQL RLS & Table Partitioning for Multi-Million Leads** → **E23.4 P1** (Sub-10ms query isolation on partitioned lead stores).
+
 `[DONE — NFR]` **NFR-1b/1c/1d Memory latency & injection bound** *(E3.14 done, AD-18)*.
 `[RESOLVED]` FR-36 Legacy memory data-loss (2026-07-25 — không mất dữ liệu; 178 chưa apply prod, `memory_md` rỗng, snapshot đã tạo; guard + backfill + 5 test qua `3-10a`/`3-10b`).
 `[REMOVED]` FR-5 AI File Sorting.
@@ -2964,6 +2969,80 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 **Given** Telegram messages containing lead contacts,
 **When** queried by `LeadGenOrchestrator` (Story 21.15),
 **Then** `TelegramLeadAdapter` implements `LeadSourceAdapter` (AD-44), converting message entities and contacts into standard `Lead` records streamed directly into the Split-View Table Matrix.
+
+---
+
+## Epic 23: Enterprise Lead Infrastructure, Realtime Ingestion & Automated Outreach Engine
+
+### Story 23.1: Asynchronous Scraper Worker Pool (Celery + Redis Streams)
+- **User Value:** Lead scraping across 15+ Vietnamese platforms runs asynchronously in parallel Celery workers without blocking chat SSE responses, streaming individual leads to the browser matrix via Zero-cache / Redis pub-sub as they are found.
+- **Key Deliverables:**
+  - `LeadScraperWorker`: Celery tasks with per-platform rate limiters, exponential backoff, and circuit breaker.
+  - Redis Stream channel `workspace:{id}:leads_stream` with graceful degradation if a platform (e.g. Batdongsan/Chotot) is rate-limited or blocked.
+  - Zero-cache reactive ingestion into PostgreSQL with `ON CONFLICT (workspace_id, value_hmac) DO UPDATE`.
+- **Acceptance Criteria:**
+  - **Given** a lead generation prompt requiring multi-source scraping (Batdongsan, Chợ Tốt, TopCV, Masothue),  
+    **When** `LeadGenOrchestrator` dispatches scraping tasks,  
+    **Then** Celery returns a `job_id` within 200ms and executes workers concurrently across independent worker pools.
+  - **Given** active scraping workers discovering leads in real time,  
+    **When** any individual worker extracts a batch of 5+ leads,  
+    **Then** it pushes records directly to Redis Stream `workspace:{id}:leads_stream`, triggering immediate Zero-cache mutation and cell pulse animations in the frontend table without waiting for the full job completion.
+  - **Given** a scraper encountering Cloudflare anti-bot challenge or HTTP 429 rate limit,  
+    **When** consecutive failures reach the failure threshold (default: 3),  
+    **Then** the circuit breaker trips for that specific adapter, logging the incident to `AntiBotEscalation` while remaining adapters continue execution uninterrupted.
+
+### Story 23.2: Official Zalo OA Webhook & ZNS Template Automation Hub
+- **User Value:** Integrate official Zalo OpenAPI v3 Webhooks and ZNS (Zalo Notification Service) templates, allowing automated verification, instant template messaging, and two-way chat logging directly in Nowing.
+- **Key Deliverables:**
+  - Backend Webhook endpoint `/api/v1/workspaces/{id}/gateways/zalo/webhook` with HMAC-SHA256 signature verification.
+  - ZNS Template catalog & variable injector (e.g. `{customer_name}`, `{property_name}`, `{price}`).
+  - Two-way conversation sync between Zalo OA chat and Nowing Outbound Inbox.
+- **Acceptance Criteria:**
+  - **Given** an incoming webhook POST from Zalo Official Account server,  
+    **When** validated against the workspace app secret using HMAC-SHA256,  
+    **Then** the event is enqueued into `zalo_inbox_events` and acknowledged with `HTTP 200 OK` in < 500ms.
+  - **Given** a verified lead with an unlocked Vietnamese mobile number,  
+    **When** a user clicks `⚡ Send ZNS` in the Leads Matrix or Flyout Drawer,  
+    **Then** Nowing opens the template modal with dynamic parameters pre-filled, dispatches the approved ZNS template via Zalo OpenAPI, and records the delivery receipt in `outbound_messages`.
+  - **Given** a prospect responding to an outbound Zalo message,  
+    **When** Zalo OA fires the `user_send_text` webhook event,  
+    **Then** the lead record status updates to `responded`, and an in-app notification alerts the workspace owner with the prospect's reply.
+
+### Story 23.3: Automated VietQR Affiliate Payout Reconciliation
+- **User Value:** Affiliate partners and agencies receive instantaneous, automated 24/7 bank payouts via VietQR / Napas API as soon as payout requests are approved.
+- **Key Deliverables:**
+  - Payout reconciliation service (`nowing_backend/app/services/payout_reconciliation_service.py`).
+  - Webhook listener for payment gateway status updates (`/api/v1/partners/payouts/webhook`).
+  - Partner ledger audit trail with cryptographic HMAC receipt signatures.
+- **Acceptance Criteria:**
+  - **Given** an approved affiliate payout request with valid Napas 24/7 bank account details,  
+    **When** admin or automated policy triggers payout execution,  
+    **Then** the payment gateway API is called with an idempotent `tx_reference` and payout state transitions to `processing`.
+  - **Given** a webhook callback confirming bank transfer success,  
+    **When** signature and checksum match the gateway secret key,  
+    **Then** the partner's `pending_balance` is settled, `PartnerPayout.status` becomes `completed`, and an automated email receipt with the Napas transaction ID is dispatched.
+  - **Given** a transient network failure or timeout during payout dispatch,  
+    **When** the reconciliation background worker runs,  
+    **Then** it queries the gateway transaction status API before attempting any retry, preventing duplicate bank payouts.
+
+### Story 23.4: PostgreSQL Row-Level Security (RLS) & Table Partitioning for Multi-Million Lead Scale
+- **User Value:** High-performance database infrastructure capable of handling millions of scraped leads across multi-tenant workspaces with sub-10ms query latency and strict tenant isolation.
+- **Key Deliverables:**
+  - Declarative Hash/Range Table Partitioning on `leads` table by `workspace_id`.
+  - PostgreSQL Row-Level Security (RLS) policies enforcing tenant boundary at the database engine level.
+  - Composite pgvector and GiST indexing for fast semantic and geographic lead search.
+- **Acceptance Criteria:**
+  - **Given** a database connection with tenant session variable set to `app.current_workspace_id = '1'`,  
+    **When** executing `SELECT * FROM leads`,  
+    **Then** PostgreSQL engine-level RLS strictly filters out rows belonging to any other `workspace_id`, even in raw SQL queries.
+  - **Given** a partitioned `leads` table containing over 5,000,000 lead records,  
+    **When** executing workspace-scoped filter and search queries,  
+    **Then** `EXPLAIN ANALYZE` confirms partition pruning eliminates unneeded partitions, maintaining p95 query response time under 15ms.
+  - **Given** an active production database,  
+    **When** applying partition migration,  
+    **Then** existing lead records are migrated into partition shards with zero table locking and zero downtime.
+
+---
 
 ---
 

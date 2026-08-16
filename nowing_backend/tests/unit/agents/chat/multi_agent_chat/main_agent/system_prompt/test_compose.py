@@ -206,3 +206,80 @@ def test_max_instruction_length_boundary_plus_one() -> None:
         use_default_system_instructions=False,
     )
     assert instruction not in prompt
+
+
+def test_system_prompt_contains_lead_and_knowledge_intelligence_identity() -> None:
+    """Verify system prompt establishes the Lead & Knowledge Intelligence platform identity."""
+    prompt = build_main_agent_system_prompt(
+        today=None,
+        registry_subagent_prompt_lines=_make_tool_lines(),
+        use_default_system_instructions=True,
+    )
+    assert "Lead Intelligence & Knowledge Intelligence Platform" in prompt
+    assert "<agent_identity>" in prompt
+    assert "</agent_identity>" in prompt
+
+
+def test_system_prompt_contains_vertical_scrapers_and_routing_rules() -> None:
+    """Verify all vertical scrapers, finance, recruitment, and lead gen are covered in routing."""
+    prompt = build_main_agent_system_prompt(
+        today=None,
+        registry_subagent_prompt_lines=_make_tool_lines(),
+        use_default_system_instructions=True,
+    )
+    # Vietnam Real Estate
+    assert "batdongsan" in prompt
+    assert "chotot_bds" in prompt
+    assert "muaban_bds" in prompt
+
+    # Vietnam Finance & Business
+    assert "cafef" in prompt
+    assert "vietstock" in prompt
+
+    # Recruitment & Talent
+    assert "vn_jobs" in prompt
+    assert "TopCV" in prompt
+    assert "VietnamWorks" in prompt
+    assert "ITviec" in prompt
+
+    # Deep Research Modes
+    assert "chainlens" in prompt
+    assert "speed" in prompt
+    assert "balanced" in prompt
+    assert "quality" in prompt
+
+    # Failover & Degradation
+    assert "Graceful Degradation" in prompt
+    assert "AD-19.1" in prompt
+
+
+def test_all_xml_tags_are_balanced_in_compiled_prompt() -> None:
+    """Verify that all core XML section tags in the compiled system prompt are properly opened and closed."""
+    prompt = build_main_agent_system_prompt(
+        today=None,
+        registry_subagent_prompt_lines=_make_tool_lines(),
+        use_default_system_instructions=True,
+    )
+    core_tags = [
+        "agent_identity",
+        "core_behavior",
+        "knowledge_base_first",
+        "dynamic_context",
+        "routing",
+        "specialists",
+        "tools",
+        "memory_protocol",
+        "citations",
+        "output_format",
+        "refusal_and_limits",
+        "reminder",
+    ]
+    for tag in core_tags:
+        open_tag = f"<{tag}>"
+        close_tag = f"</{tag}>"
+        assert open_tag in prompt, f"Missing opening tag {open_tag}"
+        assert close_tag in prompt, f"Missing closing tag {close_tag}"
+        assert prompt.count(close_tag) == 1, f"Duplicate closing tag {close_tag}"
+        assert prompt.index(open_tag) < prompt.index(close_tag), f"Mismatched tag order for {tag}"
+
+
