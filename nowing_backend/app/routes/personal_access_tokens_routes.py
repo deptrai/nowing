@@ -16,7 +16,7 @@ from app.db import (
     get_async_session,
 )
 from app.schemas.pat import PATCreate, PATCreated, PATRead
-from app.users import require_session_context
+from app.users import require_non_impersonated_session, require_session_context
 from app.utils.pat import generate_pat, hash_pat, token_prefix
 from app.utils.rbac import is_workspace_owner
 
@@ -51,7 +51,7 @@ def _expires_at(expires_in_days: int | None) -> datetime | None:
 async def create_personal_access_token(
     body: PATCreate,
     session: AsyncSession = Depends(get_async_session),
-    auth: AuthContext = Depends(require_session_context),
+    auth: AuthContext = Depends(require_non_impersonated_session),
 ) -> PATCreated:
     token_kind = body.token_kind.strip().lower()
 
@@ -187,7 +187,7 @@ async def list_personal_access_tokens(
 async def delete_personal_access_token(
     pat_id: int,
     session: AsyncSession = Depends(get_async_session),
-    auth: AuthContext = Depends(require_session_context),
+    auth: AuthContext = Depends(require_non_impersonated_session),
 ) -> None:
     await session.execute(
         delete(PersonalAccessToken).where(

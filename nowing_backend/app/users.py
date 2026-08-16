@@ -361,8 +361,6 @@ async def get_auth_context(
                 user = None
 
             if user and user.is_active:
-                if is_impersonation:
-                    user.is_superuser = False
                 return AuthContext.session(user, is_impersonation=is_impersonation, impersonated_by=impersonated_by)
 
     cookie_token = request.cookies.get(config.SESSION_COOKIE_NAME)
@@ -377,8 +375,6 @@ async def get_auth_context(
             user = None
 
         if user and user.is_active:
-            if is_impersonation:
-                user.is_superuser = False
             return AuthContext.session(user, is_impersonation=is_impersonation, impersonated_by=impersonated_by)
 
     raise HTTPException(
@@ -418,10 +414,26 @@ async def require_superuser(
 
     PATs are rejected by the session gate, and workspace roles do not
     grant platform admin access. Only User.is_superuser is authoritative.
+    Impersonated sessions are explicitly rejected to prevent privilege escalation.
     """
-    if not auth.user.is_superuser:
+    if auth.is_impersonation or not auth.user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This action requires platform admin privileges",
+        )
+    return auth
+
+
+async def require_non_impersonated_session(
+    auth: AuthContext = Depends(require_session_context),
+) -> AuthContext:
+    """Require an interactive session that is not an impersonation session.
+
+    Use for destructive security operations where the real user must be present.
+    """
+    if auth.is_impersonation:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This action is not allowed during an impersonation session",
         )
     return auth

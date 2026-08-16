@@ -5996,18 +5996,27 @@ class PartnerPayout(Base, TimestampMixin):
     partner = relationship("AffiliatePartner", back_populates="payouts")
 
 
-class AuditEvent(Base):
-    """Dual-principal audit logging in audit_events."""
+class AuditEvent(BaseModel, TimestampMixin):
+    """Immutable dual-principal audit logging in audit_events."""
     __tablename__ = "audit_events"
 
-    id = Column(Integer, primary_key=True)
-    action = Column(String, nullable=False)
-    actor_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
-    subject_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=True)
-    ticket_ref = Column(String, nullable=True)
-    created_at = Column(
-        TIMESTAMP(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    action = Column(String(100), nullable=False, index=True)
+    actor_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
+    subject_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    ticket_ref = Column(String(255), nullable=True)
+    ip_address = Column(String(45), nullable=True)
+    user_agent = Column(String(500), nullable=True)
+    diff_payload = Column(JSONB, nullable=True)
 
 
 class CreditTransaction(Base, TimestampMixin):
