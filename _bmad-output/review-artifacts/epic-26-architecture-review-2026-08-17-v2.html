@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture Review v2 — Epic 26 (Unified Nowing + ChainLens + DSH)</title>
+<style>
+:root { --bg:#0d1117; --fg:#e6edf3; --muted:#8b949e; --border:#30363d; --blocker:#ff7b72; --high:#ffa657; --medium:#d29922; --low:#58a6ff; --ok:#3fb950; --code:#161b22; }
+body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--fg); line-height:1.5; max-width:1100px; margin:0 auto; padding:1.5rem; }
+h1,h2,h3 { color:var(--fg); border-bottom:1px solid var(--border); padding-bottom:.3rem; }
+.badge { display:inline-block; padding:.1rem .5rem; border-radius:999px; font-size:.75rem; font-weight:600; text-transform:uppercase; }
+.badge-blocker { background:rgba(255,123,114,.15); color:var(--blocker); border:1px solid var(--blocker); }
+.badge-high { background:rgba(255,166,87,.15); color:var(--high); border:1px solid var(--high); }
+.badge-medium { background:rgba(210,153,34,.15); color:var(--medium); border:1px solid var(--medium); }
+.badge-low { background:rgba(88,166,255,.15); color:var(--low); border:1px solid var(--low); }
+.badge-ok { background:rgba(63,185,80,.15); color:var(--ok); border:1px solid var(--ok); }
+table { width:100%; border-collapse:collapse; margin:.8rem 0; font-size:.9rem; }
+th,td { border:1px solid var(--border); padding:.5rem; text-align:left; vertical-align:top; }
+th { background:var(--code); }
+tr:nth-child(even) { background:rgba(255,255,255,.02); }
+code { background:var(--code); color:var(--fg); padding:.1rem .3rem; border-radius:.2rem; font-size:.85rem; }
+pre { background:var(--code); padding:.7rem; overflow-x:auto; border-radius:.3rem; }
+.finding { border-left:4px solid; padding:0 0 0 .9rem; margin:1rem 0; }
+.finding h3 { margin-top:0; border:none; font-size:1.05rem; }
+.blocker { border-color:var(--blocker); }
+.high { border-color:var(--high); }
+.medium { border-color:var(--medium); }
+.low { border-color:var(--low); }
+.callout { background:rgba(88,166,255,.1); border:1px solid var(--low); padding:.8rem; border-radius:.5rem; }
+</style>
+</head>
+<body>
+
+<h1>Architecture Review v2 — Epic 26</h1>
+<p><strong>Target:</strong> <code>architecture-unified-nowing-chainlens-dsh-2026-08-17/ARCHITECTURE-SPINE.md</code><br>
+<strong>Story:</strong> <code>26-1-fastmcp-batch-ingest-and-stateless-chainlens-pipeline</code><br>
+<strong>Review date:</strong> 2026-08-17<br>
+<strong>Reviewers:</strong> Blind Hunter, Edge Case Hunter, P0 Gate, Reality Check, BA, QA (manual), Architect (manual)</p>
+
+<div class="callout">
+  <strong>Verdict: CHANGES REQUESTED — NOT READY FOR DEV</strong><br>
+  Lần review thứ hai phát hiện thêm nhiều lỗ hổng nghiêm trọng. Tổng cộng có <strong>11 BLOCKER, 13 HIGH, 16 MEDIUM, 4 LOW</strong>.<br>
+  Dev subagent bị gián đoạn do quota; QA và Architect được chạy thủ công.
+</div>
+
+<h2>1. Tổng quan tìm kiếm</h2>
+<table>
+<tr><th>Severity</th><th>Count</th><th>Tóm tắt chủ đề</th></tr>
+<tr><td><span class="badge badge-blocker">BLOCKER</span></td><td>11</td><td>PII, ChainLens hướng, HMAC, value_hmac, embedding/chunk, sidecar, pricing/COGS, vLLM/Gemini</td></tr>
+<tr><td><span class="badge badge-high">HIGH</span></td><td>13</td><td>FastMCP, Zero-Cache, Redis Streams, rate-limit, RLS, refund, unlock UX, test, DNC, Next.js 16</td></tr>
+<tr><td><span class="badge badge-medium">MEDIUM</span></td><td>16</td><td>Audit log, empty batch, LLM fallback, WAL config, migration, ChainLensIngestJob, Qwen name</td></tr>
+<tr><td><span class="badge badge-low">LOW</span></td><td>4</td><td>Stream naming, test scaffold, docs, tech verified</td></tr>
+</table>
+
+<h2>2. BLOCKER Findings</h2>
+
+<div class="finding blocker">
+<h3>B1. PII Encryption Conflict — AES-256-GCM vs Fernet, cột CITEXT <span class="badge badge-blocker">BLOCKER</span></h3>
+<p><strong>Tham chiếu:</strong> AD-105, Story 26.1 AC-1, <code>app/db.py:5044-5045</code>, <code>app/services/pii/verified_contact_encryption.py</code>, <code>app/utils/oauth_security.py:155-171</code>.</p>
+<p>Epic 26 yêu cầu AES-256-GCM với cột <code>phone_encrypted</code>/<code>email_encrypted</code>; code hiện dùng <code>VerifiedContactEncryption</code> (Fernet/TokenEncryption — AES-128-CBC+HMAC-SHA256) ghi ciphertext trực tiếp vào cột <code>email</code> (CITEXT + index) và <code>phone</code>. CITEXT + ciphertext vô nghĩa, index bị phá. Không có path migration Fernet → AES-GCM.</p>
+<p><strong>Fix:</strong> Chọn 1 quy ước. Nếu dùng Fernet thì sửa AD-105, bỏ <code>email</code> CITEXT/index. Nếu bắt buộc AES-GCM thì viết service mới, migration decrypt/re-encrypt, thêm cột <code>_encrypted</code>, drop cột cũ sau verify.</p>
+</div>
+
+<div class="finding blocker">
+<h3>B2. ChainLens Ingest Hướng Bị Đảo Ngược <span class="badge badge-blocker">BLOCKER</span></h3>
+<p><strong>Tham chiếu:</strong> AD-101, Story 26.1 AC-3, <code>app/services/chainlens/ingest.py:78-81</code>, parent AD-34.</p>
+<p>Epic 26: ChainLens gọi <code>POST /v1/chainlens/ingest</code> về Nowing. Code hiện: <code>NowingIngestService</code> gọi <code>POST /v1/ingest/scraper</code> sang ChainLens. Không có route inbound, không có schema <code>ChainLensIngestPayload</code>, không có auth cho callback ngược.</p>
+<p><strong>Fix:</strong> Chốt luồng duy nhất. Option A: giữ Nowing→ChainLens, bỏ AC-3. Option B: ChainLens→Nowing, thêm route, schema, HMAC/API-key auth inbound, vô hiệu hóa hoặc đổi <code>NowingIngestService</code>.</p>
+</div>
+
+<div class="finding blocker">
+<h3>B3. <code>pii_blacklists</code> Trùng Với DNC Registry <span class="badge badge-blocker">BLOCKER</span></h3>
+<p><strong>Tham chiếu:</strong> AD-110, Story 26.1 AC-1, <code>app/db.py:5773-5843</code>.</p>
+<p>Epic 26 đòi bảng <code>pii_blacklists</code>; code đã có <code>workspace_dnc_records</code> và <code>global_dnc_records</code> với <code>value_hmac</code>, <code>record_type</code>. Migration 218 tồn tại nhưng là <code>add_partner_payout_reconciliation_columns</code>, không phải PII blacklist.</p>
+<p><strong>Fix:</strong> Dùng DNC tables làm blacklist (cập nhật AD-110 + story), hoặc tạo <code>pii_blacklists</code> và migrate DNC data. Đặt migration đúng số thứ tự (ví dụ 225+) để tránh xung đột.</p>
+</div>
+
+<div class="finding blocker">
+<h3>B4. <code>dsh-worker</code> Sidecar Vi Phạm AD-1 (Monolith) <span class="badge badge-blocker">BLOCKER</span></h3>
+<p><strong>Tham chiếu:</strong> AD-102, parent AD-1 (ARCHITECTURE-SPINE.md:196-200).</p>
+<p>Parent AD-1: mọi nghiệp vụ trong một process FastAPI, giao tiếp nội bộ qua function call. AD-102 giới thiệu <code>dsh-worker</code> sidecar container, chạy Redis Streams, gọi FastMCP Gateway — là process riêng, tương đương microservice.</p>
+<p><strong>Fix:</strong> Sửa parent AD-1 để công nhận sidecar cho long-running missions (như ngoại lệ ChainLens/AD-15), hoặc gộp sidecar logic vào Celery worker trong process hiện có. Viết AD mới sửa AD-1 nếu chọn sidecar.</p>
+</div>
+
+<div class="finding blocker">
+<h3>B5. HMAC Computation Divergence <span class="badge badge-blocker">BLOCKER</span></h3>
+<p><strong>Tham chiếu:</strong> Story 26.1 AC-1, <code>app/lead_intelligence/dnc/normalizer.py</code>, <code>app/lead_intelligence/services/lead_stream_service.py:47-52</code>.</p>
+<p>Epic 26 mô tả composite HMAC gồm <code>workspace_id:phone:email:domain</code>. Code hiện: <code>hash_phone_hmac()</code> chỉ hash từng trường; <code>generate_lead_hmac()</code> dùng SHA-256 với <code>workspace_id:domain:company_name</code>. Không có <code>HMAC_SECRET</code> riêng.</p>
+<p><strong>Fix:</strong> Chọn 1 thuật toán HMAC duy nhất, cập nhật mọi nơi (batch ingest, DNC, lead dedup), thêm <code>HMAC_SECRET</code> config hoặc dùng <code>SECRET_KEY</code> hiện tại.</p>
+</div>
+
+<div class="finding blocker">
+<h3>B6. <code>leads.value_hmac</code> Nullable + Thiếu Unique Constraint <span class="badge badge-blocker">BLOCKER</span></h3>
+<p><strong>Tham chiếu:</strong> Story 26.1 AC-2, <code>app/db.py:4518</code>.</p>
+<p>Story giả định <code>ON CONFLICT (workspace_id, value_hmac)</code>. <code>value_hmac</code> hiện <code>nullable=True</code> và chỉ có index. PostgreSQL cho phép nhiều NULL trong unique constraint, nên duplicate NULL vẫn insert được; deadlock prevention không hoạt động.</p>
+<p><strong>Fix:</strong> Migration: backfill <code>value_hmac</code> cho NULL, đổi thành <code>NOT NULL</code>, thêm <code>UniqueConstraint("workspace_id", "value_hmac")</code>.</p>
+</div>
+
+<div class="finding blocker">
+<h3>B7. Embedding Dimension Mismatch <span class="badge badge-blocker">BLOCKER</span></h3>
+<p><strong>Tham chiếu:</strong> Story 26.1 AC-3, <code>app/db.py:1639</code>, <code>app/config/__init__.py:1692-1701</code>.</p>
+<p>Epic 26 đề cập 1536 (OpenAI) và 1024 (BGE) trong cùng <code>chunks</code> table. pgvector chỉ chứa 1 dimension/cột. Code hiện dùng <code>Vector(config.embedding_model_instance.dimension)</code> toàn cục.</p>
+<p><strong>Fix:</strong> Chọn 1 dimension duy nhất (khuyến nghị 1536), hoặc thêm cột <code>embedding_local</code> 1024 và routing logic. Cập nhật AD-101.</p>
+</div>
+
+<div class="finding blocker">
+<h3>B8. Chunk ID Type Mismatch — UUIDv5 vs Integer <span class="badge badge-blocker">BLOCKER</span></h3>
+<p><strong>Tham chiếu:</strong> Story 26.1 AC-3, <code>app/db.py:1635-1652</code>, <code>app/schemas/chunks.py:19-20</code>.</p>
+<p>Epic 26 yêu cầu UUIDv5 deterministic chunk IDs. <code>Chunk</code> hiện dùng <code>id</code> integer auto-increment; schema <code>ChunkRead</code> cũng là int. Không có <code>chunk_uuid</code> cột.</p>
+<p><strong>Fix:</strong> Migration đổi <code>chunks.id</code> sang UUID hoặc thêm cột <code>chunk_uuid</code> với unique constraint; cập nhật schema, route, FQ.</p>
+</div>
+
+<div class="finding blocker">
+<h3>B9. Contact Unlock Billing Chưa Tồn Tại <span class="badge badge-blocker">BLOCKER</span></h3>
+<p><strong>Tham chiếu:</strong> AD-105 (line 126), <code>app/services/wallet_credit.py</code>, <code>app/services/billing_event_service.py</code>, <code>app/db.py</code>.</p>
+<p>AD-105 nói debit 1.5 credits để unlock. Code không có <code>is_unlocked</code> column, không có route unlock, không có <code>record_contact_unlock()</code> trong <code>BillingEventService</code>, không tích hợp <code>wallet_credit.apply_debit()</code>.</p>
+<p><strong>Fix:</strong> Thêm <code>is_unlocked</code> vào <code>verified_contacts</code>, endpoint <code>POST /api/v1/workspaces/{id}/leads/{lead_id}/contacts/{contact_id}/unlock</code>, service debit 1500 micros và ghi <code>BillingEvent</code> <code>event_type='contact_unlock'</code>.</p>
+</div>
+
+<div class="finding blocker">
+<h3>B10. DeepSeek Pricing & COGS Lỗi Thời <span class="badge badge-blocker">BLOCKER</span></h3>
+<p><strong>Tham chiếu:</strong> AD-103, §5 unit economics, Reality-Check RC-1/RC-4.</p>
+<p>Giá DeepSeek V4 đã đổi sang peak/off-peak từ 2026-08-16 (tăng 51%-371%). Tên model cũng không chính xác (<code>DeepSeek-V4-Flash</code> thay vì <code>deepseek-v4-flash</code>). COGS $15.30/1.000 leads và margin 89.8% sai; tính lại ~$17.18-$22.56, margin 84.9%-88.5%.</p>
+<p><strong>Fix:</strong> Cập nhật AD-103 tên model, định giá peak/off-peak; đánh dấu §5 là <code>[ASSUMPTION]</code> hoặc recalculate.</p>
+</div>
+
+<div class="finding blocker">
+<h3>B11. vLLM & Gemini Free Tier Assumptions Sai <span class="badge badge-blocker">BLOCKER</span></h3>
+<p><strong>Tham chiếu:</strong> AD-103, §5, Reality-Check RC-2/RC-3.</p>
+<p>vLLM local không phải $0 COGS — H100 $917-$2,295/tháng. Gemini Flash Free Tier có rate limit VÀ dùng content để cải thiện sản phẩm Google, không được dùng cho PII/proprietary data.</p>
+<p><strong>Fix:</strong> Thêm GPU infra cost vào COGS; cấm Gemini free tier cho PII, đưa vào fallback logic khi quota hoặc sensitive data.</p>
+</div>
+
+<h2>3. HIGH Findings</h2>
+
+<div class="finding high">
+<h3>H1. FastMCP REST Endpoint Confusion <span class="badge badge-high">HIGH</span></h3>
+<p><strong>Tham chiếu:</strong> Story 26.1 AC-1 / Task 4, <code>nowing_mcp/mcp_server/server.py</code>.</p>
+<p>Story mô tả <code>POST /mcp/v1/tools/batch_ingest_leads</code> như FastAPI route. FastMCP dùng giao thức MCP (stdio/SSE), tool đăng ký qua <code>@mcp.tool()</code> ở <code>nowing_mcp</code>. Path <code>/mcp/v1/tools/...</code> không tồn tại trong MCP.</p>
+<p><strong>Fix:</strong> Nếu là MCP tool, đăng ký trong <code>nowing_mcp/mcp_server/features/lead_intelligence/</code>; nếu là REST API, đặt <code>/api/v1/workspaces/{id}/leads/batch-ingest</code> và bỏ từ FastMCP.</p>
+</div>
+
+<div class="finding high">
+<h3>H2. Zero-Cache CDC Scope Không Rõ / value_hmac Leak <span class="badge badge-high">HIGH</span></h3>
+<p><strong>Tham chiếu:</strong> AD-104, <code>app/zero_publication.py:134-155</code>, EC-6.</p>
+<p>AD-104 nói “all realtime UI updates for leads, signal events, mission progress” nhưng không liệt kê cột. <code>LEADS_COLS</code> không gồm <code>value_hmac</code>/<code>consent_status</code>; nếu thêm thì <code>value_hmac</code> leak qua CDC.</p>
+<p><strong>Fix:</strong> Liệt kê chính xác cột được publish, loại trừ PII/hash columns. Đồng bộ <code>nowing_web/zero/schema/leads.ts</code>.</p>
+</div>
+
+<div class="finding high">
+<h3>H3. Redis Streams DLQ/XAUTOCLAIM Chưa Implement <span class="badge badge-high">HIGH</span></h3>
+<p><strong>Tham chiếu:</strong> AD-102 (line 104), EC-2, <code>app/tasks/social_stream_worker.py:500-514</code>.</p>
+<p>AD-102 yêu cầu <code>XAUTOCLAIM</code> và DLQ sau 3 lần giao. Code chưa có implementation <code>nowing:dsh:tasks</code> consumer group, chưa có <code>XAUTOCLAIM</code>.</p>
+<p><strong>Fix:</strong> Thêm <code>app/tasks/dsh_stream_worker.py</code> với consumer group, <code>XAUTOCLAIM</code>, delivery count, DLQ <code>nowing:dsh:dlq</code>.</p>
+</div>
+
+<div class="finding high">
+<h3>H4. <code>is_blacklisted</code> Column / Status Enum Thiếu <span class="badge badge-high">HIGH</span></h3>
+<p><strong>Tham chiếu:</strong> Story 26.1 AC-1, EC-4, <code>app/db.py</code>.</p>
+<p>AC-1 yêu cầu set <code>is_blacklisted=True</code> và status <code>blacklisted</code>. Cả hai đều không tồn tại trong schema <code>leads</code>.</p>
+<p><strong>Fix:</strong> Migration thêm <code>is_blacklisted</code> boolean và giá trị <code>blacklisted</code> vào enum/status; hoặc bỏ requirement khỏi AC.</p>
+</div>
+
+<div class="finding high">
+<h3>H5. Rate Limiting Thiếu Trên Ingest Endpoints <span class="badge badge-high">HIGH</span></h3>
+<p><strong>Tham chiếu:</strong> Story 26.1 AC-1/AC-3, <code>app/rate_limiter.py</code>, P0-4.</p>
+<p>Không có rate limit cho <code>/v1/chainlens/ingest</code> và batch ingest. Mỗi batch 100 leads, nếu không giới hạn sẽ quá tải DB và làm trống ví nhanh.</p>
+<p><strong>Fix:</strong> Thêm <code>RateLimitItemPerMinute</code> cho ChainLens ingest (60 req/min) và batch ingest (30 batch/min); áp dụng per-workspace.</p>
+</div>
+
+<div class="finding high">
+<h3>H6. RLS Policy Gaps Cho Các Bảng Mới <span class="badge badge-high">HIGH</span></h3>
+<p><strong>Tham chiếu:</strong> AD-105/AD-110, P0-7, <code>app/db.py</code> Lead/VerifiedContact.</p>
+<p>Các bảng mới (<code>pii_blacklists</code>, <code>verified_contacts</code> encrypted columns, <code>chainlens_ingest_jobs</code>) chưa có RLS policy xác minh. <code>zero_publication</code> có thể publish cross-workspace nếu policy thiếu.</p>
+<p><strong>Fix:</strong> Liệt kê RLS policy cho mỗi bảng mới trong AC; viết integration test isolation.</p>
+</div>
+
+<div class="finding high">
+<h3>H7. Refund Cap 15% Chưa Được Mô Tả/Implement <span class="badge badge-high">HIGH</span></h3>
+<p><strong>Tham chiếu:</strong> AD-110 (line 156), P0-5, BA-1, <code>app/services/billing_service.py:58-150</code>.</p>
+<p>AD-110 nói trần refund 15% số lead đã unlock/tháng/workspace. Không có AC nào trong Story 26.1; <code>BillingService.auto_refund_lead()</code> không tính cumulative percentage.</p>
+<p><strong>Fix:</strong> Bổ sung AC: tính <code>refunded_leads / unlocked_leads &lt; 15%</code>, ghi <code>BillingEvent event_type='contact_refund'</code>, định nghĩa billing cycle.</p>
+</div>
+
+<div class="finding high">
+<h3>H8. Two-Tier Unlock UX Thiếu AC <span class="badge badge-high">HIGH</span></h3>
+<p><strong>Tham chiếu:</strong> AD-110 (line 157), BA-2, Story 26.1 AC-1.</p>
+<p>AD-110 yêu cầu Smart Confirmation Popover + session toggle “1-Click Fast Unlock”. Story 26.1 không có AC về UX này.</p>
+<p><strong>Fix:</strong> Thêm AC mô tả popover, toggle state, reset sau 30 phút inactive hoặc new session.</p>
+</div>
+
+<div class="finding high">
+<h3>H9. Opt-Out & Decree 13 Compliance Gaps <span class="badge badge-high">HIGH</span></h3>
+<p><strong>Tham chiếu:</strong> AD-105/AD-110, BA-4, <code>app/db.py</code> DNC.</p>
+<p>Không có AC cho người dùng gửi yêu cầu opt-out, xử lý, áp dụng retroactive, xóa dữ liệu theo Decree 13/PDPD.</p>
+<p><strong>Fix:</strong> Thêm endpoint opt-out, workflow xác minh, hủy unlock, hoàn credit, xóa/giả danh PII, audit log.</p>
+</div>
+
+<div class="finding high">
+<h3>H10. Missing Test Scaffolds <span class="badge badge-high">HIGH</span></h3>
+<p><strong>Tham chiếu:</strong> Story 26.1 AC-5, DoD, <code>nowing_backend/tests</code>, <code>nowing_mcp/tests</code>.</p>
+<p>Story yêu cầu <code>tests/unit/mcp/test_fastmcp_batch_ingest.py</code> và <code>tests/integration/services/test_chainlens_ingest_pipeline.py</code> nhưng chưa tồn tại. Không có golden cassettes, fake MCP transport, fake ChainLens callback.</p>
+<p><strong>Fix:</strong> Tạo test files với fixtures: fake ChainLens, fake MCP in-memory, concurrency 20 threads, hermetic $0 API cost. Chạy mutation gate nếu cần.</p>
+</div>
+
+<div class="finding high">
+<h3>H11. <code>ChainLensIngestJob</code> Schema Không Khớp <span class="badge badge-high">HIGH</span></h3>
+<p><strong>Tham chiếu:</strong> Story 26.1 AC-3, <code>app/db.py:4311-4354</code>.</p>
+<p>Bảng <code>chainlens_ingest_jobs</code> hiện dùng cho outbound Nowing→ChainLens. AC-3 yêu cầu cập nhật status <code>complete</code> và “count of ingested chunks” khi ChainLens gọi ngược, nhưng bảng không có <code>chunks_count</code>.</p>
+<p><strong>Fix:</strong> Định nghĩa semantics rõ: tách bảng inbound/outbound hoặc thêm cột <code>chunks_received_count</code>, <code>chunks_ingested_count</code>.</p>
+</div>
+
+<div class="finding high">
+<h3>H12. Next.js 16 Cache Components Breaking Change <span class="badge badge-high">HIGH</span></h3>
+<p><strong>Tham chiếu:</strong> AD-104, Reality-Check RC-6.</p>
+<p>Next.js 16 bỏ implicit fetch caching, đổi middleware <code>proxy.ts</code>. Nếu frontend dùng <code>unstable_cache</code> hoặc implicit cache sẽ break. Zero-Cache CDC vẫn hoạt động nhưng cần xác minh.</p>
+<p><strong>Fix:</strong> Thêm migration note trong AD-104, audit frontend code, cập nhật <code>'use cache'</code> directive nếu cần.</p>
+</div>
+
+<div class="finding high">
+<h3>H13. Migration Number Conflict <span class="badge badge-high">HIGH</span></h3>
+<p><strong>Tham chiếu:</strong> Story 26.1 DoD, <code>nowing_backend/alembic/versions/218_add_partner_payout_reconciliation_columns.py</code>.</p>
+<p>Story gọi migration <code>218_add_pii_blacklists_and_batch_leads.py</code> nhưng 218 đã tồn tại với tên khác. Số 224 cũng có thể conflict.</p>
+<p><strong>Fix:</strong> Dùng số migration tiếp theo chưa dùng (kiểm tra bằng <code>ls alembic/versions</code>), đặt tên rõ ràng, không reuse.</p>
+</div>
+
+<h2>4. MEDIUM Findings (Summary Table)</h2>
+<table>
+<tr><th>ID</th><th>Severity</th><th>Finding</th><th>Key Fix</th></tr>
+<tr><td>M1</td><td><span class="badge badge-medium">MEDIUM</span></td><td>Empty/null batch + degenerate HMAC input</td><td>Reject items with all-empty phone/email/domain</td></tr>
+<tr><td>M2</td><td><span class="badge badge-medium">MEDIUM</span></td><td>LLM router 429 fallback chain missing</td><td>Fallback from Gemini free → DeepSeek on quota; retry/backoff</td></tr>
+<tr><td>M3</td><td><span class="badge badge-medium">MEDIUM</span></td><td>PostgreSQL WAL config not enforced</td><td>Add <code>max_slot_wal_keep_size=4GB</code>, <code>wal_keep_size=1GB</code> to compose</td></tr>
+<tr><td>M4</td><td><span class="badge badge-medium">MEDIUM</span></td><td>Audit log for PII unlock/deletion missing</td><td>Log to <code>AuditEvent</code>/<code>LeadActivityLog</code>; 365-day retention</td></tr>
+<tr><td>M5</td><td><span class="badge badge-medium">MEDIUM</span></td><td>Contact unlock ambiguity (per contact? atomic? insufficient credit?)</td><td>Clarify 1.5 credits/contact, debit after success, block if balance &lt;1500 micros</td></tr>
+<tr><td>M6</td><td><span class="badge badge-medium">MEDIUM</span></td><td>Data retention/audit requirements (Decree 13) not in AC</td><td>Add retention AC: PII 730d, audit 365d, deletion workflow</td></tr>
+<tr><td>M7</td><td><span class="badge badge-medium">MEDIUM</span></td><td>Qwen model name incorrect (<code>Qwen 3.8-27B AWQ</code> is community)</td><td>Use <code>Qwen/Qwen3.8-27B</code> or specify community AWQ repo</td></tr>
+<tr><td>M8</td><td><span class="badge badge-medium">MEDIUM</span></td><td>User value SLAs missing (lead visibility latency, partial failure)</td><td>Add AC: dashboard within 2s, partial success notification</td></tr>
+<tr><td>M9</td><td><span class="badge badge-medium">MEDIUM</span></td><td>Traceability to PRD FR/NFR missing</td><td>Add mapping to FR-37, FR-69, NFR-9, Decree 13</td></tr>
+<tr><td>M10</td><td><span class="badge badge-medium">MEDIUM</span></td><td>Residential proxy + CAPTCHA cost unverified ($7.80/1k)</td><td>POC or mark [ASSUMPTION]</td></tr>
+<tr><td>M11</td><td><span class="badge badge-medium">MEDIUM</span></td><td>Telco HLR/Zalo lookup cost unverified ($1.50/1k)</td><td>Vendor contract hoặc đánh dấu [ASSUMPTION]</td></tr>
+<tr><td>M12</td><td><span class="badge badge-medium">MEDIUM</span></td><td>Migration rollback plan for PII encryption change</td><td>3-phase migration: add cols, migrate, drop after verify</td></tr>
+<tr><td>M13</td><td><span class="badge badge-medium">MEDIUM</span></td><td>Redis stream naming no centralized registry</td><td>Add constants in <code>app/config/__init__.py</code></td></tr>
+<tr><td>M14</td><td><span class="badge badge-medium">MEDIUM</span></td><td><code>BillingEvent</code> vs <code>TokenUsage</code> for contact unlock not specified</td><td>Contact unlock = <code>BillingEvent</code> per AD-42</td></tr>
+<tr><td>M15</td><td><span class="badge badge-medium">MEDIUM</span></td><td>Missing <code>pii_access_audit_logs</code> JSONB column / semantics</td><td>Thêm cột hoặc dùng <code>AuditEvent</code> table hiện có</td></tr>
+<tr><td>M16</td><td><span class="badge badge-medium">MEDIUM</span></td><td>FastMCP hermetic fake transport not defined</td><td>Define in-memory transport + Golden Replay cassettes</td></tr>
+</table>
+
+<h2>5. LOW Findings</h2>
+<table>
+<tr><th>ID</th><th>Finding</th><th>Fix</th></tr>
+<tr><td>L1</td><td>Stream naming could collide with social streams</td><td>Centralize names in config, document</td></tr>
+<tr><td>L2</td><td>Docs drift: unit economics in spine should be in business brief</td><td>Move §5 to product/business brief</td></tr>
+<tr><td>L3</td><td>Story 26.1 references non-existent <code>nowing_backend/app/routes/fastmcp_routes.py</code></td><td>Đổi thành đúng file theo quyết định MCP/REST</td></tr>
+<tr><td>L4</td><td>Other named technologies verified (FastMCP, Redis Streams, tini, Zero-Cache, Next.js 16, React 19)</td><td>No action</td></tr>
+</table>
+
+<h2>6. Khuyến nghị tổng thể</h2>
+<ol>
+<li><strong>Đình chỉ Story 26.1</strong> cho đến khi 11 BLOCKER được reconcile.</li>
+<li><strong>Triệu hồi architecture decision meeting</strong> chốt 6 câu hỏi sau:
+  <ul>
+    <li>PII encryption: Fernet hiện tại hay AES-256-GCM?</li>
+    <li>ChainLens data flow: Nowing→ChainLens hay ChainLens→Nowing?</li>
+    <li>HMAC: thuật toán và input chuẩn là gì?</li>
+    <li>Blacklist: <code>pii_blacklists</code> hay <code>workspace_dnc_records</code>?</li>
+    <li>Sidecar: amend AD-1 hay gộp vào Celery?</li>
+    <li>Embedding dimension: 1536 single hay dual-column 1024/1536?</li>
+  </ul>
+</li>
+<li><strong>Cập nhật Epic 26 spine & Story 26.1:</strong> sửa AD-101..AD-110, liệt kê Zero-Cache columns, thêm RLS, rate-limit, refund AC, unlock UX, opt-out workflow, test scaffolds, recalculate COGS.</li>
+<li><strong>Re-run validation gates:</strong> lint_spine.py, adversarial, edge-case, P0, reality-check, BA, QA, architect sau khi update.</li>
+</ol>
+
+<h2>7. Files tham chiếu chính</h2>
+<ul>
+<li><code>_bmad-output/planning-artifacts/architecture/architecture-unified-nowing-chainlens-dsh-2026-08-17/ARCHITECTURE-SPINE.md</code></li>
+<li><code>_bmad-output/implementation-artifacts/26-1-fastmcp-batch-ingest-and-stateless-chainlens-pipeline.md</code></li>
+<li><code>_bmad-output/planning-artifacts/architecture/architecture-Nowing-2026-07-22/ARCHITECTURE-SPINE.md</code></li>
+<li><code>nowing_backend/app/db.py</code> (Lead, VerifiedContact, DNC, chainlens_ingest_jobs)</li>
+<li><code>nowing_backend/app/services/pii/verified_contact_encryption.py</code></li>
+<li><code>nowing_backend/app/utils/oauth_security.py</code></li>
+<li><code>nowing_backend/app/services/chainlens/ingest.py</code></li>
+<li><code>nowing_mcp/mcp_server/server.py</code></li>
+<li><code>nowing_backend/app/zero_publication.py</code></li>
+<li><code>nowing_backend/app/services/wallet_credit.py</code>, <code>billing_event_service.py</code></li>
+<li><code>nowing_backend/app/lead_intelligence/dnc/normalizer.py</code>, <code>lead_stream_service.py</code></li>
+</ul>
+
+<h2>8. Ghi chú review process</h2>
+<ul>
+<li>Blind Hunter, Edge Case Hunter, P0 Gate, Reality Check, BA Agent hoàn thành bằng subagent.</li>
+<li>Dev Agent bị gián đoạn do quota.</li>
+<li>QA và Architect review được thực hiện thủ công (manual synthesis).</li>
+<li>Reports: v1 <code>epic-26-architecture-review-2026-08-17.html</code>, v2 <code>epic-26-architecture-review-2026-08-17-v2.html</code>.</li>
+</ul>
+
+</body>
+</html>

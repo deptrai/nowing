@@ -110,3 +110,22 @@ So that customer billing disputes are resolved instantly without risk of double-
 - Tailwind `h-9` equals 36px, matching the AC-4 high-density row height.
 - Workspace validation under the `FOR UPDATE` lock is safe; Redis lock is just a key and the DB query on a non-existent workspace returns no row.
 - `migration 221` CRM tables are pre-existing and not caused by the 25.2 diff.
+
+### Review Findings — Test Additions (2026-08-16)
+
+#### Patch (cần xử lý)
+
+- [x] [Review][Patch] `test_adjust_credits_concurrent_quota_guard` dùng hardcoded `600` thay vì constant `DAILY_CREDIT_QUOTA`, dễ break nếu quota thay đổi (`tests/integration/services/test_manual_credits.py:241`).
+- [x] [Review][Patch] `test_adjust_credits_concurrent_quota_guard` tự dọn dữ liệu (User/Workspace/AuditEvent) thủ công, không dùng fixture rollback, dễ leak nếu test fail giữa chừng (`tests/integration/services/test_manual_credits.py:278-297`).
+- [x] [Review][Patch] Thiếu test boundary 64 ký tự cho `Idempotency-Key` (hiện chỉ test 65 ký tự bị reject) (`tests/integration/routes/test_admin_credits.py:159`).
+- [x] [Review][Patch] Thiếu test `limit > 100` và `limit = 100` cho `/ledger` (`tests/integration/routes/test_admin_credits.py:270-280`).
+- [x] [Review][Patch] Test pagination không assert ordering `created_at DESC` theo route (`tests/integration/routes/test_admin_credits.py:270-280`).
+- [x] [Review][Patch] Thiếu test `_` wildcard escaping (hiện chỉ test `%`) (`tests/integration/routes/test_admin_credits.py:283-307`).
+- [x] [Review][Patch] `test_post_admin_credits_adjust_quota_guardrail` assert `AuditEvent` chưa kiểm tra `actor_id`/`subject_id` khớp admin (`tests/integration/routes/test_admin_credits.py:142-148`).
+
+#### Defer (pre-existing / ngoài phạm vi diff)
+
+- [x] [Review][Defer] Thiếu test AC-1 validation cho `reason` min length, `ticket_ref` missing, `workspace_id` format/negative, `amount_credits` zero/negative, `direction` invalid values — các trường hợp này đã có unit test cơ bản, chưa cần bổ sung ngay trong diff này.
+- [x] [Review][Defer] Thiếu test trực tiếp Redis Redlock / Postgres `FOR UPDATE` / `lock_timeout` — khó assert từ bên ngoài, phụ thuộc implementation internals.
+- [x] [Review][Defer] Thiếu test quota cho `DEBIT` và non-superuser role — hạ tầng role chưa hỗ trợ, đã ghi nhận trong quyết định story.
+- [x] [Review][Defer] Thiếu test CSV export, aggregate stats cards, 36px row height — thuộc AC-4 UI, ngoài phạm vi test backend vừa thêm.

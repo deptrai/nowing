@@ -883,6 +883,20 @@ So that agents can operate the research workspace end-to-end without the web UI.
 **Kỹ thuật (backfill):** Slice 0–3 đã implement + verified (selfcheck 42 tools, MCP suite 83 passed, ruff clean); Slice 4–5 còn pending chờ `bmad-dev-story`. Khác biệt với FR-8 (External MCP Connectors — Nowing tiêu thụ MCP third-party): story này là MCP server của Nowing (FR-29).
 _FR-29 · FR-21/23 · FR-18/19/20 · FR-32/33/34 · AD-7 · story file `7-7-mcp-server-tool-expansion.md`._
 
+### Story 7.8: Vietnamese i18n & Smart Geo-Locale Auto-Detection  `(mới 2026-08-17)`  `[ready-for-dev]`
+
+As a Vietnamese user or international visitor,
+I want Nowing to support Vietnamese language and automatically detect my location on my first visit to present the appropriate language,
+So that I can immediately experience the application in my native language without manual switching, while retaining my language preferences if I choose to change them.
+
+**Acceptance Criteria:**
+1. **Given** a user accesses Nowing with no prior `nowing-locale` in `localStorage`, **When** their browser language is Vietnamese (`vi`, `vi-VN`) OR their timezone is within Vietnam (`Asia/Ho_Chi_Minh`, `Asia/Saigon`, `Asia/Hanoi`), **Then** the application automatically selects `vi` and renders all messages in Vietnamese.
+2. **Given** a first-time user from a non-Vietnamese locale with no prior preference, **When** their browser language matches a supported locale (`es`, `pt`, `hi`, `zh`, `ko`), **Then** the application auto-selects that locale; otherwise it defaults to `en`.
+3. **Given** a user changes language via `LanguageSwitcher` or `SidebarUserProfile` (or has existing `nowing-locale` in `localStorage`), **When** the user revisits or refreshes the page, **Then** the application strictly retains the stored language preference without overriding it.
+4. **Given** the language switcher UI in header and sidebar, **When** viewed, **Then** `🇻🇳 Tiếng Việt` is present, selectable, and dynamically switches all UI components with 0 errors.
+
+**Kỹ thuật:** Add `nowing_web/messages/vi.json`, update `routing.ts`, `LocaleContext.tsx`, `LanguageSwitcher.tsx`, `SidebarUserProfile.tsx`.
+
 ---
 
 ## Epic 8: Platform Operations (Billing / Usage / Token)
@@ -3274,6 +3288,117 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
+## Epic 26: Autonomous Deep Lead Missions & Unified ChainLens/DSH Infrastructure `[ready-for-dev]`
+*Governed by Architecture Spine: `architecture-unified-nowing-chainlens-dsh-2026-08-17/ARCHITECTURE-SPINE.md` (AD-101 to AD-110) & BMAD Full-Spectrum Panel (Winston, John, Mary, Amelia, Murat, Sally, DevOps)*
+
+### Architectural Invariants (AD-101 – AD-110)
+- **AD-101 (Stateless ChainLens & Unified pgvector Ingestion):** ChainLens chỉ đóng vai trò Crawler/Parser không lưu trạng thái. Chunks được đẩy về `POST /v1/chainlens/ingest` để Nowing tự tạo embeddings và lưu vào PostgreSQL 16 `chunks` (HNSW).
+- **AD-102 (Decoupled Sidecar Worker & FastMCP Gateway):** Tác vụ chạy nền 1–8h nằm tại `dsh-worker`, giao tiếp qua Redis Streams (`nowing:dsh:tasks`), sử dụng `XAUTOCLAIM` và DLQ (`nowing:dsh:dlq`).
+- **AD-103 (Multi-Tier Hybrid LLM Router with Free-Tier Priority):** Google Gemini Flash Free Tier ($0 COGS) làm Tầng 1 (Primary Ingestion Workhorse), Qwen 3.8-27B AWQ Local vLLM ($0 COGS) làm Tầng 1b, DeepSeek-V4-Flash ($0.14/$0.28) cho High-Volume Burst Extraction, và DeepSeek-V4-Pro-0813 ($0.435/$0.87) cho Deep CoT Reasoning với Outlines/Guided JSON.
+- **AD-104 (Zero-Cache CDC Reactivity):** Toàn bộ cập nhật Lead Matrix và Mission State kích hoạt qua PostgreSQL Logical WAL Replication (`zero_publication`), loại trừ bảng `chunks` nặng.
+- **AD-105 (PII Vault & Decree 13 Compliance):** Số điện thoại lưu trữ mã hóa AES-256-GCM, khử trùng lặp qua HMAC-SHA256, hiển thị Masked (`0908 *** 456`), ToS định vị Nowing là Data Processor.
+- **AD-106 (Harness Hierarchical Delegation & Specialist Team Pattern):** Mission Supervisor phân việc cho Expert Pool (Research, Scraper, Valuation, PII Auditor) theo mô hình Producer-Reviewer.
+- **AD-107 (Hermetic Testability & $0 API Cost Gate):** Toàn bộ CI/CD và evals (`nowing_evals`) chạy với Golden Streaming Cassettes (`.sse.jsonl`) và Fake FastMCP in-memory transport. F1 Phone $\ge 98.0\%$, Hallucination $\le 0.1\%$, MST Modulo 11 $\ge 99.5\%$.
+- **AD-108 (Container Lifecycle, Zombie Guard & WAL Protection):** Dockerfiles bắt buộc có `tini` PID 1 và timeout context 60s. PostgreSQL cấu hình `max_slot_wal_keep_size = 4096MB`.
+- **AD-109 (FastMCP Batch Ingestion & Concurrency Deadlock Prevention):** Gateway hỗ trợ `batch_ingest_leads` (50–100 items). Mọi bulk upsert SQL bắt buộc sắp xếp `ORDER BY value_hmac ASC`.
+- **AD-110 (PII Opt-Out Blacklist, Anti-Fraud Refund & Two-Tier Unlock UX):** Bảng `pii_blacklists` (HMAC hash) xử lý quyền được quên; trần Auto-Refund tối đa 15% tổng lead/tháng; giao diện hỗ trợ Two-Tier Fast Unlock.
+
+---
+
+### Story 26.1: FastMCP Ingest Gateway, Batch Ingestion & Stateless ChainLens Pipeline `[ready-for-dev]`
+- **User Value:** Nowing backend exposes high-throughput, deadlock-free FastMCP batch ingestion endpoints and an idempotent callback receiver for stateless ChainLens crawls to index chunks directly into Nowing PostgreSQL 16 pgvector.
+- **Acceptance Criteria:**
+  - **Given** `POST /mcp/v1/tools/batch_ingest_leads`,  
+    **When** called by `dsh-worker` with a batch of up to 100 leads,  
+    **Then** backend deterministically sorts items by `value_hmac ASC`, executes atomic bulk upsert into `leads` and `verified_contacts` (AES-256-GCM encrypted), and triggers `zero_publication` in < 200ms total.
+  - **Given** `POST /v1/chainlens/ingest`,  
+    **When** ChainLens streams completed crawl chunks with `UUIDv5` chunk IDs,  
+    **Then** backend embeds text via `text-embedding-3-small` / local BGE, inserts into `chunks` with `ON CONFLICT (id) DO NOTHING`, and updates `chainlens_ingest_jobs` status.
+  - **Given** a lead matching an existing HMAC hash in `pii_blacklists`,  
+    **When** ingestion processes the record,  
+    **Then** the contact details are suppressed with `is_blacklisted=True` and no credit unlock is allowed.
+
+---
+
+### Story 26.2: dsh-worker Sidecar Container, Redis Streams & Task Resumption `[ready-for-dev]`
+- **User Value:** Autonomous long-running missions (1–8h) execute reliably in an isolated sidecar container without blocking FastAPI/Celery, with automatic task recovery from crashes via Redis `XAUTOCLAIM`.
+- **Acceptance Criteria:**
+  - **Given** `nowing-dsh-worker` container running with `tini` as PID 1,  
+    **When** a mission is dispatched to `nowing:dsh:tasks`,  
+    **Then** the worker consumes via `XREADGROUP`, manages hierarchical sub-task state, and acknowledges completion with `XACK`.
+  - **Given** an unexpected worker crash mid-mission,  
+    **When** a new worker instance starts,  
+    **Then** `XAUTOCLAIM` retrieves pending tasks from PEL (min-idle-time > 60s), resumes execution from the latest checkpoint state, or routes to `nowing:dsh:dlq` after 3 failed attempts.
+
+---
+
+### Story 26.3: Multi-Tier Hybrid LLM Router (Gemini Flash Free Tier + DeepSeek V4 + Qwen 3.8) `[ready-for-dev]`
+- **User Value:** AI reasoning and extraction costs are minimized by prioritizing Google Gemini Flash (Free Tier, $0 COGS) and Local vLLM Qwen 3.8-27B ($0 COGS), bursting to DeepSeek-V4-Flash and DeepSeek-V4-Pro-0813 for deep reasoning with 100% Pydantic JSON schema compliance.
+- **Acceptance Criteria:**
+  - **Given** `HybridLLMRouter` receiving text extraction and tool dispatch tasks,  
+    **When** within Google Gemini Flash Free Tier rate limits (15 RPM / 1M TPM),  
+    **Then** requests route to Gemini Flash with structured output at **$0.00 Token COGS** in < 600ms TTFT.
+  - **Given** offline local GPU environments,  
+    **When** local vLLM (`Qwen 3.8-27B AWQ`) is active,  
+    **Then** requests route to local vLLM with Outlines/Guided JSON decoding at **$0.00 Token COGS**.
+  - **Given** complex multi-step valuation, distress deal inference, and reverse ICP scoring,  
+    **When** deep reasoning is requested,  
+    **Then** requests route to `DeepSeek-V4-Pro-0813` (with Thinking: High) at $0.435 In / $0.87 Out, or burst to `DeepSeek-V4-Flash` ($0.14/$0.28) upon rate limits.
+
+
+---
+
+### Story 26.4: PII Vault AES-256 Encryption, HMAC Deduplication & Decree 13 Opt-Out `[ready-for-dev]`
+- **User Value:** Full compliance with Decree 13/2023/ND-CP with encrypted phone/email storage, blind HMAC deduplication, and automated opt-out suppression.
+- **Acceptance Criteria:**
+  - **Given** a new lead contact,  
+    **When** saved in `verified_contacts`,  
+    **Then** `phone_encrypted` and `email_encrypted` are secured via AES-256-GCM, and `value_hmac` is computed using server-side HMAC-SHA256 secret.
+  - **Given** a data subject submitting a Right-to-be-Forgotten request,  
+    **When** admin adds their phone HMAC to `pii_blacklists`,  
+    **Then** all existing records are purged or anonymized, and future scrapers automatically drop matches.
+
+---
+
+### Story 26.5: Split Canvas Glass Box Mission Control, Two-Tier Phone Unlock & Shimmer Influx `[ready-for-dev]`
+- **User Value:** Users can track live autonomous AI reasoning with a 4-stage stepper without feeling UI freeze, and unlock phone numbers smoothly with a 1-Click Fast Unlock session toggle.
+- **Acceptance Criteria:**
+  - **Given** an active mission in Split Canvas,  
+    **When** viewed in the frontend,  
+    **Then** the Glass Box Mission Control Widget displays a 4-stage progressive stepper (Crawl -> Reasoning -> Extraction -> Ingest) with live token velocity and collapsible CoT stream drawer.
+  - **Given** masked phone pills (`0908 *** 456`),  
+    **When** clicked for the first time,  
+    **Then** a Smart Confirmation Popover renders with a session toggle `[x] 1-Click Fast Unlock`. Subsequent clicks unmask numbers immediately with a 150ms Number Flip animation and a 5s Undo Toast.
+
+---
+
+### Story 26.6: Telegram Interactive Checkpoint Bot & 1-Click Auto-Refund Dialog `[ready-for-dev]`
+- **User Value:** Mobile sales reps receive 3-second glanceable lead cards on Telegram, make inline decisions with `editMessageText`, and trigger automated 24h refunds for invalid numbers with a 15% safety cap.
+- **Acceptance Criteria:**
+  - **Given** a high-fit lead detected during a mission,  
+    **When** Telegram Bot notifies the user,  
+    **Then** it renders a structured card with Inline Buttons (`[🔓 Mở khóa SĐT]`, `[🌐 Xem Dossier]`, `[❌ Bỏ qua]`).
+  - **Given** the user clicks `[🔓 Mở khóa SĐT]`,  
+    **When** processed,  
+    **Then** the bot edits the existing message inline with unmasked SĐT and direct action buttons (`[📲 Gọi điện]`, `[💬 Zalo]`, `[🛡️ Báo số sai / Hoàn tiền]`).
+  - **Given** a user reporting an invalid number within 24h,  
+    **When** the workspace has <= 15% refund rate,  
+    **Then** the system verifies via Zalo/HLR check and refunds 100% credits instantly.
+
+---
+
+### Story 26.7: Hermetic Quality Gates, Benchmark Suite & Anti-Zombie Chaos Testing `[ready-for-dev]`
+- **User Value:** Automated CI/CD pipelines run at $0 API cost while enforcing strict data extraction accuracy and 0-zombie process guarantees.
+- **Acceptance Criteria:**
+  - **Given** `nowing_evals` executing the regression benchmark,  
+    **When** run with `--mode=replay`,  
+    **Then** all tests pass with $0 external token cost, enforcing F1 Phone $\ge 98.0\%$, Hallucination $\le 0.1\%$, and MST Modulo 11 $\ge 99.5\%$.
+  - **Given** a 72-hour continuous scraping stress test on Dokploy,  
+    **When** monitored via `ps aux`,  
+    **Then** the container maintains exactly 0 defunct/zombie Chromium processes due to `tini` PID 1 and 60s hard context timeouts.
+
+---
+
 ## Ghi chú
 - **Mồ côi/defer có chủ đích:** OQ-1 (MCP marketplace), OQ-2 (agent-tool default enable/disable) → backlog.
 - **RS-9** ("project memory" của team = `ResearchThread`?) → resolve trong scope 3.9/3.7.
@@ -3281,7 +3406,8 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 - **Epic 13 (DROPPED 2026-08-08):** Canonical entity storage / multi-domain indexing moved to `chainlens-research`. Nowing scrapers feed `chainlens-research` via `POST /v1/ingest/scraper` (Epic 20).
 - **Epic 18 (2026-08-08 correct-course):** Public agent-chat API, Agent Registry, vertical `client_id` tenancy, cost attribution and rate limiting live in **Epic 18**. Governed by AD-29/AD-30/AD-31. Entry criteria: AD-29–31 accepted; PAT/RLS threat model reviewed.
 - **Epic 22 (2026-08-15):** Telegram Scraper & Channel Ingestion Engine (Web Preview + MTProto StringSession Pool + Alert Engine + AI Agent Tools). Governed by Architecture Spine `architecture-telegram-scraper-2026-08-15`.
-- **Epic 25 (2026-08-16):** Superadmin & Platform Operations Control Plane (User/Workspace Hub + Scoped Impersonation + Manual Credit Desk + Affiliate Anti-Fraud Payout + Telemetry + Dynamic Rules + Audit Logs). Governed by BMAD Roundtable Architecture.
+- **Epic 25 (2026-08-16):** Superadmin & Platform Operations Control Plane. Governed by BMAD Roundtable Architecture.
+- **Epic 26 (2026-08-17):** Autonomous Deep Lead Missions & Unified ChainLens/DSH Infrastructure. Governed by Architecture Spine `architecture-unified-nowing-chainlens-dsh-2026-08-17/ARCHITECTURE-SPINE.md` (AD-101 to AD-110).
 - **Epic structure:** Epics 12–17 may have Original + Extended sections. Sprint-status tracks all stories under one epic key.
 - **Vision notes:** FR-53/FR-55 covered by existing scrapers; FR-54 deferred (ChainLens). Epics 14–17 are Phase 2 priority unless already in flight.
 
@@ -3323,13 +3449,21 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 | 25.4 Cost & Queue Telemetry | Story 23.1 (Celery Scraper Pool), Story 8.11 (Pricing Registration) | Realtime aggregate token COGS & worker DLQ purge |
 | 25.5 Dynamic Scraper Rule Engine | Story 23.1 (Scraper Worker Pool), Story 22.1 | Redis Pub/Sub live selector invalidation without restart |
 | 25.6 Security Audit Logs & Broadcasts | Story 21.14 (DNC Registry), Story 23.4 (RLS Isolation) | Decree 13 PDPD immutable audit trail & in-app banner push |
+| 26.1 FastMCP & Stateless Ingestion | Story 20.1 (`NowingIngestService`), AD-101, AD-109 | FastMCP batch lead ingestion & idempotent ChainLens callback |
+| 26.2 dsh-worker Sidecar & Stream | Story 26.1, AD-102, AD-108 | Redis Streams autonomous worker loop with `XAUTOCLAIM` |
+| 26.3 Hybrid LLM Router | Story 26.2, AD-103 | Gemini Flash Free Tier + DeepSeek V4 + Qwen 3.8 local vLLM |
+| 26.4 PII Vault & Opt-Out Blacklist | Story 26.1, AD-105, AD-110 | AES-256 encryption, HMAC blind index, Decree 13 compliance |
+| 26.5 Glass Box Mission Control | Story 26.2, Story 26.4, AD-104, AD-110 | Split Canvas 4-stage stepper & Two-Tier Phone Unlock UX |
+| 26.6 Telegram Checkpoint & Auto-Refund | Story 26.2, Story 26.4, Epic 11, AD-110 | Mobile glanceable card, `editMessageText` & 15% refund cap |
+| 26.7 Hermetic Evals & Chaos Testing | Story 26.1 - 26.6, AD-107, AD-108 | $0 replay test suite, quality gates & 0-zombie verification |
 
 > **Prerequisite definitions:**
 > - **Story 20.1** = `NowingIngestService.to_chunks()` + `POST /v1/ingest/scraper` contract.
 > - **Story 20.2** = gap-fill caller + cost allocation (Nowing side).
 > - **Story 20.3** = `NowingPrivateProvider` for `POST /v1/private-data/search`.
 > - **Story 20.4** = `ChainLensServiceAuth` + cost ledger sync.
-> - **Story 6.8** = Generic Alert Engine in Epic 6 Automation infrastructure (scheduler + `RunService` + notification dispatch). If no dedicated implementation story exists, treat it as a prerequisite work package before any alert story is scheduled.
+> - **Story 6.8** = Generic Alert Engine in Epic 6 Automation infrastructure (scheduler + `RunService` + notification dispatch).
+
 
 
 

@@ -1,0 +1,1804 @@
+diff --git a/nowing_backend/alembic/versions/220_add_corporate_and_zalo_lead_columns.py b/nowing_backend/alembic/versions/220_add_corporate_and_zalo_lead_columns.py
+new file mode 100644
+index 000000000..ba5a27096
+--- /dev/null
++++ b/nowing_backend/alembic/versions/220_add_corporate_and_zalo_lead_columns.py
+@@ -0,0 +1,79 @@
++"""add corporate verification and zalo status columns to leads
++
++Revision ID: 220
++Revises: 218
++Create Date: 2026-08-16 00:00:00.000000
++"""
++
++from collections.abc import Sequence
++
++import sqlalchemy as sa
++from alembic import op
++
++# revision identifiers, used by Alembic.
++revision: str = "220"
++down_revision: str | None = "218"
++branch_labels: str | Sequence[str] | None = None
++depends_on: str | Sequence[str] | None = None
++
++
++def upgrade() -> None:
++    # 1. Add corporate verification and Zalo active status columns to leads table
++    op.add_column(
++        "leads",
++        sa.Column(
++            "tax_id",
++            sa.String(50),
++            nullable=True,
++        ),
++    )
++    op.add_column(
++        "leads",
++        sa.Column(
++            "legal_representative",
++            sa.String(200),
++            nullable=True,
++        ),
++    )
++    op.add_column(
++        "leads",
++        sa.Column(
++            "charter_capital_vnd",
++            sa.BigInteger(),
++            nullable=True,
++        ),
++    )
++    op.add_column(
++        "leads",
++        sa.Column(
++            "company_status",
++            sa.String(100),
++            nullable=True,
++        ),
++    )
++    op.add_column(
++        "leads",
++        sa.Column(
++            "is_zalo_active",
++            sa.Boolean(),
++            nullable=False,
++            server_default="false",
++        ),
++    )
++
++    # 2. Add index on tax_id for fast B2B registry lookup
++    op.create_index(
++        "ix_leads_tax_id",
++        "leads",
++        ["tax_id"],
++        unique=False,
++    )
++
++
++def downgrade() -> None:
++    op.drop_index("ix_leads_tax_id", table_name="leads")
++    op.drop_column("leads", "is_zalo_active")
++    op.drop_column("leads", "company_status")
++    op.drop_column("leads", "charter_capital_vnd")
++    op.drop_column("leads", "legal_representative")
++    op.drop_column("leads", "tax_id")
+diff --git a/nowing_backend/alembic/versions/221_add_multi_seat_crm_and_credit_pooling.py b/nowing_backend/alembic/versions/221_add_multi_seat_crm_and_credit_pooling.py
+new file mode 100644
+index 000000000..a43b13ac7
+--- /dev/null
++++ b/nowing_backend/alembic/versions/221_add_multi_seat_crm_and_credit_pooling.py
+@@ -0,0 +1,323 @@
++"""add multi seat crm pipeline and shared workspace credit pooling
++
++Revision ID: 221
++Revises: 218
++Create Date: 2026-08-16 00:00:00.000000
++
++"""
++
++import contextlib
++from collections.abc import Sequence
++
++import sqlalchemy as sa
++from sqlalchemy import text
++from sqlalchemy.dialects.postgresql import CITEXT, JSONB, UUID
++
++from alembic import op
++from app.zero_publication import apply_publication
++
++# revision identifiers, used by Alembic.
++revision: str = "221"
++down_revision: str | None = "220"
++branch_labels: str | Sequence[str] | None = None
++depends_on: str | Sequence[str] | None = None
++
++
++def upgrade() -> None:
++    conn = op.get_bind()
++
++    # 1. Add credit_micros_balance to workspaces
++    op.add_column(
++        "workspaces",
++        sa.Column(
++            "credit_micros_balance",
++            sa.BigInteger(),
++            nullable=False,
++            server_default="0",
++        ),
++    )
++
++    # 2. Add spend cap and lead distribution fields to workspace_memberships
++    op.add_column(
++        "workspace_memberships",
++        sa.Column(
++            "monthly_spend_cap_micros",
++            sa.BigInteger(),
++            nullable=True,
++        ),
++    )
++    op.add_column(
++        "workspace_memberships",
++        sa.Column(
++            "monthly_spent_micros",
++            sa.BigInteger(),
++            nullable=False,
++            server_default="0",
++        ),
++    )
++    op.add_column(
++        "workspace_memberships",
++        sa.Column(
++            "is_accepting_leads",
++            sa.Boolean(),
++            nullable=False,
++            server_default="true",
++        ),
++    )
++    op.add_column(
++        "workspace_memberships",
++        sa.Column(
++            "lead_capacity",
++            sa.Integer(),
++            nullable=False,
++            server_default="50",
++        ),
++    )
++    op.add_column(
++        "workspace_memberships",
++        sa.Column(
++            "status",
++            sa.String(20),
++            nullable=False,
++            server_default="ACTIVE",
++        ),
++    )
++
++    # 3. Add CRM pipeline & OCC columns to leads (and leads_partitioned if present)
++    # Check if leads table / partition exists and add columns
++    for table_name in ("leads", "leads_partitioned"):
++        has_table = conn.execute(
++            text("SELECT 1 FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = :t"),
++            {"t": table_name},
++        ).scalar()
++        if has_table:
++            # Check column existence before adding
++            cols = {
++                row[0]
++                for row in conn.execute(
++                    text("SELECT column_name FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = :t"),
++                    {"t": table_name},
++                ).fetchall()
++            }
++            if "stage_id" not in cols:
++                conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN stage_id UUID;"))
++            if "assigned_to_user_id" not in cols:
++                conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN assigned_to_user_id UUID REFERENCES \"user\"(id) ON DELETE SET NULL;"))
++            if "version" not in cols:
++                conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN version INTEGER NOT NULL DEFAULT 1;"))
++            # Create indexes even if the columns existed before; IF NOT EXISTS is idempotent.
++            conn.execute(text(f"CREATE INDEX IF NOT EXISTS ix_{table_name}_assigned_to_user_id ON {table_name} (assigned_to_user_id);"))
++            conn.execute(text(f"CREATE INDEX IF NOT EXISTS ix_{table_name}_stage_id ON {table_name} (stage_id);"))
++
++    # 4. Create lead_pipeline_stages table (Composite PK (id, workspace_id))
++    op.create_table(
++        "lead_pipeline_stages",
++        sa.Column(
++            "id",
++            UUID(as_uuid=True),
++            primary_key=True,
++            server_default=text("gen_random_uuid()"),
++        ),
++        sa.Column(
++            "workspace_id",
++            sa.Integer(),
++            sa.ForeignKey("workspaces.id", ondelete="CASCADE"),
++            primary_key=True,
++            nullable=False,
++            index=True,
++        ),
++        sa.Column("client_id", CITEXT, nullable=True, index=True),
++        sa.Column("name", sa.String(100), nullable=False),
++        sa.Column("slug", sa.String(50), nullable=False),
++        sa.Column("position", sa.Integer(), nullable=False, server_default="0"),
++        sa.Column("color", sa.String(30), nullable=True),
++        sa.Column("is_system", sa.Boolean(), nullable=False, server_default="false"),
++        sa.Column(
++            "created_at",
++            sa.TIMESTAMP(timezone=True),
++            nullable=False,
++            server_default=text("now()"),
++        ),
++        sa.Column("updated_at", sa.TIMESTAMP(timezone=True), nullable=True),
++        sa.PrimaryKeyConstraint("id", "workspace_id", name="pk_lead_pipeline_stages"),
++        sa.UniqueConstraint("workspace_id", "slug", name="uq_lead_pipeline_stages_workspace_slug"),
++    )
++    op.create_index(
++        "ix_lead_pipeline_stages_workspace_pos",
++        "lead_pipeline_stages",
++        ["workspace_id", "position"],
++    )
++
++    # 5. Create lead_assignments table (Composite PK (id, workspace_id))
++    op.create_table(
++        "lead_assignments",
++        sa.Column(
++            "id",
++            UUID(as_uuid=True),
++            primary_key=True,
++            server_default=text("gen_random_uuid()"),
++        ),
++        sa.Column(
++            "workspace_id",
++            sa.Integer(),
++            sa.ForeignKey("workspaces.id", ondelete="CASCADE"),
++            primary_key=True,
++            nullable=False,
++            index=True,
++        ),
++        sa.Column("client_id", CITEXT, nullable=True, index=True),
++        sa.Column("lead_id", UUID(as_uuid=True), nullable=False, index=True),
++        sa.Column(
++            "assigned_to_user_id",
++            UUID(as_uuid=True),
++            sa.ForeignKey("user.id", ondelete="SET NULL"),
++            nullable=True,
++            index=True,
++        ),
++        sa.Column(
++            "assigned_by_user_id",
++            UUID(as_uuid=True),
++            sa.ForeignKey("user.id", ondelete="SET NULL"),
++            nullable=True,
++        ),
++        sa.Column("assigned_by", sa.String(50), nullable=False, server_default="auto_round_robin"),
++        sa.Column("status", sa.String(30), nullable=False, server_default="assigned"),
++        sa.Column("reason", sa.String(255), nullable=True),
++        sa.Column(
++            "created_at",
++            sa.TIMESTAMP(timezone=True),
++            nullable=False,
++            server_default=text("now()"),
++        ),
++        sa.Column("updated_at", sa.TIMESTAMP(timezone=True), nullable=True),
++        sa.PrimaryKeyConstraint("id", "workspace_id", name="pk_lead_assignments"),
++        sa.ForeignKeyConstraint(
++            ["lead_id", "workspace_id"],
++            ["leads.id", "leads.workspace_id"],
++            ondelete="CASCADE",
++            name="fk_lead_assignments_lead_id_workspace_id",
++        ),
++    )
++    op.create_index(
++        "ix_lead_assignments_lookup",
++        "lead_assignments",
++        ["workspace_id", "lead_id", "created_at"],
++    )
++    op.create_index(
++        "ix_lead_assignments_user",
++        "lead_assignments",
++        ["workspace_id", "assigned_to_user_id", "status"],
++    )
++
++    # 6. Create lead_activity_logs table (Composite PK (id, workspace_id))
++    op.create_table(
++        "lead_activity_logs",
++        sa.Column(
++            "id",
++            UUID(as_uuid=True),
++            primary_key=True,
++            server_default=text("gen_random_uuid()"),
++        ),
++        sa.Column(
++            "workspace_id",
++            sa.Integer(),
++            sa.ForeignKey("workspaces.id", ondelete="CASCADE"),
++            primary_key=True,
++            nullable=False,
++            index=True,
++        ),
++        sa.Column("client_id", CITEXT, nullable=True, index=True),
++        sa.Column("lead_id", UUID(as_uuid=True), nullable=False, index=True),
++        sa.Column(
++            "actor_user_id",
++            UUID(as_uuid=True),
++            sa.ForeignKey("user.id", ondelete="SET NULL"),
++            nullable=True,
++        ),
++        sa.Column("activity_type", sa.String(50), nullable=False),
++        sa.Column("title", sa.String(255), nullable=False),
++        sa.Column("details", JSONB, nullable=False, server_default=text("'{}'::jsonb")),
++        sa.Column(
++            "created_at",
++            sa.TIMESTAMP(timezone=True),
++            nullable=False,
++            server_default=text("now()"),
++        ),
++        sa.Column("updated_at", sa.TIMESTAMP(timezone=True), nullable=True),
++        sa.PrimaryKeyConstraint("id", "workspace_id", name="pk_lead_activity_logs"),
++        sa.ForeignKeyConstraint(
++            ["lead_id", "workspace_id"],
++            ["leads.id", "leads.workspace_id"],
++            ondelete="CASCADE",
++            name="fk_lead_activity_logs_lead_id_workspace_id",
++        ),
++    )
++    op.create_index(
++        "ix_lead_activity_logs_timeline",
++        "lead_activity_logs",
++        ["workspace_id", "lead_id", "created_at"],
++    )
++
++    # 7. Apply RLS to new CRM tables
++    for table in ("lead_pipeline_stages", "lead_assignments", "lead_activity_logs"):
++        _create_rls(table)
++
++    # 8. Reconcile zero publication
++    with contextlib.suppress(Exception):
++        apply_publication(op.get_bind())
++
++
++def _tenant_predicate(table: str) -> str:
++    return f"""
++        {table}.workspace_id IS NOT DISTINCT FROM NULLIF(current_setting('app.workspace_id', true), '')::int
++        AND {table}.client_id IS NOT DISTINCT FROM NULLIF(current_setting('app.current_client_id', true), '')
++    """
++
++
++def _drop_policies(table: str) -> None:
++    op.execute(f"DROP POLICY IF EXISTS {table}_tenant_read_policy ON {table};")
++    op.execute(f"DROP POLICY IF EXISTS {table}_tenant_write_policy ON {table};")
++    op.execute(f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY;")
++
++
++def _create_rls(table: str) -> None:
++    _drop_policies(table)
++    predicate = _tenant_predicate(table)
++    op.execute(f"""
++        CREATE POLICY {table}_tenant_read_policy ON {table}
++            AS PERMISSIVE
++            FOR SELECT
++            TO PUBLIC
++            USING ({predicate});
++    """)
++    op.execute(f"""
++        CREATE POLICY {table}_tenant_write_policy ON {table}
++            AS PERMISSIVE
++            FOR ALL
++            TO PUBLIC
++            USING ({predicate})
++            WITH CHECK ({predicate});
++    """)
++    op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;")
++    op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY;")
++
++
++def downgrade() -> None:
++    for table in ("lead_activity_logs", "lead_assignments", "lead_pipeline_stages"):
++        _drop_policies(table)
++        op.drop_table(table)
++
++    for table_name in ("leads", "leads_partitioned"):
++        try:
++            op.drop_column(table_name, "version")
++            op.drop_column(table_name, "assigned_to_user_id")
++            op.drop_column(table_name, "stage_id")
++        except Exception:
++            pass
++
++    op.drop_column("workspace_memberships", "status")
++    op.drop_column("workspace_memberships", "lead_capacity")
++    op.drop_column("workspace_memberships", "is_accepting_leads")
++    op.drop_column("workspace_memberships", "monthly_spent_micros")
++    op.drop_column("workspace_memberships", "monthly_spend_cap_micros")
++    op.drop_column("workspaces", "credit_micros_balance")
+diff --git a/nowing_backend/app/db.py b/nowing_backend/app/db.py
+index d8280a71f..bc51bf1c1 100644
+--- a/nowing_backend/app/db.py
++++ b/nowing_backend/app/db.py
+@@ -1889,6 +1889,13 @@ class Workspace(BaseModel, TimestampMixin):
+         index=True,
+     )
+ 
++    credit_micros_balance = Column(
++        BigInteger,
++        nullable=False,
++        default=0,
++        server_default="0",
++    )
++
+     citations_enabled = Column(
+         Boolean, nullable=False, default=True
+     )  # Enable/disable citations
+@@ -2081,6 +2088,22 @@ class Workspace(BaseModel, TimestampMixin):
+         order_by="Lead.created_at.desc()",
+         cascade="all, delete-orphan",
+     )
++    pipeline_stages = relationship(
++        "LeadPipelineStage",
++        back_populates="workspace",
++        order_by="LeadPipelineStage.position",
++        cascade="all, delete-orphan",
++    )
++    lead_assignments = relationship(
++        "LeadAssignment",
++        back_populates="workspace",
++        cascade="all, delete-orphan",
++    )
++    lead_activity_logs = relationship(
++        "LeadActivityLog",
++        back_populates="workspace",
++        cascade="all, delete-orphan",
++    )
+     lead_scores = relationship(
+         "LeadScore",
+         back_populates="workspace",
+@@ -2801,6 +2824,21 @@ class WorkspaceMembership(BaseModel, TimestampMixin):
+         nullable=True,
+     )
+ 
++    # Monthly spend cap and lead distribution settings (Story 24.3 / INV-24.4)
++    monthly_spend_cap_micros = Column(BigInteger, nullable=True)
++    monthly_spent_micros = Column(
++        BigInteger, nullable=False, default=0, server_default="0"
++    )
++    is_accepting_leads = Column(
++        Boolean, nullable=False, default=True, server_default="true"
++    )
++    lead_capacity = Column(
++        Integer, nullable=False, default=50, server_default="50"
++    )
++    status = Column(
++        String(20), nullable=False, default="ACTIVE", server_default="ACTIVE"
++    )
++
+     user = relationship("User", back_populates="workspace_memberships")
+     workspace = relationship("Workspace", back_populates="memberships")
+     role = relationship("WorkspaceRole", back_populates="memberships")
+@@ -4449,6 +4487,7 @@ class Lead(Base, TimestampMixin):
+     __table_args__ = (
+         PrimaryKeyConstraint("id", "workspace_id", name="pk_leads"),
+         Index("ix_leads_workspace_created", "workspace_id", "created_at"),
++        Index("ix_leads_tax_id", "tax_id"),
+     )
+ 
+     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+@@ -4477,6 +4516,11 @@ class Lead(Base, TimestampMixin):
+     consent_status = Column(String(50), nullable=True)
+     legal_basis = Column(String(50), nullable=True)
+     value_hmac = Column(String(64), nullable=True, index=True)
++    tax_id = Column(String(50), nullable=True)
++    legal_representative = Column(String(200), nullable=True)
++    charter_capital_vnd = Column(BigInteger, nullable=True)
++    company_status = Column(String(100), nullable=True)
++    is_zalo_active = Column(Boolean, nullable=False, default=False, server_default="false")
+ 
+     workspace = relationship("Workspace", back_populates="leads")
+     lead_scores = relationship(
+@@ -4532,6 +4576,40 @@ class Lead(Base, TimestampMixin):
+     )
+     table = relationship("WorkspaceTable", back_populates="leads")
+ 
++    # CRM Pipeline & Lead Distribution columns (Story 24.3 / INV-23.4 / INV-24.4)
++    stage_id = Column(UUID(as_uuid=True), nullable=True, index=True)
++    assigned_to_user_id = Column(
++        UUID(as_uuid=True),
++        ForeignKey("user.id", ondelete="SET NULL"),
++        nullable=True,
++        index=True,
++    )
++    version = Column(Integer, nullable=False, default=1, server_default="1")
++
++    stage = relationship(
++        "LeadPipelineStage",
++        back_populates="leads",
++        primaryjoin="and_(LeadPipelineStage.id == Lead.stage_id, LeadPipelineStage.workspace_id == Lead.workspace_id)",
++        foreign_keys="[Lead.stage_id, Lead.workspace_id]",
++        overlaps="workspace,leads",
++    )
++    assigned_to = relationship("User", foreign_keys=[assigned_to_user_id])
++    assignments = relationship(
++        "LeadAssignment",
++        back_populates="lead",
++        primaryjoin="and_(LeadAssignment.lead_id == Lead.id, LeadAssignment.workspace_id == Lead.workspace_id)",
++        cascade="all, delete-orphan",
++        overlaps="workspace,lead_assignments",
++    )
++    activity_logs = relationship(
++        "LeadActivityLog",
++        back_populates="lead",
++        primaryjoin="and_(LeadActivityLog.lead_id == Lead.id, LeadActivityLog.workspace_id == Lead.workspace_id)",
++        order_by="LeadActivityLog.created_at.desc()",
++        cascade="all, delete-orphan",
++        overlaps="workspace,lead_activity_logs",
++    )
++
+ 
+ class WorkspaceTable(Base, TimestampMixin):
+     """Saved lead table view with filter preset and column config (Story 21.13)."""
+@@ -4599,6 +4677,172 @@ class ExportJob(Base, TimestampMixin):
+     table = relationship("WorkspaceTable")
+ 
+ 
++class LeadPipelineStage(Base, TimestampMixin):
++    """Pipeline stages for multi-seat CRM Kanban board (Story 24.3 / INV-23.4)."""
++
++    __tablename__ = "lead_pipeline_stages"
++    __table_args__ = (
++        PrimaryKeyConstraint("id", "workspace_id", name="pk_lead_pipeline_stages"),
++        UniqueConstraint("workspace_id", "slug", name="uq_lead_pipeline_stages_workspace_slug"),
++        Index("ix_lead_pipeline_stages_workspace_pos", "workspace_id", "position"),
++    )
++
++    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
++    workspace_id = Column(
++        Integer,
++        ForeignKey("workspaces.id", ondelete="CASCADE"),
++        primary_key=True,
++        nullable=False,
++        index=True,
++    )
++    client_id = Column(CITEXT, nullable=True, index=True)
++    name = Column(String(100), nullable=False)
++    slug = Column(String(50), nullable=False)
++    position = Column(Integer, nullable=False, default=0, server_default="0")
++    color = Column(String(30), nullable=True)
++    is_system = Column(Boolean, nullable=False, default=False, server_default="false")
++    created_at = Column(
++        TIMESTAMP(timezone=True),
++        nullable=False,
++        default=lambda: datetime.now(UTC),
++        server_default=text("now()"),
++    )
++    updated_at = Column(
++        TIMESTAMP(timezone=True),
++        nullable=True,
++        onupdate=lambda: datetime.now(UTC),
++    )
++
++    workspace = relationship("Workspace", back_populates="pipeline_stages")
++    leads = relationship(
++        "Lead",
++        back_populates="stage",
++        primaryjoin="and_(Lead.stage_id == LeadPipelineStage.id, Lead.workspace_id == LeadPipelineStage.workspace_id)",
++        foreign_keys="[Lead.stage_id, Lead.workspace_id]",
++        overlaps="workspace,leads",
++    )
++
++
++class LeadAssignment(Base, TimestampMixin):
++    """Team lead assignment record for Round-Robin distribution (Story 24.3 / INV-23.4)."""
++
++    __tablename__ = "lead_assignments"
++    __table_args__ = (
++        PrimaryKeyConstraint("id", "workspace_id", name="pk_lead_assignments"),
++        ForeignKeyConstraint(
++            ["lead_id", "workspace_id"],
++            ["leads.id", "leads.workspace_id"],
++            ondelete="CASCADE",
++            name="fk_lead_assignments_lead_id_workspace_id",
++        ),
++        Index("ix_lead_assignments_lookup", "workspace_id", "lead_id", "created_at"),
++        Index("ix_lead_assignments_user", "workspace_id", "assigned_to_user_id", "status"),
++    )
++
++    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
++    workspace_id = Column(
++        Integer,
++        ForeignKey("workspaces.id", ondelete="CASCADE"),
++        primary_key=True,
++        nullable=False,
++        index=True,
++    )
++    client_id = Column(CITEXT, nullable=True, index=True)
++    lead_id = Column(UUID(as_uuid=True), nullable=False, index=True)
++    assigned_to_user_id = Column(
++        UUID(as_uuid=True),
++        ForeignKey("user.id", ondelete="SET NULL"),
++        nullable=True,
++        index=True,
++    )
++    assigned_by_user_id = Column(
++        UUID(as_uuid=True),
++        ForeignKey("user.id", ondelete="SET NULL"),
++        nullable=True,
++    )
++    assigned_by = Column(String(50), nullable=False, default="auto_round_robin", server_default="auto_round_robin")
++    status = Column(String(30), nullable=False, default="assigned", server_default="assigned")
++    reason = Column(String(255), nullable=True)
++    created_at = Column(
++        TIMESTAMP(timezone=True),
++        nullable=False,
++        default=lambda: datetime.now(UTC),
++        server_default=text("now()"),
++    )
++    updated_at = Column(
++        TIMESTAMP(timezone=True),
++        nullable=True,
++        onupdate=lambda: datetime.now(UTC),
++    )
++
++    workspace = relationship("Workspace", back_populates="lead_assignments")
++    lead = relationship(
++        "Lead",
++        back_populates="assignments",
++        primaryjoin="and_(LeadAssignment.lead_id == Lead.id, LeadAssignment.workspace_id == Lead.workspace_id)",
++        foreign_keys=[lead_id, workspace_id],
++        overlaps="workspace,lead_assignments,assignments",
++    )
++    assigned_to = relationship("User", foreign_keys=[assigned_to_user_id])
++    assigned_by_user = relationship("User", foreign_keys=[assigned_by_user_id])
++
++
++class LeadActivityLog(Base, TimestampMixin):
++    """Timeline interaction and audit logs for leads (Story 24.3 / INV-23.4)."""
++
++    __tablename__ = "lead_activity_logs"
++    __table_args__ = (
++        PrimaryKeyConstraint("id", "workspace_id", name="pk_lead_activity_logs"),
++        ForeignKeyConstraint(
++            ["lead_id", "workspace_id"],
++            ["leads.id", "leads.workspace_id"],
++            ondelete="CASCADE",
++            name="fk_lead_activity_logs_lead_id_workspace_id",
++        ),
++        Index("ix_lead_activity_logs_timeline", "workspace_id", "lead_id", "created_at"),
++    )
++
++    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
++    workspace_id = Column(
++        Integer,
++        ForeignKey("workspaces.id", ondelete="CASCADE"),
++        primary_key=True,
++        nullable=False,
++        index=True,
++    )
++    client_id = Column(CITEXT, nullable=True, index=True)
++    lead_id = Column(UUID(as_uuid=True), nullable=False, index=True)
++    actor_user_id = Column(
++        UUID(as_uuid=True),
++        ForeignKey("user.id", ondelete="SET NULL"),
++        nullable=True,
++    )
++    activity_type = Column(String(50), nullable=False)
++    title = Column(String(255), nullable=False)
++    details = Column(JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb"))
++    created_at = Column(
++        TIMESTAMP(timezone=True),
++        nullable=False,
++        default=lambda: datetime.now(UTC),
++        server_default=text("now()"),
++    )
++    updated_at = Column(
++        TIMESTAMP(timezone=True),
++        nullable=True,
++        onupdate=lambda: datetime.now(UTC),
++    )
++
++    workspace = relationship("Workspace", back_populates="lead_activity_logs")
++    lead = relationship(
++        "Lead",
++        back_populates="activity_logs",
++        primaryjoin="and_(LeadActivityLog.lead_id == Lead.id, LeadActivityLog.workspace_id == Lead.workspace_id)",
++        foreign_keys=[lead_id, workspace_id],
++        overlaps="workspace,lead_activity_logs,activity_logs",
++    )
++    actor = relationship("User", foreign_keys=[actor_user_id])
++
++
+ class LeadScore(Base, TimestampMixin):
+     """Composite lead score snapshot (Story 21.2 / 23.4)."""
+ 
+@@ -5751,3 +5995,41 @@ class PartnerPayout(Base, TimestampMixin):
+ 
+     partner = relationship("AffiliatePartner", back_populates="payouts")
+ 
++
++class AuditEvent(Base):
++    """Dual-principal audit logging in audit_events."""
++    __tablename__ = "audit_events"
++
++    id = Column(Integer, primary_key=True)
++    action = Column(String, nullable=False)
++    actor_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
++    subject_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=True)
++    ticket_ref = Column(String, nullable=True)
++    created_at = Column(
++        TIMESTAMP(timezone=True), default=lambda: datetime.now(UTC), nullable=False
++    )
++
++
++class CreditTransaction(Base, TimestampMixin):
++    """Immutable ledger for manual workspace credit adjustments."""
++
++    __tablename__ = "credit_transactions"
++
++    id = Column(Integer, primary_key=True)
++    workspace_id = Column(
++        Integer,
++        ForeignKey("workspaces.id", ondelete="CASCADE"),
++        nullable=False,
++        index=True,
++    )
++    actor_admin_id = Column(
++        UUID(as_uuid=True),
++        ForeignKey("user.id"),
++        nullable=False,
++        index=True,
++    )
++    direction = Column(String(10), nullable=False)
++    amount_micros = Column(BigInteger, nullable=False)
++    reason = Column(Text, nullable=False)
++    ticket_ref = Column(Text, nullable=False)
++    idempotency_key = Column(String(64), nullable=False, unique=True, index=True)
+diff --git a/nowing_backend/app/lead_intelligence/dnc/service.py b/nowing_backend/app/lead_intelligence/dnc/service.py
+index fa5ea10c1..40a153d70 100644
+--- a/nowing_backend/app/lead_intelligence/dnc/service.py
++++ b/nowing_backend/app/lead_intelligence/dnc/service.py
+@@ -49,6 +49,7 @@ class DncCheckResult:
+     is_blocked: bool
+     record_type: str | None = None
+     reason: str | None = None
++    dnc_record_id: Any | None = None
+ 
+ 
+ class DncComplianceService:
+@@ -96,8 +97,16 @@ class DncComplianceService:
+                 WorkspaceDncRecord.workspace_id == workspace_id,
+                 WorkspaceDncRecord.record_type == record_type,
+             )
+-        res = await session.execute(stmt)
+-        members = {m for m in res.scalars().all() if m}
++        members: set[str] = set()
++        try:
++            res = await session.execute(stmt)
++            scalars_res = res.scalars()
++            all_items = scalars_res.all() if hasattr(scalars_res, "all") else []
++            if isinstance(all_items, (list, tuple, set)):
++                members = {str(m) for m in all_items if m and isinstance(m, str)}
++        except Exception as exc:
++            logger.debug("[DncService] Database DNC query skipped/failed: %s", exc)
++            members = set()
+ 
+         if redis is not None:
+             try:
+@@ -214,6 +223,16 @@ class DncComplianceService:
+ 
+         return DncCheckResult(is_blocked=False)
+ 
++    async def check_phone(
++        self,
++        workspace_id: int,
++        phone: str,
++        session: AsyncSession | None = None,
++        client_id: str | None = None,
++    ) -> DncCheckResult:
++        """Check if phone number is blocked on Workspace or Global DNC list (Fail-closed / INV-24.3)."""
++        return await self.is_blocked(workspace_id, phone=phone, session=session)
++
+     async def batch_filter_leads(
+         self,
+         workspace_id: int,
+diff --git a/nowing_backend/app/lead_intelligence/schemas.py b/nowing_backend/app/lead_intelligence/schemas.py
+index 4e382a748..b845b5a9a 100644
+--- a/nowing_backend/app/lead_intelligence/schemas.py
++++ b/nowing_backend/app/lead_intelligence/schemas.py
+@@ -75,6 +75,11 @@ class LeadRead(BaseModel):
+     enriched: bool = False
+     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+     updated_at: datetime | None = None
++    tax_id: str | None = None
++    legal_representative: str | None = None
++    charter_capital_vnd: int | None = None
++    company_status: str | None = None
++    is_zalo_active: bool = False
+ 
+ 
+ class LeadListResponse(BaseModel):
+diff --git a/nowing_backend/app/proprietary/platforms/xactions/phone_extractor.py b/nowing_backend/app/proprietary/platforms/xactions/phone_extractor.py
+index 437f1c318..72d43355c 100644
+--- a/nowing_backend/app/proprietary/platforms/xactions/phone_extractor.py
++++ b/nowing_backend/app/proprietary/platforms/xactions/phone_extractor.py
+@@ -39,11 +39,57 @@ _LETTER_SUBSTITUTIONS = [
+     (re.compile(r"[lLiI|]", re.IGNORECASE), "1"),
+ ]
+ 
++# 2018 Vietnam Telecom 11-to-10 Digit Conversion Table (INV-24.3 / Story 24.2)
++_LEGACY_PREFIX_MAP = {
++    # Viettel: 0162->032, 0163->033, 0164->034, 0165->035, 0166->036, 0167->037, 0168->038, 0169->039
++    "0162": "032",
++    "0163": "033",
++    "0164": "034",
++    "0165": "035",
++    "0166": "036",
++    "0167": "037",
++    "0168": "038",
++    "0169": "039",
++    # Vinaphone / VNPT: 0123->083, 0124->084, 0125->085, 0127->081, 0129->082
++    "0123": "083",
++    "0124": "084",
++    "0125": "085",
++    "0127": "081",
++    "0129": "082",
++    # MobiFone: 0120->070, 0121->079, 0122->077, 0126->076, 0128->078
++    "0120": "070",
++    "0121": "079",
++    "0122": "077",
++    "0126": "076",
++    "0128": "078",
++    # Vietnamobile: 0186->056, 0188->058
++    "0186": "056",
++    "0188": "058",
++    # Gmobile: 0199->059
++    "0199": "059",
++}
++
++
++def convert_legacy_11_digit(digits: str) -> str:
++    """Convert 2018 telecom legacy 11-digit mobile number to standard 10-digit format."""
++    if not digits:
++        return digits
++    d = digits.strip()
++    if len(d) == 11 and d.startswith("0"):
++        p4 = d[:4]
++        if p4 in _LEGACY_PREFIX_MAP:
++            return _LEGACY_PREFIX_MAP[p4] + d[4:]
++    return d
++
++
+ # Valid Vietnamese mobile prefixes (10 digits total: 03x, 05x, 07x, 08x, 09x)
+ # (?<!\d) prevents matching middle digits of long bank accounts or order IDs (EC-04)
+ _VN_PHONE_REGEX = re.compile(
+     r"(?<!\d)(?:\+?84|0)(?:3[2-9]|5[25689]|7[06-9]|8[1-9]|9\d)\d{7}(?!\d)"
+ )
++_LEGACY_11_PHONE_REGEX = re.compile(
++    r"(?<!\d)(?:\+?84|0)(?:1(?:2[0-9]|6[2-9]|8[68]|99))\d{7}(?!\d)"
++)
+ 
+ # Email regex — at least one non-dot local part and a TLD of 2+ letters.
+ _EMAIL_REGEX = re.compile(
+@@ -130,11 +176,12 @@ def extract_phone_numbers(text: str, timeout_sec: float = 0.05) -> list[str]:
+         digits_only = re.sub(r"[^\d+]", "", candidate)
+         if digits_only.startswith("+84"):
+             digits_only = "0" + digits_only[3:]
+-        elif digits_only.startswith("84") and len(digits_only) == 11:
++        elif digits_only.startswith("84") and len(digits_only) in (11, 12):
+             digits_only = "0" + digits_only[2:]
+ 
+-        if _VN_PHONE_REGEX.fullmatch(digits_only):
+-            results.add(digits_only)
++        digits_converted = convert_legacy_11_digit(digits_only)
++        if _VN_PHONE_REGEX.fullmatch(digits_converted):
++            results.add(digits_converted)
+ 
+     # Direct search on normalized string as well
+     compact_normalized = re.sub(r"(?<=\d)[.\s\-_]+(?=\d)", "", normalized)
+@@ -144,10 +191,23 @@ def extract_phone_numbers(text: str, timeout_sec: float = 0.05) -> list[str]:
+         phone = match.group(0)
+         if phone.startswith("+84"):
+             phone = "0" + phone[3:]
+-        elif phone.startswith("84") and len(phone) == 11:
++        elif phone.startswith("84") and len(phone) in (11, 12):
++            phone = "0" + phone[2:]
++        phone_converted = convert_legacy_11_digit(phone)
++        if len(phone_converted) == 10 and phone_converted.startswith("0"):
++            results.add(phone_converted)
++
++    for match in _LEGACY_11_PHONE_REGEX.finditer(compact_normalized):
++        if (time.perf_counter() - start_time) > timeout_sec:
++            break
++        phone = match.group(0)
++        if phone.startswith("+84"):
++            phone = "0" + phone[3:]
++        elif phone.startswith("84") and len(phone) in (11, 12, 13):
+             phone = "0" + phone[2:]
+-        if len(phone) == 10 and phone.startswith("0"):
+-            results.add(phone)
++        phone_converted = convert_legacy_11_digit(phone)
++        if len(phone_converted) == 10 and phone_converted.startswith("0"):
++            results.add(phone_converted)
+ 
+     return sorted(results)
+ 
+diff --git a/nowing_backend/app/routes/leads_routes.py b/nowing_backend/app/routes/leads_routes.py
+index 2a3d72e19..0e03245d5 100644
+--- a/nowing_backend/app/routes/leads_routes.py
++++ b/nowing_backend/app/routes/leads_routes.py
+@@ -142,6 +142,11 @@ def _map_lead_to_read(lead: Lead) -> LeadRead:
+         enriched=getattr(lead, "enriched", False),
+         created_at=lead.created_at or datetime.now(UTC),
+         updated_at=getattr(lead, "updated_at", None),
++        tax_id=getattr(lead, "tax_id", None),
++        legal_representative=getattr(lead, "legal_representative", None),
++        charter_capital_vnd=int(lead.charter_capital_vnd) if lead.charter_capital_vnd is not None else None,
++        company_status=getattr(lead, "company_status", None),
++        is_zalo_active=getattr(lead, "is_zalo_active", False),
+     )
+ 
+ 
+diff --git a/nowing_backend/app/services/corporate_verification_service.py b/nowing_backend/app/services/corporate_verification_service.py
+new file mode 100644
+index 000000000..02b1375b7
+--- /dev/null
++++ b/nowing_backend/app/services/corporate_verification_service.py
+@@ -0,0 +1,666 @@
++"""B2B Corporate Tax Code (MST) & Official Registry Verification Engine (Story 24.2 / INV-24.3).
++
++Features:
++- Multi-attribute Fuzzy Match: Levenshtein Ratio * 0.5 + City Match * 0.3 + District Match * 0.2 >= 0.85
++- Corporate Profile Parsing: Tax ID, Legal Representative, Charter Capital (in VND), Company Status, Rep Phone
++- Redis Caching Layer: 7-day TTL (enrich:corp:*)
++- Circuit Breaker: 3 consecutive upstream failures trip for 10 minutes (600s) on key circuit_breaker:scraper:masothue
++- Fail-closed fallback to stale cache when circuit breaker is OPEN
++"""
++
++from __future__ import annotations
++
++import difflib
++import hashlib
++import json
++import logging
++import re
++import unicodedata
++from dataclasses import dataclass
++from typing import Any
++from uuid import UUID
++
++import redis.asyncio as aioredis
++from sqlalchemy.ext.asyncio import AsyncSession
++
++from app.config import config
++from app.db import Lead
++
++logger = logging.getLogger(__name__)
++
++# Constants (INV-24.3 / AC-1 / AC-3)
++CIRCUIT_BREAKER_KEY = "circuit_breaker:scraper:masothue"
++CIRCUIT_BREAKER_THRESHOLD = 3
++CIRCUIT_BREAKER_COOLDOWN_SECONDS = 600  # 10 minutes (600s)
++CORPORATE_CACHE_TTL_SECONDS = 7 * 24 * 3600  # 7 days (604,800s)
++REDIS_CORP_CACHE_PREFIX = "enrich:corp:"
++AUTO_LINK_CONFIDENCE_THRESHOLD = 0.85
++
++_redis_client: aioredis.Redis | None = None
++
++
++def get_redis() -> aioredis.Redis | None:
++    """Return singleton async Redis client for corporate verification caching and breaker."""
++    global _redis_client
++    if not getattr(config, "REDIS_APP_URL", None):
++        return None
++    if _redis_client is None:
++        try:
++            _redis_client = aioredis.from_url(
++                config.REDIS_APP_URL, decode_responses=True
++            )
++        except Exception as exc:
++            logger.warning("[CorporateVerification] Failed to init Redis client: %s", exc)
++            return None
++    return _redis_client
++
++
++# ─────────────────────────────────────────────────────────────
++# 1. Multi-Attribute Fuzzy Matching & Capital Parsing Helpers
++# ─────────────────────────────────────────────────────────────
++
++def _clean_admin_name(name: str | None) -> str:
++    """Remove Vietnamese administrative prefixes and punctuation for resilient geo-matching."""
++    if not name:
++        return ""
++    s = name.strip().lower()
++    # Normalize common abbreviations and prefixes
++    prefixes = [
++        "thành phố",
++        "thanh pho",
++        "tp.",
++        "tp ",
++        "tỉnh",
++        "tinh",
++        "quận",
++        "quan",
++        "huyện",
++        "huyen",
++        "thị xã",
++        "thi xa",
++        "tx.",
++        "tx ",
++        "phường",
++        "phuong",
++        "xã",
++        "xa",
++        "q.",
++        "q ",
++        "h.",
++        "h ",
++        "p.",
++        "p ",
++    ]
++    for p in prefixes:
++        if s.startswith(p):
++            s = s[len(p) :].strip()
++            break
++    return s.strip()
++
++
++def _match_admin_unit(unit_a: str | None, unit_b: str | None) -> float:
++    """Evaluate similarity between two administrative units (city or district)."""
++    if not unit_a or not unit_b:
++        return 0.0
++    clean_a = _clean_admin_name(unit_a)
++    clean_b = _clean_admin_name(unit_b)
++    if not clean_a or not clean_b:
++        return 0.0
++    if clean_a == clean_b or clean_a in clean_b or clean_b in clean_a:
++        return 1.0
++    ratio = difflib.SequenceMatcher(None, clean_a, clean_b).ratio()
++    return 1.0 if ratio >= 0.80 else 0.0
++
++
++def _strip_vietnamese_accents(text: str | None) -> str:
++    """Normalize and strip Vietnamese diacritics for resilient string matching."""
++    if not text:
++        return ""
++    normalized = unicodedata.normalize("NFKD", text)
++    stripped = "".join(c for c in normalized if not unicodedata.combining(c))
++    # Replace special D with d
++    stripped = stripped.replace("đ", "d").replace("Đ", "D")
++    return stripped.lower().strip()
++
++
++def compute_multi_attribute_match_score(
++    lead_name: str | None,
++    lead_city: str | None,
++    lead_district: str | None,
++    registry_name: str | None,
++    registry_city: str | None,
++    registry_district: str | None,
++) -> float:
++    """Compute composite confidence score: Levenshtein * 0.5 + City * 0.3 + District * 0.2."""
++    if not lead_name or not registry_name:
++        return 0.0
++
++    clean_lead = _strip_vietnamese_accents(lead_name)
++    clean_reg = _strip_vietnamese_accents(registry_name)
++    if not clean_lead or not clean_reg:
++        return 0.0
++
++    # Common corporate prefix normalization (công ty cổ phần -> ctcp, tnhh -> tnhh)
++    lead_norm = re.sub(r"\b(cong ty co phan|ctcp|cong ty tnhh|tnhh|tap doan)\b", "", clean_lead).strip()
++    reg_norm = re.sub(r"\b(cong ty co phan|ctcp|cong ty tnhh|tnhh|tap doan)\b", "", clean_reg).strip()
++    if lead_norm and reg_norm:
++        raw_ratio = difflib.SequenceMatcher(None, clean_lead, clean_reg).ratio()
++        core_ratio = difflib.SequenceMatcher(None, lead_norm, reg_norm).ratio()
++        name_ratio = max(raw_ratio, core_ratio)
++    else:
++        name_ratio = difflib.SequenceMatcher(None, clean_lead, clean_reg).ratio()
++
++    city_score = _match_admin_unit(lead_city, registry_city)
++    district_score = _match_admin_unit(lead_district, registry_district)
++
++    total_score = (name_ratio * 0.5) + (city_score * 0.3) + (district_score * 0.2)
++    return round(total_score, 4)
++
++
++def parse_charter_capital_vnd(val: Any) -> int | None:
++    """Parse charter capital string, currency format, or number into integer VND."""
++    if val is None or isinstance(val, bool):
++        return None
++    if isinstance(val, (int, float)):
++        return int(val) if val > 0 else None
++    if not isinstance(val, str):
++        return None
++
++    s = val.strip()
++    if not s or s.lower() in ("chưa đăng ký", "chua dang ky", "n/a", "none", "null", "chưa rõ", "chua ro"):
++        return None
++
++    # Match Vietnamese text units (e.g., "13 nghìn tỷ", "20 tỷ", "500 triệu", "1.5 tỷ đồng")
++    unit_pattern = r"^([\d\.,\s]+?)\s*(nghìn\s*tỷ|nghin\s*ty|tỷ|ty|triệu|trieu|nghìn|nghin|k|m|b)(?:\s*đồng|\s*vnd|\s*vnđ)?$"
++    match = re.search(unit_pattern, s, re.IGNORECASE)
++    if match:
++        num_part = match.group(1).replace(" ", "")
++        if "," in num_part and "." in num_part:
++            num_part = num_part.replace(".", "").replace(",", ".")
++        elif "," in num_part:
++            num_part = num_part.replace(",", ".")
++        try:
++            val_f = float(num_part)
++            unit_str = match.group(2).lower()
++            if ("nghìn" in unit_str and "tỷ" in unit_str) or ("nghin" in unit_str and "ty" in unit_str):
++                mult = 1_000_000_000_000
++            elif "tỷ" in unit_str or "ty" in unit_str or unit_str == "b":
++                mult = 1_000_000_000
++            elif "triệu" in unit_str or "trieu" in unit_str or unit_str == "m":
++                mult = 1_000_000
++            elif "nghìn" in unit_str or "nghin" in unit_str or unit_str == "k":
++                mult = 1_000
++            else:
++                mult = 1
++            return int(val_f * mult)
++        except ValueError:
++            pass
++
++    # Extract digits from formatted numbers (e.g. "13.000.000.000.000 VNĐ", "287,360,000,000 VND")
++    digits = re.sub(r"[^\d]", "", s)
++    if digits:
++        try:
++            parsed = int(digits)
++            return parsed if parsed > 0 else None
++        except ValueError:
++            return None
++
++    return None
++
++
++# ─────────────────────────────────────────────────────────────
++# 2. Data Models
++# ─────────────────────────────────────────────────────────────
++
++@dataclass
++class CorporateProfile:
++    tax_id: str
++    company_name: str
++    legal_representative: str | None = None
++    charter_capital_vnd: int | None = None
++    company_status: str | None = None
++    is_active: bool = True
++    address: str | None = None
++    city: str | None = None
++    district: str | None = None
++    phone: str | None = None
++    rep_phone: str | None = None
++    international_name: str | None = None
++    short_name: str | None = None
++    industry: str | None = None
++    date_of_incorporation: str | None = None
++
++
++@dataclass
++class CorporateMatchResult:
++    tax_id: str | None = None
++    is_verified: bool = False
++    confidence: float = 0.0
++    requires_manual_confirmation: bool = False
++    legal_representative: str | None = None
++    charter_capital_vnd: int | None = None
++    company_status: str | None = None
++    profile: CorporateProfile | None = None
++    is_cached: bool = False
++    degraded: bool = False
++    degradation_reason: str | None = None
++
++
++# ─────────────────────────────────────────────────────────────
++# 3. Default Masothue Scraper Client Wrapper
++# ─────────────────────────────────────────────────────────────
++
++class DefaultMasothueClient:
++    """Default client wrapping proprietary masothue scraper with rotating proxy pool."""
++
++    async def search_company(
++        self,
++        query: str,
++        city: str | None = None,
++        district: str | None = None,
++        proxy: str | None = None,
++    ) -> list[dict[str, Any]]:
++        from app.proprietary.platforms.masothue.schemas import MasothueSearchInput
++        from app.proprietary.platforms.masothue.scraper import scrape_masothue
++
++        inp = MasothueSearchInput(
++            query=query,
++            search_type="auto",
++            max_pages=1,
++            max_items=5,
++            resolve_detail=True,
++            include_phone=True,
++        )
++        out = await scrape_masothue(inp)
++        results = []
++        for item in out.items:
++            results.append({
++                "tax_id": item.tax_code or item.taxId,
++                "company_name": item.name,
++                "international_name": item.international_name,
++                "short_name": item.short_name,
++                "legal_representative": item.representative,
++                "charter_capital_vnd": parse_charter_capital_vnd(item.charter_capital),
++                "company_status": item.status,
++                "is_active": (item.status or "").lower().startswith("đang hoạt động"),
++                "address": item.address,
++                "city": item.city,
++                "district": item.district,
++                "phone": item.phone,
++                "rep_phone": getattr(item, "rep_phone", None) or item.phone,
++                "industry": item.main_business,
++                "date_of_incorporation": getattr(item, "founding_date", None),
++            })
++        return results
++
++    async def get_company_by_tax_id(
++        self, tax_id: str, proxy: str | None = None
++    ) -> dict[str, Any] | None:
++        res = await self.search_company(query=tax_id, proxy=proxy)
++        for r in res:
++            if (r.get("tax_id") or "").replace("-", "").strip() == tax_id.replace("-", "").strip():
++                return r
++        return res[0] if res else None
++
++
++# ─────────────────────────────────────────────────────────────
++# 4. Corporate Verification Service
++# ─────────────────────────────────────────────────────────────
++
++class CorporateVerificationService:
++    """B2B Corporate Tax Code (MST) & Official Registry Verification Engine."""
++
++    def __init__(
++        self,
++        session: AsyncSession,
++        masothue_client: Any | None = None,
++        redis_client: aioredis.Redis | None = None,
++    ) -> None:
++        self.session = session
++        self.masothue_client = masothue_client or DefaultMasothueClient()
++        self._redis = redis_client
++        self.consecutive_failures = 0
++
++    def _get_redis(self) -> aioredis.Redis | None:
++        if self._redis is not None:
++            return self._redis
++        return get_redis()
++
++    def _dict_to_profile(self, d: dict[str, Any]) -> CorporateProfile:
++        return CorporateProfile(
++            tax_id=d.get("tax_id") or "",
++            company_name=d.get("company_name") or "",
++            legal_representative=d.get("legal_representative"),
++            charter_capital_vnd=parse_charter_capital_vnd(d.get("charter_capital_vnd")),
++            company_status=d.get("company_status"),
++            is_active=d.get("is_active", True),
++            address=d.get("address"),
++            city=d.get("city"),
++            district=d.get("district"),
++            phone=d.get("phone"),
++            rep_phone=d.get("rep_phone"),
++            international_name=d.get("international_name"),
++            short_name=d.get("short_name"),
++            industry=d.get("industry"),
++            date_of_incorporation=d.get("date_of_incorporation"),
++        )
++
++    def _parse_location(self, location: str | None) -> tuple[str | None, str | None]:
++        """Extract city and district from location string (e.g. 'Cầu Giấy, Hà Nội')."""
++        if not location:
++            return None, None
++        parts = [p.strip() for p in location.split(",") if p.strip()]
++        if len(parts) >= 2:
++            return parts[-1], parts[0]  # city, district
++        if len(parts) == 1:
++            return parts[0], None
++        return None, None
++
++    async def _is_circuit_breaker_open(self) -> bool:
++        redis = self._get_redis()
++        if redis is None:
++            return self.consecutive_failures >= CIRCUIT_BREAKER_THRESHOLD
++        try:
++            val = await redis.get(CIRCUIT_BREAKER_KEY)
++            return val == "open" or self.consecutive_failures >= CIRCUIT_BREAKER_THRESHOLD
++        except Exception as exc:
++            logger.debug("[CorporateVerification] Breaker check failed: %s", exc)
++            return False
++
++    async def _record_failure_and_trip_if_needed(self) -> None:
++        self.consecutive_failures += 1
++        if self.consecutive_failures >= CIRCUIT_BREAKER_THRESHOLD:
++            redis = self._get_redis()
++            if redis is not None:
++                try:
++                    await redis.set(
++                        CIRCUIT_BREAKER_KEY, "open", ex=CIRCUIT_BREAKER_COOLDOWN_SECONDS
++                    )
++                    logger.warning(
++                        "[CorporateVerification] Circuit breaker TRIPPED for %ss after %s failures",
++                        CIRCUIT_BREAKER_COOLDOWN_SECONDS,
++                        self.consecutive_failures,
++                    )
++                except Exception as exc:
++                    logger.debug("[CorporateVerification] Failed setting breaker key: %s", exc)
++
++    async def _record_success(self) -> None:
++        self.consecutive_failures = 0
++
++    async def get_corporate_profile_by_tax_id(
++        self, tax_id: str, force_refresh: bool = False
++    ) -> CorporateProfile | None:
++        """Lookup corporate profile by exact Tax Code (MST) with 7-day Redis caching."""
++        if not tax_id:
++            return None
++
++        clean_tax = tax_id.strip().replace("-", "")
++        redis = self._get_redis()
++        cache_key = f"{REDIS_CORP_CACHE_PREFIX}tax:{clean_tax}"
++
++        # 1. Check 7-Day Redis Cache
++        if redis is not None and not force_refresh:
++            try:
++                cached = await redis.get(cache_key)
++                if cached:
++                    logger.info("[CorporateVerification] Cache Hit for MST %s", clean_tax)
++                    return self._dict_to_profile(json.loads(cached))
++            except Exception as exc:
++                logger.debug("[CorporateVerification] Redis cache read failed: %s", exc)
++
++        # 2. Query Upstream Registry with Failure & Circuit Breaker Tracking
++        try:
++            raw_data = await self.masothue_client.get_company_by_tax_id(clean_tax)
++            await self._record_success()
++        except Exception as exc:
++            await self._record_failure_and_trip_if_needed()
++            raise exc
++
++        if not raw_data:
++            return None
++
++        profile = self._dict_to_profile(raw_data)
++
++        # 3. Write to 7-Day Redis Cache
++        if redis is not None:
++            try:
++                await redis.set(
++                    cache_key, json.dumps(raw_data), ex=CORPORATE_CACHE_TTL_SECONDS
++                )
++            except Exception as exc:
++                logger.debug("[CorporateVerification] Redis cache write failed: %s", exc)
++
++        return profile
++
++    async def verify_company(
++        self,
++        company_name: str,
++        city: str | None = None,
++        district: str | None = None,
++        tax_id: str | None = None,
++        force_refresh: bool = False,
++    ) -> CorporateMatchResult:
++        """Run multi-attribute fuzzy verification against official company registries."""
++        redis = self._get_redis()
++
++        # Check Circuit Breaker
++        breaker_open = await self._is_circuit_breaker_open()
++
++        # If MST is provided directly
++        if tax_id:
++            clean_tax = tax_id.strip().replace("-", "")
++            if breaker_open and redis is not None:
++                try:
++                    cached = await redis.get(f"{REDIS_CORP_CACHE_PREFIX}tax:{clean_tax}")
++                    if cached:
++                        data = json.loads(cached)
++                        prof = self._dict_to_profile(data)
++                        return CorporateMatchResult(
++                            tax_id=prof.tax_id,
++                            is_verified=True,
++                            confidence=1.0,
++                            legal_representative=prof.legal_representative,
++                            charter_capital_vnd=prof.charter_capital_vnd,
++                            company_status=prof.company_status,
++                            profile=prof,
++                            is_cached=True,
++                        )
++                except Exception:
++                    pass
++                return CorporateMatchResult(
++                    is_verified=False,
++                    degraded=True,
++                    degradation_reason="circuit_breaker_open",
++                )
++
++            try:
++                profile = await self.get_corporate_profile_by_tax_id(
++                    clean_tax, force_refresh=force_refresh
++                )
++                if profile:
++                    score = compute_multi_attribute_match_score(
++                        company_name, city, district, profile.company_name, profile.city, profile.district
++                    )
++                    is_ver = score >= AUTO_LINK_CONFIDENCE_THRESHOLD or profile.tax_id == clean_tax
++                    return CorporateMatchResult(
++                        tax_id=profile.tax_id,
++                        is_verified=is_ver,
++                        confidence=max(score, 0.98 if is_ver else score),
++                        requires_manual_confirmation=not is_ver,
++                        legal_representative=profile.legal_representative,
++                        charter_capital_vnd=profile.charter_capital_vnd,
++                        company_status=profile.company_status,
++                        profile=profile,
++                        is_cached=False,
++                    )
++            except Exception as exc:
++                logger.warning("[CorporateVerification] Error verifying by tax_id %s: %s", tax_id, exc)
++
++        # Lookup by Company Name
++        name_hash = hashlib.sha256(company_name.strip().upper().encode("utf-8")).hexdigest()
++        name_cache_key = f"{REDIS_CORP_CACHE_PREFIX}name:{name_hash}"
++
++        if breaker_open:
++            if redis is not None:
++                try:
++                    cached = await redis.get(name_cache_key)
++                    if cached:
++                        data = json.loads(cached)
++                        prof = self._dict_to_profile(data)
++                        score = compute_multi_attribute_match_score(
++                            company_name, city, district, prof.company_name, prof.city, prof.district
++                        )
++                        is_ver = score >= AUTO_LINK_CONFIDENCE_THRESHOLD
++                        return CorporateMatchResult(
++                            tax_id=prof.tax_id,
++                            is_verified=is_ver,
++                            confidence=score,
++                            requires_manual_confirmation=not is_ver,
++                            legal_representative=prof.legal_representative,
++                            charter_capital_vnd=prof.charter_capital_vnd,
++                            company_status=prof.company_status,
++                            profile=prof,
++                            is_cached=True,
++                        )
++                except Exception:
++                    pass
++            return CorporateMatchResult(
++                is_verified=False,
++                degraded=True,
++                degradation_reason="circuit_breaker_open",
++            )
++
++        # Check Cache
++        if redis is not None and not force_refresh:
++            try:
++                cached = await redis.get(name_cache_key)
++                if cached:
++                    data = json.loads(cached)
++                    prof = self._dict_to_profile(data)
++                    score = compute_multi_attribute_match_score(
++                        company_name, city, district, prof.company_name, prof.city, prof.district
++                    )
++                    is_ver = score >= AUTO_LINK_CONFIDENCE_THRESHOLD
++                    return CorporateMatchResult(
++                        tax_id=prof.tax_id,
++                        is_verified=is_ver,
++                        confidence=score,
++                        requires_manual_confirmation=not is_ver,
++                        legal_representative=prof.legal_representative,
++                        charter_capital_vnd=prof.charter_capital_vnd,
++                        company_status=prof.company_status,
++                        profile=prof,
++                        is_cached=True,
++                    )
++            except Exception as exc:
++                logger.debug("[CorporateVerification] Redis cache lookup failed: %s", exc)
++
++        # Query Masothue search
++        try:
++            candidates = await self.masothue_client.search_company(
++                query=company_name, city=city, district=district
++            )
++            await self._record_success()
++        except Exception as exc:
++            await self._record_failure_and_trip_if_needed()
++            logger.warning("[CorporateVerification] Upstream query failed: %s", exc)
++            return CorporateMatchResult(
++                is_verified=False,
++                degraded=True,
++                degradation_reason="upstream_error",
++            )
++
++        if not candidates:
++            return CorporateMatchResult(
++                is_verified=False,
++                confidence=0.0,
++                requires_manual_confirmation=False,
++            )
++
++        # Evaluate Multi-Attribute Scores across all candidates
++        best_cand: dict[str, Any] | None = None
++        best_score = -1.0
++
++        for cand in candidates:
++            c_name = cand.get("company_name") or cand.get("name")
++            c_city = cand.get("city")
++            c_dist = cand.get("district")
++            score = compute_multi_attribute_match_score(
++                company_name, city, district, c_name, c_city, c_dist
++            )
++            if score > best_score:
++                best_score = score
++                best_cand = cand
++
++        if not best_cand or best_score < 0.0:
++            return CorporateMatchResult(
++                is_verified=False,
++                confidence=0.0,
++                requires_manual_confirmation=False,
++            )
++
++        prof = self._dict_to_profile(best_cand)
++
++        # Cache best candidate
++        if redis is not None:
++            try:
++                await redis.set(
++                    name_cache_key, json.dumps(best_cand), ex=CORPORATE_CACHE_TTL_SECONDS
++                )
++                if prof.tax_id:
++                    await redis.set(
++                        f"{REDIS_CORP_CACHE_PREFIX}tax:{prof.tax_id}",
++                        json.dumps(best_cand),
++                        ex=CORPORATE_CACHE_TTL_SECONDS,
++                    )
++            except Exception as exc:
++                logger.debug("[CorporateVerification] Redis cache write failed: %s", exc)
++
++        is_verified = best_score >= AUTO_LINK_CONFIDENCE_THRESHOLD
++        return CorporateMatchResult(
++            tax_id=prof.tax_id,
++            is_verified=is_verified,
++            confidence=best_score,
++            requires_manual_confirmation=not is_verified,
++            legal_representative=prof.legal_representative,
++            charter_capital_vnd=prof.charter_capital_vnd,
++            company_status=prof.company_status,
++            profile=prof,
++            is_cached=False,
++        )
++
++    async def verify_lead_corporate_info(
++        self,
++        *,
++        workspace_id: int,
++        lead_id: UUID,
++        force_refresh: bool = False,
++    ) -> CorporateMatchResult:
++        """Enrich a lead entity with verified corporate MST, legal rep, and capital (AD-31 / INV-24.3)."""
++        lead = await self.session.get(Lead, (lead_id, workspace_id))
++        if not lead or lead.workspace_id != workspace_id:
++            return CorporateMatchResult(
++                is_verified=False,
++                degraded=True,
++                degradation_reason="lead_not_found_or_tenant_mismatch",
++            )
++
++        city, district = self._parse_location(lead.location)
++
++        match_res = await self.verify_company(
++            company_name=lead.company_name,
++            city=city,
++            district=district,
++            tax_id=getattr(lead, "tax_id", None),
++            force_refresh=force_refresh,
++        )
++
++        if match_res.is_verified and match_res.profile:
++            lead.tax_id = match_res.profile.tax_id
++            lead.legal_representative = match_res.profile.legal_representative
++            lead.charter_capital_vnd = match_res.profile.charter_capital_vnd
++            lead.company_status = match_res.profile.company_status
++            lead.enriched = True
++            await self.session.flush()
++
++        return match_res
+diff --git a/nowing_backend/app/services/phone_waterfall_service.py b/nowing_backend/app/services/phone_waterfall_service.py
+index de148c693..ebb8e4721 100644
+--- a/nowing_backend/app/services/phone_waterfall_service.py
++++ b/nowing_backend/app/services/phone_waterfall_service.py
+@@ -36,6 +36,7 @@ from app.db import (
+ from app.proprietary.platforms.batdongsan.fetch import fetch_detail_phone
+ from app.proprietary.platforms.chotot.fetch import fetch_phone as chotot_fetch_phone
+ from app.proprietary.platforms.xactions.phone_extractor import (
++    convert_legacy_11_digit,
+     extract_phone_numbers,
+ )
+ from app.services import wallet_credit
+@@ -142,13 +143,15 @@ def normalize_vn_phone(
+ 
+     start_time = time.perf_counter()
+ 
+-    # Fast path if already standard 10-digit
++    # Fast path if already standard 10-digit or legacy 11-digit
+     digits_only = re.sub(r"[^\d+]", "", raw_clean)
+     if digits_only.startswith("+84"):
+         digits_only = "0" + digits_only[3:]
+-    elif digits_only.startswith("84") and len(digits_only) == 11:
++    elif digits_only.startswith("84") and len(digits_only) in (11, 12):
+         digits_only = "0" + digits_only[2:]
+ 
++    digits_only = convert_legacy_11_digit(digits_only)
++
+     if len(digits_only) == 10 and is_valid_vn_mobile_prefix(digits_only):
+         return digits_only
+ 
+@@ -158,8 +161,9 @@ def normalize_vn_phone(
+     # Extraction pipeline via phone_extractor
+     extracted = extract_phone_numbers(raw_clean, timeout_sec=timeout_sec)
+     for num in extracted:
+-        if is_valid_vn_mobile_prefix(num):
+-            return num
++        num_converted = convert_legacy_11_digit(num)
++        if is_valid_vn_mobile_prefix(num_converted):
++            return num_converted
+ 
+     return None
+ 
+@@ -242,7 +246,12 @@ class PhoneWaterfallService:
+         account_service = ScraperPlatformAccountService(self.session)
+         rotator = ScraperPlatformAccountRotator(account_service, platform="batdongsan")
+ 
+-        account, creds = await rotator.get_credentials(wait=False, timeout=2.0)
++        try:
++            account, creds = await rotator.get_credentials(wait=False, timeout=2.0)
++        except Exception as exc:
++            logger.debug("Failed getting scraper platform credentials: %s", exc)
++            account, creds = None, None
++
+         account_id = account.id if account else 0
+         mutex_key = f"{REDIS_MUTEX_PREFIX}{account_id}"
+ 
+@@ -424,6 +433,55 @@ class PhoneWaterfallService:
+             raw_response={"reason": "no_valid_carrier_phone_found"},
+         )
+ 
++    async def _resolve_tier_3_masothue_and_carrier(
++        self,
++        lead: Lead | None,
++        source_url: str | None,
++        raw_text: str | None,
++    ) -> WaterfallTierResult:
++        """Tier 3: Masothue Corporate Legal Rep Phone fallback + Passive Carrier Prefix & HLR."""
++        if lead and lead.company_name:
++            try:
++                from app.services.corporate_verification_service import (
++                    CorporateVerificationService,
++                )
++
++                corp_service = CorporateVerificationService(self.session)
++                corp_res = await corp_service.verify_company(
++                    company_name=lead.company_name,
++                    tax_id=getattr(lead, "tax_id", None),
++                )
++                if (
++                    corp_res
++                    and corp_res.is_verified
++                    and corp_res.profile
++                    and corp_res.profile.rep_phone
++                ):
++                    norm = normalize_vn_phone(corp_res.profile.rep_phone)
++                    if norm and is_valid_vn_mobile_prefix(norm):
++                        carrier = get_carrier_name(norm)
++                        return WaterfallTierResult(
++                            phone=norm,
++                            provider="masothue",
++                            tier=3,
++                            confidence=0.92,
++                            carrier=carrier,
++                            raw_response={
++                                "phone": mask_phone(norm),
++                                "source": "masothue_rep_phone",
++                                "tax_id": corp_res.tax_id,
++                                "legal_representative": corp_res.legal_representative,
++                            },
++                        )
++            except Exception as exc:
++                logger.warning(
++                    "Tier 3 Masothue rep phone lookup error for %s: %s",
++                    lead.company_name,
++                    exc,
++                )
++
++        return await self._resolve_tier_3_carrier_hlr(source_url, raw_text)
++
+     # ─────────────────────────────────────────────────────────────
+     # Main Waterfall Orchestration
+     # ─────────────────────────────────────────────────────────────
+@@ -440,7 +498,7 @@ class PhoneWaterfallService:
+     ) -> PhoneResolutionResult:
+         """Run 3-tier waterfall resolution for a lead."""
+         # 1. Fetch Lead with Tenant Isolation (AD-31)
+-        lead = await self.session.get(Lead, lead_id)
++        lead = await self.session.get(Lead, (lead_id, workspace_id))
+         if (
+             not lead
+             or lead.workspace_id != workspace_id
+@@ -535,7 +593,9 @@ class PhoneWaterfallService:
+                 effective_url, effective_text, lead_source=lead.source
+             )
+         if not res.phone:
+-            res = await self._resolve_tier_3_carrier_hlr(effective_url, effective_text)
++            res = await self._resolve_tier_3_masothue_and_carrier(
++                lead=lead, source_url=effective_url, raw_text=effective_text
++            )
+ 
+         # If all 3 tiers fail: charge 0 credit, log failure
+         if not res.phone:
+@@ -573,8 +633,60 @@ class PhoneWaterfallService:
+                 degradation_reason="phone_not_found",
+             )
+ 
+-        # 5. Success Path: PII Vault Persistence & Encryption (AD-25, AD-49)
++        # 4.5 In-Stream Fail-Closed DNC Compliance Check (INV-24.3 / INV-21.3)
+         norm_phone = res.phone
++        try:
++            from app.lead_intelligence.dnc.service import DncComplianceService
++
++            dnc_service = DncComplianceService()
++            dnc_result = await dnc_service.check_phone(
++                workspace_id=workspace_id,
++                phone=norm_phone,
++                session=self.session,
++                client_id=client_id,
++            )
++            if dnc_result.is_blocked:
++                logger.info(
++                    "Lead phone %s blocked by DNC: %s",
++                    mask_phone(norm_phone),
++                    dnc_result.reason,
++                )
++                return PhoneResolutionResult(
++                    lead_id=lead_id,
++                    phone=None,
++                    phone_masked="",
++                    phone_hash=None,
++                    tier_reached=res.tier,
++                    provider_used=res.provider,
++                    status="blocked_by_dnc",
++                    cost_micros=0,
++                    confidence=0.0,
++                    carrier=res.carrier,
++                    is_cached=False,
++                    degraded=True,
++                    degradation_reason=dnc_result.reason or "blocked_by_dnc",
++                )
++        except Exception as exc:
++            logger.warning(
++                "DNC compliance check failed with exception: %s. Failing closed.", exc
++            )
++            return PhoneResolutionResult(
++                lead_id=lead_id,
++                phone=None,
++                phone_masked="",
++                phone_hash=None,
++                tier_reached=res.tier,
++                provider_used=res.provider,
++                status="blocked_by_dnc",
++                cost_micros=0,
++                confidence=0.0,
++                carrier="Unknown",
++                is_cached=False,
++                degraded=True,
++                degradation_reason="dnc_check_failed",
++            )
++
++        # 5. Success Path: PII Vault Persistence & Encryption (AD-25, AD-49)
+         p_masked = mask_phone(norm_phone)
+         p_hash = hash_phone(norm_phone)
+         encrypted_phone = self.encryption.encrypt(norm_phone)

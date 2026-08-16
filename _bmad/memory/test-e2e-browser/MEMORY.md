@@ -5,6 +5,10 @@ _Curated long-term knowledge for Nowing E2E Browser Testing._
 ## Known Environment Quirks & Fixes
 - **Zero Cache 401:** If Zero query fails with `401 TransformFailed`, ensure `NEXT_PUBLIC_ZERO_CACHE_URL=http://localhost:4848` and `POSTGRES_PORT=5434` are properly aligned.
 - **Local Ports:** Postgres runs on `5434` and Redis on `6380` to avoid conflicts with host instances.
+- **PostGIS in pgvector image:** The `pgvector/pgvector:pg17` Docker image does not include PostGIS. `CREATE EXTENSION postgis` fails until `apt-get install postgresql-17-postgis-3` is run inside the container. This is required for `spatial_planning_zones` and any model using `Geometry` columns.
+- **Missing frontend deps for build:** `leaflet` and `react-leaflet` are imported in `components/realestate/land-zoning/zoning-map.tsx` but are not in `package.json`; `pnpm build` fails until they are installed.
+- **Alembic two heads:** As of 2026-08-17, revisions `223_add_audit_events_table.py` and `07582243b847_merge_e2e_heads_for_testing.py` are both heads. A temporary merge revision is needed to run `alembic upgrade head` on a fresh database.
+- **E2E superuser requirement:** `/admin/scraper-accounts` (and likely all `/admin/*` pages) require `User.is_superuser=True`. The default `e2e-test@nowing.net` created by the Playwright auth setup is not a superuser, so admin E2E tests fail with 403/unexpected DOM.
 
 ## Flaky Selectors & DOM Patterns
 - **Header Auth Controls:** The `Sign In` link in the main navigation uses `hidden md:block`. When testing with browser MCP tools, always ensure viewport is set to desktop size (e.g. 1440x900 via `browser_resize`) or click the `Get Started` hero link if testing on small viewports.

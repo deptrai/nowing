@@ -1,3 +1,27 @@
+## Deferred from: code review of 25-1-multitenant-user-workspace-hub-scoped-impersonation (2026-08-17)
+
+- **Finding:** E2E tests `nowing_web/tests/admin/impersonation.spec.ts` còn scaffold `test.fail`.
+  - **Action:** Marked `[x] [Review][Defer]` in `25-1-multitenant-user-workspace-hub-scoped-impersonation.md`.
+  - **Reason / when to revisit:** ATDD red-phase; implement khi UI impersonation hoàn thiện.
+
+## Deferred from: code review of 25-2-manual-credit-adjustment-refund-desk-dual-audit-ledger (2026-08-16)
+
+- **Finding:** Thiếu test AC-1 validation cho `reason` min length, `ticket_ref` missing, `workspace_id` format/negative, `amount_credits` zero/negative, `direction` invalid values.
+  - **Action:** Marked `[x] [Review][Defer]` in `25-2-manual-credit-adjustment-refund-desk-dual-audit-ledger.md`.
+  - **Reason / when to revisit:** Pre-existing test coverage; not in the current test-additions diff.
+
+- **Finding:** Thiếu test trực tiếp Redis Redlock / Postgres `FOR UPDATE` / `lock_timeout`.
+  - **Action:** Marked `[x] [Review][Defer]` in `25-2-manual-credit-adjustment-refund-desk-dual-audit-ledger.md`.
+  - **Reason / when to revisit:** Implementation internals; revisit if concurrency lock contracts become externally observable.
+
+- **Finding:** Thiếu test quota cho `DEBIT` và non-superuser role.
+  - **Action:** Marked `[x] [Review][Defer]` in `25-2-manual-credit-adjustment-refund-desk-dual-audit-ledger.md`.
+  - **Reason / when to revisit:** Role-based staff infra not yet in place; story already documents decision to keep `require_superuser`.
+
+- **Finding:** Thiếu test CSV export, aggregate stats cards, 36px row height.
+  - **Action:** Marked `[x] [Review][Defer]` in `25-2-manual-credit-adjustment-refund-desk-dual-audit-ledger.md`.
+  - **Reason / when to revisit:** AC-4 UI tests; out of scope for the current backend test diff.
+
 ## Deferred from: code review of 22-3-telegram-data-enrichment-realtime-alerts-and-scraper-ui (2026-08-16)
 
 - **Finding:** Configure timeout and SSL options for smtplib.SMTP in alert notifications.
@@ -846,3 +870,9 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - **Finding:** PII vault lacks key-rotation and encryption-failure handling. (nowing_backend/app/services/pii/verified_contact_encryption.py:40-55 and nowing_backend/app/services/phone_waterfall_service.py:692)
   - **Action:** Marked `[x] [Review][Defer]` in `24-2-waterfall-phone-mst-corporate-verification-engine.md`.
   - **Reason / when to revisit:** Verified-contact encryption relies on a single `SECRET_KEY` with no rotation plan, and `resolve_lead_phone` calls `encrypt()` without guarding against transient failures. This is a cross-cutting PII-vault concern and should be handled in a dedicated PII security story.
+
+## Deferred from: code review of 24-2-waterfall-phone-mst-corporate-verification-engine (2026-08-17)
+
+- **Finding:** PII vault lacks key-rotation and encryption-failure handling. (nowing_backend/app/services/pii/verified_contact_encryption.py:40-55 and nowing_backend/app/services/phone_waterfall_service.py:692)
+  - **Action:** Marked `[x] [Review][Defer]` in `24-2-waterfall-phone-mst-corporate-verification-engine.md`.
+  - **Reason / when to revisit:** Confirmed in chunk 1 backend review. Verified-contact encryption relies on a single `SECRET_KEY` with no rotation plan, and `resolve_lead_phone` calls `encrypt()` without guarding against transient failures. Cross-cutting PII-vault concern; revisit in a dedicated PII security story.
