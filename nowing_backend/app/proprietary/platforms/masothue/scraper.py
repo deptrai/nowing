@@ -67,7 +67,6 @@ def _timeout() -> float:
     return max(0.0, getattr(config, "MASOTHUE_TIMEOUT_S", 30.0))
 
 
-
 async def scrape_masothue(
     input_model: MasothueSearchInput,
     *,
@@ -103,6 +102,7 @@ async def scrape_masothue(
                     input_model.query,
                     input_model.search_type,
                     page,
+                    proxy=input_model.proxy,
                 )
                 break
             except MasothueRateLimitedError:
@@ -117,9 +117,7 @@ async def scrape_masothue(
                 page_failed = True
                 break
             except (MasothueAccessBlockedError, MasothueTimeoutError, Exception) as exc:
-                logger.warning(
-                    "masothue search page %s failed: %s", page, exc
-                )
+                logger.warning("masothue search page %s failed: %s", page, exc)
                 if attempt < _MAX_RETRIES:
                     await asyncio.sleep(_page_delay())
                     continue
@@ -155,7 +153,9 @@ async def scrape_masothue(
                 try:
                     # Pace detail fetches to avoid tripping Cloudflare/rate limits.
                     await asyncio.sleep(_page_delay())
-                    detail_html = await detail_fetch(company.detail_url)
+                    detail_html = await detail_fetch(
+                        company.detail_url, proxy=input_model.proxy
+                    )
                     apply_detail(
                         company,
                         detail_html,
@@ -190,7 +190,10 @@ async def scrape_masothue(
                 continue
 
             # Deduplicate by tax code or (name + detail URL).
-            key = _normalize_tax_code(company.tax_code) or f"{company.name or ''}|{company.detail_url or ''}"
+            key = (
+                _normalize_tax_code(company.tax_code)
+                or f"{company.name or ''}|{company.detail_url or ''}"
+            )
             if key in seen:
                 continue
             seen.add(key)
@@ -201,7 +204,9 @@ async def scrape_masothue(
         if rate_limited_seen or page_failed:
             degraded = True
             if not degradation_reason:
-                degradation_reason = "rate_limited" if rate_limited_seen else "api_error"
+                degradation_reason = (
+                    "rate_limited" if rate_limited_seen else "api_error"
+                )
             break
 
         if len(items) >= cap:

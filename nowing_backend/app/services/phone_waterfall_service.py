@@ -13,7 +13,6 @@
 from __future__ import annotations
 
 import contextlib
-import hashlib
 import json
 import logging
 import re
@@ -50,7 +49,7 @@ logger = logging.getLogger(__name__)
 
 # Constants
 PHONE_RESOLUTION_COST_MICROS = 1_500_000  # 1.5 credits = 1,500 VND
-PHONE_CACHE_TTL_SECONDS = 30 * 24 * 3600  # 30 days (2,592,000 seconds)
+PHONE_CACHE_TTL_SECONDS = 24 * 3600  # 24 hours (86,400 seconds)
 REDOS_TIMEOUT_SECONDS = 0.05  # 50ms guard against ReDoS
 REDIS_PHONE_CACHE_PREFIX = "enrich:phone:"
 REDIS_MUTEX_PREFIX = "batdongsan:token:"
@@ -183,10 +182,12 @@ def mask_phone(phone: str | None) -> str:
 
 
 def hash_phone(phone: str | None) -> str | None:
-    """Compute SHA-256 hex digest of normalized phone string for caching and deduplication."""
+    """Compute HMAC-SHA256 hex digest of normalized phone string for caching and deduplication."""
     if not phone:
         return None
-    return hashlib.sha256(phone.encode("utf-8")).hexdigest()
+    from app.lead_intelligence.dnc.normalizer import hash_phone_hmac
+
+    return hash_phone_hmac(phone, config.SECRET_KEY)
 
 
 @dataclass
@@ -421,7 +422,7 @@ class PhoneWaterfallService:
                         "phone": mask_phone(norm),
                         "carrier": carrier,
                         "hlr_status": "active",
-                        "zalo_verified": True,
+                        "zalo_verified": False,
                     },
                 )
 
@@ -496,6 +497,75 @@ class PhoneWaterfallService:
         raw_text: str | None = None,
         force_refresh: bool = False,
     ) -> PhoneResolutionResult:
+        """Run 3-tier waterfall resolution for a lead with a per-lead Redis lock.
+
+        ponytail: distributed lock prevents concurrent requests for the same
+        lead from double-running tiers / double-billing. If Redis is down we
+        degrade gracefully and continue without locking.
+        """
+        redis = get_redis()
+        if redis is None:
+            return await self._resolve_lead_phone_unlocked(
+                workspace_id=workspace_id,
+                client_id=client_id,
+                lead_id=lead_id,
+                user_id=user_id,
+                source_url=source_url,
+                raw_text=raw_text,
+                force_refresh=force_refresh,
+            )
+
+        # ponytail: SET NX is a simple distributed lock; not as robust as
+        # Redlock but atomic and good enough for a single Redis primary.
+        lock_key = f"{REDIS_PHONE_CACHE_PREFIX}lock:{lead_id}"
+        try:
+            acquired = await redis.set(lock_key, "1", nx=True, ex=30)
+        except Exception as exc:
+            logger.warning("[PhoneWaterfall] Failed acquiring resolution lock: %s", exc)
+            acquired = None
+        if not acquired:
+            return PhoneResolutionResult(
+                lead_id=lead_id,
+                phone=None,
+                phone_masked="",
+                phone_hash=None,
+                tier_reached=0,
+                provider_used="none",
+                status="failed",
+                cost_micros=0,
+                confidence=0.0,
+                carrier="Unknown",
+                is_cached=False,
+                degraded=True,
+                degradation_reason="concurrent_resolution",
+            )
+
+        try:
+            return await self._resolve_lead_phone_unlocked(
+                workspace_id=workspace_id,
+                client_id=client_id,
+                lead_id=lead_id,
+                user_id=user_id,
+                source_url=source_url,
+                raw_text=raw_text,
+                force_refresh=force_refresh,
+            )
+        finally:
+            with contextlib.suppress(Exception):
+                await redis.delete(lock_key)
+
+    # ─────────────────────────────────────────────────────────────
+    async def _resolve_lead_phone_unlocked(
+        self,
+        *,
+        workspace_id: int,
+        client_id: str | None,
+        lead_id: UUID,
+        user_id: UUID | None,
+        source_url: str | None = None,
+        raw_text: str | None = None,
+        force_refresh: bool = False,
+    ) -> PhoneResolutionResult:
         """Run 3-tier waterfall resolution for a lead."""
         # 1. Fetch Lead with Tenant Isolation (AD-31)
         lead = await self.session.get(Lead, (lead_id, workspace_id))
@@ -533,11 +603,87 @@ class PhoneWaterfallService:
                     payload = json.loads(cached_data)
                     cached_phone = payload.get("phone")
                     if cached_phone:
+                        # PII: cached phone is Fernet-encrypted. Decrypt before use.
+                        try:
+                            if self.encryption.is_encrypted(cached_phone):
+                                cached_phone = self.encryption.decrypt(cached_phone)
+                        except Exception as exc:
+                            logger.warning(
+                                "Failed decrypting cached phone; treating as miss: %s",
+                                exc,
+                            )
+                            cached_phone = None
+
+                    if cached_phone:
                         logger.info(
                             "Waterfall Cache Hit for lead %s: %s",
                             lead_id,
                             mask_phone(cached_phone),
                         )
+
+                        # Re-validate cached phone against DNC (INV-24.3 / INV-21.3)
+                        try:
+                            from app.lead_intelligence.dnc.service import (
+                                DncComplianceService,
+                            )
+
+                            dnc_service = DncComplianceService()
+                            dnc_result = await dnc_service.check_phone(
+                                workspace_id=workspace_id,
+                                phone=cached_phone,
+                                session=self.session,
+                                client_id=client_id,
+                            )
+                            if dnc_result.is_blocked:
+                                logger.info(
+                                    "Cached lead phone %s blocked by DNC: %s",
+                                    mask_phone(cached_phone),
+                                    dnc_result.reason,
+                                )
+                                return PhoneResolutionResult(
+                                    lead_id=lead_id,
+                                    phone=None,
+                                    phone_masked="",
+                                    phone_hash=None,
+                                    tier_reached=payload.get("tier_reached", 0),
+                                    provider_used="cache",
+                                    status="blocked_by_dnc",
+                                    cost_micros=0,
+                                    confidence=0.0,
+                                    carrier=payload.get(
+                                        "carrier", get_carrier_name(cached_phone)
+                                    ),
+                                    is_cached=True,
+                                    contact_id=None,
+                                    degraded=True,
+                                    degradation_reason=dnc_result.reason
+                                    or "blocked_by_dnc",
+                                )
+                        except Exception as exc:
+                            logger.warning(
+                                "DNC re-validation of cached phone failed: %s. "
+                                "Failing closed.",
+                                exc,
+                            )
+                            return PhoneResolutionResult(
+                                lead_id=lead_id,
+                                phone=None,
+                                phone_masked="",
+                                phone_hash=None,
+                                tier_reached=payload.get("tier_reached", 0),
+                                provider_used="cache",
+                                status="blocked_by_dnc",
+                                cost_micros=0,
+                                confidence=0.0,
+                                carrier=payload.get(
+                                    "carrier", get_carrier_name(cached_phone)
+                                ),
+                                is_cached=True,
+                                contact_id=None,
+                                degraded=True,
+                                degradation_reason="dnc_check_failed",
+                            )
+
                         return PhoneResolutionResult(
                             lead_id=lead_id,
                             phone=cached_phone,
@@ -722,7 +868,9 @@ class PhoneWaterfallService:
             dict(res.raw_response) if isinstance(res.raw_response, dict) else {}
         )
         if "phone" in sanitized_raw_response:
-            sanitized_raw_response["phone"] = mask_phone(sanitized_raw_response["phone"])
+            sanitized_raw_response["phone"] = mask_phone(
+                sanitized_raw_response["phone"]
+            )
 
         # 6. Create PhoneWaterfallLog
         log_entry = PhoneWaterfallLog(
@@ -756,9 +904,29 @@ class PhoneWaterfallService:
         self.session.add(billing_event)
 
         if user_id is not None:
-            await wallet_credit.apply_debit(
-                self.session, user_id, PHONE_RESOLUTION_COST_MICROS
-            )
+            try:
+                await wallet_credit.apply_debit(
+                    self.session, user_id, PHONE_RESOLUTION_COST_MICROS
+                )
+            except wallet_credit.InsufficientCreditsError as ice:
+                logger.warning(
+                    "Wallet ran out of credits during final debit: %s", ice
+                )
+                return PhoneResolutionResult(
+                    lead_id=lead_id,
+                    phone=None,
+                    phone_masked="",
+                    phone_hash=None,
+                    tier_reached=0,
+                    provider_used="none",
+                    status="failed",
+                    cost_micros=0,
+                    confidence=0.0,
+                    carrier="Unknown",
+                    is_cached=False,
+                    degraded=True,
+                    degradation_reason="insufficient_wallet",
+                )
         else:
             await self.session.commit()
 
@@ -767,7 +935,7 @@ class PhoneWaterfallService:
             try:
                 cache_payload = json.dumps(
                     {
-                        "phone": norm_phone,
+                        "phone": self.encryption.encrypt(norm_phone),
                         "phone_masked": p_masked,
                         "phone_hash": p_hash,
                         "tier_reached": res.tier,

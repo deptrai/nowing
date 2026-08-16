@@ -10,7 +10,6 @@ Features:
 
 from __future__ import annotations
 
-import difflib
 import hashlib
 import json
 import logging
@@ -21,15 +20,18 @@ from typing import Any
 from uuid import UUID
 
 import redis.asyncio as aioredis
+from rapidfuzz import fuzz
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import config
 from app.db import Lead
+from app.services.pii.verified_contact_encryption import VerifiedContactEncryption
 
 logger = logging.getLogger(__name__)
 
 # Constants (INV-24.3 / AC-1 / AC-3)
 CIRCUIT_BREAKER_KEY = "circuit_breaker:scraper:masothue"
+CIRCUIT_BREAKER_FAILURES_KEY = f"{CIRCUIT_BREAKER_KEY}:failures"
 CIRCUIT_BREAKER_THRESHOLD = 3
 CIRCUIT_BREAKER_COOLDOWN_SECONDS = 600  # 10 minutes (600s)
 CORPORATE_CACHE_TTL_SECONDS = 7 * 24 * 3600  # 7 days (604,800s)
@@ -50,7 +52,9 @@ def get_redis() -> aioredis.Redis | None:
                 config.REDIS_APP_URL, decode_responses=True
             )
         except Exception as exc:
-            logger.warning("[CorporateVerification] Failed to init Redis client: %s", exc)
+            logger.warning(
+                "[CorporateVerification] Failed to init Redis client: %s", exc
+            )
             return None
     return _redis_client
 
@@ -58,6 +62,7 @@ def get_redis() -> aioredis.Redis | None:
 # ─────────────────────────────────────────────────────────────
 # 1. Multi-Attribute Fuzzy Matching & Capital Parsing Helpers
 # ─────────────────────────────────────────────────────────────
+
 
 def _clean_admin_name(name: str | None) -> str:
     """Remove Vietnamese administrative prefixes and punctuation for resilient geo-matching."""
@@ -106,9 +111,9 @@ def _match_admin_unit(unit_a: str | None, unit_b: str | None) -> float:
     clean_b = _clean_admin_name(unit_b)
     if not clean_a or not clean_b:
         return 0.0
-    if clean_a == clean_b or clean_a in clean_b or clean_b in clean_a:
+    if clean_a == clean_b:
         return 1.0
-    ratio = difflib.SequenceMatcher(None, clean_a, clean_b).ratio()
+    ratio = fuzz.ratio(clean_a, clean_b) / 100.0
     return 1.0 if ratio >= 0.80 else 0.0
 
 
@@ -141,14 +146,18 @@ def compute_multi_attribute_match_score(
         return 0.0
 
     # Common corporate prefix normalization (công ty cổ phần -> ctcp, tnhh -> tnhh)
-    lead_norm = re.sub(r"\b(cong ty co phan|ctcp|cong ty tnhh|tnhh|tap doan)\b", "", clean_lead).strip()
-    reg_norm = re.sub(r"\b(cong ty co phan|ctcp|cong ty tnhh|tnhh|tap doan)\b", "", clean_reg).strip()
+    lead_norm = re.sub(
+        r"\b(cong ty co phan|ctcp|cong ty tnhh|tnhh|tap doan)\b", "", clean_lead
+    ).strip()
+    reg_norm = re.sub(
+        r"\b(cong ty co phan|ctcp|cong ty tnhh|tnhh|tap doan)\b", "", clean_reg
+    ).strip()
     if lead_norm and reg_norm:
-        raw_ratio = difflib.SequenceMatcher(None, clean_lead, clean_reg).ratio()
-        core_ratio = difflib.SequenceMatcher(None, lead_norm, reg_norm).ratio()
+        raw_ratio = fuzz.ratio(clean_lead, clean_reg) / 100.0
+        core_ratio = fuzz.ratio(lead_norm, reg_norm) / 100.0
         name_ratio = max(raw_ratio, core_ratio)
     else:
-        name_ratio = difflib.SequenceMatcher(None, clean_lead, clean_reg).ratio()
+        name_ratio = fuzz.ratio(clean_lead, clean_reg) / 100.0
 
     city_score = _match_admin_unit(lead_city, registry_city)
     district_score = _match_admin_unit(lead_district, registry_district)
@@ -167,11 +176,20 @@ def parse_charter_capital_vnd(val: Any) -> int | None:
         return None
 
     s = val.strip()
-    if not s or s.lower() in ("chưa đăng ký", "chua dang ky", "n/a", "none", "null", "chưa rõ", "chua ro"):
+    if not s or s.lower() in (
+        "chưa đăng ký",
+        "chua dang ky",
+        "n/a",
+        "none",
+        "null",
+        "chưa rõ",
+        "chua ro",
+    ):
         return None
 
-    # Match Vietnamese text units (e.g., "13 nghìn tỷ", "20 tỷ", "500 triệu", "1.5 tỷ đồng")
-    unit_pattern = r"^([\d\.,\s]+?)\s*(nghìn\s*tỷ|nghin\s*ty|tỷ|ty|triệu|trieu|nghìn|nghin|k|m|b)(?:\s*đồng|\s*vnd|\s*vnđ)?$"
+    # Match Vietnamese text units (e.g., "13 nghìn tỷ", "20 tỷ", "500 triệu", "1.5 tỷ đồng",
+    # "500 ngàn tỷ", "2 tỉ"). Southern "ngàn" and short "tỉ" are also accepted.
+    unit_pattern = r"^([\d\.,\s]+?)\s*(ngàn\s*tỉ|ngàn\s*tỷ|ngan\s*ti|ngan\s*ty|nghìn\s*tỷ|nghin\s*ty|tỉ|ti|tỷ|ty|triệu|trieu|ngàn|ngan|nghìn|nghin|k|m|b)(?:\s*đồng|\s*vnd|\s*vnđ)?$"
     match = re.search(unit_pattern, s, re.IGNORECASE)
     if match:
         num_part = match.group(1).replace(" ", "")
@@ -182,13 +200,30 @@ def parse_charter_capital_vnd(val: Any) -> int | None:
         try:
             val_f = float(num_part)
             unit_str = match.group(2).lower()
-            if ("nghìn" in unit_str and "tỷ" in unit_str) or ("nghin" in unit_str and "ty" in unit_str):
+            if (
+                ("nghìn" in unit_str and "tỷ" in unit_str)
+                or ("nghin" in unit_str and "ty" in unit_str)
+                or ("ngàn" in unit_str and ("tỉ" in unit_str or "tỷ" in unit_str))
+                or ("ngan" in unit_str and ("ti" in unit_str or "ty" in unit_str))
+            ):
                 mult = 1_000_000_000_000
-            elif "tỷ" in unit_str or "ty" in unit_str or unit_str == "b":
+            elif (
+                "tỉ" in unit_str
+                or "ti" in unit_str
+                or "tỷ" in unit_str
+                or "ty" in unit_str
+                or unit_str == "b"
+            ):
                 mult = 1_000_000_000
             elif "triệu" in unit_str or "trieu" in unit_str or unit_str == "m":
                 mult = 1_000_000
-            elif "nghìn" in unit_str or "nghin" in unit_str or unit_str == "k":
+            elif (
+                "nghìn" in unit_str
+                or "nghin" in unit_str
+                or "ngàn" in unit_str
+                or "ngan" in unit_str
+                or unit_str == "k"
+            ):
                 mult = 1_000
             else:
                 mult = 1
@@ -211,6 +246,7 @@ def parse_charter_capital_vnd(val: Any) -> int | None:
 # ─────────────────────────────────────────────────────────────
 # 2. Data Models
 # ─────────────────────────────────────────────────────────────
+
 
 @dataclass
 class CorporateProfile:
@@ -250,6 +286,7 @@ class CorporateMatchResult:
 # 3. Default Masothue Scraper Client Wrapper
 # ─────────────────────────────────────────────────────────────
 
+
 class DefaultMasothueClient:
     """Default client wrapping proprietary masothue scraper with rotating proxy pool."""
 
@@ -270,42 +307,52 @@ class DefaultMasothueClient:
             max_items=5,
             resolve_detail=True,
             include_phone=True,
+            proxy=proxy,
         )
         out = await scrape_masothue(inp)
         results = []
         for item in out.items:
-            results.append({
-                "tax_id": item.tax_code or item.taxId,
-                "company_name": item.name,
-                "international_name": item.international_name,
-                "short_name": item.short_name,
-                "legal_representative": item.representative,
-                "charter_capital_vnd": parse_charter_capital_vnd(item.charter_capital),
-                "company_status": item.status,
-                "is_active": (item.status or "").lower().startswith("đang hoạt động"),
-                "address": item.address,
-                "city": item.city,
-                "district": item.district,
-                "phone": item.phone,
-                "rep_phone": getattr(item, "rep_phone", None) or item.phone,
-                "industry": item.main_business,
-                "date_of_incorporation": getattr(item, "founding_date", None),
-            })
+            results.append(
+                {
+                    "tax_id": item.tax_code or item.taxId,
+                    "company_name": item.name,
+                    "international_name": item.international_name,
+                    "short_name": item.short_name,
+                    "legal_representative": item.representative
+                    or item.legal_representative,
+                    "charter_capital_vnd": parse_charter_capital_vnd(
+                        item.charter_capital
+                    ),
+                    "company_status": item.status,
+                    "is_active": (item.status or "")
+                    .lower()
+                    .startswith("đang hoạt động"),
+                    "address": item.address,
+                    "city": item.city,
+                    "district": item.district,
+                    "phone": item.phone,
+                    "rep_phone": item.rep_phone or item.phone,
+                    "industry": item.main_business or item.main_industry,
+                    "date_of_incorporation": item.founding_date or item.active_date,
+                }
+            )
         return results
 
     async def get_company_by_tax_id(
         self, tax_id: str, proxy: str | None = None
     ) -> dict[str, Any] | None:
         res = await self.search_company(query=tax_id, proxy=proxy)
+        clean_target = tax_id.replace("-", "").strip()
         for r in res:
-            if (r.get("tax_id") or "").replace("-", "").strip() == tax_id.replace("-", "").strip():
+            if (r.get("tax_id") or "").replace("-", "").strip() == clean_target:
                 return r
-        return res[0] if res else None
+        return None
 
 
 # ─────────────────────────────────────────────────────────────
 # 4. Corporate Verification Service
 # ─────────────────────────────────────────────────────────────
+
 
 class CorporateVerificationService:
     """B2B Corporate Tax Code (MST) & Official Registry Verification Engine."""
@@ -320,11 +367,26 @@ class CorporateVerificationService:
         self.masothue_client = masothue_client or DefaultMasothueClient()
         self._redis = redis_client
         self.consecutive_failures = 0
+        self.encryption = VerifiedContactEncryption()
 
     def _get_redis(self) -> aioredis.Redis | None:
         if self._redis is not None:
             return self._redis
         return get_redis()
+
+    def _decrypt_cache_value(self, cached: str | None) -> str | None:
+        """Decrypt cached JSON if it was encrypted at rest.
+
+        ponytail: backcompat with old plaintext JSON in cache.
+        """
+        if not cached:
+            return None
+        try:
+            if self.encryption.is_encrypted(cached):
+                return self.encryption.decrypt(cached)
+        except Exception as exc:
+            logger.debug("[CorporateVerification] Cache decrypt failed: %s", exc)
+        return cached
 
     def _dict_to_profile(self, d: dict[str, Any]) -> CorporateProfile:
         return CorporateProfile(
@@ -346,46 +408,98 @@ class CorporateVerificationService:
         )
 
     def _parse_location(self, location: str | None) -> tuple[str | None, str | None]:
-        """Extract city and district from location string (e.g. 'Cầu Giấy, Hà Nội')."""
+        """Extract city and district from location string (e.g. 'Cầu Giấy, Hà Nội').
+
+        ponytail: uses the same Vietnamese province regex as phone_extractor.
+        If a recognized province is on one side of the comma, that side is the city.
+        """
+        from app.proprietary.platforms.xactions.phone_extractor import (
+            _PROVINCES_COMBINED_REGEX,
+        )
+
         if not location:
             return None, None
         parts = [p.strip() for p in location.split(",") if p.strip()]
-        if len(parts) >= 2:
-            return parts[-1], parts[0]  # city, district
+        if not parts:
+            return None, None
         if len(parts) == 1:
             return parts[0], None
-        return None, None
+
+        first, second = parts[0], parts[-1]
+        first_is_province = bool(_PROVINCES_COMBINED_REGEX.search(first))
+        second_is_province = bool(_PROVINCES_COMBINED_REGEX.search(second))
+
+        if first_is_province and not second_is_province:
+            return first, second
+        if second_is_province and not first_is_province:
+            return second, first
+
+        # Fallback: original "district, city" convention.
+        return second, first
 
     async def _is_circuit_breaker_open(self) -> bool:
         redis = self._get_redis()
         if redis is None:
             return self.consecutive_failures >= CIRCUIT_BREAKER_THRESHOLD
         try:
-            val = await redis.get(CIRCUIT_BREAKER_KEY)
-            return val == "open" or self.consecutive_failures >= CIRCUIT_BREAKER_THRESHOLD
+            val, failure_count = await redis.mget(
+                CIRCUIT_BREAKER_KEY, CIRCUIT_BREAKER_FAILURES_KEY
+            )
+            # Redis mocks may return non-integer types; coerce safely.
+            try:
+                failures = int(failure_count or 0)
+            except (TypeError, ValueError):
+                failures = self.consecutive_failures
+            return val == "open" or failures >= CIRCUIT_BREAKER_THRESHOLD
         except Exception as exc:
             logger.debug("[CorporateVerification] Breaker check failed: %s", exc)
-            return False
+            # ponytail: fail-closed — when Redis is unavailable we cannot confirm the
+            # breaker is closed, so treat it as open to protect upstream.
+            return True
 
     async def _record_failure_and_trip_if_needed(self) -> None:
         self.consecutive_failures += 1
-        if self.consecutive_failures >= CIRCUIT_BREAKER_THRESHOLD:
-            redis = self._get_redis()
-            if redis is not None:
-                try:
-                    await redis.set(
-                        CIRCUIT_BREAKER_KEY, "open", ex=CIRCUIT_BREAKER_COOLDOWN_SECONDS
-                    )
-                    logger.warning(
-                        "[CorporateVerification] Circuit breaker TRIPPED for %ss after %s failures",
-                        CIRCUIT_BREAKER_COOLDOWN_SECONDS,
-                        self.consecutive_failures,
-                    )
-                except Exception as exc:
-                    logger.debug("[CorporateVerification] Failed setting breaker key: %s", exc)
+        redis = self._get_redis()
+        failure_count = self.consecutive_failures
+        if redis is not None:
+            try:
+                count = await redis.incr(CIRCUIT_BREAKER_FAILURES_KEY)
+                # Redis mocks may return non-integer values; fall back to in-memory counter.
+                if isinstance(count, int):
+                    failure_count = count
+                await redis.expire(
+                    CIRCUIT_BREAKER_FAILURES_KEY, CIRCUIT_BREAKER_COOLDOWN_SECONDS
+                )
+            except Exception as exc:
+                logger.debug(
+                    "[CorporateVerification] Failed incrementing breaker counter: %s",
+                    exc,
+                )
+        if failure_count >= CIRCUIT_BREAKER_THRESHOLD and redis is not None:
+            try:
+                await redis.set(
+                    CIRCUIT_BREAKER_KEY, "open", ex=CIRCUIT_BREAKER_COOLDOWN_SECONDS
+                )
+                logger.warning(
+                    "[CorporateVerification] Circuit breaker TRIPPED for %ss after %s failures",
+                    CIRCUIT_BREAKER_COOLDOWN_SECONDS,
+                    failure_count,
+                )
+            except Exception as exc:
+                logger.debug(
+                    "[CorporateVerification] Failed setting breaker key: %s", exc
+                )
 
     async def _record_success(self) -> None:
         self.consecutive_failures = 0
+        redis = self._get_redis()
+        if redis is not None:
+            try:
+                await redis.delete(CIRCUIT_BREAKER_FAILURES_KEY)
+            except Exception as exc:
+                logger.debug(
+                    "[CorporateVerification] Failed resetting breaker counter: %s", exc
+                )
 
     async def get_corporate_profile_by_tax_id(
         self, tax_id: str, force_refresh: bool = False
@@ -403,8 +517,13 @@ class CorporateVerificationService:
             try:
                 cached = await redis.get(cache_key)
                 if cached:
-                    logger.info("[CorporateVerification] Cache Hit for MST %s", clean_tax)
-                    return self._dict_to_profile(json.loads(cached))
+                    logger.info(
+                        "[CorporateVerification] Cache Hit for MST %s", clean_tax
+                    )
+                    decrypted = self._decrypt_cache_value(cached)
+                    if decrypted is None:
+                        decrypted = cached
+                    return self._dict_to_profile(json.loads(decrypted))
             except Exception as exc:
                 logger.debug("[CorporateVerification] Redis cache read failed: %s", exc)
 
@@ -425,10 +544,14 @@ class CorporateVerificationService:
         if redis is not None:
             try:
                 await redis.set(
-                    cache_key, json.dumps(raw_data), ex=CORPORATE_CACHE_TTL_SECONDS
+                    cache_key,
+                    self.encryption.encrypt(json.dumps(raw_data)),
+                    ex=CORPORATE_CACHE_TTL_SECONDS,
                 )
             except Exception as exc:
-                logger.debug("[CorporateVerification] Redis cache write failed: %s", exc)
+                logger.debug(
+                    "[CorporateVerification] Redis cache write failed: %s", exc
+                )
 
         return profile
 
@@ -451,9 +574,11 @@ class CorporateVerificationService:
             clean_tax = tax_id.strip().replace("-", "")
             if breaker_open and redis is not None:
                 try:
-                    cached = await redis.get(f"{REDIS_CORP_CACHE_PREFIX}tax:{clean_tax}")
+                    cached = await redis.get(
+                        f"{REDIS_CORP_CACHE_PREFIX}tax:{clean_tax}"
+                    )
                     if cached:
-                        data = json.loads(cached)
+                        data = json.loads(self._decrypt_cache_value(cached) or cached)
                         prof = self._dict_to_profile(data)
                         return CorporateMatchResult(
                             tax_id=prof.tax_id,
@@ -479,13 +604,21 @@ class CorporateVerificationService:
                 )
                 if profile:
                     score = compute_multi_attribute_match_score(
-                        company_name, city, district, profile.company_name, profile.city, profile.district
+                        company_name,
+                        city,
+                        district,
+                        profile.company_name,
+                        profile.city,
+                        profile.district,
                     )
-                    is_ver = score >= AUTO_LINK_CONFIDENCE_THRESHOLD or profile.tax_id == clean_tax
+                    is_ver = (
+                        score >= AUTO_LINK_CONFIDENCE_THRESHOLD
+                        or profile.tax_id == clean_tax
+                    )
                     return CorporateMatchResult(
                         tax_id=profile.tax_id,
                         is_verified=is_ver,
-                        confidence=max(score, 0.98 if is_ver else score),
+                        confidence=(1.0 if profile.tax_id == clean_tax else score),
                         requires_manual_confirmation=not is_ver,
                         legal_representative=profile.legal_representative,
                         charter_capital_vnd=profile.charter_capital_vnd,
@@ -494,10 +627,16 @@ class CorporateVerificationService:
                         is_cached=False,
                     )
             except Exception as exc:
-                logger.warning("[CorporateVerification] Error verifying by tax_id %s: %s", tax_id, exc)
+                logger.warning(
+                    "[CorporateVerification] Error verifying by tax_id %s: %s",
+                    tax_id,
+                    exc,
+                )
 
         # Lookup by Company Name
-        name_hash = hashlib.sha256(company_name.strip().upper().encode("utf-8")).hexdigest()
+        name_hash = hashlib.sha256(
+            company_name.strip().upper().encode("utf-8")
+        ).hexdigest()
         name_cache_key = f"{REDIS_CORP_CACHE_PREFIX}name:{name_hash}"
 
         if breaker_open:
@@ -505,10 +644,15 @@ class CorporateVerificationService:
                 try:
                     cached = await redis.get(name_cache_key)
                     if cached:
-                        data = json.loads(cached)
+                        data = json.loads(self._decrypt_cache_value(cached) or cached)
                         prof = self._dict_to_profile(data)
                         score = compute_multi_attribute_match_score(
-                            company_name, city, district, prof.company_name, prof.city, prof.district
+                            company_name,
+                            city,
+                            district,
+                            prof.company_name,
+                            prof.city,
+                            prof.district,
                         )
                         is_ver = score >= AUTO_LINK_CONFIDENCE_THRESHOLD
                         return CorporateMatchResult(
@@ -535,10 +679,15 @@ class CorporateVerificationService:
             try:
                 cached = await redis.get(name_cache_key)
                 if cached:
-                    data = json.loads(cached)
+                    data = json.loads(self._decrypt_cache_value(cached) or cached)
                     prof = self._dict_to_profile(data)
                     score = compute_multi_attribute_match_score(
-                        company_name, city, district, prof.company_name, prof.city, prof.district
+                        company_name,
+                        city,
+                        district,
+                        prof.company_name,
+                        prof.city,
+                        prof.district,
                     )
                     is_ver = score >= AUTO_LINK_CONFIDENCE_THRESHOLD
                     return CorporateMatchResult(
@@ -553,14 +702,15 @@ class CorporateVerificationService:
                         is_cached=True,
                     )
             except Exception as exc:
-                logger.debug("[CorporateVerification] Redis cache lookup failed: %s", exc)
+                logger.debug(
+                    "[CorporateVerification] Redis cache lookup failed: %s", exc
+                )
 
         # Query Masothue search
         try:
             candidates = await self.masothue_client.search_company(
                 query=company_name, city=city, district=district
             )
-            await self._record_success()
         except Exception as exc:
             await self._record_failure_and_trip_if_needed()
             logger.warning("[CorporateVerification] Upstream query failed: %s", exc)
@@ -576,6 +726,8 @@ class CorporateVerificationService:
                 confidence=0.0,
                 requires_manual_confirmation=False,
             )
+
+        await self._record_success()
 
         # Evaluate Multi-Attribute Scores across all candidates
         best_cand: dict[str, Any] | None = None
@@ -605,7 +757,9 @@ class CorporateVerificationService:
         if redis is not None:
             try:
                 await redis.set(
-                    name_cache_key, json.dumps(best_cand), ex=CORPORATE_CACHE_TTL_SECONDS
+                    name_cache_key,
+                    json.dumps(best_cand),
+                    ex=CORPORATE_CACHE_TTL_SECONDS,
                 )
                 if prof.tax_id:
                     await redis.set(
@@ -614,7 +768,9 @@ class CorporateVerificationService:
                         ex=CORPORATE_CACHE_TTL_SECONDS,
                     )
             except Exception as exc:
-                logger.debug("[CorporateVerification] Redis cache write failed: %s", exc)
+                logger.debug(
+                    "[CorporateVerification] Redis cache write failed: %s", exc
+                )
 
         is_verified = best_score >= AUTO_LINK_CONFIDENCE_THRESHOLD
         return CorporateMatchResult(

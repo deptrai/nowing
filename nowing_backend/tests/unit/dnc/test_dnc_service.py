@@ -83,3 +83,25 @@ class TestDncComplianceService:
 
             assert filtered[1]["blocked_by_dnc"] is True
             assert "DNC" in (filtered[1].get("dnc_reason") or "")
+
+    @pytest.mark.asyncio
+    async def test_is_blocked_by_global_phone_number(self) -> None:
+        """Should detect phone number on the global DNC registry."""
+        from app.lead_intelligence.dnc.normalizer import hash_phone_hmac
+        from app.lead_intelligence.dnc.service import DncComplianceService
+
+        service = DncComplianceService(secret_key="test-secret-123")
+        expected_hash = hash_phone_hmac("+84908123456", "test-secret-123")
+
+        with patch.object(
+            service,
+            "_get_global_dnc_phone_hashes",
+            AsyncMock(return_value={expected_hash}),
+        ):
+            result = await service.is_blocked(
+                workspace_id=1,
+                phone="0908123456",
+            )
+            assert result.is_blocked is True
+            assert result.record_type == "phone"
+            assert "Global" in result.reason

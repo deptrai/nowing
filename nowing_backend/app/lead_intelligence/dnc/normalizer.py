@@ -30,8 +30,16 @@ def normalize_phone_e164(phone: str | None) -> str | None:
     if not digits:
         return None
 
+    # Convert legacy 11-digit mobile numbers (2018 telecom reform) before E.164
+    if len(digits) == 11 and digits.startswith("0"):
+        from app.proprietary.platforms.xactions.phone_extractor import (
+            convert_legacy_11_digit,
+        )
+
+        digits = convert_legacy_11_digit(digits)
+
     # Vietnamese standard 10-digit mobile conversion (09x, 08x, 07x, 05x, 03x, 02x)
-    if digits.startswith("0") and len(digits) in (10, 11):
+    if digits.startswith("0") and len(digits) == 10:
         e164 = f"+84{digits[1:]}"
     elif (digits.startswith("84") and len(digits) in (11, 12)) or has_plus:
         e164 = f"+{digits}"
@@ -50,11 +58,11 @@ def normalize_phone_e164(phone: str | None) -> str | None:
 
 def hash_phone_hmac(phone_e164: str, secret_key: str | None = None) -> str:
     """Compute Keyed HMAC-SHA256 hex digest for an E.164 phone number."""
-    key = (
-        secret_key or getattr(config, "SECRET_KEY", "nowing-dnc-secret-fallback")
-    ).encode("utf-8")
+    key = secret_key or getattr(config, "SECRET_KEY", "")
+    if not key:
+        raise ValueError("DNC SECRET_KEY is not configured")
     msg = phone_e164.strip().encode("utf-8")
-    return hmac.new(key, msg, sha256).hexdigest()
+    return hmac.new(key.encode("utf-8"), msg, sha256).hexdigest()
 
 
 def normalize_domain(domain_or_url: str | None) -> str | None:

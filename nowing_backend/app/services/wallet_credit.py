@@ -78,16 +78,34 @@ async def apply_debit(
     Flushes any audit row the caller staged before this, then fires a
     best-effort auto-reload check. No-op for a non-positive cost; returns the
     new balance in micros, or ``None`` when nothing was charged.
+
+    ponytail: SELECT FOR UPDATE + balance check inside the same transaction
+    makes the read-modify-write atomic and prevents concurrent overdraws.
     """
     if cost_micros <= 0:
         return None
 
     from app.db import User
 
-    result = await session.execute(select(User).where(User.id == user_id))
+    result = await session.execute(
+        select(User).where(User.id == user_id).with_for_update()
+    )
     user = result.unique().scalar_one_or_none()
     if not user:
         raise ValueError(f"User with ID {user_id} not found")
+
+    available = user.credit_micros_balance - user.credit_micros_reserved
+    if cost_micros > available:
+        raise InsufficientCreditsError(
+            message=(
+                "This run would exceed your available credit. "
+                f"Available: ${available / 1_000_000:.2f}, "
+                f"needed: ${cost_micros / 1_000_000:.2f}. "
+                "Add more credits to continue."
+            ),
+            balance_micros=available,
+            required_micros=cost_micros,
+        )
 
     user.credit_micros_balance -= cost_micros
     await session.commit()

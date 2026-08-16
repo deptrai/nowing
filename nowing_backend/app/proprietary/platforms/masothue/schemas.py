@@ -27,6 +27,7 @@ class MasothueSearchInput(BaseModel):
     max_items: int = Field(default=10, ge=0)
     resolve_detail: bool = True
     include_phone: bool = False
+    proxy: str | None = None
 
     @property
     def estimated_units(self) -> int:
@@ -67,6 +68,15 @@ class MasothueCompany(BaseModel):
     short_name: str | None = None
     phone: str | None = None
     detail_url: str | None = None
+
+    # Fields the downstream CorporateVerificationService expects
+    representative: str | None = None
+    charter_capital: str | None = None
+    main_business: str | None = None
+    founding_date: str | None = None
+    city: str | None = None
+    district: str | None = None
+    rep_phone: str | None = None
 
     def to_output(self) -> dict[str, Any]:
         """Serialize to a flat dict for downstream consumers."""

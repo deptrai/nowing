@@ -69,6 +69,24 @@ const STATUS_OPTIONS: Array<{ id: string; label: string; dotColor: string }> = [
 	{ id: "qualified", label: "Tiềm năng", dotColor: "bg-purple-500" },
 ];
 
+function getCompanyStatusColorClass(status: string): string {
+	const s = status.toLowerCase();
+	if (s.includes("đang hoạt động") || s.includes("hoạt động") || s.includes("làm việc")) {
+		return "text-emerald-700 dark:text-emerald-300";
+	}
+	if (
+		s.includes("giải thể") ||
+		s.includes("ngừng hoạt động") ||
+		s.includes("thu hồi") ||
+		s.includes("rút") ||
+		s.includes("phá sản") ||
+		s.includes("chấm dứt")
+	) {
+		return "text-rose-700 dark:text-rose-300";
+	}
+	return "text-amber-700 dark:text-amber-300";
+}
+
 export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 	leads = [],
 	isLoading = false,
@@ -585,10 +603,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 																		</span>
 																	</div>
 																)}
-																{lead.company_status && (
-																	<div className="text-[10px] text-emerald-700 dark:text-emerald-300 font-medium">
-																		● {lead.company_status}
-																	</div>
+																{lead.company_status && (\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t<div\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tclassName={`text-[10px] font-medium ${getCompanyStatusColorClass(lead.company_status)}`}>\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t● {lead.company_status}\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t</div>
 																)}
 															</TooltipContent>
 														</Tooltip>

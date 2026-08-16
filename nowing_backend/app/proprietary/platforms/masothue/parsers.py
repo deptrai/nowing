@@ -28,6 +28,8 @@ _DETAIL_LABEL_MAP = {
     "loại hình doanh nghiệm": "company_type",
     "loại hình doanh nghiệp": "company_type",
     "ngành nghề chính": "main_industry",
+    "vốn điều lệ": "charter_capital",
+    "vốn điều lệ (vnđ)": "charter_capital",
 }
 
 _TAX_CODE_RE = re.compile(r"Mã\s+số\s+thuế[:\s]*([\d\-]{10,})", re.IGNORECASE)
@@ -197,6 +199,35 @@ def parse_pagination(html: str) -> tuple[int, int | None]:
     return current, next_page
 
 
+def _extract_city_district_from_address(address: str | None) -> tuple[str | None, str | None]:
+    """Heuristic city/district extraction from a full Vietnamese address.
+
+    ponytail: simple regex-driven parser; falls back to the address segment
+    containing 'Quận' or 'Huyện' when province is not recognized.
+    """
+    if not address:
+        return None, None
+
+    from app.proprietary.platforms.xactions.phone_extractor import (
+        _PROVINCES_COMBINED_REGEX,
+    )
+
+    parts = [p.strip() for p in address.split(",") if p.strip()]
+    for i, part in enumerate(parts):
+        if _PROVINCES_COMBINED_REGEX.search(part):
+            city = part
+            district = parts[i - 1] if i > 0 else None
+            return city, district
+
+    # Fallback: look for a district-like segment.
+    for i, part in enumerate(parts):
+        if re.search(r"\b(Quận|Huyện|Thị xã|TX)\b", part, re.IGNORECASE):
+            city = parts[i + 1] if i + 1 < len(parts) else None
+            return city, part
+
+    return None, None
+
+
 def apply_detail(
     company: MasothueCompany,
     detail_html: str,
@@ -213,6 +244,20 @@ def apply_detail(
     for key, value in data.items():
         if value:
             setattr(company, key, value)
+
+    # Map known fields to the aliases CorporateVerificationService expects.
+    if company.legal_representative and not company.representative:
+        company.representative = company.legal_representative
+    if company.phone and not company.rep_phone:
+        company.rep_phone = company.phone
+    if company.main_industry and not company.main_business:
+        company.main_business = company.main_industry
+    if company.active_date and not company.founding_date:
+        company.founding_date = company.active_date
+    if company.address:
+        company.city, company.district = _extract_city_district_from_address(
+            company.address
+        )
 
     # Detail URL from the path if the company has none.
     if company.detail_url is None and company.tax_code and company.name:
