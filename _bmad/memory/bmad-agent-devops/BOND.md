@@ -17,19 +17,24 @@ Anh em cùng máy: chainlens, chainlens-research, vibe-trading, mmomarket, medir
 | Service | App ID | appName | Domain | Port | Nguồn |
 |---|---|---|---|---|---|
 | frontend | `Z3MYiB0npy5zJf0Q4MHT` | nowing-frontend | nowing.net | 3000 | github deptrai/nowing @production, path /nowing_web |
-| backend-api | `yqNCh43qjq9rqWAysLUQ` | nowing-backend-api | api.nowing.net | 8000 | github deptrai/nowing @production, path /nowing_backend |
+| backend-api | `yqNCh43qjq9rqWAysLUQ` | nowing-backend-api | api.nowing.net | 8000 | github deptrai/nowing @production, path /nowing_backend (`SERVICE_ROLE=api`) |
+| backend-worker | `EFAToldKb2zL7A7roXGZA` | nowing-backend-worker | — | — | github deptrai/nowing @production, path /nowing_backend (`SERVICE_ROLE=worker`) |
+| backend-beat | `F5SXyqJAPgme1w6vtAgwr` | nowing-backend-beat | — | — | github deptrai/nowing @production, path /nowing_backend (`SERVICE_ROLE=beat`) |
 | zero-cache | `mrLWR0r2leCDee0d7Lmy` | nowing-zero-cache | zero.nowing.net | 4848 | docker rocicorp/zero:1.6.0 |
 | postgres | `95TnauTU0vCLJsBWLsoF` | nowing-postgres | — | 5432 | pgvector/pgvector:pg17 |
 | redis | `LtR77Ku3zl8DQpnUWe5Z` | nowing-redis | — | 6379 | — |
 | searxng (compose) | `z6BmLrpFEEqP8tsuHTHQ` | searxng | — | — | compose, status done |
 
-Cả 3 domain đều `letsencrypt` + https, path `/`, stripPath=false.
+Cả 3 domain (`nowing.net`, `api.nowing.net`, `zero.nowing.net`) đều `letsencrypt` + https, path `/`, stripPath=false.
 
 **Postgres chi tiết:** db `nowing`, user `nowing`, volume `nowing-postgres-data` mount `/var/lib/postgresql/data`.
 Chạy với `wal_level=logical`, `max_replication_slots=10`, `max_wal_senders=10`, `max_connections=200` — WAL logical là **bắt buộc** cho zero-cache, không được đổi.
 backend-api dùng `postgresql+asyncpg://`, frontend + zero-cache dùng `postgresql://`. Không nhầm driver.
 
-**backend-api là all-in-one:** `SERVICE_ROLE=all` — API + Celery Worker + Beat trong cùng một container. Restart nó là restart cả ba.
+**Cụm backend đã được tách rời (Decoupled):**
+- `backend-api` (`yqNCh43qjq9rqWAysLUQ`): Chỉ chạy FastAPI Uvicorn, port 8000. Chạy Alembic migrations trước khi Uvicorn boot.
+- `backend-worker` (`EFAToldKb2zL7A7roXGZA`): Chỉ chạy Celery Worker tiêu thụ hàng đợi cào web, OCR, AI indexing.
+- `backend-beat` (`F5SXyqJAPgme1w6vtAgwr`): Chỉ chạy Celery Beat scheduler cho các cron job định kỳ.
 
 ## Cách họ muốn tôi vận hành
 {Chưa hỏi — ranh giới tự quyết là câu quan trọng nhất còn thiếu. Tới khi có câu trả lời, tôi mặc định: đọc thoải mái, không ghi gì lên production mà chưa hỏi.}
