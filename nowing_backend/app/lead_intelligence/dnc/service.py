@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import logging
 from dataclasses import dataclass
 from typing import Any
@@ -101,6 +102,8 @@ class DncComplianceService:
         res = await session.execute(stmt)
         scalars_res = res.scalars()
         all_items = scalars_res.all() if hasattr(scalars_res, "all") else []
+        if inspect.isawaitable(all_items):
+            all_items = await all_items
         if isinstance(all_items, (list, tuple, set)):
             members = {str(m) for m in all_items if m and isinstance(m, str)}
 
@@ -149,6 +152,8 @@ class DncComplianceService:
         res = await session.execute(stmt)
         scalars_res = res.scalars()
         all_items = scalars_res.all() if hasattr(scalars_res, "all") else []
+        if inspect.isawaitable(all_items):
+            all_items = await all_items
         if isinstance(all_items, (list, tuple, set)):
             members = {str(m) for m in all_items if m and isinstance(m, str)}
 
