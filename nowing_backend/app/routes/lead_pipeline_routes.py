@@ -33,7 +33,8 @@ from app.schemas.lead_pipeline import (
 )
 from app.services.lead_assignment_service import LeadAssignmentService
 from app.services.workspace_credit_service import WorkspaceCreditService
-from app.users import allow_any_principal
+from app.users import get_auth_context
+from app.utils.rbac import check_workspace_access, check_permission
 
 router = APIRouter(
     prefix="/workspaces/{workspace_id}/leads",
@@ -84,7 +85,7 @@ async def _ensure_default_stages(
 )
 async def list_pipeline_stages(
     workspace_id: int,
-    auth: AuthContext = Depends(allow_any_principal),
+    auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
 ) -> list[LeadPipelineStage]:
     """Retrieve Kanban pipeline stages ordered by position."""
@@ -101,7 +102,7 @@ async def list_pipeline_stages(
 async def create_pipeline_stage(
     workspace_id: int,
     payload: LeadPipelineStageCreate,
-    auth: AuthContext = Depends(allow_any_principal),
+    auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
 ) -> LeadPipelineStage:
     """Create a custom Kanban stage for the workspace."""
@@ -129,7 +130,7 @@ async def transition_lead_stage(
     workspace_id: int,
     lead_id: UUID,
     payload: LeadStageTransitionRequest,
-    auth: AuthContext = Depends(allow_any_principal),
+    auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
 ) -> LeadStageTransitionResponse:
     """Move lead across Kanban stages with Optimistic Concurrency Control (OCC).
@@ -187,7 +188,7 @@ async def transition_lead_stage(
     log = LeadActivityLog(
         workspace_id=workspace_id,
         lead_id=lead_id,
-        actor_user_id=auth.user_id if auth else None,
+        actor_user_id=auth.user.id if auth and auth.user else None,
         activity_type="stage_changed",
         title=f"Chuyển trạng thái sang '{stage.name}'",
         details={
@@ -219,7 +220,7 @@ async def transition_lead_stage(
 async def list_lead_activities(
     workspace_id: int,
     lead_id: UUID,
-    auth: AuthContext = Depends(allow_any_principal),
+    auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
 ) -> list[LeadActivityLog]:
     """Chronological timeline of all interactions with the lead."""
@@ -242,7 +243,7 @@ async def create_lead_activity(
     workspace_id: int,
     lead_id: UUID,
     payload: LeadActivityLogCreate,
-    auth: AuthContext = Depends(allow_any_principal),
+    auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
 ) -> LeadActivityLog:
     """Record a manual internal note or interaction log."""
@@ -251,7 +252,7 @@ async def create_lead_activity(
     log = LeadActivityLog(
         workspace_id=workspace_id,
         lead_id=lead_id,
-        actor_user_id=auth.user_id if auth else None,
+        actor_user_id=auth.user.id if auth and auth.user else None,
         activity_type=payload.activity_type,
         title=payload.title,
         details=payload.details,
@@ -270,7 +271,7 @@ async def assign_or_reassign_lead(
     workspace_id: int,
     lead_id: UUID,
     payload: LeadAssignmentRequest,
-    auth: AuthContext = Depends(allow_any_principal),
+    auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
 ) -> dict[str, Any]:
     """Manually assign or reassign lead to a designated member."""
@@ -280,7 +281,7 @@ async def assign_or_reassign_lead(
         workspace_id=workspace_id,
         lead_id=lead_id,
         target_user_id=payload.target_user_id,
-        actor_user_id=auth.user_id or payload.target_user_id,
+        actor_user_id=auth.user.id if auth and auth.user else None,
         reason=payload.reason or "manual_reassignment",
     )
     await session.commit()
@@ -300,7 +301,7 @@ async def assign_or_reassign_lead(
 async def assign_leads_batch(
     workspace_id: int,
     payload: BatchLeadAssignmentRequest,
-    auth: AuthContext = Depends(allow_any_principal),
+    auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
 ) -> dict[str, Any]:
     """Batch round-robin distribution of newly imported leads."""
@@ -332,17 +333,17 @@ async def assign_leads_batch(
 )
 async def get_my_spend_status(
     workspace_id: int,
-    auth: AuthContext = Depends(allow_any_principal),
+    auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
 ) -> dict[str, Any]:
     """Retrieve calling user's spend cap status in this workspace."""
-    if not auth or not auth.user_id:
+    if not auth or not auth.user:
         raise HTTPException(status_code=401, detail="Authentication required")
 
     svc = WorkspaceCreditService(session=session)
     status_obj = await svc.get_member_spend_status(
         workspace_id=workspace_id,
-        user_id=auth.user_id,
+        user_id=auth.user.id if auth and auth.user else None,
     )
     return {
         "workspace_id": status_obj.workspace_id,
@@ -362,7 +363,7 @@ async def update_member_spend_cap(
     workspace_id: int,
     target_user_id: UUID,
     payload: MemberSpendCapUpdateRequest,
-    auth: AuthContext = Depends(allow_any_principal),
+    auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
 ) -> None:
     """Owner/Admin sets monthly spend cap for a workspace member."""
@@ -372,7 +373,7 @@ async def update_member_spend_cap(
         workspace_id=workspace_id,
         target_user_id=target_user_id,
         cap_micros=payload.monthly_spend_cap_micros,
-        actor_user_id=auth.user_id if auth else None,
+        actor_user_id=auth.user.id if auth and auth.user else None,
     )
     await session.commit()
 
@@ -385,7 +386,7 @@ async def update_member_lead_capacity(
     workspace_id: int,
     target_user_id: UUID,
     payload: MemberLeadCapacityUpdateRequest,
-    auth: AuthContext = Depends(allow_any_principal),
+    auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
 ) -> None:
     """Configure lead acceptance toggle and max capacity for a member."""
