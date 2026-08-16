@@ -28,6 +28,7 @@ import { AnimatePresence, motion } from "motion/react";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { type FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import {
 	agentToolsAtom,
 	disabledToolsAtom,
@@ -228,7 +229,7 @@ const PremiumQuotaPinnedAlert: FC = () => {
 	);
 };
 
-const getTimeBasedGreeting = (user?: { display_name?: string | null; email?: string }): string => {
+const _getTimeBasedGreeting = (user?: { display_name?: string | null; email?: string }): string => {
 	const hour = new Date().getHours();
 
 	let firstName: string | null = null;
@@ -265,21 +266,222 @@ const getTimeBasedGreeting = (user?: { display_name?: string | null; email?: str
 
 const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }) => {
 	const { data: user } = useAtomValue(currentUserAtom);
-	const greeting = useMemo(() => getTimeBasedGreeting(user), [user]);
+	const [showBetaCard, setShowBetaCard] = useState(true);
+
+	const displayName = useMemo(() => {
+		if (user?.display_name?.trim()) {
+			return user.display_name.trim().split(/\s+/)[0];
+		}
+		if (user?.email) {
+			return user.email.split("@")[0];
+		}
+		return "Luis";
+	}, [user]);
 
 	return (
-		<div className="aui-thread-welcome-root flex min-h-0 flex-1">
-			<section className="mx-auto grid w-full max-w-(--thread-max-width) content-center gap-4 pt-4 pb-[clamp(2rem,6vh,4rem)]">
-				<div className="aui-thread-welcome-message flex flex-col items-center px-4 text-center">
-					<h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground font-sans select-none">
-						{greeting}
-					</h1>
-					<p className="text-xs text-muted-foreground mt-1 select-none">
-						AI Săn Lead Tự Động &amp; Outreach Đa Kênh
-					</p>
+		<div className="aui-thread-welcome-root flex min-h-0 flex-1 flex-col justify-between p-6 sm:p-10 overflow-y-auto">
+			<div className="w-full flex items-center justify-end">
+				<div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-pink-500/10 dark:bg-pink-500/20 text-pink-600 dark:text-pink-400 text-xs font-semibold border border-pink-500/20 shadow-2xs">
+					<span>🌸</span>
+					<span className="font-mono font-bold">1,420</span> Credits
 				</div>
+			</div>
+
+			<section className="mx-auto w-full max-w-3xl my-auto py-6 space-y-7">
+				{/* Welcome Title */}
+				<div className="text-center">
+					<h1 className="text-3xl sm:text-4xl lg:text-5xl font-serif tracking-tight text-foreground font-normal select-none">
+						Welcome back, {displayName}.
+					</h1>
+				</div>
+
+				{/* Real Assistant UI Composer in Center */}
 				<div className="flex w-full items-start justify-center">
 					<Composer initialPrompt={initialPrompt} hasActiveThread={false} />
+				</div>
+
+				{/* Quick Suggestion Chips */}
+				<div className="flex flex-wrap items-center justify-center gap-2">
+					{[
+						{
+							label: "Give me ideas",
+							icon: "💡",
+							prompt: "Gợi ý 5 chiến dịch săn lead hiệu quả nhất tuần này",
+						},
+						{
+							label: "New campaign",
+							icon: "＋",
+							prompt: "Tạo chiến dịch mới săn 20 doanh nghiệp Bất động sản Hà Nội",
+						},
+						{
+							label: "Săn Lead BĐS Hà Nội",
+							icon: "🏢",
+							prompt: "Tìm kiếm 10 công ty Bất động sản tại Hà Nội và thêm vào bảng",
+						},
+						{
+							label: "Tín hiệu tuyển dụng Tech",
+							icon: "⚡",
+							prompt: "Quét các công ty công nghệ đang tuyển dụng Senior Developer trên TopCV",
+						},
+					].map((chip) => (
+						<button
+							key={chip.label}
+							type="button"
+							onClick={() => {
+								window.location.href = `/dashboard/1/new-chat?q=${encodeURIComponent(chip.prompt)}`;
+							}}
+							className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/80 bg-card hover:bg-muted/70 text-xs font-medium text-foreground transition-all hover:scale-102 cursor-pointer shadow-2xs"
+						>
+							<span>{chip.icon}</span>
+							<span>{chip.label}</span>
+						</button>
+					))}
+				</div>
+
+				{/* Beta Outreach Agent Setup Card */}
+				{showBetaCard && (
+					<div className="p-4 rounded-2xl border border-pink-500/20 bg-pink-500/5 dark:bg-pink-500/10 flex items-start sm:items-center justify-between gap-4 relative">
+						<div className="flex items-center gap-3">
+							<div className="w-10 h-10 rounded-2xl bg-pink-500/15 flex items-center justify-center text-xl shrink-0">
+								🌸
+							</div>
+							<div>
+								<div className="flex items-center gap-2">
+									<h4 className="text-xs sm:text-sm font-bold text-foreground">
+										Set up your Outreach Agent
+									</h4>
+									<span className="px-1.5 py-0.2 rounded bg-pink-500/20 text-pink-700 dark:text-pink-300 text-[10px] font-extrabold uppercase tracking-wider">
+										BETA
+									</span>
+								</div>
+								<p className="text-xs text-muted-foreground mt-0.5 max-w-xl">
+									15 minutes of setup, then it maximizes your replies — keeping quality leads
+									flowing and your senders at full speed.
+								</p>
+							</div>
+						</div>
+
+						<div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+							<button
+								type="button"
+								onClick={() => toast.success("Mở trình thiết lập Outreach Agent")}
+								className="px-3.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 text-white text-xs font-semibold transition-colors cursor-pointer shadow-xs"
+							>
+								Set it up
+							</button>
+							<button
+								type="button"
+								onClick={() => setShowBetaCard(false)}
+								className="p-1 text-muted-foreground hover:text-foreground rounded-lg transition-colors cursor-pointer"
+							>
+								<X className="w-4 h-4" />
+							</button>
+						</div>
+					</div>
+				)}
+
+				{/* Activity & Stats Row */}
+				<div className="flex flex-wrap items-center justify-between gap-3 text-xs pt-2 border-t border-border/40">
+					<div className="text-muted-foreground">
+						Past 7 days <strong className="text-foreground font-mono font-bold">15</strong> new
+						leads
+					</div>
+					<div className="flex items-center gap-3">
+						<button
+							type="button"
+							onClick={() => toast.info("Kết nối kênh Email")}
+							className="text-muted-foreground hover:text-foreground font-medium transition-colors cursor-pointer"
+						>
+							Connect email →
+						</button>
+						<button
+							type="button"
+							onClick={() => toast.info("Kết nối Zalo OA")}
+							className="text-muted-foreground hover:text-foreground font-medium transition-colors cursor-pointer"
+						>
+							Connect Zalo →
+						</button>
+						<button
+							type="button"
+							onClick={() => toast.info("Kết nối LinkedIn")}
+							className="text-muted-foreground hover:text-foreground font-medium transition-colors cursor-pointer"
+						>
+							Connect LinkedIn →
+						</button>
+					</div>
+				</div>
+
+				{/* Insight Cards (What's costing you replies) */}
+				<div className="space-y-3">
+					<div className="text-xs text-muted-foreground">
+						<strong className="text-foreground">What&apos;s costing you replies</strong> • from your
+						August 10 report
+					</div>
+
+					<div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+						<div className="p-4 rounded-2xl border border-border/80 bg-card hover:border-border transition-all flex flex-col justify-between gap-3 shadow-2xs">
+							<div className="space-y-2">
+								<div className="w-7 h-7 rounded-xl bg-muted flex items-center justify-center text-muted-foreground">
+									↗
+								</div>
+								<h4 className="text-xs font-bold text-foreground leading-snug">
+									No email or Zalo sender connected
+								</h4>
+								<p className="text-[11px] text-muted-foreground">
+									15 qualified agarwood leads built, nothing sent yet
+								</p>
+							</div>
+							<button
+								type="button"
+								onClick={() => toast.info("Xem chi tiết cài đặt kết nối")}
+								className="text-left text-xs font-semibold text-pink-600 dark:text-pink-400 hover:underline cursor-pointer"
+							>
+								View details
+							</button>
+						</div>
+
+						<div className="p-4 rounded-2xl border border-border/80 bg-card hover:border-border transition-all flex flex-col justify-between gap-3 shadow-2xs">
+							<div className="space-y-2">
+								<div className="w-7 h-7 rounded-xl bg-muted flex items-center justify-center text-muted-foreground">
+									↗
+								</div>
+								<h4 className="text-xs font-bold text-foreground leading-snug">
+									Your strongest list has never been sequenced
+								</h4>
+								<p className="text-[11px] text-muted-foreground">
+									9 qualified Vietnamese agarwood companies, ready
+								</p>
+							</div>
+							<button
+								type="button"
+								onClick={() => toast.info("Xem danh sách khách hàng sẵn sàng")}
+								className="text-left text-xs font-semibold text-pink-600 dark:text-pink-400 hover:underline cursor-pointer"
+							>
+								View details
+							</button>
+						</div>
+
+						<div className="p-4 rounded-2xl border border-border/80 bg-card hover:border-border transition-all flex flex-col justify-between gap-3 shadow-2xs">
+							<div className="space-y-2">
+								<div className="w-7 h-7 rounded-xl bg-muted flex items-center justify-center text-muted-foreground">
+									✨
+								</div>
+								<h4 className="text-xs font-bold text-foreground leading-snug">
+									Your warmest leads have no contact channel
+								</h4>
+								<p className="text-[11px] text-muted-foreground">
+									grow the reply-able business segment instead
+								</p>
+							</div>
+							<button
+								type="button"
+								onClick={() => toast.info("Xem chi tiết kênh liên hệ")}
+								className="text-left text-xs font-semibold text-pink-600 dark:text-pink-400 hover:underline cursor-pointer"
+							>
+								View details
+							</button>
+						</div>
+					</div>
 				</div>
 			</section>
 		</div>
@@ -515,7 +717,7 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 	const [actionQuery, setActionQuery] = useState("");
 	const [suggestionAnchorPoint, setSuggestionAnchorPoint] =
 		useState<ComposerSuggestionAnchorPoint | null>(null);
-	const [isComposerInputEmpty, setIsComposerInputEmpty] = useState(true);
+	const [_isComposerInputEmpty, setIsComposerInputEmpty] = useState(true);
 	const editorRef = useRef<InlineMentionEditorRef>(null);
 	const prevMentionedDocsRef = useRef<Map<string, MentionedDocumentInfo>>(new Map());
 	const documentPickerRef = useRef<DocumentMentionPickerRef>(null);
@@ -770,7 +972,7 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 		[actionQuery, aui]
 	);
 
-	const handleExampleSelect = useCallback(
+	const _handleExampleSelect = useCallback(
 		(prompt: string) => {
 			editorRef.current?.setText(prompt);
 			aui.composer().setText(prompt);
@@ -987,64 +1189,66 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 				members={members ?? []}
 			/>
 
-			{/* Origami Style: Suggested Next Actions Card */}
-			<div className="rounded-2xl border border-border/80 bg-card/95 p-3.5 shadow-xs transition-all backdrop-blur-xs">
-				<div className="flex items-center justify-between mb-2">
-					<div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-						<span className="text-amber-500">💡</span>
-						<span>Suggested Next Actions</span>
+			{/* Origami Style: Suggested Next Actions Card (shown only during active thread) */}
+			{hasActiveThread && (
+				<div className="rounded-2xl border border-border/80 bg-card/95 p-3.5 shadow-xs transition-all backdrop-blur-xs">
+					<div className="flex items-center justify-between mb-2">
+						<div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+							<span className="text-amber-500">💡</span>
+							<span>Suggested Next Actions</span>
+						</div>
+						<Sparkles className="w-3.5 h-3.5 text-muted-foreground opacity-60" />
 					</div>
-					<Sparkles className="w-3.5 h-3.5 text-muted-foreground opacity-60" />
+					<div className="space-y-1.5">
+						<button
+							type="button"
+							onClick={() =>
+								handleApplySuggestedAction(
+									"Find decision-makers at these companies and set up a sequence to them"
+								)
+							}
+							className="w-full text-left flex items-start gap-2.5 p-2 rounded-xl hover:bg-muted/70 transition-colors text-xs text-foreground group cursor-pointer border border-transparent hover:border-border/60"
+						>
+							<span className="w-5 h-5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5">
+								🚀
+							</span>
+							<span className="leading-snug font-medium">
+								Find decision-makers at these companies and set up a sequence to them
+							</span>
+						</button>
+						<button
+							type="button"
+							onClick={() =>
+								handleApplySuggestedAction(
+									"Chỉ giữ các hồ sơ có nội dung thể hiện ý định mua rõ ràng"
+								)
+							}
+							className="w-full text-left flex items-start gap-2.5 p-2 rounded-xl hover:bg-muted/70 transition-colors text-xs text-foreground group cursor-pointer border border-transparent hover:border-border/60"
+						>
+							<span className="w-5 h-5 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5 font-mono">
+								2
+							</span>
+							<span className="leading-snug text-muted-foreground group-hover:text-foreground">
+								Chỉ giữ các hồ sơ có nội dung thể hiện ý định mua rõ ràng
+							</span>
+						</button>
+						<button
+							type="button"
+							onClick={() =>
+								handleApplySuggestedAction("So sánh mức độ ý định mua giữa X, Instagram và TikTok")
+							}
+							className="w-full text-left flex items-start gap-2.5 p-2 rounded-xl hover:bg-muted/70 transition-colors text-xs text-foreground group cursor-pointer border border-transparent hover:border-border/60"
+						>
+							<span className="w-5 h-5 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5 font-mono">
+								3
+							</span>
+							<span className="leading-snug text-muted-foreground group-hover:text-foreground">
+								So sánh mức độ ý định mua giữa X, Instagram và TikTok
+							</span>
+						</button>
+					</div>
 				</div>
-				<div className="space-y-1.5">
-					<button
-						type="button"
-						onClick={() =>
-							handleApplySuggestedAction(
-								"Find decision-makers at these companies and set up a sequence to them"
-							)
-						}
-						className="w-full text-left flex items-start gap-2.5 p-2 rounded-xl hover:bg-muted/70 transition-colors text-xs text-foreground group cursor-pointer border border-transparent hover:border-border/60"
-					>
-						<span className="w-5 h-5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5">
-							🚀
-						</span>
-						<span className="font-medium group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors flex-1">
-							Find decision-makers at these companies and set up a sequence to them
-						</span>
-					</button>
-					<button
-						type="button"
-						onClick={() =>
-							handleApplySuggestedAction(
-								"Chỉ giữ các hồ sơ có nội dung thể hiện ý định mua rõ ràng"
-							)
-						}
-						className="w-full text-left flex items-start gap-2.5 p-2 rounded-xl hover:bg-muted/70 transition-colors text-xs text-foreground group cursor-pointer border border-transparent hover:border-border/60"
-					>
-						<span className="w-5 h-5 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5 font-mono">
-							2
-						</span>
-						<span className="font-medium group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors flex-1">
-							Chỉ giữ các hồ sơ có nội dung thể hiện ý định mua rõ ràng
-						</span>
-					</button>
-					<button
-						type="button"
-						onClick={() =>
-							handleApplySuggestedAction("So sánh mức độ ý định mua giữa X, Instagram và TikTok")
-						}
-						className="w-full text-left flex items-start gap-2.5 p-2 rounded-xl hover:bg-muted/70 transition-colors text-xs text-foreground group cursor-pointer border border-transparent hover:border-border/60"
-					>
-						<span className="w-5 h-5 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5 font-mono">
-							3
-						</span>
-						<span className="font-medium group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors flex-1">
-							So sánh mức độ ý định mua giữa X, Instagram và TikTok
-						</span>
-					</button>
-				</div>
-			</div>
+			)}
 			<Popover open={showDocumentPopover} onOpenChange={handleDocumentPopoverOpenChange}>
 				{suggestionAnchorPoint ? (
 					<>

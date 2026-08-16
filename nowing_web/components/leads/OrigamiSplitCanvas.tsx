@@ -21,7 +21,6 @@ import { DynamicRightPanelCanvas } from "./DynamicRightPanelCanvas";
 import { FloatingBulkActionBar } from "./FloatingBulkActionBar";
 import { LeadDetailFlyoutDrawer } from "./LeadDetailFlyoutDrawer";
 import { extractLeadsFromChatMessages } from "./lead-parser";
-import { OrigamiHomeDashboard } from "./OrigamiHomeDashboard";
 import { ReverseIcpModal } from "./ReverseIcpModal";
 
 const MIN_LEFT_WIDTH = 360;
@@ -42,7 +41,7 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 	chatSlot,
 	hasActiveThread = false,
 	messages = [],
-	onSendPrompt,
+	onSendPrompt: _onSendPrompt,
 	className,
 }) => {
 	const [leftWidth, setLeftWidth] = useAtom(canvasLeftWidthAtom);
@@ -206,14 +205,7 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 					className
 				)}
 			>
-				<OrigamiHomeDashboard
-					userName="Luis"
-					onSendPrompt={(promptText) => {
-						if (onSendPrompt) {
-							onSendPrompt(promptText);
-						}
-					}}
-				/>
+				{chatSlot}
 			</main>
 		);
 	}
