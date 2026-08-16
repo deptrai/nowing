@@ -215,7 +215,7 @@ development_status:
   21-15: done  # 2026-08-16: Unified Multi-Source AI Lead Generation Orchestrator & Universal Scraper Adapters; 7 review patches applied, 169 unit tests passing, ruff clean
   21-16: done  # 2026-08-16: Origami Split-View Canvas & Workspace Modernization (420px Chat + Resizable Data Matrix, Sọc Caro, Mint Green, ATDD green, 8 review patches verified, tsc/biome clean)
   21-17: done  # 2026-08-16: Complete Origami Landing Page (10 sections) + Mint Green OrigamiLogo + Verticals grid; tsc/biome clean
-  21-18: review  # 2026-08-16: Partners Affiliate Portal & $0 Pricing Page Deployment (Alembic 215, PartnerService, 15% commission hook, VietQR payouts, PricingLeadCalculator, PartnerEarningsCalculator, /partners & /partners/dashboard, 13/13 backend pytest green, ruff/tsc/biome 100% clean)
+  21-18: done  # 2026-08-16: Partners Affiliate Portal & $0 Pricing Page Deployment (Alembic 215, PartnerService, 15% commission hook, VietQR payouts, PricingLeadCalculator, PartnerEarningsCalculator, /partners & /partners/dashboard, 13/13 backend pytest green, ruff/tsc/biome 100% clean)
   epic-21-retrospective: optional
 
   # === Epic 22: Telegram Scraper & Channel Ingestion Engine ===

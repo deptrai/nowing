@@ -2633,7 +2633,7 @@ _FR-66 · AD-31 · AD-33 · AD-39 · AD-42_
 
 ---
 
-### Story 21.5: CRM Integration & Lark Base / Google Sheets 1-Click Sync `[REVIEW - P1]`
+### Story 21.5: CRM Integration & Lark Base / Google Sheets 1-Click Sync `[DONE]`
 
 As a sales operations manager,
 I want to sync lead data bi-directionally with HubSpot, Salesforce, Lark Base, and Google Sheets,
@@ -2663,7 +2663,7 @@ _FR-68 · AD-31 · AD-41 · AD-SOC-7_
 
 ---
 
-### Story 21.7: Outcome-Based Pricing & Transparent Credit Ledger `[READY-FOR-DEV - P1]`
+### Story 21.7: Outcome-Based Pricing & Transparent Credit Ledger `[DONE]`
 
 As a sales team founder,
 I want a transparent economic model with $0 cost for AI Chat & Sequencer and pay-as-you-go credits for verified leads and booked meetings,
@@ -2777,7 +2777,7 @@ _FR-83 · AD-31 · AD-40 · Zero-Cache-Publication_
 
 ---
 
-### Story 21.14: Smart Whitelist & Do-Not-Call (DNC) Compliance Engine `[READY-FOR-DEV - P0]`
+### Story 21.14: Smart Whitelist & Do-Not-Call (DNC) Compliance Engine `[DONE]`
 
 As a compliance manager and sales leader,
 I want to manage Do-Not-Call / Exclusion lists for contacts and domains with CSV bulk import,
@@ -2792,7 +2792,7 @@ _FR-84 · AD-25 · AD-31 · Nghị định 91/2020/NĐ-CP · Nghị định 13/2
 
 ---
 
-### Story 21.15: Unified Multi-Source AI Lead Generation Orchestrator & Universal Scraper Adapters `[READY-FOR-DEV - P0]`
+### Story 21.15: Unified Multi-Source AI Lead Generation Orchestrator & Universal Scraper Adapters `[DONE]`
 
 As an active sales rep or researcher,
 I want to describe my target prospect in natural language in the chat,
@@ -2814,7 +2814,7 @@ _FR-85 · AD-31 · AD-37 · AD-44_
 
 ---
 
-### Story 21.16: Origami Split-View Canvas & Workspace Modernization `[READY-FOR-DEV - P0]`
+### Story 21.16: Origami Split-View Canvas & Workspace Modernization `[DONE]`
 
 As a workspace user,
 I want a 2-panel split canvas (420px Chat Co-pilot on the left + Resizable Data Matrix on the right) with Mint Green theme and Sọc Caro grid background,
@@ -2853,7 +2853,7 @@ _FR-87 · UX-Design-Landing-Page_
 
 ---
 
-### Story 21.18: Partners Affiliate Portal & $0 Pricing Page Deployment `[READY-FOR-DEV - P1]`
+### Story 21.18: Partners Affiliate Portal & $0 Pricing Page Deployment `[DONE]`
 
 As an affiliate partner or agency,
 I want dedicated `/pricing` and `/partners` pages with commission tracking and Stripe/VietQR payout ledger,
