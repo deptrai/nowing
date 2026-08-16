@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default function TermsOfService() {
 	return (
 		<div className="container max-w-4xl mx-auto py-12 px-4">
-			<h1 className="text-4xl font-bold mb-8">Terms of Service</h1>
+			<h1 className="font-serif text-3xl sm:text-4xl font-normal mb-6">Terms of Service</h1>
 
 			<div className="prose dark:prose-invert max-w-none">
 				<p className="text-lg mb-6">Last updated: {new Date().toLocaleDateString()}</p>

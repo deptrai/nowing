@@ -116,8 +116,12 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 	return (
 		<div className="space-y-6">
 			<div>
-				<h1 className="text-2xl font-bold tracking-tight">{t("limits_title")}</h1>
-				<p className="text-sm text-muted-foreground">{t("limits_description")}</p>
+				<h1 className="font-serif text-2xl sm:text-3xl font-normal tracking-tight text-foreground">
+					{t("limits_title")}
+				</h1>
+				<p className="text-xs sm:text-sm text-muted-foreground font-sans">
+					{t("limits_description")}
+				</p>
 			</div>
 
 			<Card>

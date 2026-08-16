@@ -113,7 +113,7 @@ export default async function BlogPostPage(props: { params: Promise<{ slug: stri
 				)}
 
 				<div className="space-y-4 mb-10">
-					<h1 className="text-3xl md:text-4xl font-bold tracking-tight text-balance">
+					<h1 className="font-serif text-3xl md:text-4xl lg:text-5xl font-normal tracking-tight text-balance">
 						{page.data.title}
 					</h1>
 

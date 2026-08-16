@@ -185,10 +185,10 @@ export default function ExternalMcpConnectorsPage() {
 								<Plug className="size-3.5" />
 								External MCP connectors
 							</Badge>
-							<h1 className="text-3xl font-bold tracking-tight text-balance sm:text-4xl lg:text-5xl">
+							<h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-balance">
 								Bring any external MCP server to your agents
 							</h1>
-							<p className="mt-5 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+							<p className="mt-4 max-w-xl text-sm sm:text-base leading-relaxed text-muted-foreground font-sans">
 								External MCP connectors turn your Nowing workspace into an MCP client. Add any MCP
 								server with the same config you'd use in Cursor, and its tools are auto-discovered
 								and handed to your agents, guarded by per-tool approval. Notion, Slack, Jira, and

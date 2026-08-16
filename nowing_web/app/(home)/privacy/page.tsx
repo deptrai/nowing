@@ -21,7 +21,7 @@ const LAST_UPDATED = "May 21, 2026";
 export default function PrivacyPolicy() {
 	return (
 		<div className="container max-w-4xl mx-auto py-12 px-4">
-			<h1 className="text-4xl font-bold mb-8">Privacy Policy</h1>
+			<h1 className="font-serif text-3xl sm:text-4xl font-normal mb-6">Privacy Policy</h1>
 
 			<div className="prose dark:prose-invert max-w-none">
 				<p className="text-lg mb-6">Last updated: {LAST_UPDATED}</p>

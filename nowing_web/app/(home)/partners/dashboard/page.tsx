@@ -198,7 +198,7 @@ export default function PartnerDashboardPage() {
 						<div className="size-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center mx-auto mb-4">
 							<IconAffiliate className="size-6" />
 						</div>
-						<h1 className="text-2xl md:text-3xl font-extrabold text-neutral-900 dark:text-white">
+						<h1 className="font-serif text-2xl md:text-3xl font-normal text-neutral-900 dark:text-white">
 							Join the Nowing Partner Program
 						</h1>
 						<p className="text-sm text-neutral-600 dark:text-neutral-400 mt-2">
@@ -318,7 +318,7 @@ export default function PartnerDashboardPage() {
 						<IconAffiliate className="size-3.5" />
 						<span>Affiliate Partner Dashboard</span>
 					</div>
-					<h1 className="text-3xl font-extrabold text-neutral-900 dark:text-white">
+					<h1 className="font-serif text-2xl sm:text-3xl font-normal text-neutral-900 dark:text-white">
 						Partner Portal
 					</h1>
 					<p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">

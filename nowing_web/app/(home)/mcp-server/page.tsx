@@ -221,10 +221,10 @@ export default function McpServerPage() {
 								<Server className="size-3.5" />
 								Nowing MCP server
 							</Badge>
-							<h1 className="text-3xl font-bold tracking-tight text-balance sm:text-4xl lg:text-5xl">
+							<h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-balance">
 								Give your agents Nowing as native tools
 							</h1>
-							<p className="mt-5 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+							<p className="mt-4 max-w-xl text-sm sm:text-base leading-relaxed text-muted-foreground font-sans">
 								The Nowing MCP server hands Claude, Cursor, or any MCP client the whole platform:
 								scrape Reddit, YouTube, Instagram, TikTok, Amazon, Google Maps, Google Search, and
 								the open web, and search, read, and write your knowledge base. One API key, typed

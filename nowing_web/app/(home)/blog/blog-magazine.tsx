@@ -61,7 +61,7 @@ export function BlogWithSearchMagazine({ blogs }: { blogs: BlogEntry[] }) {
 			<div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(120,119,198,0.15),transparent)] dark:bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(120,119,198,0.12),transparent)]" />
 			<Container className="relative pt-12 pb-24 md:pt-20">
 				<header className="mb-10 md:mb-14">
-					<h1 className="text-4xl font-bold tracking-tight text-neutral-900 md:text-5xl dark:text-neutral-50">
+					<h1 className="font-serif text-3xl md:text-4xl lg:text-5xl font-normal tracking-tight text-neutral-900 dark:text-neutral-50">
 						Blog
 					</h1>
 				</header>

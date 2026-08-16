@@ -192,8 +192,10 @@ export default async function FreeModelPage({ params }: PageProps) {
 			<div className="border-t bg-background">
 				<article className="container mx-auto px-4 py-10 max-w-3xl">
 					<header className="mb-6">
-						<h1 className="text-2xl font-bold mb-2">Chat with {model.name} Free, No Login</h1>
-						<p className="text-sm text-muted-foreground leading-relaxed">
+						<h1 className="font-serif text-2xl sm:text-3xl font-normal mb-2 text-foreground">
+							Chat with {model.name} Free, No Login
+						</h1>
+						<p className="text-xs sm:text-sm text-muted-foreground leading-relaxed font-sans">
 							Use <strong>{model.name}</strong> free online without login or sign-up. No account, no
 							email, no password needed. Powered by Nowing.
 						</p>
