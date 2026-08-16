@@ -112,6 +112,19 @@ def _match_admin_unit(unit_a: str | None, unit_b: str | None) -> float:
     return 1.0 if ratio >= 0.80 else 0.0
 
 
+import unicodedata
+
+def _strip_vietnamese_accents(text: str | None) -> str:
+    """Normalize and strip Vietnamese diacritics for resilient string matching."""
+    if not text:
+        return ""
+    normalized = unicodedata.normalize("NFKD", text)
+    stripped = "".join(c for c in normalized if not unicodedata.combining(c))
+    # Replace special D with d
+    stripped = stripped.replace("đ", "d").replace("Đ", "D")
+    return stripped.lower().strip()
+
+
 def compute_multi_attribute_match_score(
     lead_name: str | None,
     lead_city: str | None,
@@ -124,12 +137,21 @@ def compute_multi_attribute_match_score(
     if not lead_name or not registry_name:
         return 0.0
 
-    clean_lead = lead_name.strip().lower()
-    clean_reg = registry_name.strip().lower()
+    clean_lead = _strip_vietnamese_accents(lead_name)
+    clean_reg = _strip_vietnamese_accents(registry_name)
     if not clean_lead or not clean_reg:
         return 0.0
 
-    name_ratio = difflib.SequenceMatcher(None, clean_lead, clean_reg).ratio()
+    # Common corporate prefix normalization (công ty cổ phần -> ctcp, tnhh -> tnhh)
+    lead_norm = re.sub(r"\b(cong ty co phan|ctcp|cong ty tnhh|tnhh|tap doan)\b", "", clean_lead).strip()
+    reg_norm = re.sub(r"\b(cong ty co phan|ctcp|cong ty tnhh|tnhh|tap doan)\b", "", clean_reg).strip()
+    if lead_norm and reg_norm:
+        raw_ratio = difflib.SequenceMatcher(None, clean_lead, clean_reg).ratio()
+        core_ratio = difflib.SequenceMatcher(None, lead_norm, reg_norm).ratio()
+        name_ratio = max(raw_ratio, core_ratio)
+    else:
+        name_ratio = difflib.SequenceMatcher(None, clean_lead, clean_reg).ratio()
+
     city_score = _match_admin_unit(lead_city, registry_city)
     district_score = _match_admin_unit(lead_district, registry_district)
 

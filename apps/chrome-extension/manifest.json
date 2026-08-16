@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "Nowing Lead Clipper",
+  "version": "1.0.0",
+  "description": "1-Click Lead Capturing for Facebook Groups, Batdongsan, TopCV into your Nowing Workspace",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "notifications",
+    "alarms"
+  ],
+  "host_permissions": [
+    "https://*.facebook.com/*",
+    "https://*.batdongsan.com.vn/*",
+    "https://*.topcv.vn/*",
+    "https://*.chotot.com/*",
+    "https://*.linkedin.com/*",
+    "http://localhost:*/*",
+    "https://*.nowing.net/*"
+  ],
+  "background": {
+    "service_worker": "assets/background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Nowing Lead Clipper"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.facebook.com/*",
+        "https://*.batdongsan.com.vn/*",
+        "https://*.topcv.vn/*",
+        "https://*.chotot.com/*",
+        "https://*.linkedin.com/*"
+      ],
+      "js": ["assets/content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

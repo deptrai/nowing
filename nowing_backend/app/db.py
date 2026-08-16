@@ -4570,6 +4570,40 @@ class Lead(Base, TimestampMixin):
     )
     table = relationship("WorkspaceTable", back_populates="leads")
 
+    # CRM Pipeline & Lead Distribution columns (Story 24.3 / INV-23.4 / INV-24.4)
+    stage_id = Column(UUID(as_uuid=True), nullable=True, index=True)
+    assigned_to_user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    version = Column(Integer, nullable=False, default=1, server_default="1")
+
+    stage = relationship(
+        "LeadPipelineStage",
+        back_populates="leads",
+        primaryjoin="and_(LeadPipelineStage.id == Lead.stage_id, LeadPipelineStage.workspace_id == Lead.workspace_id)",
+        foreign_keys="[Lead.stage_id, Lead.workspace_id]",
+        overlaps="workspace",
+    )
+    assigned_to = relationship("User", foreign_keys=[assigned_to_user_id])
+    assignments = relationship(
+        "LeadAssignment",
+        back_populates="lead",
+        primaryjoin="and_(LeadAssignment.lead_id == Lead.id, LeadAssignment.workspace_id == Lead.workspace_id)",
+        cascade="all, delete-orphan",
+        overlaps="workspace",
+    )
+    activity_logs = relationship(
+        "LeadActivityLog",
+        back_populates="lead",
+        primaryjoin="and_(LeadActivityLog.lead_id == Lead.id, LeadActivityLog.workspace_id == Lead.workspace_id)",
+        order_by="LeadActivityLog.created_at.desc()",
+        cascade="all, delete-orphan",
+        overlaps="workspace",
+    )
+
 
 class WorkspaceTable(Base, TimestampMixin):
     """Saved lead table view with filter preset and column config (Story 21.13)."""
@@ -4635,6 +4669,172 @@ class ExportJob(Base, TimestampMixin):
 
     workspace = relationship("Workspace")
     table = relationship("WorkspaceTable")
+
+
+class LeadPipelineStage(Base, TimestampMixin):
+    """Pipeline stages for multi-seat CRM Kanban board (Story 24.3 / INV-23.4)."""
+
+    __tablename__ = "lead_pipeline_stages"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", "workspace_id", name="pk_lead_pipeline_stages"),
+        UniqueConstraint("workspace_id", "slug", name="uq_lead_pipeline_stages_workspace_slug"),
+        Index("ix_lead_pipeline_stages_workspace_pos", "workspace_id", "position"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        primary_key=True,
+        nullable=False,
+        index=True,
+    )
+    client_id = Column(CITEXT, nullable=True, index=True)
+    name = Column(String(100), nullable=False)
+    slug = Column(String(50), nullable=False)
+    position = Column(Integer, nullable=False, default=0, server_default="0")
+    color = Column(String(30), nullable=True)
+    is_system = Column(Boolean, nullable=False, default=False, server_default="false")
+    created_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+    workspace = relationship("Workspace", back_populates="pipeline_stages")
+    leads = relationship(
+        "Lead",
+        back_populates="stage",
+        primaryjoin="and_(Lead.stage_id == LeadPipelineStage.id, Lead.workspace_id == LeadPipelineStage.workspace_id)",
+        foreign_keys="[Lead.stage_id, Lead.workspace_id]",
+        overlaps="workspace,leads",
+    )
+
+
+class LeadAssignment(Base, TimestampMixin):
+    """Team lead assignment record for Round-Robin distribution (Story 24.3 / INV-23.4)."""
+
+    __tablename__ = "lead_assignments"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", "workspace_id", name="pk_lead_assignments"),
+        ForeignKeyConstraint(
+            ["lead_id", "workspace_id"],
+            ["leads.id", "leads.workspace_id"],
+            ondelete="CASCADE",
+            name="fk_lead_assignments_lead_id_workspace_id",
+        ),
+        Index("ix_lead_assignments_lookup", "workspace_id", "lead_id", "created_at"),
+        Index("ix_lead_assignments_user", "workspace_id", "assigned_to_user_id", "status"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        primary_key=True,
+        nullable=False,
+        index=True,
+    )
+    client_id = Column(CITEXT, nullable=True, index=True)
+    lead_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    assigned_to_user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    assigned_by_user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    assigned_by = Column(String(50), nullable=False, default="auto_round_robin", server_default="auto_round_robin")
+    status = Column(String(30), nullable=False, default="assigned", server_default="assigned")
+    reason = Column(String(255), nullable=True)
+    created_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+    workspace = relationship("Workspace", back_populates="lead_assignments")
+    lead = relationship(
+        "Lead",
+        back_populates="assignments",
+        primaryjoin="and_(LeadAssignment.lead_id == Lead.id, LeadAssignment.workspace_id == Lead.workspace_id)",
+        foreign_keys=[lead_id, workspace_id],
+        overlaps="workspace,lead_assignments,assignments",
+    )
+    assigned_to = relationship("User", foreign_keys=[assigned_to_user_id])
+    assigned_by_user = relationship("User", foreign_keys=[assigned_by_user_id])
+
+
+class LeadActivityLog(Base, TimestampMixin):
+    """Timeline interaction and audit logs for leads (Story 24.3 / INV-23.4)."""
+
+    __tablename__ = "lead_activity_logs"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", "workspace_id", name="pk_lead_activity_logs"),
+        ForeignKeyConstraint(
+            ["lead_id", "workspace_id"],
+            ["leads.id", "leads.workspace_id"],
+            ondelete="CASCADE",
+            name="fk_lead_activity_logs_lead_id_workspace_id",
+        ),
+        Index("ix_lead_activity_logs_timeline", "workspace_id", "lead_id", "created_at"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        primary_key=True,
+        nullable=False,
+        index=True,
+    )
+    client_id = Column(CITEXT, nullable=True, index=True)
+    lead_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    actor_user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    activity_type = Column(String(50), nullable=False)
+    title = Column(String(255), nullable=False)
+    details = Column(JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb"))
+    created_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+    workspace = relationship("Workspace", back_populates="lead_activity_logs")
+    lead = relationship(
+        "Lead",
+        back_populates="activity_logs",
+        primaryjoin="and_(LeadActivityLog.lead_id == Lead.id, LeadActivityLog.workspace_id == Lead.workspace_id)",
+        foreign_keys=[lead_id, workspace_id],
+        overlaps="workspace,lead_activity_logs,activity_logs",
+    )
+    actor = relationship("User", foreign_keys=[actor_user_id])
 
 
 class LeadScore(Base, TimestampMixin):

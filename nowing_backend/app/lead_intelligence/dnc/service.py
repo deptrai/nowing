@@ -97,8 +97,16 @@ class DncComplianceService:
                 WorkspaceDncRecord.workspace_id == workspace_id,
                 WorkspaceDncRecord.record_type == record_type,
             )
-        res = await session.execute(stmt)
-        members = {m for m in res.scalars().all() if m}
+        members: set[str] = set()
+        try:
+            res = await session.execute(stmt)
+            scalars_res = res.scalars()
+            all_items = scalars_res.all() if hasattr(scalars_res, "all") else []
+            if isinstance(all_items, (list, tuple, set)):
+                members = {str(m) for m in all_items if m and isinstance(m, str)}
+        except Exception as exc:
+            logger.debug("[DncService] Database DNC query skipped/failed: %s", exc)
+            members = set()
 
         if redis is not None:
             try:

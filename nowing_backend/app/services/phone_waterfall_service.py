@@ -246,7 +246,12 @@ class PhoneWaterfallService:
         account_service = ScraperPlatformAccountService(self.session)
         rotator = ScraperPlatformAccountRotator(account_service, platform="batdongsan")
 
-        account, creds = await rotator.get_credentials(wait=False, timeout=2.0)
+        try:
+            account, creds = await rotator.get_credentials(wait=False, timeout=2.0)
+        except Exception as exc:
+            logger.debug("Failed getting scraper platform credentials: %s", exc)
+            account, creds = None, None
+
         account_id = account.id if account else 0
         mutex_key = f"{REDIS_MUTEX_PREFIX}{account_id}"
 

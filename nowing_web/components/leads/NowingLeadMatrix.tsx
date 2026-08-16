@@ -8,11 +8,13 @@ import {
 	ChevronRight,
 	Globe,
 	Maximize2,
+	MessageSquare,
 	Minimize2,
 	Network,
 	RefreshCw,
 	Search,
 	ShieldAlert,
+	ShieldCheck,
 	Sparkles,
 } from "lucide-react";
 import type React from "react";
@@ -26,6 +28,12 @@ import {
 	selectedLeadIdsAtom,
 } from "@/atoms/leads/leads-canvas.atoms";
 import type { Lead } from "@/contracts/types/leads.types";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { PhoneCopyPill } from "./PhoneCopyPill";
 import { SendExportDropdown } from "./send-export-dropdown";
@@ -545,6 +553,79 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 													<span className="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[9px] font-bold uppercase shrink-0">
 														Mới
 													</span>
+												)}
+												{lead.tax_id && (
+													<TooltipProvider delayDuration={150}>
+														<Tooltip>
+															<TooltipTrigger asChild>
+																<span
+																	onClick={(e) => e.stopPropagation()}
+																	className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-[9.5px] font-semibold font-mono tracking-tight shrink-0 cursor-help"
+																>
+																	<ShieldCheck className="size-2.5" />
+																	MST Verified
+																</span>
+															</TooltipTrigger>
+															<TooltipContent
+																side="top"
+																className="max-w-xs p-2.5 space-y-1 text-left bg-popover text-popover-foreground border border-border shadow-md"
+															>
+																<div className="font-bold text-xs flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+																	<ShieldCheck className="size-3.5" />
+																	MST: {lead.tax_id}
+																</div>
+																{lead.legal_representative && (
+																	<div className="text-[11px] text-muted-foreground">
+																		Đại diện:{" "}
+																		<span className="font-medium text-foreground">
+																			{lead.legal_representative}
+																		</span>
+																	</div>
+																)}
+																{lead.charter_capital_vnd && (
+																	<div className="text-[11px] text-muted-foreground">
+																		Vốn điều lệ:{" "}
+																		<span className="font-medium text-foreground">
+																			{(lead.charter_capital_vnd / 1_000_000_000).toLocaleString("vi-VN")}{" "}
+																			tỷ VNĐ
+																		</span>
+																	</div>
+																)}
+																{lead.company_status && (
+																	<div className="text-[10px] text-emerald-700 dark:text-emerald-300 font-medium">
+																		● {lead.company_status}
+																	</div>
+																)}
+															</TooltipContent>
+														</Tooltip>
+													</TooltipProvider>
+												)}
+												{lead.is_zalo_active && (
+													<TooltipProvider delayDuration={150}>
+														<Tooltip>
+															<TooltipTrigger asChild>
+																<span
+																	onClick={(e) => e.stopPropagation()}
+																	className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 text-[9.5px] font-semibold tracking-tight shrink-0 cursor-help"
+																>
+																	<MessageSquare className="size-2.5" />
+																	Zalo Active
+																</span>
+															</TooltipTrigger>
+															<TooltipContent
+																side="top"
+																className="p-2 text-left bg-popover text-popover-foreground border border-border shadow-md text-xs"
+															>
+																<div className="font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
+																	<Check className="size-3" />
+																	Đã xác thực tài khoản Zalo
+																</div>
+																<div className="text-[10.5px] text-muted-foreground mt-0.5">
+																	Sẵn sàng gửi tin nhắn ZNS hoặc tự động hóa
+																</div>
+															</TooltipContent>
+														</Tooltip>
+													</TooltipProvider>
 												)}
 											</div>
 										</td>

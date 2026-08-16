@@ -125,10 +125,10 @@ class TestMultiAttributeFuzzyMatch:
 
         # Case 2: Only City matches (1.0 * 0.3 = 0.30)
         score_city_only = compute_multi_attribute_match_score(
-            lead_name="Company X",
+            lead_name="11111111",
             lead_city="Hà Nội",
             lead_district="Ba Đình",
-            registry_name="Company YZZZ",
+            registry_name="22222222",
             registry_city="Thành phố Hà Nội",
             registry_district="Cầu Giấy",
         )

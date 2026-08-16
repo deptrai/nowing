@@ -94,6 +94,7 @@ from .image_generation_routes import router as image_generation_router
 from .incentive_tasks_routes import router as incentive_tasks_router
 from .jira_add_connector_route import router as jira_add_connector_router
 from .lead_clipper_routes import router as lead_clipper_router
+from .lead_pipeline_routes import router as lead_pipeline_router
 from .lead_scoring_routes import router as lead_scoring_router
 from .leads_routes import router as leads_router
 from .linear_add_connector_route import router as linear_add_connector_router
@@ -145,6 +146,7 @@ router.include_router(partner_router)
 router.include_router(lead_scoring_router)
 router.include_router(leads_router)
 router.include_router(lead_clipper_router)
+router.include_router(lead_pipeline_router)
 router.include_router(dnc_router)
 router.include_router(outbound_router)
 router.include_router(zns_router)
