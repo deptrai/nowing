@@ -1,29 +1,38 @@
-# Story 26.1: FastMCP Ingest Gateway, Batch Ingestion & Stateless ChainLens Ingestion Pipeline
+# Story 26.1: Batch Lead Ingestion, Stateless ChainLens Ingestion Pipeline & PII Vault
 
-Status: ready-for-dev
+Status: in-review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
 ## Story
 
 As a backend platform engineer,
-I want Nowing FastAPI to expose a high-throughput FastMCP tool gateway with batch lead ingestion (`POST /mcp/v1/tools/batch_ingest_leads`) and an idempotent ingestion endpoint for stateless ChainLens web crawls (`POST /v1/chainlens/ingest`),
-So that autonomous sidecar agents (`dsh-worker`) and ChainLens crawlers can ingest hundreds of leads and research chunks directly into PostgreSQL 16 pgvector without distributed deadlocks, with AES-256 PII encryption, and instant Zero-Cache UI synchronization.
+I want Nowing FastAPI to expose a high-throughput authenticated REST batch lead ingestion endpoint (`POST /api/v1/workspaces/:workspace_id/leads/batch-ingest`) and an idempotent ingestion endpoint for stateless ChainLens web crawls (`POST /v1/chainlens/ingest`),
+So that autonomous sidecar agents (`dsh-worker`) and ChainLens crawlers can ingest hundreds of leads and research chunks directly into PostgreSQL 16 pgvector without distributed deadlocks, with PII encrypted at rest, and instant Zero-Cache UI synchronization.
 
 ---
 
 ## Acceptance Criteria
 
-### AC-1: FastMCP Batch Ingest Lead Tool Endpoint (`POST /mcp/v1/tools/batch_ingest_leads`)
-- **Given** an authenticated request from `dsh-worker` with a batch of up to 100 leads (max batch size: 100),
-- **When** `POST /mcp/v1/tools/batch_ingest_leads` is called with payload schema `BatchLeadIngestPayload`,
+### AC-1: Batch Lead Ingestion Endpoint (`POST /api/v1/workspaces/:workspace_id/leads/batch-ingest`)
+- **Given** an authenticated request from `dsh-worker` with a batch of 1..100 leads,
+- **When** `POST /api/v1/workspaces/:workspace_id/leads/batch-ingest` is called with payload schema `BatchLeadIngestPayload`,
 - **Then** the endpoint:
-  1. Validates `workspace_id`, `task_id`, and `leads` array (1..100 items) using Pydantic schema validation.
-  2. Generates blind HMAC-SHA256 hash `value_hmac` for each lead contact: `HMAC_SHA256(f"{workspace_id}:{normalized_phone or ''}:{normalized_email or ''}:{domain or ''}", HMAC_SECRET)`.
-  3. Checks `pii_blacklists`, `global_dnc_records`, and `workspace_dnc_records` for matching `value_hmac`.
-     - If matched, the lead is stored with `is_blacklisted = True` (or status `blacklisted`), contact details are suppressed, and credit unlock is permanently disabled.
-  4. Encrypts raw PII fields (`phone`, `email`) using AES-256-GCM authenticated cipher before inserting into `verified_contacts`.
-  5. Returns `HTTP 200 OK` with JSON `{ "ingested_count": N, "skipped_blacklisted_count": M, "execution_time_ms": X, "lead_ids": [...] }` in < 200ms total for 100 items.
+  1. Validates the URL `workspace_id`, `task_id`, and `leads` array (`min_length=1`, `max_length=100`) using Pydantic schema validation; rejects any lead with all of `phone`, `email`, and `domain` empty as degenerate.
+  2. Generates a single blind HMAC-SHA256 hash `value_hmac` per lead using the canonical normalized contact string form `phone=<normalized_phone>|email=<normalized_email>|domain=<domain>` and the configured `HMAC_SECRET`.
+  3. Checks `global_dnc_records` and `workspace_dnc_records` for matching `value_hmac`. If matched, the lead is stored with `status = 'blacklisted'` and contact details are suppressed; a record is not created in `verified_contacts`.
+  4. Persists PII in `verified_contacts` using the existing `VerifiedContactEncryption` service (Fernet/TokenEncryption). [DEFERRED] A future AD amendment may migrate to AES-256-GCM.
+  5. Enforces a per-workspace rate limit (e.g., 30 batches/minute) and returns `HTTP 200 OK` with JSON `BatchLeadIngestResponse`:
+     ```json
+     {
+       "ingested_count": 0,
+       "skipped_blacklisted_count": 0,
+       "failed_count": 0,
+       "execution_time_ms": 0.0,
+       "lead_ids": []
+     }
+     ```
+     in < 200ms total for 100 items.
 
 ### AC-2: Deterministic Sorting & Concurrency Deadlock Prevention (AD-109)
 - **Given** concurrent worker threads or sidecar processes ingesting intersecting sets of leads into the same workspace,
