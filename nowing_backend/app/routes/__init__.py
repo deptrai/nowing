@@ -131,6 +131,7 @@ from .video_presentations_routes import router as video_presentations_router
 from .workspace_tables_routes import router as workspace_tables_router
 from .workspaces_routes import router as workspaces_router
 from .youtube_routes import router as youtube_router
+from .zns_routes import router as zns_router
 
 router = APIRouter()
 
@@ -143,6 +144,7 @@ router.include_router(lead_scoring_router)
 router.include_router(leads_router)
 router.include_router(dnc_router)
 router.include_router(outbound_router)
+router.include_router(zns_router)
 router.include_router(enrichment_router)
 router.include_router(crm_router, prefix="/workspaces")
 router.include_router(crm_oauth_router)

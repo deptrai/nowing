@@ -27,9 +27,7 @@ ZALO_OAUTH_BASE = "https://oauth.zalo.me"
 ZALO_RATE_LIMIT_PER_MINUTE = 20
 
 
-_VIETNAM_MOBILE_RE = re.compile(
-    r"^(?:0|84)(3[2-9]|5[6-9]|7[0-9]|8[1-9]|9[0-9])\d{7}$"
-)
+_VIETNAM_MOBILE_RE = re.compile(r"^(?:0|84)(3[2-9]|5[6-9]|7[0-9]|8[1-9]|9[0-9])\d{7}$")
 
 
 def format_vietnam_phone(phone: str | None) -> dict[str, str]:
@@ -86,11 +84,18 @@ def redact_template_data(template_data: dict[str, Any]) -> dict[str, Any]:
             redacted[key] = redact_template_data(value)
         elif isinstance(value, list):
             redacted[key] = [
-                redact_template_data({"_": item})["_"] if isinstance(item, dict) else item
+                redact_template_data({"_": item})["_"]
+                if isinstance(item, dict)
+                else item
                 for item in value
             ]
         elif isinstance(value, str):
-            if _PII_KEY_RE.search(key) or _EMAIL_RE.search(value) or _PHONE_RE.search(value) or _ID_RE.search(value):
+            if (
+                _PII_KEY_RE.search(key)
+                or _EMAIL_RE.search(value)
+                or _PHONE_RE.search(value)
+                or _ID_RE.search(value)
+            ):
                 redacted[key] = "***"
             else:
                 redacted[key] = value
@@ -250,7 +255,9 @@ async def generate_assisted_outbound_draft(
                 },
                 {
                     "role": "user",
-                    "content": _build_draft_prompt(lead_data, custom_context=custom_context),
+                    "content": _build_draft_prompt(
+                        lead_data, custom_context=custom_context
+                    ),
                 },
             ],
             temperature=0.6,
@@ -421,7 +428,9 @@ class ZaloClient:
             self.token_expires_at = datetime.now(UTC) + timedelta(seconds=expires_in)
             return res_data
 
-        error_msg = res_data.get("error_name") or res_data.get("message") or str(res_data)
+        error_msg = (
+            res_data.get("error_name") or res_data.get("message") or str(res_data)
+        )
         logger.error("Zalo token refresh error response: %s", res_data)
         raise RuntimeError(f"Zalo OAuth error: {error_msg}")
 
