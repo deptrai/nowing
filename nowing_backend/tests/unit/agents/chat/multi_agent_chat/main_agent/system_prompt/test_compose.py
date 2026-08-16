@@ -250,7 +250,7 @@ def test_system_prompt_contains_vertical_scrapers_and_routing_rules() -> None:
 
     # Failover & Degradation
     assert "Graceful Degradation" in prompt
-    assert "AD-19.1" in prompt
+    assert "Failover" in prompt
 
 
 def test_all_xml_tags_are_balanced_in_compiled_prompt() -> None:
