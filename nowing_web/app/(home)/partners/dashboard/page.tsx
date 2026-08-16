@@ -42,6 +42,7 @@ import type {
 	VietQrBankItem,
 } from "@/contracts/types/partners.types";
 import { partnersApiService } from "@/lib/apis/partners-api.service";
+import { PayoutHistoryTable } from "./components/PayoutHistoryTable";
 
 export default function PartnerDashboardPage() {
 	const [isLoading, setIsLoading] = useState(true);
@@ -449,23 +450,27 @@ export default function PartnerDashboardPage() {
 				{/* Card 4: Active Paying Referrals */}
 				<div className="p-6 rounded-3xl border border-neutral-200/80 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-xs">
 					<div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">
-						Active Paying Clients
+						Active Paying Clients Paying Customers
 					</div>
-					<div className="text-3xl font-black font-mono text-emerald-600 dark:text-emerald-400">
+					<div className="text-3xl font-black font-mono text-neutral-900 dark:text-white">
 						{profile.active_paying_referrals}
 					</div>
-					<div className="text-xs text-neutral-500 mt-1">
-						Generating lifetime recurring commission
-					</div>
+					<div className="text-xs text-neutral-500 mt-1">15% lifetime recurring split</div>
 				</div>
 			</div>
 
-			{/* Tabs Section for Ledger, Referrals, and Payouts */}
-			<Tabs defaultValue="commissions" className="w-full">
-				<TabsList className="grid grid-cols-3 max-w-md mb-6">
-					<TabsTrigger value="commissions">Commissions</TabsTrigger>
-					<TabsTrigger value="referrals">Referrals</TabsTrigger>
-					<TabsTrigger value="payouts">Payouts</TabsTrigger>
+			{/* Tabs Section */}
+			<Tabs defaultValue="commissions" className="space-y-6">
+				<TabsList className="bg-neutral-100 dark:bg-neutral-800/60 p-1 rounded-2xl">
+					<TabsTrigger value="commissions" className="rounded-xl text-xs md:text-sm font-semibold">
+						Commissions ({commissions.length})
+					</TabsTrigger>
+					<TabsTrigger value="referrals" className="rounded-xl text-xs md:text-sm font-semibold">
+						Referred Accounts ({referrals.length})
+					</TabsTrigger>
+					<TabsTrigger value="payouts" className="rounded-xl text-xs md:text-sm font-semibold">
+						Payout History ({payouts.length})
+					</TabsTrigger>
 				</TabsList>
 
 				{/* Tab 1: Commissions Ledger */}
@@ -473,16 +478,14 @@ export default function PartnerDashboardPage() {
 					<div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 overflow-hidden shadow-xs">
 						<div className="p-5 border-b border-neutral-100 dark:border-neutral-800 flex justify-between items-center">
 							<h3 className="font-bold text-neutral-900 dark:text-white text-base">
-								Commission Ledger (15% Recurring)
+								Commission Ledger
 							</h3>
-							<span className="text-xs text-neutral-500 font-mono">
-								{commissions.length} entries
-							</span>
+							<span className="text-xs text-neutral-500 font-mono">15% Recurring Split</span>
 						</div>
 
 						{commissions.length === 0 ? (
 							<div className="p-12 text-center text-neutral-500 text-sm">
-								No commissions recorded yet. Share your referral link to start earning!
+								No commissions earned yet. Share your referral link to get started!
 							</div>
 						) : (
 							<div className="overflow-x-auto">
@@ -490,9 +493,9 @@ export default function PartnerDashboardPage() {
 									<thead className="bg-neutral-50 dark:bg-neutral-800/50 text-xs text-neutral-500 uppercase font-semibold">
 										<tr>
 											<th className="px-6 py-3.5">Date</th>
-											<th className="px-6 py-3.5">Customer Spent</th>
-											<th className="px-6 py-3.5">Commission (15%)</th>
-											<th className="px-6 py-3.5">VND Value</th>
+											<th className="px-6 py-3.5">Customer Purchase</th>
+											<th className="px-6 py-3.5">Your Cut (15%)</th>
+											<th className="px-6 py-3.5">Amount (VND)</th>
 											<th className="px-6 py-3.5">Status</th>
 										</tr>
 									</thead>
@@ -588,78 +591,7 @@ export default function PartnerDashboardPage() {
 
 				{/* Tab 3: Payout History */}
 				<TabsContent value="payouts" className="space-y-4">
-					<div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 overflow-hidden shadow-xs">
-						<div className="p-5 border-b border-neutral-100 dark:border-neutral-800 flex justify-between items-center">
-							<h3 className="font-bold text-neutral-900 dark:text-white text-base">
-								Payout Withdrawals
-							</h3>
-							<Button
-								size="sm"
-								onClick={() => setIsPayoutOpen(true)}
-								className="bg-emerald-500 hover:bg-emerald-600 text-neutral-950 font-bold text-xs rounded-xl"
-							>
-								New Withdrawal
-							</Button>
-						</div>
-
-						{payouts.length === 0 ? (
-							<div className="p-12 text-center text-neutral-500 text-sm">
-								No payout requests submitted yet.
-							</div>
-						) : (
-							<div className="overflow-x-auto">
-								<table className="w-full text-left text-sm">
-									<thead className="bg-neutral-50 dark:bg-neutral-800/50 text-xs text-neutral-500 uppercase font-semibold">
-										<tr>
-											<th className="px-6 py-3.5">Requested Date</th>
-											<th className="px-6 py-3.5">Amount (USD)</th>
-											<th className="px-6 py-3.5">Amount (VND)</th>
-											<th className="px-6 py-3.5">Method</th>
-											<th className="px-6 py-3.5">Status</th>
-											<th className="px-6 py-3.5">Reference</th>
-										</tr>
-									</thead>
-									<tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
-										{payouts.map((payout) => (
-											<tr
-												key={payout.id}
-												className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30"
-											>
-												<td className="px-6 py-4 text-xs font-mono text-neutral-600 dark:text-neutral-400">
-													{new Date(payout.requested_at).toLocaleDateString()}
-												</td>
-												<td className="px-6 py-4 font-mono font-bold text-neutral-900 dark:text-white">
-													${payout.amount_usd.toFixed(2)}
-												</td>
-												<td className="px-6 py-4 font-mono text-xs text-neutral-500">
-													{payout.amount_vnd.toLocaleString("vi-VN")} VND
-												</td>
-												<td className="px-6 py-4 text-xs">
-													{payout.payout_method === "credit_wallet"
-														? "Credit (+10%)"
-														: "VietQR Napas"}
-												</td>
-												<td className="px-6 py-4">
-													<span
-														className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-															payout.status === "completed"
-																? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
-																: "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
-														}`}
-													>
-														{payout.status}
-													</span>
-												</td>
-												<td className="px-6 py-4 font-mono text-xs text-neutral-500">
-													{payout.tx_reference || "Pending Batch"}
-												</td>
-											</tr>
-										))}
-									</tbody>
-								</table>
-							</div>
-						)}
-					</div>
+					<PayoutHistoryTable payouts={payouts} onNewPayoutClick={() => setIsPayoutOpen(true)} />
 				</TabsContent>
 			</Tabs>
 

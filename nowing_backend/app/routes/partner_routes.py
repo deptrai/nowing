@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import logging
-from typing import Annotated
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
+from app.config import config
 from app.db import get_async_session
 from app.schemas.partner import (
     PartnerApplyRequest,
@@ -21,7 +22,9 @@ from app.schemas.partner import (
     PartnerReferralsListResponse,
     VietQrBankItem,
 )
+from app.services.partner_payout_service import PartnerPayoutService
 from app.services.partner_service import PartnerService
+from app.services.vietqr_payout_client import VietQRPayoutClient
 from app.users import require_session_context
 
 logger = logging.getLogger(__name__)
@@ -137,3 +140,53 @@ async def list_payouts(
         limit=limit,
         offset=offset,
     )
+
+
+@router.post("/payouts/webhook")
+async def handle_payout_webhook(
+    request: Request,
+    db_session: AsyncSession = Depends(get_async_session),
+    x_webhook_signature: Annotated[str | None, Header(alias="x-webhook-signature")] = None,
+) -> dict[str, Any]:
+    """Bank & VietQR Webhook Callback endpoint for payout settlement & reconciliation (Story 23.3)."""
+    raw_body = await request.body()
+    secret = (
+        getattr(config, "VIETQR_WEBHOOK_SECRET", None)
+        or getattr(config, "NAPAS_WEBHOOK_SECRET", None)
+        or ""
+    )
+
+    if secret and (
+        not x_webhook_signature
+        or not VietQRPayoutClient.verify_webhook_signature(
+            raw_body, x_webhook_signature, secret
+        )
+    ):
+        logger.warning("Invalid webhook signature received for payout callback")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid webhook signature",
+        )
+
+    try:
+        payload = await request.json()
+    except Exception as e:
+        logger.error("Failed to parse JSON payload in payout webhook: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid JSON payload",
+        ) from e
+
+    receipt = await PartnerPayoutService.handle_webhook_confirmation(
+        db_session=db_session,
+        payload=payload,
+    )
+    await db_session.commit()
+
+    return {
+        "status": "success",
+        "payout_id": str(receipt.payout_id),
+        "payout_status": receipt.status,
+        "napas_ref": receipt.napas_transaction_number,
+        "hmac_audit_hash": receipt.hmac_audit_hash,
+    }

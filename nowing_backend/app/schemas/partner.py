@@ -52,6 +52,9 @@ class PartnerProfileResponse(BaseModel):
     balance_micros: int
     balance_usd: float
     balance_vnd: int
+    hold_balance_micros: int = 0
+    hold_balance_usd: float = 0.0
+    hold_balance_vnd: int = 0
     total_earned_micros: int
     total_earned_usd: float
     total_earned_vnd: int
@@ -123,10 +126,17 @@ class PartnerPayoutItem(BaseModel):
     amount_micros: int
     amount_usd: float
     amount_vnd: int
+    tax_deducted_micros: int = 0
+    tax_deducted_vnd: int = 0
+    net_amount_micros: int = 0
+    net_amount_vnd: int = 0
+    tax_code: str | None = None
     payout_method: str
     payout_details: dict[str, Any]
     status: str
     tx_reference: str | None = None
+    napas_ref: str | None = None
+    hmac_audit_hash: str | None = None
     requested_at: datetime
     processed_at: datetime | None = None
     created_at: datetime
