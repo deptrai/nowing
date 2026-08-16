@@ -15,8 +15,8 @@ export default async function PlaygroundApiKeysPage({
 	return (
 		<div className="mx-auto w-full max-w-5xl space-y-6">
 			<div className="space-y-1">
-				<h2 className="text-xl font-semibold tracking-tight">API keys</h2>
-				<p className="text-sm text-muted-foreground">
+				<h2 className="font-serif text-2xl sm:text-3xl font-normal tracking-tight">API keys</h2>
+				<p className="text-xs sm:text-sm text-muted-foreground font-sans">
 					Create user API keys and choose whether they can access this workspace.
 				</p>
 			</div>

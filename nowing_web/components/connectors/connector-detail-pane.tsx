@@ -304,24 +304,26 @@ export function ConnectorDetailPane({
 			<Button
 				variant="ghost"
 				size="sm"
-				className="mb-4 w-fit -ml-2 text-muted-foreground hover:text-foreground"
+				className="mb-3 w-fit -ml-2 h-7 text-xs text-muted-foreground hover:text-foreground"
 				onClick={onBack}
 			>
 				← Back to catalog
 			</Button>
 
-			<div className="flex items-start gap-4">
+			<div className="flex items-start gap-3.5">
 				<div
 					className={cn(
-						"flex h-14 w-14 items-center justify-center rounded-xl border shrink-0",
+						"flex h-11 w-11 items-center justify-center rounded-lg border shrink-0",
 						"bg-slate-400/5 dark:bg-white/5 border-slate-400/5 dark:border-white/5"
 					)}
 				>
-					{getConnectorIcon(connectorType, "size-7")}
+					{getConnectorIcon(connectorType, "size-5")}
 				</div>
 				<div className="flex-1 min-w-0">
 					<div className="flex items-center gap-2">
-						<h2 className="text-lg font-semibold leading-tight truncate">{title}</h2>
+						<h2 className="font-serif text-xl sm:text-2xl font-normal leading-tight truncate text-foreground">
+							{title}
+						</h2>
 						{isSyncing && (
 							<span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
 								<Loader2 className="size-3 animate-spin" />
@@ -335,7 +337,7 @@ export function ConnectorDetailPane({
 							</span>
 						)}
 					</div>
-					<p className="mt-1 text-sm text-muted-foreground">
+					<p className="mt-0.5 text-xs text-muted-foreground">
 						{accountCount > 0 ? (
 							<span>
 								{accountCount} {accountCount === 1 ? "account" : "accounts"} connected

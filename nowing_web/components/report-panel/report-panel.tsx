@@ -446,25 +446,27 @@ export function ReportPanelContent({
 			{showDesktopHeader ? (
 				<>
 					{/* Header — matches the Documents panel header pattern */}
-					<div className="shrink-0 flex h-12 items-center justify-between px-3 border-b">
-						<h2 className="select-none text-lg font-semibold">{isResume ? "Resume" : "Report"}</h2>
+					<div className="shrink-0 flex h-10 items-center justify-between px-3 border-b border-border/40">
+						<h2 className="select-none text-xs font-semibold text-foreground">
+							{isResume ? "Resume" : "Report"}
+						</h2>
 						{onClose && (
 							<Button
 								variant="ghost"
 								size="icon"
 								onClick={onClose}
-								className="h-8 w-8 rounded-full shrink-0 text-muted-foreground hover:text-accent-foreground"
+								className="h-7 w-7 rounded-md shrink-0 text-muted-foreground hover:text-accent-foreground"
 							>
-								<XIcon className="h-4 w-4" />
+								<XIcon className="h-3.5 w-3.5" />
 								<span className="sr-only">Close report panel</span>
 							</Button>
 						)}
 					</div>
 
 					{!isResume && (
-						<div className="flex h-10 items-center justify-between gap-2 border-b px-4 shrink-0">
+						<div className="flex h-9 items-center justify-between gap-2 border-b border-border/40 px-3 shrink-0">
 							<div className="min-w-0 flex-1">
-								<p className="truncate text-sm text-muted-foreground">
+								<p className="truncate text-xs font-medium text-foreground">
 									{reportContent?.title || title}
 								</p>
 							</div>
@@ -479,9 +481,11 @@ export function ReportPanelContent({
 				</>
 			) : (
 				!isResume && (
-					<div className="flex h-14 items-center justify-between border-b px-4 shrink-0">
+					<div className="flex h-10 items-center justify-between border-b border-border/40 px-3 shrink-0">
 						<div className="flex-1 min-w-0">
-							<h2 className="text-sm font-semibold truncate">{reportContent?.title || title}</h2>
+							<h2 className="text-xs font-semibold truncate text-foreground">
+								{reportContent?.title || title}
+							</h2>
 						</div>
 						<div className="flex items-center gap-1 shrink-0">
 							{versionSwitcher}

@@ -342,9 +342,9 @@ export function NotificationsDropdown({
 
 	const panelContent = (
 		<>
-			<div className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3">
+			<div className="flex shrink-0 items-center justify-between gap-3 border-b px-3.5 py-2.5">
 				<div className="min-w-0">
-					<h2 className="text-base font-semibold">Notifications</h2>
+					<h2 className="text-xs font-semibold tracking-tight text-foreground">Notifications</h2>
 				</div>
 				<Button
 					type="button"
@@ -352,14 +352,14 @@ export function NotificationsDropdown({
 					size="sm"
 					onClick={handleMarkAllAsRead}
 					disabled={visibleUnreadCount === 0 || markingAllAsRead}
-					className="h-8 shrink-0 gap-1.5 px-2 text-xs text-muted-foreground hover:text-accent-foreground"
+					className="h-6 shrink-0 gap-1 px-1.5 text-[10.5px] text-muted-foreground hover:text-accent-foreground"
 				>
 					{markingAllAsRead ? <Spinner size="xs" /> : null}
 					Mark all read
 				</Button>
 			</div>
 
-			<div className="relative flex shrink-0 items-end gap-4 px-4 after:absolute after:inset-x-0 after:bottom-0 after:z-0 after:h-px after:bg-muted-foreground/25 after:content-['']">
+			<div className="relative flex shrink-0 items-end gap-3 px-3.5 after:absolute after:inset-x-0 after:bottom-0 after:z-0 after:h-px after:bg-muted-foreground/20 after:content-['']">
 				{tabs.map((tab) => {
 					const isActive = activeFilter === tab.value;
 					return (
@@ -369,13 +369,13 @@ export function NotificationsDropdown({
 							aria-pressed={isActive}
 							onClick={() => setActiveFilter(tab.value)}
 							className={cn(
-								"relative z-10 flex h-11 items-center gap-2 border-b-2 border-transparent px-0 text-sm font-medium text-muted-foreground transition-colors",
+								"relative z-10 flex h-8 items-center gap-1.5 border-b-2 border-transparent px-0 text-xs font-medium text-muted-foreground transition-colors",
 								"hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-								isActive && "border-primary text-primary"
+								isActive && "border-primary text-primary font-semibold"
 							)}
 						>
 							<span>{tab.label}</span>
-							<span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1.5 text-[11px] font-semibold text-muted-foreground">
+							<span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-muted px-1 text-[9.5px] font-semibold text-muted-foreground font-mono">
 								{formatNotificationCount(tab.count)}
 							</span>
 						</button>
@@ -383,20 +383,20 @@ export function NotificationsDropdown({
 				})}
 			</div>
 
-			<div ref={scrollContainerRef} className="min-h-0 flex-1 overflow-y-auto p-2">
+			<div ref={scrollContainerRef} className="min-h-0 flex-1 overflow-y-auto p-1.5">
 				{isLoading ? (
 					<div className="space-y-1">
 						{[82, 64, 74].map((width) => (
-							<div key={width} className="flex h-[72px] items-center rounded-lg px-2 py-2">
-								<div className="min-w-0 flex-1 space-y-2">
-									<Skeleton className="h-3 rounded" style={{ width: `${width}%` }} />
-									<Skeleton className="h-2.5 w-1/2 rounded" />
+							<div key={width} className="flex h-14 items-center rounded-md px-2 py-1.5">
+								<div className="min-w-0 flex-1 space-y-1.5">
+									<Skeleton className="h-2.5 rounded" style={{ width: `${width}%` }} />
+									<Skeleton className="h-2 w-1/2 rounded" />
 								</div>
 							</div>
 						))}
 					</div>
 				) : groupedItems.length > 0 ? (
-					<div className="space-y-1">
+					<div className="space-y-0.5">
 						{groupedItems.map((item) => {
 							const isGroup = "alert_rule_id" in item;
 							const isMarkingAsRead = isGroup ? false : markingAsReadId === item.id;
@@ -415,30 +415,30 @@ export function NotificationsDropdown({
 									disabled={isMarkingAsRead}
 									onClick={() => handleItemClick(item)}
 									className={cn(
-										"group h-auto w-full justify-start rounded-lg px-2 py-2 text-left",
+										"group h-auto w-full justify-start rounded-md px-2 py-1.5 text-left",
 										"hover:bg-accent hover:text-accent-foreground",
 										unread && "bg-accent/40"
 									)}
-									style={{ contentVisibility: "auto", containIntrinsicSize: "0 72px" }}
+									style={{ contentVisibility: "auto", containIntrinsicSize: "0 56px" }}
 								>
 									<div className="min-w-0 flex-1">
-										<div className="flex min-w-0 items-start gap-2">
+										<div className="flex min-w-0 items-start gap-1.5">
 											<p
 												className={cn(
-													"line-clamp-1 flex-1 text-sm font-medium",
-													unread && "font-semibold"
+													"line-clamp-1 flex-1 text-xs font-medium",
+													unread && "font-semibold text-foreground"
 												)}
 											>
 												{title}
 											</p>
 											{unread ? (
-												<span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+												<span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
 											) : null}
 										</div>
-										<p className="mt-0.5 line-clamp-2 text-xs font-normal text-muted-foreground group-hover:text-accent-foreground/80">
+										<p className="mt-0.5 line-clamp-2 text-[11px] font-normal text-muted-foreground group-hover:text-accent-foreground/80 leading-snug">
 											{message}
 										</p>
-										<p className="mt-1 text-[11px] font-normal text-muted-foreground/70">
+										<p className="mt-0.5 text-[10px] font-normal text-muted-foreground/70 font-mono">
 											{formatTime(createdAt)}
 										</p>
 									</div>
@@ -449,29 +449,18 @@ export function NotificationsDropdown({
 						{hasMore ? (
 							<div
 								ref={loadMoreTriggerRef}
-								className="flex min-h-10 items-center justify-center py-2"
+								className="flex min-h-8 items-center justify-center py-1.5"
 							>
 								{isLoadingMore ? <Spinner size="xs" /> : null}
 							</div>
 						) : null}
 					</div>
 				) : (
-					<div className="flex min-h-full flex-col items-center justify-center px-6 py-10 text-center">
-						<p className="text-sm font-medium">{emptyStateCopy.title}</p>
-						<p className="mt-1 text-xs text-muted-foreground">{emptyStateCopy.description}</p>
-						{hasMore ? (
-							<Button
-								type="button"
-								variant="ghost"
-								size="sm"
-								onClick={loadMoreForActiveFilter}
-								disabled={isLoadingMore}
-								className="mt-3 text-xs"
-							>
-								{isLoadingMore ? <Spinner size="xs" /> : null}
-								Load more
-							</Button>
-						) : null}
+					<div className="flex min-h-full flex-col items-center justify-center px-4 py-8 text-center">
+						<p className="text-xs font-semibold text-foreground">{emptyStateCopy.title}</p>
+						<p className="mt-0.5 text-[11px] text-muted-foreground leading-relaxed">
+							{emptyStateCopy.description}
+						</p>
 					</div>
 				)}
 			</div>
