@@ -7,10 +7,9 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import time
 import uuid
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import HTTPException
@@ -106,15 +105,17 @@ class TestPIT10PercentTaxCalculation:
         assert tax_info.net_amount_micros == 108_000_000
         assert tax_info.tax_rate == 0.10
         assert tax_info.tax_exemption_applied is False
+        assert tax_info.tax_code == "TNCN-10PCT-TT111"
 
-    def test_pit_tax_exemption_for_amounts_under_or_equal_2m_vnd(self):
-        """Payouts <= 2,000,000 VNĐ are exempt from immediate PIT deduction."""
+    def test_pit_tax_exemption_for_amounts_under_2m_vnd(self):
+        """Payouts < 2,000,000 VNĐ are exempt from immediate PIT deduction."""
         amount_micros = 60_000_000  # $60 / 1,500,000 VNĐ
         tax_info = PartnerPayoutService.calculate_pit_tax(amount_micros)
 
         assert tax_info.tax_deducted_micros == 0
         assert tax_info.net_amount_micros == 60_000_000
         assert tax_info.tax_exemption_applied is True
+        assert tax_info.tax_code is None
 
 
 class TestVietQRGatewayAndHMACReceipt:
@@ -126,8 +127,14 @@ class TestVietQRGatewayAndHMACReceipt:
         payload = b'{"tx_reference":"NOWING-PAY-1-12345","status":"SUCCESS","napas_ref":"NAPAS999"}'
         valid_sig = hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
 
-        assert VietQRPayoutClient.verify_webhook_signature(payload, valid_sig, secret) is True
-        assert VietQRPayoutClient.verify_webhook_signature(payload, "invalid_sig", secret) is False
+        assert (
+            VietQRPayoutClient.verify_webhook_signature(payload, valid_sig, secret)
+            is True
+        )
+        assert (
+            VietQRPayoutClient.verify_webhook_signature(payload, "invalid_sig", secret)
+            is False
+        )
 
     @pytest.mark.asyncio
     async def test_webhook_confirmation_finalizes_balances_and_creates_receipt(self):
@@ -166,13 +173,50 @@ class TestVietQRGatewayAndHMACReceipt:
             "beneficiary_name": "NGUYEN VAN A",
         }
 
-        receipt = await PartnerPayoutService.handle_webhook_confirmation(session, payload)
+        receipt = await PartnerPayoutService.handle_webhook_confirmation(
+            session, payload
+        )
 
         assert receipt.status == "completed"
         assert receipt.napas_transaction_number == "NAPAS-2026-08-16-9999"
         assert receipt.hmac_audit_hash is not None
         assert mock_partner.hold_balance_micros == 0
         assert mock_partner.total_paid_micros == 80_000_000
+
+    @pytest.mark.asyncio
+    async def test_duplicate_failed_webhook_is_idempotent_no_infinite_refund(self):
+        """Duplicate FAILED webhook callbacks must return idempotent receipt without double refunding."""
+        session = AsyncMock()
+        payout_id = uuid.uuid4()
+        partner_id = uuid.uuid4()
+
+        mock_payout = MagicMock(
+            id=payout_id,
+            partner_id=partner_id,
+            amount_micros=50_000_000,
+            tax_deducted_micros=0,
+            net_amount_micros=50_000_000,
+            tx_reference="NOWING-PAY-FAILED-123",
+            status="failed",  # already failed
+            napas_ref=None,
+            hmac_audit_hash=None,
+            updated_at=None,
+        )
+
+        session.execute.side_effect = [
+            _FakeScalarResult(mock_payout),
+        ]
+
+        payload = {
+            "tx_reference": "NOWING-PAY-FAILED-123",
+            "status": "FAILED",
+        }
+
+        receipt = await PartnerPayoutService.handle_webhook_confirmation(
+            session, payload
+        )
+        assert receipt.status == "failed"
+        assert receipt.payout_id == payout_id
 
 
 class TestTwoGeneralsTimeoutAutoReconciliation:
@@ -183,21 +227,34 @@ class TestTwoGeneralsTimeoutAutoReconciliation:
         """When payout is stuck in 'processing', worker queries GET /transfers/{tx_ref} without blind retries."""
         session = AsyncMock()
         client = AsyncMock()
-        client.query_transfer_status.return_value = {"status": "SUCCESS", "napas_ref": "NAPAS-RESOLVED"}
+        client.query_transfer_status.return_value = {
+            "status": "SUCCESS",
+            "napas_ref": "NAPAS-RESOLVED",
+        }
 
         mock_partner = MagicMock(hold_balance_micros=50_000_000, total_paid_micros=0)
         payout = MagicMock(
+            id=uuid.uuid4(),
+            partner_id=uuid.uuid4(),
             status="processing",
             amount_micros=50_000_000,
+            net_amount_micros=50_000_000,
+            tax_deducted_micros=0,
             tx_reference="NOWING-PAY-1-123",
             partner=mock_partner,
         )
+
+        session.execute.side_effect = [
+            _FakeScalarResult(payout),
+            _FakeScalarResult(mock_partner),
+        ]
 
         await PartnerPayoutService.reconcile_payout_status(session, payout, client)
 
         # Asserts query_transfer_status was called (INV-23.11)
         client.query_transfer_status.assert_awaited_once_with("NOWING-PAY-1-123")
         assert payout.status == "completed"
+        assert payout.hmac_audit_hash is not None
         assert mock_partner.hold_balance_micros == 0
         assert mock_partner.total_paid_micros == 50_000_000
 
@@ -206,15 +263,25 @@ class TestTwoGeneralsTimeoutAutoReconciliation:
         """When gateway reports FAILED, hold_balance is restored to available_balance and status marked failed."""
         session = AsyncMock()
         client = AsyncMock()
-        client.query_transfer_status.return_value = {"status": "FAILED", "reason": "ACCOUNT_LOCKED"}
+        client.query_transfer_status.return_value = {
+            "status": "FAILED",
+            "reason": "ACCOUNT_LOCKED",
+        }
 
         partner = MagicMock(balance_micros=0, hold_balance_micros=50_000_000)
         payout = MagicMock(
+            id=uuid.uuid4(),
+            partner_id=uuid.uuid4(),
             status="processing",
             amount_micros=50_000_000,
             tx_reference="NOWING-PAY-1-123",
             partner=partner,
         )
+
+        session.execute.side_effect = [
+            _FakeScalarResult(payout),
+            _FakeScalarResult(partner),
+        ]
 
         await PartnerPayoutService.reconcile_payout_status(session, payout, client)
 

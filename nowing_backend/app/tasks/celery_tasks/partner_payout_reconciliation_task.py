@@ -26,26 +26,29 @@ def reconcile_pending_partner_payouts_task():
 
 async def _reconcile_pending_partner_payouts() -> None:
     """Query Napas / VietQR gateway for all payouts stuck in 'processing' status."""
-    lookback_minutes = getattr(config, "PARTNER_PAYOUT_RECONCILIATION_LOOKBACK_MINUTES", 5)
+    lookback_minutes = getattr(
+        config, "PARTNER_PAYOUT_RECONCILIATION_LOOKBACK_MINUTES", 5
+    )
     cutoff = datetime.now(UTC) - timedelta(minutes=lookback_minutes)
 
     client = VietQRPayoutClient(
         client_id=getattr(config, "VIETQR_CLIENT_ID", "") or "",
         api_key=getattr(config, "VIETQR_API_KEY", "") or "",
-        secret_key=getattr(config, "VIETQR_WEBHOOK_SECRET", "") or "",
+        webhook_secret=getattr(config, "VIETQR_WEBHOOK_SECRET", "") or "",
     )
 
-    async with get_celery_session_maker()() as db_session:
-        stuck_payouts = (
+    session_maker = get_celery_session_maker()
+    async with session_maker() as db_session:
+        stuck_payout_ids = (
             (
                 await db_session.execute(
-                    select(PartnerPayout)
-                    .options(selectinload(PartnerPayout.partner))
+                    select(PartnerPayout.id)
                     .where(
                         PartnerPayout.status == "processing",
                         PartnerPayout.tx_reference.is_not(None),
                         PartnerPayout.updated_at <= cutoff,
                     )
+                    .order_by(PartnerPayout.updated_at.asc())
                     .limit(50)
                 )
             )
@@ -53,28 +56,39 @@ async def _reconcile_pending_partner_payouts() -> None:
             .all()
         )
 
-        if not stuck_payouts:
+        if not stuck_payout_ids:
             return
 
         logger.info(
             "Found %d in-flight payouts to reconcile against VietQR/Napas gateway",
-            len(stuck_payouts),
+            len(stuck_payout_ids),
         )
 
-        for payout in stuck_payouts:
-            try:
-                await PartnerPayoutService.reconcile_payout_status(
-                    db_session=db_session,
-                    payout=payout,
-                    client=client,
-                )
-                await db_session.commit()
-            except Exception as e:
-                logger.error(
-                    "Failed to auto-reconcile payout %s (tx_ref=%s): %s",
-                    payout.id,
-                    payout.tx_reference,
-                    e,
-                    exc_info=True,
-                )
-                await db_session.rollback()
+        for payout_id in stuck_payout_ids:
+            async with session_maker() as item_session:
+                try:
+                    stmt = (
+                        select(PartnerPayout)
+                        .options(selectinload(PartnerPayout.partner))
+                        .where(PartnerPayout.id == payout_id)
+                        .with_for_update()
+                    )
+                    payout_res = await item_session.execute(stmt)
+                    payout = payout_res.scalar_one_or_none()
+                    if not payout or payout.status != "processing":
+                        continue
+
+                    await PartnerPayoutService.reconcile_payout_status(
+                        session=item_session,
+                        payout=payout,
+                        client=client,
+                    )
+                    await item_session.commit()
+                except Exception as e:
+                    logger.error(
+                        "Failed to auto-reconcile payout %s: %s",
+                        payout_id,
+                        e,
+                        exc_info=True,
+                    )
+                    await item_session.rollback()

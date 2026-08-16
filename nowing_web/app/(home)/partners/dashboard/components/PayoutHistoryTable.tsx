@@ -221,8 +221,8 @@ export function PayoutHistoryTable({ payouts, onNewPayoutClick }: PayoutHistoryT
 								<div className="flex justify-between">
 									<span className="text-neutral-500">Gross Payout:</span>
 									<span className="font-mono font-semibold">
-										{selectedReceipt.amount_vnd.toLocaleString("vi-VN")} VND ($
-										{selectedReceipt.amount_usd.toFixed(2)})
+										{(selectedReceipt.amount_vnd ?? 0).toLocaleString("vi-VN")} VND ($
+										{(selectedReceipt.amount_usd ?? 0).toFixed(2)})
 									</span>
 								</div>
 								<div className="flex justify-between">
@@ -234,9 +234,11 @@ export function PayoutHistoryTable({ payouts, onNewPayoutClick }: PayoutHistoryT
 								<div className="border-t border-neutral-200 dark:border-neutral-700 pt-2 flex justify-between">
 									<span className="font-bold text-neutral-900 dark:text-white">Net Deposited:</span>
 									<span className="font-mono font-black text-emerald-600 text-base">
-										{(selectedReceipt.net_amount_vnd ?? selectedReceipt.amount_vnd).toLocaleString(
-											"vi-VN"
-										)}{" "}
+										{(
+											selectedReceipt.net_amount_vnd ??
+											selectedReceipt.amount_vnd ??
+											0
+										).toLocaleString("vi-VN")}{" "}
 										VND
 									</span>
 								</div>

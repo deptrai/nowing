@@ -469,16 +469,16 @@ class PartnerService:
                 detail=f"Insufficient balance. Available: ${micros_to_usd(partner.balance_micros):.2f}.",
             )
 
-        # Deduct balance
-        partner.balance_micros -= request.amount_micros
-        partner.total_paid_micros += request.amount_micros
-
         payout_details = dict(partner.payout_details or {})
         payout_details.update(request.payout_details or {})
         payout_details["amount_vnd"] = micros_to_vnd(request.amount_micros)
         payout_details["exchange_rate"] = USD_TO_VND_RATE
 
         if request.payout_method == "credit_wallet":
+            # Deduct balance immediately for instant credit conversion
+            partner.balance_micros -= request.amount_micros
+            partner.total_paid_micros += request.amount_micros
+
             # Instant conversion with +10% bonus into user wallet
             user = (
                 await db_session.execute(
@@ -495,6 +495,10 @@ class PartnerService:
                 id=uuid.uuid4(),
                 partner_id=partner.id,
                 amount_micros=request.amount_micros,
+                amount_vnd=micros_to_vnd(request.amount_micros),
+                tax_deducted_micros=0,
+                net_amount_micros=request.amount_micros,
+                tax_code=None,
                 payout_method="credit_wallet",
                 payout_details=payout_details,
                 status="completed",
@@ -505,6 +509,8 @@ class PartnerService:
                 updated_at=now,
             )
         else:
+            # For bank / VietQR payouts: balance is preserved in available_balance until
+            # execute_payout_with_lock moves it to hold_balance_micros (Double-Entry AC-1).
             now = datetime.now(UTC)
             from app.services.partner_payout_service import PartnerPayoutService
 

@@ -23,7 +23,9 @@ from app.services.partner_service import USD_TO_VND_RATE
 # 2,000,000 / 25,000 = $80.00 -> 80_000_000 micros
 PIT_TAX_THRESHOLD_MICROS = int((2_000_000 / USD_TO_VND_RATE) * 1_000_000)
 PIT_TAX_RATE = 0.10
-HMAC_RECEIPT_SECRET = os.environ.get("PAYOUT_HMAC_SECRET", "nowing_payout_audit_receipt_salt_2026")
+HMAC_RECEIPT_SECRET = os.environ.get(
+    "PAYOUT_HMAC_SECRET", "nowing_payout_audit_receipt_salt_2026"
+)
 
 
 @dataclass
@@ -33,6 +35,7 @@ class TaxCalculationResult:
     net_amount_micros: int
     tax_rate: float
     tax_exemption_applied: bool
+    tax_code: str | None = None
 
 
 class PayoutReceipt(BaseModel):
@@ -56,11 +59,11 @@ class PartnerPayoutService:
     @staticmethod
     def calculate_pit_tax(amount_micros: int) -> TaxCalculationResult:
         """Calculate 10% PIT (Thuế TNCN) deduction according to TT 111/2013/TT-BTC.
-        
-        Amounts > 2,000,000 VNĐ (~80,000,000 micros) are subject to 10% withholding.
-        Amounts <= 2,000,000 VNĐ are exempt from deduction.
+
+        Amounts >= 2,000,000 VNĐ (~80,000,000 micros) are subject to 10% withholding.
+        Amounts < 2,000,000 VNĐ are exempt from deduction.
         """
-        if amount_micros > PIT_TAX_THRESHOLD_MICROS:
+        if amount_micros >= PIT_TAX_THRESHOLD_MICROS:
             tax_deducted = int(amount_micros * PIT_TAX_RATE)
             net_amount = amount_micros - tax_deducted
             return TaxCalculationResult(
@@ -69,6 +72,7 @@ class PartnerPayoutService:
                 net_amount_micros=net_amount,
                 tax_rate=PIT_TAX_RATE,
                 tax_exemption_applied=False,
+                tax_code="TNCN-10PCT-TT111",
             )
         else:
             return TaxCalculationResult(
@@ -77,6 +81,7 @@ class PartnerPayoutService:
                 net_amount_micros=amount_micros,
                 tax_rate=0.0,
                 tax_exemption_applied=True,
+                tax_code=None,
             )
 
     @classmethod
@@ -84,20 +89,20 @@ class PartnerPayoutService:
         cls, session: AsyncSession, payout_id: uuid.UUID
     ) -> PartnerPayout:
         """Acquire explicit database row locks (INV-23.10) and transition funds to hold balance.
-        
+
         BẮT BUỘC dùng SELECT ... FOR UPDATE trên partner_payouts và affiliate_partners.
         """
         # 1. Row-lock payout record
         stmt = (
-            select(PartnerPayout)
-            .where(PartnerPayout.id == payout_id)
-            .with_for_update()
+            select(PartnerPayout).where(PartnerPayout.id == payout_id).with_for_update()
         )
         res = await session.execute(stmt)
         payout = res.scalar_one_or_none()
 
         if not payout:
-            raise HTTPException(status_code=404, detail="Partner payout request not found")
+            raise HTTPException(
+                status_code=404, detail="Partner payout request not found"
+            )
 
         if payout.status != "pending":
             raise HTTPException(
@@ -115,7 +120,9 @@ class PartnerPayoutService:
         partner = partner_res.scalar_one_or_none()
 
         if not partner:
-            raise HTTPException(status_code=404, detail="Affiliate partner record not found")
+            raise HTTPException(
+                status_code=404, detail="Affiliate partner record not found"
+            )
 
         if partner.balance_micros < payout.amount_micros:
             raise HTTPException(
@@ -128,7 +135,7 @@ class PartnerPayoutService:
         payout.tax_deducted_micros = tax_info.tax_deducted_micros
         payout.net_amount_micros = tax_info.net_amount_micros
         if not tax_info.tax_exemption_applied and not payout.tax_code:
-            payout.tax_code = "TNCN-10PCT-TT111"
+            payout.tax_code = tax_info.tax_code
 
         # 4. Double-entry balance transfer: available -> hold
         partner.balance_micros -= payout.amount_micros
@@ -145,30 +152,43 @@ class PartnerPayoutService:
 
     @classmethod
     async def handle_webhook_confirmation(
-        cls, session: AsyncSession, payload: dict[str, Any]
+        cls,
+        session: AsyncSession | None = None,
+        payload: dict[str, Any] | None = None,
+        db_session: AsyncSession | None = None,
     ) -> PayoutReceipt:
         """Process gateway webhook callback and finalize balances (AC-3)."""
+        active_session = session or db_session
+        if active_session is None or payload is None:
+            raise HTTPException(
+                status_code=400, detail="Invalid session or payload in webhook"
+            )
+
         tx_reference = payload.get("tx_reference")
         if not tx_reference:
-            raise HTTPException(status_code=400, detail="Missing tx_reference in webhook payload")
+            raise HTTPException(
+                status_code=400, detail="Missing tx_reference in webhook payload"
+            )
 
         stmt = (
             select(PartnerPayout)
             .where(PartnerPayout.tx_reference == tx_reference)
             .with_for_update()
         )
-        res = await session.execute(stmt)
+        res = await active_session.execute(stmt)
         payout = res.scalar_one_or_none()
 
         if not payout:
-            raise HTTPException(status_code=404, detail=f"Payout tx_reference {tx_reference} not found")
+            raise HTTPException(
+                status_code=404, detail=f"Payout tx_reference {tx_reference} not found"
+            )
 
-        # Idempotent return if already completed
-        if payout.status == "completed":
+        # Idempotent return if already settled (completed or failed - prevents Replay Attacks)
+        if payout.status in ("completed", "failed"):
             return PayoutReceipt(
                 payout_id=payout.id,
                 tx_reference=payout.tx_reference,
-                status="completed",
+                status=payout.status,
                 napas_transaction_number=payout.napas_ref,
                 gross_amount_micros=payout.amount_micros,
                 tax_deducted_micros=payout.tax_deducted_micros or 0,
@@ -182,7 +202,7 @@ class PartnerPayoutService:
             .where(AffiliatePartner.id == payout.partner_id)
             .with_for_update()
         )
-        partner_res = await session.execute(partner_stmt)
+        partner_res = await active_session.execute(partner_stmt)
         partner = partner_res.scalar_one_or_none()
 
         gateway_status = payload.get("status", "").upper()
@@ -190,7 +210,9 @@ class PartnerPayoutService:
 
         if gateway_status == "SUCCESS":
             if partner:
-                partner.hold_balance_micros = max(0, partner.hold_balance_micros - payout.amount_micros)
+                partner.hold_balance_micros = max(
+                    0, partner.hold_balance_micros - payout.amount_micros
+                )
                 partner.total_paid_micros += payout.amount_micros
 
             payout.status = "completed"
@@ -205,14 +227,16 @@ class PartnerPayoutService:
             ).hexdigest()
 
         else:
-            # Transfer failed at bank/gateway -> refund hold balance
+            # Transfer failed at bank/gateway -> refund hold balance to available
             if partner:
-                partner.hold_balance_micros = max(0, partner.hold_balance_micros - payout.amount_micros)
+                partner.hold_balance_micros = max(
+                    0, partner.hold_balance_micros - payout.amount_micros
+                )
                 partner.balance_micros += payout.amount_micros
 
             payout.status = "failed"
 
-        await session.flush()
+        await active_session.flush()
 
         return PayoutReceipt(
             payout_id=payout.id,
@@ -231,23 +255,70 @@ class PartnerPayoutService:
 
     @classmethod
     async def reconcile_payout_status(
-        cls, session: AsyncSession, payout: PartnerPayout, client: Any
+        cls,
+        session: AsyncSession | None = None,
+        payout: PartnerPayout | None = None,
+        client: Any = None,
+        db_session: AsyncSession | None = None,
     ) -> None:
         """Two-Generals reconciliation: queries gateway before modifying DB (INV-23.11)."""
-        if not payout.tx_reference:
+        active_session = session or db_session
+        if (
+            payout is None
+            or client is None
+            or not payout.tx_reference
+            or active_session is None
+        ):
             return
 
-        status_data = await client.query_transfer_status(payout.tx_reference)
-        status = status_data.get("status", "").upper()
+        # Row-lock payout and partner records
+        stmt = (
+            select(PartnerPayout).where(PartnerPayout.id == payout.id).with_for_update()
+        )
+        res = await active_session.execute(stmt)
+        locked_payout = res.scalar_one_or_none()
+        if not locked_payout or locked_payout.status != "processing":
+            return
 
-        if status == "SUCCESS":
-            payout.status = "completed"
-            payout.napas_ref = status_data.get("napas_ref")
-            if hasattr(payout, "partner") and payout.partner:
-                payout.partner.hold_balance_micros = max(0, payout.partner.hold_balance_micros - payout.amount_micros)
-                payout.partner.total_paid_micros += payout.amount_micros
-        elif status == "FAILED":
-            payout.status = "failed"
-            if hasattr(payout, "partner") and payout.partner:
-                payout.partner.hold_balance_micros = max(0, payout.partner.hold_balance_micros - payout.amount_micros)
-                payout.partner.balance_micros += payout.amount_micros
+        partner_stmt = (
+            select(AffiliatePartner)
+            .where(AffiliatePartner.id == locked_payout.partner_id)
+            .with_for_update()
+        )
+        partner_res = await active_session.execute(partner_stmt)
+        partner = partner_res.scalar_one_or_none()
+
+        status_data = await client.query_transfer_status(locked_payout.tx_reference)
+        gateway_status = status_data.get("status", "").upper()
+
+        if gateway_status == "SUCCESS":
+            locked_payout.status = "completed"
+            locked_payout.napas_ref = status_data.get("napas_ref")
+            if partner:
+                partner.hold_balance_micros = max(
+                    0, partner.hold_balance_micros - locked_payout.amount_micros
+                )
+                partner.total_paid_micros += locked_payout.amount_micros
+
+            raw_hmac_data = f"{locked_payout.id}:{locked_payout.tx_reference}:{locked_payout.napas_ref}:{locked_payout.net_amount_micros}:{locked_payout.tax_deducted_micros}"
+            locked_payout.hmac_audit_hash = hmac.new(
+                HMAC_RECEIPT_SECRET.encode(),
+                raw_hmac_data.encode(),
+                hashlib.sha256,
+            ).hexdigest()
+
+        elif gateway_status in (
+            "FAILED",
+            "NOT_FOUND",
+            "REJECTED",
+            "EXPIRED",
+            "CANCELLED",
+        ):
+            locked_payout.status = "failed"
+            if partner:
+                partner.hold_balance_micros = max(
+                    0, partner.hold_balance_micros - locked_payout.amount_micros
+                )
+                partner.balance_micros += locked_payout.amount_micros
+
+        await active_session.flush()

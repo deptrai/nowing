@@ -450,7 +450,7 @@ export default function PartnerDashboardPage() {
 				{/* Card 4: Active Paying Referrals */}
 				<div className="p-6 rounded-3xl border border-neutral-200/80 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-xs">
 					<div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">
-						Active Paying Clients Paying Customers
+						Active Paying Customers
 					</div>
 					<div className="text-3xl font-black font-mono text-neutral-900 dark:text-white">
 						{profile.active_paying_referrals}

@@ -146,7 +146,9 @@ async def list_payouts(
 async def handle_payout_webhook(
     request: Request,
     db_session: AsyncSession = Depends(get_async_session),
-    x_webhook_signature: Annotated[str | None, Header(alias="x-webhook-signature")] = None,
+    x_webhook_signature: Annotated[
+        str | None, Header(alias="x-webhook-signature")
+    ] = None,
 ) -> dict[str, Any]:
     """Bank & VietQR Webhook Callback endpoint for payout settlement & reconciliation (Story 23.3)."""
     raw_body = await request.body()
@@ -156,13 +158,19 @@ async def handle_payout_webhook(
         or ""
     )
 
-    if secret and (
-        not x_webhook_signature
-        or not VietQRPayoutClient.verify_webhook_signature(
-            raw_body, x_webhook_signature, secret
+    if not secret:
+        logger.error("Payout webhook secret is not configured in server environment")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Webhook verification is unconfigured on server",
         )
+
+    if not x_webhook_signature or not VietQRPayoutClient.verify_webhook_signature(
+        raw_body, x_webhook_signature, secret
     ):
-        logger.warning("Invalid webhook signature received for payout callback")
+        logger.warning(
+            "Invalid or missing webhook signature received for payout callback"
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid webhook signature",
@@ -178,7 +186,7 @@ async def handle_payout_webhook(
         ) from e
 
     receipt = await PartnerPayoutService.handle_webhook_confirmation(
-        db_session=db_session,
+        session=db_session,
         payload=payload,
     )
     await db_session.commit()

@@ -229,11 +229,11 @@ development_status:
 
   # === Epic 23: Enterprise Lead Infrastructure, Realtime Ingestion & Automated Outreach Engine ===
   # 2026-08-16: Scalability & Enterprise Automation layer (Celery + Redis Stream, Zalo OA Webhook, VietQR Auto Payout, PostgreSQL RLS Partitioning)
-  epic-23: ready-for-dev
+  epic-23: in-progress
   23-1: ready-for-dev  # Asynchronous Scraper Worker Pool (Celery + Redis Streams)
-  23-2: ready-for-dev  # Official Zalo OA Webhook & ZNS Template Automation Hub
-  23-3: ready-for-dev  # Automated VietQR Affiliate Payout Reconciliation
-  23-4: ready-for-dev  # PostgreSQL Row-Level Security (RLS) & Table Partitioning for Multi-Million Lead Scale
+  23-2: done  # Official Zalo OA Webhook & ZNS Template Automation Hub
+  23-3: done  # Automated VietQR Affiliate Payout Reconciliation — 3-layer code-review passed, 8 patches applied, 9 unit + 4 integration tests pass
+  23-4: done  # PostgreSQL Row-Level Security (RLS) & Table Partitioning for Multi-Million Lead Scale
   epic-23-retrospective: optional
 
   # === Epic 11: Telegram Automation & Bot ===
@@ -483,3 +483,8 @@ validation_reports:
     verdict: "PASS-with-changes"
     reviewed_by: "bmad-code-review"
     notes: "3-layer adversarial review: 11 patch findings applied (OAuth callback workspace scoping, false-positive duplicate check fix, RLS tenant isolation read policy, NULLIF integer casting in migration 201, async flush for error sync logs and context memory persistence, UTC naive timezone normalization in conflict resolver, empty entity_ids FastMCP handling, auth client_id propagation, sync-logs pagination, field-mapping lowercasing, client_secret validation). 2 deferred, 1 dismissed. 34 unit tests pass, ruff clean."
+  - story: "23-3"
+    type: "code-review"
+    verdict: "PASS-with-changes"
+    reviewed_by: "bmad-code-review"
+    notes: "3-layer adversarial review: 8 patch findings applied (TaxCalculationResult.tax_code AttributeError fix, Double Balance Deduction in request_payout fix, Replay attack idempotency on FAILED webhook, session/webhook_secret parameter alignment, Fail-Closed webhook signature verification, Two-Generals NOT_FOUND refund >15m & HMAC seal in Celery reconciliation worker, TT 111 >= 2M VND threshold comparison, frontend defensive null checks & KPI typo fix). 0 deferred, 0 dismissed. 9 unit + 4 PostgreSQL integration tests pass, tsc & biome clean."

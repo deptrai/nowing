@@ -191,6 +191,7 @@ export const filterPresetsSchema = z.object({
 	target_industries: z.array(z.string()).default([]),
 	locations: z.array(z.string()).default([]),
 	company_size_range: z.string().nullable().optional(),
+	min_fit_score: z.number().nullable().optional(),
 });
 
 export type FilterPresets = z.infer<typeof filterPresetsSchema>;

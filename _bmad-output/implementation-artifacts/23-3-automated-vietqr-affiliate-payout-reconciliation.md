@@ -1,5 +1,5 @@
 story_key: 23-3-automated-vietqr-affiliate-payout-reconciliation
-status: ready-for-review
+status: done
 baseline_commit: 14d9eb4729cfa97ba8d6c70281b37a1c49618a80
 epic: 23
 story: 3
@@ -7,7 +7,7 @@ story: 3
 
 # Story 23.3: Automated VietQR Affiliate Payout Reconciliation
 
-Status: ready-for-review
+Status: done
 
 <!-- Note: Governed by FR-91, INV-23.10, INV-23.11, and Architecture Spine: architecture-epic23-lead-infrastructure.md -->
 
@@ -83,8 +83,19 @@ So that affiliate partners receive instant commission withdrawals without double
     - Cryptographic Audit Receipt modal.
 
 - [x] **Task 5: Automated Testing & Chaos Scenarios**
-  - [x] Unit tests: Double-entry ledger math, PIT tax deduction rules, idempotent reference generator (8/8 pass).
+  - [x] Unit tests: Double-entry ledger math, PIT tax deduction rules, idempotent reference generator (9/9 pass).
   - [x] Integration tests: Concurrent payout approval attempts on PostgreSQL, Webhook settlement, Two-Generals refund on gateway failure (4/4 pass).
+
+### Review Findings
+
+- [x] [Review][Patch] Fix AttributeError: 'TaxCalculationResult' object has no attribute 'tax_code' [`partner_payout_service.py:30` & `partner_service.py:519`]
+- [x] [Review][Patch] Fix Double Balance Deduction and premature total_paid_micros increment in request_payout [`partner_service.py:473`]
+- [x] [Review][Patch] Fix Infinite Refund Replay Attack on duplicate FAILED webhooks by adding status guard [`partner_payout_service.py:167`]
+- [x] [Review][Patch] Fix parameter keyword mismatches (db_session vs session, secret_key vs webhook_secret) [`partner_routes.py:180` & `partner_payout_reconciliation_task.py:35,66`]
+- [x] [Review][Patch] Enforce Fail-Closed Webhook authentication when webhook secret is unconfigured [`partner_routes.py:159`]
+- [x] [Review][Patch] Handle Two-Generals NOT_FOUND status (>15m) and generate HMAC audit seal in auto-reconciliation worker [`partner_payout_service.py:240`]
+- [x] [Review][Patch] Fix TT 111/2013/TT-BTC legal threshold comparison to >= 2,000,000 VND [`partner_payout_service.py:63`]
+- [x] [Review][Patch] Add defensive null fallbacks in PayoutHistoryTable.tsx and fix typo in dashboard page [`PayoutHistoryTable.tsx:224` & `page.tsx:453`]
 
 ---
 
