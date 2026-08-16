@@ -141,6 +141,8 @@ class TestStandardPhoneNormalization:
     def test_mask_phone(self):
         assert mask_phone("0908123456") == "0908***456"
         assert mask_phone("0987654321") == "0987***321"
+        # E.164 input also masks as domestic display
+        assert mask_phone("+84908123456") == "0908***456"
         assert mask_phone("") == ""
         assert mask_phone(None) == ""
 
@@ -149,12 +151,15 @@ class TestStandardPhoneNormalization:
 
         test_key = "test-secret-key-must-be-long-enough-12345678"
         monkeypatch.setattr(config, "SECRET_KEY", test_key)
+        # hash_phone now canonicalizes to E.164 before hashing
         expected = hmac.new(
             test_key.encode("utf-8"),
-            b"0908123456",
+            b"+84908123456",
             hashlib.sha256,
         ).hexdigest()
         assert hash_phone("0908123456") == expected
+        assert hash_phone("+84908123456") == expected
+        assert hash_phone("84908123456") == expected
         assert hash_phone(None) is None
 
     def test_carrier_name(self):

@@ -168,10 +168,16 @@ def normalize_vn_phone(
 
 
 def mask_phone(phone: str | None) -> str:
-    """Mask phone number for non-privileged response and zero-cache (e.g. 0908***456)."""
+    """Mask phone number for non-privileged response and zero-cache (e.g. 0908***456).
+
+    ponytail: accepts both 10-digit domestic and E.164 input; E.164 is converted
+    to domestic display before masking.
+    """
     if not phone:
         return ""
     digits = re.sub(r"\D", "", phone)
+    if digits.startswith("84") and len(digits) == 11:
+        digits = "0" + digits[2:]
     if len(digits) == 10:
         return f"{digits[:4]}***{digits[7:]}"
     if len(digits) >= 7:
@@ -182,12 +188,18 @@ def mask_phone(phone: str | None) -> str:
 
 
 def hash_phone(phone: str | None) -> str | None:
-    """Compute HMAC-SHA256 hex digest of normalized phone string for caching and deduplication."""
+    """Compute HMAC-SHA256 hex digest of canonical E.164 phone for DNC/cache alignment."""
     if not phone:
         return None
-    from app.lead_intelligence.dnc.normalizer import hash_phone_hmac
+    from app.lead_intelligence.dnc.normalizer import (
+        hash_phone_hmac,
+        normalize_phone_e164,
+    )
 
-    return hash_phone_hmac(phone, config.SECRET_KEY)
+    e164 = normalize_phone_e164(phone)
+    if not e164:
+        return None
+    return hash_phone_hmac(e164, config.SECRET_KEY)
 
 
 @dataclass

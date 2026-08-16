@@ -241,8 +241,8 @@ development_status:
   # 2026-08-16: Strategic Lead Conversion, Visual Drip Outreach, Waterfall MST Verification, Multi-Seat CRM, Lead Clipper Extension
   epic-24: in-progress
   24-1: ready-for-dev  # Multi-Channel Drip Outreach Campaign Engine (Zalo ZNS + Telegram + Email Cadence)
-  24-2: review  # Waterfall Phone & B2B Tax Code (MST) Corporate Verification Engine (75 unit tests pass, Redis 7d cache, Circuit breaker, 2018 telecom table, fail-closed DNC)
-  24-3: in-progress  # Multi-Seat Team CRM Pipeline & Shared Workspace Credit Pooling (code-review found blockers: auth, OCC, credit atomicity, RLS, Kanban implementation)
+  24-2: done  # Waterfall Phone & B2B Tax Code (MST) Corporate Verification Engine — all batch 1/2 code review patches applied, phone output canonicalized (E.164 hash/DNC/cache, domestic display), retry queue verified (Celery phone worker + masothue in-process retries), 74 unit tests pass
+  24-3: review  # Multi-Seat Team CRM Pipeline & Shared Workspace Credit Pooling (patches applied: auth/RBAC, OCC atomic, credit atomic, RLS, dnd-kit + Zero Kanban, spend cap UI, scraper auto-assign)
   24-4: done  # Nowing Lead Clipper — 3-layer code-review passed, 5 patches applied (concurrency rollback recovery, phone +8409 normalizer, tenant client_id, tracking param scrubbing, contact title)
   24-5: ready-for-dev  # Vertical Playbook Marketplace & Community Workflow Templates
   24-6: ready-for-dev  # Two-Way AI Outreach Auto-Reply Agent
@@ -251,7 +251,7 @@ development_status:
   # === Epic 25: Superadmin & Platform Operations Control Plane ===
   # 2026-08-16: Multi-Tenant Hub, Scoped Impersonation, Manual Credit Desk, Affiliate Anti-Fraud Payouts, Telemetry & Dynamic Scraper Rules
   epic-25: ready-for-dev
-  25-1: ready-for-dev  # Multi-Tenant User & Workspace Hub + Scoped Impersonation
+  25-1: in-progress  # Multi-Tenant User & Workspace Hub + Scoped Impersonation
   25-2: done  # Manual Credit Adjustment & Refund Desk with Dual-Audit Ledger
   25-3: ready-for-dev  # Affiliate Partner Payout Desk & Anti-Fraud Engine
   25-4: ready-for-dev  # Realtime LLM Token Cost, Proxy Health & Celery Queue Telemetry
