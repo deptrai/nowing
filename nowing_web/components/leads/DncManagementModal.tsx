@@ -130,18 +130,21 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 	const handleFileUpload = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!selectedFile) return;
-
 		setActionLoading(true);
 		setError(null);
+		setSuccessMsg(null);
 		setImportResult(null);
 		try {
 			const res = await dncApiService.importDncCsv(workspaceId, selectedFile);
 			setImportResult(res);
-			setSuccessMsg(`Successfully imported ${res.imported_count} DNC records`);
+			setSuccessMsg(
+				`Import completed: ${res.imported_count} imported, ${res.skipped_count} skipped, ${res.failed_count} failed.`
+			);
 			setSelectedFile(null);
+			setActiveTab("list");
 			await fetchRecords();
 		} catch (err: unknown) {
-			setError(err instanceof Error ? err.message : "CSV import failed");
+			setError(err instanceof Error ? err.message : "CSV Import failed");
 		} finally {
 			setActionLoading(false);
 		}

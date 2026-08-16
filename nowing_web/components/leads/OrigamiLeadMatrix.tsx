@@ -14,6 +14,7 @@ import {
 	Network,
 	RefreshCw,
 	Search,
+	ShieldAlert,
 	Sparkles,
 } from "lucide-react";
 import type React from "react";
@@ -43,6 +44,7 @@ export interface OrigamiLeadMatrixProps {
 	onSearchQueryChange: (query: string) => void;
 	onRefresh: () => void;
 	onOpenReverseIcp?: () => void;
+	onOpenDnc?: () => void;
 	onOpenCompanyGraph?: (companyName: string) => void;
 	className?: string;
 }
@@ -77,6 +79,7 @@ export const OrigamiLeadMatrix: React.FC<OrigamiLeadMatrixProps> = ({
 	onSearchQueryChange,
 	onRefresh,
 	onOpenReverseIcp,
+	onOpenDnc,
 	onOpenCompanyGraph,
 	className,
 }) => {
@@ -245,6 +248,18 @@ export const OrigamiLeadMatrix: React.FC<OrigamiLeadMatrixProps> = ({
 						>
 							<Search className="w-3.5 h-3.5 text-muted-foreground" />
 							<span>Find similar leads</span>
+						</button>
+					)}
+
+					{onOpenDnc && (
+						<button
+							type="button"
+							onClick={onOpenDnc}
+							className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border border-border/80 bg-background hover:bg-muted text-foreground transition-all cursor-pointer shadow-2xs"
+							title="Quản lý danh sách Do-Not-Call (DNC) & Tuân thủ Nghị định 13 PDPD"
+						>
+							<ShieldAlert className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+							<span>Do-Not-Call (DNC)</span>
 						</button>
 					)}
 

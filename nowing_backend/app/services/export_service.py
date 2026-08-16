@@ -1,11 +1,15 @@
 """Service for exporting knowledge base content as an OKF ZIP archive."""
 
 import asyncio
+import csv
+import io
 import logging
 import os
+import re
 import tempfile
 import zipfile
 from dataclasses import dataclass, field
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -570,3 +574,167 @@ def _memory_title(memory: Memory) -> str:
     if len(content) <= 80:
         return content
     return content[:80].rstrip() + "..."
+
+
+def mask_phone(phone: str | None) -> str:
+    """Mask phone for PII redaction (Story 21.13 / AD-36)."""
+    if not phone:
+        return ""
+    clean = str(phone).strip()
+    if clean.startswith("+84"):
+        rest = clean[3:]
+        digits = re.sub(r"\D", "", rest)
+        if len(digits) >= 6:
+            return f"+84{digits[:3]}***{digits[-3:]}"
+    digits = re.sub(r"\D", "", clean)
+    if len(digits) == 10:
+        return f"{digits[:4]}***{digits[7:]}"
+    if len(digits) >= 7:
+        mid_start = max(2, len(digits) - 5)
+        mid_end = len(digits) - 3
+        return f"{digits[:mid_start]}***{digits[mid_end:]}"
+    if len(clean) <= 6:
+        return clean
+    return f"{clean[:4]}***{clean[-3:]}"
+
+
+def mask_email(email: str | None) -> str:
+    """Mask email for PII redaction (Story 21.13 / AD-36)."""
+    if not email:
+        return ""
+    clean = str(email).strip()
+    if "@" not in clean:
+        return clean
+    parts = clean.split("@", 1)
+    username = parts[0]
+    domain = parts[1]
+    if not username:
+        return f"***@{domain}"
+    return f"{username[0]}***@{domain}"
+
+
+class ExportService:
+    """Lead Export Service for CSV, Lark Base, and Google Sheets format conversion (Story 21.13)."""
+
+    def generate_csv(self, leads: list[Any], mask_pii: bool = False) -> str:
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow([
+            "Company Name",
+            "Domain",
+            "Source",
+            "Industry",
+            "Location",
+            "Fit Score",
+            "Status",
+            "Contact Name",
+            "Contact Title",
+            "Email",
+            "Phone",
+        ])
+
+        for lead in leads:
+            contacts = getattr(lead, "verified_contacts", None) or []
+            contact = contacts[0] if len(contacts) > 0 else None
+            name = getattr(contact, "name", "") or ""
+            title = getattr(contact, "title", "") or ""
+            email = getattr(contact, "email", "") or ""
+            phone = getattr(contact, "phone", "") or ""
+
+            if mask_pii:
+                email = mask_email(email)
+                phone = mask_phone(phone)
+
+            writer.writerow([
+                getattr(lead, "company_name", "") or "",
+                getattr(lead, "domain", "") or "",
+                getattr(lead, "source", "") or "",
+                getattr(lead, "industry", "") or "",
+                getattr(lead, "location", "") or "",
+                getattr(lead, "fit_score", 0.0) or 0.0,
+                getattr(lead, "status", "") or "",
+                name,
+                title,
+                email,
+                phone,
+            ])
+
+        return output.getvalue()
+
+    def prepare_lark_records(
+        self, leads: list[Any], mask_pii: bool = False
+    ) -> list[dict[str, Any]]:
+        records = []
+        for lead in leads:
+            contacts = getattr(lead, "verified_contacts", None) or []
+            contact = contacts[0] if len(contacts) > 0 else None
+            name = getattr(contact, "name", "") or ""
+            title = getattr(contact, "title", "") or ""
+            email = getattr(contact, "email", "") or ""
+            phone = getattr(contact, "phone", "") or ""
+
+            if mask_pii:
+                email = mask_email(email)
+                phone = mask_phone(phone)
+
+            records.append({
+                "fields": {
+                    "Company Name": getattr(lead, "company_name", "") or "",
+                    "Domain": getattr(lead, "domain", "") or "",
+                    "Source": getattr(lead, "source", "") or "",
+                    "Industry": getattr(lead, "industry", "") or "",
+                    "Location": getattr(lead, "location", "") or "",
+                    "Fit Score": float(getattr(lead, "fit_score", 0.0) or 0.0),
+                    "Status": getattr(lead, "status", "") or "",
+                    "Contact Name": name,
+                    "Contact Title": title,
+                    "Email": email,
+                    "Phone": phone,
+                }
+            })
+        return records
+
+    def prepare_google_sheets_rows(
+        self, leads: list[Any], mask_pii: bool = False
+    ) -> list[list[Any]]:
+        rows = [
+            [
+                "Company Name",
+                "Domain",
+                "Source",
+                "Industry",
+                "Location",
+                "Fit Score",
+                "Status",
+                "Contact Name",
+                "Contact Title",
+                "Email",
+                "Phone",
+            ]
+        ]
+        for lead in leads:
+            contacts = getattr(lead, "verified_contacts", None) or []
+            contact = contacts[0] if len(contacts) > 0 else None
+            name = getattr(contact, "name", "") or ""
+            title = getattr(contact, "title", "") or ""
+            email = getattr(contact, "email", "") or ""
+            phone = getattr(contact, "phone", "") or ""
+
+            if mask_pii:
+                email = mask_email(email)
+                phone = mask_phone(phone)
+
+            rows.append([
+                getattr(lead, "company_name", "") or "",
+                getattr(lead, "domain", "") or "",
+                getattr(lead, "source", "") or "",
+                getattr(lead, "industry", "") or "",
+                getattr(lead, "location", "") or "",
+                float(getattr(lead, "fit_score", 0.0) or 0.0),
+                getattr(lead, "status", "") or "",
+                name,
+                title,
+                email,
+                phone,
+            ])
+        return rows

@@ -5424,3 +5424,227 @@ class PromoCodeRedemption(Base, TimestampMixin):
 
     user = relationship("User")
     promo_code = relationship("PromoCode")
+
+
+class WorkspaceDncRecord(Base, TimestampMixin):
+    """Do-Not-Call (DNC) / Exclusion registry record (Story 21.14 / AD-43)."""
+
+    __tablename__ = "workspace_dnc_records"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "record_type", "value_hmac", name="uq_workspace_dnc_entry"),
+        Index("ix_workspace_dnc_records_workspace_type", "workspace_id", "record_type"),
+        Index("ix_workspace_dnc_records_hmac", "workspace_id", "value_hmac"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    record_type = Column(String(20), nullable=False)  # 'phone', 'domain', 'email', 'tax_id'
+    value = Column(String(255), nullable=True)  # Masked/raw display value
+    value_hmac = Column(String(64), nullable=False, index=True)
+    reason = Column(String(255), nullable=True, default="Opt-out requested", server_default=text("'Opt-out requested'"))
+    source = Column(String(50), nullable=False, default="manual", server_default=text("'manual'"))
+    created_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
+
+    workspace = relationship("Workspace")
+
+
+class AffiliatePartner(Base, TimestampMixin):
+    """Affiliate Partner account for Nowing referral program (Story 21.18 / AD-44)."""
+
+    __tablename__ = "affiliate_partners"
+    __table_args__ = (
+        UniqueConstraint("referral_code", name="uq_affiliate_partners_referral_code"),
+        Index("ix_affiliate_partners_user_id", "user_id"),
+        Index("ix_affiliate_partners_referral_code", "referral_code"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    referral_code = Column(CITEXT, nullable=False)
+    partner_type = Column(String(50), nullable=False, default="agency", server_default=text("'agency'"))
+    status = Column(String(30), nullable=False, default="active", server_default=text("'active'"))
+    commission_rate = Column(Float, nullable=False, default=0.15, server_default="0.15")
+    balance_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
+    total_earned_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
+    total_paid_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
+    payout_method = Column(String(30), nullable=False, default="vietqr", server_default=text("'vietqr'"))
+    payout_details = Column(JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb"))
+    created_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
+
+    user = relationship("User")
+    referrals = relationship("PartnerReferral", back_populates="partner", cascade="all, delete-orphan")
+    commissions = relationship("PartnerCommission", back_populates="partner", cascade="all, delete-orphan")
+    payouts = relationship("PartnerPayout", back_populates="partner", cascade="all, delete-orphan")
+
+
+class PartnerReferral(Base, TimestampMixin):
+    """Referred user attribution (Story 21.18)."""
+
+    __tablename__ = "partner_referrals"
+    __table_args__ = (
+        UniqueConstraint("referred_user_id", name="uq_partner_referrals_referred_user"),
+        Index("ix_partner_referrals_partner_id", "partner_id"),
+        Index("ix_partner_referrals_referred_user_id", "referred_user_id"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    partner_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("affiliate_partners.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    referred_user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    attribution_source = Column(String(100), nullable=True, default="direct_ref", server_default=text("'direct_ref'"))
+    landing_page = Column(String(255), nullable=True)
+    created_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
+
+    partner = relationship("AffiliatePartner", back_populates="referrals")
+    referred_user = relationship("User")
+    commissions = relationship("PartnerCommission", back_populates="referral", cascade="all, delete-orphan")
+
+
+class PartnerCommission(Base, TimestampMixin):
+    """Commission payout ledger event from user credit purchase (Story 21.18)."""
+
+    __tablename__ = "partner_commissions"
+    __table_args__ = (
+        Index("ix_partner_commissions_partner_id", "partner_id"),
+        Index("ix_partner_commissions_referral_id", "referral_id"),
+        Index("ix_partner_commissions_credit_purchase_id", "credit_purchase_id"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    partner_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("affiliate_partners.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    referral_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("partner_referrals.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    credit_purchase_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("credit_purchases.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    source_amount_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
+    commission_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
+    commission_rate = Column(Float, nullable=False, default=0.15, server_default="0.15")
+    currency = Column(String(10), nullable=False, default="USD", server_default=text("'USD'"))
+    status = Column(String(20), nullable=False, default="settled", server_default=text("'settled'"))
+    created_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
+
+    partner = relationship("AffiliatePartner", back_populates="commissions")
+    referral = relationship("PartnerReferral", back_populates="commissions")
+
+
+class PartnerPayout(Base, TimestampMixin):
+    """Partner payout request / transaction record (Story 21.18)."""
+
+    __tablename__ = "partner_payouts"
+    __table_args__ = (
+        Index("ix_partner_payouts_partner_id", "partner_id"),
+        Index("ix_partner_payouts_status", "status"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    partner_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("affiliate_partners.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    amount_micros = Column(BigInteger, nullable=False)
+    amount_vnd = Column(BigInteger, nullable=False, default=0, server_default="0")
+    payout_method = Column(String(30), nullable=False, default="vietqr", server_default=text("'vietqr'"))
+    payout_details = Column(JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb"))
+    status = Column(String(20), nullable=False, default="pending", server_default=text("'pending'"))
+    tx_reference = Column(String(100), nullable=True)
+    requested_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    processed_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    created_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
+
+    partner = relationship("AffiliatePartner", back_populates="payouts")
+

@@ -143,6 +143,8 @@ export const ReverseIcpModal: React.FC<ReverseIcpModalProps> = ({
 
 	const activePersona: BuyerPersona | undefined = result?.target_buyer_personas[selectedPersonaIdx];
 
+	if (!isOpen) return null;
+
 	return (
 		<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150">
 			<div className="relative w-full max-w-3xl max-h-[90vh] flex flex-col rounded-2xl bg-zinc-900 border border-zinc-800 shadow-2xl overflow-hidden text-zinc-100">

@@ -67,6 +67,7 @@ from .confluence_add_connector_route import router as confluence_add_connector_r
 from .crm_oauth_routes import router as crm_oauth_router
 from .crm_routes import router as crm_router
 from .discord_add_connector_route import router as discord_add_connector_router
+from .dnc_routes import router as dnc_router
 from .documents_routes import router as documents_router
 from .dropbox_add_connector_route import router as dropbox_add_connector_router
 from .editor_routes import router as editor_router
@@ -108,6 +109,7 @@ from .obsidian_plugin_routes import router as obsidian_plugin_router
 from .onedrive_add_connector_route import router as onedrive_add_connector_router
 from .outbound_routes import router as outbound_router
 from .outcome_pricing_routes import router as outcome_pricing_router
+from .partner_routes import router as partner_router
 from .personal_access_tokens_routes import router as personal_access_tokens_router
 from .promo_code_routes import router as promo_code_router
 from .prompts_routes import router as prompts_router
@@ -136,8 +138,10 @@ router.include_router(workspaces_router)
 router.include_router(workspace_tables_router)
 router.include_router(outcome_pricing_router)
 router.include_router(promo_code_router)
+router.include_router(partner_router)
 router.include_router(lead_scoring_router)
 router.include_router(leads_router)
+router.include_router(dnc_router)
 router.include_router(outbound_router)
 router.include_router(enrichment_router)
 router.include_router(crm_router, prefix="/workspaces")

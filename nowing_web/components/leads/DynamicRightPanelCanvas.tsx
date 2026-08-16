@@ -1,7 +1,14 @@
 "use client";
 
 import { useAtom } from "jotai";
-import { Activity, ChevronDown, PanelLeftOpen, Sparkles, Table as TableIcon, Zap } from "lucide-react";
+import {
+	Activity,
+	ChevronDown,
+	PanelLeftOpen,
+	Sparkles,
+	Table as TableIcon,
+	Zap,
+} from "lucide-react";
 import type React from "react";
 import { useMemo } from "react";
 import {
@@ -34,6 +41,7 @@ export interface DynamicRightPanelCanvasProps {
 	onSearchQueryChange: (query: string) => void;
 	onRefresh: () => void;
 	onOpenReverseIcp?: () => void;
+	onOpenDnc?: () => void;
 	onOpenCompanyGraph?: (companyName: string) => void;
 	className?: string;
 }
@@ -251,6 +259,7 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 						onSearchQueryChange={props.onSearchQueryChange}
 						onRefresh={props.onRefresh}
 						onOpenReverseIcp={props.onOpenReverseIcp}
+						onOpenDnc={props.onOpenDnc}
 						onOpenCompanyGraph={props.onOpenCompanyGraph}
 					/>
 				)}

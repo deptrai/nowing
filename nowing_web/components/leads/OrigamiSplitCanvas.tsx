@@ -17,6 +17,7 @@ import type { FilterPresets } from "@/contracts/types/leads.types";
 import { useLeads } from "@/lib/hooks/use-leads";
 import { cn } from "@/lib/utils";
 import { CompanyGraphDrawer } from "./CompanyGraphDrawer";
+import { DncManagementModal } from "./DncManagementModal";
 import { DynamicRightPanelCanvas } from "./DynamicRightPanelCanvas";
 import { FloatingBulkActionBar } from "./FloatingBulkActionBar";
 import { LeadDetailFlyoutDrawer } from "./LeadDetailFlyoutDrawer";
@@ -56,6 +57,7 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 	const containerRef = useRef<HTMLElement>(null);
 	const [isDragging, setIsDragging] = useState(false);
 	const [isReverseIcpOpen, setIsReverseIcpOpen] = useState(false);
+	const [isDncOpen, setIsDncOpen] = useState(false);
 	const [selectedCompanyForGraph, setSelectedCompanyForGraph] = useState<string | null>(null);
 	const [isGraphDrawerOpen, setIsGraphDrawerOpen] = useState(false);
 
@@ -265,6 +267,7 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 						onSearchQueryChange={setSearchQuery}
 						onRefresh={refetch}
 						onOpenReverseIcp={() => setIsReverseIcpOpen(true)}
+						onOpenDnc={() => setIsDncOpen(true)}
 						onOpenCompanyGraph={handleOpenCompanyGraph}
 					/>
 				</section>
@@ -312,6 +315,13 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 				onClose={() => setIsReverseIcpOpen(false)}
 				workspaceId={String(workspaceId)}
 				onApplyFilterPresets={handleReverseIcpSuccess}
+			/>
+
+			{/* DNC & Compliance Modal */}
+			<DncManagementModal
+				isOpen={isDncOpen}
+				onClose={() => setIsDncOpen(false)}
+				workspaceId={String(workspaceId)}
 			/>
 		</main>
 	);
