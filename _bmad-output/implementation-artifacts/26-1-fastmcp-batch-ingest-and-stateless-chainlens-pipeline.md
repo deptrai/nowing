@@ -36,23 +36,25 @@ So that autonomous sidecar agents (`dsh-worker`) and ChainLens crawlers can inge
 
 ### AC-2: Deterministic Sorting & Concurrency Deadlock Prevention (AD-109)
 - **Given** concurrent worker threads or sidecar processes ingesting intersecting sets of leads into the same workspace,
-- **When** executing bulk upsert operations on partitioned `leads` and `verified_contacts` tables,
-- **Then** the database repository MUST deterministically sort all batch items in memory by `value_hmac ASC` before acquiring row-level locks and executing:
-  ```sql
-  INSERT INTO leads (
-      id, workspace_id, client_id, source, source_url, company_name, domain,
-      industry, company_size, location, fit_score, intent_score, composite_score,
-      status, enriched, value_hmac, created_at, updated_at
-  )
-  VALUES (...)
-  ON CONFLICT (workspace_id, value_hmac)
-  DO UPDATE SET
-      fit_score = GREATEST(leads.fit_score, EXCLUDED.fit_score),
-      composite_score = GREATEST(COALESCE(leads.composite_score, 0), COALESCE(EXCLUDED.composite_score, 0)),
-      updated_at = NOW()
-  RETURNING id, value_hmac, workspace_id;
-  ```
-- **And** verified under a concurrency stress test with 20 parallel async threads inserting overlapping batches with 0 `DeadlockDetected` (`40P01`) exceptions.
+- **When** executing bulk upsert operations on `leads` and `verified_contacts` tables,
+- **Then** the repository MUST:
+  1. Ensure `leads.value_hmac` and `verified_contacts.value_hmac` are `NOT NULL` and guarded by a `UNIQUE(workspace_id, value_hmac)` constraint.
+  2. Deterministically sort all batch items in memory by `value_hmac ASC` before acquiring row-level locks and executing:
+     ```sql
+     INSERT INTO leads (
+         id, workspace_id, client_id, source, source_url, company_name, domain,
+         industry, company_size, location, fit_score, intent_score, composite_score,
+         status, enriched, value_hmac, created_at, updated_at
+     )
+     VALUES (...)
+     ON CONFLICT (workspace_id, value_hmac)
+     DO UPDATE SET
+         fit_score = GREATEST(leads.fit_score, EXCLUDED.fit_score),
+         composite_score = GREATEST(COALESCE(leads.composite_score, 0), COALESCE(EXCLUDED.composite_score, 0)),
+         updated_at = NOW()
+     RETURNING id, value_hmac, workspace_id;
+     ```
+- **And** verified under a concurrency stress test with 20 parallel async threads inserting overlapping batches with 0 `DeadlockDetected` (`40P01`) exceptions and 0 duplicate `value_hmac` NULL rows.
 
 ### AC-3: Stateless ChainLens Chunk Ingestion Pipeline (`POST /v1/chainlens/ingest`) (AD-101)
 - **Given** completed web crawl chunks received from the stateless ChainLens Research Engine,
