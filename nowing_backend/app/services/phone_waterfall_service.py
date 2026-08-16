@@ -442,7 +442,9 @@ class PhoneWaterfallService:
         """Tier 3: Masothue Corporate Legal Rep Phone fallback + Passive Carrier Prefix & HLR."""
         if lead and lead.company_name:
             try:
-                from app.services.corporate_verification_service import CorporateVerificationService
+                from app.services.corporate_verification_service import (
+                    CorporateVerificationService,
+                )
 
                 corp_service = CorporateVerificationService(self.session)
                 corp_res = await corp_service.verify_company(

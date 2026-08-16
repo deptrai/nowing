@@ -4585,7 +4585,7 @@ class Lead(Base, TimestampMixin):
         back_populates="leads",
         primaryjoin="and_(LeadPipelineStage.id == Lead.stage_id, LeadPipelineStage.workspace_id == Lead.workspace_id)",
         foreign_keys="[Lead.stage_id, Lead.workspace_id]",
-        overlaps="workspace",
+        overlaps="workspace,leads",
     )
     assigned_to = relationship("User", foreign_keys=[assigned_to_user_id])
     assignments = relationship(
@@ -4593,7 +4593,7 @@ class Lead(Base, TimestampMixin):
         back_populates="lead",
         primaryjoin="and_(LeadAssignment.lead_id == Lead.id, LeadAssignment.workspace_id == Lead.workspace_id)",
         cascade="all, delete-orphan",
-        overlaps="workspace",
+        overlaps="workspace,lead_assignments",
     )
     activity_logs = relationship(
         "LeadActivityLog",
@@ -4601,7 +4601,7 @@ class Lead(Base, TimestampMixin):
         primaryjoin="and_(LeadActivityLog.lead_id == Lead.id, LeadActivityLog.workspace_id == Lead.workspace_id)",
         order_by="LeadActivityLog.created_at.desc()",
         cascade="all, delete-orphan",
-        overlaps="workspace",
+        overlaps="workspace,lead_activity_logs",
     )
 
 

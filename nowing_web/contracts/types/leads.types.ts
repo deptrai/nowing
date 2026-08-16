@@ -46,6 +46,11 @@ export const leadSchema = z.object({
 	stage_id: z.string().uuid().nullable().optional(),
 	assigned_to_user_id: z.string().uuid().nullable().optional(),
 	version: z.number().default(1),
+	tax_id: z.string().nullable().optional(),
+	legal_representative: z.string().nullable().optional(),
+	charter_capital_vnd: z.number().nullable().optional(),
+	company_status: z.string().nullable().optional(),
+	is_zalo_active: z.boolean().nullable().optional(),
 	created_at: z.string(),
 	updated_at: z.string().nullable().optional(),
 });

@@ -15,8 +15,8 @@ import hashlib
 import json
 import logging
 import re
+import unicodedata
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -111,8 +111,6 @@ def _match_admin_unit(unit_a: str | None, unit_b: str | None) -> float:
     ratio = difflib.SequenceMatcher(None, clean_a, clean_b).ratio()
     return 1.0 if ratio >= 0.80 else 0.0
 
-
-import unicodedata
 
 def _strip_vietnamese_accents(text: str | None) -> str:
     """Normalize and strip Vietnamese diacritics for resilient string matching."""

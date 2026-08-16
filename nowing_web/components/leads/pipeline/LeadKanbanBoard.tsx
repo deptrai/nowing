@@ -1,19 +1,6 @@
 "use client";
 
-import {
-	AlertCircle,
-	Building2,
-	CheckCircle2,
-	Filter,
-	Layers,
-	Loader2,
-	Phone,
-	Plus,
-	RefreshCw,
-	Sparkles,
-	UserCheck,
-	Users,
-} from "lucide-react";
+import { AlertCircle, Filter, Loader2, RefreshCw, Sparkles, UserCheck } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { LeadPipelineStage } from "@/contracts/types/lead-pipeline.types";
@@ -150,7 +137,7 @@ export const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = ({ workspaceId })
 						: l
 				)
 			);
-		} catch (err: any) {
+		} catch (err: unknown) {
 			// Rollback on error / 409 Conflict
 			console.warn("OCC stage transition failed, rolling back", err);
 			setLeads((prev) =>
@@ -159,7 +146,12 @@ export const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = ({ workspaceId })
 				)
 			);
 
-			const is409 = err?.status === 409 || err?.response?.status === 409;
+			const is409 =
+				typeof err === "object" &&
+				err !== null &&
+				("status" in err || "response" in err) &&
+				((err as { status?: number }).status === 409 ||
+					(err as { response?: { status?: number } }).response?.status === 409);
 			setConflictNotice(
 				is409
 					? `Xung đột đồng thời (OCC): Lead "${leadToMove.company_name}" vừa được chỉnh sửa bởi thành viên khác. Đã tự động hoàn tác để đảm bảo toàn vẹn dữ liệu.`
@@ -256,8 +248,9 @@ export const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = ({ workspaceId })
 						const stageLeads = leadsByStage[stage.id] || [];
 
 						return (
-							<div
+							<section
 								key={stage.id}
+								aria-label={stage.name}
 								onDragOver={handleDragOver}
 								onDrop={() => handleDrop(stage.id)}
 								className="flex-1 min-w-[220px] max-w-[280px] rounded-xl bg-muted/30 border border-border flex flex-col max-h-[calc(100vh-210px)]"
@@ -284,7 +277,7 @@ export const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = ({ workspaceId })
 										</div>
 									) : (
 										stageLeads.map((lead) => (
-											<div
+											<article
 												key={lead.id}
 												draggable
 												onDragStart={() => handleDragStart(lead.id)}
@@ -292,7 +285,14 @@ export const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = ({ workspaceId })
 													setSelectedLead(lead);
 													setIsDrawerOpen(true);
 												}}
-												className={`p-3 rounded-lg bg-card border border-border hover:border-primary/50 shadow-xs hover:shadow-md transition-all cursor-grab active:cursor-grabbing space-y-2.5 ${
+												onKeyDown={(e) => {
+													if (e.key === "Enter" || e.key === " ") {
+														e.preventDefault();
+														setSelectedLead(lead);
+														setIsDrawerOpen(true);
+													}
+												}}
+												className={`p-3 rounded-lg bg-card border border-border hover:border-primary/50 shadow-xs hover:shadow-md transition-all cursor-grab active:cursor-grabbing space-y-2.5 text-left ${
 													draggedLeadId === lead.id ? "opacity-40" : ""
 												}`}
 											>
@@ -315,10 +315,7 @@ export const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = ({ workspaceId })
 												</div>
 
 												{/* Phone & Outreach */}
-												<div
-													className="flex items-center justify-between gap-1 pt-1"
-													onClick={(e) => e.stopPropagation()}
-												>
+												<div className="flex items-center justify-between gap-1 pt-1">
 													{lead.phone ? (
 														<PhoneCopyPill phone={lead.phone} />
 													) : (
@@ -338,11 +335,11 @@ export const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = ({ workspaceId })
 														className="h-6 px-2 text-[10px]"
 													/>
 												</div>
-											</div>
+											</article>
 										))
 									)}
 								</div>
-							</div>
+							</section>
 						);
 					})}
 				</div>

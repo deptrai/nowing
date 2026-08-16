@@ -54,7 +54,7 @@ class LeadPipelineApiService {
 	addActivity = async (
 		workspaceId: number | string,
 		leadId: string,
-		activity: { activity_type: string; title: string; details?: Record<string, any> }
+		activity: { activity_type: string; title: string; details?: Record<string, unknown> }
 	): Promise<LeadActivityLog> => {
 		return baseApiService.post(`${base(workspaceId)}/${leadId}/activities`, leadActivityLogSchema, {
 			body: activity,
@@ -66,14 +66,14 @@ class LeadPipelineApiService {
 		leadId: string,
 		targetUserId: string,
 		reason?: string
-	): Promise<any> => {
-		return baseApiService.post(`${base(workspaceId)}/${leadId}/assign`, z.any(), {
+	): Promise<unknown> => {
+		return baseApiService.post(`${base(workspaceId)}/${leadId}/assign`, z.unknown(), {
 			body: { target_user_id: targetUserId, reason },
 		});
 	};
 
-	batchAssignLeads = async (workspaceId: number | string, leadIds: string[]): Promise<any> => {
-		return baseApiService.post(`${base(workspaceId)}/assign-batch`, z.any(), {
+	batchAssignLeads = async (workspaceId: number | string, leadIds: string[]): Promise<unknown> => {
+		return baseApiService.post(`${base(workspaceId)}/assign-batch`, z.unknown(), {
 			body: { lead_ids: leadIds },
 		});
 	};

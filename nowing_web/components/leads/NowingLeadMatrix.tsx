@@ -27,13 +27,8 @@ import {
 	selectedLeadContextAtom,
 	selectedLeadIdsAtom,
 } from "@/atoms/leads/leads-canvas.atoms";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Lead } from "@/contracts/types/leads.types";
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { PhoneCopyPill } from "./PhoneCopyPill";
 import { SendExportDropdown } from "./send-export-dropdown";
@@ -558,10 +553,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 													<TooltipProvider delayDuration={150}>
 														<Tooltip>
 															<TooltipTrigger asChild>
-																<span
-																	onClick={(e) => e.stopPropagation()}
-																	className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-[9.5px] font-semibold font-mono tracking-tight shrink-0 cursor-help"
-																>
+																<span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-[9.5px] font-semibold font-mono tracking-tight shrink-0 cursor-help">
 																	<ShieldCheck className="size-2.5" />
 																	MST Verified
 																</span>
@@ -586,7 +578,9 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 																	<div className="text-[11px] text-muted-foreground">
 																		Vốn điều lệ:{" "}
 																		<span className="font-medium text-foreground">
-																			{(lead.charter_capital_vnd / 1_000_000_000).toLocaleString("vi-VN")}{" "}
+																			{(lead.charter_capital_vnd / 1_000_000_000).toLocaleString(
+																				"vi-VN"
+																			)}{" "}
 																			tỷ VNĐ
 																		</span>
 																	</div>
@@ -604,10 +598,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 													<TooltipProvider delayDuration={150}>
 														<Tooltip>
 															<TooltipTrigger asChild>
-																<span
-																	onClick={(e) => e.stopPropagation()}
-																	className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 text-[9.5px] font-semibold tracking-tight shrink-0 cursor-help"
-																>
+																<span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 text-[9.5px] font-semibold tracking-tight shrink-0 cursor-help">
 																	<MessageSquare className="size-2.5" />
 																	Zalo Active
 																</span>
