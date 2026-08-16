@@ -248,6 +248,18 @@ development_status:
   24-6: ready-for-dev  # Two-Way AI Outreach Auto-Reply Agent
   epic-24-retrospective: optional
 
+  # === Epic 25: Superadmin & Platform Operations Control Plane ===
+  # 2026-08-16: Multi-Tenant Hub, Scoped Impersonation, Manual Credit Desk, Affiliate Anti-Fraud Payouts, Telemetry & Dynamic Scraper Rules
+  epic-25: ready-for-dev
+  25-1: ready-for-dev  # Multi-Tenant User & Workspace Hub + Scoped Impersonation
+  25-2: ready-for-dev  # Manual Credit Adjustment & Refund Desk with Dual-Audit Ledger
+  25-3: ready-for-dev  # Affiliate Partner Payout Desk & Anti-Fraud Engine
+  25-4: ready-for-dev  # Realtime LLM Token Cost, Proxy Health & Celery Queue Telemetry
+  25-5: ready-for-dev  # Dynamic Scraper Rule Engine & ReDoS Sandbox
+  25-6: ready-for-dev  # Security Audit Trail Logs & In-App Broadcast Announcements
+  epic-25-retrospective: optional
+
+
 
   # === Epic 11: Telegram Automation & Bot ===
   epic-11: in-progress

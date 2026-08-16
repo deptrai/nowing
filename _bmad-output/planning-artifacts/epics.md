@@ -3167,8 +3167,110 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
     **When** received,  
     **Then** Webhook returns `HTTP 200 OK` in < 100ms, aggregates rapid-fire messages via Redis Debounce Buffer (3s window), and triggers asynchronous RAG grounding with Cosine Similarity `>= 0.75` and `temperature = 0.0`.
   - **Given** prospect intent indicating strong buying signal (e.g. *"Báo giá cho tôi"*, *"Hẹn xem nhà"*) or asking ungrounded pricing terms,  
-    **When** detected,  
-    **Then** it triggers a high-priority notification to the assigned sales rep on Telegram with inline `[Nhận Tư Vấn]` button, sets `auto_reply_paused` for 24h, and marks the lead as `Qualified / High-Intent`.
+---
+
+## Epic 25: Superadmin & Platform Operations Control Plane
+*Governed by Strategic Architecture & Operations Plan: 2026-08-16 by Winston (Arch), John (PM), Sally (UX), Murat (QA)*
+
+### Architectural Invariants (INV-25.1 – INV-25.8)
+- **INV-25.1 (Scoped Short-Lived Impersonation JWT & Privilege Stripping):** Phiên làm việc Impersonation ("Login as User") BẮT BUỘC sinh `impersonation_token` riêng biệt có TTL tối đa 15 phút, chứa claims `impersonated_by: <admin_uuid>`, `target_user: <user_uuid>`, `is_impersonation: true`. Backend Middleware BẮT BUỘC tước bỏ cờ `is_superuser` trong session này và chặn đứng (HTTP 403) mọi API thay đổi mật khẩu, đổi email, xóa tài khoản, xem/sửa API keys, hoặc nested impersonation.
+- **INV-25.2 (Dual-Principal Audit Integrity - PDPD Decree 13):** Mọi request thực hiện trong phiên Impersonation hoặc thao tác của Admin trên dữ liệu người dùng BẮT BUỘC ghi log append-only vào `audit_events` với đầy đủ: `actor_id` (Admin thật), `subject_id` (User bị mạo danh), `impersonation_session_id`, `action`, `endpoint`, `origin_ip`, `user_agent`.
+- **INV-25.3 (2-Tier Lock & Double-Entry Ledger for Credit Adjustments):** Mọi thao tác cộng/trừ credit thủ công BẮT BUỘC yêu cầu `Idempotency-Key` trên header, sử dụng Redis Redlock (`lock:workspace_wallet:{id}`) kết hợp Postgres `SELECT FOR UPDATE` trên bảng `workspace_wallets`, ghi nhận vào `credit_transactions` append-only kèm trường `reason` bắt buộc và `ticket_reference`.
+- **INV-25.4 (Affiliate Anti-Fraud Graph Detection & Napas Name Matching):** Duyệt yêu cầu rút tiền hoa hồng 15% BẮT BUỘC chạy qua Anti-Fraud Engine (quét trùng Device Fingerprint, dải IP, phát hiện Self-referral rings qua Recursive CTE) và xác thực 100% khớp tên chủ tài khoản thụ hưởng từ cổng Napas 24/7 trước khi cho phép 1-Click Payout.
+- **INV-25.5 (Realtime Telemetry & Gross Margin Monitoring):** Thu thập số lượng token và chi phí API thực tế (OpenAI, Anthropic, Google, DeepSeek) đối soát với doanh thu nạp tiền thời gian thực (`gross_margin = (revenue - cogs) / revenue`), phát hiện ngay lập tức các tài khoản lạm dụng hoặc tính năng bị âm lợi nhuận gộp.
+- **INV-25.6 (Dynamic Scraper Rule Invalidation via Redis Pub/Sub):** Cập nhật CSS Selectors / Delays trực tiếp trên UI được lưu versioned trong Postgres `JSONB` và publish qua kênh Redis Pub/Sub `scraper_config_updated`. Celery workers tự động refresh local in-memory cache mà không cần restart pod; tự động fallback về version trước đó nếu error rate vượt ngưỡng 20%.
+- **INV-25.7 (ReDoS Sandbox Hard Limit & Schema AST Validation):** Mọi Regex hoặc CSS Selector do admin cấu hình BẮT BUỘC chạy qua `cssselect.parse` và ReDoS Sandbox Benchmark với hard limit **50ms** (sử dụng engine `google-re2`). Vượt quá 50ms lập tức trả về `422 Unprocessable Entity`.
+- **INV-25.8 (Fail-Closed Superadmin Guard & PAT Rejection):** 100% các endpoint `/admin/*` BẮT BUỘC có guard `require_superuser` (kiểm tra `User.is_superuser == True`). Toàn bộ Personal Access Tokens (PAT) bị từ chối tuyệt đối (Fail-Closed) ở tầng `require_session_context`.
+
+---
+
+### Story 25.1: Multi-Tenant User & Workspace Hub + Scoped Impersonation `[ready-for-dev]`
+- **User Value:** Superadmin can search, view 360° user/workspace activity, suspend/ban fraudulent accounts, and securely impersonate users in 1-click to triage customer support issues without credential sharing.
+- **Acceptance Criteria:**
+  - **Given** `/admin/users` and `/admin/workspaces`,  
+    **When** loaded by a verified Superadmin interactive session,  
+    **Then** it renders high-density data tables (36px row height, monospace IDs/emails) with full-text search, plan badge, credit balance, and action buttons (`Ban`, `Suspend`, `Impersonate`).
+  - **Given** a customer support ticket,  
+    **When** admin clicks `⚡ Impersonate User`,  
+    **Then** backend issues a scoped short-lived JWT (TTL 15m), redirects to the user's workspace, renders a persistent 40px sticky amber hazard banner at `z-[9999]` with remaining time and `1-Click Exit (Esc)`, plus a 4px amber viewport border.
+  - **Given** an active impersonation session,  
+    **When** attempting to access `/admin/*` routes or modifying account security settings (change password, delete account),  
+    **Then** backend privilege stripping middleware rejects with `HTTP 403 Forbidden` and logs the violation.
+
+---
+
+### Story 25.2: Manual Credit Adjustment & Refund Desk with Dual-Audit Ledger `[ready-for-dev]`
+- **User Value:** Superadmin can credit or debit tokens/credits to any workspace for customer support compensation, bank transfer top-ups, or partner promotions with strict operational guardrails and immutable audit logs.
+- **Acceptance Criteria:**
+  - **Given** `/admin/workspaces/{id}/credits`,  
+    **When** submitting a manual credit adjustment form,  
+    **Then** form enforces mandatory fields: `amount_credits`, `direction (CREDIT/DEBIT)`, `reason (min 10 chars)`, and `ticket_ref (Zendesk/Jira URL)`.
+  - **Given** concurrent submission or rapid double-click on the adjustment button,  
+    **When** processed by the backend,  
+    **Then** Redis Redlock and Postgres `SELECT FOR UPDATE` on `workspace_wallets` ensure exactly one ledger row is inserted into `credit_transactions` and the wallet balance updates atomically.
+  - **Given** non-manager support staff,  
+    **When** attempting to grant credits exceeding their role limit (e.g. > $10/day),  
+    **Then** backend blocks with `HTTP 403 QuotaExceeded` requiring Tier-2 Manager approval.
+
+---
+
+### Story 25.3: Affiliate Partner Payout Desk & Anti-Fraud Engine `[ready-for-dev]`
+- **User Value:** Superadmin can audit affiliate partner payout requests, view automated fraud risk scores (IP/Device clusters, self-referral rings), and execute 1-click 24/7 bank payouts via VietQR / Napas API.
+- **Acceptance Criteria:**
+  - **Given** `/admin/affiliates/payouts`,  
+    **When** viewed,  
+    **Then** it displays pending payout requests with Fraud Risk Score Pills (`🟢 Low (0-29)`, `🟡 Mid (30-69)`, `🔴 High (70-100)`), bank name match indicator (`100% Match` vs `Name Mismatch`), and tax deduction calculation (10% PIT for > 2M VND).
+  - **Given** an affiliate detected with matching device fingerprint or IP subnet with their referred accounts,  
+    **When** risk engine evaluates,  
+    **Then** the record flags `🔴 High Risk: Self-Referral Ring Detected` and disables 1-click quick approval.
+  - **Given** an approved valid payout request,  
+    **When** admin clicks `⚡ Approve & Dispatch VietQR`,  
+    **Then** backend executes idempotent Napas transfer, updates status to `completed`, stores cryptographic receipt, and sends confirmation email to partner.
+
+---
+
+### Story 25.4: Realtime LLM Token Cost, Proxy Health & Celery Queue Telemetry `[ready-for-dev]`
+- **User Value:** Superadmin can monitor real-time AI infrastructure costs, gross margins per model/workspace, proxy pool availability, and Celery worker queue health with emergency controls.
+- **Acceptance Criteria:**
+  - **Given** `/admin/telemetry`,  
+    **When** loaded,  
+    **Then** it displays real-time aggregate LLM cost graphs (OpenAI, Anthropic, Google, DeepSeek), token consumption by workspace, and live gross margin tracking.
+  - **Given** the Proxy Pool monitor,  
+    **When** displayed,  
+    **Then** it lists active SOCKS5/HTTP proxies with latency (ms), bandwidth (GB), and success rate (%), providing 1-click `Rotate Dead Proxies`.
+  - **Given** Celery Worker & Queue section,  
+    **When** tasks stall in Dead Letter Queue (DLQ),  
+    **Then** it shows workload bars and provides a safe 2-second long-press `Purge Dead Tasks` action with breakdown.
+
+---
+
+### Story 25.5: Dynamic Scraper Rule Engine & ReDoS Sandbox `[ready-for-dev]`
+- **User Value:** Superadmin can update CSS selectors, request delays, and retry policies for scrapers (Batdongsan, Chotot, TopCV, Muaban) live on the dashboard without redeploying backend code.
+- **Acceptance Criteria:**
+  - **Given** `/admin/scrapers/rules`,  
+    **When** updating a platform's extraction schema or CSS selector,  
+    **Then** backend validates syntax via `cssselect.parse` and runs a ReDoS Benchmark Sandbox (< 50ms limit with `google-re2`).
+  - **Given** a valid rule update,  
+    **When** saved to Postgres `JSONB`,  
+    **Then** backend publishes a Redis Pub/Sub event `scraper_config_updated`, and active Celery workers refresh their local config cache in < 1s.
+  - **Given** an emergency where a platform is blocking all IPs,  
+    **When** admin toggles `Emergency Circuit Breaker: Trip`,  
+    **Then** all workers immediately pause scraping on that target platform.
+
+---
+
+### Story 25.6: Security Audit Trail Logs & In-App Broadcast Announcements `[ready-for-dev]`
+- **User Value:** Full compliance audit logging for PDPD Decree 13, global DNC blacklist management, and 1-click in-app banner announcements for system maintenance or promotional campaigns.
+- **Acceptance Criteria:**
+  - **Given** `/admin/audit-logs`,  
+    **When** queried,  
+    **Then** it provides an immutable timeline of all admin and impersonation actions with dual-principal tracking (`actor_id`, `subject_id`, IP, timestamp, diff payload).
+  - **Given** the Global DNC Blacklist manager,  
+    **When** admin adds a VIP phone number, domain, or tax code,  
+    **Then** the entry synchronizes immediately to the global blacklist cache, suppressing all outbound scraping and messaging system-wide.
+  - **Given** `/admin/broadcasts`,  
+    **When** admin creates an announcement banner (Maintenance / Promo),  
+    **Then** the banner mounts on top of `/dashboard/*` for targeted or all workspaces via Zero-cache realtime push.
 
 ---
 
@@ -3179,6 +3281,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 - **Epic 13 (DROPPED 2026-08-08):** Canonical entity storage / multi-domain indexing moved to `chainlens-research`. Nowing scrapers feed `chainlens-research` via `POST /v1/ingest/scraper` (Epic 20).
 - **Epic 18 (2026-08-08 correct-course):** Public agent-chat API, Agent Registry, vertical `client_id` tenancy, cost attribution and rate limiting live in **Epic 18**. Governed by AD-29/AD-30/AD-31. Entry criteria: AD-29–31 accepted; PAT/RLS threat model reviewed.
 - **Epic 22 (2026-08-15):** Telegram Scraper & Channel Ingestion Engine (Web Preview + MTProto StringSession Pool + Alert Engine + AI Agent Tools). Governed by Architecture Spine `architecture-telegram-scraper-2026-08-15`.
+- **Epic 25 (2026-08-16):** Superadmin & Platform Operations Control Plane (User/Workspace Hub + Scoped Impersonation + Manual Credit Desk + Affiliate Anti-Fraud Payout + Telemetry + Dynamic Rules + Audit Logs). Governed by BMAD Roundtable Architecture.
 - **Epic structure:** Epics 12–17 may have Original + Extended sections. Sprint-status tracks all stories under one epic key.
 - **Vision notes:** FR-53/FR-55 covered by existing scrapers; FR-54 deferred (ChainLens). Epics 14–17 are Phase 2 priority unless already in flight.
 
@@ -3214,6 +3317,12 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 | 24.4 Nowing Lead Clipper Extension | Story 21.15 (Universal Lead Orchestrator) | Direct REST payload ingest to workspace leads table |
 | 24.5 Vertical Playbook Marketplace | Story 6.6, Story 6.7 (Playbook Reuse & Schema UI) | Schema-driven dynamic modal input & pipeline orchestration |
 | 24.6 Two-Way AI Outreach Auto-Reply | Epic 11 (Telegram Bot), Story 23.2 (Zalo Webhook) | Inbound message webhook processing & RAG-grounded auto-reply |
+| 25.1 User/Workspace Hub & Impersonation | Story 8.11 (Global Models), Story 8.12 (Workspace Limits) | Multi-tenant user directory & scoped JWT session switching |
+| 25.2 Manual Credit Adjustment Desk | Story 21.18 (Credit Wallet Ledger) | 2-tier lock atomic credit topup & audit ledger |
+| 25.3 Affiliate Payout Approval Desk | Story 23.3 (Automated VietQR Payouts), Story 21.18 (Partners) | Anti-fraud graph scoring & 1-click Napas 24/7 bank transfer |
+| 25.4 Cost & Queue Telemetry | Story 23.1 (Celery Scraper Pool), Story 8.11 (Pricing Registration) | Realtime aggregate token COGS & worker DLQ purge |
+| 25.5 Dynamic Scraper Rule Engine | Story 23.1 (Scraper Worker Pool), Story 22.1 | Redis Pub/Sub live selector invalidation without restart |
+| 25.6 Security Audit Logs & Broadcasts | Story 21.14 (DNC Registry), Story 23.4 (RLS Isolation) | Decree 13 PDPD immutable audit trail & in-app banner push |
 
 > **Prerequisite definitions:**
 > - **Story 20.1** = `NowingIngestService.to_chunks()` + `POST /v1/ingest/scraper` contract.
@@ -3222,12 +3331,5 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 > - **Story 20.4** = `ChainLensServiceAuth` + cost ledger sync.
 > - **Story 6.8** = Generic Alert Engine in Epic 6 Automation infrastructure (scheduler + `RunService` + notification dispatch). If no dedicated implementation story exists, treat it as a prerequisite work package before any alert story is scheduled.
 
-
-> **Prerequisite definitions:**
-> - **Story 20.1** = `NowingIngestService.to_chunks()` + `POST /v1/ingest/scraper` contract.
-> - **Story 20.2** = gap-fill caller + cost allocation (Nowing side).
-> - **Story 20.3** = `NowingPrivateProvider` for `POST /v1/private-data/search`.
-> - **Story 20.4** = `ChainLensServiceAuth` + cost ledger sync.
-> - **Story 6.8** = Generic Alert Engine in Epic 6 Automation infrastructure (scheduler + `RunService` + notification dispatch). If no dedicated implementation story exists, treat it as a prerequisite work package before any alert story is scheduled.
 
 
