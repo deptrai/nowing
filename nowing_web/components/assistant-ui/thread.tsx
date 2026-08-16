@@ -27,6 +27,7 @@ import {
 import { AnimatePresence, motion } from "motion/react";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { type FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -123,8 +124,6 @@ import {
 	type DocumentMentionPickerRef,
 	promoteRecentMention,
 } from "../new-chat/document-mention-picker";
-
-const COMPOSER_PLACEHOLDER = "Nhập yêu cầu tìm kiếm, săn lead... (Dùng / xem lệnh, @ tài liệu)";
 
 type ComposerSuggestionAnchorPoint = {
 	left: number;
@@ -264,10 +263,11 @@ const _getTimeBasedGreeting = (user?: { display_name?: string | null; email?: st
 };
 
 const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }) => {
-	const { data: user } = useAtomValue(currentUserAtom);
+	const tChat = useTranslations("chat");
 	const [showBetaCard, setShowBetaCard] = useState(true);
+	const { data: user } = useAtomValue(currentUserAtom);
 	const params = useParams();
-	const workspaceId = (params?.workspace_id as string) || "1";
+	const workspaceId = params?.workspace_id as string | undefined;
 
 	const creditsCount = useMemo(() => {
 		if (!user) return 500;
@@ -290,11 +290,13 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 			<div className="w-full flex items-center justify-end mb-2">
 				<div
 					className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-pink-500/10 dark:bg-pink-500/20 text-pink-600 dark:text-pink-400 text-xs font-semibold border border-pink-500/20 shadow-2xs"
-					title={`Số dư khả dụng: ${((user?.credit_micros_balance ?? 5_000_000) / 1_000_000).toFixed(2)} USD`}
+					title={tChat("available_balance", {
+						balance: ((user?.credit_micros_balance ?? 5_000_000) / 1_000_000).toFixed(2),
+					})}
 				>
 					<span>🌸</span>
 					<span className="font-mono font-bold">
-						{new Intl.NumberFormat("vi-VN").format(creditsCount)}
+						{new Intl.NumberFormat().format(creditsCount)}
 					</span>{" "}
 					Credits
 				</div>
@@ -319,22 +321,22 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 						{
 							label: "Give me ideas",
 							icon: "💡",
-							prompt: "Gợi ý 5 chiến dịch săn lead hiệu quả nhất tuần này",
+							prompt: tChat("card_icp_prompt"),
 						},
 						{
 							label: "New campaign",
 							icon: "➕",
-							prompt: "Tạo chiến dịch mới săn 20 doanh nghiệp Bất động sản Hà Nội",
+							prompt: tChat("card_bds_prompt"),
 						},
 						{
-							label: "Săn Lead BĐS Hà Nội",
+							label: tChat("card_bds_title"),
 							icon: "🏢",
-							prompt: "Tìm kiếm 10 công ty Bất động sản tại Hà Nội và thêm vào bảng",
+							prompt: tChat("card_bds_prompt"),
 						},
 						{
-							label: "Tuyển dụng Tech",
+							label: tChat("card_it_title"),
 							icon: "⚡",
-							prompt: "Quét các công ty công nghệ đang tuyển dụng Senior Developer trên TopCV",
+							prompt: tChat("card_it_prompt"),
 						},
 					].map((chip) => (
 						<button
@@ -377,10 +379,10 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 						<div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
 							<button
 								type="button"
-								onClick={() => toast.success("Mở trình thiết lập Outreach Agent")}
+								onClick={() => toast.success(tChat("modal_setup_outreach"))}
 								className="px-3.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 text-white text-xs font-semibold transition-colors cursor-pointer shadow-xs"
 							>
-								Set it up
+								{tChat("set_it_up")}
 							</button>
 							<button
 								type="button"
@@ -398,17 +400,17 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 				<div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground border-y border-border/60 py-2.5">
 					<div className="flex items-center gap-1.5">
 						<span className="text-emerald-600 dark:text-emerald-400 font-semibold">
-							⚡ Sẵn Sàng Săn Lead
+							{tChat("lead_ready_badge")}
 						</span>
 						<span className="text-muted-foreground">•</span>
-						<span className="text-foreground font-medium">15+ Nền Tảng Dữ Liệu Live</span>
+						<span className="text-foreground font-medium">{tChat("live_sources_badge")}</span>
 					</div>
 					<div className="flex items-center gap-3">
 						<a
 							href={workspaceId ? `/dashboard/${workspaceId}/user-settings` : "/dashboard"}
 							className="text-muted-foreground hover:text-foreground font-medium transition-colors cursor-pointer"
 						>
-							Cấu hình Kênh Tin Nhắn (Zalo/Telegram) →
+							{tChat("config_channels_link")}
 						</a>
 					</div>
 				</div>
@@ -416,8 +418,8 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 				{/* Actionable Quickstart Cards */}
 				<div className="space-y-3">
 					<div className="text-xs text-muted-foreground">
-						<strong className="text-foreground">Tác vụ khởi đầu nhanh</strong> • Chọn một mẫu kịch
-						bản để AI săn lead ngay lập tức
+						<strong className="text-foreground">{tChat("quickstart_title")}</strong> •{" "}
+						{tChat("quickstart_subtitle")}
 					</div>
 
 					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
@@ -427,21 +429,19 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 									🏠
 								</div>
 								<h4 className="text-xs font-bold text-foreground leading-snug">
-									Săn Lead Bất Động Sản
+									{tChat("card_bds_title")}
 								</h4>
-								<p className="text-[11px] text-muted-foreground">
-									Tìm kiếm 10 công ty BĐS tại Hà Nội, trích xuất SĐT và thêm vào bảng
-								</p>
+								<p className="text-[11px] text-muted-foreground">{tChat("card_bds_desc")}</p>
 							</div>
 							<button
 								type="button"
 								onClick={() => {
-									const prompt = "Tìm kiếm 10 công ty Bất động sản tại Hà Nội và thêm vào bảng";
+									const prompt = tChat("card_bds_prompt");
 									window.location.href = `/dashboard/${workspaceId || 1}/new-chat?q=${encodeURIComponent(prompt)}`;
 								}}
 								className="text-left text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
 							>
-								Chạy tác vụ này →
+								{tChat("run_task_button")}
 							</button>
 						</div>
 
@@ -451,22 +451,19 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 									💼
 								</div>
 								<h4 className="text-xs font-bold text-foreground leading-snug">
-									Quét Tín Hiệu Tuyển Dụng
+									{tChat("card_it_title")}
 								</h4>
-								<p className="text-[11px] text-muted-foreground">
-									Quét các công ty công nghệ đang tuyển dụng Senior Developer trên TopCV
-								</p>
+								<p className="text-[11px] text-muted-foreground">{tChat("card_it_desc")}</p>
 							</div>
 							<button
 								type="button"
 								onClick={() => {
-									const prompt =
-										"Quét các công ty công nghệ đang tuyển dụng Senior Developer trên TopCV";
+									const prompt = tChat("card_it_prompt");
 									window.location.href = `/dashboard/${workspaceId || 1}/new-chat?q=${encodeURIComponent(prompt)}`;
 								}}
 								className="text-left text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
 							>
-								Chạy tác vụ này →
+								{tChat("run_task_button")}
 							</button>
 						</div>
 
@@ -476,22 +473,19 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 									🌐
 								</div>
 								<h4 className="text-xs font-bold text-foreground leading-snug">
-									Phân Tích Chân Dung ICP
+									{tChat("card_icp_title")}
 								</h4>
-								<p className="text-[11px] text-muted-foreground">
-									Phân tích mô hình kinh doanh và tìm 15 doanh nghiệp B2B tương tự
-								</p>
+								<p className="text-[11px] text-muted-foreground">{tChat("card_icp_desc")}</p>
 							</div>
 							<button
 								type="button"
 								onClick={() => {
-									const prompt =
-										"Phân tích chân dung khách hàng mục tiêu (ICP) và tìm 15 doanh nghiệp B2B tiềm năng";
+									const prompt = tChat("card_icp_prompt");
 									window.location.href = `/dashboard/${workspaceId || 1}/new-chat?q=${encodeURIComponent(prompt)}`;
 								}}
 								className="text-left text-xs font-semibold text-purple-600 dark:text-purple-400 hover:underline cursor-pointer"
 							>
-								Chạy tác vụ này →
+								{tChat("run_task_button")}
 							</button>
 						</div>
 					</div>
@@ -777,6 +771,7 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 		}
 	}, [initialPrompt, hasActiveThread, aui, isDesktop]);
 
+	const tChat = useTranslations("chat");
 	const isThreadEmpty = useAuiState(({ thread }) => thread.isEmpty);
 	const isThreadRunning = useAuiState(({ thread }) => thread.isRunning);
 	const [connectToolsTrayVisible, setConnectToolsTrayVisible] = useState(false);
@@ -785,7 +780,7 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 	const { data: chatSetupStatus } = useAtomValue(llmSetupStatusAtomFamily(workspaceId ?? 0));
 	const isChatUnavailable = !!chatSetupStatus && chatSetupStatus.status !== "ready";
 
-	const currentPlaceholder = COMPOSER_PLACEHOLDER;
+	const currentPlaceholder = tChat("composer_placeholder");
 
 	const { data: currentUser } = useAtomValue(currentUserAtom);
 	const { data: members } = useAtomValue(membersAtom);
@@ -1258,12 +1253,8 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 		}
 
 		// 3. Fallback high-value proactive suggestions for active thread
-		return [
-			"Trích xuất email & người đại diện pháp luật của các công ty này",
-			"Kiểm tra nhu cầu tuyển dụng để đánh giá quy mô phát triển",
-			"Tạo kịch bản Zalo & Outreach tự động cho danh sách leads",
-		];
-	}, [threadMessages]);
+		return [tChat("default_action_1"), tChat("default_action_2"), tChat("default_action_3")];
+	}, [threadMessages, tChat]);
 
 	return (
 		<ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col gap-2 rounded-2xl">
@@ -1280,7 +1271,7 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 					<div className="flex items-center justify-between px-1.5 pb-1">
 						<div className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wider text-muted-foreground">
 							<span className="text-amber-500">💡</span>
-							<span>Suggested Next Actions</span>
+							<span>{tChat("suggested_actions_title")}</span>
 						</div>
 						<Sparkles className="size-3 text-muted-foreground opacity-60" />
 					</div>
@@ -1293,7 +1284,7 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 									type="button"
 									onClick={() => handleApplySuggestedAction(actionText)}
 									className="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-muted/70 transition-colors text-xs text-foreground group cursor-pointer border border-transparent hover:border-border/50"
-									title={`Nhấp để đưa vào prompt: "${actionText}"`}
+									title={tChat("click_to_prompt_tooltip", { action: actionText })}
 								>
 									<span className="size-4.5 rounded-md bg-muted/80 text-foreground flex items-center justify-center text-[10px] font-bold shrink-0">
 										{icon}
@@ -1386,8 +1377,8 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 								type="button"
 								onClick={() => setSelectedLeadContext(null)}
 								className="hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 p-1 rounded-md transition-colors"
-								title="Bỏ chọn ngữ cảnh lead"
-								aria-label="Bỏ chọn ngữ cảnh lead"
+								title={tChat("dismiss_lead_context")}
+								aria-label={tChat("dismiss_lead_context")}
 							>
 								<X className="w-3.5 h-3.5" />
 							</button>

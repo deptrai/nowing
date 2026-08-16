@@ -11,6 +11,7 @@ import { useSetAtom } from "jotai";
 import { ExternalLinkIcon, FileIcon, Folder as FolderIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import { createContext, memo, type ReactNode, useCallback, useContext, useRef } from "react";
 import rehypeKatex from "rehype-katex";
@@ -466,13 +467,16 @@ const defaultComponents = memoizeMarkdownComponents({
 	hr: ({ className, ...props }) => (
 		<hr className={cn("aui-md-hr my-5 border-b", className)} {...props} />
 	),
-	table: ({ className, ...props }) => (
-		<TableArtifactCard title="Bảng dữ liệu Khách hàng & Leads" type="TABLE" className="my-2.5">
-			<div className="aui-md-table-wrapper overflow-x-auto rounded-md border border-border/70">
-				<Table className={cn("aui-md-table text-[11px]", className)} {...props} />
-			</div>
-		</TableArtifactCard>
-	),
+	table: function TableWrapper({ className, ...props }) {
+		const t = useTranslations("chat");
+		return (
+			<TableArtifactCard title={t("table_artifact_title")} type="TABLE" className="my-2.5">
+				<div className="aui-md-table-wrapper overflow-x-auto rounded-md border border-border/70">
+					<Table className={cn("aui-md-table text-[11px]", className)} {...props} />
+				</div>
+			</TableArtifactCard>
+		);
+	},
 	thead: ({ className, ...props }) => (
 		<TableHeader className={cn("aui-md-thead", className)} {...props} />
 	),
