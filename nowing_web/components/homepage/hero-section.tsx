@@ -643,16 +643,19 @@ export function HeroSection() {
 			<div className="mt-4 flex w-full min-w-0 flex-col items-start px-2 md:px-8 xl:px-0">
 				<h1
 					className={cn(
-						"relative mt-4 max-w-4xl text-left text-4xl font-bold tracking-tight text-balance text-neutral-900 sm:text-5xl md:text-6xl dark:text-neutral-50"
+						"relative mt-4 max-w-4xl text-left font-serif font-normal text-5xl sm:text-6xl md:text-7xl lg:text-[76px] tracking-tight leading-[1.08] text-balance text-neutral-900 dark:text-neutral-50"
 					)}
 				>
-					<Balancer>Open-core research memory for AI agents.</Balancer>
+					<Balancer>
+						Open-core research memory{" "}
+						<span className="italic font-serif font-normal">for AI agents.</span>
+					</Balancer>
 				</h1>
-				<div className="mt-4 flex w-full flex-col items-start justify-between gap-4 md:mt-8 md:flex-row md:items-end md:gap-10">
+				<div className="mt-6 flex w-full flex-col items-start justify-between gap-4 md:mt-8 md:flex-row md:items-end md:gap-10">
 					<div>
 						<p
 							className={cn(
-								"relative mb-8 max-w-2xl text-left text-sm text-neutral-600 antialiased sm:text-base md:text-lg dark:text-neutral-400"
+								"relative mb-8 max-w-2xl text-left text-base sm:text-lg md:text-xl text-neutral-600 font-sans leading-relaxed dark:text-neutral-400"
 							)}
 						>
 							Nowing is open-core research memory for AI agents — it remembers what it went and

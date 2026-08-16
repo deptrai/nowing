@@ -16,6 +16,11 @@ module.exports = {
 			},
 		},
 		extend: {
+			fontFamily: {
+				sans: ["var(--font-inter)", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
+				serif: ["var(--font-instrument-serif)", "Newsreader", "Playfair Display", "Georgia", "serif"],
+				mono: ["var(--font-jetbrains-mono)", "SFMono-Regular", "Menlo", "monospace"],
+			},
 			colors: {
 				border: "hsl(var(--border))",
 				input: "hsl(var(--input))",

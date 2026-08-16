@@ -132,7 +132,9 @@ export const ResearchStudioPanel: React.FC<ResearchStudioPanelProps> = ({
 								<Sparkles className="w-3 h-3" />
 								Chainlens Deep Research Synthesis
 							</div>
-							<h1 className="text-2xl font-bold tracking-tight text-foreground">{reportTitle}</h1>
+							<h1 className="text-2xl sm:text-3xl font-serif font-normal tracking-tight text-foreground">
+								{reportTitle}
+							</h1>
 							<p className="text-xs text-muted-foreground mt-1">
 								Tổng hợp từ dữ liệu thời gian thực và trích dẫn kiểm chứng của Nowing
 							</p>

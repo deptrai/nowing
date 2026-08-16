@@ -2,7 +2,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { RootProvider } from "fumadocs-ui/provider/next";
-import { Roboto } from "next/font/google";
+import { Instrument_Serif, Inter, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
 import { AnnouncementToastProvider } from "@/components/announcements/AnnouncementToastProvider";
 import { DesktopUpdateToast } from "@/components/desktop/desktop-update-toast";
@@ -25,11 +25,24 @@ import { ReactQueryClientProvider } from "@/lib/query-client/query-client.provid
 import { getRuntimeAuthInitScript, resolveRuntimeAuthUiMode } from "@/lib/runtime-auth-config";
 import { cn } from "@/lib/utils";
 
-const roboto = Roboto({
-	subsets: ["latin"],
-	weight: ["400", "500", "700"],
+const inter = Inter({
+	subsets: ["latin", "vietnamese"],
 	display: "swap",
-	variable: "--font-roboto",
+	variable: "--font-inter",
+});
+
+const instrumentSerif = Instrument_Serif({
+	subsets: ["latin"],
+	weight: ["400"],
+	style: ["normal", "italic"],
+	display: "swap",
+	variable: "--font-instrument-serif",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+	subsets: ["latin", "vietnamese"],
+	display: "swap",
+	variable: "--font-jetbrains-mono",
 });
 
 /**
@@ -127,7 +140,15 @@ export default function RootLayout({
 				<WebSiteJsonLd />
 				<SoftwareApplicationJsonLd />
 			</head>
-			<body className={cn(roboto.className, "bg-main-panel antialiased h-full w-full ")}>
+			<body
+				className={cn(
+					inter.variable,
+					instrumentSerif.variable,
+					jetbrainsMono.variable,
+					inter.className,
+					"font-sans bg-main-panel antialiased h-full w-full"
+				)}
+			>
 				<PostHogProvider>
 					<LocaleProvider>
 						<I18nProvider>
