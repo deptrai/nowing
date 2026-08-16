@@ -20,9 +20,9 @@ import { CompanyGraphDrawer } from "./CompanyGraphDrawer";
 import { DynamicRightPanelCanvas } from "./DynamicRightPanelCanvas";
 import { FloatingBulkActionBar } from "./FloatingBulkActionBar";
 import { LeadDetailFlyoutDrawer } from "./LeadDetailFlyoutDrawer";
-import { OrigamiLeadMatrix } from "./OrigamiLeadMatrix";
-import { ReverseIcpModal } from "./ReverseIcpModal";
 import { extractLeadsFromChatMessages } from "./lead-parser";
+import { OrigamiHomeDashboard } from "./OrigamiHomeDashboard";
+import { ReverseIcpModal } from "./ReverseIcpModal";
 
 const MIN_LEFT_WIDTH = 360;
 const MAX_LEFT_WIDTH = 650;
@@ -33,6 +33,7 @@ export interface OrigamiSplitCanvasProps {
 	chatSlot?: React.ReactNode;
 	hasActiveThread?: boolean;
 	messages?: Array<{ role: string; content?: unknown }>;
+	onSendPrompt?: (prompt: string) => void;
 	className?: string;
 }
 
@@ -41,6 +42,7 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 	chatSlot,
 	hasActiveThread = false,
 	messages = [],
+	onSendPrompt,
 	className,
 }) => {
 	const [leftWidth, setLeftWidth] = useAtom(canvasLeftWidthAtom);
@@ -57,7 +59,7 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 	const [isGraphDrawerOpen, setIsGraphDrawerOpen] = useState(false);
 
 	// Tabs & Modes
-	const [activeTabMode, setActiveTabMode] = useState<"new_search" | "saved">(
+	const [activeTabMode, _setActiveTabMode] = useState<"new_search" | "saved">(
 		hasActiveThread ? "saved" : "new_search"
 	);
 
@@ -106,7 +108,12 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 		if (chatExtractedLeads.length > 0 && sourceFilter === "all" && !searchQuery) {
 			return chatExtractedLeads;
 		}
-		if (activeTabMode === "new_search" && !searchQuery && sourceFilter === "all" && !hasActiveThread) {
+		if (
+			activeTabMode === "new_search" &&
+			!searchQuery &&
+			sourceFilter === "all" &&
+			!hasActiveThread
+		) {
 			return [];
 		}
 		return apiLeads || [];
@@ -189,13 +196,36 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 		toast.info(`Kích hoạt chiến dịch tiếp cận Zalo cho ${selectedLeadIds.length} leads.`);
 	};
 
+	// 1. Initial State (Photo 1): Full-Screen Clean Origami Home Dashboard (No Right Panel)
+	if (!hasActiveThread) {
+		return (
+			<main
+				data-testid="origami-home-canvas"
+				className={cn(
+					"w-full h-full flex flex-col bg-background text-foreground overflow-y-auto animate-in fade-in duration-300",
+					className
+				)}
+			>
+				<OrigamiHomeDashboard
+					userName="Luis"
+					onSendPrompt={(promptText) => {
+						if (onSendPrompt) {
+							onSendPrompt(promptText);
+						}
+					}}
+				/>
+			</main>
+		);
+	}
+
+	// 2. Active Chat State (Photo 2): Morphing Split-View Workspace (Left Chat + Right Dynamic Context Canvas)
 	return (
 		<main
 			ref={containerRef}
 			aria-label="Không gian làm việc Origami Split-View"
 			data-testid="origami-split-canvas"
 			className={cn(
-				"relative w-full h-full flex bg-background text-foreground overflow-hidden",
+				"relative w-full h-full flex bg-background text-foreground overflow-hidden animate-in fade-in duration-300",
 				isDragging && "select-none cursor-col-resize",
 				className
 			)}
@@ -204,7 +234,7 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 			{!isFullscreen && !isCollapsed && (
 				<div
 					style={{ width: `${leftWidth}px` }}
-					className="h-full shrink-0 flex flex-col transition-all duration-75 border-r border-border bg-card overflow-hidden"
+					className="h-full shrink-0 flex flex-col transition-all duration-200 border-r border-border bg-card overflow-hidden"
 				>
 					{chatSlot}
 				</div>

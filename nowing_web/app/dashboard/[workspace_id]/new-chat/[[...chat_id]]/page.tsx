@@ -9,7 +9,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useAtomValue, useSetAtom } from "jotai";
 import dynamic from "next/dynamic";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -172,6 +172,7 @@ function ThreadMessagesSkeleton() {
 }
 
 export default function NewChatPage() {
+	const router = useRouter();
 	const params = useParams();
 	const searchParams = useSearchParams();
 	const initialPrompt = searchParams.get("q") ?? undefined;
@@ -800,6 +801,11 @@ export default function NewChatPage() {
 							workspaceId={workspaceId}
 							hasActiveThread={!!activeThreadId}
 							messages={messages}
+							onSendPrompt={(promptText) => {
+								router.push(
+									`/dashboard/${workspaceId}/new-chat?q=${encodeURIComponent(promptText)}`
+								);
+							}}
 							chatSlot={
 								<div className="relative h-full flex flex-col min-w-0 overflow-hidden">
 									<Thread hasActiveThread={!!activeThreadId} initialPrompt={initialPrompt} />

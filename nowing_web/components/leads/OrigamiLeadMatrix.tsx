@@ -16,7 +16,6 @@ import {
 	SlidersHorizontal,
 	Sparkles,
 	Table as TableIcon,
-	Users,
 } from "lucide-react";
 import type React from "react";
 import { useMemo, useState } from "react";
@@ -367,7 +366,9 @@ export const OrigamiLeadMatrix: React.FC<OrigamiLeadMatrixProps> = ({
 							Sẵn sàng Săn Lead với AI Co-pilot
 						</h3>
 						<p className="text-xs text-muted-foreground max-w-md mb-6 leading-relaxed">
-							Hãy nhập lệnh tìm kiếm trong khung AI Chat bên trái. Hệ thống sẽ tự động điều phối cào dữ liệu sống từ 5+ nền tảng (BĐS, Chợ Tốt, TopCV, Đấu Thầu...) và đổ trực tiếp vào ma trận bảng này.
+							Hãy nhập lệnh tìm kiếm trong khung AI Chat bên trái. Hệ thống sẽ tự động điều phối cào
+							dữ liệu sống từ 5+ nền tảng (BĐS, Chợ Tốt, TopCV, Đấu Thầu...) và đổ trực tiếp vào ma
+							trận bảng này.
 						</p>
 
 						<div className="flex flex-wrap items-center justify-center gap-2 max-w-lg mb-6">
@@ -446,6 +447,7 @@ export const OrigamiLeadMatrix: React.FC<OrigamiLeadMatrixProps> = ({
 								const isSelected = selectedLeadIds.includes(lead.id);
 								const isContextActive = selectedLeadContext?.id === lead.id;
 								const isHighlighted = highlightedRowIds.includes(lead.id);
+								const isNewLead = lead.source === "chat_scraper" || isHighlighted;
 								const fitScore = lead.fit_score ?? 85 + (idx % 15);
 
 								return (
@@ -461,7 +463,8 @@ export const OrigamiLeadMatrix: React.FC<OrigamiLeadMatrixProps> = ({
 											}
 										}}
 										className={cn(
-											"transition-colors cursor-pointer group hover:bg-muted/40 focus:outline-none focus:bg-muted/60",
+											"transition-all duration-300 cursor-pointer group hover:bg-muted/40 focus:outline-none focus:bg-muted/60",
+											isNewLead && "animate-lead-pulse bg-emerald-500/10",
 											isSelected && "bg-emerald-500/10",
 											isContextActive && "bg-emerald-500/15 ring-1 ring-inset ring-emerald-500/40",
 											isHighlighted && "bg-blue-500/15 ring-1 ring-inset ring-blue-500/40"
@@ -495,8 +498,15 @@ export const OrigamiLeadMatrix: React.FC<OrigamiLeadMatrixProps> = ({
 
 										{/* Company Name */}
 										<td className="px-3 py-2.5 font-medium text-foreground">
-											<div className="flex items-center justify-between gap-1 overflow-hidden">
-												<span className="truncate font-semibold">{lead.company_name}</span>
+											<div className="flex items-center justify-between gap-1.5 overflow-hidden">
+												<div className="flex items-center gap-1.5 overflow-hidden">
+													<span className="truncate font-semibold">{lead.company_name}</span>
+													{isNewLead && (
+														<span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold shrink-0 animate-pulse">
+															✨ Mới
+														</span>
+													)}
+												</div>
 												{onOpenCompanyGraph && (
 													<button
 														type="button"
