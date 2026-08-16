@@ -7,6 +7,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
@@ -72,9 +73,15 @@ async def _ensure_default_stages(
             )
             session.add(new_stage)
             stages.append(new_stage)
-        await session.commit()
-        for s in stages:
-            await session.refresh(s)
+        try:
+            await session.commit()
+            for s in stages:
+                await session.refresh(s)
+        except IntegrityError:
+            # Concurrent request created the same default stages; rollback and re-query.
+            await session.rollback()
+            res = await session.execute(stmt)
+            stages = list(res.scalars().all())
 
     return stages
 

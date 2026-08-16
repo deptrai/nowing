@@ -6,12 +6,13 @@ import asyncio
 import uuid
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import AuditEvent, CreditTransaction, User, Workspace
 from app.services.manual_credit_service import (
     CREDIT_TO_MICROS,
+    DAILY_CREDIT_QUOTA,
     ManualCreditAdjustmentService,
     ManualCreditQuotaExceededError,
     ManualCreditValidationError,
@@ -228,6 +229,10 @@ async def test_adjust_credits_concurrent_quota_guard(
         workspace_id = workspace.id
         admin_id = admin.id
 
+    # Use a value that exceeds the daily quota when both grants race, but is
+    # derived from the actual quota constant so the test stays valid if config changes.
+    grant_amount = (DAILY_CREDIT_QUOTA // 2) + 1
+
     async def run_grant(key: str) -> dict | None:
         async with (
             async_engine.connect() as conn,
@@ -237,7 +242,7 @@ async def test_adjust_credits_concurrent_quota_guard(
             try:
                 result = await svc.adjust_credits(
                     workspace_id=workspace_id,
-                    amount_credits=600,
+                    amount_credits=grant_amount,
                     direction="CREDIT",
                     reason="Concurrent test",
                     ticket_ref="TICKET-CC",
@@ -251,47 +256,48 @@ async def test_adjust_credits_concurrent_quota_guard(
                 await session.commit()
             return result
 
-    keys = [f"concurrent-a-{uuid.uuid4()}", f"concurrent-b-{uuid.uuid4()}"]
-    results = await asyncio.gather(
-        *(asyncio.create_task(run_grant(k)) for k in keys),
-        return_exceptions=True,
-    )
-
-    successes = [r for r in results if isinstance(r, dict)]
-    quota_errors = [r for r in results if isinstance(r, ManualCreditQuotaExceededError)]
-    assert len(successes) == 1, results
-    assert len(quota_errors) == 1, results
-
-    async with (
-        async_engine.connect() as conn,
-        AsyncSession(bind=conn, expire_on_commit=False) as session,
-    ):
-        all_tx = await session.execute(
-            select(CreditTransaction).where(CreditTransaction.workspace_id == workspace_id)
+    try:
+        keys = [f"concurrent-a-{uuid.uuid4()}", f"concurrent-b-{uuid.uuid4()}"]
+        results = await asyncio.gather(
+            *(asyncio.create_task(run_grant(k)) for k in keys),
+            return_exceptions=True,
         )
-        assert len(all_tx.scalars().all()) == 1
 
-        ws = await session.get(Workspace, workspace_id)
-        assert ws is not None
-        assert ws.credit_micros_balance == 600 * CREDIT_TO_MICROS
+        successes = [r for r in results if isinstance(r, dict)]
+        quota_errors = [r for r in results if isinstance(r, ManualCreditQuotaExceededError)]
+        assert len(successes) == 1, results
+        assert len(quota_errors) == 1, results
 
-    async with (
-        async_engine.connect() as conn,
-        AsyncSession(bind=conn, expire_on_commit=False) as session,
-    ):
-        audit_events = await session.execute(
-            select(AuditEvent).where(
-                (AuditEvent.actor_id == admin_id) | (AuditEvent.subject_id == admin_id)
+        async with (
+            async_engine.connect() as conn,
+            AsyncSession(bind=conn, expire_on_commit=False) as session,
+        ):
+            all_tx = await session.execute(
+                select(CreditTransaction).where(CreditTransaction.workspace_id == workspace_id)
             )
-        )
-        for event in audit_events.scalars().all():
-            await session.delete(event)
+            assert len(all_tx.scalars().all()) == 1
 
-        ws = await session.get(Workspace, workspace_id)
-        if ws is not None:
-            await session.delete(ws)
+            ws = await session.get(Workspace, workspace_id)
+            assert ws is not None
+            assert ws.credit_micros_balance == grant_amount * CREDIT_TO_MICROS
 
-        user = await session.get(User, admin_id)
-        if user is not None:
-            await session.delete(user)
-        await session.commit()
+    finally:
+        async with (
+            async_engine.connect() as conn,
+            AsyncSession(bind=conn, expire_on_commit=False) as session,
+        ):
+            await session.execute(
+                delete(AuditEvent).where(
+                    AuditEvent.action == "manual_credit_quota_exceeded",
+                    AuditEvent.actor_id == admin_id,
+                )
+            )
+
+            ws = await session.get(Workspace, workspace_id)
+            if ws is not None:
+                await session.delete(ws)
+
+            user = await session.get(User, admin_id)
+            if user is not None:
+                await session.delete(user)
+            await session.commit()

@@ -9,7 +9,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db import AuditEvent, CreditTransaction, Workspace
+from app.db import AuditEvent, CreditTransaction, User, Workspace
 
 pytestmark = pytest.mark.integration
 
@@ -109,6 +109,7 @@ async def test_post_admin_credits_adjust_debit_rejected_when_insufficient(
 async def test_post_admin_credits_adjust_quota_guardrail(
     admin_client: AsyncClient,
     db_session: AsyncSession,
+    db_superuser: User,
     db_workspace: Workspace,
 ) -> None:
     """AC-3: Second grant exceeding the daily quota is rejected with 403."""
@@ -143,9 +144,13 @@ async def test_post_admin_credits_adjust_quota_guardrail(
         select(AuditEvent).where(
             AuditEvent.action == "manual_credit_quota_exceeded",
             AuditEvent.ticket_ref == "TICKET-4",
+            (AuditEvent.actor_id == db_superuser.id)
+            | (AuditEvent.subject_id == db_superuser.id),
         )
     )
-    assert audit.scalar_one_or_none() is not None
+    audit_event = audit.scalar_one_or_none()
+    assert audit_event is not None
+    assert audit_event.actor_id == db_superuser.id
 
 
 @pytest.mark.asyncio
@@ -166,6 +171,26 @@ async def test_post_admin_credits_adjust_idempotency_key_too_long(
         },
     )
     assert res.status_code == 400, res.text
+
+
+@pytest.mark.asyncio
+async def test_post_admin_credits_adjust_idempotency_key_64_chars_ok(
+    admin_client: AsyncClient,
+    db_workspace: Workspace,
+) -> None:
+    """AC-1: Idempotency-Key at the 64-character boundary is accepted."""
+    res = await admin_client.post(
+        "/api/v1/admin/credits/adjust",
+        headers={"Idempotency-Key": "x" * 64},
+        json={
+            "workspace_id": db_workspace.id,
+            "amount_credits": 100,
+            "direction": "CREDIT",
+            "reason": "Boundary key length test",
+            "ticket_ref": "TICKET-KEY64",
+        },
+    )
+    assert res.status_code == 201, res.text
 
 
 @pytest.mark.asyncio
@@ -267,17 +292,36 @@ async def test_get_admin_credits_ledger_pagination(
         )
         assert res.status_code == 201, res.text
 
+    res = await admin_client.get("/api/v1/admin/credits/ledger?limit=2")
+    assert res.status_code == 200, res.text
+    data = res.json()
+    assert len(data) == 2
+    assert data[0]["amount_credits"] == 75
+    assert data[1]["amount_credits"] == 50
+    assert data[0]["created_at"] >= data[1]["created_at"]
+
     res = await admin_client.get("/api/v1/admin/credits/ledger?limit=1")
     assert res.status_code == 200, res.text
-    assert len(res.json()) == 1
+    data = res.json()
+    assert len(data) == 1
+    assert data[0]["amount_credits"] == 75
 
     res = await admin_client.get("/api/v1/admin/credits/ledger?limit=1&offset=1")
     assert res.status_code == 200, res.text
-    assert len(res.json()) == 1
+    data = res.json()
+    assert len(data) == 1
+    assert data[0]["amount_credits"] == 50
 
     res = await admin_client.get("/api/v1/admin/credits/ledger?limit=1&offset=2")
     assert res.status_code == 200, res.text
     assert len(res.json()) == 0
+
+    res = await admin_client.get("/api/v1/admin/credits/ledger?limit=100")
+    assert res.status_code == 200, res.text
+    assert len(res.json()) == 2
+
+    res = await admin_client.get("/api/v1/admin/credits/ledger?limit=101")
+    assert res.status_code == 422, res.text
 
 
 @pytest.mark.asyncio
@@ -305,3 +349,30 @@ async def test_get_admin_credits_ledger_reason_wildcard_escaped(
     data = res.json()
     assert len(data) == 1
     assert data[0]["reason"] == "supp%ort case"
+
+
+@pytest.mark.asyncio
+async def test_get_admin_credits_ledger_reason_underscore_escaped(
+    admin_client: AsyncClient,
+    db_workspace: Workspace,
+) -> None:
+    """AC-4: The reason filter escapes SQL wildcards so _ is matched literally."""
+    for i, reason in enumerate(["support case", "supp_ort case"], start=1):
+        res = await admin_client.post(
+            "/api/v1/admin/credits/adjust",
+            headers={"Idempotency-Key": f"idem-und-{i}-{uuid.uuid4()}"},
+            json={
+                "workspace_id": db_workspace.id,
+                "amount_credits": 10,
+                "direction": "CREDIT",
+                "reason": reason,
+                "ticket_ref": f"TICKET-UND-{i}",
+            },
+        )
+        assert res.status_code == 201, res.text
+
+    res = await admin_client.get("/api/v1/admin/credits/ledger?reason=supp_ort%20case")
+    assert res.status_code == 200, res.text
+    data = res.json()
+    assert len(data) == 1
+    assert data[0]["reason"] == "supp_ort case"

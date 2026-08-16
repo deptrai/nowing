@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class LeadPipelineStageBase(BaseModel):
@@ -78,7 +78,19 @@ class LeadAssignmentRequest(BaseModel):
 
 
 class BatchLeadAssignmentRequest(BaseModel):
-    lead_ids: list[UUID]
+    lead_ids: list[UUID] = Field(..., min_length=1)
+
+    @field_validator("lead_ids", mode="after")
+    @classmethod
+    def _dedupe_lead_ids(cls, v: list[UUID]) -> list[UUID]:
+        """Remove duplicate IDs while preserving submission order."""
+        seen: set[UUID] = set()
+        deduped: list[UUID] = []
+        for x in v:
+            if x not in seen:
+                seen.add(x)
+                deduped.append(x)
+        return deduped
 
 
 class MemberSpendCapUpdateRequest(BaseModel):
