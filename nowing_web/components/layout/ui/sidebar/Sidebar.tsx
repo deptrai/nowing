@@ -389,14 +389,14 @@ function SidebarUsageFooter({
 
 	if (isCollapsed) return null;
 
-	const containerClass = cn("px-3 py-3 space-y-3", hasNavSectionAbove && "border-t");
+	const containerClass = cn("px-2.5 py-2 space-y-2", hasNavSectionAbove && "border-t");
 
 	if (isAnonymous) {
 		return (
 			<div className={containerClass}>
 				{pageUsage && (
-					<div className="space-y-1.5">
-						<div className="flex justify-between items-center text-xs">
+					<div className="space-y-1">
+						<div className="flex justify-between items-center text-[11px]">
 							<span className="text-muted-foreground">
 								{pageUsage.pagesUsed.toLocaleString()} / {pageUsage.pagesLimit.toLocaleString()}{" "}
 								tokens
@@ -411,13 +411,13 @@ function SidebarUsageFooter({
 						</div>
 						<Progress
 							value={Math.min((pageUsage.pagesUsed / Math.max(pageUsage.pagesLimit, 1)) * 100, 100)}
-							className="h-1.5"
+							className="h-1"
 						/>
 					</div>
 				)}
 				<Link
 					href="/register"
-					className="flex items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90"
+					className="flex items-center justify-center gap-1 rounded-md bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-foreground transition-opacity hover:opacity-90"
 				>
 					Create Free Account
 				</Link>
@@ -432,18 +432,18 @@ function SidebarUsageFooter({
 				<Link
 					href={`/dashboard/${workspaceId}/earn-credits`}
 					onClick={onNavigate}
-					className="group relative z-10 mx-0.5 flex min-w-0 items-center justify-center gap-1 rounded-md px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+					className="group relative z-10 mx-0.5 flex min-w-0 items-center justify-center gap-1 rounded-md px-1 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
 				>
-					<Zap className="h-3 w-3 shrink-0" />
+					<Zap className="h-3 w-3 shrink-0 text-amber-500" />
 					<span className="truncate">Earn</span>
-					<SidebarButtonBadge className="h-4 px-1 text-[10px] bg-emerald-600 text-white hover:bg-emerald-600">
+					<SidebarButtonBadge className="h-3.5 px-1 text-[9px] bg-emerald-600 text-white hover:bg-emerald-600">
 						FREE
 					</SidebarButtonBadge>
 				</Link>
 				<Link
 					href={`/dashboard/${workspaceId}/buy-more`}
 					onClick={onNavigate}
-					className="group relative z-10 mx-0.5 flex min-w-0 items-center justify-center gap-1 rounded-md px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+					className="group relative z-10 mx-0.5 flex min-w-0 items-center justify-center gap-1 rounded-md px-1 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
 				>
 					<CreditCard className="h-3 w-3 shrink-0" />
 					<span className="truncate">Buy</span>

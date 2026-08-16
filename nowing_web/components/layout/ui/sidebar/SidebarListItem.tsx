@@ -38,7 +38,7 @@ export function sidebarListItemClassName({
 	className?: string;
 }) {
 	return cn(
-		"group group/sidebar-list-item flex h-8 w-full items-center rounded-md text-left text-sm select-none",
+		"group group/sidebar-list-item flex h-7 w-full items-center rounded-md text-left text-[11.5px] select-none",
 		interactive && "cursor-pointer hover:bg-accent hover:text-accent-foreground",
 		active && "bg-accent text-accent-foreground",
 		dragging && "opacity-40",

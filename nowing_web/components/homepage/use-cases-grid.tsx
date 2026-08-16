@@ -110,7 +110,7 @@ export function UseCasesGrid() {
 	return (
 		<section className="relative mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
 			<div className="mb-6 text-center">
-				<h2 className="text-3xl font-semibold tracking-tight text-neutral-900 sm:text-4xl dark:text-white">
+				<h2 className="font-serif text-3xl font-normal tracking-tight text-neutral-900 sm:text-4xl dark:text-white">
 					What You Can Do
 				</h2>
 			</div>

@@ -266,7 +266,7 @@ export function SocialProof() {
 		<section className="overflow-hidden py-12 sm:py-16">
 			<Reveal>
 				<div className="mx-auto max-w-2xl px-4 text-center">
-					<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+					<h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-normal tracking-tight">
 						Loved across the internet
 					</h2>
 				</div>

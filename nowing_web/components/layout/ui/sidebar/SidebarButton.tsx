@@ -24,7 +24,7 @@ interface SidebarButtonProps {
 }
 
 const baseClassName = cn(
-	"group/sidebar-button relative h-9 justify-start gap-0 rounded-md mx-2 px-2 text-sm text-left",
+	"group/sidebar-button relative h-7.5 justify-start gap-0 rounded-md mx-1.5 px-2 text-[12px] font-medium text-left",
 	"transition-colors hover:bg-accent hover:text-accent-foreground",
 	"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
 );

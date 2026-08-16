@@ -28,16 +28,18 @@ export function HowItWorks() {
 	return (
 		<MarketingSection>
 			<Reveal>
-				<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">How Nowing works</h2>
+				<h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-normal tracking-tight">
+					How Nowing works
+				</h2>
 			</Reveal>
 			<FlowLine />
 			<div className="grid gap-6 md:mt-0 mt-8 md:grid-cols-3">
 				{STEPS.map((step, i) => (
 					<Reveal key={step.number} delay={i * 0.06}>
 						<div className="h-full rounded-xl border bg-card p-6">
-							<span className="font-mono text-sm font-medium text-brand">{step.number}</span>
-							<h3 className="mt-2 text-lg font-semibold">{step.title}</h3>
-							<p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+							<span className="font-mono text-xs font-bold text-brand">{step.number}</span>
+							<h3 className="mt-2 text-base font-semibold">{step.title}</h3>
+							<p className="mt-2 text-xs sm:text-[13px] leading-relaxed text-muted-foreground">
 								{step.description}
 							</p>
 						</div>

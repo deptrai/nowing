@@ -63,15 +63,17 @@ export function CompareTable() {
 	return (
 		<MarketingSection>
 			<Reveal>
-				<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">How Nowing compares</h2>
-				<p className="mt-3 max-w-2xl text-muted-foreground leading-relaxed">
+				<h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-normal tracking-tight">
+					How Nowing compares
+				</h2>
+				<p className="mt-2.5 max-w-2xl text-sm sm:text-[15px] text-muted-foreground font-sans leading-relaxed">
 					Nowing is the only open-core product that combines long-term research memory with
 					live-data primitives for agents. Here is how that stacks up against each class of tool.
 				</p>
 			</Reveal>
 			<Reveal>
 				<div className="mt-8 overflow-x-auto rounded-xl border bg-card">
-					<table className="w-full min-w-4xl text-sm">
+					<table className="w-full min-w-4xl text-xs sm:text-[13px]">
 						<thead>
 							<tr className="border-b bg-muted/40 text-left">
 								<th className="p-4 font-medium">Feature</th>

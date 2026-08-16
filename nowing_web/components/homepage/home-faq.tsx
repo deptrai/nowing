@@ -37,7 +37,7 @@ export function HomeFaq() {
 		<MarketingSection>
 			<FAQJsonLd questions={HOME_FAQ} />
 			<Reveal>
-				<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+				<h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-normal tracking-tight">
 					Frequently asked questions
 				</h2>
 			</Reveal>

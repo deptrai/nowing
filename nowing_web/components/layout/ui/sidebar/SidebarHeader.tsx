@@ -36,12 +36,14 @@ export function SidebarHeader({
 					<Button
 						variant="ghost"
 						className={cn(
-							"flex h-8 w-full items-center justify-between gap-1 overflow-hidden px-2 py-0.5 font-semibold",
+							"flex h-7.5 w-full items-center justify-between gap-1 overflow-hidden px-2 py-0.5 font-semibold",
 							isCollapsed && "w-10"
 						)}
 					>
-						<span className="truncate text-sm">{workspace?.name ?? t("select_workspace")}</span>
-						<ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+						<span className="truncate text-xs font-semibold">
+							{workspace?.name ?? t("select_workspace")}
+						</span>
+						<ChevronsUpDown className="h-3 w-3 shrink-0 text-muted-foreground opacity-70" />
 					</Button>
 				</DropdownMenuTrigger>
 				<DropdownMenuContent align="start" className="w-48">
