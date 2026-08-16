@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { USER_QUERY_KEY } from "@/atoms/user/user-query.atoms";
+import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 import { useGlobalLoadingEffect } from "@/hooks/use-global-loading";
 import { useSession } from "@/hooks/use-session";
 import { redirectToLogin } from "@/lib/auth-utils";
@@ -32,6 +34,15 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
 	return (
 		<div className="h-full flex flex-col">
+			{session.status === "authenticated" && session.isImpersonation && <ImpersonationBanner />}
+			<nav className="bg-gray-900 text-white px-4 py-2 flex gap-4 text-sm">
+				<Link href="/admin/users" className="hover:underline">
+					Users
+				</Link>
+				<Link href="/admin/workspaces" className="hover:underline">
+					Workspaces
+				</Link>
+			</nav>
 			<div className="flex-1 min-h-0">{children}</div>
 		</div>
 	);

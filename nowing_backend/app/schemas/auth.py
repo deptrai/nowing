@@ -39,6 +39,9 @@ class LogoutAllResponse(BaseModel):
 class SessionResponse(BaseModel):
     authenticated: bool = True
     access_expires_at: int | None = None
+    is_impersonation: bool = False
+    impersonated_by: str | None = None
+    target_user: str | None = None
 
 
 class DesktopSessionRequest(BaseModel):

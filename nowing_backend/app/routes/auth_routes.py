@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from urllib.parse import urlparse
 
 import httpx
+import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi_users import exceptions as fastapi_users_exceptions
 from google.auth.transport import requests as google_requests
@@ -51,6 +52,19 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth/jwt", tags=["auth"])
 session_router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+def _decode_session_token(token: str) -> dict:
+    """Decode an access token for session metadata without verifying audience."""
+    try:
+        return jwt.decode(
+            token,
+            get_jwt_strategy().secret,
+            algorithms=["HS256"],
+            options={"verify_aud": False},
+        )
+    except Exception:
+        return {}
 
 
 async def _load_user(user_id) -> User | None:
@@ -253,7 +267,13 @@ async def get_session(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized"
         )
-    return SessionResponse(access_expires_at=access_expires_at(access_token))
+    payload = _decode_session_token(access_token)
+    return SessionResponse(
+        access_expires_at=access_expires_at(access_token),
+        is_impersonation=payload.get("is_impersonation", False),
+        impersonated_by=payload.get("impersonated_by"),
+        target_user=payload.get("target_user"),
+    )
 
 
 @session_router.post("/desktop/login", response_model=RefreshTokenResponse)

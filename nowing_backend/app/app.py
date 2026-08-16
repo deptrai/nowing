@@ -33,6 +33,7 @@ from app.agents.chat.runtime.checkpointer import (
 )
 from app.auth.context import AuthContext
 from app.auth.csrf import CsrfOriginMiddleware
+from app.auth.impersonation import ImpersonationGuardMiddleware
 from app.config import (
     config,
     initialize_image_gen_router,
@@ -780,6 +781,7 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
 
 
 app.add_middleware(RequestIDMiddleware)
+app.add_middleware(ImpersonationGuardMiddleware)
 
 
 # ---------------------------------------------------------------------------

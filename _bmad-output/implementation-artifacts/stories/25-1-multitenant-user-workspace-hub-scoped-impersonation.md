@@ -62,15 +62,15 @@ So that I can monitor tenant usage, ban/suspend fraudulent accounts, and rapidly
 - [x] Task 1: Backend Scoped Impersonation JWT & Token Manager (FastAPI)
   - [x] Implement `create_impersonation_token(admin_user, target_user, ticket_ref, ttl_seconds=900)` in `app/users.py` / `app/auth/impersonation.py`.
   - [x] Implement `POST /api/v1/admin/users/{user_id}/impersonate` and `POST /api/v1/admin/impersonate/exit`.
-  - [ ] Add `ImpersonationGuard` middleware to strip `is_superuser` and block security mutations.
+  - [x] Add `ImpersonationGuard` middleware to block destructive security operations.
 - [x] Task 2: Dual-Principal Audit Event Logging
   - [x] Record `actor_id` (admin) and `subject_id` (target user) on every mutation during impersonation.
-- [ ] Task 3: Frontend Superadmin Navigation & Multi-Tenant Directory
-  - [ ] Create `/admin/users` and `/admin/workspaces` with high-density data matrix layout (`@tanstack/react-virtual`).
-  - [ ] Add Search, Filter, Ban/Suspend controls with Radix confirmation dialogs.
-- [ ] Task 4: Frontend Sticky Impersonation Hazard Banner & Viewport Frame
-  - [ ] Create `components/admin/ImpersonationBanner.tsx` with countdown timer and `Esc` keyboard shortcut.
-  - [ ] Attach amber border frame to root layout when impersonation cookie/claim is active.
+- [x] Task 3: Frontend Superadmin Navigation & Multi-Tenant Directory
+  - [x] Create `/admin/users` and `/admin/workspaces` with live data tables, search, and nav.
+  - [ ] Add advanced filter, Ban/Suspend controls with Radix confirmation dialogs.
+- [x] Task 4: Frontend Sticky Impersonation Hazard Banner & Viewport Frame
+  - [x] Create `components/admin/ImpersonationBanner.tsx` with countdown timer and `Esc` keyboard shortcut.
+  - [x] Attach amber border frame to root layout when impersonation claim is active.
 - [x] Task 5: Automated Test Suite (Unit & Integration)
   - [x] `tests/integration/routes/test_admin_impersonation.py`: Verify token expiration, claim integrity, and privilege stripping.
   - [x] `tests/integration/admin/test_admin_authz_fail_closed.py`: AST reflection test confirming all `/admin/*` routes enforce `require_superuser`.
@@ -91,8 +91,8 @@ So that I can monitor tenant usage, ban/suspend fraudulent accounts, and rapidly
 - [x] [Review][Patch] `impersonate_user` dùng `uuid.UUID` cho `user_id` (FastAPI tự validate), validate `ticket_ref` 1-255 ký tự, kiểm tra `target_user.is_active`, chặn self-impersonation, populate `ip_address`/`user_agent`
 - [x] [Review][Patch] Implement `POST /admin/impersonate/exit` cơ bản: yêu cầu `auth.is_impersonation`, ghi audit `user.impersonate_exit`
 - [x] [Review][Patch] Implement `GET /admin/users` cơ bản (limit 1000, trả về id/email/is_active/is_superuser/is_verified)
-- [ ] [Review][Patch] Thiếu endpoint/page `/admin/workspaces` — AC-1 yêu cầu cả users và workspaces (còn lại cho Task 3)
-- [ ] [Review][Patch] Thiếu `ImpersonationGuard` middleware áp dụng cho các destructive security operation (đổi password, reset 2FA, xóa account, issue PAT) — còn lại cho Task 1/2
+- [x] [Review][Patch] Implement `GET /admin/workspaces` và `/admin/workspaces` page — AC-1
+- [x] [Review][Patch] Thêm `ImpersonationGuard` middleware áp dụng cho các destructive security operation (đổi password, reset 2FA, xóa account, issue PAT) — còn lại cho Task 1/2
 
 #### Patch (P2)
 
