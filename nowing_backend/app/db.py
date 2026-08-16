@@ -5804,6 +5804,40 @@ class WorkspaceDncRecord(Base, TimestampMixin):
     workspace = relationship("Workspace")
 
 
+class GlobalDncRecord(Base, TimestampMixin):
+    """Global Do-Not-Call (DNC) / Exclusion registry record.
+
+    ponytail: platform-wide blacklist that applies across all workspaces.
+    """
+
+    __tablename__ = "global_dnc_records"
+    __table_args__ = (
+        UniqueConstraint("record_type", "value_hmac", name="uq_global_dnc_entry"),
+        Index("ix_global_dnc_records_type", "record_type"),
+        Index("ix_global_dnc_records_hmac", "value_hmac"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    record_type = Column(String(20), nullable=False)  # 'phone', 'domain', 'email', 'tax_id'
+    value = Column(String(255), nullable=True)  # Masked/raw display value
+    value_hmac = Column(String(64), nullable=False, index=True)
+    reason = Column(String(255), nullable=True, default="Opt-out requested", server_default=text("'Opt-out requested'"))
+    source = Column(String(50), nullable=False, default="manual", server_default=text("'manual'"))
+    created_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
+
+
 class AffiliatePartner(Base, TimestampMixin):
     """Affiliate Partner account for Nowing referral program (Story 21.18 / Story 23.3 / AD-44)."""
 

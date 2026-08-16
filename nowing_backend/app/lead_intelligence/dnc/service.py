@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import config
-from app.db import WorkspaceDncRecord
+from app.db import GlobalDncRecord, WorkspaceDncRecord
 from app.lead_intelligence.dnc.normalizer import (
     hash_phone_hmac,
     is_domain_matching,
@@ -116,6 +116,74 @@ class DncComplianceService:
 
         return members
 
+    async def _get_global_dnc_set(
+        self, record_type: str, session: AsyncSession | None = None
+    ) -> set[str]:
+        """Fetch all blacklisted entries or HMAC hashes for the global DNC registry."""
+        redis_key = f"dnc:global:{record_type}"
+        redis = get_redis()
+        if redis is not None:
+            try:
+                cached_members = await redis.smembers(redis_key)
+                if cached_members:
+                    return {m for m in cached_members if m != "__EMPTY__"}
+            except Exception as exc:
+                logger.debug(
+                    "[DncService] Global Redis lookup failed for %s DNC: %s",
+                    record_type,
+                    exc,
+                )
+
+        if session is None:
+            return set()
+
+        if record_type == "domain":
+            stmt = select(GlobalDncRecord.value).where(
+                GlobalDncRecord.record_type == record_type,
+            )
+        else:
+            stmt = select(GlobalDncRecord.value_hmac).where(
+                GlobalDncRecord.record_type == record_type,
+            )
+        members: set[str] = set()
+        res = await session.execute(stmt)
+        scalars_res = res.scalars()
+        all_items = scalars_res.all() if hasattr(scalars_res, "all") else []
+        if isinstance(all_items, (list, tuple, set)):
+            members = {str(m) for m in all_items if m and isinstance(m, str)}
+
+        if redis is not None:
+            try:
+                if members:
+                    await redis.sadd(redis_key, *members)
+                else:
+                    await redis.sadd(redis_key, "__EMPTY__")
+                await redis.expire(redis_key, 3600)
+            except Exception as exc:
+                logger.debug("[DncService] Global Redis cache populate failed: %s", exc)
+
+        return members
+
+    async def _get_global_dnc_phone_hashes(
+        self, session: AsyncSession | None = None
+    ) -> set[str]:
+        return await self._get_global_dnc_set("phone", session)
+
+    async def _get_global_dnc_domains(
+        self, session: AsyncSession | None = None
+    ) -> set[str]:
+        return await self._get_global_dnc_set("domain", session)
+
+    async def _get_global_dnc_email_hashes(
+        self, session: AsyncSession | None = None
+    ) -> set[str]:
+        return await self._get_global_dnc_set("email", session)
+
+    async def _get_global_dnc_tax_hashes(
+        self, session: AsyncSession | None = None
+    ) -> set[str]:
+        return await self._get_global_dnc_set("tax_id", session)
+
     async def _get_workspace_dnc_phone_hashes(
         self, workspace_id: int, session: AsyncSession | None = None
     ) -> set[str]:
@@ -172,6 +240,15 @@ class DncComplianceService:
                             record_type="phone",
                             reason="Phone number is registered on Workspace DNC blacklist",
                         )
+                    global_blocked_hashes = await self._get_global_dnc_phone_hashes(
+                        session
+                    )
+                    if phone_hash in global_blocked_hashes:
+                        return DncCheckResult(
+                            is_blocked=True,
+                            record_type="phone",
+                            reason="Phone number is registered on Global DNC blacklist",
+                        )
 
             # 2. Check Domain / Wildcard
             if domain:
@@ -186,6 +263,16 @@ class DncComplianceService:
                                 is_blocked=True,
                                 record_type="domain",
                                 reason=f"Company domain matches blocked rule '{rule_dom}'",
+                            )
+                    global_blocked_domains = await self._get_global_dnc_domains(
+                        session
+                    )
+                    for rule_dom in global_blocked_domains:
+                        if is_domain_matching(norm_dom, rule_dom):
+                            return DncCheckResult(
+                                is_blocked=True,
+                                record_type="domain",
+                                reason=f"Company domain matches global blocked rule '{rule_dom}'",
                             )
 
             # 3. Check Email
@@ -202,6 +289,15 @@ class DncComplianceService:
                             record_type="email",
                             reason="Email address is on Workspace DNC blacklist",
                         )
+                    global_blocked_emails = await self._get_global_dnc_email_hashes(
+                        session
+                    )
+                    if email_hash in global_blocked_emails:
+                        return DncCheckResult(
+                            is_blocked=True,
+                            record_type="email",
+                            reason="Email address is on Global DNC blacklist",
+                        )
 
             # 4. Check Tax ID
             if tax_id:
@@ -216,6 +312,15 @@ class DncComplianceService:
                             is_blocked=True,
                             record_type="tax_id",
                             reason="Corporate Tax ID is on Workspace DNC blacklist",
+                        )
+                    global_blocked_taxes = await self._get_global_dnc_tax_hashes(
+                        session
+                    )
+                    if tax_hash in global_blocked_taxes:
+                        return DncCheckResult(
+                            is_blocked=True,
+                            record_type="tax_id",
+                            reason="Corporate Tax ID is on Global DNC blacklist",
                         )
 
             return DncCheckResult(is_blocked=False)
@@ -248,17 +353,28 @@ class DncComplianceService:
             return []
 
         try:
-            # Pre-fetch all workspace blacklist sets once
+            # Pre-fetch all workspace + global blacklist sets once
             phone_hashes = await self._get_workspace_dnc_phone_hashes(
                 workspace_id, session
             )
+            global_phone_hashes = await self._get_global_dnc_phone_hashes(session)
+            phone_hashes |= global_phone_hashes
+
             blocked_domains = await self._get_workspace_dnc_domains(
                 workspace_id, session
             )
+            global_blocked_domains = await self._get_global_dnc_domains(session)
+            blocked_domains |= global_blocked_domains
+
             email_hashes = await self._get_workspace_dnc_email_hashes(
                 workspace_id, session
             )
+            global_email_hashes = await self._get_global_dnc_email_hashes(session)
+            email_hashes |= global_email_hashes
+
             tax_hashes = await self._get_workspace_dnc_tax_hashes(workspace_id, session)
+            global_tax_hashes = await self._get_global_dnc_tax_hashes(session)
+            tax_hashes |= global_tax_hashes
 
             results = []
             for lead in leads:
