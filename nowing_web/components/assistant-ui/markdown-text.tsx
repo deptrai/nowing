@@ -385,7 +385,7 @@ const defaultComponents = memoizeMarkdownComponents({
 		return (
 			<p
 				className={cn(
-					"aui-md-p mt-2 mb-2 text-xs sm:text-[13px] leading-relaxed text-foreground/90 first:mt-0 last:mb-0",
+					"aui-md-p my-1.5 text-[11.5px] sm:text-xs leading-relaxed text-foreground/90 first:mt-0 last:mb-0",
 					className
 				)}
 				{...props}
@@ -402,7 +402,10 @@ const defaultComponents = memoizeMarkdownComponents({
 		const urlMap = useCitationUrlMap();
 		return (
 			<a
-				className={cn("aui-md-a font-medium text-primary underline underline-offset-4", className)}
+				className={cn(
+					"aui-md-a font-medium text-primary underline underline-offset-4 text-[11.5px]",
+					className
+				)}
 				{...props}
 			>
 				{processChildrenWithCitations(children, urlMap)}
@@ -412,21 +415,36 @@ const defaultComponents = memoizeMarkdownComponents({
 	blockquote: function Blockquote({ className, children, ...props }) {
 		const urlMap = useCitationUrlMap();
 		return (
-			<blockquote className={cn("aui-md-blockquote border-l-2 pl-6 italic", className)} {...props}>
+			<blockquote
+				className={cn("aui-md-blockquote border-l-2 pl-3 italic text-[11.5px] my-1.5", className)}
+				{...props}
+			>
 				{processChildrenWithCitations(children, urlMap)}
 			</blockquote>
 		);
 	},
 	ul: ({ className, ...props }) => (
-		<ul className={cn("aui-md-ul my-5 ml-6 list-disc [&>li]:mt-2", className)} {...props} />
+		<ul
+			className={cn(
+				"aui-md-ul my-1.5 ml-4 list-disc space-y-1 text-[11.5px] text-foreground/90",
+				className
+			)}
+			{...props}
+		/>
 	),
 	ol: ({ className, ...props }) => (
-		<ol className={cn("aui-md-ol my-5 ml-6 list-decimal [&>li]:mt-2", className)} {...props} />
+		<ol
+			className={cn(
+				"aui-md-ol my-1.5 ml-4 list-decimal space-y-1.5 text-[11.5px] text-foreground/90",
+				className
+			)}
+			{...props}
+		/>
 	),
 	li: function Li({ className, children, ...props }) {
 		const urlMap = useCitationUrlMap();
 		return (
-			<li className={cn("aui-md-li", className)} {...props}>
+			<li className={cn("aui-md-li leading-relaxed text-[11.5px]", className)} {...props}>
 				{processChildrenWithCitations(children, urlMap)}
 			</li>
 		);

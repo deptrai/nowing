@@ -468,7 +468,7 @@ const AssistantMessageInner: FC = () => {
 
 	return (
 		<CitationMetadataProvider>
-			<div className="aui-assistant-message-content wrap-break-word px-2 text-foreground leading-relaxed">
+			<div className="aui-assistant-message-content wrap-break-word px-2 text-[11.5px] text-foreground leading-relaxed">
 				<MessagePrimitive.Parts
 					components={{
 						Text: MarkdownText,

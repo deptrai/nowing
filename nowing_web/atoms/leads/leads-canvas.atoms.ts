@@ -9,8 +9,8 @@ export const canvasModeAtom = atom<CanvasMode>("leads");
 // Thread-scoped active canvas modes: key is thread_id, value is CanvasMode
 export const threadCanvasModeMapAtom = atom<Record<string, CanvasMode>>({});
 
-// Left Chat Panel width in pixels (clamped: min 360px, max 650px, default 420px)
-export const canvasLeftWidthAtom = atom<number>(420);
+// Left Chat Panel width in pixels (clamped: min 280px, max 520px, default 340px)
+export const canvasLeftWidthAtom = atom<number>(340);
 
 // Panel collapse & fullscreen states
 export const isLeftPanelCollapsedAtom = atom<boolean>(false);

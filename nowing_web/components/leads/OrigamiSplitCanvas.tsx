@@ -23,9 +23,9 @@ import { LeadDetailFlyoutDrawer } from "./LeadDetailFlyoutDrawer";
 import { ReverseIcpModal } from "./ReverseIcpModal";
 import { parseThreadContext } from "./thread-intent-detector";
 
-const MIN_LEFT_WIDTH = 360;
-const MAX_LEFT_WIDTH = 650;
-const DEFAULT_LEFT_WIDTH = 420;
+const MIN_LEFT_WIDTH = 280;
+const MAX_LEFT_WIDTH = 500;
+const DEFAULT_LEFT_WIDTH = 340;
 
 export interface OrigamiSplitCanvasProps {
 	workspaceId?: string | number;

@@ -6,14 +6,14 @@ import {
 	Check,
 	ChevronDown,
 	ChevronRight,
+	Columns,
+	Filter,
 	Globe,
-	Lock,
 	Maximize2,
 	Minimize2,
 	Network,
 	RefreshCw,
 	Search,
-	SlidersHorizontal,
 	Sparkles,
 } from "lucide-react";
 import type React from "react";
@@ -85,7 +85,6 @@ export const OrigamiLeadMatrix: React.FC<OrigamiLeadMatrixProps> = ({
 	const [, setActiveDrawerLead] = useAtom(activeDrawerLeadAtom);
 	const [highlightedRowIds] = useAtom(chatHighlightedRowIdsAtom);
 	const [isFullscreen, setIsFullscreen] = useAtom(isMatrixFullscreenAtom);
-	const [_activeTabName, _setActiveTabName] = useState("Tất cả khách hàng tiềm năng");
 
 	const [isSourceOpen, setIsSourceOpen] = useState(false);
 	const [isStatusOpen, setIsStatusOpen] = useState(false);
@@ -163,23 +162,6 @@ export const OrigamiLeadMatrix: React.FC<OrigamiLeadMatrixProps> = ({
 		}
 	};
 
-	const displayTitle = useMemo(() => {
-		if (searchQuery) return `Kết quả: ${searchQuery}`;
-		if (sourceFilter !== "all") {
-			const sourceLabels: Record<string, string> = {
-				batdongsan: "Leads Bất Động Sản (Batdongsan)",
-				chotot: "Leads Mua Bán / BDS (Chợ Tốt)",
-				topcv: "Tín Hiệu Tuyển Dụng (TopCV)",
-				tender: "Gói Thầu Mua Sắm Công",
-				facebook: "Cộng Đồng Mạng Xã Hội",
-				telegram: "Nhóm Đầu Tư & Tín Hiệu",
-				linkedin: "LinkedIn Search",
-			};
-			return sourceLabels[sourceFilter] || `Leads từ nguồn ${sourceFilter}`;
-		}
-		return "Tất cả khách hàng tiềm năng";
-	}, [searchQuery, sourceFilter]);
-
 	const currentSourceOption = useMemo(() => {
 		return SOURCE_OPTIONS.find((s) => s.id === sourceFilter) || SOURCE_OPTIONS[0];
 	}, [sourceFilter]);
@@ -197,14 +179,10 @@ export const OrigamiLeadMatrix: React.FC<OrigamiLeadMatrixProps> = ({
 				className
 			)}
 		>
-			{/* Main Editorial Header: Title + Primary Actions */}
-			<div className="px-5 py-3 border-b border-border/80 bg-background flex flex-wrap items-center justify-between gap-4">
-				<div className="flex items-center gap-3">
-					<h1 className="text-base sm:text-lg font-bold tracking-tight text-foreground font-sans">
-						{displayTitle}
-					</h1>
-
-					{/* Custom Source Combobox (Positioned directly underneath button) */}
+			{/* Row 1: Slim Action Bar (Matching Origami.chat exactly) */}
+			<div className="h-10 px-3 border-b border-border/80 bg-background flex items-center justify-between gap-2 shrink-0">
+				<div className="flex items-center gap-2">
+					{/* Custom Source Combobox */}
 					<div className="relative" ref={sourceDropdownRef}>
 						<button
 							type="button"
@@ -212,10 +190,10 @@ export const OrigamiLeadMatrix: React.FC<OrigamiLeadMatrixProps> = ({
 								setIsSourceOpen((prev) => !prev);
 								setIsStatusOpen(false);
 							}}
-							className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border border-border bg-muted/30 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all cursor-pointer focus:outline-none shadow-2xs"
+							className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-border/80 bg-background hover:bg-muted/60 text-xs font-medium text-foreground transition-all cursor-pointer shadow-2xs focus:outline-none"
 						>
-							<span>{currentSourceOption.icon}</span>
-							<span>{currentSourceOption.label}</span>
+							<span className="text-xs">{currentSourceOption.icon}</span>
+							<span className="truncate max-w-[140px]">{currentSourceOption.label}</span>
 							<ChevronDown
 								className={cn(
 									"w-3 h-3 text-muted-foreground transition-transform duration-150 ml-0.5",
@@ -225,8 +203,8 @@ export const OrigamiLeadMatrix: React.FC<OrigamiLeadMatrixProps> = ({
 						</button>
 
 						{isSourceOpen && (
-							<div className="absolute left-0 top-full mt-1.5 w-64 rounded-xl border border-border bg-popover p-1 shadow-lg z-50 animate-in fade-in zoom-in-95 duration-100">
-								<div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+							<div className="absolute left-0 top-full mt-1 w-60 rounded-xl border border-border bg-popover p-1 shadow-lg z-50 animate-in fade-in zoom-in-95 duration-100">
+								<div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
 									Nguồn dữ liệu
 								</div>
 								{SOURCE_OPTIONS.map((opt) => (
@@ -258,15 +236,15 @@ export const OrigamiLeadMatrix: React.FC<OrigamiLeadMatrixProps> = ({
 					</div>
 				</div>
 
-				<div className="flex items-center gap-2.5">
+				<div className="flex items-center gap-2">
 					{onOpenReverseIcp && (
 						<button
 							type="button"
 							onClick={onOpenReverseIcp}
-							className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl border border-border bg-background hover:bg-muted text-foreground transition-all cursor-pointer shadow-xs"
+							className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border border-border/80 bg-background hover:bg-muted text-foreground transition-all cursor-pointer shadow-2xs"
 						>
 							<Search className="w-3.5 h-3.5 text-muted-foreground" />
-							Find similar leads
+							<span>Find similar leads</span>
 						</button>
 					)}
 
@@ -280,32 +258,23 @@ export const OrigamiLeadMatrix: React.FC<OrigamiLeadMatrixProps> = ({
 				</div>
 			</div>
 
-			{/* Campaigns & Filter Chips Bar */}
-			<div className="px-5 py-2.5 border-b border-border/60 bg-muted/10 flex flex-wrap items-center justify-between gap-3 text-xs">
-				<div className="flex flex-wrap items-center gap-4">
-					<div className="flex items-center gap-2">
-						<span className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase">
+			{/* Row 2: Campaigns & Filters Bar (Slim 32px) */}
+			<div className="h-8 px-3 border-b border-border/60 bg-muted/20 flex items-center justify-between gap-3 text-xs shrink-0 select-none">
+				<div className="flex items-center gap-3 overflow-x-auto no-scrollbar">
+					<div className="flex items-center gap-1.5 shrink-0">
+						<span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
 							Campaigns:
 						</span>
-						<span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 text-[11px] font-medium">
-							<AlertTriangle className="w-3 h-3" />
+						<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 text-[10px] font-medium shrink-0">
+							<AlertTriangle className="w-2.5 h-2.5" />
 							Not sending yet — connect a campaign
 						</span>
 					</div>
 
-					<div className="flex items-center gap-2 flex-wrap">
-						<div className="relative">
-							<Search className="w-3 h-3 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-							<input
-								type="text"
-								value={searchQuery}
-								onChange={(e) => onSearchQueryChange(e.target.value)}
-								placeholder="Tìm trong bảng..."
-								className="pl-7 pr-2.5 py-0.5 rounded-full border border-border bg-background text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
-							/>
-						</div>
-
-						{/* Custom Status Combobox */}
+					<div className="flex items-center gap-1.5 shrink-0">
+						<span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+							Filters:
+						</span>
 						<div className="relative" ref={statusDropdownRef}>
 							<button
 								type="button"
@@ -313,7 +282,7 @@ export const OrigamiLeadMatrix: React.FC<OrigamiLeadMatrixProps> = ({
 									setIsStatusOpen((prev) => !prev);
 									setIsSourceOpen(false);
 								}}
-								className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-border bg-background hover:bg-muted/60 text-[11px] text-foreground focus:outline-none cursor-pointer shadow-2xs"
+								className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-border/80 bg-background hover:bg-muted/60 text-[10px] text-foreground focus:outline-none cursor-pointer shadow-2xs shrink-0"
 							>
 								<span className={cn("w-1.5 h-1.5 rounded-full", currentStatusOption.dotColor)} />
 								<span>{currentStatusOption.label}</span>
@@ -326,7 +295,7 @@ export const OrigamiLeadMatrix: React.FC<OrigamiLeadMatrixProps> = ({
 							</button>
 
 							{isStatusOpen && (
-								<div className="absolute left-0 top-full mt-1.5 w-44 rounded-xl border border-border bg-popover p-1 shadow-lg z-50 animate-in fade-in zoom-in-95 duration-100">
+								<div className="absolute left-0 top-full mt-1 w-40 rounded-xl border border-border bg-popover p-1 shadow-lg z-50 animate-in fade-in zoom-in-95 duration-100">
 									{STATUS_OPTIONS.map((opt) => (
 										<button
 											key={opt.id}
@@ -336,18 +305,18 @@ export const OrigamiLeadMatrix: React.FC<OrigamiLeadMatrixProps> = ({
 												setIsStatusOpen(false);
 											}}
 											className={cn(
-												"w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium text-left transition-colors cursor-pointer",
+												"w-full flex items-center justify-between px-2 py-1 rounded-lg text-xs font-medium text-left transition-colors cursor-pointer",
 												statusFilter === opt.id
 													? "bg-muted text-foreground font-semibold"
 													: "text-muted-foreground hover:text-foreground hover:bg-muted/60"
 											)}
 										>
-											<div className="flex items-center gap-2">
-												<span className={cn("w-2 h-2 rounded-full", opt.dotColor)} />
-												<span>{opt.label}</span>
+											<div className="flex items-center gap-1.5">
+												<span className={cn("w-1.5 h-1.5 rounded-full", opt.dotColor)} />
+												<span className="text-xs">{opt.label}</span>
 											</div>
 											{statusFilter === opt.id && (
-												<Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+												<Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
 											)}
 										</button>
 									))}
@@ -357,17 +326,64 @@ export const OrigamiLeadMatrix: React.FC<OrigamiLeadMatrixProps> = ({
 					</div>
 				</div>
 
-				<div className="flex items-center gap-2">
+				<div className="flex items-center gap-2 shrink-0">
+					<div className="relative">
+						<Search className="w-3 h-3 text-muted-foreground absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+						<input
+							type="text"
+							value={searchQuery}
+							onChange={(e) => onSearchQueryChange(e.target.value)}
+							placeholder="Tìm trong bảng..."
+							className="pl-6 pr-2 py-0.5 h-6 rounded-full border border-border/80 bg-background text-[10px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500/50 w-36"
+						/>
+					</div>
+				</div>
+			</div>
+
+			{/* Row 3: Metrics & View Customization Bar (Slim 28px) */}
+			<div className="h-7 px-3 border-b border-border/60 bg-background flex items-center justify-between text-xs shrink-0 select-none">
+				<div className="flex items-center gap-3">
+					<span className="font-mono text-xs font-bold text-foreground">
+						Leads {leads.length} <ChevronDown className="w-3 h-3 inline text-muted-foreground" />
+					</span>
+					<span className="text-[10px] text-muted-foreground font-mono">
+						Projected price: <span className="font-bold text-foreground">1.5 credits</span> ($0.022)
+						per lead ⌄
+					</span>
+				</div>
+
+				<div className="flex items-center gap-1.5">
+					<button
+						type="button"
+						className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-muted-foreground hover:text-foreground rounded border border-border/60 hover:bg-muted/40 transition-colors"
+					>
+						<span>8 cols</span>
+						<ChevronDown className="w-2.5 h-2.5" />
+					</button>
+					<button
+						type="button"
+						title="Lọc nâng cao"
+						className="p-1 text-muted-foreground hover:text-foreground rounded hover:bg-muted/40 transition-colors"
+					>
+						<Filter className="w-3 h-3" />
+					</button>
+					<button
+						type="button"
+						title="Tùy chỉnh cột"
+						className="p-1 text-muted-foreground hover:text-foreground rounded hover:bg-muted/40 transition-colors"
+					>
+						<Columns className="w-3 h-3" />
+					</button>
 					<button
 						type="button"
 						onClick={onRefresh}
 						disabled={isLoading}
-						title="Làm mới dữ liệu"
-						className="p-1 text-muted-foreground hover:text-foreground rounded transition-colors cursor-pointer"
+						title="Làm mới"
+						className="p-1 text-muted-foreground hover:text-foreground rounded hover:bg-muted/40 transition-colors"
 					>
 						<RefreshCw
 							className={cn(
-								"w-3.5 h-3.5",
+								"w-3 h-3",
 								isLoading && "animate-spin text-emerald-600 dark:text-emerald-400"
 							)}
 						/>
@@ -376,276 +392,173 @@ export const OrigamiLeadMatrix: React.FC<OrigamiLeadMatrixProps> = ({
 						type="button"
 						onClick={() => setIsFullscreen((prev) => !prev)}
 						title={isFullscreen ? "Thu nhỏ" : "Toàn màn hình"}
-						className="p-1 text-muted-foreground hover:text-foreground rounded transition-colors cursor-pointer"
+						className="p-1 text-muted-foreground hover:text-foreground rounded hover:bg-muted/40 transition-colors"
 					>
-						{isFullscreen ? (
-							<Minimize2 className="w-3.5 h-3.5" />
-						) : (
-							<Maximize2 className="w-3.5 h-3.5" />
-						)}
+						{isFullscreen ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
 					</button>
 				</div>
 			</div>
 
-			{/* Sub-header Bar: Stats & Controls */}
-			<div className="px-5 py-2 border-b border-border/60 bg-muted/20 flex items-center justify-between gap-4 text-xs text-muted-foreground">
-				<div className="flex items-center gap-4">
-					<div className="flex items-center gap-1 font-medium text-foreground cursor-pointer">
-						<span>Leads</span>
-						<span className="font-bold text-emerald-600 dark:text-emerald-400">{leads.length}</span>
-						<ChevronDown className="w-3 h-3 opacity-70" />
-					</div>
-					<div className="h-3.5 w-[1px] bg-border" />
-					<div className="flex items-center gap-1 text-[11px] cursor-pointer">
-						<span>Projected price:</span>
-						<span className="font-bold text-foreground font-mono">1.5 credits</span>
-						<span className="text-[10px] text-muted-foreground">($0.022) per lead</span>
-						<ChevronDown className="w-3 h-3 opacity-70" />
-					</div>
-				</div>
-
-				<div className="flex items-center gap-2">
-					<button
-						type="button"
-						className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border/80 bg-background text-[11px] font-medium text-foreground hover:bg-muted transition-colors cursor-pointer"
-					>
-						<span>8 cols</span>
-						<ChevronDown className="w-3 h-3 opacity-70" />
-					</button>
-					<button
-						type="button"
-						className="p-1 rounded-md border border-border/80 bg-background text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-						title="Sắp xếp"
-					>
-						<SlidersHorizontal className="w-3 h-3" />
-					</button>
-				</div>
-			</div>
-
-			{/* Spreadsheet Table Container */}
-			<div className="flex-1 overflow-auto scrollbar-thin">
+			{/* Main High-Density Data Matrix Grid */}
+			<div className="flex-1 overflow-auto bg-background/50 relative scrollbar-thin">
 				{leads.length === 0 ? (
-					<div className="h-full min-h-[420px] flex flex-col items-center justify-center p-8 text-center soc-caro-grid">
-						<div className="w-14 h-14 rounded-2xl bg-card border border-border flex items-center justify-center text-muted-foreground mb-4 shadow-md ring-1 ring-emerald-500/20">
-							<Sparkles className="w-7 h-7 text-emerald-600 dark:text-emerald-400 animate-pulse" />
+					<div className="flex flex-col items-center justify-center h-full p-8 text-center select-none">
+						<div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-3">
+							<Sparkles className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
 						</div>
-						<span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-semibold mb-2 border border-emerald-500/20">
+						<div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-[11px] font-semibold mb-2 border border-emerald-500/20">
 							🎯 Bảng Săn Lead Sống Đa Kênh
-						</span>
-						<h3 className="text-lg font-bold text-foreground mb-2">
-							Sẵn sàng Săn Lead với AI Co-pilot
-						</h3>
-						<p className="text-xs text-muted-foreground max-w-md mb-6 leading-relaxed">
+						</div>
+						<h3 className="text-sm font-bold text-foreground">Sẵn sàng Săn Lead với AI Co-pilot</h3>
+						<p className="text-xs text-muted-foreground mt-1 max-w-md">
 							Hãy nhập lệnh tìm kiếm trong khung AI Chat bên trái. Hệ thống sẽ tự động điều phối cào
 							dữ liệu sống từ 5+ nền tảng (BĐS, Chợ Tốt, TopCV, Đấu Thầu...) và đổ trực tiếp vào ma
 							trận bảng này.
 						</p>
-
-						<div className="flex flex-wrap items-center justify-center gap-2 max-w-lg mb-6">
-							<button
-								type="button"
-								onClick={() => {
-									onSourceFilterChange("batdongsan");
-								}}
-								className="px-3 py-1.5 rounded-lg border border-border/80 bg-card hover:bg-muted text-xs font-medium text-foreground transition-colors cursor-pointer flex items-center gap-1.5"
-							>
-								<span>🏢</span>
-								<span>Xem Leads Bất Động Sản</span>
-							</button>
-							<button
-								type="button"
-								onClick={() => {
-									onSourceFilterChange("topcv");
-								}}
-								className="px-3 py-1.5 rounded-lg border border-border/80 bg-card hover:bg-muted text-xs font-medium text-foreground transition-colors cursor-pointer flex items-center gap-1.5"
-							>
-								<span>💼</span>
-								<span>Xem Tín Hiệu Tuyển Dụng</span>
-							</button>
-							{onOpenReverseIcp && (
-								<button
-									type="button"
-									onClick={onOpenReverseIcp}
-									className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
-								>
-									<Sparkles className="w-3.5 h-3.5" />
-									<span>Phân tích ICP từ Website</span>
-								</button>
-							)}
-						</div>
 					</div>
 				) : (
-					<table className="w-full text-left text-xs text-foreground border-collapse">
-						<thead className="sticky top-0 z-10 bg-muted/90 text-[11px] text-muted-foreground border-b border-border font-medium backdrop-blur-xs">
-							<tr>
-								<th scope="col" className="w-10 px-3 py-2.5 text-center">
+					<table className="w-full text-left border-collapse text-xs">
+						{/* Table Header Row (Compact 28px) */}
+						<thead className="sticky top-0 z-10 bg-muted/60 backdrop-blur-md border-b border-border/80 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/90 select-none">
+							<tr className="h-7">
+								<th className="w-8 px-2 text-center">
 									<input
 										type="checkbox"
 										checked={isAllSelected}
 										onChange={handleSelectAll}
-										className="rounded border-border bg-background text-emerald-600 focus:ring-emerald-500/30 cursor-pointer"
+										className="rounded border-border text-emerald-600 focus:ring-emerald-500 size-3.5 cursor-pointer align-middle"
 									/>
 								</th>
-								<th scope="col" className="w-10 px-2 py-2.5 font-medium text-center">
-									#
-								</th>
-								<th scope="col" className="w-24 px-3 py-2.5 font-medium">
-									FIT SCORE &gt;
-								</th>
-								<th scope="col" className="w-[20%] px-3 py-2.5 font-medium">
-									T TÊN DOANH NGHIỆP
-								</th>
-								<th scope="col" className="w-[14%] px-3 py-2.5 font-medium">
-									🌐 WEBSITE
-								</th>
-								<th scope="col" className="w-[13%] px-3 py-2.5 font-medium">
-									T NGÀNH
-								</th>
-								<th scope="col" className="w-[20%] px-3 py-2.5 font-medium">
-									T MÔ TẢ HOẠT ĐỘNG
-								</th>
-								<th scope="col" className="w-[15%] px-3 py-2.5 font-medium">
-									📍 ĐỊA ĐIỂM
-								</th>
-								<th scope="col" className="w-[18%] px-3 py-2.5 font-medium text-center">
-									SĐT & TIẾP CẬN
-								</th>
+								<th className="w-8 px-1.5 font-mono text-center">#</th>
+								<th className="px-2.5 w-28">FIT SCORE &gt;</th>
+								<th className="px-3 min-w-[200px]">TÊN DOANH NGHIỆP</th>
+								<th className="px-3 w-44">WEBSITE</th>
+								<th className="px-3 w-32">NGÀNH</th>
+								<th className="px-3 w-32">ĐIỆN THOẠI</th>
+								<th className="w-24 px-2 text-right">HÀNH ĐỘNG</th>
 							</tr>
 						</thead>
-						<tbody className="divide-y divide-border/60 bg-background font-sans">
+
+						{/* Table Body Rows (High Density 34px - 36px) */}
+						<tbody className="divide-y divide-border/40 font-sans">
 							{leads.map((lead, idx) => {
 								const isSelected = selectedLeadIds.includes(lead.id);
 								const isContextActive = selectedLeadContext?.id === lead.id;
 								const isHighlighted = highlightedRowIds.includes(lead.id);
-								const isNewLead = lead.source === "chat_scraper" || isHighlighted;
-								const fitScore = lead.fit_score ?? 85 + (idx % 15);
 
 								return (
 									<tr
 										key={lead.id}
-										tabIndex={0}
-										data-testid={`lead-row-${lead.id}`}
 										onClick={() => handleRowClick(lead)}
-										onKeyDown={(e) => {
-											if (e.key === "Enter" || e.key === " ") {
-												e.preventDefault();
-												handleRowClick(lead);
-											}
-										}}
 										className={cn(
-											"transition-all duration-300 cursor-pointer group hover:bg-muted/40 focus:outline-none focus:bg-muted/60",
-											isNewLead && "animate-lead-pulse bg-emerald-500/10",
-											isSelected && "bg-emerald-500/10",
-											isContextActive && "bg-emerald-500/15 ring-1 ring-inset ring-emerald-500/40",
-											isHighlighted && "bg-blue-500/15 ring-1 ring-inset ring-blue-500/40"
+											"h-9 group hover:bg-muted/40 transition-colors cursor-pointer text-[11.5px]",
+											isSelected && "bg-emerald-500/5 hover:bg-emerald-500/10",
+											isContextActive && "bg-muted/70",
+											isHighlighted && "animate-pulse bg-emerald-500/10"
 										)}
 									>
 										{/* Checkbox */}
-										<td className="w-10 px-3 py-2.5 text-center">
+										<td
+											className="w-8 px-2 text-center"
+											onClick={(e) => handleToggleLead(lead.id, e)}
+											onKeyDown={(e) => {
+												if (e.key === "Enter" || e.key === " ") {
+													handleToggleLead(lead.id, e);
+												}
+											}}
+										>
 											<input
 												type="checkbox"
-												data-lead-checkbox="true"
 												checked={isSelected}
-												onClick={(e) => e.stopPropagation()}
-												onChange={(e) => handleToggleLead(lead.id, e)}
-												className="rounded border-border bg-background text-emerald-600 focus:ring-emerald-500/30 cursor-pointer"
+												onChange={() => {}}
+												className="rounded border-border text-emerald-600 focus:ring-emerald-500 size-3.5 cursor-pointer align-middle"
 											/>
 										</td>
 
-										{/* Row Index (#) */}
-										<td className="w-10 px-2 py-2.5 text-center font-mono text-[11px] text-muted-foreground">
+										{/* Index # */}
+										<td className="w-8 px-1.5 font-mono text-[11px] text-muted-foreground text-center">
 											{idx + 1}
 										</td>
 
-										{/* Fit Score Pill (Origami style: 🟩 100 >) */}
-										<td className="w-24 px-3 py-2.5">
-											<div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 font-mono text-[11px] font-bold">
-												<span className="w-2 h-2 rounded-[2px] bg-emerald-500" />
-												<span>{fitScore}</span>
-												<ChevronRight className="w-3 h-3 opacity-60" />
+										{/* Fit Score Badge [🟩 95 >] */}
+										<td className="px-2.5">
+											<div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 font-mono text-[10px] font-bold">
+												<span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+												<span>{lead.fit_score ?? 85}</span>
+												<ChevronRight className="w-2.5 h-2.5 text-emerald-600/70" />
 											</div>
 										</td>
 
 										{/* Company Name */}
-										<td className="px-3 py-2.5 font-medium text-foreground">
-											<div className="flex items-center justify-between gap-1.5 overflow-hidden">
-												<div className="flex items-center gap-1.5 overflow-hidden">
-													<span className="truncate font-semibold">{lead.company_name}</span>
-													{isNewLead && (
-														<span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold shrink-0 animate-pulse">
-															✨ Mới
-														</span>
-													)}
-												</div>
+										<td className="px-3 font-medium text-foreground">
+											<div className="flex items-center gap-1.5 truncate max-w-[240px]">
+												<span className="truncate">{lead.company_name}</span>
+												{lead.source === "chat_scraper" && (
+													<span className="px-1 py-0.2 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[9px] font-bold uppercase shrink-0">
+														✨ Mới
+													</span>
+												)}
+											</div>
+										</td>
+
+										{/* Website */}
+										<td className="px-3 text-muted-foreground">
+											{lead.domain || lead.source_url ? (
+												<a
+													href={lead.source_url || `https://${lead.domain}`}
+													target="_blank"
+													rel="noopener noreferrer"
+													onClick={(e) => e.stopPropagation()}
+													className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground hover:underline transition-colors truncate max-w-[150px] text-[11px]"
+												>
+													<Globe className="w-3 h-3 text-muted-foreground/70 shrink-0" />
+													<span className="truncate">{lead.domain || lead.source_url}</span>
+												</a>
+											) : (
+												<span className="text-muted-foreground/40 text-[10px]">—</span>
+											)}
+										</td>
+
+										{/* Industry */}
+										<td className="px-3 text-muted-foreground text-[11px]">
+											<span className="truncate block max-w-[120px]">
+												{lead.industry || "Bất động sản"}
+											</span>
+										</td>
+
+										{/* Phone Pill */}
+										<td
+											className="px-3"
+											onClick={(e) => e.stopPropagation()}
+											onKeyDown={(e) => e.stopPropagation()}
+										>
+											<PhoneCopyPill phone={lead.phone || ""} />
+										</td>
+
+										{/* Actions */}
+										<td
+											className="w-24 px-2 text-right"
+											onClick={(e) => e.stopPropagation()}
+											onKeyDown={(e) => e.stopPropagation()}
+										>
+											<div className="inline-flex items-center justify-end gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+												<ZaloOutreachButton
+													leadId={lead.id}
+													phone={lead.phone}
+													companyName={lead.company_name}
+													workspaceId={workspaceId}
+													size="sm"
+												/>
 												{onOpenCompanyGraph && (
 													<button
 														type="button"
-														onClick={(e) => {
-															e.stopPropagation();
-															onOpenCompanyGraph(lead.company_name);
-														}}
-														title="Company Graph"
-														className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+														onClick={() => onOpenCompanyGraph(lead.company_name)}
+														title="Xem sơ đồ liên kết doanh nghiệp"
+														className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
 													>
 														<Network className="w-3 h-3" />
 													</button>
 												)}
-											</div>
-										</td>
-
-										{/* Website / Domain with Favicon */}
-										<td className="px-3 py-2.5">
-											<div className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground overflow-hidden">
-												<Globe className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-												<span className="truncate font-mono text-[11px]">
-													{lead.domain ||
-														(lead.source_url
-															? lead.source_url.replace(/^https?:\/\//, "").split("/")[0]
-															: `${lead.company_name.toLowerCase().replace(/[^a-z0-9]/g, "")}.com`)}
-												</span>
-											</div>
-										</td>
-
-										{/* Industry */}
-										<td className="px-3 py-2.5 text-muted-foreground">
-											<span className="truncate block text-[11px]">
-												{lead.industry || "wholesale / B2B"}
-											</span>
-										</td>
-
-										{/* Description Activity */}
-										<td className="px-3 py-2.5 text-muted-foreground">
-											<p className="truncate text-[11px]">
-												{lead.content_snippet || "Cung cấp giải pháp & phân phối toàn quốc..."}
-											</p>
-										</td>
-
-										{/* Location */}
-										<td className="px-3 py-2.5 text-muted-foreground">
-											<span className="truncate block text-[11px]">
-												{lead.location || "TP. Hồ Chí Minh, Việt Nam"}
-											</span>
-										</td>
-
-										{/* SĐT & Zalo Outreach Button */}
-										<td className="px-3 py-2.5 text-center">
-											<div className="flex items-center justify-center gap-1.5 flex-wrap">
-												{lead.phone ? (
-													<PhoneCopyPill phone={lead.phone} />
-												) : (
-													<span className="text-[10px] text-muted-foreground font-mono">
-														Chưa mở khóa
-													</span>
-												)}
-												<ZaloOutreachButton
-													leadId={lead.id}
-													workspaceId={workspaceId}
-													phone={lead.phone}
-													companyName={lead.company_name}
-													intent={lead.intent}
-													source={lead.source}
-													contentSnippet={lead.content_snippet}
-												/>
 											</div>
 										</td>
 									</tr>
@@ -653,25 +566,6 @@ export const OrigamiLeadMatrix: React.FC<OrigamiLeadMatrixProps> = ({
 							})}
 						</tbody>
 					</table>
-				)}
-
-				{/* More leads ready to unlock (Bottom Box) */}
-				{leads.length > 0 && (
-					<div className="p-8 flex flex-col items-center justify-center border-t border-border/60 bg-muted/10 text-center">
-						<div className="w-10 h-10 rounded-full bg-muted border border-border flex items-center justify-center text-muted-foreground mb-2">
-							<Lock className="w-4 h-4" />
-						</div>
-						<h4 className="text-xs font-bold text-foreground">More leads ready to unlock</h4>
-						<p className="text-[11px] text-muted-foreground mb-2">
-							Upgrade to add them to your list
-						</p>
-						<button
-							type="button"
-							className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
-						>
-							Unlock more leads &gt;
-						</button>
-					</div>
 				)}
 			</div>
 		</div>
