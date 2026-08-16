@@ -391,15 +391,34 @@ class CorporateVerificationService:
         )
 
     def _parse_location(self, location: str | None) -> tuple[str | None, str | None]:
-        """Extract city and district from location string (e.g. 'Cầu Giấy, Hà Nội')."""
+        """Extract city and district from location string (e.g. 'Cầu Giấy, Hà Nội').
+
+        ponytail: uses the same Vietnamese province regex as phone_extractor.
+        If a recognized province is on one side of the comma, that side is the city.
+        """
+        from app.proprietary.platforms.xactions.phone_extractor import (
+            _PROVINCES_COMBINED_REGEX,
+        )
+
         if not location:
             return None, None
         parts = [p.strip() for p in location.split(",") if p.strip()]
-        if len(parts) >= 2:
-            return parts[-1], parts[0]  # city, district
+        if not parts:
+            return None, None
         if len(parts) == 1:
             return parts[0], None
-        return None, None
+
+        first, second = parts[0], parts[-1]
+        first_is_province = bool(_PROVINCES_COMBINED_REGEX.search(first))
+        second_is_province = bool(_PROVINCES_COMBINED_REGEX.search(second))
+
+        if first_is_province and not second_is_province:
+            return first, second
+        if second_is_province and not first_is_province:
+            return second, first
+
+        # Fallback: original "district, city" convention.
+        return second, first
 
     async def _is_circuit_breaker_open(self) -> bool:
         redis = self._get_redis()
