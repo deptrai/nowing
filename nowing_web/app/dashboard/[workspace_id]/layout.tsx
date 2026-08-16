@@ -15,7 +15,7 @@ export default async function DashboardLayout({
 }) {
 	const [{ workspace_id }, cookieStore] = await Promise.all([params, cookies()]);
 	const initialPlaygroundSidebarCollapsed =
-		cookieStore.get(PLAYGROUND_SIDEBAR_COLLAPSED_COOKIE)?.value === "true";
+		cookieStore.get(PLAYGROUND_SIDEBAR_COLLAPSED_COOKIE)?.value !== "false";
 
 	return (
 		<DashboardClientLayout

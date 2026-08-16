@@ -224,7 +224,7 @@ export function LayoutShell({
 	onTabSwitch,
 	onTabPrefetch,
 	playgroundSidebar,
-	initialPlaygroundSidebarCollapsed = false,
+	initialPlaygroundSidebarCollapsed = true,
 }: LayoutShellProps) {
 	const isMobile = useIsMobile();
 	const electronAPI = useElectronAPI();
