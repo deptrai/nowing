@@ -4,7 +4,17 @@ import type React from "react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import enMessages from "../messages/en.json";
 
-type Locale = "en" | "es" | "pt" | "hi" | "zh" | "ko";
+export type Locale = "en" | "vi" | "es" | "pt" | "hi" | "zh" | "ko";
+
+export const SUPPORTED_LOCALES: readonly Locale[] = [
+	"en",
+	"vi",
+	"es",
+	"pt",
+	"hi",
+	"zh",
+	"ko",
+] as const;
 
 /**
  * Dynamically load locale messages on demand.
@@ -12,6 +22,8 @@ type Locale = "en" | "es" | "pt" | "hi" | "zh" | "ko";
  */
 const loadMessages = async (locale: Locale): Promise<typeof enMessages> => {
 	switch (locale) {
+		case "vi":
+			return (await import("../messages/vi.json")).default as typeof enMessages;
 		case "es":
 			return (await import("../messages/es.json")).default as typeof enMessages;
 		case "hi":
@@ -37,6 +49,46 @@ const LocaleContext = createContext<LocaleContextType | undefined>(undefined);
 
 const LOCALE_STORAGE_KEY = "nowing-locale";
 
+/**
+ * Detect initial locale based on browser languages and timezone.
+ * Defaults to 'vi' for Vietnamese browser language or Vietnam timezones,
+ * or other supported languages if matched, otherwise 'en'.
+ */
+export function detectInitialLocale(): Locale {
+	if (typeof window === "undefined") return "en";
+
+	// 1. Check browser navigator languages
+	const navLangs = window.navigator.languages || [window.navigator.language || ""];
+	for (const lang of navLangs) {
+		if (!lang) continue;
+		const code = lang.toLowerCase();
+		if (code.startsWith("vi")) return "vi";
+		if (code.startsWith("es")) return "es";
+		if (code.startsWith("pt")) return "pt";
+		if (code.startsWith("hi")) return "hi";
+		if (code.startsWith("zh")) return "zh";
+		if (code.startsWith("ko")) return "ko";
+		if (code.startsWith("en")) return "en";
+	}
+
+	// 2. Check timezone for Vietnam / Indochina
+	try {
+		const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+		if (
+			timeZone === "Asia/Ho_Chi_Minh" ||
+			timeZone === "Asia/Saigon" ||
+			timeZone === "Asia/Hanoi" ||
+			timeZone === "Asia/Bangkok"
+		) {
+			return "vi";
+		}
+	} catch {
+		// Ignore timezone detection errors
+	}
+
+	return "en";
+}
+
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
 	// Always start with 'en' to avoid hydration mismatch
 	// Then sync with localStorage after mount
@@ -49,12 +101,20 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
 		setMounted(true);
 		if (typeof window !== "undefined") {
 			const stored = localStorage.getItem(LOCALE_STORAGE_KEY);
-			if (stored && (["en", "es", "pt", "hi", "zh", "ko"] as const).includes(stored as Locale)) {
+			if (stored && (SUPPORTED_LOCALES as readonly string[]).includes(stored)) {
 				const storedLocale = stored as Locale;
 				setLocaleState(storedLocale);
 				// Load messages for non-English locale
 				if (storedLocale !== "en") {
 					loadMessages(storedLocale).then(setMessages);
+				}
+			} else if (!stored) {
+				// First-time visit: auto-detect locale and persist preference
+				const detected = detectInitialLocale();
+				setLocaleState(detected);
+				localStorage.setItem(LOCALE_STORAGE_KEY, detected);
+				if (detected !== "en") {
+					loadMessages(detected).then(setMessages);
 				}
 			}
 		}

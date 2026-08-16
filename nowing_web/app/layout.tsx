@@ -1,4 +1,4 @@
-// auto-deploy verified
+// auto-deploy verified - trigger-recompile-turbopack
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { RootProvider } from "fumadocs-ui/provider/next";
