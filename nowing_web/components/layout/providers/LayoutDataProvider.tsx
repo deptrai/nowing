@@ -10,7 +10,6 @@ import {
 	Puzzle,
 	Shapes,
 	SquareTerminal,
-	Target,
 } from "lucide-react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -299,7 +298,6 @@ export function LayoutDataProvider({
 	// Automations and Artifacts are rendered explicitly below "New chat"
 	// in the sidebar. Documents is embedded below Recents; notifications and
 	// announcements live in the avatar rail/dropdown.
-	const isLeadsActive = pathname?.includes("/leads") === true;
 	const isAutomationsActive = pathname?.includes("/automations") === true;
 	const isArtifactsActive = pathname?.endsWith("/artifacts") === true;
 	const isPlaybooksActive = pathname?.includes("/playbooks") === true;
@@ -310,12 +308,6 @@ export function LayoutDataProvider({
 		() =>
 			(
 				[
-					{
-						title: "Origami Canvas",
-						url: `/dashboard/${workspaceId}/new-chat?mode=leads`,
-						icon: Target,
-						isActive: isLeadsActive,
-					},
 					{
 						title: tNav("usage"),
 						url: `/dashboard/${workspaceId}/usage`,
@@ -356,7 +348,6 @@ export function LayoutDataProvider({
 			).filter((item): item is NavItem => item !== null),
 		[
 			workspaceId,
-			isLeadsActive,
 			isUsageActive,
 			isConnectorsActive,
 			isAutomationsActive,
