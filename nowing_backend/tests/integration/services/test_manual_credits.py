@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db import CreditTransaction, User, Workspace
+from app.db import AuditEvent, CreditTransaction, User, Workspace
 from app.services.manual_credit_service import (
     CREDIT_TO_MICROS,
     ManualCreditAdjustmentService,
@@ -195,3 +196,102 @@ async def test_adjust_credits_idempotency_double_submit(
 
     await db_session.refresh(db_workspace)
     assert db_workspace.credit_micros_balance == 25 * CREDIT_TO_MICROS
+
+
+async def test_adjust_credits_concurrent_quota_guard(
+    async_engine, db_user: User
+) -> None:
+    """AC-3: Two concurrent credit grants from the same admin cannot exceed the daily quota.
+
+    This test exercises the per-admin pg_advisory_xact_lock by running two
+    independent database sessions in parallel.
+    """
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    admin = User(
+        id=uuid.uuid4(),
+        email=f"concurrent-{uuid.uuid4()}@nowing.net",
+        hashed_password="hashed",
+        is_active=True,
+        is_superuser=True,
+        is_verified=True,
+    )
+    workspace = Workspace(name="Concurrent quota test", user_id=admin.id)
+
+    async with (
+        async_engine.connect() as conn,
+        AsyncSession(bind=conn, expire_on_commit=False) as session,
+    ):
+        session.add(admin)
+        session.add(workspace)
+        await session.commit()
+        workspace_id = workspace.id
+        admin_id = admin.id
+
+    async def run_grant(key: str) -> dict | None:
+        async with (
+            async_engine.connect() as conn,
+            AsyncSession(bind=conn, expire_on_commit=False) as session,
+        ):
+            svc = ManualCreditAdjustmentService(session)
+            try:
+                result = await svc.adjust_credits(
+                    workspace_id=workspace_id,
+                    amount_credits=600,
+                    direction="CREDIT",
+                    reason="Concurrent test",
+                    ticket_ref="TICKET-CC",
+                    actor_admin_id=admin_id,
+                    idempotency_key=key,
+                )
+            except ManualCreditQuotaExceededError:
+                await session.commit()
+                raise
+            else:
+                await session.commit()
+            return result
+
+    keys = [f"concurrent-a-{uuid.uuid4()}", f"concurrent-b-{uuid.uuid4()}"]
+    results = await asyncio.gather(
+        *(asyncio.create_task(run_grant(k)) for k in keys),
+        return_exceptions=True,
+    )
+
+    successes = [r for r in results if isinstance(r, dict)]
+    quota_errors = [r for r in results if isinstance(r, ManualCreditQuotaExceededError)]
+    assert len(successes) == 1, results
+    assert len(quota_errors) == 1, results
+
+    async with (
+        async_engine.connect() as conn,
+        AsyncSession(bind=conn, expire_on_commit=False) as session,
+    ):
+        all_tx = await session.execute(
+            select(CreditTransaction).where(CreditTransaction.workspace_id == workspace_id)
+        )
+        assert len(all_tx.scalars().all()) == 1
+
+        ws = await session.get(Workspace, workspace_id)
+        assert ws is not None
+        assert ws.credit_micros_balance == 600 * CREDIT_TO_MICROS
+
+    async with (
+        async_engine.connect() as conn,
+        AsyncSession(bind=conn, expire_on_commit=False) as session,
+    ):
+        audit_events = await session.execute(
+            select(AuditEvent).where(
+                (AuditEvent.actor_id == admin_id) | (AuditEvent.subject_id == admin_id)
+            )
+        )
+        for event in audit_events.scalars().all():
+            await session.delete(event)
+
+        ws = await session.get(Workspace, workspace_id)
+        if ws is not None:
+            await session.delete(ws)
+
+        user = await session.get(User, admin_id)
+        if user is not None:
+            await session.delete(user)
+        await session.commit()

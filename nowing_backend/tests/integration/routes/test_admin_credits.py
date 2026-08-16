@@ -9,7 +9,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db import CreditTransaction, Workspace
+from app.db import AuditEvent, CreditTransaction, Workspace
 
 pytestmark = pytest.mark.integration
 
@@ -75,7 +75,9 @@ async def test_post_admin_credits_adjust_credit_and_ledger(
     await db_session.refresh(db_workspace)
     assert db_workspace.credit_micros_balance == 500 * 10_000
 
-    res = await admin_client.get("/api/v1/admin/credits/ledger")
+    res = await admin_client.get(
+        f"/api/v1/admin/credits/ledger?workspace_id={db_workspace.id}"
+    )
     assert res.status_code == 200, res.text
     ledger = res.json()
     assert len(ledger) == 1
@@ -136,6 +138,34 @@ async def test_post_admin_credits_adjust_quota_guardrail(
     )
     assert res.status_code == 403, res.text
     assert "quota exceeded" in res.json()["detail"].lower()
+
+    audit = await db_session.execute(
+        select(AuditEvent).where(
+            AuditEvent.action == "manual_credit_quota_exceeded",
+            AuditEvent.ticket_ref == "TICKET-4",
+        )
+    )
+    assert audit.scalar_one_or_none() is not None
+
+
+@pytest.mark.asyncio
+async def test_post_admin_credits_adjust_idempotency_key_too_long(
+    admin_client: AsyncClient,
+    db_workspace: Workspace,
+) -> None:
+    """AC-1: Idempotency-Key longer than 64 characters is rejected with 400."""
+    res = await admin_client.post(
+        "/api/v1/admin/credits/adjust",
+        headers={"Idempotency-Key": "x" * 65},
+        json={
+            "workspace_id": db_workspace.id,
+            "amount_credits": 100,
+            "direction": "CREDIT",
+            "reason": "Key too long",
+            "ticket_ref": "TICKET-KEY",
+        },
+    )
+    assert res.status_code == 400, res.text
 
 
 @pytest.mark.asyncio
@@ -212,3 +242,66 @@ async def test_get_admin_credits_ledger_filter_by_workspace(
     res = await admin_client.get("/api/v1/admin/credits/ledger?reason=missing")
     assert res.status_code == 200, res.text
     assert len(res.json()) == 0
+
+
+@pytest.mark.asyncio
+async def test_get_admin_credits_ledger_pagination(
+    admin_client: AsyncClient,
+    db_session: AsyncSession,
+    db_workspace: Workspace,
+) -> None:
+    """AC-4: GET /ledger honors limit and offset."""
+    for i, (amount, reason) in enumerate(
+        [(50, "page one item"), (75, "page two item")], start=1
+    ):
+        res = await admin_client.post(
+            "/api/v1/admin/credits/adjust",
+            headers={"Idempotency-Key": f"idem-paging-{i}-{uuid.uuid4()}"},
+            json={
+                "workspace_id": db_workspace.id,
+                "amount_credits": amount,
+                "direction": "CREDIT",
+                "reason": reason,
+                "ticket_ref": f"TICKET-PAGE-{i}",
+            },
+        )
+        assert res.status_code == 201, res.text
+
+    res = await admin_client.get("/api/v1/admin/credits/ledger?limit=1")
+    assert res.status_code == 200, res.text
+    assert len(res.json()) == 1
+
+    res = await admin_client.get("/api/v1/admin/credits/ledger?limit=1&offset=1")
+    assert res.status_code == 200, res.text
+    assert len(res.json()) == 1
+
+    res = await admin_client.get("/api/v1/admin/credits/ledger?limit=1&offset=2")
+    assert res.status_code == 200, res.text
+    assert len(res.json()) == 0
+
+
+@pytest.mark.asyncio
+async def test_get_admin_credits_ledger_reason_wildcard_escaped(
+    admin_client: AsyncClient,
+    db_workspace: Workspace,
+) -> None:
+    """AC-4: The reason filter escapes SQL wildcards so % is matched literally."""
+    for i, reason in enumerate(["support case", "supp%ort case"], start=1):
+        res = await admin_client.post(
+            "/api/v1/admin/credits/adjust",
+            headers={"Idempotency-Key": f"idem-wild-{i}-{uuid.uuid4()}"},
+            json={
+                "workspace_id": db_workspace.id,
+                "amount_credits": 10,
+                "direction": "CREDIT",
+                "reason": reason,
+                "ticket_ref": f"TICKET-WILD-{i}",
+            },
+        )
+        assert res.status_code == 201, res.text
+
+    res = await admin_client.get("/api/v1/admin/credits/ledger?reason=supp%25ort%20case")
+    assert res.status_code == 200, res.text
+    data = res.json()
+    assert len(data) == 1
+    assert data[0]["reason"] == "supp%ort case"
