@@ -54,13 +54,13 @@ So that our entire sales force operates efficiently without duplicate outreach o
 ## Technical Tasks
 
 ### Backend Implementation
-- [ ] Alembic Migration: Bổ sung `credit_micros_balance` vào `workspaces`; thêm `monthly_spend_cap_micros`, `monthly_spent_micros` vào `workspace_memberships`.
-- [ ] Schema: Tạo bảng `lead_pipeline_stages`, `lead_assignments`, `lead_activity_logs` với Composite PK `(id, workspace_id)` và publication vào `zero_publication`.
-- [ ] Service: Xây dựng `LeadAssignmentService` (`nowing_backend/app/services/lead_assignment_service.py`) với Round-Robin Redis cursor.
+- [x] Alembic Migration: Bổ sung `credit_micros_balance` vào `workspaces`; thêm `monthly_spend_cap_micros`, `monthly_spent_micros` vào `workspace_memberships`.
+- [x] Schema: Tạo bảng `lead_pipeline_stages`, `lead_assignments`, `lead_activity_logs` với Composite PK `(id, workspace_id)` và publication vào `zero_publication`.
+- [x] Service: Xây dựng `LeadAssignmentService` (`nowing_backend/app/services/lead_assignment_service.py`) với Round-Robin Redis cursor.
 
 ### Frontend Implementation
-- [ ] Pages & Components: Xây dựng Kanban Board (`nowing_web/components/leads/pipeline/LeadKanbanBoard.tsx`) sử dụng `@dnd-kit/core` và Zero query subscriptions.
-- [ ] Workspace Settings: Bổ sung giao diện phân bổ hạn mức tín dụng (Spend Cap Manager) trong cài đặt thành viên.
+- [~] Pages & Components: Xây dựng Kanban Board (`nowing_web/components/leads/pipeline/LeadKanbanBoard.tsx`) sử dụng `@dnd-kit/core` (dnd-kit OK; Zero query subscriptions còn pending).
+- [x] Workspace Settings: Bổ sung giao diện phân bổ hạn mức tín dụng (Spend Cap Manager) trong cài đặt thành viên.
 
 ---
 
@@ -83,8 +83,8 @@ pnpm exec biome check components/leads/pipeline/ app/dashboard/\[workspace_id\]/
 
 #### Patch (chưa xử lý)
 
-- [ ] [Review][Patch] `auth.user_id` không tồn tại trên `AuthContext`, route CRM sẽ crash tại runtime (`nowing_backend/app/routes/lead_pipeline_routes.py:190, 254, 283, 339, 345, 375`)
-- [ ] [Review][Patch] OCC stage transition là read-check-write, không atomic; hai request đồng thời đều có thể thắng (`nowing_backend/app/routes/lead_pipeline_routes.py:141-202`)
+- [x] [Review][Patch] `auth.user_id` không tồn tại trên `AuthContext`, route CRM sẽ crash tại runtime (`nowing_backend/app/routes/lead_pipeline_routes.py:190, 254, 283, 339, 345, 375`)
+- [x] [Review][Patch] OCC stage transition là read-check-write, không atomic; hai request đồng thời đều có thể thắng (`nowing_backend/app/routes/lead_pipeline_routes.py:141-202`)
 - [ ] [Review][Patch] `WorkspaceCreditService.deduct_credits` không dùng `SELECT FOR UPDATE` / conditional UPDATE, có thể overdraft pool và vượt spend cap khi concurrency (`nowing_backend/app/services/workspace_credit_service.py:125-181`)
 - [ ] [Review][Patch] `LeadAssignmentService` không cập nhật `Lead.assigned_to_user_id`, phá vỡ capacity tracking và unassigned filter (`nowing_backend/app/services/lead_assignment_service.py:147-180, 219-246`)
 - [ ] [Review][Patch] `LeadAssignmentService` nuốt mọi exception và chứa `_mock_name` guard dành cho test, cần loại bỏ (`nowing_backend/app/services/lead_assignment_service.py:147-172, 219-246`)
@@ -112,3 +112,17 @@ pnpm exec biome check components/leads/pipeline/ app/dashboard/\[workspace_id\]/
 #### Defer
 
 - [x] [Review][Defer] `pnpm tsc --noEmit` fail trên `admin-users-api.service.ts:14` do lỗi pre-existing, không thuộc diff 24.3 — revisit khi sửa story 25.1
+
+#### Implementation Notes (auto-generated)
+
+- 2026-08-16: Patches applied in this session:
+  - `auth.user_id` → `auth.user.id`, RBAC thay thế `allow_any_principal`, OCC atomic `UPDATE ... WHERE version` trả 409.
+  - `WorkspaceCreditService.deduct_credits` dùng conditional UPDATE cho balance và `monthly_spent_micros`.
+  - `LeadAssignmentService` cập nhật `Lead.assigned_to_user_id`, loại bỏ `_mock_name` và exception swallowing.
+  - Migration 221 sửa `down_revision`, thêm `FORCE ROW LEVEL SECURITY`, `client_id` predicate, indexes.
+  - CORS regex `chrome-extension://.*` đã xóa; `/timeline` alias thêm.
+  - `LeadKanbanBoard` rewrite bằng `@dnd-kit/core`, `data-testid` column/card, xử lý 409 rollback/merge current_version.
+  - Spend Cap Manager UI (`MemberSpendCapDialog`) thêm vào `/dashboard/[workspace_id]/team`.
+  - Scraper/webhook (`lead_gen_orchestrator`, `lead_clipper_routes`, `social_stream_worker`) tự động gọi `assign_leads_batch`.
+  - `test_credit_deduction_race.py` pass; `test_kanban_concurrency.py`, `test_lead_assignment.py`, `test_workspace_credit_pooling.py` pass.
+  - Zero query subscriptions cho Kanban còn pending (cần thêm `leads` / `lead_pipeline_stages` vào `zero/schema/index.ts` và hook).

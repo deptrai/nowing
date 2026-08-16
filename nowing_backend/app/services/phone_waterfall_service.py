@@ -498,7 +498,7 @@ class PhoneWaterfallService:
     ) -> PhoneResolutionResult:
         """Run 3-tier waterfall resolution for a lead."""
         # 1. Fetch Lead with Tenant Isolation (AD-31)
-        lead = await self.session.get(Lead, lead_id)
+        lead = await self.session.get(Lead, (lead_id, workspace_id))
         if (
             not lead
             or lead.workspace_id != workspace_id

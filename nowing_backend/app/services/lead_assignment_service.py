@@ -93,17 +93,27 @@ class LeadAssignmentService:
         res = await self.session.execute(stmt)
         memberships = res.scalars().all()
 
-        eligible: list[MemberLeadCapacity] = []
-        for m in sorted(memberships, key=lambda x: str(x.user_id)):
-            # Count active assigned leads (excluding lost/archived)
-            count_stmt = select(func.count(Lead.id)).where(
-                Lead.workspace_id == workspace_id,
-                Lead.assigned_to_user_id == m.user_id,
-                Lead.status != "lost",
+        user_ids = [m.user_id for m in memberships]
+
+        # Single aggregated count for all members; exclude terminal stages (lost/won).
+        counts: dict[UUID, int] = dict.fromkeys(user_ids, 0)
+        if user_ids:
+            count_stmt = (
+                select(Lead.assigned_to_user_id, func.count(Lead.id))
+                .where(
+                    Lead.workspace_id == workspace_id,
+                    Lead.assigned_to_user_id.in_(user_ids),
+                    Lead.status.notin_(["lost", "won"]),
+                )
+                .group_by(Lead.assigned_to_user_id)
             )
             count_res = await self.session.execute(count_stmt)
-            active_count = count_res.scalar() or 0
+            for uid, cnt in count_res.all():
+                counts[uid] = cnt
 
+        eligible: list[MemberLeadCapacity] = []
+        for m in sorted(memberships, key=lambda x: str(x.user_id)):
+            active_count = counts.get(m.user_id, 0)
             max_cap = m.lead_capacity if m.lead_capacity is not None else 50
             if active_count < max_cap:
                 eligible.append(
@@ -127,6 +137,16 @@ class LeadAssignmentService:
         actor_user_id: UUID | None = None,
     ) -> AssignmentResult:
         """Assign a single lead using round-robin distribution."""
+        if self.session is None:
+            raise NoEligibleAssigneeError(workspace_id=workspace_id)
+
+        lead = await self.session.get(Lead, (lead_id, workspace_id))
+        if lead is None:
+            raise NoEligibleAssigneeError(
+                workspace_id=workspace_id,
+                reason=f"Lead {lead_id} not found",
+            )
+
         eligible = await self.get_eligible_members(workspace_id=workspace_id)
         if not eligible:
             raise NoEligibleAssigneeError(workspace_id=workspace_id)
@@ -143,33 +163,31 @@ class LeadAssignmentService:
 
         assignee = eligible[idx]
 
-        # Record assignment and activity log in DB if real session
-        if self.session is not None and hasattr(self.session, "add") and not hasattr(self.session.add, "_mock_name"):
-            try:
-                assignment = LeadAssignment(
-                    workspace_id=workspace_id,
-                    lead_id=lead_id,
-                    assigned_to_user_id=assignee.user_id,
-                    assigned_by_user_id=actor_user_id,
-                    assigned_by="auto_round_robin",
-                    status="assigned",
-                )
-                self.session.add(assignment)
+        # Update the lead owner and record the audit trail.
+        lead.assigned_to_user_id = assignee.user_id
 
-                log = LeadActivityLog(
-                    workspace_id=workspace_id,
-                    lead_id=lead_id,
-                    actor_user_id=actor_user_id,
-                    activity_type="assigned",
-                    title=f"Tự động phân bổ lead cho nhân viên {assignee.user_id}",
-                    details={
-                        "assigned_to_user_id": str(assignee.user_id),
-                        "assigned_by": "auto_round_robin",
-                    },
-                )
-                self.session.add(log)
-            except Exception:
-                pass
+        assignment = LeadAssignment(
+            workspace_id=workspace_id,
+            lead_id=lead_id,
+            assigned_to_user_id=assignee.user_id,
+            assigned_by_user_id=actor_user_id,
+            assigned_by="auto_round_robin",
+            status="assigned",
+        )
+        self.session.add(assignment)
+
+        log = LeadActivityLog(
+            workspace_id=workspace_id,
+            lead_id=lead_id,
+            actor_user_id=actor_user_id,
+            activity_type="assigned",
+            title=f"Tự động phân bổ lead cho nhân viên {assignee.user_id}",
+            details={
+                "assigned_to_user_id": str(assignee.user_id),
+                "assigned_by": "auto_round_robin",
+            },
+        )
+        self.session.add(log)
 
         return AssignmentResult(
             lead_id=lead_id,
@@ -216,34 +234,57 @@ class LeadAssignmentService:
         reason: str = "manual_reassignment",
     ) -> AssignmentResult:
         """Manually reassign a lead to a specific team member and log reason."""
-        if self.session is not None and hasattr(self.session, "add") and not hasattr(self.session.add, "_mock_name"):
-            try:
-                assignment = LeadAssignment(
-                    workspace_id=workspace_id,
-                    lead_id=lead_id,
-                    assigned_to_user_id=target_user_id,
-                    assigned_by_user_id=actor_user_id,
-                    assigned_by="manual_reassignment",
-                    status="assigned",
-                    reason=reason,
-                )
-                self.session.add(assignment)
+        if self.session is None:
+            raise NoEligibleAssigneeError(workspace_id=workspace_id)
 
-                log = LeadActivityLog(
-                    workspace_id=workspace_id,
-                    lead_id=lead_id,
-                    actor_user_id=actor_user_id,
-                    activity_type="reassigned",
-                    title=f"Chuyển lead cho nhân viên {target_user_id}",
-                    details={
-                        "target_user_id": str(target_user_id),
-                        "actor_user_id": str(actor_user_id),
-                        "reason": reason,
-                    },
-                )
-                self.session.add(log)
-            except Exception:
-                pass
+        lead = await self.session.get(Lead, (lead_id, workspace_id))
+        if lead is None:
+            raise NoEligibleAssigneeError(
+                workspace_id=workspace_id,
+                reason=f"Lead {lead_id} not found",
+            )
+
+        # Validate the target member is active and accepting leads.
+        target_membership = await self.session.get(
+            WorkspaceMembership, (workspace_id, target_user_id)
+        )
+        if target_membership is None:
+            raise NoEligibleAssigneeError(
+                workspace_id=workspace_id,
+                reason=f"Target member {target_user_id} not found",
+            )
+        if target_membership.status != "ACTIVE" or not target_membership.is_accepting_leads:
+            raise NoEligibleAssigneeError(
+                workspace_id=workspace_id,
+                reason=f"Target member {target_user_id} is not accepting leads",
+            )
+
+        lead.assigned_to_user_id = target_user_id
+
+        assignment = LeadAssignment(
+            workspace_id=workspace_id,
+            lead_id=lead_id,
+            assigned_to_user_id=target_user_id,
+            assigned_by_user_id=actor_user_id,
+            assigned_by="manual_reassignment",
+            status="assigned",
+            reason=reason,
+        )
+        self.session.add(assignment)
+
+        log = LeadActivityLog(
+            workspace_id=workspace_id,
+            lead_id=lead_id,
+            actor_user_id=actor_user_id,
+            activity_type="reassigned",
+            title=f"Chuyển lead cho nhân viên {target_user_id}",
+            details={
+                "target_user_id": str(target_user_id),
+                "actor_user_id": str(actor_user_id),
+                "reason": reason,
+            },
+        )
+        self.session.add(log)
 
         return AssignmentResult(
             lead_id=lead_id,

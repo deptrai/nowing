@@ -75,6 +75,11 @@ class LeadRead(BaseModel):
     enriched: bool = False
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime | None = None
+    tax_id: str | None = None
+    legal_representative: str | None = None
+    charter_capital_vnd: int | None = None
+    company_status: str | None = None
+    is_zalo_active: bool = False
 
 
 class LeadListResponse(BaseModel):

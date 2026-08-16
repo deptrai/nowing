@@ -25,6 +25,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
 from app.db import Lead, Permission, VerifiedContact, get_async_session
+from app.redis_client import get_redis_client
+from app.services.lead_assignment_service import LeadAssignmentService
 from app.users import get_auth_context
 from app.utils.rbac import check_permission
 
@@ -188,6 +190,7 @@ async def clip_lead(
     body: LeadClipRequest,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    redis_client: Any = Depends(get_redis_client),
 ) -> LeadClipResponse:
     """Clip a lead from external web platforms with SHA-256 deduplication and PAT auth."""
     await _verify_clipper_auth(auth, workspace_id, session)
@@ -253,6 +256,19 @@ async def clip_lead(
             verification_status="unverified",
         )
         session.add(verified_contact)
+
+    # Trigger round-robin assignment for the clipped lead.
+    assignment_service = LeadAssignmentService(
+        session=session,
+        redis_client=redis_client,
+    )
+    try:
+        await assignment_service.assign_leads_batch(
+            workspace_id=workspace_id,
+            lead_ids=[new_lead.id],
+        )
+    except Exception:
+        logger.exception("Failed to auto-assign clipped lead in workspace %s", workspace_id)
 
     try:
         await session.commit()

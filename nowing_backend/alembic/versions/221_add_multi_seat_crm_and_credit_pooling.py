@@ -6,18 +6,19 @@ Create Date: 2026-08-16 00:00:00.000000
 
 """
 
+import contextlib
 from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB, UUID
 
+from alembic import op
 from app.zero_publication import apply_publication
 
 # revision identifiers, used by Alembic.
 revision: str = "221"
-down_revision: str | None = "218"
+down_revision: str | None = "220"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -104,6 +105,9 @@ def upgrade() -> None:
                 conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN assigned_to_user_id UUID REFERENCES \"user\"(id) ON DELETE SET NULL;"))
             if "version" not in cols:
                 conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN version INTEGER NOT NULL DEFAULT 1;"))
+            # Create indexes even if the columns existed before; IF NOT EXISTS is idempotent.
+            conn.execute(text(f"CREATE INDEX IF NOT EXISTS ix_{table_name}_assigned_to_user_id ON {table_name} (assigned_to_user_id);"))
+            conn.execute(text(f"CREATE INDEX IF NOT EXISTS ix_{table_name}_stage_id ON {table_name} (stage_id);"))
 
     # 4. Create lead_pipeline_stages table (Composite PK (id, workspace_id))
     op.create_table(
@@ -259,15 +263,14 @@ def upgrade() -> None:
         _create_rls(table)
 
     # 8. Reconcile zero publication
-    try:
+    with contextlib.suppress(Exception):
         apply_publication(op.get_bind())
-    except Exception:
-        pass
 
 
 def _tenant_predicate(table: str) -> str:
     return f"""
         {table}.workspace_id IS NOT DISTINCT FROM NULLIF(current_setting('app.workspace_id', true), '')::int
+        AND {table}.client_id IS NOT DISTINCT FROM NULLIF(current_setting('app.current_client_id', true), '')
     """
 
 
@@ -296,6 +299,7 @@ def _create_rls(table: str) -> None:
             WITH CHECK ({predicate});
     """)
     op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;")
+    op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY;")
 
 
 def downgrade() -> None:

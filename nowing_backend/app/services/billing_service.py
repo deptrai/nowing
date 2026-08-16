@@ -70,7 +70,7 @@ class BillingService:
                            or already refunded.
         """
         # 1. Fetch Lead
-        lead = await self.session.get(Lead, lead_id)
+        lead = await self.session.get(Lead, (lead_id, workspace_id))
         if not lead or lead.workspace_id != workspace_id:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

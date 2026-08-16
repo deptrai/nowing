@@ -13,11 +13,9 @@ Verifies:
 from __future__ import annotations
 
 import uuid
-from typing import Any
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import Lead, Workspace
@@ -82,9 +80,9 @@ async def test_kanban_stage_transition_optimistic_concurrency_and_conflict_409(
     )
     # Set stage_id and version if model has them
     if hasattr(new_lead, "stage_id"):
-        setattr(new_lead, "stage_id", stage_1_id)
+        new_lead.stage_id = stage_1_id
     if hasattr(new_lead, "version"):
-        setattr(new_lead, "version", 1)
+        new_lead.version = 1
 
     db_session.add(new_lead)
     await db_session.commit()
@@ -172,6 +170,6 @@ async def test_kanban_cross_workspace_isolation_fail_closed(
 
     res = await client_as_regular_user.patch(
         f"/api/v1/workspaces/{unauthorized_workspace_id}/leads/{fake_lead_id}/stage",
-        json={"stage_id": uuid.uuid4(), "expected_version": 1},
+        json={"stage_id": str(uuid.uuid4()), "expected_version": 1},
     )
     assert res.status_code in [403, 404]

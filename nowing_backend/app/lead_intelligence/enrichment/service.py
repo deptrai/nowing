@@ -172,7 +172,7 @@ class EnrichmentService:
         request.status = "processing"
         await session.flush()
 
-        lead = await session.get(Lead, request.lead_id)
+        lead = await session.get(Lead, (request.lead_id, request.workspace_id))
         if lead is None:
             request.status = "completed"
             request.provider_results = {

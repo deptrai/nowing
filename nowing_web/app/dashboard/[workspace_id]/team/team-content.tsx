@@ -32,6 +32,7 @@ import {
 	updateMemberMutationAtom,
 } from "@/atoms/members/members-mutation.atoms";
 import { canPerform, membersAtom, myAccessAtom } from "@/atoms/members/members-query.atoms";
+import { MemberSpendCapDialog } from "@/components/team/MemberSpendCapDialog";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -200,6 +201,10 @@ export function TeamContent({ workspaceId }: TeamContentProps) {
 	const canInvite = hasPermission("members:invite");
 	const canManageRoles = hasPermission("members:manage_roles");
 	const canRemove = hasPermission("members:remove");
+	const canManageSpendCap = hasPermission("members:spend_cap");
+
+	const [spendCapMember, setSpendCapMember] = useState<Membership | null>(null);
+	const [spendCapOpen, setSpendCapOpen] = useState(false);
 
 	const owners = useMemo(() => members.filter((m) => m.is_owner), [members]);
 	const nonOwnerMembers = useMemo(() => members.filter((m) => !m.is_owner), [members]);
@@ -405,6 +410,11 @@ export function TeamContent({ workspaceId }: TeamContentProps) {
 								canRemove={canRemove}
 								onUpdateRole={handleUpdateMember}
 								onRemoveMember={handleRemoveMember}
+								canManageSpendCap={canManageSpendCap}
+								onOpenSpendCap={(m) => {
+									setSpendCapMember(m);
+									setSpendCapOpen(true);
+								}}
 							/>
 						))}
 						{paginatedMembers.map((member) => (
@@ -417,6 +427,11 @@ export function TeamContent({ workspaceId }: TeamContentProps) {
 								canRemove={canRemove}
 								onUpdateRole={handleUpdateMember}
 								onRemoveMember={handleRemoveMember}
+								canManageSpendCap={canManageSpendCap}
+								onOpenSpendCap={(m) => {
+									setSpendCapMember(m);
+									setSpendCapOpen(true);
+								}}
 							/>
 						))}
 						{members.length === 0 && (
@@ -482,6 +497,13 @@ export function TeamContent({ workspaceId }: TeamContentProps) {
 					</div>
 				</div>
 			)}
+
+			<MemberSpendCapDialog
+				workspaceId={workspaceId}
+				member={spendCapMember}
+				open={spendCapOpen}
+				onOpenChange={setSpendCapOpen}
+			/>
 		</div>
 	);
 }
@@ -492,22 +514,26 @@ function MemberRow({
 	roles,
 	canManageRoles,
 	canRemove,
+	canManageSpendCap,
 	onUpdateRole,
 	onRemoveMember,
+	onOpenSpendCap,
 }: {
 	workspaceId: number;
 	member: Membership;
 	roles: Role[];
 	canManageRoles: boolean;
 	canRemove: boolean;
+	canManageSpendCap: boolean;
 	onUpdateRole: (membershipId: number, roleId: number | null) => Promise<Membership>;
 	onRemoveMember: (membershipId: number) => Promise<boolean>;
+	onOpenSpendCap: (member: Membership) => void;
 }) {
 	const router = useRouter();
 	const initials = getAvatarInitials(member);
 	const displayName = member.user_display_name || member.user_email || "Unknown";
 	const roleName = member.is_owner ? "Owner" : member.role?.name || "No role";
-	const showActions = !member.is_owner && (canManageRoles || canRemove);
+	const showActions = !member.is_owner && (canManageRoles || canRemove || canManageSpendCap);
 
 	return (
 		<TableRow className="border-b border-border/60 transition-colors hover:bg-accent hover:text-accent-foreground">
@@ -595,6 +621,11 @@ function MemberRow({
 										</AlertDialogFooter>
 									</AlertDialogContent>
 								</AlertDialog>
+							)}
+							{canManageSpendCap && (
+								<DropdownMenuItem onClick={() => onOpenSpendCap(member)}>
+									Spend cap &amp; capacity
+								</DropdownMenuItem>
 							)}
 							<DropdownMenuSeparator className="bg-popover-border" />
 							<DropdownMenuItem

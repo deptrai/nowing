@@ -142,6 +142,11 @@ def _map_lead_to_read(lead: Lead) -> LeadRead:
         enriched=getattr(lead, "enriched", False),
         created_at=lead.created_at or datetime.now(UTC),
         updated_at=getattr(lead, "updated_at", None),
+        tax_id=getattr(lead, "tax_id", None),
+        legal_representative=getattr(lead, "legal_representative", None),
+        charter_capital_vnd=int(lead.charter_capital_vnd) if lead.charter_capital_vnd is not None else None,
+        company_status=getattr(lead, "company_status", None),
+        is_zalo_active=getattr(lead, "is_zalo_active", False),
     )
 
 

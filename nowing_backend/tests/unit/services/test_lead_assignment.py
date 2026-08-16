@@ -202,7 +202,6 @@ async def test_round_robin_skips_members_at_capacity():
     workspace_id = 42
     redis = FakeRedis()
 
-    full_user = uuid4()
     available_user = uuid4()
 
     service = LeadAssignmentService(session=AsyncMock(), redis_client=redis)
@@ -289,11 +288,16 @@ async def test_reassign_lead_creates_activity_log():
     """Test manual reassignment reassigns lead to new target user and records reason."""
     workspace_id = 42
     lead_id = uuid4()
-    old_user = uuid4()
     new_user = uuid4()
     admin_user = uuid4()
 
-    service = LeadAssignmentService(session=AsyncMock(), redis_client=FakeRedis())
+    fake_lead = MagicMock()
+    fake_membership = MagicMock(status="ACTIVE", is_accepting_leads=True)
+    session = MagicMock()
+    session.get = AsyncMock(side_effect=[fake_lead, fake_membership])
+    session.add = MagicMock()
+
+    service = LeadAssignmentService(session=session, redis_client=FakeRedis())
     result = await service.reassign_lead(
         workspace_id=workspace_id,
         lead_id=lead_id,

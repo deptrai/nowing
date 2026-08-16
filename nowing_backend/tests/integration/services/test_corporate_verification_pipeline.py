@@ -36,10 +36,6 @@ from app.services.phone_waterfall_service import (
 )
 from app.services.pii.verified_contact_encryption import VerifiedContactEncryption
 from tests.fixtures.masothue_mock import (
-    MOCK_MASOTHUE_AMBIGUOUS_COMPANY,
-    MOCK_MASOTHUE_FPT,
-    MOCK_MASOTHUE_LEGACY_PHONE_COMPANY,
-    MOCK_MASOTHUE_VNG,
     MockMasothueClient,
 )
 
@@ -60,7 +56,6 @@ async def test_corporate_verification_pipeline_high_confidence_and_tier_3_phone(
     lead = Lead(
         id=uuid.uuid4(),
         workspace_id=db_workspace.id,
-        client_id="b2b_corp",
         source="b2b_sourcing",
         company_name="CÔNG TY CỔ PHẦN FPT",
         location="Cầu Giấy, Hà Nội",
@@ -97,7 +92,7 @@ async def test_corporate_verification_pipeline_high_confidence_and_tier_3_phone(
     ):
         phone_res = await phone_service.resolve_lead_phone(
             workspace_id=db_workspace.id,
-            client_id="b2b_corp",
+            client_id=None,
             lead_id=lead.id,
             user_id=db_user.id,
         )
@@ -155,7 +150,6 @@ async def test_corporate_verification_pipeline_legacy_11_digit_rep_phone_convers
     lead = Lead(
         id=uuid.uuid4(),
         workspace_id=db_workspace.id,
-        client_id="b2b_corp",
         source="b2b_sourcing",
         company_name="CÔNG TY TNHH CÔNG NGHỆ ALPHA VIỆT NAM",
         location="Thanh Xuân, Hà Nội",
@@ -187,7 +181,7 @@ async def test_corporate_verification_pipeline_legacy_11_digit_rep_phone_convers
     ):
         phone_res = await phone_service.resolve_lead_phone(
             workspace_id=db_workspace.id,
-            client_id="b2b_corp",
+            client_id=None,
             lead_id=lead.id,
             user_id=db_user.id,
         )
@@ -210,7 +204,6 @@ async def test_corporate_verification_pipeline_low_confidence_flags_manual(
     lead = Lead(
         id=uuid.uuid4(),
         workspace_id=db_workspace.id,
-        client_id="b2b_corp",
         source="b2b_sourcing",
         company_name="CÔNG TY TNHH Á CHÂU",
         location="Quận 1, TP Hồ Chí Minh",  # Location differs from Bình Dương registry
@@ -246,7 +239,6 @@ async def test_corporate_verification_pipeline_dnc_blocked_stops_charge(
     lead = Lead(
         id=uuid.uuid4(),
         workspace_id=db_workspace.id,
-        client_id="b2b_corp",
         source="b2b_sourcing",
         company_name="CÔNG TY CỔ PHẦN VNG",
         location="Quận 7, TP Hồ Chí Minh",
@@ -272,7 +264,7 @@ async def test_corporate_verification_pipeline_dnc_blocked_stops_charge(
     ):
         phone_res = await phone_service.resolve_lead_phone(
             workspace_id=db_workspace.id,
-            client_id="b2b_corp",
+            client_id=None,
             lead_id=lead.id,
             user_id=db_user.id,
         )
@@ -296,7 +288,7 @@ async def test_corporate_verification_pipeline_circuit_breaker_resilience(
     lead = Lead(
         id=uuid.uuid4(),
         workspace_id=db_workspace.id,
-        client_id="b2b_corp",
+        source="b2b_corp",
         company_name="CÔNG TY CỔ PHẦN FPT",
         location="Cầu Giấy, Hà Nội",
     )

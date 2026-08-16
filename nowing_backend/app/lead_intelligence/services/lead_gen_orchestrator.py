@@ -284,6 +284,40 @@ class LeadGenOrchestrator:
             },
         )
 
+    async def _assign_new_leads(
+        self,
+        session: AsyncSession,
+        workspace_id: int,
+        new_lead_ids: list[UUID],
+    ) -> None:
+        """Trigger round-robin assignment for newly persisted leads."""
+        if not new_lead_ids:
+            return
+
+        from app.services.lead_assignment_service import LeadAssignmentService
+
+        service = LeadAssignmentService(
+            session=session,
+            redis_client=self.redis,
+        )
+        try:
+            result = await service.assign_leads_batch(
+                workspace_id=workspace_id,
+                lead_ids=new_lead_ids,
+            )
+            logger.info(
+                "Auto-assigned %s of %s new leads in workspace %s",
+                result.total_assigned,
+                len(new_lead_ids),
+                workspace_id,
+            )
+        except Exception as exc:
+            logger.exception(
+                "Failed to auto-assign new leads for workspace %s: %s",
+                workspace_id,
+                exc,
+            )
+
     async def execute_and_persist(
         self,
         session: AsyncSession,
@@ -311,6 +345,8 @@ class LeadGenOrchestrator:
             table_id=table_id,
         )
         unified_leads = search_result.leads
+
+        new_lead_ids: list[UUID] = []
 
         try:
             for lead in unified_leads:
@@ -363,6 +399,7 @@ class LeadGenOrchestrator:
                         status="new",
                     )
                     session.add(new_lead)
+                    new_lead_ids.append(lead_row_id)
 
                 # Persist discovered contact in VerifiedContact table
                 if lead.primary_phone or lead.primary_email or lead.contact_name:
@@ -394,6 +431,7 @@ class LeadGenOrchestrator:
                         session.add(new_contact)
 
             await session.flush()
+            await self._assign_new_leads(session, workspace_id, new_lead_ids)
 
         except Exception as exc:
             logger.error("Failed to persist leads to database: %s", exc)

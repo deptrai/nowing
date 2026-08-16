@@ -4,6 +4,7 @@ import { chatSessionQueries, commentQueries, messageQueries } from "./chat";
 import { connectorQueries, documentQueries } from "./documents";
 import { folderQueries } from "./folders";
 import { notificationQueries } from "./inbox";
+import { leadPipelineStageQueries, leadQueries } from "./leads";
 import { podcastQueries } from "./podcasts";
 import { userQueries } from "./user";
 
@@ -18,4 +19,6 @@ export const queries = defineQueries({
 	user: userQueries,
 	automationRuns: automationRunQueries,
 	podcasts: podcastQueries,
+	leads: leadQueries,
+	leadPipelineStages: leadPipelineStageQueries,
 });

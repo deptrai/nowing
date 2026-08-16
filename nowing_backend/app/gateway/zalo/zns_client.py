@@ -313,7 +313,7 @@ class ZnsClient:
         session.add(log_entry)
 
         if lead_id:
-            lead = await session.get(Lead, lead_id)
+            lead = await session.get(Lead, (lead_id, workspace_id))
             if lead and lead.status == "new":
                 lead.status = "contacted"
 

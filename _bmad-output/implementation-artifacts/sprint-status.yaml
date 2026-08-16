@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-08"
-last_updated: "2026-08-16"  # 21-5 code-review PASS-with-changes (done); 21-12 done; 21-14 done; 21-15 done
+last_updated: "2026-08-16"  # 25-2 implementation complete, ready for code review
 # ponytail: 2026-08-14 — reopened deferred/business-gated/dropped to backlog; 16-1 mutation gate reopened; 15-2 moved to review; tech-debt tracker reopened.
 # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended citation ACs to 3.15 (WEB_RESULT), 9.3 (async delivery), 2.10 (Exa MCP). 3 stories → review.
 # ponytail: 2026-08-08 sprint-planning — added Epic 1, 5 (DONE brownfield); added 9.1a, 9.1b, 4.8a-4.8h, 13.2a-13.2e; upgraded 12.1-12.5 to ready-for-dev (story files exist); 12.0 DONE (legal approved).
@@ -252,7 +252,7 @@ development_status:
   # 2026-08-16: Multi-Tenant Hub, Scoped Impersonation, Manual Credit Desk, Affiliate Anti-Fraud Payouts, Telemetry & Dynamic Scraper Rules
   epic-25: ready-for-dev
   25-1: ready-for-dev  # Multi-Tenant User & Workspace Hub + Scoped Impersonation
-  25-2: ready-for-dev  # Manual Credit Adjustment & Refund Desk with Dual-Audit Ledger
+  25-2: done  # Manual Credit Adjustment & Refund Desk with Dual-Audit Ledger
   25-3: ready-for-dev  # Affiliate Partner Payout Desk & Anti-Fraud Engine
   25-4: ready-for-dev  # Realtime LLM Token Cost, Proxy Health & Celery Queue Telemetry
   25-5: ready-for-dev  # Dynamic Scraper Rule Engine & ReDoS Sandbox

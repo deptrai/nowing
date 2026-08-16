@@ -1,32 +1,82 @@
+"""Unit tests for ManualCreditAdjustmentService pure logic.
+
+These tests do not require a database. Database-backed assertions live in
+``tests/integration/services/test_manual_credits.py``.
+"""
+
+from __future__ import annotations
+
 import pytest
 
-@pytest.mark.asyncio
-async def test_ac1_mandatory_field_validation():
-    """
-    AC-1 — Admin Manual Credit Adjustment Form & Validation
-    Test that mandatory fields are enforced: workspace_id, amount_credits > 0, direction in (CREDIT, DEBIT), reason >= 10 chars, ticket_ref.
-    """
-    assert True
+from app.services.manual_credit_service import (
+    CREDIT_TO_MICROS,
+    DAILY_CREDIT_QUOTA,
+    ManualCreditAdjustmentService,
+    ManualCreditValidationError,
+)
 
-@pytest.mark.asyncio
-async def test_ac2_two_tier_concurrency_lock():
-    """
-    AC-2 — 2-Tier Concurrency Lock & Atomic Ledger Insertion
-    Test Tier 1 (Redis Redlock) and Tier 2 (Postgres Lock) are acquired, and atomic ledger insertion happens.
-    """
-    assert True
+pytestmark = [pytest.mark.unit]
 
-@pytest.mark.asyncio
-async def test_ac3_concurrent_double_submit_simulation():
-    """
-    AC-2/3 — 50-thread concurrent double-submit simulation ensuring exact atomic balance update and exactly 1 transaction row.
-    """
-    assert True
 
-@pytest.mark.asyncio
-async def test_ac4_staff_quota_guardrails():
-    """
-    AC-3 — Role-Based Staff Quota Guardrails
-    Test rejecting adjustment > $10/day for non-manager staff with HTTP 403.
-    """
-    assert True
+class _FakeSession:
+    """Placeholder session for unit tests that only exercise validation."""
+
+
+def test_credit_micros_conversion() -> None:
+    """1 credit = 10_000 micro-USD (i.e. $0.01)."""
+    svc = ManualCreditAdjustmentService(_FakeSession())
+    assert svc._micros_from_credits(500) == 500 * CREDIT_TO_MICROS
+    assert svc._credits_from_micros(5_000_000) == 500
+
+
+def test_daily_credit_quota_constant() -> None:
+    """The guardrail is $10 / 1,000 credits per day."""
+    assert DAILY_CREDIT_QUOTA == 1_000
+
+
+def test_validate_payload_accepted() -> None:
+    """AC-1: A valid CREDIT payload passes validation."""
+    svc = ManualCreditAdjustmentService(_FakeSession())
+    svc._validate_payload(
+        amount_credits=500,
+        direction="CREDIT",
+        reason="Promotional partner top-up",
+        ticket_ref="https://zendesk.example.com/tickets/12345",
+    )
+
+
+def test_validate_payload_rejects_invalid_values() -> None:
+    """AC-1: Invalid amount, direction, reason, or ticket_ref are rejected."""
+    svc = ManualCreditAdjustmentService(_FakeSession())
+
+    with pytest.raises(ManualCreditValidationError):
+        svc._validate_payload(
+            amount_credits=-10,
+            direction="CREDIT",
+            reason="Valid reason here",
+            ticket_ref="TICKET-1",
+        )
+
+    with pytest.raises(ManualCreditValidationError):
+        svc._validate_payload(
+            amount_credits=100,
+            direction="HOLD",
+            reason="Valid reason here",
+            ticket_ref="TICKET-1",
+        )
+
+    with pytest.raises(ManualCreditValidationError):
+        svc._validate_payload(
+            amount_credits=100,
+            direction="DEBIT",
+            reason="short",
+            ticket_ref="TICKET-1",
+        )
+
+    with pytest.raises(ManualCreditValidationError):
+        svc._validate_payload(
+            amount_credits=100,
+            direction="CREDIT",
+            reason="Valid reason here",
+            ticket_ref="",
+        )

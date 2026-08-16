@@ -43,6 +43,7 @@ from .admin_agent_registry_routes import (
 from .admin_anti_bot_escalation_routes import (
     router as admin_anti_bot_escalation_router,
 )
+from .admin_credits_routes import router as admin_credits_router
 from .admin_global_model_connections_routes import (
     router as admin_global_model_connections_router,
 )
@@ -224,6 +225,7 @@ router.include_router(
     admin_anti_bot_escalation_router
 )  # Admin anti-bot / CAPTCHA escalations
 router.include_router(admin_users_router)  # Admin users and impersonation
+router.include_router(admin_credits_router)  # Manual credit adjustments
 router.include_router(model_connections_router)  # Connection-centric model catalog
 router.include_router(model_list_router)  # Dynamic model catalogue from OpenRouter
 router.include_router(logs_router)

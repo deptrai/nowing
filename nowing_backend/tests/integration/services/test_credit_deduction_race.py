@@ -10,57 +10,88 @@ Verifies:
 from __future__ import annotations
 
 import asyncio
-from typing import Any
-from uuid import uuid4
+import uuid
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
-from app.config import config
-from app.db import (
-    User,
-    Workspace,
-    WorkspaceMembership,
-    WorkspaceRole,
+from app.db import User, Workspace, WorkspaceMembership
+from app.routes.workspaces_routes import create_default_roles_and_membership
+from app.services.workspace_credit_service import (
+    InsufficientCreditsError,
+    SpendCapExceededError,
+    WorkspaceCreditService,
 )
-
-# Domain exceptions and service
-try:
-    from app.services.workspace_credit_service import (
-        CreditDeductionResult,
-        InsufficientCreditsError,
-        SpendCapExceededError,
-        WorkspaceCreditService,
-    )
-except ImportError:
-    class SpendCapExceededError(Exception):
-        pass
-
-    class InsufficientCreditsError(Exception):
-        pass
-
-    class WorkspaceCreditService:
-        def __init__(self, session: Any = None) -> None:
-            self.session = session
-
-        async def deduct_credits(
-            self,
-            *,
-            workspace_id: int,
-            user_id: Any,
-            amount_micros: int,
-            description: str = "",
-        ) -> Any:
-            raise NotImplementedError("To be implemented in Story 24.3")
 
 pytestmark = pytest.mark.integration
 
 
+async def _setup_race_workspace(
+    async_engine: AsyncEngine,
+    workspace_balance: int,
+    member_spend_cap: int | None,
+) -> tuple[Workspace, User]:
+    """Create a workspace + owner with committed state visible to other connections.
+
+    The integration test fixture uses savepoints, so data seeded in ``db_session`` is
+    not visible to new connections. We therefore create and commit the race fixture
+    data in a standalone transaction.
+    """
+    async with AsyncSession(
+        async_engine, expire_on_commit=False
+    ) as session, session.begin():
+        user = User(
+            id=uuid.uuid4(),
+            email=f"race-{uuid.uuid4()}@nowing.net",
+            hashed_password="hashed",
+            is_active=True,
+            is_superuser=False,
+            is_verified=True,
+        )
+        session.add(user)
+        await session.flush()
+
+        workspace = Workspace(
+            name="Race Workspace",
+            user_id=user.id,
+            credit_micros_balance=workspace_balance,
+        )
+        session.add(workspace)
+        await session.flush()
+
+        await create_default_roles_and_membership(session, workspace.id, user.id)
+
+        membership = (
+            await session.execute(
+                select(WorkspaceMembership).where(
+                    WorkspaceMembership.workspace_id == workspace.id,
+                    WorkspaceMembership.user_id == user.id,
+                )
+            )
+        ).scalars().one()
+        membership.monthly_spend_cap_micros = member_spend_cap
+        membership.monthly_spent_micros = 0
+
+    return workspace, user
+
+
+async def _cleanup_race_workspace(
+    async_engine: AsyncEngine, workspace: Workspace, user: User
+) -> None:
+    async with AsyncSession(
+        async_engine, expire_on_commit=False
+    ) as session, session.begin():
+        ws = await session.get(Workspace, workspace.id)
+        if ws is not None:
+            await session.delete(ws)
+        u = await session.get(User, user.id)
+        if u is not None:
+            await session.delete(u)
+
+
 async def test_concurrent_workspace_credit_deductions_prevent_overdraft(
-    db_session: AsyncSession,
-    db_workspace: Workspace,
-    db_user: User,
+    async_engine: AsyncEngine,
 ) -> None:
     """AC-4 & INV-24.4: 10 concurrent tasks each requesting 100k micros against a 500k balance pool.
 
@@ -69,76 +100,56 @@ async def test_concurrent_workspace_credit_deductions_prevent_overdraft(
     - Exactly 5 tasks fail with InsufficientCreditsError.
     - Final Workspace.credit_micros_balance == 0 (Strictly No Overdraft).
     """
-    # 1. Initialize Workspace credit balance to 500_000 micros ($0.50)
-    db_workspace.credit_micros_balance = 500_000
-    db_session.add(db_workspace)
-
-    # 2. Ensure membership with ample spend cap
-    membership = await db_session.execute(
-        select(WorkspaceMembership).where(
-            WorkspaceMembership.workspace_id == db_workspace.id,
-            WorkspaceMembership.user_id == db_user.id,
-        )
+    workspace, user = await _setup_race_workspace(
+        async_engine,
+        workspace_balance=500_000,
+        member_spend_cap=2_000_000,
     )
-    m_row = membership.scalars().first()
-    if m_row:
-        m_row.monthly_spend_cap_micros = 2_000_000
-        m_row.monthly_spent_micros = 0
-        db_session.add(m_row)
-    await db_session.commit()
 
-    # 3. Create independent DB sessions for concurrent execution
-    engine = create_async_engine(config.DATABASE_URL)
-    session_factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-
-    success_count = 0
-    failure_count = 0
-
-    async def _attempt_deduction(task_idx: int) -> str:
-        nonlocal success_count, failure_count
-        async with session_factory() as session:
-            service = WorkspaceCreditService(session=session)
-            try:
-                await service.deduct_credits(
-                    workspace_id=db_workspace.id,
-                    user_id=db_user.id,
-                    amount_micros=100_000,
-                    description=f"Concurrent task {task_idx}",
-                )
-                await session.commit()
-                return "SUCCESS"
-            except InsufficientCreditsError:
-                await session.rollback()
-                return "INSUFFICIENT"
-            except Exception as e:
-                await session.rollback()
-                return f"ERROR: {type(e).__name__}"
-
-    # 4. Launch 10 concurrent deduction tasks
-    results = await asyncio.gather(*[_attempt_deduction(i) for i in range(10)])
-
-    successes = results.count("SUCCESS")
-    insufficients = results.count("INSUFFICIENT")
-
-    # Invariant: Exactly 5 succeed and 5 fail due to balance limitation
-    assert successes == 5, f"Expected exactly 5 successes, got {successes}. Results: {results}"
-    assert insufficients == 5, f"Expected exactly 5 InsufficientCreditsError, got {insufficients}"
-
-    # 5. Check final workspace balance in a fresh session
-    async with session_factory() as verify_session:
-        refreshed_ws = await verify_session.get(Workspace, db_workspace.id)
-        assert refreshed_ws is not None
-        assert refreshed_ws.credit_micros_balance == 0, (
-            f"Overdraft detected! Final balance: {refreshed_ws.credit_micros_balance}"
+    try:
+        session_factory = async_sessionmaker(
+            async_engine, expire_on_commit=False, class_=AsyncSession
         )
 
-    await engine.dispose()
+        async def _attempt_deduction(task_idx: int) -> str:
+            async with session_factory() as session:
+                service = WorkspaceCreditService(session=session)
+                try:
+                    await service.deduct_credits(
+                        workspace_id=workspace.id,
+                        user_id=user.id,
+                        amount_micros=100_000,
+                        description=f"Concurrent task {task_idx}",
+                    )
+                    await session.commit()
+                    return "SUCCESS"
+                except InsufficientCreditsError:
+                    await session.rollback()
+                    return "INSUFFICIENT"
+                except Exception as e:
+                    await session.rollback()
+                    return f"ERROR: {type(e).__name__}"
+
+        results = await asyncio.gather(*[_attempt_deduction(i) for i in range(10)])
+
+        successes = results.count("SUCCESS")
+        insufficients = results.count("INSUFFICIENT")
+
+        assert successes == 5, f"Expected exactly 5 successes, got {successes}. Results: {results}"
+        assert insufficients == 5, f"Expected exactly 5 InsufficientCreditsError, got {insufficients}"
+
+        async with session_factory() as verify_session:
+            refreshed_ws = await verify_session.get(Workspace, workspace.id)
+            assert refreshed_ws is not None
+            assert refreshed_ws.credit_micros_balance == 0, (
+                f"Overdraft detected! Final balance: {refreshed_ws.credit_micros_balance}"
+            )
+    finally:
+        await _cleanup_race_workspace(async_engine, workspace, user)
 
 
 async def test_concurrent_member_spend_cap_race_prevents_cap_overdraft(
-    db_session: AsyncSession,
-    db_workspace: Workspace,
-    db_user: User,
+    async_engine: AsyncEngine,
 ) -> None:
     """AC-4 & INV-24.4: 5 concurrent tasks each requesting 100k against a 250k member spend cap.
 
@@ -147,65 +158,54 @@ async def test_concurrent_member_spend_cap_race_prevents_cap_overdraft(
     - Exactly 3 tasks fail with SpendCapExceededError.
     - Final WorkspaceMembership.monthly_spent_micros == 200_000 (<= 250_000 cap).
     """
-    # 1. Initialize large workspace balance and 250_000 member cap
-    db_workspace.credit_micros_balance = 10_000_000
-    db_session.add(db_workspace)
-
-    membership = await db_session.execute(
-        select(WorkspaceMembership).where(
-            WorkspaceMembership.workspace_id == db_workspace.id,
-            WorkspaceMembership.user_id == db_user.id,
-        )
+    workspace, user = await _setup_race_workspace(
+        async_engine,
+        workspace_balance=10_000_000,
+        member_spend_cap=250_000,
     )
-    m_row = membership.scalars().first()
-    if m_row:
-        m_row.monthly_spend_cap_micros = 250_000
-        m_row.monthly_spent_micros = 0
-        db_session.add(m_row)
-    await db_session.commit()
 
-    engine = create_async_engine(config.DATABASE_URL)
-    session_factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-
-    async def _attempt_member_deduction(task_idx: int) -> str:
-        async with session_factory() as session:
-            service = WorkspaceCreditService(session=session)
-            try:
-                await service.deduct_credits(
-                    workspace_id=db_workspace.id,
-                    user_id=db_user.id,
-                    amount_micros=100_000,
-                    description=f"Member spend task {task_idx}",
-                )
-                await session.commit()
-                return "SUCCESS"
-            except SpendCapExceededError:
-                await session.rollback()
-                return "CAP_EXCEEDED"
-            except Exception as e:
-                await session.rollback()
-                return f"ERROR: {type(e).__name__}"
-
-    # 2. Launch 5 concurrent tasks
-    results = await asyncio.gather(*[_attempt_member_deduction(i) for i in range(5)])
-
-    successes = results.count("SUCCESS")
-    cap_exceeded = results.count("CAP_EXCEEDED")
-
-    assert successes == 2, f"Expected 2 successes, got {successes}. Results: {results}"
-    assert cap_exceeded == 3, f"Expected 3 cap exceeded errors, got {cap_exceeded}"
-
-    # 3. Verify final membership spend
-    async with session_factory() as verify_session:
-        refreshed_mem = await verify_session.execute(
-            select(WorkspaceMembership).where(
-                WorkspaceMembership.workspace_id == db_workspace.id,
-                WorkspaceMembership.user_id == db_user.id,
-            )
+    try:
+        session_factory = async_sessionmaker(
+            async_engine, expire_on_commit=False, class_=AsyncSession
         )
-        mem_row = refreshed_mem.scalars().first()
-        assert mem_row is not None
-        assert mem_row.monthly_spent_micros == 200_000
-        assert mem_row.monthly_spent_micros <= mem_row.monthly_spend_cap_micros
 
-    await engine.dispose()
+        async def _attempt_member_deduction(task_idx: int) -> str:
+            async with session_factory() as session:
+                service = WorkspaceCreditService(session=session)
+                try:
+                    await service.deduct_credits(
+                        workspace_id=workspace.id,
+                        user_id=user.id,
+                        amount_micros=100_000,
+                        description=f"Member spend task {task_idx}",
+                    )
+                    await session.commit()
+                    return "SUCCESS"
+                except SpendCapExceededError:
+                    await session.rollback()
+                    return "CAP_EXCEEDED"
+                except Exception as e:
+                    await session.rollback()
+                    return f"ERROR: {type(e).__name__}"
+
+        results = await asyncio.gather(*[_attempt_member_deduction(i) for i in range(5)])
+
+        successes = results.count("SUCCESS")
+        cap_exceeded = results.count("CAP_EXCEEDED")
+
+        assert successes == 2, f"Expected 2 successes, got {successes}. Results: {results}"
+        assert cap_exceeded == 3, f"Expected 3 cap exceeded errors, got {cap_exceeded}"
+
+        async with session_factory() as verify_session:
+            refreshed_mem = await verify_session.execute(
+                select(WorkspaceMembership).where(
+                    WorkspaceMembership.workspace_id == workspace.id,
+                    WorkspaceMembership.user_id == user.id,
+                )
+            )
+            mem_row = refreshed_mem.scalars().first()
+            assert mem_row is not None
+            assert mem_row.monthly_spent_micros == 200_000
+            assert mem_row.monthly_spent_micros <= mem_row.monthly_spend_cap_micros
+    finally:
+        await _cleanup_race_workspace(async_engine, workspace, user)

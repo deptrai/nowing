@@ -4487,6 +4487,7 @@ class Lead(Base, TimestampMixin):
     __table_args__ = (
         PrimaryKeyConstraint("id", "workspace_id", name="pk_leads"),
         Index("ix_leads_workspace_created", "workspace_id", "created_at"),
+        Index("ix_leads_tax_id", "tax_id"),
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -4515,6 +4516,11 @@ class Lead(Base, TimestampMixin):
     consent_status = Column(String(50), nullable=True)
     legal_basis = Column(String(50), nullable=True)
     value_hmac = Column(String(64), nullable=True, index=True)
+    tax_id = Column(String(50), nullable=True)
+    legal_representative = Column(String(200), nullable=True)
+    charter_capital_vnd = Column(BigInteger, nullable=True)
+    company_status = Column(String(100), nullable=True)
+    is_zalo_active = Column(Boolean, nullable=False, default=False, server_default="false")
 
     workspace = relationship("Workspace", back_populates="leads")
     lead_scores = relationship(
@@ -5993,10 +5999,37 @@ class PartnerPayout(Base, TimestampMixin):
 class AuditEvent(Base):
     """Dual-principal audit logging in audit_events."""
     __tablename__ = "audit_events"
-    
+
     id = Column(Integer, primary_key=True)
     action = Column(String, nullable=False)
     actor_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
     subject_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=True)
     ticket_ref = Column(String, nullable=True)
-    created_at = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    created_at = Column(
+        TIMESTAMP(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
+
+
+class CreditTransaction(Base, TimestampMixin):
+    """Immutable ledger for manual workspace credit adjustments."""
+
+    __tablename__ = "credit_transactions"
+
+    id = Column(Integer, primary_key=True)
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    actor_admin_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id"),
+        nullable=False,
+        index=True,
+    )
+    direction = Column(String(10), nullable=False)
+    amount_micros = Column(BigInteger, nullable=False)
+    reason = Column(Text, nullable=False)
+    ticket_ref = Column(Text, nullable=False)
+    idempotency_key = Column(String(64), nullable=False, unique=True, index=True)

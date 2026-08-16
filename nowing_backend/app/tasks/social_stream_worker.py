@@ -158,6 +158,7 @@ async def _create_lead_from_social_post(
     event: SocialPostEvent,
     raw_entities: dict[str, Any],
     fit_score: float,
+    redis_client: Any | None = None,
 ) -> Lead | None:
     """Create a CRM ``Lead`` for high-intent social posts (AD-SOC-7).
 
@@ -252,6 +253,22 @@ async def _create_lead_from_social_post(
     )
 
     session.add(lead)
+
+    # Trigger round-robin assignment for the social lead.
+    from app.services.lead_assignment_service import LeadAssignmentService
+
+    assignment_service = LeadAssignmentService(
+        session=session,
+        redis_client=redis_client,
+    )
+    try:
+        await assignment_service.assign_leads_batch(
+            workspace_id=workspace_id,
+            lead_ids=[lead.id],
+        )
+    except Exception:
+        logger.exception("Failed to auto-assign social lead in workspace %s", workspace_id)
+
     try:
         await session.commit()
     except SQLAlchemyError as exc:
@@ -345,6 +362,7 @@ async def _evaluate_alerts_for_social_post(
 async def process_social_post_event(
     payload: dict[str, Any],
     session: AsyncSession | None = None,
+    redis_client: Any | None = None,
 ) -> dict[str, Any] | None:
     """Validate, extract entities, calculate fit score, and UPSERT into social_posts."""
     try:
@@ -455,6 +473,7 @@ async def process_social_post_event(
                 event=event,
                 raw_entities=extracted,
                 fit_score=fit_score,
+                redis_client=redis_client,
             )
 
         await _evaluate_alerts_for_social_post(
@@ -539,7 +558,9 @@ async def run_social_stream_consumer(
                 for msg_id, payload in messages:
                     try:
                         result = await process_social_post_event(
-                            payload, session=session
+                            payload,
+                            session=session,
+                            redis_client=redis_client,
                         )
                         if result is not None:
                             processed_count += 1

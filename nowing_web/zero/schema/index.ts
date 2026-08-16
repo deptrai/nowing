@@ -8,6 +8,7 @@ import {
 } from "./chat";
 import { documentTable, searchSourceConnectorTable } from "./documents";
 import { folderTable } from "./folders";
+import { leadPipelineStageTable, leadsTable } from "./leads";
 import { notificationTable } from "./inbox";
 import { podcastTable } from "./podcasts";
 import { userTable } from "./user";
@@ -73,6 +74,8 @@ export const schema = createSchema({
 		automationTable,
 		automationRunTable,
 		podcastTable,
+		leadsTable,
+		leadPipelineStageTable,
 	],
 	relationships: [
 		chatCommentRelationships,

@@ -637,7 +637,7 @@ class CorporateVerificationService:
         force_refresh: bool = False,
     ) -> CorporateMatchResult:
         """Enrich a lead entity with verified corporate MST, legal rep, and capital (AD-31 / INV-24.3)."""
-        lead = await self.session.get(Lead, lead_id)
+        lead = await self.session.get(Lead, (lead_id, workspace_id))
         if not lead or lead.workspace_id != workspace_id:
             return CorporateMatchResult(
                 is_verified=False,

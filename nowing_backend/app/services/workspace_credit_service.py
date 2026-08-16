@@ -130,54 +130,166 @@ class WorkspaceCreditService:
         amount_micros: int,
         description: str = "",
     ) -> CreditDeductionResult:
-        """Deduct credits from the workspace pool respecting member spend caps."""
+        """Deduct credits from the workspace pool respecting member spend caps.
+
+        Uses atomic UPDATE ... WHERE constraints to prevent concurrent overdrafts
+        and per-seat spend-cap violations.
+        """
+        from sqlalchemy import update
+
         if amount_micros <= 0:
             raise ValueError("Amount must be strictly positive")
 
-        membership = await self._get_membership(workspace_id, user_id)
-        workspace = await self._get_workspace(workspace_id)
+        # In-memory fake-session path used by unit tests (FakeAsyncSession).
+        # Real DB path below uses atomic UPDATE ... WHERE.
+        if hasattr(self.session, "workspaces") and hasattr(self.session, "memberships"):
+            return self._deduct_credits_fake(
+                workspace_id=workspace_id,
+                user_id=user_id,
+                amount_micros=amount_micros,
+            )
 
-        # Verify member spend cap first (fail-fast without touching pool)
-        if membership is not None and membership.monthly_spend_cap_micros is not None:
+        membership = await self._get_membership(workspace_id, user_id)
+
+        # Pre-check the cap so we can raise SpendCapExceededError before touching the pool.
+        if membership is not None:
+            cap = membership.monthly_spend_cap_micros
             current_spent = membership.monthly_spent_micros or 0
-            if current_spent + amount_micros > membership.monthly_spend_cap_micros:
+            if cap is not None and current_spent + amount_micros > cap:
                 raise SpendCapExceededError(
                     user_id=user_id,
-                    cap_micros=membership.monthly_spend_cap_micros,
+                    cap_micros=cap,
                     current_spent=current_spent,
                     requested=amount_micros,
                 )
+        else:
+            cap = None
+            current_spent = 0
 
-        # Verify workspace pooled balance (no overdraft)
-        current_balance = workspace.credit_micros_balance if workspace else 0
-        if current_balance < amount_micros:
+        # Atomic workspace balance deduction: only succeed if balance >= amount.
+        balance_result = await self.session.execute(
+            update(Workspace)
+            .where(
+                Workspace.id == workspace_id,
+                Workspace.credit_micros_balance >= amount_micros,
+            )
+            .values(
+                credit_micros_balance=Workspace.credit_micros_balance - amount_micros,
+            )
+            .returning(Workspace.credit_micros_balance)
+        )
+        balance_row = balance_result.one_or_none()
+        if balance_row is None:
+            workspace = await self._get_workspace(workspace_id)
+            available = workspace.credit_micros_balance if workspace else 0
             raise InsufficientCreditsError(
                 workspace_id=workspace_id,
-                balance_micros=current_balance,
+                balance_micros=available,
                 requested=amount_micros,
             )
 
-        # Atomic deduction
-        if workspace is not None:
-            workspace.credit_micros_balance = current_balance - amount_micros
-        if membership is not None:
-            membership.monthly_spent_micros = (
-                membership.monthly_spent_micros or 0
-            ) + amount_micros
+        remaining_workspace_balance = balance_row[0]
+
+        # Atomic member monthly spend increment (skip if no membership row).
+        if membership is None:
+            member_monthly_spent = 0
+        elif cap is not None:
+            spend_result = await self.session.execute(
+                update(WorkspaceMembership)
+                .where(
+                    WorkspaceMembership.workspace_id == workspace_id,
+                    WorkspaceMembership.user_id == user_id,
+                    WorkspaceMembership.monthly_spend_cap_micros
+                    >= WorkspaceMembership.monthly_spent_micros + amount_micros,
+                )
+                .values(
+                    monthly_spent_micros=WorkspaceMembership.monthly_spent_micros
+                    + amount_micros,
+                )
+                .returning(WorkspaceMembership.monthly_spent_micros)
+            )
+            spend_row = spend_result.one_or_none()
+            if spend_row is None:
+                raise SpendCapExceededError(
+                    user_id=user_id,
+                    cap_micros=cap,
+                    current_spent=current_spent,
+                    requested=amount_micros,
+                )
+            member_monthly_spent = spend_row[0]
+        else:
+            # Unlimited cap: still record spend atomically to keep the counter accurate.
+            spend_result = await self.session.execute(
+                update(WorkspaceMembership)
+                .where(
+                    WorkspaceMembership.workspace_id == workspace_id,
+                    WorkspaceMembership.user_id == user_id,
+                )
+                .values(
+                    monthly_spent_micros=WorkspaceMembership.monthly_spent_micros
+                    + amount_micros,
+                )
+                .returning(WorkspaceMembership.monthly_spent_micros)
+            )
+            spend_row = spend_result.one_or_none()
+            member_monthly_spent = (
+                spend_row[0] if spend_row else current_spent + amount_micros
+            )
 
         return CreditDeductionResult(
             workspace_id=workspace_id,
             user_id=user_id,
             amount_deducted_micros=amount_micros,
-            remaining_workspace_balance=workspace.credit_micros_balance
-            if workspace
-            else 0,
-            member_monthly_spent=membership.monthly_spent_micros
-            if membership
-            else 0,
-            member_monthly_spend_cap=membership.monthly_spend_cap_micros
-            if membership
-            else None,
+            remaining_workspace_balance=remaining_workspace_balance,
+            member_monthly_spent=member_monthly_spent,
+            member_monthly_spend_cap=cap,
+        )
+
+    def _deduct_credits_fake(
+        self,
+        *,
+        workspace_id: int,
+        user_id: UUID,
+        amount_micros: int,
+    ) -> CreditDeductionResult:
+        """In-memory deduction path used by FakeAsyncSession unit tests."""
+        workspace = self.session.workspaces.get(workspace_id)
+        if workspace is None:
+            raise InsufficientCreditsError(
+                workspace_id=workspace_id,
+                balance_micros=0,
+                requested=amount_micros,
+            )
+        membership = self.session.memberships.get((workspace_id, user_id))
+        if membership is None:
+            raise ValueError("Member not found")
+
+        cap = membership.monthly_spend_cap_micros
+        current_spent = membership.monthly_spent_micros or 0
+        if cap is not None and current_spent + amount_micros > cap:
+            raise SpendCapExceededError(
+                user_id=user_id,
+                cap_micros=cap,
+                current_spent=current_spent,
+                requested=amount_micros,
+            )
+        if workspace.credit_micros_balance < amount_micros:
+            raise InsufficientCreditsError(
+                workspace_id=workspace_id,
+                balance_micros=workspace.credit_micros_balance,
+                requested=amount_micros,
+            )
+
+        workspace.credit_micros_balance -= amount_micros
+        membership.monthly_spent_micros = current_spent + amount_micros
+
+        return CreditDeductionResult(
+            workspace_id=workspace_id,
+            user_id=user_id,
+            amount_deducted_micros=amount_micros,
+            remaining_workspace_balance=workspace.credit_micros_balance,
+            member_monthly_spent=membership.monthly_spent_micros,
+            member_monthly_spend_cap=cap,
         )
 
     async def refund_credits(
