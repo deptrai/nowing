@@ -539,6 +539,70 @@ class PhoneWaterfallService:
                             lead_id,
                             mask_phone(cached_phone),
                         )
+
+                        # Re-validate cached phone against DNC (INV-24.3 / INV-21.3)
+                        try:
+                            from app.lead_intelligence.dnc.service import (
+                                DncComplianceService,
+                            )
+
+                            dnc_service = DncComplianceService()
+                            dnc_result = await dnc_service.check_phone(
+                                workspace_id=workspace_id,
+                                phone=cached_phone,
+                                session=self.session,
+                                client_id=client_id,
+                            )
+                            if dnc_result.is_blocked:
+                                logger.info(
+                                    "Cached lead phone %s blocked by DNC: %s",
+                                    mask_phone(cached_phone),
+                                    dnc_result.reason,
+                                )
+                                return PhoneResolutionResult(
+                                    lead_id=lead_id,
+                                    phone=None,
+                                    phone_masked="",
+                                    phone_hash=None,
+                                    tier_reached=payload.get("tier_reached", 0),
+                                    provider_used="cache",
+                                    status="blocked_by_dnc",
+                                    cost_micros=0,
+                                    confidence=0.0,
+                                    carrier=payload.get(
+                                        "carrier", get_carrier_name(cached_phone)
+                                    ),
+                                    is_cached=True,
+                                    contact_id=None,
+                                    degraded=True,
+                                    degradation_reason=dnc_result.reason
+                                    or "blocked_by_dnc",
+                                )
+                        except Exception as exc:
+                            logger.warning(
+                                "DNC re-validation of cached phone failed: %s. "
+                                "Failing closed.",
+                                exc,
+                            )
+                            return PhoneResolutionResult(
+                                lead_id=lead_id,
+                                phone=None,
+                                phone_masked="",
+                                phone_hash=None,
+                                tier_reached=payload.get("tier_reached", 0),
+                                provider_used="cache",
+                                status="blocked_by_dnc",
+                                cost_micros=0,
+                                confidence=0.0,
+                                carrier=payload.get(
+                                    "carrier", get_carrier_name(cached_phone)
+                                ),
+                                is_cached=True,
+                                contact_id=None,
+                                degraded=True,
+                                degradation_reason="dnc_check_failed",
+                            )
+
                         return PhoneResolutionResult(
                             lead_id=lead_id,
                             phone=cached_phone,
