@@ -160,6 +160,7 @@ case "${SERVICE_ROLE}" in
         exit 0
         ;;
     api)
+        run_migrations
         start_api
         ;;
     worker)
