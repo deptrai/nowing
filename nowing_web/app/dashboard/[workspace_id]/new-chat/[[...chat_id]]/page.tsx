@@ -799,6 +799,7 @@ export default function NewChatPage() {
 					<div key={workspaceId} className="flex h-full w-full overflow-hidden">
 						<OrigamiSplitCanvas
 							workspaceId={workspaceId}
+							threadId={activeThreadId}
 							hasActiveThread={!!activeThreadId}
 							messages={messages}
 							onSendPrompt={(promptText) => {

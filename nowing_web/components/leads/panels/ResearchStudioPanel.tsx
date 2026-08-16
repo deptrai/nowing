@@ -16,15 +16,32 @@ import { cn } from "@/lib/utils";
 
 export interface ResearchStudioPanelProps {
 	workspaceId?: string | number;
+	report?: {
+		title: string;
+		summary: string;
+		keyFindings: string[];
+		citations: Array<{ title: string; url: string; snippet?: string }>;
+		wordCount?: number;
+		readingTime?: string;
+	};
 	className?: string;
 }
 
 export const ResearchStudioPanel: React.FC<ResearchStudioPanelProps> = ({
 	workspaceId: _workspaceId = "1",
+	report,
 	className,
 }) => {
 	const [activeSubTab, setActiveSubTab] = useState<"report" | "sources" | "podcast">("report");
 	const [isPlayingPodcast, setIsPlayingPodcast] = useState(false);
+
+	const reportTitle = report?.title || "Báo Cáo Nghiên Cứu Thị Trường";
+	const reportSummary = report?.summary || "Tổng quan phân tích chuyên sâu về dữ liệu ngành.";
+	const _findings = report?.keyFindings || [
+		"Thị trường đang ghi nhận mức tăng trưởng nhu cầu tìm kiếm 24% so với cùng kỳ.",
+		"Tỷ lệ phản hồi qua kênh Zalo cá nhân hóa đạt 38.5%, cao gấp 3 lần Email.",
+	];
+	const _citations = report?.citations || [];
 
 	const handleExportMarkdown = () => {
 		toast.success("Đang xuất báo cáo định dạng Markdown...", { duration: 1500 });
@@ -115,12 +132,9 @@ export const ResearchStudioPanel: React.FC<ResearchStudioPanelProps> = ({
 								<Sparkles className="w-3 h-3" />
 								Chainlens Deep Research Synthesis
 							</div>
-							<h1 className="text-2xl font-bold tracking-tight text-foreground">
-								Báo Cáo Phân Tích Toàn Cảnh Thị Trường Bất Động Sản Hà Nội 2026
-							</h1>
+							<h1 className="text-2xl font-bold tracking-tight text-foreground">{reportTitle}</h1>
 							<p className="text-xs text-muted-foreground mt-1">
-								Tổng hợp từ 15 nguồn dữ liệu sống (Batdongsan, Bộ Xây Dựng, CBRE, Savills, Mua Sắm
-								Công)
+								Tổng hợp từ dữ liệu thời gian thực và trích dẫn kiểm chứng của Nowing
 							</p>
 						</div>
 
@@ -129,12 +143,7 @@ export const ResearchStudioPanel: React.FC<ResearchStudioPanelProps> = ({
 							<h2 className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
 								Tóm Tắt Điều Hành (Executive Summary)
 							</h2>
-							<p className="text-xs text-foreground leading-relaxed">
-								Thị trường bất động sản phía Tây và phía Đông Hà Nội ghi nhận mức tăng trưởng giao
-								dịch 18.4% trong Q2/2026. Nhu cầu phân khúc căn hộ chung cư cao cấp và nhà phố
-								thương mại tiếp tục dẫn dắt thanh khoản. Các doanh nghiệp môi giới hàng đầu đang tập
-								trung số hóa dữ liệu khách hàng và triển khai outreach tự động qua Zalo OA.
-							</p>
+							<p className="text-xs text-foreground leading-relaxed">{reportSummary}</p>
 						</div>
 
 						{/* Market Highlights Grid */}

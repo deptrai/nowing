@@ -20,8 +20,8 @@ import { CompanyGraphDrawer } from "./CompanyGraphDrawer";
 import { DynamicRightPanelCanvas } from "./DynamicRightPanelCanvas";
 import { FloatingBulkActionBar } from "./FloatingBulkActionBar";
 import { LeadDetailFlyoutDrawer } from "./LeadDetailFlyoutDrawer";
-import { extractLeadsFromChatMessages } from "./lead-parser";
 import { ReverseIcpModal } from "./ReverseIcpModal";
+import { parseThreadContext } from "./thread-intent-detector";
 
 const MIN_LEFT_WIDTH = 360;
 const MAX_LEFT_WIDTH = 650;
@@ -29,6 +29,7 @@ const DEFAULT_LEFT_WIDTH = 420;
 
 export interface OrigamiSplitCanvasProps {
 	workspaceId?: string | number;
+	threadId?: string | number | null;
 	chatSlot?: React.ReactNode;
 	hasActiveThread?: boolean;
 	messages?: Array<{ role: string; content?: unknown }>;
@@ -38,6 +39,7 @@ export interface OrigamiSplitCanvasProps {
 
 export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 	workspaceId = "1",
+	threadId,
 	chatSlot,
 	hasActiveThread = false,
 	messages = [],
@@ -58,7 +60,7 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 	const [isGraphDrawerOpen, setIsGraphDrawerOpen] = useState(false);
 
 	// Tabs & Modes
-	const [activeTabMode, _setActiveTabMode] = useState<"new_search" | "saved">(
+	const [_activeTabMode, _setActiveTabMode] = useState<"new_search" | "saved">(
 		hasActiveThread ? "saved" : "new_search"
 	);
 
@@ -86,37 +88,38 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 		return () => window.removeEventListener("resize", checkViewport);
 	}, [setIsCollapsed]);
 
-	// Automatically extract structured leads from live chat messages
-	const chatExtractedLeads = useMemo(() => {
-		return extractLeadsFromChatMessages(messages || [], workspaceId);
-	}, [messages, workspaceId]);
+	// Session-Scoped context parser: derives intent, leads, research, and workflows strictly for THIS thread
+	const threadContext = useMemo(() => {
+		return parseThreadContext(messages || [], threadId || "default", workspaceId);
+	}, [messages, threadId, workspaceId]);
 
-	// Data Fetching
-	const {
-		leads: apiLeads,
-		loading,
-		refetch,
-	} = useLeads(String(workspaceId), {
+	// Data Fetching (for live status updates and refresh)
+	const { loading, refetch } = useLeads(String(workspaceId), {
 		source: sourceFilter !== "all" ? sourceFilter : undefined,
 		status: statusFilter !== "all" ? statusFilter : undefined,
 		search: searchQuery || undefined,
 	});
 
-	// Priority: 1. Live Chat Scraped Leads -> 2. Filtered API Leads -> 3. Clean Empty Canvas on fresh new-chat
+	// Session-Scoped Leads: Strictly display leads generated in THIS specific chat thread (Zero cross-session pollution)
 	const displayLeads = useMemo(() => {
-		if (chatExtractedLeads.length > 0 && sourceFilter === "all" && !searchQuery) {
-			return chatExtractedLeads;
+		if (threadContext.leads.length > 0) {
+			let result = threadContext.leads;
+			if (searchQuery) {
+				const q = searchQuery.toLowerCase();
+				result = result.filter(
+					(l) =>
+						l.company_name?.toLowerCase().includes(q) ||
+						l.industry?.toLowerCase().includes(q) ||
+						l.location?.toLowerCase().includes(q)
+				);
+			}
+			if (sourceFilter !== "all") {
+				result = result.filter((l) => l.source === sourceFilter);
+			}
+			return result;
 		}
-		if (
-			activeTabMode === "new_search" &&
-			!searchQuery &&
-			sourceFilter === "all" &&
-			!hasActiveThread
-		) {
-			return [];
-		}
-		return apiLeads || [];
-	}, [chatExtractedLeads, activeTabMode, searchQuery, sourceFilter, hasActiveThread, apiLeads]);
+		return [];
+	}, [threadContext.leads, searchQuery, sourceFilter]);
 
 	// Dragging logic for resizer
 	const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -260,6 +263,8 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 					className="flex-1 h-full min-w-0 flex flex-col overflow-hidden relative animate-in fade-in slide-in-from-right-4 duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
 				>
 					<DynamicRightPanelCanvas
+						threadId={threadId ?? undefined}
+						threadContext={threadContext}
 						leads={displayLeads}
 						isLoading={loading}
 						workspaceId={workspaceId}

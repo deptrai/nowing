@@ -4,45 +4,77 @@ import type { Lead } from "@/contracts/types/leads.types";
  * Intelligent lead parser that extracts structured company/lead listings
  * from chat assistant messages or tool execution outputs.
  */
-export function parseLeadsFromText(
-	text: string,
-	workspaceId: number | string = 1
-): Lead[] {
+export function parseLeadsFromText(text: string, workspaceId: number | string = 1): Lead[] {
 	if (!text || typeof text !== "string") return [];
 
 	const leads: Lead[] = [];
-	const wsId = typeof workspaceId === "number" ? workspaceId : Number.parseInt(String(workspaceId), 10) || 1;
+	const wsId =
+		typeof workspaceId === "number" ? workspaceId : Number.parseInt(String(workspaceId), 10) || 1;
 
-	// Pattern 1: Numbered list items (e.g. 1. **Công ty ABC** or 1. Cong ty ABC)
-	const numberedBlocks = text.split(/(?=\n\s*\d+[\.\)]\s+)/);
+	// Split by numbered list items, markdown headers, or bold lines
+	const blocks = text.split(/(?=\n\s*(?:\d+[.)]|#{1,4}\s+|[-*•]\s*\*\*|\*\*\d+[.)]))/);
 
 	const COMPANY_KEYWORD_REGEX =
-		/(?:Công ty|Tập đoàn|Doanh nghiệp|Văn phòng|TNHH|JSC|Corp|Group|Land|BĐS|Real Estate|Bank|Capital|Agency|Studio|Store|Shop|Clinic|Hospital|Hotel|Resort|Restaurant|Quỹ|Ban Quản lý|Viện|Trường|Chi nhánh|Đại lý|Nhà phân phối)/i;
+		/(?:Công ty|Tập đoàn|Doanh nghiệp|Văn phòng|TNHH|JSC|Corp|Group|Land|BĐS|Real Estate|Bank|Capital|Agency|Studio|Store|Shop|Clinic|Hospital|Hotel|Resort|Restaurant|Quỹ|Ban Quản lý|Viện|Trường|Chi nhánh|Đại lý|Nhà phân phối|HANDICO|Vingroup|Sun Group|Novaland|SGG Homes|Highlands|PropTech)/i;
 
-	for (const block of numberedBlocks) {
-		const headerMatch = block.match(/^\s*\d+[\.\)]\s+\**([^*\n]+)\**/);
-		if (!headerMatch) continue;
+	for (const block of blocks) {
+		// Match numbered or bold or header title
+		let rawCompanyName: string | null = null;
 
-		const rawCompanyName = headerMatch[1].trim().replace(/^[-–—:]\s*/, "");
-		if (rawCompanyName.length < 3 || rawCompanyName.length > 80) continue;
+		const numMatch = block.match(/^\s*(?:\d+[.)]|#{1,4})\s*\**([^*\n\r]+)\**/);
+		const boldMatch = block.match(/^\s*[-*•]?\s*\*\*([^*\n\r]+)\*\*/);
+		const plainHeaderMatch = block.match(/^\s*([A-ZÀ-Ỹ0-9][A-Za-zÀ-ỹ0-9\s&.–—()-]{4,70})(?=\n|$)/);
+
+		if (numMatch) {
+			rawCompanyName = numMatch[1].trim().replace(/^[-–—:]\s*/, "");
+		} else if (boldMatch) {
+			rawCompanyName = boldMatch[1].trim().replace(/^[-–—:]\s*/, "");
+		} else if (plainHeaderMatch && COMPANY_KEYWORD_REGEX.test(plainHeaderMatch[1])) {
+			rawCompanyName = plainHeaderMatch[1].trim();
+		}
+
+		if (!rawCompanyName || rawCompanyName.length < 3 || rawCompanyName.length > 80) {
+			continue;
+		}
+
+		// Filter out non-company headers (like "Tóm tắt điều hành", "Dưới đây là danh sách")
+		if (
+			/^(Dưới đây|Sau đây|Tổng quan|Danh sách|Báo cáo|Tóm tắt|Lưu ý|Gợi ý|Kết quả)/i.test(
+				rawCompanyName
+			)
+		) {
+			continue;
+		}
 
 		// Extract fields from lines within the block
-		const locationMatch = block.match(/(?:Địa chỉ|Location|Địa điểm|Khu vực)[:\s]+([^\n\r]+)/i);
+		const locationMatch = block.match(
+			/(?:Địa chỉ|Location|Địa điểm|Khu vực|Trụ sở|Trụ sở chính)[:\s]+([^\n\r]+)/i
+		);
 		const phoneMatch = block.match(/(?:Điện thoại|Phone|SĐT|Tel|Hotline)[:\s]+([^\n\r]+)/i);
 		const websiteMatch = block.match(/(?:Website|Web|Trang web|Link)[:\s]+([^\s\n\r]+)/i);
-		const industryMatch = block.match(/(?:Ngành|Industry|Lĩnh vực)[:\s]+([^\n\r]+)/i);
-		const descMatch = block.match(/(?:Mô tả|Description|Hoạt động|Đánh giá)[:\s]+([^\n\r]+)/i);
+		const industryMatch = block.match(
+			/(?:Ngành|Industry|Lĩnh vực|Lĩnh vực \/ Dự án)[:\s]+([^\n\r]+)/i
+		);
+		const descMatch = block.match(
+			/(?:Mô tả|Description|Hoạt động|Đánh giá|Dự án nổi bật)[:\s]+([^\n\r]+)/i
+		);
 
 		const isCompanyLike =
 			COMPANY_KEYWORD_REGEX.test(rawCompanyName) ||
 			Boolean(phoneMatch) ||
 			Boolean(websiteMatch) ||
-			Boolean(locationMatch);
+			Boolean(locationMatch) ||
+			Boolean(industryMatch);
 
 		if (!isCompanyLike) continue;
 
 		const stripMd = (str: string | null | undefined) =>
-			str ? str.replace(/\*\*/g, "").replace(/\[.*?\]|\(.*?\)|Source/gi, "").trim() : null;
+			str
+				? str
+						.replace(/\*\*/g, "")
+						.replace(/\[.*?\]|\(.*?\)|Source/gi, "")
+						.trim()
+				: null;
 
 		let cleanPhone = stripMd(phoneMatch ? phoneMatch[1] : null);
 		let cleanWebsite = stripMd(websiteMatch ? websiteMatch[1] : null);
@@ -52,7 +84,10 @@ export function parseLeadsFromText(
 
 		// Clean up website / domain
 		if (cleanWebsite) {
-			cleanWebsite = cleanWebsite.replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
+			cleanWebsite = cleanWebsite
+				.replace(/^https?:\/\//i, "")
+				.replace(/\/.*$/, "")
+				.replace(/[^\w.-]/g, "");
 		}
 
 		// Ensure phone format
@@ -101,11 +136,8 @@ export function extractLeadsFromChatMessages(
 	const allLeads: Lead[] = [];
 	const seenNames = new Set<string>();
 
-	// Iterate from newest message to oldest
-	for (let i = messages.length - 1; i >= 0; i--) {
-		const msg = messages[i];
-		if (!msg || msg.role !== "assistant") continue;
-
+	// Iterate across all messages in order
+	for (const msg of messages) {
 		let text = "";
 		if (typeof msg.content === "string") {
 			text = msg.content;
@@ -113,7 +145,9 @@ export function extractLeadsFromChatMessages(
 			text = msg.content
 				.map((part) => {
 					if (typeof part === "string") return part;
-					if (part && typeof part === "object" && "text" in part) return (part as { text: string }).text;
+					if (part && typeof part === "object" && "text" in part) {
+						return (part as { text: string }).text;
+					}
 					return "";
 				})
 				.join("\n");
@@ -121,18 +155,13 @@ export function extractLeadsFromChatMessages(
 
 		if (!text) continue;
 
-		const parsed = parseLeadsFromText(text, workspaceId);
-		for (const lead of parsed) {
-			const normalizedName = lead.company_name.toLowerCase().trim();
+		const extracted = parseLeadsFromText(text, workspaceId);
+		for (const lead of extracted) {
+			const normalizedName = lead.company_name.toLowerCase().replace(/[^a-z0-9]/g, "");
 			if (!seenNames.has(normalizedName)) {
 				seenNames.add(normalizedName);
 				allLeads.push(lead);
 			}
-		}
-
-		// If we already found leads in the latest message, stop
-		if (allLeads.length > 0) {
-			break;
 		}
 	}
 

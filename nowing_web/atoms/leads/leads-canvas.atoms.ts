@@ -3,8 +3,11 @@ import type { FilterPresets, Lead } from "@/contracts/types/leads.types";
 
 export type CanvasMode = "leads" | "research" | "automations" | "scrapers" | "artifacts";
 
-// Polymorphic Right Panel Mini-App active mode
+// Global fallback mode (for fresh new-chat sessions)
 export const canvasModeAtom = atom<CanvasMode>("leads");
+
+// Thread-scoped active canvas modes: key is thread_id, value is CanvasMode
+export const threadCanvasModeMapAtom = atom<Record<string, CanvasMode>>({});
 
 // Left Chat Panel width in pixels (clamped: min 360px, max 650px, default 420px)
 export const canvasLeftWidthAtom = atom<number>(420);

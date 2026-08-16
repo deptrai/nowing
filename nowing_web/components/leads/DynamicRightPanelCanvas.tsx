@@ -16,8 +16,8 @@ import type React from "react";
 import { useMemo, useState } from "react";
 import {
 	type CanvasMode,
-	canvasModeAtom,
 	isMatrixFullscreenAtom,
+	threadCanvasModeMapAtom,
 } from "@/atoms/leads/leads-canvas.atoms";
 import type { Lead } from "@/contracts/types/leads.types";
 import { cn } from "@/lib/utils";
@@ -26,8 +26,11 @@ import { ArtifactsStudioPanel } from "./panels/ArtifactsStudioPanel";
 import { AutomationBuilderPanel } from "./panels/AutomationBuilderPanel";
 import { ResearchStudioPanel } from "./panels/ResearchStudioPanel";
 import { ScraperPlatformMonitorPanel } from "./panels/ScraperPlatformMonitorPanel";
+import type { ThreadParsedContext } from "./thread-intent-detector";
 
 export interface DynamicRightPanelCanvasProps {
+	threadId?: string | number;
+	threadContext?: ThreadParsedContext;
 	leads: Lead[];
 	isLoading?: boolean;
 	workspaceId?: string | number;
@@ -72,21 +75,42 @@ const VIEW_MODES: Array<{ id: CanvasMode; label: string; icon: React.ReactNode }
 ];
 
 export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (props) => {
-	const [activeMode, setActiveMode] = useAtom(canvasModeAtom);
+	const [threadModesMap, setThreadModesMap] = useAtom(threadCanvasModeMapAtom);
 	const [isFullscreen, setIsFullscreen] = useAtom(isMatrixFullscreenAtom);
 	const [isViewDropdownOpen, setIsViewDropdownOpen] = useState(false);
 
-	// Contextual dynamic title derived from the current leads dataset
+	// Session-Scoped Key for this specific chat thread
+	const threadKey = String(props.threadId || "default");
+
+	// Active mode is strictly scoped to this thread (derived from threadContext or user override)
+	const activeMode: CanvasMode = useMemo(() => {
+		if (threadModesMap[threadKey]) {
+			return threadModesMap[threadKey];
+		}
+		return props.threadContext?.detectedIntent || "leads";
+	}, [threadModesMap, threadKey, props.threadContext?.detectedIntent]);
+
+	const setActiveMode = (mode: CanvasMode) => {
+		setThreadModesMap((prev) => ({
+			...prev,
+			[threadKey]: mode,
+		}));
+	};
+
+	// Contextual dynamic title derived strictly from THIS thread
 	const dynamicTitle = useMemo(() => {
+		if (props.threadContext?.title) {
+			return props.threadContext.title;
+		}
 		if (props.leads.length > 0) {
 			const firstLead = props.leads[0];
 			if (firstLead.industry) {
-				return `Doanh nghiệp ${firstLead.industry} Việt Nam`;
+				return `Doanh nghiệp ${firstLead.industry} (${props.leads.length})`;
 			}
 			return `Danh sách khách hàng tiềm năng (${props.leads.length})`;
 		}
 		return "Tất cả khách hàng tiềm năng";
-	}, [props.leads]);
+	}, [props.threadContext?.title, props.leads]);
 
 	// Segmented category chips detected dynamically in current dataset
 	const detectedCategories = useMemo(() => {
@@ -110,7 +134,7 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 				props.className
 			)}
 		>
-			{/* Origami Contextual Top Tab Bar (Purely Dynamic, Zero Clutter) */}
+			{/* Origami Contextual Top Tab Bar (Session-Scoped & Dynamic) */}
 			<header className="h-10 border-b border-border/80 bg-muted/40 flex items-center justify-between px-3 shrink-0 select-none">
 				<div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar flex-1">
 					{/* Mode: Leads Matrix Dynamic Tabs */}
@@ -157,7 +181,9 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 					{activeMode === "research" && (
 						<div className="flex items-center gap-1.5 px-3 py-1 bg-background border-t-2 border-t-blue-500 border-x border-border/80 rounded-t-md text-xs font-semibold text-foreground shadow-xs shrink-0">
 							<FileText className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-							<span>Báo cáo nghiên cứu thị trường</span>
+							<span className="truncate max-w-[220px]">
+								{props.threadContext?.researchReport?.title || "Báo cáo nghiên cứu thị trường"}
+							</span>
 						</div>
 					)}
 
@@ -165,7 +191,9 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 					{activeMode === "automations" && (
 						<div className="flex items-center gap-1.5 px-3 py-1 bg-background border-t-2 border-t-amber-500 border-x border-border/80 rounded-t-md text-xs font-semibold text-foreground shadow-xs shrink-0">
 							<Zap className="w-3.5 h-3.5 text-amber-500" />
-							<span>Quy trình Automation &amp; Triggers</span>
+							<span className="truncate max-w-[220px]">
+								{props.threadContext?.automationWorkflow?.name || "Quy trình Automation"}
+							</span>
 						</div>
 					)}
 
@@ -181,7 +209,7 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 					{activeMode === "artifacts" && (
 						<div className="flex items-center gap-1.5 px-3 py-1 bg-background border-t-2 border-t-purple-500 border-x border-border/80 rounded-t-md text-xs font-semibold text-foreground shadow-xs shrink-0">
 							<Code2 className="w-3.5 h-3.5 text-purple-500" />
-							<span>Studio Artifacts &amp; Templates</span>
+							<span>Studio Kịch bản &amp; Templates</span>
 						</div>
 					)}
 				</div>
@@ -210,7 +238,7 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 						{isViewDropdownOpen && (
 							<div className="absolute right-0 top-full mt-1 w-56 rounded-xl border border-border bg-popover p-1 shadow-lg z-50 animate-in fade-in zoom-in-95 duration-150">
 								<div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-									Chế độ xem Canvas
+									Chế độ xem Canvas (Phiên này)
 								</div>
 								{VIEW_MODES.map((mode) => (
 									<button
@@ -251,13 +279,23 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 				</div>
 			</header>
 
-			{/* Dynamic Mini-App Body View */}
+			{/* Dynamic Mini-App Body View (Strictly Scoped to THIS Thread) */}
 			<div className="flex-1 overflow-hidden relative">
 				{activeMode === "leads" && <OrigamiLeadMatrix {...props} />}
 
-				{activeMode === "research" && <ResearchStudioPanel workspaceId={props.workspaceId} />}
+				{activeMode === "research" && (
+					<ResearchStudioPanel
+						workspaceId={props.workspaceId}
+						report={props.threadContext?.researchReport}
+					/>
+				)}
 
-				{activeMode === "automations" && <AutomationBuilderPanel workspaceId={props.workspaceId} />}
+				{activeMode === "automations" && (
+					<AutomationBuilderPanel
+						workspaceId={props.workspaceId}
+						workflow={props.threadContext?.automationWorkflow}
+					/>
+				)}
 
 				{activeMode === "scrapers" && <ScraperPlatformMonitorPanel />}
 

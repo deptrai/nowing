@@ -8,17 +8,29 @@ import { cn } from "@/lib/utils";
 
 export interface AutomationBuilderPanelProps {
 	workspaceId?: string | number;
+	workflow?: {
+		name: string;
+		triggerPlatform: string;
+		scheduleTime: string;
+		notifyChannel: string;
+		minFitScore: number;
+		status: "active" | "draft" | "paused";
+	};
 	className?: string;
 }
 
 export const AutomationBuilderPanel: React.FC<AutomationBuilderPanelProps> = ({
 	workspaceId: _workspaceId = "1",
+	workflow,
 	className,
 }) => {
-	const [scheduleTime, setScheduleTime] = useState("08:00");
-	const [targetPlatform, setTargetPlatform] = useState("batdongsan");
-	const [notifyChannel, setNotifyChannel] = useState("telegram");
-	const [minFitScore, setMinFitScore] = useState(85);
+	const [scheduleTime, setScheduleTime] = useState(workflow?.scheduleTime || "08:00");
+	const [targetPlatform, setTargetPlatform] = useState(workflow?.triggerPlatform || "batdongsan");
+	const [notifyChannel, setNotifyChannel] = useState(workflow?.notifyChannel || "telegram");
+	const [minFitScore, setMinFitScore] = useState(workflow?.minFitScore || 85);
+	const [_workflowName, _setWorkflowName] = useState(
+		workflow?.name || "Quy trình Săn Lead Tự Động"
+	);
 	const [isRunningTest, setIsRunningTest] = useState(false);
 	const [testLogs, setTestLogs] = useState<string[]>([]);
 
