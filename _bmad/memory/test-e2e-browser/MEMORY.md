@@ -76,5 +76,13 @@ _Curated long-term knowledge for Nowing E2E Browser Testing._
   - Content scripts communicate strictly via `chrome.runtime.sendMessage` to background service worker (`INV-24.5`).
   - Backend deduplication route: `POST /api/v1/workspaces/{id}/leads/clip` returns `is_duplicate: true` on collision.
   - Multi-tab Playwright test: `tests/leads/lead-clipper-multitab.spec.ts` verifies token isolation in `chrome.storage`, DOM extractors, offline queue resilience, and Zero-sync ingestion.
+- **Lead Detail Flyout Drawer Hook Ordering Fix (Story 24.3 / 21.16):** `LeadDetailFlyoutDrawer.tsx` must declare all `useState` and `useEffect` hooks at top level before `if (!isOpen || !lead) return null;` to avoid React Rules of Hooks crash (`Rendered more hooks than during the previous render`).
+- **Multi-Vertical Beta Pilot Live Dogfooding Run (2026-08-17):**
+  - **BĐS (5):** Batdongsan & Chợ Tốt active broker listings & ngộp properties (Quận 3, Quận 12, Quận 10, Tây Hồ, Đức Linh).
+  - **HR & Headhunting (5):** TopCV & ITviec Tech Recruiters (CMC Telecom, Newwave Solutions, AHT Tech, BSS Group, VBA Technology).
+  - **B2B Corporate & Services (5):** Masothue & CafeF newly registered entities with verified MST and legal reps (Taseco KCN Kim Bảng, Auto Investment Group, USC Interco, Khánh Linh, Xây dựng Đại Phát).
+  - **Verification:** Lead Kanban Pipeline (`/dashboard/1/leads/pipeline`), Round-Robin allocation, timeline audit trail, 1-Click Zalo Outreach script copier, and Masked Phone display (`PhoneCopyPill`) fully operational.
+  - **Pilot Tracker:** Populated in `_bmad-output/planning-artifacts/multi-vertical-pilot-tracker.csv`.
+
 
 

@@ -44,6 +44,10 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 	onOpenCompanyGraph,
 	onReportInvalidPhone,
 }) => {
+	const [activities, setActivities] = useState<LeadActivityLog[]>([]);
+	const [newNote, setNewNote] = useState("");
+	const [isSubmittingNote, setIsSubmittingNote] = useState(false);
+
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
 			if (e.key === "Escape" && isOpen) {
@@ -54,18 +58,6 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 		return () => window.removeEventListener("keydown", handleKeyDown);
 	}, [isOpen, onClose]);
 
-	if (!isOpen || !lead) {
-		return null;
-	}
-
-	const fitScore = lead.fit_score ?? 0;
-	const intentScore = lead.intent_score ?? 0;
-	const compositeScore = lead.composite_score ?? 0;
-
-	const [activities, setActivities] = useState<LeadActivityLog[]>([]);
-	const [newNote, setNewNote] = useState("");
-	const [isSubmittingNote, setIsSubmittingNote] = useState(false);
-
 	useEffect(() => {
 		if (isOpen && lead?.id) {
 			leadPipelineApiService
@@ -74,6 +66,14 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 				.catch(() => setActivities([]));
 		}
 	}, [isOpen, lead?.id, workspaceId]);
+
+	if (!isOpen || !lead) {
+		return null;
+	}
+
+	const fitScore = lead.fit_score ?? 0;
+	const intentScore = lead.intent_score ?? 0;
+	const compositeScore = lead.composite_score ?? 0;
 
 	const handleAddNote = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -345,13 +345,16 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 
 										if (act.activity_type.includes("zalo") || act.activity_type.includes("zns")) {
 											icon = <MessageSquare className="w-3 h-3 text-emerald-500" />;
-											badgeBg = "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30";
+											badgeBg =
+												"bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30";
 										} else if (act.activity_type.includes("stage")) {
 											icon = <CheckCircle2 className="w-3 h-3 text-blue-500" />;
-											badgeBg = "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30";
+											badgeBg =
+												"bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30";
 										} else if (act.activity_type.includes("assign")) {
 											icon = <UserCheck className="w-3 h-3 text-purple-500" />;
-											badgeBg = "bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/30";
+											badgeBg =
+												"bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/30";
 										}
 
 										return (
@@ -361,7 +364,9 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 												</div>
 												<div className="flex-1 min-w-0 p-2 rounded-lg bg-card border border-border text-xs space-y-1">
 													<div className="flex items-center justify-between gap-2">
-														<span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${badgeBg}`}>
+														<span
+															className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${badgeBg}`}
+														>
 															{act.activity_type}
 														</span>
 														<span className="text-[10px] text-muted-foreground font-mono">

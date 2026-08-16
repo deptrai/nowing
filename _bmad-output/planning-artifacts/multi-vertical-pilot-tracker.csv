@@ -1,0 +1,46 @@
+STT,Domain,Tên_User,Chức_vụ_Lĩnh_vực,Kênh_Nguồn_Profile,Link_Profile_Hoặc_Tin,Khu_vực_Hoạt_động,Trạng_thái_Outreach,Ngày_nhắn,Ngày_kích_hoạt_dùng_tool,Tính_năng_dùng_nhiều_nhất,Quay_lại_tuần_2,Phản_hồi_thực_tế,Sẵn_sàng_trả_tiền,Công_cụ_CRM_hiện_tại_họ_dùng,Ghi_chú_hành_động
+1,BĐS,Tuấn BĐS Nhà Phố,Môi giới nhà mặt tiền & nhà ngộp Quận 3 (205m2 giảm 10 tỷ),Batdongsan,https://batdongsan.com.vn/ban-nha-mat-pho-duong-ly-chinh-thang-phuong-7-quan-3,Quận 3 - TP.HCM,chưa_liên_hệ,,,,,,Google Sheet,Đăng 5-8 tin/ngày -> Môi giới active cần quét số chủ nhà và đồng nghiệp
+2,BĐS,Hương Đất Nền,Môi giới đất nền & nhà phố ngộp bank An Phú Đông 9,Chợ Tốt,https://nha.chotot.com/mua-ban-bat-dong-san-quan-12-tp-ho-chi-minh,Quận 12 / Củ Chi - TP.HCM,chưa_liên_hệ,,,,,,Sổ tay + Zalo,Cần mở chat Zalo 1-click để chốt khách ngộp gấp
+3,BĐS,Thành Căn Hộ,Môi giới căn hộ cao cấp Hà Đô Centrosa & Opal Skyline,Chợ Tốt,https://nha.chotot.com/mua-ban-can-ho-chung-cu-quan-10-tp-ho-chi-minh,Quận 10 - TP.HCM & Bình Dương,chưa_liên_hệ,,,,,,Excel,Chuyên khách VIP phân khúc 3-8 tỷ cần phân tích Reverse-ICP
+4,BĐS,Minh BDS Tây Hồ,Môi giới biệt thự ngõ ô tô Võ Chí Công & Kim Giang,Batdongsan,https://batdongsan.com.vn/ban-nha-rieng-duong-vo-chi-cong-phuong-xuan-la-ha-noi,Tây Hồ / Hoàng Mai - Hà Nội,chưa_liên_hệ,,,,,,Google Sheet,Cần lọc số chính chủ để tránh trùng tin sàn và phân bổ cho nhóm 5 người
+5,BĐS,Hoàng Đất Ven Sài Gòn,Môi giới đất nền ngộp sổ đỏ mặt tiền CMT8 Đức Linh,Batdongsan,https://batdongsan.com.vn/ban-dat-duong-cach-mang-thang-tam-thi-tran-vo-xu,Đức Linh / Long An / Đông Anh,chưa_liên_hệ,,,,,,Excel,Săn nguồn đất ngộp ngân hàng thanh lý cần trích xuất SĐT hàng loạt
+6,BĐS,,,,,,,,,,,,,,
+7,BĐS,,,,,,,,,,,,,,
+8,BĐS,,,,,,,,,,,,,,
+9,BĐS,,,,,,,,,,,,,,
+10,BĐS,,,,,,,,,,,,,,
+11,BĐS,,,,,,,,,,,,,,
+12,BĐS,,,,,,,,,,,,,,
+13,BĐS,,,,,,,,,,,,,,
+14,BĐS,,,,,,,,,,,,,,
+15,BĐS,,,,,,,,,,,,,,
+16,HR_Headhunt,Hoàng TechRecruiter (CMC Telecom),Chuyên viên Tuyển dụng IT (Cloud/Network/Security),TopCV,https://www.topcv.vn/viec-lam/chuyen-vien-tuyen-dung-it-recruiter/cmc-telecom,Hà Nội,chưa_liên_hệ,,,,,,Lark Base,Chuyên săn Tech Lead & Network Engineers - cần mở Zalo trực tiếp
+17,HR_Headhunt,Trang HR (Newwave Solutions),Senior IT Recruiter (AI Engineers & Golang),TopCV,https://www.topcv.vn/viec-lam/it-recruiter-newwave-solutions,Hà Nội & Remote,chưa_liên_hệ,,,,,,Google Sheet,Cần SĐT cá nhân của Senior Devs để nhắn Zalo thay vì chờ email
+18,HR_Headhunt,Nam Talent Acquisition (AHT Tech),IT Talent Acquisition (Magento/Salesforce/Ecom),TopCV,https://www.topcv.vn/viec-lam/it-talent-acquisition-aht-tech,Hà Nội & Đà Nẵng,chưa_liên_hệ,,,,,,Excel,Cần tích hợp kịch bản outreach AI tự động hóa
+19,HR_Headhunt,Linh IT Recruiter (BSS Group),Senior IT Recruiter (Fullstack/Node.js/React),TopCV,https://www.topcv.vn/viec-lam/chuyen-vien-tuyen-dung-bss-group,Hà Nội / TP.HCM,chưa_liên_hệ,,,,,,Notion,Ứng viên công nghệ ít rep email - Zalo 1-click tăng 40% reply rate
+20,HR_Headhunt,Đức Agency Lead (VBA Technology),Lead Recruiter chuyên Offshore & Fintech Devs,ITviec / TopCV,https://www.topcv.vn/viec-lam/it-recruiter-vba-technology,TP.HCM,chưa_liên_hệ,,,,,,Lark Base,Muốn phân bổ ứng viên Kanban cho 4 recruiters trong nhóm
+21,HR_Headhunt,,,,,,,,,,,,,,
+22,HR_Headhunt,,,,,,,,,,,,,,
+23,HR_Headhunt,,,,,,,,,,,,,,
+24,HR_Headhunt,,,,,,,,,,,,,,
+25,HR_Headhunt,,,,,,,,,,,,,,
+26,HR_Headhunt,,,,,,,,,,,,,,
+27,HR_Headhunt,,,,,,,,,,,,,,
+28,HR_Headhunt,,,,,,,,,,,,,,
+29,HR_Headhunt,,,,,,,,,,,,,,
+30,HR_Headhunt,,,,,,,,,,,,,,
+31,B2B_Corporate,Lan Trưởng Phòng Sales (Taseco KCN Kim Bảng),Head of B2B Sales KCN & Bất động sản Công nghiệp (Vốn 400 tỷ),Masothue,https://masothue.com/0700863921-cong-ty-co-phan-dau-tu-ha-tang-khu-cong-nghiep-kim-bang,Hà Nam / Hà Nội,chưa_liên_hệ,,,,,,GetFly CRM,Cần quét DN FDI và xưởng sản xuất mới đăng ký kinh doanh
+32,B2B_Corporate,Việt Sales B2B SaaS (Auto Investment Group),Trưởng nhóm kinh doanh phần mềm B2B & Tự động hóa,CafeF / Masothue,https://masothue.com/0316867388-cong-ty-co-phan-tap-doan-dau-tu-cong-nghe-tu-dong-toan-cau,TP.HCM,chưa_liên_hệ,,,,,,KiotViet / Excel,Cần SĐT di động của Giám Đốc/Người đại diện để chào SaaS
+33,B2B_Corporate,Hùng Giám Đốc Dịch Vụ (CTCP USC Interco),Chủ DN Dịch vụ Tư vấn Đầu tư & Xuất Nhập Khẩu,CafeF / Masothue,https://masothue.com/0109062329-cong-ty-co-phan-tu-van-dau-tu-quoc-te-va-dich-vu-thuong-mai-usc,Hà Nội,chưa_liên_hệ,,,,,,Google Sheet,Cần lọc số theo MST và vốn điều lệ đã xác thực (MST Verified)
+34,B2B_Corporate,Thảo Sales B2B (Công ty TNHH TM Khánh Linh),Chuyên viên cung ứng dịch vụ kế toán & văn phòng chia sẻ,Masothue,https://masothue.com/0111282832-cong-ty-tnhh-dau-tu-va-tm-khanh-linh,Hà Nội,chưa_liên_hệ,,,,,,Excel,Săn doanh nghiệp mới cấp MST trong vòng 30 ngày
+35,B2B_Corporate,Dũng Săn Thầu (Công ty Xây dựng Đại Phát),Chuyên viên đấu thầu & cung ứng thiết bị vật tư xây dựng,Masothue / Mua Sắm Công,https://masothue.com/0110744040-cong-ty-tnhh-dich-vu-thuong-mai-va-xay-dung-dai-phat,Hà Nội & Miền Bắc,chưa_liên_hệ,,,,,,Google Sheet,Cần thông tin đại diện pháp luật và số di động trực tiếp
+36,B2B_Corporate,,,,,,,,,,,,,,
+37,B2B_Corporate,,,,,,,,,,,,,,
+38,B2B_Corporate,,,,,,,,,,,,,,
+39,B2B_Corporate,,,,,,,,,,,,,,
+40,B2B_Corporate,,,,,,,,,,,,,,
+41,B2B_Corporate,,,,,,,,,,,,,,
+42,B2B_Corporate,,,,,,,,,,,,,,
+43,B2B_Corporate,,,,,,,,,,,,,,
+44,B2B_Corporate,,,,,,,,,,,,,,
+45,B2B_Corporate,,,,,,,,,,,,,,
