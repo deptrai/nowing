@@ -241,13 +241,15 @@ def apply_publication(conn: Connection) -> None:
     """Reconcile ``zero_publication`` to the canonical shape."""
 
     exists = conn.execute(
-        text("SELECT 1 FROM pg_publication WHERE pubname = :name"),
+        text("SELECT pubname, pubviaroot FROM pg_publication WHERE pubname = :name"),
         {"name": PUBLICATION_NAME},
     ).fetchone()
     if not exists:
         return
 
     conn.execute(text(build_set_table_sql(conn)))
+    if not exists[1]:
+        conn.execute(text(f"ALTER PUBLICATION {_quote_identifier(PUBLICATION_NAME)} SET (publish_via_partition_root = true)"))
 
 
 def ensure_publication(conn: Connection) -> None:
@@ -262,7 +264,7 @@ def ensure_publication(conn: Connection) -> None:
     """
 
     exists = conn.execute(
-        text("SELECT 1 FROM pg_publication WHERE pubname = :name"),
+        text("SELECT pubname, pubviaroot FROM pg_publication WHERE pubname = :name"),
         {"name": PUBLICATION_NAME},
     ).fetchone()
     if not exists:
@@ -273,9 +275,11 @@ def ensure_publication(conn: Connection) -> None:
         conn.execute(
             text(
                 f"CREATE PUBLICATION {_quote_identifier(PUBLICATION_NAME)} "
-                "FOR TABLE notifications"
+                "FOR TABLE notifications WITH (publish_via_partition_root = true)"
             )
         )
+    elif not exists[1]:
+        conn.execute(text(f"ALTER PUBLICATION {_quote_identifier(PUBLICATION_NAME)} SET (publish_via_partition_root = true)"))
 
     if verify_publication(conn):
         conn.execute(text(build_set_table_sql(conn)))
@@ -312,15 +316,19 @@ def verify_publication(conn: Connection) -> list[str]:
     """Return human-readable mismatches between Postgres and the canonical shape."""
 
     publication_exists = conn.execute(
-        text("SELECT 1 FROM pg_publication WHERE pubname = :name"),
+        text("SELECT pubname, pubviaroot FROM pg_publication WHERE pubname = :name"),
         {"name": PUBLICATION_NAME},
     ).fetchone()
     if not publication_exists:
         return [f"Publication {PUBLICATION_NAME!r} does not exist"]
 
+    mismatches: list[str] = []
+    if not publication_exists[1]:
+        mismatches.append(f"{PUBLICATION_NAME}: publish_via_partition_root is False")
+
     actual = _actual_publication_shape(conn)
     expected = expected_publication_shape(conn)
-    mismatches: list[str] = []
+
 
     for table, expected_columns in expected.items():
         if table not in actual:
