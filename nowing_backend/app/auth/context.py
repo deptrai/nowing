@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass
 from typing import Literal
 
@@ -16,10 +17,12 @@ class AuthContext:
     method: AuthMethod
     pat: PersonalAccessToken | None = None
     source: str | None = None
+    is_impersonation: bool = False
+    impersonated_by: uuid.UUID | None = None
 
     @classmethod
-    def session(cls, user: User) -> AuthContext:
-        return cls(user=user, method="session")
+    def session(cls, user: User, is_impersonation: bool = False, impersonated_by: uuid.UUID | None = None) -> AuthContext:
+        return cls(user=user, method="session", is_impersonation=is_impersonation, impersonated_by=impersonated_by)
 
     @classmethod
     def pat_auth(cls, user: User, pat: PersonalAccessToken) -> AuthContext:
@@ -36,3 +39,4 @@ class AuthContext:
     @property
     def is_session(self) -> bool:
         return self.method == "session"
+

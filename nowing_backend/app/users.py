@@ -353,23 +353,33 @@ async def get_auth_context(
         if is_bearer and _token_meets_epoch(token):
             try:
                 user = await get_jwt_strategy().read_token(token, user_manager)
+                payload = jwt.decode(token, SECRET, algorithms=["HS256"], options={"verify_aud": False})
+                is_impersonation = payload.get("is_impersonation", False)
+                impersonated_by = uuid.UUID(payload.get("impersonated_by")) if payload.get("impersonated_by") else None
             except Exception:
                 logger.exception("Failed to read bearer access token")
                 user = None
 
             if user and user.is_active:
-                return AuthContext.session(user)
+                if is_impersonation:
+                    user.is_superuser = False
+                return AuthContext.session(user, is_impersonation=is_impersonation, impersonated_by=impersonated_by)
 
     cookie_token = request.cookies.get(config.SESSION_COOKIE_NAME)
     if cookie_token and _token_meets_epoch(cookie_token):
         try:
             user = await get_jwt_strategy().read_token(cookie_token, user_manager)
+            payload = jwt.decode(cookie_token, SECRET, algorithms=["HS256"], options={"verify_aud": False})
+            is_impersonation = payload.get("is_impersonation", False)
+            impersonated_by = uuid.UUID(payload.get("impersonated_by")) if payload.get("impersonated_by") else None
         except Exception:
             logger.exception("Failed to read session cookie access token")
             user = None
 
         if user and user.is_active:
-            return AuthContext.session(user)
+            if is_impersonation:
+                user.is_superuser = False
+            return AuthContext.session(user, is_impersonation=is_impersonation, impersonated_by=impersonated_by)
 
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
