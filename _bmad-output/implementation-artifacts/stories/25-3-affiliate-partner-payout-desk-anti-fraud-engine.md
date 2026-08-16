@@ -1,5 +1,5 @@
 story_key: 25-3-affiliate-partner-payout-desk-anti-fraud-engine
-status: ready-for-dev
+status: review
 baseline_commit: be1122dd9ab3a0d92200ecfbc3c3545b736b04a0
 epic: 25
 story: 3
@@ -7,7 +7,7 @@ story: 3
 
 # Story 25.3: Affiliate Partner Payout Desk & Anti-Fraud Engine
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Governed by INV-25.4, INV-25.2, INV-25.8, and Architecture Spine: epics.md (Epic 25) -->
 
@@ -56,12 +56,12 @@ So that genuine affiliate partners receive their commission in seconds while fra
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Backend Affiliate Anti-Fraud Service & Payout API
-  - [ ] Implement `AffiliateAntiFraudService.evaluate_payout_risk()` with recursive CTE fraud detection in `app/services/affiliate_anti_fraud_service.py`.
-  - [ ] Create API routes in `app/routes/admin_affiliates_routes.py`: `GET /api/v1/admin/affiliates/payouts`, `POST /api/v1/admin/affiliates/payouts/{id}/approve`, `POST /api/v1/admin/affiliates/payouts/{id}/reject`.
-- [ ] Task 2: Unit & Integration Tests
-  - [ ] Add `tests/unit/services/test_affiliate_anti_fraud.py` (fraud ring scenarios, name match edge cases).
-  - [ ] Add `tests/integration/routes/test_admin_affiliate_payouts.py`.
-- [ ] Task 3: Frontend Payout Approval Desk UI
-  - [ ] Create `nowing_web/app/admin/affiliates/payouts/page.tsx` with high-density table and fraud score pills.
-  - [ ] Create `components/admin/PayoutDetailModal.tsx` with Napas verification preview.
+- [x] Task 1: Backend Affiliate Anti-Fraud Service & Payout API
+  - [x] Implement `AffiliateAntiFraudService.evaluate_payout_risk()` with recursive CTE fraud detection in `app/services/affiliate_anti_fraud_service.py`.
+  - [x] Create API routes in `app/routes/admin_affiliates_routes.py`: `GET /api/v1/admin/affiliates/payouts`, `POST /api/v1/admin/affiliates/payouts/{id}/approve`, `POST /api/v1/admin/affiliates/payouts/{id}/reject`.
+- [x] Task 2: Unit & Integration Tests
+  - [x] Add `tests/unit/services/test_affiliate_anti_fraud.py` (fraud ring scenarios, name match edge cases).
+  - [x] Add `tests/integration/routes/test_admin_affiliate_payouts.py`.
+- [x] Task 3: Frontend Payout Approval Desk UI
+  - [x] Create `nowing_web/app/admin/affiliates/payouts/page.tsx` with high-density table and fraud score pills.
+  - [x] Create `components/admin/PayoutDetailModal.tsx` with Napas verification preview.
