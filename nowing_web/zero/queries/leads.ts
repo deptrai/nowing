@@ -13,7 +13,7 @@ export const leadQueries = {
 
 export const leadPipelineStageQueries = {
 	bySpace: defineQuery(z.object({ workspaceId: z.number() }), ({ args: { workspaceId }, ctx }) => {
-		const query = zql.leadPipelineStages.where("workspaceId", workspaceId);
+		const query = zql.lead_pipeline_stages.where("workspaceId", workspaceId);
 		if (!canReadSpace(ctx, workspaceId)) return denySpace(query).orderBy("position", "asc");
 		return constrainToAllowedSpaces(query, ctx).orderBy("position", "asc");
 	}),

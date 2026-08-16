@@ -13,6 +13,7 @@ import {
 	useSensors,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
+import { useQuery } from "@rocicorp/zero/react";
 import {
 	AlertCircle,
 	ExternalLink,
@@ -23,7 +24,6 @@ import {
 	UserCheck,
 } from "lucide-react";
 import type React from "react";
-import { useQuery } from "@rocicorp/zero/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { LeadPipelineStage } from "@/contracts/types/lead-pipeline.types";
 import type { Lead } from "@/contracts/types/leads.types";
@@ -190,10 +190,15 @@ export const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = ({ workspaceId })
 	const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 	const [activeLead, setActiveLead] = useState<Lead | null>(null);
 
-	const workspaceIdNumber = useMemo(() => Number(workspaceId), [workspaceId]);
+	const workspaceIdNumber = useMemo(
+		() => (typeof workspaceId === "number" ? workspaceId : Number(workspaceId)) || -1,
+		[workspaceId]
+	);
 
 	const [zeroLeads] = useQuery(queries.leads.bySpace({ workspaceId: workspaceIdNumber }));
-	const [zeroStages] = useQuery(queries.leadPipelineStages.bySpace({ workspaceId: workspaceIdNumber }));
+	const [zeroStages] = useQuery(
+		queries.leadPipelineStages.bySpace({ workspaceId: workspaceIdNumber })
+	);
 	type ZeroLead = NonNullable<typeof zeroLeads>[number];
 	type ZeroStage = NonNullable<typeof zeroStages>[number];
 
@@ -257,7 +262,7 @@ export const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = ({ workspaceId })
 				charter_capital_vnd: undefined,
 				company_status: undefined,
 				is_zalo_active: undefined,
-			} as Lead),
+			}) as Lead,
 		[mapZeroLeadFields]
 	);
 
@@ -298,9 +303,7 @@ export const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = ({ workspaceId })
 			const prevIds = new Set(prev.map((l) => l.id));
 			const liveById = new Map(zeroLeads.map((l) => [l.id, l] as [string, ZeroLead]));
 
-			const newItems: Lead[] = zeroLeads
-				.filter((l) => !prevIds.has(l.id))
-				.map(mapZeroLead);
+			const newItems: Lead[] = zeroLeads.filter((l) => !prevIds.has(l.id)).map(mapZeroLead);
 
 			const updated = prev
 				.filter((l) => liveIds.has(l.id))

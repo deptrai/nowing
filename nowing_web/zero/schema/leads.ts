@@ -14,7 +14,7 @@ export const leadsTable = table("leads")
 		techStack: json().optional().from("tech_stack"),
 		fitScore: number().optional().from("fit_score"),
 		intentScore: number().optional().from("intent_score"),
-		composite_score: number().optional().from("composite_score"),
+		compositeScore: number().optional().from("composite_score"),
 		status: string(),
 		enriched: boolean(),
 		stageId: string().optional().from("stage_id"),
