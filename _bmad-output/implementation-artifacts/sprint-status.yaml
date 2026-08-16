@@ -243,7 +243,7 @@ development_status:
   24-1: ready-for-dev  # Multi-Channel Drip Outreach Campaign Engine (Zalo ZNS + Telegram + Email Cadence)
   24-2: ready-for-dev  # Waterfall Phone & B2B Tax Code (MST) Corporate Verification Engine
   24-3: ready-for-dev  # Multi-Seat Team CRM Pipeline & Shared Workspace Credit Pooling
-  24-4: ready-for-dev  # Nowing Lead Clipper — Chrome Extension for 1-Click Lead Capturing
+  24-4: review  # Nowing Lead Clipper — Chrome Extension for 1-Click Lead Capturing
   24-5: ready-for-dev  # Vertical Playbook Marketplace & Community Workflow Templates
   24-6: ready-for-dev  # Two-Way AI Outreach Auto-Reply Agent
   epic-24-retrospective: optional

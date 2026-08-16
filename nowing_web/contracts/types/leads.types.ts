@@ -43,6 +43,9 @@ export const leadSchema = z.object({
 	consent_status: z.string().nullable().optional(),
 	dnc_reason: z.string().nullable().optional(),
 	enriched: z.boolean().default(false),
+	stage_id: z.string().uuid().nullable().optional(),
+	assigned_to_user_id: z.string().uuid().nullable().optional(),
+	version: z.number().default(1),
 	created_at: z.string(),
 	updated_at: z.string().nullable().optional(),
 });

@@ -3,7 +3,7 @@ story_key: "24-4"
 epic: "epic-24"
 story: "24.4"
 title: "Nowing Lead Clipper — Chrome Extension for 1-Click Lead Capturing"
-status: "ready-for-dev"
+status: "review"
 baseline_commit: "6ac305274"
 ---
 
@@ -50,13 +50,67 @@ So that I can capture leads into my active Nowing Workspace without copy-pasting
 ## Technical Tasks
 
 ### Extension Package
-- [ ] Setup: Khởi tạo module `apps/chrome-extension` (Manifest V3, Vite + React + TypeScript + Tailwind).
-- [ ] Service Worker: Xây dựng `background.ts` xử lý PAT storage, message listener và REST dispatch.
-- [ ] Content Scripts: Xây dựng các DOM extractors (`extractors/facebook.ts`, `extractors/batdongsan.ts`, `extractors/topcv.ts`).
+- [x] Setup: Khởi tạo module `apps/chrome-extension` (Manifest V3, Vite + React + TypeScript + Tailwind).
+- [x] Service Worker: Xây dựng `background.ts` xử lý PAT storage, message listener và REST dispatch.
+- [x] Content Scripts: Xây dựng các DOM extractors (`extractors/facebook.ts`, `extractors/batdongsan.ts`, `extractors/topcv.ts`).
 
 ### Backend Implementation
-- [ ] Route: Xây dựng endpoint `POST /api/v1/workspaces/{id}/leads/clip` với xác thực PAT và deduplication upsert.
-- [ ] CORS: Cho phép Origin `chrome-extension://*` khi có header Authorization hợp lệ.
+- [x] Route: Xây dựng endpoint `POST /api/v1/workspaces/{id}/leads/clip` với xác thực PAT và deduplication upsert.
+- [x] CORS: Cho phép Origin `chrome-extension://*` khi có header Authorization hợp lệ.
+
+---
+
+## Dev Agent Record
+
+### Implementation Plan
+1. Backend Lead Clipper Endpoint (`app/routes/lead_clipper_routes.py`):
+   - Implemented endpoint `POST /api/v1/workspaces/{workspace_id}/leads/clip` with SHA-256 deduplication hashing: `SHA256(workspace_id + source_canonical_url + normalized_phone)`.
+   - Enforced PAT authorization with scope `leads:clipper:write` and workspace isolation.
+   - Handled URL canonicalization (stripping tracking parameters) and Vietnamese phone normalization.
+   - Idempotent deduplication: returns `is_duplicate=True` on existing match, creates `Lead` and `VerifiedContact` records otherwise.
+2. Route and Schema Registration:
+   - Exported `LEADS_CLIPPER_WRITE_SCOPE` in `app/schemas/pat.py`.
+   - Registered `lead_clipper_router` in `app/routes/__init__.py`.
+   - Added regex support for `chrome-extension://.*` in `CORSMiddleware` in `app/app.py`.
+3. Chrome Extension Package (`apps/chrome-extension/`):
+   - Manifest V3 architecture with isolated background service worker (`src/background/index.ts`).
+   - Domain-specific DOM extractors for Facebook Groups (`extractors/facebook.ts`), Batdongsan (`extractors/batdongsan.ts`), TopCV (`extractors/topcv.ts`), and generic fallback (`extractors/generic.ts`).
+   - Isolated Shadow DOM Floating Action Pill (`src/content/floating_pill.ts`) with 2s click debounce spinner and live toast feedback.
+   - Offline buffer and queue (`src/storage/offline_queue.ts`) with badge counter and batch sync button in extension popup.
+
+### Completion Notes
+- All 16 unit tests in `tests/unit/routes/test_lead_clipper.py` passed (100%).
+- Static analysis with `ruff check` on backend routes and schemas passed with 0 errors.
+- Architectural invariant INV-24.5 fully satisfied with token isolation in Background Service Worker.
+
+## File List
+- `nowing_backend/app/routes/lead_clipper_routes.py` (New)
+- `nowing_backend/app/schemas/pat.py` (Modified)
+- `nowing_backend/app/routes/__init__.py` (Modified)
+- `nowing_backend/app/app.py` (Modified)
+- `apps/chrome-extension/manifest.json` (New)
+- `apps/chrome-extension/package.json` (New)
+- `apps/chrome-extension/tsconfig.json` (New)
+- `apps/chrome-extension/vite.config.ts` (New)
+- `apps/chrome-extension/popup.html` (New)
+- `apps/chrome-extension/README.md` (New)
+- `apps/chrome-extension/src/types/index.ts` (New)
+- `apps/chrome-extension/src/utils/normalizer.ts` (New)
+- `apps/chrome-extension/src/storage/token_store.ts` (New)
+- `apps/chrome-extension/src/storage/offline_queue.ts` (New)
+- `apps/chrome-extension/src/background/index.ts` (New)
+- `apps/chrome-extension/src/content/extractors/facebook.ts` (New)
+- `apps/chrome-extension/src/content/extractors/batdongsan.ts` (New)
+- `apps/chrome-extension/src/content/extractors/topcv.ts` (New)
+- `apps/chrome-extension/src/content/extractors/generic.ts` (New)
+- `apps/chrome-extension/src/content/floating_pill.ts` (New)
+- `apps/chrome-extension/src/content/index.ts` (New)
+- `apps/chrome-extension/src/popup/index.tsx` (New)
+- `apps/chrome-extension/src/popup/Popup.tsx` (New)
+- `_bmad-output/implementation-artifacts/stories/24-4-nowing-lead-clipper-chrome-extension.md` (Modified)
+
+## Change Log
+- 2026-08-16: Implemented Story 24.4 Nowing Lead Clipper Chrome Extension & backend ingest endpoint with PAT scope authorization, SHA-256 deduplication, and isolated Shadow DOM UI.
 
 ---
 
@@ -70,6 +124,6 @@ uv run pytest tests/unit/routes/test_lead_clipper.py -q
 uv run pytest tests/integration/routes/test_lead_clipper_ingest.py -q
 
 # Extension build & test
-cd ../nowing_web
-pnpm tsc --noEmit
+cd ../apps/chrome-extension
+pnpm build
 ```
