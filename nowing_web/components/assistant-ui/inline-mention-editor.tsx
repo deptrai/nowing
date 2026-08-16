@@ -138,7 +138,7 @@ const MENTION_CHIP_CLASSNAME =
 	"group inline-flex h-5 items-center gap-1 mx-0.5 rounded bg-primary/10 px-1 text-xs font-bold text-primary/60 select-none align-middle leading-none";
 const MENTION_CHIP_ICON_CLASSNAME = "flex items-center text-muted-foreground leading-none";
 const MENTION_CHIP_TITLE_CLASSNAME = "max-w-[120px] truncate leading-none";
-const COMPOSER_TEXT_METRICS_CLASSNAME = "text-sm leading-6";
+const COMPOSER_TEXT_METRICS_CLASSNAME = "text-[11.5px] sm:text-xs leading-5";
 
 const EMPTY_VALUE: ComposerValue = [{ type: "p", children: [{ text: "" }] }];
 

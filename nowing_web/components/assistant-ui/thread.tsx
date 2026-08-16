@@ -124,8 +124,7 @@ import {
 	promoteRecentMention,
 } from "../new-chat/document-mention-picker";
 
-const COMPOSER_PLACEHOLDER =
-	"Research the live web, scrape platforms, automate briefs. Use / for prompts, @ for docs";
+const COMPOSER_PLACEHOLDER = "Nhập yêu cầu tìm kiếm, săn lead... (Dùng / xem lệnh, @ tài liệu)";
 
 type ComposerSuggestionAnchorPoint = {
 	left: number;
@@ -1191,15 +1190,15 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 
 			{/* Origami Style: Suggested Next Actions Card (shown only during active thread) */}
 			{hasActiveThread && (
-				<div className="rounded-2xl border border-border/80 bg-card/95 p-3.5 shadow-xs transition-all backdrop-blur-xs">
-					<div className="flex items-center justify-between mb-2">
-						<div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+				<div className="rounded-xl border border-border/70 bg-card/90 p-2 shadow-2xs transition-all backdrop-blur-xs">
+					<div className="flex items-center justify-between px-1 pb-1">
+						<div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
 							<span className="text-amber-500">💡</span>
 							<span>Suggested Next Actions</span>
 						</div>
-						<Sparkles className="w-3.5 h-3.5 text-muted-foreground opacity-60" />
+						<Sparkles className="w-3 h-3 text-muted-foreground opacity-60" />
 					</div>
-					<div className="space-y-1.5">
+					<div className="space-y-0.5">
 						<button
 							type="button"
 							onClick={() =>
@@ -1207,13 +1206,13 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 									"Find decision-makers at these companies and set up a sequence to them"
 								)
 							}
-							className="w-full text-left flex items-start gap-2.5 p-2 rounded-xl hover:bg-muted/70 transition-colors text-xs text-foreground group cursor-pointer border border-transparent hover:border-border/60"
+							className="w-full text-left flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-muted/70 transition-colors text-[10.5px] text-foreground group cursor-pointer border border-transparent hover:border-border/50"
 						>
-							<span className="w-5 h-5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5">
+							<span className="w-4 h-4 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center text-[9px] font-bold shrink-0">
 								🚀
 							</span>
-							<span className="leading-snug font-medium">
-								Find decision-makers at these companies and set up a sequence to them
+							<span className="leading-tight font-medium truncate">
+								Find decision-makers at these companies and set up a sequence
 							</span>
 						</button>
 						<button
@@ -1223,12 +1222,12 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 									"Chỉ giữ các hồ sơ có nội dung thể hiện ý định mua rõ ràng"
 								)
 							}
-							className="w-full text-left flex items-start gap-2.5 p-2 rounded-xl hover:bg-muted/70 transition-colors text-xs text-foreground group cursor-pointer border border-transparent hover:border-border/60"
+							className="w-full text-left flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-muted/70 transition-colors text-[10.5px] text-foreground group cursor-pointer border border-transparent hover:border-border/50"
 						>
-							<span className="w-5 h-5 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5 font-mono">
+							<span className="w-4 h-4 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-[9px] font-bold shrink-0 font-mono">
 								2
 							</span>
-							<span className="leading-snug text-muted-foreground group-hover:text-foreground">
+							<span className="leading-tight text-muted-foreground group-hover:text-foreground truncate">
 								Chỉ giữ các hồ sơ có nội dung thể hiện ý định mua rõ ràng
 							</span>
 						</button>
@@ -1237,12 +1236,12 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 							onClick={() =>
 								handleApplySuggestedAction("So sánh mức độ ý định mua giữa X, Instagram và TikTok")
 							}
-							className="w-full text-left flex items-start gap-2.5 p-2 rounded-xl hover:bg-muted/70 transition-colors text-xs text-foreground group cursor-pointer border border-transparent hover:border-border/60"
+							className="w-full text-left flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-muted/70 transition-colors text-[10.5px] text-foreground group cursor-pointer border border-transparent hover:border-border/50"
 						>
-							<span className="w-5 h-5 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5 font-mono">
+							<span className="w-4 h-4 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-[9px] font-bold shrink-0 font-mono">
 								3
 							</span>
-							<span className="leading-snug text-muted-foreground group-hover:text-foreground">
+							<span className="leading-tight text-muted-foreground group-hover:text-foreground truncate">
 								So sánh mức độ ý định mua giữa X, Instagram và TikTok
 							</span>
 						</button>
@@ -1410,9 +1409,9 @@ const ConnectedScraperIcons: FC<{ workspaceId: number }> = ({ workspaceId }) => 
 					return (
 						<Tooltip key={platform.id}>
 							<TooltipTrigger asChild>
-								<Avatar className="size-5" style={{ zIndex: visiblePlatforms.length - i }}>
-									<AvatarFallback className="bg-popover text-[10px]">
-										<Icon className="size-3" />
+								<Avatar className="size-4" style={{ zIndex: visiblePlatforms.length - i }}>
+									<AvatarFallback className="bg-popover text-[9px]">
+										<Icon className="size-2.5" />
 									</AvatarFallback>
 								</Avatar>
 							</TooltipTrigger>
@@ -1423,8 +1422,8 @@ const ConnectedScraperIcons: FC<{ workspaceId: number }> = ({ workspaceId }) => 
 				{remainingCount > 0 && (
 					<Tooltip>
 						<TooltipTrigger asChild>
-							<Avatar className="size-5" style={{ zIndex: 0 }}>
-								<AvatarFallback className="bg-muted text-[9px] font-medium text-muted-foreground font-mono">
+							<Avatar className="size-4" style={{ zIndex: 0 }}>
+								<AvatarFallback className="bg-muted text-[8px] font-medium text-muted-foreground font-mono">
 									+{remainingCount}
 								</AvatarFallback>
 							</Avatar>
@@ -1847,11 +1846,11 @@ const ComposerAction: FC<ComposerActionProps> = ({
 								disableTooltip={toolsPopoverOpen}
 								variant="ghost"
 								size="icon"
-								className="h-9 w-9 rounded-full p-0 font-semibold text-xs text-muted-foreground transition-colors dark:border-muted-foreground/15 hover:bg-foreground/10 hover:text-foreground"
+								className="h-7 w-7 rounded-full p-0 font-semibold text-xs text-muted-foreground transition-colors dark:border-muted-foreground/15 hover:bg-foreground/10 hover:text-foreground"
 								aria-label="Upload files, manage tools and more"
 								data-joyride="connector-icon"
 							>
-								<Plus className="size-5" />
+								<Plus className="size-4" />
 							</TooltipIconButton>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent
@@ -2100,10 +2099,10 @@ const ComposerAction: FC<ComposerActionProps> = ({
 				)}
 				<ConnectedScraperIcons workspaceId={workspaceId} />
 			</div>
-			<div className="ml-auto flex min-w-0 shrink-0 items-center gap-2">
+			<div className="ml-auto flex min-w-0 shrink-0 items-center gap-1.5">
 				<ChatHeader
 					workspaceId={workspaceId}
-					className="h-9 max-w-[44vw] px-2 sm:max-w-[220px] sm:px-3"
+					className="h-7 max-w-[44vw] px-1.5 sm:max-w-[160px]"
 					onChatModelSelected={onChatModelSelected}
 				/>
 				<AuiIf condition={({ thread }) => !thread.isRunning}>
@@ -2121,13 +2120,13 @@ const ComposerAction: FC<ComposerActionProps> = ({
 							variant="default"
 							size="icon"
 							className={cn(
-								"aui-composer-send size-9 shrink-0 rounded-full",
+								"aui-composer-send size-7 shrink-0 rounded-full",
 								isSendDisabled && "cursor-not-allowed opacity-50"
 							)}
 							aria-label="Send message"
 							disabled={isSendDisabled}
 						>
-							<ArrowUpIcon className="aui-composer-send-icon size-5" />
+							<ArrowUpIcon className="aui-composer-send-icon size-3.5" />
 						</TooltipIconButton>
 					</ComposerPrimitive.Send>
 				</AuiIf>
@@ -2138,10 +2137,10 @@ const ComposerAction: FC<ComposerActionProps> = ({
 							type="button"
 							variant="default"
 							size="icon"
-							className="aui-composer-cancel size-9 shrink-0 rounded-full"
+							className="aui-composer-cancel size-7 shrink-0 rounded-full"
 							aria-label="Stop generating"
 						>
-							<SquareIcon className="aui-composer-cancel-icon size-3.5 fill-current" />
+							<SquareIcon className="aui-composer-cancel-icon size-2.5 fill-current" />
 						</Button>
 					</ComposerPrimitive.Cancel>
 				</AuiIf>

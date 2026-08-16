@@ -270,23 +270,23 @@ export function ModelSelector({ workspaceId, className, onChatModelSelected }: M
 			size="sm"
 			aria-label="Select chat model"
 			className={cn(
-				"h-8 min-w-0 gap-2 rounded-md px-3 text-muted-foreground transition-colors",
+				"h-7 min-w-0 gap-1.5 rounded-md px-2 text-[11px] font-medium text-muted-foreground transition-colors",
 				"select-none",
 				"hover:bg-foreground/10 hover:text-foreground",
 				"data-[state=open]:bg-foreground/10 data-[state=open]:text-foreground",
 				className,
-				showIconOnlyTrigger && "h-9 w-auto shrink-0 justify-center gap-1 px-2"
+				showIconOnlyTrigger && "h-7 w-auto shrink-0 justify-center gap-1 px-1.5"
 			)}
 		>
 			{selected
-				? getProviderIcon(selected.provider, { className: "size-4 shrink-0" })
-				: getProviderIcon(AUTO_PROVIDER_ICON_KEY, { className: "size-4 shrink-0" })}
+				? getProviderIcon(selected.provider, { className: "size-3.5 shrink-0" })
+				: getProviderIcon(AUTO_PROVIDER_ICON_KEY, { className: "size-3.5 shrink-0" })}
 			{showIconOnlyTrigger ? null : (
-				<span className="min-w-0 flex-1 truncate text-sm">
+				<span className="min-w-0 flex-1 truncate text-[11px] font-medium">
 					{selected ? modelName(selected) : "Auto"}
 				</span>
 			)}
-			<ChevronDown className="h-3.5 w-3.5 shrink-0" />
+			<ChevronDown className="h-3 w-3 shrink-0 opacity-70" />
 		</Button>
 	);
 
