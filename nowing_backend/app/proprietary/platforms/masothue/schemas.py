@@ -69,6 +69,15 @@ class MasothueCompany(BaseModel):
     phone: str | None = None
     detail_url: str | None = None
 
+    # Fields the downstream CorporateVerificationService expects
+    representative: str | None = None
+    charter_capital: str | None = None
+    main_business: str | None = None
+    founding_date: str | None = None
+    city: str | None = None
+    district: str | None = None
+    rep_phone: str | None = None
+
     def to_output(self) -> dict[str, Any]:
         """Serialize to a flat dict for downstream consumers."""
         return self.model_dump(exclude_none=False)

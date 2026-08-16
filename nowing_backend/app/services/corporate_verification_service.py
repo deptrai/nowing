@@ -317,7 +317,8 @@ class DefaultMasothueClient:
                     "company_name": item.name,
                     "international_name": item.international_name,
                     "short_name": item.short_name,
-                    "legal_representative": item.representative,
+                    "legal_representative": item.representative
+                    or item.legal_representative,
                     "charter_capital_vnd": parse_charter_capital_vnd(
                         item.charter_capital
                     ),
@@ -329,9 +330,9 @@ class DefaultMasothueClient:
                     "city": item.city,
                     "district": item.district,
                     "phone": item.phone,
-                    "rep_phone": getattr(item, "rep_phone", None) or item.phone,
-                    "industry": item.main_business,
-                    "date_of_incorporation": getattr(item, "founding_date", None),
+                    "rep_phone": item.rep_phone or item.phone,
+                    "industry": item.main_business or item.main_industry,
+                    "date_of_incorporation": item.founding_date or item.active_date,
                 }
             )
         return results
