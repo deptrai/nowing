@@ -176,10 +176,12 @@ export default function NewChatPage() {
 	const params = useParams();
 	const searchParams = useSearchParams();
 	const initialPrompt = searchParams.get("q") ?? undefined;
+	const isLeadsMode = searchParams.get("mode") === "leads";
 	const queryClient = useQueryClient();
 	const urlChatId = useMemo(() => parseUrlChatId(params.chat_id), [params.chat_id]);
 	const [threadId, setThreadId] = useState<number | null>(() => (urlChatId > 0 ? urlChatId : null));
 	const activeThreadId = urlChatId > 0 ? urlChatId : threadId;
+	const hasActiveView = Boolean(activeThreadId || isLeadsMode);
 	const handledLoadErrorThreadRef = useRef<number | null>(null);
 	const [currentThread, setCurrentThread] = useState<ThreadRecord | null>(null);
 	// DB-hydrated messages for the viewed thread (idle display). While a turn
@@ -800,7 +802,7 @@ export default function NewChatPage() {
 						<NowingSplitCanvas
 							workspaceId={workspaceId}
 							threadId={activeThreadId}
-							hasActiveThread={!!activeThreadId}
+							hasActiveThread={hasActiveView}
 							messages={messages}
 							onSendPrompt={(promptText) => {
 								router.push(
@@ -809,7 +811,7 @@ export default function NewChatPage() {
 							}}
 							chatSlot={
 								<div className="relative h-full flex flex-col min-w-0 overflow-hidden">
-									<Thread hasActiveThread={!!activeThreadId} initialPrompt={initialPrompt} />
+									<Thread hasActiveThread={hasActiveView} initialPrompt={initialPrompt} />
 									{isThreadMessagesLoading ? (
 										<div className="absolute inset-0 z-10 bg-panel">
 											<ThreadMessagesSkeleton />

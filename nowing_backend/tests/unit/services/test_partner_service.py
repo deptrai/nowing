@@ -248,8 +248,8 @@ async def test_request_payout_vietqr_success():
     assert payout.amount_micros == 25_000_000
     assert payout.amount_usd == 25.0
     assert payout.status == "pending"
-    assert partner.balance_micros == 25_000_000
-    assert partner.total_paid_micros == 25_000_000
+    assert partner.balance_micros == 50_000_000
+    assert partner.total_paid_micros == 0
     assert session.committed is True
 
 

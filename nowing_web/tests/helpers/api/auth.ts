@@ -100,7 +100,16 @@ export async function acquireTestToken(request: APIRequestContext): Promise<stri
 	try {
 		return await mintTestToken(request);
 	} catch {
-		return loginAsTestUser(request);
+		try {
+			return await loginAsTestUser(request);
+		} catch {
+			try {
+				await registerUser(request, TEST_USER_EMAIL, TEST_USER_PASSWORD);
+			} catch {
+				// User might already exist, continue to login
+			}
+			return await loginAsTestUser(request);
+		}
 	}
 }
 

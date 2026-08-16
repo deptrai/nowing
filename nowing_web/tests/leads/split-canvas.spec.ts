@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures";
 
 test.describe("Story 21.16: Nowing Split-View Canvas & Workspace Modernization", () => {
 	test.beforeEach(async ({ page }) => {
@@ -40,15 +40,16 @@ test.describe("Story 21.16: Nowing Split-View Canvas & Workspace Modernization",
 		});
 	});
 
-	test("should redirect /leads to /new-chat?mode=leads", async ({ page }) => {
-		await page.goto("/dashboard/1/leads");
-		await expect(page).toHaveURL(/\/dashboard\/1\/new-chat\?mode=leads/);
+	test("should redirect /leads to /new-chat?mode=leads", async ({ page, workspace }) => {
+		await page.goto(`/dashboard/${workspace.id}/leads`);
+		await expect(page).toHaveURL(new RegExp(`/dashboard/${workspace.id}/new-chat\\?mode=leads`));
 	});
 
 	test("should render 2-panel split canvas with resizer and data matrix on new-chat", async ({
 		page,
+		workspace,
 	}) => {
-		await page.goto("/dashboard/1/new-chat");
+		await page.goto(`/dashboard/${workspace.id}/new-chat?mode=leads`);
 
 		// AC1: Split canvas panels exist
 		await expect(page.locator("[data-testid='nowing-split-canvas']")).toBeVisible();
@@ -56,8 +57,11 @@ test.describe("Story 21.16: Nowing Split-View Canvas & Workspace Modernization",
 		await expect(page.locator("[data-testid='split-canvas-resizer']")).toBeVisible();
 	});
 
-	test("should show floating bulk action bar when >= 2 leads are selected", async ({ page }) => {
-		await page.goto("/dashboard/1/new-chat");
+	test("should show floating bulk action bar when >= 2 leads are selected", async ({
+		page,
+		workspace,
+	}) => {
+		await page.goto(`/dashboard/${workspace.id}/new-chat?mode=leads`);
 
 		const checkboxes = page.locator("input[type='checkbox'][data-lead-checkbox]");
 		await checkboxes.nth(0).check();
@@ -70,8 +74,8 @@ test.describe("Story 21.16: Nowing Split-View Canvas & Workspace Modernization",
 		);
 	});
 
-	test("should open flyout detail drawer on row click", async ({ page }) => {
-		await page.goto("/dashboard/1/new-chat");
+	test("should open flyout detail drawer on row click", async ({ page, workspace }) => {
+		await page.goto(`/dashboard/${workspace.id}/new-chat?mode=leads`);
 
 		await page.click("[data-testid='lead-row-lead-1']");
 		await expect(page.locator("[data-testid='lead-detail-flyout-drawer']")).toBeVisible();

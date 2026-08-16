@@ -78,6 +78,13 @@ BUYING_INTENT_KEYWORDS = {
     "nha pho",
     "nhà phố",
     "shophouse",
+    "hen",
+    "hẹn",
+    "gap",
+    "gặp",
+    "demo",
+    "hen gap",
+    "hẹn gặp",
 }
 
 # Maximum timestamp tolerance for webhook replay attacks (seconds)

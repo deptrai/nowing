@@ -287,7 +287,7 @@ class TestBuyingIntentDetection:
     def test_negative_neutral_message(self):
         has_intent, reason = detect_buying_intent("Cảm ơn thông tin từ bạn nhé")
         assert has_intent is False
-        assert reason == ""
+        assert not reason
 
 
 @pytest.mark.unit
