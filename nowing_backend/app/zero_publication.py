@@ -146,6 +146,49 @@ LEADS_COLS = [
     "composite_score",
     "status",
     "enriched",
+    "stage_id",
+    "assigned_to_user_id",
+    "version",
+    "created_at",
+    "updated_at",
+]
+
+LEAD_PIPELINE_STAGE_COLS = [
+    "id",
+    "workspace_id",
+    "client_id",
+    "name",
+    "slug",
+    "position",
+    "color",
+    "is_system",
+    "created_at",
+    "updated_at",
+]
+
+LEAD_ASSIGNMENT_COLS = [
+    "id",
+    "workspace_id",
+    "client_id",
+    "lead_id",
+    "assigned_to_user_id",
+    "assigned_by_user_id",
+    "assigned_by",
+    "status",
+    "reason",
+    "created_at",
+    "updated_at",
+]
+
+LEAD_ACTIVITY_LOG_COLS = [
+    "id",
+    "workspace_id",
+    "client_id",
+    "lead_id",
+    "actor_user_id",
+    "activity_type",
+    "title",
+    "details",
     "created_at",
     "updated_at",
 ]
@@ -168,6 +211,9 @@ ZERO_PUBLICATION: Mapping[str, Sequence[str] | None] = {
     "canonical_merge_history": CANONICAL_MERGE_HISTORY_COLS,
     "canonical_persist_outbox": CANONICAL_PERSIST_OUTBOX_COLS,
     "leads": LEADS_COLS,
+    "lead_pipeline_stages": LEAD_PIPELINE_STAGE_COLS,
+    "lead_assignments": LEAD_ASSIGNMENT_COLS,
+    "lead_activity_logs": LEAD_ACTIVITY_LOG_COLS,
 }
 
 

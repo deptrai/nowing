@@ -49,6 +49,7 @@ class DncCheckResult:
     is_blocked: bool
     record_type: str | None = None
     reason: str | None = None
+    dnc_record_id: Any | None = None
 
 
 class DncComplianceService:
@@ -213,6 +214,16 @@ class DncComplianceService:
                     )
 
         return DncCheckResult(is_blocked=False)
+
+    async def check_phone(
+        self,
+        workspace_id: int,
+        phone: str,
+        session: AsyncSession | None = None,
+        client_id: str | None = None,
+    ) -> DncCheckResult:
+        """Check if phone number is blocked on Workspace or Global DNC list (Fail-closed / INV-24.3)."""
+        return await self.is_blocked(workspace_id, phone=phone, session=session)
 
     async def batch_filter_leads(
         self,

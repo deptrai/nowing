@@ -1889,6 +1889,13 @@ class Workspace(BaseModel, TimestampMixin):
         index=True,
     )
 
+    credit_micros_balance = Column(
+        BigInteger,
+        nullable=False,
+        default=0,
+        server_default="0",
+    )
+
     citations_enabled = Column(
         Boolean, nullable=False, default=True
     )  # Enable/disable citations
@@ -2079,6 +2086,22 @@ class Workspace(BaseModel, TimestampMixin):
         "Lead",
         back_populates="workspace",
         order_by="Lead.created_at.desc()",
+        cascade="all, delete-orphan",
+    )
+    pipeline_stages = relationship(
+        "LeadPipelineStage",
+        back_populates="workspace",
+        order_by="LeadPipelineStage.position",
+        cascade="all, delete-orphan",
+    )
+    lead_assignments = relationship(
+        "LeadAssignment",
+        back_populates="workspace",
+        cascade="all, delete-orphan",
+    )
+    lead_activity_logs = relationship(
+        "LeadActivityLog",
+        back_populates="workspace",
         cascade="all, delete-orphan",
     )
     lead_scores = relationship(
@@ -2799,6 +2822,21 @@ class WorkspaceMembership(BaseModel, TimestampMixin):
         Integer,
         ForeignKey("workspace_invites.id", ondelete="SET NULL"),
         nullable=True,
+    )
+
+    # Monthly spend cap and lead distribution settings (Story 24.3 / INV-24.4)
+    monthly_spend_cap_micros = Column(BigInteger, nullable=True)
+    monthly_spent_micros = Column(
+        BigInteger, nullable=False, default=0, server_default="0"
+    )
+    is_accepting_leads = Column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
+    lead_capacity = Column(
+        Integer, nullable=False, default=50, server_default="50"
+    )
+    status = Column(
+        String(20), nullable=False, default="ACTIVE", server_default="ACTIVE"
     )
 
     user = relationship("User", back_populates="workspace_memberships")

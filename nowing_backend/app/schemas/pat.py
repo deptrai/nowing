@@ -2,6 +2,15 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+# PAT Scopes
+LEADS_CLIPPER_WRITE_SCOPE: str = "leads:clipper:write"
+KNOWN_PAT_SCOPES: list[str] = [
+    LEADS_CLIPPER_WRITE_SCOPE,
+    "agent_chat:thread:create",
+    "agent_chat:message:create",
+    "agent_chat:thread:read",
+]
+
 
 class PATCreate(BaseModel):
     label: str = Field(min_length=1, max_length=120)

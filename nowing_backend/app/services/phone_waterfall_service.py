@@ -36,6 +36,7 @@ from app.db import (
 from app.proprietary.platforms.batdongsan.fetch import fetch_detail_phone
 from app.proprietary.platforms.chotot.fetch import fetch_phone as chotot_fetch_phone
 from app.proprietary.platforms.xactions.phone_extractor import (
+    convert_legacy_11_digit,
     extract_phone_numbers,
 )
 from app.services import wallet_credit
@@ -142,12 +143,14 @@ def normalize_vn_phone(
 
     start_time = time.perf_counter()
 
-    # Fast path if already standard 10-digit
+    # Fast path if already standard 10-digit or legacy 11-digit
     digits_only = re.sub(r"[^\d+]", "", raw_clean)
     if digits_only.startswith("+84"):
         digits_only = "0" + digits_only[3:]
-    elif digits_only.startswith("84") and len(digits_only) == 11:
+    elif digits_only.startswith("84") and len(digits_only) in (11, 12):
         digits_only = "0" + digits_only[2:]
+
+    digits_only = convert_legacy_11_digit(digits_only)
 
     if len(digits_only) == 10 and is_valid_vn_mobile_prefix(digits_only):
         return digits_only
@@ -158,8 +161,9 @@ def normalize_vn_phone(
     # Extraction pipeline via phone_extractor
     extracted = extract_phone_numbers(raw_clean, timeout_sec=timeout_sec)
     for num in extracted:
-        if is_valid_vn_mobile_prefix(num):
-            return num
+        num_converted = convert_legacy_11_digit(num)
+        if is_valid_vn_mobile_prefix(num_converted):
+            return num_converted
 
     return None
 
@@ -424,6 +428,53 @@ class PhoneWaterfallService:
             raw_response={"reason": "no_valid_carrier_phone_found"},
         )
 
+    async def _resolve_tier_3_masothue_and_carrier(
+        self,
+        lead: Lead | None,
+        source_url: str | None,
+        raw_text: str | None,
+    ) -> WaterfallTierResult:
+        """Tier 3: Masothue Corporate Legal Rep Phone fallback + Passive Carrier Prefix & HLR."""
+        if lead and lead.company_name:
+            try:
+                from app.services.corporate_verification_service import CorporateVerificationService
+
+                corp_service = CorporateVerificationService(self.session)
+                corp_res = await corp_service.verify_company(
+                    company_name=lead.company_name,
+                    tax_id=getattr(lead, "tax_id", None),
+                )
+                if (
+                    corp_res
+                    and corp_res.is_verified
+                    and corp_res.profile
+                    and corp_res.profile.rep_phone
+                ):
+                    norm = normalize_vn_phone(corp_res.profile.rep_phone)
+                    if norm and is_valid_vn_mobile_prefix(norm):
+                        carrier = get_carrier_name(norm)
+                        return WaterfallTierResult(
+                            phone=norm,
+                            provider="masothue",
+                            tier=3,
+                            confidence=0.92,
+                            carrier=carrier,
+                            raw_response={
+                                "phone": mask_phone(norm),
+                                "source": "masothue_rep_phone",
+                                "tax_id": corp_res.tax_id,
+                                "legal_representative": corp_res.legal_representative,
+                            },
+                        )
+            except Exception as exc:
+                logger.warning(
+                    "Tier 3 Masothue rep phone lookup error for %s: %s",
+                    lead.company_name,
+                    exc,
+                )
+
+        return await self._resolve_tier_3_carrier_hlr(source_url, raw_text)
+
     # ─────────────────────────────────────────────────────────────
     # Main Waterfall Orchestration
     # ─────────────────────────────────────────────────────────────
@@ -535,7 +586,9 @@ class PhoneWaterfallService:
                 effective_url, effective_text, lead_source=lead.source
             )
         if not res.phone:
-            res = await self._resolve_tier_3_carrier_hlr(effective_url, effective_text)
+            res = await self._resolve_tier_3_masothue_and_carrier(
+                lead=lead, source_url=effective_url, raw_text=effective_text
+            )
 
         # If all 3 tiers fail: charge 0 credit, log failure
         if not res.phone:
@@ -573,8 +626,60 @@ class PhoneWaterfallService:
                 degradation_reason="phone_not_found",
             )
 
-        # 5. Success Path: PII Vault Persistence & Encryption (AD-25, AD-49)
+        # 4.5 In-Stream Fail-Closed DNC Compliance Check (INV-24.3 / INV-21.3)
         norm_phone = res.phone
+        try:
+            from app.lead_intelligence.dnc.service import DncComplianceService
+
+            dnc_service = DncComplianceService()
+            dnc_result = await dnc_service.check_phone(
+                workspace_id=workspace_id,
+                phone=norm_phone,
+                session=self.session,
+                client_id=client_id,
+            )
+            if dnc_result.is_blocked:
+                logger.info(
+                    "Lead phone %s blocked by DNC: %s",
+                    mask_phone(norm_phone),
+                    dnc_result.reason,
+                )
+                return PhoneResolutionResult(
+                    lead_id=lead_id,
+                    phone=None,
+                    phone_masked="",
+                    phone_hash=None,
+                    tier_reached=res.tier,
+                    provider_used=res.provider,
+                    status="blocked_by_dnc",
+                    cost_micros=0,
+                    confidence=0.0,
+                    carrier=res.carrier,
+                    is_cached=False,
+                    degraded=True,
+                    degradation_reason=dnc_result.reason or "blocked_by_dnc",
+                )
+        except Exception as exc:
+            logger.warning(
+                "DNC compliance check failed with exception: %s. Failing closed.", exc
+            )
+            return PhoneResolutionResult(
+                lead_id=lead_id,
+                phone=None,
+                phone_masked="",
+                phone_hash=None,
+                tier_reached=res.tier,
+                provider_used=res.provider,
+                status="blocked_by_dnc",
+                cost_micros=0,
+                confidence=0.0,
+                carrier="Unknown",
+                is_cached=False,
+                degraded=True,
+                degradation_reason="dnc_check_failed",
+            )
+
+        # 5. Success Path: PII Vault Persistence & Encryption (AD-25, AD-49)
         p_masked = mask_phone(norm_phone)
         p_hash = hash_phone(norm_phone)
         encrypted_phone = self.encryption.encrypt(norm_phone)

@@ -39,10 +39,56 @@ _LETTER_SUBSTITUTIONS = [
     (re.compile(r"[lLiI|]", re.IGNORECASE), "1"),
 ]
 
+# 2018 Vietnam Telecom 11-to-10 Digit Conversion Table (INV-24.3 / Story 24.2)
+_LEGACY_PREFIX_MAP = {
+    # Viettel: 0162->032, 0163->033, 0164->034, 0165->035, 0166->036, 0167->037, 0168->038, 0169->039
+    "0162": "032",
+    "0163": "033",
+    "0164": "034",
+    "0165": "035",
+    "0166": "036",
+    "0167": "037",
+    "0168": "038",
+    "0169": "039",
+    # Vinaphone / VNPT: 0123->083, 0124->084, 0125->085, 0127->081, 0129->082
+    "0123": "083",
+    "0124": "084",
+    "0125": "085",
+    "0127": "081",
+    "0129": "082",
+    # MobiFone: 0120->070, 0121->079, 0122->077, 0126->076, 0128->078
+    "0120": "070",
+    "0121": "079",
+    "0122": "077",
+    "0126": "076",
+    "0128": "078",
+    # Vietnamobile: 0186->056, 0188->058
+    "0186": "056",
+    "0188": "058",
+    # Gmobile: 0199->059
+    "0199": "059",
+}
+
+
+def convert_legacy_11_digit(digits: str) -> str:
+    """Convert 2018 telecom legacy 11-digit mobile number to standard 10-digit format."""
+    if not digits:
+        return digits
+    d = digits.strip()
+    if len(d) == 11 and d.startswith("0"):
+        p4 = d[:4]
+        if p4 in _LEGACY_PREFIX_MAP:
+            return _LEGACY_PREFIX_MAP[p4] + d[4:]
+    return d
+
+
 # Valid Vietnamese mobile prefixes (10 digits total: 03x, 05x, 07x, 08x, 09x)
 # (?<!\d) prevents matching middle digits of long bank accounts or order IDs (EC-04)
 _VN_PHONE_REGEX = re.compile(
     r"(?<!\d)(?:\+?84|0)(?:3[2-9]|5[25689]|7[06-9]|8[1-9]|9\d)\d{7}(?!\d)"
+)
+_LEGACY_11_PHONE_REGEX = re.compile(
+    r"(?<!\d)(?:\+?84|0)(?:1(?:2[0-9]|6[2-9]|8[68]|99))\d{7}(?!\d)"
 )
 
 # Email regex — at least one non-dot local part and a TLD of 2+ letters.
@@ -130,11 +176,12 @@ def extract_phone_numbers(text: str, timeout_sec: float = 0.05) -> list[str]:
         digits_only = re.sub(r"[^\d+]", "", candidate)
         if digits_only.startswith("+84"):
             digits_only = "0" + digits_only[3:]
-        elif digits_only.startswith("84") and len(digits_only) == 11:
+        elif digits_only.startswith("84") and len(digits_only) in (11, 12):
             digits_only = "0" + digits_only[2:]
 
-        if _VN_PHONE_REGEX.fullmatch(digits_only):
-            results.add(digits_only)
+        digits_converted = convert_legacy_11_digit(digits_only)
+        if _VN_PHONE_REGEX.fullmatch(digits_converted):
+            results.add(digits_converted)
 
     # Direct search on normalized string as well
     compact_normalized = re.sub(r"(?<=\d)[.\s\-_]+(?=\d)", "", normalized)
@@ -144,10 +191,23 @@ def extract_phone_numbers(text: str, timeout_sec: float = 0.05) -> list[str]:
         phone = match.group(0)
         if phone.startswith("+84"):
             phone = "0" + phone[3:]
-        elif phone.startswith("84") and len(phone) == 11:
+        elif phone.startswith("84") and len(phone) in (11, 12):
             phone = "0" + phone[2:]
-        if len(phone) == 10 and phone.startswith("0"):
-            results.add(phone)
+        phone_converted = convert_legacy_11_digit(phone)
+        if len(phone_converted) == 10 and phone_converted.startswith("0"):
+            results.add(phone_converted)
+
+    for match in _LEGACY_11_PHONE_REGEX.finditer(compact_normalized):
+        if (time.perf_counter() - start_time) > timeout_sec:
+            break
+        phone = match.group(0)
+        if phone.startswith("+84"):
+            phone = "0" + phone[3:]
+        elif phone.startswith("84") and len(phone) in (11, 12, 13):
+            phone = "0" + phone[2:]
+        phone_converted = convert_legacy_11_digit(phone)
+        if len(phone_converted) == 10 and phone_converted.startswith("0"):
+            results.add(phone_converted)
 
     return sorted(results)
 
