@@ -3,6 +3,7 @@
 import { useAtom } from "jotai";
 import {
 	AlertTriangle,
+	Check,
 	ChevronDown,
 	ChevronRight,
 	Globe,
@@ -16,7 +17,7 @@ import {
 	Sparkles,
 } from "lucide-react";
 import type React from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
 	activeDrawerLeadAtom,
 	chatHighlightedRowIdsAtom,
@@ -46,8 +47,26 @@ export interface OrigamiLeadMatrixProps {
 	className?: string;
 }
 
+const SOURCE_OPTIONS: Array<{ id: string; label: string; icon: string }> = [
+	{ id: "all", label: "Tất cả nguồn tìm kiếm", icon: "🔍" },
+	{ id: "batdongsan", label: "Batdongsan.com.vn", icon: "🏠" },
+	{ id: "chotot", label: "Chợ Tốt (BĐS & Mua bán)", icon: "🛒" },
+	{ id: "facebook", label: "Facebook Groups", icon: "👥" },
+	{ id: "telegram", label: "Telegram Channels", icon: "✈️" },
+	{ id: "topcv", label: "TopCV / ITviec", icon: "💼" },
+	{ id: "tender", label: "Cổng Đấu Thầu (Mua Sắm Công)", icon: "🏛️" },
+	{ id: "linkedin", label: "LinkedIn Search", icon: "🌐" },
+];
+
+const STATUS_OPTIONS: Array<{ id: string; label: string; dotColor: string }> = [
+	{ id: "all", label: "Tất cả trạng thái", dotColor: "bg-muted-foreground" },
+	{ id: "new", label: "Mới", dotColor: "bg-emerald-500" },
+	{ id: "contacted", label: "Đã liên hệ", dotColor: "bg-blue-500" },
+	{ id: "qualified", label: "Tiềm năng", dotColor: "bg-purple-500" },
+];
+
 export const OrigamiLeadMatrix: React.FC<OrigamiLeadMatrixProps> = ({
-	leads,
+	leads = [],
 	isLoading = false,
 	workspaceId = "1",
 	sourceFilter,
@@ -67,6 +86,25 @@ export const OrigamiLeadMatrix: React.FC<OrigamiLeadMatrixProps> = ({
 	const [highlightedRowIds] = useAtom(chatHighlightedRowIdsAtom);
 	const [isFullscreen, setIsFullscreen] = useAtom(isMatrixFullscreenAtom);
 	const [_activeTabName, _setActiveTabName] = useState("Tất cả khách hàng tiềm năng");
+
+	const [isSourceOpen, setIsSourceOpen] = useState(false);
+	const [isStatusOpen, setIsStatusOpen] = useState(false);
+	const sourceDropdownRef = useRef<HTMLDivElement>(null);
+	const statusDropdownRef = useRef<HTMLDivElement>(null);
+
+	// Close popovers on click outside
+	useEffect(() => {
+		const handleClickOutside = (event: MouseEvent) => {
+			if (sourceDropdownRef.current && !sourceDropdownRef.current.contains(event.target as Node)) {
+				setIsSourceOpen(false);
+			}
+			if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target as Node)) {
+				setIsStatusOpen(false);
+			}
+		};
+		document.addEventListener("mousedown", handleClickOutside);
+		return () => document.removeEventListener("mousedown", handleClickOutside);
+	}, []);
 
 	const allIds = useMemo(() => leads.map((l) => l.id), [leads]);
 	const isAllSelected = leads.length > 0 && leads.every((l) => selectedLeadIds.includes(l.id));
@@ -120,7 +158,9 @@ export const OrigamiLeadMatrix: React.FC<OrigamiLeadMatrixProps> = ({
 	};
 
 	const handleShareLink = async () => {
-		await navigator.clipboard.writeText(window.location.href);
+		if (typeof window !== "undefined") {
+			await navigator.clipboard.writeText(window.location.href);
+		}
 	};
 
 	const displayTitle = useMemo(() => {
@@ -130,14 +170,23 @@ export const OrigamiLeadMatrix: React.FC<OrigamiLeadMatrixProps> = ({
 				batdongsan: "Leads Bất Động Sản (Batdongsan)",
 				chotot: "Leads Mua Bán / BDS (Chợ Tốt)",
 				topcv: "Tín Hiệu Tuyển Dụng (TopCV)",
-				muasamcong: "Gói Thầu Mua Sắm Công",
+				tender: "Gói Thầu Mua Sắm Công",
 				facebook: "Cộng Đồng Mạng Xã Hội",
 				telegram: "Nhóm Đầu Tư & Tín Hiệu",
+				linkedin: "LinkedIn Search",
 			};
 			return sourceLabels[sourceFilter] || `Leads từ nguồn ${sourceFilter}`;
 		}
 		return "Tất cả khách hàng tiềm năng";
 	}, [searchQuery, sourceFilter]);
+
+	const currentSourceOption = useMemo(() => {
+		return SOURCE_OPTIONS.find((s) => s.id === sourceFilter) || SOURCE_OPTIONS[0];
+	}, [sourceFilter]);
+
+	const currentStatusOption = useMemo(() => {
+		return STATUS_OPTIONS.find((s) => s.id === statusFilter) || STATUS_OPTIONS[0];
+	}, [statusFilter]);
 
 	return (
 		<div
@@ -154,21 +203,58 @@ export const OrigamiLeadMatrix: React.FC<OrigamiLeadMatrixProps> = ({
 					<h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground font-sans">
 						{displayTitle}
 					</h1>
-					<div className="relative">
-						<select
-							value={sourceFilter}
-							onChange={(e) => onSourceFilterChange(e.target.value)}
-							className="appearance-none pl-2.5 pr-7 py-1 rounded-lg border border-border bg-muted/30 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer focus:outline-none"
+
+					{/* Custom Source Combobox (Positioned directly underneath button) */}
+					<div className="relative" ref={sourceDropdownRef}>
+						<button
+							type="button"
+							onClick={() => {
+								setIsSourceOpen((prev) => !prev);
+								setIsStatusOpen(false);
+							}}
+							className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border border-border bg-muted/30 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all cursor-pointer focus:outline-none shadow-2xs"
 						>
-							<option value="all">🔍 Tất cả nguồn tìm kiếm</option>
-							<option value="batdongsan">🏠 Batdongsan.com.vn</option>
-							<option value="facebook">👥 Facebook Groups</option>
-							<option value="telegram">✈️ Telegram Channels</option>
-							<option value="topcv">💼 TopCV / ITviec</option>
-							<option value="tender">🏛️ Cổng Đấu Thầu</option>
-							<option value="linkedin">💼 LinkedIn Search</option>
-						</select>
-						<ChevronDown className="w-3 h-3 text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+							<span>{currentSourceOption.icon}</span>
+							<span>{currentSourceOption.label}</span>
+							<ChevronDown
+								className={cn(
+									"w-3 h-3 text-muted-foreground transition-transform duration-150 ml-0.5",
+									isSourceOpen && "rotate-180"
+								)}
+							/>
+						</button>
+
+						{isSourceOpen && (
+							<div className="absolute left-0 top-full mt-1.5 w-64 rounded-xl border border-border bg-popover p-1 shadow-lg z-50 animate-in fade-in zoom-in-95 duration-100">
+								<div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+									Nguồn dữ liệu
+								</div>
+								{SOURCE_OPTIONS.map((opt) => (
+									<button
+										key={opt.id}
+										type="button"
+										onClick={() => {
+											onSourceFilterChange(opt.id);
+											setIsSourceOpen(false);
+										}}
+										className={cn(
+											"w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium text-left transition-colors cursor-pointer",
+											sourceFilter === opt.id
+												? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold"
+												: "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+										)}
+									>
+										<div className="flex items-center gap-2">
+											<span>{opt.icon}</span>
+											<span>{opt.label}</span>
+										</div>
+										{sourceFilter === opt.id && (
+											<Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+										)}
+									</button>
+								))}
+							</div>
+						)}
 					</div>
 				</div>
 
@@ -218,16 +304,56 @@ export const OrigamiLeadMatrix: React.FC<OrigamiLeadMatrixProps> = ({
 								className="pl-7 pr-2.5 py-0.5 rounded-full border border-border bg-background text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
 							/>
 						</div>
-						<select
-							value={statusFilter}
-							onChange={(e) => onStatusFilterChange(e.target.value)}
-							className="px-2.5 py-0.5 rounded-full border border-border bg-background text-[11px] text-foreground focus:outline-none cursor-pointer"
-						>
-							<option value="all">Tất cả trạng thái</option>
-							<option value="new">Mới</option>
-							<option value="contacted">Đã liên hệ</option>
-							<option value="qualified">Tiềm năng</option>
-						</select>
+
+						{/* Custom Status Combobox */}
+						<div className="relative" ref={statusDropdownRef}>
+							<button
+								type="button"
+								onClick={() => {
+									setIsStatusOpen((prev) => !prev);
+									setIsSourceOpen(false);
+								}}
+								className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-border bg-background hover:bg-muted/60 text-[11px] text-foreground focus:outline-none cursor-pointer shadow-2xs"
+							>
+								<span className={cn("w-1.5 h-1.5 rounded-full", currentStatusOption.dotColor)} />
+								<span>{currentStatusOption.label}</span>
+								<ChevronDown
+									className={cn(
+										"w-2.5 h-2.5 text-muted-foreground transition-transform duration-150 ml-0.5",
+										isStatusOpen && "rotate-180"
+									)}
+								/>
+							</button>
+
+							{isStatusOpen && (
+								<div className="absolute left-0 top-full mt-1.5 w-44 rounded-xl border border-border bg-popover p-1 shadow-lg z-50 animate-in fade-in zoom-in-95 duration-100">
+									{STATUS_OPTIONS.map((opt) => (
+										<button
+											key={opt.id}
+											type="button"
+											onClick={() => {
+												onStatusFilterChange(opt.id);
+												setIsStatusOpen(false);
+											}}
+											className={cn(
+												"w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium text-left transition-colors cursor-pointer",
+												statusFilter === opt.id
+													? "bg-muted text-foreground font-semibold"
+													: "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+											)}
+										>
+											<div className="flex items-center gap-2">
+												<span className={cn("w-2 h-2 rounded-full", opt.dotColor)} />
+												<span>{opt.label}</span>
+											</div>
+											{statusFilter === opt.id && (
+												<Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+											)}
+										</button>
+									))}
+								</div>
+							)}
+						</div>
 					</div>
 				</div>
 
