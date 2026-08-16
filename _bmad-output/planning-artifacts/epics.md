@@ -3076,6 +3076,101 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
+## Epic 24: Enterprise Lead Conversion, Automated Multi-Channel Outreach & Team CRM Ecosystem
+*Governed by Strategic Product Plan: 2026-08-16 by Mary (BA), Winston (Arch), Sally (UX), Amelia (Dev), Murat (QA)*
+
+### Architectural Invariants (INV-24.1 – INV-24.8)
+- **INV-24.1 (Stateful Cadence Scheduler):** Multi-channel outbound drip steps BẮT BUỘC lưu trạng thái execution step trong bảng `campaign_steps` và schedule qua Celery Beat / Redis delayed sets.
+- **INV-24.2 (Opt-Out & Anti-Spam Compliance):** Mọi tin nhắn gửi qua Zalo/Email/Telegram BẮT BUỘC kiểm tra trạng thái Unsubscribe / DNC trước khi dispatch. Khi prospect phản hồi "STOP"/"HUY", chiến dịch tự động hủy ngay lập tức.
+- **INV-24.3 (Waterfall Phone & Tax Code Isolation):** API tra cứu MST và Phone Waterfall BẮT BUỘC có caching Redis (TTL 24h) và Circuit Breaker để tránh quá tải cổng tra cứu.
+- **INV-24.4 (Team Credit Pooling & Quota Locks):** Thành viên trong Workspace dùng chung `Workspace.credit_micros_balance` với Row-level Locking (`SELECT ... FOR UPDATE`), hỗ trợ cấu hình Spend Cap cho từng User.
+- **INV-24.5 (Clipper Extension Cryptographic Token):** Chrome Extension giao tiếp với Nowing qua Personal Access Token (PAT) có scope `leads:write` và workspace-scoped CORS validation.
+- **INV-24.6 (Template Sandbox & AST Security):** Vertical Playbooks BẮT BUỘC khai báo JSON Schema đầu vào (`inputs_schema`) và được validate trước khi khởi chạy.
+- **INV-24.7 (Inbound Auto-Reply Grounding):** AI Auto-Reply Bot chỉ được trả lời dựa trên verified documents trong Knowledge Base của Workspace, tuyệt đối không bịa đặt thông tin giá cả/pháp lý ngoài hợp đồng.
+
+---
+
+### Story 24.1: Multi-Channel Drip Outreach Campaign Engine (Zalo ZNS + Telegram + Email Cadence) `[ready-for-dev]`
+- **User Value:** Sales teams and researchers can define automated multi-step outreach cadences across Zalo ZNS, Telegram Bot, and Email with AI-personalized copy, conditional delays (e.g. "Wait 2 days for reply"), and automated status transitions.
+- **Acceptance Criteria:**
+  - **Given** an active lead list in Nowing Workspace,  
+    **When** a user creates a new Drip Campaign,  
+    **Then** the UI provides a visual cadence editor to configure Step 1 (Instant Zalo ZNS / Telegram message), Step 2 (Conditional Wait 48h if no reply), and Step 3 (Follow-up Email or Sale task creation).
+  - **Given** campaign execution,  
+    **When** dispatching each step,  
+    **Then** LLM dynamically personalizes greeting, company name, and pain-point based on extracted lead attributes.
+  - **Given** a prospect responding to any step,  
+    **When** the inbound webhook event arrives,  
+    **Then** the campaign state for this specific lead automatically transitions to `responded` and halts further automated follow-up steps.
+
+---
+
+### Story 24.2: Waterfall Phone & B2B Tax Code (MST) Corporate Verification Engine `[ready-for-dev]`
+- **User Value:** Automatically enrich scraped leads with verified phone numbers, Zalo registration status, and corporate legal entity details (Tax Code / MST, charter capital, legal representative, operating status) to maximize lead quality.
+- **Acceptance Criteria:**
+  - **Given** raw lead records with business names or addresses,  
+    **When** enrichment is triggered,  
+    **Then** `CorporateVerificationService` queries official business registries / masothue API, attaching MST, founding date, legal rep, and active status.
+  - **Given** phone numbers discovered,  
+    **When** the 3-tier Waterfall executes (Listing Phone ➔ Zalo UID Check ➔ Masothue Rep Phone),  
+    **Then** it verifies carrier format, eliminates invalid/disposable numbers, and cross-checks with National DNC blacklist.
+  - **Given** enriched data,  
+    **When** saved,  
+    **Then** Zero-cache updates the Table Matrix with verified badges (Green Check for MST & Zalo active).
+
+---
+
+### Story 24.3: Multi-Seat Team CRM Pipeline & Shared Workspace Credit Pooling `[ready-for-dev]`
+- **User Value:** Enable agencies and sales teams to collaborate in real-time on a shared Kanban pipeline, assign leads via Round-robin, track conversation history, and share a central workspace credit wallet with granular per-member caps.
+- **Acceptance Criteria:**
+  - **Given** `/dashboard/[workspace_id]/leads/pipeline`,  
+    **When** loaded,  
+    **Then** it renders a reactive Kanban board with stages: `New Lead`, `Contacted`, `Qualified`, `Won`, `Lost`, with drag-and-drop column movement synced via Zero.
+  - **Given** new batch of leads imported from scrapers or chat,  
+    **When** auto-assignment is enabled,  
+    **Then** `LeadAssignmentService` distributes leads evenly across active team members using Round-Robin logic.
+  - **Given** workspace billing,  
+    **When** team members initiate scraping or AI enrichment,  
+    **Then** costs debit from the shared workspace credit balance, enforcing individual monthly limits set by Workspace Admin.
+
+---
+
+### Story 24.4: Nowing Lead Clipper — Chrome Extension for 1-Click Lead Capturing `[ready-for-dev]`
+- **User Value:** Sales reps and sourcers browsing Facebook Groups, LinkedIn, Batdongsan.com.vn, or TopCV can capture leads, posts, and contact information directly into their Nowing Workspace table with 1 click.
+- **Acceptance Criteria:**
+  - **Given** the Nowing Chrome Extension (Manifest V3) installed and authenticated with PAT,  
+    **When** browsing a supported platform (Facebook Group post, Batdongsan listing, TopCV candidate/company),  
+    **Then** the extension injects a non-intrusive floating `⚡ Clip to Nowing` button.
+  - **Given** the user clicks `Clip to Nowing`,  
+    **When** DOM parser extracts contact info, price, location, and post content,  
+    **Then** it sends a secured REST payload to `POST /api/v1/workspaces/{id}/leads/clip`, streaming the new row into the active Nowing table within 500ms.
+
+---
+
+### Story 24.5: Vertical Playbook Marketplace & Community Workflow Templates `[ready-for-dev]`
+- **User Value:** Users can browse, install, and execute pre-built 1-click workflows tailored to specific industries (Real Estate Brokerage, IT Headhunting, B2B SaaS Sales, E-Commerce Price Monitoring).
+- **Acceptance Criteria:**
+  - **Given** `/dashboard/[workspace_id]/playbooks/marketplace`,  
+    **When** viewed,  
+    **Then** it displays categorized cards (Bất Động Sản, Tuyển Dụng Nhân Sự, B2B Sales, E-Commerce) with verified tags, run counts, and average lead yields.
+  - **Given** a user selects a playbook (e.g. *"Săn nhà phố ngộp giá & tự động gửi Zalo môi giới"*),  
+    **When** clicking `Install & Run`,  
+    **Then** it generates a schema-driven input modal, collects parameters (Khu vực, Ngân sách), and initiates the multi-step orchestrator pipeline.
+
+---
+
+### Story 24.6: Two-Way AI Outreach Auto-Reply Agent `[ready-for-dev]`
+- **User Value:** Automated AI Agent that listens to incoming prospect replies on Zalo OA and Telegram, intelligently answers inquiries based on the workspace's uploaded documents/FAQ, and escalates hot leads to human sales reps.
+- **Acceptance Criteria:**
+  - **Given** an incoming message from an outreach prospect via Zalo OA or Telegram Bot,  
+    **When** processed by `InboundMessageRouter`,  
+    **Then** `AutoReplyAgent` queries the workspace Knowledge Base for relevant project facts, generating a context-grounded response.
+  - **Given** prospect intent indicating strong buying signal (e.g. *"Báo giá cho tôi"*, *"Hẹn xem nhà"*),  
+    **When** detected,  
+    **Then** it triggers a high-priority notification to the assigned sales rep on Telegram and marks the lead as `Qualified / High-Intent`.
+
+---
+
 ## Ghi chú
 - **Mồ côi/defer có chủ đích:** OQ-1 (MCP marketplace), OQ-2 (agent-tool default enable/disable) → backlog.
 - **RS-9** ("project memory" của team = `ResearchThread`?) → resolve trong scope 3.9/3.7.
