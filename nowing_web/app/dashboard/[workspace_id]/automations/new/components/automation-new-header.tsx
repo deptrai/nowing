@@ -27,8 +27,10 @@ export function AutomationNewHeader({ workspaceId, modeSwitcher }: AutomationNew
 
 			<div className="flex items-start justify-between gap-4 flex-wrap">
 				<div className="space-y-1">
-					<h1 className="text-xl md:text-2xl font-semibold text-foreground">New automation</h1>
-					<p className="text-sm text-muted-foreground max-w-2xl">
+					<h1 className="font-serif text-2xl sm:text-3xl font-normal text-foreground">
+						New automation
+					</h1>
+					<p className="text-xs sm:text-sm text-muted-foreground max-w-2xl font-sans">
 						Configure the task, schedule, and execution settings for this automation.
 					</p>
 				</div>

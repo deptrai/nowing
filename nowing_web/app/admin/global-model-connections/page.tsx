@@ -462,8 +462,8 @@ export default function GlobalModelConnectionsAdminPage() {
 		<div className="container mx-auto max-w-5xl p-6">
 			<div className="mb-6 flex items-center justify-between">
 				<div>
-					<h1 className="text-2xl font-semibold">Global model connections</h1>
-					<p className="text-sm text-muted-foreground">
+					<h1 className="font-serif text-2xl sm:text-3xl font-normal">Global model connections</h1>
+					<p className="text-xs sm:text-sm text-muted-foreground font-sans">
 						Manage platform-level LLM connections and models.
 					</p>
 				</div>

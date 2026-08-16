@@ -376,8 +376,8 @@ export default function ScraperAccountsAdminPage() {
 		<div className="container mx-auto max-w-5xl p-6">
 			<div className="mb-6 flex items-center justify-between">
 				<div>
-					<h1 className="text-2xl font-semibold">Scraper platform accounts</h1>
-					<p className="text-sm text-muted-foreground">
+					<h1 className="font-serif text-2xl sm:text-3xl font-normal">Scraper platform accounts</h1>
+					<p className="text-xs sm:text-sm text-muted-foreground font-sans">
 						Manage cookies, tokens and API credentials for scraper platforms.
 					</p>
 				</div>

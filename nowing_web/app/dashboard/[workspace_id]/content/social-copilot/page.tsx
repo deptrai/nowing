@@ -201,10 +201,10 @@ export default function SocialCopilotPage() {
 						</span>
 						<span className="text-xs text-muted-foreground">Story 21.12</span>
 					</div>
-					<h1 className="text-2xl font-bold tracking-tight text-foreground">
+					<h1 className="font-serif text-2xl sm:text-3xl font-normal tracking-tight text-foreground">
 						Viral Social Outbound Co-pilot
 					</h1>
-					<p className="text-sm text-muted-foreground">
+					<p className="text-xs sm:text-sm text-muted-foreground font-sans">
 						Phân tích các bài viết viral ngoại lệ, học giọng văn cá nhân độc bản và viết lại thành
 						bản thảo thu hút khách hàng tiềm năng.
 					</p>

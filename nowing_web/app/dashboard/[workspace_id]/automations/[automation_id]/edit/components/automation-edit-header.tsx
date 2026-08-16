@@ -27,7 +27,7 @@ export function AutomationEditHeader({
 				</Link>
 			</Button>
 			<div className="flex flex-wrap items-center justify-between gap-3">
-				<h1 className="text-xl md:text-2xl font-semibold text-foreground wrap-break-word">
+				<h1 className="font-serif text-2xl sm:text-3xl font-normal text-foreground wrap-break-word">
 					Edit automation
 				</h1>
 				{modeSwitcher ? <div className="ml-auto">{modeSwitcher}</div> : null}

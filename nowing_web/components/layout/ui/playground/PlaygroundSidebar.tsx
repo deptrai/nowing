@@ -20,19 +20,19 @@ export function getPlaygroundNavItems(base: string): RoutedSectionItem[] {
 			value: "overview",
 			label: "Overview",
 			href: base,
-			icon: <LayoutGrid className="h-4 w-4" />,
+			icon: <LayoutGrid className="h-3.5 w-3.5" />,
 		},
 		{
 			value: "runs",
 			label: "API Runs",
 			href: `${base}/runs`,
-			icon: <History className="h-4 w-4" />,
+			icon: <History className="h-3.5 w-3.5" />,
 		},
 		{
 			value: "api-keys",
 			label: "API Keys",
 			href: `${base}/api-keys`,
-			icon: <KeyRound className="h-4 w-4" />,
+			icon: <KeyRound className="h-3.5 w-3.5" />,
 		},
 	];
 }
@@ -43,7 +43,7 @@ export function getPlaygroundNavGroups(base: string): RoutedSectionGroup[] {
 		return {
 			value: platform.id,
 			label: platform.label,
-			icon: <Icon className="h-4 w-4 shrink-0" />,
+			icon: <Icon className="h-3.5 w-3.5 shrink-0" />,
 			items: platform.verbs.map((verb) => ({
 				value: `${platform.id}/${verb.verb}`,
 				label: verb.label,
@@ -107,9 +107,9 @@ function PlaygroundNavLink({
 			scroll={false}
 			prefetch
 			className={cn(
-				"inline-flex h-auto items-center justify-start gap-3 rounded-md px-3 py-2.5 text-left text-sm font-medium transition-colors duration-150 focus:outline-none focus-visible:outline-none",
+				"inline-flex h-7.5 items-center justify-start gap-2.5 rounded-md px-2.5 py-1.5 text-left text-[11.5px] font-medium transition-colors duration-150 focus:outline-none focus-visible:outline-none",
 				isActive
-					? "bg-accent text-accent-foreground"
+					? "bg-accent text-accent-foreground font-semibold"
 					: "bg-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground"
 			)}
 		>
@@ -137,16 +137,19 @@ function PlaygroundNavGroup({
 				aria-expanded={isExpanded}
 				onClick={onToggle}
 				className={cn(
-					"inline-flex h-auto items-center justify-start gap-3 rounded-md px-3 py-2.5 text-left text-sm font-medium transition-colors duration-150 focus:outline-none focus-visible:outline-none",
+					"inline-flex h-7.5 items-center justify-start gap-2.5 rounded-md px-2.5 py-1.5 text-left text-[11.5px] font-medium transition-colors duration-150 focus:outline-none focus-visible:outline-none",
 					isExpanded
-						? "text-accent-foreground"
+						? "text-accent-foreground font-semibold"
 						: "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
 				)}
 			>
 				{group.icon}
 				<span className="min-w-0 truncate">{group.label}</span>
 				<ChevronRight
-					className={cn("ml-auto h-4 w-4 shrink-0 transition-transform", isExpanded && "rotate-90")}
+					className={cn(
+						"ml-auto h-3.5 w-3.5 shrink-0 transition-transform",
+						isExpanded && "rotate-90"
+					)}
 				/>
 			</button>
 			<div
@@ -157,7 +160,7 @@ function PlaygroundNavGroup({
 				aria-hidden={!isExpanded}
 			>
 				<div className="min-h-0 overflow-hidden">
-					<div className="flex flex-col gap-0.5 pl-10">
+					<div className="flex flex-col gap-0.5 pl-6">
 						{group.items.map((item) => (
 							<PlaygroundNavLink key={item.value} item={item} activeValue={activeValue} />
 						))}
@@ -188,12 +191,12 @@ export function PlaygroundSidebar({ workspaceId, className }: PlaygroundSidebarP
 	return (
 		<aside
 			className={cn(
-				"flex h-full w-[240px] shrink-0 flex-col overflow-hidden border-r bg-panel text-sidebar-foreground select-none",
+				"flex h-full w-[220px] shrink-0 flex-col overflow-hidden border-r bg-panel text-sidebar-foreground select-none",
 				className
 			)}
 		>
-			<div className="flex h-12 shrink-0 items-center px-3">
-				<h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
+			<div className="flex h-10 shrink-0 items-center px-3 border-b border-border/40">
+				<h1 className="truncate text-xs font-semibold tracking-tight text-foreground">
 					API Playground
 				</h1>
 			</div>
@@ -202,7 +205,7 @@ export function PlaygroundSidebar({ workspaceId, className }: PlaygroundSidebarP
 					{items.map((item) => (
 						<PlaygroundNavLink key={item.value} item={item} activeValue={activeValue} />
 					))}
-					<Separator className="my-3 bg-border" />
+					<Separator className="my-2.5 bg-border" />
 					{groups.map((group) => (
 						<PlaygroundNavGroup
 							key={group.value}

@@ -93,8 +93,8 @@ export default function AntiBotEscalationsAdminPage() {
 	return (
 		<div className="container mx-auto max-w-6xl p-6">
 			<div className="mb-6">
-				<h1 className="text-2xl font-semibold">Anti-bot escalations</h1>
-				<p className="text-sm text-muted-foreground">
+				<h1 className="font-serif text-2xl sm:text-3xl font-normal">Anti-bot escalations</h1>
+				<p className="text-xs sm:text-sm text-muted-foreground font-sans">
 					Review CAPTCHA and anti-bot blocks captured from scraper runs.
 				</p>
 			</div>

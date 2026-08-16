@@ -187,8 +187,10 @@ export default function AgentRegistryAdminPage() {
 		<div className="container mx-auto max-w-5xl p-6">
 			<div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<h1 className="text-2xl font-semibold">Agent registry</h1>
-					<p className="text-sm text-muted-foreground">Manage vertical-client agent configs.</p>
+					<h1 className="font-serif text-2xl sm:text-3xl font-normal">Agent registry</h1>
+					<p className="text-xs sm:text-sm text-muted-foreground font-sans">
+						Manage vertical-client agent configs.
+					</p>
 				</div>
 				<div className="flex items-center gap-2">
 					<Input

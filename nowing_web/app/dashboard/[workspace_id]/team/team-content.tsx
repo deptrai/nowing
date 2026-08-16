@@ -238,7 +238,7 @@ export function TeamContent({ workspaceId }: TeamContentProps) {
 			<div className="space-y-4 md:space-y-6">
 				<div className="flex items-center justify-between gap-4 flex-wrap">
 					<div className="flex items-baseline gap-3">
-						<h1 className="text-xl md:text-2xl font-semibold text-foreground">Members</h1>
+						<h1 className="font-serif text-2xl sm:text-3xl font-normal text-foreground">Members</h1>
 					</div>
 					<div className="flex items-center gap-2">
 						<Button
@@ -322,8 +322,8 @@ export function TeamContent({ workspaceId }: TeamContentProps) {
 		<div className="space-y-4 md:space-y-6">
 			<div className="flex items-center justify-between gap-4 flex-wrap">
 				<div className="flex items-baseline gap-3">
-					<h1 className="text-xl md:text-2xl font-semibold text-foreground">Members</h1>
-					<p className="text-sm text-muted-foreground whitespace-nowrap">
+					<h1 className="font-serif text-2xl sm:text-3xl font-normal text-foreground">Members</h1>
+					<p className="text-xs text-muted-foreground font-mono whitespace-nowrap">
 						{members.length} {members.length === 1 ? "member" : "members"}
 					</p>
 				</div>

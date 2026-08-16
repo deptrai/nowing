@@ -142,11 +142,13 @@ export function AutomationDetailHeader({
 
 				<div className="flex items-start justify-between gap-4 flex-wrap">
 					<div className="space-y-2 min-w-0 flex-1">
-						<h1 className="text-xl md:text-2xl font-semibold text-foreground break-words">
+						<h1 className="font-serif text-2xl sm:text-3xl font-normal text-foreground break-words">
 							{automation.name}
 						</h1>
 						{automation.description && (
-							<p className="text-sm text-muted-foreground max-w-3xl">{automation.description}</p>
+							<p className="text-xs sm:text-sm text-muted-foreground max-w-3xl font-sans">
+								{automation.description}
+							</p>
 						)}
 					</div>
 
