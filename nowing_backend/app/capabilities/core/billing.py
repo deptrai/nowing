@@ -58,6 +58,7 @@ _PLATFORM_RATE_KEYS: dict[BillingUnit, str] = {
     BillingUnit.VN_JOBS_AGGREGATE_QUERY: "VN_JOBS_AGGREGATE_QUERY_MICROS_PER_QUERY",
     BillingUnit.WALMART_PRODUCT: "WALMART_SCRAPE_MICROS_PER_ITEM",
     BillingUnit.WALMART_REVIEW: "WALMART_REVIEW_MICROS_PER_ITEM",
+    BillingUnit.ECOMMERCE_PRODUCT: "ECOMMERCE_PRODUCT_MICROS_PER_ITEM",
     BillingUnit.CAFEF_DATA: "CAFEF_DATA_MICROS_PER_ITEM",
     BillingUnit.VIETSTOCK_DATA: "VIETSTOCK_DATA_MICROS_PER_ITEM",
     BillingUnit.MASOTHUE_COMPANY: "MASOTHUE_SCRAPE_MICROS_PER_ITEM",
@@ -65,8 +66,17 @@ _PLATFORM_RATE_KEYS: dict[BillingUnit, str] = {
 
 
 def _platform_rate(unit: BillingUnit) -> int:
-    """Micro-USD per item for a platform meter, read live from config."""
-    return int(getattr(config, _PLATFORM_RATE_KEYS[unit]))
+    """Micro-USD per item for a platform meter, read live from config.
+
+    Falls back to 0 with a warning when the unit has not yet been added to
+    ``_PLATFORM_RATE_KEYS``. This prevents the chat UI's capability list from
+    crashing when a new billing unit is wired before its pricing is configured.
+    """
+    key = _PLATFORM_RATE_KEYS.get(unit)
+    if key is None:
+        logger.warning("No platform rate key configured for %s; treating as free", unit.value)
+        return 0
+    return int(getattr(config, key, 0))
 
 
 # Display noun for each platform meter, e.g. "$3.50 / 1k places".
@@ -96,6 +106,7 @@ _UNIT_NOUNS: dict[BillingUnit, str] = {
     BillingUnit.VN_JOBS_AGGREGATE_QUERY: "query",
     BillingUnit.WALMART_PRODUCT: "product",
     BillingUnit.WALMART_REVIEW: "review",
+    BillingUnit.ECOMMERCE_PRODUCT: "product",
     BillingUnit.CAFEF_DATA: "query",
     BillingUnit.VIETSTOCK_DATA: "query",
     BillingUnit.MASOTHUE_COMPANY: "company",
@@ -126,7 +137,15 @@ def pricing_meters(unit: BillingUnit | None) -> list[dict]:  # pragma: no mutate
         return meters
     if not config.PLATFORM_SCRAPE_BILLING_ENABLED:
         return []
-    meters = [{"unit": _UNIT_NOUNS[unit], "micros_per_unit": _platform_rate(unit)}]
+
+    noun = _UNIT_NOUNS.get(unit)
+    micros = _platform_rate(unit)
+    if noun is None or micros <= 0:
+        # Unknown or unpriced platform meter: do not display a $0.00 meter.
+        # The capability is effectively free until its pricing is configured.
+        return []
+
+    meters = [{"unit": noun, "micros_per_unit": micros}]
     if unit is BillingUnit.GOOGLE_MAPS_PLACE:
         # Dual-metered: attached reviews bill on their own meter.
         meters.append(

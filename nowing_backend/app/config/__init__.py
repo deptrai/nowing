@@ -1039,6 +1039,9 @@ class Config:
     WALMART_REVIEW_MICROS_PER_ITEM = int(
         os.getenv("WALMART_REVIEW_MICROS_PER_ITEM", "500")
     )
+    ECOMMERCE_PRODUCT_MICROS_PER_ITEM = int(
+        os.getenv("ECOMMERCE_PRODUCT_MICROS_PER_ITEM", "5000")
+    )
     WALMART_PAGE_DELAY_S = float(os.getenv("WALMART_PAGE_DELAY_S", "1.0"))
     WALMART_MAX_ITEMS = int(os.getenv("WALMART_MAX_ITEMS", "50"))
     WALMART_MAX_REVIEWS = int(os.getenv("WALMART_MAX_REVIEWS", "100"))

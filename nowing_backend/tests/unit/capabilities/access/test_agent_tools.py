@@ -101,14 +101,17 @@ async def test_registry_becomes_one_tool_per_verb_plus_readers(isolate):
     tools = isolate.module.build_capability_tools(workspace_id=7, capabilities=caps)
 
     by_name = {t.name: t for t in tools}
-    # One tool per verb, plus the shared run-reader tools.
+    # One tool per verb, plus the shared run-reader tools, plus any static
+    # cross-cutting tools (e.g. Telegram helpers) that are always mounted.
+    from app.capabilities.core.access.agent import ALL_AVAILABLE_TOOLS
+
     assert set(by_name) == {
         "web_scrape",
         "web_discover",
         "read_run",
         "search_run",
         "export_run",
-    }
+    } | {t.name for t in ALL_AVAILABLE_TOOLS}
     assert by_name["web_scrape"].description == "web.scrape does a thing."
     assert by_name["web_scrape"].args_schema is _EchoInput
 
