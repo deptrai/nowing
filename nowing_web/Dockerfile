@@ -17,6 +17,8 @@ COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* .npmrc* ./
 # First copy the config file and content to avoid fumadocs-mdx postinstall error
 COPY source.config.ts ./
 COPY content ./content
+COPY blog ./blog
+COPY changelog ./changelog
 
 # Install dependencies with frozen lockfile
 RUN pnpm i --frozen-lockfile

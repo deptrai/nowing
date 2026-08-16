@@ -1,8 +1,8 @@
 # Bond
 
 ## Basics
-- **Name:** {chưa biết — hỏi ở First Breath}
-- **Call them:** {chưa biết}
+- **Name:** Luis
+- **Call them:** Luis
 - **Language:** Tiếng Việt
 
 ## Hạ tầng họ đang giữ
@@ -37,7 +37,7 @@ backend-api dùng `postgresql+asyncpg://`, frontend + zero-cache dùng `postgres
 ## Quy ước deploy của họ
 - Branch `production` → cả frontend và backend-api, `autoDeploy=true`, `triggerType=push`. Push vào production là deploy thật.
 - zero-cache `autoDeploy=false`, deploy tay (docker image).
-- frontend có `watchPaths=["nowing_web"]`; backend-api `watchPaths=[]` (rebuild mọi push).
+- frontend có `watchPaths=["nowing_web/**"]`; backend-api có `watchPaths=["nowing_backend/**"]`.
 - backend-api `cleanCache=true`, frontend `cleanCache=false`.
 {Cửa sổ tránh deploy: chưa hỏi. Ai được deploy: chưa hỏi.}
 
