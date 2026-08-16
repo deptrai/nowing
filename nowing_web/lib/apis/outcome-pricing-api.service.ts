@@ -1,17 +1,13 @@
 import type {
-	OutcomeEventRead,
-	OutcomeMeetingBookedPayload,
-	OutcomeStatsRead,
 	PricingPlanRead,
 	PricingPlanUpdate,
+	ServiceBreakdownResponse,
 } from "@/contracts/types/outcome-pricing.types";
 import { baseApiService } from "./base-api.service";
 
 class OutcomePricingApiService {
 	getPricingPlan = async (workspaceId: number): Promise<PricingPlanRead> => {
-		return baseApiService.get<PricingPlanRead>(
-			`/api/v1/workspaces/${workspaceId}/pricing-plan`
-		);
+		return baseApiService.get<PricingPlanRead>(`/api/v1/workspaces/${workspaceId}/pricing-plan`);
 	};
 
 	updatePricingPlan = async (
@@ -20,23 +16,22 @@ class OutcomePricingApiService {
 	): Promise<PricingPlanRead> => {
 		return baseApiService.put<PricingPlanRead>(
 			`/api/v1/workspaces/${workspaceId}/pricing-plan`,
-			payload
+			undefined,
+			{ body: payload }
 		);
 	};
 
-	recordMeetingBooked = async (
+	getServiceBreakdown = async (
 		workspaceId: number,
-		payload: OutcomeMeetingBookedPayload
-	): Promise<OutcomeEventRead> => {
-		return baseApiService.post<OutcomeEventRead>(
-			`/api/v1/workspaces/${workspaceId}/outcomes/meeting-booked`,
-			payload
-		);
-	};
-
-	getOutcomeStats = async (workspaceId: number): Promise<OutcomeStatsRead> => {
-		return baseApiService.get<OutcomeStatsRead>(
-			`/api/v1/workspaces/${workspaceId}/outcomes/stats`
+		startDate?: string,
+		endDate?: string
+	): Promise<ServiceBreakdownResponse> => {
+		const qs = new URLSearchParams();
+		if (startDate) qs.set("start_date", startDate);
+		if (endDate) qs.set("end_date", endDate);
+		const query = qs.toString();
+		return baseApiService.get<ServiceBreakdownResponse>(
+			`/api/v1/workspaces/${workspaceId}/usage/service-breakdown${query ? `?${query}` : ""}`
 		);
 	};
 }
