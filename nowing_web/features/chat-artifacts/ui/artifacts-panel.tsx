@@ -70,16 +70,16 @@ export function ArtifactsPanelContent({ onClose }: { onClose?: () => void }) {
 
 	return (
 		<>
-			<div className="flex h-12 shrink-0 items-center justify-between border-b px-3">
-				<h2 className="select-none text-lg font-semibold">Artifacts</h2>
+			<div className="flex h-10 shrink-0 items-center justify-between border-b px-3">
+				<h2 className="select-none font-serif text-base font-normal text-foreground">Artifacts</h2>
 				{onClose && (
 					<Button
 						variant="ghost"
 						size="icon"
 						onClick={onClose}
-						className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-accent-foreground"
+						className="size-6 shrink-0 rounded-full text-muted-foreground hover:text-accent-foreground"
 					>
-						<XIcon className="h-4 w-4" />
+						<XIcon className="size-3.5" />
 						<span className="sr-only">Close artifacts panel</span>
 					</Button>
 				)}
