@@ -6,7 +6,7 @@
 - Tier 3: Passive Carrier Prefix validation (Viettel/VNPT/Mobi) + HLR/Zalo verification
 - PII Protection: AES-256 / Fernet TokenEncryption in `VerifiedContact` vault, masked everywhere else (`0908***456`)
 - Anti-ReDoS: <50ms timeout bounds on all regex/normalization operations
-- 30-day Redis Cache: `enrich:phone:{hash}` to prevent re-charge
+- 24h Redis Cache: `enrich:phone:{hash}` to prevent re-charge
 - Billing Ledger: 1.5 credits (1,500,000 micros) per successful resolution via BillingEvent
 """
 
@@ -434,6 +434,8 @@ class PhoneWaterfallService:
                         "phone": mask_phone(norm),
                         "carrier": carrier,
                         "hlr_status": "active",
+                        # ponytail: Zalo verification is not wired; is_zalo_active stays
+                        # False until a real Zalo/RCS status provider is integrated.
                         "zalo_verified": False,
                     },
                 )
@@ -605,7 +607,7 @@ class PhoneWaterfallService:
         effective_url = source_url or lead.source_url or ""
         effective_text = raw_text or f"{lead.company_name} {lead.location or ''}"
 
-        # 2. Check 30-Day Redis Cache (by lead_id and URL/name hash)
+        # 2. Check 24h Redis Cache (by lead_id and URL/name hash)
         redis = get_redis()
         cache_key_lead = f"{REDIS_PHONE_CACHE_PREFIX}lead:{lead_id}"
         if redis and not force_refresh:
@@ -615,10 +617,16 @@ class PhoneWaterfallService:
                     payload = json.loads(cached_data)
                     cached_phone = payload.get("phone")
                     if cached_phone:
-                        # PII: cached phone is Fernet-encrypted. Decrypt before use.
+                        # PII: cached phone must be Fernet-encrypted. Decrypt before use.
                         try:
                             if self.encryption.is_encrypted(cached_phone):
                                 cached_phone = self.encryption.decrypt(cached_phone)
+                            else:
+                                logger.warning(
+                                    "Rejecting unencrypted cached phone for lead %s; treating as miss",
+                                    lead_id,
+                                )
+                                cached_phone = None
                         except Exception as exc:
                             logger.warning(
                                 "Failed decrypting cached phone; treating as miss: %s",

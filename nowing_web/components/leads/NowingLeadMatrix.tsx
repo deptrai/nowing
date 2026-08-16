@@ -603,13 +603,19 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 																		</span>
 																	</div>
 																)}
-																{lead.company_status && (\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t<div\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tclassName={`text-[10px] font-medium ${getCompanyStatusColorClass(lead.company_status)}`}>\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t● {lead.company_status}\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t</div>
+																{lead.company_status && (
+																	<div
+																		className={`text-[10px] font-medium ${getCompanyStatusColorClass(lead.company_status)}`}
+																	>
+																		● {lead.company_status}
+																	</div>
 																)}
 															</TooltipContent>
 														</Tooltip>
 													</TooltipProvider>
 												)}
-												{lead.is_zalo_active && (
+												{/* ponytail: is_zalo_active is currently always false in the backend; this badge is kept for future Zalo integration and E2E tests. */}
+{lead.is_zalo_active && (
 													<TooltipProvider delayDuration={150}>
 														<Tooltip>
 															<TooltipTrigger asChild>

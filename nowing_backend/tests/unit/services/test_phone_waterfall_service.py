@@ -437,6 +437,11 @@ class TestWaterfallDncCompliance:
             patch("app.services.phone_waterfall_service.wallet_credit.check_balance", new_callable=AsyncMock),
             patch("app.services.phone_waterfall_service.wallet_credit.apply_debit", new_callable=AsyncMock) as mock_debit,
             patch(
+                "app.services.scraper_platform_account_service.ScraperPlatformAccountRotator.get_credentials",
+                new_callable=AsyncMock,
+                return_value=(None, None),
+            ),
+            patch(
                 "app.services.phone_waterfall_service.fetch_detail_phone",
                 new_callable=AsyncMock,
                 return_value=("0908 123 456", "0908 123 456"),
@@ -491,6 +496,11 @@ class TestWaterfallDncCompliance:
             patch("app.services.phone_waterfall_service.wallet_credit.check_balance", new_callable=AsyncMock),
             patch("app.services.phone_waterfall_service.wallet_credit.apply_debit", new_callable=AsyncMock) as mock_debit,
             patch(
+                "app.services.scraper_platform_account_service.ScraperPlatformAccountRotator.get_credentials",
+                new_callable=AsyncMock,
+                return_value=(None, None),
+            ),
+            patch(
                 "app.services.phone_waterfall_service.fetch_detail_phone",
                 new_callable=AsyncMock,
                 return_value=("0912 345 678", "0912 345 678"),
@@ -543,6 +553,11 @@ class TestWaterfallDncCompliance:
             patch("app.services.phone_waterfall_service.wallet_credit.check_balance", new_callable=AsyncMock),
             patch("app.services.phone_waterfall_service.wallet_credit.apply_debit", new_callable=AsyncMock) as mock_debit,
             patch(
+                "app.services.scraper_platform_account_service.ScraperPlatformAccountRotator.get_credentials",
+                new_callable=AsyncMock,
+                return_value=(None, None),
+            ),
+            patch(
                 "app.services.phone_waterfall_service.fetch_detail_phone",
                 new_callable=AsyncMock,
                 return_value=("0987 654 321", "0987 654 321"),
@@ -575,7 +590,15 @@ class TestAutoRefundAndCaching:
     """Validate 24h refund SLA and Redis cache bypass of charges."""
 
     @pytest.mark.asyncio
-    async def test_waterfall_redis_cache_hit_skips_billing(self):
+    async def test_waterfall_redis_cache_hit_skips_billing(self, monkeypatch):
+        from app.config import config
+        from app.services.pii.verified_contact_encryption import (
+            VerifiedContactEncryption,
+        )
+
+        test_key = "test-secret-key-must-be-long-enough-12345678"
+        monkeypatch.setattr(config, "SECRET_KEY", test_key)
+
         session = AsyncMock()
         lead_id = uuid4()
         user_id = uuid4()
@@ -591,10 +614,11 @@ class TestAutoRefundAndCaching:
         )
         session.get.return_value = lead
 
+        encryption = VerifiedContactEncryption()
         fake_redis = AsyncMock()
         cached_envelope = json.dumps(
             {
-                "phone": "0908123456",
+                "phone": encryption.encrypt("0908123456"),
                 "phone_masked": "0908***456",
                 "phone_hash": "dummyhash",
                 "tier_reached": 1,

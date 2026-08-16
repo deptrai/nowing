@@ -10,6 +10,7 @@ Features:
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -357,6 +358,12 @@ class DefaultMasothueClient:
 class CorporateVerificationService:
     """B2B Corporate Tax Code (MST) & Official Registry Verification Engine."""
 
+    # ponytail: per-process failure counter. Multi-worker deployments still need
+    # Redis-backed counting for cross-process consensus; this class-level counter
+    # at least lets repeated failures in the same process trip the breaker.
+    consecutive_failures: int = 0
+    _failure_lock: asyncio.Lock = asyncio.Lock()
+
     def __init__(
         self,
         session: AsyncSession,
@@ -366,7 +373,6 @@ class CorporateVerificationService:
         self.session = session
         self.masothue_client = masothue_client or DefaultMasothueClient()
         self._redis = redis_client
-        self.consecutive_failures = 0
         self.encryption = VerifiedContactEncryption()
 
     def _get_redis(self) -> aioredis.Redis | None:
@@ -440,7 +446,7 @@ class CorporateVerificationService:
     async def _is_circuit_breaker_open(self) -> bool:
         redis = self._get_redis()
         if redis is None:
-            return self.consecutive_failures >= CIRCUIT_BREAKER_THRESHOLD
+            return self.__class__.consecutive_failures >= CIRCUIT_BREAKER_THRESHOLD
         try:
             val, failure_count = await redis.mget(
                 CIRCUIT_BREAKER_KEY, CIRCUIT_BREAKER_FAILURES_KEY
@@ -449,7 +455,7 @@ class CorporateVerificationService:
             try:
                 failures = int(failure_count or 0)
             except (TypeError, ValueError):
-                failures = self.consecutive_failures
+                failures = self.__class__.consecutive_failures
             return val == "open" or failures >= CIRCUIT_BREAKER_THRESHOLD
         except Exception as exc:
             logger.debug("[CorporateVerification] Breaker check failed: %s", exc)
@@ -458,9 +464,10 @@ class CorporateVerificationService:
             return True
 
     async def _record_failure_and_trip_if_needed(self) -> None:
-        self.consecutive_failures += 1
+        async with self.__class__._failure_lock:
+            self.__class__.consecutive_failures += 1
         redis = self._get_redis()
-        failure_count = self.consecutive_failures
+        failure_count = self.__class__.consecutive_failures
         if redis is not None:
             try:
                 count = await redis.incr(CIRCUIT_BREAKER_FAILURES_KEY)
@@ -491,7 +498,8 @@ class CorporateVerificationService:
                 )
 
     async def _record_success(self) -> None:
-        self.consecutive_failures = 0
+        async with self.__class__._failure_lock:
+            self.__class__.consecutive_failures = 0
         redis = self._get_redis()
         if redis is not None:
             try:
@@ -753,18 +761,19 @@ class CorporateVerificationService:
 
         prof = self._dict_to_profile(best_cand)
 
-        # Cache best candidate
+        # Cache best candidate (encrypted at rest in Redis, INV-21.3)
         if redis is not None:
             try:
+                encrypted_payload = self.encryption.encrypt(json.dumps(best_cand))
                 await redis.set(
                     name_cache_key,
-                    json.dumps(best_cand),
+                    encrypted_payload,
                     ex=CORPORATE_CACHE_TTL_SECONDS,
                 )
                 if prof.tax_id:
                     await redis.set(
                         f"{REDIS_CORP_CACHE_PREFIX}tax:{prof.tax_id}",
-                        json.dumps(best_cand),
+                        encrypted_payload,
                         ex=CORPORATE_CACHE_TTL_SECONDS,
                     )
             except Exception as exc:

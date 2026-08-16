@@ -220,6 +220,17 @@ class DncComplianceService:
         except Exception as exc:
             logger.debug("[DncService] Cache invalidation failed: %s", exc)
 
+    async def invalidate_global_cache(self) -> None:
+        """Clear Redis DNC cache keys for the global registry upon add/delete/import."""
+        redis = get_redis()
+        if redis is None:
+            return
+        try:
+            for r_type in ("phone", "email", "domain", "tax_id"):
+                await redis.delete(f"dnc:global:{r_type}")
+        except Exception as exc:
+            logger.debug("[DncService] Global cache invalidation failed: %s", exc)
+
     async def is_blocked(
         self,
         workspace_id: int,
@@ -359,58 +370,63 @@ class DncComplianceService:
 
         try:
             # Pre-fetch all workspace + global blacklist sets once
-            phone_hashes = await self._get_workspace_dnc_phone_hashes(
+            workspace_phone_hashes = await self._get_workspace_dnc_phone_hashes(
                 workspace_id, session
             )
             global_phone_hashes = await self._get_global_dnc_phone_hashes(session)
-            phone_hashes |= global_phone_hashes
 
-            blocked_domains = await self._get_workspace_dnc_domains(
+            workspace_blocked_domains = await self._get_workspace_dnc_domains(
                 workspace_id, session
             )
             global_blocked_domains = await self._get_global_dnc_domains(session)
-            blocked_domains |= global_blocked_domains
 
-            email_hashes = await self._get_workspace_dnc_email_hashes(
+            workspace_email_hashes = await self._get_workspace_dnc_email_hashes(
                 workspace_id, session
             )
             global_email_hashes = await self._get_global_dnc_email_hashes(session)
-            email_hashes |= global_email_hashes
 
-            tax_hashes = await self._get_workspace_dnc_tax_hashes(workspace_id, session)
+            workspace_tax_hashes = await self._get_workspace_dnc_tax_hashes(
+                workspace_id, session
+            )
             global_tax_hashes = await self._get_global_dnc_tax_hashes(session)
-            tax_hashes |= global_tax_hashes
 
             results = []
             for lead in leads:
                 is_blocked = False
                 reason: str | None = None
 
-                # 1. Phone
+                # 1. Phone (workspace first, then global)
                 raw_phone = lead.get("phone") or lead.get("first_phone")
                 if raw_phone:
                     e164 = normalize_phone_e164(raw_phone)
                     if e164:
                         p_hash = hash_phone_hmac(e164, secret_key=self.secret_key)
-                        if p_hash in phone_hashes:
+                        if p_hash in workspace_phone_hashes:
                             is_blocked = True
-                            reason = (
-                                "Phone number is registered on Workspace DNC blacklist"
-                            )
+                            reason = "Phone number is registered on Workspace DNC blacklist"
+                        elif p_hash in global_phone_hashes:
+                            is_blocked = True
+                            reason = "Phone number is registered on Global DNC blacklist"
 
-                # 2. Domain
+                # 2. Domain (workspace first, then global)
                 if not is_blocked:
                     raw_domain = lead.get("domain") or lead.get("company_domain")
                     if raw_domain:
                         norm_dom = normalize_domain(raw_domain)
                         if norm_dom:
-                            for rule_dom in blocked_domains:
+                            for rule_dom in workspace_blocked_domains:
                                 if is_domain_matching(norm_dom, rule_dom):
                                     is_blocked = True
-                                    reason = f"Company domain matches blocked rule '{rule_dom}'"
+                                    reason = f"Company domain matches workspace blocked rule '{rule_dom}'"
                                     break
+                            if not is_blocked:
+                                for rule_dom in global_blocked_domains:
+                                    if is_domain_matching(norm_dom, rule_dom):
+                                        is_blocked = True
+                                        reason = f"Company domain matches global blocked rule '{rule_dom}'"
+                                        break
 
-                # 3. Email
+                # 3. Email (workspace first, then global)
                 if not is_blocked:
                     raw_email = lead.get("email")
                     if raw_email:
@@ -419,11 +435,14 @@ class DncComplianceService:
                             m_hash = hash_phone_hmac(
                                 norm_mail, secret_key=self.secret_key
                             )
-                            if m_hash in email_hashes:
+                            if m_hash in workspace_email_hashes:
                                 is_blocked = True
                                 reason = "Email address is on Workspace DNC blacklist"
+                            elif m_hash in global_email_hashes:
+                                is_blocked = True
+                                reason = "Email address is on Global DNC blacklist"
 
-                # 4. Tax ID
+                # 4. Tax ID (workspace first, then global)
                 if not is_blocked:
                     raw_tax = lead.get("tax_id")
                     if raw_tax:
@@ -432,11 +451,12 @@ class DncComplianceService:
                             t_hash = hash_phone_hmac(
                                 norm_tax, secret_key=self.secret_key
                             )
-                            if t_hash in tax_hashes:
+                            if t_hash in workspace_tax_hashes:
                                 is_blocked = True
-                                reason = (
-                                    "Corporate Tax ID is on Workspace DNC blacklist"
-                                )
+                                reason = "Corporate Tax ID is on Workspace DNC blacklist"
+                            elif t_hash in global_tax_hashes:
+                                is_blocked = True
+                                reason = "Corporate Tax ID is on Global DNC blacklist"
 
                 updated = dict(lead)
                 updated["blocked_by_dnc"] = is_blocked
