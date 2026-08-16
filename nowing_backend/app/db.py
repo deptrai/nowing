@@ -4476,6 +4476,7 @@ class Lead(Base, TimestampMixin):
     enriched = Column(Boolean, nullable=False, default=False, server_default="false")
     consent_status = Column(String(50), nullable=True)
     legal_basis = Column(String(50), nullable=True)
+    value_hmac = Column(String(64), nullable=True, index=True)
 
     workspace = relationship("Workspace", back_populates="leads")
     lead_scores = relationship(

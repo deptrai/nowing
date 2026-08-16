@@ -383,7 +383,9 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 				{/* Performance Summary Banner */}
 				<div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground border-y border-border/60 py-2.5">
 					<div className="flex items-center gap-1.5">
-						<span className="text-emerald-600 dark:text-emerald-400 font-semibold">Past 7 days</span>
+						<span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+							Past 7 days
+						</span>
 						<span className="font-bold text-foreground">15 new leads</span>
 					</div>
 					<div className="flex items-center gap-3">
@@ -460,6 +462,7 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 									✨
 								</div>
 								<h4 className="text-xs font-bold text-foreground leading-snug">
+									Kênh Phản Hồi Trực Tiếp
 								</h4>
 								<p className="text-[11px] text-muted-foreground">
 									grow the reply-able business segment instead
@@ -1172,6 +1175,78 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 		[aui]
 	);
 
+	const threadMessages = useAuiState(({ thread }) => thread.messages);
+
+	const dynamicSuggestedActions = useMemo(() => {
+		if (!threadMessages || threadMessages.length === 0) return [];
+
+		let lastAssistantMsg = null;
+		for (let i = threadMessages.length - 1; i >= 0; i--) {
+			if (threadMessages[i].role === "assistant") {
+				lastAssistantMsg = threadMessages[i];
+				break;
+			}
+		}
+		if (!lastAssistantMsg) return [];
+
+		// 1. Check data-suggested-actions part
+		if (Array.isArray(lastAssistantMsg.content)) {
+			for (const part of lastAssistantMsg.content) {
+				if (part.type === "data-suggested-actions" && "data" in part) {
+					const d = part.data as
+						| { actions?: Array<{ label?: string; text?: string; title?: string }> }
+						| Array<{ label?: string; text?: string; title?: string }>;
+					const arr = Array.isArray(d) ? d : Array.isArray(d?.actions) ? d.actions : [];
+					if (arr.length > 0) {
+						return arr
+							.map((item) =>
+								typeof item === "string" ? item : item.label || item.text || item.title
+							)
+							.filter(Boolean) as string[];
+					}
+				}
+			}
+
+			// 2. Parse suggestions from text
+			for (const part of lastAssistantMsg.content) {
+				if (part.type === "text" && typeof part.text === "string") {
+					const text = part.text;
+					const match = text.match(
+						/(?:\r?\n|^)#{1,4}\s*(?:Gợi ý bước tiếp theo|Bước tiếp theo đề xuất|Gợi ý hành động|Next steps|Suggested next steps|Next Actions)([\s\S]*)/i
+					);
+					if (match?.[1]) {
+						const lines = match[1].split("\n");
+						const extracted: string[] = [];
+						for (const line of lines) {
+							const trimmed = line.trim();
+							if (
+								trimmed.startsWith("- ") ||
+								trimmed.startsWith("* ") ||
+								/^\d+\.\s/.test(trimmed)
+							) {
+								const clean = trimmed
+									.replace(/^[-*]|\d+\.\s*/, "")
+									.replace(/\*\*(.*?)\*\*/g, "$1")
+									.trim();
+								if (clean && clean.length > 5) {
+									extracted.push(clean);
+								}
+							}
+						}
+						if (extracted.length > 0) return extracted.slice(0, 3);
+					}
+				}
+			}
+		}
+
+		// 3. Fallback high-value proactive suggestions for active thread
+		return [
+			"Trích xuất email & người đại diện pháp luật của các công ty này",
+			"Kiểm tra nhu cầu tuyển dụng để đánh giá quy mô phát triển",
+			"Tạo kịch bản Zalo & Outreach tự động cho danh sách leads",
+		];
+	}, [threadMessages]);
+
 	return (
 		<ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col gap-2 rounded-2xl">
 			<ChatSessionStatus
@@ -1181,63 +1256,36 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 				members={members ?? []}
 			/>
 
-			{/* Nowing: Suggested Next Actions Card (shown only during active thread) */}
-			{hasActiveThread && (
-				<div className="rounded-xl border border-border/70 bg-card/90 p-2 shadow-2xs transition-all backdrop-blur-xs">
-					<div className="flex items-center justify-between px-1 pb-1">
-						<div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+			{/* Nowing: Dynamic Suggested Next Actions Card */}
+			{hasActiveThread && dynamicSuggestedActions.length > 0 && (
+				<div className="rounded-xl border border-border/70 bg-card/95 p-2 shadow-2xs transition-all backdrop-blur-xs">
+					<div className="flex items-center justify-between px-1.5 pb-1">
+						<div className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wider text-muted-foreground">
 							<span className="text-amber-500">💡</span>
 							<span>Suggested Next Actions</span>
 						</div>
-						<Sparkles className="w-3 h-3 text-muted-foreground opacity-60" />
+						<Sparkles className="size-3 text-muted-foreground opacity-60" />
 					</div>
-					<div className="space-y-0.5">
-						<button
-							type="button"
-							onClick={() =>
-								handleApplySuggestedAction(
-									"Find decision-makers at these companies and set up a sequence to them"
-								)
-							}
-							className="w-full text-left flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-muted/70 transition-colors text-[10.5px] text-foreground group cursor-pointer border border-transparent hover:border-border/50"
-						>
-							<span className="w-4 h-4 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center text-[9px] font-bold shrink-0">
-								🚀
-							</span>
-							<span className="leading-tight font-medium truncate">
-								Find decision-makers at these companies and set up a sequence
-							</span>
-						</button>
-						<button
-							type="button"
-							onClick={() =>
-								handleApplySuggestedAction(
-									"Chỉ giữ các hồ sơ có nội dung thể hiện ý định mua rõ ràng"
-								)
-							}
-							className="w-full text-left flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-muted/70 transition-colors text-[10.5px] text-foreground group cursor-pointer border border-transparent hover:border-border/50"
-						>
-							<span className="w-4 h-4 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-[9px] font-bold shrink-0 font-mono">
-								2
-							</span>
-							<span className="leading-tight text-muted-foreground group-hover:text-foreground truncate">
-								Chỉ giữ các hồ sơ có nội dung thể hiện ý định mua rõ ràng
-							</span>
-						</button>
-						<button
-							type="button"
-							onClick={() =>
-								handleApplySuggestedAction("So sánh mức độ ý định mua giữa X, Instagram và TikTok")
-							}
-							className="w-full text-left flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-muted/70 transition-colors text-[10.5px] text-foreground group cursor-pointer border border-transparent hover:border-border/50"
-						>
-							<span className="w-4 h-4 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-[9px] font-bold shrink-0 font-mono">
-								3
-							</span>
-							<span className="leading-tight text-muted-foreground group-hover:text-foreground truncate">
-								So sánh mức độ ý định mua giữa X, Instagram và TikTok
-							</span>
-						</button>
+					<div className="space-y-1">
+						{dynamicSuggestedActions.map((actionText, idx) => {
+							const icon = idx === 0 ? "🚀" : idx === 1 ? "💼" : "📱";
+							return (
+								<button
+									key={actionText}
+									type="button"
+									onClick={() => handleApplySuggestedAction(actionText)}
+									className="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-muted/70 transition-colors text-xs text-foreground group cursor-pointer border border-transparent hover:border-border/50"
+									title={`Nhấp để đưa vào prompt: "${actionText}"`}
+								>
+									<span className="size-4.5 rounded-md bg-muted/80 text-foreground flex items-center justify-center text-[10px] font-bold shrink-0">
+										{icon}
+									</span>
+									<span className="leading-tight font-medium text-foreground truncate">
+										{actionText}
+									</span>
+								</button>
+							);
+						})}
 					</div>
 				</div>
 			)}

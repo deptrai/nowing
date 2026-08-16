@@ -384,7 +384,10 @@ const MessageInfoDropdown: FC<{ chatTurnId: string | null | undefined }> = ({ ch
 											<span>{counts.total_tokens.toLocaleString()} tokens</span>
 											{costMicros && costMicros > 0 ? (
 												<>
-													<Dot className="size-3.5 shrink-0 text-muted-foreground/60" aria-hidden="true" />
+													<Dot
+														className="size-3.5 shrink-0 text-muted-foreground/60"
+														aria-hidden="true"
+													/>
 													<span className="font-semibold text-emerald-600 dark:text-emerald-400">
 														{formatTurnCost(costMicros)}
 													</span>
@@ -403,7 +406,10 @@ const MessageInfoDropdown: FC<{ chatTurnId: string | null | undefined }> = ({ ch
 									<span>{usage.total_tokens.toLocaleString()} tokens</span>
 									{usage.cost_micros && usage.cost_micros > 0 ? (
 										<>
-											<Dot className="size-3.5 shrink-0 text-muted-foreground/60" aria-hidden="true" />
+											<Dot
+												className="size-3.5 shrink-0 text-muted-foreground/60"
+												aria-hidden="true"
+											/>
 											<span className="font-semibold text-emerald-600 dark:text-emerald-400">
 												{formatTurnCost(usage.cost_micros)}
 											</span>
@@ -472,7 +478,7 @@ const AssistantMessageInner: FC = () => {
 
 	return (
 		<CitationMetadataProvider>
-			<div className="aui-assistant-message-content wrap-break-word px-2 text-[11.5px] text-foreground leading-relaxed">
+			<div className="aui-assistant-message-content wrap-break-word px-2 text-[13.5px] sm:text-sm text-foreground leading-relaxed">
 				<MessagePrimitive.Parts
 					components={{
 						Text: MarkdownText,

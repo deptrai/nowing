@@ -114,17 +114,17 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 				props.className
 			)}
 		>
-			{/* Nowing Contextual Top Tab Bar (Session-Scoped & Dynamic, Slim 32px) */}
-			<header className="h-8 border-b border-border/80 bg-muted/40 flex items-center justify-between px-2.5 shrink-0 select-none">
-				<div className="flex items-center gap-1 overflow-x-auto no-scrollbar flex-1">
+			{/* Nowing Contextual Top Tab Bar (Session-Scoped & Dynamic) */}
+			<header className="h-9 border-b border-border/80 bg-muted/40 flex items-center justify-between px-3 shrink-0 select-none">
+				<div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar flex-1">
 					{isLeftCollapsed && (
 						<button
 							type="button"
 							onClick={() => setIsLeftCollapsed(false)}
-							className="inline-flex items-center gap-1 px-2 py-0.5 mr-1 rounded-md text-[11px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors border border-emerald-500/30 shrink-0 cursor-pointer shadow-2xs"
+							className="inline-flex items-center gap-1 px-2.5 py-1 mr-1 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors border border-emerald-500/30 shrink-0 cursor-pointer shadow-2xs"
 							title="Mở Chat Co-pilot"
 						>
-							<PanelLeftOpen className="w-3.5 h-3.5" />
+							<PanelLeftOpen className="size-3.5" />
 							<span>Mở Chat</span>
 						</button>
 					)}
@@ -137,18 +137,18 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 								type="button"
 								onClick={() => props.onSourceFilterChange("all")}
 								className={cn(
-									"inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium transition-all cursor-pointer shadow-2xs",
+									"inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer shadow-2xs",
 									props.sourceFilter === "all"
 										? "bg-background text-foreground shadow-xs font-semibold border border-border/80"
 										: "text-muted-foreground hover:text-foreground hover:bg-muted/60"
 								)}
 							>
-								<TableIcon className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-								<span className="truncate max-w-[140px]">{dynamicTitle}</span>
-								<span className="font-mono text-[9px] px-1 py-0.2 rounded bg-muted font-bold">
+								<TableIcon className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+								<span className="truncate max-w-[150px]">{dynamicTitle}</span>
+								<span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-muted font-bold">
 									{props.leads.length}
 								</span>
-								<ChevronDown className="w-2.5 h-2.5 text-muted-foreground opacity-60 ml-0.5" />
+								<ChevronDown className="size-3 text-muted-foreground opacity-60 ml-0.5" />
 							</button>
 
 							{/* Dynamic Category Tabs */}
@@ -158,14 +158,14 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 									type="button"
 									onClick={() => props.onSearchQueryChange(cat)}
 									className={cn(
-										"inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium transition-all cursor-pointer",
+										"inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer",
 										props.searchQuery === cat
 											? "bg-background text-foreground shadow-xs font-semibold border border-border/80"
 											: "text-muted-foreground hover:text-foreground hover:bg-muted/60"
 									)}
 								>
-									<TableIcon className="w-2.5 h-2.5 text-muted-foreground" />
-									<span className="truncate max-w-[90px]">{cat}</span>
+									<TableIcon className="size-3 text-muted-foreground" />
+									<span className="truncate max-w-[100px]">{cat}</span>
 								</button>
 							))}
 						</>

@@ -37,7 +37,7 @@ export const PhoneCopyPill: React.FC<PhoneCopyPillProps> = ({
 		safePhone.replace(/\D/g, "").length >= 8;
 
 	if (!isPhoneValid) {
-		return <span className="text-muted-foreground/40 text-[11px] select-none">—</span>;
+		return <span className="text-muted-foreground/40 text-xs select-none">—</span>;
 	}
 
 	const normalizedPhone = safePhone.replace(/[^\d+]/g, "");
@@ -73,7 +73,7 @@ export const PhoneCopyPill: React.FC<PhoneCopyPillProps> = ({
 			title={copied ? "Đã copy vào bộ nhớ tạm" : `Click để copy: ${safePhone}`}
 			onClick={handleCopy}
 			className={cn(
-				"inline-flex items-center gap-1.5 h-6 px-2 rounded-md text-[11px] font-mono font-medium transition-all duration-150 cursor-pointer select-none focus:outline-none focus:ring-1 focus:ring-emerald-500/50",
+				"inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-mono font-medium transition-all duration-150 cursor-pointer select-none focus:outline-none focus:ring-1 focus:ring-emerald-500/50",
 				copied
 					? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 shadow-xs"
 					: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 hover:border-emerald-500/40",
@@ -83,15 +83,15 @@ export const PhoneCopyPill: React.FC<PhoneCopyPillProps> = ({
 			{showIcon && (
 				<span className="shrink-0">
 					{copied ? (
-						<Check className="size-3 text-emerald-600 dark:text-emerald-400 animate-in zoom-in-50" />
+						<Check className="size-3.5 text-emerald-600 dark:text-emerald-400 animate-in zoom-in-50" />
 					) : (
-						<Phone className="size-3 text-emerald-600 dark:text-emerald-400" />
+						<Phone className="size-3.5 text-emerald-600 dark:text-emerald-400" />
 					)}
 				</span>
 			)}
 			<span className="tabular-nums tracking-tight">{safePhone}</span>
 			{copied && (
-				<span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-sans ml-0.5">
+				<span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-sans ml-0.5 font-bold">
 					✓
 				</span>
 			)}

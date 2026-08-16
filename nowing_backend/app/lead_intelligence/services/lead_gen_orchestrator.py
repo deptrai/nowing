@@ -36,6 +36,17 @@ class SubTaskPlan(BaseModel):
     category: LeadSourceCategory = LeadSourceCategory.GENERAL
 
 
+class DispatchedScrapeJobResponse(BaseModel):
+    """Response of asynchronous non-blocking scraper job dispatch."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    job_id: str
+    workspace_id: int
+    status: str = "dispatched"
+    dispatched_tasks: list[dict[str, Any]] = Field(default_factory=list)
+
+
 class LeadGenOrchestratorResult(BaseModel):
     """Execution outcome of multi-source lead generation orchestrator."""
 
@@ -58,10 +69,66 @@ class LeadGenOrchestrator:
         self,
         registry: LeadSourceAdapterRegistry | None = None,
         deduplication_service: EntityDeduplicationService | None = None,
+        db: Any = None,
+        redis: Any = None,
     ) -> None:
         self.registry = registry or LeadSourceAdapterRegistry.get_default()
         self.deduplication_service = (
             deduplication_service or EntityDeduplicationService()
+        )
+        self.db = db
+        self.redis = redis
+
+    async def dispatch_scrape_job(
+        self,
+        workspace_id: int,
+        query: str,
+        sources: list[str] | None = None,
+        filters: dict[str, Any] | None = None,
+        limit: int = 50,
+    ) -> DispatchedScrapeJobResponse:
+        """
+        Non-blocking dispatch of multi-platform scraper tasks to dedicated Celery pool (AC-1).
+        Returns job_id and task descriptors in < 100ms without blocking on HTTP calls.
+        """
+        from app.tasks.lead_scrapers import run_platform_scrape_task
+
+        job_id = f"lead-job-{uuid4()}"
+        target_sources = (
+            sources
+            if sources is not None
+            else ["batdongsan", "chotot", "topcv", "masothue"]
+        )
+
+        dispatched_tasks: list[dict[str, Any]] = []
+        for platform in target_sources:
+            try:
+                task_res = run_platform_scrape_task.apply_async(
+                    args=[workspace_id, platform, query],
+                    kwargs={"filters": filters, "limit": limit},
+                    queue="nowing.lead_scrapers",
+                )
+                dispatched_tasks.append(
+                    {
+                        "platform": platform,
+                        "task_id": str(getattr(task_res, "id", uuid4())),
+                        "queue": "nowing.lead_scrapers",
+                    }
+                )
+            except Exception as exc:
+                logger.error("Failed to enqueue scrape task for %s: %s", platform, exc)
+                dispatched_tasks.append(
+                    {
+                        "platform": platform,
+                        "error": str(exc),
+                    }
+                )
+
+        return DispatchedScrapeJobResponse(
+            job_id=job_id,
+            workspace_id=workspace_id,
+            status="dispatched",
+            dispatched_tasks=dispatched_tasks,
         )
 
     async def _plan_subtasks_with_llm(self, prompt: str) -> list[dict[str, Any]]:

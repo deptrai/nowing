@@ -103,6 +103,13 @@ function preprocessMarkdown(content: string, urlMapRef: CitationUrlMapRef): stri
 	// Ensure markdown headings (## ...) always start on their own line.
 	content = content.replace(/([^\n])(#{1,6}\s)/g, "$1\n\n$2");
 
+	// Strip duplicate "Gợi ý bước tiếp theo" / "Next steps" text sections from chat message body.
+	// These actions are interactively rendered in the dedicated Suggested Next Actions card.
+	content = content.replace(
+		/(?:\r?\n|^)#{1,4}\s*(?:Gợi ý bước tiếp theo|Bước tiếp theo đề xuất|Gợi ý hành động|Next steps|Suggested next steps|Next Actions)[\s\S]*$/i,
+		""
+	);
+
 	return content;
 }
 
@@ -301,7 +308,7 @@ const defaultComponents = memoizeMarkdownComponents({
 		return (
 			<h1
 				className={cn(
-					"aui-md-h1 mt-2.5 mb-1.5 font-bold text-[13.5px] sm:text-sm tracking-tight first:mt-0 last:mb-0 text-foreground",
+					"aui-md-h1 mt-3 mb-1.5 font-bold text-base sm:text-lg tracking-tight first:mt-0 last:mb-0 text-foreground",
 					className
 				)}
 				{...props}
@@ -315,7 +322,7 @@ const defaultComponents = memoizeMarkdownComponents({
 		return (
 			<h2
 				className={cn(
-					"aui-md-h2 mt-2 mb-1 font-semibold text-[12.5px] sm:text-[13px] tracking-tight first:mt-0 last:mb-0 text-foreground",
+					"aui-md-h2 mt-2.5 mb-1.5 font-semibold text-sm sm:text-base tracking-tight first:mt-0 last:mb-0 text-foreground",
 					className
 				)}
 				{...props}
@@ -329,7 +336,7 @@ const defaultComponents = memoizeMarkdownComponents({
 		return (
 			<h3
 				className={cn(
-					"aui-md-h3 mt-1.5 mb-1 font-semibold text-[12px] tracking-tight first:mt-0 last:mb-0 text-foreground",
+					"aui-md-h3 mt-2 mb-1 font-semibold text-[13.5px] sm:text-sm tracking-tight first:mt-0 last:mb-0 text-foreground",
 					className
 				)}
 				{...props}
@@ -343,7 +350,7 @@ const defaultComponents = memoizeMarkdownComponents({
 		return (
 			<h4
 				className={cn(
-					"aui-md-h4 my-1 font-medium text-[11.5px] tracking-tight first:mt-0 last:mb-0 text-foreground",
+					"aui-md-h4 my-1 font-medium text-[13px] sm:text-sm tracking-tight first:mt-0 last:mb-0 text-foreground",
 					className
 				)}
 				{...props}
@@ -357,7 +364,7 @@ const defaultComponents = memoizeMarkdownComponents({
 		return (
 			<h5
 				className={cn(
-					"aui-md-h5 my-1 font-semibold text-[11.5px] first:mt-0 last:mb-0 text-foreground",
+					"aui-md-h5 my-1 font-semibold text-xs sm:text-[13px] first:mt-0 last:mb-0 text-foreground",
 					className
 				)}
 				{...props}
@@ -371,7 +378,7 @@ const defaultComponents = memoizeMarkdownComponents({
 		return (
 			<h6
 				className={cn(
-					"aui-md-h6 my-1 font-semibold text-[11.5px] first:mt-0 last:mb-0 text-foreground",
+					"aui-md-h6 my-1 font-semibold text-xs first:mt-0 last:mb-0 text-foreground",
 					className
 				)}
 				{...props}
@@ -386,7 +393,7 @@ const defaultComponents = memoizeMarkdownComponents({
 		return (
 			<p
 				className={cn(
-					"aui-md-p my-1 text-[11.5px] leading-relaxed text-foreground/90 first:mt-0 last:mb-0",
+					"aui-md-p my-1.5 text-[13px] sm:text-[13.5px] leading-relaxed text-foreground/90 first:mt-0 last:mb-0",
 					className
 				)}
 				{...props}
@@ -404,7 +411,7 @@ const defaultComponents = memoizeMarkdownComponents({
 		return (
 			<a
 				className={cn(
-					"aui-md-a font-medium text-primary underline underline-offset-4 text-[11.5px]",
+					"aui-md-a font-medium text-primary underline underline-offset-4 text-[13px] sm:text-[13.5px]",
 					className
 				)}
 				{...props}
@@ -417,7 +424,10 @@ const defaultComponents = memoizeMarkdownComponents({
 		const urlMap = useCitationUrlMap();
 		return (
 			<blockquote
-				className={cn("aui-md-blockquote border-l-2 pl-3 italic text-[11.5px] my-1.5", className)}
+				className={cn(
+					"aui-md-blockquote border-l-2 pl-3 italic text-[13px] sm:text-[13.5px] my-2 text-muted-foreground",
+					className
+				)}
 				{...props}
 			>
 				{processChildrenWithCitations(children, urlMap)}
@@ -427,7 +437,7 @@ const defaultComponents = memoizeMarkdownComponents({
 	ul: ({ className, ...props }) => (
 		<ul
 			className={cn(
-				"aui-md-ul my-1.5 ml-4 list-disc space-y-1 text-[11.5px] text-foreground/90",
+				"aui-md-ul my-2 ml-4 list-disc space-y-1 text-[13px] sm:text-[13.5px] text-foreground/90",
 				className
 			)}
 			{...props}
@@ -436,7 +446,7 @@ const defaultComponents = memoizeMarkdownComponents({
 	ol: ({ className, ...props }) => (
 		<ol
 			className={cn(
-				"aui-md-ol my-1.5 ml-4 list-decimal space-y-1.5 text-[11.5px] text-foreground/90",
+				"aui-md-ol my-2 ml-4 list-decimal space-y-1.5 text-[13px] sm:text-[13.5px] text-foreground/90",
 				className
 			)}
 			{...props}
@@ -445,7 +455,10 @@ const defaultComponents = memoizeMarkdownComponents({
 	li: function Li({ className, children, ...props }) {
 		const urlMap = useCitationUrlMap();
 		return (
-			<li className={cn("aui-md-li leading-relaxed text-[11.5px]", className)} {...props}>
+			<li
+				className={cn("aui-md-li leading-relaxed text-[13px] sm:text-[13.5px]", className)}
+				{...props}
+			>
 				{processChildrenWithCitations(children, urlMap)}
 			</li>
 		);

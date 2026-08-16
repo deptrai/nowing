@@ -51,12 +51,12 @@ export const SendExportDropdown: React.FC<SendExportDropdownProps> = ({
 			<button
 				type="button"
 				onClick={() => setIsOpen(!isOpen)}
-				className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-all cursor-pointer shadow-2xs focus:outline-none"
+				className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-all cursor-pointer shadow-2xs focus:outline-none"
 			>
-				<Download className="size-3" />
+				<Download className="size-3.5" />
 				<span>Send & Export</span>
 				<ChevronDown
-					className={`size-3 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+					className={`size-3.5 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
 				/>
 			</button>
 

@@ -209,6 +209,7 @@ celery_app = Celery(
         "app.canonical.tasks.backfill_canonical_embedding",
         "app.canonical.tasks.process_canonical_persist_outbox",
         "app.tasks.celery_tasks.partner_payout_reconciliation_task",
+        "app.tasks.lead_scrapers",
     ],
 )
 
@@ -216,6 +217,7 @@ celery_app = Celery(
 # Default queue  : fast, user-facing tasks (file upload, podcast, reindex, …)
 # Connectors queue: slow, long-running indexing tasks (Notion, Gmail, web crawl, …)
 CONNECTORS_QUEUE = f"{CELERY_TASK_DEFAULT_QUEUE}.connectors"
+LEAD_SCRAPERS_QUEUE = "nowing.lead_scrapers"
 
 # Celery configuration
 celery_app.conf.update(
@@ -262,6 +264,11 @@ celery_app.conf.update(
         "index_obsidian_attachment": {"queue": CONNECTORS_QUEUE},
         "index_rss_feeds": {"queue": CONNECTORS_QUEUE},
         "ingest_social_target": {"queue": CONNECTORS_QUEUE},
+        # Lead scraper tasks → dedicated lead_scrapers queue (INV-23.1)
+        "app.tasks.lead_scrapers.run_platform_scrape_task": {
+            "queue": LEAD_SCRAPERS_QUEUE
+        },
+        "run_platform_scrape_task": {"queue": LEAD_SCRAPERS_QUEUE},
         # Everything else (document processing, podcasts, reindexing,
         # schedule checker, cleanup) stays on the default fast queue.
         "gateway.reconcile_inbox": {"queue": f"{CELERY_TASK_DEFAULT_QUEUE}.gateway"},
