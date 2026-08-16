@@ -497,6 +497,75 @@ class PhoneWaterfallService:
         raw_text: str | None = None,
         force_refresh: bool = False,
     ) -> PhoneResolutionResult:
+        """Run 3-tier waterfall resolution for a lead with a per-lead Redis lock.
+
+        ponytail: distributed lock prevents concurrent requests for the same
+        lead from double-running tiers / double-billing. If Redis is down we
+        degrade gracefully and continue without locking.
+        """
+        redis = get_redis()
+        if redis is None:
+            return await self._resolve_lead_phone_unlocked(
+                workspace_id=workspace_id,
+                client_id=client_id,
+                lead_id=lead_id,
+                user_id=user_id,
+                source_url=source_url,
+                raw_text=raw_text,
+                force_refresh=force_refresh,
+            )
+
+        # ponytail: SET NX is a simple distributed lock; not as robust as
+        # Redlock but atomic and good enough for a single Redis primary.
+        lock_key = f"{REDIS_PHONE_CACHE_PREFIX}lock:{lead_id}"
+        try:
+            acquired = await redis.set(lock_key, "1", nx=True, ex=30)
+        except Exception as exc:
+            logger.warning("[PhoneWaterfall] Failed acquiring resolution lock: %s", exc)
+            acquired = None
+        if not acquired:
+            return PhoneResolutionResult(
+                lead_id=lead_id,
+                phone=None,
+                phone_masked="",
+                phone_hash=None,
+                tier_reached=0,
+                provider_used="none",
+                status="failed",
+                cost_micros=0,
+                confidence=0.0,
+                carrier="Unknown",
+                is_cached=False,
+                degraded=True,
+                degradation_reason="concurrent_resolution",
+            )
+
+        try:
+            return await self._resolve_lead_phone_unlocked(
+                workspace_id=workspace_id,
+                client_id=client_id,
+                lead_id=lead_id,
+                user_id=user_id,
+                source_url=source_url,
+                raw_text=raw_text,
+                force_refresh=force_refresh,
+            )
+        finally:
+            with contextlib.suppress(Exception):
+                await redis.delete(lock_key)
+
+    # ─────────────────────────────────────────────────────────────
+    async def _resolve_lead_phone_unlocked(
+        self,
+        *,
+        workspace_id: int,
+        client_id: str | None,
+        lead_id: UUID,
+        user_id: UUID | None,
+        source_url: str | None = None,
+        raw_text: str | None = None,
+        force_refresh: bool = False,
+    ) -> PhoneResolutionResult:
         """Run 3-tier waterfall resolution for a lead."""
         # 1. Fetch Lead with Tenant Isolation (AD-31)
         lead = await self.session.get(Lead, (lead_id, workspace_id))
