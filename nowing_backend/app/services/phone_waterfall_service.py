@@ -603,6 +603,18 @@ class PhoneWaterfallService:
                     payload = json.loads(cached_data)
                     cached_phone = payload.get("phone")
                     if cached_phone:
+                        # PII: cached phone is Fernet-encrypted. Decrypt before use.
+                        try:
+                            if self.encryption.is_encrypted(cached_phone):
+                                cached_phone = self.encryption.decrypt(cached_phone)
+                        except Exception as exc:
+                            logger.warning(
+                                "Failed decrypting cached phone; treating as miss: %s",
+                                exc,
+                            )
+                            cached_phone = None
+
+                    if cached_phone:
                         logger.info(
                             "Waterfall Cache Hit for lead %s: %s",
                             lead_id,
@@ -923,7 +935,7 @@ class PhoneWaterfallService:
             try:
                 cache_payload = json.dumps(
                     {
-                        "phone": norm_phone,
+                        "phone": self.encryption.encrypt(norm_phone),
                         "phone_masked": p_masked,
                         "phone_hash": p_hash,
                         "tier_reached": res.tier,

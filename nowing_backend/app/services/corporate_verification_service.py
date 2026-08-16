@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import config
 from app.db import Lead
+from app.services.pii.verified_contact_encryption import VerifiedContactEncryption
 
 logger = logging.getLogger(__name__)
 
@@ -366,11 +367,26 @@ class CorporateVerificationService:
         self.masothue_client = masothue_client or DefaultMasothueClient()
         self._redis = redis_client
         self.consecutive_failures = 0
+        self.encryption = VerifiedContactEncryption()
 
     def _get_redis(self) -> aioredis.Redis | None:
         if self._redis is not None:
             return self._redis
         return get_redis()
+
+    def _decrypt_cache_value(self, cached: str | None) -> str | None:
+        """Decrypt cached JSON if it was encrypted at rest.
+
+        ponytail: backcompat with old plaintext JSON in cache.
+        """
+        if not cached:
+            return None
+        try:
+            if self.encryption.is_encrypted(cached):
+                return self.encryption.decrypt(cached)
+        except Exception as exc:
+            logger.debug("[CorporateVerification] Cache decrypt failed: %s", exc)
+        return cached
 
     def _dict_to_profile(self, d: dict[str, Any]) -> CorporateProfile:
         return CorporateProfile(
@@ -504,7 +520,10 @@ class CorporateVerificationService:
                     logger.info(
                         "[CorporateVerification] Cache Hit for MST %s", clean_tax
                     )
-                    return self._dict_to_profile(json.loads(cached))
+                    decrypted = self._decrypt_cache_value(cached)
+                    if decrypted is None:
+                        decrypted = cached
+                    return self._dict_to_profile(json.loads(decrypted))
             except Exception as exc:
                 logger.debug("[CorporateVerification] Redis cache read failed: %s", exc)
 
@@ -525,7 +544,9 @@ class CorporateVerificationService:
         if redis is not None:
             try:
                 await redis.set(
-                    cache_key, json.dumps(raw_data), ex=CORPORATE_CACHE_TTL_SECONDS
+                    cache_key,
+                    self.encryption.encrypt(json.dumps(raw_data)),
+                    ex=CORPORATE_CACHE_TTL_SECONDS,
                 )
             except Exception as exc:
                 logger.debug(
@@ -557,7 +578,7 @@ class CorporateVerificationService:
                         f"{REDIS_CORP_CACHE_PREFIX}tax:{clean_tax}"
                     )
                     if cached:
-                        data = json.loads(cached)
+                        data = json.loads(self._decrypt_cache_value(cached) or cached)
                         prof = self._dict_to_profile(data)
                         return CorporateMatchResult(
                             tax_id=prof.tax_id,
@@ -623,7 +644,7 @@ class CorporateVerificationService:
                 try:
                     cached = await redis.get(name_cache_key)
                     if cached:
-                        data = json.loads(cached)
+                        data = json.loads(self._decrypt_cache_value(cached) or cached)
                         prof = self._dict_to_profile(data)
                         score = compute_multi_attribute_match_score(
                             company_name,
@@ -658,7 +679,7 @@ class CorporateVerificationService:
             try:
                 cached = await redis.get(name_cache_key)
                 if cached:
-                    data = json.loads(cached)
+                    data = json.loads(self._decrypt_cache_value(cached) or cached)
                     prof = self._dict_to_profile(data)
                     score = compute_multi_attribute_match_score(
                         company_name,
