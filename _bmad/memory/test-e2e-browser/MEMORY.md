@@ -38,6 +38,13 @@ _Curated long-term knowledge for Nowing E2E Browser Testing._
     - `Scraper Health`: Connected to `scraperPlatformAccountsApiService.list()` and `capture()`.
   - Floating Bulk Action Bar: `aside[data-testid='floating-bulk-action-bar']` slides in from bottom at `z-[60]` when $\ge 2$ checkboxes selected.
   - Flyout Detail Drawer: `aside[data-testid='lead-detail-flyout-drawer']` (480px) opens on row click with Fit Score bars, 1-click Zalo outreach, Click-to-call link (`tel:`), and invalid phone report trigger.
+- **Telegram MTProto Userbot Client & Monitored Channels (Epic 22):**
+  - Page: `/admin/scraper-accounts` (requires `User.is_superuser=True`).
+  - Tabs: `All Accounts`, `Telegram`, `Channels`.
+  - Telegram Tab: `Telegram MTProto Accounts` table displays accounts with live `Token Quota` (`rpm`), `Proxy` (`socks5h://`), status badges (`Active`, `Rate-Limited`, `Cooldown` with countdown timer).
+  - Add Account Modal: `button:has-text('Add Telegram Account')` or `button:has-text('Connect Telegram')` opens multi-step modal with `Phone Number`, `Telegram API ID`, `API Hash`, `Proxy (Optional)`. Sends auth code via Redis `telegram:auth_flow:{phone}` and validates 2FA cloud passwords into encrypted `StringSession` records.
+  - Channels Tab: `Monitored Telegram Channels` table displays channels (`@bds_hanoi_chinhchu`, etc.), message counts, and realtime ingestion stream toggles (`button[data-testid='channel-stream-toggle']`) that immediately switch state between `OFF` (Idle) and `ON` (⚡ Live).
+
   - Credits Badge: Top-right header dynamically tracks real user credits (`🌸 500 Credits` for `$5.00` balance).
 - **Enterprise Company Graph Drawer (Story 21.3 / 21.4):** Triggered by `button[name='Xem Company Graph']`. Displays company registration data (MST, representative, capital), decision-makers list with masked contacts, and recruitment signals.
 
