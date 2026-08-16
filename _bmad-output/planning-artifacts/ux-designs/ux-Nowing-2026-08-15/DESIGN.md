@@ -80,56 +80,72 @@ typography:
     lineHeight: '1.2'
     letterSpacing: '-0.01em'
 
-  # UI Sans (Headings, Body, Controls, Tables)
+  # UI Sans (Headings, Body, Controls, High-Density Tables)
   heading-1:
-    fontFamily: 'Plus Jakarta Sans, Inter, sans-serif'
-    fontSize: '20px'
-    fontWeight: '700'
-    lineHeight: '1.3'
+    fontFamily: 'Instrument Serif, serif'
+    fontSize: '24px'
+    fontWeight: '400'
+    lineHeight: '1.2'
     letterSpacing: '-0.01em'
   heading-2:
-    fontFamily: 'Plus Jakarta Sans, Inter, sans-serif'
-    fontSize: '16px'
+    fontFamily: 'Inter, Plus Jakarta Sans, sans-serif'
+    fontSize: '14px'
     fontWeight: '600'
     lineHeight: '1.35'
   body:
-    fontFamily: 'Plus Jakarta Sans, Inter, sans-serif'
-    fontSize: '14px'
-    fontWeight: '400'
-    lineHeight: '1.5'
-  body-medium:
-    fontFamily: 'Plus Jakarta Sans, Inter, sans-serif'
-    fontSize: '14px'
-    fontWeight: '500'
-    lineHeight: '1.5'
-  caption:
-    fontFamily: 'Plus Jakarta Sans, Inter, sans-serif'
+    fontFamily: 'Inter, Plus Jakarta Sans, sans-serif'
     fontSize: '12px'
     fontWeight: '400'
+    lineHeight: '1.45'
+  body-compact:
+    fontFamily: 'Inter, Plus Jakarta Sans, sans-serif'
+    fontSize: '11.5px'
+    fontWeight: '500'
     lineHeight: '1.4'
+  table-cell:
+    fontFamily: 'Inter, Plus Jakarta Sans, sans-serif'
+    fontSize: '11.5px'
+    fontWeight: '500'
+    lineHeight: '1.35'
+  caption:
+    fontFamily: 'Inter, Plus Jakarta Sans, sans-serif'
+    fontSize: '11px'
+    fontWeight: '400'
+    lineHeight: '1.3'
+  badge-micro:
+    fontFamily: 'JetBrains Mono, Menlo, monospace'
+    fontSize: '9.5px'
+    fontWeight: '600'
   mono:
     fontFamily: 'JetBrains Mono, Menlo, monospace'
-    fontSize: '12px'
+    fontSize: '11.5px'
     fontWeight: '500'
 
 rounded:
   xs: '3px'
   sm: '6px'
-  md: '10px'
-  lg: '14px'
-  xl: '20px'
+  md: '8px'
+  lg: '12px'
+  xl: '16px'
   full: '9999px'
 
 spacing:
   2xs: '2px'
   xs: '4px'
-  sm: '8px'
-  md: '12px'
-  lg: '16px'
-  xl: '24px'
-  2xl: '32px'
-  3xl: '48px'
-  4xl: '64px'
+  sm: '6px'
+  md: '10px'
+  lg: '14px'
+  xl: '20px'
+  2xl: '28px'
+  3xl: '40px'
+  4xl: '56px'
+
+row-heights:
+  table-row: '36px'
+  nav-item: '30px'
+  tab-bar: '32px'
+  badge-pill: '18px'
+  button-sm: '28px'
 
 components:
   # Mode Switcher Pill (Outbound / Research / Scrapers)
