@@ -49,6 +49,7 @@ from .admin_global_model_connections_routes import (
 from .admin_latency_routes import router as admin_latency_router
 from .admin_scraper_platform_accounts_routes import (
     router as admin_scraper_platform_accounts_router,
+    scraper_accounts_alias_router,
 )
 from .agent_action_log_route import router as agent_action_log_router
 from .agent_chat_routes import router as agent_chat_router
@@ -211,6 +212,9 @@ router.include_router(
 router.include_router(
     admin_scraper_platform_accounts_router
 )  # Admin scraper platform credentials
+router.include_router(
+    scraper_accounts_alias_router
+)  # Admin scraper platform credentials alias (/admin/scraper-accounts)
 router.include_router(
     admin_anti_bot_escalation_router
 )  # Admin anti-bot / CAPTCHA escalations

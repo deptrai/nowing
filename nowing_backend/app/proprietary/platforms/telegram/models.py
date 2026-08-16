@@ -23,6 +23,26 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
 from app.db import Base, TimestampMixin
+from app.proprietary.platforms.telegram.schemas import (
+    ExtractedEntities,
+    TelegramChannelInfo,
+    TelegramMessageParsed,
+    TelegramMessageParsed as TelegramChannelMessage,
+    TelegramScrapeResult,
+)
+
+__all__ = [
+    "Base",
+    "ExtractedEntities",
+    "TelegramChannel",
+    "TelegramChannelInfo",
+    "TelegramChannelMessage",
+    "TelegramMedia",
+    "TelegramMessage",
+    "TelegramMessageParsed",
+    "TelegramScrapeResult",
+    "TimestampMixin",
+]
 
 
 class TelegramChannel(Base, TimestampMixin):
@@ -31,7 +51,9 @@ class TelegramChannel(Base, TimestampMixin):
     __tablename__ = "telegram_channels"
 
     id = Column(BigInteger, primary_key=True, index=True)  # Telegram peer ID
-    username = Column(String(255), index=True, nullable=True)  # Canonical username without @
+    username = Column(
+        String(255), index=True, nullable=True
+    )  # Canonical username without @
     title = Column(Text, nullable=False)
     about = Column(Text, nullable=True)
     is_megagroup = Column(Boolean, default=False, server_default=sa_text("false"))
@@ -91,7 +113,12 @@ class TelegramMessage(Base, TimestampMixin):
 
     __tablename__ = "telegram_messages"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=sa_text("gen_random_uuid()"))
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        server_default=sa_text("gen_random_uuid()"),
+    )
     channel_id = Column(
         BigInteger,
         ForeignKey("telegram_channels.id", ondelete="CASCADE"),
@@ -109,7 +136,9 @@ class TelegramMessage(Base, TimestampMixin):
     replies_count = Column(Integer, default=0, server_default=sa_text("0"))
     grouped_id = Column(BigInteger, nullable=True)
     has_media = Column(Boolean, default=False, server_default=sa_text("false"))
-    intent_tag = Column(String(50), nullable=True, index=True)  # 'sell', 'buy', 'seeking', 'news'
+    intent_tag = Column(
+        String(50), nullable=True, index=True
+    )  # 'sell', 'buy', 'seeking', 'news'
     embedding = Column(Vector(1536), nullable=True)
 
     updated_at = Column(
@@ -170,9 +199,13 @@ class TelegramMessage(Base, TimestampMixin):
         self.author_username = value
 
     __table_args__ = (
-        UniqueConstraint("channel_id", "message_id", name="uq_telegram_channel_message"),
+        UniqueConstraint(
+            "channel_id", "message_id", name="uq_telegram_channel_message"
+        ),
         Index("idx_telegram_messages_channel_date", "channel_id", "date"),
-        Index("idx_telegram_messages_entities_gin", "raw_entities", postgresql_using="gin"),
+        Index(
+            "idx_telegram_messages_entities_gin", "raw_entities", postgresql_using="gin"
+        ),
         Index("idx_telegram_msg_intent", "intent_tag"),
         {"extend_existing": True},
     )
@@ -183,20 +216,29 @@ class TelegramMedia(Base, TimestampMixin):
 
     __tablename__ = "telegram_media"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=sa_text("gen_random_uuid()"))
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        server_default=sa_text("gen_random_uuid()"),
+    )
     message_id = Column(
         UUID(as_uuid=True),
         ForeignKey("telegram_messages.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
-    media_type = Column(String(50), nullable=False)  # 'photo', 'video', 'document', 'audio'
+    media_type = Column(
+        String(50), nullable=False
+    )  # 'photo', 'video', 'document', 'audio'
     file_id = Column(Text, nullable=False)
     file_name = Column(Text, nullable=True)
     mime_type = Column(String(100), nullable=True)
     size_bytes = Column(BigInteger, default=0, server_default=sa_text("0"))
     storage_url = Column(Text, nullable=True)
-    upload_status = Column(String(50), default="pending", server_default=sa_text("'pending'"))
+    upload_status = Column(
+        String(50), default="pending", server_default=sa_text("'pending'")
+    )
 
     message = relationship("TelegramMessage", back_populates="media")
 

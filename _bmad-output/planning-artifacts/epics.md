@@ -57,7 +57,7 @@ Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Archite
 `[DONE]` **FR-82 Viral Social Outbound Co-pilot** → **E21.12** (AI Voice Learner + Viral post analyzer via XActions FB/Twitter).
 `[READY]` **FR-84 Smart Whitelist & Do-Not-Call (DNC) Compliance Engine** → **E21.14 P0** (Decree 91/2020/NĐ-CP, CSV import, opt-out protection).
 `[READY]` **FR-85 Unified Multi-Source AI Lead Generation Orchestrator** → **E21.15 P0** (1-chat parallel retrieval across all 15+ scrapers into live table).
-`[READY]` **FR-86 Origami Split-View Canvas & Workspace Modernization** → **E21.16 P0** (50% Chat + 50% Table Matrix, Sọc Caro, Mint Green).
+`[DONE]` **FR-86 Nowing Split-View Canvas & Workspace Modernization** → **E21.16 P0** (Unified New Chat, 340px Chat + Dynamic Multi-Mode Matrix, Real Credits & APIs, Sọc Caro, Emerald Green).
 `[DONE]` **FR-87 Complete Origami Landing Page & Public Site Transformation** → **E21.17 P0** (10 sections, Origami Mint Logo, 12 verticals).
 `[READY]` **FR-88 Partners Affiliate Portal & $0 Pricing Page Deployment** → **E21.18 P1** ($0 Free tier, 15% recurring affiliate ledger).
 
@@ -2819,16 +2819,17 @@ _FR-85 · AD-31 · AD-37 · AD-44_
 
 ---
 
-### Story 21.16: Origami Split-View Canvas & Workspace Modernization `[DONE]`
+### Story 21.16: Nowing Split-View Canvas & Workspace Modernization `[DONE]`
 
 As a workspace user,
-I want a 2-panel split canvas (420px Chat Co-pilot on the left + Resizable Data Matrix on the right) with Mint Green theme and Sọc Caro grid background,
-So that I can interactively chat with AI while inspecting, filtering, and managing hundreds of leads simultaneously.
+I want a 2-panel split canvas (340px Chat Co-pilot on the left + Resizable Dynamic Canvas on the right) with Mint Green theme, Sọc Caro grid background, bi-directional context sync, and 100% production-ready real APIs,
+So that I can interactively chat with AI while inspecting, filtering, and managing real-time leads, research reports, and automations simultaneously without placeholder mocks.
 
 **Acceptance Criteria:**
-- **Given** `/dashboard/[workspace_id]/leads`, **When** loaded, **Then** it renders a Split-View (Chat Left + Table Right) with a draggable divider (`cursor: col-resize`) and full-screen toggle.
-- **Given** the visual system, **When** rendered, **Then** it applies CSS Design Tokens from `DESIGN.md`: Mint Green `#10B981`, Sọc Caro Grid Paper background, font `Instrument Serif` header, and `JetBrains Mono` numbers.
-- **Given** user navigation, **When** clicking the 3-Mode Switcher, **Then** the canvas switches smoothly between `🎯 Leads`, `🧠 Research`, and `⚡ Scrapers` without losing chat history.
+- **Given** `/dashboard/[workspace_id]/new-chat/[[...chat_id]]`, **When** loaded, **Then** it renders a Split-View (Chat Left + Dynamic Canvas Right) with a draggable divider (`cursor: col-resize`), double-click reset to 340px, and full-screen toggle.
+- **Given** the visual system, **When** rendered, **Then** it applies CSS Design Tokens: Emerald `#10B981`, Sọc Caro Grid Paper background, font `Plus Jakarta Sans` and `JetBrains Mono` numbers with proportional sizing (13.5px body, 11px uppercase headers, h-10 row height).
+- **Given** user navigation, **When** clicking the 4-Mode Switcher, **Then** the canvas switches smoothly between `Leads Matrix`, `Research Studio`, `Automation Flow`, and `Scraper Health` without losing chat history.
+- **Given** real features integration, **When** interacted with, **Then** Credits balance dynamically tracks `currentUserAtom`, Empty State renders 1-click Quickstart Action cards, Research Studio exports real `.md` downloads and printable PDF, and Scraper / Automation tabs connect to live backend APIs.
 
 _FR-86 · AD-31 · UX-Contract-Lead-Panel_
 

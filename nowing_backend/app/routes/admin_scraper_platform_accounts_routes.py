@@ -8,6 +8,7 @@ import subprocess
 import sys
 import uuid
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -19,6 +20,10 @@ from app.schemas.scraper_platform_account import (
     ScraperPlatformAccountCreate,
     ScraperPlatformAccountRead,
     ScraperPlatformAccountUpdate,
+    TelegramAuthResponse,
+    TelegramRequestOtpRequest,
+    TelegramVerify2FaRequest,
+    TelegramVerifyOtpRequest,
 )
 from app.services.scraper_platform_account_service import (
     ScraperPlatformAccountService,
@@ -28,7 +33,6 @@ from app.users import require_superuser
 
 router = APIRouter(prefix="/admin/scraper-platform-accounts")
 logger = logging.getLogger(__name__)
-
 
 
 def _to_read(
@@ -63,7 +67,9 @@ async def list_scraper_platform_accounts(
     return [_to_read(a) for a in accounts]
 
 
-@router.post("", response_model=ScraperPlatformAccountRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "", response_model=ScraperPlatformAccountRead, status_code=status.HTTP_201_CREATED
+)
 async def create_scraper_platform_account(
     data: ScraperPlatformAccountCreate,
     session: AsyncSession = Depends(get_async_session),
@@ -75,7 +81,9 @@ async def create_scraper_platform_account(
         label=data.label,
         is_enabled=data.is_enabled,
         is_default=data.is_default,
-        credentials=data.credentials.model_dump(exclude_unset=True) if data.credentials else None,
+        credentials=data.credentials.model_dump(exclude_unset=True)
+        if data.credentials
+        else None,
     )
     return _to_read(account, include_credentials=True)
 
@@ -203,3 +211,345 @@ async def capture_scraper_platform_session(
         platform=platform,
         capture_id=capture_id,
     )
+
+
+# ---------------------------------------------------------------------------
+# Telegram MTProto Userbot Onboarding Flow (Story 22.2 / AC-1)
+# ---------------------------------------------------------------------------
+
+
+async def telethon_request_login_code(
+    phone: str,
+    api_id: int,
+    api_hash: str,
+    proxy_url: str | None = None,
+    label: str | None = None,
+    redis_client: Any = None,
+) -> dict[str, Any]:
+    """Send Telegram login OTP code and cache session string in Redis (TTL=300s)."""
+    import json
+
+    from telethon import TelegramClient
+    from telethon.sessions import StringSession
+
+    from app.proprietary.platforms.telegram.client import parse_proxy_url
+    from app.redis_client import get_redis_client
+
+    proxy_config = parse_proxy_url(proxy_url) if proxy_url else None
+    client = TelegramClient(
+        StringSession(),
+        int(api_id),
+        str(api_hash),
+        proxy=proxy_config,
+    )
+    await client.connect()
+    try:
+        sent_code = await client.send_code_request(phone)
+        phone_code_hash = getattr(sent_code, "phone_code_hash", "")
+        temp_session_string = client.session.save()
+    finally:
+        await client.disconnect()
+
+    redis = redis_client or await get_redis_client()
+    redis_key = f"telegram:auth_flow:{phone}"
+    flow_data = {
+        "phone": phone,
+        "phone_code_hash": phone_code_hash,
+        "session_string": temp_session_string,
+        "api_id": int(api_id),
+        "api_hash": str(api_hash),
+        "proxy_url": proxy_url,
+        "label": label,
+    }
+    await redis.set(redis_key, json.dumps(flow_data), ex=300)
+
+    return {
+        "status": "otp_sent",
+        "phone": phone,
+        "phone_code_hash": phone_code_hash,
+    }
+
+
+async def telethon_verify_login_code(
+    phone: str,
+    code: str,
+    session: AsyncSession | None = None,
+    redis_client: Any = None,
+) -> dict[str, Any]:
+    """Verify Telegram OTP code and export encrypted StringSession or request 2FA."""
+    import json
+
+    from telethon import TelegramClient
+    from telethon.errors import SessionPasswordNeededError
+    from telethon.sessions import StringSession
+
+    from app.proprietary.platforms.telegram.client import parse_proxy_url
+    from app.redis_client import get_redis_client
+
+    redis = redis_client or await get_redis_client()
+    redis_key = f"telegram:auth_flow:{phone}"
+    raw_data = await redis.get(redis_key)
+    if not raw_data:
+        raise ValueError("Auth flow expired or not found in Redis cache")
+
+    data = json.loads(raw_data) if isinstance(raw_data, str) else raw_data
+    proxy_config = (
+        parse_proxy_url(data.get("proxy_url")) if data.get("proxy_url") else None
+    )
+    client = TelegramClient(
+        StringSession(data.get("session_string", "")),
+        int(data["api_id"]),
+        str(data["api_hash"]),
+        proxy=proxy_config,
+    )
+    await client.connect()
+    try:
+        try:
+            user = await client.sign_in(
+                phone=phone,
+                code=code,
+                phone_code_hash=data.get("phone_code_hash"),
+            )
+            final_session_string = client.session.save()
+        except SessionPasswordNeededError as exc:
+            updated_session_string = client.session.save()
+            data["session_string"] = updated_session_string
+            await redis.set(redis_key, json.dumps(data), ex=300)
+            hint = getattr(exc, "hint", None) or "2FA Password Required"
+            return {
+                "status": "2fa_required",
+                "phone": phone,
+                "hint": hint,
+            }
+    finally:
+        await client.disconnect()
+
+    account_id = None
+    if session is not None:
+        svc = ScraperPlatformAccountService(session)
+        credentials = {
+            "api_id": data["api_id"],
+            "api_hash": data["api_hash"],
+            "session_string": final_session_string,
+            "phone": phone,
+        }
+        if data.get("proxy_url"):
+            credentials["proxy_url"] = data["proxy_url"]
+
+        account = await svc.create(
+            platform="telegram",
+            label=data.get("label") or f"Telegram ({phone})",
+            is_enabled=True,
+            is_default=False,
+            credentials=credentials,
+        )
+        account_id = account.id
+
+    await redis.delete(redis_key)
+
+    return {
+        "status": "authenticated",
+        "phone": phone,
+        "account_id": account_id,
+        "session_string": final_session_string,
+        "username": getattr(user, "username", None) if user else None,
+        "user_id": getattr(user, "id", None) if user else None,
+    }
+
+
+async def telethon_verify_2fa_password(
+    phone: str,
+    password: str,
+    session: AsyncSession | None = None,
+    redis_client: Any = None,
+) -> dict[str, Any]:
+    """Verify Telegram 2FA Cloud Password, export StringSession, and persist in DB."""
+    import json
+
+    from telethon import TelegramClient
+    from telethon.sessions import StringSession
+
+    from app.proprietary.platforms.telegram.client import parse_proxy_url
+    from app.redis_client import get_redis_client
+
+    redis = redis_client or await get_redis_client()
+    redis_key = f"telegram:auth_flow:{phone}"
+    raw_data = await redis.get(redis_key)
+    if not raw_data:
+        raise ValueError("Auth flow expired or not found in Redis cache")
+
+    data = json.loads(raw_data) if isinstance(raw_data, str) else raw_data
+    proxy_config = (
+        parse_proxy_url(data.get("proxy_url")) if data.get("proxy_url") else None
+    )
+    client = TelegramClient(
+        StringSession(data.get("session_string", "")),
+        int(data["api_id"]),
+        str(data["api_hash"]),
+        proxy=proxy_config,
+    )
+    await client.connect()
+    try:
+        user = await client.sign_in(password=password)
+        final_session_string = client.session.save()
+    finally:
+        await client.disconnect()
+
+    account_id = None
+    if session is not None:
+        svc = ScraperPlatformAccountService(session)
+        credentials = {
+            "api_id": data["api_id"],
+            "api_hash": data["api_hash"],
+            "session_string": final_session_string,
+            "phone": phone,
+        }
+        if data.get("proxy_url"):
+            credentials["proxy_url"] = data["proxy_url"]
+
+        account = await svc.create(
+            platform="telegram",
+            label=data.get("label") or f"Telegram ({phone})",
+            is_enabled=True,
+            is_default=False,
+            credentials=credentials,
+        )
+        account_id = account.id
+
+    await redis.delete(redis_key)
+
+    return {
+        "status": "authenticated",
+        "phone": phone,
+        "account_id": account_id,
+        "session_string": final_session_string,
+        "username": getattr(user, "username", None) if user else None,
+        "user_id": getattr(user, "id", None) if user else None,
+    }
+
+
+@router.post("/telegram/request-otp", response_model=TelegramAuthResponse)
+async def request_telegram_otp(
+    data: TelegramRequestOtpRequest,
+    _auth: AuthContext = Depends(require_superuser),
+) -> TelegramAuthResponse:
+    """Request a login code for Telegram userbot account."""
+    try:
+        await telethon_request_login_code(
+            phone=data.phone,
+            api_id=data.api_id,
+            api_hash=data.api_hash,
+            proxy_url=data.proxy_url,
+            label=data.label,
+        )
+        return TelegramAuthResponse(
+            status="otp_sent",
+            phone=data.phone,
+            message="OTP code sent via Telegram/SMS",
+        )
+    except Exception as exc:
+        logger.exception("Failed to request Telegram OTP for %s: %s", data.phone, exc)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to request Telegram OTP: {exc}",
+        ) from exc
+
+
+@router.post("/telegram/verify-otp", response_model=TelegramAuthResponse)
+async def verify_telegram_otp(
+    data: TelegramVerifyOtpRequest,
+    session: AsyncSession = Depends(get_async_session),
+    _auth: AuthContext = Depends(require_superuser),
+) -> TelegramAuthResponse:
+    """Verify Telegram OTP code and complete onboarding or signal 2FA required."""
+    try:
+        result = await telethon_verify_login_code(
+            phone=data.phone,
+            code=data.code,
+            session=session,
+        )
+        return TelegramAuthResponse(
+            status=result["status"],
+            phone=data.phone,
+            account_id=result.get("account_id"),
+            hint=result.get("hint"),
+            session_string=result.get("session_string"),
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    except Exception as exc:
+        logger.exception("Failed to verify Telegram OTP for %s: %s", data.phone, exc)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to verify Telegram OTP: {exc}",
+        ) from exc
+
+
+@router.post("/telegram/verify-2fa", response_model=TelegramAuthResponse)
+async def verify_telegram_2fa(
+    data: TelegramVerify2FaRequest,
+    session: AsyncSession = Depends(get_async_session),
+    _auth: AuthContext = Depends(require_superuser),
+) -> TelegramAuthResponse:
+    """Verify Telegram 2FA Cloud Password and complete onboarding."""
+    try:
+        result = await telethon_verify_2fa_password(
+            phone=data.phone,
+            password=data.password,
+            session=session,
+        )
+        return TelegramAuthResponse(
+            status=result["status"],
+            phone=data.phone,
+            account_id=result.get("account_id"),
+            session_string=result.get("session_string"),
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    except Exception as exc:
+        logger.exception("Failed to verify Telegram 2FA for %s: %s", data.phone, exc)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to verify Telegram 2FA: {exc}",
+        ) from exc
+
+
+scraper_accounts_alias_router = APIRouter(prefix="/admin/scraper-accounts")
+
+
+@scraper_accounts_alias_router.post(
+    "/telegram/request-otp", response_model=TelegramAuthResponse
+)
+async def request_telegram_otp_alias(
+    data: TelegramRequestOtpRequest,
+    _auth: AuthContext = Depends(require_superuser),
+) -> TelegramAuthResponse:
+    return await request_telegram_otp(data, _auth)
+
+
+@scraper_accounts_alias_router.post(
+    "/telegram/verify-otp", response_model=TelegramAuthResponse
+)
+async def verify_telegram_otp_alias(
+    data: TelegramVerifyOtpRequest,
+    session: AsyncSession = Depends(get_async_session),
+    _auth: AuthContext = Depends(require_superuser),
+) -> TelegramAuthResponse:
+    return await verify_telegram_otp(data, session, _auth)
+
+
+@scraper_accounts_alias_router.post(
+    "/telegram/verify-2fa", response_model=TelegramAuthResponse
+)
+async def verify_telegram_2fa_alias(
+    data: TelegramVerify2FaRequest,
+    session: AsyncSession = Depends(get_async_session),
+    _auth: AuthContext = Depends(require_superuser),
+) -> TelegramAuthResponse:
+    return await verify_telegram_2fa(data, session, _auth)
