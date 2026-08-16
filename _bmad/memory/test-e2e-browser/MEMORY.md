@@ -68,6 +68,9 @@ _Curated long-term knowledge for Nowing E2E Browser Testing._
 - Chat turns with SSE streaming, tool invocation widgets, and contextual suggested action pills (`data-suggested-actions`).
 - Connector authentication and indexing pipelines.
 - Workspace creation and Zero-cache state synchronization.
-- Recruitment & B2B Lead Intelligence (Story 12.10 & 21.9): Public guest scraping and PostgreSQL idempotent ingestion (`LinkedinJob`, `LinkedinCompany`).
-- Public Procurement & Tender Intelligence (Story 16.5): National tender search (`procurement.search`), E-HSMT dossier S3 streaming and qualification summary (`procurement.summarize`).
+- **Lead Clipper Extension & Multi-Tab Isolation (Story 24.4):**
+  - Content scripts communicate strictly via `chrome.runtime.sendMessage` to background service worker (`INV-24.5`).
+  - Backend deduplication route: `POST /api/v1/workspaces/{id}/leads/clip` returns `is_duplicate: true` on collision.
+  - Multi-tab Playwright test: `tests/leads/lead-clipper-multitab.spec.ts` verifies token isolation in `chrome.storage`, DOM extractors, offline queue resilience, and Zero-sync ingestion.
+
 

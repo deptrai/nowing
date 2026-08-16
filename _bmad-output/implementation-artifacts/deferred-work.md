@@ -348,6 +348,12 @@
   summary: Revalidation failure test doesn't assert mock executor was called — test passes even if code path doesn't reach executor
   evidence: Edge Case EC-15. AsyncMock with side_effect but no call_count assertion.
 
+## Deferred from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-08-16)
+
+- **Finding:** `pnpm tsc --noEmit` fails on `admin-users-api.service.ts:14` in `nowing_web/`.
+  - **Action:** Marked `[x] [Review][Defer]` in `24-3-multi-seat-team-crm-pipeline-and-shared-credits.md`.
+  - **Reason / when to revisit:** Pre-existing TypeScript error unrelated to the 24.3 diff. Revisit when Story 25.1 (Multi-Tenant User & Workspace Hub) or the admin-users refactor is next reviewed.
+
 ## Deferred from: code review of 18-6-memory-tagging-rag-filter (2026-08-11)
 
 - ~~**Finding:** `MemoryRelation` has no `client_id` and `MemoryRepository.add_relation` does not set tenant GUCs, so a workspace member could create a relation that spans clients.~~
@@ -834,3 +840,9 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - **Finding:** `ZaloMessageLog` stores raw `template_data` on outbound ZNS, which may contain PII. (app/routes/outbound_routes.py:341)
   - **Action:** Marked `[x] [Review][Patch]` in `21-6-zalo-integration.md`.
   - **Resolution:** `_redact_template_data` redacts values for PII-like keys (phone/email/name/address/cccd/cmnd/passport/identity/dob/birth/bank/card/salary) and any string matching email/phone/VN ID patterns before logging. (app/routes/outbound_routes.py:160-196, tests/unit/gateway/test_zalo_gateway.py)
+
+## Deferred from: code review of 24-2-waterfall-phone-mst-corporate-verification-engine (2026-08-16)
+
+- **Finding:** PII vault lacks key-rotation and encryption-failure handling. (nowing_backend/app/services/pii/verified_contact_encryption.py:40-55 and nowing_backend/app/services/phone_waterfall_service.py:692)
+  - **Action:** Marked `[x] [Review][Defer]` in `24-2-waterfall-phone-mst-corporate-verification-engine.md`.
+  - **Reason / when to revisit:** Verified-contact encryption relies on a single `SECRET_KEY` with no rotation plan, and `resolve_lead_phone` calls `encrypt()` without guarding against transient failures. This is a cross-cutting PII-vault concern and should be handled in a dedicated PII security story.

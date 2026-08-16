@@ -242,7 +242,7 @@ development_status:
   epic-24: in-progress
   24-1: ready-for-dev  # Multi-Channel Drip Outreach Campaign Engine (Zalo ZNS + Telegram + Email Cadence)
   24-2: review  # Waterfall Phone & B2B Tax Code (MST) Corporate Verification Engine (75 unit tests pass, Redis 7d cache, Circuit breaker, 2018 telecom table, fail-closed DNC)
-  24-3: review  # Multi-Seat Team CRM Pipeline & Shared Workspace Credit Pooling (Atomic spend cap, OCC version conflict handling, Kanban reactive board)
+  24-3: in-progress  # Multi-Seat Team CRM Pipeline & Shared Workspace Credit Pooling (code-review found blockers: auth, OCC, credit atomicity, RLS, Kanban implementation)
   24-4: done  # Nowing Lead Clipper — 3-layer code-review passed, 5 patches applied (concurrency rollback recovery, phone +8409 normalizer, tenant client_id, tracking param scrubbing, contact title)
   24-5: ready-for-dev  # Vertical Playbook Marketplace & Community Workflow Templates
   24-6: ready-for-dev  # Two-Way AI Outreach Auto-Reply Agent

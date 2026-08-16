@@ -5989,3 +5989,14 @@ class PartnerPayout(Base, TimestampMixin):
 
     partner = relationship("AffiliatePartner", back_populates="payouts")
 
+
+class AuditEvent(Base):
+    """Dual-principal audit logging in audit_events."""
+    __tablename__ = "audit_events"
+    
+    id = Column(Integer, primary_key=True)
+    action = Column(String, nullable=False)
+    actor_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
+    subject_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=True)
+    ticket_ref = Column(String, nullable=True)
+    created_at = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
