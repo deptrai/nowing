@@ -16,16 +16,30 @@ from typing import Any
 
 # Vietnamese word-to-digit dictionary
 _WORD_TO_DIGIT_MAP = {
-    "không": "0", "khong": "0",
-    "một": "1", "mot": "1", "mốt": "1",
+    "không": "0",
+    "khong": "0",
+    "một": "1",
+    "mot": "1",
+    "mốt": "1",
     "hai": "2",
     "ba": "3",
-    "bốn": "4", "bon": "4", "tư": "4", "tu": "4",
-    "năm": "5", "nam": "5", "lăm": "5", "lam": "5",
-    "sáu": "6", "sau": "6",
-    "bảy": "7", "bay": "7", "bẩy": "7",
-    "tám": "8", "tam": "8",
-    "chín": "9", "chin": "9",
+    "bốn": "4",
+    "bon": "4",
+    "tư": "4",
+    "tu": "4",
+    "năm": "5",
+    "nam": "5",
+    "lăm": "5",
+    "lam": "5",
+    "sáu": "6",
+    "sau": "6",
+    "bảy": "7",
+    "bay": "7",
+    "bẩy": "7",
+    "tám": "8",
+    "tam": "8",
+    "chín": "9",
+    "chin": "9",
 }
 
 _VN_WORDS_COMBINED_REGEX = re.compile(
@@ -72,10 +86,10 @@ _LEGACY_PREFIX_MAP = {
 
 def convert_legacy_11_digit(digits: str) -> str:
     """Convert 2018 telecom legacy 11-digit mobile number to standard 10-digit format."""
-    if not digits:
-        return digits
+    if not digits or not isinstance(digits, str):
+        return digits if isinstance(digits, str) else ""
     d = digits.strip()
-    if len(d) == 11 and d.startswith("0"):
+    if len(d) >= 4 and len(d) == 11 and d.startswith("0"):
         p4 = d[:4]
         if p4 in _LEGACY_PREFIX_MAP:
             return _LEGACY_PREFIX_MAP[p4] + d[4:]
@@ -104,18 +118,82 @@ _PRICE_REGEX = re.compile(
 
 # Common Vietnamese key locations
 _VN_PROVINCES = [
-    "Hà Nội", "Hà nội", "Ha Noi", "ha nội", "ha noi", "HN",
-    "TP.HCM", "TPHCM", "Hồ Chí Minh", "Ho Chi Minh", "Sài Gòn", "Sai Gon", "HCM",
-    "Đà Nẵng", "Da Nang", "Hải Phòng", "Hai Phong", "Cần Thơ", "Can Tho",
-    "Bình Dương", "Binh Duong", "Đồng Nai", "Dong Nai", "Bà Rịa - Vũng Tàu", "Vũng Tàu",
-    "Long An", "Quảng Ninh", "Bắc Ninh", "Hải Dương", "Hưng Yên", "Vĩnh Phúc",
-    "Khánh Hòa", "Nha Trang", "Lâm Đồng", "Đà Lạt", "Bình Thuận", "Phan Thiết",
-    "Cầu Giấy", "Nam Từ Liêm", "Bắc Từ Liêm", "Thanh Xuân", "Đống Đa", "Ba Đình",
-    "Hoàn Kiếm", "Hai Bà Trưng", "Hoàng Mai", "Long Biên", "Hà Đông", "Tây Hồ",
-    "Gia Lâm", "Đông Anh", "Thanh Trì", "Hoài Đức",
-    "Quận 1", "Quận 2", "Quận 3", "Quận 4", "Quận 5", "Quận 6", "Quận 7", "Quận 8",
-    "Quận 9", "Quận 10", "Quận 11", "Quận 12", "Bình Thạnh", "Thủ Đức", "Gò Vấp",
-    "Phú Nhuận", "Tân Bình", "Tân Phú", "Bình Tân", "Nhà Bè", "Hóc Môn", "Củ Chi", "Bình Chánh"
+    "Hà Nội",
+    "Hà nội",
+    "Ha Noi",
+    "ha nội",
+    "ha noi",
+    "HN",
+    "TP.HCM",
+    "TPHCM",
+    "Hồ Chí Minh",
+    "Ho Chi Minh",
+    "Sài Gòn",
+    "Sai Gon",
+    "HCM",
+    "Đà Nẵng",
+    "Da Nang",
+    "Hải Phòng",
+    "Hai Phong",
+    "Cần Thơ",
+    "Can Tho",
+    "Bình Dương",
+    "Binh Duong",
+    "Đồng Nai",
+    "Dong Nai",
+    "Bà Rịa - Vũng Tàu",
+    "Vũng Tàu",
+    "Long An",
+    "Quảng Ninh",
+    "Bắc Ninh",
+    "Hải Dương",
+    "Hưng Yên",
+    "Vĩnh Phúc",
+    "Khánh Hòa",
+    "Nha Trang",
+    "Lâm Đồng",
+    "Đà Lạt",
+    "Bình Thuận",
+    "Phan Thiết",
+    "Cầu Giấy",
+    "Nam Từ Liêm",
+    "Bắc Từ Liêm",
+    "Thanh Xuân",
+    "Đống Đa",
+    "Ba Đình",
+    "Hoàn Kiếm",
+    "Hai Bà Trưng",
+    "Hoàng Mai",
+    "Long Biên",
+    "Hà Đông",
+    "Tây Hồ",
+    "Gia Lâm",
+    "Đông Anh",
+    "Thanh Trì",
+    "Hoài Đức",
+    "Quận 1",
+    "Quận 2",
+    "Quận 3",
+    "Quận 4",
+    "Quận 5",
+    "Quận 6",
+    "Quận 7",
+    "Quận 8",
+    "Quận 9",
+    "Quận 10",
+    "Quận 11",
+    "Quận 12",
+    "Bình Thạnh",
+    "Thủ Đức",
+    "Gò Vấp",
+    "Phú Nhuận",
+    "Tân Bình",
+    "Tân Phú",
+    "Bình Tân",
+    "Nhà Bè",
+    "Hóc Môn",
+    "Củ Chi",
+    "Bình Chánh",
 ]
 
 
@@ -139,7 +217,10 @@ def normalize_vietnamese_text(text: str) -> str:
         return token
 
     # Match tokens with mixed letters, digits and phone punctuation
-    token_pattern = re.compile(r"(?:\+?84|0|\b)[0-9oOóòỏõọôốồổỗộơớờởỡợlLiI|._\-\s/:()*]{7,25}(?:\b|(?=[^\w]))", re.IGNORECASE)
+    token_pattern = re.compile(
+        r"(?:\+?84|0|\b)[0-9oOóòỏõọôốồổỗộơớờởỡợlLiI|._\-\s/:()*]{7,25}(?:\b|(?=[^\w]))",
+        re.IGNORECASE,
+    )
     normalized = token_pattern.sub(_sub_phone_candidate, normalized)
 
     return normalized
@@ -164,7 +245,10 @@ def extract_phone_numbers(text: str, timeout_sec: float = 0.05) -> list[str]:
 
     # Clean intermediate delimiters inside potential digit clusters
     # E.g., "090.123.4567", "09 12 34 56 78", "+84 987 654 321"
-    cleaned_candidates = re.findall(r"(?:\+?\d{1,4}[.\s\-_/:()*]*)?\d{2,4}(?:[.\s\-_/:()*]*\d{2,4}){2,5}", normalized)
+    cleaned_candidates = re.findall(
+        r"(?:\+?\d{1,4}[.\s\-_/:()*]*)?\d{2,4}(?:[.\s\-_/:()*]*\d{2,4}){2,5}",
+        normalized,
+    )
 
     results: set[str] = set()
 
@@ -221,33 +305,70 @@ def classify_social_intent(text: str) -> str:
 
     # Hiring keywords
     hiring_keywords = [
-        "tuyển", "tuyển dụng", "cần tuyển", "hiring", "job", "mức lương",
-        "hoa hồng", "apply", "gửi cv", "jd", "phỏng vấn", "đãi ngộ"
+        "tuyển",
+        "tuyển dụng",
+        "cần tuyển",
+        "hiring",
+        "job",
+        "mức lương",
+        "hoa hồng",
+        "apply",
+        "gửi cv",
+        "jd",
+        "phỏng vấn",
+        "đãi ngộ",
     ]
     if any(k in lower for k in hiring_keywords):
         return "hiring"
 
     # Seeking keywords
     seeking_keywords = [
-        "tìm việc", "tìm job", "ứng tuyển", "tìm thuê", "cần thuê",
-        "tìm trọ", "tìm phòng", "tìm nguồn", "tìm đối tác", "cần tìm đối tác"
+        "tìm việc",
+        "tìm job",
+        "ứng tuyển",
+        "tìm thuê",
+        "cần thuê",
+        "tìm trọ",
+        "tìm phòng",
+        "tìm nguồn",
+        "tìm đối tác",
+        "cần tìm đối tác",
     ]
     if any(k in lower for k in seeking_keywords):
         return "seeking"
 
     # Sell keywords
     sell_keywords = [
-        "bán", "cần bán", "bán gấp", "chính chủ bán", "pass", "pass lại",
-        "thanh lý", "nhượng", "chuyển nhượng", "xả hàng", "giá bán",
-        "bán nhà", "bán đất", "bán căn hộ", "bán xe"
+        "bán",
+        "cần bán",
+        "bán gấp",
+        "chính chủ bán",
+        "pass",
+        "pass lại",
+        "thanh lý",
+        "nhượng",
+        "chuyển nhượng",
+        "xả hàng",
+        "giá bán",
+        "bán nhà",
+        "bán đất",
+        "bán căn hộ",
+        "bán xe",
     ]
     if any(k in lower for k in sell_keywords):
         return "sell"
 
     # Buy keywords
     buy_keywords = [
-        "mua", "cần mua", "tìm mua", "mua đất", "mua nhà", "gom hàng",
-        "thu mua", "mua lại", "cần tìm mua"
+        "mua",
+        "cần mua",
+        "tìm mua",
+        "mua đất",
+        "mua nhà",
+        "gom hàng",
+        "thu mua",
+        "mua lại",
+        "cần tìm mua",
     ]
     if any(k in lower for k in buy_keywords):
         return "buy"
@@ -261,7 +382,9 @@ def classify_social_intent(text: str) -> str:
 
 
 _PROVINCES_COMBINED_REGEX = re.compile(
-    r"\b(?:" + "|".join(map(re.escape, sorted(_VN_PROVINCES, key=len, reverse=True))) + r")\b",
+    r"\b(?:"
+    + "|".join(map(re.escape, sorted(_VN_PROVINCES, key=len, reverse=True)))
+    + r")\b",
     re.IGNORECASE,
 )
 

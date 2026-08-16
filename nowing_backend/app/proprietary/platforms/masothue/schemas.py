@@ -27,6 +27,7 @@ class MasothueSearchInput(BaseModel):
     max_items: int = Field(default=10, ge=0)
     resolve_detail: bool = True
     include_phone: bool = False
+    proxy: str | None = None
 
     @property
     def estimated_units(self) -> int:

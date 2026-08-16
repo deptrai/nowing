@@ -13,6 +13,7 @@ Tests:
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import time
 from datetime import UTC, datetime, timedelta
@@ -35,12 +36,10 @@ from app.services.phone_waterfall_service import (
     PhoneWaterfallService,
     get_carrier_name,
     hash_phone,
-    is_valid_vn_mobile_prefix,
     mask_phone,
     normalize_vn_phone,
 )
 from app.services.pii.verified_contact_encryption import VerifiedContactEncryption
-
 
 # ─────────────────────────────────────────────────────────────
 # 1. 2018 Telecom Legacy 11-to-10 Digit Conversion Tests (Story 24.2 / AC-2)
@@ -145,8 +144,16 @@ class TestStandardPhoneNormalization:
         assert mask_phone("") == ""
         assert mask_phone(None) == ""
 
-    def test_hash_phone(self):
-        expected = hashlib.sha256(b"0908123456").hexdigest()
+    def test_hash_phone(self, monkeypatch):
+        from app.config import config
+
+        test_key = "test-secret-key-must-be-long-enough-12345678"
+        monkeypatch.setattr(config, "SECRET_KEY", test_key)
+        expected = hmac.new(
+            test_key.encode("utf-8"),
+            b"0908123456",
+            hashlib.sha256,
+        ).hexdigest()
         assert hash_phone("0908123456") == expected
         assert hash_phone(None) is None
 
@@ -319,7 +326,10 @@ class TestWaterfallTierExecution:
                 new_callable=AsyncMock,
             ) as mock_corp_verify,
         ):
-            from app.services.corporate_verification_service import CorporateMatchResult, CorporateProfile
+            from app.services.corporate_verification_service import (
+                CorporateMatchResult,
+                CorporateProfile,
+            )
             mock_corp_verify.return_value = CorporateMatchResult(
                 tax_id="0101248141",
                 is_verified=True,

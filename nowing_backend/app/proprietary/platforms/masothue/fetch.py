@@ -88,6 +88,7 @@ async def fetch_search_page(
     page: int = 1,
     *,
     fetch_fn: Any | None = None,
+    proxy: str | None = None,
 ) -> tuple[str, int]:
     """Fetch the masothue.com search results page and return (html, status).
 
@@ -101,7 +102,7 @@ async def fetch_search_page(
         response = await fetch(
             url,
             headers=_headers(),
-            proxy=get_proxy_url(),
+            proxy=proxy or get_proxy_url(),
             stealthy_headers=True,
             timeout=getattr(config, "MASOTHUE_TIMEOUT_S", 30.0),
             follow_redirects=False,
@@ -133,9 +134,7 @@ async def fetch_search_page(
                 f"<p>Mã số thuế: {tax_code}</p></div>{detail_html}",
                 200,
             )
-        raise MasothueAccessBlockedError(
-            f"{url} redirected unexpectedly to {location}"
-        )
+        raise MasothueAccessBlockedError(f"{url} redirected unexpectedly to {location}")
 
     _status_for_url(status, url)
     if status != 200:
@@ -151,6 +150,7 @@ async def fetch_detail_page(
     url: str,
     *,
     fetch_fn: Any | None = None,
+    proxy: str | None = None,
 ) -> str:
     """Fetch a masothue.com detail page and return its HTML."""
     fetch = fetch_fn or AsyncFetcher.get
@@ -159,7 +159,7 @@ async def fetch_detail_page(
         response = await fetch(
             url,
             headers=_headers(),
-            proxy=get_proxy_url(),
+            proxy=proxy or get_proxy_url(),
             stealthy_headers=True,
             timeout=getattr(config, "MASOTHUE_TIMEOUT_S", 30.0),
         )

@@ -33,6 +33,7 @@ from app.lead_intelligence.enrichment.providers import run_waterfall
 from app.lead_intelligence.enrichment.schemas import EnrichmentOutput
 from app.services import wallet_credit
 from app.services.billing_event_service import BillingEventService
+from app.services.corporate_verification_service import CorporateVerificationService
 from app.services.memory.repository import MemoryRepository
 from app.services.pii.redact import redact_pii
 from app.services.pii.verified_contact_encryption import (
@@ -183,6 +184,17 @@ class EnrichmentService:
             await session.flush()
             await session.commit()
             return self._degraded(["lead_not_found"])
+
+        # Trigger B2B corporate verification (MST) as part of enrichment
+        if lead.company_name:
+            try:
+                corp_service = CorporateVerificationService(session)
+                await corp_service.verify_lead_corporate_info(
+                    workspace_id=request.workspace_id,
+                    lead_id=request.lead_id,
+                )
+            except Exception as exc:
+                logger.warning("[Enrichment] Corporate verification failed: %s", exc)
 
         workspace = await session.get(Workspace, request.workspace_id)
         owner_user_id = workspace.user_id if workspace is not None else None

@@ -13,7 +13,6 @@
 from __future__ import annotations
 
 import contextlib
-import hashlib
 import json
 import logging
 import re
@@ -50,7 +49,7 @@ logger = logging.getLogger(__name__)
 
 # Constants
 PHONE_RESOLUTION_COST_MICROS = 1_500_000  # 1.5 credits = 1,500 VND
-PHONE_CACHE_TTL_SECONDS = 30 * 24 * 3600  # 30 days (2,592,000 seconds)
+PHONE_CACHE_TTL_SECONDS = 24 * 3600  # 24 hours (86,400 seconds)
 REDOS_TIMEOUT_SECONDS = 0.05  # 50ms guard against ReDoS
 REDIS_PHONE_CACHE_PREFIX = "enrich:phone:"
 REDIS_MUTEX_PREFIX = "batdongsan:token:"
@@ -183,10 +182,12 @@ def mask_phone(phone: str | None) -> str:
 
 
 def hash_phone(phone: str | None) -> str | None:
-    """Compute SHA-256 hex digest of normalized phone string for caching and deduplication."""
+    """Compute HMAC-SHA256 hex digest of normalized phone string for caching and deduplication."""
     if not phone:
         return None
-    return hashlib.sha256(phone.encode("utf-8")).hexdigest()
+    from app.lead_intelligence.dnc.normalizer import hash_phone_hmac
+
+    return hash_phone_hmac(phone, config.SECRET_KEY)
 
 
 @dataclass
@@ -421,7 +422,7 @@ class PhoneWaterfallService:
                         "phone": mask_phone(norm),
                         "carrier": carrier,
                         "hlr_status": "active",
-                        "zalo_verified": True,
+                        "zalo_verified": False,
                     },
                 )
 
@@ -722,7 +723,9 @@ class PhoneWaterfallService:
             dict(res.raw_response) if isinstance(res.raw_response, dict) else {}
         )
         if "phone" in sanitized_raw_response:
-            sanitized_raw_response["phone"] = mask_phone(sanitized_raw_response["phone"])
+            sanitized_raw_response["phone"] = mask_phone(
+                sanitized_raw_response["phone"]
+            )
 
         # 6. Create PhoneWaterfallLog
         log_entry = PhoneWaterfallLog(
@@ -756,9 +759,29 @@ class PhoneWaterfallService:
         self.session.add(billing_event)
 
         if user_id is not None:
-            await wallet_credit.apply_debit(
-                self.session, user_id, PHONE_RESOLUTION_COST_MICROS
-            )
+            try:
+                await wallet_credit.apply_debit(
+                    self.session, user_id, PHONE_RESOLUTION_COST_MICROS
+                )
+            except wallet_credit.InsufficientCreditsError as ice:
+                logger.warning(
+                    "Wallet ran out of credits during final debit: %s", ice
+                )
+                return PhoneResolutionResult(
+                    lead_id=lead_id,
+                    phone=None,
+                    phone_masked="",
+                    phone_hash=None,
+                    tier_reached=0,
+                    provider_used="none",
+                    status="failed",
+                    cost_micros=0,
+                    confidence=0.0,
+                    carrier="Unknown",
+                    is_cached=False,
+                    degraded=True,
+                    degradation_reason="insufficient_wallet",
+                )
         else:
             await self.session.commit()
 
