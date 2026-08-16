@@ -103,7 +103,7 @@ async def test_cross_replica_publish_reaches_subscriber_on_other_bus(
     # Drain the listener task queue on A — the event must arrive via Redis.
     try:
         received = await asyncio.wait_for(queue_a.get(), timeout=5.0)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         pytest.fail("cross-replica event not delivered within 5s")
 
     assert received["type"] == "progress"

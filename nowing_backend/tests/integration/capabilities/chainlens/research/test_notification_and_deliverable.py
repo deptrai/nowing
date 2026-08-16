@@ -7,11 +7,8 @@ error, and cancelled terminal states.
 
 from __future__ import annotations
 
-import json
 import uuid
 from collections.abc import AsyncGenerator
-from contextlib import contextmanager
-from unittest.mock import patch
 
 import httpx
 import pytest
@@ -32,10 +29,8 @@ from app.db import (
     Report,
     Run,
     User,
-    Workspace,
     get_async_session,
 )
-from app.routes.workspaces_routes import create_default_roles_and_membership
 from app.users import get_auth_context
 
 pytestmark = [pytest.mark.integration]

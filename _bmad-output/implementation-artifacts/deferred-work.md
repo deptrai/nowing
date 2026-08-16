@@ -1,4 +1,15 @@
+## Deferred from: code review of 22-3-telegram-data-enrichment-realtime-alerts-and-scraper-ui (2026-08-16)
+
+- **Finding:** Configure timeout and SSL options for smtplib.SMTP in alert notifications.
+  - **Action:** Marked `[x] [Review][Defer]` in `22-3-telegram-data-enrichment-realtime-alerts-and-scraper-ui.md`.
+  - **Reason / when to revisit:** Pre-existing notification service pattern. Revisit when alerting notification channel hardening is scheduled.
+
+- **Finding:** Connect full TanStack Query API endpoints for Telegram Userbot / Channel list on Web Admin.
+  - **Action:** Marked `[x] [Review][Defer]` in `22-3-telegram-data-enrichment-realtime-alerts-and-scraper-ui.md`.
+  - **Reason / when to revisit:** Frontend UI contracts are in place; live backend scraper persistence APIs for accounts/channels are scheduled for next platform sprints.
+
 ## Deferred from: code review of 21-5-crm-integration (2026-08-16)
+
 
 - **Finding:** Cross-source full CRM historical bi-directional backfill and deal pipeline sync.
   - **Action:** Marked `[x] [Review][Defer]` in `21-5-crm-integration.md`.

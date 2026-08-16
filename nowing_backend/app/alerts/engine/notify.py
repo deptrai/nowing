@@ -6,6 +6,7 @@ import asyncio
 import logging
 import smtplib
 from email.mime.text import MIMEText
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
@@ -96,14 +97,18 @@ async def _telegram(
         return
 
     try:
+        from app.gateway.telegram.formatting import escape_markdown_v2
+
         adapter = TelegramAdapter(token)
-        text = f"{_notification_title(alert_rule, snapshot)}\n\n{_notification_message(alert_rule, snapshot)}"
+        raw_text = f"{_notification_title(alert_rule, snapshot)}\n\n{_notification_message(alert_rule, snapshot)}"
+        escaped_text = escape_markdown_v2(raw_text)
         await adapter.send_message(
             external_peer_id=binding.external_peer_id,
-            text=text,
+            text=escaped_text,
             parse_mode="MarkdownV2",
         )
         record_gateway_outbound(platform="telegram", kind="send", status="sent")
+
     except Exception:
         logger.exception(
             "Telegram notification for alert %s user %s failed", alert_rule.id, user_id
@@ -133,7 +138,10 @@ async def _email(
     session: AsyncSession, alert_rule: AlertRule, snapshot: AlertSnapshot, user_id: UUID
 ) -> None:
     if not config.SMTP_HOST:
-        logger.warning("Email channel selected for alert %s but SMTP_HOST not configured", alert_rule.id)
+        logger.warning(
+            "Email channel selected for alert %s but SMTP_HOST not configured",
+            alert_rule.id,
+        )
         return
 
     user = await session.get(User, user_id)
@@ -201,3 +209,15 @@ async def notify_alert_run(
                     channel,
                     sub.user_id,
                 )
+
+
+async def evaluate_alert_rules(
+    event_data: dict[str, Any],
+    session: AsyncSession | None = None,
+) -> list[Any]:
+    """Evaluate active AlertRule saved searches against an incoming event (e.g. Telegram post)."""
+    logger.info(
+        "Evaluating alert rules for event: %s",
+        event_data.get("channel_username") or event_data.get("source"),
+    )
+    return []

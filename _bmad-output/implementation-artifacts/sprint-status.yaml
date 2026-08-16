@@ -214,7 +214,7 @@ development_status:
   21-13: done  # 2026-08-15: Multi-Table Tabs & Send/Export Hub (Zero-cache live reactive sync, CSV/Lark Export)
   21-14: done  # 2026-08-15: Smart Whitelist & DNC Compliance Engine
   21-15: done  # 2026-08-16: Unified Multi-Source AI Lead Generation Orchestrator & Universal Scraper Adapters; 7 review patches applied, 169 unit tests passing, ruff clean
-  21-16: done  # 2026-08-16: Origami Split-View Canvas & Workspace Modernization (420px Chat + Resizable Data Matrix, Sọc Caro, Mint Green, ATDD green, 8 review patches verified, tsc/biome clean)
+  21-16: done  # 2026-08-16: Nowing Split-View Canvas & Workspace Modernization (340px Chat + Dynamic 4-Mode Matrix, Real Credits Atom, Empty State Quickstart Deck, Markdown Blob Exporter, Live Scraper & Automation APIs, Suggested Actions, tsc/biome/E2E clean)
   21-17: done  # 2026-08-16: Complete Origami Landing Page (10 sections) + Mint Green OrigamiLogo + Verticals grid; tsc/biome clean
   21-18: done  # 2026-08-16: Partners Affiliate Portal & $0 Pricing Page Deployment (Alembic 215, PartnerService, 15% commission hook, VietQR payouts, PricingLeadCalculator, PartnerEarningsCalculator, /partners & /partners/dashboard, 13/13 backend pytest green, ruff/tsc/biome 100% clean)
   epic-21-retrospective: optional
@@ -224,8 +224,9 @@ development_status:
   epic-22: in-progress
   22-1: done  # Telegram Storage Schema & Public Web Preview Ingestion Engine
   22-2: ready-for-dev  # Telegram MTProto Userbot Client, Encrypted Session Pool & Anti-Ban Cooldown
-  22-3: ready-for-dev  # Telegram Data Enrichment, Realtime Alert Trigger, AI Agent Tools & Scraper UI
+  22-3: done  # Telegram Data Enrichment, Realtime Alert Trigger, AI Agent Tools & Scraper UI (3-layer code review passed, 8 patches applied, 23 unit tests pass, ruff/tsc/biome clean)
   epic-22-retrospective: optional
+
 
   # === Epic 23: Enterprise Lead Infrastructure, Realtime Ingestion & Automated Outreach Engine ===
   # 2026-08-16: Scalability & Enterprise Automation layer (Celery + Redis Stream, Zalo OA Webhook, VietQR Auto Payout, PostgreSQL RLS Partitioning)

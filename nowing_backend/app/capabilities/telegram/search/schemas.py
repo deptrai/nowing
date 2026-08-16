@@ -50,7 +50,6 @@ class TelegramSearchInput(BaseModel):
         return self.limit
 
 
-
 class TelegramSearchOutput(BaseModel):
     """Output payload returning matched Telegram messages and channel metadata."""
 
@@ -70,4 +69,3 @@ class TelegramSearchOutput(BaseModel):
     @property
     def billable_units(self) -> int:
         return len(self.messages)
-

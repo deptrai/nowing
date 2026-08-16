@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import AsyncGenerator
-from datetime import datetime, timedelta, timezone
 
 import httpx
 import pytest

@@ -36,7 +36,9 @@ class BatdongsanLeadAdapter(LeadSourceAdapter):
     ) -> list[dict[str, Any]]:
         """Call underlying Batdongsan scraper routines."""
         try:
-            from app.proprietary.platforms.batdongsan.schemas import BatdongsanScrapeInput
+            from app.proprietary.platforms.batdongsan.schemas import (
+                BatdongsanScrapeInput,
+            )
             from app.proprietary.platforms.batdongsan.scraper import scrape_batdongsan
 
             input_model = BatdongsanScrapeInput(

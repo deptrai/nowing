@@ -39,9 +39,7 @@ def _filter_and_paginate(
 
     if payload.keyword:
         kw = payload.keyword.strip().lower()
-        filtered_messages = [
-            m for m in filtered_messages if kw in m.text.lower()
-        ]
+        filtered_messages = [m for m in filtered_messages if kw in m.text.lower()]
 
     total_found = len(filtered_messages)
     matched_messages = filtered_messages[: payload.limit]
@@ -58,7 +56,9 @@ async def search_telegram_messages(
     ctx: CapabilityContext | None = None,
 ) -> TelegramSearchOutput:
     """Execute telegram search using scrape_telegram_channel."""
-    result: TelegramScrapeResult = await scrape_telegram_channel(payload.channel_username)
+    result: TelegramScrapeResult = await scrape_telegram_channel(
+        payload.channel_username
+    )
     return _filter_and_paginate(result, payload)
 
 
@@ -75,4 +75,3 @@ def build_telegram_search_executor(scraper_fn: Any = None):
         return _filter_and_paginate(result, payload)
 
     return _execute
-

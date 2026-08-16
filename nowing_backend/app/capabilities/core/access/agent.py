@@ -88,6 +88,7 @@ def build_capability_tools(
     )
 
     tools.extend(build_run_reader_tools(workspace_id=workspace_id))
+    tools.extend(ALL_AVAILABLE_TOOLS)
     return tools
 
 
@@ -644,3 +645,15 @@ def _build_preview(serialized, run_id: str | None) -> str:
         f"read_run('run_{run_id}', offset, limit) or search_run('run_{run_id}', "
         "pattern) to inspect the rest."
     )
+
+
+# Catalog of all available standalone agent tools including Telegram and scraping tools
+from app.capabilities.telegram.tools import (  # noqa: E402
+    telegram_fetch_recent_posts_tool,
+    telegram_search_channel_tool,
+)
+
+ALL_AVAILABLE_TOOLS: list[BaseTool] = [
+    telegram_search_channel_tool,
+    telegram_fetch_recent_posts_tool,
+]
