@@ -3,7 +3,7 @@ story_key: "24-4"
 epic: "epic-24"
 story: "24.4"
 title: "Nowing Lead Clipper — Chrome Extension for 1-Click Lead Capturing"
-status: "ready-for-dev"
+status: "done"
 baseline_commit: "6ac305274"
 ---
 
@@ -50,13 +50,20 @@ So that I can capture leads into my active Nowing Workspace without copy-pasting
 ## Technical Tasks
 
 ### Extension Package
-- [ ] Setup: Khởi tạo module `apps/chrome-extension` (Manifest V3, Vite + React + TypeScript + Tailwind).
-- [ ] Service Worker: Xây dựng `background.ts` xử lý PAT storage, message listener và REST dispatch.
-- [ ] Content Scripts: Xây dựng các DOM extractors (`extractors/facebook.ts`, `extractors/batdongsan.ts`, `extractors/topcv.ts`).
+- [x] Setup: Khởi tạo module `apps/chrome-extension` (Manifest V3, Vite + React + TypeScript + Tailwind).
+- [x] Service Worker: Xây dựng `background.ts` xử lý PAT storage, message listener và REST dispatch.
+- [x] Content Scripts: Xây dựng các DOM extractors (`extractors/facebook.ts`, `extractors/batdongsan.ts`, `extractors/topcv.ts`).
 
 ### Backend Implementation
-- [ ] Route: Xây dựng endpoint `POST /api/v1/workspaces/{id}/leads/clip` với xác thực PAT và deduplication upsert.
-- [ ] CORS: Cho phép Origin `chrome-extension://*` khi có header Authorization hợp lệ.
+- [x] Route: Xây dựng endpoint `POST /api/v1/workspaces/{id}/leads/clip` với xác thực PAT và deduplication upsert.
+- [x] CORS: Cho phép Origin `chrome-extension://*` khi có header Authorization hợp lệ.
+
+### Review Findings
+- [x] [Review][Patch] Concurrency Race & IntegrityError Rollback on Duplicate Clipper Ingest [nowing_backend/app/routes/lead_clipper_routes.py:179]
+- [x] [Review][Patch] Vietnamese Phone Normalization Leading-Zero Over-Prepend Bug (+8409...) [nowing_backend/app/routes/lead_clipper_routes.py:37]
+- [x] [Review][Patch] Multi-Tenant client_id and Domain Propagation in Lead & VerifiedContact [nowing_backend/app/routes/lead_clipper_routes.py:199]
+- [x] [Review][Patch] URL Canonicalization Ad Tracking Parameter Scrubbing & Scheme Sanitization [nowing_backend/app/routes/lead_clipper_routes.py:48]
+- [x] [Review][Patch] Lead Context Payload Preservation (price/content to VerifiedContact.title) [nowing_backend/app/routes/lead_clipper_routes.py:213]
 
 ---
 

@@ -9,111 +9,25 @@ Covers:
 
 from __future__ import annotations
 
-import hashlib
 import re
-from datetime import UTC, datetime
 from types import SimpleNamespace
-from typing import Any
-from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 from fastapi import HTTPException, status
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import ValidationError
 
 from app.auth.context import AuthContext
+from app.routes.lead_clipper_routes import (
+    CLIPPER_REQUIRED_SCOPE,
+    LeadClipRequest,
+    LeadClipResponse,
+    canonicalize_url,
+    compute_clipper_dedupe_hash,
+    normalize_vietnamese_phone_raw,
+)
 
 pytestmark = pytest.mark.unit
-
-# Required PAT Scope for Chrome Extension Clipper
-CLIPPER_REQUIRED_SCOPE = "leads:clipper:write"
-
-
-# ---------------------------------------------------------------------------
-# Red-Phase Reference Schemas and Helper Contracts
-# ---------------------------------------------------------------------------
-
-
-def normalize_vietnamese_phone_raw(phone: str | None) -> str:
-    """Normalize Vietnamese phone numbers to standard format (e.g., 0912345678 or +84912345678)."""
-    if not phone:
-        return ""
-    digits = re.sub(r"\D", "", phone)
-    if digits.startswith("84") and len(digits) >= 10:
-        digits = "0" + digits[2:]
-    return digits
-
-
-def canonicalize_url(url: str) -> str:
-    """Strip tracking query parameters (utm_*, fbclid) and normalize URL structure."""
-    if not url:
-        return ""
-    parsed = urlparse(url.strip())
-    # Filter out tracking query params
-    filtered_query = [
-        (k, v)
-        for k, v in parse_qsl(parsed.query)
-        if not k.startswith("utm_") and k not in {"fbclid", "gclid", "ref", "source"}
-    ]
-    clean_query = urlencode(filtered_query)
-    clean_path = parsed.path.rstrip("/") if parsed.path != "/" else "/"
-    return urlunparse(
-        (
-            parsed.scheme.lower(),
-            parsed.netloc.lower(),
-            clean_path,
-            parsed.params,
-            clean_query,
-            "",  # strip fragment
-        )
-    )
-
-
-def compute_clipper_dedupe_hash(
-    workspace_id: int,
-    source_canonical_url: str,
-    phone: str | None = None,
-) -> str:
-    """
-    Compute deterministic SHA-256 deduplication hash according to INV-24.5.
-    dedupe_hash = SHA256(workspace_id + source_canonical_url + normalized_phone)
-    """
-    clean_url = canonicalize_url(source_canonical_url)
-    norm_phone = normalize_vietnamese_phone_raw(phone)
-    raw_key = f"{workspace_id}:{clean_url}:{norm_phone}"
-    return hashlib.sha256(raw_key.encode("utf-8")).hexdigest()
-
-
-class LeadClipRequest(BaseModel):
-    """Pydantic model validating lead clipper payloads."""
-
-    source_canonical_url: str = Field(..., description="Canonical URL of listing or profile")
-    source_platform: str = Field(
-        ...,
-        description="Source platform: facebook, batdongsan, topcv, linkedin, chotot, custom",
-    )
-    contact_name: str | None = Field(default=None, max_length=255)
-    phone: str | None = Field(default=None, max_length=50)
-    email: str | None = Field(default=None, max_length=255)
-    company_name: str | None = Field(default=None, max_length=255)
-    post_content: str | None = Field(default=None)
-    price: str | None = Field(default=None, max_length=100)
-    location: str | None = Field(default=None, max_length=255)
-    metadata: dict[str, Any] = Field(default_factory=dict)
-    dedupe_hash: str | None = Field(default=None)
-
-
-class LeadClipResponse(BaseModel):
-    """Response returned upon successful lead clipping."""
-
-    success: bool = True
-    lead_id: UUID
-    workspace_id: int
-    dedupe_hash: str
-    is_duplicate: bool
-    source_platform: str
-    message: str = "Lead clipped successfully"
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 # ---------------------------------------------------------------------------
@@ -141,11 +55,12 @@ class TestClipperDeduplicationHash:
         assert isinstance(hash_1, str)
 
     def test_phone_normalization_formats_produce_identical_hash(self):
-        """Phone variants (0912.345.678, +84 912 345 678, 84912345678) must normalize to identical hash."""
+        """Phone variants (0912.345.678, +84 912 345 678, +84(0)912345678, 84912345678) must normalize to identical hash."""
         url = "https://batdongsan.com.vn/ban-nha-quan-1/listing-12345"
         base_hash = compute_clipper_dedupe_hash(1, url, "0912345678")
 
         assert compute_clipper_dedupe_hash(1, url, "+84 912 345 678") == base_hash
+        assert compute_clipper_dedupe_hash(1, url, "+84(0)912345678") == base_hash
         assert compute_clipper_dedupe_hash(1, url, "0912.345.678") == base_hash
         assert compute_clipper_dedupe_hash(1, url, "0912-345-678") == base_hash
         assert compute_clipper_dedupe_hash(1, url, "84912345678") == base_hash
@@ -168,10 +83,10 @@ class TestClipperDeduplicationHash:
         assert hash_url1 != hash_url2
 
     def test_url_canonicalization_strips_tracking_params(self):
-        """Tracking parameters (utm_*, fbclid) must be stripped before hashing."""
+        """Tracking parameters (utm_*, fbclid, gad_source, _ga) must be stripped before hashing."""
         base_url = "https://facebook.com/groups/bds/posts/1001"
         url_with_tracking = (
-            "https://facebook.com/groups/bds/posts/1001?utm_source=feed&utm_medium=cpc&fbclid=IwAR123"
+            "https://facebook.com/groups/bds/posts/1001?utm_source=feed&utm_medium=cpc&fbclid=IwAR123&gad_source=1&_ga=GA1.2.3"
         )
 
         hash_base = compute_clipper_dedupe_hash(1, base_url, "0901112233")
@@ -179,14 +94,23 @@ class TestClipperDeduplicationHash:
 
         assert hash_base == hash_tracked
 
-    def test_hash_handles_none_and_empty_phone(self):
-        """Empty phone numbers should produce a deterministic hash without raising errors."""
-        url = "https://linkedin.com/in/recruiter-profile"
-        hash_none = compute_clipper_dedupe_hash(1, url, None)
-        hash_empty = compute_clipper_dedupe_hash(1, url, "")
+    def test_normalize_vietnamese_phone_raw_variants(self):
+        """Tests standard normalization of Vietnamese mobile numbers."""
+        assert normalize_vietnamese_phone_raw("0912345678") == "0912345678"
+        assert normalize_vietnamese_phone_raw("+84 912 345 678") == "0912345678"
+        assert normalize_vietnamese_phone_raw("+84(0)912345678") == "0912345678"
+        assert normalize_vietnamese_phone_raw("84912345678") == "0912345678"
+        assert normalize_vietnamese_phone_raw("912345678") == "0912345678"
+        assert normalize_vietnamese_phone_raw(None) == ""
+        assert normalize_vietnamese_phone_raw("") == ""
 
-        assert hash_none == hash_empty
-        assert len(hash_none) == 64
+    def test_canonicalize_url_strips_params_and_normalizes_scheme(self):
+        """Tests URL canonicalization with schemes and social tracking params."""
+        clean = canonicalize_url("https://facebook.com/groups/123/posts/456?fbclid=123&utm_source=test&_ga=1.2")
+        assert clean == "https://facebook.com/groups/123/posts/456"
+
+        clean_no_scheme = canonicalize_url("batdongsan.com.vn/ban-nha-quan-1/?ref=homepage")
+        assert clean_no_scheme == "https://batdongsan.com.vn/ban-nha-quan-1"
 
 
 # ---------------------------------------------------------------------------

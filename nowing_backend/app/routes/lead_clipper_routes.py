@@ -5,6 +5,7 @@ Enforces:
 1. PAT Scope `leads:clipper:write` gating & workspace authorization.
 2. SHA-256 deduplication hashing: SHA256(workspace_id + source_canonical_url + normalized_phone).
 3. URL canonicalization and Vietnamese phone number normalization.
+4. Concurrency rollback recovery and multi-tenant client_id propagation.
 """
 
 from __future__ import annotations
@@ -33,6 +34,23 @@ router = APIRouter()
 
 CLIPPER_REQUIRED_SCOPE = "leads:clipper:write"
 
+TRACKING_PARAMS = {
+    "fbclid",
+    "gclid",
+    "ref",
+    "source",
+    "_ga",
+    "_gl",
+    "gad_source",
+    "gbraid",
+    "wbraid",
+    "igshid",
+    "fb_action_ids",
+    "fb_action_types",
+    "mc_cid",
+    "mc_eid",
+}
+
 
 def normalize_vietnamese_phone_raw(phone: str | None) -> str:
     """Normalize Vietnamese phone numbers to standard format (e.g., 0912345678 or +84912345678)."""
@@ -40,26 +58,31 @@ def normalize_vietnamese_phone_raw(phone: str | None) -> str:
         return ""
     digits = re.sub(r"\D", "", phone)
     if digits.startswith("84") and len(digits) >= 10:
-        digits = "0" + digits[2:]
+        digits = "0" + digits[2:].lstrip("0")
+    elif not digits.startswith("0") and len(digits) == 9:
+        digits = "0" + digits
     return digits
 
 
 def canonicalize_url(url: str) -> str:
-    """Strip tracking query parameters (utm_*, fbclid) and normalize URL structure."""
+    """Strip tracking query parameters (utm_*, fbclid, etc.) and normalize URL structure."""
     if not url:
         return ""
-    parsed = urlparse(url.strip())
+    clean_url = url.strip()
+    if not (clean_url.startswith("http://") or clean_url.startswith("https://")):
+        clean_url = f"https://{clean_url}"
+    parsed = urlparse(clean_url)
     # Filter out tracking query params
     filtered_query = [
         (k, v)
         for k, v in parse_qsl(parsed.query)
-        if not k.startswith("utm_") and k not in {"fbclid", "gclid", "ref", "source"}
+        if not k.startswith("utm_") and k.lower() not in TRACKING_PARAMS
     ]
     clean_query = urlencode(filtered_query)
     clean_path = parsed.path.rstrip("/") if parsed.path != "/" else "/"
     return urlunparse(
         (
-            parsed.scheme.lower(),
+            parsed.scheme.lower() or "https",
             parsed.netloc.lower(),
             clean_path,
             parsed.params,
@@ -169,9 +192,10 @@ async def clip_lead(
     """Clip a lead from external web platforms with SHA-256 deduplication and PAT auth."""
     await _verify_clipper_auth(auth, workspace_id, session)
 
+    clean_url = canonicalize_url(body.source_canonical_url)
     dedupe_hash = compute_clipper_dedupe_hash(
         workspace_id=workspace_id,
-        source_canonical_url=body.source_canonical_url,
+        source_canonical_url=clean_url,
         phone=body.phone,
     )
 
@@ -194,13 +218,19 @@ async def clip_lead(
             message="Lead already exists in workspace (deduplicated)",
         )
 
+    # Multi-tenant and domain resolution
+    client_id = getattr(auth, "client_id", None)
+    parsed_domain = urlparse(clean_url).netloc.lower() or None
+
     # Create new Lead record
     company_or_author = body.company_name or body.contact_name or "Khách hàng tiềm năng"
     new_lead = Lead(
         id=uuid4(),
         workspace_id=workspace_id,
+        client_id=client_id,
         source=body.source_platform,
-        source_url=body.source_canonical_url,
+        source_url=clean_url,
+        domain=parsed_domain,
         company_name=company_or_author,
         location=body.location,
         value_hmac=dedupe_hash,
@@ -210,19 +240,48 @@ async def clip_lead(
     session.add(new_lead)
 
     if body.phone or body.email or body.contact_name:
+        contact_title = body.price or (body.post_content[:200] if body.post_content else None)
         verified_contact = VerifiedContact(
             id=uuid4(),
             workspace_id=workspace_id,
+            client_id=client_id,
             lead_id=new_lead.id,
             name=body.contact_name,
-            phone=body.phone,
-            email=body.email,
+            title=contact_title,
+            phone=normalize_vietnamese_phone_raw(body.phone) or body.phone,
+            email=body.email.strip().lower() if body.email else None,
             verification_status="unverified",
         )
         session.add(verified_contact)
 
-    await session.commit()
-    await session.refresh(new_lead)
+    try:
+        await session.commit()
+        await session.refresh(new_lead)
+    except Exception as exc:
+        await session.rollback()
+        logger.warning(
+            "Clipper commit conflict or IntegrityError in workspace %s: %s",
+            workspace_id,
+            exc,
+        )
+        # Attempt to recover by fetching existing lead with identical dedupe hash
+        stmt_recover = select(Lead).where(
+            Lead.workspace_id == workspace_id,
+            Lead.value_hmac == dedupe_hash,
+        )
+        res_recover = await session.execute(stmt_recover)
+        duplicate_lead = res_recover.scalars().first()
+        if duplicate_lead is not None:
+            return LeadClipResponse(
+                success=True,
+                lead_id=duplicate_lead.id,
+                workspace_id=workspace_id,
+                dedupe_hash=dedupe_hash,
+                is_duplicate=True,
+                source_platform=body.source_platform,
+                message="Lead already exists in workspace (deduplicated via rollback)",
+            )
+        raise
 
     return LeadClipResponse(
         success=True,
@@ -233,3 +292,4 @@ async def clip_lead(
         source_platform=body.source_platform,
         message="Lead clipped successfully",
     )
+

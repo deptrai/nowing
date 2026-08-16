@@ -243,7 +243,7 @@ development_status:
   24-1: ready-for-dev  # Multi-Channel Drip Outreach Campaign Engine (Zalo ZNS + Telegram + Email Cadence)
   24-2: review  # Waterfall Phone & B2B Tax Code (MST) Corporate Verification Engine (75 unit tests pass, Redis 7d cache, Circuit breaker, 2018 telecom table, fail-closed DNC)
   24-3: review  # Multi-Seat Team CRM Pipeline & Shared Workspace Credit Pooling (Atomic spend cap, OCC version conflict handling, Kanban reactive board)
-  24-4: review  # Nowing Lead Clipper — Chrome Extension for 1-Click Lead Capturing (Manifest V3 package, dedupe hash, PAT auth)
+  24-4: done  # Nowing Lead Clipper — 3-layer code-review passed, 5 patches applied (concurrency rollback recovery, phone +8409 normalizer, tenant client_id, tracking param scrubbing, contact title)
   24-5: ready-for-dev  # Vertical Playbook Marketplace & Community Workflow Templates
   24-6: ready-for-dev  # Two-Way AI Outreach Auto-Reply Agent
   epic-24-retrospective: optional
@@ -513,3 +513,8 @@ validation_reports:
     verdict: "PASS-with-changes"
     reviewed_by: "bmad-code-review"
     notes: "3-layer adversarial review: 8 patch findings applied (TaxCalculationResult.tax_code AttributeError fix, Double Balance Deduction in request_payout fix, Replay attack idempotency on FAILED webhook, session/webhook_secret parameter alignment, Fail-Closed webhook signature verification, Two-Generals NOT_FOUND refund >15m & HMAC seal in Celery reconciliation worker, TT 111 >= 2M VND threshold comparison, frontend defensive null checks & KPI typo fix). 0 deferred, 0 dismissed. 9 unit + 4 PostgreSQL integration tests pass, tsc & biome clean."
+  - story: "24-4"
+    type: "code-review"
+    verdict: "PASS-with-changes"
+    reviewed_by: "bmad-code-review"
+    notes: "3-layer adversarial review: 5 patch findings applied (concurrency rollback recovery on duplicate commit, phone +84(0)9 leading-zero normalizer fix, multi-tenant client_id & domain propagation, expanded social ad tracking param scrubbing, lead context price/content preservation in VerifiedContact.title). 0 deferred, 6 dismissed. 17 unit tests pass, ruff clean."
