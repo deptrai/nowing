@@ -66,9 +66,9 @@ function SectionNavLink({
 			prefetch
 			onClick={onNavigate}
 			className={cn(
-				"inline-flex h-auto items-center justify-start gap-3 rounded-md px-3 py-2.5 text-left text-sm font-medium transition-colors duration-150 focus:outline-none focus-visible:outline-none",
+				"inline-flex h-7.5 items-center justify-start gap-2.5 rounded-md px-2.5 py-1.5 text-left text-xs font-medium transition-colors duration-150 focus:outline-none focus-visible:outline-none",
 				isActive
-					? "bg-accent text-accent-foreground"
+					? "bg-accent text-accent-foreground font-semibold"
 					: "bg-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground"
 			)}
 		>
@@ -98,16 +98,19 @@ function SectionNavGroup({
 				aria-expanded={isExpanded}
 				onClick={onToggle}
 				className={cn(
-					"inline-flex h-auto items-center justify-start gap-3 rounded-md px-3 py-2.5 text-left text-sm font-medium transition-colors duration-150 focus:outline-none focus-visible:outline-none",
+					"inline-flex h-7.5 items-center justify-start gap-2.5 rounded-md px-2.5 py-1.5 text-left text-xs font-medium transition-colors duration-150 focus:outline-none focus-visible:outline-none",
 					isExpanded
-						? "text-accent-foreground"
+						? "text-accent-foreground font-semibold"
 						: "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
 				)}
 			>
 				{group.icon}
 				<span className="min-w-0 truncate">{group.label}</span>
 				<ChevronRight
-					className={cn("ml-auto h-4 w-4 shrink-0 transition-transform", isExpanded && "rotate-90")}
+					className={cn(
+						"ml-auto h-3.5 w-3.5 shrink-0 transition-transform",
+						isExpanded && "rotate-90"
+					)}
 				/>
 			</button>
 			<div
@@ -205,7 +208,7 @@ export function RoutedSectionShell({
 			)}
 		>
 			<div className={cn("md:w-[220px] md:shrink-0", !desktopNav && "md:hidden")}>
-				<h1 className="mb-4 px-1 text-xl font-semibold tracking-tight text-foreground md:text-2xl">
+				<h1 className="mb-4 px-1 font-serif text-2xl font-normal tracking-tight text-foreground md:text-3xl">
 					{title}
 				</h1>
 				{desktopNav ? <nav className="hidden flex-col gap-0.5 md:flex">{renderNav()}</nav> : null}

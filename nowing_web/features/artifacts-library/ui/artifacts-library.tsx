@@ -91,9 +91,11 @@ export function ArtifactsLibrary({ workspaceId }: { workspaceId: number }) {
 		<div className="w-full space-y-6">
 			<header className="flex items-center justify-between gap-4 flex-wrap">
 				<div className="flex items-baseline gap-3">
-					<h1 className="text-xl md:text-2xl font-semibold text-foreground">Artifacts</h1>
+					<h1 className="font-serif text-2xl sm:text-3xl font-normal text-foreground">Artifacts</h1>
 					{!loading && artifacts.length > 0 ? (
-						<span className="text-sm text-muted-foreground">{artifacts.length} total</span>
+						<span className="text-xs text-muted-foreground font-mono">
+							{artifacts.length} total
+						</span>
 					) : null}
 				</div>
 			</header>

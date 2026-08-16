@@ -124,27 +124,29 @@ export default function PartnersPage() {
 					<span>Official Affiliate & Agency Partner Program</span>
 				</div>
 
-				<h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-neutral-900 dark:text-white max-w-4xl mx-auto leading-tight md:leading-tight">
+				<h1 className="font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-normal tracking-tight text-neutral-900 dark:text-white max-w-4xl mx-auto leading-tight">
 					Earn{" "}
-					<span className="text-emerald-600 dark:text-emerald-400">15% Lifetime Recurring</span>{" "}
+					<span className="text-emerald-600 dark:text-emerald-400 italic">
+						15% Lifetime Recurring
+					</span>{" "}
 					Commission
 				</h1>
 
-				<p className="mt-6 text-lg sm:text-xl text-neutral-600 dark:text-neutral-300 max-w-3xl mx-auto leading-relaxed">
+				<p className="mt-4 text-sm sm:text-base md:text-lg text-neutral-600 dark:text-neutral-300 max-w-3xl mx-auto font-sans leading-relaxed">
 					Recommend Nowing’s AI Agents, B2B Scrapers & Phone Unlock Engine to your clients, agency
 					network, or sales audience. Receive passive payouts via VietQR Napas 24/7 on every single
 					top-up.
 				</p>
 
-				<div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+				<div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
 					<Link href="/partners/dashboard">
-						<Button className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-neutral-950 font-bold px-8 py-6 rounded-2xl flex items-center justify-center gap-2 text-base transition-all shadow-xl shadow-emerald-500/20">
+						<Button className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-neutral-950 font-bold px-6 py-5 rounded-xl flex items-center justify-center gap-2 text-sm transition-all shadow-lg shadow-emerald-500/20">
 							<span>Go to Partner Dashboard</span>
-							<IconArrowRight className="size-5" />
+							<IconArrowRight className="size-4" />
 						</Button>
 					</Link>
 					<Link href="/pricing">
-						<Button variant="outline" className="w-full sm:w-auto px-8 py-6 rounded-2xl text-base">
+						<Button variant="outline" className="w-full sm:w-auto px-6 py-5 rounded-xl text-sm">
 							Explore Platform Pricing ($0 Free Tier)
 						</Button>
 					</Link>
@@ -157,7 +159,7 @@ export default function PartnersPage() {
 			{/* Value Propositions Grid */}
 			<div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 my-20">
 				<div className="text-center mb-12">
-					<h2 className="text-3xl font-bold tracking-tight text-neutral-900 dark:text-white">
+					<h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-normal tracking-tight text-neutral-900 dark:text-white">
 						Why Partner with Nowing?
 					</h2>
 					<p className="text-neutral-600 dark:text-neutral-400 mt-2 text-base max-w-2xl mx-auto">

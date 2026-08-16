@@ -23,8 +23,8 @@ export default function AnnouncementsPage() {
 			<div className="border-b border-border/50">
 				<div className="max-w-5xl mx-auto relative">
 					<div className="p-6">
-						<h1 className="text-4xl font-bold tracking-tight bg-linear-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 bg-clip-text text-transparent">
-							What's New
+						<h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-neutral-900 dark:text-neutral-50">
+							What&apos;s New
 						</h1>
 					</div>
 				</div>

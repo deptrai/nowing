@@ -92,7 +92,7 @@ export function BuyCreditsContent() {
 	return (
 		<div className="w-full space-y-5">
 			<div className="text-center">
-				<h2 className="text-xl font-bold tracking-tight">Buy Credits</h2>
+				<h2 className="font-serif text-2xl sm:text-3xl font-normal tracking-tight">Buy Credits</h2>
 			</div>
 
 			<div className="rounded-lg border bg-muted/20 p-3">

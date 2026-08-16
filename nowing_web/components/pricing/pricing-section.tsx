@@ -283,13 +283,13 @@ function PricingFAQ() {
 		<div className="mx-auto w-full max-w-4xl overflow-hidden px-4 py-20 md:px-8 md:py-32">
 			<FAQJsonLd questions={faqData.flatMap((section) => section.items)} />
 			<div className="text-center">
-				<h2 className="text-4xl font-bold tracking-tight sm:text-5xl">
+				<h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight">
 					Frequently Asked Questions
 				</h2>
-				<p className="mx-auto mt-4 max-w-2xl text-lg text-muted-foreground">
+				<p className="mx-auto mt-3 max-w-2xl text-sm sm:text-base text-muted-foreground font-sans leading-relaxed">
 					Everything you need to know about Nowing credits and billing. Can&apos;t find what you
 					need? Reach out at{" "}
-					<a href="mailto:admin@nowing.com" className="text-blue-500 underline">
+					<a href="mailto:admin@nowing.com" className="text-brand underline">
 						admin@nowing.com
 					</a>
 				</p>

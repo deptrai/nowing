@@ -81,11 +81,11 @@ export function PlaybooksContent({ workspaceId }: PlaybooksContentProps) {
 	return (
 		<div className="space-y-6">
 			<div className="flex items-baseline gap-3">
-				<h1 className="text-xl md:text-2xl font-semibold text-foreground">Playbooks</h1>
-				<span className="text-sm text-muted-foreground">
+				<h1 className="font-serif text-2xl sm:text-3xl font-normal text-foreground">Playbooks</h1>
+				<span className="text-xs text-muted-foreground font-mono">
 					{playbooks.length} {playbooks.length === 1 ? "playbook" : "playbooks"}
 				</span>
-				<Badge variant="secondary" className="ml-auto capitalize">
+				<Badge variant="secondary" className="ml-auto capitalize text-xs">
 					{workspaceVertical.replace(/_/g, " ")}
 				</Badge>
 			</div>

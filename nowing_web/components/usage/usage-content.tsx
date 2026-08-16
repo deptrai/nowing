@@ -91,8 +91,10 @@ export function UsageContent() {
 		<div className="space-y-6 px-4 md:px-0">
 			<div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 				<div>
-					<h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
-					<p className="text-sm text-muted-foreground">{t("subtitle")}</p>
+					<h1 className="font-serif text-2xl sm:text-3xl font-normal tracking-tight">
+						{t("title")}
+					</h1>
+					<p className="text-xs sm:text-sm text-muted-foreground font-sans">{t("subtitle")}</p>
 				</div>
 				<UsageDateRangePicker value={range} onChange={setRange} />
 			</div>

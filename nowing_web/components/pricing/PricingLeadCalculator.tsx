@@ -41,7 +41,7 @@ export function PricingLeadCalculator() {
 								<IconCalculator className="size-3.5" />
 								<span>Interactive Cost Estimator</span>
 							</div>
-							<h3 className="text-2xl md:text-3xl font-bold tracking-tight text-neutral-900 dark:text-white">
+							<h3 className="font-serif text-2xl md:text-3xl font-normal tracking-tight text-neutral-900 dark:text-white">
 								Pay Only For What You Actually Extract
 							</h3>
 							<p className="text-sm md:text-base text-neutral-600 dark:text-neutral-400 mt-1">

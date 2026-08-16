@@ -37,10 +37,10 @@ export default function ConnectorsIndexPage() {
 		<div className="pt-28 pb-16 sm:pt-32">
 			<div className="mx-auto w-full max-w-7xl px-2 md:px-8 xl:px-0">
 				<header className="max-w-2xl">
-					<h1 className="text-3xl font-bold tracking-tight text-balance sm:text-4xl lg:text-5xl">
+					<h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-balance">
 						Connectors for every platform where answers live
 					</h1>
-					<p className="mt-5 text-base leading-relaxed text-muted-foreground sm:text-lg">
+					<p className="mt-4 text-sm sm:text-base leading-relaxed text-muted-foreground font-sans">
 						Each connector is a platform-native scraper API your AI agents can call directly, or
 						through the Nowing MCP server. They are the live data behind the Nowing{" "}
 						<Link href="/" className="font-medium text-foreground underline underline-offset-4">

@@ -180,25 +180,25 @@ export default async function FreeHubPage() {
 			<article className="container mx-auto px-4 pb-20">
 				{/* Hero */}
 				<section className="mt-8 text-center max-w-3xl mx-auto">
-					<h1 className="text-4xl md:text-5xl font-bold tracking-tight">
+					<h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-normal tracking-tight">
 						ChatGPT Free Online Without Login
 					</h1>
-					<p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+					<p className="mt-3 text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto font-sans leading-relaxed">
 						Use <strong>ChatGPT</strong>, <strong>Claude AI</strong>, <strong>Gemini</strong>, and
 						other AI models free online without login. No sign-up, no email, no password. Pick a
 						model and start chatting instantly.
 					</p>
-					<div className="flex flex-wrap items-center justify-center gap-3 mt-6">
-						<Badge variant="secondary" className="px-3 py-1.5 text-sm">
+					<div className="flex flex-wrap items-center justify-center gap-2 mt-6">
+						<Badge variant="secondary" className="px-2.5 py-1 text-xs">
 							No login required
 						</Badge>
-						<Badge variant="secondary" className="px-3 py-1.5 text-sm">
+						<Badge variant="secondary" className="px-2.5 py-1 text-xs">
 							500K free tokens
 						</Badge>
-						<Badge variant="secondary" className="px-3 py-1.5 text-sm">
+						<Badge variant="secondary" className="px-2.5 py-1 text-xs">
 							{seoModels.length} AI models
 						</Badge>
-						<Badge variant="secondary" className="px-3 py-1.5 text-sm">
+						<Badge variant="secondary" className="px-2.5 py-1 text-xs">
 							Open-core
 						</Badge>
 					</div>
@@ -217,7 +217,9 @@ export default async function FreeHubPage() {
 						className="max-w-4xl mx-auto"
 						aria-label="Free AI models available without login"
 					>
-						<h2 className="text-2xl font-bold mb-2">Free AI Models Available Without Login</h2>
+						<h2 className="font-serif text-2xl sm:text-3xl font-normal mb-2">
+							Free AI Models Available Without Login
+						</h2>
 						<p className="text-sm text-muted-foreground mb-6">
 							All models below work without login or sign-up. Click any model to start a free AI
 							chat instantly.
@@ -282,9 +284,7 @@ export default async function FreeHubPage() {
 
 				{/* Why Nowing */}
 				<section className="max-w-4xl mx-auto">
-					<h2 className="text-2xl font-bold mb-6">
-						Why Use Nowing for Free AI Chat
-					</h2>
+					<h2 className="text-2xl font-bold mb-6">Why Use Nowing for Free AI Chat</h2>
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 						<div className="rounded-lg border bg-card p-5">
 							<h3 className="font-semibold mb-1.5">Multiple AI Models in One Place</h3>
@@ -305,9 +305,9 @@ export default async function FreeHubPage() {
 						<div className="rounded-lg border bg-card p-5">
 							<h3 className="font-semibold mb-1.5">Open-Core Research Memory for AI Agents</h3>
 							<p className="text-sm text-muted-foreground leading-relaxed">
-								Nowing is free, open-core long-term research memory for AI agents, with document
-								Q&A and citations, integrations with Slack, Google Drive, Notion, and Confluence,
-								plus team collaboration and self-hosting support.
+								Nowing is free, open-core long-term research memory for AI agents, with document Q&A
+								and citations, integrations with Slack, Google Drive, Notion, and Confluence, plus
+								team collaboration and self-hosting support.
 							</p>
 						</div>
 					</div>
