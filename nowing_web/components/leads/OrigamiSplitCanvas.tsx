@@ -1,7 +1,7 @@
 "use client";
 
 import { useAtom } from "jotai";
-import { GripVertical, PanelLeftOpen } from "lucide-react";
+import { GripVertical } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -195,45 +195,35 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 		toast.info(`Kích hoạt chiến dịch tiếp cận Zalo cho ${selectedLeadIds.length} leads.`);
 	};
 
-	// 1. Initial State (Photo 1): Full-Screen Clean Origami Home Dashboard (No Right Panel)
-	if (!hasActiveThread) {
-		return (
-			<main
-				data-testid="origami-home-canvas"
-				className={cn(
-					"w-full h-full flex flex-col bg-background text-foreground overflow-y-auto animate-in fade-in duration-300",
-					className
-				)}
-			>
-				{chatSlot}
-			</main>
-		);
-	}
-
-	// 2. Active Chat State (Photo 2): Morphing Split-View Workspace (Left Chat + Right Dynamic Context Canvas)
+	// Unified Animated Split Canvas (Morphing from 100% full-width to 420px Split-View over 700ms)
 	return (
 		<main
 			ref={containerRef}
 			aria-label="Không gian làm việc Origami Split-View"
 			data-testid="origami-split-canvas"
 			className={cn(
-				"relative w-full h-full flex bg-background text-foreground overflow-hidden animate-in fade-in duration-300",
+				"relative w-full h-full flex bg-background text-foreground overflow-hidden",
 				isDragging && "select-none cursor-col-resize",
 				className
 			)}
 		>
-			{/* Left Panel: Chat Co-pilot */}
+			{/* Left Panel: Chat Co-pilot (Morphs smoothly from 100% to leftWidth) */}
 			{!isFullscreen && !isCollapsed && (
 				<div
-					style={{ width: `${leftWidth}px` }}
-					className="h-full shrink-0 flex flex-col transition-all duration-200 border-r border-border bg-card overflow-hidden"
+					style={{
+						width: hasActiveThread ? `${leftWidth}px` : "100%",
+					}}
+					className={cn(
+						"h-full shrink-0 flex flex-col transition-[width] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] bg-card overflow-hidden z-10",
+						hasActiveThread ? "border-r border-border/80" : "w-full"
+					)}
 				>
 					{chatSlot}
 				</div>
 			)}
 
 			{/* Center Draggable Resizer Divider */}
-			{!isFullscreen && !isCollapsed && (
+			{hasActiveThread && !isFullscreen && !isCollapsed && (
 				<div
 					role="slider"
 					tabIndex={0}
@@ -263,47 +253,39 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 				</div>
 			)}
 
-			{/* Collapsed Expand Trigger */}
-			{!isFullscreen && isCollapsed && (
-				<button
-					type="button"
-					onClick={() => setIsCollapsed(false)}
-					title="Mở rộng AI Co-pilot"
-					className="h-full w-10 bg-card border-r border-border flex flex-col items-center py-4 text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-muted transition-colors cursor-pointer z-20"
+			{/* Right Panel: Dynamic Context Canvas (Slides in and expands gracefully) */}
+			{hasActiveThread && (
+				<section
+					aria-label="Dynamic Context Canvas"
+					className="flex-1 h-full min-w-0 flex flex-col overflow-hidden relative animate-in fade-in slide-in-from-right-4 duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
 				>
-					<PanelLeftOpen className="w-5 h-5 mb-2" />
-					<span className="[writing-mode:vertical-rl] text-[11px] font-semibold tracking-wider uppercase font-sans">
-						AI Co-pilot
-					</span>
-				</button>
+					<DynamicRightPanelCanvas
+						leads={displayLeads}
+						isLoading={loading}
+						workspaceId={workspaceId}
+						sourceFilter={sourceFilter}
+						onSourceFilterChange={setSourceFilter}
+						statusFilter={statusFilter}
+						onStatusFilterChange={setStatusFilter}
+						searchQuery={searchQuery}
+						onSearchQueryChange={setSearchQuery}
+						onRefresh={refetch}
+						onOpenReverseIcp={() => setIsReverseIcpOpen(true)}
+						onOpenCompanyGraph={handleOpenCompanyGraph}
+					/>
+				</section>
 			)}
 
-			{/* Right Panel: Polymorphic Dynamic Mini-App Canvas */}
-			<div className="flex-1 h-full min-w-[500px] flex flex-col overflow-hidden">
-				<DynamicRightPanelCanvas
-					leads={displayLeads}
-					isLoading={loading}
-					workspaceId={workspaceId}
-					sourceFilter={sourceFilter}
-					onSourceFilterChange={setSourceFilter}
-					statusFilter={statusFilter}
-					onStatusFilterChange={setStatusFilter}
-					searchQuery={searchQuery}
-					onSearchQueryChange={setSearchQuery}
-					onRefresh={refetch}
-					onOpenReverseIcp={() => setIsReverseIcpOpen(true)}
-					onOpenCompanyGraph={handleOpenCompanyGraph}
-				/>
-			</div>
-
 			{/* Floating Bulk Action Bar */}
-			<FloatingBulkActionBar
-				selectedCount={selectedLeadIds.length}
-				onUnlockPhones={handleUnlockPhones}
-				onExportLarkBase={handleExportLarkBase}
-				onBulkZalo={handleBulkZalo}
-				onClearSelection={() => setSelectedLeadIds([])}
-			/>
+			{hasActiveThread && selectedLeadIds.length > 0 && (
+				<FloatingBulkActionBar
+					selectedCount={selectedLeadIds.length}
+					onUnlockPhones={handleUnlockPhones}
+					onExportLarkBase={handleExportLarkBase}
+					onBulkZalo={handleBulkZalo}
+					onClearSelection={() => setSelectedLeadIds([])}
+				/>
+			)}
 
 			{/* Slide-over Detail Flyout Drawer */}
 			<LeadDetailFlyoutDrawer

@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Logo } from "@/components/Logo";
 import { Spinner } from "@/components/ui/spinner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -239,6 +239,15 @@ export function LayoutShell({
 		handlePointerDown: onResizePointerDown,
 		isDragging: isResizing,
 	} = useSidebarResize();
+
+	// Origami UX: Automatically collapse sidebar into 48px icon rail in active chat sessions
+	useEffect(() => {
+		if (isChatPage && activeChatId) {
+			setIsCollapsed(true);
+		} else if (isChatPage && !activeChatId) {
+			setIsCollapsed(false);
+		}
+	}, [isChatPage, activeChatId, setIsCollapsed]);
 
 	// Memoize context value to prevent unnecessary re-renders
 	const sidebarContextValue = useMemo(

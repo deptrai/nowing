@@ -10,12 +10,10 @@ import {
 	Maximize2,
 	Minimize2,
 	Network,
-	Plus,
 	RefreshCw,
 	Search,
 	SlidersHorizontal,
 	Sparkles,
-	Table as TableIcon,
 } from "lucide-react";
 import type React from "react";
 import { useMemo, useState } from "react";
@@ -68,7 +66,7 @@ export const OrigamiLeadMatrix: React.FC<OrigamiLeadMatrixProps> = ({
 	const [, setActiveDrawerLead] = useAtom(activeDrawerLeadAtom);
 	const [highlightedRowIds] = useAtom(chatHighlightedRowIdsAtom);
 	const [isFullscreen, setIsFullscreen] = useAtom(isMatrixFullscreenAtom);
-	const [activeTabName, setActiveTabName] = useState("Tất cả khách hàng tiềm năng");
+	const [_activeTabName, _setActiveTabName] = useState("Tất cả khách hàng tiềm năng");
 
 	const allIds = useMemo(() => leads.map((l) => l.id), [leads]);
 	const isAllSelected = leads.length > 0 && leads.every((l) => selectedLeadIds.includes(l.id));
@@ -138,8 +136,8 @@ export const OrigamiLeadMatrix: React.FC<OrigamiLeadMatrixProps> = ({
 			};
 			return sourceLabels[sourceFilter] || `Leads từ nguồn ${sourceFilter}`;
 		}
-		return activeTabName || "Tất cả khách hàng tiềm năng";
-	}, [searchQuery, sourceFilter, activeTabName]);
+		return "Tất cả khách hàng tiềm năng";
+	}, [searchQuery, sourceFilter]);
 
 	return (
 		<div
@@ -150,60 +148,6 @@ export const OrigamiLeadMatrix: React.FC<OrigamiLeadMatrixProps> = ({
 				className
 			)}
 		>
-			{/* Top Spreadsheet Tab Bar with Multi-Table Tabs & Credits */}
-			<div className="h-10 border-b border-border/80 bg-muted/40 flex items-center justify-between px-3 shrink-0">
-				<div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar flex-1">
-					<button
-						type="button"
-						onClick={() => {
-							setActiveTabName("Tất cả khách hàng tiềm năng");
-							onSourceFilterChange("all");
-						}}
-						className="flex items-center gap-1.5 px-3 py-1 bg-background border-t-2 border-t-emerald-500 border-x border-border/80 rounded-t-md text-xs font-semibold text-foreground shadow-xs shrink-0 cursor-pointer"
-					>
-						<TableIcon className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-						<span className="truncate max-w-[180px]">{displayTitle}</span>
-						<ChevronDown className="w-3 h-3 text-muted-foreground ml-1" />
-					</button>
-					<button
-						type="button"
-						onClick={() => {
-							setActiveTabName("Bất động sản & Chủ nhà");
-							onSourceFilterChange("batdongsan");
-						}}
-						className="flex items-center gap-1 px-3 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-background/60 rounded-t-md transition-colors shrink-0 cursor-pointer border border-transparent hover:border-border/50"
-					>
-						<TableIcon className="w-3.5 h-3.5 opacity-60" />
-						<span className="truncate max-w-[150px]">Bất động sản</span>
-					</button>
-					<button
-						type="button"
-						onClick={() => {
-							setActiveTabName("Tín hiệu tuyển dụng");
-							onSourceFilterChange("topcv");
-						}}
-						className="flex items-center gap-1 px-3 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-background/60 rounded-t-md transition-colors shrink-0 cursor-pointer border border-transparent hover:border-border/50"
-					>
-						<TableIcon className="w-3.5 h-3.5 opacity-60" />
-						<span className="truncate max-w-[150px]">Tuyển dụng & Doanh nghiệp</span>
-					</button>
-					<button
-						type="button"
-						title="Thêm bảng mới"
-						className="p-1 text-muted-foreground hover:text-foreground hover:bg-background/80 rounded transition-colors cursor-pointer"
-					>
-						<Plus className="w-3.5 h-3.5" />
-					</button>
-				</div>
-
-				<div className="flex items-center gap-2 shrink-0">
-					<div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-[11px] font-medium border border-emerald-500/20">
-						<span className="text-[10px]">💎</span>
-						<span className="font-mono font-bold">1,420</span> Credits
-					</div>
-				</div>
-			</div>
-
 			{/* Main Editorial Header: Title + Primary Actions */}
 			<div className="px-5 py-4 border-b border-border/80 bg-background flex flex-wrap items-center justify-between gap-4">
 				<div className="flex items-center gap-3">
