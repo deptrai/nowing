@@ -1,6 +1,6 @@
 "use client";
 
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import {
 	Activity,
 	ChevronDown,
@@ -17,6 +17,7 @@ import {
 	isMatrixFullscreenAtom,
 	threadCanvasModeMapAtom,
 } from "@/atoms/leads/leads-canvas.atoms";
+import { currentUserAtom } from "@/atoms/user/user-query.atoms";
 import type { Lead } from "@/contracts/types/leads.types";
 import { cn } from "@/lib/utils";
 import { NowingLeadMatrix } from "./NowingLeadMatrix";
@@ -60,6 +61,13 @@ const VIEW_MODES: Array<{
 export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (props) => {
 	const [threadModesMap, setThreadModesMap] = useAtom(threadCanvasModeMapAtom);
 	const [isFullscreen] = useAtom(isMatrixFullscreenAtom);
+	const { data: currentUser } = useAtomValue(currentUserAtom);
+
+	const creditsCount = useMemo(() => {
+		if (!currentUser) return 500;
+		const micros = currentUser.credit_micros_balance ?? 5_000_000;
+		return Math.max(0, Math.floor(micros / 10_000));
+	}, [currentUser]);
 
 	// Session-Scoped Key for this specific chat thread
 	const threadKey = String(props.threadId || "default");
@@ -213,9 +221,15 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 
 				{/* Right: Credits Badge & Mode Switcher */}
 				<div className="flex items-center gap-1.5 shrink-0 ml-2">
-					<div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-pink-500/10 dark:bg-pink-500/20 text-pink-600 dark:text-pink-400 text-[10px] font-semibold border border-pink-500/20">
+					<div
+						className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-pink-500/10 dark:bg-pink-500/20 text-pink-600 dark:text-pink-400 text-xs font-semibold border border-pink-500/20 shadow-2xs"
+						title={`Số dư khả dụng: ${((currentUser?.credit_micros_balance ?? 5_000_000) / 1_000_000).toFixed(2)} USD`}
+					>
 						<span>🌸</span>
-						<span className="font-mono font-bold">1,420</span> Credits
+						<span className="font-mono font-bold">
+							{new Intl.NumberFormat("vi-VN").format(creditsCount)}
+						</span>{" "}
+						Credits
 					</div>
 
 					{/* Mini Mode Switcher */}

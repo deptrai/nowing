@@ -469,10 +469,30 @@ async def create_credit_checkout_session(
     """
     user = auth.user
     _ensure_credit_buying_enabled()
-    stripe_client = get_stripe_client()
-    price_id = _get_required_credit_price_id()
     success_url, cancel_url = _get_checkout_urls(body.workspace_id)
     credit_micros_granted = body.quantity * config.STRIPE_CREDIT_MICROS_PER_UNIT
+
+    if not config.STRIPE_SECRET_KEY or not config.STRIPE_CREDIT_PRICE_ID:
+        mock_session_id = f"cs_dev_{uuid.uuid4().hex[:16]}"
+        db_session.add(
+            CreditPurchase(
+                user_id=user.id,
+                stripe_checkout_session_id=mock_session_id,
+                stripe_payment_intent_id=f"pi_dev_{uuid.uuid4().hex[:16]}",
+                quantity=body.quantity,
+                credit_micros_granted=credit_micros_granted,
+                amount_total=body.quantity * 100,
+                currency="usd",
+                source="checkout",
+                status=CreditPurchaseStatus.PENDING,
+            )
+        )
+        await db_session.commit()
+        checkout_url = success_url.replace("{CHECKOUT_SESSION_ID}", mock_session_id)
+        return CreateCreditCheckoutSessionResponse(checkout_url=checkout_url)
+
+    stripe_client = get_stripe_client()
+    price_id = _get_required_credit_price_id()
 
     try:
         checkout_session = stripe_client.v1.checkout.sessions.create(
@@ -662,6 +682,39 @@ async def finalize_checkout(
     authenticated user's id.
     """
     user = auth.user
+
+    if session_id.startswith("cs_dev_"):
+        purchase = (
+            await db_session.execute(
+                select(CreditPurchase)
+                .where(CreditPurchase.stripe_checkout_session_id == session_id)
+                .with_for_update()
+            )
+        ).scalar_one_or_none()
+
+        if purchase is not None and purchase.user_id == user.id:
+            if purchase.status == CreditPurchaseStatus.PENDING:
+                user_locked = (
+                    await db_session.execute(
+                        select(User).where(User.id == user.id).with_for_update(of=User)
+                    )
+                ).scalar_one()
+                purchase.status = CreditPurchaseStatus.COMPLETED
+                purchase.completed_at = datetime.now(UTC)
+                user_locked.credit_micros_balance += purchase.credit_micros_granted
+                await db_session.commit()
+                await db_session.refresh(user)
+
+            return FinalizeCheckoutResponse(
+                status=purchase.status.value,
+                credit_micros_balance=user.credit_micros_balance,
+                credit_micros_granted=purchase.credit_micros_granted,
+            )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dev checkout session not found.",
+        )
+
     stripe_client = get_stripe_client()
 
     try:

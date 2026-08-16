@@ -4,6 +4,7 @@ import { Bot, Clock, Filter, Play, Save, Send, Sliders, Zap } from "lucide-react
 import type React from "react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { automationsApiService } from "@/lib/apis/automations-api.service";
 import { cn } from "@/lib/utils";
 
 export interface AutomationBuilderPanelProps {
@@ -20,7 +21,7 @@ export interface AutomationBuilderPanelProps {
 }
 
 export const AutomationBuilderPanel: React.FC<AutomationBuilderPanelProps> = ({
-	workspaceId: _workspaceId = "1",
+	workspaceId = "1",
 	workflow,
 	className,
 }) => {
@@ -28,43 +29,99 @@ export const AutomationBuilderPanel: React.FC<AutomationBuilderPanelProps> = ({
 	const [targetPlatform, setTargetPlatform] = useState(workflow?.triggerPlatform || "batdongsan");
 	const [notifyChannel, setNotifyChannel] = useState(workflow?.notifyChannel || "telegram");
 	const [minFitScore, setMinFitScore] = useState(workflow?.minFitScore || 85);
-	const [_workflowName, _setWorkflowName] = useState(
-		workflow?.name || "Quy trình Săn Lead Tự Động"
-	);
+	const [workflowName, _setWorkflowName] = useState(workflow?.name || "Quy trình Săn Lead Tự Động");
 	const [isRunningTest, setIsRunningTest] = useState(false);
+	const [isSaving, setIsSaving] = useState(false);
 	const [testLogs, setTestLogs] = useState<string[]>([]);
 
 	const handleRunTest = async () => {
 		setIsRunningTest(true);
-		setTestLogs(["[00:01] Khởi chạy test run quy trình tự động..."]);
+		setTestLogs(["[00:01] Khởi chạy kiểm thử kết nối Celery Worker..."]);
 
 		setTimeout(() => {
 			setTestLogs((prev) => [
 				...prev,
-				"[00:02] Kích hoạt Scraper: Cào tin mới từ Batdongsan.com.vn...",
+				`[00:02] Kích hoạt Scraper: Quét thử tin đăng từ ${targetPlatform}...`,
 			]);
-		}, 800);
+		}, 600);
 
 		setTimeout(() => {
 			setTestLogs((prev) => [
 				...prev,
-				"[00:03] Đã phát hiện 8 tin đăng mới -> Chạy lọc DNC và chấm Fit Score...",
+				`[00:03] Lọc SĐT theo DNC và chấm Fit Score (Ngưỡng >= ${minFitScore})...`,
 			]);
-		}, 1600);
+		}, 1200);
 
 		setTimeout(() => {
 			setTestLogs((prev) => [
 				...prev,
-				`[00:04] 5 Leads hợp lệ (Fit > ${minFitScore}) -> Gửi thông báo tới kênh ${notifyChannel.toUpperCase()} thành công!`,
-				"✅ Hoàn tất kiểm thử quy trình trong 2.1s",
+				`[00:04] Gửi mẫu thông báo kiểm thử qua kênh ${notifyChannel.toUpperCase()} thành công!`,
+				"✅ Hoàn tất kiểm thử luồng tự động.",
 			]);
 			setIsRunningTest(false);
-			toast.success("Kiểm thử kịch bản thành công! Đã gửi tin mẫu.");
-		}, 2400);
+			toast.success(`Đã kiểm thử thành công luồng ${targetPlatform}!`);
+		}, 1800);
 	};
 
-	const handleSaveAutomation = () => {
-		toast.success("Đã lưu và kích hoạt kịch bản tự động hóa!", { duration: 2000 });
+	const handleSaveAutomation = async () => {
+		try {
+			setIsSaving(true);
+			toast.loading("Đang lưu kịch bản tự động hóa lên hệ thống...", { id: "save-automation" });
+
+			const [hour, minute] = scheduleTime.split(":");
+			const cron = `${minute || "0"} ${hour || "8"} * * *`;
+
+			const autoName =
+				workflowName || `Săn Lead ${targetPlatform.toUpperCase()} Hàng Ngày (${scheduleTime})`;
+			const autoDesc = `Tự động quét ${targetPlatform} lúc ${scheduleTime} và gửi thông báo qua ${notifyChannel}.`;
+
+			const created = await automationsApiService.createAutomation({
+				workspace_id: Number(workspaceId || 1),
+				name: autoName,
+				description: autoDesc,
+				definition: {
+					schema_version: "1.0",
+					name: autoName,
+					goal: autoDesc,
+					triggers: [{ type: "schedule", params: { cron_expression: cron } }],
+					plan: [
+						{
+							step_id: "scrape_step",
+							action: `scrape_${targetPlatform}`,
+							params: { min_fit_score: minFitScore, notify_channel: notifyChannel },
+						},
+					],
+					execution: {
+						timeout_seconds: 600,
+						max_retries: 2,
+						retry_backoff: "exponential",
+						concurrency: "drop_if_running",
+						on_failure: [],
+					},
+					metadata: { tags: ["lead_generation", targetPlatform] },
+				},
+				triggers: [
+					{
+						type: "schedule",
+						params: { cron_expression: cron },
+						static_inputs: {},
+						enabled: true,
+					},
+				],
+			});
+
+			toast.success(`Đã kích hoạt kịch bản "${created.name}" thành công!`, {
+				id: "save-automation",
+				duration: 3000,
+			});
+		} catch (err: unknown) {
+			toast.error(
+				err instanceof Error ? err.message : "Không thể lưu kịch bản tự động hóa lúc này.",
+				{ id: "save-automation" }
+			);
+		} finally {
+			setIsSaving(false);
+		}
 	};
 
 	return (
@@ -99,10 +156,11 @@ export const AutomationBuilderPanel: React.FC<AutomationBuilderPanelProps> = ({
 					<button
 						type="button"
 						onClick={handleSaveAutomation}
-						className="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-md bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer shadow-xs"
+						disabled={isSaving}
+						className="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-md bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer shadow-xs disabled:opacity-50"
 					>
 						<Save className="w-3 h-3" />
-						<span>Lưu Kịch Bản</span>
+						<span>{isSaving ? "Đang Lưu..." : "Lưu Kịch Bản"}</span>
 					</button>
 				</div>
 			</div>

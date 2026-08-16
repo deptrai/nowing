@@ -26,14 +26,19 @@ _Curated long-term knowledge for Nowing E2E Browser Testing._
   - PII Hard Purge (Decree 13 PDPD / GDPR): `DELETE /api/v1/leads/{id}/pii` hard purges phone/email/contacts and appends Keyed HMAC to DNC set with `value: null`.
 - **Suggested Action Pills (Story 21.11):** Suggested execution pills mount directly below assistant messages via container `[data-testid='suggested-action-pills']` and buttons `button[data-action-type]`. Supports 1-click prompt dispatch and keyboard shortcuts `Alt+Digit1`, `Alt+Digit2`, `Alt+Digit3` when composer input is unfocused. Emits window custom event `nowing:action-dispatched` triggering `.cell-pulse` highlight.
 - **Phone Copy Pills & PII Masking (Story 21.3):** Lead phone numbers render inside `button[aria-label^='Copy phone number']`. Non-privileged views strictly display masked format (`0908***456`). Clicking copies normalized digits and temporarily updates state to `(Đã copy)` with a 1500ms reset timer.
-- **Origami Split-View Canvas & Workspace Modernization (Story 21.16):**
-  - Main container: `main[data-testid='origami-split-canvas']` with Sọc Caro grid texture headers (`.soc-caro-grid`) and Emerald Green brand tokens.
-  - Left Panel: `section[data-testid='origami-chat-copilot']`, 3-Mode switcher `button[data-testid='mode-tab-leads']`, `button[data-testid='mode-tab-research']`, `button[data-testid='mode-tab-scrapers']`.
+- **Nowing Split-View Canvas & Dynamic Multi-Mode Hub (Story 21.16):**
+  - Main container: `main[data-testid='nowing-split-canvas']` with Sọc Caro grid texture headers (`.soc-caro-grid`) and Emerald Green brand tokens.
+  - Left Panel: `section[data-testid='nowing-chat-copilot']`, width 340px, full Assistant-UI runtime. Dynamic `💡 SUGGESTED NEXT ACTIONS` renders 1-click prompt action buttons above the composer. Table outputs render as `TableArtifactCard` `[ ▦ ] Bảng dữ liệu Khách hàng & Leads (● Đang xem >)`, which pings and highlights matching matrix rows. Query parameter `?q=...` automatically fills and executes initial prompts.
   - Collapse / Expand: Collapse trigger `button[title='Thu gọn Co-pilot']`, Expand trigger `button[title='Mở rộng AI Co-pilot']` (renders vertical rail `[writing-mode:vertical-rl]`).
-  - Resizer Divider: `div[role='slider'][data-testid='split-canvas-resizer']` supporting drag with `containerRect.left` offset, keyboard arrow keys `ArrowLeft`/`ArrowRight`, and double-click reset to 420px.
-  - Right Panel: `div[data-testid='origami-lead-matrix']` Live Data Matrix with columns (Checkbox, Lead / Company, Source, Decoded Phone, Fit Score, Actions). Fullscreen toggle `button:has-text('Toàn màn hình')`.
+  - Resizer Divider: `div[role='slider'][data-testid='split-canvas-resizer']` supporting drag, keyboard arrow keys `ArrowLeft`/`ArrowRight`, and double-click reset to 340px.
+  - Right Panel Hub: 4 contextual modes:
+    - `Leads Matrix`: `div[data-testid='nowing-lead-matrix']` with fluid auto-fit columns, fit score badges, phone copy pills, and 1-click Zalo outreach. Fullscreen toggle `button:has-text('Toàn màn hình')`.
+    - `Research Studio`: Executive summary, RAG citations, real `.md` blob export (`button:has-text('Xuất .MD')`), and print PDF (`button:has-text('Tải PDF')`).
+    - `Automation Flow`: Connected to `automationsApiService.createAutomation()` to save cron triggers.
+    - `Scraper Health`: Connected to `scraperPlatformAccountsApiService.list()` and `capture()`.
   - Floating Bulk Action Bar: `aside[data-testid='floating-bulk-action-bar']` slides in from bottom at `z-[60]` when $\ge 2$ checkboxes selected.
   - Flyout Detail Drawer: `aside[data-testid='lead-detail-flyout-drawer']` (480px) opens on row click with Fit Score bars, 1-click Zalo outreach, Click-to-call link (`tel:`), and invalid phone report trigger.
+  - Credits Badge: Top-right header dynamically tracks real user credits (`🌸 500 Credits` for `$5.00` balance).
 - **Enterprise Company Graph Drawer (Story 21.3 / 21.4):** Triggered by `button[name='Xem Company Graph']`. Displays company registration data (MST, representative, capital), decision-makers list with masked contacts, and recruitment signals.
 
 - **CRM Integration & Write-Back (Story 21.5):**

@@ -42,6 +42,11 @@ class LeadSourceAdapterRegistry:
             cls._instance = registry
         return cls._instance
 
+    @classmethod
+    def get_instance(cls) -> LeadSourceAdapterRegistry:
+        """Alias for get_default."""
+        return cls.get_default()
+
     def _register_defaults(self) -> None:
         """Auto-register all default built-in platform adapters."""
         from app.lead_intelligence.adapters.batdongsan import BatdongsanLeadAdapter
@@ -51,12 +56,14 @@ class LeadSourceAdapterRegistry:
         )
         from app.lead_intelligence.adapters.job_market import JobMarketLeadAdapter
         from app.lead_intelligence.adapters.social import SocialLeadAdapter
+        from app.lead_intelligence.adapters.telegram import TelegramLeadAdapter
 
         self.register(BatdongsanLeadAdapter())
         self.register(ChototLeadAdapter())
         self.register(JobMarketLeadAdapter())
         self.register(EnterpriseProcurementLeadAdapter())
         self.register(SocialLeadAdapter())
+        self.register(TelegramLeadAdapter())
 
     def register(self, adapter: LeadSourceAdapter) -> None:
         """Register a concrete adapter."""
@@ -74,6 +81,10 @@ class LeadSourceAdapterRegistry:
         if key not in self._adapters:
             raise KeyError(f"No lead adapter registered for source: '{source_name}'")
         return self._adapters[key]
+
+    def get_adapter(self, source_name: str) -> LeadSourceAdapter:
+        """Alias for get."""
+        return self.get(source_name)
 
     def list_all(self) -> list[LeadSourceAdapter]:
         """List all currently registered adapters."""
@@ -174,11 +185,16 @@ class LeadSourceAdapterRegistry:
                 if a not in matched:
                     matched.append(a)
 
-        # Social keywords
+        # Social & Telegram keywords
         social_keywords = [
             "facebook",
             "twitter",
             "xactions",
+            "telegram",
+            "tele",
+            "tg",
+            "kênh telegram",
+            "userbot",
             "mạng xã hội",
             "mang xa hoi",
             "group",
@@ -189,6 +205,7 @@ class LeadSourceAdapterRegistry:
             "môi giới",
             "moi gioi",
         ]
+
         if any(
             k in raw_lower or k in plain_lower for k in social_keywords
         ) or re.search(r"\bpost\b", raw_lower):

@@ -91,7 +91,9 @@ def parse_channel_info(html: str, username: str) -> TelegramChannelInfo:
     avatar_url = photo_node.attributes.get("src") if photo_node else None
 
     # Subscribers
-    counter_node = tree.css_first(".tgme_channel_info_counter .counter_value, .tgme_page_extra")
+    counter_node = tree.css_first(
+        ".tgme_channel_info_counter .counter_value, .tgme_page_extra"
+    )
     subscribers_count = 0
     if counter_node:
         counter_text = counter_node.text(strip=True)
@@ -122,7 +124,9 @@ def parse_messages(html: str, channel_username: str) -> list[TelegramMessagePars
     seen_ids = set()
     for wrap in wraps:
         msg_node = wrap.css_first(".tgme_widget_message") or wrap
-        post_attr = msg_node.attributes.get("data-post") or wrap.attributes.get("data-post")
+        post_attr = msg_node.attributes.get("data-post") or wrap.attributes.get(
+            "data-post"
+        )
 
         if not post_attr:
             # Try to find link with post id
@@ -167,12 +171,16 @@ def parse_messages(html: str, channel_username: str) -> list[TelegramMessagePars
                 published_at = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
 
         # Author name
-        author_node = msg_node.css_first(".tgme_widget_message_owner_name, .tgme_widget_message_from_author")
+        author_node = msg_node.css_first(
+            ".tgme_widget_message_owner_name, .tgme_widget_message_from_author"
+        )
         author_name = author_node.text(strip=True) if author_node else None
 
         # Media detection
         photo_nodes = msg_node.css(".tgme_widget_message_photo_wrap")
-        video_nodes = msg_node.css(".tgme_widget_message_video_player, .tgme_widget_message_roundvideo")
+        video_nodes = msg_node.css(
+            ".tgme_widget_message_video_player, .tgme_widget_message_roundvideo"
+        )
         doc_nodes = msg_node.css(".tgme_widget_message_document")
         has_media = bool(photo_nodes or video_nodes or doc_nodes)
 
@@ -235,14 +243,18 @@ class TelegramWebPreviewScraper:
             self._owned_client = None
 
     def _get_client(self) -> httpx.AsyncClient:
-        return self._injected_client or self._owned_client or httpx.AsyncClient(
-            timeout=self.timeout, follow_redirects=True
+        return (
+            self._injected_client
+            or self._owned_client
+            or httpx.AsyncClient(timeout=self.timeout, follow_redirects=True)
         )
 
     @staticmethod
     def sanitize_username(channel_username: str) -> str:
         """Extract canonical username from full URL or handle."""
-        cleaned = re.sub(r"^(?:https?://)?(?:www\.)?t\.me/(?:s/)?", "", channel_username.strip())
+        cleaned = re.sub(
+            r"^(?:https?://)?(?:www\.)?t\.me/(?:s/)?", "", channel_username.strip()
+        )
         cleaned = cleaned.lstrip("@").strip().strip("/")
         if not re.match(r"^[a-zA-Z0-9_]{4,32}$", cleaned):
             raise ValueError(f"Invalid Telegram channel username: '{channel_username}'")
@@ -271,7 +283,7 @@ class TelegramWebPreviewScraper:
         }
 
         client = self._get_client()
-        should_close = (client != self._injected_client and client != self._owned_client)
+        should_close = client != self._injected_client and client != self._owned_client
 
         try:
             last_err: Exception | str | None = None
@@ -282,34 +294,51 @@ class TelegramWebPreviewScraper:
                         html = response.text
                         channel_info = parse_channel_info(html, clean_username)
                         messages = parse_messages(html, clean_username)
-                        return TelegramScrapeResult(channel_info=channel_info, messages=messages)
+                        return TelegramScrapeResult(
+                            channel_info=channel_info, messages=messages
+                        )
 
                     if response.status_code == 404:
-                        logger.warning("Telegram channel @%s not found (404)", clean_username)
+                        logger.warning(
+                            "Telegram channel @%s not found (404)", clean_username
+                        )
                         return TelegramScrapeResult(
-                            channel_info=TelegramChannelInfo(username=clean_username, title=clean_username),
+                            channel_info=TelegramChannelInfo(
+                                username=clean_username, title=clean_username
+                            ),
                             messages=[],
                         )
 
                     if response.status_code in (429, 503):
                         last_err = f"HTTP {response.status_code} (Rate limited / Service unavailable)"
-                        backoff = (2 ** attempt) + random.uniform(0.5, 1.5)
-                        logger.warning("Telegram rate limit (%d), backing off %.2fs (attempt %d)", response.status_code, backoff, attempt)
+                        backoff = (2**attempt) + random.uniform(0.5, 1.5)
+                        logger.warning(
+                            "Telegram rate limit (%d), backing off %.2fs (attempt %d)",
+                            response.status_code,
+                            backoff,
+                            attempt,
+                        )
                         await asyncio.sleep(backoff)
                         continue
 
                     response.raise_for_status()
                 except (httpx.RequestError, httpx.HTTPStatusError) as exc:
                     last_err = exc
-                    backoff = (2 ** attempt) + random.uniform(0.1, 0.5)
+                    backoff = (2**attempt) + random.uniform(0.1, 0.5)
                     await asyncio.sleep(backoff)
 
-            logger.error("Failed to scrape Telegram channel @%s after %d retries: %s", clean_username, self.max_retries, last_err)
+            logger.error(
+                "Failed to scrape Telegram channel @%s after %d retries: %s",
+                clean_username,
+                self.max_retries,
+                last_err,
+            )
             return TelegramScrapeResult(
-                channel_info=TelegramChannelInfo(username=clean_username, title=clean_username),
+                channel_info=TelegramChannelInfo(
+                    username=clean_username, title=clean_username
+                ),
                 messages=[],
             )
         finally:
             if should_close:
                 await client.aclose()
-

@@ -1,14 +1,6 @@
 "use client";
 
-import {
-	BookOpen,
-	Download,
-	ExternalLink,
-	FileText,
-	Headphones,
-	Play,
-	Sparkles,
-} from "lucide-react";
+import { BookOpen, Download, ExternalLink, FileText, Sparkles } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -32,23 +24,45 @@ export const ResearchStudioPanel: React.FC<ResearchStudioPanelProps> = ({
 	report,
 	className,
 }) => {
-	const [activeSubTab, setActiveSubTab] = useState<"report" | "sources" | "podcast">("report");
-	const [isPlayingPodcast, setIsPlayingPodcast] = useState(false);
+	const [activeSubTab, setActiveSubTab] = useState<"report" | "sources">("report");
 
 	const reportTitle = report?.title || "Báo Cáo Nghiên Cứu Thị Trường";
 	const reportSummary = report?.summary || "Tổng quan phân tích chuyên sâu về dữ liệu ngành.";
-	const _findings = report?.keyFindings || [
+	const findings = report?.keyFindings || [
 		"Thị trường đang ghi nhận mức tăng trưởng nhu cầu tìm kiếm 24% so với cùng kỳ.",
 		"Tỷ lệ phản hồi qua kênh Zalo cá nhân hóa đạt 38.5%, cao gấp 3 lần Email.",
 	];
-	const _citations = report?.citations || [];
+	const citations = report?.citations || [];
 
 	const handleExportMarkdown = () => {
-		toast.success("Đang xuất báo cáo định dạng Markdown...", { duration: 1500 });
+		const mdContent = `# ${reportTitle}
+
+## Tóm Tắt Điều Hành
+${reportSummary}
+
+## Các Phát Hiện Trọng Yếu
+${findings.map((f, i) => `${i + 1}. ${f}`).join("\n")}
+
+## Nguồn Trích Dẫn & RAG
+${citations.length > 0 ? citations.map((c) => `- [${c.title}](${c.url})${c.snippet ? `: ${c.snippet}` : ""}`).join("\n") : "- Dữ liệu tổng hợp từ Nowing Market Intelligence."}
+
+---
+*Xuất tự động từ Nowing Research Studio • ${new Date().toLocaleDateString("vi-VN")}*
+`;
+		const blob = new Blob([mdContent], { type: "text/markdown;charset=utf-8;" });
+		const url = URL.createObjectURL(blob);
+		const link = document.createElement("a");
+		link.href = url;
+		link.download = `${reportTitle.replace(/[^a-zA-Z0-9\u00C0-\u024F\u1E00-\u1EFF]/g, "_")}_${Date.now()}.md`;
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+		URL.revokeObjectURL(url);
+		toast.success("Đã tải về tệp Báo cáo Markdown thành công!");
 	};
 
 	const handleExportPdf = () => {
-		toast.success("Đang chuẩn bị file PDF nghiên cứu...", { duration: 1500 });
+		window.print();
 	};
 
 	return (
@@ -85,20 +99,7 @@ export const ResearchStudioPanel: React.FC<ResearchStudioPanelProps> = ({
 						)}
 					>
 						<BookOpen className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-						<span>Nguồn Trích Dẫn & RAG (8)</span>
-					</button>
-					<button
-						type="button"
-						onClick={() => setActiveSubTab("podcast")}
-						className={cn(
-							"flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer",
-							activeSubTab === "podcast"
-								? "bg-background text-foreground shadow-xs border border-border/80"
-								: "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-						)}
-					>
-						<Headphones className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-						<span>Audio Brief (3:20)</span>
+						<span>Nguồn Trích Dẫn & RAG ({citations.length || 8})</span>
 					</button>
 				</div>
 
@@ -273,46 +274,6 @@ export const ResearchStudioPanel: React.FC<ResearchStudioPanelProps> = ({
 									</button>
 								</div>
 							))}
-						</div>
-					</div>
-				)}
-
-				{activeSubTab === "podcast" && (
-					<div className="max-w-md mx-auto py-8 text-center space-y-5">
-						<div className="w-20 h-20 rounded-3xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center mx-auto text-purple-600 dark:text-purple-400 shadow-md">
-							<Headphones className="w-10 h-10" />
-						</div>
-						<div>
-							<h3 className="text-base font-bold text-foreground">
-								AI Audio Brief — Tóm Tắt 3 Phút
-							</h3>
-							<p className="text-xs text-muted-foreground mt-1">
-								Giọng đọc AI tự nhiên tóm tắt các điểm nhấn quan trọng của báo cáo
-							</p>
-						</div>
-						<div className="p-4 rounded-2xl bg-card border border-border flex items-center justify-center gap-4">
-							<button
-								type="button"
-								onClick={() => {
-									setIsPlayingPodcast(!isPlayingPodcast);
-									toast.info(isPlayingPodcast ? "Đã tạm dừng audio" : "Đang phát Audio Brief...");
-								}}
-								className="w-12 h-12 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center transition-transform hover:scale-105 shadow-md cursor-pointer"
-							>
-								<Play className={cn("w-5 h-5 ml-0.5", isPlayingPodcast && "fill-current")} />
-							</button>
-							<div className="text-left flex-1">
-								<div className="text-xs font-semibold text-foreground">
-									Bản tin nhanh BĐS Hà Nội
-								</div>
-								<div className="w-full bg-muted rounded-full h-1.5 mt-2 overflow-hidden">
-									<div className="bg-emerald-500 h-1.5 rounded-full w-1/3" />
-								</div>
-								<div className="flex justify-between text-[10px] text-muted-foreground mt-1 font-mono">
-									<span>01:12</span>
-									<span>03:20</span>
-								</div>
-							</div>
 						</div>
 					</div>
 				)}

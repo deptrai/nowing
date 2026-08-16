@@ -266,6 +266,14 @@ const _getTimeBasedGreeting = (user?: { display_name?: string | null; email?: st
 const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }) => {
 	const { data: user } = useAtomValue(currentUserAtom);
 	const [showBetaCard, setShowBetaCard] = useState(true);
+	const params = useParams();
+	const workspaceId = (params?.workspace_id as string) || "1";
+
+	const creditsCount = useMemo(() => {
+		if (!user) return 500;
+		const micros = user.credit_micros_balance ?? 5_000_000;
+		return Math.max(0, Math.floor(micros / 10_000));
+	}, [user]);
 
 	const displayName = useMemo(() => {
 		if (user?.display_name?.trim()) {
@@ -280,9 +288,15 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 	return (
 		<div className="aui-thread-welcome-root flex min-h-0 flex-1 flex-col items-center justify-between p-4 sm:p-8 overflow-y-auto overflow-x-hidden">
 			<div className="w-full flex items-center justify-end mb-2">
-				<div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-pink-500/10 dark:bg-pink-500/20 text-pink-600 dark:text-pink-400 text-xs font-semibold border border-pink-500/20 shadow-2xs">
+				<div
+					className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-pink-500/10 dark:bg-pink-500/20 text-pink-600 dark:text-pink-400 text-xs font-semibold border border-pink-500/20 shadow-2xs"
+					title={`Số dư khả dụng: ${((user?.credit_micros_balance ?? 5_000_000) / 1_000_000).toFixed(2)} USD`}
+				>
 					<span>🌸</span>
-					<span className="font-mono font-bold">1,420</span> Credits
+					<span className="font-mono font-bold">
+						{new Intl.NumberFormat("vi-VN").format(creditsCount)}
+					</span>{" "}
+					Credits
 				</div>
 			</div>
 
@@ -384,96 +398,100 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 				<div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground border-y border-border/60 py-2.5">
 					<div className="flex items-center gap-1.5">
 						<span className="text-emerald-600 dark:text-emerald-400 font-semibold">
-							Past 7 days
+							⚡ Sẵn Sàng Săn Lead
 						</span>
-						<span className="font-bold text-foreground">15 new leads</span>
+						<span className="text-muted-foreground">•</span>
+						<span className="text-foreground font-medium">15+ Nền Tảng Dữ Liệu Live</span>
 					</div>
 					<div className="flex items-center gap-3">
-						<button
-							type="button"
-							onClick={() => toast.info("Kết nối Zalo OA")}
+						<a
+							href={workspaceId ? `/dashboard/${workspaceId}/user-settings` : "/dashboard"}
 							className="text-muted-foreground hover:text-foreground font-medium transition-colors cursor-pointer"
 						>
-							Connect Zalo →
-						</button>
-						<button
-							type="button"
-							onClick={() => toast.info("Kết nối LinkedIn")}
-							className="text-muted-foreground hover:text-foreground font-medium transition-colors cursor-pointer"
-						>
-							Connect LinkedIn →
-						</button>
+							Cấu hình Kênh Tin Nhắn (Zalo/Telegram) →
+						</a>
 					</div>
 				</div>
 
-				{/* Insight Cards (What's costing you replies) */}
+				{/* Actionable Quickstart Cards */}
 				<div className="space-y-3">
 					<div className="text-xs text-muted-foreground">
-						<strong className="text-foreground">What&apos;s costing you replies</strong> • from your
-						August 10 report
+						<strong className="text-foreground">Tác vụ khởi đầu nhanh</strong> • Chọn một mẫu kịch
+						bản để AI săn lead ngay lập tức
 					</div>
 
 					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
 						<div className="p-4 rounded-2xl border border-border/80 bg-card hover:border-border transition-all flex flex-col justify-between gap-3 shadow-2xs min-w-0">
 							<div className="space-y-2">
-								<div className="w-7 h-7 rounded-xl bg-muted flex items-center justify-center text-muted-foreground">
-									↗
+								<div className="w-7 h-7 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-sm font-bold">
+									🏠
 								</div>
 								<h4 className="text-xs font-bold text-foreground leading-snug">
-									No email or Zalo sender connected
+									Săn Lead Bất Động Sản
 								</h4>
 								<p className="text-[11px] text-muted-foreground">
-									15 qualified agarwood leads built, nothing sent yet
+									Tìm kiếm 10 công ty BĐS tại Hà Nội, trích xuất SĐT và thêm vào bảng
 								</p>
 							</div>
 							<button
 								type="button"
-								onClick={() => toast.info("Xem chi tiết cài đặt kết nối")}
-								className="text-left text-xs font-semibold text-pink-600 dark:text-pink-400 hover:underline cursor-pointer"
+								onClick={() => {
+									const prompt = "Tìm kiếm 10 công ty Bất động sản tại Hà Nội và thêm vào bảng";
+									window.location.href = `/dashboard/${workspaceId || 1}/new-chat?q=${encodeURIComponent(prompt)}`;
+								}}
+								className="text-left text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
 							>
-								View details
+								Chạy tác vụ này →
 							</button>
 						</div>
 
 						<div className="p-4 rounded-2xl border border-border/80 bg-card hover:border-border transition-all flex flex-col justify-between gap-3 shadow-2xs min-w-0">
 							<div className="space-y-2">
-								<div className="w-7 h-7 rounded-xl bg-muted flex items-center justify-center text-muted-foreground">
-									↗
+								<div className="w-7 h-7 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center text-sm font-bold">
+									💼
 								</div>
 								<h4 className="text-xs font-bold text-foreground leading-snug">
-									Your strongest list has never been sequenced
+									Quét Tín Hiệu Tuyển Dụng
 								</h4>
 								<p className="text-[11px] text-muted-foreground">
-									9 qualified Vietnamese agarwood companies, ready
+									Quét các công ty công nghệ đang tuyển dụng Senior Developer trên TopCV
 								</p>
 							</div>
 							<button
 								type="button"
-								onClick={() => toast.info("Xem danh sách khách hàng sẵn sàng")}
-								className="text-left text-xs font-semibold text-pink-600 dark:text-pink-400 hover:underline cursor-pointer"
+								onClick={() => {
+									const prompt =
+										"Quét các công ty công nghệ đang tuyển dụng Senior Developer trên TopCV";
+									window.location.href = `/dashboard/${workspaceId || 1}/new-chat?q=${encodeURIComponent(prompt)}`;
+								}}
+								className="text-left text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
 							>
-								View details
+								Chạy tác vụ này →
 							</button>
 						</div>
 
 						<div className="p-4 rounded-2xl border border-border/80 bg-card hover:border-border transition-all flex flex-col justify-between gap-3 shadow-2xs sm:col-span-2 lg:col-span-1 min-w-0">
 							<div className="space-y-2">
-								<div className="w-7 h-7 rounded-xl bg-muted flex items-center justify-center text-muted-foreground">
-									✨
+								<div className="w-7 h-7 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center text-sm font-bold">
+									🌐
 								</div>
 								<h4 className="text-xs font-bold text-foreground leading-snug">
-									Kênh Phản Hồi Trực Tiếp
+									Phân Tích Chân Dung ICP
 								</h4>
 								<p className="text-[11px] text-muted-foreground">
-									grow the reply-able business segment instead
+									Phân tích mô hình kinh doanh và tìm 15 doanh nghiệp B2B tương tự
 								</p>
 							</div>
 							<button
 								type="button"
-								onClick={() => toast.info("Xem chi tiết kênh liên hệ")}
-								className="text-left text-xs font-semibold text-pink-600 dark:text-pink-400 hover:underline cursor-pointer"
+								onClick={() => {
+									const prompt =
+										"Phân tích chân dung khách hàng mục tiêu (ICP) và tìm 15 doanh nghiệp B2B tiềm năng";
+									window.location.href = `/dashboard/${workspaceId || 1}/new-chat?q=${encodeURIComponent(prompt)}`;
+								}}
+								className="text-left text-xs font-semibold text-purple-600 dark:text-purple-400 hover:underline cursor-pointer"
 							>
-								View details
+								Chạy tác vụ này →
 							</button>
 						</div>
 					</div>

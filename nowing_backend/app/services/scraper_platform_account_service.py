@@ -287,9 +287,7 @@ class ScraperPlatformAccountRotator:
 
     def _choose(self, now: float) -> ScraperPlatformAccount | None:
         accounts = self._accounts or []
-        available = [
-            a for a in accounts if not self._is_banned(a, now)
-        ]
+        available = [a for a in accounts if not self._is_banned(a, now)]
         if not available:
             return None
         available.sort(
@@ -371,16 +369,23 @@ class ScraperPlatformAccountRotator:
         *,
         success: bool,
         error_type: str | None = None,
+        custom_cooldown_until: float | None = None,
     ) -> None:
         """Update rate-limit state after a request completes."""
         async with self._lock:
             state = self._state.get(account.id, {})
             now = time.time()
             if not success:
-                state["consecutive_failures"] = (
-                    state.get("consecutive_failures", 0) + 1
-                )
-                if error_type == "restricted":
+                state["consecutive_failures"] = state.get("consecutive_failures", 0) + 1
+                if custom_cooldown_until is not None:
+                    state["banned_until"] = float(custom_cooldown_until)
+                    logger.warning(
+                        "Scraper account %s rate limited with custom cooldown until %s (%.0fs)",
+                        account.id,
+                        state["banned_until"],
+                        state["banned_until"] - now,
+                    )
+                elif error_type == "restricted":
                     state["banned_until"] = now + (self.limit.cooldown_seconds * 2)
                     logger.warning(
                         "Scraper account %s marked restricted; cooldown %.0fs",
@@ -394,8 +399,12 @@ class ScraperPlatformAccountRotator:
                         account.id,
                         state["banned_until"] - now,
                     )
-                if state.get("consecutive_failures", 0) >= self.limit.max_consecutive_failures:
-                    state["banned_until"] = now + self.limit.cooldown_seconds
+                if (
+                    state.get("consecutive_failures", 0)
+                    >= self.limit.max_consecutive_failures
+                ):
+                    if custom_cooldown_until is None:
+                        state["banned_until"] = now + self.limit.cooldown_seconds
                     state["consecutive_failures"] = 0
                     logger.warning(
                         "Scraper account %s hit max consecutive failures; cooldown %.0fs",

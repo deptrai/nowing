@@ -1173,6 +1173,8 @@ app.include_router(chainlens_internal_router, prefix="/v1")
 app.include_router(self_host_research_router, prefix="/v1")
 
 app.include_router(crud_router, prefix="/api/v1", tags=["crud"])
+app.include_router(crud_router, prefix="/api", tags=["crud"])
+app.include_router(crud_router)
 
 
 @functools.lru_cache(maxsize=1)
