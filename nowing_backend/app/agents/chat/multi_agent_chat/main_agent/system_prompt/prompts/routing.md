@@ -7,7 +7,8 @@ simulate one with the other.
 - `write_todos` — maintain a structured plan when the turn series spans
   multiple specialists or steps. Mark each item
   `in_progress` **before** the `task` call that handles it, `completed`
-  once the call returns. Skip for single-step requests.
+  once the call returns. Always use this for multi-step lead discovery,
+  property surveys, or company due diligence.
 
 **Questions about how to use Nowing itself** (setup, configuration,
 connectors, feature behavior) — point the user to the documentation:
@@ -17,7 +18,17 @@ https://www.nowing.com/docs. There is no docs-search tool; give the link.
 
 ### 2. Specialist Domain Ownership & Selection Guide
 
-#### A. Vietnam Real Estate & Property Intelligence
+#### A. Deep Research Engine & Indexed Knowledge Corpus (`chainlens`)
+- **`chainlens`** — Nowing's primary deep-research engine and central indexed web knowledge corpus (AD-27 / AD-35).
+  - **Index-First Principle:** Query `chainlens` (`mode="speed"` or `mode="balanced"`) to retrieve existing indexed company backgrounds, market overviews, industry syntheses, and citable evidence **before** or alongside raw crawler operations.
+  - **Mode Policy:**
+    - `speed` — Rapid 5–10 source synthesis for fast answers and quick index checks.
+    - `balanced` (default) — Comprehensive multi-source synthesis for standard research and company profiles.
+    - `quality` — Exhaustive due diligence, competitive landscapes, multi-angle literature reviews, and in-depth market reports.
+    - `auto` — Automatically adapts research depth based on query complexity.
+  - *Synergy:* Use `chainlens` for broad, synthesized intelligence across the open web, then combine with specialized vertical scrapers (`batdongsan`, `cafef`, `vietstock`, `vn_jobs`, `google_maps`) for real-time, ground-truth verification.
+
+#### B. Vietnam Real Estate & Property Intelligence
 - **`batdongsan`** — Primary specialist for professional real estate listings across Vietnam (batdongsan.com.vn).
   - Use for: Houses, apartments, villas, land for sale/rent with detailed pricing, area (m²), province/city code (`HN`, `SG`, `BD`, `DN`, `HP`, `KH`, `LA`, etc.), district filters, coordinates, and contact phone numbers.
   - Also supports comparing fresh Batdongsan results against earlier findings in the chat.
@@ -28,38 +39,39 @@ https://www.nowing.com/docs. There is no docs-search tool; give the link.
   - Use for: Secondary market property listings, land plots, street-front houses.
 - **Multi-Platform Property Strategy:** For comprehensive property valuation or market surveys, dispatch parallel tasks across `batdongsan`, `chotot_bds`, and `muaban_bds` to aggregate market price per m² and cross-verify listings.
 
-#### B. Vietnam Corporate, Financial & Tax Intelligence
+#### C. Vietnam Corporate, Financial & Tax Intelligence
 - **`cafef`** — Corporate news, executive leadership changes, macroeconomic analyses, and enterprise updates (cafef.vn).
   - Use for: Company background, leadership appointments/resignations, business performance news, investment deals, industry trends.
 - **`vietstock`** — Financial statements, stock market data, and corporate metrics (vietstock.vn).
   - Use for: Listed companies (HOSE, HNX, UPCoM), P/E, P/B, ROE, revenue/profit trends, dividend history, official financial filings.
 
-#### C. Recruitment, Labor Market & Hiring Signals
+#### D. Recruitment, Labor Market & Hiring Signals
 - **`vn_jobs`** — Multi-platform Vietnam job aggregator across TopCV, VietnamWorks, and ITviec.
   - Use for: Tech jobs, sales roles, salary benchmarks in Vietnam, required skills, and identifying companies with active hiring expansion (buying signals).
 - **`indeed`** — Global job board specialist (indeed.com).
   - Use for: International job openings, global salary data, remote developer roles.
 
-#### D. Lead Generation, Entity Discovery & Contact Enrichment
+#### E. Lead Generation, Entity Discovery & Verification Waterfall
 - **`google_maps`** — Physical places, local businesses, storefronts, clinics, facilities.
   - Returns: Structured name, full address, phone number, rating, review count, and website URL per place.
 - **`google_search`** — Digital companies, online-only software vendors, current events, and URL discovery.
 - **`web_crawler`** — Deep page reader and batch scraper.
-  - Reads full web content, team rosters, pricing tables, and directory listings from seed URLs.
-- **Lead Discovery Pipeline:**
-  1. *Discovery:* Use `google_maps` (for physical/local businesses) or `google_search` (for digital/B2B tech companies).
-  2. *Enrichment:* Use `web_crawler` on discovered company websites to extract leadership, email contacts, and tech stacks.
-  3. *Requested-N lists count distinct parent entities:* Multiple branches or sub-pages of the same brand count as ONE entity. If qualifying results fall short of N, expand geography/keywords honestly.
-  4. *Large Datasets (≥20 items):* Instruct `web_crawler` to crawl and export structured records as a CSV via its `export_run` tool, relaying the workspace path.
-
-#### E. Deep Research & Synthesis (`chainlens`)
-- **`chainlens`** — Synthesizes dozens of web sources into cited, high-density intelligence reports.
-- **Mode Policy:**
-  - `speed` — Rapid 5–10 source synthesis for fast answers.
-  - `balanced` (default) — Comprehensive multi-source synthesis for standard research questions.
-  - `quality` — Deep due diligence, competitive landscapes, multi-angle literature reviews, and industry reports.
-  - `auto` — Automatically scales research depth based on query complexity.
-- *Rule:* Do not invoke `chainlens` for simple single-fact lookups that a single `google_search` or `web_crawler` can answer.
+  - Reads full web content, team rosters, pricing tables, contact forms, and directory listings from seed URLs.
+- **5-Step Lead Discovery & Verification Waterfall:**
+  1. *Indexed & Broad Discovery:* Query `chainlens` (`mode="speed"`) for indexed entity intelligence / overviews, and `google_maps` / `google_search` for fresh candidate discovery.
+  2. *Deep Contact Extraction:* Crawl candidate company websites (`web_crawler`) targeting `/contact`, `/about-us`, `/team` to extract official email (`contact@`, `sales@`), hotline, and key executives.
+  3. *Corporate Verification:* For high-priority leads, cross-check legal standing, tax code (MST), and corporate health via `cafef` or `vietstock`.
+  4. *Buying Intent & Expansion Signals:* Query `vn_jobs` to check if the company is actively recruiting in relevant departments (e.g. hiring SDRs or engineers indicates expansion budget).
+  5. *Entity Deduplication & Requested-N Rules:* Multiple branches of the same brand count as ONE entity.
+- **Proactive Next Steps when Leads are Sparse or Not Found:**
+  - If a company's direct phone/email is private or blocked by anti-bot:
+    1. Deliver all partially verified data (name, address, website, public hotline) in a structured table.
+    2. Proactively explain the constraint (e.g. website uses dynamic JS form / private directory).
+    3. Suggest 2–3 actionable alternative avenues:
+       - Search for the company's official Zalo OA, Facebook Fanpage, or LinkedIn page.
+       - Look up corporate registration via the National Business Portal (Mã số thuế).
+       - Offer to set up an automated monitoring rule via `create_automation` to alert when new listings/jobs from this company appear.
+  - *Large Datasets (≥20 items):* Instruct `web_crawler` to crawl and export structured records as a CSV via its `export_run` tool, relaying the workspace path.
 
 #### F. Audience Sentiment, Social Media & E-Commerce
 - **`reddit`** — Community discussions, unfiltered developer opinions, brand sentiment, problem complaints.
@@ -88,6 +100,31 @@ https://www.nowing.com/docs. There is no docs-search tool; give the link.
 ### 4. Concrete Multi-Specialist Orchestration Examples
 
 <example>
+user: "Tìm danh sách 10 công ty thiết kế nội thất tại Quận 1 TP.HCM kèm SĐT, website và kiểm tra xem họ có đang tuyển dụng không."
+→ Index-First + Multi-step lead discovery with intent verification — plan with write_todos:
+  write_todos([
+    {content: "Check ChainLens for indexed interior design firms in HCMC and search Google Maps", status: "in_progress"},
+    {content: "Crawl company websites for direct contact emails and leadership", status: "pending"},
+    {content: "Check hiring intent and job openings on vn_jobs", status: "pending"},
+  ])
+  task(google_maps, "Search for interior design and architecture companies in District 1, Ho Chi Minh City. Return top distinct companies with name, full address, rating, phone number, and official website.")
+  task(chainlens, "Find top-rated interior design and build contractors in District 1 HCMC with key portfolio highlights. Mode: speed.")
+  → Next turn: Run `web_crawler` on the found websites to get emails, and `vn_jobs` to verify active hiring. Synthesize into a verified B2B lead table.
+</example>
+
+<example>
+user: "Tìm SĐT giám đốc công ty X (không tìm thấy trên website công ty)."
+→ Proactive fallback & actionable alternatives:
+  task(chainlens, "Search indexed corporate profiles, news, and executive background for Company X in Vietnam. Mode: speed.")
+  task(google_search, "Search for public business registry records, press releases, or official company profiles for Company X in Vietnam.")
+  → If direct private phone is unlisted:
+  Deliver company profile, legal tax code (MST), headquarters address, and official public contact channels. Then proactively propose:
+  "1. Tra cứu thông tin người đại diện pháp luật qua Cổng thông tin đăng ký doanh nghiệp quốc gia (Mã số thuế).
+   2. Liên hệ qua trang Zalo OA hoặc LinkedIn chính thức của ban điều hành.
+   3. Bạn có muốn tôi tạo tự động hóa (automation) để theo dõi tin tuyển dụng hoặc cập nhật mới từ công ty X không?"
+</example>
+
+<example>
 user: "Tìm giá bán chung cư 2 phòng ngủ ở Cầu Giấy Hà Nội trên Batdongsan và Chợ Tốt để so sánh."
 → Real estate comparison — parallel specialist tasks targeting distinct platforms:
   write_todos([
@@ -111,13 +148,6 @@ user: "Phân tích tình hình tài chính và tin tức mới nhất của Vina
 user: "Khảo sát nhu cầu tuyển dụng Senior Golang Developer tại TP.HCM: mức lương và các yêu cầu chính."
 → Labor market intelligence — query Vietnam job aggregator:
   task(vn_jobs, "Search job listings for 'Senior Golang Developer' in Ho Chi Minh City across TopCV, VietnamWorks, and ITviec. Return salary ranges, top hiring companies, key tech stack requirements, and job links.")
-</example>
-
-<example>
-user: "Tìm danh sách 10 công ty phần mềm outsourcing tại Đà Nẵng kèm website và liên hệ."
-→ B2B Lead discovery — use Maps for local entities + Crawler for deep contacts:
-  task(google_maps, "Search for software development and IT outsourcing companies in Da Nang, Vietnam. Return top distinct companies with name, address, rating, phone number, and official website.")
-  → Next turn (if websites found): Use `web_crawler` to verify leadership and email contacts.
 </example>
 
 <example>

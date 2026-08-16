@@ -2973,64 +2973,93 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 ---
 
 ## Epic 23: Enterprise Lead Infrastructure, Realtime Ingestion & Automated Outreach Engine
+*Governed by Architecture Spine: `architecture-epic23-lead-infrastructure.md`*
+*Reviewed & Ratified: 2026-08-16 by Winston (Arch), Mary (BA), Sally (UX), Amelia (Dev), Murat (QA)*
+
+### Architectural Invariants (INV-23.1 – INV-23.11)
+- **INV-23.1 (Worker Queue Isolation):** Scraper tasks BẮT BUỘC route vào Celery queue riêng biệt `nowing.lead_scrapers` với priority thấp hơn chat/gateway queue.
+- **INV-23.2 (Bounded Redis Streams):** Mọi lệnh đẩy vào stream BẮT BUỘC dùng approximate cap: `XADD stream_key MAXLEN ~ 10000`. Redis chỉ đóng vai trò transit buffer.
+- **INV-23.3 (Circuit Breaker Persistence):** Trạng thái Circuit Breaker per-platform BẮT BUỘC lưu trữ trên Redis với key `circuit_breaker:scraper:{platform}` có TTL 10 phút.
+- **INV-23.4 (Composite Partition Key):** Bảng `leads` và các bảng quan hệ BẮT BUỘC định nghĩa Primary Key bao gồm `workspace_id`: `PRIMARY KEY (id, workspace_id)`.
+- **INV-23.5 (Zero-Cache Partition CDC Replication):** PostgreSQL Logical Publication cho Zero-cache BẮT BUỘC phải bật cờ `ALTER PUBLICATION zero_publication SET (publish_via_partition_root = true);`.
+- **INV-23.6 (Fail-Closed RLS Enforcement):** Mọi query tương tác với `leads` BẮT BUỘC phải thiết lập `SET LOCAL app.current_workspace_id = :ws_id` và bật `FORCE ROW LEVEL SECURITY`.
+- **INV-23.7 (Payout Mutual Exclusion & Row Lock):** Mọi bước chuyển trạng thái của `PartnerPayout` BẮT BUỘC phải acquire Database Row Lock (`SELECT ... FOR UPDATE`).
+- **INV-23.8 (Reconciliation-Before-Retry):** Khi gặp timeout khi gọi Napas/VietQR Gateway, worker TUYỆT ĐỐI KHÔNG retry chuyển tiền mà BẮT BUỘC phải gọi API tra cứu trạng thái giao dịch trước.
+- **INV-23.9 (Cryptographic Audit Signatures):** Mọi payout hoàn tất BẮT BUỘC lưu trữ chữ ký HMAC-SHA256 gồm `(payout_id + partner_id + amount_micros + tx_reference + timestamp)` vào trường `audit_signature`.
+- **INV-23.10 (Constant-Time HMAC Webhook Verification):** Webhook Zalo OA và VietQR Gateway BẮT BUỘC xác thực bằng `hmac.compare_digest()`, kiểm tra `timestamp` không lệch quá 300 giây.
+- **INV-23.11 (Async Webhook ACK < 500ms):** Webhook endpoint chỉ làm nhiệm vụ verify chữ ký, validate payload schema, đẩy event vào Celery/Redis queue và trả về HTTP 200 trong < 100ms.
+
+---
 
 ### Story 23.1: Asynchronous Scraper Worker Pool (Celery + Redis Streams)
 - **User Value:** Lead scraping across 15+ Vietnamese platforms runs asynchronously in parallel Celery workers without blocking chat SSE responses, streaming individual leads to the browser matrix via Zero-cache / Redis pub-sub as they are found.
 - **Key Deliverables:**
-  - `LeadScraperWorker`: Celery tasks with per-platform rate limiters, exponential backoff, and circuit breaker.
-  - Redis Stream channel `workspace:{id}:leads_stream` with graceful degradation if a platform (e.g. Batdongsan/Chotot) is rate-limited or blocked.
+  - `LeadScraperWorker`: Celery tasks on dedicated queue `nowing.lead_scrapers` with per-platform rate limiters (Leaky bucket in Lua) and circuit breaker.
+  - Redis Stream channel `workspace:{id}:leads_stream` with dual flush triggers (Batch size >= 5 OR Time window >= 3s).
   - Zero-cache reactive ingestion into PostgreSQL with `ON CONFLICT (workspace_id, value_hmac) DO UPDATE`.
+  - Frontend Hardware-Accelerated Cell Pulse Shimmer animation (`.streamed-lead-row-entering`).
 - **Acceptance Criteria:**
   - **Given** a lead generation prompt requiring multi-source scraping (Batdongsan, Chợ Tốt, TopCV, Masothue),  
     **When** `LeadGenOrchestrator` dispatches scraping tasks,  
-    **Then** Celery returns a `job_id` within 200ms and executes workers concurrently across independent worker pools.
+    **Then** Celery returns a `job_id` within 100ms and executes workers concurrently across independent worker pools.
   - **Given** active scraping workers discovering leads in real time,  
-    **When** any individual worker extracts a batch of 5+ leads,  
-    **Then** it pushes records directly to Redis Stream `workspace:{id}:leads_stream`, triggering immediate Zero-cache mutation and cell pulse animations in the frontend table without waiting for the full job completion.
+    **When** any individual worker extracts 5+ leads OR when 3 seconds elapse with buffered leads,  
+    **Then** it pushes records directly to Redis Stream `workspace:{id}:leads_stream`, triggering Zero-cache WAL mutation and CSS cell pulse animations in the frontend table without waiting for full job completion.
   - **Given** a scraper encountering Cloudflare anti-bot challenge or HTTP 429 rate limit,  
-    **When** consecutive failures reach the failure threshold (default: 3),  
-    **Then** the circuit breaker trips for that specific adapter, logging the incident to `AntiBotEscalation` while remaining adapters continue execution uninterrupted.
+    **When** consecutive failures reach 3,  
+    **Then** the circuit breaker trips for that specific adapter for 10 minutes, logging the incident to `AntiBotEscalation` while remaining adapters continue execution uninterrupted.
+  - **Given** a worker process experiencing an unexpected crash (`SIGKILL`/OOM),  
+    **When** Celery retries the task (`acks_late=True`),  
+    **Then** `ON CONFLICT (workspace_id, value_hmac) DO UPDATE` ensures zero duplicate rows are created in the database.
 
 ### Story 23.2: Official Zalo OA Webhook & ZNS Template Automation Hub
 - **User Value:** Integrate official Zalo OpenAPI v3 Webhooks and ZNS (Zalo Notification Service) templates, allowing automated verification, instant template messaging, and two-way chat logging directly in Nowing.
+- **Compliance Gates:**
+  - **Nghị định 91/2020/NĐ-CP (Anti-Spam):** ZNS chỉ dùng cho giao dịch/CSKH (Verified Opt-in Leads). Khung giờ gửi tin bị chặn nghiêm ngặt trong khoảng **08:00 – 21:30**.
+  - **National DNC Check:** Mọi số điện thoại gửi đi phải được kiểm tra qua blacklist và DNC.
 - **Key Deliverables:**
-  - Backend Webhook endpoint `/api/v1/workspaces/{id}/gateways/zalo/webhook` with HMAC-SHA256 signature verification.
-  - ZNS Template catalog & variable injector (e.g. `{customer_name}`, `{property_name}`, `{price}`).
-  - Two-way conversation sync between Zalo OA chat and Nowing Outbound Inbox.
+  - Backend Webhook endpoint `/api/v1/workspaces/{id}/gateways/zalo/webhook` đọc raw body bytes và xác thực `hmac.compare_digest`.
+  - Fast ACK (< 100ms) enqueuing payload to `zalo_inbox_events`.
+  - Split-Pane ZNS Template Modal with dynamic variable mapping (`{customer_name}`, `{property_name}`, `{price}`) and live mobile preview.
+  - Two-way conversation sync: Prospect reply (`user_send_text`) updates `Lead.status = 'responded'`.
 - **Acceptance Criteria:**
   - **Given** an incoming webhook POST from Zalo Official Account server,  
-    **When** validated against the workspace app secret using HMAC-SHA256,  
-    **Then** the event is enqueued into `zalo_inbox_events` and acknowledged with `HTTP 200 OK` in < 500ms.
-  - **Given** a verified lead with an unlocked Vietnamese mobile number,  
-    **When** a user clicks `⚡ Send ZNS` in the Leads Matrix or Flyout Drawer,  
-    **Then** Nowing opens the template modal with dynamic parameters pre-filled, dispatches the approved ZNS template via Zalo OpenAPI, and records the delivery receipt in `outbound_messages`.
+    **When** validated against the workspace app secret using HMAC-SHA256 with timestamp delta <= 300s,  
+    **Then** the event is enqueued into `zalo_inbox_events` and acknowledged with `HTTP 200 OK` in < 100ms.
+  - **Given** a verified lead with an unlocked Vietnamese mobile number within the valid sending window (08:00–21:30),  
+    **When** a user clicks `⚡ Send ZNS`,  
+    **Then** Nowing opens the Split-Pane Modal with pre-filled variables, live preview, dispatches via Zalo OpenAPI v3, and records the delivery receipt in `outbound_messages`.
   - **Given** a prospect responding to an outbound Zalo message,  
-    **When** Zalo OA fires the `user_send_text` webhook event,  
+    **When** Zalo OA fires the `user_send_text` webhook event within the 48h active conversation window,  
     **Then** the lead record status updates to `responded`, and an in-app notification alerts the workspace owner with the prospect's reply.
 
 ### Story 23.3: Automated VietQR Affiliate Payout Reconciliation
 - **User Value:** Affiliate partners and agencies receive instantaneous, automated 24/7 bank payouts via VietQR / Napas API as soon as payout requests are approved.
+- **Compliance & Financial Invariants:**
+  - **Double-Entry Ledger Integrity:** Tách `available_balance` và `hold_balance`. Chỉ ghi nhận `total_paid_micros` khi có xác nhận thành công từ cổng thanh toán.
+  - **Thuế TNCN (TT 111/2013/TT-BTC):** Tự động tính và khấu trừ 10% thuế TNCN cho các giao dịch rút tiền > 2.000.000 VNĐ.
 - **Key Deliverables:**
-  - Payout reconciliation service (`nowing_backend/app/services/payout_reconciliation_service.py`).
-  - Webhook listener for payment gateway status updates (`/api/v1/partners/payouts/webhook`).
-  - Partner ledger audit trail with cryptographic HMAC receipt signatures.
+  - Payout reconciliation service (`nowing_backend/app/services/payout_reconciliation_service.py`) với Row Lock `SELECT ... FOR UPDATE`.
+  - Webhook listener `/api/v1/partners/payouts/webhook` với HMAC-SHA256 verification.
+  - Celery Beat task `reconcile_pending_payouts` chạy định kỳ 2 phút xử lý giao dịch treo (`processing`).
 - **Acceptance Criteria:**
   - **Given** an approved affiliate payout request with valid Napas 24/7 bank account details,  
     **When** admin or automated policy triggers payout execution,  
-    **Then** the payment gateway API is called with an idempotent `tx_reference` and payout state transitions to `processing`.
+    **Then** the database locks the row, moves funds to `hold_balance`, calls the gateway API with an idempotent `tx_reference`, and transitions state to `processing`.
   - **Given** a webhook callback confirming bank transfer success,  
     **When** signature and checksum match the gateway secret key,  
-    **Then** the partner's `pending_balance` is settled, `PartnerPayout.status` becomes `completed`, and an automated email receipt with the Napas transaction ID is dispatched.
-  - **Given** a transient network failure or timeout during payout dispatch,  
+    **Then** `hold_balance` is deducted, `total_paid_micros` is credited, `PartnerPayout.status` becomes `completed`, and an automated email receipt with the Napas transaction ID and cryptographic HMAC audit signature is dispatched.
+  - **Given** a transient network failure or timeout (Two-Generals problem),  
     **When** the reconciliation background worker runs,  
-    **Then** it queries the gateway transaction status API before attempting any retry, preventing duplicate bank payouts.
+    **Then** it queries the gateway transaction status API (`GET /transactions/{tx_ref}`) before attempting any retry, preventing duplicate bank payouts.
 
 ### Story 23.4: PostgreSQL Row-Level Security (RLS) & Table Partitioning for Multi-Million Lead Scale
 - **User Value:** High-performance database infrastructure capable of handling millions of scraped leads across multi-tenant workspaces with sub-10ms query latency and strict tenant isolation.
 - **Key Deliverables:**
-  - Declarative Hash/Range Table Partitioning on `leads` table by `workspace_id`.
-  - PostgreSQL Row-Level Security (RLS) policies enforcing tenant boundary at the database engine level.
-  - Composite pgvector and GiST indexing for fast semantic and geographic lead search.
+  - Alembic migration `217_partition_leads_table_zero_downtime.py`: 5-phase zero-downtime shadow table pattern with 16 hash partition shards (`leads_p0` .. `leads_p15`) and fallback `leads_default`.
+  - Composite Primary Key `(id, workspace_id)` on `leads` and composite FKs on child tables (`lead_scores`, `verified_contacts`, `zalo_message_logs`).
+  - Zero-cache publication configured with `publish_via_partition_root = true`.
+  - PostgreSQL Row-Level Security (`FORCE ROW LEVEL SECURITY`) with session context `app.current_workspace_id`.
 - **Acceptance Criteria:**
   - **Given** a database connection with tenant session variable set to `app.current_workspace_id = '1'`,  
     **When** executing `SELECT * FROM leads`,  
@@ -3040,7 +3069,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
     **Then** `EXPLAIN ANALYZE` confirms partition pruning eliminates unneeded partitions, maintaining p95 query response time under 15ms.
   - **Given** an active production database,  
     **When** applying partition migration,  
-    **Then** existing lead records are migrated into partition shards with zero table locking and zero downtime.
+    **Then** shadow table creation, dual-write triggers, and batched backfill migrate records with zero table locking and zero downtime.
 
 ---
 
