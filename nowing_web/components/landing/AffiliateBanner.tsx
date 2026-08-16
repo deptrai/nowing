@@ -1,8 +1,13 @@
+"use client";
+
 import { ArrowRight, Coins } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import type React from "react";
 
 export const AffiliateBanner: React.FC = () => {
+	const t = useTranslations("landing.affiliate");
+
 	return (
 		<section className="py-12 bg-gradient-to-br from-emerald-900 via-slate-900 to-slate-950 text-white relative overflow-hidden">
 			{/* Ambient glows */}
@@ -14,18 +19,14 @@ export const AffiliateBanner: React.FC = () => {
 					<div className="max-w-2xl">
 						<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-semibold mb-3 border border-emerald-500/30">
 							<Coins className="w-3.5 h-3.5" />
-							<span>Chính sách Đại lý & Affiliate Nowing</span>
+							<span>{t("badge")}</span>
 						</div>
 
 						<h3 className="text-2xl sm:text-3xl font-serif font-normal tracking-tight text-white">
-							Nhận ngay <span className="text-emerald-400 font-bold">15% hoa hồng trọn đời</span>{" "}
-							khi giới thiệu khách hàng
+							{t("title")}
 						</h3>
 
-						<p className="mt-2 text-sm text-slate-300 leading-relaxed">
-							Dành cho các Agency, Marketing Freelancer, Chuyên gia BĐS và Giảng viên đào tạo. Rút
-							tiền nhanh chóng qua VietQR hoặc khấu trừ credit trực tiếp.
-						</p>
+						<p className="mt-2 text-sm text-slate-300 leading-relaxed">{t("subtitle")}</p>
 					</div>
 
 					<div className="flex-shrink-0">
@@ -33,7 +34,7 @@ export const AffiliateBanner: React.FC = () => {
 							href="/partners"
 							className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm shadow-lg shadow-emerald-500/20 transition-all hover:scale-105 active:scale-95"
 						>
-							<span>Đăng ký làm Đại lý ngay</span>
+							<span>{t("btn_join")}</span>
 							<ArrowRight className="w-4 h-4" />
 						</Link>
 					</div>

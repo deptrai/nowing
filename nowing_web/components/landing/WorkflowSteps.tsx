@@ -1,15 +1,19 @@
+"use client";
+
+import { useTranslations } from "next-intl";
 import type React from "react";
 
 export const WorkflowSteps: React.FC = () => {
+	const t = useTranslations("landing.workflow");
 	return (
 		<section className="py-16 md:py-24 bg-slate-50/60 dark:bg-slate-900/40 border-t border-slate-200/80 dark:border-slate-800">
 			<div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 				<div className="text-center max-w-3xl mx-auto mb-14">
 					<span className="px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold text-xs uppercase tracking-wider">
-						Quy Trình 3 Bước Tinh Gọn
+						{t("badge")}
 					</span>
 					<h2 className="mt-3 text-3xl sm:text-4xl font-serif text-slate-900 dark:text-white tracking-tight">
-						Từ ý tưởng đến 1.000 khách hàng tiềm năng trong 10 giây
+						{t("title")}
 					</h2>
 				</div>
 
@@ -19,11 +23,10 @@ export const WorkflowSteps: React.FC = () => {
 							01
 						</div>
 						<h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
-							Nhập câu lệnh hoặc dán link website
+							{t("step1_title")}
 						</h3>
 						<p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-							Mô tả chân dung khách hàng bạn muốn tìm bằng tiếng Việt tự nhiên hoặc dán link landing
-							page dự án để AI tự suy luận ICP.
+							{t("step1_desc")}
 						</p>
 					</div>
 
@@ -32,11 +35,10 @@ export const WorkflowSteps: React.FC = () => {
 							02
 						</div>
 						<h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
-							AI quét song song 15+ nguồn dữ liệu
+							{t("step2_title")}
 						</h3>
 						<p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-							Nowing kích hoạt đồng thời các bot cào Batdongsan, Chợ Tốt, TopCV, Facebook, lọc trùng
-							và giải mã số điện thoại 3 tầng.
+							{t("step2_desc")}
 						</p>
 					</div>
 
@@ -45,11 +47,10 @@ export const WorkflowSteps: React.FC = () => {
 							03
 						</div>
 						<h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
-							Nhắn Zalo hoặc xuất sang Google Sheets
+							{t("step3_title")}
 						</h3>
 						<p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-							Tiếp cận trực tiếp từng khách hàng qua Zalo chỉ bằng 1 cú click hoặc bấm nút đồng bộ
-							toàn bộ bảng về CRM / Lark Base.
+							{t("step3_desc")}
 						</p>
 					</div>
 				</div>

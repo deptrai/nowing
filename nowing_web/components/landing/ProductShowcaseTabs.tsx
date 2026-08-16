@@ -1,11 +1,13 @@
 "use client";
 
 import { CheckCircle, Flame, MessageCircle, Phone, Sparkles, Target, Zap } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 export const ProductShowcaseTabs: React.FC = () => {
+	const t = useTranslations("landing.showcase");
 	const [activeTab, setActiveTab] = useState<"leads" | "enrich" | "viral">("leads");
 
 	return (
@@ -15,15 +17,12 @@ export const ProductShowcaseTabs: React.FC = () => {
 				<div className="text-center max-w-3xl mx-auto mb-12">
 					<div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100/70 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 text-xs font-bold uppercase tracking-wider mb-3">
 						<Sparkles className="w-3.5 h-3.5" />
-						<span>Trải nghiệm sức mạnh trực quan</span>
+						<span>{t("badge")}</span>
 					</div>
 					<h2 className="text-3xl sm:text-4xl font-serif text-slate-900 dark:text-white tracking-tight">
-						Từ một câu chat đến danh sách khách hàng chất lượng cao
+						{t("title")}
 					</h2>
-					<p className="mt-3 text-base text-slate-600 dark:text-slate-400">
-						Xem trực tiếp cách Nowing bóc tách dữ liệu đa kênh và hỗ trợ sales tiếp cận khách hàng
-						trong chớp mắt.
-					</p>
+					<p className="mt-3 text-base text-slate-600 dark:text-slate-400">{t("subtitle")}</p>
 				</div>
 
 				{/* Tab Nav Buttons */}
@@ -40,7 +39,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 							)}
 						>
 							<Target className="w-4 h-4" />
-							<span>1. Bảng Leads Realtime</span>
+							<span>{t("tab_leads")}</span>
 						</button>
 
 						<button
@@ -54,7 +53,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 							)}
 						>
 							<Zap className="w-4 h-4" />
-							<span>2. Giải mã SĐT 3 Tầng</span>
+							<span>{t("tab_enrich")}</span>
 						</button>
 
 						<button
@@ -68,7 +67,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 							)}
 						>
 							<Flame className="w-4 h-4" />
-							<span>3. Social Co-pilot Viral</span>
+							<span>{t("tab_viral")}</span>
 						</button>
 					</div>
 				</div>
@@ -81,15 +80,15 @@ export const ProductShowcaseTabs: React.FC = () => {
 							<div className="flex items-center gap-2">
 								<span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
 								<span className="font-bold text-slate-800 dark:text-slate-200">
-									Bảng 1: Môi giới BĐS Nhà phố Thủ Đức (50 leads)
+									{t("table_title")}
 								</span>
 								<span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-semibold text-[11px]">
-									Live Zero-Cache Sync
+									{t("sync_status")}
 								</span>
 							</div>
 
 							<div className="flex items-center gap-2">
-								<span className="text-slate-400">Đã lọc DNC & Khử trùng</span>
+								<span className="text-slate-400">{t("filtered_status")}</span>
 							</div>
 						</div>
 
@@ -98,21 +97,21 @@ export const ProductShowcaseTabs: React.FC = () => {
 							<table className="w-full text-left text-xs sm:text-sm border-collapse">
 								<thead>
 									<tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400">
-										<th className="py-3 px-4 font-semibold">Khách hàng / Tiêu đề</th>
-										<th className="py-3 px-4 font-semibold">Nguồn cào</th>
-										<th className="py-3 px-4 font-semibold">SĐT Giải mã</th>
+										<th className="py-3 px-4 font-semibold">{t("col_name")}</th>
+										<th className="py-3 px-4 font-semibold">{t("col_source")}</th>
+										<th className="py-3 px-4 font-semibold">{t("col_phone")}</th>
 										<th className="py-3 px-4 font-semibold">Fit Score</th>
-										<th className="py-3 px-4 font-semibold text-right">Tiếp cận 1-Click</th>
+										<th className="py-3 px-4 font-semibold text-right">{t("col_action")}</th>
 									</tr>
 								</thead>
 								<tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
 									<tr className="hover:bg-emerald-50/30 dark:hover:bg-emerald-950/20 transition-colors">
 										<td className="py-3.5 px-4">
 											<div className="font-semibold text-slate-900 dark:text-white">
-												Nguyễn Văn Hùng (Môi giới chuyên nhà phố)
+												Nguyễn Văn Hùng (Real Estate Broker)
 											</div>
 											<div className="text-xs text-slate-500">
-												Bán nhà mặt tiền Đặng Văn Bi, Thủ Đức (8.5 tỷ)
+												Dang Van Bi Streetfront, Thu Duc City ($350k)
 											</div>
 										</td>
 										<td className="py-3.5 px-4">
@@ -129,7 +128,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 											<div className="inline-flex items-center gap-1 font-semibold text-emerald-600">
 												<span>96%</span>
 												<span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">
-													Rất khớp
+													Fit
 												</span>
 											</div>
 										</td>
@@ -139,7 +138,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 												className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-transform active:scale-95"
 											>
 												<MessageCircle className="w-3.5 h-3.5" />
-												<span>Nhắn Zalo</span>
+												<span>Zalo Message</span>
 											</button>
 										</td>
 									</tr>
@@ -147,15 +146,13 @@ export const ProductShowcaseTabs: React.FC = () => {
 									<tr className="hover:bg-emerald-50/30 dark:hover:bg-emerald-950/20 transition-colors">
 										<td className="py-3.5 px-4">
 											<div className="font-semibold text-slate-900 dark:text-white">
-												Trần Thị Thu Mai (Chính chủ đăng tin)
+												Trần Thị Thu Mai (Direct Property Owner)
 											</div>
-											<div className="text-xs text-slate-500">
-												Cần bán gấp nhà hẻm xe hơi Võ Văn Ngân
-											</div>
+											<div className="text-xs text-slate-500">Vo Van Ngan Alley House, Thu Duc</div>
 										</td>
 										<td className="py-3.5 px-4">
 											<span className="px-2 py-0.5 rounded bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300 text-xs font-medium border border-orange-200/50">
-												Chợ Tốt Nhà
+												Cho Tot Nha
 											</span>
 										</td>
 										<td className="py-3.5 px-4">
@@ -167,7 +164,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 											<div className="inline-flex items-center gap-1 font-semibold text-emerald-600">
 												<span>92%</span>
 												<span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">
-													Khớp cao
+													Fit
 												</span>
 											</div>
 										</td>
@@ -177,7 +174,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 												className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-transform active:scale-95"
 											>
 												<MessageCircle className="w-3.5 h-3.5" />
-												<span>Nhắn Zalo</span>
+												<span>Zalo Message</span>
 											</button>
 										</td>
 									</tr>
@@ -185,10 +182,10 @@ export const ProductShowcaseTabs: React.FC = () => {
 									<tr className="hover:bg-emerald-50/30 dark:hover:bg-emerald-950/20 transition-colors">
 										<td className="py-3.5 px-4">
 											<div className="font-semibold text-slate-900 dark:text-white">
-												Lê Hoàng Nam (Founder - Công ty Công nghệ)
+												Lê Hoàng Nam (Founder & CTO - Software Enterprise)
 											</div>
 											<div className="text-xs text-slate-500">
-												Đang tuyển dụng 5 Senior Node.js & ReactJS
+												Hiring 5 Senior Node.js & React Engineers
 											</div>
 										</td>
 										<td className="py-3.5 px-4">
@@ -205,7 +202,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 											<div className="inline-flex items-center gap-1 font-semibold text-emerald-600">
 												<span>95%</span>
 												<span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">
-													Rất khớp
+													Fit
 												</span>
 											</div>
 										</td>
@@ -215,7 +212,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 												className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-xs transition-transform active:scale-95"
 											>
 												<Phone className="w-3.5 h-3.5" />
-												<span>Gọi điện</span>
+												<span>Call Lead</span>
 											</button>
 										</td>
 									</tr>
@@ -228,17 +225,24 @@ export const ProductShowcaseTabs: React.FC = () => {
 				{/* Tab 2 Content: 3-Tier Waterfall Engine */}
 				{activeTab === "enrich" && (
 					<div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xl animate-in fade-in-50 duration-200">
+						<div className="mb-4">
+							<h3 className="font-bold text-slate-900 dark:text-white text-lg mb-1">
+								{t("enrich_card_title")}
+							</h3>
+							<p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
+								{t("enrich_card_desc")}
+							</p>
+						</div>
 						<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 							<div className="p-5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
 								<div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 font-bold flex items-center justify-center mb-3">
 									1
 								</div>
-								<h3 className="font-bold text-slate-900 dark:text-white text-base mb-1">
-									Tier 1: Token Pool Xoay Vòng
-								</h3>
+								<h4 className="font-bold text-slate-900 dark:text-white text-base mb-1">
+									Tier 1: Token Pool Rotation
+								</h4>
 								<p className="text-xs text-slate-500 leading-relaxed">
-									Sử dụng Redis Mutex Token Pool xoay vòng giải mã số điện thoại bị ẩn trên
-									Batdongsan và Muaban.
+									Redis Mutex token pool rotating decryption across Batdongsan and Muaban listings.
 								</p>
 							</div>
 
@@ -246,12 +250,11 @@ export const ProductShowcaseTabs: React.FC = () => {
 								<div className="w-8 h-8 rounded-lg bg-teal-100 text-teal-700 font-bold flex items-center justify-center mb-3">
 									2
 								</div>
-								<h3 className="font-bold text-slate-900 dark:text-white text-base mb-1">
-									Tier 2: Chợ Tốt Mobile API
-								</h3>
+								<h4 className="font-bold text-slate-900 dark:text-white text-base mb-1">
+									Tier 2: Mobile Gateway API
+								</h4>
 								<p className="text-xs text-slate-500 leading-relaxed">
-									Fallback gọi API trực tiếp với UUID device giả lập để trích xuất số điện thoại gốc
-									của người đăng.
+									Emulated device UUID gateway resolution extracting full poster mobile contacts.
 								</p>
 							</div>
 
@@ -259,12 +262,12 @@ export const ProductShowcaseTabs: React.FC = () => {
 								<div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 font-bold flex items-center justify-center mb-3">
 									3
 								</div>
-								<h3 className="font-bold text-slate-900 dark:text-white text-base mb-1">
-									Tier 3: Zalo UID & Xác thực Nhà mạng
-								</h3>
+								<h4 className="font-bold text-slate-900 dark:text-white text-base mb-1">
+									Tier 3: Zalo OA & Carrier Verification
+								</h4>
 								<p className="text-xs text-slate-500 leading-relaxed">
-									Kiểm tra đầu số Viettel/VNPT/Mobi và tra cứu Zalo UID để đảm bảo 100% số máy đang
-									hoạt động.
+									Validating telecom network active status and Zalo UID active endpoints with 99.2%
+									accuracy.
 								</p>
 							</div>
 						</div>
@@ -277,36 +280,33 @@ export const ProductShowcaseTabs: React.FC = () => {
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
 							<div>
 								<span className="px-2.5 py-1 rounded bg-amber-100 text-amber-800 font-semibold text-xs mb-2 inline-block">
-									Phát hiện bài viết Outlier (Tương tác gấp 5x trung bình)
+									Outlier Viral Signal Detection (5x Avg Engagement)
 								</span>
 								<h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
-									Học văn phong & Tái tạo bài đăng Viral
+									{t("viral_card_title")}
 								</h3>
 								<p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mb-4 leading-relaxed">
-									AI tự động phân tích cấu trúc câu, Hook giữ chân người đọc từ các bài viết bán
-									nhà/tuyển dụng hot nhất trên Facebook & Twitter, sau đó viết lại độc bản cho bạn.
+									{t("viral_card_desc")}
 								</p>
 								<div className="space-y-2 text-xs text-slate-700 dark:text-slate-300">
 									<div className="flex items-center gap-2">
 										<CheckCircle className="w-4 h-4 text-emerald-500" />
-										<span>Phân loại Hook: Tương phản, Câu chuyện cảm xúc, Danh sách giá trị</span>
+										<span>Hook classification: Contrast, Story, Value List</span>
 									</div>
 									<div className="flex items-center gap-2">
 										<CheckCircle className="w-4 h-4 text-emerald-500" />
-										<span>
-											Kiểm soát Human-in-the-loop: Không tự động đăng, người dùng toàn quyền duyệt
-										</span>
+										<span>Human-in-the-loop verification & custom approval</span>
 									</div>
 								</div>
 							</div>
 
 							<div className="p-4 rounded-xl bg-slate-900 text-slate-100 font-mono text-xs border border-slate-800">
 								<div className="text-emerald-400 font-bold mb-2">
-									✨ AI Generated Hook (Văn phong: Chuyên gia BĐS)
+									✨ AI Generated Hook (Voice: B2B Real Estate Specialist)
 								</div>
 								<div className="text-slate-300 leading-relaxed">
-									&quot;Nhiều người nghĩ mua nhà Thủ Đức giá 8 tỷ bây giờ là muộn. Nhưng đây là 3 lý
-									do vì sao tuyến metro sắp thông sẽ thay đổi toàn bộ thị trường...&quot;
+									&quot;Why top investors are shifting capital to Thu Duc before the metro line
+									connects — 3 data-backed reasons you should know...&quot;
 								</div>
 							</div>
 						</div>

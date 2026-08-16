@@ -15,6 +15,7 @@ import Link from "next/link";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { SignInButton } from "@/components/auth/sign-in-button";
 import { NavbarGitHubStars } from "@/components/homepage/github-stars-badge";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { Logo } from "@/components/Logo";
 import { ThemeTogglerComponent } from "@/components/theme/theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -269,6 +270,7 @@ const DesktopNav = ({ navItems, isScrolled, scrolledBgClassName }: DesktopNavPro
 					<IconBrandReddit className="h-5 w-5 text-neutral-600 dark:text-neutral-300" aria-hidden />
 				</Link>
 				<NavbarGitHubStars className="hidden md:flex" />
+				<LanguageSwitcher />
 				<ThemeTogglerComponent />
 				<SignInButton variant="desktop" />
 			</div>
@@ -389,6 +391,7 @@ const MobileNav = ({ navItems, isScrolled, scrolledBgClassName }: MobileNavProps
 								/>
 							</Link>
 							<NavbarGitHubStars className="rounded-lg" />
+							<LanguageSwitcher />
 							<ThemeTogglerComponent />
 						</div>
 						<SignInButton variant="mobile" />

@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import type { Locale } from "@/contexts/LocaleContext";
 import { useLocaleContext } from "@/contexts/LocaleContext";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { usePlatform } from "@/hooks/use-platform";
@@ -48,6 +49,7 @@ import type { User } from "../../types/layout.types";
 // Supported languages configuration
 const LANGUAGES = [
 	{ code: "en" as const, name: "English", flag: "🇺🇸" },
+	{ code: "vi" as const, name: "Tiếng Việt", flag: "🇻🇳" },
 	{ code: "es" as const, name: "Español", flag: "🇪🇸" },
 	{ code: "pt" as const, name: "Português", flag: "🇧🇷" },
 	{ code: "hi" as const, name: "हिन्दी", flag: "🇮🇳" },
@@ -158,7 +160,7 @@ export function SidebarUserProfile({
 	const showDownloadCta = !isDesktop && !isMobileOS && isDesktopViewport;
 	const useMobileSubmenus = !isDesktopViewport;
 
-	const handleLanguageChange = (newLocale: "en" | "es" | "pt" | "hi" | "zh" | "ko") => {
+	const handleLanguageChange = (newLocale: Locale) => {
 		setLocale(newLocale);
 	};
 
