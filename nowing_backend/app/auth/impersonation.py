@@ -29,5 +29,9 @@ def create_impersonation_token(
         "is_impersonation": True,
         "ticket_ref": ticket_ref,
     }
-    
-    return jwt.encode(payload, config.SECRET_KEY, algorithm="HS256")
+    secret = (
+        config.SECRET_KEY.get_secret_value()
+        if hasattr(config.SECRET_KEY, "get_secret_value")
+        else str(config.SECRET_KEY)
+    )
+    return jwt.encode(payload, secret, algorithm="HS256")

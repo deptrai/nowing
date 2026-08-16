@@ -5989,3 +5989,18 @@ class PartnerPayout(Base, TimestampMixin):
 
     partner = relationship("AffiliatePartner", back_populates="payouts")
 
+
+class AuditEvent(BaseModel, TimestampMixin):
+    """
+    Immutable audit trail compliant with PDPD Decree 13.
+    """
+    __tablename__ = "audit_events"
+
+    action = Column(String(100), nullable=False, index=True)
+    actor_id = Column(UUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL"), nullable=True, index=True)
+    subject_id = Column(UUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL"), nullable=True, index=True)
+    ticket_ref = Column(String(255), nullable=True)
+    ip_address = Column(String(45), nullable=True)
+    user_agent = Column(String(500), nullable=True)
+    diff_payload = Column(JSONB, nullable=True)
+

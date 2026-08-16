@@ -419,7 +419,7 @@ async def require_superuser(
     PATs are rejected by the session gate, and workspace roles do not
     grant platform admin access. Only User.is_superuser is authoritative.
     """
-    if not auth.user.is_superuser:
+    if not auth.user.is_superuser or getattr(auth, "is_impersonation", False):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This action requires platform admin privileges",
