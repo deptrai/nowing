@@ -1,11 +1,12 @@
 "use client";
 
 import { useAtom } from "jotai";
-import { Activity, ChevronDown, Sparkles, Table as TableIcon, Zap } from "lucide-react";
+import { Activity, ChevronDown, PanelLeftOpen, Sparkles, Table as TableIcon, Zap } from "lucide-react";
 import type React from "react";
 import { useMemo } from "react";
 import {
 	type CanvasMode,
+	isLeftPanelCollapsedAtom,
 	isMatrixFullscreenAtom,
 	threadCanvasModeMapAtom,
 } from "@/atoms/leads/leads-canvas.atoms";
@@ -94,6 +95,8 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 		return Array.from(cats);
 	}, [props.leads]);
 
+	const [isLeftCollapsed, setIsLeftCollapsed] = useAtom(isLeftPanelCollapsedAtom);
+
 	return (
 		<div
 			data-testid="dynamic-right-panel-canvas"
@@ -106,6 +109,18 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 			{/* Origami Contextual Top Tab Bar (Session-Scoped & Dynamic, Slim 32px) */}
 			<header className="h-8 border-b border-border/80 bg-muted/40 flex items-center justify-between px-2.5 shrink-0 select-none">
 				<div className="flex items-center gap-1 overflow-x-auto no-scrollbar flex-1">
+					{isLeftCollapsed && (
+						<button
+							type="button"
+							onClick={() => setIsLeftCollapsed(false)}
+							className="inline-flex items-center gap-1 px-2 py-0.5 mr-1 rounded-md text-[11px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors border border-emerald-500/30 shrink-0 cursor-pointer shadow-2xs"
+							title="Mở Chat Co-pilot"
+						>
+							<PanelLeftOpen className="w-3.5 h-3.5" />
+							<span>Mở Chat</span>
+						</button>
+					)}
+
 					{/* Mode: Leads Matrix Dynamic Tabs */}
 					{activeMode === "leads" && (
 						<>

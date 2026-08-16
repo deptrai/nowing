@@ -74,19 +74,8 @@ export const OrigamiSplitCanvas: React.FC<OrigamiSplitCanvasProps> = ({
 		setSelectedLeadIds([]);
 		setSelectedLeadContext(null);
 		setActiveDrawerLead(null);
-	}, [setSelectedLeadIds, setSelectedLeadContext, setActiveDrawerLead]);
-
-	// AC-7: Responsive layout & Auto-collapse on small viewport (<1280px)
-	useEffect(() => {
-		const checkViewport = () => {
-			if (window.innerWidth < 1280) {
-				setIsCollapsed(true);
-			}
-		};
-		checkViewport();
-		window.addEventListener("resize", checkViewport);
-		return () => window.removeEventListener("resize", checkViewport);
-	}, [setIsCollapsed]);
+		setIsCollapsed(false);
+	}, [setSelectedLeadIds, setSelectedLeadContext, setActiveDrawerLead, setIsCollapsed]);
 
 	// Session-Scoped context parser: derives intent, leads, research, and workflows strictly for THIS thread
 	const threadContext = useMemo(() => {
