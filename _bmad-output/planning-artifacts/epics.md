@@ -3105,18 +3105,21 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-### Story 24.1: Multi-Channel Drip Outreach Campaign Engine (Zalo ZNS + Telegram + Email Cadence) `[ready-for-dev]`
-- **User Value:** Sales teams and researchers can define automated multi-step outreach cadences across Zalo ZNS, Telegram Bot, and Email with AI-personalized copy, conditional delays (e.g. "Wait 2 days for reply"), and automated status transitions.
+### Story 24.1: Multi-Channel Drip Outreach Campaign Engine (Sequence Backend — Email-first MVP) `[done]`
+- **User Value:** Sales teams and researchers can define automated multi-step outreach Sequences (Email in MVP; Zalo ZNS and Telegram reserved behind feature gates) with conditional delays, quiet-hour compliance, and real-time opt-out/reply handling.
 - **Acceptance Criteria:**
   - **Given** an active lead list in Nowing Workspace,  
-    **When** a user creates a new Drip Campaign,  
-    **Then** the UI provides a visual cadence editor to configure Step 1 (Approved Zalo ZNS Template / Telegram Bot), Step 2 (Conditional Wait 48h if no reply), and Step 3 (Follow-up Email or Sale task creation).
-  - **Given** campaign execution within 08:00 – 21:30 (Asia/Ho_Chi_Minh),  
-    **When** dispatching each step,  
-    **Then** LLM dynamically maps pre-approved template variables based on extracted lead attributes, and defers execution to 08:05 next morning if scheduled during quiet hours.
-  - **Given** a prospect responding to any step or sending "STOP",  
-    **When** the inbound webhook event arrives,  
-    **Then** Redis distributed lock and `SELECT FOR UPDATE` prevent race conditions, transitioning the campaign state to `responded` and halting further automated follow-up steps.
+    **When** a user creates a new Sequence,  
+    **Then** the UI provides a visual cadence editor to configure `send_email`, `wait`, and `condition` steps; the `email` channel is active and `zalo`/`telegram` are deferred with feature-gate messaging.
+  - **Given** a scheduled step due outside 08:00 – 21:30 (Asia/Ho_Chi_Minh),  
+    **When** `SequencerService.calculate_step_eta()` evaluates the step,  
+    **Then** it defers execution to `08:05 + uniform(0, 1800)` seconds next morning.
+  - **Given** an active enrollment and an inbound opt-out keyword (`STOP`, `HUY`, `NGUNG`, `UNSUBSCRIBE`) or reply,  
+    **When** the inbound event arrives,  
+    **Then** `SequencerService.handle_inbound_interruption()` acquires a Redis lock, performs an OCC version update, writes a `WorkspaceDncRecord` if opt-out, and halts future steps.
+  - **Given** an existing sequence,  
+    **When** the analytics view loads,  
+    **Then** the backend returns `SequenceAnalyticsResponse` with `total_enrolled`, `active_scheduled`, `delivered_count`, `responded_count`, `unsubscribed_count`, `failed_count`, `total_cost_micros`.
 
 ---
 
@@ -3181,6 +3184,22 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
     **When** received,  
     **Then** Webhook returns `HTTP 200 OK` in < 100ms, aggregates rapid-fire messages via Redis Debounce Buffer (3s window), and triggers asynchronous RAG grounding with Cosine Similarity `>= 0.75` and `temperature = 0.0`.
   - **Given** prospect intent indicating strong buying signal (e.g. *"Báo giá cho tôi"*, *"Hẹn xem nhà"*) or asking ungrounded pricing terms,  
+
+---
+
+### Story 24.7: Multi-Channel Drip Outreach Campaign Engine (Zalo ZNS + Telegram + Email Cadence) `[backlog]`
+- **User Value:** Sales teams and researchers can define automated multi-step outreach cadences across Zalo ZNS, Telegram Bot, and Email with AI-personalized copy, conditional delays (e.g. "Wait 2 days for reply"), and automated status transitions.
+- **Acceptance Criteria:**
+  - **Given** an active lead list in Nowing Workspace,  
+    **When** a user creates a new Drip Campaign,  
+    **Then** the UI provides a visual cadence editor to configure Step 1 (Approved Zalo ZNS Template / Telegram Bot), Step 2 (Conditional Wait 48h if no reply), and Step 3 (Follow-up Email or Sale task creation).
+  - **Given** campaign execution within 08:00 – 21:30 (Asia/Ho_Chi_Minh),  
+    **When** dispatching each step,  
+    **Then** `DripCampaignSchedulerService` dynamically maps pre-approved template variables, defers execution to 08:05 next morning if scheduled during quiet hours, and attempts fallback channels on permanent delivery errors.
+  - **Given** a prospect responding to any step or sending an opt-out keyword (`STOP`, `HUY`, `NGUNG`, `UNSUBSCRIBE`),  
+    **When** the inbound webhook event arrives,  
+    **Then** Redis distributed lock `campaign:lock:enrollment:{id}` and `SELECT FOR UPDATE` prevent race conditions, transition the campaign state to `responded` / `unsubscribed`, and halt further automated follow-up steps.
+
 ---
 
 ## Epic 25: Superadmin & Platform Operations Control Plane
@@ -3294,7 +3313,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 ### Architectural Invariants (AD-101 – AD-110)
 - **AD-101 (Stateless ChainLens & Unified pgvector Ingestion):** ChainLens chỉ đóng vai trò Crawler/Parser không lưu trạng thái. Chunks được đẩy về `POST /v1/chainlens/ingest` để Nowing tự tạo embeddings và lưu vào PostgreSQL 16 `chunks` (HNSW).
 - **AD-102 (Decoupled Sidecar Worker & FastMCP Gateway):** Tác vụ chạy nền 1–8h nằm tại `dsh-worker`, giao tiếp qua Redis Streams (`nowing:dsh:tasks`), sử dụng `XAUTOCLAIM` và DLQ (`nowing:dsh:dlq`).
-- **AD-103 (Multi-Tier Hybrid LLM Router with Free-Tier Priority):** Google Gemini Flash Free Tier ($0 COGS) làm Tầng 1 (Primary Ingestion Workhorse), Qwen 3.8-27B AWQ Local vLLM ($0 COGS) làm Tầng 1b, DeepSeek-V4-Flash ($0.14/$0.28) cho High-Volume Burst Extraction, và DeepSeek-V4-Pro-0813 ($0.435/$0.87) cho Deep CoT Reasoning với Outlines/Guided JSON.
+- **AD-103 (Hybrid LLM Inference Router with Circuit Breaker):** Local vLLM (`DeepSeek-R1-Distill-14B AWQ`, COGS $0) làm tầng 1, failover sang DeepSeek Cloud API khi quá tải queue > 8s, tự động strip `<think>` tags hoặc dùng Guided JSON.
 - **AD-104 (Zero-Cache CDC Reactivity):** Toàn bộ cập nhật Lead Matrix và Mission State kích hoạt qua PostgreSQL Logical WAL Replication (`zero_publication`), loại trừ bảng `chunks` nặng.
 - **AD-105 (PII Vault & Decree 13 Compliance):** Số điện thoại lưu trữ mã hóa AES-256-GCM, khử trùng lặp qua HMAC-SHA256, hiển thị Masked (`0908 *** 456`), ToS định vị Nowing là Data Processor.
 - **AD-106 (Harness Hierarchical Delegation & Specialist Team Pattern):** Mission Supervisor phân việc cho Expert Pool (Research, Scraper, Valuation, PII Auditor) theo mô hình Producer-Reviewer.
@@ -3451,7 +3470,7 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 | 25.6 Security Audit Logs & Broadcasts | Story 21.14 (DNC Registry), Story 23.4 (RLS Isolation) | Decree 13 PDPD immutable audit trail & in-app banner push |
 | 26.1 FastMCP & Stateless Ingestion | Story 20.1 (`NowingIngestService`), AD-101, AD-109 | FastMCP batch lead ingestion & idempotent ChainLens callback |
 | 26.2 dsh-worker Sidecar & Stream | Story 26.1, AD-102, AD-108 | Redis Streams autonomous worker loop with `XAUTOCLAIM` |
-| 26.3 Hybrid LLM Router | Story 26.2, AD-103 | Gemini Flash Free Tier + DeepSeek V4 + Qwen 3.8 local vLLM |
+| 26.3 Hybrid LLM Router | Story 26.2, AD-103 | vLLM 14B AWQ local inference & Cloud fallback circuit breaker |
 | 26.4 PII Vault & Opt-Out Blacklist | Story 26.1, AD-105, AD-110 | AES-256 encryption, HMAC blind index, Decree 13 compliance |
 | 26.5 Glass Box Mission Control | Story 26.2, Story 26.4, AD-104, AD-110 | Split Canvas 4-stage stepper & Two-Tier Phone Unlock UX |
 | 26.6 Telegram Checkpoint & Auto-Refund | Story 26.2, Story 26.4, Epic 11, AD-110 | Mobile glanceable card, `editMessageText` & 15% refund cap |

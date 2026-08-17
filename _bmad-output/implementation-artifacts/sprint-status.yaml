@@ -246,6 +246,7 @@ development_status:
   24-4: done  # Nowing Lead Clipper — 3-layer code-review passed, 5 patches applied (concurrency rollback recovery, phone +8409 normalizer, tenant client_id, tracking param scrubbing, contact title)
   24-5: ready-for-dev  # Vertical Playbook Marketplace & Community Workflow Templates
   24-6: ready-for-dev  # Two-Way AI Outreach Auto-Reply Agent
+  24-7: backlog  # Multi-Channel Drip Outreach Campaign Engine (Zalo ZNS + Telegram + Email Cadence) — split from 24-1; full drip_campaigns bounded context, deferred until AD-41/ToS/ZNS gates close.
   epic-24-retrospective: optional
 
   # === Epic 25: Superadmin & Platform Operations Control Plane ===
