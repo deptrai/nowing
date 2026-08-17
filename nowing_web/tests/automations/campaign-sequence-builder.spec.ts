@@ -22,33 +22,33 @@ test.describe("Story 24.1: Multi-Channel Drip Outreach Campaign Engine (VisualCa
 		const telegramChannel = page.locator('[data-testid="channel-option-telegram"]');
 		await expect(telegramChannel).toBeDisabled();
 
-		// 4. Add Step 1: Send Email
+		// 4. Add Step 2: Send Email (step 1 is the initial default email node)
 		const addEmailStepBtn = page.locator('[data-testid="add-step-send_email"]');
 		await addEmailStepBtn.click();
 
-		const emailStepNode = page.locator('[data-testid="step-node-1"]');
+		const emailStepNode = page.locator('[data-testid="step-node-2"]');
 		await expect(emailStepNode).toBeVisible();
 
-		// Check template variable pills
-		const variablePills = page.locator('[data-testid="template-variable-pills"]');
+		// Check template variable pills inside the newly added email step
+		const variablePills = emailStepNode.locator('[data-testid="template-variable-pills"]');
 		await expect(variablePills).toContainText("{customer_name}");
 		await expect(variablePills).toContainText("{company}");
 		await expect(variablePills).toContainText("{property_title}");
 
-		// 5. Add Step 2: Wait (Delay)
+		// 5. Add Step 3: Wait (Delay)
 		const addWaitStepBtn = page.locator('[data-testid="add-step-wait"]');
 		await addWaitStepBtn.click();
 
-		const waitStepNode = page.locator('[data-testid="step-node-2"]');
+		const waitStepNode = page.locator('[data-testid="step-node-3"]');
 		await expect(waitStepNode).toBeVisible();
-		const waitDurationInput = page.locator('[data-testid="wait-duration-input"]');
+		const waitDurationInput = waitStepNode.locator('[data-testid="wait-duration-input"]');
 		await expect(waitDurationInput).toBeVisible();
 
-		// 6. Add Step 3: Condition (Branch)
+		// 6. Add Step 4: Condition (Branch)
 		const addConditionBtn = page.locator('[data-testid="add-step-condition"]');
 		await addConditionBtn.click();
 
-		const conditionNode = page.locator('[data-testid="step-node-3"]');
+		const conditionNode = page.locator('[data-testid="step-node-4"]');
 		await expect(conditionNode).toBeVisible();
 		await expect(conditionNode).toContainText("if replied");
 
