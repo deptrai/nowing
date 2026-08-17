@@ -1,6 +1,11 @@
 /**
  * Offline buffer & queue manager for lead resilience (AC-4).
  * Stores unsent leads when offline and provides batch sync.
+ *
+ * ponytail: uses chrome.storage.session instead of chrome.storage.local so lead
+ * PII (phone/email/post content) is never written to disk plaintext. The
+ * tradeoff is the queue is in-memory and lost when the browser closes; if
+ * persistence is needed, encrypt with a user-supplied secret or OS keychain.
  */
 
 import { LeadClipPayload, OfflineQueuedLead } from '../types';
@@ -9,7 +14,7 @@ const QUEUE_STORAGE_KEY = 'nowing_clipper_offline_queue';
 
 export async function getOfflineQueue(): Promise<OfflineQueuedLead[]> {
   return new Promise((resolve) => {
-    chrome.storage.local.get([QUEUE_STORAGE_KEY], (result) => {
+    chrome.storage.session.get([QUEUE_STORAGE_KEY], (result) => {
       resolve(result[QUEUE_STORAGE_KEY] || []);
     });
   });
@@ -31,7 +36,7 @@ export async function enqueueLead(
   };
   const updated = [...queue, queuedLead];
   await new Promise<void>((resolve) => {
-    chrome.storage.local.set({ [QUEUE_STORAGE_KEY]: updated }, () => resolve());
+    chrome.storage.session.set({ [QUEUE_STORAGE_KEY]: updated }, () => resolve());
   });
   await updateBadge(updated.length);
   return updated;
@@ -41,7 +46,7 @@ export async function removeQueuedLead(id: string): Promise<OfflineQueuedLead[]>
   const queue = await getOfflineQueue();
   const updated = queue.filter((item) => item.id !== id);
   await new Promise<void>((resolve) => {
-    chrome.storage.local.set({ [QUEUE_STORAGE_KEY]: updated }, () => resolve());
+    chrome.storage.session.set({ [QUEUE_STORAGE_KEY]: updated }, () => resolve());
   });
   await updateBadge(updated.length);
   return updated;
@@ -49,7 +54,7 @@ export async function removeQueuedLead(id: string): Promise<OfflineQueuedLead[]>
 
 export async function clearOfflineQueue(): Promise<void> {
   await new Promise<void>((resolve) => {
-    chrome.storage.local.remove([QUEUE_STORAGE_KEY], () => resolve());
+    chrome.storage.session.remove([QUEUE_STORAGE_KEY], () => resolve());
   });
   await updateBadge(0);
 }

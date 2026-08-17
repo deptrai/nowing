@@ -55,16 +55,10 @@ export const Popup: React.FC = () => {
     setStatusMessage('');
 
     try {
-      const url = `${config.backendUrl.replace(/\/$/, '')}/api/v1/workspaces/${config.workspaceId}/leads`;
-      const res = await fetch(url, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${config.patToken.trim()}`,
-        },
-      });
+      const url = `${config.backendUrl.replace(/\/$/, '')}/health`;
+      const res = await fetch(url, { method: 'GET' });
 
-      if (res.ok || res.status === 403) {
-        // Even if 403 on full leads list, server is reachable with CORS
+      if (res.ok) {
         setTestStatus('success');
         setStatusMessage('✓ Backend connection verified!');
       } else {

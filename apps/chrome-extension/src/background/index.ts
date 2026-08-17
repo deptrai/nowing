@@ -113,11 +113,22 @@ async function handleSyncOfflineQueue(): Promise<{ synced: number; failed: numbe
     return { synced: 0, failed: 0, remaining: 0 };
   }
 
+  // Cannot sync without a PAT; leave the queue intact for a later retry.
+  if (!config.patToken?.trim()) {
+    return { synced: 0, failed: queue.length, remaining: queue.length };
+  }
+
   let synced = 0;
   let failed = 0;
 
   for (const item of queue) {
     const wsId = item.workspaceId || config.workspaceId;
+    if (!wsId) {
+      // No workspace id available — this item is unrecoverable.
+      await removeQueuedLead(item.id);
+      continue;
+    }
+
     const endpoint = `${config.backendUrl.replace(/\/$/, '')}/api/v1/workspaces/${wsId}/leads/clip`;
 
     try {
@@ -133,7 +144,14 @@ async function handleSyncOfflineQueue(): Promise<{ synced: number; failed: numbe
       if (res.ok) {
         await removeQueuedLead(item.id);
         synced++;
+      } else if (res.status >= 400 && res.status < 500) {
+        // 4xx means the payload or auth is rejected; retrying will not help.
+        console.warn(
+          `Offline lead ${item.id} rejected with ${res.status} ${res.statusText}; dropping`,
+        );
+        await removeQueuedLead(item.id);
       } else {
+        // 5xx / other errors: keep in queue for a later retry.
         failed++;
       }
     } catch {
