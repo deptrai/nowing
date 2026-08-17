@@ -84,5 +84,47 @@ _Curated long-term knowledge for Nowing E2E Browser Testing._
   - **Verification:** Lead Kanban Pipeline (`/dashboard/1/leads/pipeline`), Round-Robin allocation, timeline audit trail, 1-Click Zalo Outreach script copier, and Masked Phone display (`PhoneCopyPill`) fully operational.
   - **Pilot Tracker:** Populated in `_bmad-output/planning-artifacts/multi-vertical-pilot-tracker.csv`.
 
+## Epic 24 Live Pilot — 2026-08-17
+
+### Environment
+- Stack: Postgres 5434, Redis 6380, Backend 8000, Zero 4848, Frontend 3000.
+- Playwright viewport default, logged in as `e2e-test@nowing.net`.
+
+### 24.4 Lead Clipper
+- Extension builds successfully (`pnpm run build` in `apps/chrome-extension`).
+- Backend `POST /api/v1/workspaces/1/leads/clip` accepts clipper PAT and returns
+  `{success, lead_id, dedupe_hash, is_duplicate}`.
+- Phone normalization works: `+84 0909123456` stored/normalized to `0909***456`
+  (masked in `lead.phone`).
+- Deduplication works: re-clipping same canonical URL + phone returns
+  `is_duplicate: true`.
+- ⚠️ Live extension UI not loaded in this session — requires Chrome with unpacked
+  `dist/` extension. API path verified only.
+
+### 24.3 Kanban / Team
+- `/dashboard/1/leads/pipeline` renders 4 stages (Mới săn, Đang tiếp cận,
+  Tiềm năng, Đã chốt, Hủy / Không nhu cầu) and live lead cards.
+- Lead detail flyout drawer opens and shows fit-score, timeline, source, content.
+- Team page `/dashboard/1/team` loads member list.
+- ⚠️ MemberSpendCapDialog not reachable because test workspace only has the owner;
+  action menu is hidden for `is_owner=true` members (`showActions = !is_owner`).
+- ⚠️ Drag-and-drop stage transition not exercised in this session; Playwright MCP
+  has no native drag tool and dnd-kit requires careful pointer-event synthesis.
+
+### 24.2 Phone Waterfall / PII Masking
+- Lead API returns masked phone `0909***456`.
+- ⚠️ `PhoneCopyPill` renders `—` for masked phone because
+  `safePhone.replace(/\D/g, '').length >= 8` only counts digits, and a masked
+  11-digit number like `0909***456` has only 7 digits. Kanban card therefore shows
+  `—` instead of `0909***456`.
+- Copy-to-clipboard for masked numbers would also produce an incomplete number
+  because `safePhone.replace(/[^\d+]/g, '')` drops the `*`, e.g. `0909456`.
+- This is a pre-existing UI issue that also breaks masked-phone display on the
+  Lead Kanban board.
+
+### Console / Errors
+- Initial page load on `/` produced `401 /auth/session` before login.
+- No console errors on dashboard or team pages during pilot.
+
 
 
