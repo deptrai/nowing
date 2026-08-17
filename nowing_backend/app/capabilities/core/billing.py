@@ -556,6 +556,12 @@ async def _charge_chainlens(output: BillableOutput, ctx: CapabilityContext) -> i
         # Run.cost_micros and the chat turn token-usage SSE remain accurate.
         return total_cost_micros
 
+    # ponytail: debit first, then record TokenUsage. If the wallet cannot cover
+    # the charge we must not leave an audit row behind, otherwise callers that
+    # roll back the user balance still see a persisted TokenUsage.
+    await _debit_with_workspace_spend_cap(
+        ctx.session, ctx.workspace_id, owner_user_id, total_cost_micros
+    )
     await _record_chainlens_cost_allocation(
         ctx,
         owner_user_id,
@@ -567,9 +573,6 @@ async def _charge_chainlens(output: BillableOutput, ctx: CapabilityContext) -> i
         mode_requested=mode_requested,
         e2e_ms=e2e_ms,
         ttfb_ms=ttfb_ms,
-    )
-    await _debit_with_workspace_spend_cap(
-        ctx.session, ctx.workspace_id, owner_user_id, total_cost_micros
     )
     return total_cost_micros
 
