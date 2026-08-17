@@ -200,6 +200,8 @@ Chi tiết triển khai:
 - Checklist: `_bmad-output/test-artifacts/atdd-checklist-26-3-multi-tier-hybrid-llm-router.md`
 - Unit tests: `nowing_backend/tests/unit/services/test_hybrid_llm_router.py` (31 tests, red phase)
 - Integration service tests: `nowing_backend/tests/integration/services/test_hybrid_llm_router.py` (7 tests, red phase)
+- Pattern 6 / real Postgres integration tests: `nowing_backend/tests/integration/services/test_hybrid_llm_router_pattern6.py` (6 tests, active red)
+- Shared integration fixtures: `nowing_backend/tests/integration/services/conftest.py`
 - Integration route tests: `nowing_backend/tests/integration/routes/test_hybrid_llm_routes.py` (8 tests, red phase)
 
 ---
