@@ -29,18 +29,23 @@ export const PhoneCopyPill: React.FC<PhoneCopyPillProps> = ({
 	}, []);
 
 	const safePhone = (phone || "").trim();
-	// Check if valid phone (digits with length >= 8 and no pipes or headers)
+	const digitsOnly = safePhone.replace(/\D/g, "");
+	const isMasked = safePhone.includes("*");
+	// Check if valid phone: unmasked needs >= 8 digits; masked phone (e.g. 0909***456)
+	// is valid if the raw string is long enough, since '*' is a placeholder.
 	const isPhoneValid =
 		Boolean(safePhone) &&
 		!safePhone.includes("|") &&
 		!safePhone.includes("Website") &&
-		safePhone.replace(/\D/g, "").length >= 8;
+		(isMasked ? safePhone.length >= 8 : digitsOnly.length >= 8);
 
 	if (!isPhoneValid) {
 		return <span className="text-muted-foreground/40 text-xs select-none">—</span>;
 	}
 
-	const normalizedPhone = safePhone.replace(/[^\d+]/g, "");
+	// Masked phone should not have '*' stripped during copy, otherwise we emit
+	// an incomplete number. Unmasked phone is copied as digits (+ kept for E.164).
+	const normalizedPhone = isMasked ? safePhone : safePhone.replace(/[^\d+]/g, "");
 
 	const handleCopy = async (e: React.MouseEvent | React.KeyboardEvent) => {
 		e.stopPropagation();

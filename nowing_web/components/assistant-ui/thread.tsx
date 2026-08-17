@@ -171,11 +171,12 @@ const ThreadContent: FC<ThreadProps> = ({ hasActiveThread = false, initialPrompt
 			}}
 		>
 			<ChatViewport
+				hasActiveThread={hasActiveThread}
 				footer={
-					<AuiIf condition={({ thread }) => hasActiveThread || !thread.isEmpty}>
+					<>
 						<PremiumQuotaPinnedAlert />
 						<Composer initialPrompt={initialPrompt} hasActiveThread={hasActiveThread} />
-					</AuiIf>
+					</>
 				}
 			>
 				<AuiIf condition={({ thread }) => !hasActiveThread && thread.isEmpty}>

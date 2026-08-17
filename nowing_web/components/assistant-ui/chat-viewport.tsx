@@ -22,9 +22,10 @@ const ChatScrollToBottom: FC = () => (
 export interface ChatViewportProps {
 	children: ReactNode;
 	footer?: ReactNode;
+	hasActiveThread?: boolean;
 }
 
-export const ChatViewport: FC<ChatViewportProps> = ({ children, footer }) => (
+export const ChatViewport: FC<ChatViewportProps> = ({ children, footer, hasActiveThread }) => (
 	<ThreadPrimitive.Viewport
 		turnAnchor="top"
 		autoScroll
@@ -40,7 +41,7 @@ export const ChatViewport: FC<ChatViewportProps> = ({ children, footer }) => (
 		/>
 		{children}
 		{footer ? (
-			<AuiIf condition={({ thread }) => !thread.isEmpty}>
+			<AuiIf condition={({ thread }) => hasActiveThread || !thread.isEmpty}>
 				<ThreadPrimitive.ViewportFooter
 					className="aui-chat-composer-footer sticky bottom-0 z-20 -mx-4 mt-auto flex flex-col items-stretch bg-gradient-to-t from-main-panel from-60% to-transparent px-4 pt-6"
 					style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}

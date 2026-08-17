@@ -126,5 +126,28 @@ _Curated long-term knowledge for Nowing E2E Browser Testing._
 - Initial page load on `/` produced `401 /auth/session` before login.
 - No console errors on dashboard or team pages during pilot.
 
+## Epic 24 Fixes & Re-verification — 2026-08-17
+
+### Fixes applied
+- **`PhoneCopyPill.tsx`**: masked phone (`0909***456`) is now valid and displayed.
+  Digit-only count caused `—` for masked numbers; now `isMasked` keeps the
+  placeholder and `normalizedPhone` is not stripped for masked SĐT.
+- **`chat-viewport.tsx` / `thread.tsx`**: composer footer now renders when
+  `hasActiveThread` is true, so `/dashboard/{id}/new-chat?mode=leads` no longer
+  has an empty chat panel.
+- **`team-content.tsx`**: owner members now see the action dropdown if they have
+  `members:spend_cap`, so `MemberSpendCapDialog` is reachable in single-owner
+  workspaces. Role/Remove options are still hidden for the owner row.
+
+### Re-verification
+- `pnpm tsc --noEmit` passes.
+- `pnpm exec biome check` passes for changed files.
+- `pnpm build` passes.
+- `/dashboard/1/leads/pipeline` shows Kanban cards with `0909***456`.
+- `/dashboard/1/leads` (leads mode) renders the chat composer and a message
+  can be sent.
+- `/dashboard/1/team` owner row opens the action menu and
+  `Spend Cap & Lead Capacity` dialog; saving a cap value completes without error.
+
 
 

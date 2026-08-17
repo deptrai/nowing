@@ -533,7 +533,7 @@ function MemberRow({
 	const initials = getAvatarInitials(member);
 	const displayName = member.user_display_name || member.user_email || "Unknown";
 	const roleName = member.is_owner ? "Owner" : member.role?.name || "No role";
-	const showActions = !member.is_owner && (canManageRoles || canRemove || canManageSpendCap);
+	const showActions = canManageSpendCap || (!member.is_owner && (canManageRoles || canRemove));
 
 	return (
 		<TableRow className="border-b border-border/60 transition-colors hover:bg-accent hover:text-accent-foreground">
@@ -581,7 +581,8 @@ function MemberRow({
 							onCloseAutoFocus={(e) => e.preventDefault()}
 							className="min-w-[120px]"
 						>
-							{canManageRoles &&
+							{!member.is_owner &&
+								canManageRoles &&
 								roles
 									.filter((r) => r.name !== "Owner")
 									.map((role) => (
@@ -592,7 +593,7 @@ function MemberRow({
 											Make {role.name}
 										</DropdownMenuItem>
 									))}
-							{canRemove && (
+							{!member.is_owner && canRemove && (
 								<AlertDialog>
 									<AlertDialogTrigger asChild>
 										<DropdownMenuItem
