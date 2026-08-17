@@ -39,10 +39,15 @@ def execute_sequence_step(self, enrollment_id: str, workspace_id: int) -> None:
 
 
 async def _execute_sequence_step_impl(enrollment_id_str: str, workspace_id: int) -> None:
+    from app.canonical.tenant_context import set_request_tenant_context
+
     sequencer = SequencerService()
     session_maker = get_celery_session_maker()
     enrollment_id = UUID(enrollment_id_str)
     async with session_maker() as session:
+        # Set workspace GUC for audit/RLS. Celery worker should use a DB role with BYPASSRLS
+        # because sequence execution does not know the client_id before loading the row.
+        await set_request_tenant_context(session, workspace_id=workspace_id)
         try:
             await sequencer.execute_enrollment_step(
                 session=session,

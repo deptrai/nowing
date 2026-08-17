@@ -117,13 +117,15 @@ async def _telegram(
 
 
 def _send_email_smtp(to_email: str, subject: str, body: str) -> None:
-    """Synchronous helper: send a plain-text email over SMTP."""
+    """Synchronous helper: send a plain-text email over SMTP with explicit timeout."""
+
     msg = MIMEText(body)
     msg["Subject"] = subject
     msg["From"] = config.SMTP_FROM or "noreply@nowing.net"
     msg["To"] = to_email
 
-    server = smtplib.SMTP(config.SMTP_HOST, config.SMTP_PORT)
+    timeout = getattr(config, "SMTP_TIMEOUT_SECONDS", 30.0)
+    server = smtplib.SMTP(config.SMTP_HOST, config.SMTP_PORT, timeout=timeout)
     try:
         if config.SMTP_TLS:
             server.starttls()

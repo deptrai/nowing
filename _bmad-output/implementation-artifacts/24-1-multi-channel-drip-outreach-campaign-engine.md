@@ -570,3 +570,16 @@ Reviewers: Blind Hunter (adversarial) + Edge Case Hunter + Acceptance Auditor. D
 - Verification: `ruff check` 0 errors; `pytest tests/integration/routes/test_sequence_routes.py` 4/4 pass; `pytest tests/unit/services/test_sequencer_service.py tests/integration/services/test_sequence_scheduler.py` 24/24 pass.
 - Còn lại: review chunk 2 (`app/services/sequencer_service.py`, `app/services/billing_event_service.py`, `app/automations/tasks/sequence_tasks.py`) và chunk 3 (frontend) sẽ chạy tiếp.
 
+#### Patching log — 2026-08-17 (chunk 2)
+- Apply patch core:
+  - `handle_inbound_interruption` tìm đúng `SequenceEnrollment` qua `VerifiedContact` thay vì chọn bừa (AC-5 / INV-24.7).
+  - `enroll_lead` validate `lead.workspace_id == workspace_id`, chỉ cho phép `consent_status` trong `ENROLLABLE_CONSENT_STATUSES` và `legal_basis` hợp lệ (AC-4 / AD-25 / AD-49).
+  - `get_due_enrollments` nhận `workspace_id` filter, `evaluate_pending_enrollments` query per-workspace trước khi dispatch (chống cross-workspace leak).
+  - `_resolve_verified_contact` filter theo `channel` (email/phone) và chỉ lấy contact có trường tương ứng.
+  - `_handle_condition_step` bổ sung `opened` / `delivered` vào context để condition branching đúng.
+  - `execute_enrollment_step` set tenant context sau khi load enrollment; `execute_sequence_step` task set `workspace_id` GUC.
+  - `_send_email_smtp` thêm `SMTP_TIMEOUT_SECONDS` config (default 30s).
+- Tests: cập nhật `_FakeSession.execute` signature, `test_inbound_*` mock `_resolve_inbound_contact`, `test_evaluate_pending_enrollments` setup cho per-workspace query.
+- Verification: `ruff check` 0 errors; `pytest tests/unit/services/test_sequencer_service.py tests/integration/services/test_sequence_scheduler.py tests/integration/routes/test_sequence_routes.py` 32/32 pass.
+- Còn lại: chunk 3 frontend review nếu cần.
+

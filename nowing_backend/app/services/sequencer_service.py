@@ -203,6 +203,9 @@ class SequencerService:
 
         return enrollments
 
+    # AD-25 / AD-49: lead consent statuses that allow outbound communication
+    ENROLLABLE_CONSENT_STATUSES = {"granted", "confirmed", "opted_in"}
+
     async def enroll_lead(
         self,
         session: AsyncSession,
@@ -216,16 +219,24 @@ class SequencerService:
     ) -> tuple[SequenceRun, SequenceEnrollment] | SequenceEnrollment | None:
         """Enroll a single lead into a sequence after verifying consent (AC-4 / AD-25 / AD-49)."""
         if isinstance(lead, (UUID, str)):
-            lead_obj = await session.get(Lead, lead)
+            lead_obj = (
+                await session.execute(
+                    select(Lead).where(Lead.id == lead, Lead.workspace_id == workspace_id)
+                )
+            ).scalar_one_or_none()
         else:
             lead_obj = lead
 
         if not lead_obj:
-            logger.warning("Enrollment rejected: Lead %s not found", lead)
+            logger.warning("Enrollment rejected: Lead %s not found in workspace %s", lead, workspace_id)
+            return None
+
+        if lead_obj.workspace_id != workspace_id:
+            logger.warning("Enrollment rejected: Lead %s workspace mismatch", lead_obj.id)
             return None
 
         # AC-4: Consent & Legal Basis gate
-        if lead_obj.consent_status == "none" or not lead_obj.legal_basis:
+        if lead_obj.consent_status not in self.ENROLLABLE_CONSENT_STATUSES or not lead_obj.legal_basis:
             logger.info("Rejecting enrollment: Lead %s lacks consent (%s) or legal basis", lead_obj.id, lead_obj.consent_status)
             return None
 
@@ -278,32 +289,53 @@ class SequencerService:
             return (created_run, enrollment)
         return enrollment
 
-    async def get_due_enrollments(self, session: AsyncSession) -> list[SequenceEnrollment]:
-        """Query all enrollments due for execution."""
+    async def get_due_enrollments(
+        self,
+        session: AsyncSession,
+        workspace_id: int | None = None,
+    ) -> list[SequenceEnrollment]:
+        """Query enrollments due for execution, scoped to a workspace if provided."""
         now_dt = datetime.now(UTC)
-        stmt = select(SequenceEnrollment).where(
+        filters = [
             SequenceEnrollment.status == "scheduled",
             SequenceEnrollment.scheduled_at <= now_dt,
-        )
+        ]
+        if workspace_id is not None:
+            filters.append(SequenceEnrollment.workspace_id == workspace_id)
+        stmt = select(SequenceEnrollment).where(*filters)
         result = await session.execute(stmt)
         return list(result.scalars().all())
 
     async def evaluate_pending_enrollments(self, session: AsyncSession) -> int:
         """Celery Beat worker dispatcher: query due enrollments and enqueue tasks (AC-3)."""
-        due_enrollments = await self.get_due_enrollments(session)
+        now_dt = datetime.now(UTC)
+        workspace_stmt = (
+            select(SequenceEnrollment.workspace_id)
+            .where(
+                SequenceEnrollment.status == "scheduled",
+                SequenceEnrollment.scheduled_at <= now_dt,
+            )
+            .distinct()
+        )
+        workspace_result = await session.execute(workspace_stmt)
+        workspace_ids = list(workspace_result.scalars().all())
+
         dispatched_count = 0
+        for ws_id in workspace_ids:
+            due_enrollments = await self.get_due_enrollments(session, workspace_id=ws_id)
+            for enrollment in due_enrollments:
+                try:
+                    from app.automations.tasks.sequence_tasks import (
+                        execute_sequence_step,
+                    )
 
-        for enrollment in due_enrollments:
-            try:
-                from app.automations.tasks.sequence_tasks import execute_sequence_step
-
-                execute_sequence_step.delay(
-                    enrollment_id=str(enrollment.id),
-                    workspace_id=enrollment.workspace_id,
-                )
-                dispatched_count += 1
-            except Exception:
-                logger.exception("Failed to dispatch Celery task for enrollment %s", enrollment.id)
+                    execute_sequence_step.delay(
+                        enrollment_id=str(enrollment.id),
+                        workspace_id=ws_id,
+                    )
+                    dispatched_count += 1
+                except Exception:
+                    logger.exception("Failed to dispatch Celery task for enrollment %s", enrollment.id)
 
         return dispatched_count
 
@@ -314,11 +346,14 @@ class SequencerService:
         workspace_id: int,
     ) -> SequenceEvent | None:
         """Execute the current step for an enrollment under Redis distributed lock (AC-5, AC-6)."""
+        from app.canonical.tenant_context import set_request_tenant_context
+
         redis_client = await get_redis_client()
         lock_key = f"sequence:lock:enrollment:{workspace_id}:{enrollment_id}"
 
         async with redis_client.lock(lock_key, timeout=10.0, blocking=True, blocking_timeout=3.0):
-            # Fetch enrollment with fresh data
+            # Fetch enrollment with fresh data. Celery worker must bypass RLS for the initial
+            # read because client_id is not known until the row is loaded.
             enrollment = (
                 await session.execute(
                     select(SequenceEnrollment).where(
@@ -327,6 +362,13 @@ class SequencerService:
                     )
                 )
             ).scalar_one_or_none()
+
+            if enrollment:
+                await set_request_tenant_context(
+                    session,
+                    workspace_id=workspace_id,
+                    client_id=enrollment.client_id,
+                )
 
             if not enrollment or enrollment.status not in ("scheduled", "executing"):
                 logger.info("Enrollment %s not eligible for execution (status=%s)", enrollment_id, getattr(enrollment, "status", None))
@@ -605,6 +647,8 @@ class SequencerService:
         """Handle condition branching step."""
         context = {
             "has_replied": enrollment.status == "responded",
+            "opened": enrollment.status in ("responded", "executing"),  # opened/delivered are not tracked per-event yet
+            "delivered": enrollment.status in ("responded", "executing", "scheduled"),
             "lead_status": getattr(lead, "status", ""),
         }
         next_step_order = evaluate_condition_step(step.condition_config or {}, context)
@@ -669,6 +713,46 @@ class SequencerService:
         enrollment.last_event_at = datetime.now(UTC)
         enrollment.updated_at = datetime.now(UTC)
 
+    async def _resolve_inbound_contact(
+        self,
+        session: AsyncSession,
+        workspace_id: int,
+        *,
+        phone: str | None = None,
+        email: str | None = None,
+    ) -> VerifiedContact | None:
+        """Resolve a consented VerifiedContact from an inbound email or phone (AC-5 / AD-49)."""
+        if email:
+            norm_email = normalize_email(email)
+            stmt = (
+                select(VerifiedContact)
+                .where(
+                    VerifiedContact.workspace_id == workspace_id,
+                    VerifiedContact.email == norm_email,
+                    VerifiedContact.consent.is_(True),
+                    VerifiedContact.is_valid.is_(True),
+                )
+                .order_by(VerifiedContact.confidence.desc(), VerifiedContact.created_at.desc())
+            )
+            return (await session.execute(stmt)).scalars().first()
+
+        if phone:
+            e164 = normalize_phone_e164(phone)
+            if e164:
+                stmt = (
+                    select(VerifiedContact)
+                    .where(
+                        VerifiedContact.workspace_id == workspace_id,
+                        VerifiedContact.phone == e164,
+                        VerifiedContact.consent.is_(True),
+                        VerifiedContact.is_valid.is_(True),
+                    )
+                    .order_by(VerifiedContact.confidence.desc(), VerifiedContact.created_at.desc())
+                )
+                return (await session.execute(stmt)).scalars().first()
+
+        return None
+
     async def handle_inbound_interruption(
         self,
         session: AsyncSession,
@@ -691,10 +775,23 @@ class SequencerService:
                 words = re.findall(r"\w+", text.lower())
                 is_opt_out = any(w in OPT_OUT_KEYWORDS for w in words)
 
-            # Find matching active enrollment
-            stmt = select(SequenceEnrollment).where(
-                SequenceEnrollment.workspace_id == workspace_id,
-                SequenceEnrollment.status.in_(["scheduled", "executing", "paused"]),
+            # Resolve the contact that this inbound message belongs to
+            contact = await self._resolve_inbound_contact(
+                session, workspace_id, phone=phone, email=email
+            )
+            if not contact:
+                logger.info("No consented verified contact found for inbound %s", email or phone)
+                return None
+
+            # Find the most recently scheduled active enrollment for this lead
+            stmt = (
+                select(SequenceEnrollment)
+                .where(
+                    SequenceEnrollment.workspace_id == workspace_id,
+                    SequenceEnrollment.lead_id == contact.lead_id,
+                    SequenceEnrollment.status.in_(["scheduled", "executing", "paused"]),
+                )
+                .order_by(SequenceEnrollment.scheduled_at.desc().nulls_last(), SequenceEnrollment.created_at.desc())
             )
             enrollments = (await session.execute(stmt)).scalars().all()
             if not enrollments:
@@ -790,7 +887,8 @@ class SequencerService:
         lead: Lead,
         channel: str = "email",
     ) -> VerifiedContact | None:
-        """Resolve highest-confidence consented VerifiedContact for given lead."""
+        """Resolve highest-confidence consented VerifiedContact for given lead and channel."""
+        contact_field = VerifiedContact.email if channel == "email" else VerifiedContact.phone
         stmt = (
             select(VerifiedContact)
             .where(
@@ -798,6 +896,7 @@ class SequencerService:
                 VerifiedContact.workspace_id == lead.workspace_id,
                 VerifiedContact.consent.is_(True),
                 VerifiedContact.is_valid.is_(True),
+                contact_field.isnot(None),
             )
             .order_by(VerifiedContact.confidence.desc(), VerifiedContact.created_at.desc())
         )

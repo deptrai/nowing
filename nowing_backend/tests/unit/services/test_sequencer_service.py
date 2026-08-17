@@ -66,7 +66,7 @@ class _FakeSession:
             if not getattr(obj, "id", None):
                 obj.id = uuid4()
 
-    async def execute(self, _stmt: Any) -> _FakeResult:
+    async def execute(self, _stmt: Any, _params: Any | None = None) -> _FakeResult:
         return _FakeResult(self._scalar, self._rows)
 
     async def commit(self) -> None:
@@ -192,6 +192,7 @@ class TestConsentAndLegalBasisGate:
 
         unconsented_lead = MagicMock()
         unconsented_lead.id = uuid4()
+        unconsented_lead.workspace_id = 1
         unconsented_lead.consent_status = "none"
         unconsented_lead.legal_basis = None
 
@@ -212,7 +213,7 @@ class TestConsentAndLegalBasisGate:
         session = _FakeSession()
         sequencer = SequencerService()
 
-        lead = MagicMock(id=uuid4(), consent_status="opted_in", legal_basis="legitimate_interest")
+        lead = MagicMock(id=uuid4(), workspace_id=1, consent_status="opted_in", legal_basis="legitimate_interest")
         contact_no_consent = MagicMock(consent=False, is_valid=True, email="user@example.com")
         sequence = MagicMock(id=uuid4(), created_by_user_id=uuid4(), workspace_id=1)
         step = MagicMock(id=uuid4(), channel="email", step_order=1, wait_duration_seconds=0)
@@ -241,14 +242,17 @@ class TestInboundInterruptionAndLock:
         """Inbound opt-out message triggers DNC creation and cancels further sequence steps."""
         from app.services.sequencer_service import SequencerService
 
+        fake_lead_id = uuid4()
         fake_enrollment = MagicMock(
             id=uuid4(),
             workspace_id=1,
             client_id="default",
             sequence_id=uuid4(),
+            lead_id=fake_lead_id,
             status="scheduled",
             version=1,
         )
+        contact = MagicMock(lead_id=fake_lead_id, consent=True, is_valid=True)
         session = _FakeSession(rows=[fake_enrollment])
         sequencer = SequencerService()
 
@@ -259,6 +263,7 @@ class TestInboundInterruptionAndLock:
 
         with (
             patch("app.services.sequencer_service.get_redis_client", return_value=fake_redis),
+            patch.object(sequencer, "_resolve_inbound_contact", new_callable=AsyncMock, return_value=contact),
             patch.object(sequencer, "_register_opt_out_dnc", new_callable=AsyncMock) as mock_dnc,
         ):
             await sequencer.handle_inbound_interruption(
@@ -275,14 +280,17 @@ class TestInboundInterruptionAndLock:
         """Normal inbound reply updates sequence enrollment status to 'responded'."""
         from app.services.sequencer_service import SequencerService
 
+        fake_lead_id = uuid4()
         fake_enrollment = MagicMock(
             id=uuid4(),
             workspace_id=1,
             client_id="default",
             sequence_id=uuid4(),
+            lead_id=fake_lead_id,
             status="scheduled",
             version=1,
         )
+        contact = MagicMock(lead_id=fake_lead_id, consent=True, is_valid=True)
         session = _FakeSession(rows=[fake_enrollment])
         sequencer = SequencerService()
 
@@ -291,7 +299,10 @@ class TestInboundInterruptionAndLock:
         fake_redis.lock.return_value = fake_lock
         fake_lock.__aenter__.return_value = fake_lock
 
-        with patch("app.services.sequencer_service.get_redis_client", return_value=fake_redis):
+        with (
+            patch("app.services.sequencer_service.get_redis_client", return_value=fake_redis),
+            patch.object(sequencer, "_resolve_inbound_contact", new_callable=AsyncMock, return_value=contact),
+        ):
             result = await sequencer.handle_inbound_interruption(
                 session=session,
                 workspace_id=1,
@@ -320,7 +331,7 @@ class TestBillingAndCreditFlow:
         session = _FakeSession()
         sequencer = SequencerService()
 
-        lead = MagicMock(id=uuid4(), consent_status="opted_in", legal_basis="legitimate_interest", custom_fields={})
+        lead = MagicMock(id=uuid4(), workspace_id=1, consent_status="opted_in", legal_basis="legitimate_interest", custom_fields={})
         contact = MagicMock(consent=True, is_valid=True, email="test@example.com")
         sequence = MagicMock(id=uuid4(), created_by_user_id=uuid4(), workspace_id=1)
         step = MagicMock(id=uuid4(), channel="email", step_order=1, template={})

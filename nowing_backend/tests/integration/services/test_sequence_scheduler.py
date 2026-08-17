@@ -59,7 +59,7 @@ class _FakeSession:
             if not getattr(obj, "id", None):
                 obj.id = uuid4()
 
-    async def execute(self, _stmt: Any) -> _FakeResult:
+    async def execute(self, _stmt: Any, _params: Any | None = None) -> _FakeResult:
         return _FakeResult(self._scalar, self._rows)
 
     async def commit(self) -> None:
@@ -80,6 +80,9 @@ class TestSequenceSchedulerIntegration:
         from app.services.sequencer_service import SequencerService
 
         session = MagicMock()
+        _workspace_result = MagicMock()
+        _workspace_result.scalars.return_value.all.return_value = [1]
+        session.execute = AsyncMock(return_value=_workspace_result)
         sequencer = SequencerService()
 
         now = datetime.now(VN_TZ)
@@ -87,6 +90,8 @@ class TestSequenceSchedulerIntegration:
 
         # Mock query return
         due_enrollment = MagicMock(id=due_enrollment_id, workspace_id=1, status="scheduled", scheduled_at=now - timedelta(minutes=5))
+
+        session.execute.return_value.scalars.return_value.all.return_value = [1]
 
         with (
             patch.object(sequencer, "get_due_enrollments", return_value=[due_enrollment]),
@@ -112,6 +117,7 @@ class TestSequenceSchedulerIntegration:
 
         lead = MagicMock(
             id=lead_id,
+            workspace_id=1,
             consent_status="opted_in",
             legal_basis="legitimate_interest",
             client_id="default",
@@ -187,7 +193,7 @@ class TestSequenceExecutionIntegration:
         )
 
         class MultiQuerySession(_FakeSession):
-            async def execute(self, stmt: Any) -> _FakeResult:
+            async def execute(self, stmt: Any, params: Any | None = None) -> _FakeResult:
                 s = str(stmt).lower().strip()
                 if s.startswith("update") or "update sequence_enrollments set" in s:
                     return _FakeResult(rowcount=1)
