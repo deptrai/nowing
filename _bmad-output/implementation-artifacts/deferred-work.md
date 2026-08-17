@@ -43,6 +43,16 @@
   - **Action:** Marked `[x] [Review][Defer]` in `21-5-crm-integration.md`.
   - **Reason / when to revisit:** Frontend contracts and UI components are scoped to Story 21.6 (Zalo Integration) and Story 21.13 (Multi-Table Tabs).
 
+## Deferred from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-08-17)
+
+- **Finding:** Scope creep từ story khác trong diff 24.3: `ImpersonationGuardMiddleware` và chỉnh CORS regex trong `app/app.py` thuộc Story 25.1/24.5.
+  - **Action:** Marked `[x] [Review][Defer]` in `24-3-multi-seat-team-crm-pipeline-and-shared-credits.md`.
+  - **Reason / when to revisit:** Nằm ngoài scope Story 24.3; đã hoặc sẽ được xử lý trong story tương ứng.
+
+- **Finding:** Scope creep từ story khác trong diff 24.3: `GlobalDncRecord`, `AuditEvent`, `CreditTransaction` và các trường `tax_id`/`company_status` trên `Lead` trong `app/db.py` thuộc Story 24.2/24.4/25.2.
+  - **Action:** Marked `[x] [Review][Defer]` in `24-3-multi-seat-team-crm-pipeline-and-shared-credits.md`.
+  - **Reason / when to revisit:** Nằm ngoài scope Story 24.3; đã hoặc sẽ được xử lý trong story tương ứng.
+
 ## Deferred from: code review of 10-7-chotot-multi-category-capability (2026-08-15)
 
 - **Finding:** Inverted `district_id` guard in `app/proprietary/platforms/chotot/scraper.py:116-119` rejects every valid non-negative `district_id`.

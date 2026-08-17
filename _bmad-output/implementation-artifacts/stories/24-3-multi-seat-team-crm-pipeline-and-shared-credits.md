@@ -109,8 +109,26 @@ pnpm exec biome check components/leads/pipeline/ app/dashboard/\[workspace_id\]/
 - [ ] [Review][Patch] Thiếu Spend Cap Manager UI trong workspace settings (`nowing_web/lib/apis/lead-pipeline-api.service.ts:75-88`)
 - [ ] [Review][Patch] Diff chứa scope creep từ story khác: `chrome-extension://.*` CORS (24.5) và tax_id/Zalo fields trên `NowingLeadMatrix`/`leads.types.ts` (24.2/24.4) (`nowing_backend/app/app.py:871`, `nowing_web/components/leads/NowingLeadMatrix.tsx:3153-3221`)
 
+### Review Findings — 2026-08-17 (bmad-code-review Chunk A: backend core)
+
+#### Patch (đã xử lý 2026-08-17)
+
+- [x] [Review][Patch] `lead_pipeline_routes.list_lead_activities` trả timeline theo thứ tự `created_at.desc()` dù docstring và AC-3 yêu cầu chronological (`asc()`); endpoint `/timeline` và `/activities` cùng logic này (`nowing_backend/app/routes/lead_pipeline_routes.py:269-272`)
+- [x] [Review][Patch] `WorkspaceCreditService.deduct_credits` cho phép user không phải thành viên workspace vẫn trừ tiền: `_get_membership` trả `None` thì `cap=None`, `current_spent=0` và vẫn `UPDATE Workspace ...` để trừ balance; thiếu check membership (`nowing_backend/app/services/workspace_credit_service.py:152-168`)
+- [x] [Review][Patch] `session.refresh()` sau `session.commit()` trong `_ensure_default_stages`, `create_pipeline_stage`, `create_lead_activity` sẽ chạy trong transaction mới không có GUC `app.workspace_id` (vì `set_request_tenant_context` dùng `SET LOCAL`), khiến RLS `FORCE` không nhìn thấy row vừa tạo và raise exception / trả 500 (`nowing_backend/app/routes/lead_pipeline_routes.py:77-84, 141-142, 309-310`)
+- [x] [Review][Patch] `lead_pipeline_routes.assign_or_reassign_lead` không bắt `NoEligibleAssigneeError` từ `LeadAssignmentService.reassign_lead` khi target member không tồn tại / không accepting, dẫn đến 500 thay vì 4xx (`nowing_backend/app/routes/lead_pipeline_routes.py:337-344`)
+- [x] [Review][Patch] `LeadAssignmentService.reassign_lead` kiểm tra member active/accepting nhưng không kiểm tra capacity (`current_leads < max_capacity`), cho phép manual reassign vượt cap (`nowing_backend/app/services/lead_assignment_service.py:247-260`)
+- [x] [Review][Patch] `workspace_credit_service.refund_credits` là read-modify-write không có `UPDATE ... WHERE`; concurrent refund dễ lost update / over-refund (`nowing_backend/app/services/workspace_credit_service.py:295-331`)
+- [x] [Review][Patch] `lead_pipeline_routes.create_pipeline_stage` pre-check duplicate slug bằng query, không `try/except IntegrityError`; race condition hai request cùng slug sẽ 500 (`nowing_backend/app/routes/lead_pipeline_routes.py:120-143`)
+
+#### Patch (đã xử lý 2026-08-17)
+
+- [x] [Review][Patch] `WorkspaceCreditService.deduct_credits` chưa được wire vào các billable operation (enrichment, scraping, AI). Theo option 2, tôi thêm `WorkspaceCreditService.record_spend` để enforce per-seat spend cap atomic trước khi gọi `wallet_credit.apply_debit`. Payment vẫn là user wallet; `WorkspaceCreditService` chỉ đóng vai trò gate cho `monthly_spend_cap_micros`. (`nowing_backend/app/services/workspace_credit_service.py:280-390`, `nowing_backend/app/services/billing_event_service.py:175-195`, `nowing_backend/app/capabilities/core/billing.py:35-60, 380-565`)
+
 #### Defer
 
+- [x] [Review][Defer] Scope creep từ story khác trong diff 24.3: `ImpersonationGuardMiddleware` và chỉnh CORS regex trong `app/app.py` thuộc Story 25.1/24.5 (`nowing_backend/app/app.py:784, 871`)
+- [x] [Review][Defer] Scope creep từ story khác trong diff 24.3: `GlobalDncRecord`, `AuditEvent`, `CreditTransaction` và các trường `tax_id`/`company_status` trên `Lead` trong `app/db.py` thuộc Story 24.2/24.4/25.2 (`nowing_backend/app/db.py:4479-4516, 6035-6084`)
 - [x] [Review][Defer] `pnpm tsc --noEmit` fail trên `admin-users-api.service.ts:14` do lỗi pre-existing, không thuộc diff 24.3 — revisit khi sửa story 25.1
 
 #### Implementation Notes (auto-generated)
@@ -128,3 +146,29 @@ pnpm exec biome check components/leads/pipeline/ app/dashboard/\[workspace_id\]/
   - Zero query subscriptions cho Kanban đã thêm (`zero/schema/leads.ts`, `zero/queries/leads.ts`), `LeadKanbanBoard` dùng `useQuery` để nhận real-time stage/lead updates.
   - `_ensure_default_stages` xử lý `IntegrityError` khi race tạo default stages.
   - `BatchLeadAssignmentRequest` thêm `min_length=1` và dedupe `lead_ids`.
+
+- 2026-08-17: Patches applied in chunk A code review:
+  - `list_lead_activities` sắp xếp `created_at.asc()` (chronological timeline).
+  - `create_pipeline_stage` bắt `IntegrityError` và trả 409 khi slug trùng (race).
+  - `_ensure_default_stages`, `create_pipeline_stage`, `create_lead_activity` re-set GUC `app.workspace_id` bằng `set_request_tenant_context` sau `session.commit()` và trước `session.refresh()` để tránh RLS `FORCE` lỗi.
+  - `assign_or_reassign_lead` bắt `NoEligibleAssigneeError` và trả 400.
+  - `LeadAssignmentService.reassign_lead` thêm capacity check dựa trên `Lead.assigned_to_user_id` và status non-terminal.
+  - `WorkspaceCreditService.deduct_credits` từ chối non-member bằng `ValueError("Member not found")`.
+  - `WorkspaceCreditService.refund_credits` chuyển sang atomic `UPDATE ... RETURNING` cho `Workspace.credit_micros_balance` và `WorkspaceMembership.monthly_spent_micros`, thêm `_refund_credits_fake` path cho FakeAsyncSession.
+  - `tests/unit/services/test_lead_assignment.py` mock `session.execute` cho capacity check.
+  - `ruff check`, `tests/unit/services/test_lead_assignment.py`, `tests/unit/services/test_workspace_credit_pooling.py`, `tests/unit/services/test_billing_event_service.py`, `tests/unit/capabilities/test_billing.py`, `tests/integration/services/test_team_crm_pipeline.py` đều pass.
+  - [Review][Patch] Wire `WorkspaceCreditService` vào billable operations theo option 2:
+    - Thêm `record_spend` atomic `UPDATE ... WHERE` trên `WorkspaceMembership.monthly_spent_micros` với `or_(cap IS NULL, cap >= spent + amount)`.
+    - Gọi `record_spend` trước `wallet_credit.apply_debit` trong `BillingEventService._record_business_event` (enrichment/lead scoring/signal scan).
+    - Thêm `_debit_with_workspace_spend_cap` helper trong `app/capabilities/core/billing.py` và dùng cho `_charge_web_crawl`, `_charge_captcha`, `_charge_platform_meter`, `_charge_vn_bds_aggregate`, `_charge_vn_jobs_aggregate`, `_charge_chainlens` (scrape/AI).
+    - Thêm unit tests `record_spend` trong `test_workspace_credit_pooling.py`.
+
+- 2026-08-17: Patches applied in chunk B/C code review:
+  - `WorkspaceCreditService.deduct_credits`, `record_spend`, `refund_credits` dùng `func.coalesce(WorkspaceMembership.monthly_spent_micros, 0)` để xử lý `NULL` trong SQL atomic update.
+  - `BillingEventService._record_business_event` và `_debit_with_workspace_spend_cap` trong `billing.py` chuyển `SpendCapExceededError` thành `InsufficientCreditsError` trước khi re-raise, giúp REST/agent tools bắt `InsufficientCreditsError` / 402 thay vì 500.
+  - `AppError` trong `nowing_web/lib/error.ts` thêm `data?: unknown`; `base-api.service.ts` gán `data` khi throw `AppError` cho non-2xx response, giúp `LeadKanbanBoard` đọc `err.data.current_version`/`current_stage_id` từ 409 OCC body.
+  - `LeadKanbanBoard.tsx` fallback lấy `err.data` trước `err.response?.data` khi merge current version sau 409.
+  - `MembershipRead` schema + `rbac_routes.py` `list_members`/`update_member_role` trả về `monthly_spend_cap_micros`, `monthly_spent_micros`, `is_accepting_leads`, `lead_capacity`, `status`.
+  - Frontend `members.types.ts` thêm các trường per-seat settings.
+  - `MemberSpendCapDialog.tsx` khởi tạo form từ dữ liệu member hiện tại thay vì reset về rỗng/50/true, tránh vô tình xóa hạn mức/capacity khi owner chỉ mở và lưu.
+  - `pnpm tsc --noEmit` pass; `biome check` pass; `ruff check` pass; `pytest` 124 pass.

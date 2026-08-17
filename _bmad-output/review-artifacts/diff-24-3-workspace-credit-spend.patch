@@ -1,0 +1,884 @@
+diff --git a/nowing_backend/app/capabilities/core/billing.py b/nowing_backend/app/capabilities/core/billing.py
+index c4ab1e7ee..a6fed543b 100644
+--- a/nowing_backend/app/capabilities/core/billing.py
++++ b/nowing_backend/app/capabilities/core/billing.py
+@@ -19,6 +19,10 @@ from app.services import wallet_credit
+ from app.services.platform_scrape_credit_service import PlatformScrapeCreditService
+ from app.services.token_tracking_service import UsageType, record_token_usage
+ from app.services.web_crawl_credit_service import WebCrawlCreditService
++from app.services.workspace_credit_service import (
++    SpendCapExceededError,
++    WorkspaceCreditService,
++)
+ from app.utils.captcha import captcha_enabled
+ 
+ if TYPE_CHECKING:
+@@ -29,6 +33,35 @@ if TYPE_CHECKING:
+ logger = logging.getLogger(__name__)
+ 
+ 
++async def _debit_with_workspace_spend_cap(
++    session: AsyncSession,
++    workspace_id: int,
++    user_id: UUID,
++    cost_micros: int,
++) -> int | None:
++    """Debit the user wallet while enforcing the workspace per-seat spend cap.
++
++    Mirrors ``wallet_credit.apply_debit`` but first records the spend against
++    ``WorkspaceMembership.monthly_spent_micros`` so per-seat caps are enforced
++    atomically. Returns the new user wallet balance or ``None`` for free/zero.
++    """
++    if cost_micros <= 0:
++        return None
++
++    credit_svc = WorkspaceCreditService(session=session)
++    try:
++        await credit_svc.record_spend(
++            workspace_id=workspace_id,
++            user_id=user_id,
++            amount_micros=cost_micros,
++        )
++    except SpendCapExceededError:
++        await session.rollback()
++        raise
++
++    return await wallet_credit.apply_debit(session, user_id, cost_micros)
++
++
+ # Each platform meter -> the config knob holding its micro-USD per-item rate.
+ # The rate is looked up live (not cached) so an env retune + restart takes
+ # effect without a code change, mirroring the crawl biller.
+@@ -74,7 +107,9 @@ def _platform_rate(unit: BillingUnit) -> int:
+     """
+     key = _PLATFORM_RATE_KEYS.get(unit)
+     if key is None:
+-        logger.warning("No platform rate key configured for %s; treating as free", unit.value)
++        logger.warning(
++            "No platform rate key configured for %s; treating as free", unit.value
++        )
+         return 0
+     return int(getattr(config, key, 0))
+ 
+@@ -369,7 +404,9 @@ async def _charge_web_crawl(ctx: CapabilityContext, successes: int) -> int:
+         cost_micros=cost_micros,
+         call_details={"successes": successes},
+     )
+-    await service.charge_credits(owner_user_id, successes)
++    await _debit_with_workspace_spend_cap(
++        ctx.session, ctx.workspace_id, owner_user_id, cost_micros
++    )
+     return cost_micros
+ 
+ 
+@@ -392,7 +429,9 @@ async def _charge_captcha(ctx: CapabilityContext, attempts: int) -> int:
+         cost_micros=cost_micros,
+         call_details={"attempts": attempts},
+     )
+-    await service.charge_captcha(owner_user_id, attempts)
++    await _debit_with_workspace_spend_cap(
++        ctx.session, ctx.workspace_id, owner_user_id, cost_micros
++    )
+     return cost_micros
+ 
+ 
+@@ -508,7 +547,6 @@ async def _charge_chainlens(output: BillableOutput, ctx: CapabilityContext) -> i
+         # Run.cost_micros and the chat turn token-usage SSE remain accurate.
+         return total_cost_micros
+ 
+-    await wallet_credit.check_balance(ctx.session, owner_user_id, total_cost_micros)
+     await _record_chainlens_cost_allocation(
+         ctx,
+         owner_user_id,
+@@ -521,7 +559,9 @@ async def _charge_chainlens(output: BillableOutput, ctx: CapabilityContext) -> i
+         e2e_ms=e2e_ms,
+         ttfb_ms=ttfb_ms,
+     )
+-    await wallet_credit.apply_debit(ctx.session, owner_user_id, total_cost_micros)
++    await _debit_with_workspace_spend_cap(
++        ctx.session, ctx.workspace_id, owner_user_id, total_cost_micros
++    )
+     return total_cost_micros
+ 
+ 
+@@ -760,7 +800,9 @@ async def _charge_platform_meter(
+         cost_micros=cost_micros,
+         call_details=call_details,
+     )
+-    await service.charge(owner_user_id, items, rate)
++    await _debit_with_workspace_spend_cap(
++        ctx.session, ctx.workspace_id, owner_user_id, cost_micros
++    )
+     return cost_micros
+ 
+ 
+@@ -785,8 +827,6 @@ async def _charge_vn_bds_aggregate(
+     if owner_user_id is None:
+         return 0
+ 
+-    await wallet_credit.check_balance(ctx.session, owner_user_id, cost_micros)
+-
+     call_details: dict[str, Any] = {
+         "total_items": getattr(output, "total_items", 0),
+         "degraded": getattr(output, "degraded", False),
+@@ -803,7 +843,9 @@ async def _charge_vn_bds_aggregate(
+         cost_micros=cost_micros,
+         call_details=call_details,
+     )
+-    await wallet_credit.apply_debit(ctx.session, owner_user_id, cost_micros)
++    await _debit_with_workspace_spend_cap(
++        ctx.session, ctx.workspace_id, owner_user_id, cost_micros
++    )
+     return cost_micros
+ 
+ 
+@@ -828,8 +870,6 @@ async def _charge_vn_jobs_aggregate(
+     if owner_user_id is None:
+         return 0
+ 
+-    await wallet_credit.check_balance(ctx.session, owner_user_id, cost_micros)
+-
+     call_details: dict[str, Any] = {
+         "total_items": getattr(output, "total_items", 0),
+         "degraded": getattr(output, "degraded", False),
+@@ -846,7 +886,9 @@ async def _charge_vn_jobs_aggregate(
+         cost_micros=cost_micros,
+         call_details=call_details,
+     )
+-    await wallet_credit.apply_debit(ctx.session, owner_user_id, cost_micros)
++    await _debit_with_workspace_spend_cap(
++        ctx.session, ctx.workspace_id, owner_user_id, cost_micros
++    )
+     return cost_micros
+ 
+ 
+diff --git a/nowing_backend/app/services/billing_event_service.py b/nowing_backend/app/services/billing_event_service.py
+index 3f478c625..eaa145b5e 100644
+--- a/nowing_backend/app/services/billing_event_service.py
++++ b/nowing_backend/app/services/billing_event_service.py
+@@ -9,6 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
+ 
+ from app.db import BillingEvent
+ from app.services import wallet_credit
++from app.services.workspace_credit_service import (
++    SpendCapExceededError,
++    WorkspaceCreditService,
++)
+ 
+ 
+ class BillingEventService:
+@@ -64,7 +68,6 @@ class BillingEventService:
+         enrichment_request_id: UUID,
+         workspace_id: int,
+         client_id: str | None = None,
+-
+         user_id: UUID,
+         cost_micros: int,
+     ) -> BillingEvent:
+@@ -173,6 +176,17 @@ async def _record_business_event(
+     session.add(event)
+ 
+     if cost_micros > 0 and user_id is not None:
++        # Enforce shared workspace per-seat spend cap before debiting the user wallet.
++        credit_svc = WorkspaceCreditService(session=session)
++        try:
++            await credit_svc.record_spend(
++                workspace_id=workspace_id,
++                user_id=user_id,
++                amount_micros=cost_micros,
++            )
++        except SpendCapExceededError:
++            await session.rollback()
++            raise
+         await wallet_credit.check_balance(session, user_id, cost_micros)
+         try:
+             await wallet_credit.apply_debit(session, user_id, cost_micros)
+diff --git a/nowing_backend/app/services/workspace_credit_service.py b/nowing_backend/app/services/workspace_credit_service.py
+index 1a9a5ec32..05c9f4ac3 100644
+--- a/nowing_backend/app/services/workspace_credit_service.py
++++ b/nowing_backend/app/services/workspace_credit_service.py
+@@ -13,7 +13,7 @@ from dataclasses import dataclass
+ from typing import Any
+ from uuid import UUID
+ 
+-from sqlalchemy import select
++from sqlalchemy import func, or_, select
+ from sqlalchemy.ext.asyncio import AsyncSession
+ 
+ from app.db import Workspace, WorkspaceMembership
+@@ -87,17 +87,13 @@ class WorkspaceCreditService:
+     def __init__(self, session: AsyncSession | Any = None) -> None:
+         self.session = session
+ 
+-    async def _get_membership(
+-        self, workspace_id: int, user_id: UUID
+-    ) -> Any | None:
++    async def _get_membership(self, workspace_id: int, user_id: UUID) -> Any | None:
+         if self.session is None:
+             return None
+ 
+         # Check if session has a custom get implementation (e.g. FakeAsyncSession)
+         if hasattr(self.session, "memberships"):
+-            res = await self.session.get(
+-                WorkspaceMembership, (workspace_id, user_id)
+-            )
++            res = await self.session.get(WorkspaceMembership, (workspace_id, user_id))
+             if res is not None:
+                 return res
+ 
+@@ -150,21 +146,19 @@ class WorkspaceCreditService:
+             )
+ 
+         membership = await self._get_membership(workspace_id, user_id)
++        if membership is None:
++            raise ValueError("Member not found")
+ 
+         # Pre-check the cap so we can raise SpendCapExceededError before touching the pool.
+-        if membership is not None:
+-            cap = membership.monthly_spend_cap_micros
+-            current_spent = membership.monthly_spent_micros or 0
+-            if cap is not None and current_spent + amount_micros > cap:
+-                raise SpendCapExceededError(
+-                    user_id=user_id,
+-                    cap_micros=cap,
+-                    current_spent=current_spent,
+-                    requested=amount_micros,
+-                )
+-        else:
+-            cap = None
+-            current_spent = 0
++        cap = membership.monthly_spend_cap_micros
++        current_spent = membership.monthly_spent_micros or 0
++        if cap is not None and current_spent + amount_micros > cap:
++            raise SpendCapExceededError(
++                user_id=user_id,
++                cap_micros=cap,
++                current_spent=current_spent,
++                requested=amount_micros,
++            )
+ 
+         # Atomic workspace balance deduction: only succeed if balance >= amount.
+         balance_result = await self.session.execute(
+@@ -292,6 +286,134 @@ class WorkspaceCreditService:
+             member_monthly_spend_cap=cap,
+         )
+ 
++    async def record_spend(
++        self,
++        *,
++        workspace_id: int,
++        user_id: UUID,
++        amount_micros: int,
++        description: str = "",
++    ) -> dict[str, Any]:
++        """Record a billable spend against the member's monthly cap.
++
++        Unlike :meth:`deduct_credits`, this does **not** touch the shared
++        workspace balance. It is intended for call sites where payment is still
++        handled by the user wallet (e.g. ``wallet_credit.apply_debit``) but the
++        per-seat spend cap must still be enforced atomically.
++
++        Returns a status dict. Raises :class:`SpendCapExceededError` when the
++        cap would be exceeded. No-ops for non-positive amounts. If the user is
++        not a workspace member, no cap is enforced and spend is not tracked.
++        """
++        if amount_micros <= 0:
++            return {
++                "workspace_id": workspace_id,
++                "user_id": user_id,
++                "amount_micros": 0,
++                "member_monthly_spent": 0,
++                "member_monthly_spend_cap": None,
++            }
++
++        # In-memory fake-session path used by unit tests (FakeAsyncSession).
++        if hasattr(self.session, "workspaces") and hasattr(self.session, "memberships"):
++            return self._record_spend_fake(
++                workspace_id=workspace_id,
++                user_id=user_id,
++                amount_micros=amount_micros,
++            )
++
++        membership = await self._get_membership(workspace_id, user_id)
++        if membership is None:
++            # No membership => no per-seat cap to enforce for this user.
++            return {
++                "workspace_id": workspace_id,
++                "user_id": user_id,
++                "amount_micros": amount_micros,
++                "member_monthly_spent": 0,
++                "member_monthly_spend_cap": None,
++            }
++
++        cap = membership.monthly_spend_cap_micros
++        current_spent = membership.monthly_spent_micros or 0
++
++        from sqlalchemy import update
++
++        # Atomic monthly spent increment; only succeeds if under the cap.
++        spend_result = await self.session.execute(
++            update(WorkspaceMembership)
++            .where(
++                WorkspaceMembership.workspace_id == workspace_id,
++                WorkspaceMembership.user_id == user_id,
++                or_(
++                    WorkspaceMembership.monthly_spend_cap_micros.is_(None),
++                    WorkspaceMembership.monthly_spend_cap_micros
++                    >= WorkspaceMembership.monthly_spent_micros + amount_micros,
++                ),
++            )
++            .values(
++                monthly_spent_micros=WorkspaceMembership.monthly_spent_micros
++                + amount_micros,
++            )
++            .returning(
++                WorkspaceMembership.monthly_spend_cap_micros,
++                WorkspaceMembership.monthly_spent_micros,
++            )
++        )
++        spend_row = spend_result.one_or_none()
++        if spend_row is None:
++            raise SpendCapExceededError(
++                user_id=user_id,
++                cap_micros=cap or 0,
++                current_spent=current_spent,
++                requested=amount_micros,
++            )
++
++        returned_cap, returned_spent = spend_row
++        return {
++            "workspace_id": workspace_id,
++            "user_id": user_id,
++            "amount_micros": amount_micros,
++            "member_monthly_spent": returned_spent,
++            "member_monthly_spend_cap": returned_cap,
++        }
++
++    def _record_spend_fake(
++        self,
++        *,
++        workspace_id: int,
++        user_id: UUID,
++        amount_micros: int,
++    ) -> dict[str, Any]:
++        """In-memory record_spend path used by FakeAsyncSession unit tests."""
++        membership = self.session.memberships.get((workspace_id, user_id))
++        if membership is None:
++            return {
++                "workspace_id": workspace_id,
++                "user_id": user_id,
++                "amount_micros": amount_micros,
++                "member_monthly_spent": 0,
++                "member_monthly_spend_cap": None,
++            }
++
++        cap = membership.monthly_spend_cap_micros
++        current_spent = membership.monthly_spent_micros or 0
++        if cap is not None and current_spent + amount_micros > cap:
++            raise SpendCapExceededError(
++                user_id=user_id,
++                cap_micros=cap,
++                current_spent=current_spent,
++                requested=amount_micros,
++            )
++
++        membership.monthly_spent_micros = current_spent + amount_micros
++        return {
++            "workspace_id": workspace_id,
++            "user_id": user_id,
++            "amount_micros": amount_micros,
++            "member_monthly_spent": membership.monthly_spent_micros,
++            "member_monthly_spend_cap": cap,
++        }
++
+     async def refund_credits(
+         self,
+         *,
+@@ -304,30 +426,56 @@ class WorkspaceCreditService:
+         if amount_micros <= 0:
+             raise ValueError("Amount must be strictly positive")
+ 
+-        membership = await self._get_membership(workspace_id, user_id)
+-        workspace = await self._get_workspace(workspace_id)
++        # In-memory fake-session path used by unit tests (FakeAsyncSession).
++        if hasattr(self.session, "workspaces") and hasattr(self.session, "memberships"):
++            return self._refund_credits_fake(
++                workspace_id=workspace_id,
++                user_id=user_id,
++                amount_micros=amount_micros,
++                reason=reason,
++            )
++
++        from sqlalchemy import update
+ 
+-        if workspace is not None:
+-            workspace.credit_micros_balance = (
+-                workspace.credit_micros_balance or 0
+-            ) + amount_micros
++        # Atomic workspace balance refund.
++        balance_result = await self.session.execute(
++            update(Workspace)
++            .where(Workspace.id == workspace_id)
++            .values(
++                credit_micros_balance=Workspace.credit_micros_balance + amount_micros,
++            )
++            .returning(Workspace.credit_micros_balance)
++        )
++        balance_row = balance_result.one_or_none()
++        remaining_workspace_balance = balance_row[0] if balance_row else 0
+ 
++        # Atomic member monthly spent decrement, guarded against negative values.
++        membership = await self._get_membership(workspace_id, user_id)
++        member_monthly_spent = 0
+         if membership is not None:
+-            membership.monthly_spent_micros = max(
+-                0, (membership.monthly_spent_micros or 0) - amount_micros
++            spend_result = await self.session.execute(
++                update(WorkspaceMembership)
++                .where(
++                    WorkspaceMembership.workspace_id == workspace_id,
++                    WorkspaceMembership.user_id == user_id,
++                )
++                .values(
++                    monthly_spent_micros=func.greatest(
++                        0, WorkspaceMembership.monthly_spent_micros - amount_micros
++                    ),
++                )
++                .returning(WorkspaceMembership.monthly_spent_micros)
+             )
++            spend_row = spend_result.one_or_none()
++            member_monthly_spent = spend_row[0] if spend_row else 0
+ 
+         return {
+             "workspace_id": workspace_id,
+             "user_id": user_id,
+             "refunded_micros": amount_micros,
+             "reason": reason,
+-            "remaining_workspace_balance": workspace.credit_micros_balance
+-            if workspace
+-            else 0,
+-            "member_monthly_spent": membership.monthly_spent_micros
+-            if membership
+-            else 0,
++            "remaining_workspace_balance": remaining_workspace_balance,
++            "member_monthly_spent": member_monthly_spent,
+         }
+ 
+     async def set_member_spend_cap(
+@@ -375,5 +523,43 @@ class WorkspaceCreditService:
+             workspace_balance_micros=balance,
+         )
+ 
++    def _refund_credits_fake(
++        self,
++        *,
++        workspace_id: int,
++        user_id: UUID,
++        amount_micros: int,
++        reason: str,
++    ) -> dict[str, Any]:
++        """In-memory refund path used by FakeAsyncSession unit tests."""
++        workspace = self.session.workspaces.get(workspace_id)
++        if workspace is None:
++            return {
++                "workspace_id": workspace_id,
++                "user_id": user_id,
++                "refunded_micros": amount_micros,
++                "reason": reason,
++                "remaining_workspace_balance": 0,
++                "member_monthly_spent": 0,
++            }
++
++        membership = self.session.memberships.get((workspace_id, user_id))
++        member_monthly_spent = 0
++        if membership is not None:
++            current_spent = membership.monthly_spent_micros or 0
++            membership.monthly_spent_micros = max(0, current_spent - amount_micros)
++            member_monthly_spent = membership.monthly_spent_micros
++
++        workspace.credit_micros_balance += amount_micros
++
++        return {
++            "workspace_id": workspace_id,
++            "user_id": user_id,
++            "refunded_micros": amount_micros,
++            "reason": reason,
++            "remaining_workspace_balance": workspace.credit_micros_balance,
++            "member_monthly_spent": member_monthly_spent,
++        }
++
+ 
+ workspace_credit_service = WorkspaceCreditService()
+diff --git a/nowing_backend/tests/unit/capabilities/test_billing.py b/nowing_backend/tests/unit/capabilities/test_billing.py
+index 811496416..bafd1d01b 100644
+--- a/nowing_backend/tests/unit/capabilities/test_billing.py
++++ b/nowing_backend/tests/unit/capabilities/test_billing.py
+@@ -7,6 +7,7 @@ WebCrawlCreditService debit math and the owner-billed decision.
+ from __future__ import annotations
+ 
+ from types import SimpleNamespace
++from typing import Any
+ from unittest.mock import AsyncMock, MagicMock
+ from uuid import UUID
+ 
+@@ -71,6 +72,33 @@ def _stub_auto_reload(monkeypatch):
+     monkeypatch.setattr(ar, "maybe_trigger_auto_reload", AsyncMock())
+ 
+ 
++@pytest.fixture(autouse=True)
++def _stub_workspace_credit_spend(monkeypatch):
++    """Bypass the shared-credit spend-cap gate so unit tests focus on billing math."""
++
++    async def _record_spend(
++        self,
++        *,
++        workspace_id: int,
++        user_id: Any,
++        amount_micros: int,
++        description: str = "",
++    ) -> dict[str, Any]:
++        return {
++            "workspace_id": workspace_id,
++            "user_id": user_id,
++            "amount_micros": amount_micros,
++            "member_monthly_spent": 0,
++            "member_monthly_spend_cap": None,
++        }
++
++    monkeypatch.setattr(
++        "app.services.workspace_credit_service.WorkspaceCreditService.record_spend",
++        _record_spend,
++        raising=False,
++    )
++
++
+ @pytest.fixture
+ def record_usage(monkeypatch):
+     rec = AsyncMock(return_value=MagicMock())
+@@ -568,9 +596,7 @@ async def test_engine_unavailable_no_content_does_not_record_token_usage(
+     assert user.credit_micros_balance == 100_000
+ 
+ 
+-async def test_chainlens_kb_fallback_not_double_counted(
+-    monkeypatch, record_usage
+-):
++async def test_chainlens_kb_fallback_not_double_counted(monkeypatch, record_usage):
+     """KB-fallback cost is folded into search once, not double-counted in the split."""
+     from app.capabilities.chainlens.research.schemas import ResearchOutput
+ 
+@@ -1584,7 +1610,9 @@ async def test_gate_vn_jobs_aggregate_reserves_exact_worst_case(monkeypatch):
+     assert mock_check.await_args.args[2] == 1111 + 16_000
+ 
+ 
+-async def test_charge_vn_bds_aggregate_records_and_debits_exact_cost(monkeypatch, record_usage):
++async def test_charge_vn_bds_aggregate_records_and_debits_exact_cost(
++    monkeypatch, record_usage
++):
+     from app.capabilities.core.billing import _charge_vn_bds_aggregate
+ 
+     monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+@@ -1623,7 +1651,9 @@ async def test_charge_vn_bds_aggregate_negative_cost_is_free(monkeypatch, record
+     record_usage.assert_not_awaited()
+ 
+ 
+-async def test_charge_vn_jobs_aggregate_records_and_debits_exact_cost(monkeypatch, record_usage):
++async def test_charge_vn_jobs_aggregate_records_and_debits_exact_cost(
++    monkeypatch, record_usage
++):
+     from app.capabilities.core.billing import _charge_vn_jobs_aggregate
+ 
+     monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+@@ -1674,7 +1704,12 @@ async def test_split_chainlens_cost_splits_and_absorbs_rounding_drift(monkeypatc
+     assert allocation["gap_fill_micros"] == 30
+     assert allocation["scraper_micros"] == 20
+     assert allocation["scraper_id"] is None
+-    assert allocation["search_micros"] + allocation["gap_fill_micros"] + allocation["scraper_micros"] == 101
++    assert (
++        allocation["search_micros"]
++        + allocation["gap_fill_micros"]
++        + allocation["scraper_micros"]
++        == 101
++    )
+ 
+ 
+ async def test_split_chainlens_cost_no_gap_fill_is_all_search(monkeypatch):
+@@ -1724,7 +1759,9 @@ async def test_chainlens_kb_fallback_cost_computed_exactly(monkeypatch, record_u
+     assert details["cost_dollars"] == 0.015
+ 
+ 
+-async def test_chainlens_call_details_defaults_for_non_degraded_output(monkeypatch, record_usage):
++async def test_chainlens_call_details_defaults_for_non_degraded_output(
++    monkeypatch, record_usage
++):
+     from app.capabilities.core.billing import _charge_chainlens
+ 
+     monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+@@ -1748,7 +1785,9 @@ async def test_chainlens_call_details_defaults_for_non_degraded_output(monkeypat
+     assert "final_status" not in details
+ 
+ 
+-async def test_chainlens_zero_cost_still_records_deep_research_usage(monkeypatch, record_usage):
++async def test_chainlens_zero_cost_still_records_deep_research_usage(
++    monkeypatch, record_usage
++):
+     from app.capabilities.core.billing import _charge_chainlens
+ 
+     monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+diff --git a/nowing_backend/tests/unit/services/test_billing_event_service.py b/nowing_backend/tests/unit/services/test_billing_event_service.py
+index 6cc33157a..8e72eae97 100644
+--- a/nowing_backend/tests/unit/services/test_billing_event_service.py
++++ b/nowing_backend/tests/unit/services/test_billing_event_service.py
+@@ -86,6 +86,22 @@ def _patch_wallet(monkeypatch, *, balance_micros: int = 1_000_000) -> dict[str,
+         calls["debit"].append({"user_id": user_id, "cost_micros": cost_micros})
+         return balance_micros - cost_micros
+ 
++    async def _record_spend(
++        self,
++        *,
++        workspace_id: int,
++        user_id: Any,
++        amount_micros: int,
++        description: str = "",
++    ) -> dict[str, Any]:
++        return {
++            "workspace_id": workspace_id,
++            "user_id": user_id,
++            "amount_micros": amount_micros,
++            "member_monthly_spent": 0,
++            "member_monthly_spend_cap": None,
++        }
++
+     monkeypatch.setattr(
+         "app.services.wallet_credit.check_balance",
+         _check_balance,
+@@ -96,6 +112,11 @@ def _patch_wallet(monkeypatch, *, balance_micros: int = 1_000_000) -> dict[str,
+         _apply_debit,
+         raising=False,
+     )
++    monkeypatch.setattr(
++        "app.services.workspace_credit_service.WorkspaceCreditService.record_spend",
++        _record_spend,
++        raising=False,
++    )
+     return calls
+ 
+ 
+@@ -302,6 +323,11 @@ class TestRecordSignalScan:
+             AsyncMock(),
+             raising=False,
+         )
++        monkeypatch.setattr(
++            "app.services.workspace_credit_service.WorkspaceCreditService.record_spend",
++            AsyncMock(),
++            raising=False,
++        )
+ 
+         session = _FakeSession()
+ 
+@@ -447,9 +473,7 @@ class TestRecordContactEnrichment:
+             cost_micros=1000,
+         )
+ 
+-        assert calls["check"] == [
+-            {"user_id": user_id, "required_micros": 1000}
+-        ]
++        assert calls["check"] == [{"user_id": user_id, "required_micros": 1000}]
+         assert calls["debit"] == [{"user_id": user_id, "cost_micros": 1000}]
+ 
+     @pytest.mark.asyncio
+diff --git a/nowing_backend/tests/unit/services/test_workspace_credit_pooling.py b/nowing_backend/tests/unit/services/test_workspace_credit_pooling.py
+index 08dc88480..4546a43b1 100644
+--- a/nowing_backend/tests/unit/services/test_workspace_credit_pooling.py
++++ b/nowing_backend/tests/unit/services/test_workspace_credit_pooling.py
+@@ -136,6 +136,7 @@ pytestmark = pytest.mark.unit
+ # Test Fixtures & Fakes
+ # ---------------------------------------------------------------------------
+ 
++
+ @dataclass
+ class FakeWorkspace:
+     id: int
+@@ -186,13 +187,16 @@ class FakeAsyncSession:
+ # Unit Tests
+ # ---------------------------------------------------------------------------
+ 
++
+ @pytest.mark.asyncio
+ async def test_deduct_credits_success_within_spend_cap():
+     """Test successful credit deduction when member spend is within monthly cap."""
+     workspace_id = 100
+     user_id = uuid4()
+     session = FakeAsyncSession()
+-    session.workspaces[workspace_id] = FakeWorkspace(id=workspace_id, credit_micros_balance=1_000_000)
++    session.workspaces[workspace_id] = FakeWorkspace(
++        id=workspace_id, credit_micros_balance=1_000_000
++    )
+     session.memberships[(workspace_id, user_id)] = FakeWorkspaceMembership(
+         workspace_id=workspace_id,
+         user_id=user_id,
+@@ -222,7 +226,9 @@ async def test_deduct_credits_fails_when_member_spend_cap_exceeded():
+     workspace_id = 100
+     user_id = uuid4()
+     session = FakeAsyncSession()
+-    session.workspaces[workspace_id] = FakeWorkspace(id=workspace_id, credit_micros_balance=5_000_000)
++    session.workspaces[workspace_id] = FakeWorkspace(
++        id=workspace_id, credit_micros_balance=5_000_000
++    )
+     session.memberships[(workspace_id, user_id)] = FakeWorkspaceMembership(
+         workspace_id=workspace_id,
+         user_id=user_id,
+@@ -256,7 +262,9 @@ async def test_deduct_credits_fails_when_workspace_balance_insufficient():
+     workspace_id = 100
+     user_id = uuid4()
+     session = FakeAsyncSession()
+-    session.workspaces[workspace_id] = FakeWorkspace(id=workspace_id, credit_micros_balance=80_000)
++    session.workspaces[workspace_id] = FakeWorkspace(
++        id=workspace_id, credit_micros_balance=80_000
++    )
+     session.memberships[(workspace_id, user_id)] = FakeWorkspaceMembership(
+         workspace_id=workspace_id,
+         user_id=user_id,
+@@ -288,7 +296,9 @@ async def test_deduct_credits_unlimited_member_spends_from_pool():
+     workspace_id = 100
+     user_id = uuid4()
+     session = FakeAsyncSession()
+-    session.workspaces[workspace_id] = FakeWorkspace(id=workspace_id, credit_micros_balance=2_000_000)
++    session.workspaces[workspace_id] = FakeWorkspace(
++        id=workspace_id, credit_micros_balance=2_000_000
++    )
+     session.memberships[(workspace_id, user_id)] = FakeWorkspaceMembership(
+         workspace_id=workspace_id,
+         user_id=user_id,
+@@ -315,7 +325,9 @@ async def test_deduct_credits_zero_or_negative_amount_validation():
+     workspace_id = 100
+     user_id = uuid4()
+     session = FakeAsyncSession()
+-    session.workspaces[workspace_id] = FakeWorkspace(id=workspace_id, credit_micros_balance=1_000_000)
++    session.workspaces[workspace_id] = FakeWorkspace(
++        id=workspace_id, credit_micros_balance=1_000_000
++    )
+     session.memberships[(workspace_id, user_id)] = FakeWorkspaceMembership(
+         workspace_id=workspace_id,
+         user_id=user_id,
+@@ -360,7 +372,10 @@ async def test_set_member_spend_cap_updates_membership():
+         cap_micros=1_000_000,
+     )
+ 
+-    assert session.memberships[(workspace_id, target_user_id)].monthly_spend_cap_micros == 1_000_000
++    assert (
++        session.memberships[(workspace_id, target_user_id)].monthly_spend_cap_micros
++        == 1_000_000
++    )
+ 
+ 
+ @pytest.mark.asyncio
+@@ -390,7 +405,9 @@ async def test_get_member_spend_status():
+     workspace_id = 100
+     user_id = uuid4()
+     session = FakeAsyncSession()
+-    session.workspaces[workspace_id] = FakeWorkspace(id=workspace_id, credit_micros_balance=2_500_000)
++    session.workspaces[workspace_id] = FakeWorkspace(
++        id=workspace_id, credit_micros_balance=2_500_000
++    )
+     session.memberships[(workspace_id, user_id)] = FakeWorkspaceMembership(
+         workspace_id=workspace_id,
+         user_id=user_id,
+@@ -418,7 +435,9 @@ async def test_refund_credits_restores_pool_and_decrements_member_spent():
+     workspace_id = 100
+     user_id = uuid4()
+     session = FakeAsyncSession()
+-    session.workspaces[workspace_id] = FakeWorkspace(id=workspace_id, credit_micros_balance=800_000)
++    session.workspaces[workspace_id] = FakeWorkspace(
++        id=workspace_id, credit_micros_balance=800_000
++    )
+     session.memberships[(workspace_id, user_id)] = FakeWorkspaceMembership(
+         workspace_id=workspace_id,
+         user_id=user_id,
+@@ -437,3 +456,87 @@ async def test_refund_credits_restores_pool_and_decrements_member_spent():
+     assert session.workspaces[workspace_id].credit_micros_balance == 850_000
+     assert session.memberships[(workspace_id, user_id)].monthly_spent_micros == 150_000
+     assert res.get("refunded_micros") == 50_000
++
++
++@pytest.mark.asyncio
++async def test_record_spend_increments_monthly_spent_without_touching_balance():
++    """record_spend tracks spend for cap enforcement while leaving the shared pool untouched."""
++    workspace_id = 100
++    user_id = uuid4()
++    session = FakeAsyncSession()
++    session.workspaces[workspace_id] = FakeWorkspace(
++        id=workspace_id,
++        credit_micros_balance=1_000_000,
++    )
++    session.memberships[(workspace_id, user_id)] = FakeWorkspaceMembership(
++        workspace_id=workspace_id,
++        user_id=user_id,
++        monthly_spend_cap_micros=500_000,
++        monthly_spent_micros=100_000,
++    )
++
++    service = WorkspaceCreditService(session=session)
++    res = await service.record_spend(
++        workspace_id=workspace_id,
++        user_id=user_id,
++        amount_micros=50_000,
++    )
++
++    assert session.memberships[(workspace_id, user_id)].monthly_spent_micros == 150_000
++    assert session.workspaces[workspace_id].credit_micros_balance == 1_000_000
++    assert res["member_monthly_spent"] == 150_000
++    assert res["amount_micros"] == 50_000
++
++
++@pytest.mark.asyncio
++async def test_record_spend_allows_unlimited_when_cap_is_none():
++    """Members with no cap can record spend without hitting a ceiling."""
++    workspace_id = 100
++    user_id = uuid4()
++    session = FakeAsyncSession()
++    session.workspaces[workspace_id] = FakeWorkspace(
++        id=workspace_id,
++        credit_micros_balance=1_000_000,
++    )
++    session.memberships[(workspace_id, user_id)] = FakeWorkspaceMembership(
++        workspace_id=workspace_id,
++        user_id=user_id,
++        monthly_spend_cap_micros=None,
++        monthly_spent_micros=0,
++    )
++
++    service = WorkspaceCreditService(session=session)
++    res = await service.record_spend(
++        workspace_id=workspace_id,
++        user_id=user_id,
++        amount_micros=900_000,
++    )
++
++    assert session.memberships[(workspace_id, user_id)].monthly_spent_micros == 900_000
++    assert res["member_monthly_spend_cap"] is None
++
++
++@pytest.mark.asyncio
++async def test_record_spend_rejects_amount_exceeding_cap():
++    """record_spend raises SpendCapExceededError when the cap would be breached."""
++    workspace_id = 100
++    user_id = uuid4()
++    session = FakeAsyncSession()
++    session.workspaces[workspace_id] = FakeWorkspace(
++        id=workspace_id,
++        credit_micros_balance=1_000_000,
++    )
++    session.memberships[(workspace_id, user_id)] = FakeWorkspaceMembership(
++        workspace_id=workspace_id,
++        user_id=user_id,
++        monthly_spend_cap_micros=500_000,
++        monthly_spent_micros=400_000,
++    )
++
++    service = WorkspaceCreditService(session=session)
++    with pytest.raises(SpendCapExceededError):
++        await service.record_spend(
++            workspace_id=workspace_id,
++            user_id=user_id,
++            amount_micros=150_000,
++        )
