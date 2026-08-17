@@ -16,6 +16,9 @@ NotificationType = Literal[
     "automation_run_complete",
     "alert_run_complete",
     "signal_detected",
+    "email_reply",
+    "email_delivered",
+    "email_bounced",
 ]
 
 NotificationCategory = Literal["comments", "status"]

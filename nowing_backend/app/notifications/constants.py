@@ -21,5 +21,8 @@ CATEGORY_TYPES: dict[str, tuple[str, ...]] = {
         "automation_run_complete",
         "alert_run_complete",
         "signal_detected",
+        "email_reply",
+        "email_delivered",
+        "email_bounced",
     ),
 }

@@ -90,6 +90,59 @@ class BillingEventService:
             cost_basis="actual",
         )
 
+    async def record_sequence_send(
+        self,
+        session: AsyncSession,
+        *,
+        sequence_event_id: UUID,
+        workspace_id: int,
+        client_id: str | None = None,
+        user_id: UUID | None,
+        cost_micros: int,
+        cost_basis: str = "actual",
+    ) -> BillingEvent:
+        """Record an outbound sequence send billing event and debit user wallet (Story 24.1 / AD-42).
+
+        Idempotent by sequence_event_id: returns existing BillingEvent on duplicate to be retry-safe with Celery.
+        """
+        return await _record_business_event(
+            session,
+            event_entity_type="sequence_event",
+            event_type="email_send",
+            event_id=sequence_event_id,
+            workspace_id=workspace_id,
+            client_id=client_id,
+            user_id=user_id,
+            cost_micros=cost_micros,
+            cost_basis=cost_basis,
+            return_existing=True,
+        )
+
+    async def record_outcome_meeting_booked(
+        self,
+        session: AsyncSession,
+        *,
+        outcome_event_id: UUID,
+        workspace_id: int,
+        client_id: str | None = None,
+        user_id: UUID | None,
+        cost_micros: int,
+        cost_basis: str = "actual",
+    ) -> BillingEvent:
+        """Record an outcome-based meeting booked billing event (Story 24.1 / AD-42 / AD-48)."""
+        return await _record_business_event(
+            session,
+            event_entity_type="outcome_event",
+            event_type="outcome_meeting_booked",
+            event_id=outcome_event_id,
+            workspace_id=workspace_id,
+            client_id=client_id,
+            user_id=user_id,
+            cost_micros=cost_micros,
+            cost_basis=cost_basis,
+            return_existing=True,
+        )
+
 
 async def record_signal_scan(
     session: AsyncSession,
@@ -132,6 +185,7 @@ async def _record_business_event(
     user_id: UUID | None,
     cost_micros: int,
     cost_basis: str = "estimated",
+    return_existing: bool = False,
 ) -> BillingEvent:
     """Core path: check duplicate, write BillingEvent, debit wallet."""
     # Idempotency: look for an existing billing row for this event.
@@ -145,6 +199,8 @@ async def _record_business_event(
         )
     ).scalar_one_or_none()
     if existing is not None:
+        if return_existing:
+            return existing
         raise ValueError(
             f"duplicate billing event for {event_entity_type} id={event_id}"
         )
@@ -158,6 +214,8 @@ async def _record_business_event(
             and obj.event_type == event_type
             and obj.event_id == event_id
         ):
+            if return_existing:
+                return obj
             raise ValueError(
                 f"duplicate billing event for {event_entity_type} id={event_id}"
             )

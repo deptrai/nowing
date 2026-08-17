@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -202,6 +203,34 @@ async def execute_alert_rule(
                 snapshot.degradation_reasons or [],
             )
         return snapshot
+    # Trigger target sequence enrollment if configured (Story 24.1 / AD-43)
+    if getattr(alert_rule, "target_sequence_id", None) and snapshot.new_items_count > 0:
+        try:
+            from app.services.sequencer_service import SequencerService
+
+            sequencer = SequencerService()
+            matched_items = (snapshot.snapshot_json.get("_delta") or {}).get("matched_item_ids", [])
+            lead_ids: list[UUID] = []
+            for mid in matched_items:
+                try:
+                    lead_ids.append(UUID(str(mid)))
+                except (ValueError, TypeError):
+                    continue
+            if lead_ids:
+                await sequencer.enroll_leads(
+                    session=session,
+                    workspace_id=alert_rule.workspace_id,
+                    sequence_id=alert_rule.target_sequence_id,
+                    lead_ids=lead_ids,
+                    triggered_by_alert_rule_id=alert_rule.id,
+                )
+                await session.commit()
+        except Exception:
+            logger.exception(
+                "Failed to trigger target sequence %s for alert rule %s",
+                alert_rule.target_sequence_id,
+                alert_rule.id,
+            )
 
     await notify_alert_run(session=session, alert_rule=alert_rule, snapshot=snapshot)
     return snapshot

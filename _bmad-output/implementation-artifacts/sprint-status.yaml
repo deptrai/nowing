@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-08"
-last_updated: "2026-08-17"  # 24-3 code review chunks A/B/C: 8 patch, 2 defer findings; backend + frontend verification pass
+last_updated: "2026-08-17"  # 24-1 story file regenerated and validated; 24-3 code review chunks A/B/C: 8 patch, 2 defer findings; backend + frontend verification pass
 # ponytail: 2026-08-14 — reopened deferred/business-gated/dropped to backlog; 16-1 mutation gate reopened; 15-2 moved to review; tech-debt tracker reopened.
 # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended citation ACs to 3.15 (WEB_RESULT), 9.3 (async delivery), 2.10 (Exa MCP). 3 stories → review.
 # ponytail: 2026-08-08 sprint-planning — added Epic 1, 5 (DONE brownfield); added 9.1a, 9.1b, 4.8a-4.8h, 13.2a-13.2e; upgraded 12.1-12.5 to ready-for-dev (story files exist); 12.0 DONE (legal approved).
@@ -240,7 +240,7 @@ development_status:
   # === Epic 24: Enterprise Lead Conversion, Automated Multi-Channel Outreach & Team CRM Ecosystem ===
   # 2026-08-16: Strategic Lead Conversion, Visual Drip Outreach, Waterfall MST Verification, Multi-Seat CRM, Lead Clipper Extension
   epic-24: in-progress
-  24-1: ready-for-dev  # Multi-Channel Drip Outreach Campaign Engine (Zalo ZNS + Telegram + Email Cadence)
+  24-1: done  # Multi-Channel Drip Outreach Campaign Engine (Email-first MVP, Sequence bounded context, AD-39/41/42/43/45/49); implementation complete, 28/28 tests pass, code-review-graph 3-layer review clean, marked done 2026-08-17
   24-2: done  # Waterfall Phone & B2B Tax Code (MST) Corporate Verification Engine — all batch 1/2 code review patches applied, phone output canonicalized (E.164 hash/DNC/cache, domestic display), retry queue verified (Celery phone worker + masothue in-process retries), 74 unit tests pass
   24-3: in-progress  # Multi-Seat Team CRM Pipeline & Shared Workspace Credit Pooling — chunks A/B/C review done; 8 patch findings applied, 2 defer findings (scope creep, pre-existing TS error). Backend + frontend verification pass.
   24-4: done  # Nowing Lead Clipper — 3-layer code-review passed, 5 patches applied (concurrency rollback recovery, phone +8409 normalizer, tenant client_id, tracking param scrubbing, contact title)

@@ -124,6 +124,7 @@ from .reports_routes import router as reports_router
 from .research_threads_routes import router as research_threads_router
 from .sandbox_routes import router as sandbox_router
 from .search_source_connectors_routes import router as search_source_connectors_router
+from .sequence_routes import router as sequence_router
 from .signals_routes import router as signals_router
 from .slack_add_connector_route import router as slack_add_connector_router
 from .social_copilot_routes import router as social_copilot_router
@@ -142,6 +143,7 @@ router = APIRouter()
 
 router.include_router(workspaces_router)
 router.include_router(workspace_tables_router)
+router.include_router(sequence_router)
 router.include_router(outcome_pricing_router)
 router.include_router(promo_code_router)
 router.include_router(partner_router)

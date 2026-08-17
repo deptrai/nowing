@@ -202,6 +202,7 @@ celery_app = Celery(
         "app.indexing_pipeline.cache.eviction.task",
         "app.automations.tasks.execute_run",
         "app.automations.tasks.notify_run_complete",
+        "app.automations.tasks.sequence_tasks",
         "app.automations.triggers.builtin.schedule.selector",
         "app.automations.triggers.builtin.event.selector",
         "app.alerts.engine.tick",
@@ -382,6 +383,12 @@ celery_app.conf.beat_schedule = {
     # Fire due alert rules (saved searches).
     "alert-engine-tick": {
         "task": "alert_engine_tick",
+        "schedule": crontab(minute="*"),
+        "options": {"expires": 50},
+    },
+    # Evaluate and dispatch due drip outreach sequences (Story 24.1 / AD-39).
+    "evaluate-sequences": {
+        "task": "evaluate_sequences",
         "schedule": crontab(minute="*"),
         "options": {"expires": 50},
     },
