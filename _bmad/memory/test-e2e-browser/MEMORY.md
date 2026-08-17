@@ -149,5 +149,11 @@ _Curated long-term knowledge for Nowing E2E Browser Testing._
 - `/dashboard/1/team` owner row opens the action menu and
   `Spend Cap & Lead Capacity` dialog; saving a cap value completes without error.
 
+## 24.1 Multi-Channel Drip Outreach Campaign Engine (2026-08-17)
+
+- **Flaky selector pattern:** `VisualCadenceBuilder` starts with a default `send_email` step (step-node-1). Adding `send_email`/`wait`/`condition` produces step-node-2/3/4. Tests must scope `data-testid` selectors to the specific step node (`step-node-<n>`) instead of global page locators; `template-variable-pills` and `wait-duration-input` are duplicated across nodes.
+- **Fix applied:** `tests/automations/campaign-sequence-builder.spec.ts` now scopes pills/inputs to their step node and uses correct step numbering (send 2, wait 3, condition 4).
+- **E2E verification:** `pnpm exec playwright test tests/automations/campaign-sequence-builder.spec.ts` → 3/3 passed (setup + AC-1 + AC-8).
+- **Local stack:** Postgres 5434, Redis 6380, backend on 8000, zero-cache 4848, frontend on 3000. Auth state generated via `tests/auth.setup.ts` → `playwright/.auth/user.json`.
 
 
