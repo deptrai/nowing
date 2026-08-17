@@ -7,6 +7,7 @@ WebCrawlCreditService debit math and the owner-billed decision.
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID
 
@@ -69,6 +70,33 @@ def _stub_auto_reload(monkeypatch):
     import app.services.auto_reload_service as ar
 
     monkeypatch.setattr(ar, "maybe_trigger_auto_reload", AsyncMock())
+
+
+@pytest.fixture(autouse=True)
+def _stub_workspace_credit_spend(monkeypatch):
+    """Bypass the shared-credit spend-cap gate so unit tests focus on billing math."""
+
+    async def _record_spend(
+        self,
+        *,
+        workspace_id: int,
+        user_id: Any,
+        amount_micros: int,
+        description: str = "",
+    ) -> dict[str, Any]:
+        return {
+            "workspace_id": workspace_id,
+            "user_id": user_id,
+            "amount_micros": amount_micros,
+            "member_monthly_spent": 0,
+            "member_monthly_spend_cap": None,
+        }
+
+    monkeypatch.setattr(
+        "app.services.workspace_credit_service.WorkspaceCreditService.record_spend",
+        _record_spend,
+        raising=False,
+    )
 
 
 @pytest.fixture
@@ -568,9 +596,7 @@ async def test_engine_unavailable_no_content_does_not_record_token_usage(
     assert user.credit_micros_balance == 100_000
 
 
-async def test_chainlens_kb_fallback_not_double_counted(
-    monkeypatch, record_usage
-):
+async def test_chainlens_kb_fallback_not_double_counted(monkeypatch, record_usage):
     """KB-fallback cost is folded into search once, not double-counted in the split."""
     from app.capabilities.chainlens.research.schemas import ResearchOutput
 
@@ -1584,7 +1610,9 @@ async def test_gate_vn_jobs_aggregate_reserves_exact_worst_case(monkeypatch):
     assert mock_check.await_args.args[2] == 1111 + 16_000
 
 
-async def test_charge_vn_bds_aggregate_records_and_debits_exact_cost(monkeypatch, record_usage):
+async def test_charge_vn_bds_aggregate_records_and_debits_exact_cost(
+    monkeypatch, record_usage
+):
     from app.capabilities.core.billing import _charge_vn_bds_aggregate
 
     monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
@@ -1623,7 +1651,9 @@ async def test_charge_vn_bds_aggregate_negative_cost_is_free(monkeypatch, record
     record_usage.assert_not_awaited()
 
 
-async def test_charge_vn_jobs_aggregate_records_and_debits_exact_cost(monkeypatch, record_usage):
+async def test_charge_vn_jobs_aggregate_records_and_debits_exact_cost(
+    monkeypatch, record_usage
+):
     from app.capabilities.core.billing import _charge_vn_jobs_aggregate
 
     monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
@@ -1674,7 +1704,12 @@ async def test_split_chainlens_cost_splits_and_absorbs_rounding_drift(monkeypatc
     assert allocation["gap_fill_micros"] == 30
     assert allocation["scraper_micros"] == 20
     assert allocation["scraper_id"] is None
-    assert allocation["search_micros"] + allocation["gap_fill_micros"] + allocation["scraper_micros"] == 101
+    assert (
+        allocation["search_micros"]
+        + allocation["gap_fill_micros"]
+        + allocation["scraper_micros"]
+        == 101
+    )
 
 
 async def test_split_chainlens_cost_no_gap_fill_is_all_search(monkeypatch):
@@ -1724,7 +1759,9 @@ async def test_chainlens_kb_fallback_cost_computed_exactly(monkeypatch, record_u
     assert details["cost_dollars"] == 0.015
 
 
-async def test_chainlens_call_details_defaults_for_non_degraded_output(monkeypatch, record_usage):
+async def test_chainlens_call_details_defaults_for_non_degraded_output(
+    monkeypatch, record_usage
+):
     from app.capabilities.core.billing import _charge_chainlens
 
     monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
@@ -1748,7 +1785,9 @@ async def test_chainlens_call_details_defaults_for_non_degraded_output(monkeypat
     assert "final_status" not in details
 
 
-async def test_chainlens_zero_cost_still_records_deep_research_usage(monkeypatch, record_usage):
+async def test_chainlens_zero_cost_still_records_deep_research_usage(
+    monkeypatch, record_usage
+):
     from app.capabilities.core.billing import _charge_chainlens
 
     monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)

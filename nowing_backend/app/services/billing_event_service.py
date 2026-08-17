@@ -9,6 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import BillingEvent
 from app.services import wallet_credit
+from app.services.workspace_credit_service import (
+    SpendCapExceededError,
+    WorkspaceCreditService,
+)
 
 
 class BillingEventService:
@@ -64,7 +68,6 @@ class BillingEventService:
         enrichment_request_id: UUID,
         workspace_id: int,
         client_id: str | None = None,
-
         user_id: UUID,
         cost_micros: int,
     ) -> BillingEvent:
@@ -173,6 +176,26 @@ async def _record_business_event(
     session.add(event)
 
     if cost_micros > 0 and user_id is not None:
+        # Enforce shared workspace per-seat spend cap before debiting the user wallet.
+        credit_svc = WorkspaceCreditService(session=session)
+        try:
+            await credit_svc.record_spend(
+                workspace_id=workspace_id,
+                user_id=user_id,
+                amount_micros=cost_micros,
+            )
+        except SpendCapExceededError as exc:
+            await session.rollback()
+            raise wallet_credit.InsufficientCreditsError(
+                message=(
+                    f"Member {exc.user_id} exceeded monthly spend cap of "
+                    f"${exc.cap_micros / 1_000_000:.2f}. "
+                    f"Current spent: ${exc.current_spent / 1_000_000:.2f}, "
+                    f"requested: ${exc.requested / 1_000_000:.2f}."
+                ),
+                balance_micros=max(0, exc.cap_micros - exc.current_spent),
+                required_micros=exc.requested,
+            ) from exc
         await wallet_credit.check_balance(session, user_id, cost_micros)
         try:
             await wallet_credit.apply_debit(session, user_id, cost_micros)

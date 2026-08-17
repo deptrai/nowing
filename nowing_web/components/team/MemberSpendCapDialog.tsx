@@ -38,9 +38,11 @@ export function MemberSpendCapDialog({
 
 	useEffect(() => {
 		if (member) {
-			setMonthlySpendCap("");
-			setLeadCapacity("50");
-			setIsAcceptingLeads(true);
+			setMonthlySpendCap(
+				member.monthly_spend_cap_micros ? String(member.monthly_spend_cap_micros / 1_000_000) : ""
+			);
+			setLeadCapacity(String(member.lead_capacity ?? 50));
+			setIsAcceptingLeads(member.is_accepting_leads ?? true);
 		}
 	}, [member]);
 

@@ -4488,6 +4488,13 @@ class Lead(Base, TimestampMixin):
         PrimaryKeyConstraint("id", "workspace_id", name="pk_leads"),
         Index("ix_leads_workspace_created", "workspace_id", "created_at"),
         Index("ix_leads_tax_id", "tax_id"),
+        Index(
+            "uq_leads_workspace_value_hmac",
+            "workspace_id",
+            "value_hmac",
+            unique=True,
+            postgresql_where=text("value_hmac IS NOT NULL"),
+        ),
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

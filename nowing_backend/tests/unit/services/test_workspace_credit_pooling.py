@@ -136,6 +136,7 @@ pytestmark = pytest.mark.unit
 # Test Fixtures & Fakes
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class FakeWorkspace:
     id: int
@@ -186,13 +187,16 @@ class FakeAsyncSession:
 # Unit Tests
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_deduct_credits_success_within_spend_cap():
     """Test successful credit deduction when member spend is within monthly cap."""
     workspace_id = 100
     user_id = uuid4()
     session = FakeAsyncSession()
-    session.workspaces[workspace_id] = FakeWorkspace(id=workspace_id, credit_micros_balance=1_000_000)
+    session.workspaces[workspace_id] = FakeWorkspace(
+        id=workspace_id, credit_micros_balance=1_000_000
+    )
     session.memberships[(workspace_id, user_id)] = FakeWorkspaceMembership(
         workspace_id=workspace_id,
         user_id=user_id,
@@ -222,7 +226,9 @@ async def test_deduct_credits_fails_when_member_spend_cap_exceeded():
     workspace_id = 100
     user_id = uuid4()
     session = FakeAsyncSession()
-    session.workspaces[workspace_id] = FakeWorkspace(id=workspace_id, credit_micros_balance=5_000_000)
+    session.workspaces[workspace_id] = FakeWorkspace(
+        id=workspace_id, credit_micros_balance=5_000_000
+    )
     session.memberships[(workspace_id, user_id)] = FakeWorkspaceMembership(
         workspace_id=workspace_id,
         user_id=user_id,
@@ -256,7 +262,9 @@ async def test_deduct_credits_fails_when_workspace_balance_insufficient():
     workspace_id = 100
     user_id = uuid4()
     session = FakeAsyncSession()
-    session.workspaces[workspace_id] = FakeWorkspace(id=workspace_id, credit_micros_balance=80_000)
+    session.workspaces[workspace_id] = FakeWorkspace(
+        id=workspace_id, credit_micros_balance=80_000
+    )
     session.memberships[(workspace_id, user_id)] = FakeWorkspaceMembership(
         workspace_id=workspace_id,
         user_id=user_id,
@@ -288,7 +296,9 @@ async def test_deduct_credits_unlimited_member_spends_from_pool():
     workspace_id = 100
     user_id = uuid4()
     session = FakeAsyncSession()
-    session.workspaces[workspace_id] = FakeWorkspace(id=workspace_id, credit_micros_balance=2_000_000)
+    session.workspaces[workspace_id] = FakeWorkspace(
+        id=workspace_id, credit_micros_balance=2_000_000
+    )
     session.memberships[(workspace_id, user_id)] = FakeWorkspaceMembership(
         workspace_id=workspace_id,
         user_id=user_id,
@@ -315,7 +325,9 @@ async def test_deduct_credits_zero_or_negative_amount_validation():
     workspace_id = 100
     user_id = uuid4()
     session = FakeAsyncSession()
-    session.workspaces[workspace_id] = FakeWorkspace(id=workspace_id, credit_micros_balance=1_000_000)
+    session.workspaces[workspace_id] = FakeWorkspace(
+        id=workspace_id, credit_micros_balance=1_000_000
+    )
     session.memberships[(workspace_id, user_id)] = FakeWorkspaceMembership(
         workspace_id=workspace_id,
         user_id=user_id,
@@ -360,7 +372,10 @@ async def test_set_member_spend_cap_updates_membership():
         cap_micros=1_000_000,
     )
 
-    assert session.memberships[(workspace_id, target_user_id)].monthly_spend_cap_micros == 1_000_000
+    assert (
+        session.memberships[(workspace_id, target_user_id)].monthly_spend_cap_micros
+        == 1_000_000
+    )
 
 
 @pytest.mark.asyncio
@@ -390,7 +405,9 @@ async def test_get_member_spend_status():
     workspace_id = 100
     user_id = uuid4()
     session = FakeAsyncSession()
-    session.workspaces[workspace_id] = FakeWorkspace(id=workspace_id, credit_micros_balance=2_500_000)
+    session.workspaces[workspace_id] = FakeWorkspace(
+        id=workspace_id, credit_micros_balance=2_500_000
+    )
     session.memberships[(workspace_id, user_id)] = FakeWorkspaceMembership(
         workspace_id=workspace_id,
         user_id=user_id,
@@ -418,7 +435,9 @@ async def test_refund_credits_restores_pool_and_decrements_member_spent():
     workspace_id = 100
     user_id = uuid4()
     session = FakeAsyncSession()
-    session.workspaces[workspace_id] = FakeWorkspace(id=workspace_id, credit_micros_balance=800_000)
+    session.workspaces[workspace_id] = FakeWorkspace(
+        id=workspace_id, credit_micros_balance=800_000
+    )
     session.memberships[(workspace_id, user_id)] = FakeWorkspaceMembership(
         workspace_id=workspace_id,
         user_id=user_id,
@@ -437,3 +456,87 @@ async def test_refund_credits_restores_pool_and_decrements_member_spent():
     assert session.workspaces[workspace_id].credit_micros_balance == 850_000
     assert session.memberships[(workspace_id, user_id)].monthly_spent_micros == 150_000
     assert res.get("refunded_micros") == 50_000
+
+
+@pytest.mark.asyncio
+async def test_record_spend_increments_monthly_spent_without_touching_balance():
+    """record_spend tracks spend for cap enforcement while leaving the shared pool untouched."""
+    workspace_id = 100
+    user_id = uuid4()
+    session = FakeAsyncSession()
+    session.workspaces[workspace_id] = FakeWorkspace(
+        id=workspace_id,
+        credit_micros_balance=1_000_000,
+    )
+    session.memberships[(workspace_id, user_id)] = FakeWorkspaceMembership(
+        workspace_id=workspace_id,
+        user_id=user_id,
+        monthly_spend_cap_micros=500_000,
+        monthly_spent_micros=100_000,
+    )
+
+    service = WorkspaceCreditService(session=session)
+    res = await service.record_spend(
+        workspace_id=workspace_id,
+        user_id=user_id,
+        amount_micros=50_000,
+    )
+
+    assert session.memberships[(workspace_id, user_id)].monthly_spent_micros == 150_000
+    assert session.workspaces[workspace_id].credit_micros_balance == 1_000_000
+    assert res["member_monthly_spent"] == 150_000
+    assert res["amount_micros"] == 50_000
+
+
+@pytest.mark.asyncio
+async def test_record_spend_allows_unlimited_when_cap_is_none():
+    """Members with no cap can record spend without hitting a ceiling."""
+    workspace_id = 100
+    user_id = uuid4()
+    session = FakeAsyncSession()
+    session.workspaces[workspace_id] = FakeWorkspace(
+        id=workspace_id,
+        credit_micros_balance=1_000_000,
+    )
+    session.memberships[(workspace_id, user_id)] = FakeWorkspaceMembership(
+        workspace_id=workspace_id,
+        user_id=user_id,
+        monthly_spend_cap_micros=None,
+        monthly_spent_micros=0,
+    )
+
+    service = WorkspaceCreditService(session=session)
+    res = await service.record_spend(
+        workspace_id=workspace_id,
+        user_id=user_id,
+        amount_micros=900_000,
+    )
+
+    assert session.memberships[(workspace_id, user_id)].monthly_spent_micros == 900_000
+    assert res["member_monthly_spend_cap"] is None
+
+
+@pytest.mark.asyncio
+async def test_record_spend_rejects_amount_exceeding_cap():
+    """record_spend raises SpendCapExceededError when the cap would be breached."""
+    workspace_id = 100
+    user_id = uuid4()
+    session = FakeAsyncSession()
+    session.workspaces[workspace_id] = FakeWorkspace(
+        id=workspace_id,
+        credit_micros_balance=1_000_000,
+    )
+    session.memberships[(workspace_id, user_id)] = FakeWorkspaceMembership(
+        workspace_id=workspace_id,
+        user_id=user_id,
+        monthly_spend_cap_micros=500_000,
+        monthly_spent_micros=400_000,
+    )
+
+    service = WorkspaceCreditService(session=session)
+    with pytest.raises(SpendCapExceededError):
+        await service.record_spend(
+            workspace_id=workspace_id,
+            user_id=user_id,
+            amount_micros=150_000,
+        )

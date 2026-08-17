@@ -24,7 +24,7 @@ import {
 	UserCheck,
 } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LeadPipelineStage } from "@/contracts/types/lead-pipeline.types";
 import type { Lead } from "@/contracts/types/leads.types";
 import { leadPipelineApiService } from "@/lib/apis/lead-pipeline-api.service";
@@ -189,6 +189,7 @@ export const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = ({ workspaceId })
 	const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
 	const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 	const [activeLead, setActiveLead] = useState<Lead | null>(null);
+	const zeroLeadsReadyRef = useRef(false);
 
 	const workspaceIdNumber = useMemo(
 		() => (typeof workspaceId === "number" ? workspaceId : Number(workspaceId)) || -1,
@@ -298,6 +299,8 @@ export const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = ({ workspaceId })
 
 	useEffect(() => {
 		if (!zeroLeads) return;
+		if (zeroLeads.length === 0 && !zeroLeadsReadyRef.current) return;
+		zeroLeadsReadyRef.current = true;
 		const liveIds = new Set(zeroLeads.map((l) => l.id));
 		setLeads((prev) => {
 			const prevIds = new Set(prev.map((l) => l.id));
@@ -410,9 +413,10 @@ export const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = ({ workspaceId })
 					(err as { response?: { status?: number } }).response?.status === 409);
 
 			if (is409 && typeof err === "object" && err !== null) {
-				const data = (
-					err as { response?: { data?: { current_version?: number; current_stage_id?: string } } }
-				).response?.data;
+				const data =
+					(err as { data?: { current_version?: number; current_stage_id?: string } }).data ??
+					(err as { response?: { data?: { current_version?: number; current_stage_id?: string } } })
+						.response?.data;
 				if (data?.current_version && data?.current_stage_id) {
 					setLeads((prev) =>
 						prev.map((l) =>

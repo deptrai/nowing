@@ -15,6 +15,12 @@ export const membership = z.object({
 	user_avatar_url: z.string().nullable().optional(),
 	user_last_login: z.string().nullable().optional(),
 	user_is_active: z.boolean().nullable().optional(),
+	// Team CRM per-seat settings (Story 24.3)
+	monthly_spend_cap_micros: z.number().nullable().optional(),
+	monthly_spent_micros: z.number().nullable().optional(),
+	is_accepting_leads: z.boolean().optional(),
+	lead_capacity: z.number().optional(),
+	status: z.string().optional(),
 });
 
 /**

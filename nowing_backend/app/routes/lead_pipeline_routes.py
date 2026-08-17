@@ -32,7 +32,10 @@ from app.schemas.lead_pipeline import (
     MemberLeadCapacityUpdateRequest,
     MemberSpendCapUpdateRequest,
 )
-from app.services.lead_assignment_service import LeadAssignmentService
+from app.services.lead_assignment_service import (
+    LeadAssignmentService,
+    NoEligibleAssigneeError,
+)
 from app.services.workspace_credit_service import WorkspaceCreditService
 from app.users import get_auth_context
 from app.utils.rbac import check_workspace_access, is_workspace_owner
@@ -55,9 +58,11 @@ async def _ensure_default_stages(
     session: AsyncSession, workspace_id: int
 ) -> list[LeadPipelineStage]:
     """Auto-seed default pipeline stages if workspace has none configured."""
-    stmt = select(LeadPipelineStage).where(
-        LeadPipelineStage.workspace_id == workspace_id
-    ).order_by(LeadPipelineStage.position)
+    stmt = (
+        select(LeadPipelineStage)
+        .where(LeadPipelineStage.workspace_id == workspace_id)
+        .order_by(LeadPipelineStage.position)
+    )
     res = await session.execute(stmt)
     stages = list(res.scalars().all())
 
@@ -75,11 +80,13 @@ async def _ensure_default_stages(
             stages.append(new_stage)
         try:
             await session.commit()
+            await set_request_tenant_context(session, workspace_id=workspace_id)
             for s in stages:
                 await session.refresh(s)
         except IntegrityError:
             # Concurrent request created the same default stages; rollback and re-query.
             await session.rollback()
+            await set_request_tenant_context(session, workspace_id=workspace_id)
             res = await session.execute(stmt)
             stages = list(res.scalars().all())
 
@@ -138,7 +145,15 @@ async def create_pipeline_stage(
         is_system=payload.is_system,
     )
     session.add(stage)
-    await session.commit()
+    try:
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Stage slug '{payload.slug}' already exists in this workspace",
+        ) from None
+    await set_request_tenant_context(session, workspace_id=workspace_id)
     await session.refresh(stage)
     return stage
 
@@ -266,10 +281,14 @@ async def list_lead_activities(
             detail=f"Lead {lead_id} not found in workspace {workspace_id}",
         )
 
-    stmt = select(LeadActivityLog).where(
-        LeadActivityLog.workspace_id == workspace_id,
-        LeadActivityLog.lead_id == lead_id,
-    ).order_by(LeadActivityLog.created_at.desc())
+    stmt = (
+        select(LeadActivityLog)
+        .where(
+            LeadActivityLog.workspace_id == workspace_id,
+            LeadActivityLog.lead_id == lead_id,
+        )
+        .order_by(LeadActivityLog.created_at.asc())
+    )
     res = await session.execute(stmt)
     return list(res.scalars().all())
 
@@ -307,6 +326,7 @@ async def create_lead_activity(
     )
     session.add(log)
     await session.commit()
+    await set_request_tenant_context(session, workspace_id=workspace_id)
     await session.refresh(log)
     return log
 
@@ -334,18 +354,26 @@ async def assign_or_reassign_lead(
         )
 
     svc = LeadAssignmentService(session=session)
-    result = await svc.reassign_lead(
-        workspace_id=workspace_id,
-        lead_id=lead_id,
-        target_user_id=payload.target_user_id,
-        actor_user_id=auth.user.id if auth and auth.user else None,
-        reason=payload.reason or "manual_reassignment",
-    )
+    try:
+        result = await svc.reassign_lead(
+            workspace_id=workspace_id,
+            lead_id=lead_id,
+            target_user_id=payload.target_user_id,
+            actor_user_id=auth.user.id if auth and auth.user else None,
+            reason=payload.reason or "manual_reassignment",
+        )
+    except NoEligibleAssigneeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=exc.reason,
+        ) from exc
     await session.commit()
     return {
         "lead_id": str(result.lead_id),
         "workspace_id": result.workspace_id,
-        "assigned_to_user_id": str(result.assigned_to_user_id) if result.assigned_to_user_id else None,
+        "assigned_to_user_id": str(result.assigned_to_user_id)
+        if result.assigned_to_user_id
+        else None,
         "assigned_by": result.assigned_by,
         "status": result.status,
     }
@@ -388,7 +416,9 @@ async def assign_leads_batch(
         "assignments": [
             {
                 "lead_id": str(a.lead_id),
-                "assigned_to_user_id": str(a.assigned_to_user_id) if a.assigned_to_user_id else None,
+                "assigned_to_user_id": str(a.assigned_to_user_id)
+                if a.assigned_to_user_id
+                else None,
                 "status": a.status,
             }
             for a in result.assignments
@@ -419,7 +449,9 @@ async def get_my_spend_status(
             user_id=auth.user.id if auth and auth.user else None,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
     return {
         "workspace_id": status_obj.workspace_id,
         "user_id": str(status_obj.user_id),
@@ -445,7 +477,9 @@ async def update_member_spend_cap(
     await set_request_tenant_context(session, workspace_id=workspace_id)
     await check_workspace_access(session, auth, workspace_id)
     if not await is_workspace_owner(session, auth.user.id, workspace_id):
-        raise HTTPException(status_code=403, detail="Only workspace owner can set spend cap")
+        raise HTTPException(
+            status_code=403, detail="Only workspace owner can set spend cap"
+        )
 
     svc = WorkspaceCreditService(session=session)
     try:
@@ -456,7 +490,9 @@ async def update_member_spend_cap(
             actor_user_id=auth.user.id if auth and auth.user else None,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
     await session.commit()
 
 
@@ -475,7 +511,9 @@ async def update_member_lead_capacity(
     await set_request_tenant_context(session, workspace_id=workspace_id)
     await check_workspace_access(session, auth, workspace_id)
     if not await is_workspace_owner(session, auth.user.id, workspace_id):
-        raise HTTPException(status_code=403, detail="Only workspace owner can set member capacity")
+        raise HTTPException(
+            status_code=403, detail="Only workspace owner can set member capacity"
+        )
 
     stmt = select(WorkspaceMembership).where(
         WorkspaceMembership.workspace_id == workspace_id,

@@ -519,6 +519,11 @@ async def list_members(
                 "user_display_name": member_user.display_name if member_user else None,
                 "user_avatar_url": member_user.avatar_url if member_user else None,
                 "user_last_login": member_user.last_login if member_user else None,
+                "monthly_spend_cap_micros": membership.monthly_spend_cap_micros,
+                "monthly_spent_micros": membership.monthly_spent_micros,
+                "is_accepting_leads": membership.is_accepting_leads,
+                "lead_capacity": membership.lead_capacity,
+                "status": membership.status,
             }
             response.append(membership_dict)
 
@@ -612,6 +617,11 @@ async def update_member_role(
             "role": db_membership.role,
             "user_email": member_user.email if member_user else None,
             "user_last_login": member_user.last_login if member_user else None,
+            "monthly_spend_cap_micros": db_membership.monthly_spend_cap_micros,
+            "monthly_spent_micros": db_membership.monthly_spent_micros,
+            "is_accepting_leads": db_membership.is_accepting_leads,
+            "lead_capacity": db_membership.lead_capacity,
+            "status": db_membership.status,
         }
 
     except HTTPException:

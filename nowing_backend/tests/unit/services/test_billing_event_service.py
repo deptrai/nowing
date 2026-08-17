@@ -86,6 +86,22 @@ def _patch_wallet(monkeypatch, *, balance_micros: int = 1_000_000) -> dict[str, 
         calls["debit"].append({"user_id": user_id, "cost_micros": cost_micros})
         return balance_micros - cost_micros
 
+    async def _record_spend(
+        self,
+        *,
+        workspace_id: int,
+        user_id: Any,
+        amount_micros: int,
+        description: str = "",
+    ) -> dict[str, Any]:
+        return {
+            "workspace_id": workspace_id,
+            "user_id": user_id,
+            "amount_micros": amount_micros,
+            "member_monthly_spent": 0,
+            "member_monthly_spend_cap": None,
+        }
+
     monkeypatch.setattr(
         "app.services.wallet_credit.check_balance",
         _check_balance,
@@ -94,6 +110,11 @@ def _patch_wallet(monkeypatch, *, balance_micros: int = 1_000_000) -> dict[str, 
     monkeypatch.setattr(
         "app.services.wallet_credit.apply_debit",
         _apply_debit,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "app.services.workspace_credit_service.WorkspaceCreditService.record_spend",
+        _record_spend,
         raising=False,
     )
     return calls
@@ -302,6 +323,11 @@ class TestRecordSignalScan:
             AsyncMock(),
             raising=False,
         )
+        monkeypatch.setattr(
+            "app.services.workspace_credit_service.WorkspaceCreditService.record_spend",
+            AsyncMock(),
+            raising=False,
+        )
 
         session = _FakeSession()
 
@@ -447,9 +473,7 @@ class TestRecordContactEnrichment:
             cost_micros=1000,
         )
 
-        assert calls["check"] == [
-            {"user_id": user_id, "required_micros": 1000}
-        ]
+        assert calls["check"] == [{"user_id": user_id, "required_micros": 1000}]
         assert calls["debit"] == [{"user_id": user_id, "cost_micros": 1000}]
 
     @pytest.mark.asyncio

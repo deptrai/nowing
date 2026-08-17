@@ -78,6 +78,12 @@ class MembershipRead(BaseModel):
     user_display_name: str | None = None
     user_avatar_url: str | None = None
     user_last_login: datetime | None = None
+    # Team CRM per-seat settings (Story 24.3)
+    monthly_spend_cap_micros: int | None = None
+    monthly_spent_micros: int | None = None
+    is_accepting_leads: bool = True
+    lead_capacity: int = 50
+    status: str = "ACTIVE"
 
     class Config:
         from_attributes = True

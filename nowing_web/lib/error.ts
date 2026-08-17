@@ -12,6 +12,7 @@ export class AppError extends Error {
 	requestId?: string;
 	reportUrl?: string;
 	fields?: ValidationFieldError[];
+	data?: unknown;
 	constructor(
 		message: string,
 		status?: number,
@@ -19,7 +20,8 @@ export class AppError extends Error {
 		code?: string,
 		requestId?: string,
 		reportUrl?: string,
-		fields?: ValidationFieldError[]
+		fields?: ValidationFieldError[],
+		data?: unknown
 	) {
 		super(message);
 		this.name = this.constructor.name;
@@ -29,6 +31,7 @@ export class AppError extends Error {
 		this.requestId = requestId;
 		this.reportUrl = reportUrl ?? NOWING_ISSUES_URL;
 		this.fields = fields;
+		this.data = data;
 	}
 }
 

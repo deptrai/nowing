@@ -67,6 +67,9 @@ class LeadRead(BaseModel):
     intent_score: float | None = None
     composite_score: float | None = None
     status: str = "new"
+    stage_id: UUID | None = None
+    assigned_to_user_id: UUID | None = None
+    version: int = 1
     intent: str | None = None
     phone: str | None = None
     price_estimate: str | None = None

@@ -21,12 +21,14 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
 from app.db import Lead, Permission, VerifiedContact, get_async_session
 from app.redis_client import get_redis_client
 from app.services.lead_assignment_service import LeadAssignmentService
+from app.services.pii.verified_contact_encryption import VerifiedContactEncryption
 from app.users import get_auth_context
 from app.utils.rbac import check_permission
 
@@ -180,6 +182,140 @@ async def _verify_clipper_auth(
         )
 
 
+
+async def _find_duplicate_lead(
+    session: AsyncSession,
+    workspace_id: int,
+    dedupe_hash: str,
+) -> Lead | None:
+    """Return an existing lead in the workspace with the same dedupe hash."""
+    stmt = select(Lead).where(
+        Lead.workspace_id == workspace_id,
+        Lead.value_hmac == dedupe_hash,
+    )
+    result = await session.execute(stmt)
+    return result.scalars().first()
+
+
+def _build_lead_record(
+    body: LeadClipRequest,
+    workspace_id: int,
+    client_id: UUID | None,
+    clean_url: str,
+    dedupe_hash: str,
+) -> Lead:
+    """Construct a new Lead from the clip request."""
+    parsed_domain = urlparse(clean_url).netloc.lower() or None
+    company_or_author = body.company_name or body.contact_name or "Khách hàng tiềm năng"
+    return Lead(
+        id=uuid4(),
+        workspace_id=workspace_id,
+        client_id=client_id,
+        source=body.source_platform,
+        source_url=clean_url,
+        domain=parsed_domain,
+        company_name=company_or_author,
+        location=body.location,
+        value_hmac=dedupe_hash,
+        status="new",
+        enriched=False,
+    )
+
+
+def _build_verified_contact(
+    body: LeadClipRequest,
+    workspace_id: int,
+    client_id: UUID | None,
+    lead_id: UUID,
+) -> VerifiedContact | None:
+    """Construct an encrypted VerifiedContact if any PII is present."""
+    if not (body.phone or body.email or body.contact_name):
+        return None
+
+    contact_title = body.price or (body.post_content[:200] if body.post_content else None)
+    contact_enc = VerifiedContactEncryption()
+    encrypted = contact_enc.encrypt_contact(
+        {
+            "name": body.contact_name,
+            "title": contact_title,
+            "phone": normalize_vietnamese_phone_raw(body.phone) or body.phone,
+            "email": body.email.strip().lower() if body.email else None,
+            "verification_status": "unverified",
+            "confidence": 0.0,
+            "source_provider": "lead_clipper",
+        }
+    )
+    return VerifiedContact(
+        id=uuid4(),
+        workspace_id=workspace_id,
+        client_id=client_id,
+        lead_id=lead_id,
+        name=encrypted.get("name"),
+        title=encrypted.get("title"),
+        phone=encrypted.get("phone"),
+        email=encrypted.get("email"),
+        verification_status=encrypted.get("verification_status", "unverified"),
+        confidence=encrypted.get("confidence", 0.0),
+        source_provider=encrypted.get("source_provider", "fallback"),
+    )
+
+
+async def _assign_clipped_lead(
+    session: AsyncSession,
+    redis_client: Any,
+    workspace_id: int,
+    lead_id: UUID,
+) -> None:
+    """Trigger round-robin assignment, logging any non-fatal failure."""
+    assignment_service = LeadAssignmentService(
+        session=session,
+        redis_client=redis_client,
+    )
+    try:
+        await assignment_service.assign_leads_batch(
+            workspace_id=workspace_id,
+            lead_ids=[lead_id],
+        )
+    except Exception:
+        logger.exception("Failed to auto-assign clipped lead in workspace %s", workspace_id)
+
+
+async def _commit_or_recover_duplicate(
+    session: AsyncSession,
+    new_lead: Lead,
+    workspace_id: int,
+    dedupe_hash: str,
+    body: LeadClipRequest,
+) -> LeadClipResponse:
+    """Commit the new lead, or recover an existing one on a dedupe race."""
+    try:
+        await session.commit()
+        await session.refresh(new_lead)
+    except IntegrityError:
+        await session.rollback()
+        duplicate_lead = await _find_duplicate_lead(session, workspace_id, dedupe_hash)
+        if duplicate_lead is not None:
+            return LeadClipResponse(
+                success=True,
+                lead_id=duplicate_lead.id,
+                workspace_id=workspace_id,
+                dedupe_hash=dedupe_hash,
+                is_duplicate=True,
+                source_platform=body.source_platform,
+                message="Lead already exists in workspace (deduplicated via rollback)",
+            )
+        raise
+
+    return LeadClipResponse(
+        success=True,
+        lead_id=new_lead.id,
+        workspace_id=workspace_id,
+        dedupe_hash=dedupe_hash,
+        is_duplicate=False,
+        source_platform=body.source_platform,
+        message="Lead clipped successfully",
+    )
+
 @router.post(
     "/workspaces/{workspace_id}/leads/clip",
     response_model=LeadClipResponse,
@@ -202,14 +338,7 @@ async def clip_lead(
         phone=body.phone,
     )
 
-    # Check for existing lead with identical dedupe hash in the workspace
-    stmt = select(Lead).where(
-        Lead.workspace_id == workspace_id,
-        Lead.value_hmac == dedupe_hash,
-    )
-    result = await session.execute(stmt)
-    existing_lead = result.scalars().first()
-
+    existing_lead = await _find_duplicate_lead(session, workspace_id, dedupe_hash)
     if existing_lead is not None:
         return LeadClipResponse(
             success=True,
@@ -221,91 +350,17 @@ async def clip_lead(
             message="Lead already exists in workspace (deduplicated)",
         )
 
-    # Multi-tenant and domain resolution
     client_id = getattr(auth, "client_id", None)
-    parsed_domain = urlparse(clean_url).netloc.lower() or None
-
-    # Create new Lead record
-    company_or_author = body.company_name or body.contact_name or "Khách hàng tiềm năng"
-    new_lead = Lead(
-        id=uuid4(),
-        workspace_id=workspace_id,
-        client_id=client_id,
-        source=body.source_platform,
-        source_url=clean_url,
-        domain=parsed_domain,
-        company_name=company_or_author,
-        location=body.location,
-        value_hmac=dedupe_hash,
-        status="new",
-        enriched=False,
-    )
+    new_lead = _build_lead_record(body, workspace_id, client_id, clean_url, dedupe_hash)
     session.add(new_lead)
 
-    if body.phone or body.email or body.contact_name:
-        contact_title = body.price or (body.post_content[:200] if body.post_content else None)
-        verified_contact = VerifiedContact(
-            id=uuid4(),
-            workspace_id=workspace_id,
-            client_id=client_id,
-            lead_id=new_lead.id,
-            name=body.contact_name,
-            title=contact_title,
-            phone=normalize_vietnamese_phone_raw(body.phone) or body.phone,
-            email=body.email.strip().lower() if body.email else None,
-            verification_status="unverified",
-        )
+    verified_contact = _build_verified_contact(body, workspace_id, client_id, new_lead.id)
+    if verified_contact is not None:
         session.add(verified_contact)
 
-    # Trigger round-robin assignment for the clipped lead.
-    assignment_service = LeadAssignmentService(
-        session=session,
-        redis_client=redis_client,
-    )
-    try:
-        await assignment_service.assign_leads_batch(
-            workspace_id=workspace_id,
-            lead_ids=[new_lead.id],
-        )
-    except Exception:
-        logger.exception("Failed to auto-assign clipped lead in workspace %s", workspace_id)
+    await _assign_clipped_lead(session, redis_client, workspace_id, new_lead.id)
 
-    try:
-        await session.commit()
-        await session.refresh(new_lead)
-    except Exception as exc:
-        await session.rollback()
-        logger.warning(
-            "Clipper commit conflict or IntegrityError in workspace %s: %s",
-            workspace_id,
-            exc,
-        )
-        # Attempt to recover by fetching existing lead with identical dedupe hash
-        stmt_recover = select(Lead).where(
-            Lead.workspace_id == workspace_id,
-            Lead.value_hmac == dedupe_hash,
-        )
-        res_recover = await session.execute(stmt_recover)
-        duplicate_lead = res_recover.scalars().first()
-        if duplicate_lead is not None:
-            return LeadClipResponse(
-                success=True,
-                lead_id=duplicate_lead.id,
-                workspace_id=workspace_id,
-                dedupe_hash=dedupe_hash,
-                is_duplicate=True,
-                source_platform=body.source_platform,
-                message="Lead already exists in workspace (deduplicated via rollback)",
-            )
-        raise
-
-    return LeadClipResponse(
-        success=True,
-        lead_id=new_lead.id,
-        workspace_id=workspace_id,
-        dedupe_hash=dedupe_hash,
-        is_duplicate=False,
-        source_platform=body.source_platform,
-        message="Lead clipped successfully",
+    return await _commit_or_recover_duplicate(
+        session, new_lead, workspace_id, dedupe_hash, body
     )
 

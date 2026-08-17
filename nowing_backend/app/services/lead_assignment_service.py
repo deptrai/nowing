@@ -25,9 +25,7 @@ class NoEligibleAssigneeError(Exception):
     def __init__(self, workspace_id: int, reason: str = "No eligible members") -> None:
         self.workspace_id = workspace_id
         self.reason = reason
-        super().__init__(
-            f"No eligible assignee for workspace {workspace_id}: {reason}"
-        )
+        super().__init__(f"No eligible assignee for workspace {workspace_id}: {reason}")
 
 
 @dataclass
@@ -253,10 +251,32 @@ class LeadAssignmentService:
                 workspace_id=workspace_id,
                 reason=f"Target member {target_user_id} not found",
             )
-        if target_membership.status != "ACTIVE" or not target_membership.is_accepting_leads:
+        if (
+            target_membership.status != "ACTIVE"
+            or not target_membership.is_accepting_leads
+        ):
             raise NoEligibleAssigneeError(
                 workspace_id=workspace_id,
                 reason=f"Target member {target_user_id} is not accepting leads",
+            )
+
+        # Check manual reassignment would not exceed the member's lead capacity.
+        count_stmt = select(func.count(Lead.id)).where(
+            Lead.workspace_id == workspace_id,
+            Lead.assigned_to_user_id == target_user_id,
+            Lead.status.notin_(["lost", "won"]),
+        )
+        count_res = await self.session.execute(count_stmt)
+        current_leads = count_res.scalar() or 0
+        max_capacity = (
+            target_membership.lead_capacity
+            if target_membership.lead_capacity is not None
+            else 50
+        )
+        if current_leads >= max_capacity:
+            raise NoEligibleAssigneeError(
+                workspace_id=workspace_id,
+                reason=f"Target member {target_user_id} is at lead capacity ({current_leads}/{max_capacity})",
             )
 
         lead.assigned_to_user_id = target_user_id

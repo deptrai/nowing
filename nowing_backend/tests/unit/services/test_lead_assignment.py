@@ -37,7 +37,9 @@ except ImportError:
         def __init__(self, workspace_id: int, reason: str = "No eligible members"):
             self.workspace_id = workspace_id
             self.reason = reason
-            super().__init__(f"No eligible assignee for workspace {workspace_id}: {reason}")
+            super().__init__(
+                f"No eligible assignee for workspace {workspace_id}: {reason}"
+            )
 
     @dataclass
     class MemberLeadCapacity:
@@ -113,6 +115,7 @@ pytestmark = pytest.mark.unit
 # Test Fixtures & Fakes
 # ---------------------------------------------------------------------------
 
+
 class FakeRedis:
     """In-memory Redis stub for tracking round-robin cursors."""
 
@@ -135,6 +138,7 @@ class FakeRedis:
 # Unit Tests
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_round_robin_assignment_even_distribution():
     """Test 6 leads evenly distributed across 3 active eligible members (2 leads each in 1-2-3-1-2-3 sequence)."""
@@ -146,9 +150,30 @@ async def test_round_robin_assignment_even_distribution():
     user_3 = uuid4()
 
     eligible_members = [
-        MemberLeadCapacity(user_id=user_1, workspace_id=workspace_id, status="ACTIVE", is_accepting_leads=True, current_leads=0, max_capacity=10),
-        MemberLeadCapacity(user_id=user_2, workspace_id=workspace_id, status="ACTIVE", is_accepting_leads=True, current_leads=0, max_capacity=10),
-        MemberLeadCapacity(user_id=user_3, workspace_id=workspace_id, status="ACTIVE", is_accepting_leads=True, current_leads=0, max_capacity=10),
+        MemberLeadCapacity(
+            user_id=user_1,
+            workspace_id=workspace_id,
+            status="ACTIVE",
+            is_accepting_leads=True,
+            current_leads=0,
+            max_capacity=10,
+        ),
+        MemberLeadCapacity(
+            user_id=user_2,
+            workspace_id=workspace_id,
+            status="ACTIVE",
+            is_accepting_leads=True,
+            current_leads=0,
+            max_capacity=10,
+        ),
+        MemberLeadCapacity(
+            user_id=user_3,
+            workspace_id=workspace_id,
+            status="ACTIVE",
+            is_accepting_leads=True,
+            current_leads=0,
+            max_capacity=10,
+        ),
     ]
 
     service = LeadAssignmentService(session=AsyncMock(), redis_client=redis)
@@ -179,9 +204,30 @@ async def test_round_robin_skips_inactive_or_paused_members():
     inactive_user = uuid4()
 
     all_members = [
-        MemberLeadCapacity(user_id=active_user, workspace_id=workspace_id, status="ACTIVE", is_accepting_leads=True, current_leads=0, max_capacity=10),
-        MemberLeadCapacity(user_id=paused_user, workspace_id=workspace_id, status="ACTIVE", is_accepting_leads=False, current_leads=0, max_capacity=10),
-        MemberLeadCapacity(user_id=inactive_user, workspace_id=workspace_id, status="SUSPENDED", is_accepting_leads=True, current_leads=0, max_capacity=10),
+        MemberLeadCapacity(
+            user_id=active_user,
+            workspace_id=workspace_id,
+            status="ACTIVE",
+            is_accepting_leads=True,
+            current_leads=0,
+            max_capacity=10,
+        ),
+        MemberLeadCapacity(
+            user_id=paused_user,
+            workspace_id=workspace_id,
+            status="ACTIVE",
+            is_accepting_leads=False,
+            current_leads=0,
+            max_capacity=10,
+        ),
+        MemberLeadCapacity(
+            user_id=inactive_user,
+            workspace_id=workspace_id,
+            status="SUSPENDED",
+            is_accepting_leads=True,
+            current_leads=0,
+            max_capacity=10,
+        ),
     ]
 
     service = LeadAssignmentService(session=AsyncMock(), redis_client=redis)
@@ -206,9 +252,18 @@ async def test_round_robin_skips_members_at_capacity():
 
     service = LeadAssignmentService(session=AsyncMock(), redis_client=redis)
     # Service filters out members at capacity
-    service.get_eligible_members = AsyncMock(return_value=[
-        MemberLeadCapacity(user_id=available_user, workspace_id=workspace_id, status="ACTIVE", is_accepting_leads=True, current_leads=2, max_capacity=10)
-    ])
+    service.get_eligible_members = AsyncMock(
+        return_value=[
+            MemberLeadCapacity(
+                user_id=available_user,
+                workspace_id=workspace_id,
+                status="ACTIVE",
+                is_accepting_leads=True,
+                current_leads=2,
+                max_capacity=10,
+            )
+        ]
+    )
 
     lead_id = uuid4()
     result = await service.assign_lead(workspace_id=workspace_id, lead_id=lead_id)
@@ -226,8 +281,22 @@ async def test_round_robin_redis_cursor_persistence():
     user_2 = uuid4()
 
     eligible = [
-        MemberLeadCapacity(user_id=user_1, workspace_id=workspace_id, status="ACTIVE", is_accepting_leads=True, current_leads=0, max_capacity=10),
-        MemberLeadCapacity(user_id=user_2, workspace_id=workspace_id, status="ACTIVE", is_accepting_leads=True, current_leads=0, max_capacity=10),
+        MemberLeadCapacity(
+            user_id=user_1,
+            workspace_id=workspace_id,
+            status="ACTIVE",
+            is_accepting_leads=True,
+            current_leads=0,
+            max_capacity=10,
+        ),
+        MemberLeadCapacity(
+            user_id=user_2,
+            workspace_id=workspace_id,
+            status="ACTIVE",
+            is_accepting_leads=True,
+            current_leads=0,
+            max_capacity=10,
+        ),
     ]
 
     # First service invocation assigns lead 1 to user_1
@@ -267,15 +336,31 @@ async def test_assign_leads_batch_atomic_distribution():
     user_1 = uuid4()
     user_2 = uuid4()
     eligible = [
-        MemberLeadCapacity(user_id=user_1, workspace_id=workspace_id, status="ACTIVE", is_accepting_leads=True, current_leads=0, max_capacity=10),
-        MemberLeadCapacity(user_id=user_2, workspace_id=workspace_id, status="ACTIVE", is_accepting_leads=True, current_leads=0, max_capacity=10),
+        MemberLeadCapacity(
+            user_id=user_1,
+            workspace_id=workspace_id,
+            status="ACTIVE",
+            is_accepting_leads=True,
+            current_leads=0,
+            max_capacity=10,
+        ),
+        MemberLeadCapacity(
+            user_id=user_2,
+            workspace_id=workspace_id,
+            status="ACTIVE",
+            is_accepting_leads=True,
+            current_leads=0,
+            max_capacity=10,
+        ),
     ]
 
     service = LeadAssignmentService(session=AsyncMock(), redis_client=redis)
     service.get_eligible_members = AsyncMock(return_value=eligible)
 
     batch_lead_ids = [uuid4() for _ in range(4)]
-    batch_result = await service.assign_leads_batch(workspace_id=workspace_id, lead_ids=batch_lead_ids)
+    batch_result = await service.assign_leads_batch(
+        workspace_id=workspace_id, lead_ids=batch_lead_ids
+    )
 
     assert batch_result.workspace_id == workspace_id
     assert batch_result.total_assigned == 4
@@ -292,9 +377,14 @@ async def test_reassign_lead_creates_activity_log():
     admin_user = uuid4()
 
     fake_lead = MagicMock()
-    fake_membership = MagicMock(status="ACTIVE", is_accepting_leads=True)
+    fake_membership = MagicMock(
+        status="ACTIVE", is_accepting_leads=True, lead_capacity=50
+    )
     session = MagicMock()
     session.get = AsyncMock(side_effect=[fake_lead, fake_membership])
+    session.execute = AsyncMock(
+        return_value=MagicMock(scalar=MagicMock(return_value=0))
+    )
     session.add = MagicMock()
 
     service = LeadAssignmentService(session=session, redis_client=FakeRedis())

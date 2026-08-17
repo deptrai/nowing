@@ -274,7 +274,9 @@ class BaseApiService {
 							response.statusText,
 							errorCode,
 							requestId,
-							reportUrl
+							reportUrl,
+							undefined,
+							data
 						);
 				}
 			}

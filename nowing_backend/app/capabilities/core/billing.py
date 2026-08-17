@@ -19,6 +19,10 @@ from app.services import wallet_credit
 from app.services.platform_scrape_credit_service import PlatformScrapeCreditService
 from app.services.token_tracking_service import UsageType, record_token_usage
 from app.services.web_crawl_credit_service import WebCrawlCreditService
+from app.services.workspace_credit_service import (
+    SpendCapExceededError,
+    WorkspaceCreditService,
+)
 from app.utils.captcha import captcha_enabled
 
 if TYPE_CHECKING:
@@ -27,6 +31,44 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
+
+
+async def _debit_with_workspace_spend_cap(
+    session: AsyncSession,
+    workspace_id: int,
+    user_id: UUID,
+    cost_micros: int,
+) -> int | None:
+    """Debit the user wallet while enforcing the workspace per-seat spend cap.
+
+    Mirrors ``wallet_credit.apply_debit`` but first records the spend against
+    ``WorkspaceMembership.monthly_spent_micros`` so per-seat caps are enforced
+    atomically. Returns the new user wallet balance or ``None`` for free/zero.
+    """
+    if cost_micros <= 0:
+        return None
+
+    credit_svc = WorkspaceCreditService(session=session)
+    try:
+        await credit_svc.record_spend(
+            workspace_id=workspace_id,
+            user_id=user_id,
+            amount_micros=cost_micros,
+        )
+    except SpendCapExceededError as exc:
+        await session.rollback()
+        raise wallet_credit.InsufficientCreditsError(
+            message=(
+                f"Member {exc.user_id} exceeded monthly spend cap of "
+                f"${exc.cap_micros / 1_000_000:.2f}. "
+                f"Current spent: ${exc.current_spent / 1_000_000:.2f}, "
+                f"requested: ${exc.requested / 1_000_000:.2f}."
+            ),
+            balance_micros=max(0, exc.cap_micros - exc.current_spent),
+            required_micros=exc.requested,
+        ) from exc
+
+    return await wallet_credit.apply_debit(session, user_id, cost_micros)
 
 
 # Each platform meter -> the config knob holding its micro-USD per-item rate.
@@ -74,7 +116,9 @@ def _platform_rate(unit: BillingUnit) -> int:
     """
     key = _PLATFORM_RATE_KEYS.get(unit)
     if key is None:
-        logger.warning("No platform rate key configured for %s; treating as free", unit.value)
+        logger.warning(
+            "No platform rate key configured for %s; treating as free", unit.value
+        )
         return 0
     return int(getattr(config, key, 0))
 
@@ -369,7 +413,9 @@ async def _charge_web_crawl(ctx: CapabilityContext, successes: int) -> int:
         cost_micros=cost_micros,
         call_details={"successes": successes},
     )
-    await service.charge_credits(owner_user_id, successes)
+    await _debit_with_workspace_spend_cap(
+        ctx.session, ctx.workspace_id, owner_user_id, cost_micros
+    )
     return cost_micros
 
 
@@ -392,7 +438,9 @@ async def _charge_captcha(ctx: CapabilityContext, attempts: int) -> int:
         cost_micros=cost_micros,
         call_details={"attempts": attempts},
     )
-    await service.charge_captcha(owner_user_id, attempts)
+    await _debit_with_workspace_spend_cap(
+        ctx.session, ctx.workspace_id, owner_user_id, cost_micros
+    )
     return cost_micros
 
 
@@ -508,7 +556,6 @@ async def _charge_chainlens(output: BillableOutput, ctx: CapabilityContext) -> i
         # Run.cost_micros and the chat turn token-usage SSE remain accurate.
         return total_cost_micros
 
-    await wallet_credit.check_balance(ctx.session, owner_user_id, total_cost_micros)
     await _record_chainlens_cost_allocation(
         ctx,
         owner_user_id,
@@ -521,7 +568,9 @@ async def _charge_chainlens(output: BillableOutput, ctx: CapabilityContext) -> i
         e2e_ms=e2e_ms,
         ttfb_ms=ttfb_ms,
     )
-    await wallet_credit.apply_debit(ctx.session, owner_user_id, total_cost_micros)
+    await _debit_with_workspace_spend_cap(
+        ctx.session, ctx.workspace_id, owner_user_id, total_cost_micros
+    )
     return total_cost_micros
 
 
@@ -760,7 +809,9 @@ async def _charge_platform_meter(
         cost_micros=cost_micros,
         call_details=call_details,
     )
-    await service.charge(owner_user_id, items, rate)
+    await _debit_with_workspace_spend_cap(
+        ctx.session, ctx.workspace_id, owner_user_id, cost_micros
+    )
     return cost_micros
 
 
@@ -785,8 +836,6 @@ async def _charge_vn_bds_aggregate(
     if owner_user_id is None:
         return 0
 
-    await wallet_credit.check_balance(ctx.session, owner_user_id, cost_micros)
-
     call_details: dict[str, Any] = {
         "total_items": getattr(output, "total_items", 0),
         "degraded": getattr(output, "degraded", False),
@@ -803,7 +852,9 @@ async def _charge_vn_bds_aggregate(
         cost_micros=cost_micros,
         call_details=call_details,
     )
-    await wallet_credit.apply_debit(ctx.session, owner_user_id, cost_micros)
+    await _debit_with_workspace_spend_cap(
+        ctx.session, ctx.workspace_id, owner_user_id, cost_micros
+    )
     return cost_micros
 
 
@@ -828,8 +879,6 @@ async def _charge_vn_jobs_aggregate(
     if owner_user_id is None:
         return 0
 
-    await wallet_credit.check_balance(ctx.session, owner_user_id, cost_micros)
-
     call_details: dict[str, Any] = {
         "total_items": getattr(output, "total_items", 0),
         "degraded": getattr(output, "degraded", False),
@@ -846,7 +895,9 @@ async def _charge_vn_jobs_aggregate(
         cost_micros=cost_micros,
         call_details=call_details,
     )
-    await wallet_credit.apply_debit(ctx.session, owner_user_id, cost_micros)
+    await _debit_with_workspace_spend_cap(
+        ctx.session, ctx.workspace_id, owner_user_id, cost_micros
+    )
     return cost_micros
 
 

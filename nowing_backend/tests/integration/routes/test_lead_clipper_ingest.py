@@ -9,19 +9,24 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import AsyncGenerator
-from typing import Any
-from uuid import UUID, uuid4
+from uuid import UUID
 
 import httpx
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.app import app, limiter
 from app.auth.context import AuthContext
-from app.db import Lead, PersonalAccessToken, User, VerifiedContact, Workspace, get_async_session
+from app.db import (
+    Lead,
+    PersonalAccessToken,
+    User,
+    Workspace,
+    get_async_session,
+)
 from app.users import get_auth_context
 
 pytestmark = [pytest.mark.integration]
@@ -109,26 +114,21 @@ async def test_lead_clipper_ingest_success_creates_db_lead(
         json=payload,
     )
 
-    # In Red Phase before route registration or implementation, response is expected
-    # to be 200/201 when route exists or 404/405 during red phase.
-    if response.status_code in {200, 201}:
-        data = response.json()
-        assert data["success"] is True
-        assert data["is_duplicate"] is False
-        assert "lead_id" in data
-        assert "dedupe_hash" in data
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["is_duplicate"] is False
+    assert "lead_id" in data
+    assert "dedupe_hash" in data
 
-        # Verify DB record
-        lead_id = UUID(data["lead_id"])
-        stmt = select(Lead).where(Lead.id == lead_id, Lead.workspace_id == db_workspace.id)
-        result = await db_session.execute(stmt)
-        lead = result.scalar_one_or_none()
-        assert lead is not None
-        assert lead.company_name == "BĐS Sài Gòn Mới"
-        assert lead.source == "batdongsan"
-    else:
-        # Red phase assertion
-        assert response.status_code in {200, 201, 404, 405}
+    # Verify DB record
+    lead_id = UUID(data["lead_id"])
+    stmt = select(Lead).where(Lead.id == lead_id, Lead.workspace_id == db_workspace.id)
+    result = await db_session.execute(stmt)
+    lead = result.scalar_one_or_none()
+    assert lead is not None
+    assert lead.company_name == "BĐS Sài Gòn Mới"
+    assert lead.source == "batdongsan"
 
 
 async def test_lead_clipper_ingest_deduplication_upsert(
@@ -150,14 +150,16 @@ async def test_lead_clipper_ingest_deduplication_upsert(
     resp1 = await client.post(f"/api/v1/workspaces/{db_workspace.id}/leads/clip", json=payload)
     resp2 = await client.post(f"/api/v1/workspaces/{db_workspace.id}/leads/clip", json=payload)
 
-    if resp1.status_code in {200, 201} and resp2.status_code in {200, 201}:
-        data1 = resp1.json()
-        data2 = resp2.json()
+    assert resp1.status_code == 200
+    assert resp2.status_code == 200
 
-        assert data1["is_duplicate"] is False
-        assert data2["is_duplicate"] is True
-        assert data1["lead_id"] == data2["lead_id"]
-        assert data1["dedupe_hash"] == data2["dedupe_hash"]
+    data1 = resp1.json()
+    data2 = resp2.json()
+
+    assert data1["is_duplicate"] is False
+    assert data2["is_duplicate"] is True
+    assert data1["lead_id"] == data2["lead_id"]
+    assert data1["dedupe_hash"] == data2["dedupe_hash"]
 
 
 async def test_lead_clipper_ingest_rejected_without_clipper_scope(
@@ -174,7 +176,7 @@ async def test_lead_clipper_ingest_rejected_without_clipper_scope(
         label="Unscoped PAT",
         workspace_id=db_workspace.id,
         scopes=["agent_chat:thread:create"],  # Missing leads:clipper:write
-        token_kind="agent_chat",
+        token_kind="legacy",
     )
     db_session.add(unscoped_pat)
     await db_session.flush()
