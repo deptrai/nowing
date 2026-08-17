@@ -3,7 +3,7 @@ story_key: "26-3"
 epic: "epic-26"
 story: "26.3"
 title: "Bộ định tuyến LLM lai đa tầng (Gemini Flash Free Tier + DeepSeek V4 + Qwen 3.8)"
-status: "ready-for-dev"
+status: "in-progress"
 baseline_commit: "ce6e4b6eb"
 ---
 
@@ -291,6 +291,20 @@ python ../scripts/mutation-gate.py --services hybrid_llm_router --project-root .
 - Sprint status: `_bmad-output/implementation-artifacts/sprint-status.yaml`
 
 ---
+
+## Dev Agent Record
+
+### Implementation Plan
+- [ ] Task 1: Model config + Config entries
+- [ ] Task 2: `HybridLLMRouter`
+- [ ] Task 3: Schemas, service, routes
+- [ ] Task 4: Integrate call sites
+- [ ] Task 5: Quota/usage/cost tracking
+- [ ] Task 6: Tests green
+
+### Debug Log
+
+### Completion Notes
 
 ## Story Completion Status
 
