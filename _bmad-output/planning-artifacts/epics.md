@@ -2,7 +2,7 @@
 title: Nowing - Epic Breakdown
 description: ''
 createdAt: '2026-07-28T12:47:48.297Z'
-updatedAt: '2026-08-07T00:00:00.000Z'
+updatedAt: '2026-08-17T00:00:00.000Z'
 tags:
   - bmad
   - bmad-source-bmad-output-planning-artifacts-epics-md

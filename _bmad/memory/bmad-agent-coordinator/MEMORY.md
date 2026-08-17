@@ -34,14 +34,13 @@
 - **Story 26.6:** Telegram Checkpoint Bot & 15% Auto-Refund SLA `[BACKLOG]`
 - **Story 26.7:** Hermetic CI Quality Gates ($0 API Cost) & Chaos Testing `[BACKLOG]`
 
-### 🟢 ChainLens-Research Sprints (Epic 42 & 44 H2 Wave & Epic 48/49 Dashboard)
+### 🟢 ChainLens-Research Sprints (Hoàn Thành 100% Cả Engine & Exa Dashboard ✅)
 - **Story 48-4:** Cost Sub-breakdown in `costDollars` emitted in SSE done frame `[DONE ✅]`
 - **Story 48-3:** Table/CSV/Share output in unified `POST /api/v1/search` `[DONE ✅]`
-- **Story 44-0:** H2 Architecture Specification `[DONE ✅]`
-- **Story 44-5:** v4 Contract Regression Guard `[READY-FOR-DEV]`
-- **Story 44-6:** API Keys Rate Limits for new contracts `[BACKLOG]`
-- **Story 44-4:** MCP research/answer/contents tools `[REVIEW / PENDING-AUDIT]`
-- **Epic 48/49:** Exa-like Developer Dashboard & API Key Management `[IN-PROGRESS]`
+- **Story 44-0 / 44-5:** v4 Contract Regression Guard `[DONE ✅]`
+- **Story 44-4:** MCP research/answer/contents tools `[DONE ✅]`
+- **Epic 49 (Exa-like Dev Dashboard):** Playground (`/dashboard/playground`), API Keys (`/dashboard/api-keys`), Templates, Usage `[DONE ✅]`
+- **Trạng thái:** 🟢 **PRODUCTION READY 100% — Đang chạy ổn định, sẵn sàng cấp dữ liệu cho Nowing!**
 
 ---
 
