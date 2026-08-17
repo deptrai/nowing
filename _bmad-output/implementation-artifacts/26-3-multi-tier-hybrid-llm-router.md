@@ -195,6 +195,13 @@ Chi tiết triển khai:
   - CPU-only / vLLM down: **DeepSeek Flash → DeepSeek Pro**.
 - Sử dụng `hmac.compare_digest` nếu có internal route (ít quan trọng hơn 26.2 nhưng giữ nguyên pattern).
 
+### ATDD Artifacts
+
+- Checklist: `_bmad-output/test-artifacts/atdd-checklist-26-3-multi-tier-hybrid-llm-router.md`
+- Unit tests: `nowing_backend/tests/unit/services/test_hybrid_llm_router.py` (31 tests, red phase)
+- Integration service tests: `nowing_backend/tests/integration/services/test_hybrid_llm_router.py` (7 tests, red phase)
+- Integration route tests: `nowing_backend/tests/integration/routes/test_hybrid_llm_routes.py` (8 tests, red phase)
+
 ---
 
 ## GAPs This Story Closes
