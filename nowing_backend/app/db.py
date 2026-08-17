@@ -1652,6 +1652,38 @@ class Chunk(BaseModel, TimestampMixin):
     document = relationship("Document", back_populates="chunks")
 
 
+class ChainLensChunk(BaseModel, TimestampMixin):
+    """A chunk ingested from chainlens-research into Nowing (Story 26.1 / AC-3)."""
+
+    __tablename__ = "chainlens_chunks"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", "workspace_id", name="pk_chainlens_chunks"),
+        Index(
+            "ix_chainlens_chunks_workspace_source",
+            "workspace_id",
+            "source_url",
+        ),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True)
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        primary_key=True,
+        nullable=False,
+        index=True,
+    )
+    source_url = Column(Text, nullable=False)
+    content = Column(Text, nullable=False)
+    embedding = Column(
+        Vector(1536),
+        nullable=False,
+    )
+    chunk_index = Column(Integer, nullable=False, server_default="0")
+
+    workspace = relationship("Workspace", back_populates="chainlens_chunks")
+
+
 class VideoPresentation(BaseModel, TimestampMixin):
     """Video presentation model for storing AI-generated video presentations.
 
@@ -2118,6 +2150,18 @@ class Workspace(BaseModel, TimestampMixin):
     verified_contacts = relationship(
         "VerifiedContact",
         back_populates="workspace",
+        cascade="all, delete-orphan",
+    )
+    chainlens_chunks = relationship(
+        "ChainLensChunk",
+        back_populates="workspace",
+        order_by="ChainLensChunk.created_at.desc()",
+        cascade="all, delete-orphan",
+    )
+    chainlens_ingest_jobs = relationship(
+        "ChainLensIngestJob",
+        back_populates="workspace",
+        order_by="ChainLensIngestJob.created_at.desc()",
         cascade="all, delete-orphan",
     )
     crm_connections = relationship(
@@ -2832,9 +2876,7 @@ class WorkspaceMembership(BaseModel, TimestampMixin):
     is_accepting_leads = Column(
         Boolean, nullable=False, default=True, server_default="true"
     )
-    lead_capacity = Column(
-        Integer, nullable=False, default=50, server_default="50"
-    )
+    lead_capacity = Column(Integer, nullable=False, default=50, server_default="50")
     status = Column(
         String(20), nullable=False, default="ACTIVE", server_default="ACTIVE"
     )
@@ -4340,6 +4382,12 @@ class ChainLensIngestJob(BaseModel, TimestampMixin):
     ingested_source_ids = Column(
         JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
     )
+    chunks_received_count = Column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    chunks_ingested_count = Column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
     status = Column(
         String(16), nullable=False, default="pending", server_default=text("'pending'")
     )
@@ -4352,6 +4400,8 @@ class ChainLensIngestJob(BaseModel, TimestampMixin):
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
     )
+
+    workspace = relationship("Workspace", back_populates="chainlens_ingest_jobs")
 
 
 class SignalEvent(Base, TimestampMixin):
@@ -4488,12 +4538,10 @@ class Lead(Base, TimestampMixin):
         PrimaryKeyConstraint("id", "workspace_id", name="pk_leads"),
         Index("ix_leads_workspace_created", "workspace_id", "created_at"),
         Index("ix_leads_tax_id", "tax_id"),
-        Index(
-            "uq_leads_workspace_value_hmac",
+        UniqueConstraint(
             "workspace_id",
             "value_hmac",
-            unique=True,
-            postgresql_where=text("value_hmac IS NOT NULL"),
+            name="uq_leads_workspace_value_hmac",
         ),
     )
 
@@ -4527,7 +4575,9 @@ class Lead(Base, TimestampMixin):
     legal_representative = Column(String(200), nullable=True)
     charter_capital_vnd = Column(BigInteger, nullable=True)
     company_status = Column(String(100), nullable=True)
-    is_zalo_active = Column(Boolean, nullable=False, default=False, server_default="false")
+    is_zalo_active = Column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
     updated_at = Column(
         TIMESTAMP(timezone=True),
         nullable=True,
@@ -4695,7 +4745,9 @@ class LeadPipelineStage(Base, TimestampMixin):
     __tablename__ = "lead_pipeline_stages"
     __table_args__ = (
         PrimaryKeyConstraint("id", "workspace_id", name="pk_lead_pipeline_stages"),
-        UniqueConstraint("workspace_id", "slug", name="uq_lead_pipeline_stages_workspace_slug"),
+        UniqueConstraint(
+            "workspace_id", "slug", name="uq_lead_pipeline_stages_workspace_slug"
+        ),
         Index("ix_lead_pipeline_stages_workspace_pos", "workspace_id", "position"),
     )
 
@@ -4748,7 +4800,9 @@ class LeadAssignment(Base, TimestampMixin):
             name="fk_lead_assignments_lead_id_workspace_id",
         ),
         Index("ix_lead_assignments_lookup", "workspace_id", "lead_id", "created_at"),
-        Index("ix_lead_assignments_user", "workspace_id", "assigned_to_user_id", "status"),
+        Index(
+            "ix_lead_assignments_user", "workspace_id", "assigned_to_user_id", "status"
+        ),
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -4772,8 +4826,15 @@ class LeadAssignment(Base, TimestampMixin):
         ForeignKey("user.id", ondelete="SET NULL"),
         nullable=True,
     )
-    assigned_by = Column(String(50), nullable=False, default="auto_round_robin", server_default="auto_round_robin")
-    status = Column(String(30), nullable=False, default="assigned", server_default="assigned")
+    assigned_by = Column(
+        String(50),
+        nullable=False,
+        default="auto_round_robin",
+        server_default="auto_round_robin",
+    )
+    status = Column(
+        String(30), nullable=False, default="assigned", server_default="assigned"
+    )
     reason = Column(String(255), nullable=True)
     created_at = Column(
         TIMESTAMP(timezone=True),
@@ -4811,7 +4872,9 @@ class LeadActivityLog(Base, TimestampMixin):
             ondelete="CASCADE",
             name="fk_lead_activity_logs_lead_id_workspace_id",
         ),
-        Index("ix_lead_activity_logs_timeline", "workspace_id", "lead_id", "created_at"),
+        Index(
+            "ix_lead_activity_logs_timeline", "workspace_id", "lead_id", "created_at"
+        ),
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -4831,7 +4894,9 @@ class LeadActivityLog(Base, TimestampMixin):
     )
     activity_type = Column(String(50), nullable=False)
     title = Column(String(255), nullable=False)
-    details = Column(JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb"))
+    details = Column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
     created_at = Column(
         TIMESTAMP(timezone=True),
         nullable=False,
@@ -5013,6 +5078,11 @@ class VerifiedContact(Base, TimestampMixin):
             "lead_id",
             text("created_at DESC"),
         ),
+        UniqueConstraint(
+            "workspace_id",
+            "value_hmac",
+            name="uq_verified_contacts_workspace_hmac",
+        ),
         ForeignKeyConstraint(
             ["lead_id", "workspace_id"],
             ["leads.id", "leads.workspace_id"],
@@ -5060,7 +5130,12 @@ class VerifiedContact(Base, TimestampMixin):
     consent = Column(Boolean, nullable=False, default=False, server_default="false")
     consent_status = Column(String(50), nullable=True)
     legal_basis = Column(String(50), nullable=True)
+    value_hmac = Column(String(64), nullable=True, index=True)
     is_valid = Column(Boolean, nullable=False, default=True, server_default="true")
+    is_unlocked = Column(Boolean, nullable=False, default=False, server_default="false")
+    pii_access_audit_logs = Column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
     refunded_at = Column(TIMESTAMP(timezone=True), nullable=True)
     invalid_reason = Column(String(255), nullable=True)
 
@@ -5782,7 +5857,9 @@ class WorkspaceDncRecord(Base, TimestampMixin):
 
     __tablename__ = "workspace_dnc_records"
     __table_args__ = (
-        UniqueConstraint("workspace_id", "record_type", "value_hmac", name="uq_workspace_dnc_entry"),
+        UniqueConstraint(
+            "workspace_id", "record_type", "value_hmac", name="uq_workspace_dnc_entry"
+        ),
         Index("ix_workspace_dnc_records_workspace_type", "workspace_id", "record_type"),
         Index("ix_workspace_dnc_records_hmac", "workspace_id", "value_hmac"),
     )
@@ -5794,11 +5871,20 @@ class WorkspaceDncRecord(Base, TimestampMixin):
         nullable=False,
         index=True,
     )
-    record_type = Column(String(20), nullable=False)  # 'phone', 'domain', 'email', 'tax_id'
+    record_type = Column(
+        String(20), nullable=False
+    )  # 'phone', 'domain', 'email', 'tax_id'
     value = Column(String(255), nullable=True)  # Masked/raw display value
     value_hmac = Column(String(64), nullable=False, index=True)
-    reason = Column(String(255), nullable=True, default="Opt-out requested", server_default=text("'Opt-out requested'"))
-    source = Column(String(50), nullable=False, default="manual", server_default=text("'manual'"))
+    reason = Column(
+        String(255),
+        nullable=True,
+        default="Opt-out requested",
+        server_default=text("'Opt-out requested'"),
+    )
+    source = Column(
+        String(50), nullable=False, default="manual", server_default=text("'manual'")
+    )
     created_at = Column(
         TIMESTAMP(timezone=True),
         nullable=False,
@@ -5830,11 +5916,20 @@ class GlobalDncRecord(Base, TimestampMixin):
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    record_type = Column(String(20), nullable=False)  # 'phone', 'domain', 'email', 'tax_id'
+    record_type = Column(
+        String(20), nullable=False
+    )  # 'phone', 'domain', 'email', 'tax_id'
     value = Column(String(255), nullable=True)  # Masked/raw display value
     value_hmac = Column(String(64), nullable=False, index=True)
-    reason = Column(String(255), nullable=True, default="Opt-out requested", server_default=text("'Opt-out requested'"))
-    source = Column(String(50), nullable=False, default="manual", server_default=text("'manual'"))
+    reason = Column(
+        String(255),
+        nullable=True,
+        default="Opt-out requested",
+        server_default=text("'Opt-out requested'"),
+    )
+    source = Column(
+        String(50), nullable=False, default="manual", server_default=text("'manual'")
+    )
     created_at = Column(
         TIMESTAMP(timezone=True),
         nullable=False,
@@ -5868,15 +5963,29 @@ class AffiliatePartner(Base, TimestampMixin):
         unique=True,
     )
     referral_code = Column(CITEXT, nullable=False)
-    partner_type = Column(String(50), nullable=False, default="agency", server_default=text("'agency'"))
-    status = Column(String(30), nullable=False, default="active", server_default=text("'active'"))
+    partner_type = Column(
+        String(50), nullable=False, default="agency", server_default=text("'agency'")
+    )
+    status = Column(
+        String(30), nullable=False, default="active", server_default=text("'active'")
+    )
     commission_rate = Column(Float, nullable=False, default=0.15, server_default="0.15")
     balance_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
-    hold_balance_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
-    total_earned_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
-    total_paid_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
-    payout_method = Column(String(30), nullable=False, default="vietqr", server_default=text("'vietqr'"))
-    payout_details = Column(JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb"))
+    hold_balance_micros = Column(
+        BigInteger, nullable=False, default=0, server_default="0"
+    )
+    total_earned_micros = Column(
+        BigInteger, nullable=False, default=0, server_default="0"
+    )
+    total_paid_micros = Column(
+        BigInteger, nullable=False, default=0, server_default="0"
+    )
+    payout_method = Column(
+        String(30), nullable=False, default="vietqr", server_default=text("'vietqr'")
+    )
+    payout_details = Column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
     created_at = Column(
         TIMESTAMP(timezone=True),
         nullable=False,
@@ -5892,9 +6001,15 @@ class AffiliatePartner(Base, TimestampMixin):
     )
 
     user = relationship("User")
-    referrals = relationship("PartnerReferral", back_populates="partner", cascade="all, delete-orphan")
-    commissions = relationship("PartnerCommission", back_populates="partner", cascade="all, delete-orphan")
-    payouts = relationship("PartnerPayout", back_populates="partner", cascade="all, delete-orphan")
+    referrals = relationship(
+        "PartnerReferral", back_populates="partner", cascade="all, delete-orphan"
+    )
+    commissions = relationship(
+        "PartnerCommission", back_populates="partner", cascade="all, delete-orphan"
+    )
+    payouts = relationship(
+        "PartnerPayout", back_populates="partner", cascade="all, delete-orphan"
+    )
 
     @property
     def available_balance_micros(self) -> int:
@@ -5927,7 +6042,12 @@ class PartnerReferral(Base, TimestampMixin):
         nullable=False,
         unique=True,
     )
-    attribution_source = Column(String(100), nullable=True, default="direct_ref", server_default=text("'direct_ref'"))
+    attribution_source = Column(
+        String(100),
+        nullable=True,
+        default="direct_ref",
+        server_default=text("'direct_ref'"),
+    )
     landing_page = Column(String(255), nullable=True)
     created_at = Column(
         TIMESTAMP(timezone=True),
@@ -5945,7 +6065,9 @@ class PartnerReferral(Base, TimestampMixin):
 
     partner = relationship("AffiliatePartner", back_populates="referrals")
     referred_user = relationship("User")
-    commissions = relationship("PartnerCommission", back_populates="referral", cascade="all, delete-orphan")
+    commissions = relationship(
+        "PartnerCommission", back_populates="referral", cascade="all, delete-orphan"
+    )
 
 
 class PartnerCommission(Base, TimestampMixin):
@@ -5974,11 +6096,19 @@ class PartnerCommission(Base, TimestampMixin):
         ForeignKey("credit_purchases.id", ondelete="SET NULL"),
         nullable=True,
     )
-    source_amount_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
-    commission_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
+    source_amount_micros = Column(
+        BigInteger, nullable=False, default=0, server_default="0"
+    )
+    commission_micros = Column(
+        BigInteger, nullable=False, default=0, server_default="0"
+    )
     commission_rate = Column(Float, nullable=False, default=0.15, server_default="0.15")
-    currency = Column(String(10), nullable=False, default="USD", server_default=text("'USD'"))
-    status = Column(String(20), nullable=False, default="settled", server_default=text("'settled'"))
+    currency = Column(
+        String(10), nullable=False, default="USD", server_default=text("'USD'")
+    )
+    status = Column(
+        String(20), nullable=False, default="settled", server_default=text("'settled'")
+    )
     created_at = Column(
         TIMESTAMP(timezone=True),
         nullable=False,
@@ -6014,12 +6144,22 @@ class PartnerPayout(Base, TimestampMixin):
     )
     amount_micros = Column(BigInteger, nullable=False)
     amount_vnd = Column(BigInteger, nullable=False, default=0, server_default="0")
-    tax_deducted_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
-    net_amount_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
+    tax_deducted_micros = Column(
+        BigInteger, nullable=False, default=0, server_default="0"
+    )
+    net_amount_micros = Column(
+        BigInteger, nullable=False, default=0, server_default="0"
+    )
     tax_code = Column(String(50), nullable=True)
-    payout_method = Column(String(30), nullable=False, default="vietqr", server_default=text("'vietqr'"))
-    payout_details = Column(JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb"))
-    status = Column(String(20), nullable=False, default="pending", server_default=text("'pending'"))
+    payout_method = Column(
+        String(30), nullable=False, default="vietqr", server_default=text("'vietqr'")
+    )
+    payout_details = Column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+    status = Column(
+        String(20), nullable=False, default="pending", server_default=text("'pending'")
+    )
     tx_reference = Column(String(100), nullable=True)
     napas_ref = Column(String(100), nullable=True)
     hmac_audit_hash = Column(String(128), nullable=True)
@@ -6044,6 +6184,7 @@ class PartnerPayout(Base, TimestampMixin):
 
 class AuditEvent(BaseModel, TimestampMixin):
     """Immutable dual-principal audit logging in audit_events."""
+
     __tablename__ = "audit_events"
 
     action = Column(String(100), nullable=False, index=True)
@@ -6101,7 +6242,12 @@ class Sequence(Base, TimestampMixin):
     __tablename__ = "sequences"
     __table_args__ = (
         PrimaryKeyConstraint("id", "workspace_id", name="pk_sequences"),
-        ForeignKeyConstraint(["workspace_id"], ["workspaces.id"], ondelete="CASCADE", name="fk_sequences_workspace_id"),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            ondelete="CASCADE",
+            name="fk_sequences_workspace_id",
+        ),
         Index("ix_sequences_workspace_status", "workspace_id", "status"),
         Index("ix_sequences_workspace_client", "workspace_id", "client_id"),
     )
@@ -6111,14 +6257,20 @@ class Sequence(Base, TimestampMixin):
     client_id = Column(CITEXT, nullable=True, index=True)
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-    status = Column(String(50), nullable=False, default="active", server_default=text("'active'"))
-    shared = Column(Boolean, nullable=False, default=False, server_default=text("false"))
+    status = Column(
+        String(50), nullable=False, default="active", server_default=text("'active'")
+    )
+    shared = Column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
     created_by_user_id = Column(
         UUID(as_uuid=True),
         ForeignKey("user.id", ondelete="SET NULL"),
         nullable=True,
     )
-    entry_step_order = Column(Integer, nullable=False, default=1, server_default=text("1"))
+    entry_step_order = Column(
+        Integer, nullable=False, default=1, server_default=text("1")
+    )
     created_at = Column(
         TIMESTAMP(timezone=True),
         nullable=False,
@@ -6133,10 +6285,21 @@ class Sequence(Base, TimestampMixin):
         server_default=text("now()"),
     )
 
-    steps = relationship("SequenceStep", back_populates="sequence", cascade="all, delete-orphan", order_by="SequenceStep.step_order")
-    runs = relationship("SequenceRun", back_populates="sequence", cascade="all, delete-orphan")
-    enrollments = relationship("SequenceEnrollment", back_populates="sequence", cascade="all, delete-orphan")
-    events = relationship("SequenceEvent", back_populates="sequence", cascade="all, delete-orphan")
+    steps = relationship(
+        "SequenceStep",
+        back_populates="sequence",
+        cascade="all, delete-orphan",
+        order_by="SequenceStep.step_order",
+    )
+    runs = relationship(
+        "SequenceRun", back_populates="sequence", cascade="all, delete-orphan"
+    )
+    enrollments = relationship(
+        "SequenceEnrollment", back_populates="sequence", cascade="all, delete-orphan"
+    )
+    events = relationship(
+        "SequenceEvent", back_populates="sequence", cascade="all, delete-orphan"
+    )
 
 
 class SequenceStep(Base, TimestampMixin):
@@ -6159,12 +6322,22 @@ class SequenceStep(Base, TimestampMixin):
     client_id = Column(CITEXT, nullable=True, index=True)
     sequence_id = Column(UUID(as_uuid=True), nullable=False)
     step_order = Column(Integer, nullable=False)
-    step_type = Column(String(50), nullable=False)  # send_email, wait, condition, update_lead_score, update_crm, tag
-    channel = Column(String(50), nullable=False, default="email", server_default=text("'email'"))
-    template = Column(JSONB, nullable=True, default=dict, server_default=text("'{}'::jsonb"))
+    step_type = Column(
+        String(50), nullable=False
+    )  # send_email, wait, condition, update_lead_score, update_crm, tag
+    channel = Column(
+        String(50), nullable=False, default="email", server_default=text("'email'")
+    )
+    template = Column(
+        JSONB, nullable=True, default=dict, server_default=text("'{}'::jsonb")
+    )
     wait_duration_seconds = Column(Integer, nullable=True)
-    condition_config = Column(JSONB, nullable=True, default=dict, server_default=text("'{}'::jsonb"))
-    is_enabled = Column(Boolean, nullable=False, default=True, server_default=text("true"))
+    condition_config = Column(
+        JSONB, nullable=True, default=dict, server_default=text("'{}'::jsonb")
+    )
+    is_enabled = Column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )
     created_at = Column(
         TIMESTAMP(timezone=True),
         nullable=False,
@@ -6206,7 +6379,9 @@ class SequenceRun(Base, TimestampMixin):
         ForeignKey("alert_rules.id", ondelete="SET NULL"),
         nullable=True,
     )
-    status = Column(String(50), nullable=False, default="running", server_default=text("'running'"))  # running, completed, cancelled
+    status = Column(
+        String(50), nullable=False, default="running", server_default=text("'running'")
+    )  # running, completed, cancelled
     started_at = Column(
         TIMESTAMP(timezone=True),
         nullable=False,
@@ -6229,7 +6404,9 @@ class SequenceRun(Base, TimestampMixin):
     )
 
     sequence = relationship("Sequence", back_populates="runs", overlaps="runs,sequence")
-    enrollments = relationship("SequenceEnrollment", back_populates="run", overlaps="enrollments,run")
+    enrollments = relationship(
+        "SequenceEnrollment", back_populates="run", overlaps="enrollments,run"
+    )
 
 
 class SequenceEnrollment(Base, TimestampMixin):
@@ -6239,7 +6416,9 @@ class SequenceEnrollment(Base, TimestampMixin):
     __table_args__ = (
         PrimaryKeyConstraint("id", "workspace_id", name="pk_sequence_enrollments"),
         UniqueConstraint(
-            "sequence_id", "lead_id", "workspace_id",
+            "sequence_id",
+            "lead_id",
+            "workspace_id",
             name="uq_sequence_enrollments_seq_lead",
         ),
         ForeignKeyConstraint(
@@ -6254,7 +6433,9 @@ class SequenceEnrollment(Base, TimestampMixin):
             ondelete="SET NULL",
             name="fk_sequence_enrollments_run",
         ),
-        Index("ix_sequence_enrollments_sched", "workspace_id", "status", "scheduled_at"),
+        Index(
+            "ix_sequence_enrollments_sched", "workspace_id", "status", "scheduled_at"
+        ),
         Index("ix_sequence_enrollments_lead", "workspace_id", "lead_id"),
     )
 
@@ -6288,9 +6469,18 @@ class SequenceEnrollment(Base, TimestampMixin):
         server_default=text("now()"),
     )
 
-    sequence = relationship("Sequence", back_populates="enrollments", overlaps="enrollments,sequence")
-    run = relationship("SequenceRun", back_populates="enrollments", overlaps="enrollments,sequence")
-    events = relationship("SequenceEvent", back_populates="enrollment", cascade="all, delete-orphan", overlaps="events,enrollment")
+    sequence = relationship(
+        "Sequence", back_populates="enrollments", overlaps="enrollments,sequence"
+    )
+    run = relationship(
+        "SequenceRun", back_populates="enrollments", overlaps="enrollments,sequence"
+    )
+    events = relationship(
+        "SequenceEvent",
+        back_populates="enrollment",
+        cascade="all, delete-orphan",
+        overlaps="events,enrollment",
+    )
 
 
 class SequenceEvent(Base):
@@ -6311,8 +6501,15 @@ class SequenceEvent(Base):
             ondelete="CASCADE",
             name="fk_sequence_events_sequence",
         ),
-        Index("ix_sequence_events_enrollment", "workspace_id", "enrollment_id", "event_type"),
-        Index("ix_sequence_events_seq_type", "workspace_id", "sequence_id", "event_type"),
+        Index(
+            "ix_sequence_events_enrollment",
+            "workspace_id",
+            "enrollment_id",
+            "event_type",
+        ),
+        Index(
+            "ix_sequence_events_seq_type", "workspace_id", "sequence_id", "event_type"
+        ),
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -6321,11 +6518,25 @@ class SequenceEvent(Base):
     enrollment_id = Column(UUID(as_uuid=True), nullable=False)
     sequence_id = Column(UUID(as_uuid=True), nullable=False)
     step_id = Column(UUID(as_uuid=True), nullable=True)
-    event_type = Column(String(50), nullable=False)  # sent, delivered, opened, replied, bounced, meeting_booked, failed, skipped
-    event_subtype = Column(String(100), nullable=True)  # insufficient_credits, smtp_error, no_consent, opt_out, etc.
-    channel = Column(String(50), nullable=False, default="email", server_default=text("'email'"))
-    cost_micros = Column(BigInteger, nullable=False, default=0, server_default=text("0"))
-    event_metadata = Column("metadata", JSONB, nullable=True, default=dict, server_default=text("'{}'::jsonb"))
+    event_type = Column(
+        String(50), nullable=False
+    )  # sent, delivered, opened, replied, bounced, meeting_booked, failed, skipped
+    event_subtype = Column(
+        String(100), nullable=True
+    )  # insufficient_credits, smtp_error, no_consent, opt_out, etc.
+    channel = Column(
+        String(50), nullable=False, default="email", server_default=text("'email'")
+    )
+    cost_micros = Column(
+        BigInteger, nullable=False, default=0, server_default=text("0")
+    )
+    event_metadata = Column(
+        "metadata",
+        JSONB,
+        nullable=True,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+    )
     provider_msg_id = Column(String(255), nullable=True)
     created_at = Column(
         TIMESTAMP(timezone=True),
@@ -6334,5 +6545,9 @@ class SequenceEvent(Base):
         server_default=text("now()"),
     )
 
-    enrollment = relationship("SequenceEnrollment", back_populates="events", overlaps="events,enrollment")
-    sequence = relationship("Sequence", back_populates="events", overlaps="enrollment,events")
+    enrollment = relationship(
+        "SequenceEnrollment", back_populates="events", overlaps="events,enrollment"
+    )
+    sequence = relationship(
+        "Sequence", back_populates="events", overlaps="enrollment,events"
+    )

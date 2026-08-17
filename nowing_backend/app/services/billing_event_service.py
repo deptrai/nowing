@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import BillingEvent
 from app.services import wallet_credit
 from app.services.workspace_credit_service import (
-    SpendCapExceededError,
     WorkspaceCreditService,
 )
 
@@ -59,6 +58,34 @@ class BillingEventService:
             client_id=client_id,
             user_id=user_id,
             cost_micros=cost_micros,
+        )
+
+    async def record_contact_unlock(
+        self,
+        session: AsyncSession,
+        *,
+        verified_contact_id: UUID,
+        workspace_id: int,
+        client_id: str | None = None,
+        user_id: UUID,
+        cost_micros: int = 1_500,
+    ) -> BillingEvent:
+        """Record a contact-unlock billing event and debit the owner (Story 26.1 / AD-105).
+
+        Uses ``cost_basis="actual"`` and is idempotent by ``verified_contact_id``:
+        a duplicate call returns the existing BillingEvent so retries are safe.
+        """
+        return await _record_business_event(
+            session,
+            event_entity_type="verified_contact",
+            event_type="contact_unlock",
+            event_id=verified_contact_id,
+            workspace_id=workspace_id,
+            client_id=client_id,
+            user_id=user_id,
+            cost_micros=cost_micros,
+            cost_basis="actual",
+            return_existing=True,
         )
 
     async def record_contact_enrichment(
@@ -220,6 +247,18 @@ async def _record_business_event(
                 f"duplicate billing event for {event_entity_type} id={event_id}"
             )
 
+    if cost_micros > 0 and user_id is not None:
+        # Debit the wallet first; only persist BillingEvent after a successful debit.
+        await wallet_credit.check_balance(session, user_id, cost_micros)
+
+        credit_svc = WorkspaceCreditService(session=session)
+        await credit_svc.record_spend(
+            workspace_id=workspace_id,
+            user_id=user_id,
+            amount_micros=cost_micros,
+        )
+        await wallet_credit.apply_debit(session, user_id, cost_micros)
+
     event = BillingEvent(
         workspace_id=workspace_id,
         client_id=client_id,
@@ -233,35 +272,8 @@ async def _record_business_event(
     )
     session.add(event)
 
-    if cost_micros > 0 and user_id is not None:
-        # Enforce shared workspace per-seat spend cap before debiting the user wallet.
-        credit_svc = WorkspaceCreditService(session=session)
-        try:
-            await credit_svc.record_spend(
-                workspace_id=workspace_id,
-                user_id=user_id,
-                amount_micros=cost_micros,
-            )
-        except SpendCapExceededError as exc:
-            await session.rollback()
-            raise wallet_credit.InsufficientCreditsError(
-                message=(
-                    f"Member {exc.user_id} exceeded monthly spend cap of "
-                    f"${exc.cap_micros / 1_000_000:.2f}. "
-                    f"Current spent: ${exc.current_spent / 1_000_000:.2f}, "
-                    f"requested: ${exc.requested / 1_000_000:.2f}."
-                ),
-                balance_micros=max(0, exc.cap_micros - exc.current_spent),
-                required_micros=exc.requested,
-            ) from exc
-        await wallet_credit.check_balance(session, user_id, cost_micros)
-        try:
-            await wallet_credit.apply_debit(session, user_id, cost_micros)
-        except Exception:
-            await session.rollback()
-            raise
-    else:
-        # Zero-cost or ownerless event still creates a BillingEvent row.
+    if cost_micros <= 0 or user_id is None:
+        # Zero-cost or ownerless event is persisted immediately.
         await session.commit()
 
     return event

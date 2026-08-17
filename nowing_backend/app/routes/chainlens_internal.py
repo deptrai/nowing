@@ -20,6 +20,11 @@ from app.capabilities.core.types import CapabilityContext
 from app.db import Workspace, get_async_session
 from app.services.chainlens.auth import ChainLensAuthContext, ChainLensServiceAuth
 from app.services.chainlens.ingest import NowingIngestService
+from app.services.chainlens.ingest_reception import (
+    ChainLensIngestReceptionService,
+    ChainLensIngestRequest,
+    ChainLensIngestResponse,
+)
 from app.services.chainlens.private_provider import PrivateProviderService
 from app.services.chainlens.schemas import (
     PrivateDataSearchRequest,
@@ -216,10 +221,13 @@ async def run_scraper_for_chainlens(
         except Exception:
             # Skip records that cannot be normalized; the ingestion still
             # proceeds with the rest.
-            logger.exception("Skipping unserializable listing", extra={
-                "scraper_id": scraper_id,
-                "workspace_id": workspace_id,
-            })
+            logger.exception(
+                "Skipping unserializable listing",
+                extra={
+                    "scraper_id": scraper_id,
+                    "workspace_id": workspace_id,
+                },
+            )
             continue
 
     if not chunks:
@@ -294,3 +302,34 @@ async def search_private_data(
         workspace=workspace,
         correlation_id=auth_ctx.correlation_id,
     )
+
+
+@router.post("/chainlens/ingest", response_model=ChainLensIngestResponse)
+async def chainlens_ingest(
+    request: Request,
+    body: ChainLensIngestRequest,
+    session: AsyncSession = Depends(get_async_session),
+    auth_ctx: ChainLensAuthContext = Depends(chainlens_auth_dependency),
+) -> ChainLensIngestResponse:
+    """Receive chunk ingestion from chainlens-research (Story 26.1 / AC-3)."""
+    if body.workspace_id != auth_ctx.workspace_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Workspace mismatch",
+        )
+
+    workspace = await session.get(Workspace, body.workspace_id)
+    if workspace is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unknown workspace",
+        )
+
+    service = ChainLensIngestReceptionService()
+    try:
+        return await service.ingest(session, request=body)
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        ) from exc

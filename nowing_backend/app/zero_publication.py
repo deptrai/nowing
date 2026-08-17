@@ -136,6 +136,7 @@ LEADS_COLS = [
     "workspace_id",
     "client_id",
     "source",
+    "source_url",
     "company_name",
     "domain",
     "industry",
@@ -296,7 +297,11 @@ def apply_publication(conn: Connection) -> None:
 
     conn.execute(text(build_set_table_sql(conn)))
     if not exists[1]:
-        conn.execute(text(f"ALTER PUBLICATION {_quote_identifier(PUBLICATION_NAME)} SET (publish_via_partition_root = true)"))
+        conn.execute(
+            text(
+                f"ALTER PUBLICATION {_quote_identifier(PUBLICATION_NAME)} SET (publish_via_partition_root = true)"
+            )
+        )
 
 
 def ensure_publication(conn: Connection) -> None:
@@ -326,7 +331,11 @@ def ensure_publication(conn: Connection) -> None:
             )
         )
     elif not exists[1]:
-        conn.execute(text(f"ALTER PUBLICATION {_quote_identifier(PUBLICATION_NAME)} SET (publish_via_partition_root = true)"))
+        conn.execute(
+            text(
+                f"ALTER PUBLICATION {_quote_identifier(PUBLICATION_NAME)} SET (publish_via_partition_root = true)"
+            )
+        )
 
     if verify_publication(conn):
         conn.execute(text(build_set_table_sql(conn)))
@@ -375,7 +384,6 @@ def verify_publication(conn: Connection) -> list[str]:
 
     actual = _actual_publication_shape(conn)
     expected = expected_publication_shape(conn)
-
 
     for table, expected_columns in expected.items():
         if table not in actual:
