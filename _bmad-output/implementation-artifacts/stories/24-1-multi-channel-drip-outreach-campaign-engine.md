@@ -3,7 +3,7 @@ story_key: "24-1"
 epic: "epic-24"
 story: "24.1"
 title: "Multi-Channel Drip Outreach Campaign Engine (Sequence Backend — Email-first MVP)"
-status: in-progress
+status: done
 baseline_commit: "1b75d8fc4"
 ---
 
