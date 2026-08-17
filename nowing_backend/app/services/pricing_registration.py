@@ -370,3 +370,96 @@ def register_pricing_from_global_configs() -> None:
             label="image",
             mode="image_generation",
         )
+
+    # Story 26.3: register fixed/fallback pricing for the hybrid router tiers.
+    register_hybrid_model_pricing()
+
+
+_HYBRID_PRICING_REGISTERED = False
+
+
+def register_hybrid_model_pricing() -> None:
+    """Register LiteLLM pricing for the Story 26.3 hybrid LLM tiers.
+
+    Uses any explicit ``input_cost_per_token`` / ``output_cost_per_token`` found
+    in the matching ``GLOBAL_LLM_CONFIGS`` entries (id -10..-13), otherwise falls
+    back to the default Story 26.3 reference prices.
+    """
+    global _HYBRID_PRICING_REGISTERED
+    if _HYBRID_PRICING_REGISTERED:
+        return
+
+    from app.config import config as app_config
+
+    chat_configs: list[dict] = list(getattr(app_config, "GLOBAL_LLM_CONFIGS", []) or [])
+    by_id = {cfg.get("id"): cfg for cfg in chat_configs}
+
+    defaults: dict[int, dict[str, Any]] = {
+        -10: {
+            "provider": "gemini",
+            "model_name": "gemini-2.0-flash",
+            "base_model": "gemini/gemini-2.0-flash",
+            "input_cost": 0.0,
+            "output_cost": 0.0,
+        },
+        -11: {
+            "provider": "openai",
+            "model_name": "Qwen/Qwen3.8-27B",
+            "base_model": "openai/Qwen/Qwen3.8-27B",
+            "input_cost": 0.0,
+            "output_cost": 0.0,
+        },
+        -12: {
+            "provider": "deepseek",
+            "model_name": "deepseek-v4-flash",
+            "base_model": "deepseek/deepseek-chat",
+            "input_cost": 0.000007,
+            "output_cost": 0.00002,
+        },
+        -13: {
+            "provider": "deepseek",
+            "model_name": "deepseek-v4-pro",
+            "base_model": "deepseek/deepseek-reasoner",
+            "input_cost": 0.00002,
+            "output_cost": 0.00006,
+        },
+    }
+
+    for model_id, default in defaults.items():
+        cfg = by_id.get(model_id) or {}
+        litellm_params = cfg.get("litellm_params") or {}
+
+        provider = str(cfg.get("provider") or default["provider"]).lower()
+        model_name = str(cfg.get("model_name") or default["model_name"])
+        base_model = str(litellm_params.get("base_model") or default["base_model"])
+
+        input_cost = _per_token_cost(
+            cfg,
+            litellm_params,
+            "input_cost_per_token",
+            "cost_per_1k_input_tokens",
+        ) or _safe_float(default["input_cost"])
+        output_cost = _per_token_cost(
+            cfg,
+            litellm_params,
+            "output_cost_per_token",
+            "cost_per_1k_output_tokens",
+        ) or _safe_float(default["output_cost"])
+
+        aliases = _alias_set_for_yaml(provider, model_name, base_model)
+        provider_prefix = spec_for(provider).litellm_prefix or provider or "openai"
+
+        # Also register the exact model strings the hybrid router dials.
+        exact = default["base_model"]
+        if exact not in aliases:
+            aliases.append(exact)
+
+        _register(
+            aliases,
+            input_cost=input_cost,
+            output_cost=output_cost,
+            provider=provider_prefix,
+            mode="chat",
+        )
+
+    _HYBRID_PRICING_REGISTERED = True

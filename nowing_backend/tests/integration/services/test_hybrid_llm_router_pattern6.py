@@ -340,12 +340,16 @@ async def test_workspace_isolation_for_token_usage(
     )
 
     rows = (
-        await db_session.execute(
-            select(TokenUsage).where(
-                TokenUsage.workspace_id.in_([db_workspace.id, other_workspace.id])
+        (
+            await db_session.execute(
+                select(TokenUsage).where(
+                    TokenUsage.workspace_id.in_([db_workspace.id, other_workspace.id])
+                )
             )
         )
-    ).all()
+        .scalars()
+        .all()
+    )
     assert len(rows) == 1
     assert rows[0].workspace_id == db_workspace.id
 

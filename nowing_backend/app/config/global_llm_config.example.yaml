@@ -187,6 +187,98 @@ global_llm_configs:
     use_default_system_instructions: true
     citations_enabled: false
 
+  # =============================================================================
+  # Hybrid LLM Router (Story 26.3)
+  # =============================================================================
+  # Tier 1 — Gemini Flash Free (public, low-latency extraction)
+  - id: -10
+    name: "Gemini 2.0 Flash Free"
+    billing_tier: "free"
+    router_pool_eligible: false
+    provider: "gemini"
+    model_name: "gemini-2.0-flash"
+    supports_image_input: false
+    supports_tools: true
+    max_input_tokens: 1000000
+    api_key: "your-google-api-key-here"
+    rpm: 15
+    tpm: 1000000
+    litellm_params:
+      max_tokens: 8192
+      base_model: "gemini-2.0-flash"
+    system_instructions: ""
+    use_default_system_instructions: true
+    citations_enabled: false
+
+  # Tier 1b — Local vLLM Qwen 3.8-27B (GPU local, PII/business safe)
+  - id: -11
+    name: "Local vLLM Qwen 3.8-27B"
+    billing_tier: "free"
+    router_pool_eligible: false
+    provider: "openai"
+    model_name: "Qwen/Qwen3.8-27B"
+    api_base: "${VLLM_BASE_URL:-http://localhost:8000/v1}"
+    api_key: "not-needed"
+    supports_image_input: false
+    supports_tools: true
+    max_input_tokens: 32000
+    rpm: 10000
+    tpm: 10000000
+    litellm_params:
+      max_tokens: 4096
+      base_model: "Qwen/Qwen3.8-27B"
+    system_instructions: ""
+    use_default_system_instructions: true
+    citations_enabled: false
+
+  # Tier 2 — DeepSeek V4 Flash (burst / peak-hour reasoning)
+  - id: -12
+    name: "DeepSeek V4 Flash"
+    billing_tier: "premium"
+    router_pool_eligible: false
+    provider: "deepseek"
+    model_name: "deepseek-v4-flash"
+    supports_image_input: false
+    supports_tools: true
+    max_input_tokens: 64000
+    api_key: "your-deepseek-api-key-here"
+    rpm: 10000
+    tpm: 10000000
+    litellm_params:
+      max_tokens: 8192
+      base_model: "deepseek/deepseek-chat"
+      # Pricing is updated from the DeepSeek dashboard at deploy time.
+      # AD-103 off-peak reference: ~$0.22 / $0.66 per million tokens.
+      input_cost_per_token: 0.00000022
+      output_cost_per_token: 0.00000066
+    system_instructions: ""
+    use_default_system_instructions: true
+    citations_enabled: false
+
+  # Tier 3 — DeepSeek V4 Pro (deep reasoning, Thinking High)
+  - id: -13
+    name: "DeepSeek V4 Pro"
+    billing_tier: "premium"
+    router_pool_eligible: false
+    provider: "deepseek"
+    model_name: "deepseek-v4-pro"
+    supports_image_input: false
+    supports_tools: true
+    max_input_tokens: 64000
+    api_key: "your-deepseek-api-key-here"
+    rpm: 1000
+    tpm: 1000000
+    litellm_params:
+      max_tokens: 8192
+      base_model: "deepseek/deepseek-reasoner"
+      # Pricing is updated from the DeepSeek dashboard at deploy time.
+      # AD-103 off-peak reference: ~$0.66 / $1.98 per million tokens.
+      input_cost_per_token: 0.00000066
+      output_cost_per_token: 0.00000198
+    system_instructions: ""
+    use_default_system_instructions: true
+    citations_enabled: false
+
 # =============================================================================
 # OpenRouter Dynamic Model Integration
 # =============================================================================

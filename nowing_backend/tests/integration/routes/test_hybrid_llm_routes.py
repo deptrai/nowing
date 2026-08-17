@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncGenerator
 from typing import Any
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
@@ -24,9 +24,6 @@ from app.users import get_auth_context
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.skip(
-        reason="ATDD red phase — Story 26.3 Hybrid LLM routes not yet implemented"
-    ),
 ]
 
 
@@ -77,6 +74,41 @@ def dsh_worker_secret(monkeypatch) -> str:
 
     monkeypatch.setattr(config, "DSH_WORKER_SECRET", "test-dsh-secret")
     return "test-dsh-secret"
+
+
+def _make_llm_response(
+    content: str, model: str = "gemini/gemini-2.0-flash"
+) -> MagicMock:
+    usage = MagicMock(
+        prompt_tokens=10,
+        completion_tokens=5,
+        total_tokens=15,
+    )
+    choice = MagicMock(
+        message=MagicMock(
+            content=content,
+            reasoning_content=None,
+        )
+    )
+    return MagicMock(model=model, usage=usage, choices=[choice])
+
+
+@pytest.fixture(autouse=True)
+def mock_hybrid_completion(monkeypatch) -> None:
+    """Mock the LLM completion and vLLM health so route tests stay hermetic."""
+    monkeypatch.setattr(
+        "app.services.hybrid_llm_router.acompletion",
+        AsyncMock(return_value=_make_llm_response('{"company_name":"Acme"}')),
+    )
+
+    http_client = AsyncMock()
+    http_client.get = AsyncMock(
+        return_value=MagicMock(status_code=503, text="unavailable")
+    )
+    monkeypatch.setattr(
+        "app.services.hybrid_llm_router.AsyncClient",
+        MagicMock(return_value=http_client),
+    )
 
 
 def _hybrid_request() -> dict[str, Any]:

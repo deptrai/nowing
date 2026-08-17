@@ -3,7 +3,7 @@ story_key: "26-3"
 epic: "epic-26"
 story: "26.3"
 title: "Bộ định tuyến LLM lai đa tầng (Gemini Flash Free Tier + DeepSeek V4 + Qwen 3.8)"
-status: "in-progress"
+status: "pending-human-review"
 baseline_commit: "ce6e4b6eb"
 ---
 
@@ -295,12 +295,12 @@ python ../scripts/mutation-gate.py --services hybrid_llm_router --project-root .
 ## Dev Agent Record
 
 ### Implementation Plan
-- [ ] Task 1: Model config + Config entries
-- [ ] Task 2: `HybridLLMRouter`
-- [ ] Task 3: Schemas, service, routes
-- [ ] Task 4: Integrate call sites
-- [ ] Task 5: Quota/usage/cost tracking
-- [ ] Task 6: Tests green
+- [x] Task 1: Model config + Config entries
+- [x] Task 2: `HybridLLMRouter`
+- [x] Task 3: Schemas, service, routes
+- [x] Task 4: Integrate call sites
+- [x] Task 5: Quota/usage/cost tracking
+- [x] Task 6: Tests green
 
 ### Debug Log
 
@@ -308,7 +308,7 @@ python ../scripts/mutation-gate.py --services hybrid_llm_router --project-root .
 
 ## Story Completion Status
 
-**Status:** `ready-for-dev`
+**Status:** `pending-human-review`
 
 Created from baseline commit `ce6e4b6eb` on 2026-08-18. This story file is the canonical input for the dev agent. Next step is for the dev agent to resolve the five critical design decisions at the top of this file, then proceed to implement `HybridLLMRouter` and tier policy.
 

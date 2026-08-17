@@ -24,7 +24,11 @@ class RedactedText:
 
     @property
     def has_pii(self) -> bool:
-        return self.phones_detected > 0 or self.emails_detected > 0 or self.names_detected > 0
+        return (
+            self.phones_detected > 0
+            or self.emails_detected > 0
+            or self.names_detected > 0
+        )
 
 
 _PHONE_PATTERNS = [
@@ -39,7 +43,8 @@ _EMAIL_PATTERN = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
 
 # Naive person-name heuristic: common Vietnamese surname + 1-2 capitalized words.
 _NAME_PATTERN = re.compile(
-    r"\b(?:Nguyễn|Trần|Lê|Phạm|Hoàng|Huỳnh|Vũ|Võ|Phan|Trương|Bùi|Đặng|Đỗ|Ngô|Hồ|Dương|Đinh)\s+[A-ZÀÁẢÃẠÂẦẤẨẪẬĂẰẮẲẴẶEÈÉẺẼẸÊỀẾỂỄỆIÌÍỈĨỊOÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢUÙÚỦŨỤƯỪỨỬỮỰYỲÝỶỸỴ][a-zàáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵ]*(?:\s+[A-ZÀÁẢÃẠÂẦẤẨẪẬĂẰẮẲẴẶEÈÉẺẼẸÊỀẾỂỄỆIÌÍỈĨỊOÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢUÙÚỦŨỤƯỪỨỬỮỰYỲÝỶỸỴ][a-zàáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵ]*)?")
+    r"\b(?:Nguyễn|Trần|Lê|Phạm|Hoàng|Huỳnh|Vũ|Võ|Phan|Trương|Bùi|Đặng|Đỗ|Ngô|Hồ|Dương|Đinh)\s+[A-ZÀÁẢÃẠÂẦẤẨẪẬĂẰẮẲẴẶEÈÉẺẼẸÊỀẾỂỄỆIÌÍỈĨỊOÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢUÙÚỦŨỤƯỪỨỬỮỰYỲÝỶỸỴ][a-zàáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵ]*(?:\s+[A-ZÀÁẢÃẠÂẦẤẨẪẬĂẰẮẲẴẶEÈÉẺẼẸÊỀẾỂỄỆIÌÍỈĨỊOÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢUÙÚỦŨỤƯỪỨỬỮỰYỲÝỶỸỴ][a-zàáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵ]*)?"
+)
 
 
 def _apply_redaction(text: str) -> RedactedText:

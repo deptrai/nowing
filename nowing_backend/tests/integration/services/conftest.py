@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
+from contextlib import suppress
 from typing import Any
 from unittest.mock import AsyncMock
 
@@ -24,16 +25,21 @@ limiter.enabled = False
 
 class _AsyncSessionWrapper:
     """Makes the transactional ``db_session`` fixture usable as a
-    ``billable_call`` session factory (``AbstractAsyncContextManager``)."""
+    ``billable_call`` session factory while isolating savepoint rollbacks."""
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+        self._nested: Any = None
 
     async def __aenter__(self) -> AsyncSession:
+        self._nested = self._session.begin_nested()
+        await self._nested.__aenter__()
         return self._session
 
     async def __aexit__(self, *exc: object) -> None:
-        return None
+        if self._nested is not None:
+            with suppress(Exception):
+                await self._nested.__aexit__(*exc)
 
 
 @pytest.fixture

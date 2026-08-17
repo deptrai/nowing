@@ -684,6 +684,23 @@ class Config:
         os.getenv("DSH_MAX_PAYLOAD_BYTES", str(10 * 1024 * 1024))
     )
 
+    # Hybrid LLM Router (Story 26.3)
+    HYBRID_ENABLE_LOCAL_VLLM = (
+        os.getenv("HYBRID_ENABLE_LOCAL_VLLM", "TRUE").upper() == "TRUE"
+    )
+    VLLM_BASE_URL = os.getenv("VLLM_BASE_URL", "http://localhost:8000/v1")
+    HYBRID_GEMINI_RPM_LIMIT = _env_int("HYBRID_GEMINI_RPM_LIMIT", 15)
+    HYBRID_GEMINI_TPM_LIMIT = _env_int("HYBRID_GEMINI_TPM_LIMIT", 1_000_000)
+    HYBRID_GEMINI_RPD_LIMIT = _env_int("HYBRID_GEMINI_RPD_LIMIT", 1500)
+    HYBRID_OFF_PEAK_HOURS = os.getenv("HYBRID_OFF_PEAK_HOURS", "22-06")
+    HYBRID_PEAK_PRICE_MULTIPLIER = _env_float("HYBRID_PEAK_PRICE_MULTIPLIER", 2.0)
+    HYBRID_FORCE_DEEP_REASONING = (
+        os.getenv("HYBRID_FORCE_DEEP_REASONING", "FALSE").upper() == "TRUE"
+    )
+    HYBRID_VLLM_QUEUE_TIMEOUT_SECONDS = _env_float(
+        "HYBRID_VLLM_QUEUE_TIMEOUT_SECONDS", 8.0
+    )
+
     # Celery beat scheduling intervals (format: "<number><unit>", e.g. "2m", "1h")
     SCHEDULE_CHECKER_INTERVAL = os.getenv("SCHEDULE_CHECKER_INTERVAL", "2m")
     STRIPE_RECONCILIATION_INTERVAL = os.getenv("STRIPE_RECONCILIATION_INTERVAL", "10m")

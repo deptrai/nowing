@@ -15,9 +15,6 @@ from sqlalchemy import select
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.skip(
-        reason="ATDD red phase — Story 26.3 HybridLLMRouter not yet implemented"
-    ),
 ]
 
 
@@ -62,7 +59,12 @@ class TestHybridLLMRouterFreeTier:
     """AC-1: Gemini free tier uses $0 cost and records TokenUsage."""
 
     async def test_public_fast_extraction_records_zero_cost(
-        self, db_session, sample_workspace, fake_redis, monkeypatch
+        self,
+        db_session,
+        sample_workspace,
+        fake_redis,
+        billable_session_factory,
+        monkeypatch,
     ) -> None:
         mod = _load_router()
         monkeypatch.setattr(mod, "get_redis_client", AsyncMock(return_value=fake_redis))
@@ -84,16 +86,23 @@ class TestHybridLLMRouterFreeTier:
                     "type": "object",
                     "properties": {"company_name": {"type": "string"}},
                 },
-            )
+            ),
+            billable_session_factory=billable_session_factory,
         )
 
         from app.db import TokenUsage
 
         usages = (
-            await db_session.execute(
-                select(TokenUsage).where(TokenUsage.workspace_id == sample_workspace.id)
+            (
+                await db_session.execute(
+                    select(TokenUsage).where(
+                        TokenUsage.workspace_id == sample_workspace.id
+                    )
+                )
             )
-        ).all()
+            .scalars()
+            .all()
+        )
         assert len(usages) == 1
         assert usages[0].cost_micros == 0
 
@@ -103,7 +112,13 @@ class TestHybridLLMRouterPIIFallback:
 
     @pytest.mark.parametrize("sensitivity", ["pii", "business"])
     async def test_pii_data_does_not_call_gemini(
-        self, db_session, sample_workspace, fake_redis, monkeypatch, sensitivity
+        self,
+        db_session,
+        sample_workspace,
+        fake_redis,
+        billable_session_factory,
+        monkeypatch,
+        sensitivity,
     ) -> None:
         mod = _load_router()
         monkeypatch.setattr(mod, "get_redis_client", AsyncMock(return_value=fake_redis))
@@ -111,14 +126,17 @@ class TestHybridLLMRouterPIIFallback:
         gemini = AsyncMock(return_value=_make_llm_response('{"company_name":"Acme"}'))
         vllm = AsyncMock(return_value=_make_llm_response('{"company_name":"Acme"}'))
 
-        def _route(*args, **kwargs):
+        async def _route(*args, **kwargs):
             model = kwargs.get("model", "")
             if "gemini" in model:
-                return gemini(*args, **kwargs)
-            return vllm(*args, **kwargs)
+                return await gemini(*args, **kwargs)
+            return await vllm(*args, **kwargs)
 
         monkeypatch.setattr(mod, "acompletion", AsyncMock(side_effect=_route))
-        monkeypatch.setattr(mod, "AsyncClient", MagicMock())
+
+        http_client = AsyncMock()
+        http_client.get = AsyncMock(return_value=MagicMock(status_code=200, text="ok"))
+        monkeypatch.setattr(mod, "AsyncClient", MagicMock(return_value=http_client))
 
         router = mod.HybridLLMRouter()
         await router.ainvoke(
@@ -131,7 +149,8 @@ class TestHybridLLMRouterPIIFallback:
                     {"role": "user", "content": "Liên hệ Nguyễn Văn A 0912345678"}
                 ],
                 response_model={"type": "object"},
-            )
+            ),
+            billable_session_factory=billable_session_factory,
         )
 
         assert not gemini.called
@@ -142,7 +161,12 @@ class TestHybridLLMRouterPremiumBilling:
     """AC-3: DeepSeek debit and TokenUsage cost attribution."""
 
     async def test_deepseek_reasoning_debits_workspace_owner(
-        self, db_session, sample_workspace, fake_redis, monkeypatch
+        self,
+        db_session,
+        sample_workspace,
+        fake_redis,
+        billable_session_factory,
+        monkeypatch,
     ) -> None:
         mod = _load_router()
         monkeypatch.setattr(mod, "get_redis_client", AsyncMock(return_value=fake_redis))
@@ -163,16 +187,23 @@ class TestHybridLLMRouterPremiumBilling:
                 sensitivity="public",
                 messages=[{"role": "user", "content": "reason"}],
                 response_model={"type": "object"},
-            )
+            ),
+            billable_session_factory=billable_session_factory,
         )
 
         from app.db import TokenUsage
 
         usage = (
-            await db_session.execute(
-                select(TokenUsage).where(TokenUsage.workspace_id == sample_workspace.id)
+            (
+                await db_session.execute(
+                    select(TokenUsage).where(
+                        TokenUsage.workspace_id == sample_workspace.id
+                    )
+                )
             )
-        ).scalar_one()
+            .scalars()
+            .one()
+        )
         assert usage.user_id == sample_workspace.user_id
         assert usage.cost_micros > 0
 

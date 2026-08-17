@@ -45,6 +45,7 @@ from .folders import (
     FolderUpdate,
 )
 from .google_drive import DriveItem, GoogleDriveIndexingOptions, GoogleDriveIndexRequest
+from .hybrid_llm import HybridLLMRequest, HybridLLMResponse
 from .image_generation import (
     ImageGenerationCreate,
     ImageGenerationListRead,
@@ -214,6 +215,8 @@ __all__ = [
     "FolderUpdate",
     "GoogleDriveIndexRequest",
     "GoogleDriveIndexingOptions",
+    "HybridLLMRequest",
+    "HybridLLMResponse",
     # Base schemas
     "IDModel",
     # Image Generation schemas

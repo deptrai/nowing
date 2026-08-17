@@ -570,9 +570,11 @@ class TokenQuotaService:
         reserved = user.credit_micros_reserved
 
         # Block when the new hold would exceed the spendable balance.
+        # ponytail: this function does not own the session; leave rollback to the
+        # caller-managed session (or its context manager) so savepoint-based test
+        # fixtures are not rolled back to the outer transaction start.
         if reserved + reserve_micros > balance:
             remaining = max(0, balance - reserved)
-            await db_session.rollback()
             return QuotaResult(
                 allowed=False,
                 status=QuotaStatus.BLOCKED,

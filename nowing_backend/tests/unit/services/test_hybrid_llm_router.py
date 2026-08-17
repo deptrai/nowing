@@ -17,9 +17,6 @@ import pytest
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.skip(
-        reason="ATDD red phase — Story 26.3 HybridLLMRouter not yet implemented"
-    ),
 ]
 
 
@@ -271,7 +268,6 @@ class TestVllmHealth:
 class TestModelInvocationAndJSON:
     """AC-1/AC-2/AC-3: provider calls, JSON schema, fallback, reasoning."""
 
-    @pytest.fixture
     def sample_schema(self) -> dict[str, Any]:
         return {
             "type": "object",
@@ -374,8 +370,8 @@ class TestModelInvocationAndJSON:
         def _acompletion_side_effect(*args, **kwargs):
             model = kwargs.get("model", "")
             if "gemini" in model:
-                return gemini_call(*args, **kwargs)
-            return vllm_call(*args, **kwargs)
+                return gemini_call.return_value
+            return vllm_call.return_value
 
         monkeypatch.setattr(
             mod, "acompletion", AsyncMock(side_effect=_acompletion_side_effect)
@@ -459,7 +455,11 @@ class TestAInvokeFreeAndPremium:
         )
         monkeypatch.setattr(mod, "acompletion", acompletion)
 
-        billable_call = AsyncMock()
+        billable_call = MagicMock()
+        billable_ctx = MagicMock()
+        billable_ctx.__aenter__ = AsyncMock(return_value=MagicMock())
+        billable_ctx.__aexit__ = AsyncMock(return_value=False)
+        billable_call.return_value = billable_ctx
         monkeypatch.setattr("app.services.billable_calls.billable_call", billable_call)
 
         await router.ainvoke(

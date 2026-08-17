@@ -69,6 +69,7 @@ class UsageType(StrEnum):
     IMAGE_GENERATION = "image_generation"
     LEAD_SCORING_LLM = "lead_scoring_llm"
     ASSISTED_DRAFT = "assisted_draft"
+    HYBRID_LLM = "hybrid_llm"
 
 
 @dataclass
