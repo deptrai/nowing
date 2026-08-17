@@ -3,7 +3,7 @@ story_key: "24-1"
 epic: "epic-24"
 story: "24.1"
 title: "Multi-Channel Drip Outreach Campaign Engine (Sequence Backend — Email-first MVP)"
-status: ready-for-dev
+status: in-progress
 baseline_commit: "1b75d8fc4"
 ---
 
@@ -537,4 +537,36 @@ Verdict: **Không có alternative đơn giản hơn** mà không vi phạm AD-39
 ### Kết luận
 
 Story 24.1 đã rõ ràng về bounded context và reuse helper. 2 critical gap liên quan billing transaction boundary và retry idempotency đã được clarify trong AC-6, Task 6, và Dev Note 6. Các vấn đề còn lại là edge cases / failure modes non-critical cần bổ sung vào test skeleton ở bước `test-first-atdd`. **Có thể tiếp tục pipeline.**
+
+---
+
+### Review Findings — Backend API / tests / migration chunk
+
+Reviewers: Blind Hunter (adversarial) + Edge Case Hunter + Acceptance Auditor. Diff chunk: `3449a631e..105f7e1f8` restricted to migration 225, `sequence_routes.py`, `schemas/sequence.py`, `routes/__init__.py`, tests.
+
+#### decision-needed
+(đã giải quyết — chuyển thành patch bên dưới theo best practice AD-31)
+
+#### patch
+- [x] [Review][Patch] `client_id` kiểu `Text` thay vì `CITEXT` trên 5 bảng `sequence_*` — theo best practice AD-31, đổi sang `CITEXT` trong migration và ORM. Lưu ý: `leads.client_id` vẫn là `text` do Zero sync; nếu sau này cần composite FK sang `leads` thì phải migration đổi `leads.client_id` thành `CITEXT`. Location: `225_add_sequence_tables.py:67,87,113,136,169` / `app/db.py:6111,6159,6202,6236,6312`.
+
+#### patch
+- [x] [Review][Patch] `sequence_routes.py` gọi sai signature `check_workspace_access(auth_ctx, workspace_id)` — thiếu `session`, sẽ `TypeError` ở runtime ở tất cả 11 route. Mọi route khác trong repo gọi `check_workspace_access(session, auth, workspace_id)`. Location: `sequence_routes.py:56,121,144,183,277,304,330,348,366,392,415`.
+- [x] [Review][Patch] `pause_sequence`/`resume_sequence` thiếu `set_request_tenant_context(session, auth_ctx, workspace_id)` — RLS client_id bị bypass. Location: `sequence_routes.py:330-337,348-355`.
+- [x] [Review][Patch] `sequence_runs.triggering_alert_rule_id` thiếu FK `alert_rules.id` — AD-43 yêu cầu `AlertRule` là first-class table; bảng đã tồn tại. Location: `225_add_sequence_tables.py:115-121` / `app/db.py:6204`.
+- [x] [Review][Patch] `sequence_enrollments` thiếu unique constraint `(workspace_id, sequence_id, lead_id)` — cho phép duplicate enrollment. Location: `225_add_sequence_tables.py:131-161` / `app/db.py:6231-6251`.
+- [x] [Review][Patch] `create_sequence`/`update_sequence` không validate `step_order` duy nhất trong sequence — duplicate step_order gây undefined execution. Location: `sequence_routes.py:86-102` và `234-248`.
+- [x] [Review][Patch] `SequenceCreate`/`SequenceUpdate` không validate `entry_step_order` tồn tại trong `steps`. Location: `sequence_routes.py:80-81,205-206`.
+- [x] [Review][Patch] `schemas/sequence.py` dùng `str` thay vì `Literal`/enum cho `status`, `step_type`, `channel`, `event_type` — API chấp nhận giá trị không hợp lệ. Location: `schemas/sequence.py:13-15,50,62-64,99,116-118`.
+- [x] [Review][Patch] `tests/integration/routes/test_sequence_routes.py` mock `check_workspace_access` và `set_request_tenant_context` — che giấu lỗi signature (#1). Cần thêm test integration không mock hoặc kiểm tra signature. Location: `tests/integration/routes/test_sequence_routes.py:58,117,161,210`.
+
+#### notes / cross-chunk (not triaged in this chunk)
+- `AC-7`/`AD-43` alert-driven enrollment được implement trong `app/alerts/engine/execute.py` (nằm ngoài chunk này) — finding "missing" là false positive do chunk hóa.
+- Logic `handle_inbound_interruption`, `get_due_enrollments`, billing/commit, consent/DNC, PII redaction nằm trong `app/services/sequencer_service.py` (core chunk) — sẽ review ở chunk tiếp theo.
+- `SequenceEventRead.event_metadata` vs cột DB `metadata` là mapping đúng (SQLAlchemy `Column("metadata", ...)` + Pydantic `populate_by_name=True`) — dismiss.
+
+#### Patching log — 2026-08-17
+- Đã apply toàn bộ 9 patch findings ở chunk 1.
+- Verification: `ruff check` 0 errors; `pytest tests/integration/routes/test_sequence_routes.py` 4/4 pass; `pytest tests/unit/services/test_sequencer_service.py tests/integration/services/test_sequence_scheduler.py` 24/24 pass.
+- Còn lại: review chunk 2 (`app/services/sequencer_service.py`, `app/services/billing_event_service.py`, `app/automations/tasks/sequence_tasks.py`) và chunk 3 (frontend) sẽ chạy tiếp.
 

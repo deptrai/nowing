@@ -53,12 +53,23 @@ async def create_sequence(
     auth_ctx: AuthContext = Depends(get_auth_context),
 ) -> SequenceDetailRead:
     """Create a new outreach Sequence with ordered steps (AD-39, AD-41)."""
-    await check_workspace_access(auth_ctx, workspace_id)
+    await check_workspace_access(session, auth_ctx, workspace_id)
     await set_request_tenant_context(session, auth_ctx, workspace_id)
 
     sequencer = SequencerService()
 
-    # Validate channels for each step
+    # Validate channels for each step, duplicate step_order, and entry_step_order
+    step_orders = [s.step_order for s in payload.steps]
+    if len(step_orders) != len(set(step_orders)):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="step_order values must be unique within a sequence",
+        )
+    if payload.steps and payload.entry_step_order not in step_orders:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="entry_step_order must match one of the provided step_order values",
+        )
     for s in payload.steps:
         try:
             await sequencer.validate_step_channel(s.channel)
@@ -118,7 +129,7 @@ async def list_sequences(
     auth_ctx: AuthContext = Depends(get_auth_context),
 ) -> list[SequenceRead]:
     """List all sequences in the workspace."""
-    await check_workspace_access(auth_ctx, workspace_id)
+    await check_workspace_access(session, auth_ctx, workspace_id)
     await set_request_tenant_context(session, auth_ctx, workspace_id)
 
     stmt = (
@@ -141,7 +152,7 @@ async def get_sequence(
     auth_ctx: AuthContext = Depends(get_auth_context),
 ) -> SequenceDetailRead:
     """Get sequence details including all configured steps."""
-    await check_workspace_access(auth_ctx, workspace_id)
+    await check_workspace_access(session, auth_ctx, workspace_id)
     await set_request_tenant_context(session, auth_ctx, workspace_id)
 
     sequence = (
@@ -180,7 +191,7 @@ async def update_sequence(
     auth_ctx: AuthContext = Depends(get_auth_context),
 ) -> SequenceDetailRead:
     """Update sequence name, description, status, and/or replace steps."""
-    await check_workspace_access(auth_ctx, workspace_id)
+    await check_workspace_access(session, auth_ctx, workspace_id)
     await set_request_tenant_context(session, auth_ctx, workspace_id)
 
     sequence = (
@@ -209,6 +220,17 @@ async def update_sequence(
 
     if payload.steps is not None:
         # Validate all new steps
+        step_orders = [s.step_order for s in payload.steps]
+        if len(step_orders) != len(set(step_orders)):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="step_order values must be unique within a sequence",
+            )
+        if payload.entry_step_order is not None and payload.entry_step_order not in step_orders:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="entry_step_order must match one of the provided step_order values",
+            )
         for s in payload.steps:
             try:
                 await sequencer.validate_step_channel(s.channel)
@@ -274,7 +296,7 @@ async def delete_sequence(
     auth_ctx: AuthContext = Depends(get_auth_context),
 ) -> None:
     """Soft-delete / archive a sequence."""
-    await check_workspace_access(auth_ctx, workspace_id)
+    await check_workspace_access(session, auth_ctx, workspace_id)
     await set_request_tenant_context(session, auth_ctx, workspace_id)
 
     sequence = (
@@ -301,7 +323,7 @@ async def enroll_leads(
     auth_ctx: AuthContext = Depends(get_auth_context),
 ) -> list[SequenceEnrollmentRead]:
     """Enroll leads into the outreach sequence after validating consent (AC-4 / AD-25)."""
-    await check_workspace_access(auth_ctx, workspace_id)
+    await check_workspace_access(session, auth_ctx, workspace_id)
     await set_request_tenant_context(session, auth_ctx, workspace_id)
 
     sequencer = SequencerService()
@@ -327,7 +349,8 @@ async def pause_sequence(
     auth_ctx: AuthContext = Depends(get_auth_context),
 ) -> SequenceRead:
     """Pause an active sequence."""
-    await check_workspace_access(auth_ctx, workspace_id)
+    await check_workspace_access(session, auth_ctx, workspace_id)
+    await set_request_tenant_context(session, auth_ctx, workspace_id)
     sequence = await session.get(Sequence, (sequence_id, workspace_id))
     if not sequence:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sequence not found")
@@ -345,7 +368,8 @@ async def resume_sequence(
     auth_ctx: AuthContext = Depends(get_auth_context),
 ) -> SequenceRead:
     """Resume a paused sequence."""
-    await check_workspace_access(auth_ctx, workspace_id)
+    await check_workspace_access(session, auth_ctx, workspace_id)
+    await set_request_tenant_context(session, auth_ctx, workspace_id)
     sequence = await session.get(Sequence, (sequence_id, workspace_id))
     if not sequence:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sequence not found")
@@ -363,7 +387,7 @@ async def get_sequence_analytics(
     auth_ctx: AuthContext = Depends(get_auth_context),
 ) -> SequenceAnalyticsResponse:
     """Get real-time aggregated metrics for a sequence (AC-8)."""
-    await check_workspace_access(auth_ctx, workspace_id)
+    await check_workspace_access(session, auth_ctx, workspace_id)
     await set_request_tenant_context(session, auth_ctx, workspace_id)
 
     sequencer = SequencerService()
@@ -389,7 +413,7 @@ async def list_sequence_enrollments(
     auth_ctx: AuthContext = Depends(get_auth_context),
 ) -> list[SequenceEnrollmentRead]:
     """List all lead enrollments for a sequence."""
-    await check_workspace_access(auth_ctx, workspace_id)
+    await check_workspace_access(session, auth_ctx, workspace_id)
     await set_request_tenant_context(session, auth_ctx, workspace_id)
 
     stmt = (
@@ -412,7 +436,7 @@ async def list_sequence_events(
     auth_ctx: AuthContext = Depends(get_auth_context),
 ) -> list[SequenceEventRead]:
     """List all delivery and interaction events for a sequence."""
-    await check_workspace_access(auth_ctx, workspace_id)
+    await check_workspace_access(session, auth_ctx, workspace_id)
     await set_request_tenant_context(session, auth_ctx, workspace_id)
 
     stmt = (

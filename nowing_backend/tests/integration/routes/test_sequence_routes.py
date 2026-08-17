@@ -55,8 +55,8 @@ async def test_create_sequence_endpoint(
     workspace_id = 1
 
     with (
-        patch("app.routes.sequence_routes.check_workspace_access", AsyncMock()),
-        patch("app.routes.sequence_routes.set_request_tenant_context", AsyncMock()),
+        patch("app.routes.sequence_routes.check_workspace_access", AsyncMock()) as mock_check,
+        patch("app.routes.sequence_routes.set_request_tenant_context", AsyncMock()) as mock_tenant,
         patch("app.routes.sequence_routes.SequencerService") as mock_seq_cls,
     ):
         mock_svc = mock_seq_cls.return_value
@@ -88,6 +88,9 @@ async def test_create_sequence_endpoint(
             assert data["workspace_id"] == workspace_id
             assert len(data["steps"]) == 1
 
+    mock_check.assert_awaited_once_with(mock_db_session, mock_auth, workspace_id)
+    mock_tenant.assert_awaited_once_with(mock_db_session, mock_auth, workspace_id)
+
 
 @pytest.mark.asyncio
 async def test_enroll_leads_endpoint(
@@ -114,8 +117,8 @@ async def test_enroll_leads_endpoint(
     )
 
     with (
-        patch("app.routes.sequence_routes.check_workspace_access", AsyncMock()),
-        patch("app.routes.sequence_routes.set_request_tenant_context", AsyncMock()),
+        patch("app.routes.sequence_routes.check_workspace_access", AsyncMock()) as mock_check,
+        patch("app.routes.sequence_routes.set_request_tenant_context", AsyncMock()) as mock_tenant,
         patch("app.routes.sequence_routes.SequencerService") as mock_seq_cls,
     ):
         mock_svc = mock_seq_cls.return_value
@@ -133,6 +136,9 @@ async def test_enroll_leads_endpoint(
             data = resp.json()
             assert len(data) == 1
             assert data[0]["status"] == "scheduled"
+
+    mock_check.assert_awaited_once_with(mock_db_session, mock_auth, workspace_id)
+    mock_tenant.assert_awaited_once_with(mock_db_session, mock_auth, workspace_id)
 
 
 @pytest.mark.asyncio
@@ -158,8 +164,8 @@ async def test_get_sequence_analytics_endpoint(
     )
 
     with (
-        patch("app.routes.sequence_routes.check_workspace_access", AsyncMock()),
-        patch("app.routes.sequence_routes.set_request_tenant_context", AsyncMock()),
+        patch("app.routes.sequence_routes.check_workspace_access", AsyncMock()) as mock_check,
+        patch("app.routes.sequence_routes.set_request_tenant_context", AsyncMock()) as mock_tenant,
         patch("app.routes.sequence_routes.SequencerService") as mock_seq_cls,
     ):
         mock_svc = mock_seq_cls.return_value
@@ -177,6 +183,9 @@ async def test_get_sequence_analytics_endpoint(
             assert data["total_enrolled"] == 15
             assert data["responded_count"] == 4
             assert data["total_cost_micros"] == 60000
+
+    mock_check.assert_awaited_once_with(mock_db_session, mock_auth, workspace_id)
+    mock_tenant.assert_awaited_once_with(mock_db_session, mock_auth, workspace_id)
 
 
 @pytest.mark.asyncio
@@ -207,8 +216,8 @@ async def test_list_sequence_events_endpoint(
     )
 
     with (
-        patch("app.routes.sequence_routes.check_workspace_access", AsyncMock()),
-        patch("app.routes.sequence_routes.set_request_tenant_context", AsyncMock()),
+        patch("app.routes.sequence_routes.check_workspace_access", AsyncMock()) as mock_check,
+        patch("app.routes.sequence_routes.set_request_tenant_context", AsyncMock()) as mock_tenant,
     ):
         async with AsyncClient(
             transport=ASGITransport(app=test_app), base_url="http://test"
@@ -222,3 +231,6 @@ async def test_list_sequence_events_endpoint(
             assert len(data) == 1
             assert data[0]["event_type"] == "sent"
             assert data[0]["cost_micros"] == 5000
+
+    mock_check.assert_awaited_once_with(mock_db_session, mock_auth, workspace_id)
+    mock_tenant.assert_awaited_once_with(mock_db_session, mock_auth, workspace_id)

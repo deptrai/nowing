@@ -6108,7 +6108,7 @@ class Sequence(Base, TimestampMixin):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     workspace_id = Column(Integer, primary_key=True, nullable=False, index=True)
-    client_id = Column(Text, nullable=True, index=True)
+    client_id = Column(CITEXT, nullable=True, index=True)
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     status = Column(String(50), nullable=False, default="active", server_default=text("'active'"))
@@ -6156,7 +6156,7 @@ class SequenceStep(Base, TimestampMixin):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     workspace_id = Column(Integer, primary_key=True, nullable=False, index=True)
-    client_id = Column(Text, nullable=True, index=True)
+    client_id = Column(CITEXT, nullable=True, index=True)
     sequence_id = Column(UUID(as_uuid=True), nullable=False)
     step_order = Column(Integer, nullable=False)
     step_type = Column(String(50), nullable=False)  # send_email, wait, condition, update_lead_score, update_crm, tag
@@ -6199,9 +6199,13 @@ class SequenceRun(Base, TimestampMixin):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     workspace_id = Column(Integer, primary_key=True, nullable=False, index=True)
-    client_id = Column(Text, nullable=True, index=True)
+    client_id = Column(CITEXT, nullable=True, index=True)
     sequence_id = Column(UUID(as_uuid=True), nullable=False)
-    triggering_alert_rule_id = Column(UUID(as_uuid=True), nullable=True)
+    triggering_alert_rule_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("alert_rules.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     status = Column(String(50), nullable=False, default="running", server_default=text("'running'"))  # running, completed, cancelled
     started_at = Column(
         TIMESTAMP(timezone=True),
@@ -6234,6 +6238,10 @@ class SequenceEnrollment(Base, TimestampMixin):
     __tablename__ = "sequence_enrollments"
     __table_args__ = (
         PrimaryKeyConstraint("id", "workspace_id", name="pk_sequence_enrollments"),
+        UniqueConstraint(
+            "sequence_id", "lead_id", "workspace_id",
+            name="uq_sequence_enrollments_seq_lead",
+        ),
         ForeignKeyConstraint(
             ["sequence_id", "workspace_id"],
             ["sequences.id", "sequences.workspace_id"],
@@ -6252,7 +6260,7 @@ class SequenceEnrollment(Base, TimestampMixin):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     workspace_id = Column(Integer, primary_key=True, nullable=False, index=True)
-    client_id = Column(Text, nullable=True, index=True)
+    client_id = Column(CITEXT, nullable=True, index=True)
     sequence_id = Column(UUID(as_uuid=True), nullable=False)
     lead_id = Column(UUID(as_uuid=True), nullable=False, index=True)
     sequence_run_id = Column(UUID(as_uuid=True), nullable=True)
@@ -6309,7 +6317,7 @@ class SequenceEvent(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     workspace_id = Column(Integer, primary_key=True, nullable=False, index=True)
-    client_id = Column(Text, nullable=True, index=True)
+    client_id = Column(CITEXT, nullable=True, index=True)
     enrollment_id = Column(UUID(as_uuid=True), nullable=False)
     sequence_id = Column(UUID(as_uuid=True), nullable=False)
     step_id = Column(UUID(as_uuid=True), nullable=True)

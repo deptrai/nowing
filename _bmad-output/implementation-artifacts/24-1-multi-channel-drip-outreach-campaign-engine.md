@@ -3,7 +3,7 @@ story_key: "24-1"
 epic: "epic-24"
 story: "24.1"
 title: "Multi-Channel Drip Outreach Campaign Engine (Sequence Backend — Email-first MVP)"
-status: done
+status: in-progress
 baseline_commit: "1b75d8fc4"
 ---
 
@@ -127,23 +127,23 @@ baseline_commit: "1b75d8fc4"
 ## Công việc / Subtasks
 
 ### 1. Database Schema & Alembic Migration
-- [x] Tạo migration `nowing_backend/alembic/versions/225_add_sequence_tables.py` (Revises: `224`, head hiện tại `224` / `94cfa0f6f5f9`).
-- [x] Thêm 5 bảng với Composite PK `(id, workspace_id)`, `client_id: CITEXT` (lưu ý tương thích Zero nếu sync), `created_at`, `updated_at`, `FORCE ROW LEVEL SECURITY`:
+- [ ] Tạo migration `nowing_backend/alembic/versions/225_add_sequence_tables.py` (Revises: `224`, head hiện tại `224` / `94cfa0f6f5f9`).
+- [ ] Thêm 5 bảng với Composite PK `(id, workspace_id)`, `client_id: CITEXT` (lưu ý tương thích Zero nếu sync), `created_at`, `updated_at`, `FORCE ROW LEVEL SECURITY`:
   - `sequence`: `id`, `workspace_id`, `client_id`, `name`, `description`, `status` (`active`/`paused`/`archived`), `shared` (bool), `created_by_user_id`, `entry_step_order` (mặc định 1).
   - `sequence_steps`: `id`, `workspace_id`, `client_id`, `sequence_id`, `step_order` (int), `step_type` (`send_email`/`wait`/`condition`/`update_lead_score`/`update_crm`/`tag`), `channel`, `template` (JSONB: template_id + variable mapping), `wait_duration_seconds` (int), `condition_config` (JSONB: branch predicate + next step order), `is_enabled`.
   - `sequence_enrollments`: `id`, `workspace_id`, `client_id`, `sequence_id`, `lead_id`, `sequence_run_id`, `current_step` (int), `status` (`scheduled`/`executing`/`paused`/`responded`/`unsubscribed`/`failed`/`completed`), `scheduled_at`, `version` (int, default 0, OCC), `last_event_at`.
   - `sequence_events`: `id`, `workspace_id`, `client_id`, `enrollment_id`, `sequence_id`, `step_id`, `event_type` (`sent`/`delivered`/`opened`/`replied`/`bounced`/`meeting_booked`/`failed`/`skipped`), `event_subtype`, `channel`, `cost_micros`, `metadata` (JSONB), `provider_msg_id`.
   - `sequence_runs`: `id`, `workspace_id`, `client_id`, `sequence_id`, `triggering_alert_rule_id`, `status` (`running`/`completed`/`cancelled`), `started_at`, `completed_at`.
-- [x] Đảm bảo `triggering_alert_rule_id` nullable; FK `alert_rules.id` deferred nếu table chưa sẵn sàng.
-- [x] Tạo indexes: `ix_sequence_enrollments_sched (workspace_id, status, scheduled_at)`, `ix_sequence_steps_order (workspace_id, sequence_id, step_order)`, `ix_sequence_events_enrollment (workspace_id, enrollment_id, event_type)`.
-- [x] Kiểm tra kiểu `client_id`: `leads.client_id` hiện là `text` do Zero sync; quyết định CITEXT/text cho `sequence_*` phải tương thích với Zero publication plan (nếu cần Zero sync, tham khảo `94cfa0f6f5f9`).
+- [ ] Đảm bảo `triggering_alert_rule_id` nullable; FK `alert_rules.id` deferred nếu table chưa sẵn sàng.
+- [ ] Tạo indexes: `ix_sequence_enrollments_sched (workspace_id, status, scheduled_at)`, `ix_sequence_steps_order (workspace_id, sequence_id, step_order)`, `ix_sequence_events_enrollment (workspace_id, enrollment_id, event_type)`.
+- [ ] Kiểm tra kiểu `client_id`: `leads.client_id` hiện là `text` do Zero sync; quyết định CITEXT/text cho `sequence_*` phải tương thích với Zero publication plan (nếu cần Zero sync, tham khảo `94cfa0f6f5f9`).
 
 ### 2. ORM Models
-- [x] Cập nhật `nowing_backend/app/db.py` thêm 5 model trên.
-- [x] Khai báo enum/status, composite FK đến `leads` và `vertical_clients`.
+- [ ] Cập nhật `nowing_backend/app/db.py` thêm 5 model trên.
+- [ ] Khai báo enum/status, composite FK đến `leads` và `vertical_clients`.
 
 ### 3. Core Service — `SequencerService`
-- [x] Tạo `nowing_backend/app/services/sequencer_service.py`:
+- [ ] Tạo `nowing_backend/app/services/sequencer_service.py`:
   - `calculate_step_eta(delay_seconds, from_dt=None)` — timezone `Asia/Ho_Chi_Minh`, quiet hours, jitter.
   - `enroll_leads(session, workspace_id, sequence_id, lead_ids, *, triggered_by_alert_rule_id=None, user_id=None)`.
   - `enroll_lead(session, workspace_id, sequence_id, lead_id, *, triggering_alert_rule_id=None, sequence_run_id=None)`.
@@ -153,49 +153,43 @@ baseline_commit: "1b75d8fc4"
   - `get_sequence_analytics(session, workspace_id, sequence_id)`.
 
 ### 4. Celery Tasks & Beat Schedule
-- [x] Tạo `nowing_backend/app/automations/tasks/sequence_tasks.py` với `evaluate_sequences` và `execute_sequence_step`.
-- [x] Thêm `app.automations.tasks.sequence_tasks` vào `include` trong `nowing_backend/app/celery_app.py`.
-- [x] Thêm `evaluate_sequences` vào `beat_schedule` mỗi 1 phút.
+- [ ] Tạo `nowing_backend/app/automations/tasks/sequence_tasks.py` với `evaluate_sequences` và `execute_sequence_step`.
+- [ ] Thêm `app.automations.tasks.sequence_tasks` vào `include` trong `nowing_backend/app/celery_app.py`.
+- [ ] Thêm `evaluate_sequences` vào `beat_schedule` mỗi 1 phút.
 
 ### 5. REST API Routes & Schemas
-- [x] Tạo `nowing_backend/app/schemas/sequence.py`.
-- [x] Tạo `nowing_backend/app/routes/sequence_routes.py` với CRUD + enroll/pause/resume/analytics.
-- [x] Register route trong `nowing_backend/app/routes/__init__.py` (hoặc `app.py` nếu cần).
+- [ ] Tạo `nowing_backend/app/schemas/sequence.py`.
+- [ ] Tạo `nowing_backend/app/routes/sequence_routes.py` với CRUD + enroll/pause/resume/analytics.
+- [ ] Register route trong `nowing_backend/app/routes/__init__.py` (hoặc `app.py` nếu cần).
 
 ### 6. BillingEvent Service Extension
-- [x] Mở rộng `nowing_backend/app/services/billing_event_service.py`:
+- [ ] Mở rộng `nowing_backend/app/services/billing_event_service.py`:
   - Thêm `record_sequence_send(session, *, sequence_event_id, workspace_id, client_id, user_id, cost_micros, cost_basis='actual')` gọi `_record_business_event(event_entity_type='sequence_event', event_type='email_send')`.
   - Thêm `record_outcome_meeting_booked(session, *, outcome_event_id, workspace_id, client_id, user_id, cost_micros, cost_basis='actual')` gọi `_record_business_event(event_entity_type='outcome_event', event_type='outcome_meeting_booked')`.
-- [x] Đảm bảo `record_sequence_send` idempotent theo `sequence_event_id`: nếu `BillingEvent` đã tồn tại thì **return existing row** thay vì raise `ValueError`, để retry-safe với Celery.
-- [x] Verification: `ruff check app/services/billing_event_service.py`, `pytest tests/unit/services/test_billing_event_service.py`.
+- [ ] Đảm bảo `record_sequence_send` idempotent theo `sequence_event_id`: nếu `BillingEvent` đã tồn tại thì **return existing row** thay vì raise `ValueError`, để retry-safe với Celery.
+- [ ] Verification: `ruff check app/services/billing_event_service.py`, `pytest tests/unit/services/test_billing_event_service.py`.
 
 ### 7. Inbound Webhook & Notification Integration
-- [x] Mở rộng `NotificationType` / channel constants trong `app/notifications/types.py` và `app/notifications/constants.py` với `email_reply`, `email_delivered`, `email_bounced`.
-- [x] Tích hợp `SequencerService.handle_inbound_interruption` từ `app/gateway/zalo/webhook.py`, `app/gateway/telegram/callbacks.py`, `app/gateway/inbox_processor.py` (hoặc route email SES webhook/IMAP idle).
-- [x] Đảm bảo positive-reply/delivery/bounce notifications reuse Story 11.1 notification dispatcher.
+- [ ] Mở rộng `NotificationType` / channel constants trong `app/notifications/types.py` và `app/notifications/constants.py` với `email_reply`, `email_delivered`, `email_bounced`.
+- [ ] Tích hợp `SequencerService.handle_inbound_interruption` từ `app/gateway/zalo/webhook.py`, `app/gateway/telegram/callbacks.py`, `app/gateway/inbox_processor.py` (hoặc route email SES webhook/IMAP idle).
+- [ ] Đảm bảo positive-reply/delivery/bounce notifications reuse Story 11.1 notification dispatcher.
 
 ### 8. Frontend UI
-- [x] Tạo `nowing_web/contracts/types/sequence.types.ts`.
-- [x] Tạo `nowing_web/lib/apis/sequence-api.service.ts`.
-- [x] Tạo `nowing_web/components/automations/VisualCadenceBuilder.tsx`.
-- [x] Tạo pages:
+- [ ] Tạo/cập nhật `nowing_web/contracts/types/sequence.types.ts`.
+- [ ] Tạo `nowing_web/lib/apis/sequence-api.service.ts`.
+- [ ] Tạo `nowing_web/components/automations/VisualCadenceBuilder.tsx`.
+- [ ] Tạo pages:
   - `nowing_web/app/dashboard/[workspace_id]/automations/campaigns/page.tsx` (list)
   - `nowing_web/app/dashboard/[workspace_id]/automations/campaigns/new/page.tsx` (builder)
   - `nowing_web/app/dashboard/[workspace_id]/automations/campaigns/[sequence_id]/page.tsx` (analytics)
-- [x] UX navigation: `/dashboard/[id]/campaigns` theo `EXPERIENCE.md`; channel selector chỉ bật `email`.
+- [ ] UX navigation: `/dashboard/[id]/campaigns` theo `EXPERIENCE.md`; channel selector chỉ bật `email`.
 
 ### 9. Tests
-- [x] `nowing_backend/tests/unit/services/test_sequencer_service.py` (20 passed).
-- [x] `nowing_backend/tests/integration/services/test_sequence_scheduler.py` (4 passed).
-- [x] Frontend typecheck (`tsc --noEmit`) & biome check clean (0 errors).
+- [ ] `nowing_backend/tests/unit/services/test_sequencer_service.py`.
+- [ ] `nowing_backend/tests/integration/services/test_sequence_scheduler.py`.
+- [ ] Frontend typecheck & biome cho các file đã động.
 
 ## Dev Notes & Architecture Guardrails
-
-### ATDD Artifacts
-- **Checklist:** `_bmad-output/test-artifacts/atdd-checklist-24-1-multi-channel-drip-outreach-campaign-engine.md`
-- **Unit Tests (Backend):** [`nowing_backend/tests/unit/services/test_sequencer_service.py`](file:///Users/luisphan/Documents/GitHub/nowing/nowing_backend/tests/unit/services/test_sequencer_service.py)
-- **Integration Tests (Backend):** [`nowing_backend/tests/integration/services/test_sequence_scheduler.py`](file:///Users/luisphan/Documents/GitHub/nowing/nowing_backend/tests/integration/services/test_sequence_scheduler.py)
-- **E2E Tests (Frontend):** [`nowing_web/tests/automations/campaign-sequence-builder.spec.ts`](file:///Users/luisphan/Documents/GitHub/nowing/nowing_web/tests/automations/campaign-sequence-builder.spec.ts)
 
 ### 1. Existing Services to Reuse
 - **Email SMTP:** `_send_email_smtp(to_email, subject, body)` trong `app/alerts/engine/notify.py:119` là sync; wrap bằng `asyncio.to_thread`.
@@ -544,39 +538,35 @@ Verdict: **Không có alternative đơn giản hơn** mà không vi phạm AD-39
 
 Story 24.1 đã rõ ràng về bounded context và reuse helper. 2 critical gap liên quan billing transaction boundary và retry idempotency đã được clarify trong AC-6, Task 6, và Dev Note 6. Các vấn đề còn lại là edge cases / failure modes non-critical cần bổ sung vào test skeleton ở bước `test-first-atdd`. **Có thể tiếp tục pipeline.**
 
-## Dev Agent Record
+---
 
-### Verification Evidence
-- **Unit Tests:** `tests/unit/services/test_sequencer_service.py` -> **20 passed (100%)**
-- **Integration Tests:** `tests/integration/services/test_sequence_scheduler.py` -> **4 passed (100%)**
-- **Backend Linting:** `ruff check app/db.py app/services/sequencer_service.py app/services/billing_event_service.py app/schemas/sequence.py app/routes/sequence_routes.py app/routes/__init__.py app/automations/tasks/sequence_tasks.py app/celery_app.py app/alerts/engine/execute.py alembic/versions/225_add_sequence_tables.py tests/unit/services/test_sequencer_service.py tests/integration/services/test_sequence_scheduler.py` -> **0 errors, all checks passed**
-- **Frontend Typecheck:** `pnpm tsc --noEmit` -> **0 errors**
-- **Frontend Linter:** `pnpm exec biome check contracts/types/sequence.types.ts lib/apis/sequence-api.service.ts components/automations/VisualCadenceBuilder.tsx app/dashboard/[workspace_id]/automations/campaigns/page.tsx app/dashboard/[workspace_id]/automations/campaigns/new/page.tsx app/dashboard/[workspace_id]/automations/campaigns/[sequence_id]/page.tsx tests/automations/campaign-sequence-builder.spec.ts` -> **0 errors**
+### Review Findings — Backend API / tests / migration chunk
 
-### Modified / Created Files
-1. `nowing_backend/alembic/versions/225_add_sequence_tables.py`: Migration for 5 sequence tables with Composite PK/FK & RLS.
-2. `nowing_backend/app/db.py`: Added `Sequence`, `SequenceStep`, `SequenceEnrollment`, `SequenceEvent`, `SequenceRun` models with explicit `overlaps` configuration.
-3. `nowing_backend/app/services/sequencer_service.py`: Core Sequence bounded context service (quiet hours, jitter, consent/channel gates, OCC, Redis locks, email send, opt-out handling, analytics).
-4. `nowing_backend/app/services/billing_event_service.py`: Added idempotent `record_sequence_send` and `record_outcome_meeting_booked`.
-5. `nowing_backend/app/schemas/sequence.py`: Full Pydantic schemas for sequence domain.
-6. `nowing_backend/app/routes/sequence_routes.py`: REST API endpoints for sequences, enrollments, analytics, events.
-7. `nowing_backend/app/routes/__init__.py`: Registered sequence router.
-8. `nowing_backend/app/automations/tasks/sequence_tasks.py`: Celery tasks `evaluate_sequences` and `execute_sequence_step`.
-9. `nowing_backend/app/celery_app.py`: Celery beat schedule & include.
-10. `nowing_backend/app/notifications/types.py` & `app/notifications/constants.py`: Sequence email notification types.
-11. `nowing_backend/app/alerts/engine/execute.py`: Sequence enrollment trigger for alert rules.
-12. `nowing_backend/tests/unit/services/test_sequencer_service.py`: 20 unit tests.
-13. `nowing_backend/tests/integration/services/test_sequence_scheduler.py`: 4 integration tests.
-14. `nowing_web/contracts/types/sequence.types.ts`: TypeScript contracts and Zod validation.
-15. `nowing_web/lib/apis/sequence-api.service.ts`: API service for sequence endpoints.
-16. `nowing_web/components/automations/VisualCadenceBuilder.tsx`: Visual multi-step cadence builder.
-17. `nowing_web/app/dashboard/[workspace_id]/automations/campaigns/page.tsx`: Sequence campaign list.
-18. `nowing_web/app/dashboard/[workspace_id]/automations/campaigns/new/page.tsx`: Create campaign page.
-19. `nowing_web/app/dashboard/[workspace_id]/automations/campaigns/[sequence_id]/page.tsx`: Campaign analytics & event logs.
-20. `nowing_web/tests/automations/campaign-sequence-builder.spec.ts`: E2E test suite for visual builder.
+Reviewers: Blind Hunter (adversarial) + Edge Case Hunter + Acceptance Auditor. Diff chunk: `3449a631e..105f7e1f8` restricted to migration 225, `sequence_routes.py`, `schemas/sequence.py`, `routes/__init__.py`, tests.
 
-### Review Findings
-- **Review Mode:** `full` (Blind Hunter + Edge Case Hunter + Acceptance Auditor + `code-review-graph` AST & Blast Radius Analysis)
-- **Status:** ✅ Clean review — all layers passed (0 decision-needed, 0 patch, 0 defer, 0 dismissed).
-- **All 9 Acceptance Criteria (AC-1 through AC-9) & Architecture Invariants (AD-39, AD-41, AD-42, AD-43, AD-48, AD-49, INV-24.1, INV-24.2, INV-24.7) strictly satisfied.**
+#### decision-needed
+(đã giải quyết — chuyển thành patch bên dưới theo best practice AD-31)
+
+#### patch
+- [x] [Review][Patch] `client_id` kiểu `Text` thay vì `CITEXT` trên 5 bảng `sequence_*` — theo best practice AD-31, đổi sang `CITEXT` trong migration và ORM. Lưu ý: `leads.client_id` vẫn là `text` do Zero sync; nếu sau này cần composite FK sang `leads` thì phải migration đổi `leads.client_id` thành `CITEXT`. Location: `225_add_sequence_tables.py:67,87,113,136,169` / `app/db.py:6111,6159,6202,6236,6312`.
+
+#### patch
+- [x] [Review][Patch] `sequence_routes.py` gọi sai signature `check_workspace_access(auth_ctx, workspace_id)` — thiếu `session`, sẽ `TypeError` ở runtime ở tất cả 11 route. Mọi route khác trong repo gọi `check_workspace_access(session, auth, workspace_id)`. Location: `sequence_routes.py:56,121,144,183,277,304,330,348,366,392,415`.
+- [x] [Review][Patch] `pause_sequence`/`resume_sequence` thiếu `set_request_tenant_context(session, auth_ctx, workspace_id)` — RLS client_id bị bypass. Location: `sequence_routes.py:330-337,348-355`.
+- [x] [Review][Patch] `sequence_runs.triggering_alert_rule_id` thiếu FK `alert_rules.id` — AD-43 yêu cầu `AlertRule` là first-class table; bảng đã tồn tại. Location: `225_add_sequence_tables.py:115-121` / `app/db.py:6204`.
+- [x] [Review][Patch] `sequence_enrollments` thiếu unique constraint `(workspace_id, sequence_id, lead_id)` — cho phép duplicate enrollment. Location: `225_add_sequence_tables.py:131-161` / `app/db.py:6231-6251`.
+- [x] [Review][Patch] `create_sequence`/`update_sequence` không validate `step_order` duy nhất trong sequence — duplicate step_order gây undefined execution. Location: `sequence_routes.py:86-102` và `234-248`.
+- [x] [Review][Patch] `SequenceCreate`/`SequenceUpdate` không validate `entry_step_order` tồn tại trong `steps`. Location: `sequence_routes.py:80-81,205-206`.
+- [x] [Review][Patch] `schemas/sequence.py` dùng `str` thay vì `Literal`/enum cho `status`, `step_type`, `channel`, `event_type` — API chấp nhận giá trị không hợp lệ. Location: `schemas/sequence.py:13-15,50,62-64,99,116-118`.
+- [x] [Review][Patch] `tests/integration/routes/test_sequence_routes.py` mock `check_workspace_access` và `set_request_tenant_context` — che giấu lỗi signature (#1). Cần thêm test integration không mock hoặc kiểm tra signature. Location: `tests/integration/routes/test_sequence_routes.py:58,117,161,210`.
+
+#### notes / cross-chunk (not triaged in this chunk)
+- `AC-7`/`AD-43` alert-driven enrollment được implement trong `app/alerts/engine/execute.py` (nằm ngoài chunk này) — finding "missing" là false positive do chunk hóa.
+- Logic `handle_inbound_interruption`, `get_due_enrollments`, billing/commit, consent/DNC, PII redaction nằm trong `app/services/sequencer_service.py` (core chunk) — sẽ review ở chunk tiếp theo.
+- `SequenceEventRead.event_metadata` vs cột DB `metadata` là mapping đúng (SQLAlchemy `Column("metadata", ...)` + Pydantic `populate_by_name=True`) — dismiss.
+
+#### Patching log — 2026-08-17
+- Đã apply toàn bộ 9 patch findings ở chunk 1.
+- Verification: `ruff check` 0 errors; `pytest tests/integration/routes/test_sequence_routes.py` 4/4 pass; `pytest tests/unit/services/test_sequencer_service.py tests/integration/services/test_sequence_scheduler.py` 24/24 pass.
+- Còn lại: review chunk 2 (`app/services/sequencer_service.py`, `app/services/billing_event_service.py`, `app/automations/tasks/sequence_tasks.py`) và chunk 3 (frontend) sẽ chạy tiếp.
 
