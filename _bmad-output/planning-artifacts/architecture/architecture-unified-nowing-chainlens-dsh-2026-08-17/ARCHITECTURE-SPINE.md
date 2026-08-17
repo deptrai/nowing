@@ -5,9 +5,9 @@ purpose: build-substrate
 altitude: platform
 paradigm: 4-Tier Hybrid Reactive Architecture with Decoupled Autonomous Mission Workers
 scope: Full Platform (Nowing Core, ChainLens Engine, Harness Orchestrator, DeepSeek V4 + Gemini Flash + Qwen)
-status: review
+status: final
 created: '2026-08-17'
-updated: '2026-08-17T05:00'
+updated: '2026-08-17T06:00'
 approvedBy: Luisphan
 binds:
   - AD-101
@@ -132,10 +132,14 @@ flowchart TB
 - **Binds:** `verified_contacts`, `leads`, `pii_blacklists`/`dnc_records`, credit wallet, and audit logs.
 - **Prevents:** Regulatory PII violations, data leakage, customer disputes over invalid contacts, and unbilled PII access.
 - **Rule:**
-  1. Phone numbers and emails MUST be stored encrypted at rest in the `verified_contacts` vault. The canonical encryption service is the existing `VerifiedContactEncryption` (Fernet/TokenEncryption) as defined in `app/services/pii/verified_contact_encryption.py`. A migration to AES-256-GCM is [DEFERRED] pending an explicit AD amendment and a decrypt/re-encrypt plan (see M12).
+  1. Phone numbers and emails MUST be stored encrypted at rest in the `verified_contacts` vault using the canonical encryption service `VerifiedContactEncryption` (Fernet/TokenEncryption) as defined in `app/services/pii/verified_contact_encryption.py`.
   2. Contact deduplication MUST use blind HMAC-SHA256 hashes (`value_hmac`). The HMAC input is a single normalized contact string in the form `HMAC_SHA256("phone=<normalized_phone>|email=<normalized_email>|domain=<domain>", HMAC_SECRET)`. `value_hmac` MUST be `NOT NULL` and part of a `UNIQUE(workspace_id, value_hmac)` constraint.
   3. Frontend displays masked strings (`0908 *** 456`) until the user unlocks the contact.
-  4. Contact unlock debits **1.5 credits** (1,500 `credit_micros`) from the workspace owner wallet AFTER successful PII decryption, via a `BillingEvent` with `event_type='contact_unlock'`. Unlock is atomic: decrypt and debit in the same transaction; if decryption fails, no debit.
+  4. Contact unlock debits **1.5 credits** (1,500 `credit_micros`) from the workspace owner wallet AFTER successful PII decryption.
+     - The endpoint is `POST /api/v1/workspaces/:workspace_id/leads/:lead_id/contacts/:contact_id/unlock`.
+     - It checks `verified_contacts.is_unlocked = FALSE` and `User.credit_micros_balance >= 1,500` for the attributed owner.
+     - In a single transaction: decrypt phone/email, set `is_unlocked = TRUE`, call `wallet_credit.apply_debit(user_id, 1_500, event_type='contact_unlock')`, and write a `BillingEvent` with `event_type='contact_unlock'`, `event_entity_type='verified_contact'`, `cost_micros=1_500`, and `reason='contact_unlock'`.
+     - If decryption fails, the wallet is not debited.
   5. `verified_contacts` MUST contain `is_unlocked` (boolean) and `pii_access_audit_logs` (JSONB or reference to `AuditEvent`) recording every access: `user_id`, `workspace_id`, `lead_id`, `access_type`, `timestamp`, `ip_address`.
   6. PII opt-out requests MUST be honored within 24h: add HMAC to the blacklist/DNC table, mark `verified_contacts.is_unlocked = FALSE`, return credits, and schedule PII deletion or irreversible anonymization per Decree 13/PDPD.
   7. Nowing's Terms of Service (ToS) legally structures Nowing as a *Data Processor on behalf of user*.
@@ -161,7 +165,7 @@ flowchart TB
 - **Binds:** `batch_ingest_leads` service/route and database repositories.
 - **Prevents:** High HTTP roundtrip latency, distributed PostgreSQL row-lock deadlocks, and duplicate nullable rows.
 - **Rule:**
-  1. `batch_ingest_leads` is exposed as an authenticated **REST endpoint** at `POST /api/v1/workspaces/:workspace_id/leads/batch-ingest` (50–100 items per batch, `min_length=1`). It MAY additionally be registered as a **named MCP tool** in `nowing_mcp` if the DSH sidecar uses MCP transport; the route inside `nowing_backend` is FastAPI, not an MCP server route.
+  1. `batch_ingest_leads` is exposed as an authenticated **REST endpoint** at `POST /api/v1/workspaces/:workspace_id/leads/batch-ingest` (50–100 items per batch, `min_length=1`). A named MCP tool in `nowing_mcp` is **not in scope** for this epic; if DSH later uses MCP transport, it will be covered by a separate story.
   2. All incoming items MUST produce a deterministic `value_hmac` using the canonical HMAC input (AD-105, Rule 2). Items with no phone/email/domain MUST be rejected as degenerate before persistence.
   3. The `leads.value_hmac` and `verified_contacts.value_hmac` columns MUST be `NOT NULL` and guarded by a `UNIQUE(workspace_id, value_hmac)` constraint.
   4. All SQL bulk upserts on `leads` and `verified_contacts` MUST deterministically sort records by `value_hmac ASC` before executing `INSERT ... ON CONFLICT DO UPDATE`.
@@ -199,13 +203,14 @@ flowchart TB
                                                                      │
                                                                      ▼
   ┌─────────────────────────────────┐               ┌─────────────────────────────────┐
-  │  dnc_records / pii_blacklists   │               │  verified_contacts (PII Vault)  │
-  │  (Opt-out Vault)                │               │  - lead_id: UUID (FK)           │
-  │  - value_hmac: String (PK)      │               │  - phone: Encrypted ( Fernet   │
-  │  - record_type: String          │               │    or AES-256-GCM ) [DEFERRED]  │
-  │  - reason: String               │               │  - email: Encrypted             │
-  │  - requested_at: Timestamp      │               │  - is_unlocked: Boolean         │
-  │  - is_active: Boolean           │               │  - pii_access_audit_logs: JSONB │
+  │  DNC records (workspace_dnc_    │               │  verified_contacts (PII Vault)  │
+  │  records / global_dnc_records)  │               │  - lead_id: UUID (FK)           │
+  │  (Opt-out Vault)                │               │  - phone: Encrypted (Fernet/   │
+  │  - value_hmac: String (PK)      │               │    TokenEncryption)             │
+  │  - record_type: String          │               │  - email: Encrypted             │
+  │  - reason: String               │               │  - is_unlocked: Boolean         │
+  │  - requested_at: Timestamp      │               │  - pii_access_audit_logs: JSONB │
+  │  - is_active: Boolean           │               │                                 │
   └─────────────────────────────────┘               └─────────────────────────────────┘
 ```
 
@@ -259,25 +264,18 @@ class BatchLeadIngestResponse(BaseModel):
     lead_ids: list[UUID]
 ```
 
-A named MCP tool `batch_ingest_leads` MAY also be registered in `nowing_mcp` if the DSH sidecar uses MCP transport; the backend canonical endpoint is the FastAPI route above.
+A named MCP tool in `nowing_mcp` is **not in scope** for this epic; if DSH later uses MCP transport, it will be covered by a separate story.
 
 ---
 
-## 5. Tokenomics & Unit Economics [ASSUMPTION — PENDING VALIDATION]
+## 5. Tokenomics & Unit Economics
 
-> The numbers below are a working hypothesis. DeepSeek pricing changed to peak/off-peak on 2026-08-16; vLLM is not $0 (it has GPU infrastructure cost); and residential-proxy, CAPTCHA, and HLR/Zalo costs have not been verified with vendor contracts. Do not use these figures for pricing or subscription commitments until validated.
+Unit economics is a **business hypothesis**, not an architecture invariant. It is maintained separately in `UNIT-ECONOMICS-HYPOTHESIS.md` and must be validated before any pricing or subscription commitments.
 
-| Task Type / Cost Center | Primary Model | COGS / 1,000 Leads (baseline) | Notes |
-| :--- | :--- | :--- | :--- |
-| **HTML Parsing & Initial Filtering** | **Google Gemini Flash (Free Tier)** | **$0.00–$0.05** | Only for non-PII parsing. PII/sensitive data routes to Tier 2/3. |
-| **Local Offline / Fallback** | **Qwen 3.8-27B (vLLM)** | **$50.00–$150.00 GPU infra** | Allocated per 1,000 leads at 10–30% GPU utilization; marginal token cost is $0. |
-| **Residential Proxies & CAPTCHA** | VN Residential Pool + Solvers | **$7.80 [UNVERIFIED]** | Cost must come from a live pilot or vendor quote. |
-| **High-Volume Burst Extraction** | **deepseek-v4-flash** | **$1.20–$4.00** | Off-peak $0.22/$0.66; peak $0.44/$1.32 per 1M tokens; depends on cache hit rate. |
-| **Deep Reasoning & ICP Scoring** | **deepseek-v4-pro** | **$3.50–$10.00** | Off-peak $0.66/$1.98; peak $1.32/$3.96 per 1M tokens with Thinking: High. |
-| **Telco HLR / Zalo Lookup** | 15% Verification Sample | **$1.50 [UNVERIFIED]** | Cost must come from a live pilot or vendor contract. |
-| **TỔNG GIÁ VỐN (COGS) / 1.000 LEADS** | **Multi-Tier Architecture** | **$17.00–$35.00 (working range)** | **$150.00 revenue (1.5k credits)** is a placeholder until FR-69 pricing is finalized. |
-
-**Gross margin working range: 76.7%–88.7%** (not the previously claimed 89.8%).
+The architecture only requires that:
+- `TokenUsage.cost_micros` records actual spend per call/ingest job.
+- `wallet_credit.py` debits the workspace owner wallet for billable events.
+- `HybridLLMRouter` logs model usage so the business hypothesis can be recalibrated with real data.
 
 ---
 
@@ -288,10 +286,10 @@ A named MCP tool `batch_ingest_leads` MAY also be registered in `nowing_mcp` if 
 - `[ASSUMPTION]` Host on Dokploy has optional 1 dedicated GPU (e.g. RTX 4090 / A10G) for local vLLM Qwen 3.8. If CPU-only, the `HybridLLMRouter` routes 100% to Gemini Flash + DeepSeek V4 Cloud.
 - `[ASSUMPTION]` Local vLLM has zero marginal token cost but GPU infrastructure overhead of ~$50–$150/month per 1,000 leads at 10–30% utilization.
 - `[ASSUMPTION]` DeepSeek peak/off-peak pricing from 2026-08-16 is current; the `HybridLLMRouter` schedules elastic workloads off-peak when possible.
-- `[ASSUMPTION]` Residential proxy, CAPTCHA, and HLR/Zalo costs in §5 are unverified and must be replaced with live vendor quotes.
+- `[ASSUMPTION]` Residential proxy, CAPTCHA, and HLR/Zalo costs in `UNIT-ECONOMICS-HYPOTHESIS.md` are unverified and must be replaced with live vendor quotes.
 - `[ASSUMPTION]` Telegram Bot Webhook endpoint `/api/v1/gateway/telegram/webhook` is configured with SSL for interactive inline callbacks.
 - `[ASSUMPTION]` Logical replication slot `zero_publication` is pre-created on PostgreSQL for instant Zero-Cache synchronization.
-- `[REVIEW]` PII encryption method: final decision is [DEFERRED] between existing Fernet/TokenEncryption and AES-256-GCM migration (see AD-105 Rule 1 and M12).
+- `[DECISION]` PII encryption method: canonical service is `VerifiedContactEncryption` (Fernet/TokenEncryption).
 
 ---
 
