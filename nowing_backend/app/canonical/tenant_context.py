@@ -76,15 +76,15 @@ async def set_request_tenant_context(
     )
     await session.execute(
         text("SELECT set_config('app.current_client_id', :cid, true)"),
-        {"cid": client_id or ""},
+        {"cid": "" if client_id is None else str(client_id)},
     )
     await session.execute(
         text("SELECT set_config('app.current_agent_id', :aid, true)"),
-        {"aid": agent_id or ""},
+        {"aid": "" if agent_id is None else str(agent_id)},
     )
     await session.execute(
         text("SELECT set_config('app.run_id', :rid, true)"),
-        {"rid": run_id or ""},
+        {"rid": "" if run_id is None else str(run_id)},
     )
     await session.execute(
         text("SELECT set_config('app.memory_id', :mid, true)"),
@@ -92,7 +92,7 @@ async def set_request_tenant_context(
     )
     await session.execute(
         text("SELECT set_config('app.current_user_id', :uid, true)"),
-        {"uid": user_id or ""},
+        {"uid": "" if user_id is None else str(user_id)},
     )
     # Tests sometimes pass a fake session without .info; the GUCs are the
     # source of truth for RLS anyway, so tolerate the missing attribute.

@@ -9,6 +9,7 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.auth.context import AuthContext
 from app.canonical.tenant_context import set_request_tenant_context
@@ -27,7 +28,6 @@ from app.schemas.sequence import (
     SequenceEnrollRequest,
     SequenceEventRead,
     SequenceRead,
-    SequenceStepRead,
     SequenceUpdate,
 )
 from app.services.sequencer_service import (
@@ -54,7 +54,7 @@ async def create_sequence(
 ) -> SequenceDetailRead:
     """Create a new outreach Sequence with ordered steps (AD-39, AD-41)."""
     await check_workspace_access(session, auth_ctx, workspace_id)
-    await set_request_tenant_context(session, auth_ctx, workspace_id)
+    await set_request_tenant_context(session, workspace_id=workspace_id)
 
     sequencer = SequencerService()
 
@@ -94,7 +94,6 @@ async def create_sequence(
     session.add(sequence)
     await session.flush()
 
-    steps_read: list[SequenceStepRead] = []
     for step_data in payload.steps:
         step = SequenceStep(
             id=uuid4(),
@@ -112,13 +111,12 @@ async def create_sequence(
         )
         session.add(step)
         await session.flush()
-        steps_read.append(SequenceStepRead.model_validate(step))
 
     await session.commit()
-    await session.refresh(sequence)
+    stmt = select(Sequence).where(Sequence.id == sequence.id, Sequence.workspace_id == workspace_id).options(selectinload(Sequence.steps))
+    sequence = (await session.execute(stmt)).scalar_one()
 
     res = SequenceDetailRead.model_validate(sequence)
-    res.steps = steps_read
     return res
 
 
@@ -130,7 +128,7 @@ async def list_sequences(
 ) -> list[SequenceRead]:
     """List all sequences in the workspace."""
     await check_workspace_access(session, auth_ctx, workspace_id)
-    await set_request_tenant_context(session, auth_ctx, workspace_id)
+    await set_request_tenant_context(session, workspace_id=workspace_id)
 
     stmt = (
         select(Sequence)
@@ -153,33 +151,22 @@ async def get_sequence(
 ) -> SequenceDetailRead:
     """Get sequence details including all configured steps."""
     await check_workspace_access(session, auth_ctx, workspace_id)
-    await set_request_tenant_context(session, auth_ctx, workspace_id)
+    await set_request_tenant_context(session, workspace_id=workspace_id)
 
     sequence = (
         await session.execute(
-            select(Sequence).where(
+            select(Sequence)
+            .where(
                 Sequence.id == sequence_id,
                 Sequence.workspace_id == workspace_id,
             )
+            .options(selectinload(Sequence.steps))
         )
     ).scalar_one_or_none()
     if not sequence:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sequence not found")
 
-    steps = (
-        await session.execute(
-            select(SequenceStep)
-            .where(
-                SequenceStep.sequence_id == sequence_id,
-                SequenceStep.workspace_id == workspace_id,
-            )
-            .order_by(SequenceStep.step_order.asc())
-        )
-    ).scalars().all()
-
-    res = SequenceDetailRead.model_validate(sequence)
-    res.steps = [SequenceStepRead.model_validate(s) for s in steps]
-    return res
+    return SequenceDetailRead.model_validate(sequence)
 
 
 @router.put("/{sequence_id}", response_model=SequenceDetailRead)
@@ -192,7 +179,7 @@ async def update_sequence(
 ) -> SequenceDetailRead:
     """Update sequence name, description, status, and/or replace steps."""
     await check_workspace_access(session, auth_ctx, workspace_id)
-    await set_request_tenant_context(session, auth_ctx, workspace_id)
+    await set_request_tenant_context(session, workspace_id=workspace_id)
 
     sequence = (
         await session.execute(
@@ -270,22 +257,18 @@ async def update_sequence(
             session.add(step)
 
     await session.commit()
-    await session.refresh(sequence)
-
-    steps = (
+    sequence = (
         await session.execute(
-            select(SequenceStep)
+            select(Sequence)
             .where(
-                SequenceStep.sequence_id == sequence_id,
-                SequenceStep.workspace_id == workspace_id,
+                Sequence.id == sequence_id,
+                Sequence.workspace_id == workspace_id,
             )
-            .order_by(SequenceStep.step_order.asc())
+            .options(selectinload(Sequence.steps))
         )
-    ).scalars().all()
+    ).scalar_one()
 
-    res = SequenceDetailRead.model_validate(sequence)
-    res.steps = [SequenceStepRead.model_validate(s) for s in steps]
-    return res
+    return SequenceDetailRead.model_validate(sequence)
 
 
 @router.delete("/{sequence_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -297,7 +280,7 @@ async def delete_sequence(
 ) -> None:
     """Soft-delete / archive a sequence."""
     await check_workspace_access(session, auth_ctx, workspace_id)
-    await set_request_tenant_context(session, auth_ctx, workspace_id)
+    await set_request_tenant_context(session, workspace_id=workspace_id)
 
     sequence = (
         await session.execute(
@@ -324,7 +307,7 @@ async def enroll_leads(
 ) -> list[SequenceEnrollmentRead]:
     """Enroll leads into the outreach sequence after validating consent (AC-4 / AD-25)."""
     await check_workspace_access(session, auth_ctx, workspace_id)
-    await set_request_tenant_context(session, auth_ctx, workspace_id)
+    await set_request_tenant_context(session, workspace_id=workspace_id)
 
     sequencer = SequencerService()
     try:
@@ -350,7 +333,7 @@ async def pause_sequence(
 ) -> SequenceRead:
     """Pause an active sequence."""
     await check_workspace_access(session, auth_ctx, workspace_id)
-    await set_request_tenant_context(session, auth_ctx, workspace_id)
+    await set_request_tenant_context(session, workspace_id=workspace_id)
     sequence = await session.get(Sequence, (sequence_id, workspace_id))
     if not sequence:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sequence not found")
@@ -369,7 +352,7 @@ async def resume_sequence(
 ) -> SequenceRead:
     """Resume a paused sequence."""
     await check_workspace_access(session, auth_ctx, workspace_id)
-    await set_request_tenant_context(session, auth_ctx, workspace_id)
+    await set_request_tenant_context(session, workspace_id=workspace_id)
     sequence = await session.get(Sequence, (sequence_id, workspace_id))
     if not sequence:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sequence not found")
@@ -388,7 +371,7 @@ async def get_sequence_analytics(
 ) -> SequenceAnalyticsResponse:
     """Get real-time aggregated metrics for a sequence (AC-8)."""
     await check_workspace_access(session, auth_ctx, workspace_id)
-    await set_request_tenant_context(session, auth_ctx, workspace_id)
+    await set_request_tenant_context(session, workspace_id=workspace_id)
 
     sequencer = SequencerService()
     metrics = await sequencer.get_sequence_analytics(session, workspace_id, sequence_id)
@@ -414,7 +397,7 @@ async def list_sequence_enrollments(
 ) -> list[SequenceEnrollmentRead]:
     """List all lead enrollments for a sequence."""
     await check_workspace_access(session, auth_ctx, workspace_id)
-    await set_request_tenant_context(session, auth_ctx, workspace_id)
+    await set_request_tenant_context(session, workspace_id=workspace_id)
 
     stmt = (
         select(SequenceEnrollment)
@@ -437,7 +420,7 @@ async def list_sequence_events(
 ) -> list[SequenceEventRead]:
     """List all delivery and interaction events for a sequence."""
     await check_workspace_access(session, auth_ctx, workspace_id)
-    await set_request_tenant_context(session, auth_ctx, workspace_id)
+    await set_request_tenant_context(session, workspace_id=workspace_id)
 
     stmt = (
         select(SequenceEvent)

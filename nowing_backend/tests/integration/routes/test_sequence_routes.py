@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from app.auth.context import AuthContext
-from app.db import SequenceEnrollment, SequenceEvent, get_async_session
+from app.db import Sequence, SequenceEnrollment, SequenceEvent, SequenceStep, get_async_session
 from app.routes.sequence_routes import router as sequence_router
 from app.schemas.sequence import SequenceAnalyticsResponse
 from app.users import get_auth_context
@@ -41,6 +41,43 @@ def mock_db_session() -> AsyncMock:
     session.flush = AsyncMock()
     session.commit = AsyncMock()
     session.refresh = AsyncMock()
+
+    seq_id = uuid4()
+    sequence = Sequence(
+        id=seq_id,
+        workspace_id=1,
+        client_id="default",
+        name="Outreach VIP",
+        description="Drip sequence",
+        status="active",
+        shared=False,
+        entry_step_order=1,
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    sequence.steps = [
+        SequenceStep(
+            id=uuid4(),
+            workspace_id=1,
+            client_id="default",
+            sequence_id=seq_id,
+            step_order=1,
+            step_type="send_email",
+            channel="email",
+            template={"subject": "Hi"},
+            condition_config={},
+            is_enabled=True,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+        )
+    ]
+
+    result_mock = MagicMock()
+    result_mock.scalar_one = MagicMock(return_value=sequence)
+    result_mock.scalar_one_or_none = MagicMock(return_value=sequence)
+    result_mock.scalar_one_or_none = MagicMock(return_value=None)
+    result_mock.scalars.return_value.all.return_value = []
+    session.execute = AsyncMock(return_value=result_mock)
     return session
 
 
@@ -89,7 +126,7 @@ async def test_create_sequence_endpoint(
             assert len(data["steps"]) == 1
 
     mock_check.assert_awaited_once_with(mock_db_session, mock_auth, workspace_id)
-    mock_tenant.assert_awaited_once_with(mock_db_session, mock_auth, workspace_id)
+    mock_tenant.assert_awaited_once_with(mock_db_session, workspace_id=workspace_id)
 
 
 @pytest.mark.asyncio
@@ -138,7 +175,7 @@ async def test_enroll_leads_endpoint(
             assert data[0]["status"] == "scheduled"
 
     mock_check.assert_awaited_once_with(mock_db_session, mock_auth, workspace_id)
-    mock_tenant.assert_awaited_once_with(mock_db_session, mock_auth, workspace_id)
+    mock_tenant.assert_awaited_once_with(mock_db_session, workspace_id=workspace_id)
 
 
 @pytest.mark.asyncio
@@ -185,7 +222,7 @@ async def test_get_sequence_analytics_endpoint(
             assert data["total_cost_micros"] == 60000
 
     mock_check.assert_awaited_once_with(mock_db_session, mock_auth, workspace_id)
-    mock_tenant.assert_awaited_once_with(mock_db_session, mock_auth, workspace_id)
+    mock_tenant.assert_awaited_once_with(mock_db_session, workspace_id=workspace_id)
 
 
 @pytest.mark.asyncio
@@ -233,4 +270,4 @@ async def test_list_sequence_events_endpoint(
             assert data[0]["cost_micros"] == 5000
 
     mock_check.assert_awaited_once_with(mock_db_session, mock_auth, workspace_id)
-    mock_tenant.assert_awaited_once_with(mock_db_session, mock_auth, workspace_id)
+    mock_tenant.assert_awaited_once_with(mock_db_session, workspace_id=workspace_id)

@@ -156,4 +156,26 @@ _Curated long-term knowledge for Nowing E2E Browser Testing._
 - **E2E verification:** `pnpm exec playwright test tests/automations/campaign-sequence-builder.spec.ts` → 3/3 passed (setup + AC-1 + AC-8).
 - **Local stack:** Postgres 5434, Redis 6380, backend on 8000, zero-cache 4848, frontend on 3000. Auth state generated via `tests/auth.setup.ts` → `playwright/.auth/user.json`.
 
+## Epic 24 Full Implemented-Story Test Run (2026-08-17)
+
+- **Switched backend to E2E entrypoint** (`nowing_backend/tests/e2e/run_backend.py` on 8000) to avoid `/auth/desktop/login` 429 rate limits in Playwright helpers.
+- **Command:** `pnpm exec playwright test tests/automations/campaign-sequence-builder.spec.ts tests/leads/story-24-2-corporate-verification.spec.ts tests/zero/kanban-multicontext-sync.spec.ts tests/leads/lead-clipper-multitab.spec.ts`
+- **Result: 10/10 passed** (1.2m total).
+  - 24.1: `campaign-sequence-builder.spec.ts` — 2/2 passed (send/wait/condition sequence + analytics).
+  - 24.2: `story-24-2-corporate-verification.spec.ts` — 2/2 passed (MST/Zalo badges + session expiry redirect).
+  - 24.3: `kanban-multicontext-sync.spec.ts` — 1/1 passed (Zero Sync Kanban multi-context + OCC 409).
+  - 24.4: `lead-clipper-multitab.spec.ts` — 5/5 passed (PAT token isolation, multi-tab extractors, offline queue, deduplication).
+- **Note:** 24.5 Playbook Marketplace, 24.6 Two-Way AI Auto-Reply, and 24.7 Multi-Channel Drip remain not-implemented / backlog. Dev backend (`main.py`) restored on `localhost:8000` after the run.
+
+## 24.1 Live Manual Campaign Builder Save (2026-08-17)
+
+- Điều khiển trực tiếp qua Playwright MCP: login → `/dashboard/1/automations/campaigns/new` → thêm send_email / wait / condition → click **Lưu chuỗi tiếp cận**.
+- Save thành công, redirect sang `/dashboard/1/automations/campaigns/<uuid>` và hiển thị dashboard metric (Tổng tham gia, Đang lên lịch, Đã gửi, Đã phản hồi, Đã hủy, Thất bại, Tổng chi phí).
+- **Backend bug found & fixed during live demo:**
+  - `app/routes/sequence_routes.py` gọi sai positional args `set_request_tenant_context(session, auth_ctx, workspace_id)`, gây 500 `expected str, got int`.
+  - `create_sequence`, `get_sequence`, `update_sequence` dùng `model_validate` trên `Sequence` chưa eager-load `steps`, gây `MissingGreenlet`.
+  - Sửa: dùng keyword `workspace_id=workspace_id`, thêm `selectinload(Sequence.steps)` vào các query detail/create/update, `app/canonical/tenant_context.py` chuyển `client_id`/`agent_id`/`run_id`/`user_id` sang `str` defensively.
+  - `tests/integration/routes/test_sequence_routes.py` được cập nhật mock/assertion cho đúng signature.
+- **Re-test:** `ruff check` passed, `pytest tests/integration/routes/test_sequence_routes.py` 4/4 passed, full Epic 24 Playwright suite 10/10 passed.
+
 
