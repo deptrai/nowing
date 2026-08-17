@@ -30,6 +30,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxrender1 \
     dos2unix \
     git \
+    tini \
     # ── Phase 3e stealth hardening ──────────────────────────────────────────
     # Xvfb: virtual display so the browser can run headful without real hardware
     # (entrypoint starts it when CRAWL_HEADED_XVFB_ENABLED; used by TikTok's profile
@@ -221,4 +222,4 @@ ENV CELERY_MAX_TASKS_PER_CHILD=50
 ENV CELERY_QUEUES=""
 
 EXPOSE 8000-8001
-CMD ["/app/scripts/docker/entrypoint.sh"]
+ENTRYPOINT ["/usr/bin/tini", "--", "/app/scripts/docker/entrypoint.sh"]

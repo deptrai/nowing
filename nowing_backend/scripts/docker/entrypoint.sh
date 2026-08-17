@@ -131,6 +131,13 @@ start_beat() {
     echo "  Celery Beat PID=${PIDS[-1]}"
 }
 
+start_dsh() {
+    echo "Starting DSH Worker..."
+    python -m app.tasks.dsh_worker &
+    PIDS+=($!)
+    echo "  DSH Worker PID=${PIDS[-1]}"
+}
+
 # ── Headful browser display ──────────────────────────────────
 # Give the stealth browser a virtual display so it can run headful (TikTok's
 # profile feed is empty to headless Chromium). Off => every browser stays headless.
@@ -176,6 +183,9 @@ case "${SERVICE_ROLE}" in
         start_worker
         sleep 3
         start_beat
+        ;;
+    dsh)
+        start_dsh
         ;;
     *)
         echo "ERROR: Unknown SERVICE_ROLE '${SERVICE_ROLE}'. Use: migrate, api, worker, beat, or all"

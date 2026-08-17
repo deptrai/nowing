@@ -663,6 +663,23 @@ class Config:
         os.getenv("CONNECTOR_INDEXING_LOCK_TTL_SECONDS", str(8 * 60 * 60))
     )
 
+    # DSH worker sidecar (Story 26.2)
+    DSH_WORKER_PAT = os.getenv("DSH_WORKER_PAT", "")
+    DSH_WORKER_SECRET = os.getenv("DSH_WORKER_SECRET", "")
+    DSH_HEARTBEAT_INTERVAL_SECONDS = int(
+        os.getenv("DSH_HEARTBEAT_INTERVAL_SECONDS", str(30))
+    )
+    DSH_LOCK_TTL_SECONDS = int(os.getenv("DSH_LOCK_TTL_SECONDS", str(90)))
+    DSH_XAUTOCLAIM_MIN_IDLE_MS = int(
+        os.getenv("DSH_XAUTOCLAIM_MIN_IDLE_MS", str(60 * 1000))
+    )
+    DSH_MAX_RETRIES = int(os.getenv("DSH_MAX_RETRIES", str(3)))
+    DSH_STREAM_TASKS = os.getenv("DSH_STREAM_TASKS", "nowing:dsh:tasks")
+    DSH_STREAM_DLQ = os.getenv("DSH_STREAM_DLQ", "nowing:dsh:dlq")
+    DSH_CONSUMER_GROUP = os.getenv("DSH_CONSUMER_GROUP", "dsh_workers")
+    DSH_REDIS_BLOCK_MS = int(os.getenv("DSH_REDIS_BLOCK_MS", str(5000)))
+    DSH_SYNC_TIMEOUT_SECONDS = int(os.getenv("DSH_SYNC_TIMEOUT_SECONDS", str(60)))
+
     # Celery beat scheduling intervals (format: "<number><unit>", e.g. "2m", "1h")
     SCHEDULE_CHECKER_INTERVAL = os.getenv("SCHEDULE_CHECKER_INTERVAL", "2m")
     STRIPE_RECONCILIATION_INTERVAL = os.getenv("STRIPE_RECONCILIATION_INTERVAL", "10m")
@@ -1651,9 +1668,9 @@ class Config:
     CONTACT_ENRICHMENT_CACHE_TTL_SECONDS = max(
         1, _env_int("CONTACT_ENRICHMENT_CACHE_TTL_SECONDS", 30 * 24 * 60 * 60)
     )
-    CONTACT_ENRICHMENT_PRIMARY_PROVIDER = os.getenv(
-        "CONTACT_ENRICHMENT_PRIMARY_PROVIDER", "cleanlist"
-    ).strip().lower()
+    CONTACT_ENRICHMENT_PRIMARY_PROVIDER = (
+        os.getenv("CONTACT_ENRICHMENT_PRIMARY_PROVIDER", "cleanlist").strip().lower()
+    )
     CONTACT_ENRICHMENT_MAX_CONTACTS_PER_LEAD = max(
         1, _env_int("CONTACT_ENRICHMENT_MAX_CONTACTS_PER_LEAD", 5)
     )

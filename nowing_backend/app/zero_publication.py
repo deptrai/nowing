@@ -195,6 +195,18 @@ LEAD_ACTIVITY_LOG_COLS = [
     "updated_at",
 ]
 
+DSH_MISSION_COLS = [
+    "id",
+    "workspace_id",
+    "mission_type",
+    "status",
+    "phase",
+    "progress_percent",
+    "current_subtask_id",
+    "created_at",
+    "updated_at",
+]
+
 ZERO_PUBLICATION: Mapping[str, Sequence[str] | None] = {
     "notifications": None,
     "documents": DOCUMENT_COLS,
@@ -216,6 +228,7 @@ ZERO_PUBLICATION: Mapping[str, Sequence[str] | None] = {
     "lead_pipeline_stages": LEAD_PIPELINE_STAGE_COLS,
     "lead_assignments": LEAD_ASSIGNMENT_COLS,
     "lead_activity_logs": LEAD_ACTIVITY_LOG_COLS,
+    "dsh_missions": DSH_MISSION_COLS,
 }
 
 

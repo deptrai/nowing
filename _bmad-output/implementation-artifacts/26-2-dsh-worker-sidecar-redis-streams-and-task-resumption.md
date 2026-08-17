@@ -621,3 +621,15 @@ Created from baseline commit `699e74dfe` on 2026-08-18. This story file is the c
 - Q2: **Clean — proceed.** `async_runner`, Celery, and the `Run` table do not meet AC-1/AC-2 (Redis Streams, `XAUTOCLAIM`, per-subtask checkpoint, DLQ). The sidecar is architecture-mandated.
 - Q3: **Non-critical findings** — route to dev agent for schema/test design. The `progress_percent` bounds, payload size, empty-source batch, rate-limit key, and checkpoint schema versioning are test skeleton items.
 - Q4: **Non-critical findings** — route to dev agent for resilience design. The Redis/Postgres reconciliation, DLQ consumer, `tini`/WAL gaps, and 429/402 handling are test skeleton items.
+
+## Resolved Design Decisions
+
+The following decisions are locked before dev to avoid mid-implementation drift:
+
+1. **Sidecar auth model — Option A (recommended):** The sidecar uses a workspace-scoped `PersonalAccessToken` with `token_kind='service_account'`. The same PAT is supplied as `DSH_WORKER_PAT`. The public dispatch route `POST /api/v1/workspaces/{workspace_id}/dsh/missions` is gated by `LEADS_WRITE` (or `DSH_MISSIONS_WRITE`) through the normal `check_permission` path. The internal `PATCH /v1/dsh/missions/{mission_id}/checkpoint` route is gated by the `X-Dsh-Worker-Secret` header compared to `config.DSH_WORKER_SECRET` with `hmac.compare_digest`; workspace-membership is not required on that one route, but the PAT's `workspace_id` must match the mission's `workspace_id`.
+
+2. **One image:** `dsh-worker` runs from the existing `nowing_backend` image with `SERVICE_ROLE=dsh`. No new package is introduced.
+
+3. **Mission model:** New `dsh_missions` table in `app/db.py` with `id` (UUID PK), `workspace_id`, `user_id`, `mission_type`, `status`, `phase`, `progress_percent` (clamped 0–100), `current_subtask_id`, `retry_count`, `started_at`, `completed_at`, `payload` (JSONB, private), `checkpoint` (JSONB, private). Only PII-safe columns (`id`, `workspace_id`, `mission_type`, `status`, `phase`, `progress_percent`, `current_subtask_id`, `created_at`, `updated_at`) are published to `zero_publication`.
+
+4. **XAUTOCLAIM idempotent lock:** Each mission is a single Redis Stream message in `nowing:dsh:tasks`. The active worker owns `nowing:dsh:lock:{mission_id}` with a 90s TTL, renewed every `DSH_HEARTBEAT_INTERVAL_SECONDS` (default 30s) together with `XCLAIM ... IDLE 0` to reset PEL idle time. `XAUTOCLAIM` is run with `MINIDLE 60000` on startup and after idle loops. A second worker will skip a message whose lock is still held.

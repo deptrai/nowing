@@ -423,6 +423,10 @@ class Permission(StrEnum):
     CANONICAL_ENTITIES_READ = "canonical_entities:read"
     CANONICAL_ENTITIES_WRITE = "canonical_entities:write"
 
+    # DSH missions (Story 26.2)
+    DSH_MISSIONS_READ = "dsh_missions:read"
+    DSH_MISSIONS_WRITE = "dsh_missions:write"
+
     # Full access wildcard
     FULL_ACCESS = "*"
 
@@ -3709,6 +3713,100 @@ class Run(Base, TimestampMixin):
     # Structured skip/failure reason, sharing Story 8.7/8.8's vocabulary
     # (``disabled``, ``anonymous_unbilled``, ``missing_creator``, ...).
     memory_extraction_skip_reason = Column(String(64), nullable=True)
+
+
+class DshMissionStatus(StrEnum):
+    PENDING = "pending"
+    RUNNING = "running"
+    SUCCESS = "success"
+    ERROR = "error"
+    CANCELLED = "cancelled"
+    DLQ = "dlq"
+
+
+class DshMission(Base, TimestampMixin):
+    """
+    Long-running DSH mission state. PII/full payload and checkpoint are kept
+    in private JSONB columns and intentionally NOT published to zero_publication.
+    Only PII-safe columns are published so the mission progress UI stays live.
+    """
+
+    __tablename__ = "dsh_missions"
+    __allow_unmapped__ = True
+
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending', 'running', 'success', 'error', 'cancelled', 'dlq')",
+            name="chk_dsh_missions_status",
+        ),
+        CheckConstraint(
+            "progress_percent IS NULL OR (progress_percent >= 0 AND progress_percent <= 100)",
+            name="chk_dsh_missions_progress_percent",
+        ),
+        Index("ix_dsh_missions_workspace_id_status", "workspace_id", "status"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    mission_type = Column(
+        String(64),
+        nullable=False,
+        default="deep_lead_research",
+    )
+    status = Column(
+        String(16),
+        nullable=False,
+        default="pending",
+        server_default="pending",
+        index=True,
+    )
+    phase = Column(String(32), nullable=True)
+    progress_percent = Column(
+        Integer,
+        nullable=True,
+        default=0,
+        server_default="0",
+    )
+    current_subtask_id = Column(String(64), nullable=True)
+    retry_count = Column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default="0",
+    )
+    started_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    completed_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        index=True,
+    )
+    payload = Column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+    )
+    checkpoint = Column(
+        JSONB,
+        nullable=False,
+        default=lambda: {"phase": "crawl", "subtasks": []},
+        server_default=text('\'{"phase": "crawl", "subtasks": []}\'::jsonb'),
+    )
+    error = Column(JSONB, nullable=True)
 
 
 class AntiBotEscalation(BaseModel, TimestampMixin):

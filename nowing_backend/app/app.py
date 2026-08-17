@@ -67,6 +67,7 @@ from app.routes.auth_routes import (
     session_router,
 )
 from app.routes.chainlens_internal import router as chainlens_internal_router
+from app.routes.dsh_routes import dsh_internal_router, dsh_public_router
 from app.routes.lead_batch_routes import router as lead_batch_router
 from app.routes.self_host_research import router as self_host_research_router
 from app.routes.users_routes import router as users_router
@@ -1176,6 +1177,10 @@ app.include_router(chainlens_internal_router, prefix="/v1")
 app.include_router(self_host_research_router, prefix="/v1")
 
 app.include_router(lead_batch_router, prefix="/api/v1", tags=["lead-batch"])
+app.include_router(dsh_public_router, prefix="/api/v1", tags=["dsh"])
+
+# Internal DSH worker checkpoint callback is mounted at /v1.
+app.include_router(dsh_internal_router, prefix="/v1")
 
 app.include_router(crud_router, prefix="/api/v1", tags=["crud"])
 app.include_router(crud_router, prefix="/api", tags=["crud"])

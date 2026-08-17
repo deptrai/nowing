@@ -219,6 +219,11 @@ services:
       CELERY_TASK_DEFAULT_QUEUE: nowing
       PYTHONPATH: /app
       SERVICE_ROLE: beat
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep -q 'celery beat'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     depends_on:
       db:
         condition: service_healthy
@@ -230,6 +235,35 @@ services:
         condition: service_started
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
+    restart: unless-stopped
+
+  dsh_worker:
+    image: ghcr.io/modsetter/nowing-backend:${NOWING_VERSION:-latest}${NOWING_VARIANT:+-${NOWING_VARIANT}}
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://${DB_USER:-nowing}:${DB_PASSWORD:-nowing}@${DB_HOST:-db}:${DB_PORT:-5432}/${DB_NAME:-nowing}}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      REDIS_APP_URL: ${REDIS_URL:-redis://redis:6379/0}
+      DSH_WORKER_PAT: ${DSH_WORKER_PAT:-}
+      DSH_WORKER_SECRET: ${DSH_WORKER_SECRET:-}
+      DSH_INTERNAL_API_URL: ${DSH_INTERNAL_API_URL:-http://backend:8000}
+      PYTHONPATH: /app
+      SERVICE_ROLE: dsh
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep -q 'dsh_worker' || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     restart: unless-stopped
 
   zero-cache:

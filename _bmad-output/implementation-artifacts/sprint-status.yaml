@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-08"
-last_updated: "2026-08-18"  # 26-2 story file created and sprint-status updated to ready-for-dev
+last_updated: "2026-08-17"  # 26-2 implementation complete; moved to review
 # ponytail: 2026-08-14 — reopened deferred/business-gated/dropped to backlog; 16-1 mutation gate reopened; 15-2 moved to review; tech-debt tracker reopened.
 # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended citation ACs to 3.15 (WEB_RESULT), 9.3 (async delivery), 2.10 (Exa MCP). 3 stories → review.
 # ponytail: 2026-08-08 sprint-planning — added Epic 1, 5 (DONE brownfield); added 9.1a, 9.1b, 4.8a-4.8h, 13.2a-13.2e; upgraded 12.1-12.5 to ready-for-dev (story files exist); 12.0 DONE (legal approved).
@@ -264,7 +264,7 @@ development_status:
   # 2026-08-17: Governed by Architecture Spine (AD-101 to AD-110). FastMCP, Stateless ChainLens Ingest, dsh-worker Sidecar, Hybrid Router.
   epic-26: in-progress
   26-1: ready-for-dev  # FastMCP Ingest Gateway, Batch Ingestion & Stateless ChainLens Pipeline
-  26-2: ready-for-dev  # dsh-worker Sidecar Container, Redis Streams & Task Resumption
+  26-2: review  # dsh-worker Sidecar Container, Redis Streams & Task Resumption
   26-3: backlog  # Multi-Tier Hybrid LLM Router (Gemini Flash Free Tier + DeepSeek V4 + Qwen 3.8)
   26-4: backlog  # PII Vault AES-256 Encryption, HMAC Deduplication & Decree 13 Opt-Out
   26-5: backlog  # Split Canvas Glass Box Mission Control, Two-Tier Phone Unlock & Shimmer Influx
