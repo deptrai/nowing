@@ -560,3 +560,64 @@ docker compose -f ../docker/docker-compose.yml run --rm dsh_worker ps -p 1 -o co
 **Status:** `ready-for-dev`
 
 Created from baseline commit `699e74dfe` on 2026-08-18. This story file is the canonical input for the dev agent (Amelia / `bmad-agent-dev`). The next step is for the dev agent to resolve the four critical design decisions at the top of this file, then proceed to `bmad-nowing-test-first-atdd`.
+
+## Challenge Log (grill-me)
+
+### Q1 — Already implemented?
+- Finding: No `dsh-worker`, `dsh_missions` table, `nowing:dsh:tasks`/`nowing:dsh:dlq` stream, `XAUTOCLAIM` resume, or mission checkpoint code exists in the backend. A repo-wide search (`dsh[-_]worker|dsh_mission|dsh:tasks|XAUTOCLAIM|XREADGROUP`) only returned matches inside this story file; `find_file_by_name **/dsh_worker*` returned nothing. However, the following existing patterns should be reused rather than invented:
+  - `XGROUP CREATE` / `XREADGROUP` / `XACK` / DLQ `XADD` consumer loop: `nowing_backend/app/tasks/social_stream_worker.py:42-45, 500-614`.
+  - `XPENDING` / `XCLAIM` manual reclaim: `nowing_backend/app/tasks/lead_scrapers.py:168-214`.
+  - Async background run lifecycle (`asyncio.create_task`, `Run` row, progress bus, terminal events): `nowing_backend/app/capabilities/core/async_runner.py:49-96, 98-202`.
+  - Shared Redis client: `nowing_backend/app/redis_client.py:15-41` (5s connect/read timeouts, 30s health check).
+  - `PersonalAccessToken` / `get_auth_context`: `nowing_backend/app/db.py:3561-3629`, `nowing_backend/app/users.py:330-383`, `nowing_backend/app/utils/pat.py:36-52`.
+  - Batch lead ingestion endpoint: `nowing_backend/app/routes/lead_batch_routes.py:72-114`.
+  - `chainlens.research` capability and async REST door: `nowing_backend/app/capabilities/chainlens/research/definition.py:9-22`, `nowing_backend/app/capabilities/chainlens/research/executor.py:793-865`, `nowing_backend/app/capabilities/core/access/rest.py:201-369`.
+  - `Run` table shape: `nowing_backend/app/db.py:3630-3712`.
+- Verdict: no duplicate found. Proceed.
+
+### Q2 — Simpler alternative?
+- Alternatives considered:
+  - `app/capabilities/core/async_runner.py:83-95`: spawns `asyncio.create_task` inside the FastAPI process, persists a `Run` row, but is process-local. On API pod crash the task dies; there is no per-subtask checkpoint resumption across workers and it cannot satisfy AC-2 (`XAUTOCLAIM` + Redis Streams) or the 1–8h mission lifetime.
+  - Celery (`nowing_backend/app/celery_app.py:236-247`): has `task_time_limit=28800` (8h), `task_acks_late=True`, `reject_on_worker_lost=True`, but it retries the *whole* task on worker loss and does not expose `XREADGROUP`/`XAUTOCLAIM` consumer groups or a per-subtask PostgreSQL checkpoint. It also shares queues with fast tasks and would block the `connectors` queue.
+  - Existing `Run` table (`nowing_backend/app/db.py:3630-3712`): stores capability-level `status`, `progress`, `error` and `memory_extraction_status`, but has no mission `phase`, `checkpoint` JSONB, `retry_count`, or `dlq` state, and it does not act as a Redis Streams consumer.
+- Verdict: No acceptable simpler alternative; the Redis Streams sidecar is required by AD-102/AD-106 and the ACs. Proceed.
+
+### Q3 — Edge cases spec misses (Pattern 3)
+- [ ] Boundary: Mission `payload` or `checkpoint` JSONB approaches PostgreSQL's 1GB `jsonb` limit (`app/db.py` proposed `payload`/`checkpoint` JSONB columns). Sidecar must chunk/stream or reject oversized payloads before `XADD`.
+- [ ] Boundary: `progress_percent` not bounded; the proposed `dsh_missions` schema has `progress_percent` as an unvalidated `Integer` (story plan). Supervisor could write `>100` or `<0`; add a `CheckConstraint` (`0 <= progress_percent <= 100`) or clamp in code.
+- [ ] Null/empty: Empty `payload_json` or `payload={}`. `DshMissionRequest` schema is not yet defined; the route must either reject or the supervisor must handle `payload.query` missing/blank.
+- [ ] Null/empty: `ResearchOutput.sources` is empty. For the deterministic domain-only batch executor, zero sources means `batch_ingest_leads` with `leads: []` violates `min_length=1` (`app/routes/lead_batch_routes.py:49`). The worker must skip the ingestion sub-task rather than call the endpoint with an empty batch.
+- [ ] Null/empty: 0 sub-tasks or all sub-tasks fail. The checkpoint schema starts with `subtasks: []`; if no subtask completes the mission should terminal as `error`, not `success`, and the `XACK` should still happen.
+- [ ] Null/empty: `batch_ingest_leads` returns `ingested_count=0` and `failed_count=0` (all blacklisted/degenerate). The worker must not crash on `LeadItemValidationError` (`app/services/lead_batch_service.py:35-44`) and should record the subtask as `failed`/`skipped`.
+- [ ] Null/empty: `ResearchOutput.cost_dollars` missing or malformed. The executor already tolerates this (`app/capabilities/chainlens/research/executor.py:525-535`), but billing falls back to `CHAINLENS_QUERY_MICROS_PER_CALL` (`app/capabilities/core/billing.py:478-487`). The worker must handle a returned `costDollars` of `null`/`0`/non-finite without treating it as an error.
+- [ ] Concurrent: Worker heartbeat lost for 90s then resumes. The per-mission Redis lock TTL is 90s and `XAUTOCLAIM` min-idle is 60s; if the old worker renews just as the new one claims, both can hold the same stream message. Need idempotent sub-task execution and final `XACK` (Redis `XACK` is idempotent).
+- [ ] Concurrent: `XAUTOCLAIM` returns a message whose worker is still alive because of heartbeat delay / clock skew. The spec's `nowing:dsh:lock:{mission_id}` check helps, but the lock and PEL idle time are independent; add a `last_heartbeat` field and refuse to resume if `lock` exists and `idle_time < 90s`.
+- [ ] Concurrent: Two workers claim the same message but the lock is held. If lock acquisition is not `SET NX EX`-atomic, both can pass. The consumer must `SET` with `NX` and `PX 90000`, then `XCLAIM ... IDLE 0`, and skip on lock failure.
+- [ ] Concurrent: Mission cancelled while a sub-task is running. There is no `cancel` route in the ACs and the supervisor does not re-read `dsh_missions.status` between sub-tasks; a long ChainLens call may continue after a cancel.
+- [ ] State/schema: Checkpoint schema migration / unknown old keys. `checkpoint` is free-form JSONB with no `version` field (story plan). Resuming after a code upgrade with a changed `subtasks` shape can break resumption.
+- [ ] State/schema: `dsh_missions` `status` vocabulary includes `pending`, `running`, `success`, `error`, `cancelled`, `dlq` (story plan), but no `CHECK` constraint on the column is proposed; invalid values can be written.
+- [ ] State/schema: `Permission` enum currently has no `DSH_MISSIONS_WRITE` or `DSH_MISSIONS_READ` (`app/db.py:304-423`). `check_permission` also requires a `WorkspaceMembership` row (`app/utils/rbac.py:153-170`), which a service account may not have. Option A/B in the story must be resolved before coding the `PATCH /v1/dsh/missions/{id}/checkpoint` route.
+- [ ] State/schema: Sidecar service-account PAT can expire or be revoked mid-mission. `PersonalAccessToken.expires_at` is nullable and `resolve_pat` only checks expiry (`app/utils/pat.py:40-52`); `PATCH checkpoint` can start returning `401`/`403` 1–8 hours after dispatch.
+
+### Q4 — Failure modes unspecified (Pattern 2, 4)
+- [ ] Redis: Redis unavailable / partial. `get_redis_client()` has 5s connect and socket timeouts (`nowing_backend/app/redis_client.py:35-36`). Worker `xreadgroup`/`xautoclaim` will raise; the main loop must catch, back-off, and retry without crashing.
+- [ ] Redis: `nowing:dsh:tasks` stream is `XTRIM`-ed or the consumer group is reset/destroyed while a mission is in the PEL. `XAUTOCLAIM` returns nothing even though `dsh_missions` has a `running` row. Need a periodic DB reconciliation loop that re-`XADD`s stale `running` missions older than a threshold.
+- [ ] Redis: `XREADGROUP` block returns empty repeatedly (no new missions). The AC specifies `block=5000ms` but no back-off or max idle iterations; without a sleep the worker can spin and hammer Redis.
+- [ ] Redis: Double `XACK` / duplicate message after split-brain. `XACK` is idempotent on the same id, but if a second worker re-`XADD`s the same mission to DLQ, duplicate DLQ entries can grow. Add `original_id` dedup in DLQ.
+- [ ] Postgres: Postgres unavailable or connection pool exhausted. `engine` is configured with `pool_size=30`, `max_overflow=150`, `pool_timeout=30` (`nowing_backend/app/db.py:3846-3853`). A checkpoint update that fails means crash resumption is broken; worker must fail the mission rather than `XACK`.
+- [ ] Postgres: `dsh_missions` row is in `running` but the stream message is gone. The worker must detect this, set `status='error'` and `XACK` only when it actually owns a PEL entry; otherwise the mission orphan loop should reclaim it.
+- [ ] ChainLens/batch ingest/scraper: ChainLens API timeout / 5xx / `costDollars` missing. `_call_chainlens` uses `config.CHAINLENS_REQUEST_TIMEOUT_SECONDS` (default 300s, `app/config/__init__.py:1114-1116`) and returns `status='engine_unavailable'` for 5xx/400 (`app/capabilities/chainlens/research/executor.py:846-862`). Sidecar must treat partial output as a resume point, not a mission failure.
+- [ ] ChainLens/batch ingest/scraper: `POST /workspaces/{id}/scrapers/chainlens/research?mode=async` returns `402` from `gate_capability` (`app/capabilities/core/billing.py:204-225`) when the workspace wallet is empty. The sidecar must not retry a 402 indefinitely; it should mark the subtask `failed` and eventually DLQ.
+- [ ] ChainLens/batch ingest/scraper: `batch_ingest_leads` returns `429` (rate limit), `422` (`LeadItemValidationError`), or `5xx`. The route has `@limiter.limit("30/minute")` keyed by `get_real_client_ip` (`app/routes/lead_batch_routes.py:77`, `app/rate_limiter.py:16-39`). A long mission may exceed this, especially if the sidecar appears from a single container IP. The sidecar must back off on `429` and the route may need a workspace-scoped exemption/key.
+- [ ] ChainLens/batch ingest/scraper: Scraper returns empty or malformed. `chainlens_internal.py:198-239` returns `no_items`/`no_chunks` with `ingested_count=0` instead of raising. The sidecar must decide whether this is a retry-able failure or a terminal `success` with no output.
+- [ ] ChainLens/batch ingest/scraper: Embedding model returns wrong-dimension vectors. `ChainLensChunk.embedding = Vector(1536)` (`app/db.py:1678-1681`) while other tables use `Vector(config.embedding_model_instance.dimension)`. If a gap-fill ingest path writes a 1024-dim vector, the insert fails.
+- [ ] Auth/credit: `PATCH /v1/dsh/missions/{id}/checkpoint` returns `401`/`403`/`404`. PAT workspace-membership check may fail for the service account (`app/utils/rbac.py:153-170` requires `WorkspaceMembership`), the `X-Dsh-Worker-Secret` may mismatch, or the mission row may be deleted. The worker should stop and let DLQ logic handle it, not crash.
+- [ ] Container/shutdown: Worker container receives `SIGTERM`. `nowing_backend/Dockerfile` does not install `tini` and `docker/postgresql.conf` lacks `max_slot_wal_keep_size`/`wal_keep_size` (story file confirms). `entrypoint.sh` only traps `SIGTERM`/`SIGINT` for `api`/`worker`/`beat`/`all` cases (`nowing_backend/scripts/docker/entrypoint.sh:46-57, 156-184`); a new `dsh` case must be added and `tini` must be PID 1 to avoid zombie children and ensure clean shutdown.
+- [ ] Container/shutdown: WAL segment removed before replica catches up. `docker/postgresql.conf` currently has `wal_level=logical`, `max_replication_slots=10`, but no `max_slot_wal_keep_size`/`wal_keep_size` (`docker/postgresql.conf:1-20`). AD-108 requires `max_slot_wal_keep_size = 4096MB` and `wal_keep_size = 1024MB`.
+- [ ] Container/shutdown: DLQ after 3 retries — who consumes `nowing:dsh:dlq`? The AC only specifies writing to the DLQ. There is no consumer, no `MAXLEN`, and no retention policy; the DLQ stream will grow unbounded unless a sweep/alert is added.
+
+### Triage
+- Q1: **Clean — proceed.** No duplicate `dsh-worker` implementation; existing Redis Streams / async runner / PAT / batch lead patterns are reusable and explicitly referenced in the story.
+- Q2: **Clean — proceed.** `async_runner`, Celery, and the `Run` table do not meet AC-1/AC-2 (Redis Streams, `XAUTOCLAIM`, per-subtask checkpoint, DLQ). The sidecar is architecture-mandated.
+- Q3: **Non-critical findings** — route to dev agent for schema/test design. The `progress_percent` bounds, payload size, empty-source batch, rate-limit key, and checkpoint schema versioning are test skeleton items.
+- Q4: **Non-critical findings** — route to dev agent for resilience design. The Redis/Postgres reconciliation, DLQ consumer, `tini`/WAL gaps, and 429/402 handling are test skeleton items.
