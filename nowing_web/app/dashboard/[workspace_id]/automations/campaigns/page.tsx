@@ -9,12 +9,13 @@ import { sequenceApiService } from "@/lib/apis/sequence-api.service";
 
 export default function CampaignsListPage() {
 	const params = useParams();
-	const workspaceId = Number(params?.workspace_id) || 1;
+	const workspaceId = Number(params?.workspace_id);
 
 	const [sequences, setSequences] = useState<Sequence[]>([]);
 	const [loading, setLoading] = useState(true);
 
 	const fetchSequences = useCallback(async () => {
+		if (Number.isNaN(workspaceId)) return;
 		setLoading(true);
 		try {
 			const data = await sequenceApiService.listSequences(workspaceId);
@@ -31,6 +32,7 @@ export default function CampaignsListPage() {
 	}, [fetchSequences]);
 
 	const toggleStatus = async (sequence: Sequence) => {
+		if (Number.isNaN(workspaceId)) return;
 		try {
 			if (sequence.status === "active") {
 				await sequenceApiService.pauseSequence(workspaceId, sequence.id);
@@ -42,6 +44,14 @@ export default function CampaignsListPage() {
 			console.error("Failed to toggle sequence status:", err);
 		}
 	};
+
+	if (Number.isNaN(workspaceId)) {
+		return (
+			<div className="p-6 max-w-6xl mx-auto text-sm text-destructive">
+				Workspace ID không hợp lệ.
+			</div>
+		);
+	}
 
 	return (
 		<div className="p-6 space-y-6 max-w-6xl mx-auto">

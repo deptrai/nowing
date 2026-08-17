@@ -583,3 +583,10 @@ Reviewers: Blind Hunter (adversarial) + Edge Case Hunter + Acceptance Auditor. D
 - Verification: `ruff check` 0 errors; `pytest tests/unit/services/test_sequencer_service.py tests/integration/services/test_sequence_scheduler.py tests/integration/routes/test_sequence_routes.py` 32/32 pass.
 - Còn lại: chunk 3 frontend review nếu cần.
 
+#### Patching log — 2026-08-17 (chunk 3)
+- Apply patch frontend (`nowing_web`):
+  - `VisualCadenceBuilder.tsx`: fix wait duration input `min`/`step` từ `60` về `1` (giá trị hiển thị là giờ, tránh buộc chờ tối thiểu 60 giờ); thêm `maxLength={255}` cho tên chiến dịch (AC-1 / AD-39).
+  - `app/dashboard/[workspace_id]/automations/campaigns/[sequence_id]/page.tsx`: thêm metric card `failed_count` (AC-8) và icon `XCircle`; điều chỉnh grid `xl:grid-cols-7`; bỏ fallback `workspaceId || 1`, thêm guard `Number.isNaN(workspaceId)` sau hooks.
+  - `page.tsx` danh sách + `new/page.tsx`: bỏ fallback workspace về `1`, thêm guard `Number.isNaN(workspaceId)` để tránh gọi API với workspace sai lệch.
+- Verification: `pnpm tsc --noEmit` 0 errors; `pnpm exec biome check` trên 7 file frontend sạch; `uv run pytest` backend sequence tests vẫn 28/28 pass.
+

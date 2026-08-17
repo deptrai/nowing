@@ -11,12 +11,16 @@ import { sequenceApiService } from "@/lib/apis/sequence-api.service";
 export default function NewCampaignPage() {
 	const params = useParams();
 	const router = useRouter();
-	const workspaceId = Number(params?.workspace_id) || 1;
+	const workspaceId = Number(params?.workspace_id);
 
 	const [isSaving, setIsSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
 	const handleSave = async (payload: SequenceCreate) => {
+		if (Number.isNaN(workspaceId)) {
+			setError("Workspace ID không hợp lệ.");
+			return;
+		}
 		setIsSaving(true);
 		setError(null);
 		try {
@@ -33,6 +37,14 @@ export default function NewCampaignPage() {
 			setIsSaving(false);
 		}
 	};
+
+	if (Number.isNaN(workspaceId)) {
+		return (
+			<div className="p-6 max-w-5xl mx-auto text-sm text-destructive">
+				Workspace ID không hợp lệ.
+			</div>
+		);
+	}
 
 	return (
 		<div className="p-6 space-y-6 max-w-5xl mx-auto">

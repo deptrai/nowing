@@ -176,6 +176,7 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 							onChange={(e) => setName(e.target.value)}
 							placeholder="VD: Drip Nuôi dưỡng Khách hàng VIP BĐS"
 							className="w-full px-3 py-2 border rounded-lg bg-background text-foreground text-sm focus:ring-2 focus:ring-primary focus:outline-none"
+							maxLength={255}
 							required
 						/>
 					</div>
@@ -378,8 +379,8 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 										id={`wait-duration-input-${step.step_order}`}
 										type="number"
 										data-testid="wait-duration-input"
-										min="60"
-										step="60"
+										min="1"
+										step="1"
 										value={Math.round((step.wait_duration_seconds || 172800) / 3600)}
 										onChange={(e) =>
 											handleUpdateStep(index, {

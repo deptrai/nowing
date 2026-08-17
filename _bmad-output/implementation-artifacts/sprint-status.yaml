@@ -240,7 +240,7 @@ development_status:
   # === Epic 24: Enterprise Lead Conversion, Automated Multi-Channel Outreach & Team CRM Ecosystem ===
   # 2026-08-16: Strategic Lead Conversion, Visual Drip Outreach, Waterfall MST Verification, Multi-Seat CRM, Lead Clipper Extension
   epic-24: in-progress
-  24-1: in-progress  # Multi-Channel Drip Outreach Campaign Engine (Email-first MVP, Sequence bounded context, AD-39/41/42/43/45/49); chunk 1 (API/tests/migration) and chunk 2 (core services/scheduler) resolved — 9 + 7 patches applied. Frontend chunk 3 pending.
+  24-1: done  # Multi-Channel Drip Outreach Campaign Engine (Email-first MVP, Sequence bounded context, AD-39/41/42/43/45/49); chunk 1 (API/tests/migration), chunk 2 (core services/scheduler), and chunk 3 (frontend) resolved — patches applied.
   24-2: done  # Waterfall Phone & B2B Tax Code (MST) Corporate Verification Engine — all batch 1/2 code review patches applied, phone output canonicalized (E.164 hash/DNC/cache, domestic display), retry queue verified (Celery phone worker + masothue in-process retries), 74 unit tests pass
   24-3: in-progress  # Multi-Seat Team CRM Pipeline & Shared Workspace Credit Pooling — chunks A/B/C review done; 8 patch findings applied, 2 defer findings (scope creep, pre-existing TS error). Backend + frontend verification pass.
   24-4: done  # Nowing Lead Clipper — 3-layer code-review passed, 5 patches applied (concurrency rollback recovery, phone +8409 normalizer, tenant client_id, tracking param scrubbing, contact title)

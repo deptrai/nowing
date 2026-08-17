@@ -11,6 +11,7 @@ import {
 	RefreshCw,
 	UserMinus,
 	Users,
+	XCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -26,7 +27,7 @@ import { sequenceApiService } from "@/lib/apis/sequence-api.service";
 
 export default function CampaignAnalyticsPage() {
 	const params = useParams();
-	const workspaceId = Number(params?.workspace_id) || 1;
+	const workspaceId = Number(params?.workspace_id);
 	const sequenceId = String(params?.sequence_id || "");
 
 	const [sequence, setSequence] = useState<Sequence | null>(null);
@@ -36,7 +37,7 @@ export default function CampaignAnalyticsPage() {
 	const [loading, setLoading] = useState(true);
 
 	const loadData = useCallback(async () => {
-		if (!sequenceId) return;
+		if (!sequenceId || Number.isNaN(workspaceId)) return;
 		setLoading(true);
 		try {
 			const [seqData, analyticsData, enrollmentsData, eventsData] = await Promise.all([
@@ -59,6 +60,14 @@ export default function CampaignAnalyticsPage() {
 	useEffect(() => {
 		loadData();
 	}, [loadData]);
+
+	if (Number.isNaN(workspaceId)) {
+		return (
+			<div className="p-6 max-w-6xl mx-auto text-sm text-destructive">
+				Workspace ID không hợp lệ.
+			</div>
+		);
+	}
 
 	return (
 		<div className="p-6 space-y-6 max-w-6xl mx-auto">
@@ -95,7 +104,7 @@ export default function CampaignAnalyticsPage() {
 			</div>
 
 			{/* Metric Cards Grid */}
-			<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+			<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
 				<div
 					data-testid="metric-total-enrolled"
 					className="bg-card border rounded-xl p-4 shadow-sm space-y-1.5"
@@ -159,6 +168,17 @@ export default function CampaignAnalyticsPage() {
 					<div className="text-2xl font-bold text-foreground">
 						{analytics?.unsubscribed_count ?? 0}
 					</div>
+				</div>
+
+				<div
+					data-testid="metric-failed-count"
+					className="bg-card border rounded-xl p-4 shadow-sm space-y-1.5"
+				>
+					<div className="flex items-center justify-between text-muted-foreground">
+						<span className="text-xs font-medium">Thất bại</span>
+						<XCircle className="w-4 h-4 text-red-500" />
+					</div>
+					<div className="text-2xl font-bold text-foreground">{analytics?.failed_count ?? 0}</div>
 				</div>
 
 				<div
