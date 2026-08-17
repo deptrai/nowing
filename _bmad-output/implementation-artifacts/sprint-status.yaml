@@ -264,7 +264,7 @@ development_status:
   # 2026-08-17: Governed by Architecture Spine (AD-101 to AD-110). FastMCP, Stateless ChainLens Ingest, dsh-worker Sidecar, Hybrid Router.
   epic-26: in-progress
   26-1: ready-for-dev  # FastMCP Ingest Gateway, Batch Ingestion & Stateless ChainLens Pipeline
-  26-2: review  # dsh-worker Sidecar Container, Redis Streams & Task Resumption
+  26-2: done  # dsh-worker Sidecar Container, Redis Streams & Task Resumption
   26-3: backlog  # Multi-Tier Hybrid LLM Router (Gemini Flash Free Tier + DeepSeek V4 + Qwen 3.8)
   26-4: backlog  # PII Vault AES-256 Encryption, HMAC Deduplication & Decree 13 Opt-Out
   26-5: backlog  # Split Canvas Glass Box Mission Control, Two-Tier Phone Unlock & Shimmer Influx

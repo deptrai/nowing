@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import select
@@ -22,8 +22,47 @@ class DshMissionServiceError(Exception):
     pass
 
 
+class DshPayloadTooLargeError(DshMissionServiceError):
+    """Raised when the serialized payload exceeds the safe XADD limit."""
+
+    pass
+
+
+_VALID_STATUS_TRANSITIONS: dict[DshMissionStatus, set[DshMissionStatus]] = {
+    DshMissionStatus.PENDING: {
+        DshMissionStatus.PENDING,
+        DshMissionStatus.RUNNING,
+        DshMissionStatus.CANCELLED,
+        DshMissionStatus.ERROR,
+        DshMissionStatus.DLQ,
+    },
+    DshMissionStatus.RUNNING: {
+        DshMissionStatus.RUNNING,
+        DshMissionStatus.SUCCESS,
+        DshMissionStatus.CANCELLED,
+        DshMissionStatus.ERROR,
+        DshMissionStatus.DLQ,
+    },
+    DshMissionStatus.SUCCESS: {DshMissionStatus.SUCCESS},
+    DshMissionStatus.ERROR: {
+        DshMissionStatus.ERROR,
+        DshMissionStatus.PENDING,
+        DshMissionStatus.DLQ,
+    },
+    DshMissionStatus.DLQ: {DshMissionStatus.DLQ},
+    DshMissionStatus.CANCELLED: {
+        DshMissionStatus.CANCELLED,
+        DshMissionStatus.PENDING,
+    },
+}
+
+
 class DshMissionService:
     """Business logic for creating, checkpointing and dispatching DSH missions."""
+
+    @staticmethod
+    def _default_checkpoint() -> dict[str, Any]:
+        return {"version": 1, "phase": "crawl", "subtasks": []}
 
     async def create_mission(
         self,
@@ -42,7 +81,7 @@ class DshMissionService:
             phase="crawl",
             progress_percent=0,
             payload=payload or {},
-            checkpoint={"phase": "crawl", "subtasks": []},
+            checkpoint=self._default_checkpoint(),
         )
         session.add(mission)
         await session.flush()
@@ -77,6 +116,39 @@ class DshMissionService:
             raise DshMissionServiceError("Mission not found")
         return mission
 
+    def _validate_status_transition(
+        self,
+        mission: DshMission,
+        status: str,
+    ) -> DshMissionStatus:
+        try:
+            new_status = DshMissionStatus(status)
+        except ValueError as exc:
+            raise DshMissionServiceError(f"Invalid mission status {status!r}") from exc
+        try:
+            old_status = DshMissionStatus(mission.status)
+        except ValueError:
+            # Defensive: if the DB somehow has an invalid status, allow recovery.
+            logger.warning(
+                "Mission %s has invalid status %s", mission.id, mission.status
+            )
+            return new_status
+
+        allowed = _VALID_STATUS_TRANSITIONS.get(old_status, set())
+        if old_status != new_status and new_status not in allowed:
+            raise DshMissionServiceError(
+                f"Invalid status transition from {old_status.value} to {new_status.value}"
+            )
+        return new_status
+
+    def _bump_checkpoint_version(
+        self, checkpoint: dict[str, Any] | None
+    ) -> dict[str, Any]:
+        checkpoint = self._default_checkpoint() if not checkpoint else dict(checkpoint)
+        checkpoint["version"] = checkpoint.get("version", 0) + 1
+        checkpoint["last_updated_at"] = datetime.now(UTC).isoformat()
+        return checkpoint
+
     async def update_checkpoint(
         self,
         session: AsyncSession,
@@ -93,7 +165,19 @@ class DshMissionService:
     ) -> DshMission:
         """Patch mission state from the sidecar."""
         if checkpoint is not None:
-            mission.checkpoint = checkpoint
+            current_version = (
+                mission.checkpoint.get("version", 0)
+                if isinstance(mission.checkpoint, dict)
+                else 0
+            )
+            new_version = (
+                checkpoint.get("version", 0) if isinstance(checkpoint, dict) else 0
+            )
+            if new_version < current_version:
+                raise DshMissionServiceError(
+                    f"Stale checkpoint version {new_version} < {current_version}"
+                )
+            mission.checkpoint = self._bump_checkpoint_version(checkpoint)
         if phase is not None:
             mission.phase = phase
         if progress_percent is not None:
@@ -101,7 +185,7 @@ class DshMissionService:
         if current_subtask_id is not None:
             mission.current_subtask_id = current_subtask_id
         if status is not None:
-            mission.status = status
+            mission.status = self._validate_status_transition(mission, status).value
         if retry_count is not None:
             mission.retry_count = retry_count
         if error is not None:
@@ -113,16 +197,32 @@ class DshMissionService:
         await session.flush()
         return mission
 
+    def validate_payload_size(self, payload: dict[str, Any]) -> None:
+        """Raise DshPayloadTooLargeError if the serialized payload is too big."""
+        payload_json = json.dumps(payload or {})
+        if len(payload_json.encode("utf-8")) > config.DSH_MAX_PAYLOAD_BYTES:
+            raise DshPayloadTooLargeError(
+                f"Payload exceeds {config.DSH_MAX_PAYLOAD_BYTES} bytes"
+            )
+
     async def publish_to_stream(self, mission: DshMission) -> str:
         """Add the mission to the Redis Stream for workers to consume."""
+        self.validate_payload_size(mission.payload)
+
         redis_client = await get_redis_client()
+        payload_json = json.dumps(mission.payload)
         msg_id = await redis_client.xadd(
             config.DSH_STREAM_TASKS,
             {
                 "mission_id": str(mission.id),
                 "workspace_id": str(mission.workspace_id),
+                "user_id": str(mission.user_id) if mission.user_id else "",
                 "mission_type": mission.mission_type,
-                "payload": json.dumps(mission.payload),
+                "payload_json": payload_json,
+                "created_at": mission.created_at.isoformat()
+                if mission.created_at
+                else "",
+                "attempt": "1",
             },
         )
         return msg_id

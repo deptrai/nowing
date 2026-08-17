@@ -1,3 +1,9 @@
+## Deferred from: code review of 26-2-dsh-worker-sidecar-redis-streams-and-task-resumption (2026-08-17)
+
+- **Finding:** Missing structured mission-lifecycle observability.
+  - **Action:** Marked `[x] [Review][Defer]` in `26-2-dsh-worker-sidecar-redis-streams-and-task-resumption.md`.
+  - **Reason / when to revisit:** Functional logging exists; structured logs and metrics are a production-hardening follow-up, not a 26.2 launch blocker and not in the ACs.
+
 ## Deferred from: code review of 25-1-multitenant-user-workspace-hub-scoped-impersonation (2026-08-17)
 
 - **Finding:** E2E tests `nowing_web/tests/admin/impersonation.spec.ts` còn scaffold `test.fail`.

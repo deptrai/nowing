@@ -666,10 +666,11 @@ class Config:
     # DSH worker sidecar (Story 26.2)
     DSH_WORKER_PAT = os.getenv("DSH_WORKER_PAT", "")
     DSH_WORKER_SECRET = os.getenv("DSH_WORKER_SECRET", "")
+    DSH_INTERNAL_BASE_URL = os.getenv("DSH_INTERNAL_BASE_URL", "http://localhost:8000")
     DSH_HEARTBEAT_INTERVAL_SECONDS = int(
         os.getenv("DSH_HEARTBEAT_INTERVAL_SECONDS", str(30))
     )
-    DSH_LOCK_TTL_SECONDS = int(os.getenv("DSH_LOCK_TTL_SECONDS", str(90)))
+    DSH_LOCK_TTL_SECONDS = int(os.getenv("DSH_LOCK_TTL_SECONDS", str(120)))
     DSH_XAUTOCLAIM_MIN_IDLE_MS = int(
         os.getenv("DSH_XAUTOCLAIM_MIN_IDLE_MS", str(60 * 1000))
     )
@@ -679,6 +680,9 @@ class Config:
     DSH_CONSUMER_GROUP = os.getenv("DSH_CONSUMER_GROUP", "dsh_workers")
     DSH_REDIS_BLOCK_MS = int(os.getenv("DSH_REDIS_BLOCK_MS", str(5000)))
     DSH_SYNC_TIMEOUT_SECONDS = int(os.getenv("DSH_SYNC_TIMEOUT_SECONDS", str(60)))
+    DSH_MAX_PAYLOAD_BYTES = int(
+        os.getenv("DSH_MAX_PAYLOAD_BYTES", str(10 * 1024 * 1024))
+    )
 
     # Celery beat scheduling intervals (format: "<number><unit>", e.g. "2m", "1h")
     SCHEDULE_CHECKER_INTERVAL = os.getenv("SCHEDULE_CHECKER_INTERVAL", "2m")

@@ -3803,8 +3803,10 @@ class DshMission(Base, TimestampMixin):
     checkpoint = Column(
         JSONB,
         nullable=False,
-        default=lambda: {"phase": "crawl", "subtasks": []},
-        server_default=text('\'{"phase": "crawl", "subtasks": []}\'::jsonb'),
+        default=lambda: {"version": 1, "phase": "crawl", "subtasks": []},
+        server_default=text(
+            '\'{"version": 1, "phase": "crawl", "subtasks": []}\'::jsonb'
+        ),
     )
     error = Column(JSONB, nullable=True)
 

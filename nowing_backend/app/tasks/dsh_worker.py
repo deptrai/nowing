@@ -1,38 +1,82 @@
 from __future__ import annotations
 
+import argparse
 import asyncio
 import contextlib
 import json
 import logging
 import os
+import signal
 import socket
+import sys
 import uuid
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 from redis.asyncio.client import Redis
-from redis.exceptions import (
-    BusyGroupError,
-    ResponseError,
-)
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from redis.exceptions import ResponseError
 
 from app.config import config
-from app.db import DshMission, DshMissionStatus, async_session_maker
 from app.redis_client import get_redis_client
-from app.schemas.dsh import DshMissionCheckpointUpdate
-from app.services.dsh_mission_service import DshMissionService
 
 logger = logging.getLogger(__name__)
 
 
-def _default_consumer_name() -> str:
-    """Return a unique consumer name per process/host for load balancing."""
-    return f"{socket.gethostname()}-{os.getpid()}-{uuid.uuid4().hex[:8]}"
+def _checkpoint_update(**kwargs: Any) -> dict[str, Any]:
+    """Build a JSON-serialisable checkpoint update with None values omitted."""
+    return {k: v for k, v in kwargs.items() if v is not None}
 
 
+# ---------------------------------------------------------------------------
+# Error taxonomy for the sidecar
+# ---------------------------------------------------------------------------
+class DshWorkerError(Exception):
+    """Base class for DSH worker errors."""
+
+    pass
+
+
+class DshRetryableError(DshWorkerError):
+    """A transient failure that should count against the retry budget."""
+
+    pass
+
+
+class DshNonRetryableError(DshWorkerError):
+    """A failure that should move the mission straight to the DLQ."""
+
+    pass
+
+
+class DshBillingError(DshNonRetryableError):
+    """The workspace cannot pay for the operation (402)."""
+
+    pass
+
+
+class DshNotFoundError(DshNonRetryableError):
+    """A requested resource does not exist (404)."""
+
+    pass
+
+
+class DshValidationError(DshNonRetryableError):
+    """The payload or state is invalid (422)."""
+
+    pass
+
+
+class DshTransientError(DshRetryableError):
+    """A transient REST or upstream error (5xx, 429, timeout)."""
+
+    pass
+
+
+# ---------------------------------------------------------------------------
+# REST client
+# ---------------------------------------------------------------------------
 class DshRestClient:
     """REST client used by the sidecar to talk to the Nowing gateway."""
 
@@ -56,32 +100,94 @@ class DshRestClient:
             timeout=httpx.Timeout(timeout),
         )
 
+    def _raise_for_status(
+        self,
+        response: httpx.Response,
+        context: str,
+    ) -> None:
+        """Classify REST failures into retryable vs non-retryable buckets."""
+        if response.is_success:
+            return
+        status = response.status_code
+        detail = f"{context}: HTTP {status} {response.text[:200]}"
+        if status == 402:
+            raise DshBillingError(detail)
+        if status == 404:
+            raise DshNotFoundError(detail)
+        if status == 422:
+            raise DshValidationError(detail)
+        if status == 429 or status >= 500:
+            raise DshTransientError(detail)
+        # Any other 4xx is treated as non-retryable (e.g. 403 misconfiguration).
+        raise DshNonRetryableError(detail)
+
     async def get_mission(self, mission_id: uuid.UUID) -> dict[str, Any]:
         response = await self._client.get(f"/v1/dsh/missions/{mission_id}")
-        response.raise_for_status()
+        self._raise_for_status(response, f"get_mission {mission_id}")
         return response.json()
 
     async def patch_checkpoint(
         self,
         mission_id: uuid.UUID,
-        update: DshMissionCheckpointUpdate,
+        update: dict[str, Any],
     ) -> dict[str, Any]:
         response = await self._client.patch(
             f"/v1/dsh/missions/{mission_id}/checkpoint",
-            json=update.model_dump(exclude_none=True),
+            json=update,
         )
-        response.raise_for_status()
+        self._raise_for_status(response, f"patch_checkpoint {mission_id}")
         return response.json()
 
     async def chainlens_research(self, workspace_id: int, query: str) -> dict[str, Any]:
-        payload = {"query": query}
+        """Start chainlens.research in async mode and poll until terminal."""
+        payload = {"query": query, "mode": "balanced"}
         response = await self._client.post(
-            f"/api/v1/workspaces/{workspace_id}/scrapers/chainlens/research?mode=sync",
+            f"/api/v1/workspaces/{workspace_id}/scrapers/chainlens/research?mode=async",
             json=payload,
             timeout=httpx.Timeout(config.DSH_SYNC_TIMEOUT_SECONDS),
         )
-        response.raise_for_status()
+
+        if response.status_code == 202:
+            body = response.json()
+            run_id = body.get("run_id")
+            if not run_id:
+                raise DshTransientError(
+                    "chainlens.research returned 202 without run_id"
+                )
+            return await self._poll_run(workspace_id, run_id)
+
+        # In case the gateway allowed sync, treat a 200 as a completed output.
+        self._raise_for_status(response, "chainlens_research")
         return response.json()
+
+    async def _poll_run(self, workspace_id: int, run_id: str) -> dict[str, Any]:
+        """Poll GET /scrapers/runs/{run_id} until a terminal status."""
+        while True:
+            response = await self._client.get(
+                f"/api/v1/workspaces/{workspace_id}/scrapers/runs/{run_id}",
+                timeout=httpx.Timeout(config.DSH_SYNC_TIMEOUT_SECONDS),
+            )
+            self._raise_for_status(response, f"poll_run {run_id}")
+            run = response.json()
+            status = run.get("status")
+
+            if status == "success":
+                output_text = run.get("output_text") or ""
+                if not output_text:
+                    raise DshTransientError(f"Run {run_id} succeeded with no output")
+                try:
+                    return json.loads(output_text.splitlines()[0])
+                except (json.JSONDecodeError, IndexError) as exc:
+                    raise DshTransientError(
+                        f"Run {run_id} has unparsable output: {exc}"
+                    ) from exc
+
+            if status in {"error", "cancelled"}:
+                raise DshTransientError(
+                    f"Run {run_id} ended with status {status}: {run.get('error')}"
+                )
+
+            await asyncio.sleep(5)
 
     async def batch_ingest_leads(
         self,
@@ -101,20 +207,32 @@ class DshRestClient:
                 logger.warning("batch_ingest rate limited; retry in %ss", wait)
                 await asyncio.sleep(wait)
                 continue
-            response.raise_for_status()
+            self._raise_for_status(response, "batch_ingest_leads")
             return response.json()
-        response.raise_for_status()
-        return {}
+        raise DshTransientError("batch_ingest_leads exhausted retries on 429")
 
     async def aclose(self) -> None:
         await self._client.aclose()
 
 
+# ---------------------------------------------------------------------------
+# Mission executor
+# ---------------------------------------------------------------------------
 class DeepLeadResearchExecutor:
     """Default deterministic sequential executor for deep-lead-research missions."""
 
     def __init__(self, rest_client: DshRestClient) -> None:
         self.rest_client = rest_client
+
+    @staticmethod
+    def _extract_domain(url: str | None) -> str | None:
+        if not url:
+            return None
+        try:
+            parsed = urlparse(url)
+            return parsed.netloc if parsed.netloc else None
+        except Exception:
+            return None
 
     async def _patch_checkpoint(
         self,
@@ -124,24 +242,53 @@ class DeepLeadResearchExecutor:
         progress_percent: int,
         current_subtask_id: str | None = None,
         status: str | None = None,
+        error: dict[str, Any] | None = None,
+        started_at: datetime | None = None,
+        completed_at: datetime | None = None,
     ) -> dict[str, Any]:
-        update = DshMissionCheckpointUpdate(
+        update = _checkpoint_update(
             checkpoint=checkpoint,
             phase=phase,
             progress_percent=progress_percent,
             current_subtask_id=current_subtask_id,
             status=status,
+            error=error,
+            started_at=started_at,
+            completed_at=completed_at,
         )
         return await self.rest_client.patch_checkpoint(mission_id, update)
 
-    async def run(self, mission: DshMission) -> None:
+    def _mission_id(self, mission: dict[str, Any] | Any) -> uuid.UUID:
+        raw = mission["id"] if isinstance(mission, dict) else mission.id
+        return uuid.UUID(raw) if isinstance(raw, str) else raw
+
+    def _mission_workspace_id(self, mission: dict[str, Any] | Any) -> int:
+        return (
+            mission["workspace_id"]
+            if isinstance(mission, dict)
+            else mission.workspace_id
+        )
+
+    def _mission_payload(self, mission: dict[str, Any] | Any) -> dict[str, Any]:
+        payload = mission["payload"] if isinstance(mission, dict) else mission.payload
+        return payload or {}
+
+    def _mission_checkpoint(self, mission: dict[str, Any] | Any) -> dict[str, Any]:
+        checkpoint = (
+            mission["checkpoint"] if isinstance(mission, dict) else mission.checkpoint
+        )
+        if not checkpoint:
+            checkpoint = {"version": 1, "phase": "crawl", "subtasks": []}
+        return checkpoint
+
+    async def run(self, mission: dict[str, Any] | Any) -> None:
         """Run the four phases sequentially, updating checkpoint after each."""
-        mission_id = mission.id
-        workspace_id = mission.workspace_id
-        payload = mission.payload or {}
+        mission_id = self._mission_id(mission)
+        workspace_id = self._mission_workspace_id(mission)
+        payload = self._mission_payload(mission)
         query = payload.get("query", "") if isinstance(payload, dict) else ""
 
-        checkpoint = mission.checkpoint or {"phase": "crawl", "subtasks": []}
+        checkpoint = self._mission_checkpoint(mission)
         subtasks = checkpoint.get("subtasks", [])
 
         # Phase: crawl -> reasoning -> extraction -> ingestion
@@ -238,6 +385,8 @@ class DeepLeadResearchExecutor:
             extracted_leads = [
                 self._source_to_lead(source, workspace_id) for source in sources
             ]
+            # Filter degenerate leads that would fail the batch-ingest validator.
+            extracted_leads = [lead for lead in extracted_leads if lead is not None]
             subtasks.append(
                 {
                     "id": "extraction",
@@ -303,14 +452,19 @@ class DeepLeadResearchExecutor:
 
     def _source_to_lead(
         self, source: dict[str, Any], workspace_id: int
-    ) -> dict[str, Any]:
-        """Convert a ChainLens source into a LeadItem-shaped dict."""
-        return {
+    ) -> dict[str, Any] | None:
+        """Convert a ChainLens source into a LeadItem-shaped dict.
+
+        Returns None for degenerate leads that would fail batch validation.
+        """
+        url = source.get("url")
+        domain = source.get("domain") or self._extract_domain(url)
+        lead = {
             "source": "dsh_research",
-            "source_url": source.get("url"),
+            "source_url": url,
             "client_id": source.get("client_id"),
             "company_name": source.get("company_name"),
-            "domain": source.get("domain"),
+            "domain": domain,
             "phone": source.get("phone"),
             "email": source.get("email"),
             "title": source.get("title"),
@@ -320,6 +474,27 @@ class DeepLeadResearchExecutor:
             "intent_score": source.get("intent_score", 0.0),
             "composite_score": source.get("composite_score"),
         }
+        if not any([lead["phone"], lead["email"], lead["domain"]]):
+            logger.warning("Skipping degenerate lead from source %s", url)
+            return None
+        return lead
+
+
+# ---------------------------------------------------------------------------
+# Worker
+# ---------------------------------------------------------------------------
+def _default_consumer_name() -> str:
+    """Return a unique consumer name per process/host for load balancing."""
+    return f"{socket.gethostname()}-{os.getpid()}-{uuid.uuid4().hex[:8]}"
+
+
+_RENEW_LOCK_SCRIPT = """
+if redis.call('get', KEYS[1]) == ARGV[1] then
+    return redis.call('expire', KEYS[1], ARGV[2])
+else
+    return 0
+end
+"""
 
 
 class DshWorker:
@@ -330,10 +505,12 @@ class DshWorker:
         consumer_name: str | None = None,
         redis_client: Redis | None = None,
         executor: DeepLeadResearchExecutor | None = None,
+        rest_client: DshRestClient | None = None,
     ) -> None:
         self.consumer_name = consumer_name or _default_consumer_name()
         self._redis = redis_client
         self._executor = executor
+        self._rest_client = rest_client
         self._running = False
         self._tasks: set[asyncio.Task] = set()
 
@@ -361,6 +538,17 @@ class DshWorker:
     def max_retries(self) -> int:
         return config.DSH_MAX_RETRIES
 
+    @property
+    def rest_client(self) -> DshRestClient:
+        if self._rest_client is None:
+            self._rest_client = DshRestClient(
+                config.DSH_INTERNAL_BASE_URL,
+                config.DSH_WORKER_PAT,
+                config.DSH_WORKER_SECRET,
+                timeout=float(config.DSH_SYNC_TIMEOUT_SECONDS),
+            )
+        return self._rest_client
+
     def _lock_key(self, mission_id: uuid.UUID) -> str:
         return f"nowing:dsh:lock:{mission_id}"
 
@@ -374,14 +562,12 @@ class DshWorker:
             await redis_client.xgroup_create(
                 name=self.stream,
                 groupname=self.group,
-                id="0",
+                id="$",
                 mkstream=True,
             )
         except ResponseError as exc:
             if "BUSYGROUP" not in str(exc).upper():
                 raise
-        except BusyGroupError:
-            pass
 
     async def _try_set_lock(
         self,
@@ -402,7 +588,10 @@ class DshWorker:
         mission_id: uuid.UUID,
         msg_id: bytes | str,
     ) -> bool:
-        """Heartbeat: reset PEL idle time and refresh the Redis lock."""
+        """Heartbeat: reset PEL idle time and refresh the Redis lock.
+
+        Uses a Lua script so we only extend TTL when we still own the lock.
+        """
         try:
             await redis_client.xclaim(
                 self.stream,
@@ -411,29 +600,31 @@ class DshWorker:
                 0,
                 [msg_id],
             )
-            await redis_client.expire(self._lock_key(mission_id), self.lock_ttl)
-            return True
+            ok = await redis_client.eval(
+                _RENEW_LOCK_SCRIPT,
+                1,
+                self._lock_key(mission_id),
+                self.consumer_name,
+                self.lock_ttl,
+            )
+            return bool(ok)
         except Exception as exc:
             logger.warning("Heartbeat failed for mission %s: %s", mission_id, exc)
             return False
 
-    async def _autoclaim(self, redis_client: Redis) -> list[tuple[str, dict[str, str]]]:
+    async def _autoclaim(self, redis_client: Redis) -> list[tuple[str, dict[str, Any]]]:
         """Reclaim idle messages using XAUTOCLAIM."""
-        claimed: list[tuple[str, dict[str, str]]] = []
-        start_id = "0"
+        claimed: list[tuple[str, dict[str, Any]]] = []
+        start_id = "0-0"
         while True:
-            try:
-                next_start, messages = await redis_client.xautoclaim(
-                    self.stream,
-                    self.group,
-                    self.consumer_name,
-                    config.DSH_XAUTOCLAIM_MIN_IDLE_MS,
-                    start_id,
-                    count=10,
-                )
-            except Exception as exc:
-                logger.exception("XAUTOCLAIM failed: %s", exc)
-                break
+            next_start, messages = await redis_client.xautoclaim(
+                self.stream,
+                self.group,
+                self.consumer_name,
+                config.DSH_XAUTOCLAIM_MIN_IDLE_MS,
+                start_id,
+                count=10,
+            )
             for msg_id, fields in messages:
                 claimed.append((msg_id, fields))
             if not next_start or next_start == start_id or not messages:
@@ -446,41 +637,45 @@ class DshWorker:
         for key, value in fields.items():
             key_s = key.decode() if isinstance(key, bytes) else key
             value_s = value.decode() if isinstance(value, bytes) else value
-            if key_s in ("payload", "checkpoint"):
+            if key_s in ("payload", "payload_json"):
+                try:
+                    parsed["payload"] = json.loads(value_s)
+                except json.JSONDecodeError:
+                    parsed["payload"] = value_s
+            elif key_s == "checkpoint":
                 try:
                     parsed[key_s] = json.loads(value_s)
                 except json.JSONDecodeError:
+                    parsed[key_s] = value_s
+            elif key_s == "attempt":
+                try:
+                    parsed[key_s] = int(value_s)
+                except (ValueError, TypeError):
                     parsed[key_s] = value_s
             else:
                 parsed[key_s] = value_s
         return parsed
 
-    async def _load_mission(
+    async def _heartbeat_loop(
         self,
-        session: AsyncSession,
+        redis_client: Redis,
         mission_id: uuid.UUID,
-    ) -> DshMission | None:
-        result = await session.execute(
-            select(DshMission).where(DshMission.id == mission_id)
-        )
-        return result.scalars().first()
-
-    async def _mission_from_stream(
-        self,
-        session: AsyncSession,
-        payload: dict[str, Any],
-    ) -> DshMission | None:
-        mission_id = payload.get("mission_id")
-        if not mission_id:
-            return None
+        msg_id: str,
+        executor_task: asyncio.Task,
+    ) -> None:
+        """Periodically reset idle time and renew the lock while a mission runs."""
         try:
-            return await self._load_mission(
-                session,
-                uuid.UUID(mission_id),
-            )
-        except Exception as exc:
-            logger.warning("Could not load mission %s: %s", mission_id, exc)
-            return None
+            while self._running:
+                await asyncio.sleep(self.heartbeat_interval)
+                ok = await self._renew_lock_and_idle(redis_client, mission_id, msg_id)
+                if not ok:
+                    logger.warning(
+                        "Lock lost for mission %s; cancelling executor", mission_id
+                    )
+                    executor_task.cancel()
+                    break
+        except asyncio.CancelledError:
+            pass
 
     async def _handle_message(
         self,
@@ -490,159 +685,249 @@ class DshWorker:
     ) -> bool:
         """Process one stream message. Returns True if XACK should be attempted."""
         parsed = self._parse_payload(fields)
-        async with async_session_maker() as session:
-            mission = await self._mission_from_stream(session, parsed)
-            if mission is None:
-                logger.error("Mission not found for stream message %s", msg_id)
+        mission_id_str = parsed.get("mission_id")
+        if not mission_id_str:
+            logger.error("Stream message %s has no mission_id", msg_id)
+            return True
+
+        try:
+            mission_id = uuid.UUID(str(mission_id_str))
+        except ValueError:
+            logger.error(
+                "Invalid mission_id %r in stream message %s", mission_id_str, msg_id
+            )
+            return True
+
+        # Idempotent lock check for new and reclaimed messages.
+        if not await self._try_set_lock(redis_client, mission_id):
+            logger.info("Mission %s is already locked; skip", mission_id)
+            return False
+
+        try:
+            mission = await self.rest_client.get_mission(mission_id)
+        except DshNonRetryableError as exc:
+            logger.error("Mission %s non-retryable load error: %s", mission_id, exc)
+            try:
+                await self._dlq(redis_client, msg_id, mission_id, str(exc))
+            except Exception as dlq_exc:
+                logger.exception(
+                    "Failed to DLQ mission %s after non-retryable load: %s",
+                    mission_id,
+                    dlq_exc,
+                )
+                return False
+            return True
+        except Exception as exc:
+            logger.exception("Could not load mission %s: %s", mission_id, exc)
+            return False
+
+        try:
+            # Only the default deep-lead-research executor is supported in 26.2.
+            if mission.get("mission_type") != "deep_lead_research":
+                await self.rest_client.patch_checkpoint(
+                    mission_id,
+                    _checkpoint_update(
+                        status="error",
+                        error={
+                            "message": f"Unsupported mission_type {mission.get('mission_type')!r}",
+                            "failed_at": datetime.now(UTC).isoformat(),
+                        },
+                        completed_at=datetime.now(UTC),
+                    ),
+                )
                 return True
 
-            mission_id = mission.id
+            # Seed checkpoint attempt from the stream if the row is fresh.
+            checkpoint = mission.get("checkpoint") or {}
+            if checkpoint.get("attempt") is None:
+                checkpoint["attempt"] = parsed.get("attempt", 1)
+                mission["checkpoint"] = checkpoint
 
-            # Idempotent lock check
-            if not await self._try_set_lock(redis_client, mission_id):
-                logger.info("Mission %s is already locked; skip", mission_id)
-                return False
-
-            # Heartbeat task
-            heartbeat_task = asyncio.create_task(
-                self._heartbeat_loop(redis_client, mission_id, msg_id)
+            await self.rest_client.patch_checkpoint(
+                mission_id,
+                _checkpoint_update(
+                    status="running",
+                    phase="crawl",
+                    progress_percent=0,
+                    current_subtask_id="crawl",
+                    checkpoint=checkpoint,
+                    started_at=datetime.now(UTC),
+                ),
             )
+
+            executor = self._executor or DeepLeadResearchExecutor(self.rest_client)
+            executor_task = asyncio.create_task(executor.run(mission))
+            heartbeat_task = asyncio.create_task(
+                self._heartbeat_loop(redis_client, mission_id, msg_id, executor_task)
+            )
+            self._tasks.add(executor_task)
             self._tasks.add(heartbeat_task)
 
             try:
-                # Mark running
-                service = DshMissionService()
-                await service.update_checkpoint(
-                    session,
-                    mission,
-                    status=DshMissionStatus.RUNNING.value,
-                    started_at=datetime.now(UTC),
-                    phase="crawl",
-                    progress_percent=0,
+                await executor_task
+                await self.rest_client.patch_checkpoint(
+                    mission_id,
+                    _checkpoint_update(
+                        status="success",
+                        phase="terminal",
+                        progress_percent=100,
+                        current_subtask_id=None,
+                        completed_at=datetime.now(UTC),
+                    ),
                 )
-                await session.commit()
-
-                executor = self._executor or self._build_default_executor()
-                await executor.run(mission)
-
-                # Success terminal
-                await service.update_checkpoint(
-                    session,
-                    mission,
-                    status=DshMissionStatus.SUCCESS.value,
-                    completed_at=datetime.now(UTC),
-                    phase="terminal",
-                    progress_percent=100,
-                )
-                await session.commit()
                 return True
-            except Exception as exc:
-                await session.rollback()
-                logger.exception("Mission %s failed: %s", mission_id, exc)
-                await self._maybe_retry_or_dlq(
-                    session,
-                    redis_client,
-                    mission,
-                    str(exc),
+            except asyncio.CancelledError:
+                logger.info(
+                    "Mission %s cancelled (heartbeat/lock lost or shutdown)", mission_id
                 )
-                # Do not XACK here; retry/dlq logic decides.
                 return False
             finally:
                 heartbeat_task.cancel()
                 self._tasks.discard(heartbeat_task)
+                self._tasks.discard(executor_task)
                 with contextlib.suppress(asyncio.CancelledError):
                     await heartbeat_task
 
+        except asyncio.CancelledError:
+            logger.info(
+                "Mission %s cancelled (heartbeat/lock lost or shutdown)", mission_id
+            )
+            return False
+        except DshNonRetryableError as exc:
+            try:
+                await self._dlq(redis_client, msg_id, mission, str(exc))
+                return True
+            except Exception as dlq_exc:
+                logger.exception(
+                    "Failed to DLQ mission %s after non-retryable error: %s",
+                    mission_id,
+                    dlq_exc,
+                )
+                return False
+        except Exception as exc:
+            try:
+                return await self._maybe_retry_or_dlq(
+                    redis_client, msg_id, mission, str(exc)
+                )
+            except Exception as retry_exc:
+                logger.exception(
+                    "Failed to schedule retry for mission %s: %s",
+                    mission_id,
+                    retry_exc,
+                )
+                return False
+
     async def _maybe_retry_or_dlq(
         self,
-        session: AsyncSession,
         redis_client: Redis,
-        mission: DshMission,
+        msg_id: str,
+        mission: dict[str, Any],
         error_message: str,
-    ) -> None:
-        """Increment retry_count; if exceeded, DLQ and XACK."""
-        service = DshMissionService()
-        retry_count = (mission.retry_count or 0) + 1
-        checkpoint = mission.checkpoint or {}
-        checkpoint["attempt"] = (checkpoint.get("attempt", 0) or 0) + 1
+    ) -> bool:
+        """Increment retry_count; if exceeded, DLQ and signal XACK."""
+        mission_id = uuid.UUID(str(mission["id"]))
+        retry_count = (mission.get("retry_count") or 0) + 1
+        checkpoint = mission.get("checkpoint") or {}
+        checkpoint["attempt"] = (checkpoint.get("attempt") or 0) + 1
+        checkpoint["version"] = (checkpoint.get("version") or 0) + 1
 
         if retry_count >= self.max_retries:
-            await service.update_checkpoint(
-                session,
+            return await self._dlq(
+                redis_client,
+                msg_id,
                 mission,
-                status=DshMissionStatus.DLQ.value,
+                error_message,
                 retry_count=retry_count,
-                checkpoint=checkpoint,
-                error={
-                    "message": error_message,
-                    "failed_at": datetime.now(UTC).isoformat(),
-                },
             )
-            await session.commit()
-            try:
-                await redis_client.xadd(
-                    self.dlq,
-                    {
-                        "original_id": str(mission.id),
-                        "payload": json.dumps(mission.payload),
-                        "error": error_message,
-                        "failed_at": datetime.now(UTC).isoformat(),
-                    },
-                )
-            except Exception as exc:
-                logger.exception(
-                    "Failed to write mission %s to DLQ: %s", mission.id, exc
-                )
-        else:
-            await service.update_checkpoint(
-                session,
-                mission,
-                status=DshMissionStatus.PENDING.value,
-                retry_count=retry_count,
-                checkpoint=checkpoint,
-                error={
-                    "message": error_message,
-                    "failed_at": datetime.now(UTC).isoformat(),
-                },
-            )
-            await session.commit()
 
-    async def _heartbeat_loop(
+        await self.rest_client.patch_checkpoint(
+            mission_id,
+            _checkpoint_update(
+                status="pending",
+                checkpoint=checkpoint,
+                retry_count=retry_count,
+                error={
+                    "message": error_message,
+                    "failed_at": datetime.now(UTC).isoformat(),
+                },
+            ),
+        )
+        return False
+
+    async def _dlq(
         self,
         redis_client: Redis,
-        mission_id: uuid.UUID,
         msg_id: str,
-    ) -> None:
-        """Periodically reset idle time and renew the lock while a mission runs."""
-        while True:
-            await asyncio.sleep(self.heartbeat_interval)
-            ok = await self._renew_lock_and_idle(redis_client, mission_id, msg_id)
-            if not ok:
-                break
+        mission_or_id: dict[str, Any] | uuid.UUID,
+        error_message: str,
+        retry_count: int | None = None,
+    ) -> bool:
+        """Move a mission to the DLQ, writing a bounded stream entry."""
+        if isinstance(mission_or_id, uuid.UUID):
+            # Used when the mission row could not be loaded at all.
+            mission_id = mission_or_id
+            payload: dict[str, Any] | None = None
+            checkpoint: dict[str, Any] = {}
+            attempt = 1
+            if retry_count is None:
+                retry_count = 0
+        else:
+            mission = mission_or_id
+            mission_id = uuid.UUID(str(mission["id"]))
+            payload = mission.get("payload")
+            checkpoint = mission.get("checkpoint") or {}
+            attempt = checkpoint.get("attempt", 1)
+            if retry_count is None:
+                retry_count = mission.get("retry_count") or 0
 
-    def _build_default_executor(self) -> DeepLeadResearchExecutor:
-        pat = config.DSH_WORKER_PAT
-        secret = config.DSH_WORKER_SECRET
-        base_url = os.getenv("DSH_INTERNAL_API_URL", "http://localhost:8000")
-        rest_client = DshRestClient(base_url, pat, secret)
-        return DeepLeadResearchExecutor(rest_client)
+        checkpoint["version"] = (checkpoint.get("version") or 0) + 1
+        error = {
+            "message": error_message,
+            "failed_at": datetime.now(UTC).isoformat(),
+        }
+
+        await self.rest_client.patch_checkpoint(
+            mission_id,
+            _checkpoint_update(
+                status="dlq",
+                checkpoint=checkpoint,
+                retry_count=retry_count,
+                error=error,
+                completed_at=datetime.now(UTC),
+            ),
+        )
+
+        try:
+            await redis_client.xadd(
+                self.dlq,
+                {
+                    "original_id": msg_id,
+                    "mission_id": str(mission_id),
+                    "payload_json": json.dumps(payload) if payload is not None else "",
+                    "error_json": json.dumps(error),
+                    "failed_at": error["failed_at"],
+                    "attempt": str(attempt),
+                },
+                maxlen=10000,
+                approximate=True,
+            )
+        except Exception as exc:
+            logger.exception("Failed to write mission %s to DLQ: %s", mission_id, exc)
+            # The checkpoint is already dlq; a missing DLQ stream entry is logged.
+        return True
 
     async def _read_new_messages(
         self,
         redis_client: Redis,
     ) -> list[tuple[str, dict[str, Any]]]:
         """Read one batch of new messages from the consumer group."""
-        try:
-            entries = await redis_client.xreadgroup(
-                groupname=self.group,
-                consumername=self.consumer_name,
-                streams={self.stream: ">"},
-                count=1,
-                block=config.DSH_REDIS_BLOCK_MS,
-            )
-        except Exception as exc:
-            logger.error("XREADGROUP failed: %s", exc)
-            return []
+        entries = await redis_client.xreadgroup(
+            groupname=self.group,
+            consumername=self.consumer_name,
+            streams={self.stream: ">"},
+            count=1,
+            block=config.DSH_REDIS_BLOCK_MS,
+        )
 
         messages: list[tuple[str, dict[str, Any]]] = []
         if entries:
@@ -652,22 +937,63 @@ class DshWorker:
         return messages
 
     async def run(self) -> None:
-        """Main worker loop."""
+        """Main worker loop with bounded exponential backoff on Redis errors."""
         redis_client = await self._redis_client()
         await self._ensure_consumer_group(redis_client)
+        self._redis = redis_client
         self._running = True
 
+        consecutive_redis_errors = 0
         last_autoclaim = 0.0
         while self._running:
             # Periodically XAUTOCLAIM idle messages
             now = asyncio.get_event_loop().time()
             if now - last_autoclaim >= self.heartbeat_interval:
-                reclaimed = await self._autoclaim(redis_client)
+                try:
+                    reclaimed = await self._autoclaim(redis_client)
+                    consecutive_redis_errors = 0
+                except Exception as exc:
+                    logger.exception("XAUTOCLAIM failed: %s", exc)
+                    consecutive_redis_errors += 1
+                    await asyncio.sleep(min(30, 2**consecutive_redis_errors))
+                    continue
+
                 for msg_id, fields in reclaimed:
-                    await self._handle_message(redis_client, msg_id, fields)
+                    parsed = self._parse_payload(fields)
+                    mission_id_str = parsed.get("mission_id")
+                    if mission_id_str:
+                        try:
+                            lock_key = self._lock_key(uuid.UUID(str(mission_id_str)))
+                            if await redis_client.exists(lock_key):
+                                logger.info(
+                                    "Reclaimed message %s for mission %s still locked; skip",
+                                    msg_id,
+                                    mission_id_str,
+                                )
+                                continue
+                        except Exception:
+                            pass
+
+                    should_ack = await self._handle_message(
+                        redis_client, msg_id, fields
+                    )
+                    if should_ack:
+                        try:
+                            await redis_client.xack(self.stream, self.group, msg_id)
+                        except Exception as exc:
+                            logger.exception("Failed to XACK %s: %s", msg_id, exc)
+
                 last_autoclaim = now
 
-            messages = await self._read_new_messages(redis_client)
+            try:
+                messages = await self._read_new_messages(redis_client)
+                consecutive_redis_errors = 0
+            except Exception as exc:
+                logger.exception("XREADGROUP failed: %s", exc)
+                consecutive_redis_errors += 1
+                await asyncio.sleep(min(30, 2**consecutive_redis_errors))
+                continue
+
             if not messages:
                 await asyncio.sleep(1)
                 continue
@@ -681,19 +1007,88 @@ class DshWorker:
                         logger.exception("Failed to XACK %s: %s", msg_id, exc)
 
     def stop(self) -> None:
-        """Signal the worker to stop."""
+        """Signal the worker to stop and cancel in-flight tasks."""
         self._running = False
+        for task in list(self._tasks):
+            task.cancel()
+
+    async def aclose(self) -> None:
+        await self.rest_client.aclose()
+
+
+# ---------------------------------------------------------------------------
+# Healthcheck
+# ---------------------------------------------------------------------------
+async def healthcheck() -> int:
+    """Liveness probe used by docker-compose."""
+    try:
+        redis_client = await get_redis_client()
+        await redis_client.ping()
+    except Exception as exc:
+        logger.error("DSH healthcheck Redis ping failed: %s", exc)
+        return 1
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(
+                f"{config.DSH_INTERNAL_BASE_URL.rstrip('/')}/health"
+            )
+            resp.raise_for_status()
+    except Exception as exc:
+        logger.error("DSH healthcheck API ping failed: %s", exc)
+        return 1
+
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Entry points
+# ---------------------------------------------------------------------------
+def _validate_config() -> None:
+    if not config.DSH_WORKER_PAT or not config.DSH_WORKER_SECRET:
+        raise SystemExit(
+            "DSH_WORKER_PAT and DSH_WORKER_SECRET must be set and non-empty"
+        )
+    if config.DSH_LOCK_TTL_SECONDS <= config.DSH_HEARTBEAT_INTERVAL_SECONDS:
+        raise SystemExit(
+            "DSH_LOCK_TTL_SECONDS must be greater than DSH_HEARTBEAT_INTERVAL_SECONDS"
+        )
+    if (
+        config.DSH_XAUTOCLAIM_MIN_IDLE_MS
+        <= config.DSH_HEARTBEAT_INTERVAL_SECONDS * 1000
+    ):
+        raise SystemExit(
+            "DSH_XAUTOCLAIM_MIN_IDLE_MS must be greater than heartbeat interval in ms"
+        )
 
 
 async def run_dsh_worker() -> None:
     """Entry point for the SERVICE_ROLE=dsh sidecar."""
+    _validate_config()
     worker = DshWorker()
+    loop = asyncio.get_event_loop()
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        with contextlib.suppress(NotImplementedError, ValueError):
+            # Signals may not be supported on this platform (e.g. Windows).
+            loop.add_signal_handler(sig, worker.stop)
+
     try:
         await worker.run()
-    except Exception as exc:
-        logger.exception("DSH worker crashed: %s", exc)
-        raise
+    finally:
+        worker.stop()
+        await worker.aclose()
 
 
 if __name__ == "__main__":
-    asyncio.run(run_dsh_worker())
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--healthcheck", action="store_true")
+    args = parser.parse_args()
+
+    if args.healthcheck:
+        sys.exit(asyncio.run(healthcheck()))
+
+    try:
+        asyncio.run(run_dsh_worker())
+    except SystemExit as exc:
+        if exc.code not in (0, None):
+            sys.exit(exc.code)

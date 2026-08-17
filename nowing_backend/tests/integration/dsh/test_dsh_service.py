@@ -22,7 +22,7 @@ async def test_create_mission_sets_defaults(db_session, db_workspace, db_user):
     assert mission.workspace_id == db_workspace.id
     assert mission.user_id == db_user.id
     assert mission.status == DshMissionStatus.PENDING.value
-    assert mission.checkpoint == {"phase": "crawl", "subtasks": []}
+    assert mission.checkpoint == {"version": 1, "phase": "crawl", "subtasks": []}
     assert mission.payload == {"query": "bds"}
 
 

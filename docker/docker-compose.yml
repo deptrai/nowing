@@ -247,7 +247,7 @@ services:
       REDIS_APP_URL: ${REDIS_URL:-redis://redis:6379/0}
       DSH_WORKER_PAT: ${DSH_WORKER_PAT:-}
       DSH_WORKER_SECRET: ${DSH_WORKER_SECRET:-}
-      DSH_INTERNAL_API_URL: ${DSH_INTERNAL_API_URL:-http://backend:8000}
+      DSH_INTERNAL_BASE_URL: ${DSH_INTERNAL_BASE_URL:-http://backend:8000}
       PYTHONPATH: /app
       SERVICE_ROLE: dsh
     depends_on:
@@ -260,9 +260,9 @@ services:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "ps aux | grep -q 'dsh_worker' || exit 1"]
+      test: ["CMD-SHELL", "python -m app.tasks.dsh_worker --healthcheck"]
       interval: 30s
-      timeout: 5s
+      timeout: 10s
       retries: 3
     restart: unless-stopped
 

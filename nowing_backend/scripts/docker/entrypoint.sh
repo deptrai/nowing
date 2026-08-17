@@ -133,9 +133,7 @@ start_beat() {
 
 start_dsh() {
     echo "Starting DSH Worker..."
-    python -m app.tasks.dsh_worker &
-    PIDS+=($!)
-    echo "  DSH Worker PID=${PIDS[-1]}"
+    exec python -m app.tasks.dsh_worker
 }
 
 # ── Headful browser display ──────────────────────────────────

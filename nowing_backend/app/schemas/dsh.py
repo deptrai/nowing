@@ -1,15 +1,32 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+DshMissionStatus = Literal[
+    "pending",
+    "running",
+    "success",
+    "error",
+    "cancelled",
+    "dlq",
+]
+DshMissionType = Literal["deep_lead_research", "noop"]
 
 
 class DshMissionPayload(BaseModel):
     """The sidecar-visible payload that drives the mission."""
 
-    query: str | None = None
+    model_config = ConfigDict(extra="ignore")
+
+    query: str = Field(
+        ...,
+        min_length=1,
+        description="The research question or topic.",
+    )
     workspace_id: int | None = None
     extras: dict = Field(default_factory=dict)
 
@@ -17,8 +34,16 @@ class DshMissionPayload(BaseModel):
 class DshMissionRequest(BaseModel):
     """Create a new long-running DSH mission."""
 
-    mission_type: str = "deep_lead_research"
+    mission_type: DshMissionType = "deep_lead_research"
     payload: dict = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _validate_payload(self) -> DshMissionRequest:
+        if self.mission_type == "deep_lead_research":
+            payload_model = DshMissionPayload.model_validate(self.payload)
+            if not payload_model.query or not payload_model.query.strip():
+                raise ValueError("query is required for deep_lead_research missions")
+        return self
 
 
 class DshMissionCheckpointUpdate(BaseModel):
@@ -28,7 +53,7 @@ class DshMissionCheckpointUpdate(BaseModel):
     phase: str | None = None
     progress_percent: int | None = Field(default=None, ge=0, le=100)
     current_subtask_id: str | None = None
-    status: str | None = None
+    status: DshMissionStatus | None = None
     retry_count: int | None = None
     error: dict | None = None
     started_at: datetime | None = None
@@ -42,7 +67,6 @@ class DshMissionResponse(BaseModel):
 
     id: UUID
     workspace_id: int
-    user_id: UUID | None
     mission_type: str
     status: str
     phase: str | None
@@ -51,3 +75,14 @@ class DshMissionResponse(BaseModel):
     retry_count: int
     created_at: datetime
     updated_at: datetime
+
+
+class DshMissionInternalResponse(DshMissionResponse):
+    """Full mission response for the authenticated sidecar."""
+
+    user_id: UUID | None
+    payload: dict
+    checkpoint: dict | None
+    error: dict | None
+    started_at: datetime | None
+    completed_at: datetime | None
