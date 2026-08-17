@@ -571,5 +571,40 @@ Nowing là brownfield với phần lớn epic nền tảng (Auth, Workspace, Con
 
 Assessment này xác định **~10 nhóm vấn đề** xuyên suốt 6 hạng mục (PRD completeness, epic coverage, UX alignment, epic quality, architecture/ legal gates, scope creep). Các vấn đề critical (#1–#5) cần được xử lý trước khi coi dự án sẵn sàng cho public repository / GA cloud. Core brownfield hiện tại có thể tiếp tục iterate, nhưng việc mở rộng sang HR/lead-gen/domain vertical cần hard gates đóng kín.
 
+## Phụ lục cải chính thực tế (Reality Correction Addendum) — 2026-08-17
+
+Sau khi kiểm tra lại code (`nowing_backend/app/capabilities/vietnamworks/`, `topcv/`, `itviec/`, `vn_jobs/`, `nowing_backend/app/lead_intelligence/`, `nowing_mcp/mcp_server/features/scrapers/platforms/vn_jobs.py`, v.v.) và `sprint-status.yaml`, các phát hiện sau đã được cập nhật:
+
+### 1. Trạng thái Epic 12 / 21 / 22 / 23
+
+- **Epic 12 (HR/Recruitment Vertical):** `sprint-status.yaml` ghi 12-0..12-10 đều `done`; code tồn tại cho `vietnamworks.scrape`, `topcv.scrape`, `itviec.scrape`, `vn_jobs.aggregate`, PII redaction, saved searches, job alerts, LinkedIn public jobs.
+- **Epic 21 (Lead Gen Intelligence):** 21-1..21-18 đều `done`; code tồn tại cho signal detection, scoring, contact waterfall, outbound, CRM, Zalo/Telegram, outcome pricing, affiliate.
+- **Epic 22 (Telegram Scraper):** 22-1..22-3 đều `done`; code tồn tại cho web preview, MTProto client, enrichment, alerts, AI agent tools.
+- **Epic 23 (Enterprise Lead Infrastructure):** 23-1..23-4 đều `done`; code tồn tại cho async scraper worker pool, Zalo OA webhook, VietQR affiliate payouts, RLS/partitioning.
+
+### 2. Đánh giá lại các vấn đề critical trước đây
+
+- **#1 — Hard gate pháp lý / ToS cho HR vertical (FR-43..47):** ĐÃ GIẢI QUYẾT. Legal counsel đã phê duyệt (2026-08-08); anti-bot/POC cho TopCV/ITviec đã pass; code đã done.
+- **#2 — Lead-Gen & Outbound (FR-63..69 / Epic 21):** ĐÃ GIẢI QUYẾT. Code done, legal review DNC/consent/Zalo/Telegram/affiliate đã approved, `sprint-status.yaml` 21-1..21-18 done.
+- **#4 — Scope creep FR-70..92 trong `epics.md` không có trong PRD:** ĐÃ TÁI PHÂN LOẠI. Đây là **PRD stale so với `epics.md`** (các FR đã được bổ sung và implement trong sprint 2026-08-10..2026-08-16), không còn là scope creep. Đã giải quyết bằng phụ lục `AMENDMENT-Epic-12-21-22-23-Readiness-Correction-2026-08-17.md`.
+- **#3 — UX docs drift giữa canonical 08-15 và archived 07-22:** ĐÃ GIẢI QUYẾT. Các `ux-contract-*` đã được chuyển vào `ux-designs/archive/ux-Nowing-2026-07-22-superseded/`; `epics.md` đã được cập nhật trỏ đúng đường dẫn lưu trữ và ghi chú UX chuẩn là `ux-Nowing-2026-08-15`.
+
+### 3. Các vấn đề thực sự còn lại
+
+- **NFR-9 State B** (deep-research sync chat-mode) vẫn cần benchmark ratification (p95 `balanced` ≤ 30s) trước khi bật mặc định.
+- **Tham chiếu PRD/Epics tới UX archive** đã được xử lý trong `epics.md`; một số tiêu đề epic kỹ thuật (E20, E22, E24, E25) cần user-value framing khi cập nhật docs.
+- **Traceability cơ bản** FR-49..52 (news/finance/company/e-commerce) và FR-56..57 (public agent-chat / agent registry) vẫn cần theo dõi nhưng nằm ngoài phạm vi Epic 12/21/22/23 vừa cải chính.
+
+### 4. Kết luận cập nhật
+
+**Trạng thái sẵn sàng: READY-ISH.**
+
+- **GA cloud có thể tiếp tục** cho các module lead-gen/HR/Telegram/Zalo vì code đã done, pháp lý/ToS đã approved, và `sprint-status.yaml` xác nhận.
+- **Public repo** vẫn cần hoàn tất **NFR-9 State B ratification** và **docs sync** cuối cùng trước khi coi là fully ready.
+
+Các thay đổi cụ thể:
+- `epics.md`: FR-43..47 chuyển `PROPOSED` → `DONE`; FR-63..92 chuyển `READY/REVIEW` → `DONE`; Epic 21/22/23 chuyển `in-progress/ready-for-dev` → `done`; cập nhật mọi `ux-contract-*` trỏ vào archive và ghi chú UX chuẩn.
+- `AMENDMENT-Epic-12-21-22-23-Readiness-Correction-2026-08-17.md`: phụ lục chính thức ghi nhận các yêu cầu đã implement.
+
 **Implementation Readiness Assessment Complete.**
 

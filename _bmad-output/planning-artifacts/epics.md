@@ -39,43 +39,43 @@ Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Archite
 ### Functional Requirements
 `[DONE]` FR-1 Auth · FR-2 API/PAT · FR-3 Workspace lifecycle · FR-4 Invites/memberships · FR-10 RBAC 3 roles · FR-6 Scrapers · FR-7 OAuth connectors · FR-8 MCP connectors · FR-9 Doc upload/index · FR-11 Folders · FR-12 Hybrid search · FR-13 Citation panel · FR-14 Chat threads · FR-15 Multi-agent runtime (+auto-extract) · FR-16 Realtime chat · FR-17 Anonymous chat · **FR-42 Chat Response Benchmark** *(mới 2026-08-04 — telemetry, regression, quality, production query sampler; stories 4.8a–4.8g)* · FR-21 Reports · FR-22 Podcast/video · FR-23 Image · FR-19 Automation triggers · FR-20 Automation runs · FR-25 Web · FR-26 Desktop · FR-27 Extension · FR-28 Obsidian · FR-29 MCP server · FR-30 Token tracking · **FR-32 Memory storage/retrieval** *(dedupe primitive + recall quality gate done; baseline ratified 2026-08-04)* · FR-33 Research continuity · FR-34 Memory correction · **FR-18 Automation actions** *(cải chính 2026-07-25: registry có `agent_task` + `continue_research` + `write_back_jira/linear/notion/slack`)* · **FR-31 Credit wallet** *(dashboard `8-3` = done)* · **FR-35 Memory-driven automations** *(cải chính 2026-07-25: trigger `memory_change` + action `continue_research` + `AutomationRun.research_thread_id` đều có)* · **FR-24 Deep-research via ChainLens engine** *(E9.1b contract regression guard done; mode default handled)* · **FR-38 Research degradation & self-host independence** *(E9.1a done)* · **FR-39 Memory→scraper-run provenance & re-validation** *(E9.6 done)* · **FR-40 First-run value: research run sinh memory** *(E3.13 done)* · **FR-41 Admin UI cho Global LLM Model Configuration** *(E8.11 done)*.
 `[DONE]` **FR-37 Deep-research cost metering** (`costDollars` parser done; fallback ~$0.06; cost thực tế ChainLens 2026-08-02: research speed $0.0353 / balanced $0.0482 / quality $0.0671) → **E9.2 P0**.
-`[PROPOSED]` **FR-43 VietnamWorks scraper** → **E12.1 P0** (public API, no auth; spike passed; ToS gate).
-`[PROPOSED]` **FR-44 TopCV scraper** → **E12.2 P0** (HTML + anti-bot; Cloudflare challenge; POC required).
-`[PROPOSED]` **FR-45 ITviec scraper** → **E12.3 P0** (HTML server-rendered; salary hidden).
-`[PROPOSED]` **FR-46 `vn_jobs.aggregate`** → **E12.4a–e P0 (split: normalization, dedupe/conflict, PII, ingest, exposure)** (cross-source normalization, dedupe, confidence, conflict detection).
-`[PROPOSED]` **FR-47 PII redaction for job data** → **E12.5 P0** (mask/drop phone, email, names before memory).
+`[DONE]` **FR-43 VietnamWorks scraper** → **E12.1 P0** (public API, no auth; spike passed; legal/ToS approved, anti-bot POC passed).
+`[DONE]` **FR-44 TopCV scraper** → **E12.2 P0** (HTML + anti-bot; Cloudflare challenge; legal/ToS approved, anti-bot POC passed).
+`[DONE]` **FR-45 ITviec scraper** → **E12.3 P0** (HTML server-rendered; salary hidden; legal/ToS approved, anti-bot POC passed).
+`[DONE]` **FR-46 `vn_jobs.aggregate`** → **E12.4a–e P0 (split: normalization, dedupe/conflict, PII, ingest, exposure)** (cross-source normalization, dedupe, confidence, conflict detection; legal/ToS approved).
+`[DONE]` **FR-47 PII redaction for job data** → **E12.5 P0** (mask/drop phone, email, names before memory; legal/ToS approved).
 
 `[DONE]` **FR-63 Intent Signal Detection** → **E21.1** (buying signals: funding, hiring, tech stack, executive moves).
 `[DONE]` **FR-64 Lead Scoring & Prioritization** → **E21.2** (composite score: fit + intent).
 `[DONE]` **FR-65 Vietnam Phone & Contact Waterfall Engine** → **E21.3 P0** (3-tier: Batdongsan Token Pool → Chotot API → Zalo UID verification + Auto-refund SLA).
 `[DONE]` **FR-66 Outbound Prospecting Automation & Panel** → **E21.4** (email + multi-source lead generation from all scrapers).
-`[REVIEW]` **FR-67 CRM Integration & Lark Base / Google Sheets 1-Click Sync** → **E21.5** (HubSpot, Salesforce, Lark Base, Google Sheets, Pancake/Haravan webhooks).
+`[DONE]` **FR-67 CRM Integration & Lark Base / Google Sheets 1-Click Sync** → **E21.5** (HubSpot, Salesforce, Lark Base, Google Sheets, Pancake/Haravan webhooks).
 `[DONE]` **FR-68 Vietnam Outbound Automation (Zalo OA & Telegram Sender)** → **E21.6 P0** (Zalo Assisted Chat Deep-link `zalo.me/{phone}`, Zalo OA ZNS, Telegram Bot alert).
-`[READY]` **FR-69 Outcome-Based Pricing & Transparent Credit Ledger** → **E21.7** ($0 chat & sequencer, pay per verified lead / outcome meeting).
+`[DONE]` **FR-69 Outcome-Based Pricing & Transparent Credit Ledger** → **E21.7** ($0 chat & sequencer, pay per verified lead / outcome meeting).
 `[DONE]` **FR-80 1-Click Reverse-ICP from Website / Project URL** → **E21.10** (auto-generate buyer personas, scraper targets & filter presets).
 `[DONE]` **FR-81 Actionable Turn Dispatches (Suggested Action Pills)** → **E21.11** (contextual 1-click execution chips after scrape turns).
 `[DONE]` **FR-82 Viral Social Outbound Co-pilot** → **E21.12** (AI Voice Learner + Viral post analyzer via XActions FB/Twitter).
-`[READY]` **FR-84 Smart Whitelist & Do-Not-Call (DNC) Compliance Engine** → **E21.14 P0** (Decree 91/2020/NĐ-CP, CSV import, opt-out protection).
-`[READY]` **FR-85 Unified Multi-Source AI Lead Generation Orchestrator** → **E21.15 P0** (1-chat parallel retrieval across all 15+ scrapers into live table).
+`[DONE]` **FR-84 Smart Whitelist & Do-Not-Call (DNC) Compliance Engine** → **E21.14 P0** (Decree 91/2020/NĐ-CP, CSV import, opt-out protection).
+`[DONE]` **FR-85 Unified Multi-Source AI Lead Generation Orchestrator** → **E21.15 P0** (1-chat parallel retrieval across all 15+ scrapers into live table).
 `[DONE]` **FR-86 Nowing Split-View Canvas & Workspace Modernization** → **E21.16 P0** (Unified New Chat, 340px Chat + Dynamic Multi-Mode Matrix, Real Credits & APIs, Sọc Caro, Emerald Green).
 `[DONE]` **FR-87 Complete Origami Landing Page & Public Site Transformation** → **E21.17 P0** (10 sections, Origami Mint Logo, 12 verticals).
-`[READY]` **FR-88 Partners Affiliate Portal & $0 Pricing Page Deployment** → **E21.18 P1** ($0 Free tier, 15% recurring affiliate ledger).
+`[DONE]` **FR-88 Partners Affiliate Portal & $0 Pricing Page Deployment** → **E21.18 P1** ($0 Free tier, 15% recurring affiliate ledger).
 
-`[READY]` **FR-70 Telegram Web Preview Scraper** → **E22.1** (`t.me/s/{channel}`, no login, zero-risk).
-`[READY]` **FR-71 Telegram MTProto Client Ingestion** → **E22.2** (Telethon, private channels, discussion comments).
-`[READY]` **FR-72 Telegram Scraper Platform Accounts & Session Onboarding** → **E22.2** (AES-256 encrypted `StringSession` in DB).
-`[READY]` **FR-73 Telegram Rate Limiter & FloodWait Cooldown** → **E22.2** (`ScraperPlatformAccountRotator`, Redis mutex lock).
-`[READY]` **FR-74 Telegram Async S3 Media Streaming** → **E22.3** (128KB chunk stream directly to S3/MinIO).
-`[READY]` **FR-75 Telegram Entity Extraction** → **E22.3** (VN phone, BĐS price, email into `raw_entities` JSONB).
-`[READY]` **FR-76 Telegram Realtime Stream Daemon** → **E22.3** (`events.NewMessage` -> Redis Stream `stream:telegram:raw_events`).
-`[READY]` **FR-77 Telegram Alert Engine Trigger** → **E22.3** (matching Telegram messages trigger `AlertRule`).
-`[READY]` **FR-78 Telegram AI Agent Tools** → **E22.3** (`telegram_search_channel`, `telegram_fetch_recent_posts`).
-`[READY]` **FR-79 Telegram PostgreSQL Storage & Zero Cache Sync** → **E22.1** (composite unique `(channel_id, message_id)`).
+`[DONE]` **FR-70 Telegram Web Preview Scraper** → **E22.1** (`t.me/s/{channel}`, no login, zero-risk).
+`[DONE]` **FR-71 Telegram MTProto Client Ingestion** → **E22.2** (Telethon, private channels, discussion comments).
+`[DONE]` **FR-72 Telegram Scraper Platform Accounts & Session Onboarding** → **E22.2** (AES-256 encrypted `StringSession` in DB).
+`[DONE]` **FR-73 Telegram Rate Limiter & FloodWait Cooldown** → **E22.2** (`ScraperPlatformAccountRotator`, Redis mutex lock).
+`[DONE]` **FR-74 Telegram Async S3 Media Streaming** → **E22.3** (128KB chunk stream directly to S3/MinIO).
+`[DONE]` **FR-75 Telegram Entity Extraction** → **E22.3** (VN phone, BĐS price, email into `raw_entities` JSONB).
+`[DONE]` **FR-76 Telegram Realtime Stream Daemon** → **E22.3** (`events.NewMessage` -> Redis Stream `stream:telegram:raw_events`).
+`[DONE]` **FR-77 Telegram Alert Engine Trigger** → **E22.3** (matching Telegram messages trigger `AlertRule`).
+`[DONE]` **FR-78 Telegram AI Agent Tools** → **E22.3** (`telegram_search_channel`, `telegram_fetch_recent_posts`).
+`[DONE]` **FR-79 Telegram PostgreSQL Storage & Zero Cache Sync** → **E22.1** (composite unique `(channel_id, message_id)`).
 
-`[READY]` **FR-89 Async Scraper Worker Pool (Celery + Redis Streams)** → **E23.1 P0** (Non-blocking background scraping + live matrix stream).
-`[READY]` **FR-90 Official Zalo OA Webhook & ZNS Template Automation** → **E23.2 P0** (Zalo OpenAPI v3 signature verification + ZNS template delivery).
-`[READY]` **FR-91 Automated VietQR Affiliate Payout Reconciliation** → **E23.3 P1** (Instant 24/7 Napas bank settlement + cryptographic audit receipts).
-`[READY]` **FR-92 PostgreSQL RLS & Table Partitioning for Multi-Million Leads** → **E23.4 P1** (Sub-10ms query isolation on partitioned lead stores).
+`[DONE]` **FR-89 Async Scraper Worker Pool (Celery + Redis Streams)** → **E23.1 P0** (Non-blocking background scraping + live matrix stream).
+`[DONE]` **FR-90 Official Zalo OA Webhook & ZNS Template Automation** → **E23.2 P0** (Zalo OpenAPI v3 signature verification + ZNS template delivery).
+`[DONE]` **FR-91 Automated VietQR Affiliate Payout Reconciliation** → **E23.3 P1** (Instant 24/7 Napas bank settlement + cryptographic audit receipts).
+`[DONE]` **FR-92 PostgreSQL RLS & Table Partitioning for Multi-Million Leads** → **E23.4 P1** (Sub-10ms query isolation on partitioned lead stores).
 
 `[DONE — NFR]` **NFR-1b/1c/1d Memory latency & injection bound** *(E3.14 done, AD-18)*.
 `[RESOLVED]` FR-36 Legacy memory data-loss (2026-07-25 — không mất dữ liệu; 178 chưa apply prod, `memory_md` rỗng, snapshot đã tạo; guard + backfill + 5 test qua `3-10a`/`3-10b`).
@@ -102,15 +102,15 @@ Starter template: **KHÔNG — brownfield**. Component mới thật sự duy nh�
 **Requirements signals:** RS-1 auto-extract budget (item-cap + spend-cap + wallet pre-check + rate-limit done) · RS-2 recall top_k≤5 (verify) · RS-3 beachhead agent-builder→team · RS-4 "MCP trước UI sau"/"semantic facts first" · RS-5 docs-sync bắt buộc · RS-6 right-to-delete + self-host/cloud split · RS-7 eval-gated launch + chốt số SM · RS-8 data export · RS-9 "project memory"=`ResearchThread`? · RS-10 cost/turn beta trước pricing.
 
 ### UX Design Requirements
-UX contracts tồn tại trong `ux-designs/ux-Nowing-2026-07-22/` dưới dạng behavior contract (không layout/màu):
-- `ux-contract-async-deep-research.md` — chặn story 9.3 (NFR-9 State A)
-- `ux-contract-admin-global-model-config.md` — chặn story 8.11 (FR-41)
-- `ux-contract-chat-benchmark.md` — chặn stories 4.8a–4.8g (FR-42, NFR-10)
-- `ux-contract-usage-dashboard.md` — chặn story 8.12, bổ sung story 8.3 (FR-31, NFR-7)
-- `ux-contract-sync-offline-indicator.md` — chặn stories 9.1a, 9.3 (FR-38, NFR-9)
-- `ux-contract-first-run-onboarding.md` — chặn story 3.13 (FR-40)
+Các UX contract dưới đây đã được lưu trữ tại `_bmad-output/planning-artifacts/ux-designs/archive/ux-Nowing-2026-07-22-superseded/` dưới dạng behavior contract (không layout/màu). UX chuẩn hiện tại là `_bmad-output/planning-artifacts/ux-designs/ux-Nowing-2026-08-15/` (`DESIGN.md` + `EXPERIENCE.md`); các đường dẫn cũ chỉ còn giá trị tham chiếu lịch sử.
+- `_bmad-output/planning-artifacts/ux-designs/archive/ux-Nowing-2026-07-22-superseded/ux-contract-async-deep-research.md` — chặn story 9.3 (NFR-9 State A)
+- `_bmad-output/planning-artifacts/ux-designs/archive/ux-Nowing-2026-07-22-superseded/ux-contract-admin-global-model-config.md` — chặn story 8.11 (FR-41)
+- `_bmad-output/planning-artifacts/ux-designs/archive/ux-Nowing-2026-07-22-superseded/ux-contract-chat-benchmark.md` — chặn stories 4.8a–4.8g (FR-42, NFR-10)
+- `_bmad-output/planning-artifacts/ux-designs/archive/ux-Nowing-2026-07-22-superseded/ux-contract-usage-dashboard.md` — chặn story 8.12, bổ sung story 8.3 (FR-31, NFR-7)
+- `_bmad-output/planning-artifacts/ux-designs/archive/ux-Nowing-2026-07-22-superseded/ux-contract-sync-offline-indicator.md` — chặn stories 9.1a, 9.3 (FR-38, NFR-9)
+- `_bmad-output/planning-artifacts/ux-designs/archive/ux-Nowing-2026-07-22-superseded/ux-contract-first-run-onboarding.md` — chặn story 3.13 (FR-40)
 
-Các story có UI vẫn cần UX spec riêng trước khi build UI chi tiết.
+Các story có UI vẫn cần UX spec riêng trước khi build UI chi tiết. UX chuẩn (2026-08-15) là nguồn thiết kế cho mọi tính năng mới.
 
 ### FR Coverage Map
 - FR-1/2/3/4/10 → **E1** [DONE] · FR-6/7/8 → **E2** [DONE] · **FR-6 mở rộng → E10.1** [DONE] (batdongsan scraper) · FR-9/11/12/13 → **E3** [DONE] · **FR-14/15/16/17/42 → E4** [DONE] (4.8a–4.8g chat benchmark & regression gate) · FR-21/22/23 → **E5** [DONE] · FR-19/20 → **E6** [DONE] · FR-25/26/27/28/29 → **E7** [DONE] · FR-30 → **E8** [DONE] · **FR-41 → E8.11** [DONE]
@@ -128,7 +128,7 @@ Các story có UI vẫn cần UX spec riêng trước khi build UI chi tiết.
 - **OQ-8 HR/Recruitment Vertical in Vietnam** → **E12 P0** (ToS, legal classification, anti-bot, salary hidden, willingness-to-pay, PII).
 - **SM-12 HR pilot metrics** → **E12 P0** (workspace active, aggregate queries, listings indexed, dedupe, confidence, PII coverage).
 - **AR-11 HR anti-bot validation** → **E12.2 P0** (TopCV Cloudflare bypass/residential proxy feasibility).
-- **Mới 2026-08-10 (Market Research → Lead Intelligence):** FR-63 (Intent Signals) → **E21.1** `[PROPOSED]` · FR-64 (Lead Scoring) → **E21.2** `[PROPOSED]` · FR-65 (Contact Enrichment) → **E21.3** `[PROPOSED]` · FR-66 (Outbound Automation) → **E21.4** `[PROPOSED]` (Email in MVP; LinkedIn/Zalo deferred) · FR-67 (CRM Integration) → **E21.5** `[PROPOSED]` · FR-68 (Zalo Integration) → **E21.6** `[DEFERRED]` · FR-69 (Outcome Pricing) → **E21.7** `[PROPOSED]`.
+- **Mới 2026-08-10 (Market Research → Lead Intelligence) — đã hoàn thành 2026-08-16:** FR-63 (Intent Signals) → **E21.1** `[DONE]` · FR-64 (Lead Scoring) → **E21.2** `[DONE]` · FR-65 (Contact Enrichment) → **E21.3** `[DONE]` · FR-66 (Outbound Automation) → **E21.4** `[DONE]` (Email/Zalo/Telegram outbound done) · FR-67 (CRM Integration) → **E21.5** `[DONE]` · FR-68 (Zalo Integration) → **E21.6** `[DONE]` · FR-69 (Outcome Pricing) → **E21.7** `[DONE]`.
 
 ## Epic List
 
@@ -2138,7 +2138,7 @@ So that I can quickly understand what happened without reading 50 articles.
 - Unit test: `test_news_digest_structure.py` — structured summary contains key events, entity mentions, sentiment
 - Integration test: `test_news_digest_citations.py` — each claim links to indexed source
 
-_AD-34 · AD-35 · Reuses `ux-contract-ecosystem-search` (citation model) · AD-33 (scheduler)_
+_AD-34 · AD-35 · Reuses archived `_bmad-output/planning-artifacts/ux-designs/archive/ux-Nowing-2026-07-22-superseded/ux-contract-ecosystem-search.md` (citation model; UX chuẩn hiện tại: `ux-Nowing-2026-08-15`) · AD-33 (scheduler)_
 
 ---
 
@@ -2487,7 +2487,7 @@ So that different vertical clients can have specialized chat agents.
 - **Given** an `agent_id` is provided in a chat request, **When** processed, **Then** the system loads the corresponding `AgentConfig` or returns 404 if not found.
 - **Given** `AgentConfig` is global (not workspace-scoped), **When** same agent is used across workspaces, **Then** the same config applies.
 
-_Kỹ thuật: `app/db.py` (AgentConfig model), Alembic migration (number assigned at implement time), seed script. **AD-30**. UX: `ux-contract-agent-registry.md`._
+_Kỹ thuật: `app/db.py` (AgentConfig model), Alembic migration (number assigned at implement time), seed script. **AD-30**. UX (đã lưu trữ): `_bmad-output/planning-artifacts/ux-designs/archive/ux-Nowing-2026-07-22-superseded/ux-contract-agent-registry.md`; UX chuẩn hiện tại: `ux-Nowing-2026-08-15`._
 
 ---
 
@@ -2571,13 +2571,13 @@ _Kỹ thuật: Middleware in `app/middleware/tenant_context.py`, rate limiter wi
 ---
 
 
-## Epic 21: Lead Gen Intelligence & Social Graph `[in-progress]`
+## Epic 21: Lead Gen Intelligence & Social Graph `[done]`
 
 > **Epic Goal:** Trung tâm Xử lý, Chấm điểm và Quản trị Lead tập trung (Lead Intelligence & CRM Hub) của toàn hệ thống Nowing. Tiếp nhận dữ liệu khách hàng tiềm năng từ TẤT CẢ các phễu cào (BĐS Epic 10, Tuyển dụng Epic 12, Đấu thầu/Pháp lý Epic 16, TMĐT Epic 17, Telegram Epic 22 và Mạng xã hội qua `XActions`), bóc tách thông tin liên hệ (SĐT, Email, Tên), phân loại ý định thương mại (Intent Signals), chấm điểm Fit Score, lưu trữ vào Lead CRM và kích hoạt chiến dịch Outbound Automation (Zalo OA, Telegram, Email, Lark Base, Google Sheets).
 
 **Status:** `[in-progress]`  
 **Governed by Architecture Spines:** `architecture-xactions-social-integration-2026-08-15`, `architecture-linkedin-b2b-2026-08-15`, `epic21-architecture-update.md` (AD-31 to AD-49).  
-**UX Contracts:** `ux-contract-lead-intelligence-panel.md`, `ux-contract-workspace-mode-switch.md`, `ux-contract-sidebar-onboarding.md`, `ux-contract-positive-reply-notifications.md`.
+**UX Contracts (đã lưu trữ):** `_bmad-output/planning-artifacts/ux-designs/archive/ux-Nowing-2026-07-22-superseded/ux-contract-lead-intelligence-panel.md`, `_bmad-output/planning-artifacts/ux-designs/archive/ux-Nowing-2026-07-22-superseded/ux-contract-workspace-mode-switch.md`, `_bmad-output/planning-artifacts/ux-designs/archive/ux-Nowing-2026-07-22-superseded/ux-contract-sidebar-onboarding.md`, `_bmad-output/planning-artifacts/ux-designs/archive/ux-Nowing-2026-07-22-superseded/ux-contract-positive-reply-notifications.md`. UX chuẩn hiện tại: `ux-designs/ux-Nowing-2026-08-15/`.
 
 ---
 
@@ -2889,13 +2889,13 @@ _FR-88 · AD-42_
 
 ---
 
-## Epic 22: Telegram Scraper & Channel Ingestion Engine `[ready-for-dev]`
+## Epic 22: Telegram Scraper & Channel Ingestion Engine `[done]`
 
 > **Epic Goal:** Cung cấp giải pháp trích xuất dữ liệu đa nguồn từ Telegram (kênh công khai, nhóm thảo luận, bài đăng, bình luận, media), tự động phân tích thực thể (SĐT, giá BĐS, email), bảo vệ tài khoản chống khóa (Anti-ban/FloodWait), tích hợp thông báo tức thời (Alert Engine) và cung cấp công cụ tra cứu cho AI Agent.
 
 **Status:** `[ready-for-dev]`
 **Governed by Architecture Spine:** `_bmad-output/planning-artifacts/architecture/architecture-telegram-scraper-2026-08-15/ARCHITECTURE-SPINE.md` (AD-1 to AD-8).
-**UX Contract:** `_bmad-output/planning-artifacts/ux-designs/ux-Nowing-2026-07-22/ux-contract-telegram-scraper-engine.md` (U1 to U7).
+**UX Contract (đã lưu trữ):** `_bmad-output/planning-artifacts/ux-designs/archive/ux-Nowing-2026-07-22-superseded/ux-contract-telegram-scraper-engine.md` (U1 to U7). UX chuẩn hiện tại: `ux-designs/ux-Nowing-2026-08-15/`.
 
 ### Story 22.1: Telegram Storage Schema & Public Web Preview Ingestion Engine
 
@@ -2987,7 +2987,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-## Epic 23: Enterprise Lead Infrastructure, Realtime Ingestion & Automated Outreach Engine
+## Epic 23: Enterprise Lead Infrastructure, Realtime Ingestion & Automated Outreach Engine `[done]`
 *Governed by Architecture Spine: `architecture-epic23-lead-infrastructure.md`*
 *Reviewed & Ratified: 2026-08-16 by Winston (Arch), Mary (BA), Sally (UX), Amelia (Dev), Murat (QA)*
 
