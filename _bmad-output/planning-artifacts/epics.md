@@ -215,11 +215,11 @@ Public agent-chat endpoints, AgentConfig registry, client_id tenancy, cost trace
 ### Epic 20: Nowing Ecosystem Integration — Feed & Recall from chainlens-research — ✅ DONE
 `NowingIngestService` + `to_chunks()`, gap-fill caller, `NowingPrivateProvider`, service-to-service auth. **Open:** none.
 
-### Epic 21: Lead Gen Intelligence & Social Graph — 🔄 IN PROGRESS
-Toàn diện hóa hệ thống Săn Lead & Tiếp cận Khách hàng Đa kênh: Phone Waterfall 3 tầng (Batdongsan/Chotot/Zalo), Zalo OA & Telegram Outbound Waterfall, XActions Social Ingress (Facebook Groups/Twitter), 1-Click Reverse-ICP từ Website/Dự án, AI Actionable Turn Dispatches, Viral Social Outbound Co-pilot, Multi-Table Tabs & Export Hub (Lark Base, Google Sheets) và DNC Compliance Engine. **Stories:** 21.1–21.14 (21.3, 21.6, 21.14 P0). Governed by `architecture-xactions-social-integration-2026-08-15` & `architecture-linkedin-b2b-2026-08-15`.
+### Epic 21: Lead Gen Intelligence & Social Graph — ✅ DONE
+Toàn diện hóa hệ thống Săn Lead & Tiếp cận Khách hàng Đa kênh: Phone Waterfall 3 tầng (Batdongsan/Chotot/Zalo), Zalo OA & Telegram Outbound Waterfall, XActions Social Ingress (Facebook Groups/Twitter), 1-Click Reverse-ICP từ Website/Dự án, AI Actionable Turn Dispatches, Viral Social Outbound Co-pilot, Multi-Table Tabs & Export Hub (Lark Base, Google Sheets), DNC Compliance Engine, Origami Workspace, Partners Affiliate Portal và $0 Pricing. **Stories:** 21.1–21.18 (21.3, 21.6, 21.14 P0). Governed by `architecture-xactions-social-integration-2026-08-15` & `architecture-linkedin-b2b-2026-08-15`.
 
-### Epic 22: Telegram Scraper & Channel Ingestion Engine — 🚀 READY FOR DEV
-Public channel web preview, MTProto Userbot session pool, distributed mutex lock, FloodWait cooldown state machine, regex entity extractor, S3 media chunk streaming, realtime stream daemon, Alert Engine trigger, AI Agent tools. **Open:** 22.1–22.3. Governed by `architecture-telegram-scraper-2026-08-15`.
+### Epic 22: Telegram Scraper & Channel Ingestion Engine — ✅ DONE
+Public channel web preview, MTProto Userbot session pool, distributed mutex lock, FloodWait cooldown state machine, regex entity extractor, S3 media chunk streaming, realtime stream daemon, Alert Engine trigger, AI Agent tools. **Stories:** 22.1–22.3. Governed by `architecture-telegram-scraper-2026-08-15`.
 
 ---
 
