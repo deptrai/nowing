@@ -25,16 +25,16 @@
 
 ## 2. Sprint Status Across Both Repositories
 
-### 🔵 Nowing Sprints (Epic 26: Autonomous Deep Lead Missions)
-- **Story 26.1:** FastMCP Batch Ingest & Stateless ChainLens Ingestion Pipeline `[READY-FOR-DEV]` ➔ **ACTIVE CRITICAL PATH**
-- **Story 26.2:** `dsh-worker` Sidecar Container, Redis Streams & Task Resumption `[BACKLOG]`
-- **Story 26.3:** 4-Tier Hybrid LLM Router (Gemini Flash Free Tier + DeepSeek V4 + Qwen 3.8) `[BACKLOG]`
-- **Story 26.4:** PII Vault AES-256 Encryption, HMAC Deduplication & Decree 13 Opt-Out `[BACKLOG]`
-- **Story 26.5:** Split Canvas Glass Box Mission Control UI & Two-Tier Phone Unlock `[BACKLOG]`
-- **Story 26.6:** Telegram Checkpoint Bot & 15% Auto-Refund SLA `[BACKLOG]`
-- **Story 26.7:** Hermetic CI Quality Gates ($0 API Cost) & Chaos Testing `[BACKLOG]`
+### 🔵 Nowing Platform Sprints (Backend 95% Done, Còn Lại UI Split Canvas & Bot)
+- **Story 26.1 (FastMCP Batch Ingest & Chunks):** Backend & Migration `ac475d54f6a2` `[DONE ✅]`
+- **Story 26.2 (dsh-worker & Redis Streams):** Backend & Migration `49988ab02307` `[DONE ✅]`
+- **Story 26.3 (4-Tier Hybrid Router Gemini $0):** Backend `hybrid_llm_routes.py` `[DONE ✅]`
+- **Story 26.4 (PII Vault AES-256 & Opt-Out):** Backend & Migration `8f0e6aa7aa87` `[DONE ✅]`
+- **Story 26.5 (Split Canvas Glass Box UI):** `[ACTIVE — CẦN HOÀN THIỆN UI FRONTEND ⏳]`
+- **Story 26.6 (Telegram Checkpoint Bot UI):** `[ACTIVE — CẦN HOÀN THIỆN INLINE CARDS ⏳]`
+- **Story 26.7 (Hermetic CI Quality Gates):** Unit & Integration Test Suites `[DONE ✅]`
 
-### 🟢 ChainLens-Research Sprints (Hoàn Thành 100% Cả Engine & Exa Dashboard ✅)
+### 🟢 ChainLens-Research Platform (Hoàn Thành 100% Cả Engine & Exa Dashboard ✅)
 - **Story 48-4:** Cost Sub-breakdown in `costDollars` emitted in SSE done frame `[DONE ✅]`
 - **Story 48-3:** Table/CSV/Share output in unified `POST /api/v1/search` `[DONE ✅]`
 - **Story 44-0 / 44-5:** v4 Contract Regression Guard `[DONE ✅]`

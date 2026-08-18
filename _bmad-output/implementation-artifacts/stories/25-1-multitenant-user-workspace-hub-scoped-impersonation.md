@@ -1,5 +1,5 @@
 story_key: 25-1-multitenant-user-workspace-hub-scoped-impersonation
-status: ready-for-dev
+status: done
 baseline_commit: 13f09ce60057422f281e263d90f2ca76db9e54a3
 epic: 25
 story: 1
@@ -7,7 +7,7 @@ story: 1
 
 # Story 25.1: Multi-Tenant User & Workspace Hub + Scoped Impersonation
 
-Status: in-review
+Status: done
 
 <!-- Note: Governed by INV-25.1, INV-25.2, INV-25.8, and Architecture Spine: epics.md (Epic 25) -->
 
