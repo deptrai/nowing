@@ -144,6 +144,7 @@ async def create_dsh_mission(
             detail="Mission created but could not be dispatched to the worker stream",
         ) from exc
 
+    await session.commit()
     return DshMissionResponse.model_validate(mission)
 
 

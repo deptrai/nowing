@@ -13,7 +13,7 @@ import {
 	selectedLeadContextAtom,
 	selectedLeadIdsAtom,
 } from "@/atoms/leads/leads-canvas.atoms";
-import type { FilterPresets } from "@/contracts/types/leads.types";
+import type { FilterPresets, Lead } from "@/contracts/types/leads.types";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useDshMissionControl } from "@/lib/hooks/use-dsh-mission-control";
 import { useLeads } from "@/lib/hooks/use-leads";
@@ -68,7 +68,15 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 
 	const handlePhoneChange = useCallback(
 		(leadId: string, phone: string | null, _unlocked: boolean) => {
-			setUnlockedPhones((prev) => ({ ...prev, [leadId]: phone }));
+			setUnlockedPhones((prev) => {
+				const next = { ...prev };
+				if (phone == null) {
+					delete next[leadId];
+				} else {
+					next[leadId] = phone;
+				}
+				return next;
+			});
 		},
 		[]
 	);
@@ -136,10 +144,22 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 	useEffect(() => {
 		if (!activeDrawerLead) return;
 		const updated = displayLeads.find((l) => l.id === activeDrawerLead.id);
-		if (updated && updated !== activeDrawerLead) {
-			setActiveDrawerLead(updated);
+		if (!updated) return;
+
+		const phoneOverride = unlockedPhones[updated.id];
+		const isUnlocked = Boolean(phoneOverride) || updated.is_unlocked;
+		const newLead: Lead = {
+			...updated,
+			phone: phoneOverride ?? updated.phone,
+			is_unlocked: isUnlocked,
+		};
+		if (
+			newLead.is_unlocked !== activeDrawerLead.is_unlocked ||
+			newLead.phone !== activeDrawerLead.phone
+		) {
+			setActiveDrawerLead(newLead);
 		}
-	}, [displayLeads, activeDrawerLead, setActiveDrawerLead]);
+	}, [displayLeads, activeDrawerLead, unlockedPhones, setActiveDrawerLead]);
 
 	// Resizing Handlers (Mouse Dragging)
 	const handleMouseDown = useCallback((e: React.MouseEvent) => {

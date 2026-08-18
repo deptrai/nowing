@@ -149,6 +149,7 @@ async def batch_ingest_leads(
             detail=str(exc),
         ) from exc
 
+    await session.commit()
     return BatchLeadIngestResponse(**result)
 
 
@@ -273,10 +274,6 @@ async def unlock_contact(
             detail=f"Contact is blocked by DNC: {dnc_result.reason}",
         )
 
-    # ponytail: set is_unlocked and audit log BEFORE billing so that the single
-    # commit inside BillingEventService.record_contact_unlock (via wallet_credit.
-    # apply_debit) persists everything atomically. If billing fails, this route
-    # never commits and the contact stays locked.
     contact.is_unlocked = True
     existing_logs = list(contact.pii_access_audit_logs or [])
     contact.pii_access_audit_logs = [
@@ -303,8 +300,6 @@ async def unlock_contact(
             cost_micros=1_500,
         )
     except wallet_credit.InsufficientCreditsError as exc:
-        # The contact changes above are in the same transaction; they will be
-        # rolled back if apply_debit fails before commit.
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail="Insufficient credits to unlock contact.",
@@ -321,6 +316,7 @@ async def unlock_contact(
             detail="Failed to unlock contact.",
         ) from exc
 
+    await session.commit()
     return ContactUnlockResponse(
         contact_id=contact.id,
         is_unlocked=True,
@@ -436,6 +432,7 @@ async def relock_contact(
                 return None
         return value
 
+    await session.commit()
     return ContactUnlockResponse(
         contact_id=contact.id,
         is_unlocked=False,

@@ -16,6 +16,7 @@ import { SmartUnlockPopover } from "./SmartUnlockPopover";
 const UNLOCK_COST_CREDITS = 1.5;
 const FAST_UNLOCK_TTL_MS = 30 * 60 * 1000;
 const FLIP_DURATION_MS = 150;
+const FLIP_CLASS_HOLD_MS = 600;
 
 export interface PhoneUnlockPillProps {
 	lead: Lead;
@@ -142,17 +143,23 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 			onUnlock?.(true);
 			onPhoneChange?.(lead.id, newPhone, true);
 			setIsFlipped(true);
-			setTimeout(() => setIsFlipped(false), FLIP_DURATION_MS);
+			setTimeout(() => setIsFlipped(false), FLIP_CLASS_HOLD_MS);
 
 			toast.success(`Đã mở khóa SĐT -${UNLOCK_COST_CREDITS} credits`, {
 				duration: 5000,
-				action: {
-					label: "Hoàn tác",
-					onClick: () => {
-						if (isRelocking) return;
-						void performRelock();
-					},
-				},
+				action: (
+					<button
+						type="button"
+						data-testid="relock-undo-button"
+						onClick={() => {
+							if (isRelocking) return;
+							void performRelock();
+						}}
+						className="ml-2 text-xs underline"
+					>
+						Hoàn tác
+					</button>
+				),
 			});
 		} catch (err) {
 			const message = err instanceof Error ? err.message : "Không thể mở khóa";
@@ -221,6 +228,7 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 					? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 shadow-xs"
 					: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 hover:border-emerald-500/40",
 				isDisabled && "opacity-50 cursor-not-allowed",
+				isFlipped && "animate-flip",
 				className
 			)}
 			data-testid={contactId ? `phone-pill-${contactId}` : undefined}

@@ -167,6 +167,32 @@ _Curated long-term knowledge for Nowing E2E Browser Testing._
   - 24.4: `lead-clipper-multitab.spec.ts` — 5/5 passed (PAT token isolation, multi-tab extractors, offline queue, deduplication).
 - **Note:** 24.5 Playbook Marketplace, 24.6 Two-Way AI Auto-Reply, and 24.7 Multi-Channel Drip remain not-implemented / backlog. Dev backend (`main.py`) restored on `localhost:8000` after the run.
 
+## Story 26.5 Split Canvas, Two-Tier Phone Unlock & Mission Control Glass Box (2026-08-19)
+
+### E2E verification
+- **Command:** `pnpm exec playwright test tests/leads/two-tier-phone-unlock.spec.ts tests/leads/mission-control-glass-box.spec.ts`
+- **Result: 13/13 passed**
+  - `two-tier-phone-unlock.spec.ts` — 8/8 passed
+  - `mission-control-glass-box.spec.ts` — 5/5 passed
+
+### Key fixes discovered
+- **Backend transaction commit:** `unlock_contact` and `relock_contact` in `app/routes/lead_batch_routes.py` were not calling `session.commit()`, so the `is_unlocked` flag and billing events were never persisted. Added `await session.commit()` after successful billing.
+- **Lead list sync with overrides:** `NowingSplitCanvas` had a `useEffect` that replaced `activeDrawerLead` with a raw `displayLeads` item on every render, which re-masked the phone and re-locked the UI right after a row was clicked. Fixed by merging `unlockedPhones` overrides into the updated lead before `setActiveDrawerLead`.
+- **Row-to-drawer lead state:** `NowingLeadMatrix` now passes `rowLead` (which carries `unlockedPhones` overrides) into `handleRowClick`, and `handlePhoneChange` in `NowingSplitCanvas` removes the override from `unlockedPhones` on relock so the row falls back to the masked `lead.phone`.
+- **Undo action in toast:** `PhoneUnlockPill.tsx` `toast.success` uses a React element `action` (button with `data-testid="relock-undo-button"`) so Playwright can click the undo action.
+- **Flip animation class:** `PhoneUnlockPill` adds `animate-flip` class on unlock and holds the flag for `FLIP_CLASS_HOLD_MS` (600ms) so the assertion can catch it.
+- **Test selector stabilization:** `two-tier-phone-unlock.spec.ts` uses drawer-scoped locators (`drawer.getByTestId(...)`) for `zalo-outreach-button` and `call-now-link`, and waits for `Đã mở khóa`/`Đã hoàn tác mở khóa` toasts with 15-20s timeouts to survive slow backend billing.
+
+### Backend routes changed
+- `nowing_backend/app/routes/lead_batch_routes.py` — added `await session.commit()` to `unlock_contact` and `relock_contact`.
+
+### Frontend components changed
+- `nowing_web/components/leads/NowingSplitCanvas.tsx` — import `Lead`, merge `unlockedPhones` into `activeDrawerLead` sync effect.
+- `nowing_web/components/leads/NowingLeadMatrix.tsx` — `handleRowClick(rowLead)` and `handleRowClick` cleanup.
+- `nowing_web/components/leads/LeadDetailFlyoutDrawer.tsx` — (minor console cleanup after debugging).
+- `nowing_web/components/leads/PhoneUnlockPill.tsx` — `FLIP_CLASS_HOLD_MS`, toast action ReactNode, relock `onPhoneChange(null, false)`.
+- `nowing_web/tests/leads/two-tier-phone-unlock.spec.ts` — `lead-row` click to open drawer, drawer-scoped assertions, adjusted toast/bulk popover selectors.
+
 ## 24.1 Live Manual Campaign Builder Save (2026-08-17)
 
 - Điều khiển trực tiếp qua Playwright MCP: login → `/dashboard/1/automations/campaigns/new` → thêm send_email / wait / condition → click **Lưu chuỗi tiếp cận**.

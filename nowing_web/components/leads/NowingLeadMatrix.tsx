@@ -477,7 +477,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 
 			{/* Main High-Density Fluid Data Matrix Grid */}
 			<div className="flex-1 overflow-auto bg-background/50 relative scrollbar-thin">
-				{filteredLeads.length === 0 ? (
+				{filteredLeads.length === 0 && shimmerCount === 0 ? (
 					<div className="flex flex-col items-center justify-center h-full p-8 text-center select-none">
 						<div className="size-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-3">
 							<Sparkles className="size-5 text-emerald-600 dark:text-emerald-400" />
@@ -537,7 +537,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 										key={lead.id}
 										data-testid={`lead-row-${lead.id}`}
 										data-lead-row
-										onClick={() => handleRowClick(lead)}
+										onClick={() => handleRowClick(rowLead)}
 										className={cn(
 											"h-10 group hover:bg-muted/40 transition-colors cursor-pointer text-xs sm:text-[12.5px]",
 											isSelected && "bg-emerald-500/5 hover:bg-emerald-500/10",
