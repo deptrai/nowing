@@ -40,15 +40,14 @@ export const FloatingBulkActionBar: React.FC<FloatingBulkActionBarProps> = ({
 	onPhoneChange,
 }) => {
 	const { data: currentUser } = useAtomValue(currentUserAtom);
-	const [fastUnlockSessions, setFastUnlockSessions] = useAtom(fastUnlockSessionAtom);
+	const fastUnlockKey = makeFastUnlockKey(workspaceId, currentUser?.id);
+	const [fastUnlockSession, setFastUnlockSession] = useAtom(fastUnlockSessionAtom(fastUnlockKey));
 
 	const [isOpen, setIsOpen] = useState(false);
 	const [isUnlocking, setIsUnlocking] = useState(false);
 	const [fastUnlockEnabled, setFastUnlockEnabled] = useState(false);
 
-	const fastUnlockKey = makeFastUnlockKey(workspaceId, currentUser?.id);
-	const sessionState = fastUnlockSessions[fastUnlockKey];
-	const isFastUnlockActive = !!sessionState && sessionState.expires_at > Date.now();
+	const isFastUnlockActive = !!fastUnlockSession && fastUnlockSession.expires_at > Date.now();
 
 	const unlockedCount = useMemo(
 		() => selectedLeads.filter((l) => l.is_unlocked || Boolean(unlockedPhones[l.id])).length,
@@ -91,17 +90,10 @@ export const FloatingBulkActionBar: React.FC<FloatingBulkActionBarProps> = ({
 
 	const applyFastUnlockSession = (enabled: boolean) => {
 		if (!enabled) {
-			setFastUnlockSessions((prev) => {
-				const next = { ...prev };
-				delete next[fastUnlockKey];
-				return next;
-			});
+			setFastUnlockSession(null);
 			return;
 		}
-		setFastUnlockSessions((prev) => ({
-			...prev,
-			[fastUnlockKey]: { expires_at: Date.now() + FAST_UNLOCK_TTL_MS },
-		}));
+		setFastUnlockSession({ expires_at: Date.now() + FAST_UNLOCK_TTL_MS });
 	};
 
 	const performBulkUnlock = async () => {

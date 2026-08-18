@@ -12,8 +12,8 @@ import {
 	X,
 } from "lucide-react";
 import type React from "react";
-import { useState } from "react";
-import type { DshMission, DshMissionControl } from "@/contracts/types/dsh.types";
+import { useMemo, useState } from "react";
+import type { DshMission, DshMissionControl, DshMissionSubtask } from "@/contracts/types/dsh.types";
 import { cn } from "@/lib/utils";
 
 export interface MissionControlWidgetProps {
@@ -48,6 +48,57 @@ const formatElapsed = (start?: string | null, end?: string | null) => {
 	const rem = seconds % 60;
 	return `${minutes}m ${rem}s`;
 };
+
+// ponytail: naive sparkline from subtask tokens_used, not a real time-series.
+// Upgrade path: feed checkpoint timestamps from the worker when available.
+function TokenSparkline({ subtasks }: { subtasks: DshMissionSubtask[] }) {
+	const { path, viewBox } = useMemo(() => {
+		const values = subtasks.map((s) => s.tokens_used);
+		const width = 120;
+		const height = 32;
+		const padding = 2;
+		const max = Math.max(1, ...values);
+
+		if (values.length < 2) {
+			// Flat line at baseline when only one datapoint.
+			return {
+				path: `M 0 ${height - padding} L ${width} ${height - padding}`,
+				viewBox: `0 0 ${width} ${height}`,
+			};
+		}
+
+		const points = values.map((v, i) => {
+			const x = (i / (values.length - 1)) * width;
+			const y = height - padding - (v / max) * (height - 2 * padding);
+			return [x, y];
+		});
+
+		const d = points.reduce(
+			(acc, [x, y], i) => (i === 0 ? `M ${x} ${y}` : `${acc} L ${x} ${y}`),
+			""
+		);
+		return { path: d, viewBox: `0 0 ${width} ${height}` };
+	}, [subtasks]);
+
+	return (
+		<svg
+			viewBox={viewBox}
+			preserveAspectRatio="none"
+			role="img"
+			aria-label="Token usage sparkline"
+			className="h-8 w-full overflow-visible"
+		>
+			<path
+				d={path}
+				fill="none"
+				stroke="currentColor"
+				strokeWidth="2"
+				className="text-indigo-500"
+			/>
+			<circle cx="120" cy="16" r="2" className="fill-indigo-500 opacity-0" />
+		</svg>
+	);
+}
 
 export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 	className,
@@ -206,6 +257,15 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 						</p>
 					</div>
 				</div>
+
+				{missionControl?.subtasks && missionControl.subtasks.length > 0 && (
+					<div className="mt-3">
+						<p className="text-[10px] text-muted-foreground uppercase mb-1">
+							Tiêu thụ tokens theo bước
+						</p>
+						<TokenSparkline subtasks={missionControl.subtasks} />
+					</div>
+				)}
 
 				{missionControl?.subtasks && missionControl.subtasks.length > 0 && (
 					<div className="mt-3">

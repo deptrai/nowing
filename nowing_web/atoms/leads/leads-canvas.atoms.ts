@@ -1,21 +1,23 @@
 import { atom } from "jotai";
 import { atomWithStorage, createJSONStorage } from "jotai/utils";
+import { atomFamily } from "jotai-family";
 import type { FilterPresets, Lead } from "@/contracts/types/leads.types";
 
 export interface FastUnlockSessionState {
 	expires_at: number;
 }
 
-export type FastUnlockSessions = Record<string, FastUnlockSessionState>;
-
-const sessionStorageAdapter = createJSONStorage<FastUnlockSessions>(
+const fastUnlockSessionStorage = createJSONStorage<FastUnlockSessionState | null>(
 	() => (typeof window !== "undefined" ? sessionStorage : undefined) as Storage
 );
 
-export const fastUnlockSessionAtom = atomWithStorage<FastUnlockSessions>(
-	"nowing:fast-unlock-sessions",
-	{},
-	sessionStorageAdapter
+// Per-workspace, per-user fast-unlock session keyed in sessionStorage.
+export const fastUnlockSessionAtom = atomFamily((key: string) =>
+	atomWithStorage<FastUnlockSessionState | null>(
+		`nowing:fast-unlock-session:${key}`,
+		null,
+		fastUnlockSessionStorage
+	)
 );
 
 export function makeFastUnlockKey(workspaceId: number | string, userId?: string | null) {

@@ -44,7 +44,8 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 	onPhoneChange,
 }) => {
 	const { data: currentUser } = useAtomValue(currentUserAtom);
-	const [fastUnlockSessions, setFastUnlockSessions] = useAtom(fastUnlockSessionAtom);
+	const fastUnlockKey = makeFastUnlockKey(workspaceId, currentUser?.id);
+	const [fastUnlockSession, setFastUnlockSession] = useAtom(fastUnlockSessionAtom(fastUnlockKey));
 
 	const [isUnlocked, setIsUnlocked] = useState(lead.is_unlocked);
 	const [displayPhone, setDisplayPhone] = useState(lead.phone ?? "");
@@ -74,9 +75,7 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 	const isInvalid = lead.is_valid === false;
 	const isDisabled = !contactId || isDnc || isInvalid;
 
-	const fastUnlockKey = makeFastUnlockKey(workspaceId, currentUser?.id);
-	const sessionState = fastUnlockSessions[fastUnlockKey];
-	const isFastUnlockActive = !!sessionState && sessionState.expires_at > Date.now();
+	const isFastUnlockActive = !!fastUnlockSession && fastUnlockSession.expires_at > Date.now();
 
 	const safePhone = (displayPhone || "").trim();
 	const isMasked = safePhone.includes("*");
@@ -112,17 +111,10 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 
 	const applyFastUnlockSession = (enabled: boolean) => {
 		if (!enabled) {
-			setFastUnlockSessions((prev) => {
-				const next = { ...prev };
-				delete next[fastUnlockKey];
-				return next;
-			});
+			setFastUnlockSession(null);
 			return;
 		}
-		setFastUnlockSessions((prev) => ({
-			...prev,
-			[fastUnlockKey]: { expires_at: Date.now() + FAST_UNLOCK_TTL_MS },
-		}));
+		setFastUnlockSession({ expires_at: Date.now() + FAST_UNLOCK_TTL_MS });
 	};
 
 	const performUnlock = async () => {
