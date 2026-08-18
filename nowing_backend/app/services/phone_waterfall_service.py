@@ -851,14 +851,32 @@ class PhoneWaterfallService:
         p_hash = hash_phone(norm_phone)
         encrypted_phone = self.encryption.encrypt(norm_phone)
 
+        value_hmac = compute_verified_contact_hmac(norm_phone, None, lead.domain)
+        if value_hmac is None:
+            return PhoneResolutionResult(
+                lead_id=lead_id,
+                phone=None,
+                phone_masked="",
+                phone_hash=None,
+                tier_reached=res.tier,
+                provider_used=res.provider,
+                status="degenerate_contact",
+                cost_micros=0,
+                confidence=0.0,
+                carrier="Unknown",
+                is_cached=False,
+                degraded=True,
+                degradation_reason="no_domain_or_phone_for_dedup",
+            )
+
         # Create or update VerifiedContact
         contact = VerifiedContact(
             workspace_id=workspace_id,
             client_id=client_id,
             lead_id=lead_id,
             enrichment_request_id=None,
-            name=self.encryption.encrypt(lead.company_name or "Doanh nghiep"),
-            title=self.encryption.encrypt("Lead Contact"),
+            name=None,
+            title=None,
             email=None,
             phone=encrypted_phone,  # Encrypted at rest in vault
             verification_status="verified",
@@ -868,7 +886,7 @@ class PhoneWaterfallService:
             consent_status="legitimate_interest",
             legal_basis="legitimate_interest",
             is_valid=True,
-            value_hmac=compute_verified_contact_hmac(norm_phone, None, lead.domain),
+            value_hmac=value_hmac,
             phone_hmac=compute_phone_hmac(norm_phone),
             email_hmac=None,
         )

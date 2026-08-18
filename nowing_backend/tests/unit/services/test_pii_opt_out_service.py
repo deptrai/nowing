@@ -143,35 +143,7 @@ class TestOptOutServiceProcess:
             user_id=uuid4(),
             cost_micros=1500,
         )
-
-        session = _FakeSession(contacts=[contact])
-
-        calls: dict[str, Any] = {"wallet": [], "monthly_spent": []}
-
-        async def _credit_wallet(
-            _s: Any, user_id: UUID | str, amount_micros: int
-        ) -> None:
-            calls["wallet"].append({"user_id": user_id, "amount_micros": amount_micros})
-
-        async def _decrement_monthly_spent(
-            _s: Any, *, workspace_id: int, user_id: UUID, amount_micros: int
-        ) -> None:
-            calls["monthly_spent"].append(
-                {
-                    "workspace_id": workspace_id,
-                    "user_id": user_id,
-                    "amount_micros": amount_micros,
-                }
-            )
-
-        monkeypatch.setattr(
-            "app.services.pii.opt_out_service._credit_user_wallet",
-            _credit_wallet,
-        )
-        monkeypatch.setattr(
-            "app.services.pii.opt_out_service._decrement_member_monthly_spent",
-            _decrement_monthly_spent,
-        )
+        refund_calls: list[dict[str, Any]] = []
 
         async def _find_original_event(
             _session: Any, _contact_id: UUID, _workspace_id: int
@@ -183,6 +155,48 @@ class TestOptOutServiceProcess:
             _find_original_event,
         )
 
+        async def _record_contact_unlock_refund(
+            _self: Any,
+            session: Any,
+            *,
+            verified_contact_id: UUID,
+            workspace_id: int,
+            client_id: str | None,
+            user_id: UUID,
+            cost_micros: int,
+        ) -> Any:
+            refund_calls.append(
+                {
+                    "verified_contact_id": verified_contact_id,
+                    "user_id": user_id,
+                    "cost_micros": cost_micros,
+                }
+            )
+            event = SimpleNamespace(
+                id=uuid4(),
+                event_type="contact_unlock_refund",
+                event_entity_type="verified_contact",
+                event_id=verified_contact_id,
+                cost_micros=-cost_micros,
+                user_id=user_id,
+            )
+            session.added.append(event)
+            return event
+
+        monkeypatch.setattr(
+            "app.services.pii.opt_out_service.BillingEventService.record_contact_unlock_refund",
+            _record_contact_unlock_refund,
+        )
+
+        async def _count_refundable(*a: Any, **k: Any) -> int:
+            return 1
+
+        monkeypatch.setattr(
+            "app.services.pii.opt_out_service._count_refundable_unlocks_this_cycle",
+            _count_refundable,
+        )
+
+        session = _FakeSession(contacts=[contact])
         service = OptOutService(session)
         result = await service.process_opt_out(
             workspace_id=1,
@@ -191,12 +205,10 @@ class TestOptOutServiceProcess:
             actor_user_id=uuid4(),
         )
 
+        assert result.purged_contact_count == 1
         assert result.refunded_micros == 1500
-        assert len(calls["wallet"]) == 1
-        assert calls["wallet"][0]["amount_micros"] == 1500
-        assert calls["wallet"][0]["user_id"] == original_event.user_id
-        assert len(calls["monthly_spent"]) == 1
-        assert calls["monthly_spent"][0]["amount_micros"] == 1500
+        assert len(refund_calls) == 1
+        assert refund_calls[0]["cost_micros"] == 1500
 
         refund_event = next(
             (

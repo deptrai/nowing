@@ -892,3 +892,17 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - **Finding:** PII vault lacks key-rotation and encryption-failure handling. (nowing_backend/app/services/pii/verified_contact_encryption.py:40-55 and nowing_backend/app/services/phone_waterfall_service.py:692)
   - **Action:** Marked `[x] [Review][Defer]` in `24-2-waterfall-phone-mst-corporate-verification-engine.md`.
   - **Reason / when to revisit:** Confirmed in chunk 1 backend review. Verified-contact encryption relies on a single `SECRET_KEY` with no rotation plan, and `resolve_lead_phone` calls `encrypt()` without guarding against transient failures. Cross-cutting PII-vault concern; revisit in a dedicated PII security story.
+
+## Deferred from: code review of 26-4-pii-vault-hmac-deduplication-decree-13-opt-out (2026-08-19)
+
+- **Finding:** `batch_ingest_leads` route returns without committing the session, so writes are rolled back on session close. (`nowing_backend/app/routes/lead_batch_routes.py:116`, `nowing_backend/app/db.py:4107-4109`)
+  - **Action:** Marked `[x] [Review][Defer]` in `26-4-pii-vault-hmac-deduplication-decree-13-opt-out.md`.
+  - **Reason / when to revisit:** Pre-existing pattern in `lead_batch_routes.py`; the 26.4 diff does not introduce the missing `session.commit()` here. Fix when `batch_ingest_leads` persistence is addressed in a dedicated lead-ingest hardening pass or when the route is next touched.
+
+- **Finding:** Global / superadmin PII opt-out endpoint is not exposed. (`nowing_backend/app/routes/lead_batch_routes.py:289`, `nowing_backend/app/services/pii/opt_out_service.py:309-320`)
+  - **Action:** Marked `[x] [Review][Decision→Defer]` in `26-4-pii-vault-hmac-deduplication-decree-13-opt-out.md`.
+  - **Reason / when to revisit:** Current AC does not require cross-workspace purge. Implement when product requires global Right-to-be-Forgotten flow with proper superadmin permission, audit, and scope design.
+
+- **Finding:** `BillingEvent` model has no `reason` column as suggested by AD-105 Rule 4. (`nowing_backend/app/db.py:4586-4627`, `nowing_backend/app/services/billing_event_service.py:78-89`)
+  - **Action:** Marked `[x] [Review][Decision→Defer]` in `26-4-pii-vault-hmac-deduplication-decree-13-opt-out.md`.
+  - **Reason / when to revisit:** BillingEvent `event_type` already distinguishes unlock/refund. Detailed reason stored in `pii_access_audit_logs`. Defer to a billing schema v2 epic if a dedicated `reason` column is needed.

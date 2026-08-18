@@ -159,18 +159,21 @@ def compute_verified_contact_hmac(
     phone: str | None,
     email: str | None,
     domain: str | None,
-) -> str:
+) -> str | None:
     """Canonical composite HMAC for verified contact deduplication (Story 26.4).
 
     Canonical form: HMAC_SHA256(
         "phone=<normalized_phone>|email=<normalized_email>|domain=<domain>",
         config.SECRET_KEY
     )
+
+    Returns None for degenerate contacts (no phone, email, or domain) so callers
+    can safely skip creating un-deduplicable records.
     """
     norm_phone = normalize_phone_e164(phone) or ""
     norm_email = normalize_email(email) or ""
     norm_domain = normalize_domain(domain) or ""
     if not norm_phone and not norm_email and not norm_domain:
-        raise ValueError("degenerate contact: phone, email and domain are all empty")
+        return None
     canonical = f"phone={norm_phone}|email={norm_email}|domain={norm_domain}"
     return hash_phone_hmac(canonical)

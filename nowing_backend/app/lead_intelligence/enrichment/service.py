@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
+from typing import Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
@@ -32,6 +33,7 @@ from app.lead_intelligence.dnc.normalizer import (
     compute_phone_hmac,
     compute_verified_contact_hmac,
 )
+from app.lead_intelligence.dnc.service import DncComplianceService
 from app.lead_intelligence.enrichment import cache as enrichment_cache
 from app.lead_intelligence.enrichment.fallback import FallbackVerifier
 from app.lead_intelligence.enrichment.providers import run_waterfall
@@ -55,6 +57,7 @@ class EnrichmentService:
     def __init__(self) -> None:
         self.billing = BillingEventService()
         self.cipher = VerifiedContactEncryption()
+        self.dnc = DncComplianceService(secret_key=config.SECRET_KEY)
 
     async def enrich(
         self,
@@ -178,7 +181,9 @@ class EnrichmentService:
         request.status = "processing"
         await session.flush()
 
-        lead = await session.get(Lead, (request.lead_id, request.workspace_id))
+        lead = await self._fetch_lead(
+            session, request.workspace_id, request.client_id, request.lead_id
+        )
         if lead is None:
             request.status = "completed"
             request.provider_results = {
@@ -227,17 +232,43 @@ class EnrichmentService:
             await session.commit()
             return self._degraded(reasons)
 
-        created_count = min(len(contacts), request.requested_count)
-        cost_micros = self._estimated_cost(created_count)
         contact_ids: list[UUID] = []
         lead_consent_status, lead_legal_basis = lead.consent_status, lead.legal_basis
-        for item in contacts[:created_count]:
+        accepted_contacts: list[dict[str, Any]] = []
+
+        for item in contacts[: request.requested_count]:
+            # Fail-closed DNC check before creating the contact.
+            dnc_result = await self.dnc.is_blocked(
+                request.workspace_id,
+                phone=item.get("phone"),
+                email=item.get("email"),
+                domain=lead.domain,
+                session=session,
+            )
+            if dnc_result.is_blocked:
+                logger.info(
+                    "Enrichment contact for lead %s blocked by DNC: %s",
+                    request.lead_id,
+                    dnc_result.reason,
+                )
+                reasons.append("dnc_blocked")
+                continue
+
             encrypted = self.cipher.encrypt_contact(item)
             consent_status = item.get("consent_status") or lead_consent_status
             legal_basis = item.get("legal_basis") or lead_legal_basis
             if lead_consent_status is None and consent_status is not None:
                 lead_consent_status = consent_status
                 lead_legal_basis = legal_basis
+
+            value_hmac = compute_verified_contact_hmac(
+                item.get("phone"), item.get("email"), lead.domain
+            )
+            if value_hmac is None:
+                # Degenerate contact with no phone/email/domain to dedup by.
+                reasons.append("degenerate_contact")
+                continue
+
             contact = VerifiedContact(
                 id=uuid4(),
                 workspace_id=request.workspace_id,
@@ -254,20 +285,27 @@ class EnrichmentService:
                 consent=consent_status == "explicit",
                 consent_status=consent_status,
                 legal_basis=legal_basis,
-                value_hmac=compute_verified_contact_hmac(
-                    item.get("phone"), item.get("email"), lead.domain
-                ),
+                value_hmac=value_hmac,
                 phone_hmac=compute_phone_hmac(item.get("phone")),
                 email_hmac=compute_email_hmac(item.get("email")),
             )
             session.add(contact)
             await session.flush()
             contact_ids.append(contact.id)
+            accepted_contacts.append(item)
+
+            if len(accepted_contacts) >= request.requested_count:
+                break
+
+        created_count = len(contact_ids)
+        cost_micros = self._estimated_cost(created_count)
 
         request.status = "completed"
-        request.contact_count = len(contact_ids)
+        request.contact_count = created_count
         request.cost_micros = cost_micros
-        request.provider_results = self._redacted_results(provider, reasons, contacts)
+        request.provider_results = self._redacted_results(
+            provider, reasons, accepted_contacts
+        )
         await session.flush()
 
         lead.enriched = True
@@ -292,13 +330,13 @@ class EnrichmentService:
             session.add(request)
             request.status = "failed"
             request.provider_results = self._redacted_results(
-                provider, ["billing_failed"], contacts
+                provider, ["billing_failed"], accepted_contacts
             )
             await session.flush()
             await session.commit()
             return self._degraded(["billing_failed"])
 
-        await self._write_memory(session, request, contacts, owner_user_id)
+        await self._write_memory(session, request, accepted_contacts, owner_user_id)
 
         enrichment_cache.set_cached_contact_ids(
             request.workspace_id,
@@ -311,7 +349,7 @@ class EnrichmentService:
         return EnrichmentOutput(
             enrichment_request_id=request.id,
             lead_id=request.lead_id,
-            contact_count=len(contact_ids),
+            contact_count=created_count,
             cost_micros=cost_micros,
             verified_contact_ids=contact_ids,
             degraded=False,

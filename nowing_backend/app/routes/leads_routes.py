@@ -60,7 +60,11 @@ def _escape_ilike_term(term: str) -> str:
 
 
 def _map_lead_to_read(lead: Lead) -> LeadRead:
-    """Map DB Lead entity to Pydantic LeadRead model."""
+    """Map DB Lead entity to Pydantic LeadRead model.
+
+    Never decrypt PII in list responses. Encrypted values are redacted by the
+    mask helpers; only an unlocked contact is decrypted and returned.
+    """
     raw_contacts = []
     if getattr(lead, "verified_contacts", None):
         raw_contacts = [
@@ -69,42 +73,19 @@ def _map_lead_to_read(lead: Lead) -> LeadRead:
             if getattr(c, "phone", None) or getattr(c, "email", None)
         ]
     first_contact = raw_contacts[0] if raw_contacts else None
-    first_phone = (
+    raw_phone = (
         getattr(first_contact, "phone", None)
         if first_contact
         else getattr(lead, "phone", None)
     )
-    first_email = getattr(first_contact, "email", None) if first_contact else None
-    first_name = getattr(first_contact, "name", None) if first_contact else None
+    raw_email = getattr(first_contact, "email", None) if first_contact else None
+    raw_name = getattr(first_contact, "name", None) if first_contact else None
 
     from app.services.export_service import mask_email, mask_name, mask_phone
-    from app.services.pii.verified_contact_encryption import VerifiedContactEncryption
 
-    enc = VerifiedContactEncryption()
-    is_unlocked = bool(getattr(first_contact, "is_unlocked", False))
-
-    def _render_field(value: str | None) -> str | None:
-        if not value:
-            return None
-        if enc.is_encrypted(value):
-            try:
-                value = enc.decrypt(value)
-            except Exception:
-                return None
-        return value
-
-    raw_phone = _render_field(first_phone)
-    raw_email = _render_field(first_email)
-    raw_name = _render_field(first_name)
-
-    if is_unlocked:
-        first_phone = raw_phone
-        first_email = raw_email
-        first_name = raw_name
-    else:
-        first_phone = mask_phone(raw_phone) if raw_phone else None
-        first_email = mask_email(raw_email) if raw_email else None
-        first_name = mask_name(raw_name) if raw_name else None
+    first_phone = mask_phone(raw_phone) if raw_phone else None
+    first_email = mask_email(raw_email) if raw_email else None
+    first_name = mask_name(raw_name) if raw_name else None
 
     # Derive intent and snippet from available metadata or source
     derived_intent = getattr(lead, "intent", None)
@@ -167,9 +148,9 @@ def _map_lead_to_read(lead: Lead) -> LeadRead:
         updated_at=getattr(lead, "updated_at", None),
         tax_id=getattr(lead, "tax_id", None),
         legal_representative=getattr(lead, "legal_representative", None),
-        charter_capital_vnd=int(lead.charter_capital_vnd)
-        if isinstance(lead.charter_capital_vnd, (int, float))
-        and not isinstance(lead.charter_capital_vnd, bool)
+        charter_capital_vnd=int(_ccv)
+        if isinstance(_ccv := getattr(lead, "charter_capital_vnd", None), (int, float))
+        and not isinstance(_ccv, bool)
         else None,
         company_status=getattr(lead, "company_status", None),
         is_zalo_active=getattr(lead, "is_zalo_active", False),
@@ -502,35 +483,38 @@ async def get_company_graph(
     decision_makers: list[DecisionMakerRead] = []
     seen_names: set[str] = set()
 
+    from app.services.export_service import mask_email, mask_name, mask_phone
+    from app.services.pii.verified_contact_encryption import VerifiedContactEncryption
+
+    enc = VerifiedContactEncryption()
+
+    def _decrypt_pii(value: str | None) -> str | None:
+        if not value:
+            return None
+        if enc.is_encrypted(value):
+            try:
+                return enc.decrypt(value)
+            except Exception:
+                return None
+        return value
+
     for c in db_contacts:
-        if c.name and c.name not in seen_names:
-            seen_names.add(c.name)
-            linkedin_slug = quote(c.name.lower().replace(" ", "-"), safe="")
-            dm_phone = c.phone
-            if dm_phone:
-                from app.services.phone_waterfall_service import mask_phone
-                from app.services.pii.verified_contact_encryption import (
-                    VerifiedContactEncryption,
-                )
+        plain_name = _decrypt_pii(c.name)
+        if not plain_name or plain_name in seen_names:
+            continue
+        seen_names.add(plain_name)
+        linkedin_slug = quote(mask_name(plain_name).lower().replace(" ", "-"), safe="")
 
-                enc = VerifiedContactEncryption()
-                if enc.is_encrypted(dm_phone):
-                    try:
-                        dm_phone = enc.decrypt(dm_phone)
-                    except Exception:
-                        dm_phone = None
-                dm_phone = mask_phone(dm_phone) if dm_phone else None
-
-            decision_makers.append(
-                DecisionMakerRead(
-                    name=c.name,
-                    title=c.title or "Executive",
-                    linkedin_url=f"https://linkedin.com/in/{linkedin_slug}",
-                    email=c.email if c.email else None,
-                    phone=dm_phone,
-                    confidence=c.confidence if c.confidence is not None else 0.95,
-                )
+        decision_makers.append(
+            DecisionMakerRead(
+                name=mask_name(plain_name),
+                title=mask_name(_decrypt_pii(c.title) or "Executive"),
+                linkedin_url=f"https://linkedin.com/in/{linkedin_slug}",
+                email=mask_email(_decrypt_pii(c.email)),
+                phone=mask_phone(_decrypt_pii(c.phone)),
+                confidence=c.confidence if c.confidence is not None else 0.95,
             )
+        )
 
     # Query CompanyDecisionMaker from DB (Story 21.9)
     try:
@@ -614,7 +598,7 @@ async def get_company_graph(
         int_seed = int(
             hashlib.md5(lead_obj.company_name.encode("utf-8")).hexdigest()[:8], 16
         )
-        rep_name = db_contacts[0].name if db_contacts else "Chưa cập nhật"
+        rep_name = mask_name(db_contacts[0].name) if db_contacts else "Chưa cập nhật"
         legal_entity = LegalEntityRead(
             legal_name=lead_obj.company_name,
             tax_id=f"010{int_seed % 9000000 + 1000000}",

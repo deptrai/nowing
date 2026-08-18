@@ -126,6 +126,7 @@ def _create_mock_lead(
                 email="minh.le@vng.com.vn",
                 phone="0912.345.678",
                 confidence=0.98,
+                is_unlocked=True,
             )
         ],
     )
@@ -138,7 +139,9 @@ def _fake_auth() -> AuthContext:
 @pytest.fixture
 def mock_leads():
     return [
-        _create_mock_lead(company_name="VNG Corporation", source="facebook", fit_score=92.0),
+        _create_mock_lead(
+            company_name="VNG Corporation", source="facebook", fit_score=92.0
+        ),
         _create_mock_lead(company_name="FPT Software", source="topcv", fit_score=85.0),
     ]
 
@@ -174,7 +177,7 @@ def test_list_leads_returns_paginated_response(client, mock_leads):
     first_item = data["items"][0]
     assert first_item["company_name"] == "VNG Corporation"
     assert first_item["fit_score"] == 92.0
-    assert first_item["phone"] == "0912.345.678"
+    assert first_item["phone"] == "0912***678"
     assert first_item["intent"] == "BÁN"
 
 
@@ -192,7 +195,7 @@ def test_get_lead_detail(client, mock_leads):
     assert response.status_code == 200
     data = response.json()
     assert data["company_name"] == "VNG Corporation"
-    assert data["phone"] == "0912.345.678"
+    assert data["phone"] == "0912***678"
 
 
 def test_update_lead_status_success(client, mock_leads):

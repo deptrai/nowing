@@ -577,34 +577,42 @@ def _memory_title(memory: Memory) -> str:
 
 
 def mask_phone(phone: str | None) -> str:
-    """Mask phone for PII redaction (Story 21.13 / AD-36)."""
+    """Mask phone for PII redaction (Story 21.13 / AD-36).
+
+    Returns a redacted placeholder for short, malformed, or non-phone input
+    (e.g. encrypted tokens) instead of leaking the raw value.
+    """
     if not phone:
         return ""
     clean = str(phone).strip()
+    if not re.match(r"^[\d\s\+\-\(\)\.]*$", clean):
+        return "***"
+    digits = re.sub(r"\D", "", clean)
     if clean.startswith("+84"):
         rest = clean[3:]
-        digits = re.sub(r"\D", "", rest)
-        if len(digits) >= 6:
-            return f"+84{digits[:3]}***{digits[-3:]}"
-    digits = re.sub(r"\D", "", clean)
-    if len(digits) == 10:
+        rest_digits = re.sub(r"\D", "", rest)
+        if len(rest_digits) >= 6:
+            return f"+84{rest_digits[:3]}***{rest_digits[-3:]}"
+    if len(digits) == 10 and digits.startswith("0"):
         return f"{digits[:4]}***{digits[7:]}"
     if len(digits) >= 7:
         mid_start = max(2, len(digits) - 5)
         mid_end = len(digits) - 3
         return f"{digits[:mid_start]}***{digits[mid_end:]}"
-    if len(clean) <= 6:
-        return clean
-    return f"{clean[:4]}***{clean[-3:]}"
+    return "***"
 
 
 def mask_email(email: str | None) -> str:
-    """Mask email for PII redaction (Story 21.13 / AD-36)."""
+    """Mask email for PII redaction (Story 21.13 / AD-36).
+
+    Returns a redacted placeholder for malformed or non-email input instead of
+    leaking the raw value.
+    """
     if not email:
         return ""
     clean = str(email).strip()
-    if "@" not in clean:
-        return clean
+    if "@" not in clean or "." not in clean.split("@")[-1]:
+        return "***"
     parts = clean.split("@", 1)
     username = parts[0]
     domain = parts[1]
@@ -619,8 +627,33 @@ def mask_name(name: str | None) -> str:
         return ""
     clean = str(name).strip()
     if len(clean) <= 3:
-        return clean
+        return "***"
     return f"{clean[0]}***{clean[-1]}"
+
+
+def _maybe_decrypt_pii(value: str | None) -> str | None:
+    """Decrypt a Fernet-encrypted PII value; return plaintext or the raw value."""
+    if not value:
+        return value
+    from app.services.pii.verified_contact_encryption import (
+        VerifiedContactEncryption,
+    )
+
+    enc = VerifiedContactEncryption()
+    if enc.is_encrypted(value):
+        try:
+            return enc.decrypt(value)
+        except Exception:
+            return None
+    return value
+
+
+def _render_pii_field(value: str | None, mask: bool, mask_fn) -> str:
+    """Decrypt if needed and optionally mask a PII field for export."""
+    plaintext = _maybe_decrypt_pii(value) or ""
+    if not mask:
+        return plaintext
+    return mask_fn(plaintext)
 
 
 class ExportService:
@@ -648,14 +681,18 @@ class ExportService:
         for lead in leads:
             contacts = getattr(lead, "verified_contacts", None) or []
             contact = contacts[0] if len(contacts) > 0 else None
-            name = getattr(contact, "name", "") or ""
-            title = getattr(contact, "title", "") or ""
-            email = getattr(contact, "email", "") or ""
-            phone = getattr(contact, "phone", "") or ""
-
-            if mask_pii:
-                email = mask_email(email)
-                phone = mask_phone(phone)
+            name = _render_pii_field(
+                getattr(contact, "name", None), mask_pii, mask_name
+            )
+            title = _render_pii_field(
+                getattr(contact, "title", None), mask_pii, mask_name
+            )
+            email = _render_pii_field(
+                getattr(contact, "email", None), mask_pii, mask_email
+            )
+            phone = _render_pii_field(
+                getattr(contact, "phone", None), mask_pii, mask_phone
+            )
 
             writer.writerow(
                 [
@@ -682,14 +719,18 @@ class ExportService:
         for lead in leads:
             contacts = getattr(lead, "verified_contacts", None) or []
             contact = contacts[0] if len(contacts) > 0 else None
-            name = getattr(contact, "name", "") or ""
-            title = getattr(contact, "title", "") or ""
-            email = getattr(contact, "email", "") or ""
-            phone = getattr(contact, "phone", "") or ""
-
-            if mask_pii:
-                email = mask_email(email)
-                phone = mask_phone(phone)
+            name = _render_pii_field(
+                getattr(contact, "name", None), mask_pii, mask_name
+            )
+            title = _render_pii_field(
+                getattr(contact, "title", None), mask_pii, mask_name
+            )
+            email = _render_pii_field(
+                getattr(contact, "email", None), mask_pii, mask_email
+            )
+            phone = _render_pii_field(
+                getattr(contact, "phone", None), mask_pii, mask_phone
+            )
 
             records.append(
                 {
@@ -731,14 +772,18 @@ class ExportService:
         for lead in leads:
             contacts = getattr(lead, "verified_contacts", None) or []
             contact = contacts[0] if len(contacts) > 0 else None
-            name = getattr(contact, "name", "") or ""
-            title = getattr(contact, "title", "") or ""
-            email = getattr(contact, "email", "") or ""
-            phone = getattr(contact, "phone", "") or ""
-
-            if mask_pii:
-                email = mask_email(email)
-                phone = mask_phone(phone)
+            name = _render_pii_field(
+                getattr(contact, "name", None), mask_pii, mask_name
+            )
+            title = _render_pii_field(
+                getattr(contact, "title", None), mask_pii, mask_name
+            )
+            email = _render_pii_field(
+                getattr(contact, "email", None), mask_pii, mask_email
+            )
+            phone = _render_pii_field(
+                getattr(contact, "phone", None), mask_pii, mask_phone
+            )
 
             rows.append(
                 [

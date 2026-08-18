@@ -101,16 +101,19 @@ class BillingEventService:
         """Record a contact-unlock refund and credit the payer wallet (Story 26.4).
 
         Idempotent: returns an existing refund BillingEvent if one already exists.
+        Refunds are capped at the original unlock cost.
         """
-        # 1. Idempotency: existing refund row for this contact.
+        # 1. Idempotency: existing refund row for this contact (lock for update).
         existing_refund = (
             await session.execute(
-                select(BillingEvent).where(
+                select(BillingEvent)
+                .where(
                     BillingEvent.event_entity_type == "verified_contact",
                     BillingEvent.event_type == "contact_unlock_refund",
                     BillingEvent.event_id == verified_contact_id,
                     BillingEvent.workspace_id == workspace_id,
                 )
+                .with_for_update()
             )
         ).scalar_one_or_none()
         if getattr(existing_refund, "event_type", None) == "contact_unlock_refund":
@@ -119,12 +122,14 @@ class BillingEventService:
         # 2. Find the original unlock billing event to identify the payer.
         original = (
             await session.execute(
-                select(BillingEvent).where(
+                select(BillingEvent)
+                .where(
                     BillingEvent.event_entity_type == "verified_contact",
                     BillingEvent.event_type == "contact_unlock",
                     BillingEvent.event_id == verified_contact_id,
                     BillingEvent.workspace_id == workspace_id,
                 )
+                .with_for_update()
             )
         ).scalar_one_or_none()
         if getattr(original, "event_type", None) != "contact_unlock":
@@ -136,16 +141,19 @@ class BillingEventService:
         if payer_id is None:
             payer_id = user_id
 
-        # 3. Credit the payer wallet and decrement member monthly spent.
-        await wallet_credit.apply_credit(session, payer_id, cost_micros)
+        # 3. Refund cannot exceed the original unlock cost.
+        refund_micros = min(cost_micros, original.cost_micros or cost_micros)
+
+        # 4. Credit the payer wallet and decrement member monthly spent.
+        await wallet_credit.apply_credit(session, payer_id, refund_micros)
         credit_svc = WorkspaceCreditService(session=session)
         await credit_svc.refund_member_spend(
             workspace_id=workspace_id,
             user_id=payer_id,
-            amount_micros=cost_micros,
+            amount_micros=refund_micros,
         )
 
-        # 4. Persist the refund billing event (negative cost).
+        # 5. Persist the refund billing event (negative cost).
         event = BillingEvent(
             workspace_id=workspace_id,
             client_id=client_id,
@@ -153,7 +161,7 @@ class BillingEventService:
             event_entity_type="verified_contact",
             event_type="contact_unlock_refund",
             event_id=verified_contact_id,
-            cost_micros=-cost_micros,
+            cost_micros=-refund_micros,
             currency="USD",
             cost_basis="actual",
         )
@@ -287,14 +295,16 @@ async def _record_business_event(
     return_existing: bool = False,
 ) -> BillingEvent:
     """Core path: check duplicate, write BillingEvent, debit wallet."""
-    # Idempotency: look for an existing billing row for this event.
+    # Idempotency: look for an existing billing row for this event (lock for update).
     existing = (
         await session.execute(
-            select(BillingEvent).where(
+            select(BillingEvent)
+            .where(
                 BillingEvent.event_entity_type == event_entity_type,
                 BillingEvent.event_type == event_type,
                 BillingEvent.event_id == event_id,
             )
+            .with_for_update()
         )
     ).scalar_one_or_none()
     if existing is not None:
@@ -321,15 +331,19 @@ async def _record_business_event(
 
     if cost_micros > 0 and user_id is not None:
         # Debit the wallet first; only persist BillingEvent after a successful debit.
-        await wallet_credit.check_balance(session, user_id, cost_micros)
+        try:
+            await wallet_credit.check_balance(session, user_id, cost_micros)
 
-        credit_svc = WorkspaceCreditService(session=session)
-        await credit_svc.record_spend(
-            workspace_id=workspace_id,
-            user_id=user_id,
-            amount_micros=cost_micros,
-        )
-        await wallet_credit.apply_debit(session, user_id, cost_micros)
+            credit_svc = WorkspaceCreditService(session=session)
+            await credit_svc.record_spend(
+                workspace_id=workspace_id,
+                user_id=user_id,
+                amount_micros=cost_micros,
+            )
+            await wallet_credit.apply_debit(session, user_id, cost_micros)
+        except Exception:
+            await session.rollback()
+            raise
 
     event = BillingEvent(
         workspace_id=workspace_id,
@@ -343,9 +357,4 @@ async def _record_business_event(
         cost_basis=cost_basis,
     )
     session.add(event)
-
-    if cost_micros <= 0 or user_id is None:
-        # Zero-cost or ownerless event is persisted immediately.
-        await session.commit()
-
     return event

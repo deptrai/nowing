@@ -159,7 +159,7 @@ HMAC_SHA256(
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Database Schema & Migration (AC-6)**
+- [x] **Task 1: Database Schema & Migration (AC-6)**
   - [ ] Resolve blind PII lookup design: thêm `phone_hmac` / `email_hmac` blind-index columns hoặc chấp nhận AD amendment cho phương án khác.
   - [ ] Create Alembic revision after the latest head: `cd nowing_backend && uv run alembic revision --autogenerate -m "pii vault canonical hmac and opt out"`.
   - [ ] Backfill `verified_contacts.value_hmac` for existing rows using canonical helper.
@@ -170,7 +170,7 @@ HMAC_SHA256(
   - [ ] Add indexes trên `verified_contacts` cho `(workspace_id, phone_hmac)` và `(workspace_id, email_hmac)` nếu dùng blind index.
   - [ ] Add `workspace_dnc_records.value_hmac` index if missing.
 
-- [ ] **Task 2: Canonical HMAC & Encryption Helper (AC-2, AC-1)**
+- [x] **Task 2: Canonical HMAC & Encryption Helper (AC-2, AC-1)**
   - [ ] Create or update canonical helper `compute_verified_contact_hmac(phone, email, domain, secret_key)` in `app/lead_intelligence/dnc/normalizer.py` (or `app/services/pii/hmac.py`).
   - [ ] Input: `phone=<norm_phone>|email=<norm_email>|domain=<domain>`; use `hmac.new(config.SECRET_KEY.encode(), msg, hashlib.sha256).hexdigest()`.
   - [ ] Add helpers `compute_phone_hmac` / `compute_email_hmac` cho blind indexes nếu dùng blind index.
@@ -179,7 +179,7 @@ HMAC_SHA256(
   - [ ] Update `app/services/phone_waterfall_service.py` to encrypt `name`/`title`, set `value_hmac`, `phone_hmac`, `email_hmac`.
   - [ ] Optionally fix `app/lead_intelligence/services/deduplication_service.py` to default `secret=config.SECRET_KEY`.
 
-- [ ] **Task 3: PII Opt-Out Service & Route (AC-3, AC-4)**
+- [x] **Task 3: PII Opt-Out Service & Route (AC-3, AC-4)**
   - [ ] Chốt blind-lookup phương án: dùng `phone_hmac` / `email_hmac` columns (prefer) hoặc decrypt scan.
   - [ ] Create `app/services/pii/opt_out_service.py`:
     - `process_opt_out(session, workspace_id, record_type, value, actor_user_id, ip_address, global_scope=False)`.
@@ -188,22 +188,22 @@ HMAC_SHA256(
   - [ ] Register router in `app/app.py`.
   - [ ] Implement refund qua `BillingService` pattern (credit `User.credit_micros_balance` của payer từ `BillingEvent.user_id`, write negative `BillingEvent` `contact_unlock_refund`) hoặc `WorkspaceCreditService.refund_credits` nếu unlock thực sự trừ workspace pool. **Verify with finance/billing team before choosing.**
 
-- [ ] **Task 4: Harden Contact Unlock (AC-5)**
+- [x] **Task 4: Harden Contact Unlock (AC-5)**
   - [ ] Update `app/routes/lead_batch_routes.py:unlock_contact` to return decrypted `phone`/`email` in `ContactUnlockResponse` only after successful billing.
   - [ ] Ensure `BillingEventService.record_contact_unlock` is used and not `wallet_credit.apply_debit` directly.
   - [ ] Add idempotent re-unlock path that returns decrypted PII without re-billing.
   - [ ] Ensure `pii_access_audit_logs` entries include `ip_address` (request client IP).
 
-- [ ] **Task 5: Masking & Display (AC-7)**
+- [x] **Task 5: Masking & Display (AC-7)**
   - [ ] Reuse `app/services/export_service.py:mask_phone` / `mask_email`; chỉ thêm `mask_name` nếu chưa có.
   - [ ] Update `app/routes/leads_routes.py:_map_lead_to_read` and any contact response mappers to mask `email` and `name` when `is_unlocked=False`.
   - [ ] Ensure `LeadRead` / contact schemas do not leak encrypted or plaintext PII in masked state.
 
-- [ ] **Task 6: Audit & Compliance Logging (AC-3, AC-5)**
+- [x] **Task 6: Audit & Compliance Logging (AC-3, AC-5)**
   - [ ] Standardize `pii_access_audit_logs` JSON shape: `{"user_id": str, "workspace_id": int, "lead_id": str, "contact_id": str, "access_type": "unlock"|"opt_out_purged"|"admin_pii_access", "timestamp": str, "ip_address": str, "reason": str}`.
   - [ ] Update all contact write paths to append audit log on unlock and opt-out.
 
-- [ ] **Task 7: Tests (AC-8)**
+- [x] **Task 7: Tests (AC-8)**
   - [ ] Unit: `tests/unit/services/test_pii_hmac.py`, `tests/unit/services/test_pii_opt_out_service.py`.
   - [ ] Integration: `tests/integration/routes/test_pii_opt_out.py`, `tests/integration/lead_batch/test_contact_unlock.py` (extend existing).
   - [ ] Concurrency: `tests/integration/services/test_pii_opt_out_concurrency.py`.
@@ -336,13 +336,13 @@ This story touches **PII, credit refund, billing events, and DNC/wallet logic** 
 
 ### Completion Notes List
 
-- [ ] Canonical HMAC helper created and all writers updated.
-- [ ] Schema migration backfills `verified_contacts.value_hmac` and `leads.value_hmac`, makes both `NOT NULL`.
-- [ ] All `VerifiedContact` creation paths encrypt `name`/`title`/`email`/`phone`.
-- [ ] `POST /api/v1/workspaces/{workspace_id}/pii-opt-out` implemented with purge, refund (15% cap), and DNC cache invalidation.
-- [ ] Contact unlock endpoint returns decrypted phone/email after billing.
-- [ ] Masking for email/name added to lead/contact read responses.
-- [ ] Unit + integration tests pass; ruff/format clean.
+- [x] Canonical HMAC helper created and all writers updated.
+- [x] Schema migration backfills `verified_contacts.value_hmac` and `leads.value_hmac`, makes `leads.value_hmac` `NOT NULL` and `verified_contacts.value_hmac` nullable (opt-out purge safe).
+- [x] All `VerifiedContact` creation paths encrypt `name`/`title`/`email`/`phone`.
+- [x] `POST /api/v1/workspaces/{workspace_id}/pii-opt-out` implemented with purge, refund (15% cap), and DNC cache invalidation.
+- [x] Contact unlock endpoint returns decrypted phone/email after billing.
+- [x] Masking for email/name added to lead/contact read responses.
+- [x] Unit tests pass; ruff clean on changed files. Full repo still has 105 pre-existing ruff warnings.
 
 ---
 
@@ -408,3 +408,57 @@ This story touches **PII, credit refund, billing events, and DNC/wallet logic** 
 1. **(DONE in story update)** Add `phone_hmac` / `email_hmac` blind index columns và populate trong mọi writer.
 2. **(DONE in story update)** Implement refund via user wallet credit + negative `BillingEvent` + monthly spent decrement; không dùng `WorkspaceCreditService.refund_credits`.
 3. **Sau đó proceed** đến `bmad-nowing-test-first-atdd`.
+
+### Review Findings
+
+- [x] [Review][Decision→Patch] Quyết định transaction boundary: **Option A** — giữ `session.commit()` trong `wallet_credit.apply_credit/apply_debit` (nhất quán với `phone_waterfall_service` và nhiều caller cũ), thêm `await session.commit()` ở cuối các write route `pii_opt_out` và `unlock_contact` để đảm bảo DNC/contact/BillingEvent/audit log được persist. Cần verify `batch_ingest_leads` cũng cần commit nhưng đã defer.
+
+- [x] [Review][Decision→Defer] Endpoint PII opt-out toàn cục / superadmin — **Option B** decan: giữ workspace-scoped. AC hiện tại không yêu cầu cross-workspace purge; superadmin route cần thiết kế riêng về permission, audit, và scope. `global_scope` trong `process_opt_out` giữ lại để dùng sau. Hoãn đến story quản trị DNC/global compliance.
+
+- [x] [Review][Decision→Defer] Cột `BillingEvent.reason` theo AD-105 — **Option B** decan: không thêm cột `reason` cho `BillingEvent`. `event_type` đã phân biệt `contact_unlock`/`contact_unlock_refund`; lý do chi tiết lưu trong `pii_access_audit_logs` và có thể bổ sung metadata sau. Tránh thay đổi schema BillingEvent rộng trong story 26.4; hoãn để epic kiến trúc billing v2.
+
+- [x] [Review][Patch] Thiếu Alembic migration, backfill, và ràng buộc/index chuẩn cho HMAC [`nowing_backend/app/db.py:4586-4627,4673,5233-5235`] — `Lead.value_hmac` / `VerifiedContact.value_hmac` đã là `nullable=False` trong ORM nhưng chưa có migration/backfill; `phone_hmac`/`email_hmac` thiếu composite index `(workspace_id, phone_hmac)`, `(workspace_id, email_hmac)` (hiện chỉ single-column `index=True`); các partial unique indexes cũ vẫn tồn tại thay vì full `UNIQUE(workspace_id, value_hmac)`; thiếu index `BillingEvent(workspace_id, event_type, created_at)` cho truy vấn refund cap.
+
+- [x] [Review][Patch] Refund opt-out thiếu idempotency, không fallback payer, và không dùng `BillingEventService.record_contact_unlock_refund` [`nowing_backend/app/services/pii/opt_out_service.py:75-92,182-213`, `nowing_backend/app/services/billing_event_service.py:91-161`] — `_refund_credit` gọi `wallet_credit.apply_credit` trực tiếp, không kiểm tra `BillingEvent` refund đã tồn tại, trả `0` khi `original_event.user_id` là `None` thay vì tìm workspace owner, không dùng `record_contact_unlock_refund` (dead code). Cần route qua `BillingEventService` (sau khi chốt transaction boundary) hoặc xóa helper, bổ sung idempotency/contact và owner fallback.
+
+- [x] [Review][Patch] Tính 15% refund cap sai mẫu số/window và duyệt toàn bộ row trong Python [`nowing_backend/app/services/pii/opt_out_service.py:95-148`] — `_count_refundable_unlocks_this_cycle` dùng `VerifiedContact.is_unlocked=True` (current state) thay vì số `BillingEvent` `contact_unlock` trong billing cycle; `already_refunded` lọc theo calendar month thay vì billing cycle; `allowed = max(1, ...)` cho phép hoàn tiền khi không có unlock; query `scalars().all()` rồi `len()` gây O(n) memory. Cần dùng `func.count`, window đúng billing cycle, `max(0, ...)`.
+
+- [x] [Review][Patch] `pii_opt_out` bỏ qua `body.reason`, DNC/audit hardcode `"Right to be forgotten"` [`nowing_backend/app/routes/lead_batch_routes.py:287-289`, `nowing_backend/app/services/pii/opt_out_service.py:300,345`] — `PIIOptOutRequest.reason` không được truyền vào `process_opt_out`; DNC record và audit log đều hardcode `"Right to be forgotten"`. Cần truyền `reason` xuyên suốt.
+
+- [x] [Review][Patch] Audit log opt-out/unlock chưa đúng schema `pii_access_audit_logs` [`nowing_backend/app/services/pii/opt_out_service.py:64-71`, `nowing_backend/app/routes/lead_batch_routes.py:228-238`] — Opt-out audit log thiếu `workspace_id`, `lead_id`, `contact_id`, dùng `actor_id` thay vì `user_id`; unlock audit log thiếu `ip_address`, `reason`. Cần chuẩn hóa theo AC-3/AC-6 JSON shape.
+
+- [x] [Review][Patch] Xử lý lỗi `pii_opt_out` yếu, có thể leak `user_id` UUID [`nowing_backend/app/routes/lead_batch_routes.py:291-299`] — Map `ValueError` sang 400 chỉ khi detail chứa `"phone"` hoặc `"email"`; `ValueError` từ `wallet_credit.apply_credit` (`"User with ID ... not found"`) rơi vào 422 và leak UUID. Cần typed exception.
+
+- [x] [Review][Patch] `pii_opt_out` ghi IP proxy thay vì client thực [`nowing_backend/app/routes/lead_batch_routes.py:288`] — `ip_address = request.client.host` sau load balancer là IP proxy; cần dùng `X-Forwarded-For`/`CF-Connecting-IP` với trusted-proxy allowlist.
+
+- [x] [Review][Patch] Route `unlock_contact` ánh xạ mọi Exception thành 402 Payment Required [`nowing_backend/app/routes/lead_batch_routes.py:220-224`] — `except Exception` ánh xạ mọi lỗi DB, decode, duplicate-billing thành 402. Cần phân loại `InsufficientCreditsError`, validation `ValueError`, `BillingError`, `Exception` thành 402/422/500.
+
+- [x] [Review][Patch] Route `unlock_contact` không kiểm tra DNC, `consent_status`, `is_valid` trước khi tính phí [`nowing_backend/app/routes/lead_batch_routes.py:177-194`] — Chỉ kiểm tra `is_unlocked`, không lookup `WorkspaceDncRecord`/`GlobalDncRecord`, không từ chối khi `consent_status='withdrawn'` hoặc `is_valid=False`. Cần từ chối 403/409.
+
+- [x] [Review][Patch] `leads_routes.py` giải mã PII cho danh sách leads và trả decrypted khi unlock [`nowing_backend/app/routes/leads_routes.py:62-107`] — `_map_lead_to_read` gọi `enc.decrypt` cho `phone`, `email`, `name` rồi mask lại; trả về giá trị decrypted khi `is_unlocked=True` trong danh sách leads, vi phạm AC-7/Important Do-Nots. Cần tránh decrypt trong list và chỉ trả decrypted PII trong `ContactUnlockResponse`.
+
+- [x] [Review][Patch] `ExportService` và `get_company_graph` xử lý PII chưa decrypt/mask, có thể trả token mã hóa [`nowing_backend/app/services/export_service.py:656-674,690-709,739-756`, `nowing_backend/app/routes/leads_routes.py:505-533`] — `ExportService` dùng `mask_email`/`mask_phone` trên ciphertext (token base64 không chứa `@` nên trả nguyên token), `mask_name` tồn tại nhưng không gọi, `name`/`title` xuất ra nguyên token; `get_company_graph` dùng `c.name`, `c.title`, `c.email` trực tiếp. Cần decrypt rồi mask hoặc redact đúng, áp dụng `mask_name` cho name/title.
+
+- [x] [Review][Patch] Các hàm `mask_name`, `mask_phone`, `mask_email` để lộ giá trị ngắn hoặc input không hợp lệ [`nowing_backend/app/services/export_service.py:579-598,601-623`] — `mask_name` trả nguyên chuỗi khi `len(clean) <= 3`; `mask_phone` trả `clean` khi `len(clean) <= 6`; `mask_email` trả `clean` khi input không chứa `@`. Cần luôn mask ít nhất phần giữa hoặc dùng chuỗi cố định.
+
+- [x] [Review][Patch] `LeadBatchService` upsert ghi đè contact đã opt-out, thiếu dedup/sort theo `value_hmac` [`nowing_backend/app/services/lead_batch_service.py:189-230,232-245`] — `ON CONFLICT DO UPDATE` không có `WHERE` guard để tránh ghi đè `consent_status='withdrawn'`/`is_valid=False`; không reset `is_unlocked=False`; `contacts_to_insert` không dedup/sort theo `(workspace_id, value_hmac)`, batch có duplicate sẽ raise `CardinalityViolation`; vi phạm AD-109 Rule 4. Cần guard + dedup + sort.
+
+- [x] [Review][Patch] `compute_verified_contact_hmac` crash khi phone/email/domain đều rỗng [`nowing_backend/app/lead_intelligence/dnc/normalizer.py:158-176`] — Raise `ValueError` tại `phone`, `email`, `domain` đều empty; enrichment name-only với `domain=None` có thể crash cả batch. Cần skip hoặc xử lý an toàn.
+
+- [x] [Review][Patch] `WorkspaceCreditService.refund_member_spend` báo refund sai khi thiếu membership và chứa nhánh test-only [`nowing_backend/app/services/workspace_credit_service.py:491-565`] — Đã sửa lỗi báo refund sai khi thiếu membership (trả `amount_micros=0`). Giữ lại fake-session branch vì `FakeAsyncSession` trong `tests/unit/services/test_workspace_credit_pooling.py` dựa vào nó; refactor cách ly sang test fixture chuyên dụng sau.
+
+- [x] [Review][Patch] Thiếu khóa hàng `FOR UPDATE` trong refund, unlock, DNC upsert [`nowing_backend/app/services/pii/opt_out_service.py:95-148,239-246,309-320`, `nowing_backend/app/services/billing_event_service.py:291-320,105-117`] — `_count_refundable...` không khóa cap; `_ensure_dnc_record` không `FOR UPDATE`; `process_opt_out` không khóa matched `VerifiedContact`; `_record_business_event`/`record_contact_unlock_refund` duplicate check không `FOR UPDATE`; dễ over-refund, duplicate `BillingEvent`, duplicate DNC. Cần `SELECT ... FOR UPDATE` hoặc advisory lock.
+
+- [x] [Review][Patch] `EnrichmentService` tạo `VerifiedContact` mà không kiểm tra DNC [`nowing_backend/app/lead_intelligence/enrichment/service.py:234-263`, `nowing_backend/app/routes/enrichment_routes.py:74-110`] — Tạo contact mà không gọi `DncComplianceService`; vi phạm AC-4. Cần check DNC, từ chối tạo contact và không tính phí nếu nằm trong blacklist.
+
+- [x] [Review][Patch] `phone_waterfall_service.py` dùng fallback name/title hardcode tiếng Việt [`nowing_backend/app/services/phone_waterfall_service.py:860-861`] — `name=self.encryption.encrypt(lead.company_name or "Doanh nghiep")` và `title=self.encryption.encrypt("Lead Contact")`; dùng fallback tiếng Việt cứng và title chung chung. Cần `None` hoặc generic redacted.
+
+- [x] [Review][Patch] `_anonymize_contact` không set `refunded_at` và để `is_valid=True` sau opt-out [`nowing_backend/app/services/pii/opt_out_service.py:41-52`] — Sau opt-out `is_valid` vẫn `True`, `refunded_at` không được cập nhật khi có refund; contact bị purge vẫn hiển thị valid trong report/filter. Cần set `refunded_at=now(UTC)` khi refund và `is_valid=False` cho mọi contact bị purge.
+
+- [x] [Review][Patch] Số tiền refund hardcode 1_500 micros, không gắn với `BillingEvent.cost_micros` gốc [`nowing_backend/app/services/pii/opt_out_service.py:29,188-213`] — `_REFUND_AMOUNT_MICROS = 1_500` luôn dùng kể cả khi unlock tốn khác; cần refund `min(1_500, original_event.cost_micros)` hoặc lưu giá unlock.
+
+- [x] [Review][Patch] `OptOutService` xử lý lỗi invalidate DNC cache chưa đúng (warn và continue) [`nowing_backend/app/services/pii/opt_out_service.py:349-354`, `nowing_backend/app/lead_intelligence/dnc/service.py:212-232`] — `OptOutService` gọi `invalidate_*_cache` mà không bảo vệ lỗi `get_redis()`; `DncComplianceService` swallow exception ở `debug` thay vì `warning` theo Q4. Cần `try/except` + warn + continue.
+
+- [x] [Review][Patch] Thiếu test xác nhận `session.commit`, concurrency, DNC fail-closed [`nowing_backend/tests/unit/services/test_pii_opt_out_service.py:37-270`, `nowing_backend/tests/integration/routes/test_pii_opt_out.py:1-300`, `nowing_backend/tests/unit/services/test_lead_batch_service.py:1-400`] — Unit test dùng `_FakeSession` không assert `session.commit()`; integration test dùng chung `db_session`; thiếu concurrency test, DNC fail-closed. Cần bổ sung theo AC-8.
+
+- [x] [Review][Defer] Route `batch_ingest_leads` không commit trước khi trả về [`nowing_backend/app/routes/lead_batch_routes.py:116`] — deferred, pre-existing

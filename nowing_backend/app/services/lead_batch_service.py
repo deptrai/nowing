@@ -13,6 +13,7 @@ import time
 from typing import Any
 from uuid import UUID, uuid4
 
+from sqlalchemy import not_, or_
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import func
@@ -128,6 +129,53 @@ def _build_batch_upsert_stmt(leads: list[dict[str, Any]]) -> Any:
     return upsert_stmt
 
 
+def _build_contacts_upsert_stmt(contacts: list[dict[str, Any]]) -> Any:
+    """Build deterministic, deadlock-free bulk upsert for ``verified_contacts``.
+
+    In-memory dedup by (workspace_id, value_hmac) and sorted by value_hmac ASC
+    before lock acquisition. The DO UPDATE guard refuses to overwrite contacts
+    that have been opted out (withdrawn / invalid).
+    """
+    if not contacts:
+        return None
+
+    unique: dict[tuple[int, str], dict[str, Any]] = {}
+    for contact in contacts:
+        key = (contact["workspace_id"], contact["value_hmac"])
+        existing = unique.get(key)
+        if existing is None:
+            unique[key] = contact
+        else:
+            # Keep the record with the higher confidence on conflict.
+            if (contact.get("confidence") or 0) > (existing.get("confidence") or 0):
+                unique[key] = contact
+
+    sorted_contacts = sorted(unique.values(), key=lambda x: x["value_hmac"])
+
+    stmt = pg_insert(VerifiedContact).values(sorted_contacts)
+    upsert_stmt = stmt.on_conflict_do_update(
+        index_elements=["workspace_id", "value_hmac"],
+        set_={
+            "name": stmt.excluded.name,
+            "title": stmt.excluded.title,
+            "email": stmt.excluded.email,
+            "phone": stmt.excluded.phone,
+            "phone_hmac": stmt.excluded.phone_hmac,
+            "email_hmac": stmt.excluded.email_hmac,
+            "confidence": stmt.excluded.confidence,
+            "source_provider": stmt.excluded.source_provider,
+            "updated_at": func.now(),
+        },
+        where=not_(
+            or_(
+                VerifiedContact.consent_status == "withdrawn",
+                VerifiedContact.is_valid.is_(False),
+            )
+        ),
+    )
+    return upsert_stmt
+
+
 class LeadBatchService:
     """Batch ingestion orchestrator for leads and their PII contacts."""
 
@@ -200,6 +248,9 @@ class LeadBatchService:
             contact_hmac = compute_verified_contact_hmac(
                 lead.get("phone"), lead.get("email"), domain
             )
+            if contact_hmac is None:
+                # Degenerate: no phone, email, or domain to deduplicate by.
+                continue
 
             contact = {
                 "id": uuid4(),
@@ -230,19 +281,9 @@ class LeadBatchService:
             contacts_to_insert.append(contact)
 
         if contacts_to_insert:
-            contact_stmt = pg_insert(VerifiedContact).values(contacts_to_insert)
-            contact_upsert = contact_stmt.on_conflict_do_update(
-                index_elements=["workspace_id", "value_hmac"],
-                set_={
-                    "name": contact_stmt.excluded.name,
-                    "title": contact_stmt.excluded.title,
-                    "email": contact_stmt.excluded.email,
-                    "phone": contact_stmt.excluded.phone,
-                    "phone_hmac": contact_stmt.excluded.phone_hmac,
-                    "email_hmac": contact_stmt.excluded.email_hmac,
-                },
-            )
-            await session.execute(contact_upsert)
+            contact_upsert = _build_contacts_upsert_stmt(contacts_to_insert)
+            if contact_upsert is not None:
+                await session.execute(contact_upsert)
 
         execution_time_ms = (time.monotonic() - started_at) * 1000
 

@@ -5230,7 +5230,7 @@ class VerifiedContact(Base, TimestampMixin):
     consent = Column(Boolean, nullable=False, default=False, server_default="false")
     consent_status = Column(String(50), nullable=True)
     legal_basis = Column(String(50), nullable=True)
-    value_hmac = Column(String(64), nullable=False, index=True)
+    value_hmac = Column(String(64), nullable=True, index=True)
     phone_hmac = Column(String(64), nullable=True, index=True)
     email_hmac = Column(String(64), nullable=True, index=True)
     is_valid = Column(Boolean, nullable=False, default=True, server_default="true")

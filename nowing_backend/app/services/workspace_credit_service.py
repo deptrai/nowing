@@ -507,24 +507,11 @@ class WorkspaceCreditService:
 
         # In-memory fake-session path used by unit tests (FakeAsyncSession).
         if hasattr(self.session, "workspaces") and hasattr(self.session, "memberships"):
-            membership = self.session.memberships.get((workspace_id, user_id))
-            if membership is None:
-                return {
-                    "workspace_id": workspace_id,
-                    "user_id": user_id,
-                    "amount_micros": amount_micros,
-                    "member_monthly_spent": 0,
-                    "member_monthly_spend_cap": None,
-                }
-            current_spent = membership.monthly_spent_micros or 0
-            membership.monthly_spent_micros = max(0, current_spent - amount_micros)
-            return {
-                "workspace_id": workspace_id,
-                "user_id": user_id,
-                "amount_micros": amount_micros,
-                "member_monthly_spent": membership.monthly_spent_micros,
-                "member_monthly_spend_cap": membership.monthly_spend_cap_micros,
-            }
+            return self._refund_member_spend_fake(
+                workspace_id=workspace_id,
+                user_id=user_id,
+                amount_micros=amount_micros,
+            )
 
         from sqlalchemy import update
 
@@ -548,10 +535,11 @@ class WorkspaceCreditService:
         )
         spend_row = spend_result.one_or_none()
         if spend_row is None:
+            # Member not found: no monthly spent to refund; do not report a refund.
             return {
                 "workspace_id": workspace_id,
                 "user_id": user_id,
-                "amount_micros": amount_micros,
+                "amount_micros": 0,
                 "member_monthly_spent": 0,
                 "member_monthly_spend_cap": None,
             }
@@ -562,6 +550,33 @@ class WorkspaceCreditService:
             "amount_micros": amount_micros,
             "member_monthly_spent": returned_spent,
             "member_monthly_spend_cap": returned_cap,
+        }
+
+    def _refund_member_spend_fake(
+        self,
+        *,
+        workspace_id: int,
+        user_id: UUID,
+        amount_micros: int,
+    ) -> dict[str, Any]:
+        """In-memory refund_member_spend path used by FakeAsyncSession unit tests."""
+        membership = self.session.memberships.get((workspace_id, user_id))
+        if membership is None:
+            return {
+                "workspace_id": workspace_id,
+                "user_id": user_id,
+                "amount_micros": 0,
+                "member_monthly_spent": 0,
+                "member_monthly_spend_cap": None,
+            }
+        current_spent = membership.monthly_spent_micros or 0
+        membership.monthly_spent_micros = max(0, current_spent - amount_micros)
+        return {
+            "workspace_id": workspace_id,
+            "user_id": user_id,
+            "amount_micros": amount_micros,
+            "member_monthly_spent": membership.monthly_spent_micros,
+            "member_monthly_spend_cap": membership.monthly_spend_cap_micros,
         }
 
     async def set_member_spend_cap(

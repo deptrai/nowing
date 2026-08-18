@@ -218,7 +218,7 @@ class DncComplianceService:
             for r_type in ("phone", "email", "domain", "tax_id"):
                 await redis.delete(self._get_redis_key(workspace_id, r_type))
         except Exception as exc:
-            logger.debug("[DncService] Cache invalidation failed: %s", exc)
+            logger.warning("[DncService] Cache invalidation failed: %s", exc)
 
     async def invalidate_global_cache(self) -> None:
         """Clear Redis DNC cache keys for the global registry upon add/delete/import."""
@@ -229,7 +229,7 @@ class DncComplianceService:
             for r_type in ("phone", "email", "domain", "tax_id"):
                 await redis.delete(f"dnc:global:{r_type}")
         except Exception as exc:
-            logger.debug("[DncService] Global cache invalidation failed: %s", exc)
+            logger.warning("[DncService] Global cache invalidation failed: %s", exc)
 
     async def is_blocked(
         self,
@@ -280,9 +280,7 @@ class DncComplianceService:
                                 record_type="domain",
                                 reason=f"Company domain matches blocked rule '{rule_dom}'",
                             )
-                    global_blocked_domains = await self._get_global_dnc_domains(
-                        session
-                    )
+                    global_blocked_domains = await self._get_global_dnc_domains(session)
                     for rule_dom in global_blocked_domains:
                         if is_domain_matching(norm_dom, rule_dom):
                             return DncCheckResult(
@@ -403,10 +401,14 @@ class DncComplianceService:
                         p_hash = hash_phone_hmac(e164, secret_key=self.secret_key)
                         if p_hash in workspace_phone_hashes:
                             is_blocked = True
-                            reason = "Phone number is registered on Workspace DNC blacklist"
+                            reason = (
+                                "Phone number is registered on Workspace DNC blacklist"
+                            )
                         elif p_hash in global_phone_hashes:
                             is_blocked = True
-                            reason = "Phone number is registered on Global DNC blacklist"
+                            reason = (
+                                "Phone number is registered on Global DNC blacklist"
+                            )
 
                 # 2. Domain (workspace first, then global)
                 if not is_blocked:
@@ -453,7 +455,9 @@ class DncComplianceService:
                             )
                             if t_hash in workspace_tax_hashes:
                                 is_blocked = True
-                                reason = "Corporate Tax ID is on Workspace DNC blacklist"
+                                reason = (
+                                    "Corporate Tax ID is on Workspace DNC blacklist"
+                                )
                             elif t_hash in global_tax_hashes:
                                 is_blocked = True
                                 reason = "Corporate Tax ID is on Global DNC blacklist"

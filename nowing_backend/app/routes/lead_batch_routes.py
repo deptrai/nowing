@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import ipaddress
+import logging
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -11,16 +13,50 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.db import Permission, VerifiedContact, Workspace, get_async_session
+from app.config import config
+from app.db import Lead, Permission, VerifiedContact, Workspace, get_async_session
+from app.lead_intelligence.dnc.service import DncComplianceService
 from app.rate_limiter import limiter
+from app.services import wallet_credit
 from app.services.billing_event_service import BillingEventService
 from app.services.lead_batch_service import LeadBatchService, LeadItemValidationError
-from app.services.pii.opt_out_service import OptOutService
+from app.services.pii.opt_out_service import OptOutService, OptOutValidationError
 from app.services.pii.verified_contact_encryption import VerifiedContactEncryption
 from app.users import get_auth_context
 from app.utils.rbac import check_permission
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
+
+
+def _is_trusted_proxy(host: str) -> bool:
+    """Return True when the immediate remote address is a private/trusted proxy."""
+    try:
+        addr = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return bool(
+        addr.is_loopback
+        or addr.is_private
+        or addr in ipaddress.ip_network("10.0.0.0/8")
+        or addr in ipaddress.ip_network("172.16.0.0/12")
+        or addr in ipaddress.ip_network("192.168.0.0/16")
+        or addr in ipaddress.ip_network("100.64.0.0/10")
+    )
+
+
+def _get_client_ip(request: Request) -> str | None:
+    """Return the real client IP behind trusted proxies / Cloudflare."""
+    remote = request.client.host if request.client else None
+    if remote and _is_trusted_proxy(remote):
+        cf = request.headers.get("cf-connecting-ip")
+        if cf:
+            return cf.split(",")[0].strip()
+        xff = request.headers.get("x-forwarded-for")
+        if xff:
+            return xff.split(",")[0].strip()
+    return remote
 
 
 class LeadItem(BaseModel):
@@ -176,11 +212,13 @@ async def unlock_contact(
 
     contact = (
         await session.execute(
-            select(VerifiedContact).where(
+            select(VerifiedContact)
+            .where(
                 VerifiedContact.id == contact_id,
                 VerifiedContact.workspace_id == workspace_id,
                 VerifiedContact.lead_id == lead_id,
             )
+            .with_for_update()
         )
     ).scalar_one_or_none()
     if contact is None:
@@ -191,21 +229,48 @@ async def unlock_contact(
 
     enc = VerifiedContactEncryption()
 
+    # Reject purged/withdrawn contacts.
+    if not contact.is_valid or contact.consent_status == "withdrawn":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Contact has been opted-out and cannot be unlocked.",
+        )
+
+    def _decrypt_field(value: str | None) -> str | None:
+        if not value:
+            return None
+        if enc.is_encrypted(value):
+            try:
+                return enc.decrypt(value)
+            except Exception:
+                return None
+        return value
+
     if contact.is_unlocked:
         return ContactUnlockResponse(
             contact_id=contact.id,
             is_unlocked=True,
             cost_micros=0,
-            name=enc.decrypt(contact.name) if enc.is_encrypted(contact.name) else None,
-            title=enc.decrypt(contact.title)
-            if enc.is_encrypted(contact.title)
-            else None,
-            email=enc.decrypt(contact.email)
-            if enc.is_encrypted(contact.email)
-            else None,
-            phone=enc.decrypt(contact.phone)
-            if enc.is_encrypted(contact.phone)
-            else None,
+            name=_decrypt_field(contact.name),
+            title=_decrypt_field(contact.title),
+            email=_decrypt_field(contact.email),
+            phone=_decrypt_field(contact.phone),
+        )
+
+    # Fail-closed DNC check before billing.
+    lead = await session.get(Lead, (lead_id, workspace_id))
+    dnc = DncComplianceService(secret_key=config.SECRET_KEY)
+    dnc_result = await dnc.is_blocked(
+        workspace_id=workspace_id,
+        phone=_decrypt_field(contact.phone),
+        email=_decrypt_field(contact.email),
+        domain=getattr(lead, "domain", None) if lead else None,
+        session=session,
+    )
+    if dnc_result.is_blocked:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Contact is blocked by DNC: {dnc_result.reason}",
         )
 
     try:
@@ -217,10 +282,21 @@ async def unlock_contact(
             user_id=auth.user.id,
             cost_micros=1_500,
         )
-    except Exception as exc:
+    except wallet_credit.InsufficientCreditsError as exc:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail=str(exc),
+            detail="Insufficient credits to unlock contact.",
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Billing validation failed.",
+        ) from exc
+    except Exception as exc:
+        logger.exception("Failed to unlock contact %s: %s", contact_id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to unlock contact.",
         ) from exc
 
     contact.is_unlocked = True
@@ -232,20 +308,22 @@ async def unlock_contact(
             "workspace_id": workspace_id,
             "lead_id": str(lead_id),
             "contact_id": str(contact_id),
-            "timestamp": datetime.now(UTC).isoformat(),
             "access_type": "unlock",
+            "timestamp": datetime.now(UTC).isoformat(),
+            "ip_address": _get_client_ip(request),
+            "reason": "contact_unlock",
         },
     ]
-    await session.flush()
+    await session.commit()
 
     return ContactUnlockResponse(
         contact_id=contact.id,
         is_unlocked=True,
         cost_micros=1_500,
-        name=enc.decrypt(contact.name) if enc.is_encrypted(contact.name) else None,
-        title=enc.decrypt(contact.title) if enc.is_encrypted(contact.title) else None,
-        email=enc.decrypt(contact.email) if enc.is_encrypted(contact.email) else None,
-        phone=enc.decrypt(contact.phone) if enc.is_encrypted(contact.phone) else None,
+        name=_decrypt_field(contact.name),
+        title=_decrypt_field(contact.title),
+        email=_decrypt_field(contact.email),
+        phone=_decrypt_field(contact.phone),
     )
 
 
@@ -285,22 +363,32 @@ async def pii_opt_out(
             record_type=body.record_type,
             value=body.value,
             actor_user_id=auth.user.id,
-            ip_address=getattr(request, "client", None) and request.client.host,
+            ip_address=_get_client_ip(request),
             global_scope=False,
+            reason=body.reason,
         )
-    except ValueError as exc:
-        detail = str(exc).lower()
-        if "phone" in detail or "email" in detail:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=str(exc),
-            ) from exc
+    except OptOutValidationError as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
+    except wallet_credit.InsufficientCreditsError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Insufficient credits to process opt-out.",
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Billing validation failed.",
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to process opt-out.",
+        ) from exc
 
-    await session.flush()
+    await session.commit()
 
     return PIIOptOutResponse(
         purged_contact_count=result.purged_contact_count,
