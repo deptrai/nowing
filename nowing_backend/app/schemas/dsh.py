@@ -86,3 +86,46 @@ class DshMissionInternalResponse(DshMissionResponse):
     error: dict | None
     started_at: datetime | None
     completed_at: datetime | None
+
+
+class TokenVelocity(BaseModel):
+    """Aggregated token/cost summary for the Glass Box widget."""
+
+    tokens_total: int = 0
+    tokens_per_second: float = 0.0
+    cost_micros: int = 0
+    cost_credits: float = 0.0
+
+
+class DshMissionSubtask(BaseModel):
+    """Redacted subtask snapshot shown in the public control view."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    id: str
+    title: str
+    status: str
+    phase: str | None = None
+    reasoning_content: str | None = None
+    tokens_used: int = 0
+    tokens_per_second: float = 0.0
+    run_id: str | None = None
+    cost_micros: int = 0
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+
+
+class DshMissionControlResponse(DshMissionResponse):
+    """Public, PII-safe mission control payload with token velocity and subtasks."""
+
+    token_velocity: TokenVelocity
+    subtasks: list[DshMissionSubtask]
+
+
+class DshMissionListResponse(BaseModel):
+    """Paginated list of DSH missions."""
+
+    items: list[DshMissionResponse]
+    total: int
+    limit: int
+    offset: int

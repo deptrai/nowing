@@ -62,8 +62,10 @@ def _escape_ilike_term(term: str) -> str:
 def _map_lead_to_read(lead: Lead) -> LeadRead:
     """Map DB Lead entity to Pydantic LeadRead model.
 
-    Never decrypt PII in list responses. Encrypted values are redacted by the
-    mask helpers; only an unlocked contact is decrypted and returned.
+    Never decrypt PII in list responses unless the first verified contact is
+    unlocked. Encrypted values are redacted by the mask helpers for locked
+    contacts. Contact metadata (contact_id, is_unlocked, is_valid,
+    consent_status) is exposed so the UI can render unlock/DNC affordances.
     """
     raw_contacts = []
     if getattr(lead, "verified_contacts", None):
@@ -73,6 +75,22 @@ def _map_lead_to_read(lead: Lead) -> LeadRead:
             if getattr(c, "phone", None) or getattr(c, "email", None)
         ]
     first_contact = raw_contacts[0] if raw_contacts else None
+
+    from app.services.pii.mask import mask_email, mask_name, mask_phone
+    from app.services.pii.verified_contact_encryption import VerifiedContactEncryption
+
+    enc = VerifiedContactEncryption()
+
+    def _decrypt_pii(value: str | None) -> str | None:
+        if not value:
+            return None
+        if enc.is_encrypted(value):
+            try:
+                return enc.decrypt(value)
+            except Exception:
+                return None
+        return value
+
     raw_phone = (
         getattr(first_contact, "phone", None)
         if first_contact
@@ -81,11 +99,18 @@ def _map_lead_to_read(lead: Lead) -> LeadRead:
     raw_email = getattr(first_contact, "email", None) if first_contact else None
     raw_name = getattr(first_contact, "name", None) if first_contact else None
 
-    from app.services.export_service import mask_email, mask_name, mask_phone
-
-    first_phone = mask_phone(raw_phone) if raw_phone else None
-    first_email = mask_email(raw_email) if raw_email else None
-    first_name = mask_name(raw_name) if raw_name else None
+    is_unlocked = bool(getattr(first_contact, "is_unlocked", False))
+    plain_phone = _decrypt_pii(raw_phone)
+    plain_email = _decrypt_pii(raw_email)
+    plain_name = _decrypt_pii(raw_name)
+    if is_unlocked:
+        first_phone = plain_phone
+        first_email = plain_email
+        first_name = plain_name
+    else:
+        first_phone = mask_phone(plain_phone) if plain_phone else None
+        first_email = mask_email(plain_email) if plain_email else None
+        first_name = mask_name(plain_name) if plain_name else None
 
     # Derive intent and snippet from available metadata or source
     derived_intent = getattr(lead, "intent", None)
@@ -144,7 +169,7 @@ def _map_lead_to_read(lead: Lead) -> LeadRead:
         content_snippet=content_snippet,
         author=getattr(lead, "author", None),
         enriched=getattr(lead, "enriched", False),
-        created_at=lead.created_at or datetime.now(UTC),
+        created_at=getattr(lead, "created_at", None) or datetime.now(UTC),
         updated_at=getattr(lead, "updated_at", None),
         tax_id=getattr(lead, "tax_id", None),
         legal_representative=getattr(lead, "legal_representative", None),
@@ -154,6 +179,10 @@ def _map_lead_to_read(lead: Lead) -> LeadRead:
         else None,
         company_status=getattr(lead, "company_status", None),
         is_zalo_active=getattr(lead, "is_zalo_active", False),
+        contact_id=getattr(first_contact, "id", None),
+        is_unlocked=is_unlocked,
+        is_valid=getattr(first_contact, "is_valid", None),
+        consent_status=getattr(first_contact, "consent_status", None),
     )
 
 
@@ -483,7 +512,7 @@ async def get_company_graph(
     decision_makers: list[DecisionMakerRead] = []
     seen_names: set[str] = set()
 
-    from app.services.export_service import mask_email, mask_name, mask_phone
+    from app.services.pii.mask import mask_email, mask_name, mask_phone
     from app.services.pii.verified_contact_encryption import VerifiedContactEncryption
 
     enc = VerifiedContactEncryption()

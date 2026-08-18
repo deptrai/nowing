@@ -43,6 +43,7 @@ from app.proprietary.platforms.xactions.phone_extractor import (
     extract_phone_numbers,
 )
 from app.services import wallet_credit
+from app.services.pii.mask import mask_phone
 from app.services.pii.verified_contact_encryption import VerifiedContactEncryption
 from app.services.scraper_platform_account_service import (
     ScraperPlatformAccountRotator,
@@ -169,26 +170,6 @@ def normalize_vn_phone(
             return num_converted
 
     return None
-
-
-def mask_phone(phone: str | None) -> str:
-    """Mask phone number for non-privileged response and zero-cache (e.g. 0908***456).
-
-    ponytail: accepts both 10-digit domestic and E.164 input; E.164 is converted
-    to domestic display before masking.
-    """
-    if not phone:
-        return ""
-    digits = re.sub(r"\D", "", phone)
-    if digits.startswith("84") and len(digits) == 11:
-        digits = "0" + digits[2:]
-    if len(digits) == 10:
-        return f"{digits[:4]}***{digits[7:]}"
-    if len(digits) >= 7:
-        mid_start = max(2, len(digits) - 5)
-        mid_end = len(digits) - 3
-        return f"{digits[:mid_start]}***{digits[mid_end:]}"
-    return "***"
 
 
 def hash_phone(phone: str | None) -> str | None:

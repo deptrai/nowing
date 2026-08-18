@@ -49,7 +49,7 @@ class _FakeSession:
     def add(self, obj: Any) -> None:
         self.added.append(obj)
 
-    async def execute(self, _stmt: Any) -> _FakeResult:
+    async def execute(self, _stmt: Any, _params: Any | None = None) -> _FakeResult:
         return _FakeResult(self._scalar, self._rows)
 
     async def commit(self) -> None:
@@ -326,7 +326,11 @@ class TestRecordSignalScan:
             description: str = "",
         ) -> dict[str, Any]:
             record_spend_calls.append(
-                {"workspace_id": workspace_id, "user_id": user_id, "amount_micros": amount_micros}
+                {
+                    "workspace_id": workspace_id,
+                    "user_id": user_id,
+                    "amount_micros": amount_micros,
+                }
             )
             return {
                 "workspace_id": workspace_id,
@@ -346,7 +350,11 @@ class TestRecordSignalScan:
             amount_micros: int,
         ) -> dict[str, Any]:
             refund_calls.append(
-                {"workspace_id": workspace_id, "user_id": user_id, "amount_micros": amount_micros}
+                {
+                    "workspace_id": workspace_id,
+                    "user_id": user_id,
+                    "amount_micros": amount_micros,
+                }
             )
             return {
                 "workspace_id": workspace_id,

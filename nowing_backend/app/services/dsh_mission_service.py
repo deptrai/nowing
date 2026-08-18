@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import select
@@ -115,6 +115,36 @@ class DshMissionService:
         if mission is None:
             raise DshMissionServiceError("Mission not found")
         return mission
+
+    async def list_missions_for_workspace(
+        self,
+        session: AsyncSession,
+        workspace_id: int,
+        status_filter: str | None = None,
+        hours: int = 24,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[DshMission]:
+        """List missions in a workspace filtered by status and age."""
+        since = datetime.now(UTC) - timedelta(hours=hours)
+        status_list = [
+            s.strip()
+            for s in (status_filter or "").split(",")
+            if s.strip()
+        ]
+        stmt = (
+            select(DshMission)
+            .where(
+                DshMission.workspace_id == workspace_id,
+                DshMission.created_at >= since,
+            )
+            .order_by(DshMission.created_at.desc())
+        )
+        if status_list:
+            stmt = stmt.where(DshMission.status.in_(status_list))
+        stmt = stmt.limit(limit).offset(offset)
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
 
     def _validate_status_transition(
         self,

@@ -57,7 +57,7 @@ class _FakeSession:
     def add(self, obj: Any) -> None:
         self.added.append(obj)
 
-    async def execute(self, _stmt: Any) -> _FakeResult:
+    async def execute(self, _stmt: Any, _params: Any | None = None) -> _FakeResult:
         return _FakeResult(self._scalar, self._rows)
 
     async def get(self, _model: type, _ident: Any) -> Any | None:
@@ -165,6 +165,12 @@ def unlock_client(monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, Any, Any
         lead_id=uuid4(),
         workspace_id=1,
         is_unlocked=False,
+        is_valid=True,
+        consent_status="legitimate_interest",
+        phone=None,
+        email=None,
+        name=None,
+        title=None,
         pii_access_audit_logs=[],
     )
 
@@ -177,7 +183,7 @@ def unlock_client(monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, Any, Any
                 return SimpleNamespace(id=ident)
             return None
 
-        async def execute(self, stmt: Any) -> _FakeResult:
+        async def execute(self, stmt: Any, _params: Any | None = None) -> _FakeResult:
             if "verified_contacts" in str(stmt).lower():
                 return _FakeResult(value=contact)
             return _FakeResult()

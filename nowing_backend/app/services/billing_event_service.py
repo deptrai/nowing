@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
+import hashlib
+import math
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import BillingEvent
@@ -12,6 +16,11 @@ from app.services import wallet_credit
 from app.services.workspace_credit_service import (
     WorkspaceCreditService,
 )
+
+# ponytail: in-process lock so concurrent relock requests in the same worker
+# (e.g. the integration-test AsyncClient that reuses one db_session) are
+# serialized. The DB advisory lock still protects cross-worker/process races.
+_RELOCK_LOCK = asyncio.Lock()
 
 
 class BillingEventService:
@@ -103,6 +112,13 @@ class BillingEventService:
         Idempotent: returns an existing refund BillingEvent if one already exists.
         Refunds are capped at the original unlock cost.
         """
+        # ponytail: serialize all refund attempts for the same contact. The first
+        # SELECT FOR UPDATE cannot lock a refund row that does not exist yet, so
+        # concurrent first refunds would both pass the check and double-credit.
+        await _acquire_billing_lock(
+            session, "verified_contact", "contact_unlock_refund", verified_contact_id
+        )
+
         # 1. Idempotency: existing refund row for this contact (lock for update).
         existing_refund = (
             await session.execute(
@@ -167,6 +183,114 @@ class BillingEventService:
         )
         session.add(event)
         return event
+
+    async def record_contact_relock(
+        self,
+        session: AsyncSession,
+        *,
+        verified_contact_id: UUID,
+        workspace_id: int,
+        client_id: str | None = None,
+        user_id: UUID,
+        cost_micros: int = 1_500,
+        relock_window_seconds: int = 60,
+    ) -> BillingEvent:
+        """Record an accidental contact relock (60s window) refund.
+
+        Refunds the original payer, decrements member monthly spend, and writes a
+        negative ``contact_relock`` BillingEvent. Idempotent: a duplicate call
+        returns the existing relock row. Enforces a 60-second relock window and a
+        15% accidental-relock budget per billing cycle (separate from opt-out cap).
+        """
+        # ponytail: in-process serialization. Combined with the DB advisory lock
+        # below this makes the read-check-write for relocks safe even when one
+        # AsyncSession is reused by concurrent test callers.
+        async with _RELOCK_LOCK:
+            await _acquire_billing_lock(
+                session, "verified_contact", "contact_relock", verified_contact_id
+            )
+
+            # 1. Idempotency: an existing relock row for this contact.
+            existing_rows = await _list_billing_events(
+                session,
+                event_entity_type="verified_contact",
+                event_type="contact_relock",
+                event_id=verified_contact_id,
+                workspace_id=workspace_id,
+            )
+            if existing_rows:
+                return existing_rows[0]
+
+            # 2. Original unlock event must exist and be within the relock window.
+            original_rows = await _list_billing_events(
+                session,
+                event_entity_type="verified_contact",
+                event_type="contact_unlock",
+                event_id=verified_contact_id,
+                workspace_id=workspace_id,
+            )
+            original = original_rows[0] if original_rows else None
+            if original is None or getattr(original, "event_type", None) != "contact_unlock":
+                raise ValueError(
+                    f"no unlock billing event for contact {verified_contact_id}"
+                )
+
+            created_at = getattr(original, "created_at", None)
+            if created_at is None:
+                raise ValueError("original unlock event has no timestamp")
+            now = datetime.now(UTC)
+            if now - created_at > timedelta(seconds=relock_window_seconds):
+                raise ValueError("relock window expired")
+
+            # 3. Accidental-relock budget: 15% of unlocked leads this billing cycle.
+            cycle_start, cycle_end = _billing_cycle_bounds(now)
+            relock_count = await _count_workspace_events(
+                session,
+                event_entity_type="verified_contact",
+                event_type="contact_relock",
+                workspace_id=workspace_id,
+                since=cycle_start,
+                until=cycle_end,
+            )
+            unlock_count = await _count_workspace_events(
+                session,
+                event_entity_type="verified_contact",
+                event_type="contact_unlock",
+                workspace_id=workspace_id,
+                since=cycle_start,
+                until=cycle_end,
+            )
+            if unlock_count > 0:
+                cap = math.ceil(unlock_count * 0.15)
+                if relock_count >= cap:
+                    raise ValueError("relock budget exhausted")
+
+            # 4. Credit the original payer and refund their monthly spend.
+            payer_id = original.user_id or user_id
+            refund_micros = min(cost_micros, original.cost_micros or cost_micros)
+
+            await wallet_credit.apply_credit(session, payer_id, refund_micros)
+            credit_svc = WorkspaceCreditService(session=session)
+            await credit_svc.refund_member_spend(
+                workspace_id=workspace_id,
+                user_id=payer_id,
+                amount_micros=refund_micros,
+            )
+
+            # 5. Persist the relock billing event (negative cost).
+            event = BillingEvent(
+                workspace_id=workspace_id,
+                client_id=client_id,
+                user_id=payer_id,
+                event_entity_type="verified_contact",
+                event_type="contact_relock",
+                event_id=verified_contact_id,
+                cost_micros=-refund_micros,
+                currency="USD",
+                cost_basis="actual",
+            )
+            session.add(event)
+            return event
 
     async def record_contact_enrichment(
         self,
@@ -281,6 +405,101 @@ async def record_signal_scan(
     )
 
 
+def _billing_lock_key(entity_type: str, event_type: str, event_id: UUID) -> int:
+    """Derive a 63-bit Postgres advisory lock key from a billing event identity.
+
+    ponytail: advisory locks are global and 64-bit signed; we hash the identity
+    and mask to the positive range. Collision is unlikely (MD5-64) but possible;
+    a duplicate BillingEvent would then serialize unnecessarily rather than
+    double-bill. Add a unique index on (entity, type, event_id, workspace_id)
+    if this ever becomes a bottleneck.
+    """
+    key_str = f"{entity_type}:{event_type}:{event_id!s}".encode()
+    return int(hashlib.md5(key_str).hexdigest()[:16], 16) & 0x7FFFFFFFFFFFFFFF
+
+
+async def _acquire_billing_lock(
+    session: AsyncSession,
+    entity_type: str,
+    event_type: str,
+    event_id: UUID,
+) -> None:
+    """Acquire a transaction-scoped advisory lock for the billing identity."""
+    key = _billing_lock_key(entity_type, event_type, event_id)
+    await session.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": key})
+
+
+def _billing_cycle_bounds(now: datetime) -> tuple[datetime, datetime]:
+    """Return (start, end) of the current monthly billing cycle in UTC."""
+    start = datetime(now.year, now.month, 1, tzinfo=UTC)
+    if now.month == 12:
+        end = datetime(now.year + 1, 1, 1, tzinfo=UTC)
+    else:
+        end = datetime(now.year, now.month + 1, 1, tzinfo=UTC)
+    return start, end
+
+
+async def _list_billing_events(
+    session: AsyncSession,
+    *,
+    event_entity_type: str,
+    event_type: str,
+    event_id: UUID,
+    workspace_id: int,
+) -> list[BillingEvent]:
+    """Return billing events matching the identity, ordered by recency."""
+    result = await session.execute(
+        select(BillingEvent)
+        .where(
+            BillingEvent.event_entity_type == event_entity_type,
+            BillingEvent.event_type == event_type,
+            BillingEvent.event_id == event_id,
+            BillingEvent.workspace_id == workspace_id,
+        )
+        .order_by(BillingEvent.created_at.desc())
+    )
+    rows = list(result.scalars().all())
+    # ponytail: in-memory / FakeAsyncSession stand-ins may return rows that do
+    # not match the WHERE clause, so re-apply the identity filters in Python.
+    return [
+        row
+        for row in rows
+        if (
+            getattr(row, "event_entity_type", None) == event_entity_type
+            and getattr(row, "event_type", None) == event_type
+            and getattr(row, "event_id", None) == event_id
+            and getattr(row, "workspace_id", None) == workspace_id
+        )
+    ]
+
+
+async def _count_workspace_events(
+    session: AsyncSession,
+    *,
+    event_entity_type: str,
+    event_type: str,
+    workspace_id: int,
+    since: datetime,
+    until: datetime,
+) -> int:
+    """Count billing events of a given type in a workspace and time range."""
+    result = await session.execute(
+        select(BillingEvent)
+        .where(
+            BillingEvent.event_entity_type == event_entity_type,
+            BillingEvent.event_type == event_type,
+            BillingEvent.workspace_id == workspace_id,
+            BillingEvent.created_at >= since,
+            BillingEvent.created_at < until,
+        )
+    )
+    rows = list(result.scalars().all())
+    # ponytail: count in Python so FakeAsyncSession tests can return arbitrary
+    # row stand-ins without needing a scalar count(). Production DB rows are
+    # cheap here because accidental-relock volume is low per workspace.
+    return len(rows)
+
+
 async def _record_business_event(
     session: AsyncSession,
     *,
@@ -295,6 +514,11 @@ async def _record_business_event(
     return_existing: bool = False,
 ) -> BillingEvent:
     """Core path: check duplicate, write BillingEvent, debit wallet."""
+    # Serialize concurrent billing for the same logical event. FOR UPDATE cannot
+    # lock a row that does not exist yet, so two first-time calls can race and
+    # both insert a BillingEvent.
+    await _acquire_billing_lock(session, event_entity_type, event_type, event_id)
+
     # Idempotency: look for an existing billing row for this event (lock for update).
     existing = (
         await session.execute(

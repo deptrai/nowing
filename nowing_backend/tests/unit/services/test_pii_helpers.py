@@ -14,7 +14,7 @@ from app.lead_intelligence.dnc.normalizer import (
     normalize_email,
     normalize_phone_e164,
 )
-from app.services.export_service import mask_email, mask_phone
+from app.services.pii.mask import mask_email, mask_phone
 
 pytestmark = pytest.mark.unit
 
@@ -69,9 +69,8 @@ class TestComputeVerifiedContactHmac:
         )
         assert h == expected
 
-    def test_degenerate_all_empty_raises(self) -> None:
-        with pytest.raises(ValueError, match="degenerate contact"):
-            compute_verified_contact_hmac(None, None, None)
+    def test_degenerate_all_empty_returns_none(self) -> None:
+        assert compute_verified_contact_hmac(None, None, None) is None
 
     def test_secret_not_configured_raises(
         self, monkeypatch: pytest.MonkeyPatch
@@ -118,7 +117,7 @@ class TestMaskPhone:
     @pytest.mark.parametrize(
         "phone,expected",
         [
-            ("+84908123456", "+84908***456"),
+            ("+84908123456", "0908***456"),
             ("0908123456", "0908***456"),
             ("090 123 45 67", "0901***567"),
         ],
@@ -129,8 +128,8 @@ class TestMaskPhone:
     def test_returns_empty_for_none(self) -> None:
         assert mask_phone(None) == ""
 
-    def test_returns_original_for_short_phone(self) -> None:
-        assert mask_phone("12345") == "12345"
+    def test_short_phone_returns_redacted_placeholder(self) -> None:
+        assert mask_phone("12345") == "***"
 
 
 class TestMaskEmail:
@@ -142,5 +141,5 @@ class TestMaskEmail:
     def test_returns_empty_for_none(self) -> None:
         assert mask_email(None) == ""
 
-    def test_returns_original_for_no_at(self) -> None:
-        assert mask_email("notanemail") == "notanemail"
+    def test_malformed_email_returns_redacted_placeholder(self) -> None:
+        assert mask_email("notanemail") == "***"

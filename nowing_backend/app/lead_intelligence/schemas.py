@@ -85,6 +85,10 @@ class LeadRead(BaseModel):
     charter_capital_vnd: int | None = None
     company_status: str | None = None
     is_zalo_active: bool = False
+    contact_id: UUID | None = None
+    is_unlocked: bool = False
+    is_valid: bool | None = None
+    consent_status: str | None = None
 
 
 class LeadListResponse(BaseModel):

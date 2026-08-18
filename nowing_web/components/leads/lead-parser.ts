@@ -162,6 +162,7 @@ function parseMarkdownTables(text: string, wsId: number): Lead[] {
 					content_snippet: snippet,
 					tech_stack: [],
 					enriched: true,
+					is_unlocked: false,
 					version: 1,
 					created_at: new Date().toISOString(),
 				});
@@ -276,6 +277,7 @@ export function parseLeadsFromText(text: string, workspaceId: number | string = 
 			content_snippet: cleanSnippet,
 			tech_stack: [],
 			enriched: true,
+			is_unlocked: false,
 			version: 1,
 			created_at: new Date().toISOString(),
 		});

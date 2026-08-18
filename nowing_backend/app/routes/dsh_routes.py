@@ -2,20 +2,25 @@ from __future__ import annotations
 
 import hmac
 import logging
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
 from app.config import config
-from app.db import Permission, Workspace, get_async_session
+from app.db import DshMission, Permission, Workspace, get_async_session
 from app.schemas.dsh import (
     DshMissionCheckpointUpdate,
+    DshMissionControlResponse,
     DshMissionInternalResponse,
+    DshMissionListResponse,
     DshMissionRequest,
     DshMissionResponse,
 )
+from app.services.dsh_control_service import MissionControlService
 from app.services.dsh_mission_service import (
     DshMissionService,
     DshMissionServiceError,
@@ -176,6 +181,101 @@ async def get_public_dsh_mission(
         ) from exc
 
     return DshMissionResponse.model_validate(mission)
+
+
+@dsh_public_router.get(
+    "/workspaces/{workspace_id}/dsh/missions",
+    response_model=DshMissionListResponse,
+    status_code=status.HTTP_200_OK,
+    tags=["dsh"],
+)
+async def list_dsh_missions(
+    request: Request,
+    workspace_id: int,
+    status: str = Query(
+        "running,pending",
+        description="Comma-separated mission statuses to include",
+    ),
+    hours: int = Query(24, ge=1, le=168, description="Lookback window in hours"),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(get_auth_context),
+) -> DshMissionListResponse:
+    """List recent DSH missions for the workspace."""
+    await check_permission(
+        session,
+        auth,
+        workspace_id,
+        Permission.LEADS_READ.value,
+        error_message="You don't have permission to view leads in this workspace",
+    )
+
+    service = DshMissionService()
+    missions = await service.list_missions_for_workspace(
+        session,
+        workspace_id=workspace_id,
+        status_filter=status,
+        hours=hours,
+        limit=limit,
+        offset=offset,
+    )
+
+    status_list = [s.strip() for s in status.split(",") if s.strip()]
+    since = datetime.now(UTC) - timedelta(hours=hours)
+
+    total = 0
+    total_stmt = select(func.count(DshMission.id)).where(
+        DshMission.workspace_id == workspace_id,
+        DshMission.created_at >= since,
+    )
+    if status_list:
+        total_stmt = total_stmt.where(DshMission.status.in_(status_list))
+    total_result = await session.execute(total_stmt)
+    total = total_result.scalar_one()
+
+    return DshMissionListResponse(
+        items=[DshMissionResponse.model_validate(m) for m in missions],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@dsh_public_router.get(
+    "/workspaces/{workspace_id}/dsh/missions/{mission_id}/control",
+    response_model=DshMissionControlResponse,
+    status_code=status.HTTP_200_OK,
+    tags=["dsh"],
+)
+async def get_dsh_mission_control(
+    request: Request,
+    workspace_id: int,
+    mission_id: UUID,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(get_auth_context),
+) -> DshMissionControlResponse:
+    """Public, PII-safe mission control view (Glass Box data source)."""
+    await check_permission(
+        session,
+        auth,
+        workspace_id,
+        Permission.LEADS_READ.value,
+        error_message="You don't have permission to view leads in this workspace",
+    )
+
+    service = DshMissionService()
+    try:
+        mission = await service.get_mission_for_workspace(
+            session, mission_id, workspace_id
+        )
+    except DshMissionServiceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+    return await MissionControlService().build_control_data(session, mission)
 
 
 @dsh_internal_router.get(

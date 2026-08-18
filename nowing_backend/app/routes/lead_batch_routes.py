@@ -273,6 +273,26 @@ async def unlock_contact(
             detail=f"Contact is blocked by DNC: {dnc_result.reason}",
         )
 
+    # ponytail: set is_unlocked and audit log BEFORE billing so that the single
+    # commit inside BillingEventService.record_contact_unlock (via wallet_credit.
+    # apply_debit) persists everything atomically. If billing fails, this route
+    # never commits and the contact stays locked.
+    contact.is_unlocked = True
+    existing_logs = list(contact.pii_access_audit_logs or [])
+    contact.pii_access_audit_logs = [
+        *existing_logs,
+        {
+            "user_id": str(auth.user.id),
+            "workspace_id": workspace_id,
+            "lead_id": str(lead_id),
+            "contact_id": str(contact_id),
+            "access_type": "unlock",
+            "timestamp": datetime.now(UTC).isoformat(),
+            "ip_address": _get_client_ip(request),
+            "reason": "contact_unlock",
+        },
+    ]
+
     try:
         await BillingEventService().record_contact_unlock(
             session,
@@ -283,6 +303,8 @@ async def unlock_contact(
             cost_micros=1_500,
         )
     except wallet_credit.InsufficientCreditsError as exc:
+        # The contact changes above are in the same transaction; they will be
+        # rolled back if apply_debit fails before commit.
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail="Insufficient credits to unlock contact.",
@@ -299,23 +321,6 @@ async def unlock_contact(
             detail="Failed to unlock contact.",
         ) from exc
 
-    contact.is_unlocked = True
-    existing_logs = list(contact.pii_access_audit_logs or [])
-    contact.pii_access_audit_logs = [
-        *existing_logs,
-        {
-            "user_id": str(auth.user.id),
-            "workspace_id": workspace_id,
-            "lead_id": str(lead_id),
-            "contact_id": str(contact_id),
-            "access_type": "unlock",
-            "timestamp": datetime.now(UTC).isoformat(),
-            "ip_address": _get_client_ip(request),
-            "reason": "contact_unlock",
-        },
-    ]
-    await session.commit()
-
     return ContactUnlockResponse(
         contact_id=contact.id,
         is_unlocked=True,
@@ -324,6 +329,121 @@ async def unlock_contact(
         title=_decrypt_field(contact.title),
         email=_decrypt_field(contact.email),
         phone=_decrypt_field(contact.phone),
+    )
+
+
+@router.post(
+    "/workspaces/{workspace_id}/leads/{lead_id}/contacts/{contact_id}/relock",
+    response_model=ContactUnlockResponse,
+    status_code=status.HTTP_200_OK,
+)
+@limiter.limit("60/minute")
+async def relock_contact(
+    request: Request,
+    workspace_id: int,
+    lead_id: UUID,
+    contact_id: UUID,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(get_auth_context),
+) -> ContactUnlockResponse:
+    """Accidentally re-lock a contact and refund the 1.5 credit unlock (Story 26.5)."""
+    await check_permission(
+        session,
+        auth,
+        workspace_id,
+        Permission.LEADS_WRITE.value,
+        error_message="You don't have permission to relock contacts in this workspace",
+    )
+
+    contact = (
+        await session.execute(
+            select(VerifiedContact)
+            .where(
+                VerifiedContact.id == contact_id,
+                VerifiedContact.workspace_id == workspace_id,
+                VerifiedContact.lead_id == lead_id,
+            )
+            .with_for_update()
+        )
+    ).scalar_one_or_none()
+    if contact is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Contact not found",
+        )
+
+    # ponytail: set is_unlocked and audit log before the billing service call so
+    # the single commit inside BillingEventService.record_contact_relock persists
+    # everything atomically. If the refund fails, the contact stays unlocked.
+    contact.is_unlocked = False
+    existing_logs = list(contact.pii_access_audit_logs or [])
+    contact.pii_access_audit_logs = [
+        *existing_logs,
+        {
+            "user_id": str(auth.user.id),
+            "workspace_id": workspace_id,
+            "lead_id": str(lead_id),
+            "contact_id": str(contact_id),
+            "access_type": "relock",
+            "timestamp": datetime.now(UTC).isoformat(),
+            "ip_address": _get_client_ip(request),
+            "reason": "accidental_unlock",
+        },
+    ]
+
+    try:
+        await BillingEventService().record_contact_relock(
+            session,
+            verified_contact_id=contact.id,
+            workspace_id=workspace_id,
+            user_id=auth.user.id,
+            cost_micros=1_500,
+        )
+    except ValueError as exc:
+        detail = str(exc)
+        if "relock window expired" in detail:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Relock window expired",
+            ) from exc
+        if "relock budget exhausted" in detail:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Không thể hoàn tác: đã hết hạn mức hoàn tiền tự động",
+            ) from exc
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=detail,
+        ) from exc
+    except Exception as exc:
+        logger.exception("Failed to relock contact %s: %s", contact_id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to relock contact.",
+        ) from exc
+
+    from app.services.pii.mask import mask_email, mask_name, mask_phone
+
+    enc = VerifiedContactEncryption()
+
+    def _decrypt_field(value: str | None) -> str | None:
+        if not value:
+            return None
+        if enc.is_encrypted(value):
+            try:
+                return enc.decrypt(value)
+            except Exception:
+                return None
+        return value
+
+    return ContactUnlockResponse(
+        contact_id=contact.id,
+        is_unlocked=False,
+        cost_micros=0,
+        name=mask_name(_decrypt_field(contact.name)),
+        title=mask_name(_decrypt_field(contact.title)),
+        email=mask_email(_decrypt_field(contact.email)),
+        phone=mask_phone(_decrypt_field(contact.phone)),
     )
 
 

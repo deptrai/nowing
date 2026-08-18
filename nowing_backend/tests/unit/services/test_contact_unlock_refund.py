@@ -46,7 +46,7 @@ class _FakeSession:
     def add(self, obj: Any) -> None:
         self.added.append(obj)
 
-    async def execute(self, _stmt: Any) -> _FakeResult:
+    async def execute(self, _stmt: Any, _params: Any | None = None) -> _FakeResult:
         return _FakeResult(self._event)
 
     async def get(self, _model: type, _ident: Any) -> Any | None:

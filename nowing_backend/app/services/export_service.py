@@ -5,7 +5,6 @@ import csv
 import io
 import logging
 import os
-import re
 import tempfile
 import zipfile
 from dataclasses import dataclass, field
@@ -42,6 +41,7 @@ from app.services.okf import (
     redact_secrets,
     relation_to_concept,
 )
+from app.services.pii.mask import mask_email, mask_name, mask_phone
 
 logger = logging.getLogger(__name__)
 
@@ -574,61 +574,6 @@ def _memory_title(memory: Memory) -> str:
     if len(content) <= 80:
         return content
     return content[:80].rstrip() + "..."
-
-
-def mask_phone(phone: str | None) -> str:
-    """Mask phone for PII redaction (Story 21.13 / AD-36).
-
-    Returns a redacted placeholder for short, malformed, or non-phone input
-    (e.g. encrypted tokens) instead of leaking the raw value.
-    """
-    if not phone:
-        return ""
-    clean = str(phone).strip()
-    if not re.match(r"^[\d\s\+\-\(\)\.]*$", clean):
-        return "***"
-    digits = re.sub(r"\D", "", clean)
-    if clean.startswith("+84"):
-        rest = clean[3:]
-        rest_digits = re.sub(r"\D", "", rest)
-        if len(rest_digits) >= 6:
-            return f"+84{rest_digits[:3]}***{rest_digits[-3:]}"
-    if len(digits) == 10 and digits.startswith("0"):
-        return f"{digits[:4]}***{digits[7:]}"
-    if len(digits) >= 7:
-        mid_start = max(2, len(digits) - 5)
-        mid_end = len(digits) - 3
-        return f"{digits[:mid_start]}***{digits[mid_end:]}"
-    return "***"
-
-
-def mask_email(email: str | None) -> str:
-    """Mask email for PII redaction (Story 21.13 / AD-36).
-
-    Returns a redacted placeholder for malformed or non-email input instead of
-    leaking the raw value.
-    """
-    if not email:
-        return ""
-    clean = str(email).strip()
-    if "@" not in clean or "." not in clean.split("@")[-1]:
-        return "***"
-    parts = clean.split("@", 1)
-    username = parts[0]
-    domain = parts[1]
-    if not username:
-        return f"***@{domain}"
-    return f"{username[0]}***@{domain}"
-
-
-def mask_name(name: str | None) -> str:
-    """Mask a personal/company name for PII redaction."""
-    if not name:
-        return ""
-    clean = str(name).strip()
-    if len(clean) <= 3:
-        return "***"
-    return f"{clean[0]}***{clean[-1]}"
 
 
 def _maybe_decrypt_pii(value: str | None) -> str | None:
