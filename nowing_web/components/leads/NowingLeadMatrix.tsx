@@ -30,7 +30,8 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Lead } from "@/contracts/types/leads.types";
 import { cn } from "@/lib/utils";
-import { PhoneCopyPill } from "./PhoneCopyPill";
+import { PhoneUnlockPill } from "./PhoneUnlockPill";
+import { ShimmerSkeletonRow } from "./ShimmerSkeletonRow";
 import { SendExportDropdown } from "./send-export-dropdown";
 import { ZaloOutreachButton } from "./zalo-outreach-button";
 
@@ -48,6 +49,7 @@ export interface NowingLeadMatrixProps {
 	onOpenReverseIcp?: () => void;
 	onOpenDnc?: () => void;
 	onOpenCompanyGraph?: (companyName: string) => void;
+	shimmerCount?: number;
 	className?: string;
 }
 
@@ -101,6 +103,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 	onOpenReverseIcp,
 	onOpenDnc,
 	onOpenCompanyGraph,
+	shimmerCount = 0,
 	className,
 }) => {
 	const [selectedLeadIds, setSelectedLeadIds] = useAtom(selectedLeadIdsAtom);
@@ -113,6 +116,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 	const [isSourceOpen, setIsSourceOpen] = useState(false);
 	const [isStatusOpen, setIsStatusOpen] = useState(false);
 	const [isPingActive, setIsPingActive] = useState(false);
+	const [unlockedLeadIds, setUnlockedLeadIds] = useState<Set<string>>(new Set());
 	const sourceDropdownRef = useRef<HTMLDivElement>(null);
 	const statusDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -510,14 +514,21 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 
 						{/* Table Body Rows (Height 40px, Text 13px) */}
 						<tbody className="divide-y divide-border/40 font-sans">
+							{Array.from({ length: shimmerCount }).map((_, i) => (
+								// biome-ignore lint/suspicious/noArrayIndexKey: static shimmer placeholders
+								<ShimmerSkeletonRow key={`shimmer-${i}`} />
+							))}
 							{filteredLeads.map((lead, idx) => {
 								const isSelected = selectedLeadIds.includes(lead.id);
 								const isContextActive = selectedLeadContext?.id === lead.id;
 								const isHighlighted = highlightedRowIds.includes(lead.id);
+								const isUnlocked = lead.is_unlocked || unlockedLeadIds.has(lead.id);
 
 								return (
 									<tr
 										key={lead.id}
+										data-testid={`lead-row-${lead.id}`}
+										data-lead-row
 										onClick={() => handleRowClick(lead)}
 										className={cn(
 											"h-10 group hover:bg-muted/40 transition-colors cursor-pointer text-xs sm:text-[12.5px]",
@@ -615,7 +626,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 													</TooltipProvider>
 												)}
 												{/* ponytail: is_zalo_active is currently always false in the backend; this badge is kept for future Zalo integration and E2E tests. */}
-{lead.is_zalo_active && (
+												{lead.is_zalo_active && (
 													<TooltipProvider delayDuration={150}>
 														<Tooltip>
 															<TooltipTrigger asChild>
@@ -671,7 +682,18 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 											onClick={(e) => e.stopPropagation()}
 											onKeyDown={(e) => e.stopPropagation()}
 										>
-											<PhoneCopyPill phone={lead.phone} />
+											<PhoneUnlockPill
+												lead={lead}
+												workspaceId={workspaceId}
+												onUnlock={(unlocked) =>
+													setUnlockedLeadIds((prev) => {
+														const next = new Set(prev);
+														if (unlocked) next.add(lead.id);
+														else next.delete(lead.id);
+														return next;
+													})
+												}
+											/>
 										</td>
 
 										{/* Actions */}
@@ -687,6 +709,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 													companyName={lead.company_name}
 													workspaceId={workspaceId}
 													size="sm"
+													disabled={!isUnlocked}
 												/>
 												{onOpenCompanyGraph && (
 													<button

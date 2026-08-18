@@ -39,6 +39,7 @@ export const leadSchema = z.object({
 	contact_id: z.string().uuid().nullable().optional(),
 	is_unlocked: z.boolean().default(false),
 	is_valid: z.boolean().nullable().optional(),
+	is_new_from_zero: z.boolean().default(false).optional(),
 	price_estimate: z.string().nullable().optional(),
 	content_snippet: z.string().nullable().optional(),
 	author: z.string().nullable().optional(),
@@ -154,6 +155,18 @@ export interface ListLeadsParams {
 	limit?: number;
 	offset?: number;
 }
+
+export const contactUnlockResponseSchema = z.object({
+	contact_id: z.string().uuid(),
+	is_unlocked: z.boolean(),
+	cost_micros: z.number(),
+	name: z.string().nullable().optional(),
+	title: z.string().nullable().optional(),
+	email: z.string().nullable().optional(),
+	phone: z.string().nullable().optional(),
+});
+
+export type ContactUnlockResponse = z.infer<typeof contactUnlockResponseSchema>;
 
 export const zaloDraftResponseSchema = z.object({
 	lead_id: z.string(),

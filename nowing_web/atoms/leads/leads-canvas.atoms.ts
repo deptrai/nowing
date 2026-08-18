@@ -1,5 +1,26 @@
 import { atom } from "jotai";
+import { atomWithStorage, createJSONStorage } from "jotai/utils";
 import type { FilterPresets, Lead } from "@/contracts/types/leads.types";
+
+export interface FastUnlockSessionState {
+	expires_at: number;
+}
+
+export type FastUnlockSessions = Record<string, FastUnlockSessionState>;
+
+const sessionStorageAdapter = createJSONStorage<FastUnlockSessions>(
+	() => (typeof window !== "undefined" ? sessionStorage : undefined) as Storage
+);
+
+export const fastUnlockSessionAtom = atomWithStorage<FastUnlockSessions>(
+	"nowing:fast-unlock-sessions",
+	{},
+	sessionStorageAdapter
+);
+
+export function makeFastUnlockKey(workspaceId: number | string, userId?: string | null) {
+	return `${workspaceId}:${userId ?? "anon"}`;
+}
 
 export type CanvasMode = "leads" | "research" | "automations" | "scrapers" | "artifacts";
 

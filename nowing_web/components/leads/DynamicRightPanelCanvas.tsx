@@ -20,6 +20,7 @@ import {
 import { currentUserAtom } from "@/atoms/user/user-query.atoms";
 import type { Lead } from "@/contracts/types/leads.types";
 import { cn } from "@/lib/utils";
+import { MissionControlWidget } from "./MissionControlWidget";
 import { NowingLeadMatrix } from "./NowingLeadMatrix";
 import { AutomationBuilderPanel } from "./panels/AutomationBuilderPanel";
 import { ResearchStudioPanel } from "./panels/ResearchStudioPanel";
@@ -44,6 +45,7 @@ export interface DynamicRightPanelCanvasProps {
 	onOpenReverseIcp?: () => void;
 	onOpenDnc?: () => void;
 	onOpenCompanyGraph?: (companyName: string) => void;
+	shimmerCount?: number;
 	className?: string;
 }
 
@@ -222,6 +224,7 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 				{/* Right: Credits Badge & Mode Switcher */}
 				<div className="flex items-center gap-1.5 shrink-0 ml-2">
 					<div
+						data-testid="credit-balance-badge"
 						className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-pink-500/10 dark:bg-pink-500/20 text-pink-600 dark:text-pink-400 text-xs font-semibold border border-pink-500/20 shadow-2xs"
 						title={`Số dư khả dụng: ${((currentUser?.credit_micros_balance ?? 5_000_000) / 1_000_000).toFixed(2)} USD`}
 					>
@@ -260,6 +263,7 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 
 			{/* Panel View Switching Router */}
 			<main className="flex-1 min-h-0 relative overflow-hidden">
+				<MissionControlWidget workspaceId={props.workspaceId} className="m-3" />
 				{activeMode === "leads" && (
 					<NowingLeadMatrix
 						leads={props.leads}
@@ -275,6 +279,7 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 						onOpenReverseIcp={props.onOpenReverseIcp}
 						onOpenDnc={props.onOpenDnc}
 						onOpenCompanyGraph={props.onOpenCompanyGraph}
+						shimmerCount={props.shimmerCount}
 					/>
 				)}
 

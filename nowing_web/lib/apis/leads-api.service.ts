@@ -1,6 +1,8 @@
 import {
 	type CompanyGraph,
+	type ContactUnlockResponse,
 	companyGraphSchema,
+	contactUnlockResponseSchema,
 	type Lead,
 	type LeadListResponse,
 	type ListLeadsParams,
@@ -100,6 +102,28 @@ class LeadsApiService {
 			{
 				body: data,
 			}
+		);
+	};
+
+	unlockContact = async (
+		workspaceId: number | string,
+		leadId: string,
+		contactId: string
+	): Promise<ContactUnlockResponse> => {
+		return baseApiService.post(
+			`${base(workspaceId)}/leads/${leadId}/contacts/${contactId}/unlock`,
+			contactUnlockResponseSchema
+		);
+	};
+
+	relockContact = async (
+		workspaceId: number | string,
+		leadId: string,
+		contactId: string
+	): Promise<ContactUnlockResponse> => {
+		return baseApiService.post(
+			`${base(workspaceId)}/leads/${leadId}/contacts/${contactId}/relock`,
+			contactUnlockResponseSchema
 		);
 	};
 }

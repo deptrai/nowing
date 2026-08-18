@@ -24,7 +24,7 @@ import type { LeadActivityLog } from "@/contracts/types/lead-pipeline.types";
 import type { Lead } from "@/contracts/types/leads.types";
 import { leadPipelineApiService } from "@/lib/apis/lead-pipeline-api.service";
 import { isAllowedUrl } from "@/lib/utils";
-import { PhoneCopyPill } from "./PhoneCopyPill";
+import { PhoneUnlockPill } from "./PhoneUnlockPill";
 import { ZaloOutreachButton } from "./zalo-outreach-button";
 
 export interface LeadDetailFlyoutDrawerProps {
@@ -47,6 +47,7 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 	const [activities, setActivities] = useState<LeadActivityLog[]>([]);
 	const [newNote, setNewNote] = useState("");
 	const [isSubmittingNote, setIsSubmittingNote] = useState(false);
+	const [leadUnlocked, setLeadUnlocked] = useState(lead?.is_unlocked ?? false);
 
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
@@ -57,6 +58,10 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
 	}, [isOpen, onClose]);
+
+	useEffect(() => {
+		setLeadUnlocked(lead?.is_unlocked ?? false);
+	}, [lead?.is_unlocked]);
 
 	useEffect(() => {
 		if (isOpen && lead?.id) {
@@ -209,19 +214,18 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 							<div className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-card border border-border">
 								<div className="flex items-center gap-2">
 									<Phone className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-									{lead.phone ? (
-										<PhoneCopyPill phone={lead.phone} />
-									) : (
-										<span className="text-xs text-muted-foreground font-mono">
-											Chưa mở khóa SĐT
-										</span>
-									)}
+									<PhoneUnlockPill
+										lead={lead}
+										workspaceId={workspaceId}
+										onUnlock={setLeadUnlocked}
+									/>
 								</div>
 								{(() => {
 									const cleanDigits = lead.phone?.replace(/[^0-9+]/g, "") || "";
-									return cleanDigits.length >= 8 ? (
+									return (lead.is_unlocked || leadUnlocked) && cleanDigits.length >= 8 ? (
 										<a
 											href={`tel:${cleanDigits}`}
+											data-testid="call-now-link"
 											className="px-2.5 py-1 text-xs font-medium rounded-md bg-muted hover:bg-muted/80 text-foreground transition-colors"
 										>
 											Gọi ngay
@@ -240,6 +244,7 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 									source={lead.source}
 									contentSnippet={lead.content_snippet}
 									className="w-full justify-center"
+									disabled={!(lead.is_unlocked || leadUnlocked)}
 								/>
 
 								{onOpenCompanyGraph && (

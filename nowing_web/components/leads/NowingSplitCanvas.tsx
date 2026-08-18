@@ -15,6 +15,7 @@ import {
 } from "@/atoms/leads/leads-canvas.atoms";
 import type { FilterPresets } from "@/contracts/types/leads.types";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useDshMissionControl } from "@/lib/hooks/use-dsh-mission-control";
 import { useLeads } from "@/lib/hooks/use-leads";
 import { cn } from "@/lib/utils";
 import { CompanyGraphDrawer } from "./CompanyGraphDrawer";
@@ -88,7 +89,11 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 	}, [messages, threadId, workspaceId]);
 
 	// Data Fetching (for live status updates and refresh)
-	const { leads: apiLeads, loading, refetch } = useLeads(String(workspaceId), {
+	const {
+		leads: apiLeads,
+		loading,
+		refetch,
+	} = useLeads(String(workspaceId), {
 		source: sourceFilter !== "all" ? sourceFilter : undefined,
 		status: statusFilter !== "all" ? statusFilter : undefined,
 		search: searchQuery || undefined,
@@ -103,6 +108,16 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 		}
 		return apiLeads;
 	}, [threadContext.leads, apiLeads]);
+
+	const selectedLeads = useMemo(() => {
+		return displayLeads.filter((lead) => selectedLeadIds.includes(lead.id));
+	}, [displayLeads, selectedLeadIds]);
+
+	const { missionControl, latestMission } = useDshMissionControl(workspaceId);
+	const shimmerCount = useMemo(() => {
+		const phase = missionControl?.phase ?? latestMission?.phase;
+		return phase === "ingestion" ? 2 : 0;
+	}, [missionControl, latestMission]);
 
 	// Resizing Handlers (Mouse Dragging)
 	const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -157,9 +172,6 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 	};
 
 	// Bulk action handlers
-	const handleUnlockPhones = () => {
-		toast.success(`Đã gửi yêu cầu mở khóa ${selectedLeadIds.length} SĐT qua hệ thống Waterfall!`);
-	};
 
 	const handleExportLarkBase = () => {
 		toast.success(`Đang xuất ${selectedLeadIds.length} leads sang Lark Base & CSV...`);
@@ -233,6 +245,7 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 								onSearchQueryChange={setSearchQuery}
 								onRefresh={refetch}
 								onOpenReverseIcp={() => setIsReverseIcpOpen(true)}
+								shimmerCount={shimmerCount}
 								onOpenDnc={() => setIsDncOpen(true)}
 								onOpenCompanyGraph={handleOpenCompanyGraph}
 							/>
@@ -244,7 +257,8 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 				{selectedLeadIds.length > 0 && (
 					<FloatingBulkActionBar
 						selectedCount={selectedLeadIds.length}
-						onUnlockPhones={handleUnlockPhones}
+						selectedLeads={selectedLeads}
+						workspaceId={workspaceId}
 						onExportLarkBase={handleExportLarkBase}
 						onBulkZalo={handleBulkZalo}
 						onClearSelection={() => setSelectedLeadIds([])}
@@ -365,6 +379,7 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 						onSearchQueryChange={setSearchQuery}
 						onRefresh={refetch}
 						onOpenReverseIcp={() => setIsReverseIcpOpen(true)}
+						shimmerCount={shimmerCount}
 						onOpenDnc={() => setIsDncOpen(true)}
 						onOpenCompanyGraph={handleOpenCompanyGraph}
 					/>
@@ -375,7 +390,8 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 			{hasActiveThread && selectedLeadIds.length > 0 && (
 				<FloatingBulkActionBar
 					selectedCount={selectedLeadIds.length}
-					onUnlockPhones={handleUnlockPhones}
+					selectedLeads={selectedLeads}
+					workspaceId={workspaceId}
 					onExportLarkBase={handleExportLarkBase}
 					onBulkZalo={handleBulkZalo}
 					onClearSelection={() => setSelectedLeadIds([])}

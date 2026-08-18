@@ -17,6 +17,7 @@ export interface ZaloOutreachButtonProps {
 	contentSnippet?: string | null;
 	className?: string;
 	size?: "sm" | "md";
+	disabled?: boolean;
 }
 
 const sizeClasses: Record<"sm" | "md", string> = {
@@ -47,6 +48,7 @@ export const ZaloOutreachButton: React.FC<ZaloOutreachButtonProps> = ({
 	source,
 	className,
 	size = "sm",
+	disabled = false,
 }) => {
 	const [loading, setLoading] = useState(false);
 	const [copied, setCopied] = useState(false);
@@ -59,7 +61,7 @@ export const ZaloOutreachButton: React.FC<ZaloOutreachButtonProps> = ({
 
 	const handleQuickOutreach = async (e: React.MouseEvent) => {
 		e.stopPropagation();
-		if (loading) return;
+		if (loading || disabled) return;
 
 		setLoading(true);
 		try {
@@ -122,7 +124,8 @@ export const ZaloOutreachButton: React.FC<ZaloOutreachButtonProps> = ({
 				<button
 					type="button"
 					onClick={handleQuickOutreach}
-					disabled={loading}
+					disabled={loading || disabled}
+					data-testid="zalo-outreach-button"
 					className={cn(
 						"inline-flex items-center font-medium transition-all cursor-pointer select-none",
 						"bg-blue-600 hover:bg-blue-500 text-white active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs",

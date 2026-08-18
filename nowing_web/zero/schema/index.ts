@@ -10,6 +10,7 @@ import { documentTable, searchSourceConnectorTable } from "./documents";
 import { folderTable } from "./folders";
 import { notificationTable } from "./inbox";
 import { leadPipelineStageTable, leadsTable } from "./leads";
+import { dshMissionsTable } from "./missions";
 import { podcastTable } from "./podcasts";
 import { userTable } from "./user";
 
@@ -76,6 +77,7 @@ export const schema = createSchema({
 		podcastTable,
 		leadsTable,
 		leadPipelineStageTable,
+		dshMissionsTable,
 	],
 	relationships: [
 		chatCommentRelationships,

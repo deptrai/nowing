@@ -1,12 +1,25 @@
 "use client";
 
+import { useAtom, useAtomValue } from "jotai";
 import { CheckSquare, Download, MessageSquare, PhoneCall, X } from "lucide-react";
 import type React from "react";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import { fastUnlockSessionAtom, makeFastUnlockKey } from "@/atoms/leads/leads-canvas.atoms";
+import { currentUserAtom } from "@/atoms/user/user-query.atoms";
+import { Button } from "@/components/ui/button";
+import type { Lead } from "@/contracts/types/leads.types";
+import { leadsApiService } from "@/lib/apis/leads-api.service";
 import { cn } from "@/lib/utils";
+import { SmartUnlockPopover } from "./SmartUnlockPopover";
+
+const FAST_UNLOCK_TTL_MS = 30 * 60 * 1000;
+const UNLOCK_COST_CREDITS = 1.5;
 
 export interface FloatingBulkActionBarProps {
 	selectedCount: number;
-	onUnlockPhones?: () => void;
+	selectedLeads?: Lead[];
+	workspaceId?: number | string;
 	onExportLarkBase?: () => void;
 	onBulkZalo?: () => void;
 	onClearSelection: () => void;
@@ -15,15 +28,97 @@ export interface FloatingBulkActionBarProps {
 
 export const FloatingBulkActionBar: React.FC<FloatingBulkActionBarProps> = ({
 	selectedCount,
-	onUnlockPhones,
+	selectedLeads = [],
+	workspaceId = "1",
 	onExportLarkBase,
 	onBulkZalo,
 	onClearSelection,
 	className,
 }) => {
+	const { data: currentUser } = useAtomValue(currentUserAtom);
+	const [, setFastUnlockSessions] = useAtom(fastUnlockSessionAtom);
+
+	const [isOpen, setIsOpen] = useState(false);
+	const [isUnlocking, setIsUnlocking] = useState(false);
+	const [fastUnlockEnabled, setFastUnlockEnabled] = useState(false);
+
+	const unlockedCount = useMemo(
+		() => selectedLeads.filter((l) => l.is_unlocked).length,
+		[selectedLeads]
+	);
+
+	const eligibleLeads = useMemo(
+		() =>
+			selectedLeads.filter(
+				(l) => l.contact_id && l.consent_status !== "withdrawn" && l.is_valid !== false
+			),
+		[selectedLeads]
+	);
+
+	const previewPhone = eligibleLeads[0]?.phone ?? "SĐT";
+	const totalCost = eligibleLeads.length * UNLOCK_COST_CREDITS;
+
 	if (selectedCount < 2) {
 		return null;
 	}
+
+	const applyFastUnlockSession = (enabled: boolean) => {
+		const fastUnlockKey = makeFastUnlockKey(workspaceId, currentUser?.id);
+		if (!enabled) {
+			setFastUnlockSessions((prev) => {
+				const next = { ...prev };
+				delete next[fastUnlockKey];
+				return next;
+			});
+			return;
+		}
+		setFastUnlockSessions((prev) => ({
+			...prev,
+			[fastUnlockKey]: { expires_at: Date.now() + FAST_UNLOCK_TTL_MS },
+		}));
+	};
+
+	const performBulkUnlock = async () => {
+		if (eligibleLeads.length === 0 || isUnlocking) return;
+		setIsUnlocking(true);
+
+		let success = 0;
+		let failed = 0;
+		for (const lead of eligibleLeads) {
+			if (!lead.contact_id) continue;
+			try {
+				await leadsApiService.unlockContact(workspaceId, lead.id, lead.contact_id);
+				success++;
+			} catch (err) {
+				failed++;
+				console.error("Bulk unlock failed for lead", lead.id, err);
+			}
+		}
+
+		setIsUnlocking(false);
+		setIsOpen(false);
+		applyFastUnlockSession(fastUnlockEnabled);
+
+		if (success > 0) {
+			toast.success(
+				`Đã mở khóa ${success} SĐT -${(success * UNLOCK_COST_CREDITS).toFixed(1)} credits`
+			);
+		}
+		if (failed > 0) {
+			toast.error(`${failed} SĐT không mở khóa được do lỗi server hoặc hết credits.`);
+		}
+	};
+
+	const handlePillClick = () => {
+		if (eligibleLeads.length === 0) {
+			toast.warning("Không có SĐT hợp lệ trong các leads đã chọn.");
+			return;
+		}
+		const _fastUnlockKey = makeFastUnlockKey(workspaceId, currentUser?.id);
+		// State will be derived on next render; for the popover we seed it from session
+		setFastUnlockEnabled(false); // default false, user can toggle
+		setIsOpen(true);
+	};
 
 	return (
 		<aside
@@ -50,15 +145,30 @@ export const FloatingBulkActionBar: React.FC<FloatingBulkActionBarProps> = ({
 			</div>
 
 			<div className="flex items-center gap-1.5">
-				{onUnlockPhones && (
-					<button
-						type="button"
-						onClick={onUnlockPhones}
-						className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer shadow-sm shadow-emerald-950/20"
+				{eligibleLeads.length > 0 && (
+					<SmartUnlockPopover
+						open={isOpen}
+						onOpenChange={setIsOpen}
+						maskedPhone={previewPhone}
+						costCredits={totalCost}
+						fastUnlockEnabled={fastUnlockEnabled}
+						onToggleFastUnlock={setFastUnlockEnabled}
+						onConfirm={performBulkUnlock}
+						onCancel={() => setIsOpen(false)}
+						isBulk
+						selectedCount={eligibleLeads.length}
 					>
-						<PhoneCall className="w-3.5 h-3.5" />
-						Mở khóa SĐT ({selectedCount})
-					</button>
+						<Button
+							type="button"
+							onClick={handlePillClick}
+							size="sm"
+							data-testid="bulk-unlock-button"
+							className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-colors shadow-sm shadow-emerald-950/20"
+						>
+							<PhoneCall className="w-3.5 h-3.5" />
+							Mở khóa SĐT ({eligibleLeads.length - unlockedCount})
+						</Button>
+					</SmartUnlockPopover>
 				)}
 
 				{onExportLarkBase && (

@@ -278,6 +278,7 @@ export function parseLeadsFromText(text: string, workspaceId: number | string = 
 			tech_stack: [],
 			enriched: true,
 			is_unlocked: false,
+			is_new_from_zero: false,
 			version: 1,
 			created_at: new Date().toISOString(),
 		});
