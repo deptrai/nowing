@@ -204,4 +204,11 @@ _Curated long-term knowledge for Nowing E2E Browser Testing._
   - `tests/integration/routes/test_sequence_routes.py` được cập nhật mock/assertion cho đúng signature.
 - **Re-test:** `ruff check` passed, `pytest tests/integration/routes/test_sequence_routes.py` 4/4 passed, full Epic 24 Playwright suite 10/10 passed.
 
+## Live MCP Smoke — Two-Tier Phone Unlock (2026-08-19)
+
+- **Playwright MCP flow:** navigate `/login` → fill `e2e-test@nowing.net` / `E2eTestPassword123!` → `/dashboard/1/new-chat?mode=leads` → click `Mở khóa số điện thoại` on `0987***321` (FPT row) → confirm `Mở khóa SĐT`.
+- **Observed:** phone pill flips to `0987654321`; row and lead-detail flyout `Gọi ngay` link resolves to `tel:0987654321`; Zalo + ZNS + AI script buttons are enabled.
+- **Console:** 0 errors, only known preload/Jotai warnings.
+- **Screenshot:** `_bmad/memory/test-e2e-browser/sessions/2026-08-19-two-tier-unlock.png`.
+
 
