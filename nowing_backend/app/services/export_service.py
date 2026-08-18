@@ -613,25 +613,37 @@ def mask_email(email: str | None) -> str:
     return f"{username[0]}***@{domain}"
 
 
+def mask_name(name: str | None) -> str:
+    """Mask a personal/company name for PII redaction."""
+    if not name:
+        return ""
+    clean = str(name).strip()
+    if len(clean) <= 3:
+        return clean
+    return f"{clean[0]}***{clean[-1]}"
+
+
 class ExportService:
     """Lead Export Service for CSV, Lark Base, and Google Sheets format conversion (Story 21.13)."""
 
     def generate_csv(self, leads: list[Any], mask_pii: bool = False) -> str:
         output = io.StringIO()
         writer = csv.writer(output)
-        writer.writerow([
-            "Company Name",
-            "Domain",
-            "Source",
-            "Industry",
-            "Location",
-            "Fit Score",
-            "Status",
-            "Contact Name",
-            "Contact Title",
-            "Email",
-            "Phone",
-        ])
+        writer.writerow(
+            [
+                "Company Name",
+                "Domain",
+                "Source",
+                "Industry",
+                "Location",
+                "Fit Score",
+                "Status",
+                "Contact Name",
+                "Contact Title",
+                "Email",
+                "Phone",
+            ]
+        )
 
         for lead in leads:
             contacts = getattr(lead, "verified_contacts", None) or []
@@ -645,19 +657,21 @@ class ExportService:
                 email = mask_email(email)
                 phone = mask_phone(phone)
 
-            writer.writerow([
-                getattr(lead, "company_name", "") or "",
-                getattr(lead, "domain", "") or "",
-                getattr(lead, "source", "") or "",
-                getattr(lead, "industry", "") or "",
-                getattr(lead, "location", "") or "",
-                getattr(lead, "fit_score", 0.0) or 0.0,
-                getattr(lead, "status", "") or "",
-                name,
-                title,
-                email,
-                phone,
-            ])
+            writer.writerow(
+                [
+                    getattr(lead, "company_name", "") or "",
+                    getattr(lead, "domain", "") or "",
+                    getattr(lead, "source", "") or "",
+                    getattr(lead, "industry", "") or "",
+                    getattr(lead, "location", "") or "",
+                    getattr(lead, "fit_score", 0.0) or 0.0,
+                    getattr(lead, "status", "") or "",
+                    name,
+                    title,
+                    email,
+                    phone,
+                ]
+            )
 
         return output.getvalue()
 
@@ -677,21 +691,23 @@ class ExportService:
                 email = mask_email(email)
                 phone = mask_phone(phone)
 
-            records.append({
-                "fields": {
-                    "Company Name": getattr(lead, "company_name", "") or "",
-                    "Domain": getattr(lead, "domain", "") or "",
-                    "Source": getattr(lead, "source", "") or "",
-                    "Industry": getattr(lead, "industry", "") or "",
-                    "Location": getattr(lead, "location", "") or "",
-                    "Fit Score": float(getattr(lead, "fit_score", 0.0) or 0.0),
-                    "Status": getattr(lead, "status", "") or "",
-                    "Contact Name": name,
-                    "Contact Title": title,
-                    "Email": email,
-                    "Phone": phone,
+            records.append(
+                {
+                    "fields": {
+                        "Company Name": getattr(lead, "company_name", "") or "",
+                        "Domain": getattr(lead, "domain", "") or "",
+                        "Source": getattr(lead, "source", "") or "",
+                        "Industry": getattr(lead, "industry", "") or "",
+                        "Location": getattr(lead, "location", "") or "",
+                        "Fit Score": float(getattr(lead, "fit_score", 0.0) or 0.0),
+                        "Status": getattr(lead, "status", "") or "",
+                        "Contact Name": name,
+                        "Contact Title": title,
+                        "Email": email,
+                        "Phone": phone,
+                    }
                 }
-            })
+            )
         return records
 
     def prepare_google_sheets_rows(
@@ -724,17 +740,19 @@ class ExportService:
                 email = mask_email(email)
                 phone = mask_phone(phone)
 
-            rows.append([
-                getattr(lead, "company_name", "") or "",
-                getattr(lead, "domain", "") or "",
-                getattr(lead, "source", "") or "",
-                getattr(lead, "industry", "") or "",
-                getattr(lead, "location", "") or "",
-                float(getattr(lead, "fit_score", 0.0) or 0.0),
-                getattr(lead, "status", "") or "",
-                name,
-                title,
-                email,
-                phone,
-            ])
+            rows.append(
+                [
+                    getattr(lead, "company_name", "") or "",
+                    getattr(lead, "domain", "") or "",
+                    getattr(lead, "source", "") or "",
+                    getattr(lead, "industry", "") or "",
+                    getattr(lead, "location", "") or "",
+                    float(getattr(lead, "fit_score", 0.0) or 0.0),
+                    getattr(lead, "status", "") or "",
+                    name,
+                    title,
+                    email,
+                    phone,
+                ]
+            )
         return rows

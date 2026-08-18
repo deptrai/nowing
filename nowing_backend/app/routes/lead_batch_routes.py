@@ -15,6 +15,8 @@ from app.db import Permission, VerifiedContact, Workspace, get_async_session
 from app.rate_limiter import limiter
 from app.services.billing_event_service import BillingEventService
 from app.services.lead_batch_service import LeadBatchService, LeadItemValidationError
+from app.services.pii.opt_out_service import OptOutService
+from app.services.pii.verified_contact_encryption import VerifiedContactEncryption
 from app.users import get_auth_context
 from app.utils.rbac import check_permission
 
@@ -114,12 +116,32 @@ async def batch_ingest_leads(
     return BatchLeadIngestResponse(**result)
 
 
+class PIIOptOutRequest(BaseModel):
+    """PII opt-out request body."""
+
+    record_type: str = Field(..., pattern="^(phone|email)$")
+    value: str = Field(..., min_length=1)
+    reason: str | None = "Right to be forgotten"
+
+
+class PIIOptOutResponse(BaseModel):
+    """PII opt-out response."""
+
+    purged_contact_count: int
+    refunded_micros: int
+    dnc_record_id: UUID
+
+
 class ContactUnlockResponse(BaseModel):
     """Contact unlock response."""
 
     contact_id: UUID
     is_unlocked: bool
     cost_micros: int
+    name: str | None = None
+    title: str | None = None
+    email: str | None = None
+    phone: str | None = None
 
 
 @router.post(
@@ -167,11 +189,23 @@ async def unlock_contact(
             detail="Contact not found",
         )
 
+    enc = VerifiedContactEncryption()
+
     if contact.is_unlocked:
         return ContactUnlockResponse(
             contact_id=contact.id,
             is_unlocked=True,
             cost_micros=0,
+            name=enc.decrypt(contact.name) if enc.is_encrypted(contact.name) else None,
+            title=enc.decrypt(contact.title)
+            if enc.is_encrypted(contact.title)
+            else None,
+            email=enc.decrypt(contact.email)
+            if enc.is_encrypted(contact.email)
+            else None,
+            phone=enc.decrypt(contact.phone)
+            if enc.is_encrypted(contact.phone)
+            else None,
         )
 
     try:
@@ -208,4 +242,68 @@ async def unlock_contact(
         contact_id=contact.id,
         is_unlocked=True,
         cost_micros=1_500,
+        name=enc.decrypt(contact.name) if enc.is_encrypted(contact.name) else None,
+        title=enc.decrypt(contact.title) if enc.is_encrypted(contact.title) else None,
+        email=enc.decrypt(contact.email) if enc.is_encrypted(contact.email) else None,
+        phone=enc.decrypt(contact.phone) if enc.is_encrypted(contact.phone) else None,
+    )
+
+
+@router.post(
+    "/workspaces/{workspace_id}/pii-opt-out",
+    response_model=PIIOptOutResponse,
+    status_code=status.HTTP_200_OK,
+)
+@limiter.limit("30/minute")
+async def pii_opt_out(
+    request: Request,
+    workspace_id: int,
+    body: PIIOptOutRequest = Body(...),
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(get_auth_context),
+) -> PIIOptOutResponse:
+    """Process a PDPD Decree 13 opt-out request (Right to be Forgotten)."""
+    await check_permission(
+        session,
+        auth,
+        workspace_id,
+        Permission.LEADS_WRITE.value,
+        error_message="You don't have permission to opt-out PII in this workspace",
+    )
+
+    workspace = await session.get(Workspace, workspace_id)
+    if workspace is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Workspace not found",
+        )
+
+    service = OptOutService(session)
+    try:
+        result = await service.process_opt_out(
+            workspace_id=workspace_id,
+            record_type=body.record_type,
+            value=body.value,
+            actor_user_id=auth.user.id,
+            ip_address=getattr(request, "client", None) and request.client.host,
+            global_scope=False,
+        )
+    except ValueError as exc:
+        detail = str(exc).lower()
+        if "phone" in detail or "email" in detail:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(exc),
+            ) from exc
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+    await session.flush()
+
+    return PIIOptOutResponse(
+        purged_contact_count=result.purged_contact_count,
+        refunded_micros=result.refunded_micros,
+        dnc_record_id=result.dnc_record_id,
     )

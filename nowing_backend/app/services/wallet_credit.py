@@ -24,6 +24,7 @@ from app.services.etl_credit_service import InsufficientCreditsError
 
 __all__ = [
     "InsufficientCreditsError",
+    "apply_credit",
     "apply_debit",
     "check_balance",
     "spendable_micros",
@@ -119,4 +120,30 @@ async def apply_debit(
     except Exception:
         pass
 
+    return user.credit_micros_balance
+
+
+async def apply_credit(
+    session: AsyncSession, user_id: str | UUID, amount_micros: int
+) -> int | None:
+    """Credit ``amount_micros`` to the wallet and commit.
+
+    No-op for non-positive amounts; returns the new balance, or ``None``.
+    ponytail: SELECT FOR UPDATE keeps the read-modify-write atomic.
+    """
+    if amount_micros <= 0:
+        return None
+
+    from app.db import User
+
+    result = await session.execute(
+        select(User).where(User.id == user_id).with_for_update()
+    )
+    user = result.unique().scalar_one_or_none()
+    if not user:
+        raise ValueError(f"User with ID {user_id} not found")
+
+    user.credit_micros_balance += amount_micros
+    await session.commit()
+    await session.refresh(user)
     return user.credit_micros_balance

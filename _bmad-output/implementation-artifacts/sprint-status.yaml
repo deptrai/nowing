@@ -1,5 +1,5 @@
 # generated: 2026-08-08
-# last_updated: 2026-08-15  # 10-6, 10-7, 3-13 → done; followups reopened; Epic 21 opened for dev
+# last_updated: 2026-08-19  # 26-4 implementation complete, moved to review
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-08"
-last_updated: "2026-08-18"  # 26-3 story file created, validated, and fixed
+last_updated: "2026-08-19"  # 26-4 implementation complete, moved to review
 # ponytail: 2026-08-14 — reopened deferred/business-gated/dropped to backlog; 16-1 mutation gate reopened; 15-2 moved to review; tech-debt tracker reopened.
 # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended citation ACs to 3.15 (WEB_RESULT), 9.3 (async delivery), 2.10 (Exa MCP). 3 stories → review.
 # ponytail: 2026-08-08 sprint-planning — added Epic 1, 5 (DONE brownfield); added 9.1a, 9.1b, 4.8a-4.8h, 13.2a-13.2e; upgraded 12.1-12.5 to ready-for-dev (story files exist); 12.0 DONE (legal approved).
@@ -251,8 +251,8 @@ development_status:
 
   # === Epic 25: Superadmin & Platform Operations Control Plane ===
   # 2026-08-16: Multi-Tenant Hub, Scoped Impersonation, Manual Credit Desk, Affiliate Anti-Fraud Payouts, Telemetry & Dynamic Scraper Rules
-  epic-25: ready-for-dev
-  25-1: in-progress  # Multi-Tenant User & Workspace Hub + Scoped Impersonation
+  epic-25: in-progress
+  25-1: done  # Multi-Tenant User & Workspace Hub + Scoped Impersonation
   25-2: done  # Manual Credit Adjustment & Refund Desk with Dual-Audit Ledger
   25-3: ready-for-dev  # Affiliate Partner Payout Desk & Anti-Fraud Engine
   25-4: ready-for-dev  # Realtime LLM Token Cost, Proxy Health & Celery Queue Telemetry
@@ -265,8 +265,8 @@ development_status:
   epic-26: in-progress
   26-1: ready-for-dev  # FastMCP Ingest Gateway, Batch Ingestion & Stateless ChainLens Pipeline
   26-2: done  # dsh-worker Sidecar Container, Redis Streams & Task Resumption
-  26-3: in-progress  # Multi-Tier Hybrid LLM Router (Gemini Flash Free Tier + DeepSeek V4 + Qwen 3.8)
-  26-4: backlog  # PII Vault AES-256 Encryption, HMAC Deduplication & Decree 13 Opt-Out
+  26-3: pending-human-review  # Multi-Tier Hybrid LLM Router (Gemini Flash Free Tier + DeepSeek V4 + Qwen 3.8)
+  26-4: review  # PII Vault Fernet Encryption, HMAC Deduplication & Decree 13 Opt-Out
   26-5: backlog  # Split Canvas Glass Box Mission Control, Two-Tier Phone Unlock & Shimmer Influx
   26-6: backlog  # Telegram Interactive Checkpoint Bot & 1-Click Auto-Refund Dialog
   26-7: backlog  # Hermetic Quality Gates, Benchmark Suite & Anti-Zombie Chaos Testing

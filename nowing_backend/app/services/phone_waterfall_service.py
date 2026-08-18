@@ -32,6 +32,10 @@ from app.db import (
     PhoneWaterfallLog,
     VerifiedContact,
 )
+from app.lead_intelligence.dnc.normalizer import (
+    compute_phone_hmac,
+    compute_verified_contact_hmac,
+)
 from app.proprietary.platforms.batdongsan.fetch import fetch_detail_phone
 from app.proprietary.platforms.chotot.fetch import fetch_phone as chotot_fetch_phone
 from app.proprietary.platforms.xactions.phone_extractor import (
@@ -189,17 +193,7 @@ def mask_phone(phone: str | None) -> str:
 
 def hash_phone(phone: str | None) -> str | None:
     """Compute HMAC-SHA256 hex digest of canonical E.164 phone for DNC/cache alignment."""
-    if not phone:
-        return None
-    from app.lead_intelligence.dnc.normalizer import (
-        hash_phone_hmac,
-        normalize_phone_e164,
-    )
-
-    e164 = normalize_phone_e164(phone)
-    if not e164:
-        return None
-    return hash_phone_hmac(e164, config.SECRET_KEY)
+    return compute_phone_hmac(phone)
 
 
 @dataclass
@@ -863,8 +857,8 @@ class PhoneWaterfallService:
             client_id=client_id,
             lead_id=lead_id,
             enrichment_request_id=None,
-            name=lead.company_name,
-            title="Lead Contact",
+            name=self.encryption.encrypt(lead.company_name or "Doanh nghiep"),
+            title=self.encryption.encrypt("Lead Contact"),
             email=None,
             phone=encrypted_phone,  # Encrypted at rest in vault
             verification_status="verified",
@@ -874,6 +868,9 @@ class PhoneWaterfallService:
             consent_status="legitimate_interest",
             legal_basis="legitimate_interest",
             is_valid=True,
+            value_hmac=compute_verified_contact_hmac(norm_phone, None, lead.domain),
+            phone_hmac=compute_phone_hmac(norm_phone),
+            email_hmac=None,
         )
         self.session.add(contact)
         await self.session.flush()
@@ -929,9 +926,7 @@ class PhoneWaterfallService:
                     self.session, user_id, PHONE_RESOLUTION_COST_MICROS
                 )
             except wallet_credit.InsufficientCreditsError as ice:
-                logger.warning(
-                    "Wallet ran out of credits during final debit: %s", ice
-                )
+                logger.warning("Wallet ran out of credits during final debit: %s", ice)
                 return PhoneResolutionResult(
                     lead_id=lead_id,
                     phone=None,

@@ -71,6 +71,8 @@ class LeadRead(BaseModel):
     assigned_to_user_id: UUID | None = None
     version: int = 1
     intent: str | None = None
+    name: str | None = None
+    email: str | None = None
     phone: str | None = None
     price_estimate: str | None = None
     content_snippet: str | None = None

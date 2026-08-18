@@ -488,6 +488,82 @@ class WorkspaceCreditService:
             "member_monthly_spent": member_monthly_spent,
         }
 
+    async def refund_member_spend(
+        self,
+        *,
+        workspace_id: int,
+        user_id: UUID,
+        amount_micros: int,
+    ) -> dict[str, Any]:
+        """Decrement a member's monthly spent counter without touching workspace balance."""
+        if amount_micros <= 0:
+            return {
+                "workspace_id": workspace_id,
+                "user_id": user_id,
+                "amount_micros": 0,
+                "member_monthly_spent": 0,
+                "member_monthly_spend_cap": None,
+            }
+
+        # In-memory fake-session path used by unit tests (FakeAsyncSession).
+        if hasattr(self.session, "workspaces") and hasattr(self.session, "memberships"):
+            membership = self.session.memberships.get((workspace_id, user_id))
+            if membership is None:
+                return {
+                    "workspace_id": workspace_id,
+                    "user_id": user_id,
+                    "amount_micros": amount_micros,
+                    "member_monthly_spent": 0,
+                    "member_monthly_spend_cap": None,
+                }
+            current_spent = membership.monthly_spent_micros or 0
+            membership.monthly_spent_micros = max(0, current_spent - amount_micros)
+            return {
+                "workspace_id": workspace_id,
+                "user_id": user_id,
+                "amount_micros": amount_micros,
+                "member_monthly_spent": membership.monthly_spent_micros,
+                "member_monthly_spend_cap": membership.monthly_spend_cap_micros,
+            }
+
+        from sqlalchemy import update
+
+        spend_result = await self.session.execute(
+            update(WorkspaceMembership)
+            .where(
+                WorkspaceMembership.workspace_id == workspace_id,
+                WorkspaceMembership.user_id == user_id,
+            )
+            .values(
+                monthly_spent_micros=func.greatest(
+                    0,
+                    func.coalesce(WorkspaceMembership.monthly_spent_micros, 0)
+                    - amount_micros,
+                ),
+            )
+            .returning(
+                WorkspaceMembership.monthly_spend_cap_micros,
+                WorkspaceMembership.monthly_spent_micros,
+            )
+        )
+        spend_row = spend_result.one_or_none()
+        if spend_row is None:
+            return {
+                "workspace_id": workspace_id,
+                "user_id": user_id,
+                "amount_micros": amount_micros,
+                "member_monthly_spent": 0,
+                "member_monthly_spend_cap": None,
+            }
+        returned_cap, returned_spent = spend_row
+        return {
+            "workspace_id": workspace_id,
+            "user_id": user_id,
+            "amount_micros": amount_micros,
+            "member_monthly_spent": returned_spent,
+            "member_monthly_spend_cap": returned_cap,
+        }
+
     async def set_member_spend_cap(
         self,
         *,

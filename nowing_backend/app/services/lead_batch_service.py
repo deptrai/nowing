@@ -20,7 +20,9 @@ from sqlalchemy.sql import func
 from app.config import config
 from app.db import Lead, VerifiedContact
 from app.lead_intelligence.dnc.normalizer import (
-    hash_phone_hmac,
+    compute_email_hmac,
+    compute_phone_hmac,
+    compute_verified_contact_hmac,
     normalize_domain,
     normalize_email,
     normalize_phone_e164,
@@ -104,8 +106,7 @@ def _build_batch_upsert_stmt(leads: list[dict[str, Any]]) -> Any:
     # ``verified_contacts``.
     lead_columns = set(Lead.__table__.columns.keys())
     lead_rows = [
-        {k: v for k, v in lead.items() if k in lead_columns}
-        for lead in sorted_leads
+        {k: v for k, v in lead.items() if k in lead_columns} for lead in sorted_leads
     ]
 
     stmt = pg_insert(Lead).values(lead_rows)
@@ -195,11 +196,9 @@ class LeadBatchService:
             if not any([lead.get("phone"), lead.get("email")]):
                 continue
 
-            norm_phone = normalize_phone_e164(lead.get("phone")) or ""
-            norm_email = normalize_email(lead.get("email")) or ""
-            contact_hmac = hash_phone_hmac(
-                f"{norm_phone}|{norm_email}",
-                secret_key=config.SECRET_KEY,
+            domain = lead.get("domain")
+            contact_hmac = compute_verified_contact_hmac(
+                lead.get("phone"), lead.get("email"), domain
             )
 
             contact = {
@@ -207,8 +206,10 @@ class LeadBatchService:
                 "workspace_id": workspace_id,
                 "client_id": lead.get("client_id"),
                 "lead_id": lead_id,
-                "name": self._cipher.encrypt(lead.get("company_name")),
-                "title": None,
+                "name": self._cipher.encrypt(
+                    lead.get("contact_name") or lead.get("company_name")
+                ),
+                "title": self._cipher.encrypt(lead.get("title")),
                 "email": self._cipher.encrypt(lead.get("email")),
                 "phone": self._cipher.encrypt(lead.get("phone")),
                 "verification_status": "verified",
@@ -221,6 +222,10 @@ class LeadBatchService:
                 "is_unlocked": False,
                 "pii_access_audit_logs": [],
                 "value_hmac": contact_hmac,
+                "phone_hmac": compute_phone_hmac(
+                    normalize_phone_e164(lead.get("phone"))
+                ),
+                "email_hmac": compute_email_hmac(normalize_email(lead.get("email"))),
             }
             contacts_to_insert.append(contact)
 
@@ -230,8 +235,11 @@ class LeadBatchService:
                 index_elements=["workspace_id", "value_hmac"],
                 set_={
                     "name": contact_stmt.excluded.name,
+                    "title": contact_stmt.excluded.title,
                     "email": contact_stmt.excluded.email,
                     "phone": contact_stmt.excluded.phone,
+                    "phone_hmac": contact_stmt.excluded.phone_hmac,
+                    "email_hmac": contact_stmt.excluded.email_hmac,
                 },
             )
             await session.execute(contact_upsert)

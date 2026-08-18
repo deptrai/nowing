@@ -127,3 +127,49 @@ async def pat_client(
     finally:
         app.dependency_overrides.clear()
         app.dependency_overrides.update(previous_overrides)
+
+
+@pytest_asyncio.fixture
+async def db_other_user(db_session: AsyncSession) -> User:
+    """A user who is not a member of the test workspace."""
+    user = User(
+        id=uuid4(),
+        email="other@nowing.net",
+        hashed_password="hashed",
+        is_active=True,
+        is_superuser=False,
+        is_verified=True,
+    )
+    db_session.add(user)
+    await db_session.flush()
+    return user
+
+
+@pytest_asyncio.fixture
+async def client_as_other(
+    db_session: AsyncSession,
+    db_other_user: User,
+) -> AsyncGenerator[httpx.AsyncClient, None]:
+    """Authenticated as a non-member user."""
+
+    async def override_session() -> AsyncGenerator[AsyncSession, None]:
+        yield db_session
+
+    async def override_auth() -> AuthContext:
+        return AuthContext.session(db_other_user)
+
+    previous_overrides = app.dependency_overrides.copy()
+    app.dependency_overrides[get_async_session] = override_session
+    app.dependency_overrides[get_auth_context] = override_auth
+
+    try:
+        async with httpx.AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            timeout=30.0,
+            follow_redirects=False,
+        ) as test_client:
+            yield test_client
+    finally:
+        app.dependency_overrides.clear()
+        app.dependency_overrides.update(previous_overrides)

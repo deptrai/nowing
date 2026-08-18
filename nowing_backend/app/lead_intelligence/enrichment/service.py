@@ -27,6 +27,11 @@ from app.db import (
     VerifiedContact,
     Workspace,
 )
+from app.lead_intelligence.dnc.normalizer import (
+    compute_email_hmac,
+    compute_phone_hmac,
+    compute_verified_contact_hmac,
+)
 from app.lead_intelligence.enrichment import cache as enrichment_cache
 from app.lead_intelligence.enrichment.fallback import FallbackVerifier
 from app.lead_intelligence.enrichment.providers import run_waterfall
@@ -249,6 +254,11 @@ class EnrichmentService:
                 consent=consent_status == "explicit",
                 consent_status=consent_status,
                 legal_basis=legal_basis,
+                value_hmac=compute_verified_contact_hmac(
+                    item.get("phone"), item.get("email"), lead.domain
+                ),
+                phone_hmac=compute_phone_hmac(item.get("phone")),
+                email_hmac=compute_email_hmac(item.get("email")),
             )
             session.add(contact)
             await session.flush()

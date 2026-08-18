@@ -68,22 +68,43 @@ def _map_lead_to_read(lead: Lead) -> LeadRead:
             for c in lead.verified_contacts
             if getattr(c, "phone", None) or getattr(c, "email", None)
         ]
+    first_contact = raw_contacts[0] if raw_contacts else None
     first_phone = (
-        raw_contacts[0].phone if raw_contacts else getattr(lead, "phone", None)
+        getattr(first_contact, "phone", None)
+        if first_contact
+        else getattr(lead, "phone", None)
     )
-    if first_phone:
-        from app.services.phone_waterfall_service import mask_phone
-        from app.services.pii.verified_contact_encryption import (
-            VerifiedContactEncryption,
-        )
+    first_email = getattr(first_contact, "email", None) if first_contact else None
+    first_name = getattr(first_contact, "name", None) if first_contact else None
 
-        enc = VerifiedContactEncryption()
-        if enc.is_encrypted(first_phone):
+    from app.services.export_service import mask_email, mask_name, mask_phone
+    from app.services.pii.verified_contact_encryption import VerifiedContactEncryption
+
+    enc = VerifiedContactEncryption()
+    is_unlocked = bool(getattr(first_contact, "is_unlocked", False))
+
+    def _render_field(value: str | None) -> str | None:
+        if not value:
+            return None
+        if enc.is_encrypted(value):
             try:
-                first_phone = enc.decrypt(first_phone)
+                value = enc.decrypt(value)
             except Exception:
-                first_phone = None
-        first_phone = mask_phone(first_phone) if first_phone else None
+                return None
+        return value
+
+    raw_phone = _render_field(first_phone)
+    raw_email = _render_field(first_email)
+    raw_name = _render_field(first_name)
+
+    if is_unlocked:
+        first_phone = raw_phone
+        first_email = raw_email
+        first_name = raw_name
+    else:
+        first_phone = mask_phone(raw_phone) if raw_phone else None
+        first_email = mask_email(raw_email) if raw_email else None
+        first_name = mask_name(raw_name) if raw_name else None
 
     # Derive intent and snippet from available metadata or source
     derived_intent = getattr(lead, "intent", None)
@@ -135,6 +156,8 @@ def _map_lead_to_read(lead: Lead) -> LeadRead:
         else None,
         status=lead.status or "new",
         intent=derived_intent,
+        name=first_name,
+        email=first_email,
         phone=first_phone,
         price_estimate=getattr(lead, "price_estimate", None),
         content_snippet=content_snippet,

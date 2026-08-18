@@ -88,6 +88,78 @@ class BillingEventService:
             return_existing=True,
         )
 
+    async def record_contact_unlock_refund(
+        self,
+        session: AsyncSession,
+        *,
+        verified_contact_id: UUID,
+        workspace_id: int,
+        client_id: str | None = None,
+        user_id: UUID,
+        cost_micros: int = 1_500,
+    ) -> BillingEvent:
+        """Record a contact-unlock refund and credit the payer wallet (Story 26.4).
+
+        Idempotent: returns an existing refund BillingEvent if one already exists.
+        """
+        # 1. Idempotency: existing refund row for this contact.
+        existing_refund = (
+            await session.execute(
+                select(BillingEvent).where(
+                    BillingEvent.event_entity_type == "verified_contact",
+                    BillingEvent.event_type == "contact_unlock_refund",
+                    BillingEvent.event_id == verified_contact_id,
+                    BillingEvent.workspace_id == workspace_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if getattr(existing_refund, "event_type", None) == "contact_unlock_refund":
+            return existing_refund
+
+        # 2. Find the original unlock billing event to identify the payer.
+        original = (
+            await session.execute(
+                select(BillingEvent).where(
+                    BillingEvent.event_entity_type == "verified_contact",
+                    BillingEvent.event_type == "contact_unlock",
+                    BillingEvent.event_id == verified_contact_id,
+                    BillingEvent.workspace_id == workspace_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if getattr(original, "event_type", None) != "contact_unlock":
+            raise ValueError(
+                f"no unlock billing event for contact {verified_contact_id}"
+            )
+
+        payer_id = original.user_id
+        if payer_id is None:
+            payer_id = user_id
+
+        # 3. Credit the payer wallet and decrement member monthly spent.
+        await wallet_credit.apply_credit(session, payer_id, cost_micros)
+        credit_svc = WorkspaceCreditService(session=session)
+        await credit_svc.refund_member_spend(
+            workspace_id=workspace_id,
+            user_id=payer_id,
+            amount_micros=cost_micros,
+        )
+
+        # 4. Persist the refund billing event (negative cost).
+        event = BillingEvent(
+            workspace_id=workspace_id,
+            client_id=client_id,
+            user_id=payer_id,
+            event_entity_type="verified_contact",
+            event_type="contact_unlock_refund",
+            event_id=verified_contact_id,
+            cost_micros=-cost_micros,
+            currency="USD",
+            cost_basis="actual",
+        )
+        session.add(event)
+        return event
+
     async def record_contact_enrichment(
         self,
         session: AsyncSession,

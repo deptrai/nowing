@@ -137,3 +137,40 @@ def normalize_tax_id(tax_id: str | None) -> str | None:
 
     cleaned = re.sub(r"[^\w-]", "", tax_id.strip()).lower()
     return cleaned if cleaned else None
+
+
+def compute_phone_hmac(phone: str | None) -> str | None:
+    """Blind HMAC for a phone number (raw or E.164)."""
+    e164 = normalize_phone_e164(phone)
+    if not e164:
+        return None
+    return hash_phone_hmac(e164)
+
+
+def compute_email_hmac(email: str | None) -> str | None:
+    """Blind HMAC for an email address (raw or normalized)."""
+    norm = normalize_email(email)
+    if not norm:
+        return None
+    return hash_phone_hmac(norm)
+
+
+def compute_verified_contact_hmac(
+    phone: str | None,
+    email: str | None,
+    domain: str | None,
+) -> str:
+    """Canonical composite HMAC for verified contact deduplication (Story 26.4).
+
+    Canonical form: HMAC_SHA256(
+        "phone=<normalized_phone>|email=<normalized_email>|domain=<domain>",
+        config.SECRET_KEY
+    )
+    """
+    norm_phone = normalize_phone_e164(phone) or ""
+    norm_email = normalize_email(email) or ""
+    norm_domain = normalize_domain(domain) or ""
+    if not norm_phone and not norm_email and not norm_domain:
+        raise ValueError("degenerate contact: phone, email and domain are all empty")
+    canonical = f"phone={norm_phone}|email={norm_email}|domain={norm_domain}"
+    return hash_phone_hmac(canonical)
