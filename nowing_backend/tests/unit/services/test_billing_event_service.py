@@ -307,11 +307,54 @@ class TestRecordSignalScan:
         assert "exceed your available credit" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_record_signal_scan_apply_debit_failure_rolls_back(self, monkeypatch):
+    async def test_record_signal_scan_apply_debit_failure_refunds_member_spend(
+        self, monkeypatch
+    ):
         from app.services.billing_event_service import record_signal_scan
 
         async def _apply_debit(_session: Any, _user_id: Any, _cost_micros: int) -> int:
             raise RuntimeError("debit failed")
+
+        record_spend_calls: list[dict[str, Any]] = []
+
+        async def _record_spend(
+            self,
+            *,
+            workspace_id: int,
+            user_id: Any,
+            amount_micros: int,
+            description: str = "",
+        ) -> dict[str, Any]:
+            record_spend_calls.append(
+                {"workspace_id": workspace_id, "user_id": user_id, "amount_micros": amount_micros}
+            )
+            return {
+                "workspace_id": workspace_id,
+                "user_id": user_id,
+                "amount_micros": amount_micros,
+                "member_monthly_spent": amount_micros,
+                "member_monthly_spend_cap": None,
+            }
+
+        refund_calls: list[dict[str, Any]] = []
+
+        async def _refund_member_spend(
+            self,
+            *,
+            workspace_id: int,
+            user_id: Any,
+            amount_micros: int,
+        ) -> dict[str, Any]:
+            refund_calls.append(
+                {"workspace_id": workspace_id, "user_id": user_id, "amount_micros": amount_micros}
+            )
+            return {
+                "workspace_id": workspace_id,
+                "user_id": user_id,
+                "amount_micros": amount_micros,
+                "member_monthly_spent": 0,
+                "member_monthly_spend_cap": None,
+            }
 
         monkeypatch.setattr(
             "app.services.wallet_credit.apply_debit",
@@ -325,23 +368,35 @@ class TestRecordSignalScan:
         )
         monkeypatch.setattr(
             "app.services.workspace_credit_service.WorkspaceCreditService.record_spend",
-            AsyncMock(),
+            _record_spend,
+            raising=False,
+        )
+        monkeypatch.setattr(
+            "app.services.workspace_credit_service.WorkspaceCreditService.refund_member_spend",
+            _refund_member_spend,
             raising=False,
         )
 
         session = _FakeSession()
 
+        user_id = uuid4()
         with pytest.raises(RuntimeError, match="debit failed"):
             await record_signal_scan(
                 session,
                 signal_event_id=uuid4(),
                 workspace_id=1,
                 client_id=None,
-                user_id=uuid4(),
+                user_id=user_id,
                 cost_micros=1000,
             )
 
-        assert session.rolled_back is True
+        assert record_spend_calls == [
+            {"workspace_id": 1, "user_id": user_id, "amount_micros": 1000}
+        ]
+        assert refund_calls == [
+            {"workspace_id": 1, "user_id": user_id, "amount_micros": 1000}
+        ]
+        assert session.rolled_back is False
         assert session.committed is False
 
     @pytest.mark.asyncio

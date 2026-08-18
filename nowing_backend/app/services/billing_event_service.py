@@ -330,19 +330,24 @@ async def _record_business_event(
             )
 
     if cost_micros > 0 and user_id is not None:
-        # Debit the wallet first; only persist BillingEvent after a successful debit.
-        try:
-            await wallet_credit.check_balance(session, user_id, cost_micros)
+        # Check balance, tentatively reserve the member monthly spend, then debit.
+        await wallet_credit.check_balance(session, user_id, cost_micros)
 
-            credit_svc = WorkspaceCreditService(session=session)
-            await credit_svc.record_spend(
+        credit_svc = WorkspaceCreditService(session=session)
+        await credit_svc.record_spend(
+            workspace_id=workspace_id,
+            user_id=user_id,
+            amount_micros=cost_micros,
+        )
+        try:
+            await wallet_credit.apply_debit(session, user_id, cost_micros)
+        except Exception:
+            # Undo the monthly-spent increment if the wallet debit failed.
+            await credit_svc.refund_member_spend(
                 workspace_id=workspace_id,
                 user_id=user_id,
                 amount_micros=cost_micros,
             )
-            await wallet_credit.apply_debit(session, user_id, cost_micros)
-        except Exception:
-            await session.rollback()
             raise
 
     event = BillingEvent(
