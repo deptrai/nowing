@@ -470,5 +470,7 @@ This story touches **PII, credit refund, billing events, and DNC/wallet logic** 
 - **Unit tests:** 122 passed trên nhóm 26.4 (`test_pii_opt_out_service`, `test_contact_unlock_refund`, `test_lead_batch_service`, `test_export_service`, `test_billing_event_service`, `test_leads_routes`, `test_contact_enrichment`, `test_dnc_*`, `test_phone_waterfall_service`, `test_workspace_credit_pooling`).
 - **Integration tests:** 9 passed trên Postgres/Redis local (`tests/integration/routes/test_pii_opt_out.py`, `tests/integration/lead_batch/test_contact_unlock.py`).
 - **Lint:** `ruff check` sạch trên tất cả file thay đổi.
-- **Migration:** Alembic revision `8f0e6aa7aa87` đã tạo. Sau khi cài PostGIS vào container `pgvector/pgvector:pg17` và tạo extension trên `nowing_test`, `DATABASE_URL=.../nowing_test uv run alembic upgrade head` chạy thành công (fresh DB → `Base.metadata.create_all` + stamp head). Migration SQL với `IF NOT EXISTS` guard cho columns/indexes/constraints; cần staging trên DB có dữ liệu thật để validate backfill và unique-constraint.
+- **Migration:** Alembic revision `8f0e6aa7aa87` đã tạo.
+  - Fresh DB: `alembic upgrade head` chạy thành công trên `nowing_test` sau khi cài PostGIS.
+  - Existing-DB migration: tạo `nowing_migration_test` từ template `nowing`, set `alembic_version = 49988ab02307`, chạy `alembic upgrade head` thành công, backfill 3 verified_contacts + 1 lead, version stamp chuyển lên `8f0e6aa7aa87`.
 - **Commit liên quan:** `e0682787d` (review patches), `82c65e9f5` (billing_event rollback → refund_member_spend fix).

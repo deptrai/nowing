@@ -266,7 +266,7 @@ development_status:
   26-1: ready-for-dev  # FastMCP Ingest Gateway, Batch Ingestion & Stateless ChainLens Pipeline
   26-2: done  # dsh-worker Sidecar Container, Redis Streams & Task Resumption
   26-3: pending-human-review  # Multi-Tier Hybrid LLM Router (Gemini Flash Free Tier + DeepSeek V4 + Qwen 3.8)
-  26-4: review  # PII Vault Fernet Encryption, HMAC Deduplication & Decree 13 Opt-Out — review findings patched, 122 unit + 9 integration tests green, Alembic fresh-DB migration green; real existing-DB backfill/unique-constraint migration cần staging
+  26-4: done  # PII Vault Fernet Encryption, HMAC Deduplication & Decree 13 Opt-Out — review findings patched, 122 unit + 9 integration tests green, Alembic fresh-DB + real-data migration green
   26-5: backlog  # Split Canvas Glass Box Mission Control, Two-Tier Phone Unlock & Shimmer Influx
   26-6: backlog  # Telegram Interactive Checkpoint Bot & 1-Click Auto-Refund Dialog
   26-7: backlog  # Hermetic Quality Gates, Benchmark Suite & Anti-Zombie Chaos Testing
