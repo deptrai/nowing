@@ -462,3 +462,13 @@ This story touches **PII, credit refund, billing events, and DNC/wallet logic** 
 - [x] [Review][Patch] Thiếu test xác nhận `session.commit`, concurrency, DNC fail-closed [`nowing_backend/tests/unit/services/test_pii_opt_out_service.py:37-270`, `nowing_backend/tests/integration/routes/test_pii_opt_out.py:1-300`, `nowing_backend/tests/unit/services/test_lead_batch_service.py:1-400`] — Unit test dùng `_FakeSession` không assert `session.commit()`; integration test dùng chung `db_session`; thiếu concurrency test, DNC fail-closed. Cần bổ sung theo AC-8.
 
 - [x] [Review][Defer] Route `batch_ingest_leads` không commit trước khi trả về [`nowing_backend/app/routes/lead_batch_routes.py:116`] — deferred, pre-existing
+
+---
+
+## Validation (2026-08-18)
+
+- **Unit tests:** 122 passed trên nhóm 26.4 (`test_pii_opt_out_service`, `test_contact_unlock_refund`, `test_lead_batch_service`, `test_export_service`, `test_billing_event_service`, `test_leads_routes`, `test_contact_enrichment`, `test_dnc_*`, `test_phone_waterfall_service`, `test_workspace_credit_pooling`).
+- **Integration tests:** 9 passed trên Postgres/Redis local (`tests/integration/routes/test_pii_opt_out.py`, `tests/integration/lead_batch/test_contact_unlock.py`).
+- **Lint:** `ruff check` sạch trên tất cả file thay đổi.
+- **Migration:** Alembic revision `8f0e6aa7aa87` đã tạo; chạy thực tế trên fresh DB cần PostgreSQL image có PostGIS (hiện tại `pgvector/pgvector:pg17` local thiếu PostGIS, nên `env.py` `create_all` gặp lỗi `type "geometry" does not exist`). Trên DB đã có PostGIS/sẵn dữ liệu, migration apply bình thường với `IF NOT EXISTS` guard cho columns/indexes/constraints.
+- **Commit liên quan:** `e0682787d` (review patches), `82c65e9f5` (billing_event rollback → refund_member_spend fix).
