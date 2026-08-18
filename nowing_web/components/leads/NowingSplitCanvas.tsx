@@ -64,6 +64,14 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 	const [selectedCompanyForGraph, setSelectedCompanyForGraph] = useState<string | null>(null);
 	const [isGraphDrawerOpen, setIsGraphDrawerOpen] = useState(false);
 	const [mobileActiveTab, setMobileActiveTab] = useState<"chat" | "matrix">("chat");
+	const [unlockedPhones, setUnlockedPhones] = useState<Record<string, string | null>>({});
+
+	const handlePhoneChange = useCallback(
+		(leadId: string, phone: string | null, _unlocked: boolean) => {
+			setUnlockedPhones((prev) => ({ ...prev, [leadId]: phone }));
+		},
+		[]
+	);
 
 	// Tabs & Modes
 	const [_activeTabMode, _setActiveTabMode] = useState<"new_search" | "saved">(
@@ -113,11 +121,25 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 		return displayLeads.filter((lead) => selectedLeadIds.includes(lead.id));
 	}, [displayLeads, selectedLeadIds]);
 
-	const { missionControl, latestMission } = useDshMissionControl(workspaceId);
+	const {
+		missionControl,
+		latestMission,
+		loading: missionLoading,
+		error: missionError,
+	} = useDshMissionControl(workspaceId);
 	const shimmerCount = useMemo(() => {
-		const phase = missionControl?.phase ?? latestMission?.phase;
-		return phase === "ingestion" ? 2 : 0;
+		const phase = (missionControl?.phase ?? latestMission?.phase)?.toLowerCase();
+		return phase && (phase === "ingestion" || phase === "ingest") ? 2 : 0;
 	}, [missionControl, latestMission]);
+
+	// Keep the flyout lead in sync when the list refreshes (e.g. after phone unlock)
+	useEffect(() => {
+		if (!activeDrawerLead) return;
+		const updated = displayLeads.find((l) => l.id === activeDrawerLead.id);
+		if (updated && updated !== activeDrawerLead) {
+			setActiveDrawerLead(updated);
+		}
+	}, [displayLeads, activeDrawerLead, setActiveDrawerLead]);
 
 	// Resizing Handlers (Mouse Dragging)
 	const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -247,7 +269,13 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 								onOpenReverseIcp={() => setIsReverseIcpOpen(true)}
 								shimmerCount={shimmerCount}
 								onOpenDnc={() => setIsDncOpen(true)}
+								missionControl={missionControl}
+								latestMission={latestMission}
+								missionLoading={missionLoading}
+								missionError={missionError}
 								onOpenCompanyGraph={handleOpenCompanyGraph}
+								unlockedPhones={unlockedPhones}
+								onPhoneChange={handlePhoneChange}
 							/>
 						</div>
 					)}
@@ -262,6 +290,8 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 						onExportLarkBase={handleExportLarkBase}
 						onBulkZalo={handleBulkZalo}
 						onClearSelection={() => setSelectedLeadIds([])}
+						unlockedPhones={unlockedPhones}
+						onPhoneChange={handlePhoneChange}
 					/>
 				)}
 
@@ -271,6 +301,8 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 					isOpen={Boolean(activeDrawerLead)}
 					onClose={() => setActiveDrawerLead(null)}
 					workspaceId={String(workspaceId)}
+					unlockedPhone={activeDrawerLead ? unlockedPhones[activeDrawerLead.id] : undefined}
+					onPhoneChange={handlePhoneChange}
 				/>
 
 				{/* 1-Click Reverse-ICP Modal */}
@@ -381,7 +413,13 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 						onOpenReverseIcp={() => setIsReverseIcpOpen(true)}
 						shimmerCount={shimmerCount}
 						onOpenDnc={() => setIsDncOpen(true)}
+						missionControl={missionControl}
+						latestMission={latestMission}
+						missionLoading={missionLoading}
+						missionError={missionError}
 						onOpenCompanyGraph={handleOpenCompanyGraph}
+						unlockedPhones={unlockedPhones}
+						onPhoneChange={handlePhoneChange}
 					/>
 				</section>
 			)}
@@ -395,6 +433,8 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 					onExportLarkBase={handleExportLarkBase}
 					onBulkZalo={handleBulkZalo}
 					onClearSelection={() => setSelectedLeadIds([])}
+					unlockedPhones={unlockedPhones}
+					onPhoneChange={handlePhoneChange}
 				/>
 			)}
 
@@ -408,6 +448,8 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 				onReportInvalidPhone={(lead) => {
 					toast.info(`Đã mở báo cáo SĐT sai cho lead: ${lead.company_name}`);
 				}}
+				unlockedPhone={activeDrawerLead ? unlockedPhones[activeDrawerLead.id] : undefined}
+				onPhoneChange={handlePhoneChange}
 			/>
 
 			{/* Company Graph Modal / Drawer */}

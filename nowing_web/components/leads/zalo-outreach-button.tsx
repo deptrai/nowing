@@ -92,6 +92,7 @@ export const ZaloOutreachButton: React.FC<ZaloOutreachButtonProps> = ({
 
 	const handleOpenModal = async (e: React.MouseEvent) => {
 		e.stopPropagation();
+		if (disabled) return;
 		setShowModal(true);
 		if (!draftText) {
 			setLoading(true);
@@ -109,6 +110,7 @@ export const ZaloOutreachButton: React.FC<ZaloOutreachButtonProps> = ({
 	};
 
 	const handleCopyAndLaunch = async () => {
+		if (disabled) return;
 		if (draftText && navigator.clipboard) {
 			await navigator.clipboard.writeText(draftText);
 		}
@@ -146,7 +148,8 @@ export const ZaloOutreachButton: React.FC<ZaloOutreachButtonProps> = ({
 				<button
 					type="button"
 					onClick={handleOpenModal}
-					className="size-7 p-0 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border border-border/60 cursor-pointer"
+					disabled={disabled}
+					className="size-7 p-0 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border border-border/60 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
 					title="Xem & chỉnh sửa kịch bản AI trước khi gửi"
 				>
 					<Sparkles className="size-3.5 text-blue-500" />
@@ -156,11 +159,14 @@ export const ZaloOutreachButton: React.FC<ZaloOutreachButtonProps> = ({
 					type="button"
 					onClick={(e) => {
 						e.stopPropagation();
+						if (disabled) return;
 						setShowZnsModal(true);
 					}}
+					disabled={disabled}
 					className={cn(
-						"inline-flex items-center font-medium transition-all cursor-pointer select-none",
+						"inline-flex items-center font-medium transition-all select-none",
 						"bg-emerald-600 hover:bg-emerald-500 text-white active:scale-95 shadow-2xs",
+						"disabled:opacity-50 disabled:cursor-not-allowed",
 						sizeClasses[size]
 					)}
 					title="Gửi tin nhắn ZNS (Zalo Notification Service) với template đã duyệt"

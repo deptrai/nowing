@@ -51,6 +51,8 @@ export interface NowingLeadMatrixProps {
 	onOpenCompanyGraph?: (companyName: string) => void;
 	shimmerCount?: number;
 	className?: string;
+	unlockedPhones?: Record<string, string | null>;
+	onPhoneChange?: (leadId: string, phone: string | null, unlocked: boolean) => void;
 }
 
 const SOURCE_OPTIONS: Array<{ id: string; label: string; icon: string }> = [
@@ -105,6 +107,8 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 	onOpenCompanyGraph,
 	shimmerCount = 0,
 	className,
+	unlockedPhones = {},
+	onPhoneChange,
 }) => {
 	const [selectedLeadIds, setSelectedLeadIds] = useAtom(selectedLeadIdsAtom);
 	const [selectedLeadContext, setSelectedLeadContext] = useAtom(selectedLeadContextAtom);
@@ -116,7 +120,6 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 	const [isSourceOpen, setIsSourceOpen] = useState(false);
 	const [isStatusOpen, setIsStatusOpen] = useState(false);
 	const [isPingActive, setIsPingActive] = useState(false);
-	const [unlockedLeadIds, setUnlockedLeadIds] = useState<Set<string>>(new Set());
 	const sourceDropdownRef = useRef<HTMLDivElement>(null);
 	const statusDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -522,7 +525,12 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 								const isSelected = selectedLeadIds.includes(lead.id);
 								const isContextActive = selectedLeadContext?.id === lead.id;
 								const isHighlighted = highlightedRowIds.includes(lead.id);
-								const isUnlocked = lead.is_unlocked || unlockedLeadIds.has(lead.id);
+
+								const unlockedPhone = unlockedPhones?.[lead.id];
+								const hasPhoneOverride = lead.id in (unlockedPhones ?? {});
+								const rowPhone = hasPhoneOverride ? unlockedPhone : lead.phone;
+								const rowIsUnlocked = hasPhoneOverride ? Boolean(unlockedPhone) : lead.is_unlocked;
+								const rowLead: Lead = { ...lead, phone: rowPhone, is_unlocked: rowIsUnlocked };
 
 								return (
 									<tr
@@ -683,16 +691,9 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 											onKeyDown={(e) => e.stopPropagation()}
 										>
 											<PhoneUnlockPill
-												lead={lead}
+												lead={rowLead}
 												workspaceId={workspaceId}
-												onUnlock={(unlocked) =>
-													setUnlockedLeadIds((prev) => {
-														const next = new Set(prev);
-														if (unlocked) next.add(lead.id);
-														else next.delete(lead.id);
-														return next;
-													})
-												}
+												onPhoneChange={onPhoneChange}
 											/>
 										</td>
 
@@ -705,11 +706,11 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 											<div className="inline-flex items-center justify-end gap-1.5">
 												<ZaloOutreachButton
 													leadId={lead.id}
-													phone={lead.phone}
+													phone={rowPhone}
 													companyName={lead.company_name}
 													workspaceId={workspaceId}
 													size="sm"
-													disabled={!isUnlocked}
+													disabled={!rowIsUnlocked}
 												/>
 												{onOpenCompanyGraph && (
 													<button

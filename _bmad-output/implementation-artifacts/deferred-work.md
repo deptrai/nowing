@@ -1,3 +1,13 @@
+## Deferred from: code review of 26-5-split-canvas-glass-box-mission-control-two-tier-phone-unlock-shimmer-influx (2026-08-21)
+
+- **Finding:** Top-right credit badge is not refetched after unlock and already displays `credit_micros_balance / 1_000_000` as USD.
+  - **Action:** Marked `[x] [Review][Defer]` in `26-5-split-canvas-glass-box-mission-control-two-tier-phone-unlock-shimmer-influx.md`.
+  - **Reason / when to revisit:** Pre-existing `DynamicRightPanelCanvas` behavior; not part of 26.5 ACs.
+
+- **Finding:** No new unit tests for the new components; Playwright E2E specs already exist.
+  - **Action:** Marked `[x] [Review][Defer]` in `26-5-split-canvas-glass-box-mission-control-two-tier-phone-unlock-shimmer-influx.md`.
+  - **Reason / when to revisit:** E2E coverage exists in `nowing_web/tests/leads`; add component/unit tests when the design stabilizes.
+
 ## Deferred from: code review of 26-2-dsh-worker-sidecar-redis-streams-and-task-resumption (2026-08-17)
 
 - **Finding:** Missing structured mission-lifecycle observability.

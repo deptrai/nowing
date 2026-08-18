@@ -407,6 +407,36 @@ This story touches:
 Per `nowing-quality-pipeline.md`:
 - Integration tests on real Postgres are P0-gated.
 - Human-review gate is required for billing/PII changes.
+
+### Review Findings
+
+#### decision-needed (resolved)
+- [x] [Review][Decision] Mission Control real-time source — Chọn giải pháp REST polling 3 giây với filter `running,pending` làm nguồn thật cho Mission Control. `dshMissionsTable` đã gỡ khỏi `zero/schema/index.ts` để tránh schema chết/mismatch. Lý do: Zero query cho DSH cần thêm integration phức tạp (subtask `dsh.ts` + `zero/queries/dsh.ts`) nằm ngoài phạm vi sửa nhanh; REST hiện đáp ứng đủ re-render ~3s và tránh rủi ro mismatch với backend.
+- [x] [Review][Decision] Unlocked phone propagation — Chọn `onPhoneChange(leadId, phone, unlocked)` + map `unlockedPhones` ở `NowingSplitCanvas`, truyền xuống `NowingLeadMatrix`, `LeadDetailFlyoutDrawer` và `FloatingBulkActionBar`. `ZaloOutreachButton` và `tel:` link dùng phone từ map thay vì `lead.phone` cũ.
+
+#### patch
+- [x] [Review][Patch] Bulk unlock eligible filter misses `is_unlocked`, re-unlocks and double-charges — đã sửa: `eligibleLeads` loại `is_unlocked` / `unlockedPhones[lead.id]`, tổng cost tính theo `selectedCount`, nút disabled khi có lead không hợp lệ. [FloatingBulkActionBar.tsx]
+- [x] [Review][Patch] Bulk unlock does not update `NowingLeadMatrix.unlockedLeadIds` or refetch `useLeads`; rows remain masked after confirm — đã sửa: gọi `onPhoneChange(lead.id, res.phone, true)` sau mỗi lần mở khóa thành công, map `unlockedPhones` cập nhật UI ngay lập tức. [FloatingBulkActionBar.tsx]
+- [x] [Review][Patch] Bulk unlock ignores active fast-unlock session and resets `fastUnlockEnabled` on open — đã sửa: `handlePillClick` seed `fastUnlockEnabled` từ session hiện tại; `performBulkUnlock` reset TTL khi session active. [FloatingBulkActionBar.tsx]
+- [x] [Review][Patch] Relock clears the entire workspace fast-unlock session and may not re-mask the phone — đã sửa: bỏ `applyFastUnlockSession(false)` khỏi `performRelock`; gọi `onPhoneChange(lead.id, null, false)` để parent fallback về `lead.phone` masked. [PhoneUnlockPill.tsx]
+- [x] [Review][Patch] `ZaloOutreachButton` edit/ZNS buttons ignore `disabled` — đã sửa: thêm `disabled` và guard trên tất cả các nút/modal action. [zalo-outreach-button.tsx]
+- [x] [Review][Patch] Mission Control stepper cannot highlight `ingestion` or `terminal` phases — đã sửa: `STEPS` đổi thành `["Crawl","Reasoning","Extraction","Ingestion"]`, thêm map `PHASE_TO_STEP` xử lý `ingest`/`ingestion`/`terminal`/`success`. [MissionControlWidget.tsx]
+- [x] [Review][Patch] `useDshMissionControl` is mounted twice and does not cancel/reset on workspace switch — đã sửa: nâng hook lên `NowingSplitCanvas`, truyền props xuống `MissionControlWidget`; hook hủy in-flight, reset state khi `workspaceId` đổi, polling 3s, filter `running,pending`. [use-dsh-mission-control.ts, NowingSplitCanvas.tsx, MissionControlWidget.tsx, DynamicRightPanelCanvas.tsx]
+- [x] [Review][Patch] `PhoneUnlockPill` does not validate `unlockContact` response; can set unlocked with empty/placeholder phone — đã sửa: thêm `isValidPhoneString(res.phone)` kiểm tra trước khi set `isUnlocked`. [PhoneUnlockPill.tsx]
+- [x] [Review][Patch] Phone flip animation uses non-existent `animate-flip` class and 300 ms instead of `motion` 150 ms — đã sửa: dùng `motion.span` từ `motion/react`, `FLIP_DURATION_MS = 150`. [PhoneUnlockPill.tsx]
+- [x] [Review][Patch] `MissionControlWidget` swallows `error` state; no user-facing error UI — đã sửa: hiển thị `error` banner và truyền `error` prop từ hook. [MissionControlWidget.tsx]
+- [x] [Review][Patch] `ShimmerSkeletonRow` has 6 cells while `NowingLeadMatrix` has 8 columns — đã sửa: thêm 2 cột `#` và `FIT SCORE`, chỉnh lại width. [ShimmerSkeletonRow.tsx]
+- [~] [Review][Patch] Mission Control widget is missing CoT drawer, elapsed time, status label, cancel affordance, total tokens and sparkline — đã thêm CoT collapsible, elapsed time, status badge, cancel button disabled, total tokens; **còn thiếu sparkline**. [MissionControlWidget.tsx]
+- [x] [Review][Patch] `SmartUnlockPopover` confirm has no loading/disabled guard during async unlock — đã sửa: thêm `isLoading` prop, disable confirm/cancel/checkbox/trigger khi loading. [SmartUnlockPopover.tsx]
+- [x] [Review][Patch] `SmartUnlockPopover` fast-unlock toggle treats `"indeterminate"` as `true` — đã sửa: `onCheckedChange` dùng `checked === true`. [SmartUnlockPopover.tsx]
+- [x] [Review][Patch] Undo toast can trigger multiple concurrent relock requests — đã sửa: thêm `isRelocking` guard. [PhoneUnlockPill.tsx]
+- [x] [Review][Patch] `dshMissionsTable` column nullability/types do not match backend published columns — đã sửa: gỡ bỏ `dshMissionsTable` khỏi `zero/schema/index.ts` (table không dùng, tránh mismatch). [zero/schema/index.ts]
+- [x] [Review][Patch] `dshMissionResponseSchema` uses `z.string()` for `mission_type` and `status` instead of the defined enum schemas — đã sửa: dùng `dshMissionTypeSchema` và `dshMissionStatusSchema`. [contracts/types/dsh.types.ts]
+- [~] [Review][Patch] Fast-unlock storage uses a single `sessionStorage` map and does not reset TTL on every unlock action — TTL reset trên mỗi unlock/relock đã được thực hiện; **cấu trúc key `sessionStorage` vẫn là map dưới `nowing:fast-unlock-sessions` thay vì `nowing:fast-unlock-session:{workspaceId}:{userId}`** — cần follow-up nếu muốn tuân thủ nghiêm spec. [atoms/leads/leads-canvas.atoms.ts]
+
+#### defer
+- [x] [Review][Defer] Top-right credit badge is not refetched after unlock and already displays `credit_micros_balance / 1_000_000` as USD — pre-existing, not introduced by this diff [DynamicRightPanelCanvas.tsx:56-60]
+- [x] [Review][Defer] No new unit tests for the new components; Playwright E2E specs already exist in `nowing_web/tests/leads`
 - Mutation gate is required for `app/services/dsh_mission_service.py`, `app/services/dsh_control_service.py`, `app/routes/lead_batch_routes.py`, `app/services/billing_event_service.py` (if touched).
 
 ### Important Do-Nots

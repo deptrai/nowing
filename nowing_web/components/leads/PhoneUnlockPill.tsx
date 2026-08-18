@@ -2,6 +2,7 @@
 
 import { useAtom, useAtomValue } from "jotai";
 import { Check, Phone } from "lucide-react";
+import { motion } from "motion/react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -14,6 +15,7 @@ import { SmartUnlockPopover } from "./SmartUnlockPopover";
 
 const UNLOCK_COST_CREDITS = 1.5;
 const FAST_UNLOCK_TTL_MS = 30 * 60 * 1000;
+const FLIP_DURATION_MS = 150;
 
 export interface PhoneUnlockPillProps {
 	lead: Lead;
@@ -21,6 +23,16 @@ export interface PhoneUnlockPillProps {
 	className?: string;
 	showIcon?: boolean;
 	onUnlock?: (unlocked: boolean) => void;
+	onPhoneChange?: (leadId: string, phone: string | null, unlocked: boolean) => void;
+}
+
+function isValidPhoneString(value?: string | null) {
+	const safe = (value || "").trim();
+	if (!safe) return false;
+	if (safe.includes("|") || /website/i.test(safe)) return false;
+	if (safe.includes("*")) return true;
+	const digits = safe.replace(/\D/g, "");
+	return digits.length >= 9;
 }
 
 export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
@@ -29,6 +41,7 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 	className,
 	showIcon = true,
 	onUnlock,
+	onPhoneChange,
 }) => {
 	const { data: currentUser } = useAtomValue(currentUserAtom);
 	const [fastUnlockSessions, setFastUnlockSessions] = useAtom(fastUnlockSessionAtom);
@@ -38,6 +51,7 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 	const [copied, setCopied] = useState(false);
 	const [isOpen, setIsOpen] = useState(false);
 	const [isUnlocking, setIsUnlocking] = useState(false);
+	const [isRelocking, setIsRelocking] = useState(false);
 	const [fastUnlockEnabled, setFastUnlockEnabled] = useState(false);
 	const [isFlipped, setIsFlipped] = useState(false);
 	const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -66,8 +80,7 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 
 	const safePhone = (displayPhone || "").trim();
 	const isMasked = safePhone.includes("*");
-	const isPhoneValid =
-		Boolean(safePhone) && !safePhone.includes("|") && !safePhone.includes("Website");
+	const isPhoneValid = isValidPhoneString(safePhone);
 
 	if (!isPhoneValid) {
 		if (lead.is_new_from_zero) {
@@ -115,19 +128,38 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 	const performUnlock = async () => {
 		if (!contactId || isUnlocking) return;
 		setIsUnlocking(true);
+
+		// Extend/reset the fast-unlock TTL on every unlock action.
+		if (isFastUnlockActive || fastUnlockEnabled) {
+			applyFastUnlockSession(true);
+		}
+
 		try {
 			const res = await leadsApiService.unlockContact(workspaceId, lead.id, contactId);
+			const newPhone = typeof res.phone === "string" ? res.phone : "";
+
+			if (!res.is_unlocked || !isValidPhoneString(newPhone)) {
+				toast.error("Không thể mở khóa SĐT");
+				setIsUnlocking(false);
+				setIsOpen(false);
+				return;
+			}
+
 			setIsUnlocked(true);
+			setDisplayPhone(newPhone);
 			onUnlock?.(true);
-			setDisplayPhone(res.phone ?? res.phone ?? displayPhone);
+			onPhoneChange?.(lead.id, newPhone, true);
 			setIsFlipped(true);
-			setTimeout(() => setIsFlipped(false), 300);
+			setTimeout(() => setIsFlipped(false), FLIP_DURATION_MS);
 
 			toast.success(`Đã mở khóa SĐT -${UNLOCK_COST_CREDITS} credits`, {
 				duration: 5000,
 				action: {
 					label: "Hoàn tác",
-					onClick: () => void performRelock(),
+					onClick: () => {
+						if (isRelocking) return;
+						void performRelock();
+					},
 				},
 			});
 		} catch (err) {
@@ -140,17 +172,22 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 	};
 
 	const performRelock = async () => {
-		if (!contactId) return;
+		if (!contactId || isRelocking) return;
+		setIsRelocking(true);
 		try {
 			const res = await leadsApiService.relockContact(workspaceId, lead.id, contactId);
+			const maskedPhone = res.phone ?? lead.phone ?? "";
 			setIsUnlocked(false);
 			onUnlock?.(false);
-			setDisplayPhone(res.phone ?? displayPhone);
-			toast.success("Đã hoàn tác mở khóa");
-			applyFastUnlockSession(false);
+			setDisplayPhone(maskedPhone);
+			// Report null phone to parent so it falls back to the masked lead.phone
+			onPhoneChange?.(lead.id, null, false);
+			toast.success("Đã hoàn tác mở khóa - +1.5 credits");
 		} catch (err) {
 			const message = err instanceof Error ? err.message : "Không thể hoàn tác";
 			toast.error(message);
+		} finally {
+			setIsRelocking(false);
 		}
 	};
 
@@ -168,7 +205,7 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 			return;
 		}
 
-		setFastUnlockEnabled(isFastUnlockActive);
+		setFastUnlockEnabled(false);
 		setIsOpen(true);
 	};
 
@@ -178,13 +215,19 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 	};
 
 	const pillContent = (
-		<span
+		<motion.span
+			animate={
+				isFlipped
+					? { rotateX: [0, 90, 0], scale: [1, 1.05, 1], opacity: [1, 0.8, 1] }
+					: { rotateX: 0, scale: 1, opacity: 1 }
+			}
+			transition={{ duration: FLIP_DURATION_MS / 1000 }}
+			style={{ transformOrigin: "center center" }}
 			className={cn(
-				"inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-mono font-medium transition-all duration-150 cursor-pointer select-none focus:outline-none focus:ring-1 focus:ring-emerald-500/50",
+				"inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-mono font-medium cursor-pointer select-none focus:outline-none focus:ring-1 focus:ring-emerald-500/50",
 				copied
 					? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 shadow-xs"
 					: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 hover:border-emerald-500/40",
-				isFlipped && "animate-flip",
 				isDisabled && "opacity-50 cursor-not-allowed",
 				className
 			)}
@@ -205,7 +248,7 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 					✓
 				</span>
 			)}
-		</span>
+		</motion.span>
 	);
 
 	if (isUnlocked) {
@@ -232,6 +275,7 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 			onToggleFastUnlock={setFastUnlockEnabled}
 			onConfirm={handleConfirm}
 			onCancel={() => setIsOpen(false)}
+			isLoading={isUnlocking}
 		>
 			<button
 				type="button"

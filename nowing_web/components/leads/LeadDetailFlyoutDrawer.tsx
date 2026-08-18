@@ -34,6 +34,8 @@ export interface LeadDetailFlyoutDrawerProps {
 	workspaceId?: string | number;
 	onOpenCompanyGraph?: (companyName: string) => void;
 	onReportInvalidPhone?: (lead: Lead) => void;
+	unlockedPhone?: string | null;
+	onPhoneChange?: (leadId: string, phone: string | null, unlocked: boolean) => void;
 }
 
 export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
@@ -43,11 +45,19 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 	workspaceId = "1",
 	onOpenCompanyGraph,
 	onReportInvalidPhone,
+	unlockedPhone: externalUnlockedPhone,
+	onPhoneChange,
 }) => {
 	const [activities, setActivities] = useState<LeadActivityLog[]>([]);
 	const [newNote, setNewNote] = useState("");
 	const [isSubmittingNote, setIsSubmittingNote] = useState(false);
 	const [leadUnlocked, setLeadUnlocked] = useState(lead?.is_unlocked ?? false);
+	const [localUnlockedPhone, setLocalUnlockedPhone] = useState<string | null>(
+		externalUnlockedPhone ?? lead?.phone ?? null
+	);
+
+	const displayPhone = localUnlockedPhone ?? lead?.phone ?? null;
+	const isContactUnlocked = leadUnlocked;
 
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
@@ -61,7 +71,8 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 
 	useEffect(() => {
 		setLeadUnlocked(lead?.is_unlocked ?? false);
-	}, [lead?.is_unlocked]);
+		setLocalUnlockedPhone(externalUnlockedPhone ?? lead?.phone ?? null);
+	}, [lead?.is_unlocked, lead?.phone, externalUnlockedPhone]);
 
 	useEffect(() => {
 		if (isOpen && lead?.id) {
@@ -218,11 +229,16 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 										lead={lead}
 										workspaceId={workspaceId}
 										onUnlock={setLeadUnlocked}
+										onPhoneChange={(leadId, phone, unlocked) => {
+											setLeadUnlocked(unlocked);
+											setLocalUnlockedPhone(phone);
+											onPhoneChange?.(leadId, phone, unlocked);
+										}}
 									/>
 								</div>
 								{(() => {
-									const cleanDigits = lead.phone?.replace(/[^0-9+]/g, "") || "";
-									return (lead.is_unlocked || leadUnlocked) && cleanDigits.length >= 8 ? (
+									const cleanDigits = (displayPhone ?? "").replace(/[^0-9+]/g, "");
+									return isContactUnlocked && cleanDigits.length >= 8 ? (
 										<a
 											href={`tel:${cleanDigits}`}
 											data-testid="call-now-link"
@@ -238,13 +254,13 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 								<ZaloOutreachButton
 									leadId={lead.id}
 									workspaceId={workspaceId}
-									phone={lead.phone}
+									phone={displayPhone}
 									companyName={lead.company_name}
 									intent={lead.intent}
 									source={lead.source}
 									contentSnippet={lead.content_snippet}
 									className="w-full justify-center"
-									disabled={!(lead.is_unlocked || leadUnlocked)}
+									disabled={!isContactUnlocked}
 								/>
 
 								{onOpenCompanyGraph && (

@@ -18,6 +18,7 @@ import {
 	threadCanvasModeMapAtom,
 } from "@/atoms/leads/leads-canvas.atoms";
 import { currentUserAtom } from "@/atoms/user/user-query.atoms";
+import type { DshMission, DshMissionControl } from "@/contracts/types/dsh.types";
 import type { Lead } from "@/contracts/types/leads.types";
 import { cn } from "@/lib/utils";
 import { MissionControlWidget } from "./MissionControlWidget";
@@ -47,6 +48,12 @@ export interface DynamicRightPanelCanvasProps {
 	onOpenCompanyGraph?: (companyName: string) => void;
 	shimmerCount?: number;
 	className?: string;
+	missionControl?: DshMissionControl | null;
+	latestMission?: DshMission | null;
+	missionLoading?: boolean;
+	missionError?: string | null;
+	unlockedPhones?: Record<string, string | null>;
+	onPhoneChange?: (leadId: string, phone: string | null, unlocked: boolean) => void;
 }
 
 const VIEW_MODES: Array<{
@@ -263,7 +270,14 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 
 			{/* Panel View Switching Router */}
 			<main className="flex-1 min-h-0 relative overflow-hidden">
-				<MissionControlWidget workspaceId={props.workspaceId} className="m-3" />
+				<MissionControlWidget
+					workspaceId={props.workspaceId}
+					className="m-3"
+					latestMission={props.latestMission}
+					missionControl={props.missionControl}
+					loading={props.missionLoading}
+					error={props.missionError}
+				/>
 				{activeMode === "leads" && (
 					<NowingLeadMatrix
 						leads={props.leads}
@@ -280,6 +294,8 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 						onOpenDnc={props.onOpenDnc}
 						onOpenCompanyGraph={props.onOpenCompanyGraph}
 						shimmerCount={props.shimmerCount}
+						unlockedPhones={props.unlockedPhones}
+						onPhoneChange={props.onPhoneChange}
 					/>
 				)}
 

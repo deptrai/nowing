@@ -25,8 +25,8 @@ export type DshMissionRequest = z.infer<typeof dshMissionRequestSchema>;
 export const dshMissionResponseSchema = z.object({
 	id: z.string().uuid(),
 	workspace_id: z.number(),
-	mission_type: z.string(),
-	status: z.string(),
+	mission_type: dshMissionTypeSchema,
+	status: dshMissionStatusSchema,
 	phase: z.string().nullable().optional(),
 	progress_percent: z.number().nullable().optional(),
 	current_subtask_id: z.string().nullable().optional(),
