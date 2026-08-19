@@ -206,16 +206,16 @@ VietnamWorks, TopCV, ITviec, Indeed, LinkedIn Public Guest API (`seeMoreJobPosti
 Canonical index moved to `chainlens-research`; Nowing scrapers feed via `POST /v1/ingest/scraper`.
 
 ### Epic 14: News Aggregation (Vietnam) — 📋 BACKLOG
-RSS feed integration, entity enrichment, alerts, digest/synthesis. **Open:** 14.1–14.4.
+RSS feed integration, entity enrichment. News alerts/digest merged into Epic 6.11/6.12. **Open:** 14.1–14.2, 6.11 (alert templates), 6.12 (narrative reports).
 
 ### Epic 15: Financial Data (Vietnam) — 📋 BACKLOG
-CafeF / Vietstock data, stock price alerts, financial trend detection. **Open:** 15.1–15.4.
+CafeF / Vietstock data. Stock price alerts/financial trend merged into Epic 6.11/6.12. **Open:** 15.1–15.2, 6.11, 6.12.
 
 ### Epic 16: Company Directory & Public Procurement (Vietnam) — 📋 BACKLOG
-masothue.com company data, official business registry (`dangkykinhdoanh.gov.vn`), national public procurement tenders (`muasamcong.mpi.gov.vn`), company alerts, timeline. **Open:** 16.1–16.5.
+masothue.com company data, official business registry, national public procurement tenders. Company alerts/timeline merged into Epic 6.11/6.12. **Open:** 16.1–16.2, 16.5, 6.11, 6.12.
 
 ### Epic 17: E-commerce Intelligence (Vietnam) — 📋 BACKLOG
-Lazada / Shopee Vietnam in-house fast JSON API (`/search_items`) / TikTok Shop product data, price-drop alerts, competitor tracking. **Open:** 17.1–17.5. Governed by `architecture-shopee-ecommerce-2026-08-15`.
+Lazada / Shopee / TikTok Shop product data. Price-drop alerts/competitor tracking merged into Epic 6.11. **Open:** 17.1–17.2, 17.5, 6.11. Governed by `architecture-shopee-ecommerce-2026-08-15`.
 
 ### Epic 18: Vertical Client Platform (Public Agent-Chat) — 🔄 IN PROGRESS
 Public agent-chat endpoints, AgentConfig registry, client_id tenancy, cost traceability, rate limiting + RLS. **Open:** 18.1–18.8.
@@ -826,9 +826,9 @@ So that I don't end up with 8 separate scheduler/notification implementations fo
 - **Given** user preferences are configured, **When** an alert triggers, **Then** it respects `alert_subscriptions` (`user_id`, `alert_rule_template_id`, `channels`, `enabled`) and does not create per-vertical preference tables.
 
 **Diff Strategies:**
-- `new_items`: query, compare to last snapshot, notify new items. Used for job alerts (12.9), news alerts (14.3).
-- `price_change`: compare price field, notify if delta > threshold. Used for stock alerts (15.3), price-drop alerts (17.3).
-- `threshold_cross`: compare field to threshold, notify on cross. Used for trend alerts (15.4), company event alerts (16.3).
+- `new_items`: query, compare to last snapshot, notify new items. Used for job alerts (12.9) and news/competitor alerts (6.11).
+- `price_change`: compare price field, notify if delta > threshold. Used for stock alerts and price-drop alerts (6.11).
+- `threshold_cross`: compare field to threshold, notify on cross. Used for trend alerts and company event alerts (6.11).
 
 _Kỹ thuật (không phải AC):_ `AlertRule` table: `id` (UUID), `workspace_id`, `client_id` (CITEXT), `capability_id`, `query` (JSONB), `schedule`, `diff_strategy`, `threshold`, `notification_channels`, `target_sequence_id`, `target_step_id`, `enabled`. `alert_snapshots`, `alert_subscriptions`. Built as an Automation template/extension in `app/automations/` or `app/alerts/`. Governed by `AD-33`, Epic 6 scheduler, FR-44/49/50/51/52.
 
@@ -2110,7 +2110,9 @@ _AD-34 · AD-35 · AD-25 (PII redaction for person names)_
 
 ---
 
-### Story 14.3: News Alerts & Topic Monitoring `[P1]`
+### Story 14.3: News Alerts & Topic Monitoring `[P1, MERGED INTO Story 6.11]`
+
+> **Merged 2026-08-20:** Nội dung story này được gộp vào **Story 6.11 — Vertical Alert Rule Templates**. Giữ lại để traceability; không implement riêng.
 
 As a news researcher,
 I want to monitor topics and receive alerts for new articles,
@@ -2129,7 +2131,9 @@ So that I stay informed without manually checking news sites.
 
 _AD-33 (Generic Alert Engine — AlertRule template, `new_items` diff strategy) · AD-34 · AD-35_
 
-### Story 14.4: News Digest & Synthesis `[P2]`
+### Story 14.4: News Digest & Synthesis `[P2, MERGED INTO Story 6.12]`
+
+> **Merged 2026-08-20:** Nội dung story này được gộp vào **Story 6.12 — Narrative Report Engine for Indexed Data**. Giữ lại để traceability; không implement riêng.
 
 As a researcher,
 I want daily/weekly synthesis of news across my monitored topics,
@@ -2196,7 +2200,9 @@ _AD-34 · AD-35 · AD-24 (cross-source sourceId convention)_
 
 ---
 
-### Story 15.3: Stock Price Alerts `[P1]`
+### Story 15.3: Stock Price Alerts `[P1, MERGED INTO Story 6.11]`
+
+> **Merged 2026-08-20:** Nội dung story này được gộp vào **Story 6.11 — Vertical Alert Rule Templates**. Giữ lại để traceability; không implement riêng.
 
 As an investment researcher,
 I want alerts when stock prices cross thresholds,
@@ -2215,7 +2221,9 @@ So that I can act on market movements.
 
 _AD-33 (Generic Alert Engine — AlertRule template, `price_change` diff strategy) · AD-34 · AD-35_
 
-### Story 15.4: Financial Trend Detection `[P2]`
+### Story 15.4: Financial Trend Detection `[P2, MERGED INTO Story 6.12]`
+
+> **Merged 2026-08-20:** Nội dung story này được gộp vào **Story 6.12 — Narrative Report Engine for Indexed Data**. Giữ lại để traceability; không implement riêng.
 
 As an analyst,
 I want automatic detection of financial trends across my watched companies,
@@ -2280,7 +2288,9 @@ _AD-GIS-3 · AD-GIS-5 · AD-34 · AD-35 · Governed by `architecture-bds-plannin
 
 ---
 
-### Story 16.3: Company Alerts `[P1]`
+### Story 16.3: Company Alerts `[P1, MERGED INTO Story 6.11]`
+
+> **Merged 2026-08-20:** Nội dung story này được gộp vào **Story 6.11 — Vertical Alert Rule Templates**. Giữ lại để traceability; không implement riêng.
 
 As a business researcher,
 I want alerts when tracked companies have significant events,
@@ -2301,7 +2311,9 @@ _AD-33 (Generic Alert Engine — AlertRule template, `threshold_cross` diff stra
 
 ---
 
-### Story 16.4: Company Timeline `[P1]`
+### Story 16.4: Company Timeline `[P1, MERGED INTO Story 6.12]`
+
+> **Merged 2026-08-20:** Nội dung story này được gộp vào **Story 6.12 — Narrative Report Engine for Indexed Data**. Giữ lại để traceability; không implement riêng.
 
 As a researcher,
 I want to see a company's event history across all sources,
@@ -2407,7 +2419,9 @@ _AD-EC-1 · AD-EC-2 · AD-EC-3 · AD-EC-6_
 
 ---
 
-### Story 17.3: Price Drop Alerts `[P1]`
+### Story 17.3: Price Drop Alerts `[P1, MERGED INTO Story 6.11]`
+
+> **Merged 2026-08-20:** Nội dung story này được gộp vào **Story 6.11 — Vertical Alert Rule Templates**. Giữ lại để traceability; không implement riêng.
 
 As a product researcher,
 I want alerts when tracked products change price,
@@ -2426,7 +2440,9 @@ So that I can identify pricing trends and opportunities.
 
 _AD-33 (Generic Alert Engine — AlertRule template, `price_change` diff strategy) · AD-34 · AD-35_
 
-### Story 17.4: Competitor Tracking `[P2]`
+### Story 17.4: Competitor Tracking `[P2, MERGED INTO Story 6.11]`
+
+> **Merged 2026-08-20:** Nội dung story này được gộp vào **Story 6.11 — Vertical Alert Rule Templates**. Giữ lại để traceability; không implement riêng.
 
 As a product researcher,
 I want to track competitor products and receive change notifications,
@@ -3458,15 +3474,10 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 | 16.2 Official Business Registry | Story 20.1 (`NowingIngestService`) | sends registry chunks to `chainlens-research` |
 | 17.1 Lazada Product Data | Story 20.1 (`NowingIngestService`) | sends Lazada product chunks to `chainlens-research` |
 | 17.2 Shopee Product Data | Story 20.1 (`NowingIngestService`), Story 6.8 | sends Shopee product chunks + alert template |
+| 6.11 Vertical Alert Rule Templates | Story 6.8 (Generic Alert Engine) | Consolidated alert templates for news, stock, company, price-drop, competitor |
+| 6.12 Narrative Report Engine for Indexed Data | Story 6.8 (Generic Alert Engine) | Consolidated news digest, financial trend, company timeline |
 | 12.6 Saved Searches | Story 6.8 (Generic Alert Engine) | saved-search `AlertRule` template |
 | 12.9 Job Market Alerts | Story 6.8 (Generic Alert Engine), Story 12.6 | job-market `AlertRule` template on top of saved searches |
-| 14.3 News Alerts & Topic Monitoring | Story 20.1 (`NowingIngestService`), Story 6.8 | news alert fetch/ingest + `AlertRule` |
-| 14.4 News Digest & Synthesis | Story 6.8 (Generic Alert Engine) | news digest `AlertRule` template |
-| 15.3 Stock Price Alerts | Story 20.1 (`NowingIngestService`), Story 6.8 | stock price `AlertRule` |
-| 15.4 Financial Trend Detection | Story 6.8 (Generic Alert Engine) | financial trend `AlertRule` |
-| 16.3 Company Alerts | Story 20.1 (`NowingIngestService`), Story 6.8 | company `AlertRule` |
-| 17.3 Price Drop Alerts | Story 20.1 (`NowingIngestService`), Story 6.8 | price-drop `AlertRule` |
-| 17.4 Competitor Tracking | Story 20.1 (`NowingIngestService`), Story 6.8 | competitor `AlertRule` |
 | 22.3 Telegram Alert & Agent Tools | Story 6.8 (Generic Alert Engine), Story 22.1, Story 22.2 | Realtime message matching triggers `AlertRule` & AI Agent tools |
 | 24.1 Drip Outreach Campaign Engine | Story 23.2 (Zalo Webhook/ZNS), Story 6.8 (Scheduler) | Scheduled cadence execution + ZNS template dispatch |
 | 24.2 Waterfall Phone & MST Verification | Story 20.1 (`NowingIngestService`), Story 21.3 (Enriched Contact) | Multi-tier phone & corporate tax registry enrichment |
@@ -3494,9 +3505,10 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 | 27.1 Web App Builder & Design View | AD-113, AD-114 | Next.js generator + 1-click *.nowing.space deploy + Mark Tool AST mutator |
 | 27.2 Manus Slides & Meeting Minutes | AD-112, AD-114 | Xuất slide PPTX/Marp 16:9 + Whisper STT & Diarization action items |
 
-> **Duplicate review note (2026-08-20):**
-> - 14.3, 15.3, 16.3, 17.3, 17.4 are thin `AlertRule` templates on the Generic Alert Engine (Story 6.8). Consider consolidating into a single **"Vertical Alert Rule Templates"** story.
-> - 14.4, 15.4, 16.4 are narrative report templates over indexed data. Consider consolidating into a single **"Narrative Report Engine for Indexed Data"** story.
+> **Merge decision (2026-08-20):**
+> - 14.3, 15.3, 16.3, 17.3, 17.4 merged into **Story 6.11 — Vertical Alert Rule Templates**.
+> - 14.4, 15.4, 16.4 merged into **Story 6.12 — Narrative Report Engine for Indexed Data**.
+> - Các section cũ giữ lại dưới dạng `[MERGED INTO ...]` để traceability.
 > - 17.5 should reuse `ecommerce_products` + `ecommerce_price_history` tables and price-drop alert patterns built for Shopee (AD-EC-1..6).
 > - 27.2 should split into **PPTX/Marp export** (reuses `video_presentation` agent + `reports_routes.py`) and **Speaker Diarization meeting minutes** (reuses `stt_service.py` + `circleback_webhook_route.py`).
 
@@ -3514,6 +3526,39 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 
 ### Mở rộng Epic 6: Story 6.10 — Inbound Mail Gateway (`task@nowing.ai`) & Stateful Scheduled Tasks 2.0
 **Scope:** Thêm email adapter vào gateway framework và nâng cấp Celery scheduler thêm delta analysis. **Tận dụng code đã có:** Gateway webhook framework (`gateway_webhook_routes.py` — 1144 dòng xử lý Slack/Discord/Telegram/WhatsApp, `persist_inbound_event`, `pairing_code`), Celery Beat scheduler (`celery_app.py` — `check_periodic_schedules`, `alert_engine_tick`, automation triggers). **Code mới:** (a) `app/gateway/email/adapter.py` tiếp nhận webhook SendGrid/Mailgun, parse attachment, enqueue DSH mission, reply SMTP, (b) snapshot storage table cho scheduled task results, (c) delta diff engine so sánh snapshot cũ/mới trước khi gửi báo cáo. Governed by `AD-115`.
+
+---
+
+
+### Mở rộng Epic 6: Story 6.11 — Vertical Alert Rule Templates
+**Scope:** Đăng ký sẵn các `AlertRule` template cho news (`new_items`), stock (`price_change`/`threshold_cross`), company (`threshold_cross`), e-commerce price-drop (`price_change`) và competitor tracking (`new_items`/`price_change`) trên nền **Generic Alert Engine** (Story 6.8). Mỗi template điền sẵn `capability_id`, `query`, `schedule`, `diff_strategy` và `notification_channels` để user bật cảnh báo trong một click mà không cần viết automation. Tận dụng `app/alerts/`, bảng `AlertRule`/`AlertSnapshot`/`AlertSubscription`, và các scraper/capability hiện có (`news.rss`, `cafef.scrape`, `vietstock.scrape`, `masothue.scrape`, `shopee.scrape`, `lazada.scrape` khi có). **Không xây scheduler hay notification path mới.**
+
+**Acceptance Criteria:**
+- **Given** Generic Alert Engine đã có, **When** user bật template "News Alerts & Topic Monitoring", **Then** tạo `AlertRule` với `capability_id='news.rss'`, `diff_strategy='new_items'`, lịch daily mặc định.
+- **Given** template "Stock Price Alerts", **When** bật, **Then** tạo `AlertRule` với `capability_id='vietstock.scrape'`/`cafef.scrape`, `diff_strategy='price_change'` hoặc `threshold_cross`.
+- **Given** template "Company Alerts", **When** bật, **Then** tạo `AlertRule` với `capability_id='masothue.scrape'`, `diff_strategy='threshold_cross'` theo dõi thay đổi trạng thái/ngành/người đại diện.
+- **Given** template "Price Drop Alerts", **When** bật, **Then** tạo `AlertRule` với `capability_id='shopee.scrape'`/`lazada.scrape`, `diff_strategy='price_change'`.
+- **Given** template "Competitor Tracking", **When** bật, **Then** tạo `AlertRule` theo dõi `new_items` (biến thể mới, tồn kho) và `price_change` trên sản phẩm đối thủ.
+- **Given** template cần capability chưa có (ví dụ `lazada.scrape`), **When** user bật, **Then** UI hiển thị `not_available` và không tạo rule lỗi.
+- **Given** alert từ template kích hoạt, **When** user xem notification, **Then** có deep-link đến kết quả đã index trên `chainlens-research` và hiển thị old-vs-new / lý do trigger.
+
+**Gộp từ:** Story 14.3, 15.3, 16.3, 17.3, 17.4.
+**Governed by:** AD-33, AD-34, AD-35.
+
+---
+
+### Mở rộng Epic 6: Story 6.12 — Narrative Report Engine for Indexed Data
+**Scope:** Xây deliverable generic truy vấn `chainlens-research` lấy dữ liệu đã index theo topic/công ty/sản phẩm đang theo dõi, rồi prompt LLM tổng hợp thành narrative có cấu trúc (digest, trend, timeline). Tận dụng `generate_report` deliverable tool, `chainlens.research` capability, và Generic Alert Engine scheduler. Output: news digest, financial trend detection, company timeline. **Không viết scheduler hay synthesis code riêng cho từng vertical.**
+
+**Acceptance Criteria:**
+- **Given** các topic đang theo dõi, **When** schedule "News Digest" chạy, **Then** engine query `chainlens-research` cho mỗi topic, lấy articles đã index, prompt LLM sinh summary có cấu trúc kèm `sourceId` citations.
+- **Given** công ty/cổ phiếu theo dõi, **When** schedule "Financial Trend" chạy, **Then** engine query historical financial `Chunk[]`, mô tả trend (revenue growth, margin change) với supporting data points và citations.
+- **Given** một công ty, **When** request "Company Timeline", **Then** engine gọi `chainlens-research` timeline API (hoặc search với timeline filters) và render events theo trình tự thời gian với source badges.
+- **Given** LLM synthesis fail hoặc dataset rỗng, **When** engine chạy, **Then** trả `degraded=true` với `degradation_reasons` và retry action.
+- **Given** report được tạo, **When** user click citation, **Then** source mở trong chat với provenance drawer.
+
+**Gộp từ:** Story 14.4, 15.4, 16.4.
+**Governed by:** AD-34, AD-35.
 
 ---
 
