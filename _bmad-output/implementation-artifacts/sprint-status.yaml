@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-08"
-last_updated: "2026-08-19"  # story 14.2 created
+last_updated: "2026-08-20"  # Epic 27 added, Epics 26.9, 24.8, 6.10, 3.18 added for Manus parity roadmap
 # ponytail: 2026-08-14 — reopened deferred/business-gated/dropped to backlog; 16-1 mutation gate reopened; 15-2 moved to review; tech-debt tracker reopened.
 # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended citation ACs to 3.15 (WEB_RESULT), 9.3 (async delivery), 2.10 (Exa MCP). 3 stories → review.
 # ponytail: 2026-08-08 sprint-planning — added Epic 1, 5 (DONE brownfield); added 9.1a, 9.1b, 4.8a-4.8h, 13.2a-13.2e; upgraded 12.1-12.5 to ready-for-dev (story files exist); 12.0 DONE (legal approved).
@@ -87,6 +87,7 @@ development_status:
   # ponytail: 2026-08-11 sprint planning — moved to in-progress.
   3-17: done
   # ponytail: 2026-08-13 implementation + code review + benchmark all PASS; patches applied (logger, tests, comment); AC1-4 satisfied.
+  3-18: backlog  # Projects Persistent Workspace & Modular Skills Hub (AD-1)
   epic-3-retrospective: done
 
   # === Epic 4: Chat & Agents ===
@@ -125,6 +126,7 @@ development_status:
   6-6a-playbook-reuse: backlog  # business-gated → backlog until decision  # epics.md Story 6.6 — gated sau pilot BĐS retention
   6-7a-schema-form-ui: backlog  # business-gated → backlog until decision  # epics.md Story 6.7 — gated sau pilot BĐS retention
   6-9a-workspace-vertical: backlog  # business-gated → backlog until decision  # epics.md Story 6.9 — gated sau pilot BĐS retention
+  6-10: backlog  # Inbound Mail Gateway (task@nowing.ai) & Stateful Scheduled Tasks 2.0 (AD-115)
   epic-6-retrospective: optional
 
   # === Epic 7: Multi-surface Clients ===
@@ -247,6 +249,7 @@ development_status:
   24-5: ready-for-dev  # Vertical Playbook Marketplace & Community Workflow Templates
   24-6: ready-for-dev  # Two-Way AI Outreach Auto-Reply Agent
   24-7: ready-for-dev  # Multi-Channel Drip Outreach Campaign Engine (Zalo ZNS + Telegram + Email Cadence) — split from 24-1; extends Sequence bounded context from Story 24.1; story file ready 2026-08-17.
+  24-8: backlog  # Full Browser Operator Chrome Extension & Human Live Takeover (AD-111)
   epic-24-retrospective: optional
 
   # === Epic 25: Superadmin & Platform Operations Control Plane ===
@@ -271,7 +274,14 @@ development_status:
   26-6: done  # Telegram Interactive Checkpoint Bot & 1-Click Auto-Refund Dialog — group-1 data/config + chunk-1 core-implementation patches applied, group chat callback authorization enforced, 72 unit tests green
   26-7: in-progress  # Hermetic Quality Gates, Benchmark Suite & Anti-Zombie Chaos Testing — review findings applied (endpoint security, metrics, cassette robustness, auth, anti-zombie harness, 60s timeouts); baseline remains unratified (lead-009 invalid MST drops mst_modulo11_accuracy below 0.995)
   26-8: done  # LangGraph DSH Mission Executor & Feature Flag — spike complete, DSH_EXECUTOR_ENGINE flag added, unit/wiring + local Postgres/Redis smoke tests green, ruff clean
+  26-9: backlog  # Wide Research Client & Pro Excel Formatter (via Daytona Sandbox) (AD-112)
   epic-26-retrospective: optional
+
+  # === Epic 27: Full-Stack Web App Builder, Instant Hosting & Creative Studio ===
+  epic-27: backlog
+  27-1: backlog  # Full-Stack Web App Builder, 1-Click Hosting *.nowing.space & Design View Mark Tool (AD-113, AD-114)
+  27-2: backlog  # Manus Slides Presentation Studio & Speaker Diarization Meeting Minutes (AD-112, AD-114)
+  epic-27-retrospective: optional
 
 
 
@@ -532,3 +542,47 @@ validation_reports:
     verdict: "PASS-with-changes"
     reviewed_by: "bmad-code-review"
     notes: "3-layer adversarial review: 5 patch findings applied (concurrency rollback recovery on duplicate commit, phone +84(0)9 leading-zero normalizer fix, multi-tenant client_id & domain propagation, expanded social ad tracking param scrubbing, lead context price/content preservation in VerifiedContact.title). 0 deferred, 6 dismissed. 17 unit tests pass, ruff clean."
+
+waves:
+  - wave: 0
+    theme: P0 — Lead Intelligence & DSH Substrate Integration
+    status: in-progress
+    evidence_gate: ChainLens Epic 52 output=wide_research live; dsh-worker active; FastMCP batch ingestion and Daytona Sandbox ready
+    stories:
+    - 26-1
+    - 26-3
+    - 26-5
+    - 26-7
+    - 26-9
+    notes: Story 26.9 depends on ChainLens 52-2 API contract; executes openpyxl Pro Formatter in Daytona sandbox without building new container.
+  - wave: 1
+    theme: P0 — Interactive Browser Operator & Projects Workspace
+    status: backlog
+    evidence_gate: Plasmo extension CDP debugger enabled; Human Live Takeover UI working; Projects schema & Master Instructions injected
+    stories:
+    - 24-8
+    - 3-18
+    - 24-3
+    - 24-5
+    - 24-6
+    - 24-7
+    notes: Story 24.8 extends Lead Clipper 24.4 with chrome.debugger CDP bridge; Story 3.18 provides Master Instructions context injection for all downstream agent turns.
+  - wave: 2
+    theme: P1 — Inbound Mail Gateway & Long-running Automations
+    status: backlog
+    evidence_gate: Webhook task@nowing.ai processing attachments; Celery Beat stateful delta snapshots comparing runs
+    stories:
+    - 6-10
+    - 25-3
+    - 25-4
+    - 25-5
+    - 25-6
+    notes: Story 6.10 integrates into gateway_webhook_routes.py and adds delta analysis to existing Celery Beat scheduler.
+  - wave: 3
+    theme: P1/P2 — Creative Studio & Full-Stack Web Builder
+    status: backlog
+    evidence_gate: PPTX export + Marp slides working; pyannote/whisper diarization working; Next.js scaffolding + *.nowing.space Traefik routing working
+    stories:
+    - 27-2
+    - 27-1
+    notes: Story 27.2 builds on existing faster-whisper and reports_routes.py; Story 27.1 is the largest scope story in the roadmap (new web generator + dynamic hosting).
