@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+import unicodedata
 from typing import Any
 from urllib.parse import urljoin, urlparse
 
@@ -45,7 +46,10 @@ def _safe_text(element: Any) -> str | None:
 
 def _normalize_keyword(value: str) -> str:
     """Convert a search phrase into an ITviec URL slug."""
-    text = re.sub(r"[^a-z0-9\s-]", "", value.lower())
+    text = unicodedata.normalize("NFD", value)
+    text = "".join(c for c in text if unicodedata.category(c) != "Mn")
+    text = text.replace("đ", "d").replace("Đ", "D")
+    text = re.sub(r"[^a-z0-9\s-]", "", text.lower())
     text = re.sub(r"\s+", "-", text.strip())
     return text.strip("-") or "it"
 
@@ -503,25 +507,24 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
             if not cards:
                 break
 
+            fetch_details = bool(params.get("fetch_details", False))
             for card in cards[:remaining]:
-                detail_resp = await _do_detail(client, card["_detail_url"])
-                if detail_resp.status_code == 200:
-                    detail = _parse_detail(detail_resp.text, card["_detail_url"])
-                    _apply_detail(card, detail)
-                    cost_micros += config.ITVIEC_SCRAPE_MICROS_PER_ITEM
-                    del card["_detail_url"]
-                    items.append(card)
+                if fetch_details:
+                    detail_resp = await _do_detail(client, card["_detail_url"])
+                    if detail_resp.status_code == 200:
+                        detail = _parse_detail(detail_resp.text, card["_detail_url"])
+                        _apply_detail(card, detail)
+                        cost_micros += config.ITVIEC_SCRAPE_MICROS_PER_ITEM
+                    else:
+                        _apply_detail(card, {})
+                        cost_micros += config.ITVIEC_SCRAPE_MICROS_PER_ITEM
                 else:
-                    # Detail fetch failed; keep the search card with low confidence but bill it.
                     _apply_detail(card, {})
-                    cost_micros += config.ITVIEC_SCRAPE_MICROS_PER_ITEM
-                    del card["_detail_url"]
-                    items.append(card)
+                card.pop("_detail_url", None)
+                items.append(card)
 
                 if len(items) >= max_items:
                     break
-
-                await asyncio.sleep(config.ITVIEC_PAGE_DELAY_S)
 
             if len(items) >= max_items:
                 break

@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+import unicodedata
 from typing import Any
 from urllib.parse import quote_plus, urlencode, urljoin, urlparse
 
@@ -81,7 +82,10 @@ def _safe_text(element: Any) -> str | None:
 
 def _normalize_keyword(value: str) -> str:
     """Convert a search phrase into an Indeed query slug."""
-    text = re.sub(r"[^a-z0-9\s-]", "", value.lower())
+    text = unicodedata.normalize("NFD", value)
+    text = "".join(c for c in text if unicodedata.category(c) != "Mn")
+    text = text.replace("đ", "d").replace("Đ", "D")
+    text = re.sub(r"[^a-z0-9\s-]", "", text.lower())
     text = re.sub(r"\s+", " ", text.strip())
     return text.strip() or "data engineer"
 

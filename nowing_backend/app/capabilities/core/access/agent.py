@@ -208,7 +208,7 @@ def _build_cached_anti_bot_command(
     from app.agents.chat.multi_agent_chat.shared.citations import load_registry
     from app.capabilities.core.access.run_citation import attach_run_citation
 
-    content = json.dumps(cached_dump, ensure_ascii=False)
+    content = json.dumps(cached_dump, ensure_ascii=False, default=str)
     run_external_id = cached_dump.get("run_id")
     registry = load_registry(getattr(runtime, "state", None))
     if run_external_id:
@@ -573,7 +573,7 @@ def _capability_tool(
         from app.capabilities.core.access.web_citation import register_web_citations
 
         content = (
-            json.dumps(dump, ensure_ascii=False)
+            json.dumps(dump, ensure_ascii=False, default=str)
             if dump is not None
             else _build_preview(serialized, run_id)
         )

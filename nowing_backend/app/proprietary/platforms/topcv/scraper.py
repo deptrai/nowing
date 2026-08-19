@@ -7,6 +7,7 @@ import logging
 import random
 import re
 import time
+import unicodedata
 from typing import Any
 from urllib.parse import quote, urljoin, urlparse
 
@@ -14,7 +15,7 @@ from lxml import html as lxml_html
 from scrapling.fetchers import StealthyFetcher
 
 from app.config import config
-from app.utils.crawl import BlockType, classify_block
+from app.utils.crawl import BlockType
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,9 @@ _consecutive_failures = 0
 _circuit_open_until = 0.0
 _circuit_lock = asyncio.Lock()
 
-_SALARY_PERIOD_RE = re.compile(r"\b(tháng|month|năm|year|giờ|hour|ngày|day)\b", re.IGNORECASE)
+_SALARY_PERIOD_RE = re.compile(
+    r"\b(tháng|month|năm|year|giờ|hour|ngày|day)\b", re.IGNORECASE
+)
 _SALARY_NUMBER_RE = re.compile(r"[\d\.,]+\s*(?:tr(?:iệu)?|k|m|b|t)?", re.IGNORECASE)
 _AGE_RE = re.compile(
     r"(?:đăng\s+)?(\d+)\s+(phút|giờ|ngày|tuần|tháng|năm)\s+trước",
@@ -53,7 +56,10 @@ def _safe_text(element: Any) -> str | None:
 
 def _normalize_keyword(value: str) -> str:
     """Convert a Vietnamese search phrase into a TopCV URL slug."""
-    text = re.sub(r"[^a-z0-9\s+-]", "", value.lower())
+    text = unicodedata.normalize("NFD", value)
+    text = "".join(c for c in text if unicodedata.category(c) != "Mn")
+    text = text.replace("đ", "d").replace("Đ", "D")
+    text = re.sub(r"[^a-z0-9\s+-]", "", text.lower())
     text = re.sub(r"\s+", "-", text.strip())
     text = re.sub(r"-+", "-", text)
     slug = text.strip("-")
@@ -126,7 +132,11 @@ def _extract_salary_numbers(
 
         lower_token = token.lower()
         unit = 1.0
-        if lower_token.endswith("tr") or lower_token.endswith("triệu") or lower_token.endswith("m"):
+        if (
+            lower_token.endswith("tr")
+            or lower_token.endswith("triệu")
+            or lower_token.endswith("m")
+        ):
             unit = 1_000_000
             token = re.sub(r"(?i)(tr(?:iệu)?|m)$", "", token).strip()
         elif lower_token.endswith("k"):
@@ -151,7 +161,10 @@ def _extract_salary_numbers(
     # Normalize unit-less numbers to the shared magnitude found elsewhere in the text.
     shared_unit = next((u for u in units if u > 1), 1.0)
     if shared_unit > 1:
-        numbers = [n * (shared_unit if u == 1 else u) for n, u in zip(numbers, units, strict=True)]
+        numbers = [
+            n * (shared_unit if u == 1 else u)
+            for n, u in zip(numbers, units, strict=True)
+        ]
     else:
         numbers = [n * u for n, u in zip(numbers, units, strict=True)]
 
@@ -160,7 +173,10 @@ def _extract_salary_numbers(
     has_from = "từ" in lower or "from" in lower
     has_to = "tới" in lower or "up to" in lower or "đến" in lower
     if has_from and has_to:
-        min_v, max_v = int(numbers[0]), int(numbers[-1]) if len(numbers) > 1 else int(numbers[0])
+        min_v, max_v = (
+            int(numbers[0]),
+            int(numbers[-1]) if len(numbers) > 1 else int(numbers[0]),
+        )
     elif has_to:
         min_v, max_v = 0, int(numbers[0])
     elif has_from:
@@ -309,7 +325,9 @@ def _parse_detail_markdown(content: str, metadata: dict[str, Any]) -> dict[str, 
     if salary_match:
         salary_raw = salary_match.group(1).strip()
     if not employment_type:
-        employment_type = _map_employment_type(description) or _map_employment_type(content)
+        employment_type = _map_employment_type(description) or _map_employment_type(
+            content
+        )
 
     return {
         "job_description": jd,
@@ -354,7 +372,9 @@ def _parse_search_page(html: str) -> list[dict[str, Any]]:
 
         title = ""
         title_link = card.xpath('.//h3[contains(@class,"title")]//a/@href')
-        title_el = card.xpath('.//h3[contains(@class,"title")]//a//span[@data-toggle="tooltip"]')
+        title_el = card.xpath(
+            './/h3[contains(@class,"title")]//a//span[@data-toggle="tooltip"]'
+        )
         if title_el:
             title = _safe_text(title_el[0]) or ""
         if not title:
@@ -376,21 +396,29 @@ def _parse_search_page(html: str) -> list[dict[str, Any]]:
             continue
 
         company = ""
-        company_el = card.xpath('.//a[contains(@class,"company")]//span[contains(@class,"company-name")]')
+        company_el = card.xpath(
+            './/a[contains(@class,"company")]//span[contains(@class,"company-name")]'
+        )
         if company_el:
             company = _safe_text(company_el[0]) or ""
 
         location = None
-        city_el = card.xpath('.//label[contains(@class,"address")]//span[contains(@class,"city-text")]')
+        city_el = card.xpath(
+            './/label[contains(@class,"address")]//span[contains(@class,"city-text")]'
+        )
         if city_el:
             location = _safe_text(city_el[0])
 
         salary_raw = ""
-        salary_els = card.xpath('.//label[contains(@class,"salary")]//span') or card.xpath('.//label[contains(@class,"title-salary")]')
+        salary_els = card.xpath(
+            './/label[contains(@class,"salary")]//span'
+        ) or card.xpath('.//label[contains(@class,"title-salary")]')
         if salary_els:
             salary_raw = _safe_text(salary_els[0]) or ""
 
-        min_v, max_v, currency, period, salary_hidden, salary_confidence = _extract_salary_numbers(salary_raw)
+        min_v, max_v, currency, period, salary_hidden, salary_confidence = (
+            _extract_salary_numbers(salary_raw)
+        )
 
         experience = None
         exp_els = card.xpath('.//label[contains(@class,"exp")]//span')
@@ -411,37 +439,46 @@ def _parse_search_page(html: str) -> list[dict[str, Any]]:
                 './/a[contains(@class,"item-tag")] | .//span[contains(@class,"item-tag")]'
             ):
                 tag_text = _safe_text(tag)
-                if tag_text and not tag_text.startswith("+") and not _is_requirement_tag(tag_text) and tag_text not in tags:
+                if (
+                    tag_text
+                    and not tag_text.startswith("+")
+                    and not _is_requirement_tag(tag_text)
+                    and tag_text not in tags
+                ):
                     tags.append(tag_text)
-            for remaining in tag_container[0].xpath('.//span[contains(@class,"remaining-items")]'):
+            for remaining in tag_container[0].xpath(
+                './/span[contains(@class,"remaining-items")]'
+            ):
                 tooltip = remaining.get("data-original-title") or ""
                 for part in tooltip.split(","):
                     part = part.strip()
                     if part and not _is_requirement_tag(part) and part not in tags:
                         tags.append(part)
 
-        results.append({
-            "id": f"topcv:{job_id}",
-            "title": title,
-            "company": company,
-            "location": location,
-            "source_url": source_url,
-            "salary_raw": salary_raw,
-            "salary_min": min_v,
-            "salary_max": max_v,
-            "salary_currency": currency,
-            "salary_period_id": period,
-            "salary_hidden": salary_hidden,
-            "salary_confidence": salary_confidence,
-            "employment_type": None,
-            "experience_years": experience,
-            "job_description": "",
-            "job_requirement": "",
-            "skills": tags,
-            "posted_at": posted,
-            "is_active": True,
-            "source": "topcv",
-        })
+        results.append(
+            {
+                "id": f"topcv:{job_id}",
+                "title": title,
+                "company": company,
+                "location": location,
+                "source_url": source_url,
+                "salary_raw": salary_raw,
+                "salary_min": min_v,
+                "salary_max": max_v,
+                "salary_currency": currency,
+                "salary_period_id": period,
+                "salary_hidden": salary_hidden,
+                "salary_confidence": salary_confidence,
+                "employment_type": None,
+                "experience_years": experience,
+                "job_description": "",
+                "job_requirement": "",
+                "skills": tags,
+                "posted_at": posted,
+                "is_active": True,
+                "source": "topcv",
+            }
+        )
 
     return results
 
@@ -492,7 +529,9 @@ async def _record_failure() -> None:
     async with _circuit_lock:
         _consecutive_failures += 1
         if _consecutive_failures >= config.TOPCV_CIRCUIT_BREAKER_THRESHOLD:
-            _circuit_open_until = time.monotonic() + config.TOPCV_CIRCUIT_BREAKER_TIMEOUT_S
+            _circuit_open_until = (
+                time.monotonic() + config.TOPCV_CIRCUIT_BREAKER_TIMEOUT_S
+            )
 
 
 def _user_agent_for_attempt(attempt: int) -> str | None:
@@ -510,7 +549,9 @@ def _user_agent_for_attempt(attempt: int) -> str | None:
 
 
 def _backoff_seconds(attempt: int) -> float:
-    return min(config.TOPCV_RETRY_BACKOFF_BASE_S * (2 ** attempt), 30.0) + random.uniform(0, 0.5)
+    return min(config.TOPCV_RETRY_BACKOFF_BASE_S * (2**attempt), 30.0) + random.uniform(
+        0, 0.5
+    )
 
 
 def _validate_search_page(page: Any) -> None:
@@ -529,24 +570,22 @@ def _validate_search_page(page: Any) -> None:
         raise ValueError(f"search page error: status={status}")
 
     title = ""
-    title_nodes = page.css("title")
-    if title_nodes and title_nodes[0].text:
-        title = str(title_nodes[0].text)
-    if "just a moment..." in title.lower():
-        raise ValueError("anti-bot challenge")
-
-    block = classify_block(status, html)
-    if block == BlockType.RATE_LIMITED:
-        raise ValueError("rate limited")
-    if block != BlockType.OK:
+    if hasattr(page, "css"):
+        title_nodes = page.css("title")
+        if title_nodes and title_nodes[0].text:
+            title = str(title_nodes[0].text)
+    if "just a moment..." in title.lower() or "ddos-guard" in title.lower():
         raise ValueError("anti-bot challenge")
 
 
 async def _fetch_search_page(keyword: str, page: int) -> str:
     global _consecutive_failures, _circuit_open_until
     # Local imports avoid a topcv <-> web_crawler circular import on startup.
-    from app.proprietary.web_crawler.stealth import build_stealthy_kwargs, get_stealth_config  # noqa: I001
     from app.proprietary.web_crawler.connector import scroll_to_bottom
+    from app.proprietary.web_crawler.stealth import (
+        build_stealthy_kwargs,
+        get_stealth_config,
+    )
 
     async with _circuit_lock:
         if _circuit_open_until > time.monotonic():
@@ -555,9 +594,10 @@ async def _fetch_search_page(keyword: str, page: int) -> str:
     url = _topcv_search_url(keyword, page)
     base_kwargs: dict[str, Any] = {
         "headless": True,
-        "network_idle": True,
+        "network_idle": False,
+        "wait_until": "domcontentloaded",
         "block_ads": True,
-        "solve_cloudflare": True,
+        "solve_cloudflare": False,
         "proxy": None,
         "timeout": int(config.TOPCV_TIMEOUT_S * 1000),
     }
@@ -639,9 +679,9 @@ async def _fetch_detail_page(url: str) -> dict[str, Any] | None:
                 await _record_failure()
                 if _looks_like_rate_limit(exc):
                     raise ValueError("rate_limited") from exc
-                if (
-                    "anti-bot challenge" in str(exc).lower()
-                    or (outcome is not None and outcome.block_type not in (BlockType.OK, BlockType.UNKNOWN))
+                if "anti-bot challenge" in str(exc).lower() or (
+                    outcome is not None
+                    and outcome.block_type not in (BlockType.OK, BlockType.UNKNOWN)
                 ):
                     # Signal an anti-bot block so the scrape loop can count it
                     # before deciding whether to degrade.
@@ -696,25 +736,26 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
                 break
 
             # Charge the heavier search fetch only after cards are successfully parsed.
-            cost_micros += config.TOPCV_SCRAPE_MICROS_PER_ITEM * 3
-
+            fetch_details = bool(params.get("fetch_details", False))
             for card in cards[:remaining]:
-                detail = await _fetch_detail_page(card["source_url"])
-                if detail is None:
-                    detail_anti_bot_count += 1
-                    if detail_anti_bot_count >= config.TOPCV_CIRCUIT_BREAKER_THRESHOLD:
-                        raise ValueError("anti-bot challenge")
-                    continue
-                detail_anti_bot_count = 0
-                if detail:
-                    _apply_detail(card, detail)
-                    cost_micros += config.TOPCV_SCRAPE_MICROS_PER_ITEM
+                if fetch_details:
+                    detail = await _fetch_detail_page(card["source_url"])
+                    if detail is None:
+                        detail_anti_bot_count += 1
+                        if (
+                            detail_anti_bot_count
+                            >= config.TOPCV_CIRCUIT_BREAKER_THRESHOLD
+                        ):
+                            raise ValueError("anti-bot challenge")
+                        continue
+                    detail_anti_bot_count = 0
+                    if detail:
+                        _apply_detail(card, detail)
+                        cost_micros += config.TOPCV_SCRAPE_MICROS_PER_ITEM
                 items.append(card)
 
                 if len(items) >= max_items:
                     break
-
-                await asyncio.sleep(config.TOPCV_PAGE_DELAY_S)
 
             if len(items) >= max_items:
                 break

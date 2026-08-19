@@ -330,7 +330,9 @@ async def aggregate_jobs(input: VnJobAggregateInput, ctx: Any) -> VnJobAggregate
     all_listings: list[VnJobAggregatedListing] = []
     total_cost_micros = 0
 
-    for source in input.sources:
+    import asyncio
+
+    async def _fetch_one(source: str) -> tuple[str, dict[str, Any]]:
         payload = _source_payload(input, source)
         try:
             raw = await _call_source(source, payload, ctx)
@@ -341,11 +343,13 @@ async def aggregate_jobs(input: VnJobAggregateInput, ctx: Any) -> VnJobAggregate
                 "degraded": True,
                 "degradation_reason": "source_failed",
             }
-
-        # Handle None return from _call_source (treat as empty, not degraded).
         if raw is None:
             raw = {"items": [], "degraded": False}
+        return source, raw
 
+    results = await asyncio.gather(*[_fetch_one(s) for s in input.sources])
+
+    for source, raw in results:
         source_items = raw.get("items", [])
         source_degraded = raw.get("degraded", False)
         source_reason = (

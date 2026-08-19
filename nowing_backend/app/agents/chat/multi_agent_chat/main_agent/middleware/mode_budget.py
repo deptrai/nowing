@@ -53,6 +53,7 @@ _MODE_BUDGETS: dict[str, tuple[int, int, int]] = {
     "balanced": (2, 1, 3),
     "quality": (3, 2, 5),
     "auto": (2, 5, 5),
+    "leads": (3, 5, 8),
 }
 
 # Subagent names that count as knowledge-base calls.
@@ -91,7 +92,9 @@ def _config_from_runtime(runtime: Runtime[Any] | None) -> dict[str, Any]:
     try:
         cfg = get_config() or {}
     except Exception:
-        logger.debug("get_config() failed, falling back to runtime.config", exc_info=True)
+        logger.debug(
+            "get_config() failed, falling back to runtime.config", exc_info=True
+        )
         cfg = getattr(runtime, "config", None) or {}
     if not isinstance(cfg, dict):
         return {}
@@ -179,7 +182,9 @@ def _breakdown_tool_call(tool_call: dict[str, Any]) -> _CallBreakdown:
             for t in tasks:
                 subagent = (t or {}).get("subagent_type")
                 if subagent is None:
-                    logger.debug("task tool call missing subagent_type, treating as non_kb")
+                    logger.debug(
+                        "task tool call missing subagent_type, treating as non_kb"
+                    )
                 if subagent in _KB_SUBAGENTS:
                     items.append(_CallItem("kb", subagent))
                 else:
@@ -329,19 +334,6 @@ class ModeBudgetMiddleware(AgentMiddleware[AgentState[ResponseT], ContextT, Resp
                     reason,
                 )
                 blocked_messages.append(self._tool_message(tool_call, reason))
-
-        if not allowed and blocked_messages:
-            # Budget is fully exhausted: force the agent to answer.
-            final = AIMessage(
-                content=(
-                    f"I have reached the {mode} mode tool budget. "
-                    "I will now answer based on the information I have gathered."
-                )
-            )
-            return {
-                "messages": [*blocked_messages, final],
-                "jump_to": "end",
-            }
 
         if blocked_messages:
             return {"messages": blocked_messages}
