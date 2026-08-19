@@ -7,7 +7,7 @@ paradigm: 4-Tier Hybrid Reactive Architecture with Decoupled Autonomous Mission 
 scope: Full Platform (Nowing Core, ChainLens Engine, DSH Agent Orchestration Sidecar, DeepSeek V4 + Gemini Flash + Qwen)
 status: final
 created: '2026-08-17'
-updated: '2026-08-17T06:00'
+updated: '2026-08-20T12:00'
 approvedBy: Luisphan
 binds:
   - AD-101
@@ -25,6 +25,9 @@ binds:
   - AD-113
   - AD-114
   - AD-115
+  - AD-116
+  - AD-117
+  - AD-118
 ---
 
 # Architecture Spine — Nowing + ChainLens + DSH Unified Platform
@@ -330,3 +333,22 @@ The architecture only requires that:
 - **Binds:** Inbound email webhook và Celery scheduler.
 - **Rule:** Inbound email forward kích hoạt task ngầm và trả kết quả qua SMTP kèm deliverables. Scheduled tasks lưu snapshot lần chạy trước và thực hiện Delta Analysis trước khi gửi báo cáo Telegram/Slack.
 
+
+
+---
+
+## 9. Readiness Gap ADs (AD-116 to AD-118)
+
+Các AD sau được bổ sung sau Implementation Readiness Assessment 2026-08-20 để đóng gap giữa PRD và architecture spine.
+
+### AD-116 — Bounded Memory Injection & Recall Performance (NFR-1b) [ADOPTED]
+- **Binds:** Memory retrieval / injection path, `nowing_recall`, `MemoryExtractionService`.
+- **Rule:** Memory injection vào prompt phải có bound: tối đa **8.000 ký tự** context, retrieval phải là **O(top-k)** trên index đã materialized (không scan toàn bộ `Memory` table). `MemoryExtractionService` kiểm tra bound trước khi append; nếu vượt, cắt theo relevance score và log `memory_injection_truncated`.
+
+### AD-117 — Vertical Client Tenancy & `client_id` RLS (FR-56, NFR-MULTI-1) [ADOPTED]
+- **Binds:** Public agent-chat API, `Memory`, `TokenUsage`, `Run`, `ResearchThread`.
+- **Rule:** Mọi query từ public API **bắt buộc** lọc theo `client_id` (hard filter). PostgreSQL RLS context `SET LOCAL app.current_client_id` được set qua middleware sau PAT validation. `client_id = NULL` chỉ dùng cho Nowing-internal queries. Composite RLS (`workspace_id` + `client_id`) là cách triển khai mặc định; `workspace_id-only` queries tự động thêm `client_id IS NULL`.
+
+### AD-118 — Agent Registry & `agent_configs` Persistence (FR-57) [ADOPTED]
+- **Binds:** `AgentConfig` model, chat orchestrator, `NewChatRequest`, `agent_chat_routes`.
+- **Rule:** Tồn tại bảng `agent_configs` với schema: `id`, `client_id` (nullable), `name`, `system_instructions`, `enabled_tools` (text[]), `disabled_tools` (text[]), `model_name`, `citations_enabled` (bool), `is_active` (bool). `AgentConfig` là global (không workspace-scoped). Chat orchestrator load config theo `agent_id`, prepend `system_instructions`, filter tool allowlist. Nếu `agent_id` không tồn tại hoặc disabled → 404 và fallback về default agent.

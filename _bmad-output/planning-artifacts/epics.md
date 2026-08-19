@@ -44,6 +44,9 @@ Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Archite
 `[DONE]` **FR-45 ITviec scraper** → **E12.3 P0** (HTML server-rendered; salary hidden; legal/ToS approved, anti-bot POC passed).
 `[DONE]` **FR-46 `vn_jobs.aggregate`** → **E12.4a–e P0 (split: normalization, dedupe/conflict, PII, ingest, exposure)** (cross-source normalization, dedupe, confidence, conflict detection; legal/ToS approved).
 `[DONE]` **FR-47 PII redaction for job data** → **E12.5 P0** (mask/drop phone, email, names before memory; legal/ToS approved).
+`[BACKLOG]` **FR-49/50/51/52 News/Financial/Company/E-commerce Intelligence** → **E14/E15/E16/E17** (re-scoped 2026-08-08 — feed `chainlens-research` via `NowingIngestService`; governed by `AD-34`, `AD-35`).
+`[IN PROGRESS]` **FR-56 Public Agent-Chat API + FR-57 Agent Registry + NFR-MULTI-1** → **E18** (public API endpoints, `AgentConfig` registry, `client_id` tenancy, cost traceability, rate limiting + RLS).
+`[DONE]` **FR-58 Scraper Feed + FR-59 Gap-Fill + FR-60 Private Provider + FR-61 Service Auth + FR-62 Canonical Chunk Schema** → **E20** (ingest to `chainlens-research`, `NowingPrivateProvider`, service-to-service auth + `TokenUsage`, canonical `Chunk` contract).
 
 `[DONE]` **FR-63 Intent Signal Detection** → **E21.1** (buying signals: funding, hiring, tech stack, executive moves).
 `[DONE]` **FR-64 Lead Scoring & Prioritization** → **E21.2** (composite score: fit + intent).
@@ -76,6 +79,8 @@ Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Archite
 `[DONE]` **FR-90 Official Zalo OA Webhook & ZNS Template Automation** → **E23.2 P0** (Zalo OpenAPI v3 signature verification + ZNS template delivery).
 `[DONE]` **FR-91 Automated VietQR Affiliate Payout Reconciliation** → **E23.3 P1** (Instant 24/7 Napas bank settlement + cryptographic audit receipts).
 `[DONE]` **FR-92 PostgreSQL RLS & Table Partitioning for Multi-Million Leads** → **E23.4 P1** (Sub-10ms query isolation on partitioned lead stores).
+
+> **⚠️ Out-of-PRD scope (FR-70–FR-92):** Các FR từ **FR-70 đến FR-92** (Telegram scraper Epic 22, lead-gen extensions Epic 21 mở rộng, infrastructure Epic 23) không xuất hiện trong PRD canonical `prd-Nowing-2026-07-22/prd.md`. Chúng được giữ lại trong `epics.md` như **implementation backlog / market-specific elaboration**, không phải nguồn sự thật về requirements. Nếu cần đưa vào PRD, hãy tạo amendment; nếu không, tiếp tục track ở `epics.md` với ghi chú `out-of-prd`.
 
 `[DONE — NFR]` **NFR-1b/1c/1d Memory latency & injection bound** *(E3.14 done, AD-18)*.
 `[RESOLVED]` FR-36 Legacy memory data-loss (2026-07-25 — không mất dữ liệu; 178 chưa apply prod, `memory_md` rỗng, snapshot đã tạo; guard + backfill + 5 test qua `3-10a`/`3-10b`).
@@ -118,6 +123,9 @@ Các story có UI vẫn cần UX spec riêng trước khi build UI chi tiết. U
 - **FR-24/37/38/39 + NFR-9 → E9** (mới 2026-07-25; tách story theo readiness Q-3/Q-4): FR-38 → **E9.1a** [DONE, P0] · FR-24 → **E9.1b** [DONE, P0] · FR-37 → **E9.2** [DONE, P0, parser `done.usage.costDollars` + `done.usage.estimated` + `done.resolvedMode` + canonical golden fixtures + fallback 60k micros; cost thực tế ChainLens 2026-08-02: research speed $0.0353 / balanced $0.0482 / quality $0.0671] · NFR-9 → **E9.3** [DONE] · OQ-6/AR-10 (phần Nowing↔engine) → **E9.4** [DONE, P1] · D5-Phase2 → **E9.5** [deferred] · **FR-39 → E9.6** (provenance + re-validation) [DONE]
 - FR-32 → E3 (3.8 done; quality→3.9, dedupe→3.11) · FR-33 → E4 (4.6 done) · FR-34 → E3/E4 (done)
 - FR-36 → **E3.10** [RESOLVED 2026-07-25] · FR-18 → **E6.4** [DONE] · FR-31/NFR-7 → **E8.3** [DONE] · FR-35 → **E6.5** [DONE — cải chính 2026-07-25]
+- **FR-49/50/51/52 → E14/E15/E16/E17** `[BACKLOG]` (re-scoped 2026-08-08 — feed `chainlens-research`; governed by `AD-34`, `AD-35`)
+- **FR-56/57 + NFR-MULTI-1 → E18** `[IN PROGRESS]` (public agent-chat endpoints, `AgentConfig` registry, `client_id` tenancy, cost traceability)
+- **FR-58/59/60/61/62 → E20** `[DONE]` (scraper feed to `chainlens-research`, gap-fill trigger, `NowingPrivateProvider`, service-to-service auth + cost allocation, canonical `Chunk` schema)
 - NFR-8 → **E3.9** [DONE — baseline ratified 2026-08-04] · NFR-6 → **E3.6** [DONE] · NFR-10 → **E4** [DONE — 4.8b/4.8e/4.8f/4.8g] · OQ-3/AR-4 → **E3.7** [PARTIAL] · OQ-4 → **E2.5** [DONE] · **OQ-5 → E6.4 [DONE]** *(2026-07-25: `6-4` = done; 4 action type `write_back_notion/slack/linear/jira` đã có ⇒ câu hỏi "action type riêng vs `agent_task`" **code đã trả lời: action type riêng**)* · OQ-6/AR-10 → **E8.10 + E9.4** [DONE] · **OQ-7 (5 câu hỏi từ ChainLens `42-3`, ADOPTED 2026-08-05) → E9.1b/E9.2/E9.3** [DONE] · FR-5 → [REMOVED]
 - **Mới 2026-07-25 (readiness Nhóm 3 — trước đây KHÔNG có FR lẫn epic):** **FR-40** (first-run value: research run sinh memory; M1; brief §9 H-4) → **E3.13** [DONE, HIGH] · **NFR-1b/1c/1d** (bound cho memory injection + recall + auto-extract; `AD-18`) → **E3.14** [DONE, đi kèm E3.13]
   - ⚠️ **NFR-1 trước đây KHÔNG map sang epic nào** (readiness C-1) và không phủ memory (P-5). Nay: **NFR-1a** (CRUD/scraper) = nền tảng, không cần story riêng · **NFR-1b/1c/1d → E3.14**.
@@ -218,7 +226,7 @@ Public agent-chat endpoints, AgentConfig registry, client_id tenancy, cost trace
 ### Epic 21: Lead Gen Intelligence & Social Graph — ✅ DONE
 Toàn diện hóa hệ thống Săn Lead & Tiếp cận Khách hàng Đa kênh: Phone Waterfall 3 tầng (Batdongsan/Chotot/Zalo), Zalo OA & Telegram Outbound Waterfall, XActions Social Ingress (Facebook Groups/Twitter), 1-Click Reverse-ICP từ Website/Dự án, AI Actionable Turn Dispatches, Viral Social Outbound Co-pilot, Multi-Table Tabs & Export Hub (Lark Base, Google Sheets), DNC Compliance Engine, Origami Workspace, Partners Affiliate Portal và $0 Pricing. **Stories:** 21.1–21.18 (21.3, 21.6, 21.14 P0). Governed by `architecture-xactions-social-integration-2026-08-15` & `architecture-linkedin-b2b-2026-08-15`.
 
-### Epic 22: Telegram Scraper & Channel Ingestion Engine — ✅ DONE
+### Epic 22: Telegram Scraper & Channel Ingestion Engine — ⏳ READY-FOR-DEV
 Public channel web preview, MTProto Userbot session pool, distributed mutex lock, FloodWait cooldown state machine, regex entity extractor, S3 media chunk streaming, realtime stream daemon, Alert Engine trigger, AI Agent tools. **Stories:** 22.1–22.3. Governed by `architecture-telegram-scraper-2026-08-15`.
 
 ---
@@ -2015,13 +2023,13 @@ _As originally scoped, this timeline required `canonical_entities`, source-linea
 
 ---
 
-### Story 12.9: Job Market Alerts `[P1 — depends on 12.6]`
+### Story 12.9: Job Market Alerts `[P1]`
 
 As a job market researcher,
 I want to receive alerts when new postings match my criteria,
 So that I don't have to manually re-run searches every day.
 
-> **Dependency:** Story 12.6 (Saved Searches) must ship first — alerts use saved search infrastructure.
+> **Prerequisite:** Saved search infrastructure (Story 12.6 or equivalent) is available. If not, the alert scheduler uses an inline query equivalent to maintain story independence.
 
 **Acceptance Criteria:**
 - **Given** a saved job search with filters (title, location, salary range), **When** a new posting matches, **Then** I receive an in-app notification.
@@ -2455,7 +2463,7 @@ So that I can integrate Nowing chat into my application.
 - **Given** a PAT is presented, **When** authorized, **Then** the token's allowed `workspace_id` (and optional `client_id`/`agent_id` scopes from AD-29) are enforced server-side; client-supplied IDs cannot escalate scope.
 - **Given** every public call, **When** completed or rejected, **Then** an audit log records actor, workspace, client, agent, route, status and run id without storing message PII bodies by default.
 
-_Kỹ thuật: `app/routes/agent_chat_routes.py`, PAT auth middleware, rate limiter. **AD-29** (public agent-chat surface). Depends on AD-13 ResearchThread linkage._
+_Kỹ thuật: `app/routes/agent_chat_routes.py`, PAT auth middleware, rate limiter. **AD-29** (public agent-chat surface). **Prerequisite:** AD-13 ResearchThread linkage; if not yet accepted, the endpoint returns 503 for auto-link and falls back to `research_thread_id = null` with a clear warning._
 
 ---
 
@@ -2518,7 +2526,7 @@ So that memory is properly isolated and contextual across sessions.
 - **Given** memories are extracted from the chat, **When** stored, **Then** they are tagged with `research_thread_id`.
 - **Given** chat thread creation fails because `agent_id` is invalid or the workspace lacks permission, **When** the API processes the request, **Then** it returns 400/403 with a clear error and does not create an orphan `ResearchThread`.
 
-_Kỹ thuật: `app/routes/agent_chat_routes.py` — auto-create ResearchThread, update response schema. **AD-13** + **AD-29**._
+_Kỹ thuật: `app/routes/agent_chat_routes.py` — auto-create ResearchThread, update response schema. **AD-13** + **AD-29**. **Prerequisite:** AD-13 ResearchThread linkage accepted; if not, the response omits `research_thread_id` and logs `research_thread_link_degraded`._
 ---
 
 ### Story 18.6: Memory Tagging + RAG Filter `[P1]`
@@ -2533,7 +2541,7 @@ So that one client's data never leaks into another client's chat.
 - **Given** a recall query without `client_id`, **When** it is processed, **Then** only memories with `client_id = NULL` (Nowing-internal) are returned.
 - **Given** `client_id` is missing from the request or the tenant RLS context is not set, **When** RAG recall runs, **Then** it returns an empty result set and logs `tenant_filter_missing` instead of leaking memory across tenants.
 
-_Kỹ thuật: Alembic migration for memory tenant tags, update `app/retriever/`. **AD-31**, NFR-MULTI-1. Blocked until AD-31 tenancy design is accepted._
+_Kỹ thuật: Alembic migration for memory tenant tags, update `app/retriever/`. **AD-31**, NFR-MULTI-1. **Prerequisite:** AD-31 tenancy design accepted; ACs are conditional on `AD-31_accepted=true`._
 ---
 
 ### Story 18.7: Cost Traceability `[P1]`
@@ -2563,7 +2571,7 @@ So that no single client can degrade service for others.
 - **Given** RLS is active, **When** any query runs, **Then** rows are filtered by `client_id` automatically.
 - **Given** a request with a valid PAT but no `client_id` in a workspace that requires one, **When** the rate limiter or RLS check runs, **Then** the request is rejected with 403 and does not reach the database.
 
-_Kỹ thuật: Middleware in `app/middleware/tenant_context.py`, rate limiter with Redis. **AD-29** + **AD-31**, NFR-MULTI-1. Composite RLS (`workspace_id` + `client_id`) must be designed before implementation._
+_Kỹ thuật: Middleware in `app/middleware/tenant_context.py`, rate limiter with Redis. **AD-29** + **AD-31**, NFR-MULTI-1. **Prerequisite:** AD-31 composite RLS design accepted; if AD-31 is not yet accepted, this story is conditional and may be split into an AD-31 prerequisite plus implementation story._
 
 ---
 
@@ -2575,7 +2583,7 @@ _Kỹ thuật: Middleware in `app/middleware/tenant_context.py`, rate limiter wi
 
 > **Epic Goal:** Trung tâm Xử lý, Chấm điểm và Quản trị Lead tập trung (Lead Intelligence & CRM Hub) của toàn hệ thống Nowing. Tiếp nhận dữ liệu khách hàng tiềm năng từ TẤT CẢ các phễu cào (BĐS Epic 10, Tuyển dụng Epic 12, Đấu thầu/Pháp lý Epic 16, TMĐT Epic 17, Telegram Epic 22 và Mạng xã hội qua `XActions`), bóc tách thông tin liên hệ (SĐT, Email, Tên), phân loại ý định thương mại (Intent Signals), chấm điểm Fit Score, lưu trữ vào Lead CRM và kích hoạt chiến dịch Outbound Automation (Zalo OA, Telegram, Email, Lark Base, Google Sheets).
 
-**Status:** `[in-progress]`  
+**Status:** `[done]`  
 **Governed by Architecture Spines:** `architecture-xactions-social-integration-2026-08-15`, `architecture-linkedin-b2b-2026-08-15`, `epic21-architecture-update.md` (AD-31 to AD-49).  
 **UX Contracts (đã lưu trữ):** `_bmad-output/planning-artifacts/ux-designs/archive/ux-Nowing-2026-07-22-superseded/ux-contract-lead-intelligence-panel.md`, `_bmad-output/planning-artifacts/ux-designs/archive/ux-Nowing-2026-07-22-superseded/ux-contract-workspace-mode-switch.md`, `_bmad-output/planning-artifacts/ux-designs/archive/ux-Nowing-2026-07-22-superseded/ux-contract-sidebar-onboarding.md`, `_bmad-output/planning-artifacts/ux-designs/archive/ux-Nowing-2026-07-22-superseded/ux-contract-positive-reply-notifications.md`. UX chuẩn hiện tại: `ux-designs/ux-Nowing-2026-08-15/`.
 
@@ -2889,7 +2897,7 @@ _FR-88 · AD-42_
 
 ---
 
-## Epic 22: Telegram Scraper & Channel Ingestion Engine `[done]`
+## Epic 22: Telegram Scraper & Channel Ingestion Engine `[ready-for-dev]`
 
 > **Epic Goal:** Cung cấp giải pháp trích xuất dữ liệu đa nguồn từ Telegram (kênh công khai, nhóm thảo luận, bài đăng, bình luận, media), tự động phân tích thực thể (SĐT, giá BĐS, email), bảo vệ tài khoản chống khóa (Anti-ban/FloodWait), tích hợp thông báo tức thời (Alert Engine) và cung cấp công cụ tra cứu cho AI Agent.
 

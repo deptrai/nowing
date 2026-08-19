@@ -155,3 +155,14 @@ updated: 2026-08-15
   - No bloated, multi-nested modals.
   - No decorative gradients that obscure text legibility.
   - No hidden credit deductions without upfront estimations.
+
+---
+
+## 10. Readiness Gap Contracts
+
+Các UX contract sau bổ sung cho các requirement chưa có đủ UX chi tiết trong tài liệu này:
+
+- `ux-contract-first-run-onboarding.md` — first-run memory seeding (FR-40, E3.13)
+- `ux-contract-readiness-gaps.md` — Agent Registry, vertical client tenancy, chat benchmark, outcome-based pricing, CRM sync, bounded memory injection
+
+Chúng được đưa vào canonical UX 2026-08-15 sau Implementation Readiness Assessment 2026-08-20.
