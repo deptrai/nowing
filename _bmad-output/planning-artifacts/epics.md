@@ -2239,6 +2239,8 @@ _AD-33 (Generic Alert Engine — AlertRule template, `threshold_cross` diff stra
 
 ### Story 16.1: masothue.com Company Data `[P0]`
 
+> **Implementation status (2026-08-20):** `app/proprietary/platforms/masothue/` scraper and MCP tool `nowing_masothue_scrape` already exist. Missing `app.capabilities.masothue.scrape` executor, `BillingUnit.MASOTHUE_COMPANY`, and mutation-gate retest. Sprint status updated to `in-progress`.
+
 As a business researcher,
 I want access to 2M+ Vietnamese company profiles with tax codes and registration data,
 So that I can verify business partners and research market players via the Nowing chat agent.
@@ -2386,6 +2388,8 @@ _AD-EC-1 · AD-EC-2 · AD-EC-3 · AD-EC-4 · Governed by `architecture-shopee-ec
 ---
 
 ### Story 17.5: TikTok Shop Product & Trending SKUs Ingestion `[P2]`
+
+> **Reuse note (2026-08-20):** Codebase currently only has public TikTok video scraper, not TikTok Shop. When implemented, reuse `ecommerce_products` + `ecommerce_price_history` schema and alert patterns from Shopee architecture (AD-EC-1..6).
 
 As a social commerce researcher,
 I want product, pricing, and sales volume data from TikTok Shop Vietnam,
@@ -3489,6 +3493,12 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 | 3.18 Projects Workspace & Skills Hub | Epic 3, AD-1 | Projects Master Instructions context auto-inject + .skill.md modular hub |
 | 27.1 Web App Builder & Design View | AD-113, AD-114 | Next.js generator + 1-click *.nowing.space deploy + Mark Tool AST mutator |
 | 27.2 Manus Slides & Meeting Minutes | AD-112, AD-114 | Xuất slide PPTX/Marp 16:9 + Whisper STT & Diarization action items |
+
+> **Duplicate review note (2026-08-20):**
+> - 14.3, 15.3, 16.3, 17.3, 17.4 are thin `AlertRule` templates on the Generic Alert Engine (Story 6.8). Consider consolidating into a single **"Vertical Alert Rule Templates"** story.
+> - 14.4, 15.4, 16.4 are narrative report templates over indexed data. Consider consolidating into a single **"Narrative Report Engine for Indexed Data"** story.
+> - 17.5 should reuse `ecommerce_products` + `ecommerce_price_history` tables and price-drop alert patterns built for Shopee (AD-EC-1..6).
+> - 27.2 should split into **PPTX/Marp export** (reuses `video_presentation` agent + `reports_routes.py`) and **Speaker Diarization meeting minutes** (reuses `stt_service.py` + `circleback_webhook_route.py`).
 
 ---
 

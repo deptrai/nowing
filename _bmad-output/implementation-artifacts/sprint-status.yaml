@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-08"
-last_updated: "2026-08-20"  # Epic 27 added, Epics 26.9, 24.8, 6.10, 3.18 added for Manus parity roadmap
+last_updated: "2026-08-20"  # duplicate review: alert/synthesis templates flagged, 16-1 -> in-progress
 # ponytail: 2026-08-14 — reopened deferred/business-gated/dropped to backlog; 16-1 mutation gate reopened; 15-2 moved to review; tech-debt tracker reopened.
 # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended citation ACs to 3.15 (WEB_RESULT), 9.3 (async delivery), 2.10 (Exa MCP). 3 stories → review.
 # ponytail: 2026-08-08 sprint-planning — added Epic 1, 5 (DONE brownfield); added 9.1a, 9.1b, 4.8a-4.8h, 13.2a-13.2e; upgraded 12.1-12.5 to ready-for-dev (story files exist); 12.0 DONE (legal approved).
@@ -280,7 +280,7 @@ development_status:
   # === Epic 27: Full-Stack Web App Builder, Instant Hosting & Creative Studio ===
   epic-27: backlog
   27-1: backlog  # Full-Stack Web App Builder, 1-Click Hosting *.nowing.space & Design View Mark Tool (AD-113, AD-114)
-  27-2: backlog  # Manus Slides Presentation Studio & Speaker Diarization Meeting Minutes (AD-112, AD-114)
+  27-2: backlog  # Manus Slides + Speaker Diarization — split into PPTX/Marp export and diarization; reuse video_presentation/reports/stt_service
   epic-27-retrospective: optional
 
 
@@ -329,8 +329,8 @@ development_status:
   # Unit/integration tests pass; Playwright E2E passes; marked done.
   14-1: done
   14-2: ready-for-dev  # story file created 2026-08-19
-  14-3: backlog
-  14-4: backlog
+  14-3: backlog  # [TEMPLATE] Generic Alert Engine template — consider consolidating with 15.3/16.3/17.3/17.4
+  14-4: backlog  # [TEMPLATE] narrative report over indexed data — consider consolidating with 15.4/16.4
   epic-14-retrospective: optional
 
   # === Epic 15: Financial Data (Vietnam) ===
@@ -342,19 +342,19 @@ development_status:
   15-1b: done
   # 15-2 implementation and Playwright E2E verification complete.
   15-2: done
-  15-3: backlog
-  15-4: backlog
+  15-3: backlog  # [TEMPLATE] Generic Alert Engine price threshold — consider consolidating with 17.3
+  15-4: backlog  # [TEMPLATE] narrative trend report — consider consolidating with 14.4/16.4
   epic-15-retrospective: optional
 
   # === Epic 16: Company Directory (Vietnam) ===
   epic-16: in-progress
   # 16-1 depends on 20.2 (NowingIngestService). Mutation-gate: FAIL (P1 240+ survived mutants).
   # Remains in progress until P1 findings closed and 20.2 stable.
-  16-1: backlog  # reopened: mutation gate FAIL, needs P1 mutation coverage and retest
+  16-1: in-progress  # scraper exists; missing masothue.scrape capability/billing + mutation retest (2026-08-20)
   16-2: backlog  # Official Business Registry (dangkykinhdoanh.gov.vn)
-  16-3: backlog
+  16-3: backlog  # [TEMPLATE] Generic Alert Engine template — consider consolidating with 14.3/15.3/17.3/17.4
   # RE-SCOPED 2026-08-08: 16-4 no longer blocked on Nowing Epic 13 (dropped). Company timeline builds on chainlens-research canonical index.
-  16-4: backlog
+  16-4: backlog  # [TEMPLATE] narrative timeline report — consider consolidating with 14.4/15.4
   16-5: done  # National Public Procurement & Tender Intelligence (muasamcong.mpi.gov.vn)
   epic-16-retrospective: optional
 
@@ -362,9 +362,9 @@ development_status:
   epic-17: in-progress
   17-1: backlog
   17-2: done  # Shopee Vietnam In-House Scraper & Price Normalization
-  17-3: backlog
-  17-4: backlog
-  17-5: backlog  # TikTok Shop Product & Trending SKUs Ingestion
+  17-3: backlog  # [TEMPLATE] Generic Alert Engine price_change — overlaps 17.4 (competitor tracking)
+  17-4: backlog  # [TEMPLATE] Generic Alert Engine new_items — superset of 17.3 price-drop logic
+  17-5: backlog  # TikTok Shop Product & Trending SKUs — reuse ecommerce_products/price_history tables + Shopee alert patterns (AD-EC-1..6)
   epic-17-retrospective: optional
 
   # === Epic 18: Vertical Client Platform (Public Agent-Chat) ===
