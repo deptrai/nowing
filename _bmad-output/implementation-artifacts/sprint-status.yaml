@@ -268,7 +268,7 @@ development_status:
   epic-26: in-progress
   26-1: ready-for-dev  # FastMCP Ingest Gateway, Batch Ingestion & Stateless ChainLens Pipeline
   26-2: done  # dsh-worker Sidecar Container, Redis Streams & Task Resumption
-  26-3: pending-human-review  # Multi-Tier Hybrid LLM Router (Gemini Flash Free Tier + DeepSeek V4 + Qwen 3.8)
+  26-3: in-progress  # Multi-Tier Hybrid LLM Router (Gemini Flash Free Tier + DeepSeek V4 + Qwen 3.8); pending human review
   26-4: done  # PII Vault Fernet Encryption, HMAC Deduplication & Decree 13 Opt-Out — review findings patched, 122 unit + 9 integration tests green, Alembic fresh-DB + real-data migration green
   26-5: in-progress  # Split Canvas Glass Box Mission Control, Two-Tier Phone Unlock & Shimmer Influx
   26-6: done  # Telegram Interactive Checkpoint Bot & 1-Click Auto-Refund Dialog — group-1 data/config + chunk-1 core-implementation patches applied, group chat callback authorization enforced, 72 unit tests green
@@ -368,7 +368,7 @@ development_status:
   epic-17-retrospective: optional
 
   # === Epic 18: Vertical Client Platform (Public Agent-Chat) ===
-  epic-18: done
+  epic-18: in-progress  # conditional on AD-13 + AD-31 acceptance per Implementation Readiness 2026-08-20
   18-1: done
   18-2: done
   18-3: done
