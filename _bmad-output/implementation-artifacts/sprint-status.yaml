@@ -269,7 +269,8 @@ development_status:
   26-4: done  # PII Vault Fernet Encryption, HMAC Deduplication & Decree 13 Opt-Out — review findings patched, 122 unit + 9 integration tests green, Alembic fresh-DB + real-data migration green
   26-5: in-progress  # Split Canvas Glass Box Mission Control, Two-Tier Phone Unlock & Shimmer Influx
   26-6: done  # Telegram Interactive Checkpoint Bot & 1-Click Auto-Refund Dialog — group-1 data/config + chunk-1 core-implementation patches applied, group chat callback authorization enforced, 72 unit tests green
-  26-7: done  # Hermetic Quality Gates, Benchmark Suite & Anti-Zombie Chaos Testing — 100 lead extraction fixtures + golden cassettes, hermetic replay gate green, baseline ratified
+  26-7: in-progress  # Hermetic Quality Gates, Benchmark Suite & Anti-Zombie Chaos Testing — review findings applied (endpoint security, metrics, cassette robustness, auth, anti-zombie harness, 60s timeouts); baseline remains unratified (lead-009 invalid MST drops mst_modulo11_accuracy below 0.995)
+  26-8: done  # LangGraph DSH Mission Executor & Feature Flag — spike complete, DSH_EXECUTOR_ENGINE flag added, unit/wiring + local Postgres/Redis smoke tests green, ruff clean
   epic-26-retrospective: optional
 
 

@@ -683,6 +683,7 @@ class Config:
     DSH_MAX_PAYLOAD_BYTES = int(
         os.getenv("DSH_MAX_PAYLOAD_BYTES", str(10 * 1024 * 1024))
     )
+    DSH_EXECUTOR_ENGINE = os.getenv("DSH_EXECUTOR_ENGINE", "langgraph")
 
     # DSH Telegram Interactive Checkpoint & Auto-Refund (Story 26.6)
     DSH_TELEGRAM_FIT_SCORE_THRESHOLD = max(

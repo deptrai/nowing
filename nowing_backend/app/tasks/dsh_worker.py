@@ -21,6 +21,7 @@ from redis.exceptions import ResponseError
 
 from app.config import config
 from app.redis_client import get_redis_client
+from app.tasks.dsh_worker_langgraph import LangGraphMissionExecutor
 
 logger = logging.getLogger(__name__)
 
@@ -268,8 +269,8 @@ class DeepLeadResearchExecutor:
         current_subtask_id: str | None = None,
         status: str | None = None,
         error: dict[str, Any] | None = None,
-        started_at: datetime | None = None,
-        completed_at: datetime | None = None,
+        started_at: datetime | str | None = None,
+        completed_at: datetime | str | None = None,
     ) -> dict[str, Any]:
         update = _checkpoint_update(
             checkpoint=checkpoint,
@@ -281,7 +282,15 @@ class DeepLeadResearchExecutor:
             started_at=started_at,
             completed_at=completed_at,
         )
-        return await self.rest_client.patch_checkpoint(mission_id, update)
+        response = await self.rest_client.patch_checkpoint(mission_id, update)
+        # Merge the server's checkpoint back so the next patch does not fail on
+        # a stale version. The checkpoint dict is mutated in place so callers
+        # that hold references to it see the updated subtasks/sources/leads.
+        response_checkpoint = response.get("checkpoint") if isinstance(response, dict) else None
+        if response_checkpoint:
+            checkpoint.clear()
+            checkpoint.update(response_checkpoint)
+        return response
 
     def _mission_id(self, mission: dict[str, Any] | Any) -> uuid.UUID:
         raw = mission["id"] if isinstance(mission, dict) else mission.id
@@ -699,7 +708,7 @@ class DshWorker:
         claimed: list[tuple[str, dict[str, Any]]] = []
         start_id = "0-0"
         while True:
-            next_start, messages = await asyncio.wait_for(
+            response = await asyncio.wait_for(
                 redis_client.xautoclaim(
                     self.stream,
                     self.group,
@@ -710,6 +719,9 @@ class DshWorker:
                 ),
                 timeout=_DSH_CALL_TIMEOUT_SECONDS,
             )
+            # redis-py can return a 2- or 3-element list; the first two elements are
+            # next_start_id and the message list.
+            next_start, messages = response[0], response[1]
             for msg_id, fields in messages:
                 claimed.append((msg_id, fields))
             if not next_start or next_start == start_id or not messages:
@@ -817,7 +829,7 @@ class DshWorker:
                             "message": f"Unsupported mission_type {mission.get('mission_type')!r}",
                             "failed_at": datetime.now(UTC).isoformat(),
                         },
-                        completed_at=datetime.now(UTC),
+                        completed_at=datetime.now(UTC).isoformat(),
                     ),
                 )
                 return True
@@ -828,7 +840,7 @@ class DshWorker:
                 checkpoint["attempt"] = parsed.get("attempt", 1)
                 mission["checkpoint"] = checkpoint
 
-            await self.rest_client.patch_checkpoint(
+            running_response = await self.rest_client.patch_checkpoint(
                 mission_id,
                 _checkpoint_update(
                     status="running",
@@ -836,11 +848,18 @@ class DshWorker:
                     progress_percent=0,
                     current_subtask_id="crawl",
                     checkpoint=checkpoint,
-                    started_at=datetime.now(UTC),
+                    started_at=datetime.now(UTC).isoformat(),
                 ),
             )
+            if isinstance(running_response, dict) and running_response.get("checkpoint"):
+                mission["checkpoint"] = running_response["checkpoint"]
 
-            executor = self._executor or DeepLeadResearchExecutor(self.rest_client)
+            if self._executor is not None:
+                executor = self._executor
+            elif config.DSH_EXECUTOR_ENGINE == "langgraph":
+                executor = LangGraphMissionExecutor(self.rest_client)
+            else:
+                executor = DeepLeadResearchExecutor(self.rest_client)
             executor_task = asyncio.create_task(executor.run(mission))
             heartbeat_task = asyncio.create_task(
                 self._heartbeat_loop(redis_client, mission_id, msg_id, executor_task)
@@ -857,7 +876,7 @@ class DshWorker:
                         phase="terminal",
                         progress_percent=100,
                         current_subtask_id=None,
-                        completed_at=datetime.now(UTC),
+                        completed_at=datetime.now(UTC).isoformat(),
                     ),
                 )
                 return True
@@ -978,7 +997,7 @@ class DshWorker:
                 checkpoint=checkpoint,
                 retry_count=retry_count,
                 error=error,
-                completed_at=datetime.now(UTC),
+                completed_at=datetime.now(UTC).isoformat(),
             ),
         )
 
