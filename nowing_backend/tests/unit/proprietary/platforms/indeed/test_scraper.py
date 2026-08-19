@@ -164,3 +164,28 @@ class TestScraperFailureModes:
 
         assert out["degraded"] is True
         assert out["degradation_reason"] == "anti_bot_block"
+
+    @pytest.mark.asyncio
+    async def test_degrades_on_60s_timeout(self, monkeypatch):
+        """A 61s browser hang must be terminated and reported as a timeout."""
+        import asyncio
+
+        from app.proprietary.platforms.indeed import scraper as scraper_module
+
+        monkeypatch.setattr(scraper_module, "_INDEED_FETCH_TIMEOUT_SECONDS", 0.1)
+
+        async def _hang(*_args, **_kwargs):
+            await asyncio.sleep(61)
+            return ""
+
+        monkeypatch.setattr(scraper_module, "_fetch_search_page", _hang)
+
+        start = asyncio.get_event_loop().time()
+        out = await scrape_indeed(
+            {"keyword": "data engineer", "max_items": 1, "max_pages": 1}
+        )
+        elapsed = asyncio.get_event_loop().time() - start
+
+        assert out["degraded"] is True
+        assert out["degradation_reason"] == "timeout"
+        assert elapsed < 2.0

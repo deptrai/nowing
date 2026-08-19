@@ -17,6 +17,9 @@ logger = logging.getLogger(__name__)
 
 _BASE_URL = "https://www.indeed.com"
 
+# Hard 60s ceiling on every browser / crawler round-trip (AC-2 / AD-108).
+_INDEED_FETCH_TIMEOUT_SECONDS = 60.0
+
 _SALARY_PERIOD_RE = re.compile(
     r"\b(hour|hours|hourly|day|days|daily|week|weeks|weekly|month|months|monthly|year|years|yearly)\b",
     re.IGNORECASE,
@@ -580,7 +583,10 @@ async def _fetch_search_page(
     kwargs.update(build_stealthy_kwargs(get_stealth_config()))
     kwargs["page_action"] = scroll_to_bottom
 
-    page = await asyncio.to_thread(StealthyFetcher.fetch, url, **kwargs)
+    page = await asyncio.wait_for(
+        asyncio.to_thread(StealthyFetcher.fetch, url, **kwargs),
+        timeout=_INDEED_FETCH_TIMEOUT_SECONDS,
+    )
     html = getattr(page, "html_content", "")
     if not html:
         raise ValueError("empty search page")
@@ -595,7 +601,10 @@ async def _fetch_detail_page(url: str) -> dict[str, Any]:
     )
 
     connector = WebCrawlerConnector()
-    outcome = await connector.crawl_url(url)
+    outcome = await asyncio.wait_for(
+        connector.crawl_url(url),
+        timeout=_INDEED_FETCH_TIMEOUT_SECONDS,
+    )
     if outcome.status == "success" and outcome.result:
         content = outcome.result.get("content") or ""
         metadata = outcome.result.get("metadata") or {}
@@ -615,7 +624,10 @@ async def _fetch_detail_page(url: str) -> dict[str, Any]:
     }
     kwargs.update(build_stealthy_kwargs(get_stealth_config()))
 
-    page = await asyncio.to_thread(StealthyFetcher.fetch, url, **kwargs)
+    page = await asyncio.wait_for(
+        asyncio.to_thread(StealthyFetcher.fetch, url, **kwargs),
+        timeout=_INDEED_FETCH_TIMEOUT_SECONDS,
+    )
     html = getattr(page, "html_content", "")
     if not html:
         return {}
@@ -650,7 +662,10 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
             if remaining == 0:
                 break
 
-            html = await _fetch_search_page(keyword, location, radius, sort, start)
+            html = await asyncio.wait_for(
+                _fetch_search_page(keyword, location, radius, sort, start),
+                timeout=_INDEED_FETCH_TIMEOUT_SECONDS,
+            )
 
             cards = _parse_search_page(html)
             if not cards:
@@ -662,7 +677,10 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
                     continue
                 seen_jk.add(jk)
 
-                detail = await _fetch_detail_page(card["source_url"])
+                detail = await asyncio.wait_for(
+                    _fetch_detail_page(card["source_url"]),
+                    timeout=_INDEED_FETCH_TIMEOUT_SECONDS,
+                )
                 _apply_detail(card, detail)
                 cost_micros += config.INDEED_SCRAPE_MICROS_PER_ITEM
                 items.append(card)
@@ -678,6 +696,11 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
             start += len(cards)
             await asyncio.sleep(config.INDEED_PAGE_DELAY_S)
 
+    except TimeoutError:
+        logger.warning(
+            "indeed.scrape timed out after %ss", _INDEED_FETCH_TIMEOUT_SECONDS
+        )
+        return _degraded("timeout", cost_micros=cost_micros)
     except Exception as exc:
         logger.warning("indeed.scrape failed: %s", exc)
         if not items:

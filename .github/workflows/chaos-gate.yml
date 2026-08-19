@@ -1,0 +1,171 @@
+name: Anti-Zombie Chaos Gate
+
+# Story 26.7: 72h continuous scraping stress test with 0 zombie browser
+# processes, tini PID 1 verification, and Postgres WAL limit checks (AC-2 / AD-108).
+
+on:
+  pull_request:
+    paths:
+      - 'nowing_backend/scripts/chaos_scraper_stress.py'
+      - 'nowing_backend/scripts/docker/healthcheck_zombie.sh'
+      - 'nowing_backend/scripts/run_72h_chaos.sh'
+      - 'nowing_backend/Dockerfile'
+      - 'nowing_backend/app/tasks/dsh_worker.py'
+      - 'nowing_backend/app/proprietary/platforms/*/scraper.py'
+      - 'nowing_backend/app/services/phone_waterfall_service.py'
+      - 'docker/postgresql.conf'
+      - '.github/workflows/chaos-gate.yml'
+  workflow_dispatch:
+    inputs:
+      duration_seconds:
+        description: 'Stress duration in seconds (default: 300 for CI)'
+        required: true
+        default: '300'
+
+concurrency:
+  group: chaos-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  chaos-gate:
+    name: Anti-Zombie 300s Stress + tini + WAL
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image
+        run: |
+          docker build \
+            --target production \
+            -t nowing-chaos:local \
+            -f nowing_backend/Dockerfile \
+            nowing_backend
+
+      - name: Start Postgres with WAL limits
+        run: |
+          docker network create chaos-net || true
+          docker run -d --rm \
+            --name chaos-db \
+            --network chaos-net \
+            -v "$PWD/docker/postgresql.conf:/etc/postgresql/postgresql.conf:ro" \
+            -e POSTGRES_USER=nowing \
+            -e POSTGRES_PASSWORD=nowing \
+            -e POSTGRES_DB=nowing \
+            pgvector/pgvector:pg17 \
+            postgres -c config_file=/etc/postgresql/postgresql.conf
+
+      - name: Start Redis
+        run: |
+          docker run -d --rm \
+            --name chaos-redis \
+            --network chaos-net \
+            redis:8-alpine
+
+      - name: Wait for Postgres
+        run: |
+          for i in $(seq 1 30); do
+            if docker exec chaos-db pg_isready -U nowing -d nowing >/dev/null 2>&1; then
+              echo "Postgres is ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Postgres did not become ready" >&2
+          exit 1
+
+      - name: Run migrations
+        run: |
+          docker run --rm \
+            --network chaos-net \
+            -e DATABASE_URL=postgresql+asyncpg://nowing:nowing@chaos-db:5432/nowing \
+            -e REDIS_URL=redis://chaos-redis:6379/0 \
+            -e REDIS_APP_URL=redis://chaos-redis:6379/0 \
+            -e SERVICE_ROLE=migrate \
+            nowing-chaos:local
+
+      - name: Start backend
+        run: |
+          docker run -d --rm \
+            --name chaos-backend \
+            --network chaos-net \
+            -p 8000:8000 \
+            -e DATABASE_URL=postgresql+asyncpg://nowing:nowing@chaos-db:5432/nowing \
+            -e CELERY_BROKER_URL=redis://chaos-redis:6379/0 \
+            -e CELERY_RESULT_BACKEND=redis://chaos-redis:6379/0 \
+            -e REDIS_APP_URL=redis://chaos-redis:6379/0 \
+            -e SERVICE_ROLE=api \
+            -e ENVIRONMENT=test \
+            -e DSH_WORKER_SECRET=chaos-test \
+            -e TEST_EXTRACTION_SECRET=chaos-test \
+            -e SECRET_KEY=chaos-test-secret-key-not-for-production \
+            -e AUTH_TYPE=LOCAL \
+            -e REGISTRATION_ENABLED=TRUE \
+            -e ETL_SERVICE=DOCLING \
+            -e EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2 \
+            nowing-chaos:local
+
+      - name: Wait for backend
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8000/ready >/dev/null 2>&1; then
+              echo "Backend is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Backend did not become ready" >&2
+          exit 1
+
+      - name: Verify tini is PID 1
+        run: |
+          pid1_comm=$(docker exec chaos-backend sh -c 'ps -p 1 -o comm=' | tr -d '[:space:]')
+          echo "PID 1 command: $pid1_comm"
+          if [ "$pid1_comm" != "tini" ]; then
+            echo "FAIL: PID 1 is not tini (got '$pid1_comm')" >&2
+            exit 1
+          fi
+          echo "PASS: tini is PID 1"
+
+      - name: Verify Postgres WAL limits
+        run: |
+          docker exec chaos-db psql -U nowing -d nowing -t -c "SHOW max_slot_wal_keep_size;" > /tmp/max_slot.txt
+          docker exec chaos-db psql -U nowing -d nowing -t -c "SHOW wal_keep_size;" > /tmp/wal_keep.txt
+          cat /tmp/max_slot.txt /tmp/wal_keep.txt
+          if ! grep -qE '4096MB|4GB' /tmp/max_slot.txt; then
+            echo "FAIL: max_slot_wal_keep_size is not 4096MB" >&2
+            exit 1
+          fi
+          if ! grep -qE '1024MB|1GB' /tmp/wal_keep.txt; then
+            echo "FAIL: wal_keep_size is not 1024MB" >&2
+            exit 1
+          fi
+          echo "PASS: WAL limits are correct"
+
+      - name: Run 300s anti-zombie stress test
+        run: |
+          duration="${{ github.event.inputs.duration_seconds || '300' }}"
+          docker exec chaos-backend \
+            python /app/scripts/chaos_scraper_stress.py \
+              --duration-seconds "$duration" \
+              --workers 4 \
+              --zombie-log /tmp/zombie_log.jsonl \
+              --base-url http://localhost:8000
+
+      - name: Upload zombie log artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zombie-log
+          path: /tmp/zombie_log.jsonl
+          if-no-files-found: ignore
+
+      - name: Dump and cleanup
+        if: always()
+        run: |
+          docker logs chaos-backend || true
+          docker stop chaos-backend chaos-db chaos-redis || true
+          docker network rm chaos-net || true

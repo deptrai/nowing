@@ -16,7 +16,7 @@ import argparse
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Literal, Protocol, runtime_checkable
 
 import httpx
 
@@ -47,6 +47,12 @@ class RunContext:
     config: Config
     suite_state: SuiteState
     http: httpx.AsyncClient
+    mode: Literal["live", "replay"] = "live"
+    record: bool = False
+
+    def __post_init__(self) -> None:
+        if self.mode not in {"live", "replay"}:
+            raise ValueError(f"Invalid mode: {self.mode!r}. Must be 'live' or 'replay'.")
 
     @property
     def search_space_id(self) -> int:
@@ -124,6 +130,11 @@ class RunContext:
         path.mkdir(parents=True, exist_ok=True)
         return path
 
+    def replay_artifacts_dir(self) -> Path:
+        path = self.benchmark_data_dir() / "cassettes"
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
 
 # ---------------------------------------------------------------------------
 # Run artifact + report section
@@ -173,6 +184,7 @@ class Benchmark(Protocol):
     requires_suite_setup: bool = True
     requires_auth_for_ingest: bool = True
     requires_auth_for_run: bool = True
+    supports_replay: bool = False
 
     async def ingest(self, ctx: RunContext, **opts: Any) -> None:  # pragma: no cover - protocol
         ...

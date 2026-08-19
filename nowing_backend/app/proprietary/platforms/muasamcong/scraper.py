@@ -32,7 +32,9 @@ DEFAULT_CAPACITY = MAX_REQUESTS_PER_MINUTE  # 15.0 tokens
 class MuasamcongTokenBucket:
     """Async Token-Bucket Rate Limiter enforcing <= 15 requests/minute (AD-PROC-4)."""
 
-    def __init__(self, rate: float = DEFAULT_REFILL_RATE, capacity: float = DEFAULT_CAPACITY) -> None:
+    def __init__(
+        self, rate: float = DEFAULT_REFILL_RATE, capacity: float = DEFAULT_CAPACITY
+    ) -> None:
         self.rate = rate
         self.capacity = capacity
         self.tokens = capacity
@@ -98,7 +100,7 @@ class MuasamcongScraper:
     ) -> None:
         self.base_url = base_url
         self.proxy_url = proxy_url
-        self.timeout_seconds = timeout_seconds
+        self.timeout_seconds = min(float(timeout_seconds), 60.0)
         self.rate_limiter = MuasamcongTokenBucket(
             rate=DEFAULT_REFILL_RATE,
             capacity=DEFAULT_CAPACITY,
@@ -120,7 +122,12 @@ class MuasamcongScraper:
         """Converts raw e-GP JSON item into a validated ProcurementTenderItem."""
         bid_no = str(raw.get("bidNo") or raw.get("bid_no") or raw.get("bidCode") or "")
         bid_turn_no = str(raw.get("bidTurnNo") or raw.get("bid_turn_no") or "00")
-        project_name = str(raw.get("bidName") or raw.get("bid_name") or raw.get("projectName") or "Gói thầu")
+        project_name = str(
+            raw.get("bidName")
+            or raw.get("bid_name")
+            or raw.get("projectName")
+            or "Gói thầu"
+        )
         procuring_entity = raw.get("procuringEntityName") or raw.get("procuring_entity")
         investor = raw.get("investorName") or raw.get("investor")
         field = raw.get("bidField") or raw.get("field") or raw.get("procurement_field")
@@ -128,7 +135,9 @@ class MuasamcongScraper:
         funding_source = raw.get("fundingSource") or raw.get("funding_source")
 
         # Normalize price
-        raw_price = raw.get("bidPrice") or raw.get("bid_price") or raw.get("totalAmount")
+        raw_price = (
+            raw.get("bidPrice") or raw.get("bid_price") or raw.get("totalAmount")
+        )
         bid_price: float | None = None
         if raw_price is not None:
             try:
@@ -136,16 +145,30 @@ class MuasamcongScraper:
             except (ValueError, TypeError):
                 bid_price = None
 
-        bid_open_date = _parse_iso_datetime(raw.get("bidOpenDate") or raw.get("bid_open_date"))
-        bid_closing_at = _parse_iso_datetime(raw.get("bidCloseDate") or raw.get("bid_close_date") or raw.get("bid_closing_at"))
+        bid_open_date = _parse_iso_datetime(
+            raw.get("bidOpenDate") or raw.get("bid_open_date")
+        )
+        bid_closing_at = _parse_iso_datetime(
+            raw.get("bidCloseDate")
+            or raw.get("bid_close_date")
+            or raw.get("bid_closing_at")
+        )
         location = raw.get("location") or raw.get("bidLocation") or raw.get("province")
 
         doc_urls = raw.get("documentUrls") or raw.get("document_urls") or []
-        dossier_url = doc_urls[0] if isinstance(doc_urls, list) and doc_urls else raw.get("dossier_url")
+        dossier_url = (
+            doc_urls[0]
+            if isinstance(doc_urls, list) and doc_urls
+            else raw.get("dossier_url")
+        )
 
         raw_specs = raw.get("rawSpecs") or raw.get("raw_specs") or {}
         raw_status = str(raw.get("status") or "").upper()
-        status = "closed" if "CLOSE" in raw_status else ("cancelled" if "CANCEL" in raw_status else "active")
+        status = (
+            "closed"
+            if "CLOSE" in raw_status
+            else ("cancelled" if "CANCEL" in raw_status else "active")
+        )
 
         return ProcurementTenderItem(
             bid_no=bid_no,
@@ -199,7 +222,9 @@ class MuasamcongScraper:
                 headers=self._get_headers(),
                 follow_redirects=True,
             ) as client:
-                response = await client.post(url, json=payload)
+                response = await asyncio.wait_for(
+                    client.post(url, json=payload), timeout=self.timeout_seconds
+                )
                 response.raise_for_status()
                 data = response.json()
 
@@ -211,8 +236,12 @@ class MuasamcongScraper:
                 if isinstance(data, dict):
                     data_body = data.get("data") or data
                     if isinstance(data_body, dict):
-                        content_list = data_body.get("content") or data_body.get("items") or []
-                        total_elements = int(data_body.get("totalElements") or len(content_list))
+                        content_list = (
+                            data_body.get("content") or data_body.get("items") or []
+                        )
+                        total_elements = int(
+                            data_body.get("totalElements") or len(content_list)
+                        )
                         total_pages = int(data_body.get("totalPages") or 1)
                         page_num = int(data_body.get("pageNumber") or page)
                     elif isinstance(data_body, list):
@@ -231,6 +260,20 @@ class MuasamcongScraper:
                     degraded=False,
                 )
 
+        except TimeoutError:
+            logger.warning(
+                "Muasamcong scraper search timed out after %ss. Entering degraded mode.",
+                self.timeout_seconds,
+            )
+            return ScrapeResult(
+                items=[],
+                total_elements=0,
+                total_pages=0,
+                page_number=page,
+                page_size=size,
+                degraded=True,
+                degradation_reason="Request timed out",
+            )
         except Exception as exc:
             logger.warning(
                 "Muasamcong scraper search failed or timed out: %s. Entering degraded mode.",
@@ -264,15 +307,30 @@ class MuasamcongScraper:
                 headers=self._get_headers(),
                 follow_redirects=True,
             ) as client:
-                response = await client.get(url, params={"turnNo": bid_turn_no})
+                response = await asyncio.wait_for(
+                    client.get(url, params={"turnNo": bid_turn_no}),
+                    timeout=self.timeout_seconds,
+                )
                 response.raise_for_status()
                 data = response.json()
 
-                raw_item = data.get("data") if isinstance(data, dict) and "data" in data else data
+                raw_item = (
+                    data.get("data")
+                    if isinstance(data, dict) and "data" in data
+                    else data
+                )
                 if isinstance(raw_item, dict):
                     return self._normalize_item(raw_item)
                 return None
 
+        except TimeoutError:
+            logger.warning(
+                "Timed out fetching tender detail for %s (%s) after %ss",
+                bid_no,
+                bid_turn_no,
+                self.timeout_seconds,
+            )
+            return None
         except Exception as exc:
             logger.warning(
                 "Failed to fetch tender detail for %s (%s): %s",

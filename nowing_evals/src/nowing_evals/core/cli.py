@@ -75,7 +75,7 @@ console = Console(legacy_windows=False)
 
 #: Run directories are named by ``utc_iso_timestamp()``. Anything else is not a
 #: run and must not take part in the "latest wins" ordering.
-_RUN_TIMESTAMP_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z$")
+_RUN_TIMESTAMP_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z(?:_[a-zA-Z0-9_-]+)?$")
 
 
 # ---------------------------------------------------------------------------
@@ -546,7 +546,17 @@ async def _cmd_run(args: argparse.Namespace) -> int:
     extra_kwargs = {
         k: v
         for k, v in vars(args).items()
-        if k not in {"_func", "_async", "command", "subcommand", "suite", "benchmark", "log_level"}
+        if k
+        not in {
+            "_func",
+            "_async",
+            "command",
+            "subcommand",
+            "suite",
+            "benchmark",
+            "log_level",
+            "mode",
+        }
     }
 
     # Pre-auth hook (D10): a benchmark that declares run-option requirements
@@ -565,7 +575,13 @@ async def _cmd_run(args: argparse.Namespace) -> int:
     if state is None:
         return code
 
-    needs_auth = getattr(benchmark, "requires_auth_for_run", True)
+    mode = getattr(args, "mode", "live")
+    if mode == "replay" and not getattr(benchmark, "supports_replay", False):
+        console.print(
+            f"[red]Benchmark {args.suite}/{args.benchmark} does not support replay mode.[/red]"
+        )
+        return 2
+    needs_auth = getattr(benchmark, "requires_auth_for_run", True) and mode != "replay"
     token = None
     if needs_auth:
         try:
@@ -590,6 +606,8 @@ async def _cmd_run(args: argparse.Namespace) -> int:
             config=config,
             suite_state=state,
             http=http,
+            mode=getattr(args, "mode", "live"),
+            record=getattr(args, "record", False),
         )
         artifact = await benchmark.run(ctx, **extra_kwargs)
 
@@ -998,6 +1016,20 @@ def _build_parser() -> argparse.ArgumentParser:
         for benchmark in registry.list_benchmarks(suite):
             bp = suite_bench.add_parser(
                 benchmark.name, help=getattr(benchmark, "description", benchmark.name)
+            )
+            bp.add_argument(
+                "--mode",
+                choices=["live", "replay"],
+                default="live",
+                help="Execution mode: live (calls APIs) or replay (uses golden cassettes).",
+            )
+            bp.add_argument(
+                "--record",
+                "--record-cassettes",
+                dest="record",
+                action="store_true",
+                default=False,
+                help="Record live endpoint responses as sanitized replay cassettes.",
             )
             if hasattr(benchmark, "add_run_args"):
                 benchmark.add_run_args(bp)

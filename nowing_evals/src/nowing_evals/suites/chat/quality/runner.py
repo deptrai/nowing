@@ -378,7 +378,7 @@ class ChatQualityBenchmark:
             help="Comma-separated tag filter (e.g. memory,document).",
         )
         parser.add_argument(
-            "--mode",
+            "--chat-mode",
             default="balanced",
             choices=["speed", "balanced", "quality", "auto"],
             help="Chat mode to use for Nowing answers.",
@@ -472,7 +472,7 @@ class ChatQualityBenchmark:
         workspace_id = opts.get("workspace_id")
         sample_n = opts.get("sample_n")
         tags_filter = opts.get("tags")
-        mode = str(opts.get("mode") or "balanced")
+        mode = str(opts.get("chat_mode") or "balanced")
         valid_modes = {"speed", "balanced", "quality", "auto"}
         if mode not in valid_modes:
             raise RuntimeError(

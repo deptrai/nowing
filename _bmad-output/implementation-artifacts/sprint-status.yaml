@@ -1,5 +1,5 @@
 # generated: 2026-08-08
-# last_updated: 2026-08-19  # Story 26.6 file created
+# last_updated: 2026-08-19  # Story 26.7 validated and revised
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -268,8 +268,8 @@ development_status:
   26-3: pending-human-review  # Multi-Tier Hybrid LLM Router (Gemini Flash Free Tier + DeepSeek V4 + Qwen 3.8)
   26-4: done  # PII Vault Fernet Encryption, HMAC Deduplication & Decree 13 Opt-Out — review findings patched, 122 unit + 9 integration tests green, Alembic fresh-DB + real-data migration green
   26-5: in-progress  # Split Canvas Glass Box Mission Control, Two-Tier Phone Unlock & Shimmer Influx
-  26-6: done  # Telegram Interactive Checkpoint Bot & 1-Click Auto-Refund Dialog — human review gate APPROVED, 60 unit tests green, 9 patches applied, AC1-AC6 satisfied
-  26-7: backlog  # Hermetic Quality Gates, Benchmark Suite & Anti-Zombie Chaos Testing
+  26-6: done  # Telegram Interactive Checkpoint Bot & 1-Click Auto-Refund Dialog — group-1 data/config + chunk-1 core-implementation patches applied, group chat callback authorization enforced, 72 unit tests green
+  26-7: done  # Hermetic Quality Gates, Benchmark Suite & Anti-Zombie Chaos Testing — 100 lead extraction fixtures + golden cassettes, hermetic replay gate green, baseline ratified
   epic-26-retrospective: optional
 
 

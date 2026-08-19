@@ -214,3 +214,29 @@ class TestShopeeScraperResilienceAndErrorHandling:
             pytest.raises(ShopeeScraperError),
         ):
             await scraper.search_products(keyword="test")
+
+    @pytest.mark.asyncio
+    async def test_61s_http_hang_is_terminated(self, monkeypatch):
+        """A 61s HTTP hang must be terminated by the 60s timeout guard."""
+        import asyncio
+
+        import respx
+
+        from app.proprietary.platforms.shopee import scraper as shopee_module
+
+        async def _hang(request):
+            await asyncio.sleep(61)
+            return httpx.Response(200, json=_SAMPLE_SEARCH_RESPONSE)
+
+        with respx.mock:
+            respx.get(
+                "https://shopee.vn/api/v4/search/search_items",
+            ).mock(side_effect=_hang)
+
+            scraper = ShopeeScraper(timeout_seconds=0.1, max_retries=1)
+            start = asyncio.get_event_loop().time()
+            with pytest.raises(ShopeeScraperError):
+                await scraper.search_products(keyword="test")
+            elapsed = asyncio.get_event_loop().time() - start
+
+        assert elapsed < 2.0

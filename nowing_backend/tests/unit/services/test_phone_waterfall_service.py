@@ -12,6 +12,7 @@ Tests:
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import json
@@ -44,6 +45,7 @@ from app.services.pii.verified_contact_encryption import VerifiedContactEncrypti
 # ─────────────────────────────────────────────────────────────
 # 1. 2018 Telecom Legacy 11-to-10 Digit Conversion Tests (Story 24.2 / AC-2)
 # ─────────────────────────────────────────────────────────────
+
 
 @pytest.mark.unit
 class TestLegacy11DigitConversion:
@@ -99,6 +101,7 @@ class TestLegacy11DigitConversion:
 # 2. Standard Normalization, Masking, Hashing & ReDoS Tests
 # ─────────────────────────────────────────────────────────────
 
+
 @pytest.mark.unit
 class TestStandardPhoneNormalization:
     """Validate standard 10-digit formats and security protections."""
@@ -119,7 +122,8 @@ class TestStandardPhoneNormalization:
             == "0908123456"
         )
         assert (
-            normalize_vn_phone("khong chin tam bay sau nam bon ba hai mot") == "0987654321"
+            normalize_vn_phone("khong chin tam bay sau nam bon ba hai mot")
+            == "0987654321"
         )
 
     def test_normalize_vn_phone_invalid_prefixes_or_lengths(self):
@@ -136,7 +140,9 @@ class TestStandardPhoneNormalization:
         start = time.perf_counter()
         _ = normalize_vn_phone(evil_text, timeout_sec=0.05)
         elapsed = time.perf_counter() - start
-        assert elapsed < 0.1  # Must execute or abort well within bound (<100ms max in test env)
+        assert (
+            elapsed < 0.1
+        )  # Must execute or abort well within bound (<100ms max in test env)
 
     def test_mask_phone(self):
         assert mask_phone("0908123456") == "0908***456"
@@ -179,6 +185,7 @@ class TestStandardPhoneNormalization:
 # 3. PII Vault Encryption Tests (INV-21.3)
 # ─────────────────────────────────────────────────────────────
 
+
 @pytest.mark.unit
 class TestPiiEncryption:
     """Validate Fernet symmetric encryption of phone numbers at rest."""
@@ -199,6 +206,7 @@ class TestPiiEncryption:
 # Tier 2: Chợ Tốt / Zalo UID
 # Tier 3: Masothue Legal Rep Phone & Passive Carrier HLR
 # ─────────────────────────────────────────────────────────────
+
 
 @pytest.mark.unit
 class TestWaterfallTierExecution:
@@ -226,8 +234,14 @@ class TestWaterfallTierExecution:
 
         with (
             patch("app.services.phone_waterfall_service.get_redis", return_value=None),
-            patch("app.services.phone_waterfall_service.wallet_credit.check_balance", new_callable=AsyncMock),
-            patch("app.services.phone_waterfall_service.wallet_credit.apply_debit", new_callable=AsyncMock),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.check_balance",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.apply_debit",
+                new_callable=AsyncMock,
+            ),
             patch(
                 "app.services.scraper_platform_account_service.ScraperPlatformAccountRotator.get_credentials",
                 new_callable=AsyncMock,
@@ -276,8 +290,14 @@ class TestWaterfallTierExecution:
 
         with (
             patch("app.services.phone_waterfall_service.get_redis", return_value=None),
-            patch("app.services.phone_waterfall_service.wallet_credit.check_balance", new_callable=AsyncMock),
-            patch("app.services.phone_waterfall_service.wallet_credit.apply_debit", new_callable=AsyncMock),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.check_balance",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.apply_debit",
+                new_callable=AsyncMock,
+            ),
             patch(
                 "app.services.phone_waterfall_service.chotot_fetch_phone",
                 new_callable=AsyncMock,
@@ -323,8 +343,14 @@ class TestWaterfallTierExecution:
 
         with (
             patch("app.services.phone_waterfall_service.get_redis", return_value=None),
-            patch("app.services.phone_waterfall_service.wallet_credit.check_balance", new_callable=AsyncMock),
-            patch("app.services.phone_waterfall_service.wallet_credit.apply_debit", new_callable=AsyncMock),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.check_balance",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.apply_debit",
+                new_callable=AsyncMock,
+            ),
             # Mock Corporate Verification returning rep_phone
             patch(
                 "app.services.corporate_verification_service.CorporateVerificationService.verify_company",
@@ -335,6 +361,7 @@ class TestWaterfallTierExecution:
                 CorporateMatchResult,
                 CorporateProfile,
             )
+
             mock_corp_verify.return_value = CorporateMatchResult(
                 tax_id="0101248141",
                 is_verified=True,
@@ -384,8 +411,14 @@ class TestWaterfallTierExecution:
 
         with (
             patch("app.services.phone_waterfall_service.get_redis", return_value=None),
-            patch("app.services.phone_waterfall_service.wallet_credit.check_balance", new_callable=AsyncMock),
-            patch("app.services.phone_waterfall_service.wallet_credit.apply_debit", new_callable=AsyncMock) as mock_debit,
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.check_balance",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.apply_debit",
+                new_callable=AsyncMock,
+            ) as mock_debit,
         ):
             result = await service.resolve_lead_phone(
                 workspace_id=workspace_id,
@@ -407,12 +440,15 @@ class TestWaterfallTierExecution:
 # 5. Fail-Closed DNC Compliance Tests (INV-24.3 / Story 21.14)
 # ─────────────────────────────────────────────────────────────
 
+
 @pytest.mark.unit
 class TestWaterfallDncCompliance:
     """Validate in-stream fail-closed DNC check during phone waterfall resolution."""
 
     @pytest.mark.asyncio
-    async def test_waterfall_phone_blocked_by_workspace_dnc_charges_zero_and_masks(self):
+    async def test_waterfall_phone_blocked_by_workspace_dnc_charges_zero_and_masks(
+        self,
+    ):
         """When resolved candidate phone is in Workspace DNC, resolution stops and charges 0 credits."""
         session = AsyncMock()
         session.add = MagicMock()
@@ -434,8 +470,14 @@ class TestWaterfallDncCompliance:
 
         with (
             patch("app.services.phone_waterfall_service.get_redis", return_value=None),
-            patch("app.services.phone_waterfall_service.wallet_credit.check_balance", new_callable=AsyncMock),
-            patch("app.services.phone_waterfall_service.wallet_credit.apply_debit", new_callable=AsyncMock) as mock_debit,
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.check_balance",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.apply_debit",
+                new_callable=AsyncMock,
+            ) as mock_debit,
             patch(
                 "app.services.scraper_platform_account_service.ScraperPlatformAccountRotator.get_credentials",
                 new_callable=AsyncMock,
@@ -493,8 +535,14 @@ class TestWaterfallDncCompliance:
 
         with (
             patch("app.services.phone_waterfall_service.get_redis", return_value=None),
-            patch("app.services.phone_waterfall_service.wallet_credit.check_balance", new_callable=AsyncMock),
-            patch("app.services.phone_waterfall_service.wallet_credit.apply_debit", new_callable=AsyncMock) as mock_debit,
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.check_balance",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.apply_debit",
+                new_callable=AsyncMock,
+            ) as mock_debit,
             patch(
                 "app.services.scraper_platform_account_service.ScraperPlatformAccountRotator.get_credentials",
                 new_callable=AsyncMock,
@@ -550,8 +598,14 @@ class TestWaterfallDncCompliance:
 
         with (
             patch("app.services.phone_waterfall_service.get_redis", return_value=None),
-            patch("app.services.phone_waterfall_service.wallet_credit.check_balance", new_callable=AsyncMock),
-            patch("app.services.phone_waterfall_service.wallet_credit.apply_debit", new_callable=AsyncMock) as mock_debit,
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.check_balance",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.apply_debit",
+                new_callable=AsyncMock,
+            ) as mock_debit,
             patch(
                 "app.services.scraper_platform_account_service.ScraperPlatformAccountRotator.get_credentials",
                 new_callable=AsyncMock,
@@ -584,6 +638,7 @@ class TestWaterfallDncCompliance:
 # ─────────────────────────────────────────────────────────────
 # 6. Auto-Refund SLA & Redis Caching Tests
 # ─────────────────────────────────────────────────────────────
+
 
 @pytest.mark.unit
 class TestAutoRefundAndCaching:
@@ -632,9 +687,18 @@ class TestAutoRefundAndCaching:
         service = PhoneWaterfallService(session)
 
         with (
-            patch("app.services.phone_waterfall_service.get_redis", return_value=fake_redis),
-            patch("app.services.phone_waterfall_service.wallet_credit.check_balance", new_callable=AsyncMock) as mock_check,
-            patch("app.services.phone_waterfall_service.wallet_credit.apply_debit", new_callable=AsyncMock) as mock_debit,
+            patch(
+                "app.services.phone_waterfall_service.get_redis",
+                return_value=fake_redis,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.check_balance",
+                new_callable=AsyncMock,
+            ) as mock_check,
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.apply_debit",
+                new_callable=AsyncMock,
+            ) as mock_debit,
         ):
             result = await service.resolve_lead_phone(
                 workspace_id=workspace_id,
@@ -663,7 +727,9 @@ class TestAutoRefundAndCaching:
             lead
             if model == Lead
             else (
-                User(id=user_id, credit_micros_balance=5000000) if model == User else None
+                User(id=user_id, credit_micros_balance=5000000)
+                if model == User
+                else None
             )
         )
 
@@ -732,7 +798,8 @@ class TestAutoRefundAndCaching:
             lead_id=lead_id,
             status="success",
             cost_micros=1500000,
-            created_at=datetime.now(UTC) - timedelta(hours=26),  # 26 hours ago (>24h SLA)
+            created_at=datetime.now(UTC)
+            - timedelta(hours=26),  # 26 hours ago (>24h SLA)
         )
 
         mock_log_res = MagicMock()
@@ -750,3 +817,120 @@ class TestAutoRefundAndCaching:
 
         assert exc_info.value.status_code == 400
         assert "Auto-refund SLA expired" in exc_info.value.detail
+
+
+# ─────────────────────────────────────────────────────────────
+# 7. 60s Hard Timeout Audit Tests (AC-2 / AD-108)
+# ─────────────────────────────────────────────────────────────
+
+
+@pytest.mark.unit
+class TestPhoneWaterfall60sTimeout:
+    """Every external phone-resolution network / browser call must terminate at 60s."""
+
+    @pytest.mark.asyncio
+    async def test_tier_1_batdongsan_61s_hang_terminated(self, monkeypatch):
+        from app.services import phone_waterfall_service as pws
+
+        monkeypatch.setattr(pws, "_PHONE_RESOLVE_TIMEOUT_SECONDS", 0.1)
+        monkeypatch.setattr(pws, "get_redis", lambda: None)
+
+        class FakeRotator:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            async def get_credentials(self, wait=False, timeout=2.0):
+                return (None, None)
+
+            async def record_use(self, *args, **kwargs):
+                pass
+
+        monkeypatch.setattr(pws, "ScraperPlatformAccountRotator", FakeRotator)
+        monkeypatch.setattr(
+            pws, "ScraperPlatformAccountService", lambda session: AsyncMock()
+        )
+
+        async def _hang(*args, **kwargs):
+            await asyncio.sleep(61)
+
+        monkeypatch.setattr(
+            pws,
+            "fetch_detail_phone",
+            AsyncMock(side_effect=_hang),
+        )
+
+        session = AsyncMock()
+        service = PhoneWaterfallService(session)
+        start = asyncio.get_event_loop().time()
+        result = await service._resolve_tier_1_batdongsan(
+            "https://batdongsan.com.vn/ban-nha-pr12345", None
+        )
+        elapsed = asyncio.get_event_loop().time() - start
+
+        assert result.phone is None
+        assert result.raw_response.get("reason") == "batdongsan_phone_not_found"
+        assert elapsed < 2.0
+
+    @pytest.mark.asyncio
+    async def test_tier_2_chotot_61s_hang_terminated(self, monkeypatch):
+        from app.services import phone_waterfall_service as pws
+
+        monkeypatch.setattr(pws, "_PHONE_RESOLVE_TIMEOUT_SECONDS", 0.1)
+
+        async def _hang(*args, **kwargs):
+            await asyncio.sleep(61)
+
+        monkeypatch.setattr(
+            pws,
+            "chotot_fetch_phone",
+            AsyncMock(side_effect=_hang),
+        )
+
+        session = AsyncMock()
+        service = PhoneWaterfallService(session)
+        start = asyncio.get_event_loop().time()
+        result = await service._resolve_tier_2_chotot(
+            "https://www.nhatot.com/12345678.htm", None
+        )
+        elapsed = asyncio.get_event_loop().time() - start
+
+        assert result.phone is None
+        assert result.raw_response.get("reason") == "chotot_phone_not_found"
+        assert elapsed < 2.0
+
+    @pytest.mark.asyncio
+    async def test_tier_3_masothue_61s_hang_terminated(self, monkeypatch):
+        from app.services import (
+            corporate_verification_service as cvs,
+            phone_waterfall_service as pws,
+        )
+
+        monkeypatch.setattr(pws, "_PHONE_RESOLVE_TIMEOUT_SECONDS", 0.1)
+
+        class FakeCorpService:
+            async def verify_company(self, **kwargs):
+                await asyncio.sleep(61)
+
+        monkeypatch.setattr(
+            cvs, "CorporateVerificationService", lambda session: FakeCorpService()
+        )
+
+        lead_id = uuid4()
+        lead = Lead(
+            id=lead_id,
+            workspace_id=1,
+            company_name="Công ty TNHH Test",
+            tax_id="0123456789",
+        )
+
+        session = AsyncMock()
+        service = PhoneWaterfallService(session)
+        start = asyncio.get_event_loop().time()
+        result = await service._resolve_tier_3_masothue_and_carrier(
+            lead=lead, source_url=None, raw_text=None
+        )
+        elapsed = asyncio.get_event_loop().time() - start
+
+        assert result.phone is None
+        assert result.raw_response.get("reason") == "no_text_for_carrier_hlr"
+        assert elapsed < 2.0

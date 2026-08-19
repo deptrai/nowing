@@ -231,3 +231,39 @@ class TestScraperFailureModes:
 
         assert out["degraded"] is False
         assert out["items"] == []
+
+    @pytest.mark.asyncio
+    async def test_degrades_on_61s_http_hang(self, monkeypatch):
+        """A 61s HTTP hang must be terminated and reported as timeout."""
+        import asyncio
+
+        import respx
+
+        from app.proprietary.platforms.itviec import scraper as scraper_module
+
+        monkeypatch.setattr(scraper_module, "_REQUEST_TIMEOUT", 0.1)
+
+        async def _hang(request):
+            await asyncio.sleep(61)
+            return httpx.Response(200, text="")
+
+        with respx.mock:
+            respx.get("https://itviec.com/it-jobs/data-engineer").mock(
+                side_effect=_hang
+            )
+            respx.get(
+                re.compile(r"https://itviec\.com/it-jobs/data-engineer\?page=\d+")
+            ).mock(side_effect=_hang)
+            respx.get(
+                re.compile(r"https://itviec\.com/.*/content")
+            ).mock(side_effect=_hang)
+
+            start = asyncio.get_event_loop().time()
+            out = await scrape_itviec(
+                {"keyword": "data engineer", "max_items": 1, "max_pages": 1}
+            )
+            elapsed = asyncio.get_event_loop().time() - start
+
+        assert out["degraded"] is True
+        assert out["degradation_reason"] == "timeout"
+        assert elapsed < 2.0

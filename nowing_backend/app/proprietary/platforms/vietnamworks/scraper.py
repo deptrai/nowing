@@ -167,10 +167,14 @@ def _normalize_job(job: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("missing jobTitle or companyName in job entry")
 
     working_locations = job.get("workingLocations") or []
-    salary_min, salary_max = _normalize_salary(job.get("salaryMin"), job.get("salaryMax"))
+    salary_min, salary_max = _normalize_salary(
+        job.get("salaryMin"), job.get("salaryMax")
+    )
 
     type_working_id = job.get("typeWorkingId")
-    employment_type = _TYPE_WORKING_MAP.get(type_working_id) if type_working_id is not None else None
+    employment_type = (
+        _TYPE_WORKING_MAP.get(type_working_id) if type_working_id is not None else None
+    )
 
     skills = []
     for skill in job.get("skills") or []:
@@ -212,7 +216,9 @@ def _normalize_job(job: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _build_request_body(params: dict[str, Any], page: int, hits_per_page: int) -> dict[str, Any]:
+def _build_request_body(
+    params: dict[str, Any], page: int, hits_per_page: int
+) -> dict[str, Any]:
     body: dict[str, Any] = {
         "keyword": params.get("keyword", ""),
         "page": page,
@@ -260,7 +266,9 @@ def _extract_items(envelope: dict[str, Any]) -> list[dict[str, Any]]:
         try:
             items.append(_normalize_job(job))
         except Exception as exc:
-            logger.warning("vietnamworks: skipping malformed job at index %d: %s", index, exc)
+            logger.warning(
+                "vietnamworks: skipping malformed job at index %d: %s", index, exc
+            )
     return items
 
 
@@ -272,8 +280,21 @@ def _headers() -> dict[str, str]:
     }
 
 
-async def _do_request(client: httpx.AsyncClient, body: dict[str, Any]) -> httpx.Response:
-    return await client.post(_API_URL, json=body, headers=_headers(), timeout=config.VIETNAMWORKS_TIMEOUT_S)
+_REQUEST_TIMEOUT = min(getattr(config, "VIETNAMWORKS_TIMEOUT_S", 60.0), 60.0)
+
+
+async def _do_request(
+    client: httpx.AsyncClient, body: dict[str, Any]
+) -> httpx.Response:
+    return await asyncio.wait_for(
+        client.post(
+            _API_URL,
+            json=body,
+            headers=_headers(),
+            timeout=httpx.Timeout(_REQUEST_TIMEOUT),
+        ),
+        timeout=_REQUEST_TIMEOUT,
+    )
 
 
 async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
@@ -321,7 +342,7 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
     retry_backoff = getattr(config, "VIETNAMWORKS_RETRY_BACKOFF_BASE_S", 0.5)
 
     try:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(60.0)) as client:
             for page in range(starting_page, starting_page + max_pages):
                 # Limit the page size so we don't over-fetch on the last page.
                 remaining = max(0, max_items - len(items))
@@ -337,7 +358,7 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
                         resp = await _do_request(client, body)
                         if resp.status_code == 429:
                             if attempt < retry_attempts:
-                                await asyncio.sleep(retry_backoff * (2 ** attempt))
+                                await asyncio.sleep(retry_backoff * (2**attempt))
                                 continue
                             # Exceeded retry budget for this page.
                             return _degraded("rate_limited", items=items)
@@ -356,7 +377,11 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
                 try:
                     resp.raise_for_status()
                 except httpx.HTTPStatusError as exc:
-                    logger.warning("vietnamworks unexpected status %s: %s", exc.response.status_code, exc)
+                    logger.warning(
+                        "vietnamworks unexpected status %s: %s",
+                        exc.response.status_code,
+                        exc,
+                    )
                     return _degraded("api_error", items=items)
 
                 try:
@@ -387,7 +412,7 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
                 if page < starting_page + max_pages - 1:
                     await asyncio.sleep(config.VIETNAMWORKS_PAGE_DELAY_S)
 
-    except httpx.TimeoutException:
+    except (httpx.TimeoutException, TimeoutError):
         return _degraded("timeout", items=items)
     except httpx.ConnectError as exc:
         logger.warning("vietnamworks connect error: %s", exc)

@@ -35,3 +35,10 @@
 !canonical/fixtures/*.py
 !canonical/fixtures/*.jsonl
 !canonical/fixtures/*.json
+
+# Story 26.7 Lead extraction regression dataset and golden cassettes.
+!lead_extraction/
+!lead_extraction/regression/
+!lead_extraction/regression/cases.jsonl
+!lead_extraction/regression/cassettes/
+!lead_extraction/regression/cassettes/*.sse.jsonl

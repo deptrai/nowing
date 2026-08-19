@@ -53,11 +53,11 @@ class ShopeeScraper:
         max_retries: int = 3,
         proxy_url: str | None = None,
     ) -> None:
-        self.timeout_seconds = timeout_seconds
+        self.timeout_seconds = min(float(timeout_seconds), 60.0)
         self.max_retries = max_retries
         self.proxy_url = proxy_url
         self._client = httpx.AsyncClient(
-            timeout=self.timeout_seconds,
+            timeout=httpx.Timeout(self.timeout_seconds),
             follow_redirects=True,
             proxy=self.proxy_url,
         )
@@ -101,22 +101,31 @@ class ShopeeScraper:
 
         for attempt in range(self.max_retries):
             try:
-                response = await self._client.get(url, params=params, headers=headers)
+                response = await asyncio.wait_for(
+                    self._client.get(url, params=params, headers=headers),
+                    timeout=self.timeout_seconds,
+                )
                 if response.status_code == 200:
                     try:
                         return response.json()
                     except Exception as json_err:
-                        raise ShopeeScraperError(f"Failed to parse JSON: {json_err}") from json_err
+                        raise ShopeeScraperError(
+                            f"Failed to parse JSON: {json_err}"
+                        ) from json_err
 
                 if response.status_code == 429:
                     if attempt == self.max_retries - 1:
-                        raise ShopeeRateLimitedError("Shopee rate limit exceeded (HTTP 429).")
+                        raise ShopeeRateLimitedError(
+                            "Shopee rate limit exceeded (HTTP 429)."
+                        )
                     await asyncio.sleep(0.5 * (2**attempt))
                     continue
 
                 if response.status_code == 403:
                     if attempt == self.max_retries - 1:
-                        raise ShopeeBlockedError("Shopee blocked access / bot detected (HTTP 403).")
+                        raise ShopeeBlockedError(
+                            "Shopee blocked access / bot detected (HTTP 403)."
+                        )
                     await asyncio.sleep(0.5 * (2**attempt))
                     continue
 
@@ -132,14 +141,22 @@ class ShopeeScraper:
                     f"Unexpected Shopee HTTP status {response.status_code}: {response.text[:200]}"
                 )
 
-            except (httpx.TimeoutException, httpx.NetworkError) as net_err:
+            except (
+                httpx.TimeoutException,
+                httpx.NetworkError,
+                TimeoutError,
+            ) as net_err:
                 last_error = net_err
                 if attempt == self.max_retries - 1:
-                    raise ShopeeScraperError(f"Network failure connecting to Shopee: {net_err}") from net_err
+                    raise ShopeeScraperError(
+                        f"Network failure connecting to Shopee: {net_err}"
+                    ) from net_err
                 await asyncio.sleep(0.5 * (2**attempt))
 
         if last_error:
-            raise ShopeeScraperError(f"Shopee request failed: {last_error}") from last_error
+            raise ShopeeScraperError(
+                f"Shopee request failed: {last_error}"
+            ) from last_error
         raise ShopeeScraperError("Shopee request failed with unknown error.")
 
     async def search_products(
@@ -198,7 +215,9 @@ class ShopeeScraper:
             rating_star = normalize_rating(rating_data.get("rating_star"))
             rating_counts = rating_data.get("rating_count")
             rating_count = (
-                sum(rating_counts) if isinstance(rating_counts, list) else int(rating_counts or 0)
+                sum(rating_counts)
+                if isinstance(rating_counts, list)
+                else int(rating_counts or 0)
             )
 
             stock = item_basic.get("stock", 0)
@@ -251,7 +270,9 @@ class ShopeeScraper:
 
         item_data = data.get("data") or {}
         if not item_data or "itemid" not in item_data:
-            raise ShopeeNotFoundError(f"Shopee product {item_id} (shop: {shop_id}) not found.")
+            raise ShopeeNotFoundError(
+                f"Shopee product {item_id} (shop: {shop_id}) not found."
+            )
 
         title = item_data.get("name", "")
         raw_price = item_data.get("price")
@@ -267,7 +288,9 @@ class ShopeeScraper:
         rating_star = normalize_rating(rating_data.get("rating_star"))
         rating_counts = rating_data.get("rating_count")
         rating_count = (
-            sum(rating_counts) if isinstance(rating_counts, list) else int(rating_counts or 0)
+            sum(rating_counts)
+            if isinstance(rating_counts, list)
+            else int(rating_counts or 0)
         )
 
         stock = item_data.get("stock", 0)

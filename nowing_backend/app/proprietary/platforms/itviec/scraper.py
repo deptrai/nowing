@@ -17,8 +17,13 @@ logger = logging.getLogger(__name__)
 
 _BASE_URL = "https://itviec.com"
 
-_SALARY_PERIOD_RE = re.compile(r"\b(tháng|month|năm|year|giờ|hour|ngày|day)\b", re.IGNORECASE)
-_AGE_RE = re.compile(r"Posted\s+(\d+)\s+(hour|hours|day|days|week|weeks|month|months)\s+ago", re.IGNORECASE)
+_SALARY_PERIOD_RE = re.compile(
+    r"\b(tháng|month|năm|year|giờ|hour|ngày|day)\b", re.IGNORECASE
+)
+_AGE_RE = re.compile(
+    r"Posted\s+(\d+)\s+(hour|hours|day|days|week|weeks|month|months)\s+ago",
+    re.IGNORECASE,
+)
 
 
 def _degraded(reason: str, *, cost_micros: int = 0) -> dict[str, Any]:
@@ -45,7 +50,9 @@ def _normalize_keyword(value: str) -> str:
     return text.strip("-") or "it"
 
 
-def _extract_salary_numbers(text: str) -> tuple[int | None, int | None, str, str | None]:
+def _extract_salary_numbers(
+    text: str,
+) -> tuple[int | None, int | None, str, str | None]:
     """Parse a free-form salary string into (min, max, currency, period_tag).
 
     Returns integers in the raw currency unit (VND for Vietnamese postings).
@@ -54,7 +61,10 @@ def _extract_salary_numbers(text: str) -> tuple[int | None, int | None, str, str
         return None, None, "VND", None
 
     lower = text.lower()
-    if any(k in lower for k in ("sign in to view", "thương lượng", "thoả thuận", "negotiable")):
+    if any(
+        k in lower
+        for k in ("sign in to view", "thương lượng", "thoả thuận", "negotiable")
+    ):
         return 0, 0, "VND", "negotiable"
 
     currency = "VND"
@@ -148,7 +158,7 @@ def _html_text_without_heading(div: Any, heading: str) -> str:
     """Return the text of ``div`` minus its first ``h2`` heading text."""
     full = _safe_text(div) or ""
     if heading and full.startswith(heading):
-        return full[len(heading):].strip()
+        return full[len(heading) :].strip()
     return full
 
 
@@ -188,25 +198,47 @@ def _parse_detail(html: str, source_url: str) -> dict[str, Any]:
     location = None
     work_mode = None
     posted_text = None
-    for span in overview_root.xpath('.//span[contains(@class,"text-rich-grey")] | .//div[contains(@class,"text-rich-grey") and @title]'):
+    for span in overview_root.xpath(
+        './/span[contains(@class,"text-rich-grey")] | .//div[contains(@class,"text-rich-grey") and @title]'
+    ):
         text = _safe_text(span) or ""
-        if not location and any(k in text for k in ("Hà Nội", "Ha Noi", "Hồ Chí Minh", "Ho Chi Minh", "Đà Nẵng", "Da Nang", "phố", "đường", "tầng", "tòa nhà")):
+        if not location and any(
+            k in text
+            for k in (
+                "Hà Nội",
+                "Ha Noi",
+                "Hồ Chí Minh",
+                "Ho Chi Minh",
+                "Đà Nẵng",
+                "Da Nang",
+                "phố",
+                "đường",
+                "tầng",
+                "tòa nhà",
+            )
+        ):
             location = text
         if not work_mode and text in ("At office", "Remote", "Hybrid"):
             work_mode = text
-        if not posted_text and ("ago" in text or any(k in text for k in ("hour", "day", "week", "month"))):
+        if not posted_text and (
+            "ago" in text or any(k in text for k in ("hour", "day", "week", "month"))
+        ):
             posted_text = text
 
     # Skills appear as tag links under the overview.
     skills: list[str] = []
-    for a in overview_root.xpath('.//a[contains(@class,"itag-light") and contains(@href,"/it-jobs/")]'):
+    for a in overview_root.xpath(
+        './/a[contains(@class,"itag-light") and contains(@href,"/it-jobs/")]'
+    ):
         skill = _safe_text(a)
         if skill and skill not in skills:
             skills.append(skill)
 
     # Job domain tags are non-link itags.
     job_domain: list[str] = []
-    for div in overview_root.xpath('.//div[contains(@class,"itag") and contains(@class,"cursor-default")]'):
+    for div in overview_root.xpath(
+        './/div[contains(@class,"itag") and contains(@class,"cursor-default")]'
+    ):
         domain = _safe_text(div)
         if domain and domain not in job_domain:
             job_domain.append(domain)
@@ -219,21 +251,31 @@ def _parse_detail(html: str, source_url: str) -> dict[str, Any]:
     for section in root.xpath(
         '//section[contains(@class,"job-description")] | //section[contains(@class,"job-experiences")]'
     ):
-        heading = _safe_text(section.xpath('.//h2[1]')[0]) if section.xpath('.//h2[1]') else ""
+        heading = (
+            _safe_text(section.xpath(".//h2[1]")[0])
+            if section.xpath(".//h2[1]")
+            else ""
+        )
         content_els = section.xpath('.//div[contains(@class,"paragraph")]')
         content = _safe_text(content_els[0]) if content_els else ""
         if heading and "Job description" in heading:
             jd = content
-        elif heading and ("skills and experience" in heading or "yêu cầu" in heading.lower()):
+        elif heading and (
+            "skills and experience" in heading or "yêu cầu" in heading.lower()
+        ):
             req = content
 
     if jd is None or req is None:
         for div in root.xpath('//div[contains(@class,"paragraph") and h2]'):
-            heading_els = div.xpath('.//h2')
+            heading_els = div.xpath(".//h2")
             heading = _safe_text(heading_els[0]) if heading_els else ""
             if jd is None and heading and "Job description" in heading:
                 jd = _html_text_without_heading(div, heading)
-            elif req is None and heading and ("skills and experience" in heading or "yêu cầu" in heading.lower()):
+            elif (
+                req is None
+                and heading
+                and ("skills and experience" in heading or "yêu cầu" in heading.lower())
+            ):
                 req = _html_text_without_heading(div, heading)
 
     return {
@@ -255,7 +297,9 @@ def _parse_search_page(html: str) -> list[dict[str, Any]]:
     except Exception:
         return []
 
-    cards = root.xpath('//div[contains(@class,"job-card") and contains(@class,"ipt-2")]')
+    cards = root.xpath(
+        '//div[contains(@class,"job-card") and contains(@class,"ipt-2")]'
+    )
     results: list[dict[str, Any]] = []
 
     for card in cards:
@@ -269,7 +313,9 @@ def _parse_search_page(html: str) -> list[dict[str, Any]]:
             title = _safe_text(title_link[0]) or ""
 
         company = ""
-        company_link = card.xpath('.//a[contains(@href,"/companies/") and contains(@class,"text-rich-grey")]')
+        company_link = card.xpath(
+            './/a[contains(@href,"/companies/") and contains(@class,"text-rich-grey")]'
+        )
         if company_link:
             company = _safe_text(company_link[0]) or ""
 
@@ -285,45 +331,55 @@ def _parse_search_page(html: str) -> list[dict[str, Any]]:
             salary_raw = _safe_text(salary_el[0]) or ""
 
         posted = None
-        for posted_el in card.xpath('.//span[contains(@class,"small-text") and contains(@class,"text-dark-grey")]'):
+        for posted_el in card.xpath(
+            './/span[contains(@class,"small-text") and contains(@class,"text-dark-grey")]'
+        ):
             posted = _safe_text(posted_el)
             if posted:
                 break
 
         skills: list[str] = []
-        for a in card.xpath('.//a[contains(@class,"itag-light") and contains(@data-responsive-tag-list-target,"tag")]'):
+        for a in card.xpath(
+            './/a[contains(@class,"itag-light") and contains(@data-responsive-tag-list-target,"tag")]'
+        ):
             skill = _safe_text(a)
             if skill and skill not in skills:
                 skills.append(skill)
 
         canonical = _clean_url(_abs_url(detail_rel.split("?")[0])) if detail_rel else ""
-        detail_url = canonical.replace("https://itviec.com", "") + "/content" if canonical else ""
+        detail_url = (
+            canonical.replace("https://itviec.com", "") + "/content"
+            if canonical
+            else ""
+        )
         if detail_url.startswith("/"):
             detail_url = f"https://itviec.com{detail_url}"
         else:
             detail_url = canonical
 
-        results.append({
-            "id": f"itviec:{slug or canonical}",
-            "title": title,
-            "company": company,
-            "location": location,
-            "source_url": canonical,
-            "salary_raw": salary_raw,
-            "salary_min": None,
-            "salary_max": None,
-            "salary_currency": None,
-            "salary_period_id": None,
-            "employment_type": None,
-            "experience_years": None,
-            "job_description": "",
-            "job_requirement": "",
-            "skills": skills,
-            "posted_at": _parse_posted(posted),
-            "is_active": True,
-            "source": "itviec",
-            "_detail_url": detail_url,
-        })
+        results.append(
+            {
+                "id": f"itviec:{slug or canonical}",
+                "title": title,
+                "company": company,
+                "location": location,
+                "source_url": canonical,
+                "salary_raw": salary_raw,
+                "salary_min": None,
+                "salary_max": None,
+                "salary_currency": None,
+                "salary_period_id": None,
+                "employment_type": None,
+                "experience_years": None,
+                "job_description": "",
+                "job_requirement": "",
+                "skills": skills,
+                "posted_at": _parse_posted(posted),
+                "is_active": True,
+                "source": "itviec",
+                "_detail_url": detail_url,
+            }
+        )
 
     return results
 
@@ -342,7 +398,9 @@ def _apply_detail(item: dict[str, Any], detail: dict[str, Any]) -> None:
     if detail.get("skills"):
         item["skills"] = detail["skills"]
     if detail.get("posted_text"):
-        item["posted_at"] = _parse_posted(detail["posted_text"]) or item.get("posted_at")
+        item["posted_at"] = _parse_posted(detail["posted_text"]) or item.get(
+            "posted_at"
+        )
     item["job_domain"] = detail.get("job_domain", [])
 
     salary_raw = item.get("salary_raw") or ""
@@ -382,15 +440,26 @@ def _headers() -> dict[str, str]:
     }
 
 
-async def _do_search(client: httpx.AsyncClient, keyword: str, page: int) -> httpx.Response:
+_REQUEST_TIMEOUT = min(getattr(config, "ITVIEC_TIMEOUT_S", 60.0), 60.0)
+
+
+async def _do_search(
+    client: httpx.AsyncClient, keyword: str, page: int
+) -> httpx.Response:
     url = f"{_BASE_URL}/it-jobs/{_normalize_keyword(keyword)}"
     if page > 1:
         url = f"{url}?page={page}"
-    return await client.get(url, headers=_headers(), timeout=config.ITVIEC_TIMEOUT_S)
+    return await asyncio.wait_for(
+        client.get(url, headers=_headers(), timeout=httpx.Timeout(_REQUEST_TIMEOUT)),
+        timeout=_REQUEST_TIMEOUT,
+    )
 
 
 async def _do_detail(client: httpx.AsyncClient, url: str) -> httpx.Response:
-    return await client.get(url, headers=_headers(), timeout=config.ITVIEC_TIMEOUT_S)
+    return await asyncio.wait_for(
+        client.get(url, headers=_headers(), timeout=httpx.Timeout(_REQUEST_TIMEOUT)),
+        timeout=_REQUEST_TIMEOUT,
+    )
 
 
 async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
@@ -412,7 +481,9 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
     items: list[dict[str, Any]] = []
     cost_micros = 0
 
-    async with httpx.AsyncClient(follow_redirects=True) as client:
+    async with httpx.AsyncClient(
+        follow_redirects=True, timeout=httpx.Timeout(60.0)
+    ) as client:
         for page in range(starting_page, starting_page + max_pages):
             remaining = max(0, max_items - len(items))
             if remaining == 0:
@@ -469,7 +540,7 @@ async def scrape_itviec(params: dict[str, Any]) -> dict[str, Any]:
     """Fetch and parse ITviec job search + detail pages."""
     try:
         return await _scrape(params)
-    except httpx.TimeoutException:
+    except (httpx.TimeoutException, TimeoutError):
         return _degraded("timeout")
     except httpx.ConnectError:
         return _degraded("api_error")

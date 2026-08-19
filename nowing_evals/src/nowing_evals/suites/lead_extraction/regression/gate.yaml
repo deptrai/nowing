@@ -1,0 +1,7 @@
+baseline_ratified: true
+thresholds:
+  min_f1_phone: 0.98
+  max_hallucination_rate: 0.001
+  min_mst_modulo11_accuracy: 0.995
+  min_cases: 10
+baseline_source: ""

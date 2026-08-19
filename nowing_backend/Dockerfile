@@ -31,6 +31,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     dos2unix \
     git \
     tini \
+    procps \
     # ── Phase 3e stealth hardening ──────────────────────────────────────────
     # Xvfb: virtual display so the browser can run headful without real hardware
     # (entrypoint starts it when CRAWL_HEADED_XVFB_ENABLED; used by TikTok's profile
@@ -220,6 +221,13 @@ ENV CELERY_MAX_TASKS_PER_CHILD=50
 #   "nowing.connectors"   – slow connector indexing tasks only
 #   ""                       – both queues (default, for single-worker setups)
 ENV CELERY_QUEUES=""
+
+# Anti-zombie container healthcheck (AC-2 / AD-108)
+COPY scripts/docker/healthcheck_zombie.sh /app/scripts/docker/healthcheck_zombie.sh
+RUN dos2unix /app/scripts/docker/healthcheck_zombie.sh && chmod +x /app/scripts/docker/healthcheck_zombie.sh
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD ["/app/scripts/docker/healthcheck_zombie.sh"]
 
 EXPOSE 8000-8001
 ENTRYPOINT ["/usr/bin/tini", "--", "/app/scripts/docker/entrypoint.sh"]

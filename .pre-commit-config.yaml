@@ -74,6 +74,14 @@ repos:
         always_run: true
         stages: [pre-commit]
 
+      # Lead extraction cassettes must be sanitized and match the dataset.
+      - id: check-lead-extraction-cassettes
+        name: check-lead-extraction-cassettes
+        entry: python nowing_evals/scripts/check-cassettes-sanitized.py
+        language: system
+        files: ^nowing_evals/data/lead_extraction/regression/cassettes/.*\.sse\.jsonl$
+        pass_filenames: true
+
       # Biome check for nowing_browser_extension
       # - id: biome-check-extension
       #   name: biome-check-extension

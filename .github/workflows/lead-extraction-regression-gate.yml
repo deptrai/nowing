@@ -1,0 +1,44 @@
+name: Lead Extraction Regression Gate
+
+# Story 26.7: Hermetic Quality Gate for Lead Entity Extraction (AC-1 / AD-107).
+#
+# Runs hermetic replay benchmark against golden cassettes ($0 external cost).
+# Enforces F1 Phone >= 0.98, Hallucination Rate <= 0.001, MST Modulo-11 >= 0.995.
+
+on:
+  pull_request:
+    paths:
+      - 'nowing_backend/app/proprietary/platforms/xactions/tax_code.py'
+      - 'nowing_backend/app/proprietary/platforms/xactions/phone_extractor.py'
+      - 'nowing_backend/app/services/lead_extraction_service.py'
+      - 'nowing_evals/**'
+      - '.github/workflows/lead-extraction-regression-gate.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lead-extraction-gate:
+    name: Lead Extraction Hermetic Replay Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install UV
+        uses: astral-sh/setup-uv@v8.1.0
+
+      - name: Sync eval dependencies
+        working-directory: nowing_evals
+        run: uv sync --all-extras --frozen
+
+      - name: Run hermetic replay gate
+        working-directory: nowing_evals
+        run: ./scripts/run-hermetic-gate.sh

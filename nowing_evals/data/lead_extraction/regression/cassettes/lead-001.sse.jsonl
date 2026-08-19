@@ -1,0 +1,1 @@
+{"type": "rest", "status": 200, "headers": {}, "body": {"phones": ["0908123456", "0912345678"], "tax_ids": ["0100109106"], "tax_ids_valid": [true], "company_name": "Công ty TNHH Viễn Thông ABC"}}

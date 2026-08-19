@@ -787,3 +787,35 @@ class TestScraperGoldenRegression:
         assert second["salary_min"] == 0
         assert second["salary_max"] == 0
         assert second["posted_at"] == "2026-08-03"
+
+
+class TestScraper60sTimeout:
+    """AC-108: a 61s HTTP hang must be terminated and reported as timeout."""
+
+    @pytest.mark.asyncio
+    async def test_degrades_on_61s_http_hang(self, monkeypatch):
+        import asyncio
+
+        import respx
+
+        from app.proprietary.platforms.vietnamworks import scraper as scraper_module
+
+        monkeypatch.setattr(scraper_module, "_REQUEST_TIMEOUT", 0.1)
+
+        async def _hang(request):
+            await asyncio.sleep(61)
+            return httpx.Response(200, json={"data": []})
+
+        with respx.mock:
+            respx.post("https://ms.vietnamworks.com/job-search/v1.0/search").mock(
+                side_effect=_hang
+            )
+            start = asyncio.get_event_loop().time()
+            out = await scrape_vietnamworks(
+                {"keyword": "data engineer", "max_items": 1, "max_pages": 1}
+            )
+            elapsed = asyncio.get_event_loop().time() - start
+
+        assert out["degraded"] is True
+        assert out["degradation_reason"] == "timeout"
+        assert elapsed < 2.0

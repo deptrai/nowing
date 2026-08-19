@@ -191,3 +191,28 @@ class TestMuasamcongScraper:
             assert result.degraded is True
             assert result.total_elements == 0
             assert "timed out" in (result.degradation_reason or "")
+
+    @pytest.mark.asyncio
+    async def test_search_tenders_61s_hang_is_terminated(self, monkeypatch):
+        """A 61s HTTP hang must be terminated by the 60s timeout guard."""
+        import respx
+
+        from app.proprietary.platforms.muasamcong import scraper as scraper_module
+
+        async def _hang(request):
+            await asyncio.sleep(61)
+            return httpx.Response(200, json=_MOCK_SEARCH_RESPONSE_JSON)
+
+        with respx.mock:
+            respx.post(
+                "https://muasamcong.mpi.gov.vn/api/v1/tender/notice/search"
+            ).mock(side_effect=_hang)
+
+            scraper = MuasamcongScraper(timeout_seconds=0.1)
+            start = asyncio.get_event_loop().time()
+            result = await scraper.search_tenders(keyword="Test Hang")
+            elapsed = asyncio.get_event_loop().time() - start
+
+        assert result.degraded is True
+        assert "time" in (result.degradation_reason or "").lower()
+        assert elapsed < 2.0
