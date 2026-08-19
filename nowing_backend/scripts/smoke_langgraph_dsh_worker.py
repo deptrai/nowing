@@ -20,6 +20,7 @@ import asyncio
 import contextlib
 import logging
 import os
+import statistics
 import sys
 import time
 import uuid
@@ -53,10 +54,17 @@ logger = logging.getLogger(__name__)
 class _SmokeDshRestClient:
     """A DshRestClient that talks to the DB/services directly, not HTTP."""
 
-    def __init__(self, session: AsyncSession, chainlens_delay: float = 0.0) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        chainlens_delay: float = 0.0,
+        ingestion_delay: float = 0.0,
+    ) -> None:
         self.session = session
         self.chainlens_delay = chainlens_delay
+        self.ingestion_delay = ingestion_delay
         self._crawl_count = 0
+        self._ingest_count = 0
 
     @staticmethod
     def _mission_to_dict(mission: DshMission) -> dict[str, Any]:
@@ -141,6 +149,14 @@ class _SmokeDshRestClient:
     async def batch_ingest_leads(
         self, workspace_id: int, leads: list[dict[str, Any]]
     ) -> dict[str, Any]:
+        self._ingest_count += 1
+        if self.ingestion_delay and self._ingest_count == 1:
+            logger.info(
+                "Smoke: batch_ingest_leads hanging for %.1fs (workspace %s)",
+                self.ingestion_delay,
+                workspace_id,
+            )
+            await asyncio.sleep(self.ingestion_delay)
         logger.info("Smoke: batch_ingest_leads called with %d leads", len(leads))
         mapping: dict[str, str] = {}
         for i, lead in enumerate(leads):
@@ -160,8 +176,10 @@ class _SmokeDshRestClient:
 
 
 async def _get_or_create_workspace_and_user(session: AsyncSession) -> tuple[uuid.UUID, int]:
-    # Look for an existing smoke user.
-    result = await session.execute(select(User).where(User.email == "smoke-dsh@example.com"))
+    # Look for an existing smoke user. The email defaults to a stable value so
+    # repeated local runs reuse the workspace; it can be overridden via env.
+    smoke_email = os.environ.get("SMOKE_USER_EMAIL", "smoke-dsh@example.com")
+    result = await session.execute(select(User).where(User.email == smoke_email))
     user = result.scalar_one_or_none()
 
     if user is None:
@@ -169,10 +187,16 @@ async def _get_or_create_workspace_and_user(session: AsyncSession) -> tuple[uuid
 
         from app.users import UserManager
 
+        user_email = os.environ.get(
+            "SMOKE_USER_EMAIL", f"smoke-dsh-{uuid.uuid4().hex[:8]}@example.com"
+        )
+        user_password = os.environ.get(
+            "SMOKE_USER_PASSWORD", f"smoke-password-{uuid.uuid4().hex[:8]}"
+        )
         user_db = SQLAlchemyUserDatabase(session, User)
         user_manager = UserManager(user_db)
         user = await user_manager.create(
-            UserCreate(email="smoke-dsh@example.com", password="smoke-password-123")
+            UserCreate(email=user_email, password=user_password)
         )
         await session.flush()
 
@@ -311,22 +335,34 @@ async def _get_mission_status(mission_id: uuid.UUID) -> DshMission:
         return await _verify_mission(session, mission_id)
 
 
-async def _poll_mission_at_phase(mission_id: uuid.UUID, timeout: float = 10.0) -> DshMission:
+async def _poll_mission_at_phase(
+    mission_id: uuid.UUID,
+    phase: str,
+    progress_percent: int,
+    status: str | None = None,
+    timeout: float = 10.0,
+) -> DshMission:
     deadline = time.perf_counter() + timeout
+    status_value = status or DshMissionStatus.RUNNING.value
     while time.perf_counter() < deadline:
         mission = await _get_mission_status(mission_id)
         if (
-            mission.status == DshMissionStatus.RUNNING.value
-            and mission.phase == "crawl"
-            and mission.progress_percent == 10
+            mission.status == status_value
+            and mission.phase == phase
+            and mission.progress_percent == progress_percent
         ):
             return mission
         await asyncio.sleep(0.2)
-    raise TimeoutError(f"Mission {mission_id} did not reach phase=crawl progress=10")
+    raise TimeoutError(
+        f"Mission {mission_id} did not reach phase={phase} progress={progress_percent}"
+    )
 
 
-async def _run_worker_until_crawl(
-    mission_id: uuid.UUID, stream: str, chainlens_delay: float
+async def _run_worker_until_hang(
+    mission_id: uuid.UUID,
+    stream: str,
+    chainlens_delay: float,
+    ingestion_delay: float,
 ) -> tuple[asyncio.Task, Redis]:
     from app.redis_client import get_redis_client
 
@@ -334,7 +370,11 @@ async def _run_worker_until_crawl(
 
     async def _loop() -> None:
         async with async_session_maker() as session:
-            rest_client = _SmokeDshRestClient(session, chainlens_delay)
+            rest_client = _SmokeDshRestClient(
+                session,
+                chainlens_delay=chainlens_delay,
+                ingestion_delay=ingestion_delay,
+            )
             worker = DshWorker(
                 redis_client=redis_client,
                 rest_client=rest_client,
@@ -378,7 +418,7 @@ async def _resume_mission(mission_id: uuid.UUID, stream: str, group: str) -> boo
             await worker._ensure_consumer_group(redis_client)
 
             logger.info("Resuming mission %s via XAUTOCLAIM", mission_id)
-            reclaimed = await worker._autoclaim(redis_client)
+            reclaimed = await worker._autoclaim(redis_client, min_idle_ms=0)
             logger.info("Reclaimed %s message(s)", len(reclaimed))
 
             for msg_id, fields in reclaimed:
@@ -396,7 +436,8 @@ async def _resume_mission(mission_id: uuid.UUID, stream: str, group: str) -> boo
 
 
 async def _run_crash_resume(stream: str, group: str) -> int:
-    chainlens_delay = float(os.environ.get("SMOKE_CHAINLENS_DELAY", "2"))
+    chainlens_delay = float(os.environ.get("SMOKE_CHAINLENS_DELAY", "0"))
+    ingestion_delay = float(os.environ.get("SMOKE_INGESTION_DELAY", "2"))
 
     async with async_session_maker() as session:
         user_id, workspace_id = await _get_or_create_workspace_and_user(session)
@@ -414,11 +455,20 @@ async def _run_crash_resume(stream: str, group: str) -> int:
         await redis_client.aclose()
 
     os.environ.setdefault("DSH_EXECUTOR_ENGINE", "langgraph")
-    worker_task, worker_redis = await _run_worker_until_crawl(mission_id, stream, chainlens_delay)
+    worker_task, worker_redis = await _run_worker_until_hang(
+        mission_id, stream, chainlens_delay, ingestion_delay
+    )
     try:
-        logger.info("Waiting for mission to reach phase=crawl progress=10")
-        await _poll_mission_at_phase(mission_id, timeout=10)
-        logger.info("Killing first worker mid-crawl to simulate crash")
+        logger.info(
+            "Waiting for mission to reach phase=ingestion progress=90 (crawl/reasoning/extraction done)"
+        )
+        await _poll_mission_at_phase(
+            mission_id,
+            phase="ingestion",
+            progress_percent=90,
+            timeout=10,
+        )
+        logger.info("Killing first worker mid-ingestion to simulate crash")
         worker_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await worker_task
@@ -505,7 +555,13 @@ async def main() -> int:
 
     total = time.perf_counter() - overall_start
     avg = sum(times) / len(times) if times else 0
-    p95 = sorted(times)[int(len(times) * 0.95)] if times else 0
+    if not times:
+        p95 = 0.0
+    elif len(times) < 20:
+        # With fewer than 20 samples, use the nearest-rank 95th percentile.
+        p95 = sorted(times)[int(len(times) * 0.95)]
+    else:
+        p95 = statistics.quantiles(times, n=20, method="inclusive")[18]
 
     logger.info("=" * 60)
     logger.info("DSH %s batch smoke complete", config.DSH_EXECUTOR_ENGINE)

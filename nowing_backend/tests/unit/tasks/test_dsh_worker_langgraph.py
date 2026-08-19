@@ -143,3 +143,27 @@ async def test_langgraph_executor_resumes_from_existing_subtask(
     checkpoint = fake_client.mission.get("checkpoint", {})
     assert fake_client.mission.get("status") == "success"
     assert checkpoint["leads"][0]["company_name"] == "ResumedCo"
+
+
+@pytest.mark.asyncio
+async def test_langgraph_executor_clears_current_subtask_id(fake_client: _FakeDshRestClient) -> None:
+    """The terminal/success checkpoint must clear current_subtask_id."""
+    mission_id = uuid4()
+    mission = {
+        "id": mission_id,
+        "workspace_id": 42,
+        "mission_type": "deep_lead_research",
+        "payload": {"query": "AI companies"},
+        "checkpoint": {"version": 1, "phase": "crawl", "subtasks": []},
+    }
+
+    executor = LangGraphMissionExecutor(fake_client)  # type: ignore[arg-type]
+    await executor.run(mission)
+
+    assert fake_client.mission.get("status") == "success"
+    assert fake_client.mission.get("phase") == "terminal"
+    assert fake_client.mission.get("current_subtask_id") is None
+    assert fake_client.mission.get("progress_percent") == 100
+    checkpoint = fake_client.mission.get("checkpoint", {})
+    assert checkpoint.get("current_subtask_id") is None
+    assert checkpoint.get("phase") == "terminal"

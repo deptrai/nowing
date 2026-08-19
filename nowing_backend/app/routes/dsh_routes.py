@@ -24,6 +24,7 @@ from app.schemas.dsh import (
 )
 from app.services.dsh_control_service import MissionControlService
 from app.services.dsh_mission_service import (
+    _UNSET,
     DshMissionService,
     DshMissionServiceError,
     DshPayloadTooLargeError,
@@ -333,6 +334,14 @@ async def patch_dsh_mission_checkpoint(
 
     _require_pat_workspace_scope(auth, mission.workspace_id)
 
+    # Only pass ``current_subtask_id`` when the client explicitly sent it so
+    # that omitted fields do not accidentally clear the column.
+    current_subtask_id = (
+        body.current_subtask_id
+        if "current_subtask_id" in body.model_fields_set
+        else _UNSET
+    )
+
     try:
         mission = await service.update_checkpoint(
             session,
@@ -340,7 +349,7 @@ async def patch_dsh_mission_checkpoint(
             checkpoint=body.checkpoint,
             phase=body.phase,
             progress_percent=body.progress_percent,
-            current_subtask_id=body.current_subtask_id,
+            current_subtask_id=current_subtask_id,
             status=body.status,
             retry_count=body.retry_count,
             error=body.error,

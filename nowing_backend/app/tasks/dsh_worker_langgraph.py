@@ -12,8 +12,9 @@ Design notes:
 - The graph state does NOT contain the REST client. We pass it through
   ``configurable`` so the state remains serialisable if we later enable a
   LangGraph checkpointer.
-- PII (phone/email in leads) is filtered before checkpoint writes the same way
-  the legacy executor does.
+- PII (phone/email in leads) is stored in the checkpoint JSONB the same way
+  the legacy executor does. The checkpoint column is private and not published
+  to Zero, consistent with AD-108.
 """
 
 from __future__ import annotations
@@ -31,11 +32,6 @@ if TYPE_CHECKING:
     from app.tasks.dsh_worker import DshRestClient
 
 logger = logging.getLogger(__name__)
-
-
-def _checkpoint_update(**kwargs: Any) -> dict[str, Any]:
-    """Build a JSON-serialisable checkpoint update with None values omitted."""
-    return {k: v for k, v in kwargs.items() if v is not None}
 
 
 class _Subtask(TypedDict, total=False):
@@ -125,6 +121,14 @@ class LangGraphMissionExecutor:
 
         mission_id = state["mission_id"]
         current_checkpoint = update.get("checkpoint") or state.get("checkpoint") or {}
+
+        # Merge the scalar state fields into the checkpoint JSONB so that crash
+        # resumption has an authoritative view of the last persisted phase,
+        # progress, and current subtask id.
+        for key in ("phase", "progress_percent", "current_subtask_id", "status", "error"):
+            value = update.get(key) if key in update else state.get(key)
+            if value is not None or key == "current_subtask_id":
+                current_checkpoint[key] = value
 
         payload = build_update(
             checkpoint=current_checkpoint,

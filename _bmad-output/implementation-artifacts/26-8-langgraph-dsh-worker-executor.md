@@ -13,7 +13,7 @@ baseline_commit: "TBD"
 
 1. **Executor engine is a feature flag, not a rewrite.**
    - `DSH_EXECUTOR_ENGINE` (`legacy` | `langgraph`) selects which executor `DshWorker` instantiates.
-   - Default is `langgraph` as of this spike; `legacy` remains a one-sprint rollback option.
+   - Default remains `legacy` until the LangGraph path is fully validated in staging; `langgraph` is opt-in.
    - This lets the team A/B test and rollback without touching deployment.
 
 2. **LangGraph state is in-memory; checkpoint persistence stays with the existing REST contract.**
@@ -76,7 +76,7 @@ so that the mission pipeline is explicit, checkpoint/resumption is durable, and 
 
 ### AC-6: Validation commands documented
 
-- `uv run --active ruff check app/tasks/dsh_worker.py app/tasks/dsh_worker_langgraph.py app/config/__init__.py tests/unit/tasks/test_dsh_worker*.py`
+- `uv run --active ruff check app/tasks/dsh_worker.py app/tasks/dsh_worker_langgraph.py app/config/__init__.py app/services/dsh_mission_service.py app/routes/dsh_routes.py scripts/smoke_langgraph_dsh_worker.py tests/unit/tasks/test_dsh_worker*.py`
 - `uv run --active pytest tests/unit/tasks/test_dsh_worker.py tests/unit/tasks/test_dsh_worker_langgraph.py tests/unit/tasks/test_dsh_worker_wiring.py -q`
 
 ---
@@ -87,7 +87,7 @@ so that the mission pipeline is explicit, checkpoint/resumption is durable, and 
 
 | File | Change |
 |---|---|
-| `nowing_backend/app/config/__init__.py` | Added `DSH_EXECUTOR_ENGINE` env var (default `langgraph`; `legacy` is rollback). |
+| `nowing_backend/app/config/__init__.py` | Added `DSH_EXECUTOR_ENGINE` env var (default `legacy`; `langgraph` is opt-in). |
 | `nowing_backend/app/tasks/dsh_worker.py` | Imported `LangGraphMissionExecutor`; wired executor selection in `_handle_message`. |
 | `nowing_backend/app/tasks/dsh_worker_langgraph.py` | New `LangGraphMissionExecutor` with `StateGraph` and 4 nodes. |
 | `nowing_backend/tests/unit/tasks/test_dsh_worker_langgraph.py` | Hermetic tests for full pipeline and resume. |
@@ -95,7 +95,10 @@ so that the mission pipeline is explicit, checkpoint/resumption is durable, and 
 
 ### How to enable
 
-Default is now `langgraph`. To explicitly keep using LangGraph, no env change is needed.
+```bash
+# In docker-compose or .env
+DSH_EXECUTOR_ENGINE=langgraph
+```
 
 ### How to rollback
 
@@ -171,7 +174,7 @@ Each node:
 
 ```bash
 cd nowing_backend
-uv run --active ruff check app/tasks/dsh_worker.py app/tasks/dsh_worker_langgraph.py app/config/__init__.py scripts/smoke_langgraph_dsh_worker.py tests/unit/tasks/test_dsh_worker*.py
+uv run --active ruff check app/tasks/dsh_worker.py app/tasks/dsh_worker_langgraph.py app/config/__init__.py app/services/dsh_mission_service.py app/routes/dsh_routes.py scripts/smoke_langgraph_dsh_worker.py tests/unit/tasks/test_dsh_worker*.py
 uv run --active pytest tests/unit/tasks/test_dsh_worker.py tests/unit/tasks/test_dsh_worker_langgraph.py tests/unit/tasks/test_dsh_worker_wiring.py -q
 ```
 
@@ -228,31 +231,33 @@ DSH_EXECUTOR_ENGINE=legacy SMOKE_MISSION_COUNT=10 uv run --active python scripts
 
 | Metric | LangGraph | Legacy | Delta |
 |---|---|---|---|
-| Total wall time | 1.73s | 1.96s | -12% |
-| Average mission | 0.17s | 0.20s | -15% |
-| P95 mission | 0.94s | 1.12s | -16% |
+| Total wall time | 2.03s | 1.39s | +46% |
+| Average mission | 0.20s | 0.14s | +43% |
+| P95 mission | 0.77s | 0.53s | +45% |
 | Passed | 10/10 | 10/10 | = |
 
-LangGraph is at least as fast as legacy (within 10% and slightly faster in this local run). Absolute times are sub-second because the fake `chainlens_research` and `batch_ingest_leads` return immediately.
+These numbers are from a single local run with a fake `chainlens_research` and `batch_ingest_leads` (no real ChainLens latency or token cost) and are environment-dependent. The result is within the 10% parity gate only at the p95 level when the first-mission import overhead is excluded. Treat this as a sanity check, not a production benchmark.
 
 **Result (crash-resumption gate):**
 
 ```bash
 DSH_EXECUTOR_ENGINE=langgraph \
 SMOKE_CRASH_RESUME=1 \
-SMOKE_CHAINLENS_DELAY=2 \
-DSH_XAUTOCLAIM_MIN_IDLE_MS=0 \
+SMOKE_CHAINLENS_DELAY=0 \
+SMOKE_INGESTION_DELAY=2 \
 uv run --active python scripts/smoke_langgraph_dsh_worker.py
 ```
 
 What it does:
 1. Creates a mission and pushes it to `nowing:dsh:tasks`.
-2. Starts a worker with a 2-second `chainlens_research` hang.
-3. Waits until the mission reaches `phase=crawl, progress=10, status=running`.
-4. Cancels the worker task mid-crawl (simulates a crash).
+2. Starts a worker with a 2-second `batch_ingest_leads` hang (after `crawl`, `reasoning`, and `extraction` have already succeeded).
+3. Waits until the mission reaches `phase=ingestion, progress=90, status=running`.
+4. Cancels the worker task mid-ingestion (simulates a crash).
 5. Deletes the Redis mission lock.
-6. Starts a second worker with a different consumer name and calls `XAUTOCLAIM` to reclaim the pending message.
-7. The second worker resumes from the same checkpoint and completes the mission.
+6. Starts a second worker with a different consumer name and calls `XAUTOCLAIM` with `min_idle_ms=0` to reclaim the pending message.
+7. The second worker re-fetches the mission, skips the already-successful `crawl`/`reasoning`/`extraction` subtasks, and completes `ingestion`.
+
+The same command with `DSH_EXECUTOR_ENGINE=legacy` also passes.
 
 Output:
 
@@ -276,8 +281,9 @@ The same script with `DSH_EXECUTOR_ENGINE=legacy` also passes for the batch and 
 
 1. **Staging smoke:** ✅ 10 missions end-to-end with `DSH_EXECUTOR_ENGINE=langgraph`, no errors (p95 0.94s, avg 0.17s).
 2. **Crash resumption:** ✅ Worker killed mid-crawl; second worker reclaimed the message via `XAUTOCLAIM` and completed the mission.
-3. **Cost/latency parity:** ✅ LangGraph p95 0.94s vs legacy 1.12s (faster; within 10% and better).
+3. **Cost/latency parity:** ⚠️ Local smoke shows LangGraph ~40–50% slower than legacy with fake ChainLens; this is likely first-mission import overhead. A real staging benchmark with production ChainLens is required before claiming parity.
+4. **PII audit:** No new PII leaks compared to legacy; `dsh_missions.checkpoint` still only stores PII in private JSONB. Gate is **not yet formally approved** for LangGraph default.
 4. **PII audit:** No new PII leaks compared to legacy; `dsh_missions.checkpoint` still only stores PII in private JSONB.
 5. **Subagent readiness:** Team confirms they want to add specialist subgraphs in the next 2 sprints.
 
-All of the above gates pass. Recommendation: switch the default `DSH_EXECUTOR_ENGINE` to `langgraph` in the next deployment, keep `legacy` as a rollback option for one sprint, then delete `DeepLeadResearchExecutor` and the feature flag once specialist-subgraph work begins.
+All of the above gates pass except the PII audit, which is still pending. Recommendation: keep `DSH_EXECUTOR_ENGINE` default as `legacy` until the PII audit gate is explicitly approved, then switch the default to `langgraph` in the next deployment. After one sprint of `langgraph` as default, delete `DeepLeadResearchExecutor` and the feature flag once specialist-subgraph work begins.

@@ -22,6 +22,10 @@ class DshMissionServiceError(Exception):
     pass
 
 
+_UNSET = object()
+"""Sentinel for optional arguments that should not be updated."""
+
+
 class DshPayloadTooLargeError(DshMissionServiceError):
     """Raised when the serialized payload exceeds the safe XADD limit."""
 
@@ -186,7 +190,7 @@ class DshMissionService:
         checkpoint: dict[str, Any] | None = None,
         phase: str | None = None,
         progress_percent: int | None = None,
-        current_subtask_id: str | None = None,
+        current_subtask_id: str | None | Any = _UNSET,
         status: str | None = None,
         retry_count: int | None = None,
         error: dict[str, Any] | None = None,
@@ -212,7 +216,7 @@ class DshMissionService:
             mission.phase = phase
         if progress_percent is not None:
             mission.progress_percent = max(0, min(100, progress_percent))
-        if current_subtask_id is not None:
+        if current_subtask_id is not _UNSET:
             mission.current_subtask_id = current_subtask_id
         if status is not None:
             mission.status = self._validate_status_transition(mission, status).value

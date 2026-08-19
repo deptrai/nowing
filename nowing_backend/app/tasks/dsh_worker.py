@@ -34,8 +34,21 @@ _DSH_SYNC_TIMEOUT = min(
 
 
 def _checkpoint_update(**kwargs: Any) -> dict[str, Any]:
-    """Build a JSON-serialisable checkpoint update with None values omitted."""
-    return {k: v for k, v in kwargs.items() if v is not None}
+    """Build a JSON-serialisable checkpoint update with None values omitted.
+
+    ``current_subtask_id`` is always preserved (including ``None``) because the
+    sidecar must be able to clear it on terminal/success transitions.
+    ``started_at`` and ``completed_at`` are normalised to ISO strings so the
+    sidecar payload is JSON-serialisable even if a caller passes a ``datetime``.
+    """
+    result: dict[str, Any] = {}
+    for k, v in kwargs.items():
+        if v is None and k != "current_subtask_id":
+            continue
+        if k in ("started_at", "completed_at") and isinstance(v, datetime):
+            v = v.isoformat()
+        result[k] = v
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -269,8 +282,8 @@ class DeepLeadResearchExecutor:
         current_subtask_id: str | None = None,
         status: str | None = None,
         error: dict[str, Any] | None = None,
-        started_at: datetime | str | None = None,
-        completed_at: datetime | str | None = None,
+        started_at: str | None = None,
+        completed_at: str | None = None,
     ) -> dict[str, Any]:
         update = _checkpoint_update(
             checkpoint=checkpoint,
@@ -595,7 +608,7 @@ class DshWorker:
         self,
         consumer_name: str | None = None,
         redis_client: Redis | None = None,
-        executor: DeepLeadResearchExecutor | None = None,
+        executor: DeepLeadResearchExecutor | LangGraphMissionExecutor | None = None,
         rest_client: DshRestClient | None = None,
     ) -> None:
         self.consumer_name = consumer_name or _default_consumer_name()
@@ -679,18 +692,14 @@ class DshWorker:
         mission_id: uuid.UUID,
         msg_id: bytes | str,
     ) -> bool:
-        """Heartbeat: reset PEL idle time and refresh the Redis lock.
+        """Heartbeat: refresh the Redis lock, then reset PEL idle time.
 
         Uses a Lua script so we only extend TTL when we still own the lock.
+        We renew the lock FIRST so that a lost lock is detected before we
+        reset the pending-entry-list idle time; otherwise we could delay
+        another worker from reclaiming the message.
         """
         try:
-            await redis_client.xclaim(
-                self.stream,
-                self.group,
-                self.consumer_name,
-                0,
-                [msg_id],
-            )
             ok = await redis_client.eval(
                 _RENEW_LOCK_SCRIPT,
                 1,
@@ -698,22 +707,41 @@ class DshWorker:
                 self.consumer_name,
                 self.lock_ttl,
             )
-            return bool(ok)
+            if not ok:
+                logger.info("Lock for mission %s is no longer ours", mission_id)
+                return False
+            await redis_client.xclaim(
+                self.stream,
+                self.group,
+                self.consumer_name,
+                0,
+                [msg_id],
+            )
+            return True
         except Exception as exc:
             logger.warning("Heartbeat failed for mission %s: %s", mission_id, exc)
             return False
 
-    async def _autoclaim(self, redis_client: Redis) -> list[tuple[str, dict[str, Any]]]:
-        """Reclaim idle messages using XAUTOCLAIM."""
+    async def _autoclaim(
+        self,
+        redis_client: Redis,
+        min_idle_ms: int | None = None,
+    ) -> list[tuple[str, dict[str, Any]]]:
+        """Reclaim idle messages using XAUTOCLAIM.
+
+        ``min_idle_ms`` overrides ``config.DSH_XAUTOCLAIM_MIN_IDLE_MS`` when the
+        caller needs a non-production value (e.g. smoke tests).
+        """
         claimed: list[tuple[str, dict[str, Any]]] = []
         start_id = "0-0"
+        idle = min_idle_ms if min_idle_ms is not None else config.DSH_XAUTOCLAIM_MIN_IDLE_MS
         while True:
             response = await asyncio.wait_for(
                 redis_client.xautoclaim(
                     self.stream,
                     self.group,
                     self.consumer_name,
-                    config.DSH_XAUTOCLAIM_MIN_IDLE_MS,
+                    idle,
                     start_id,
                     count=10,
                 ),
@@ -819,7 +847,7 @@ class DshWorker:
             return False
 
         try:
-            # Only the default deep-lead-research executor is supported in 26.2.
+            # Only the deep-lead-research executor is supported in 26.8.
             if mission.get("mission_type") != "deep_lead_research":
                 await self.rest_client.patch_checkpoint(
                     mission_id,
@@ -899,6 +927,14 @@ class DshWorker:
             return False
         except DshNonRetryableError as exc:
             try:
+                mission = await self.rest_client.get_mission(mission_id)
+            except Exception as refresh_exc:
+                logger.warning(
+                    "Could not refresh mission %s before DLQ: %s",
+                    mission_id,
+                    refresh_exc,
+                )
+            try:
                 await self._dlq(redis_client, msg_id, mission, str(exc))
                 return True
             except Exception as dlq_exc:
@@ -909,6 +945,14 @@ class DshWorker:
                 )
                 return False
         except Exception as exc:
+            try:
+                mission = await self.rest_client.get_mission(mission_id)
+            except Exception as refresh_exc:
+                logger.warning(
+                    "Could not refresh mission %s before retry: %s",
+                    mission_id,
+                    refresh_exc,
+                )
             try:
                 return await self._maybe_retry_or_dlq(
                     redis_client, msg_id, mission, str(exc)
