@@ -4,7 +4,7 @@ type: architecture-spine
 purpose: build-substrate
 altitude: platform
 paradigm: 4-Tier Hybrid Reactive Architecture with Decoupled Autonomous Mission Workers
-scope: Full Platform (Nowing Core, ChainLens Engine, Harness Orchestrator, DeepSeek V4 + Gemini Flash + Qwen)
+scope: Full Platform (Nowing Core, ChainLens Engine, DSH Agent Orchestration Sidecar, DeepSeek V4 + Gemini Flash + Qwen)
 status: final
 created: '2026-08-17'
 updated: '2026-08-17T06:00'
@@ -20,11 +20,18 @@ binds:
   - AD-108
   - AD-109
   - AD-110
+  - AD-111
+  - AD-112
+  - AD-113
+  - AD-114
+  - AD-115
 ---
 
-# Architecture Spine — Nowing + ChainLens + Harness Unified Platform
+# Architecture Spine — Nowing + ChainLens + DSH Unified Platform
 
-> Canonical architecture contract governing the integration of Nowing (Product & Memory), ChainLens (JIT Research Engine), Harness (Agent Team Factory), and Hybrid Model Routing (Gemini Flash Free Tier + DeepSeek V4 + Qwen 3.8).
+> Canonical architecture contract governing the integration of Nowing (Product & Memory), ChainLens (JIT Research Engine), DSH (Domain-Specific Sidecar Harness — an internal agent orchestration sidecar), and Hybrid Model Routing (Gemini Flash Free Tier + DeepSeek V4 + Qwen 3.8).
+>
+> **Note:** `DSH` / `Harness` in this document refers to the in-house Python sidecar worker and its agent-team design patterns. It is **not** a dependency on the open-source `github.com/deepseek-ai/deepseek-harness` repository, which may be evaluated for a future self-host pilot. See `dsh-self-host-pilot-plan-2026-08-19.md`.
 
 ---
 
@@ -34,7 +41,7 @@ The platform operates as a **4-Tier Hybrid Reactive Architecture with Decoupled 
 
 1. **Client & Experience Plane:** Next.js 16 + React 19 web app with Zero-Client reactive optimistic state, Split Canvas, Glass Box Mission Control Widget, and Telegram 3-Second Glanceable Checkpoints.
 2. **Product & Control Plane (Nowing Core):** FastAPI backend, PostgreSQL 16 + pgvector, Zero-Cache CDC sync, and authenticated REST/MCP Tool Gateway. Single source of truth for all persistent entities.
-3. **Agent Orchestration Plane (Harness + dsh Sidecar):** Long-running autonomous worker containers executing multi-step mission trees with Harness Hierarchical Delegation & Multi-Tier Model Routing. This is an approved exception to parent AD-1 (monolith process); the sidecar is a separate stateless worker, not a business-domain microservice.
+3. **Agent Orchestration Plane (DSH Sidecar):** Long-running autonomous worker containers executing multi-step mission trees with DSH Agent-Team Hierarchical Delegation & Multi-Tier Model Routing. The sidecar is implemented as an internal Python worker (`dsh-worker`) and is an approved exception to parent AD-1 (monolith process).
 4. **Specialist Research & Ingestion Plane (ChainLens + Scrapers):** Stateless multi-source web crawlers, SERP extractors, and portal adapters streaming chunks back into Nowing.
 
 ```mermaid
@@ -102,7 +109,7 @@ flowchart TB
   3. Nowing stores chunks in its own `chunks` table with deterministic `UUIDv5` IDs. `chunks.id` MUST be a UUID column (not the legacy integer primary key).
 
 ### AD-102 — Decoupled Sidecar Worker & FastMCP/REST Gateway [ADOPTED]
-- **Binds:** `dsh-worker` sidecar container and Nowing FastAPI core.
+- **Binds:** `dsh-worker` sidecar container (internal Python worker, not `github.com/deepseek-ai/deepseek-harness`) and Nowing FastAPI core.
 - **Prevents:** Long-running agent loops (1–8 hours) blocking Celery fast-path queues or FastAPI web threads.
 - **Rule:**
   1. Autonomous missions MUST be dispatched via Redis Streams (`nowing:dsh:tasks`) with a centralized stream name registry (see `app/config/__init__.py`).
@@ -144,10 +151,10 @@ flowchart TB
   6. PII opt-out requests MUST be honored within 24h: add HMAC to the blacklist/DNC table, mark `verified_contacts.is_unlocked = FALSE`, return credits, and schedule PII deletion or irreversible anonymization per Decree 13/PDPD.
   7. Nowing's Terms of Service (ToS) legally structures Nowing as a *Data Processor on behalf of user*.
 
-### AD-106 — Harness Hierarchical Delegation & Specialist Team Pattern [ADOPTED]
-- **Binds:** Agent task tree dispatch within `dsh-worker`.
+### AD-106 — DSH Agent-Team Hierarchical Delegation & Specialist Team Pattern [ADOPTED]
+- **Binds:** Agent task tree dispatch within the internal `dsh-worker` sidecar.
 - **Prevents:** Monolithic prompt bloat and uncontrolled subagent recursion.
-- **Rule:** The Mission Supervisor delegates sub-tasks to an Expert Pool (Research Specialist, Scraper Specialist, Valuation Specialist, PII Auditor) using Harness Producer-Reviewer and Fan-out/Fan-in patterns.
+- **Rule:** The Mission Supervisor delegates sub-tasks to an Expert Pool (Research Specialist, Scraper Specialist, Valuation Specialist, PII Auditor) using Producer-Reviewer and Fan-out/Fan-in patterns inspired by agent-harness design literature. This is a design pattern; it does not require the `deepseek-harness` runtime.
 
 ### AD-107 — Hermetic Testability & $0 API Cost Gate [ADOPTED]
 - **Binds:** `nowing_evals`, CI/CD pipelines, and local unit/integration tests.
@@ -165,7 +172,7 @@ flowchart TB
 - **Binds:** `batch_ingest_leads` service/route and database repositories.
 - **Prevents:** High HTTP roundtrip latency, distributed PostgreSQL row-lock deadlocks, and duplicate nullable rows.
 - **Rule:**
-  1. `batch_ingest_leads` is exposed as an authenticated **REST endpoint** at `POST /api/v1/workspaces/:workspace_id/leads/batch-ingest` (50–100 items per batch, `min_length=1`). A named MCP tool in `nowing_mcp` is **not in scope** for this epic; if DSH later uses MCP transport, it will be covered by a separate story.
+  1. `batch_ingest_leads` is exposed as an authenticated **REST endpoint** at `POST /api/v1/workspaces/:workspace_id/leads/batch-ingest` (50–100 items per batch, `min_length=1`). A named MCP tool in `nowing_mcp` is **not in scope** for this epic; if the internal DSH sidecar later uses MCP transport, it will be covered by a separate story. Evaluation of the `deepseek-harness` repo as an optional self-host runtime is deferred to a post-beta pilot.
   2. All incoming items MUST produce a deterministic `value_hmac` using the canonical HMAC input (AD-105, Rule 2). Items with no phone/email/domain MUST be rejected as degenerate before persistence.
   3. The `leads.value_hmac` and `verified_contacts.value_hmac` columns MUST be `NOT NULL` and guarded by a `UNIQUE(workspace_id, value_hmac)` constraint.
   4. All SQL bulk upserts on `leads` and `verified_contacts` MUST deterministically sort records by `value_hmac ASC` before executing `INSERT ... ON CONFLICT DO UPDATE`.
@@ -264,7 +271,7 @@ class BatchLeadIngestResponse(BaseModel):
     lead_ids: list[UUID]
 ```
 
-A named MCP tool in `nowing_mcp` is **not in scope** for this epic; if DSH later uses MCP transport, it will be covered by a separate story.
+A named MCP tool in `nowing_mcp` is **not in scope** for this epic; if the internal DSH sidecar later uses MCP transport, it will be covered by a separate story. Evaluation of the `deepseek-harness` repo as an optional self-host runtime is deferred to a post-beta pilot.
 
 ---
 
@@ -296,3 +303,30 @@ The architecture only requires that:
 ## 7. Deferred Decisions
 - **DEF-101:** Dynamic GPU autoscaling for vLLM based on spot instance prices (deferred to Q4 2026).
 - **DEF-102:** Direct Zalo OA Outbound messaging automation (deferred to Sprint 3 post-Closed Beta).
+
+---
+
+## 8. The Manus-Killer Autonomous Workstation Evolution (AD-111 to AD-115)
+
+> Canonical contract (2026-08-20, approved): Quy định vai trò của `nowing` là Autonomous Workstation sở hữu 25 phân hệ tính năng Manus.im.
+
+### AD-111 — Browser Operator Chrome Extension CDP Bridge [ADOPTED]
+- **Binds:** `nowing` Chrome Extension (Manifest V3) và FastAPI mission supervisor.
+- **Rule:** Extension kết nối qua WebSocket tới local agent runner bằng `chrome.debugger` API. Thao tác trực tiếp trên các tab đã đăng nhập sẵn cookies (LinkedIn, Facebook Ads, Jira, Shopee). Hỗ trợ Human Live Takeover tức thì.
+
+### AD-112 — In-Sandbox Linux Shell & Python Data Science Studio [ADOPTED]
+- **Binds:** `nowing` Execution Sandbox container.
+- **Rule:** Docker ephemeral container chạy non-root với PID 1 `tini`, RAM cap 512MB, timeout 60s. Tích hợp sẵn `pandas`, `numpy`, `matplotlib`, `openpyxl` để làm sạch dữ liệu lớn và xuất file Excel `.xlsx` chuyên nghiệp.
+
+### AD-113 — Full-Stack Web App Builder & Traefik Instant Hosting [ADOPTED]
+- **Binds:** `nowing` Web Builder và Traefik reverse proxy.
+- **Rule:** Agent sinh project Next.js/React trong `/workspace/web-app`. Deploy 1-click tự động lên `https://[app-name].nowing.space` có HTTPS và dynamic routing.
+
+### AD-114 — Design View Visual "Mark Tool" Canvas AST Mutator [ADOPTED]
+- **Binds:** Nowing Canvas Web Preview và React code generator.
+- **Rule:** Iframe preview inject Bounding Box Selector. Khi user khoanh vùng phần tử UI, agent bóc DOM XPath/CSS và AST-mutate chính xác component JSX.
+
+### AD-115 — Inbound Mail Gateway (`task@nowing.ai`) & Scheduled Tasks 2.0 [ADOPTED]
+- **Binds:** Inbound email webhook và Celery scheduler.
+- **Rule:** Inbound email forward kích hoạt task ngầm và trả kết quả qua SMTP kèm deliverables. Scheduled tasks lưu snapshot lần chạy trước và thực hiện Delta Analysis trước khi gửi báo cáo Telegram/Slack.
+

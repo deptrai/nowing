@@ -3475,6 +3475,43 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 | 26.5 Glass Box Mission Control | Story 26.2, Story 26.4, AD-104, AD-110 | Split Canvas 4-stage stepper & Two-Tier Phone Unlock UX |
 | 26.6 Telegram Checkpoint & Auto-Refund | Story 26.2, Story 26.4, Epic 11, AD-110 | Mobile glanceable card, `editMessageText` & 15% refund cap |
 | 26.7 Hermetic Evals & Chaos Testing | Story 26.1 - 26.6, AD-107, AD-108 | $0 replay test suite, quality gates & 0-zombie verification |
+| 26.9 Wide Research & Pro Excel | Epic 26, AD-112 | Client gọi Chainlens Wide Research + OpenPyXL Pro Formatter qua Daytona Sandbox |
+| 24.8 Browser Operator & Takeover | Story 24.4, AD-111 | Nâng cấp Chrome Extension CDP bridge, authenticated tabs, live takeover |
+| 6.10 Mail Gateway & Scheduled 2.0 | Epic 6, Story 6.8, AD-115 | Webhook task@nowing.ai + Celery Beat Delta Analysis reporting |
+| 3.18 Projects Workspace & Skills Hub | Epic 3, AD-1 | Projects Master Instructions context auto-inject + .skill.md modular hub |
+| 27.1 Web App Builder & Design View | AD-113, AD-114 | Next.js generator + 1-click *.nowing.space deploy + Mark Tool AST mutator |
+| 27.2 Manus Slides & Meeting Minutes | AD-112, AD-114 | Xuất slide PPTX/Marp 16:9 + Whisper STT & Diarization action items |
+
+---
+
+### Mở rộng Epic 26: Story 26.9 — Wide Research Client & Pro Excel Formatter (via Daytona Sandbox)
+**Scope:** Thêm `output: wide_research` client vào chainlens sub-agent để nhận ma trận JSON, và viết Pro Excel Template Script chạy trong **Daytona sandbox đã có sẵn**. **Tận dụng code đã có:** `ChainLensServiceAuth` (`services/chainlens/auth.py`), chainlens sub-agent (`agents/.../subagents/chainlens/`), DSH mission routes (`dsh_routes.py`), Daytona sandbox lifecycle (`middleware/filesystem/sandbox.py` — `get_or_create_sandbox()` với cache + async locks), sandbox file download (`sandbox_routes.py` — MIME `.xlsx` đã khai báo), pre-installed `pandas`/`numpy` trong sandbox (`execute_code/description.py`). **Code mới:** (a) thêm `output=wide_research` vào chainlens sub-agent request builder, (b) openpyxl Pro Formatter Python script template (đa tab, màu sắc, công thức, auto-filter) chạy trong sandbox hiện có. **KHÔNG cần xây Docker sandbox mới.** Governed by `AD-112`.
+
+---
+
+### Mở rộng Epic 24: Story 24.8 — Full Browser Operator Chrome Extension & Human Live Takeover
+**Scope:** Nâng cấp `nowing_browser_extension` (hiện là Web History Tracker + Lead Clipper backend) thành công cụ điều khiển trình duyệt hoàn chỉnh qua CDP. **Tận dụng code đã có:** Plasmo framework (`@plasmohq/storage`, popup routing, `background/index.ts`), Lead Clipper backend (`lead_clipper_routes.py` — SHA-256 dedupe, PII encryption, PAT auth), Agent Revert rollback (`agent_revert_route.py`). **Code mới (gần toàn bộ):** (a) thêm quyền `debugger` vào Plasmo manifest, (b) `chrome.debugger.attach()` + `sendCommand()` CDP bridge trong background script, (c) WebSocket kết nối tới DSH worker nhận lệnh click/type/navigate, (d) Authenticated Tab Tunnel tái sử dụng cookies/session, (e) Human Live Takeover Popover UI (pause agent → user giải CAPTCHA/2FA → resume), (f) backend Pause/Resume agent mid-execution endpoint. Governed by `AD-111`.
+
+---
+
+### Mở rộng Epic 6: Story 6.10 — Inbound Mail Gateway (`task@nowing.ai`) & Stateful Scheduled Tasks 2.0
+**Scope:** Thêm email adapter vào gateway framework và nâng cấp Celery scheduler thêm delta analysis. **Tận dụng code đã có:** Gateway webhook framework (`gateway_webhook_routes.py` — 1144 dòng xử lý Slack/Discord/Telegram/WhatsApp, `persist_inbound_event`, `pairing_code`), Celery Beat scheduler (`celery_app.py` — `check_periodic_schedules`, `alert_engine_tick`, automation triggers). **Code mới:** (a) `app/gateway/email/adapter.py` tiếp nhận webhook SendGrid/Mailgun, parse attachment, enqueue DSH mission, reply SMTP, (b) snapshot storage table cho scheduled task results, (c) delta diff engine so sánh snapshot cũ/mới trước khi gửi báo cáo. Governed by `AD-115`.
+
+---
+
+### Mở rộng Epic 3: Story 3.18 — Projects Persistent Workspace & Modular Skills Hub
+**Scope:** Thêm layer Project vào workspace hiện có và xây concept Skills Hub mới. **Tận dụng code đã có:** Workspace CRUD + RBAC (`workspaces_routes.py` — 619 dòng, roles, limits, MCP tool toggles), Prompt CRUD (`prompts_routes.py` — name, mode, content), Documents management (`documents_routes.py` — File/Note/Extension types). **Code mới (gần toàn bộ):** (a) entity `Project` (DB migration + API) chứa Master Instructions + pinned documents, (b) auto-inject project context vào system prompt trước mỗi chat turn (middleware hook trong `new_chat_routes.py`), (c) document pinning field + API, (d) `.skill.md` parser và Modular Skills registry.
+
+---
+
+## Epic 27: Full-Stack Web App Builder, Instant Hosting & Creative Studio (2026-08-20)
+**Epic goal:** Cung cấp trọn bộ công cụ sáng tạo và sản xuất phần mềm tự hành gồm Web Builder deploy `*.nowing.space`, công cụ chỉnh sửa trực quan Design View (Mark Tool), studio soạn thảo slide thuyết trình PPTX/Marp, và pipeline bóc tách ghi âm cuộc họp thành Action Items.
+
+**Stories:**
+- **27.1 Full-Stack Web App Builder, 1-Click Hosting `*.nowing.space` & Design View Mark Tool** — **⚠️ Story scope lớn nhất trong roadmap — toàn bộ code mới.** Không có nền tảng web builder hay dynamic hosting nào trong codebase. `editor_routes.py` là Plate.js Markdown editor (không liên quan). **Code mới:** (a) LLM code generator engine sinh Next.js/React + Tailwind CSS vào `/workspace/web-app`, (b) Dockerfile template + Traefik dynamic SSL routing lên `https://[app].nowing.space`, (c) Custom CNAME manager, (d) Iframe Bounding Box Selector "Mark Tool" DOM inspector + JSX AST mutator. Governed by `AD-113`, `AD-114`.
+- **27.2 Manus Slides Presentation Studio & Speaker Diarization Meeting Minutes** — **Tận dụng code đã có:** Remotion video presentations (`video_presentations_routes.py`), export PDF/DOCX/LaTeX/EPUB (`reports_routes.py` — Pandoc + Typst), Whisper STT local (`services/stt_service.py` — `faster-whisper` transcribe), Circleback meeting notes webhook (`circleback_webhook_route.py` → Markdown document). **Code mới chỉ là:** (a) thêm `python-pptx` dependency + PPTX export route (slide 16:9, biểu đồ, Speaker Notes), (b) Marp Markdown slides renderer, (c) thêm Speaker Diarization (`pyannote.audio` hoặc `whisperx`) vào `stt_service.py` để nhận diện giọng từng người trong meeting minutes.
+
+
 
 > **Prerequisite definitions:**
 > - **Story 20.1** = `NowingIngestService.to_chunks()` + `POST /v1/ingest/scraper` contract.
