@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import logging
 import math
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
@@ -11,11 +12,14 @@ from uuid import UUID
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import config
 from app.db import BillingEvent
 from app.services import wallet_credit
 from app.services.workspace_credit_service import (
     WorkspaceCreditService,
 )
+
+logger = logging.getLogger(__name__)
 
 # ponytail: in-process lock so concurrent relock requests in the same worker
 # (e.g. the integration-test AsyncClient that reuses one db_session) are
@@ -221,6 +225,17 @@ class BillingEventService:
             if existing_rows:
                 return existing_rows[0]
 
+            # 2. A refund already processed prevents a relock.
+            existing_refunds = await _list_billing_events(
+                session,
+                event_entity_type="verified_contact",
+                event_type="contact_unlock_refund",
+                event_id=verified_contact_id,
+                workspace_id=workspace_id,
+            )
+            if existing_refunds:
+                raise ValueError("refund already processed for this contact")
+
             # 2. Original unlock event must exist and be within the relock window.
             original_rows = await _list_billing_events(
                 session,
@@ -230,7 +245,10 @@ class BillingEventService:
                 workspace_id=workspace_id,
             )
             original = original_rows[0] if original_rows else None
-            if original is None or getattr(original, "event_type", None) != "contact_unlock":
+            if (
+                original is None
+                or getattr(original, "event_type", None) != "contact_unlock"
+            ):
                 raise ValueError(
                     f"no unlock billing event for contact {verified_contact_id}"
                 )
@@ -265,19 +283,13 @@ class BillingEventService:
                 if relock_count >= cap:
                     raise ValueError("relock budget exhausted")
 
-            # 4. Credit the original payer and refund their monthly spend.
+            # 4. Build the relock billing event before committing.
             payer_id = original.user_id or user_id
-            refund_micros = min(cost_micros, original.cost_micros or cost_micros)
+            original_cost = original.cost_micros
+            if original_cost is None:
+                original_cost = cost_micros
+            refund_micros = min(cost_micros, max(0, original_cost))
 
-            await wallet_credit.apply_credit(session, payer_id, refund_micros)
-            credit_svc = WorkspaceCreditService(session=session)
-            await credit_svc.refund_member_spend(
-                workspace_id=workspace_id,
-                user_id=payer_id,
-                amount_micros=refund_micros,
-            )
-
-            # 5. Persist the relock billing event (negative cost).
             event = BillingEvent(
                 workspace_id=workspace_id,
                 client_id=client_id,
@@ -290,7 +302,226 @@ class BillingEventService:
                 cost_basis="actual",
             )
             session.add(event)
+
+            # 5. Credit the original payer and refund their monthly spend.
+            credit_svc = WorkspaceCreditService(session=session)
+            await credit_svc.refund_member_spend(
+                workspace_id=workspace_id,
+                user_id=payer_id,
+                amount_micros=refund_micros,
+            )
+            await wallet_credit.apply_credit(session, payer_id, refund_micros)
             return event
+
+    async def record_contact_unlock_refund_24h(
+        self,
+        session: AsyncSession,
+        *,
+        verified_contact_id: UUID,
+        workspace_id: int,
+        client_id: str | None = None,
+        user_id: UUID,
+        cost_micros: int = 1_500,
+        refund_window_hours: int = 24,
+    ) -> BillingEvent:
+        """Record a 24h auto-refund for an invalid contact (Telegram 1-click refund).
+
+        Refunds the original payer, decrements member monthly spend, writes a
+        negative ``contact_unlock_refund`` BillingEvent, and updates contact state.
+        Enforces a 24-hour SLA window and a 15% budget cap per billing cycle.
+        """
+        async with _RELOCK_LOCK:
+            await _acquire_billing_lock(
+                session,
+                "verified_contact",
+                "contact_unlock_refund",
+                verified_contact_id,
+            )
+
+            # 1. Idempotency: check for existing refund or relock row (prevent double refund)
+            existing_refunds = await _list_billing_events(
+                session,
+                event_entity_type="verified_contact",
+                event_type="contact_unlock_refund",
+                event_id=verified_contact_id,
+                workspace_id=workspace_id,
+            )
+            if existing_refunds:
+                return existing_refunds[0]
+
+            existing_relocks = await _list_billing_events(
+                session,
+                event_entity_type="verified_contact",
+                event_type="contact_relock",
+                event_id=verified_contact_id,
+                workspace_id=workspace_id,
+            )
+            if existing_relocks:
+                # Relock already refunded this contact. Do not double-credit, but ensure
+                # the contact is marked invalid and treat the existing relock as the
+                # refund record for idempotency.
+                await self._mark_contact_invalid_for_refund(
+                    session,
+                    verified_contact_id=verified_contact_id,
+                    user_id=user_id,
+                    workspace_id=workspace_id,
+                    now=datetime.now(UTC),
+                )
+                return existing_relocks[0]
+
+            # 2. Original unlock event must exist and be within the 24h window
+            original_rows = await _list_billing_events(
+                session,
+                event_entity_type="verified_contact",
+                event_type="contact_unlock",
+                event_id=verified_contact_id,
+                workspace_id=workspace_id,
+            )
+            original = original_rows[0] if original_rows else None
+            if (
+                original is None
+                or getattr(original, "event_type", None) != "contact_unlock"
+            ):
+                raise ValueError(
+                    f"no original unlock billing event found for contact {verified_contact_id}"
+                )
+
+            created_at = getattr(original, "created_at", None)
+            if created_at is None:
+                raise ValueError("original unlock event has no timestamp")
+            now = datetime.now(UTC)
+            if now - created_at > timedelta(hours=refund_window_hours):
+                raise ValueError("24h refund window expired")
+
+            # 3. 15% auto-refund cap across the current and original-unlock billing cycles.
+            current_cycle_start, current_cycle_end = _billing_cycle_bounds(now)
+            original_cycle_start, original_cycle_end = _billing_cycle_bounds(created_at)
+
+            refund_count = await _count_workspace_events(
+                session,
+                event_entity_type="verified_contact",
+                event_type="contact_unlock_refund",
+                workspace_id=workspace_id,
+                since=current_cycle_start,
+                until=current_cycle_end,
+            )
+            unlock_count = await _count_workspace_events(
+                session,
+                event_entity_type="verified_contact",
+                event_type="contact_unlock",
+                workspace_id=workspace_id,
+                since=current_cycle_start,
+                until=current_cycle_end,
+            )
+
+            if (original_cycle_start, original_cycle_end) != (
+                current_cycle_start,
+                current_cycle_end,
+            ):
+                refund_count += await _count_workspace_events(
+                    session,
+                    event_entity_type="verified_contact",
+                    event_type="contact_unlock_refund",
+                    workspace_id=workspace_id,
+                    since=original_cycle_start,
+                    until=original_cycle_end,
+                )
+                unlock_count += await _count_workspace_events(
+                    session,
+                    event_entity_type="verified_contact",
+                    event_type="contact_unlock",
+                    workspace_id=workspace_id,
+                    since=original_cycle_start,
+                    until=original_cycle_end,
+                )
+
+            if unlock_count > 0:
+                cap_pct = float(getattr(config, "DSH_TELEGRAM_REFUND_CAP_PCT", 0.15))
+                cap = math.ceil(unlock_count * cap_pct)
+                if refund_count >= cap:
+                    raise ValueError(
+                        "auto-refund budget cap exhausted for this billing cycle"
+                    )
+
+            # 4. Credit original payer and refund monthly spend (after persisting event).
+            payer_id = original.user_id or user_id
+            original_cost = original.cost_micros
+            if original_cost is None:
+                original_cost = cost_micros
+            refund_micros = min(cost_micros, max(0, original_cost))
+
+            # 5. Mark contact as invalid and audit.
+            await self._mark_contact_invalid_for_refund(
+                session,
+                verified_contact_id=verified_contact_id,
+                user_id=user_id,
+                workspace_id=workspace_id,
+                now=now,
+            )
+
+            # 6. Persist negative BillingEvent.
+            event = BillingEvent(
+                workspace_id=workspace_id,
+                client_id=client_id,
+                user_id=payer_id,
+                event_entity_type="verified_contact",
+                event_type="contact_unlock_refund",
+                event_id=verified_contact_id,
+                cost_micros=-refund_micros,
+                currency="USD",
+                cost_basis="actual",
+            )
+            session.add(event)
+
+            credit_svc = WorkspaceCreditService(session=session)
+            await credit_svc.refund_member_spend(
+                workspace_id=workspace_id,
+                user_id=payer_id,
+                amount_micros=refund_micros,
+            )
+            await wallet_credit.apply_credit(session, payer_id, refund_micros)
+            return event
+
+    @staticmethod
+    async def _mark_contact_invalid_for_refund(
+        session: AsyncSession,
+        *,
+        verified_contact_id: UUID,
+        user_id: UUID,
+        workspace_id: int,
+        now: datetime,
+    ) -> None:
+        """Mark a VerifiedContact as invalid and append a refund audit log.
+
+        Safe for fake test sessions that do not implement ``session.get``.
+        """
+        session_get = getattr(session, "get", None)
+        if session_get is None:
+            return
+
+        from app.db import VerifiedContact
+
+        contact = await session_get(VerifiedContact, verified_contact_id)
+        if contact is None:
+            return
+
+        contact.is_valid = False
+        contact.invalid_reason = "telegram_refund"
+        contact.verification_status = "invalid"
+        contact.refunded_at = now
+        existing_logs = list(contact.pii_access_audit_logs or [])
+        contact.pii_access_audit_logs = [
+            *existing_logs,
+            {
+                "user_id": str(user_id),
+                "workspace_id": workspace_id,
+                "lead_id": str(contact.lead_id) if contact.lead_id else None,
+                "contact_id": str(verified_contact_id),
+                "access_type": "refund",
+                "timestamp": now.isoformat(),
+                "reason": "invalid_number",
+            },
+        ]
 
     async def record_contact_enrichment(
         self,
@@ -484,8 +715,7 @@ async def _count_workspace_events(
 ) -> int:
     """Count billing events of a given type in a workspace and time range."""
     result = await session.execute(
-        select(BillingEvent)
-        .where(
+        select(BillingEvent).where(
             BillingEvent.event_entity_type == event_entity_type,
             BillingEvent.event_type == event_type,
             BillingEvent.workspace_id == workspace_id,

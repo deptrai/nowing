@@ -13,12 +13,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.config import config
 from app.db import Lead, Permission, VerifiedContact, Workspace, get_async_session
-from app.lead_intelligence.dnc.service import DncComplianceService
 from app.rate_limiter import limiter
 from app.services import wallet_credit
 from app.services.billing_event_service import BillingEventService
+from app.services.contact_unlock_service import ContactUnlockService
 from app.services.lead_batch_service import LeadBatchService, LeadItemValidationError
 from app.services.pii.opt_out_service import OptOutService, OptOutValidationError
 from app.services.pii.verified_contact_encryption import VerifiedContactEncryption
@@ -105,6 +104,7 @@ class BatchLeadIngestResponse(BaseModel):
     failed_count: int
     execution_time_ms: float
     lead_ids: list[UUID]
+    lead_id_mapping: dict[str, UUID] = Field(default_factory=dict)
 
 
 @router.post(
@@ -228,103 +228,26 @@ async def unlock_contact(
             detail="Contact not found",
         )
 
-    enc = VerifiedContactEncryption()
-
-    # Reject purged/withdrawn contacts.
-    if not contact.is_valid or contact.consent_status == "withdrawn":
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Contact has been opted-out and cannot be unlocked.",
-        )
-
-    def _decrypt_field(value: str | None) -> str | None:
-        if not value:
-            return None
-        if enc.is_encrypted(value):
-            try:
-                return enc.decrypt(value)
-            except Exception:
-                return None
-        return value
-
-    if contact.is_unlocked:
-        return ContactUnlockResponse(
-            contact_id=contact.id,
-            is_unlocked=True,
-            cost_micros=0,
-            name=_decrypt_field(contact.name),
-            title=_decrypt_field(contact.title),
-            email=_decrypt_field(contact.email),
-            phone=_decrypt_field(contact.phone),
-        )
-
-    # Fail-closed DNC check before billing.
     lead = await session.get(Lead, (lead_id, workspace_id))
-    dnc = DncComplianceService(secret_key=config.SECRET_KEY)
-    dnc_result = await dnc.is_blocked(
-        workspace_id=workspace_id,
-        phone=_decrypt_field(contact.phone),
-        email=_decrypt_field(contact.email),
-        domain=getattr(lead, "domain", None) if lead else None,
+    service = ContactUnlockService()
+    result = await service.unlock_contact(
         session=session,
+        workspace_id=workspace_id,
+        contact=contact,
+        user_id=auth.user.id,
+        lead=lead,
+        ip_address=_get_client_ip(request),
+        reason="contact_unlock",
     )
-    if dnc_result.is_blocked:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Contact is blocked by DNC: {dnc_result.reason}",
-        )
-
-    contact.is_unlocked = True
-    existing_logs = list(contact.pii_access_audit_logs or [])
-    contact.pii_access_audit_logs = [
-        *existing_logs,
-        {
-            "user_id": str(auth.user.id),
-            "workspace_id": workspace_id,
-            "lead_id": str(lead_id),
-            "contact_id": str(contact_id),
-            "access_type": "unlock",
-            "timestamp": datetime.now(UTC).isoformat(),
-            "ip_address": _get_client_ip(request),
-            "reason": "contact_unlock",
-        },
-    ]
-
-    try:
-        await BillingEventService().record_contact_unlock(
-            session,
-            verified_contact_id=contact.id,
-            workspace_id=workspace_id,
-            client_id=None,
-            user_id=auth.user.id,
-            cost_micros=1_500,
-        )
-    except wallet_credit.InsufficientCreditsError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail="Insufficient credits to unlock contact.",
-        ) from exc
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Billing validation failed.",
-        ) from exc
-    except Exception as exc:
-        logger.exception("Failed to unlock contact %s: %s", contact_id, exc)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to unlock contact.",
-        ) from exc
-
     await session.commit()
     return ContactUnlockResponse(
-        contact_id=contact.id,
-        is_unlocked=True,
-        cost_micros=1_500,
-        name=_decrypt_field(contact.name),
-        title=_decrypt_field(contact.title),
-        email=_decrypt_field(contact.email),
-        phone=_decrypt_field(contact.phone),
+        contact_id=result.contact_id,
+        is_unlocked=result.is_unlocked,
+        cost_micros=result.cost_micros,
+        name=result.name,
+        title=result.title,
+        email=result.email,
+        phone=result.phone,
     )
 
 

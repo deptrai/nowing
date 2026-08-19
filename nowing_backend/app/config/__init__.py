@@ -684,6 +684,19 @@ class Config:
         os.getenv("DSH_MAX_PAYLOAD_BYTES", str(10 * 1024 * 1024))
     )
 
+    # DSH Telegram Interactive Checkpoint & Auto-Refund (Story 26.6)
+    DSH_TELEGRAM_FIT_SCORE_THRESHOLD = _env_int("DSH_TELEGRAM_FIT_SCORE_THRESHOLD", 80)
+    DSH_TELEGRAM_REFUND_CAP_PCT = _env_float(
+        "DSH_TELEGRAM_REFUND_CAP_PCT", 0.15
+    )
+    DSH_TELEGRAM_REFUND_WINDOW_HOURS = _env_int("DSH_TELEGRAM_REFUND_WINDOW_HOURS", 24)
+    DSH_TELEGRAM_MAX_LEADS_PER_MISSION = _env_int(
+        "DSH_TELEGRAM_MAX_LEADS_PER_MISSION", 1
+    )
+    DSH_TELEGRAM_CALLBACK_RATE_LIMIT_PER_MINUTE = _env_int(
+        "DSH_TELEGRAM_CALLBACK_RATE_LIMIT_PER_MINUTE", 60
+    )
+
     # Hybrid LLM Router (Story 26.3)
     HYBRID_ENABLE_LOCAL_VLLM = (
         os.getenv("HYBRID_ENABLE_LOCAL_VLLM", "TRUE").upper() == "TRUE"

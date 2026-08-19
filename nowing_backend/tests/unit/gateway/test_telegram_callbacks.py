@@ -276,3 +276,170 @@ async def test_unknown_callback_data_answers_only(session, adapter, binding):
     adapter.answer_callback_query.assert_awaited_once_with(callback_query_id="cqid")
     adapter.send_message.assert_not_awaited()
     adapter.edit_message.assert_not_awaited()
+
+
+class TestDshTelegramCallbacks:
+    """AC-1 to AC-5: 3-part callback query parsing and routing (dsh:{action}:{token})."""
+
+    @pytest.mark.asyncio
+    async def test_dsh_unlock_callback_dispatches_to_service(
+        self, session, adapter, binding, mocker
+    ):
+        event = _event("dsh:unlock:tok_abc123xyz456")
+        service_mock = MagicMock()
+        service_mock.handle_unlock_callback = AsyncMock()
+        mocker.patch(
+            "app.services.dsh_telegram_checkpoint_service.DshTelegramCheckpointService",
+            return_value=service_mock,
+        )
+
+        await handle_callback_query(
+            session=session, adapter=adapter, event=event, binding=binding
+        )
+
+        service_mock.handle_unlock_callback.assert_awaited_once_with(
+            session=session,
+            adapter=adapter,
+            event=event,
+            binding=binding,
+            callback_token="tok_abc123xyz456",
+            callback_query_id="cqid",
+        )
+
+    @pytest.mark.asyncio
+    async def test_dsh_dossier_callback_dispatches_to_service(
+        self, session, adapter, binding, mocker
+    ):
+        event = _event("dsh:dossier:tok_abc123xyz456")
+        service_mock = MagicMock()
+        service_mock.handle_dossier_callback = AsyncMock()
+        mocker.patch(
+            "app.services.dsh_telegram_checkpoint_service.DshTelegramCheckpointService",
+            return_value=service_mock,
+        )
+
+        await handle_callback_query(
+            session=session, adapter=adapter, event=event, binding=binding
+        )
+
+        service_mock.handle_dossier_callback.assert_awaited_once_with(
+            session=session,
+            adapter=adapter,
+            event=event,
+            binding=binding,
+            callback_token="tok_abc123xyz456",
+            callback_query_id="cqid",
+        )
+
+    @pytest.mark.asyncio
+    async def test_dsh_skip_callback_dispatches_to_service(
+        self, session, adapter, binding, mocker
+    ):
+        event = _event("dsh:skip:tok_abc123xyz456")
+        service_mock = MagicMock()
+        service_mock.handle_skip_callback = AsyncMock()
+        mocker.patch(
+            "app.services.dsh_telegram_checkpoint_service.DshTelegramCheckpointService",
+            return_value=service_mock,
+        )
+
+        await handle_callback_query(
+            session=session, adapter=adapter, event=event, binding=binding
+        )
+
+        service_mock.handle_skip_callback.assert_awaited_once_with(
+            session=session,
+            adapter=adapter,
+            event=event,
+            binding=binding,
+            callback_token="tok_abc123xyz456",
+            callback_query_id="cqid",
+        )
+
+    @pytest.mark.asyncio
+    async def test_dsh_refund_callback_dispatches_to_service(
+        self, session, adapter, binding, mocker
+    ):
+        event = _event("dsh:refund:tok_abc123xyz456")
+        service_mock = MagicMock()
+        service_mock.handle_refund_callback = AsyncMock()
+        mocker.patch(
+            "app.services.dsh_telegram_checkpoint_service.DshTelegramCheckpointService",
+            return_value=service_mock,
+        )
+
+        await handle_callback_query(
+            session=session, adapter=adapter, event=event, binding=binding
+        )
+
+        service_mock.handle_refund_callback.assert_awaited_once_with(
+            session=session,
+            adapter=adapter,
+            event=event,
+            binding=binding,
+            callback_token="tok_abc123xyz456",
+            callback_query_id="cqid",
+        )
+
+    @pytest.mark.asyncio
+    async def test_dsh_unknown_action_answers_with_error(
+        self, session, adapter, binding
+    ):
+        event = _event("dsh:invalid_action:tok_abc123xyz456")
+
+        await handle_callback_query(
+            session=session, adapter=adapter, event=event, binding=binding
+        )
+
+        adapter.answer_callback_query.assert_awaited_once_with(callback_query_id="cqid")
+
+    @pytest.mark.asyncio
+    async def test_dsh_callback_rate_limited_shows_alert(
+        self, session, adapter, binding, mocker
+    ):
+        event = _event("dsh:unlock:tok_abc123xyz456")
+        mocker.patch(
+            "app.gateway.ratelimit.acquire_token",
+            new=AsyncMock(return_value=1500),  # wait_ms > 0 => rate limited
+        )
+        service_mock = MagicMock()
+        service_mock.handle_unlock_callback = AsyncMock()
+        mocker.patch(
+            "app.services.dsh_telegram_checkpoint_service.DshTelegramCheckpointService",
+            return_value=service_mock,
+        )
+
+        await handle_callback_query(
+            session=session, adapter=adapter, event=event, binding=binding
+        )
+
+        adapter.answer_callback_query.assert_awaited_once()
+        args = adapter.answer_callback_query.call_args.kwargs
+        assert (
+            args.get("show_alert") is True
+            or "quá nhanh" in args.get("text", "").lower()
+        )
+        service_mock.handle_unlock_callback.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_dsh_callback_permission_denied_shows_alert(
+        self, session, adapter, binding, mocker
+    ):
+        event = _event("dsh:unlock:tok_abc123xyz456")
+        mocker.patch(
+            "app.gateway.telegram.callbacks.check_permission",
+            new=AsyncMock(side_effect=HTTPException(status_code=403)),
+        )
+        service_mock = MagicMock()
+        service_mock.handle_unlock_callback = AsyncMock()
+        mocker.patch(
+            "app.services.dsh_telegram_checkpoint_service.DshTelegramCheckpointService",
+            return_value=service_mock,
+        )
+
+        await handle_callback_query(
+            session=session, adapter=adapter, event=event, binding=binding
+        )
+
+        adapter.answer_callback_query.assert_awaited_once()
+        service_mock.handle_unlock_callback.assert_not_awaited()

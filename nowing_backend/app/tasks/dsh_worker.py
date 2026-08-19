@@ -13,6 +13,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlparse
+from uuid import UUID
 
 import httpx
 from redis.asyncio.client import Redis
@@ -210,6 +211,23 @@ class DshRestClient:
             self._raise_for_status(response, "batch_ingest_leads")
             return response.json()
         raise DshTransientError("batch_ingest_leads exhausted retries on 429")
+
+    async def notify_high_fit_lead(
+        self,
+        mission_id: UUID | str,
+        lead_id: UUID | str,
+        contact_id: UUID | str | None = None,
+    ) -> dict[str, Any]:
+        payload: dict[str, Any] = {"lead_id": str(lead_id)}
+        if contact_id:
+            payload["contact_id"] = str(contact_id)
+        response = await self._client.post(
+            f"/v1/dsh/missions/{mission_id}/notify-high-fit",
+            json=payload,
+            timeout=httpx.Timeout(config.DSH_SYNC_TIMEOUT_SECONDS),
+        )
+        self._raise_for_status(response, "notify_high_fit_lead")
+        return response.json()
 
     async def aclose(self) -> None:
         await self._client.aclose()
@@ -419,7 +437,64 @@ class DeepLeadResearchExecutor:
             leads = checkpoint.get("leads", [])
             if leads:
                 try:
-                    await self.rest_client.batch_ingest_leads(workspace_id, leads)
+                    ingest_res = await self.rest_client.batch_ingest_leads(
+                        workspace_id, leads
+                    )
+                    try:
+                        # Trigger Telegram notification for top high-fit lead if any (Story 26.6)
+                        from app.lead_intelligence.dnc.normalizer import (
+                            normalize_domain,
+                        )
+                        from app.services.dsh_telegram_checkpoint_service import (
+                            DshTelegramCheckpointService,
+                        )
+                        from app.services.lead_batch_service import generate_lead_hmac
+
+                        checkpoint_svc = DshTelegramCheckpointService()
+                        high_fit_candidate = checkpoint_svc.select_high_fit_lead(leads)
+                        if high_fit_candidate:
+                            lead_id = None
+                            if isinstance(high_fit_candidate, dict):
+                                cand_company = (
+                                    high_fit_candidate.get("company_name")
+                                    or high_fit_candidate.get("title")
+                                    or "Doanh nghiệp"
+                                )
+                                cand_domain = normalize_domain(
+                                    high_fit_candidate.get("domain")
+                                )
+                                cand_hmac = high_fit_candidate.get(
+                                    "value_hmac"
+                                ) or generate_lead_hmac(
+                                    workspace_id, cand_company, cand_domain
+                                )
+                                mapping = ingest_res.get("lead_id_mapping") or {}
+                                lead_id = mapping.get(cand_hmac)
+                                if not lead_id:
+                                    logger.info(
+                                        "High-fit lead mapping missing for mission %s; skipping notification",
+                                        mission_id,
+                                    )
+                            elif hasattr(high_fit_candidate, "id"):
+                                lead_id = high_fit_candidate.id
+
+                            if lead_id:
+                                try:
+                                    await self.rest_client.notify_high_fit_lead(
+                                        mission_id, lead_id
+                                    )
+                                except Exception as notify_exc:
+                                    logger.warning(
+                                        "Failed to notify high fit lead for mission %s: %s",
+                                        mission_id,
+                                        notify_exc,
+                                    )
+                    except Exception as notify_exc:
+                        logger.warning(
+                            "Failed to process high fit lead notification for mission %s: %s",
+                            mission_id,
+                            notify_exc,
+                        )
                 except Exception as exc:
                     subtasks.append(
                         {

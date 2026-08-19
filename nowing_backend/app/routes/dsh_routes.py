@@ -19,6 +19,8 @@ from app.schemas.dsh import (
     DshMissionListResponse,
     DshMissionRequest,
     DshMissionResponse,
+    DshNotifyHighFitRequest,
+    DshNotifyHighFitResponse,
 )
 from app.services.dsh_control_service import MissionControlService
 from app.services.dsh_mission_service import (
@@ -26,6 +28,7 @@ from app.services.dsh_mission_service import (
     DshMissionServiceError,
     DshPayloadTooLargeError,
 )
+from app.services.dsh_telegram_checkpoint_service import DshTelegramCheckpointService
 from app.users import get_auth_context
 from app.utils.rbac import check_permission
 
@@ -351,3 +354,39 @@ async def patch_dsh_mission_checkpoint(
         ) from exc
 
     return DshMissionInternalResponse.model_validate(mission)
+
+
+@dsh_internal_router.post(
+    "/dsh/missions/{mission_id}/notify-high-fit",
+    response_model=DshNotifyHighFitResponse,
+    status_code=status.HTTP_200_OK,
+    tags=["dsh-internal"],
+)
+async def notify_dsh_mission_high_fit_lead(
+    request: Request,
+    mission_id: UUID,
+    body: DshNotifyHighFitRequest,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(require_dsh_worker),
+) -> DshNotifyHighFitResponse:
+    """Sidecar-only high-fit lead Telegram notification."""
+    mission_service = DshMissionService()
+    try:
+        mission = await mission_service.get_mission_or_404(session, mission_id)
+    except DshMissionServiceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+    _require_pat_workspace_scope(auth, mission.workspace_id)
+
+    checkpoint_service = DshTelegramCheckpointService()
+    res = await checkpoint_service.notify_high_fit_lead(
+        session=session,
+        workspace_id=mission.workspace_id,
+        mission_id=mission_id,
+        lead_id=body.lead_id,
+        contact_id=body.contact_id,
+    )
+    return DshNotifyHighFitResponse.model_validate(res)

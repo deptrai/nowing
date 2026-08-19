@@ -3811,6 +3811,73 @@ class DshMission(Base, TimestampMixin):
     error = Column(JSONB, nullable=True)
 
 
+class TelegramCheckpointMessage(Base, TimestampMixin):
+    """Maps a Telegram inline-keyboard message to a lead/contact for DSH checkpoints."""
+
+    __tablename__ = "telegram_checkpoint_messages"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "callback_token", name="uq_telegram_checkpoint_callback_token"
+        ),
+        Index("ix_telegram_checkpoint_callback_token", "callback_token"),
+        Index(
+            "ix_telegram_checkpoint_message_peer",
+            "external_message_id",
+            "external_peer_id",
+        ),
+        Index("ix_telegram_checkpoint_workspace_mission", "workspace_id", "mission_id"),
+        Index("ix_telegram_checkpoint_workspace_lead", "workspace_id", "lead_id"),
+        ForeignKeyConstraint(
+            ["lead_id", "workspace_id"],
+            ["leads.id", "leads.workspace_id"],
+            ondelete="CASCADE",
+            name="fk_telegram_checkpoint_lead_id_workspace_id",
+        ),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    callback_token = Column(String(24), nullable=False, unique=True)
+    status = Column(String(20), nullable=False, default="sent", server_default="sent")
+
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    mission_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("dsh_missions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    lead_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    contact_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("verified_contacts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    external_message_id = Column(Text, nullable=True)
+    external_peer_id = Column(Text, nullable=True)
+
+    unlocked_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    refunded_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
+    # Safe metadata only (e.g. {"dossier_visible": true}). NEVER store unmasked PII here.
+    action_payload = Column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+
+
 class AntiBotEscalation(BaseModel, TimestampMixin):
     """Admin-escalation row for an anti-bot / CAPTCHA block.
 

@@ -6,9 +6,10 @@ and wallet are mocked; no real Postgres or credit card gateway is required.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -27,6 +28,9 @@ class _FakeResult:
 
     def scalar(self) -> Any:
         return self._value
+
+    def scalars(self) -> _FakeResult:
+        return self
 
     def first(self) -> Any:
         return self._value
@@ -580,3 +584,311 @@ class TestRecordContactEnrichment:
                 cost_micros=1000,
             )
         assert "exceed your available credit" in str(exc_info.value)
+
+
+class TestRecordContactUnlockRefund24h:
+    """AC-4: 24h auto-refund SLA with 15% billing-cycle cap (Story 26.6)."""
+
+    def _make_unlock_event(
+        self, contact_id: UUID, user_id: UUID, created_at: datetime | None = None
+    ) -> Any:
+        from types import SimpleNamespace
+
+        return SimpleNamespace(
+            id=uuid4(),
+            user_id=user_id,
+            workspace_id=1,
+            event_entity_type="verified_contact",
+            event_type="contact_unlock",
+            event_id=contact_id,
+            cost_micros=1500,
+            created_at=created_at or datetime.now(UTC),
+        )
+
+    def _make_refund_event(self, contact_id: UUID, user_id: UUID) -> Any:
+        from types import SimpleNamespace
+
+        return SimpleNamespace(
+            id=uuid4(),
+            user_id=user_id,
+            workspace_id=1,
+            event_entity_type="verified_contact",
+            event_type="contact_unlock_refund",
+            event_id=contact_id,
+            cost_micros=-1500,
+            created_at=datetime.now(UTC),
+        )
+
+    def _patch_wallet_and_spend(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> dict[str, Any]:
+        calls: dict[str, Any] = {"credit": [], "refund_spend": []}
+
+        async def _apply_credit(_session: Any, user_id: Any, amount_micros: int) -> int:
+            calls["credit"].append({"user_id": user_id, "amount_micros": amount_micros})
+            return amount_micros
+
+        async def _refund_member_spend(
+            self: Any,
+            *,
+            workspace_id: int,
+            user_id: UUID,
+            amount_micros: int,
+        ) -> dict[str, Any]:
+            calls["refund_spend"].append(
+                {
+                    "workspace_id": workspace_id,
+                    "user_id": user_id,
+                    "amount_micros": amount_micros,
+                }
+            )
+            return {
+                "workspace_id": workspace_id,
+                "user_id": user_id,
+                "amount_micros": amount_micros,
+                "member_monthly_spent": 0,
+            }
+
+        monkeypatch.setattr(
+            "app.services.wallet_credit.apply_credit", _apply_credit, raising=False
+        )
+        monkeypatch.setattr(
+            "app.services.workspace_credit_service.WorkspaceCreditService.refund_member_spend",
+            _refund_member_spend,
+            raising=False,
+        )
+        return calls
+
+    def _compile_text(self, stmt: Any) -> str:
+        try:
+            return str(stmt.compile(compile_kwargs={"literal_binds": True})).lower()
+        except Exception:
+            return str(stmt).lower()
+
+    @pytest.mark.asyncio
+    async def test_record_contact_unlock_refund_24h_returns_negative_billing_event(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """P0: record_contact_unlock_refund_24h writes -1500 micros BillingEvent and credits wallet."""
+        from app.services.billing_event_service import BillingEventService
+
+        calls = self._patch_wallet_and_spend(monkeypatch)
+        contact_id = uuid4()
+        user_id = uuid4()
+        original_unlock = self._make_unlock_event(contact_id, user_id)
+
+        session = _FakeSession()
+
+        # Mock query results
+        async def _execute(stmt: Any, _params: Any | None = None) -> _FakeResult:
+            text = self._compile_text(stmt)
+            if "contact_unlock_refund" in text and "count" in text:
+                return _FakeResult(value=0)
+            if "contact_unlock" in text and "count" in text:
+                return _FakeResult(value=10)
+            if "contact_unlock_refund" in text:
+                return _FakeResult(rows=[])  # no existing refund
+            if "contact_unlock" in text:
+                return _FakeResult(value=original_unlock, rows=[original_unlock])
+            return _FakeResult(value=1, rows=[])
+
+        session.execute = _execute  # type: ignore[method-assign]
+
+        result = await BillingEventService().record_contact_unlock_refund_24h(
+            session,
+            verified_contact_id=contact_id,
+            workspace_id=1,
+            user_id=user_id,
+        )
+
+        assert result.event_type == "contact_unlock_refund"
+        assert result.cost_micros == -1500
+        assert len(calls["credit"]) == 1
+        assert calls["credit"][0]["amount_micros"] == 1500
+        assert len(calls["refund_spend"]) == 1
+        assert calls["refund_spend"][0]["amount_micros"] == 1500
+
+    @pytest.mark.asyncio
+    async def test_record_contact_unlock_refund_24h_is_idempotent(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """P0: a second refund call for the same contact returns existing event without double credit."""
+        from app.services.billing_event_service import BillingEventService
+
+        calls = self._patch_wallet_and_spend(monkeypatch)
+        contact_id = uuid4()
+        user_id = uuid4()
+        existing_refund = self._make_refund_event(contact_id, user_id)
+
+        session = _FakeSession()
+
+        async def _execute(stmt: Any, _params: Any | None = None) -> _FakeResult:
+            text = self._compile_text(stmt)
+            if "contact_unlock_refund" in text:
+                return _FakeResult(value=existing_refund, rows=[existing_refund])
+            return _FakeResult()
+
+        session.execute = _execute  # type: ignore[method-assign]
+
+        result = await BillingEventService().record_contact_unlock_refund_24h(
+            session,
+            verified_contact_id=contact_id,
+            workspace_id=1,
+            user_id=user_id,
+        )
+
+        assert result is existing_refund
+        assert len(calls["credit"]) == 0
+        assert len(calls["refund_spend"]) == 0
+
+    @pytest.mark.asyncio
+    async def test_record_contact_unlock_refund_24h_returns_existing_if_relocked(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Patch 2: a refund call for a contact that was already relocked returns existing relock without double credit."""
+        from types import SimpleNamespace
+
+        from app.services.billing_event_service import BillingEventService
+
+        calls = self._patch_wallet_and_spend(monkeypatch)
+        contact_id = uuid4()
+        user_id = uuid4()
+        existing_relock = SimpleNamespace(
+            id=uuid4(),
+            user_id=user_id,
+            workspace_id=1,
+            event_entity_type="verified_contact",
+            event_type="contact_relock",
+            event_id=contact_id,
+            cost_micros=-1500,
+            created_at=datetime.now(UTC),
+        )
+
+        session = _FakeSession()
+
+        async def _execute(stmt: Any, _params: Any | None = None) -> _FakeResult:
+            text = self._compile_text(stmt)
+            if "contact_unlock_refund" in text:
+                return _FakeResult(rows=[])
+            if "contact_relock" in text:
+                return _FakeResult(value=existing_relock, rows=[existing_relock])
+            return _FakeResult()
+
+        session.execute = _execute  # type: ignore[method-assign]
+
+        result = await BillingEventService().record_contact_unlock_refund_24h(
+            session,
+            verified_contact_id=contact_id,
+            workspace_id=1,
+            user_id=user_id,
+        )
+
+        assert result is existing_relock
+        assert len(calls["credit"]) == 0
+        assert len(calls["refund_spend"]) == 0
+
+    @pytest.mark.asyncio
+    async def test_record_contact_unlock_refund_24h_refuses_expired_window(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """P0: refund beyond 24h window is rejected with ValueError."""
+        from datetime import timedelta
+
+        from app.services.billing_event_service import BillingEventService
+
+        self._patch_wallet_and_spend(monkeypatch)
+        contact_id = uuid4()
+        user_id = uuid4()
+        expired_unlock = self._make_unlock_event(
+            contact_id, user_id, created_at=datetime.now(UTC) - timedelta(hours=25)
+        )
+
+        session = _FakeSession()
+
+        async def _execute(stmt: Any, _params: Any | None = None) -> _FakeResult:
+            text = self._compile_text(stmt)
+            if "contact_unlock_refund" in text:
+                return _FakeResult(rows=[])
+            if "contact_unlock" in text:
+                return _FakeResult(value=expired_unlock, rows=[expired_unlock])
+            return _FakeResult(value=10)
+
+        session.execute = _execute  # type: ignore[method-assign]
+
+        with pytest.raises((ValueError, RuntimeError), match=r"(?i)24h|expired|window"):
+            await BillingEventService().record_contact_unlock_refund_24h(
+                session,
+                verified_contact_id=contact_id,
+                workspace_id=1,
+                user_id=user_id,
+            )
+
+    @pytest.mark.asyncio
+    async def test_record_contact_unlock_refund_24h_refuses_when_no_original_unlock(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """P0: refund without prior contact_unlock BillingEvent is rejected."""
+        from app.services.billing_event_service import BillingEventService
+
+        self._patch_wallet_and_spend(monkeypatch)
+        session = _FakeSession()
+
+        async def _execute(stmt: Any, _params: Any | None = None) -> _FakeResult:
+            return _FakeResult(value=None, rows=[])
+
+        session.execute = _execute  # type: ignore[method-assign]
+
+        with pytest.raises(
+            (ValueError, RuntimeError), match=r"(?i)original|not found|unlock"
+        ):
+            await BillingEventService().record_contact_unlock_refund_24h(
+                session,
+                verified_contact_id=uuid4(),
+                workspace_id=1,
+                user_id=uuid4(),
+            )
+
+    @pytest.mark.asyncio
+    async def test_record_contact_unlock_refund_24h_refuses_when_cap_exhausted(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """P0: refund rejected when 15% budget cap is reached."""
+        from app.services.billing_event_service import BillingEventService
+
+        self._patch_wallet_and_spend(monkeypatch)
+        contact_id = uuid4()
+        user_id = uuid4()
+        original_unlock = self._make_unlock_event(contact_id, user_id)
+
+        session = _FakeSession()
+
+        dummy_refunds = [self._make_refund_event(uuid4(), user_id) for _ in range(15)]
+        dummy_unlocks = [self._make_unlock_event(uuid4(), user_id) for _ in range(100)]
+
+        # Simulate 100 unlocks and 15 prior refunds (cap = 15) -> 16th refund is rejected
+        async def _execute(stmt: Any, _params: Any | None = None) -> _FakeResult:
+            text = self._compile_text(stmt)
+            # Cycle count queries contain 'created_at >='
+            if "created_at >=" in text:
+                if "contact_unlock_refund" in text:
+                    return _FakeResult(rows=dummy_refunds)
+                if "contact_unlock" in text:
+                    return _FakeResult(rows=dummy_unlocks)
+            # Identity queries for this specific contact
+            if "contact_unlock_refund" in text:
+                return _FakeResult(rows=[])
+            if "contact_unlock" in text:
+                return _FakeResult(value=original_unlock, rows=[original_unlock])
+            return _FakeResult()
+
+        session.execute = _execute  # type: ignore[method-assign]
+
+        with pytest.raises(
+            (ValueError, RuntimeError), match=r"(?i)cap|budget|exhausted|limit"
+        ):
+            await BillingEventService().record_contact_unlock_refund_24h(
+                session,
+                verified_contact_id=contact_id,
+                workspace_id=1,
+                user_id=user_id,
+            )

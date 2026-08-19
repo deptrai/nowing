@@ -293,4 +293,5 @@ class LeadBatchService:
             "failed_count": 0,
             "execution_time_ms": execution_time_ms,
             "lead_ids": list(hmac_to_id.values()),
+            "lead_id_mapping": hmac_to_id,
         }

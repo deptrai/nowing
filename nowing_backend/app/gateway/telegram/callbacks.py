@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from uuid import UUID
 
@@ -18,8 +19,10 @@ from app.automations.persistence.models.run import AutomationRun
 from app.automations.persistence.models.trigger import AutomationTrigger
 from app.config import config
 from app.db import ExternalChatBinding, Permission, User
+from app.gateway import ratelimit
 from app.gateway.base.adapter import ParsedInboundEvent
 from app.gateway.telegram.adapter import TelegramAdapter
+from app.services import dsh_telegram_checkpoint_service
 from app.utils.rbac import check_permission
 
 logger = logging.getLogger(__name__)
@@ -333,6 +336,129 @@ async def _handle_rerun(
                 )
 
 
+async def _handle_dsh_callback(
+    *,
+    session: AsyncSession,
+    adapter: TelegramAdapter,
+    event: ParsedInboundEvent,
+    binding: ExternalChatBinding,
+    action: str,
+    token: str,
+    callback_query_id: str | None,
+) -> None:
+    """Handle 3-part dsh:{action}:{token} callbacks with rate limiting and RBAC."""
+    # DSH checkpoint callbacks affect wallet/PII; only allow direct chats for now.
+    if getattr(binding, "external_peer_kind", None) != "direct":
+        if callback_query_id:
+            with contextlib.suppress(Exception):
+                await adapter.answer_callback_query(
+                    callback_query_id=callback_query_id,
+                    text="Vui lòng mở khóa trong chat riêng với bot.",
+                    show_alert=True,
+                )
+        return
+
+    rate_limit = getattr(config, "DSH_TELEGRAM_CALLBACK_RATE_LIMIT_PER_MINUTE", 60)
+    user_id = binding.user_id or "anonymous"
+    key = f"telegram:checkpoint:{binding.workspace_id}:{user_id}"
+    wait_ms = await ratelimit.acquire_token(
+        key,
+        capacity=rate_limit,
+        refill_per_sec=rate_limit / 60.0,
+    )
+    if wait_ms > 0:
+        if callback_query_id:
+            try:
+                await adapter.answer_callback_query(
+                    callback_query_id=callback_query_id,
+                    text="Thao tác quá nhanh, vui lòng thử lại sau.",
+                    show_alert=True,
+                )
+            except Exception:
+                logger.warning(
+                    "Failed to answer rate-limited callback query", exc_info=True
+                )
+        return
+
+    try:
+        auth = await _auth_for_binding(session, binding)
+        required_perm = (
+            Permission.LEADS_READ.value
+            if action == "dossier"
+            else Permission.LEADS_WRITE.value
+        )
+        await check_permission(
+            session,
+            auth,
+            binding.workspace_id,
+            required_perm,
+            "You don't have permission to perform this lead action in this workspace",
+        )
+    except HTTPException:
+        if callback_query_id:
+            try:
+                await adapter.answer_callback_query(
+                    callback_query_id=callback_query_id,
+                    text="Access denied: you don't have permission to perform this action.",
+                    show_alert=True,
+                )
+            except Exception:
+                logger.warning("Failed to answer denied callback query", exc_info=True)
+        return
+
+    checkpoint_svc = dsh_telegram_checkpoint_service.DshTelegramCheckpointService()
+    try:
+        if action == "unlock":
+            await checkpoint_svc.handle_unlock_callback(
+                session=session,
+                adapter=adapter,
+                event=event,
+                binding=binding,
+                callback_token=token,
+                callback_query_id=callback_query_id,
+            )
+        elif action == "dossier":
+            await checkpoint_svc.handle_dossier_callback(
+                session=session,
+                adapter=adapter,
+                event=event,
+                binding=binding,
+                callback_token=token,
+                callback_query_id=callback_query_id,
+            )
+        elif action == "skip":
+            await checkpoint_svc.handle_skip_callback(
+                session=session,
+                adapter=adapter,
+                event=event,
+                binding=binding,
+                callback_token=token,
+                callback_query_id=callback_query_id,
+            )
+        elif action == "refund":
+            await checkpoint_svc.handle_refund_callback(
+                session=session,
+                adapter=adapter,
+                event=event,
+                binding=binding,
+                callback_token=token,
+                callback_query_id=callback_query_id,
+            )
+        else:
+            if callback_query_id:
+                with contextlib.suppress(Exception):
+                    await adapter.answer_callback_query(callback_query_id=callback_query_id)
+    except Exception:
+        logger.exception("Unexpected error handling dsh:%s callback", action)
+        if callback_query_id:
+            with contextlib.suppress(Exception):
+                await adapter.answer_callback_query(
+                    callback_query_id=callback_query_id,
+                    text="Không thể xử lý thao tác này.",
+                    show_alert=True,
+                )
+
+
 async def handle_callback_query(
     *,
     session: AsyncSession,
@@ -340,7 +466,7 @@ async def handle_callback_query(
     event: ParsedInboundEvent,
     binding: ExternalChatBinding,
 ) -> None:
-    """Dispatch a Telegram ``callback_query`` to ``view_run:`` or ``rerun:`` handlers."""
+    """Dispatch a Telegram ``callback_query`` to ``view_run:``, ``rerun:``, or ``dsh:`` handlers."""
     data = event.text or ""
     callback_query_id = (event.metadata or {}).get("callback_query_id")
 
@@ -366,6 +492,30 @@ async def handle_callback_query(
                     callback_query_id,
                     exc_info=True,
                 )
+        return
+
+    # Check 3-part dsh:{action}:{token} callback
+    if data.startswith("dsh:"):
+        dsh_parts = data.split(":", 2)
+        if len(dsh_parts) != 3:
+            if callback_query_id:
+                with contextlib.suppress(Exception):
+                    await adapter.answer_callback_query(
+                        callback_query_id=callback_query_id,
+                        text="Dữ liệu callback không hợp lệ.",
+                        show_alert=True,
+                    )
+            return
+        _, action, token = dsh_parts
+        await _handle_dsh_callback(
+            session=session,
+            adapter=adapter,
+            event=event,
+            binding=binding,
+            action=action,
+            token=token,
+            callback_query_id=callback_query_id,
+        )
         return
 
     parts = data.split(":", 1)

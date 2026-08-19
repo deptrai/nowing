@@ -12,20 +12,27 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from app.app import app
+from app.auth.context import AuthContext
 from app.db import (
     BillingEvent,
     Lead,
     User,
     VerifiedContact,
+    Workspace,
     WorkspaceMembership,
 )
 from app.lead_intelligence.dnc.normalizer import (
     hash_phone_hmac,
     normalize_phone_e164,
 )
+from app.routes.workspaces_routes import create_default_roles_and_membership
 from app.services.pii.verified_contact_encryption import VerifiedContactEncryption
+from app.users import get_auth_context
 
 pytestmark = [
     pytest.mark.integration,
@@ -52,27 +59,27 @@ def _email_hash(email: str) -> str:
 
 
 async def _create_unlocked_contact(
-    db_session,
-    db_user: User,
-    db_workspace,
+    session: AsyncSession,
+    user: User,
+    workspace,
     *,
     unlocked_at: datetime | None = None,
 ) -> tuple[Lead, VerifiedContact]:
     """Factory for a lead with an unlocked verified contact and original BillingEvent."""
     lead = Lead(
-        workspace_id=db_workspace.id,
+        workspace_id=workspace.id,
         company_name="Acme",
         domain="acme.com",
         value_hmac=f"lead-hmac-{uuid4().hex[:8]}",
         source="test",
     )
-    db_session.add(lead)
-    await db_session.flush()
+    session.add(lead)
+    await session.flush()
 
     phone = "+84908123456"
     email = "alice@acme.com"
     contact = VerifiedContact(
-        workspace_id=db_workspace.id,
+        workspace_id=workspace.id,
         lead_id=lead.id,
         name=_encrypt("Alice"),
         title=_encrypt("CEO"),
@@ -87,20 +94,20 @@ async def _create_unlocked_contact(
         pii_access_audit_logs=[
             {
                 "access_type": "unlock",
-                "actor_id": str(db_user.id),
+                "actor_id": str(user.id),
                 "timestamp": (unlocked_at or datetime.now(UTC)).isoformat(),
                 "reason": "contact_unlock",
             }
         ],
     )
-    db_session.add(contact)
-    await db_session.flush()
+    session.add(contact)
+    await session.flush()
 
     unlock_ts = unlocked_at or datetime.now(UTC)
-    db_session.add(
+    session.add(
         BillingEvent(
-            workspace_id=db_workspace.id,
-            user_id=db_user.id,
+            workspace_id=workspace.id,
+            user_id=user.id,
             event_entity_type="verified_contact",
             event_type="contact_unlock",
             event_id=contact.id,
@@ -112,18 +119,71 @@ async def _create_unlocked_contact(
     )
 
     membership = (
-        await db_session.execute(
+        await session.execute(
             select(WorkspaceMembership).where(
-                WorkspaceMembership.workspace_id == db_workspace.id,
-                WorkspaceMembership.user_id == db_user.id,
+                WorkspaceMembership.workspace_id == workspace.id,
+                WorkspaceMembership.user_id == user.id,
             )
         )
     ).scalar_one()
     membership.monthly_spent_micros += 1500
 
-    db_user.credit_micros_balance -= 1500
-    await db_session.flush()
+    user.credit_micros_balance -= 1500
+    await session.flush()
     return lead, contact
+
+
+async def _setup_relock_race(
+    async_engine: AsyncEngine,
+) -> tuple[Workspace, User, Lead, VerifiedContact]:
+    """Create committed user/workspace/contact for concurrent HTTP tests.
+
+    ``db_session``-based fixtures use savepoints, so data is not visible to new
+    connections. We therefore create and commit the race fixture in a standalone
+    transaction, mirroring the pattern in ``test_credit_deduction_race.py``.
+    """
+    async with AsyncSession(
+        async_engine, expire_on_commit=False
+    ) as session, session.begin():
+        user = User(
+            id=uuid4(),
+            email=f"relock-race-{uuid4().hex[:8]}@nowing.net",
+            hashed_password="hashed",
+            is_active=True,
+            is_superuser=False,
+            is_verified=True,
+            credit_micros_balance=1500,
+        )
+        session.add(user)
+        await session.flush()
+
+        workspace = Workspace(
+            name="Relock Race Workspace",
+            user_id=user.id,
+        )
+        session.add(workspace)
+        await session.flush()
+
+        await create_default_roles_and_membership(session, workspace.id, user.id)
+        lead, contact = await _create_unlocked_contact(session, user, workspace)
+
+    return workspace, user, lead, contact
+
+
+async def _cleanup_relock_race(
+    async_engine: AsyncEngine,
+    workspace: Workspace,
+    user: User,
+) -> None:
+    async with AsyncSession(
+        async_engine, expire_on_commit=False
+    ) as session, session.begin():
+        ws = await session.get(Workspace, workspace.id)
+        if ws is not None:
+            await session.delete(ws)
+        u = await session.get(User, user.id)
+        if u is not None:
+            await session.delete(u)
 
 
 @pytest.mark.asyncio
@@ -283,38 +343,76 @@ async def test_relock_403_for_non_member(client_as_other, db_workspace):
 
 @pytest.mark.asyncio
 async def test_concurrent_relock_does_not_double_refund(
-    client_as_regular_user, db_user, db_workspace, db_session
-):
-    """P0: two concurrent relock requests produce exactly one refund event."""
-    lead, contact = await _create_unlocked_contact(db_session, db_user, db_workspace)
-    balance_before = db_user.credit_micros_balance
+    async_engine: AsyncEngine,
+) -> None:
+    """P0: two concurrent relock requests produce exactly one refund event.
 
-    url = (
-        f"/api/v1/workspaces/{db_workspace.id}/leads/{lead.id}"
-        f"/contacts/{contact.id}/relock"
-    )
-    results = await asyncio.gather(
-        client_as_regular_user.post(url),
-        client_as_regular_user.post(url),
-    )
-    assert all(r.status_code == 200 for r in results)
+    This test does NOT use ``client_as_regular_user`` because that fixture shares
+    the single ``db_session`` across requests. ``record_contact_relock`` calls
+    ``wallet_credit.apply_credit``, which commits the session; the second request
+    then receives a session in 'prepared' state and fails. Instead, we follow the
+    committed-fixture pattern from ``test_credit_deduction_race.py`` and give each
+    HTTP request its own database session.
+    """
+    workspace, user, lead, contact = await _setup_relock_race(async_engine)
 
-    events = (
-        (
-            await db_session.execute(
-                select(BillingEvent).where(
-                    BillingEvent.workspace_id == db_workspace.id,
-                    BillingEvent.event_id == contact.id,
-                    BillingEvent.event_type == "contact_relock",
-                )
+    def override_auth() -> AuthContext:
+        return AuthContext.session(user)
+
+    previous_overrides = app.dependency_overrides.copy()
+    app.dependency_overrides[get_auth_context] = override_auth
+
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            timeout=30.0,
+            follow_redirects=False,
+        ) as client:
+            url = (
+                f"/api/v1/workspaces/{workspace.id}/leads/{lead.id}"
+                f"/contacts/{contact.id}/relock"
             )
+            results = await asyncio.gather(client.post(url), client.post(url))
+            assert all(r.status_code == 200 for r in results)
+
+        session_factory = async_sessionmaker(
+            async_engine, expire_on_commit=False, class_=AsyncSession
         )
-        .scalars()
-        .all()
-    )
-    assert len(events) == 1
-    user_after = await db_session.get(User, db_user.id)
-    assert user_after.credit_micros_balance == balance_before + 1500
+        async with session_factory() as verify_session:
+            events = (
+                (
+                    await verify_session.execute(
+                        select(BillingEvent).where(
+                            BillingEvent.workspace_id == workspace.id,
+                            BillingEvent.event_id == contact.id,
+                            BillingEvent.event_type == "contact_relock",
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            assert len(events) == 1
+
+            refreshed_user = await verify_session.get(User, user.id)
+            assert refreshed_user is not None
+            assert refreshed_user.credit_micros_balance == 1500
+
+            membership = (
+                await verify_session.execute(
+                    select(WorkspaceMembership).where(
+                        WorkspaceMembership.workspace_id == workspace.id,
+                        WorkspaceMembership.user_id == user.id,
+                    )
+                )
+            ).scalars().first()
+            assert membership is not None
+            assert membership.monthly_spent_micros == 0
+    finally:
+        app.dependency_overrides.clear()
+        app.dependency_overrides.update(previous_overrides)
+        await _cleanup_relock_race(async_engine, workspace, user)
 
 
 @pytest.mark.asyncio
