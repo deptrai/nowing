@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import copy
 import os
 import re
@@ -112,7 +113,12 @@ class ExtractorClient:
             return cassette.body
 
         # Live mode — call local test endpoint
-        url = "/api/v1/test/extract-entities"
+        config = getattr(self.ctx, "config", None)
+        if config is not None:
+            base = (config.nowing_api_base or "http://localhost:8000").rstrip("/")
+        else:
+            base = "http://localhost:8000"
+        url = f"{base}/api/v1/test/extract-entities"
         secret = os.environ.get("TEST_EXTRACTION_SECRET")
         if not secret:
             raise RuntimeError(
@@ -120,6 +126,9 @@ class ExtractorClient:
             )
         headers = {"X-Internal-Test": secret}
         payload = {"source_text": source_text}
+
+        # Throttle live calls to stay under the backend's 30/minute rate limit.
+        await asyncio.sleep(2.1)
 
         resp = await self.ctx.http.post(url, json=payload, headers=headers)
         resp.raise_for_status()
