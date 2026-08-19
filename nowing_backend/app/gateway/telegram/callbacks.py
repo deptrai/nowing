@@ -358,6 +358,21 @@ async def _handle_dsh_callback(
                 )
         return
 
+    # Enforce clicker == card recipient (owner). In a direct chat the peer id and
+    # the user id are the same; if a message is forwarded to another chat, the
+    # clicker will not match and the action is rejected.
+    if event.external_user_id is not None and str(event.external_user_id) != str(
+        binding.external_peer_id
+    ):
+        if callback_query_id:
+            with contextlib.suppress(Exception):
+                await adapter.answer_callback_query(
+                    callback_query_id=callback_query_id,
+                    text="Thao tác này chỉ dành cho người nhận card.",
+                    show_alert=True,
+                )
+        return
+
     rate_limit = getattr(config, "DSH_TELEGRAM_CALLBACK_RATE_LIMIT_PER_MINUTE", 60)
     user_id = binding.user_id or "anonymous"
     key = f"telegram:checkpoint:{binding.workspace_id}:{user_id}"
@@ -447,7 +462,9 @@ async def _handle_dsh_callback(
         else:
             if callback_query_id:
                 with contextlib.suppress(Exception):
-                    await adapter.answer_callback_query(callback_query_id=callback_query_id)
+                    await adapter.answer_callback_query(
+                        callback_query_id=callback_query_id
+                    )
     except Exception:
         logger.exception("Unexpected error handling dsh:%s callback", action)
         if callback_query_id:

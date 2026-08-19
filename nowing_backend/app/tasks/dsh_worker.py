@@ -24,6 +24,13 @@ from app.redis_client import get_redis_client
 
 logger = logging.getLogger(__name__)
 
+# Hard 60s ceiling on every synchronous Redis stream / REST round-trip (AC-2 / AD-108).
+_DSH_CALL_TIMEOUT_SECONDS = 60.0
+_DSH_SYNC_TIMEOUT = min(
+    float(getattr(config, "DSH_SYNC_TIMEOUT_SECONDS", _DSH_CALL_TIMEOUT_SECONDS)),
+    _DSH_CALL_TIMEOUT_SECONDS,
+)
+
 
 def _checkpoint_update(**kwargs: Any) -> dict[str, Any]:
     """Build a JSON-serialisable checkpoint update with None values omitted."""
@@ -91,7 +98,7 @@ class DshRestClient:
         self.base_url = base_url.rstrip("/")
         self.pat = pat
         self.worker_secret = worker_secret
-        self.timeout = timeout
+        self.timeout = min(float(timeout), _DSH_CALL_TIMEOUT_SECONDS)
         self._client = httpx.AsyncClient(
             base_url=self.base_url,
             headers={
@@ -145,7 +152,7 @@ class DshRestClient:
         response = await self._client.post(
             f"/api/v1/workspaces/{workspace_id}/scrapers/chainlens/research?mode=async",
             json=payload,
-            timeout=httpx.Timeout(config.DSH_SYNC_TIMEOUT_SECONDS),
+            timeout=httpx.Timeout(_DSH_SYNC_TIMEOUT),
         )
 
         if response.status_code == 202:
@@ -166,7 +173,7 @@ class DshRestClient:
         while True:
             response = await self._client.get(
                 f"/api/v1/workspaces/{workspace_id}/scrapers/runs/{run_id}",
-                timeout=httpx.Timeout(config.DSH_SYNC_TIMEOUT_SECONDS),
+                timeout=httpx.Timeout(_DSH_SYNC_TIMEOUT),
             )
             self._raise_for_status(response, f"poll_run {run_id}")
             run = response.json()
@@ -201,7 +208,7 @@ class DshRestClient:
             response = await self._client.post(
                 f"/api/v1/workspaces/{workspace_id}/leads/batch-ingest",
                 json=payload,
-                timeout=httpx.Timeout(config.DSH_SYNC_TIMEOUT_SECONDS),
+                timeout=httpx.Timeout(_DSH_SYNC_TIMEOUT),
             )
             if response.status_code == 429:
                 wait = 2**attempt
@@ -224,7 +231,7 @@ class DshRestClient:
         response = await self._client.post(
             f"/v1/dsh/missions/{mission_id}/notify-high-fit",
             json=payload,
-            timeout=httpx.Timeout(config.DSH_SYNC_TIMEOUT_SECONDS),
+            timeout=httpx.Timeout(_DSH_SYNC_TIMEOUT),
         )
         self._raise_for_status(response, "notify_high_fit_lead")
         return response.json()
@@ -692,13 +699,16 @@ class DshWorker:
         claimed: list[tuple[str, dict[str, Any]]] = []
         start_id = "0-0"
         while True:
-            next_start, messages = await redis_client.xautoclaim(
-                self.stream,
-                self.group,
-                self.consumer_name,
-                config.DSH_XAUTOCLAIM_MIN_IDLE_MS,
-                start_id,
-                count=10,
+            next_start, messages = await asyncio.wait_for(
+                redis_client.xautoclaim(
+                    self.stream,
+                    self.group,
+                    self.consumer_name,
+                    config.DSH_XAUTOCLAIM_MIN_IDLE_MS,
+                    start_id,
+                    count=10,
+                ),
+                timeout=_DSH_CALL_TIMEOUT_SECONDS,
             )
             for msg_id, fields in messages:
                 claimed.append((msg_id, fields))
@@ -996,12 +1006,15 @@ class DshWorker:
         redis_client: Redis,
     ) -> list[tuple[str, dict[str, Any]]]:
         """Read one batch of new messages from the consumer group."""
-        entries = await redis_client.xreadgroup(
-            groupname=self.group,
-            consumername=self.consumer_name,
-            streams={self.stream: ">"},
-            count=1,
-            block=config.DSH_REDIS_BLOCK_MS,
+        entries = await asyncio.wait_for(
+            redis_client.xreadgroup(
+                groupname=self.group,
+                consumername=self.consumer_name,
+                streams={self.stream: ">"},
+                count=1,
+                block=config.DSH_REDIS_BLOCK_MS,
+            ),
+            timeout=_DSH_CALL_TIMEOUT_SECONDS,
         )
 
         messages: list[tuple[str, dict[str, Any]]] = []

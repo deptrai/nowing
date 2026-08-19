@@ -6,7 +6,7 @@ import json
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import any_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
@@ -48,9 +48,9 @@ async def create_voice_profile(
     session: AsyncSession = Depends(get_async_session),
 ) -> VoiceProfile:
     """Analyze writing sample (>= 100 words) and persist learned VoiceProfile in memories table."""
-    await check_workspace_access(workspace_id, auth.user, session)
+    await check_workspace_access(session, auth, workspace_id)
 
-    client_id = auth.user.client_id or "default"
+    client_id = getattr(auth.user, "client_id", None) or "default"
     learner = VoiceProfileLearner()
     try:
         profile = await learner.extract_voice_profile(
@@ -96,15 +96,15 @@ async def list_voice_profiles(
     session: AsyncSession = Depends(get_async_session),
 ) -> VoiceProfileListResponse:
     """List stored voice profiles for the workspace with tenant isolation (AD-31)."""
-    await check_workspace_access(workspace_id, auth.user, session)
+    await check_workspace_access(session, auth, workspace_id)
 
-    client_id = auth.user.client_id or "default"
+    client_id = getattr(auth.user, "client_id", None) or "default"
     stmt = (
         select(Memory)
         .where(
             Memory.workspace_id == workspace_id,
             Memory.client_id == client_id,
-            Memory.tags.contains(["voice_profile"]),
+            any_(Memory.tags) == "voice_profile",
         )
         .order_by(Memory.created_at.desc())
     )
@@ -147,14 +147,14 @@ async def activate_voice_profile(
     session: AsyncSession = Depends(get_async_session),
 ) -> VoiceProfile:
     """Set the specified voice profile as active exclusively across workspace & client."""
-    await check_workspace_access(workspace_id, auth.user, session)
+    await check_workspace_access(session, auth, workspace_id)
 
-    client_id = auth.user.client_id or "default"
+    client_id = getattr(auth.user, "client_id", None) or "default"
     # First, deactivate all other profiles in this workspace/client
     all_profiles_stmt = select(Memory).where(
         Memory.workspace_id == workspace_id,
         Memory.client_id == client_id,
-        Memory.tags.contains(["voice_profile"]),
+        any_(Memory.tags) == "voice_profile",
     )
     all_res = await session.execute(all_profiles_stmt)
     for mem in all_res.scalars().all():
@@ -202,9 +202,9 @@ async def get_outlier_posts(
     session: AsyncSession = Depends(get_async_session),
 ) -> OutlierPostsResponse:
     """Find viral outlier posts (>= 3x author baseline) with Redis caching and graceful fallback."""
-    await check_workspace_access(workspace_id, auth.user, session)
+    await check_workspace_access(session, auth, workspace_id)
 
-    client_id = auth.user.client_id or "default"
+    client_id = getattr(auth.user, "client_id", None) or "default"
     try:
         detector = OutlierDetector(session=session)
         outliers = await detector.find_outliers(
@@ -239,7 +239,7 @@ async def manual_post_ingest(
     session: AsyncSession = Depends(get_async_session),
 ) -> ManualIngestResponse:
     """Manual URL/Text ingestion endpoint for degraded scrapers or unsupported platforms (AC 5)."""
-    await check_workspace_access(workspace_id, auth.user, session)
+    await check_workspace_access(session, auth, workspace_id)
 
     deconstructor = ViralMechanicsDeconstructor()
     sanitized_text = await deconstructor.sanitize_and_redact(request.raw_text)
@@ -264,9 +264,9 @@ async def generate_viral_drafts(
     session: AsyncSession = Depends(get_async_session),
 ) -> GenerateDraftsResponse:
     """Generate 3 platform-constrained, voice-matched viral post drafts."""
-    await check_workspace_access(workspace_id, auth.user, session)
+    await check_workspace_access(session, auth, workspace_id)
 
-    client_id = auth.user.client_id or "default"
+    client_id = getattr(auth.user, "client_id", None) or "default"
     # Resolve voice profile
     voice: VoiceProfile
     if request.voice_profile:
@@ -298,7 +298,7 @@ async def generate_viral_drafts(
             .where(
                 Memory.workspace_id == workspace_id,
                 Memory.client_id == client_id,
-                Memory.tags.contains(["voice_profile"]),
+                any_(Memory.tags) == "voice_profile",
             )
             .order_by(Memory.created_at.desc())
         )

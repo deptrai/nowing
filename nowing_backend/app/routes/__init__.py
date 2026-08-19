@@ -76,6 +76,7 @@ from .dropbox_add_connector_route import router as dropbox_add_connector_router
 from .editor_routes import router as editor_router
 from .enrichment_routes import router as enrichment_router
 from .export_routes import router as export_router
+from .extract_entities_routes import router as extract_entities_router
 from .folders_routes import router as folders_router
 from .gateway_webhook_routes import (
     config_router as gateway_config_router,
@@ -251,4 +252,5 @@ router.include_router(memory_router)  # User personal memory (memory.md style)
 router.include_router(team_memory_router)  # Workspace team memory
 router.include_router(automations_router)  # Automations CRUD + run history
 router.include_router(file_storage_router)  # Original file metadata + download
+router.include_router(extract_entities_router)  # Test entity extraction (AC-1 / AD-107)
 router.include_router(build_capabilities_router())  # Scraper-API capability doors (05)

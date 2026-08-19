@@ -685,16 +685,23 @@ class Config:
     )
 
     # DSH Telegram Interactive Checkpoint & Auto-Refund (Story 26.6)
-    DSH_TELEGRAM_FIT_SCORE_THRESHOLD = _env_int("DSH_TELEGRAM_FIT_SCORE_THRESHOLD", 80)
-    DSH_TELEGRAM_REFUND_CAP_PCT = _env_float(
-        "DSH_TELEGRAM_REFUND_CAP_PCT", 0.15
+    DSH_TELEGRAM_FIT_SCORE_THRESHOLD = max(
+        0, _env_int("DSH_TELEGRAM_FIT_SCORE_THRESHOLD", 80)
     )
-    DSH_TELEGRAM_REFUND_WINDOW_HOURS = _env_int("DSH_TELEGRAM_REFUND_WINDOW_HOURS", 24)
-    DSH_TELEGRAM_MAX_LEADS_PER_MISSION = _env_int(
-        "DSH_TELEGRAM_MAX_LEADS_PER_MISSION", 1
+    _raw_refund_cap_pct = _env_float("DSH_TELEGRAM_REFUND_CAP_PCT", 0.15)
+    if not (0.0 <= _raw_refund_cap_pct <= 1.0):
+        raise ValueError(
+            f"DSH_TELEGRAM_REFUND_CAP_PCT must be in [0, 1], got {_raw_refund_cap_pct}"
+        )
+    DSH_TELEGRAM_REFUND_CAP_PCT = _raw_refund_cap_pct
+    DSH_TELEGRAM_REFUND_WINDOW_HOURS = max(
+        0, _env_int("DSH_TELEGRAM_REFUND_WINDOW_HOURS", 24)
     )
-    DSH_TELEGRAM_CALLBACK_RATE_LIMIT_PER_MINUTE = _env_int(
-        "DSH_TELEGRAM_CALLBACK_RATE_LIMIT_PER_MINUTE", 60
+    DSH_TELEGRAM_MAX_LEADS_PER_MISSION = max(
+        0, _env_int("DSH_TELEGRAM_MAX_LEADS_PER_MISSION", 1)
+    )
+    DSH_TELEGRAM_CALLBACK_RATE_LIMIT_PER_MINUTE = max(
+        0, _env_int("DSH_TELEGRAM_CALLBACK_RATE_LIMIT_PER_MINUTE", 60)
     )
 
     # Hybrid LLM Router (Story 26.3)

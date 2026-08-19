@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.app import app, limiter
 from app.auth.context import AuthContext
-from app.db import PersonalAccessToken, User, get_async_session
+from app.db import PersonalAccessToken, User, Workspace, get_async_session
 from app.users import get_auth_context
 
 pytestmark = pytest.mark.integration
@@ -96,10 +96,12 @@ async def client_as_regular_user(
 async def pat_client(
     db_session: AsyncSession,
     db_user: User,
+    db_workspace: Workspace,
 ) -> AsyncGenerator[httpx.AsyncClient, None]:
     pat = PersonalAccessToken(
         user_id=db_user.id,
         user=db_user,
+        workspace_id=db_workspace.id,
         token_hash="0" * 64,
         token_prefix="nw_pat_test",
         label="Test PAT",

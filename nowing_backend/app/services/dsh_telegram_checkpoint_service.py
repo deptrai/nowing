@@ -32,9 +32,14 @@ from app.gateway.accounts import account_token
 from app.gateway.base.adapter import ParsedInboundEvent
 from app.gateway.telegram.adapter import TelegramAdapter
 from app.gateway.telegram.formatting import escape_markdown_v2
-from app.services.billing_event_service import BillingEventService
+from app.services.billing_event_service import (
+    BillingEventService,
+    NoOriginalUnlockEventError,
+    RefundAlreadyProcessedError,
+    RefundBudgetExhaustedError,
+    RefundWindowExpiredError,
+)
 from app.services.contact_unlock_service import ContactUnlockService
-from app.services.etl_credit_service import InsufficientCreditsError
 from app.services.phone_waterfall_service import PhoneWaterfallService
 from app.services.pii.mask import mask_phone
 from app.services.pii.verified_contact_encryption import VerifiedContactEncryption
@@ -126,36 +131,35 @@ class DshTelegramCheckpointService:
             else getattr(config, "DSH_TELEGRAM_FIT_SCORE_THRESHOLD", 80)
         )
 
-        candidates = []
-        for lead in leads:
-            score = (
-                lead.get("fit_score")
-                if isinstance(lead, dict)
-                else getattr(lead, "fit_score", None)
-            )
-            phone = (
-                lead.get("phone")
-                if isinstance(lead, dict)
-                else getattr(lead, "phone", None)
-            )
-            if score is not None and score >= target_threshold and phone:
-                candidates.append(lead)
-
-        if not candidates:
-            return None
-
-        # Sort by fit_score DESC (normalize to float to avoid mixed-type crashes)
-        def _fit_score(item: Any) -> float:
+        def _numeric_fit_score(item: Any) -> float | None:
             if isinstance(item, dict):
                 raw = item.get("fit_score")
             else:
                 raw = getattr(item, "fit_score", None)
             try:
-                return float(raw) if raw is not None else 0.0
+                return float(raw) if raw is not None else None
             except (TypeError, ValueError):
-                return 0.0
+                return None
 
-        candidates.sort(key=_fit_score, reverse=True)
+        candidates = []
+        for lead in leads:
+            numeric_score = _numeric_fit_score(lead)
+            phone = (
+                lead.get("phone")
+                if isinstance(lead, dict)
+                else getattr(lead, "phone", None)
+            )
+            if (
+                numeric_score is not None
+                and numeric_score >= target_threshold
+                and phone
+            ):
+                candidates.append(lead)
+
+        if not candidates:
+            return None
+
+        candidates.sort(key=_numeric_fit_score, reverse=True)
         return candidates[0]
 
     def should_send_telegram_notification(self, user: User | Any | None) -> bool:
@@ -210,7 +214,8 @@ class DshTelegramCheckpointService:
                 ExternalChatBinding.revoked_at.is_(None),
                 ExternalChatBinding.suspended_at.is_(None),
                 ExternalChatAccount.platform == "telegram",
-                ExternalChatAccount.health_status != ExternalChatHealthStatus.FAILING.value,
+                ExternalChatAccount.health_status
+                != ExternalChatHealthStatus.FAILING.value,
                 ExternalChatAccount.suspended_at.is_(None),
             )
             .order_by(desc(ExternalChatBinding.updated_at))
@@ -340,7 +345,7 @@ class DshTelegramCheckpointService:
             return {
                 "status": "sent",
                 "callback_token": callback_token,
-                "contact_id": str(contact.id),
+                "contact_id": contact.id,
                 "message_id": checkpoint_msg.external_message_id,
             }
         except Exception as exc:
@@ -439,11 +444,9 @@ class DshTelegramCheckpointService:
             phone_digits = "".join(c for c in unmasked_phone if c.isdigit())
             buttons = []
             if len(phone_digits) >= 9:
+                buttons.append({"text": "📲 Gọi điện", "url": f"tel:{phone_digits}"})
                 buttons.append(
-                    {"text": "� Gọi điện", "url": f"tel:{phone_digits}"}
-                )
-                buttons.append(
-                    {"text": "�💬 Zalo", "url": f"https://zalo.me/{phone_digits}"}
+                    {"text": "💬 Zalo", "url": f"https://zalo.me/{phone_digits}"}
                 )
             buttons.append(
                 {
@@ -469,31 +472,15 @@ class DshTelegramCheckpointService:
                     callback_query_id=callback_query_id,
                     text="Đã mở khóa thành công!",
                 )
-        except InsufficientCreditsError:
-            err_text = "❌ *Không đủ credits\\. Nạp thêm tại dashboard để tiếp tục\\.*"
-            peer_id = event.external_peer_id or checkpoint.external_peer_id
-            msg_id = event.external_message_id or checkpoint.external_message_id
-            if peer_id and msg_id:
-                await adapter.edit_message(
-                    external_peer_id=peer_id,
-                    external_message_id=msg_id,
-                    text=err_text,
-                    parse_mode="MarkdownV2",
-                    reply_markup={"inline_keyboard": []},
-                )
-            if callback_query_id:
-                await adapter.answer_callback_query(
-                    callback_query_id=callback_query_id,
-                    text="Không đủ credits để mở khóa.",
-                    show_alert=True,
-                )
         except HTTPException as exc:
             if exc.status_code == status.HTTP_403_FORBIDDEN:
                 err_text = "❌ *Số điện thoại bị chặn bởi DNC\\.*"
                 alert_text = "Số điện thoại bị chặn bởi DNC."
             elif exc.status_code == status.HTTP_409_CONFLICT:
                 err_text = "❌ *Liên hệ này đã bị rút lại đồng ý hoặc đánh dấu không hợp lệ\\.*"
-                alert_text = "Liên hệ này đã bị rút lại đồng ý hoặc đánh dấu không hợp lệ."
+                alert_text = (
+                    "Liên hệ này đã bị rút lại đồng ý hoặc đánh dấu không hợp lệ."
+                )
             elif exc.status_code == status.HTTP_402_PAYMENT_REQUIRED:
                 err_text = "❌ *Không đủ credits\\. Nạp thêm tại dashboard\\.*"
                 alert_text = "Không đủ credits để mở khóa."
@@ -681,6 +668,7 @@ class DshTelegramCheckpointService:
                 return False
 
         # 2. Carrier/HLR heuristic via PhoneWaterfallService as a fallback.
+        # If verification cannot be completed, fail-closed: do NOT refund.
         if not phone:
             return True
         phone_digits = "".join(c for c in phone if c.isdigit())
@@ -697,6 +685,7 @@ class DshTelegramCheckpointService:
                 contact_id,
                 exc_info=True,
             )
+            return False
         return True
 
     async def handle_refund_callback(
@@ -830,20 +819,26 @@ class DshTelegramCheckpointService:
                     callback_query_id=callback_query_id,
                     text="Đã hoàn tiền +1.5 credits!",
                 )
-        except ValueError as exc:
-            err_msg = str(exc)
-            if "auto-refund budget cap exhausted" in err_msg:
+        except (
+            RefundBudgetExhaustedError,
+            RefundWindowExpiredError,
+            RefundAlreadyProcessedError,
+            NoOriginalUnlockEventError,
+        ) as exc:
+            if isinstance(exc, RefundBudgetExhaustedError):
                 err_text = "❌ *Không thể hoàn tiền: đã hết hạn mức hoàn tiền tự động tháng này\\.*"
                 alert_text = "Đã hết hạn mức hoàn tiền tự động tháng này."
-            elif "24h refund window expired" in err_msg:
+            elif isinstance(exc, RefundWindowExpiredError):
                 err_text = "❌ *Đã hết hạn 24h để báo số sai\\.*"
                 alert_text = "Đã hết hạn 24h để báo số sai."
-            elif "relock window expired" in err_msg or "already relocked" in err_msg:
-                err_text = "❌ *Không thể hoàn tiền: liên hệ đã được xử lý relock.*"
-                alert_text = "Không thể hoàn tiền: liên hệ đã được xử lý relock."
+            elif isinstance(exc, RefundAlreadyProcessedError):
+                err_text = "❌ *Không thể hoàn tiền: liên hệ đã được xử lý hoàn tiền trước đó\\.*"
+                alert_text = (
+                    "Không thể hoàn tiền: liên hệ đã được xử lý hoàn tiền trước đó."
+                )
             else:
-                err_text = "❌ *Không thể hoàn tiền cho liên hệ này\\.*"
-                alert_text = "Không thể hoàn tiền cho liên hệ này."
+                err_text = "❌ *Không thể hoàn tiền: chưa có giao dịch mở khóa\\.*"
+                alert_text = "Không thể hoàn tiền: chưa có giao dịch mở khóa."
 
             peer_id = event.external_peer_id or checkpoint.external_peer_id
             msg_id = event.external_message_id or checkpoint.external_message_id

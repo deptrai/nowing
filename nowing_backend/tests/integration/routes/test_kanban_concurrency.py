@@ -75,6 +75,7 @@ async def test_kanban_stage_transition_optimistic_concurrency_and_conflict_409(
         id=lead_id,
         workspace_id=db_workspace.id,
         company_name="ATDD Concurrency Real Estate Corp",
+        value_hmac=f"lead-hmac-{uuid.uuid4().hex[:8]}",
         source="batdongsan",
         status="new",
     )
@@ -144,6 +145,7 @@ async def test_kanban_timeline_activity_logs_chronological(
         id=lead_id,
         workspace_id=db_workspace.id,
         company_name="Timeline Test Lead",
+        value_hmac=f"lead-hmac-{uuid.uuid4().hex[:8]}",
         source="batdongsan",
         status="new",
     )

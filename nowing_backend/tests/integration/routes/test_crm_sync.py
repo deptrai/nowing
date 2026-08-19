@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import select
@@ -125,6 +126,7 @@ async def test_crm_dedup_and_writeback_lifecycle(
             source="web_search",
             company_name="Vingroup Joint Stock",
             domain="vingroup.net",
+            value_hmac=f"lead-hmac-{uuid4().hex[:8]}",
             industry="Real Estate",
             company_size="10000+",
             location="Hanoi, Vietnam",

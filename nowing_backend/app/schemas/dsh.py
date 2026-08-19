@@ -134,7 +134,7 @@ class DshMissionListResponse(BaseModel):
 class DshNotifyHighFitRequest(BaseModel):
     """Request payload for internal worker notification of high-fit lead."""
 
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
 
     lead_id: UUID
     contact_id: UUID | None = None
@@ -143,9 +143,9 @@ class DshNotifyHighFitRequest(BaseModel):
 class DshNotifyHighFitResponse(BaseModel):
     """Response payload for internal high-fit lead notification."""
 
-    status: str
+    status: Literal["sent", "skipped", "failed"]
     callback_token: str | None = None
-    contact_id: str | None = None
+    contact_id: UUID | None = None
     message_id: str | None = None
     reason: str | None = None
     error: str | None = None

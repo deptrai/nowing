@@ -1,3 +1,19 @@
+## Deferred from: code review of 26-7-hermetic-quality-gates-benchmark-anti-zombie (2026-08-19)
+
+- **Finding:** Pre-compile regex token pattern at module level in `phone_extractor.py`.
+  - **Action:** Marked `[x] [Review][Defer]` in `26-7-hermetic-quality-gates-benchmark-anti-zombie.md`.
+  - **Reason / when to revisit:** Pre-existing pattern in `xactions/phone_extractor.py`; not introduced by 26.7 diff. Revisit during phone extractor performance tuning.
+- **Finding:** Validate `is_valid_vietnam_tax_code` against 100 known-good masothue fixtures before ratifying.
+  - **Action:** Marked `[x] [Review][Defer]` in `26-7-hermetic-quality-gates-benchmark-anti-zombie.md`.
+  - **Reason / when to revisit:** Fixtures not yet available; revisit when masothue fixture corpus is consolidated.
+- **Finding:** Add FastMCP hermetic integration test for `dsh_worker` / `nowing_mcp` reusing `tests/e2e/fakes/mcp_runtime.py`.
+  - **Action:** Marked `[x] [Review][Defer]` in `26-7-hermetic-quality-gates-benchmark-anti-zombie.md`.
+  - **Reason / when to revisit:** Out of scope for the `nowing_evals` cassette suite; revisit when AD-107 FastMCP transport is explicitly required for `dsh_worker`.
+
+- **Finding:** Pre-compile regex token pattern at module level in `phone_extractor.py`.
+  - **Action:** Marked `[x] [Review][Defer]` in `26-7-hermetic-quality-gates-benchmark-anti-zombie.md`.
+  - **Reason / when to revisit:** Pre-existing pattern in `xactions/phone_extractor.py`; not introduced by 26.7 diff. Revisit during phone extractor performance tuning.
+
 ## Deferred from: code review of 26-5-split-canvas-glass-box-mission-control-two-tier-phone-unlock-shimmer-influx (2026-08-21)
 
 - **Finding:** Top-right credit badge is not refetched after unlock and already displays `credit_micros_balance / 1_000_000` as USD.
@@ -916,3 +932,9 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - **Finding:** `BillingEvent` model has no `reason` column as suggested by AD-105 Rule 4. (`nowing_backend/app/db.py:4586-4627`, `nowing_backend/app/services/billing_event_service.py:78-89`)
   - **Action:** Marked `[x] [Review][Decision→Defer]` in `26-4-pii-vault-hmac-deduplication-decree-13-opt-out.md`.
   - **Reason / when to revisit:** BillingEvent `event_type` already distinguishes unlock/refund. Detailed reason stored in `pii_access_audit_logs`. Defer to a billing schema v2 epic if a dedicated `reason` column is needed.
+
+## Deferred from: code review of 26-6-telegram-interactive-checkpoint-bot-1-click-auto-refund-dialog (Group 1 — 2026-08-19)
+
+- **Finding:** `telegram_checkpoint_messages` migration lacks RLS / `apply_publication` reconciliation used by other workspace-scoped tables.
+  - **Action:** Marked `[x] [Review][Defer]` in `26-6-telegram-interactive-checkpoint-bot-1-click-auto-refund-dialog.md`.
+  - **Reason / when to revisit:** DSH routes currently do not call `set_request_tenant_context`, and `dsh_missions` does not have RLS either. Adding RLS now would break existing DSH read/write paths until tenant context is wired into the internal route + service. Defer to a DSH tenant-context hardening pass.

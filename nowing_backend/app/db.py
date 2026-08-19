@@ -3820,14 +3820,32 @@ class TelegramCheckpointMessage(Base, TimestampMixin):
         UniqueConstraint(
             "callback_token", name="uq_telegram_checkpoint_callback_token"
         ),
-        Index("ix_telegram_checkpoint_callback_token", "callback_token"),
         Index(
             "ix_telegram_checkpoint_message_peer",
             "external_message_id",
             "external_peer_id",
         ),
-        Index("ix_telegram_checkpoint_workspace_mission", "workspace_id", "mission_id"),
+        Index(
+            "ix_telegram_checkpoint_workspace_mission",
+            "workspace_id",
+            "mission_id",
+            unique=True,
+            postgresql_where=text("status != 'failed'"),
+        ),
         Index("ix_telegram_checkpoint_workspace_lead", "workspace_id", "lead_id"),
+        Index("ix_telegram_checkpoint_workspace_id", "workspace_id"),
+        Index("ix_telegram_checkpoint_mission_id", "mission_id"),
+        Index("ix_telegram_checkpoint_lead_id", "lead_id"),
+        Index("ix_telegram_checkpoint_contact_id", "contact_id"),
+        Index("ix_telegram_checkpoint_user_id", "user_id"),
+        CheckConstraint(
+            "status IN ('sent', 'unlocked', 'dismissed', 'refunded')",
+            name="ck_telegram_checkpoint_status",
+        ),
+        CheckConstraint(
+            "callback_token ~ '^[A-Za-z0-9_-]{16,24}$'",
+            name="ck_telegram_checkpoint_callback_token",
+        ),
         ForeignKeyConstraint(
             ["lead_id", "workspace_id"],
             ["leads.id", "leads.workspace_id"],
@@ -3837,33 +3855,29 @@ class TelegramCheckpointMessage(Base, TimestampMixin):
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    callback_token = Column(String(24), nullable=False, unique=True)
+    callback_token = Column(String(24), nullable=False)
     status = Column(String(20), nullable=False, default="sent", server_default="sent")
 
     workspace_id = Column(
         Integer,
         ForeignKey("workspaces.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     mission_id = Column(
         UUID(as_uuid=True),
         ForeignKey("dsh_missions.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
-    lead_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    lead_id = Column(UUID(as_uuid=True), nullable=False)
     contact_id = Column(
         UUID(as_uuid=True),
         ForeignKey("verified_contacts.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     user_id = Column(
         UUID(as_uuid=True),
         ForeignKey("user.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
 
     external_message_id = Column(Text, nullable=True)

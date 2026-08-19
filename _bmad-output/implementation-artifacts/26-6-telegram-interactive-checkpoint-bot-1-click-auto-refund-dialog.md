@@ -425,40 +425,41 @@ Review ngày 2026-08-19. Tổng hợp từ 3 layer: Blind Hunter, Edge Case Hunt
 
 #### Decision cần người dùng
 
-- [x] [Review][Decision] **Group chat / shared device: chỉ cho phép callback từ direct chat (`binding.external_peer_kind == "direct"`).** Trong group chat, bất kỳ ai nhấn inline keyboard cũng thực hiện unlock/skip/refund với quyền của owner; tạm chặn yêu cầu chat riêng để tránh rủi ro tài chính. `nowing_backend/app/gateway/telegram/callbacks.py:350-395`
+- [x] [Review][Decision] **Group chat / shared device: callback authorize dùng `event.external_user_id` so sánh với `binding.external_peer_id`.** Trong group chat, bất kỳ ai nhấn inline keyboard cũng thực hiện unlock/skip/refund với quyền của owner. Có cần bắt buộc `event.external_user_id == binding.external_peer_id` không? `nowing_backend/app/gateway/telegram/callbacks.py:350-395`
+  - *Decision:* Chọn **(A)**. Trong direct chat, Telegram `external_user_id` của người nhấn trùng với `external_peer_id` của chat. Guard mới từ chối khi khác nhau (forwarded message, shared device khác, hoặc group chat — mặc dù group chat đã bị từ chối trước đó). Đã thêm unit test `test_dsh_callback_wrong_user_rejected`.
 
 #### Patch (high)
 
-- [x] [Review][Patch] **TelegramAdapter khởi tạo thiếu bot token, card không thể gửi.** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:278`
-- [x] [Review][Patch] **`send_message` trả về `PlatformSendResult` nhưng code kiểm tra `dict`, `external_message_id` không được lưu.** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:280-287`
-- [x] [Review][Patch] **Refund credit wallet trước khi persist `BillingEvent`, gây race double-credit / mất event.** `nowing_backend/app/services/billing_event_service.py:412`
-- [x] [Review][Patch] **`record_contact_relock` và `record_contact_unlock_refund_24h` return event của nhau, conflate ledger.** `nowing_backend/app/services/billing_event_service.py:228-236,348-356`
-- [x] [Review][Patch] **DSH worker fallback về `ingest_res["lead_ids"][0]` khi HMAC mapping miss, thông báo sai lead.** `nowing_backend/app/tasks/dsh_worker.py:468-471`
-- [x] [Review][Patch] **Block gửi Telegram nằm trong `try/except` của ingestion; lỗi notification làm ingestion fail.** `nowing_backend/app/tasks/dsh_worker.py:439-504`
-- [x] [Review][Patch] **Không có idempotency/unique guard "một mission một card", worker retry có thể spam nhiều card.** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:260-272` và `nowing_backend/app/db.py:3819-3837`
-- [x] [Review][Patch] **Refund verification quá sơ sài, không gọi HLR/Zalo `verify_only`; active number có thể bị hoàn tiền.** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:586-607`
+- [x] [Review][Patch] **TelegramAdapter khởi tạo thiếu bot token, card không thể gửi.** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:278` — *verified: current code loads the bot token from `ExternalChatAccount` via `account_token(...)` before instantiating `TelegramAdapter`.*
+- [x] [Review][Patch] **`send_message` trả về `PlatformSendResult` nhưng code kiểm tra `dict`, `external_message_id` không được lưu.** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:280-287` — *verified: code now reads `res.external_message_id` from the `PlatformSendResult` dataclass.*
+- [x] [Review][Patch] **Refund credit wallet trước khi persist `BillingEvent`, gây race double-credit / mất event.** `nowing_backend/app/services/billing_event_service.py:412` — *verified: `record_contact_unlock_refund_24h` now adds the `BillingEvent` before `wallet_credit.apply_credit`, so the negative ledger row is flushed in the same commit. The unconditional `record_contact_unlock_refund` keeps its existing order because `OptOutService` relies on `session.new` detection; a future refactor of that contract is needed to reorder it safely.*
+- [x] [Review][Patch] **`record_contact_relock` và `record_contact_unlock_refund_24h` return event của nhau, conflate ledger.** `nowing_backend/app/services/billing_event_service.py:228-236,348-356` — *applied: `record_contact_unlock_refund_24h` now raises `RefundAlreadyProcessedError` when a `contact_relock` event already exists, instead of returning the relock row as a refund. Added concrete exception classes for refund/relock ledger errors.*
+- [x] [Review][Patch] **DSH worker fallback về `ingest_res["lead_ids"][0]` khi HMAC mapping miss, thông báo sai lead.** `nowing_backend/app/tasks/dsh_worker.py:468-471` — *verified: current worker maps by `value_hmac` and skips notification with a log message when the HMAC is missing; no fallback to an arbitrary `lead_ids[0]`.*
+- [x] [Review][Patch] **Block gửi Telegram nằm trong `try/except` của ingestion; lỗi notification làm ingestion fail.** `nowing_backend/app/tasks/dsh_worker.py:439-504` — *verified: notification block is wrapped in its own `try/except` and logs non-fatal errors; ingestion success checkpoint is still appended.*
+- [x] [Review][Patch] **Không có idempotency/unique guard "một mission một card", worker retry có thể spam nhiều card.** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:260-272` và `nowing_backend/app/db.py:3819-3837` — *verified: `notify_high_fit_lead` checks with `SELECT ... FOR UPDATE` and the DB has a partial unique index on `(workspace_id, mission_id)` excluding `status='failed'`.*
+- [x] [Review][Patch] **Refund verification quá sơ sài, không gọi HLR/Zalo `verify_only`; active number có thể bị hoàn tiền.** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:586-607` — *applied: fallback now uses `PhoneWaterfallService._resolve_tier_3_carrier_hlr` and fails closed (`return False`) when verification raises, preventing a refund on an active/unreachable number when the carrier check is unavailable.*
 
 #### Patch (medium)
 
-- [x] [Review][Patch] **Binding query không lọc `revoked_at`/`suspended_at` và `health_status` so sánh sai case.** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:192-209`
-- [x] [Review][Patch] **`fit_score` 0.0 bị coi là missing, hiển thị 80.** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:75`
-- [x] [Review][Patch] **Re-unlock sau relock miễn phí nhưng API vẫn báo `cost_micros=1500`.** `nowing_backend/app/services/contact_unlock_service.py:92-102` và `nowing_backend/app/services/billing_event_service.py:91-102`
-- [x] [Review][Patch] **`handle_skip_callback` ghi đè trạng thái `unlocked`/`refunded`, không xóa inline keyboard.** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:539-578`
-- [x] [Review][Patch] **Refund callback không từ chối card chưa unlock.** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:639-660`
-- [x] [Review][Patch] **Scope rate-limit callback `dsh:*` không đúng `telegram:checkpoint:{workspace_id}:{user_id}`.** `nowing_backend/app/gateway/telegram/callbacks.py:350-355`
-- [x] [Review][Patch] **Dossier deep-link URL chỉ escape `)` và `\`, dễ hỏng MarkdownV2.** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:499-507`
-- [x] [Review][Patch] **`handle_refund_callback` parse thông báo lỗi bằng substring thay vì exception type cụ thể.** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:718-728`
-- [x] [Review][Patch] **`handle_unlock_callback` bắt `InsufficientCreditsError` dead code (đã bị `ContactUnlockService` bắn HTTPException 402).** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:410-426`
-- [x] [Review][Patch] **`_handle_dsh_callback` không catch exception từ service handlers, `answer_callback_query` bị gọi 2 lần.** `nowing_backend/app/gateway/telegram/callbacks.py:397-437`
-- [x] [Review][Patch] **Malformed `dsh:` callback không được trả lời rõ ràng, spinner treo.** `nowing_backend/app/gateway/telegram/callbacks.py:476-489`
-- [x] [Review][Patch] **Notify endpoint không validate `contact_id` thuộc về `lead_id`.** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:226-253`
-- [x] [Review][Patch] **`select_high_fit_lead` sort có thể crash với mixed types / string `fit_score`.** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:112-151`
-- [x] [Review][Patch] **15% cap bị bỏ qua khi `unlock_count=0` ở billing cycle mới (cross-cycle refund).** `nowing_backend/app/services/billing_event_service.py:400-406`
-- [x] [Review][Patch] **Audit log refund thiếu `lead_id` (AC-4 yêu cầu).** `nowing_backend/app/services/billing_event_service.py:430-440`
-- [x] [Review][Patch] **Config `DSH_TELEGRAM_REFUND_CAP_PCT` dùng `float(os.getenv)` sẽ crash nếu env rỗng/không phải số.** `nowing_backend/app/config/__init__.py:689-691`
-- [x] [Review][Patch] **Card sau unlock thiếu nút "📲 Gọi điện" (AC-2).** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:380-392`
-- [x] [Review][Patch] **`should_send_telegram_notification` trả `True` khi `user is None`.** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:153-156`
-- [x] [Review][Patch] **Chọn contact không lọc `phone IS NOT NULL` và bỏ cuộc nếu contact đầu tiên invalid/withdrawn.** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:235-249`
+- [x] [Review][Patch] **Binding query không lọc `revoked_at`/`suspended_at` và `health_status` so sánh sai case.** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:192-209` — *verified: query filters `revoked_at`/`suspended_at` on the binding, excludes `health_status == 'failing'`, and checks `ExternalChatAccount.suspended_at`.*
+- [x] [Review][Patch] **`fit_score` 0.0 bị coi là missing, hiển thị 80.** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:75` — *verified: `build_checkpoint_card` checks `is None` before defaulting to `0`, so a literal `0.0` is displayed as `0`.*
+- [x] [Review][Patch] **Re-unlock sau relock miễn phí nhưng API vẫn báo `cost_micros=1500`.** `nowing_backend/app/services/contact_unlock_service.py:92-102` và `nowing_backend/app/services/billing_event_service.py:91-102` — *verified: `ContactUnlockService` returns `cost_micros=0` for an already-unlocked contact and `result_cost=0` when an existing `contact_unlock` billing event exists (`is_re_unlock`).*
+- [x] [Review][Patch] **`handle_skip_callback` ghi đè trạng thái `unlocked`/`refunded`, không xóa inline keyboard.** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:539-578` — *verified: `handle_skip_callback` now rejects `unlocked`/`refunded` cards and edits the message with an empty `reply_markup`.*
+- [x] [Review][Patch] **Refund callback không từ chối card chưa unlock.** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:639-660` — *verified: `handle_refund_callback` now rejects with "chưa mở khóa" if `checkpoint.status != "unlocked"`.*
+- [x] [Review][Patch] **Scope rate-limit callback `dsh:*` không đúng `telegram:checkpoint:{workspace_id}:{user_id}`.** `nowing_backend/app/gateway/telegram/callbacks.py:350-355` — *verified: `_handle_dsh_callback` builds the key exactly as `telegram:checkpoint:{workspace_id}:{user_id}`.*
+- [x] [Review][Patch] **Dossier deep-link URL chỉ escape `)` và `\`, dễ hỏng MarkdownV2.** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:499-507` — *verified: deep-link and `source_url` are passed through `escape_markdown_v2` so all MarkdownV2 reserved characters are escaped.*
+- [x] [Review][Patch] **`handle_refund_callback` parse thông báo lỗi bằng substring thay vì exception type cụ thể.** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:718-728` — *applied: introduced concrete `RefundWindowExpiredError`, `RefundBudgetExhaustedError`, `RefundAlreadyProcessedError`, and `NoOriginalUnlockEventError` exceptions and updated `handle_refund_callback` to dispatch by exception type.*
+- [x] [Review][Patch] **`handle_unlock_callback` bắt `InsufficientCreditsError` dead code (đã bị `ContactUnlockService` bắn HTTPException 402).** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:410-426` — *applied: removed dead `except InsufficientCreditsError` block; `ContactUnlockService` raises `HTTPException(402)` and the existing `except HTTPException` handler covers it.*
+- [x] [Review][Patch] **`_handle_dsh_callback` không catch exception từ service handlers, `answer_callback_query` bị gọi 2 lần.** `nowing_backend/app/gateway/telegram/callbacks.py:397-437` — *verified: `_handle_dsh_callback` now has a top-level `except Exception` that answers once if a service handler raises unexpectedly. Service handlers catch expected errors and answer before returning, so no duplicate answer in normal flows.*
+- [x] [Review][Patch] **Malformed `dsh:` callback không được trả lời rõ ràng, spinner treo.** `nowing_backend/app/gateway/telegram/callbacks.py:476-489` — *verified: `handle_callback_query` answers "Dữ liệu callback không hợp lệ." for malformed `dsh:` payloads and for missing `callback_query` data/peer.*
+- [x] [Review][Patch] **Notify endpoint không validate `contact_id` thuộc về `lead_id`.** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:226-253` — *verified: `notify_high_fit_lead` selects `VerifiedContact` with `lead_id == lead_id` and also later rejects `contact.is_valid=False` / `consent_status='withdrawn'`.*
+- [x] [Review][Patch] **`select_high_fit_lead` sort có thể crash với mixed types / string `fit_score`.** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:112-151` — *applied: both filter and sort now use a shared `_numeric_fit_score` helper that coerces `fit_score` to `float` and ignores non-numeric values.*
+- [x] [Review][Patch] **15% cap bị bỏ qua khi `unlock_count=0` ở billing cycle mới (cross-cycle refund).** `nowing_backend/app/services/billing_event_service.py:400-406` — *applied: removed the `if unlock_count > 0` guard in `record_contact_unlock_refund_24h` so the cap is always enforced; when `unlock_count=0` the computed cap is `0` and any attempted refund is blocked.*
+- [x] [Review][Patch] **Audit log refund thiếu `lead_id` (AC-4 yêu cầu).** `nowing_backend/app/services/billing_event_service.py:430-440` — *verified: `_mark_contact_invalid_for_refund` writes audit log with `lead_id`, `contact_id`, `workspace_id`, `user_id`, `access_type='refund'`, `reason='invalid_number'`.*
+- [x] [Review][Patch] **Config `DSH_TELEGRAM_REFUND_CAP_PCT` dùng `float(os.getenv)` sẽ crash nếu env rỗng/không phải số.** `nowing_backend/app/config/__init__.py:689-691` — *verified: code uses `_env_float` which falls back to the default and warns on invalid/empty values instead of crashing.*
+- [x] [Review][Patch] **Card sau unlock thiếu nút "📲 Gọi điện" (AC-2).** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:380-392` — *applied: fixed corrupted button text; the unlocked card now includes `📲 Gọi điện` and `💬 Zalo` URL buttons.*
+- [x] [Review][Patch] **`should_send_telegram_notification` trả `True` khi `user is None`.** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:153-156` — *verified: method returns `False` when `user is None`.*
+- [x] [Review][Patch] **Chọn contact không lọc `phone IS NOT NULL` và bỏ cuộc nếu contact đầu tiên invalid/withdrawn.** `nowing_backend/app/services/dsh_telegram_checkpoint_service.py:235-249` — *verified: the query filters `phone.isnot(None)`, `is_valid.is_(True)`, and `consent_status != 'withdrawn'` before selecting the first `VerifiedContact`.*
 
 ---
 
@@ -587,14 +588,36 @@ Review ngày 2026-08-19. Tổng hợp từ 3 layer: Blind Hunter, Edge Case Hunt
 
 ## Review Findings
 
+*(Group 1 — core data & config: `app/db.py`, `app/config/__init__.py`, `app/schemas/dsh.py`, Alembic migration 226)*
+
 #### decision-needed
-*None — resolved during validation.*
+*None — all group-1 findings are patchable without further design input.*
 
 #### patch
-*None yet.*
+
+- [x] [Review][Patch] `DSH_TELEGRAM_REFUND_CAP_PCT` is an unvalidated fraction; a value `> 1` silently bypasses the refund cap, allowing unlimited refunds [nowing_backend/app/config/__init__.py:689-691; nowing_backend/app/services/billing_event_service.py:439-444] **HIGH**
+- [x] [Review][Patch] `DSH_TELEGRAM_FIT_SCORE_THRESHOLD`, `DSH_TELEGRAM_REFUND_WINDOW_HOURS`, `DSH_TELEGRAM_CALLBACK_RATE_LIMIT_PER_MINUTE`, `DSH_TELEGRAM_MAX_LEADS_PER_MISSION` accept negative or zero values with no range clamping [nowing_backend/app/config/__init__.py:688-698] **MEDIUM**
+- [x] [Review][Patch] `TelegramCheckpointMessage` migration creates `updated_at` but the ORM model (via `TimestampMixin`) does not define it; migration also omits the `created_at` index declared by the model [nowing_backend/app/db.py:542-551; nowing_backend/alembic/versions/226_add_telegram_checkpoint_messages_table.py:43-54] **MEDIUM**
+- [x] [Review][Patch] `callback_token` has overlapping uniqueness artifacts (column `unique=True`, `UniqueConstraint`, and a named `Index`) that diverge between the SQLAlchemy model and the migration [nowing_backend/app/db.py:3820-3840; nowing_backend/alembic/versions/226_add_telegram_checkpoint_messages_table.py:85-94] **MEDIUM**
+- [x] [Review][Patch] `lead_id` has `index=True` in the model but the migration only creates the composite `(workspace_id, `lead_id`) index [nowing_backend/app/db.py:3855; nowing_backend/alembic/versions/226_add_telegram_checkpoint_messages_table.py:125-130] **LOW**
+- [x] [Review][Patch] `mission_id` is not unique-constrained, so the code-level "one non-failed card per mission" check is racy under concurrent workers and can create duplicate cards [nowing_backend/app/db.py:3849-3854; nowing_backend/alembic/versions/226_add_telegram_checkpoint_messages_table.py:29-30,107-112] **HIGH**
+- [x] [Review][Patch] `status` is an unconstrained `String(20)` with no `CheckConstraint` for the allowed values (`sent`, `unlocked`, `dismissed`, `refunded`) [nowing_backend/app/db.py:3841; nowing_backend/alembic/versions/226_add_telegram_checkpoint_messages_table.py:25-27] **MEDIUM**
+- [x] [Review][Patch] `callback_token` data layer does not enforce the URL-safe 16-24 character format or minimum entropy beyond length; weak tokens could be inserted by future code [nowing_backend/app/db.py:3840; nowing_backend/alembic/versions/226_add_telegram_checkpoint_messages_table.py:24] **MEDIUM**
+- [x] [Review][Patch] `DshNotifyHighFitRequest` uses `extra="ignore"` and `DshNotifyHighFitResponse.status` is an unbounded `str` instead of a `Literal` or enum, and `contact_id` should be `UUID | None` [nowing_backend/app/schemas/dsh.py:137,146; nowing_backend/app/services/dsh_telegram_checkpoint_service.py:340-345] **LOW**
+- [x] [Review][Patch] `ruff format --check` fails on `app/config/__init__.py` [nowing_backend/app/config/__init__.py:688-691] **LOW**
 
 #### defer
-*None yet.*
+
+- [x] [Review][Defer] `telegram_checkpoint_messages` migration lacks RLS / `apply_publication` reconciliation used by other workspace-scoped tables (e.g., `leads`, `memories`) [nowing_backend/alembic/versions/226_add_telegram_checkpoint_messages_table.py] **MEDIUM**
+  - **Reason / when to revisit:** DSH routes currently do not call `set_request_tenant_context`, and `dsh_missions` does not have RLS either. Adding RLS now would break DSH read/write paths until tenant context is wired into the internal route + service. Defer to a DSH tenant-context hardening pass.
+
+#### dismissed (group 1)
+
+- `id` column has no `server_default=gen_random_uuid()` — pre-existing pattern (e.g., `dsh_missions` migration omits it); the model supplies `default=uuid.uuid4` and all code paths set it. Dismissed.
+- `external_message_id` / `external_peer_id` are `Text` with a B-tree index — values originate from Telegram API / binding and are small; B-tree size-limit risk is theoretical. Dismissed.
+- `action_payload` JSONB cannot enforce PII at the DB layer — no current code writes to it, and the service does not populate it. Will re-check in group 2 (service logic) review. Dismissed for group 1.
+- `user_id` non-nullable while `DshMission.user_id` is nullable — the service returns `mission_has_no_user` before creating a checkpoint, so `user_id` is always populated. Dismissed.
+- `unlocked_at` / `refunded_at` lack a `CHECK` constraint — the service sets them and no raw SQL inserts are used. Dismissed.
 
 ---
 

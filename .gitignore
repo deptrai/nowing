@@ -45,3 +45,4 @@ nowing_backend/_bmad-output/
 
 # Git worktrees
 .worktrees/
+*.rdb

@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import json
 import logging
@@ -58,6 +59,9 @@ PHONE_CACHE_TTL_SECONDS = 24 * 3600  # 24 hours (86,400 seconds)
 REDOS_TIMEOUT_SECONDS = 0.05  # 50ms guard against ReDoS
 REDIS_PHONE_CACHE_PREFIX = "enrich:phone:"
 REDIS_MUTEX_PREFIX = "batdongsan:token:"
+
+# Hard 60s ceiling on every external phone-resolution network / browser call (AC-2 / AD-108).
+_PHONE_RESOLVE_TIMEOUT_SECONDS = 60.0
 
 _redis_client: aioredis.Redis | None = None
 
@@ -263,7 +267,10 @@ class PhoneWaterfallService:
             )
 
         try:
-            raw_phone, _ = await fetch_detail_phone(source_url, credentials=creds)
+            raw_phone, _ = await asyncio.wait_for(
+                fetch_detail_phone(source_url, credentials=creds),
+                timeout=_PHONE_RESOLVE_TIMEOUT_SECONDS,
+            )
             norm = normalize_vn_phone(raw_phone or "")
             if norm:
                 carrier = get_carrier_name(norm)
@@ -342,7 +349,10 @@ class PhoneWaterfallService:
             )
 
         try:
-            phone_raw = await chotot_fetch_phone(listing_id)
+            phone_raw = await asyncio.wait_for(
+                chotot_fetch_phone(listing_id),
+                timeout=_PHONE_RESOLVE_TIMEOUT_SECONDS,
+            )
             norm = normalize_vn_phone(phone_raw or "")
             if norm:
                 carrier = get_carrier_name(norm)
@@ -437,9 +447,12 @@ class PhoneWaterfallService:
                 )
 
                 corp_service = CorporateVerificationService(self.session)
-                corp_res = await corp_service.verify_company(
-                    company_name=lead.company_name,
-                    tax_id=getattr(lead, "tax_id", None),
+                corp_res = await asyncio.wait_for(
+                    corp_service.verify_company(
+                        company_name=lead.company_name,
+                        tax_id=getattr(lead, "tax_id", None),
+                    ),
+                    timeout=_PHONE_RESOLVE_TIMEOUT_SECONDS,
                 )
                 if (
                     corp_res

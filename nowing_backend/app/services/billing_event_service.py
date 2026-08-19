@@ -21,6 +21,31 @@ from app.services.workspace_credit_service import (
 
 logger = logging.getLogger(__name__)
 
+
+class RefundWindowExpiredError(ValueError):
+    """Raised when a 24h contact-unlock refund window has expired."""
+
+
+class RefundBudgetExhaustedError(ValueError):
+    """Raised when the 15% auto-refund budget cap is exhausted."""
+
+
+class RefundAlreadyProcessedError(ValueError):
+    """Raised when a contact has already been relocked or refunded."""
+
+
+class NoOriginalUnlockEventError(ValueError):
+    """Raised when the original contact_unlock billing event is missing."""
+
+
+class RelockWindowExpiredError(ValueError):
+    """Raised when the 60s accidental-relock window has expired."""
+
+
+class RelockBudgetExhaustedError(ValueError):
+    """Raised when the 15% accidental-relock budget cap is exhausted."""
+
+
 # ponytail: in-process lock so concurrent relock requests in the same worker
 # (e.g. the integration-test AsyncClient that reuses one db_session) are
 # serialized. The DB advisory lock still protects cross-worker/process races.
@@ -153,7 +178,7 @@ class BillingEventService:
             )
         ).scalar_one_or_none()
         if getattr(original, "event_type", None) != "contact_unlock":
-            raise ValueError(
+            raise NoOriginalUnlockEventError(
                 f"no unlock billing event for contact {verified_contact_id}"
             )
 
@@ -165,6 +190,9 @@ class BillingEventService:
         refund_micros = min(cost_micros, original.cost_micros or cost_micros)
 
         # 4. Credit the payer wallet and decrement member monthly spent.
+        # NOTE: apply_credit commits the session, so the BillingEvent is added
+        # afterwards to keep it in the caller's transaction. OptOutService relies
+        # on session.new/add to detect a newly created refund event.
         await wallet_credit.apply_credit(session, payer_id, refund_micros)
         credit_svc = WorkspaceCreditService(session=session)
         await credit_svc.refund_member_spend(
@@ -234,7 +262,9 @@ class BillingEventService:
                 workspace_id=workspace_id,
             )
             if existing_refunds:
-                raise ValueError("refund already processed for this contact")
+                raise RefundAlreadyProcessedError(
+                    "refund already processed for this contact"
+                )
 
             # 2. Original unlock event must exist and be within the relock window.
             original_rows = await _list_billing_events(
@@ -249,16 +279,18 @@ class BillingEventService:
                 original is None
                 or getattr(original, "event_type", None) != "contact_unlock"
             ):
-                raise ValueError(
+                raise NoOriginalUnlockEventError(
                     f"no unlock billing event for contact {verified_contact_id}"
                 )
 
             created_at = getattr(original, "created_at", None)
             if created_at is None:
-                raise ValueError("original unlock event has no timestamp")
+                raise NoOriginalUnlockEventError(
+                    "original unlock event has no timestamp"
+                )
             now = datetime.now(UTC)
             if now - created_at > timedelta(seconds=relock_window_seconds):
-                raise ValueError("relock window expired")
+                raise RelockWindowExpiredError("relock window expired")
 
             # 3. Accidental-relock budget: 15% of unlocked leads this billing cycle.
             cycle_start, cycle_end = _billing_cycle_bounds(now)
@@ -281,7 +313,7 @@ class BillingEventService:
             if unlock_count > 0:
                 cap = math.ceil(unlock_count * 0.15)
                 if relock_count >= cap:
-                    raise ValueError("relock budget exhausted")
+                    raise RelockBudgetExhaustedError("relock budget exhausted")
 
             # 4. Build the relock billing event before committing.
             payer_id = original.user_id or user_id
@@ -357,17 +389,11 @@ class BillingEventService:
                 workspace_id=workspace_id,
             )
             if existing_relocks:
-                # Relock already refunded this contact. Do not double-credit, but ensure
-                # the contact is marked invalid and treat the existing relock as the
-                # refund record for idempotency.
-                await self._mark_contact_invalid_for_refund(
-                    session,
-                    verified_contact_id=verified_contact_id,
-                    user_id=user_id,
-                    workspace_id=workspace_id,
-                    now=datetime.now(UTC),
+                # A relock already refunded this contact. Do not conflate the ledger
+                # by returning a contact_relock event as a contact_unlock_refund.
+                raise RefundAlreadyProcessedError(
+                    "contact already relocked; refund already processed"
                 )
-                return existing_relocks[0]
 
             # 2. Original unlock event must exist and be within the 24h window
             original_rows = await _list_billing_events(
@@ -382,16 +408,18 @@ class BillingEventService:
                 original is None
                 or getattr(original, "event_type", None) != "contact_unlock"
             ):
-                raise ValueError(
+                raise NoOriginalUnlockEventError(
                     f"no original unlock billing event found for contact {verified_contact_id}"
                 )
 
             created_at = getattr(original, "created_at", None)
             if created_at is None:
-                raise ValueError("original unlock event has no timestamp")
+                raise NoOriginalUnlockEventError(
+                    "original unlock event has no timestamp"
+                )
             now = datetime.now(UTC)
             if now - created_at > timedelta(hours=refund_window_hours):
-                raise ValueError("24h refund window expired")
+                raise RefundWindowExpiredError("24h refund window expired")
 
             # 3. 15% auto-refund cap across the current and original-unlock billing cycles.
             current_cycle_start, current_cycle_end = _billing_cycle_bounds(now)
@@ -435,13 +463,13 @@ class BillingEventService:
                     until=original_cycle_end,
                 )
 
-            if unlock_count > 0:
-                cap_pct = float(getattr(config, "DSH_TELEGRAM_REFUND_CAP_PCT", 0.15))
-                cap = math.ceil(unlock_count * cap_pct)
-                if refund_count >= cap:
-                    raise ValueError(
-                        "auto-refund budget cap exhausted for this billing cycle"
-                    )
+            cap_pct = float(getattr(config, "DSH_TELEGRAM_REFUND_CAP_PCT", 0.15))
+            cap_pct = max(0.0, min(cap_pct, 1.0))
+            cap = math.ceil(unlock_count * cap_pct)
+            if refund_count >= cap:
+                raise RefundBudgetExhaustedError(
+                    "auto-refund budget cap exhausted for this billing cycle"
+                )
 
             # 4. Credit original payer and refund monthly spend (after persisting event).
             payer_id = original.user_id or user_id

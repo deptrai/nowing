@@ -12,7 +12,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision: str = "226"
-down_revision: str | None = "225"
+down_revision: str | None = "49988ab02307"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -46,12 +46,6 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
             nullable=False,
         ),
-        sa.Column(
-            "updated_at",
-            sa.TIMESTAMP(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
         sa.ForeignKeyConstraint(
             ["contact_id"],
             ["verified_contacts.id"],
@@ -61,8 +55,8 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(
             ["lead_id", "workspace_id"],
             ["leads.id", "leads.workspace_id"],
-            name="fk_telegram_checkpoint_lead_id_workspace_id",
             ondelete="CASCADE",
+            name="fk_telegram_checkpoint_lead_id_workspace_id",
         ),
         sa.ForeignKeyConstraint(
             ["mission_id"],
@@ -85,18 +79,14 @@ def upgrade() -> None:
         sa.UniqueConstraint(
             "callback_token", name="uq_telegram_checkpoint_callback_token"
         ),
-    )
-    op.create_index(
-        "ix_telegram_checkpoint_callback_token",
-        "telegram_checkpoint_messages",
-        ["callback_token"],
-        unique=True,
-    )
-    op.create_index(
-        "ix_telegram_checkpoint_contact_id",
-        "telegram_checkpoint_messages",
-        ["contact_id"],
-        unique=False,
+        sa.CheckConstraint(
+            "status IN ('sent', 'unlocked', 'dismissed', 'refunded')",
+            name="ck_telegram_checkpoint_status",
+        ),
+        sa.CheckConstraint(
+            "callback_token ~ '^[A-Za-z0-9_-]{16,24}$'",
+            name="ck_telegram_checkpoint_callback_token",
+        ),
     )
     op.create_index(
         "ix_telegram_checkpoint_message_peer",
@@ -105,15 +95,16 @@ def upgrade() -> None:
         unique=False,
     )
     op.create_index(
-        "ix_telegram_checkpoint_mission_id",
+        "ix_telegram_checkpoint_workspace_mission",
         "telegram_checkpoint_messages",
-        ["mission_id"],
-        unique=False,
+        ["workspace_id", "mission_id"],
+        unique=True,
+        postgresql_where=sa.text("status != 'failed'"),
     )
     op.create_index(
-        "ix_telegram_checkpoint_user_id",
+        "ix_telegram_checkpoint_workspace_lead",
         "telegram_checkpoint_messages",
-        ["user_id"],
+        ["workspace_id", "lead_id"],
         unique=False,
     )
     op.create_index(
@@ -123,15 +114,33 @@ def upgrade() -> None:
         unique=False,
     )
     op.create_index(
-        "ix_telegram_checkpoint_workspace_lead",
+        "ix_telegram_checkpoint_mission_id",
         "telegram_checkpoint_messages",
-        ["workspace_id", "lead_id"],
+        ["mission_id"],
         unique=False,
     )
     op.create_index(
-        "ix_telegram_checkpoint_workspace_mission",
+        "ix_telegram_checkpoint_lead_id",
         "telegram_checkpoint_messages",
-        ["workspace_id", "mission_id"],
+        ["lead_id"],
+        unique=False,
+    )
+    op.create_index(
+        "ix_telegram_checkpoint_contact_id",
+        "telegram_checkpoint_messages",
+        ["contact_id"],
+        unique=False,
+    )
+    op.create_index(
+        "ix_telegram_checkpoint_user_id",
+        "telegram_checkpoint_messages",
+        ["user_id"],
+        unique=False,
+    )
+    op.create_index(
+        "ix_telegram_checkpoint_messages_created_at",
+        "telegram_checkpoint_messages",
+        ["created_at"],
         unique=False,
     )
 

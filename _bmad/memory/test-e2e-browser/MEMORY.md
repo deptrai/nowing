@@ -211,4 +211,11 @@ _Curated long-term knowledge for Nowing E2E Browser Testing._
 - **Console:** 0 errors, only known preload/Jotai warnings.
 - **Screenshot:** `_bmad/memory/test-e2e-browser/sessions/2026-08-19-two-tier-unlock.png`.
 
+## Live MCP Session — Row 1 Phone Unlock & Two-Tier Fast Popover (2026-08-19 18:13)
+
+- **Flow:** Login `e2e-test@nowing.net` → `/dashboard/1/new-chat?mode=leads` → click `Mở khóa số điện thoại` on `0909***456` (Row 1, Batdongsan lead) → Two-Tier confirmation dialog displays with 1.5 credits price + 1-Click Fast Unlock checkbox → click `Mở khóa SĐT` (`ref=f12e913`).
+- **Observed:** Phone pill flips immediately to `0909123456`, Zalo outreach button & ZNS button transition from disabled to active in real-time, credit balance debited accurately.
+- **Console:** 0 errors, clean SSE / Zero-cache sync.
+
+
 

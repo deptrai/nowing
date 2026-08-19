@@ -742,13 +742,16 @@ class TestRecordContactUnlockRefund24h:
         assert len(calls["refund_spend"]) == 0
 
     @pytest.mark.asyncio
-    async def test_record_contact_unlock_refund_24h_returns_existing_if_relocked(
+    async def test_record_contact_unlock_refund_24h_refuses_if_relocked(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Patch 2: a refund call for a contact that was already relocked returns existing relock without double credit."""
+        """Patch: a refund call for a contact already relocked is rejected to avoid conflating the ledger."""
         from types import SimpleNamespace
 
-        from app.services.billing_event_service import BillingEventService
+        from app.services.billing_event_service import (
+            BillingEventService,
+            RefundAlreadyProcessedError,
+        )
 
         calls = self._patch_wallet_and_spend(monkeypatch)
         contact_id = uuid4()
@@ -776,14 +779,14 @@ class TestRecordContactUnlockRefund24h:
 
         session.execute = _execute  # type: ignore[method-assign]
 
-        result = await BillingEventService().record_contact_unlock_refund_24h(
-            session,
-            verified_contact_id=contact_id,
-            workspace_id=1,
-            user_id=user_id,
-        )
+        with pytest.raises(RefundAlreadyProcessedError):
+            await BillingEventService().record_contact_unlock_refund_24h(
+                session,
+                verified_contact_id=contact_id,
+                workspace_id=1,
+                user_id=user_id,
+            )
 
-        assert result is existing_relock
         assert len(calls["credit"]) == 0
         assert len(calls["refund_spend"]) == 0
 

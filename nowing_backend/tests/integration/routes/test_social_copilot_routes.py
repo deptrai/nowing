@@ -7,7 +7,7 @@ import pytest
 pytestmark = pytest.mark.integration
 
 
-async def test_create_and_fetch_voice_profile_endpoint(client_as_regular_user) -> None:
+async def test_create_and_fetch_voice_profile_endpoint(client_as_regular_user, db_workspace) -> None:
     """AC 1: POST /api/workspaces/{id}/voice-profiles saves into memories with tag 'voice_profile'."""
     payload = {
         "profile_name": "Executive Founder",
@@ -26,7 +26,7 @@ async def test_create_and_fetch_voice_profile_endpoint(client_as_regular_user) -
     }
 
     response = await client_as_regular_user.post(
-        "/api/workspaces/1/voice-profiles",
+        f"/api/workspaces/{db_workspace.id}/voice-profiles",
         json=payload,
     )
     assert response.status_code == 201
@@ -37,14 +37,14 @@ async def test_create_and_fetch_voice_profile_endpoint(client_as_regular_user) -
 
     # Verify listing profiles
     list_res = await client_as_regular_user.get(
-        "/api/workspaces/1/voice-profiles",
+        f"/api/workspaces/{db_workspace.id}/voice-profiles",
     )
     assert list_res.status_code == 200
     items = list_res.json()["items"]
     assert any(p["profile_name"] == "Executive Founder" for p in items)
 
 
-async def test_manual_post_ingestion_fallback_endpoint(client_as_regular_user) -> None:
+async def test_manual_post_ingestion_fallback_endpoint(client_as_regular_user, db_workspace) -> None:
     """AC 5: Manual URL/Text ingestion endpoint works for degraded/unsupported platform posts."""
     payload = {
         "raw_text": "Top 5 xu hướng công nghệ năm 2026 sẽ thay đổi toàn bộ thị trường BĐS Việt Nam.",
@@ -53,7 +53,7 @@ async def test_manual_post_ingestion_fallback_endpoint(client_as_regular_user) -
     }
 
     response = await client_as_regular_user.post(
-        "/api/workspaces/1/social-copilot/manual-ingest",
+        f"/api/workspaces/{db_workspace.id}/social-copilot/manual-ingest",
         json=payload,
     )
     assert response.status_code == 200

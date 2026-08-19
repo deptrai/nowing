@@ -1,9 +1,9 @@
 # Architecture Spine — XActions Universal Scraping Microservice Integration (Social, E-Commerce, Real Estate & HR)
 
 **Ngày lập:** 2026-08-15  
-**Cập nhật mới:** 2026-08-18 (Nâng cấp toàn diện thành Universal Scraping Engine)  
+**Cập nhật mới:** 2026-08-18 (Nâng cấp toàn diện thành Universal Scraping Engine & Adaptive Rate Limiting)  
 **Trạng thái:** `final`  
-**Quyết định Kiến trúc chi phối (Architectural Invariants):** AD-SOC-1 đến AD-SOC-10  
+**Quyết định Kiến trúc chi phối (Architectural Invariants):** AD-SOC-1 đến AD-SOC-11  
 **Epic liên kết:** Epic 21A (Social Lead Generation & Universal Scraping Ingestion)  
 **Tác giả:** Winston (BMAD System Architect)  
 **Tích hợp:** Sử dụng trực tiếp `XActions` Universal Scraping Microservice (`/Users/luisphan/Documents/GitHub/XActions`)  
@@ -30,23 +30,26 @@
   * Ủy quyền toàn bộ cơ chế TLS/JA4 spoofing, Playwright Signer Bridge (`a_bogus`, `msToken`, `transaction-id`), và cookie warmup cho XActions.
 * **AD-SOC-3 [ADOPTED]: Sticky SOCKS5 & Resilient Proxy Pool**
   * Tận dụng hệ thống ProxyIpPool tập trung của XActions với cơ chế auto-quarantine 5 phút và chống rò rỉ WebRTC/DNS.
-* **AD-SOC-4 [ADOPTED]: Decoupled Redis Stream Event Buffer (`stream:social:raw_posts`)**
-  * Dữ liệu cào từ XActions được đẩy vào Redis Stream dạng Thin Event Pointers (`MAXLEN ~ 20000`), tách rời khỏi tiến trình NLP bóc tách Entity và tính toán Embedding Vector của Nowing.
+* **AD-SOC-4 [ADOPTED]: Dual-Channel Microservice Communication**
+  * *Kênh Đồng Bộ (Realtime / On-Demand):* Nowing kết nối sang XActions Daemon qua **MCP over HTTP/SSE Transport** (Port 3001) với Persistent Connection Pool (Keep-Alive), loại bỏ hoàn toàn việc spawn subprocess stdio (độ trễ <2ms).
+  * *Kênh Bất Đồng Bộ (Bulk Ingestion):* Dữ liệu cào định kỳ được đẩy vào Redis Stream dạng Thin Event Pointers (`MAXLEN ~ 20000`).
 * **AD-SOC-5 [ADOPTED]: Automated Intent Classification & Entity Normalization**
   * Tự động gán nhãn `intent_tag` (`sell`, `buy`, `hiring`, `seeking`) và bóc tách SĐT/Email/Giá tiền vào `raw_entities JSONB`.
 * **AD-SOC-6 [ADOPTED]: Idempotent Social & Lead Post Storage**
   * Ràng buộc duy nhất `(platform, external_post_id)`. Cập nhật số lượt reaction, bình luận, shares theo thời gian thực mà không trùng bản ghi.
 * **AD-SOC-7 [ADOPTED]: Realtime Alert & CRM Lead Creation**
   * Bài đăng mang intent mua/bán ngay lập tức kích hoạt `AlertEngine` và tạo bản ghi Lead trong Nowing Lead Hub (Epic 21).
-* **AD-SOC-8 [ADOPTED - NEW]: 3-Tier Incremental Gap-Filling Ingestion Protocol**
+* **AD-SOC-8 [ADOPTED]: 3-Tier Incremental Gap-Filling Ingestion Protocol**
   * Quy trình truy xuất 3 tầng:
     1. *L1 Cache (Nowing DB):* Kiểm tra dữ liệu đã qua tinh chế AI (<15p).
     2. *L2 Cache (XActions DB):* Nếu thiếu/stale, hỏi XActions kho dữ liệu thô.
     3. *L3 Live Scraping:* XActions chỉ cào trên Internet cho phần khoảng trống thời gian (Delta Gap qua `since_id` / timestamp), không cào lại bài cũ.
-* **AD-SOC-9 [ADOPTED - NEW]: Universal Multi-Domain Scraping & Legacy Decommissioning**
+* **AD-SOC-9 [ADOPTED]: Universal Multi-Domain Scraping & Legacy Decommissioning**
   * Mở rộng adapter Nowing kết nối toàn bộ các domain (Ecom, BĐS, Tuyển dụng) sang XActions. Xóa bỏ 20+ thư mục scraper cũ trong `nowing_backend/app/proprietary/platforms/` và giảm kích thước Dockerfile của Nowing từ 4GB xuống <500MB.
-* **AD-SOC-10 [ADOPTED - NEW]: Data Partitioning & Storage Retention Policy**
+* **AD-SOC-10 [ADOPTED]: Data Partitioning & Storage Retention Policy**
   * XActions lưu trữ Raw Data tạm thời với vòng đời 30 ngày (Hot Data TTL). Nowing lưu trữ vĩnh viễn các Leads, Verified Contacts và Vector Embeddings có giá trị thương mại.
+* **AD-SOC-11 [ADOPTED - NEW]: Adaptive Infrastructure-Aware Dynamic Rate Limiting & Account Protection**
+  * Tự động điều tốc nhịp cào theo tỷ lệ Proxy sống (`Max Throughput = Healthy Proxies * SafeRatePerIP`) và đưa tài khoản vào chế độ Ngủ đông (Hibernation) 15–30 phút khi gặp thử thách WAF, triệt tiêu 100% rủi ro die account hàng loạt.
 
 ---
 

@@ -1,0 +1,276 @@
+diff --git a/nowing_backend/alembic/versions/226_add_telegram_checkpoint_messages_table.py b/nowing_backend/alembic/versions/226_add_telegram_checkpoint_messages_table.py
+new file mode 100644
+index 000000000..1b2fddca7
+--- /dev/null
++++ b/nowing_backend/alembic/versions/226_add_telegram_checkpoint_messages_table.py
+@@ -0,0 +1,140 @@
++"""add telegram checkpoint messages table
++
++Revision ID: 226
++Revises: 225
++"""
++
++from collections.abc import Sequence
++
++import sqlalchemy as sa
++from sqlalchemy.dialects import postgresql
++
++from alembic import op
++
++revision: str = "226"
++down_revision: str | None = "225"
++branch_labels: str | Sequence[str] | None = None
++depends_on: str | Sequence[str] | None = None
++
++
++def upgrade() -> None:
++    op.create_table(
++        "telegram_checkpoint_messages",
++        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
++        sa.Column("callback_token", sa.String(length=24), nullable=False),
++        sa.Column(
++            "status", sa.String(length=20), server_default="sent", nullable=False
++        ),
++        sa.Column("workspace_id", sa.Integer(), nullable=False),
++        sa.Column("mission_id", postgresql.UUID(as_uuid=True), nullable=False),
++        sa.Column("lead_id", postgresql.UUID(as_uuid=True), nullable=False),
++        sa.Column("contact_id", postgresql.UUID(as_uuid=True), nullable=False),
++        sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=False),
++        sa.Column("external_message_id", sa.Text(), nullable=True),
++        sa.Column("external_peer_id", sa.Text(), nullable=True),
++        sa.Column("unlocked_at", sa.TIMESTAMP(timezone=True), nullable=True),
++        sa.Column("refunded_at", sa.TIMESTAMP(timezone=True), nullable=True),
++        sa.Column(
++            "action_payload",
++            postgresql.JSONB(astext_type=sa.Text()),
++            server_default=sa.text("'{}'::jsonb"),
++            nullable=False,
++        ),
++        sa.Column(
++            "created_at",
++            sa.TIMESTAMP(timezone=True),
++            server_default=sa.text("now()"),
++            nullable=False,
++        ),
++        sa.Column(
++            "updated_at",
++            sa.TIMESTAMP(timezone=True),
++            server_default=sa.text("now()"),
++            nullable=False,
++        ),
++        sa.ForeignKeyConstraint(
++            ["contact_id"],
++            ["verified_contacts.id"],
++            name="fk_telegram_checkpoint_contact_id",
++            ondelete="CASCADE",
++        ),
++        sa.ForeignKeyConstraint(
++            ["lead_id", "workspace_id"],
++            ["leads.id", "leads.workspace_id"],
++            name="fk_telegram_checkpoint_lead_id_workspace_id",
++            ondelete="CASCADE",
++        ),
++        sa.ForeignKeyConstraint(
++            ["mission_id"],
++            ["dsh_missions.id"],
++            name="fk_telegram_checkpoint_mission_id",
++            ondelete="CASCADE",
++        ),
++        sa.ForeignKeyConstraint(
++            ["user_id"],
++            ["user.id"],
++            name="fk_telegram_checkpoint_user_id",
++            ondelete="CASCADE",
++        ),
++        sa.ForeignKeyConstraint(
++            ["workspace_id"],
++            ["workspaces.id"],
++            name="fk_telegram_checkpoint_workspace_id",
++            ondelete="CASCADE",
++        ),
++        sa.UniqueConstraint(
++            "callback_token", name="uq_telegram_checkpoint_callback_token"
++        ),
++    )
++    op.create_index(
++        "ix_telegram_checkpoint_callback_token",
++        "telegram_checkpoint_messages",
++        ["callback_token"],
++        unique=True,
++    )
++    op.create_index(
++        "ix_telegram_checkpoint_contact_id",
++        "telegram_checkpoint_messages",
++        ["contact_id"],
++        unique=False,
++    )
++    op.create_index(
++        "ix_telegram_checkpoint_message_peer",
++        "telegram_checkpoint_messages",
++        ["external_message_id", "external_peer_id"],
++        unique=False,
++    )
++    op.create_index(
++        "ix_telegram_checkpoint_mission_id",
++        "telegram_checkpoint_messages",
++        ["mission_id"],
++        unique=False,
++    )
++    op.create_index(
++        "ix_telegram_checkpoint_user_id",
++        "telegram_checkpoint_messages",
++        ["user_id"],
++        unique=False,
++    )
++    op.create_index(
++        "ix_telegram_checkpoint_workspace_id",
++        "telegram_checkpoint_messages",
++        ["workspace_id"],
++        unique=False,
++    )
++    op.create_index(
++        "ix_telegram_checkpoint_workspace_lead",
++        "telegram_checkpoint_messages",
++        ["workspace_id", "lead_id"],
++        unique=False,
++    )
++    op.create_index(
++        "ix_telegram_checkpoint_workspace_mission",
++        "telegram_checkpoint_messages",
++        ["workspace_id", "mission_id"],
++        unique=False,
++    )
++
++
++def downgrade() -> None:
++    op.drop_table("telegram_checkpoint_messages")
+diff --git a/nowing_backend/app/config/__init__.py b/nowing_backend/app/config/__init__.py
+index 408b4b812..ff76d9efe 100644
+--- a/nowing_backend/app/config/__init__.py
++++ b/nowing_backend/app/config/__init__.py
+@@ -684,6 +684,19 @@ class Config:
+         os.getenv("DSH_MAX_PAYLOAD_BYTES", str(10 * 1024 * 1024))
+     )
+ 
++    # DSH Telegram Interactive Checkpoint & Auto-Refund (Story 26.6)
++    DSH_TELEGRAM_FIT_SCORE_THRESHOLD = _env_int("DSH_TELEGRAM_FIT_SCORE_THRESHOLD", 80)
++    DSH_TELEGRAM_REFUND_CAP_PCT = _env_float(
++        "DSH_TELEGRAM_REFUND_CAP_PCT", 0.15
++    )
++    DSH_TELEGRAM_REFUND_WINDOW_HOURS = _env_int("DSH_TELEGRAM_REFUND_WINDOW_HOURS", 24)
++    DSH_TELEGRAM_MAX_LEADS_PER_MISSION = _env_int(
++        "DSH_TELEGRAM_MAX_LEADS_PER_MISSION", 1
++    )
++    DSH_TELEGRAM_CALLBACK_RATE_LIMIT_PER_MINUTE = _env_int(
++        "DSH_TELEGRAM_CALLBACK_RATE_LIMIT_PER_MINUTE", 60
++    )
++
+     # Hybrid LLM Router (Story 26.3)
+     HYBRID_ENABLE_LOCAL_VLLM = (
+         os.getenv("HYBRID_ENABLE_LOCAL_VLLM", "TRUE").upper() == "TRUE"
+diff --git a/nowing_backend/app/db.py b/nowing_backend/app/db.py
+index 50008a854..2160249a2 100644
+--- a/nowing_backend/app/db.py
++++ b/nowing_backend/app/db.py
+@@ -3811,6 +3811,73 @@ class DshMission(Base, TimestampMixin):
+     error = Column(JSONB, nullable=True)
+ 
+ 
++class TelegramCheckpointMessage(Base, TimestampMixin):
++    """Maps a Telegram inline-keyboard message to a lead/contact for DSH checkpoints."""
++
++    __tablename__ = "telegram_checkpoint_messages"
++
++    __table_args__ = (
++        UniqueConstraint(
++            "callback_token", name="uq_telegram_checkpoint_callback_token"
++        ),
++        Index("ix_telegram_checkpoint_callback_token", "callback_token"),
++        Index(
++            "ix_telegram_checkpoint_message_peer",
++            "external_message_id",
++            "external_peer_id",
++        ),
++        Index("ix_telegram_checkpoint_workspace_mission", "workspace_id", "mission_id"),
++        Index("ix_telegram_checkpoint_workspace_lead", "workspace_id", "lead_id"),
++        ForeignKeyConstraint(
++            ["lead_id", "workspace_id"],
++            ["leads.id", "leads.workspace_id"],
++            ondelete="CASCADE",
++            name="fk_telegram_checkpoint_lead_id_workspace_id",
++        ),
++    )
++
++    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
++    callback_token = Column(String(24), nullable=False, unique=True)
++    status = Column(String(20), nullable=False, default="sent", server_default="sent")
++
++    workspace_id = Column(
++        Integer,
++        ForeignKey("workspaces.id", ondelete="CASCADE"),
++        nullable=False,
++        index=True,
++    )
++    mission_id = Column(
++        UUID(as_uuid=True),
++        ForeignKey("dsh_missions.id", ondelete="CASCADE"),
++        nullable=False,
++        index=True,
++    )
++    lead_id = Column(UUID(as_uuid=True), nullable=False, index=True)
++    contact_id = Column(
++        UUID(as_uuid=True),
++        ForeignKey("verified_contacts.id", ondelete="CASCADE"),
++        nullable=False,
++        index=True,
++    )
++    user_id = Column(
++        UUID(as_uuid=True),
++        ForeignKey("user.id", ondelete="CASCADE"),
++        nullable=False,
++        index=True,
++    )
++
++    external_message_id = Column(Text, nullable=True)
++    external_peer_id = Column(Text, nullable=True)
++
++    unlocked_at = Column(TIMESTAMP(timezone=True), nullable=True)
++    refunded_at = Column(TIMESTAMP(timezone=True), nullable=True)
++
++    # Safe metadata only (e.g. {"dossier_visible": true}). NEVER store unmasked PII here.
++    action_payload = Column(
++        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
++    )
++
++
+ class AntiBotEscalation(BaseModel, TimestampMixin):
+     """Admin-escalation row for an anti-bot / CAPTCHA block.
+ 
+diff --git a/nowing_backend/app/schemas/dsh.py b/nowing_backend/app/schemas/dsh.py
+index 84ee54d1e..b71243974 100644
+--- a/nowing_backend/app/schemas/dsh.py
++++ b/nowing_backend/app/schemas/dsh.py
+@@ -129,3 +129,23 @@ class DshMissionListResponse(BaseModel):
+     total: int
+     limit: int
+     offset: int
++
++
++class DshNotifyHighFitRequest(BaseModel):
++    """Request payload for internal worker notification of high-fit lead."""
++
++    model_config = ConfigDict(extra="ignore")
++
++    lead_id: UUID
++    contact_id: UUID | None = None
++
++
++class DshNotifyHighFitResponse(BaseModel):
++    """Response payload for internal high-fit lead notification."""
++
++    status: str
++    callback_token: str | None = None
++    contact_id: str | None = None
++    message_id: str | None = None
++    reason: str | None = None
++    error: str | None = None

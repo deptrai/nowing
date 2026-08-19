@@ -42,7 +42,7 @@ def _event(text: str = "view_run:123") -> ParsedInboundEvent:
         external_peer_id="12345",
         external_peer_kind="direct",
         external_message_id="99",
-        external_user_id="111",
+        external_user_id="12345",  # same as peer id for direct chat owner
         text=text,
         metadata={"callback_query_id": "cqid"},
         raw_payload={},
@@ -443,3 +443,25 @@ class TestDshTelegramCallbacks:
 
         adapter.answer_callback_query.assert_awaited_once()
         service_mock.handle_unlock_callback.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_dsh_callback_wrong_user_rejected(self, session, adapter, binding):
+        event = _event("dsh:unlock:tok_abc123xyz456")
+        event = ParsedInboundEvent(
+            platform=event.platform,
+            event_kind=event.event_kind,
+            external_peer_id=event.external_peer_id,
+            external_peer_kind=event.external_peer_kind,
+            external_message_id=event.external_message_id,
+            external_user_id="99999",  # different user clicked
+            text=event.text,
+            metadata=event.metadata,
+            raw_payload=event.raw_payload,
+        )
+
+        await handle_callback_query(
+            session=session, adapter=adapter, event=event, binding=binding
+        )
+
+        adapter.answer_callback_query.assert_awaited_once()
+        adapter.edit_message.assert_not_awaited()

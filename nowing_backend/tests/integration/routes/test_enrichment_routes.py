@@ -75,6 +75,7 @@ async def _make_lead(
         source="test",
         company_name=company_name,
         domain="fpt.com",
+        value_hmac=f"lead-hmac-{uuid4().hex[:8]}",
         industry="software",
         status="open",
     )

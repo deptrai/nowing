@@ -177,7 +177,11 @@ class ContactUnlockService:
             },
         ]
 
-        result_cost = 0 if is_re_unlock else (getattr(billing_event, "cost_micros", 1_500) or 1_500)
+        result_cost = (
+            0
+            if is_re_unlock
+            else (getattr(billing_event, "cost_micros", 1_500) or 1_500)
+        )
         return ContactUnlockResult(
             contact_id=contact.id,
             is_unlocked=True,

@@ -385,10 +385,11 @@ class TestDshUnlockCallback:
         self, mocker: pytest.MonkeyPatch
     ) -> None:
         """Pattern 2: 402 PAYMENT_REQUIRED edits card with top-up message and NO PII."""
+        from fastapi import HTTPException, status
+
         from app.services.dsh_telegram_checkpoint_service import (
             DshTelegramCheckpointService,
         )
-        from app.services.etl_credit_service import InsufficientCreditsError
 
         session = _FakeSession()
         adapter = MagicMock()
@@ -403,8 +404,9 @@ class TestDshUnlockCallback:
         mocker.patch(
             "app.services.contact_unlock_service.ContactUnlockService.unlock_contact",
             new=AsyncMock(
-                side_effect=InsufficientCreditsError(
-                    "Insufficient credits", balance_micros=0, required_micros=1500
+                side_effect=HTTPException(
+                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                    detail="Insufficient credits",
                 )
             ),
         )
