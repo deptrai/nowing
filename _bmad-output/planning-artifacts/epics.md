@@ -82,6 +82,12 @@ Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Archite
 
 > **⚠️ Out-of-PRD scope (FR-70–FR-92):** Các FR từ **FR-70 đến FR-92** (Telegram scraper Epic 22, lead-gen extensions Epic 21 mở rộng, infrastructure Epic 23) không xuất hiện trong PRD canonical `prd-Nowing-2026-07-22/prd.md`. Chúng được giữ lại trong `epics.md` như **implementation backlog / market-specific elaboration**, không phải nguồn sự thật về requirements. Nếu cần đưa vào PRD, hãy tạo amendment; nếu không, tiếp tục track ở `epics.md` với ghi chú `out-of-prd`.
 
+> **✅ Implementation Readiness Closeout (2026-08-20):**
+> - `FR-48` đã bị loại bỏ khỏi PRD Nowing (moved to `chainlens-research`).
+> - `FR-50`, `FR-51`, `FR-52` đã được re-scope thành "feed to `chainlens-research`"; coverage trong `epics.md` thể hiện qua `Story 20.1`, `FR-58`, `FR-62` và các story 15.1/15.2/16.1/16.2/17.1/17.2.
+> - `FR-70–FR-92` được ratify là out-of-PRD implementation backlog.
+> - Forward dependencies 2.10→3.15 (soft), 9.5→9.6 (deferred hard), 20.1→20.4 (prerequisite satisfied) đã được phân loại và ghi rõ trong `epics.md` và PRD Amendment `AMENDMENT-Implementation-Readiness-Closeout-2026-08-20.md`.
+
 `[DONE — NFR]` **NFR-1b/1c/1d Memory latency & injection bound** *(E3.14 done, AD-18)*.
 `[RESOLVED]` FR-36 Legacy memory data-loss (2026-07-25 — không mất dữ liệu; 178 chưa apply prod, `memory_md` rỗng, snapshot đã tạo; guard + backfill + 5 test qua `3-10a`/`3-10b`).
 `[REMOVED]` FR-5 AI File Sorting.
@@ -1309,6 +1315,8 @@ So that tôi không phải chuyển sang cloud chỉ vì một năng lực.
 > **Trạng thái: deferred.** Đây là **Phase 2** của D5. Mở khi (a) có số self-host thật, và (b) story `9.2` cho số cost để định giá. Không build trước hai điều đó.
 >
 > **Approval criteria (readiness audit 2026-08-08):** Story 9.5 requires a new SCP before dev can start. SCP must address: (1) self-host demand evidence (≥5 self-host instances requesting deep research), (2) pricing model (metered per-call vs subscription), (3) abuse prevention design, (4) revenue attribution to Nowing Cloud vs engine. Without SCP approval, this story remains deferred indefinitely.
+>
+> **Dependency note:** Story 9.5 requires Story 9.6 (Memory Provenance & Re-Validation) provenance recipe for any metered deep-research output that must be traceable and re-validated. This is a hard dependency, but 9.5 remains deferred until the SCP is approved.
 
 **Acceptance Criteria (nháp — cần SCP phê duyệt trước khi dev):**
 
@@ -3481,6 +3489,7 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 | 12.6 Saved Searches | Story 6.8 (Generic Alert Engine) | saved-search `AlertRule` template |
 | 12.9 Job Market Alerts | Story 6.8 (Generic Alert Engine), Story 12.6 | job-market `AlertRule` template on top of saved searches |
 | 22.3 Telegram Alert & Agent Tools | Story 6.8 (Generic Alert Engine), Story 22.1, Story 22.2 | Realtime message matching triggers `AlertRule` & AI Agent tools |
+| 9.5 Metered Deep-Research Endpoint (Self-Host) | Story 9.6 (Memory Provenance & Re-Validation) | 9.5 deferred; requires 9.6 provenance recipe + SCP approval before dev |
 | 24.1 Drip Outreach Campaign Engine | Story 23.2 (Zalo Webhook/ZNS), Story 6.8 (Scheduler) | Scheduled cadence execution + ZNS template dispatch |
 | 24.2 Waterfall Phone & MST Verification | Story 20.1 (`NowingIngestService`), Story 21.3 (Enriched Contact) | Multi-tier phone & corporate tax registry enrichment |
 | 24.3 Multi-Seat Team CRM Pipeline | Story 23.4 (RLS & Partitioning), Story 8.12 (Workspace Limits) | Multi-seat tenant isolation & shared credit quota locks |

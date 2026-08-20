@@ -985,3 +985,31 @@ Vẫn mở (không thuộc phạm vi fix này):
 - Forward dependencies 2.10→3.15, 9.5→9.6, 20.1→20.4 cần PM/Architect quyết định.
 
 ---
+
+## Final Closeout (2026-08-20 19:20)
+
+### Các vấn đề còn mở đã được giải quyết
+
+- ✅ **FR-48** — Removed khỏi PRD; canonical entity storage thuộc `chainlens-research`.
+- ✅ **FR-50, FR-51, FR-52** — Re-scoped thành "feed to `chainlens-research`"; coverage thể hiện qua `Story 20.1`, `FR-58`, `FR-62` và các story 15.1/15.2/16.1/16.2/17.1/17.2.
+- ✅ **FR-70–FR-92** — Ratified là out-of-PRD implementation backlog; theo dõi trong `epics.md` với ghi chú `out-of-prd`.
+- ✅ **Forward dependencies:**
+  - 2.10 → 3.15: **soft/shared context** (regression test khi 3.15 merge).
+  - 9.5 → 9.6: **hard dependency, deferred** (9.5 chỉ ready khi 9.6 done + SCP approved).
+  - 20.1 → 20.4: **prerequisite, already satisfied** (20.4 done).
+
+### Tài liệu closeout
+
+- PRD Amendment: `prds/prd-Nowing-2026-07-22/AMENDMENT-Implementation-Readiness-Closeout-2026-08-20.md`
+- `epics.md` cập nhật: closeout note, dependency table 9.5→9.6, dependency note trong Story 9.5.
+
+### Overall Readiness Status: READY WITH CONDITIONS
+
+- PRD, Architecture, Epics, UX đã aligned.
+- Coverage hoàn chỉnh theo PRD canonical sau re-scope/loại bỏ FR-48/50/51/52.
+- Không còn forward dependency blocker.
+- **Điều kiện trước Phase 4:** review `epic21-lead-intelligence-ux.md` trước khi dev lead-gen UI.
+
+---
+
+**Implementation Readiness Assessment — CLOSED**
