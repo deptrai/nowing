@@ -41,8 +41,8 @@ def _mask_pii_in_topics(topics: list[Any]) -> list[str]:
     for topic in topics:
         if not isinstance(topic, str):
             topic = str(topic)
-        # Mask email-like and phone-like tokens.
-        topic = re.sub(r"[\w.-]+@[\w.-]+\.\w+", "[EMAIL]", topic)
+        # Mask email-like and phone-like tokens with word boundaries.
+        topic = re.sub(r"\b[\w.-]+@[\w.-]+\.\w+\b", "[EMAIL]", topic)
         topic = re.sub(r"\b\d{9,11}\b", "[PHONE]", topic)
         masked.append(topic)
     return masked
@@ -57,13 +57,23 @@ def _validate_input(data: Any) -> dict[str, Any]:
     return data
 
 
+TRUTHY_STRINGS = frozenset({"1", "true", "yes", "y", "t"})
+FALSY_STRINGS = frozenset({"", "false", "0", "no", "n", "f"})
+
+
 def _bool_from_raw(value: Any) -> bool:
     if isinstance(value, bool):
         return value
     if isinstance(value, (int, float)):
         return value != 0
     if isinstance(value, str):
-        return value.strip().lower() not in {"", "false", "0", "no", "n", "f"}
+        cleaned = value.strip().lower()
+        if cleaned in TRUTHY_STRINGS:
+            return True
+        if cleaned in FALSY_STRINGS:
+            return False
+        # Unknown strings should not silently become True.
+        return False
     return bool(value)
 
 

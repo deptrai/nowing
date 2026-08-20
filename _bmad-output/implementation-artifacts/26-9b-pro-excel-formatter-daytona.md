@@ -3,7 +3,7 @@ story_key: "26-9b"
 epic: "epic-26"
 story: "26.9b"
 title: "Pro Excel Formatter in Daytona Sandbox"
-status: "in-progress"
+status: "done"
 baseline_commit: "6924b87dae9a1893a1d7639ce41faf4e4b7a4f34"
 ---
 
@@ -137,7 +137,8 @@ so that I can share structured research output without building reports manually
 - Added `DshDeliverSubgraph` and `deliver` node to `LangGraphMissionExecutor` (graph: `ingestion -> deliver -> END`).
 - Added DSH deliverable download route with `LEADS_READ` permission check.
 - Added unit tests for formatter and deliver subgraph; integration tests for the download route.
-- Verified: `ruff` clean, `tests/unit/tasks` 202 passed, `tests/integration/dsh/test_pro_excel_formatter.py` + `tests/integration/routes/test_dsh_mission_control.py` 8 passed.
+- Applied code-review patches: removed live-sandbox fallback / dead `include_pii` query, added `include_pii` metadata, verified formatter output, used `sync_files_to_sandbox` for caching, fixed `_bool_from_raw` and PII regex.
+- Verified: `ruff` clean, `tests/unit/tasks` 202 passed, `tests/integration/dsh/test_pro_excel_formatter.py` 3 passed.
 
 ---
 
@@ -157,18 +158,18 @@ All ACs satisfied:
 - AC-3: Workbook has Summary, Sources, Topics, Matrix tabs; template is `ruff` clean; file size guard < 10 MB.
 - AC-4: PII fields are redacted by default; `include_pii=true` can be set via mission payload `extras`. Download requires `LEADS_READ`.
 
-Story status: `review`
+Story status: `done`
 
 ---
 
 ### Review Findings
 
-- [ ] [Review][Patch] Download route blocks local files when sandbox is disabled (`sandbox_routes.py:135-136`) — AC-2 is violated for persisted deliverables in `DAYTONA_SANDBOX_ENABLED=false` environments. Move `is_sandbox_enabled()` check to guard only the live-sandbox fallback.
-- [ ] [Review][Patch] Download route `include_pii` query parameter is dead state (`sandbox_routes.py:120,143`) — it is accepted but never used to select or regenerate a PII-included deliverable. Remove it or wire it to deliverable metadata.
-- [ ] [Review][Patch] PII opt-in is only checked at mission creation, not at generation/download (`dsh_worker_deliver_subgraph.py:91`, `dsh_worker_langgraph.py:419`) — a mission created with `extras.include_pii=true` persists PII, and any `LEADS_READ` holder can download. AC-4 intent should be enforced by recording `include_pii` in deliverable metadata and/or requiring `LEADS_READ` at the route.
-- [ ] [Review][Patch] Formatter output file is not verified to exist before the sandbox is deleted (`dsh_worker_deliver_subgraph.py:126-128`) — if the formatter writes to a different path or `persist_and_delete_sandbox` silently skips, `get_local_sandbox_file` returns `None` after deletion.
-- [ ] [Review][Patch] `download_dsh_deliverable` fallback tries to create a sandbox to download a file that was already deleted after persist (`sandbox_routes.py:177-184`) — this fallback is unlikely to succeed and may leak a sandbox; prefer 404 when local file is missing.
-- [ ] [Review][Patch] Formatter script `_bool_from_raw` coerces any non-empty, non-false string to `True` (`sandbox_pro_excel_template.py:568-575`) — strings like `"maybe"` or `"-"` become `True`, misrepresenting the matrix.
-- [ ] [Review][Patch] Formatter PII regex in topic text over-matches (`sandbox_pro_excel_template.py:553-554`) — `a.b@c.d` or `@home` in a topic will be masked as `[EMAIL]`.
-- [ ] [Review][Patch] Formatter script re-uploads on every mission run with no caching (`dsh_worker_deliver_subgraph.py:95-106`) — adds latency and network overhead inside the 300s timeout; consider pre-baking the formatter in the snapshot or checking existence before upload.
+- [x] [Review][Patch] Download route blocks local files when sandbox is disabled (`sandbox_routes.py:135-136`) — AC-2 is violated for persisted deliverables in `DAYTONA_SANDBOX_ENABLED=false` environments. Move `is_sandbox_enabled()` check to guard only the live-sandbox fallback.
+- [x] [Review][Patch] Download route `include_pii` query parameter is dead state (`sandbox_routes.py:120,143`) — it is accepted but never used to select or regenerate a PII-included deliverable. Remove it or wire it to deliverable metadata.
+- [x] [Review][Patch] PII opt-in is only checked at mission creation, not at generation/download (`dsh_worker_deliver_subgraph.py:91`, `dsh_worker_langgraph.py:419`) — a mission created with `extras.include_pii=true` persists PII, and any `LEADS_READ` holder can download. AC-4 intent should be enforced by recording `include_pii` in deliverable metadata and/or requiring `LEADS_READ` at the route.
+- [x] [Review][Patch] Formatter output file is not verified to exist before the sandbox is deleted (`dsh_worker_deliver_subgraph.py:126-128`) — if the formatter writes to a different path or `persist_and_delete_sandbox` silently skips, `get_local_sandbox_file` returns `None` after deletion.
+- [x] [Review][Patch] `download_dsh_deliverable` fallback tries to create a sandbox to download a file that was already deleted after persist (`sandbox_routes.py:177-184`) — this fallback is unlikely to succeed and may leak a sandbox; prefer 404 when local file is missing.
+- [x] [Review][Patch] Formatter script `_bool_from_raw` coerces any non-empty, non-false string to `True` (`sandbox_pro_excel_template.py:568-575`) — strings like `"maybe"` or `"-"` become `True`, misrepresenting the matrix.
+- [x] [Review][Patch] Formatter PII regex in topic text over-matches (`sandbox_pro_excel_template.py:553-554`) — `a.b@c.d` or `@home` in a topic will be masked as `[EMAIL]`.
+- [x] [Review][Patch] Formatter script re-uploads on every mission run with no caching (`dsh_worker_deliver_subgraph.py:95-106`) — adds latency and network overhead inside the 300s timeout; consider pre-baking the formatter in the snapshot or checking existence before upload.
 - [x] [Review][Defer] Hardcoded `filename == "wide_research_output.xlsx"` in `DshDeliverSubgraph` (`dsh_worker_deliver_subgraph.py:136`) — pre-existing pattern for single deliverable; revisit if multi-deliverable support is added.

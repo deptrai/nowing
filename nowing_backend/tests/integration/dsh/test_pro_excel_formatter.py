@@ -76,10 +76,6 @@ async def test_download_dsh_deliverable_returns_xlsx(
         "app.agents.chat.multi_agent_chat.shared.middleware.filesystem.sandbox.get_local_sandbox_file",
         _fake_get_local_sandbox_file,
     )
-    monkeypatch.setattr(
-        "app.agents.chat.multi_agent_chat.shared.middleware.filesystem.sandbox.is_sandbox_enabled",
-        lambda: True,
-    )
 
     url = f"/api/v1/workspaces/{db_workspace.id}/dsh/missions/{mission.id}/deliverables/{filename}"
     response = await client.get(url)
@@ -101,5 +97,30 @@ async def test_download_dsh_deliverable_404_when_missing(
 ) -> None:
     mission = await _create_mission(db_session, db_workspace, db_user)
     url = f"/api/v1/workspaces/{db_workspace.id}/dsh/missions/{mission.id}/deliverables/missing.xlsx"
+    response = await client.get(url)
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_download_dsh_deliverable_404_when_local_file_missing(
+    client: AsyncClient,
+    db_user: User,
+    db_workspace: Workspace,
+    db_session: AsyncSession,
+    monkeypatch,
+) -> None:
+    """AC-2: 404 if deliverable record exists but persisted file is gone."""
+    mission = await _create_mission(db_session, db_workspace, db_user)
+
+    def _fake_local_missing(_thread_id: str, _path: str) -> bytes | None:
+        return None
+
+    monkeypatch.setattr(
+        "app.agents.chat.multi_agent_chat.shared.middleware.filesystem.sandbox.get_local_sandbox_file",
+        _fake_local_missing,
+    )
+
+    filename = "wide_research_output.xlsx"
+    url = f"/api/v1/workspaces/{db_workspace.id}/dsh/missions/{mission.id}/deliverables/{filename}"
     response = await client.get(url)
     assert response.status_code == 404

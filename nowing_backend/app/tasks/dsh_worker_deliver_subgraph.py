@@ -6,7 +6,6 @@ output to local storage so it can be served by ``sandbox_routes.py``.
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 from datetime import UTC, datetime
@@ -17,6 +16,7 @@ from app.agents.chat.multi_agent_chat.shared.middleware.filesystem.sandbox impor
     get_local_sandbox_file,
     get_or_create_sandbox,
     persist_and_delete_sandbox,
+    sync_files_to_sandbox,
 )
 from app.tasks.dsh_worker_crawl_subgraph import _is_valid_matrix
 
@@ -90,20 +90,29 @@ class DshDeliverSubgraph:
 
         matrix = raw_matrix if self.include_pii else _redact_matrix(raw_matrix)
 
-        sandbox, _ = await get_or_create_sandbox(mission_id)
+        sandbox, is_new = await get_or_create_sandbox(mission_id)
 
         script = _load_formatter_script()
-        input_json = json.dumps(matrix, ensure_ascii=False, default=str).encode("utf-8")
+        input_json = json.dumps(matrix, ensure_ascii=False, default=str)
+        formatter_mtime = datetime.fromtimestamp(
+            FORMATTER_SCRIPT_PATH.stat().st_mtime, tz=UTC
+        ).isoformat()
 
-        def _upload() -> None:
-            sandbox.upload_files(
-                [
-                    ("/documents/formatter.py", script.encode("utf-8")),
-                    (SANDBOX_INPUT_PATH, input_json),
-                ]
-            )
-
-        await asyncio.to_thread(_upload)
+        await sync_files_to_sandbox(
+            mission_id,
+            {
+                "formatter.py": {
+                    "content": script.splitlines(),
+                    "modified_at": formatter_mtime,
+                },
+                "wide_research_matrix.json": {
+                    "content": [input_json],
+                    "modified_at": datetime.now(UTC).isoformat(),
+                },
+            },
+            sandbox,
+            is_new,
+        )
 
         command = (
             f"python3 /documents/formatter.py "
@@ -121,6 +130,11 @@ class DshDeliverSubgraph:
                 f"exit={result.exit_code} output={output}"
             )
 
+        if SANDBOX_OUTPUT_PATH not in output:
+            raise RuntimeError(
+                f"Formatter did not confirm writing {SANDBOX_OUTPUT_PATH}: {output}"
+            )
+
         logger.info("Formatter output for mission %s: %s", mission_id, output)
 
         await persist_and_delete_sandbox(mission_id, [SANDBOX_OUTPUT_PATH])
@@ -135,6 +149,7 @@ class DshDeliverSubgraph:
             "type": "xlsx",
             "filename": "wide_research_output.xlsx",
             "sandbox_path": SANDBOX_OUTPUT_PATH,
+            "include_pii": self.include_pii,
             "size": len(content),
             "created_at": datetime.now(UTC).isoformat(),
         }

@@ -103,8 +103,11 @@ async def test_deliver_subgraph_runs_sandbox_and_returns_deliverable(tmp_path: P
 
     with patch(
         "app.tasks.dsh_worker_deliver_subgraph.get_or_create_sandbox",
-        return_value=(fake_sandbox, False),
+        return_value=(fake_sandbox, True),
     ) as mock_get, patch(
+        "app.tasks.dsh_worker_deliver_subgraph.sync_files_to_sandbox",
+        new_callable=AsyncMock,
+    ) as mock_sync, patch(
         "app.tasks.dsh_worker_deliver_subgraph.persist_and_delete_sandbox",
         return_value=None,
     ) as mock_persist, patch(
@@ -116,10 +119,11 @@ async def test_deliver_subgraph_runs_sandbox_and_returns_deliverable(tmp_path: P
     assert result is not None
     assert result["type"] == "xlsx"
     assert result["filename"] == "wide_research_output.xlsx"
+    assert result["include_pii"] is False
     assert result["size"] == 9
     assert result["sandbox_path"] == "/documents/wide_research_output.xlsx"
     mock_get.assert_called_once_with("mission-1")
+    mock_sync.assert_awaited_once_with("mission-1", mock_sync.call_args[0][1], fake_sandbox, True)
     mock_persist.assert_called_once_with("mission-1", ["/documents/wide_research_output.xlsx"])
     mock_get_local.assert_called_once_with("mission-1", "/documents/wide_research_output.xlsx")
-    fake_sandbox.upload_files.assert_called_once()
     fake_sandbox.aexecute.assert_awaited_once()
