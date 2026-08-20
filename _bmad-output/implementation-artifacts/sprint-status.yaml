@@ -292,9 +292,9 @@ development_status:
   epic-26-retrospective: optional
 
   # === Epic 27: Full-Stack Web App Builder, Instant Hosting & Creative Studio ===
-  epic-27: backlog
-  27-1: backlog  # Full-Stack Web App Builder, 1-Click Hosting *.nowing.space & Design View Mark Tool (AD-113, AD-114)
-  27-2: backlog  # Manus Slides + Speaker Diarization — split into PPTX/Marp export and diarization; reuse video_presentation/reports/stt_service
+  epic-27: ready-for-dev
+  27-1: ready-for-dev  # Full-Stack Web App Builder, 1-Click Hosting *.nowing.space & Design View Mark Tool (AD-113, AD-114)
+  27-2: ready-for-dev  # Manus Slides + Speaker Diarization — split into PPTX/Marp export and diarization; reuse video_presentation/reports/stt_service
   epic-27-retrospective: optional
 
 

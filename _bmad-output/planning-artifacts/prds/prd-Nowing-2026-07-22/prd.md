@@ -1152,6 +1152,45 @@ Một `Memory` sinh ra từ dữ liệu scrape phải trỏ được về **đú
 
 **Status:** `[DONE]` — story `9-6` implemented; provenance recipe and re-validation API are complete.
 
+### 4.10 Autonomous Workstation & Creative Studio (Manus-like)
+
+**Description:** Nowing là **Autonomous Workstation** — ngoài research/chat, nó sở hữu các công cụ sáng tạo tự hành (generative deliverables) và điều khiển trình duyệt/ngữ cảnh của người dùng. Phần này bao gồm hai cột mốc Manus-killer được architecture spine `AD-113`–`AD-114` phê duyệt.
+
+**Epic:** Epic 27 — Full-Stack Web App Builder, Instant Hosting & Creative Studio.
+
+#### FR-93: Full-Stack Web App Builder & Instant Hosting
+
+Người dùng có thể mô tả một ứng dụng web bằng ngôn ngữ tự nhiên, agent sinh project Next.js/React + Tailwind CSS vào `/workspace/web-app`, và deploy 1-click lên `https://[app-name].nowing.space` với HTTPS qua Traefik.
+
+**Acceptance Criteria:**
+- Given một mô tả app bằng tiếng Anh hoặc tiếng Việt, when agent generate code, then một dự án Next.js + Tailwind hoàn chỉnh được ghi vào `/workspace/web-app` và trả về preview URL.
+- Given người dùng bấm `Publish`, when app vượt qua validation, then nó được deploy lên `https://[app-name].nowing.space` với chứng chỉ SSL hợp lệ.
+- Given user muốn dùng domain riêng, when cấu hình CNAME, then Traefik route động ánh xạ domain về app container.
+
+**Consequences:**
+- `app/services/web_builder/` (LLM generator, project scaffold, file writer).
+- `docker/web-app.Dockerfile` template.
+- Traefik dynamic config + `nowing.space` wildcard DNS.
+- Workspace-scoped app registry.
+
+**Status:** `[BACKLOG]` — story `27.1` ready for development after this amendment.
+
+#### FR-94: Design View Mark Tool & Presentation Studio
+
+Người dùng có thể chỉnh sửa UI đã sinh bằng công cụ khoanh vùng trực quan (Mark Tool) để AST-mutate JSX, và có thể tạo/xuất slide deck PPTX/Marp từ prompt cùng bản ghi cuộc họp có speaker diarization.
+
+**Acceptance Criteria:**
+- Given Mark Tool đang hoạt động trên web preview, when người dùng bấm một phần tử, then công cụ bắt bounding box selector và cập nhật JSX AST tương ứng.
+- Given một prompt trình bày, when yêu cầu xuất PPTX, then file `.pptx` 16:9 được sinh với speaker notes và biểu đồ.
+- Given một bản ghi cuộc họp, when yêu cầu diarization, then output chứa action items theo từng người nói và meeting minutes.
+
+**Consequences:**
+- `python-pptx` dependency, PPTX export route.
+- Marp Markdown slide renderer.
+- Speaker diarization extension (`pyannote.audio` hoặc `whisperx`) trong `stt_service.py`.
+
+**Status:** `[BACKLOG]` — story `27.2` ready for development after this amendment.
+
 ## 5. Non-Functional Requirements
 
 #### NFR-1: Performance

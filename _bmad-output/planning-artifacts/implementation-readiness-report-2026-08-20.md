@@ -1013,3 +1013,15 @@ Vẫn mở (không thuộc phạm vi fix này):
 ---
 
 **Implementation Readiness Assessment — CLOSED**
+
+## Post-Closeout Update (2026-08-20) — Epic 27 promoted to in-PRD
+
+Sau audit Manus-vs-Nowing:
+
+- ✅ **FR-93** (Full-Stack Web App Builder & Instant Hosting) và **FR-94** (Design View Mark Tool & Presentation Studio) đã được thêm vào `prd-Nowing-2026-07-22/prd.md` §4.10.
+- ✅ **Epic 27** được nâng từ `backlog` lên `ready-for-dev` trong `sprint-status.yaml`.
+- ✅ **Story files** `27-1` và `27-2` được tạo trong `_bmad-output/implementation-artifacts/stories/`.
+- ✅ **`epics.md`** cập nhật: Epic 27 header, FR-93/94 trong Requirements Inventory, closeout note.
+- ✅ **PRD Amendment** `AMENDMENT-Epic-27-Manus-Autonomous-Workstation-2026-08-20.md` được tạo.
+
+**Overall Readiness Status: READY** — PRD canonical nay bao gồm FR-93/FR-94; Epic 27 không còn là out-of-PRD backlog.

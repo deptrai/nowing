@@ -80,12 +80,16 @@ Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Archite
 `[DONE]` **FR-91 Automated VietQR Affiliate Payout Reconciliation** → **E23.3 P1** (Instant 24/7 Napas bank settlement + cryptographic audit receipts).
 `[DONE]` **FR-92 PostgreSQL RLS & Table Partitioning for Multi-Million Leads** → **E23.4 P1** (Sub-10ms query isolation on partitioned lead stores).
 
-> **⚠️ Out-of-PRD scope (FR-70–FR-92):** Các FR từ **FR-70 đến FR-92** (Telegram scraper Epic 22, lead-gen extensions Epic 21 mở rộng, infrastructure Epic 23) không xuất hiện trong PRD canonical `prd-Nowing-2026-07-22/prd.md`. Chúng được giữ lại trong `epics.md` như **implementation backlog / market-specific elaboration**, không phải nguồn sự thật về requirements. Nếu cần đưa vào PRD, hãy tạo amendment; nếu không, tiếp tục track ở `epics.md` với ghi chú `out-of-prd`.
+`[READY-FOR-DEV]` **FR-93 Full-Stack Web App Builder & Instant Hosting** → **E27.1** (Next.js/React generator, Traefik `*.nowing.space` deploy, custom CNAME; governed by `AD-113`).
+`[READY-FOR-DEV]` **FR-94 Design View Mark Tool & Presentation Studio** → **E27.2** (PPTX/Marp slides, speaker diarization, Mark Tool AST mutation; governed by `AD-114`).
+
+> **⚠️ Out-of-PRD scope (FR-70–FR-92):** Các FR từ **FR-70 đến FR-92** (Telegram scraper Epic 22, lead-gen extensions Epic 21 mở rộng, infrastructure Epic 23) không xuất hiện trong PRD canonical `prd-Nowing-2026-07-22/prd.md`. Chúng được giữ lại trong `epics.md` như **implementation backlog / market-specific elaboration**, không phải nguồn sự thật về requirements. **FR-93/FR-94 (Epic 27) là in-PRD** theo PRD Amendment `AMENDMENT-Epic-27-Manus-Autonomous-Workstation-2026-08-20.md`.
 
 > **✅ Implementation Readiness Closeout (2026-08-20):**
 > - `FR-48` đã bị loại bỏ khỏi PRD Nowing (moved to `chainlens-research`).
 > - `FR-50`, `FR-51`, `FR-52` đã được re-scope thành "feed to `chainlens-research`"; coverage trong `epics.md` thể hiện qua `Story 20.1`, `FR-58`, `FR-62` và các story 15.1/15.2/16.1/16.2/17.1/17.2.
 > - `FR-70–FR-92` được ratify là out-of-PRD implementation backlog.
+> - `FR-93–FR-94` được đưa vào PRD canonical qua `AMENDMENT-Epic-27-Manus-Autonomous-Workstation-2026-08-20.md`; Epic 27 nâng lên `ready-for-dev`.
 > - Forward dependencies 2.10→3.15 (soft), 9.5→9.6 (deferred hard), 20.1→20.4 (prerequisite satisfied) đã được phân loại và ghi rõ trong `epics.md` và PRD Amendment `AMENDMENT-Implementation-Readiness-Closeout-2026-08-20.md`.
 
 `[DONE — NFR]` **NFR-1b/1c/1d Memory latency & injection bound** *(E3.14 done, AD-18)*.
@@ -3578,8 +3582,10 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 
 ---
 
-## Epic 27: Full-Stack Web App Builder, Instant Hosting & Creative Studio (2026-08-20)
+## Epic 27: Full-Stack Web App Builder, Instant Hosting & Creative Studio (2026-08-20) `[ready-for-dev]`
 **Epic goal:** Cung cấp trọn bộ công cụ sáng tạo và sản xuất phần mềm tự hành gồm Web Builder deploy `*.nowing.space`, công cụ chỉnh sửa trực quan Design View (Mark Tool), studio soạn thảo slide thuyết trình PPTX/Marp, và pipeline bóc tách ghi âm cuộc họp thành Action Items.
+**FRs:** FR-93 (Web App Builder & Instant Hosting), FR-94 (Design View Mark Tool & Presentation Studio).
+**ADs:** AD-113, AD-114.
 
 **Stories:**
 - **27.1 Full-Stack Web App Builder, 1-Click Hosting `*.nowing.space` & Design View Mark Tool** — **⚠️ Story scope lớn nhất trong roadmap — toàn bộ code mới.** Không có nền tảng web builder hay dynamic hosting nào trong codebase. `editor_routes.py` là Plate.js Markdown editor (không liên quan). **Code mới:** (a) LLM code generator engine sinh Next.js/React + Tailwind CSS vào `/workspace/web-app`, (b) Dockerfile template + Traefik dynamic SSL routing lên `https://[app].nowing.space`, (c) Custom CNAME manager, (d) Iframe Bounding Box Selector "Mark Tool" DOM inspector + JSX AST mutator. Governed by `AD-113`, `AD-114`.
