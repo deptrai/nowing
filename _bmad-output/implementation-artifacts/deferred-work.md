@@ -14,6 +14,12 @@
   - **Action:** Marked `[x] [Review][Defer]` in `26-7-hermetic-quality-gates-benchmark-anti-zombie.md`.
   - **Reason / when to revisit:** Pre-existing pattern in `xactions/phone_extractor.py`; not introduced by 26.7 diff. Revisit during phone extractor performance tuning.
 
+## Deferred from: code review of 26-9b-pro-excel-formatter-daytona (2026-08-20)
+
+- **Finding:** Hardcoded `filename == "wide_research_output.xlsx"` in `DshDeliverSubgraph` (`dsh_worker_deliver_subgraph.py:136`).
+  - **Action:** Marked `[x] [Review][Defer]` in `26-9b-pro-excel-formatter-daytona.md`.
+  - **Reason / when to revisit:** Pre-existing single-deliverable design; revisit when multi-deliverable support or versioned filenames are required.
+
 ## Deferred from: code review of 26-5-split-canvas-glass-box-mission-control-two-tier-phone-unlock-shimmer-influx (2026-08-21)
 
 - **Finding:** Top-right credit badge is not refetched after unlock and already displays `credit_micros_balance / 1_000_000` as USD.
