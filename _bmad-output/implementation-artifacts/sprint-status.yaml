@@ -288,7 +288,7 @@ development_status:
   26-6: done  # Telegram Interactive Checkpoint Bot & 1-Click Auto-Refund Dialog — group-1 data/config + chunk-1 core-implementation patches applied, group chat callback authorization enforced, 72 unit tests green
   26-7: done  # Hermetic Quality Gates, Benchmark Suite & Anti-Zombie Chaos Testing — lead-009 now valid; nowing_evals lead_extraction/regression replay 100 cases: f1=1.0, hallucination=0.0, mst=1.0
   26-8: done  # LangGraph DSH Mission Executor & Feature Flag — spike complete, DSH_EXECUTOR_ENGINE flag added, unit/wiring + local Postgres/Redis smoke tests green, ruff clean
-  26-9a: ready-for-dev  # Wide Research Client: LangGraph crawl subgraph calling ChainLens output=wide_research (unblocked by 26.8; AD-112)
+  26-9a: ready-for-dev  # Wide Research Crawl Subgraph: LangGraph crawl node dispatch to subgraph, calls chainlens.research with output=table + outputSchema (Direction A, unblocked by 26.8; AD-102, AD-106, AD-108, AD-112)
   26-9b: backlog  # Pro Excel Formatter in Daytona Sandbox (input from 26.9a checkpoint matrix; AD-112)
   epic-26-retrospective: optional
 
