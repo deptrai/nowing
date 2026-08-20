@@ -3,7 +3,7 @@ story_key: "26-9b"
 epic: "epic-26"
 story: "26.9b"
 title: "Pro Excel Formatter in Daytona Sandbox"
-status: "backlog"
+status: "ready-for-dev"
 baseline_commit: "TBD"
 ---
 
@@ -77,5 +77,26 @@ so that I can share structured research output without building reports manually
 
 | File | Change |
 |---|---|
-| `nowing_backend/app/tasks/dsh_worker_langgraph.py` | Add `deliver` edge from `ingestion` or extend `ingestion` node. |
-| `nowing_backend/app/routes/sandbox_routes.py` | Ensure `.xlsx` MIME is served from sandbox file store. |
+| `nowing_backend/app/tasks/dsh_worker_langgraph.py` | Add `deliver` node and edge `ingestion -> deliver -> END` in `_build_graph`. Resumption follows same pattern as other nodes (`_subtask_success` check). |
+| `nowing_backend/app/routes/sandbox_routes.py` | Add new DSH deliverable download route (current route is chat-only). Ensure `.xlsx` MIME, permission `LEADS_READ` (+ opt-in PII flag). |
+| `nowing_backend/app/agents/chat/multi_agent_chat/shared/middleware/filesystem/sandbox.py` | Use `mission_id` as sandbox key; confirm `openpyxl` is in snapshot or install at runtime. |
+| `nowing_backend/scripts/create_sandbox_snapshot.py` | Add `openpyxl` to `PACKAGES` so the Daytona snapshot has xlsx write support. |
+
+### Validation Findings (must resolve before/during dev)
+
+| Severity | Finding | Mitigation in story |
+|---|---|---|
+| High | `openpyxl` is **not** in the current Daytona snapshot (`scripts/create_sandbox_snapshot.py` only installs `pandas`, `numpy`, `matplotlib`, `scipy`, `scikit-learn`). `pandas.to_excel` for `.xlsx` will fail without it. | Add `openpyxl` to `PACKAGES` in `create_sandbox_snapshot.py` and update `execute_code/description.py` if needed. Fallback: install via `pip install openpyxl` in the formatter script if allowed by network. |
+| High | `sandbox_routes.py` route `/threads/{thread_id}/sandbox/download` is hard-coded to chat threads (`NewChatThread`) and checks `Permission.CHATS_READ`. DSH deliverable download needs a mission-scoped route. | Add `GET /workspaces/{workspace_id}/dsh/missions/{mission_id}/deliverables/{filename}` or equivalent; check `LEADS_READ` and `include_pii` flag. |
+| High | PII masking (AC-4) is not implemented anywhere in the Excel path. `wide_research_matrix.sources` may contain raw `content`/emails/phones. | Pass an `include_pii: bool` option; default to redact `content` and any non-whitelisted fields. Reuse `_normalize_source` pattern from 26.9a. |
+| Medium | Sandbox lifecycle is thread-oriented. Reusing `get_or_create_sandbox(mission_id)` works (the label is just `nowing_thread`), but file persistence and deletion logic assume thread context. | Document that `mission_id` is used as the sandbox key; ensure `persist_and_delete_sandbox` is called after the formatter writes `/home/daytona/documents/...`. |
+| Medium | File-size guard (AC-3 "under 10 MB") is not specified in design. | Add `xl` writer guard or post-execution size check; fail gracefully if > 10 MB. |
+| Medium | `deliver` node placement is ambiguous. Running deliver for every mission may add latency/cost; it should be gated on `research_mode=wide` or on `checkpoint.wide_research_matrix`. | AC-1 should read: "Given `research_mode=wide` (or `checkpoint.wide_research_matrix` exists)". |
+| Low | `ruff check` on a script template inside a sandbox is unusual; the dev agent should lint the template file in the repo (`scripts/sandbox_pro_excel_template.py`) with `ruff`. | Update AC-3 to clarify `ruff` runs on the repo template, not inside the sandbox. |
+| Low | `deliverables` schema is not defined; UI/frontend may not know how to display it. | Define `checkpoint.deliverables` as a list of `{type, filename, sandbox_path, size, created_at}` objects. |
+
+### Decisions needed
+
+1. **New download route or reuse thread route?** Decision: add a dedicated DSH deliverable route (recommended) to avoid coupling DSH to chat thread model.
+2. **Include PII default?** Decision: default `include_pii=false`; only workspace members with `LEADS_READ` can request `include_pii=true`.
+3. **Keep sandbox alive or persist-and-delete?** Decision: use `persist_and_delete_sandbox` pattern; file is served from local `SANDBOX_FILES_DIR` via the new route.
