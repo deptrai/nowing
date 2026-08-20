@@ -125,11 +125,14 @@ class DshMissionDeliverable(BaseModel):
     size: int = 0
     created_at: str | None = None
     include_pii: bool = False
+    sources_count: int = 0
+    topics_count: int = 0
 
 
 class DshMissionControlResponse(DshMissionResponse):
     """Public, PII-safe mission control payload with token velocity, subtasks, and deliverables."""
 
+    query: str | None = None
     token_velocity: TokenVelocity
     subtasks: list[DshMissionSubtask]
     deliverables: list[DshMissionDeliverable] = []

@@ -183,8 +183,7 @@ async def test_build_control_data_redacts_payload_sources_and_leads() -> None:
     assert "payload" not in result.model_dump()
     assert "sources" not in result.model_dump()
     assert "leads" not in result.model_dump()
-    raw = result.model_dump()
-    assert "query" not in str(raw)
+    assert result.query == mission.payload["query"]
 
 
 @pytest.mark.asyncio

@@ -68,11 +68,14 @@ export const dshMissionDeliverableSchema = z.object({
 	size: z.number().default(0),
 	created_at: z.string().nullable().optional(),
 	include_pii: z.boolean().default(false),
+	sources_count: z.number().default(0),
+	topics_count: z.number().default(0),
 });
 
 export type DshMissionDeliverable = z.infer<typeof dshMissionDeliverableSchema>;
 
 export const dshMissionControlResponseSchema = dshMissionResponseSchema.extend({
+	query: z.string().nullable().optional(),
 	token_velocity: tokenVelocitySchema,
 	subtasks: z.array(dshMissionSubtaskSchema),
 	deliverables: z.array(dshMissionDeliverableSchema).default([]),

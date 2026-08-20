@@ -277,6 +277,7 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 					missionControl={props.missionControl}
 					loading={props.missionLoading}
 					error={props.missionError}
+					totalBudgetMicros={currentUser?.credit_micros_balance ?? undefined}
 				/>
 				{activeMode === "leads" && (
 					<NowingLeadMatrix

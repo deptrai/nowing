@@ -12,7 +12,10 @@ tags:
 stepsCompleted: ["step-01-validate-prerequisites", "step-02-design-epics", "step-03-create-stories", "step-04-final-validation"]
 inputDocuments:
   - "_bmad-output/planning-artifacts/prds/prd-Nowing-2026-07-22/prd.md"
-  - "_bmad-output/planning-artifacts/architecture/architecture-Nowing-2026-07-22/ARCHITECTURE-SPINE.md"
+  - "_bmad-output/planning-artifacts/architecture/architecture-unified-nowing-chainlens-dsh-2026-08-17/ARCHITECTURE-SPINE.md"
+  - "_bmad-output/planning-artifacts/ux-designs/ux-Nowing-2026-08-15/DESIGN.md"
+  - "_bmad-output/planning-artifacts/ux-designs/ux-Nowing-2026-08-15/EXPERIENCE.md"
+  - "_bmad-output/planning-artifacts/ux-spec-epic26-mission-control-phone-unlock-2026-08-20.md"
   - "_bmad-output/planning-artifacts/prfaq-Nowing-distillate.md (context)"
   - "_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-22.md (epic taxonomy)"
   - "_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-22-vision-pivot.md (epic taxonomy)"
@@ -126,6 +129,78 @@ Các UX contract dưới đây đã được lưu trữ tại `_bmad-output/plan
 - `_bmad-output/planning-artifacts/ux-designs/archive/ux-Nowing-2026-07-22-superseded/ux-contract-first-run-onboarding.md` — chặn story 3.13 (FR-40)
 
 Các story có UI vẫn cần UX spec riêng trước khi build UI chi tiết. UX chuẩn (2026-08-15) là nguồn thiết kế cho mọi tính năng mới.
+
+#### UX Design Requirements — Epic 26 Mission Control & Two-Tier Phone Unlock Refinement
+
+*Nguồn:* `_bmad-output/planning-artifacts/ux-spec-epic26-mission-control-phone-unlock-2026-08-20.md` (produced 2026-08-20 from browser-tested baseline of Story 26.5).
+
+**UX-DR1: Mission Control header clarity**
+- Title must be user-facing (`Trợ lý tìm lead`) instead of internal (`DSH Mission Control`).
+- Subtitle must display the active mission query (e.g. `“20 công ty AI Agent tại TP.HCM”`) so users know what is running.
+- Phase badge must map internal phase names (`terminal`, `crawl`, `extraction`) to Vietnamese labels (`Hoàn thành`, `Đang chạy`, `Đang trích xuất`, `Lỗi`).
+
+**UX-DR2: Running-state affordance in progress bar**
+- Progress bar must animate (`animate-stripes` or `animate-pulse`) when `status === 'running'`.
+- Percentage label must remain visible and update smoothly.
+
+**UX-DR3: Cost transparency in Mission Control**
+- Token velocity cost must display both credits and dollar equivalent (e.g. `1.2 credits ≈ $0.0012`).
+- When budget data is available, show a small budget progress bar (`Đã dùng 12% ngân sách tháng`).
+- When running, show estimated remaining credits based on token velocity.
+
+**UX-DR4: Deliverable download prominence and PII safety**
+- Deliverable cards must use file-type icons (`FileSpreadsheet`, `FileText`, `FileImage`) and a primary `Tải xuống` button.
+- Each card must show metadata (`3 nguồn · 3 khía cạnh · 6.5 KB`).
+- PII badge must be amber, near the filename, with tooltip explaining data sensitivity.
+- Successful download must trigger a Sonner toast (`Đã tải xuống {filename} ({size})`).
+- Failed download must show an error toast with retry guidance.
+
+**UX-DR5: Reasoning (CoT) progressive disclosure**
+- The CoT section must expand the current subtask by default.
+- Past subtasks remain collapsible.
+- Each subtask card must show title, status badge, tokens used, cost, and reasoning content (line-clamp-3 with expand).
+
+**UX-DR6: SmartUnlockPopover cost clarity and anti-accidental spend**
+- Cost must display `1.5 credits ≈ $0.0015` (or VNĐ equivalent) before any action.
+- `1-Click Fast Unlock` checkbox must default to unchecked and clearly state TTL (`15 phút`).
+- Helper text must explain: `“Bỏ qua hộp thoại này trong 15 phút tới.”`
+- Bulk unlock must always show the popover, display total cost, and disable fast unlock toggle.
+
+**UX-DR7: Fast unlock session safety rules**
+- Fast unlock session TTL must be `15 phút` (down from `30 phút`).
+- Session must expire on: 15 min inactivity, leaving the leads view, or logout.
+- When fast unlock is active, clicking a pill must show an inline spinner before the API call (no silent spend).
+- After fast unlock, toast must show an undo action for `10s`.
+
+**UX-DR8: PhoneUnlockPill state distinction and copy behavior**
+- Locked pill must use neutral colors (`bg-slate-100`, dashed border, `Lock` icon).
+- Unlocked pill must use emerald (`bg-emerald-500/10`, solid border, `Phone` icon).
+- Disabled pill (DNC/invalid) must be muted with `Ban` icon and tooltip.
+- Click unlocked pill must copy normalized phone number and show a brief `✓` state.
+- Flip animation (`rotateX`, 150ms) must play on unlock/relock.
+
+**UX-DR9: Undo / relock affordance**
+- Single unlock undo toast must last `30s` with a `Hoàn tác` action.
+- Fast unlock undo toast must last `10s`.
+- Undo must call `relockContact`, flip pill back to masked, and refund credits.
+
+**UX-DR10: Accessibility for phone unlock and Mission Control**
+- Locked pill `aria-label` must state cost: `“Số điện thoại bị ẩn. Click để mở khóa với chi phí 1.5 credits.”`
+- Unlocked pill `aria-label` must state phone and copy action.
+- Popover must be a focus trap with `Enter/Space/Tab/Esc` keyboard navigation.
+- Color contrast for emerald cost text must meet ≥ 4.5:1.
+- Animation must respect `prefers-reduced-motion`.
+
+**UX-DR11: Error states for unlock and download**
+- Insufficient credits (402): replace popover content with `“Không đủ credits. Nạp thêm để tiếp tục.”` and a link/button to top-up.
+- DNC / blocked (403): show `“Số điện thoại bị chặn bởi DNC. Không thể mở khóa.”`
+- Missing research thread (404): return clear `“Research thread not found”` error without implicit creation.
+
+**UX-DR12: Analytics instrumentation**
+- `mission_control.impression` (phase, status, has_deliverable).
+- `mission_control.deliverable.download` (filename, size, include_pii, mission_type).
+- `phone_unlock.popover.open`, `phone_unlock.confirm`, `phone_unlock.fast.unlock`, `phone_unlock.undo`, `phone_unlock.error`.
+
 
 ### FR Coverage Map
 - FR-1/2/3/4/10 → **E1** [DONE] · FR-6/7/8 → **E2** [DONE] · **FR-6 mở rộng → E10.1** [DONE] (batdongsan scraper) · FR-9/11/12/13 → **E3** [DONE] · **FR-14/15/16/17/42 → E4** [DONE] (4.8a–4.8g chat benchmark & regression gate) · FR-21/22/23 → **E5** [DONE] · FR-19/20 → **E6** [DONE] · FR-25/26/27/28/29 → **E7** [DONE] · FR-30 → **E8** [DONE] · **FR-41 → E8.11** [DONE]
@@ -3356,6 +3431,8 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 ## Epic 26: Autonomous Lead Missions & Deep Sales Research `in-progress`
 *Governed by Architecture Spine: `architecture-unified-nowing-chainlens-dsh-2026-08-17/ARCHITECTURE-SPINE.md` (AD-101 to AD-110) & BMAD Full-Spectrum Panel (Winston, John, Mary, Amelia, Murat, Sally, DevOps)*
 
+> **UX Refinement (2026-08-20):** Epic 26 bổ sung story cải tiến UX cho `MissionControlWidget` (Glass Box) và `PhoneUnlockPill` / `SmartUnlockPopover` (Two-Tier Phone Unlock) dựa trên `ux-spec-epic26-mission-control-phone-unlock-2026-08-20.md` (UX-DR1–UX-DR12). Mục tiêu: mission minh bạch chi phí, tránh mất tiền oan, đảm bảo accessibility và analytics đầy đủ.
+
 ### Architectural Invariants (AD-101 – AD-110)
 - **AD-101 (Stateless ChainLens & Unified pgvector Ingestion):** ChainLens chỉ đóng vai trò Crawler/Parser không lưu trạng thái. Chunks được đẩy về `POST /v1/chainlens/ingest` để Nowing tự tạo embeddings và lưu vào PostgreSQL 16 `chunks` (HNSW).
 - **AD-102 (Decoupled Sidecar Worker & FastMCP Gateway):** Tác vụ chạy nền 1–8h nằm tại `dsh-worker`, giao tiếp qua Redis Streams (`nowing:dsh:tasks`), sử dụng `XAUTOCLAIM` và DLQ (`nowing:dsh:dlq`).
@@ -3463,6 +3540,86 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
     **Then** the container maintains exactly 0 defunct/zombie Chromium processes due to `tini` PID 1 and 60s hard context timeouts.
 
 ---
+
+### Story 26.10: Mission Control Glass Box UX Refinement `[ready-for-dev]`
+- **User Value:** Sales managers and SDRs can track the AI mission progress, understand costs, and download deliverables without confusion.
+- **Acceptance Criteria:**
+  - **Given** an active DSH mission,  
+    **When** the Mission Control widget renders,  
+    **Then** the title is `Trợ lý tìm lead` (not `DSH Mission Control`), the active mission query is shown as a subtitle, and the phase badge uses Vietnamese user-friendly labels (`Đang chạy`, `Hoàn thành`, `Lỗi`, `Đang trích xuất`).
+  - **Given** a mission with `status === 'running'`,  
+    **When** the progress bar is displayed,  
+    **Then** it has a running animation (`animate-stripes` or `animate-pulse`) and shows the percentage label.
+  - **Given** token velocity data is available,  
+    **When** the token velocity panel renders,  
+    **Then** it displays cost in both credits and dollar equivalent (e.g. `1.2 credits ≈ $0.0012`), and if budget data exists it shows a budget progress bar (`Đã dùng X% ngân sách tháng`) and estimated remaining credits.
+  - **Given** the mission has completed and produced deliverables,  
+    **When** the deliverables section renders,  
+    **Then** each deliverable appears as a card with a file-type icon (`FileSpreadsheet`, `FileText`, `FileImage`), metadata (`sources · aspects · size`), an amber `Chứa PII` badge when `include_pii === true`, and a primary `Tải xuống` button.
+  - **Given** a deliverable card with a valid download URL,  
+    **When** the user clicks `Tải xuống`,  
+    **Then** the browser downloads the file and a Sonner toast `Đã tải xuống {filename} ({size})` appears; on failure an error toast with retry guidance appears.
+  - **Given** the mission has reasoning (CoT) subtasks,  
+    **When** the widget loads,  
+    **Then** the current subtask is expanded by default, past subtasks are collapsed, and each card shows title, status badge, tokens used, cost, and reasoning content (line-clamp-3 with expand).
+  - **Given** the user tries to continue a research thread that does not exist,  
+    **When** the system receives a 404,  
+    **Then** it shows a clear `Research thread not found` error and does **not** create a thread implicitly.
+- **UX-DRs covered:** UX-DR1, UX-DR2, UX-DR3, UX-DR4, UX-DR5, UX-DR11 (404), UX-DR12 (analytics).
+- **FRs/NFRs covered:** FR-86, FR-85, FR-37, NFR-1, NFR-5.
+
+---
+
+### Story 26.11: Two-Tier Phone Unlock UX Refinement `[ready-for-dev]`
+- **User Value:** Sales reps can unlock phone numbers with transparent cost, optional fast unlock, and a reliable undo option without accidental credit spend.
+- **Acceptance Criteria:**
+  - **Given** a masked phone pill,  
+    **When** I click it for the first time,  
+    **Then** a `SmartUnlockPopover` opens showing the masked preview and cost in both credits and dollar equivalent (e.g. `1.5 credits ≈ $0.0015`).
+  - **Given** the unlock popover is open,  
+    **When** I look at the `1-Click Fast Unlock` option,  
+    **Then** it defaults to **unchecked**, clearly states a `15 phút` TTL, and shows helper text `Bỏ qua hộp thoại này trong 15 phút tới.`
+  - **Given** I have enabled `1-Click Fast Unlock`,  
+    **When** I click another masked phone pill within 15 minutes,  
+    **Then** the pill unlocks immediately with a brief inline spinner, no popover appears, and the 15-minute TTL resets.
+  - **Given** a fast unlock session is active,  
+    **When** 15 minutes pass with no interaction, or I leave the leads view, or I log out,  
+    **Then** the session expires and the next click reopens the confirmation popover.
+  - **Given** I confirm a single phone unlock,  
+    **When** the API succeeds,  
+    **Then** the pill flips (150ms `rotateX` animation) to display the real number and a Sonner toast `Đã mở khóa SĐT -1.5 credits` appears with a `Hoàn tác` action that lasts **30 seconds**.
+  - **Given** I confirm via fast unlock,  
+    **When** the API succeeds,  
+    **Then** the toast shows the same undo action but it lasts **10 seconds**.
+  - **Given** the undo toast is visible,  
+    **When** I click `Hoàn tác`,  
+    **Then** the system calls `relockContact`, the pill flips back to the masked state, and a toast `Đã hoàn tác mở khóa +1.5 credits` appears.
+  - **Given** a phone pill is already unlocked,  
+    **When** I click it,  
+    **Then** it copies the normalized phone number to the clipboard and briefly shows a `✓` copied state.
+  - **Given** a phone pill is disabled (DNC, invalid, or missing `contact_id`),  
+    **When** I hover or focus it,  
+    **Then** it shows a `Ban` icon and a tooltip explaining why it cannot be unlocked, and the click is blocked.
+  - **Given** I try to unlock with insufficient credits (402),  
+    **When** the backend returns the error,  
+    **Then** the popover content is replaced with `Không đủ credits. Nạp thêm để tiếp tục.` and a clear top-up link/button.
+  - **Given** I try to unlock a phone blocked by DNC (403),  
+    **When** the backend returns the error,  
+    **Then** the popover shows `Số điện thoại bị chặn bởi DNC. Không thể mở khóa.` and disables the unlock action.
+  - **Given** I select multiple leads and trigger bulk unlock,  
+    **When** the bulk unlock popover opens,  
+    **Then** it always shows, displays the total cost (`{count × 1.5} credits ≈ ${dollars}`), disables the fast unlock toggle, and has a single `Mở khóa SĐT hàng loạt` action.
+  - **Given** the phone unlock flow is used with a screen reader or keyboard,  
+    **When** navigating the popover or pill,  
+    **Then** locked pills have `aria-label` stating the cost, unlocked pills state the phone and copy action, the popover is a focus trap with `Enter/Space/Tab/Esc` support, and color contrast meets ≥ 4.5:1.
+  - **Given** the user has set `prefers-reduced-motion`,  
+    **When** the pill flips or the popover appears,  
+    **Then** animations are disabled or reduced.
+  - **Given** an unlock or download event occurs,  
+    **When** telemetry is enabled,  
+    **Then** the frontend emits the analytics events defined in UX-DR12 (`phone_unlock.popover.open`, `phone_unlock.confirm`, `phone_unlock.fast.unlock`, `phone_unlock.undo`, `phone_unlock.error`).
+- **UX-DRs covered:** UX-DR6, UX-DR7, UX-DR8, UX-DR9, UX-DR10, UX-DR11 (402/403), UX-DR12 (analytics).
+- **FRs/NFRs covered:** FR-65, FR-86, NFR-2, NFR-5.
 
 ## Ghi chú
 - **Mồ côi/defer có chủ đích:** OQ-1 (MCP marketplace), OQ-2 (agent-tool default enable/disable) → backlog.
@@ -3619,6 +3776,30 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 > - **Story 20.3** = `NowingPrivateProvider` for `POST /v1/private-data/search`.
 > - **Story 20.4** = `ChainLensServiceAuth` + cost ledger sync.
 > - **Story 6.8** = Generic Alert Engine in Epic 6 Automation infrastructure (scheduler + `RunService` + notification dispatch).
+
+---
+
+## Epic 26 UX Refinement — Requirements Coverage Map
+
+| Requirement | Epic / Story | Notes |
+|---|---|---|
+| `UX-DR1` Mission Control header clarity | **Epic 26** (Story 26.10) | Title, query display, Vietnamese phase badges. |
+| `UX-DR2` Running progress bar animation | **Epic 26** (Story 26.10) | `animate-stripes`/`animate-pulse`. |
+| `UX-DR3` Cost transparency (credits + $, budget %) | **Epic 26** (Story 26.10) | Token velocity panel + budget progress. |
+| `UX-DR4` Deliverable card + PII safety + toast | **Epic 26** (Story 26.10) | Download prominence and safety UX. |
+| `UX-DR5` CoT progressive disclosure | **Epic 26** (Story 26.10) | Expand current subtask by default. |
+| `UX-DR6` SmartUnlockPopover cost & anti-accidental | **Epic 26** (Story 26.10) | Cost display, fast unlock 15m, bulk confirm. |
+| `UX-DR7` Fast unlock session safety | **Epic 26** (Story 26.10) | TTL 15m, expire on leave/logout, inline spinner. |
+| `UX-DR8` PhoneUnlockPill state distinction | **Epic 26** (Story 26.10) | Locked/unlocked/disabled visual states + copy. |
+| `UX-DR9` Undo / relock affordance | **Epic 26** (Story 26.10) | 30s single / 10s fast undo toast. |
+| `UX-DR10` Accessibility | **Epic 26** (Story 26.10) | aria-label, focus trap, keyboard, contrast, motion. |
+| `UX-DR11` Error states (402/403/404) | **Epic 26** (Story 26.10) | Insufficient credits, DNC, missing thread. |
+| `UX-DR12` Analytics instrumentation | **Epic 26** (Story 26.10) | Mission control + phone unlock events. |
+| `FR-86` Split-View Canvas & Workspace Modernization | **Epic 26** | UX refinement builds on done Story 26.5. |
+| `FR-65` Enriched Contact Data | **Epic 26** | Phone unlock flow, cost display, DNC. |
+| `NFR-1` Performance bounds | **Epic 26** | Progress animation, token velocity display. |
+| `NFR-2` Security & Auth | **Epic 26** | DNC block, PII badge, disabled state. |
+| `NFR-5` Multi-tenancy | **Epic 26** | Workspace-scoped mission data, fast unlock session. |
 
 
 

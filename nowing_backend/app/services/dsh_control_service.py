@@ -41,16 +41,30 @@ class MissionControlService:
         )
 
     @staticmethod
-    def _redact_deliverable(raw: Any) -> DshMissionDeliverable | None:
+    def _redact_deliverable(
+        raw: Any,
+        matrix: dict[str, Any] | None = None,
+    ) -> DshMissionDeliverable | None:
         """Keep only public, safe deliverable fields (drop sandbox_path)."""
         if not isinstance(raw, dict):
             return None
+        sources_count = 0
+        topics_count = 0
+        if isinstance(matrix, dict):
+            sources = matrix.get("sources")
+            if isinstance(sources, list):
+                sources_count = len(sources)
+            topics = matrix.get("topics")
+            if isinstance(topics, list):
+                topics_count = len(topics)
         return DshMissionDeliverable(
             type=raw.get("type") or "xlsx",
             filename=raw.get("filename") or "",
             size=raw.get("size") or 0,
             created_at=raw.get("created_at"),
             include_pii=raw.get("include_pii") or False,
+            sources_count=sources_count,
+            topics_count=topics_count,
         )
 
     @staticmethod
@@ -152,10 +166,14 @@ class MissionControlService:
         if not isinstance(checkpoint, dict):
             checkpoint = {}
 
+        wide_matrix = checkpoint.get("wide_research_matrix")
+        if not isinstance(wide_matrix, dict):
+            wide_matrix = None
+
         deliverables: list[DshMissionDeliverable] = [
             d
             for raw in checkpoint.get("deliverables", [])
-            if (d := self._redact_deliverable(raw)) is not None
+            if (d := self._redact_deliverable(raw, wide_matrix)) is not None
         ]
 
         subtasks: list[DshMissionSubtask] = []
@@ -196,9 +214,15 @@ class MissionControlService:
             weighted_tps / total_tokens if total_tokens > 0 else 0.0
         )
 
+        payload = mission.payload or {}
+        if not isinstance(payload, dict):
+            payload = {}
+        query = payload.get("query")
+
         now = datetime.now(UTC)
         return DshMissionControlResponse(
             id=mission.id,
+            query=query,
             workspace_id=mission.workspace_id,
             mission_type=mission.mission_type,
             status=mission.status,
