@@ -30,6 +30,15 @@ from .update_memory import (
 )
 
 
+def _build_multi_source_lead_gen_tool(deps: dict[str, Any]) -> BaseTool:
+    from .lead_generation import create_multi_source_lead_gen_tool
+
+    return create_multi_source_lead_gen_tool(
+        workspace_id=deps["workspace_id"],
+        db_session=deps.get("db_session"),
+    )
+
+
 def _build_create_automation_tool(deps: dict[str, Any]) -> BaseTool:
     # Deferred import: the automation package is a sibling under ``main_agent``
     # and is only needed at build time, mirroring the shared registry's
@@ -71,6 +80,10 @@ _MAIN_AGENT_TOOL_FACTORIES: dict[
     "update_memory": (
         _build_update_memory_tool,
         ("user_id", "workspace_id", "db_session", "thread_visibility", "llm"),
+    ),
+    "multi_source_lead_gen": (
+        _build_multi_source_lead_gen_tool,
+        ("workspace_id",),
     ),
 }
 

@@ -8,7 +8,6 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.lead_intelligence.adapters.base import (
@@ -172,6 +171,7 @@ class LeadGenOrchestrator:
         table_id: str | None = None,
         concurrency_limit: int = 5,
         adapter_timeout_seconds: float = 12.0,
+        limit: int = 50,
     ) -> LeadGenOrchestratorResult:
         """
         Execute multi-source scraper searches concurrently with semaphore bounding,
@@ -202,7 +202,7 @@ class LeadGenOrchestrator:
                             workspace_id=workspace_id,
                             query=query,
                             filters=filters,
-                            limit=50,
+                            limit=limit,
                         ),
                         timeout=adapter_timeout_seconds,
                     )
@@ -326,11 +326,12 @@ class LeadGenOrchestrator:
         table_id: str | None = None,
         user_id: UUID | None = None,
         client_id: str | None = None,
+        limit: int = 50,
+        filters: dict[str, Any] | None = None,
     ) -> LeadGenOrchestratorResult:
-        """Execute lead generation and atomically upsert records to PostgreSQL database."""
-        from app.db import Lead, VerifiedContact
+        """Execute lead generation and atomically persist records via LeadBatchService."""
+        from app.services.lead_batch_service import LeadBatchService
 
-        # Safely parse table_id to UUID if provided
         table_uuid: UUID | None = None
         if table_id:
             try:
@@ -338,104 +339,48 @@ class LeadGenOrchestrator:
             except (ValueError, TypeError):
                 table_uuid = None
 
-        # Execute lead search and in-stream deduplication
         search_result = await self.execute_multi_source_lead_gen(
             workspace_id=workspace_id,
             query=query,
+            filters=filters,
             table_id=table_id,
+            limit=limit,
         )
-        unified_leads = search_result.leads
+        if not search_result.leads:
+            return search_result
 
-        new_lead_ids: list[UUID] = []
+        lead_dicts: list[dict[str, Any]] = []
+        for lead in search_result.leads:
+            lead_dicts.append(
+                {
+                    "client_id": client_id,
+                    "table_id": table_uuid,
+                    "source": ",".join(lead.sources)
+                    if lead.sources
+                    else lead.source_name,
+                    "source_url": (
+                        lead.raw_data.get("url")
+                        or lead.raw_data.get("source_url")
+                        or lead.raw_data.get("detail_url")
+                    ),
+                    "company_name": lead.company_name or lead.title or "Doanh nghiệp",
+                    "domain": lead.canonical_domain,
+                    "industry": lead.raw_data.get("industry"),
+                    "location": lead.city or lead.address,
+                    "fit_score": lead.confidence_score,
+                    "phone": lead.primary_phone,
+                    "email": lead.primary_email,
+                    "tax_id": lead.tax_id,
+                    "contact_name": lead.contact_name or lead.legal_rep,
+                    "title": lead.title,
+                }
+            )
 
+        service = LeadBatchService()
         try:
-            for lead in unified_leads:
-                company_name = (
-                    lead.company_name or lead.title or "Doanh nghiệp tiềm năng"
-                )
-                domain = lead.canonical_domain
-
-                # Check if Lead entity already exists by domain or company in this workspace
-                existing_lead = None
-                if domain:
-                    stmt = select(Lead).where(
-                        Lead.workspace_id == workspace_id,
-                        Lead.domain == domain,
-                    )
-                    existing_lead = (await session.execute(stmt)).scalars().first()
-
-                if not existing_lead and company_name:
-                    stmt = select(Lead).where(
-                        Lead.workspace_id == workspace_id,
-                        Lead.company_name == company_name,
-                    )
-                    existing_lead = (await session.execute(stmt)).scalars().first()
-
-                lead_row_id: UUID
-                if existing_lead:
-                    lead_row_id = existing_lead.id
-                    if lead.confidence_score:
-                        existing_lead.fit_score = max(
-                            existing_lead.fit_score or 0.0,
-                            lead.confidence_score,
-                        )
-                    if table_uuid and not existing_lead.table_id:
-                        existing_lead.table_id = table_uuid
-                else:
-                    lead_row_id = uuid4()
-                    new_lead = Lead(
-                        id=lead_row_id,
-                        workspace_id=workspace_id,
-                        client_id=client_id,
-                        table_id=table_uuid,
-                        source=",".join(lead.sources)
-                        if lead.sources
-                        else lead.source_name,
-                        source_url=lead.raw_data.get("url")
-                        or lead.raw_data.get("source_url"),
-                        company_name=company_name,
-                        domain=domain,
-                        fit_score=lead.confidence_score,
-                        status="new",
-                    )
-                    session.add(new_lead)
-                    new_lead_ids.append(lead_row_id)
-
-                # Persist discovered contact in VerifiedContact table
-                if lead.primary_phone or lead.primary_email or lead.contact_name:
-                    contact_stmt = select(VerifiedContact).where(
-                        VerifiedContact.workspace_id == workspace_id,
-                        VerifiedContact.lead_id == lead_row_id,
-                        VerifiedContact.phone == lead.primary_phone,
-                    )
-                    existing_contact = (
-                        (await session.execute(contact_stmt)).scalars().first()
-                    )
-
-                    if not existing_contact and (
-                        lead.primary_phone or lead.primary_email
-                    ):
-                        new_contact = VerifiedContact(
-                            id=uuid4(),
-                            workspace_id=workspace_id,
-                            client_id=client_id,
-                            lead_id=lead_row_id,
-                            name=lead.contact_name or lead.legal_rep,
-                            title=lead.title,
-                            phone=lead.primary_phone,
-                            email=lead.primary_email,
-                            confidence=lead.confidence_score / 100.0,
-                            source_provider=lead.source_name,
-                            verification_status="discovered",
-                        )
-                        session.add(new_contact)
-
-            await session.flush()
-            await self._assign_new_leads(session, workspace_id, new_lead_ids)
-
+            summary = await service.ingest_batch(session, workspace_id, lead_dicts)
         except Exception as exc:
-            logger.error("Failed to persist leads to database: %s", exc)
-            await session.rollback()
+            logger.error("Failed to persist leads via LeadBatchService: %s", exc)
             return LeadGenOrchestratorResult(
                 status="degraded",
                 total_discovered=search_result.total_discovered,
@@ -443,9 +388,11 @@ class LeadGenOrchestrator:
                 leads=[],
                 degraded_sources=[
                     *search_result.degraded_sources,
-                    "db_persistence_error",
+                    "persistence_error",
                 ],
                 table_id=table_id,
             )
 
+        new_lead_ids = list(summary["lead_id_mapping"].values())
+        await self._assign_new_leads(session, workspace_id, new_lead_ids)
         return search_result

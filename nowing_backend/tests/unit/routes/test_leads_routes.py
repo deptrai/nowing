@@ -126,7 +126,7 @@ def _create_mock_lead(
                 email="minh.le@vng.com.vn",
                 phone="0912.345.678",
                 confidence=0.98,
-                is_unlocked=True,
+                is_unlocked=False,
             )
         ],
     )

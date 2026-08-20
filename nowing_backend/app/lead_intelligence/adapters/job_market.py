@@ -51,7 +51,18 @@ class JobMarketLeadAdapter(LeadSourceAdapter):
         limit: int = 25,
     ) -> list[dict[str, Any]]:
         """Query TopCV recruitment portal."""
-        return []
+        from app.proprietary.platforms.topcv.scraper import scrape_topcv
+
+        # ponytail: scrape_topcv currently only supports keyword search;
+        # location filter is not wired in the underlying scraper.
+        params: dict[str, Any] = {
+            "keyword": query,
+            "max_items": min(limit, 20),
+            "max_pages": 2,
+            "fetch_details": True,
+        }
+        raw = await scrape_topcv(params)
+        return raw.get("items", [])
 
     async def _search_itviec(
         self,
@@ -61,7 +72,17 @@ class JobMarketLeadAdapter(LeadSourceAdapter):
         limit: int = 25,
     ) -> list[dict[str, Any]]:
         """Query ITviec tech recruitment portal."""
-        return []
+        from app.proprietary.platforms.itviec.scraper import scrape_itviec
+
+        # ponytail: scrape_itviec currently only supports keyword search.
+        params: dict[str, Any] = {
+            "keyword": query,
+            "max_items": min(limit, 20),
+            "max_pages": 2,
+            "fetch_details": True,
+        }
+        raw = await scrape_itviec(params)
+        return raw.get("items", [])
 
     async def search_leads(
         self,
@@ -102,7 +123,9 @@ class JobMarketLeadAdapter(LeadSourceAdapter):
             raw_records.append(
                 RawLeadRecord(
                     source_name="topcv",
-                    source_id=str(item.get("job_id") or f"topcv_{idx}"),
+                    source_id=str(
+                        item.get("id") or item.get("job_id") or f"topcv_{idx}"
+                    ),
                     data=item,
                     category=self.category,
                 )
@@ -111,7 +134,7 @@ class JobMarketLeadAdapter(LeadSourceAdapter):
             raw_records.append(
                 RawLeadRecord(
                     source_name="itviec",
-                    source_id=str(item.get("job_id") or f"itv_{idx}"),
+                    source_id=str(item.get("id") or item.get("job_id") or f"itv_{idx}"),
                     data=item,
                     category=self.category,
                 )
@@ -139,18 +162,29 @@ class JobMarketLeadAdapter(LeadSourceAdapter):
 
         domain = _extract_domain(data.get("company_website") or data.get("website"))
 
+        location = data.get("location") or data.get("address") or ""
+        city: str | None = None
+        if location and ":" in location:
+            city = location.split(":", 1)[0].strip()
+        elif location:
+            city = location
+
+        company = (
+            data.get("company") or data.get("company_name") or "Doanh nghiệp tuyển dụng"
+        )
+
         return NormalizedLead(
             source_name=raw_record.source_name,
             source_id=raw_record.source_id,
             title=data.get("title") or "Tuyển dụng nhân sự",
-            company_name=data.get("company_name") or "Doanh nghiệp tuyển dụng",
+            company_name=company,
             canonical_domain=domain,
             primary_phone=primary_phone,
-            primary_email=primary_email or data.get("hr_email"),
+            primary_email=primary_email,
             tax_id=data.get("tax_id"),
             contact_name=data.get("hr_name") or data.get("contact_person"),
-            city=data.get("city") or data.get("location"),
-            address=data.get("address"),
+            city=city,
+            address=location or data.get("address"),
             confidence_score=85.0 if (primary_phone or primary_email) else 70.0,
             sources=[raw_record.source_name],
             contact_candidates=candidates,
@@ -193,7 +227,11 @@ class JobMarketLeadAdapter(LeadSourceAdapter):
                 )
 
         # Body text phones
-        body_text = data.get("description") or data.get("job_description") or ""
+        body_text = " ".join(
+            str(v)
+            for v in [data.get("job_description"), data.get("job_requirement")]
+            if v
+        )
         for phone in extract_phones_from_text(body_text):
             candidates.append(
                 ContactCandidate(

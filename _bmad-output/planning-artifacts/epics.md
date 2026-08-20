@@ -308,7 +308,7 @@ Public agent-chat endpoints, AgentConfig registry, client_id tenancy, cost trace
 ### Epic 20: Nowing Ecosystem Integration — Feed & Recall from chainlens-research — ✅ DONE
 `NowingIngestService` + `to_chunks()`, gap-fill caller, `NowingPrivateProvider`, service-to-service auth. **Open:** none.
 
-### Epic 21: Lead Gen Intelligence & Social Graph — ✅ DONE
+### Epic 21: Lead Gen Intelligence & Social Graph — ⏳ IN-PROGRESS
 Toàn diện hóa hệ thống Săn Lead & Tiếp cận Khách hàng Đa kênh: Phone Waterfall 3 tầng (Batdongsan/Chotot/Zalo), Zalo OA & Telegram Outbound Waterfall, XActions Social Ingress (Facebook Groups/Twitter), 1-Click Reverse-ICP từ Website/Dự án, AI Actionable Turn Dispatches, Viral Social Outbound Co-pilot, Multi-Table Tabs & Export Hub (Lark Base, Google Sheets), DNC Compliance Engine, Origami Workspace, Partners Affiliate Portal và $0 Pricing. **Stories:** 21.1–21.18 (21.3, 21.6, 21.14 P0). Governed by `architecture-xactions-social-integration-2026-08-15` & `architecture-linkedin-b2b-2026-08-15`.
 
 ### Epic 22: Telegram Scraper & Channel Ingestion Engine — ⏳ READY-FOR-DEV
@@ -2692,11 +2692,11 @@ _Kỹ thuật: Middleware in `app/middleware/tenant_context.py`, rate limiter wi
 ---
 
 
-## Epic 21: Lead Gen Intelligence & Social Graph `[done]`
+## Epic 21: Lead Gen Intelligence & Social Graph `[in-progress]`
 
 > **Epic Goal:** Trung tâm Xử lý, Chấm điểm và Quản trị Lead tập trung (Lead Intelligence & CRM Hub) của toàn hệ thống Nowing. Tiếp nhận dữ liệu khách hàng tiềm năng từ TẤT CẢ các phễu cào (BĐS Epic 10, Tuyển dụng Epic 12, Đấu thầu/Pháp lý Epic 16, TMĐT Epic 17, Telegram Epic 22 và Mạng xã hội qua `XActions`), bóc tách thông tin liên hệ (SĐT, Email, Tên), phân loại ý định thương mại (Intent Signals), chấm điểm Fit Score, lưu trữ vào Lead CRM và kích hoạt chiến dịch Outbound Automation (Zalo OA, Telegram, Email, Lark Base, Google Sheets).
 
-**Status:** `[done]`  
+**Status:** `[in-progress]`  
 **Governed by Architecture Spines:** `architecture-xactions-social-integration-2026-08-15`, `architecture-linkedin-b2b-2026-08-15`, `epic21-architecture-update.md` (AD-31 to AD-49).  
 **UX Contracts (đã lưu trữ):** `_bmad-output/planning-artifacts/ux-designs/archive/ux-Nowing-2026-07-22-superseded/ux-contract-lead-intelligence-panel.md`, `_bmad-output/planning-artifacts/ux-designs/archive/ux-Nowing-2026-07-22-superseded/ux-contract-workspace-mode-switch.md`, `_bmad-output/planning-artifacts/ux-designs/archive/ux-Nowing-2026-07-22-superseded/ux-contract-sidebar-onboarding.md`, `_bmad-output/planning-artifacts/ux-designs/archive/ux-Nowing-2026-07-22-superseded/ux-contract-positive-reply-notifications.md`. UX chuẩn hiện tại: `ux-designs/ux-Nowing-2026-08-15/`.
 
@@ -3005,6 +3005,26 @@ So that I can refer clients and earn 15% lifetime recurring commissions.
 - **Given** `/partners`, **When** an agency applies, **Then** it generates unique referral links with cookie tracking (30 days) and registers a Partner Profile in the database.
 
 _FR-88 · AD-42_
+
+---
+
+### Story 21.19: Lead Source Adapter Live Data Integration & Persistence `[DONE]`
+
+As a sales rep or real estate broker in Vietnam,
+I want to describe my target prospects in natural language in chat and get a live multi-source lead table,
+So that I can immediately see, persist, and act on verified BĐS, recruitment, and company leads without manual scraping.
+
+**Acceptance Criteria:**
+
+- **Given** a chat prompt like "Tìm 20 nhà đất Hà Nội giá dưới 5 tỷ" or "Tìm công ty logistics tuyển dụng tại TP.HCM", **when** the user sends it, **then** the main agent can trigger `multi_source_lead_gen` and receive a formatted markdown table.
+- **Given** the `multi_source_lead_gen` capability, **when** executed, **then** it calls `LeadGenOrchestrator` which dispatches the right adapters (`batdongsan`, `chotot`, `topcv`, `itviec`, `enterprise`) concurrently with `asyncio.Semaphore(5)` and 12s timeout.
+- **Given** each adapter, **when** it runs, **then** it calls the existing live scraper function and returns `RawLeadRecord`s with data shapes the `normalize_lead` method can consume.
+- **Given** normalized leads, **when** persistence is triggered, **then** `LeadBatchService.ingest_batch` is used to create `Lead` and `VerifiedContact` rows with correct `value_hmac`, DNC filtering, and PII encryption.
+- **Given** a lead with phone or email, **when** persisted, **then** `VerifiedContact` is created with `verification_status="verified"`, `consent=True`, `legal_basis="legitimate_interest"`.
+- **Given** job-market leads without direct contact, **when** persisted, **then** `Lead` is still created using `company_name` for `value_hmac` and no `VerifiedContact` is created.
+- **Given** the feature, **when** `ruff check` and `pytest` run, **then** lint/type errors are 0 and relevant tests pass.
+
+_FR-89 · AD-42 · AD-44_
 
 ---
 

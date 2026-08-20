@@ -41,9 +41,11 @@ class LeadItemValidationError(ValueError):
 
 def _reject_degenerate_leads(leads: list[dict[str, Any]]) -> None:
     for idx, lead in enumerate(leads):
-        if not any(lead.get(field) for field in ("phone", "email", "domain")):
+        if not any(
+            lead.get(field) for field in ("phone", "email", "domain", "company_name")
+        ):
             raise LeadItemValidationError(
-                f"Lead at index {idx} is degenerate: phone, email and domain are all empty"
+                f"Lead at index {idx} is degenerate: phone, email, domain and company_name are all empty"
             )
 
 
@@ -63,6 +65,7 @@ def _prepare_lead_record(
         "id": uuid4(),
         "workspace_id": workspace_id,
         "client_id": item.get("client_id", "default"),
+        "table_id": item.get("table_id"),
         "source": item.get("source", "batch_ingest"),
         "source_url": item.get("source_url"),
         "company_name": company,
@@ -164,7 +167,6 @@ def _build_contacts_upsert_stmt(contacts: list[dict[str, Any]]) -> Any:
             "email_hmac": stmt.excluded.email_hmac,
             "confidence": stmt.excluded.confidence,
             "source_provider": stmt.excluded.source_provider,
-            "updated_at": func.now(),
         },
         where=not_(
             or_(

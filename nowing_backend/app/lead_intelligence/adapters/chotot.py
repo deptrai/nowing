@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class ChototLeadAdapter(LeadSourceAdapter):
-    """Adapter bridging Chợ Tốt classified ads (BĐS, Xe cộ, Đồ điện tử, Mặt bằng kinh doanh)."""
+    """Adapter bridging Chợ Tốt classified ads (BĐS focus for now)."""
 
     source_name = "chotot"
     category = LeadSourceCategory.REAL_ESTATE
@@ -34,8 +34,25 @@ class ChototLeadAdapter(LeadSourceAdapter):
         filters: dict[str, Any] | None = None,
         limit: int = 50,
     ) -> list[dict[str, Any]]:
-        """Call underlying Chợ Tốt platform routines."""
-        return []
+        """Call underlying Chợ Tốt BĐS scraper."""
+        from app.proprietary.platforms.chotot.schemas import ChototScrapeInput
+        from app.proprietary.platforms.chotot.scraper import scrape_chotot
+
+        # ponytail: locations are passed as free text; the scraper resolver handles
+        # Vietnamese city names and aliases. Default keeps the happy path working.
+        city = None
+        if filters and filters.get("locations"):
+            city = filters["locations"][0]
+        city = city or "Hà Nội"
+
+        input_model = ChototScrapeInput(
+            category="bds",
+            city=city,
+            max_items=min(limit, 20),
+            max_pages=5,
+        )
+        output = await scrape_chotot(input_model, limit=min(limit, 20))
+        return [item.to_output() for item in output.items]
 
     async def search_leads(
         self,
@@ -60,7 +77,11 @@ class ChototLeadAdapter(LeadSourceAdapter):
                     RawLeadRecord(
                         source_name=self.source_name,
                         source_id=str(
-                            item.get("list_id") or item.get("id") or f"ct_{idx}"
+                            item.get("listing_id")
+                            or item.get("list_id")
+                            or item.get("ad_id")
+                            or item.get("detail_url")
+                            or f"ct_{idx}"
                         ),
                         data=item,
                         category=self.category,
@@ -81,16 +102,29 @@ class ChototLeadAdapter(LeadSourceAdapter):
         candidates = self.extract_contact_candidates(raw_record)
         primary_phone = candidates[0].value if candidates else None
 
+        price_val: float | None = None
+        if data.get("price_value"):
+            price_val = float(data.get("price_value"))
+        elif data.get("price"):
+            try:
+                price_val = float(str(data.get("price")).replace(",", ""))
+            except ValueError:
+                price_val = None
+
         return NormalizedLead(
             source_name=self.source_name,
             source_id=raw_record.source_id,
-            title=data.get("subject") or data.get("title") or "Tin đăng Chợ Tốt",
+            title=data.get("title") or data.get("subject") or "Tin đăng Chợ Tốt",
             company_name=data.get("company_name"),
             primary_phone=primary_phone,
-            contact_name=data.get("account_name") or data.get("contact_name"),
-            price=float(data.get("price") or 0.0) or None,
-            city=data.get("region_name") or data.get("area_name"),
-            address=data.get("address") or data.get("region_name"),
+            contact_name=data.get("account_name")
+            or data.get("contact_name")
+            or data.get("seller_type"),
+            price=price_val,
+            city=data.get("city") or data.get("region_name") or data.get("area_name"),
+            address=data.get("location")
+            or data.get("address")
+            or data.get("region_name"),
             confidence_score=80.0 if primary_phone else 60.0,
             sources=[self.source_name],
             contact_candidates=candidates,

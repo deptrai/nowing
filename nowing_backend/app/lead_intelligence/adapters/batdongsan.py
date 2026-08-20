@@ -36,26 +36,34 @@ class BatdongsanLeadAdapter(LeadSourceAdapter):
     ) -> list[dict[str, Any]]:
         """Call underlying Batdongsan scraper routines."""
         try:
-            from app.proprietary.platforms.batdongsan.schemas import BatdongsanScrapeInput
+            from app.proprietary.platforms.batdongsan.schemas import (
+                BatdongsanScrapeInput,
+            )
             from app.proprietary.platforms.batdongsan.scraper import scrape_batdongsan
 
+            # ponytail: location filter mapping is intentionally minimal; default HN keeps
+            # the scraper path simple. Upgrade to a city-name→code resolver when needed.
             input_model = BatdongsanScrapeInput(
-                query=query,
                 max_items=min(limit, 20),
             )
             output = await scrape_batdongsan(input_model)
             results = []
             for item in output.items:
-                results.append({
-                    "id": item.id,
-                    "title": item.title,
-                    "price_vnd": item.price_vnd,
-                    "location": item.location,
-                    "project_name": item.project_name,
-                    "contact_phone": getattr(item, "phone", None) or getattr(item, "contact_phone", None),
-                    "description": item.description,
-                    "url": item.url,
-                })
+                data = item.to_output()
+                results.append(
+                    {
+                        "id": data.get("listing_id") or data.get("detail_url"),
+                        "title": data.get("title"),
+                        "price_vnd": data.get("price") or data.get("price_vnd"),
+                        "location": data.get("location"),
+                        "city": data.get("city"),
+                        "district": data.get("district"),
+                        "project_name": data.get("project_name"),
+                        "contact_phone": data.get("phone"),
+                        "description": data.get("description") or "",
+                        "url": data.get("detail_url"),
+                    }
+                )
             return results
         except Exception as exc:
             logger.warning("Live Batdongsan scrape error: %s", exc)

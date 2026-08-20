@@ -30,11 +30,13 @@ def build_multi_source_lead_gen_executor() -> Callable[
             else MultiSourceLeadGenRequest.model_validate(payload)
         )
         orchestrator = LeadGenOrchestrator()
-        result = await orchestrator.execute_multi_source_lead_gen(
+        result = await orchestrator.execute_and_persist(
+            session=ctx.session,
             workspace_id=ctx.workspace_id,
             query=req.query,
-            filters={"locations": req.locations} if req.locations else None,
             table_id=req.table_id,
+            limit=req.limit,
+            filters={"locations": req.locations} if req.locations else None,
         )
         return MultiSourceLeadGenResponse(
             status=result.status,

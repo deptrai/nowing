@@ -52,8 +52,13 @@ class MultiSourceLeadGenTool:
         "required": ["query"],
     }
 
-    def __init__(self, orchestrator: LeadGenOrchestrator | None = None) -> None:
+    def __init__(
+        self,
+        orchestrator: LeadGenOrchestrator | None = None,
+        db_session: Any | None = None,
+    ) -> None:
         self.orchestrator = orchestrator or LeadGenOrchestrator()
+        self.db_session = db_session
 
     async def execute(
         self,
@@ -64,23 +69,32 @@ class MultiSourceLeadGenTool:
         **kwargs: Any,
     ) -> str:
         """Execute orchestrator and return formatted Markdown summary for chat turn."""
-        filters = {}
+        filters: dict[str, Any] = {}
         if locations:
             filters["locations"] = locations
 
-        result = await self.orchestrator.execute_multi_source_lead_gen(
-            workspace_id=workspace_id,
-            query=query,
-            filters=filters,
-            table_id=table_id,
-        )
+        if self.db_session is not None:
+            result = await self.orchestrator.execute_and_persist(
+                session=self.db_session,
+                workspace_id=workspace_id,
+                query=query,
+                table_id=table_id,
+                filters=filters,
+            )
+        else:
+            result = await self.orchestrator.execute_multi_source_lead_gen(
+                workspace_id=workspace_id,
+                query=query,
+                filters=filters,
+                table_id=table_id,
+            )
 
         total = result.total_deduplicated
         sources_used = sorted({s for lead in result.leads for s in lead.sources})
         source_str = ", ".join(sources_used) if sources_used else "đa nguồn"
 
         lines = [
-            "### 🎯 Kết Quả Tìm Kiếm Khách Hàng Tiềm Năng (Lead Generation)",
+            "### Kết Quả Tìm Kiếm Khách Hàng Tiềm Năng (Lead Generation)",
             "",
             f"- **Trạng thái:** `{result.status.upper()}`",
             f"- **Đã tìm thấy:** `{total} leads` (Khử trùng từ {result.total_discovered} bản ghi thô từ nguồn {source_str})",

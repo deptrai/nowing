@@ -9,7 +9,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db import User, Workspace
+from app.db import User, Workspace, WorkspaceTable
 
 pytestmark = [pytest.mark.integration]
 
@@ -109,7 +109,12 @@ class TestLeadGenOrchestratorIntegration:
                 VerifiedContact.workspace_id == db_workspace.id,
             )
             contacts = (await db_session.execute(contact_stmt)).scalars().all()
-            phones = [c.phone for c in contacts if c.phone]
+            from app.services.pii.verified_contact_encryption import (
+                VerifiedContactEncryption,
+            )
+
+            cipher = VerifiedContactEncryption()
+            phones = [cipher.decrypt(c.phone) for c in contacts if c.phone]
             assert "0911223344" in phones
             assert "0988776655" in phones
 
@@ -230,7 +235,16 @@ class TestLeadGenOrchestratorIntegration:
 
         orchestrator = LeadGenOrchestrator()
         other_workspace_id = db_workspace.id + 999
-        table_id = str(uuid4())
+        table_uuid = uuid4()
+        table_id = str(table_uuid)
+
+        ws_table = WorkspaceTable(
+            id=table_uuid,
+            workspace_id=db_workspace.id,
+            name="Isolation Leads Table",
+        )
+        db_session.add(ws_table)
+        await db_session.flush()
 
         lead_ws1 = NormalizedLead(
             source_name="topcv",

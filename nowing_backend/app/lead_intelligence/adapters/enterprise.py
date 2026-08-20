@@ -43,16 +43,18 @@ class EnterpriseProcurementLeadAdapter(LeadSourceAdapter):
             output = await scrape_masothue(inp)
             results = []
             for comp in output.companies:
-                results.append({
-                    "id": comp.tax_code,
-                    "tax_code": comp.tax_code,
-                    "company_name": comp.company_name,
-                    "representative": comp.representative,
-                    "phone": comp.phone,
-                    "address": comp.address,
-                    "industry": comp.industry_name,
-                    "status": comp.status,
-                })
+                results.append(
+                    {
+                        "id": comp.tax_code,
+                        "tax_id": comp.tax_code,
+                        "company_name": comp.company_name,
+                        "representative": comp.representative,
+                        "phone": comp.phone,
+                        "address": comp.address,
+                        "industry": comp.industry_name,
+                        "status": comp.status,
+                    }
+                )
             return results
         except Exception as exc:
             logger.warning("Live Masothue scrape error: %s", exc)
