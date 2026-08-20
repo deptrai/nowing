@@ -968,3 +968,20 @@ Date: 2026-08-20
 4. Review `epic21-lead-intelligence-ux.md` before lead-gen UI dev.
 
 ---
+
+## Resolution Update (2026-08-20 18:55)
+
+Các finding từ `Implementation Readiness Re-run` đã được apply:
+
+- ✅ Epic 8, 23, 25, 26 titles viết lại theo user value.
+- ✅ GWT ACs bổ sung cho 26.9, 24.8, 6.10, 3.18, 27.1, 27.2.
+- ✅ Dependency note 2.10 → 3.15 thêm vào `epics.md`.
+- ✅ `sprint-status.yaml` cập nhật header notes, epic title comments, `epic-13: done`.
+
+Vẫn mở (không thuộc phạm vi fix này):
+
+- FR-48, FR-50, FR-51, FR-52 missing coverage.
+- FR-70–FR-92 out-of-PRD.
+- Forward dependencies 2.10→3.15, 9.5→9.6, 20.1→20.4 cần PM/Architect quyết định.
+
+---

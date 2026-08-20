@@ -1,5 +1,5 @@
 # generated: 2026-08-08
-# last_updated: 2026-08-19  # Story 26.7 validated and revised
+# last_updated: 2026-08-20
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -42,6 +42,17 @@
 
 generated: "2026-08-20 04:46"
 last_updated: "2026-08-20 04:46"  # merged 14.3/15.3/16.3/17.3/17.4 -> 6-11; 14.4/15.4/16.4 -> 6-12
+# bmad-sprint-planning full run: 2026-08-20
+# - Parsed epics.md: 24 epics, ~160 stories.
+# - Scanned _bmad-output/implementation-artifacts/ + stories/*.md for story files (frontmatter story_key/epic+story).
+# - Existing sprint-status.yaml preserved with manual statuses; no backlog story upgraded because all file-backed stories already >= ready-for-dev.
+# - 10 dropped/merged stories (12-7, 12-8, 14-3/4, 15-3/4, 16-3/4, 17-3/4) correctly excluded from status.
+# - 5 manual/implementation story keys preserved:
+#   * 15-1b  -> stories/15-1b-cafef-chat-subagent-integration.md (done)
+#   * 26-8   -> 26-8-langgraph-dsh-worker-executor.md (done)
+#   * 6-6a-playbook-reuse, 6-7a-schema-form-ui, 6-9a-workspace-vertical -> manual business-gated splits of 6-6/6-7/6-9 (backlog).
+# - 5 orphan story files not mapped to current epics.md (kept in artifacts, not added to status): 3-8, 4-5, 4-6, 9-6a, 9-6b.
+
 # ponytail: 2026-08-14 — reopened deferred/business-gated/dropped to backlog; 16-1 mutation gate reopened; 15-2 moved to review; tech-debt tracker reopened.
 # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended citation ACs to 3.15 (WEB_RESULT), 9.3 (async delivery), 2.10 (Exa MCP). 3 stories → review.
 # ponytail: 2026-08-08 sprint-planning — added Epic 1, 5 (DONE brownfield); added 9.1a, 9.1b, 4.8a-4.8h, 13.2a-13.2e; upgraded 12.1-12.5 to ready-for-dev (story files exist); 12.0 DONE (legal approved).
@@ -139,7 +150,7 @@ development_status:
   7-8: ready-for-dev  # 7.8 Vietnamese i18n & Smart Geo-Locale Auto-Detection  `(mới 2026-08-17)`  `[ready-for-dev]`
   epic-7-retrospective: optional
 
-  # === Epic 8: Platform Operations (Billing / Usage / Token) ===
+  # === Epic 8: Workspace Billing & Usage Transparency ===
   epic-8: in-progress
   8-3: done
   8-7: done
@@ -233,7 +244,7 @@ development_status:
   epic-22-retrospective: optional
 
 
-  # === Epic 23: Enterprise Lead Infrastructure, Realtime Ingestion & Automated Outreach Engine ===
+  # === Epic 23: Lead Capture, Real-Time Enrichment & Automated Outreach ===
   # 2026-08-16: Scalability & Enterprise Automation layer (Celery + Redis Stream, Zalo OA Webhook, VietQR Auto Payout, PostgreSQL RLS Partitioning)
   epic-23: done
   23-1: done  # Asynchronous Scraper Worker Pool (Celery + Redis Streams) — 3-layer code review passed, 8 patches applied, 19 unit/integration tests pass
@@ -255,7 +266,7 @@ development_status:
   24-8: backlog  # Full Browser Operator Chrome Extension & Human Live Takeover (AD-111)
   epic-24-retrospective: optional
 
-  # === Epic 25: Superadmin & Platform Operations Control Plane ===
+  # === Epic 25: Platform Administration & Multi-Tenant Operations ===
   # 2026-08-16: Multi-Tenant Hub, Scoped Impersonation, Manual Credit Desk, Affiliate Anti-Fraud Payouts, Telemetry & Dynamic Scraper Rules
   epic-25: in-progress
   25-1: done  # Multi-Tenant User & Workspace Hub + Scoped Impersonation
@@ -266,7 +277,7 @@ development_status:
   25-6: ready-for-dev  # Security Audit Trail Logs & In-App Broadcast Announcements
   epic-25-retrospective: optional
 
-  # === Epic 26: Autonomous Deep Lead Missions & Unified ChainLens/DSH Infrastructure ===
+  # === Epic 26: Autonomous Lead Missions & Deep Sales Research ===
   # 2026-08-17: Governed by Architecture Spine (AD-101 to AD-110). FastMCP, Stateless ChainLens Ingest, dsh-worker Sidecar, Hybrid Router.
   epic-26: in-progress
   26-1: ready-for-dev  # FastMCP Ingest Gateway, Batch Ingestion & Stateless ChainLens Pipeline
@@ -321,6 +332,7 @@ development_status:
   # RE-SCOPED 2026-08-08: Nowing no longer builds canonical index; chainlens-research owns it.
   # Code already merged (13.1-13.3) is deprecated; do not expand. Use chainlens-research POST /v1/ingest/scraper.
   # Archived 2026-08-08: dropped story files moved to _bmad-output/implementation-artifacts/archive/epic-13/; ux-contract-canonical-entity.md moved to _bmad-output/planning-artifacts/ux-designs/ux-Nowing-2026-07-22/archive/.
+  epic-13: done  # re-scoped/archived 2026-08-08; no active stories; all merged code deprecated
   epic-13-retrospective: optional
 
   # === Epic 14: News Aggregation (Vietnam) ===

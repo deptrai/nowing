@@ -320,6 +320,8 @@ _FR-8 · FR-8.1 · OQ-4._
 
 **Kỹ thuật (appended):** hook vào MCP tool wrapper hoặc post-processing step — extract URLs from `web_search_exa` results, register URL directly for `web_fetch_exa`. Reuse `register_web_citations()` helper from Story 3.15 extension.
 
+> **Dependency note:** Story 2.10 reuses the `WEB_RESULT` citation contract that Story 3.15 will finalize. Because 2.10 was completed on 2026-08-05, it uses a provisional citation format; when 3.15 is merged, the E2 team should regression-test 2.10 against the final 3.15 citation contract.
+
 ---
 
 ## Epic 3: Knowledge Base + Long-Term Memory
@@ -907,7 +909,7 @@ So that I can immediately experience the application in my native language witho
 
 ---
 
-## Epic 8: Platform Operations (Billing / Usage / Token)
+## Epic 8: Workspace Billing & Usage Transparency
 ### Story 8.3: Usage & Credit Dashboard  `[DONE per sprint-status: 8-3]`
 As a user,
 I want dashboard xem usage/chi phí theo workspace/model/thời gian,
@@ -2917,7 +2919,7 @@ _FR-88 · AD-42_
 
 ---
 
-## Epic 22: Telegram Scraper & Channel Ingestion Engine `[ready-for-dev]`
+## Epic 22: Telegram Scraper & Channel Ingestion Engine `ready-for-dev`
 
 > **Epic Goal:** Cung cấp giải pháp trích xuất dữ liệu đa nguồn từ Telegram (kênh công khai, nhóm thảo luận, bài đăng, bình luận, media), tự động phân tích thực thể (SĐT, giá BĐS, email), bảo vệ tài khoản chống khóa (Anti-ban/FloodWait), tích hợp thông báo tức thời (Alert Engine) và cung cấp công cụ tra cứu cho AI Agent.
 
@@ -3015,7 +3017,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-## Epic 23: Enterprise Lead Infrastructure, Realtime Ingestion & Automated Outreach Engine `[done]`
+## Epic 23: Lead Capture, Real-Time Enrichment & Automated Outreach `done`
 *Governed by Architecture Spine: `architecture-epic23-lead-infrastructure.md`*
 *Reviewed & Ratified: 2026-08-16 by Winston (Arch), Mary (BA), Sally (UX), Amelia (Dev), Murat (QA)*
 
@@ -3230,7 +3232,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-## Epic 25: Superadmin & Platform Operations Control Plane
+## Epic 25: Platform Administration & Multi-Tenant Operations
 *Governed by Strategic Architecture & Operations Plan: 2026-08-16 by Winston (Arch), John (PM), Sally (UX), Murat (QA)*
 
 ### Architectural Invariants (INV-25.1 – INV-25.8)
@@ -3335,7 +3337,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-## Epic 26: Autonomous Deep Lead Missions & Unified ChainLens/DSH Infrastructure `[ready-for-dev]`
+## Epic 26: Autonomous Lead Missions & Deep Sales Research `ready-for-dev`
 *Governed by Architecture Spine: `architecture-unified-nowing-chainlens-dsh-2026-08-17/ARCHITECTURE-SPINE.md` (AD-101 to AD-110) & BMAD Full-Spectrum Panel (Winston, John, Mary, Amelia, Murat, Sally, DevOps)*
 
 ### Architectural Invariants (AD-101 – AD-110)
@@ -3574,6 +3576,19 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 - **27.1 Full-Stack Web App Builder, 1-Click Hosting `*.nowing.space` & Design View Mark Tool** — **⚠️ Story scope lớn nhất trong roadmap — toàn bộ code mới.** Không có nền tảng web builder hay dynamic hosting nào trong codebase. `editor_routes.py` là Plate.js Markdown editor (không liên quan). **Code mới:** (a) LLM code generator engine sinh Next.js/React + Tailwind CSS vào `/workspace/web-app`, (b) Dockerfile template + Traefik dynamic SSL routing lên `https://[app].nowing.space`, (c) Custom CNAME manager, (d) Iframe Bounding Box Selector "Mark Tool" DOM inspector + JSX AST mutator. Governed by `AD-113`, `AD-114`.
 - **27.2 Manus Slides Presentation Studio & Speaker Diarization Meeting Minutes** — **Tận dụng code đã có:** Remotion video presentations (`video_presentations_routes.py`), export PDF/DOCX/LaTeX/EPUB (`reports_routes.py` — Pandoc + Typst), Whisper STT local (`services/stt_service.py` — `faster-whisper` transcribe), Circleback meeting notes webhook (`circleback_webhook_route.py` → Markdown document). **Code mới chỉ là:** (a) thêm `python-pptx` dependency + PPTX export route (slide 16:9, biểu đồ, Speaker Notes), (b) Marp Markdown slides renderer, (c) thêm Speaker Diarization (`pyannote.audio` hoặc `whisperx`) vào `stt_service.py` để nhận diện giọng từng người trong meeting minutes.
 
+
+
+**Acceptance Criteria (đã phê duyệt 2026-08-20):**
+
+**27.1 — Web App Builder:**
+- **Given** người dùng mô tả web app bằng ngôn ngữ tự nhiên, **When** builder sinh code, **Then** một dự án Next.js + Tailwind được ghi vào `/workspace/web-app` và trả về preview URL.
+- **Given** người dùng bấm `Publish`, **When** app vượt qua validation, **Then** nó được deploy lên `https://[app].nowing.space` với chứng chỉ SSL hợp lệ.
+- **Given** Mark Tool đang hoạt động, **When** người dùng bấm một phần tử trên trang, **Then** công cụ bắt bounding box selector và cập nhật JSX AST.
+
+**27.2 — Slides & Meeting Minutes:**
+- **Given** một prompt trình bày, **When** người dùng yêu cầu xuất PPTX, **Then** một file `.pptx` 16:9 được sinh ra với speaker notes và biểu đồ.
+- **Given** một bản ghi cuộc họp, **When** người dùng yêu cầu diarization, **Then** output chứa action items theo từng người nói và tài liệu meeting minutes.
+- **Given** STT service không nhận diện được giọng nói, **When** yêu cầu diarization, **Then** hệ thống trả về kết quả rỗng mà không crash pipeline.
 
 
 > **Prerequisite definitions:**
