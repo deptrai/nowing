@@ -918,3 +918,52 @@ Report: `_bmad-output/planning-artifacts/implementation-readiness-report-2026-08
 
 Assessor: Devin / BMAD `bmad-check-implementation-readiness`
 Date: 2026-08-20
+
+## Implementation Readiness Re-run (2026-08-20 18:45)
+
+### PRD Analysis Re-confirmation
+
+- Total FRs: 70
+- Total NFRs: 11
+- PRD canonical: `prds/prd-Nowing-2026-07-22/prd.md`
+
+### Epic Coverage Validation Re-confirmation
+
+- FRs covered in `epics.md`: 66/70 (94.3%)
+- Missing FRs: 48, 50, 51, 52
+- FRs in epics but not in PRD: 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92
+
+### UX Alignment Re-confirmation
+
+- UX canonical documents exist.
+- FRs referenced in UX: 40.
+- UX contracts cover FR-56, FR-57, NFR-MULTI-1, FR-42, NFR-10, FR-69, FR-67, NFR-1b.
+
+### Epic Quality Review Re-confirmation
+
+- Stories missing GWT ACs: 26.9, 24.8, 6.10, 3.18, 27.1, 27.2 (12.7/12.8 DROPPED, 6.8 has GWT ACs)
+- Epic titles flagged as technical/platform (need user-value rewrite):
+  - Epic 8: Platform Operations (Billing / Usage / Token)
+  - Epic 22: Telegram Scraper & Channel Ingestion Engine `[ready-for-dev]`
+  - Epic 23: Enterprise Lead Infrastructure, Realtime Ingestion & Automated Outreach Engine `[done]`
+  - Epic 25: Superadmin & Platform Operations Control Plane
+  - Epic 26: Autonomous Deep Lead Missions & Unified ChainLens/DSH Infrastructure `[ready-for-dev]`
+
+### Summary and Recommendations
+
+**Overall Readiness Status: NEEDS WORK**
+
+- PRD, Architecture, Epics, UX documents exist and are aligned at high level.
+- Coverage gap: 4 FRs missing in epics (FR-48, FR-50, FR-51, FR-52) due to Epic 13 re-scope/drop.
+- Out-of-PRD scope: FR-70–FR-92 need explicit PRD amendment or `out-of-prd` tracker.
+- Forward dependencies 2.10→3.15, 9.5→9.6, 20.1→20.4 require review.
+
+### Recommended Next Steps
+
+1. Bổ sung GWT ACs cho 26.9, 24.8, 6.10, 3.18, 27.1, 27.2.
+2. Resolve missing FR-48/50/51/52 (drop or re-scope into Epic 14/15/16/17).
+2. Create PRD amendment or out-of-PRD tracker for FR-70–FR-92.
+3. Confirm forward dependencies are hard or shared context.
+4. Review `epic21-lead-intelligence-ux.md` before lead-gen UI dev.
+
+---
