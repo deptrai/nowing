@@ -3,7 +3,7 @@ story_key: "26-9a"
 epic: "epic-26"
 story: "26.9a"
 title: "Wide Research Crawl Subgraph for DSH Missions"
-status: "review"
+status: "done"
 baseline_commit: "cdb95035773a4f653d8670911cd5432432f5524d"
 ---
 
@@ -61,8 +61,8 @@ so that deep-research missions can start from broad, cited coverage and later co
    - When ChainLens emits a `done` frame with an `output` object (because `outputSchema` was provided), the SSE parser stores it here.
    - If `structured_output` is missing, the subgraph parses `answer`.
 
-4. **Crawl "subgraph" is a `StateGraph` invoked inside `_crawl_node`.**
-   - New `app/tasks/dsh_worker_crawl_subgraph.py` defines `WideResearchCrawlSubgraph.build()` returning `StateGraph`.
+4. **Crawl "subgraph" is a buildable `ainvoke` entry point invoked inside `_crawl_node`.**
+   - New `app/tasks/dsh_worker_crawl_subgraph.py` defines `WideResearchCrawlSubgraph.build(rest_client)` returning an object with an `ainvoke(state, config)` method.
    - `LangGraphMissionExecutor._crawl_node` checks `payload.get("extras", {}).get("research_mode") == "wide"` and, when `DSH_EXECUTOR_ENGINE=langgraph`, runs the subgraph instead of the inline `chainlens_research` call.
    - The legacy executor (`DeepLeadResearchExecutor`) is unchanged and does not support wide research (acceptable; this is LangGraph-only).
 
@@ -322,4 +322,38 @@ uv run --active pytest tests/unit/tasks/test_dsh_worker.py tests/unit/tasks/test
   - Created `app/tasks/dsh_worker_crawl_subgraph.py` with resumption, degradation, cost, and matrix synthesis.
   - Wired `LangGraphMissionExecutor._crawl_node` to dispatch to `WideResearchCrawlSubgraph` when `research_mode=wide`.
   - Unskipped and greened ATDD tests; added `test_dsh_worker_crawl_subgraph.py` with fake client.
+
+---
+
+## Review Findings
+
+Triage từ 3 subagent (Blind Hunter, Edge Case Hunter, Acceptance Auditor) chạy song song.
+
+### decision-needed
+
+- [x] [Review][Decision] `WideResearchCrawlSubgraph` không phải `StateGraph` như spec — `nowing_backend/app/tasks/dsh_worker_crawl_subgraph.py:54-68`. **Quyết định: giữ class `ainvoke` đơn giản, cập nhật spec. Resumption đã xử lý ở `_crawl_node` và `ainvoke`; StateGraph không mang lại resumable thực tế nhưng tăng bug surface.**
+- [x] [Review][Decision] Markdown table fallback — `nowing_backend/app/tasks/dsh_worker_crawl_subgraph.py:414-422`. **Quyết định: implement minimal markdown table parser.**
+
+### patch (applied)
+
+- [x] [Review][Patch][high] `_crawl_node` resumption không kiểm tra `wide_research_matrix` — Đã sửa: `_crawl_node` chỉ return sớm khi `research_mode=wide` + có `wide_research_matrix`; non-wide giữ hành vi cũ.
+- [x] [Review][Patch][high] `output`/`output_schema` không bị ép về `table` + matrix schema khi `research_mode=wide` — Đã sửa: `WideResearchCrawlSubgraph` luôn dùng `output="table"` và `_DEFAULT_OUTPUT_SCHEMA`, không đọc `extras.output`/`output_schema`.
+- [x] [Review][Patch][high] PII không bị strip trong `wide_research_matrix["sources"]` — Đã sửa: `_normalize_source` whitelist `title/url/source_type/domain`; `_redact_matrix_sources` áp dụng cho cả structured matrix.
+- [x] [Review][Patch][high] SSE parser bỏ qua `block { type: "output" }` — Đã sửa: `_set_structured_output` được gọi từ `block`/`updateBlock` type `output`.
+- [x] [Review][Patch][high] `done` frame có thể trả `output` là JSON string — Đã sửa: `_set_structured_output` parse JSON string trước khi kiểm tra dict.
+- [x] [Review][Patch][medium] `ResearchOutput.billable_units` bỏ qua `structured_output` — Đã sửa: `structured_output` được tính trong `billable_units`.
+- [x] [Review][Patch][medium] `checkpoint["sources"]` diverge khỏi `wide_research_matrix["sources"]` — Đã sửa: `checkpoint["sources"]` = `wide_matrix["sources"]`; trả về `state["sources"]` từ matrix.
+- [x] [Review][Patch][medium] `structured_output` không validate shape — Đã sửa: `_is_valid_matrix` kiểm tra kiểu/dimensions; malformed bị reject và rơi vào fallback.
+- [x] [Review][Patch][medium] `_rows_to_matrix` coerces giá trị sai cho `0` và unknown `source_url` — Đã sửa: `_to_bool` xử lý `0`/falsy đúng; unknown `source_url` bị skip.
+- [x] [Review][Patch][medium] Resumption không rehydrate top-level `sources`/`subtasks` — Đã sửa: resumption trả về `subtasks` và `sources` từ checkpoint/matrix.
+- [x] [Review][Patch][low] `_normalize_source` không ép kiểu string cho fields — Đã sửa: `_normalize_source` ép kiểu `str` cho `title`/`url`/`source_type`.
+- [x] [Review][Patch][low] `_rows_to_matrix` tạo empty matrix khi `sources` rỗng — Đã sửa: trả về well-shaped empty matrix `{topics: [], sources: [], matrix: []}`.
+- [x] [Review][Patch][low] `ResearchInput.output` hẹp hơn contract ChainLens — Đã dismiss: spec giới hạn `output` ở `answer/research/table`; Nowing không expose các mode ChainLens khác qua research capability.
+- [x] [Review][Patch][low] Không có test cho executor SSE `output`/`outputSchema` path — Đã thêm: 4 unit test trong `test_wide_research_output.py` cho `done` output, JSON string, `block` output, `billable_units`.
+- [x] [Review][Patch][low] Default `output_schema` underspecified — Đã sửa: `_DEFAULT_OUTPUT_SCHEMA` thêm `required`/`additionalProperties: false`/descriptions.
+
+### defer
+
+- [x] [Review][Defer] `_checkpoint_update` duplicated — `nowing_backend/app/tasks/dsh_worker_crawl_subgraph.py:247-262`. Tránh circular import; chấp nhận technical debt.
+- [x] [Review][Defer] Implementation Plan ghi sửa `test_dsh_worker_langgraph.py` nhưng test được thêm ở `test_dsh_worker_langgraph_wide.py` mới. Coverage vẫn đạt AC-8; là vị trí file, không phải lỗi.
 

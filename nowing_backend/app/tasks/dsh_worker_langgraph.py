@@ -164,8 +164,16 @@ class LangGraphMissionExecutor:
     async def _crawl_node(
         self, state: MissionState, config: RunnableConfig
     ) -> MissionState:
+        payload = state.get("payload") or {}
+        extras = payload.get("extras", {}) if isinstance(payload, dict) else {}
+        checkpoint = state.get("checkpoint") or {}
+
         if self._subtask_success(state, "crawl"):
-            return state
+            if extras.get("research_mode") == "wide":
+                if checkpoint.get("wide_research_matrix"):
+                    return state
+            else:
+                return state
 
         rest_client: DshRestClient = config["configurable"]["rest_client"]
         workspace_id = state["workspace_id"]
@@ -179,12 +187,9 @@ class LangGraphMissionExecutor:
             status="running",
         )
 
-        payload = state.get("payload") or {}
-        extras = payload.get("extras", {}) if isinstance(payload, dict) else {}
-
         try:
             if extras.get("research_mode") == "wide":
-                subgraph = WideResearchCrawlSubgraph.build(self.rest_client)
+                subgraph = WideResearchCrawlSubgraph.build(rest_client)
                 result = await subgraph.ainvoke(state, config)
                 sources = result.get("sources", [])
                 subtasks = list(result.get("subtasks", []))

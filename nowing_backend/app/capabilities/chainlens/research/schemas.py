@@ -350,8 +350,8 @@ class ResearchOutput(BaseModel):
     @computed_field
     @property
     def billable_units(self) -> int:
-        """Bill one unit only when the call returned usable content."""
-        return 1 if self.answer or self.sources else 0
+        """Bill one unit when the call returned any usable content."""
+        return 1 if self.answer or self.sources or self.structured_output else 0
 
 
 def _default_next_action(

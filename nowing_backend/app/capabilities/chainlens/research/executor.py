@@ -268,6 +268,20 @@ class _SSEParser:
         if isinstance(text, str) and text.strip():
             self._record_first_token()
 
+    def _set_structured_output(self, raw_output: Any) -> None:
+        """Capture structured output from any SSE frame that carries one.
+
+        ChainLens may emit the table as a JSON object, a JSON string, or inside
+        an ``output`` block. We normalise all of those to a dict when possible.
+        """
+        if isinstance(raw_output, str):
+            try:
+                raw_output = json.loads(raw_output)
+            except json.JSONDecodeError:
+                return
+        if isinstance(raw_output, dict):
+            self.structured_output = raw_output
+
     def feed_line(self, raw_line: str) -> None:
         """Ingest one raw ``data:`` SSE line and update parser state.
 
@@ -332,9 +346,7 @@ class _SSEParser:
             self.web_url = event.get("webUrl") or self.web_url
             self._extract_cost(event)
             self._extract_gap_fill(event)
-            raw_output = event.get("output")
-            if isinstance(raw_output, dict):
-                self.structured_output = raw_output
+            self._set_structured_output(event.get("output"))
             return
 
         if event_type == "block" and isinstance(event.get("block"), dict):
@@ -344,6 +356,8 @@ class _SSEParser:
                 self.blocks[block_id] = _Block(block.get("type", ""), block.get("data"))
                 if block.get("type") == "text":
                     self._maybe_record_text_first_token(block.get("data"))
+                if block.get("type") == "output":
+                    self._set_structured_output(block.get("data"))
             return
 
         if event_type == "updateBlock" and isinstance(event.get("blockId"), str):
@@ -358,6 +372,8 @@ class _SSEParser:
                     current.data = op.get("value")
                     if current.type == "text":
                         self._maybe_record_text_first_token(op.get("value"))
+                    if current.type == "output":
+                        self._set_structured_output(op.get("value"))
             return
 
         if event_type == "partial":
