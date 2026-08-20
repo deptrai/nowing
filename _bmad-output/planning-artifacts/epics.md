@@ -2300,6 +2300,8 @@ So that I can verify authentic legal data rather than unverified third-party est
 
 _AD-GIS-3 · AD-GIS-5 · AD-34 · AD-35 · Governed by `architecture-bds-planning-and-dkkd-2026-08-15`_
 
+> **Note (2026-08-20):** Với `LangGraphMissionExecutor` (26.8), scraper này nên được đăng ký như một `capability` / `MCP tool` để `crawl` node gọi trong DSH mission, thay vì chạy standalone.
+
 ---
 
 ### Story 16.3: Company Alerts `[P1, MERGED INTO Story 6.11]`
@@ -2390,6 +2392,8 @@ So that I can perform pricing analysis and competitor tracking.
 - Integration test: `test_lazada_ingest_chainlens.py` — chunks sent to `chainlens-research`
 
 _AD-34 · AD-35 · Method: HTML scrape (moderate anti-bot, residential proxies preferred)_
+
+> **Note (2026-08-20):** Với `LangGraphMissionExecutor` (26.8), scraper Lazada nên được đăng ký như một `capability` / `MCP tool` để `crawl` node gọi trong DSH mission, hoặc là `capability_id` cho AlertRule template (Story 6.11).
 
 ### Story 17.2: Shopee Vietnam In-House Scraper & Price Normalization `[P1]`
 
@@ -3529,24 +3533,27 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 
 ---
 
-### Mở rộng Epic 26: Story 26.9 — Wide Research Client & Pro Excel Formatter (via Daytona Sandbox)
-**Scope:** Thêm `output: wide_research` client vào chainlens sub-agent để nhận ma trận JSON, và viết Pro Excel Template Script chạy trong **Daytona sandbox đã có sẵn**. **Tận dụng code đã có:** `ChainLensServiceAuth` (`services/chainlens/auth.py`), chainlens sub-agent (`agents/.../subagents/chainlens/`), DSH mission routes (`dsh_routes.py`), Daytona sandbox lifecycle (`middleware/filesystem/sandbox.py` — `get_or_create_sandbox()` với cache + async locks), sandbox file download (`sandbox_routes.py` — MIME `.xlsx` đã khai báo), pre-installed `pandas`/`numpy` trong sandbox (`execute_code/description.py`). **Code mới:** (a) thêm `output=wide_research` vào chainlens sub-agent request builder, (b) openpyxl Pro Formatter Python script template (đa tab, màu sắc, công thức, auto-filter) chạy trong sandbox hiện có. **KHÔNG cần xây Docker sandbox mới.** Governed by `AD-112`.
+### Mở rộng Epic 26: Story 26.9a — Wide Research Crawl Subgraph `[ready-for-dev]`
+**Scope:** Tách phần "Wide Research" ra khỏi client độc lập, biến thành **LangGraph `crawl` subgraph** trong DSH mission (bổ sung cho `LangGraphMissionExecutor` của Story 26.8). Subgraph gọi `chainlens.research` với `output=wide_research`, parse terminal `done` frame, ghi `costDollars` vào `checkpoint.cost_micros`, và lưu ma trận `sources` / `wide_research_matrix` vào `dsh_missions.checkpoint` JSONB để resumption. **Tận dụng code đã có:** `ChainLensServiceAuth` (`services/chainlens/auth.py`), chainlens sub-agent (`agents/.../subagents/chainlens/`), DSH mission routes (`dsh_routes.py`), `LangGraphMissionExecutor` (`app/tasks/dsh_worker_langgraph.py`). **Code mới:** `app/tasks/dsh_worker_crawl_subgraph.py`, unit tests cassettes. Story 26.9a xong mới unblock 26.9b. Governed by `AD-112`.
+
+### Mở rộng Epic 26: Story 26.9b — Pro Excel Formatter in Daytona Sandbox `[backlog]`
+**Scope:** Nhận `checkpoint.wide_research_matrix` từ 26.9a, chạy Pro Excel Template Script trong **Daytona sandbox đã có sẵn** để xuất `.xlsx` đa tab. **Tận dụng code đã có:** Daytona sandbox lifecycle (`middleware/filesystem/sandbox.py`), `sandbox_routes.py`, pre-installed `pandas`/`numpy`/`openpyxl` (`execute_code/description.py`). **Code mới:** template `scripts/sandbox_pro_excel_template.py` và node `deliver` trong LangGraph (hoặc mở rộng `ingestion`). Governed by `AD-112`.
 
 ---
 
-### Mở rộng Epic 24: Story 24.8 — Full Browser Operator Chrome Extension & Human Live Takeover
-**Scope:** Nâng cấp `nowing_browser_extension` (hiện là Web History Tracker + Lead Clipper backend) thành công cụ điều khiển trình duyệt hoàn chỉnh qua CDP. **Tận dụng code đã có:** Plasmo framework (`@plasmohq/storage`, popup routing, `background/index.ts`), Lead Clipper backend (`lead_clipper_routes.py` — SHA-256 dedupe, PII encryption, PAT auth), Agent Revert rollback (`agent_revert_route.py`). **Code mới (gần toàn bộ):** (a) thêm quyền `debugger` vào Plasmo manifest, (b) `chrome.debugger.attach()` + `sendCommand()` CDP bridge trong background script, (c) WebSocket kết nối tới DSH worker nhận lệnh click/type/navigate, (d) Authenticated Tab Tunnel tái sử dụng cookies/session, (e) Human Live Takeover Popover UI (pause agent → user giải CAPTCHA/2FA → resume), (f) backend Pause/Resume agent mid-execution endpoint. Governed by `AD-111`.
+### Mở rộng Epic 24: Story 24.8 — Browser Operator CDP Tool for DSH Crawl + Human Live Takeover
+**Scope:** Thay vì làm extension Chrome độc lập điều khiển DSH worker, 24.8 được **re-scope** thành: (a) một **CDP tool / `crawl` subgraph** trong `LangGraphMissionExecutor` để click/type/navigate trong trình duyệt như một bước `crawl`, (b) UI Human Live Takeover để tạm dừng agent, giải CAPTCHA/2FA, rồi resume. **Tận dụng code đã có:** Plasmo framework (`@plasmohq/storage`, popup routing, `background/index.ts`), Lead Clipper backend (`lead_clipper_routes.py`), Agent Revert rollback (`agent_revert_route.py`), `LangGraphMissionExecutor` (`app/tasks/dsh_worker_langgraph.py`). **Code mới:** (a) `app/tasks/dsh_worker_browser_operator.py` CDP tool / subgraph, (b) Plasmo manifest `debugger` quyền, (c) backend pause/resume mission endpoint, (d) Human Live Takeover Popover. WebSocket điều khiển thủ công bị loại bỏ; DSH gọi CDP tool qua capability/tool registry. Có thể tách thành 24.8a (CDP tool) và 24.8b (Takeover UI). Governed by `AD-111`.
 
 ---
 
 ### Mở rộng Epic 6: Story 6.10 — Inbound Mail Gateway (`task@nowing.ai`) & Stateful Scheduled Tasks 2.0
-**Scope:** Thêm email adapter vào gateway framework và nâng cấp Celery scheduler thêm delta analysis. **Tận dụng code đã có:** Gateway webhook framework (`gateway_webhook_routes.py` — 1144 dòng xử lý Slack/Discord/Telegram/WhatsApp, `persist_inbound_event`, `pairing_code`), Celery Beat scheduler (`celery_app.py` — `check_periodic_schedules`, `alert_engine_tick`, automation triggers). **Code mới:** (a) `app/gateway/email/adapter.py` tiếp nhận webhook SendGrid/Mailgun, parse attachment, enqueue DSH mission, reply SMTP, (b) snapshot storage table cho scheduled task results, (c) delta diff engine so sánh snapshot cũ/mới trước khi gửi báo cáo. Governed by `AD-115`.
+**Scope:** Thêm email adapter vào gateway framework và nâng cấp Celery scheduler thêm delta analysis. Với `LangGraphMissionExecutor` (26.8) đã có checkpoint/resumption qua `dsh_missions.checkpoint`, phần **Stateful Scheduled Tasks 2.0** nên được triển khai như một **DSH mission template** (`schedule_type=recurring_report`) thay vì snapshot storage + scheduler riêng. **Tận dụng code đã có:** Gateway webhook framework (`gateway_webhook_routes.py`), Celery Beat scheduler (`celery_app.py`), `LangGraphMissionExecutor` (`app/tasks/dsh_worker_langgraph.py`), `dsh_missions.checkpoint` JSONB. **Code mới:** (a) `app/gateway/email/adapter.py` tiếp nhận webhook SendGrid/Mailgun, parse attachment, enqueue DSH mission, reply SMTP, (b) `app/tasks/dsh_worker_scheduled_mission.py` enqueue recurring missions từ Celery Beat, (c) `ingestion` node viết snapshot vào checkpoint. Snapshot storage table riêng bị loại bỏ. Có thể tách thành 6.10a (Mail Gateway) và 6.10b (Scheduled DSH Mission). Governed by `AD-115`.
 
 ---
 
 
 ### Mở rộng Epic 6: Story 6.11 — Vertical Alert Rule Templates
-**Scope:** Đăng ký sẵn các `AlertRule` template cho news (`new_items`), stock (`price_change`/`threshold_cross`), company (`threshold_cross`), e-commerce price-drop (`price_change`) và competitor tracking (`new_items`/`price_change`) trên nền **Generic Alert Engine** (Story 6.8). Mỗi template điền sẵn `capability_id`, `query`, `schedule`, `diff_strategy` và `notification_channels` để user bật cảnh báo trong một click mà không cần viết automation. Tận dụng `app/alerts/`, bảng `AlertRule`/`AlertSnapshot`/`AlertSubscription`, và các scraper/capability hiện có (`news.rss`, `cafef.scrape`, `vietstock.scrape`, `masothue.scrape`, `shopee.scrape`, `lazada.scrape` khi có). **Không xây scheduler hay notification path mới.**
+**Scope:** Đăng ký sẵn các `AlertRule` template cho news (`new_items`), stock (`price_change`/`threshold_cross`), company (`threshold_cross`), e-commerce price-drop (`price_change`) và competitor tracking (`new_items`/`price_change`) trên nền **Generic Alert Engine** (Story 6.8). Mỗi template điền sẵn `capability_id`, `query`, `schedule`, `diff_strategy` và `notification_channels` để user bật cảnh báo trong một click mà không cần viết automation. Tận dụng `app/alerts/`, bảng `AlertRule`/`AlertSnapshot`/`AlertSubscription`, và các scraper/capability hiện có (`news.rss`, `cafef.scrape`, `vietstock.scrape`, `masothue.scrape`, `shopee.scrape`, `lazada.scrape` khi có). **Không xây scheduler hay notification path mới.** Với `LangGraphMissionExecutor` (26.8), `notification_channels` có thể thêm `dsh_mission` để alert trigger một DSH mission (ví dụ: tự động research khi có competitor news).
 
 **Acceptance Criteria:**
 - **Given** Generic Alert Engine đã có, **When** user bật template "News Alerts & Topic Monitoring", **Then** tạo `AlertRule` với `capability_id='news.rss'`, `diff_strategy='new_items'`, lịch daily mặc định.
@@ -3563,7 +3570,7 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 ---
 
 ### Mở rộng Epic 6: Story 6.12 — Narrative Report Engine for Indexed Data
-**Scope:** Xây deliverable generic truy vấn `chainlens-research` lấy dữ liệu đã index theo topic/công ty/sản phẩm đang theo dõi, rồi prompt LLM tổng hợp thành narrative có cấu trúc (digest, trend, timeline). Tận dụng `generate_report` deliverable tool, `chainlens.research` capability, và Generic Alert Engine scheduler. Output: news digest, financial trend detection, company timeline. **Không viết scheduler hay synthesis code riêng cho từng vertical.**
+**Scope:** Re-scope thành **DSH mission deliverable** / `ingestion` node extension: truy vấn `chainlens-research` lấy dữ liệu đã index theo topic/công ty/sản phẩm, rồi prompt LLM tổng hợp thành narrative (digest, trend, timeline) và ghi vào `checkpoint.deliverables`. Tận dụng `generate_report` deliverable tool, `chainlens.research` capability, `LangGraphMissionExecutor` (26.8), và Generic Alert Engine scheduler để trigger DSH mission. Output: news digest, financial trend detection, company timeline. **Không viết scheduler hay synthesis code riêng cho từng vertical.** Sau 26.8, report engine nên chạy như một mission type `narrative_report` với `crawl` → `reasoning` → `extraction` → `ingestion` nodes.
 
 **Acceptance Criteria:**
 - **Given** các topic đang theo dõi, **When** schedule "News Digest" chạy, **Then** engine query `chainlens-research` cho mỗi topic, lấy articles đã index, prompt LLM sinh summary có cấu trúc kèm `sourceId` citations.
@@ -3578,7 +3585,7 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 ---
 
 ### Mở rộng Epic 3: Story 3.18 — Projects Persistent Workspace & Modular Skills Hub
-**Scope:** Thêm layer Project vào workspace hiện có và xây concept Skills Hub mới. **Tận dụng code đã có:** Workspace CRUD + RBAC (`workspaces_routes.py` — 619 dòng, roles, limits, MCP tool toggles), Prompt CRUD (`prompts_routes.py` — name, mode, content), Documents management (`documents_routes.py` — File/Note/Extension types). **Code mới (gần toàn bộ):** (a) entity `Project` (DB migration + API) chứa Master Instructions + pinned documents, (b) auto-inject project context vào system prompt trước mỗi chat turn (middleware hook trong `new_chat_routes.py`), (c) document pinning field + API, (d) `.skill.md` parser và Modular Skills registry.
+**Scope:** Thêm layer Project vào workspace hiện có và xây concept Skills Hub mới. **Tận dụng code đã có:** Workspace CRUD + RBAC (`workspaces_routes.py` — 619 dòng, roles, limits, MCP tool toggles), Prompt CRUD (`prompts_routes.py` — name, mode, content), Documents management (`documents_routes.py` — File/Note/Extension types), `LangGraphMissionExecutor` (`app/tasks/dsh_worker_langgraph.py`). **Code mới (gần toàn bộ):** (a) entity `Project` (DB migration + API) chứa Master Instructions + pinned documents, (b) auto-inject project context vào system prompt trước mỗi chat turn (middleware hook trong `new_chat_routes.py`), (c) document pinning field + API, (d) `.skill.md` parser và Modular Skills registry. **Kiến trúc mới:** Skills Hub có thể đăng ký skill như một **LangGraph subgraph** hoặc **DSH mission template**, cho phép agent sử dụng DSH mission làm một skill có thể gọi (ví dụ: "Research competitor X").
 
 ---
 
