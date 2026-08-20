@@ -3349,7 +3349,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-## Epic 26: Autonomous Lead Missions & Deep Sales Research `ready-for-dev`
+## Epic 26: Autonomous Lead Missions & Deep Sales Research `in-progress`
 *Governed by Architecture Spine: `architecture-unified-nowing-chainlens-dsh-2026-08-17/ARCHITECTURE-SPINE.md` (AD-101 to AD-110) & BMAD Full-Spectrum Panel (Winston, John, Mary, Amelia, Murat, Sally, DevOps)*
 
 ### Architectural Invariants (AD-101 – AD-110)
@@ -3366,7 +3366,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-### Story 26.1: FastMCP Ingest Gateway, Batch Ingestion & Stateless ChainLens Pipeline `[ready-for-dev]`
+### Story 26.1: FastMCP Ingest Gateway, Batch Ingestion & Stateless ChainLens Pipeline `[done]`
 - **User Value:** Nowing backend exposes high-throughput, deadlock-free FastMCP batch ingestion endpoints and an idempotent callback receiver for stateless ChainLens crawls to index chunks directly into Nowing PostgreSQL 16 pgvector.
 - **Acceptance Criteria:**
   - **Given** `POST /mcp/v1/tools/batch_ingest_leads`,  
@@ -3381,7 +3381,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-### Story 26.2: dsh-worker Sidecar Container, Redis Streams & Task Resumption `[ready-for-dev]`
+### Story 26.2: dsh-worker Sidecar Container, Redis Streams & Task Resumption `[done]`
 - **User Value:** Autonomous long-running missions (1–8h) execute reliably in an isolated sidecar container without blocking FastAPI/Celery, with automatic task recovery from crashes via Redis `XAUTOCLAIM`.
 - **Acceptance Criteria:**
   - **Given** `nowing-dsh-worker` container running with `tini` as PID 1,  
@@ -3393,7 +3393,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-### Story 26.3: Multi-Tier Hybrid LLM Router (Gemini Flash Free Tier + DeepSeek V4 + Qwen 3.8) `[ready-for-dev]`
+### Story 26.3: Multi-Tier Hybrid LLM Router (Gemini Flash Free Tier + DeepSeek V4 + Qwen 3.8) `[done]`
 - **User Value:** AI reasoning and extraction costs are minimized by prioritizing Google Gemini Flash (Free Tier, $0 COGS) and Local vLLM Qwen 3.8-27B ($0 COGS), bursting to DeepSeek-V4-Flash and DeepSeek-V4-Pro-0813 for deep reasoning with 100% Pydantic JSON schema compliance.
 - **Acceptance Criteria:**
   - **Given** `HybridLLMRouter` receiving text extraction and tool dispatch tasks,  
@@ -3409,7 +3409,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-### Story 26.4: PII Vault AES-256 Encryption, HMAC Deduplication & Decree 13 Opt-Out `[ready-for-dev]`
+### Story 26.4: PII Vault AES-256 Encryption, HMAC Deduplication & Decree 13 Opt-Out `[done]`
 - **User Value:** Full compliance with Decree 13/2023/ND-CP with encrypted phone/email storage, blind HMAC deduplication, and automated opt-out suppression.
 - **Acceptance Criteria:**
   - **Given** a new lead contact,  
@@ -3421,7 +3421,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-### Story 26.5: Split Canvas Glass Box Mission Control, Two-Tier Phone Unlock & Shimmer Influx `[ready-for-dev]`
+### Story 26.5: Split Canvas Glass Box Mission Control, Two-Tier Phone Unlock & Shimmer Influx `[done]`
 - **User Value:** Users can track live autonomous AI reasoning with a 4-stage stepper without feeling UI freeze, and unlock phone numbers smoothly with a 1-Click Fast Unlock session toggle.
 - **Acceptance Criteria:**
   - **Given** an active mission in Split Canvas,  
@@ -3433,7 +3433,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-### Story 26.6: Telegram Interactive Checkpoint Bot & 1-Click Auto-Refund Dialog `[ready-for-dev]`
+### Story 26.6: Telegram Interactive Checkpoint Bot & 1-Click Auto-Refund Dialog `[done]`
 - **User Value:** Mobile sales reps receive 3-second glanceable lead cards on Telegram, make inline decisions with `editMessageText`, and trigger automated 24h refunds for invalid numbers with a 15% safety cap.
 - **Acceptance Criteria:**
   - **Given** a high-fit lead detected during a mission,  
@@ -3448,7 +3448,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-### Story 26.7: Hermetic Quality Gates, Benchmark Suite & Anti-Zombie Chaos Testing `[ready-for-dev]`
+### Story 26.7: Hermetic Quality Gates, Benchmark Suite & Anti-Zombie Chaos Testing `[done]`
 - **User Value:** Automated CI/CD pipelines run at $0 API cost while enforcing strict data extraction accuracy and 0-zombie process guarantees.
 - **Acceptance Criteria:**
   - **Given** `nowing_evals` executing the regression benchmark,  
@@ -3612,7 +3612,6 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 > - **Story 20.3** = `NowingPrivateProvider` for `POST /v1/private-data/search`.
 > - **Story 20.4** = `ChainLensServiceAuth` + cost ledger sync.
 > - **Story 6.8** = Generic Alert Engine in Epic 6 Automation infrastructure (scheduler + `RunService` + notification dispatch).
-
 
 
 

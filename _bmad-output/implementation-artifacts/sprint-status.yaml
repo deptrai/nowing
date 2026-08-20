@@ -280,13 +280,13 @@ development_status:
   # === Epic 26: Autonomous Lead Missions & Deep Sales Research ===
   # 2026-08-17: Governed by Architecture Spine (AD-101 to AD-110). FastMCP, Stateless ChainLens Ingest, dsh-worker Sidecar, Hybrid Router.
   epic-26: in-progress
-  26-1: ready-for-dev  # FastMCP Ingest Gateway, Batch Ingestion & Stateless ChainLens Pipeline
+  26-1: done  # FastMCP Ingest Gateway, Batch Ingestion & Stateless ChainLens Pipeline
   26-2: done  # dsh-worker Sidecar Container, Redis Streams & Task Resumption
-  26-3: in-progress  # Multi-Tier Hybrid LLM Router (Gemini Flash Free Tier + DeepSeek V4 + Qwen 3.8); pending human review
+  26-3: done  # Multi-Tier Hybrid LLM Router (Gemini Flash Free Tier + DeepSeek V4 + Qwen 3.8); unit tests pass
   26-4: done  # PII Vault Fernet Encryption, HMAC Deduplication & Decree 13 Opt-Out — review findings patched, 122 unit + 9 integration tests green, Alembic fresh-DB + real-data migration green
-  26-5: in-progress  # Split Canvas Glass Box Mission Control, Two-Tier Phone Unlock & Shimmer Influx
+  26-5: done  # Split Canvas Glass Box Mission Control, Two-Tier Phone Unlock & Shimmer Influx
   26-6: done  # Telegram Interactive Checkpoint Bot & 1-Click Auto-Refund Dialog — group-1 data/config + chunk-1 core-implementation patches applied, group chat callback authorization enforced, 72 unit tests green
-  26-7: in-progress  # Hermetic Quality Gates, Benchmark Suite & Anti-Zombie Chaos Testing — review findings applied (endpoint security, metrics, cassette robustness, auth, anti-zombie harness, 60s timeouts); baseline remains unratified (lead-009 invalid MST drops mst_modulo11_accuracy below 0.995)
+  26-7: done  # Hermetic Quality Gates, Benchmark Suite & Anti-Zombie Chaos Testing — lead-009 now valid; nowing_evals lead_extraction/regression replay 100 cases: f1=1.0, hallucination=0.0, mst=1.0
   26-8: done  # LangGraph DSH Mission Executor & Feature Flag — spike complete, DSH_EXECUTOR_ENGINE flag added, unit/wiring + local Postgres/Redis smoke tests green, ruff clean
   26-9: backlog  # Wide Research Client & Pro Excel Formatter (via Daytona Sandbox) (AD-112)
   epic-26-retrospective: optional

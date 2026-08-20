@@ -3,7 +3,7 @@ story_key: "26-5"
 epic: "epic-26"
 story: "26.5"
 title: "Split Canvas Glass Box Mission Control, Two-Tier Phone Unlock & Shimmer Influx"
-status: "in-progress"
+status: "done"
 baseline_commit: "3b1705689"
 ---
 

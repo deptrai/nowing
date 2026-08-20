@@ -3,7 +3,7 @@ story_key: "26-3"
 epic: "epic-26"
 story: "26.3"
 title: "Bộ định tuyến LLM lai đa tầng (Gemini Flash Free Tier + DeepSeek V4 + Qwen 3.8)"
-status: "pending-human-review"
+status: "done"
 baseline_commit: "ce6e4b6eb"
 ---
 

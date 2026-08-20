@@ -3,7 +3,7 @@ story_key: "26-1"
 epic: "epic-26"
 story: "26.1"
 title: "Batch Lead Ingestion, Stateless ChainLens Ingestion Pipeline & PII Vault"
-status: "ready-for-dev"
+status: "done"
 baseline_commit: "4c37acfa9"
 ---
 
