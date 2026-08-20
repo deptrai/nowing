@@ -30,11 +30,14 @@ nowing_desktop/.env
 .playwright-mcp/
 .serena/
 nowing_mcp/.serena/
+_bmad-output/test-artifacts/
+_bmad-output/*.txt
 project-context.md
 .knowns/
 
 # Local mutation-run artifacts
 nowing_backend/mutation-*
+nowing_backend/_bmad-output/
 
 # Python cache
 **/__pycache__/
