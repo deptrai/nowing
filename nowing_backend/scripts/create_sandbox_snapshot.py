@@ -40,6 +40,7 @@ PACKAGES = [
     "matplotlib",
     "scipy",
     "scikit-learn",
+    "openpyxl",
 ]
 
 

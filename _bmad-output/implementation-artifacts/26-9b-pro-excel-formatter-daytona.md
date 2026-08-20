@@ -3,8 +3,8 @@ story_key: "26-9b"
 epic: "epic-26"
 story: "26.9b"
 title: "Pro Excel Formatter in Daytona Sandbox"
-status: "ready-for-dev"
-baseline_commit: "TBD"
+status: "review"
+baseline_commit: "6924b87dae9a1893a1d7639ce41faf4e4b7a4f34"
 ---
 
 # Story 26.9b: Pro Excel Formatter in Daytona Sandbox
@@ -63,6 +63,15 @@ so that I can share structured research output without building reports manually
 
 ---
 
+## Tasks / Subtasks
+
+- [x] Step 1: Add `openpyxl` to Daytona snapshot and update sandbox description.
+- [x] Step 2: Create `scripts/sandbox_pro_excel_template.py` formatter script (Summary, Sources, Topics, Matrix tabs; PII redaction; file-size guard).
+- [x] Step 3: Add `deliver` node to `LangGraphMissionExecutor` and `dsh_worker_deliver_subgraph.py`.
+- [x] Step 4: Add DSH deliverable download route to `sandbox_routes.py` with `LEADS_READ` and `include_pii` checks.
+- [x] Step 5: Add unit/integration tests for formatter template and download route.
+- [x] Step 6: Run tests, ruff, and integration checks.
+
 ## Implementation Notes
 
 ### New files
@@ -100,3 +109,52 @@ so that I can share structured research output without building reports manually
 1. **New download route or reuse thread route?** Decision: add a dedicated DSH deliverable route (recommended) to avoid coupling DSH to chat thread model.
 2. **Include PII default?** Decision: default `include_pii=false`; only workspace members with `LEADS_READ` can request `include_pii=true`.
 3. **Keep sandbox alive or persist-and-delete?** Decision: use `persist_and_delete_sandbox` pattern; file is served from local `SANDBOX_FILES_DIR` via the new route.
+
+---
+
+## File List
+
+### New files
+
+- `nowing_backend/app/tasks/dsh_worker_deliver_subgraph.py`
+- `nowing_backend/scripts/sandbox_pro_excel_template.py`
+- `nowing_backend/tests/unit/tasks/test_dsh_worker_deliver_subgraph.py`
+- `nowing_backend/tests/integration/dsh/test_pro_excel_formatter.py`
+
+### Modified files
+
+- `nowing_backend/app/tasks/dsh_worker_langgraph.py`
+- `nowing_backend/app/routes/sandbox_routes.py`
+- `nowing_backend/scripts/create_sandbox_snapshot.py`
+- `nowing_backend/app/agents/chat/multi_agent_chat/shared/middleware/filesystem/tools/execute_code/description.py`
+
+---
+
+## Change Log
+
+- Added `openpyxl` to Daytona snapshot PACKAGES and updated `execute_code` description.
+- Created Pro Excel formatter template with 4 tabs, PII redaction, conditional formatting, auto-filter, and 10 MB size guard.
+- Added `DshDeliverSubgraph` and `deliver` node to `LangGraphMissionExecutor` (graph: `ingestion -> deliver -> END`).
+- Added DSH deliverable download route with `LEADS_READ` permission check.
+- Added unit tests for formatter and deliver subgraph; integration tests for the download route.
+- Verified: `ruff` clean, `tests/unit/tasks` 202 passed, `tests/integration/dsh/test_pro_excel_formatter.py` + `tests/integration/routes/test_dsh_mission_control.py` 8 passed.
+
+---
+
+## Dev Agent Record
+
+### Debug Log
+
+- `DshDeliverSubgraph` initially used `__file__` path off by one directory; corrected to repo root.
+- `dsh_worker_langgraph.py` `_deliver_node` needed `_is_valid_matrix` gate to avoid running sandbox on degenerate test matrices.
+- Formatter template required ruff fixes (UP015/UP017/RUF005/B905).
+
+### Completion Notes
+
+All ACs satisfied:
+- AC-1: `deliver` node creates sandbox, runs formatter, stores `.xlsx` reference in `checkpoint.deliverables`.
+- AC-2: New download route returns `.xlsx` with `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`.
+- AC-3: Workbook has Summary, Sources, Topics, Matrix tabs; template is `ruff` clean; file size guard < 10 MB.
+- AC-4: PII fields are redacted by default; `include_pii=true` can be set via mission payload `extras`. Download requires `LEADS_READ`.
+
+Story status: `review`

@@ -7,7 +7,7 @@ from app.agents.chat.multi_agent_chat.shared.filesystem_selection import Filesys
 _DESCRIPTION = """Executes Python code in an isolated sandbox environment.
 
 Common data-science packages are pre-installed (pandas, numpy, matplotlib,
-scipy, scikit-learn).
+scipy, scikit-learn, openpyxl).
 
 Usage notes:
 - No outbound network access.

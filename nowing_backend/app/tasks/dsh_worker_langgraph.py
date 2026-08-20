@@ -28,7 +28,11 @@ from uuid import UUID
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import RunnableConfig
 
-from app.tasks.dsh_worker_crawl_subgraph import WideResearchCrawlSubgraph
+from app.tasks.dsh_worker_crawl_subgraph import (
+    WideResearchCrawlSubgraph,
+    _is_valid_matrix,
+)
+from app.tasks.dsh_worker_deliver_subgraph import DshDeliverSubgraph
 
 if TYPE_CHECKING:
     from app.tasks.dsh_worker import DshRestClient
@@ -295,6 +299,95 @@ class LangGraphMissionExecutor:
             current_subtask_id="ingestion",
         )
 
+    async def _deliver_node(
+        self, state: MissionState, config: RunnableConfig
+    ) -> MissionState:
+        """Generate an .xlsx deliverable from the wide-research matrix if present."""
+        _ = config
+        payload = state.get("payload") or {}
+        extras = payload.get("extras", {}) if isinstance(payload, dict) else {}
+        checkpoint = dict(state.get("checkpoint") or {})
+
+        if self._subtask_success(state, "deliver"):
+            return state
+
+        if not _is_valid_matrix(checkpoint.get("wide_research_matrix")):
+            # Skip deliver for non-wide-research missions or invalid matrices.
+            subtasks = list(state.get("subtasks", []))
+            if not any(s.get("id") == "deliver" for s in subtasks):
+                subtasks.append({"id": "deliver", "status": "skipped"})
+            checkpoint["subtasks"] = subtasks
+            return await self._patch_checkpoint(
+                {**state, "subtasks": subtasks, "checkpoint": checkpoint},
+                checkpoint=checkpoint,
+                phase="terminal",
+                progress_percent=100,
+                current_subtask_id=None,
+                status="success",
+                completed_at=datetime.now(UTC).isoformat(),
+            )
+
+        state = await self._patch_checkpoint(
+            state,
+            phase="deliver",
+            progress_percent=95,
+            current_subtask_id="deliver",
+        )
+
+        try:
+            include_pii = bool(extras.get("include_pii"))
+            deliverable = await DshDeliverSubgraph(include_pii=include_pii).run(
+                str(state["mission_id"]),
+                checkpoint,
+            )
+            if deliverable is None:
+                # No matrix; treat as skipped.
+                subtasks = list(state.get("subtasks", []))
+                subtasks.append({"id": "deliver", "status": "skipped"})
+                checkpoint["subtasks"] = subtasks
+                return await self._patch_checkpoint(
+                    {**state, "subtasks": subtasks, "checkpoint": checkpoint},
+                    checkpoint=checkpoint,
+                    phase="terminal",
+                    progress_percent=100,
+                    current_subtask_id=None,
+                    status="success",
+                    completed_at=datetime.now(UTC).isoformat(),
+                )
+
+            subtasks = list(state.get("subtasks", []))
+            subtasks.append({"id": "deliver", "status": "success"})
+            checkpoint = dict(state.get("checkpoint") or {})
+            checkpoint["subtasks"] = subtasks
+            deliverables = list(checkpoint.get("deliverables", []))
+            deliverables.append(deliverable)
+            checkpoint["deliverables"] = deliverables
+
+            return await self._patch_checkpoint(
+                {**state, "subtasks": subtasks, "checkpoint": checkpoint},
+                checkpoint=checkpoint,
+                phase="terminal",
+                progress_percent=100,
+                current_subtask_id=None,
+                status="success",
+                completed_at=datetime.now(UTC).isoformat(),
+            )
+        except Exception as exc:
+            subtasks = list(state.get("subtasks", []))
+            subtasks.append({"id": "deliver", "status": "failed", "error": str(exc)})
+            checkpoint = dict(state.get("checkpoint") or {})
+            checkpoint["subtasks"] = subtasks
+            state = await self._patch_checkpoint(
+                {**state, "subtasks": subtasks, "checkpoint": checkpoint},
+                checkpoint=checkpoint,
+                phase="deliver",
+                progress_percent=90,
+                current_subtask_id="deliver",
+                status="error",
+                error={"phase": "deliver", "message": str(exc)},
+            )
+            raise
+
     async def _ingestion_node(
         self, state: MissionState, config: RunnableConfig
     ) -> MissionState:
@@ -416,12 +509,14 @@ class LangGraphMissionExecutor:
         graph.add_node("reasoning", self._reasoning_node)
         graph.add_node("extraction", self._extraction_node)
         graph.add_node("ingestion", self._ingestion_node)
+        graph.add_node("deliver", self._deliver_node)
 
         graph.add_edge(START, "crawl")
         graph.add_edge("crawl", "reasoning")
         graph.add_edge("reasoning", "extraction")
         graph.add_edge("extraction", "ingestion")
-        graph.add_edge("ingestion", END)
+        graph.add_edge("ingestion", "deliver")
+        graph.add_edge("deliver", END)
 
         return graph
 
