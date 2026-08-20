@@ -1,55 +1,56 @@
 ---
 stepsCompleted:
-  - document-discovery
-  - document-discovery-rerun
-  - prd-analysis
-  - prd-analysis-rerun
-  - epic-coverage-validation-rerun
-  - ux-alignment-rerun
-  - epic-quality-review-rerun
-  - final-assessment
-  - epic-coverage-validation
-  - ux-alignment
-  - epic-quality-review
-  - final-assessment
+- document-discovery
+- document-discovery-rerun
+- prd-analysis
+- prd-analysis-rerun
+- epic-coverage-validation-rerun
+- ux-alignment-rerun
+- epic-quality-review-rerun
+- final-assessment
+- epic-coverage-validation
+- ux-alignment
+- epic-quality-review
 document_inventory:
   prd:
     canonical:
-      - prds/prd-Nowing-2026-07-22/prd.md
+    - prds/prd-Nowing-2026-07-22/prd.md
     amendments:
-      - prds/prd-Nowing-2026-07-22/AMENDMENT-Epic-26-Source-of-Truth.md
-      - prds/prd-Nowing-2026-07-22/AMENDMENT-Epic-12-21-22-23-Readiness-Correction-2026-08-17.md
+    - prds/prd-Nowing-2026-07-22/AMENDMENT-Epic-26-Source-of-Truth.md
+    - prds/prd-Nowing-2026-07-22/AMENDMENT-Epic-12-21-22-23-Readiness-Correction-2026-08-17.md
     reviews:
-      - prds/prd-Nowing-2026-07-22/review-prfaq-gap.md
-      - prds/prd-Nowing-2026-07-22/review-rubric.md
-    notes: prd-requirements-extracted-2026-08-08.md and prd-requirements-extract-skill-2026-08-10.md are derivative artifacts and not used as source of truth.
+    - prds/prd-Nowing-2026-07-22/review-prfaq-gap.md
+    - prds/prd-Nowing-2026-07-22/review-rubric.md
+    notes: prd-requirements-extracted-2026-08-08.md and prd-requirements-extract-skill-2026-08-10.md
+      are derivative artifacts and not used as source of truth.
   architecture:
     canonical:
-      - architecture/architecture-unified-nowing-chainlens-dsh-2026-08-17/ARCHITECTURE-SPINE.md
+    - architecture/architecture-unified-nowing-chainlens-dsh-2026-08-17/ARCHITECTURE-SPINE.md
     baseline:
-      - architecture/architecture-Nowing-2026-07-22/ARCHITECTURE-SPINE.md
+    - architecture/architecture-Nowing-2026-07-22/ARCHITECTURE-SPINE.md
     supplementary:
-      - architecture/architecture-Nowing-2026-07-22/epic-18-pat-scope-rls-threat-model.md
-      - architecture/architecture-Nowing-2026-07-22/architecture-validation-report-2026-08-11.md
-      - architecture/architecture-Nowing-2026-07-22/.memlog.md
-      - architecture/unified-scope-chainlens-research-nowing-2026-08-08.md
-      - architecture-epic23-lead-infrastructure.md
-    notes: Domain-specific architecture spines (linkedin, shopee, telegram, bds, muasamcong, xactions) are available but not selected for core assessment unless user requests.
+    - architecture/architecture-Nowing-2026-07-22/epic-18-pat-scope-rls-threat-model.md
+    - architecture/architecture-Nowing-2026-07-22/architecture-validation-report-2026-08-11.md
+    - architecture/architecture-Nowing-2026-07-22/.memlog.md
+    - architecture/unified-scope-chainlens-research-nowing-2026-08-08.md
+    - architecture-epic23-lead-infrastructure.md
+    notes: Domain-specific architecture spines (linkedin, shopee, telegram, bds, muasamcong,
+      xactions) are available but not selected for core assessment unless user requests.
   epics_and_stories:
     canonical:
-      - epics.md
+    - epics.md
     notes: stories are embedded in epics.md; no dedicated stories/ directory found.
   ux:
     canonical:
-      - ux-designs/ux-Nowing-2026-08-15/DESIGN.md
-      - ux-designs/ux-Nowing-2026-08-15/EXPERIENCE.md
+    - ux-designs/ux-Nowing-2026-08-15/DESIGN.md
+    - ux-designs/ux-Nowing-2026-08-15/EXPERIENCE.md
     supplementary:
-      - ux-design/epic21-lead-intelligence-ux.md
-      - ux-design/epic21-ux-wireframes-2026-08-11.md
-      - ux-design/ux-research-origami-refresh-2026-08-11.md
-      - ux-design/ux-research-origami-final-2026-08-11.md
+    - ux-design/epic21-lead-intelligence-ux.md
+    - ux-design/epic21-ux-wireframes-2026-08-11.md
+    - ux-design/ux-research-origami-refresh-2026-08-11.md
+    - ux-design/ux-research-origami-final-2026-08-11.md
     archived:
-      - ux-designs/archive/ux-Nowing-2026-07-22-superseded/
+    - ux-designs/archive/ux-Nowing-2026-07-22-superseded/
     notes: archive folder is superseded and excluded from assessment.
 ---
 
