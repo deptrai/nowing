@@ -179,6 +179,7 @@ class _SSEParser:
         "sources",
         "start_time",
         "status",
+        "structured_output",
         "suggested_domains",
         "tokens_completion",
         "tokens_prompt",
@@ -220,6 +221,7 @@ class _SSEParser:
         self.suggested_domains: list[str] = []
         self.insufficient_evidence_flag: bool | None = None
         self.cost_breakdown: dict[str, Any] | None = None
+        self.structured_output: dict[str, Any] | None = None
         self.start_time = start_time
 
     def _record_first_token(self) -> None:
@@ -330,6 +332,9 @@ class _SSEParser:
             self.web_url = event.get("webUrl") or self.web_url
             self._extract_cost(event)
             self._extract_gap_fill(event)
+            raw_output = event.get("output")
+            if isinstance(raw_output, dict):
+                self.structured_output = raw_output
             return
 
         if event_type == "block" and isinstance(event.get("block"), dict):
@@ -732,6 +737,7 @@ class _SSEParser:
             gap_fill_needed=self.gap_fill_needed,
             suggested_domains=self.suggested_domains,
             insufficient_evidence=self.insufficient_evidence_flag,
+            structured_output=self.structured_output,
         )
 
 
@@ -813,6 +819,10 @@ async def _call_chainlens(payload: ResearchInput) -> ResearchOutput:
         body["systemInstructions"] = payload.system_instructions
     if payload.chat_id:
         body["chatId"] = payload.chat_id
+    if payload.output:
+        body["output"] = payload.output
+    if payload.output_schema:
+        body["outputSchema"] = payload.output_schema
 
     workspace_id = payload.workspace_id or 0
     url = f"{config.CHAINLENS_API_URL}/api/v1/search"

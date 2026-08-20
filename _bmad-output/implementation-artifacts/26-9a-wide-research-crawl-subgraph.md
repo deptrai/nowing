@@ -3,8 +3,8 @@ story_key: "26-9a"
 epic: "epic-26"
 story: "26.9a"
 title: "Wide Research Crawl Subgraph for DSH Missions"
-status: "ready-for-dev"
-baseline_commit: "TBD"
+status: "review"
+baseline_commit: "cdb95035773a4f653d8670911cd5432432f5524d"
 ---
 
 # Story 26.9a: Wide Research Crawl Subgraph for DSH Missions
@@ -256,3 +256,70 @@ uv run --active pytest tests/unit/tasks/test_dsh_worker.py tests/unit/tasks/test
 - **Cost basis:** `ResearchOutput.cost_micros` is the source of truth. Do not recompute from `costDollars` in the subgraph.
 - **Backward compatibility:** `ResearchInput.output` default is `None`; existing chat/agent calls are unaffected. `DshRestClient.chainlens_research` keeps default `mode="balanced"` when `output` not provided.
 - **Future:** When ChainLens exposes a public `output=wide_research` (Story 52.2), this subgraph can switch `output="wide_research"` and drop the `output_schema` fallback.
+
+---
+
+## Tasks/Subtasks
+
+- [x] Step 1 — Extend `ResearchInput` / `ResearchOutput` schemas
+- [x] Step 2 — Forward `output`/`output_schema` in ChainLens executor
+- [x] Step 3 — Extend `DshRestClient.chainlens_research`
+- [x] Step 4 — Build `WideResearchCrawlSubgraph`
+- [x] Step 5 — Wire into `LangGraphMissionExecutor`
+- [x] Step 6 — Make ATDD tests green and run `ruff`
+
+---
+
+## File List
+
+- `nowing_backend/app/capabilities/chainlens/research/schemas.py`
+- `nowing_backend/app/capabilities/chainlens/research/executor.py`
+- `nowing_backend/app/tasks/dsh_worker.py`
+- `nowing_backend/app/tasks/dsh_worker_langgraph.py`
+- `nowing_backend/app/tasks/dsh_worker_crawl_subgraph.py`
+- `nowing_backend/tests/unit/capabilities/chainlens/research/test_wide_research_output.py`
+- `nowing_backend/tests/unit/tasks/test_dsh_worker_langgraph_wide.py`
+- `nowing_backend/tests/unit/tasks/test_dsh_worker_crawl_subgraph.py`
+
+---
+
+## Dev Agent Record
+
+### Implementation Plan
+
+1. Add `output`/`output_schema` to `ResearchInput`, `structured_output` to `ResearchOutput`.
+2. Update `_call_chainlens` to forward these to ChainLens and `SseParser` to capture `done.output`.
+3. Extend `DshRestClient.chainlens_research` signature and payload.
+4. Create `WideResearchCrawlSubgraph` as a buildable `ainvoke` entry point with call/parse/resume logic.
+5. Modify `LangGraphMissionExecutor._crawl_node` to dispatch to the subgraph when `payload.extras.research_mode == "wide"`.
+6. Unskip ATDD tests, make them pass, and keep `ruff` clean.
+
+### Debug Log
+
+- Baseline commit: `cdb95035773a4f653d8670911cd5432432f5524d`.
+- `ResearchInput.output`/`output_schema` and `ResearchOutput.structured_output` added to schemas.
+- `_call_chainlens` now forwards `output`/`outputSchema` to ChainLens and `SseParser.finalize` captures the `done.output` object.
+- `DshRestClient.chainlens_research` accepts `output`, `output_schema`, `mode`.
+- `WideResearchCrawlSubgraph` implemented as a standalone `ainvoke` entry point with resumption, cost capture, degradation, and fallback matrix synthesis.
+- `LangGraphMissionExecutor._crawl_node` dispatches to the subgraph when `payload.extras.research_mode == "wide"`.
+- ATDD red-phase tests unskipped and green; added extra degradation/partial test.
+
+### Completion Notes
+
+- All ACs satisfied.
+- 265 existing unit tests in `tests/unit/capabilities/chainlens/research` and `tests/unit/tasks/test_dsh_worker*` remain green.
+- 7 new/updated tests pass: `test_wide_research_output.py` (2), `test_dsh_worker_langgraph_wide.py` (1), `test_dsh_worker_crawl_subgraph.py` (4).
+- `ruff` clean on all changed Python files.
+
+---
+
+## Change Log
+
+- 2026-08-20: Implemented Story 26.9a end-to-end.
+  - Added `output`/`output_schema`/`structured_output` to ChainLens research schemas.
+  - Extended ChainLens executor to forward `output`/`outputSchema` and parse `done.output`.
+  - Extended `DshRestClient.chainlens_research` with `output`, `output_schema`, `mode`.
+  - Created `app/tasks/dsh_worker_crawl_subgraph.py` with resumption, degradation, cost, and matrix synthesis.
+  - Wired `LangGraphMissionExecutor._crawl_node` to dispatch to `WideResearchCrawlSubgraph` when `research_mode=wide`.
+  - Unskipped and greened ATDD tests; added `test_dsh_worker_crawl_subgraph.py` with fake client.
+

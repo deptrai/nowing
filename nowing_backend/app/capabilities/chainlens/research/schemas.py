@@ -109,6 +109,14 @@ class ResearchInput(BaseModel):
         default=None,
         description="Optional trace id carried as X-Correlation-Id.",
     )
+    output: Literal["answer", "research", "table"] | None = Field(
+        default=None,
+        description="Requested ChainLens output format. None keeps current default (answer).",
+    )
+    output_schema: dict[str, Any] | None = Field(
+        default=None,
+        description="JSON schema for structured output when ChainLens supports outputSchema.",
+    )
 
     @field_validator("query", mode="before")
     @classmethod
@@ -277,6 +285,10 @@ class ResearchOutput(BaseModel):
     cost_breakdown: dict[str, Any] | None = Field(
         default=None,
         description="Optional per-operation cost breakdown from the engine (search, gap_fill, scraper).",
+    )
+    structured_output: dict[str, Any] | None = Field(
+        default=None,
+        description="Structured object from the ChainLens done frame when outputSchema is provided.",
     )
 
     @model_validator(mode="after")

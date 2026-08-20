@@ -9,7 +9,6 @@ from app.capabilities.chainlens.research.schemas import ResearchInput, ResearchO
 pytestmark = pytest.mark.unit
 
 
-@pytest.mark.skip("RED: ResearchInput.output not implemented (Story 26.9a)")
 def test_research_input_accepts_output_table_and_output_schema() -> None:
     """AC-3: ResearchInput must accept output='table' and an output_schema."""
     schema = {
@@ -29,7 +28,6 @@ def test_research_input_accepts_output_table_and_output_schema() -> None:
     assert payload.output_schema == schema
 
 
-@pytest.mark.skip("RED: ResearchOutput.structured_output not implemented (Story 26.9a)")
 def test_research_output_has_structured_output() -> None:
     """AC-4: ResearchOutput must carry parsed structured output from the ChainLens done frame."""
     matrix = {

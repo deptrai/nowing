@@ -28,6 +28,8 @@ from uuid import UUID
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import RunnableConfig
 
+from app.tasks.dsh_worker_crawl_subgraph import WideResearchCrawlSubgraph
+
 if TYPE_CHECKING:
     from app.tasks.dsh_worker import DshRestClient
 
@@ -177,21 +179,31 @@ class LangGraphMissionExecutor:
             status="running",
         )
 
+        payload = state.get("payload") or {}
+        extras = payload.get("extras", {}) if isinstance(payload, dict) else {}
+
         try:
-            research_output = await rest_client.chainlens_research(workspace_id, query)
-            sources = research_output.get("sources", [])
-            subtasks = list(state.get("subtasks", []))
-            subtasks.append(
-                {
-                    "id": "crawl",
-                    "status": "success",
-                    "run_id": research_output.get("run_id"),
-                    "sources_count": len(sources),
-                }
-            )
-            checkpoint = dict(state.get("checkpoint") or {})
-            checkpoint["subtasks"] = subtasks
-            checkpoint["sources"] = sources
+            if extras.get("research_mode") == "wide":
+                subgraph = WideResearchCrawlSubgraph.build(self.rest_client)
+                result = await subgraph.ainvoke(state, config)
+                sources = result.get("sources", [])
+                subtasks = list(result.get("subtasks", []))
+                checkpoint = dict(result.get("checkpoint") or {})
+            else:
+                research_output = await rest_client.chainlens_research(workspace_id, query)
+                sources = research_output.get("sources", [])
+                subtasks = list(state.get("subtasks", []))
+                subtasks.append(
+                    {
+                        "id": "crawl",
+                        "status": "success",
+                        "run_id": research_output.get("run_id"),
+                        "sources_count": len(sources),
+                    }
+                )
+                checkpoint = dict(state.get("checkpoint") or {})
+                checkpoint["subtasks"] = subtasks
+                checkpoint["sources"] = sources
 
             return await self._patch_checkpoint(
                 {**state, "subtasks": subtasks, "sources": sources, "checkpoint": checkpoint},

@@ -160,9 +160,20 @@ class DshRestClient:
         self._raise_for_status(response, f"patch_checkpoint {mission_id}")
         return response.json()
 
-    async def chainlens_research(self, workspace_id: int, query: str) -> dict[str, Any]:
+    async def chainlens_research(
+        self,
+        workspace_id: int,
+        query: str,
+        output: str | None = None,
+        output_schema: dict[str, Any] | None = None,
+        mode: str = "balanced",
+    ) -> dict[str, Any]:
         """Start chainlens.research in async mode and poll until terminal."""
-        payload = {"query": query, "mode": "balanced"}
+        payload: dict[str, Any] = {"query": query, "mode": mode}
+        if output:
+            payload["output"] = output
+        if output_schema:
+            payload["output_schema"] = output_schema
         response = await self._client.post(
             f"/api/v1/workspaces/{workspace_id}/scrapers/chainlens/research?mode=async",
             json=payload,

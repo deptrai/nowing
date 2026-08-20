@@ -71,7 +71,6 @@ def fake_client() -> _FakeDshRestClient:
     return _FakeDshRestClient()
 
 
-@pytest.mark.skip("RED: wide-research dispatch not implemented (Story 26.9a)")
 @pytest.mark.asyncio
 async def test_crawl_node_dispatches_with_output_table_and_schema(
     fake_client: _FakeDshRestClient,
