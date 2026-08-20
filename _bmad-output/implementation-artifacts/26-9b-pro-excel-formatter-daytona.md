@@ -127,6 +127,9 @@ so that I can share structured research output without building reports manually
 - `nowing_backend/app/routes/sandbox_routes.py`
 - `nowing_backend/scripts/create_sandbox_snapshot.py`
 - `nowing_backend/app/agents/chat/multi_agent_chat/shared/middleware/filesystem/tools/execute_code/description.py`
+- `nowing_web/components/leads/MissionControlWidget.tsx`
+- `nowing_web/contracts/types/dsh.types.ts`
+- `nowing_web/lib/apis/dsh-api.service.ts`
 
 ---
 
@@ -138,7 +141,9 @@ so that I can share structured research output without building reports manually
 - Added DSH deliverable download route with `LEADS_READ` permission check.
 - Added unit tests for formatter and deliver subgraph; integration tests for the download route.
 - Applied code-review patches: removed live-sandbox fallback / dead `include_pii` query, added `include_pii` metadata, verified formatter output, used `sync_files_to_sandbox` for caching, fixed `_bool_from_raw` and PII regex.
-- Verified: `ruff` clean, `tests/unit/tasks` 202 passed, `tests/integration/dsh/test_pro_excel_formatter.py` 3 passed.
+- Added Mission Control UI to list and download deliverables (xlsx) with PII badge and file size.
+- Added Playwright E2E test `tests/leads/mission-control-deliverable-download.spec.ts` with mocked mission + deliverables; clicked download and verified `suggestedFilename`.
+- Verified: `ruff` clean, `tests/unit/tasks` 202 passed, `tests/integration/dsh/test_pro_excel_formatter.py` 3 passed, `pnpm tsc --noEmit` clean, `pnpm test:e2e tests/leads/mission-control-deliverable-download.spec.ts` passed.
 
 ---
 
