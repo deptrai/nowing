@@ -41,6 +41,14 @@ class DshApiService {
 		);
 	};
 
+	downloadDeliverableUrl = (
+		workspaceId: number | string,
+		missionId: string,
+		filename: string
+	): string => {
+		return `${base(workspaceId)}/dsh/missions/${missionId}/deliverables/${encodeURIComponent(filename)}`;
+	};
+
 	createMission = async (
 		workspaceId: number | string,
 		data: DshMissionRequest

@@ -115,11 +115,24 @@ class DshMissionSubtask(BaseModel):
     completed_at: datetime | None = None
 
 
+class DshMissionDeliverable(BaseModel):
+    """Redacted deliverable reference shown in the public control view."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    type: str
+    filename: str
+    size: int = 0
+    created_at: str | None = None
+    include_pii: bool = False
+
+
 class DshMissionControlResponse(DshMissionResponse):
-    """Public, PII-safe mission control payload with token velocity and subtasks."""
+    """Public, PII-safe mission control payload with token velocity, subtasks, and deliverables."""
 
     token_velocity: TokenVelocity
     subtasks: list[DshMissionSubtask]
+    deliverables: list[DshMissionDeliverable] = []
 
 
 class DshMissionListResponse(BaseModel):

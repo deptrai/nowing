@@ -7,13 +7,20 @@ import {
 	Clock,
 	Cpu,
 	Database,
+	Download,
 	Network,
 	Search,
 	X,
 } from "lucide-react";
 import type React from "react";
 import { useMemo, useState } from "react";
-import type { DshMission, DshMissionControl, DshMissionSubtask } from "@/contracts/types/dsh.types";
+import type {
+	DshMission,
+	DshMissionControl,
+	DshMissionDeliverable,
+	DshMissionSubtask,
+} from "@/contracts/types/dsh.types";
+import { dshApiService } from "@/lib/apis/dsh-api.service";
 import { cn } from "@/lib/utils";
 
 export interface MissionControlWidgetProps {
@@ -35,6 +42,14 @@ const PHASE_TO_STEP: Record<string, number> = {
 	ingestion: 3,
 	terminal: 3,
 	success: 3,
+};
+
+const formatBytes = (bytes: number): string => {
+	if (bytes === 0) return "0 B";
+	const k = 1024;
+	const sizes = ["B", "KB", "MB", "GB"];
+	const i = Math.floor(Math.log(bytes) / Math.log(k));
+	return `${parseFloat((bytes / k ** i).toFixed(1))} ${sizes[i]}`;
 };
 
 const formatElapsed = (start?: string | null, end?: string | null) => {
@@ -101,6 +116,7 @@ function TokenSparkline({ subtasks }: { subtasks: DshMissionSubtask[] }) {
 }
 
 export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
+	workspaceId,
 	className,
 	latestMission,
 	missionControl,
@@ -116,6 +132,7 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 		: 0;
 	const status = latestMission?.status ?? "idle";
 	const tokenVelocity = missionControl?.token_velocity;
+	const deliverables = missionControl?.deliverables ?? [];
 
 	const activeStepIndex = PHASE_TO_STEP[phase?.toLowerCase() ?? ""] ?? -1;
 
@@ -257,6 +274,46 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 						</p>
 					</div>
 				</div>
+
+				{deliverables.length > 0 && (
+					<div className="mt-3" data-testid="mission-control-deliverables">
+						<p className="text-[10px] text-muted-foreground uppercase mb-1.5">Kết quả xuất ra</p>
+						<div className="space-y-1.5">
+							{deliverables.map((d: DshMissionDeliverable) => {
+								const href = latestMission
+									? dshApiService.downloadDeliverableUrl(
+											workspaceId ?? latestMission.workspace_id,
+											latestMission.id,
+											d.filename
+										)
+									: undefined;
+								return (
+									<a
+										key={d.filename}
+										href={href}
+										download
+										data-testid={`mission-control-download-${d.filename}`}
+										className={cn(
+											"flex items-center gap-2 rounded-md border border-border bg-muted/30 px-2.5 py-1.5 text-xs transition-colors",
+											href
+												? "hover:bg-muted text-foreground"
+												: "pointer-events-none opacity-50 text-muted-foreground"
+										)}
+									>
+										<Download className="w-3.5 h-3.5 text-indigo-500" />
+										<span className="flex-1 truncate">{d.filename}</span>
+										<span className="text-[10px] text-muted-foreground">{formatBytes(d.size)}</span>
+										{d.include_pii && (
+											<span className="text-[10px] text-amber-500" title="Chứa PII">
+												(PII)
+											</span>
+										)}
+									</a>
+								);
+							})}
+						</div>
+					</div>
+				)}
 
 				{missionControl?.subtasks && missionControl.subtasks.length > 0 && (
 					<div className="mt-3">

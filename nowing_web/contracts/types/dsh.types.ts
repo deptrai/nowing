@@ -62,9 +62,20 @@ export const dshMissionSubtaskSchema = z.object({
 
 export type DshMissionSubtask = z.infer<typeof dshMissionSubtaskSchema>;
 
+export const dshMissionDeliverableSchema = z.object({
+	type: z.string(),
+	filename: z.string(),
+	size: z.number().default(0),
+	created_at: z.string().nullable().optional(),
+	include_pii: z.boolean().default(false),
+});
+
+export type DshMissionDeliverable = z.infer<typeof dshMissionDeliverableSchema>;
+
 export const dshMissionControlResponseSchema = dshMissionResponseSchema.extend({
 	token_velocity: tokenVelocitySchema,
 	subtasks: z.array(dshMissionSubtaskSchema),
+	deliverables: z.array(dshMissionDeliverableSchema).default([]),
 });
 
 export type DshMissionControl = z.infer<typeof dshMissionControlResponseSchema>;

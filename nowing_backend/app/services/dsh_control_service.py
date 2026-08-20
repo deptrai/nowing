@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import DshMission, Run, TokenUsage
 from app.schemas.dsh import (
     DshMissionControlResponse,
+    DshMissionDeliverable,
     DshMissionSubtask,
     TokenVelocity,
 )
@@ -37,6 +38,19 @@ class MissionControlService:
             cost_micros=raw.get("cost_micros") or 0,
             started_at=raw.get("started_at"),
             completed_at=raw.get("completed_at"),
+        )
+
+    @staticmethod
+    def _redact_deliverable(raw: Any) -> DshMissionDeliverable | None:
+        """Keep only public, safe deliverable fields (drop sandbox_path)."""
+        if not isinstance(raw, dict):
+            return None
+        return DshMissionDeliverable(
+            type=raw.get("type") or "xlsx",
+            filename=raw.get("filename") or "",
+            size=raw.get("size") or 0,
+            created_at=raw.get("created_at"),
+            include_pii=raw.get("include_pii") or False,
         )
 
     @staticmethod
@@ -138,6 +152,12 @@ class MissionControlService:
         if not isinstance(checkpoint, dict):
             checkpoint = {}
 
+        deliverables: list[DshMissionDeliverable] = [
+            d
+            for raw in checkpoint.get("deliverables", [])
+            if (d := self._redact_deliverable(raw)) is not None
+        ]
+
         subtasks: list[DshMissionSubtask] = []
         total_tokens = 0
         total_cost = 0
@@ -195,4 +215,5 @@ class MissionControlService:
                 cost_credits=round(total_cost / 1_000_000, 6),
             ),
             subtasks=subtasks,
+            deliverables=deliverables,
         )
