@@ -240,6 +240,15 @@ uv run --active pytest tests/unit/tasks/test_dsh_worker.py tests/unit/tasks/test
 
 ---
 
+## ATDD Artifacts (red-phase)
+
+- Checklist: `_bmad-output/implementation-artifacts/atdd-checklist-26-9a.md`
+- Backend red-phase scaffolds:
+  - `nowing_backend/tests/unit/capabilities/chainlens/research/test_wide_research_output.py`
+  - `nowing_backend/tests/unit/tasks/test_dsh_worker_langgraph_wide.py`
+  - `nowing_backend/tests/unit/tasks/test_dsh_worker_crawl_subgraph.py`
+- All scaffolds currently use `@pytest.mark.skip`; remove per AC as they turn green during `dev-story`.
+
 ## Dev Notes
 
 - **No new dependencies.** `langgraph>=1.1.3`, `deepagents>=0.4.12`, `httpx` already declared.
