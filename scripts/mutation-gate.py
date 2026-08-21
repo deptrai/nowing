@@ -345,9 +345,11 @@ def run_cosmic_ray(
             if scope_functions or skip_noise_operators:
                 print(f"[mutation] scope-mutation-session {session.name}")
                 scope_script = (project_root / "scripts" / "scope_mutation_session.py").resolve()
-                scope_python = str((backend / ".venv" / "bin" / "python").resolve()) if (backend / ".venv" / "bin" / "python").exists() else sys.executable
                 scope_cmd: list[str] = [
-                    scope_python,
+                    "uv",
+                    "run",
+                    "--no-sync",
+                    "python",
                     str(scope_script),
                     str(session),
                 ]
