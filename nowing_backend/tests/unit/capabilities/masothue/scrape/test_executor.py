@@ -52,7 +52,6 @@ async def test_executor_returns_output_and_cost(monkeypatch: Any) -> None:
     assert out.cost_micros == 2 * 3000
 
 
-
 @pytest.mark.asyncio
 async def test_executor_returns_zero_cost_when_degraded(monkeypatch: Any) -> None:
     """A degraded run reports cost_micros=0 even when items were returned."""
@@ -79,9 +78,13 @@ async def test_executor_returns_zero_cost_when_degraded(monkeypatch: Any) -> Non
 
 @pytest.mark.asyncio
 async def test_executor_cost_uses_default_rate(monkeypatch: Any) -> None:
-    """cost_micros uses MASOTHUE_SCRAPE_MICROS_PER_ITEM default (3000 micros)."""
-    # Force the fallback value so any mutation of the default constant is caught.
-    monkeypatch.delattr("app.config.config.MASOTHUE_SCRAPE_MICROS_PER_ITEM", raising=False)
+    """When MASOTHUE_SCRAPE_MICROS_PER_ITEM is not configured, default 3000 is used."""
+    import app.capabilities.masothue.scrape.executor as executor_mod
+
+    if hasattr(executor_mod.config, "MASOTHUE_SCRAPE_MICROS_PER_ITEM"):
+        monkeypatch.delattr(
+            executor_mod.config, "MASOTHUE_SCRAPE_MICROS_PER_ITEM", raising=False
+        )
 
     async def fake_scrape(_: Any) -> dict[str, Any]:
         return {
@@ -96,7 +99,7 @@ async def test_executor_cost_uses_default_rate(monkeypatch: Any) -> None:
 
     assert out.degraded is False
     assert out.total_items == 1
-    assert out.cost_micros == 1 * 3000
+    assert out.cost_micros == 3000
 
 
 @pytest.mark.asyncio
@@ -243,7 +246,9 @@ async def test_executor_persists_with_context(monkeypatch: Any) -> None:
 
 
 @pytest.mark.asyncio
-async def test_executor_persists_uses_fingerprint_when_tax_code_missing(monkeypatch: Any) -> None:
+async def test_executor_persists_uses_fingerprint_when_tax_code_missing(
+    monkeypatch: Any,
+) -> None:
     """If the company has no tax_code, source_record_id falls back to the fingerprint."""
     from app.capabilities.core.types import CapabilityContext
 

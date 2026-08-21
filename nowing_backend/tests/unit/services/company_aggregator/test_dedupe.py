@@ -27,9 +27,7 @@ def _company_data(tax_code: str, name: str) -> dict[str, str]:
         "main_industry": "Sản xuất sữa",
         "managed_by": "Cục Thuế TP. Hồ Chí Minh",
     }
-    data["fingerprint"] = hashlib.sha256(
-        tax_code.encode("utf-8")
-    ).hexdigest()[:16]
+    data["fingerprint"] = hashlib.sha256(tax_code.encode("utf-8")).hexdigest()[:16]
     return data
 
 
@@ -69,6 +67,45 @@ def test_merge_passes_through() -> None:
     assert merged["tax_code"] == "0314539064"
 
 
+def test_fingerprint_fallback_variations() -> None:
+    # Name only (no address)
+    fp1 = fingerprint({"name": "Công ty TNHH Vinamilk Tân Sơn"})
+    expected1 = hashlib.sha256(
+        f"{normalize('Công ty TNHH Vinamilk Tân Sơn')}|".encode()
+    ).hexdigest()[:16]
+    assert fp1 == expected1
+
+    # Address only (no name)
+    fp2 = fingerprint({"address": "10 Đường 3/2, P. 12, Q. 10, TP. HCM"})
+    expected2 = hashlib.sha256(
+        f"|{normalize('10 Đường 3/2, P. 12, Q. 10, TP. HCM')}".encode()
+    ).hexdigest()[:16]
+    assert fp2 == expected2
+
+    # Neither name nor address -> str(raw_data)
+    data3 = {"foo": "bar"}
+    fp3 = fingerprint(data3)
+    expected3 = hashlib.sha256(str(data3).encode("utf-8")).hexdigest()[:16]
+    assert fp3 == expected3
+
+    # Empty tax code fallback
+    fp4 = fingerprint({"tax_code": "   ", "name": "Vinamilk"})
+    assert fp4 == hashlib.sha256(f"{normalize('Vinamilk')}|".encode()).hexdigest()[:16]
+
+
+def test_merge_edges() -> None:
+    assert merge(None, {"name": "Test"}) == {"name": "Test"}
+    assert merge("not a dict", {"name": "Test"}) == {"name": "Test"}
+
+    canonical = {"name": "Old", "tax_code": "123", "address": "123 Street"}
+    new = {"name": "New", "tax_code": "456"}
+    merged = merge(canonical, new)
+    assert merged["name"] == "New"
+    assert merged["tax_code"] == "456"
+    assert merged["address"] == "123 Street"
+
+
 def test_normalize() -> None:
+    assert normalize(None) == ""
     assert normalize("  Vinamilk  ") == "vinamilk"
     assert normalize("Công ty TNHH!") == "công ty tnhh"

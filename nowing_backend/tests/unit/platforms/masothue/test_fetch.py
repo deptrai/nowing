@@ -276,8 +276,26 @@ def test_fetch_helper_functions() -> None:
         _search_url("vnm", "auto", 1) == "https://masothue.com/Search/?q=vnm&type=auto"
     )
     assert (
+        _search_url("vnm", "auto", 0) == "https://masothue.com/Search/?q=vnm&type=auto"
+    )
+    assert (
+        _search_url("vnm", "auto", -1) == "https://masothue.com/Search/?q=vnm&type=auto"
+    )
+    assert (
+        _search_url("vnm", "auto", 2)
+        == "https://masothue.com/Search/?q=vnm&type=auto&page=2"
+    )
+    assert (
         _search_url("vnm", "auto", 3)
         == "https://masothue.com/Search/?q=vnm&type=auto&page=3"
+    )
+    assert (
+        _search_url("vnm", "enterpriseTax", 2)
+        == "https://masothue.com/Search/?q=vnm&type=enterpriseTax&page=2"
+    )
+    assert (
+        _search_url("vnm", "personalTax", 1)
+        == "https://masothue.com/Search/?q=vnm&type=personalTax"
     )
 
     with pytest.raises(MasothueRateLimitedError):
@@ -292,8 +310,10 @@ def test_fetch_helper_functions() -> None:
         with pytest.raises(MasothueAccessBlockedError):
             _status_for_url(status_code, "http://test")
 
-    # 200 should not raise
+    # Non-error codes should not raise
     _status_for_url(200, "http://test")
+    _status_for_url(428, "http://test")
+    _status_for_url(430, "http://test")
 
     assert _looks_like_cloudflare("cf-browser-verification") is True
     assert _looks_like_cloudflare("challenge-form") is True
