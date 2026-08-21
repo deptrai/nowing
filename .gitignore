@@ -31,9 +31,28 @@ nowing_desktop/.env
 .serena/
 nowing_mcp/.serena/
 _bmad-output/test-artifacts/
+_bmad-output/review-artifacts/
+_bmad-output/benchmark-reports/
 _bmad-output/*.txt
 project-context.md
 .knowns/
+test-results/
+
+# Benchmark & Evals run outputs
+nowing_evals/.pytest_cache/
+nowing_evals/runs/
+nowing_evals/reports/
+nowing_evals/eval_results/
+nowing_evals/data/
+**/cassettes/
+**/cassettes/*
+**/cassettes/**
+
+# Temporary debug scripts and screenshots in root/sessions
+mcp-*.js
+mcp-*.png
+_bmad/memory/*/sessions/*.png
+_bmad/memory/*/sessions/*.jpg
 
 # Local mutation-run artifacts
 nowing_backend/mutation-*
@@ -43,6 +62,7 @@ nowing_backend/_bmad-output/
 **/__pycache__/
 *.py[cod]
 
-# Git worktrees
+# Git worktrees & dumps
 .worktrees/
 *.rdb
+
