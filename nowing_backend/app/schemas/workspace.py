@@ -31,6 +31,10 @@ class WorkspaceUpdate(BaseModel):
     auto_archive_enabled: bool | None = None
     document_retention_action: Literal["archive", "delete"] | None = None
     memory_auto_extract_enabled: bool | None = None
+    auto_reply_enabled: bool | None = None
+    auto_reply_collections: list[int] | None = None
+    auto_reply_fallback: str | None = None
+    auto_reply_recipient_chat_id: str | None = None
 
 
 class WorkspaceApiAccessUpdate(BaseModel):
@@ -48,6 +52,10 @@ class WorkspaceRead(WorkspaceBase, IDModel, TimestampModel):
     auto_archive_enabled: bool = False
     document_retention_action: str = "archive"
     memory_auto_extract_enabled: bool = True
+    auto_reply_enabled: bool = False
+    auto_reply_collections: list[int] = []
+    auto_reply_fallback: str | None = None
+    auto_reply_recipient_chat_id: str | None = None
     is_owner: bool = False
     # Populated only by create_workspace so the client can route straight to
     # onboarding vs. new-chat on the first hop. Null everywhere else.

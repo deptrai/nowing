@@ -24,6 +24,7 @@ from app.db import (
     ExternalChatPeerKind,
     ExternalChatPlatform,
     NewChatThread,
+    Workspace,
     async_session_maker,
 )
 from app.gateway.agent_invoke import call_agent_for_gateway
@@ -31,6 +32,7 @@ from app.gateway.base.commands import command_name
 from app.gateway.bindings import get_or_create_thread_for_binding
 from app.gateway.registry import resolve_platform_bundle
 from app.observability.metrics import record_gateway_inbox_processed
+from app.services.inbound_debounce_service import InboundDebounceService
 
 logger = logging.getLogger(__name__)
 
@@ -543,6 +545,34 @@ async def _dispatch_inbound_event(
             event.last_error = "empty_message"
             await session.commit()
             return
+
+        # Story 24.6: Buffer inbound direct message for auto-reply if the workspace has it enabled.
+        workspace = await session.get(Workspace, binding.workspace_id)
+        if (
+            workspace is not None
+            and workspace.auto_reply_enabled
+            and parsed.event_kind != "callback_query"
+        ):
+            try:
+                debounce = InboundDebounceService()
+                await debounce.buffer_inbound_message(
+                    channel=bundle.platform_label,
+                    sender_id=parsed.external_user_id or parsed.external_peer_id,
+                    text=parsed.text,
+                    payload={
+                        "workspace_id": workspace.id,
+                        "thread_id": str(binding.id),
+                        "account_id": account.id,
+                        "binding_id": binding.id,
+                    },
+                )
+                event.status = ExternalChatEventStatus.PROCESSED
+                event.last_error = "auto_reply_buffered"
+                await session.commit()
+                return
+            except Exception as e:
+                logger.error("Failed to buffer inbound message for auto-reply: %s", e)
+                # Fall through to the normal chat-agent path on buffer failure.
 
         thread = await get_or_create_thread_for_binding(session, binding)
         await session.commit()

@@ -19,6 +19,10 @@ export const workspace = z.object({
 	auto_archive_enabled: z.boolean().optional().default(false),
 	document_retention_action: z.string().optional().default("archive"),
 	memory_auto_extract_enabled: z.boolean().optional().default(true),
+	auto_reply_enabled: z.boolean().optional(),
+	auto_reply_collections: z.array(z.number()).optional().default([]),
+	auto_reply_fallback: z.string().nullable().optional(),
+	auto_reply_recipient_chat_id: z.string().nullable().optional(),
 	member_count: z.number(),
 	is_owner: z.boolean(),
 });
@@ -74,6 +78,10 @@ export const updateWorkspaceRequest = z.object({
 			auto_archive_enabled: true,
 			document_retention_action: true,
 			memory_auto_extract_enabled: true,
+			auto_reply_enabled: true,
+			auto_reply_collections: true,
+			auto_reply_fallback: true,
+			auto_reply_recipient_chat_id: true,
 		})
 		.partial(),
 });

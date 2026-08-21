@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
 	Select,
 	SelectContent,
@@ -18,7 +19,8 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import type { Workspace } from "@/contracts/types/workspace.types";
+import { Textarea } from "@/components/ui/textarea";
+import type { GetWorkspaceResponse, Workspace } from "@/contracts/types/workspace.types";
 import { userApiService } from "@/lib/apis/user-api.service";
 import { workspacesApiService } from "@/lib/apis/workspaces-api.service";
 import { authenticatedFetch } from "@/lib/auth-fetch";
@@ -82,6 +84,7 @@ export function MessagingChannelsContent() {
 	const [gatewayConfig, setGatewayConfig] = useState<GatewayConfigState>(null);
 	const [connections, setConnections] = useState<GatewayConnection[]>([]);
 	const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+	const [workspace, setWorkspace] = useState<GetWorkspaceResponse | null>(null);
 	const [pairing, setPairing] = useState<Pairing | null>(null);
 	const [pairingPlatform, setPairingPlatform] = useState<PairingPlatform | null>(null);
 	const [baileysHealth, setBaileysHealth] = useState<BaileysHealth | null>(null);
@@ -89,6 +92,12 @@ export function MessagingChannelsContent() {
 	const [telegramNotificationsEnabled, setTelegramNotificationsEnabled] = useState(false);
 	const [isLoadingUserProfile, setIsLoadingUserProfile] = useState(true);
 	const [isSavingNotifications, setIsSavingNotifications] = useState(false);
+	// Story 24.6: two-way auto-reply agent settings (local state until API exists)
+	const [autoReplyEnabled, setAutoReplyEnabled] = useState(false);
+	const [autoReplyCollections, setAutoReplyCollections] = useState<string[]>([]);
+	const [autoReplyFallback, setAutoReplyFallback] = useState("");
+	const [autoReplyRecipientChatId, setAutoReplyRecipientChatId] = useState("");
+	const [isSavingAutoReply, setIsSavingAutoReply] = useState(false);
 	const isGatewayConfigLoading = gatewayConfig === null;
 	const telegramGatewayEnabled = gatewayConfig?.telegram_enabled ?? false;
 	const whatsappMode = gatewayConfig?.whatsapp_intake_mode ?? "disabled";
@@ -117,19 +126,35 @@ export function MessagingChannelsContent() {
 	}, []);
 
 	const refresh = useCallback(async () => {
-		const [nextConnections, spaces, nextGatewayConfig] = await Promise.all([
+		const [nextConnections, spaces, nextWorkspace, nextGatewayConfig] = await Promise.all([
 			fetchConnections(),
 			workspacesApiService.getWorkspaces(),
+			workspacesApiService.getWorkspace({ id: workspaceId }).catch(() => null),
 			fetchGatewayConfig(),
 		]);
 		setConnections(nextConnections);
 		setWorkspaces(spaces);
+		setWorkspace(nextWorkspace);
 		setGatewayConfig(nextGatewayConfig);
-	}, [fetchConnections, fetchGatewayConfig]);
+	}, [fetchConnections, fetchGatewayConfig, workspaceId]);
 
 	useEffect(() => {
 		void refresh();
 	}, [refresh]);
+
+	// Sync local auto-reply controls from workspace settings.
+	useEffect(() => {
+		if (workspace) {
+			setAutoReplyEnabled(workspace.auto_reply_enabled ?? false);
+			setAutoReplyCollections(
+				Array.isArray(workspace.auto_reply_collections)
+					? workspace.auto_reply_collections.map(String)
+					: []
+			);
+			setAutoReplyFallback(workspace.auto_reply_fallback ?? "");
+			setAutoReplyRecipientChatId(workspace.auto_reply_recipient_chat_id ?? "");
+		}
+	}, [workspace]);
 
 	const refreshPlatform = useCallback(
 		async (platform: GatewayPlatform) => {
@@ -208,6 +233,33 @@ export function MessagingChannelsContent() {
 			toast.error("Failed to update Telegram notification preference");
 		} finally {
 			setIsSavingNotifications(false);
+		}
+	}
+
+	async function saveAutoReply(partial: Partial<Workspace>) {
+		setIsSavingAutoReply(true);
+		try {
+			const updated = await workspacesApiService.updateWorkspace({
+				id: workspaceId,
+				data: partial,
+			});
+			setWorkspace(updated);
+			toast.success("Auto-reply settings saved");
+			return updated;
+		} catch {
+			toast.error("Failed to update auto-reply settings");
+			throw new Error("Failed to update auto-reply settings");
+		} finally {
+			setIsSavingAutoReply(false);
+		}
+	}
+
+	async function toggleAutoReply(enabled: boolean) {
+		setAutoReplyEnabled(enabled);
+		try {
+			await saveAutoReply({ auto_reply_enabled: enabled });
+		} catch {
+			setAutoReplyEnabled(!enabled);
 		}
 	}
 
@@ -663,6 +715,99 @@ export function MessagingChannelsContent() {
 					</CardContent>
 				</Card>
 			) : null}
+
+			<Card className="order-3 group relative h-full overflow-hidden border-primary/30 bg-primary/5 transition-all duration-200 hover:shadow-md col-span-full">
+				<CardHeader className="space-y-1.5 p-4 pb-2">
+					<div className="flex items-center justify-between gap-3">
+						<CardTitle className="flex items-center gap-2 text-sm">
+							<span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+							AI Tự Động Trả Lời Tin Nhắn 24/7 (Two-Way Auto-Reply Agent)
+						</CardTitle>
+						<Switch
+							data-testid="auto-reply-toggle"
+							checked={autoReplyEnabled}
+							onCheckedChange={toggleAutoReply}
+							disabled={isSavingAutoReply}
+						/>
+					</div>
+					<p className="text-xs text-muted-foreground">
+						Tự động trả lời thắc mắc của khách hàng trên Zalo OA / Telegram dựa trên tài liệu
+						Knowledge Base của workspace. Phát hiện ý định mua hàng (Buying Signals) và bắn alert
+						Telegram cho nhân viên nhận tư vấn (tự động khóa AI 24h khi con người can thiệp).
+					</p>
+				</CardHeader>
+				<CardContent className="space-y-3 p-4 pt-2">
+					<div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+						<span className="rounded bg-background/80 px-2 py-0.5 border">
+							RAG Cosine &ge; 0.75 Grounding
+						</span>
+						<span className="rounded bg-background/80 px-2 py-0.5 border">
+							Anti-Hallucination Safe Fallback
+						</span>
+						<span className="rounded bg-background/80 px-2 py-0.5 border">3s Debounce Buffer</span>
+						<span className="rounded bg-background/80 px-2 py-0.5 border">
+							24h Human Takeover Pause
+						</span>
+					</div>
+					<div className="grid gap-3">
+						<div className="space-y-1">
+							<label htmlFor="autoReplyCollections" className="text-xs font-medium">
+								KB Collections
+							</label>
+							<Select
+								disabled={isSavingAutoReply}
+								value={autoReplyCollections.length ? autoReplyCollections.join(",") : "none"}
+								onValueChange={(v) => {
+									const next = v && v !== "none" ? v.split(",") : [];
+									setAutoReplyCollections(next);
+									void saveAutoReply({ auto_reply_collections: next.map(Number).filter(Boolean) });
+								}}
+							>
+								<SelectTrigger id="autoReplyCollections" className="h-8 text-xs">
+									<SelectValue placeholder="Chọn KB collections (coming soon)" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="none">Chưa có collection nào</SelectItem>
+								</SelectContent>
+							</Select>
+						</div>
+						<div className="space-y-1">
+							<label htmlFor="autoReplyFallback" className="text-xs font-medium">
+								Fallback Message
+							</label>
+							<Textarea
+								id="autoReplyFallback"
+								data-testid="auto-reply-fallback"
+								disabled={isSavingAutoReply}
+								value={autoReplyFallback}
+								onChange={(e) => setAutoReplyFallback(e.target.value)}
+								onBlur={() => void saveAutoReply({ auto_reply_fallback: autoReplyFallback })}
+								placeholder="Tin nhắn dự phòng khi không có tài liệu liên quan..."
+								className="min-h-[60px] text-xs"
+							/>
+						</div>
+						<div className="space-y-1">
+							<label htmlFor="autoReplyRecipientChatId" className="text-xs font-medium">
+								Hot-Lead Recipient Chat ID
+							</label>
+							<Input
+								id="autoReplyRecipientChatId"
+								data-testid="auto-reply-recipient"
+								disabled={isSavingAutoReply}
+								value={autoReplyRecipientChatId}
+								onChange={(e) => setAutoReplyRecipientChatId(e.target.value)}
+								onBlur={() =>
+									void saveAutoReply({
+										auto_reply_recipient_chat_id: autoReplyRecipientChatId,
+									})
+								}
+								placeholder="e.g. @sales_channel hoặc Telegram chat id"
+								className="h-8 text-xs"
+							/>
+						</div>
+					</div>
+				</CardContent>
+			</Card>
 		</div>
 	);
 }

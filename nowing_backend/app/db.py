@@ -1981,6 +1981,16 @@ class Workspace(BaseModel, TimestampMixin):
     # Epic 21 lead scoring ICP criteria (Story 21.2).
     icp_criteria = Column(JSONB, nullable=True)
 
+    # Story 24.6: Two-Way AI Outreach Auto-Reply Agent workspace settings.
+    auto_reply_enabled = Column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    auto_reply_collections = Column(
+        JSONB, nullable=False, default=list, server_default="[]"
+    )
+    auto_reply_fallback = Column(Text, nullable=True)
+    auto_reply_recipient_chat_id = Column(String(255), nullable=True)
+
     user_id = Column(
         UUID(as_uuid=True), ForeignKey("user.id", ondelete="CASCADE"), nullable=False
     )

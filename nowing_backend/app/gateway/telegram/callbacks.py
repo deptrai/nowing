@@ -7,6 +7,7 @@ import logging
 from uuid import UUID
 
 from fastapi import HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
@@ -18,11 +19,12 @@ from app.automations.persistence.models.automation import Automation
 from app.automations.persistence.models.run import AutomationRun
 from app.automations.persistence.models.trigger import AutomationTrigger
 from app.config import config
-from app.db import ExternalChatBinding, Permission, User
+from app.db import ExternalChatBinding, Lead, Permission, User
 from app.gateway import ratelimit
 from app.gateway.base.adapter import ParsedInboundEvent
 from app.gateway.telegram.adapter import TelegramAdapter
 from app.services import dsh_telegram_checkpoint_service
+from app.services.auto_reply_agent import pause_auto_reply
 from app.utils.rbac import check_permission
 
 logger = logging.getLogger(__name__)
@@ -535,6 +537,49 @@ async def handle_callback_query(
         )
         return
 
+    # Check nhan_tu_van:{thread_id}:{lead_id} callback
+    if data.startswith("nhan_tu_van:"):
+        ntv_parts = data.split(":", 2)
+        if len(ntv_parts) != 3:
+            if callback_query_id:
+                with contextlib.suppress(Exception):
+                    await adapter.answer_callback_query(
+                        callback_query_id=callback_query_id,
+                        text="Dữ liệu callback không hợp lệ.",
+                        show_alert=True,
+                    )
+            return
+        _, thread_id, lead_id = ntv_parts
+        if (
+            event.external_user_id is not None
+            and binding.external_peer_id is not None
+            and str(event.external_user_id) != str(binding.external_peer_id)
+        ):
+            if callback_query_id:
+                with contextlib.suppress(Exception):
+                    await adapter.answer_callback_query(
+                        callback_query_id=callback_query_id,
+                        text="Thao tác này chỉ dành cho người nhận alert.",
+                        show_alert=True,
+                    )
+            return
+        await handle_telegram_callback_nhan_tu_van(
+            thread_id=thread_id,
+            lead_id=lead_id,
+            claimed_by_user_id=str(event.external_user_id or binding.user_id or ""),
+            session=session,
+            adapter=adapter,
+            binding=binding,
+        )
+        if callback_query_id:
+            with contextlib.suppress(Exception):
+                await adapter.answer_callback_query(
+                    callback_query_id=callback_query_id,
+                    text="Đã ghi nhận yêu cầu tư vấn. AI auto-reply sẽ tạm dừng 24h.",
+                    show_alert=True,
+                )
+        return
+
     parts = data.split(":", 1)
     prefix = parts[0]
     item_id: int | None = None
@@ -571,3 +616,85 @@ async def handle_callback_query(
             logger.warning(
                 "Failed to answer callback query %s", callback_query_id, exc_info=True
             )
+
+
+async def handle_telegram_callback_nhan_tu_van(
+    thread_id: str,
+    lead_id: str,
+    claimed_by_user_id: str,
+    *,
+    session: AsyncSession | None = None,
+    adapter: TelegramAdapter | None = None,
+    binding: ExternalChatBinding | None = None,
+) -> dict[str, str]:
+    """Handles Telegram [Nhận Tư Vấn] callback: pauses AI auto-reply for 24h and assigns lead."""
+    clean_thread_id = (thread_id or "").strip()
+    clean_lead_id = (lead_id or "").strip()
+    clean_user_id = (claimed_by_user_id or "").strip()
+
+    if not clean_thread_id or not clean_lead_id:
+        return {
+            "status": "error",
+            "error": "Missing required thread_id or lead_id",
+        }
+
+    try:
+        await pause_auto_reply(clean_thread_id)
+
+        # Update lead assignment / status when invoked from a real gateway session.
+        if session is not None and binding is not None:
+            try:
+                lead_uuid = UUID(clean_lead_id)
+            except ValueError:
+                logger.warning("Invalid lead_id format in nhan_tu_van callback: %s", clean_lead_id)
+            else:
+                result = await session.execute(
+                    select(Lead).where(
+                        Lead.id == lead_uuid,
+                        Lead.workspace_id == binding.workspace_id,
+                    )
+                )
+                lead = result.scalar_one_or_none()
+                if lead is not None:
+                    lead.status = "warm"
+                    # Always assign to the binding owner (workspace sales rep), never the raw
+                    # Telegram id. The clicker was already validated against binding.external_peer_id.
+                    lead.user_id = binding.user_id
+                    await session.commit()
+                    logger.info(
+                        "Assigned lead %s to user %s for workspace %s",
+                        clean_lead_id,
+                        lead.user_id,
+                        binding.workspace_id,
+                    )
+
+            # Reply to the prospect that a specialist has joined.
+            if adapter is not None and binding is not None:
+                with contextlib.suppress(Exception):
+                    await adapter.send_message(
+                        external_peer_id=binding.external_peer_id,
+                        text=(
+                            "Dạ em đã chuyển thông tin cho chuyên viên tư vấn. "
+                            "Anh/chị vui lòng đợi một chút, bên em sẽ liên hệ hỗ trợ ngay ạ."
+                        ),
+                        parse_mode=None,
+                    )
+
+        logger.info(
+            "Claimed lead %s for user %s on thread %s. Auto-reply paused 24h.",
+            clean_lead_id,
+            clean_user_id,
+            clean_thread_id,
+        )
+        return {
+            "status": "success",
+            "thread_id": clean_thread_id,
+            "lead_id": clean_lead_id,
+            "assigned_to": clean_user_id,
+        }
+    except Exception as e:
+        logger.error("Error handling nhan_tu_van callback for lead %s: %s", clean_lead_id, e)
+        return {
+            "status": "error",
+            "error": str(e),
+        }

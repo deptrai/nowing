@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: "2026-08-22"  # Story 24.3 code review patches applied and verified; pending human-review-gate, E2E gate, and deferred test-quality/direct-debit items.
+last_updated: "2026-08-22"  # Story 25.3 review patches applied and verified green  # Story 24.3 code review patches applied and verified; pending human-review-gate, E2E gate, and deferred test-quality/direct-debit items.
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # - Parsed epics.md: 24 epics, ~160 stories.
 # - Scanned _bmad-output/implementation-artifacts/ + stories/*.md for story files (frontmatter story_key/epic+story).
@@ -264,7 +264,7 @@ development_status:
   24-3: in-progress  # Multi-Seat Team CRM Pipeline & Shared Workspace Credit Pooling — code review patches applied and verified (ruff/pytest/tsc/biome green); pending human-review-gate, E2E gate, and deferred test-quality/direct-debit items.
   24-4: done  # Nowing Lead Clipper — 3-layer code-review passed, 5 patches applied (concurrency rollback recovery, phone +8409 normalizer, tenant client_id, tracking param scrubbing, contact title)
   24-5: done  # Vertical Playbook Marketplace & Community Workflow Templates — P0/P1 code review patches applied (auth, seed runnable, is_approved, metadata, vertical filter, hard limit, instantiate run launch). Backend ruff/pytest and frontend tsc/biome green.
-  24-6: ready-for-dev  # Two-Way AI Outreach Auto-Reply Agent
+  24-6: review  # Two-Way AI Outreach Auto-Reply Agent — 2026-08-22 post-patch: resolved 2 decision_needed + 7 patch findings. Wired auto-reply into inbox_processor, fixed LLM router call, implemented reply send + hot-lead alert dispatch, added Workspace auto-reply settings (migration 222 + API + UI), fixed tests. Unit/integration tests green; frontend tsc/biome green. Awaiting re-review / gates.
   24-7: ready-for-dev  # Multi-Channel Drip Outreach Campaign Engine (Zalo ZNS + Telegram + Email Cadence) — split from 24-1; extends Sequence bounded context from Story 24.1; story file ready 2026-08-17.
   24-8: backlog  # Browser Operator CDP tool for DSH crawl subgraph + Human Live Takeover UI (split 24-8a/24-8b; AD-111)
   epic-24-retrospective: optional
@@ -274,7 +274,7 @@ development_status:
   epic-25: in-progress
   25-1: done  # Multi-Tenant User & Workspace Hub + Scoped Impersonation
   25-2: done  # Manual Credit Adjustment & Refund Desk with Dual-Audit Ledger
-  25-3: ready-for-dev  # Affiliate Partner Payout Desk & Anti-Fraud Engine
+  25-3: done  # Affiliate Partner Payout Desk & Anti-Fraud Engine — review patches applied; ruff/pytest/tsc/biome green
   25-4: ready-for-dev  # Realtime LLM Token Cost, Proxy Health & Celery Queue Telemetry
   25-5: ready-for-dev  # Dynamic Scraper Rule Engine & ReDoS Sandbox
   25-6: ready-for-dev  # Security Audit Trail Logs & In-App Broadcast Announcements
@@ -296,7 +296,7 @@ development_status:
   epic-26-retrospective: optional
 
   # === Epic 27: Full-Stack Web App Builder, Instant Hosting & Creative Studio ===
-  epic-27: ready-for-dev
+  epic-27: in-progress
   27-1: ready-for-dev  # Full-Stack Web App Builder, 1-Click Hosting *.nowing.space & Design View Mark Tool (AD-113, AD-114)
   27-2: ready-for-dev  # Manus Slides + Speaker Diarization — split into PPTX/Marp export and diarization; reuse video_presentation/reports/stt_service
   epic-27-retrospective: optional

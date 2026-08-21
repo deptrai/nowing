@@ -41,7 +41,18 @@ _Curated long-term knowledge for Nowing E2E Browser Testing._
     - `Automation Flow`: Connected to `automationsApiService.createAutomation()` to save cron triggers.
     - `Scraper Health`: Connected to `scraperPlatformAccountsApiService.list()` and `capture()`.
   - Floating Bulk Action Bar: `aside[data-testid='floating-bulk-action-bar']` slides in from bottom at `z-[60]` when $\ge 2$ checkboxes selected.
-  - Flyout Detail Drawer: `aside[data-testid='lead-detail-flyout-drawer']` (480px) opens on row click with Fit Score bars, 1-click Zalo outreach, Click-to-call link (`tel:`), and invalid phone report trigger.
+  - **Flyout Detail Drawer:** `aside[data-testid='lead-detail-flyout-drawer']` (480px) opens on row click with Fit Score bars, 1-click Zalo outreach, Click-to-call link (`tel:`), and invalid phone report trigger.
+
+## Story 24.6 Live Browser Verification — Two-Way AI Outreach Auto-Reply Settings (2026-08-22)
+- **Flow:** Login as `e2e-test@nowing.net` → Navigate to `http://localhost:3000/dashboard/1/user-settings/messaging-channels`.
+- **Observed:**
+  - The **AI Tự Động Trả Lời Tin Nhắn 24/7 (Two-Way Auto-Reply Agent)** card renders prominently at the bottom of Messaging Channels with green indicator dot and 4 quality badges (`RAG Cosine >= 0.75 Grounding`, `Anti-Hallucination Safe Fallback`, `3s Debounce Buffer`, `24h Human Takeover Pause`).
+  - Toggling the switch updates state and displays toast notification `Telegram run notifications enabled`.
+- **Console / Network:** 0 errors, clean SSE / Zero-cache sync.
+- **Screenshots:**
+  - `auto_reply_messaging_settings.png` (Default state)
+  - `auto_reply_messaging_settings_toggled.png` (Toggled ON with success toast)
+
 - **Telegram MTProto Userbot Client & Monitored Channels (Epic 22):**
   - Page: `/admin/scraper-accounts` (requires `User.is_superuser=True`).
   - Tabs: `All Accounts`, `Telegram`, `Channels`.

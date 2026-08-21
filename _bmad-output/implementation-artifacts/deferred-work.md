@@ -1,3 +1,9 @@
+## Deferred from: code review of 24-6-two-way-ai-outreach-auto-reply-agent (2026-08-22)
+
+- **Finding:** Zalo signature verification (INV-23.11) is pre-existing in `app/gateway/zalo/webhook.py` and not changed by this story.
+  - **Action:** Marked `[x] [Review][Defer]` in `24-6-two-way-ai-outreach-auto-reply-agent.md`.
+  - **Reason / when to revisit:** Pre-existing webhook signature verification; revisit when Story 24.6 explicitly touches Zalo webhook handlers.
+
 ## Deferred from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-08-21)
 
 - **Finding:** `FakeAsyncSession` seam in `workspace_credit_service.py:141-146,322-328` (`_deduct_credits_fake`, `_record_spend_fake`) lets unit tests exercise fake paths instead of production `UPDATE ... WHERE ... RETURNING` SQL.
