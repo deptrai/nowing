@@ -102,7 +102,7 @@ jobs:
           if [ "${{ github.event.inputs.skip-noise-operators || 'false' }}" = "true" ]; then
             SKIP_NOISE="--skip-noise-operators"
           fi
-          python scripts/mutation-gate.py \
+          nowing_backend/.venv/bin/python scripts/mutation-gate.py \
             --services ${{ matrix.service }} \
             --timeout ${{ github.event.inputs.timeout || '120' }} \
             --project-root . \

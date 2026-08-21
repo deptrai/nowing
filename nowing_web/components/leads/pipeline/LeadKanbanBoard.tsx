@@ -275,6 +275,7 @@ export const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = ({ workspaceId })
 	const loadData = useCallback(async () => {
 		try {
 			setIsLoading(true);
+			setConflictNotice(null);
 			const [fetchedStages, leadListRes] = await Promise.all([
 				leadPipelineApiService.listStages(workspaceId),
 				leadsApiService.listLeads(workspaceId, { limit: 200 }),
@@ -283,6 +284,8 @@ export const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = ({ workspaceId })
 			setLeads(leadListRes.items || []);
 		} catch (err) {
 			console.error("Failed to load pipeline data", err);
+			const message = err instanceof Error ? err.message : String(err);
+			setConflictNotice(`Lỗi tải dữ liệu pipeline: ${message}. Vui lòng thử lại.`);
 		} finally {
 			setIsLoading(false);
 		}
@@ -413,18 +416,31 @@ export const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = ({ workspaceId })
 					(err as { response?: { status?: number } }).response?.status === 409);
 
 			if (is409 && typeof err === "object" && err !== null) {
-				const data =
-					(err as { data?: { current_version?: number; current_stage_id?: string } }).data ??
-					(err as { response?: { data?: { current_version?: number; current_stage_id?: string } } })
-						.response?.data;
-				if (data?.current_version && data?.current_stage_id) {
+				type ConflictPayload = {
+					current_version?: number;
+					current_stage_id?: string;
+					detail?: {
+						current_version?: number;
+						current_stage_id?: string;
+					};
+				};
+				const errorData =
+					(err as { data?: ConflictPayload }).data ??
+					(err as { response?: { data?: ConflictPayload } }).response?.data ??
+					{};
+				const currentVersion = errorData.current_version ?? errorData.detail?.current_version;
+				const currentStageId = errorData.current_stage_id ?? errorData.detail?.current_stage_id;
+
+				if (currentVersion != null && currentStageId != null) {
+					const remoteStage = stages.find((s) => s.id === currentStageId);
 					setLeads((prev) =>
 						prev.map((l) =>
 							l.id === active.id
 								? {
 										...l,
-										version: data.current_version ?? l.version,
-										stage_id: data.current_stage_id ?? l.stage_id,
+										version: currentVersion,
+										stage_id: currentStageId,
+										status: remoteStage ? remoteStage.slug : previousStatus,
 									}
 								: l
 						)
@@ -434,7 +450,7 @@ export const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = ({ workspaceId })
 
 			setConflictNotice(
 				is409
-					? `Xung đột đồng thời (OCC): Lead "${leadToMove.company_name}" vừa được chỉnh sửa bởi thành viên khác. Đã tự động hoàn tác để đảm bảo toàn vẹn dữ liệu.`
+					? `Xung đột đồng thời (OCC): Lead "${leadToMove.company_name}" vừa được chỉnh sửa bởi thành viên khác. Đã tự động cập nhật trạng thái mới nhất.`
 					: `Lỗi khi chuyển trạng thái lead "${leadToMove.company_name}". Đã hoàn tác.`
 			);
 

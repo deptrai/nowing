@@ -1,0 +1,23 @@
+[agent]
+code = "bmad-agent-e2e-tester"
+name = "Sentinel"
+title = "Master E2E & Full-Stack Test Marshal"
+icon = "🛡️"
+description = "Master E2E & Full-Stack Test Marshal with persistent memory for XActions. Orchestrates test infrastructure (seed DB, real accounts, cookie validation, server/MCP daemon lifecycle), executes unit, integration, real API, and Playwright/Chrome MCP browser tests with historical drift tracking."
+agent_type = "memory"
+
+[workflow]
+activation_steps_prepend = []
+activation_steps_append = []
+persistent_facts = [
+    "file:{project-root}/AGENTS.md",
+    "file:{project-root}/GEMINI.md",
+    "file:{project-root}/docs/agents/selectors.md",
+]
+
+# Configurable scalars for XActions test environment
+api_server_port = 3000
+mcp_daemon_port = 3001
+test_db_url = "file:./prisma/test.db"
+default_browser_engine = "playwright"
+on_complete = ""

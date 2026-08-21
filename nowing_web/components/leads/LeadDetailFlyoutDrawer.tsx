@@ -49,6 +49,7 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 	onPhoneChange,
 }) => {
 	const [activities, setActivities] = useState<LeadActivityLog[]>([]);
+	const [timelineError, setTimelineError] = useState<string | null>(null);
 	const [newNote, setNewNote] = useState("");
 	const [isSubmittingNote, setIsSubmittingNote] = useState(false);
 	const [leadUnlocked, setLeadUnlocked] = useState(lead?.is_unlocked ?? false);
@@ -76,10 +77,24 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 
 	useEffect(() => {
 		if (isOpen && lead?.id) {
+			setTimelineError(null);
 			leadPipelineApiService
 				.listActivities(workspaceId, lead.id)
 				.then((data) => setActivities(data || []))
-				.catch(() => setActivities([]));
+				.catch((err) => {
+					const apiErr = err as {
+						data?: { detail?: string };
+						response?: { data?: { detail?: string } };
+						message?: string;
+					};
+					const message =
+						apiErr?.data?.detail ??
+						apiErr?.response?.data?.detail ??
+						apiErr?.message ??
+						"Không thể tải lịch sử tương tác";
+					setTimelineError(message);
+					setActivities([]);
+				});
 		}
 	}, [isOpen, lead?.id, workspaceId]);
 
@@ -355,7 +370,12 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 
 							{/* Activity Timeline List */}
 							<div className="space-y-3 relative before:absolute before:inset-0 before:left-2.5 before:w-0.5 before:bg-border/60">
-								{activities.length === 0 ? (
+								{timelineError ? (
+									<div className="text-xs text-rose-600 dark:text-rose-400 pl-6 py-2 flex items-center gap-1.5">
+										<AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+										<span>{timelineError}</span>
+									</div>
+								) : activities.length === 0 ? (
 									<div className="text-xs text-muted-foreground pl-6 py-2">
 										Chưa có tương tác ghi nhận.
 									</div>

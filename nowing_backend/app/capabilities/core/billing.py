@@ -68,7 +68,16 @@ async def _debit_with_workspace_spend_cap(
             required_micros=exc.requested,
         ) from exc
 
-    return await wallet_credit.apply_debit(session, user_id, cost_micros)
+    try:
+        return await wallet_credit.apply_debit(session, user_id, cost_micros)
+    except Exception:
+        # Undo the monthly-spent increment if the wallet debit failed.
+        await credit_svc.refund_member_spend(
+            workspace_id=workspace_id,
+            user_id=user_id,
+            amount_micros=cost_micros,
+        )
+        raise
 
 
 # Each platform meter -> the config knob holding its micro-USD per-item rate.

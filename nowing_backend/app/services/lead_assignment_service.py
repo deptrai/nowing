@@ -71,7 +71,6 @@ class LeadAssignmentService:
     ) -> None:
         self.session = session
         self.redis = redis_client
-        self._in_memory_cursors: dict[int, int] = {}
 
     async def get_eligible_members(
         self,
@@ -137,6 +136,11 @@ class LeadAssignmentService:
         """Assign a single lead using round-robin distribution."""
         if self.session is None:
             raise NoEligibleAssigneeError(workspace_id=workspace_id)
+        if self.redis is None:
+            raise NoEligibleAssigneeError(
+                workspace_id=workspace_id,
+                reason="Redis is required for round-robin cursor",
+            )
 
         lead = await self.session.get(Lead, (lead_id, workspace_id))
         if lead is None:
@@ -144,54 +148,176 @@ class LeadAssignmentService:
                 workspace_id=workspace_id,
                 reason=f"Lead {lead_id} not found",
             )
+        if lead.status in ("lost", "won") or lead.assigned_to_user_id is not None:
+            raise NoEligibleAssigneeError(
+                workspace_id=workspace_id,
+                reason=f"Lead {lead_id} is terminal or already assigned",
+            )
 
         eligible = await self.get_eligible_members(workspace_id=workspace_id)
         if not eligible:
             raise NoEligibleAssigneeError(workspace_id=workspace_id)
 
-        # Monotonic cursor increment via Redis (or in-memory fallback)
-        cursor_key = f"lead_assignment:cursor:{workspace_id}"
-        if self.redis is not None:
-            raw_idx = await self.redis.incr(cursor_key)
-            idx = (raw_idx - 1) % len(eligible)
-        else:
-            current = self._in_memory_cursors.get(workspace_id, 0) + 1
-            self._in_memory_cursors[workspace_id] = current
-            idx = (current - 1) % len(eligible)
+        assignee = await self._select_next_assignee(
+            workspace_id=workspace_id,
+            eligible=eligible,
+        )
 
-        assignee = eligible[idx]
+        return await self._assign_to_member(
+            workspace_id=workspace_id,
+            lead=lead,
+            target_user_id=assignee.user_id,
+            actor_user_id=actor_user_id,
+            assigned_by="auto_round_robin",
+            reason=None,
+            exclude_lead_id=None,
+        )
+
+    async def _select_next_assignee(
+        self,
+        *,
+        workspace_id: int,
+        eligible: list[MemberLeadCapacity],
+    ) -> MemberLeadCapacity:
+        """Advance the monotonic Redis cursor and return the selected member."""
+        if self.redis is None:
+            raise NoEligibleAssigneeError(
+                workspace_id=workspace_id,
+                reason="Redis is required for round-robin cursor",
+            )
+
+        cursor_key = f"lead_assignment:cursor:{workspace_id}"
+        raw_idx = await self.redis.incr(cursor_key)
+        idx = (raw_idx - 1) % len(eligible)
+
+        # If the cursor lands on a member whose local counter is already at capacity,
+        # walk forward to the next member. The Redis slot is consumed regardless.
+        tries = 0
+        while eligible[idx].current_leads >= eligible[idx].max_capacity and tries < len(eligible):
+            idx = (idx + 1) % len(eligible)
+            tries += 1
+        if tries == len(eligible):
+            raise NoEligibleAssigneeError(
+                workspace_id=workspace_id,
+                reason="All eligible members are at lead capacity",
+            )
+
+        return eligible[idx]
+
+    async def _assign_to_member(
+        self,
+        *,
+        workspace_id: int,
+        lead: Lead,
+        target_user_id: UUID,
+        actor_user_id: UUID | None,
+        assigned_by: str,
+        reason: str | None,
+        exclude_lead_id: UUID | None,
+    ) -> AssignmentResult:
+        """Persist a lead assignment under an atomic capacity guard."""
+        if self.session is None:
+            raise NoEligibleAssigneeError(workspace_id=workspace_id)
+
+        # Atomic capacity guard: lock the target membership row and re-count leads.
+        membership = (
+            await self.session.execute(
+                select(WorkspaceMembership)
+                .where(
+                    WorkspaceMembership.workspace_id == workspace_id,
+                    WorkspaceMembership.user_id == target_user_id,
+                )
+                .with_for_update()
+            )
+        ).scalar_one_or_none()
+
+        if membership is None:
+            raise NoEligibleAssigneeError(
+                workspace_id=workspace_id,
+                reason=f"Target member {target_user_id} not found",
+            )
+        if (
+            membership.status != "ACTIVE"
+            or not membership.is_accepting_leads
+        ):
+            raise NoEligibleAssigneeError(
+                workspace_id=workspace_id,
+                reason=f"Target member {target_user_id} is not accepting leads",
+            )
+
+        max_capacity = membership.lead_capacity if membership.lead_capacity is not None else 50
+
+        count_filters = [
+            Lead.workspace_id == workspace_id,
+            Lead.assigned_to_user_id == target_user_id,
+            Lead.status.notin_(["lost", "won"]),
+        ]
+        if exclude_lead_id is not None:
+            count_filters.append(Lead.id != exclude_lead_id)
+
+        count_stmt = select(func.count(Lead.id)).where(*count_filters)
+        count_res = await self.session.execute(count_stmt)
+        current_leads = count_res.scalar() or 0
+
+        if current_leads >= max_capacity:
+            raise NoEligibleAssigneeError(
+                workspace_id=workspace_id,
+                reason=f"Target member {target_user_id} is at lead capacity ({current_leads}/{max_capacity})",
+            )
+
+        # Inactivate any existing active assignment records for this lead before
+        # inserting the new one (prevents duplicate active LeadAssignment rows).
+        existing = (
+            await self.session.execute(
+                select(LeadAssignment).where(
+                    LeadAssignment.workspace_id == workspace_id,
+                    LeadAssignment.lead_id == lead.id,
+                    LeadAssignment.status == "assigned",
+                )
+            )
+        ).scalars().all()
+        for prior in existing:
+            prior.status = "inactive"
 
         # Update the lead owner and record the audit trail.
-        lead.assigned_to_user_id = assignee.user_id
+        lead.assigned_to_user_id = target_user_id
 
         assignment = LeadAssignment(
             workspace_id=workspace_id,
-            lead_id=lead_id,
-            assigned_to_user_id=assignee.user_id,
+            lead_id=lead.id,
+            assigned_to_user_id=target_user_id,
             assigned_by_user_id=actor_user_id,
-            assigned_by="auto_round_robin",
+            assigned_by=assigned_by,
             status="assigned",
+            reason=reason,
         )
         self.session.add(assignment)
 
+        activity_type = "reassigned" if assigned_by == "manual_reassignment" else "assigned"
+        title = (
+            f"Chuyển lead cho nhân viên {target_user_id}"
+            if assigned_by == "manual_reassignment"
+            else f"Tự động phân bổ lead cho nhân viên {target_user_id}"
+        )
         log = LeadActivityLog(
             workspace_id=workspace_id,
-            lead_id=lead_id,
+            lead_id=lead.id,
             actor_user_id=actor_user_id,
-            activity_type="assigned",
-            title=f"Tự động phân bổ lead cho nhân viên {assignee.user_id}",
+            activity_type=activity_type,
+            title=title,
             details={
-                "assigned_to_user_id": str(assignee.user_id),
-                "assigned_by": "auto_round_robin",
+                "assigned_to_user_id": str(target_user_id),
+                "assigned_by": assigned_by,
+                "reason": reason,
             },
         )
         self.session.add(log)
 
         return AssignmentResult(
-            lead_id=lead_id,
+            lead_id=lead.id,
             workspace_id=workspace_id,
-            assigned_to_user_id=assignee.user_id,
-            assigned_by="auto_round_robin",
+            assigned_to_user_id=target_user_id,
+            assigned_by=assigned_by,
             status="assigned",
         )
 
@@ -202,16 +328,54 @@ class LeadAssignmentService:
         lead_ids: list[UUID],
     ) -> BatchAssignmentResult:
         """Distribute a batch of leads atomically across active members."""
+        if self.session is None:
+            raise NoEligibleAssigneeError(workspace_id=workspace_id)
+        if self.redis is None:
+            raise NoEligibleAssigneeError(
+                workspace_id=workspace_id,
+                reason="Redis is required for round-robin cursor",
+            )
+
+        eligible = await self.get_eligible_members(workspace_id=workspace_id)
+
         assignments: list[AssignmentResult] = []
         unassigned: list[UUID] = []
 
         for lead_id in lead_ids:
+            lead = await self.session.get(Lead, (lead_id, workspace_id))
+            if lead is None:
+                unassigned.append(lead_id)
+                continue
+            if lead.status in ("lost", "won") or lead.assigned_to_user_id is not None:
+                unassigned.append(lead_id)
+                continue
+            if not eligible:
+                unassigned.append(lead_id)
+                continue
+
             try:
-                res = await self.assign_lead(
+                assignee = await self._select_next_assignee(
                     workspace_id=workspace_id,
-                    lead_id=lead_id,
+                    eligible=eligible,
                 )
-                assignments.append(res)
+            except NoEligibleAssigneeError:
+                unassigned.append(lead_id)
+                continue
+
+            try:
+                result = await self._assign_to_member(
+                    workspace_id=workspace_id,
+                    lead=lead,
+                    target_user_id=assignee.user_id,
+                    actor_user_id=None,
+                    assigned_by="auto_round_robin",
+                    reason=None,
+                    exclude_lead_id=None,
+                )
+                assignments.append(result)
+                # Update the in-memory counter so the next lead in the batch sees
+                # the capacity change without an extra COUNT round-trip.
+                assignee.current_leads += 1
             except NoEligibleAssigneeError:
                 unassigned.append(lead_id)
 
@@ -241,78 +405,23 @@ class LeadAssignmentService:
                 workspace_id=workspace_id,
                 reason=f"Lead {lead_id} not found",
             )
-
-        # Validate the target member is active and accepting leads.
-        target_membership = await self.session.get(
-            WorkspaceMembership, (workspace_id, target_user_id)
-        )
-        if target_membership is None:
+        if lead.status in ("lost", "won"):
             raise NoEligibleAssigneeError(
                 workspace_id=workspace_id,
-                reason=f"Target member {target_user_id} not found",
+                reason=f"Lead {lead_id} is terminal",
             )
-        if (
-            target_membership.status != "ACTIVE"
-            or not target_membership.is_accepting_leads
-        ):
+        if lead.assigned_to_user_id == target_user_id:
             raise NoEligibleAssigneeError(
                 workspace_id=workspace_id,
-                reason=f"Target member {target_user_id} is not accepting leads",
+                reason="Cannot reassign lead to its current owner",
             )
 
-        # Check manual reassignment would not exceed the member's lead capacity.
-        count_stmt = select(func.count(Lead.id)).where(
-            Lead.workspace_id == workspace_id,
-            Lead.assigned_to_user_id == target_user_id,
-            Lead.status.notin_(["lost", "won"]),
-        )
-        count_res = await self.session.execute(count_stmt)
-        current_leads = count_res.scalar() or 0
-        max_capacity = (
-            target_membership.lead_capacity
-            if target_membership.lead_capacity is not None
-            else 50
-        )
-        if current_leads >= max_capacity:
-            raise NoEligibleAssigneeError(
-                workspace_id=workspace_id,
-                reason=f"Target member {target_user_id} is at lead capacity ({current_leads}/{max_capacity})",
-            )
-
-        lead.assigned_to_user_id = target_user_id
-
-        assignment = LeadAssignment(
+        return await self._assign_to_member(
             workspace_id=workspace_id,
-            lead_id=lead_id,
-            assigned_to_user_id=target_user_id,
-            assigned_by_user_id=actor_user_id,
-            assigned_by="manual_reassignment",
-            status="assigned",
-            reason=reason,
-        )
-        self.session.add(assignment)
-
-        log = LeadActivityLog(
-            workspace_id=workspace_id,
-            lead_id=lead_id,
+            lead=lead,
+            target_user_id=target_user_id,
             actor_user_id=actor_user_id,
-            activity_type="reassigned",
-            title=f"Chuyển lead cho nhân viên {target_user_id}",
-            details={
-                "target_user_id": str(target_user_id),
-                "actor_user_id": str(actor_user_id),
-                "reason": reason,
-            },
-        )
-        self.session.add(log)
-
-        return AssignmentResult(
-            lead_id=lead_id,
-            workspace_id=workspace_id,
-            assigned_to_user_id=target_user_id,
             assigned_by="manual_reassignment",
-            status="assigned",
+            reason=reason,
+            exclude_lead_id=lead.id,
         )
-
-
-lead_assignment_service = LeadAssignmentService()

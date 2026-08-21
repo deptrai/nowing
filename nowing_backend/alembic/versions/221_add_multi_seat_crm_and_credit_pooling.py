@@ -91,21 +91,10 @@ def upgrade() -> None:
             {"t": table_name},
         ).scalar()
         if has_table:
-            # Check column existence before adding
-            cols = {
-                row[0]
-                for row in conn.execute(
-                    text("SELECT column_name FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = :t"),
-                    {"t": table_name},
-                ).fetchall()
-            }
-            if "stage_id" not in cols:
-                conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN stage_id UUID;"))
-            if "assigned_to_user_id" not in cols:
-                conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN assigned_to_user_id UUID REFERENCES \"user\"(id) ON DELETE SET NULL;"))
-            if "version" not in cols:
-                conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN version INTEGER NOT NULL DEFAULT 1;"))
-            # Create indexes even if the columns existed before; IF NOT EXISTS is idempotent.
+            # Idempotent raw DDL: column/index additions use IF NOT EXISTS guards.
+            conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS stage_id UUID;"))
+            conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS assigned_to_user_id UUID REFERENCES \"user\"(id) ON DELETE SET NULL;"))
+            conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 1;"))
             conn.execute(text(f"CREATE INDEX IF NOT EXISTS ix_{table_name}_assigned_to_user_id ON {table_name} (assigned_to_user_id);"))
             conn.execute(text(f"CREATE INDEX IF NOT EXISTS ix_{table_name}_stage_id ON {table_name} (stage_id);"))
 
@@ -258,9 +247,11 @@ def upgrade() -> None:
         ["workspace_id", "lead_id", "created_at"],
     )
 
-    # 7. Apply RLS to new CRM tables
-    for table in ("lead_pipeline_stages", "lead_assignments", "lead_activity_logs"):
-        _create_rls(table)
+    # 7. Apply RLS to new CRM tables and strengthen leads visibility
+    _create_lead_rls("leads")
+    _create_lead_assignment_rls("lead_assignments")
+    _create_lead_activity_log_rls("lead_activity_logs")
+    _create_rls("lead_pipeline_stages")
 
     # 8. Reconcile zero publication
     with contextlib.suppress(Exception):
@@ -271,6 +262,49 @@ def _tenant_predicate(table: str) -> str:
     return f"""
         {table}.workspace_id IS NOT DISTINCT FROM NULLIF(current_setting('app.workspace_id', true), '')::int
         AND {table}.client_id IS NOT DISTINCT FROM NULLIF(current_setting('app.current_client_id', true), '')
+    """
+
+
+def _is_lead_admin_expr() -> str:
+    """GUC expression: 'true' when the caller is a workspace lead admin."""
+    return "COALESCE(NULLIF(current_setting('app.is_lead_admin', true), ''), 'false') = 'true'"
+
+
+def _current_user_id_expr() -> str:
+    """GUC expression returning the calling user's UUID or NULL."""
+    return "NULLIF(current_setting('app.current_user_id', true), '')::uuid"
+
+
+def _lead_visibility_predicate(table: str) -> str:
+    """Tenant predicate plus lead-assignment visibility for leads/lead_assignments."""
+    tenant = _tenant_predicate(table)
+    admin = _is_lead_admin_expr()
+    user_id = _current_user_id_expr()
+    return f"""
+        {tenant}
+        AND (
+            {admin}
+            OR {table}.assigned_to_user_id IS NOT DISTINCT FROM {user_id}
+        )
+    """
+
+
+def _lead_activity_log_visibility_predicate(table: str) -> str:
+    """Tenant predicate plus visibility only if the related lead is visible."""
+    tenant = _tenant_predicate(table)
+    admin = _is_lead_admin_expr()
+    user_id = _current_user_id_expr()
+    return f"""
+        {tenant}
+        AND (
+            {admin}
+            OR EXISTS (
+                SELECT 1 FROM leads
+                WHERE leads.id = {table}.lead_id
+                  AND leads.workspace_id = {table}.workspace_id
+                  AND leads.assigned_to_user_id IS NOT DISTINCT FROM {user_id}
+            )
+        )
     """
 
 
@@ -302,16 +336,94 @@ def _create_rls(table: str) -> None:
     op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY;")
 
 
+def _create_lead_rls(table: str) -> None:
+    """Workspace/client tenant RLS with role/assignment lead visibility."""
+    _drop_policies(table)
+    predicate = _lead_visibility_predicate(table)
+    op.execute(f"""
+        CREATE POLICY {table}_tenant_read_policy ON {table}
+            AS PERMISSIVE
+            FOR SELECT
+            TO PUBLIC
+            USING ({predicate});
+    """)
+    op.execute(f"""
+        CREATE POLICY {table}_tenant_write_policy ON {table}
+            AS PERMISSIVE
+            FOR ALL
+            TO PUBLIC
+            USING ({predicate})
+            WITH CHECK ({predicate});
+    """)
+    op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;")
+    op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY;")
+
+
+def _create_lead_assignment_rls(table: str) -> None:
+    """Lead assignments inherit the same visibility as leads."""
+    _create_lead_rls(table)
+
+
+def _create_lead_activity_log_rls(table: str) -> None:
+    """Activity logs visible only for visible leads."""
+    _drop_policies(table)
+    predicate = _lead_activity_log_visibility_predicate(table)
+    op.execute(f"""
+        CREATE POLICY {table}_tenant_read_policy ON {table}
+            AS PERMISSIVE
+            FOR SELECT
+            TO PUBLIC
+            USING ({predicate});
+    """)
+    op.execute(f"""
+        CREATE POLICY {table}_tenant_write_policy ON {table}
+            AS PERMISSIVE
+            FOR ALL
+            TO PUBLIC
+            USING ({predicate})
+            WITH CHECK ({predicate});
+    """)
+    op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;")
+    op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY;")
+
+
+def _create_legacy_lead_rls(table: str) -> None:
+    """Workspace-only RLS used during downgrade."""
+    _drop_policies(table)
+    predicate = _tenant_predicate(table)
+    op.execute(f"""
+        CREATE POLICY {table}_tenant_read_policy ON {table}
+            AS PERMISSIVE
+            FOR SELECT
+            TO PUBLIC
+            USING ({predicate});
+    """)
+    op.execute(f"""
+        CREATE POLICY {table}_tenant_write_policy ON {table}
+            AS PERMISSIVE
+            FOR ALL
+            TO PUBLIC
+            USING ({predicate})
+            WITH CHECK ({predicate});
+    """)
+    op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;")
+    op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY;")
+
+
 def downgrade() -> None:
+    # Revert leads to workspace-only RLS first.
+    _drop_policies("leads")
+    _create_legacy_lead_rls("leads")
+
     for table in ("lead_activity_logs", "lead_assignments", "lead_pipeline_stages"):
         _drop_policies(table)
         op.drop_table(table)
 
     for table_name in ("leads", "leads_partitioned"):
         try:
-            op.drop_column(table_name, "version")
-            op.drop_column(table_name, "assigned_to_user_id")
-            op.drop_column(table_name, "stage_id")
+            op.execute(text(f"ALTER TABLE {table_name} DROP COLUMN IF EXISTS version;"))
+            op.execute(text(f"ALTER TABLE {table_name} DROP COLUMN IF EXISTS assigned_to_user_id;"))
+            op.execute(text(f"ALTER TABLE {table_name} DROP COLUMN IF EXISTS stage_id;"))
         except Exception:
             pass
 

@@ -6,6 +6,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,8 +17,10 @@ from app.db import (
     Lead,
     LeadActivityLog,
     LeadPipelineStage,
+    Permission,
     WorkspaceMembership,
     get_async_session,
+    has_permission,
 )
 from app.redis_client import get_redis_client
 from app.schemas.lead_pipeline import (
@@ -52,6 +55,63 @@ DEFAULT_STAGES = [
     {"name": "Đã chốt", "slug": "won", "position": 3, "color": "#10B981"},
     {"name": "Hủy / Không nhu cầu", "slug": "lost", "position": 4, "color": "#EF4444"},
 ]
+
+
+def _can_view_all_leads(membership: WorkspaceMembership) -> bool:
+    """Return True for owners and members with lead-management permissions."""
+    if membership.is_owner:
+        return True
+    if membership.role and membership.role.permissions:
+        perms = membership.role.permissions
+        return has_permission(perms, Permission.LEADS_WRITE.value) or has_permission(
+            perms, Permission.CRM_WRITE.value
+        )
+    return False
+
+
+def _lead_visibility_filter(user_id: Any, membership: WorkspaceMembership) -> Any:
+    """Return a Lead filter clause that restricts non-admin members to assigned leads."""
+    if _can_view_all_leads(membership):
+        return True
+    return Lead.assigned_to_user_id == user_id
+
+
+async def _require_lead_visible(
+    session: AsyncSession,
+    workspace_id: int,
+    lead_id: UUID,
+    membership: WorkspaceMembership,
+) -> Lead:
+    """Fetch a lead and fail closed if the caller may not view it."""
+    lead = await session.get(Lead, (lead_id, workspace_id))
+    if lead is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Lead {lead_id} not found in workspace {workspace_id}",
+        )
+    user_id = membership.user_id
+    if not _can_view_all_leads(membership) and lead.assigned_to_user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Lead {lead_id} not found in workspace {workspace_id}",
+        )
+    return lead
+
+
+async def _set_lead_tenant_context(
+    session: AsyncSession,
+    workspace_id: int,
+    membership: WorkspaceMembership,
+) -> None:
+    """Set RLS GUCs including the calling user's lead visibility."""
+    user_id = str(membership.user_id) if membership and membership.user_id else None
+    is_lead_admin = "true" if _can_view_all_leads(membership) else "false"
+    await set_request_tenant_context(
+        session,
+        workspace_id=workspace_id,
+        user_id=user_id,
+        is_lead_admin=is_lead_admin,
+    )
 
 
 async def _ensure_default_stages(
@@ -103,8 +163,8 @@ async def list_pipeline_stages(
     session: AsyncSession = Depends(get_async_session),
 ) -> list[LeadPipelineStage]:
     """Retrieve Kanban pipeline stages ordered by position."""
-    await set_request_tenant_context(session, workspace_id=workspace_id)
-    await check_workspace_access(session, auth, workspace_id)
+    membership = await check_workspace_access(session, auth, workspace_id)
+    await _set_lead_tenant_context(session, workspace_id, membership)
     stages = await _ensure_default_stages(session, workspace_id)
     return stages
 
@@ -121,8 +181,8 @@ async def create_pipeline_stage(
     session: AsyncSession = Depends(get_async_session),
 ) -> LeadPipelineStage:
     """Create a custom Kanban stage for the workspace."""
-    await set_request_tenant_context(session, workspace_id=workspace_id)
-    await check_workspace_access(session, auth, workspace_id)
+    membership = await check_workspace_access(session, auth, workspace_id)
+    await _set_lead_tenant_context(session, workspace_id, membership)
 
     existing = await session.execute(
         select(LeadPipelineStage).where(
@@ -153,7 +213,7 @@ async def create_pipeline_stage(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Stage slug '{payload.slug}' already exists in this workspace",
         ) from None
-    await set_request_tenant_context(session, workspace_id=workspace_id)
+    await _set_lead_tenant_context(session, workspace_id, membership)
     await session.refresh(stage)
     return stage
 
@@ -168,13 +228,13 @@ async def transition_lead_stage(
     payload: LeadStageTransitionRequest,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
-) -> LeadStageTransitionResponse:
+) -> LeadStageTransitionResponse | JSONResponse:
     """Move lead across Kanban stages with Optimistic Concurrency Control (OCC).
 
     Returns 409 Conflict if expected_version does not match current DB version.
     """
-    await set_request_tenant_context(session, workspace_id=workspace_id)
-    await check_workspace_access(session, auth, workspace_id)
+    membership = await check_workspace_access(session, auth, workspace_id)
+    await _set_lead_tenant_context(session, workspace_id, membership)
 
     # Fetch stage first (no update if invalid)
     stage_stmt = select(LeadPipelineStage).where(
@@ -188,6 +248,9 @@ async def transition_lead_stage(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Stage {payload.stage_id} not found in workspace {workspace_id}",
         )
+
+    # Verify the lead is visible to the caller before allowing any transition.
+    await _require_lead_visible(session, workspace_id, lead_id, membership)
 
     # Atomic OCC update: version must match exactly
     prev_version = payload.expected_version
@@ -210,17 +273,27 @@ async def transition_lead_stage(
     if row is None:
         # Conflict: fetch current version/stage for 409 body
         current = await session.execute(
-            select(Lead.version, Lead.stage_id).where(
+            select(Lead.id, Lead.version, Lead.stage_id, Lead.assigned_to_user_id).where(
                 Lead.id == lead_id,
                 Lead.workspace_id == workspace_id,
             )
         )
-        current_version, current_stage_id = current.one_or_none() or (1, None)
-        raise HTTPException(
+        current_row = current.one_or_none()
+        if current_row is None:
+            # Lead does not exist at all: return 404, not 409.
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Lead {lead_id} not found in workspace {workspace_id}",
+            ) from None
+        current_version, current_stage_id = current_row[1], current_row[2]
+        return JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
-            detail={
+            content={
+                "detail": (
+                    f"Lead was modified by another member (DB version: {current_version}, "
+                    f"expected: {payload.expected_version})."
+                ),
                 "error_code": "concurrency_conflict",
-                "message": f"Lead was modified by another member (DB version: {current_version}, expected: {payload.expected_version}).",
                 "current_version": current_version,
                 "current_stage_id": str(current_stage_id) if current_stage_id else None,
             },
@@ -271,15 +344,10 @@ async def list_lead_activities(
     session: AsyncSession = Depends(get_async_session),
 ) -> list[LeadActivityLog]:
     """Chronological timeline of all interactions with the lead."""
-    await set_request_tenant_context(session, workspace_id=workspace_id)
-    await check_workspace_access(session, auth, workspace_id)
+    membership = await check_workspace_access(session, auth, workspace_id)
+    await _set_lead_tenant_context(session, workspace_id, membership)
 
-    lead = await session.get(Lead, (lead_id, workspace_id))
-    if lead is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Lead {lead_id} not found in workspace {workspace_id}",
-        )
+    await _require_lead_visible(session, workspace_id, lead_id, membership)
 
     stmt = (
         select(LeadActivityLog)
@@ -306,15 +374,10 @@ async def create_lead_activity(
     session: AsyncSession = Depends(get_async_session),
 ) -> LeadActivityLog:
     """Record a manual internal note or interaction log."""
-    await set_request_tenant_context(session, workspace_id=workspace_id)
-    await check_workspace_access(session, auth, workspace_id)
+    membership = await check_workspace_access(session, auth, workspace_id)
+    await _set_lead_tenant_context(session, workspace_id, membership)
 
-    lead = await session.get(Lead, (lead_id, workspace_id))
-    if lead is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Lead {lead_id} not found in workspace {workspace_id}",
-        )
+    await _require_lead_visible(session, workspace_id, lead_id, membership)
 
     log = LeadActivityLog(
         workspace_id=workspace_id,
@@ -326,7 +389,7 @@ async def create_lead_activity(
     )
     session.add(log)
     await session.commit()
-    await set_request_tenant_context(session, workspace_id=workspace_id)
+    await _set_lead_tenant_context(session, workspace_id, membership)
     await session.refresh(log)
     return log
 
@@ -341,19 +404,15 @@ async def assign_or_reassign_lead(
     payload: LeadAssignmentRequest,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    redis_client: Any = Depends(get_redis_client),
 ) -> dict[str, Any]:
     """Manually assign or reassign lead to a designated member."""
-    await set_request_tenant_context(session, workspace_id=workspace_id)
-    await check_workspace_access(session, auth, workspace_id)
+    membership = await check_workspace_access(session, auth, workspace_id)
+    await _set_lead_tenant_context(session, workspace_id, membership)
 
-    lead = await session.get(Lead, (lead_id, workspace_id))
-    if lead is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Lead {lead_id} not found in workspace {workspace_id}",
-        )
+    await _require_lead_visible(session, workspace_id, lead_id, membership)
 
-    svc = LeadAssignmentService(session=session)
+    svc = LeadAssignmentService(session=session, redis_client=redis_client)
     try:
         result = await svc.reassign_lead(
             workspace_id=workspace_id,
@@ -402,8 +461,23 @@ async def assign_leads_batch(
             detail="lead_ids contains duplicates",
         )
 
-    await set_request_tenant_context(session, workspace_id=workspace_id)
-    await check_workspace_access(session, auth, workspace_id)
+    membership = await check_workspace_access(session, auth, workspace_id)
+    await _set_lead_tenant_context(session, workspace_id, membership)
+
+    # Validate every requested lead exists in the workspace.
+    existing_stmt = select(Lead.id).where(
+        Lead.workspace_id == workspace_id,
+        Lead.id.in_(payload.lead_ids),
+    )
+    existing_res = await session.execute(existing_stmt)
+    existing_ids = set(existing_res.scalars().all())
+    missing = [lid for lid in payload.lead_ids if lid not in existing_ids]
+    if missing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Lead IDs not found in workspace: {[str(lead_id) for lead_id in missing]}",
+        )
+
     svc = LeadAssignmentService(session=session, redis_client=redis_client)
     result = await svc.assign_leads_batch(
         workspace_id=workspace_id,
@@ -440,7 +514,8 @@ async def get_my_spend_status(
     if not auth or not auth.user:
         raise HTTPException(status_code=401, detail="Authentication required")
 
-    await check_workspace_access(session, auth, workspace_id)
+    membership = await check_workspace_access(session, auth, workspace_id)
+    await _set_lead_tenant_context(session, workspace_id, membership)
 
     svc = WorkspaceCreditService(session=session)
     try:
@@ -474,8 +549,8 @@ async def update_member_spend_cap(
     session: AsyncSession = Depends(get_async_session),
 ) -> None:
     """Owner/Admin sets monthly spend cap for a workspace member."""
-    await set_request_tenant_context(session, workspace_id=workspace_id)
-    await check_workspace_access(session, auth, workspace_id)
+    membership = await check_workspace_access(session, auth, workspace_id)
+    await _set_lead_tenant_context(session, workspace_id, membership)
     if not await is_workspace_owner(session, auth.user.id, workspace_id):
         raise HTTPException(
             status_code=403, detail="Only workspace owner can set spend cap"
@@ -508,8 +583,8 @@ async def update_member_lead_capacity(
     session: AsyncSession = Depends(get_async_session),
 ) -> None:
     """Configure lead acceptance toggle and max capacity for a member."""
-    await set_request_tenant_context(session, workspace_id=workspace_id)
-    await check_workspace_access(session, auth, workspace_id)
+    membership = await check_workspace_access(session, auth, workspace_id)
+    await _set_lead_tenant_context(session, workspace_id, membership)
     if not await is_workspace_owner(session, auth.user.id, workspace_id):
         raise HTTPException(
             status_code=403, detail="Only workspace owner can set member capacity"

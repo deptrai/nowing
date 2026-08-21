@@ -170,6 +170,9 @@ class FakeAsyncSession:
     async def execute(self, stmt: Any) -> Any:
         return MagicMock()
 
+    async def flush(self) -> None:
+        pass
+
     async def commit(self) -> None:
         self.committed = True
 

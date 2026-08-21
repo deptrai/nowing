@@ -1,0 +1,140 @@
+[
+  {
+    "location": "nowing_backend/app/services/workspace_credit_service.py:148-215",
+    "trigger_condition": "deduct_credits updates balance before atomic member cap guard",
+    "guard_snippet": "execute member monthly_spent UPDATE first, then workspace balance UPDATE, and explicitly rollback on SpendCapExceededError; or use a single conditional UPDATE joining both tables",
+    "potential_consequence": "Balance deducted while cap check fails under concurrency"
+  },
+  {
+    "location": "nowing_backend/app/services/billing_event_service.py:818-847",
+    "trigger_condition": "record_spend raises SpendCapExceededError and BillingEvent staged after apply_debit commits",
+    "guard_snippet": "except SpendCapExceededError as exc: raise InsufficientCreditsError(message=..., balance_micros=max(0, exc.cap_micros - exc.current_spent), required_micros=exc.requested) from exc; add BillingEvent before wallet_credit.apply_debit",
+    "potential_consequence": "500 on cap hit and BillingEvent lost if later commit fails"
+  },
+  {
+    "location": "nowing_backend/app/services/lead_assignment_service.py:208-223",
+    "trigger_condition": "assign_leads_batch calls get_eligible_members inside per-lead loop",
+    "guard_snippet": "fetch eligible members once before the loop and lock capacity across the batch with an atomic insert",
+    "potential_consequence": "N+1 queries and TOCTOU over-allocation beyond capacity"
+  },
+  {
+    "location": "nowing_backend/app/services/lead_assignment_service.py:154-160",
+    "trigger_condition": "Redis client missing falls back to in-memory cursor",
+    "guard_snippet": "if self.redis is None: raise ConfigurationError(\"redis required\") or persist cursor in a backend table",
+    "potential_consequence": "Multi-worker round-robin fairness lost"
+  },
+  {
+    "location": "nowing_backend/app/services/lead_assignment_service.py:284-307",
+    "trigger_condition": "reassign_lead inserts LeadAssignment without upsert or duplicate guard",
+    "guard_snippet": "upsert LeadAssignment on (lead_id, workspace_id) and skip when lead.assigned_to_user_id == target_user_id",
+    "potential_consequence": "Duplicate LeadAssignment rows for one lead"
+  },
+  {
+    "location": "nowing_backend/app/services/lead_assignment_service.py:264-280",
+    "trigger_condition": "target member already owns lead and is at capacity",
+    "guard_snippet": "current_leads = count_res.scalar() - (1 if lead.assigned_to_user_id == target_user_id else 0)",
+    "potential_consequence": "Reassignment rejected for current owner at capacity"
+  },
+  {
+    "location": "nowing_backend/app/services/lead_assignment_service.py:130-148",
+    "trigger_condition": "assign_lead does not check lead already assigned or terminal",
+    "guard_snippet": "if lead.assigned_to_user_id or lead.status in {\"lost\", \"won\"}: raise NoEligibleAssigneeError(...)",
+    "potential_consequence": "Unexpected lead reassignment and duplicate audit logs"
+  },
+  {
+    "location": "nowing_backend/app/routes/lead_pipeline_routes.py:210-227",
+    "trigger_condition": "OCC conflict query for lead returns None",
+    "guard_snippet": "current_row = current.one_or_none(); if not current_row: raise HTTPException(404, \"Lead not found\"); current_version, current_stage_id = current_row",
+    "potential_consequence": "Missing lead returns 409 instead of 404"
+  },
+  {
+    "location": "nowing_backend/app/routes/lead_pipeline_routes.py:259-293",
+    "trigger_condition": "member with only assigned-lead role queries workspace",
+    "guard_snippet": "after check_workspace_access, if not owner/admin: filter Lead and LeadActivityLog by assigned_to_user_id",
+    "potential_consequence": "Members see all leads and logs (INV-23.6 bypass)"
+  },
+  {
+    "location": "nowing_web/components/leads/pipeline/LeadKanbanBoard.tsx:416-428",
+    "trigger_condition": "OCC 409 response nests current_version under err.data.detail",
+    "guard_snippet": "const detail = err.data?.detail ?? err.data; const nextVersion = detail?.current_version; const nextStageId = detail?.current_stage_id",
+    "potential_consequence": "Server version and stage not merged after conflict"
+  },
+  {
+    "location": "nowing_web/components/leads/pipeline/LeadKanbanBoard.tsx:420-431",
+    "trigger_condition": "409 merge updates stage_id but not status field",
+    "guard_snippet": "const nextStage = stages.find((s) => s.id === nextStageId); update status: nextStage ? nextStage.slug : leadToMove.status",
+    "potential_consequence": "Lead status and stage become inconsistent"
+  },
+  {
+    "location": "nowing_web/components/leads/pipeline/LeadKanbanBoard.tsx:275-289",
+    "trigger_condition": "loadData API fails with 401/403/500",
+    "guard_snippet": "catch (err) { if (err.status === 401) redirect(\"/login\"); else setError(err.message) }",
+    "potential_consequence": "Board silently renders empty on auth or server errors"
+  },
+  {
+    "location": "nowing_web/tests/zero/kanban-multicontext-sync.spec.ts:46-50,92-94,105-110",
+    "trigger_condition": "lead creation or card visibility conditional, no second drag or conflict assert",
+    "guard_snippet": "expect(leadCreateRes.ok()).toBeTruthy(); expect(await leadCardA.isVisible()).toBeTruthy(); await leadCardB.dragTo(...); await expect(conflictToast).toBeVisible()",
+    "potential_consequence": "409 conflict path not actually tested; false positives"
+  },
+  {
+    "location": "nowing_web/tests/zero/kanban-multicontext-sync.spec.ts:52-54",
+    "trigger_condition": "browser contexts created without storageState",
+    "guard_snippet": "const contextA = await browser.newContext({ storageState: ownerStorage }); const contextB = await browser.newContext({ storageState: memberStorage })",
+    "potential_consequence": "Multi-user scenario not tested; unauthenticated flakiness"
+  },
+  {
+    "location": "nowing_web/components/team/MemberSpendCapDialog.tsx:81-86",
+    "trigger_condition": "save fails with 403/409/422 or one parallel update fails",
+    "guard_snippet": "const results = await Promise.allSettled([...]); if any rejected, undo optimistic UI and show specific error message",
+    "potential_consequence": "Generic toast hides actual error and partial updates"
+  },
+  {
+    "location": "nowing_web/components/team/MemberSpendCapDialog.tsx:52-66",
+    "trigger_condition": "monthlySpendCap contains decimal or non-integer value",
+    "guard_snippet": "if !Number.isInteger(capMicros) || capMicros < 0: toast.error(\"Monthly cap must be a whole number\"); return",
+    "potential_consequence": "Fractional micros rejected or rounded unexpectedly"
+  },
+  {
+    "location": "nowing_web/components/leads/LeadDetailFlyoutDrawer.tsx:77-84",
+    "trigger_condition": "listActivities throws error",
+    "guard_snippet": ".catch((err) => { setError(err); toast.error(\"Failed to load timeline\"); })",
+    "potential_consequence": "Timeline failures hidden from user"
+  },
+  {
+    "location": "nowing_backend/app/services/workspace_credit_service.py:425-489",
+    "trigger_condition": "refund_credits on missing workspace or over-refund",
+    "guard_snippet": "if not balance_row: raise WorkspaceNotFoundError(...); return {\"refunded_micros\": amount_micros if balance_row else 0, ...}",
+    "potential_consequence": "Misreported refund amount when workspace missing"
+  },
+  {
+    "location": "nowing_backend/app/services/workspace_credit_service.py:491-553",
+    "trigger_condition": "refund_member_spend on missing member or over-refund",
+    "guard_snippet": "actual_refund = min(amount_micros, current_spent); membership.monthly_spent_micros = max(0, current_spent - actual_refund); return {\"amount_micros\": actual_refund, ...}",
+    "potential_consequence": "Over-reported member spend refund"
+  },
+  {
+    "location": "nowing_backend/app/services/workspace_credit_service.py:582-598",
+    "trigger_condition": "set_member_spend_cap below current monthly_spent",
+    "guard_snippet": "if cap_micros is not None and cap_micros < membership.monthly_spent_micros: raise ValueError(\"Cap below current spent\")",
+    "potential_consequence": "Member already over new cap; only future spends blocked"
+  },
+  {
+    "location": "nowing_backend/app/services/workspace_credit_service.py:330-339",
+    "trigger_condition": "record_spend for non-workspace member",
+    "guard_snippet": "if membership is None: raise NoMemberError or create WorkspaceMembership for billable user",
+    "potential_consequence": "Non-member billable user bypasses per-seat spend cap"
+  },
+  {
+    "location": "nowing_backend/alembic/versions/221_add_multi_seat_crm_and_credit_pooling.py:270-302",
+    "trigger_condition": "RLS predicates only filter workspace_id and client_id",
+    "guard_snippet": "add role/assignment predicate to _tenant_predicate and route-level filters for members",
+    "potential_consequence": "Workspace members see all leads and activity logs"
+  },
+  {
+    "location": "review-24-3-working-tree.diff:198-199",
+    "trigger_condition": "masothue district fallback uses i+0 length check",
+    "guard_snippet": "city = parts[i + 1] if i + 1 < len(parts) else None",
+    "potential_consequence": "IndexError when district is last address part"
+  }
+]

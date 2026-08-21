@@ -15,7 +15,6 @@ import argparse
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 from collections import Counter
@@ -346,8 +345,9 @@ def run_cosmic_ray(
             if scope_functions or skip_noise_operators:
                 print(f"[mutation] scope-mutation-session {session.name}")
                 scope_script = (project_root / "scripts" / "scope_mutation_session.py").resolve()
+                scope_python = str((backend / ".venv" / "bin" / "python").resolve()) if (backend / ".venv" / "bin" / "python").exists() else sys.executable
                 scope_cmd: list[str] = [
-                    sys.executable,
+                    scope_python,
                     str(scope_script),
                     str(session),
                 ]

@@ -98,6 +98,27 @@ def _stub_workspace_credit_spend(monkeypatch):
         raising=False,
     )
 
+    async def _refund_member_spend(
+        self,
+        *,
+        workspace_id: int,
+        user_id: Any,
+        amount_micros: int,
+    ) -> dict[str, Any]:
+        return {
+            "workspace_id": workspace_id,
+            "user_id": user_id,
+            "amount_micros": amount_micros,
+            "member_monthly_spent": 0,
+            "member_monthly_spend_cap": None,
+        }
+
+    monkeypatch.setattr(
+        "app.services.workspace_credit_service.WorkspaceCreditService.refund_member_spend",
+        _refund_member_spend,
+        raising=False,
+    )
+
 
 @pytest.fixture
 def record_usage(monkeypatch):

@@ -56,6 +56,7 @@ async def set_request_tenant_context(
     run_id: str | None = None,  # pragma: no mutate
     memory_id: int | None = None,  # pragma: no mutate
     user_id: str | None = None,  # pragma: no mutate
+    is_lead_admin: str | None = None,  # pragma: no mutate
 ) -> None:
     """Set workspace + client + agent GUCs for the current transaction only.
 
@@ -94,6 +95,10 @@ async def set_request_tenant_context(
         text("SELECT set_config('app.current_user_id', :uid, true)"),
         {"uid": "" if user_id is None else str(user_id)},
     )
+    await session.execute(
+        text("SELECT set_config('app.is_lead_admin', :ila, true)"),
+        {"ila": "" if is_lead_admin is None else str(is_lead_admin)},
+    )
     # Tests sometimes pass a fake session without .info; the GUCs are the
     # source of truth for RLS anyway, so tolerate the missing attribute.
     if hasattr(session, "info"):
@@ -103,3 +108,4 @@ async def set_request_tenant_context(
         session.info["current_run_id"] = run_id
         session.info["current_memory_id"] = memory_id
         session.info["current_user_id"] = user_id
+        session.info["is_lead_admin"] = is_lead_admin

@@ -129,10 +129,10 @@ class WorkspaceCreditService:
         """Deduct credits from the workspace pool respecting member spend caps.
 
         Uses atomic UPDATE ... WHERE constraints to prevent concurrent overdrafts
-        and per-seat spend-cap violations.
+        and per-seat spend-cap violations. The member monthly spend is reserved
+        before the shared balance is touched, so the pool is never deducted when
+        the per-seat cap is the reason for failure.
         """
-        from sqlalchemy import update
-
         if amount_micros <= 0:
             raise ValueError("Amount must be strictly positive")
 
@@ -145,20 +145,15 @@ class WorkspaceCreditService:
                 amount_micros=amount_micros,
             )
 
-        membership = await self._get_membership(workspace_id, user_id)
-        if membership is None:
-            raise ValueError("Member not found")
+        # Reserve the member monthly spend first. If the cap would be exceeded,
+        # this raises before the shared balance is ever touched.
+        spend_status = await self.record_spend(
+            workspace_id=workspace_id,
+            user_id=user_id,
+            amount_micros=amount_micros,
+        )
 
-        # Pre-check the cap so we can raise SpendCapExceededError before touching the pool.
-        cap = membership.monthly_spend_cap_micros
-        current_spent = membership.monthly_spent_micros or 0
-        if cap is not None and current_spent + amount_micros > cap:
-            raise SpendCapExceededError(
-                user_id=user_id,
-                cap_micros=cap,
-                current_spent=current_spent,
-                requested=amount_micros,
-            )
+        from sqlalchemy import update
 
         # Atomic workspace balance deduction: only succeed if balance >= amount.
         balance_result = await self.session.execute(
@@ -174,6 +169,12 @@ class WorkspaceCreditService:
         )
         balance_row = balance_result.one_or_none()
         if balance_row is None:
+            # Roll back the reserved member spend before reporting insufficient balance.
+            await self.refund_member_spend(
+                workspace_id=workspace_id,
+                user_id=user_id,
+                amount_micros=amount_micros,
+            )
             workspace = await self._get_workspace(workspace_id)
             available = workspace.credit_micros_balance if workspace else 0
             raise InsufficientCreditsError(
@@ -184,64 +185,13 @@ class WorkspaceCreditService:
 
         remaining_workspace_balance = balance_row[0]
 
-        # Atomic member monthly spend increment (skip if no membership row).
-        if membership is None:
-            member_monthly_spent = 0
-        elif cap is not None:
-            spend_result = await self.session.execute(
-                update(WorkspaceMembership)
-                .where(
-                    WorkspaceMembership.workspace_id == workspace_id,
-                    WorkspaceMembership.user_id == user_id,
-                    WorkspaceMembership.monthly_spend_cap_micros
-                    >= func.coalesce(WorkspaceMembership.monthly_spent_micros, 0)
-                    + amount_micros,
-                )
-                .values(
-                    monthly_spent_micros=func.coalesce(
-                        WorkspaceMembership.monthly_spent_micros, 0
-                    )
-                    + amount_micros,
-                )
-                .returning(WorkspaceMembership.monthly_spent_micros)
-            )
-            spend_row = spend_result.one_or_none()
-            if spend_row is None:
-                raise SpendCapExceededError(
-                    user_id=user_id,
-                    cap_micros=cap,
-                    current_spent=current_spent,
-                    requested=amount_micros,
-                )
-            member_monthly_spent = spend_row[0]
-        else:
-            # Unlimited cap: still record spend atomically to keep the counter accurate.
-            spend_result = await self.session.execute(
-                update(WorkspaceMembership)
-                .where(
-                    WorkspaceMembership.workspace_id == workspace_id,
-                    WorkspaceMembership.user_id == user_id,
-                )
-                .values(
-                    monthly_spent_micros=func.coalesce(
-                        WorkspaceMembership.monthly_spent_micros, 0
-                    )
-                    + amount_micros,
-                )
-                .returning(WorkspaceMembership.monthly_spent_micros)
-            )
-            spend_row = spend_result.one_or_none()
-            member_monthly_spent = (
-                spend_row[0] if spend_row else current_spent + amount_micros
-            )
-
         return CreditDeductionResult(
             workspace_id=workspace_id,
             user_id=user_id,
             amount_deducted_micros=amount_micros,
             remaining_workspace_balance=remaining_workspace_balance,
-            member_monthly_spent=member_monthly_spent,
-            member_monthly_spend_cap=cap,
+            member_monthly_spent=spend_status["member_monthly_spent"],
+            member_monthly_spend_cap=spend_status["member_monthly_spend_cap"],
         )
 
     def _deduct_credits_fake(
@@ -308,7 +258,7 @@ class WorkspaceCreditService:
 
         Returns a status dict. Raises :class:`SpendCapExceededError` when the
         cap would be exceeded. No-ops for non-positive amounts. If the user is
-        not a workspace member, no cap is enforced and spend is not tracked.
+        not a workspace member, raises :class:`ValueError`.
         """
         if amount_micros <= 0:
             return {
@@ -329,17 +279,9 @@ class WorkspaceCreditService:
 
         membership = await self._get_membership(workspace_id, user_id)
         if membership is None:
-            # No membership => no per-seat cap to enforce for this user.
-            return {
-                "workspace_id": workspace_id,
-                "user_id": user_id,
-                "amount_micros": amount_micros,
-                "member_monthly_spent": 0,
-                "member_monthly_spend_cap": None,
-            }
+            raise ValueError("Member not found")
 
         cap = membership.monthly_spend_cap_micros
-        current_spent = membership.monthly_spent_micros or 0
 
         from sqlalchemy import update
 
@@ -372,7 +314,7 @@ class WorkspaceCreditService:
             raise SpendCapExceededError(
                 user_id=user_id,
                 cap_micros=cap or 0,
-                current_spent=current_spent,
+                current_spent=membership.monthly_spent_micros or 0,
                 requested=amount_micros,
             )
 
@@ -395,13 +337,7 @@ class WorkspaceCreditService:
         """In-memory record_spend path used by FakeAsyncSession unit tests."""
         membership = self.session.memberships.get((workspace_id, user_id))
         if membership is None:
-            return {
-                "workspace_id": workspace_id,
-                "user_id": user_id,
-                "amount_micros": amount_micros,
-                "member_monthly_spent": 0,
-                "member_monthly_spend_cap": None,
-            }
+            raise ValueError("Member not found")
 
         cap = membership.monthly_spend_cap_micros
         current_spent = membership.monthly_spent_micros or 0
@@ -445,6 +381,32 @@ class WorkspaceCreditService:
 
         from sqlalchemy import update
 
+        # Atomic member monthly spent decrement first; if it cannot be applied,
+        # the workspace pool is not inflated.
+        membership = await self._get_membership(workspace_id, user_id)
+        if membership is None:
+            raise ValueError("Member not found")
+
+        spend_result = await self.session.execute(
+            update(WorkspaceMembership)
+            .where(
+                WorkspaceMembership.workspace_id == workspace_id,
+                WorkspaceMembership.user_id == user_id,
+            )
+            .values(
+                monthly_spent_micros=func.greatest(
+                    0,
+                    func.coalesce(WorkspaceMembership.monthly_spent_micros, 0)
+                    - amount_micros,
+                ),
+            )
+            .returning(WorkspaceMembership.monthly_spent_micros)
+        )
+        spend_row = spend_result.one_or_none()
+        if spend_row is None:
+            raise ValueError("Member not found")
+        member_monthly_spent = spend_row[0]
+
         # Atomic workspace balance refund.
         balance_result = await self.session.execute(
             update(Workspace)
@@ -455,29 +417,9 @@ class WorkspaceCreditService:
             .returning(Workspace.credit_micros_balance)
         )
         balance_row = balance_result.one_or_none()
-        remaining_workspace_balance = balance_row[0] if balance_row else 0
-
-        # Atomic member monthly spent decrement, guarded against negative values.
-        membership = await self._get_membership(workspace_id, user_id)
-        member_monthly_spent = 0
-        if membership is not None:
-            spend_result = await self.session.execute(
-                update(WorkspaceMembership)
-                .where(
-                    WorkspaceMembership.workspace_id == workspace_id,
-                    WorkspaceMembership.user_id == user_id,
-                )
-                .values(
-                    monthly_spent_micros=func.greatest(
-                        0,
-                        func.coalesce(WorkspaceMembership.monthly_spent_micros, 0)
-                        - amount_micros,
-                    ),
-                )
-                .returning(WorkspaceMembership.monthly_spent_micros)
-            )
-            spend_row = spend_result.one_or_none()
-            member_monthly_spent = spend_row[0] if spend_row else 0
+        if balance_row is None:
+            raise ValueError("Workspace not found")
+        remaining_workspace_balance = balance_row[0]
 
         return {
             "workspace_id": workspace_id,
@@ -515,6 +457,18 @@ class WorkspaceCreditService:
 
         from sqlalchemy import update
 
+        membership = await self._get_membership(workspace_id, user_id)
+        if membership is None:
+            # No member to refund; report zero.
+            return {
+                "workspace_id": workspace_id,
+                "user_id": user_id,
+                "amount_micros": 0,
+                "member_monthly_spent": 0,
+                "member_monthly_spend_cap": None,
+            }
+
+        current_spent = membership.monthly_spent_micros or 0
         spend_result = await self.session.execute(
             update(WorkspaceMembership)
             .where(
@@ -535,7 +489,7 @@ class WorkspaceCreditService:
         )
         spend_row = spend_result.one_or_none()
         if spend_row is None:
-            # Member not found: no monthly spent to refund; do not report a refund.
+            # Member not found after update: no monthly spent to refund.
             return {
                 "workspace_id": workspace_id,
                 "user_id": user_id,
@@ -544,10 +498,11 @@ class WorkspaceCreditService:
                 "member_monthly_spend_cap": None,
             }
         returned_cap, returned_spent = spend_row
+        actual_refund = max(0, current_spent - returned_spent)
         return {
             "workspace_id": workspace_id,
             "user_id": user_id,
-            "amount_micros": amount_micros,
+            "amount_micros": actual_refund,
             "member_monthly_spent": returned_spent,
             "member_monthly_spend_cap": returned_cap,
         }
@@ -571,10 +526,11 @@ class WorkspaceCreditService:
             }
         current_spent = membership.monthly_spent_micros or 0
         membership.monthly_spent_micros = max(0, current_spent - amount_micros)
+        actual_refund = max(0, current_spent - membership.monthly_spent_micros)
         return {
             "workspace_id": workspace_id,
             "user_id": user_id,
-            "amount_micros": amount_micros,
+            "amount_micros": actual_refund,
             "member_monthly_spent": membership.monthly_spent_micros,
             "member_monthly_spend_cap": membership.monthly_spend_cap_micros,
         }
@@ -595,7 +551,12 @@ class WorkspaceCreditService:
         if membership is None:
             raise ValueError("Member not found")
 
+        current_spent = membership.monthly_spent_micros or 0
+        if cap_micros is not None and cap_micros < current_spent:
+            raise ValueError("Spend cap cannot be set below current spent amount")
+
         membership.monthly_spend_cap_micros = cap_micros
+        await self.session.flush()
 
     async def get_member_spend_status(
         self,

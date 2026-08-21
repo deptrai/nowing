@@ -49,20 +49,26 @@ export function MemberSpendCapDialog({
 	const handleSave = async () => {
 		if (!member) return;
 
-		const capMicros = monthlySpendCap.trim() === "" ? null : Number(monthlySpendCap) * 1_000_000;
+		const capInput = monthlySpendCap.trim();
+		let capMicros: number | null = null;
 		const capacity = Number(leadCapacity);
 
-		if (Number.isNaN(capacity) || capacity < 0) {
-			toast.error("Lead capacity phải là số dương");
+		if (Number.isNaN(capacity) || !Number.isInteger(capacity) || capacity < 0) {
+			toast.error("Lead capacity phải là số nguyên dương");
 			return;
 		}
 
-		if (
-			monthlySpendCap.trim() !== "" &&
-			(capMicros === null || Number.isNaN(capMicros) || capMicros < 0)
-		) {
-			toast.error("Monthly spend cap phải là số dương");
-			return;
+		if (capInput !== "") {
+			const capNumber = Number(capInput);
+			if (Number.isNaN(capNumber) || !Number.isInteger(capNumber) || capNumber < 0) {
+				toast.error("Monthly spend cap phải là số nguyên dương (USD)");
+				return;
+			}
+			capMicros = capNumber * 1_000_000;
+			if (Number.isNaN(capMicros)) {
+				toast.error("Monthly spend cap không hợp lệ");
+				return;
+			}
 		}
 
 		try {
@@ -79,7 +85,17 @@ export function MemberSpendCapDialog({
 			toast.success("Đã cập nhật hạn mức và sức chứa lead");
 			onOpenChange(false);
 		} catch (err) {
-			toast.error("Cập nhật thất bại");
+			const apiErr = err as {
+				data?: { detail?: string };
+				response?: { data?: { detail?: string } };
+				message?: string;
+			};
+			const message =
+				apiErr?.data?.detail ??
+				apiErr?.response?.data?.detail ??
+				apiErr?.message ??
+				"Cập nhật thất bại";
+			toast.error(message);
 			console.error("Failed to update member spend cap", err);
 		} finally {
 			setSaving(false);

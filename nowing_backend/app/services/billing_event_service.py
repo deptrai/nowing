@@ -16,6 +16,7 @@ from app.config import config
 from app.db import BillingEvent
 from app.services import wallet_credit
 from app.services.workspace_credit_service import (
+    SpendCapExceededError,
     WorkspaceCreditService,
 )
 
@@ -816,11 +817,21 @@ async def _record_business_event(
         await wallet_credit.check_balance(session, user_id, cost_micros)
 
         credit_svc = WorkspaceCreditService(session=session)
-        await credit_svc.record_spend(
-            workspace_id=workspace_id,
-            user_id=user_id,
-            amount_micros=cost_micros,
-        )
+        try:
+            await credit_svc.record_spend(
+                workspace_id=workspace_id,
+                user_id=user_id,
+                amount_micros=cost_micros,
+            )
+        except SpendCapExceededError as exc:
+            raise wallet_credit.InsufficientCreditsError(
+                message=(
+                    f"Member {exc.user_id} exceeded monthly spend cap of {exc.cap_micros} micros. "
+                    f"Current spent: {exc.current_spent}, requested: {exc.requested}."
+                ),
+                balance_micros=max(0, exc.cap_micros - exc.current_spent),
+                required_micros=exc.requested,
+            ) from exc
         try:
             await wallet_credit.apply_debit(session, user_id, cost_micros)
         except Exception:

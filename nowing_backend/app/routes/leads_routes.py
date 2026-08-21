@@ -14,12 +14,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.auth.context import AuthContext
+from app.canonical.tenant_context import set_request_tenant_context
 from app.db import (
     CompanyDecisionMaker,
     Lead,
     LinkedinJob,
     Permission,
     VerifiedContact,
+    WorkspaceMembership,
     get_async_session,
 )
 from app.lead_intelligence.reverse_icp import ReverseIcpService
@@ -57,6 +59,56 @@ router = APIRouter()
 def _escape_ilike_term(term: str) -> str:
     """Escape special SQL ILIKE pattern characters (%, _, !)."""
     return term.replace("!", "!!").replace("%", "!%").replace("_", "!_")
+
+
+def _can_view_all_leads(membership: WorkspaceMembership) -> bool:
+    """Owners and members with lead-management permissions may view all leads."""
+    if membership.is_owner:
+        return True
+    if membership.role and membership.role.permissions:
+        perms = membership.role.permissions
+        return has_permission(perms, Permission.LEADS_WRITE.value) or has_permission(
+            perms, Permission.CRM_WRITE.value
+        )
+    return False
+
+
+async def _set_lead_tenant_context(
+    session: AsyncSession,
+    workspace_id: int,
+    membership: WorkspaceMembership,
+) -> None:
+    """Set RLS GUCs including the calling user's lead visibility."""
+    user_id = str(membership.user_id) if membership and membership.user_id else None
+    is_lead_admin = "true" if _can_view_all_leads(membership) else "false"
+    await set_request_tenant_context(
+        session,
+        workspace_id=workspace_id,
+        user_id=user_id,
+        is_lead_admin=is_lead_admin,
+    )
+
+
+async def _require_lead_visible(
+    session: AsyncSession,
+    workspace_id: int,
+    lead_id: UUID,
+    membership: WorkspaceMembership,
+) -> Lead:
+    """Fetch a lead and fail closed if the caller may not view it."""
+    lead = await session.get(Lead, (lead_id, workspace_id))
+    if lead is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Lead not found",
+        )
+    user_id = membership.user_id
+    if not _can_view_all_leads(membership) and lead.assigned_to_user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Lead not found",
+        )
+    return lead
 
 
 def _map_lead_to_read(lead: Lead) -> LeadRead:
@@ -214,13 +266,14 @@ async def list_workspace_leads(
     auth: AuthContext = Depends(get_auth_context),
 ) -> LeadListResponse:
     """List multi-domain leads with filtering and pagination (Widget U3 / AC-5)."""
-    await check_permission(
+    membership = await check_permission(
         session,
         auth,
         workspace_id,
         Permission.LEADS_READ.value,
         error_message="You don't have permission to view leads in this workspace",
     )
+    await _set_lead_tenant_context(session, workspace_id, membership)
 
     # Base query for active workspace
     stmt = (
@@ -228,6 +281,8 @@ async def list_workspace_leads(
         .where(Lead.workspace_id == workspace_id)
         .options(selectinload(Lead.verified_contacts))
     )
+    if not _can_view_all_leads(membership):
+        stmt = stmt.where(Lead.assigned_to_user_id == membership.user_id)
 
     if client_id is not None:
         stmt = stmt.where(Lead.client_id == client_id)
@@ -392,30 +447,16 @@ async def get_lead(
     auth: AuthContext = Depends(get_auth_context),
 ) -> LeadRead:
     """Get single lead details with verified contacts."""
-    await check_permission(
+    membership = await check_permission(
         session,
         auth,
         workspace_id,
         Permission.LEADS_READ.value,
         error_message="You don't have permission to view leads in this workspace",
     )
+    await _set_lead_tenant_context(session, workspace_id, membership)
 
-    stmt = (
-        select(Lead)
-        .where(
-            Lead.workspace_id == workspace_id,
-            Lead.id == lead_id,
-        )
-        .options(selectinload(Lead.verified_contacts))
-    )
-    result = await session.execute(stmt)
-    lead = result.scalar_one_or_none()
-    if lead is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Lead not found",
-        )
-
+    lead = await _require_lead_visible(session, workspace_id, lead_id, membership)
     return _map_lead_to_read(lead)
 
 
@@ -432,30 +473,16 @@ async def update_lead_status(
     auth: AuthContext = Depends(get_auth_context),
 ) -> LeadRead:
     """Update CRM pipeline status for a lead (AC-4)."""
-    await check_permission(
+    membership = await check_permission(
         session,
         auth,
         workspace_id,
         Permission.LEADS_WRITE.value,
         error_message="You don't have permission to update leads in this workspace",
     )
+    await _set_lead_tenant_context(session, workspace_id, membership)
 
-    stmt = (
-        select(Lead)
-        .where(
-            Lead.workspace_id == workspace_id,
-            Lead.id == lead_id,
-        )
-        .options(selectinload(Lead.verified_contacts))
-    )
-    result = await session.execute(stmt)
-    lead = result.scalar_one_or_none()
-    if lead is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Lead not found",
-        )
-
+    lead = await _require_lead_visible(session, workspace_id, lead_id, membership)
     lead.status = body.status
     lead.updated_at = datetime.now(UTC)
     session.add(lead)
@@ -476,13 +503,14 @@ async def get_company_graph(
     auth: AuthContext = Depends(get_auth_context),
 ) -> CompanyGraphRead:
     """Get aggregated relationship graph for enterprise/company (AC-3 / Widget U4 / Story 21.9)."""
-    await check_permission(
+    membership = await check_permission(
         session,
         auth,
         workspace_id,
         Permission.LEADS_READ.value,
         error_message="You don't have permission to view company graph in this workspace",
     )
+    await _set_lead_tenant_context(session, workspace_id, membership)
 
     clean_name = company_name.strip()
     if not clean_name:
@@ -506,6 +534,8 @@ async def get_company_graph(
         )
         .distinct()
     )
+    if not _can_view_all_leads(membership):
+        contacts_stmt = contacts_stmt.where(Lead.assigned_to_user_id == membership.user_id)
     contacts_result = await session.execute(contacts_stmt)
     db_contacts = contacts_result.scalars().all()
 
@@ -617,6 +647,8 @@ async def get_company_graph(
         )
         .limit(1)
     )
+    if not _can_view_all_leads(membership):
+        lead_stmt = lead_stmt.where(Lead.assigned_to_user_id == membership.user_id)
     lead_res = await session.execute(lead_stmt)
     lead_obj = lead_res.scalar_one_or_none()
 

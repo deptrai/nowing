@@ -236,7 +236,7 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 	// Re-expand the current subtask when it changes.
 	useEffect(() => {
 		if (missionControl?.current_subtask_id) {
-			setExpandedSubtasks((prev) => new Set([...prev, missionControl.current_subtask_id]));
+			setExpandedSubtasks((prev) => new Set([...prev, missionControl.current_subtask_id].filter((id): id is string => typeof id === "string")));
 		}
 	}, [missionControl?.current_subtask_id]);
 
