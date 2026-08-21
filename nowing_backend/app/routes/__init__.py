@@ -52,6 +52,7 @@ from .admin_scraper_platform_accounts_routes import (
     router as admin_scraper_platform_accounts_router,
     scraper_accounts_alias_router,
 )
+from .admin_affiliates_routes import router as admin_affiliates_router
 from .admin_users_routes import router as admin_users_router
 from .agent_action_log_route import router as agent_action_log_router
 from .agent_chat_routes import router as agent_chat_router
@@ -228,6 +229,7 @@ router.include_router(
     admin_anti_bot_escalation_router
 )  # Admin anti-bot / CAPTCHA escalations
 router.include_router(admin_users_router)  # Admin users and impersonation
+router.include_router(admin_affiliates_router)  # Admin affiliate partner payout desk
 router.include_router(admin_credits_router)  # Manual credit adjustments
 router.include_router(model_connections_router)  # Connection-centric model catalog
 router.include_router(model_list_router)  # Dynamic model catalogue from OpenRouter

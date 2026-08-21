@@ -420,17 +420,20 @@ async def test_scraper_rate_limit_retries_and_recovers() -> None:
 
 @pytest.mark.asyncio
 async def test_scraper_page_pacing_sleep_called_between_pages(monkeypatch: Any) -> None:
-    """Sleep is called between page 1 and page 2, but not after the last page (page 2)."""
+    """Sleep is called strictly between page 1 and page 2 (before page 2 fetch, never after page 2)."""
     import asyncio
 
-    sleep_calls: list[float] = []
+    events: list[str] = []
 
     async def fake_sleep(duration: float) -> None:
-        sleep_calls.append(duration)
+        events.append("sleep")
 
     monkeypatch.setattr(asyncio, "sleep", fake_sleep)
 
-    async def paged_fetch(query: str, search_type: str, page: int) -> tuple[str, int]:
+    async def paged_fetch(
+        query: str, search_type: str, page: int, **kwargs: Any
+    ) -> tuple[str, int]:
+        events.append(f"fetch_{page}")
         html = f"""
         <div class="search-results">
             <h3><a href="/p{page}">Company {page}</a></h3>
@@ -450,8 +453,8 @@ async def test_scraper_page_pacing_sleep_called_between_pages(monkeypatch: Any) 
 
     assert out.degraded is False
     assert out.total_items == 2
-    # Exactly 1 sleep between page 1 and page 2 (kills page < max_pages comparison mutants)
-    assert len(sleep_calls) == 1
+    # Order must be fetch_1 -> sleep -> fetch_2 (kills if page == max_pages mutant)
+    assert events == ["fetch_1", "sleep", "fetch_2"]
 
 
 @pytest.mark.asyncio
@@ -759,3 +762,40 @@ async def test_scraper_exact_retry_attempts_count(monkeypatch: Any) -> None:
     assert out.degraded is True
     assert out.degradation_reason == "rate_limited"
     assert call_count == 3  # _MAX_RETRIES (2) + 1
+
+
+@pytest.mark.asyncio
+async def test_scraper_retry_on_first_attempt_succeeds_on_second(
+    monkeypatch: Any,
+) -> None:
+    import asyncio
+
+    sleep_called = 0
+
+    async def fake_sleep(_: float) -> None:
+        nonlocal sleep_called
+        sleep_called += 1
+
+    monkeypatch.setattr(asyncio, "sleep", fake_sleep)
+
+    attempts = 0
+
+    async def retry_search(
+        query: str, search_type: str, page: int, **kwargs: Any
+    ) -> tuple[str, int]:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise MasothueRateLimitedError("first attempt rate limited")
+        return SEARCH_HTML, 200
+
+    inp = MasothueSearchInput(
+        query="vinamilk", max_pages=1, max_items=5, resolve_detail=False
+    )
+    out = await scrape_masothue(inp, search_fetch_fn=retry_search)
+
+    assert out.degraded is True
+    assert out.degradation_reason == "rate_limited"
+    assert out.total_items == 2
+    assert attempts == 2
+    assert sleep_called == 1

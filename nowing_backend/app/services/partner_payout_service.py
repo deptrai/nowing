@@ -86,7 +86,10 @@ class PartnerPayoutService:
 
     @classmethod
     async def execute_payout_with_lock(
-        cls, session: AsyncSession, payout_id: uuid.UUID
+        cls,
+        session: AsyncSession,
+        payout_id: uuid.UUID,
+        tx_reference: str | None = None,
     ) -> PartnerPayout:
         """Acquire explicit database row locks (INV-23.10) and transition funds to hold balance.
 
@@ -143,7 +146,9 @@ class PartnerPayoutService:
 
         # 5. Generate idempotent transaction reference
         timestamp = int(time.time())
-        payout.tx_reference = f"NOWING-PAY-{payout.id}-{timestamp}"
+        payout.tx_reference = (
+            tx_reference if tx_reference else f"NOWING-PAY-{payout.id}-{timestamp}"
+        )
         payout.status = "processing"
         payout.processed_at = datetime.now(UTC)
 
