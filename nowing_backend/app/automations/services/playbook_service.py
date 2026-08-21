@@ -15,10 +15,12 @@ from app.auth.context import AuthContext
 from app.automations.actions import get_action
 from app.automations.actions.validation import StepValidationError, validate_plan_steps
 from app.automations.dispatch.inputs import validate_inputs
+from app.automations.dispatch.launch import launch_run
 from app.automations.persistence.enums.playbook_scope import PlaybookScope
 from app.automations.persistence.enums.trigger_type import TriggerType
 from app.automations.persistence.models.automation import Automation
 from app.automations.persistence.models.playbook import Playbook
+from app.automations.persistence.models.trigger import AutomationTrigger
 from app.automations.schemas.api import (
     AutomationCreate,
     PlaybookCreate,
@@ -39,6 +41,26 @@ from app.automations.services.model_policy import (
 from app.db import Permission, Workspace, get_async_session
 from app.users import get_auth_context
 from app.utils.rbac import check_permission
+
+WORKSPACE_TO_MARKETPLACE_VERTICAL = {
+    "real_estate": "realestate",
+    "b2b_equipment": "b2b",
+    "auto": "general",
+    "general": "general",
+}
+
+# Canonical marketplace vertical slugs exposed in the UI and accepted by the list endpoint.
+MARKETPLACE_VERTICALS: frozenset[str] = frozenset(
+    {"realestate", "recruitment", "b2b", "ecommerce", "general"}
+)
+
+
+def _canonical_vertical(vertical: str | None) -> str:
+    """Map a workspace or query vertical to the canonical playbook marketplace vertical."""
+    if not vertical:
+        return "general"
+    vertical = vertical.lower()
+    return WORKSPACE_TO_MARKETPLACE_VERTICAL.get(vertical, vertical)
 
 
 def _extract_inputs_schema(definition: AutomationDefinition) -> dict[str, Any]:
@@ -111,6 +133,7 @@ class PlaybookService:
 
         inputs_schema = _extract_inputs_schema(definition)
         _validate_json_schema(inputs_schema)
+        self._validate_inputs_schema_limits(inputs_schema)
 
         tool_scope = payload.tool_scope or _extract_tool_scope(definition)
         self._validate_tool_scope(tool_scope, definition)
@@ -127,6 +150,7 @@ class PlaybookService:
             tool_scope=tool_scope,
             verticals=verticals,
             scope=PlaybookScope.WORKSPACE,
+            is_approved=True,
             version=1,
         )
 
@@ -136,29 +160,42 @@ class PlaybookService:
 
     async def list_playbooks(
         self,
-        *,
         workspace_id: int,
         limit: int = 50,
         offset: int = 0,
+        vertical: str | None = None,
     ) -> tuple[list[Playbook], int]:
-        """Return workspace playbooks and system playbooks a user can instantiate.
-
-        Playbooks are visible when they declare the workspace's vertical or ``general``.
-        """
+        """Return workspace playbooks and system marketplace playbooks."""
         await self._authorize(workspace_id, Permission.AUTOMATIONS_READ.value)
-
         workspace = await self._get_workspace_or_raise(workspace_id)
 
-        base = select(Playbook).where(
+        conditions = [
+            Playbook.is_approved.is_(True),
             or_(
                 Playbook.workspace_id == workspace_id,
                 Playbook.scope == PlaybookScope.SYSTEM,
             ),
-            or_(
-                Playbook.verticals.contains([workspace.vertical]),
-                Playbook.verticals.contains(["general"]),
-            ),
-        )
+        ]
+
+        if vertical and vertical.lower() != "all":
+            canonical = _canonical_vertical(vertical)
+            if canonical not in MARKETPLACE_VERTICALS:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"invalid marketplace vertical: {vertical!r}",
+                )
+            conditions.append(Playbook.verticals.contains([canonical]))
+        else:
+            conditions.append(
+                or_(
+                    Playbook.verticals.contains(
+                        [_canonical_vertical(workspace.vertical)]
+                    ),
+                    Playbook.verticals.contains(["general"]),
+                )
+            )
+
+        base = select(Playbook).where(*conditions)
         total = await self.session.scalar(
             select(func.count()).select_from(base.subquery())
         )
@@ -200,6 +237,7 @@ class PlaybookService:
             patch.definition.schema_version = "1.1"
             new_inputs_schema = _extract_inputs_schema(patch.definition)
             _validate_json_schema(new_inputs_schema)
+            self._validate_inputs_schema_limits(new_inputs_schema)
             playbook.inputs_schema = new_inputs_schema
 
             if "tool_scope" in data and patch.tool_scope is not None:
@@ -219,7 +257,7 @@ class PlaybookService:
             version_bumped = True
 
         if "verticals" in data and patch.verticals is not None:
-            playbook.verticals = sorted(set(patch.verticals))
+            playbook.verticals = sorted({_canonical_vertical(v) for v in patch.verticals})
 
         if version_bumped:
             playbook.version += 1
@@ -232,8 +270,13 @@ class PlaybookService:
         playbook_id: int,
         payload: PlaybookInstantiate,
     ) -> Automation:
-        """Create a new automation from a playbook, validating inputs against the schema."""
+        """Create a new automation from a playbook, validating inputs against the schema.
+
+        After the automation is persisted, a manual run is immediately launched
+        so the user sees the first execution without an extra fire step.
+        """
         playbook = await self._get_playbook_or_raise(playbook_id)
+        await self._authorize_playbook_access(playbook, Permission.AUTOMATIONS_READ.value)
         await self._authorize(payload.workspace_id, Permission.AUTOMATIONS_CREATE.value)
 
         # Pin the instance to the playbook version it was created from.
@@ -248,6 +291,7 @@ class PlaybookService:
 
         # Ensure the captured schema version and tool scope lineage follow the playbook.
         definition.schema_version = "1.1"
+        definition.inputs = Inputs(schema=playbook.inputs_schema)
         if playbook.tool_scope:
             meta_extra: dict[str, Any] = {
                 "tags": list(definition.metadata.tags or []),
@@ -288,6 +332,20 @@ class PlaybookService:
         # Apply lineage pinning after creation so the instance never silently drifts.
         automation.derived_from_playbook_id = playbook.id
         automation.playbook_version = playbook.version
+
+        # Fire a manual run immediately so the playbook inputs are executed.
+        manual_trigger = AutomationTrigger(
+            automation_id=automation.id,
+            type=TriggerType.MANUAL,
+            params={},
+            static_inputs={},
+        )
+        await launch_run(
+            session=self.session,
+            trigger=manual_trigger,
+            runtime_inputs=payload.inputs,
+        )
+
         await self.session.commit()
 
         return await automation_service._get_with_triggers_or_raise(automation.id)
@@ -307,8 +365,6 @@ class PlaybookService:
 
     def _validate_inputs(self, playbook: Playbook, inputs: dict[str, Any]) -> None:
         """Validate the supplied inputs against the playbook's ``inputs_schema``."""
-        if not playbook.inputs_schema:
-            return
         # Build a minimal AutomationDefinition so we can reuse the runtime
         # input validator; only ``inputs.schema_`` matters here.
         definition = AutomationDefinition(
@@ -320,6 +376,28 @@ class PlaybookService:
             validate_inputs(definition, inputs)
         except Exception as exc:
             raise HTTPException(status_code=422, detail=f"inputs invalid: {exc}") from exc
+
+        # INV-24.6 (Template Sandbox & AST Security): Hard limit max_leads_per_run <= 200
+        for limit_key in ("max_leads", "max_leads_per_run", "max_skus"):
+            if limit_key in inputs and isinstance(inputs[limit_key], (int, float)) and inputs[limit_key] > 200:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"{limit_key} exceeds hard limit of 200 per run (INV-24.6)",
+                )
+
+    def _validate_inputs_schema_limits(self, inputs_schema: dict[str, Any]) -> None:
+        """Reject ``inputs_schema`` entries whose hard limit aliases exceed 200."""
+        properties = inputs_schema.get("properties", {})
+        for limit_key in ("max_leads", "max_leads_per_run", "max_skus"):
+            prop = properties.get(limit_key)
+            if not prop or prop.get("type") not in ("integer", "number"):
+                continue
+            maximum = prop.get("maximum")
+            if not isinstance(maximum, (int, float)) or maximum > 200:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"{limit_key} must declare a maximum <= 200 (INV-24.6)",
+                )
 
     def _validate_tool_scope(
         self,
@@ -369,14 +447,14 @@ class PlaybookService:
         requested_verticals: list[str] | None,
         workspace_id: int,
     ) -> list[str]:
-        """Use the requested verticals or default to the workspace vertical + ``general``."""
+        """Canonicalize requested verticals or default to workspace vertical + ``general``."""
         if requested_verticals:
-            return sorted(set(requested_verticals))
+            return sorted({_canonical_vertical(v) for v in requested_verticals})
         workspace = await self.session.get(Workspace, workspace_id)
         if workspace is None:
             return ["general"]
         if workspace.vertical and workspace.vertical != "general":
-            return sorted({workspace.vertical, "general"})
+            return sorted({_canonical_vertical(workspace.vertical), "general"})
         return ["general"]
 
     async def _get_workspace_or_raise(self, workspace_id: int) -> Workspace:

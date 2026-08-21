@@ -49,11 +49,12 @@ async def list_playbooks(
     workspace_id: int = Query(...),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
+    vertical: str | None = Query(default=None),
     service: PlaybookService = Depends(get_playbook_service),
 ) -> PlaybookList:
     """List playbooks for a workspace, including system playbooks."""
     items, total = await service.list_playbooks(
-        workspace_id=workspace_id, limit=limit, offset=offset
+        workspace_id=workspace_id, limit=limit, offset=offset, vertical=vertical
     )
     return PlaybookList(
         items=[PlaybookSummary.model_validate(p) for p in items],

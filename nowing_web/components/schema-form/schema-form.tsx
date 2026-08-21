@@ -51,6 +51,8 @@ export interface SchemaFormProps {
 	onChange?: (values: Record<string, unknown>) => void;
 	submitLabel?: string;
 	className?: string;
+	/** Disable the submit button while an external action is in flight. */
+	disabled?: boolean;
 }
 
 /**
@@ -69,6 +71,7 @@ export function SchemaForm({
 	onChange,
 	submitLabel = "Submit",
 	className,
+	disabled = false,
 }: SchemaFormProps) {
 	const zodSchema = useMemo(
 		() =>
@@ -130,7 +133,7 @@ export function SchemaForm({
 
 				{onSubmit && (
 					<div className="flex justify-end pt-2">
-						<Button type="submit" disabled={!isValid}>
+						<Button type="submit" disabled={!isValid || disabled}>
 							{submitLabel}
 						</Button>
 					</div>

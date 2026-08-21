@@ -232,7 +232,7 @@ async def test_create_playbook_defaults_to_workspace_vertical(
     )
     assert resp.status_code == 201
     data = resp.json()
-    assert "real_estate" in data["verticals"]
+    assert "realestate" in data["verticals"]
     assert "general" in data["verticals"]
 
 
@@ -260,13 +260,13 @@ async def test_list_playbooks_filters_by_workspace_vertical(
     )
     assert create_re.status_code == 201
 
-    # Workspace playbook tagged only for auto.
+    # Workspace playbook tagged only for a non-matching vertical.
     create_auto = await client.post(
         "/api/v1/playbooks",
         json={
             "source_automation_id": sample_automation["id"],
             "name": "Hidden playbook",
-            "verticals": ["auto"],
+            "verticals": ["other"],
         },
     )
     assert create_auto.status_code == 201
@@ -279,7 +279,7 @@ async def test_list_playbooks_filters_by_workspace_vertical(
         definition=create_auto.json()["definition"],
         inputs_schema=create_auto.json()["inputs_schema"],
         tool_scope=["agent_task"],
-        verticals=["real_estate"],
+        verticals=["realestate"],
         scope=PlaybookScope.SYSTEM,
         version=1,
     )
@@ -288,12 +288,12 @@ async def test_list_playbooks_filters_by_workspace_vertical(
     # System playbook hidden from real estate.
     system_hidden = Playbook(
         created_by_user_id=db_user.id,
-        name="System auto",
+        name="System other",
         description="",
         definition=create_auto.json()["definition"],
         inputs_schema=create_auto.json()["inputs_schema"],
         tool_scope=["agent_task"],
-        verticals=["auto"],
+        verticals=["other"],
         scope=PlaybookScope.SYSTEM,
         version=1,
     )
@@ -310,7 +310,7 @@ async def test_list_playbooks_filters_by_workspace_vertical(
     assert "Matching playbook" in names
     assert "System real estate" in names
     assert "Hidden playbook" not in names
-    assert "System auto" not in names
+    assert "System other" not in names
 
 
 async def test_list_playbooks_switches_vertical(
@@ -338,7 +338,7 @@ async def test_list_playbooks_switches_vertical(
     assert resp_re.status_code == 200
     assert any(p["name"] == "Real estate only" for p in resp_re.json()["items"])
 
-    billable_workspace.vertical = "auto"
+    billable_workspace.vertical = "other"
 
     resp_auto = await client.get(
         "/api/v1/playbooks",

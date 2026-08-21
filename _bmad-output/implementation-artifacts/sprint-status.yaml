@@ -1,5 +1,5 @@
 # generated: 2026-08-08
-# last_updated: 2026-08-21 07:19  # PRFAQ-derived epics/stories added
+# last_updated: 2026-08-22  # Story 24.5 code review patches applied and verified; remaining low/cosmetic items deferred.
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -263,7 +263,7 @@ development_status:
   24-2: done  # Waterfall Phone & B2B Tax Code (MST) Corporate Verification Engine — all batch 1/2 code review patches applied, phone output canonicalized (E.164 hash/DNC/cache, domestic display), retry queue verified (Celery phone worker + masothue in-process retries), 74 unit tests pass
   24-3: in-progress  # Multi-Seat Team CRM Pipeline & Shared Workspace Credit Pooling — code review patches applied and verified (ruff/pytest/tsc/biome green); pending human-review-gate, E2E gate, and deferred test-quality/direct-debit items.
   24-4: done  # Nowing Lead Clipper — 3-layer code-review passed, 5 patches applied (concurrency rollback recovery, phone +8409 normalizer, tenant client_id, tracking param scrubbing, contact title)
-  24-5: ready-for-dev  # Vertical Playbook Marketplace & Community Workflow Templates
+  24-5: done  # Vertical Playbook Marketplace & Community Workflow Templates — P0/P1 code review patches applied (auth, seed runnable, is_approved, metadata, vertical filter, hard limit, instantiate run launch). Backend ruff/pytest and frontend tsc/biome green.
   24-6: ready-for-dev  # Two-Way AI Outreach Auto-Reply Agent
   24-7: ready-for-dev  # Multi-Channel Drip Outreach Campaign Engine (Zalo ZNS + Telegram + Email Cadence) — split from 24-1; extends Sequence bounded context from Story 24.1; story file ready 2026-08-17.
   24-8: backlog  # Browser Operator CDP tool for DSH crawl subgraph + Human Live Takeover UI (split 24-8a/24-8b; AD-111)

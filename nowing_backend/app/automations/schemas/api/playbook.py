@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.automations.schemas.definition import AutomationDefinition
 
@@ -59,6 +59,71 @@ class PlaybookSummary(BaseModel):
     verticals: list[str]
     created_at: datetime
     updated_at: datetime
+
+    author_badge: str | None = None
+    author_name: str | None = None
+    estimated_credits_cost: int | None = None
+    run_count: int | None = 0
+    is_featured: bool | None = None
+    tags: list[str] | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _extract_metadata(cls, data: Any) -> Any:
+        """Pull marketplace card metadata from the persisted definition."""
+        if isinstance(data, dict):
+            definition = data.get("definition") or {}
+            metadata = definition.get("metadata") or {}
+            scope = data.get("scope")
+            scope_value = getattr(scope, "value", scope)
+            data.setdefault(
+                "author_badge",
+                metadata.get("author_badge") or ("workspace" if scope_value == "workspace" else None),
+            )
+            data.setdefault("author_name", metadata.get("author_name"))
+            data.setdefault(
+                "estimated_credits_cost",
+                metadata.get("estimated_credits_cost"),
+            )
+            data.setdefault(
+                "run_count",
+                metadata.get("run_count", 0 if scope_value == "workspace" else None),
+            )
+            data.setdefault("is_featured", metadata.get("is_featured"))
+            data.setdefault("tags", list(metadata.get("tags") or []))
+            return data
+
+        # ``from_attributes=True`` path: ``data`` is a Playbook ORM instance.
+        definition = getattr(data, "definition", {}) or {}
+        metadata = definition.get("metadata") or {}
+        scope = getattr(data, "scope", None)
+        scope_value = getattr(scope, "value", scope)
+        values: dict[str, Any] = {}
+
+        table = getattr(data, "__table__", None)
+        if table is not None:
+            for col in table.columns:
+                values[col.name] = getattr(data, col.name)
+        else:
+            values = dict(data.__dict__)
+            values.pop("_sa_instance_state", None)
+
+        values.setdefault(
+            "author_badge",
+            metadata.get("author_badge") or ("workspace" if scope_value == "workspace" else None),
+        )
+        values.setdefault("author_name", metadata.get("author_name"))
+        values.setdefault(
+            "estimated_credits_cost",
+            metadata.get("estimated_credits_cost"),
+        )
+        values.setdefault(
+            "run_count",
+            metadata.get("run_count", 0 if scope_value == "workspace" else None),
+        )
+        values.setdefault("is_featured", metadata.get("is_featured"))
+        values.setdefault("tags", list(metadata.get("tags") or []))
+        return values
 
 
 class PlaybookDetail(PlaybookSummary):

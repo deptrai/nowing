@@ -33,6 +33,9 @@ class PlaybooksApiService {
 			limit: String(params.limit),
 			offset: String(params.offset),
 		});
+		if (params.vertical && params.vertical !== "all") {
+			qs.append("vertical", params.vertical);
+		}
 		return baseApiService.get(`${BASE}?${qs.toString()}`, playbookListResponse);
 	};
 

@@ -6,9 +6,11 @@ from datetime import UTC, datetime
 
 from sqlalchemy import (
     TIMESTAMP,
+    Boolean,
     Column,
     Enum as SQLAlchemyEnum,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -24,6 +26,16 @@ from ..enums.playbook_scope import PlaybookScope
 
 class Playbook(BaseModel, TimestampMixin):
     __tablename__ = "playbooks"
+
+    __table_args__ = (
+        Index(
+            "uq_playbooks_name_scope_system",
+            "name",
+            "scope",
+            unique=True,
+            postgresql_where=text("workspace_id IS NULL"),
+        ),
+    )
 
     workspace_id = Column(
         Integer,
@@ -73,6 +85,14 @@ class Playbook(BaseModel, TimestampMixin):
         nullable=False,
         default=PlaybookScope.WORKSPACE,
         server_default=PlaybookScope.WORKSPACE.value,
+        index=True,
+    )
+
+    is_approved = Column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default="true",
         index=True,
     )
 

@@ -38,6 +38,12 @@ export const playbookSummary = z.object({
 	version: z.number(),
 	scope: playbookScope,
 	verticals: z.array(z.string()),
+	author_badge: z.string().nullable().optional(),
+	author_name: z.string().nullable().optional(),
+	estimated_credits_cost: z.number().nullable().optional(),
+	run_count: z.number().nullable().optional(),
+	is_featured: z.boolean().nullable().optional(),
+	tags: z.array(z.string()).nullable().optional(),
 	created_at: z.string(),
 	updated_at: z.string(),
 });
@@ -61,6 +67,7 @@ export const playbookListParams = z.object({
 	workspace_id: z.number(),
 	limit: z.number().int().min(1).max(200).default(50),
 	offset: z.number().int().min(0).default(0),
+	vertical: z.string().nullable().optional(),
 });
 export type PlaybookListParams = z.infer<typeof playbookListParams>;
 
