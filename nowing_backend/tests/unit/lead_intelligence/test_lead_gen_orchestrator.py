@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import uuid4
 
 import pytest
 
@@ -285,3 +286,76 @@ class TestMultiSourceLeadGenAgentTool:
             assert "Đã tìm thấy 8 leads" in tool_output or "8 leads" in tool_output
             assert "tab_lead_123" in tool_output
             assert "batdongsan" in tool_output
+
+
+class TestLeadGenOrchestratorPersist:
+    """DNC response filtering in execute_and_persist."""
+
+    @pytest.mark.asyncio
+    async def test_execute_and_persist_filters_dnc_blocked_leads(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Should strip DNC-blocked leads from the response after persistence."""
+        from app.lead_intelligence.adapters.base import NormalizedLead
+        from app.lead_intelligence.services.lead_gen_orchestrator import (
+            LeadGenOrchestrator,
+            LeadGenOrchestratorResult,
+        )
+
+        lead1 = NormalizedLead(
+            source_name="batdongsan",
+            source_id="bds_1",
+            company_name="Vinhomes",
+            canonical_domain="vinhomes.vn",
+        )
+        lead2 = NormalizedLead(
+            source_name="batdongsan",
+            source_id="bds_2",
+            company_name="Sun Group",
+            canonical_domain="sungroup.vn",
+        )
+        search_result = LeadGenOrchestratorResult(
+            status="completed",
+            total_discovered=2,
+            total_deduplicated=2,
+            leads=[lead1, lead2],
+            degraded_sources=[],
+        )
+
+        accepted_id = uuid4()
+        ingest_mock = AsyncMock(
+            return_value={
+                "ingested_count": 1,
+                "skipped_blacklisted_count": 1,
+                "failed_count": 0,
+                "execution_time_ms": 1.0,
+                "lead_ids": [accepted_id, uuid4()],
+                "lead_id_mapping": {},
+                "accepted": [True, False],
+                "accepted_lead_ids": [accepted_id],
+            }
+        )
+
+        fake_service_instance = MagicMock(ingest_batch=ingest_mock)
+        monkeypatch.setattr(
+            "app.services.lead_batch_service.LeadBatchService",
+            MagicMock(return_value=fake_service_instance),
+        )
+
+        orchestrator = LeadGenOrchestrator()
+        monkeypatch.setattr(
+            orchestrator, "execute_multi_source_lead_gen", AsyncMock(return_value=search_result)
+        )
+        monkeypatch.setattr(orchestrator, "_assign_new_leads", AsyncMock())
+
+        result = await orchestrator.execute_and_persist(
+            session=MagicMock(),
+            workspace_id=1,
+            query="BĐS Hà Nội",
+        )
+
+        assert len(result.leads) == 1
+        assert result.total_deduplicated == 1
+        assert result.deduplication_summary["deduplicated_count"] == 1
+        assert result.deduplication_summary["dnc_suppressed_count"] == 1
+        assert result.leads[0].company_name == "Vinhomes"

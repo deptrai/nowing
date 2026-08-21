@@ -31,6 +31,9 @@ class MuaSamCongLeadAdapter(LeadSourceAdapter):
 
     def __init__(self) -> None:
         self.last_execution_status = "ok"
+        # ponytail: reuse one scraper instance so the token-bucket rate limiter
+        # enforces the e-GP 15 req/min global cap across repeated calls.
+        self._scraper = MuasamcongScraper()
 
     async def _search_public_tenders(
         self,
@@ -43,8 +46,7 @@ class MuaSamCongLeadAdapter(LeadSourceAdapter):
         min_price, max_price = extract_price_range(query)
         location = resolve_chotot_city(query, filters, default=None)
 
-        scraper = MuasamcongScraper()
-        result = await scraper.search_tenders(
+        result = await self._scraper.search_tenders(
             keyword=query,
             min_price=float(min_price) if min_price is not None else None,
             max_price=float(max_price) if max_price is not None else None,

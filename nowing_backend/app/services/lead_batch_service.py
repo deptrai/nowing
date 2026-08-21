@@ -297,6 +297,13 @@ class LeadBatchService:
 
         execution_time_ms = (time.monotonic() - started_at) * 1000
 
+        accepted = [not dnc.get("blocked_by_dnc") for dnc in dnc_leads]
+        accepted_lead_ids = [
+            hmac_to_id[lead["value_hmac"]]
+            for lead, dnc, ok in zip(prepared, dnc_leads, accepted, strict=True)
+            if ok and lead["value_hmac"] in hmac_to_id
+        ]
+
         return {
             "ingested_count": len(prepared) - len(blocked_hmacs),
             "skipped_blacklisted_count": len(blocked_hmacs),
@@ -304,4 +311,9 @@ class LeadBatchService:
             "execution_time_ms": execution_time_ms,
             "lead_ids": list(hmac_to_id.values()),
             "lead_id_mapping": hmac_to_id,
+            # ponytail: downstream orchestrators need these to filter response
+            # without recomputing HMACs. Not part of the public API response.
+            "blocked_hmacs": blocked_hmacs,
+            "accepted_lead_ids": accepted_lead_ids,
+            "accepted": accepted,
         }

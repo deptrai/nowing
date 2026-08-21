@@ -22,8 +22,8 @@ from .schemas import MasothueCompany, MasothueScrapeOutput, MasothueSearchInput
 
 logger = logging.getLogger(__name__)
 
-SearchFetchFn = Callable[[str, str, int], Awaitable[tuple[str, int]]]
-DetailFetchFn = Callable[[str], Awaitable[str]]
+SearchFetchFn = Callable[..., Awaitable[tuple[str, int]]]
+DetailFetchFn = Callable[..., Awaitable[str]]
 
 _MAX_RETRIES = 2
 
@@ -98,12 +98,27 @@ async def scrape_masothue(
 
         for attempt in range(_MAX_RETRIES + 1):
             try:
-                html, _ = await search_fetch(
-                    input_model.query,
-                    input_model.search_type,
-                    page,
-                    proxy=input_model.proxy,
-                )
+                if search_fetch_fn is not None:
+                    try:
+                        html, _ = await search_fetch(
+                            input_model.query,
+                            input_model.search_type,
+                            page,
+                            proxy=input_model.proxy,
+                        )
+                    except TypeError:
+                        html, _ = await search_fetch(
+                            input_model.query,
+                            input_model.search_type,
+                            page,
+                        )
+                else:
+                    html, _ = await fetch_search_page(
+                        input_model.query,
+                        input_model.search_type,
+                        page,
+                        proxy=input_model.proxy,
+                    )
                 break
             except MasothueRateLimitedError:
                 rate_limited_seen = True
@@ -153,9 +168,17 @@ async def scrape_masothue(
                 try:
                     # Pace detail fetches to avoid tripping Cloudflare/rate limits.
                     await asyncio.sleep(_page_delay())
-                    detail_html = await detail_fetch(
-                        company.detail_url, proxy=input_model.proxy
-                    )
+                    if detail_fetch_fn is not None:
+                        try:
+                            detail_html = await detail_fetch(
+                                company.detail_url, proxy=input_model.proxy
+                            )
+                        except TypeError:
+                            detail_html = await detail_fetch(company.detail_url)
+                    else:
+                        detail_html = await fetch_detail_page(
+                            company.detail_url, proxy=input_model.proxy
+                        )
                     apply_detail(
                         company,
                         detail_html,

@@ -344,3 +344,15 @@ All review findings from 2026-08-21 were triaged and applied in the same session
 3. `resolve_adapters_for_intent` now returns **all explicitly named** job sources; if none are named, it still deduplicates to one via the priority list.
 
 Verification: `ruff check app/lead_intelligence` passed; `pytest tests/unit/lead_intelligence` 192 passed; `pytest tests/integration/lead_intelligence/test_lead_gen_orchestrator.py` 3 passed; `python -c "from app.app import app"` passed.
+
+### Re-review 2026-08-21 (manual, subagent quota exhausted)
+
+A second manual review after the first patch set found two additional issues and applied fixes:
+
+1. **`MuaSamCongLeadAdapter` created a new `MuasamcongScraper()` per `search_leads` call**, which discarded the e-GP token-bucket rate limiter state and defeated the 15 req/min cap. Fixed by reusing one scraper instance per adapter (`muasamcong.py`).
+2. **Procurement queries still triggered both `muasamcong` and `enterprise`**, because all `ENTERPRISE`-category adapters were added whenever any procurement/tax keyword matched. `enterprise` does not search tenders, so this produced an irrelevant Masothue lookup. Fixed by splitting `proc_keywords` and `ent_keywords` blocks and selecting only the matching source (`registry.py`). A unit test was added to lock the behavior.
+3. **`LeadGenOrchestrator.execute_and_persist` returned pre-DNC leads in `search_result.leads`** and only updated counts after persistence. Fixed by having `LeadBatchService.ingest_batch` return an `accepted` flag list and `accepted_lead_ids`, then filtering `search_result.leads` before returning and using only accepted IDs for assignment (`lead_batch_service.py` and `lead_gen_orchestrator.py`). A unit test was added to verify DNC-blocked leads are removed from the response.
+
+No remaining 21.20 findings.
+
+Verification (post-defer fix): `ruff check` passed; `pytest tests/unit/lead_intelligence tests/unit/services/test_lead_batch_service.py tests/unit/routes/test_lead_batch_ingest.py` 211 passed; `python -c "from app.app import app"` passed.

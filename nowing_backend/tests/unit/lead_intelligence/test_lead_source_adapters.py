@@ -676,6 +676,25 @@ class TestRegistryIntentRoutingStory2120:
         assert "vn_jobs" not in names
         assert "job_market" not in names
 
+    def test_resolve_procurement_intent_does_not_trigger_enterprise(self) -> None:
+        """Procurement query should route to muasamcong, not the tax directory."""
+        from app.lead_intelligence.adapters.enterprise import (
+            EnterpriseProcurementLeadAdapter,
+        )
+        from app.lead_intelligence.adapters.muasamcong import MuaSamCongLeadAdapter
+        from app.lead_intelligence.adapters.registry import LeadSourceAdapterRegistry
+
+        registry = LeadSourceAdapterRegistry()
+        registry.register(EnterpriseProcurementLeadAdapter())
+        registry.register(MuaSamCongLeadAdapter())
+
+        matched = registry.resolve_adapters_for_intent(
+            "gói thầu phần mềm CRM tại Hà Nội"
+        )
+        names = {a.source_name for a in matched}
+        assert "muasamcong" in names
+        assert "enterprise" not in names
+
 
 class TestLeadSourceAdapterStateRecovery:
     """Adapter status should reset from degraded to ok on a successful subsequent call."""

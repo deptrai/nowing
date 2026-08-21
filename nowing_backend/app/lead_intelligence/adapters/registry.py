@@ -193,28 +193,39 @@ class LeadSourceAdapterRegistry:
                 if a not in matched:
                     matched.append(a)
 
-        # Enterprise / Public Procurement keywords
-        # ponytail: "công ty" / "doanh nghiệp" are too generic and collide with
-        # job-market queries; keep explicit enterprise/tax/procurement terms.
-        ent_keywords = [
-            "mã số thuế",
-            "ma so thue",
+        # Public Procurement keywords — trigger only Mua Sắm Công, not the
+        # Masothue enterprise directory.
+        proc_keywords = [
+            "muasamcong",
+            "mua sắm công",
+            "mua sam cong",
             "gói thầu",
             "goi thau",
             "đấu thầu",
             "dau thau",
-            "mua sắm công",
-            "mua sam cong",
             "dự thầu",
             "du thau",
             "chủ đầu tư",
             "chu dau tu",
         ]
+        if any(
+            k in raw_lower or k in plain_lower for k in proc_keywords
+        ) or re.search(r"\bmuasamcong\b", raw_lower):
+            for a in self.find_by_category(LeadSourceCategory.ENTERPRISE):
+                if a.source_name == "muasamcong" and a not in matched:
+                    matched.append(a)
+
+        # Enterprise / Tax keywords
+        ent_keywords = [
+            "mã số thuế",
+            "ma so thue",
+            "mst",
+        ]
         if any(k in raw_lower or k in plain_lower for k in ent_keywords) or re.search(
             r"\bmst\b", raw_lower
         ):
             for a in self.find_by_category(LeadSourceCategory.ENTERPRISE):
-                if a not in matched:
+                if a.source_name == "enterprise" and a not in matched:
                     matched.append(a)
 
         # Social & Telegram keywords

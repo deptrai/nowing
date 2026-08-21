@@ -392,17 +392,23 @@ class LeadGenOrchestrator:
                 table_id=table_id,
             )
 
-        new_lead_ids = list(summary["lead_id_mapping"].values())
+        # Filter response to only the leads that survived DNC and DB upsert.
+        accepted = summary.get("accepted") or [True] * len(search_result.leads)
+        search_result.leads = [
+            lead for lead, ok in zip(search_result.leads, accepted, strict=True) if ok
+        ]
+        search_result.total_deduplicated = len(search_result.leads)
+
+        new_lead_ids = summary.get("accepted_lead_ids") or []
         await self._assign_new_leads(session, workspace_id, new_lead_ids)
 
         # Update the search result with actual persistence counts.
-        search_result.total_deduplicated = summary.get("ingested_count", 0)
         existing_summary = getattr(search_result, "deduplication_summary", None)
         if not isinstance(existing_summary, dict):
             existing_summary = {}
         search_result.deduplication_summary = {
             **existing_summary,
-            "deduplicated_count": summary.get("ingested_count", 0),
+            "deduplicated_count": len(search_result.leads),
             "dnc_suppressed_count": summary.get("skipped_blacklisted_count", 0),
             "failed_count": summary.get("failed_count", 0),
         }
