@@ -38,6 +38,12 @@ P0_SERVICES = {
     "kb_sync_service",
     "embedding_service",
     "reranker_service",
+    # Story 24.3 P0 surfaces: credit pooling, lead assignment, CRM pipeline routes, billing integration.
+    "workspace_credit_service",
+    "lead_assignment_service",
+    "routes/lead_pipeline_routes",
+    "billing_event_service",
+    "capabilities/core/billing",
 }
 
 
@@ -270,7 +276,14 @@ def generate_toml(backend: Path, service: str, project_root: Path, timeout: floa
                             module = backend / "app" / "services" / f"{service}.py"
 
     test_files = test_files_override or discover_tests(backend, service)
-    test_cmd = f'bash -c "COSMIC_RAY=1 .venv/bin/python -m pytest {" ".join(test_files)} -m \"unit or not integration\" -x 2>&1"'
+    # When the caller explicitly targets an integration test file, run with the
+    # integration marker so real-DB tests (e.g. route mutation for Story 24.3)
+    # are selected instead of filtered out.
+    if test_files and any(t.startswith("tests/integration") for t in test_files):
+        marker = '-m "integration"'
+    else:
+        marker = '-m "unit or not integration"'
+    test_cmd = f'bash -c "COSMIC_RAY=1 .venv/bin/python -m pytest {" ".join(test_files)} {marker} -x 2>&1"'
     test_cmd_toml = test_cmd.replace("\\", "\\\\").replace('"', '\\"')
 
     # If the module lives under app/proprietary, do not exclude the proprietary
@@ -316,7 +329,7 @@ def run_cosmic_ray(
         if result.returncode != 0:
             print(result.stdout)
             print(result.stderr, file=sys.stderr)
-            raise RuntimeError(f"cosmic-ray {step} failed for {config.name}")
+            raise RuntimeError(f"cosmic-ray {step} failed for {config.name} (exit code {result.returncode})")
 
         # Skip mutants on lines marked with `# pragma: no mutate` after init so
         # non-runtime type annotations don't unfairly lower the score.
@@ -334,7 +347,7 @@ def run_cosmic_ray(
                 print(f"[mutation] scope-mutation-session {session.name}")
                 scope_script = (project_root / "scripts" / "scope_mutation_session.py").resolve()
                 scope_cmd: list[str] = [
-                    str((Path(shutil.which("cosmic-ray") or "cosmic-ray").resolve().parent / "python")),
+                    str(Path(shutil.which("cosmic-ray") or "cosmic-ray").resolve().parent / "python"),
                     str(scope_script),
                     str(session),
                 ]

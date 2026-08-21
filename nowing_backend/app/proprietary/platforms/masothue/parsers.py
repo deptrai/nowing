@@ -120,7 +120,9 @@ def _extract_representative(text: str) -> str | None:
     return None
 
 
-def _parse_search_result_card(card: Any, base_url: str = _ORIGIN) -> MasothueCompany | None:
+def _parse_search_result_card(
+    card: Any, base_url: str = _ORIGIN
+) -> MasothueCompany | None:
     """Map one search-result card (``h3 > a`` + metadata) to a typed company."""
     link = card.find("h3")
     if not link:
@@ -137,7 +139,9 @@ def _parse_search_result_card(card: Any, base_url: str = _ORIGIN) -> MasothueCom
         return None
 
     # Tax code and representative are in the text following the title.
-    siblings_text = " ".join(p.get_text(" ", strip=True) for p in card.find_all(["p", "div"]))
+    siblings_text = " ".join(
+        p.get_text(" ", strip=True) for p in card.find_all(["p", "div"])
+    )
     tax_code = _extract_tax_code(siblings_text)
     legal_representative = _extract_representative(siblings_text)
 
@@ -169,7 +173,9 @@ def parse_search_results(html: str) -> list[MasothueCompany]:
         if company is None or company.name is None:
             continue
         # Dedupe within the page by (name, tax_code) or by detail URL.
-        key = f"{company.name or ''}|{company.tax_code or ''}|{company.detail_url or ''}"
+        key = (
+            f"{company.name or ''}|{company.tax_code or ''}|{company.detail_url or ''}"
+        )
         if key in seen:
             continue
         seen.add(key)
@@ -199,7 +205,9 @@ def parse_pagination(html: str) -> tuple[int, int | None]:
     return current, next_page
 
 
-def _extract_city_district_from_address(address: str | None) -> tuple[str | None, str | None]:
+def _extract_city_district_from_address(
+    address: str | None,
+) -> tuple[str | None, str | None]:
     """Heuristic city/district extraction from a full Vietnamese address.
 
     ponytail: simple regex-driven parser; falls back to the address segment
@@ -246,7 +254,7 @@ def apply_detail(
             setattr(company, key, value)
 
     # Map known fields to the aliases CorporateVerificationService expects.
-    if company.legal_representative and not company.representative:
+    if company.legal_representative or not company.representative:
         company.representative = company.legal_representative
     if company.phone and not company.rep_phone:
         company.rep_phone = company.phone

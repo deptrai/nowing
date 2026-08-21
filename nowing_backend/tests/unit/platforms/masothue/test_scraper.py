@@ -21,7 +21,9 @@ SEARCH_HTML = (FIXTURES / "search_page.html").read_text()
 DETAIL_HTML = (FIXTURES / "detail_page.html").read_text()
 
 
-async def _fake_search_fetch(query: str, search_type: str, page: int) -> tuple[str, int]:
+async def _fake_search_fetch(
+    query: str, search_type: str, page: int
+) -> tuple[str, int]:
     return SEARCH_HTML, 200
 
 
@@ -66,9 +68,7 @@ async def test_scrape_zero_max_items() -> None:
 
 @pytest.mark.asyncio
 async def test_scrape_filters_by_tax_code() -> None:
-    inp = MasothueSearchInput(
-        query="vinamilk", tax_code="0314539065", max_items=2
-    )
+    inp = MasothueSearchInput(query="vinamilk", tax_code="0314539065", max_items=2)
     out = await scrape_masothue(
         inp,
         search_fetch_fn=_fake_search_fetch,
@@ -90,13 +90,10 @@ async def test_scrape_empty_first_page_degrades() -> None:
     assert out.total_items == 0
 
 
-
 @pytest.fixture(autouse=True)
 def _no_page_delay(monkeypatch):
     """Disable inter-request pacing so unit tests run quickly."""
-    monkeypatch.setattr(
-        "app.config.config.MASOTHUE_PAGE_DELAY_S", 0, raising=False
-    )
+    monkeypatch.setattr("app.config.config.MASOTHUE_PAGE_DELAY_S", 0, raising=False)
 
 
 @pytest.mark.asyncio
@@ -144,7 +141,9 @@ async def test_scrape_stops_when_no_next_page() -> None:
     """parse_pagination is used and the scraper stops when there is no next page."""
     pages_fetched: list[int] = []
 
-    async def paged_search_fetch(query: str, search_type: str, page: int) -> tuple[str, int]:
+    async def paged_search_fetch(
+        query: str, search_type: str, page: int
+    ) -> tuple[str, int]:
         pages_fetched.append(page)
         return SEARCH_HTML, 200
 
@@ -184,7 +183,10 @@ async def test_scrape_detail_rate_limit_degrades() -> None:
 @pytest.mark.asyncio
 async def test_scrape_exact_match_with_tax_code_filter() -> None:
     """A 302 redirect exact-match plus a tax_code filter returns the one match."""
-    async def exact_match_fetch(query: str, search_type: str, page: int) -> tuple[str, int]:
+
+    async def exact_match_fetch(
+        query: str, search_type: str, page: int
+    ) -> tuple[str, int]:
         return (
             "<div class='search-results'><h3><a href='/0314539064-cong-ty'>Query</a></h3>"
             "<p>Mã số thuế: 0314539064</p></div>",
@@ -213,7 +215,9 @@ async def test_scrape_zero_max_items_does_not_fetch() -> None:
     """Boundary: max_items=0 must short-circuit and never call the search fetcher."""
     calls: list[int] = []
 
-    async def tracking_fetch(query: str, search_type: str, page: int) -> tuple[str, int]:
+    async def tracking_fetch(
+        query: str, search_type: str, page: int
+    ) -> tuple[str, int]:
         calls.append(page)
         return SEARCH_HTML, 200
 
@@ -230,7 +234,9 @@ async def test_scrape_zero_max_pages_does_not_fetch() -> None:
     """Boundary: max_pages=0 must short-circuit and never call the search fetcher."""
     calls: list[int] = []
 
-    async def tracking_fetch(query: str, search_type: str, page: int) -> tuple[str, int]:
+    async def tracking_fetch(
+        query: str, search_type: str, page: int
+    ) -> tuple[str, int]:
         calls.append(page)
         return SEARCH_HTML, 200
 
@@ -247,7 +253,9 @@ async def test_scrape_retries_then_degrades_on_rate_limit() -> None:
     """The scraper retries _MAX_RETRIES times before degrading on rate limit."""
     calls: list[int] = []
 
-    async def rate_limited_fetch(query: str, search_type: str, page: int) -> tuple[str, int]:
+    async def rate_limited_fetch(
+        query: str, search_type: str, page: int
+    ) -> tuple[str, int]:
         calls.append(page)
         raise MasothueRateLimitedError("429")
 
@@ -280,46 +288,44 @@ async def test_degrade_reason_from_exc_maps_exception_types() -> None:
 
 
 @pytest.mark.asyncio
-async def test_scrape_pagination_respects_max_pages(monkeypatch: Any) -> None:
+async def test_scrape_pagination_respects_max_pages() -> None:
     """The scraper must fetch exactly max_pages pages and no more (kills Add_LShift on range)."""
     pages_fetched: list[int] = []
 
-    async def fake_search_fetch(query: str, search_type: str, page: int) -> tuple[str, int]:
+    async def paged_fetch(query: str, search_type: str, page: int) -> tuple[str, int]:
         pages_fetched.append(page)
-        return (f"<html><body>page {page}</body></html>", 200)
+        html = f"""
+        <div class="search-results">
+            <h3><a href="/p{page}">Company {page}</a></h3>
+            <p>Mã số thuế: 031453906{page}</p>
+        </div>
+        <div class="pagination">
+            <span class="page-numbers current">{page}</span>
+            <a class="page-numbers" href="?page={page + 1}">{page + 1}</a>
+        </div>
+        """
+        return html, 200
 
-    from app.proprietary.platforms.masothue import scraper as scraper_module
-
-    def fake_parse_search_results(html: str) -> list[MasothueCompany]:
-        return [
-            MasothueCompany(
-                name=f"Company page {html}",
-                tax_code=None,
-                detail_url=None,
-            )
-        ]
-
-    def fake_parse_pagination(html: str) -> tuple[int, int | None]:
-        # Always claim a next page so the loop relies on max_pages to stop.
-        current = int(html.split("page ")[1].split("<")[0])
-        return current, current + 1
-
-    monkeypatch.setattr(scraper_module, "parse_search_results", fake_parse_search_results)
-    monkeypatch.setattr(scraper_module, "parse_pagination", fake_parse_pagination)
-
-    inp = MasothueSearchInput(query="vinamilk", max_items=10, max_pages=2, resolve_detail=False)
-    out = await scrape_masothue(inp, search_fetch_fn=fake_search_fetch)
+    inp = MasothueSearchInput(
+        query="vinamilk", max_items=10, max_pages=2, resolve_detail=False
+    )
+    out = await scrape_masothue(inp, search_fetch_fn=paged_fetch)
 
     assert out.degraded is False
     assert pages_fetched == [1, 2]
+    assert out.total_items == 2
 
 
 @pytest.mark.asyncio
-async def test_scrape_retry_upper_bound_uses_max_retries_plus_one(monkeypatch: Any) -> None:
+async def test_scrape_retry_upper_bound_uses_max_retries_plus_one(
+    monkeypatch: Any,
+) -> None:
     """range(_MAX_RETRIES + 1) must be used; range(_MAX_RETRIES << 1) would over-run."""
     calls: list[int] = []
 
-    async def rate_limited_fetch(query: str, search_type: str, page: int) -> tuple[str, int]:
+    async def rate_limited_fetch(
+        query: str, search_type: str, page: int
+    ) -> tuple[str, int]:
         calls.append(page)
         raise MasothueRateLimitedError("429")
 
@@ -333,3 +339,352 @@ async def test_scrape_retry_upper_bound_uses_max_retries_plus_one(monkeypatch: A
     assert out.degraded is True
     assert out.degradation_reason == "rate_limited"
     assert len(calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_scraper_zero_bounds() -> None:
+    calls: list[int] = []
+
+    async def tracking_fetch(
+        query: str, search_type: str, page: int
+    ) -> tuple[str, int]:
+        calls.append(page)
+        return SEARCH_HTML, 200
+
+    inp1 = MasothueSearchInput(query="vinamilk", max_items=0, max_pages=5)
+    out1 = await scrape_masothue(inp1, search_fetch_fn=tracking_fetch)
+    assert out1.items == []
+    assert out1.total_items == 0
+    assert out1.degraded is False
+    assert len(calls) == 0
+
+    inp2 = MasothueSearchInput(query="vinamilk", max_items=10, max_pages=0)
+    out2 = await scrape_masothue(inp2, search_fetch_fn=tracking_fetch)
+    assert out2.items == []
+    assert out2.total_items == 0
+    assert out2.degraded is False
+    assert len(calls) == 0
+
+    inp3 = MasothueSearchInput(
+        query="vinamilk", max_items=1, max_pages=1, resolve_detail=False
+    )
+    out3 = await scrape_masothue(inp3, search_fetch_fn=tracking_fetch)
+    assert len(calls) == 1
+    assert out3.total_items == 1
+
+
+@pytest.mark.asyncio
+async def test_scraper_search_generic_exc_retries_and_recovers() -> None:
+    calls = 0
+
+    async def retry_search_fetch(
+        query: str, search_type: str, page: int
+    ) -> tuple[str, int]:
+        nonlocal calls
+        calls += 1
+        if calls <= 2:
+            raise RuntimeError(f"attempt {calls} failed")
+        return SEARCH_HTML, 200
+
+    inp = MasothueSearchInput(
+        query="vinamilk", max_pages=1, max_items=2, resolve_detail=False
+    )
+    out = await scrape_masothue(inp, search_fetch_fn=retry_search_fetch)
+    assert out.degraded is False
+    assert out.total_items == 2
+    assert calls == 3
+
+
+@pytest.mark.asyncio
+async def test_scraper_rate_limit_retries_and_recovers() -> None:
+    calls = 0
+
+    async def retry_429_fetch(
+        query: str, search_type: str, page: int
+    ) -> tuple[str, int]:
+        nonlocal calls
+        calls += 1
+        if calls <= 2:
+            raise MasothueRateLimitedError(f"attempt {calls} 429")
+        return SEARCH_HTML, 200
+
+    inp = MasothueSearchInput(
+        query="vinamilk", max_pages=1, max_items=2, resolve_detail=False
+    )
+    out = await scrape_masothue(inp, search_fetch_fn=retry_429_fetch)
+    assert out.degraded is True
+    assert out.degradation_reason == "rate_limited"
+    assert out.total_items == 2
+    assert calls == 3
+
+
+@pytest.mark.asyncio
+async def test_scraper_page_pacing_sleep_called_between_pages(monkeypatch: Any) -> None:
+    """Sleep is called between page 1 and page 2, but not after the last page (page 2)."""
+    import asyncio
+
+    sleep_calls: list[float] = []
+
+    async def fake_sleep(duration: float) -> None:
+        sleep_calls.append(duration)
+
+    monkeypatch.setattr(asyncio, "sleep", fake_sleep)
+
+    async def paged_fetch(query: str, search_type: str, page: int) -> tuple[str, int]:
+        html = f"""
+        <div class="search-results">
+            <h3><a href="/p{page}">Company {page}</a></h3>
+            <p>Mã số thuế: 031453906{page}</p>
+        </div>
+        <div class="pagination">
+            <span class="page-numbers current">{page}</span>
+            <a class="page-numbers" href="?page={page + 1}">{page + 1}</a>
+        </div>
+        """
+        return html, 200
+
+    inp = MasothueSearchInput(
+        query="vinamilk", max_items=10, max_pages=2, resolve_detail=False
+    )
+    out = await scrape_masothue(inp, search_fetch_fn=paged_fetch)
+
+    assert out.degraded is False
+    assert out.total_items == 2
+    # Exactly 1 sleep between page 1 and page 2 (kills page < max_pages comparison mutants)
+    assert len(sleep_calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_scraper_helpers() -> None:
+    import re
+
+    from app.proprietary.platforms.masothue.scraper import (
+        _matches_filter,
+        _normalize_tax_code,
+        _now_iso,
+        _page_delay,
+        _timeout,
+    )
+
+    ts = _now_iso()
+    assert ts.endswith("Z")
+    assert re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$", ts)
+    assert len(ts) == 24
+
+    assert _normalize_tax_code(None) is None
+    assert _normalize_tax_code("") is None
+    assert _normalize_tax_code("   -   ") is None
+    assert _normalize_tax_code(" 031-453 9064 ") == "0314539064"
+
+    company = MasothueCompany(name="Vinamilk", tax_code="031-453 9064")
+    assert _matches_filter(company, None) is True
+    assert _matches_filter(company, "") is True
+    assert _matches_filter(company, "0314539064") is True
+    assert _matches_filter(company, "031-453-9064") is True
+    assert _matches_filter(company, "9999999999") is False
+
+    # Tax code greater than and less than filter (kills >= and <= mutants)
+    assert (
+        _matches_filter(MasothueCompany(tax_code="0314539065"), "0314539064") is False
+    )
+    assert (
+        _matches_filter(MasothueCompany(tax_code="0314539063"), "0314539064") is False
+    )
+
+    assert _page_delay() >= 0.0
+    assert _timeout() >= 0.0
+
+
+@pytest.mark.asyncio
+async def test_scrape_detail_rate_limited_degrades() -> None:
+    async def rate_limited_detail(url: str) -> str:
+        raise MasothueRateLimitedError("429 detail")
+
+    inp = MasothueSearchInput(query="vinamilk", max_pages=1, max_items=2)
+    out = await scrape_masothue(
+        inp,
+        search_fetch_fn=_fake_search_fetch,
+        detail_fetch_fn=rate_limited_detail,
+    )
+    assert out.degraded is True
+    assert out.degradation_reason == "rate_limited"
+
+
+@pytest.mark.asyncio
+async def test_scrape_cap_stops_at_exact_count() -> None:
+    inp = MasothueSearchInput(
+        query="vinamilk", max_pages=1, max_items=1, resolve_detail=False
+    )
+    out = await scrape_masothue(inp, search_fetch_fn=_fake_search_fetch)
+    assert out.total_items == 1
+    assert len(out.items) == 1
+    assert out.items[0].tax_code == "0314539064"
+
+
+@pytest.mark.asyncio
+async def test_scrape_search_decode_error_degrades() -> None:
+    from app.proprietary.platforms.masothue.fetch import MasothueDecodeError
+
+    async def decode_err_fetch(
+        query: str, search_type: str, page: int
+    ) -> tuple[str, int]:
+        raise MasothueDecodeError("bad html")
+
+    inp = MasothueSearchInput(query="vinamilk", max_items=10)
+    out = await scrape_masothue(inp, search_fetch_fn=decode_err_fetch)
+    assert out.degraded is True
+    assert out.degradation_reason == "decode_error"
+    assert out.total_items == 0
+
+
+@pytest.mark.asyncio
+async def test_scrape_search_access_blocked_and_timeout_degrade() -> None:
+    from app.proprietary.platforms.masothue.fetch import (
+        MasothueAccessBlockedError,
+        MasothueTimeoutError,
+    )
+
+    async def blocked_fetch(query: str, search_type: str, page: int) -> tuple[str, int]:
+        raise MasothueAccessBlockedError("403")
+
+    inp = MasothueSearchInput(query="vinamilk", max_items=10)
+    out = await scrape_masothue(inp, search_fetch_fn=blocked_fetch)
+    assert out.degraded is True
+    assert out.degradation_reason == "access_blocked"
+
+    async def timeout_fetch(query: str, search_type: str, page: int) -> tuple[str, int]:
+        raise MasothueTimeoutError("timeout")
+
+    out_to = await scrape_masothue(inp, search_fetch_fn=timeout_fetch)
+    assert out_to.degraded is True
+    assert out_to.degradation_reason == "timeout"
+
+    async def generic_err_fetch(
+        query: str, search_type: str, page: int
+    ) -> tuple[str, int]:
+        raise RuntimeError("generic network fail")
+
+    out_gen = await scrape_masothue(inp, search_fetch_fn=generic_err_fetch)
+    assert out_gen.degraded is True
+    assert out_gen.degradation_reason == "api_error"
+
+
+@pytest.mark.asyncio
+async def test_scrape_deduplicates_companies_without_tax_code() -> None:
+    html = """
+    <div>
+        <div><h3><a href="/url-a">Company Alpha</a></h3></div>
+        <div><h3><a href="/url-b">Company Beta</a></h3></div>
+        <div><h3><a href="/url-a">Company Alpha</a></h3></div>
+    </div>
+    """
+
+    async def fake_search(query: str, search_type: str, page: int) -> tuple[str, int]:
+        return html, 200
+
+    inp = MasothueSearchInput(
+        query="test", max_pages=1, max_items=10, resolve_detail=False
+    )
+    out = await scrape_masothue(inp, search_fetch_fn=fake_search)
+    assert out.degraded is False
+    assert out.degradation_reason is None
+    assert out.total_items == 2
+    names = [c.name for c in out.items]
+    assert "Company Alpha" in names
+    assert "Company Beta" in names
+
+
+@pytest.mark.asyncio
+async def test_scrape_detail_decode_error_keeps_summary() -> None:
+    from app.proprietary.platforms.masothue.fetch import MasothueDecodeError
+
+    async def decode_err_detail(url: str) -> str:
+        raise MasothueDecodeError("malformed detail")
+
+    inp = MasothueSearchInput(query="vinamilk", max_pages=1, max_items=2)
+    out = await scrape_masothue(
+        inp,
+        search_fetch_fn=_fake_search_fetch,
+        detail_fetch_fn=decode_err_detail,
+    )
+
+    assert out.degraded is False
+    assert out.total_items == 2
+    assert out.items[0].tax_code == "0314539064"
+
+
+@pytest.mark.asyncio
+async def test_scrape_detail_blocked_or_generic_exc_skips_item_and_continues() -> None:
+    """When detail fetch fails for first item, first item is skipped and second item is fetched."""
+    from app.proprietary.platforms.masothue.fetch import MasothueAccessBlockedError
+
+    calls = 0
+
+    async def partial_fail_detail(url: str) -> str:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise MasothueAccessBlockedError("blocked")
+        return DETAIL_HTML.replace("0314539064", "0314539065")
+
+    inp = MasothueSearchInput(query="vinamilk", max_pages=1, max_items=2)
+    out = await scrape_masothue(
+        inp,
+        search_fetch_fn=_fake_search_fetch,
+        detail_fetch_fn=partial_fail_detail,
+    )
+
+    assert out.degraded is False
+    assert out.total_items == 1
+    assert out.items[0].tax_code == "0314539065"
+    assert out.items[0].address is not None
+
+
+@pytest.mark.asyncio
+async def test_scrape_second_page_empty_stops_without_degrading() -> None:
+    """If page 1 has items and page 2 has no items, the run is complete and not degraded."""
+
+    async def search_fetch(query: str, search_type: str, page: int) -> tuple[str, int]:
+        if page == 1:
+            return SEARCH_HTML, 200
+        return "<html><body><div></div></body></html>", 200
+
+    inp = MasothueSearchInput(
+        query="vinamilk", max_pages=3, max_items=10, resolve_detail=False
+    )
+    out = await scrape_masothue(inp, search_fetch_fn=search_fetch)
+
+    assert out.degraded is False
+    assert out.total_items == 2
+
+
+@pytest.mark.asyncio
+async def test_scrape_deduplicates_by_tax_code_and_name_url() -> None:
+    """Deduplication keys by tax_code and fallback name|detail_url."""
+    dup_html = """
+    <div class="search-results">
+        <h3><a href="/0314539064-a">Vinamilk</a></h3>
+        <p>Mã số thuế: 0314539064</p>
+    </div>
+    <div class="search-results">
+        <h3><a href="/0314539064-b">Vinamilk Dup</a></h3>
+        <p>Mã số thuế: 0314539064</p>
+    </div>
+    <div class="search-results">
+        <h3><a href="/no-tax-c">No Tax Unique</a></h3>
+    </div>
+    <div class="search-results">
+        <h3><a href="/no-tax-c">No Tax Unique</a></h3>
+    </div>
+    """
+
+    async def dup_fetch(query: str, search_type: str, page: int) -> tuple[str, int]:
+        return dup_html, 200
+
+    inp = MasothueSearchInput(
+        query="vinamilk", max_pages=1, max_items=10, resolve_detail=False
+    )
+    out = await scrape_masothue(inp, search_fetch_fn=dup_fetch)
+    assert out.total_items == 2
+    assert out.items[0].tax_code == "0314539064"
+    assert out.items[1].name == "No Tax Unique"
