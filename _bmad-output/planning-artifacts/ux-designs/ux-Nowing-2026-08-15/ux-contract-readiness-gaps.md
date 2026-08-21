@@ -91,7 +91,53 @@ User cần biết khi memory injection bị bound/truncate để không ngạc n
 
 ---
 
-## 7. Truy vết
+## 7. PRFAQ 2026-08-21 UX Contracts
+
+### 7.1 Memory Browser / Research Timeline (UX-DR-PRFAQ-1)
+
+**Bài toán:** Analyst cần duyệt workspace memory theo research thread, source type, confidence và time, với click-to-source citation.
+
+| # | Trạng thái UI bắt buộc |
+|---|---|
+| MB-1 | **Research Timeline Panel** — danh sách memory theo thread, sort theo `created_at`, group theo `source_type` / `research_thread_id`. |
+| MB-2 | **Source Type + Confidence Filter** — chips cho `SCRAPER_RUN`, `CHAT_TURN`, `DOCUMENT`, `CONNECTOR`; slider confidence ≥ threshold. |
+| MB-3 | **Click-to-Source Citation** — click citation badge mở drawer/source panel hiển thị `citation = "run_<uuid>"` hoặc chunk/document origin. |
+| MB-4 | **Version History Peek** — hover/long-press memory hiển thị số version và timestamp correction gần nhất. |
+
+### 7.2 Self-Host Onboarding Flow (UX-DR-PRFAQ-2)
+
+**Bài toán:** Dev self-host cần hoàn tất onboarding trong <10 phút.
+
+| # | Trạng thái UI bắt buộc |
+|---|---|
+| SH-1 | **Landing Hero — Self-Host CTA** — prominent "Self-host in 10 min" button dẫn đến README + Docker Compose. |
+| SH-2 | **Install Wizard Steps** — 1) `docker compose up` 2) Chọn local LLM/embedding (`llama.cpp`/`ollama` mặc định) hoặc nhập API key 3) Tạo first workspace 4) Connect MCP client. |
+| SH-3 | **First-Run Aha Panel** — sau `docker compose up`, hiển thị quick prompt "Tìm 1 tin bất động sản và lưu vào memory" với progress indicator. |
+| SH-4 | **Offline vs Remote LLM Toggle** — rõ ràng local mode (free, slow) vs cloud API key (fast, metered). |
+
+### 7.3 Memory Correction / Version History (UX-DR-PRFAQ-3)
+
+**Bài toán:** User/agent cần flag/update memory sai và xem version history + affected relations.
+
+| # | Trạng thái UI bắt buộc |
+|---|---|
+| MC-1 | **Flag Memory Button** — trên memory card, nút "Báo sai / Correct" mở form với lý do (`outdated`, `hallucination`, `conflict`, `other`). |
+| MC-2 | **Correction Form** — input `corrected_content`, chọn propagate scope (chỉ memory này / cả thread / workspace). MVP: chỉ memory này. |
+| MC-3 | **Version History Drawer** — list `MemoryVersion` với `previous_content`, `corrected_content`, `corrected_by`, timestamp. |
+| MC-4 | **Affected Relations View** — hiển thị relations bị ảnh hưởng (post-MVP: auto propagate). |
+
+### 7.4 Cost Control / Auto-Extract Budget Dashboard (UX-DR-PRFAQ-4)
+
+**Bài toán:** Admin/workspace owner cần xem và điều chỉnh chi phí auto-extract, embedding, recall per turn.
+
+| # | Trạng thái UI bắt buộc |
+|---|---|
+| CC-1 | **Auto-Extract Budget Card** — input max items/turn, max spend/turn, toggle `memory_auto_extract_enabled`, rate-limit interval. |
+| CC-2 | **Cost Breakdown Per Turn** — bar/stack chart hoặc table hiển thị `memory_create`, `embedding`, `recall` cost micros cho mỗi chat turn. |
+| CC-3 | **Wallet + Reserved Balance** — hiển thị `credit_micros_balance`, `credit_micros_reserved`, và projected cost trước mỗi lệnh scrape/enrich. |
+| CC-4 | **Budget Alert Toast** — khi một turn vượt ngưỡng, hiển thị cảnh báo trước khi tiếp tục hoặc auto-pause auto-extract. |
+
+## 8. Truy vết
 
 | Contract | Chặn |
 |---|---|
@@ -101,3 +147,7 @@ User cần biết khi memory injection bị bound/truncate để không ngạc n
 | Outcome-Based Pricing | E21.7 / FR-69 |
 | CRM Integration | E21.5 / FR-67 |
 | Bounded Memory Injection | E3.14 / E3.17 / NFR-1b |
+| Memory Browser / Research Timeline | E3 (post-MVP) / FR-95 / UX-DR-PRFAQ-1 |
+| Self-Host Onboarding Flow | E28.4 / FR-98 / UX-DR-PRFAQ-2 |
+| Memory Correction / Version History | E3 (post-MVP) / FR-34 / UX-DR-PRFAQ-3 |
+| Cost Control / Auto-Extract Budget | E8.14 / FR-30 / UX-DR-PRFAQ-4 |

@@ -2,7 +2,7 @@
 title: Nowing - Epic Breakdown
 description: ''
 createdAt: '2026-07-28T12:47:48.297Z'
-updatedAt: '2026-08-17T00:00:00.000Z'
+updatedAt: '2026-08-21T07:16:17Z'
 tags:
   - bmad
   - bmad-source-bmad-output-planning-artifacts-epics-md
@@ -11,6 +11,7 @@ tags:
 ---
 stepsCompleted: ["step-01-validate-prerequisites", "step-02-design-epics", "step-03-create-stories", "step-04-final-validation"]
 inputDocuments:
+  - "_bmad-output/planning-artifacts/prfaq-Nowing.md (primary PRFAQ / vision source)"
   - "_bmad-output/planning-artifacts/prds/prd-Nowing-2026-07-22/prd.md"
   - "_bmad-output/planning-artifacts/architecture/architecture-unified-nowing-chainlens-dsh-2026-08-17/ARCHITECTURE-SPINE.md"
   - "_bmad-output/planning-artifacts/ux-designs/ux-Nowing-2026-08-15/DESIGN.md"
@@ -31,7 +32,7 @@ inputDocuments:
 
 ## Overview
 
-Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Architecture spine, và 2 sprint-change-proposal (nguồn taxonomy epic).
+Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Architecture spine, PRFAQ `prfaq-Nowing.md`, và 2 sprint-change-proposal (nguồn taxonomy epic).
 
 > **Bối cảnh (đã verify code):** Nowing là **brownfield** — taxonomy **Epic 1–8 đã tồn tại và phần lớn ĐÃ IMPLEMENT** (migration tới 179; memory layer đã build: mig 177 tables/enums/confidence/HNSW+GIN/RBAC, 179 auto-extract, endpoints `memories_routes.py`, 4 MCP tools). Tài liệu này **không tạo epic mới đè lên epic đã xong**, mà: (a) ghi lại taxonomy thật với trạng thái `[DONE]`/`[PARTIAL]`/`[GAP]`, (b) thêm story **mới** chỉ cho phần còn thiếu (recall eval-gate, data-loss recovery, dedupe tuning, cost guardrails, docs sync).
 >
@@ -101,6 +102,14 @@ Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Archite
 
 > **⚠️ Re-bind 2026-07-25 (SCP `sprint-change-proposal-2026-07-25-chainlens-engine-boundary.md`, ✅ ADOPTED):** **FR-24 rời Epic 2 (Connectors) sang Epic 9.** ChainLens không phải connector/scraper ngang hàng Reddit — nó là external dependency hạng nhất (`AD-15`). FR-37, FR-38, NFR-9 là mới. Story `2-4` giữ `done` làm lịch sử (nó đã ship tool thật), không revert.
 
+#### PRFAQ-derived Functional Requirement Gaps (post-pivot 2026-08-04)
+
+`[BACKLOG]` **FR-95 Data export & portability** → workspace/self-host user có thể export memory, research threads, và citations ra JSON/CSV (PRFAQ Q5, RS-8).
+`[BACKLOG]` **FR-96 Encryption-at-rest & key management for cloud memory** → dữ liệu `content`, PII trong `source_input`, và metadata memory/version/relation trong cloud được mã hóa với BYOK hoặc managed key; `embedding` v1 giữ plaintext để HNSW/GIN search hoạt động, mã hóa embedding deferred cho đến khi benchmark searchable encryption (PRFAQ Q4, AD-28.1).
+`[BACKLOG]` **FR-97 ToS/legal review + retention policy for long-term scraped data** → review ToS các nguồn, đặt retention + right-to-delete policy trước GA cloud (PRFAQ IQ9, RS-11).
+`[BACKLOG]` **FR-98 Self-host OSS onboarding <10 min** → README + `docker compose` + local LLM/embedding config để dev tự host trong 10 phút (PRFAQ Q6, IQ6, RS-13).
+`[BACKLOG]` **FR-99 Recall precision/noise gate before scale** → chốt ngưỡng precision và top-k noise trên `nowing_evals` trước khi mở rộng auto-extract (PRFAQ IQ1, Q8, RS-7).
+
 ### NonFunctional Requirements
 `[DONE]` NFR-2 Security · NFR-3 Observability · NFR-4 Reliability · NFR-5 Multi-tenancy isolation · **NFR-6 Citation jump-to-source** *(cải chính 2026-07-25: `editorPanelAtom` CÓ `chunkId`; `AD-DEFER-1` đã đóng)* · **NFR-7 Usage dashboard** *(story `8-3` = done)* · **NFR-8 Recall quality eval-gate** *(story `3-9` = done; baseline ratified 2026-08-04)* · **NFR-9 Deep-research latency & availability budget** *(story `9-3` = done; State A async deliverable default; State B sync chat-mode gated on measured p95 `balanced` ≤30s)* · **NFR-10 Chat Response Regression Gate** *(mới 2026-08-04 — stories 4.8b/4.8e/4.8f/4.8g/4.8h done; `chat/regression` baseline ratification pending measured run)*.  **NFR-11 Scraping compliance & anti-bot resilience (Vietnam job market)** *(mới 2026-08-05 — ToS review, legal counsel, anti-bot POC, PII pipeline)*. `[PARTIAL]` NFR-1 Performance (bounds mơ hồ — **và không có epic nào nhận**, xem readiness C-1).
 
@@ -116,8 +125,13 @@ Starter template: **KHÔNG — brownfield**. Component mới thật sự duy nh�
 - **AR-8** MCP tool contract/selfcheck CI (`EXPECTED_TOOLS`, e2e smoke), toggle-aware.
 - **AR-9** Memory security: verify `memory:*` RBAC enforced + workspace/user isolation + audit-log writes (hiện chỉ `logger.warning`).
 - **AR-10** Docs/README/epics sync sang research-memory (Fumadocs) + CI docs-drift.
+- **AR-11** Data export / portability cho workspace memory và research threads (PRFAQ Q5 — self-host/cloud split, giảm lock-in trước GA).
+- **AR-12** Encryption-at-rest + key management cho cloud memory content/PII/metadata; BYOK/managed key; embedding encryption deferred sau benchmark (PRFAQ Q4, AD-28.1).
+- **AR-13** ToS/legal review + retention / right-to-delete policy cho dữ liệu scrape lưu dài hạn (PRFAQ IQ9 — Reddit/YouTube/TikTok/Amazon).
+- **AR-14** Self-host onboarding <10 phút (`docker compose up`, local LLM/embedding, README mới) (PRFAQ Q6/IQ6 — OSS motion / aha moment).
+- **AR-15** Refine recall precision gate: xác định ngưỡng precision/noise trên `nowing_evals` trước khi scale (PRFAQ IQ1 — rủi ro sản phẩm #1; NFR-8 đã có, cần chốt số).
 
-**Requirements signals:** RS-1 auto-extract budget (item-cap + spend-cap + wallet pre-check + rate-limit done) · RS-2 recall top_k≤5 (verify) · RS-3 beachhead agent-builder→team · RS-4 "MCP trước UI sau"/"semantic facts first" · RS-5 docs-sync bắt buộc · RS-6 right-to-delete + self-host/cloud split · RS-7 eval-gated launch + chốt số SM · RS-8 data export · RS-9 "project memory"=`ResearchThread`? · RS-10 cost/turn beta trước pricing.
+**Requirements signals:** RS-1 auto-extract budget (item-cap + spend-cap + wallet pre-check + rate-limit done) · RS-2 recall top_k≤5 (verify) · RS-3 beachhead agent-builder→team · RS-4 "MCP trước UI sau"/"semantic facts first" · RS-5 docs-sync bắt buộc · RS-6 right-to-delete + self-host/cloud split · RS-7 eval-gated launch + chốt số SM · RS-8 data export · RS-9 "project memory"=`ResearchThread`? · RS-10 cost/turn beta trước pricing · **RS-11 legal/ToS + retention policy trước GA cloud (PRFAQ)** · **RS-12 encryption-at-rest + key management cho cloud (PRFAQ)** · **RS-13 self-host onboarding <10 phút / aha recall (PRFAQ)**.
 
 ### UX Design Requirements
 Các UX contract dưới đây đã được lưu trữ tại `_bmad-output/planning-artifacts/ux-designs/archive/ux-Nowing-2026-07-22-superseded/` dưới dạng behavior contract (không layout/màu). UX chuẩn hiện tại là `_bmad-output/planning-artifacts/ux-designs/ux-Nowing-2026-08-15/` (`DESIGN.md` + `EXPERIENCE.md`); các đường dẫn cũ chỉ còn giá trị tham chiếu lịch sử.
@@ -129,6 +143,26 @@ Các UX contract dưới đây đã được lưu trữ tại `_bmad-output/plan
 - `_bmad-output/planning-artifacts/ux-designs/archive/ux-Nowing-2026-07-22-superseded/ux-contract-first-run-onboarding.md` — chặn story 3.13 (FR-40)
 
 Các story có UI vẫn cần UX spec riêng trước khi build UI chi tiết. UX chuẩn (2026-08-15) là nguồn thiết kế cho mọi tính năng mới.
+
+#### UX Design Requirements — PRFAQ (Memory Layer)
+
+*Nguồn:* `_bmad-output/planning-artifacts/prfaq-Nowing.md`.
+
+**UX-DR-PRFAQ-1: Memory browser / research timeline (post-MVP)**
+- Analyst dùng web UI cần xem danh sách memory theo research thread, filter theo source type / confidence / time, và click-to-source citation.
+- *Priority:* post-MVP; agent/MCP là beachhead trước (PRFAQ Q9/IQ7).
+
+**UX-DR-PRFAQ-2: Self-host onboarding flow**
+- Landing page + README phải dẫn dev qua `docker compose up`, chọn local vs remote LLM/embedding, kết nối MCP client trong ≤10 phút.
+- *Priority:* fast-follow cho OSS motion (PRFAQ Q6/IQ6).
+
+**UX-DR-PRFAQ-3: Memory correction / version history**
+- UI cho phép user/agent flag memory sai, update fact, xem version history và relations bị ảnh hưởng.
+- *Priority:* fast-follow sau 4 MCP tools (PRFAQ Q1/Q8).
+
+**UX-DR-PRFAQ-4: Cost control / per-workspace auto-extract budget**
+- Dashboard hiển thị chi phí extract + embedding + recall per turn, cấu hình ngân sách và toggle auto-extract.
+- *Priority:* fast-follow (PRFAQ Q7/IQ5).
 
 #### UX Design Requirements — Epic 26 Mission Control & Two-Tier Phone Unlock Refinement
 
@@ -244,7 +278,7 @@ Built-in scrapers + OAuth connectors + external MCP connectors; connectors là m
 > **⚠️ 2026-07-25: FR-24 (ChainLens) đã rời Epic 2 → Epic 9.** ChainLens không phải connector. Story `2-4-chainlens-research-mcp-tool` giữ `done` làm lịch sử — nó đã ship tool thật; việc còn lại thuộc Epic 9.
 
 ### Epic 3: Knowledge Base + Long-Term Memory — ✅ DONE
-KB + long-term research memory. **FRs:** FR-9,11,12,13,32,33,34, **FR-40** *(mới)*, **NFR-1b/1c/1d** *(mới)*. **Open:** 3.15 run citations `[ready-for-dev]`, 3.16 OKF export `[ready-for-dev]`.
+KB + long-term research memory. **FRs:** FR-9,11,12,13,32,33,34, **FR-40** *(mới)*, **NFR-1b/1c/1d** *(mới)*, **FR-99** *(mới 2026-08-21 — recall precision/noise gate từ PRFAQ)*. **Open:** 3.15 run citations `[ready-for-dev]`, 3.16 OKF export `[ready-for-dev]`, 3.17 memory injection perf gate `[ready-for-dev]`, 3.18 recall precision gate `[backlog]`.
 > **🆕 2026-07-25 (readiness Nhóm 3):** hai story mới, cả hai đều là **gap trước đây không có FR lẫn epic**. **3.13** — `MemoryExtractionService` chỉ có `extract_from_turn` và workspace mới không seed gì ⇒ `nowing_recall` session đầu **rỗng theo cấu trúc**, **M1 (first-run value ≤15 phút) không tồn tại**. **3.14** — `MemoryInjectionMiddleware` **chặn mọi lượt chat** với `SELECT` không LIMIT, bỏ qua cả HNSW + GIN index đã có sẵn ⇒ chi phí mỗi lượt tăng tuyến tính theo mức dùng. **3.14 nên chạy trước khi chốt số SM-10 của 3.9.**
 
 ### Epic 4: Chat & Agents — ✅ DONE
@@ -266,7 +300,7 @@ Schedule/event/**memory_change** trigger + `agent_task`/`continue_research`/**wr
 Web/desktop/extension/Obsidian/MCP. **FRs:** FR-25,26,27,28,29. **Open:** 7.4 dedicated connectors layout `[ready-for-dev]`.
 
 ### Epic 8: Người dùng thấy và kiểm soát được chi phí — ✅ DONE (2026-08-02)
-Token tracking, ví credit, dashboard usage, guardrail chi phí, docs/vision sync, admin UI cho global LLM model config, workspace limits, và PostHog analytics. **FRs:** FR-30, FR-31, **FR-41** *(mới)*. 8.10, 8.11, 8.12, 8.13 **done**.
+Token tracking, ví credit, dashboard usage, guardrail chi phí, docs/vision sync, admin UI cho global LLM model config, workspace limits, và PostHog analytics. **FRs:** FR-30, FR-31, **FR-41** *(mới)*. 8.10, 8.11, 8.12, 8.13 **done**. **Open:** 8.14 cost & auto-extract budget dashboard `[backlog]` *(mới 2026-08-21 từ PRFAQ, UX-DR-PRFAQ-4)*.
 > **⚠️ Đổi tên + đánh lại số hiệu 2026-07-25 (readiness Q-7 + C-C).** Tên trước *"Platform Operations (Billing/Usage/Token)"* là framing ops. **Và quan trọng hơn — số hiệu story đã bị xung đột với `sprint-status.yaml`:** `8.4a`/`8.5`/`8.6` trong tài liệu này nghĩa **khác** `8-4`/`8-5`/`8-6` trong sprint-status (observability-logging / security-permissions / multi-tenant-isolation). Đã đánh lại theo số **chưa dùng**: `8.4a → 8.8` · `8.5 → 8.9` · `8.6 → 8.10`. Từ giờ số hiệu ở hai tài liệu khớp 1-1.
 
 ### Epic 9: Deep Research đáng tin cậy — không vỡ, không treo, tính phí đúng — ✅ DONE (2026-08-05)
@@ -313,6 +347,9 @@ Toàn diện hóa hệ thống Săn Lead & Tiếp cận Khách hàng Đa kênh: 
 
 ### Epic 22: Telegram Scraper & Channel Ingestion Engine — ⏳ READY-FOR-DEV
 Public channel web preview, MTProto Userbot session pool, distributed mutex lock, FloodWait cooldown state machine, regex entity extractor, S3 media chunk streaming, realtime stream daemon, Alert Engine trigger, AI Agent tools. **Stories:** 22.1–22.3. Governed by `architecture-telegram-scraper-2026-08-15`.
+
+### Epic 28: Self-Host Trust, Data Portability & Cloud GA Legal Readiness — 📋 BACKLOG *(mới 2026-08-21 từ PRFAQ)*
+Người dùng self-host và cloud có thể tin tưởng Nowing với research memory dài hạn: dữ liệu có thể xuất, được mã hóa, quản lý bởi policy rõ ràng, và self-host chạy trong <10 phút. **FRs:** FR-95, FR-96, FR-97, FR-98. **ARs:** AR-11, AR-12, AR-13, AR-14. **UX-DRs:** UX-DR-PRFAQ-2 (self-host onboarding). **Stories:** 28.1–28.4. **Dependencies:** Epic 1 (auth), Epic 3 (memory schema), Epic 8 (billing/cost). Post-MVP UX-DR-PRFAQ-1/3 (memory browser/correction) thuộc Epic 3.
 
 ---
 
@@ -635,6 +672,32 @@ So that `AD-18` is not silently regressed as the product accumulates memories.
 **Then** a `memory_injection_failure` counter is incremented (not just `logger.exception`).
 
 _Governed by `AD-18`, NFR-1b._
+
+### Story 3.18: Recall Precision / Noise Gate Ratification  `(mới 2026-08-21 từ PRFAQ)`  `[backlog]`
+
+As a platform team,
+I want to ratify a precise precision/noise threshold for `nowing_recall` on `nowing_evals` before scaling,
+So that Nowing does not ship "AI guessing" instead of "AI remembering".
+
+**Acceptance Criteria:**
+
+**Given** the `memory-recall` eval suite in `nowing_evals` already measures recall@k, MRR, nDCG, and Wilson CI,
+**When** I add the `precision@5` and `noise_rate` metrics with a documented oracle,
+**Then** `nowing_evals report memory recall` prints both metrics with confidence intervals and a pass/fail verdict.
+
+**Given** a candidate threshold (e.g. `precision@5 ≥ 0.80`, `noise_rate ≤ 0.10`),
+**When** the baseline is measured on the current corpus,
+**Then** the chosen threshold is recorded in `_bmad-output/planning-artifacts/memory-recall-thresholds-2026-08-21.md` and wired into the CI gate so any PR that regresses recall below the threshold is blocked.
+
+**Given** a regression in precision or noise,
+**When** the CI gate runs,
+**Then** it fails with a clear diff of metric deltas and a link to the oracle dataset, not a generic assertion failure.
+
+**Given** the threshold document is missing or the oracle is empty,
+**When** the gate runs,
+**Then** it raises `QualityBenchmarkConfigError` with a validation message and does not silently pass.
+
+_FR-99 · AR-15 · NFR-8 · AD-46 · AR-1 · AR-3 · RS-7 · SM-10. Threshold artifact: `memory-recall-thresholds-2026-08-21.md`._
 
 ---
 
@@ -1143,6 +1206,28 @@ So that I can understand user flows, feature adoption, and retention.
 
 **Kỹ thuật:** add `@posthog-js` (if not already), initialize in layout, wrap key events, keep server-side observability separate.
 _NFR-3 · upstream PR #1622._
+
+### Story 8.14: Cost & Auto-Extract Budget Dashboard `(mới 2026-08-21 từ PRFAQ)` `[backlog]`
+
+As a workspace owner,
+I want a dashboard that shows cost per turn and a per-workspace auto-extract budget toggle,
+So that I can control spend and avoid surprise bills from memory extraction.
+
+**Acceptance Criteria:**
+
+**Given** the workspace owner opens `Usage & Budget` settings, **When** the page loads, **Then** it displays a per-turn cost breakdown: auto-extract LLM tokens, embedding tokens, and recall tokens, sourced from `TokenUsage` and reconciled with `credit_transactions`.
+
+**Given** a `TokenUsage` row is missing `workspace_id` or `cost_micros`, **When** the dashboard queries the data, **Then** it excludes incomplete rows and logs a `usage_reconcile_warning` rather than inflating totals.
+
+**Given** auto-extract is enabled for the workspace, **When** the owner sets an item cap, spend cap, or wallet pre-check, **Then** the existing kill-switch/guardrails (Story 8.7) enforce those limits and surface a warning when 80% of the cap is reached.
+
+**Given** auto-extract is disabled for the workspace, **When** a user continues a research thread, **Then** no `MemoryExtractionService` runs, no LLM extraction cost is incurred, and the agent still has access to manually-saved memories.
+
+**Given** the cost dashboard is open, **When** the owner hovers a bar, **Then** it shows the capability (e.g. `chainlens.research`, `memory.extraction`, `memory.recall`) and the resolved model, and the value created (memories created, citations generated) alongside the cost.
+
+**And** the dashboard reuses the existing `workspace_limits` and `credit_wallet` infrastructure so it does not duplicate ledgers.
+
+_UX-DR-PRFAQ-4 · AR-5 · AR-6 · FR-31 · NFR-7 · Story 8.3 extension._
 
 ## Epic 9: Deep Research đáng tin cậy — không vỡ, không treo, tính phí đúng  `(mới 2026-07-25)`
 ### Story 9.1a: Research Degradation & Self-Host Independence  `(mới)`  `[DONE — P0, tiền đề trước khi public repo]`
@@ -3028,7 +3113,7 @@ _FR-89 · AD-42 · AD-44_
 
 ---
 
-### Story 21.20: Extend Multi-Source Lead Gen Adapters `[ready-for-dev]`
+### Story 21.20: Extend Multi-Source Lead Gen Adapters `[done]`
 
 As a sales rep or real estate broker in Vietnam,
 I want `multi_source_lead_gen` to also cover the sources it currently advertises but does not yet wire (`muaban_bds`, `vn_jobs`/`VietnamWorks`, `Mua Sắm Công` / `muasamcong`),
@@ -3814,6 +3899,150 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 > - **Story 20.3** = `NowingPrivateProvider` for `POST /v1/private-data/search`.
 > - **Story 20.4** = `ChainLensServiceAuth` + cost ledger sync.
 > - **Story 6.8** = Generic Alert Engine in Epic 6 Automation infrastructure (scheduler + `RunService` + notification dispatch).
+
+---
+
+## Epic 28: Self-Host Trust, Data Portability & Cloud GA Legal Readiness `(mới 2026-08-21 từ PRFAQ)`
+
+**Epic goal:** Người dùng self-host và cloud có thể tin tưởng Nowing với research memory dài hạn: dữ liệu có thể xuất, được mã hóa, quản lý bởi policy rõ ràng, và self-host chạy trong <10 phút.
+
+**FRs:** FR-95 (Data export & portability), FR-96 (Encryption-at-rest & key management cho cloud), FR-97 (ToS/legal review + retention policy cho scrape data), FR-98 (Self-host OSS onboarding <10 min).
+
+**ARs:** AR-11 (data export/portability), AR-12 (encryption-at-rest + key management), AR-13 (ToS/legal review + right-to-delete), AR-14 (self-host onboarding <10 phút).
+
+**UX-DRs:** UX-DR-PRFAQ-2 (self-host onboarding flow).
+
+**NFRs / NFR signals:** NFR-2 (Security), NFR-3 (Observability), RS-11 (legal/ToS + retention policy), RS-12 (encryption-at-rest), RS-13 (self-host onboarding / aha recall).
+
+**Architectural invariants (INV-28.1 – INV-28.4):**
+- **INV-28.1 (Cloud key hierarchy):** Cloud hỗ trợ managed key mặc định và BYOK (customer-managed key) tùy chọn; v1 encrypt `content`, PII trong `source_input`, và metadata `MemoryVersion`/`MemoryRelation` trước khi ghi disk; **defer** encrypt `embedding` cho đến khi có benchmark searchable encryption, vì `embedding` dùng HNSW/GIN search.
+- **INV-28.2 (Right-to-delete without cascade):** Retention policy cho phép user xóa 1 memory cụ thể + versions + relations mà không xóa workspace hoặc research thread; mọi xóa phải có dry-run và ghi `audit_events`.
+- **INV-28.3 (Self-host billing off by default):** Self-host install không yêu cầu Nowing Cloud API key để chạy core; deep-research engine gọi qua Cloud API key tùy chọn, local model có thể thay thế embedding/LLM.
+- **INV-28.4 (Portability format stable):** Data export dùng OKF (đã có) làm canonical bundle; JSON/CSV là derived view; import-OKF là fast-follow để giảm lock-in fear.
+
+**Dependencies:** Epic 1 (auth/RBAC), Epic 3 (memory schema/provenance), Epic 8 (billing/cost/wallet), Epic 9 (self-host research path qua Nowing Cloud API). Không phụ thuộc Epic 4/7.
+
+**Architecture Decisions:**
+- `AD-28.1` — Encryption-at-Rest Strategy for Nowing Memory.
+- `AD-28.2` — Data Export / OKF Bundle.
+- `AD-28.3` — Retention & Right-to-Delete.
+- `AD-28.4` — Self-Host OSS Onboarding.
+- `AD-46` — Recall Precision / Noise Threshold Ratification (Story 3.18).
+
+**Stories:**
+
+### Story 28.1: Workspace Memory & Research Data Export `(mới 2026-08-21 từ PRFAQ)` `[backlog]`
+
+As a workspace owner,
+I want to export all workspace memory, research threads, and citations in JSON or CSV on top of OKF,
+So that I can back up, migrate, or leave the platform without lock-in.
+
+**Acceptance Criteria:**
+
+**Given** a workspace with memories, research threads, and citations, **When** an owner requests a portable export, **Then** the backend produces a ZIP containing JSON/CSV files plus the canonical OKF bundle, and the export is scoped strictly to that workspace.
+
+**Given** a workspace with no memories or documents, **When** an export is requested, **Then** it returns an empty but valid bundle with `item_count=0` instead of a 500 error.
+
+**Given** the export contains memory with `source_run_id` or `source_uuid`, **When** the CSV is opened, **Then** provenance fields are preserved as stable identifiers so citations can be re-linked after import.
+
+**Given** a large workspace with >10,000 memories, **When** the export runs, **Then** it streams in batches, enforces a file size limit per part, and does not OOM the worker.
+
+**Given** a memory has a corrupted embedding or missing `content`, **When** the export reaches that row, **Then** it logs a `export_row_skipped` warning and continues, producing a valid bundle.
+
+**And** the export redacts API keys, OAuth tokens, and embeddings if the user selects a human-readable format (CSV/JSON without vectors).
+
+_FR-95 · AR-11 · RS-8 · INV-28.4 · AD-28.2._
+
+### Story 28.2: Encryption-at-Rest for Cloud Memory `(mới 2026-08-21 từ PRFAQ)` `[backlog]`
+
+As a cloud workspace user,
+I want memory content, PII source input, and metadata encrypted at rest with a managed or customer-managed key,
+So that my long-term research data is protected if the underlying storage is compromised.
+
+**Acceptance Criteria:**
+
+**Given** cloud deployment with `NOWING_ENCRYPTION_KEY_PROVIDER=managed|byok`, **When** a memory row is inserted or updated, **Then** `content`, sensitive `source_input`, `MemoryVersion.content`, and `MemoryRelation` soft-delete metadata are encrypted before being written to disk, not just protected by TLS.
+
+**Given** `embedding` encryption is not enabled (v1), **When** a vector search runs, **Then** it uses the existing HNSW index on plaintext `embedding` with no additional latency, satisfying the performance gate.
+
+**Given** the same cloud deployment, **When** a memory is read, **Then** the backend decrypts it transparently and returns plaintext to authorized callers; unauthorized tenants never see plaintext or raw ciphertext.
+
+**Given** a feature flag `MEMORY_ENCRYPTION_V1` is OFF, **When** a memory is written, **Then** it is written as before, allowing staged rollout and rollback.
+
+**Given** a BYOK key is rotated, **When** the rotation job runs, **Then** old ciphertext is re-encrypted with the new key without downtime, without exposing plaintext in logs, and row-level `key_id` metadata is updated.
+
+**Given** a self-host deployment with `NOWING_ENCRYPTION_KEY_PROVIDER=none` (default), **When** memory is written, **Then** it remains plaintext unless the admin explicitly configures a local key, preserving OSS simplicity.
+
+**And** encryption metadata (`key_id`, `algorithm`, `iv`) is stored per row so a single compromised key does not force a full database restore.
+
+_FR-96 · AR-12 · RS-12 · NFR-2 · INV-28.1 · AD-28.1._
+
+### Story 28.3: ToS / Legal Review & Retention Policy for Long-Term Scrape Data `(mới 2026-08-21 từ PRFAQ)` `[backlog]`
+
+As a data protection officer / cloud user,
+I want Nowing to have a documented ToS/legal review and a retention / right-to-delete policy for data kept in long-term memory,
+So that the cloud GA is legally safe and users can remove infringing or outdated content.
+
+**Acceptance Criteria:**
+
+**Given** a list of scrape sources used by Nowing (Reddit, YouTube, TikTok, Amazon, Google Maps, etc.), **When** legal review is performed, **Then** a `_bmad-output/planning-artifacts/legal/tos-review-2026-08-21.md` document records: (a) which sources permit long-term storage, (b) which require attribution, (c) which prohibit reproduction, (d) recommended retention windows per source type, and (e) a **source risk tier** (low/medium/high) for cloud enablement decisions.
+
+**Given** a high-risk source (e.g. TikTok with restrictive ToS), **When** cloud workspace owner browses settings, **Then** that source is disabled by default with an explicit legal warning and does not appear in auto-extract unless owner opts in.
+
+**Given** the ToS review is approved, **When** an admin initiates a bulk deletion by `source_type` + `source_id`, **Then** the system runs a dry-run that lists affected `Memory` rows and total bytes, and only purges after explicit confirmation, with all actions logged to `audit_events`.
+
+**Given** a workspace owner requests right-to-delete for a specific memory, **When** the erasure is confirmed, **Then** the memory, its versions, its relations, and its embedding are purged within the SLA, and an audit log entry is written to `audit_events`.
+
+**Given** a bulk deletion of >100,000 memories, **When** the job runs, **Then** it is chunked into batches with progress reporting and can be cancelled without corrupting the index.
+
+**Given** self-host vs cloud deployment, **When** the policy is published, **Then** it clearly states that self-host users retain responsibility for source compliance, while cloud Nowing acts as a processor with documented retention windows.
+
+**And** the policy is linked from the public docs, signup flow, and workspace settings before cloud GA.
+
+_FR-97 · AR-13 · RS-11 · INV-28.2 · AD-28.3. Legal review approved 2026-08-21; see `legal/tos-review-2026-08-21.md`._
+
+### Story 28.4: Self-Host OSS Onboarding in Under 10 Minutes `(mới 2026-08-21 từ PRFAQ)` `[backlog]`
+
+As a developer evaluating Nowing,
+I want to self-host the open-core with `docker compose` and have a working workspace with local or remote LLM/embedding in under 10 minutes,
+So that I can trust the product and try it without a cloud account.
+
+**Acceptance Criteria:**
+
+**Given** a fresh Linux, macOS, or Windows WSL2 machine with Docker installed, **When** the user runs `curl -fsSL .../install.sh | bash`, **Then** within 10 minutes Postgres, Redis, backend, frontend, and MCP server are healthy and the web UI is reachable at `http://localhost:3000`.
+
+**Given** a host with existing Postgres/Redis on default ports, **When** the install script detects the conflict, **Then** it prompts for alternative ports and updates `.env` + `docker-compose` accordingly.
+
+**Given** the install script runs, **When** the user has no OpenAI/Anthropic key, **Then** the script detects and offers a local embedding/LLM option (e.g. Ollama with `nomic-embed-text` + `llama3.1`) and sets `LOCAL_MODEL=true` so core memory features work offline.
+
+**Given** a first-time user opens the web UI, **When** they create an account and ask the agent to remember a fact, **Then** `nowing_remember` writes to `Memory`, `nowing_recall` returns it, and the aha moment happens without cloud dependency.
+
+**Given** the install environment has no internet, **When** the user pre-pulls the Ollama model image, **Then** the offline path still completes within 10 minutes after `install.sh` is available locally.
+
+**Given** the user later wants cloud deep-research, **When** they add `NOWING_CLOUD_API_URL` + `NOWING_SELF_HOST_API_KEY`, **Then** self-host routes research through Nowing Cloud metered API and does not need an engine key.
+
+**And** the README quick-start is rewritten to match the new install script and local-model path, and a CI smoke test runs the install on a fresh Ubuntu VM nightly.
+
+_FR-98 · AR-14 · RS-13 · INV-28.3 · AD-28.4._
+
+### PRFAQ-Derived Requirements Coverage Map
+
+| Requirement | Epic | Notes |
+|---|---|---|
+| **FR-95** Data export & portability | **Epic 28** | Export workspace memory/research threads/citations ra JSON/CSV trên OKF bundle (28.1). |
+| **FR-96** Encryption-at-rest & key management (cloud) | **Epic 28** | Tiered encryption: content + PII/metadata v1, embedding v2 (28.2, AD-28.1). |
+| **FR-97** ToS/legal review + retention policy | **Epic 28** | Review ToS nguồn scrape, source risk tier, right-to-delete workflow (28.3). |
+| **FR-98** Self-host OSS onboarding <10 min | **Epic 28** | README + `docker compose` + local LLM/embedding config + install script (28.4). |
+| **FR-99** Recall precision/noise gate | **Epic 3** | Chốt ngưỡng precision/noise trên `nowing_evals` trước khi scale (3.18). |
+| **AR-11** Data export/portability | **Epic 28** | Same as FR-95. |
+| **AR-12** Encryption-at-rest + key management | **Epic 28** | Same as FR-96. |
+| **AR-13** ToS/legal review + right-to-delete | **Epic 28** | Same as FR-97. |
+| **AR-14** Self-host onboarding <10 phút | **Epic 28** | Same as FR-98. |
+| **AR-15** Refine recall precision gate | **Epic 3** | Same as FR-99. |
+| **UX-DR-PRFAQ-1** Memory browser / research timeline | **Epic 3** *(post-MVP)* | UI cho analyst duyệt memory theo thread/source/confidence. |
+| **UX-DR-PRFAQ-2** Self-host onboarding flow | **Epic 28** | Landing page + README hướng dẫn `docker compose` + MCP. |
+| **UX-DR-PRFAQ-3** Memory correction / version history | **Epic 3** *(post-MVP)* | UI flag/update fact, xem version history & relations. |
+| **UX-DR-PRFAQ-4** Cost control / auto-extract budget dashboard | **Epic 8** *(chính)* | Per-workspace budget toggle + cost/turn panel (8.14). |
 
 ---
 
