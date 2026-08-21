@@ -73,3 +73,30 @@ def test_masothue_scrape_context_aware() -> None:
     from app.capabilities.masothue.scrape.definition import MASOTHUE_SCRAPE
 
     assert MASOTHUE_SCRAPE.context_aware is True
+
+
+def test_scrape_output_computed_fields_and_defaults() -> None:
+    from app.capabilities.masothue.scrape.schemas import ScrapeOutput
+    from app.proprietary.platforms.masothue.schemas import MasothueCompany
+
+    # Default output
+    out = ScrapeOutput()
+    assert out.cost_micros == 0
+    assert out.total_items == 0
+    assert out.items == []
+    assert out.degraded is False
+    assert out.degradation_reason is None
+
+    # Serialization must include total_items computed field
+    dump = out.model_dump()
+    assert "total_items" in dump
+    assert dump["total_items"] == 0
+
+    # With items
+    c1 = MasothueCompany(name="Vinamilk", tax_code="0314539064")
+    out2 = ScrapeOutput(items=[c1], cost_micros=3000)
+    assert out2.cost_micros == 3000
+    assert out2.total_items == 1
+    dump2 = out2.model_dump()
+    assert dump2["total_items"] == 1
+    assert dump2["cost_micros"] == 3000

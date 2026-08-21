@@ -688,3 +688,59 @@ async def test_scrape_deduplicates_by_tax_code_and_name_url() -> None:
     assert out.total_items == 2
     assert out.items[0].tax_code == "0314539064"
     assert out.items[1].name == "No Tax Unique"
+
+
+def test_scraper_timeout_helper(monkeypatch: Any) -> None:
+    import app.proprietary.platforms.masothue.scraper as scraper_mod
+    from app.proprietary.platforms.masothue.scraper import _timeout
+
+    monkeypatch.setattr(scraper_mod, "config", object())
+    assert _timeout() == 30.0
+
+    monkeypatch.setattr(
+        scraper_mod, "config", type("C", (), {"MASOTHUE_TIMEOUT_S": 15.5})()
+    )
+    assert _timeout() == 15.5
+
+    monkeypatch.setattr(
+        scraper_mod, "config", type("C", (), {"MASOTHUE_TIMEOUT_S": -5.0})()
+    )
+    assert _timeout() == 0.0
+
+
+@pytest.mark.asyncio
+async def test_scraper_zero_bounds_return_empty() -> None:
+    res1 = await scrape_masothue(MasothueSearchInput(query="vnm", max_items=0))
+    assert res1.total_items == 0
+    assert res1.items == []
+
+    res2 = await scrape_masothue(MasothueSearchInput(query="vnm", max_pages=0))
+    assert res2.total_items == 0
+    assert res2.items == []
+
+
+@pytest.mark.asyncio
+async def test_scraper_exact_retry_attempts_count(monkeypatch: Any) -> None:
+    """_MAX_RETRIES=2 means exactly 3 attempts before degrading."""
+    import asyncio
+
+    async def fake_sleep(_: float) -> None:
+        pass
+
+    monkeypatch.setattr(asyncio, "sleep", fake_sleep)
+
+    call_count = 0
+
+    async def always_rate_limited(
+        query: str, search_type: str, page: int, **kwargs: Any
+    ) -> tuple[str, int]:
+        nonlocal call_count
+        call_count += 1
+        raise MasothueRateLimitedError("rate limited")
+
+    inp = MasothueSearchInput(query="vinamilk", max_pages=1, max_items=5)
+    out = await scrape_masothue(inp, search_fetch_fn=always_rate_limited)
+
+    assert out.degraded is True
+    assert out.degradation_reason == "rate_limited"
+    assert call_count == 3  # _MAX_RETRIES (2) + 1

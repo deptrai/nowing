@@ -303,3 +303,40 @@ def test_parse_detail_table_empty_and_continue_after_invalid_rows() -> None:
     data = parse_detail_table(html)
     assert data["address"] == "Số 10 Đường 3/2"
     assert data["tax_code"] == "0314539064"
+
+
+def test_apply_detail_representative_and_phone_aliases() -> None:
+    from app.proprietary.platforms.masothue.parsers import apply_detail
+    from app.proprietary.platforms.masothue.schemas import MasothueCompany
+
+    # 1. legal_representative overrides existing representative
+    c1 = MasothueCompany(name="Co 1", representative="Old Rep")
+    html1 = "<table class='table-taxinfo'><tr><th>Người đại diện</th><td>Nguyen Van A</td></tr></table>"
+    apply_detail(c1, html1)
+    assert c1.legal_representative == "Nguyen Van A"
+    assert c1.representative == "Nguyen Van A"
+
+    # 2. None legal_representative does not override existing representative
+    c2 = MasothueCompany(name="Co 2", representative="Keep This Rep")
+    html2 = "<table class='table-taxinfo'><tr><th>Địa chỉ</th><td>123 Street</td></tr></table>"
+    apply_detail(c2, html2)
+    assert c2.legal_representative is None
+    assert c2.representative == "Keep This Rep"
+
+    # 3. None legal_representative and None representative
+    c3 = MasothueCompany(name="Co 3")
+    apply_detail(c3, html2)
+    assert c3.representative is None
+
+    # 4. phone maps to rep_phone when rep_phone is None
+    c4 = MasothueCompany(name="Co 4")
+    html4 = "<table class='table-taxinfo'><tr><th>Điện thoại</th><td>0901234567</td></tr></table>"
+    apply_detail(c4, html4, include_phone=True)
+    assert c4.phone == "0901234567"
+    assert c4.rep_phone == "0901234567"
+
+    # 5. phone does NOT overwrite existing rep_phone
+    c5 = MasothueCompany(name="Co 5", rep_phone="0987654321")
+    apply_detail(c5, html4, include_phone=True)
+    assert c5.phone == "0901234567"
+    assert c5.rep_phone == "0987654321"
