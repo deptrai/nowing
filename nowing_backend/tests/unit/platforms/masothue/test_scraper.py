@@ -710,11 +710,26 @@ def test_scraper_timeout_helper(monkeypatch: Any) -> None:
 
 @pytest.mark.asyncio
 async def test_scraper_zero_bounds_return_empty() -> None:
-    res1 = await scrape_masothue(MasothueSearchInput(query="vnm", max_items=0))
+    search_called = False
+
+    async def tracking_search(*args: Any, **kwargs: Any) -> tuple[str, int]:
+        nonlocal search_called
+        search_called = True
+        return SEARCH_HTML, 200
+
+    res1 = await scrape_masothue(
+        MasothueSearchInput(query="vnm", max_items=0, max_pages=1),
+        search_fetch_fn=tracking_search,
+    )
+    assert search_called is False
     assert res1.total_items == 0
     assert res1.items == []
 
-    res2 = await scrape_masothue(MasothueSearchInput(query="vnm", max_pages=0))
+    res2 = await scrape_masothue(
+        MasothueSearchInput(query="vnm", max_items=5, max_pages=0),
+        search_fetch_fn=tracking_search,
+    )
+    assert search_called is False
     assert res2.total_items == 0
     assert res2.items == []
 

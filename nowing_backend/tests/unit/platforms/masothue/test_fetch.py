@@ -9,6 +9,7 @@ import pytest
 from app.proprietary.platforms.masothue.fetch import (
     MasothueAccessBlockedError,
     MasothueRateLimitedError,
+    MasothueTimeoutError,
     fetch_detail_page,
     fetch_search_page,
 )
@@ -204,7 +205,13 @@ async def test_fetch_search_page_location_precedence_over_redirect_attr() -> Non
 @pytest.mark.asyncio
 async def test_fetch_search_page_redirect_to_non_mst_path_raises_blocked() -> None:
     """302 redirect to non-mst paths (e.g. external or non-digit slug) raises MasothueAccessBlockedError."""
-    for bad_loc in ("https://external.com/path", "/notaxcode-slug", ""):
+    for bad_loc in (
+        "https://external.com/path",
+        "https://masothue.com/0314539064-slug",
+        "/notaxcode-slug",
+        "/cong-ty-khong-so",
+        "",
+    ):
 
         def _make_loc_handler(loc: str) -> Any:
             async def fake_fetch(url: str, **kwargs: Any) -> Any:
@@ -214,6 +221,21 @@ async def test_fetch_search_page_redirect_to_non_mst_path_raises_blocked() -> No
 
         with pytest.raises(MasothueAccessBlockedError):
             await fetch_search_page("query", fetch_fn=_make_loc_handler(bad_loc))
+
+
+@pytest.mark.asyncio
+async def test_fetch_search_page_exceptions() -> None:
+    async def timeout_fetch(url: str, **kwargs: Any) -> Any:
+        raise TimeoutError("search timeout")
+
+    with pytest.raises(MasothueTimeoutError):
+        await fetch_search_page("query", fetch_fn=timeout_fetch)
+
+    async def boom_fetch(url: str, **kwargs: Any) -> Any:
+        raise RuntimeError("network boom")
+
+    with pytest.raises(MasothueAccessBlockedError):
+        await fetch_search_page("query", fetch_fn=boom_fetch)
 
 
 @pytest.mark.asyncio
