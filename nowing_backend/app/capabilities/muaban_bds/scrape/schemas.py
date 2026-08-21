@@ -26,6 +26,11 @@ class ScrapeInput(BaseModel):
     min_area: int | None = Field(default=None, description="Minimum area in m².")
     max_area: int | None = Field(default=None, description="Maximum area in m².")
 
+    @property
+    def estimated_units(self) -> int:
+        """Worst-case billable items for the pre-flight credit gate."""
+        return self.max_items
+
 
 class ScrapeOutput(BaseModel):
     """Output of the ``muaban_bds.scrape`` capability."""

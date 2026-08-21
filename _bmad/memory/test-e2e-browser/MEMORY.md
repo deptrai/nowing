@@ -217,5 +217,36 @@ _Curated long-term knowledge for Nowing E2E Browser Testing._
 - **Observed:** Phone pill flips immediately to `0909123456`, Zalo outreach button & ZNS button transition from disabled to active in real-time, credit balance debited accurately.
 - **Console:** 0 errors, clean SSE / Zero-cache sync.
 
+## Story 21.20 — Multi-Source Lead Gen Adapters E2E Smoke (2026-08-21)
+
+**Local stack:** Postgres 5434, Redis 6380, backend 8000, zero-cache 4848, frontend 3000.
+
+**Important:** Restart backend when adapter code changes; FastAPI does not hot-reload the `lead_intelligence` adapters.
+
+### Flow 1 — Real Estate (BĐS)
+- Query: *"Tìm 20 nhà đất Quận 7 giá dưới 5 tỷ"*
+- Tool: `Multi Source Lead Gen`
+- Observation: `batdongsan` and **`muaban_bds`** both returned `degraded` (zero leads). Agent then attempted to call `chotot_bds`/`chotot` directly, conflicting with the prompt rule that forbids parallel `task` calls for the same query.
+
+### Flow 2 — Job Market
+- Query: *"Tìm công ty AI tuyển dụng Senior Python tại Hà Nội"*
+- Tool: `Multi Source Lead Gen`
+- Result: **PASS**. Agent reported **21 raw records** from `vn_jobs` (TopCV, ITviec, VietnamWorks), filtered to 2 lead rows. UI rendered a lead table and a note that `Masothue` and `Mua Sắm Công` were disrupted.
+
+### Flow 3 — Public Procurement
+- Query: *"Tìm gói thầu phần mềm CRM tại TP.HCM"*
+- Tool: `Multi Source Lead Gen` → fallback `Google Search` + scraper run
+- Result: **PASS**. Inline table rendered with columns `Tên gói thầu / Dự án`, `Bên mời thầu / Đơn vị`, `Mã gói thầu / Phạm vi`, `Nguồn / Trạng thái`.
+  - Row 1: `Khối doanh nghiệp / Ngân hàng`, scope `Toàn quốc / TP.HCM`, source `Niêm yết Mua sắm công & Dauthau.asia`
+  - Row 2: `Mua sắm dịch vụ bảo trì máy CRM và Sidecar`, `Tổ chức tài chính / Ngân hàng`, scope `TP.HCM / Hà Nội`, source `Niêm yết thông báo mời thầu`
+- Each row had a `View scraper run run_9372cf1f-...` source button, confirming `muasamcong` data ingested through the pipeline.
+
+### Findings
+- `vn_jobs` aggregate works end-to-end and returns lead tables.
+- `muasamcong` returns real procurement lead tables via the chat UI.
+- `muaban_bds` adapter is registered and invoked, but live scraper is degraded in this environment (same as `batdongsan`).
+- **Prompt/fallback tension:** when `multi_source_lead_gen` returns 0/degraded, the assistant still attempts direct `chotot`/`chotot_bds` calls. This should be addressed in the prompt/routing review for 21.20.
+- **UI nit:** the right "Trợ lý tìm lead" panel sometimes keeps the title from the previous query (e.g., job title shown during procurement flow).
+
 
 

@@ -5,12 +5,18 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from app.lead_intelligence.adapters._query_parser import (
+    extract_listing_type_bds,
+    extract_price_range,
+    resolve_batdongsan_city,
+)
 from app.lead_intelligence.adapters.base import (
     ContactCandidate,
     LeadSourceAdapter,
     LeadSourceCategory,
     NormalizedLead,
     RawLeadRecord,
+    _to_float,
     extract_phones_from_text,
     normalize_vietnamese_phone,
 )
@@ -35,39 +41,48 @@ class BatdongsanLeadAdapter(LeadSourceAdapter):
         limit: int = 50,
     ) -> list[dict[str, Any]]:
         """Call underlying Batdongsan scraper routines."""
-        try:
-            from app.proprietary.platforms.batdongsan.schemas import (
-                BatdongsanScrapeInput,
-            )
-            from app.proprietary.platforms.batdongsan.scraper import scrape_batdongsan
+        from app.proprietary.platforms.batdongsan.schemas import (
+            BatdongsanScrapeInput,
+        )
+        from app.proprietary.platforms.batdongsan.scraper import scrape_batdongsan
 
-            # ponytail: location filter mapping is intentionally minimal; default HN keeps
-            # the scraper path simple. Upgrade to a city-name→code resolver when needed.
-            input_model = BatdongsanScrapeInput(
-                max_items=min(limit, 20),
+        city = resolve_batdongsan_city(query, filters)
+        min_price, max_price = extract_price_range(query)
+        listing_type = extract_listing_type_bds(query)
+
+        input_model = BatdongsanScrapeInput(
+            city=city,
+            listing_type=listing_type,
+            min_price=min_price,
+            max_price=max_price,
+            max_items=min(limit, 20),
+        )
+        output = await scrape_batdongsan(input_model)
+
+        if output.degraded:
+            logger.warning(
+                "Batdongsan scraper degraded: %s", output.degradation_reason
             )
-            output = await scrape_batdongsan(input_model)
-            results = []
-            for item in output.items:
-                data = item.to_output()
-                results.append(
-                    {
-                        "id": data.get("listing_id") or data.get("detail_url"),
-                        "title": data.get("title"),
-                        "price_vnd": data.get("price") or data.get("price_vnd"),
-                        "location": data.get("location"),
-                        "city": data.get("city"),
-                        "district": data.get("district"),
-                        "project_name": data.get("project_name"),
-                        "contact_phone": data.get("phone"),
-                        "description": data.get("description") or "",
-                        "url": data.get("detail_url"),
-                    }
-                )
-            return results
-        except Exception as exc:
-            logger.warning("Live Batdongsan scrape error: %s", exc)
-            return []
+            self.last_execution_status = "degraded"
+
+        results = []
+        for item in output.items:
+            data = item.to_output()
+            results.append(
+                {
+                    "id": data.get("listing_id") or data.get("detail_url"),
+                    "title": data.get("title"),
+                    "price_vnd": data.get("price") or data.get("price_vnd"),
+                    "location": data.get("location"),
+                    "city": data.get("city"),
+                    "district": data.get("district"),
+                    "project_name": data.get("project_name"),
+                    "contact_phone": data.get("phone"),
+                    "description": data.get("description") or "",
+                    "url": data.get("detail_url"),
+                }
+            )
+        return results
 
     async def search_leads(
         self,
@@ -77,6 +92,7 @@ class BatdongsanLeadAdapter(LeadSourceAdapter):
         limit: int = 50,
     ) -> list[RawLeadRecord]:
         """Search property listings with anti-loop max 1 retry and graceful degradation (AD-19.1)."""
+        self.last_execution_status = "ok"
         retries = 1
         attempt = 0
         last_exc: Exception | None = None
@@ -87,7 +103,8 @@ class BatdongsanLeadAdapter(LeadSourceAdapter):
                 items = await self._fetch_raw_listings(
                     workspace_id=workspace_id, query=query, filters=filters, limit=limit
                 )
-                self.last_execution_status = "ok"
+                if self.last_execution_status != "degraded":
+                    self.last_execution_status = "ok"
                 return [
                     RawLeadRecord(
                         source_name=self.source_name,
@@ -125,7 +142,7 @@ class BatdongsanLeadAdapter(LeadSourceAdapter):
             company_name=data.get("project_name") or data.get("agency_name"),
             primary_phone=primary_phone,
             contact_name=data.get("contact_name") or data.get("author"),
-            price=float(data.get("price_vnd") or data.get("price") or 0.0) or None,
+            price=_to_float(data.get("price_vnd") or data.get("price")) or None,
             city=data.get("location") or data.get("city"),
             address=data.get("address") or data.get("location"),
             confidence_score=85.0 if primary_phone else 65.0,

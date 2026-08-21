@@ -25,6 +25,29 @@ def _strip_vietnamese_diacritics(text: str) -> str:
     return stripped.replace("đ", "d").replace("Đ", "D").lower()
 
 
+_SOURCE_KEYWORDS: dict[str, list[str]] = {
+    "vietnamworks": ["vietnamworks", "vietnam works"],
+    "vn_jobs": ["vn_jobs", "vn jobs", "vnjobs"],
+    "job_market": ["topcv", "itviec", "it viec", "job market"],
+    "muasamcong": ["muasamcong", "mua sắm công", "mua sam cong"],
+    "muaban_bds": ["muaban_bds", "muaban", "mua bán", "mua ban"],
+}
+
+
+_JOB_MARKET_PRIORITY = ["vn_jobs", "job_market", "vietnamworks"]
+
+
+def _source_keyword_present(source_name: str, prompt: str) -> bool:
+    """Check whether ``prompt`` explicitly names a source adapter."""
+    raw_lower = (prompt or "").lower()
+    plain = _strip_vietnamese_diacritics(raw_lower)
+    for keyword in _SOURCE_KEYWORDS.get(source_name, []):
+        keyword_plain = _strip_vietnamese_diacritics(keyword)
+        if keyword in raw_lower or keyword_plain in plain:
+            return True
+    return False
+
+
 class LeadSourceAdapterRegistry:
     """Central registry for discovering, filtering, and resolving scraper adapters."""
 
@@ -55,13 +78,21 @@ class LeadSourceAdapterRegistry:
             EnterpriseProcurementLeadAdapter,
         )
         from app.lead_intelligence.adapters.job_market import JobMarketLeadAdapter
+        from app.lead_intelligence.adapters.muaban_bds import MuabanBdsLeadAdapter
+        from app.lead_intelligence.adapters.muasamcong import MuaSamCongLeadAdapter
         from app.lead_intelligence.adapters.social import SocialLeadAdapter
         from app.lead_intelligence.adapters.telegram import TelegramLeadAdapter
+        from app.lead_intelligence.adapters.vietnamworks import VietnamWorksLeadAdapter
+        from app.lead_intelligence.adapters.vn_jobs import VnJobsLeadAdapter
 
         self.register(BatdongsanLeadAdapter())
         self.register(ChototLeadAdapter())
+        self.register(MuabanBdsLeadAdapter())
         self.register(JobMarketLeadAdapter())
+        self.register(VnJobsLeadAdapter())
+        self.register(VietnamWorksLeadAdapter())
         self.register(EnterpriseProcurementLeadAdapter())
+        self.register(MuaSamCongLeadAdapter())
         self.register(SocialLeadAdapter())
         self.register(TelegramLeadAdapter())
 
@@ -149,6 +180,9 @@ class LeadSourceAdapterRegistry:
             "viec lam",
             "topcv",
             "itviec",
+            "vietnamworks",
+            "vn_jobs",
+            "vnjobs",
             "recruitment",
         ]
         # Check boundary words or substrings
@@ -160,11 +194,9 @@ class LeadSourceAdapterRegistry:
                     matched.append(a)
 
         # Enterprise / Public Procurement keywords
+        # ponytail: "công ty" / "doanh nghiệp" are too generic and collide with
+        # job-market queries; keep explicit enterprise/tax/procurement terms.
         ent_keywords = [
-            "công ty",
-            "cong ty",
-            "doanh nghiệp",
-            "doanh nghiep",
             "mã số thuế",
             "ma so thue",
             "gói thầu",
@@ -213,5 +245,37 @@ class LeadSourceAdapterRegistry:
                 if a not in matched:
                     matched.append(a)
 
-        # Default fallback: if no specific category matched, return all
-        return matched if matched else self.list_all()
+        # ponytail: job-market category now has multiple overlapping adapters
+        # (vn_jobs aggregate, job_market direct, vietnamworks direct). For a
+        # generic job query we want one call; for an explicit source keyword we
+        # select that source (or all explicitly named sources). Upgrade path:
+        # richer per-source keyword model.
+        if not matched:
+            matched = self.list_all()
+
+        by_category: dict[LeadSourceCategory, list[LeadSourceAdapter]] = {}
+        for a in matched:
+            by_category.setdefault(a.category, []).append(a)
+
+        deduped: list[LeadSourceAdapter] = []
+        for category, adapters in by_category.items():
+            if category == LeadSourceCategory.JOB_MARKET and len(adapters) > 1:
+                selected: list[LeadSourceAdapter] = [
+                    a for a in adapters if _source_keyword_present(a.source_name, prompt)
+                ]
+                if not selected:
+                    for name in _JOB_MARKET_PRIORITY:
+                        for a in adapters:
+                            if a.source_name == name:
+                                selected.append(a)
+                                break
+                        if selected:
+                            break
+                if selected:
+                    deduped.extend(selected)
+                else:
+                    deduped.extend(adapters)
+            else:
+                deduped.extend(adapters)
+
+        return deduped

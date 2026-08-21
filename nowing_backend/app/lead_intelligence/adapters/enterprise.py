@@ -11,6 +11,7 @@ from app.lead_intelligence.adapters.base import (
     LeadSourceCategory,
     NormalizedLead,
     RawLeadRecord,
+    _to_float,
     extract_phones_from_text,
     normalize_vietnamese_phone,
 )
@@ -35,30 +36,33 @@ class EnterpriseProcurementLeadAdapter(LeadSourceAdapter):
         limit: int = 50,
     ) -> list[dict[str, Any]]:
         """Call underlying Masothue / Mua Sắm Công platform routines."""
-        try:
-            from app.proprietary.platforms.masothue.schemas import MasothueSearchInput
-            from app.proprietary.platforms.masothue.scraper import scrape_masothue
+        from app.proprietary.platforms.masothue.schemas import MasothueSearchInput
+        from app.proprietary.platforms.masothue.scraper import scrape_masothue
 
-            inp = MasothueSearchInput(keyword=query, max_items=min(limit, 20))
-            output = await scrape_masothue(inp)
-            results = []
-            for comp in output.companies:
-                results.append(
-                    {
-                        "id": comp.tax_code,
-                        "tax_id": comp.tax_code,
-                        "company_name": comp.company_name,
-                        "representative": comp.representative,
-                        "phone": comp.phone,
-                        "address": comp.address,
-                        "industry": comp.industry_name,
-                        "status": comp.status,
-                    }
-                )
-            return results
-        except Exception as exc:
-            logger.warning("Live Masothue scrape error: %s", exc)
-            return []
+        inp = MasothueSearchInput(keyword=query, max_items=min(limit, 20))
+        output = await scrape_masothue(inp)
+
+        if output.degraded:
+            logger.warning(
+                "Masothue scraper degraded: %s", output.degradation_reason
+            )
+            self.last_execution_status = "degraded"
+
+        results = []
+        for comp in output.companies:
+            results.append(
+                {
+                    "id": comp.tax_code,
+                    "tax_id": comp.tax_code,
+                    "company_name": comp.company_name,
+                    "representative": comp.representative,
+                    "phone": comp.phone,
+                    "address": comp.address,
+                    "industry": comp.industry_name,
+                    "status": comp.status,
+                }
+            )
+        return results
 
     async def search_leads(
         self,
@@ -68,6 +72,7 @@ class EnterpriseProcurementLeadAdapter(LeadSourceAdapter):
         limit: int = 50,
     ) -> list[RawLeadRecord]:
         """Search enterprise and procurement bidding packages with retry."""
+        self.last_execution_status = "ok"
         retries = 1
         attempt = 0
         last_exc: Exception | None = None
@@ -78,7 +83,8 @@ class EnterpriseProcurementLeadAdapter(LeadSourceAdapter):
                 items = await self._fetch_enterprise_records(
                     workspace_id=workspace_id, query=query, filters=filters, limit=limit
                 )
-                self.last_execution_status = "ok"
+                if self.last_execution_status != "degraded":
+                    self.last_execution_status = "ok"
                 return [
                     RawLeadRecord(
                         source_name=self.source_name,
@@ -125,7 +131,7 @@ class EnterpriseProcurementLeadAdapter(LeadSourceAdapter):
             primary_email=primary_email or data.get("email"),
             address=data.get("address") or data.get("headquarters"),
             city=data.get("city") or data.get("province"),
-            price=float(data.get("bid_value_vnd") or 0.0) or None,
+            price=_to_float(data.get("bid_value_vnd")) or None,
             confidence_score=90.0 if data.get("tax_id") else 75.0,
             sources=[self.source_name],
             contact_candidates=candidates,

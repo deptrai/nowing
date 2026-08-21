@@ -255,12 +255,7 @@ class LeadGenOrchestrator:
             all_normalized_leads
         )
 
-        # In-stream DNC Compliance
-        dnc_result = self.deduplication_service.apply_dnc_compliance(
-            dedup_result.unified_leads, workspace_id=workspace_id, suppress_dnc=True
-        )
-
-        final_leads = dnc_result.compliant_leads
+        final_leads = dedup_result.unified_leads
 
         # Determine overall execution status
         if not final_leads and degraded_sources:
@@ -280,7 +275,9 @@ class LeadGenOrchestrator:
             deduplication_summary={
                 "raw_count": total_discovered,
                 "deduplicated_count": len(final_leads),
-                "dnc_suppressed_count": len(dnc_result.dnc_suppressed_leads),
+                # DNC filtering is delegated to LeadBatchService at persistence time.
+                # The real suppression count is reported by execute_and_persist.
+                "dnc_suppressed_count": 0,
             },
         )
 
@@ -359,9 +356,11 @@ class LeadGenOrchestrator:
                     if lead.sources
                     else lead.source_name,
                     "source_url": (
-                        lead.raw_data.get("url")
+                        lead.source_url
+                        or lead.raw_data.get("url")
                         or lead.raw_data.get("source_url")
                         or lead.raw_data.get("detail_url")
+                        or lead.raw_data.get("dossier_url")
                     ),
                     "company_name": lead.company_name or lead.title or "Doanh nghiệp",
                     "domain": lead.canonical_domain,
@@ -395,4 +394,16 @@ class LeadGenOrchestrator:
 
         new_lead_ids = list(summary["lead_id_mapping"].values())
         await self._assign_new_leads(session, workspace_id, new_lead_ids)
+
+        # Update the search result with actual persistence counts.
+        search_result.total_deduplicated = summary.get("ingested_count", 0)
+        existing_summary = getattr(search_result, "deduplication_summary", None)
+        if not isinstance(existing_summary, dict):
+            existing_summary = {}
+        search_result.deduplication_summary = {
+            **existing_summary,
+            "deduplicated_count": summary.get("ingested_count", 0),
+            "dnc_suppressed_count": summary.get("skipped_blacklisted_count", 0),
+            "failed_count": summary.get("failed_count", 0),
+        }
         return search_result

@@ -57,6 +57,10 @@ class SocialLeadAdapter(LeadSourceAdapter):
                 items = await self._search_social_feeds(
                     workspace_id=workspace_id, query=query, filters=filters, limit=limit
                 )
+                if not items:
+                    logger.warning("Social feed search returned no live results")
+                    self.last_execution_status = "degraded"
+                    return []
                 self.last_execution_status = "ok"
                 return [
                     RawLeadRecord(

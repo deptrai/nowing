@@ -944,3 +944,23 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - **Finding:** `telegram_checkpoint_messages` migration lacks RLS / `apply_publication` reconciliation used by other workspace-scoped tables.
   - **Action:** Marked `[x] [Review][Defer]` in `26-6-telegram-interactive-checkpoint-bot-1-click-auto-refund-dialog.md`.
   - **Reason / when to revisit:** DSH routes currently do not call `set_request_tenant_context`, and `dsh_missions` does not have RLS either. Adding RLS now would break existing DSH read/write paths until tenant context is wired into the internal route + service. Defer to a DSH tenant-context hardening pass.
+
+## Deferred from: code review of 21-20-extend-lead-source-adapters (2026-08-21)
+
+- **Finding:**  un-diacritized output vs  may miss less common provinces.
+  - **Action:** Marked  in .
+  - **Reason / when to revisit:** Scraper normalizes input and common cities work; revisit when testing provinces beyond the top 8 in .
+
+- **Finding:**  location filter not wired.
+  - **Action:** Marked  in .
+  - **Reason / when to revisit:** Spec explicitly defers location filter to v1+; revisit when  supports .
+
+## Deferred from: code review of 21-20-extend-lead-source-adapters (2026-08-21)
+
+- **Finding:** `resolve_muaban_bds_city` un-diacritized output vs `MuabanBdsScraper._CITY_ALIASES` may miss less common provinces.
+  - **Action:** Marked `[x] [Review][Defer]` in `21-20-extend-lead-source-adapters.md`.
+  - **Reason / when to revisit:** Scraper normalizes input and common cities work; revisit when testing provinces beyond the top 8 in `_CITY_ALIASES`.
+
+- **Finding:** `VietnamWorks` location filter not wired.
+  - **Action:** Marked `[x] [Review][Defer]` in `21-20-extend-lead-source-adapters.md`.
+  - **Reason / when to revisit:** Spec explicitly defers location filter to v1+; revisit when `scrape_vietnamworks` supports `locationId`.

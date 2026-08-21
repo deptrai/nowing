@@ -446,3 +446,255 @@ class TestPhoneNormalizationAndReDoSSafety:
         # Must execute in under 50ms
         assert duration < 0.05
         assert isinstance(phones, list)
+
+
+# ---------------------------------------------------------------------------
+# 9. Story 21.20 New Adapters (Muaban BĐS, VnJobs, VietnamWorks, Mua Sắm Công)
+# ---------------------------------------------------------------------------
+class TestMuabanBdsLeadAdapter:
+    """Validate Muaban.net BĐS lead adapter."""
+
+    @pytest.mark.asyncio
+    async def test_search_leads_and_normalize(self) -> None:
+        """Should query Muaban.net BĐS scraper and normalize to standard Lead record."""
+        from app.lead_intelligence.adapters.base import NormalizedLead
+        from app.lead_intelligence.adapters.muaban_bds import MuabanBdsLeadAdapter
+
+        adapter = MuabanBdsLeadAdapter()
+        mock_items = [
+            {
+                "listing_id": 123,
+                "title": "Bán nhà phố Quận 7",
+                "price_value": 6500000000,
+                "location": "Quận 7, TP.HCM",
+                "city": "TP.HCM",
+                "phone": "0909123456",
+                "detail_url": "https://muaban.net/bds/123",
+            }
+        ]
+
+        with patch.object(
+            adapter, "_query_muaban_bds_api", AsyncMock(return_value=mock_items)
+        ):
+            raw_records = await adapter.search_leads(
+                workspace_id=1,
+                query="nhà phố Quận 7",
+                filters={"locations": ["TP.HCM"]},
+                limit=10,
+            )
+            assert len(raw_records) == 1
+            normalized = adapter.normalize_lead(raw_records[0])
+            assert isinstance(normalized, NormalizedLead)
+            assert normalized.title == "Bán nhà phố Quận 7"
+            assert normalized.primary_phone == "0909123456"
+            assert normalized.price == 6500000000
+            assert normalized.source_name == "muaban_bds"
+
+
+class TestVnJobsLeadAdapter:
+    """Validate VnJobs aggregate lead adapter."""
+
+    @pytest.mark.asyncio
+    async def test_search_leads_and_normalize(self) -> None:
+        """Should aggregate job listings and normalize to company leads."""
+        from app.lead_intelligence.adapters.base import NormalizedLead
+        from app.lead_intelligence.adapters.vn_jobs import VnJobsLeadAdapter
+
+        adapter = VnJobsLeadAdapter()
+        mock_items = [
+            {
+                "id": "vnj_1",
+                "title": "Senior Backend Engineer",
+                "company": "FPT Software",
+                "location": "Hà Nội",
+                "source_urls": ["https://topcv.vn/job/1"],
+                "salary": {"min": 20000000, "max": 30000000},
+            }
+        ]
+
+        with patch.object(
+            adapter, "_aggregate_job_listings", AsyncMock(return_value=mock_items)
+        ):
+            raw_records = await adapter.search_leads(
+                workspace_id=1,
+                query="Senior Backend Engineer",
+                filters={"locations": ["Hà Nội"]},
+                limit=10,
+            )
+            assert len(raw_records) == 1
+            normalized = adapter.normalize_lead(raw_records[0])
+            assert isinstance(normalized, NormalizedLead)
+            assert normalized.company_name == "FPT Software"
+            assert normalized.canonical_domain == "topcv.vn"
+
+
+class TestVietnamWorksLeadAdapter:
+    """Validate VietnamWorks direct lead adapter."""
+
+    @pytest.mark.asyncio
+    async def test_search_leads_and_normalize(self) -> None:
+        """Should call VietnamWorks scraper and normalize to company leads."""
+        from app.lead_intelligence.adapters.base import NormalizedLead
+        from app.lead_intelligence.adapters.vietnamworks import VietnamWorksLeadAdapter
+
+        adapter = VietnamWorksLeadAdapter()
+        mock_items = [
+            {
+                "id": "vw:123",
+                "title": "Data Scientist",
+                "company": "VNG Corporation",
+                "location": "TP.HCM",
+                "source_url": "https://www.vietnamworks.com/data-scientist-123",
+                "salary_min": 25000000,
+                "salary_max": 40000000,
+                "job_description": "Join VNG",
+            }
+        ]
+
+        with patch.object(
+            adapter, "_fetch_vietnamworks_jobs", AsyncMock(return_value=mock_items)
+        ):
+            raw_records = await adapter.search_leads(
+                workspace_id=1,
+                query="Data Scientist",
+                limit=10,
+            )
+            assert len(raw_records) == 1
+            normalized = adapter.normalize_lead(raw_records[0])
+            assert isinstance(normalized, NormalizedLead)
+            assert normalized.company_name == "VNG Corporation"
+            assert normalized.source_name == "vietnamworks"
+
+    def test_redact_job_text(self) -> None:
+        """Should mask PII in job description text."""
+        from app.lead_intelligence.adapters.vietnamworks import VietnamWorksLeadAdapter
+
+        adapter = VietnamWorksLeadAdapter()
+        item = {
+            "job_description": "Liên hệ anh Hùng 0912345678",
+            "job_requirement": "",
+        }
+        redacted = adapter._redact_job_text(item)
+        assert "0912345678" not in redacted["job_description"]
+
+
+class TestMuaSamCongLeadAdapter:
+    """Validate Mua Sắm Công public procurement lead adapter."""
+
+    @pytest.mark.asyncio
+    async def test_search_leads_and_normalize(self) -> None:
+        """Should call Muasamcong scraper and normalize to procuring-entity leads."""
+        from app.lead_intelligence.adapters.base import NormalizedLead
+        from app.lead_intelligence.adapters.muasamcong import MuaSamCongLeadAdapter
+
+        adapter = MuaSamCongLeadAdapter()
+        mock_items = [
+            {
+                "bid_no": "IB2400123456",
+                "project_name": "Cung cấp phần mềm CRM",
+                "procuring_entity": "Công ty CP ABC",
+                "investor": "Tập đoàn XYZ",
+                "bid_price": 500000000,
+                "location": "Hà Nội",
+                "dossier_url": "https://muasamcong.mpi.gov.vn/123",
+            }
+        ]
+
+        with patch.object(
+            adapter, "_search_public_tenders", AsyncMock(return_value=mock_items)
+        ):
+            raw_records = await adapter.search_leads(
+                workspace_id=1,
+                query="gói thầu phần mềm CRM",
+                limit=10,
+            )
+            assert len(raw_records) == 1
+            normalized = adapter.normalize_lead(raw_records[0])
+            assert isinstance(normalized, NormalizedLead)
+            assert normalized.company_name == "Công ty CP ABC"
+            assert normalized.source_name == "muasamcong"
+
+
+class TestRegistryIntentRoutingStory2120:
+    """Validate 21.20 source routing and deduplication."""
+
+    def test_resolve_job_intent_deduplicates_to_vn_jobs(self) -> None:
+        """Generic job query should route to VnJobs, not all job adapters."""
+        from app.lead_intelligence.adapters.batdongsan import BatdongsanLeadAdapter
+        from app.lead_intelligence.adapters.chotot import ChototLeadAdapter
+        from app.lead_intelligence.adapters.enterprise import (
+            EnterpriseProcurementLeadAdapter,
+        )
+        from app.lead_intelligence.adapters.job_market import JobMarketLeadAdapter
+        from app.lead_intelligence.adapters.muaban_bds import MuabanBdsLeadAdapter
+        from app.lead_intelligence.adapters.muasamcong import MuaSamCongLeadAdapter
+        from app.lead_intelligence.adapters.registry import LeadSourceAdapterRegistry
+        from app.lead_intelligence.adapters.social import SocialLeadAdapter
+        from app.lead_intelligence.adapters.vietnamworks import VietnamWorksLeadAdapter
+        from app.lead_intelligence.adapters.vn_jobs import VnJobsLeadAdapter
+
+        registry = LeadSourceAdapterRegistry()
+        registry.register(BatdongsanLeadAdapter())
+        registry.register(ChototLeadAdapter())
+        registry.register(MuabanBdsLeadAdapter())
+        registry.register(JobMarketLeadAdapter())
+        registry.register(VnJobsLeadAdapter())
+        registry.register(VietnamWorksLeadAdapter())
+        registry.register(EnterpriseProcurementLeadAdapter())
+        registry.register(MuaSamCongLeadAdapter())
+        registry.register(SocialLeadAdapter())
+
+        matched = registry.resolve_adapters_for_intent(
+            "công ty AI tuyển dụng Senior Python tại Hà Nội"
+        )
+        names = {a.source_name for a in matched}
+        assert "vn_jobs" in names
+        assert "batdongsan" not in names
+        assert "chotot" not in names
+        assert "muaban_bds" not in names
+        assert "muasamcong" not in names
+        assert "enterprise" not in names
+        assert "vietnamworks" not in names
+
+    def test_resolve_explicit_vietnamworks(self) -> None:
+        """Explicit VietnamWorks keyword should route to VietnamWorks adapter."""
+        from app.lead_intelligence.adapters.job_market import JobMarketLeadAdapter
+        from app.lead_intelligence.adapters.registry import LeadSourceAdapterRegistry
+        from app.lead_intelligence.adapters.vietnamworks import VietnamWorksLeadAdapter
+        from app.lead_intelligence.adapters.vn_jobs import VnJobsLeadAdapter
+
+        registry = LeadSourceAdapterRegistry()
+        registry.register(JobMarketLeadAdapter())
+        registry.register(VnJobsLeadAdapter())
+        registry.register(VietnamWorksLeadAdapter())
+
+        matched = registry.resolve_adapters_for_intent(
+            "tìm việc Python trên VietnamWorks"
+        )
+        names = {a.source_name for a in matched}
+        assert "vietnamworks" in names
+        assert "vn_jobs" not in names
+        assert "job_market" not in names
+
+
+class TestLeadSourceAdapterStateRecovery:
+    """Adapter status should reset from degraded to ok on a successful subsequent call."""
+
+    @pytest.mark.asyncio
+    async def test_muaban_bds_recovers_from_degraded(self) -> None:
+        """A second successful search_leads call must clear a previous degraded latch."""
+        from app.lead_intelligence.adapters.muaban_bds import MuabanBdsLeadAdapter
+
+        adapter = MuabanBdsLeadAdapter()
+        adapter.last_execution_status = "degraded"
+
+        with patch.object(
+            adapter,
+            "_query_muaban_bds_api",
+            AsyncMock(return_value=[{"listing_id": 1, "title": "Test"}]),
+        ):
+            records = await adapter.search_leads(
+                workspace_id=1, query="nhà phố", limit=10
+            )
+            assert records
+            assert adapter.last_execution_status == "ok"

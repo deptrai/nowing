@@ -362,6 +362,7 @@ async def patch_dsh_mission_checkpoint(
             detail=str(exc),
         ) from exc
 
+    await session.commit()
     return DshMissionInternalResponse.model_validate(mission)
 
 

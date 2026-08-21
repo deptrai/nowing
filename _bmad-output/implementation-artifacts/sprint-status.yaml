@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-20 15:15"
-last_updated: "2026-08-20 15:15"  # merged 14.3/15.3/16.3/17.3/17.4 -> 6-11; 14.4/15.4/16.4 -> 6-12; Epic 27 promoted to ready-for-dev; full run 0 status changes
+last_updated: "2026-08-21"  # Story 21.20 review findings applied; status done.
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # - Parsed epics.md: 24 epics, ~160 stories.
 # - Scanned _bmad-output/implementation-artifacts/ + stories/*.md for story files (frontmatter story_key/epic+story).
@@ -233,7 +233,8 @@ development_status:
   21-16: done  # 2026-08-16: Nowing Split-View Canvas & Workspace Modernization (340px Chat + Dynamic 4-Mode Matrix, Real Credits Atom, Empty State Quickstart Deck, Markdown Blob Exporter, Live Scraper & Automation APIs, Suggested Actions, tsc/biome/E2E clean)
   21-17: done  # 2026-08-16: Complete Origami Landing Page (10 sections) + Mint Green OrigamiLogo + Verticals grid; tsc/biome clean
   21-18: done  # 2026-08-16: Partners Affiliate Portal & $0 Pricing Page Deployment (Alembic 215, PartnerService, 15% commission hook, VietQR payouts, PricingLeadCalculator, PartnerEarningsCalculator, /partners & /partners/dashboard, 13/13 backend pytest green, ruff/tsc/biome 100% clean)
-  21-19: done  # Lead Source Adapter Live Data Integration & Persistence — wire adapters to live scrapers (Chotot, TopCV/ITviec, Masothue, Batdongsan) and persist via LeadBatchService.
+  21-19: done  # Lead Source Adapter Live Data Integration & Persistence — review completed, 12 patches applied, tests green; remaining source-list gap deferred to 21.20.
+  21-20: done  # Extend Multi-Source Lead Gen Adapters — review applied (degraded latch, location default, price regex, source_url, fake email, registry dedup); tests green.
   epic-21-retrospective: optional
 
   # === Epic 22: Telegram Scraper & Channel Ingestion Engine ===

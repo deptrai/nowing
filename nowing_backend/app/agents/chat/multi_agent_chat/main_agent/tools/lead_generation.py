@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from typing import Any
 
@@ -41,16 +42,23 @@ def create_multi_source_lead_gen_tool(
         """
         from app.capabilities.leads.orchestrator_tool import MultiSourceLeadGenTool
 
+        session = None
         try:
-            async with async_session_maker() as session:
+            async with async_session_maker() as session_:
+                session = session_
                 lead_tool = MultiSourceLeadGenTool(db_session=session)
-                return await lead_tool.execute(
+                result = await lead_tool.execute(
                     workspace_id=workspace_id,
                     query=query,
                     table_id=table_id,
                     locations=locations or [],
                 )
+                await session.commit()
+                return result
         except Exception as exc:
+            if session is not None:
+                with contextlib.suppress(Exception):
+                    await session.rollback()
             logger.exception("multi_source_lead_gen failed: %s", exc)
             return f"Lỗi khi tìm kiếm leads: {exc}"
 

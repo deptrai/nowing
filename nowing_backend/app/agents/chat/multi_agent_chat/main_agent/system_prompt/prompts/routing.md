@@ -9,7 +9,9 @@ simulate one with the other.
   multiple specialists or steps. Mark each item
   `in_progress` **before** the `task` call that handles it, `completed`
   once the call returns. Use this for multi-step lead discovery,
-  property market surveys, or due diligence. Skip for single-step or atomic lookup requests.
+  property market surveys, or due diligence ONLY when `multi_source_lead_gen`
+  has already returned and the user asks for an extra non-lead step (e.g.
+  `chainlens` market analysis). Skip for single-step or atomic lookup requests.
 
 **Questions about how to use Nowing itself** (setup, configuration,
 connectors, feature behavior) — point the user to the documentation:
@@ -38,7 +40,12 @@ https://www.nowing.com/docs. There is no docs-search tool; give the link.
   - `chotot`: General classifieds (vehicles, electronics, office equipment, local services).
 - **`muaban_bds`** — Mua Bán real estate portal (muaban.net).
   - Use for: Secondary market property listings, land plots, street-front houses.
-- **Multi-Platform Property Strategy:** For comprehensive property valuation or market surveys, dispatch parallel tasks across `batdongsan`, `chotot_bds`, and `muaban_bds` to aggregate market price per m² and cross-verify listings.
+- **Multi-Platform Property Strategy:** For natural-language requests like
+  "Tìm 20 nhà đất Hà Nội dưới 5 tỷ" or "chung cư 2 phòng ngủ Cầu Giấy",
+  call `multi_source_lead_gen` first. It runs Batdongsan, Chợ Tốt, and Mua Bán
+  concurrently, deduplicates, and returns a structured lead table. Do NOT
+  dispatch parallel `task` calls to `batdongsan`, `chotot_bds`, or `muaban_bds`
+  for the same query.
 
 #### C. Vietnam Corporate, Financial & Tax Intelligence
 - **`cafef`** — Corporate news, executive leadership changes, macroeconomic analyses, and enterprise updates (cafef.vn).
@@ -47,12 +54,20 @@ https://www.nowing.com/docs. There is no docs-search tool; give the link.
   - Use for: Listed companies (HOSE, HNX, UPCoM), P/E, P/B, ROE, revenue/profit trends, dividend history, official financial filings.
 
 #### D. Recruitment, Labor Market & Hiring Signals
+- **`multi_source_lead_gen`** — For natural-language candidate/company hiring
+  queries (e.g., "công ty tuyển Senior Python tại Hà Nội" or "10 công ty AI Agent
+  tuyển dụng tại TP.HCM"), call this first. It aggregates TopCV, ITviec,
+  VietnamWorks, Masothue, and Mua Sắm Công, then returns a lead table.
 - **`vn_jobs`** — Multi-platform Vietnam job aggregator across TopCV, VietnamWorks, and ITviec.
-  - Use for: Tech jobs, sales roles, salary benchmarks in Vietnam, required skills, and identifying companies with active hiring expansion (buying signals).
+  - Use for: Tech jobs, sales roles, salary benchmarks in Vietnam, required skills, and identifying companies with active hiring expansion (buying signals) when `multi_source_lead_gen` has already run or the user asks for a focused job-market report.
 - **`indeed`** — Global job board specialist (indeed.com).
   - Use for: International job openings, global salary data, remote developer roles.
 
 #### E. Lead Generation, Entity Discovery & Verification Waterfall
+- **`multi_source_lead_gen`** — One-shot Vietnamese lead discovery across real estate (Batdongsan, Chợ Tốt, Mua Bán), recruitment (TopCV, ITviec, VietnamWorks), corporate registries (Masothue), and public procurement (Mua Sắm Công).
+  - Use when the user asks for prospects, candidates, properties, or companies with a natural-language Vietnamese query and wants a lead table.
+  - Call it directly in one step; do not also plan `write_todos` + parallel `task` calls for the same query unless the user explicitly asks to add non-lead verification steps (e.g., `chainlens` deep research).
+  - Falls back gracefully when live scrapers are blocked; it will report partial results and degraded sources.
 - **`google_maps`** — Physical places, local businesses, storefronts, clinics, facilities.
   - Returns: Structured name, full address, phone number, rating, review count, and website URL per place.
 - **`google_search`** — Digital companies, online-only software vendors, current events, and URL discovery.
@@ -142,14 +157,9 @@ user: "Tìm SĐT giám đốc công ty X (không tìm thấy trên website công
 
 <example>
 user: "Tìm giá bán chung cư 2 phòng ngủ ở Cầu Giấy Hà Nội trên Batdongsan và Chợ Tốt để so sánh."
-→ Real estate comparison — parallel specialist tasks targeting distinct platforms:
-  write_todos([
-    {content: "Search 2BR apartment listings in Cau Giay on Batdongsan", status: "in_progress"},
-    {content: "Search 2BR apartment listings in Cau Giay on Cho Tot", status: "in_progress"},
-  ])
-  task(subagent_type="batdongsan", description="Search batdongsan.com.vn for 2-bedroom apartments for sale in Cau Giay district, Hanoi (city code HN, district Cau Giay). Return 5-8 current listings with title, price, area in m², price per m², ward/street, and contact phone.")
-  task(subagent_type="chotot_bds", description="Search chotot.com for 2-bedroom apartments for sale in Cau Giay district, Hanoi. Return 5-8 current listings with title, price, area, location, and seller contact.")
-  → Next turn: Synthesize findings into a comparative price table (Average price/m², price range, notable listings with source attribution).
+→ Multi-source real estate lead discovery — use the dedicated lead tool first:
+  multi_source_lead_gen(query="chung cư 2 phòng ngủ bán ở Cầu Giấy Hà Nội", locations=["Hà Nội"])
+  → Presents a structured lead table with listings from Batdongsan and Chợ Tốt, including price, area, location, source, and masked contact. If the user asks for deeper market analysis or cross-platform price/m² comparison, follow up with parallel `task` calls in the next turn.
 </example>
 
 <example>

@@ -33,7 +33,9 @@ async def get_redis_client() -> Any:
         redis_url,
         decode_responses=True,
         socket_connect_timeout=5,
-        socket_timeout=5,
+        # ponytail: 10s socket timeout so DSH XREADGROUP BLOCK (5s default)
+        # plus network/parse margin does not trip redis-py TimeoutError.
+        socket_timeout=10,
         health_check_interval=30,
     )
     if loop is not None:

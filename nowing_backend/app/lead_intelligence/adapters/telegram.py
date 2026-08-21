@@ -52,6 +52,10 @@ class TelegramLeadAdapter(LeadSourceAdapter):
             filters=filters,
             limit=limit,
         )
+        if not records:
+            logger.warning("Telegram search returned no live results")
+            self.last_execution_status = "degraded"
+            return []
         return [self.normalize_lead(r) for r in records]
 
     def normalize_lead(
@@ -100,7 +104,13 @@ class TelegramLeadAdapter(LeadSourceAdapter):
 
         contact_candidates = self.extract_contact_candidates(raw_record)
 
-        lead = NormalizedLead(
+        # Store extra Telegram-specific context inside raw_data instead of
+        # bypassing Pydantic validation with object.__setattr__.
+        raw_data = dict(data)
+        raw_data["telegram_metadata"] = metadata
+        raw_data["phone_numbers"] = phones
+
+        return NormalizedLead(
             source_name="telegram",
             source_id=rec_id,
             title=title,
@@ -109,17 +119,8 @@ class TelegramLeadAdapter(LeadSourceAdapter):
             city=city,
             price=price_val,
             contact_candidates=contact_candidates,
-            raw_data=data,
+            raw_data=raw_data,
         )
-
-        # Dynamic attribute compatibility for tests
-        object.__setattr__(lead, "source", "telegram")
-        object.__setattr__(lead, "source_record_id", rec_id)
-        object.__setattr__(lead, "price_vnd", price_val)
-        object.__setattr__(lead, "phone_numbers", phones)
-        object.__setattr__(lead, "metadata", metadata)
-
-        return lead
 
     def extract_contact_candidates(
         self, raw_record: RawLeadRecord | dict[str, Any]
@@ -138,15 +139,23 @@ class TelegramLeadAdapter(LeadSourceAdapter):
 
         candidates: list[ContactCandidate] = []
         for phone in entities.get("phones", []):
-            cand = ContactCandidate(channel="phone", value=phone, confidence=0.95)
-            object.__setattr__(cand, "contact_type", "phone")
-            object.__setattr__(cand, "source", "telegram")
-            candidates.append(cand)
+            candidates.append(
+                ContactCandidate(
+                    channel="phone",
+                    value=phone,
+                    confidence=0.95,
+                    metadata={"contact_type": "phone", "source": "telegram"},
+                )
+            )
 
         for email in entities.get("emails", []):
-            cand = ContactCandidate(channel="email", value=email, confidence=0.90)
-            object.__setattr__(cand, "contact_type", "email")
-            object.__setattr__(cand, "source", "telegram")
-            candidates.append(cand)
+            candidates.append(
+                ContactCandidate(
+                    channel="email",
+                    value=email,
+                    confidence=0.90,
+                    metadata={"contact_type": "email", "source": "telegram"},
+                )
+            )
 
         return candidates

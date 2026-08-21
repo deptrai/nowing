@@ -13,7 +13,7 @@ from app.lead_intelligence.schemas import (
 
 LEADS_MULTI_SOURCE_GEN = Capability(
     name="leads.multi_source_gen",
-    description="Unified multi-source AI lead generation across Batdongsan, Chợ Tốt, TopCV, ITviec, Masothue, Mua Sắm Công, and Social groups with deduplication.",
+    description="Unified multi-source AI lead generation across Batdongsan, Chợ Tốt, Mua Bán, TopCV, ITviec, VietnamWorks, Masothue, Mua Sắm Công, and Social groups with deduplication.",
     input_schema=MultiSourceLeadGenRequest,
     output_schema=MultiSourceLeadGenResponse,
     executor=build_multi_source_lead_gen_executor(),

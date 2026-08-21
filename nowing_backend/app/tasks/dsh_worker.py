@@ -19,9 +19,13 @@ import httpx
 from redis.asyncio.client import Redis
 from redis.exceptions import ResponseError
 
+from app.capabilities.chainlens.research.executor import build_research_executor
+from app.capabilities.chainlens.research.schemas import ResearchInput
 from app.config import config
 from app.redis_client import get_redis_client
 from app.tasks.dsh_worker_langgraph import LangGraphMissionExecutor
+
+_research_executor = build_research_executor()
 
 logger = logging.getLogger(__name__)
 
@@ -168,30 +172,36 @@ class DshRestClient:
         output_schema: dict[str, Any] | None = None,
         mode: str = "balanced",
     ) -> dict[str, Any]:
-        """Start chainlens.research in async mode and poll until terminal."""
-        payload: dict[str, Any] = {"query": query, "mode": mode}
-        if output:
-            payload["output"] = output
-        if output_schema:
-            payload["output_schema"] = output_schema
-        response = await self._client.post(
-            f"/api/v1/workspaces/{workspace_id}/scrapers/chainlens/research?mode=async",
-            json=payload,
-            timeout=httpx.Timeout(_DSH_SYNC_TIMEOUT),
-        )
+        """Call the local chainlens.research capability directly.
 
-        if response.status_code == 202:
-            body = response.json()
-            run_id = body.get("run_id")
-            if not run_id:
-                raise DshTransientError(
-                    "chainlens.research returned 202 without run_id"
-                )
-            return await self._poll_run(workspace_id, run_id)
+        ponytail: the REST route this client used to call no longer exists in
+        the gateway, so we invoke the executor the gateway itself uses and
+        return a flat dict for backward compatibility with the legacy and
+        LangGraph executors.
+        """
+        try:
+            payload = ResearchInput(
+                query=query,
+                mode=mode,  # type: ignore[arg-type]
+                output=output,  # type: ignore[arg-type]
+                output_schema=output_schema,
+                workspace_id=workspace_id,
+            )
+        except Exception as exc:
+            raise DshTransientError(f"Invalid chainlens.research payload: {exc}") from exc
 
-        # In case the gateway allowed sync, treat a 200 as a completed output.
-        self._raise_for_status(response, "chainlens_research")
-        return response.json()
+        output_obj = await _research_executor(payload, None)
+
+        if output_obj.status in ("engine_unavailable", "timeout"):
+            raise DshTransientError(
+                output_obj.degradation_reason
+                or output_obj.engine_reason
+                or output_obj.status
+            )
+
+        result: dict[str, Any] = output_obj.model_dump()
+        result["run_id"] = output_obj.chat_id or str(uuid.uuid4())
+        return result
 
     async def _poll_run(self, workspace_id: int, run_id: str) -> dict[str, Any]:
         """Poll GET /scrapers/runs/{run_id} until a terminal status."""
@@ -674,10 +684,12 @@ class DshWorker:
 
     async def _ensure_consumer_group(self, redis_client: Redis) -> None:
         try:
+            # ponytail: start at 0-0 so a (re)started worker consumes the
+            # backlog instead of only messages published after boot.
             await redis_client.xgroup_create(
                 name=self.stream,
                 groupname=self.group,
-                id="$",
+                id="0-0",
                 mkstream=True,
             )
         except ResponseError as exc:
@@ -841,6 +853,13 @@ class DshWorker:
 
         try:
             mission = await self.rest_client.get_mission(mission_id)
+            if mission.get("status") in ("success", "error", "dlq", "cancelled"):
+                logger.info(
+                    "Mission %s already terminal (%s); skip",
+                    mission_id,
+                    mission.get("status"),
+                )
+                return True
         except DshNonRetryableError as exc:
             logger.error("Mission %s non-retryable load error: %s", mission_id, exc)
             try:

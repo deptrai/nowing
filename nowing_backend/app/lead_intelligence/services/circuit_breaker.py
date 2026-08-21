@@ -101,7 +101,9 @@ class PlatformCircuitBreaker:
 
             return False
         except Exception as exc:
-            logger.error("Failed to record circuit breaker failure for %s: %s", platform, exc)
+            logger.error(
+                "Failed to record circuit breaker failure for %s: %s", platform, exc
+            )
             return False
 
     async def record_success(self, platform: str) -> None:

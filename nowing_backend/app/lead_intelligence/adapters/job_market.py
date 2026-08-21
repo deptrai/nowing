@@ -94,26 +94,10 @@ class JobMarketLeadAdapter(LeadSourceAdapter):
         """Aggregate recruitment leads across multiple portals with error isolation."""
         half_limit = max(1, limit // 2)
 
-        async def _safe_topcv() -> list[dict[str, Any]]:
-            try:
-                return await self._search_topcv(
-                    workspace_id, query, filters, half_limit
-                )
-            except Exception as exc:
-                logger.warning("TopCV search failed: %s", exc)
-                return []
-
-        async def _safe_itviec() -> list[dict[str, Any]]:
-            try:
-                return await self._search_itviec(
-                    workspace_id, query, filters, half_limit
-                )
-            except Exception as exc:
-                logger.warning("ITviec search failed: %s", exc)
-                return []
-
         results = await asyncio.gather(
-            _safe_topcv(), _safe_itviec(), return_exceptions=True
+            self._search_topcv(workspace_id, query, filters, half_limit),
+            self._search_itviec(workspace_id, query, filters, half_limit),
+            return_exceptions=True,
         )
         topcv_items = results[0] if isinstance(results[0], list) else []
         itviec_items = results[1] if isinstance(results[1], list) else []
@@ -140,9 +124,7 @@ class JobMarketLeadAdapter(LeadSourceAdapter):
                 )
             )
 
-        if not raw_records and (
-            isinstance(results[0], Exception) or isinstance(results[1], Exception)
-        ):
+        if isinstance(results[0], Exception) or isinstance(results[1], Exception):
             self.last_execution_status = "degraded"
         else:
             self.last_execution_status = "ok"

@@ -13,7 +13,7 @@ import time
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import not_, or_
+from sqlalchemy import case, not_, or_
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import func
@@ -124,8 +124,16 @@ def _build_batch_upsert_stmt(leads: list[dict[str, Any]]) -> Any:
             ),
             "company_name": stmt.excluded.company_name,
             "domain": stmt.excluded.domain,
+            "client_id": stmt.excluded.client_id,
+            "table_id": func.coalesce(stmt.excluded.table_id, Lead.table_id),
+            "source_url": func.coalesce(stmt.excluded.source_url, Lead.source_url),
+            "industry": func.coalesce(stmt.excluded.industry, Lead.industry),
+            "location": func.coalesce(stmt.excluded.location, Lead.location),
             "intent_score": stmt.excluded.intent_score,
-            "status": stmt.excluded.status,
+            "status": case(
+                (Lead.status.in_(["blacklisted", "withdrawn", "opted_out", "lost", "won"]), Lead.status),
+                else_=stmt.excluded.status,
+            ),
             "updated_at": func.now(),
         },
     ).returning(Lead.id, Lead.value_hmac)

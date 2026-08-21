@@ -69,6 +69,7 @@ class NormalizedLead(BaseModel):
     address: str | None = None
     city: str | None = None
     price: float | None = None
+    source_url: str | None = None
     confidence_score: float = 70.0
     sources: list[str] = Field(default_factory=list)
     contact_candidates: list[ContactCandidate] = Field(default_factory=list)
@@ -159,6 +160,16 @@ def normalize_vietnamese_phone(raw_phone: str) -> str:
     cleaned = cleaned.replace("+", "")
 
     return cleaned
+
+
+def _to_float(value: Any) -> float | None:
+    """Safely cast a value to float, returning ``None`` on non-numeric input."""
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def extract_phones_from_text(text: str) -> list[str]:

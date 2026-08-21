@@ -3028,6 +3028,24 @@ _FR-89 · AD-42 · AD-44_
 
 ---
 
+### Story 21.20: Extend Multi-Source Lead Gen Adapters `[ready-for-dev]`
+
+As a sales rep or real estate broker in Vietnam,
+I want `multi_source_lead_gen` to also cover the sources it currently advertises but does not yet wire (`muaban_bds`, `vn_jobs`/`VietnamWorks`, `Mua Sắm Công` / `muasamcong`),
+So that the prompt, routing, capability description, and adapter registry stay consistent and those sources are searchable through the same natural-language tool.
+
+**Acceptance Criteria:**
+
+- **Given** a BĐS-related chat prompt, **when** `multi_source_lead_gen` runs, **then** `MuabanBdsLeadAdapter` is dispatched alongside `batdongsan` and `chotot`, calls `scrape_muaban_bds`, and returns `RawLeadRecord`s with `degraded` handling consistent with 21.19.
+- **Given** a recruitment-related chat prompt, **when** `multi_source_lead_gen` runs, **then** `VnJobsLeadAdapter` calls `aggregate_jobs(..., ctx=None)` to fetch across TopCV/ITviec/VietnamWorks without self-persisting, and `VietnamWorksLeadAdapter` is dispatched only when the query explicitly mentions "vietnamworks".
+- **Given** a public-procurement-related chat prompt, **when** `multi_source_lead_gen` runs, **then** `MuaSamCongLeadAdapter` calls `MuasamcongScraper.search_tenders()` and returns company/tender leads.
+- **Given** the new adapters are registered, **when** `LeadSourceAdapterRegistry.resolve_adapters_for_intent(query)` is called, **then** it returns the right adapters and avoids duplicate calls across `vn_jobs`/`vietnamworks`/`job_market`.
+- **Given** the feature, **when** `ruff check` and `pytest` run, **then** lint/type errors are 0 and relevant tests pass.
+
+_FR-85 · FR-43 · FR-44 · FR-45 · FR-46 · AD-42_
+
+---
+
 ---
 
 ## Epic 22: Telegram Scraper & Channel Ingestion Engine `ready-for-dev`
