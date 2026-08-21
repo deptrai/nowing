@@ -347,7 +347,7 @@ def run_cosmic_ray(
                 print(f"[mutation] scope-mutation-session {session.name}")
                 scope_script = (project_root / "scripts" / "scope_mutation_session.py").resolve()
                 scope_cmd: list[str] = [
-                    str(Path(shutil.which("cosmic-ray") or "cosmic-ray").resolve().parent / "python"),
+                    sys.executable,
                     str(scope_script),
                     str(session),
                 ]
