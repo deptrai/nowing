@@ -1,3 +1,7 @@
+---
+baseline_commit: c098ac87dfe2a30fe3669d1056fe66bb933b02f5
+---
+
 # Story 10.8: Spatial Planning & Land Zoning GIS (PostGIS Map Layers)
 
 Status: done
@@ -89,3 +93,47 @@ So that I can verify land usability (Đất ở ODT/ONT vs Đất giao thông DG
 - [x] [Review][Patch] `effective_year`/`expiry_year` từ props không validate [app/proprietary/platforms/spatial_planning/importer.py:105] — Giá trị từ GeoJSON properties đi thẳng vào `Integer` column. Nếu là string/float/None có thể gây lỗi insert. Nên ép kiểu `int()` hoặc bỏ qua nếu không hợp lệ.
 
 - [x] [Review][Patch] Thiếu test boundary, swap edge cases, large number of zones [tests/unit/proprietary/platforms/spatial_planning/] — Test `test_coordinate_validation.py` chưa cover tọa độ chính xác tại biên `[8.5, 23.5]` x `[102.0, 109.5]`, trường hợp `lat` ở ngoài biên nhưng `lng` ở trong vùng đảo, và trường hợp 100+ zone intersect.
+
+## Dev Agent Record
+
+### Debug Log
+- Verified PostGIS geometry schema and spatial GIST index creation with Alembic migration 208 (`208_add_spatial_planning_zones_table.py`).
+- Integrated `SpatialPlanningZone` in `nowing_backend/app/db.py` to ensure metadata registration across test and production environments.
+- Implemented `SpatialPlanningService` fast `ST_Intersects` queries with strict $\le 10$ms SLA enforcement and default query limit of 50.
+- Hardened `PlanningDataImporter` with error handling, LRU-cached CRS transformers, integer coercion for years, and safe "UNKNOWN" fallback for missing zone codes.
+- Added Land Zoning Modal with Mapbox/Leaflet vector overlay in `nowing_web/components/realestate/land-zoning/land-zoning-modal.tsx` and dedicated page.
+- Created unit tests (`test_coordinate_validation.py`, `test_planning_service.py`, `test_realestate_zoning_capabilities.py`) and integration tests with real PostGIS geometry operations (`test_spatial_planning.py`).
+- Ran adversarial 3-layer code review; all review patches and decisions verified and resolved.
+
+### Completion Notes
+- All 5 tasks and 14 review findings implemented, tested, and validated 100%.
+- Unit test suite: 23/23 tests passing green.
+- Code quality: Ruff check and Biome check clean (0 errors, 0 warnings).
+
+## File List
+
+- `nowing_backend/alembic/versions/208_add_spatial_planning_zones_table.py` (New)
+- `nowing_backend/app/proprietary/platforms/spatial_planning/models.py` (New)
+- `nowing_backend/app/proprietary/platforms/spatial_planning/schemas.py` (New)
+- `nowing_backend/app/proprietary/platforms/spatial_planning/service.py` (New)
+- `nowing_backend/app/proprietary/platforms/spatial_planning/importer.py` (New)
+- `nowing_backend/app/proprietary/platforms/spatial_planning/__init__.py` (New)
+- `nowing_backend/app/capabilities/realestate/zoning/definition.py` (New)
+- `nowing_backend/app/capabilities/realestate/zoning/schemas.py` (New)
+- `nowing_backend/app/capabilities/realestate/zoning/executor.py` (New)
+- `nowing_backend/app/capabilities/realestate/zoning/__init__.py` (New)
+- `nowing_backend/app/db.py` (Modified)
+- `nowing_backend/tests/unit/proprietary/platforms/spatial_planning/test_coordinate_validation.py` (New)
+- `nowing_backend/tests/unit/proprietary/platforms/spatial_planning/test_planning_service.py` (New)
+- `nowing_backend/tests/unit/capabilities/test_realestate_zoning_capabilities.py` (New)
+- `nowing_backend/tests/integration/platforms/spatial_planning/test_spatial_planning.py` (New)
+- `nowing_web/components/realestate/land-zoning/land-zoning-modal.tsx` (New)
+- `nowing_web/components/realestate/land-zoning/zoning-map.tsx` (New)
+- `nowing_web/app/dashboard/[workspace_id]/realestate/land-zoning/page.tsx` (New)
+- `nowing_web/tests/realestate/land-zoning.spec.ts` (New)
+
+## Change Log
+
+- 2026-08-15: Initial implementation of PostGIS spatial planning zones, importer, ST_Intersects service, agent capability, and unit tests.
+- 2026-08-15: Applied 3-layer code review patches (migration 208, db.py registration, limit 50, coordinate bounds schema, district non-null constraint, robust error handling in importer, Land Zoning frontend modal, integration tests).
+- 2026-08-21: Verified full test suite (23 pytest passed, ruff clean, biome clean), updated story status to done and synchronized sprint-status.yaml.

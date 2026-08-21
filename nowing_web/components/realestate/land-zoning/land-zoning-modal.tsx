@@ -166,7 +166,7 @@ export function LandZoningModal({
 								<div className="space-y-1">
 									<h4 className="text-sm font-medium text-red-700">Cảnh báo rủi ro</h4>
 									<ul className="list-disc space-y-1 pl-4 text-sm text-red-700">
-										{result.risk_notes.map((note, i) => (
+										{result.risk_notes.map((note) => (
 											<li key={note}>{note}</li>
 										))}
 									</ul>
