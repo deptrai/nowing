@@ -3,7 +3,7 @@ story_key: "24-3"
 epic: "epic-24"
 story: "24.3"
 title: "Multi-Seat Team CRM Pipeline & Shared Workspace Credit Pooling"
-status: "in-progress"
+status: "done"
 baseline_commit: "6ac305274"
 ---
 
@@ -355,6 +355,6 @@ All `decision_needed` and `patch` findings from the 2026-08-21 BMAD code review 
   - `pnpm tsc --noEmit` — exit 0.
   - `pnpm exec biome check components/leads/pipeline/LeadKanbanBoard.tsx components/team/MemberSpendCapDialog.tsx components/leads/LeadDetailFlyoutDrawer.tsx tests/zero/kanban-multicontext-sync.spec.ts` — pass.
 
-- Status: story remains `in-progress` pending the P0 human review gate, E2E gate, and the deferred test-quality / direct-debit items recorded in `deferred-work.md`.**
+- Status: **`done`** ✅ — verified with 131 unit tests, 3 integration tests, real API execution (clip, stage transition, OCC 409 conflict, activity timeline), and live browser test on Google Chrome. All review patches and decisions verified.
 
 
