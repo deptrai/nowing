@@ -10,11 +10,11 @@ from app.proprietary.platforms.xactions.phone_extractor import _VN_PHONE_REGEX
 # Weight coefficients for the 9 leading digits of a 10-digit Vietnamese tax code
 _WEIGHTS = [31, 29, 23, 19, 17, 13, 7, 5, 3]
 
-# Main 10-digit MST group with optional [.\s-] delimiters (e.g. 0100.109.106)
-_TAX_MAIN_GROUP = r"\d{4}(?:[.\s-]?\d{3}){2}"
+# Main 10-digit MST group with optional [.\s-] delimiters (e.g. 0100.109.106 or O1OO1O91O6)
+_TAX_MAIN_GROUP = r"[0-9oO]{4}(?:[.\s-]?[0-9oO]{3}){2}"
 
 # Optional 3-digit branch suffix, also allowing a leading delimiter
-_TAX_BRANCH_GROUP = r"(?:[.\s-]?(?P<branch>\d{3}))"
+_TAX_BRANCH_GROUP = r"(?:[.\s-]?(?P<branch>[0-9oO]{3}))"
 
 
 _TAX_KEYWORDS = (
@@ -24,7 +24,7 @@ _TAX_KEYWORDS = (
 _KEYWORD_TAX_PATTERN = re.compile(
     r"(?i:\b(?:"
     + _TAX_KEYWORDS
-    + r")[^0-9\n]{0,30}?)(?P<main>"
+    + r")[^0-9oO\n]{0,30}?)(?P<main>"
     + _TAX_MAIN_GROUP
     + r")"
     + _TAX_BRANCH_GROUP
@@ -32,7 +32,7 @@ _KEYWORD_TAX_PATTERN = re.compile(
 )
 
 _STANDALONE_TAX_PATTERN = re.compile(
-    r"\b(?P<main>" + _TAX_MAIN_GROUP + r")" + _TAX_BRANCH_GROUP + r"?\b"
+    r"\b(?P<main>\d{4}(?:[.\s-]?\d{3}){2})" + r"(?:[.\s-]?(?P<branch>\d{3}))?" + r"\b"
 )
 
 
@@ -48,8 +48,9 @@ def is_valid_vietnam_tax_code(tax_id: str | None) -> bool:
     if not tax_id or not isinstance(tax_id, str):
         return False
 
-    # Strip prefixes like "MST:", whitespace, dots, and hyphens
-    cleaned = re.sub(r"[^\d]", "", tax_id)
+    # Normalize letter o/O to 0, and strip non-digit characters
+    normalized = re.sub(r"[oO]", "0", tax_id)
+    cleaned = re.sub(r"[^\d]", "", normalized)
 
     if len(cleaned) not in (10, 13):
         return False
@@ -65,8 +66,11 @@ def is_valid_vietnam_tax_code(tax_id: str | None) -> bool:
 
 
 def _clean_match(value: str | None) -> str:
-    """Remove any non-digit characters from a matched group."""
-    return re.sub(r"[^\d]", "", value) if value else ""
+    """Normalize and remove any non-digit characters from a matched group."""
+    if not value:
+        return ""
+    normalized = re.sub(r"[oO]", "0", value)
+    return re.sub(r"[^\d]", "", normalized)
 
 
 def _is_phone_like(digits: str) -> bool:

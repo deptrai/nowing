@@ -88,6 +88,33 @@ _DEFAULT_DATASET: list[dict[str, Any]] = [
         "disabled_tools": [],
         "expected_contains": ["welcome"],
     },
+    {
+        "case_id": "chat-lead-dispatch-001",
+        "query": "Tìm kiếm 5 nhà máy may mặc ở Bình Dương kèm số điện thoại liên hệ.",
+        "tags": ["lead-gen", "orchestrator"],
+        "tier": "multi_tool",
+        "mentioned_document_ids": [],
+        "disabled_tools": [],
+        "expected_contains": ["Bình Dương"],
+    },
+    {
+        "case_id": "chat-wide-table-001",
+        "query": "Khảo sát và lập bảng so sánh 5 dự án căn hộ chung cư nổi bật tại TP Thủ Đức năm 2026.",
+        "tags": ["wide-research", "deep-research"],
+        "tier": "multi_tool",
+        "mentioned_document_ids": [],
+        "disabled_tools": [],
+        "expected_contains": ["Thủ Đức"],
+    },
+    {
+        "case_id": "chat-speed-latency-001",
+        "query": "Nowing là gì và hỗ trợ những định dạng tài liệu nào?",
+        "tags": ["speed", "factual"],
+        "tier": "short",
+        "mentioned_document_ids": [],
+        "disabled_tools": [],
+        "expected_contains": ["Nowing"],
+    },
 ]
 
 
