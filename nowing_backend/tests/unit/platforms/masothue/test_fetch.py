@@ -43,6 +43,7 @@ async def test_fetch_search_page_success() -> None:
     assert html == "<html><body>ok</body></html>"
     assert "masothue.com" in called["url"]
     assert called["kwargs"]["timeout"] == 30.0
+    assert called["kwargs"]["follow_redirects"] is False
 
 
 @pytest.mark.asyncio
@@ -174,6 +175,45 @@ async def test_fetch_search_page_302_redirect_with_redirect_attr() -> None:
     html, status = await fetch_search_page("0314539064", fetch_fn=fake_fetch)
     assert status == 200
     assert "<p>Mã số thuế: 0314539064</p>" in html
+
+
+@pytest.mark.asyncio
+async def test_fetch_search_page_location_precedence_over_redirect_attr() -> None:
+    """Header location takes precedence over redirect attribute on response."""
+
+    class DualRedirectResponse:
+        status = 302
+        body = b""
+        headers = {"location": "/0314539064-from-header"}
+        redirect = "/0314539065-from-attr"
+
+    async def fake_fetch(url: str, **kwargs: Any) -> Any:
+        if "/Search/" in url:
+            return DualRedirectResponse()
+        return _make_response(
+            200,
+            "<table class='table-taxinfo'><tr><th>Địa chỉ</th><td>HCM</td></tr></table>",
+        )
+
+    html, status = await fetch_search_page("0314539064", fetch_fn=fake_fetch)
+    assert status == 200
+    assert "<p>Mã số thuế: 0314539064</p>" in html
+    assert "0314539065" not in html
+
+
+@pytest.mark.asyncio
+async def test_fetch_search_page_redirect_to_non_mst_path_raises_blocked() -> None:
+    """302 redirect to non-mst paths (e.g. external or non-digit slug) raises MasothueAccessBlockedError."""
+    for bad_loc in ("https://external.com/path", "/notaxcode-slug", ""):
+
+        def _make_loc_handler(loc: str) -> Any:
+            async def fake_fetch(url: str, **kwargs: Any) -> Any:
+                return _make_response(302, "", headers={"location": loc})
+
+            return fake_fetch
+
+        with pytest.raises(MasothueAccessBlockedError):
+            await fetch_search_page("query", fetch_fn=_make_loc_handler(bad_loc))
 
 
 @pytest.mark.asyncio
