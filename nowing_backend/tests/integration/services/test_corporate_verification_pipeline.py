@@ -66,11 +66,15 @@ async def test_corporate_verification_pipeline_high_confidence_and_tier_3_phone(
     client_mock = MockMasothueClient()
     corp_service = CorporateVerificationService(db_session, masothue_client=client_mock, redis_client=None)
 
-    # 1. Run Corporate Verification
-    corp_res: CorporateMatchResult = await corp_service.verify_lead_corporate_info(
-        workspace_id=db_workspace.id,
-        lead_id=lead.id,
-    )
+    # 1. Run Corporate Verification (bypass Redis so stale name cache doesn't mask the fresh location)
+    with patch(
+        "app.services.corporate_verification_service.get_redis",
+        return_value=None,
+    ):
+        corp_res: CorporateMatchResult = await corp_service.verify_lead_corporate_info(
+            workspace_id=db_workspace.id,
+            lead_id=lead.id,
+        )
 
     assert corp_res.is_verified is True
     assert corp_res.confidence >= 0.85
@@ -80,7 +84,12 @@ async def test_corporate_verification_pipeline_high_confidence_and_tier_3_phone(
     assert corp_res.charter_capital_vnd == 13_000_000_000_000
 
     # 2. Run Phone Waterfall Service (Tier 3 Masothue Rep Phone)
-    phone_service = PhoneWaterfallService(db_session)
+    fake_redis = AsyncMock()
+    fake_redis.get.return_value = None
+    fake_redis.mget.return_value = (None, None)
+    phone_service = PhoneWaterfallService(
+        db_session, masothue_client=client_mock, redis_client=fake_redis
+    )
 
     with (
         patch("app.services.phone_waterfall_service.get_redis", return_value=None),
@@ -169,7 +178,12 @@ async def test_corporate_verification_pipeline_legacy_11_digit_rep_phone_convers
     assert corp_res.tax_id == "0108999888"
 
     # 2. Run Phone Waterfall Service
-    phone_service = PhoneWaterfallService(db_session)
+    fake_redis = AsyncMock()
+    fake_redis.get.return_value = None
+    fake_redis.mget.return_value = (None, None)
+    phone_service = PhoneWaterfallService(
+        db_session, masothue_client=client_mock, redis_client=fake_redis
+    )
 
     with (
         patch("app.services.phone_waterfall_service.get_redis", return_value=None),
@@ -246,13 +260,19 @@ async def test_corporate_verification_pipeline_dnc_blocked_stops_charge(
     db_session.add(lead)
     await db_session.flush()
 
-    corp_service = CorporateVerificationService(db_session, masothue_client=MockMasothueClient(), redis_client=None)
+    client_mock = MockMasothueClient()
+    corp_service = CorporateVerificationService(db_session, masothue_client=client_mock, redis_client=None)
     await corp_service.verify_lead_corporate_info(
         workspace_id=db_workspace.id,
         lead_id=lead.id,
     )
 
-    phone_service = PhoneWaterfallService(db_session)
+    fake_redis = AsyncMock()
+    fake_redis.get.return_value = None
+    fake_redis.mget.return_value = (None, None)
+    phone_service = PhoneWaterfallService(
+        db_session, masothue_client=client_mock, redis_client=fake_redis
+    )
 
     with (
         patch("app.services.phone_waterfall_service.get_redis", return_value=None),

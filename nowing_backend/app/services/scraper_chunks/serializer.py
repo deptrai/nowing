@@ -1,4 +1,4 @@
-"""Normalize heterogeneous scraper output into canonical ``Chunk[]`` objects."""
+"""Normalize heterogeneous scraper output into ``Chunk[]`` for chainlens-research."""
 
 from __future__ import annotations
 

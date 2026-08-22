@@ -15,6 +15,7 @@ from sqlalchemy import (
     Column,
     Float,
     ForeignKey,
+    ForeignKeyConstraint,
     Integer,
     String,
     text,
@@ -56,9 +57,14 @@ def upgrade() -> None:
         Column(
             "lead_id",
             UUID(as_uuid=True),
-            ForeignKey("leads.id", ondelete="CASCADE"),
             nullable=False,
             index=True,
+        ),
+        ForeignKeyConstraint(
+            ["lead_id", "workspace_id"],
+            ["leads.id", "leads.workspace_id"],
+            ondelete="CASCADE",
+            name="fk_enrichment_requests_lead_id_workspace_id",
         ),
         Column(
             "status",
@@ -133,9 +139,14 @@ def upgrade() -> None:
         Column(
             "lead_id",
             UUID(as_uuid=True),
-            ForeignKey("leads.id", ondelete="CASCADE"),
             nullable=False,
             index=True,
+        ),
+        ForeignKeyConstraint(
+            ["lead_id", "workspace_id"],
+            ["leads.id", "leads.workspace_id"],
+            ondelete="CASCADE",
+            name="fk_verified_contacts_lead_id_workspace_id",
         ),
         Column(
             "enrichment_request_id",
@@ -257,7 +268,8 @@ def _drop_all_rls() -> None:
 
 def downgrade() -> None:
     _drop_all_rls()
-    op.drop_index("ix_enrichment_requests_tenant_lookup", table_name="enrichment_requests")
-    op.drop_index("ix_verified_contacts_tenant_lookup", table_name="verified_contacts")
-    op.drop_table("verified_contacts")
-    op.drop_table("enrichment_requests")
+    # CASCADE removes dependent foreign key constraints added by later migrations
+    # (e.g. phone_waterfall_logs, telegram_checkpoint_messages) without dropping
+    # the referencing tables themselves.
+    op.execute("DROP TABLE IF EXISTS verified_contacts CASCADE;")
+    op.execute("DROP TABLE IF EXISTS enrichment_requests CASCADE;")

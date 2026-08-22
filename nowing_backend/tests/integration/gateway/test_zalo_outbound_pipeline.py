@@ -247,7 +247,7 @@ async def test_zalo_inbound_webhook_event_and_telegram_alert(
         "timestamp": 1723700000,
     }
 
-    with patch("app.gateway.zalo.webhook.send_telegram_lead_alert") as mock_telegram:
+    with patch("app.gateway.zalo.telegram_alerts.send_telegram_lead_alert") as mock_telegram:
         mock_telegram.return_value = {"sent": True, "message_id": "tg_msg_101"}
 
         result = await handle_zalo_webhook_event(db_session, conn, event_payload)

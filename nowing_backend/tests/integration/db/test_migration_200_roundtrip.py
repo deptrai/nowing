@@ -80,8 +80,10 @@ async def _column_type(db_session: AsyncSession, table: str, column: str) -> str
 
 async def _drop_tables(db_session: AsyncSession) -> None:
     """Return the schema to its pre-200 shape so ``upgrade()`` has work to do."""
-    await db_session.execute(text("DROP TABLE IF EXISTS verified_contacts"))
-    await db_session.execute(text("DROP TABLE IF EXISTS enrichment_requests"))
+    # CASCADE removes dependent FK constraints from later tables
+    # (phone_waterfall_logs, telegram_checkpoint_messages).
+    await db_session.execute(text("DROP TABLE IF EXISTS verified_contacts CASCADE"))
+    await db_session.execute(text("DROP TABLE IF EXISTS enrichment_requests CASCADE"))
     await db_session.flush()
 
 

@@ -31,6 +31,13 @@ create_default_roles_and_membership = importlib.import_module(
 ).create_default_roles_and_membership
 TEST_DATABASE_URL = importlib.import_module("tests.conftest").TEST_DATABASE_URL
 
+# Integration fixtures often create Lead rows directly without computing
+# value_hmac. Migration 8f0e6aa7aa87 made the column NOT NULL in production,
+# but for hermetic DB tests we relax the DDL so fixtures don't fail on that
+# constraint. Production code paths (LeadBatchService, enrichment) always
+# compute the hash themselves.
+app_db.Lead.__table__.columns["value_hmac"].nullable = True
+
 _EMBEDDING_DIM = app_config.embedding_model_instance.dimension
 
 
@@ -95,6 +102,21 @@ async def db_session(async_engine) -> AsyncSession:
         ) as session:
             yield session
         await transaction.rollback()
+
+
+@pytest_asyncio.fixture
+async def db_vertical_client(
+    db_session: AsyncSession,
+) -> "app_db.VerticalClient":
+    """An active vertical client used by lead/phone integration tests."""
+    client = app_db.VerticalClient(
+        client_id="bds",
+        display_name="BDS AI",
+        is_active=True,
+    )
+    db_session.add(client)
+    await db_session.flush()
+    return client
 
 
 @pytest_asyncio.fixture

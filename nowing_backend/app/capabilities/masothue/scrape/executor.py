@@ -111,12 +111,11 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
         degraded = bool(result.get("degraded", False))
 
         # Build typed items. Pydantic will coerce dicts into MasothueCompany.
+        # Copy input dicts before mutating so the caller's data stays intact.
         items: list[Any] = []
-        for item in item_dicts:
-            if isinstance(item, dict):
-                items.append(item)
-            else:
-                items.append(item.to_output())
+        for raw in item_dicts:
+            item = dict(raw) if isinstance(raw, dict) else raw.to_output()
+            items.append(item)
 
         # A degraded run is not billed even if partial items were returned.
         rate = getattr(config, "MASOTHUE_SCRAPE_MICROS_PER_ITEM", 3000)

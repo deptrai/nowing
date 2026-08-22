@@ -91,7 +91,7 @@ async def test_persist_ok_when_ingest_succeeds(
     """Successful chainlens ingest returns 'ok' and no message."""
     monkeypatch.setattr(
         "app.services.chainlens.ingest.NowingIngestService.ingest",
-        AsyncMock(return_value=None),
+        AsyncMock(return_value=SimpleNamespace(status="ok", error=None)),
     )
 
     status, message = await _persist_jobs_aggregates(session, 1, [sample_listing])

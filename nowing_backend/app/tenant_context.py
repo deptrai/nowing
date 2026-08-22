@@ -68,7 +68,6 @@ async def set_request_tenant_context(
     # Tests sometimes pass a fake session without .info; the GUCs are the
     # source of truth for RLS anyway, so tolerate the missing attribute.
     if hasattr(session, "info"):
-        session.info["canonical_workspace_id"] = workspace_id
         session.info["current_client_id"] = client_id
         session.info["current_agent_id"] = agent_id
         session.info["current_run_id"] = run_id

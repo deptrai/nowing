@@ -1477,19 +1477,6 @@ def record_vn_jobs_aggregate_degraded(*, reason: str) -> None:
     _add(_vn_jobs_aggregate_degraded(), 1, {"reason": reason})
 
 
-@lru_cache(maxsize=1)
-def _canonical_persist_failed():
-    return _get_meter().create_counter(
-        "nowing.canonical.persist.failed",
-        description="Count of canonical persistence failures.",
-    )
-
-
-def record_canonical_persist_failure(*, domain: str, reason: str) -> None:
-    """Count one terminal canonical persistence failure by domain."""
-    _add(_canonical_persist_failed(), 1, {"domain": domain, "reason": reason})
-
-
 __all__ = [
     "categorize_exception",
     "parse_celery_task_label",
@@ -1497,7 +1484,6 @@ __all__ = [
     "record_anti_bot_screenshot_failure",
     "record_auth_failure",
     "record_blocked_url_coverage",
-    "record_canonical_persist_failure",
     "record_celery_heartbeat_failure",
     "record_celery_heartbeat_refresh",
     "record_celery_queue_latency",

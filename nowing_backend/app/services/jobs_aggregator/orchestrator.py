@@ -207,13 +207,17 @@ async def _persist_jobs_aggregates(
         from app.services.chainlens.ingest import NowingIngestService
 
         ingest_service = NowingIngestService()
-        await ingest_service.ingest(
+        result = await ingest_service.ingest(
             scraper_id="vn_jobs",
             chunks=chunks,
             workspace_id=workspace_id,
-            session=None,
+            session=session,
         )
-        return "ok", None
+        if result.status in ("ok", "noop"):
+            return "ok", None
+        if result.status == "partial":
+            return "partial", result.error
+        return "failed", result.error
     except Exception as exc:
         logger.exception("Job aggregate chainlens ingest failed")
         return "failed", str(exc)

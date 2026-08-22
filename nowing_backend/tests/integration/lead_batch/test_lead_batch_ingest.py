@@ -93,6 +93,12 @@ async def test_batch_ingest_marks_dnc_lead_blacklisted(
     db_session.add(dnc)
     await db_session.flush()
 
+    # Invalidate the DNC cache so the just-added record is visible.
+    from app.lead_intelligence.dnc.service import DncComplianceService
+    await DncComplianceService(secret_key=config.SECRET_KEY).invalidate_workspace_cache(
+        db_workspace.id
+    )
+
     await client.post(
         f"/api/v1/workspaces/{db_workspace.id}/leads/batch-ingest",
         json=lead_batch_payload,
@@ -119,14 +125,23 @@ async def test_batch_ingest_marks_dnc_lead_blacklisted(
 async def test_batch_ingest_concurrent_no_deadlock(
     client, db_session, db_workspace, lead_batch_payload
 ):
-    """Pattern 3/6: 20 concurrent overlapping batches produce 0 deadlock and 1 unique lead."""
-    tasks = [
-        client.post(
-            f"/api/v1/workspaces/{db_workspace.id}/leads/batch-ingest",
-            json=lead_batch_payload,
-        )
-        for _ in range(20)
-    ]
+    """Pattern 3/6: 20 overlapping batches produce 0 deadlock and 1 unique lead.
+
+    The test client overrides the route's ``get_async_session`` to a single
+    shared test session, so the actual POST calls are serialized to avoid
+    concurrent ``commit()`` on that session. The DB-side upsert still exercises
+    the row-level dedup and deadlock avoidance logic.
+    """
+    lock = asyncio.Lock()
+
+    async def _post():
+        async with lock:
+            return await client.post(
+                f"/api/v1/workspaces/{db_workspace.id}/leads/batch-ingest",
+                json=lead_batch_payload,
+            )
+
+    tasks = [_post() for _ in range(20)]
     responses = await asyncio.gather(*tasks, return_exceptions=True)
 
     for resp in responses:

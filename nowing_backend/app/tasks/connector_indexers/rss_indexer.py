@@ -8,7 +8,6 @@ import unicodedata
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
 from typing import Any
-from urllib.parse import urlparse
 
 from sqlalchemy import delete as sa_delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -124,22 +123,6 @@ def _news_fingerprint(article: NewsArticle) -> str:
     return hashlib.sha256(combined.encode("utf-8")).hexdigest()
 
 
-def _source_name_for_canonical(article: NewsArticle) -> str:
-    """Use the article URL's domain as the canonical source name.
-
-    Channel titles vary per feed section (e.g. "Thời sự" vs "Thế giới" on
-    the same portal); the domain keeps cross-section attribution stable.
-    """
-    try:
-        host = urlparse(article.link).hostname or ""
-    except ValueError:
-        host = ""
-    host = host.lower()
-    if host.startswith("www."):
-        host = host[4:]
-    return host or article.source
-
-
 async def _persist_canonical_articles(
     session: AsyncSession,
     workspace_id: int,
@@ -210,8 +193,8 @@ async def _prune_stale_articles(
     """Delete articles that left the feed's rolling window.
 
     Articles not seen in the current poll and older than the retention window
-    are gone from the source; remove their documents, canonical provenance
-    rows and any canonical entities left without sources.
+    are gone from the source; remove their local ``Document`` and ``Chunk``
+    rows. Canonical indexing is owned by ``chainlens-research``.
     """
     cutoff = datetime.now(UTC) - timedelta(days=RSS_RETENTION_DAYS)
     link_expr = Document.document_metadata["link"].as_string()
@@ -242,12 +225,13 @@ async def _prune_stale_articles(
 
     doc_ids = prunable_ids
 
-    # Chunks first, then the document rows (mirrors delete_document_task).
+    # Chunks and documents are deleted in matching batches so a large prune
+    # does not issue a single giant ``DELETE FROM documents`` statement.
     batch_size = 500
     for start in range(0, len(doc_ids), batch_size):
         batch = doc_ids[start : start + batch_size]
         await session.execute(sa_delete(Chunk).where(Chunk.document_id.in_(batch)))
-    await session.execute(sa_delete(Document).where(Document.id.in_(doc_ids)))
+        await session.execute(sa_delete(Document).where(Document.id.in_(batch)))
 
     # chainlens-research owns canonical indexing; Nowing only stores the
     # source documents here, so no extra canonical cleanup is required.
@@ -424,12 +408,15 @@ async def index_rss_feeds(
         )
 
         # Rolling-window retention: drop articles that left the feed long ago.
-        await _prune_stale_articles(
-            session,
-            connector_id=connector_id,
-            workspace_id=workspace_id,
-            seen_links=seen_links,
-        )
+        # Only prune when every feed fetched successfully, so a transient
+        # failure in one feed does not wipe articles from that feed.
+        if not fetch_errors:
+            await _prune_stale_articles(
+                session,
+                connector_id=connector_id,
+                workspace_id=workspace_id,
+                seen_links=seen_links,
+            )
 
         await update_connector_last_indexed(session, connector, update_last_indexed)
 

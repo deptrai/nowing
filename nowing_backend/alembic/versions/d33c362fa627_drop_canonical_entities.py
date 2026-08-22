@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from alembic import op
+from app.zero_publication import apply_publication
 
 revision: str = "d33c362fa627"
 down_revision: str | None = "f984b591d763"
@@ -29,6 +30,9 @@ def upgrade() -> None:
         "('canonical_entities', 'canonical_entity_sources', "
         "'canonical_merge_history', 'canonical_persist_outbox');"
     )
+
+    # Reconcile the publication shape after dropping realtime tables.
+    apply_publication(op.get_bind())
 
 
 def downgrade() -> None:

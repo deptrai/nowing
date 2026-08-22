@@ -206,6 +206,8 @@ ADD:
   - `uv run pytest tests/integration/canonical -m integration -q` 42 passed.
 - ✅ `scripts/check-docs-drift.py` still PASS.
 
+> **Correction / note fast-track (2026-08-22, code review `td-8`):** The "deprecation pass" described above was executed as a fast-track cleanup. Commit `542b84d61` removed `app/canonical/`, `canonical_entities_routes.py`, related models/tests, and shipped migration `d33c362fa627` in the same change. Git history (`git show 542b84d61~1`, `git log --all -S "DeprecationWarning"`) does not contain the deprecation warnings/filterwarnings listed above; the canonical package was removed before a 1-sprint deprecation window. PO approved the fast-track because code intelligence confirmed zero live callers and no external MCP/REST surface.
+
 ## 8. Next Step
 
 Remaining cleanup work is tracked as `td-8` and should be picked up by Developer agent:

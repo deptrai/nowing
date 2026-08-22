@@ -576,7 +576,7 @@ The following 4 deferred items have been promoted to dedicated tech-debt stories
   4. Drop tables after all dependent code is removed.
 - **Priority:** P2 — not blocking integration work, but should run before Phase 1 GA to avoid data-migration pain.
 - **When to revisit:** After `NowingIngestService` and `chainlens-research` `POST /v1/ingest/scraper` are in production and no live call path touches Epic 13 tables.
-- **2026-08-22 update:** Cleanup story added as `td-8` in `sprint-status.yaml`. Deprecation warning added to `nowing_backend/app/canonical/__init__.py`. Next: identify all live call paths, mark routes deprecated, then schedule table/column removal.
+- **2026-08-22 update:** Cleanup completed as fast-track: `app/canonical/` package, `canonical_entities_routes.py`, models, tests, and migration `d33c362fa627` dropping canonical tables all shipped in commit `542b84d61`. Deprecation period was skipped because `git grep` confirmed zero live callers and no external MCP/REST surface; PO approved fast-track. `td-8` remains in `sprint-status.yaml` pending final review sign-off.
 
 ## Deferred from: code review of 7-7-mcp-server-tool-expansion (2026-08-09)
 
@@ -1011,3 +1011,39 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - **Finding:** `VietnamWorks` location filter not wired.
   - **Action:** Marked `[x] [Review][Defer]` in `21-20-extend-lead-source-adapters.md`.
   - **Reason / when to revisit:** Spec explicitly defers location filter to v1+; revisit when `scrape_vietnamworks` supports `locationId`.
+
+## Deferred from: code review of td-8 Epic 13 cleanup commit 542b84d61 (2026-08-22)
+
+- **Finding:** NG-5 residual — `cafef` scraper indexes news into local KB only without forwarding `Chunk[]` to `chainlens-research`; `rss_indexer` dual-writes local `Document/Chunk` plus chainlens feed.
+  - **Action:** Marked `[x] [Review][Defer]` in `review-td8-triaged-findings.md` (W1).
+  - **Reason / when to revisit:** Pre-existing inconsistency in scraper feed contract, not a regression of the Epic 13 cleanup. Revisit when standardizing scraper-to-chainlens ingestion across all connector domains.
+
+- **Finding:** `ChainLensIngestJob` observability may have been reduced at ingest path (needs verification whether intentional).
+  - **Action:** Marked `[x] [Review][Defer]` in `review-td8-triaged-findings.md` (W2).
+  - **Reason / when to revisit:** Insufficient evidence in the diff to determine if metrics/observability removal was deliberate; verify with `app/services/chainlens/ingest.py` and `ingest_reception.py` before patching.
+
+## Deferred from: blind-hunter + edge-case-hunter re-run on td-8 (2026-08-23)
+
+- **Finding:** `d33c362fa627_drop_canonical_entities.py` `downgrade()` raises `NotImplementedError`.
+  - **Action:** Marked `[x] [Review][Defer]` in `review-td8-triaged-findings.md` (W3).
+  - **Reason / when to revisit:** Canonical entity tables are intentionally owned by `chainlens-research`; rollback is a backup-restore operation, not a migration. Document the procedure in ops runbook before closing.
+
+- **Finding:** `NowingIngestService.ingest` calls `session.commit()`/`rollback()` inside the service, owning the caller's transaction boundary.
+  - **Action:** Marked `[x] [Review][Defer]` in `review-td8-triaged-findings.md` (W4).
+  - **Reason / when to revisit:** Contract currently by design (tests expect `session.commit`); revisit when standardizing the scraper ingest transaction model across all call sites.
+
+- **Finding:** `IngestResult` is ignored by `masothue.scrape` and `rss_indexer`; chainlens failures are not surfaced to callers.
+  - **Action:** Marked `[x] [Review][Defer]` in `review-td8-triaged-findings.md` (W5).
+  - **Reason / when to revisit:** Need a design for propagating partial/failed ingest status into capability output / indexing warning without breaking billing/tests.
+
+- **Finding:** Per-scraper ingest failure metrics are missing after canonical metrics were removed.
+  - **Action:** Marked `[x] [Review][Defer]` in `review-td8-triaged-findings.md` (W6).
+  - **Reason / when to revisit:** `NowingIngestService.ingest` already emits `record_chainlens_ingest_failed`; add domain dimension when implementing a scraper observability story.
+
+- **Finding:** `masothue.scrape` only feeds `chainlens-research` when `ctx is not None`.
+  - **Action:** Marked `[x] [Review][Defer]` in `review-td8-triaged-findings.md` (W7).
+  - **Reason / when to revisit:** Capability production calls always have `ctx`; revisit if direct executor calls or tests need a clearer contract.
+
+- **Finding:** `bds_aggregator` and `jobs_aggregator` charge `cost_micros` even when `persistence_status` is `failed`.
+  - **Action:** Marked `[x] [Review][Defer]` in `review-td8-triaged-findings.md` (W8).
+  - **Reason / when to revisit:** Pre-existing business rule; decide whether scraper cost and ingest cost should be separate billing events in a pricing review.

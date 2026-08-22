@@ -16,6 +16,7 @@ from app.db import (
     PhoneWaterfallLog,
     User,
     VerifiedContact,
+    VerticalClient,
     Workspace,
 )
 from app.services.billing_service import BillingService
@@ -28,7 +29,10 @@ pytestmark = pytest.mark.integration
 
 
 async def test_phone_waterfall_integration_tier_1_batdongsan_persist_and_billing(
-    db_session: AsyncSession, db_user: User, db_workspace: Workspace
+    db_session: AsyncSession,
+    db_user: User,
+    db_workspace: Workspace,
+    db_vertical_client: VerticalClient,
 ):
     # Setup initial balance
     db_user.credit_micros_balance = 5_000_000
@@ -109,7 +113,10 @@ async def test_phone_waterfall_integration_tier_1_batdongsan_persist_and_billing
 
 
 async def test_phone_waterfall_integration_auto_refund_within_sla(
-    db_session: AsyncSession, db_user: User, db_workspace: Workspace
+    db_session: AsyncSession,
+    db_user: User,
+    db_workspace: Workspace,
+    db_vertical_client: VerticalClient,
 ):
     db_user.credit_micros_balance = 5_000_000
     db_session.add(db_user)

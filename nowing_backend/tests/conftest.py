@@ -193,6 +193,7 @@ import pytest  # noqa: E402
 
 from app.db import DocumentType  # noqa: E402
 from app.indexing_pipeline.connector_document import ConnectorDocument  # noqa: E402
+from app.rate_limiter import limiter  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Unit test fixtures
@@ -235,3 +236,20 @@ def make_connector_document():
         return ConnectorDocument(**defaults)
 
     return _make
+
+
+@pytest.fixture(autouse=True)
+def _manage_rate_limiter_for_test_isolation(request, monkeypatch):
+    """Re-enable the global rate limiter for unit tests.
+
+    Many integration conftests set ``limiter.enabled = False`` at module-import
+    time to avoid rate-limit rejections. Without isolation, that disabled state
+    leaks to unit tests (e.g. ``test_lead_batch_ingest``) that assert rate
+    limits are enforced. Unit tests are marked ``pytest.mark.unit``; integration
+    tests own their own setup and should not be forced back on.
+    """
+    if not request.node.get_closest_marker("integration"):
+        monkeypatch.setattr(limiter, "enabled", True)
+
+    yield
+    # monkeypatch cleans up at teardown

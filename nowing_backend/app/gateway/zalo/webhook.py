@@ -331,7 +331,7 @@ async def handle_zalo_webhook_event(
 
     if has_intent:
         try:
-            from app.gateway.zalo.client import send_telegram_lead_alert
+            from app.gateway.zalo.telegram_alerts import send_telegram_lead_alert
 
             telegram_result = await send_telegram_lead_alert(
                 session=session,

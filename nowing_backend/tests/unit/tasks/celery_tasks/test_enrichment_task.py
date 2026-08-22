@@ -54,7 +54,12 @@ def test_enrich_lead_task_no_autoretry() -> None:
     """The task must not auto-retry (re-running duplicates contacts/billing)."""
     from app.tasks.celery_tasks.enrichment_tasks import enrich_lead_task
 
-    task = enrich_lead_task._get_current_object()
+    # Celery may expose the task as a PromiseProxy or a concrete Task depending
+    # on import order; resolve it safely before inspecting retry configuration.
+    task = enrich_lead_task
+    if hasattr(task, "_get_current_object"):
+        task = task._get_current_object()
+
     retry_options = {
         key
         for key in task.__dict__

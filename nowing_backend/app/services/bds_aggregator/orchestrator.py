@@ -194,7 +194,7 @@ async def _persist_bds_aggregates(
     listings: list[VnBdsAggregatedListing],
 ) -> tuple[Literal["ok", "partial", "failed", "not_attempted"], str | None]:
     """Persist all listings to chainlens-research and report status."""
-    if not session or workspace_id is None:
+    if not session or not isinstance(session, AsyncSession) or workspace_id is None:
         return "not_attempted", None
 
     if not listings:
@@ -217,13 +217,17 @@ async def _persist_bds_aggregates(
         from app.services.chainlens.ingest import NowingIngestService
 
         ingest_service = NowingIngestService()
-        await ingest_service.ingest(
+        result = await ingest_service.ingest(
             scraper_id="vn_bds",
             chunks=chunks,
             workspace_id=workspace_id,
-            session=None,
+            session=session,
         )
-        return "ok", None
+        if result.status in ("ok", "noop"):
+            return "ok", None
+        if result.status == "partial":
+            return "partial", result.error
+        return "failed", result.error
     except Exception as exc:
         logger.exception("BDS aggregate chainlens ingest failed")
         return "failed", str(exc)
@@ -288,8 +292,8 @@ async def aggregate(
     provenance_input = payload.model_dump(exclude_unset=True)
 
     for source, result in zip(selected, results, strict=True):
-        if isinstance(result, BaseException):
-            logger.exception("vn_bds.aggregate unhandled exception from %s", source)
+        if isinstance(result, Exception):
+            logger.error("vn_bds.aggregate unhandled exception from %s: %r", source, result)
             source_breakdown.update(_source_breakdown(source, [], 0, True, "api_error"))
             degradation_reasons.append(f"{source}: api_error")
             any_degraded = True

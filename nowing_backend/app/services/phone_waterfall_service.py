@@ -212,8 +212,15 @@ class PhoneResolutionResult:
 class PhoneWaterfallService:
     """3-Tier Phone Resolution and Verification Waterfall Engine."""
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        masothue_client: Any | None = None,
+        redis_client: aioredis.Redis | None = None,
+    ) -> None:
         self.session = session
+        self.masothue_client = masothue_client
+        self._redis_client = redis_client
         self.encryption = VerifiedContactEncryption()
 
     # ─────────────────────────────────────────────────────────────
@@ -446,7 +453,11 @@ class PhoneWaterfallService:
                     CorporateVerificationService,
                 )
 
-                corp_service = CorporateVerificationService(self.session)
+                corp_service = CorporateVerificationService(
+                    self.session,
+                    masothue_client=self.masothue_client,
+                    redis_client=self._redis_client,
+                )
                 corp_res = await asyncio.wait_for(
                     corp_service.verify_company(
                         company_name=lead.company_name,

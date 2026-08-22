@@ -214,15 +214,9 @@ class MissionControlService:
             weighted_tps / total_tokens if total_tokens > 0 else 0.0
         )
 
-        payload = mission.payload or {}
-        if not isinstance(payload, dict):
-            payload = {}
-        query = payload.get("query")
-
         now = datetime.now(UTC)
         return DshMissionControlResponse(
             id=mission.id,
-            query=query,
             workspace_id=mission.workspace_id,
             mission_type=mission.mission_type,
             status=mission.status,
