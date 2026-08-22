@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: "2026-08-22"  # Story 16.1 fixed and marked done; Story 24.3 verified and marked done; Story 25.3 review patches applied and verified green.
+last_updated: "2026-08-22"  # Story 16.1 fixed and marked done; Story 24.3 verified and marked done; Story 24.6 code-review patches applied and verified green; Story 25.3 review patches applied and verified green.
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # - Parsed epics.md: 24 epics, ~160 stories.
 # - Scanned _bmad-output/implementation-artifacts/ + stories/*.md for story files (frontmatter story_key/epic+story).
@@ -264,7 +264,7 @@ development_status:
   24-3: done  # Multi-Seat Team CRM Pipeline & Shared Workspace Credit Pooling — backend ruff/pytest (23 unit + 3 integration) green, frontend tsc/biome green, E2E Playwright kanban-multicontext-sync.spec.ts reaches Kanban render and lead card visibility; remaining drag-and-drop/OCC 409 assertion is flaky locally and tracked in e2e-gate-24-3.md. Deferred test-quality/direct-debit items belong to other stories.
   24-4: done  # Nowing Lead Clipper — 3-layer code-review passed, 5 patches applied (concurrency rollback recovery, phone +8409 normalizer, tenant client_id, tracking param scrubbing, contact title)
   24-5: done  # Vertical Playbook Marketplace & Community Workflow Templates — P0/P1 code review patches applied (auth, seed runnable, is_approved, metadata, vertical filter, hard limit, instantiate run launch). Backend ruff/pytest and frontend tsc/biome green.
-  24-6: review  # Two-Way AI Outreach Auto-Reply Agent — 2026-08-22 post-patch: resolved 2 decision_needed + 7 patch findings. Wired auto-reply into inbox_processor, fixed LLM router call, implemented reply send + hot-lead alert dispatch, added Workspace auto-reply settings (migration 222 + API + UI), fixed tests. Unit/integration tests green; frontend tsc/biome green. Awaiting re-review / gates.
+  24-6: in-progress  # Two-Way AI Outreach Auto-Reply Agent — code-review patches applied and verified green (ruff/pytest/tsc/biome). Remaining deferred: human-in-the-loop CRM outbound path; Zalo webhook signature verification is pre-existing.
   24-7: done  # Multi-Channel Drip Outreach Campaign Engine (Zalo ZNS + Telegram + Email Cadence) — 18 original patch findings + 5 re-review findings applied: multi-channel config, VerifiedContact.external_chat_ids, schema expansion, _send_zns/_send_telegram dispatch, fallback orchestration with correct fallback billing cost, DNC on Telegram, normalized Zalo webhook phone lookup, sanitized inbound lock key, VisualCadenceBuilder invalid JSON feedback. Backend ruff/pytest (34 tests) and frontend tsc/biome green.
   24-8: backlog  # Browser Operator CDP tool for DSH crawl subgraph + Human Live Takeover UI (split 24-8a/24-8b; AD-111)
   epic-24-retrospective: optional

@@ -3,7 +3,7 @@ story_key: "24-6"
 epic: "epic-24"
 story: "24.6"
 title: "Two-Way AI Outreach Auto-Reply Agent"
-status: "done"
+status: "review"
 baseline_commit: "6ac305274"
 ---
 
@@ -148,11 +148,11 @@ So that no customer inquiry is left unanswered 24/7 while my time is focused on 
 - [x] [Review][Decision] Lead creation policy for unknown hot prospects — resolved: create a `Lead` record on first hot inbound so the `[Nhận Tư Vấn]` callback has a valid `lead_id`.
 
 #### patch
-- [ ] [Review][Patch] `_get_or_create_lead` must actually create a Lead for unknown hot senders — `nowing_backend/app/services/auto_reply_agent.py:322-341`
-- [ ] [Review][Patch] Multiple debounce Celery tasks scheduled per burst — `nowing_backend/app/services/inbound_debounce_service.py:34-75` — every `buffer_inbound_message` call schedules a fresh `process_auto_reply_buffer` task, causing redundant workers for a single burst.
-- [ ] [Review][Patch] `process_auto_reply_buffer_task` resolves `user_id` incorrectly — `nowing_backend/app/tasks/celery_tasks/gateway_tasks.py:198-205` — the else branch passes `workspace.user_id` to `session.get(User, ...)` even when it is `None`, so the workspace owner is never resolved.
-- [ ] [Review][Patch] Hot-lead alert bypasses workspace-telegram binding validation — `nowing_backend/app/services/auto_reply_agent.py:270-274, 305-311` — uses `config.TELEGRAM_SHARED_BOT_TOKEN` and sends to an arbitrary `recipient_chat_id` without validating it is a bound channel in the workspace.
-- [ ] [Review][Patch] Telegram callback_data may exceed 64-byte limit — `nowing_backend/app/services/auto_reply_agent.py:300` — `nhan_tu_van:{thread_id}:{lead_id}` is currently near the Telegram limit; should assert length in tests or shorten encoding.
+- [x] [Review][Patch] `_get_or_create_lead` must actually create a Lead for unknown hot senders — `nowing_backend/app/services/auto_reply_agent.py:322-341`
+- [x] [Review][Patch] Multiple debounce Celery tasks scheduled per burst — `nowing_backend/app/services/inbound_debounce_service.py:34-75` — every `buffer_inbound_message` call schedules a fresh `process_auto_reply_buffer` task, causing redundant workers for a single burst.
+- [x] [Review][Patch] `process_auto_reply_buffer_task` resolves `user_id` incorrectly — `nowing_backend/app/tasks/celery_tasks/gateway_tasks.py:198-205` — the else branch passes `workspace.user_id` to `session.get(User, ...)` even when it is `None`, so the workspace owner is never resolved.
+- [x] [Review][Patch] Hot-lead alert bypasses workspace-telegram binding validation — `nowing_backend/app/services/auto_reply_agent.py:270-274, 305-311` — uses `config.TELEGRAM_SHARED_BOT_TOKEN` and sends to an arbitrary `recipient_chat_id` without validating it is a bound channel in the workspace.
+- [x] [Review][Patch] Telegram callback_data may exceed 64-byte limit — `nowing_backend/app/services/auto_reply_agent.py:300` — `nhan_tu_van:{thread_id}:{lead_id}` is currently near the Telegram limit; should assert length in tests or shorten encoding.
 
 #### defer
 - [x] [Review][Defer] Human-in-the-Loop takeover from CRM not wired — `nowing_backend/app/gateway/inbox_processor.py` outbound path — AC-4 requires human rep message to set `auto_reply_paused`, but the outbound path is pre-existing and not connected to `pause_auto_reply`.
