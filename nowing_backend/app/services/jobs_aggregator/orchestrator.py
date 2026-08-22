@@ -11,7 +11,6 @@ from typing import Any, Literal
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.observability.metrics import record_vn_jobs_pii_detected
-from app.services.chainlens.ingest import NowingIngestService
 from app.services.location_normalize import resolve_city_code
 from app.services.pii.redact import redact_job_pii
 from app.services.scraper_chunks.serializer import to_chunks
@@ -205,6 +204,8 @@ async def _persist_jobs_aggregates(
         return "ok", None
 
     try:
+        from app.services.chainlens.ingest import NowingIngestService
+
         ingest_service = NowingIngestService()
         await ingest_service.ingest(
             scraper_id="vn_jobs",

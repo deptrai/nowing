@@ -76,7 +76,7 @@ class TestScraperApiCall:
 
         monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _FakeClient())
 
-        out = await scrape_itviec({"keyword": "data engineer", "max_items": 1, "max_pages": 1})
+        out = await scrape_itviec({"keyword": "data engineer", "max_items": 1, "max_pages": 1, "fetch_details": True})
 
         assert out["degraded"] is False
         assert len(out["items"]) == 1
@@ -93,7 +93,7 @@ class TestScraperFieldMapping:
     async def test_maps_required_fields(self, monkeypatch):
         monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _fake_client_class()())
 
-        out = await scrape_itviec({"keyword": "data engineer", "max_items": 1, "max_pages": 1})
+        out = await scrape_itviec({"keyword": "data engineer", "max_items": 1, "max_pages": 1, "fetch_details": True})
 
         assert out["degraded"] is False
         assert out["total_items"] == 1
@@ -117,7 +117,7 @@ class TestScraperFieldMapping:
     async def test_extracts_job_description_and_requirement(self, monkeypatch):
         monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _fake_client_class()())
 
-        out = await scrape_itviec({"keyword": "data engineer", "max_items": 1, "max_pages": 1})
+        out = await scrape_itviec({"keyword": "data engineer", "max_items": 1, "max_pages": 1, "fetch_details": True})
 
         item = out["items"][0]
         assert "ABOUT THE ROLE" in item["job_description"]
@@ -127,7 +127,7 @@ class TestScraperFieldMapping:
     async def test_extracts_skills_and_job_domain(self, monkeypatch):
         monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _fake_client_class()())
 
-        out = await scrape_itviec({"keyword": "data engineer", "max_items": 1, "max_pages": 1})
+        out = await scrape_itviec({"keyword": "data engineer", "max_items": 1, "max_pages": 1, "fetch_details": True})
 
         item = out["items"][0]
         assert "Data Engineer" in item["skills"]
@@ -157,7 +157,7 @@ class TestScraperPagination:
 
         monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _FakeClient())
 
-        out = await scrape_itviec({"keyword": "data engineer", "max_items": 3, "max_pages": 2})
+        out = await scrape_itviec({"keyword": "data engineer", "max_items": 3, "max_pages": 2, "fetch_details": True})
 
         assert len(out["items"]) == 3
         assert _FakeClient.call_count >= 3  # search + 2 details at minimum

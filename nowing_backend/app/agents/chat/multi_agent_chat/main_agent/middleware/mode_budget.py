@@ -336,6 +336,15 @@ class ModeBudgetMiddleware(AgentMiddleware[AgentState[ResponseT], ContextT, Resp
                 blocked_messages.append(self._tool_message(tool_call, reason))
 
         if blocked_messages:
+            # Budget exhaustion is a terminal state: jump to end and replace the
+            # blocked tool calls with a final assistant message so the agent
+            # answers instead of silently erroring.
+            if all("budget" in m.content for m in blocked_messages):
+                reasons = " ".join(m.content for m in blocked_messages)
+                return {
+                    "messages": [AIMessage(content=f"Mode budget exhausted: {reasons}")],
+                    "jump_to": "end",
+                }
             return {"messages": blocked_messages}
 
         return None

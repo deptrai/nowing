@@ -574,7 +574,13 @@ def _validate_search_page(page: Any) -> None:
         title_nodes = page.css("title")
         if title_nodes and title_nodes[0].text:
             title = str(title_nodes[0].text)
-    if "just a moment..." in title.lower() or "ddos-guard" in title.lower():
+    body_text = (html or "").lower()
+    if (
+        "just a moment" in title.lower()
+        or "just a moment" in body_text
+        or "ddos-guard" in title.lower()
+        or "ddos-guard" in body_text
+    ):
         raise ValueError("anti-bot challenge")
 
 
@@ -734,6 +740,10 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
             cards = _parse_search_page(html)
             if not cards:
                 break
+
+            # Each successfully parsed search page is charged at 3x the detail
+            # rate to account for the heavier scroll/stealth fetch.
+            cost_micros += 3 * config.TOPCV_SCRAPE_MICROS_PER_ITEM
 
             # Charge the heavier search fetch only after cards are successfully parsed.
             fetch_details = bool(params.get("fetch_details", False))

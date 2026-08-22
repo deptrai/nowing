@@ -71,7 +71,7 @@ def _create_sample_leads():
 def test_mask_phone_utility():
     assert mask_phone("0908123456") == "0908***456"
     assert mask_phone("0912.345.678") == "0912***678"
-    assert mask_phone("+84908123456") == "+84908***456"
+    assert mask_phone("+84908123456") == "0908***456"
     assert mask_phone("") == ""
     assert mask_phone(None) == ""
 

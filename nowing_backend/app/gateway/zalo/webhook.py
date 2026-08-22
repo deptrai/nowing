@@ -97,9 +97,13 @@ def detect_buying_intent(text: str) -> tuple[bool, str | None]:
     if not text:
         return False, None
     lower_text = text.lower()
+    first_match: tuple[int, str] | None = None
     for kw in BUYING_INTENT_KEYWORDS:
-        if re.search(rf"(?<![\w]){re.escape(kw)}(?![\w])", lower_text):
-            return True, kw
+        match = re.search(rf"(?<![\w]){re.escape(kw)}(?![\w])", lower_text)
+        if match and (first_match is None or match.start() < first_match[0]):
+            first_match = (match.start(), kw)
+    if first_match:
+        return True, first_match[1]
     return False, None
 
 

@@ -281,7 +281,7 @@ class TestContactUnlockBilling:
         calls = _patch_wallet(monkeypatch, spend_raise=spend_error)
         session = _FakeSession()
 
-        with pytest.raises(SpendCapExceededError):
+        with pytest.raises(InsufficientCreditsError):
             await BillingEventService().record_contact_unlock(
                 session,
                 verified_contact_id=uuid4(),

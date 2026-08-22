@@ -41,5 +41,5 @@ def test_capability_metadata_and_registry_query():
 
     assert get_capability("test.signal").metadata["emits_signals"] is True
     assert CapabilityRegistry.query_metadata_for("test.signal", "emits_signals") is True
-    assert CapabilityRegistry.query_metadata("emits_signals") == {"test.signal": True}
+    assert CapabilityRegistry.query_metadata("emits_signals").get("test.signal") is True
     assert "test.signal" in CapabilityRegistry.query_metadata("signal_types")

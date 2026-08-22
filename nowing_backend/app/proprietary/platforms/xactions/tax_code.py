@@ -24,11 +24,11 @@ _TAX_KEYWORDS = (
 _KEYWORD_TAX_PATTERN = re.compile(
     r"(?i:\b(?:"
     + _TAX_KEYWORDS
-    + r")[^0-9oO\n]{0,30}?)(?P<main>"
+    + r"))[^0-9\n]{0,30}?(?i:(?P<main>"
     + _TAX_MAIN_GROUP
     + r")"
     + _TAX_BRANCH_GROUP
-    + r"?\b"
+    + r"?\b)"
 )
 
 _STANDALONE_TAX_PATTERN = re.compile(

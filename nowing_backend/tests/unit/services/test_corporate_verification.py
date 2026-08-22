@@ -326,6 +326,9 @@ class TestCircuitBreakerAndResilience:
 class TestCorporateVerificationServiceExecution:
     """Validate full verification flow on Lead model."""
 
+    def setup_method(self):
+        CorporateVerificationService.consecutive_failures = 0
+
     @pytest.mark.asyncio
     async def test_verify_lead_high_confidence_auto_links_and_updates_lead(self):
         session = AsyncMock()
@@ -343,7 +346,11 @@ class TestCorporateVerificationServiceExecution:
         session.get.return_value = lead
 
         client_mock = MockMasothueClient()
-        service = CorporateVerificationService(session, masothue_client=client_mock, redis_client=None)
+        fake_redis = AsyncMock()
+        fake_redis.mget.return_value = (None, None)
+        service = CorporateVerificationService(
+            session, masothue_client=client_mock, redis_client=fake_redis
+        )
 
         match_res: CorporateMatchResult = await service.verify_lead_corporate_info(
             workspace_id=workspace_id,
@@ -375,7 +382,11 @@ class TestCorporateVerificationServiceExecution:
         session.get.return_value = lead
 
         client_mock = MockMasothueClient()
-        service = CorporateVerificationService(session, masothue_client=client_mock, redis_client=None)
+        fake_redis = AsyncMock()
+        fake_redis.mget.return_value = (None, None)
+        service = CorporateVerificationService(
+            session, masothue_client=client_mock, redis_client=fake_redis
+        )
 
         match_res: CorporateMatchResult = await service.verify_lead_corporate_info(
             workspace_id=workspace_id,

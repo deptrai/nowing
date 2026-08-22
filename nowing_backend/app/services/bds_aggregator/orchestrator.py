@@ -15,7 +15,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.capabilities.core.store import get_capability
 from app.config import config
-from app.services.chainlens.ingest import NowingIngestService
 from app.services.scraper_chunks.serializer import to_chunks
 
 from .dedupe import deduplicate
@@ -215,6 +214,8 @@ async def _persist_bds_aggregates(
         return "ok", None
 
     try:
+        from app.services.chainlens.ingest import NowingIngestService
+
         ingest_service = NowingIngestService()
         await ingest_service.ingest(
             scraper_id="vn_bds",

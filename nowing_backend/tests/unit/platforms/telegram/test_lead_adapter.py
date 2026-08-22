@@ -72,13 +72,13 @@ class TestTelegramLeadAdapterNormalization:
         adapter = TelegramLeadAdapter()
         normalized = adapter.normalize_lead(sample_raw_telegram_record)
 
-        assert normalized.source == "telegram"
-        assert normalized.source_record_id == "101"
+        assert normalized.source_name == "telegram"
+        assert normalized.source_id == "101"
         assert normalized.title == "Bán gấp nhà Cầu Giấy 55m2 x 5 tầng, giá 12.5 tỷ. LH chính chủ: 0912.345.678"[:100]
-        assert normalized.price_vnd == 12_500_000_000
-        assert "0912345678" in normalized.phone_numbers
-        assert normalized.metadata.get("channel_username") == "bds_hanoi_chinhchu"
-        assert normalized.metadata.get("views_count") == 1240
+        assert normalized.price == 12_500_000_000
+        assert "0912345678" in normalized.raw_data.get("phone_numbers", [])
+        assert normalized.raw_data.get("telegram_metadata", {}).get("channel_username") == "bds_hanoi_chinhchu"
+        assert normalized.raw_data.get("telegram_metadata", {}).get("views_count") == 1240
 
     def test_extract_contact_candidates(
         self, sample_raw_telegram_record: dict[str, Any]
@@ -91,9 +91,9 @@ class TestTelegramLeadAdapterNormalization:
 
         assert len(candidates) >= 1
         phone_candidate = candidates[0]
-        assert phone_candidate.contact_type == "phone"
+        assert phone_candidate.channel == "phone"
         assert phone_candidate.value == "0912345678"
-        assert phone_candidate.source == "telegram"
+        assert phone_candidate.metadata.get("source") == "telegram"
 
 
 class TestTelegramLeadAdapterSearch:
@@ -122,5 +122,5 @@ class TestTelegramLeadAdapterSearch:
             )
 
             assert len(results) == 1
-            assert results[0].source == "telegram"
+            assert results[0].source_name == "telegram"
             mock_query.assert_awaited_once()

@@ -130,11 +130,15 @@ NAPAS_BANKS: list[dict[str, str]] = [
 ]
 
 
-def micros_to_usd(micros: int) -> float:
+def micros_to_usd(micros: int | None) -> float:
+    if micros is None:
+        return 0.0
     return round(micros / 1_000_000.0, 2)
 
 
-def micros_to_vnd(micros: int) -> int:
+def micros_to_vnd(micros: int | None) -> int:
+    if micros is None:
+        return 0
     usd = micros / 1_000_000.0
     return round(usd * USD_TO_VND_RATE)
 
@@ -260,13 +264,13 @@ class PartnerService:
             balance_micros=partner.balance_micros,
             balance_usd=micros_to_usd(partner.balance_micros),
             balance_vnd=micros_to_vnd(partner.balance_micros),
-            hold_balance_micros=partner.hold_balance_micros,
+            hold_balance_micros=partner.hold_balance_micros or 0,
             hold_balance_usd=micros_to_usd(partner.hold_balance_micros),
             hold_balance_vnd=micros_to_vnd(partner.hold_balance_micros),
-            total_earned_micros=partner.total_earned_micros,
+            total_earned_micros=partner.total_earned_micros or 0,
             total_earned_usd=micros_to_usd(partner.total_earned_micros),
             total_earned_vnd=micros_to_vnd(partner.total_earned_micros),
-            total_paid_micros=partner.total_paid_micros,
+            total_paid_micros=partner.total_paid_micros or 0,
             payout_method=partner.payout_method,
             payout_details=partner.payout_details,
             total_clicks=referral_count * 3,  # Estimated clicks or exact counter

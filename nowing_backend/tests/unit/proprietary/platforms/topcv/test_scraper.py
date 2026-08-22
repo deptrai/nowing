@@ -138,7 +138,9 @@ class TestScraperOrchestration:
             "app.proprietary.platforms.topcv.scraper._fetch_detail_page", _fake_detail
         )
 
-        out = await scrape_topcv({"keyword": "data engineer", "max_items": 1, "max_pages": 1})
+        out = await scrape_topcv(
+            {"keyword": "data engineer", "max_items": 1, "max_pages": 1, "fetch_details": True}
+        )
 
         assert out["degraded"] is False
         assert out["total_items"] == 1
@@ -166,7 +168,14 @@ class TestScraperOrchestration:
             "app.proprietary.platforms.topcv.scraper._fetch_detail_page", _fake_detail
         )
 
-        out = await scrape_topcv({"keyword": "data engineer", "max_items": 3, "max_pages": 1})
+        out = await scrape_topcv(
+            {
+                "keyword": "data engineer",
+                "max_items": 3,
+                "max_pages": 1,
+                "fetch_details": True,
+            }
+        )
 
         assert len(out["items"]) == 3
 
@@ -183,7 +192,9 @@ class TestScraperFailureModes:
             "app.proprietary.platforms.topcv.scraper._fetch_search_page", _fake_search
         )
 
-        out = await scrape_topcv({"keyword": "data engineer", "max_items": 1, "max_pages": 1})
+        out = await scrape_topcv(
+            {"keyword": "data engineer", "max_items": 1, "max_pages": 1, "fetch_details": True}
+        )
 
         assert out["degraded"] is True
         assert out["degradation_reason"] == "bot_detected"
@@ -210,7 +221,12 @@ class TestScraperFailureModes:
         )
 
         out = await scrape_topcv(
-            {"keyword": "data engineer", "max_items": 10, "max_pages": 1}
+            {
+                "keyword": "data engineer",
+                "max_items": 10,
+                "max_pages": 1,
+                "fetch_details": True,
+            }
         )
 
         assert out["degraded"] is True
@@ -731,7 +747,7 @@ class TestScrapeDefaults:
             return "<html/>"
 
         async def _fake_detail(_url):
-            return {}
+            return {"skills": ["Python"]}
 
         monkeypatch.setattr(scraper, "_fetch_search_page", _fake_search)
         monkeypatch.setattr(scraper, "_fetch_detail_page", _fake_detail)
@@ -741,10 +757,10 @@ class TestScrapeDefaults:
             lambda _html: _many_cards(51),
         )
 
-        out = await scrape_topcv({})
+        out = await scrape_topcv({"fetch_details": True})
         assert search_calls == [("viec-lam", 1)]
         assert out["total_items"] == 50
-        assert out["cost_micros"] == 3000
+        assert out["cost_micros"] == (50 + 3) * config.TOPCV_SCRAPE_MICROS_PER_ITEM
         assert out["degraded"] is False
 
     @pytest.mark.asyncio
@@ -878,6 +894,7 @@ class TestScrapePagination:
                 "page": page,
                 "max_pages": max_pages,
                 "max_items": 10,
+                "fetch_details": True,
             }
         )
         assert search_calls == [
@@ -918,7 +935,7 @@ class TestSafeText:
 
 class TestNormalizeKeyword:
     @pytest.mark.parametrize("value,expected", [
-        ("Lập trình viên", "lp-trnh-vin"),
+        ("Lập trình viên", "lap-trinh-vien"),
         ("data engineer", "data-engineer"),
         ("c++", "c++"),
         ("c#", "c"),
@@ -1955,5 +1972,7 @@ class TestScrapeCostMicros:
         monkeypatch.setattr(scraper, "_fetch_detail_page", _fake_detail)
         monkeypatch.setattr(scraper, "_parse_search_page", _fake_parse)
 
-        out = await scrape_topcv({"keyword": "x", "max_items": 1, "max_pages": 1})
+        out = await scrape_topcv(
+            {"keyword": "x", "max_items": 1, "max_pages": 1, "fetch_details": True}
+        )
         assert out["cost_micros"] == per_item * 3 + per_item

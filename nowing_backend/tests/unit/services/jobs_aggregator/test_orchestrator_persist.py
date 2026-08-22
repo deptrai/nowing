@@ -90,7 +90,7 @@ async def test_persist_ok_when_ingest_succeeds(
 ):
     """Successful chainlens ingest returns 'ok' and no message."""
     monkeypatch.setattr(
-        "app.services.jobs_aggregator.orchestrator.NowingIngestService.ingest",
+        "app.services.chainlens.ingest.NowingIngestService.ingest",
         AsyncMock(return_value=None),
     )
 
@@ -105,7 +105,7 @@ async def test_persist_failed_when_ingest_fails(
 ):
     """If chainlens ingest fails, return 'failed' and the error."""
     monkeypatch.setattr(
-        "app.services.jobs_aggregator.orchestrator.NowingIngestService.ingest",
+        "app.services.chainlens.ingest.NowingIngestService.ingest",
         AsyncMock(side_effect=RuntimeError("ingest failed")),
     )
 

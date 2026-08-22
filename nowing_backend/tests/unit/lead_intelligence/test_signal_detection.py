@@ -54,6 +54,8 @@ class _FakeSession:
         self.flushed = False
         self._scalar = scalar
         self._rows = rows or []
+        self.workspaces: dict[int, Any] = {}
+        self.memberships: dict[tuple[int, UUID], Any] = {}
 
     def add(self, obj: Any) -> None:
         self.added.append(obj)
@@ -76,11 +78,18 @@ class _FakeSession:
 
 def _make_context(session: _FakeSession | None = None, workspace_id: int = 1) -> Any:
     """Minimal execution context for signal tests."""
+    user_id = uuid4()
+    if session is None:
+        session = _FakeSession()
+    session.memberships[(workspace_id, user_id)] = types.SimpleNamespace(
+        monthly_spend_cap_micros=None,
+        monthly_spent_micros=0,
+    )
     return types.SimpleNamespace(
-        session=session or _FakeSession(),
+        session=session,
         workspace_id=workspace_id,
         run_id="run-signal-test",
-        user_id=uuid4(),
+        user_id=user_id,
     )
 
 
