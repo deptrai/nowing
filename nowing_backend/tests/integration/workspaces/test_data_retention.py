@@ -22,8 +22,8 @@ from app.routes.workspaces_routes import create_default_roles_and_membership
 
 pytestmark = pytest.mark.integration
 
-BASE = "/api/v1/workspaces"
-DOCUMENTS_BASE = "/api/v1/documents"
+BASE = "/workspaces"
+DOCUMENTS_BASE = "/documents"
 EMBEDDING_DIM = app_config.embedding_model_instance.dimension
 DUMMY_EMBEDDING = [0.1] * EMBEDDING_DIM
 
@@ -483,6 +483,8 @@ async def test_archived_document_excluded_from_hybrid_search(
     client, db_workspace, db_user, db_session
 ):
     """Archived documents must not appear in chunk hybrid search (citation) results."""
+    from sqlalchemy import func, select
+
     from app.retriever.chunks_hybrid_search import ChucksHybridSearchRetriever
 
     user_id = str(db_user.id)
@@ -502,11 +504,26 @@ async def test_archived_document_excluded_from_hybrid_search(
     db_session.add_all([visible, archived])
     await db_session.flush()
 
-    db_session.add_all([
-        _make_chunk(content="quarterly revenue growth", document_id=visible.id),
-        _make_chunk(content="quarterly revenue growth", document_id=archived.id),
-    ])
+    db_session.add_all(
+        [
+            _make_chunk(content="quarterly revenue growth", document_id=visible.id),
+            _make_chunk(content="quarterly revenue growth", document_id=archived.id),
+        ]
+    )
     await db_session.flush()
+
+    # Precondition assertions: verify document states and chunk inventory before
+    # running hybrid search.
+    assert visible.archived_at is None
+    assert archived.archived_at is not None
+    total_chunk_count = (
+        await db_session.execute(
+            select(func.count(Chunk.id)).where(
+                Chunk.document_id.in_([visible.id, archived.id])
+            )
+        )
+    ).scalar()
+    assert total_chunk_count == 2, f"Expected 2 chunks total, found {total_chunk_count}"
 
     retriever = ChucksHybridSearchRetriever(db_session)
     results = await retriever.hybrid_search(

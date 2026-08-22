@@ -2,7 +2,7 @@
 title: Nowing - Epic Breakdown
 description: ''
 createdAt: '2026-07-28T12:47:48.297Z'
-updatedAt: '2026-08-21T07:16:17Z'
+updatedAt: '2026-08-23T04:18:00Z'
 tags:
   - bmad
   - bmad-source-bmad-output-planning-artifacts-epics-md
@@ -256,7 +256,7 @@ Các story có UI vẫn cần UX spec riêng trước khi build UI chi tiết. U
 - **OQ-8 HR/Recruitment Vertical in Vietnam** → **E12 P0** (ToS, legal classification, anti-bot, salary hidden, willingness-to-pay, PII).
 - **SM-12 HR pilot metrics** → **E12 P0** (workspace active, aggregate queries, listings indexed, dedupe, confidence, PII coverage).
 - **AR-11 HR anti-bot validation** → **E12.2 P0** (TopCV Cloudflare bypass/residential proxy feasibility).
-- **Mới 2026-08-10 (Market Research → Lead Intelligence) — đã hoàn thành 2026-08-16:** FR-63 (Intent Signals) → **E21.1** `[DONE]` · FR-64 (Lead Scoring) → **E21.2** `[DONE]` · FR-65 (Contact Enrichment) → **E21.3** `[DONE]` · FR-66 (Outbound Automation) → **E21.4** `[DONE]` (Email/Zalo/Telegram outbound done) · FR-67 (CRM Integration) → **E21.5** `[DONE]` · FR-68 (Zalo Integration) → **E21.6** `[DONE]` · FR-69 (Outcome Pricing) → **E21.7** `[DONE]`.
+- **Mới 2026-08-10 (Market Research → Lead Intelligence) — đã hoàn thành 2026-08-16:** FR-63 (Intent Signals) → **E21.1** `[DONE]` · FR-64 (Lead Scoring) → **E21.2** `[DONE]` · FR-65 (Contact Enrichment) → **E21.3** `[DONE]` · FR-66 (Outbound Automation) → **E21.4** `[DONE]` (Email/Zalo/Telegram outbound done) · FR-67 (CRM Integration) → **E21.5** `[DONE]` · FR-68 (Zalo Integration) → **E21.6** `[DONE]` · FR-69 (Outcome Pricing) → **E21.7** `[DONE]` · FR-85 (Lead Gen Orchestration & Micro-Extraction) → **E21.15, E21.19, E21.20, E21.21** `[ready-for-dev]`.
 
 ## Epic List
 
@@ -344,7 +344,7 @@ Public agent-chat endpoints, AgentConfig registry, client_id tenancy, cost trace
 `NowingIngestService` + `to_chunks()`, gap-fill caller, `NowingPrivateProvider`, service-to-service auth. **Open:** none.
 
 ### Epic 21: Lead Gen Intelligence & Social Graph — ⏳ IN-PROGRESS
-Toàn diện hóa hệ thống Săn Lead & Tiếp cận Khách hàng Đa kênh: Phone Waterfall 3 tầng (Batdongsan/Chotot/Zalo), Zalo OA & Telegram Outbound Waterfall, XActions Social Ingress (Facebook Groups/Twitter), 1-Click Reverse-ICP từ Website/Dự án, AI Actionable Turn Dispatches, Viral Social Outbound Co-pilot, Multi-Table Tabs & Export Hub (Lark Base, Google Sheets), DNC Compliance Engine, Origami Workspace, Partners Affiliate Portal và $0 Pricing. **Stories:** 21.1–21.18 (21.3, 21.6, 21.14 P0). Governed by `architecture-xactions-social-integration-2026-08-15` & `architecture-linkedin-b2b-2026-08-15`.
+Toàn diện hóa hệ thống Săn Lead & Tiếp cận Khách hàng Đa kênh: Phone Waterfall 3 tầng (Batdongsan/Chotot/Zalo), Zalo OA & Telegram Outbound Waterfall, XActions Social Ingress (Facebook Groups/Twitter), 1-Click Reverse-ICP từ Website/Dự án, AI Actionable Turn Dispatches, Viral Social Outbound Co-pilot, Multi-Table Tabs & Export Hub (Lark Base, Google Sheets), DNC Compliance Engine, Origami Workspace, Partners Affiliate Portal, $0 Pricing, và Selective Micro-LLM Fallback Extraction. **Stories:** 21.1–21.21 (21.3, 21.6, 21.14 P0; 21.21 ready-for-dev). Governed by `architecture-xactions-social-integration-2026-08-15` & `architecture-linkedin-b2b-2026-08-15` & `AD-119`.
 
 ### Epic 22: Telegram Scraper & Channel Ingestion Engine — ⏳ READY-FOR-DEV
 Public channel web preview, MTProto Userbot session pool, distributed mutex lock, FloodWait cooldown state machine, regex entity extractor, S3 media chunk streaming, realtime stream daemon, Alert Engine trigger, AI Agent tools. **Stories:** 22.1–22.3. Governed by `architecture-telegram-scraper-2026-08-15`.
@@ -2459,9 +2459,9 @@ So that I can verify authentic legal data rather than unverified third-party est
 - Unit test: `test_dangkykinhdoanh_pdf.py` — Vietnamese font & Unicode NFC decoding.
 - Integration test: `test_business_gov_vn.py` — official data accessible and stored in `official_enterprise_registrations`.
 
-_AD-GIS-3 · AD-GIS-5 · AD-34 · AD-35 · Governed by `architecture-bds-planning-and-dkkd-2026-08-15`_
+_AD-GIS-3 · AD-GIS-5 · AD-34 · AD-35 · AD-SOC-1 · AD-SOC-9 · Governed by `architecture-bds-planning-and-dkkd-2026-08-15` & `architecture-xactions-social-integration-2026-08-15`_
 
-> **Note (2026-08-20):** Với `LangGraphMissionExecutor` (26.8), scraper này nên được đăng ký như một `capability` / `MCP tool` để `crawl` node gọi trong DSH mission, thay vì chạy standalone.
+> **XActions Delegation Note (AD-SOC-1 & AD-SOC-9):** Do NOT build raw headless browser crawlers or captcha solvers inside Nowing. Raw portal scraping of `dangkykinhdoanh.gov.vn` (government captcha, session warmup, PDF download) is delegated to XActions (`x_dangkykinhdoanh` MCP tool). Nowing focuses purely on `DkkdLeadAdapter` ingestion, PDF/Unicode normalization, extraction of charter capital/shareholders into `official_enterprise_registrations`, and Confidence Gate verification (Story 21.21).
 
 ---
 
@@ -2552,9 +2552,9 @@ So that I can perform pricing analysis and competitor tracking.
 - Anti-bot test: `test_lazada_graceful_degradation.py` — backs off on 403/CAPTCHA
 - Integration test: `test_lazada_ingest_chainlens.py` — chunks sent to `chainlens-research`
 
-_AD-34 · AD-35 · Method: HTML scrape (moderate anti-bot, residential proxies preferred)_
+_AD-34 · AD-35 · AD-SOC-1 · AD-SOC-9 · Method: Consumes XActions MCP tool / Fast API JSON_
 
-> **Note (2026-08-20):** Với `LangGraphMissionExecutor` (26.8), scraper Lazada nên được đăng ký như một `capability` / `MCP tool` để `crawl` node gọi trong DSH mission, hoặc là `capability_id` cho AlertRule template (Story 6.11).
+> **XActions Delegation Note (AD-SOC-1 & AD-SOC-9):** Do NOT build in-house Lazada Playwright crawlers inside Nowing. Raw product scraping and anti-bot proxy rotation are delegated to XActions (`x_lazada_search` / `x_lazada_product` MCP tools). Nowing focuses on `LazadaLeadAdapter`, schema normalization into `ecommerce_products`, Confidence Gate verification, and `chainlens-research` ingestion.
 
 ### Story 17.2: Shopee Vietnam In-House Scraper & Price Normalization `[P1]`
 
@@ -2592,7 +2592,9 @@ So that I can analyze viral e-commerce trends, top KOC promoted products, and co
 - **Given** historical product runs, **When** analyzed, **Then** the engine calculates sales velocity `(sold_t2 - sold_t1) / delta_days` to classify trending breakout SKUs.
 - **Given** an AI Agent session, **When** calling `ecommerce_search_products(platform='tiktok_shop', query=...)`, **Then** top trending products with sales velocity metrics are returned.
 
-_AD-EC-1 · AD-EC-2 · AD-EC-3 · AD-EC-6_
+_AD-EC-1 · AD-EC-2 · AD-EC-3 · AD-EC-6 · AD-SOC-1 · AD-SOC-2 · AD-SOC-9_
+
+> **XActions Delegation Note (AD-SOC-1, AD-SOC-2 & AD-SOC-9):** Do NOT build anti-tamper TikTok signature bridges (`msToken`, `_signature`) inside Nowing. Raw TikTok Shop scraping and crawler sessions are delegated to XActions (`x_tiktok_shop_products` MCP tool). Nowing focuses on `TikTokShopLeadAdapter`, schema mapping into `ecommerce_products` / `ecommerce_price_history`, trending sales velocity calculations, and AI Agent query tools.
 
 
 
@@ -3129,6 +3131,30 @@ So that the prompt, routing, capability description, and adapter registry stay c
 - **Given** the feature, **when** `ruff check` and `pytest` run, **then** lint/type errors are 0 and relevant tests pass.
 
 _FR-85 · FR-43 · FR-44 · FR-45 · FR-46 · AD-42_
+
+---
+
+### Story 21.21: Deterministic Confidence Gate & Selective Micro-LLM Fallback Worker `[ready-for-dev]`
+
+As a sales rep or lead researcher,
+I want scraped lead records to be automatically classified by schema completeness and only the truly incomplete records to be selectively enriched by a lightweight micro-LLM,
+So that lead data completeness reaches ≥98% while keeping LLM token cost near $0 and maintaining sub-second deterministic parsing speed.
+
+**Acceptance Criteria:**
+
+- **Given** raw records processed by Pass 1 deterministic parsers (`parsers.py` / `normalize_lead()`), **When** schema completeness is evaluated after normalization, **Then** each record receives a `schema_completeness_score` based on the ratio of required fields successfully matched (Phone, Price, Address District, Area, Title):
+  - `schema_completeness_score >= 0.85`: Record goes directly to Data Plane (Deduplication → Scoring → Persistence) with **0 LLM calls**.
+  - `0.70 <= schema_completeness_score < 0.85`: Record goes to Data Plane but is marked `needs_enrichment = True` for non-blocking async batch enrichment.
+  - `schema_completeness_score < 0.70` OR missing critical required fields (Phone, Price, or District-level Address): Record is enqueued to `MicroExtractionWorker`.
+- **Given** an enqueued low-confidence record, **When** `MicroExtractionWorker` processes it, **Then** it isolates ONLY the ambiguous text snippet using Anchor Sliding-Window regex (`lh`, `sđt`, `alo`, `zalo`, `không`, `chín`...) capped at **≤ 250 characters (≤ 200 input tokens)**, supports dynamic micro-batching (5–10 snippets/call) with `asyncio.Semaphore(20)`, and routes to Tier 1 Model (Google Gemini Flash Free / Local Qwen via `HybridLLMRouter` per AD-103).
+- **Given** the Micro-LLM returns an extraction result, **When** the result is received, **Then** the extracted values (phone digits, numeric price, district) are **re-validated** against Pass 1 Regex/Schema rules (E.164 phone format, 1900/1800 suppression, positive price). Validated fields are merged **ONLY into missing (`None`) fields** without overwriting valid Pass 1 fields; LLM output failing re-validation is discarded.
+- **Given** extracted contact information, **When** persisted, **Then** raw phone numbers are immediately encrypted via AES-256 (`VerifiedContactEncryption`), blind `phone_hmac` is generated for deduplication, and database update executes via atomic `COALESCE` SQL to ensure zero-locking and immediate Zero-cache WAL synchronization (`zero.nowing.net`).
+- **Given** a batch of 100 scraped records from any adapter (Batdongsan, Chotot, Muaban, TopCV, ITviec), **When** end-to-end extraction completes, **Then** ≥85% of records bypass LLM entirely (confidence ≥ 0.85 after Pass 1), and total LLM token spend across the batch is **< 4,000 tokens** (avg < 40 tokens per micro-extraction call).
+- **Given** `MicroExtractionWorker` encounters a Tier 1 model timeout (>2.0s per call, >3.5s per batch) or HTTP 429 rate limit, **When** the circuit breaker trips, **Then** it gracefully degrades: the record is persisted with its original low confidence score and `needs_enrichment = True`, no error is raised, and the worker continues processing remaining records.
+- **Given** the feature is deployed, **When** regression tests in `tests/unit/lead_intelligence/` run against a 100-record Golden Dataset (covering Vietnamese word numbers, homoglyphs, and false-positive traps like "không thương lượng"), **Then** Phone F1 score improves from baseline ~85% to ≥95% without regression on records that were already passing Pass 1.
+- **And** the existing `LeadGenOrchestrator` and `EntityDeduplicationService` interfaces remain unchanged — `MicroExtractionWorker` operates as a post-normalization enrichment step that feeds back into the existing pipeline.
+
+_FR-85 · AD-103 · AD-119 (Rules 1-3, 6) · Decree 13/2023 Compliance_
 
 ---
 

@@ -1,8 +1,9 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func
+from sqlalchemy import func, text
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -269,7 +270,7 @@ async def update_workspace(
     Requires SETTINGS_UPDATE permission.
     """
     try:
-        # Check permission
+        # Check permission (no row lock needed here)
         await check_permission(
             session,
             auth,
@@ -278,27 +279,69 @@ async def update_workspace(
             "You don't have permission to update this workspace",
         )
 
-        result = await session.execute(
-            select(Workspace).filter(Workspace.id == workspace_id)
-        )
+        update_data = workspace_update.model_dump(exclude_unset=True)
+
+        # Only serialize concurrent updates that touch retention settings.
+        retention_fields = {
+            "document_retention_days",
+            "auto_archive_enabled",
+            "document_retention_action",
+        }
+        touches_retention = bool(retention_fields & update_data.keys())
+
+        if touches_retention:
+            # Fail fast if another request holds the row lock too long.
+            await session.execute(text("SET LOCAL lock_timeout = '10s'"))
+            result = await session.execute(
+                select(Workspace).filter(Workspace.id == workspace_id).with_for_update()
+            )
+        else:
+            result = await session.execute(
+                select(Workspace).filter(Workspace.id == workspace_id)
+            )
+
         db_workspace = result.scalars().first()
 
         if not db_workspace:
             raise HTTPException(status_code=404, detail="Workspace not found")
 
-        update_data = workspace_update.model_dump(exclude_unset=True)
+        # Compute effective final state for retention fields.
+        new_auto_archive = update_data.get(
+            "auto_archive_enabled", db_workspace.auto_archive_enabled
+        )
+        new_days = update_data.get(
+            "document_retention_days", db_workspace.document_retention_days
+        )
+        new_action = update_data.get(
+            "document_retention_action", db_workspace.document_retention_action
+        )
 
-        if update_data.get("auto_archive_enabled"):
-            days = update_data.get("document_retention_days")
-            if not isinstance(days, int) or days <= 0:
+        # Reject explicit nulls for non-nullable retention fields.
+        if "auto_archive_enabled" in update_data and new_auto_archive is None:
+            raise HTTPException(
+                status_code=400, detail="auto_archive_enabled cannot be null"
+            )
+        if "document_retention_action" in update_data and new_action is None:
+            raise HTTPException(
+                status_code=400, detail="document_retention_action cannot be null"
+            )
+
+        # Validate the final retention invariant.
+        if new_auto_archive:
+            if new_days is None or not isinstance(new_days, int) or new_days <= 0:
                 raise HTTPException(
                     status_code=400,
                     detail="document_retention_days must be a positive integer when auto_archive_enabled is true",
                 )
-            if days > 36500:
+            if new_days > 36500:
                 raise HTTPException(
                     status_code=400,
                     detail="document_retention_days must not exceed 36500 (100 years)",
+                )
+            if not new_action:
+                raise HTTPException(
+                    status_code=400,
+                    detail="document_retention_action is required when auto_archive_enabled is true",
                 )
 
         for key, value in update_data.items():
@@ -311,7 +354,13 @@ async def update_workspace(
         )
         return response
     except HTTPException:
+        await session.rollback()
         raise
+    except OperationalError:
+        await session.rollback()
+        raise HTTPException(
+            status_code=503, detail="Database operation failed. Please try again later."
+        ) from None
     except Exception as e:
         await session.rollback()
         raise HTTPException(

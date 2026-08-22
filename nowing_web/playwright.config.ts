@@ -34,7 +34,7 @@ process.env.NEXT_PUBLIC_ZERO_CACHE_URL ??= zeroCacheURL;
  */
 export default defineConfig({
 	testDir: "./tests",
-	timeout: 60_000,
+	timeout: process.env.CI ? 60_000 : 120_000,
 	expect: { timeout: 15_000 },
 	fullyParallel: true,
 	forbidOnly: !!process.env.CI,
@@ -54,8 +54,8 @@ export default defineConfig({
 			],
 	use: {
 		baseURL,
-		actionTimeout: 15_000,
-		navigationTimeout: 30_000,
+		actionTimeout: process.env.CI ? 15_000 : 60_000,
+		navigationTimeout: process.env.CI ? 30_000 : 90_000,
 		trace: "retain-on-failure",
 		screenshot: "only-on-failure",
 		video: "off",

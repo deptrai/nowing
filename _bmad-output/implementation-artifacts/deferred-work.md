@@ -1,3 +1,21 @@
+## Deferred from: code review of 3-7-followup-retention-hardening (2026-08-23)
+
+- **Finding:** `WorkspaceWithStats` list endpoint returns default retention values instead of persisted ones.
+  - **Action:** Marked `[x] [Review][Defer]` in `3-7-followup-retention-hardening.md`.
+  - **Reason / when to revisit:** Pre-existing from Story 3-7; revisit when `read_workspaces` is touched or a retention list-endpoint bug is reported.
+- **Finding:** Retention lifecycle task is not idempotent under concurrent Celery workers.
+  - **Action:** Marked `[x] [Review][Defer]` in `3-7-followup-retention-hardening.md`.
+  - **Reason / when to revisit:** Pre-existing from Story 3-7; revisit if retention task is run with multiple workers or if duplicate `delete_document_task` calls are observed.
+- **Finding:** Concurrency test does not prove `with_for_update` is necessary.
+  - **Action:** Marked `[x] [Review][Defer]` in `3-7-followup-retention-hardening.md`.
+  - **Reason / when to revisit:** Test-only improvement; revisit during test review / mutation gate.
+- **Finding:** `data-retention.spec.ts` should also skip when backend is down.
+  - **Action:** Marked `[x] [Review][Defer]` in `3-7-followup-retention-hardening.md`.
+  - **Reason / when to revisit:** Nice-to-have E2E robustness; revisit when centralizing Playwright health-check fixtures.
+- **Finding:** `data-retention.spec.ts` cleanup leaves invited member user behind.
+  - **Action:** Marked `[x] [Review][Defer]` in `3-7-followup-retention-hardening.md`.
+  - **Reason / when to revisit:** Pre-existing E2E cleanup pattern; revisit during test-hygiene sprint.
+
 ## Deferred from: code review of 24-7-multi-channel-drip-outreach-campaign-engine (2026-08-22)
 
 - **Finding:** Cross-cutting `billing_event_service.py` refund/relock code is pre-existing and not introduced by Story 24.7.

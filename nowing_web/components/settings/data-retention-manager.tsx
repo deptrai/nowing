@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { updateWorkspaceMutationAtom } from "@/atoms/workspaces/workspace-mutation.atoms";
 import { workspacesAtom } from "@/atoms/workspaces/workspace-query.atoms";
@@ -55,9 +55,11 @@ export function DataRetentionManager({
 	const [retentionDays, setRetentionDays] = useState<string>("");
 	const [action, setAction] = useState<"archive" | "delete">("archive");
 	const [saving, setSaving] = useState(false);
+	const initializedRef = useRef(false);
 
 	useEffect(() => {
-		if (workspace) {
+		if (workspace && !initializedRef.current) {
+			initializedRef.current = true;
 			setAutoArchive(workspace.auto_archive_enabled ?? false);
 			setRetentionDays(
 				workspace.document_retention_days ? String(workspace.document_retention_days) : ""
@@ -65,6 +67,10 @@ export function DataRetentionManager({
 			setAction((workspace.document_retention_action as "archive" | "delete") ?? "archive");
 		}
 	}, [workspace]);
+
+	useEffect(() => {
+		initializedRef.current = false;
+	}, [workspaceId]);
 
 	const hasChanges = useMemo(() => {
 		if (!workspace) return false;
@@ -165,7 +171,6 @@ export function DataRetentionManager({
 						id="data-retention-days"
 						data-testid="data-retention-days-input"
 						type="number"
-						min={1}
 						value={retentionDays}
 						disabled={!isOwner || saving}
 						onChange={(e) => setRetentionDays(e.target.value)}

@@ -1,5 +1,5 @@
 # generated: 2026-08-08
-# last_updated: 2026-08-22  # td-8 done; Epic 13 cleanup patches applied; P6 RSS unit tests restored.
+# last_updated: 2026-08-23  # 3-7-followup validated ready-for-dev; td-8 done; Epic 13 cleanup patches applied; P6 RSS unit tests restored.
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: "2026-08-22"  # Story 16.1 fixed and marked done; Story 24.3 verified and marked done; Story 24.6 code-review patches applied and verified green; Story 25.3 review patches applied and verified green.
+last_updated: "2026-08-23"  # Story 3-7-followup bmad-code-review: findings found, moved to in-progress; Story 16.1 fixed and marked done; Story 24.3 verified and marked done; Story 24.6 code-review patches applied and verified green; Story 25.3 review patches applied and verified green.
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # - Parsed epics.md: 24 epics, ~160 stories.
 # - Scanned _bmad-output/implementation-artifacts/ + stories/*.md for story files (frontmatter story_key/epic+story).
@@ -83,7 +83,7 @@ development_status:
   3-6: done
   3-7: done
   # ponytail: 2026-08-15 reopened all followups to ready-for-dev
-  3-7-followup: ready-for-dev  # reopened
+  3-7-followup: done  # bmad-code-review 2026-08-23: findings resolved and verified
   3-9: done
   3-10: done
   3-11: done

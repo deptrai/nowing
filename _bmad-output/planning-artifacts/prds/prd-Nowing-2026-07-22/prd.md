@@ -1,138 +1,102 @@
 ---
 title: Nowing
+status: approved
 created: 2026-07-21
-updated: 2026-08-10
+updated: 2026-08-23
+canonical: true
 ---
 
 # PRD: Nowing
-*Nowing (now + knowing) — lead intelligence + knowledge intelligence platform nơi raw data từ mọi nguồn biến thành kiến thức thực sự, và kiến thức biến thành pipeline. Mọi nguồn. Một sự thật. Nhớ mãi.*
+## AI Gen Leads Enterprise
+*Nowing (now + knowing) — Nền Tảng AI Săn Lead Doanh Nghiệp (AI Gen Leads Enterprise).*
 
-> **⛵ DIRECTION (CURRENT) 2026-07-25 — Nowing = SẢN PHẨM, ChainLens = ENGINE.** Đường đi đã chốt: **OSS/PLG-led**. Nowing là sản phẩm và bề mặt phân phối (sở hữu account, billing, credit, community); **ChainLens là engine deep-open-web-research phía sau**, gọi qua `POST /api/v1/search` (SSE, Bearer service key) — không bán riêng. Lý do người dùng trả tiền = **memory + provenance + self-host/privacy + integration depth + lead intelligence**, KHÔNG phải "rẻ hơn". **Đóng vĩnh viễn (xem §2.4):** bán raw research corpus kiểu Exa (không có owned index); đua parity consumer kiểu Perplexity. **Ngoại lệ NG-1 (xem §2.4):** bán structured lead-enrichment deliverables cho B2B sales tại Vietnam qua FR-65/FR-69, với điều kiện legal basis, consent, và audit. **Nguồn chân lý:** `sprint-change-proposal-2026-07-25-chainlens-engine-boundary.md` (✅ ADOPTED, D1–D4) + đối ứng ChainLens `sprint-change-proposal-2026-07-25-v4-nowing-microservice.md` + `ADR-CHAINLENS-AS-NOWING-MICROSERVICE.md`.
->
-> **Positioning freeze lifted 2026-08-10** per SCP `sprint-change-proposal-nowing-ai-gen-lead-positioning-2026-08-10.md`. Sections §1 Vision, §2 Target User, §2.4 Non-Goals, and §6 MVP Scope have been updated to reflect the lead-intelligence direction. Original freeze (2026-08-24) superseded by the SCP.
+> **👑 CANONICAL ECOSYSTEM DIRECTION (2026-08-23) — NGUỒN CHÂN LÝ TỐI THƯỢNG:**  
+> Ranh giới trách nhiệm, luồng giao tiếp và phân định hệ sinh thái 3 dự án được chuẩn hóa bởi **`_bmad-output/planning-artifacts/prds/PRD-ECOSYSTEM-TRINITY-ALIGNMENT.md`** (TRINITY-1 đến TRINITY-10).
+> 
+> * **🔵 Nowing (Product & CRM Hub):** AI Gen Leads Enterprise — Sở hữu User, Auth, Billing, Lead CRM, PII Vault AES-256 (Nghị định 13/2023), Confidence Gate (Story 21.21), Drip Outbound (Zalo OA/Telegram/Email), và Autonomous Workstation UI.
+> * **🟢 ChainLens-Research (Strategy Brain & Market GPS):** Động cơ nghiên cứu sâu/rộng (Deep/Wide Research), phân tích thị trường và phát hiện phân khúc ICP trước khi xuất quân săn lead; cung cấp Search & Citation API độc lập (Exa-like).
+> * **🟣 XActions Microservice (Tactical Execution Engine):** Chuyên trách 100% cào dữ liệu thô, vượt rào cản kỹ thuật (Anti-bot, WAF, Captcha, Signer `a_bogus`/`msToken`, SocksNode Proxy Pool) và phát dữ liệu qua MCP Daemon Port 3001 & Redis Stream.
 
-## 0. Document Purpose
-Tài liệu này dành cho PM, stakeholders và downstream workflow (architecture, epics, implementation) để thống nhất scope, yêu cầu và các khoảng trống (gap) của Nowing. Cấu trúc: glossary, user journeys, functional/non-functional requirements được đánh số toàn cục, các giả định được gắn tag `[ASSUMPTION]` và lập chỉ mục ở §9. Tài liệu được cập nhật theo trạng thái code thực tế tại `/Users/luisphan/Documents/nowing`.
+---
 
-> **[NOTE FOR PM] — Market Research + Lead Intelligence Positioning added 2026-08-10.** Research report: `_bmad-output/planning-artifacts/research/market-ai-lead-generation-market-research-2026-08-10.md`. New positioning: "lead intelligence + knowledge intelligence platform". New beachhead: Sales team / SDR (primary beachhead for the Epic 21 lead-gen pilot). New FRs: FR-63..FR-69 (Epic 21: Lead Gen Intelligence). New pricing: outcome-based option (pay per meeting / lead). Vietnam market prioritized (white space — no AI-native lead gen player). Key insight: Nowing is unintentionally building an AI Lead Gen platform; memory + provenance + real-time research + compliance-by-design = 3 competitive advantages global players (Apollo, ZoomInfo, Clay) don't have.
->
-> **Governance:** Approved via SCP `sprint-change-proposal-nowing-ai-gen-lead-positioning-2026-08-10.md` (ADOPTED 2026-08-10). Positioning freeze and NG-1 exception updated accordingly.
->
-> **[NOTE FOR PM] — HR/Recruitment Vertical (Vietnam) added 2026-08-05.** Pilot scope: 8-week pilot for `vn_jobs` research capability covering VietnamWorks (public API), TopCV (HTML + anti-bot), and ITviec (HTML). Source: `prfaq-hr-vertical-vietnam-2026-08-05.md`, `feature-brief-hr-vertical-vietnam-2026-08-05.md`, `pilot-plan-c-memo-2026-08-05.md`, and technical spikes. New FRs: FR-43..FR-47. New NFR: NFR-11. New OQ: OQ-8. New SM: SM-12.
->
-> **[NOTE FOR PM] — Domain Expansion Research + New Epics added 2026-08-06.** Research report: `research/domain-expansion-research-report-2026-08-06.md`. New FRs: FR-49..FR-55 (Epics 14-20; Epic 13 `[REMOVED]` — moved to chainlens-research). Product definition updated: `product-definition-nowing-2026-08-06.md`. Key insight: Nowing = Now + Knowing = Knowledge intelligence platform. Three transformations: Data → Entity → Knowledge → Memory. Data strategy: 3 layers (built-in scrapers 30-50 max, OAuth connectors unlimited, ChainLens unlimited).
->
-> **[NOTE FOR PM] — Ecosystem Alignment 2026-08-08 (SCP `sprint-change-proposal-2026-08-08-remove-duplicate-index.md`, ✅ ADOPTED).** `chainlens-research` owns the single canonical index for public web + shared vertical data. Nowing no longer builds `canonical_entities` / multi-domain indexing / vertical search corpus (Epic 13 `[REMOVED]`). Domain scrapers/aggregators (BĐS, jobs, news, finance, company, e-commerce) output `Chunk[]` and feed `chainlens-research` via `POST /v1/ingest/scraper`. FR-48 `[REMOVED]`; FR-46/49/50/51/52 `[RE-SCOPED]`; FR-47 updated to redact before ingest.
+## 0. Mục Đích Tài Liệu & Ma Trận Hợp Nhất Các Phụ Lục (Consolidated Amendments Matrix)
 
-> **[NOTE FOR PM] — Reality-correction 2026-07-24 (đã verify code, sau PRFAQ + validate).** Trái với bản trước, **lớp memory đã được build phần lớn**: migration `177_add_research_memory_tables` tạo `memories`/`memory_versions`/`memory_relations`/`research_threads` (+ enums, `confidence`, index HNSW+GIN, quyền `memory:*`); `179` thêm `workspaces.memory_auto_extract_enabled` (default **true**); ORM `Memory` trong `app/db.py`; endpoints `memories_routes.py`; 4 MCP tools trong `nowing_mcp/.../features/memory/`. PRD gốc chụp trạng thái *trước* khi code đáp (docs đề 2026-07-21; migration 177–179 landing sau). Các FR memory dưới đây đã cập nhật `[BUILT]`/`[PARTIAL]`. **Open items thật (KHÔNG phải "build từ đầu"):** (1) **recall quality/eval gate** trên `nowing_evals` — NFR-8 → **`[DONE — implementation complete; baseline ratification pending]`**, story `3-9` = **`done`**; (2) ~~đánh giá mất dữ liệu (FR-36)~~ → **✅ RESOLVED 2026-07-25: KHÔNG mất dữ liệu** (178 chưa apply prod, alembic 174, `memory_md` rỗng, snapshot đã tạo; guard + backfill + 5 test đã build qua `3-10a`/`3-10b`; giữ deploy-order mig177→backfill→mig178); (3) **dedupe**: primitive đã có (cosine<0.08 + `update_on_duplicate`), cần tune/validate qua eval; (4) legal/retention (OQ-3); (5) metrics; (6) **auto-extract spend cap** — story `8-7` = **`done`** (59 tests passed; default ON, item-cap + spend cap + wallet pre-check + rate-limit). **Chính xác hoá:** đây là **cổng TRƯỚC KHI merge lên prod**, KHÔNG phải cost bleed đang chạy — migration 175–179 còn ở branch `develop`, prod = `alembic 174` (ops verify 2026-07-25). Chi tiết: `validation-report.md`, `epics.md`.
+Tài liệu này là **Bản PRD Hợp Nhất (Canonical PRD)** tích hợp toàn bộ các phân hệ tính năng từ 5 bản Amendment chính thức:
 
-> **[NOTE FOR PM] — Direction-correction 2026-07-25 (SCP `sprint-change-proposal-2026-07-25-chainlens-engine-boundary.md`, ✅ ADOPTED).** Ranh giới sản phẩm được ghi tường minh: **Nowing = sản phẩm, ChainLens = engine** (§1.1, §4.9, `AD-15`). **FR-24 rời §4.2 Connectors → §4.9** (ChainLens không còn là scraper ngang hàng Reddit). **Ba lỗi thương mại mới phát hiện ở tầng code**, đều thành FR/NFR mới: (a) **under-meter ChainLens 2.1–3.3×** — `CHAINLENS_QUERY_MICROS_PER_CALL = 5000` là giá **phẳng** $0.005/call trong khi `mode` default `quality` có target cost $0.0105 → **FR-37**; (b) **`costDollars` chưa parse** (grep = 0 hits) → không có cost basis cho pricing → FR-37 + gate: không chốt giá trước khi FR-37 và `8-7` có số thật; (c) **không có degradation** — chỉ raise `CHAINLENS_TIMEOUT` sau 300s dù Nowing đã có hybrid search → **FR-38**. Thêm **NFR-9** (latency hai trạng thái A/B). **§2.4 Non-Goals** đóng vĩnh viễn: bán research data kiểu Exa (NG-1), parity consumer kiểu Perplexity (NG-2), ChainLens thành sản phẩm độc lập (NG-3).
+| Phân hệ / Phụ lục (Amendment) | Mã Yêu Cầu Chức Năng (FRs) | Trọng Tâm Nghiệp Vụ | Trạng Thái Triển Khai |
+|---|:---:|---|:---:|
+| **Nền tảng Cốt lõi & Workspace** | **FR-1 .. FR-42** | Auth, RBAC, Connectors, Memory (HNSW), Chat Citations, Deliverables, Automations, Clients | `[DONE / STABLE]` |
+| **HR & Recruitment Intelligence** *(Amendment 1)* | **FR-43 .. FR-47** | Cào tuyển dụng TopCV, VietnamWorks, ITviec, bóc tách lương, PII Redaction (Epic 12) | `[DONE]` |
+| **Multi-Domain Market Scrapers** *(Amendment 1)* | **FR-49 .. FR-55** | BĐS Batdongsan/Chotot, E-com Shopee/TikTok Shop, Đăng ký kinh doanh, Đấu thầu (Epics 14–20) | `[DONE / DELEGATED TO XACTIONS]` |
+| **Lead Gen Intelligence & Outbound** *(Amendment 1)* | **FR-63 .. FR-69** | Intent Signals, Phone Waterfall 3 tầng, Zalo OA / Telegram Outbound, Credit Unlock (Epic 21) | `[IN-PROGRESS / S21.21 ACTIVE]` |
+| **Telegram Stream Daemon & Bot** *(Amendment 1)* | **FR-70 .. FR-79** | Telegram MTProto Stream, Checkpoint Bot, 3s Inline Callbacks (Epic 22) | `[DONE]` |
+| **Enterprise Lead Infrastructure** *(Amendment 1)* | **FR-89 .. FR-92** | Celery Worker Pool, Zalo OA ZNS, VietQR Affiliate Payout, Lead Partitioning & RLS (Epic 23) | `[DONE]` |
+| **Autonomous Deep Lead Missions (DSH)** *(Amendment 2)* | **Epic 26 (AD-101..119)** | LangGraph Supervisor Loop, Multi-Tier LLM Router, $0 Token Gate, Distributed DLQ Worker | `[DONE]` |
+| **Autonomous Workstation Studio** *(Amendment 3)* | **FR-93 .. FR-94** | Web App Builder & Traefik Hosting, Design View Mark Tool & AST Mutator (Epic 27) | `[IN-PROGRESS]` |
+| **Enterprise Readiness & Compliance** *(Amendment 4 & 5)* | **FR-95 .. FR-99** | OKF Data Portability, Encryption-at-Rest BYOK, ToS Legal Compliance, OSS Onboarding | `[IN-PROGRESS]` |
 
-## 1. Vision
+---
 
-Nowing (now + knowing) là **lead intelligence + knowledge intelligence platform** — nơi raw data từ mọi nguồn biến thành kiến thức thực sự, và kiến thức biến thành pipeline.
+## 1. Tầm Nhìn Sản Phẩm (Vision & Value Proposition)
 
-### 1.0 Lead Intelligence (mới 2026-08-10)
+Nowing là **Nền Tảng AI Săn Lead Doanh Nghiệp (AI Gen Leads Enterprise)** — giải quyết bài toán cốt lõi: **"Biến dữ liệu thô trên Internet thành danh sách khách hàng doanh nghiệp chất lượng cao với chi phí tối thiểu và tỷ lệ chuyển đổi cao nhất."**
 
-Trong thị trường AI Lead Generation ($5.88B global, CAGR 8.4-32.9%), Nowing chiếm vị trí **độc nhất**: không chỉ tìm lead — mà nhớ lead, hiểu lead, và chăm sóc lead theo thời gian thực.
+```
+❌ MÔ HÌNH CÀO TRUYỀN THỐNG (Cào bừa & Tốn kém):
+Gõ từ khóa ──► Cào mù quáng hàng ngàn tin ──► Đốt hàng trăm ngàn token để lọc ──► Lead rác nhiều, chuyển đổi < 1%.
 
-**Ba competitive advantages:**
-1. **Memory + Provenance** — Memory gắn citations + live web data, khác static DB của Apollo/ZoomInfo
-2. **Real-time web research** — ChainLens deep research, khác batch-refreshed DB
-3. **Compliance-by-design** — Decree 356 (VN) + GDPR ready, competitive moat so với global players
+─────────────────────────────────────────────────────────────────────────────────────────
 
-**Target market:** Vietnam trước (white space — không có AI-native lead gen player), sau đó SEA.
+✅ MÔ HÌNH RESEARCH-FIRST CỦA NOWING:
 
-### 1.0.1 Knowledge Intelligence (original)
+[BƯỚC 1: MARKET GPS (ChainLens Deep/Wide Research)]
+Phân tích tin tức thị trường, chính sách, đối thủ ──► Nhận diện phân khúc ICP & Bộ từ khóa chuẩn xác.
+        │
+        ▼ (Tọa độ săn lead chính xác)
+[BƯỚC 2: PRECISION HARVESTING (XActions Engine)]
+Chỉ cào đúng các hội nhóm/sàn mục tiêu ──► Tiết kiệm 80% chi phí cào và token.
+        │
+        ▼ (Raw Data đúng tệp 100%)
+[BƯỚC 3: ZERO-TOKEN DATA GATE (Story 21.21)]
+Pass 1 Regex lọc sạch 85%+ record (0 token) ──► Pass 2 Micro-LLM bổ sung SĐT với Phone F1 >= 95%.
+        │
+        ▼ (Clean Leads & PII Vault AES-256)
+[BƯỚC 4: HYPER-PERSONALIZED OUTREACH (Nowing CRM)]
+Kích hoạt tin nhắn Zalo OA / Telegram / Email Drip được cá nhân hóa sâu theo insight thị trường.
+```
 
-Khác biệt giữa data và kiến thức:
-- **Data** là "căn hộ Thủ Đức 3.5 tỷ trên Batdongsan"
-- **Data** là "căn hộ Thủ Đức 3.2 tỷ trên Chotot"
-- **Data** là "căn hộ Thủ Đức 4.1 tỷ trên Muaban"
+### 1.1 Ba Trụ Cột Giá Trị Cốt Lõi (The 3 Moats)
 
-Ba cái data. Ba con số khác nhau. Bạn không biết tin cái nào.
+1. 🧠 **Market GPS & Trí Não Chiến Lược (Powered by ChainLens):**
+   * Không bắt đầu bằng việc cào bừa bãi. Nowing phân tích bức tranh vĩ mô và vi mô của thị trường, bóc tách chân dung khách hàng tiềm năng cao nhất (ICP), từ đó lập kế hoạch săn lead với độ chính xác tuyệt đối.
+2. 🎯 **Săn Lead & Dữ Liệu Sạch $0 Token COGS (Powered by XActions + Story 21.21):**
+   * Thu thập dữ liệu đa kênh (Facebook Groups, Chợ Tốt, Shopee, TopCV, Đăng ký kinh doanh) qua XActions.
+   * Lọc sạch dữ liệu bằng **Confidence Gate** (Pass 1 Deterministic 0 token + Pass 2 Selective Micro-LLM) để đạt độ chính xác SĐT $\ge 95\%$.
+   * Bảo mật PII theo tiêu chuẩn Nghị định 13/2023/NĐ-CP với mã hóa AES-256 Fernet và HMAC-SHA256 deduplication.
+3. 💬 **Trạm Làm Việc Bán Hàng & Chốt Sales Đa Kênh (In-house Nowing):**
+   * Không gian làm việc Origami Split-Canvas (quản lý bảng dữ liệu, Kanban, chi tiết lead song song).
+   * Kịch bản Drip Campaign tự động qua Zalo OA, Telegram Checkpoint Bot và Email.
 
-**Kiến thức** là: "Căn hộ Thủ Đức này đang được rao bán với giá trung bình 3.6 tỷ, trải dài từ 3.2–4.1 tỷ qua 3 nguồn, và giá đã tăng 8% trong 2 tháng qua."
+---
 
-**Nowing biến data thành kiến thức.**
+## 2. Đối Tượng Người Dùng Mục Tiêu (Target ICP Personas)
 
-### 1.0 Three Transformations
+### 2.1 Các Nhóm Người Dùng Trọng Tâm (Primary ICPs)
 
-1. **Data → Entity** — Mỗi nguồn nói về cùng một thứ theo cách khác nhau. Nowing nhận ra đó là cùng một entity và gộp chúng lại. Không phải "ba kết quả tìm kiếm". Là một entity với nhiều nguồn.
-2. **Entity → Knowledge** — Entity đơn lẻ chưa phải kiến thức. Kiến thức là khi bạn biết giá trị thực (dedup + confidence score), độ tin cậy (source count + provenance), cách thay đổi theo thời gian (temporal tracking), và relations.
-3. **Knowledge → Memory** — Kiến thức mất đi khi bạn quên. Nowing nhớ cho bạn — không chỉ cái bạn vừa tìm, mà cả cách nó thay đổi. Lần sau bạn cần biết, Nowing trả về delta: cái mới, cái khác, cái mất.
+1. **B2B Sales Teams & Business Development Reps (SDRs):**
+   * *Nhu cầu:* Tìm kiếm doanh nghiệp mới thành lập (ĐKKD), người đại diện pháp luật, số điện thoại giám đốc để chào dịch vụ B2B, phần mềm, kế toán, văn phòng.
+   * *Giá trị nhận được:* Lead tươi cập nhật hàng ngày, SĐT thật đã qua xác thực, 1-click gửi tin nhắn Zalo/Email.
+2. **Môi Giới & Nhà Đầu Tư Bất Động Sản:**
+   * *Nhu cầu:* Săn tin rao nhà đất chính chủ giá ngợp trên Batdongsan, Chợ Tốt, Facebook; loại bỏ tin môi giới ảo/tin rác; trích xuất SĐT chủ nhà.
+   * *Giá trị nhận được:* Báo cáo biến động giá theo khu vực (nhờ ChainLens), bóc tách SĐT chính chủ không bị che `***`, so sánh giá thị trường.
+3. **Headhunters & HR Tech Recruiters:**
+   * *Nhu cầu:* Thu thập nhu cầu tuyển dụng từ TopCV, VietnamWorks, ITviec, LinkedIn để tìm kiếm khách hàng doanh nghiệp cần tuyển dụng (B2B HR Services).
+4. **Chủ Doanh Nghiệp & Market Researchers:**
+   * *Nhu cầu:* Nghiên cứu đối thủ cạnh tranh, phân tích xu hướng tiêu dùng trên MXH/Sàn TMĐT trước khi tung sản phẩm mới.
 
-### 1.1 Data Strategy (3 Layers)
-
-| Layer | What | Count | Maintain |
-|-------|------|-------|----------|
-| **Built-in Scrapers** | High-value structured sources | 30-50 max | Nowing team |
-| **User Connectors** | OAuth personal data | Unlimited | 0 (official APIs) |
-| **Generic Web Crawl** | ChainLens arbitrary URLs | Unlimited | 0 (ChainLens) |
-
-Nowing does NOT build scrapers for millions of websites. Expansion happens through OAuth connectors and ChainLens.
-
-Ngoài khả năng lưu trữ và truy cứu, Nowing còn cung cấp research workspace: chat đa agent với citations, deliverables (report, podcast, video presentation, image), automations theo lịch/sự kiện có thể write-back vào tool stack, và hỗ trợ đa client (web Next.js, desktop Electron, browser extension Plasmo, Obsidian plugin, MCP server). Self-hosted hoàn toàn miễn phí; cloud trả theo mức sử dụng.
-
-### 1.1 Ranh giới sản phẩm: Nowing ↔ ChainLens
-
-**Nowing là sản phẩm.** Nowing sở hữu toàn bộ bề mặt người dùng và phân phối: account/auth/onboarding, workspace/RBAC, memory layer, connectors, chat, deliverables, automations, **billing/credit/metering**, đa client, và OSS distribution (self-host).
-
-**ChainLens là engine, không phải sản phẩm.** Năng lực **deep multi-step open-web research** (classifier → planner → researcher → writer → reflection + citations) do ChainLens cung cấp như một **microservice nội bộ**, Nowing gọi qua `POST /api/v1/search` (SSE, `Authorization: Bearer <CHAINLENS_API_KEY>`). ChainLens không có end-user auth, không có billing, không phân phối độc lập. Hai codebase giữ riêng (Nowing = Python/FastAPI, ChainLens = TypeScript/NestJS) — giao tiếp qua HTTP, **không merge**. Chi tiết: **§4.9**, `AD-15`.
-
-**Vì sao trả tiền (OSS/PLG-led).** Nowing miễn phí khi self-host; doanh thu đến từ cloud pay-as-you-go. Lý do trả tiền là **chiều sâu tích hợp**, không phải giá:
-- **Memory có provenance** — memory gắn citations và bao gồm live web data (Reddit/YouTube/TikTok/Maps/Amazon), khác memory hội thoại thuần.
-- **Self-host / privacy** — khách data-sensitive giữ dữ liệu research trên infra riêng.
-- **Integration depth** — connectors → citations → memory → deliverables → multi-client trong một vòng khép kín.
-
-Phân phối bằng **OSS + MCP registry + self-host**, không bằng push-GTM. Đây là lựa chọn khớp năng lực thật của team (dev-strong, GTM-thin) — xem `chainlens-direction-decision-brief-2026-07-24.md` §9.
-
-**Ranh giới license & OSS/Cloud (quyết định D5, 2026-07-25 — sửa sau khi verify code).**
-
-Repo **đã** dùng mô hình dual-license trong code, nên ranh giới là **ba tầng**, không phải "Nowing OSS vs engine closed-source":
-
-| Tầng | Phạm vi | License | Self-host |
-|---|---|---|---|
-| **Core** | Mọi thứ ngoài `nowing_backend/app/proprietary/` — memory, KB, chat, automations, deliverables, 5 client, billing | **Apache-2.0** (OSS thật) | ✅ tự do |
-| **Crawler engine** | `nowing_backend/app/proprietary/**` — 84 file Python, ~16.6k dòng: fetcher từng nền tảng, YouTube InnerTube, CAPTCHA, session pool, stealth testbench, proxy registry | **Business Source License 1.1** — *không phải OSS*. Additional Use Grant: **được** dùng production; **không được** đem chính nó (hoặc sản phẩm/dịch vụ mà giá trị chủ yếu bắt nguồn từ nó) bán cho bên thứ ba như commercial product hoặc hosted/managed service. Change Date: 4 năm → Apache-2.0 | ✅ kể cả production, chỉ không được bán lại dạng hosted |
-| **Deep-research engine** | Không nằm trong repo | Closed-source, hosted | ❌ Phase 1 · 💳 Phase 2 |
-
-Nguồn: `LICENSE` (root) + `nowing_backend/app/proprietary/LICENSE`. Ràng buộc kiến trúc: **`AD-16`**.
-
-⚠️ **Hệ quả bắt buộc cho mọi tài liệu công khai:** **không** gọi cả sản phẩm là "open source" trần trụi — sai về license, vì BSL tự tuyên bố không phải OSS. Dùng *"Apache-2.0 core + BSL 1.1 crawler engine"*. Xem luật messaging đầy đủ ở `briefs/brief-Nowing-2026-07-25/brief.md` §5.1 + §7.
-
-Hệ quả về feature: **người self-host nhận toàn bộ sản phẩm trừ deep open-web research.**
-
-| | Self-host (miễn phí, OSS) | Cloud (trả theo dùng) |
-|---|---|---|
-| Memory layer + 4 MCP tool · KB + hybrid search + citations · **8 nền tảng / 14 scraping verb** (BSL) · chat đa agent · deliverables · automations · 5 client surface | ✅ | ✅ |
-| **Deep multi-step open-web research** (FR-24) | Phase 1: ❌ · Phase 2: 💳 | ✅ |
-
-Đây là ranh giới **thương mại**, không chỉ là hệ quả kỹ thuật: self-host giữ cả wedge chính (live data vào memory), cloud giữ lại đúng một năng lực — cái đắt nhất về hạ tầng. **Deep research vì thế là đòn bẩy conversion chính** self-host → cloud (xem SM-11).
-
-Hai hệ quả bắt buộc:
-1. **FR-38 (degradation) không còn là yêu cầu reliability — nó là yêu cầu mô hình kinh doanh.** Thiếu nó thì self-host không dùng được và đường OSS/PLG sụp. Story **`9.1a`** là **điều kiện tiên quyết trước khi public repo**, và chạy **trước `9.1b`/`9.2`**.
-2. **Không nêu tên ChainLens ở tài liệu công khai** — gọi là *"Nowing's hosted deep-research engine"* (NG-3). Xem `briefs/brief-Nowing-2026-07-25/brief.md` §5.1 và §7 cho luật messaging.
-
-## 2. Target User
-
-### 2.1 Jobs To Be Done
-> **[Beachhead — core product]** Primary v1 = **AI agent builder** và **team làm việc cùng nghiên cứu** (nhóm cảm nhận giá trị memory nhanh nhất, và là bề mặt MCP/cloud doanh thu). **Researcher/analyst** và **self-hoster** là secondary.
->
-> **[Beachhead — Epic 21 Lead Intelligence]** For the Vietnam lead-gen pilot, **Sales team / SDR** (B2B SaaS, IT outsourcing, agency, local business) is the primary beachhead. The core OSS/PLG rollout order remains agent-builder (OSS/MCP) → team (cloud); the lead-intelligence pilot runs in parallel on cloud.
->
-> **Sales team / SDR** cần tìm leads mới, hiểu intent signals (funding, hiring, tech stack), và chăm sóc leads theo thời gian thực. **Họ cần lead scoring + intent detection + automated outreach** — thay vì manual research trên Apollo/ZoomInfo.
-
-- **Nhà nghiên cứu / analyst** cần thu thập ý kiến thực từ Reddit, YouTube, TikTok, Google Maps, Amazon… mà không tự viết scraper, và lưu lại kết quả để research tiếp giữa các phiên. **Họ cần entity dedup** — 3 nguồn cùng một entity → 1 golden record thay vì 3 kết quả trùng lặp.
-- **AI agent builder** cần một surface typed để agent gọi thay vì tự xử lý web; đặc biệt cần persistent memory qua MCP để agent không mất context giữa các session.
-- **Team làm việc cùng nghiên cứu** cần workspace chia sẻ, chat real-time, deliverables, phân quyền, và bộ nhớ dự án chung (project memory) thay vì mỗi người một chat riêng.
-- **Sales team / SDR** (mới 2026-08-10) cần tìm leads mới, hiểu intent signals (funding, hiring, tech stack), và chăm sóc leads theo thời gian thực. **Họ cần lead scoring + intent detection + automated outreach** — thay vì manual research trên Apollo/ZoomInfo. Beachhead segment: B2B SaaS, IT outsourcing, agency, local business (HVAC, plumbing, dịch vụ).
-- **Self-hoster** muốn nền tảng mở, chạy trên infra riêng với nhiều LLM/embedding model, và giữ dữ liệu research nội bộ thay vì gửi qua cloud của AI vendor.
-
-### 2.2 Non-Users (v1)
-- Người dùng muốn một công cụ duyệt web thủ công (Nowing là agent-facing, không phải browser).
-- Doanh nghiệp cần SLA, on-call hoặc compliance chuyên sâu (chưa có trong v1).
-- Người dùng cần native mobile app (v1 tập trung web/desktop/extension/plugin/MCP).
+### 2.2 Người Dùng Không Phục Vụ (Non-Users trong v1)
+* Người dùng chỉ tìm kiếm một công cụ duyệt web thủ công (Nowing là Agent Workstation, không phải web browser).
+* Người dùng cá nhân tìm kiếm chatbot trò chuyện phiếm (Nowing tập trung 100% vào Business Intelligence & Lead Generation).
 
 ### 2.3 Key User Journeys
 - **UJ-1. Agent builder gọi Reddit scraper qua MCP.**
@@ -1007,9 +971,15 @@ As a sales team, I want to pay per qualified meeting booked (not just per seat),
 
 **Status:** `[PROPOSED]` — Epic 21 (Lead Gen Intelligence). Depends on FR-66 (outbound automation).
 
-### 4.9 Deep-Research Engine Integration (ChainLens)
+### 4.9 Deep-Research Engine Integration (ChainLens — Strategic Brain & Market GPS)
 
-**Description:** Năng lực **deep multi-step open-web research** của Nowing được cung cấp bởi **ChainLens** — một microservice ngoài, gọi qua `POST /api/v1/search` (SSE, `Authorization: Bearer <CHAINLENS_API_KEY>`). Đây là **dependency kiến trúc hạng nhất**, không phải một scraper capability: nó có contract phải giữ ổn định, cost phải đo thật, và failure mode phải degrade an toàn. Governed by `AD-15`. Retriever nội bộ của Nowing (hybrid search trên KB) và Deep-Research Engine bù trừ nhau: KB lo dữ liệu đã ingest, ChainLens lo open-web research sâu.
+**Description:** Năng lực **deep multi-step open-web research** và **Market GPS** của Nowing được cung cấp bởi **ChainLens-Research** — microservice chuyên trách nghiên cứu thị trường, gọi qua `POST /api/v1/search` (SSE, `Authorization: Bearer <CHAINLENS_API_KEY>`). Đây là **dependency kiến trúc hạng nhất** theo quy chuẩn **`PRD-ECOSYSTEM-TRINITY-ALIGNMENT.md` (Luồng B & TRINITY-10)**. 
+
+ChainLens đóng 2 vai trò cốt lõi cho Nowing:
+1. **Market GPS cho Lead Gen:** Phân tích thị trường, bóc tách chân dung ICP, xu hướng và đối thủ trước khi Nowing kích hoạt cào lead thô.
+2. **Deep-Research Chat & Deliverables:** Cung cấp câu trả lời tổng hợp kèm trích dẫn nguồn (citations) minh bạch.
+
+Retriever nội bộ của Nowing (hybrid search trên KB) và Deep-Research Engine bù trừ nhau: KB lo dữ liệu nội bộ đã ingest, ChainLens lo open-web research sâu. Governed by `AD-15` & `PRD-ECOSYSTEM-TRINITY-ALIGNMENT.md`.
 
 **Epic:** Epic 9 — Deep Research đáng tin cậy: không vỡ, không treo, tính phí đúng.
 

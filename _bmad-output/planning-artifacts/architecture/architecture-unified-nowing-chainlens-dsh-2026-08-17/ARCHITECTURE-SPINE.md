@@ -7,7 +7,7 @@ paradigm: 4-Tier Hybrid Reactive Architecture with Decoupled Autonomous Mission 
 scope: Full Platform (Nowing Core, ChainLens Engine, DSH Agent Orchestration Sidecar, DeepSeek V4 + Gemini Flash + Qwen)
 status: final
 created: '2026-08-17'
-updated: '2026-08-20T12:00'
+updated: '2026-08-23T04:06'
 approvedBy: Luisphan
 binds:
   - AD-101
@@ -28,6 +28,7 @@ binds:
   - AD-116
   - AD-117
   - AD-118
+  - AD-119
 ---
 
 # Architecture Spine — Nowing + ChainLens + DSH Unified Platform
@@ -352,3 +353,52 @@ Các AD sau được bổ sung sau Implementation Readiness Assessment 2026-08-2
 ### AD-118 — Agent Registry & `agent_configs` Persistence (FR-57) [ADOPTED]
 - **Binds:** `AgentConfig` model, chat orchestrator, `NewChatRequest`, `agent_chat_routes`.
 - **Rule:** Tồn tại bảng `agent_configs` với schema: `id`, `client_id` (nullable), `name`, `system_instructions`, `enabled_tools` (text[]), `disabled_tools` (text[]), `model_name`, `citations_enabled` (bool), `is_active` (bool). `AgentConfig` là global (không workspace-scoped). Chat orchestrator load config theo `agent_id`, prepend `system_instructions`, filter tool allowlist. Nếu `agent_id` không tồn tại hoặc disabled → 404 và fallback về default agent.
+
+---
+
+## 10. Data Engineering Invariant (AD-119)
+
+> Bổ sung 2026-08-23 để đóng gap giữa code thực tế (đã có multi-layer rule-based parsing) và tài liệu kiến trúc (chưa quy định tường minh chuẩn Deterministic-First Extraction).
+
+### AD-119 — Deterministic-First Parsing & Selective Micro-LLM Fallback [ADOPTED]
+- **Binds:** Toàn bộ Scraper Adapters (`app/proprietary/platforms/*`), `app/capabilities/*/scrape/executor.py`, `app/services/bds_aggregator/`, `app/lead_intelligence/adapters/`, và mọi module cào/bóc tách dữ liệu từ nguồn ngoài.
+- **Prevents:** (a) Lãng phí token LLM vào việc parse dữ liệu có cấu trúc đã biết trước (giá, SĐT, diện tích, địa chỉ). (b) Latency tăng vô ích do round-trip tới LLM cho text đã match 100% regex/schema. (c) Developer tạo scraper mới rồi ném raw HTML/JSON vào Agent context thay vì viết parser chuẩn.
+- **Rule:**
+  1. **Pass 1 — Pure Deterministic Parsing (0 token LLM, bắt buộc):** Mọi scraper adapter BẮT BUỘC thực hiện bước đầu tiên bằng Pure Deterministic Parsers — Regex, BeautifulSoup/lxml, Unicode normalizer, và Pydantic schema validation — với chi phí $0 token LLM. Đây là tầng bóc tách chính, không phải bước chuẩn bị cho LLM.
+     - **Chuẩn hóa giá:** Regex `_parse_price()` / `_extract_number_and_unit()` xử lý chuỗi `"3.5 tỷ"`, `"500 triệu"`, `"72-75 m²"` thành giá trị số chuẩn.
+     - **Chuẩn hóa SĐT:** Regex `extract_phone_from_title()` / `normalize_vietnamese_phone()` bóc SĐT từ title, description, và contact button HTML.
+     - **Tách địa chỉ:** `_split_address()` phân tách chuỗi comma-delimited thành Phường/Xã, Quận/Huyện, Tỉnh/Thành phố dựa trên tiền tố địa lý Việt Nam.
+     - **Schema mapping:** `parse_listing()` / `normalize_lead()` ánh xạ raw dict sang typed Pydantic model (`BatdongsanListing`, `NormalizedLead`, `VnBdsAggregatedListing`).
+  2. **Confidence Gate — Schema Completeness Check:** Sau Pass 1, mỗi record được chấm `confidence_score` dựa trên tỷ lệ trường bắt buộc đã match:
+     - **confidence ≥ 0.85:** Record đi thẳng vào Data Plane (Deduplication → Scoring → Persistence) mà KHÔNG qua bất kỳ LLM nào.
+     - **confidence < 0.70 hoặc thiếu trường quan trọng** (SĐT, Giá, Địa chỉ cấp Quận): Record đủ điều kiện cho Pass 2.
+     - **0.70 ≤ confidence < 0.85:** Record đi vào Data Plane nhưng được đánh dấu `needs_enrichment = true` cho batch enrichment sau (không block luồng chính).
+  3. **Pass 2 — Selective Micro-LLM Fallback (chỉ khi cần):** Khi record không match 100%, CHỈ những trường bị thiếu/mơ hồ mới được đưa cho LLM xử lý. Rule:
+     - Sử dụng Model Tier 1 (Gemini Flash Free / Local Qwen) theo AD-103 — KHÔNG dùng Tier 2/3 cho việc bóc tách cơ bản.
+     - Prompt CHỈ chứa đoạn text liên quan tới trường cần trích xuất (ví dụ: chỉ gửi `description` để tìm SĐT viết bằng chữ), KHÔNG gửi toàn bộ listing.
+     - Kết quả LLM phải qua validation lại bằng Regex/Schema trước khi merge vào record — LLM không được là nguồn chân lý cuối cùng cho structured data.
+     - Budget: tối đa **200 input tokens** mỗi lần gọi micro-extraction. Vượt ngưỡng → bỏ qua và giữ `confidence` thấp.
+  4. **Post-Extraction Pipeline (không dùng LLM):** Các bước sau PHẢI hoàn toàn deterministic, 0 token:
+     - **Deduplication:** Union-Find trên phone_key, address_key, image_hash (xem `bds_aggregator/dedupe.py`).
+     - **Price Conflict Detection:** So sánh giá cross-source, gắn `ConflictFlag` khi chênh lệch > 20%.
+     - **Rule-Based Scoring:** Tính `confidence_score` từ Source Trust, Overlap, Freshness, Price Consistency (xem `bds_aggregator/scoring.py`).
+     - **DNC/Blacklist Suppression:** Loại bỏ record theo HMAC blacklist trước khi persist (AD-105/AD-110).
+  5. **Token Budget Guard cho Agent Context:** Khi dữ liệu đã qua pipeline trên được trả về Agent chính trong Chat:
+     - Output ≤ `RUN_OUTPUT_CHAR_CAP` (40.000 chars, ~10k tokens): trả inline.
+     - Output > cap: lưu vào `runs` table, Agent nhận preview + `run_<uuid>` reference để phân trang qua `read_run`/`search_run`.
+     - Context cũ tự động spill ra DB khi tổng token vượt 100k (xem `SpillingContextEditingMiddleware`).
+  6. **Quy tắc khi tạo Scraper mới:** Mọi scraper adapter mới (trong `app/proprietary/platforms/` hoặc `app/capabilities/*/scrape/`) BẮT BUỘC:
+     - Có file `parsers.py` riêng chứa toàn bộ logic bóc tách deterministic, I/O-free, unit-testable.
+     - Có Pydantic schema typed output (file `schemas.py`).
+     - Pass 1 phải cover ≥ 90% record trong test fixture mà không cần LLM.
+     - Nếu cần Pass 2, phải justify trong PR description tại sao regex/heuristic không đủ.
+- **Existing compliance (verified 2026-08-23):**
+  - `app/proprietary/platforms/batdongsan/parsers.py` — pure regex/BS4, 0 LLM calls ✅
+  - `app/proprietary/platforms/muaban_bds/` — pure HTML parsing ✅
+  - `app/services/bds_aggregator/` — normalize → dedupe → score, 0 LLM calls ✅
+  - `app/lead_intelligence/adapters/batdongsan.py` — normalize_lead() pure rule-based ✅
+  - `app/lead_intelligence/services/deduplication_service.py` — entity dedup, 0 LLM calls ✅
+  - `app/lead_intelligence/scoring/service.py` — fit/intent scoring chủ yếu rule-based (LLM chỉ cho converted_similarity RAG fallback) ✅
+- **Gap cần đóng (post-adoption):**
+  - Chưa có Pass 2 Micro-LLM worker riêng — hiện tại record thiếu trường chỉ có `confidence` thấp và chờ Agent chính xử lý khi user hỏi.
+  - Story cần tạo: `XX.Y — Micro-Extraction Worker for Low-Confidence Scraper Records` để implement Pass 2 với Tier 1 model routing.

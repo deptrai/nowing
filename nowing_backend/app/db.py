@@ -1897,6 +1897,17 @@ class ImageGeneration(BaseModel, TimestampMixin):
 class Workspace(BaseModel, TimestampMixin):
     __tablename__ = "workspaces"
 
+    __table_args__ = (
+        CheckConstraint(
+            "NOT auto_archive_enabled OR ("
+            "document_retention_days IS NOT NULL AND "
+            "document_retention_days > 0 AND "
+            "document_retention_days <= 36500"
+            ")",
+            name="ck_workspace_retention_invariant",
+        ),
+    )
+
     name = Column(String(100), nullable=False, index=True)
     description = Column(String(500), nullable=True)
 

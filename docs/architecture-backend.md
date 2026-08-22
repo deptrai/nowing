@@ -85,6 +85,36 @@ Các module mới / thay đổi kể từ đợt scan trước:
 - AD-29/AD-30/AD-31 — public/vertical agent-chat, `client_id` tenancy.
 - AD-32/AD-33 — connector dedicated page, Generic Alert Engine dùng Automation runtime.
 
+## Cập nhật 2026-08-23
+
+- AD-119 — **Deterministic-First Parsing & Selective Micro-LLM Fallback**: quy chuẩn chính thức rằng mọi scraper BẮT BUỘC thực hiện bóc tách dữ liệu bằng Regex/BS4/Pydantic trước (Pass 1, 0 token LLM). Chỉ record có confidence < 0.70 hoặc thiếu trường quan trọng mới được chuyển sang Micro-LLM Fallback (Pass 2, Tier 1 model). Pipeline hậu xử lý (Deduplication, Scoring, DNC Suppression) hoàn toàn deterministic.
+
+## Scraper Data Engineering Pipeline
+
+Mọi dữ liệu scrape đều đi qua pipeline đa tầng trước khi đến LLM Agent:
+
+```
+Raw HTML/JSON (Source)
+    ↓
+Pass 1: Pure Deterministic Parsers (Regex, BS4, Pydantic) — 0 token LLM
+    ↓
+Confidence Gate (≥ 0.85 → direct persist, < 0.70 → Pass 2 eligible)
+    ↓
+Pass 2: Selective Micro-LLM (Tier 1 only, ≤ 200 tokens/call) — chỉ trường bị thiếu
+    ↓
+Deduplication (Union-Find on phone/address/image hash)
+    ↓
+Rule-Based Scoring (Source Trust, Overlap, Freshness, Price Consistency)
+    ↓
+DNC/Blacklist Suppression
+    ↓
+Token Budget Guard (RUN_OUTPUT_CHAR_CAP = 40k chars)
+    ↓
+Agent Context (inline hoặc run_<uuid> reference)
+```
+
+Xem chi tiết AD-119 tại [ARCHITECTURE-SPINE.md (Unified)](../_bmad-output/planning-artifacts/architecture/architecture-unified-nowing-chainlens-dsh-2026-08-17/ARCHITECTURE-SPINE.md).
+
 Xem chi tiết tại [project-overview.md](./project-overview.md) và [planning-to-product.md](./planning-to-product.md).
 
 ---

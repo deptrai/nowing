@@ -20,6 +20,17 @@ import { createWorkspace, deleteWorkspace } from "../helpers/api/workspaces";
  * the local run recipe.
  */
 test.describe("Zero sync — archived_at", () => {
+	const getBackendUrl = () =>
+		process.env.NEXT_PUBLIC_FASTAPI_BACKEND_URL ??
+		process.env.NEXT_PUBLIC_BACKEND_URL ??
+		"http://localhost:8000";
+
+	test.beforeAll(async ({ request }) => {
+		const backendUrl = getBackendUrl();
+		const health = await request.get(`${backendUrl}/health`).catch(() => null);
+		test.skip(!health || !health.ok(), "Backend not running — skipping Zero archived sync test");
+	});
+
 	test("archived document disappears from the document list without a page reload", async ({
 		page,
 		request,
@@ -32,35 +43,37 @@ test.describe("Zero sync — archived_at", () => {
 		);
 		const workspaceId = workspace.id;
 
-		const filename = `zero-sync-doc-${Date.now()}.md`;
-		const upload = await uploadMarkdown(
-			request,
-			ownerToken,
-			workspaceId,
-			filename,
-			"Content that will be archived via Zero sync."
-		);
-		const documentId = upload.document_ids[0];
-		await waitForDocumentReady(request, ownerToken, workspaceId, documentId, {
-			timeoutMs: 60_000,
-		});
+		try {
+			const filename = `zero-sync-doc-${Date.now()}.md`;
+			const upload = await uploadMarkdown(
+				request,
+				ownerToken,
+				workspaceId,
+				filename,
+				"Content that will be archived via Zero sync."
+			);
+			const documentId = upload.document_ids[0];
+			await waitForDocumentReady(request, ownerToken, workspaceId, documentId, {
+				timeoutMs: 60_000,
+			});
 
-		// Open the new-chat view which renders the Zero-synced document list.
-		await page.goto(`/dashboard/${workspaceId}/new-chat`);
-		await expect(page.getByText(filename)).toBeVisible({ timeout: 30_000 });
+			// Open the new-chat view which renders the Zero-synced document list.
+			await page.goto(`/dashboard/${workspaceId}/new-chat`);
+			await expect(page.getByText(filename)).toBeVisible({ timeout: 30_000 });
 
-		// Archive the document through the test-only endpoint. The backend
-		// sets `archived_at`; Zero sync propagates the row change to the web
-		// client and the document query (which filters `archivedAt IS null`)
-		// drops it from the list — no page reload required.
-		const backendUrl = process.env.NEXT_PUBLIC_FASTAPI_BACKEND_URL ?? "http://localhost:8000";
-		await request.post(`${backendUrl}/__e2e__/documents/${documentId}/archive`, {
-			headers: { Authorization: `Bearer ${ownerToken}` },
-		});
+			// Archive the document through the test-only endpoint. The backend
+			// sets `archived_at`; Zero sync propagates the row change to the web
+			// client and the document query (which filters `archivedAt IS null`)
+			// drops it from the list — no page reload required.
+			const backendUrl = getBackendUrl();
+			await request.post(`${backendUrl}/__e2e__/documents/${documentId}/archive`, {
+				headers: { Authorization: `Bearer ${ownerToken}` },
+			});
 
-		// AC-6: the document list updates via Zero sync without a reload.
-		await expect(page.getByText(filename)).not.toBeVisible({ timeout: 15_000 });
-
-		await deleteWorkspace(request, ownerToken, workspaceId);
+			// AC-6: the document list updates via Zero sync without a reload.
+			await expect(page.getByText(filename)).not.toBeVisible({ timeout: 15_000 });
+		} finally {
+			await deleteWorkspace(request, ownerToken, workspaceId).catch(() => {});
+		}
 	});
 });
