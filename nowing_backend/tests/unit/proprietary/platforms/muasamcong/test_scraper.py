@@ -197,7 +197,6 @@ class TestMuasamcongScraper:
         """A 61s HTTP hang must be terminated by the 60s timeout guard."""
         import respx
 
-        from app.proprietary.platforms.muasamcong import scraper as scraper_module
 
         async def _hang(request):
             await asyncio.sleep(61)

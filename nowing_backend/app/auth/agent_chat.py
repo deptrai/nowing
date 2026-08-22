@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Module references (not local copies) so tests can monkeypatch these seams.
-import app.canonical.tenant_context as _tenant_context
+import app.tenant_context as _tenant_context
 import app.users as _users
 import app.utils.rbac as _rbac
 from app.auth.context import AuthContext

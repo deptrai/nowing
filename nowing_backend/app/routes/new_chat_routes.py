@@ -38,7 +38,6 @@ from app.agents.chat.multi_agent_chat.shared.filesystem_selection import (
 )
 from app.auth.agent_chat import _resolve_agent_config
 from app.auth.context import AuthContext
-from app.canonical.tenant_context import set_request_tenant_context
 from app.config import config
 from app.db import (
     AgentConfig,
@@ -81,6 +80,7 @@ from app.tasks.chat.streaming.flows import (
 )
 from app.tasks.chat.streaming.flows.new_chat.auto_pin import resolve_initial_auto_pin
 from app.tasks.chat.streaming.flows.shared.llm_bundle import load_llm_bundle
+from app.tenant_context import set_request_tenant_context
 from app.users import get_auth_context
 from app.utils.perf import get_perf_logger
 from app.utils.rbac import check_permission

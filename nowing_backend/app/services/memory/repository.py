@@ -13,7 +13,6 @@ from sqlalchemy import Float, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.canonical.tenant_context import set_request_tenant_context
 from app.config import config
 from app.db import (
     Memory,
@@ -29,6 +28,7 @@ from app.services.memory.vector import (
     validate_single_embedding_result,
 )
 from app.services.token_tracking_service import record_token_usage
+from app.tenant_context import set_request_tenant_context
 from app.utils.document_converters import embed_texts
 
 logger = logging.getLogger(__name__)

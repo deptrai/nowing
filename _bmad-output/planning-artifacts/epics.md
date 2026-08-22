@@ -118,7 +118,7 @@ Starter template: **KHÔNG — brownfield**. Component mới thật sự duy nh�
 - **AR-1** Thêm **suite memory-recall** vào `nowing_evals` (**DONE**: suite + dataset + oracle + metrics + gate đã có; 168 tests passed; baseline ratified 2026-08-04).
 - **AR-2** Backfill/recovery markdown→`Memory` (mig 178 drop `memory_md`/`shared_memory_md` KHÔNG backfill; `downgrade` chỉ tạo cột rỗng → data-loss có thể đã xảy ra).
 - **AR-3** Dedupe/confidence *validation & tuning* (primitive đã có: `repository.py` cosine<0.08 + `update_on_duplicate`, đã wire vào auto-extract) — bench + tune qua eval.
-- **AR-4** Retention + right-to-delete cho `Memory`/versions/relations + scrape data (doc retention đã có mig 176; memory chưa).
+- **AR-4** Retention + right-to-delete cho `Memory`/versions/relations + scrape data (doc retention đã có mig 176 **[DONE]**; memory chưa).
 - **AR-5** Observability + cost/turn quantification (spans extraction/recall + aggregate).
 - **AR-6** Auto-extract cost control — **DONE**: kill-switch/global + per-workspace flags, wallet pre-check, spend/budget cap, rate-limit thời gian; 59 tests passed.
 - **AR-7** Legacy memory bridge parity tests (`/…/memory`, `/users/me/memory` backed by `Memory`).
@@ -130,6 +130,7 @@ Starter template: **KHÔNG — brownfield**. Component mới thật sự duy nh�
 - **AR-13** ToS/legal review + retention / right-to-delete policy cho dữ liệu scrape lưu dài hạn (PRFAQ IQ9 — Reddit/YouTube/TikTok/Amazon).
 - **AR-14** Self-host onboarding <10 phút (`docker compose up`, local LLM/embedding, README mới) (PRFAQ Q6/IQ6 — OSS motion / aha moment).
 - **AR-15** Refine recall precision gate: xác định ngưỡng precision/noise trên `nowing_evals` trước khi scale (PRFAQ IQ1 — rủi ro sản phẩm #1; NFR-8 đã có, cần chốt số).
+- **AR-16** Epic 13 canonical entity cleanup — `CanonicalEntity` / `app/canonical/` / `canonical_entities_routes.py` và migration/schema liên quan đã dropped khỏi kiến trúc (chainlens-research owns canonical index, SCP 2026-08-08). Cần deprecation warnings và removal story `td-8` trước GA cloud.
 
 **Requirements signals:** RS-1 auto-extract budget (item-cap + spend-cap + wallet pre-check + rate-limit done) · RS-2 recall top_k≤5 (verify) · RS-3 beachhead agent-builder→team · RS-4 "MCP trước UI sau"/"semantic facts first" · RS-5 docs-sync bắt buộc · RS-6 right-to-delete + self-host/cloud split · RS-7 eval-gated launch + chốt số SM · RS-8 data export · RS-9 "project memory"=`ResearchThread`? · RS-10 cost/turn beta trước pricing · **RS-11 legal/ToS + retention policy trước GA cloud (PRFAQ)** · **RS-12 encryption-at-rest + key management cho cloud (PRFAQ)** · **RS-13 self-host onboarding <10 phút / aha recall (PRFAQ)**.
 

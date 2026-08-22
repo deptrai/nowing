@@ -43,7 +43,6 @@ from app.agents.chat.multi_agent_chat.shared.filesystem_selection import (
 from app.agents.chat.runtime.llm_config import AgentConfig as RuntimeAgentConfig
 from app.auth.agent_chat import _resolve_agent_config
 from app.auth.context import AuthContext
-from app.canonical.tenant_context import set_request_tenant_context
 from app.db import (
     AgentConfig as RegistryAgentConfig,
     ChatVisibility,
@@ -123,6 +122,7 @@ from app.tasks.chat.streaming.flows.shared.terminal_error import (
     handle_terminal_exception,
 )
 from app.tasks.chat.streaming.shared.stream_result import StreamResult
+from app.tenant_context import set_request_tenant_context
 from app.utils.perf import get_perf_logger, log_system_snapshot
 
 logger = logging.getLogger(__name__)

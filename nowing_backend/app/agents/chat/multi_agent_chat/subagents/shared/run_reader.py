@@ -24,9 +24,9 @@ from uuid import UUID
 from langchain_core.tools import BaseTool, StructuredTool
 from sqlalchemy import select
 
-from app.canonical.tenant_context import set_request_tenant_context
 from app.capabilities.core.runs import RUN_OUTPUT_CHAR_CAP
 from app.db import Run, ToolOutputSpill, shielded_async_session
+from app.tenant_context import set_request_tenant_context
 
 logger = logging.getLogger(__name__)
 

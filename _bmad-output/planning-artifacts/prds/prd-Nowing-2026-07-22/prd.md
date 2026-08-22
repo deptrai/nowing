@@ -1512,9 +1512,11 @@ Có nên cho phép workspace owner cấu hình default enable/disable của agen
 **Defer có chủ đích** (`epics.md`: *"OQ-1, OQ-2 → backlog"*).
 
 #### OQ-3: Retention, right-to-delete & phơi nhiễm pháp lý (retention KHÔNG chỉ là storage)
-Document retention **schema đã có** (migration 176: `document_retention_days`, `auto_archive_enabled`, `document_retention_action`, `documents.archived_at`) — nhưng enforcement job/UI chưa xác nhận đầy đủ. **Quan trọng hơn (từ PRFAQ):** memory *bền* lưu dài hạn dữ liệu scrape (Reddit/YouTube/TikTok/Amazon) tạo **phơi nhiễm pháp lý (ToS/bản quyền/PII)**, KHÔNG chỉ là vấn đề dung lượng. Cần: **retention + right-to-delete cho MEMORY** (chưa có, khác doc retention), tách rõ trách nhiệm **self-host vs cloud**, và **chốt TRƯỚC GA cloud**.
+**Document retention `[DONE]`** — migration 176 (`document_retention_days`, `auto_archive_enabled`, `document_retention_action`, `documents.archived_at`), Celery enforcement job (`app/tasks/celery_tasks/document_retention_task.py`), UI (`nowing_web/components/settings/data-retention-manager.tsx`), và tests (`tests/unit/tasks/test_document_retention_task.py`) đã implement.
 
-**Gap:** `[GAP]` OQ-3 — Chưa có retention/right-to-delete cho `memories`; chưa tách trách nhiệm self-host vs cloud; chưa có đánh giá ToS/PII cho dữ liệu scrape lưu dài hạn. (Doc retention `[PARTIAL]` — schema 176.)
+**Memory / scraped-data retention `[GAP]`** — memory *bền* lưu dài hạn dữ liệu scrape (Reddit/YouTube/TikTok/Amazon) tạo **phơi nhiễm pháp lý (ToS/bản quyền/PII)**, KHÔNG chỉ là vấn đề dung lượng. Cần: **retention + right-to-delete cho MEMORY** (chưa có, khác doc retention), tách rõ trách nhiệm **self-host vs cloud**, và **chốt TRƯỚC GA cloud**.
+
+**Gap:** `[GAP]` OQ-3 — Chưa có retention/right-to-delete cho `memories`; chưa tách trách nhiệm self-host vs cloud; chưa có đánh giá ToS/PII cho dữ liệu scrape lưu dài hạn. (Document retention `[DONE]`; memory / scraped-data retention `[GAP]`.)
 
 #### OQ-4: Per-workspace MCP tool enable/disable toggle  `[RESOLVED 2026-07-25 — ĐÃ BUILD]`
 
@@ -1577,7 +1579,7 @@ ADR `ADR-CHAINLENS-AS-NOWING-MICROSERVICE` để ngỏ ba câu hỏi mà **Nowin
 ## 9. Assumptions Index
 - `[ASSUMPTION]` Self-hosted installs tắt billing theo mặc định (cloud dùng Stripe).
 - `[SUPERSEDED 2026-07-25]` ~~MCP server không cần per-workspace tool toggle trong v1 vì workspace được chọn qua `nowing_select_workspace`.~~ → Đã build **rồi** (`workspace_mcp_tool_settings`, story `2-5` done). Assumption này bị **vượt qua**, không phải bị bác bỏ — chọn workspace và bật/tắt từng tool là hai việc khác nhau, và cái thứ hai hoá ra vẫn cần. Xem OQ-4.
-- `[ASSUMPTION]` Agent có thể thực hiện write-back bằng cách gọi Notion/Linear/Slack/Jira tools trong `agent_task`, nên direct write-back action không cần thiết cho MVP.
+- `[CORRECTED 2026-08-22]` ~~Agent có thể thực hiện write-back bằng cách gọi Notion/Linear/Slack/Jira tools trong `agent_task`, nên direct write-back action không cần thiết cho MVP.~~ → Direct write-back action type riêng đã được implement (`write_back_jira`, `write_back_linear`, `write_back_notion`, `write_back_slack`, `write_back_telegram` trong `app/automations/actions/builtin/`). `agent_task` vẫn là một lối tắt nhưng không phải primary path. FR-18 / OQ-5 `[DONE/RESOLVED]`.
 - `[ASSUMPTION]` Citation highlight trong full editor có thể deferred vì citation panel đã cung cấp đủ context.
 - `[CORRECTED 2026-07-24]` ~~Data retention có thể xử lý sau MVP vì storage chưa cấp bách.~~ → Retention là vấn đề **pháp lý** (ToS/bản quyền/PII cho dữ liệu scrape lưu dài hạn), **không** chỉ là dung lượng; phải chốt **retention + right-to-delete + self-host/cloud split TRƯỚC GA cloud** (xem OQ-3).
 - `[CONFIRMED 2026-07-24]` Long-term memory lưu dưới dạng `Memory` rows + embedding `pgvector`, không graph database riêng — **đã đúng như vậy** (migration 177).

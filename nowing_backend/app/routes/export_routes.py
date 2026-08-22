@@ -10,9 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.auth.context import AuthContext
-from app.canonical.tenant_context import set_request_tenant_context
 from app.db import Memory, Permission, get_async_session
 from app.services.export_service import build_export_zip
+from app.tenant_context import set_request_tenant_context
 from app.users import get_auth_context
 from app.utils.rbac import check_permission
 

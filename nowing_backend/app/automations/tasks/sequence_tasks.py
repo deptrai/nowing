@@ -39,7 +39,7 @@ def execute_sequence_step(self, enrollment_id: str, workspace_id: int) -> None:
 
 
 async def _execute_sequence_step_impl(enrollment_id_str: str, workspace_id: int) -> None:
-    from app.canonical.tenant_context import set_request_tenant_context
+    from app.tenant_context import set_request_tenant_context
 
     sequencer = SequencerService()
     session_maker = get_celery_session_maker()

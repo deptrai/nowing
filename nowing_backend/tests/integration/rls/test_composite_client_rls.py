@@ -15,10 +15,10 @@ import pytest
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.canonical.tenant_context import set_request_tenant_context
 from app.db import Memory, MemorySourceType, MemoryType, User, Workspace
 from app.services.memory.repository import MemoryRepository
 from app.services.memory.search import MemoryHybridSearch
+from app.tenant_context import set_request_tenant_context
 
 pytestmark = [pytest.mark.integration]
 

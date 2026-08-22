@@ -37,6 +37,7 @@ from app.gateway import require_gateway_enabled
 from app.notifications.api import router as notifications_router
 from app.podcasts.api import router as podcasts_router
 
+from .admin_affiliates_routes import router as admin_affiliates_router
 from .admin_agent_registry_routes import (
     router as admin_agent_registry_router,
 )
@@ -52,7 +53,6 @@ from .admin_scraper_platform_accounts_routes import (
     router as admin_scraper_platform_accounts_router,
     scraper_accounts_alias_router,
 )
-from .admin_affiliates_routes import router as admin_affiliates_router
 from .admin_users_routes import router as admin_users_router
 from .agent_action_log_route import router as agent_action_log_router
 from .agent_chat_routes import router as agent_chat_router
@@ -62,7 +62,6 @@ from .agent_revert_route import router as agent_revert_router
 from .airtable_add_connector_route import (
     router as airtable_add_connector_router,
 )
-from .canonical_entities_routes import router as canonical_entities_router
 from .chat_comments_routes import router as chat_comments_router
 from .circleback_webhook_route import router as circleback_webhook_router
 from .clickup_add_connector_route import router as clickup_add_connector_router
@@ -159,7 +158,6 @@ router.include_router(zns_router)
 router.include_router(enrichment_router)
 router.include_router(crm_router, prefix="/workspaces")
 router.include_router(crm_oauth_router)
-router.include_router(canonical_entities_router)  # Canonical merge/revert/review
 router.include_router(rbac_router)  # RBAC routes for roles, members, invites
 router.include_router(editor_router)
 router.include_router(export_router)

@@ -747,28 +747,8 @@ async def delete_search_source_connector(
                 f"Progress: {total_deleted}/{total_docs}"
             )
 
-        # Canonical entities can outlive the connector's documents: remove
-        # provenance rows for the deleted documents, then sweep any canonical
-        # entities left without sources.
-        if pruned_links:
-            from app.canonical.services.canonical_cleanup import (
-                delete_canonical_sources_by_record_ids,
-                delete_orphaned_canonical_entities,
-            )
-
-            deleted_sources = await delete_canonical_sources_by_record_ids(
-                session, db_connector.workspace_id, pruned_links
-            )
-            deleted_entities = await delete_orphaned_canonical_entities(
-                session, db_connector.workspace_id, entity_types=["news_article"]
-            )
-            if deleted_sources or deleted_entities:
-                await session.commit()
-                logger.info(
-                    f"Deleted {deleted_sources} canonical source(s) and "
-                    f"{deleted_entities} orphaned entity(ies) for connector "
-                    f"{connector_id}"
-                )
+        # chainlens-research owns canonical indexing; Nowing only deletes its
+        # own documents here. No local canonical cleanup is required.
 
         # Delete the connector record
         workspace_id = db_connector.workspace_id

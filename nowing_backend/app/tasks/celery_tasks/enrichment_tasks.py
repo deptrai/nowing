@@ -23,8 +23,8 @@ async def _run_enrichment(
     client_id: str | None,
 ) -> None:
     """Run the provider waterfall for one enrichment request."""
-    from app.canonical.tenant_context import set_request_tenant_context
     from app.tasks.celery_tasks import get_celery_session_maker
+    from app.tenant_context import set_request_tenant_context
 
     session_maker = get_celery_session_maker()
     async with session_maker() as session:

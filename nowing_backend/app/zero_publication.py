@@ -79,58 +79,6 @@ PODCAST_COLS = [
     "created_at",
 ]
 
-# Minimal columns for canonical queue/list UI. Bulky snapshots, search_text,
-# fingerprint and full source payloads are fetched over workspace-authorized REST.
-CANONICAL_ENTITY_COLS = [
-    "id",
-    "workspace_id",
-    "entity_type",
-    "canonical_title",
-    "source_count",
-    "confidence_score",
-    "conflict_flags",
-    "version",
-    "last_seen_at",
-    "embedding_status",
-]
-
-CANONICAL_ENTITY_SOURCE_COLS = [
-    "id",
-    "workspace_id",
-    "canonical_entity_id",
-    "entity_type",
-    "source_name",
-    "source_record_id",
-    "source_url",
-    "first_seen_at",
-    "last_seen_at",
-]
-
-CANONICAL_MERGE_HISTORY_COLS = [
-    "id",
-    "canonical_entity_id",
-    "workspace_id",
-    "entity_type",
-    "previous_version",
-    "new_version",
-    "operation",
-    "actor",
-    "conflicts",
-    "method",
-    "created_at",
-]
-
-CANONICAL_PERSIST_OUTBOX_COLS = [
-    "id",
-    "workspace_id",
-    "entity_type",
-    "status",
-    "retry_count",
-    "next_attempt_at",
-    "created_at",
-    "updated_at",
-]
-
 LEADS_COLS = [
     "id",
     "workspace_id",
@@ -220,10 +168,6 @@ ZERO_PUBLICATION: Mapping[str, Sequence[str] | None] = {
     "automations": AUTOMATION_COLS,
     "automation_runs": AUTOMATION_RUN_COLS,
     "podcasts": PODCAST_COLS,
-    "canonical_entities": CANONICAL_ENTITY_COLS,
-    "canonical_entity_sources": CANONICAL_ENTITY_SOURCE_COLS,
-    "canonical_merge_history": CANONICAL_MERGE_HISTORY_COLS,
-    "canonical_persist_outbox": CANONICAL_PERSIST_OUTBOX_COLS,
     "leads": LEADS_COLS,
     "lead_pipeline_stages": LEAD_PIPELINE_STAGE_COLS,
     "lead_assignments": LEAD_ASSIGNMENT_COLS,

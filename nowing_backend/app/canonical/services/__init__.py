@@ -1,3 +1,0 @@
-"""Canonical persistence services."""
-
-from __future__ import annotations

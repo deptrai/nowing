@@ -13,7 +13,6 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from app.canonical.tenant_context import set_request_tenant_context
 from app.db import (
     Chunk,
     Document,
@@ -42,6 +41,7 @@ from app.services.okf import (
     relation_to_concept,
 )
 from app.services.pii.mask import mask_email, mask_name, mask_phone
+from app.tenant_context import set_request_tenant_context
 
 logger = logging.getLogger(__name__)
 

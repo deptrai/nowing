@@ -28,8 +28,8 @@ import litellm
 from litellm.integrations.custom_logger import CustomLogger
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.canonical.tenant_context import set_request_tenant_context
 from app.db import TokenUsage
+from app.tenant_context import set_request_tenant_context
 
 logger = logging.getLogger(__name__)
 

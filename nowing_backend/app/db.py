@@ -419,10 +419,6 @@ class Permission(StrEnum):
     SIGNALS_READ = "signals:read"
     SIGNALS_DETECT = "signals:detect"
 
-    # Canonical entities (merge history, conflict resolution, revert)
-    CANONICAL_ENTITIES_READ = "canonical_entities:read"
-    CANONICAL_ENTITIES_WRITE = "canonical_entities:write"
-
     # DSH missions (Story 26.2)
     DSH_MISSIONS_READ = "dsh_missions:read"
     DSH_MISSIONS_WRITE = "dsh_missions:write"
@@ -491,9 +487,6 @@ DEFAULT_ROLE_PERMISSIONS = {
         Permission.MEMORY_CREATE.value,
         Permission.MEMORY_READ.value,
         Permission.MEMORY_UPDATE.value,
-        # Canonical entities (no delete)
-        Permission.CANONICAL_ENTITIES_READ.value,
-        Permission.CANONICAL_ENTITIES_WRITE.value,
     ],
     "Viewer": [
         # Documents (read only)
@@ -529,8 +522,6 @@ DEFAULT_ROLE_PERMISSIONS = {
         Permission.AUTOMATIONS_READ.value,
         # Memory (read only)
         Permission.MEMORY_READ.value,
-        # Canonical entities (read only)
-        Permission.CANONICAL_ENTITIES_READ.value,
     ],
 }
 
@@ -4313,232 +4304,6 @@ def get_default_roles_config() -> list[dict]:
             "is_system_role": True,
         },
     ]
-
-
-# ============================================================================
-# Canonical entity persistence (Story 13.1)
-# ============================================================================
-
-
-class EmbeddingStatus(StrEnum):
-    PENDING = "pending"
-    READY = "ready"
-    FAILED = "failed"
-
-
-class PersistOutboxStatus(StrEnum):
-    PENDING = "pending"
-    PROCESSING = "processing"
-    FAILED = "failed"
-    DONE = "done"
-
-
-class CanonicalEntity(Base, TimestampMixin):
-    """Merged, tenant-scoped canonical entity with provenance and embedding."""
-
-    __tablename__ = "canonical_entities"
-    __allow_unmapped__ = True
-
-    __table_args__ = (
-        UniqueConstraint(
-            "workspace_id",
-            "entity_type",
-            "fingerprint",
-            name="uq_canonical_entities_workspace_type_fingerprint",
-        ),
-        Index(
-            "ix_canonical_entities_workspace_type_last_seen",
-            "workspace_id",
-            "entity_type",
-            "last_seen_at",
-            postgresql_using="btree",
-        ),
-        Index(
-            "ix_canonical_entities_search_text",
-            text("to_tsvector('simple', search_text)"),
-            postgresql_using="gin",
-        ),
-        Index(
-            "ix_canonical_entities_embedding",
-            "embedding",
-            postgresql_using="hnsw",
-            postgresql_ops={"embedding": "vector_cosine_ops"},
-            postgresql_where=text("embedding IS NOT NULL"),
-        ),
-    )
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    workspace_id = Column(
-        Integer,
-        ForeignKey("workspaces.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    entity_type = Column(String(64), nullable=False)
-    canonical_title = Column(String(500), nullable=True)
-    canonical_data = Column(JSONB, nullable=False, default=dict)
-    fingerprint = Column(String(255), nullable=False)
-    search_text = Column(Text, nullable=True)
-    source_count = Column(Integer, nullable=False, default=0)
-    confidence_score = Column(Float, nullable=False, default=0.0)
-    conflict_flags = Column(JSONB, nullable=False, default=list)
-    version = Column(Integer, nullable=False, default=1)
-    first_seen_at = Column(
-        TIMESTAMP(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
-    )
-    last_seen_at = Column(
-        TIMESTAMP(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
-    )
-    embedding = Column(Vector(config.embedding_model_instance.dimension), nullable=True)
-    embedding_model_name = Column(String(255), nullable=True)
-    embedding_content_hash = Column(String(64), nullable=True)
-    embedding_status = Column(
-        String(16),
-        nullable=False,
-        default=EmbeddingStatus.PENDING.value,
-        server_default=EmbeddingStatus.PENDING.value,
-    )
-
-    sources = relationship(
-        "CanonicalEntitySource",
-        back_populates="canonical_entity",
-        cascade="all, delete-orphan",
-        order_by="CanonicalEntitySource.last_seen_at.desc()",
-    )
-    merge_history = relationship(
-        "CanonicalMergeHistory",
-        back_populates="canonical_entity",
-        cascade="all, delete-orphan",
-        order_by="CanonicalMergeHistory.created_at.desc()",
-    )
-
-
-class CanonicalEntitySource(Base, TimestampMixin):
-    """One source record contributing to a canonical entity."""
-
-    __tablename__ = "canonical_entity_sources"
-    __allow_unmapped__ = True
-
-    __table_args__ = (
-        UniqueConstraint(
-            "workspace_id",
-            "entity_type",
-            "source_name",
-            "source_record_id",
-            name="uq_canonical_entity_sources_workspace_type_source_record",
-        ),
-        Index(
-            "ix_canonical_entity_sources_canonical_entity_id",
-            "canonical_entity_id",
-        ),
-    )
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    workspace_id = Column(
-        Integer,
-        ForeignKey("workspaces.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    canonical_entity_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("canonical_entities.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    entity_type = Column(String(64), nullable=False)
-    source_name = Column(String(64), nullable=False)
-    source_record_id = Column(String(255), nullable=False)
-    source_snapshot = Column(JSONB, nullable=False, default=dict)
-    source_url = Column(Text, nullable=True)
-    source_fingerprint = Column(String(255), nullable=True)
-    first_seen_at = Column(
-        TIMESTAMP(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
-    )
-    last_seen_at = Column(
-        TIMESTAMP(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
-    )
-
-    canonical_entity = relationship("CanonicalEntity", back_populates="sources")
-
-
-class CanonicalMergeHistory(Base):
-    """Audit trail of canonical entity merges and reverts."""
-
-    __tablename__ = "canonical_merge_history"
-    __allow_unmapped__ = True
-
-    __table_args__ = (
-        Index(
-            "ix_canonical_merge_history_entity_created",
-            "canonical_entity_id",
-            "created_at",
-        ),
-    )
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    canonical_entity_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("canonical_entities.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    workspace_id = Column(
-        Integer,
-        ForeignKey("workspaces.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    entity_type = Column(String(64), nullable=False)
-    previous_version = Column(Integer, nullable=False)
-    new_version = Column(Integer, nullable=False)
-    previous_data = Column(JSONB, nullable=False, default=dict)
-    new_data = Column(JSONB, nullable=False, default=dict)
-    previous_source_ids = Column(JSONB, nullable=False, default=list)
-    new_source_ids = Column(JSONB, nullable=False, default=list)
-    operation = Column(String(64), nullable=False)
-    actor = Column(String(255), nullable=True)
-    conflicts = Column(JSONB, nullable=False, default=list)
-    method = Column(String(64), nullable=True)
-    created_at = Column(
-        TIMESTAMP(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
-    )
-
-    canonical_entity = relationship("CanonicalEntity", back_populates="merge_history")
-
-
-class CanonicalPersistOutbox(Base):
-    """Durable outbox for canonical persistence retries."""
-
-    __tablename__ = "canonical_persist_outbox"
-    __allow_unmapped__ = True
-
-    __table_args__ = (
-        Index(
-            "ix_canonical_persist_outbox_status_next_attempt",
-            "status",
-            "next_attempt_at",
-        ),
-    )
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    workspace_id = Column(
-        Integer,
-        ForeignKey("workspaces.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    entity_type = Column(String(64), nullable=False)
-    payload = Column(JSONB, nullable=False, default=dict)
-    status = Column(
-        String(16),
-        nullable=False,
-        default=PersistOutboxStatus.PENDING.value,
-        server_default=PersistOutboxStatus.PENDING.value,
-    )
-    retry_count = Column(Integer, nullable=False, default=0)
-    next_attempt_at = Column(TIMESTAMP(timezone=True), nullable=True)
-    error = Column(Text, nullable=True)
-    created_at = Column(
-        TIMESTAMP(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
-    )
-    updated_at = Column(
-        TIMESTAMP(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
-    )
 
 
 class ChainLensIngestJob(BaseModel, TimestampMixin):

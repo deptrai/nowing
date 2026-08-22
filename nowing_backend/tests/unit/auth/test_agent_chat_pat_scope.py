@@ -179,7 +179,7 @@ def _patch_seams(
     """Mock the external seams the dependency is expected to call."""
     guc_mock = AsyncMock()
     monkeypatch.setattr(
-        "app.canonical.tenant_context.set_request_tenant_context",
+        "app.tenant_context.set_request_tenant_context",
         guc_mock,
         raising=False,
     )

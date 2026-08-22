@@ -5,25 +5,18 @@ from __future__ import annotations
 import datetime
 import logging
 from collections.abc import Awaitable
+from datetime import UTC
 from typing import Any, Literal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.canonical.services.canonical_persist_service import (
-    create_persist_outbox,
-    upsert_canonical_entity,
-)
-from app.canonical.services.canonical_pii import redact_canonical_data
-from app.canonical.tenant_context import set_canonical_workspace_id
-from app.observability.metrics import (
-    categorize_exception,
-    record_canonical_persist_failure,
-    record_vn_jobs_pii_detected,
-)
+from app.observability.metrics import record_vn_jobs_pii_detected
+from app.services.chainlens.ingest import NowingIngestService
 from app.services.location_normalize import resolve_city_code
 from app.services.pii.redact import redact_job_pii
+from app.services.scraper_chunks.serializer import to_chunks
 
-from .dedupe import deduplicate, fingerprint, search_text
+from .dedupe import deduplicate
 from .normalize import normalize_listing
 from .schemas import VnJobAggregatedListing, VnJobAggregateInput, VnJobAggregateOutput
 
@@ -177,60 +170,14 @@ def _make_json_safe(value: Any) -> Any:
     return value
 
 
-def _build_canonical_data(listing: VnJobAggregatedListing) -> dict[str, Any]:
-    """Return a JSON-safe, PII-redacted copy of the listing for canonical storage."""
-    # PrivateAttrs are excluded by Pydantic; description/requirement are already
-    # redacted by _redact_listing before deduplication.
-    return _make_json_safe(listing.model_dump())
-
-
-def _build_job_source_snapshot(canonical_data: dict[str, Any]) -> dict[str, Any]:
-    """Return a source snapshot with any remaining PII removed from text fields."""
-    # ponytail: central redactor masks JD text and removes contact/email
-    # heuristics; we keep the source snapshot consistent with canonical rules.
-    # Upgrade path: replace with a domain-specific NER redactor if name/address
-    # detection needs to improve (see story 12-4c-4d-4e-pii-ingest-exposure.md).
-    return redact_canonical_data("vn_job", dict(canonical_data))
-
-
-def _build_conflict_flags(
-    listing: VnJobAggregatedListing,
-) -> list[dict[str, Any]]:
-    """Surface salary/location conflict metadata for canonical storage."""
-    return [{"type": flag} for flag in listing.conflict_flags]
-
-
-async def _stage_jobs_persist_outbox(
-    session: AsyncSession,
-    workspace_id: int,
-    listing: VnJobAggregatedListing,
-    error: str,
-) -> None:
-    """Stage a durable outbox row so a retry worker can finish persistence."""
-    canonical_data = _build_canonical_data(listing)
-    payload = {
-        "workspace_id": workspace_id,
-        "entity_type": _JOBS_ENTITY_TYPE,
-        "fingerprint": fingerprint(listing.model_dump()),
-        "title": listing.title,
-        "data": canonical_data,
-        "search_text": search_text(listing),
-        "sources": [
-            {
-                "source_name": source_name,
-                "source_record_id": source_record_id,
-                "source_url": listing._source_url_map.get(source_name),
-            }
-            for source_name, source_record_id in listing._source_record_ids.items()
-        ],
-    }
-    await set_canonical_workspace_id(session, workspace_id)
-    await create_persist_outbox(
-        session,
-        workspace_id=workspace_id,
-        entity_type=_JOBS_ENTITY_TYPE,
-        payload=payload,
-        error=error,
+def _job_to_chunks(listing: VnJobAggregatedListing, fetched_at: str) -> Any:
+    """Serialize one job aggregated listing into scraper ``Chunk[]``."""
+    return to_chunks(
+        domain="vn_jobs",
+        data=listing,
+        fetched_at=fetched_at,
+        content_type="job",
+        category="job_posting",
     )
 
 
@@ -239,84 +186,36 @@ async def _persist_jobs_aggregates(
     workspace_id: int | None,
     listings: list[VnJobAggregatedListing],
 ) -> tuple[Literal["ok", "partial", "failed", "not_attempted"], str | None]:
-    """Persist all listings and report ok/partial/failed/not_attempted."""
+    """Persist all listings to chainlens-research and report status."""
     if not session or not isinstance(session, AsyncSession) or workspace_id is None:
         return "not_attempted", None
 
-    overall_succeeded = False
-    overall_failed = False
-    message: str | None = None
+    if not listings:
+        return "ok", None
 
+    chunks: list[Any] = []
+    fetched_at = datetime.datetime.now(UTC).isoformat()
     for listing in listings:
-        canonical_data = _build_canonical_data(listing)
-        source_snapshot = _build_job_source_snapshot(canonical_data)
-        fp = fingerprint(listing.model_dump())
-        search_text_value = search_text(listing)
-        conflict_flags = _build_conflict_flags(listing)
+        try:
+            chunks.extend(_job_to_chunks(listing, fetched_at))
+        except Exception:
+            logger.exception("Job listing %s chunk serialization failed", listing.id)
 
-        listing_succeeded = False
-        listing_failed = False
-        listing_error: str | None = None
+    if not chunks:
+        return "ok", None
 
-        # ponytail: each source record is linked against the same canonical
-        # fingerprint; the unique (workspace, entity_type, source, record_id)
-        # key keeps retries idempotent.
-        # Upgrade path: batch upserts if per-source loop becomes a bottleneck
-        for source_name, source_record_id in listing._source_record_ids.items():
-            source_url = listing._source_url_map.get(source_name)
-            try:
-                await upsert_canonical_entity(
-                    session,
-                    workspace_id=workspace_id,
-                    entity_type=_JOBS_ENTITY_TYPE,
-                    fingerprint=fp,
-                    title=listing.title,
-                    data=canonical_data,
-                    search_text=search_text_value,
-                    source_name=source_name,
-                    source_record_id=source_record_id,
-                    source_snapshot=source_snapshot,
-                    source_url=source_url,
-                    confidence_score=listing.confidence_score,
-                    conflict_flags=conflict_flags,
-                )
-                listing_succeeded = True
-                overall_succeeded = True
-            except Exception as exc:
-                listing_failed = True
-                overall_failed = True
-                listing_error = str(exc)
-                if message is None:
-                    message = listing_error
-                logger.exception(
-                    "Job listing %s source %s failed to persist",
-                    listing.id,
-                    source_name,
-                )
-                record_canonical_persist_failure(
-                    domain="vn_job",
-                    reason=categorize_exception(exc),
-                )
-
-        if listing_failed:
-            try:
-                await _stage_jobs_persist_outbox(
-                    session, workspace_id, listing, listing_error or "unknown"
-                )
-            except Exception:
-                logger.exception(
-                    "Job persist outbox for %s also failed",
-                    listing.id,
-                )
-
-        if listing_succeeded:
-            overall_succeeded = True
-
-    if overall_failed and not overall_succeeded:
-        return "failed", message
-    if overall_failed:
-        return "partial", message or "One or more job listings failed to persist"
-    return "ok", None
+    try:
+        ingest_service = NowingIngestService()
+        await ingest_service.ingest(
+            scraper_id="vn_jobs",
+            chunks=chunks,
+            workspace_id=workspace_id,
+            session=None,
+        )
+        return "ok", None
+    except Exception as exc:
+        logger.exception("Job aggregate chainlens ingest failed")
+        return "failed", str(exc)
 
 
 async def aggregate_jobs(input: VnJobAggregateInput, ctx: Any) -> VnJobAggregateOutput:

@@ -14,7 +14,6 @@ from uuid import UUID
 
 from sqlalchemy import select
 
-from app.canonical.tenant_context import set_request_tenant_context
 from app.db import (
     NATIVE_TO_LEGACY_DOCTYPE,
     Document,
@@ -31,6 +30,7 @@ from app.services.chainlens.schemas import (
 )
 from app.services.memory.search import MemoryHybridSearch, ScoredMemory
 from app.services.token_tracking_service import UsageType, record_token_usage
+from app.tenant_context import set_request_tenant_context
 from app.utils.document_converters import embed_text
 
 logger = logging.getLogger(__name__)

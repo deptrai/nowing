@@ -7,25 +7,18 @@ import hashlib
 import json
 import logging
 from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
 from typing import Any, Literal
 
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.canonical.services.canonical_persist_service import (
-    create_persist_outbox,
-    upsert_canonical_entity,
-)
-from app.canonical.services.canonical_pii import redact_source_snapshot
-from app.canonical.tenant_context import set_canonical_workspace_id
 from app.capabilities.core.store import get_capability
 from app.config import config
-from app.observability.metrics import (
-    categorize_exception,
-    record_canonical_persist_failure,
-)
+from app.services.chainlens.ingest import NowingIngestService
+from app.services.scraper_chunks.serializer import to_chunks
 
-from .dedupe import deduplicate, search_text
+from .dedupe import deduplicate
 from .normalize import normalize_listing, to_batdongsan_city_code
 from .schemas import VnBdsAggregatedListing, VnBdsAggregateInput, VnBdsAggregateOutput
 from .scoring import score_listing
@@ -156,43 +149,6 @@ def _filter_by_confidence(
 _BDS_ENTITY_TYPE = "bds_listing"
 
 
-def _build_bds_data(listing: VnBdsAggregatedListing) -> dict[str, Any]:
-    """Return a serializable copy of the listing, including excluded fields."""
-    data = listing.model_dump()
-    # source_prices are excluded from the API schema but kept for canonical
-    # provenance and merge history.
-    if listing.source_prices:
-        data["source_prices"] = listing.source_prices
-    return data
-
-
-def _redact_bds_snapshot(data: dict[str, Any]) -> dict[str, Any]:
-    """Return a source snapshot with PII fields removed or masked."""
-    # ponytail: source snapshots do not need matching keys, so we drop even
-    # one-way digests here. Central redaction removes owner/seller phones and
-    # any *phone* / *email* heuristic keys as a second guard.
-    return redact_source_snapshot(_BDS_ENTITY_TYPE, data)
-
-
-def _build_bds_canonical_data(
-    listing: VnBdsAggregatedListing,
-    data: dict[str, Any],
-) -> dict[str, Any]:
-    """Build canonical data with one-way keys for matching but no raw PII."""
-    canonical_data = dict(data)
-    # source_prices are intentionally excluded from the API schema but are
-    # safe and useful for canonical provenance/price-conflict history.
-    if listing.source_prices:
-        canonical_data["source_prices"] = listing.source_prices
-    # phone_key and address_key are one-way normalized keys safe for matching.
-    if listing.phone_key:
-        canonical_data["phone_key"] = listing.phone_key
-    if listing.address_key:
-        canonical_data["address_key"] = listing.address_key
-    canonical_data.pop("contact", None)
-    return canonical_data
-
-
 def _bds_source_record_id(source: str, listing: VnBdsAggregatedListing) -> str:
     """Return a stable source record id, falling back to a keyed digest."""
     raw_source_id = listing.source_ids.get(source)
@@ -222,74 +178,14 @@ def _bds_source_record_id(source: str, listing: VnBdsAggregatedListing) -> str:
     return f"{source}:{hashlib.sha256(text.encode('utf-8')).hexdigest()}"
 
 
-async def _persist_bds_listing(
-    session: AsyncSession,
-    workspace_id: int,
-    listing: VnBdsAggregatedListing,
-) -> None:
-    """Upsert one BĐS listing and each contributing source into canonical storage."""
-    data = _build_bds_data(listing)
-    source_snapshot = _redact_bds_snapshot(data)
-    canonical_data = _build_bds_canonical_data(listing, data)
-    fingerprint = listing.canonical_id
-    search_text_value = search_text(listing)
-    conflict_flags = [flag.model_dump() for flag in listing.conflict_flags]
-
-    # ponytail: day-one implementation links each source record separately.
-    # Each call to upsert_canonical_entity is idempotent on the entity
-    # fingerprint and on the (source_name, source_record_id) provenance key.
-    for source in listing.sources:
-        source_record_id = _bds_source_record_id(source, listing)
-        source_url = listing.detail_urls.get(source)
-        await upsert_canonical_entity(
-            session,
-            workspace_id=workspace_id,
-            entity_type=_BDS_ENTITY_TYPE,
-            fingerprint=fingerprint,
-            title=listing.title,
-            data=canonical_data,
-            search_text=search_text_value,
-            source_name=source,
-            source_record_id=source_record_id,
-            source_snapshot=source_snapshot,
-            source_url=source_url,
-            confidence_score=listing.confidence_score,
-            conflict_flags=conflict_flags,
-        )
-
-
-async def _stage_bds_persist_outbox(
-    session: AsyncSession,
-    workspace_id: int,
-    listing: VnBdsAggregatedListing,
-    error: str,
-) -> None:
-    """Stage a durable outbox row so a retry worker can finish persistence."""
-    data = _build_bds_data(listing)
-    canonical_data = _build_bds_canonical_data(listing, data)
-    payload = {
-        "workspace_id": workspace_id,
-        "entity_type": _BDS_ENTITY_TYPE,
-        "fingerprint": listing.canonical_id,
-        "title": listing.title,
-        "data": canonical_data,
-        "search_text": search_text(listing),
-        "sources": [
-            {
-                "source_name": source,
-                "source_record_id": _bds_source_record_id(source, listing),
-                "source_url": listing.detail_urls.get(source),
-            }
-            for source in listing.sources
-        ],
-    }
-    await set_canonical_workspace_id(session, workspace_id)
-    await create_persist_outbox(
-        session,
-        workspace_id=workspace_id,
-        entity_type=_BDS_ENTITY_TYPE,
-        payload=payload,
-        error=error,
+def _bds_to_chunk(listing: VnBdsAggregatedListing, fetched_at: str) -> Any:
+    """Serialize one BĐS aggregated listing into scraper ``Chunk[]``."""
+    return to_chunks(
+        domain="bds",
+        data=listing,
+        fetched_at=fetched_at,
+        content_type="text/markdown",
+        category="listing",
     )
 
 
@@ -298,41 +194,38 @@ async def _persist_bds_aggregates(
     workspace_id: int | None,
     listings: list[VnBdsAggregatedListing],
 ) -> tuple[Literal["ok", "partial", "failed", "not_attempted"], str | None]:
-    """Persist all listings and report ok/partial/failed/not_attempted."""
+    """Persist all listings to chainlens-research and report status."""
     if not session or workspace_id is None:
         return "not_attempted", None
 
-    succeeded = False
-    failed = False
-    message: str | None = None
+    if not listings:
+        return "ok", None
 
+    chunks: list[Any] = []
+    fetched_at = datetime.now(UTC).isoformat()
     for listing in listings:
         try:
-            await _persist_bds_listing(session, workspace_id, listing)
-            succeeded = True
-        except Exception as exc:
-            failed = True
-            message = str(exc)
-            logger.exception("BDS listing %s failed to persist", listing.canonical_id)
-            record_canonical_persist_failure(
-                domain="vn_bds",
-                reason=categorize_exception(exc),
+            chunks.extend(_bds_to_chunk(listing, fetched_at))
+        except Exception:
+            logger.exception(
+                "BDS listing %s chunk serialization failed", listing.canonical_id
             )
-            try:
-                await _stage_bds_persist_outbox(
-                    session, workspace_id, listing, str(exc)
-                )
-            except Exception:
-                logger.exception(
-                    "BDS persist outbox for %s also failed",
-                    listing.canonical_id,
-                )
 
-    if failed and not succeeded:
-        return "failed", message
-    if failed:
-        return "partial", "One or more listings failed to persist"
-    return "ok", None
+    if not chunks:
+        return "ok", None
+
+    try:
+        ingest_service = NowingIngestService()
+        await ingest_service.ingest(
+            scraper_id="vn_bds",
+            chunks=chunks,
+            workspace_id=workspace_id,
+            session=None,
+        )
+        return "ok", None
+    except Exception as exc:
+        logger.exception("BDS aggregate chainlens ingest failed")
+        return "failed", str(exc)
 
 
 async def _execute_source(

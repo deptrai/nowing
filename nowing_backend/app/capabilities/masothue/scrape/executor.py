@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
 from typing import Any
 
-from app.canonical.services.canonical_persist_service import upsert_canonical_entity
 from app.capabilities.core import Executor
 from app.capabilities.core.progress import emit_progress
 from app.capabilities.core.types import CapabilityContext
@@ -22,7 +22,8 @@ from app.proprietary.platforms.masothue.schemas import (
     MasothueScrapeOutput,
     MasothueSearchInput,
 )
-from app.services.company_aggregator import fingerprint, search_text
+from app.services.chainlens.ingest import NowingIngestService
+from app.services.scraper_chunks.serializer import to_chunks
 
 from .schemas import ScrapeInput, ScrapeOutput
 
@@ -121,30 +122,36 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
         rate = getattr(config, "MASOTHUE_SCRAPE_MICROS_PER_ITEM", 3000)
         cost = 0 if degraded else total * rate
 
-        # Persist each company to the canonical entity store.
+        # Feed scraper output to chainlens-research via the canonical scraper ingest contract.
         if ctx is not None:
+            chunks: list[Any] = []
+            fetched_at = datetime.now(UTC).isoformat()
             for item in items:
+                item["title"] = item.get("name") or ""
                 try:
-                    fp = fingerprint(item)
-                    text = search_text(item)
-                    title = item.get("name") or ""
-                    source_record_id = item.get("tax_code") or fp
-                    await upsert_canonical_entity(
-                        ctx.session,
-                        workspace_id=ctx.workspace_id,
-                        entity_type="company",
-                        fingerprint=fp,
-                        title=title,
-                        data=item,
-                        search_text=text,
-                        source_name="masothue",
-                        source_record_id=source_record_id,
-                        source_snapshot=item,
-                        source_url=item.get("detail_url"),
-                        source_fingerprint=fp,
+                    chunks.extend(
+                        to_chunks(
+                            domain="masothue",
+                            data=item,
+                            fetched_at=fetched_at,
+                            content_type="company",
+                            category="company",
+                        )
                     )
                 except Exception:
-                    logger.exception("masothue canonical upsert failed")
+                    logger.exception("masothue chunk serialization failed")
+            if chunks:
+                try:
+                    ingest_service = NowingIngestService()
+                    await ingest_service.ingest(
+                        scraper_id="masothue",
+                        chunks=chunks,
+                        workspace_id=ctx.workspace_id,
+                        session=ctx.session,
+                        run_id=ctx.run_id,
+                    )
+                except Exception:
+                    logger.exception("masothue chainlens ingest failed")
 
         emit_progress(
             "done",

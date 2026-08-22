@@ -794,7 +794,7 @@ class SequencerService:
         workspace_id: int,
     ) -> SequenceEvent | None:
         """Execute the current step for an enrollment under Redis distributed lock (AC-5, AC-6)."""
-        from app.canonical.tenant_context import set_request_tenant_context
+        from app.tenant_context import set_request_tenant_context
 
         redis_client = await get_redis_client()
         lock_key = f"sequence:lock:enrollment:{workspace_id}:{enrollment_id}"

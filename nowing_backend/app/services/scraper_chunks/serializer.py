@@ -23,7 +23,8 @@ except Exception:  # pragma: no cover - tiktoken may be unavailable in minimal e
 
 # Domain registry. Unknown domains default to listing-style serialization.
 _JOB_DOMAINS = {"vn_jobs", "itviec", "topcv", "vietnamworks"}
-_LISTING_DOMAINS = {"bds", "batdongsan", "chotot", "muaban_bds"}
+_LISTING_DOMAINS = {"bds", "batdongsan", "chotot", "muaban_bds", "masothue"}
+_NEWS_DOMAINS = {"news", "news_article"}
 _STOCK_DOMAINS = {"cafef", "vietstock"}
 
 # Canonical wire-domain names exposed in ChunkMetadata.domain (Story 12.3 AC-9).
@@ -49,6 +50,11 @@ def _is_job_domain(domain: str) -> bool:
 def _is_listing_domain(domain: str) -> bool:
     """Return True if ``domain`` is a known listing domain."""
     return domain in _LISTING_DOMAINS
+
+
+def _is_news_domain(domain: str) -> bool:
+    """Return True if ``domain`` is a known news/article domain."""
+    return domain in _NEWS_DOMAINS
 
 
 def _is_stock_domain(domain: str) -> bool:
@@ -117,6 +123,10 @@ def _required_fields(domain: str) -> list[str]:
         return ["title", "company", "location"]
     if _is_stock_domain(domain):
         return ["symbol"]
+    if _is_news_domain(domain):
+        return ["title"]
+    if domain == "masothue":
+        return ["title"]
     return ["title", "city", "district", "price"]
 
 
@@ -171,6 +181,25 @@ def _build_content(domain: str, data: dict[str, Any]) -> str:
             _add_part("Description", description)
         if requirement:
             _add_part("Requirements", requirement)
+    elif _is_news_domain(domain) or domain == "masothue":
+        # Generic article/company record: include all non-empty top-level fields
+        # so downstream ChainLens can still search on title, description, etc.
+        title = _get(data, "title") or ""
+        description = _redact_text(
+            _get(data, "description"), domain=domain, context="default"
+        )
+        _add_part("Title", title)
+        if description:
+            _add_part("Description", description)
+        for key, value in sorted(data.items()):
+            if value is None or value == "":
+                continue
+            if key in ("title", "description"):
+                continue
+            if isinstance(value, (dict, list)):
+                _add_part(key.title(), _fmt(value))
+            else:
+                _add_part(key.title(), _fmt(value))
     elif _is_stock_domain(domain):
         # Stock quote or financial-statement record.
         prebuilt = _get(data, "content")
@@ -271,6 +300,21 @@ def _identity_fields(domain: str, data: dict[str, Any]) -> dict[str, Any]:
             "symbol": str(symbol).upper(),
             "statement_type": str(statement_type).lower(),
             "period": str(period).upper(),
+        }
+
+    if domain == "masothue":
+        tax_code = _get(data, "tax_code")
+        if tax_code:
+            return {"tax_code": str(tax_code)}
+
+    if _is_news_domain(domain):
+        link = _get(data, "link")
+        if link:
+            return {"link": str(link)}
+        return {
+            "title": _get(data, "title"),
+            "pubDate": _get(data, "pub_date", "pubDate"),
+            "source": _get(data, "source"),
         }
 
     canonical_id = _get(data, "canonical_id", "id")
@@ -490,7 +534,13 @@ def to_chunks(
     oversize content at token boundaries while preserving ``chunkIndex`` /
     ``chunkTotal`` metadata.
     """
-    if not _is_job_domain(domain) and not _is_listing_domain(domain) and not _is_stock_domain(domain):
+    if (
+        not _is_job_domain(domain)
+        and not _is_listing_domain(domain)
+        and not _is_news_domain(domain)
+        and not _is_stock_domain(domain)
+        and domain != "masothue"
+    ):
         logger.warning(
             "Domain %s is not in the scraper_chunks registry; defaulting to listing layout",
             domain,

@@ -16,7 +16,6 @@ from uuid import UUID
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.canonical.tenant_context import set_request_tenant_context
 from app.db import Memory, User
 from app.services.memory.document import parse_memory_document, render_memory_document
 from app.services.memory.parser import parse_memory_markdown_to_facts
@@ -35,6 +34,7 @@ from app.services.memory.validation import (
     validate_memory_scope,
     validate_memory_size,
 )
+from app.tenant_context import set_request_tenant_context
 
 logger = logging.getLogger(__name__)
 

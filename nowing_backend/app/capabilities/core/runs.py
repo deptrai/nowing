@@ -20,8 +20,8 @@ from typing import TYPE_CHECKING, Any
 from pydantic import BaseModel
 from sqlalchemy import select, text
 
-from app.canonical.tenant_context import set_request_tenant_context
 from app.db import Run, ToolOutputSpill
+from app.tenant_context import set_request_tenant_context
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession

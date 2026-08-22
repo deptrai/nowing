@@ -11,10 +11,10 @@ import numpy as np
 from sqlalchemy import Float, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.canonical.tenant_context import set_request_tenant_context
 from app.config import config
 from app.db import Memory, MemoryType
 from app.services.memory.vector import VectorValidationError, validate_embedding_vector
+from app.tenant_context import set_request_tenant_context
 
 logger = logging.getLogger(__name__)
 

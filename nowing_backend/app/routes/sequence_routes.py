@@ -12,7 +12,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.auth.context import AuthContext
-from app.canonical.tenant_context import set_request_tenant_context
 from app.db import (
     Sequence,
     SequenceEnrollment,
@@ -35,6 +34,7 @@ from app.services.sequencer_service import (
     DeferredChannelError,
     SequencerService,
 )
+from app.tenant_context import set_request_tenant_context
 from app.users import get_auth_context
 from app.utils.rbac import check_workspace_access
 

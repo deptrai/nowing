@@ -19,7 +19,6 @@ from typing import Any
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import select
 
-from app.canonical.tenant_context import set_request_tenant_context
 from app.capabilities.core import execute_with_context
 from app.capabilities.core.billing import charge_capability, gate_capability
 from app.capabilities.core.runs import record_run, serialize_output
@@ -27,6 +26,7 @@ from app.capabilities.core.store import get_capability
 from app.capabilities.core.types import CapabilityContext
 from app.db import Memory, MemorySourceType
 from app.services.memory.repository import MemoryRepository
+from app.tenant_context import set_request_tenant_context
 
 logger = logging.getLogger(__name__)
 

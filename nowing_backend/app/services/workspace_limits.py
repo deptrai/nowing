@@ -16,7 +16,6 @@ from fastapi import HTTPException
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.canonical.tenant_context import set_request_tenant_context
 from app.config import config
 from app.db import (
     Document,
@@ -27,6 +26,7 @@ from app.db import (
     WorkspaceMembership,
 )
 from app.file_storage.persistence.models import DocumentFile
+from app.tenant_context import set_request_tenant_context
 
 
 @dataclass

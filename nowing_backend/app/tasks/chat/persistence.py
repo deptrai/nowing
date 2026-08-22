@@ -59,7 +59,6 @@ from sqlalchemy import text as sa_text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.future import select
 
-from app.canonical.tenant_context import set_request_tenant_context
 from app.db import (
     NewChatMessage,
     NewChatMessageRole,
@@ -70,6 +69,7 @@ from app.db import (
 from app.services.token_tracking_service import (
     TurnTokenAccumulator,
 )
+from app.tenant_context import set_request_tenant_context
 from app.utils.perf import get_perf_logger
 
 logger = logging.getLogger(__name__)

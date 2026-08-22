@@ -27,7 +27,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.canonical.tenant_context import set_request_tenant_context
 from app.capabilities.chainlens.research.schemas import ResearchOutput, Source
 from app.capabilities.core import execute_with_context
 from app.capabilities.core.access.rate_limit import enforce_capability_rate_limit
@@ -52,6 +51,7 @@ from app.exceptions import ExternalServiceError, NowingError
 from app.services.chainlens.gap_fill import GapFillRequest, GapFillService
 from app.services.web_crawl_credit_service import InsufficientCreditsError
 from app.services.workspace_limits import workspace_limit_service
+from app.tenant_context import set_request_tenant_context
 from app.users import get_auth_context
 from app.utils.rbac import check_workspace_access
 

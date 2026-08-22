@@ -29,7 +29,6 @@ import logging
 
 from sqlalchemy import select, update
 
-from app.canonical.tenant_context import set_request_tenant_context
 from app.celery_app import celery_app
 from app.observability.metrics import (
     record_run_memory_failed,
@@ -42,6 +41,7 @@ from app.services.memory.run_extraction import (
     RunMemoryExtractionService,
 )
 from app.tasks.celery_tasks import run_async_celery_task
+from app.tenant_context import set_request_tenant_context
 
 logger = logging.getLogger(__name__)
 

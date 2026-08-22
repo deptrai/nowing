@@ -18,7 +18,6 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.canonical.tenant_context import set_request_tenant_context
 from app.capabilities.core import execute_with_context
 from app.capabilities.core.billing import charge_capability
 from app.capabilities.core.events import run_event_bus
@@ -38,6 +37,7 @@ from app.services.chainlens.gap_fill import GapFillRequest, GapFillService
 from app.services.memory.run_enqueue import (
     enqueue_run_memory_extraction_after_commit,
 )
+from app.tenant_context import set_request_tenant_context
 
 logger = logging.getLogger(__name__)
 

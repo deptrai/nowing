@@ -9,10 +9,10 @@ from uuid import UUID
 
 from celery import shared_task
 
-from app.canonical.tenant_context import set_request_tenant_context
 from app.db import async_session_maker
 from app.services.billing_service import BillingService
 from app.services.phone_waterfall_service import PhoneWaterfallService
+from app.tenant_context import set_request_tenant_context
 
 logger = logging.getLogger(__name__)
 

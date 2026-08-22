@@ -409,6 +409,8 @@ development_status:
   td-5: backlog  # title_gen.py lacks timeout/retry on litellm.acompletion (P1, affects chat UX)
   td-6: backlog  # verify_chat_image_capability.py lacks num_retries (P3, diagnostic script)
   td-7: backlog  # No unit test coverage for test_model function (P2, integration tests mock it)
+  td-8: backlog  # Epic 13 canonical entity cleanup — `CanonicalEntity` / `app/canonical/` / `canonical_entities_routes.py` deprecated after chainlens-research owns canonical index (SCP 2026-08-08). P2; deprecate then drop.
+  # 2026-08-22 re-verify: td-1..td-7 remain valid backlog per code audit.
   tech-debt-retrospective: optional
 
 validation_reports:

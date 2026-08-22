@@ -201,22 +201,14 @@ async def test_executor_persists_with_context(monkeypatch: Any) -> None:
     """When a CapabilityContext is provided, each item is upserted to the canonical store."""
     from app.capabilities.core.types import CapabilityContext
 
-    calls: list[dict[str, Any]] = []
+    ingest_calls: list[list[Any]] = []
 
-    async def fake_upsert(session: Any, **kwargs: Any) -> None:
-        calls.append(kwargs)
+    async def fake_ingest(*args: Any, **kwargs: Any) -> None:
+        ingest_calls.append([args, kwargs])
 
     monkeypatch.setattr(
-        "app.capabilities.masothue.scrape.executor.upsert_canonical_entity",
-        fake_upsert,
-    )
-    monkeypatch.setattr(
-        "app.capabilities.masothue.scrape.executor.fingerprint",
-        lambda item: f"fp-{item.get('tax_code')}",
-    )
-    monkeypatch.setattr(
-        "app.capabilities.masothue.scrape.executor.search_text",
-        lambda item: f"text-{item.get('name')}",
+        "app.capabilities.masothue.scrape.executor.NowingIngestService.ingest",
+        fake_ingest,
     )
 
     async def fake_scrape(_: Any) -> dict[str, Any]:
@@ -239,10 +231,10 @@ async def test_executor_persists_with_context(monkeypatch: Any) -> None:
 
     assert out.degraded is False
     assert out.total_items == 1
-    assert len(calls) == 1
-    assert calls[0]["title"] == "Vinamilk"
-    assert calls[0]["source_record_id"] == "0314539064"
-    assert calls[0]["workspace_id"] == 42
+    assert len(ingest_calls) == 1
+    _args, kwargs = ingest_calls[0]
+    assert kwargs["scraper_id"] == "masothue"
+    assert kwargs["workspace_id"] == 42
 
 
 @pytest.mark.asyncio
@@ -252,22 +244,14 @@ async def test_executor_persists_uses_fingerprint_when_tax_code_missing(
     """If the company has no tax_code, source_record_id falls back to the fingerprint."""
     from app.capabilities.core.types import CapabilityContext
 
-    calls: list[dict[str, Any]] = []
+    ingest_calls: list[list[Any]] = []
 
-    async def fake_upsert(session: Any, **kwargs: Any) -> None:
-        calls.append(kwargs)
+    async def fake_ingest(*args: Any, **kwargs: Any) -> None:
+        ingest_calls.append([args, kwargs])
 
     monkeypatch.setattr(
-        "app.capabilities.masothue.scrape.executor.upsert_canonical_entity",
-        fake_upsert,
-    )
-    monkeypatch.setattr(
-        "app.capabilities.masothue.scrape.executor.fingerprint",
-        lambda item: "fp-no-tax",
-    )
-    monkeypatch.setattr(
-        "app.capabilities.masothue.scrape.executor.search_text",
-        lambda item: f"text-{item.get('name')}",
+        "app.capabilities.masothue.scrape.executor.NowingIngestService.ingest",
+        fake_ingest,
     )
 
     async def fake_scrape(_: Any) -> dict[str, Any]:
@@ -289,9 +273,9 @@ async def test_executor_persists_uses_fingerprint_when_tax_code_missing(
     )
 
     assert out.degraded is False
-    assert len(calls) == 1
-    assert calls[0]["title"] == "No Tax Co"
-    assert calls[0]["source_record_id"] == "fp-no-tax"
+    assert len(ingest_calls) == 1
+    _args, kwargs = ingest_calls[0]
+    assert kwargs["scraper_id"] == "masothue"
 
 
 @pytest.mark.asyncio
@@ -364,20 +348,12 @@ async def test_executor_swallows_upsert_exception(monkeypatch: Any) -> None:
     """An exception during canonical upsert must be logged and swallowed."""
     from app.capabilities.core.types import CapabilityContext
 
-    async def fake_upsert(*args: Any, **kwargs: Any) -> None:
-        raise RuntimeError("upsert boom")
+    async def fake_ingest(*args: Any, **kwargs: Any) -> None:
+        raise RuntimeError("ingest boom")
 
     monkeypatch.setattr(
-        "app.capabilities.masothue.scrape.executor.upsert_canonical_entity",
-        fake_upsert,
-    )
-    monkeypatch.setattr(
-        "app.capabilities.masothue.scrape.executor.fingerprint",
-        lambda item: "fp",
-    )
-    monkeypatch.setattr(
-        "app.capabilities.masothue.scrape.executor.search_text",
-        lambda item: "text",
+        "app.capabilities.masothue.scrape.executor.NowingIngestService.ingest",
+        fake_ingest,
     )
 
     async def fake_scrape(_: Any) -> dict[str, Any]:

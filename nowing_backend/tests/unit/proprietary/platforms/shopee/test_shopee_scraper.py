@@ -222,7 +222,6 @@ class TestShopeeScraperResilienceAndErrorHandling:
 
         import respx
 
-        from app.proprietary.platforms.shopee import scraper as shopee_module
 
         async def _hang(request):
             await asyncio.sleep(61)

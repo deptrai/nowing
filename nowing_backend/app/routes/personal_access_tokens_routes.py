@@ -7,7 +7,6 @@ from sqlalchemy.future import select
 
 from app.auth.agent_chat import _validate_slug, validate_scopes
 from app.auth.context import AuthContext
-from app.canonical.tenant_context import set_request_tenant_context
 from app.config import config
 from app.db import (
     AgentConfig,
@@ -16,6 +15,7 @@ from app.db import (
     get_async_session,
 )
 from app.schemas.pat import PATCreate, PATCreated, PATRead
+from app.tenant_context import set_request_tenant_context
 from app.users import require_non_impersonated_session, require_session_context
 from app.utils.pat import generate_pat, hash_pat, token_prefix
 from app.utils.rbac import is_workspace_owner

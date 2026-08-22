@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -49,7 +48,6 @@ async def test_persist_not_attempted_without_session():
         company="FPT",
         source="vietnamworks",
     )
-    listing._source_record_ids = {"vietnamworks": "vw:123"}
 
     status, message = await _persist_jobs_aggregates(None, 1, [listing])
 
@@ -65,7 +63,6 @@ async def test_persist_not_attempted_without_workspace_id(session):
         company="FPT",
         source="vietnamworks",
     )
-    listing._source_record_ids = {"vietnamworks": "vw:123"}
 
     status, message = await _persist_jobs_aggregates(session, None, [listing])
 
@@ -81,7 +78,6 @@ async def test_persist_not_attempted_with_non_async_session():
         company="FPT",
         source="vietnamworks",
     )
-    listing._source_record_ids = {"vietnamworks": "vw:123"}
 
     status, message = await _persist_jobs_aggregates(SimpleNamespace(), 1, [listing])
 
@@ -89,113 +85,37 @@ async def test_persist_not_attempted_with_non_async_session():
     assert message is None
 
 
-async def test_persist_ok_when_all_sources_succeed(
+async def test_persist_ok_when_ingest_succeeds(
     session, sample_listing, monkeypatch
 ):
-    """Successful persistence of all sources returns 'ok' and no message."""
+    """Successful chainlens ingest returns 'ok' and no message."""
     monkeypatch.setattr(
-        "app.services.jobs_aggregator.orchestrator.upsert_canonical_entity",
+        "app.services.jobs_aggregator.orchestrator.NowingIngestService.ingest",
         AsyncMock(return_value=None),
-    )
-    stage = AsyncMock(return_value=None)
-    monkeypatch.setattr(
-        "app.services.jobs_aggregator.orchestrator._stage_jobs_persist_outbox", stage
     )
 
     status, message = await _persist_jobs_aggregates(session, 1, [sample_listing])
 
     assert status == "ok"
     assert message is None
-    assert stage.call_count == 0
 
 
-async def test_persist_partial_when_one_source_fails(
+async def test_persist_failed_when_ingest_fails(
     session, sample_listing, monkeypatch
 ):
-    """A listing with at least one failed source but also one success is 'partial'."""
-    sample_listing._source_record_ids = {"vietnamworks": "vw:123", "topcv": "tc:456"}
-    sample_listing._source_url_map = {
-        "vietnamworks": "https://vietnamworks.com/123",
-        "topcv": "https://topcv.com/456",
-    }
-
-    async def fake_upsert(session, **kwargs: Any) -> None:
-        if kwargs.get("source_name") == "topcv":
-            raise RuntimeError("topcv persist failed")
-
+    """If chainlens ingest fails, return 'failed' and the error."""
     monkeypatch.setattr(
-        "app.services.jobs_aggregator.orchestrator.upsert_canonical_entity",
-        fake_upsert,
-    )
-    stage = AsyncMock(return_value=None)
-    monkeypatch.setattr(
-        "app.services.jobs_aggregator.orchestrator._stage_jobs_persist_outbox", stage
-    )
-
-    status, message = await _persist_jobs_aggregates(session, 1, [sample_listing])
-
-    assert status == "partial"
-    assert message is not None
-    assert stage.call_count == 1
-
-
-async def test_persist_failed_when_all_sources_fail(
-    session, sample_listing, monkeypatch
-):
-    """If every source fails for every listing, return 'failed' and the first error."""
-    monkeypatch.setattr(
-        "app.services.jobs_aggregator.orchestrator.upsert_canonical_entity",
-        AsyncMock(side_effect=RuntimeError("persist failed")),
-    )
-    stage = AsyncMock(return_value=None)
-    monkeypatch.setattr(
-        "app.services.jobs_aggregator.orchestrator._stage_jobs_persist_outbox", stage
+        "app.services.jobs_aggregator.orchestrator.NowingIngestService.ingest",
+        AsyncMock(side_effect=RuntimeError("ingest failed")),
     )
 
     status, message = await _persist_jobs_aggregates(session, 1, [sample_listing])
 
     assert status == "failed"
-    assert "persist failed" in message
-    assert stage.call_count == 1
+    assert "ingest failed" in message
 
 
-async def test_persist_stages_outbox_for_each_failed_listing(
-    session, sample_listing, monkeypatch
-):
-    """A failed listing triggers _stage_jobs_persist_outbox with its error."""
-    monkeypatch.setattr(
-        "app.services.jobs_aggregator.orchestrator.upsert_canonical_entity",
-        AsyncMock(side_effect=RuntimeError("listing failed")),
-    )
-    stage = AsyncMock(return_value=None)
-    monkeypatch.setattr(
-        "app.services.jobs_aggregator.orchestrator._stage_jobs_persist_outbox", stage
-    )
-
-    await _persist_jobs_aggregates(session, 1, [sample_listing])
-
-    assert stage.call_count == 1
-    call_args = stage.call_args[0]
-    assert call_args[1] == 1  # workspace_id
-    assert call_args[2] == sample_listing  # listing
-    assert "listing failed" in call_args[3]  # error
-
-
-async def test_persist_logs_when_outbox_also_fails(
-    session, sample_listing, monkeypatch, caplog
-):
-    """If _stage_jobs_persist_outbox also raises, it is logged and the run continues."""
-    monkeypatch.setattr(
-        "app.services.jobs_aggregator.orchestrator.upsert_canonical_entity",
-        AsyncMock(side_effect=RuntimeError("listing failed")),
-    )
-    stage = AsyncMock(side_effect=RuntimeError("outbox failed"))
-    monkeypatch.setattr(
-        "app.services.jobs_aggregator.orchestrator._stage_jobs_persist_outbox", stage
-    )
-
-    with caplog.at_level("ERROR"):
-        status, _ = await _persist_jobs_aggregates(session, 1, [sample_listing])
-
-    assert status == "failed"
-    assert any("outbox" in record.message for record in caplog.records)
+async def test_persist_ok_when_no_listings(session):
+    status, message = await _persist_jobs_aggregates(session, 1, [])
+    assert status == "ok"
+    assert message is None

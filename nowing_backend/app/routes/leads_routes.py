@@ -14,7 +14,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.auth.context import AuthContext
-from app.canonical.tenant_context import set_request_tenant_context
 from app.db import (
     CompanyDecisionMaker,
     Lead,
@@ -48,6 +47,7 @@ from app.proprietary.platforms.crawler.fast_crawler import (
 from app.services.billing_service import BillingService
 from app.services.phone_waterfall_service import PhoneWaterfallService
 from app.tasks.phone_waterfall_worker import resolve_phone_waterfall_task
+from app.tenant_context import set_request_tenant_context
 from app.users import get_auth_context
 from app.utils.rbac import check_permission, has_permission
 

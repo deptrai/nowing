@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from app.connectors.exceptions import ConnectorAPIError, ConnectorAuthError
-from app.services.chainlens.ingest import IngestResult, NowingIngestService
+from app.services.chainlens.ingest import NowingIngestService
 
 pytestmark = pytest.mark.unit
 

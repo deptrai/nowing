@@ -1,1 +1,0 @@
-"""Canonical entity integration tests."""

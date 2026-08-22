@@ -12,7 +12,6 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.canonical.tenant_context import set_request_tenant_context
 from app.db import (
     Lead,
     LeadActivityLog,
@@ -40,6 +39,7 @@ from app.services.lead_assignment_service import (
     NoEligibleAssigneeError,
 )
 from app.services.workspace_credit_service import WorkspaceCreditService
+from app.tenant_context import set_request_tenant_context
 from app.users import get_auth_context
 from app.utils.rbac import check_workspace_access, is_workspace_owner
 

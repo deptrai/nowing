@@ -207,8 +207,6 @@ celery_app = Celery(
         "app.automations.triggers.builtin.event.selector",
         "app.alerts.engine.tick",
         "app.automations.triggers.builtin.memory_change.selector",
-        "app.canonical.tasks.backfill_canonical_embedding",
-        "app.canonical.tasks.process_canonical_persist_outbox",
         "app.tasks.celery_tasks.partner_payout_reconciliation_task",
         "app.tasks.lead_scrapers",
     ],

@@ -576,6 +576,7 @@ The following 4 deferred items have been promoted to dedicated tech-debt stories
   4. Drop tables after all dependent code is removed.
 - **Priority:** P2 — not blocking integration work, but should run before Phase 1 GA to avoid data-migration pain.
 - **When to revisit:** After `NowingIngestService` and `chainlens-research` `POST /v1/ingest/scraper` are in production and no live call path touches Epic 13 tables.
+- **2026-08-22 update:** Cleanup story added as `td-8` in `sprint-status.yaml`. Deprecation warning added to `nowing_backend/app/canonical/__init__.py`. Next: identify all live call paths, mark routes deprecated, then schedule table/column removal.
 
 ## Deferred from: code review of 7-7-mcp-server-tool-expansion (2026-08-09)
 

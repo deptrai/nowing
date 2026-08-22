@@ -31,7 +31,6 @@ from app.agents.chat.multi_agent_chat.shared.filesystem_selection import (
     FilesystemSelection,
 )
 from app.auth.context import AuthContext
-from app.canonical.tenant_context import set_request_tenant_context
 from app.db import ChatVisibility, NewChatThread, async_session_maker
 from app.observability import otel as ot
 from app.services.chat_session_state_service import set_ai_responding
@@ -96,6 +95,7 @@ from app.tasks.chat.streaming.flows.shared.terminal_error import (
 )
 from app.tasks.chat.streaming.shared.stream_result import StreamResult
 from app.tasks.chat.streaming.shared.utils import resume_step_prefix
+from app.tenant_context import set_request_tenant_context
 from app.utils.perf import get_perf_logger
 
 logger = logging.getLogger(__name__)

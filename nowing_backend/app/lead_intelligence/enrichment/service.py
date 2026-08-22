@@ -17,7 +17,6 @@ from uuid import UUID, uuid4
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.canonical.tenant_context import set_request_tenant_context
 from app.capabilities.core.types import CapabilityContext
 from app.config import config
 from app.db import (
@@ -47,6 +46,7 @@ from app.services.pii.verified_contact_encryption import (
     VerifiedContactDict,
     VerifiedContactEncryption,
 )
+from app.tenant_context import set_request_tenant_context
 
 logger = logging.getLogger(__name__)
 

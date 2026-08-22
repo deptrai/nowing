@@ -253,7 +253,6 @@ markers = [
     "integration: tests that require a real PostgreSQL database",
     "memory: tests for the memory subsystem",
     "test_id: test identifier marker",
-    "canonical: tests for the canonical entity persistence subsystem",
     "expensive: streaming or LLM-heavy tests that should be skipped in quick CI runs",
 ]
 filterwarnings = [

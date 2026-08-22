@@ -7,16 +7,12 @@ import re
 import unicodedata
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
+from typing import Any
 from urllib.parse import urlparse
 
 from sqlalchemy import delete as sa_delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.canonical.services.canonical_cleanup import (
-    delete_canonical_sources_by_record_ids,
-    delete_orphaned_canonical_entities,
-)
-from app.canonical.services.canonical_persist_service import upsert_canonical_entity
 from app.db import (
     Chunk,
     Document,
@@ -29,8 +25,10 @@ from app.indexing_pipeline.indexing_pipeline_service import (
     IndexingPipelineService,
     PlaceholderInfo,
 )
+from app.services.chainlens.ingest import NowingIngestService
 from app.services.news.rss_config import get_feeds_for_workspace
 from app.services.news.rss_fetcher import _MISSING_PUB_DATE, NewsArticle, fetch_feed
+from app.services.scraper_chunks.serializer import to_chunks
 from app.services.task_logging_service import TaskLoggingService
 
 from .base import get_connector_by_id, logger, update_connector_last_indexed
@@ -148,13 +146,10 @@ async def _persist_canonical_articles(
     articles: list[NewsArticle],
     connector_id: int,
 ) -> None:
-    """Upsert canonical entities so syndicated articles merge across portals."""
+    """Send RSS articles to chainlens-research via the scraper ingest contract."""
+    fetched_at = datetime.now(UTC).isoformat()
+    chunks: list[Any] = []
     for article in articles:
-        fingerprint = _news_fingerprint(article)
-        search_text = f"{article.title} {article.description}"
-        if article.category:
-            search_text = f"{search_text} {article.category}"
-
         data = {
             "title": article.title,
             "link": article.link,
@@ -163,24 +158,32 @@ async def _persist_canonical_articles(
             "category": article.category,
             "source": article.source,
         }
+        try:
+            chunks.extend(
+                to_chunks(
+                    domain="news",
+                    data=data,
+                    fetched_at=fetched_at,
+                    content_type="text/markdown",
+                    category="news_article",
+                )
+            )
+        except Exception:
+            logger.exception("RSS article chunk serialization failed: %s", article.link)
 
-        await upsert_canonical_entity(
-            session,
+    if not chunks:
+        return
+
+    try:
+        ingest_service = NowingIngestService()
+        await ingest_service.ingest(
+            scraper_id=f"rss:{connector_id}",
+            chunks=chunks,
             workspace_id=workspace_id,
-            entity_type="news_article",
-            fingerprint=fingerprint,
-            title=article.title,
-            data=data,
-            search_text=search_text,
-            source_name=_source_name_for_canonical(article),
-            source_record_id=article.link,
-            source_url=article.link,
-            source_snapshot=data,
-            source_fingerprint=fingerprint,
-            confidence_score=0.9,
-            actor=f"rss-connector:{connector_id}",
-            merge_method="rss_fingerprint",
+            session=None,
         )
+    except Exception:
+        logger.exception("RSS chainlens ingest failed")
 
 
 def _parse_meta_date(pub_date: str | None) -> datetime | None:
@@ -246,12 +249,8 @@ async def _prune_stale_articles(
         await session.execute(sa_delete(Chunk).where(Chunk.document_id.in_(batch)))
     await session.execute(sa_delete(Document).where(Document.id.in_(doc_ids)))
 
-    # Remove canonical provenance for the pruned articles, then sweep any
-    # entities left without sources.
-    await delete_canonical_sources_by_record_ids(session, workspace_id, pruned_links)
-    await delete_orphaned_canonical_entities(
-        session, workspace_id, entity_types=["news_article"]
-    )
+    # chainlens-research owns canonical indexing; Nowing only stores the
+    # source documents here, so no extra canonical cleanup is required.
     await session.commit()
 
     logger.info(

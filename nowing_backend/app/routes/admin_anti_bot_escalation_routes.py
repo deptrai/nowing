@@ -18,7 +18,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.auth.context import AuthContext
-from app.canonical.tenant_context import set_request_tenant_context
 from app.capabilities.core.async_runner import start_async_run
 from app.capabilities.core.store import get_capability
 from app.db import (
@@ -40,6 +39,7 @@ from app.services.anti_bot_escalation import (
     list_escalations,
     resolve_escalation,
 )
+from app.tenant_context import set_request_tenant_context
 from app.users import get_auth_context
 
 router = APIRouter(prefix="/admin/anti-bot-escalations")

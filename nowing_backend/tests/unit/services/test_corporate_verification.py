@@ -12,8 +12,7 @@ Tests:
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
@@ -31,15 +30,9 @@ from app.services.corporate_verification_service import (
     parse_charter_capital_vnd,
 )
 from tests.fixtures.masothue_mock import (
-    MOCK_CLOUDFLARE_CHALLENGE_HTML,
-    MOCK_MASOTHUE_AMBIGUOUS_COMPANY,
     MOCK_MASOTHUE_FPT,
-    MOCK_MASOTHUE_LANDMARK,
-    MOCK_MASOTHUE_LEGACY_PHONE_COMPANY,
-    MOCK_MASOTHUE_VNG,
     MockMasothueClient,
 )
-
 
 # ─────────────────────────────────────────────────────────────
 # 1. Multi-Attribute Fuzzy Matching Tests (AC-1 / INV-24.3)

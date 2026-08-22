@@ -27,7 +27,6 @@ from app.auth.agent_chat import (
     require_agent_chat_pat as _require_agent_chat_pat,
 )
 from app.auth.context import AuthContext
-from app.canonical.tenant_context import set_request_tenant_context
 from app.config import config
 from app.db import NewChatThread, ResearchThread, TokenUsage, get_async_session
 from app.rate_limiter import check_agent_chat_limits, hit_agent_chat_limits
@@ -41,6 +40,7 @@ from app.schemas.agent_chat import (
 )
 from app.services.agent_chat.audit import log_public_call as audit
 from app.tasks.chat.streaming.flows.new_chat.orchestrator import stream_new_chat
+from app.tenant_context import set_request_tenant_context
 
 AGENT_CHAT_PUBLIC_ENABLED: bool = config.AGENT_CHAT_PUBLIC_ENABLED
 
