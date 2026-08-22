@@ -115,7 +115,7 @@ class _FakeSession:
         self._value = value
         self._calls = calls
 
-    async def execute(self, stmt):
+    async def execute(self, stmt, *args, **kwargs):
         self._calls.append(str(stmt))
         return _FakeResult(self._value)
 

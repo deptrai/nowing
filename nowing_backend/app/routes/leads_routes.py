@@ -61,8 +61,10 @@ def _escape_ilike_term(term: str) -> str:
     return term.replace("!", "!!").replace("%", "!%").replace("_", "!_")
 
 
-def _can_view_all_leads(membership: WorkspaceMembership) -> bool:
+def _can_view_all_leads(membership: WorkspaceMembership | None) -> bool:
     """Owners and members with lead-management permissions may view all leads."""
+    if not membership:
+        return False
     if membership.is_owner:
         return True
     if membership.role and membership.role.permissions:
@@ -102,7 +104,7 @@ async def _require_lead_visible(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Lead not found",
         )
-    user_id = membership.user_id
+    user_id = membership.user_id if membership else None
     if not _can_view_all_leads(membership) and lead.assigned_to_user_id != user_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -281,7 +283,7 @@ async def list_workspace_leads(
         .where(Lead.workspace_id == workspace_id)
         .options(selectinload(Lead.verified_contacts))
     )
-    if not _can_view_all_leads(membership):
+    if membership and not _can_view_all_leads(membership):
         stmt = stmt.where(Lead.assigned_to_user_id == membership.user_id)
 
     if client_id is not None:
@@ -534,7 +536,7 @@ async def get_company_graph(
         )
         .distinct()
     )
-    if not _can_view_all_leads(membership):
+    if membership and not _can_view_all_leads(membership):
         contacts_stmt = contacts_stmt.where(Lead.assigned_to_user_id == membership.user_id)
     contacts_result = await session.execute(contacts_stmt)
     db_contacts = contacts_result.scalars().all()
@@ -647,7 +649,7 @@ async def get_company_graph(
         )
         .limit(1)
     )
-    if not _can_view_all_leads(membership):
+    if membership and not _can_view_all_leads(membership):
         lead_stmt = lead_stmt.where(Lead.assigned_to_user_id == membership.user_id)
     lead_res = await session.execute(lead_stmt)
     lead_obj = lead_res.scalar_one_or_none()

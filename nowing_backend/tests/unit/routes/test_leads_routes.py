@@ -61,7 +61,7 @@ class _FakeSession:
     def add(self, obj: Any) -> None:
         self.added.append(obj)
 
-    async def execute(self, stmt: Any) -> _FakeResult:
+    async def execute(self, stmt: Any, *args, **kwargs) -> _FakeResult:
         stmt_str = str(stmt)
         if "count" in stmt_str.lower():
             return _FakeResult(value=len(self._leads))
@@ -113,6 +113,7 @@ def _create_mock_lead(
         intent_score=88.0,
         composite_score=fit_score,
         status=status,
+        assigned_to_user_id=None,
         enriched=True,
         consent_status="granted",
         legal_basis="legitimate_interest",
