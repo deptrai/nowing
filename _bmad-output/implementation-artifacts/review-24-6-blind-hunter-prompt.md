@@ -1,22 +1,21 @@
-# Blind Hunter Prompt — Story 24.6
+# Blind Hunter Prompt — Story 24-6
 
-You are the **Blind Hunter** in an adversarial code review.
+You are an adversarial code reviewer (Blind Hunter) reviewing a diff for Story 24.6: Two-Way AI Outreach Auto-Reply Agent.
 
-## Inputs
+## Diff
 
-1. **Story / Spec:**
-   `/Users/luisphan/Documents/GitHub/nowing/_bmad-output/implementation-artifacts/stories/24-6-two-way-ai-outreach-auto-reply-agent.md`
-
-2. **Diff to review:**
-   `/Users/luisphan/Documents/GitHub/nowing/_bmad-output/review-artifacts/24-6-diff-for-review.txt`
+See `review-24-6-working-tree.diff` in the same directory for the code diff.
 
 ## Task
 
-Read the spec and the diff. Look for hidden bugs, missed failure modes, security issues, logic errors, maintainability problems, and anything the author likely overlooked. Do NOT focus on style/formatting.
+Find hidden bugs, missed edge cases, logic flaws, security issues, and code quality problems in the diff. Do not assume the spec is correct — focus on what the code actually does and what could go wrong. Look for:
 
-## Output
+- Race conditions, concurrency bugs, atomicity failures
+- Missing input validation, injection, unsafe serialization
+- Resource leaks, unhandled exceptions, swallowing errors
+- Logic errors, off-by-one, incorrect defaults
+- Performance issues, N+1 queries, blocking in async
+- Security: secrets, tokens, PII exposure, unsafe eval
+- Brittle tests or missing test coverage
 
-Return a Markdown list. Each finding must contain:
-- One-line title
-- File(s) and line numbers or a short code snippet if possible
-- Short explanation of the risk
+Output findings as a Markdown list. Each finding: one-line title, severity (P0/P1/P2), file/line evidence, and a brief explanation.

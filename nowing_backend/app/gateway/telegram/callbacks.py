@@ -537,8 +537,8 @@ async def handle_callback_query(
         )
         return
 
-    # Check nhan_tu_van:{thread_id}:{lead_id} callback
-    if data.startswith("nhan_tu_van:"):
+    # Check nhan_tu_van / ntv:{thread_id}:{lead_id} callback
+    if data.startswith("nhan_tu_van:") or data.startswith("ntv:"):
         ntv_parts = data.split(":", 2)
         if len(ntv_parts) != 3:
             if callback_query_id:

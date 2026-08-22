@@ -31,6 +31,9 @@ class InboundDebounceService:
     def _buffer_key(self, channel: str, sender_id: str) -> str:
         return f"inbound_debounce:{channel}:{sender_id}"
 
+    def _scheduled_key(self, channel: str, sender_id: str) -> str:
+        return f"{self._buffer_key(channel, sender_id)}:scheduled"
+
     async def buffer_inbound_message(
         self,
         channel: str,
@@ -57,19 +60,26 @@ class InboundDebounceService:
             await pipe.execute()
 
         # Schedule the 3s debounce flush worker if caller provided routing context.
+        # Use a Redis flag so a burst of messages only schedules one worker.
         workspace_id = (payload or {}).get("workspace_id")
         thread_id = (payload or {}).get("thread_id")
         account_id = (payload or {}).get("account_id")
         binding_id = (payload or {}).get("binding_id")
         if workspace_id and thread_id and account_id and binding_id:
             try:
-                from app.celery_app import celery_app
-
-                celery_app.send_task(
-                    "gateway.process_auto_reply_buffer",
-                    args=(channel, sender_id, workspace_id, thread_id, account_id, binding_id),
-                    countdown=self.debounce_window,
+                scheduled_key = self._scheduled_key(channel, sender_id)
+                redis = await self._redis_client()
+                newly_scheduled = await redis.set(
+                    scheduled_key, "1", nx=True, ex=self.debounce_window + 5
                 )
+                if newly_scheduled:
+                    from app.celery_app import celery_app
+
+                    celery_app.send_task(
+                        "gateway.process_auto_reply_buffer",
+                        args=(channel, sender_id, workspace_id, thread_id, account_id, binding_id),
+                        countdown=self.debounce_window,
+                    )
             except Exception as e:
                 logger.warning("Failed to schedule auto-reply buffer worker: %s", e)
         return True

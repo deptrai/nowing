@@ -7,18 +7,19 @@ Adheres to:
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import re
 from dataclasses import dataclass, field
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from litellm import completion_cost
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import config
-from app.db import Chunk, Document, Workspace, async_session_maker
+from app.db import Chunk, Document, Lead, Workspace, async_session_maker
 from app.redis_client import get_redis_client as _get_shared_redis_client
 from app.services.token_tracking_service import UsageType, record_token_usage
 
@@ -252,6 +253,7 @@ class AutoReplyAgent:
         try:
             from app.gateway.telegram.client import TelegramClient
             from app.gateway.zalo.telegram_alerts import (
+                _resolve_telegram_chat_and_token,
                 build_lead_telegram_alert,
             )
 
@@ -267,10 +269,16 @@ class AutoReplyAgent:
                 logger.warning("Hot lead alert skipped: no recipient chat id for workspace %s", workspace_id)
                 return
 
-            # Use shared bot token if no bound account is available.
-            token = config.TELEGRAM_SHARED_BOT_TOKEN
-            if not token:
-                logger.warning("Hot lead alert skipped: no Telegram bot token configured")
+            # Validate the chat id belongs to a bound workspace Telegram channel
+            # and resolve the bot token (bound account token or shared fallback).
+            chat_id, token = await _resolve_telegram_chat_and_token(
+                session, workspace_id, target_chat_id
+            )
+            if not chat_id or not token:
+                logger.warning(
+                    "Hot lead alert skipped: unauthorized or missing Telegram chat/token for workspace %s",
+                    workspace_id,
+                )
                 return
 
             lead_name = "Khách hàng tiềm năng"
@@ -297,14 +305,16 @@ class AutoReplyAgent:
                 [
                     {
                         "text": "\u2705 Nhận Tư Vấn",
-                        "callback_data": f"nhan_tu_van:{thread_id}:{lead_id_str or ''}",
+                        "callback_data": self._build_nhan_tu_van_callback_data(
+                            thread_id, lead_id_str
+                        ),
                     }
                 ]
             )
 
             client = TelegramClient(token)
             await client.send_message(
-                chat_id=target_chat_id,
+                chat_id=chat_id,
                 text=text,
                 parse_mode="MarkdownV2",
                 reply_markup=keyboard,
@@ -319,6 +329,17 @@ class AutoReplyAgent:
         except Exception as e:
             logger.error("Failed to dispatch hot lead alert: %s", e, exc_info=True)
 
+    def _build_nhan_tu_van_callback_data(
+        self, thread_id: str, lead_id: str | None
+    ) -> str:
+        """Build a short Telegram callback_data string that fits the 64-byte limit."""
+        data = f"ntv:{thread_id}:{lead_id or ''}"
+        if len(data.encode("utf-8")) > 64:
+            # If somehow still too long, drop the lead_id and let the handler
+            # reject the click with a clear message instead of breaking Telegram.
+            return "ntv:overflow:"
+        return data
+
     async def _get_or_create_lead(
         self,
         session: AsyncSession,
@@ -326,9 +347,7 @@ class AutoReplyAgent:
         sender_id: str,
         channel: str,
     ) -> Any | None:
-        """Find an existing lead by external sender id or return None."""
-        from app.db import Lead
-
+        """Find an existing lead by external sender id or create a new one."""
         try:
             result = await session.execute(
                 select(Lead).where(
@@ -336,8 +355,37 @@ class AutoReplyAgent:
                     Lead.client_id == sender_id,
                 )
             )
-            return await result.scalars().first()
+            lead = result.scalars().first()
+            if lead is not None:
+                return lead
+
+            # Create a placeholder lead for a first-time hot prospect so the
+            # human takeover callback has a valid lead_id to assign.
+            value_hmac = hashlib.sha256(
+                f"{workspace_id}:{channel}:{sender_id}".encode()
+            ).hexdigest()
+            lead = Lead(
+                id=uuid4(),
+                workspace_id=workspace_id,
+                client_id=sender_id,
+                source=channel,
+                company_name="Khách hàng tiềm năng",
+                value_hmac=value_hmac,
+                status="new",
+                enriched=False,
+                intent_score=0.0,
+            )
+            session.add(lead)
+            await session.flush()
+            logger.info(
+                "Created lead %s for auto-reply sender %s in workspace %s",
+                lead.id,
+                sender_id,
+                workspace_id,
+            )
+            return lead
         except Exception:
+            logger.exception("Failed to get or create lead for auto-reply")
             return None
 
     async def generate_reply(

@@ -9,6 +9,9 @@
 - **Finding:** Zalo signature verification (INV-23.11) is pre-existing in `app/gateway/zalo/webhook.py` and not changed by this story.
   - **Action:** Marked `[x] [Review][Defer]` in `24-6-two-way-ai-outreach-auto-reply-agent.md`.
   - **Reason / when to revisit:** Pre-existing webhook signature verification; revisit when Story 24.6 explicitly touches Zalo webhook handlers.
+- **Finding:** Human-in-the-Loop takeover from CRM not wired — AC-4 requires human rep outbound message to set `auto_reply_paused`, but the outbound path is pre-existing and not connected to `pause_auto_reply`.
+  - **Action:** Marked `[x] [Review][Defer]` in `24-6-two-way-ai-outreach-auto-reply-agent.md`.
+  - **Reason / when to revisit:** Outbound CRM → channel path is not in this diff; revisit when CRM inbox sends outbound messages or Story 24.6b is scheduled.
 
 ## Deferred from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-08-21)
 

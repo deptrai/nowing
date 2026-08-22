@@ -16,8 +16,8 @@ from app.db import (
     ExternalChatHealthStatus,
     ExternalChatInboundEvent,
     ExternalChatPlatform,
-    User,
     Workspace,
+    WorkspaceMembership,
 )
 from app.gateway.inbox import persist_inbound_event, telegram_event_dedupe_key
 from app.gateway.registry import resolve_platform_bundle
@@ -200,9 +200,17 @@ def process_auto_reply_buffer_task(
             if workspace.user_id:
                 user_id = workspace.user_id
             else:
-                owner = await session.get(User, workspace.user_id)
+                owner_membership = await session.execute(
+                    select(WorkspaceMembership)
+                    .where(
+                        WorkspaceMembership.workspace_id == workspace_id,
+                        WorkspaceMembership.is_owner.is_(True),
+                    )
+                    .limit(1)
+                )
+                owner = owner_membership.scalars().first()
                 if owner is not None:
-                    user_id = owner.id
+                    user_id = owner.user_id
 
             binding = await session.get(ExternalChatBinding, binding_id)
             account = await session.get(ExternalChatAccount, account_id) if binding else None
