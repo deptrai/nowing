@@ -30,6 +30,7 @@ from app.db import (
     ExternalChatHealthStatus,
     ExternalChatPeerKind,
     ExternalChatPlatform,
+    Permission,
     get_async_session,
 )
 from app.gateway.accounts import (
@@ -46,14 +47,16 @@ from app.gateway.inbox import (
     telegram_event_dedupe_key,
 )
 from app.gateway.pairing import generate_pairing_code, pairing_expires_at
+from app.gateway.registry import resolve_platform_bundle
 from app.gateway.slack.adapter import slack_user_peer_id
 from app.observability.metrics import (
     record_gateway_inbox_write,
     record_gateway_webhook_parse_error,
 )
+from app.services.auto_reply_agent import pause_auto_reply
 from app.users import get_auth_context
 from app.utils.oauth_security import OAuthStateManager, TokenEncryption
-from app.utils.rbac import check_workspace_access
+from app.utils.rbac import check_permission, check_workspace_access
 
 router = APIRouter(prefix="/gateway", tags=["gateway"])
 config_router = APIRouter(prefix="/gateway", tags=["gateway"])
@@ -186,6 +189,10 @@ class UpdateBindingWorkspaceRequest(BaseModel):
 
 class UpdateAccountWorkspaceRequest(BaseModel):
     workspace_id: int
+
+
+class SendBindingMessageRequest(BaseModel):
+    text: str
 
 
 def _active_whatsapp_account_mode() -> ExternalChatAccountMode | None:
@@ -1141,3 +1148,60 @@ async def resume_external_chat_binding(
     binding.updated_at = datetime.now(UTC)
     await session.commit()
     return {"ok": True}
+
+
+@router.post("/bindings/{binding_id}/send")
+async def send_message_to_binding(
+    binding_id: int,
+    body: SendBindingMessageRequest,
+    auth: AuthContext = Depends(get_auth_context),
+    session: AsyncSession = Depends(get_async_session),
+) -> dict[str, Any]:
+    """Allow a workspace member to send a message to an external chat thread.
+
+    Marks the thread as human-controlled and pauses AI auto-reply for 24h (AC-4).
+    """
+    binding = await session.get(ExternalChatBinding, binding_id)
+    if binding is None:
+        raise HTTPException(status_code=404, detail="Binding not found")
+
+    await check_permission(
+        session,
+        auth,
+        binding.workspace_id,
+        Permission.LEADS_WRITE,
+        error_message="You don't have permission to send messages in this workspace",
+    )
+
+    account = await session.get(ExternalChatAccount, binding.account_id)
+    if account is None or _is_inactive_whatsapp_account(account):
+        raise HTTPException(status_code=404, detail="Binding account not found")
+
+    bundle = resolve_platform_bundle(account)
+    target_peer = binding.external_peer_id
+    if not target_peer:
+        raise HTTPException(
+            status_code=400,
+            detail="Binding has no external peer to send to",
+        )
+
+    try:
+        result = await bundle.adapter.send_message(
+            external_peer_id=target_peer,
+            text=body.text,
+        )
+    except Exception as exc:
+        logger.error("Failed to send message via binding %s: %s", binding_id, exc)
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to send message: {exc}",
+        ) from exc
+
+    # Human-in-the-loop: pause auto-reply for this thread for 24h.
+    await pause_auto_reply(str(binding.id))
+
+    return {
+        "ok": True,
+        "external_message_id": result.external_message_id,
+        "auto_reply_paused": True,
+    }

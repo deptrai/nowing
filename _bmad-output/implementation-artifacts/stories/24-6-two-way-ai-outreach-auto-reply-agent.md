@@ -3,7 +3,7 @@ story_key: "24-6"
 epic: "epic-24"
 story: "24.6"
 title: "Two-Way AI Outreach Auto-Reply Agent"
-status: "review"
+status: "done"
 baseline_commit: "6ac305274"
 ---
 
@@ -154,9 +154,9 @@ So that no customer inquiry is left unanswered 24/7 while my time is focused on 
 - [x] [Review][Patch] Hot-lead alert bypasses workspace-telegram binding validation — `nowing_backend/app/services/auto_reply_agent.py:270-274, 305-311` — uses `config.TELEGRAM_SHARED_BOT_TOKEN` and sends to an arbitrary `recipient_chat_id` without validating it is a bound channel in the workspace.
 - [x] [Review][Patch] Telegram callback_data may exceed 64-byte limit — `nowing_backend/app/services/auto_reply_agent.py:300` — `nhan_tu_van:{thread_id}:{lead_id}` is currently near the Telegram limit; should assert length in tests or shorten encoding.
 
-#### defer
-- [x] [Review][Defer] Human-in-the-Loop takeover from CRM not wired — `nowing_backend/app/gateway/inbox_processor.py` outbound path — AC-4 requires human rep message to set `auto_reply_paused`, but the outbound path is pre-existing and not connected to `pause_auto_reply`.
-- [x] [Review][Defer] Zalo OA webhook signature verification — `nowing_backend/app/gateway/zalo/webhook.py` — pre-existing, not changed by this diff.
+#### defer → resolved
+- [x] [Review][Resolved] Human-in-the-Loop takeover from CRM — added `POST /api/v1/gateway/bindings/{binding_id}/send` in `nowing_backend/app/routes/gateway_webhook_routes.py`; route pauses `auto_reply_paused:{binding_id}` for 24h after a successful human send.
+- [x] [Review][Dismissed] Zalo OA webhook signature verification — already fully implemented in `nowing_backend/app/routes/outbound_routes.py:672` (`verify_zalo_signature`); no change needed.
 
 ---
 

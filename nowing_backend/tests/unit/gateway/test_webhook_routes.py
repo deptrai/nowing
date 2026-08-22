@@ -350,3 +350,77 @@ def test_discord_gateway_callback_does_not_create_search_source_connector():
     callback_source = inspect.getsource(routes.discord_gateway_callback)
 
     assert "SearchSourceConnector" not in callback_source
+
+
+@pytest.mark.asyncio
+async def test_send_message_to_binding_pauses_auto_reply(mocker, monkeypatch):
+    from uuid import uuid4
+
+    from app.db import ExternalChatBinding
+
+    binding = ExternalChatBinding(
+        id=1,
+        account_id=123,
+        workspace_id=42,
+        user_id=uuid4(),
+        external_peer_id="peer-123",
+        external_peer_kind="direct",
+    )
+    account = ExternalChatAccount(
+        id=123,
+        platform=ExternalChatPlatform.TELEGRAM,
+        mode=ExternalChatAccountMode.CLOUD_SHARED,
+        is_system_account=True,
+    )
+
+    auth = AuthContext(
+        method="session",
+        user=SimpleNamespace(id=uuid4(), is_superuser=False),
+    )
+
+    session = mocker.AsyncMock()
+    session.get.side_effect = [binding, account]
+
+    membership = mocker.MagicMock()
+    membership.is_owner = True
+    membership.role = None
+
+    workspace = mocker.MagicMock()
+    workspace.api_access_enabled = True
+
+    def _resolve_first(stmt):
+        return membership if "WorkspaceMembership" in str(stmt) else workspace
+
+    async def _fake_execute(stmt):
+        result = mocker.MagicMock()
+        scalars = mocker.MagicMock()
+        scalars.first = mocker.MagicMock(side_effect=lambda: _resolve_first(stmt))
+        result.scalars.return_value = scalars
+        return result
+
+    session.execute = mocker.AsyncMock(side_effect=_fake_execute)
+
+    adapter = mocker.AsyncMock()
+    adapter.send_message = mocker.AsyncMock(return_value=SimpleNamespace(external_message_id="msg-1"))
+    bundle = SimpleNamespace(adapter=adapter)
+    mocker.patch(
+        "app.routes.gateway_webhook_routes.resolve_platform_bundle",
+        return_value=bundle,
+    )
+    pause_mock = mocker.patch(
+        "app.routes.gateway_webhook_routes.pause_auto_reply",
+        new=mocker.AsyncMock(),
+    )
+
+    response = await routes.send_message_to_binding(
+        binding_id=1,
+        body=routes.SendBindingMessageRequest(text="Hello from CRM"),
+        auth=auth,
+        session=session,
+    )
+
+    assert response["ok"] is True
+    assert response["external_message_id"] == "msg-1"
+    assert response["auto_reply_paused"] is True
+    adapter.send_message.assert_awaited_once_with(external_peer_id="peer-123", text="Hello from CRM")
+    pause_mock.assert_awaited_once_with("1")

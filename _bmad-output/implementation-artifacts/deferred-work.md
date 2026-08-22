@@ -4,14 +4,14 @@
   - **Action:** Marked `[x] [Review][Defer]` in `24-7-multi-channel-drip-outreach-campaign-engine.md`.
   - **Reason / when to revisit:** Owned by contact-unlock/refund work (Story 26.x); revisit when that billing path is reviewed.
 
-## Deferred from: code review of 24-6-two-way-ai-outreach-auto-reply-agent (2026-08-22)
+## Resolved from: code review of 24-6-two-way-ai-outreach-auto-reply-agent (2026-08-22)
 
-- **Finding:** Zalo signature verification (INV-23.11) is pre-existing in `app/gateway/zalo/webhook.py` and not changed by this story.
-  - **Action:** Marked `[x] [Review][Defer]` in `24-6-two-way-ai-outreach-auto-reply-agent.md`.
-  - **Reason / when to revisit:** Pre-existing webhook signature verification; revisit when Story 24.6 explicitly touches Zalo webhook handlers.
-- **Finding:** Human-in-the-Loop takeover from CRM not wired — AC-4 requires human rep outbound message to set `auto_reply_paused`, but the outbound path is pre-existing and not connected to `pause_auto_reply`.
-  - **Action:** Marked `[x] [Review][Defer]` in `24-6-two-way-ai-outreach-auto-reply-agent.md`.
-  - **Reason / when to revisit:** Outbound CRM → channel path is not in this diff; revisit when CRM inbox sends outbound messages or Story 24.6b is scheduled.
+- **Finding:** Zalo signature verification (INV-23.11) was deferred but is already fully implemented in `app/routes/outbound_routes.py:672`.
+  - **Action:** Marked `[x] [Review][Dismissed]` in `24-6-two-way-ai-outreach-auto-reply-agent.md`.
+  - **Resolution:** `zalo_inbound_webhook` calls `verify_zalo_signature` with `connection.webhook_secret` before processing; no code change needed.
+- **Finding:** Human-in-the-Loop takeover from CRM not wired — AC-4 requires human rep message to set `auto_reply_paused`.
+  - **Action:** Marked `[x] [Review][Resolved]` in `24-6-two-way-ai-outreach-auto-reply-agent.md`.
+  - **Resolution:** Added `POST /api/v1/gateway/bindings/{binding_id}/send` in `app/routes/gateway_webhook_routes.py`; on success it calls `pause_auto_reply(str(binding.id))` for 24h. Unit test `tests/unit/gateway/test_webhook_routes.py::test_send_message_to_binding_pauses_auto_reply` passes.
 
 ## Deferred from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-08-21)
 

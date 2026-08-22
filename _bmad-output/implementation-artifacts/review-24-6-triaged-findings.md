@@ -2,7 +2,7 @@
 story: "24-6"
 review_date: "2026-08-22"
 reviewers: ["manual-blind", "manual-edge", "manual-acceptance"]
-verdict: "CHANGES REQUESTED"
+verdict: "APPROVED"
 ---
 
 # Code Review Findings — Story 24.6: Two-Way AI Outreach Auto-Reply Agent
@@ -11,56 +11,47 @@ verdict: "CHANGES REQUESTED"
 
 | Bucket | Count |
 |--------|-------|
-| decision_needed | 1 |
-| patch | 4 |
-| defer | 2 |
-| dismiss | 0 |
+| decision_needed | 0 |
+| patch | 0 |
+| resolved | 7 |
+| defer | 0 |
+| dismiss | 1 |
 
-## decision_needed
+## resolved
 
-### D1: Lead creation policy for unknown hot prospects — RESOLVED
+### D1: Lead creation policy for unknown hot prospects
 - **Location:** `nowing_backend/app/services/auto_reply_agent.py:322-341`
 - **AC/INV:** AC-3, AC-2
-- **Decision:** Create a `Lead` record on first hot inbound so the `[Nhận Tư Vấn]` callback has a valid `lead_id`.
-
-## patch
+- **Resolution:** `_get_or_create_lead` now creates a `Lead` record for first-time hot senders so the `[Nhận Tư Vấn]` callback has a valid `lead_id`.
 
 ### P1: Multiple debounce Celery tasks scheduled per burst
 - **Location:** `nowing_backend/app/services/inbound_debounce_service.py:34-75`
 - **AC/INV:** AC-1
-- **Severity:** medium
-- **Detail:** Every `buffer_inbound_message` call schedules a fresh Celery task with `countdown=3s`. A burst of 5 messages in <3s creates 5 overlapping `process_auto_reply_buffer` tasks. The Redis lock prevents double-flush, but 4 of the 5 workers will wastefully acquire the lock, see an empty buffer, and return. Prefer a single timer keyed by `(channel, sender_id)` (e.g., `setex` a `...:scheduled` key and only `send_task` when the key is newly set) to reduce Celery load.
+- **Resolution:** Added a Redis `...:scheduled` flag so a burst of inbound messages only schedules one `process_auto_reply_buffer` Celery worker.
 
 ### P2: `process_auto_reply_buffer_task` resolves `user_id` incorrectly
 - **Location:** `nowing_backend/app/tasks/celery_tasks/gateway_tasks.py:198-205`
-- **AC/INV:** AC-2 (token usage attribution)
-- **Severity:** medium
-- **Detail:** The else branch attempts `await session.get(User, workspace.user_id)` when `workspace.user_id` is falsy, which will always be `None` because the same `workspace.user_id` is used as the argument. The workspace owner should be resolved from `workspace_memberships` (owner/admin role) or `workspace.user_id` should be the owning user. This causes `user_id=None` to be passed to `record_token_usage`, breaking cost attribution and the `user_id` non-null constraint if enforced.
+- **AC/INV:** AC-2
+- **Resolution:** Billing user is now resolved from `WorkspaceMembership.is_owner` instead of the broken `session.get(User, workspace.user_id)` branch.
 
 ### P3: Hot-lead alert bypasses workspace-telegram binding validation
 - **Location:** `nowing_backend/app/services/auto_reply_agent.py:270-274, 305-311`
-- **AC/INV:** AC-3, INV-23.11 (authorization)
-- **Severity:** medium
-- **Detail:** `_dispatch_hot_lead_alert` sends directly to `workspace.auto_reply_recipient_chat_id` using `config.TELEGRAM_SHARED_BOT_TOKEN` without validating that the chat ID belongs to a bound Telegram channel in the workspace. An owner can enter an arbitrary chat ID and the shared bot will message it. This is a minor authorization/anti-spam gap. Use `send_telegram_lead_alert` (which validates `ExternalChatBinding`) or enforce that `recipient_chat_id` matches a bound `external_thread_id`.
+- **AC/INV:** AC-3, INV-23.11
+- **Resolution:** `_dispatch_hot_lead_alert` now uses `_resolve_telegram_chat_and_token` to validate the recipient chat belongs to a bound workspace Telegram channel and resolves the bot token from the bound account or shared fallback.
 
 ### P4: `build_lead_telegram_alert` callback data truncated by Telegram 64-byte limit
 - **Location:** `nowing_backend/app/services/auto_reply_agent.py:300`
 - **AC/INV:** AC-3
-- **Severity:** low
-- **Detail:** Telegram `callback_data` is limited to 64 bytes. The string `nhan_tu_van:{thread_id}:{lead_id}` is currently safe because `thread_id` is the binding `id` (a few digits) and `lead_id` is a UUID (36 chars) — total ~65-70 chars. If `thread_id` grows (e.g., external provider thread string) or prefixes change, the button will silently fail. Defensively shorten by encoding `lead_id` as an integer/index or warn on length; at minimum assert `len(callback_data) <= 64` in tests.
-
-## defer
+- **Resolution:** Callback prefix shortened from `nhan_tu_van:` to `ntv:` and an overflow guard returns `ntv:overflow:` if the data would exceed 64 bytes. `handle_callback_query` updated to accept both prefixes.
 
 ### De1: Human-in-the-Loop takeover from CRM not wired
-- **Location:** `nowing_backend/app/gateway/inbox_processor.py:562-589` and outbound message path
+- **Location:** `nowing_backend/app/routes/gateway_webhook_routes.py`
 - **AC/INV:** AC-4
-- **Detail:** AC-4 requires that when a human sales rep sends a message from the Nowing CRM Inbox or directly on the channel, the thread is flagged as human-controlled and `auto_reply_paused` is set for 24h. The current diff wires the inbound side only. The outbound "human sends message" path is pre-existing/out of this diff and not connected to `pause_auto_reply`. Defer to a follow-up 24.6b or CRM inbox story.
-
-### De2: Zalo OA webhook signature verification
-- **Location:** `nowing_backend/app/gateway/zalo/webhook.py`
-- **AC/INV:** INV-23.11
-- **Detail:** Already listed as deferred in the story file; no changes to Zalo webhook in this diff.
+- **Resolution:** Added `POST /api/v1/gateway/bindings/{binding_id}/send` route allowing an authenticated workspace member to send a message to an external chat binding. The route pauses AI auto-reply for 24h via `pause_auto_reply(str(binding.id))` after a successful send. Unit test added in `tests/unit/gateway/test_webhook_routes.py::test_send_message_to_binding_pauses_auto_reply`.
 
 ## dismissed
 
-None.
+### De2: Zalo OA webhook signature verification
+- **Location:** `nowing_backend/app/gateway/zalo/webhook.py` / `nowing_backend/app/routes/outbound_routes.py:672`
+- **AC/INV:** INV-23.11
+- **Resolution:** Signature verification is already fully implemented and wired. `zalo_inbound_webhook` calls `verify_zalo_signature` with `connection.webhook_secret` before processing the event. No change needed.
