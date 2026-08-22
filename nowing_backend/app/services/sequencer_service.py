@@ -13,10 +13,11 @@ Handles:
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 import random
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, time, timedelta
 from typing import Any
 from uuid import UUID, uuid4
@@ -38,6 +39,9 @@ from app.db import (
     Workspace,
     WorkspaceDncRecord,
 )
+from app.gateway.accounts import account_token, get_or_create_system_telegram_account
+from app.gateway.telegram.adapter import TelegramAdapter
+from app.gateway.zalo.zns_client import ZnsClient
 from app.lead_intelligence.dnc.normalizer import (
     hash_phone_hmac,
     normalize_email,
@@ -58,11 +62,35 @@ VN_TZ = ZoneInfo("Asia/Ho_Chi_Minh")
 ALLOWED_OUTBOUND_CHANNELS = ["email"]
 
 # Opt-out trigger keywords
-OPT_OUT_KEYWORDS = {"stop", "huy", "hủy", "ngung", "ngưng", "unsubscribe", "optout", "opt-out"}
+OPT_OUT_KEYWORDS = {
+    "stop",
+    "huy",
+    "hủy",
+    "ngung",
+    "ngưng",
+    "unsubscribe",
+    "optout",
+    "opt-out",
+}
 
 
 class DeferredChannelError(Exception):
     """Raised when an outreach channel is not supported in the MVP release (AD-41 / DEF-102)."""
+
+
+@dataclass
+class ChannelAnalytics:
+    """Per-channel metrics for a sequence."""
+
+    channel: str = "email"
+    sent: int = 0
+    delivered: int = 0
+    opened: int = 0
+    replied: int = 0
+    bounced: int = 0
+    failed: int = 0
+    skipped: int = 0
+    cost_micros: int = 0
 
 
 @dataclass
@@ -76,6 +104,7 @@ class SequenceAnalytics:
     unsubscribed_count: int = 0
     failed_count: int = 0
     total_cost_micros: int = 0
+    channel_breakdown: list[ChannelAnalytics] = field(default_factory=list)
 
 
 def calculate_step_eta(delay_seconds: int, from_dt: datetime | None = None) -> datetime:
@@ -92,6 +121,7 @@ def calculate_step_eta(delay_seconds: int, from_dt: datetime | None = None) -> d
     else:
         from_dt = from_dt.astimezone(VN_TZ)
 
+    delay_seconds = max(delay_seconds, 0)
     target_dt = from_dt + timedelta(seconds=delay_seconds)
     current_minute = target_dt.hour * 60 + target_dt.minute
     start_minute = 8 * 60  # 08:00
@@ -102,7 +132,9 @@ def calculate_step_eta(delay_seconds: int, from_dt: datetime | None = None) -> d
 
     jitter_seconds = random.randint(0, 1800)
     if current_minute < start_minute:
-        next_send = datetime.combine(target_dt.date(), time(hour=8, minute=5), tzinfo=VN_TZ)
+        next_send = datetime.combine(
+            target_dt.date(), time(hour=8, minute=5), tzinfo=VN_TZ
+        )
     else:
         next_day = target_dt.date() + timedelta(days=1)
         next_send = datetime.combine(next_day, time(hour=8, minute=5), tzinfo=VN_TZ)
@@ -110,7 +142,9 @@ def calculate_step_eta(delay_seconds: int, from_dt: datetime | None = None) -> d
     return next_send + timedelta(seconds=jitter_seconds)
 
 
-def interpolate_template_variables(template_str: str, variables: dict[str, Any], fallback_blank: bool = True) -> str:
+def interpolate_template_variables(
+    template_str: str, variables: dict[str, Any], fallback_blank: bool = True
+) -> str:
     """Replace template variables like {customer_name}, {company}, {property_title}."""
     if not template_str:
         return ""
@@ -125,7 +159,9 @@ def interpolate_template_variables(template_str: str, variables: dict[str, Any],
     return re.sub(r"\{([a-zA-Z0-9_]+)\}", _replace, template_str)
 
 
-def evaluate_condition_step(condition_config: dict[str, Any], context: dict[str, Any]) -> int | None:
+def evaluate_condition_step(
+    condition_config: dict[str, Any], context: dict[str, Any]
+) -> int | None:
     """Evaluate condition predicate (e.g. has_replied, opened) and return next step order or None."""
     predicate = condition_config.get("predicate", "has_replied")
     if_true_step = condition_config.get("if_true_step")
@@ -138,19 +174,409 @@ def evaluate_condition_step(condition_config: dict[str, Any], context: dict[str,
 class SequencerService:
     """Orchestration service for automated multi-step sequences."""
 
+    # AD-25 / AD-49: lead consent statuses that allow outbound communication
+    ENROLLABLE_CONSENT_STATUSES = {"granted", "confirmed", "opted_in"}
+
     def __init__(self) -> None:
         self.encryption = VerifiedContactEncryption()
         self.billing_service = BillingEventService()
 
-    async def validate_step_channel(self, channel: str) -> None:
+    def _get_redis(self):
+        return get_redis_client()
+
+    async def _get_redis_async(self):
+        res = self._get_redis()
+        if hasattr(res, "__await__") or asyncio.iscoroutine(res):
+            return await res
+        return res
+
+    async def validate_step_channel(self, channel: str) -> bool:
         """Validate outreach channel against allowed MVP channels (AD-41)."""
-        allowed = getattr(config, "SEQUENCER_OUTBOUND_CHANNELS", ALLOWED_OUTBOUND_CHANNELS)
+        allowed = getattr(
+            config, "SEQUENCER_OUTBOUND_CHANNELS", ALLOWED_OUTBOUND_CHANNELS
+        )
         if isinstance(allowed, str):
-            allowed = [c.strip() for c in allowed.split(",")]
-        if channel.lower() not in [c.lower() for c in allowed]:
+            allowed = [c.strip() for c in allowed.split(",") if c.strip()]
+        allowed_lower = {c.lower() for c in allowed}
+        if channel.lower() not in allowed_lower:
             raise DeferredChannelError(
                 f"Channel '{channel}' is deferred out of MVP (AD-41 / DEF-102). Only {allowed} supported."
             )
+        # AD-41 / DEF-102 legal gate: Zalo requires explicit re-activation.
+        if channel.lower() == "zalo" and not getattr(config, "AD_41_REACTIVATED", False):
+            raise DeferredChannelError(
+                "Channel 'zalo' is gated by AD-41 / DEF-102. Set AD_41_REACTIVATED=true after SCP sign-off."
+            )
+        return True
+
+    def calculate_step_eta(
+        self,
+        target_dt: datetime | None = None,
+        delay_seconds: int = 0,
+        from_dt: datetime | None = None,
+    ) -> datetime:
+        """AC-3: Calculate step ETA respecting quiet hours (08:00 - 21:30 VN Time) & jitter."""
+        base_dt = target_dt or from_dt or datetime.now(VN_TZ)
+        return calculate_step_eta(delay_seconds=delay_seconds, from_dt=base_dt)
+
+    async def check_outbound_compliance(
+        self,
+        session: AsyncSession,
+        workspace_id: int,
+        phone: str | None,
+        channel: str,
+        consent_status: str | None,
+        legal_basis: str | None,
+        external_chat_ids: dict[str, Any] | None = None,
+    ) -> bool:
+        """AC-4 / INV-24.2: Verify Consent & DNC Pre-check fail-closed."""
+        if not legal_basis or not str(legal_basis).strip():
+            return False
+        if consent_status not in self.ENROLLABLE_CONSENT_STATUSES:
+            return False
+
+        external_chat_ids = external_chat_ids or {}
+
+        # Fail-closed if the required channel identifier is missing.
+        if channel == "zalo" and (not phone or not str(phone).strip()):
+            return False
+        if channel == "telegram" and not external_chat_ids.get("telegram_chat_id"):
+            return False
+
+        dnc_key = (
+            getattr(config, "SECRET_KEY", None)
+            or "nowing-secret-key-for-dnc-compliance-32"
+        )
+        dnc_svc = DncComplianceService(secret_key=dnc_key)
+
+        # Check DNC by email/phone domain/tax when available.
+        if phone and str(phone).strip():
+            normalized = normalize_phone_e164(str(phone).strip())
+            if not normalized:
+                return False
+            dnc_result = await dnc_svc.is_blocked(
+                workspace_id=workspace_id,
+                phone=normalized,
+                session=session,
+            )
+            if dnc_result.is_blocked:
+                return False
+
+        return True
+
+    def get_billing_event_for_step(
+        self, channel: str, event_type: str = "sent"
+    ) -> dict[str, Any]:
+        """AD-42 / AD-48 / AC-7: Return billing event specification."""
+        if event_type == "meeting_booked":
+            return {
+                "event_type": "outcome_meeting_booked",
+                "event_entity_type": "outcome_event",
+                "cost_micros": 0,
+            }
+
+        channel_type_map = {
+            "email": "email_send",
+            "zalo": "zns_send",
+            "telegram": "telegram_send",
+        }
+        cost_map = {
+            "email": getattr(config, "SEQUENCE_EMAIL_COST_MICROS", 500),
+            "zalo": getattr(config, "SEQUENCE_ZNS_COST_MICROS", 300),
+            "telegram": getattr(config, "SEQUENCE_TELEGRAM_COST_MICROS", 0),
+        }
+        return {
+            "event_type": channel_type_map.get(channel, f"{channel}_send"),
+            "event_entity_type": "sequence_event",
+            "cost_micros": cost_map.get(channel, 0),
+        }
+
+    async def _send_email_dispatch(
+        self,
+        *,
+        to_email: str,
+        subject: str,
+        body: str,
+    ) -> str:
+        """Dispatch email via SMTP and return provider message id."""
+        return await self._send_email_async(to_email=to_email, subject=subject, body=body)
+
+    async def _send_telegram_dispatch(
+        self,
+        session: AsyncSession,
+        workspace_id: int,
+        chat_id: str,
+        text: str,
+        parse_mode: str | None = None,
+    ) -> str:
+        """Dispatch Telegram bot message for a workspace."""
+        account = await get_or_create_system_telegram_account(session)
+        token = account_token(account)
+        if not token:
+            if not getattr(config, "TELEGRAM_SHARED_BOT_TOKEN", None):
+                raise RuntimeError("missing_telegram_token")
+            token = str(config.TELEGRAM_SHARED_BOT_TOKEN)
+        adapter = TelegramAdapter(token)
+        result = await adapter.send_message(
+            external_peer_id=chat_id,
+            text=text,
+            parse_mode=parse_mode,
+        )
+        return result.external_message_id or f"tg_{uuid4().hex[:12]}"
+
+    async def _send_zns_dispatch(
+        self,
+        session: AsyncSession,
+        *,
+        workspace_id: int,
+        user_id: UUID | None,
+        phone: str,
+        template_id: str,
+        template_data: dict[str, Any],
+        lead_id: UUID,
+    ) -> str:
+        """Dispatch Zalo ZNS template for a workspace."""
+        cost_micros = int(getattr(config, "SEQUENCE_ZNS_COST_MICROS", 300))
+        client = ZnsClient()
+        res = await client.send_zns_template(
+            session,
+            workspace_id=workspace_id,
+            phone=phone,
+            template_id=template_id,
+            template_data=template_data,
+            user_id=user_id,
+            lead_id=lead_id,
+            cost_micros=cost_micros,
+        )
+        return res.get("msg_id") or f"zns_{uuid4().hex[:12]}"
+
+    async def _handle_send_step(
+        self,
+        session: AsyncSession,
+        sequence: Sequence,
+        step: SequenceStep,
+        enrollment: SequenceEnrollment,
+        lead: Lead,
+    ) -> SequenceEvent:
+        """AC-5 / AC-6 / AC-7: Multi-channel send step with fallback orchestration."""
+        await self.validate_step_channel(step.channel)
+
+        # 1. Resolve verified contact with external chat IDs for the primary channel.
+        contact = await self._resolve_verified_contact(session, lead, channel=step.channel)
+        if not contact or not contact.consent or not contact.is_valid:
+            logger.info(
+                "Skipping send step for lead %s: no consented contact for %s",
+                lead.id,
+                step.channel,
+            )
+            return await self._skip_step(
+                session,
+                sequence,
+                step,
+                enrollment,
+                reason="no_consent",
+                channel=step.channel,
+            )
+
+        # 2. Contact identifiers per channel
+        raw_email = None
+        raw_phone = None
+        telegram_chat_id = None
+        if step.channel == "email":
+            try:
+                raw_email = (
+                    self.encryption.decrypt(contact.email)
+                    if self.encryption.is_encrypted(contact.email)
+                    else contact.email
+                )
+            except Exception:
+                raw_email = contact.email
+            if not raw_email:
+                return await self._skip_step(
+                    session,
+                    sequence,
+                    step,
+                    enrollment,
+                    reason="missing_email",
+                    channel=step.channel,
+                )
+        else:
+            try:
+                raw_phone = (
+                    self.encryption.decrypt(contact.phone)
+                    if self.encryption.is_encrypted(contact.phone)
+                    else contact.phone
+                )
+            except Exception:
+                raw_phone = contact.phone
+            if step.channel == "telegram":
+                telegram_chat_id = (contact.external_chat_ids or {}).get("telegram_chat_id")
+                if not telegram_chat_id and raw_phone:
+                    # Best-effort fallback: normalize phone is not a chat id, so fail.
+                    pass
+                if not telegram_chat_id:
+                    return await self._skip_step(
+                        session,
+                        sequence,
+                        step,
+                        enrollment,
+                        reason="missing_telegram_chat_id",
+                        channel=step.channel,
+                    )
+            if step.channel == "zalo" and (not raw_phone or not str(raw_phone).strip()):
+                return await self._skip_step(
+                    session,
+                    sequence,
+                    step,
+                    enrollment,
+                    reason="missing_phone",
+                    channel=step.channel,
+                )
+
+        # 3. Compliance & DNC pre-check
+        is_allowed = await self.check_outbound_compliance(
+            session,
+            workspace_id=enrollment.workspace_id,
+            phone=raw_phone,
+            channel=step.channel,
+            consent_status=lead.consent_status,
+            legal_basis=lead.legal_basis,
+            external_chat_ids=contact.external_chat_ids or {},
+        )
+        if not is_allowed:
+            return await self._skip_step(
+                session,
+                sequence,
+                step,
+                enrollment,
+                reason="compliance_or_dnc",
+                channel=step.channel,
+            )
+
+        # 4. Wallet pre-check
+        billing_spec = self.get_billing_event_for_step(step.channel)
+        cost_micros = int(billing_spec["cost_micros"])
+        attributed_user_id = sequence.created_by_user_id
+        if not attributed_user_id:
+            ws = await session.get(Workspace, enrollment.workspace_id)
+            attributed_user_id = ws.user_id if ws else None
+
+        if cost_micros > 0 and attributed_user_id:
+            try:
+                await wallet_credit.check_balance(session, attributed_user_id, cost_micros)
+            except wallet_credit.InsufficientCreditsError:
+                return await self._fail_step(
+                    session,
+                    sequence,
+                    step,
+                    enrollment,
+                    reason="insufficient_credits",
+                    channel=step.channel,
+                    detail=f"requires {cost_micros} micros",
+                )
+
+        # 5. Template interpolation
+        template_data = step.template or {}
+        context_vars = {
+            "customer_name": getattr(lead, "contact_name", None)
+            or getattr(lead, "company_name", None)
+            or "Quý khách",
+            "company": getattr(lead, "company_name", None) or "Doanh nghiệp",
+            "property_title": (lead.custom_fields or {}).get("property_title", "")
+            if lead.custom_fields
+            else "",
+            "consultant_phone": getattr(config, "CONSULTANT_PHONE", "0901234567"),
+        }
+
+        # 6. Dispatch with fallback
+        primary_channel = step.channel
+        fallback_channels = step.fallback_channels or []
+        channels_to_try = [primary_channel, *list(fallback_channels)]
+        channels_to_try = list(
+            dict.fromkeys([c.strip().lower() for c in channels_to_try if c and c.strip()])
+        )
+
+        last_error: str | None = None
+        for channel in channels_to_try:
+            try:
+                await self.validate_step_channel(channel)
+                msg_id, used_channel = await self._dispatch_single_channel(
+                    session=session,
+                    sequence=sequence,
+                    step=step,
+                    enrollment=enrollment,
+                    lead=lead,
+                    contact=contact,
+                    channel=channel,
+                    template_data=template_data,
+                    context_vars=context_vars,
+                    attributed_user_id=attributed_user_id,
+                    cost_micros=cost_micros,
+                )
+
+                # 7. Success -> record event, advance, bill
+                event = SequenceEvent(
+                    workspace_id=enrollment.workspace_id,
+                    client_id=enrollment.client_id,
+                    enrollment_id=enrollment.id,
+                    sequence_id=sequence.id,
+                    step_id=step.id,
+                    event_type="sent",
+                    channel=used_channel,
+                    cost_micros=cost_micros,
+                    event_metadata={
+                        "template_id": template_data.get("template_id"),
+                        "fallback_used": used_channel != primary_channel,
+                    },
+                    provider_msg_id=msg_id,
+                )
+                session.add(event)
+                await session.flush()
+
+                await self._advance_to_next_step(session, sequence, step, enrollment)
+
+                billing_spec = self.get_billing_event_for_step(used_channel)
+                cost_micros = int(billing_spec["cost_micros"])
+                event.cost_micros = cost_micros
+                await self.billing_service.record_sequence_send(
+                    session=session,
+                    sequence_event_id=event.id,
+                    event_type=billing_spec["event_type"],
+                    workspace_id=enrollment.workspace_id,
+                    client_id=enrollment.client_id,
+                    user_id=attributed_user_id,
+                    cost_micros=cost_micros,
+                )
+
+                # Ensure final commit for zero-cost sends and staged state.
+                await session.commit()
+                return event
+            except Exception as exc:
+                last_error = str(exc)
+                logger.warning(
+                    "Channel %s failed for lead %s: %s. Trying fallback...",
+                    channel,
+                    lead.id,
+                    exc,
+                )
+
+        # All channels failed
+        event = SequenceEvent(
+            workspace_id=enrollment.workspace_id,
+            client_id=enrollment.client_id,
+            enrollment_id=enrollment.id,
+            sequence_id=sequence.id,
+            step_id=step.id,
+            event_type="failed",
+            event_subtype="all_channels_unavailable",
+            channel=step.channel,
+            cost_micros=0,
+            event_metadata={"error": last_error or "all_channels_unavailable"},
+        )
+        session.add(event)
+        enrollment.status = "failed"
+        await session.commit()
+        return event
 
     async def enroll_leads(
         self,
@@ -173,7 +599,9 @@ class SequencerService:
             )
         ).scalar_one_or_none()
         if not sequence:
-            raise ValueError(f"Active sequence {sequence_id} not found in workspace {workspace_id}")
+            raise ValueError(
+                f"Active sequence {sequence_id} not found in workspace {workspace_id}"
+            )
 
         run = SequenceRun(
             workspace_id=workspace_id,
@@ -221,23 +649,38 @@ class SequencerService:
         if isinstance(lead, (UUID, str)):
             lead_obj = (
                 await session.execute(
-                    select(Lead).where(Lead.id == lead, Lead.workspace_id == workspace_id)
+                    select(Lead).where(
+                        Lead.id == lead, Lead.workspace_id == workspace_id
+                    )
                 )
             ).scalar_one_or_none()
         else:
             lead_obj = lead
 
         if not lead_obj:
-            logger.warning("Enrollment rejected: Lead %s not found in workspace %s", lead, workspace_id)
+            logger.warning(
+                "Enrollment rejected: Lead %s not found in workspace %s",
+                lead,
+                workspace_id,
+            )
             return None
 
         if lead_obj.workspace_id != workspace_id:
-            logger.warning("Enrollment rejected: Lead %s workspace mismatch", lead_obj.id)
+            logger.warning(
+                "Enrollment rejected: Lead %s workspace mismatch", lead_obj.id
+            )
             return None
 
         # AC-4: Consent & Legal Basis gate
-        if lead_obj.consent_status not in self.ENROLLABLE_CONSENT_STATUSES or not lead_obj.legal_basis:
-            logger.info("Rejecting enrollment: Lead %s lacks consent (%s) or legal basis", lead_obj.id, lead_obj.consent_status)
+        if (
+            lead_obj.consent_status not in self.ENROLLABLE_CONSENT_STATUSES
+            or not lead_obj.legal_basis
+        ):
+            logger.info(
+                "Rejecting enrollment: Lead %s lacks consent (%s) or legal basis",
+                lead_obj.id,
+                lead_obj.consent_status,
+            )
             return None
 
         # Check existing active enrollment
@@ -322,7 +765,9 @@ class SequencerService:
 
         dispatched_count = 0
         for ws_id in workspace_ids:
-            due_enrollments = await self.get_due_enrollments(session, workspace_id=ws_id)
+            due_enrollments = await self.get_due_enrollments(
+                session, workspace_id=ws_id
+            )
             for enrollment in due_enrollments:
                 try:
                     from app.automations.tasks.sequence_tasks import (
@@ -335,7 +780,10 @@ class SequencerService:
                     )
                     dispatched_count += 1
                 except Exception:
-                    logger.exception("Failed to dispatch Celery task for enrollment %s", enrollment.id)
+                    logger.exception(
+                        "Failed to dispatch Celery task for enrollment %s",
+                        enrollment.id,
+                    )
 
         return dispatched_count
 
@@ -351,7 +799,9 @@ class SequencerService:
         redis_client = await get_redis_client()
         lock_key = f"sequence:lock:enrollment:{workspace_id}:{enrollment_id}"
 
-        async with redis_client.lock(lock_key, timeout=10.0, blocking=True, blocking_timeout=3.0):
+        async with redis_client.lock(
+            lock_key, timeout=10.0, blocking=True, blocking_timeout=3.0
+        ):
             # Fetch enrollment with fresh data. Celery worker must bypass RLS for the initial
             # read because client_id is not known until the row is loaded.
             enrollment = (
@@ -371,7 +821,11 @@ class SequencerService:
                 )
 
             if not enrollment or enrollment.status not in ("scheduled", "executing"):
-                logger.info("Enrollment %s not eligible for execution (status=%s)", enrollment_id, getattr(enrollment, "status", None))
+                logger.info(
+                    "Enrollment %s not eligible for execution (status=%s)",
+                    enrollment_id,
+                    getattr(enrollment, "status", None),
+                )
                 return None
 
             current_version = enrollment.version
@@ -392,14 +846,19 @@ class SequencerService:
             )
             res = await session.execute(stmt)
             if res.rowcount == 0:
-                logger.info("CAS check failed on enrollment %s; skipping concurrent execution", enrollment_id)
+                logger.info(
+                    "CAS check failed on enrollment %s; skipping concurrent execution",
+                    enrollment_id,
+                )
                 return None
 
             enrollment.version = current_version + 1
             enrollment.status = "executing"
 
             # Load sequence and current step
-            sequence = await session.get(Sequence, (enrollment.sequence_id, workspace_id))
+            sequence = await session.get(
+                Sequence, (enrollment.sequence_id, workspace_id)
+            )
             if not sequence or sequence.status != "active":
                 enrollment.status = "paused"
                 await session.commit()
@@ -431,182 +890,222 @@ class SequencerService:
                 return None
 
             # Route by step_type
-            if step.step_type == "send_email":
-                return await self._handle_send_email_step(session, sequence, step, enrollment, lead)
+            if step.step_type in ("send_email", "send_zalo", "send_telegram"):
+                return await self._handle_send_step(
+                    session, sequence, step, enrollment, lead
+                )
             elif step.step_type == "wait":
                 return await self._handle_wait_step(session, sequence, step, enrollment)
             elif step.step_type == "condition":
-                return await self._handle_condition_step(session, sequence, step, enrollment, lead)
+                return await self._handle_condition_step(
+                    session, sequence, step, enrollment, lead
+                )
             else:
-                logger.warning("Unsupported step type %s; skipping to next step", step.step_type)
+                logger.warning(
+                    "Unsupported step type %s; skipping to next step", step.step_type
+                )
                 await self._advance_to_next_step(session, sequence, step, enrollment)
                 await session.commit()
                 return None
 
-    async def _handle_send_email_step(
+    async def _fail_step(
         self,
         session: AsyncSession,
         sequence: Sequence,
         step: SequenceStep,
         enrollment: SequenceEnrollment,
-        lead: Lead,
+        *,
+        reason: str,
+        channel: str,
+        detail: str | None = None,
     ) -> SequenceEvent:
-        """Handle send_email step: DNC check, consent check, balance check, SMTP send, billing debit."""
-        await self.validate_step_channel(step.channel)
-
-        # 1. Resolve VerifiedContact & consent check (AC-4)
-        contact = await self._resolve_verified_contact(session, lead, channel="email")
-        if not contact or not contact.consent or not contact.is_valid:
-            logger.info("Skipping send step for lead %s: no consented contact", lead.id)
-            event = SequenceEvent(
-                workspace_id=enrollment.workspace_id,
-                client_id=enrollment.client_id,
-                enrollment_id=enrollment.id,
-                sequence_id=sequence.id,
-                step_id=step.id,
-                event_type="skipped",
-                event_subtype="no_consent",
-                channel="email",
-                cost_micros=0,
-                event_metadata={"reason": "unconsented_or_invalid_contact"},
-            )
-            session.add(event)
-            await self._advance_to_next_step(session, sequence, step, enrollment)
-            await session.commit()
-            return event
-
-        # Decrypt contact email
-        try:
-            raw_email = self.encryption.decrypt(contact.email) if self.encryption.is_encrypted(contact.email) else contact.email
-        except Exception:
-            raw_email = contact.email
-
-        norm_email = normalize_email(raw_email) if raw_email else ""
-
-        # 2. DNC fail-closed check (INV-24.2)
-        dnc_key = getattr(config, "SECRET_KEY", None) or "nowing-secret-key-for-dnc-compliance-32"
-        dnc_svc = DncComplianceService(secret_key=dnc_key)
-        dnc_result = await dnc_svc.is_blocked(
-            workspace_id=enrollment.workspace_id,
-            email=norm_email,
-            session=session,
-        )
-        if dnc_result.is_blocked:
-            logger.info("Lead %s email %s is on DNC list; skipping step", lead.id, redact_pii(norm_email).text)
-            event = SequenceEvent(
-                workspace_id=enrollment.workspace_id,
-                client_id=enrollment.client_id,
-                enrollment_id=enrollment.id,
-                sequence_id=sequence.id,
-                step_id=step.id,
-                event_type="skipped",
-                event_subtype="dnc_blocked",
-                channel="email",
-                cost_micros=0,
-            )
-            session.add(event)
-            enrollment.status = "unsubscribed"
-            await session.commit()
-            return event
-
-        # 3. Determine attributed user & pre-check wallet credit (AC-6 / AD-42)
-        cost_micros = int(getattr(config, "SEQUENCE_EMAIL_COST_MICROS", 500))
-        attributed_user_id = sequence.created_by_user_id
-        if not attributed_user_id:
-            ws = await session.get(Workspace, enrollment.workspace_id)
-            attributed_user_id = ws.user_id if ws else None
-
-        if cost_micros > 0 and attributed_user_id:
-            try:
-                await wallet_credit.check_balance(session, attributed_user_id, cost_micros)
-            except wallet_credit.InsufficientCreditsError:
-                logger.warning("Insufficient credits for user %s to send sequence email", attributed_user_id)
-                event = SequenceEvent(
-                    workspace_id=enrollment.workspace_id,
-                    client_id=enrollment.client_id,
-                    enrollment_id=enrollment.id,
-                    sequence_id=sequence.id,
-                    step_id=step.id,
-                    event_type="failed",
-                    event_subtype="insufficient_credits",
-                    channel="email",
-                    cost_micros=0,
-                    event_metadata={"reason": f"requires {cost_micros} micros"},
-                )
-                session.add(event)
-                enrollment.status = "paused"
-                await session.commit()
-                return event
-
-        # 4. Prepare message & send SMTP
-        template_data = step.template or {}
-        subject_template = template_data.get("subject", "Cơ hội hợp tác từ Nowing")
-        body_template = template_data.get("body", "")
-
-        context_vars = {
-            "customer_name": getattr(lead, "contact_name", None) or getattr(lead, "company_name", None) or "Quý khách",
-            "company": getattr(lead, "company_name", None) or "Doanh nghiệp",
-            "property_title": (lead.custom_fields or {}).get("property_title", "") if lead.custom_fields else "",
-            "consultant_phone": getattr(config, "CONSULTANT_PHONE", "0901234567"),
-        }
-
-        subject = interpolate_template_variables(subject_template, context_vars)
-        body = interpolate_template_variables(body_template, context_vars)
-
-        msg_id: str | None = None
-        try:
-            msg_id = await self._send_email_async(to_email=norm_email, subject=subject, body=body)
-        except Exception as exc:
-            logger.exception("Failed to send sequence email to %s: %s", redact_pii(norm_email).text, exc)
-            event = SequenceEvent(
-                workspace_id=enrollment.workspace_id,
-                client_id=enrollment.client_id,
-                enrollment_id=enrollment.id,
-                sequence_id=sequence.id,
-                step_id=step.id,
-                event_type="failed",
-                event_subtype="smtp_error",
-                channel="email",
-                cost_micros=0,
-                event_metadata={"error": str(exc)},
-            )
-            session.add(event)
-            enrollment.status = "failed"
-            await session.commit()
-            return event
-
-        # 5. Success -> Record SequenceEvent & advance enrollment
+        """Record a failed send step and stop the enrollment."""
         event = SequenceEvent(
             workspace_id=enrollment.workspace_id,
             client_id=enrollment.client_id,
             enrollment_id=enrollment.id,
             sequence_id=sequence.id,
             step_id=step.id,
-            event_type="sent",
-            channel="email",
-            cost_micros=cost_micros,
-            event_metadata={
-                "template_id": template_data.get("template_id"),
-                "recipient": redact_pii(norm_email).text,
-            },
-            provider_msg_id=msg_id,
+            event_type="failed",
+            event_subtype=reason,
+            channel=channel,
+            cost_micros=0,
+            event_metadata={"reason": reason, "detail": detail},
         )
         session.add(event)
-        await session.flush()
+        enrollment.status = "failed"
+        enrollment.scheduled_at = None
+        enrollment.updated_at = datetime.now(UTC)
+        await session.commit()
+        return event
 
-        await self._advance_to_next_step(session, sequence, step, enrollment)
-
-        # 6. Record BillingEvent & debit user wallet (Final step before commit)
-        await self.billing_service.record_sequence_send(
-            session=session,
-            sequence_event_id=event.id,
+    async def _skip_step(
+        self,
+        session: AsyncSession,
+        sequence: Sequence,
+        step: SequenceStep,
+        enrollment: SequenceEnrollment,
+        *,
+        reason: str,
+        channel: str,
+        detail: str | None = None,
+    ) -> SequenceEvent:
+        """Record a skipped send step and advance enrollment."""
+        event = SequenceEvent(
             workspace_id=enrollment.workspace_id,
             client_id=enrollment.client_id,
-            user_id=attributed_user_id,
-            cost_micros=cost_micros,
+            enrollment_id=enrollment.id,
+            sequence_id=sequence.id,
+            step_id=step.id,
+            event_type="skipped",
+            event_subtype=reason,
+            channel=channel,
+            cost_micros=0,
+            event_metadata={"reason": reason, "detail": detail},
         )
-
+        session.add(event)
+        if reason == "dnc_blocked":
+            enrollment.status = "unsubscribed"
+        await self._advance_to_next_step(session, sequence, step, enrollment)
+        await session.commit()
         return event
+
+    async def _dispatch_single_channel(
+        self,
+        *,
+        session: AsyncSession,
+        sequence: Sequence,
+        step: SequenceStep,
+        enrollment: SequenceEnrollment,
+        lead: Lead,
+        contact: VerifiedContact,
+        channel: str,
+        template_data: dict[str, Any],
+        context_vars: dict[str, Any],
+        attributed_user_id: UUID | None,
+        cost_micros: int,
+    ) -> tuple[str, str]:
+        """Dispatch one channel and return (provider_msg_id, used_channel)."""
+        if channel == "email":
+            raw_email = contact.email
+            if not raw_email:
+                raise ValueError("missing_email")
+            if self.encryption.is_encrypted(raw_email):
+                raw_email = self.encryption.decrypt(raw_email)
+            norm_email = normalize_email(raw_email) or ""
+
+            dnc_key = (
+                getattr(config, "SECRET_KEY", None)
+                or "nowing-secret-key-for-dnc-compliance-32"
+            )
+            dnc_svc = DncComplianceService(secret_key=dnc_key)
+            dnc_result = await dnc_svc.is_blocked(
+                workspace_id=enrollment.workspace_id,
+                email=norm_email,
+                session=session,
+            )
+            if dnc_result.is_blocked:
+                raise ValueError("dnc_blocked")
+
+            subject = interpolate_template_variables(
+                template_data.get("subject", "Cơ hội hợp tác từ Nowing"),
+                context_vars,
+            )
+            body = interpolate_template_variables(template_data.get("body", ""), context_vars)
+            msg_id = await self._send_email_dispatch(
+                to_email=norm_email, subject=subject, body=body
+            )
+            return msg_id, "email"
+
+        if channel == "zalo":
+            raw_phone = contact.phone
+            if not raw_phone:
+                raise ValueError("missing_phone")
+            if self.encryption.is_encrypted(raw_phone):
+                raw_phone = self.encryption.decrypt(raw_phone)
+            phone = normalize_phone_e164(raw_phone) or raw_phone
+
+            dnc_key = (
+                getattr(config, "SECRET_KEY", None)
+                or "nowing-secret-key-for-dnc-compliance-32"
+            )
+            dnc_svc = DncComplianceService(secret_key=dnc_key)
+            dnc_result = await dnc_svc.is_blocked(
+                workspace_id=enrollment.workspace_id,
+                phone=phone,
+                session=session,
+            )
+            if dnc_result.is_blocked:
+                raise ValueError("dnc_blocked")
+
+            zalo_template = template_data.get("template_id") or template_data.get("zalo_template_id")
+            zalo_data = template_data.get("template_data") or template_data.get("zalo_template_data") or {}
+            if not zalo_template:
+                raise ValueError("missing_zalo_template_id")
+
+            msg_id = await self._send_zns_dispatch(
+                session=session,
+                workspace_id=enrollment.workspace_id,
+                user_id=attributed_user_id,
+                phone=phone,
+                template_id=str(zalo_template),
+                template_data=zalo_data,
+                lead_id=lead.id,
+            )
+            return msg_id, "zalo"
+
+        if channel == "telegram":
+            chat_id = (contact.external_chat_ids or {}).get("telegram_chat_id")
+            if not chat_id:
+                raise ValueError("missing_telegram_chat_id")
+
+            dnc_key = (
+                getattr(config, "SECRET_KEY", None)
+                or "nowing-secret-key-for-dnc-compliance-32"
+            )
+            dnc_svc = DncComplianceService(secret_key=dnc_key)
+
+            if contact.phone:
+                raw_phone = contact.phone
+                if self.encryption.is_encrypted(raw_phone):
+                    raw_phone = self.encryption.decrypt(raw_phone)
+                phone = normalize_phone_e164(raw_phone) or raw_phone
+                dnc_result = await dnc_svc.is_blocked(
+                    workspace_id=enrollment.workspace_id,
+                    phone=phone,
+                    session=session,
+                )
+                if dnc_result.is_blocked:
+                    raise ValueError("dnc_blocked")
+
+            if contact.email:
+                raw_email = contact.email
+                if self.encryption.is_encrypted(raw_email):
+                    raw_email = self.encryption.decrypt(raw_email)
+                norm_email = normalize_email(raw_email) or ""
+                if norm_email:
+                    dnc_result = await dnc_svc.is_blocked(
+                        workspace_id=enrollment.workspace_id,
+                        email=norm_email,
+                        session=session,
+                    )
+                    if dnc_result.is_blocked:
+                        raise ValueError("dnc_blocked")
+
+            text = interpolate_template_variables(
+                template_data.get("body", ""), context_vars
+            )
+            parse_mode = template_data.get("parse_mode")
+            msg_id = await self._send_telegram_dispatch(
+                session=session,
+                workspace_id=enrollment.workspace_id,
+                chat_id=str(chat_id),
+                text=text,
+                parse_mode=parse_mode,
+            )
+            return msg_id, "telegram"
+
+        raise ValueError(f"unsupported_channel:{channel}")
 
     async def _handle_wait_step(
         self,
@@ -632,7 +1131,9 @@ class SequencerService:
         )
         session.add(event)
 
-        await self._advance_to_next_step(session, sequence, step, enrollment, next_eta=next_eta)
+        await self._advance_to_next_step(
+            session, sequence, step, enrollment, next_eta=next_eta
+        )
         await session.commit()
         return event
 
@@ -647,7 +1148,11 @@ class SequencerService:
         """Handle condition branching step."""
         context = {
             "has_replied": enrollment.status == "responded",
-            "opened": enrollment.status in ("responded", "executing"),  # opened/delivered are not tracked per-event yet
+            "opened": enrollment.status
+            in (
+                "responded",
+                "executing",
+            ),  # opened/delivered are not tracked per-event yet
             "delivered": enrollment.status in ("responded", "executing", "scheduled"),
             "lead_status": getattr(lead, "status", ""),
         }
@@ -690,20 +1195,30 @@ class SequencerService:
     ) -> None:
         """Advance enrollment to next step or mark completed."""
         next_step = (
-            await session.execute(
-                select(SequenceStep).where(
-                    SequenceStep.sequence_id == sequence.id,
-                    SequenceStep.workspace_id == sequence.workspace_id,
-                    SequenceStep.step_order > current_step.step_order,
-                    SequenceStep.is_enabled.is_(True),
-                ).order_by(SequenceStep.step_order.asc())
+            (
+                await session.execute(
+                    select(SequenceStep)
+                    .where(
+                        SequenceStep.sequence_id == sequence.id,
+                        SequenceStep.workspace_id == sequence.workspace_id,
+                        SequenceStep.step_order > current_step.step_order,
+                        SequenceStep.is_enabled.is_(True),
+                    )
+                    .order_by(SequenceStep.step_order.asc())
+                )
             )
-        ).scalars().first()
+            .scalars()
+            .first()
+        )
 
         if next_step:
             enrollment.current_step = next_step.step_order
             enrollment.status = "scheduled"
-            delay = next_step.wait_duration_seconds or 0 if next_step.step_type == "wait" else 0
+            delay = (
+                next_step.wait_duration_seconds or 0
+                if next_step.step_type == "wait"
+                else 0
+            )
             enrollment.scheduled_at = next_eta or calculate_step_eta(delay)
         else:
             enrollment.status = "completed"
@@ -720,8 +1235,10 @@ class SequencerService:
         *,
         phone: str | None = None,
         email: str | None = None,
+        telegram_chat_id: str | None = None,
+        zalo_user_id: str | None = None,
     ) -> VerifiedContact | None:
-        """Resolve a consented VerifiedContact from an inbound email or phone (AC-5 / AD-49)."""
+        """Resolve a consented VerifiedContact from inbound identifiers (AC-5 / AD-49)."""
         if email:
             norm_email = normalize_email(email)
             stmt = (
@@ -732,7 +1249,9 @@ class SequencerService:
                     VerifiedContact.consent.is_(True),
                     VerifiedContact.is_valid.is_(True),
                 )
-                .order_by(VerifiedContact.confidence.desc(), VerifiedContact.created_at.desc())
+                .order_by(
+                    VerifiedContact.confidence.desc(), VerifiedContact.created_at.desc()
+                )
             )
             return (await session.execute(stmt)).scalars().first()
 
@@ -747,28 +1266,87 @@ class SequencerService:
                         VerifiedContact.consent.is_(True),
                         VerifiedContact.is_valid.is_(True),
                     )
-                    .order_by(VerifiedContact.confidence.desc(), VerifiedContact.created_at.desc())
+                    .order_by(
+                        VerifiedContact.confidence.desc(),
+                        VerifiedContact.created_at.desc(),
+                    )
                 )
                 return (await session.execute(stmt)).scalars().first()
+
+        if telegram_chat_id:
+            stmt = (
+                select(VerifiedContact)
+                .where(
+                    VerifiedContact.workspace_id == workspace_id,
+                    VerifiedContact.external_chat_ids.contains(
+                        {"telegram_chat_id": telegram_chat_id}
+                    ),
+                    VerifiedContact.consent.is_(True),
+                    VerifiedContact.is_valid.is_(True),
+                )
+                .order_by(
+                    VerifiedContact.confidence.desc(),
+                    VerifiedContact.created_at.desc(),
+                )
+            )
+            return (await session.execute(stmt)).scalars().first()
+
+        if zalo_user_id:
+            stmt = (
+                select(VerifiedContact)
+                .where(
+                    VerifiedContact.workspace_id == workspace_id,
+                    VerifiedContact.external_chat_ids.contains(
+                        {"zalo_user_id": zalo_user_id}
+                    ),
+                    VerifiedContact.consent.is_(True),
+                    VerifiedContact.is_valid.is_(True),
+                )
+                .order_by(
+                    VerifiedContact.confidence.desc(),
+                    VerifiedContact.created_at.desc(),
+                )
+            )
+            return (await session.execute(stmt)).scalars().first()
 
         return None
 
     async def handle_inbound_interruption(
         self,
-        session: AsyncSession,
         workspace_id: int,
+        session: AsyncSession | None = None,
         *,
+        enrollment_id: int | None = None,
+        reason: str | None = None,
         phone: str | None = None,
         email: str | None = None,
+        telegram_chat_id: str | None = None,
+        zalo_user_id: str | None = None,
         text: str | None = None,
         channel: str | None = None,
-    ) -> SequenceEnrollment | None:
-        """Handle incoming reply/opt-out, lock enrollment, update status and register DNC (AC-5)."""
-        redis_client = await get_redis_client()
-        lock_id = email or phone or "inbound"
-        lock_key = f"sequence:lock:inbound:{workspace_id}:{lock_id}"
+    ) -> SequenceEnrollment | bool | None:
+        """Handle incoming reply/opt-out, lock enrollment, CAS update status and cancel future steps (AC-6 / INV-24.7)."""
+        redis_client = await self._get_redis_async()
+        raw_lock_id = (
+            f"enrollment:{enrollment_id}"
+            if enrollment_id is not None
+            else (email or phone or telegram_chat_id or zalo_user_id or "inbound")
+        )
+        lock_id = hashlib.sha256(str(raw_lock_id).encode()).hexdigest()[:16]
+        lock_key = (
+            f"sequence:lock:enrollment:{workspace_id}:{enrollment_id}"
+            if enrollment_id is not None
+            else f"sequence:lock:inbound:{workspace_id}:{lock_id}"
+        )
 
-        async with redis_client.lock(lock_key, timeout=10.0, blocking=True, blocking_timeout=2.0):
+        # Fast path without a DB session: just acquire a short-lived Redis lock.
+        if session is None:
+            acquired = await redis_client.set(lock_key, "1", ex=10, nx=True)
+            return bool(acquired)
+
+        async with redis_client.lock(
+            lock_key, timeout=10.0, blocking=True, blocking_timeout=2.0
+        ):
             # Check opt-out keyword
             is_opt_out = False
             if text:
@@ -777,10 +1355,18 @@ class SequencerService:
 
             # Resolve the contact that this inbound message belongs to
             contact = await self._resolve_inbound_contact(
-                session, workspace_id, phone=phone, email=email
+                session,
+                workspace_id,
+                phone=phone,
+                email=email,
+                telegram_chat_id=telegram_chat_id,
+                zalo_user_id=zalo_user_id,
             )
             if not contact:
-                logger.info("No consented verified contact found for inbound %s", email or phone)
+                logger.info(
+                    "No consented verified contact found for inbound %s",
+                    email or phone or telegram_chat_id or zalo_user_id,
+                )
                 return None
 
             # Find the most recently scheduled active enrollment for this lead
@@ -791,55 +1377,97 @@ class SequencerService:
                     SequenceEnrollment.lead_id == contact.lead_id,
                     SequenceEnrollment.status.in_(["scheduled", "executing", "paused"]),
                 )
-                .order_by(SequenceEnrollment.scheduled_at.desc().nulls_last(), SequenceEnrollment.created_at.desc())
+                .order_by(
+                    SequenceEnrollment.scheduled_at.desc().nulls_last(),
+                    SequenceEnrollment.created_at.desc(),
+                )
             )
             enrollments = (await session.execute(stmt)).scalars().all()
             if not enrollments:
                 return None
 
             enrollment = enrollments[0]
+            current_version = enrollment.version
 
+            new_status = "unsubscribed" if is_opt_out else "responded"
+            new_scheduled_at = None if is_opt_out else enrollment.scheduled_at
+
+            # CAS update to prevent lost updates from concurrent step execution.
+            update_stmt = (
+                update(SequenceEnrollment)
+                .where(
+                    SequenceEnrollment.id == enrollment.id,
+                    SequenceEnrollment.workspace_id == workspace_id,
+                    SequenceEnrollment.version == current_version,
+                )
+                .values(
+                    status=new_status,
+                    scheduled_at=new_scheduled_at,
+                    version=current_version + 1,
+                    updated_at=datetime.now(UTC),
+                )
+            )
+            res = await session.execute(update_stmt)
+            if res.rowcount == 0:
+                logger.info(
+                    "CAS check failed on enrollment %s for inbound interruption",
+                    enrollment.id,
+                )
+                return None
+
+            enrollment.status = new_status
+            enrollment.scheduled_at = new_scheduled_at
+            enrollment.version = current_version + 1
+
+            # Cancel future scheduled steps when opting out.
             if is_opt_out:
-                enrollment.status = "unsubscribed"
-                enrollment.scheduled_at = None
-                enrollment.version += 1
-                enrollment.updated_at = datetime.now(UTC)
+                await self._cancel_future_steps(session, enrollment)
 
                 # Register DNC
-                await self._register_opt_out_dnc(session, workspace_id, phone=phone, email=email)
-
-                # Log opt-out event
-                event = SequenceEvent(
-                    workspace_id=workspace_id,
-                    client_id=enrollment.client_id,
-                    enrollment_id=enrollment.id,
-                    sequence_id=enrollment.sequence_id,
-                    event_type="skipped",
-                    event_subtype="opt_out",
-                    channel=channel or "email",
-                    cost_micros=0,
-                    event_metadata={"text": redact_pii(text or "").text},
+                await self._register_opt_out_dnc(
+                    session,
+                    workspace_id,
+                    phone=phone or contact.phone,
+                    email=email or contact.email,
                 )
-                session.add(event)
-            else:
-                enrollment.status = "responded"
-                enrollment.version += 1
-                enrollment.updated_at = datetime.now(UTC)
 
-                event = SequenceEvent(
-                    workspace_id=workspace_id,
-                    client_id=enrollment.client_id,
-                    enrollment_id=enrollment.id,
-                    sequence_id=enrollment.sequence_id,
-                    event_type="replied",
-                    channel=channel or "email",
-                    cost_micros=0,
-                    event_metadata={"text": redact_pii(text or "").text},
-                )
-                session.add(event)
+            event = SequenceEvent(
+                workspace_id=workspace_id,
+                client_id=enrollment.client_id,
+                enrollment_id=enrollment.id,
+                sequence_id=enrollment.sequence_id,
+                event_type="skipped" if is_opt_out else "replied",
+                event_subtype="opt_out" if is_opt_out else None,
+                channel=channel or "email",
+                cost_micros=0,
+                event_metadata={"text": redact_pii(text or "").text},
+            )
+            session.add(event)
 
             await session.commit()
             return enrollment
+
+    async def _cancel_future_steps(
+        self,
+        session: AsyncSession,
+        enrollment: SequenceEnrollment,
+    ) -> None:
+        """Mark any future scheduled steps as skipped for this enrollment."""
+        # Mark the enrollment itself as unsubscribed already; future events are
+        # implicitly skipped because the enrollment will no longer be scheduled.
+        # We also log a bulk skipped event for audit clarity.
+        event = SequenceEvent(
+            workspace_id=enrollment.workspace_id,
+            client_id=enrollment.client_id,
+            enrollment_id=enrollment.id,
+            sequence_id=enrollment.sequence_id,
+            event_type="skipped",
+            event_subtype="future_steps_cancelled",
+            channel="email",
+            cost_micros=0,
+            event_metadata={"reason": "opt_out"},
+        )
+        session.add(event)
 
     async def _register_opt_out_dnc(
         self,
@@ -849,7 +1477,10 @@ class SequencerService:
         email: str | None = None,
     ) -> None:
         """Register opt-out contact to WorkspaceDncRecord and invalidate cache."""
-        dnc_key = getattr(config, "SECRET_KEY", None) or "nowing-secret-key-for-dnc-compliance-32"
+        dnc_key = (
+            getattr(config, "SECRET_KEY", None)
+            or "nowing-secret-key-for-dnc-compliance-32"
+        )
         dnc_service = DncComplianceService(secret_key=dnc_key)
         if phone:
             e164 = normalize_phone_e164(phone)
@@ -867,6 +1498,8 @@ class SequencerService:
                 )
         if email:
             norm_mail = email.strip().lower()
+            # ponytail: hash_phone_hmac is a deterministic HMAC helper; it is used
+            # for any normalized value (phone or email) in this codebase.
             m_hash = hash_phone_hmac(norm_mail, secret_key=dnc_service.secret_key)
             session.add(
                 WorkspaceDncRecord(
@@ -888,7 +1521,6 @@ class SequencerService:
         channel: str = "email",
     ) -> VerifiedContact | None:
         """Resolve highest-confidence consented VerifiedContact for given lead and channel."""
-        contact_field = VerifiedContact.email if channel == "email" else VerifiedContact.phone
         stmt = (
             select(VerifiedContact)
             .where(
@@ -896,15 +1528,30 @@ class SequencerService:
                 VerifiedContact.workspace_id == lead.workspace_id,
                 VerifiedContact.consent.is_(True),
                 VerifiedContact.is_valid.is_(True),
-                contact_field.isnot(None),
             )
-            .order_by(VerifiedContact.confidence.desc(), VerifiedContact.created_at.desc())
+            .order_by(
+                VerifiedContact.confidence.desc(), VerifiedContact.created_at.desc()
+            )
         )
-        return (await session.execute(stmt)).scalars().first()
+        contact = (await session.execute(stmt)).scalars().first()
+        if not contact:
+            return None
+
+        if channel == "email" and not contact.email:
+            return None
+        if channel == "telegram" and not (contact.external_chat_ids or {}).get("telegram_chat_id"):
+            # Fallback: if phone-based chat id exists in the lead, accept it later.
+            return None
+        if channel == "zalo" and not contact.phone:
+            return None
+
+        return contact
 
     async def _send_email_async(self, to_email: str, subject: str, body: str) -> str:
         """Asynchronous wrapper around synchronous SMTP sender."""
-        await asyncio.to_thread(_send_email_smtp, to_email=to_email, subject=subject, body=body)
+        await asyncio.to_thread(
+            _send_email_smtp, to_email=to_email, subject=subject, body=body
+        )
         return f"msg_{uuid4().hex[:12]}"
 
     async def get_sequence_analytics(
@@ -919,7 +1566,9 @@ class SequencerService:
         # Enrollments count
         enr_stmt = select(
             func.count(SequenceEnrollment.id),
-            func.count().filter(SequenceEnrollment.status.in_(["scheduled", "executing"])),
+            func.count().filter(
+                SequenceEnrollment.status.in_(["scheduled", "executing"])
+            ),
             func.count().filter(SequenceEnrollment.status == "responded"),
             func.count().filter(SequenceEnrollment.status == "unsubscribed"),
             func.count().filter(SequenceEnrollment.status == "failed"),
@@ -947,5 +1596,50 @@ class SequencerService:
         if ev_res:
             analytics.delivered_count = ev_res[0] or 0
             analytics.total_cost_micros = ev_res[1] or 0
+
+        # Per-channel breakdown: aggregate raw events in Python for driver safety.
+        cb_stmt = (
+            select(SequenceEvent.channel, SequenceEvent.event_type, SequenceEvent.cost_micros)
+            .where(
+                SequenceEvent.sequence_id == sequence_id,
+                SequenceEvent.workspace_id == workspace_id,
+            )
+        )
+        cb_res = await session.execute(cb_stmt)
+        breakdown: dict[str, dict[str, int]] = {}
+        for row in cb_res.all():
+            channel = row[0] or "email"
+            event_type = row[1] or "sent"
+            cost = row[2] or 0
+            entry = breakdown.setdefault(
+                channel,
+                {
+                    "sent": 0,
+                    "delivered": 0,
+                    "opened": 0,
+                    "replied": 0,
+                    "bounced": 0,
+                    "failed": 0,
+                    "skipped": 0,
+                    "cost_micros": 0,
+                },
+            )
+            if event_type in entry:
+                entry[event_type] += 1
+            entry["cost_micros"] += cost
+        for channel, metrics in breakdown.items():
+            analytics.channel_breakdown.append(
+                ChannelAnalytics(
+                    channel=channel,
+                    sent=metrics["sent"],
+                    delivered=metrics["delivered"],
+                    opened=metrics["opened"],
+                    replied=metrics["replied"],
+                    bounced=metrics["bounced"],
+                    failed=metrics["failed"],
+                    skipped=metrics["skipped"],
+                    cost_micros=metrics["cost_micros"],
+                )
+            )
 
         return analytics

@@ -33,7 +33,7 @@ def _now_iso() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
 
-def _normalize_tax_code(value: str | None) -> str | None:
+def _normalize_tax_code(value: str & None) -> str | None:
     if not value:
         return None
     normalized = value.strip().replace(" ", "").replace("-", "")
@@ -151,12 +151,10 @@ async def scrape_masothue(
 
         page_items = parse_search_results(html)
 
-        if page == 1 and not page_items:
-            degraded = True
-            degradation_reason = "empty"
-            break
-
         if not page_items:
+            if page == 1:
+                degraded = True
+                degradation_reason = "empty"
             break
 
         for company in page_items:

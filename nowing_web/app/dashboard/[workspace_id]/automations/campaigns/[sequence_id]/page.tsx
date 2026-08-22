@@ -195,6 +195,40 @@ export default function CampaignAnalyticsPage() {
 				</div>
 			</div>
 
+			{/* Channel Breakdown */}
+			<div className="bg-card border rounded-xl p-5 shadow-sm space-y-4">
+				<h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
+					<BarChart3 className="w-4 h-4 text-primary" />
+					Phân tích theo kênh (Channel Breakdown)
+				</h3>
+				<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+					{analytics?.channel_breakdown && analytics.channel_breakdown.length > 0 ? (
+						analytics.channel_breakdown.map((cb) => (
+							<div
+								key={cb.channel}
+								className="p-3 border rounded-lg bg-background text-sm space-y-1"
+							>
+								<div className="flex items-center justify-between font-medium">
+									<span className="capitalize">{cb.channel}</span>
+									<span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">
+										${(cb.cost_micros / 1_000_000).toFixed(3)}
+									</span>
+								</div>
+								<div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
+									<span>Sent: {cb.sent}</span>
+									<span>Replied: {cb.replied}</span>
+									<span>Failed: {cb.failed}</span>
+								</div>
+							</div>
+						))
+					) : (
+						<div className="text-center py-6 text-muted-foreground text-xs">
+							Chưa có dữ liệu phân tích theo kênh
+						</div>
+					)}
+				</div>
+			</div>
+
 			{/* Steps Breakdown & Live Logs */}
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 				{/* Steps Config */}

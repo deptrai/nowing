@@ -32,7 +32,7 @@ async def _evaluate_sequences_impl() -> int:
             return 0
 
 
-@celery_app.task(name="execute_sequence_step", bind=True, max_retries=3, default_retry_delay=60)
+@celery_app.task(name="execute_sequence_step", bind=True, max_retries=5, default_retry_delay=60)
 def execute_sequence_step(self, enrollment_id: str, workspace_id: int) -> None:
     """Execute a single sequence step for an enrollment."""
     return run_async_celery_task(lambda: _execute_sequence_step_impl(enrollment_id, workspace_id))

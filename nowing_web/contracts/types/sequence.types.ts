@@ -1,14 +1,26 @@
 import { z } from "zod";
 
+const channelEnum = z.enum(["email", "zalo", "telegram"]);
+
 export const sequenceStepSchema = z.object({
 	id: z.string().uuid().optional(),
 	workspace_id: z.number().optional(),
 	client_id: z.string().nullable().optional(),
 	sequence_id: z.string().uuid().optional(),
 	step_order: z.number().min(1),
-	step_type: z.enum(["send_email", "wait", "condition", "update_lead_score", "update_crm", "tag"]),
-	channel: z.string().default("email"),
+	step_type: z.enum([
+		"send_email",
+		"send_zalo",
+		"send_telegram",
+		"wait",
+		"condition",
+		"update_lead_score",
+		"update_crm",
+		"tag",
+	]),
+	channel: channelEnum.default("email"),
 	template: z.record(z.string(), z.any()).default({}),
+	fallback_channels: z.array(channelEnum).optional(),
 	wait_duration_seconds: z.number().nullable().optional(),
 	condition_config: z.record(z.string(), z.any()).default({}),
 	is_enabled: z.boolean().default(true),
@@ -90,6 +102,18 @@ export const sequenceEventSchema = z.object({
 
 export type SequenceEvent = z.infer<typeof sequenceEventSchema>;
 
+export const channelBreakdownSchema = z.object({
+	channel: channelEnum,
+	sent: z.number().default(0),
+	delivered: z.number().default(0),
+	opened: z.number().default(0),
+	replied: z.number().default(0),
+	bounced: z.number().default(0),
+	failed: z.number().default(0),
+	skipped: z.number().default(0),
+	cost_micros: z.number().default(0),
+});
+
 export const sequenceAnalyticsSchema = z.object({
 	sequence_id: z.string().uuid(),
 	total_enrolled: z.number().default(0),
@@ -99,6 +123,7 @@ export const sequenceAnalyticsSchema = z.object({
 	unsubscribed_count: z.number().default(0),
 	failed_count: z.number().default(0),
 	total_cost_micros: z.number().default(0),
+	channel_breakdown: z.array(channelBreakdownSchema).default([]),
 });
 
 export type SequenceAnalytics = z.infer<typeof sequenceAnalyticsSchema>;

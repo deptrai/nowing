@@ -18,6 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import Lead, VerifiedContact, ZaloConnection, ZaloMessageLog
+from app.lead_intelligence.dnc.normalizer import normalize_phone_e164
 
 if TYPE_CHECKING:
     pass
@@ -192,12 +193,29 @@ async def _find_lead_for_inbound(
         return None
 
     if sender_phone:
+        e164 = normalize_phone_e164(str(sender_phone).strip())
+        if e164:
+            stmt = (
+                select(Lead)
+                .join(VerifiedContact, VerifiedContact.lead_id == Lead.id)
+                .where(
+                    Lead.workspace_id == workspace_id,
+                    VerifiedContact.phone == e164,
+                )
+                .limit(1)
+            )
+            res = await session.execute(stmt)
+            lead = res.scalar_one_or_none()
+            if lead:
+                return lead
+
+    if sender_id:
         stmt = (
             select(Lead)
             .join(VerifiedContact, VerifiedContact.lead_id == Lead.id)
             .where(
                 Lead.workspace_id == workspace_id,
-                VerifiedContact.phone == sender_phone,
+                VerifiedContact.external_chat_ids.contains({"zalo_user_id": sender_id}),
             )
             .limit(1)
         )
@@ -205,18 +223,6 @@ async def _find_lead_for_inbound(
         lead = res.scalar_one_or_none()
         if lead:
             return lead
-
-    if sender_id and hasattr(Lead, "zalo_user_id"):
-        stmt = (
-            select(Lead)
-            .where(
-                Lead.workspace_id == workspace_id,
-                Lead.zalo_user_id == sender_id,
-            )
-            .limit(1)
-        )
-        res = await session.execute(stmt)
-        return res.scalar_one_or_none() or None
 
     return None
 
@@ -268,7 +274,21 @@ async def handle_zalo_webhook_event(
     # 3. Find matching Lead if any
     lead = await _find_lead_for_inbound(session, ws_id, sender_id, sender_phone)
 
-    # 4. Event-specific handling & Lead status transitions (AC-3)
+    # 4. Interrupt active sequence enrollment for this lead
+    if lead and event_name in ("user_send_text", "user_send_image", "unfollow"):
+        from app.services.sequencer_service import SequencerService
+
+        await SequencerService().handle_inbound_interruption(
+            workspace_id=ws_id,
+            session=session,
+            phone=sender_phone,
+            zalo_user_id=sender_id or None,
+            text=text_content,
+            channel="zalo",
+            reason=event_name,
+        )
+
+    # 5. Event-specific handling & Lead status transitions (AC-3)
     if event_name in ("user_send_text", "user_send_image"):
         if lead:
             lead.status = "responded"

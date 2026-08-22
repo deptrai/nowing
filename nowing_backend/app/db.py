@@ -5329,6 +5329,9 @@ class VerifiedContact(Base, TimestampMixin):
     pii_access_audit_logs = Column(
         JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
     )
+    external_chat_ids = Column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
     refunded_at = Column(TIMESTAMP(timezone=True), nullable=True)
     invalid_reason = Column(String(255), nullable=True)
 
@@ -6520,6 +6523,9 @@ class SequenceStep(Base, TimestampMixin):
     )  # send_email, wait, condition, update_lead_score, update_crm, tag
     channel = Column(
         String(50), nullable=False, default="email", server_default=text("'email'")
+    )
+    fallback_channels = Column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
     )
     template = Column(
         JSONB, nullable=True, default=dict, server_default=text("'{}'::jsonb")

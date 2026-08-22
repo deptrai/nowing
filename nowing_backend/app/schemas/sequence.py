@@ -9,16 +9,17 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 SequenceStatus = Literal["active", "paused", "archived"]
-SequenceStepType = Literal["send_email", "wait", "condition", "update_lead_score", "update_crm", "tag"]
-SequenceChannel = Literal["email"]
+SequenceStepType = Literal["send_email", "send_zalo", "send_telegram", "wait", "condition", "update_lead_score", "update_crm", "tag"]
+SequenceChannel = Literal["email", "zalo", "telegram"]
 SequenceEventType = Literal["sent", "delivered", "opened", "replied", "bounced", "meeting_booked", "failed", "skipped"]
 SequenceEnrollmentStatus = Literal["scheduled", "executing", "paused", "responded", "unsubscribed", "failed", "completed"]
 
 
 class SequenceStepBase(BaseModel):
     step_order: int = Field(..., ge=1, description="1-indexed step order in sequence")
-    step_type: SequenceStepType = Field(..., description="send_email, wait, condition, update_lead_score, update_crm, tag")
-    channel: SequenceChannel = Field("email", description="Outbound channel (email only in MVP)")
+    step_type: SequenceStepType = Field(..., description="send_email, send_zalo, send_telegram, wait, condition, update_lead_score, update_crm, tag")
+    channel: SequenceChannel = Field("email", description="Outbound channel (email / zalo / telegram)")
+    fallback_channels: list[SequenceChannel] | None = Field(default_factory=list, description="Fallback channel order if primary fails")
     template: dict[str, Any] = Field(default_factory=dict, description="Template config, subject, body, variables")
     wait_duration_seconds: int | None = Field(None, ge=0, description="Delay duration in seconds for wait steps")
     condition_config: dict[str, Any] = Field(default_factory=dict, description="Branching rules and predicate")
@@ -33,6 +34,7 @@ class SequenceStepUpdate(BaseModel):
     step_order: int | None = None
     step_type: SequenceStepType | None = None
     channel: SequenceChannel | None = None
+    fallback_channels: list[SequenceChannel] | None = None
     template: dict[str, Any] | None = None
     wait_duration_seconds: int | None = None
     condition_config: dict[str, Any] | None = None
@@ -128,6 +130,18 @@ class SequenceEventRead(BaseModel):
     created_at: datetime
 
 
+class ChannelBreakdown(BaseModel):
+    channel: SequenceChannel
+    sent: int = 0
+    delivered: int = 0
+    opened: int = 0
+    replied: int = 0
+    bounced: int = 0
+    failed: int = 0
+    skipped: int = 0
+    cost_micros: int = 0
+
+
 class SequenceAnalyticsResponse(BaseModel):
     """Aggregated sequence analytics (AC-8)."""
 
@@ -139,3 +153,4 @@ class SequenceAnalyticsResponse(BaseModel):
     unsubscribed_count: int = 0
     failed_count: int = 0
     total_cost_micros: int = 0
+    channel_breakdown: list[ChannelBreakdown] = Field(default_factory=list)

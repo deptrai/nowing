@@ -1,0 +1,2050 @@
+diff --git a/nowing_backend/app/config/__init__.py b/nowing_backend/app/config/__init__.py
+index 6ab4333c2..704144205 100644
+--- a/nowing_backend/app/config/__init__.py
++++ b/nowing_backend/app/config/__init__.py
+@@ -663,6 +663,65 @@ class Config:
+         os.getenv("CONNECTOR_INDEXING_LOCK_TTL_SECONDS", str(8 * 60 * 60))
+     )
+ 
++    # DSH worker sidecar (Story 26.2)
++    DSH_WORKER_PAT = os.getenv("DSH_WORKER_PAT", "")
++    DSH_WORKER_SECRET = os.getenv("DSH_WORKER_SECRET", "")
++    DSH_INTERNAL_BASE_URL = os.getenv("DSH_INTERNAL_BASE_URL", "http://localhost:8000")
++    DSH_HEARTBEAT_INTERVAL_SECONDS = int(
++        os.getenv("DSH_HEARTBEAT_INTERVAL_SECONDS", str(30))
++    )
++    DSH_LOCK_TTL_SECONDS = int(os.getenv("DSH_LOCK_TTL_SECONDS", str(120)))
++    DSH_XAUTOCLAIM_MIN_IDLE_MS = int(
++        os.getenv("DSH_XAUTOCLAIM_MIN_IDLE_MS", str(60 * 1000))
++    )
++    DSH_MAX_RETRIES = int(os.getenv("DSH_MAX_RETRIES", str(3)))
++    DSH_STREAM_TASKS = os.getenv("DSH_STREAM_TASKS", "nowing:dsh:tasks")
++    DSH_STREAM_DLQ = os.getenv("DSH_STREAM_DLQ", "nowing:dsh:dlq")
++    DSH_CONSUMER_GROUP = os.getenv("DSH_CONSUMER_GROUP", "dsh_workers")
++    DSH_REDIS_BLOCK_MS = int(os.getenv("DSH_REDIS_BLOCK_MS", str(5000)))
++    DSH_SYNC_TIMEOUT_SECONDS = int(os.getenv("DSH_SYNC_TIMEOUT_SECONDS", str(60)))
++    DSH_MAX_PAYLOAD_BYTES = int(
++        os.getenv("DSH_MAX_PAYLOAD_BYTES", str(10 * 1024 * 1024))
++    )
++    DSH_EXECUTOR_ENGINE = os.getenv("DSH_EXECUTOR_ENGINE", "legacy")
++
++    # DSH Telegram Interactive Checkpoint & Auto-Refund (Story 26.6)
++    DSH_TELEGRAM_FIT_SCORE_THRESHOLD = max(
++        0, _env_int("DSH_TELEGRAM_FIT_SCORE_THRESHOLD", 80)
++    )
++    _raw_refund_cap_pct = _env_float("DSH_TELEGRAM_REFUND_CAP_PCT", 0.15)
++    if not (0.0 <= _raw_refund_cap_pct <= 1.0):
++        raise ValueError(
++            f"DSH_TELEGRAM_REFUND_CAP_PCT must be in [0, 1], got {_raw_refund_cap_pct}"
++        )
++    DSH_TELEGRAM_REFUND_CAP_PCT = _raw_refund_cap_pct
++    DSH_TELEGRAM_REFUND_WINDOW_HOURS = max(
++        0, _env_int("DSH_TELEGRAM_REFUND_WINDOW_HOURS", 24)
++    )
++    DSH_TELEGRAM_MAX_LEADS_PER_MISSION = max(
++        0, _env_int("DSH_TELEGRAM_MAX_LEADS_PER_MISSION", 1)
++    )
++    DSH_TELEGRAM_CALLBACK_RATE_LIMIT_PER_MINUTE = max(
++        0, _env_int("DSH_TELEGRAM_CALLBACK_RATE_LIMIT_PER_MINUTE", 60)
++    )
++
++    # Hybrid LLM Router (Story 26.3)
++    HYBRID_ENABLE_LOCAL_VLLM = (
++        os.getenv("HYBRID_ENABLE_LOCAL_VLLM", "TRUE").upper() == "TRUE"
++    )
++    VLLM_BASE_URL = os.getenv("VLLM_BASE_URL", "http://localhost:8000/v1")
++    HYBRID_GEMINI_RPM_LIMIT = _env_int("HYBRID_GEMINI_RPM_LIMIT", 15)
++    HYBRID_GEMINI_TPM_LIMIT = _env_int("HYBRID_GEMINI_TPM_LIMIT", 1_000_000)
++    HYBRID_GEMINI_RPD_LIMIT = _env_int("HYBRID_GEMINI_RPD_LIMIT", 1500)
++    HYBRID_OFF_PEAK_HOURS = os.getenv("HYBRID_OFF_PEAK_HOURS", "22-06")
++    HYBRID_PEAK_PRICE_MULTIPLIER = _env_float("HYBRID_PEAK_PRICE_MULTIPLIER", 2.0)
++    HYBRID_FORCE_DEEP_REASONING = (
++        os.getenv("HYBRID_FORCE_DEEP_REASONING", "FALSE").upper() == "TRUE"
++    )
++    HYBRID_VLLM_QUEUE_TIMEOUT_SECONDS = _env_float(
++        "HYBRID_VLLM_QUEUE_TIMEOUT_SECONDS", 8.0
++    )
++
+     # Celery beat scheduling intervals (format: "<number><unit>", e.g. "2m", "1h")
+     SCHEDULE_CHECKER_INTERVAL = os.getenv("SCHEDULE_CHECKER_INTERVAL", "2m")
+     STRIPE_RECONCILIATION_INTERVAL = os.getenv("STRIPE_RECONCILIATION_INTERVAL", "10m")
+@@ -1651,9 +1710,9 @@ class Config:
+     CONTACT_ENRICHMENT_CACHE_TTL_SECONDS = max(
+         1, _env_int("CONTACT_ENRICHMENT_CACHE_TTL_SECONDS", 30 * 24 * 60 * 60)
+     )
+-    CONTACT_ENRICHMENT_PRIMARY_PROVIDER = os.getenv(
+-        "CONTACT_ENRICHMENT_PRIMARY_PROVIDER", "cleanlist"
+-    ).strip().lower()
++    CONTACT_ENRICHMENT_PRIMARY_PROVIDER = (
++        os.getenv("CONTACT_ENRICHMENT_PRIMARY_PROVIDER", "cleanlist").strip().lower()
++    )
+     CONTACT_ENRICHMENT_MAX_CONTACTS_PER_LEAD = max(
+         1, _env_int("CONTACT_ENRICHMENT_MAX_CONTACTS_PER_LEAD", 5)
+     )
+diff --git a/nowing_backend/app/db.py b/nowing_backend/app/db.py
+index c8d9b16c3..b6c2d977c 100644
+--- a/nowing_backend/app/db.py
++++ b/nowing_backend/app/db.py
+@@ -423,6 +423,10 @@ class Permission(StrEnum):
+     CANONICAL_ENTITIES_READ = "canonical_entities:read"
+     CANONICAL_ENTITIES_WRITE = "canonical_entities:write"
+ 
++    # DSH missions (Story 26.2)
++    DSH_MISSIONS_READ = "dsh_missions:read"
++    DSH_MISSIONS_WRITE = "dsh_missions:write"
++
+     # Full access wildcard
+     FULL_ACCESS = "*"
+ 
+@@ -1652,6 +1656,38 @@ class Chunk(BaseModel, TimestampMixin):
+     document = relationship("Document", back_populates="chunks")
+ 
+ 
++class ChainLensChunk(BaseModel, TimestampMixin):
++    """A chunk ingested from chainlens-research into Nowing (Story 26.1 / AC-3)."""
++
++    __tablename__ = "chainlens_chunks"
++    __table_args__ = (
++        PrimaryKeyConstraint("id", "workspace_id", name="pk_chainlens_chunks"),
++        Index(
++            "ix_chainlens_chunks_workspace_source",
++            "workspace_id",
++            "source_url",
++        ),
++    )
++
++    id = Column(UUID(as_uuid=True), primary_key=True)
++    workspace_id = Column(
++        Integer,
++        ForeignKey("workspaces.id", ondelete="CASCADE"),
++        primary_key=True,
++        nullable=False,
++        index=True,
++    )
++    source_url = Column(Text, nullable=False)
++    content = Column(Text, nullable=False)
++    embedding = Column(
++        Vector(1536),
++        nullable=False,
++    )
++    chunk_index = Column(Integer, nullable=False, server_default="0")
++
++    workspace = relationship("Workspace", back_populates="chainlens_chunks")
++
++
+ class VideoPresentation(BaseModel, TimestampMixin):
+     """Video presentation model for storing AI-generated video presentations.
+ 
+@@ -1945,6 +1981,16 @@ class Workspace(BaseModel, TimestampMixin):
+     # Epic 21 lead scoring ICP criteria (Story 21.2).
+     icp_criteria = Column(JSONB, nullable=True)
+ 
++    # Story 24.6: Two-Way AI Outreach Auto-Reply Agent workspace settings.
++    auto_reply_enabled = Column(
++        Boolean, nullable=False, default=False, server_default="false"
++    )
++    auto_reply_collections = Column(
++        JSONB, nullable=False, default=list, server_default="[]"
++    )
++    auto_reply_fallback = Column(Text, nullable=True)
++    auto_reply_recipient_chat_id = Column(String(255), nullable=True)
++
+     user_id = Column(
+         UUID(as_uuid=True), ForeignKey("user.id", ondelete="CASCADE"), nullable=False
+     )
+@@ -2120,6 +2166,18 @@ class Workspace(BaseModel, TimestampMixin):
+         back_populates="workspace",
+         cascade="all, delete-orphan",
+     )
++    chainlens_chunks = relationship(
++        "ChainLensChunk",
++        back_populates="workspace",
++        order_by="ChainLensChunk.created_at.desc()",
++        cascade="all, delete-orphan",
++    )
++    chainlens_ingest_jobs = relationship(
++        "ChainLensIngestJob",
++        back_populates="workspace",
++        order_by="ChainLensIngestJob.created_at.desc()",
++        cascade="all, delete-orphan",
++    )
+     crm_connections = relationship(
+         "CrmConnection",
+         back_populates="workspace",
+@@ -2832,9 +2890,7 @@ class WorkspaceMembership(BaseModel, TimestampMixin):
+     is_accepting_leads = Column(
+         Boolean, nullable=False, default=True, server_default="true"
+     )
+-    lead_capacity = Column(
+-        Integer, nullable=False, default=50, server_default="50"
+-    )
++    lead_capacity = Column(Integer, nullable=False, default=50, server_default="50")
+     status = Column(
+         String(20), nullable=False, default="ACTIVE", server_default="ACTIVE"
+     )
+@@ -3669,6 +3725,183 @@ class Run(Base, TimestampMixin):
+     memory_extraction_skip_reason = Column(String(64), nullable=True)
+ 
+ 
++class DshMissionStatus(StrEnum):
++    PENDING = "pending"
++    RUNNING = "running"
++    SUCCESS = "success"
++    ERROR = "error"
++    CANCELLED = "cancelled"
++    DLQ = "dlq"
++
++
++class DshMission(Base, TimestampMixin):
++    """
++    Long-running DSH mission state. PII/full payload and checkpoint are kept
++    in private JSONB columns and intentionally NOT published to zero_publication.
++    Only PII-safe columns are published so the mission progress UI stays live.
++    """
++
++    __tablename__ = "dsh_missions"
++    __allow_unmapped__ = True
++
++    __table_args__ = (
++        CheckConstraint(
++            "status IN ('pending', 'running', 'success', 'error', 'cancelled', 'dlq')",
++            name="chk_dsh_missions_status",
++        ),
++        CheckConstraint(
++            "progress_percent IS NULL OR (progress_percent >= 0 AND progress_percent <= 100)",
++            name="chk_dsh_missions_progress_percent",
++        ),
++        Index("ix_dsh_missions_workspace_id_status", "workspace_id", "status"),
++    )
++
++    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
++    workspace_id = Column(
++        Integer,
++        ForeignKey("workspaces.id", ondelete="CASCADE"),
++        nullable=False,
++        index=True,
++    )
++    user_id = Column(
++        UUID(as_uuid=True),
++        ForeignKey("user.id", ondelete="CASCADE"),
++        nullable=True,
++        index=True,
++    )
++    mission_type = Column(
++        String(64),
++        nullable=False,
++        default="deep_lead_research",
++    )
++    status = Column(
++        String(16),
++        nullable=False,
++        default="pending",
++        server_default="pending",
++        index=True,
++    )
++    phase = Column(String(32), nullable=True)
++    progress_percent = Column(
++        Integer,
++        nullable=True,
++        default=0,
++        server_default="0",
++    )
++    current_subtask_id = Column(String(64), nullable=True)
++    retry_count = Column(
++        Integer,
++        nullable=False,
++        default=0,
++        server_default="0",
++    )
++    started_at = Column(TIMESTAMP(timezone=True), nullable=True)
++    completed_at = Column(TIMESTAMP(timezone=True), nullable=True)
++    updated_at = Column(
++        TIMESTAMP(timezone=True),
++        nullable=False,
++        default=lambda: datetime.now(UTC),
++        onupdate=lambda: datetime.now(UTC),
++        index=True,
++    )
++    payload = Column(
++        JSONB,
++        nullable=False,
++        default=dict,
++        server_default=text("'{}'::jsonb"),
++    )
++    checkpoint = Column(
++        JSONB,
++        nullable=False,
++        default=lambda: {"version": 1, "phase": "crawl", "subtasks": []},
++        server_default=text(
++            '\'{"version": 1, "phase": "crawl", "subtasks": []}\'::jsonb'
++        ),
++    )
++    error = Column(JSONB, nullable=True)
++
++
++class TelegramCheckpointMessage(Base, TimestampMixin):
++    """Maps a Telegram inline-keyboard message to a lead/contact for DSH checkpoints."""
++
++    __tablename__ = "telegram_checkpoint_messages"
++
++    __table_args__ = (
++        UniqueConstraint(
++            "callback_token", name="uq_telegram_checkpoint_callback_token"
++        ),
++        Index(
++            "ix_telegram_checkpoint_message_peer",
++            "external_message_id",
++            "external_peer_id",
++        ),
++        Index(
++            "ix_telegram_checkpoint_workspace_mission",
++            "workspace_id",
++            "mission_id",
++            unique=True,
++            postgresql_where=text("status != 'failed'"),
++        ),
++        Index("ix_telegram_checkpoint_workspace_lead", "workspace_id", "lead_id"),
++        Index("ix_telegram_checkpoint_workspace_id", "workspace_id"),
++        Index("ix_telegram_checkpoint_mission_id", "mission_id"),
++        Index("ix_telegram_checkpoint_lead_id", "lead_id"),
++        Index("ix_telegram_checkpoint_contact_id", "contact_id"),
++        Index("ix_telegram_checkpoint_user_id", "user_id"),
++        CheckConstraint(
++            "status IN ('sent', 'unlocked', 'dismissed', 'refunded')",
++            name="ck_telegram_checkpoint_status",
++        ),
++        CheckConstraint(
++            "callback_token ~ '^[A-Za-z0-9_-]{16,24}$'",
++            name="ck_telegram_checkpoint_callback_token",
++        ),
++        ForeignKeyConstraint(
++            ["lead_id", "workspace_id"],
++            ["leads.id", "leads.workspace_id"],
++            ondelete="CASCADE",
++            name="fk_telegram_checkpoint_lead_id_workspace_id",
++        ),
++    )
++
++    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
++    callback_token = Column(String(24), nullable=False)
++    status = Column(String(20), nullable=False, default="sent", server_default="sent")
++
++    workspace_id = Column(
++        Integer,
++        ForeignKey("workspaces.id", ondelete="CASCADE"),
++        nullable=False,
++    )
++    mission_id = Column(
++        UUID(as_uuid=True),
++        ForeignKey("dsh_missions.id", ondelete="CASCADE"),
++        nullable=False,
++    )
++    lead_id = Column(UUID(as_uuid=True), nullable=False)
++    contact_id = Column(
++        UUID(as_uuid=True),
++        ForeignKey("verified_contacts.id", ondelete="CASCADE"),
++        nullable=False,
++    )
++    user_id = Column(
++        UUID(as_uuid=True),
++        ForeignKey("user.id", ondelete="CASCADE"),
++        nullable=False,
++    )
++
++    external_message_id = Column(Text, nullable=True)
++    external_peer_id = Column(Text, nullable=True)
++
++    unlocked_at = Column(TIMESTAMP(timezone=True), nullable=True)
++    refunded_at = Column(TIMESTAMP(timezone=True), nullable=True)
++
++    # Safe metadata only (e.g. {"dossier_visible": true}). NEVER store unmasked PII here.
++    action_payload = Column(
++        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
++    )
++
++
+ class AntiBotEscalation(BaseModel, TimestampMixin):
+     """Admin-escalation row for an anti-bot / CAPTCHA block.
+ 
+@@ -4340,6 +4573,12 @@ class ChainLensIngestJob(BaseModel, TimestampMixin):
+     ingested_source_ids = Column(
+         JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+     )
++    chunks_received_count = Column(
++        Integer, nullable=False, default=0, server_default="0"
++    )
++    chunks_ingested_count = Column(
++        Integer, nullable=False, default=0, server_default="0"
++    )
+     status = Column(
+         String(16), nullable=False, default="pending", server_default=text("'pending'")
+     )
+@@ -4353,6 +4592,8 @@ class ChainLensIngestJob(BaseModel, TimestampMixin):
+         onupdate=lambda: datetime.now(UTC),
+     )
+ 
++    workspace = relationship("Workspace", back_populates="chainlens_ingest_jobs")
++
+ 
+ class SignalEvent(Base, TimestampMixin):
+     """A detected buying-intent signal for a company in a workspace."""
+@@ -4488,12 +4729,10 @@ class Lead(Base, TimestampMixin):
+         PrimaryKeyConstraint("id", "workspace_id", name="pk_leads"),
+         Index("ix_leads_workspace_created", "workspace_id", "created_at"),
+         Index("ix_leads_tax_id", "tax_id"),
+-        Index(
+-            "uq_leads_workspace_value_hmac",
++        UniqueConstraint(
+             "workspace_id",
+             "value_hmac",
+-            unique=True,
+-            postgresql_where=text("value_hmac IS NOT NULL"),
++            name="uq_leads_workspace_value_hmac",
+         ),
+     )
+ 
+@@ -4522,12 +4761,14 @@ class Lead(Base, TimestampMixin):
+     enriched = Column(Boolean, nullable=False, default=False, server_default="false")
+     consent_status = Column(String(50), nullable=True)
+     legal_basis = Column(String(50), nullable=True)
+-    value_hmac = Column(String(64), nullable=True, index=True)
++    value_hmac = Column(String(64), nullable=False, index=True)
+     tax_id = Column(String(50), nullable=True)
+     legal_representative = Column(String(200), nullable=True)
+     charter_capital_vnd = Column(BigInteger, nullable=True)
+     company_status = Column(String(100), nullable=True)
+-    is_zalo_active = Column(Boolean, nullable=False, default=False, server_default="false")
++    is_zalo_active = Column(
++        Boolean, nullable=False, default=False, server_default="false"
++    )
+     updated_at = Column(
+         TIMESTAMP(timezone=True),
+         nullable=True,
+@@ -4695,7 +4936,9 @@ class LeadPipelineStage(Base, TimestampMixin):
+     __tablename__ = "lead_pipeline_stages"
+     __table_args__ = (
+         PrimaryKeyConstraint("id", "workspace_id", name="pk_lead_pipeline_stages"),
+-        UniqueConstraint("workspace_id", "slug", name="uq_lead_pipeline_stages_workspace_slug"),
++        UniqueConstraint(
++            "workspace_id", "slug", name="uq_lead_pipeline_stages_workspace_slug"
++        ),
+         Index("ix_lead_pipeline_stages_workspace_pos", "workspace_id", "position"),
+     )
+ 
+@@ -4748,7 +4991,9 @@ class LeadAssignment(Base, TimestampMixin):
+             name="fk_lead_assignments_lead_id_workspace_id",
+         ),
+         Index("ix_lead_assignments_lookup", "workspace_id", "lead_id", "created_at"),
+-        Index("ix_lead_assignments_user", "workspace_id", "assigned_to_user_id", "status"),
++        Index(
++            "ix_lead_assignments_user", "workspace_id", "assigned_to_user_id", "status"
++        ),
+     )
+ 
+     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+@@ -4772,8 +5017,15 @@ class LeadAssignment(Base, TimestampMixin):
+         ForeignKey("user.id", ondelete="SET NULL"),
+         nullable=True,
+     )
+-    assigned_by = Column(String(50), nullable=False, default="auto_round_robin", server_default="auto_round_robin")
+-    status = Column(String(30), nullable=False, default="assigned", server_default="assigned")
++    assigned_by = Column(
++        String(50),
++        nullable=False,
++        default="auto_round_robin",
++        server_default="auto_round_robin",
++    )
++    status = Column(
++        String(30), nullable=False, default="assigned", server_default="assigned"
++    )
+     reason = Column(String(255), nullable=True)
+     created_at = Column(
+         TIMESTAMP(timezone=True),
+@@ -4811,7 +5063,9 @@ class LeadActivityLog(Base, TimestampMixin):
+             ondelete="CASCADE",
+             name="fk_lead_activity_logs_lead_id_workspace_id",
+         ),
+-        Index("ix_lead_activity_logs_timeline", "workspace_id", "lead_id", "created_at"),
++        Index(
++            "ix_lead_activity_logs_timeline", "workspace_id", "lead_id", "created_at"
++        ),
+     )
+ 
+     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+@@ -4831,7 +5085,9 @@ class LeadActivityLog(Base, TimestampMixin):
+     )
+     activity_type = Column(String(50), nullable=False)
+     title = Column(String(255), nullable=False)
+-    details = Column(JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb"))
++    details = Column(
++        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
++    )
+     created_at = Column(
+         TIMESTAMP(timezone=True),
+         nullable=False,
+@@ -5013,6 +5269,11 @@ class VerifiedContact(Base, TimestampMixin):
+             "lead_id",
+             text("created_at DESC"),
+         ),
++        UniqueConstraint(
++            "workspace_id",
++            "value_hmac",
++            name="uq_verified_contacts_workspace_hmac",
++        ),
+         ForeignKeyConstraint(
+             ["lead_id", "workspace_id"],
+             ["leads.id", "leads.workspace_id"],
+@@ -5060,7 +5321,14 @@ class VerifiedContact(Base, TimestampMixin):
+     consent = Column(Boolean, nullable=False, default=False, server_default="false")
+     consent_status = Column(String(50), nullable=True)
+     legal_basis = Column(String(50), nullable=True)
++    value_hmac = Column(String(64), nullable=True, index=True)
++    phone_hmac = Column(String(64), nullable=True, index=True)
++    email_hmac = Column(String(64), nullable=True, index=True)
+     is_valid = Column(Boolean, nullable=False, default=True, server_default="true")
++    is_unlocked = Column(Boolean, nullable=False, default=False, server_default="false")
++    pii_access_audit_logs = Column(
++        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
++    )
+     refunded_at = Column(TIMESTAMP(timezone=True), nullable=True)
+     invalid_reason = Column(String(255), nullable=True)
+ 
+@@ -5782,7 +6050,9 @@ class WorkspaceDncRecord(Base, TimestampMixin):
+ 
+     __tablename__ = "workspace_dnc_records"
+     __table_args__ = (
+-        UniqueConstraint("workspace_id", "record_type", "value_hmac", name="uq_workspace_dnc_entry"),
++        UniqueConstraint(
++            "workspace_id", "record_type", "value_hmac", name="uq_workspace_dnc_entry"
++        ),
+         Index("ix_workspace_dnc_records_workspace_type", "workspace_id", "record_type"),
+         Index("ix_workspace_dnc_records_hmac", "workspace_id", "value_hmac"),
+     )
+@@ -5794,11 +6064,20 @@ class WorkspaceDncRecord(Base, TimestampMixin):
+         nullable=False,
+         index=True,
+     )
+-    record_type = Column(String(20), nullable=False)  # 'phone', 'domain', 'email', 'tax_id'
++    record_type = Column(
++        String(20), nullable=False
++    )  # 'phone', 'domain', 'email', 'tax_id'
+     value = Column(String(255), nullable=True)  # Masked/raw display value
+     value_hmac = Column(String(64), nullable=False, index=True)
+-    reason = Column(String(255), nullable=True, default="Opt-out requested", server_default=text("'Opt-out requested'"))
+-    source = Column(String(50), nullable=False, default="manual", server_default=text("'manual'"))
++    reason = Column(
++        String(255),
++        nullable=True,
++        default="Opt-out requested",
++        server_default=text("'Opt-out requested'"),
++    )
++    source = Column(
++        String(50), nullable=False, default="manual", server_default=text("'manual'")
++    )
+     created_at = Column(
+         TIMESTAMP(timezone=True),
+         nullable=False,
+@@ -5830,11 +6109,20 @@ class GlobalDncRecord(Base, TimestampMixin):
+     )
+ 
+     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+-    record_type = Column(String(20), nullable=False)  # 'phone', 'domain', 'email', 'tax_id'
++    record_type = Column(
++        String(20), nullable=False
++    )  # 'phone', 'domain', 'email', 'tax_id'
+     value = Column(String(255), nullable=True)  # Masked/raw display value
+     value_hmac = Column(String(64), nullable=False, index=True)
+-    reason = Column(String(255), nullable=True, default="Opt-out requested", server_default=text("'Opt-out requested'"))
+-    source = Column(String(50), nullable=False, default="manual", server_default=text("'manual'"))
++    reason = Column(
++        String(255),
++        nullable=True,
++        default="Opt-out requested",
++        server_default=text("'Opt-out requested'"),
++    )
++    source = Column(
++        String(50), nullable=False, default="manual", server_default=text("'manual'")
++    )
+     created_at = Column(
+         TIMESTAMP(timezone=True),
+         nullable=False,
+@@ -5868,15 +6156,29 @@ class AffiliatePartner(Base, TimestampMixin):
+         unique=True,
+     )
+     referral_code = Column(CITEXT, nullable=False)
+-    partner_type = Column(String(50), nullable=False, default="agency", server_default=text("'agency'"))
+-    status = Column(String(30), nullable=False, default="active", server_default=text("'active'"))
++    partner_type = Column(
++        String(50), nullable=False, default="agency", server_default=text("'agency'")
++    )
++    status = Column(
++        String(30), nullable=False, default="active", server_default=text("'active'")
++    )
+     commission_rate = Column(Float, nullable=False, default=0.15, server_default="0.15")
+     balance_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
+-    hold_balance_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
+-    total_earned_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
+-    total_paid_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
+-    payout_method = Column(String(30), nullable=False, default="vietqr", server_default=text("'vietqr'"))
+-    payout_details = Column(JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb"))
++    hold_balance_micros = Column(
++        BigInteger, nullable=False, default=0, server_default="0"
++    )
++    total_earned_micros = Column(
++        BigInteger, nullable=False, default=0, server_default="0"
++    )
++    total_paid_micros = Column(
++        BigInteger, nullable=False, default=0, server_default="0"
++    )
++    payout_method = Column(
++        String(30), nullable=False, default="vietqr", server_default=text("'vietqr'")
++    )
++    payout_details = Column(
++        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
++    )
+     created_at = Column(
+         TIMESTAMP(timezone=True),
+         nullable=False,
+@@ -5892,9 +6194,15 @@ class AffiliatePartner(Base, TimestampMixin):
+     )
+ 
+     user = relationship("User")
+-    referrals = relationship("PartnerReferral", back_populates="partner", cascade="all, delete-orphan")
+-    commissions = relationship("PartnerCommission", back_populates="partner", cascade="all, delete-orphan")
+-    payouts = relationship("PartnerPayout", back_populates="partner", cascade="all, delete-orphan")
++    referrals = relationship(
++        "PartnerReferral", back_populates="partner", cascade="all, delete-orphan"
++    )
++    commissions = relationship(
++        "PartnerCommission", back_populates="partner", cascade="all, delete-orphan"
++    )
++    payouts = relationship(
++        "PartnerPayout", back_populates="partner", cascade="all, delete-orphan"
++    )
+ 
+     @property
+     def available_balance_micros(self) -> int:
+@@ -5927,7 +6235,12 @@ class PartnerReferral(Base, TimestampMixin):
+         nullable=False,
+         unique=True,
+     )
+-    attribution_source = Column(String(100), nullable=True, default="direct_ref", server_default=text("'direct_ref'"))
++    attribution_source = Column(
++        String(100),
++        nullable=True,
++        default="direct_ref",
++        server_default=text("'direct_ref'"),
++    )
+     landing_page = Column(String(255), nullable=True)
+     created_at = Column(
+         TIMESTAMP(timezone=True),
+@@ -5945,7 +6258,9 @@ class PartnerReferral(Base, TimestampMixin):
+ 
+     partner = relationship("AffiliatePartner", back_populates="referrals")
+     referred_user = relationship("User")
+-    commissions = relationship("PartnerCommission", back_populates="referral", cascade="all, delete-orphan")
++    commissions = relationship(
++        "PartnerCommission", back_populates="referral", cascade="all, delete-orphan"
++    )
+ 
+ 
+ class PartnerCommission(Base, TimestampMixin):
+@@ -5974,11 +6289,19 @@ class PartnerCommission(Base, TimestampMixin):
+         ForeignKey("credit_purchases.id", ondelete="SET NULL"),
+         nullable=True,
+     )
+-    source_amount_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
+-    commission_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
++    source_amount_micros = Column(
++        BigInteger, nullable=False, default=0, server_default="0"
++    )
++    commission_micros = Column(
++        BigInteger, nullable=False, default=0, server_default="0"
++    )
+     commission_rate = Column(Float, nullable=False, default=0.15, server_default="0.15")
+-    currency = Column(String(10), nullable=False, default="USD", server_default=text("'USD'"))
+-    status = Column(String(20), nullable=False, default="settled", server_default=text("'settled'"))
++    currency = Column(
++        String(10), nullable=False, default="USD", server_default=text("'USD'")
++    )
++    status = Column(
++        String(20), nullable=False, default="settled", server_default=text("'settled'")
++    )
+     created_at = Column(
+         TIMESTAMP(timezone=True),
+         nullable=False,
+@@ -6014,12 +6337,22 @@ class PartnerPayout(Base, TimestampMixin):
+     )
+     amount_micros = Column(BigInteger, nullable=False)
+     amount_vnd = Column(BigInteger, nullable=False, default=0, server_default="0")
+-    tax_deducted_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
+-    net_amount_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
++    tax_deducted_micros = Column(
++        BigInteger, nullable=False, default=0, server_default="0"
++    )
++    net_amount_micros = Column(
++        BigInteger, nullable=False, default=0, server_default="0"
++    )
+     tax_code = Column(String(50), nullable=True)
+-    payout_method = Column(String(30), nullable=False, default="vietqr", server_default=text("'vietqr'"))
+-    payout_details = Column(JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb"))
+-    status = Column(String(20), nullable=False, default="pending", server_default=text("'pending'"))
++    payout_method = Column(
++        String(30), nullable=False, default="vietqr", server_default=text("'vietqr'")
++    )
++    payout_details = Column(
++        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
++    )
++    status = Column(
++        String(20), nullable=False, default="pending", server_default=text("'pending'")
++    )
+     tx_reference = Column(String(100), nullable=True)
+     napas_ref = Column(String(100), nullable=True)
+     hmac_audit_hash = Column(String(128), nullable=True)
+@@ -6044,6 +6377,7 @@ class PartnerPayout(Base, TimestampMixin):
+ 
+ class AuditEvent(BaseModel, TimestampMixin):
+     """Immutable dual-principal audit logging in audit_events."""
++
+     __tablename__ = "audit_events"
+ 
+     action = Column(String(100), nullable=False, index=True)
+@@ -6101,7 +6435,12 @@ class Sequence(Base, TimestampMixin):
+     __tablename__ = "sequences"
+     __table_args__ = (
+         PrimaryKeyConstraint("id", "workspace_id", name="pk_sequences"),
+-        ForeignKeyConstraint(["workspace_id"], ["workspaces.id"], ondelete="CASCADE", name="fk_sequences_workspace_id"),
++        ForeignKeyConstraint(
++            ["workspace_id"],
++            ["workspaces.id"],
++            ondelete="CASCADE",
++            name="fk_sequences_workspace_id",
++        ),
+         Index("ix_sequences_workspace_status", "workspace_id", "status"),
+         Index("ix_sequences_workspace_client", "workspace_id", "client_id"),
+     )
+@@ -6111,14 +6450,20 @@ class Sequence(Base, TimestampMixin):
+     client_id = Column(CITEXT, nullable=True, index=True)
+     name = Column(String(255), nullable=False)
+     description = Column(Text, nullable=True)
+-    status = Column(String(50), nullable=False, default="active", server_default=text("'active'"))
+-    shared = Column(Boolean, nullable=False, default=False, server_default=text("false"))
++    status = Column(
++        String(50), nullable=False, default="active", server_default=text("'active'")
++    )
++    shared = Column(
++        Boolean, nullable=False, default=False, server_default=text("false")
++    )
+     created_by_user_id = Column(
+         UUID(as_uuid=True),
+         ForeignKey("user.id", ondelete="SET NULL"),
+         nullable=True,
+     )
+-    entry_step_order = Column(Integer, nullable=False, default=1, server_default=text("1"))
++    entry_step_order = Column(
++        Integer, nullable=False, default=1, server_default=text("1")
++    )
+     created_at = Column(
+         TIMESTAMP(timezone=True),
+         nullable=False,
+@@ -6133,10 +6478,21 @@ class Sequence(Base, TimestampMixin):
+         server_default=text("now()"),
+     )
+ 
+-    steps = relationship("SequenceStep", back_populates="sequence", cascade="all, delete-orphan", order_by="SequenceStep.step_order")
+-    runs = relationship("SequenceRun", back_populates="sequence", cascade="all, delete-orphan")
+-    enrollments = relationship("SequenceEnrollment", back_populates="sequence", cascade="all, delete-orphan")
+-    events = relationship("SequenceEvent", back_populates="sequence", cascade="all, delete-orphan")
++    steps = relationship(
++        "SequenceStep",
++        back_populates="sequence",
++        cascade="all, delete-orphan",
++        order_by="SequenceStep.step_order",
++    )
++    runs = relationship(
++        "SequenceRun", back_populates="sequence", cascade="all, delete-orphan"
++    )
++    enrollments = relationship(
++        "SequenceEnrollment", back_populates="sequence", cascade="all, delete-orphan"
++    )
++    events = relationship(
++        "SequenceEvent", back_populates="sequence", cascade="all, delete-orphan"
++    )
+ 
+ 
+ class SequenceStep(Base, TimestampMixin):
+@@ -6159,12 +6515,22 @@ class SequenceStep(Base, TimestampMixin):
+     client_id = Column(CITEXT, nullable=True, index=True)
+     sequence_id = Column(UUID(as_uuid=True), nullable=False)
+     step_order = Column(Integer, nullable=False)
+-    step_type = Column(String(50), nullable=False)  # send_email, wait, condition, update_lead_score, update_crm, tag
+-    channel = Column(String(50), nullable=False, default="email", server_default=text("'email'"))
+-    template = Column(JSONB, nullable=True, default=dict, server_default=text("'{}'::jsonb"))
++    step_type = Column(
++        String(50), nullable=False
++    )  # send_email, wait, condition, update_lead_score, update_crm, tag
++    channel = Column(
++        String(50), nullable=False, default="email", server_default=text("'email'")
++    )
++    template = Column(
++        JSONB, nullable=True, default=dict, server_default=text("'{}'::jsonb")
++    )
+     wait_duration_seconds = Column(Integer, nullable=True)
+-    condition_config = Column(JSONB, nullable=True, default=dict, server_default=text("'{}'::jsonb"))
+-    is_enabled = Column(Boolean, nullable=False, default=True, server_default=text("true"))
++    condition_config = Column(
++        JSONB, nullable=True, default=dict, server_default=text("'{}'::jsonb")
++    )
++    is_enabled = Column(
++        Boolean, nullable=False, default=True, server_default=text("true")
++    )
+     created_at = Column(
+         TIMESTAMP(timezone=True),
+         nullable=False,
+@@ -6206,7 +6572,9 @@ class SequenceRun(Base, TimestampMixin):
+         ForeignKey("alert_rules.id", ondelete="SET NULL"),
+         nullable=True,
+     )
+-    status = Column(String(50), nullable=False, default="running", server_default=text("'running'"))  # running, completed, cancelled
++    status = Column(
++        String(50), nullable=False, default="running", server_default=text("'running'")
++    )  # running, completed, cancelled
+     started_at = Column(
+         TIMESTAMP(timezone=True),
+         nullable=False,
+@@ -6229,7 +6597,9 @@ class SequenceRun(Base, TimestampMixin):
+     )
+ 
+     sequence = relationship("Sequence", back_populates="runs", overlaps="runs,sequence")
+-    enrollments = relationship("SequenceEnrollment", back_populates="run", overlaps="enrollments,run")
++    enrollments = relationship(
++        "SequenceEnrollment", back_populates="run", overlaps="enrollments,run"
++    )
+ 
+ 
+ class SequenceEnrollment(Base, TimestampMixin):
+@@ -6239,7 +6609,9 @@ class SequenceEnrollment(Base, TimestampMixin):
+     __table_args__ = (
+         PrimaryKeyConstraint("id", "workspace_id", name="pk_sequence_enrollments"),
+         UniqueConstraint(
+-            "sequence_id", "lead_id", "workspace_id",
++            "sequence_id",
++            "lead_id",
++            "workspace_id",
+             name="uq_sequence_enrollments_seq_lead",
+         ),
+         ForeignKeyConstraint(
+@@ -6254,7 +6626,9 @@ class SequenceEnrollment(Base, TimestampMixin):
+             ondelete="SET NULL",
+             name="fk_sequence_enrollments_run",
+         ),
+-        Index("ix_sequence_enrollments_sched", "workspace_id", "status", "scheduled_at"),
++        Index(
++            "ix_sequence_enrollments_sched", "workspace_id", "status", "scheduled_at"
++        ),
+         Index("ix_sequence_enrollments_lead", "workspace_id", "lead_id"),
+     )
+ 
+@@ -6288,9 +6662,18 @@ class SequenceEnrollment(Base, TimestampMixin):
+         server_default=text("now()"),
+     )
+ 
+-    sequence = relationship("Sequence", back_populates="enrollments", overlaps="enrollments,sequence")
+-    run = relationship("SequenceRun", back_populates="enrollments", overlaps="enrollments,sequence")
+-    events = relationship("SequenceEvent", back_populates="enrollment", cascade="all, delete-orphan", overlaps="events,enrollment")
++    sequence = relationship(
++        "Sequence", back_populates="enrollments", overlaps="enrollments,sequence"
++    )
++    run = relationship(
++        "SequenceRun", back_populates="enrollments", overlaps="enrollments,sequence"
++    )
++    events = relationship(
++        "SequenceEvent",
++        back_populates="enrollment",
++        cascade="all, delete-orphan",
++        overlaps="events,enrollment",
++    )
+ 
+ 
+ class SequenceEvent(Base):
+@@ -6311,8 +6694,15 @@ class SequenceEvent(Base):
+             ondelete="CASCADE",
+             name="fk_sequence_events_sequence",
+         ),
+-        Index("ix_sequence_events_enrollment", "workspace_id", "enrollment_id", "event_type"),
+-        Index("ix_sequence_events_seq_type", "workspace_id", "sequence_id", "event_type"),
++        Index(
++            "ix_sequence_events_enrollment",
++            "workspace_id",
++            "enrollment_id",
++            "event_type",
++        ),
++        Index(
++            "ix_sequence_events_seq_type", "workspace_id", "sequence_id", "event_type"
++        ),
+     )
+ 
+     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+@@ -6321,11 +6711,25 @@ class SequenceEvent(Base):
+     enrollment_id = Column(UUID(as_uuid=True), nullable=False)
+     sequence_id = Column(UUID(as_uuid=True), nullable=False)
+     step_id = Column(UUID(as_uuid=True), nullable=True)
+-    event_type = Column(String(50), nullable=False)  # sent, delivered, opened, replied, bounced, meeting_booked, failed, skipped
+-    event_subtype = Column(String(100), nullable=True)  # insufficient_credits, smtp_error, no_consent, opt_out, etc.
+-    channel = Column(String(50), nullable=False, default="email", server_default=text("'email'"))
+-    cost_micros = Column(BigInteger, nullable=False, default=0, server_default=text("0"))
+-    event_metadata = Column("metadata", JSONB, nullable=True, default=dict, server_default=text("'{}'::jsonb"))
++    event_type = Column(
++        String(50), nullable=False
++    )  # sent, delivered, opened, replied, bounced, meeting_booked, failed, skipped
++    event_subtype = Column(
++        String(100), nullable=True
++    )  # insufficient_credits, smtp_error, no_consent, opt_out, etc.
++    channel = Column(
++        String(50), nullable=False, default="email", server_default=text("'email'")
++    )
++    cost_micros = Column(
++        BigInteger, nullable=False, default=0, server_default=text("0")
++    )
++    event_metadata = Column(
++        "metadata",
++        JSONB,
++        nullable=True,
++        default=dict,
++        server_default=text("'{}'::jsonb"),
++    )
+     provider_msg_id = Column(String(255), nullable=True)
+     created_at = Column(
+         TIMESTAMP(timezone=True),
+@@ -6334,5 +6738,9 @@ class SequenceEvent(Base):
+         server_default=text("now()"),
+     )
+ 
+-    enrollment = relationship("SequenceEnrollment", back_populates="events", overlaps="events,enrollment")
+-    sequence = relationship("Sequence", back_populates="events", overlaps="enrollment,events")
++    enrollment = relationship(
++        "SequenceEnrollment", back_populates="events", overlaps="events,enrollment"
++    )
++    sequence = relationship(
++        "Sequence", back_populates="events", overlaps="enrollment,events"
++    )
+diff --git a/nowing_backend/app/gateway/inbox_processor.py b/nowing_backend/app/gateway/inbox_processor.py
+index 3331e957f..1c6ad5bb9 100644
+--- a/nowing_backend/app/gateway/inbox_processor.py
++++ b/nowing_backend/app/gateway/inbox_processor.py
+@@ -24,6 +24,7 @@ from app.db import (
+     ExternalChatPeerKind,
+     ExternalChatPlatform,
+     NewChatThread,
++    Workspace,
+     async_session_maker,
+ )
+ from app.gateway.agent_invoke import call_agent_for_gateway
+@@ -31,6 +32,7 @@ from app.gateway.base.commands import command_name
+ from app.gateway.bindings import get_or_create_thread_for_binding
+ from app.gateway.registry import resolve_platform_bundle
+ from app.observability.metrics import record_gateway_inbox_processed
++from app.services.inbound_debounce_service import InboundDebounceService
+ 
+ logger = logging.getLogger(__name__)
+ 
+@@ -544,6 +546,34 @@ async def _dispatch_inbound_event(
+             await session.commit()
+             return
+ 
++        # Story 24.6: Buffer inbound direct message for auto-reply if the workspace has it enabled.
++        workspace = await session.get(Workspace, binding.workspace_id)
++        if (
++            workspace is not None
++            and workspace.auto_reply_enabled
++            and parsed.event_kind != "callback_query"
++        ):
++            try:
++                debounce = InboundDebounceService()
++                await debounce.buffer_inbound_message(
++                    channel=bundle.platform_label,
++                    sender_id=parsed.external_user_id or parsed.external_peer_id,
++                    text=parsed.text,
++                    payload={
++                        "workspace_id": workspace.id,
++                        "thread_id": str(binding.id),
++                        "account_id": account.id,
++                        "binding_id": binding.id,
++                    },
++                )
++                event.status = ExternalChatEventStatus.PROCESSED
++                event.last_error = "auto_reply_buffered"
++                await session.commit()
++                return
++            except Exception as e:
++                logger.error("Failed to buffer inbound message for auto-reply: %s", e)
++                # Fall through to the normal chat-agent path on buffer failure.
++
+         thread = await get_or_create_thread_for_binding(session, binding)
+         await session.commit()
+ 
+diff --git a/nowing_backend/app/gateway/telegram/callbacks.py b/nowing_backend/app/gateway/telegram/callbacks.py
+index f0fca65c5..9f03ba6bd 100644
+--- a/nowing_backend/app/gateway/telegram/callbacks.py
++++ b/nowing_backend/app/gateway/telegram/callbacks.py
+@@ -2,10 +2,12 @@
+ 
+ from __future__ import annotations
+ 
++import contextlib
+ import logging
+ from uuid import UUID
+ 
+ from fastapi import HTTPException
++from sqlalchemy import select
+ from sqlalchemy.ext.asyncio import AsyncSession
+ 
+ from app.auth.context import AuthContext
+@@ -17,9 +19,12 @@ from app.automations.persistence.models.automation import Automation
+ from app.automations.persistence.models.run import AutomationRun
+ from app.automations.persistence.models.trigger import AutomationTrigger
+ from app.config import config
+-from app.db import ExternalChatBinding, Permission, User
++from app.db import ExternalChatBinding, Lead, Permission, User
++from app.gateway import ratelimit
+ from app.gateway.base.adapter import ParsedInboundEvent
+ from app.gateway.telegram.adapter import TelegramAdapter
++from app.services import dsh_telegram_checkpoint_service
++from app.services.auto_reply_agent import pause_auto_reply
+ from app.utils.rbac import check_permission
+ 
+ logger = logging.getLogger(__name__)
+@@ -333,6 +338,146 @@ async def _handle_rerun(
+                 )
+ 
+ 
++async def _handle_dsh_callback(
++    *,
++    session: AsyncSession,
++    adapter: TelegramAdapter,
++    event: ParsedInboundEvent,
++    binding: ExternalChatBinding,
++    action: str,
++    token: str,
++    callback_query_id: str | None,
++) -> None:
++    """Handle 3-part dsh:{action}:{token} callbacks with rate limiting and RBAC."""
++    # DSH checkpoint callbacks affect wallet/PII; only allow direct chats for now.
++    if getattr(binding, "external_peer_kind", None) != "direct":
++        if callback_query_id:
++            with contextlib.suppress(Exception):
++                await adapter.answer_callback_query(
++                    callback_query_id=callback_query_id,
++                    text="Vui lòng mở khóa trong chat riêng với bot.",
++                    show_alert=True,
++                )
++        return
++
++    # Enforce clicker == card recipient (owner). In a direct chat the peer id and
++    # the user id are the same; if a message is forwarded to another chat, the
++    # clicker will not match and the action is rejected.
++    if event.external_user_id is not None and str(event.external_user_id) != str(
++        binding.external_peer_id
++    ):
++        if callback_query_id:
++            with contextlib.suppress(Exception):
++                await adapter.answer_callback_query(
++                    callback_query_id=callback_query_id,
++                    text="Thao tác này chỉ dành cho người nhận card.",
++                    show_alert=True,
++                )
++        return
++
++    rate_limit = getattr(config, "DSH_TELEGRAM_CALLBACK_RATE_LIMIT_PER_MINUTE", 60)
++    user_id = binding.user_id or "anonymous"
++    key = f"telegram:checkpoint:{binding.workspace_id}:{user_id}"
++    wait_ms = await ratelimit.acquire_token(
++        key,
++        capacity=rate_limit,
++        refill_per_sec=rate_limit / 60.0,
++    )
++    if wait_ms > 0:
++        if callback_query_id:
++            try:
++                await adapter.answer_callback_query(
++                    callback_query_id=callback_query_id,
++                    text="Thao tác quá nhanh, vui lòng thử lại sau.",
++                    show_alert=True,
++                )
++            except Exception:
++                logger.warning(
++                    "Failed to answer rate-limited callback query", exc_info=True
++                )
++        return
++
++    try:
++        auth = await _auth_for_binding(session, binding)
++        required_perm = (
++            Permission.LEADS_READ.value
++            if action == "dossier"
++            else Permission.LEADS_WRITE.value
++        )
++        await check_permission(
++            session,
++            auth,
++            binding.workspace_id,
++            required_perm,
++            "You don't have permission to perform this lead action in this workspace",
++        )
++    except HTTPException:
++        if callback_query_id:
++            try:
++                await adapter.answer_callback_query(
++                    callback_query_id=callback_query_id,
++                    text="Access denied: you don't have permission to perform this action.",
++                    show_alert=True,
++                )
++            except Exception:
++                logger.warning("Failed to answer denied callback query", exc_info=True)
++        return
++
++    checkpoint_svc = dsh_telegram_checkpoint_service.DshTelegramCheckpointService()
++    try:
++        if action == "unlock":
++            await checkpoint_svc.handle_unlock_callback(
++                session=session,
++                adapter=adapter,
++                event=event,
++                binding=binding,
++                callback_token=token,
++                callback_query_id=callback_query_id,
++            )
++        elif action == "dossier":
++            await checkpoint_svc.handle_dossier_callback(
++                session=session,
++                adapter=adapter,
++                event=event,
++                binding=binding,
++                callback_token=token,
++                callback_query_id=callback_query_id,
++            )
++        elif action == "skip":
++            await checkpoint_svc.handle_skip_callback(
++                session=session,
++                adapter=adapter,
++                event=event,
++                binding=binding,
++                callback_token=token,
++                callback_query_id=callback_query_id,
++            )
++        elif action == "refund":
++            await checkpoint_svc.handle_refund_callback(
++                session=session,
++                adapter=adapter,
++                event=event,
++                binding=binding,
++                callback_token=token,
++                callback_query_id=callback_query_id,
++            )
++        else:
++            if callback_query_id:
++                with contextlib.suppress(Exception):
++                    await adapter.answer_callback_query(
++                        callback_query_id=callback_query_id
++                    )
++    except Exception:
++        logger.exception("Unexpected error handling dsh:%s callback", action)
++        if callback_query_id:
++            with contextlib.suppress(Exception):
++                await adapter.answer_callback_query(
++                    callback_query_id=callback_query_id,
++                    text="Không thể xử lý thao tác này.",
++                    show_alert=True,
++                )
++
++
+ async def handle_callback_query(
+     *,
+     session: AsyncSession,
+@@ -340,7 +485,7 @@ async def handle_callback_query(
+     event: ParsedInboundEvent,
+     binding: ExternalChatBinding,
+ ) -> None:
+-    """Dispatch a Telegram ``callback_query`` to ``view_run:`` or ``rerun:`` handlers."""
++    """Dispatch a Telegram ``callback_query`` to ``view_run:``, ``rerun:``, or ``dsh:`` handlers."""
+     data = event.text or ""
+     callback_query_id = (event.metadata or {}).get("callback_query_id")
+ 
+@@ -368,6 +513,73 @@ async def handle_callback_query(
+                 )
+         return
+ 
++    # Check 3-part dsh:{action}:{token} callback
++    if data.startswith("dsh:"):
++        dsh_parts = data.split(":", 2)
++        if len(dsh_parts) != 3:
++            if callback_query_id:
++                with contextlib.suppress(Exception):
++                    await adapter.answer_callback_query(
++                        callback_query_id=callback_query_id,
++                        text="Dữ liệu callback không hợp lệ.",
++                        show_alert=True,
++                    )
++            return
++        _, action, token = dsh_parts
++        await _handle_dsh_callback(
++            session=session,
++            adapter=adapter,
++            event=event,
++            binding=binding,
++            action=action,
++            token=token,
++            callback_query_id=callback_query_id,
++        )
++        return
++
++    # Check nhan_tu_van:{thread_id}:{lead_id} callback
++    if data.startswith("nhan_tu_van:"):
++        ntv_parts = data.split(":", 2)
++        if len(ntv_parts) != 3:
++            if callback_query_id:
++                with contextlib.suppress(Exception):
++                    await adapter.answer_callback_query(
++                        callback_query_id=callback_query_id,
++                        text="Dữ liệu callback không hợp lệ.",
++                        show_alert=True,
++                    )
++            return
++        _, thread_id, lead_id = ntv_parts
++        if (
++            event.external_user_id is not None
++            and binding.external_peer_id is not None
++            and str(event.external_user_id) != str(binding.external_peer_id)
++        ):
++            if callback_query_id:
++                with contextlib.suppress(Exception):
++                    await adapter.answer_callback_query(
++                        callback_query_id=callback_query_id,
++                        text="Thao tác này chỉ dành cho người nhận alert.",
++                        show_alert=True,
++                    )
++            return
++        await handle_telegram_callback_nhan_tu_van(
++            thread_id=thread_id,
++            lead_id=lead_id,
++            claimed_by_user_id=str(event.external_user_id or binding.user_id or ""),
++            session=session,
++            adapter=adapter,
++            binding=binding,
++        )
++        if callback_query_id:
++            with contextlib.suppress(Exception):
++                await adapter.answer_callback_query(
++                    callback_query_id=callback_query_id,
++                    text="Đã ghi nhận yêu cầu tư vấn. AI auto-reply sẽ tạm dừng 24h.",
++                    show_alert=True,
++                )
++        return
++
+     parts = data.split(":", 1)
+     prefix = parts[0]
+     item_id: int | None = None
+@@ -404,3 +616,85 @@ async def handle_callback_query(
+             logger.warning(
+                 "Failed to answer callback query %s", callback_query_id, exc_info=True
+             )
++
++
++async def handle_telegram_callback_nhan_tu_van(
++    thread_id: str,
++    lead_id: str,
++    claimed_by_user_id: str,
++    *,
++    session: AsyncSession | None = None,
++    adapter: TelegramAdapter | None = None,
++    binding: ExternalChatBinding | None = None,
++) -> dict[str, str]:
++    """Handles Telegram [Nhận Tư Vấn] callback: pauses AI auto-reply for 24h and assigns lead."""
++    clean_thread_id = (thread_id or "").strip()
++    clean_lead_id = (lead_id or "").strip()
++    clean_user_id = (claimed_by_user_id or "").strip()
++
++    if not clean_thread_id or not clean_lead_id:
++        return {
++            "status": "error",
++            "error": "Missing required thread_id or lead_id",
++        }
++
++    try:
++        await pause_auto_reply(clean_thread_id)
++
++        # Update lead assignment / status when invoked from a real gateway session.
++        if session is not None and binding is not None:
++            try:
++                lead_uuid = UUID(clean_lead_id)
++            except ValueError:
++                logger.warning("Invalid lead_id format in nhan_tu_van callback: %s", clean_lead_id)
++            else:
++                result = await session.execute(
++                    select(Lead).where(
++                        Lead.id == lead_uuid,
++                        Lead.workspace_id == binding.workspace_id,
++                    )
++                )
++                lead = result.scalar_one_or_none()
++                if lead is not None:
++                    lead.status = "warm"
++                    # Always assign to the binding owner (workspace sales rep), never the raw
++                    # Telegram id. The clicker was already validated against binding.external_peer_id.
++                    lead.user_id = binding.user_id
++                    await session.commit()
++                    logger.info(
++                        "Assigned lead %s to user %s for workspace %s",
++                        clean_lead_id,
++                        lead.user_id,
++                        binding.workspace_id,
++                    )
++
++            # Reply to the prospect that a specialist has joined.
++            if adapter is not None and binding is not None:
++                with contextlib.suppress(Exception):
++                    await adapter.send_message(
++                        external_peer_id=binding.external_peer_id,
++                        text=(
++                            "Dạ em đã chuyển thông tin cho chuyên viên tư vấn. "
++                            "Anh/chị vui lòng đợi một chút, bên em sẽ liên hệ hỗ trợ ngay ạ."
++                        ),
++                        parse_mode=None,
++                    )
++
++        logger.info(
++            "Claimed lead %s for user %s on thread %s. Auto-reply paused 24h.",
++            clean_lead_id,
++            clean_user_id,
++            clean_thread_id,
++        )
++        return {
++            "status": "success",
++            "thread_id": clean_thread_id,
++            "lead_id": clean_lead_id,
++            "assigned_to": clean_user_id,
++        }
++    except Exception as e:
++        logger.error("Error handling nhan_tu_van callback for lead %s: %s", clean_lead_id, e)
++        return {
++            "status": "error",
++            "error": str(e),
++        }
+diff --git a/nowing_backend/app/services/billing_event_service.py b/nowing_backend/app/services/billing_event_service.py
+index e012893cb..c89fd617a 100644
+--- a/nowing_backend/app/services/billing_event_service.py
++++ b/nowing_backend/app/services/billing_event_service.py
+@@ -2,11 +2,17 @@
+ 
+ from __future__ import annotations
+ 
++import asyncio
++import hashlib
++import logging
++import math
++from datetime import UTC, datetime, timedelta
+ from uuid import UUID
+ 
+-from sqlalchemy import select
++from sqlalchemy import select, text
+ from sqlalchemy.ext.asyncio import AsyncSession
+ 
++from app.config import config
+ from app.db import BillingEvent
+ from app.services import wallet_credit
+ from app.services.workspace_credit_service import (
+@@ -14,6 +20,38 @@ from app.services.workspace_credit_service import (
+     WorkspaceCreditService,
+ )
+ 
++logger = logging.getLogger(__name__)
++
++
++class RefundWindowExpiredError(ValueError):
++    """Raised when a 24h contact-unlock refund window has expired."""
++
++
++class RefundBudgetExhaustedError(ValueError):
++    """Raised when the 15% auto-refund budget cap is exhausted."""
++
++
++class RefundAlreadyProcessedError(ValueError):
++    """Raised when a contact has already been relocked or refunded."""
++
++
++class NoOriginalUnlockEventError(ValueError):
++    """Raised when the original contact_unlock billing event is missing."""
++
++
++class RelockWindowExpiredError(ValueError):
++    """Raised when the 60s accidental-relock window has expired."""
++
++
++class RelockBudgetExhaustedError(ValueError):
++    """Raised when the 15% accidental-relock budget cap is exhausted."""
++
++
++# ponytail: in-process lock so concurrent relock requests in the same worker
++# (e.g. the integration-test AsyncClient that reuses one db_session) are
++# serialized. The DB advisory lock still protects cross-worker/process races.
++_RELOCK_LOCK = asyncio.Lock()
++
+ 
+ class BillingEventService:
+     """Write business-event ledger rows and debit the workspace owner."""
+@@ -61,6 +99,459 @@ class BillingEventService:
+             cost_micros=cost_micros,
+         )
+ 
++    async def record_contact_unlock(
++        self,
++        session: AsyncSession,
++        *,
++        verified_contact_id: UUID,
++        workspace_id: int,
++        client_id: str | None = None,
++        user_id: UUID,
++        cost_micros: int = 1_500,
++    ) -> BillingEvent:
++        """Record a contact-unlock billing event and debit the owner (Story 26.1 / AD-105).
++
++        Uses ``cost_basis="actual"`` and is idempotent by ``verified_contact_id``:
++        a duplicate call returns the existing BillingEvent so retries are safe.
++        """
++        return await _record_business_event(
++            session,
++            event_entity_type="verified_contact",
++            event_type="contact_unlock",
++            event_id=verified_contact_id,
++            workspace_id=workspace_id,
++            client_id=client_id,
++            user_id=user_id,
++            cost_micros=cost_micros,
++            cost_basis="actual",
++            return_existing=True,
++        )
++
++    async def record_contact_unlock_refund(
++        self,
++        session: AsyncSession,
++        *,
++        verified_contact_id: UUID,
++        workspace_id: int,
++        client_id: str | None = None,
++        user_id: UUID,
++        cost_micros: int = 1_500,
++    ) -> BillingEvent:
++        """Record a contact-unlock refund and credit the payer wallet (Story 26.4).
++
++        Idempotent: returns an existing refund BillingEvent if one already exists.
++        Refunds are capped at the original unlock cost.
++        """
++        # ponytail: serialize all refund attempts for the same contact. The first
++        # SELECT FOR UPDATE cannot lock a refund row that does not exist yet, so
++        # concurrent first refunds would both pass the check and double-credit.
++        await _acquire_billing_lock(
++            session, "verified_contact", "contact_unlock_refund", verified_contact_id
++        )
++
++        # 1. Idempotency: existing refund row for this contact (lock for update).
++        existing_refund = (
++            await session.execute(
++                select(BillingEvent)
++                .where(
++                    BillingEvent.event_entity_type == "verified_contact",
++                    BillingEvent.event_type == "contact_unlock_refund",
++                    BillingEvent.event_id == verified_contact_id,
++                    BillingEvent.workspace_id == workspace_id,
++                )
++                .with_for_update()
++            )
++        ).scalar_one_or_none()
++        if getattr(existing_refund, "event_type", None) == "contact_unlock_refund":
++            return existing_refund
++
++        # 2. Find the original unlock billing event to identify the payer.
++        original = (
++            await session.execute(
++                select(BillingEvent)
++                .where(
++                    BillingEvent.event_entity_type == "verified_contact",
++                    BillingEvent.event_type == "contact_unlock",
++                    BillingEvent.event_id == verified_contact_id,
++                    BillingEvent.workspace_id == workspace_id,
++                )
++                .with_for_update()
++            )
++        ).scalar_one_or_none()
++        if getattr(original, "event_type", None) != "contact_unlock":
++            raise NoOriginalUnlockEventError(
++                f"no unlock billing event for contact {verified_contact_id}"
++            )
++
++        payer_id = original.user_id
++        if payer_id is None:
++            payer_id = user_id
++
++        # 3. Refund cannot exceed the original unlock cost.
++        refund_micros = min(cost_micros, original.cost_micros or cost_micros)
++
++        # 4. Credit the payer wallet and decrement member monthly spent.
++        # NOTE: apply_credit commits the session, so the BillingEvent is added
++        # afterwards to keep it in the caller's transaction. OptOutService relies
++        # on session.new/add to detect a newly created refund event.
++        await wallet_credit.apply_credit(session, payer_id, refund_micros)
++        credit_svc = WorkspaceCreditService(session=session)
++        await credit_svc.refund_member_spend(
++            workspace_id=workspace_id,
++            user_id=payer_id,
++            amount_micros=refund_micros,
++        )
++
++        # 5. Persist the refund billing event (negative cost).
++        event = BillingEvent(
++            workspace_id=workspace_id,
++            client_id=client_id,
++            user_id=payer_id,
++            event_entity_type="verified_contact",
++            event_type="contact_unlock_refund",
++            event_id=verified_contact_id,
++            cost_micros=-refund_micros,
++            currency="USD",
++            cost_basis="actual",
++        )
++        session.add(event)
++        return event
++
++    async def record_contact_relock(
++        self,
++        session: AsyncSession,
++        *,
++        verified_contact_id: UUID,
++        workspace_id: int,
++        client_id: str | None = None,
++        user_id: UUID,
++        cost_micros: int = 1_500,
++        relock_window_seconds: int = 60,
++    ) -> BillingEvent:
++        """Record an accidental contact relock (60s window) refund.
++
++        Refunds the original payer, decrements member monthly spend, and writes a
++        negative ``contact_relock`` BillingEvent. Idempotent: a duplicate call
++        returns the existing relock row. Enforces a 60-second relock window and a
++        15% accidental-relock budget per billing cycle (separate from opt-out cap).
++        """
++        # ponytail: in-process serialization. Combined with the DB advisory lock
++        # below this makes the read-check-write for relocks safe even when one
++        # AsyncSession is reused by concurrent test callers.
++        async with _RELOCK_LOCK:
++            await _acquire_billing_lock(
++                session, "verified_contact", "contact_relock", verified_contact_id
++            )
++
++            # 1. Idempotency: an existing relock row for this contact.
++            existing_rows = await _list_billing_events(
++                session,
++                event_entity_type="verified_contact",
++                event_type="contact_relock",
++                event_id=verified_contact_id,
++                workspace_id=workspace_id,
++            )
++            if existing_rows:
++                return existing_rows[0]
++
++            # 2. A refund already processed prevents a relock.
++            existing_refunds = await _list_billing_events(
++                session,
++                event_entity_type="verified_contact",
++                event_type="contact_unlock_refund",
++                event_id=verified_contact_id,
++                workspace_id=workspace_id,
++            )
++            if existing_refunds:
++                raise RefundAlreadyProcessedError(
++                    "refund already processed for this contact"
++                )
++
++            # 2. Original unlock event must exist and be within the relock window.
++            original_rows = await _list_billing_events(
++                session,
++                event_entity_type="verified_contact",
++                event_type="contact_unlock",
++                event_id=verified_contact_id,
++                workspace_id=workspace_id,
++            )
++            original = original_rows[0] if original_rows else None
++            if (
++                original is None
++                or getattr(original, "event_type", None) != "contact_unlock"
++            ):
++                raise NoOriginalUnlockEventError(
++                    f"no unlock billing event for contact {verified_contact_id}"
++                )
++
++            created_at = getattr(original, "created_at", None)
++            if created_at is None:
++                raise NoOriginalUnlockEventError(
++                    "original unlock event has no timestamp"
++                )
++            now = datetime.now(UTC)
++            if now - created_at > timedelta(seconds=relock_window_seconds):
++                raise RelockWindowExpiredError("relock window expired")
++
++            # 3. Accidental-relock budget: 15% of unlocked leads this billing cycle.
++            cycle_start, cycle_end = _billing_cycle_bounds(now)
++            relock_count = await _count_workspace_events(
++                session,
++                event_entity_type="verified_contact",
++                event_type="contact_relock",
++                workspace_id=workspace_id,
++                since=cycle_start,
++                until=cycle_end,
++            )
++            unlock_count = await _count_workspace_events(
++                session,
++                event_entity_type="verified_contact",
++                event_type="contact_unlock",
++                workspace_id=workspace_id,
++                since=cycle_start,
++                until=cycle_end,
++            )
++            if unlock_count > 0:
++                cap = math.ceil(unlock_count * 0.15)
++                if relock_count >= cap:
++                    raise RelockBudgetExhaustedError("relock budget exhausted")
++
++            # 4. Build the relock billing event before committing.
++            payer_id = original.user_id or user_id
++            original_cost = original.cost_micros
++            if original_cost is None:
++                original_cost = cost_micros
++            refund_micros = min(cost_micros, max(0, original_cost))
++
++            event = BillingEvent(
++                workspace_id=workspace_id,
++                client_id=client_id,
++                user_id=payer_id,
++                event_entity_type="verified_contact",
++                event_type="contact_relock",
++                event_id=verified_contact_id,
++                cost_micros=-refund_micros,
++                currency="USD",
++                cost_basis="actual",
++            )
++            session.add(event)
++
++            # 5. Credit the original payer and refund their monthly spend.
++            credit_svc = WorkspaceCreditService(session=session)
++            await credit_svc.refund_member_spend(
++                workspace_id=workspace_id,
++                user_id=payer_id,
++                amount_micros=refund_micros,
++            )
++            await wallet_credit.apply_credit(session, payer_id, refund_micros)
++            return event
++
++    async def record_contact_unlock_refund_24h(
++        self,
++        session: AsyncSession,
++        *,
++        verified_contact_id: UUID,
++        workspace_id: int,
++        client_id: str | None = None,
++        user_id: UUID,
++        cost_micros: int = 1_500,
++        refund_window_hours: int = 24,
++    ) -> BillingEvent:
++        """Record a 24h auto-refund for an invalid contact (Telegram 1-click refund).
++
++        Refunds the original payer, decrements member monthly spend, writes a
++        negative ``contact_unlock_refund`` BillingEvent, and updates contact state.
++        Enforces a 24-hour SLA window and a 15% budget cap per billing cycle.
++        """
++        async with _RELOCK_LOCK:
++            await _acquire_billing_lock(
++                session,
++                "verified_contact",
++                "contact_unlock_refund",
++                verified_contact_id,
++            )
++
++            # 1. Idempotency: check for existing refund or relock row (prevent double refund)
++            existing_refunds = await _list_billing_events(
++                session,
++                event_entity_type="verified_contact",
++                event_type="contact_unlock_refund",
++                event_id=verified_contact_id,
++                workspace_id=workspace_id,
++            )
++            if existing_refunds:
++                return existing_refunds[0]
++
++            existing_relocks = await _list_billing_events(
++                session,
++                event_entity_type="verified_contact",
++                event_type="contact_relock",
++                event_id=verified_contact_id,
++                workspace_id=workspace_id,
++            )
++            if existing_relocks:
++                # A relock already refunded this contact. Do not conflate the ledger
++                # by returning a contact_relock event as a contact_unlock_refund.
++                raise RefundAlreadyProcessedError(
++                    "contact already relocked; refund already processed"
++                )
++
++            # 2. Original unlock event must exist and be within the 24h window
++            original_rows = await _list_billing_events(
++                session,
++                event_entity_type="verified_contact",
++                event_type="contact_unlock",
++                event_id=verified_contact_id,
++                workspace_id=workspace_id,
++            )
++            original = original_rows[0] if original_rows else None
++            if (
++                original is None
++                or getattr(original, "event_type", None) != "contact_unlock"
++            ):
++                raise NoOriginalUnlockEventError(
++                    f"no original unlock billing event found for contact {verified_contact_id}"
++                )
++
++            created_at = getattr(original, "created_at", None)
++            if created_at is None:
++                raise NoOriginalUnlockEventError(
++                    "original unlock event has no timestamp"
++                )
++            now = datetime.now(UTC)
++            if now - created_at > timedelta(hours=refund_window_hours):
++                raise RefundWindowExpiredError("24h refund window expired")
++
++            # 3. 15% auto-refund cap across the current and original-unlock billing cycles.
++            current_cycle_start, current_cycle_end = _billing_cycle_bounds(now)
++            original_cycle_start, original_cycle_end = _billing_cycle_bounds(created_at)
++
++            refund_count = await _count_workspace_events(
++                session,
++                event_entity_type="verified_contact",
++                event_type="contact_unlock_refund",
++                workspace_id=workspace_id,
++                since=current_cycle_start,
++                until=current_cycle_end,
++            )
++            unlock_count = await _count_workspace_events(
++                session,
++                event_entity_type="verified_contact",
++                event_type="contact_unlock",
++                workspace_id=workspace_id,
++                since=current_cycle_start,
++                until=current_cycle_end,
++            )
++
++            if (original_cycle_start, original_cycle_end) != (
++                current_cycle_start,
++                current_cycle_end,
++            ):
++                refund_count += await _count_workspace_events(
++                    session,
++                    event_entity_type="verified_contact",
++                    event_type="contact_unlock_refund",
++                    workspace_id=workspace_id,
++                    since=original_cycle_start,
++                    until=original_cycle_end,
++                )
++                unlock_count += await _count_workspace_events(
++                    session,
++                    event_entity_type="verified_contact",
++                    event_type="contact_unlock",
++                    workspace_id=workspace_id,
++                    since=original_cycle_start,
++                    until=original_cycle_end,
++                )
++
++            cap_pct = float(getattr(config, "DSH_TELEGRAM_REFUND_CAP_PCT", 0.15))
++            cap_pct = max(0.0, min(cap_pct, 1.0))
++            cap = math.ceil(unlock_count * cap_pct)
++            if refund_count >= cap:
++                raise RefundBudgetExhaustedError(
++                    "auto-refund budget cap exhausted for this billing cycle"
++                )
++
++            # 4. Credit original payer and refund monthly spend (after persisting event).
++            payer_id = original.user_id or user_id
++            original_cost = original.cost_micros
++            if original_cost is None:
++                original_cost = cost_micros
++            refund_micros = min(cost_micros, max(0, original_cost))
++
++            # 5. Mark contact as invalid and audit.
++            await self._mark_contact_invalid_for_refund(
++                session,
++                verified_contact_id=verified_contact_id,
++                user_id=user_id,
++                workspace_id=workspace_id,
++                now=now,
++            )
++
++            # 6. Persist negative BillingEvent.
++            event = BillingEvent(
++                workspace_id=workspace_id,
++                client_id=client_id,
++                user_id=payer_id,
++                event_entity_type="verified_contact",
++                event_type="contact_unlock_refund",
++                event_id=verified_contact_id,
++                cost_micros=-refund_micros,
++                currency="USD",
++                cost_basis="actual",
++            )
++            session.add(event)
++
++            credit_svc = WorkspaceCreditService(session=session)
++            await credit_svc.refund_member_spend(
++                workspace_id=workspace_id,
++                user_id=payer_id,
++                amount_micros=refund_micros,
++            )
++            await wallet_credit.apply_credit(session, payer_id, refund_micros)
++            return event
++
++    @staticmethod
++    async def _mark_contact_invalid_for_refund(
++        session: AsyncSession,
++        *,
++        verified_contact_id: UUID,
++        user_id: UUID,
++        workspace_id: int,
++        now: datetime,
++    ) -> None:
++        """Mark a VerifiedContact as invalid and append a refund audit log.
++
++        Safe for fake test sessions that do not implement ``session.get``.
++        """
++        session_get = getattr(session, "get", None)
++        if session_get is None:
++            return
++
++        from app.db import VerifiedContact
++
++        contact = await session_get(VerifiedContact, verified_contact_id)
++        if contact is None:
++            return
++
++        contact.is_valid = False
++        contact.invalid_reason = "telegram_refund"
++        contact.verification_status = "invalid"
++        contact.refunded_at = now
++        existing_logs = list(contact.pii_access_audit_logs or [])
++        contact.pii_access_audit_logs = [
++            *existing_logs,
++            {
++                "user_id": str(user_id),
++                "workspace_id": workspace_id,
++                "lead_id": str(contact.lead_id) if contact.lead_id else None,
++                "contact_id": str(verified_contact_id),
++                "access_type": "refund",
++                "timestamp": now.isoformat(),
++                "reason": "invalid_number",
++            },
++        ]
++
+     async def record_contact_enrichment(
+         self,
+         session: AsyncSession,
+@@ -174,6 +665,100 @@ async def record_signal_scan(
+     )
+ 
+ 
++def _billing_lock_key(entity_type: str, event_type: str, event_id: UUID) -> int:
++    """Derive a 63-bit Postgres advisory lock key from a billing event identity.
++
++    ponytail: advisory locks are global and 64-bit signed; we hash the identity
++    and mask to the positive range. Collision is unlikely (MD5-64) but possible;
++    a duplicate BillingEvent would then serialize unnecessarily rather than
++    double-bill. Add a unique index on (entity, type, event_id, workspace_id)
++    if this ever becomes a bottleneck.
++    """
++    key_str = f"{entity_type}:{event_type}:{event_id!s}".encode()
++    return int(hashlib.md5(key_str).hexdigest()[:16], 16) & 0x7FFFFFFFFFFFFFFF
++
++
++async def _acquire_billing_lock(
++    session: AsyncSession,
++    entity_type: str,
++    event_type: str,
++    event_id: UUID,
++) -> None:
++    """Acquire a transaction-scoped advisory lock for the billing identity."""
++    key = _billing_lock_key(entity_type, event_type, event_id)
++    await session.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": key})
++
++
++def _billing_cycle_bounds(now: datetime) -> tuple[datetime, datetime]:
++    """Return (start, end) of the current monthly billing cycle in UTC."""
++    start = datetime(now.year, now.month, 1, tzinfo=UTC)
++    if now.month == 12:
++        end = datetime(now.year + 1, 1, 1, tzinfo=UTC)
++    else:
++        end = datetime(now.year, now.month + 1, 1, tzinfo=UTC)
++    return start, end
++
++
++async def _list_billing_events(
++    session: AsyncSession,
++    *,
++    event_entity_type: str,
++    event_type: str,
++    event_id: UUID,
++    workspace_id: int,
++) -> list[BillingEvent]:
++    """Return billing events matching the identity, ordered by recency."""
++    result = await session.execute(
++        select(BillingEvent)
++        .where(
++            BillingEvent.event_entity_type == event_entity_type,
++            BillingEvent.event_type == event_type,
++            BillingEvent.event_id == event_id,
++            BillingEvent.workspace_id == workspace_id,
++        )
++        .order_by(BillingEvent.created_at.desc())
++    )
++    rows = list(result.scalars().all())
++    # ponytail: in-memory / FakeAsyncSession stand-ins may return rows that do
++    # not match the WHERE clause, so re-apply the identity filters in Python.
++    return [
++        row
++        for row in rows
++        if (
++            getattr(row, "event_entity_type", None) == event_entity_type
++            and getattr(row, "event_type", None) == event_type
++            and getattr(row, "event_id", None) == event_id
++            and getattr(row, "workspace_id", None) == workspace_id
++        )
++    ]
++
++
++async def _count_workspace_events(
++    session: AsyncSession,
++    *,
++    event_entity_type: str,
++    event_type: str,
++    workspace_id: int,
++    since: datetime,
++    until: datetime,
++) -> int:
++    """Count billing events of a given type in a workspace and time range."""
++    result = await session.execute(
++        select(BillingEvent).where(
++            BillingEvent.event_entity_type == event_entity_type,
++            BillingEvent.event_type == event_type,
++            BillingEvent.workspace_id == workspace_id,
++            BillingEvent.created_at >= since,
++            BillingEvent.created_at < until,
++        )
++    )
++    rows = list(result.scalars().all())
++    # ponytail: count in Python so FakeAsyncSession tests can return arbitrary
++    # row stand-ins without needing a scalar count(). Production DB rows are
++    # cheap here because accidental-relock volume is low per workspace.
++    return len(rows)
++
++
+ async def _record_business_event(
+     session: AsyncSession,
+     *,
+@@ -188,14 +773,21 @@ async def _record_business_event(
+     return_existing: bool = False,
+ ) -> BillingEvent:
+     """Core path: check duplicate, write BillingEvent, debit wallet."""
+-    # Idempotency: look for an existing billing row for this event.
++    # Serialize concurrent billing for the same logical event. FOR UPDATE cannot
++    # lock a row that does not exist yet, so two first-time calls can race and
++    # both insert a BillingEvent.
++    await _acquire_billing_lock(session, event_entity_type, event_type, event_id)
++
++    # Idempotency: look for an existing billing row for this event (lock for update).
+     existing = (
+         await session.execute(
+-            select(BillingEvent).where(
++            select(BillingEvent)
++            .where(
+                 BillingEvent.event_entity_type == event_entity_type,
+                 BillingEvent.event_type == event_type,
+                 BillingEvent.event_id == event_id,
+             )
++            .with_for_update()
+         )
+     ).scalar_one_or_none()
+     if existing is not None:
+@@ -220,21 +812,10 @@ async def _record_business_event(
+                 f"duplicate billing event for {event_entity_type} id={event_id}"
+             )
+ 
+-    event = BillingEvent(
+-        workspace_id=workspace_id,
+-        client_id=client_id,
+-        user_id=user_id,
+-        event_entity_type=event_entity_type,
+-        event_type=event_type,
+-        event_id=event_id,
+-        cost_micros=cost_micros,
+-        currency="USD",
+-        cost_basis=cost_basis,
+-    )
+-    session.add(event)
+-
+     if cost_micros > 0 and user_id is not None:
+-        # Enforce shared workspace per-seat spend cap before debiting the user wallet.
++        # Check balance, tentatively reserve the member monthly spend, then debit.
++        await wallet_credit.check_balance(session, user_id, cost_micros)
++
+         credit_svc = WorkspaceCreditService(session=session)
+         try:
+             await credit_svc.record_spend(
+@@ -243,25 +824,35 @@ async def _record_business_event(
+                 amount_micros=cost_micros,
+             )
+         except SpendCapExceededError as exc:
+-            await session.rollback()
+             raise wallet_credit.InsufficientCreditsError(
+                 message=(
+-                    f"Member {exc.user_id} exceeded monthly spend cap of "
+-                    f"${exc.cap_micros / 1_000_000:.2f}. "
+-                    f"Current spent: ${exc.current_spent / 1_000_000:.2f}, "
+-                    f"requested: ${exc.requested / 1_000_000:.2f}."
++                    f"Member {exc.user_id} exceeded monthly spend cap of {exc.cap_micros} micros. "
++                    f"Current spent: {exc.current_spent}, requested: {exc.requested}."
+                 ),
+                 balance_micros=max(0, exc.cap_micros - exc.current_spent),
+                 required_micros=exc.requested,
+             ) from exc
+-        await wallet_credit.check_balance(session, user_id, cost_micros)
+         try:
+             await wallet_credit.apply_debit(session, user_id, cost_micros)
+         except Exception:
+-            await session.rollback()
++            # Undo the monthly-spent increment if the wallet debit failed.
++            await credit_svc.refund_member_spend(
++                workspace_id=workspace_id,
++                user_id=user_id,
++                amount_micros=cost_micros,
++            )
+             raise
+-    else:
+-        # Zero-cost or ownerless event still creates a BillingEvent row.
+-        await session.commit()
+ 
++    event = BillingEvent(
++        workspace_id=workspace_id,
++        client_id=client_id,
++        user_id=user_id,
++        event_entity_type=event_entity_type,
++        event_type=event_type,
++        event_id=event_id,
++        cost_micros=cost_micros,
++        currency="USD",
++        cost_basis=cost_basis,
++    )
++    session.add(event)
+     return event

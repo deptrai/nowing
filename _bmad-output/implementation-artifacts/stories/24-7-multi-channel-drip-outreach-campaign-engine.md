@@ -3,7 +3,7 @@ story_key: "24-7"
 epic: "epic-24"
 story: "24.7"
 title: "Multi-Channel Drip Outreach Campaign Engine (Zalo ZNS + Telegram + Email Cadence)"
-status: "ready-for-dev"
+status: "review"
 baseline_commit: "4c37acfa9"
 ---
 
@@ -535,8 +535,42 @@ pnpm exec biome check app/dashboard/\[workspace_id\]/automations/campaigns/ comp
 - `nowing_web/app/dashboard/[workspace_id]/automations/campaigns/[sequence_id]/page.tsx`
 - `nowing_web/tests/automations/campaign-sequence-builder.spec.ts`
 
+### Review Findings
+
+- [x] [Review][Patch] Deduplicate and normalize channel names in fallback execution [`nowing_backend/app/services/sequencer_service.py:250`]
+- [x] [Review][Patch] Validate non-empty phone string and guard channel-specific contact requirements in compliance check [`nowing_backend/app/services/sequencer_service.py:185`]
+- [x] [Review][Patch] Implement `_send_zns_step` and `_send_telegram_step` and wire into `execute_enrollment_step` [`nowing_backend/app/services/sequencer_service.py:293-352`]
+- [x] [Review][Patch] Wire fallback execution into the real send path [`nowing_backend/app/services/sequencer_service.py:490-570`]
+- [x] [Review][Patch] Add `event_type` parameter to `BillingEventService.record_sequence_send` [`nowing_backend/app/services/billing_event_service.py:584-610`]
+- [x] [Review][Patch] Add multi-channel config variables and AD-41 re-activation gate [`nowing_backend/app/config/__init__.py`, `nowing_backend/app/services/sequencer_service.py:172-183`]
+- [x] [Review][Patch] Extend backend schema for multi-channel step types, channels, events, analytics [`nowing_backend/app/schemas/sequence.py`]
+- [x] [Review][Patch] Add `external_chat_ids` JSONB column to `VerifiedContact` and use in contact resolution [`nowing_backend/app/db.py`, `nowing_backend/app/services/sequencer_service.py`]
+- [x] [Review][Patch] Complete `handle_inbound_interruption` signature/logic and wire webhooks [`nowing_backend/app/services/sequencer_service.py`, `nowing_backend/app/gateway/zalo/webhook.py`, `nowing_backend/app/gateway/inbox_processor.py`]
+- [x] [Review][Patch] Enforce AD-41 / `SEQUENCER_OUTBOUND_CHANNELS` gating in `VisualCadenceBuilder` and add missing multi-channel template fields [`nowing_web/components/automations/VisualCadenceBuilder.tsx`]
+- [x] [Review][Patch] Restrict `channel` and `fallback_channels` to channel enum in `sequence.types.ts` [`nowing_web/contracts/types/sequence.types.ts`]
+- [x] [Review][Patch] Ensure `BillingEvent` / `SequenceEvent` are committed for zero-cost sends [`nowing_backend/app/services/billing_event_service.py`, `nowing_backend/app/services/sequencer_service.py`]
+- [x] [Review][Patch] Fix `DncComplianceService.is_blocked` call signature in `check_outbound_compliance` [`nowing_backend/app/services/sequencer_service.py`]
+- [x] [Review][Patch] Guard negative `delay_seconds` in `calculate_step_eta` [`nowing_backend/app/services/sequencer_service.py:90-121`]
+- [x] [Review][Patch] Raise Celery `max_retries` for Telegram `RetryAfter` [`nowing_backend/app/automations/tasks/sequence_tasks.py:35`]
+- [x] [Review][Patch] Add `channel_breakdown` to analytics schema and UI [`nowing_web/app/dashboard/[workspace_id]/automations/campaigns/[sequence_id]/page.tsx`, `nowing_backend/app/schemas/sequence.py`, `nowing_backend/app/services/sequencer_service.py`]
+- [x] [Review][Patch] Fix Zalo webhook lead matching to use `VerifiedContact.external_chat_ids.zalo_user_id` [`nowing_backend/app/gateway/zalo/webhook.py`]
+- [x] [Review][Patch] Prevent `wait`/`condition` steps from inheriting `selectedChannel` [`nowing_web/components/automations/VisualCadenceBuilder.tsx`]
+- [x] [Review][Patch] Remove or wire `get_billing_event_for_step` with correct costs [`nowing_backend/app/services/sequencer_service.py:280-292`]
+- [x] [Review][Defer] Cross-cutting `billing_event_service.py` refund/relock changes are pre-existing and not introduced by Story 24.7 [`nowing_backend/app/services/billing_event_service.py`] — deferred, pre-existing
+
+### Code Review Findings (Re-review 2026-08-22)
+
+- [x] [Review][Patch] `cost_micros` not recalculated for fallback channel billing / event cost [`nowing_backend/app/services/sequencer_service.py:537-546`]
+- [x] [Review][Patch] Zalo webhook lead matching by `sender_phone` does not normalize E164 before querying `VerifiedContact.phone` [`nowing_backend/app/gateway/zalo/webhook.py:194-204`]
+- [x] [Review][Patch] Telegram dispatch path does not perform DNC/compliance check [`nowing_backend/app/services/sequencer_service.py:1054-1070`]
+- [x] [Review][Patch] Inbound interruption lock key uses raw phone/email/zalo_user_id as Redis key segment [`nowing_backend/app/services/sequencer_service.py:1295-1303`]
+- [x] [Review][Patch] `VisualCadenceBuilder` silently ignores invalid `template_data` JSON while editing Zalo step [`nowing_web/components/automations/VisualCadenceBuilder.tsx:440-448`]
+
 ### Change Log
 
 - **2026-07-25 (validation):** Scope clarified: `zalo` stays gated by AD-41/DEF-102; `telegram` can be enabled via config; email remains default.
 - **2026-07-25 (validation):** Open questions resolved: `external_chat_ids` JSONB on `VerifiedContact`; per-channel cost config; Telegram/Zalo inbound routing; no LLM personalization in MVP.
 - **2026-07-25 (validation):** AC and subtasks updated to reflect `AD_41_REACTIVATED`, `SEQUENCE_*_COST_MICROS`, `external_chat_ids`, `handle_inbound_interruption` signature, and `BillingEventService.record_sequence_send` event_type expansion.
+- **2026-08-22 (code-review):** 3-layer adversarial review completed. Re-review after previous "done" status found 18 patch items and 1 deferred item; story re-opened to `in-progress`. Full triage in `review-24-7-triaged-findings.md`.
+- **2026-08-22 (patch-application):** All 18 patch findings applied. Backend: multi-channel config, `VerifiedContact.external_chat_ids`, schema expansion, `_send_zns_dispatch` / `_send_telegram_dispatch`, fallback orchestration, billing `event_type`, DNC call signature, `handle_inbound_interruption` CAS + webhook wiring, channel analytics, Celery retries. Frontend: `VisualCadenceBuilder` gating/template fields, `sequence.types.ts` enum restrictions, analytics page channel breakdown. Verification: ruff, `tsc --noEmit`, biome, and 34 backend tests green.
+- **2026-08-22 (re-review):** 5 re-review findings applied and re-tested: fallback cost recalculation, Zalo webhook phone normalization, Telegram DNC check, hashed inbound interruption lock key, VisualCadenceBuilder invalid `template_data` JSON feedback. Added regression assertion for fallback channel cost. Re-review clean.

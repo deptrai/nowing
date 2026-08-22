@@ -220,7 +220,7 @@ class TestConsentAndLegalBasisGate:
         enrollment = MagicMock(workspace_id=1, client_id="default", id=uuid4(), current_step=1, version=0)
 
         with patch.object(sequencer, "_resolve_verified_contact", return_value=contact_no_consent):
-            event = await sequencer._handle_send_email_step(
+            event = await sequencer._handle_send_step(
                 session=session, sequence=sequence, step=step, enrollment=enrollment, lead=lead
             )
 
@@ -342,7 +342,7 @@ class TestBillingAndCreditFlow:
             patch("app.lead_intelligence.dnc.service.DncComplianceService.is_blocked", return_value=MagicMock(is_blocked=False)),
             patch("app.services.wallet_credit.check_balance", side_effect=wallet_credit.InsufficientCreditsError("0 balance")),
         ):
-            event = await sequencer._handle_send_email_step(
+            event = await sequencer._handle_send_step(
                 session=session, sequence=sequence, step=step, enrollment=enrollment, lead=lead
             )
 

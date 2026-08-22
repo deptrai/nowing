@@ -1,3 +1,9 @@
+## Deferred from: code review of 24-7-multi-channel-drip-outreach-campaign-engine (2026-08-22)
+
+- **Finding:** Cross-cutting `billing_event_service.py` refund/relock code is pre-existing and not introduced by Story 24.7.
+  - **Action:** Marked `[x] [Review][Defer]` in `24-7-multi-channel-drip-outreach-campaign-engine.md`.
+  - **Reason / when to revisit:** Owned by contact-unlock/refund work (Story 26.x); revisit when that billing path is reviewed.
+
 ## Deferred from: code review of 24-6-two-way-ai-outreach-auto-reply-agent (2026-08-22)
 
 - **Finding:** Zalo signature verification (INV-23.11) is pre-existing in `app/gateway/zalo/webhook.py` and not changed by this story.

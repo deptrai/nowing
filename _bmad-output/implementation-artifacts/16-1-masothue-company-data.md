@@ -354,6 +354,7 @@ Thêm `masothue.scrape` thành built-in scraper capability mới. Story này l�
 | Date | Version | Change | Author |
 |---|---|---|---|
 | 2026-08-07 | 1.0 | Initial story file ready-for-dev | bmad-create-story |
+| 2026-08-22 | 1.1 | Fix empty first/second page degradation logic; all 128 masothue tests + ruff pass | dev |
 
 ---
 

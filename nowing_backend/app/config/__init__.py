@@ -628,6 +628,14 @@ class Config:
     # Database
     DATABASE_URL = os.getenv("DATABASE_URL")
 
+    # Multi-channel sequencer outbound channels feature gate (AD-41 / Story 24.7)
+    SEQUENCER_OUTBOUND_CHANNELS: str = os.getenv("SEQUENCER_OUTBOUND_CHANNELS", "email")
+    SEQUENCE_EMAIL_COST_MICROS: int = _env_int("SEQUENCE_EMAIL_COST_MICROS", 500)
+    SEQUENCE_ZNS_COST_MICROS: int = _env_int("SEQUENCE_ZNS_COST_MICROS", 300)
+    SEQUENCE_TELEGRAM_COST_MICROS: int = _env_int("SEQUENCE_TELEGRAM_COST_MICROS", 0)
+    SEQUENCE_ZNS_MAX_RESCHEDULE_HOURS: int = _env_int("SEQUENCE_ZNS_MAX_RESCHEDULE_HOURS", 24)
+    AD_41_REACTIVATED: bool = os.getenv("AD_41_REACTIVATED", "FALSE").upper() == "TRUE"
+
     # When TRUE (default) the app ensures extensions/tables/indexes exist on
     # startup. Set FALSE in environments where schema is owned exclusively by
     # Alembic migrations to skip all boot-time DDL.

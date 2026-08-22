@@ -447,6 +447,19 @@ async def _dispatch_inbound_event(
 
         event.external_chat_binding_id = binding.id
 
+        # Story 24.7: Interrupt active outreach sequences for this Telegram peer.
+        if binding and parsed.event_kind == "message":
+            from app.services.sequencer_service import SequencerService
+
+            await SequencerService().handle_inbound_interruption(
+                workspace_id=binding.workspace_id,
+                session=session,
+                telegram_chat_id=parsed.external_peer_id,
+                text=parsed.text,
+                channel="telegram",
+                reason="telegram_inbound",
+            )
+
         if parsed.event_kind == "callback_query":
             handler = getattr(bundle.commands, "handle_callback_query", None)
             if handler is not None:

@@ -586,20 +586,21 @@ class BillingEventService:
         session: AsyncSession,
         *,
         sequence_event_id: UUID,
+        event_type: str = "email_send",
         workspace_id: int,
         client_id: str | None = None,
         user_id: UUID | None,
         cost_micros: int,
         cost_basis: str = "actual",
     ) -> BillingEvent:
-        """Record an outbound sequence send billing event and debit user wallet (Story 24.1 / AD-42).
+        """Record an outbound sequence send billing event and debit user wallet (Story 24.1 / AD-42 / AD-48).
 
         Idempotent by sequence_event_id: returns existing BillingEvent on duplicate to be retry-safe with Celery.
         """
         return await _record_business_event(
             session,
             event_entity_type="sequence_event",
-            event_type="email_send",
+            event_type=event_type,
             event_id=sequence_event_id,
             workspace_id=workspace_id,
             client_id=client_id,
@@ -855,4 +856,11 @@ async def _record_business_event(
         cost_basis=cost_basis,
     )
     session.add(event)
+
+    # ponytail: apply_debit above already commits for positive-cost events. For
+    # zero-cost or ownerless events the session still needs a commit so the
+    # BillingEvent (and any caller-staged rows) are persisted.
+    if cost_micros <= 0 or user_id is None:
+        await session.commit()
+
     return event

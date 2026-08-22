@@ -21,6 +21,7 @@ from app.db import (
     get_async_session,
 )
 from app.schemas.sequence import (
+    ChannelBreakdown,
     SequenceAnalyticsResponse,
     SequenceCreate,
     SequenceDetailRead,
@@ -103,6 +104,7 @@ async def create_sequence(
             step_order=step_data.step_order,
             step_type=step_data.step_type,
             channel=step_data.channel,
+            fallback_channels=step_data.fallback_channels or [],
             template=step_data.template,
             wait_duration_seconds=step_data.wait_duration_seconds,
             condition_config=step_data.condition_config,
@@ -249,6 +251,7 @@ async def update_sequence(
                 step_order=step_data.step_order,
                 step_type=step_data.step_type,
                 channel=step_data.channel,
+                fallback_channels=step_data.fallback_channels or [],
                 template=step_data.template,
                 wait_duration_seconds=step_data.wait_duration_seconds,
                 condition_config=step_data.condition_config,
@@ -385,6 +388,20 @@ async def get_sequence_analytics(
         unsubscribed_count=metrics.unsubscribed_count,
         failed_count=metrics.failed_count,
         total_cost_micros=metrics.total_cost_micros,
+        channel_breakdown=[
+            ChannelBreakdown(
+                channel=cb.channel,
+                sent=cb.sent,
+                delivered=cb.delivered,
+                opened=cb.opened,
+                replied=cb.replied,
+                bounced=cb.bounced,
+                failed=cb.failed,
+                skipped=cb.skipped,
+                cost_micros=cb.cost_micros,
+            )
+            for cb in metrics.channel_breakdown
+        ],
     )
 
 

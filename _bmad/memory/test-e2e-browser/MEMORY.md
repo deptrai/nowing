@@ -53,6 +53,17 @@ _Curated long-term knowledge for Nowing E2E Browser Testing._
   - `auto_reply_messaging_settings.png` (Default state)
   - `auto_reply_messaging_settings_toggled.png` (Toggled ON with success toast)
 
+## Story 24.7 Live Browser Verification — Visual Multi-Channel Cadence Builder (2026-08-22)
+- **Flow:** Login as `e2e-test@nowing.net` → Navigate to `http://localhost:3000/dashboard/1/automations/campaigns/new`.
+- **Observed:**
+  - `Visual Multi-Channel Cadence Sequence Builder` mounts with `Story 24.7 Multi-Channel` emerald badge and VN Quiet Hours (08:00 - 21:30) compliance notice.
+  - Outbound Primary Channel selector supports interactive `Email Outreach (Sẵn sàng)`, `Zalo ZNS (Official OA)`, and `Telegram Bot (Direct Bot)`.
+  - Dynamic Step action buttons (`+ Thêm bước gửi Email`, `+ Thêm bước Zalo ZNS`, `+ Thêm bước Telegram Bot`, `+ Thêm thời gian chờ (Wait)`) dynamically inject steps.
+  - Multi-Channel Fallback Selector (`+ ZALO Fallback`, `✓ TELEGRAM Fallback`) updates per-step fallback priorities.
+  - Dynamic variable insertion pills (`{customer_name}`, `{company}`, `{property_title}`, `{consultant_phone}`) append variables into textareas.
+- **Console / Network:** 0 errors, clean DOM render.
+- **Screenshot:** `story_24_7_live_demo.png`
+
 - **Telegram MTProto Userbot Client & Monitored Channels (Epic 22):**
   - Page: `/admin/scraper-accounts` (requires `User.is_superuser=True`).
   - Tabs: `All Accounts`, `Telegram`, `Channels`.

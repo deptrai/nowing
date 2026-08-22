@@ -246,6 +246,10 @@ class TestSequenceExecutionIntegration:
 
         fake_enr_res = (10, 4, 3, 1, 0)
         fake_ev_res = (8, 4000)
+        fake_cb_rows = [
+            ("email", 5, 4, 1, 1, 0, 0, 0, 1000),
+            ("telegram", 3, 2, 0, 1, 0, 0, 0, 2000),
+        ]
 
         class AnalyticsSession(_FakeSession):
             def __init__(self) -> None:
@@ -256,7 +260,9 @@ class TestSequenceExecutionIntegration:
                 self._calls += 1
                 if self._calls == 1:
                     return _FakeResult(value=fake_enr_res)
-                return _FakeResult(value=fake_ev_res)
+                if self._calls == 2:
+                    return _FakeResult(value=fake_ev_res)
+                return _FakeResult(rows=fake_cb_rows)
 
         session = AnalyticsSession()
         sequencer = SequencerService()
