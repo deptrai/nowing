@@ -357,4 +357,10 @@ All `decision_needed` and `patch` findings from the 2026-08-21 BMAD code review 
 
 - Status: **`done`** ✅ — verified with 131 unit tests, 3 integration tests, real API execution (clip, stage transition, OCC 409 conflict, activity timeline), and live browser test on Google Chrome. All review patches and decisions verified.
 
+## Change Log
+
+| Date | Version | Change | Author |
+|---|---|---|---|
+| 2026-08-22 | 1.1 | Re-verified against current stack; backend lint/tests + frontend tsc/biome green; sprint-status promoted to `done` | dev |
+
 
