@@ -89,7 +89,7 @@ So that I can control spend and avoid surprise bills from memory extraction.
 - `UsageService.get_per_turn_usage` groups `TokenUsage` rows by the best available turn anchor and returns `PerTurnUsageResponse`.
 - `GET /api/v1/usage/per-turn` and `PUT /api/v1/workspaces/{id}/limits` are live.
 - Frontend: `AutoExtractBudgetCard` and `PerTurnUsageSection` added to `UsageContent`; `usage-api.service.ts` and `workspaces-api.service.ts` extended; i18n keys added to all locales.
-- Verification: `ruff check`, `ruff format`, `tsc --noEmit`, `biome check`, `pytest tests/unit/services/test_usage_service_unified.py`, `pytest tests/integration/services/test_workspace_limits.py`, `pytest tests/integration/usage/test_usage_dashboard.py` all pass.
+- Verification: `ruff check`, `ruff format`, `tsc --noEmit`, `biome check`, `pytest tests/unit/services/test_usage_service_unified.py`, `pytest tests/integration/services/test_workspace_limits.py`, `pytest tests/integration/usage/test_usage_dashboard.py`, and `pnpm exec playwright test tests/usage/story-8-14.spec.ts` all pass.
 
 ## File List
 

@@ -122,6 +122,13 @@ class WorkspaceLimitService:
         """
         if config.is_self_hosted():
             workspace = await session.get(Workspace, workspace_id)
+            override = await session.execute(
+                select(WorkspaceLimit).where(
+                    WorkspaceLimit.workspace_id == workspace_id,
+                    WorkspaceLimit.plan_tier.is_(None),
+                )
+            )
+            override_row = override.scalars().first()
             return ResolvedWorkspaceLimits(
                 plan_tier=workspace.plan_tier if workspace else None,
                 max_documents=None,
@@ -129,6 +136,21 @@ class WorkspaceLimitService:
                 max_runs=None,
                 max_storage_bytes=None,
                 run_period_hours=720,
+                auto_extract_item_cap=getattr(
+                    override_row, "auto_extract_item_cap", None
+                )
+                if override_row
+                else None,
+                auto_extract_spend_cap_micros=getattr(
+                    override_row, "auto_extract_spend_cap_micros", None
+                )
+                if override_row
+                else None,
+                auto_extract_wallet_pre_check=getattr(
+                    override_row, "auto_extract_wallet_pre_check", None
+                )
+                if override_row
+                else None,
             )
 
         workspace = await session.get(Workspace, workspace_id)

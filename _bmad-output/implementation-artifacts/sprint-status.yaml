@@ -162,7 +162,7 @@ development_status:
   8-11-followup: backlog  # deferred: needs specific 8-11 code-review items before implementation
   8-12: done
   8-13: done
-  8-14: done  # 2026-08-23: per-turn cost + auto-extract budget toggle implemented and verified.
+  8-14: done  # 2026-08-23: per-turn cost + auto-extract budget toggle implemented, e2e verified.
   epic-8-retrospective: optional
 
   # === Epic 9: Deep Research đáng tin cậy ===
