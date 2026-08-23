@@ -1,5 +1,5 @@
 # generated: 2026-08-08
-# last_updated: 2026-08-25  # 14-2a done; 14-2b re-review complete: 6 patches applied, D1/D2 resolved, ruff clean, unit+integration tests pass.
+# last_updated: 2026-08-25  # 14-2a done; 14-2b re-review complete: 6 patches + F1/F2 resolved; ruff clean, unit 21/21 + integration 2/2 pass.
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system

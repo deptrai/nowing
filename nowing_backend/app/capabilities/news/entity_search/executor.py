@@ -19,6 +19,7 @@ from app.capabilities.news.entity_search.schemas import (
 )
 from app.config import config
 from app.services.chainlens.auth import ChainLensServiceAuth
+from app.services.pii.redact import redact_pii
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,14 @@ def _is_redacted_placeholder(entity_name: str) -> bool:
 
 
 def _parse_entity_sources(raw_data: Any) -> list[Source]:
-    """Parse raw ChainLens search response items into Source models."""
+    """Parse raw ChainLens search response items into Source models.
+
+    Sanitizes titles and snippets with the ``news_ner`` redaction pass, which
+    removes phone numbers and emails without masking public names. ChainLens is
+    a public-web search engine; names returned in search results are considered
+    public. PII that slips through in snippets should be handled by the engine
+    or the original ``Chunk`` redaction pipeline, not re-NERed here.
+    """
     if isinstance(raw_data, dict):
         raw_sources = raw_data.get("results") or raw_data.get("sources") or []
     elif isinstance(raw_data, list):
@@ -68,11 +76,21 @@ def _parse_entity_sources(raw_data: Any) -> list[Source]:
             or (meta or {}).get("pub_date")
         )
 
+        try:
+            title = redact_pii(title, context="news_ner").text
+            content = (
+                redact_pii(str(content), context="news_ner").text
+                if content is not None
+                else None
+            )
+        except Exception:
+            logger.warning("news_entity_search_source_redaction_failed")
+
         sources.append(
             Source(
                 title=title,
                 url=url,
-                content=str(content) if content is not None else None,
+                content=content,
                 source_type="web",
                 pub_date=str(pub_date) if pub_date is not None else None,
             )
@@ -177,12 +195,15 @@ class EntitySearchExecutor:
                 message="Dịch vụ ChainLens Research chưa được cấu hình xác thực.",
             )
 
-        # Build search query text tailored for news entity queries
+        # Build search query text tailored for news entity queries.
+        # ChainLens SearchRestRequestDto does not support a dedicated entity
+        # filter; entity disambiguation is encoded into the query string plus
+        # the ``news`` category hint (AD-35).
         query_text = entity_name
         if input_data.entity_type != "all":
             query_text = f"{entity_name} ({input_data.entity_type})"
 
-        # Wire payload complying strictly with ChainLens SearchRestRequestDto
+        # Wire payload complying strictly with ChainLens SearchRestRequestDto.
         payload: dict[str, Any] = {
             "query": query_text,
             "mode": "fast",

@@ -384,3 +384,42 @@ class TestEntitySearchExecutor:
         assert result.degraded is True
         assert result.status == "engine_unavailable"
         assert result.sources == []
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_executor_redacts_phone_and_email_in_source_snippets(self) -> None:
+        """Should sanitize source title/content for phone/email PII."""
+        from app.capabilities.news.entity_search.executor import EntitySearchExecutor
+        from app.capabilities.news.entity_search.schemas import EntitySearchInput
+
+        respx.post("http://127.0.0.1:3001/api/v1/search").mock(
+            return_value=Response(
+                200,
+                json={
+                    "numResults": 1,
+                    "results": [
+                        {
+                            "title": "Liên hệ 0987654321 để biết thêm",
+                            "url": "https://example.test/article",
+                            "snippet": "Gửi email đến leak@example.test hoặc gọi 0987654321",
+                        }
+                    ],
+                },
+            )
+        )
+
+        executor = EntitySearchExecutor(
+            api_url="http://127.0.0.1:3001",
+            api_key="test-token",
+        )
+        inp = EntitySearchInput(
+            entity_name="Example",
+            entity_type="organization",
+            workspace_id=1,
+        )
+        result = await executor.execute(inp)
+        assert result.degraded is False
+        assert len(result.sources) == 1
+        assert "<PHONE>" in result.sources[0].title
+        assert "<PHONE>" in (result.sources[0].content or "")
+        assert "<EMAIL>" in (result.sources[0].content or "")
