@@ -24,7 +24,18 @@ except Exception:  # pragma: no cover - tiktoken may be unavailable in minimal e
 # Domain registry. Unknown domains default to listing-style serialization.
 _JOB_DOMAINS = {"vn_jobs", "itviec", "topcv", "vietnamworks"}
 _LISTING_DOMAINS = {"bds", "batdongsan", "chotot", "muaban_bds", "masothue"}
-_NEWS_DOMAINS = {"news", "news_article"}
+_NEWS_DOMAINS = {
+    "news",
+    "news_article",
+    "vnexpress.net",
+    "tuoitre.vn",
+    "dantri.com.vn",
+    "vietnamnet.vn",
+    "thanhnien.vn",
+    "laodong.vn",
+    "vtv.vn",
+    "baomoi.com",
+}
 _STOCK_DOMAINS = {"cafef", "vietstock"}
 
 # Canonical wire-domain names exposed in ChunkMetadata.domain (Story 12.3 AC-9).
@@ -54,7 +65,21 @@ def _is_listing_domain(domain: str) -> bool:
 
 def _is_news_domain(domain: str) -> bool:
     """Return True if ``domain`` is a known news/article domain."""
-    return domain in _NEWS_DOMAINS
+    if domain in _NEWS_DOMAINS:
+        return True
+    return any(
+        domain.endswith(f".{portal}") or domain == portal
+        for portal in (
+            "vnexpress.net",
+            "tuoitre.vn",
+            "dantri.com.vn",
+            "vietnamnet.vn",
+            "thanhnien.vn",
+            "laodong.vn",
+            "vtv.vn",
+            "baomoi.com",
+        )
+    )
 
 
 def _is_stock_domain(domain: str) -> bool:
@@ -110,7 +135,9 @@ def _redact_text(text: str | None, *, domain: str, context: str) -> str:
             return redact_job_pii(text).text
         return redact_pii(text, context=context).text
     except Exception as exc:
-        logger.exception("PII redaction failed for domain %s context %s", domain, context)
+        logger.exception(
+            "PII redaction failed for domain %s context %s", domain, context
+        )
         raise ChunkValidationError(
             domain=domain,
             missing=[],
@@ -194,7 +221,16 @@ def _build_content(domain: str, data: dict[str, Any]) -> str:
         for key, value in sorted(data.items()):
             if value is None or value == "":
                 continue
-            if key in ("title", "description"):
+            if key.lower() in (
+                "title",
+                "description",
+                "entities",
+                "source",
+                "pubdate",
+                "pub_date",
+                "link",
+                "url",
+            ):
                 continue
             if isinstance(value, (dict, list)):
                 _add_part(key.title(), _fmt(value))
@@ -494,8 +530,13 @@ def _metadata_from_data(
     if salary and isinstance(salary, dict) and (salary.get("min") or salary.get("max")):
         clean_salary = salary
 
+    entities = data.get("entities")
+    pub_date = _get(data, "pubDate", "pub_date")
+    source_portal = _get(data, "source") or "nowing_scraper"
+
     return ChunkMetadata(
         source="nowing_scraper",
+        publisher=source_portal,
         sourceId=source_id,
         domain=domain,
         fetchedAt=fetched_at,
@@ -512,6 +553,8 @@ def _metadata_from_data(
         chunkIndex=chunk_index,
         chunkTotal=chunk_total,
         canonicalEntityId=str(canonical_id) if canonical_id else None,
+        entities=entities if isinstance(entities, list) else None,
+        pubDate=str(pub_date) if pub_date else None,
     )
 
 
@@ -522,6 +565,7 @@ def to_chunks(
     fetched_at: str,
     content_type: str = "text/markdown",
     category: str | None = None,
+    metadata_domain: str | None = None,
 ) -> list[Chunk]:
     """Normalize one scraper record or aggregated entity into ``Chunk[]``.
 
@@ -530,47 +574,64 @@ def to_chunks(
     ``category`` is an optional domain label (e.g. ``listing``, ``job_posting``)
     used by ChainLens for filtering/ranking.
 
+    ``metadata_domain`` overrides the canonical domain written into
+    ``ChunkMetadata.domain`` while leaving ``domain`` in control of the layout
+    and required-field rules. This lets RSS callers pass ``domain="news"`` for
+    news layout while still writing the actual portal hostname into metadata.
+
     The returned chunks have deterministic ``sourceId`` values and split
     oversize content at token boundaries while preserving ``chunkIndex`` /
     ``chunkTotal`` metadata.
     """
+    layout_domain = domain
+    wire_domain = _canonical_domain(metadata_domain or domain)
+
     if (
-        not _is_job_domain(domain)
-        and not _is_listing_domain(domain)
-        and not _is_news_domain(domain)
-        and not _is_stock_domain(domain)
-        and domain != "masothue"
+        not _is_job_domain(layout_domain)
+        and not _is_listing_domain(layout_domain)
+        and not _is_news_domain(layout_domain)
+        and not _is_stock_domain(layout_domain)
+        and layout_domain != "masothue"
     ):
         logger.warning(
             "Domain %s is not in the scraper_chunks registry; defaulting to listing layout",
-            domain,
+            layout_domain,
         )
 
     data = _to_dict(data)
-    required = _required_fields(domain)
+    required = _required_fields(layout_domain)
     missing = [field for field in required if _get(data, field) in (None, "")]
     if missing:
-        raise ChunkValidationError(domain=domain, missing=missing)
+        raise ChunkValidationError(domain=layout_domain, missing=missing)
 
-    base_source_id = _stable_fingerprint(domain, data)
-    full_content = _build_content(domain, data)
+    base_source_id = _stable_fingerprint(layout_domain, data)
+    full_content = _build_content(layout_domain, data)
 
     if not full_content.strip():
         raise ChunkValidationError(
-            domain=domain,
+            domain=layout_domain,
             missing=["content"],
-            message=f"{domain}: serialized content is empty",
+            message=f"{layout_domain}: serialized content is empty",
         )
 
-    metadata_domain = _canonical_domain(domain)
-    metadata_content_type = "job" if _is_job_domain(domain) else content_type
+    if _is_job_domain(layout_domain):
+        metadata_content_type = "job"
+    elif (
+        _is_news_domain(layout_domain)
+        or category in ("news", "news_article")
+        or content_type == "news"
+    ):
+        metadata_content_type = "news"
+    else:
+        metadata_content_type = content_type
+
     pieces = _split_tokens(full_content, max_tokens=8000)
     total = len(pieces)
     chunks: list[Chunk] = []
     for index, piece in enumerate(pieces):
         source_id = f"{base_source_id}:chunk-{index}" if total > 1 else base_source_id
         metadata = _metadata_from_data(
-            metadata_domain,
+            wire_domain,
             data,
             fetched_at,
             metadata_content_type,

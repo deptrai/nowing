@@ -43,6 +43,10 @@ class ResolvedWorkspaceLimits:
     auto_extract_item_cap: int | None = None
     auto_extract_spend_cap_micros: int | None = None
     auto_extract_wallet_pre_check: bool | None = None
+    # Story 14.2a: news entity extraction caps.
+    news_entity_extraction_item_cap: int | None = None
+    news_entity_extraction_spend_cap_micros: int | None = None
+    news_entity_extraction_wallet_pre_check: bool | None = None
 
     def __post_init__(self) -> None:
         """Enforce invariants on resolved limit values."""
@@ -53,6 +57,8 @@ class ResolvedWorkspaceLimits:
             "max_storage_bytes",
             "auto_extract_item_cap",
             "auto_extract_spend_cap_micros",
+            "news_entity_extraction_item_cap",
+            "news_entity_extraction_spend_cap_micros",
         ):
             value = getattr(self, field)
             if value is None:
@@ -151,6 +157,21 @@ class WorkspaceLimitService:
                 )
                 if override_row
                 else None,
+                news_entity_extraction_item_cap=getattr(
+                    override_row, "news_entity_extraction_item_cap", None
+                )
+                if override_row
+                else None,
+                news_entity_extraction_spend_cap_micros=getattr(
+                    override_row, "news_entity_extraction_spend_cap_micros", None
+                )
+                if override_row
+                else None,
+                news_entity_extraction_wallet_pre_check=getattr(
+                    override_row, "news_entity_extraction_wallet_pre_check", None
+                )
+                if override_row
+                else None,
             )
 
         workspace = await session.get(Workspace, workspace_id)
@@ -234,6 +255,13 @@ class WorkspaceLimitService:
             auto_extract_item_cap=_resolve("auto_extract_item_cap"),
             auto_extract_spend_cap_micros=_resolve("auto_extract_spend_cap_micros"),
             auto_extract_wallet_pre_check=_resolve("auto_extract_wallet_pre_check"),
+            news_entity_extraction_item_cap=_resolve("news_entity_extraction_item_cap"),
+            news_entity_extraction_spend_cap_micros=_resolve(
+                "news_entity_extraction_spend_cap_micros"
+            ),
+            news_entity_extraction_wallet_pre_check=_resolve(
+                "news_entity_extraction_wallet_pre_check"
+            ),
         )
 
     # ------------------------------------------------------------------ #

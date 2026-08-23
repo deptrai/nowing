@@ -1,3 +1,15 @@
+## Deferred from: code review of 14-2a-news-entity-extraction (2026-08-24, round 2 — groups A+B)
+
+- **Finding:** `NowingIngestService` can fail to persist `ChainLensIngestJob` after a successful `IngestResult` because the persistence block is best-effort and can raise.
+  - **Action:** Marked `[x] [Review][Defer]` in `14-2a-news-entity-extraction.md`.
+  - **Reason / when to revisit:** Pre-existing `NowingIngestService` reliability debt; not introduced by Story 14.2a. Revisit when chainlens ingest durability is hardened or the service persistence contract is centralized.
+
+## Deferred from: code review of 14-2a-news-entity-extraction (2026-08-24)
+
+- **Finding:** Pre-reserve atomic rate limiter bucket before LLM call in `extract_budget.py:270`.
+  - **Action:** Marked `[x] [Review][Defer]` in `14-2a-news-entity-extraction.md`.
+  - **Reason / when to revisit:** Soft rolling rate cap is sufficient for current scheduled background RSS indexing batch; hard Redis lock per article prevents duplicate extraction. Revisit when user-triggered high-concurrency real-time extraction is introduced.
+
 ## Deferred from: code review of 4-6-research-continuity (2026-08-23)
 
 - **Finding:** Citation regex copy từ TS/evals nhưng không có parity guard.

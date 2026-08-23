@@ -454,6 +454,9 @@ async def get_workspace_limits(
             auto_extract_item_cap=limits.auto_extract_item_cap,
             auto_extract_spend_cap_micros=limits.auto_extract_spend_cap_micros,
             auto_extract_wallet_pre_check=limits.auto_extract_wallet_pre_check,
+            news_entity_extraction_item_cap=limits.news_entity_extraction_item_cap,
+            news_entity_extraction_spend_cap_micros=limits.news_entity_extraction_spend_cap_micros,
+            news_entity_extraction_wallet_pre_check=limits.news_entity_extraction_wallet_pre_check,
             auto_extract_usage=AutoExtractUsage(**auto_extract_usage),
             usage=WorkspaceLimitUsage(**usage),
         )
@@ -505,6 +508,18 @@ async def update_workspace_limits(
             override.auto_extract_spend_cap_micros = body.auto_extract_spend_cap_micros
         if body.auto_extract_wallet_pre_check is not None:
             override.auto_extract_wallet_pre_check = body.auto_extract_wallet_pre_check
+        if body.news_entity_extraction_item_cap is not None:
+            override.news_entity_extraction_item_cap = (
+                body.news_entity_extraction_item_cap
+            )
+        if body.news_entity_extraction_spend_cap_micros is not None:
+            override.news_entity_extraction_spend_cap_micros = (
+                body.news_entity_extraction_spend_cap_micros
+            )
+        if body.news_entity_extraction_wallet_pre_check is not None:
+            override.news_entity_extraction_wallet_pre_check = (
+                body.news_entity_extraction_wallet_pre_check
+            )
 
         await session.commit()
 
@@ -524,6 +539,9 @@ async def update_workspace_limits(
             auto_extract_item_cap=limits.auto_extract_item_cap,
             auto_extract_spend_cap_micros=limits.auto_extract_spend_cap_micros,
             auto_extract_wallet_pre_check=limits.auto_extract_wallet_pre_check,
+            news_entity_extraction_item_cap=limits.news_entity_extraction_item_cap,
+            news_entity_extraction_spend_cap_micros=limits.news_entity_extraction_spend_cap_micros,
+            news_entity_extraction_wallet_pre_check=limits.news_entity_extraction_wallet_pre_check,
             auto_extract_usage=AutoExtractUsage(**auto_extract_usage),
             usage=WorkspaceLimitUsage(**usage),
         )

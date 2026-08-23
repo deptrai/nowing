@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -23,7 +23,7 @@ class ChunkMetadata(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    source: Literal["nowing_scraper"]
+    source: str = Field(..., min_length=1)
     sourceId: str = Field(..., min_length=1)
     domain: str = Field(..., min_length=1)
     fetchedAt: str = Field(..., min_length=1)
@@ -31,6 +31,16 @@ class ChunkMetadata(BaseModel):
     title: str | None = Field(default=None, min_length=1)
     url: str | None = Field(default=None, min_length=1)
     category: str | None = Field(default=None, min_length=1)
+    entities: list[dict[str, Any]] | None = None
+    pubDate: str | None = None
+
+    @field_validator("source")
+    @classmethod
+    def _validate_source(cls, value: str) -> str:
+        allowed = {"nowing_scraper"}
+        if value not in allowed:
+            raise ValueError(f"source must be one of {allowed!r}")
+        return value
 
     @field_validator("fetchedAt")
     @classmethod
@@ -38,6 +48,7 @@ class ChunkMetadata(BaseModel):
         if value:
             datetime.fromisoformat(value)
         return value
+
     confidence_score: float | None = Field(default=None, ge=0.0, le=1.0)
     source_count: int | None = Field(default=None, ge=0)
     conflict_flags: bool | list[dict[str, Any]] | None = Field(default=None)

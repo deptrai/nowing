@@ -1,0 +1,276 @@
+[
+  {
+    "id": "snippet-1",
+    "source": "vnexpress.net",
+    "text": "Thủ tướng Phạm Minh Chính chủ trì hội nghị tại Hà Nội cùng đại diện Bộ Kế hoạch và Đầu tư.",
+    "expected_entities": [
+      {
+        "text": "Phạm Minh Chính",
+        "type": "person",
+        "confidence": 0.98,
+        "surface_forms": ["Phạm Minh Chính"]
+      },
+      {
+        "text": "Bộ Kế hoạch và Đầu tư",
+        "type": "organization",
+        "confidence": 0.95,
+        "surface_forms": ["Bộ Kế hoạch và Đầu tư"]
+      },
+      {
+        "text": "Hà Nội",
+        "type": "location",
+        "confidence": 0.99,
+        "surface_forms": ["Hà Nội"]
+      }
+    ]
+  },
+  {
+    "id": "snippet-2",
+    "source": "tuoitre.vn",
+    "text": "Chủ tịch UBND TP.HCM Phan Văn Mãi phát biểu tại quận 1 về việc phát triển kinh tế cùng Tập đoàn Vingroup.",
+    "expected_entities": [
+      {
+        "text": "Phan Văn Mãi",
+        "type": "person",
+        "confidence": 0.98,
+        "surface_forms": ["Phan Văn Mãi"]
+      },
+      {
+        "text": "TP.HCM",
+        "type": "location",
+        "confidence": 0.95,
+        "surface_forms": ["TP.HCM"]
+      },
+      {
+        "text": "quận 1",
+        "type": "location",
+        "confidence": 0.92,
+        "surface_forms": ["quận 1"]
+      },
+      {
+        "text": "Tập đoàn Vingroup",
+        "type": "organization",
+        "confidence": 0.97,
+        "surface_forms": ["Tập đoàn Vingroup", "Vingroup"]
+      }
+    ]
+  },
+  {
+    "id": "snippet-3",
+    "source": "dantri.com.vn",
+    "text": "Tổng thống Joe Biden và CEO Tim Cook công bố khoản đầu tư mới của Apple tại Đà Nẵng.",
+    "expected_entities": [
+      {
+        "text": "Joe Biden",
+        "type": "person",
+        "confidence": 0.96,
+        "surface_forms": ["Joe Biden"]
+      },
+      {
+        "text": "Tim Cook",
+        "type": "person",
+        "confidence": 0.97,
+        "surface_forms": ["Tim Cook"]
+      },
+      {
+        "text": "Apple",
+        "type": "organization",
+        "confidence": 0.98,
+        "surface_forms": ["Apple"]
+      },
+      {
+        "text": "Đà Nẵng",
+        "type": "location",
+        "confidence": 0.95,
+        "surface_forms": ["Đà Nẵng"]
+      }
+    ]
+  },
+  {
+    "id": "snippet-4",
+    "source": "vietnamnet.vn",
+    "text": "Ông Nguyễn Văn Thắng, Bộ trưởng Bộ Giao thông Vận tải kiểm tra tiến độ sân bay Long Thành tại Đồng Nai.",
+    "expected_entities": [
+      {
+        "text": "Nguyễn Văn Thắng",
+        "type": "person",
+        "confidence": 0.96,
+        "surface_forms": ["Nguyễn Văn Thắng"]
+      },
+      {
+        "text": "Bộ Giao thông Vận tải",
+        "type": "organization",
+        "confidence": 0.95,
+        "surface_forms": ["Bộ Giao thông Vận tải"]
+      },
+      {
+        "text": "sân bay Long Thành",
+        "type": "location",
+        "confidence": 0.92,
+        "surface_forms": ["sân bay Long Thành"]
+      },
+      {
+        "text": "Đồng Nai",
+        "type": "location",
+        "confidence": 0.95,
+        "surface_forms": ["Đồng Nai"]
+      }
+    ]
+  },
+  {
+    "id": "snippet-5",
+    "source": "vnexpress.net",
+    "text": "Tỷ phú Elon Musk gặp gỡ các lãnh đạo Viettel tại trụ sở ở Cầu Giấy để bàn về dịch vụ vệ tinh Starlink.",
+    "expected_entities": [
+      {
+        "text": "Elon Musk",
+        "type": "person",
+        "confidence": 0.98,
+        "surface_forms": ["Elon Musk"]
+      },
+      {
+        "text": "Viettel",
+        "type": "organization",
+        "confidence": 0.97,
+        "surface_forms": ["Viettel"]
+      },
+      {
+        "text": "Cầu Giấy",
+        "type": "location",
+        "confidence": 0.92,
+        "surface_forms": ["Cầu Giấy"]
+      },
+      {
+        "text": "Starlink",
+        "type": "organization",
+        "confidence": 0.88,
+        "surface_forms": ["Starlink"]
+      }
+    ]
+  },
+  {
+    "id": "snippet-6",
+    "source": "thanhnien.vn",
+    "text": "Bộ Y tế cảnh báo dịch sốt xuất huyết bùng phát mạnh tại Cần Thơ và An Giang trong tháng 8.",
+    "expected_entities": [
+      {
+        "text": "Bộ Y tế",
+        "type": "organization",
+        "confidence": 0.98,
+        "surface_forms": ["Bộ Y tế"]
+      },
+      {
+        "text": "Cần Thơ",
+        "type": "location",
+        "confidence": 0.96,
+        "surface_forms": ["Cần Thơ"]
+      },
+      {
+        "text": "An Giang",
+        "type": "location",
+        "confidence": 0.95,
+        "surface_forms": ["An Giang"]
+      }
+    ]
+  },
+  {
+    "id": "snippet-7",
+    "source": "vtv.vn",
+    "text": "Đại sứ quán Nhật Bản phối hợp cùng Đại học Quốc gia Hà Nội tổ chức ngày hội giao lưu văn hóa tại Ba Đình.",
+    "expected_entities": [
+      {
+        "text": "Đại sứ quán Nhật Bản",
+        "type": "organization",
+        "confidence": 0.94,
+        "surface_forms": ["Đại sứ quán Nhật Bản"]
+      },
+      {
+        "text": "Đại học Quốc gia Hà Nội",
+        "type": "organization",
+        "confidence": 0.96,
+        "surface_forms": ["Đại học Quốc gia Hà Nội"]
+      },
+      {
+        "text": "Ba Đình",
+        "type": "location",
+        "confidence": 0.93,
+        "surface_forms": ["Ba Đình"]
+      }
+    ]
+  },
+  {
+    "id": "snippet-8",
+    "source": "laodong.vn",
+    "text": "Công ty TNHH Samsung Electronics Việt Nam tuyển dụng 2000 kỹ sư tại Bắc Ninh và Thái Nguyên.",
+    "expected_entities": [
+      {
+        "text": "Samsung Electronics Việt Nam",
+        "type": "organization",
+        "confidence": 0.97,
+        "surface_forms": ["Công ty TNHH Samsung Electronics Việt Nam", "Samsung Electronics Việt Nam", "Samsung"]
+      },
+      {
+        "text": "Bắc Ninh",
+        "type": "location",
+        "confidence": 0.96,
+        "surface_forms": ["Bắc Ninh"]
+      },
+      {
+        "text": "Thái Nguyên",
+        "type": "location",
+        "confidence": 0.95,
+        "surface_forms": ["Thái Nguyên"]
+      }
+    ]
+  },
+  {
+    "id": "snippet-9",
+    "source": "vietnamnet.vn",
+    "text": "Ngân hàng Nhà nước Việt Nam điều chỉnh tỷ giá USD tại Hải Phòng và Quảng Ninh.",
+    "expected_entities": [
+      {
+        "text": "Ngân hàng Nhà nước Việt Nam",
+        "type": "organization",
+        "confidence": 0.97,
+        "surface_forms": ["Ngân hàng Nhà nước Việt Nam"]
+      },
+      {
+        "text": "Hải Phòng",
+        "type": "location",
+        "confidence": 0.96,
+        "surface_forms": ["Hải Phòng"]
+      },
+      {
+        "text": "Quảng Ninh",
+        "type": "location",
+        "confidence": 0.95,
+        "surface_forms": ["Quảng Ninh"]
+      }
+    ]
+  },
+  {
+    "id": "snippet-10",
+    "source": "tuoitre.vn",
+    "text": "GS.TS Trần Văn Hùng cùng các nhà khoa học Viện Hàn lâm Khoa học và Công nghệ Việt Nam nhận giải thưởng quốc tế tại Huế.",
+    "expected_entities": [
+      {
+        "text": "Trần Văn Hùng",
+        "type": "person",
+        "confidence": 0.96,
+        "surface_forms": ["Trần Văn Hùng"]
+      },
+      {
+        "text": "Viện Hàn lâm Khoa học và Công nghệ Việt Nam",
+        "type": "organization",
+        "confidence": 0.98,
+        "surface_forms": ["Viện Hàn lâm Khoa học và Công nghệ Việt Nam"]
+      },
+      {
+        "text": "Huế",
+        "type": "location",
+        "confidence": 0.94,
+        "surface_forms": ["Huế"]
+      }
+    ]
+  }
+]

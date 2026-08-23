@@ -2282,6 +2282,11 @@ class WorkspaceLimit(BaseModel, TimestampMixin):
     auto_extract_spend_cap_micros = Column(BigInteger, nullable=True)
     auto_extract_wallet_pre_check = Column(Boolean, nullable=True)
 
+    # Story 14.2a: per-workspace news entity extraction caps.
+    news_entity_extraction_item_cap = Column(Integer, nullable=True)
+    news_entity_extraction_spend_cap_micros = Column(BigInteger, nullable=True)
+    news_entity_extraction_wallet_pre_check = Column(Boolean, nullable=True)
+
     workspace = relationship(
         "Workspace", back_populates="workspace_limits", uselist=False
     )

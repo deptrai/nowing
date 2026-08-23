@@ -70,6 +70,7 @@ class UsageType(StrEnum):
     LEAD_SCORING_LLM = "lead_scoring_llm"
     ASSISTED_DRAFT = "assisted_draft"
     HYBRID_LLM = "hybrid_llm"
+    ENTITY_EXTRACTION = "entity_extraction"
 
 
 @dataclass

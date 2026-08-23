@@ -2,31 +2,26 @@
 
 from __future__ import annotations
 
-import hashlib
-import re
-import unicodedata
 from collections.abc import Awaitable, Callable
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import urlparse
 
-from sqlalchemy import delete as sa_delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import (
-    Chunk,
-    Document,
-    DocumentStatus,
-    DocumentType,
+    ChainLensIngestJob,
     SearchSourceConnectorType,
 )
-from app.indexing_pipeline.connector_document import ConnectorDocument
-from app.indexing_pipeline.indexing_pipeline_service import (
-    IndexingPipelineService,
-    PlaceholderInfo,
-)
 from app.services.chainlens.ingest import NowingIngestService
+from app.services.news.entity_extractor import (
+    NewsEntityExtractor,
+    mask_person_entities_in_text,
+    redact_entities_metadata,
+)
 from app.services.news.rss_config import get_feeds_for_workspace
-from app.services.news.rss_fetcher import _MISSING_PUB_DATE, NewsArticle, fetch_feed
+from app.services.news.rss_fetcher import NewsArticle, fetch_feed
+from app.services.scraper_chunks.schemas import ChunkValidationError
 from app.services.scraper_chunks.serializer import to_chunks
 from app.services.task_logging_service import TaskLoggingService
 
@@ -35,92 +30,13 @@ from .base import get_connector_by_id, logger, update_connector_last_indexed
 HeartbeatCallbackType = Callable[[int], Awaitable[None]]
 HEARTBEAT_INTERVAL_SECONDS = 30
 
-# Articles are pruned when they have not been seen in a feed for this long.
-# RSS feeds are rolling windows (typically 24-48h), so anything unseen for a
-# month is definitively gone from the source and its indexed copy is stale.
-RSS_RETENTION_DAYS = 30
 
-
-def _format_pub_date(article: NewsArticle) -> str:
-    """Human-readable publish date for display text.
-
-    When the feed omits ``pubDate`` the fetcher records a deterministic
-    1970-01-01 sentinel in canonical data (anti-churn); render it as
-    "Unknown" instead of leaking the epoch sentinel into searchable text.
-    """
-    if article.pub_date and not article.pub_date.startswith("1970-01-01"):
-        return article.pub_date
-    return "Unknown"
-
-
-def _build_source_markdown(article: NewsArticle) -> str:
-    """Create clean markdown content for indexing and search."""
-    parts = [f"# {article.title}", ""]
-    parts.append(f"**Source:** {article.source}")
-    if article.category:
-        parts.append(f"**Category:** {article.category}")
-    parts.append(f"**Published:** {_format_pub_date(article)}")
-    parts.append("")
-    parts.append(article.description)
-    parts.append("")
-    parts.append(f"**Link:** {article.link}")
-    return "\n".join(parts)
-
-
-def _build_connector_doc(
-    article: NewsArticle,
-    *,
-    connector_id: int,
-    workspace_id: int,
-    user_id: str,
-) -> ConnectorDocument:
-    """Map a parsed news article to a ConnectorDocument."""
-    metadata = {
-        "title": article.title,
-        "link": article.link,
-        "description": article.description,
-        "pubDate": article.pub_date,
-        "category": article.category,
-        "source": article.source,
-        "connector_id": connector_id,
-        "document_type": "News Article",
-        "connector_type": "RSS Feed",
-    }
-
-    return ConnectorDocument(
-        title=article.title,
-        source_markdown=_build_source_markdown(article),
-        unique_id=article.link,
-        document_type=DocumentType.NEWS_CONNECTOR,
-        workspace_id=workspace_id,
-        connector_id=connector_id,
-        created_by_id=user_id,
-        metadata=metadata,
-    )
-
-
-def _normalise_text(value: str) -> str:
-    """NFC-normalize and collapse whitespace so the same title written with
-    differently composed diacritics or spacing still fingerprints identically."""
-    return re.sub(r"\s+", " ", unicodedata.normalize("NFC", value)).strip().lower()
-
-
-def _news_fingerprint(article: NewsArticle) -> str:
-    """Stable fingerprint for cross-portal deduplication.
-
-    Normalised title plus the first 80 characters of the description is
-    enough to catch syndicated articles while still distinguishing genuine
-    follow-up stories. When the description is empty or just repeats the
-    title, the title alone is the seed so the same headline from two portals
-    still merges instead of falsely splitting.
-    """
-    normalised_title = _normalise_text(article.title)
-    description_seed = _normalise_text(article.description)[:80]
-    if not description_seed or description_seed == normalised_title:
-        combined = normalised_title
-    else:
-        combined = f"{normalised_title}|{description_seed}"
-    return hashlib.sha256(combined.encode("utf-8")).hexdigest()
+def _domain_from_url(url: str | None) -> str:
+    """Extract the canonical second-level domain from an article URL."""
+    if not url:
+        return "news"
+    host = (urlparse(url).hostname or "news").lower().removeprefix("www.")
+    return host or "news"
 
 
 async def _persist_canonical_articles(
@@ -128,23 +44,67 @@ async def _persist_canonical_articles(
     workspace_id: int,
     articles: list[NewsArticle],
     connector_id: int,
-) -> None:
-    """Send RSS articles to chainlens-research via the scraper ingest contract."""
+    user_id: str | None = None,
+) -> tuple[int, int]:
+    """Send RSS articles to chainlens-research via NowingIngestService with extracted entities."""
     fetched_at = datetime.now(UTC).isoformat()
+    extractor = NewsEntityExtractor()
     chunks: list[Any] = []
+
     for article in articles:
+        raw_text = (
+            f"{article.title}\n\n{article.description}".strip()
+            if article.description
+            else article.title
+        )
+        try:
+            entities = await extractor.extract(
+                raw_text,
+                workspace_id=workspace_id,
+                session=session,
+                user_id=user_id,
+                article_link=article.link,
+            )
+        except Exception:
+            logger.warning(
+                "News entity extraction failed for article %s, degrading to empty",
+                article.link,
+                exc_info=True,
+            )
+            entities = []
+
+        try:
+            redacted_title = mask_person_entities_in_text(article.title or "", entities)
+            redacted_desc = mask_person_entities_in_text(
+                article.description or "", entities
+            )
+            redacted_metadata_entities = redact_entities_metadata(entities)
+        except ChunkValidationError:
+            logger.warning(
+                "PII redaction failed for news article %s, skipping", article.link
+            )
+            continue
+        except Exception:
+            logger.exception(
+                "Unexpected error during news redaction for %s", article.link
+            )
+            continue
+
         data = {
-            "title": article.title,
+            "title": redacted_title,
             "link": article.link,
-            "description": article.description,
+            "description": redacted_desc,
             "pubDate": article.pub_date,
             "category": article.category,
             "source": article.source,
+            "entities": redacted_metadata_entities,
         }
         try:
+            article_domain = _domain_from_url(article.link)
             chunks.extend(
                 to_chunks(
                     domain="news",
+                    metadata_domain=article_domain,
                     data=data,
                     fetched_at=fetched_at,
                     content_type="text/markdown",
@@ -155,92 +115,66 @@ async def _persist_canonical_articles(
             logger.exception("RSS article chunk serialization failed: %s", article.link)
 
     if not chunks:
-        return
+        return 0, len(articles)
 
     try:
         ingest_service = NowingIngestService()
-        await ingest_service.ingest(
-            scraper_id=f"rss:{connector_id}",
+        result = await ingest_service.ingest(
+            scraper_id="news.rss",
             chunks=chunks,
             workspace_id=workspace_id,
-            session=None,
+            session=session,
         )
+        status_val = getattr(result, "status", "failed") if result else "failed"
+
+        if status_val in ("ok", "noop"):
+            return len(articles), 0
+
+        if status_val == "partial":
+            ingested = len(getattr(result, "ingested_source_ids", []) or [])
+            noop = len(getattr(result, "noop_source_ids", []) or [])
+            logger.warning(
+                "chainlens_news_ingest_partial workspace_id=%s ingested=%s noop=%s",
+                workspace_id,
+                ingested,
+                noop,
+            )
+            return len(articles), 0
+
+        if status_val == "service_auth_unavailable":
+            logger.warning(
+                "chainlens_news_ingest_failed workspace_id=%s status=service_auth_unavailable error=%s",
+                workspace_id,
+                getattr(result, "error", None),
+            )
+            try:
+                job = ChainLensIngestJob(
+                    workspace_id=workspace_id,
+                    scraper_id="news.rss",
+                    status="failed",
+                    error=getattr(result, "error", None),
+                )
+                session.add(job)
+                await session.commit()
+            except Exception:
+                logger.warning(
+                    "chainlens_ingest_job_persistence_failed workspace_id=%s",
+                    workspace_id,
+                    exc_info=True,
+                )
+            return 0, len(articles)
+
+        job_id = getattr(result, "ingest_job_id", None)
+        logger.warning(
+            "chainlens_news_ingest_failed workspace_id=%s ingest_job_id=%s status=%s",
+            workspace_id,
+            job_id,
+            status_val,
+        )
+        return 0, len(articles)
     except Exception:
         logger.exception("RSS chainlens ingest failed")
-
-
-def _parse_meta_date(pub_date: str | None) -> datetime | None:
-    """Return a parsed UTC datetime from stored metadata pubDate.
-
-    Falls back to ``None`` for the epoch sentinel or unparseable values so the
-    caller can use ``Document.created_at`` instead.
-    """
-    if not pub_date or pub_date.startswith(_MISSING_PUB_DATE.isoformat()):
-        return None
-    try:
-        return datetime.fromisoformat(pub_date)
-    except ValueError:
-        return None
-
-
-async def _prune_stale_articles(
-    session: AsyncSession,
-    *,
-    connector_id: int,
-    workspace_id: int,
-    seen_links: set[str],
-) -> int:
-    """Delete articles that left the feed's rolling window.
-
-    Articles not seen in the current poll and older than the retention window
-    are gone from the source; remove their local ``Document`` and ``Chunk``
-    rows. Canonical indexing is owned by ``chainlens-research``.
-    """
-    cutoff = datetime.now(UTC) - timedelta(days=RSS_RETENTION_DAYS)
-    link_expr = Document.document_metadata["link"].as_string()
-    pub_date_expr = Document.document_metadata["pubDate"].as_string()
-    result = await session.execute(
-        select(Document.id, link_expr, pub_date_expr, Document.created_at).where(
-            Document.workspace_id == workspace_id,
-            Document.connector_id == connector_id,
-            Document.document_type == DocumentType.NEWS_CONNECTOR,
-            ~link_expr.in_(seen_links),
-        )
-    )
-    rows = result.fetchall()
-    if not rows:
-        return 0
-
-    prunable_ids: list[int] = []
-    pruned_links: list[str] = []
-    for doc_id, link, pub_date, created_at in rows:
-        article_date = _parse_meta_date(pub_date) or created_at
-        if article_date and article_date < cutoff:
-            prunable_ids.append(doc_id)
-            if link:
-                pruned_links.append(link)
-
-    if not prunable_ids:
-        return 0
-
-    doc_ids = prunable_ids
-
-    # Chunks and documents are deleted in matching batches so a large prune
-    # does not issue a single giant ``DELETE FROM documents`` statement.
-    batch_size = 500
-    for start in range(0, len(doc_ids), batch_size):
-        batch = doc_ids[start : start + batch_size]
-        await session.execute(sa_delete(Chunk).where(Chunk.document_id.in_(batch)))
-        await session.execute(sa_delete(Document).where(Document.id.in_(batch)))
-
-    # chainlens-research owns canonical indexing; Nowing only stores the
-    # source documents here, so no extra canonical cleanup is required.
-    await session.commit()
-
-    logger.info(
-        "Pruned %d stale article(s) for RSS connector %s", len(doc_ids), connector_id
-    )
-    return len(doc_ids)
+        return 0, len(articles)
 
 
 async def index_rss_feeds(
@@ -363,60 +297,14 @@ async def index_rss_feeds(
             if on_heartbeat_callback and len(seen_links) % 50 == 0:
                 await on_heartbeat_callback(len(seen_links))
 
-        # Placeholders give instant UI feedback before slow embedding/chunking.
-        pipeline = IndexingPipelineService(session)
-        connector_docs = [
-            _build_connector_doc(
-                article,
-                connector_id=connector_id,
-                workspace_id=workspace_id,
-                user_id=user_id,
-            )
-            for article in unique_articles
-        ]
-        await pipeline.create_placeholder_documents(
-            [
-                PlaceholderInfo(
-                    title=doc.title,
-                    document_type=doc.document_type,
-                    unique_id=doc.unique_id,
-                    workspace_id=doc.workspace_id,
-                    connector_id=doc.connector_id,
-                    created_by_id=doc.created_by_id,
-                    metadata={
-                        "title": doc.title,
-                        "link": doc.unique_id,
-                        "connector_id": connector_id,
-                        "connector_type": "RSS Feed",
-                    },
-                )
-                for doc in connector_docs
-            ]
+        # Send to ChainLens via NowingIngestService (AD-34 / AD-35).
+        indexed, _skipped_count = await _persist_canonical_articles(
+            session,
+            workspace_id=workspace_id,
+            articles=unique_articles,
+            connector_id=connector_id,
+            user_id=user_id,
         )
-
-        results = await pipeline.index_batch(connector_docs)
-
-        indexed = sum(
-            1
-            for doc in results
-            if DocumentStatus.is_state(doc.status, DocumentStatus.READY)
-        )
-
-        # Canonical upsert provides cross-portal deduplication (AD-27).
-        await _persist_canonical_articles(
-            session, workspace_id, unique_articles, connector_id
-        )
-
-        # Rolling-window retention: drop articles that left the feed long ago.
-        # Only prune when every feed fetched successfully, so a transient
-        # failure in one feed does not wipe articles from that feed.
-        if not fetch_errors:
-            await _prune_stale_articles(
-                session,
-                connector_id=connector_id,
-                workspace_id=workspace_id,
-                seen_links=seen_links,
-            )
 
         await update_connector_last_indexed(session, connector, update_last_indexed)
 

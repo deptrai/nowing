@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, StrictBool
+from pydantic import BaseModel, ConfigDict, Field, StrictBool
 
 from .base import IDModel, TimestampModel
 from .model_connections import LlmSetupStatusRead
@@ -110,6 +110,10 @@ class WorkspaceLimitsResponse(BaseModel):
     auto_extract_item_cap: int | None = None
     auto_extract_spend_cap_micros: int | None = None
     auto_extract_wallet_pre_check: bool | None = None
+    # Story 14.2a: news entity extraction caps.
+    news_entity_extraction_item_cap: int | None = None
+    news_entity_extraction_spend_cap_micros: int | None = None
+    news_entity_extraction_wallet_pre_check: bool | None = None
     auto_extract_usage: AutoExtractUsage
     usage: WorkspaceLimitUsage
 
@@ -117,6 +121,9 @@ class WorkspaceLimitsResponse(BaseModel):
 class WorkspaceLimitUpdate(BaseModel):
     """Owner-editable workspace limit overrides."""
 
-    auto_extract_item_cap: int | None = None
-    auto_extract_spend_cap_micros: int | None = None
+    auto_extract_item_cap: int | None = Field(default=None, ge=0)
+    auto_extract_spend_cap_micros: int | None = Field(default=None, ge=0)
     auto_extract_wallet_pre_check: bool | None = None
+    news_entity_extraction_item_cap: int | None = Field(default=None, ge=0)
+    news_entity_extraction_spend_cap_micros: int | None = Field(default=None, ge=0)
+    news_entity_extraction_wallet_pre_check: bool | None = None

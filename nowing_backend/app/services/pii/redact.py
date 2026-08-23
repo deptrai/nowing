@@ -47,7 +47,7 @@ _NAME_PATTERN = re.compile(
 )
 
 
-def _apply_redaction(text: str) -> RedactedText:
+def _apply_redaction(text: str, redact_names: bool = True) -> RedactedText:
     """Apply phone, email, and name redaction; return counts."""
     redacted = text
     phones = 0
@@ -62,8 +62,9 @@ def _apply_redaction(text: str) -> RedactedText:
     emails = len(_EMAIL_PATTERN.findall(redacted))
     redacted = _EMAIL_PATTERN.sub("<EMAIL>", redacted)
 
-    names = len(_NAME_PATTERN.findall(redacted))
-    redacted = _NAME_PATTERN.sub("<NAME>", redacted)
+    if redact_names:
+        names = len(_NAME_PATTERN.findall(redacted))
+        redacted = _NAME_PATTERN.sub("<NAME>", redacted)
 
     return RedactedText(
         text=redacted,
@@ -88,10 +89,16 @@ def redact_pii(text: str | None, context: str = "default") -> RedactedText:
     if not text:
         return RedactedText(text="")
 
-    if context not in {"job_data", "lead_enrichment", "social_template", "default"}:
+    if context not in {
+        "job_data",
+        "lead_enrichment",
+        "social_template",
+        "news_ner",
+        "default",
+    }:
         raise ValueError(f"Unknown redaction context: {context}")
 
-    return _apply_redaction(text)
+    return _apply_redaction(text, redact_names=(context != "news_ner"))
 
 
 def redact_job_pii(text: str | None) -> RedactedText:

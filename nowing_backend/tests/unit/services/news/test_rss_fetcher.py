@@ -10,7 +10,6 @@ from app.services.news.rss_config import (
     get_feeds_for_workspace,
 )
 from app.services.news.rss_fetcher import (
-    _MISSING_PUB_DATE,
     NewsArticle,
     _parse_pub_date,
     fetch_feed,
@@ -332,9 +331,7 @@ async def test_fetch_feed_rejects_billion_laughs_payload(monkeypatch):
     dtd_lines = ['<!ENTITY lol0 "lol">']
     prev = "lol0"
     for i in range(1, 6):
-        dtd_lines.append(
-            f'<!ENTITY lol{i} "&{prev};&{prev};&{prev};&{prev};&{prev};">'
-        )
+        dtd_lines.append(f'<!ENTITY lol{i} "&{prev};&{prev};&{prev};&{prev};&{prev};">')
         prev = f"lol{i}"
     dtd = "\n".join(dtd_lines)
     evil = f"""<?xml version="1.0"?>
@@ -453,43 +450,6 @@ def test_get_feeds_for_workspace_dedupes():
 
 
 @pytest.mark.unit
-def test_news_fingerprint_nfc_normalisation():
-    """Fingerprint merges NFC vs NFD titles and ignores whitespace churn."""
-    from app.tasks.connector_indexers.rss_indexer import _news_fingerprint
-
-    article = NewsArticle(
-        title="Hà Nội  mưa lớn",
-        link="https://a.example/x",
-        description="",
-        pub_date=_MISSING_PUB_DATE.isoformat(),
-        category=None,
-        source="S",
-    )
-    # NFD decomposition of "à"/"ội"/"ớn" + doubled space in title
-    nfd_title = "Ha\u0300 No\u0302\u0323i  mu\u031ba lo\u031b\u0301n"
-    article_nfd = NewsArticle(
-        title=nfd_title,
-        link="https://a.example/x",
-        description="",
-        pub_date=_MISSING_PUB_DATE.isoformat(),
-        category=None,
-        source="S",
-    )
-    assert _news_fingerprint(article) == _news_fingerprint(article_nfd)
-
-    # description repeating the title does not change the fingerprint
-    article_with_desc = NewsArticle(
-        title="Hà Nội mưa lớn",
-        link="https://a.example/x",
-        description="Hà Nội mưa lớn",
-        pub_date=_MISSING_PUB_DATE.isoformat(),
-        category=None,
-        source="S",
-    )
-    assert _news_fingerprint(article) == _news_fingerprint(article_with_desc)
-
-
-@pytest.mark.unit
 async def test_fetch_feed_resolves_relative_link(monkeypatch):
     """Relative <link> and Atom href are resolved against the feed URL."""
     feed = """<?xml version="1.0" encoding="UTF-8"?>
@@ -568,7 +528,8 @@ async def test_fetch_feed_retries_429_then_succeeds(monkeypatch):
         return None
 
     monkeypatch.setattr(
-        "app.services.news.rss_fetcher.httpx.AsyncClient.stream", _fake_stream_with_retry
+        "app.services.news.rss_fetcher.httpx.AsyncClient.stream",
+        _fake_stream_with_retry,
     )
     monkeypatch.setattr("app.services.news.rss_fetcher._check_dns_ssrf", _no_dns_check)
 

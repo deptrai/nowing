@@ -1,5 +1,5 @@
 # generated: 2026-08-08
-# last_updated: 2026-08-23  # 3-7-followup validated ready-for-dev; td-8 done; Epic 13 cleanup patches applied; P6 RSS unit tests restored.
+# last_updated: 2026-08-24  # 14-2 validated; status kept backlog due to chainlens entity search / ingest not available.
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: "2026-08-23"  # Story 8-14 started: per-turn cost + auto-extract budget toggle v2 dashboard.
+last_updated: "2026-08-24"  # Story 24-8 patches applied; moved to pending-human-review for P0 auth/authorization changes.
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # - Parsed epics.md: 24 epics, ~160 stories.
 # - Scanned _bmad-output/implementation-artifacts/ + stories/*.md for story files (frontmatter story_key/epic+story).
@@ -267,7 +267,7 @@ development_status:
   24-5: done  # Vertical Playbook Marketplace & Community Workflow Templates — P0/P1 code review patches applied (auth, seed runnable, is_approved, metadata, vertical filter, hard limit, instantiate run launch). Backend ruff/pytest and frontend tsc/biome green.
   24-6: done  # Two-Way AI Outreach Auto-Reply Agent — all review findings resolved (5 patches + 2 deferred items). Verified green: ruff, pytest unit/integration, pnpm tsc/biome.
   24-7: done  # Multi-Channel Drip Outreach Campaign Engine (Zalo ZNS + Telegram + Email Cadence) — 18 original patch findings + 5 re-review findings applied: multi-channel config, VerifiedContact.external_chat_ids, schema expansion, _send_zns/_send_telegram dispatch, fallback orchestration with correct fallback billing cost, DNC on Telegram, normalized Zalo webhook phone lookup, sanitized inbound lock key, VisualCadenceBuilder invalid JSON feedback. Backend ruff/pytest (34 tests) and frontend tsc/biome green.
-  24-8: backlog  # Browser Operator CDP tool for DSH crawl subgraph + Human Live Takeover UI (split 24-8a/24-8b; AD-111)
+  24-8: review  # 2026-08-24: prompt-in-UI control fixed (web_crawler subagent can now call browser_operator.execute); P0 auth/authorization changes still need human sign-off
   epic-24-retrospective: optional
 
   # === Epic 25: Platform Administration & Multi-Tenant Operations ===
@@ -348,7 +348,8 @@ development_status:
   # missing final session.commit(), naive datetime, empty-link logging.
   # Unit/integration tests pass; Playwright E2E passes; marked done.
   14-1: done
-  14-2: backlog  # blocked-by-external: chainlens-research entity search / ingest with metadata.entities not available
+  14-2a: done  # 2026-08-24: all review patches applied and re-reviewed; 140 targeted unit tests pass; ruff clean.
+  14-2b: backlog  # split from 14-2; blocked-by-external chainlens-research entity search / ingest with metadata.entities not available
   epic-14-retrospective: optional
 
   # === Epic 15: Financial Data (Vietnam) ===
@@ -397,6 +398,7 @@ development_status:
   28-2: backlog  # Encryption-at-Rest for Cloud Memory
   28-3: backlog  # ToS / Legal Review & Retention Policy
   28-4: backlog  # Self-Host OSS Onboarding in Under 10 Minutes
+  28-5: ready-for-dev  # Workspace Memory Storage Cap & Retention Lifecycle
   epic-28-retrospective: optional
 
   # === Tech Debt (from code review deferred items) ===
