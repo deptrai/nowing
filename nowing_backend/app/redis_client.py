@@ -33,9 +33,9 @@ async def get_redis_client() -> Any:
         redis_url,
         decode_responses=True,
         socket_connect_timeout=5,
-        # ponytail: 10s socket timeout so DSH XREADGROUP BLOCK (5s default)
-        # plus network/parse margin does not trip redis-py TimeoutError.
-        socket_timeout=10,
+        # CDP blpop waits up to 60s; socket_timeout must exceed that.
+        # Keep it bounded so stuck commands surface instead of blocking forever.
+        socket_timeout=70,
         health_check_interval=30,
     )
     if loop is not None:

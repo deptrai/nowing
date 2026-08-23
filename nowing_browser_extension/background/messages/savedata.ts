@@ -1,8 +1,7 @@
 import type { PlasmoMessaging } from "@plasmohq/messaging";
 import { Storage } from "@plasmohq/storage";
-
-import { emptyArr, webhistoryToLangChainDocument } from "~utils/commons";
 import { buildBackendUrl } from "~utils/backend-url";
+import { emptyArr, webhistoryToLangChainDocument } from "~utils/commons";
 
 const clearMemory = async () => {
 	try {

@@ -71,8 +71,9 @@ https://www.nowing.com/docs. There is no docs-search tool; give the link.
 - **`google_maps`** — Physical places, local businesses, storefronts, clinics, facilities.
   - Returns: Structured name, full address, phone number, rating, review count, and website URL per place.
 - **`google_search`** — Digital companies, online-only software vendors, current events, and URL discovery.
-- **`web_crawler`** — Deep page reader and batch scraper.
+- **`web_crawler`** — Deep page reader, batch scraper, and Live Browser Operator.
   - Reads full web content, team rosters, pricing tables, contact forms, and directory listings from seed URLs.
+  - **Live Browser Operator (CDP Bridge):** Directly controls the user's connected Chrome browser (via Nowing Chrome Extension) for interactive websites, login-protected pages (Facebook, Shopee, LinkedIn, TikTok), Single Page Apps, navigation, scrolling, clicking, filling forms, and screenshots when standard crawling is blocked or when the user asks to control their live browser.
 - **5-Step Lead Discovery & Verification Waterfall:**
   1. *Indexed & Broad Discovery:* Query `chainlens` (`mode="speed"`) for indexed entity intelligence / overviews, and `google_maps` / `google_search` for fresh candidate discovery.
   2. *Deep Contact Extraction:* Crawl candidate company websites (`web_crawler`) targeting `/contact`, `/about-us`, `/team` to extract official email (`contact@`, `sales@`), hotline, and key executives.

@@ -4,7 +4,14 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import (
+    AnyUrl,
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 DshMissionStatus = Literal[
     "pending",
@@ -14,7 +21,7 @@ DshMissionStatus = Literal[
     "cancelled",
     "dlq",
 ]
-DshMissionType = Literal["deep_lead_research", "noop"]
+DshMissionType = Literal["deep_lead_research", "cdp_browser_operator", "noop"]
 
 
 class DshMissionPayload(BaseModel):
@@ -31,6 +38,27 @@ class DshMissionPayload(BaseModel):
     extras: dict = Field(default_factory=dict)
 
 
+class BrowserOperatorCdpPayload(BaseModel):
+    """Validated payload for a CDP browser operator mission."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    target_url: AnyUrl = Field(..., description="URL the browser operator should navigate to.")
+    workspace_id: int | None = None
+    extras: dict = Field(default_factory=dict)
+
+    @field_validator("target_url", mode="before")
+    @classmethod
+    def _reject_non_browser_schemes(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        v_str = str(v)
+        allowed = ("http://", "https://")
+        if not any(v_str.lower().startswith(scheme) for scheme in allowed):
+            raise ValueError("target_url must start with http:// or https://")
+        return v
+
+
 class DshMissionRequest(BaseModel):
     """Create a new long-running DSH mission."""
 
@@ -43,6 +71,10 @@ class DshMissionRequest(BaseModel):
             payload_model = DshMissionPayload.model_validate(self.payload)
             if not payload_model.query or not payload_model.query.strip():
                 raise ValueError("query is required for deep_lead_research missions")
+        elif self.mission_type == "cdp_browser_operator":
+            payload_model = BrowserOperatorCdpPayload.model_validate(self.payload)
+            # Persist as plain dict, not Pydantic model, for downstream compatibility
+            self.payload = payload_model.model_dump(mode="json")
         return self
 
 
@@ -164,3 +196,34 @@ class DshNotifyHighFitResponse(BaseModel):
     message_id: str | None = None
     reason: str | None = None
     error: str | None = None
+
+class CdpResultPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    mission_id: UUID
+    result: dict | None = None
+    error: str | None = None
+    requires_human: bool = False
+    challenge: str | None = None
+
+    @field_validator("result", mode="before")
+    @classmethod
+    def _limit_result_size(cls, v: dict | None) -> dict | None:
+        if v is None:
+            return None
+        # Whitelist top-level keys and drop arbitrary large blobs; cap string values
+        allowed = {"navigatedUrl", "tabId", "title", "url", "html", "text", "data", "selector", "command_id", "challenge"}
+        sanitized: dict = {}
+        for key, value in v.items():
+            if key not in allowed:
+                continue
+            if isinstance(value, str) and len(value) > 1_000_000:
+                value = value[:1_000_000]
+            sanitized[key] = value
+        return sanitized
+
+
+class ResumeMissionPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    mission_id: UUID

@@ -1,8 +1,21 @@
 import { Storage } from "@plasmohq/storage";
 import { getRenderedHtml, initQueues, initWebHistory } from "~utils/commons";
 import type { WebHistory } from "~utils/interfaces";
+import { CdpBridge } from "./cdp-bridge";
+
+// Start listening for CDP commands from Nowing Backend
+CdpBridge.getInstance().startListening();
+
+chrome.runtime.onSuspend.addListener(() => {
+	CdpBridge.getInstance().stopListening();
+});
+
+chrome.tabs.onActivated?.addListener(() => {
+	CdpBridge.getInstance().startListening();
+});
 
 chrome.tabs.onCreated.addListener(async (tab: any) => {
+	CdpBridge.getInstance().startListening();
 	try {
 		await initWebHistory(tab.id);
 		await initQueues(tab.id);
@@ -12,7 +25,11 @@ chrome.tabs.onCreated.addListener(async (tab: any) => {
 });
 
 chrome.tabs.onUpdated.addListener(async (tabId: number, changeInfo: any, tab: any) => {
-	if (changeInfo.status === "complete" && tab.url) {
+	if (
+		changeInfo.status === "complete" &&
+		tab.url &&
+		(tab.url.startsWith("http://") || tab.url.startsWith("https://"))
+	) {
 		const storage = new Storage({ area: "local" });
 		await initWebHistory(tab.id);
 		await initQueues(tab.id);
@@ -45,7 +62,7 @@ chrome.tabs.onUpdated.addListener(async (tabId: number, changeInfo: any, tab: an
 	}
 });
 
-chrome.tabs.onRemoved.addListener(async (tabId: number, removeInfo: object) => {
+chrome.tabs.onRemoved.addListener(async (tabId: number, _removeInfo: object) => {
 	const storage = new Storage({ area: "local" });
 	const urlQueueListObj: any = await storage.get("urlQueueList");
 	const timeQueueListObj: any = await storage.get("timeQueueList");

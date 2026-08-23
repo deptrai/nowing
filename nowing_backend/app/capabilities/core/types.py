@@ -55,7 +55,6 @@ class BillingUnit(StrEnum):
     ECOMMERCE_PRODUCT = "ecommerce_product"
 
 
-
 class BillableInput(Protocol):
     """A billed verb's input that reports its worst-case unit count for pre-flight."""
 
@@ -77,6 +76,8 @@ class CapabilityContext:
     session: AsyncSession
     workspace_id: int
     run_id: str | None = None
+    user_id: str | None = None
+    auth: Any | None = None
 
 
 Executor = Callable[[Any], Awaitable[Any]]

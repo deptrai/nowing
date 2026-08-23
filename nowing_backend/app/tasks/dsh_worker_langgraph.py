@@ -28,6 +28,10 @@ from uuid import UUID
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import RunnableConfig
 
+from app.tasks.dsh_worker_browser_operator import (
+    BrowserOperatorCdpSubgraph,
+    HumanInterventionRequired,
+)
 from app.tasks.dsh_worker_crawl_subgraph import (
     WideResearchCrawlSubgraph,
     _is_valid_matrix,
@@ -170,12 +174,18 @@ class LangGraphMissionExecutor:
     ) -> MissionState:
         payload = state.get("payload") or {}
         extras = payload.get("extras", {}) if isinstance(payload, dict) else {}
+        research_mode = extras.get("research_mode", "")
+        # CDP browser operator also triggered by the cdp_browser_operator mission type.
+        if payload.get("target_url") and state.get("mission_type") == "cdp_browser_operator":
+            research_mode = "cdp_takeover"
         checkpoint = state.get("checkpoint") or {}
 
-        if self._subtask_success(state, "crawl"):
-            if extras.get("research_mode") == "wide":
-                if checkpoint.get("wide_research_matrix"):
-                    return state
+        skip_subtask = (
+            "cdp_crawl" if research_mode == "cdp_takeover" else "crawl"
+        )
+        if self._subtask_success(state, skip_subtask):
+            if research_mode == "wide" and not checkpoint.get("wide_research_matrix"):
+                pass
             else:
                 return state
 
@@ -192,16 +202,22 @@ class LangGraphMissionExecutor:
         )
 
         try:
-            if extras.get("research_mode") == "wide":
+            if research_mode == "wide":
                 subgraph = WideResearchCrawlSubgraph.build(rest_client)
                 result = await subgraph.ainvoke(state, config)
                 sources = result.get("sources", [])
-                subtasks = list(result.get("subtasks", []))
+                subtasks = list(result.get("subtasks") or [])
+                checkpoint = dict(result.get("checkpoint") or {})
+            elif research_mode == "cdp_takeover":
+                subgraph = BrowserOperatorCdpSubgraph.build(rest_client)
+                result = await subgraph.ainvoke(state, config)
+                sources = result.get("sources", [])
+                subtasks = list(result.get("subtasks") or [])
                 checkpoint = dict(result.get("checkpoint") or {})
             else:
                 research_output = await rest_client.chainlens_research(workspace_id, query)
                 sources = research_output.get("sources", [])
-                subtasks = list(state.get("subtasks", []))
+                subtasks = list(state.get("subtasks") or [])
                 subtasks.append(
                     {
                         "id": "crawl",
@@ -221,9 +237,11 @@ class LangGraphMissionExecutor:
                 progress_percent=35,
                 current_subtask_id="reasoning",
             )
+        except HumanInterventionRequired:
+            raise
         except Exception as exc:
             subtasks = list(state.get("subtasks", []))
-            subtasks.append({"id": "crawl", "status": "failed", "error": str(exc)})
+            subtasks.append({"id": skip_subtask, "status": "failed", "error": str(exc)})
             checkpoint = dict(state.get("checkpoint") or {})
             checkpoint["subtasks"] = subtasks
             state = await self._patch_checkpoint(
@@ -525,11 +543,13 @@ class LangGraphMissionExecutor:
         if isinstance(mission, dict):
             mission_id = str(mission["id"])
             workspace_id = mission["workspace_id"]
+            user_id = mission.get("user_id")
             payload = mission.get("payload") or {}
             checkpoint = mission.get("checkpoint") or {}
         else:
             mission_id = str(mission.id)
             workspace_id = mission.workspace_id
+            user_id = mission.user_id
             payload = mission.payload or {}
             checkpoint = mission.checkpoint or {}
 
@@ -554,6 +574,7 @@ class LangGraphMissionExecutor:
         initial_state: MissionState = {
             "mission_id": mission_id,
             "workspace_id": workspace_id,
+            "user_id": user_id,
             "query": query,
             "payload": payload,
             "checkpoint": checkpoint,

@@ -823,6 +823,29 @@ class Config:
         1, _env_int("MEMORY_AUTO_EXTRACT_RATE_WINDOW_SECONDS", 3600)
     )
 
+    # News entity extraction defaults and cost controls (Story 14.2a)
+    NEWS_ENTITY_EXTRACTION_ENABLED = (
+        os.getenv("NEWS_ENTITY_EXTRACTION_ENABLED", "true").strip().lower() == "true"
+    )
+    NEWS_ENTITY_EXTRACTION_CONFIDENCE = max(
+        0.0, min(1.0, _env_float("NEWS_ENTITY_EXTRACTION_CONFIDENCE", 0.6))
+    )
+    NEWS_ENTITY_EXTRACTION_MIN_RESERVE_MICROS = max(
+        0, _env_int("NEWS_ENTITY_EXTRACTION_MIN_RESERVE_MICROS", 0)
+    )
+    NEWS_ENTITY_EXTRACTION_BUDGET_MICROS = max(
+        0, _env_int("NEWS_ENTITY_EXTRACTION_BUDGET_MICROS", 0)
+    )
+    NEWS_ENTITY_EXTRACTION_BUDGET_WINDOW = _env_choice(
+        "NEWS_ENTITY_EXTRACTION_BUDGET_WINDOW", "day", ("day", "week", "month")
+    )
+    NEWS_ENTITY_EXTRACTION_RATE_MAX = max(
+        0, _env_int("NEWS_ENTITY_EXTRACTION_RATE_MAX", 0)
+    )
+    NEWS_ENTITY_EXTRACTION_RATE_WINDOW_SECONDS = max(
+        1, _env_int("NEWS_ENTITY_EXTRACTION_RATE_WINDOW_SECONDS", 3600)
+    )
+
     NOWING_PUBLIC_URL = os.getenv("NOWING_PUBLIC_URL")
     NEXT_FRONTEND_URL = os.getenv("NEXT_FRONTEND_URL") or NOWING_PUBLIC_URL
     # Backend URL to override the http to https in the OAuth redirect URI

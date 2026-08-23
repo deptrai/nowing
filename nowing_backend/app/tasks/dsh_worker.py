@@ -23,6 +23,7 @@ from app.capabilities.chainlens.research.executor import build_research_executor
 from app.capabilities.chainlens.research.schemas import ResearchInput
 from app.config import config
 from app.redis_client import get_redis_client
+from app.tasks.dsh_worker_browser_operator import HumanInterventionRequired
 from app.tasks.dsh_worker_langgraph import LangGraphMissionExecutor
 
 _research_executor = build_research_executor()
@@ -937,6 +938,22 @@ class DshWorker:
                         completed_at=datetime.now(UTC).isoformat(),
                     ),
                 )
+            except HumanInterventionRequired as e:
+                logger.warning("Mission %s requires human intervention: %s", mission_id, e)
+                # Save checkpoint and pause
+                workspace_id = mission.get("workspace_id") if isinstance(mission, dict) else mission.workspace_id
+                await self.rest_client.patch_checkpoint(
+                    mission_id,
+                    _checkpoint_update(
+                        status="running",
+                        phase="waiting_for_human",
+                        current_subtask_id="cdp_crawl",
+                    ),
+                )
+                # 15-minute takeover TTL. Resume route must delete this key.
+                takeover_key = f"dsh:lock:takeover:{workspace_id}:{mission_id}"
+                await redis_client.setex(takeover_key, 900, "1")
+                await redis_client.xack(self.stream, self.group, msg_id)
                 return True
             except asyncio.CancelledError:
                 logger.info(

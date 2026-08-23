@@ -232,11 +232,20 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 		return initial;
 	});
 	const [expandedReasoning, setExpandedReasoning] = useState<Set<string>>(new Set());
+	const [resumingTakeover, setResumingTakeover] = useState(false);
+	const [takeoverError, setTakeoverError] = useState<string | null>(null);
 
 	// Re-expand the current subtask when it changes.
 	useEffect(() => {
 		if (missionControl?.current_subtask_id) {
-			setExpandedSubtasks((prev) => new Set([...prev, missionControl.current_subtask_id].filter((id): id is string => typeof id === "string")));
+			setExpandedSubtasks(
+				(prev) =>
+					new Set(
+						[...prev, missionControl.current_subtask_id].filter(
+							(id): id is string => typeof id === "string"
+						)
+					)
+			);
 		}
 	}, [missionControl?.current_subtask_id]);
 
@@ -311,6 +320,22 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 		});
 	};
 
+	const handleResumeTakeover = async () => {
+		if (!latestMission?.id) return;
+		setTakeoverError(null);
+		setResumingTakeover(true);
+		try {
+			await dshApiService.resumeMission(latestMission.id);
+			toast.success("Đã trả quyền điều khiển cho agent");
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : "Không thể resume";
+			setTakeoverError(msg);
+			toast.error(msg);
+		} finally {
+			setResumingTakeover(false);
+		}
+	};
+
 	if (!loading && status === "idle" && !latestMission) {
 		return null;
 	}
@@ -365,6 +390,31 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 					</button>
 				</div>
 			</div>
+
+			{phase === "waiting_for_human" && latestMission && (
+				<div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+					<div className="flex items-start justify-between gap-3">
+						<div>
+							<p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+								Human Live Takeover
+							</p>
+							<p className="text-xs text-amber-700/80 dark:text-amber-400/80 mt-0.5">
+								Agent gặp CAPTCHA/2FA trên trình duyệt. Hãy xử lý thủ công, sau đó trả quyền điều
+								khiển.
+							</p>
+							{takeoverError && <p className="text-xs text-red-600 mt-1">{takeoverError}</p>}
+						</div>
+						<button
+							type="button"
+							disabled={resumingTakeover}
+							onClick={handleResumeTakeover}
+							className="shrink-0 px-3 py-1.5 rounded-md bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium disabled:opacity-50"
+						>
+							{resumingTakeover ? "Đang resume..." : "Trả quyền cho Agent"}
+						</button>
+					</div>
+				</div>
+			)}
 
 			{error && (
 				<div className="mt-3 flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/10 p-2.5 text-xs text-red-700 dark:text-red-300">

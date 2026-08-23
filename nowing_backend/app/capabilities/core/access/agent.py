@@ -442,6 +442,8 @@ def _capability_tool(
                     session=session,
                     workspace_id=workspace_id,
                     run_id=sync_run_id,
+                    user_id=user_id,
+                    auth=auth_context,
                 )
                 try:
                     if auth_context is not None:

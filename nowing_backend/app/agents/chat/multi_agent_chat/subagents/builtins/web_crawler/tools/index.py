@@ -7,6 +7,7 @@ from typing import Any
 from langchain_core.tools import BaseTool
 
 from app.agents.chat.multi_agent_chat.shared.permissions import Ruleset
+from app.capabilities.browser_operator.definition import BROWSER_OPERATOR_EXECUTE
 from app.capabilities.core.access.agent import build_capability_tools
 from app.capabilities.web.crawl.definition import WEB_CRAWL
 
@@ -14,7 +15,7 @@ NAME = "web_crawler"
 
 RULESET = Ruleset(origin=NAME, rules=[])
 
-_CI_VERBS = [WEB_CRAWL]
+_CI_VERBS = [WEB_CRAWL, BROWSER_OPERATOR_EXECUTE]
 
 
 def load_tools(

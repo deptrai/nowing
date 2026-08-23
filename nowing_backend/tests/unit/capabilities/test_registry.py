@@ -5,7 +5,12 @@ from __future__ import annotations
 import pytest
 
 from app.capabilities import (
-    web,  # noqa: F401  — importing the namespace registers its verbs
+    browser_operator,  # noqa: F401  — importing the namespace registers its verbs
+    web,  # noqa: F401
+)
+from app.capabilities.browser_operator.schemas import (
+    BrowserOperatorInput,
+    BrowserOperatorOutput,
 )
 from app.capabilities.core.store import (
     CapabilityRegistry,
@@ -25,6 +30,15 @@ def test_web_crawl_is_registered_with_its_schemas_and_billing_unit():
     assert cap.input_schema is CrawlInput
     assert cap.output_schema is CrawlOutput
     assert cap.billing_unit is BillingUnit.WEB_CRAWL
+
+
+def test_browser_operator_execute_is_registered_with_its_schemas():
+    cap = get_capability("browser_operator.execute")
+
+    assert cap.name == "browser_operator.execute"
+    assert cap.input_schema is BrowserOperatorInput
+    assert cap.output_schema is BrowserOperatorOutput
+    assert cap.billing_unit is None
 
 
 def test_capability_metadata_and_registry_query():

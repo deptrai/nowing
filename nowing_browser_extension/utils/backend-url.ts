@@ -1,7 +1,7 @@
 import { Storage } from "@plasmohq/storage";
 
 export const BACKEND_URL_STORAGE_KEY = "backend_base_url";
-export const FALLBACK_BACKEND_BASE_URL = "https://www.nowing.com";
+export const FALLBACK_BACKEND_BASE_URL = "http://localhost:8000";
 
 const storage = new Storage({ area: "local" });
 
@@ -18,6 +18,16 @@ export async function getCustomBackendBaseUrl() {
 	return typeof value === "string" ? normalizeBackendBaseUrl(value) : "";
 }
 
+export async function getBackendBaseUrl() {
+	const base = (await getCustomBackendBaseUrl()) || DEFAULT_BACKEND_BASE_URL;
+	if (!base) {
+		throw new Error(
+			"No backend base URL configured. Set PLASMO_PUBLIC_BACKEND_URL at build time or a custom URL via the options page."
+		);
+	}
+	return base;
+}
+
 export async function setCustomBackendBaseUrl(url: string) {
 	const normalized = normalizeBackendBaseUrl(url);
 
@@ -28,10 +38,6 @@ export async function setCustomBackendBaseUrl(url: string) {
 
 	await storage.remove(BACKEND_URL_STORAGE_KEY);
 	return "";
-}
-
-export async function getBackendBaseUrl() {
-	return (await getCustomBackendBaseUrl()) || DEFAULT_BACKEND_BASE_URL;
 }
 
 export async function buildBackendUrl(path: string) {

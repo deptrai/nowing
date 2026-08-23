@@ -57,6 +57,12 @@ class DshApiService {
 			body: dshMissionRequestSchema.parse(data),
 		});
 	};
+
+	resumeMission = async (
+		missionId: string
+	): Promise<{ mission_id: string; status: string; phase: string }> => {
+		return baseApiService.post(`/api/v1/dsh/missions/${missionId}/resume`);
+	};
 }
 
 export const dshApiService = new DshApiService();

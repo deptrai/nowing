@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import hmac
+import json
 import logging
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
@@ -8,11 +10,14 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sse_starlette.sse import EventSourceResponse
 
 from app.auth.context import AuthContext
 from app.config import config
 from app.db import DshMission, Permission, Workspace, get_async_session
+from app.redis_client import get_redis_client
 from app.schemas.dsh import (
+    CdpResultPayload,
     DshMissionCheckpointUpdate,
     DshMissionControlResponse,
     DshMissionInternalResponse,
@@ -30,6 +35,7 @@ from app.services.dsh_mission_service import (
     DshPayloadTooLargeError,
 )
 from app.services.dsh_telegram_checkpoint_service import DshTelegramCheckpointService
+from app.services.pii.redact import redact_pii
 from app.users import get_auth_context
 from app.utils.rbac import check_permission
 
@@ -86,6 +92,22 @@ def _require_pat_workspace_scope(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="PAT workspace does not match mission workspace",
         )
+
+
+def _require_mission_access(auth: AuthContext, mission: DshMission) -> None:
+    """Verify the caller owns or has workspace-scoped PAT access to the mission."""
+    if auth.method == "pat":
+        if auth.pat is None or auth.pat.workspace_id != mission.workspace_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="PAT workspace does not match mission workspace",
+            )
+    else:
+        if mission.user_id != auth.user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Forbidden",
+            )
 
 
 @dsh_public_router.post(
@@ -400,3 +422,208 @@ async def notify_dsh_mission_high_fit_lead(
         contact_id=body.contact_id,
     )
     return DshNotifyHighFitResponse.model_validate(res)
+
+
+@dsh_public_router.get("/dsh/cdp/stream")
+async def cdp_stream(request: Request, auth: AuthContext = Depends(get_auth_context)):
+    """SSE stream for the Chrome extension to receive CDP commands."""
+    redis = await get_redis_client()
+    pubsub = redis.pubsub()
+    channel = f"cdp_stream:{auth.user.id}"
+    stream_lock_key = f"cdp:stream:lock:{auth.user.id}"
+
+    # Enforce a single active CDP stream per user using an atomic Redis lock.
+    # The lock TTL bounds recovery if the process dies without cleaning up.
+    acquired = await redis.set(stream_lock_key, "1", nx=True, ex=3600)
+    if not acquired:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="CDP stream already active",
+        )
+
+    try:
+        await pubsub.subscribe(channel)
+    except Exception:
+        await redis.delete(stream_lock_key)
+        await pubsub.close()
+        raise
+
+    async def event_generator():
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
+
+                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+                if message and message["type"] == "message":
+                    raw_data = message["data"]
+                    data = raw_data.decode("utf-8") if isinstance(raw_data, bytes) else str(raw_data)
+                    yield {
+                        "event": "cdp_command",
+                        "data": data,
+                    }
+        except asyncio.CancelledError:
+            raise
+        finally:
+            await pubsub.unsubscribe(channel)
+            await pubsub.close()
+            await redis.delete(stream_lock_key)
+
+    return EventSourceResponse(event_generator())
+
+
+def _redact_cdp_result_value(value):
+    """Recursively redact PII from CDP result values before Redis storage."""
+    if isinstance(value, str):
+        try:
+            return redact_pii(value, context="lead_enrichment").text
+        except Exception:
+            return "[REDACTED]"
+    if isinstance(value, dict):
+        return {k: _redact_cdp_result_value(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_redact_cdp_result_value(v) for v in value]
+    return value
+
+
+@dsh_public_router.post("/dsh/cdp/result")
+async def cdp_result(
+    payload: CdpResultPayload,
+    auth: AuthContext = Depends(get_auth_context),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Receive result from extension's CDP execution."""
+    mission = await session.get(DshMission, payload.mission_id)
+    if mission:
+        _require_mission_access(auth, mission)
+
+    redis = await get_redis_client()
+    key = f"cdp_result:{auth.user.id}:{payload.mission_id}"
+
+    redacted_result = _redact_cdp_result_value(payload.result) if payload.result is not None else None
+    command_id = (
+        payload.result.get("command_id")
+        if isinstance(payload.result, dict)
+        else None
+    )
+    result_data = {
+        "result": redacted_result,
+        "error": payload.error,
+        "command_id": command_id,
+        "requires_human": payload.requires_human,
+        "challenge": payload.challenge,
+    }
+
+    # Atomic pipeline push + expire + cap list length to avoid OOM.
+    pipe = redis.pipeline()
+    pipe.rpush(key, json.dumps(result_data))
+    pipe.expire(key, 300)
+    pipe.ltrim(key, -5, -1)
+    await pipe.execute()
+
+    return {"status": "ok"}
+
+
+@dsh_public_router.post("/dsh/missions/{mission_id}/pause")
+async def pause_mission(
+    mission_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Explicitly pause a mission from the frontend using atomic CAS update."""
+    mission = await session.get(DshMission, mission_id)
+    if not mission:
+        raise HTTPException(status_code=404, detail="Mission not found")
+
+    _require_mission_access(auth, mission)
+
+    if mission.status != "running" or mission.phase != "waiting_for_human":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Mission is not awaiting human takeover.",
+        )
+
+    mission.phase = "waiting_for_human"
+    mission.current_subtask_id = "cdp_crawl"
+    mission.updated_at = datetime.now(UTC)
+    session.add(mission)
+
+    # Set 15-minute takeover TTL before committing so the lock and DB state are consistent.
+    # The lock value holds the pausing user id so resume can verify ownership.
+    redis = await get_redis_client()
+    takeover_key = f"dsh:lock:takeover:{mission.workspace_id}:{mission_id}"
+    await redis.setex(takeover_key, 900, str(auth.user.id))
+
+    await session.commit()
+    return {"mission_id": mission_id, "status": "running", "phase": "waiting_for_human"}
+
+
+@dsh_public_router.post("/dsh/missions/{mission_id}/resume")
+async def resume_mission(
+    mission_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Resume a paused mission after Human Live Takeover using Atomic CAS UPDATE."""
+    mission = await session.get(DshMission, mission_id)
+    if not mission:
+        raise HTTPException(status_code=404, detail="Mission not found")
+
+    _require_mission_access(auth, mission)
+
+    if mission.phase != "waiting_for_human":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Mission is not awaiting human takeover.",
+        )
+
+    # Verify challenge was addressed: the takeover lock still exists, has not expired,
+    # and is owned by the current user. We trust the user who clicked Resume to have
+    # cleared the challenge; this is the MVP human-in-the-loop contract.
+    redis = await get_redis_client()
+    takeover_key = f"dsh:lock:takeover:{mission.workspace_id}:{mission_id}"
+    lock_owner = await redis.get(takeover_key)
+    if not lock_owner:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Takeover session has expired or was not started.",
+        )
+    if str(lock_owner) != str(auth.user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Takeover session belongs to another user.",
+        )
+
+    mission.phase = "crawl"
+    mission.updated_at = datetime.now(UTC)
+    session.add(mission)
+
+    service = DshMissionService()
+    try:
+        await service.publish_to_stream(mission)
+        await session.commit()
+    except DshPayloadTooLargeError as exc:
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=str(exc),
+        ) from exc
+    except DshMissionServiceError as exc:
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    except Exception as exc:
+        logger.exception("Failed to redispatch mission to stream: %s", exc)
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Mission could not be redispatched to the worker stream",
+        ) from exc
+    finally:
+        # Always delete the takeover lock once we leave the resume attempt so a
+        # failed publish does not orphan the lock and block retry.
+        await redis.delete(takeover_key)
+
+    return {"mission_id": mission_id, "status": "running", "phase": "crawl"}

@@ -4,10 +4,6 @@
 	"version": "0.0.34",
 	"description": "Extension to collect Browsing History for Nowing.",
 	"author": "https://github.com/MODSetter",
-	"engines": {
-		"node": ">=18.0.0 <23.0.0",
-		"pnpm": ">=8.0.0"
-	},
 	"pnpm": {
 		"overrides": {
 			"sharp": "^0.33.5"
@@ -59,6 +55,14 @@
 		"host_permissions": [
 			"<all_urls>"
 		],
+		"permissions": [
+			"storage",
+			"scripting",
+			"unlimitedStorage",
+			"activeTab",
+			"tabs",
+			"debugger"
+		],
 		"name": "Nowing",
 		"description": "Extension to collect Browsing History for Nowing.",
 		"version": "0.0.3"
@@ -67,6 +71,8 @@
 		"storage",
 		"scripting",
 		"unlimitedStorage",
-		"activeTab"
+		"activeTab",
+		"tabs",
+		"debugger"
 	]
 }
