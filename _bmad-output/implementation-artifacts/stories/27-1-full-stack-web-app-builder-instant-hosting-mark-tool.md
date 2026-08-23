@@ -315,7 +315,7 @@ SWE-1.7 Max
 
 ### Q1 — Already implemented?
 
-- **No dedicated web builder, deploy, or Mark Tool found.** Codebase search (`vibervn-context-engine` + grep) found no `app/services/web_builder/`, `app/routes/web_builder_routes.py`, `mark_tool`, JSX AST mutation, or `*.nowing.space` deployment code.
+- **No dedicated web builder, deploy, or Mark Tool found.** Codebase search (`vibervn-context-engine` + grep) found no `app/services/web_builder/`, `app/routes/web_builder_routes.py`, `mark_tool`, JSX AST mutation, or `*.apps.nowing.net` deployment code.
 - **Close relatives to REUSE (not duplicate):**
   - `app/routes/image_generation_routes.py` — CRUD deliverable route pattern; reuse for `web_builder_routes.py`.
   - `app/routes/reports_routes.py` / `app/routes/video_presentations_routes.py` — prompt → service → file/URL deliverable pattern; reuse.
@@ -334,14 +334,14 @@ SWE-1.7 Max
   4. **Custom domain/DNS** → no existing helper; implement minimal DNS-over-HTTPS or `socket.gethostbyname` validation.
 - **Possible v1 MVP scope reductions (if time-bound):**
   1. Generate + preview only; deploy manual in v1.1.
-  2. Deploy to `https://apps.nowing.space/{workspace-id}/{slug}` path instead of `*.nowing.space` subdomain (avoids wildcard DNS/TLS).
+  2. Deploy to `https://apps.nowing.net/{workspace-id}/{slug}` path instead of `*.apps.nowing.net` subdomain (avoids wildcard DNS/TLS).
   3. Mark Tool v1 supports text edits only; layout/style mutation v1.2.
 - **Money/billing risk:** A new `BillingUnit.WEB_BUILDER_GENERATE` (or reuse `WEB_BUILDER_*`) must record `TokenUsage` once per step, not double-charge. The `billable_call` reserve/finalize lifecycle already handles reserve/finalize.
 - **Verdict:** Proceed with full scope; reuse `billable_call` and existing route patterns. Defer to v1.1 only if architect/PM decides after seeing POC.
 
 ### Q3 — Edge cases spec misses (Pattern 3)
 
-1. **Slug global uniqueness.** AC-2 disambiguates per workspace but `*.nowing.space` requires globally unique slug. Need `UNIQUE` on `workspace_apps.slug` and a collision check.
+1. **Slug global uniqueness.** AC-2 disambiguates per workspace but `*.apps.nowing.net` requires globally unique slug. Need `UNIQUE` on `workspace_apps.slug` and a collision check.
 2. **CNAME validation / HTTPS failure.** CNAME may resolve but TLS cert provisioning can fail or take minutes. Need `status=cert_pending` and retry, or reject early.
 3. **Build artifact disk cleanup.** Generated `node_modules` + `.next` can be hundreds of MB per app. Need retention policy and cleanup job.
 4. **Preview iframe security.** Generated app can run arbitrary JS. Iframe must `sandbox="allow-scripts allow-same-origin"` and use separate subdomain/origin to avoid SameSite/cookie issues.
