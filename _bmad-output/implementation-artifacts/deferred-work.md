@@ -1,3 +1,21 @@
+## Deferred from: code review of 4-6-research-continuity (2026-08-23)
+
+- **Finding:** Citation regex copy từ TS/evals nhưng không có parity guard.
+  - **Action:** Marked `[x] [Review][Defer]` in `4-6-research-continuity.md`.
+  - **Reason / when to revisit:** Cross-package drift risk; revisit khi có test parity hoặc khi TS/evals regex thay đổi.
+- **Finding:** MCP dùng substring `not found` để phát hiện 404.
+  - **Action:** Marked `[x] [Review][Defer]` in `4-6-research-continuity.md`.
+  - **Reason / when to revisit:** Cần `NowingClient` expose HTTP status; revisit khi refactor error handling MCP client.
+
+## Deferred from: code review of 21-21-deterministic-confidence-gate-selective-micro-llm-fallback-worker (2026-08-23)
+
+- **Finding:** Golden dataset chỉ 10 records, scale 100 + integration test deferred.
+  - **Action:** Marked `[x] [Review][Defer]` in `21-21-deterministic-confidence-gate-selective-micro-llm-fallback-worker.md`.
+  - **Reason / when to revisit:** Partial per spec T5.1; revisit when scaling the golden fixture or running the integration test suite.
+- **Finding:** Token budget benchmark 100 records chưa chạy.
+  - **Action:** Marked `[x] [Review][Defer]` in `21-21-deterministic-confidence-gate-selective-micro-llm-fallback-worker.md`.
+  - **Reason / when to revisit:** Depends on 100-record golden dataset; revisit during AC-5 verification.
+
 ## Deferred from: code review of 3-7-followup-retention-hardening (2026-08-23)
 
 - **Finding:** `WorkspaceWithStats` list endpoint returns default retention values instead of persisted ones.
