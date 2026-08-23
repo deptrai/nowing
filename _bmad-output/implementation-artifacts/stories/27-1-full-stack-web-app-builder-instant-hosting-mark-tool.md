@@ -180,6 +180,13 @@ AD-113, AD-114, FR-93, FR-94, web-builder, nextjs, tailwind, caddy, traefik, mar
 
 ## Dev Notes
 
+### ATDD Artifacts
+
+- **Checklist:** `_bmad-output/test-artifacts/atdd-checklist-27-1-full-stack-web-app-builder-instant-hosting-mark-tool.md`
+- **Unit tests:** `nowing_backend/tests/unit/services/web_builder/test_web_builder_service.py`, `nowing_backend/tests/unit/services/web_builder/test_mark_tool.py`, `nowing_backend/tests/unit/capabilities/test_web_builder_capability.py`
+- **Integration tests:** `nowing_backend/tests/integration/routes/test_web_builder_routes.py`
+- **E2E tests:** `nowing_web/tests/web-builder/web-builder.spec.ts`
+
 ### Previous Story Intelligence
 
 - **Là story đầu tiên của Epic 27**, không có story trước trong epic. Tuy nhiên, **reuse patterns từ các epic khác:**
