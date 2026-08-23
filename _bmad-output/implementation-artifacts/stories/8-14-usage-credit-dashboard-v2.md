@@ -3,7 +3,7 @@ story_id: "8.14"
 epic: "8"
 story_key: 8-14-usage-credit-dashboard-v2
 baseline_commit: 009a79f14
-status: in-progress
+status: done
 ---
 
 # Story 8.14: Usage & Credit Dashboard v2 — Per-Turn Cost & Auto-Extract Budget Toggle
