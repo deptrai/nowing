@@ -1130,17 +1130,17 @@ Một `Memory` sinh ra từ dữ liệu scrape phải trỏ được về **đú
 
 #### FR-93: Full-Stack Web App Builder & Instant Hosting
 
-Người dùng có thể mô tả một ứng dụng web bằng ngôn ngữ tự nhiên, agent sinh project Next.js/React + Tailwind CSS vào `/workspace/web-app`, và deploy 1-click lên `https://[app-name].nowing.space` với HTTPS qua Traefik.
+Người dùng có thể mô tả một ứng dụng web bằng ngôn ngữ tự nhiên, agent sinh project Next.js/React + Tailwind CSS vào `/workspace/web-app`, và deploy 1-click lên `https://[app-name].apps.nowing.net` với HTTPS qua Traefik/Caddy.
 
 **Acceptance Criteria:**
 - Given một mô tả app bằng tiếng Anh hoặc tiếng Việt, when agent generate code, then một dự án Next.js + Tailwind hoàn chỉnh được ghi vào `/workspace/web-app` và trả về preview URL.
-- Given người dùng bấm `Publish`, when app vượt qua validation, then nó được deploy lên `https://[app-name].nowing.space` với chứng chỉ SSL hợp lệ.
-- Given user muốn dùng domain riêng, when cấu hình CNAME, then Traefik route động ánh xạ domain về app container.
+- Given người dùng bấm `Publish`, when app vượt qua validation, then nó được deploy lên `https://[app-name].apps.nowing.net` với chứng chỉ SSL hợp lệ.
+- Given user muốn dùng domain riêng, when cấu hình CNAME, then Traefik/Caddy route động ánh xạ domain về app container.
 
 **Consequences:**
 - `app/services/web_builder/` (LLM generator, project scaffold, file writer).
 - `docker/web-app.Dockerfile` template.
-- Traefik dynamic config + `nowing.space` wildcard DNS.
+- Traefik/Caddy dynamic config + `apps.nowing.net` wildcard DNS.
 - Workspace-scoped app registry.
 
 **Status:** `[BACKLOG]` — story `27.1` ready for development after this amendment.

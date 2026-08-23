@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: "2026-08-25"  # Story 24-8: 4 review decisions resolved; 11/15 patches applied; ruff/pytest unit+integration/tsc green. 3 low patches and UI popover (AC-4) remain open.
+last_updated: "2026-08-25"  # Story 27-1: story file validated and rewritten with full dev context; 27-1 remains ready-for-dev. Story 24-8: 4 review decisions resolved; 11/15 patches applied; ruff/pytest unit+integration/tsc green. 3 low patches and UI popover (AC-4) remain open.
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # - Parsed epics.md: 24 epics, ~160 stories.
 # - Scanned _bmad-output/implementation-artifacts/ + stories/*.md for story files (frontmatter story_key/epic+story).
@@ -298,7 +298,7 @@ development_status:
 
   # === Epic 27: Full-Stack Web App Builder, Instant Hosting & Creative Studio ===
   epic-27: in-progress
-  27-1: ready-for-dev  # Full-Stack Web App Builder, 1-Click Hosting *.nowing.space & Design View Mark Tool (AD-113, AD-114)
+  27-1: ready-for-dev  # Full-Stack Web App Builder, 1-Click Hosting *.apps.nowing.net & Design View Mark Tool (AD-113, AD-114) — story file validated/expanded with full ACs, file structure, testing, and AD-113/Caddy conflict note.
   27-2: ready-for-dev  # Manus Slides + Speaker Diarization — split into PPTX/Marp export and diarization; reuse video_presentation/reports/stt_service
   epic-27-retrospective: optional
 
@@ -605,7 +605,7 @@ waves:
   - wave: 3
     theme: P1/P2 — Creative Studio & Full-Stack Web Builder
     status: backlog
-    evidence_gate: PPTX export + Marp slides working; pyannote/whisper diarization working; Next.js scaffolding + *.nowing.space Traefik routing working
+    evidence_gate: PPTX export + Marp slides working; pyannote/whisper diarization working; Next.js scaffolding + *.apps.nowing.net Traefik/Caddy routing working
     stories:
     - 27-2
     - 27-1

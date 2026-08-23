@@ -84,7 +84,7 @@ Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Archite
 `[DONE]` **FR-91 Automated VietQR Affiliate Payout Reconciliation** → **E23.3 P1** (Instant 24/7 Napas bank settlement + cryptographic audit receipts).
 `[DONE]` **FR-92 PostgreSQL RLS & Table Partitioning for Multi-Million Leads** → **E23.4 P1** (Sub-10ms query isolation on partitioned lead stores).
 
-`[READY-FOR-DEV]` **FR-93 Full-Stack Web App Builder & Instant Hosting** → **E27.1** (Next.js/React generator, Traefik `*.nowing.space` deploy, custom CNAME; governed by `AD-113`).
+`[READY-FOR-DEV]` **FR-93 Full-Stack Web App Builder & Instant Hosting** → **E27.1** (Next.js/React generator, Traefik/Caddy `*.apps.nowing.net` deploy, custom CNAME; governed by `AD-113`).
 `[READY-FOR-DEV]` **FR-94 Design View Mark Tool & Presentation Studio** → **E27.2** (PPTX/Marp slides, speaker diarization, Mark Tool AST mutation; governed by `AD-114`).
 
 > **⚠️ Out-of-PRD scope (FR-70–FR-92):** Các FR từ **FR-70 đến FR-92** (Telegram scraper Epic 22, lead-gen extensions Epic 21 mở rộng, infrastructure Epic 23) không xuất hiện trong PRD canonical `prd-Nowing-2026-07-22/prd.md`. Chúng được giữ lại trong `epics.md` như **implementation backlog / market-specific elaboration**, không phải nguồn sự thật về requirements. **FR-93/FR-94 (Epic 27) là in-PRD** theo PRD Amendment `AMENDMENT-Epic-27-Manus-Autonomous-Workstation-2026-08-20.md`.
@@ -106,7 +106,7 @@ Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Archite
 
 `[BACKLOG]` **FR-95 Data export & portability** → workspace/self-host user có thể export memory, research threads, và citations ra JSON/CSV (PRFAQ Q5, RS-8).
 `[BACKLOG]` **FR-96 Encryption-at-rest & key management for cloud memory** → dữ liệu `content`, PII trong `source_input`, và metadata memory/version/relation trong cloud được mã hóa với BYOK hoặc managed key; `embedding` v1 giữ plaintext để HNSW/GIN search hoạt động, mã hóa embedding deferred cho đến khi benchmark searchable encryption (PRFAQ Q4, AD-28.1).
-`[BACKLOG]` **FR-97 ToS/legal review + retention policy for long-term scraped data** → review ToS các nguồn, đặt retention + right-to-delete policy trước GA cloud (PRFAQ IQ9, RS-11).
+`[BACKLOG]` **FR-97 ToS/legal review + retention policy for long-term scraped data** → review ToS các nguồn, đặt retention + right-to-delete policy + workspace memory count cap trước GA cloud (PRFAQ IQ9, RS-11, AD-DEFER-4, AD-18).
 `[BACKLOG]` **FR-98 Self-host OSS onboarding <10 min** → README + `docker compose` + local LLM/embedding config để dev tự host trong 10 phút (PRFAQ Q6, IQ6, RS-13).
 `[BACKLOG]` **FR-99 Recall precision/noise gate before scale** → chốt ngưỡng precision và top-k noise trên `nowing_evals` trước khi mở rộng auto-extract (PRFAQ IQ1, Q8, RS-7).
 
@@ -350,7 +350,7 @@ Toàn diện hóa hệ thống Săn Lead & Tiếp cận Khách hàng Đa kênh: 
 Public channel web preview, MTProto Userbot session pool, distributed mutex lock, FloodWait cooldown state machine, regex entity extractor, S3 media chunk streaming, realtime stream daemon, Alert Engine trigger, AI Agent tools. **Stories:** 22.1–22.3. Governed by `architecture-telegram-scraper-2026-08-15`.
 
 ### Epic 28: Self-Host Trust, Data Portability & Cloud GA Legal Readiness — 📋 BACKLOG *(mới 2026-08-21 từ PRFAQ)*
-Người dùng self-host và cloud có thể tin tưởng Nowing với research memory dài hạn: dữ liệu có thể xuất, được mã hóa, quản lý bởi policy rõ ràng, và self-host chạy trong <10 phút. **FRs:** FR-95, FR-96, FR-97, FR-98. **ARs:** AR-11, AR-12, AR-13, AR-14. **UX-DRs:** UX-DR-PRFAQ-2 (self-host onboarding). **Stories:** 28.1–28.4. **Dependencies:** Epic 1 (auth), Epic 3 (memory schema), Epic 8 (billing/cost). Post-MVP UX-DR-PRFAQ-1/3 (memory browser/correction) thuộc Epic 3.
+Người dùng self-host và cloud có thể tin tưởng Nowing với research memory dài hạn: dữ liệu có thể xuất, được mã hóa, quản lý bởi policy rõ ràng, và self-host chạy trong <10 phút. **FRs:** FR-95, FR-96, FR-97, FR-98. **ARs:** AR-11, AR-12, AR-13, AR-14. **UX-DRs:** UX-DR-PRFAQ-2 (self-host onboarding). **Stories:** 28.1–28.5. **Dependencies:** Epic 1 (auth), Epic 3 (memory schema), Epic 8 (billing/cost). Post-MVP UX-DR-PRFAQ-1/3 (memory browser/correction) thuộc Epic 3.
 
 ---
 
@@ -2298,25 +2298,43 @@ So that I can search and reference news articles via the Nowing chat agent.
 
 _AD-34 · AD-35 · AD-25 · Method: RSS (official feeds, no anti-bot)_
 
-### Story 14.2: News Entity Enrichment `[P1]`
-
-> **Blocked-by-external (2026-08-23):** Story này phụ thuộc vào `chainlens-research` hỗ trợ entity search / ingest với entity metadata. `epics.md` đã giao entity linking/disambiguation cho engine; Nowing chỉ attach metadata. Chuyển `backlog` trong `sprint-status.yaml` cho đến khi dependency sẵn sàng.
+### Story 14.2a: News Entity Extraction `[P1]`
 
 As a researcher,
-I want key entities (people, organizations, locations) attached to news chunks before they are indexed,
-So that I can track mentions and trends via `chainlens-research` entity search.
+I want named entities (people, organizations, locations) extracted from news articles and attached to `Chunk` metadata before the article is sent to `chainlens-research`,
+So that `chainlens-research` can index those entities later without needing a re-ingest.
 
 **Acceptance Criteria:**
-- **Given** `chainlens-research` exposes entity search and accepts `metadata.entities` at ingest, **When** a news article is parsed, **Then** entity extraction runs and named entities (people, organizations, locations) are attached to the `Chunk` metadata.
-- **Given** a `Chunk` with `metadata.entities`, **When** it is ingested into `chainlens-research`, **Then** the canonical index stores and indexes the entity metadata; `chainlens-research` handles entity linking and disambiguation.
-- **Given** entity tracking is active, **When** a user queries an entity in chat, **Then** the agent calls `chainlens-research` and returns mentioning articles with citations; no local entity table is built in Nowing.
-- **Given** entity extraction model trả về empty entity list hoặc malformed JSON, **When** entity enrichment chạy, **Then** nó fallback về `metadata.entities` rỗng và article vẫn được indexed.
+- **Given** a news article is parsed, **When** entity extraction runs, **Then** named entities (people, organizations, locations) are extracted with confidence scores.
+- **Given** extracted entities, **When** the article is normalized to a `Chunk`, **Then** `metadata.entities` contains the entity mentions, types, and redacted surface forms; the article is still sent to `chainlens-research` via `NowingIngestService`.
+- **Given** the entity extraction model returns an empty entity list or malformed JSON, **When** entity enrichment runs, **Then** it falls back to `metadata.entities = []` and the article is still indexed.
+- **Given** the workspace cannot pay for entity extraction (insufficient wallet / `QuotaInsufficientError`, news-entity-extraction budget exceeded, or rate-limited), **When** extraction is requested, **Then** no LLM call is made, extraction degrades to `metadata.entities = []`, logs `news_entity_extraction_{reason}`, and the article is still indexed.
+- **Given** `NowingIngestService` fails to ingest a news `Chunk[]` to `chainlens-research` (5xx, auth unavailable, timeout, max retries), **When** the failure occurs, **Then** it logs `chainlens_news_ingest_failed`, emits a metric, persists a `ChainLensIngestJob` with status `failed`, continues processing the rest of the batch, and does not fall back to a local `Document`/`Chunk` index (AD-35).
+
 **Validation:**
-- Unit test: `test_news_entity_extraction.py` — entity accuracy ≥ 0.85
-- Integration test: `test_news_entity_chunk_metadata.py` — entities attached to chunk metadata
-- Integration test: `test_news_entity_search_chainlens.py` — entity query returns indexed articles
+- Unit test: `test_news_entity_extraction.py` — entity accuracy ≥ 0.85, fallback, confidence threshold, deduplication
+- Unit test: `test_news_entity_redaction.py` — person surface forms masked to `<NAME>` in `Chunk.content` and `metadata.entities`
+- Unit test: `test_news_entity_extract_budget.py` — gate blocks when disabled, budget exceeded, rate-limited, wallet insufficient
+- Integration test: `test_news_entity_chunk_metadata.py` — `NowingIngestService.ingest()` called with `metadata.entities` and correct AD-34 fields
 
 _AD-34 · AD-35 · AD-25 (PII redaction for person names)_
+
+### Story 14.2b: News Entity Search `[P1]`
+
+> **Blocked-by-external (2026-08-24):** `chainlens-research` chưa hỗ trợ entity search / ingest với entity metadata. Câu chuyện này phụ thuộc vào contract của engine; Nowing chỉ cần agent wiring khi contract sẵn sàng. Giữ `backlog` trong `sprint-status.yaml`.
+
+As a researcher,
+I want to ask the chat agent about people, organizations, or locations mentioned in news,
+So that the agent can query the canonical index and return relevant articles with citations.
+
+**Acceptance Criteria:**
+- **Given** `chainlens-research` exposes entity search and accepts `metadata.entities` at ingest, **When** a `Chunk` with `metadata.entities` is ingested, **Then** the canonical index stores and indexes the entity metadata; `chainlens-research` handles entity linking and disambiguation.
+- **Given** entity tracking is active in the canonical index, **When** a user queries an entity in chat, **Then** the agent calls `chainlens-research` and returns mentioning articles with citations; no local entity table is built in Nowing.
+
+**Validation:**
+- Integration test: `test_news_entity_search_chainlens.py` — entity query returns indexed articles (stub/mocked until chainlens contract lands)
+
+_AD-34 · AD-35 · AD-27_
 
 ---
 
@@ -3862,10 +3880,10 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 | 26.6 Telegram Checkpoint & Auto-Refund | Story 26.2, Story 26.4, Epic 11, AD-110 | Mobile glanceable card, `editMessageText` & 15% refund cap |
 | 26.7 Hermetic Evals & Chaos Testing | Story 26.1 - 26.6, AD-107, AD-108 | $0 replay test suite, quality gates & 0-zombie verification |
 | 26.9 Wide Research & Pro Excel | Epic 26, AD-112 | Client gọi Chainlens Wide Research + OpenPyXL Pro Formatter qua Daytona Sandbox |
-| 24.8 Browser Operator & Takeover | Story 24.4, AD-111 | Nâng cấp Chrome Extension CDP bridge, authenticated tabs, live takeover |
+| 24.8 Browser Operator & Takeover | Story 24.4, AD-111 | Capability `browser_operator.execute` qua Plasmo extension CDP bridge; authenticated tabs; `web_crawler` subagent prompt; live takeover với `requires_human`/`challenge` |
 | 6.10 Mail Gateway & Scheduled 2.0 | Epic 6, Story 6.8, AD-115 | Webhook task@nowing.ai + Celery Beat Delta Analysis reporting |
 | 3.18 Projects Workspace & Skills Hub | Epic 3, AD-1 | Projects Master Instructions context auto-inject + .skill.md modular hub |
-| 27.1 Web App Builder & Design View | AD-113, AD-114 | Next.js generator + 1-click *.nowing.space deploy + Mark Tool AST mutator |
+| 27.1 Web App Builder & Design View | AD-113, AD-114 | Next.js generator + 1-click *.apps.nowing.net deploy + Mark Tool AST mutator |
 | 27.2 Manus Slides & Meeting Minutes | AD-112, AD-114 | Xuất slide PPTX/Marp 16:9 + Whisper STT & Diarization action items |
 
 > **Merge decision (2026-08-20):**
@@ -3886,7 +3904,15 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 ---
 
 ### Mở rộng Epic 24: Story 24.8 — Browser Operator CDP Tool for DSH Crawl + Human Live Takeover
-**Scope:** Thay vì làm extension Chrome độc lập điều khiển DSH worker, 24.8 được **re-scope** thành: (a) một **CDP tool / `crawl` subgraph** trong `LangGraphMissionExecutor` để click/type/navigate trong trình duyệt như một bước `crawl`, (b) UI Human Live Takeover để tạm dừng agent, giải CAPTCHA/2FA, rồi resume. **Tận dụng code đã có:** Plasmo framework (`@plasmohq/storage`, popup routing, `background/index.ts`), Lead Clipper backend (`lead_clipper_routes.py`), Agent Revert rollback (`agent_revert_route.py`), `LangGraphMissionExecutor` (`app/tasks/dsh_worker_langgraph.py`). **Code mới:** (a) `app/tasks/dsh_worker_browser_operator.py` CDP tool / subgraph, (b) Plasmo manifest `debugger` quyền, (c) backend pause/resume mission endpoint, (d) Human Live Takeover Popover. WebSocket điều khiển thủ công bị loại bỏ; DSH gọi CDP tool qua capability/tool registry. Có thể tách thành 24.8a (CDP tool) và 24.8b (Takeover UI). Governed by `AD-111`.
+**Scope:** 24.8 cung cấp một **capability `browser_operator.execute`** để agent điều khiển trình duyệt Chrome của user qua CDP thông qua Plasmo extension. Chi tiết:
+- (a) `app/capabilities/browser_operator/` (`definition.py`, `schemas.py`, `executor.py`) đăng ký CDP tool với các action `navigate`, `click`, `fill`, `scroll`, `extract`, `take_screenshot`, `detect_challenge`.
+- (b) `app/agents/chat/multi_agent_chat/subagents/builtins/web_crawler/system_prompt.md` hướng dẫn subagent gọi `browser_operator.execute` khi user yêu cầu điều khiển trình duyệt (`mở trang`, `click`, `scroll`, `screenshot`, etc.).
+- (c) `GET /api/v1/dsh/cdp/stream` (SSE) và `POST /api/v1/dsh/cdp/result` (REST) kết nối backend với extension; kết quả chứa `requires_human`/`challenge` khi gặp CAPTCHA/2FA.
+- (d) Chrome extension `background/cdp-bridge.ts` dùng `fetch` SSE reader, `chrome.debugger`, tìm/focus tab theo hostname, tạo tab mới nếu cần, tự động detect challenge signature, retry khi gửi kết quả.
+- (e) UI Human Live Takeover trong `popup.tsx` cho phép user tạm dừng/resume khi gặp challenge (hiện tại lưu `activeMissionId` để popup render nút "Release Control"; dashboard popover vẫn là công việc mở rộng).
+- (f) `app/tasks/dsh_worker_browser_operator.py` / `dsh_worker_langgraph.py` giữ nguyên làm DSH subgraph wrapper gọi capability.
+
+**Tận dụng code đã có:** Plasmo framework (`@plasmohq/storage`, popup routing, `background/index.ts`), capability/tool registry (`app.capabilities`), Redis pubsub, `LangGraphMissionExecutor`. **Code mới:** `app/capabilities/browser_operator/`, SSE endpoint `cdp_stream`, REST endpoint `cdp_result`, challenge detection trong extension. WebSocket điều khiển thủ công bị loại bỏ. Có thể tách thành 24.8a (CDP capability + prompt-in-UI) và 24.8b (full mission pause/resume + dashboard takeover). Governed by `AD-111`.
 
 ---
 
@@ -3934,12 +3960,12 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 ---
 
 ## Epic 27: Full-Stack Web App Builder, Instant Hosting & Creative Studio (2026-08-20) `[ready-for-dev]`
-**Epic goal:** Cung cấp trọn bộ công cụ sáng tạo và sản xuất phần mềm tự hành gồm Web Builder deploy `*.nowing.space`, công cụ chỉnh sửa trực quan Design View (Mark Tool), studio soạn thảo slide thuyết trình PPTX/Marp, và pipeline bóc tách ghi âm cuộc họp thành Action Items.
+**Epic goal:** Cung cấp trọn bộ công cụ sáng tạo và sản xuất phần mềm tự hành gồm Web Builder deploy `*.apps.nowing.net`, công cụ chỉnh sửa trực quan Design View (Mark Tool), studio soạn thảo slide thuyết trình PPTX/Marp, và pipeline bóc tách ghi âm cuộc họp thành Action Items.
 **FRs:** FR-93 (Web App Builder & Instant Hosting), FR-94 (Design View Mark Tool & Presentation Studio).
 **ADs:** AD-113, AD-114.
 
 **Stories:**
-- **27.1 Full-Stack Web App Builder, 1-Click Hosting `*.nowing.space` & Design View Mark Tool** — **⚠️ Story scope lớn nhất trong roadmap — toàn bộ code mới.** Không có nền tảng web builder hay dynamic hosting nào trong codebase. `editor_routes.py` là Plate.js Markdown editor (không liên quan). **Code mới:** (a) LLM code generator engine sinh Next.js/React + Tailwind CSS vào `/workspace/web-app`, (b) Dockerfile template + Traefik dynamic SSL routing lên `https://[app].nowing.space`, (c) Custom CNAME manager, (d) Iframe Bounding Box Selector "Mark Tool" DOM inspector + JSX AST mutator. Governed by `AD-113`, `AD-114`.
+- **27.1 Full-Stack Web App Builder, 1-Click Hosting `*.apps.nowing.net` & Design View Mark Tool** — **⚠️ Story scope lớn nhất trong roadmap — toàn bộ code mới.** Không có nền tảng web builder hay dynamic hosting nào trong codebase. `editor_routes.py` là Plate.js Markdown editor (không liên quan). **Code mới:** (a) LLM code generator engine sinh Next.js/React + Tailwind CSS vào `/workspace/web-app`, (b) Dockerfile template + Traefik/Caddy dynamic SSL routing lên `https://[app].apps.nowing.net`, (c) Custom CNAME manager, (d) Iframe Bounding Box Selector "Mark Tool" DOM inspector + JSX AST mutator. Governed by `AD-113`, `AD-114`.
 - **27.2 Manus Slides Presentation Studio & Speaker Diarization Meeting Minutes** — **Tận dụng code đã có:** Remotion video presentations (`video_presentations_routes.py`), export PDF/DOCX/LaTeX/EPUB (`reports_routes.py` — Pandoc + Typst), Whisper STT local (`services/stt_service.py` — `faster-whisper` transcribe), Circleback meeting notes webhook (`circleback_webhook_route.py` → Markdown document). **Code mới chỉ là:** (a) thêm `python-pptx` dependency + PPTX export route (slide 16:9, biểu đồ, Speaker Notes), (b) Marp Markdown slides renderer, (c) thêm Speaker Diarization (`pyannote.audio` hoặc `whisperx`) vào `stt_service.py` để nhận diện giọng từng người trong meeting minutes.
 
 
@@ -3948,7 +3974,7 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 
 **27.1 — Web App Builder:**
 - **Given** người dùng mô tả web app bằng ngôn ngữ tự nhiên, **When** builder sinh code, **Then** một dự án Next.js + Tailwind được ghi vào `/workspace/web-app` và trả về preview URL.
-- **Given** người dùng bấm `Publish`, **When** app vượt qua validation, **Then** nó được deploy lên `https://[app].nowing.space` với chứng chỉ SSL hợp lệ.
+- **Given** người dùng bấm `Publish`, **When** app vượt qua validation, **Then** nó được deploy lên `https://[app].apps.nowing.net` với chứng chỉ SSL hợp lệ.
 - **Given** Mark Tool đang hoạt động, **When** người dùng bấm một phần tử trên trang, **Then** công cụ bắt bounding box selector và cập nhật JSX AST.
 
 **27.2 — Slides & Meeting Minutes:**
@@ -4089,13 +4115,34 @@ So that I can trust the product and try it without a cloud account.
 
 _FR-98 · AR-14 · RS-13 · INV-28.3 · AD-28.4._
 
+### Story 28.5: Workspace Memory Storage Cap & Retention Lifecycle `(mới 2026-08-23)` `[ready-for-dev]`
+
+As a cloud workspace owner,
+I want my workspace to enforce a memory count/storage cap and apply a retention lifecycle to old memories,
+So that my workspace cannot grow unbounded, my costs are predictable, and I stay compliant with scraped-source ToS.
+
+**Acceptance Criteria:**
+
+**Given** a workspace is at or over its `max_memory_count` or `max_memory_bytes` limit, **When** any code path calls `MemoryRepository.create_memory`, **Then** the request is rejected with `403 limit_exceeded` before a new row is inserted.
+
+**Given** a memory write matches an existing near-duplicate, **When** `MemoryRepository.create_memory` updates the existing row, **Then** the limit check does not reject the write because the count does not increase.
+
+**Given** a workspace with no memory limit or a self-hosted deployment, **When** a memory is created, **Then** the write succeeds without a limit check.
+
+**Given** the workspace owner configures `memory_retention_days`, `memory_auto_archive_enabled`, and `memory_retention_action` in settings, **When** the daily retention task runs, **Then** it archives (`Memory.archived_at = now()`) or hard-deletes old memories accordingly and excludes archived rows from all recall/search.
+
+**And** `DELETE /workspaces/{id}/memories/{id}` hard-deletes a specific memory with audit; bulk deletion of >100,000 memories is chunked into 1,000-row batches with dry-run, progress reporting, and cancel-ability, with all actions logged to `audit_events`.
+
+_Full implementation spec in `_bmad-output/implementation-artifacts/stories/28-5-workspace-memory-storage-cap-and-retention.md`._
+_FR-97 (retention/right-to-delete) · NFR-1b/1c/1d (memory bound) · AD-18 · AR-13 · RS-11 · INV-28.2 · AD-DEFER-4 · AD-28.3._
+
 ### PRFAQ-Derived Requirements Coverage Map
 
 | Requirement | Epic | Notes |
 |---|---|---|
 | **FR-95** Data export & portability | **Epic 28** | Export workspace memory/research threads/citations ra JSON/CSV trên OKF bundle (28.1). |
 | **FR-96** Encryption-at-rest & key management (cloud) | **Epic 28** | Tiered encryption: content + PII/metadata v1, embedding v2 (28.2, AD-28.1). |
-| **FR-97** ToS/legal review + retention policy | **Epic 28** | Review ToS nguồn scrape, source risk tier, right-to-delete workflow (28.3). |
+| **FR-97** ToS/legal review + retention policy | **Epic 28** | Review ToS nguồn scrape, source risk tier, right-to-delete workflow (28.3); cap/retention lifecycle implementation (28.5). |
 | **FR-98** Self-host OSS onboarding <10 min | **Epic 28** | README + `docker compose` + local LLM/embedding config + install script (28.4). |
 | **FR-99** Recall precision/noise gate | **Epic 3** | Chốt ngưỡng precision/noise trên `nowing_evals` trước khi scale (3.18). |
 | **AR-11** Data export/portability | **Epic 28** | Same as FR-95. |

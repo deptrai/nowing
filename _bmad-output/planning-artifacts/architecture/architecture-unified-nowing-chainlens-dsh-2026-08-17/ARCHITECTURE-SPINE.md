@@ -316,15 +316,21 @@ The architecture only requires that:
 
 ### AD-111 — Browser Operator Chrome Extension CDP Bridge [ADOPTED]
 - **Binds:** `nowing` Chrome Extension (Manifest V3) và FastAPI mission supervisor.
-- **Rule:** Extension kết nối qua WebSocket tới local agent runner bằng `chrome.debugger` API. Thao tác trực tiếp trên các tab đã đăng nhập sẵn cookies (LinkedIn, Facebook Ads, Jira, Shopee). Hỗ trợ Human Live Takeover tức thì.
+- **Rule:**
+  - Backend → Extension dùng **SSE** trên endpoint `GET /api/v1/dsh/cdp/stream`. Extension mở một `fetch` SSE reader và xác thực bằng PAT/Bearer token (hỗ trợ `@plasmohq/storage` và `chrome.storage.local` fallback).
+  - Lệnh CDP được publish qua Redis channel `cdp_stream:{user_id}` dưới dạng JSON với `action`, `mission_id`, `command_id`, `url`, `selector`, `text`, `direction`, `px`, `format`.
+  - Extension thực thi qua `chrome.debugger` API (`navigate`, `click`, `fill`, `scroll`, `extract`, `take_screenshot`, `detect_challenge`) trên tab phù hợp (tìm theo hostname, tạo mới nếu cần), tự động kiểm tra signature CAPTCHA/2FA, rồi trả kết quả qua REST `POST /api/v1/dsh/cdp/result`.
+  - `POST /api/v1/dsh/cdp/result` nhận `result`, `error`, `requires_human`, `challenge`, lưu vào `cdp_result:{user_id}:{mission_id}` (pipeline `rpush` + `expire` + `ltrim`).
+  - Capability `browser_operator.execute` (đăng ký trong `app.capabilities.browser_operator`) là giao diện chính thức; `web_crawler` subagent được prompt sử dụng khi user yêu cầu điều khiển trình duyệt.
+  - Thao tác trực tiếp trên các tab đã đăng nhập sẵn cookies (LinkedIn, Facebook Ads, Jira, Shopee). Hỗ trợ Human Live Takeover tức thì khi `requires_human=true`.
 
 ### AD-112 — In-Sandbox Linux Shell & Python Data Science Studio [ADOPTED]
 - **Binds:** `nowing` Execution Sandbox container.
 - **Rule:** Docker ephemeral container chạy non-root với PID 1 `tini`, RAM cap 512MB, timeout 60s. Tích hợp sẵn `pandas`, `numpy`, `matplotlib`, `openpyxl` để làm sạch dữ liệu lớn và xuất file Excel `.xlsx` chuyên nghiệp.
 
-### AD-113 — Full-Stack Web App Builder & Traefik Instant Hosting [ADOPTED]
-- **Binds:** `nowing` Web Builder và Traefik reverse proxy.
-- **Rule:** Agent sinh project Next.js/React trong `/workspace/web-app`. Deploy 1-click tự động lên `https://[app-name].nowing.space` có HTTPS và dynamic routing.
+### AD-113 — Full-Stack Web App Builder & Traefik/Caddy Instant Hosting [ADOPTED]
+- **Binds:** `nowing` Web Builder và Traefik/Caddy reverse proxy.
+- **Rule:** Agent sinh project Next.js/React trong `/workspace/web-app`. Deploy 1-click tự động lên `https://[app-name].apps.nowing.net` có HTTPS và dynamic routing.
 
 ### AD-114 — Design View Visual "Mark Tool" Canvas AST Mutator [ADOPTED]
 - **Binds:** Nowing Canvas Web Preview và React code generator.

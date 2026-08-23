@@ -16,7 +16,7 @@ Architecture spine (2026-08-20, approved) xác định `nowing` là **Autonomous
 - **Where added:** `prd.md` §4.10.
 - **Epic:** Epic 27 — Story 27.1
 - **Architecture decisions:** `AD-113` (Full-Stack Web App Builder & Traefik Instant Hosting), `AD-114` (Design View Mark Tool).
-- **Acceptance criteria:** generate Next.js + Tailwind from prompt, deploy to `*.nowing.space`, support custom CNAME.
+- **Acceptance criteria:** generate Next.js + Tailwind from prompt, deploy to `*.apps.nowing.net`, support custom CNAME.
 
 ### FR-94: Design View Mark Tool & Presentation Studio
 
