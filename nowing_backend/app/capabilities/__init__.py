@@ -5,12 +5,15 @@ from __future__ import annotations
 from app.capabilities import (
     amazon as _amazon,  # noqa: F401
     b2b as _b2b,  # noqa: F401
+    browser_operator as _browser_operator,  # noqa: F401
     cafef as _cafef,  # noqa: F401
+    chainlens as _chainlens,  # noqa: F401
     ecommerce as _ecommerce,  # noqa: F401
     indeed as _indeed,  # noqa: F401
     itviec as _itviec,  # noqa: F401
     leads as _leads,  # noqa: F401
     masothue as _masothue,  # noqa: F401
+    news as _news,  # noqa: F401
     procurement as _procurement,  # noqa: F401
     realestate as _realestate,  # noqa: F401
     recruitment as _recruitment,  # noqa: F401

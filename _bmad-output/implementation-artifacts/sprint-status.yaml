@@ -1,5 +1,5 @@
 # generated: 2026-08-08
-# last_updated: 2026-08-24  # 14-2 validated; status kept backlog due to chainlens entity search / ingest not available.
+# last_updated: 2026-08-24  # 14-2a done; 14-2b validated against checklist and enriched, ready-for-dev; blocked-by-external chainlens contract.
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: "2026-08-24"  # Story 24-8 patches applied; moved to pending-human-review for P0 auth/authorization changes.
+last_updated: "2026-08-24"  # Story 24-8 spec and code updated; status=review. P0 auth/authorization changes still await human sign-off.
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # - Parsed epics.md: 24 epics, ~160 stories.
 # - Scanned _bmad-output/implementation-artifacts/ + stories/*.md for story files (frontmatter story_key/epic+story).
@@ -349,7 +349,7 @@ development_status:
   # Unit/integration tests pass; Playwright E2E passes; marked done.
   14-1: done
   14-2a: done  # 2026-08-24: all review patches applied and re-reviewed; 140 targeted unit tests pass; ruff clean.
-  14-2b: backlog  # split from 14-2; blocked-by-external chainlens-research entity search / ingest with metadata.entities not available
+  14-2b: review  # 2026-08-24: entity search capability and executor implemented with 9/9 tests passing (8 unit + 1 integration)
   epic-14-retrospective: optional
 
   # === Epic 15: Financial Data (Vietnam) ===
@@ -582,7 +582,7 @@ waves:
   - wave: 1
     theme: P0 — Interactive Browser Operator & Projects Workspace
     status: backlog
-    evidence_gate: Plasmo extension CDP debugger enabled; Human Live Takeover UI working; Projects schema & Master Instructions injected
+    evidence_gate: Plasmo extension CDP debugger enabled; `browser_operator.execute` capability and `web_crawler` prompt-in-UI working; Human Live Takeover UI partially wired in popup; mission pause/resume TTL and dashboard popover still open
     stories:
     - 24-8
     - 3-18

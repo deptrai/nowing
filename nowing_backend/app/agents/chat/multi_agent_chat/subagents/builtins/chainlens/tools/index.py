@@ -9,12 +9,13 @@ from langchain_core.tools import BaseTool
 from app.agents.chat.multi_agent_chat.shared.permissions import Ruleset
 from app.capabilities.chainlens.research.definition import CHAINLENS_RESEARCH
 from app.capabilities.core.access.agent import build_capability_tools
+from app.capabilities.news.entity_search.definition import NEWS_ENTITY_SEARCH
 
 NAME = "chainlens"
 
 RULESET = Ruleset(origin=NAME, rules=[])
 
-_CI_VERBS = [CHAINLENS_RESEARCH]
+_CI_VERBS = [CHAINLENS_RESEARCH, NEWS_ENTITY_SEARCH]
 
 
 def load_tools(

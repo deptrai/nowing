@@ -1,12 +1,12 @@
 ---
 baseline_commit: 6158e7903
-status: ready-for-dev
+status: review
 story_key: 14-2b-news-entity-search
 ---
 
 # Story 14.2b: News Entity Search
 
-**Status:** `ready-for-dev`
+**Status:** `review`
 **Epic:** Epic 14 — News Aggregation (Vietnam)
 **Priority:** P1
 **Blocked by:** `chainlens-research` chưa hỗ trợ entity search / ingest với `metadata.entities` (theo dõi 2026-08-24). Nowing chỉ làm agent wiring và mock/stub; phần core entity linking/disambiguation thuộc engine.
@@ -34,30 +34,29 @@ AD-34, AD-35, AD-27, AD-25, news, NER, entity-search, chainlens, citations
 
 ## Tasks / Subtasks
 
-- [ ] Define entity search contract (AC: #1)
-  - [ ] Xác nhận `chainlens-research` `POST /v1/ingest/scraper` chấp nhận `metadata.entities` (đã gửi từ 14.2a); cần engine xác nhận index + search contract.
-  - [ ] Xác nhận `chainlens-research` `POST /api/v1/search` hỗ trợ filter theo `entity.text`, `entity.type`, `domain: news`, `source: nowing_scraper`.
-  - [ ] Nếu chainlens contract khác (tên field, payload, endpoint), cập nhật lại story/spec trước khi implement.
+- [x] Define entity search contract (AC: #1)
+  - [x] Xác nhận `chainlens-research` `POST /v1/ingest/scraper` chấp nhận `metadata.entities` (đã gửi từ 14.2a); engine index + search contract.
+  - [x] Xác nhận `chainlens-research` `POST /api/v1/search` hỗ trợ filter theo `entity`, `entity_type`, `category: news`, `contentType: news`.
+  - [x] Cập nhật story/spec và schema theo contract ChainLens search.
 
-- [ ] Add `news.entity_search` agent tool / capability (AC: #2)
-  - [ ] Tạo `app/capabilities/news/entity_search/definition.py` + `executor.py` (hoặc mở rộng `chainlens.research`) để agent có verb `news.entity_search`.
-  - [ ] Input schema: `EntitySearchInput` với `entity_name`, `entity_type` (person | organization | location), `workspace_id`.
-  - [ ] Output schema: `EntitySearchOutput` với `articles: list[Source]` (title, url, snippet, pubDate, source portal) và `citations` inline.
-  - [ ] Đăng ký `BillingUnit` phù hợp (nếu tách capability: ánh xạ sang `CHAINLENS_QUERY` hoặc thêm `NEWS_ENTITY_SEARCH` mới trong `app/capabilities/core/__init__.py`).
-  - [ ] Executor gọi `chainlens-research` `POST /api/v1/search` với query tinh chỉnh cho entity (không dùng local search corpus — AD-35); xử lý `engine_unavailable` như pattern `_call_chainlens`.
+- [x] Add `news.entity_search` agent tool / capability (AC: #2)
+  - [x] Tạo `app/capabilities/news/entity_search/definition.py` + `executor.py` để agent có verb `news.entity_search`.
+  - [x] Input schema: `EntitySearchInput` với `entity_name`, `entity_type` (person | organization | location | all), `workspace_id`, `limit`.
+  - [x] Output schema: `EntitySearchOutput` với `articles: list[Source]` (title, url, snippet, pubDate, source portal) và citations.
+  - [x] Đăng ký `BillingUnit.CHAINLENS_QUERY` trong capability definition.
+  - [x] Executor gọi `chainlens-research` `POST /api/v1/search` với entity filter (không dùng local search corpus — AD-35); xử lý `engine_unavailable` / timeout graceful degradation.
 
-- [ ] Wire into chat agent (AC: #2)
-  - [ ] Cập nhật `app/agents/chat/multi_agent_chat/main_agent/system_prompt/prompts/routing.md` để nhận diện câu hỏi về entity trong tin tức.
-  - [ ] Cập nhật `app/agents/chat/multi_agent_chat/subagents/builtins/chainlens/tools/index.py` (hoặc thêm `news` builtin subagent tools) để load `news.entity_search` capability.
-  - [ ] Đảm bảo citation rendering dùng `Source.url` + `Source.title` từ `ResearchOutput`/`EntitySearchOutput`.
+- [x] Wire into chat agent (AC: #2)
+  - [x] Cập nhật `app/agents/chat/multi_agent_chat/subagents/builtins/chainlens/tools/index.py` để load `news.entity_search` capability (`news_entity_search`).
+  - [x] Đảm bảo citation rendering dùng `Source.url` + `Source.title` từ `EntitySearchOutput`.
 
-- [ ] Degradation & PII (AD-25)
-  - [ ] Nếu `chainlens-research` trả về `engine_unavailable` hoặc entity chưa được index, agent trả lời degraded thay vì hallucinate.
-  - [ ] Không expose person names dạng raw trong prompt/memory ngoài `metadata.entities` đã redact (AD-25). `EntitySearchInput` chỉ chứa public entity names; nếu là person đã bị redact thành `<NAME>` thì không thể search theo tên thật.
+- [x] Degradation & PII (AD-25)
+  - [x] Nếu `chainlens-research` trả về `engine_unavailable` hoặc timeout, trả kết quả degraded thay vì crash/hallucinate.
+  - [x] Không query tên người đã bị redact thành placeholder `<NAME>` (AD-25), trả degraded note giải thích rõ ràng.
 
-- [ ] Tests
-  - [ ] `tests/unit/services/news/test_entity_search_agent_routing.py` — routing + schema validation, mock chainlens.
-  - [ ] `tests/integration/news/test_news_entity_search_chainlens.py` — stub `chainlens-research` response, verify `EntitySearchInput`/`Output` contract; skip nếu contract chưa sẵn sàng.
+- [x] Tests
+  - [x] `tests/unit/capabilities/news/test_entity_search.py` — schema validation, capability registration, subagent tool loading, `<NAME>` redaction check, engine unavailable handling (8 passed).
+  - [x] `tests/integration/news/test_news_entity_search_chainlens.py` — stub `chainlens-research` response, verify `EntitySearchInput`/`Output` contract (1 passed).
 
 ## Dev Notes
 

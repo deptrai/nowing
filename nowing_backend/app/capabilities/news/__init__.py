@@ -1,5 +1,9 @@
-"""Signal capabilities package."""
+"""``news.*`` namespace: News aggregation and entity search verbs."""
 
 from __future__ import annotations
 
-from .signal import definition as _definition  # noqa: F401
+from app.capabilities.news.entity_search import (
+    definition as _entity_search,  # noqa: F401
+)
+
+__all__: list[str] = []
