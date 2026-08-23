@@ -4505,6 +4505,11 @@ class Lead(Base, TimestampMixin):
         PrimaryKeyConstraint("id", "workspace_id", name="pk_leads"),
         Index("ix_leads_workspace_created", "workspace_id", "created_at"),
         Index("ix_leads_tax_id", "tax_id"),
+        Index(
+            "ix_leads_needs_enrichment",
+            "needs_enrichment",
+            postgresql_where=text("needs_enrichment = true"),
+        ),
         UniqueConstraint(
             "workspace_id",
             "value_hmac",
@@ -4533,6 +4538,11 @@ class Lead(Base, TimestampMixin):
     fit_score = Column(Float, nullable=True)
     intent_score = Column(Float, nullable=True)
     composite_score = Column(Float, nullable=True)
+    schema_completeness_score = Column(Float, nullable=True)
+    needs_enrichment = Column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    area = Column(Float, nullable=True)
     status = Column(String(50), nullable=False, default="new", server_default="new")
     enriched = Column(Boolean, nullable=False, default=False, server_default="false")
     consent_status = Column(String(50), nullable=True)

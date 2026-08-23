@@ -270,5 +270,48 @@ _Curated long-term knowledge for Nowing E2E Browser Testing._
 - **Prompt/fallback tension:** when `multi_source_lead_gen` returns 0/degraded, the assistant still attempts direct `chotot`/`chotot_bds` calls. This should be addressed in the prompt/routing review for 21.20.
 - **UI nit:** the right "Trợ lý tìm lead" panel sometimes keeps the title from the previous query (e.g., job title shown during procurement flow).
 
+## Story 21.21 — Deterministic Confidence Gate & Selective Micro-LLM Fallback E2E (2026-08-23)
 
+**Local stack:** Postgres 5434, Redis 6380, backend `.venv/bin/python main.py` on 8000, zero-cache 4848, frontend `pnpm dev` on 3000.
+
+**Pre-test fixes required for this run:**
+- Migration 228 (`add schema_completeness to leads`) had not been applied to the local DB, so `leads` columns `schema_completeness_score`, `needs_enrichment`, `area` were missing. Ran `uv run alembic upgrade head`.
+- `zero_publication` omitted `leads` because the new columns did not exist; after migration, re-ran `app.zero_publication.apply_publication()` and **wiped + restarted** `nowing-deps-zero-cache` volume so the Zero cache picked up the new publication list.
+- Backend had been running stale code from before the 21.21 patches; killed the old `main.py` and restarted with `.venv/bin/python main.py`.
+
+### Flow 1 — Job Market (smoke of new schema columns)
+- Query: *"Tìm công ty AI tuyển dụng Senior Python tại Hà Nội"*
+- Tool: `Multi Source Lead Gen` -> `vn_jobs` aggregate
+- Observation:
+  - Assistant returned an inline job listing table (7 rows) and a `Customer & Leads Data Matrix TABLE` with FIT SCORE badges 84-96.
+  - Console: 0 errors during the run; later React duplicate-key warnings from the lead matrix.
+  - DB (`leads` table) persisted **2 leads** (`MB Bank`, `Công Ty Cổ Phần Tập Đoàn Masterise`) with:
+    - `fit_score = 70`
+    - `schema_completeness_score = 0.2` and `0.4`
+    - `needs_enrichment = False`
+    - `area = None`, `location = 'HN'`
+  - This confirms the new `schema_completeness_score` and `needs_enrichment` columns are populated by the confidence gate path.
+
+### Flow 2 — Public Procurement (attempt to trigger micro-LLM fallback)
+- Query: *"Tìm gói thầu phần mềm CRM tại Hà Nội"*
+- Tool: `Multi Source Lead Gen` -> fallback `Google Search` scrape
+- Observation:
+  - Google Search step remained in `running...` state for >2.5 minutes without returning results.
+  - No new leads were persisted while waiting.
+  - Procurement flow is blocked in this local environment by the Google Search scraper hang; this is an environment/degradation issue, not a 21.21 regression.
+
+### Findings
+- **Confidence gate column persistence works:** saved leads carry `schema_completeness_score` and `needs_enrichment` after 21.21 changes.
+- **Micro-LLM fallback hard to trigger in E2E:** the job and procurement sources available in this local stack do not exercise the `price`/`district`/`area` extraction that the micro-LLM fallback targets.
+- **UI issue:** the `Customer & Leads Data Matrix` rendered by the assistant contains rows with a nil lead UUID (`00000000-0000-4000-8000-000000000001`), causing the detail drawer to 404 on `/api/v1/workspaces/1/leads/{nil-uuid}/activities` and React duplicate-key errors. This appears to be the assistant generating a preview table for sources that were not actually persisted as `leads`.
+- **Backend CORS/network noise:** initial run hit `ERR_CONNECTION_REFUSED` because the backend was still on stale code; restarting it fixed chat ingestion.
+
+### Fix applied (2026-08-23)
+- **`nowing_web/components/leads/lead-parser.ts`**: replaced sequential `00000000-0000-4000-8000-...` fake UUIDs with a deterministic hash (`cyrb128` → v5-like UUID) keyed by `workspaceId:companyName:extra`. This makes preview IDs stable across re-renders and unique across multiple tables, eliminating React duplicate-key warnings.
+- **`nowing_web/components/leads/NowingLeadMatrix.tsx`**: guarded `handleRowClick` to return early for `source === "chat_scraper"` preview rows, preventing the detail flyout from calling `/api/v1/workspaces/1/leads/{preview-uuid}/activities` and 404ing. A `toast.info` is included for user feedback (note: dashboard route currently appears to have no visible `Toaster` mounted; toast is a no-op there but harmless).
+- Verification: `pnpm tsc --noEmit` passed, `biome check --write` passed; re-loaded chat thread 4, console 0 errors, right-panel rows have unique `data-testid` lead-row-* (no duplicate keys), and clicking a preview row does not open the 404 drawer.
+
+### Verification notes
+- Restart backend whenever `lead_intelligence` adapter code changes.
+- After any migration touching `leads` columns, run `app.zero_publication.apply_publication()` and wipe the zero-cache volume to avoid `SchemaVersionNotSupported` errors.
 

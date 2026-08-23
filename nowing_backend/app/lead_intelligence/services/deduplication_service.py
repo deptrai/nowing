@@ -13,6 +13,7 @@ from app.lead_intelligence.adapters.base import (
     NormalizedLead,
     normalize_vietnamese_phone,
 )
+from app.lead_intelligence.confidence.gate import ConfidenceGate
 
 logger = logging.getLogger(__name__)
 
@@ -173,9 +174,11 @@ class EntityDeduplicationService:
         if len(cluster_leads) == 1:
             return cluster_leads[0]
 
-        # Base entity is the one with highest individual confidence score
+        # Base entity is the one with the highest schema completeness.
         sorted_by_conf = sorted(
-            cluster_leads, key=lambda x: x.confidence_score, reverse=True
+            cluster_leads,
+            key=lambda x: x.schema_completeness_score or 0.0,
+            reverse=True,
         )
         base = sorted_by_conf[0]
 
@@ -193,7 +196,7 @@ class EntityDeduplicationService:
                     seen_cand_vals.add(c.value)
                     all_candidates.append(c)
 
-        # Merge non-null attributes strictly preferring highest confidence leads
+        # Merge non-null attributes strictly preferring the most complete leads.
         title = next((item.title for item in sorted_by_conf if item.title), base.title)
         company_name = next(
             (item.company_name for item in sorted_by_conf if item.company_name),
@@ -230,12 +233,19 @@ class EntityDeduplicationService:
             (item.price for item in sorted_by_conf if item.price is not None),
             base.price,
         )
+        area = next(
+            (item.area for item in sorted_by_conf if item.area is not None), base.area
+        )
+        source_url = next(
+            (item.source_url for item in sorted_by_conf if item.source_url),
+            base.source_url,
+        )
 
         # Boost confidence score for multi-source corroboration
         multi_source_bonus = (len(all_sources) - 1) * 15.0
         boosted_score = min(100.0, base.confidence_score + multi_source_bonus)
 
-        return NormalizedLead(
+        merged_lead = NormalizedLead(
             source_name=base.source_name,
             source_id=base.source_id,
             title=title,
@@ -249,11 +259,17 @@ class EntityDeduplicationService:
             address=address,
             city=city,
             price=price,
+            area=area,
+            source_url=source_url,
             confidence_score=boosted_score,
             sources=all_sources,
             contact_candidates=all_candidates,
             raw_data=base.raw_data,
         )
+
+        # Recompute schema completeness from the merged fields.
+        ConfidenceGate.score(merged_lead)
+        return merged_lead
 
     def _check_dnc_batch(self, phones: list[str], workspace_id: int) -> dict[str, bool]:
         """Check phone numbers against DNC registry (Stub or DncComplianceService link)."""

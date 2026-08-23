@@ -1,5 +1,41 @@
 import type { Lead } from "@/contracts/types/leads.types";
 
+// ponytail: tiny deterministic UUID generator so parsed preview leads have
+// stable, collision-free keys across re-renders and across multiple tables.
+// Not cryptographically secure, but unique enough for transient UI preview rows.
+function cyrb128(str: string): [number, number, number, number] {
+	let h1 = 1779033703;
+	let h2 = 3144134277;
+	let h3 = 1013904242;
+	let h4 = 2773480762;
+	for (let i = 0; i < str.length; i++) {
+		const k = str.charCodeAt(i);
+		h1 = h2 ^ Math.imul(h1 ^ k, 597399067);
+		h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
+		h3 = h4 ^ Math.imul(h3 ^ k, 951274213);
+		h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
+	}
+	h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067);
+	h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233);
+	h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213);
+	h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
+	return [h1 >>> 0, h2 >>> 0, h3 >>> 0, h4 >>> 0];
+}
+
+function stableUuid(seed: string): string {
+	const [a, b, c, d] = cyrb128(seed);
+	const p1 = a.toString(16).padStart(8, "0");
+	const p2 = (b & 0xffff).toString(16).padStart(4, "0");
+	const p3 = (((b >>> 16) & 0x0fff) | 0x5000).toString(16).padStart(4, "0");
+	const p4 = ((c & 0x3fff) | 0x8000).toString(16).padStart(4, "0");
+	const p5 = (c >>> 16).toString(16).padStart(4, "0") + d.toString(16).padStart(8, "0");
+	return `${p1}-${p2}-${p3}-${p4}-${p5}`;
+}
+
+function previewLeadId(companyName: string, workspaceId: number, extra = ""): string {
+	return stableUuid(`${workspaceId}:${companyName}:${extra}`);
+}
+
 const COMPANY_KEYWORD_REGEX =
 	/(?:Công ty|Tập đoàn|Doanh nghiệp|Văn phòng|TNHH|JSC|Corp|Group|Land|BĐS|Real Estate|Bank|Capital|Agency|Studio|Store|Shop|Clinic|Hospital|Hotel|Resort|Restaurant|Quỹ|Ban Quản lý|Viện|Trường|Chi nhánh|Đại lý|Nhà phân phối|HANDICO|Vingroup|Sun Group|Novaland|SGG Homes|Highlands|PropTech)/i;
 
@@ -142,10 +178,10 @@ function parseMarkdownTables(text: string, wsId: number): Lead[] {
 				const snippet = cleanMarkdownValue(rawDesc) || "Tìm thấy qua AI Scraper";
 
 				const leadIndex = tableLeads.length;
-				const fakeUuid = `00000000-0000-4000-8000-${String(leadIndex + 1).padStart(12, "0")}`;
+				const leadId = previewLeadId(companyName, wsId, rawWebsite || "");
 
 				tableLeads.push({
-					id: fakeUuid,
+					id: leadId,
 					workspace_id: wsId,
 					company_name: companyName,
 					domain,
@@ -257,10 +293,10 @@ export function parseLeadsFromText(text: string, workspaceId: number | string = 
 			cleanMarkdownValue(descMatch ? descMatch[1] : null) || "Tìm thấy qua AI Scraper";
 
 		const leadIndex = leads.length;
-		const fakeUuid = `00000000-0000-4000-8000-${String(leadIndex + 1).padStart(12, "0")}`;
+		const leadId = previewLeadId(cleanCompany, wsId, domain);
 
 		leads.push({
-			id: fakeUuid,
+			id: leadId,
 			workspace_id: wsId,
 			company_name: cleanCompany,
 			domain,

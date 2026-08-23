@@ -16,8 +16,12 @@ from app.lead_intelligence.adapters.base import (
     NormalizedLead,
 )
 from app.lead_intelligence.adapters.registry import LeadSourceAdapterRegistry
+from app.lead_intelligence.confidence import ConfidenceGate
 from app.lead_intelligence.services.deduplication_service import (
     EntityDeduplicationService,
+)
+from app.lead_intelligence.services.micro_extraction_worker import (
+    MicroExtractionWorker,
 )
 
 logger = logging.getLogger(__name__)
@@ -77,6 +81,7 @@ class LeadGenOrchestrator:
         )
         self.db = db
         self.redis = redis
+        self._micro_worker: MicroExtractionWorker | None = None
 
     async def dispatch_scrape_job(
         self,
@@ -162,6 +167,47 @@ class LeadGenOrchestrator:
             )
             for a in adapters
         ]
+
+    async def _score_and_enrich(
+        self,
+        leads: list[NormalizedLead],
+        workspace_id: int,
+    ) -> list[NormalizedLead]:
+        """Apply the confidence gate and run micro-LLM fallback where needed."""
+        high_confidence: list[NormalizedLead] = []
+        needs_enrichment: list[NormalizedLead] = []
+        micro_candidates: list[NormalizedLead] = []
+
+        for lead in leads:
+            result = ConfidenceGate.score(lead)
+            if result.score >= 0.85 and not result.critical_missing:
+                high_confidence.append(lead)
+            elif 0.70 <= result.score < 0.85 and not result.critical_missing:
+                lead.needs_enrichment = True
+                needs_enrichment.append(lead)
+            else:
+                micro_candidates.append(lead)
+
+        if micro_candidates:
+            if self._micro_worker is None:
+                self._micro_worker = MicroExtractionWorker()
+            try:
+                await self._micro_worker.micro_batch(
+                    micro_candidates,
+                    workspace_id=workspace_id,
+                    user_id=None,
+                )
+            except Exception as exc:
+                # Fail-soft: keep the original records and mark for enrichment.
+                logger.warning(
+                    "Micro-extraction worker failed for workspace %s: %s",
+                    workspace_id,
+                    exc,
+                )
+                for lead in micro_candidates:
+                    lead.needs_enrichment = True
+
+        return high_confidence + needs_enrichment + micro_candidates
 
     async def execute_multi_source_lead_gen(
         self,
@@ -250,10 +296,14 @@ class LeadGenOrchestrator:
 
         total_discovered = len(all_normalized_leads)
 
-        # In-stream Deduplication
-        dedup_result = self.deduplication_service.deduplicate_leads(
-            all_normalized_leads
+        # Pass 2: Confidence gating and selective micro-LLM fallback.
+        scored_leads = await self._score_and_enrich(
+            all_normalized_leads,
+            workspace_id=workspace_id,
         )
+
+        # In-stream Deduplication
+        dedup_result = self.deduplication_service.deduplicate_leads(scored_leads)
 
         final_leads = dedup_result.unified_leads
 
@@ -367,6 +417,9 @@ class LeadGenOrchestrator:
                     "industry": lead.raw_data.get("industry"),
                     "location": lead.city or lead.address,
                     "fit_score": lead.confidence_score,
+                    "schema_completeness_score": lead.schema_completeness_score,
+                    "needs_enrichment": bool(lead.needs_enrichment),
+                    "area": lead.area,
                     "phone": lead.primary_phone,
                     "email": lead.primary_email,
                     "tax_id": lead.tax_id,

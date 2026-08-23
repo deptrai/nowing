@@ -69,8 +69,11 @@ class NormalizedLead(BaseModel):
     address: str | None = None
     city: str | None = None
     price: float | None = None
+    area: float | None = None
     source_url: str | None = None
     confidence_score: float = 70.0
+    schema_completeness_score: float | None = None
+    needs_enrichment: bool | None = None
     sources: list[str] = Field(default_factory=list)
     contact_candidates: list[ContactCandidate] = Field(default_factory=list)
     raw_data: dict[str, Any] = Field(default_factory=dict)

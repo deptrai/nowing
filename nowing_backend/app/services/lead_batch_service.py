@@ -76,6 +76,9 @@ def _prepare_lead_record(
         "fit_score": item.get("fit_score", 0.0),
         "intent_score": item.get("intent_score", 0.0),
         "composite_score": item.get("composite_score"),
+        "schema_completeness_score": item.get("schema_completeness_score"),
+        "needs_enrichment": item.get("needs_enrichment", False),
+        "area": item.get("area"),
         "status": item.get("status", "new"),
         "value_hmac": value_hmac,
         "phone": item.get("phone"),
@@ -122,6 +125,14 @@ def _build_batch_upsert_stmt(leads: list[dict[str, Any]]) -> Any:
                 func.coalesce(Lead.composite_score, 0),
                 func.coalesce(stmt.excluded.composite_score, 0),
             ),
+            "schema_completeness_score": func.greatest(
+                func.coalesce(Lead.schema_completeness_score, 0),
+                func.coalesce(stmt.excluded.schema_completeness_score, 0),
+            ),
+            "needs_enrichment": func.coalesce(
+                stmt.excluded.needs_enrichment, Lead.needs_enrichment
+            ),
+            "area": func.coalesce(stmt.excluded.area, Lead.area),
             "company_name": stmt.excluded.company_name,
             "domain": stmt.excluded.domain,
             "client_id": stmt.excluded.client_id,
@@ -131,7 +142,12 @@ def _build_batch_upsert_stmt(leads: list[dict[str, Any]]) -> Any:
             "location": func.coalesce(stmt.excluded.location, Lead.location),
             "intent_score": stmt.excluded.intent_score,
             "status": case(
-                (Lead.status.in_(["blacklisted", "withdrawn", "opted_out", "lost", "won"]), Lead.status),
+                (
+                    Lead.status.in_(
+                        ["blacklisted", "withdrawn", "opted_out", "lost", "won"]
+                    ),
+                    Lead.status,
+                ),
                 else_=stmt.excluded.status,
             ),
             "updated_at": func.now(),

@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import {
 	activeDrawerLeadAtom,
 	canvasHighlightTriggerAtom,
@@ -201,6 +202,13 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 	};
 
 	const handleRowClick = (lead: Lead) => {
+		// ponytail: chat-scraper rows are live preview leads parsed from
+		// assistant tables; they are not persisted, so opening the detail
+		// drawer would 404 on /leads/{id}/activities.
+		if (lead.source === "chat_scraper") {
+			toast.info("Lead này là bản xem trước — chưa được lưu.");
+			return;
+		}
 		setSelectedLeadContext(lead);
 		setActiveDrawerLead(lead);
 	};
