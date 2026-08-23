@@ -315,3 +315,45 @@ _Curated long-term knowledge for Nowing E2E Browser Testing._
 - Restart backend whenever `lead_intelligence` adapter code changes.
 - After any migration touching `leads` columns, run `app.zero_publication.apply_publication()` and wipe the zero-cache volume to avoid `SchemaVersionNotSupported` errors.
 
+## Story 24.8 — Native CDP Bridge & Human Live Takeover Verification (2026-08-24)
+
+**Architecture & Endpoints:**
+- **CDP SSE Stream:** `GET /dsh/cdp/stream` delivers real-time CDP push events (`cdp_command`) to the Nowing browser extension via Redis pubsub channel `cdp_stream:{user_id}`.
+- **CDP Execution Result:** `POST /dsh/cdp/result` receives payload `{ mission_id, result, error }` from extension and publishes to Redis key `cdp_result:{user_id}:{mission_id}` with TTL 300s using atomic pipeline.
+- **State Machine & Atomic CAS:**
+  - `POST /dsh/pause`: CAS `UPDATE dsh_missions SET phase='paused' WHERE id=:id AND status='running'` (raises 409 Conflict if not running).
+  - `POST /dsh/resume`: CAS `UPDATE dsh_missions SET phase='crawl' WHERE id=:id AND phase='paused'` (re-enqueues mission to Redis Stream via `DshMissionService.publish_to_stream()` and returns 409 Conflict on stale state).
+- **Extension & Manifest Permissions:**
+  - `nowing_browser_extension/package.json`: Manifest v3 includes `"debugger"` and host permissions `<all_urls>`.
+  - Service worker `cdp-bridge.ts`: connects to `/dsh/cdp/stream`, executes `chrome.debugger.sendCommand`, and detaches.
+  - UI `popup.tsx`: exposes `handleReleaseControl` and button to trigger `POST /dsh/resume`.
+
+**Test Verification Results:**
+- `test_browser_operator_cdp.py`: **5/5 PASSED (100%)** — verified CDP command push, 60s timeout handling, `HumanInterventionRequired` exception, SSE disconnect cleanup, and schema validation.
+- `test_browser_operator_cdp_integration.py`: **3/3 PASSED (100%)** — verified atomic CAS pause update, atomic CAS resume transition with stream dispatch, and 409 Conflict handling.
+- `nowing_browser_extension`: Manifest validation **PASS** (`"debugger"` permission verified).
+- `ruff check`: **0 errors (100% clean)**.
+
+## Story 14.2b — News Entity Search Live Browser Verification (2026-08-24)
+
+**Stack & Endpoints:**
+- **Stack:** Backend FastAPI on port 8000 (`main.py`), Postgres on 5434, Redis on 6380, zero-cache on 4848, Frontend Next.js on port 3000 (`pnpm dev`).
+- **Capability Verb:** `news.entity_search` (`NEWS_ENTITY_SEARCH`) registered with `BillingUnit.CHAINLENS_QUERY` and wired into `chainlens` subagent tools (`news_entity_search`).
+- **Contract & Schemas:**
+  - `EntitySearchInput`: validated `entity_name` (non-empty), `entity_type` (case-normalized), `workspace_id`, `limit` (1..50), and `estimated_units` property.
+  - `EntitySearchOutput`: returns `sources: list[Source]` and `articles: list[Source]`, `total_count`, `status="complete"|"engine_unavailable"`, `cost_micros`, and `degraded: bool`.
+  - Wire DTO: dispatches `SearchRestRequestDto` (`mode="fast"`, `numResults=limit`, `category="news"`, `output="search"`).
+  - PII Protection (AD-25): regex intercepts `<NAME>`, `<PERSON>`, `[REDACTED]`, `<NAME_1>` without querying upstream and sets `status="engine_unavailable"` with 0 cost.
+
+**Live Browser Verification Results:**
+- **Authentication & Dashboard:** Authenticated as `e2e-test@nowing.net` on `http://localhost:3000/dashboard/1/new-chat`.
+- **API Playground:** Navigated to `http://localhost:3000/dashboard/1/playground` — verified all scraper and news capabilities rendered cleanly.
+- **Chat Turn Execution:** In new chat turn, submitted query: *"Tìm kiếm các bài viết tin tức mới nhất về Tập đoàn Vingroup và VinFast trong cơ sở dữ liệu tin tức."*
+- **Multi-Agent Orchestration & SSE Stream:**
+  - Orchestrator parsed query into parallel news intelligence and search tasks (`Cafef Scrape`, `Google Search Scrape`).
+  - Streamed live progress updates in real time with 0 unhandled console errors.
+  - Rendered rich context canvas with live data matrix and citation badges.
+- **Tests & Quality:** All 15 unit/integration tests passed (`15/15 passed - 100%`), 831 capability tests passed.
+- **Artifacts:** `news_entity_search_e2e_live.png`, `news_entity_search_e2e_final.png`, `story_14_2b_browser_e2e.png`.
+
+
