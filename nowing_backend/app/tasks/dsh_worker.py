@@ -10,7 +10,7 @@ import signal
 import socket
 import sys
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.parse import urlparse
 from uuid import UUID
@@ -942,17 +942,33 @@ class DshWorker:
                 logger.warning("Mission %s requires human intervention: %s", mission_id, e)
                 # Save checkpoint and pause
                 workspace_id = mission.get("workspace_id") if isinstance(mission, dict) else mission.workspace_id
+                user_id = mission.get("user_id") if isinstance(mission, dict) else mission.user_id
+                challenge = getattr(e, "challenge", str(e))
+                payload = self._mission_payload(mission)
+                target_url = str(payload.get("target_url") or "")
+
+                now = datetime.now(UTC)
+                expires_at = now + timedelta(seconds=900)
+                checkpoint = self._mission_checkpoint(mission)
+                checkpoint["takeover"] = {
+                    "challenge": challenge,
+                    "target_url": target_url,
+                    "started_at": now.isoformat(),
+                    "expires_at": expires_at.isoformat(),
+                }
+
                 await self.rest_client.patch_checkpoint(
                     mission_id,
                     _checkpoint_update(
                         status="running",
                         phase="waiting_for_human",
                         current_subtask_id="cdp_crawl",
+                        checkpoint=checkpoint,
                     ),
                 )
                 # 15-minute takeover TTL. Resume route must delete this key.
                 takeover_key = f"dsh:lock:takeover:{workspace_id}:{mission_id}"
-                await redis_client.setex(takeover_key, 900, "1")
+                await redis_client.setex(takeover_key, 900, str(user_id) if user_id else "1")
                 await redis_client.xack(self.stream, self.group, msg_id)
                 return True
             except asyncio.CancelledError:

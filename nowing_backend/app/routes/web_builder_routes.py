@@ -1,10 +1,12 @@
 """REST API endpoints for Web Builder (Story 27.1 / AD-113 / AD-114)."""
 
+import contextlib
 import logging
 from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import HTMLResponse, StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,6 +15,8 @@ from app.db import WorkspaceApp, get_async_session
 from app.services.web_builder.deploy_service import WebAppDeployService
 from app.services.web_builder.generator import WebBuilderService
 from app.services.web_builder.mark_tool import MarkToolASTMutator
+from app.services.web_builder.preview_renderer import PreviewRenderer
+from app.services.web_builder.project_writer import ProjectWriter
 from app.services.web_builder.schemas import (
     CustomDomainInput,
     CustomDomainOutput,
@@ -42,6 +46,26 @@ async def generate_web_app(
     service = WebBuilderService()
     result = await service.generate_project(payload, session=session)
     return result
+
+
+@router.post("/generate/stream")
+async def generate_web_app_stream(
+    payload: WebAppBuildInput,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+):
+    """Stream real-time Next.js code generation tokens and file writing steps via SSE."""
+    payload.user_id = auth.user.id
+    service = WebBuilderService()
+    return StreamingResponse(
+        service.generate_project_stream(payload, session=session),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.post("/apps/{app_id}/publish", response_model=WebAppDeployOutput)
@@ -186,3 +210,96 @@ async def get_workspace_app(
             detail="Application not found",
         )
     return app_entity
+
+
+@router.get("/apps/{app_id}/preview", response_class=HTMLResponse)
+async def get_workspace_app_preview(
+    app_id: str,
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+) -> HTMLResponse:
+    """Render and serve interactive live HTML preview for the generated web app."""
+    stmt = select(WorkspaceApp).where(WorkspaceApp.id == app_id)
+    res = await session.execute(stmt)
+    app_entity = res.scalars().first()
+
+    from app.config import FILE_STORAGE_LOCAL_PATH
+
+    if app_entity and app_entity.storage_path:
+        project_dir = Path(app_entity.storage_path)
+        if not project_dir.is_absolute():
+            project_dir = (
+                Path(FILE_STORAGE_LOCAL_PATH).resolve()
+                / "web-app"
+                / str(app_entity.workspace_id)
+                / app_id
+            )
+    else:
+        project_dir = Path(FILE_STORAGE_LOCAL_PATH).resolve() / "web-app" / "1" / app_id
+
+    if not project_dir.exists():
+        project_dir.mkdir(parents=True, exist_ok=True)
+        ProjectWriter.write_minimal_nextjs_scaffold(
+            project_dir, app_entity.name if app_entity else "Generated App"
+        )
+
+    html_content = PreviewRenderer.render_app_html(
+        project_dir=project_dir,
+        app_name=app_entity.name if app_entity else "Generated Web App",
+    )
+    return HTMLResponse(content=html_content, status_code=status.HTTP_200_OK)
+
+
+@router.get("/apps/{app_id}/files")
+async def get_workspace_app_files(
+    app_id: str,
+    workspace_id: int,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+) -> dict[str, str]:
+    """Retrieve all generated source code files for a given application."""
+    stmt = select(WorkspaceApp).where(WorkspaceApp.id == app_id)
+    res = await session.execute(stmt)
+    app_entity = res.scalars().first()
+    if not app_entity:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Application not found",
+        )
+
+    from app.config import FILE_STORAGE_LOCAL_PATH
+
+    if app_entity and app_entity.storage_path:
+        project_dir = Path(app_entity.storage_path)
+        if not project_dir.is_absolute():
+            project_dir = (
+                Path(FILE_STORAGE_LOCAL_PATH).resolve()
+                / "web-app"
+                / str(workspace_id)
+                / app_id
+            )
+    else:
+        project_dir = (
+            Path(FILE_STORAGE_LOCAL_PATH).resolve()
+            / "web-app"
+            / str(workspace_id)
+            / app_id
+        )
+
+    if not project_dir.exists():
+        project_dir.mkdir(parents=True, exist_ok=True)
+        ProjectWriter.write_minimal_nextjs_scaffold(
+            project_dir, app_entity.name if app_entity else "Generated App"
+        )
+
+    files_dict: dict[str, str] = {}
+    for file_path in project_dir.rglob("*"):
+        if (
+            file_path.is_file()
+            and "node_modules" not in file_path.parts
+            and ".next" not in file_path.parts
+        ):
+            rel_path = str(file_path.relative_to(project_dir))
+            with contextlib.suppress(Exception):
+                files_dict[rel_path] = file_path.read_text(encoding="utf-8")
+
+    return files_dict

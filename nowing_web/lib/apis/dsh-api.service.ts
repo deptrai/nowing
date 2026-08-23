@@ -63,6 +63,12 @@ class DshApiService {
 	): Promise<{ mission_id: string; status: string; phase: string }> => {
 		return baseApiService.post(`/api/v1/dsh/missions/${missionId}/resume`);
 	};
+
+	pauseMission = async (
+		missionId: string
+	): Promise<{ mission_id: string; status: string; phase: string }> => {
+		return baseApiService.post(`/api/v1/dsh/missions/${missionId}/pause`);
+	};
 }
 
 export const dshApiService = new DshApiService();

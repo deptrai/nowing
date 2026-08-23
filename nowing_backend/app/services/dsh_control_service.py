@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import select
@@ -214,6 +214,26 @@ class MissionControlService:
             weighted_tps / total_tokens if total_tokens > 0 else 0.0
         )
 
+        # Human Live Takeover metadata: challenge, target URL, and expiry.
+        takeover = checkpoint.get("takeover") if isinstance(checkpoint, dict) else None
+        if not isinstance(takeover, dict):
+            takeover = {}
+        challenge = takeover.get("challenge")
+        takeover_target_url = takeover.get("target_url")
+        expires_at_raw = takeover.get("expires_at")
+        takeover_expires_at = None
+        if expires_at_raw:
+            try:
+                takeover_expires_at = datetime.fromisoformat(str(expires_at_raw))
+            except ValueError:
+                takeover_expires_at = None
+        if not takeover_target_url:
+            payload = mission.payload or {}
+            if isinstance(payload, dict):
+                takeover_target_url = payload.get("target_url")
+        if not takeover_expires_at and mission.updated_at:
+            takeover_expires_at = mission.updated_at + timedelta(seconds=900)
+
         now = datetime.now(UTC)
         return DshMissionControlResponse(
             id=mission.id,
@@ -234,4 +254,7 @@ class MissionControlService:
             ),
             subtasks=subtasks,
             deliverables=deliverables,
+            challenge=challenge,
+            takeover_target_url=takeover_target_url,
+            takeover_expires_at=takeover_expires_at,
         )

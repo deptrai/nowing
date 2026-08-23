@@ -42,7 +42,10 @@ from app.db import (
 )
 from app.routes.workspaces_routes import create_default_roles_and_membership
 from app.services.memory.search import MemoryHybridSearch
-from app.services.memory.vector import validate_single_embedding_result
+from app.services.memory.vector import (
+    VectorValidationError,
+    validate_single_embedding_result,
+)
 from app.tasks.celery_tasks.memory_extraction_task import extract_memory_after_chat_turn
 from app.utils.document_converters import embed_texts
 
@@ -458,9 +461,15 @@ async def run_freshness_harness(n: int, run_tag: str) -> tuple[dict[str, Any], b
 
             # Compute both query embeddings up-front so the latency timer starts
             # at the production seam (task dispatch), not embedding setup.
+            # Validate the whole batch first, then take each validated single
+            # result without indexing ``[0]`` before a cardinality check.
             raw_embeddings = await asyncio.to_thread(embed_texts, [nonce, topic])
-            nonce_embedding = validate_single_embedding_result([raw_embeddings[0]])
-            topic_embedding = validate_single_embedding_result([raw_embeddings[1]])
+            if not isinstance(raw_embeddings, (list, tuple, np.ndarray)) or len(
+                raw_embeddings
+            ) != 2:
+                raise VectorValidationError("invalid_count")
+            nonce_embedding = validate_single_embedding_result(raw_embeddings[:1])
+            topic_embedding = validate_single_embedding_result(raw_embeddings[1:2])
 
             async with async_session_maker() as session:
                 await _make_chat_message(

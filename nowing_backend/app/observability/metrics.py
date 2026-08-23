@@ -1027,7 +1027,11 @@ def record_memory_injection_failure(*, scope: str, stage: str, reason: str) -> N
     attrs = {"scope": scope, "stage": stage, "reason": reason}
     with contextlib.suppress(Exception):
         _memory_injection_failure_logger.warning(
-            "memory_injection.failure", extra=attrs
+            "memory_injection.failure scope=%s stage=%s reason=%s",
+            scope,
+            stage,
+            reason,
+            extra=attrs,
         )
     with contextlib.suppress(Exception):
         _add(_memory_injection_failures(), 1, attrs)
@@ -1050,7 +1054,7 @@ def record_memory_injection_truncated(*, scope: str) -> None:
     attrs = {"scope": scope}
     with contextlib.suppress(Exception):
         _memory_injection_truncated_logger.warning(
-            "memory_injection.truncated", extra=attrs
+            "memory_injection.truncated scope=%s", scope, extra=attrs
         )
     with contextlib.suppress(Exception):
         _add(_memory_injection_truncated(), 1, attrs)

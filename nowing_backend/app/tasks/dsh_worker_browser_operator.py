@@ -48,12 +48,16 @@ class BrowserOperatorCdpSubgraph:
 
     @staticmethod
     def _redact_cdp_value(value: Any) -> Any:
-        """Redact PII in string/CDP values before logging/checkpointing."""
+        """Redact PII in string/CDP values before logging/checkpointing.
+
+        Fail-soft: if redaction raises, log the incident and return a marker
+        instead of aborting the mission.
+        """
         if isinstance(value, str):
             try:
                 return redact_pii(value, context="lead_enrichment").text
-            except Exception:
-                # If redaction fails, do not leak raw text; return a marker.
+            except Exception as exc:
+                logger.warning("PII redaction failed for CDP value: %s", exc)
                 return "<redaction_failed>"
         return value
 
@@ -112,6 +116,7 @@ class BrowserOperatorCdpSubgraph:
             "url": target_url,
             "mission_id": str(mission_id),
             "command_id": command_id,
+            "user_id": str(resolved_user_id),
         }
 
         # Publish command as an SSE event through the Redis pub/sub channel.
@@ -136,7 +141,10 @@ class BrowserOperatorCdpSubgraph:
 
         if parsed_result.get("requires_human"):
             challenge = parsed_result.get("challenge", "challenge")
-            raise HumanInterventionRequired(f"CDP requires human intervention: {challenge}")
+            exc = HumanInterventionRequired(f"CDP requires human intervention: {challenge}")
+            exc.challenge = challenge
+            exc.target_url = target_url
+            raise exc
 
         if parsed_result.get("error"):
             error_msg = parsed_result["error"]
@@ -211,9 +219,14 @@ class BrowserOperatorCdpSubgraph:
         state_checkpoint["sources"] = sanitized_sources
         state_checkpoint["subtasks"] = subtasks
         # Keep a PII-redacted trace of the raw command/result for debugging.
+        try:
+            redacted_url = redact_pii(target_url, context="lead_enrichment").text
+        except Exception as exc:
+            logger.warning("PII redaction failed for CDP target URL: %s", exc)
+            redacted_url = "<redaction_failed>"
         state_checkpoint["cdp_last_command"] = {
             "action": "navigate",
-            "url": redact_pii(target_url, context="lead_enrichment").text,
+            "url": redacted_url,
             "command_id": command_id,
         }
         state_checkpoint["cdp_last_response"] = redacted_parsed

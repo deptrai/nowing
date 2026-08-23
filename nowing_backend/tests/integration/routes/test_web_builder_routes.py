@@ -204,3 +204,94 @@ class TestWebBuilderRoutes:
         data = response.json()
         assert data["status"] == "patched"
         assert "Welcome to CryptoTracker Pro" in app_page.read_text(encoding="utf-8")
+
+    def test_generate_stream_endpoint(self, client: TestClient):
+        """POST /api/v1/web-builder/generate/stream returns text/event-stream chunks."""
+        payload = {
+            "workspace_id": 1,
+            "prompt": "Create a modern portfolio tracker",
+            "language": "en",
+        }
+
+        async def fake_stream(*args, **kwargs):
+            yield 'data: {"type": "phase", "phase": "planning", "message": "Planning..."}\n\n'
+            yield 'data: {"type": "complete", "app": {"id": "app-stream-1", "name": "Portfolio Tracker"}}\n\n'
+
+        with patch(
+            "app.routes.web_builder_routes.WebBuilderService.generate_project_stream",
+            side_effect=fake_stream,
+        ):
+            response = client.post("/api/v1/web-builder/generate/stream", json=payload)
+
+        assert response.status_code == 200
+        assert "text/event-stream" in response.headers["content-type"]
+        assert "planning" in response.text
+        assert "app-stream-1" in response.text
+
+    def test_preview_html_endpoint(
+        self, client: TestClient, mock_db_session: AsyncMock, tmp_path
+    ):
+        """GET /api/v1/web-builder/apps/{app_id}/preview returns rich HTML document."""
+        app_id = "test-preview-app"
+        test_dir = tmp_path / "web-app" / "1" / app_id
+        test_dir.mkdir(parents=True, exist_ok=True)
+        app_page = test_dir / "app" / "page.tsx"
+        app_page.parent.mkdir(parents=True, exist_ok=True)
+        app_page.write_text(
+            'export default function Page() { return <h1 id="hero-title">Crypto Tracker Live</h1>; }',
+            encoding="utf-8",
+        )
+
+        mock_app_entity = WorkspaceApp(
+            id=app_id,
+            workspace_id=1,
+            name="Crypto Tracker Live",
+            slug="crypto-tracker-live",
+            storage_path=str(test_dir),
+        )
+
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.first.return_value = mock_app_entity
+        mock_db_session.execute.return_value = mock_result
+
+        response = client.get(f"/api/v1/web-builder/apps/{app_id}/preview")
+
+        assert response.status_code == 200
+        assert "text/html" in response.headers["content-type"]
+        assert "<!DOCTYPE html>" in response.text
+        assert "tailwind" in response.text
+        assert "Crypto Tracker Live" in response.text
+
+    def test_files_endpoint(
+        self, client: TestClient, mock_db_session: AsyncMock, tmp_path
+    ):
+        """GET /api/v1/web-builder/apps/{app_id}/files returns dict of source code files."""
+        app_id = "test-files-app"
+        test_dir = tmp_path / "web-app" / "1" / app_id
+        test_dir.mkdir(parents=True, exist_ok=True)
+        app_page = test_dir / "app" / "page.tsx"
+        app_page.parent.mkdir(parents=True, exist_ok=True)
+        app_page.write_text(
+            'export default function Page() { return <div>Files Test</div>; }',
+            encoding="utf-8",
+        )
+
+        mock_app_entity = WorkspaceApp(
+            id=app_id,
+            workspace_id=1,
+            name="Files Test",
+            slug="files-test",
+            storage_path=str(test_dir),
+        )
+
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.first.return_value = mock_app_entity
+        mock_db_session.execute.return_value = mock_result
+
+        response = client.get(f"/api/v1/web-builder/apps/{app_id}/files?workspace_id=1")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "app/page.tsx" in data
+        assert "Files Test" in data["app/page.tsx"]
+

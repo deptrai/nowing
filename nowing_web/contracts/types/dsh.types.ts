@@ -79,6 +79,9 @@ export const dshMissionControlResponseSchema = dshMissionResponseSchema.extend({
 	token_velocity: tokenVelocitySchema,
 	subtasks: z.array(dshMissionSubtaskSchema),
 	deliverables: z.array(dshMissionDeliverableSchema).default([]),
+	challenge: z.string().nullable().optional(),
+	takeover_target_url: z.string().nullable().optional(),
+	takeover_expires_at: z.string().nullable().optional(),
 });
 
 export type DshMissionControl = z.infer<typeof dshMissionControlResponseSchema>;

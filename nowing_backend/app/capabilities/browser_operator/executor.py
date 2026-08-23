@@ -66,6 +66,7 @@ def build_browser_operator_executor():
             "action": payload.action,
             "mission_id": mission_id,
             "command_id": command_id,
+            "user_id": user_id,
             "url": payload.url,
             "selector": payload.selector,
             "text": payload.text,

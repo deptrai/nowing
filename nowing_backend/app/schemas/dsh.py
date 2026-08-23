@@ -167,6 +167,9 @@ class DshMissionControlResponse(DshMissionResponse):
     token_velocity: TokenVelocity
     subtasks: list[DshMissionSubtask]
     deliverables: list[DshMissionDeliverable] = []
+    challenge: str | None = None
+    takeover_target_url: str | None = None
+    takeover_expires_at: datetime | None = None
 
 
 class DshMissionListResponse(BaseModel):

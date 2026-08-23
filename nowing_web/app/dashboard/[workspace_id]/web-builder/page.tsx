@@ -2,19 +2,26 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+	CheckCircle2,
 	Code,
-	Copy,
 	ExternalLink,
+	Eye,
+	FileCode,
 	Globe,
 	Loader2,
+	Monitor,
 	MousePointerClick,
 	Play,
+	RefreshCw,
 	Rocket,
 	Settings,
+	Smartphone,
 	Sparkles,
+	Square,
+	Tablet,
 } from "lucide-react";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { WorkspaceApp } from "@/contracts/types/web-builder.types";
 import { webBuilderApiService } from "@/lib/apis/web-builder-api.service";
@@ -32,6 +39,21 @@ export default function WebBuilderPage() {
 	const [customDomainInput, setCustomDomainInput] = useState("");
 	const [isDomainModalOpen, setIsDomainModalOpen] = useState(false);
 
+	// Enhanced UI States: View Tabs, Device Switcher, Streaming Logs & Code Viewer
+	const [activeTab, setActiveTab] = useState<"preview" | "code">("preview");
+	const [deviceMode, setDeviceMode] = useState<"desktop" | "tablet" | "mobile">("desktop");
+	const [isStreaming, setIsStreaming] = useState(false);
+	const [streamPhase, setStreamPhase] = useState<string>("");
+	const [streamMessage, setStreamMessage] = useState<string>("");
+	const [streamTokens, setStreamTokens] = useState<string>("");
+	const [streamFiles, setStreamFiles] = useState<string[]>([]);
+	const [iframeKey, setIframeKey] = useState(0);
+	const [appFiles, setAppFiles] = useState<Record<string, string>>({});
+	const [selectedFile, setSelectedFile] = useState<string>("app/page.tsx");
+	const abortControllerRef = useRef<AbortController | null>(null);
+
+	const backendBaseUrl = process.env.NEXT_PUBLIC_FASTAPI_BACKEND_URL || "http://localhost:8000";
+
 	// 1. Fetch apps list
 	const { data: apps = [] } = useQuery({
 		queryKey: ["web-builder-apps", workspaceId],
@@ -39,35 +61,124 @@ export default function WebBuilderPage() {
 		enabled: !!workspaceId,
 	});
 
-	// 2. Generate app mutation
-	const generateMutation = useMutation({
-		mutationFn: (userPrompt: string) =>
-			webBuilderApiService.generateWebApp({
-				workspace_id: workspaceId,
-				prompt: userPrompt,
-				language: "en",
-			}),
-		onSuccess: (result) => {
-			toast.success("Web application generated successfully!");
-			queryClient.invalidateQueries({ queryKey: ["web-builder-apps", workspaceId] });
-			setPrompt("");
-			setSelectedApp({
-				id: result.app_id,
-				workspace_id: result.workspace_id,
-				name: result.name,
-				slug: result.slug,
-				status: result.status,
-				preview_url: result.preview_url,
-				public_url: result.public_url,
-				language: "en",
-				created_at: new Date().toISOString(),
-				updated_at: new Date().toISOString(),
-			});
-		},
-		onError: (err: Error) => {
-			toast.error(err?.message || "Failed to generate application");
-		},
-	});
+	// Auto-select latest app if none selected
+	useEffect(() => {
+		if (apps.length > 0 && !selectedApp) {
+			setSelectedApp(apps[0]);
+		}
+	}, [apps, selectedApp]);
+
+	// Fetch files when selected app changes or switches to code tab
+	useEffect(() => {
+		if (selectedApp) {
+			webBuilderApiService
+				.getAppFiles(selectedApp.id, workspaceId)
+				.then((files) => {
+					if (files && Object.keys(files).length > 0) {
+						setAppFiles(files);
+						const keys = Object.keys(files);
+						if (!files[selectedFile]) {
+							setSelectedFile(keys[0]);
+						}
+					}
+				})
+				.catch(() => {});
+		}
+	}, [selectedApp, workspaceId, activeTab]);
+
+
+	// Listen to messages from Preview iframe (Mark Tool Click-To-Inspect)
+	useEffect(() => {
+		const handleIframeMessage = (event: MessageEvent) => {
+			if (event.data?.type === "MARK_ELEMENT_SELECTED") {
+				setSelectedSelector(event.data.selector || "");
+				setPatchText(event.data.text || "");
+				toast.info(`Selected element: ${event.data.selector}`);
+			}
+		};
+
+		window.addEventListener("message", handleIframeMessage);
+		return () => window.removeEventListener("message", handleIframeMessage);
+	}, []);
+
+	// Send toggle message to iframe when Mark Tool toggles
+	useEffect(() => {
+		const iframe = document.getElementById(
+			"web-builder-preview-iframe"
+		) as HTMLIFrameElement | null;
+		if (iframe?.contentWindow) {
+			iframe.contentWindow.postMessage({ type: "TOGGLE_MARK_TOOL", active: isMarkToolActive }, "*");
+		}
+	}, [isMarkToolActive]);
+
+	// 2. Real-time Streaming Generation
+	const handleStartStreamingGeneration = async () => {
+		if (!prompt.trim() || isStreaming) return;
+
+		setIsStreaming(true);
+		setStreamTokens("");
+		setStreamFiles([]);
+		setStreamPhase("planning");
+		setStreamMessage("Initializing generation engine...");
+
+		const controller = new AbortController();
+		abortControllerRef.current = controller;
+
+		try {
+			await webBuilderApiService.generateWebAppStream(
+				{
+					workspace_id: workspaceId,
+					prompt: prompt.trim(),
+					language: "en",
+				},
+				(event) => {
+					if (event.type === "phase") {
+						setStreamPhase(event.phase);
+						setStreamMessage(event.message);
+					} else if (event.type === "token") {
+						setStreamTokens((prev) => prev + event.token);
+					} else if (event.type === "file_written") {
+						setStreamFiles((prev) => (prev.includes(event.path) ? prev : [...prev, event.path]));
+					} else if (event.type === "complete") {
+						const newApp = event.app;
+						toast.success(`Generated "${newApp.name}" successfully!`);
+						queryClient.invalidateQueries({ queryKey: ["web-builder-apps", workspaceId] });
+						setSelectedApp({
+							id: newApp.id,
+							workspace_id: newApp.workspace_id,
+							name: newApp.name,
+							slug: newApp.slug,
+							status: newApp.status,
+							preview_url: newApp.preview_url,
+							public_url: newApp.public_url,
+							language: "en",
+							created_at: new Date().toISOString(),
+							updated_at: new Date().toISOString(),
+						});
+						setIframeKey((prev) => prev + 1);
+						setActiveTab("preview");
+					}
+				},
+				controller.signal
+			);
+		} catch (err: unknown) {
+			const error = err as Error;
+			if (error.name !== "AbortError") {
+				toast.error(error.message || "Streaming generation encountered an error");
+			}
+		} finally {
+			setIsStreaming(false);
+			abortControllerRef.current = null;
+		}
+	};
+
+	const handleCancelStreaming = () => {
+		if (abortControllerRef.current) {
+			abortControllerRef.current.abort();
+			setIsStreaming(false);
+			toast.info("Generation cancelled");
+		}
+	};
 
 	// 3. Publish mutation
 	const publishMutation = useMutation({
@@ -76,7 +187,7 @@ export default function WebBuilderPage() {
 				workspace_id: workspaceId,
 			}),
 		onSuccess: (result) => {
-			toast.success(`Published to ${result.public_url}`);
+			toast.success(`Published live to ${result.public_url}`);
 			queryClient.invalidateQueries({ queryKey: ["web-builder-apps", workspaceId] });
 			if (selectedApp) {
 				setSelectedApp({
@@ -110,6 +221,7 @@ export default function WebBuilderPage() {
 				setPatchText("");
 				setSelectedSelector("");
 				setIsMarkToolActive(false);
+				setIframeKey((prev) => prev + 1);
 			} else {
 				toast.warning(res.message || "Could not map selector to JSX element");
 			}
@@ -138,6 +250,15 @@ export default function WebBuilderPage() {
 		},
 	});
 
+	const localPreviewUrl = selectedApp
+		? `${backendBaseUrl}/api/v1/web-builder/apps/${selectedApp.id}/preview`
+		: "";
+
+	const currentDisplayUrl =
+		selectedApp?.status === "published" && selectedApp.public_url
+			? selectedApp.public_url
+			: localPreviewUrl;
+
 	return (
 		<div className="flex flex-col h-[calc(100vh-4rem)] p-6 space-y-6 max-w-7xl mx-auto">
 			{/* Header */}
@@ -148,8 +269,8 @@ export default function WebBuilderPage() {
 						Full-Stack Web App Builder
 					</h1>
 					<p className="text-sm text-muted-foreground">
-						Generate full-stack Next.js & Tailwind apps from prompt, edit visually with Design Mark
-						Tool, and host with 1-click on *.apps.nowing.net.
+						Generate full-stack Next.js & Tailwind apps with live streaming, interactive preview,
+						Design Mark Tool, and 1-Click hosting.
 					</p>
 				</div>
 
@@ -171,39 +292,50 @@ export default function WebBuilderPage() {
 						<button
 							type="button"
 							onClick={() => setIsDomainModalOpen(true)}
-							className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-background hover:bg-muted text-foreground"
+							className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-background hover:bg-muted text-foreground transition-colors"
 						>
-							<Settings className="w-4 h-4" />
+							<Settings className="w-4 h-4 text-muted-foreground" />
 							Custom Domain
 						</button>
 
 						<button
 							type="button"
 							onClick={() => publishMutation.mutate(selectedApp.id)}
-							disabled={publishMutation.isPending}
-							className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-colors disabled:opacity-50"
+							disabled={publishMutation.isPending || selectedApp.status === "published"}
+							className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-colors disabled:opacity-50"
 						>
 							{publishMutation.isPending ? (
-								<Loader2 className="w-4 h-4 animate-spin" />
+								<>
+									<Loader2 className="w-4 h-4 animate-spin" />
+									Publishing...
+								</>
+							) : selectedApp.status === "published" ? (
+								<>
+									<CheckCircle2 className="w-4 h-4" />
+									Published
+								</>
 							) : (
-								<Rocket className="w-4 h-4" />
+								<>
+									<Rocket className="w-4 h-4" />
+									1-Click Publish
+								</>
 							)}
-							1-Click Publish
 						</button>
 					</div>
 				)}
 			</div>
 
-			{/* Main Grid */}
+			{/* Main Content Grid */}
 			<div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
-				{/* Left Column: Prompt Input & Apps History */}
+				{/* Left Column: Prompt Input & Projects List */}
 				<div className="lg:col-span-4 flex flex-col space-y-4">
+					{/* Prompt Box */}
 					<div className="p-4 rounded-xl border border-border bg-card shadow-sm space-y-3">
 						<label
 							htmlFor="web-app-prompt-input"
-							className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+							className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block"
 						>
-							Describe your Web Application
+							Describe Your Web Application
 						</label>
 						<textarea
 							id="web-app-prompt-input"
@@ -211,42 +343,55 @@ export default function WebBuilderPage() {
 							value={prompt}
 							onChange={(e) => setPrompt(e.target.value)}
 							placeholder="E.g. A modern SaaS landing page for an AI accounting tool with dark mode, interactive pricing tiers, and contact form..."
-							className="w-full text-sm p-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+							disabled={isStreaming}
+							className="w-full text-sm p-3 rounded-lg border border-border bg-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
 						/>
-						<button
-							type="button"
-							onClick={() => generateMutation.mutate(prompt)}
-							disabled={generateMutation.isPending || !prompt.trim()}
-							className="w-full py-2.5 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium flex items-center justify-center gap-2 shadow-sm transition-colors disabled:opacity-50"
-						>
-							{generateMutation.isPending ? (
-								<>
-									<Loader2 className="w-4 h-4 animate-spin" />
-									Generating Next.js App...
-								</>
-							) : (
-								<>
-									<Play className="w-4 h-4 fill-white" />
-									Generate App
-								</>
-							)}
-						</button>
+						{isStreaming ? (
+							<button
+								type="button"
+								onClick={handleCancelStreaming}
+								className="w-full py-2.5 px-4 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium flex items-center justify-center gap-2 shadow-sm transition-colors"
+							>
+								<Square className="w-4 h-4 fill-current" />
+								Cancel Generation
+							</button>
+						) : (
+							<button
+								type="button"
+								onClick={handleStartStreamingGeneration}
+								disabled={!prompt.trim()}
+								className="w-full py-2.5 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium flex items-center justify-center gap-2 shadow-sm transition-colors disabled:opacity-50"
+							>
+								<Play className="w-4 h-4 fill-current" />
+								Generate App (Live Stream)
+							</button>
+						)}
 					</div>
 
-					{/* Generated Apps List */}
-					<div className="p-4 rounded-xl border border-border bg-card shadow-sm flex-1 flex flex-col min-h-0">
-						<h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+					{/* Generated Projects List */}
+					<div className="flex-1 flex flex-col p-4 rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+						<h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
 							Generated Projects ({apps.length})
-						</h3>
-						<div className="space-y-2 overflow-y-auto flex-1 pr-1">
+						</h2>
+						<div className="flex-1 overflow-y-auto space-y-2 pr-1">
+							{apps.length === 0 && !isStreaming && (
+								<div className="text-xs text-muted-foreground text-center py-8">
+									No web applications generated yet.
+								</div>
+							)}
+
 							{apps.map((app) => (
 								<button
 									type="button"
 									key={app.id}
-									onClick={() => setSelectedApp(app)}
-									className={`w-full text-left p-3 rounded-lg border text-sm cursor-pointer transition-all ${
+									onClick={() => {
+										setSelectedApp(app);
+										setIsMarkToolActive(false);
+										setIframeKey((prev) => prev + 1);
+									}}
+									className={`w-full text-left p-3 rounded-lg border transition-all ${
 										selectedApp?.id === app.id
-											? "border-indigo-500 bg-indigo-50/10 dark:bg-indigo-950/20"
+											? "border-indigo-500 bg-indigo-50/5 dark:bg-indigo-950/20 shadow-sm"
 											: "border-border hover:border-muted-foreground/40 bg-background"
 									}`}
 								>
@@ -256,14 +401,16 @@ export default function WebBuilderPage() {
 											className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
 												app.status === "published"
 													? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
-													: "bg-muted text-muted-foreground"
+													: "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
 											}`}
 										>
-											{app.status}
+											{app.status === "published" ? "Live HTTPS" : "Local Ready"}
 										</span>
 									</div>
 									<p className="text-xs text-muted-foreground truncate">
-										{app.slug}.apps.nowing.net
+										{app.status === "published" && app.public_url
+											? app.public_url
+											: `${app.slug}.apps.nowing.net`}
 									</p>
 								</button>
 							))}
@@ -271,97 +418,241 @@ export default function WebBuilderPage() {
 					</div>
 				</div>
 
-				{/* Right Column: Live Canvas Preview / Mark Tool */}
+				{/* Right Column: Live Streaming Terminal / Canvas Preview / Code Viewer */}
 				<div className="lg:col-span-8 flex flex-col rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-					{selectedApp ? (
-						<div className="flex flex-col h-full">
-							{/* Preview Bar */}
-							<div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-muted/30">
-								<div className="flex items-center gap-2">
-									<Globe className="w-4 h-4 text-muted-foreground" />
-									<span className="text-xs font-mono text-foreground font-medium">
-										{selectedApp.public_url || `https://${selectedApp.slug}.apps.nowing.net`}
+					{isStreaming ? (
+						/* Live SSE Streaming Terminal & File Progress */
+						<div className="flex flex-col h-full bg-slate-950 text-slate-100 p-5 space-y-4 font-mono text-xs overflow-hidden">
+							{/* Live Banner */}
+							<div className="flex items-center justify-between border-b border-slate-800 pb-3">
+								<div className="flex items-center gap-2 text-indigo-400">
+									<Loader2 className="w-4 h-4 animate-spin" />
+									<span className="font-semibold uppercase tracking-wider">
+										AI Web Builder — {streamPhase || "Streaming"}
 									</span>
 								</div>
-								{selectedApp.public_url && (
-									<a
-										href={selectedApp.public_url}
-										target="_blank"
-										rel="noreferrer"
-										className="text-xs text-indigo-500 hover:text-indigo-600 flex items-center gap-1 font-medium"
-									>
-										Open Live
-										<ExternalLink className="w-3 h-3" />
-									</a>
-								)}
+								<span className="text-slate-400">{streamMessage}</span>
 							</div>
 
-							{/* Mark Tool Quick Inspector Box */}
+							{/* Written Files Progress Checklist */}
+							{streamFiles.length > 0 && (
+								<div className="flex flex-wrap gap-2 py-1">
+									{streamFiles.map((file) => (
+										<span
+											key={file}
+											className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-950/80 text-indigo-300 border border-indigo-800/60 text-[11px]"
+										>
+											<FileCode className="w-3 h-3 text-indigo-400" />
+											{file}
+										</span>
+									))}
+								</div>
+							)}
+
+							{/* Live Code Stream Output */}
+							<div className="flex-1 overflow-y-auto rounded-lg bg-slate-900/90 border border-slate-800/80 p-4 leading-relaxed whitespace-pre-wrap select-text">
+								{streamTokens || "Connecting to model stream..."}
+							</div>
+						</div>
+					) : selectedApp ? (
+						<div className="flex flex-col h-full">
+							{/* Preview & View Controls Bar */}
+							<div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/40 gap-4">
+								{/* URL Display with Status Badge */}
+								<div className="flex items-center gap-2 flex-1 min-w-0">
+									<Globe className="w-4 h-4 text-muted-foreground shrink-0" />
+									<span
+										className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-medium shrink-0 ${
+											selectedApp.status === "published"
+												? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
+												: "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+										}`}
+									>
+										{selectedApp.status === "published" ? "LIVE HTTPS" : "LOCAL PREVIEW"}
+									</span>
+									<span className="text-xs font-mono text-foreground font-medium truncate">
+										{currentDisplayUrl}
+									</span>
+								</div>
+
+								{/* Controls: Tab Switcher, Device Switcher, Refresh, External */}
+								<div className="flex items-center gap-2 shrink-0">
+									{/* Device Mode Switcher */}
+									<div className="flex items-center bg-background border border-border rounded-lg p-0.5">
+										<button
+											type="button"
+											onClick={() => setDeviceMode("desktop")}
+											className={`p-1 rounded ${
+												deviceMode === "desktop"
+													? "bg-muted text-foreground"
+													: "text-muted-foreground hover:text-foreground"
+											}`}
+											title="Desktop View (100%)"
+										>
+											<Monitor className="w-3.5 h-3.5" />
+										</button>
+										<button
+											type="button"
+											onClick={() => setDeviceMode("tablet")}
+											className={`p-1 rounded ${
+												deviceMode === "tablet"
+													? "bg-muted text-foreground"
+													: "text-muted-foreground hover:text-foreground"
+											}`}
+											title="Tablet View (768px)"
+										>
+											<Tablet className="w-3.5 h-3.5" />
+										</button>
+										<button
+											type="button"
+											onClick={() => setDeviceMode("mobile")}
+											className={`p-1 rounded ${
+												deviceMode === "mobile"
+													? "bg-muted text-foreground"
+													: "text-muted-foreground hover:text-foreground"
+											}`}
+											title="Mobile View (375px)"
+										>
+											<Smartphone className="w-3.5 h-3.5" />
+										</button>
+									</div>
+
+									{/* Tab Switcher: Preview vs Code */}
+									<div className="flex items-center bg-background border border-border rounded-lg p-0.5">
+										<button
+											type="button"
+											onClick={() => setActiveTab("preview")}
+											className={`flex items-center gap-1 px-2 py-1 text-xs rounded font-medium ${
+												activeTab === "preview"
+													? "bg-indigo-600 text-white"
+													: "text-muted-foreground hover:text-foreground"
+											}`}
+										>
+											<Eye className="w-3.5 h-3.5" />
+											Preview
+										</button>
+										<button
+											type="button"
+											onClick={() => setActiveTab("code")}
+											className={`flex items-center gap-1 px-2 py-1 text-xs rounded font-medium ${
+												activeTab === "code"
+													? "bg-indigo-600 text-white"
+													: "text-muted-foreground hover:text-foreground"
+											}`}
+										>
+											<Code className="w-3.5 h-3.5" />
+											Code
+										</button>
+									</div>
+
+									{/* Refresh Iframe */}
+									<button
+										type="button"
+										onClick={() => setIframeKey((prev) => prev + 1)}
+										className="p-1.5 rounded-lg border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+										title="Reload Preview"
+									>
+										<RefreshCw className="w-3.5 h-3.5" />
+									</button>
+
+									{/* External Link */}
+									<a
+										href={localPreviewUrl}
+										target="_blank"
+										rel="noreferrer"
+										className="p-1.5 rounded-lg border border-border bg-background hover:bg-muted text-indigo-500 hover:text-indigo-600 transition-colors"
+										title="Open In New Window"
+									>
+										<ExternalLink className="w-3.5 h-3.5" />
+									</a>
+								</div>
+							</div>
+
+							{/* Mark Tool Quick Inspector Bar */}
 							{isMarkToolActive && (
 								<div className="p-3 bg-indigo-50/20 dark:bg-indigo-950/30 border-b border-indigo-500/30 flex items-center gap-3">
 									<input
 										type="text"
-										placeholder="DOM Selector (e.g. #hero-title or h1)"
+										placeholder="DOM Selector (e.g. #hero-title or h1) — Click element in preview to select"
 										value={selectedSelector}
 										onChange={(e) => setSelectedSelector(e.target.value)}
-										className="text-xs px-2.5 py-1.5 rounded border border-border bg-background flex-1"
+										className="text-xs px-2.5 py-1.5 rounded border border-border bg-background flex-1 focus:ring-1 focus:ring-indigo-500"
 									/>
 									<input
 										type="text"
 										placeholder="New Text Content..."
 										value={patchText}
 										onChange={(e) => setPatchText(e.target.value)}
-										className="text-xs px-2.5 py-1.5 rounded border border-border bg-background flex-1"
+										className="text-xs px-2.5 py-1.5 rounded border border-border bg-background flex-1 focus:ring-1 focus:ring-indigo-500"
 									/>
 									<button
 										type="button"
 										onClick={() => markToolMutation.mutate()}
 										disabled={markToolMutation.isPending || !selectedSelector}
-										className="px-3 py-1.5 text-xs font-medium bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
+										className="px-3 py-1.5 text-xs font-medium bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50 transition-colors"
 									>
 										{markToolMutation.isPending ? "Patching..." : "Apply Patch"}
 									</button>
 								</div>
 							)}
 
-							{/* Canvas Frame */}
-							<div className="flex-1 bg-neutral-900 flex items-center justify-center p-4">
-								<div className="w-full h-full bg-white dark:bg-neutral-950 rounded-lg shadow-lg border border-border/40 flex flex-col items-center justify-center text-center p-8">
-									<div className="max-w-md space-y-4">
-										<div className="w-12 h-12 rounded-full bg-indigo-500/10 text-indigo-500 flex items-center justify-center mx-auto">
-											<Code className="w-6 h-6" />
-										</div>
-										<h2 className="text-lg font-bold text-foreground">{selectedApp.name}</h2>
-										<p className="text-xs text-muted-foreground">
-											Preview Canvas is ready. The standalone Next.js container has been compiled
-											and routed for workspace {selectedApp.workspace_id}.
-										</p>
-										{selectedApp.public_url && (
-											<div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between text-xs text-emerald-600 font-mono">
-												<span className="truncate">{selectedApp.public_url}</span>
-												<button
-													type="button"
-													onClick={() => {
-														if (selectedApp.public_url) {
-															navigator.clipboard.writeText(selectedApp.public_url);
-															toast.success("Copied to clipboard!");
-														}
-													}}
-													className="p-1 hover:bg-emerald-500/20 rounded"
-												>
-													<Copy className="w-3.5 h-3.5" />
-												</button>
-											</div>
-										)}
+							{/* Canvas Frame or Code Viewer */}
+							{activeTab === "preview" ? (
+								<div className="flex-1 bg-neutral-900/90 flex items-center justify-center p-3 overflow-hidden">
+									<div
+										className={`h-full bg-slate-950 rounded-lg shadow-2xl border border-border/40 overflow-hidden transition-all duration-300 ${
+											deviceMode === "desktop"
+												? "w-full"
+												: deviceMode === "tablet"
+													? "w-[768px]"
+													: "w-[375px]"
+										}`}
+									>
+										<iframe
+											key={`${selectedApp.id}-${iframeKey}`}
+											id="web-builder-preview-iframe"
+											src={localPreviewUrl}
+											title={selectedApp.name}
+											className="w-full h-full border-0 bg-slate-950"
+										/>
 									</div>
 								</div>
-							</div>
+							) : (
+								/* Code Viewer Tab */
+								<div className="flex-1 flex flex-col bg-slate-950 text-slate-100 overflow-hidden">
+									{/* File Tabs */}
+									<div className="flex items-center gap-1 px-4 py-2 border-b border-slate-800 bg-slate-900/80 overflow-x-auto">
+										{Object.keys(appFiles).map((path) => (
+											<button
+												type="button"
+												key={path}
+												onClick={() => setSelectedFile(path)}
+												className={`flex items-center gap-1.5 px-3 py-1 text-xs rounded-md transition-colors ${
+													selectedFile === path
+														? "bg-indigo-600 text-white font-medium shadow-sm"
+														: "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+												}`}
+											>
+												<FileCode className="w-3.5 h-3.5" />
+												{path}
+											</button>
+										))}
+									</div>
+
+									{/* Code Content */}
+									<div className="flex-1 p-4 overflow-y-auto font-mono text-xs leading-relaxed selection:bg-indigo-500 selection:text-white">
+										<pre className="text-slate-200">
+											{appFiles[selectedFile] || "// File empty or loading..."}
+										</pre>
+									</div>
+								</div>
+							)}
 						</div>
 					) : (
 						<div className="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-3 text-muted-foreground">
 							<Sparkles className="w-10 h-10 text-muted-foreground/40 stroke-1" />
 							<p className="text-sm">
-								Select or generate a project on the left to start editing and previewing.
+								Enter a prompt on the left and click Generate App to start live building.
 							</p>
 						</div>
 					)}

@@ -50,7 +50,10 @@ def test_record_memory_injection_failure_logs_and_counts_once(
 
     records = [r for r in caplog.records if r.name == "memory_injection.failure"]
     assert len(records) == 1
-    assert records[0].message == "memory_injection.failure"
+    assert records[0].message.startswith("memory_injection.failure")
+    assert "scope=user" in records[0].message
+    assert "stage=search" in records[0].message
+    assert "reason=query_error" in records[0].message
     assert records[0].scope == "user"
     assert records[0].stage == "search"
     assert records[0].reason == "query_error"
@@ -69,7 +72,8 @@ def test_record_memory_injection_truncated_logs_and_counts_once(
 
     records = [r for r in caplog.records if r.name == "memory_injection.truncated"]
     assert len(records) == 1
-    assert records[0].message == "memory_injection.truncated"
+    assert records[0].message.startswith("memory_injection.truncated")
+    assert "scope=team" in records[0].message
     assert records[0].scope == "team"
 
 

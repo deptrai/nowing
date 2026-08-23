@@ -19,6 +19,7 @@ import {
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { HumanLiveTakeoverPopover } from "@/components/dsh/HumanLiveTakeoverPopover";
 import type {
 	DshMission,
 	DshMissionControl,
@@ -233,6 +234,7 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 	});
 	const [expandedReasoning, setExpandedReasoning] = useState<Set<string>>(new Set());
 	const [resumingTakeover, setResumingTakeover] = useState(false);
+	const [releasingTakeover, setReleasingTakeover] = useState(false);
 	const [takeoverError, setTakeoverError] = useState<string | null>(null);
 
 	// Re-expand the current subtask when it changes.
@@ -336,6 +338,22 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 		}
 	};
 
+	const handleReleaseTakeover = async () => {
+		if (!latestMission?.id) return;
+		setTakeoverError(null);
+		setReleasingTakeover(true);
+		try {
+			await dshApiService.pauseMission(latestMission.id);
+			toast.success("Đã gia hạn quyền điều khiển thêm 15 phút");
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : "Không thể gia hạn";
+			setTakeoverError(msg);
+			toast.error(msg);
+		} finally {
+			setReleasingTakeover(false);
+		}
+	};
+
 	if (!loading && status === "idle" && !latestMission) {
 		return null;
 	}
@@ -391,29 +409,16 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 				</div>
 			</div>
 
-			{phase === "waiting_for_human" && latestMission && (
-				<div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
-					<div className="flex items-start justify-between gap-3">
-						<div>
-							<p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
-								Human Live Takeover
-							</p>
-							<p className="text-xs text-amber-700/80 dark:text-amber-400/80 mt-0.5">
-								Agent gặp CAPTCHA/2FA trên trình duyệt. Hãy xử lý thủ công, sau đó trả quyền điều
-								khiển.
-							</p>
-							{takeoverError && <p className="text-xs text-red-600 mt-1">{takeoverError}</p>}
-						</div>
-						<button
-							type="button"
-							disabled={resumingTakeover}
-							onClick={handleResumeTakeover}
-							className="shrink-0 px-3 py-1.5 rounded-md bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium disabled:opacity-50"
-						>
-							{resumingTakeover ? "Đang resume..." : "Trả quyền cho Agent"}
-						</button>
-					</div>
-				</div>
+			{phase === "waiting_for_human" && latestMission && missionControl && (
+				<HumanLiveTakeoverPopover
+					mission={latestMission}
+					missionControl={missionControl}
+					onResume={handleResumeTakeover}
+					onRelease={handleReleaseTakeover}
+					resuming={resumingTakeover}
+					releasing={releasingTakeover}
+					error={takeoverError}
+				/>
 			)}
 
 			{error && (

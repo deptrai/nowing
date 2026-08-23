@@ -90,3 +90,22 @@ export interface MarkToolOutput {
 	patched_code?: string;
 	message?: string;
 }
+
+export type WebBuilderStreamEvent =
+	| { type: "phase"; phase: string; message: string }
+	| { type: "token"; token: string }
+	| { type: "file_written"; path: string; size?: number }
+	| {
+			type: "complete";
+			app: {
+				id: string;
+				workspace_id: number;
+				name: string;
+				slug: string;
+				status: WebAppStatus;
+				preview_url?: string;
+				public_url?: string;
+				files: string[];
+				message?: string;
+			};
+	  };

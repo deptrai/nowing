@@ -473,12 +473,17 @@ async def cdp_stream(request: Request, auth: AuthContext = Depends(get_auth_cont
 
 
 def _redact_cdp_result_value(value):
-    """Recursively redact PII from CDP result values before Redis storage."""
+    """Recursively redact PII from CDP result values before Redis storage.
+
+    Fail-soft: if redaction fails, log the incident and replace the value with
+    a marker rather than aborting the CDP result pipeline.
+    """
     if isinstance(value, str):
         try:
             return redact_pii(value, context="lead_enrichment").text
-        except Exception:
-            return "[REDACTED]"
+        except Exception as exc:
+            logger.warning("PII redaction failed for CDP result value: %s", exc)
+            return "<redaction_failed>"
     if isinstance(value, dict):
         return {k: _redact_cdp_result_value(v) for k, v in value.items()}
     if isinstance(value, list):
@@ -546,6 +551,16 @@ async def pause_mission(
     mission.phase = "waiting_for_human"
     mission.current_subtask_id = "cdp_crawl"
     mission.updated_at = datetime.now(UTC)
+
+    # Extend the takeover checkpoint so the UI countdown resets to a full 15 minutes.
+    checkpoint = mission.checkpoint if isinstance(mission.checkpoint, dict) else {}
+    now = datetime.now(UTC)
+    takeover = checkpoint.get("takeover") or {}
+    if isinstance(takeover, dict):
+        takeover["expires_at"] = (now + timedelta(seconds=900)).isoformat()
+        takeover["extended_at"] = now.isoformat()
+        checkpoint["takeover"] = takeover
+    mission.checkpoint = checkpoint
     session.add(mission)
 
     # Set 15-minute takeover TTL before committing so the lock and DB state are consistent.
@@ -596,6 +611,12 @@ async def resume_mission(
 
     mission.phase = "crawl"
     mission.updated_at = datetime.now(UTC)
+
+    # Clear the takeover metadata so the UI no longer shows the Human Live Takeover popover.
+    checkpoint = mission.checkpoint if isinstance(mission.checkpoint, dict) else {}
+    if "takeover" in checkpoint:
+        checkpoint["takeover"] = None
+    mission.checkpoint = checkpoint
     session.add(mission)
 
     service = DshMissionService()
