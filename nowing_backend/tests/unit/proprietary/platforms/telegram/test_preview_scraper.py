@@ -223,3 +223,108 @@ def test_parse_messages_album_single_query_param() -> None:
     messages = parse_messages(html, channel_username="testchan")
     assert len(messages) == 1
     assert messages[0].message_id == 9999
+
+
+@pytest.mark.unit
+def test_parse_messages_non_text_and_album() -> None:
+    """AC-3: photo/sticker without caption, edited posts, and album ?single."""
+    html = """
+    <div class="tgme_channel_info">
+      <div class="tgme_channel_info_title"><span dir="auto">Edge Channel</span></div>
+    </div>
+    <div class="tgme_channel_history">
+      <!-- Photo without caption -->
+      <div class="tgme_widget_message_wrap" data-post="edgechan/2001">
+        <div class="tgme_widget_message" data-post="edgechan/2001">
+          <div class="tgme_widget_message_photo_wrap" style="background-image:url('https://cdn.telegram.org/photo2001.jpg')"></div>
+          <div class="tgme_widget_message_footer">
+            <div class="tgme_widget_message_info">
+              <span class="tgme_widget_message_views">1.2K</span>
+              <span class="tgme_widget_message_meta">
+                <a class="tgme_widget_message_date" href="https://t.me/edgechan/2001">
+                  <time datetime="2026-08-15T10:00:00+00:00">10:00</time>
+                </a>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Album with ?single -->
+      <div class="tgme_widget_message_wrap" data-post="edgechan/2002?single">
+        <div class="tgme_widget_message" data-post="edgechan/2002?single">
+          <div class="tgme_widget_message_text js-message_text" dir="auto">Album post caption</div>
+          <div class="tgme_widget_message_footer">
+            <div class="tgme_widget_message_info">
+              <span class="tgme_widget_message_views">500</span>
+              <span class="tgme_widget_message_meta">
+                <a class="tgme_widget_message_date" href="https://t.me/edgechan/2002?single">
+                  <time datetime="2026-08-15T10:05:00+00:00">10:05</time>
+                </a>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Edited post with text -->
+      <div class="tgme_widget_message_wrap" data-post="edgechan/2003">
+        <div class="tgme_widget_message" data-post="edgechan/2003">
+          <div class="tgme_widget_message_text js-message_text" dir="auto">
+            Tin tức thị trường tháng 8/2026.
+          </div>
+          <div class="tgme_widget_message_footer">
+            <div class="tgme_widget_message_info">
+              <span class="tgme_widget_message_views">3.1K</span>
+              <span class="tgme_widget_message_meta">
+                <a class="tgme_widget_message_date" href="https://t.me/edgechan/2003">
+                  <time datetime="2026-08-15T10:10:00+00:00">10:10</time>
+                </a>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    """
+    messages = parse_messages(html, channel_username="edgechan")
+    assert len(messages) == 3
+
+    photo_msg = next(m for m in messages if m.message_id == 2001)
+    assert photo_msg.text == ""
+    assert photo_msg.has_media is True
+    assert any("photo2001.jpg" in url for url in photo_msg.media_urls)
+
+    album_msg = next(m for m in messages if m.message_id == 2002)
+    assert album_msg.message_id == 2002
+    assert "Album post caption" in album_msg.text
+
+    edited_msg = next(m for m in messages if m.message_id == 2003)
+    assert "Tin tức thị trường" in edited_msg.text
+    assert edited_msg.has_media is False
+
+
+@pytest.mark.unit
+@respx.mock
+async def test_scrape_channel_retries_429_503_with_backoff() -> None:
+    """AC-2: scraper retries with exponential backoff on 429 / 503."""
+    call_count = 0
+
+    def _responses(request: httpx.Request) -> httpx.Response:
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            return httpx.Response(429, text="Too Many Requests")
+        if call_count == 2:
+            return httpx.Response(503, text="Service Unavailable")
+        return httpx.Response(200, text=SAMPLE_PREVIEW_HTML)
+
+    respx.get("https://t.me/s/batdongsanhanoi").mock(side_effect=_responses)
+
+    scraper = TelegramWebPreviewScraper()
+    result = await scraper.scrape_channel("batdongsanhanoi")
+
+    assert call_count >= 2
+    assert result.channel_info.username == "batdongsanhanoi"
+    assert result.channel_info.title == "Bất Động Sản Hà Nội 2026"
+    assert len(result.messages) == 3
