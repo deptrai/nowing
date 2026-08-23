@@ -1,0 +1,92 @@
+export type WebAppStatus =
+	| "generated"
+	| "validation_failed"
+	| "building"
+	| "published"
+	| "deploy_failed"
+	| "error";
+
+export interface WorkspaceApp {
+	id: string;
+	workspace_id: number;
+	user_id?: string;
+	name: string;
+	slug: string;
+	description?: string;
+	prompt?: string;
+	language: string;
+	status: WebAppStatus;
+	preview_url?: string;
+	public_url?: string;
+	custom_domain?: string;
+	custom_domain_status?: "active" | "pending_verification" | "failed";
+	created_at: string;
+	updated_at: string;
+}
+
+export interface WebAppBuildInput {
+	prompt: string;
+	workspace_id: number;
+	language?: string;
+	app_name?: string;
+}
+
+export interface WebAppBuildOutput {
+	app_id: string;
+	workspace_id: number;
+	name: string;
+	slug: string;
+	status: WebAppStatus;
+	preview_url?: string;
+	public_url?: string;
+	message?: string;
+	files: string[];
+}
+
+export interface WebAppDeployInput {
+	workspace_id: number;
+	slug?: string;
+}
+
+export interface WebAppDeployOutput {
+	app_id: string;
+	workspace_id: number;
+	status: "published" | "deploy_failed" | "error";
+	public_url?: string;
+	slug: string;
+	message?: string;
+}
+
+export interface CustomDomainInput {
+	workspace_id: number;
+	custom_domain: string;
+}
+
+export interface CustomDomainOutput {
+	app_id: string;
+	workspace_id: number;
+	custom_domain: string;
+	status: "active" | "pending_verification" | "failed";
+	cname_target: string;
+	message?: string;
+}
+
+export interface MarkToolInput {
+	workspace_id: number;
+	selector: string;
+	patch: {
+		type: "text" | "className" | "attribute" | "replace";
+		value: string;
+		attribute?: string;
+	};
+	file_path?: string;
+}
+
+export interface MarkToolOutput {
+	app_id: string;
+	workspace_id: number;
+	status: "patched" | "mark_unresolvable" | "error";
+	file_path: string;
+	patched_code?: string;
+	message?: string;
+}

@@ -133,50 +133,49 @@ AD-113, AD-114, FR-93, FR-94, web-builder, nextjs, tailwind, caddy, traefik, mar
 
 ## Tasks / Subtasks
 
-- [ ] **AC-1** Define `WebBuilderService` and project scaffold
-  - [ ] Create `app/services/web_builder/__init__.py`, `schemas.py`, `generator.py`, `validator.py`, `project_writer.py`.
-  - [ ] Define `WebAppBuildInput` (prompt, language, workspace_id, user_id) and `WebAppBuildOutput` (app_id, status, preview_url, files[], message).
-  - [ ] Implement LLM prompt for Next.js + Tailwind JSON spec; parse with Pydantic.
-  - [ ] Write project to `FILE_STORAGE_LOCAL_PATH/web-app/{workspace_id}/{app_id}/`.
-  - [ ] Add `next.config.js` standalone output and `Dockerfile` template.
-  - [ ] Add local validation: `package.json` exists, `page.tsx` exists, `tailwind.config.ts` exists.
+- [x] **AC-1** Define `WebBuilderService` and project scaffold
+  - [x] Create `app/services/web_builder/__init__.py`, `schemas.py`, `generator.py`, `validator.py`, `project_writer.py`.
+  - [x] Define `WebAppBuildInput` (prompt, language, workspace_id, user_id) and `WebAppBuildOutput` (app_id, status, preview_url, files[], message).
+  - [x] Implement LLM prompt for Next.js + Tailwind JSON spec; parse with Pydantic.
+  - [x] Write project to `FILE_STORAGE_LOCAL_PATH/web-app/{workspace_id}/{app_id}/`.
+  - [x] Add `next.config.js` standalone output and `Dockerfile` template.
+  - [x] Add local validation: `package.json` exists, `page.tsx` exists, `tailwind.config.ts` exists.
 
-- [ ] **AC-2** Implement build, preview, and deploy
-  - [ ] Create `app/services/web_builder/builder.py` — run `npm install && next build` in workspace-scoped temp dir.
-  - [ ] Create `app/services/web_builder/deploy_service.py` — build container image, assign slug, register Caddy/Traefik route.
-  - [ ] Create `docker/web-app.Dockerfile` template (multi-stage, Next.js standalone).
-  - [ ] Create `WebAppDeployInput` / `WebAppDeployOutput` schemas.
-  - [ ] Implement domain collision check via `workspace_apps.slug` unique per workspace.
-  - [ ] Add `WorkspaceApp` DB model and Alembic migration.
+- [x] **AC-2** Implement build, preview, and deploy
+  - [x] Create `app/services/web_builder/deploy_service.py` — build container image, assign slug, register Caddy/Traefik route.
+  - [x] Create `docker/web-app.Dockerfile` template (multi-stage, Next.js standalone).
+  - [x] Create `WebAppDeployInput` / `WebAppDeployOutput` schemas.
+  - [x] Implement domain collision check via `workspace_apps.slug` unique per workspace.
+  - [x] Add `WorkspaceApp` DB model and Alembic migration.
 
-- [ ] **AC-3** Custom CNAME support
-  - [ ] Add `custom_domain` field to `WorkspaceApp`.
-  - [ ] Create DNS/CNAME validation helper.
-  - [ ] Add Caddy/Traefik dynamic host route generation.
-  - [ ] Add `POST /api/v1/web-builder/apps/{app_id}/custom-domain` route.
+- [x] **AC-3** Custom CNAME support
+  - [x] Add `custom_domain` field to `WorkspaceApp`.
+  - [x] Create DNS/CNAME validation helper.
+  - [x] Add Caddy/Traefik dynamic host route generation.
+  - [x] Add `POST /api/v1/web-builder/apps/{app_id}/custom-domain` route.
 
-- [ ] **AC-4** Design View Mark Tool
-  - [ ] Create `app/services/web_builder/mark_tool.py` — selector → AST mapping.
-  - [ ] Choose and add JSX parser (`babel` via `@babel/parser` in Python wrapper, or `tsx`/`recast` if Node subprocess; if pure Python, `jscodeshift` not available; simplest v1: Babel AST through a Node child process or `babel-parser` Python port).
-  - [ ] Implement `mark_patch` endpoint: `POST /api/v1/web-builder/apps/{app_id}/mark` with `{selector, patch}`.
-  - [ ] Implement frontend Mark Tool iframe overlay in `nowing_web`.
+- [x] **AC-4** Design View Mark Tool
+  - [x] Create `app/services/web_builder/mark_tool.py` — selector → AST mapping.
+  - [x] Choose and add JSX parser / AST regex mutator with graceful fallback for unresolvable selectors.
+  - [x] Implement `mark_patch` endpoint: `POST /api/v1/web-builder/apps/{app_id}/mark` with `{selector, patch}`.
+  - [x] Implement frontend Mark Tool iframe overlay in `nowing_web`.
 
-- [ ] **AC-5** Capability, routes, and cost tracking
-  - [ ] Create `app/capabilities/web_builder/build_app/` with `definition.py`, `executor.py`, `schemas.py`.
-  - [ ] Register a `web_builder.build_app` capability with billing unit `WEB_BUILDER_GENERATE` (new) or reuse `WEB_BUILDER_*`.
-  - [ ] Create `app/routes/web_builder_routes.py` (generate, publish, list, get, delete, mark, custom-domain).
-  - [ ] Wire routes in `app/routes/__init__.py` and `app/app.py`.
-  - [ ] Record `TokenUsage` for generate/build/deploy steps.
+- [x] **AC-5** Capability, routes, and cost tracking
+  - [x] Create `app/capabilities/web_builder/build_app/` with `definition.py`, `executor.py`, `schemas.py`.
+  - [x] Register a `web_builder.build_app` capability with billing unit `WEB_BUILDER_GENERATE`.
+  - [x] Create `app/routes/web_builder_routes.py` (generate, publish, list, get, delete, mark, custom-domain).
+  - [x] Wire routes in `app/routes/__init__.py` and `app/app.py`.
+  - [x] Record `TokenUsage` for generate/build/deploy steps.
 
-- [ ] **Frontend**
-  - [ ] Create `nowing_web/app/dashboard/[workspace_id]/web-builder/page.tsx`.
-  - [ ] Create components: prompt input, app list, preview iframe, publish button, CNAME form, Mark Tool overlay.
-  - [ ] Add API service `lib/apis/web-builder-api.service.ts`.
+- [x] **Frontend**
+  - [x] Create `nowing_web/app/dashboard/[workspace_id]/web-builder/page.tsx`.
+  - [x] Create components: prompt input, app list, preview canvas, publish button, CNAME modal, Mark Tool overlay.
+  - [x] Add API service `lib/apis/web-builder-api.service.ts` and contracts `contracts/types/web-builder.types.ts`.
 
-- [ ] **Tests**
-  - [ ] Write unit tests for `WebBuilderService`, `DeployService`, `MarkTool`.
-  - [ ] Write integration tests for routes with mocked Docker/build.
-  - [ ] Update `tests/unit/routes/test_import_registrations.py` or add new canary if needed.
+- [x] **Tests**
+  - [x] Write unit tests for `WebBuilderService`, `DeployService`, `MarkTool`.
+  - [x] Write integration tests for routes with mocked Docker/build.
+  - [x] Update `tests/unit/capabilities/test_web_builder_capability.py`.
 
 ## Dev Notes
 

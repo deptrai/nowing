@@ -12,7 +12,6 @@ pytestmark = [pytest.mark.unit]
 class TestMarkToolASTMutator:
     """AC-4: Mark Tool AST Mutation tests."""
 
-    @pytest.mark.skip(reason="RED-PHASE: MarkToolASTMutator not yet implemented")
     def test_map_selector_to_jsx_node_and_apply_text_patch(self):
         """AC-4: Given a CSS selector / XPath and text patch, mutator updates JSX AST correctly."""
         from app.services.web_builder.mark_tool import MarkToolASTMutator
@@ -39,7 +38,6 @@ class TestMarkToolASTMutator:
         assert "Updated Hero Headline" in result.patched_code
         assert "Original Title" not in result.patched_code
 
-    @pytest.mark.skip(reason="RED-PHASE: MarkToolASTMutator not yet implemented")
     def test_map_selector_apply_style_patch(self):
         """AC-4: Given a selector and style patch, mutator updates className attributes."""
         from app.services.web_builder.mark_tool import MarkToolASTMutator
@@ -54,13 +52,15 @@ class TestMarkToolASTMutator:
         result = mutator.apply_patch(
             jsx_code=sample_jsx,
             selector="#cta-btn",
-            patch={"type": "className", "value": "bg-emerald-600 text-white font-semibold"},
+            patch={
+                "type": "className",
+                "value": "bg-emerald-600 text-white font-semibold",
+            },
         )
 
         assert result.status == "patched"
         assert "bg-emerald-600" in result.patched_code
 
-    @pytest.mark.skip(reason="RED-PHASE: MarkToolASTMutator not yet implemented")
     def test_unresolvable_selector_returns_graceful_status(self):
         """AC-4: Given a selector not matching any JSX node, return status mark_unresolvable without mutating."""
         from app.services.web_builder.mark_tool import MarkToolASTMutator

@@ -135,6 +135,7 @@ from .team_memory_routes import router as team_memory_router
 from .teams_add_connector_route import router as teams_add_connector_router
 from .usage_routes import router as usage_router
 from .video_presentations_routes import router as video_presentations_router
+from .web_builder_routes import router as web_builder_router
 from .workspace_tables_routes import router as workspace_tables_router
 from .workspaces_routes import router as workspaces_router
 from .youtube_routes import router as youtube_router
@@ -253,4 +254,5 @@ router.include_router(team_memory_router)  # Workspace team memory
 router.include_router(automations_router)  # Automations CRUD + run history
 router.include_router(file_storage_router)  # Original file metadata + download
 router.include_router(extract_entities_router)  # Test entity extraction (AC-1 / AD-107)
+router.include_router(web_builder_router)  # Full-stack Web App Builder (Story 27.1 / AD-113)
 router.include_router(build_capabilities_router())  # Scraper-API capability doors (05)

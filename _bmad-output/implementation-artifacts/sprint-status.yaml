@@ -298,7 +298,7 @@ development_status:
 
   # === Epic 27: Full-Stack Web App Builder, Instant Hosting & Creative Studio ===
   epic-27: in-progress
-  27-1: ready-for-dev  # Full-Stack Web App Builder, 1-Click Hosting *.apps.nowing.net & Design View Mark Tool (AD-113, AD-114) — story file validated/expanded with full ACs, file structure, testing, and AD-113/Caddy conflict note.
+  27-1: review  # Full-Stack Web App Builder, 1-Click Hosting *.apps.nowing.net & Design View Mark Tool (AD-113, AD-114) — story file validated/expanded with full ACs, file structure, testing, and AD-113/Caddy conflict note.
   27-2: ready-for-dev  # Manus Slides + Speaker Diarization — split into PPTX/Marp export and diarization; reuse video_presentation/reports/stt_service
   epic-27-retrospective: optional
 

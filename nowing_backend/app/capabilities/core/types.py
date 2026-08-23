@@ -53,6 +53,7 @@ class BillingUnit(StrEnum):
     SOCIAL_LEAD_ITEM = "social_lead_item"
     TELEGRAM_MESSAGE = "telegram_message"
     ECOMMERCE_PRODUCT = "ecommerce_product"
+    WEB_BUILDER_GENERATE = "web_builder_generate"
 
 
 class BillableInput(Protocol):

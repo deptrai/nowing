@@ -1,0 +1,117 @@
+"""Project file writer with path traversal protection (Story 27.1, AC-1)."""
+
+import os
+from pathlib import Path
+
+
+class ProjectWriter:
+    """Safely writes Next.js and Tailwind project files into a workspace-scoped directory."""
+
+    def __init__(self, base_path: str | Path):
+        self.base_path = Path(base_path).resolve()
+        self.base_path.mkdir(parents=True, exist_ok=True)
+
+    def write_file(self, relative_path: str, content: str) -> Path:
+        """Write content to a relative file path inside the project root.
+
+        Raises:
+            ValueError: If relative_path attempts to escape base_path (Path Traversal).
+        """
+        # Clean relative path
+        norm_rel = os.path.normpath(relative_path).lstrip("/\\")
+        target_path = (self.base_path / norm_rel).resolve()
+
+        # Enforce boundary: target_path must be within base_path
+        try:
+            target_path.relative_to(self.base_path)
+        except ValueError as err:
+            raise ValueError(f"Path traversal detected: {relative_path}") from err
+
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        target_path.write_text(content, encoding="utf-8")
+        return target_path
+
+    def ensure_scaffold_defaults(self, app_name: str, slug: str) -> list[str]:
+        """Ensure standard Next.js standalone and Tailwind configuration files exist."""
+        written_files = []
+
+        # 1. next.config.js (enforces standalone output for lightweight container deployment)
+        next_config_path = self.base_path / "next.config.js"
+        if not next_config_path.exists():
+            content = """/** @type {import('next').NextConfig} */
+const nextConfig = {
+  output: 'standalone',
+  reactStrictMode: true,
+};
+
+module.exports = nextConfig;
+"""
+            self.write_file("next.config.js", content)
+            written_files.append("next.config.js")
+
+        # 2. Dockerfile (production multi-stage container build template)
+        dockerfile_path = self.base_path / "Dockerfile"
+        if not dockerfile_path.exists():
+            content = """FROM node:20-alpine AS base
+
+FROM base AS deps
+WORKDIR /app
+COPY package.json package-lock.json* pnpm-lock.yaml* yarn.lock* ./
+RUN npm install
+
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN npm run build
+
+FROM base AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+
+EXPOSE 3000
+CMD ["node", "server.js"]
+"""
+            self.write_file("Dockerfile", content)
+            written_files.append("Dockerfile")
+
+        # 3. tailwind.config.ts
+        tailwind_path = self.base_path / "tailwind.config.ts"
+        if not tailwind_path.exists():
+            content = """import type { Config } from 'tailwindcss';
+
+export default {
+  content: [
+    './app/**/*.{js,ts,jsx,tsx,mdx}',
+    './components/**/*.{js,ts,jsx,tsx,mdx}',
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+} satisfies Config;
+"""
+            self.write_file("tailwind.config.ts", content)
+            written_files.append("tailwind.config.ts")
+
+        # 4. postcss.config.mjs
+        postcss_path = self.base_path / "postcss.config.mjs"
+        if not postcss_path.exists():
+            content = """const config = {
+  plugins: {
+    tailwindcss: {},
+  },
+};
+export default config;
+"""
+            self.write_file("postcss.config.mjs", content)
+            written_files.append("postcss.config.mjs")
+
+        return written_files

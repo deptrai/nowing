@@ -24,6 +24,7 @@ from app.capabilities import (
     vietstock as _vietstock,  # noqa: F401
     vn_jobs as _vn_jobs,  # noqa: F401
     walmart as _walmart,  # noqa: F401
+    web_builder as _web_builder,  # noqa: F401
 )
 
 __all__: list[str] = []

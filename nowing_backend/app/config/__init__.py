@@ -742,6 +742,10 @@ class Config:
         "FILE_STORAGE_LOCAL_PATH", str(BASE_DIR / ".local_object_store")
     )
 
+    # Instant web-app hosting / builder (Story 27.1)
+    HOSTING_BASE_DOMAIN = os.getenv("HOSTING_BASE_DOMAIN", "apps.nowing.net")
+    CNAME_INGRESS_HOST = os.getenv("CNAME_INGRESS_HOST", "ingress.nowing.net")
+
     # Daytona sandbox (code execution / filesystem sandbox)
     DAYTONA_SANDBOX_ENABLED = (
         os.getenv("DAYTONA_SANDBOX_ENABLED", "FALSE").upper() == "TRUE"
@@ -1796,6 +1800,15 @@ class Config:
     XACTIONS_FACEBOOK_C_USER = os.getenv("XACTIONS_FACEBOOK_C_USER", "")
     XACTIONS_FACEBOOK_XS = os.getenv("XACTIONS_FACEBOOK_XS", "")
 
+    # Web Builder & 1-Click Hosting (Story 27.1 / AD-113 / AD-114)
+    HOSTING_BASE_DOMAIN = os.getenv("HOSTING_BASE_DOMAIN", "apps.nowing.net")
+    CNAME_INGRESS_HOST = os.getenv(
+        "CNAME_INGRESS_HOST", "cname-ingress.apps.nowing.net"
+    )
+    FILE_STORAGE_LOCAL_PATH = os.getenv(
+        "FILE_STORAGE_LOCAL_PATH", "/app/.local_object_store"
+    )
+
     @classmethod
     def get_settings(cls):
         """Get all settings as a dictionary."""
@@ -1808,3 +1821,14 @@ class Config:
 
 # Create a config instance
 config = Config()
+
+HOSTING_BASE_DOMAIN = config.HOSTING_BASE_DOMAIN
+CNAME_INGRESS_HOST = config.CNAME_INGRESS_HOST
+FILE_STORAGE_LOCAL_PATH = config.FILE_STORAGE_LOCAL_PATH
+
+# Module-level re-exports for code that imports settings directly
+# (e.g., web builder / deployment service; these are aliases to the
+# canonical ``config`` instance above).
+CNAME_INGRESS_HOST = config.CNAME_INGRESS_HOST
+FILE_STORAGE_LOCAL_PATH = config.FILE_STORAGE_LOCAL_PATH
+HOSTING_BASE_DOMAIN = config.HOSTING_BASE_DOMAIN

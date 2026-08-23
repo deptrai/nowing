@@ -6546,3 +6546,65 @@ class SequenceEvent(Base):
     sequence = relationship(
         "Sequence", back_populates="events", overlaps="enrollment,events"
     )
+
+
+class WorkspaceApp(Base):
+    """Full-stack web application generated and deployed for a workspace (Story 27.1 / AD-113 / AD-114)."""
+
+    __tablename__ = "workspace_apps"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "slug", name="uq_workspace_apps_workspace_slug"),
+        Index("ix_workspace_apps_workspace_status", "workspace_id", "status"),
+        Index("ix_workspace_apps_custom_domain", "custom_domain"),
+    )
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    name = Column(String(255), nullable=False)
+    slug = Column(String(100), nullable=False, index=True)
+    description = Column(Text, nullable=True)
+    prompt = Column(Text, nullable=True)
+    language = Column(
+        String(10), nullable=False, default="en", server_default=text("'en'")
+    )
+    status = Column(
+        String(50), nullable=False, default="generated", server_default=text("'generated'")
+    )  # generated, building, published, deploy_failed, error
+    preview_url = Column(String(512), nullable=True)
+    public_url = Column(String(512), nullable=True)
+    custom_domain = Column(String(255), nullable=True)
+    custom_domain_status = Column(
+        String(50), nullable=True
+    )  # pending_verification, active, failed
+    storage_path = Column(String(512), nullable=True)
+    container_id = Column(String(100), nullable=True)
+    port = Column(Integer, nullable=True)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
+
+    workspace = relationship("Workspace", backref="apps")
+    user = relationship("User", backref="apps")
+
