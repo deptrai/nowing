@@ -1,12 +1,12 @@
 ---
 baseline_commit: 6158e7903
-status: review
+status: done
 story_key: 14-2b-news-entity-search
 ---
 
 # Story 14.2b: News Entity Search
 
-**Status:** `review`
+**Status:** `done`
 **Epic:** Epic 14 — News Aggregation (Vietnam)
 **Priority:** P1
 **Blocked by:** `chainlens-research` chưa hỗ trợ entity search / ingest với `metadata.entities` (theo dõi 2026-08-24). Nowing chỉ làm agent wiring và mock/stub; phần core entity linking/disambiguation thuộc engine.

@@ -5,7 +5,7 @@ Allows querying articles and named entities indexed by ChainLens Research.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -38,28 +38,49 @@ class EntitySearchInput(BaseModel):
         description="Maximum number of articles to return.",
     )
 
-    @field_validator("entity_name")
+    @field_validator("entity_name", mode="before")
     @classmethod
-    def validate_entity_name_non_empty(cls, v: str) -> str:
-        """Reject empty or whitespace-only entity names."""
+    def validate_entity_name_non_empty(cls, v: Any) -> str:
+        """Strip and reject empty or whitespace-only entity names."""
+        if not isinstance(v, str):
+            raise ValueError("entity_name must be a string")
         trimmed = v.strip()
         if not trimmed:
             raise ValueError("entity_name cannot be empty or whitespace")
         return trimmed
+
+    @field_validator("entity_type", mode="before")
+    @classmethod
+    def normalize_entity_type(cls, v: Any) -> str:
+        """Normalize entity_type to lowercase and stripped."""
+        if isinstance(v, str):
+            return v.strip().lower()
+        return v
+
+    @property
+    def estimated_units(self) -> int:
+        """Estimated billing units for capability gate checking."""
+        return 1
 
 
 class EntitySearchOutput(BaseModel):
     """Output containing matching articles with citations."""
 
     entity_name: str = Field(description="The queried entity name.")
-    entity_type: str = Field(description="The entity category filter applied.")
-    articles: list[Source] = Field(
+    entity_type: EntityType = Field(
+        default="all", description="The entity category filter applied."
+    )
+    sources: list[Source] = Field(
         default_factory=list,
-        description="List of citing news articles.",
+        description="List of citing news articles / sources.",
     )
     total_count: int = Field(
         default=0,
         description="Total matching articles count.",
+    )
+    status: str = Field(
+        default="complete",
+        description="Execution status ('complete' or 'engine_unavailable').",
     )
     degraded: bool = Field(
         default=False,
@@ -69,3 +90,16 @@ class EntitySearchOutput(BaseModel):
         default=None,
         description="Optional informational or degradation message.",
     )
+    cost_micros: int | None = Field(
+        default=0,
+        description="Cost in micros for query billing tracking.",
+    )
+    cost_basis: str | None = Field(
+        default="actual",
+        description="Cost basis ('actual', 'estimated', or 'fallback').",
+    )
+
+    @property
+    def articles(self) -> list[Source]:
+        """Backward-compatible alias for sources."""
+        return self.sources

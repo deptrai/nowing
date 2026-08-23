@@ -1,7 +1,7 @@
-"""Story 14.2b: News Entity Search ATDD Red Phase Unit Tests.
+"""Story 14.2b: News Entity Search Unit Tests.
 
-Covers AC1 and AC2 acceptance criteria scaffolds for news entity search capability,
-schema validation, executor routing, and degradation handling.
+Covers AC1 and AC2 acceptance criteria, hardened validation, executor routing,
+PII redaction, and degradation handling.
 """
 
 from __future__ import annotations
@@ -28,6 +28,19 @@ class TestEntitySearchSchemas:
         assert payload.entity_type == "organization"
         assert payload.workspace_id == 1
         assert payload.limit == 10
+        assert payload.estimated_units == 1
+
+    def test_entity_search_input_normalizes_type_and_whitespace(self) -> None:
+        """Should normalize entity_type case and strip whitespace in mode=before."""
+        from app.capabilities.news.entity_search.schemas import EntitySearchInput
+
+        payload = EntitySearchInput(
+            entity_name="  Tập đoàn Hòa Phát  ",
+            entity_type="Organization",  # type: ignore[arg-type]
+            workspace_id=2,
+        )
+        assert payload.entity_name == "Tập đoàn Hòa Phát"
+        assert payload.entity_type == "organization"
 
     def test_entity_search_input_rejects_empty_name(self) -> None:
         """Should raise ValidationError when entity_name is empty or whitespace."""
@@ -52,7 +65,7 @@ class TestEntitySearchSchemas:
             )
 
     def test_entity_search_output_structure(self) -> None:
-        """Should return properly structured EntitySearchOutput with sources."""
+        """Should return properly structured EntitySearchOutput with sources and articles."""
         from app.capabilities.chainlens.research.schemas import Source
         from app.capabilities.news.entity_search.schemas import EntitySearchOutput
 
@@ -65,16 +78,19 @@ class TestEntitySearchSchemas:
         output = EntitySearchOutput(
             entity_name="Vingroup",
             entity_type="organization",
-            articles=[source],
+            sources=[source],
             total_count=1,
         )
         assert output.entity_name == "Vingroup"
+        assert len(output.sources) == 1
         assert len(output.articles) == 1
         assert (
             output.articles[0].url
             == "https://vnexpress.net/vingroup-ket-qua-kinh-doanh"
         )
         assert output.total_count == 1
+        assert output.status == "complete"
+        assert output.cost_micros == 0
 
 
 @pytest.mark.unit
@@ -109,26 +125,35 @@ class TestEntitySearchExecutor:
     """AC-1 & AC-2: Executor calling ChainLens Research endpoint without local DB search."""
 
     @pytest.mark.asyncio
-    async def test_executor_handles_redacted_name(self) -> None:
-        """Should return degraded empty output when entity name is redacted placeholder <NAME>."""
+    @pytest.mark.parametrize(
+        "placeholder",
+        ["<NAME>", "<PERSON>", "[REDACTED]", "<NAME_1>", "'<NAME>'", "<name> (person)"],
+    )
+    async def test_executor_handles_redacted_placeholders(
+        self, placeholder: str
+    ) -> None:
+        """Should return degraded empty output when entity name is any PII placeholder."""
         from app.capabilities.news.entity_search.executor import EntitySearchExecutor
         from app.capabilities.news.entity_search.schemas import EntitySearchInput
 
         executor = EntitySearchExecutor()
         inp = EntitySearchInput(
-            entity_name="<NAME>",
+            entity_name=placeholder,
             entity_type="person",
             workspace_id=1,
         )
         result = await executor.execute(inp)
         assert result.degraded is True
+        assert result.status == "engine_unavailable"
+        assert result.sources == []
         assert result.articles == []
         assert result.total_count == 0
+        assert result.cost_micros == 0
         assert "bảo mật thông tin cá nhân" in (result.message or "")
 
     @pytest.mark.asyncio
     async def test_executor_handles_engine_unavailable_gracefully(self) -> None:
-        """Should return degraded empty results when ChainLens is unavailable."""
+        """Should return degraded empty results and 0 cost when ChainLens is unavailable."""
         from app.capabilities.news.entity_search.executor import EntitySearchExecutor
         from app.capabilities.news.entity_search.schemas import EntitySearchInput
 
@@ -140,6 +165,9 @@ class TestEntitySearchExecutor:
         )
         result = await executor.execute(inp)
         assert result is not None
+        assert result.sources == []
         assert result.articles == []
         assert result.total_count == 0
+        assert result.status == "engine_unavailable"
         assert result.degraded is True
+        assert result.cost_micros == 0

@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: "2026-08-24"  # Story 24-8 spec and code updated; status=review. P0 auth/authorization changes still await human sign-off.
+last_updated: "2026-08-25"  # Story 24-8: 4 review decisions resolved; 11/15 patches applied; ruff/pytest unit+integration/tsc green. 3 low patches and UI popover (AC-4) remain open.
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # - Parsed epics.md: 24 epics, ~160 stories.
 # - Scanned _bmad-output/implementation-artifacts/ + stories/*.md for story files (frontmatter story_key/epic+story).
@@ -267,7 +267,7 @@ development_status:
   24-5: done  # Vertical Playbook Marketplace & Community Workflow Templates — P0/P1 code review patches applied (auth, seed runnable, is_approved, metadata, vertical filter, hard limit, instantiate run launch). Backend ruff/pytest and frontend tsc/biome green.
   24-6: done  # Two-Way AI Outreach Auto-Reply Agent — all review findings resolved (5 patches + 2 deferred items). Verified green: ruff, pytest unit/integration, pnpm tsc/biome.
   24-7: done  # Multi-Channel Drip Outreach Campaign Engine (Zalo ZNS + Telegram + Email Cadence) — 18 original patch findings + 5 re-review findings applied: multi-channel config, VerifiedContact.external_chat_ids, schema expansion, _send_zns/_send_telegram dispatch, fallback orchestration with correct fallback billing cost, DNC on Telegram, normalized Zalo webhook phone lookup, sanitized inbound lock key, VisualCadenceBuilder invalid JSON feedback. Backend ruff/pytest (34 tests) and frontend tsc/biome green.
-  24-8: review  # 2026-08-24: prompt-in-UI control fixed (web_crawler subagent can now call browser_operator.execute); P0 auth/authorization changes still need human sign-off
+  24-8: review  # 2026-08-25: 4 review decisions resolved; 11/15 code patches applied (SSE lock, command_id mismatch, resume ownership, backend URL fail-fast, etc.); ruff/pytest (unit+integration)/tsc green. UI popover (AC-4), 3 low-risk patches (PII redaction failure, screenshot cap, tab ownership) remain open.
   epic-24-retrospective: optional
 
   # === Epic 25: Platform Administration & Multi-Tenant Operations ===
@@ -349,7 +349,7 @@ development_status:
   # Unit/integration tests pass; Playwright E2E passes; marked done.
   14-1: done
   14-2a: done  # 2026-08-24: all review patches applied and re-reviewed; 140 targeted unit tests pass; ruff clean.
-  14-2b: review  # 2026-08-24: entity search capability and executor implemented with 9/9 tests passing (8 unit + 1 integration)
+  14-2b: done  # 2026-08-24: code review complete; wire DTO, auth header rotation, PII regex, and billing compatibility hardened; 15/15 tests pass; 831 capability tests clean.
   epic-14-retrospective: optional
 
   # === Epic 15: Financial Data (Vietnam) ===
