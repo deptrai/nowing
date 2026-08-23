@@ -1095,3 +1095,29 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - **Finding:** `bds_aggregator` and `jobs_aggregator` charge `cost_micros` even when `persistence_status` is `failed`.
   - **Action:** Marked `[x] [Review][Defer]` in `review-td8-triaged-findings.md` (W8).
   - **Reason / when to revisit:** Pre-existing business rule; decide whether scraper cost and ingest cost should be separate billing events in a pricing review.
+
+## Deferred from: code review of story 24.8 (2026-08-24)
+
+- **Finding:** Thiếu `HumanLiveTakeoverPopover` riêng và countdown 15:00 (AC-4).
+  - **Action:** Marked `[x] [Review][Defer]` in `24-8-browser-operator-cdp-tool-and-human-live-takeover.md`.
+  - **Reason / when to revisit:** Tách thành story 24.8b/UI; cần design countdown + challenge type display.
+
+- **Finding:** Thiếu scheduler chuyển mission sang `aborted_timeout` sau 15 phút (AC-6).
+  - **Action:** Marked `[x] [Review][Defer]` in `24-8-browser-operator-cdp-tool-and-human-live-takeover.md`.
+  - **Reason / when to revisit:** Cần Celery Beat job hoặc delayed task; hiện chỉ set Redis lock TTL.
+
+- **Finding:** Không hoàn credits khi timeout (AC-6).
+  - **Action:** Marked `[x] [Review][Defer]` in `24-8-browser-operator-cdp-tool-and-human-live-takeover.md`.
+  - **Reason / when to revisit:** Liên quan Epic 8/credit refund flow; cần tích hợp wallet refund.
+
+- **Finding:** Không CDP session token lifecycle và `chrome.debugger.onDetach` listener (AC-1/Review Finding).
+  - **Action:** Marked `[x] [Review][Defer]` in `24-8-browser-operator-cdp-tool-and-human-live-takeover.md`.
+  - **Reason / when to revisit:** Hiện attach/detach mỗi lệnh; cần thiết kế session token + detach listener khi scale.
+
+- **Finding:** Thiếu audit log cho CDP commands (security).
+  - **Action:** Marked `[x] [Review][Defer]` in `24-8-browser-operator-cdp-tool-and-human-live-takeover.md`.
+  - **Reason / when to revisit:** Cần design audit store + retention cho browser operator.
+
+- **Finding:** Không có E2E extension tests (Review Finding).
+  - **Action:** Marked `[x] [Review][Defer]` in `24-8-browser-operator-cdp-tool-and-human-live-takeover.md`.
+  - **Reason / when to revisit:** Cần Playwright + real Chrome extension lifecycle để test debugger/SSE.

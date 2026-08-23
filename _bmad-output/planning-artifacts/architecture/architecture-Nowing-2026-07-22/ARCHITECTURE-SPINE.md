@@ -40,6 +40,9 @@ companions:
 > - **`AD-15` amended** — terminal `done` contract ghi rõ `usage.costDollars`, `resolvedMode`, `estimated`; `costDollars` là USD float toàn pipeline.
 > - **`AD-21` mới** — client tab state pointer-only, local-first, v2 storage key (Story 4.7); sửa lỗi story file ghi `Architecture: AD-17`.
 >
+> **✅ Bổ sung 2026-08-23 (readiness Story 28.5):**
+> - **`AD-28.3` ADOPTED** — memory retention, right-to-delete, và storage cap. Memory dùng `archived_at` (mirror `Document`), `Workspace.memory_retention_*` (mirror `document_retention_*`), `WorkspaceLimit.max_memory_count` / `max_memory_bytes`. `AD-DEFER-4` chuyển `RESOLVED`. Source risk tier / high-risk disable-by-default thuộc Story 28.3.
+>
 > **✅ Bổ sung 2026-08-05 (đợt 5 — Epic 12 HR/Recruitment Vertical):**
 > - **`AD-22` mới** — VietnamWorks scraper: public API no-auth, BSL 1.1 fetcher nếu cần HTML fallback, Apache-2.0 capability/executor/schemas.
 > - **`AD-23` mới** — TopCV/ITviec scraper: HTML scraping trong `app/proprietary/`, anti-bot reuse `AD-19`, ITviec server-rendered, TopCV Cloudflare challenge cần headless/proxy POC.
@@ -942,11 +945,11 @@ Các quyết định kiến trúc được cố ý hoãn lại hoặc chưa có:
 - **Verify code:** bảng `workspace_mcp_tool_settings` (`app/db.py:1945`, unique constraint `uq_workspace_mcp_tool` dòng 1950) · migration `175_add_workspace_mcp_tool_settings.py` · `McpToolGroup` + catalog trong `app/mcp_tools.py`.
 - **Linked PRD:** OQ-4 → `[DONE]` · Story `2-5` = `done`
 
-### AD-DEFER-4 — Data retention & lifecycle per workspace  `⚠️ PARTIAL 2026-07-25 — schema đã có, legal còn mở`
-- **Status:** **không còn deferred hoàn toàn.** Schema + enforcement đã có; phần **legal/right-to-delete cho MEMORY** mới là chỗ còn mở.
-- **Verify code:** migration `176_add_document_retention.py` · `Workspace.document_retention_days` (`app/db.py:1804`), `auto_archive_enabled` (dòng 1805) · cron `apply-document-retention-policies` (xem `merge-to-prod-checklist.md` G5 — **automation xoá dữ liệu, chạy ngay khi deploy**).
-- **Còn mở thật:** retention + right-to-delete cho `memories`/versions/relations (khác doc retention) · phơi nhiễm ToS/bản quyền/PII cho dữ liệu scrape lưu dài hạn · tách trách nhiệm self-host vs cloud. **Chốt trước GA cloud.**
-- **Linked PRD:** OQ-3 `[GAP]` · Story `3-7` = `done` (phần doc retention)
+### AD-DEFER-4 — Data retention & lifecycle per workspace  `✅ RESOLVED 2026-08-23 — AD-28.3 ADOPTED`
+- **Status:** **RESOLVED.** Document retention đã implement (Story 3.7). Memory retention, right-to-delete, và storage cap được chốt bởi `AD-28.3`; Story 28.5 là implementation owner.
+- **Verify code:** migration `176_add_document_retention.py` · `Workspace.document_retention_days` (`app/db.py:1804`), `auto_archive_enabled` (dòng 1805) · cron `apply-document-retention-policies` · `AD-28-3-retention-right-to-delete.md` (memory `archived_at`, `memory_retention_*` fields, `WorkspaceLimit.max_memory_*`, right-to-delete + audit).
+- **Còn mở thật:** source risk tier / high-risk disable-by-default thuộc Story 28.3 (ToS review). Bulk delete >100k cần UI/confirm flow.
+- **Linked PRD:** OQ-3 `[IN PROGRESS]` · Story `3-7` = `done` (doc retention) · Story `28-5` = `ready-for-dev` (memory retention + cap)
 
 ### ~~AD-DEFER-5~~ — Usage & credit dashboard  `✅ ĐÓNG 2026-07-25`
 - **Status:** **ĐÃ IMPLEMENT** (cả API lẫn UI).

@@ -31,7 +31,7 @@ These two are platform primitives: every real-time event, async task, and LLM/sc
 11. `8-11-followup` — Admin Global LLM Model Configuration (follow-up)
 12. `25-6` — Security Audit Trail Logs & In-App Broadcast Announcements
 13. `14-2` — News Entity Enrichment
-14. `24-8` — Browser Operator CDP tool for DSH crawl subgraph
+14. `24-8` — Browser Operator CDP capability (`browser_operator.execute`) + Human Live Takeover bridge
 15. `4-8c-followup` — Production Query Sampler (follow-up)
 16. `4-8d-followup` — Chat Quality LLM-as-Judge (follow-up)
 17. `4-8h-followup` — Mode-Aware Chat Policy (follow-up)
