@@ -58,6 +58,20 @@ AD-34, AD-35, AD-27, AD-25, news, NER, entity-search, chainlens, citations
   - [x] `tests/unit/capabilities/news/test_entity_search.py` — schema validation, capability registration, subagent tool loading, `<NAME>` redaction check, engine unavailable handling (8 passed).
   - [x] `tests/integration/news/test_news_entity_search_chainlens.py` — stub `chainlens-research` response, verify `EntitySearchInput`/`Output` contract (1 passed).
 
+### Review Findings (re-review 2026-08-25)
+
+- [x] [Review][Decision] **D1 — JSON vs SSE for `POST /api/v1/search`**: **RESOLVED: A** — Keep JSON REST path (`output: "search"`, `Accept: application/json`) because ChainLens `SearchController` explicitly supports it (Story 44-0, `wantsStructuredRest`) and it returns `costDollars` top-level. SSE is required for deep-research streaming, but deterministic article list maps better to JSON. No `_SSEParser` refactor needed.
+- [x] [Review][Decision] **D2 — `pubDate` in `EntitySearchOutput`**: **RESOLVED: A** — Add optional `pub_date` on `Source`/`EntitySearchOutput` and populate from `pubDate`/`pub_date` metadata when ChainLens provides it. Accept `None` until engine exposes it (no AC relaxation).
+- [x] [Review][Patch] **P1 — Cost fallback broken**: Fixed by changing `EntitySearchOutput.cost_micros`/`cost_basis` defaults to `None`, and returning `cost_micros=None` + `cost_basis="fallback"` when ChainLens omits `costDollars`. `_charge_chainlens` now correctly applies `CHAINLENS_QUERY_MICROS_PER_CALL` (60k micros). [executor.py, schemas.py]
+- [x] [Review][Patch] **P2 — Auth header mismatch**: Fixed by removing `x-api-key` branch and using `Authorization: Bearer <key>` via `ChainLensServiceAuth` or explicit `api_key` override. [executor.py]
+- [x] [Review][Patch] **P3 — `total_count` falsy fallthrough**: Fixed by distinguishing `None` from `0` when reading `total`/`numResults`. [executor.py]
+- [x] [Review][Patch] **P4 — PII redaction substring match**: Fixed by removing substring `in` fallback and relying solely on the anchored regex. [executor.py]
+- [x] [Review][Patch] **P5 — Add optional `pub_date` to output**: Added `pub_date` optional field to `Source` and populate it from `pubDate`/`pub_date` metadata. [chainlens/research/schemas.py, executor.py]
+- [x] [Review][Patch] **P6 — Missing failure-mode test coverage**: Added unit tests for missing `costDollars`, 5xx, malformed JSON, empty results, redaction substring, `pub_date`, and no-auth; added integration test for cost fallback. [test_entity_search.py, test_news_entity_search_chainlens.py]
+- [ ] [Review][Defer] **F1 — Entity filter via separate `entity`/`entity_type` fields**: ChainLens `SearchRestRequestDto` has no `entity` or `entity_type` fields; the code appends entity type to the query string. This is an accepted contract gap / pre-existing blocker until ChainLens supports entity filter.
+- [ ] [Review][Defer] **F2 — PII redaction of ChainLens returned snippets**: `Source` titles/snippets from ChainLens may contain raw person names if the engine did not redact content. This is an engine-side responsibility and cannot be fully fixed in Nowing without re-running NER on every snippet.
+- [x] [Review][Dismiss] **workspace_id type safety in executor**: `EntitySearchInput` Pydantic already enforces `gt=0`; executor does not need to re-validate. No action.
+
 ## Dev Notes
 
 ### Previous Story Intelligence (14.2a learnings)
@@ -160,9 +174,9 @@ AD-34, AD-35, AD-27, AD-25, news, NER, entity-search, chainlens, citations
 
 ## Story Completion Status
 
-- **Status:** `ready-for-dev` (story file validated and enriched; implementation still gated on `chainlens-research` entity search contract).
+- **Status:** `done` (re-review 2026-08-25: 6 patches applied, D1/D2 resolved, unit + integration tests pass).
 - **Validation note:** Applied `bmad-create-story` checklist review — added Previous Story Intelligence, Git Intelligence, Technical Requirements, File Structure, Testing Requirements, and critical external dependency / person-name redaction blocker.
-- **Open blocker:** Person-name search ambiguity after `<NAME>` redaction — must resolve with `chainlens-research` contract owner before full `dev-story`.
+- **Open blocker:** Person-name search ambiguity after `<NAME>` redaction — remains an engine-side contract question; Nowing side does not expose raw PII and degrades gracefully.
 
 ## Dev Agent Record
 

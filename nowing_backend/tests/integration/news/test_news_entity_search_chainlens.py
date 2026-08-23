@@ -31,6 +31,7 @@ class TestNewsEntitySearchChainlensIntegration:
 
         def _match_request(request: Request) -> Response:
             assert request.headers.get("x-workspace-id") == "1"
+            assert request.headers.get("authorization") == "Bearer test-token"
             body = json.loads(request.content)
             assert body.get("mode") == "fast"
             assert body.get("numResults") == 5
@@ -60,7 +61,10 @@ class TestNewsEntitySearchChainlensIntegration:
 
         respx.post(mock_url).mock(side_effect=_match_request)
 
-        executor = EntitySearchExecutor(api_url="http://127.0.0.1:3001")
+        executor = EntitySearchExecutor(
+            api_url="http://127.0.0.1:3001",
+            api_key="test-token",
+        )
         inp = EntitySearchInput(
             entity_name="VinFast",
             entity_type="organization",
@@ -77,3 +81,46 @@ class TestNewsEntitySearchChainlensIntegration:
         assert result.status == "complete"
         assert result.degraded is False
         assert result.cost_micros == 5000
+        assert result.cost_basis == "actual"
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_entity_search_uses_cost_fallback_when_costdollars_missing(
+        self,
+    ) -> None:
+        """Should mark cost_basis=fallback when ChainLens omits costDollars."""
+        from app.capabilities.news.entity_search.executor import EntitySearchExecutor
+        from app.capabilities.news.entity_search.schemas import EntitySearchInput
+
+        respx.post("http://127.0.0.1:3001/api/v1/search").mock(
+            return_value=Response(
+                200,
+                json={
+                    "numResults": 1,
+                    "results": [
+                        {
+                            "title": "VinFast",
+                            "url": "https://tuoitre.vn/vinfast",
+                            "snippet": "VinFast...",
+                        }
+                    ],
+                },
+            )
+        )
+
+        executor = EntitySearchExecutor(
+            api_url="http://127.0.0.1:3001",
+            api_key="test-token",
+        )
+        inp = EntitySearchInput(
+            entity_name="VinFast",
+            entity_type="organization",
+            workspace_id=1,
+        )
+
+        result = await executor.execute(inp)
+        assert result.status == "complete"
+        assert result.degraded is False
+        assert result.cost_dollars is None
+        assert result.cost_micros is None
+        assert result.cost_basis == "fallback"

@@ -7,6 +7,8 @@ PII redaction, and degradation handling.
 from __future__ import annotations
 
 import pytest
+import respx
+from httpx import Request, Response
 from pydantic import ValidationError
 
 
@@ -80,6 +82,8 @@ class TestEntitySearchSchemas:
             entity_type="organization",
             sources=[source],
             total_count=1,
+            cost_micros=5000,
+            cost_basis="actual",
         )
         assert output.entity_name == "Vingroup"
         assert len(output.sources) == 1
@@ -90,7 +94,8 @@ class TestEntitySearchSchemas:
         )
         assert output.total_count == 1
         assert output.status == "complete"
-        assert output.cost_micros == 0
+        assert output.cost_micros == 5000
+        assert output.cost_basis == "actual"
 
 
 @pytest.mark.unit
@@ -127,7 +132,14 @@ class TestEntitySearchExecutor:
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "placeholder",
-        ["<NAME>", "<PERSON>", "[REDACTED]", "<NAME_1>", "'<NAME>'", "<name> (person)"],
+        [
+            "<NAME>",
+            "<PERSON>",
+            "[REDACTED]",
+            "<NAME_1>",
+            "'<NAME>'",
+            "<name> (person)",
+        ],
     )
     async def test_executor_handles_redacted_placeholders(
         self, placeholder: str
@@ -148,26 +160,227 @@ class TestEntitySearchExecutor:
         assert result.sources == []
         assert result.articles == []
         assert result.total_count == 0
-        assert result.cost_micros == 0
+        assert result.cost_micros is None
         assert "bảo mật thông tin cá nhân" in (result.message or "")
 
     @pytest.mark.asyncio
-    async def test_executor_handles_engine_unavailable_gracefully(self) -> None:
-        """Should return degraded empty results and 0 cost when ChainLens is unavailable."""
+    @respx.mock
+    async def test_executor_handles_redacted_substring_not_false_positive(self) -> None:
+        """Should not treat a name containing '<NAME>' substring as redacted."""
         from app.capabilities.news.entity_search.executor import EntitySearchExecutor
         from app.capabilities.news.entity_search.schemas import EntitySearchInput
 
-        executor = EntitySearchExecutor(api_url="http://mock-chainlens-down:9999")
+        executor = EntitySearchExecutor(
+            api_url="http://127.0.0.1:3001",
+            api_key="test-token",
+        )
+
+        def _match(request: Request) -> Response:
+            assert request.headers.get("authorization") == "Bearer test-token"
+            return Response(
+                200,
+                json={
+                    "numResults": 1,
+                    "results": [
+                        {
+                            "title": "Công ty <NAME>",
+                            "url": "https://example.test/article",
+                            "snippet": "Tin tức",
+                        }
+                    ],
+                },
+            )
+
+        respx.post("http://127.0.0.1:3001/api/v1/search").mock(side_effect=_match)
+
         inp = EntitySearchInput(
-            entity_name="FPT Software",
+            entity_name="Công ty <NAME>",
             entity_type="organization",
             workspace_id=1,
         )
         result = await executor.execute(inp)
-        assert result is not None
+        assert result.degraded is False
+        assert result.status == "complete"
+        assert len(result.sources) == 1
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_executor_returns_empty_results(self) -> None:
+        """Should handle a ChainLens response with zero results."""
+        from app.capabilities.news.entity_search.executor import EntitySearchExecutor
+        from app.capabilities.news.entity_search.schemas import EntitySearchInput
+
+        respx.post("http://127.0.0.1:3001/api/v1/search").mock(
+            return_value=Response(
+                200,
+                json={
+                    "numResults": 0,
+                    "total": 0,
+                    "results": [],
+                },
+            )
+        )
+
+        executor = EntitySearchExecutor(
+            api_url="http://127.0.0.1:3001",
+            api_key="test-token",
+        )
+        inp = EntitySearchInput(
+            entity_name="Không tồn tại",
+            entity_type="organization",
+            workspace_id=1,
+        )
+        result = await executor.execute(inp)
+        assert result.degraded is False
+        assert result.status == "complete"
         assert result.sources == []
         assert result.articles == []
         assert result.total_count == 0
-        assert result.status == "engine_unavailable"
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_executor_parses_pub_date(self) -> None:
+        """Should populate Source.pub_date when ChainLens provides it."""
+        from app.capabilities.news.entity_search.executor import EntitySearchExecutor
+        from app.capabilities.news.entity_search.schemas import EntitySearchInput
+
+        respx.post("http://127.0.0.1:3001/api/v1/search").mock(
+            return_value=Response(
+                200,
+                json={
+                    "numResults": 1,
+                    "results": [
+                        {
+                            "title": "VinFast gia tăng thị phần",
+                            "url": "https://tuoitre.vn/vinfast",
+                            "snippet": "VinFast...",
+                            "pubDate": "2026-07-20T00:00:00Z",
+                        }
+                    ],
+                },
+            )
+        )
+
+        executor = EntitySearchExecutor(
+            api_url="http://127.0.0.1:3001",
+            api_key="test-token",
+        )
+        inp = EntitySearchInput(
+            entity_name="VinFast",
+            entity_type="organization",
+            workspace_id=1,
+        )
+        result = await executor.execute(inp)
+        assert result.degraded is False
+        assert len(result.sources) == 1
+        assert result.sources[0].pub_date == "2026-07-20T00:00:00Z"
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_executor_uses_cost_fallback_when_costdollars_missing(self) -> None:
+        """Should set cost_basis=fallback and leave cost_micros None when engine omits cost."""
+        from app.capabilities.news.entity_search.executor import EntitySearchExecutor
+        from app.capabilities.news.entity_search.schemas import EntitySearchInput
+
+        respx.post("http://127.0.0.1:3001/api/v1/search").mock(
+            return_value=Response(
+                200,
+                json={
+                    "numResults": 1,
+                    "results": [
+                        {
+                            "title": "VinFast",
+                            "url": "https://tuoitre.vn/vinfast",
+                            "snippet": "VinFast...",
+                        }
+                    ],
+                },
+            )
+        )
+
+        executor = EntitySearchExecutor(
+            api_url="http://127.0.0.1:3001",
+            api_key="test-token",
+        )
+        inp = EntitySearchInput(
+            entity_name="VinFast",
+            entity_type="organization",
+            workspace_id=1,
+        )
+        result = await executor.execute(inp)
+        assert result.degraded is False
+        assert result.status == "complete"
+        assert result.cost_dollars is None
+        assert result.cost_micros is None
+        assert result.cost_basis == "fallback"
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_executor_handles_http_errors(self) -> None:
+        """Should degrade on 5xx / 429 from ChainLens."""
+        from app.capabilities.news.entity_search.executor import EntitySearchExecutor
+        from app.capabilities.news.entity_search.schemas import EntitySearchInput
+
+        respx.post("http://127.0.0.1:3001/api/v1/search").mock(
+            return_value=Response(503)
+        )
+
+        executor = EntitySearchExecutor(
+            api_url="http://127.0.0.1:3001",
+            api_key="test-token",
+        )
+        inp = EntitySearchInput(
+            entity_name="VinFast",
+            entity_type="organization",
+            workspace_id=1,
+        )
+        result = await executor.execute(inp)
         assert result.degraded is True
-        assert result.cost_micros == 0
+        assert result.status == "engine_unavailable"
+        assert result.sources == []
+        assert result.cost_micros is None
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_executor_handles_malformed_json(self) -> None:
+        """Should degrade gracefully when ChainLens returns non-JSON body."""
+        from app.capabilities.news.entity_search.executor import EntitySearchExecutor
+        from app.capabilities.news.entity_search.schemas import EntitySearchInput
+
+        respx.post("http://127.0.0.1:3001/api/v1/search").mock(
+            return_value=Response(200, text="not json")
+        )
+
+        executor = EntitySearchExecutor(
+            api_url="http://127.0.0.1:3001",
+            api_key="test-token",
+        )
+        inp = EntitySearchInput(
+            entity_name="VinFast",
+            entity_type="organization",
+            workspace_id=1,
+        )
+        result = await executor.execute(inp)
+        assert result.degraded is True
+        assert result.status == "engine_unavailable"
+        assert result.sources == []
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_executor_degrades_without_auth(self) -> None:
+        """Should degrade when neither ChainLensServiceAuth nor api_key is configured."""
+        from app.capabilities.news.entity_search.executor import EntitySearchExecutor
+        from app.capabilities.news.entity_search.schemas import EntitySearchInput
+
+        executor = EntitySearchExecutor(
+            api_url="http://127.0.0.1:3001",
+        )
+        inp = EntitySearchInput(
+            entity_name="VinFast",
+            entity_type="organization",
+            workspace_id=1,
+        )
+        result = await executor.execute(inp)
+        assert result.degraded is True
+        assert result.status == "engine_unavailable"
+        assert result.sources == []

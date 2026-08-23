@@ -1,5 +1,5 @@
 # generated: 2026-08-08
-# last_updated: 2026-08-24  # 14-2a done; 14-2b validated against checklist and enriched, ready-for-dev; blocked-by-external chainlens contract.
+# last_updated: 2026-08-25  # 14-2a done; 14-2b re-review complete: 6 patches applied, D1/D2 resolved, ruff clean, unit+integration tests pass.
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system

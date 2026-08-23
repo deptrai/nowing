@@ -46,6 +46,10 @@ class Source(BaseModel):
         default=None,
         description="Workspace chunk id when source_type is 'kb'.",
     )
+    pub_date: str | None = Field(
+        default=None,
+        description="Publication date or time, ISO-8601 string when available.",
+    )
 
     def model_post_init(self, __context: object) -> None:
         """Derive KB locators and source type from internal URLs."""

@@ -90,12 +90,16 @@ class EntitySearchOutput(BaseModel):
         default=None,
         description="Optional informational or degradation message.",
     )
-    cost_micros: int | None = Field(
-        default=0,
-        description="Cost in micros for query billing tracking.",
+    cost_dollars: float | None = Field(
+        default=None,
+        description="Exact cost in USD reported by ChainLens, if available.",
     )
-    cost_basis: str | None = Field(
-        default="actual",
+    cost_micros: int | None = Field(
+        default=None,
+        description="Exact cost in micros for query billing tracking; None triggers billing fallback.",
+    )
+    cost_basis: Literal["actual", "estimated", "fallback"] | None = Field(
+        default=None,
         description="Cost basis ('actual', 'estimated', or 'fallback').",
     )
 

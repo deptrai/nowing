@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import re
 from typing import Any
 
@@ -31,10 +32,7 @@ _REDACTED_PATTERN = re.compile(
 def _is_redacted_placeholder(entity_name: str) -> bool:
     """Check if the entity name is an anonymized PII placeholder."""
     cleaned = entity_name.strip().strip("'\"")
-    if _REDACTED_PATTERN.match(cleaned):
-        return True
-    upper = cleaned.upper()
-    return "<NAME>" in upper or "<PERSON>" in upper or "[REDACTED]" in upper
+    return _REDACTED_PATTERN.match(cleaned) is not None
 
 
 def _parse_entity_sources(raw_data: Any) -> list[Source]:
@@ -50,18 +48,33 @@ def _parse_entity_sources(raw_data: Any) -> list[Source]:
     for item in raw_sources:
         if not isinstance(item, dict):
             continue
-        meta = item.get("metadata") if isinstance(item.get("metadata"), dict) else item
-        url = str(meta.get("url") or item.get("url") or "").strip()
+
+        meta = item.get("metadata") if isinstance(item.get("metadata"), dict) else None
+        url = str(item.get("url") or (meta or {}).get("url") or "").strip()
         if not url:
             continue
-        title = str(meta.get("title") or item.get("title") or "Tin tức")
-        content = item.get("content") or item.get("snippet") or meta.get("snippet")
+
+        title = str(item.get("title") or (meta or {}).get("title") or "Tin tức")
+        content = (
+            item.get("snippet")
+            or item.get("content")
+            or (meta or {}).get("snippet")
+            or (meta or {}).get("content")
+        )
+        pub_date = (
+            item.get("pubDate")
+            or item.get("pub_date")
+            or (meta or {}).get("pubDate")
+            or (meta or {}).get("pub_date")
+        )
+
         sources.append(
             Source(
                 title=title,
                 url=url,
                 content=str(content) if content is not None else None,
                 source_type="web",
+                pub_date=str(pub_date) if pub_date is not None else None,
             )
         )
     return sources
@@ -77,9 +90,35 @@ class EntitySearchExecutor:
         timeout: float = 30.0,
     ) -> None:
         self._api_url = (api_url or config.CHAINLENS_API_URL or "").rstrip("/")
-        self._api_key = api_key or config.CHAINLENS_API_KEY
+        self._api_key = api_key
         self._timeout = timeout
         self._auth = ChainLensServiceAuth()
+
+    def _get_headers(self, workspace_id: int) -> dict[str, str] | None:
+        """Build outbound headers for ChainLens.
+
+        ChainLens ``ApiKeyGuard`` requires an ``Authorization: Bearer <key>``
+        header. ``ChainLensServiceAuth`` is the canonical source for that key;
+        an explicit ``api_key`` constructor argument is provided as an override
+        for testing and self-host deployments.
+        """
+        if self._api_key:
+            return {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "Authorization": f"Bearer {self._api_key}",
+                "X-Workspace-Id": str(workspace_id),
+            }
+
+        if self._auth.configured:
+            headers = self._auth.get_outbound_headers(
+                workspace_id=workspace_id,
+                content_type="application/json",
+            )
+            headers["Accept"] = "application/json"
+            return headers
+
+        return None
 
     async def execute(
         self,
@@ -98,7 +137,10 @@ class EntitySearchExecutor:
         if _is_redacted_placeholder(entity_name):
             logger.info(
                 "news_entity_search_redacted_placeholder",
-                extra={"entity_type": input_data.entity_type},
+                extra={
+                    "entity_type": input_data.entity_type,
+                    "entity_name": entity_name[:50],
+                },
             )
             return EntitySearchOutput(
                 entity_name=entity_name,
@@ -107,8 +149,6 @@ class EntitySearchExecutor:
                 total_count=0,
                 status="engine_unavailable",
                 degraded=True,
-                cost_micros=0,
-                cost_basis="actual",
                 message="Tên thực thể đã bị ẩn (redacted) theo chính sách bảo mật thông tin cá nhân. Vui lòng cung cấp tên công khai để tra cứu.",
             )
 
@@ -121,9 +161,20 @@ class EntitySearchExecutor:
                 total_count=0,
                 status="engine_unavailable",
                 degraded=True,
-                cost_micros=0,
-                cost_basis="actual",
                 message="Dịch vụ ChainLens Research chưa được cấu hình URL.",
+            )
+
+        headers = self._get_headers(input_data.workspace_id)
+        if headers is None:
+            logger.warning("news_entity_search_unconfigured_auth")
+            return EntitySearchOutput(
+                entity_name=entity_name,
+                entity_type=input_data.entity_type,
+                sources=[],
+                total_count=0,
+                status="engine_unavailable",
+                degraded=True,
+                message="Dịch vụ ChainLens Research chưa được cấu hình xác thực.",
             )
 
         # Build search query text tailored for news entity queries
@@ -142,7 +193,6 @@ class EntitySearchExecutor:
         }
 
         endpoint = f"{self._api_url}/api/v1/search"
-        workspace_id = input_data.workspace_id
 
         try:
             async with httpx.AsyncClient(
@@ -150,35 +200,22 @@ class EntitySearchExecutor:
                 follow_redirects=True,
             ) as client:
                 for attempt in range(2):
-                    if self._api_key:
-                        headers = {
-                            "Content-Type": "application/json",
-                            "Accept": "application/json",
-                            "x-api-key": self._api_key,
-                            "X-Workspace-Id": str(workspace_id),
-                        }
-                    elif self._auth.configured:
-                        headers = self._auth.get_outbound_headers(
-                            workspace_id=workspace_id,
-                            content_type="application/json",
-                        )
-                        headers["Accept"] = "application/json"
-                    else:
-                        headers = {
-                            "Content-Type": "application/json",
-                            "Accept": "application/json",
-                            "X-Workspace-Id": str(workspace_id),
-                        }
-
                     response = await client.post(
                         endpoint, json=payload, headers=headers
                     )
 
-                    if response.status_code == 401 and attempt == 0:
+                    if (
+                        response.status_code == 401
+                        and attempt == 0
+                        and self._auth.configured
+                    ):
                         rotated = self._auth.rotate(
-                            workspace_id=workspace_id, reason="401_response"
+                            workspace_id=input_data.workspace_id,
+                            reason="401_response",
                         )
                         if rotated:
+                            # rebuild headers with the rotated token
+                            headers = self._get_headers(input_data.workspace_id)
                             continue
 
                     if response.status_code == 200:
@@ -196,31 +233,54 @@ class EntitySearchExecutor:
                                 total_count=0,
                                 status="engine_unavailable",
                                 degraded=True,
-                                cost_micros=0,
                                 message="Dịch vụ tìm kiếm phản hồi dữ liệu không hợp lệ.",
                             )
 
                         sources = _parse_entity_sources(data)
-                        total_val = (
-                            data.get("total")
-                            if isinstance(data, dict)
-                            else data.get("numResults")
-                            if isinstance(data, dict)
-                            else None
-                        )
+
+                        if isinstance(data, dict):
+                            total_raw = data.get("total")
+                            num_results_raw = data.get("numResults")
+                            total_val = (
+                                total_raw if total_raw is not None else num_results_raw
+                            )
+                        else:
+                            total_val = None
+
                         total_count = (
                             total_val
                             if isinstance(total_val, int) and total_val >= 0
                             else len(sources)
                         )
 
-                        cost_dollars = (
-                            float(data.get("costDollars", 0.0))
-                            if isinstance(data, dict)
-                            and isinstance(data.get("costDollars"), (int, float))
-                            else 0.0
-                        )
-                        cost_micros = int(cost_dollars * 1_000_000)
+                        cost_dollars: float | None = None
+                        cost_micros: int | None = None
+                        cost_basis: str | None = None
+                        if isinstance(data, dict):
+                            raw_cost = data.get("costDollars")
+                            if isinstance(raw_cost, (int, float)):
+                                raw_cost = float(raw_cost)
+                                if raw_cost >= 0 and math.isfinite(raw_cost):
+                                    try:
+                                        cost_micros = (
+                                            ChainLensServiceAuth.cost_dollars_to_micros(
+                                                raw_cost
+                                            )
+                                        )
+                                        cost_dollars = raw_cost
+                                        cost_basis = "actual"
+                                    except ValueError as exc:
+                                        logger.warning(
+                                            "news_entity_search_unusable_cost",
+                                            extra={
+                                                "entity": log_entity,
+                                                "costDollars": raw_cost,
+                                                "error": str(exc),
+                                            },
+                                        )
+
+                        if cost_micros is None:
+                            cost_basis = "fallback"
 
                         return EntitySearchOutput(
                             entity_name=entity_name,
@@ -229,8 +289,9 @@ class EntitySearchExecutor:
                             total_count=total_count,
                             status="complete",
                             degraded=False,
+                            cost_dollars=cost_dollars,
                             cost_micros=cost_micros,
-                            cost_basis="actual",
+                            cost_basis=cost_basis,
                         )
 
                     logger.warning(
@@ -247,7 +308,6 @@ class EntitySearchExecutor:
                         total_count=0,
                         status="engine_unavailable",
                         degraded=True,
-                        cost_micros=0,
                         message=f"Dịch vụ tìm kiếm phản hồi lỗi HTTP {response.status_code}",
                     )
 
@@ -263,14 +323,12 @@ class EntitySearchExecutor:
                 total_count=0,
                 status="engine_unavailable",
                 degraded=True,
-                cost_micros=0,
                 message="Hết thời gian chờ phản hồi từ dịch vụ tìm kiếm thực thể.",
             )
-        except Exception as exc:
-            logger.error(
+        except Exception:
+            logger.exception(
                 "news_entity_search_failed",
-                extra={"entity": log_entity, "error": str(exc)},
-                exc_info=True,
+                extra={"entity": log_entity},
             )
             return EntitySearchOutput(
                 entity_name=entity_name,
@@ -279,7 +337,6 @@ class EntitySearchExecutor:
                 total_count=0,
                 status="engine_unavailable",
                 degraded=True,
-                cost_micros=0,
                 message="Không thể kết nối đến dịch vụ tìm kiếm thực thể tin tức.",
             )
 
