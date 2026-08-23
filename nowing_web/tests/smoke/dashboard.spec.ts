@@ -15,7 +15,7 @@ test.describe("Smoke", () => {
 	test("dashboard loads for authenticated user", async ({ page }) => {
 		await page.goto("/dashboard");
 
-		// Sidebar is <aside> (role=complementary); its visibility implies redirect + auth fetch.
-		await expect(page.getByRole("complementary").first()).toBeVisible({ timeout: 60_000 });
+		// Sidebar / dashboard content visibility implies redirect + auth fetch.
+		await expect(page.getByRole("button", { name: /New chat/i }).first()).toBeVisible({ timeout: 60_000 });
 	});
 });
