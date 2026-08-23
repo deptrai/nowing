@@ -2,12 +2,12 @@
 baseline_commit: 25ba542c2
 baseline_branch: develop
 story_key: 3-14-memory-injection-bounded-retrieval
-status: done
+status: review
 ---
 
 # Story 3.14: Memory Injection — Bounded Retrieval & Latency Budget
 
-**Status:** done
+**Status:** review
 **Epic:** 3 — Knowledge Base + Long-Term Memory
 **Priority:** HIGH — performance/correctness prerequisite trước khi Story 3.9 ratify SM-10
 **Requirements:** NFR-1b, NFR-1c, NFR-1d, NFR-8, FR-32

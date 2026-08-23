@@ -89,7 +89,7 @@ development_status:
   3-11: done
   3-12: done
   3-13: done  # verified 2026-08-15: story file exists and marks done
-  3-14: done
+  3-14: review  # 2026-08-23: acceptance audit has reject/patch/defer findings (stale AC-3 evidence, embeddings[0] unguarded, query max_length, deferred-work stale).
   3-15: done
   # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended WEB_RESULT citation ACs for ChainLens sources
   # ponytail: 2026-08-08 code-review round 2 — 2 patches fixed (WEB_RESULT integration test, merge tests), 0 defer, 14 dismissed. AC1-6 PASS.
