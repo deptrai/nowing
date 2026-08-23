@@ -213,7 +213,7 @@ AD-113, AD-114, FR-93, FR-94, web-builder, nextjs, tailwind, caddy, traefik, mar
   - **Production target: Traefik (Dokploy).** Mỗi web app là một container/service được đăng ký với Traefik qua Docker labels (ví dụ: `traefik.enable=true`, `traefik.http.routers.<slug>.rule=Host(\`<slug>.apps.nowing.net\`)`) và nối vào `dokploy-network`.
   - **Self-host / local dev fallback: Caddy 2 file-provider** (`docker/proxy/web-apps.Caddyfile`) nếu chạy stack `docker-compose.yml` của repo.
   - Wildcard certificate `*.apps.nowing.net` cần DNS `A/AAAA` record trỏ đến server và Traefik/Dokploy provision TLS (Let's Encrypt hoặc custom resolver).
-  - Cần quyết định thêm: backend có quyền mount Docker socket / gọi Docker API trên Dokploy server không? Nếu không, v1 phải dùng một `web-apps-router` service do chúng ta quản lý.
+  - **Backend được phép mount Docker socket** (PO confirm: có). `WebAppDeployService` gọi Docker API trực tiếp để build/run web app container trên cùng host, gắn Traefik labels và nối vào `dokploy-network`.
 - **AD-114 — Design View Visual "Mark Tool" Canvas AST Mutator:**
   - Iframe preview inject Bounding Box Selector.
   - Khi user khoanh vùng phần tử UI, agent bóc DOM XPath/CSS và AST-mutate chính xác component JSX.
@@ -280,7 +280,7 @@ AD-113, AD-114, FR-93, FR-94, web-builder, nextjs, tailwind, caddy, traefik, mar
 ### External Dependency Gating
 
 - **Reverse proxy target đã resolve: Traefik (Dokploy).** Production dùng Traefik Docker provider. Caddy 2 trong repo là fallback self-host/dev.
-- **Docker socket / build capabilities:** deploy container cần quyền build image và khởi chạy container trên host Dokploy (Docker socket mount hoặc remote builder). Cần xác nhận Dokploy cho phép backend container gọi Docker socket không.
+- **Docker socket / build capabilities:** backend container được mount Docker socket (PO confirm), `WebAppDeployService` dùng Docker API trực tiếp. Self-host/dev fallback có thể dùng Caddy file-provider.
 - **Wildcard DNS `*.apps.nowing.net`** phải đã được cấu hình ở DNS provider. Nếu chưa, chỉ test local với `*.localhost` hoặc mock.
 - **Node runtime:** build Next.js cần Node.js trong backend container hoặc sandbox. Kiểm tra `Dockerfile` base image đã có Node chưa (nếu không, thêm stage `node:22-alpine`).
 
