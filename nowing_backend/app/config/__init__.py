@@ -633,7 +633,9 @@ class Config:
     SEQUENCE_EMAIL_COST_MICROS: int = _env_int("SEQUENCE_EMAIL_COST_MICROS", 500)
     SEQUENCE_ZNS_COST_MICROS: int = _env_int("SEQUENCE_ZNS_COST_MICROS", 300)
     SEQUENCE_TELEGRAM_COST_MICROS: int = _env_int("SEQUENCE_TELEGRAM_COST_MICROS", 0)
-    SEQUENCE_ZNS_MAX_RESCHEDULE_HOURS: int = _env_int("SEQUENCE_ZNS_MAX_RESCHEDULE_HOURS", 24)
+    SEQUENCE_ZNS_MAX_RESCHEDULE_HOURS: int = _env_int(
+        "SEQUENCE_ZNS_MAX_RESCHEDULE_HOURS", 24
+    )
     AD_41_REACTIVATED: bool = os.getenv("AD_41_REACTIVATED", "FALSE").upper() == "TRUE"
 
     # When TRUE (default) the app ensures extensions/tables/indexes exist on
@@ -1806,7 +1808,10 @@ class Config:
         "CNAME_INGRESS_HOST", "cname-ingress.apps.nowing.net"
     )
     FILE_STORAGE_LOCAL_PATH = os.getenv(
-        "FILE_STORAGE_LOCAL_PATH", "/app/.local_object_store"
+        "FILE_STORAGE_LOCAL_PATH",
+        "/app/.local_object_store"
+        if os.path.exists("/app")
+        else "./.local_object_store",
     )
 
     @classmethod

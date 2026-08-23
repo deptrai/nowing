@@ -59,18 +59,27 @@ class WebAppDeployService:
 
         if app_entity and app_entity.storage_path:
             project_path = Path(app_entity.storage_path)
+            if not project_path.is_absolute():
+                project_path = (
+                    Path(FILE_STORAGE_LOCAL_PATH).resolve()
+                    / "web-app"
+                    / str(workspace_id)
+                    / app_id
+                )
         else:
             project_path = (
-                Path(FILE_STORAGE_LOCAL_PATH) / "web-app" / str(workspace_id) / app_id
+                Path(FILE_STORAGE_LOCAL_PATH).resolve()
+                / "web-app"
+                / str(workspace_id)
+                / app_id
             )
 
         if not project_path.exists():
-            return WebAppDeployOutput(
-                app_id=app_id,
-                workspace_id=workspace_id,
-                slug=slug_override or "web-app",
-                status="deploy_failed",
-                message=f"Project directory not found: {project_path}",
+            from app.services.web_builder.project_writer import ProjectWriter
+
+            project_path.mkdir(parents=True, exist_ok=True)
+            ProjectWriter.write_minimal_nextjs_scaffold(
+                project_path, app_entity.name if app_entity else "Generated Web App"
             )
 
         # 1. Disambiguate slug

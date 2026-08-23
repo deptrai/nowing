@@ -96,7 +96,12 @@ class WebBuilderService:
                 cleaned_text = re.sub(r"^```(?:json)?\n", "", cleaned_text)
                 cleaned_text = re.sub(r"\n```$", "", cleaned_text)
 
-            return json.loads(cleaned_text)
+            # Try extracting json substring if surrounding text exists
+            json_match = re.search(r"(\{.*\})", cleaned_text, re.DOTALL)
+            if json_match:
+                cleaned_text = json_match.group(1)
+
+            return json.loads(cleaned_text, strict=False)
         except Exception as e:
             logger.warning(
                 f"[WebBuilderService] LLM generation failed or returned invalid JSON: {e}"
@@ -113,7 +118,6 @@ class WebBuilderService:
         workspace_dir = (
             self.storage_base_path / "web-app" / str(build_input.workspace_id) / app_id
         )
-
         # 1. Obtain LLM specification
         spec_dict = await self._call_llm_for_spec(
             prompt=build_input.prompt,
@@ -146,7 +150,7 @@ class WebBuilderService:
                 files=[],
             )
 
-        # 2. Write project files safely
+        workspace_dir.mkdir(parents=True, exist_ok=True)
         writer = ProjectWriter(base_path=workspace_dir)
         written_files = []
 
@@ -154,11 +158,13 @@ class WebBuilderService:
             writer.write_file(file_spec.path, file_spec.content)
             written_files.append(file_spec.path)
 
-        # 3. Add default standalone scaffolding
         scaffold_files = writer.ensure_scaffold_defaults(
             app_name=spec.name, slug=spec.slug
         )
         written_files.extend([f for f in scaffold_files if f not in written_files])
+        app_name = spec.name
+        app_slug = spec.slug
+        app_desc = spec.description
 
         # 4. Validate project structure
         is_valid, validation_issues = validate_project_structure(workspace_dir)
@@ -180,9 +186,9 @@ class WebBuilderService:
                     id=app_id,
                     workspace_id=build_input.workspace_id,
                     user_id=build_input.user_id,
-                    name=spec.name,
-                    slug=spec.slug,
-                    description=spec.description,
+                    name=app_name,
+                    slug=app_slug,
+                    description=app_desc,
                     prompt=build_input.prompt,
                     language=build_input.language,
                     status=status,
@@ -211,8 +217,8 @@ class WebBuilderService:
         return WebAppBuildOutput(
             app_id=app_id,
             workspace_id=build_input.workspace_id,
-            name=spec.name,
-            slug=spec.slug,
+            name=app_name,
+            slug=app_slug,
             status=status,
             preview_url=preview_url,
             message=message,
