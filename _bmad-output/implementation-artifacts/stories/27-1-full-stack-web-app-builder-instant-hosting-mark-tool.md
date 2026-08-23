@@ -16,7 +16,7 @@ status: "ready-for-dev"
 **Related PRD:** FR-93, FR-94 in <ref_file file="/Users/luisphan/Documents/GitHub/nowing/_bmad-output/planning-artifacts/prds/prd-Nowing-2026-07-22/prd.md" /> §4.10  
 **Related Architecture:** AD-113, AD-114 in <ref_file file="/Users/luisphan/Documents/GitHub/nowing/_bmad-output/planning-artifacts/architecture/architecture-unified-nowing-chainlens-dsh-2026-08-17/ARCHITECTURE-SPINE.md" /> §8  
 **PRD Amendment:** <ref_file file="/Users/luisphan/Documents/GitHub/nowing/_bmad-output/planning-artifacts/prds/prd-Nowing-2026-07-22/AMENDMENT-Epic-27-Manus-Autonomous-Workstation-2026-08-20.md" />  
-**Blocked by / Open decision:** AD-113 ghi "Traefik" nhưng production Docker stack hiện dùng Caddy 2. Cần quyết định dùng Caddy wildcard dynamic config (theo infra hiện tại) hay migrate sang Traefik trước khi implement deploy.
+**Resolved by architect (Winston) + PO confirmation:** Production Dokploy/Nowing chạy **Traefik**. Story 27.1 vì vậy **target Traefik cho v1 production**. Caddy 2 trong `docker/docker-compose.yml` chỉ là **self-host / local dev fallback**. Deployment cần dùng **Traefik Docker provider** (labels hoặc file provider) để đăng ký `*.apps.nowing.net` và custom CNAME.
 
 > **Scope warning:** `epics.md` đánh dấu Story 27.1 là **"toàn bộ code mới" và "scope lớn nhất trong roadmap"**. Bao gồm 4 sub-system lớn: (1) LLM code generator, (2) build/preview runner, (3) 1-click hosting + custom CNAME, (4) Design View Mark Tool. Nếu sprint không đủ thời gian, ưu tiên sinh project + preview URL trước, deploy và Mark Tool theo sau.
 
@@ -196,19 +196,24 @@ AD-113, AD-114, FR-93, FR-94, web-builder, nextjs, tailwind, caddy, traefik, mar
 
 ### Technical Requirements
 
-- **Stack:** Python 3.12, FastAPI, Pydantic v2, SQLAlchemy async, LangChain/LiteLLM, Celery (nếu deploy async), Docker, Caddy 2 (hoặc Traefik nếu AD-113 được giữ nguyên), Next.js 16, React 19, Tailwind CSS v4.
+- **Stack:** Python 3.12, FastAPI, Pydantic v2, SQLAlchemy async, LangChain/LiteLLM, Celery (nếu deploy async), Docker, Traefik (production/Dokploy), Caddy 2 (self-host/dev fallback), Next.js 16, React 19, Tailwind CSS v4.
 - **Project generation:** Dùng `get_agent_llm(session, workspace_id)` hoặc `get_planner_llm()` để sinh spec. Prompt phải trả về JSON với `files[]` hoặc `description` đủ để ghi disk. **Không dùng `eval` hoặc `exec` trên output LLM.**
 - **File writer:** Ghi text files an toàn, validate path nằm trong `FILE_STORAGE_LOCAL_PATH/web-app/{workspace_id}/{app_id}/` (ngăn path traversal).
 - **Build runner:** Chạy `npm install` + `next build` trong subprocess. Cân nhắc timeout, sandbox, và resource limit. V1 có thể chạy sync trong request nếu build nhẹ; nếu nặng thì Celery task.
-- **Deploy service:** Tạo Docker image từ `docker/web-app.Dockerfile` với `context` là thư mục project. Caddy dynamic config có thể qua Caddy `admin API` hoặc file config mount. **Lưu ý:** hiện production dùng Caddy, không phải Traefik. Cần quyết định AD trước khi code.
+- **Deploy service:** Tạo Docker image từ `docker/web-app.Dockerfile` với `context` là thư mục project.
+  - **Production (Traefik/Dokploy):** `WebAppDeployService` khởi chạy app container với Docker labels `traefik.enable=true`, `traefik.http.routers.<slug>.rule=Host(\`<slug>.apps.nowing.net\`)`, `traefik.http.services.<slug>.loadbalancer.server.port=<port>`, và nối vào network `dokploy-network`. Nếu backend không có quyền gọi Docker socket trực tiếp, v1 dùng một `web-apps-router` trung gian hoặc Dokploy compose service.
+  - **Self-host/dev (Caddy):** fallback dùng Caddy file-provider (`docker/proxy/web-apps.Caddyfile`).
 - **Mark Tool AST:** Vì Python không có parser JSX native mạnh, v1 có thể dùng Node subprocess với `@babel/parser` và `@babel/traverse` để map selector đến JSX node. Cần giữ project `node_modules` để chạy parser, hoặc dùng `npx` tạm thời.
 
 ### Architecture Compliance
 
-- **AD-113 — Full-Stack Web App Builder & Traefik/Caddy Instant Hosting:**
+- **AD-113 — Full-Stack Web App Builder & Traefik/Caddy Instant Hosting (resolved):**
   - Agent sinh Next.js/React trong `/workspace/web-app`.
   - Deploy 1-click tự động lên `https://[app-name].apps.nowing.net` có HTTPS và dynamic routing.
-  - **⚠️ Conflict:** repo hiện dùng Caddy. Cần hoặc (a) cập nhật AD-113 thành Caddy, hoặc (b) triển khai Traefik song song, hoặc (c) dùng Caddy wildcard dynamic config. Story ghi nhận conflict và để dev agent quyết định với architect.
+  - **Production target: Traefik (Dokploy).** Mỗi web app là một container/service được đăng ký với Traefik qua Docker labels (ví dụ: `traefik.enable=true`, `traefik.http.routers.<slug>.rule=Host(\`<slug>.apps.nowing.net\`)`) và nối vào `dokploy-network`.
+  - **Self-host / local dev fallback: Caddy 2 file-provider** (`docker/proxy/web-apps.Caddyfile`) nếu chạy stack `docker-compose.yml` của repo.
+  - Wildcard certificate `*.apps.nowing.net` cần DNS `A/AAAA` record trỏ đến server và Traefik/Dokploy provision TLS (Let's Encrypt hoặc custom resolver).
+  - Cần quyết định thêm: backend có quyền mount Docker socket / gọi Docker API trên Dokploy server không? Nếu không, v1 phải dùng một `web-apps-router` service do chúng ta quản lý.
 - **AD-114 — Design View Visual "Mark Tool" Canvas AST Mutator:**
   - Iframe preview inject Bounding Box Selector.
   - Khi user khoanh vùng phần tử UI, agent bóc DOM XPath/CSS và AST-mutate chính xác component JSX.
@@ -249,8 +254,9 @@ AD-113, AD-114, FR-93, FR-94, web-builder, nextjs, tailwind, caddy, traefik, mar
 - `nowing_backend/app/app.py` — include router nếu không tự động.
 - `nowing_backend/app/capabilities/core/types.py` — add `WEB_BUILDER_*` billing units.
 - `nowing_backend/app/config/__init__.py` — add `WEB_BUILDER_ENABLED`, `WEB_BUILDER_STORAGE_PATH` config.
-- `docker/docker-compose.yml` — thêm volume `web_apps`, event web-app container service nếu deploy as separate service.
-- `docker/proxy/Caddyfile` — wildcard `*.apps.nowing.net` + dynamic import.
+- `docker/docker-compose.yml` — thêm volume `web_apps`, network `dokploy-network` nếu chạy trên Dokploy, và `web-app` service template với Traefik labels (self-host vẫn dùng Caddy overlay).
+- `docker/proxy/Caddyfile` (dev/self-host fallback) — wildcard `*.apps.nowing.net` + dynamic import `web-apps.Caddyfile`.
+- `docker/web-app.Dockerfile` — Dockerfile template cho generated Next.js app.
 
 **DO NOT create:**
 - Không tạo bảng `Apps` global — phải workspace-scoped.
@@ -273,17 +279,17 @@ AD-113, AD-114, FR-93, FR-94, web-builder, nextjs, tailwind, caddy, traefik, mar
 
 ### External Dependency Gating
 
-- **Quyết định AD-113/Caddy vs Traefik là blocker kỹ thuật đầu tiên.** Không thể implement deploy đúng nếu không biết reverse proxy target.
+- **Reverse proxy target đã resolve: Traefik (Dokploy).** Production dùng Traefik Docker provider. Caddy 2 trong repo là fallback self-host/dev.
+- **Docker socket / build capabilities:** deploy container cần quyền build image và khởi chạy container trên host Dokploy (Docker socket mount hoặc remote builder). Cần xác nhận Dokploy cho phép backend container gọi Docker socket không.
 - **Wildcard DNS `*.apps.nowing.net`** phải đã được cấu hình ở DNS provider. Nếu chưa, chỉ test local với `*.localhost` hoặc mock.
-- **Docker socket / build capabilities:** deploy container cần quyền build image (Docker socket mount hoặc remote builder). Môi trường dev có thể mock.
 - **Node runtime:** build Next.js cần Node.js trong backend container hoặc sandbox. Kiểm tra `Dockerfile` base image đã có Node chưa (nếu không, thêm stage `node:22-alpine`).
 
 ### Latest Tech / Web Research
 
 - **Next.js 16 standalone output** là best practice cho container deployment (`output: 'standalone'` trong `next.config.js`), giảm image size và tự host server.
 - **Tailwind CSS v4** đang ra mắt; nếu dùng v4 thì config file có thể khác v3. Cân nhắc pin `tailwindcss@^3.4` trong v1 để ổn định.
-- **Caddy 2 wildcard certificates** hỗ trợ `*.example.com` qua ACME + DNS challenge. Caddy `admin API` (`:2019`) cho phép cập nhật config động nếu enable.
-- **Traefik** cũng hỗ trợ wildcard + dynamic config qua file provider hoặc Docker labels.
+- **Traefik Docker provider** là cách Dokploy đăng ký route. Dynamic routing bằng cách thêm Docker labels khi khởi chạy container (quy tắc `Host`/`HostRegexp`) hoặc ghi file `traefik/dynamic/web-apps.yml` nếu có quyền truy cập Traefik config trên server.
+- **Caddy 2 wildcard certificates** hỗ trợ `*.example.com` qua ACME + DNS challenge. **Dùng làm fallback self-host/dev** với `docker/proxy/web-apps.Caddyfile`.
 - **JSX AST mutation in Python:** không có thư viện mạnh. V1 nên dùng Node subprocess với `@babel/parser` + `@babel/generator` + `@babel/traverse` + `@babel/types`.
 
 ### Project Context Reference
@@ -361,7 +367,7 @@ SWE-1.7 Max
 | `npm install` fails (network/registry) | Build fails; return `status=build_failed` with npm logs; do not register public URL. | AC-2 already covers build fail. |
 | `next build` fails (syntax/type error) | Same as above; preserve build output for debugging. | Add test for `next build` failure. |
 | Docker socket unavailable / build permission denied | Cannot deploy; return `503` or `500`. | Add `deploy_failed` with `reason=docker_unavailable`. |
-| Caddy/Traefik admin API unreachable | Cannot publish route; return `503`; do not mark `status=published`. | Add retry + failure. |
+| Traefik/Caddy admin API or Docker socket unreachable | Cannot publish route; return `503`; do not mark `status=published`. | Add retry + failure. |
 | Redis down (if rate-limit or lock used) | Build/publish must still work or fail gracefully (in-memory fallback). | Document `RedisDown` behavior. |
 | Postgres `workspace_apps.slug` unique constraint violation | Race on global slug; retry with new slug or return `409`. | Add global slug collision AC. |
 | Custom CNAME points to wrong IP | Reject with `422` after DNS check. | Add CNAME validation AC. |

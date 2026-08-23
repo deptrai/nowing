@@ -329,8 +329,9 @@ The architecture only requires that:
 - **Rule:** Docker ephemeral container chạy non-root với PID 1 `tini`, RAM cap 512MB, timeout 60s. Tích hợp sẵn `pandas`, `numpy`, `matplotlib`, `openpyxl` để làm sạch dữ liệu lớn và xuất file Excel `.xlsx` chuyên nghiệp.
 
 ### AD-113 — Full-Stack Web App Builder & Traefik/Caddy Instant Hosting [ADOPTED]
-- **Binds:** `nowing` Web Builder và Traefik/Caddy reverse proxy.
+- **Binds:** `nowing` Web Builder và Traefik (production/Dokploy) / Caddy (self-host/dev) reverse proxy.
 - **Rule:** Agent sinh project Next.js/React trong `/workspace/web-app`. Deploy 1-click tự động lên `https://[app-name].apps.nowing.net` có HTTPS và dynamic routing.
+- **Production (Traefik):** web app containers được khởi chạy với Docker labels hoặc file provider để Traefik đăng ký route theo `Host`/`HostRegexp`. Caddy file-provider là fallback cho self-host / local dev.
 
 ### AD-114 — Design View Visual "Mark Tool" Canvas AST Mutator [ADOPTED]
 - **Binds:** Nowing Canvas Web Preview và React code generator.
