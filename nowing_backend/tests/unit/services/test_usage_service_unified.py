@@ -94,6 +94,19 @@ class _FakeResult:
     def all(self) -> list[Any]:
         return self._rows
 
+    def scalars(self) -> Any:
+        class _ScalarMapper:
+            def __init__(self, data: list[Any]) -> None:
+                self._data = data
+
+            def all(self) -> list[Any]:
+                return self._data
+
+            def first(self) -> Any:
+                return self._data[0] if self._data else None
+
+        return _ScalarMapper(self._rows)
+
     def mappings(self) -> Any:
         class _Mapper:
             def __init__(self, data: list[dict[str, Any]]) -> None:
@@ -176,3 +189,87 @@ async def test_get_service_breakdown_aggregation() -> None:
     )
     assert meetings.cost_micros == 2_000_000
     assert meetings.event_count == 1
+
+
+@pytest.mark.asyncio
+async def test_get_per_turn_usage_groups_by_turn() -> None:
+    """Groups TokenUsage rows by message/thread/id and computes token categories."""
+    user = User()
+    user.id = uuid4()
+    user.credit_micros_balance = 0
+
+    now = datetime.now(UTC)
+    token_rows = [
+        _Row(
+            id=1,
+            message_id=100,
+            thread_id=None,
+            workspace_id=1,
+            usage_type="chat",
+            resolved_mode="balanced",
+            model_breakdown=None,
+            prompt_tokens=100,
+            completion_tokens=50,
+            total_tokens=150,
+            cost_micros=1_000_000,
+            created_at=now,
+        ),
+        _Row(
+            id=2,
+            message_id=None,
+            thread_id=10,
+            workspace_id=1,
+            usage_type="memory_create",
+            resolved_mode=None,
+            model_breakdown=None,
+            prompt_tokens=200,
+            completion_tokens=100,
+            total_tokens=300,
+            cost_micros=500_000,
+            created_at=now - timedelta(minutes=1),
+        ),
+        _Row(
+            id=3,
+            message_id=None,
+            thread_id=None,
+            workspace_id=1,
+            usage_type="memory_embedding",
+            resolved_mode=None,
+            model_breakdown=None,
+            prompt_tokens=0,
+            completion_tokens=0,
+            total_tokens=75,
+            cost_micros=0,
+            created_at=now - timedelta(minutes=2),
+        ),
+    ]
+
+    session = _FakeSession(token_rows=token_rows, billing_rows=[])
+    service = UsageService(session, user)
+
+    result = await service.get_per_turn_usage(
+        workspace_id=1, start_date=now - timedelta(days=1), end_date=now
+    )
+
+    assert result.workspace_id == 1
+    assert len(result.items) == 3
+
+    chat = next(i for i in result.items if i.turn_key == "100")
+    assert chat.turn_type == "message"
+    assert chat.capability == "chat"
+    assert chat.resolved_model == "balanced"
+    assert chat.llm_tokens == 150
+    assert chat.embedding_tokens == 0
+    assert chat.cost_micros == 1_000_000
+
+    memory = next(i for i in result.items if i.turn_key == "10")
+    assert memory.turn_type == "thread"
+    assert memory.capability == "memory_create"
+    assert memory.llm_tokens == 300
+    assert memory.cost_micros == 500_000
+
+    embedding = next(i for i in result.items if i.turn_key == "3")
+    assert embedding.turn_type == "event"
+    assert embedding.capability == "memory_embedding"
+    assert embedding.embedding_tokens == 75
+    assert embedding.llm_tokens == 0

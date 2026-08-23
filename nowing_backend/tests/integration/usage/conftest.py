@@ -158,6 +158,9 @@ async def seed_token_usage(
         cost_micros: int = 1000,
         model_breakdown: dict | None | object = _unset_model_breakdown,
         call_details: dict | None = None,
+        message_id: int | None = None,
+        thread_id: int | None = None,
+        resolved_mode: str | None = None,
         created_at: datetime | None = None,
     ) -> TokenUsage:
         if model_breakdown is _unset_model_breakdown:
@@ -182,6 +185,9 @@ async def seed_token_usage(
             cost_micros=cost_micros,
             model_breakdown=model_breakdown,
             call_details=call_details,
+            message_id=message_id,
+            thread_id=thread_id,
+            resolved_mode=resolved_mode,
             workspace_id=db_workspace.id,
             user_id=db_user.id,
             created_at=created_at or datetime.now(UTC),

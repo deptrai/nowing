@@ -11,6 +11,7 @@ from app.auth.context import AuthContext
 from app.db import (
     Permission,
     Workspace,
+    WorkspaceLimit,
     WorkspaceMcpToolSetting,
     WorkspaceMembership,
     WorkspaceRole,
@@ -25,9 +26,11 @@ from app.mcp_tools import (
 )
 from app.routes.model_connections_routes import compute_llm_setup_status
 from app.schemas import (
+    AutoExtractUsage,
     WorkspaceApiAccessUpdate,
     WorkspaceCreate,
     WorkspaceLimitsResponse,
+    WorkspaceLimitUpdate,
     WorkspaceLimitUsage,
     WorkspaceMcpToolRead,
     WorkspaceMcpToolUpdate,
@@ -35,6 +38,7 @@ from app.schemas import (
     WorkspaceUpdate,
     WorkspaceWithStats,
 )
+from app.services.memory.extract_budget import get_auto_extract_usage
 from app.services.workspace_limits import workspace_limit_service
 from app.users import allow_any_principal, get_auth_context, require_session_context
 from app.utils.rbac import check_permission, check_workspace_access, is_workspace_owner
@@ -438,6 +442,7 @@ async def get_workspace_limits(
             session, workspace_id
         )
         usage = await workspace_limit_service.get_usage_snapshot(session, workspace_id)
+        auto_extract_usage = await get_auto_extract_usage(session, workspace_id)
 
         return WorkspaceLimitsResponse(
             plan_tier=limits.plan_tier,
@@ -446,6 +451,10 @@ async def get_workspace_limits(
             max_runs=limits.max_runs,
             max_storage_bytes=limits.max_storage_bytes,
             run_period_hours=limits.run_period_hours,
+            auto_extract_item_cap=limits.auto_extract_item_cap,
+            auto_extract_spend_cap_micros=limits.auto_extract_spend_cap_micros,
+            auto_extract_wallet_pre_check=limits.auto_extract_wallet_pre_check,
+            auto_extract_usage=AutoExtractUsage(**auto_extract_usage),
             usage=WorkspaceLimitUsage(**usage),
         )
     except HTTPException:
@@ -454,6 +463,76 @@ async def get_workspace_limits(
         await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to fetch workspace limits: {e!s}"
+        ) from e
+
+
+@router.put("/workspaces/{workspace_id}/limits", response_model=WorkspaceLimitsResponse)
+async def update_workspace_limits(
+    workspace_id: int,
+    body: WorkspaceLimitUpdate,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """Update workspace-specific auto-extract budget caps.
+
+    Requires SETTINGS_UPDATE permission (Owner-only by default).
+    Only ``auto_extract_*`` fields are exposed for owner editing.
+    """
+    try:
+        await check_permission(
+            session,
+            auth,
+            workspace_id,
+            Permission.SETTINGS_UPDATE.value,
+            "You don't have permission to update workspace limits",
+        )
+
+        result = await session.execute(
+            select(WorkspaceLimit).where(
+                WorkspaceLimit.workspace_id == workspace_id,
+                WorkspaceLimit.plan_tier.is_(None),
+            )
+        )
+        override = result.scalars().first()
+        if override is None:
+            override = WorkspaceLimit(workspace_id=workspace_id)
+            session.add(override)
+
+        # Only overwrite supplied fields; keep existing overrides for others.
+        if body.auto_extract_item_cap is not None:
+            override.auto_extract_item_cap = body.auto_extract_item_cap
+        if body.auto_extract_spend_cap_micros is not None:
+            override.auto_extract_spend_cap_micros = body.auto_extract_spend_cap_micros
+        if body.auto_extract_wallet_pre_check is not None:
+            override.auto_extract_wallet_pre_check = body.auto_extract_wallet_pre_check
+
+        await session.commit()
+
+        limits = await workspace_limit_service.get_effective_limits(
+            session, workspace_id
+        )
+        usage = await workspace_limit_service.get_usage_snapshot(session, workspace_id)
+        auto_extract_usage = await get_auto_extract_usage(session, workspace_id)
+
+        return WorkspaceLimitsResponse(
+            plan_tier=limits.plan_tier,
+            max_documents=limits.max_documents,
+            max_members=limits.max_members,
+            max_runs=limits.max_runs,
+            max_storage_bytes=limits.max_storage_bytes,
+            run_period_hours=limits.run_period_hours,
+            auto_extract_item_cap=limits.auto_extract_item_cap,
+            auto_extract_spend_cap_micros=limits.auto_extract_spend_cap_micros,
+            auto_extract_wallet_pre_check=limits.auto_extract_wallet_pre_check,
+            auto_extract_usage=AutoExtractUsage(**auto_extract_usage),
+            usage=WorkspaceLimitUsage(**usage),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(
+            status_code=500, detail=f"Failed to update workspace limits: {e!s}"
         ) from e
 
 

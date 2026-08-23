@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime, timedelta
 from typing import Literal
 
@@ -14,6 +15,8 @@ from app.db import (
     User,
 )
 from app.schemas.usage import (
+    PerTurnUsageItem,
+    PerTurnUsageResponse,
     ServiceBreakdownItem,
     ServiceCategory,
     UsageBreakdownItem,
@@ -25,6 +28,8 @@ from app.schemas.usage import (
 )
 
 Granularity = Literal["day", "week", "month"]
+
+logger = logging.getLogger(__name__)
 
 
 def _ensure_utc(value: datetime) -> datetime:
@@ -511,3 +516,121 @@ class UsageService:
             )
 
         return UsageTransactionsResponse(transactions=transactions, total=total)
+
+    async def get_per_turn_usage(
+        self,
+        workspace_id: int,
+        start_date: datetime | None,
+        end_date: datetime | None,
+    ) -> PerTurnUsageResponse:
+        """Return a per-turn cost/token breakdown for a workspace.
+
+        A "turn" is the coarsest stable anchor available on the row:
+        ``message_id`` for chat turns, ``thread_id`` for extraction rows,
+        or the row ``id`` for unattributed events. Token categories are
+        best-effort from the existing ``usage_type`` / ``total_tokens`` columns;
+        ``recall_tokens`` are not yet tracked and report ``0``.
+        """
+        start_date, end_date = self._normalize_range(start_date, end_date)
+
+        result = await self.session.execute(
+            select(TokenUsage)
+            .where(
+                TokenUsage.workspace_id == workspace_id,
+                TokenUsage.created_at >= start_date,
+                TokenUsage.created_at <= end_date,
+            )
+            .order_by(TokenUsage.created_at.desc())
+        )
+        rows = result.scalars().all()
+
+        # AC-2: exclude rows missing workspace_id or cost_micros rather
+        # than inflating totals, and surface a reconcile warning.
+        excluded = [
+            row for row in rows if row.workspace_id is None or row.cost_micros is None
+        ]
+        if excluded:
+            logger.warning(
+                "usage_reconcile_warning workspace_id=%s excluded_rows=%d reason=incomplete",
+                workspace_id,
+                len(excluded),
+            )
+
+        groups: dict[str, PerTurnUsageItem] = {}
+        reconcile_warning = False
+
+        for row in rows:
+            if row in excluded:
+                continue
+
+            turn_key = str(row.message_id or row.thread_id or row.id)
+            turn_type = (
+                "message" if row.message_id else "thread" if row.thread_id else "event"
+            )
+
+            existing = groups.get(turn_key)
+            created_at = (
+                max(row.created_at, existing.created_at)
+                if existing is not None
+                else row.created_at
+            )
+
+            # Best-effort token categories. Embedding rows carry their token
+            # count in ``total_tokens``; recall is not yet instrumented.
+            is_embedding = row.usage_type == "memory_embedding"
+            llm_tokens = (
+                0 if is_embedding else row.prompt_tokens + row.completion_tokens
+            )
+            embedding_tokens = row.total_tokens if is_embedding else 0
+            recall_tokens = 0
+
+            cost_micros = row.cost_micros
+            if llm_tokens > 0 and cost_micros == 0:
+                reconcile_warning = True
+                logger.warning(
+                    "usage_reconcile_warning workspace_id=%s turn_key=%s "
+                    "usage_type=%s llm_tokens=%d cost_micros=0",
+                    workspace_id,
+                    turn_key,
+                    row.usage_type,
+                    llm_tokens,
+                )
+
+            capability = row.usage_type or "unknown"
+            resolved_model = row.resolved_mode or "unknown"
+            if resolved_model == "unknown" and row.model_breakdown:
+                resolved_model = next(iter(row.model_breakdown.keys()), "unknown")
+
+            if existing is None:
+                groups[turn_key] = PerTurnUsageItem(
+                    turn_key=turn_key,
+                    turn_type=turn_type,
+                    created_at=created_at,
+                    capability=capability,
+                    resolved_model=resolved_model,
+                    llm_tokens=llm_tokens,
+                    embedding_tokens=embedding_tokens,
+                    recall_tokens=recall_tokens,
+                    cost_micros=cost_micros,
+                    memories_created=0,
+                    citations_generated=0,
+                )
+            else:
+                existing.llm_tokens += llm_tokens
+                existing.embedding_tokens += embedding_tokens
+                existing.recall_tokens += recall_tokens
+                existing.cost_micros += cost_micros
+                existing.created_at = created_at
+                existing.capability = capability
+                existing.resolved_model = resolved_model
+
+        if excluded:
+            reconcile_warning = True
+
+        return PerTurnUsageResponse(
+            workspace_id=workspace_id,
+            start_date=start_date,
+            end_date=end_date,
+            items=list(groups.values()),
+            reconcile_warning=reconcile_warning,
+        )

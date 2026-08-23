@@ -1,4 +1,6 @@
 import {
+	type PerTurnUsageResponse,
+	perTurnUsageResponse,
 	type UsageDateRange,
 	type UsageSummaryResponse,
 	type UsageTimeSeriesResponse,
@@ -50,6 +52,18 @@ class UsageApiService {
 			`/api/v1/usage/transactions?${params.toString()}`,
 			usageTransactionsResponse
 		);
+	};
+
+	getPerTurn = async (
+		workspaceId: number,
+		range: UsageDateRange
+	): Promise<PerTurnUsageResponse> => {
+		const params = new URLSearchParams({
+			workspace_id: String(workspaceId),
+			start_date: range.start,
+			end_date: range.end,
+		});
+		return baseApiService.get(`/api/v1/usage/per-turn?${params.toString()}`, perTurnUsageResponse);
 	};
 }
 

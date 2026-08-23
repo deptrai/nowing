@@ -10,8 +10,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { outcomePricingApiService } from "@/lib/apis/outcome-pricing-api.service";
 import { type UsageDateRange, usageApiService } from "@/lib/apis/usage-api.service";
+import { AutoExtractBudgetCard } from "./auto-extract-budget-card";
 import { UsageDateRangePicker } from "./date-range-picker";
 import { OutcomeRoiMetricsCards } from "./outcome-roi-metrics-cards";
+import { PerTurnUsageSection } from "./per-turn-usage-section";
 import { PromoCodeClaimCard } from "./promo-code-claim-card";
 import { UsageBreakdown } from "./usage-breakdown";
 import { UsageChart } from "./usage-chart";
@@ -126,6 +128,9 @@ export function UsageContent() {
 				/>
 			</div>
 
+			{/* Auto-extract budget caps */}
+			<AutoExtractBudgetCard workspaceId={workspaceId} />
+
 			{/* Outcome-based ROI Metrics Section */}
 			<OutcomeRoiMetricsCards items={serviceBreakdown?.items ?? []} />
 
@@ -175,6 +180,8 @@ export function UsageContent() {
 
 			{/* Service-category distribution breakdown */}
 			<UsageServiceDonutChart items={serviceBreakdown?.items ?? []} />
+
+			<PerTurnUsageSection workspaceId={workspaceId} range={range} />
 
 			<UsageTransactions
 				transactions={transactions?.transactions ?? []}

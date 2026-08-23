@@ -39,6 +39,10 @@ class ResolvedWorkspaceLimits:
     max_runs: int | None
     max_storage_bytes: int | None
     run_period_hours: int = 720
+    # Story 8.14: auto-extract budget caps.
+    auto_extract_item_cap: int | None = None
+    auto_extract_spend_cap_micros: int | None = None
+    auto_extract_wallet_pre_check: bool | None = None
 
     def __post_init__(self) -> None:
         """Enforce invariants on resolved limit values."""
@@ -47,6 +51,8 @@ class ResolvedWorkspaceLimits:
             "max_members",
             "max_runs",
             "max_storage_bytes",
+            "auto_extract_item_cap",
+            "auto_extract_spend_cap_micros",
         ):
             value = getattr(self, field)
             if value is None:
@@ -203,6 +209,9 @@ class WorkspaceLimitService:
             max_runs=_resolve("max_runs"),
             max_storage_bytes=_resolve("max_storage_bytes"),
             run_period_hours=_resolve("run_period_hours") or 720,
+            auto_extract_item_cap=_resolve("auto_extract_item_cap"),
+            auto_extract_spend_cap_micros=_resolve("auto_extract_spend_cap_micros"),
+            auto_extract_wallet_pre_check=_resolve("auto_extract_wallet_pre_check"),
         )
 
     # ------------------------------------------------------------------ #

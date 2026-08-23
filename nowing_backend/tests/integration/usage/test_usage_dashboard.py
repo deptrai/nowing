@@ -573,3 +573,68 @@ async def test_usage_transactions_pagination(
     body = resp.json()
     assert body["transactions"] == []
     assert body["total"] == 3
+
+
+@pytest.mark.asyncio
+async def test_usage_per_turn_returns_turn_breakdown(
+    client,
+    db_workspace,
+    seed_token_usage,
+):
+    """GET /usage/per-turn groups TokenUsage rows and returns token categories."""
+    now = datetime.now(UTC)
+    start = now - timedelta(days=7)
+    end = now + timedelta(hours=1)
+
+    chat = await seed_token_usage(
+        usage_type="chat",
+        prompt_tokens=10,
+        completion_tokens=20,
+        total_tokens=30,
+        cost_micros=1500,
+        resolved_mode="balanced",
+        created_at=now - timedelta(days=1),
+    )
+    memory = await seed_token_usage(
+        usage_type="memory_create",
+        prompt_tokens=5,
+        completion_tokens=10,
+        total_tokens=15,
+        cost_micros=500,
+        created_at=now - timedelta(days=1, hours=1),
+    )
+    await seed_token_usage(
+        usage_type="memory_embedding",
+        prompt_tokens=0,
+        completion_tokens=0,
+        total_tokens=12,
+        cost_micros=0,
+        created_at=now - timedelta(days=1, hours=2),
+    )
+
+    resp = await client.get(
+        f"{BASE}/per-turn",
+        params={
+            "workspace_id": db_workspace.id,
+            "start_date": start.isoformat(),
+            "end_date": end.isoformat(),
+        },
+    )
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["workspace_id"] == db_workspace.id
+    assert isinstance(body["items"], list)
+    assert len(body["items"]) == 3
+
+    by_key = {item["turn_key"]: item for item in body["items"]}
+    chat_item = by_key[str(chat.id)]
+    assert chat_item["capability"] == "chat"
+    assert chat_item["resolved_model"] == "balanced"
+    assert chat_item["llm_tokens"] == 30
+    assert chat_item["cost_micros"] == 1500
+
+    memory_item = by_key[str(memory.id)]
+    assert memory_item["capability"] == "memory_create"
+    assert memory_item["llm_tokens"] == 15
+    assert memory_item["cost_micros"] == 500

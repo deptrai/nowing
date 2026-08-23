@@ -72,6 +72,7 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import func, select
 
 from app.config import config
+from app.services.workspace_limits import WorkspaceLimitService
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -274,6 +275,25 @@ def _record_extraction_sync(workspace_id: int) -> int:
         return _memory_incr(key, window)
 
 
+async def get_auto_extract_usage(
+    session: AsyncSession, workspace_id: int
+) -> dict[str, int]:
+    """Return current window spend and count for memory auto-extraction.
+
+    The window matches ``_period_window_start`` (rolling day/week/month) and
+    the rate counter, so the dashboard can warn when usage approaches a cap.
+    """
+    spend = await _period_spend_micros(session, workspace_id)
+    count = await _rate_count(workspace_id)
+    window = config.MEMORY_AUTO_EXTRACT_BUDGET_WINDOW
+    window_hours = {"day": 24, "week": 168, "month": 720}.get(window, 24)
+    return {
+        "period_spend_micros": spend,
+        "period_count": count,
+        "period_window_hours": window_hours,
+    }
+
+
 async def record_extraction(workspace_id: int) -> None:
     """Increment the rate-limit window counter for an extraction that ran.
 
@@ -293,7 +313,12 @@ async def record_extraction(workspace_id: int) -> None:
 
 
 async def _check_budget(
-    session: AsyncSession, workspace_id: int, *, stage: str, fail_closed: bool
+    session: AsyncSession,
+    workspace_id: int,
+    *,
+    stage: str,
+    fail_closed: bool,
+    limits=None,
 ) -> ExtractGateResult | None:
     """Budget cap check. Returns a blocking verdict, or ``None`` to continue.
 
@@ -301,9 +326,16 @@ async def _check_budget(
     authoritative service-side call blocks (bounded cost is the whole point of
     the cap); the enqueue-side fast-path continues, because blocking there
     would drop the turn before the authoritative gate ever runs.
+
+    ``limits`` is an optional ``ResolvedWorkspaceLimits`` carrying per-workspace
+    Story 8.14 caps; when absent, the global config defaults are used.
     """
-    budget_cap = config.MEMORY_AUTO_EXTRACT_BUDGET_MICROS
-    if budget_cap <= 0:
+    budget_cap = (
+        limits.auto_extract_spend_cap_micros
+        if limits is not None and limits.auto_extract_spend_cap_micros is not None
+        else config.MEMORY_AUTO_EXTRACT_BUDGET_MICROS
+    )
+    if budget_cap is None or budget_cap <= 0:
         return None
 
     try:
@@ -327,6 +359,17 @@ async def _check_budget(
         )
         return None
 
+    # Story 8.14: surface a warning when 80% of the cap is reached.
+    if spent >= int(budget_cap * 0.8):
+        logger.warning(
+            "memory_extract_budget_warning workspace_id=%s stage=%s "
+            "spent=%s cap=%s threshold=80%%",
+            workspace_id,
+            stage,
+            spent,
+            budget_cap,
+        )
+
     if spent >= budget_cap:
         logger.info(
             "memory_extract_skip reason=%s workspace_id=%s stage=%s spent=%s cap=%s",
@@ -341,15 +384,22 @@ async def _check_budget(
 
 
 async def _check_rate(
-    workspace_id: int, *, stage: str, fail_closed: bool
+    workspace_id: int, *, stage: str, fail_closed: bool, limits=None
 ) -> ExtractGateResult | None:
-    """Rate-limit check. Returns a blocking verdict, or ``None`` to continue.
+    """Rate-limit / item-cap check. Returns a blocking verdict, or ``None``.
 
     ``_rate_count`` already contains its own Redis fallback and does not raise,
     so the ``except`` here is defense in depth for a substituted seam.
+
+    ``limits`` is an optional ``ResolvedWorkspaceLimits`` carrying per-workspace
+    Story 8.14 caps; when absent, the global config defaults are used.
     """
-    rate_max = config.MEMORY_AUTO_EXTRACT_RATE_MAX
-    if rate_max <= 0:
+    rate_max = (
+        limits.auto_extract_item_cap
+        if limits is not None and limits.auto_extract_item_cap is not None
+        else config.MEMORY_AUTO_EXTRACT_RATE_MAX
+    )
+    if rate_max is None or rate_max <= 0:
         return None
 
     try:
@@ -372,6 +422,17 @@ async def _check_rate(
             stage,
         )
         return None
+
+    # Story 8.14: surface a warning when 80% of the item cap is reached.
+    if rate >= int(rate_max * 0.8):
+        logger.warning(
+            "memory_extract_item_cap_warning workspace_id=%s stage=%s "
+            "rate=%s cap=%s threshold=80%%",
+            workspace_id,
+            stage,
+            rate,
+            rate_max,
+        )
 
     if rate >= rate_max:
         logger.info(
@@ -413,6 +474,8 @@ async def check_extract_allowed(
         return ExtractGateResult(allowed=False, reason=REASON_GATE_ERROR)
 
     try:
+        limits = await WorkspaceLimitService.get_effective_limits(session, workspace_id)
+
         # 1. Anonymous / no billable owner.
         if attributed_user_id is None:
             logger.info(
@@ -422,40 +485,51 @@ async def check_extract_allowed(
             )
             return ExtractGateResult(allowed=False, reason=REASON_ANONYMOUS_UNBILLED)
 
-        # 2. Wallet eligibility pre-check (always-on). Fail-closed: an error
-        # resolving the wallet blocks optional background work rather than
-        # letting an outage widen what runs unmetered.
-        try:
-            spendable = await _wallet_spendable_micros(session, attributed_user_id)
-        except Exception:
-            logger.warning(
-                "memory_extract_skip reason=%s workspace_id=%s stage=service "
-                "wallet_check_failed=true",
-                REASON_INSUFFICIENT_WALLET,
-                workspace_id,
-            )
-            return ExtractGateResult(allowed=False, reason=REASON_INSUFFICIENT_WALLET)
+        # 2. Wallet eligibility pre-check (Story 8.14: can be disabled per workspace).
+        # Default to enabled (``None`` or ``True`` both run the pre-check).
+        wallet_pre_check = limits.auto_extract_wallet_pre_check is not False
+        if wallet_pre_check:
+            try:
+                spendable = await _wallet_spendable_micros(session, attributed_user_id)
+            except Exception:
+                logger.warning(
+                    "memory_extract_skip reason=%s workspace_id=%s stage=service "
+                    "wallet_check_failed=true",
+                    REASON_INSUFFICIENT_WALLET,
+                    workspace_id,
+                )
+                return ExtractGateResult(
+                    allowed=False, reason=REASON_INSUFFICIENT_WALLET
+                )
 
-        if spendable < config.MEMORY_AUTO_EXTRACT_MIN_RESERVE_MICROS:
-            logger.info(
-                "memory_extract_skip reason=%s workspace_id=%s stage=service "
-                "spendable=%s min_reserve=%s",
-                REASON_INSUFFICIENT_WALLET,
-                workspace_id,
-                spendable,
-                config.MEMORY_AUTO_EXTRACT_MIN_RESERVE_MICROS,
-            )
-            return ExtractGateResult(allowed=False, reason=REASON_INSUFFICIENT_WALLET)
+            if spendable < config.MEMORY_AUTO_EXTRACT_MIN_RESERVE_MICROS:
+                logger.info(
+                    "memory_extract_skip reason=%s workspace_id=%s stage=service "
+                    "spendable=%s min_reserve=%s",
+                    REASON_INSUFFICIENT_WALLET,
+                    workspace_id,
+                    spendable,
+                    config.MEMORY_AUTO_EXTRACT_MIN_RESERVE_MICROS,
+                )
+                return ExtractGateResult(
+                    allowed=False, reason=REASON_INSUFFICIENT_WALLET
+                )
 
         # 3. Per-workspace spend/budget cap over the rolling period.
         blocked = await _check_budget(
-            session, workspace_id, stage="service", fail_closed=True
+            session,
+            workspace_id,
+            stage="service",
+            fail_closed=True,
+            limits=limits,
         )
         if blocked is not None:
             return blocked
 
-        # 4. Time-based rate-limit.
-        blocked = await _check_rate(workspace_id, stage="service", fail_closed=True)
+        # 4. Time-based rate-limit / item cap.
+        blocked = await _check_rate(
+            workspace_id, stage="service", fail_closed=True, limits=limits
+        )
         if blocked is not None:
             return blocked
     except Exception:
@@ -487,12 +561,19 @@ async def check_workspace_gates(
     """
     try:
         workspace_id = workspace.id
+        limits = await WorkspaceLimitService.get_effective_limits(session, workspace_id)
         blocked = await _check_budget(
-            session, workspace_id, stage="enqueue", fail_closed=False
+            session,
+            workspace_id,
+            stage="enqueue",
+            fail_closed=False,
+            limits=limits,
         )
         if blocked is not None:
             return blocked
-        blocked = await _check_rate(workspace_id, stage="enqueue", fail_closed=False)
+        blocked = await _check_rate(
+            workspace_id, stage="enqueue", fail_closed=False, limits=limits
+        )
         if blocked is not None:
             return blocked
     except Exception:

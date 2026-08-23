@@ -91,6 +91,12 @@ class WorkspaceLimitUsage(BaseModel):
     storage_bytes: int
 
 
+class AutoExtractUsage(BaseModel):
+    period_spend_micros: int
+    period_count: int
+    period_window_hours: int
+
+
 class WorkspaceLimitsResponse(BaseModel):
     """Effective limits and current usage for a workspace."""
 
@@ -100,4 +106,17 @@ class WorkspaceLimitsResponse(BaseModel):
     max_runs: int | None
     max_storage_bytes: int | None
     run_period_hours: int
+    # Story 8.14: auto-extract budget caps.
+    auto_extract_item_cap: int | None = None
+    auto_extract_spend_cap_micros: int | None = None
+    auto_extract_wallet_pre_check: bool | None = None
+    auto_extract_usage: AutoExtractUsage
     usage: WorkspaceLimitUsage
+
+
+class WorkspaceLimitUpdate(BaseModel):
+    """Owner-editable workspace limit overrides."""
+
+    auto_extract_item_cap: int | None = None
+    auto_extract_spend_cap_micros: int | None = None
+    auto_extract_wallet_pre_check: bool | None = None

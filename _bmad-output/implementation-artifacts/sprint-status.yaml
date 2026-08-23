@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: "2026-08-23"  # Backlog grooming + implementation-readiness closeout: 5 followups deferred; 14-2/17-1/17-5 blocked-by-external; 8-14 re-scoped to ready-for-dev v2; 39 missing FR/NFRs mapped in epics.md; readiness report closed out.
+last_updated: "2026-08-23"  # Story 8-14 started: per-turn cost + auto-extract budget toggle v2 dashboard.
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # - Parsed epics.md: 24 epics, ~160 stories.
 # - Scanned _bmad-output/implementation-artifacts/ + stories/*.md for story files (frontmatter story_key/epic+story).
@@ -162,7 +162,7 @@ development_status:
   8-11-followup: backlog  # deferred: needs specific 8-11 code-review items before implementation
   8-12: done
   8-13: done
-  8-14: ready-for-dev  # PO 2026-08-23: re-scope as 8.3 v2; per-turn cost + budget toggle; concrete BDD AC in epics.md
+  8-14: in-progress  # PO 2026-08-23: re-scope as 8.3 v2; per-turn cost + budget toggle; concrete BDD AC in epics.md
   epic-8-retrospective: optional
 
   # === Epic 9: Deep Research đáng tin cậy ===

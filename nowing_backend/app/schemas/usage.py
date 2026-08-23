@@ -93,3 +93,33 @@ class ServiceBreakdownResponse(BaseModel):
     items: list[ServiceBreakdownItem]
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PerTurnUsageItem(BaseModel):
+    """One turn/event of token usage with cost and capability attribution."""
+
+    turn_key: str
+    turn_type: str
+    created_at: datetime
+    capability: str
+    resolved_model: str
+    llm_tokens: int
+    embedding_tokens: int
+    recall_tokens: int
+    cost_micros: int
+    memories_created: int
+    citations_generated: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PerTurnUsageResponse(BaseModel):
+    """Per-turn usage breakdown for a workspace over a date range."""
+
+    workspace_id: int
+    start_date: datetime
+    end_date: datetime
+    items: list[PerTurnUsageItem]
+    reconcile_warning: bool
+
+    model_config = ConfigDict(from_attributes=True)

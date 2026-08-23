@@ -141,6 +141,10 @@ from .stripe import (
     PagePurchaseRead,
     StripeWebhookResponse,
 )
+from .usage import (
+    PerTurnUsageItem,
+    PerTurnUsageResponse,
+)
 from .users import UserCreate, UserRead, UserUpdate
 from .video_presentations import (
     VideoPresentationBase,
@@ -149,10 +153,12 @@ from .video_presentations import (
     VideoPresentationUpdate,
 )
 from .workspace import (
+    AutoExtractUsage,
     WorkspaceApiAccessUpdate,
     WorkspaceBase,
     WorkspaceCreate,
     WorkspaceLimitsResponse,
+    WorkspaceLimitUpdate,
     WorkspaceLimitUsage,
     WorkspaceMcpToolRead,
     WorkspaceMcpToolUpdate,
@@ -173,6 +179,8 @@ __all__ = [
     "AdminGlobalModelTestPreview",
     "AdminGlobalModelUpdate",
     "AdminGlobalModelsBulkUpdate",
+    # Workspace schemas
+    "AutoExtractUsage",
     # Folder schemas
     "BulkDocumentMove",
     # Chat schemas (assistant-ui integration)
@@ -279,6 +287,9 @@ __all__ = [
     "PagePurchaseHistoryResponse",
     "PagePurchaseRead",
     "PaginatedResponse",
+    # Usage schemas
+    "PerTurnUsageItem",
+    "PerTurnUsageResponse",
     "PermissionInfo",
     "PermissionsListResponse",
     # Podcast schemas
@@ -318,9 +329,9 @@ __all__ = [
     "VideoPresentationRead",
     "VideoPresentationUpdate",
     "WorkspaceApiAccessUpdate",
-    # Workspace schemas
     "WorkspaceBase",
     "WorkspaceCreate",
+    "WorkspaceLimitUpdate",
     "WorkspaceLimitUsage",
     "WorkspaceLimitsResponse",
     "WorkspaceMcpToolRead",

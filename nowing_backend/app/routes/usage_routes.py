@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.context import AuthContext
 from app.db import get_async_session
 from app.schemas.usage import (
+    PerTurnUsageResponse,
     UsageSummaryResponse,
     UsageTimeSeriesResponse,
     UsageTransactionsResponse,
@@ -73,6 +74,21 @@ async def get_usage_transactions(
     """Return the authenticated user's unified credit transaction history."""
     service = UsageService(session, auth.user)
     return await service.get_transactions(limit, offset)
+
+
+@router.get("/per-turn", response_model=PerTurnUsageResponse)
+async def get_usage_per_turn(
+    workspace_id: int = Query(..., ge=1),
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+    auth: AuthContext = Depends(require_session_context),
+    session: AsyncSession = Depends(get_async_session),
+) -> PerTurnUsageResponse:
+    """Return a per-turn cost and token breakdown for a workspace."""
+    await check_workspace_access(session, auth, workspace_id)
+    _validate_date_range(start_date, end_date)
+    service = UsageService(session, auth.user)
+    return await service.get_per_turn_usage(workspace_id, start_date, end_date)
 
 
 @router.get("/service-breakdown")

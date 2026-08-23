@@ -2277,6 +2277,11 @@ class WorkspaceLimit(BaseModel, TimestampMixin):
         server_default="720",
     )
 
+    # Story 8.14: per-workspace auto-extract budget caps.
+    auto_extract_item_cap = Column(Integer, nullable=True)
+    auto_extract_spend_cap_micros = Column(BigInteger, nullable=True)
+    auto_extract_wallet_pre_check = Column(Boolean, nullable=True)
+
     workspace = relationship(
         "Workspace", back_populates="workspace_limits", uselist=False
     )

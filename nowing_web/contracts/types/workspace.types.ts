@@ -141,6 +141,12 @@ export const workspaceLimitUsage = z.object({
 	storage_bytes: z.number(),
 });
 
+export const autoExtractUsage = z.object({
+	period_spend_micros: z.number(),
+	period_count: z.number(),
+	period_window_hours: z.number(),
+});
+
 export const getWorkspaceLimitsResponse = z.object({
 	plan_tier: z.string().nullable(),
 	max_documents: z.number().nullable(),
@@ -148,7 +154,18 @@ export const getWorkspaceLimitsResponse = z.object({
 	max_runs: z.number().nullable(),
 	max_storage_bytes: z.number().nullable(),
 	run_period_hours: z.number(),
+	auto_extract_item_cap: z.number().nullable().optional(),
+	auto_extract_spend_cap_micros: z.number().nullable().optional(),
+	auto_extract_wallet_pre_check: z.boolean().nullable().optional(),
+	auto_extract_usage: autoExtractUsage,
 	usage: workspaceLimitUsage,
+});
+
+export const updateWorkspaceLimitsRequest = z.object({
+	id: z.number(),
+	auto_extract_item_cap: z.number().nullable().optional(),
+	auto_extract_spend_cap_micros: z.number().nullable().optional(),
+	auto_extract_wallet_pre_check: z.boolean().nullable().optional(),
 });
 
 // Inferred types
@@ -171,3 +188,4 @@ export type DeleteWorkspaceRequest = z.infer<typeof deleteWorkspaceRequest>;
 export type DeleteWorkspaceResponse = z.infer<typeof deleteWorkspaceResponse>;
 export type WorkspaceLimitUsage = z.infer<typeof workspaceLimitUsage>;
 export type GetWorkspaceLimitsResponse = z.infer<typeof getWorkspaceLimitsResponse>;
+export type UpdateWorkspaceLimitsRequest = z.infer<typeof updateWorkspaceLimitsRequest>;
