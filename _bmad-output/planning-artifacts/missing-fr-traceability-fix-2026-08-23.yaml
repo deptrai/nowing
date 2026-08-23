@@ -1,0 +1,387 @@
+date: '2026-08-23'
+project: Nowing
+missing_frs:
+- fr: FR-1
+  title: User Authentication
+  prd_status: DONE
+  summary: Users can sign up, log in, refresh/revoke tokens, logout-all, and use Google
+    OAuth; desktop has a dedicated session endpoint.
+  action: add_reference_to_existing_story
+  target_epic: '1'
+  target_story: null
+  note: Epic 1 (Identity, Auth & Workspace RBAC) covers FR-1 but has no individual
+    stories; add FR-1 tag to the epic summary.
+- fr: FR-2
+  title: API Access for External Clients
+  prd_status: DONE
+  summary: Desktop, browser extension, Obsidian plugin and MCP server authenticate
+    via Personal Access Token (nw_pat_...) or API key.
+  action: add_reference_to_existing_story
+  target_epic: '1'
+  target_story: null
+  note: Epic 1 covers FR-2 but has no individual stories; add FR-2 tag to the epic
+    summary.
+- fr: FR-3
+  title: Workspace Lifecycle
+  prd_status: DONE
+  summary: Users can create, list, view, update and delete workspaces; creating a
+    workspace auto-creates default system roles and an Owner membership.
+  action: add_reference_to_existing_story
+  target_epic: '1'
+  target_story: null
+  note: Epic 1 covers FR-3 but has no individual stories; add FR-3 tag to the epic
+    summary.
+- fr: FR-4
+  title: Workspace Invites & Memberships
+  prd_status: DONE
+  summary: Owners or Editors can invite members; memberships are tied to WorkspaceRole
+    and invites carry a code, expiry and usage limit.
+  action: add_reference_to_existing_story
+  target_epic: '1'
+  target_story: null
+  note: Epic 1 covers FR-4 but has no individual stories; add FR-4 tag to the epic
+    summary.
+- fr: FR-6
+  title: Built-in Scraper Connectors
+  prd_status: DONE
+  summary: Backend provides scraper endpoints for Reddit, YouTube, Instagram, TikTok,
+    Google Search, Google Maps, Amazon and web crawl; each scraper is a self-registered
+    capability.
+  action: add_reference_to_existing_story
+  target_epic: '2'
+  target_story: '2.9'
+  note: Story 2.9 (Scraper API Input Validation & Error Handling) already references
+    FR-6; add the tag explicitly for traceability.
+- fr: FR-48
+  title: Canonical Entity Storage & Multi-Domain Indexing (Epic 13)
+  prd_status: REMOVED
+  summary: Canonical entity storage, multi-domain indexing and unified search now
+    belong to chainlens-research; Nowing scrapers output Chunk[] to chainlens-research.
+  action: mark_out_of_scope
+  target_epic: '13'
+  target_story: null
+  note: Removed from PRD 2026-08-08; Epic 13 is dropped/archived. No story needed.
+- fr: FR-49
+  title: News Aggregation (Epic 14)
+  prd_status: RE-SCOPED
+  summary: As a researcher, I want news from major Vietnamese portals available in
+    my workspace, fed to chainlens-research for indexing and citation.
+  action: add_reference_to_existing_story
+  target_epic: '14'
+  target_story: '14.1'
+  note: Re-scoped to feed chainlens-research; add FR-49 tag to Story 14.1 (RSS Feed
+    Integration).
+- fr: FR-50
+  title: Financial Data Integration (Epic 15)
+  prd_status: RE-SCOPED
+  summary: As an investment researcher, I want stock prices, financial statements
+    and market news from CafeF and Vietstock, fed to chainlens-research.
+  action: add_reference_to_existing_story
+  target_epic: '15'
+  target_story: '15.1'
+  note: Re-scoped to feed chainlens-research; add FR-50 tag to Story 15.1 (CafeF Financial
+    Data Integration).
+- fr: FR-51
+  title: Company Data Integration (Epic 16)
+  prd_status: RE-SCOPED
+  summary: As a business researcher, I want access to 2M+ Vietnamese company profiles
+    with tax codes and registration data, fed to chainlens-research.
+  action: add_reference_to_existing_story
+  target_epic: '16'
+  target_story: '16.1'
+  note: Re-scoped to feed chainlens-research; add FR-51 tag to Story 16.1 (masothue.com
+    Company Data).
+- fr: FR-52
+  title: E-commerce Intelligence (Epic 17)
+  prd_status: RE-SCOPED
+  summary: As a product researcher, I want product data from Lazada and Shopee Vietnam,
+    fed to chainlens-research.
+  action: add_reference_to_existing_story
+  target_epic: '17'
+  target_story: null
+  note: Re-scoped to feed chainlens-research; Lazada (Story 17.1) and Shopee (Story
+    17.2) both relate, so attach FR-52 at the Epic 17 level.
+- fr: FR-56
+  title: Public Agent-Chat API for Vertical Clients
+  prd_status: IN PROGRESS
+  summary: As a vertical client, I want to create chat threads and send messages via
+    a public API authenticated with a PAT, scoped to a client_id.
+  action: add_reference_to_existing_story
+  target_epic: '18'
+  target_story: '18.1'
+  note: Add FR-56 tag to Story 18.1 (Public Agent-Chat Endpoints).
+- fr: FR-57
+  title: Agent Registry
+  prd_status: IN PROGRESS
+  summary: As a platform administrator, I want to register agents with custom system
+    prompts and tool configurations so each vertical client gets a specialized chat
+    agent.
+  action: add_reference_to_existing_story
+  target_epic: '18'
+  target_story: '18.3'
+  note: Add FR-57 tag to Story 18.3 (Agent Registry).
+- fr: FR-63
+  title: Intent Signal Detection
+  prd_status: PROPOSED
+  summary: As a salesperson, I want to detect buying signals from companies (funding,
+    hiring, tech-stack changes, executive moves) so I can reach out at the right moment.
+  action: add_reference_to_existing_story
+  target_epic: '21'
+  target_story: '21.1'
+  note: Add FR-63 tag to existing Story 21.1 (Intent Signal Detection).
+- fr: FR-64
+  title: Lead Scoring & Prioritization
+  prd_status: PROPOSED
+  summary: As a sales manager, I want leads scored and ranked by conversion likelihood
+    based on fit and intent so the team focuses on the best prospects.
+  action: add_reference_to_existing_story
+  target_epic: '21'
+  target_story: '21.2'
+  note: Add FR-64 tag to existing Story 21.2 (Lead Scoring & Prioritization).
+- fr: FR-66
+  title: Outbound Prospecting Automation
+  prd_status: PROPOSED
+  summary: As a sales team, I want to automate personalized outbound outreach across
+    channels so I can scale prospecting without sacrificing quality.
+  action: add_reference_to_existing_story
+  target_epic: '21'
+  target_story: '21.4'
+  note: Add FR-66 tag to existing Story 21.4 (Outbound Prospecting Automation & Panel).
+- fr: FR-67
+  title: CRM Integration & Write-Back
+  prd_status: PROPOSED
+  summary: As a sales-operations manager, I want lead-intelligence data synced with
+    CRMs (Salesforce, HubSpot, Pipedrive, etc.) so reps work from a single source
+    of truth.
+  action: add_reference_to_existing_story
+  target_epic: '21'
+  target_story: '21.5'
+  note: Add FR-67 tag to existing Story 21.5 (CRM Integration & Lark Base / Google
+    Sheets 1-Click Sync).
+- fr: FR-68
+  title: Zalo Integration (Vietnam Market)
+  prd_status: PROPOSED
+  summary: As a Vietnamese salesperson, I want to communicate with leads via Zalo
+    because 81% of Vietnamese professionals use it as their primary messaging platform.
+  action: add_reference_to_existing_story
+  target_epic: '21'
+  target_story: '21.6'
+  note: Add FR-68 tag to existing Story 21.6 (Vietnam Outbound Automation - Zalo OA
+    & Telegram Sender).
+- fr: FR-9
+  title: Document Upload, Parse & Index
+  prd_status: DONE
+  summary: Users upload files or URLs; the system parses, chunks, embeds and stores
+    Document, Chunk, DocumentVersion and DocumentFile, supporting 50+ formats.
+  action: add_reference_to_existing_story
+  target_epic: '3'
+  target_story: null
+  note: Epic 3 covers FR-9 but has no individual story for upload/index (brownfield
+    done).
+- fr: FR-11
+  title: Folders & Document Management
+  prd_status: DONE
+  summary: Users can create folders, move, rename and delete documents/folders with
+    permission checks; versioning and revision models support revert and watched-folder
+    sync.
+  action: add_reference_to_existing_story
+  target_epic: '3'
+  target_story: null
+  note: Epic 3 covers FR-11 but has no individual story for folders (brownfield done).
+- fr: FR-12
+  title: Hybrid Search over Knowledge Base
+  prd_status: DONE
+  summary: Workspace search combines pgvector semantic, full-text and reciprocal-rank-fusion;
+    results are available via /documents/search-semantic for chat citation.
+  action: add_reference_to_existing_story
+  target_epic: '3'
+  target_story: null
+  note: Epic 3 covers FR-12 but has no individual story for hybrid search (brownfield
+    done).
+- fr: FR-13
+  title: Citation Panel for Knowledge-base Chunks
+  prd_status: DONE
+  summary: Clicking a citation badge in chat opens a right panel showing the cited
+    chunk with a window (±5), highlighting and auto-scrolling to the snippet.
+  action: add_reference_to_existing_story
+  target_epic: '3'
+  target_story: '3.15'
+  note: Story 3.15 (Run Citations as Verifiable Sources) already references FR-13
+    in its metadata; add/confirm the tag for traceability.
+- fr: FR-33
+  title: Research Continuity
+  prd_status: DONE
+  summary: An agent can continue an existing research thread, automatically recalling
+    related memories and prior citations; the continue path uses the same recall-hit
+    definition as memory search.
+  action: add_reference_to_existing_story
+  target_epic: '4'
+  target_story: null
+  note: FR-33 maps to Epic 4 (Chat & Agents) per the FR coverage map, but the referenced
+    Story 4.6 is not present as a section; add FR-33 tag at the epic level.
+- fr: FR-36
+  title: Legacy Memory Data-Loss Assessment & Recovery
+  prd_status: RESOLVED
+  summary: Operations verified that migration 178 had not been applied to production,
+    legacy memory_md columns were empty and a snapshot was taken; no data was lost.
+  action: mark_resolved
+  target_epic: '3'
+  target_story: '3.10'
+  note: Resolved 2026-07-25; Story 3.10 (Legacy Memory Data Safety) covers the data-loss
+    assessment. Add/confirm FR-36 tag.
+- fr: FR-5
+  title: AI File Sorting
+  prd_status: REMOVED
+  summary: AI-driven automatic file sorting was added behind a flag in migration 124
+    and completely removed in migration 172; the feature is no longer in scope.
+  action: mark_out_of_scope
+  target_epic: '3'
+  target_story: null
+  note: Removed from PRD; no story needed.
+- fr: FR-14
+  title: Chat Threads & Messages
+  prd_status: DONE
+  summary: Users create threads, send messages and receive streaming responses; a
+    thread has title, archived, visibility, workspace_id and created_by_id.
+  action: add_reference_to_existing_story
+  target_epic: '4'
+  target_story: '4.7'
+  note: Story 4.7 (Pointer-Based Tabs with Live Title Resolution) already references
+    FR-14; add the tag explicitly for traceability.
+- fr: FR-16
+  title: Real-time Collaborative Chat
+  prd_status: DONE
+  summary: Multiple users can view and update a thread via Zero sync; it supports
+    comments and mentions.
+  action: add_reference_to_existing_story
+  target_epic: '4'
+  target_story: null
+  note: Epic 4 covers FR-16 but has no individual story for real-time collaborative
+    chat (brownfield done).
+- fr: FR-42
+  title: Chat Response Benchmark
+  prd_status: DONE
+  summary: The system provides a chat-response benchmark in nowing_evals using real
+    or curated data; it measures latency, tokens, cost, citations, finish status and
+    supports regression and quality suites.
+  action: add_reference_to_existing_story
+  target_epic: '4'
+  target_story: 4.8b
+  note: Add FR-42 tag to Story 4.8b (Chat Regression Benchmark Suite); note that Stories
+    4.8a-4.8g all relate to the benchmark.
+- fr: FR-22
+  title: Podcast & Video Presentation
+  prd_status: DONE
+  summary: Create a two-host podcast from a document/folder in under 20 seconds and
+    generate video presentations with slides/scenes.
+  action: add_reference_to_existing_story
+  target_epic: '5'
+  target_story: null
+  note: Epic 5 (Deliverables) has no individual stories; add FR-22 tag at the epic
+    level.
+- fr: FR-23
+  title: Image Generation
+  prd_status: DONE
+  summary: Generate images from a prompt with model, size, style, quality and response_format
+    parameters.
+  action: add_reference_to_existing_story
+  target_epic: '5'
+  target_story: null
+  note: Epic 5 (Deliverables) has no individual stories; add FR-23 tag at the epic
+    level.
+- fr: FR-19
+  title: Automation Triggers
+  prd_status: DONE
+  summary: Automations support schedule (cron) and event (webhook/connector event)
+    triggers.
+  action: add_reference_to_existing_story
+  target_epic: '6'
+  target_story: '6.5'
+  note: Story 6.5 (Memory-Driven Automations) includes schedule and memory_change
+    triggers; add FR-19 tag there.
+- fr: FR-20
+  title: Automation Runs & Retries
+  prd_status: DONE
+  summary: Each trigger creates an AutomationRun with status, error and progress tracking
+    and a retry policy.
+  action: add_reference_to_existing_story
+  target_epic: '6'
+  target_story: null
+  note: Epic 6 covers FR-20 but has no individual story for runs/retries (brownfield
+    done; original 6.2 is not present as a section).
+- fr: FR-35
+  title: Memory-Driven Automations
+  prd_status: DONE
+  summary: Automations can trigger when memory changes (e.g., a new competitor fact)
+    or continue a saved research thread.
+  action: add_reference_to_existing_story
+  target_epic: '6'
+  target_story: '6.5'
+  note: Add FR-35 tag to existing Story 6.5 (Memory-Driven Automations).
+- fr: FR-25
+  title: Web Client (Next.js)
+  prd_status: DONE
+  summary: The primary Next.js frontend covers landing, dashboard, chat, connectors,
+    settings and docs, proxying to the backend via /api/v1/[...path].
+  action: add_reference_to_existing_story
+  target_epic: '7'
+  target_story: null
+  note: Epic 7 (Multi-surface Clients) has no individual story for the Next.js web
+    client (brownfield done).
+- fr: FR-26
+  title: Desktop Client (Electron)
+  prd_status: DONE
+  summary: The Electron desktop client wraps the web app and adds global shortcut,
+    quick assist, screenshot assist and folder watcher.
+  action: add_reference_to_existing_story
+  target_epic: '7'
+  target_story: null
+  note: Epic 7 has no individual story for the Electron desktop client (brownfield
+    done).
+- fr: FR-27
+  title: Browser Extension (Plasmo)
+  prd_status: DONE
+  summary: The Plasmo browser extension collects browsing history and sends it to
+    the backend.
+  action: add_reference_to_existing_story
+  target_epic: '7'
+  target_story: null
+  note: Epic 7 has no individual story for the browser extension (brownfield done).
+- fr: FR-28
+  title: Obsidian Plugin
+  prd_status: DONE
+  summary: The Obsidian plugin syncs a vault with the backend via REST API /obsidian/*.
+  action: add_reference_to_existing_story
+  target_epic: '7'
+  target_story: null
+  note: Epic 7 has no individual story for the Obsidian plugin (brownfield done).
+- fr: FR-69
+  title: Outcome-Based Pricing Option
+  prd_status: PROPOSED
+  summary: As a sales team, I want to pay per qualified meeting booked rather than
+    per seat, so cost is tied to actual pipeline value delivered.
+  action: add_reference_to_existing_story
+  target_epic: '21'
+  target_story: '21.7'
+  note: Add FR-69 tag to existing Story 21.7 (Outcome-Based Pricing & Transparent
+    Credit Ledger), which already implements the capability.
+- fr: NFR-4
+  title: Reliability
+  prd_status: DONE
+  summary: Use async SQLAlchemy DB I/O and Celery + Redis for background tasks; this
+    underpins system reliability.
+  action: add_reference_to_existing_story
+  target_epic: '23'
+  target_story: '23.1'
+  note: Add NFR-4 tag to Story 23.1 (Asynchronous Scraper Worker Pool - Celery + Redis
+    Streams), which exercises the Celery/Redis reliability layer.
+- fr: NFR-6
+  title: Citation Full-Editor Highlight
+  prd_status: DONE
+  summary: Clicking a citation in chat scrolls to and highlights the corresponding
+    snippet in the full document editor.
+  action: add_reference_to_existing_story
+  target_epic: '3'
+  target_story: '3.6'
+  note: Add NFR-6 tag to Story 3.6 (Citation Scroll-to-Highlight in Full Document
+    Editor).

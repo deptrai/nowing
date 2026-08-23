@@ -301,7 +301,7 @@ Schedule/event/**memory_change** trigger + `agent_task`/`continue_research`/**wr
 Web/desktop/extension/Obsidian/MCP. **FRs:** FR-25,26,27,28,29. **Open:** 7.4 dedicated connectors layout `[ready-for-dev]`.
 
 ### Epic 8: Người dùng thấy và kiểm soát được chi phí — ✅ DONE (2026-08-02)
-Token tracking, ví credit, dashboard usage, guardrail chi phí, docs/vision sync, admin UI cho global LLM model config, workspace limits, và PostHog analytics. **FRs:** FR-30, FR-31, **FR-41** *(mới)*. 8.10, 8.11, 8.12, 8.13 **done**. **Open:** 8.14 cost & auto-extract budget dashboard `[backlog]` *(mới 2026-08-21 từ PRFAQ, UX-DR-PRFAQ-4)*.
+Token tracking, ví credit, dashboard usage, guardrail chi phí, docs/vision sync, admin UI cho global LLM model config, workspace limits, và PostHog analytics. **FRs:** FR-30, FR-31, **FR-41** *(mới)*. 8.10, 8.11, 8.12, 8.13 **done**. **Open:** 8.14 Usage & Credit Dashboard v2 — per-turn cost + auto-extract budget toggle `[ready-for-dev]` *(mới 2026-08-21 từ PRFAQ, UX-DR-PRFAQ-4; re-scope 2026-08-23 là follow-up của Story 8.3)*.
 > **⚠️ Đổi tên + đánh lại số hiệu 2026-07-25 (readiness Q-7 + C-C).** Tên trước *"Platform Operations (Billing/Usage/Token)"* là framing ops. **Và quan trọng hơn — số hiệu story đã bị xung đột với `sprint-status.yaml`:** `8.4a`/`8.5`/`8.6` trong tài liệu này nghĩa **khác** `8-4`/`8-5`/`8-6` trong sprint-status (observability-logging / security-permissions / multi-tenant-isolation). Đã đánh lại theo số **chưa dùng**: `8.4a → 8.8` · `8.5 → 8.9` · `8.6 → 8.10`. Từ giờ số hiệu ở hai tài liệu khớp 1-1.
 
 ### Epic 9: Deep Research đáng tin cậy — không vỡ, không treo, tính phí đúng — ✅ DONE (2026-08-05)
@@ -769,9 +769,17 @@ I want sampler có HMAC hash + DB error handling + test cleanup,
 So that sampler robust khi trở thành automated job.
 
 **Acceptance Criteria:**
-**Given** workspace hash, **When** generate, **Then** dùng HMAC thay vì plain SHA256 (defense-in-depth).
-**Given** DB query fail, **When** sampler chạy, **Then** log error rõ ràng thay vì crash silently.
-**Given** test_chat_query_sampler.py session context manager, **When** test fail, **Then** __aexit__ rollback transaction.
+**Given** a workspace identifier and the configured `EVAL_QUERY_SAMPLING_HMAC_KEY` secret,
+**When** the sampler hashes an identifier for the dataset,
+**Then** it uses HMAC-SHA256 with that secret rather than plain SHA256 so the same workspace always yields the same keyed hash but the hash cannot be reversed offline.
+
+**Given** the database connection drops, the query times out, or a SQL error is raised while the sampler is reading production logs,
+**When** the sampler catches the exception,
+**Then** it logs the error with a `sampler_db_error` event and `workspace_id` context, returns an empty or unchanged dataset, and exits `0` without crashing.
+
+**Given** `tests/evals/chat/test_chat_query_sampler.py` uses an async database session with a context manager,
+**When** any test inside that session fails,
+**Then** `__aexit__` rolls back the transaction and does not leave rows behind for the next test.
 
 _Source: code review defer items từ 4-8c. Priority: P3. Effort: 1 day. Trigger: khi sampler trở thành automated job._
 
@@ -807,10 +815,16 @@ _FR-42 · `nowing_evals/suites/chat/quality/`._
 ### Story 4.8d-followup: Quality Benchmark Test Robustness  `(tech debt)`  `[backlog]`
 As an ML/QA engineer,
 I want quality benchmark tests handle missing gate.yaml gracefully,
-So that tests không fail trong CI nếu file missing.
+So that tests don't fail in CI if the fixture file is missing.
 
 **Acceptance Criteria:**
-**Given** gate.yaml missing, **When** test chạy, **Then** skip với clear message thay vì crash.
+**Given** the `chat/quality` test looks for a `gate.yaml` fixture and the file is missing or empty,
+**When** the test starts,
+**Then** it calls `pytest.skip` (or equivalent) with a clear message naming the missing fixture path and does not raise `FileNotFoundError` or `QualityBenchmarkConfigError`.
+
+**Given** the same missing `gate.yaml` scenario,
+**When** CI runs the quality benchmark test suite,
+**Then** the suite exits `0` for that test as `skipped` and the CI job is not marked as failed.
 
 _Source: code review defer item từ 4-8d. Priority: P3. Effort: 0.5 day. Trigger: làm trước — rủi ro thấp nhất._
 
@@ -1174,8 +1188,17 @@ I want admin model config có provider validation + pagination,
 So that config không corrupt và list không chậm khi scale.
 
 **Acceptance Criteria:**
-**Given** provider name, **When** create/update connection, **Then** validate against known provider list (enum).
-**Given** >1000 connections, **When** list, **Then** hỗ trợ pagination (limit/offset).
+**Given** a superuser creates or updates a global model connection with a provider name,
+**When** the form is submitted,
+**Then** the backend validates the provider against the known provider enum and rejects with a `provider_not_supported` error if the provider is not in the allow-list.
+
+**Given** the global model connection count exceeds the configured `ADMIN_MODEL_LIST_PAGE_SIZE` (default 1000),
+**When** a superuser calls the admin list endpoint with `limit` and `offset` query parameters,
+**Then** it returns the requested page, includes a total count, and rejects `limit` values above a server-side maximum.
+
+**Given** a duplicate provider + model name pair is submitted,
+**When** the create/update request is processed,
+**Then** the backend returns a `409 Conflict` with a clear message instead of inserting a duplicate row.
 
 _Source: code review defer items từ 8-11. Priority: P3. Effort: 1 day. Trigger: khi connections > 1000. API key trim + provider change block đã patched._
 
@@ -1208,27 +1231,27 @@ So that I can understand user flows, feature adoption, and retention.
 **Kỹ thuật:** add `@posthog-js` (if not already), initialize in layout, wrap key events, keep server-side observability separate.
 _NFR-3 · upstream PR #1622._
 
-### Story 8.14: Cost & Auto-Extract Budget Dashboard `(mới 2026-08-21 từ PRFAQ)` `[backlog]`
+### Story 8.14: Usage & Credit Dashboard v2 — Per-Turn Cost & Auto-Extract Budget Toggle `(mới 2026-08-21 từ PRFAQ)` `[ready-for-dev]`
+
+> **Re-scope 2026-08-23:** Story này là **follow-up / v2** của **Story 8.3 (Usage & Credit Dashboard)**. Không duplicate 8.3; 8.3 vẫn `done` với aggregate theo workspace/model/time. Story 8.14 mở rộng thêm **per-turn cost breakdown** và **auto-extract budget toggle UI** trên cùng data.
 
 As a workspace owner,
-I want a dashboard that shows cost per turn and a per-workspace auto-extract budget toggle,
+I want the existing Usage & Credit Dashboard to show cost per turn and to expose a per-workspace auto-extract budget toggle,
 So that I can control spend and avoid surprise bills from memory extraction.
 
 **Acceptance Criteria:**
 
-**Given** the workspace owner opens `Usage & Budget` settings, **When** the page loads, **Then** it displays a per-turn cost breakdown: auto-extract LLM tokens, embedding tokens, and recall tokens, sourced from `TokenUsage` and reconciled with `credit_transactions`.
+**Given** the workspace owner opens the existing `Usage & Credit` dashboard (Story 8.3), **When** the page loads, **Then** it extends the current view with a per-turn cost breakdown: auto-extract LLM tokens, embedding tokens, and recall tokens, sourced from `TokenUsage` and reconciled with `credit_transactions`.
 
 **Given** a `TokenUsage` row is missing `workspace_id` or `cost_micros`, **When** the dashboard queries the data, **Then** it excludes incomplete rows and logs a `usage_reconcile_warning` rather than inflating totals.
 
-**Given** auto-extract is enabled for the workspace, **When** the owner sets an item cap, spend cap, or wallet pre-check, **Then** the existing kill-switch/guardrails (Story 8.7) enforce those limits and surface a warning when 80% of the cap is reached.
-
-**Given** auto-extract is disabled for the workspace, **When** a user continues a research thread, **Then** no `MemoryExtractionService` runs, no LLM extraction cost is incurred, and the agent still has access to manually-saved memories.
+**Given** auto-extract is enabled for the workspace, **When** the owner sets an item cap, spend cap, or wallet pre-check via a new budget toggle, **Then** the existing kill-switch/guardrails (Story 8.7) enforce those limits and surface a warning when 80% of the cap is reached.
 
 **Given** the cost dashboard is open, **When** the owner hovers a bar, **Then** it shows the capability (e.g. `chainlens.research`, `memory.extraction`, `memory.recall`) and the resolved model, and the value created (memories created, citations generated) alongside the cost.
 
-**And** the dashboard reuses the existing `workspace_limits` and `credit_wallet` infrastructure so it does not duplicate ledgers.
+**And** the dashboard reuses the existing `workspace_limits` and `credit_wallet` infrastructure from 8.3/8.7 so it does not duplicate ledgers.
 
-_UX-DR-PRFAQ-4 · AR-5 · AR-6 · FR-31 · NFR-7 · Story 8.3 extension._
+_UX-DR-PRFAQ-4 · AR-5 · AR-6 · FR-31 · NFR-7 · Story 8.3 v2 extension._
 
 ## Epic 9: Deep Research đáng tin cậy — không vỡ, không treo, tính phí đúng  `(mới 2026-07-25)`
 ### Story 9.1a: Research Degradation & Self-Host Independence  `(mới)`  `[DONE — P0, tiền đề trước khi public repo]`
@@ -1562,10 +1585,21 @@ I want revalidation có DB constraint + concurrent safety + output limits + test
 So that confidence không corrupt và revalidation robust dưới load.
 
 **Acceptance Criteria:**
-**Given** Memory.confidence, **When** set value, **Then** DB CHECK constraint đảm bảo [0.1, 1.0] (Alembic migration).
-**Given** concurrent revalidation trên cùng memory, **When** 2 requests chạy cùng lúc, **Then** dùng SELECT FOR UPDATE tránh race.
-**Given** capability output > 100KB, **When** revalidate, **Then** truncate text trước khi compare (tránh OOM).
-**Given** test_memory_revalidation.py, **When** test failure path, **Then** assert mock executor call_count > 0.
+**Given** a memory row whose `confidence` is being updated,
+**When** the value is persisted,
+**Then** the database CHECK constraint enforces `confidence` in the range `[0.1, 1.0]` and a new Alembic migration applies that constraint without data loss.
+
+**Given** two re-validation requests for the same `memory_id` arrive at the same time,
+**When** both attempt to update the memory,
+**Then** the code uses `SELECT FOR UPDATE` (or an equivalent atomic path) so one wins and the other waits, and no duplicate `MemoryVersion` rows are created.
+
+**Given** a capability re-execution produces an output larger than the configured `REVALIDATION_OUTPUT_MAX_BYTES` (default 100KB),
+**When** the re-validator compares it with the stored content,
+**Then** it truncates both sides to the same byte limit before comparison and logs a `revalidation_truncated` warning.
+
+**Given** `tests/unit/memory/test_memory_revalidation.py` exercises a failure path,
+**When** the test runs,
+**Then** it asserts the mock capability executor was called at least once and the memory `confidence` is decreased, but no unhandled exception is raised.
 
 _Source: code review defer items từ 9-6b. Priority: P2. Effort: 2-3 days. Trigger: khi có automated revalidation._
 
@@ -2266,13 +2300,14 @@ _AD-34 · AD-35 · AD-25 · Method: RSS (official feeds, no anti-bot)_
 
 ### Story 14.2: News Entity Enrichment `[P1]`
 
+> **Blocked-by-external (2026-08-23):** Story này phụ thuộc vào `chainlens-research` hỗ trợ entity search / ingest với entity metadata. `epics.md` đã giao entity linking/disambiguation cho engine; Nowing chỉ attach metadata. Chuyển `backlog` trong `sprint-status.yaml` cho đến khi dependency sẵn sàng.
+
 As a researcher,
 I want key entities (people, organizations, locations) attached to news chunks before they are indexed,
 So that I can track mentions and trends via `chainlens-research` entity search.
 
 **Acceptance Criteria:**
-- **Given** a news article is parsed, **When** entity extraction runs, **Then** named entities (people, organizations, locations) are extracted with confidence scores.
-- **Given** extracted entities, **When** the article is normalized to a `Chunk`, **Then** `metadata.entities` contains the entity mentions, types, and surface forms.
+- **Given** `chainlens-research` exposes entity search and accepts `metadata.entities` at ingest, **When** a news article is parsed, **Then** entity extraction runs and named entities (people, organizations, locations) are attached to the `Chunk` metadata.
 - **Given** a `Chunk` with `metadata.entities`, **When** it is ingested into `chainlens-research`, **Then** the canonical index stores and indexes the entity metadata; `chainlens-research` handles entity linking and disambiguation.
 - **Given** entity tracking is active, **When** a user queries an entity in chat, **Then** the agent calls `chainlens-research` and returns mentioning articles with citations; no local entity table is built in Nowing.
 - **Given** entity extraction model trả về empty entity list hoặc malformed JSON, **When** entity enrichment chạy, **Then** nó fallback về `metadata.entities` rỗng và article vẫn được indexed.
@@ -2535,14 +2570,16 @@ _AD-PROC-1 · AD-PROC-2 · AD-PROC-3 · AD-PROC-4 · AD-PROC-5 · AD-PROC-6 · A
 
 ### Story 17.1: Lazada Product Data `[P1]`
 
+> **Blocked-by-external (2026-08-23):** Raw scraping và anti-bot proxy rotation được giao cho `XActions` (`x_lazada_search` / `x_lazada_product` MCP tools) theo AD-SOC-1/AD-SOC-9. Story 17.1 chỉ implement `LazadaLeadAdapter` + normalization sau khi MCP tool sẵn sàng. Chuyển `backlog` trong `sprint-status.yaml` cho đến khi XActions tool tồn tại.
+
 As a product researcher,
 I want product data from Lazada Vietnam including price, seller, ratings, and variants,
 So that I can perform pricing analysis and competitor tracking.
 
 **Acceptance Criteria:**
-- **Given** Lazada scraper is built, **When** a user searches by product keyword, **Then** product listings are returned with: title, price, original price, discount, rating, review count, seller name, variants.
-- **Given** product data is fetched, **When** normalized to `Chunk[]`, **Then** `metadata.source: 'nowing_scraper'`, `sourceId` (stable: normalized `title` + `seller_id` + `sku` if available), `domain: 'lazada.vn'`, `fetchedAt`, `contentType: 'product'` are set.
-- **Given** Lazada anti-bot measures trigger, **When** detected, **Then** the scraper backs off gracefully and retries with proxy rotation; after max retries it returns `degraded=true` with `degradation_reason: ANTI_BOT`.
+- **Given** the `XActions` `x_lazada_search` / `x_lazada_product` MCP tool is available and returns product data, **When** a user searches by product keyword, **Then** product listings are returned with: title, price, original price, discount, rating, review count, seller name, variants.
+- **Given** product data is fetched from XActions, **When** normalized to `Chunk[]`, **Then** `metadata.source: 'xactions_adapter'`, `sourceId` (stable: normalized `title` + `seller_id` + `sku` if available), `domain: 'lazada.vn'`, `fetchedAt`, `contentType: 'product'` are set.
+- **Given** the XActions tool returns anti-bot/captcha, **When** the adapter handles it, **Then** it propagates `degraded=true` with `degradation_reason: ANTI_BOT`; no in-house Playwright crawler is built inside Nowing.
 - **Given** a `Chunk[]` batch, **When** `NowingIngestService.ingest()` is called, **Then** it calls `POST /v1/ingest/scraper` and returns `ingestJobId`.
 - **Given** the user queries product data, **When** the agent calls `chainlens-research` `POST /api/v1/search`, **Then** indexed results are returned with citations.
 
@@ -2580,15 +2617,15 @@ _AD-EC-1 · AD-EC-2 · AD-EC-3 · AD-EC-4 · Governed by `architecture-shopee-ec
 
 ### Story 17.5: TikTok Shop Product & Trending SKUs Ingestion `[P2]`
 
-> **Reuse note (2026-08-20):** Codebase currently only has public TikTok video scraper, not TikTok Shop. When implemented, reuse `ecommerce_products` + `ecommerce_price_history` schema and alert patterns from Shopee architecture (AD-EC-1..6).
+> **Blocked-by-external (2026-08-23):** Codebase hiện chỉ có public TikTok video scraper, không có TikTok Shop. Raw scraping TikTok Shop được giao cho `XActions` (`x_tiktok_shop_products` MCP tool) theo AD-SOC-1/AD-SOC-2/AD-SOC-9. Story 17.5 chỉ implement adapter + normalization sau khi MCP tool sẵn sàng. When implemented, reuse `ecommerce_products` + `ecommerce_price_history` schema and alert patterns from Shopee architecture (AD-EC-1..6).
 
 As a social commerce researcher,
 I want product, pricing, and sales volume data from TikTok Shop Vietnam,
 So that I can analyze viral e-commerce trends, top KOC promoted products, and competitive pricing.
 
 **Acceptance Criteria:**
-- **Given** search query or category, **When** `TikTokShopScraper` is executed with anti-tamper signature isolation (`_signature`, `msToken`), **Then** it returns product listings with title, current price (using divisor `1.0`), units sold, shop name, rating, and creator/affiliate metrics.
-- **Given** product data is ingested, **When** stored, **Then** records are saved into `ecommerce_products` with `platform: 'tiktok_shop'` and linked to `ecommerce_price_history`.
+- **Given** the `XActions` `x_tiktok_shop_products` MCP tool is available, **When** a user provides a search query or category, **Then** product listings are returned with title, current price (using divisor `1.0`), units sold, shop name, rating, and creator/affiliate metrics.
+- **Given** product data is fetched from XActions, **When** normalized and stored, **Then** records are saved into `ecommerce_products` with `platform: 'tiktok_shop'` and linked to `ecommerce_price_history`.
 - **Given** historical product runs, **When** analyzed, **Then** the engine calculates sales velocity `(sold_t2 - sold_t1) / delta_days` to classify trending breakout SKUs.
 - **Given** an AI Agent session, **When** calling `ecommerce_search_products(platform='tiktok_shop', query=...)`, **Then** top trending products with sales velocity metrics are returned.
 
