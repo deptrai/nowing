@@ -89,6 +89,8 @@ def parse_citation_markers(text: str) -> list[CitationMarker]:
                 chunk_id = int(number_part)
             except ValueError:
                 continue
+            if chunk_id < 0:
+                continue
             out.append(
                 ChunkCitationMarker(chunk_id=chunk_id, is_docs_chunk=is_docs_chunk)
             )

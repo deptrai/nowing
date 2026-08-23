@@ -1,6 +1,7 @@
 ---
 story_key: 4-6-research-continuity
 status: done
+baseline_commit: beb0cbf469fd79cba2907ed0199f85e1d969fdde
 ---
 
 # Story 4.6: Research Continuity
@@ -138,20 +139,30 @@ Add `GET /workspaces/{workspace_id}/research-threads/{thread_id}/context` (new f
 
 ## Tasks / Subtasks
 
-- [ ] Backend: citation aggregation service (AC-1, AC-4)
-  - [ ] `collect_thread_citations(session, research_thread)` — load thread's chat messages, parse `[citation:<payload>]` markers (reuse citations module parser), dedupe, cap, normalize.
-- [ ] Backend: research-thread context endpoint (AC-1, AC-2, AC-3)
-  - [ ] New router `research_threads_routes.py`; `memory:read` permission check.
-  - [ ] Load `ResearchThread` by id + workspace_id → 404 clear error if missing (no implicit create).
-  - [ ] Memories via `MemoryHybridSearch` scoped by `research_thread_id` (same path as recall).
-  - [ ] Return `{thread_id, title, memories, citations}`.
-  - [ ] Register router in `app/routes/__init__.py`.
-- [ ] Schemas: `ThreadCitation`, `ResearchThreadContext`.
-- [ ] MCP: update `nowing_continue_research` to call the endpoint, render memories + citations, translate 404 → clear tool error (AC-1, AC-2).
-- [ ] Tests
-  - [ ] Integration: existing thread → memories + deduped citations; missing thread → 404; cross-workspace thread → 404; malformed marker skipped.
-  - [ ] MCP: memories + citations rendered; not-found error surfaced.
-- [ ] Verification: pytest suites + selfcheck + ruff (see Step 4).
+- [x] Backend: citation aggregation service (AC-1, AC-4)
+  - [x] `collect_thread_citations(session, research_thread)` — load thread's chat messages, parse `[citation:<payload>]` markers (reuse citations module parser), dedupe, cap, normalize.
+- [x] Backend: research-thread context endpoint (AC-1, AC-2, AC-3)
+  - [x] New router `research_threads_routes.py`; `memory:read` permission check.
+  - [x] Load `ResearchThread` by id + workspace_id → 404 clear error if missing (no implicit create).
+  - [x] Memories via `MemoryHybridSearch` scoped by `research_thread_id` (same path as recall).
+  - [x] Return `{thread_id, title, memories, citations}`.
+  - [x] Register router in `app/routes/__init__.py`.
+- [x] Schemas: `ThreadCitation`, `ResearchThreadContext`.
+- [x] MCP: update `nowing_continue_research` to call the endpoint, render memories + citations, translate 404 → clear tool error (AC-1, AC-2).
+- [x] Tests
+  - [x] Integration: existing thread → memories + deduped citations; missing thread → 404; cross-workspace thread → 404; malformed marker skipped.
+  - [x] MCP: memories + citations rendered; not-found error surfaced.
+- [x] Verification: pytest suites + selfcheck + ruff (see Step 4).
+
+### Review Findings
+
+- [x] [Review][Patch] `RunCitationMarker` chưa được `_marker_to_citation` xử lý — đã thêm branch xử lý `RunCitationMarker` trả về `ThreadCitation(label=run_id, url=None, source_type="run")`; export `RunCitationMarker` trong `__init__.py` [nowing_backend/app/services/memory/thread_citations.py:97-111]
+- [x] [Review][Patch] Chunk id âm được chấp nhận — đã thêm guard `if chunk_id < 0: continue` trong `parse_citation_markers` [nowing_backend/app/agents/chat/multi_agent_chat/shared/citations/parser.py:89-91]
+- [x] [Review][Patch] `collect_thread_citations` không lọc `client_id` — đã thêm `NewChatThread.client_id == thread_client_id` (với `client_id` normalized như `MemoryHybridSearch`) để tenant-isolate citations [nowing_backend/app/services/memory/thread_citations.py:133-147]
+- [x] [Review][Defer] Citation regex copy từ TS/evals nhưng không có parity guard — rủi ro drift cross-package; cần cross-package parity test sau [nowing_backend/app/agents/chat/multi_agent_chat/shared/citations/parser.py:10-14]
+- [x] [Review][Defer] MCP dùng substring `not found` để phát hiện 404 — brittle, cần `NowingClient` expose HTTP status [nowing_mcp/mcp_server/features/memory/__init__.py:194-200]
+
+**Dismissed:** 15 findings từ Blind Hunter (noise / pre-existing) + 25 findings từ Edge Case Hunter (đã có guard hoặc không phải lỗi). Acceptance Auditor: no AC violation.
 
 ## Dev Notes
 
@@ -246,6 +257,9 @@ Kiro (BMAD `dev-story` agent).
   - `nowing_mcp/tests/test_memory_tools.py` — the pre-existing `test_continue_research_calls_search_with_thread` asserted the tool called `/memories/search`; that contract changed, so it was replaced by `test_continue_research_reads_context_endpoint` (asserts the `/research-threads/{id}/context` call + rendered memories **and** citation URL) and a new `test_continue_research_missing_thread_surfaces_not_found`; the fake client gained a context-endpoint branch.
 - **Guardrails honored:** no implicit `ResearchThread` creation; reused `MemoryHybridSearch` (no divergent ranking); no new MCP tool (30 tools); strict workspace+thread isolation for citations; malformed markers skipped (never raised).
 - Not committed, not deployed — all changes left uncommitted for human review.
+- **Re-verification (2026-08-23):** `test_research_continuity.py` + `test_memory_routes.py` → 25 passed; `mcp` `test_research_continuity.py` + `test_memory_tools.py` → 17 passed; `mcp_server.selfcheck` → 65 tools registered and well-formed; `ruff check` clean on changed files.
+- **Code review 2026-08-23:** 3 patches applied (RunCitationMarker, negative chunk id, client_id tenant filter); 2 items deferred (regex parity guard, MCP 404 substring); ~40 findings dismissed. New unit test `tests/unit/agents/multi_agent_chat/shared/citations/test_parser.py` passes; backend integration + MCP suites remain green.
+- **Test review 2026-08-23:** `bmad-testarch-test-review` approved với 5 low/medium recommendations. Đã giải quyết: thêm integration tests cho `RunCitationMarker`, `client_id` filter, citation cap (50); strengthen AC-1 assertions. Còn lại `urlcite` placeholder đã có unit test. Chi tiết: `_bmad-output/implementation-artifacts/test-reviews/test-review-4-6-research-continuity.md`.
 
 ### File List
 
@@ -254,9 +268,10 @@ Kiro (BMAD `dev-story` agent).
 - `nowing_backend/app/services/memory/thread_citations.py`
 - `nowing_backend/app/routes/research_threads_routes.py`
 - `nowing_backend/tests/integration/memory/conftest.py`
+- `nowing_backend/tests/unit/agents/multi_agent_chat/shared/citations/test_parser.py`
 
 **Modified (backend):**
-- `nowing_backend/app/agents/chat/multi_agent_chat/shared/citations/__init__.py` (export the new parser)
+- `nowing_backend/app/agents/chat/multi_agent_chat/shared/citations/__init__.py` (export the new parser + `RunCitationMarker`)
 - `nowing_backend/app/schemas/memory.py` (`ThreadCitation`, `ResearchThreadContext`)
 - `nowing_backend/app/schemas/__init__.py` (export the new schemas)
 - `nowing_backend/app/routes/__init__.py` (register the research-threads router)

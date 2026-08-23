@@ -28,6 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.chat.multi_agent_chat.shared.citations import (
     ChunkCitationMarker,
+    RunCitationMarker,
     UrlCitationMarker,
     parse_citation_markers,
 )
@@ -91,7 +92,7 @@ def _normalize_url(url: str) -> str:
 
 
 def _marker_to_citation(
-    marker: UrlCitationMarker | ChunkCitationMarker,
+    marker: UrlCitationMarker | ChunkCitationMarker | RunCitationMarker,
 ) -> tuple[str, ThreadCitation]:
     """Map a parsed marker to a dedup key and its normalized ``ThreadCitation``."""
     if isinstance(marker, UrlCitationMarker):
@@ -100,6 +101,12 @@ def _marker_to_citation(
             label=_url_label(marker.url),
             url=marker.url,
             source_type="url",
+        )
+    if isinstance(marker, RunCitationMarker):
+        return f"run:{marker.run_id}", ThreadCitation(
+            label=marker.run_id,
+            url=None,
+            source_type="run",
         )
     prefix = "doc-" if marker.is_docs_chunk else "chunk "
     source_type = "kb_document" if marker.is_docs_chunk else "kb_chunk"
@@ -123,12 +130,17 @@ async def collect_thread_citations(
     thread *and* its workspace (AC-4 isolation). Ordered by recency of message,
     then by first appearance within a message. Never raises on malformed markers.
     """
+    # AC-4 isolation: scope to the research thread's tenant (workspace + client).
+    # Mirrors MemoryHybridSearch's client_id scoping so vertical-client contexts
+    # only see citations from the same client.
+    thread_client_id = research_thread.client_id or None
     stmt = (
         select(NewChatMessage.content)
         .join(NewChatThread, NewChatMessage.thread_id == NewChatThread.id)
         .where(
             NewChatThread.research_thread_id == research_thread.id,
             NewChatThread.workspace_id == research_thread.workspace_id,
+            NewChatThread.client_id == thread_client_id,
             NewChatMessage.role == NewChatMessageRole.ASSISTANT,
         )
         .order_by(NewChatMessage.created_at.desc(), NewChatMessage.id.desc())

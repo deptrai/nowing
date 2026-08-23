@@ -11,6 +11,7 @@ from .normalizer import normalize_citations
 from .parser import (
     ChunkCitationMarker,
     CitationMarker,
+    RunCitationMarker,
     UrlCitationMarker,
     parse_citation_markers,
 )
@@ -23,6 +24,7 @@ __all__ = [
     "CitationMarker",
     "CitationRegistry",
     "CitationSourceType",
+    "RunCitationMarker",
     "UrlCitationMarker",
     "load_registry",
     "make_key",

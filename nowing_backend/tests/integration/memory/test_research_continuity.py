@@ -97,11 +97,18 @@ async def test_continue_context_returns_memories_and_citations(
     body = resp.json()
     assert body["thread_id"] == thread.id
     # AC-1a: ranked related memories scoped to the thread
-    assert len(body["memories"]) >= 1
+    assert len(body["memories"]) == 1
+    assert body["memories"][0]["content"] == "Competitor X raised prices by 10% in Q3."
+    assert body["memories"][0]["id"]
     # AC-1b: previous citations of the thread (deduped)
-    urls = {c.get("url") for c in body["citations"]}
+    citations = body["citations"]
+    urls = {c.get("url") for c in citations}
     assert "https://example.com/pricing" in urls
     assert "https://example.com/tier" in urls
+    for c in citations:
+        if c["url"] in ("https://example.com/pricing", "https://example.com/tier"):
+            assert c["source_type"] == "url"
+            assert c["label"] in ("example.com", "example.com/")
 
 
 async def test_continue_context_missing_thread_returns_404_and_creates_nothing(
@@ -337,3 +344,172 @@ async def test_continue_context_includes_chunk_citations_without_url(
     assert any(
         c["url"] is None and c["source_type"] == "kb_document" for c in citations
     )
+
+
+async def test_continue_context_includes_run_citation(client, db_session, db_workspace, db_user):
+    """AC-1b: scraper-run citations are returned with label, url=None, and source_type=run."""
+    from app.db import (
+        NewChatMessage,
+        NewChatMessageRole,
+        NewChatThread,
+        ResearchThread,
+    )
+
+    thread = ResearchThread(
+        workspace_id=db_workspace.id, created_by_id=db_user.id, title="run-citation"
+    )
+    db_session.add(thread)
+    await db_session.flush()
+    chat = NewChatThread(
+        title="s",
+        workspace_id=db_workspace.id,
+        created_by_id=db_user.id,
+        research_thread_id=thread.id,
+    )
+    db_session.add(chat)
+    await db_session.flush()
+
+    run_id = "run_550e8400-e29b-41d4-a716-446655440000"
+    db_session.add(
+        NewChatMessage(
+            thread_id=chat.id,
+            role=NewChatMessageRole.ASSISTANT,
+            content=[{"type": "text", "text": f"See [citation:{run_id}]."}],
+            turn_id="t1",
+        )
+    )
+    await db_session.flush()
+
+    resp = await client.get(
+        f"{BASE}/{db_workspace.id}/research-threads/{thread.id}/context"
+    )
+    assert resp.status_code == 200
+    citations = resp.json()["citations"]
+    run_citation = next(
+        (c for c in citations if c.get("source_type") == "run"), None
+    )
+    assert run_citation is not None
+    assert run_citation["url"] is None
+    assert run_citation["label"] == run_id
+
+
+async def test_continue_context_citations_filter_by_client_id(
+    client, db_session, db_workspace, db_user
+):
+    """AC-4: citations are tenant-scoped by client_id within a research thread."""
+    from app.db import (
+        NewChatMessage,
+        NewChatMessageRole,
+        NewChatThread,
+        ResearchThread,
+    )
+
+    thread = ResearchThread(
+        workspace_id=db_workspace.id,
+        created_by_id=db_user.id,
+        title="client-scoped",
+        client_id="client-a",
+    )
+    db_session.add(thread)
+    await db_session.flush()
+
+    chat_a = NewChatThread(
+        title="chat-a",
+        workspace_id=db_workspace.id,
+        created_by_id=db_user.id,
+        research_thread_id=thread.id,
+        client_id="client-a",
+    )
+    db_session.add(chat_a)
+    await db_session.flush()
+    db_session.add(
+        NewChatMessage(
+            thread_id=chat_a.id,
+            role=NewChatMessageRole.ASSISTANT,
+            content=[
+                {
+                    "type": "text",
+                    "text": "A [citation:https://example.com/client-a-only].",
+                }
+            ],
+            turn_id="t1",
+        )
+    )
+
+    chat_b = NewChatThread(
+        title="chat-b",
+        workspace_id=db_workspace.id,
+        created_by_id=db_user.id,
+        research_thread_id=thread.id,
+        client_id="client-b",
+    )
+    db_session.add(chat_b)
+    await db_session.flush()
+    db_session.add(
+        NewChatMessage(
+            thread_id=chat_b.id,
+            role=NewChatMessageRole.ASSISTANT,
+            content=[
+                {
+                    "type": "text",
+                    "text": "B [citation:https://example.com/client-b-only].",
+                }
+            ],
+            turn_id="t1",
+        )
+    )
+    await db_session.flush()
+
+    resp = await client.get(
+        f"{BASE}/{db_workspace.id}/research-threads/{thread.id}/context"
+    )
+    assert resp.status_code == 200
+    urls = {c.get("url") for c in resp.json()["citations"]}
+    assert "https://example.com/client-a-only" in urls
+    assert "https://example.com/client-b-only" not in urls
+
+
+async def test_continue_context_citations_capped_at_limit(
+    client, db_session, db_workspace, db_user
+):
+    """AC-1b: long-lived threads' citations are capped (DEFAULT_CITATION_LIMIT=50)."""
+    from app.db import (
+        NewChatMessage,
+        NewChatMessageRole,
+        NewChatThread,
+        ResearchThread,
+    )
+
+    thread = ResearchThread(
+        workspace_id=db_workspace.id, created_by_id=db_user.id, title="cap"
+    )
+    db_session.add(thread)
+    await db_session.flush()
+    chat = NewChatThread(
+        title="s",
+        workspace_id=db_workspace.id,
+        created_by_id=db_user.id,
+        research_thread_id=thread.id,
+    )
+    db_session.add(chat)
+    await db_session.flush()
+
+    # 55 distinct URL markers; the cap should drop the last 5.
+    markers = " ".join(
+        f"[citation:https://example.com/cite/{i}]" for i in range(55)
+    )
+    db_session.add(
+        NewChatMessage(
+            thread_id=chat.id,
+            role=NewChatMessageRole.ASSISTANT,
+            content=[{"type": "text", "text": markers}],
+            turn_id="t1",
+        )
+    )
+    await db_session.flush()
+
+    resp = await client.get(
+        f"{BASE}/{db_workspace.id}/research-threads/{thread.id}/context"
+    )
+    assert resp.status_code == 200
+    assert len(resp.json()["citations"]) == 50
