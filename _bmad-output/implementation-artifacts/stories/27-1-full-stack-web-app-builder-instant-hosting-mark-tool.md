@@ -315,30 +315,71 @@ SWE-1.7 Max
 
 ### Q1 — Already implemented?
 
-- **No dedicated web builder, deploy, or Mark Tool found.** Codebase search found no `web_builder`, `web_app`, `mark_tool`, or JSX AST code outside of unrelated `news` parser.
-- **Close relatives that must NOT be duplicated:**
-  - `app/routes/reports_routes.py` and `app/routes/video_presentations_routes.py` are deliverable routes but do not build/deploy interactive web apps.
-  - `app/services/image_generation/` is a generation service pattern to reuse, not duplicate.
-  - `app/capabilities/browser_operator/` is browser automation, not web app generation.
-- **Verdict:** Safe to build new `app/services/web_builder/` and `app/capabilities/web_builder/`.
+- **No dedicated web builder, deploy, or Mark Tool found.** Codebase search (`vibervn-context-engine` + grep) found no `app/services/web_builder/`, `app/routes/web_builder_routes.py`, `mark_tool`, JSX AST mutation, or `*.nowing.space` deployment code.
+- **Close relatives to REUSE (not duplicate):**
+  - `app/routes/image_generation_routes.py` — CRUD deliverable route pattern; reuse for `web_builder_routes.py`.
+  - `app/routes/reports_routes.py` / `app/routes/video_presentations_routes.py` — prompt → service → file/URL deliverable pattern; reuse.
+  - `app/services/billable_calls.py` `billable_call` context manager — reuse for cost reservation/finalization around the generate LLM call.
+  - `app/agents/video_presentation/nodes.py:244-265` — `asyncio.create_subprocess_exec` pattern for `ffprobe`; reuse for `npm install && next build`.
+  - `app/capabilities/core/` — capability registration pattern; reuse for `web_builder.build_app`.
+- **Verdict:** Safe to build new `app/services/web_builder/` and `app/capabilities/web_builder/`; reuse existing route/billing/subprocess patterns.
 
 ### Q2 — Simpler alternative?
 
-- **Critical finding:** The requested behavior is a full-stack app builder. There is no simpler alternative that satisfies the ACs.
-- **Possible scope reduction (v1 MVP):**
-  1. Generate + preview only, no deploy.
-  2. Deploy to single shared `nowing.net/apps/{slug}` path instead of `*.apps.nowing.net` subdomain.
-  3. Mark Tool v1 only supports text edits, not layout/style.
-- **Money/billing risk:** Adding a new `BillingUnit.WEB_BUILDER_*` is fine, but must not double-charge with `TokenUsage`. Record cost per step (generate/build/deploy).
-- **Verdict:** Keep full scope but mark deploy and Mark Tool as v1 MVP with known ceilings.
+- **Critical finding:** The requested behavior (full-stack web app builder + deploy + Mark Tool) is greenfield in this codebase. No existing helper satisfies the ACs.
+- **Reusable primitives that reduce scope:**
+  1. **Cost tracking** → `billable_call` (`app/services/billable_calls.py:217`) wraps the generate LLM call, reserve/finalize credit, and record `TokenUsage`. Do not invent a new billing lifecycle.
+  2. **File writes** → `pathlib.Path` + `Path.is_relative_to` for safe workspace-scoped writes. No need for a new `safe_file` util unless used elsewhere.
+  3. **Subprocess build** → `asyncio.create_subprocess_exec` + timeout. Do not pull in a build runner library.
+  4. **Custom domain/DNS** → no existing helper; implement minimal DNS-over-HTTPS or `socket.gethostbyname` validation.
+- **Possible v1 MVP scope reductions (if time-bound):**
+  1. Generate + preview only; deploy manual in v1.1.
+  2. Deploy to `https://apps.nowing.space/{workspace-id}/{slug}` path instead of `*.nowing.space` subdomain (avoids wildcard DNS/TLS).
+  3. Mark Tool v1 supports text edits only; layout/style mutation v1.2.
+- **Money/billing risk:** A new `BillingUnit.WEB_BUILDER_GENERATE` (or reuse `WEB_BUILDER_*`) must record `TokenUsage` once per step, not double-charge. The `billable_call` reserve/finalize lifecycle already handles reserve/finalize.
+- **Verdict:** Proceed with full scope; reuse `billable_call` and existing route patterns. Defer to v1.1 only if architect/PM decides after seeing POC.
 
-### Q3 — Edge cases spec misses
+### Q3 — Edge cases spec misses (Pattern 3)
 
-1. **Slug collision across workspaces.** AC-2 covers per-workspace disambiguation but not global uniqueness. Subdomain `*.apps.nowing.net` requires global slug uniqueness.
-2. **Custom domain HTTPS certificate.** CNAME + TLS certificate provisioning can fail; need fallback/validation.
-3. **Build artifact cleanup.** Generated projects can fill disk; need retention/cleanup.
-4. **Preview iframe security.** Generated app may run JS; iframe must use `sandbox` attribute and separate origin.
-5. **Mark Tool selector drift.** LLM-generated component structure may change after each regen, breaking stored selectors.
+1. **Slug global uniqueness.** AC-2 disambiguates per workspace but `*.nowing.space` requires globally unique slug. Need `UNIQUE` on `workspace_apps.slug` and a collision check.
+2. **CNAME validation / HTTPS failure.** CNAME may resolve but TLS cert provisioning can fail or take minutes. Need `status=cert_pending` and retry, or reject early.
+3. **Build artifact disk cleanup.** Generated `node_modules` + `.next` can be hundreds of MB per app. Need retention policy and cleanup job.
+4. **Preview iframe security.** Generated app can run arbitrary JS. Iframe must `sandbox="allow-scripts allow-same-origin"` and use separate subdomain/origin to avoid SameSite/cookie issues.
+5. **Mark Tool selector drift.** After regeneration, component tree changes; stored selectors break. Need stable `data-nowing-id` attribute or selector versioning.
+6. **Empty / malformed prompt.** Blank prompt, only whitespace, or prompt > model context length must return `422`/degraded.
+7. **LLM output not valid project.** JSON missing required files, or non-JSON. Need validation and no disk write.
+8. **Concurrent builds for same app.** Two publish clicks in quick succession must not create two containers/routes.
+9. **Workspace deletion / app orphan cleanup.** Deleting a workspace should delete `WorkspaceApp` rows and stop running containers.
+10. **Free plan gating.** `web_builder_enabled` default and plan-tier gate not in current `Workspace` schema; needs decision.
+
+### Q4 — Failure modes unspecified (Pattern 2, 4)
+
+| Dependency / Failure | Behavior when it fails | Spec answer (must add to ACs/tests) |
+|---|---|---|
+| `get_agent_llm(session, workspace_id)` returns `None` | Cannot generate; return `503` or degrade with `model_unavailable`. | Add AC: degrade with `status=model_unavailable` and no charge. |
+| LLM call exceeds timeout | Cancel call, return `status=timeout`, do not write files, do not charge (or reserve only). | Add to `billable_call` timeout handling. |
+| `npm install` fails (network/registry) | Build fails; return `status=build_failed` with npm logs; do not register public URL. | AC-2 already covers build fail. |
+| `next build` fails (syntax/type error) | Same as above; preserve build output for debugging. | Add test for `next build` failure. |
+| Docker socket unavailable / build permission denied | Cannot deploy; return `503` or `500`. | Add `deploy_failed` with `reason=docker_unavailable`. |
+| Caddy/Traefik admin API unreachable | Cannot publish route; return `503`; do not mark `status=published`. | Add retry + failure. |
+| Redis down (if rate-limit or lock used) | Build/publish must still work or fail gracefully (in-memory fallback). | Document `RedisDown` behavior. |
+| Postgres `workspace_apps.slug` unique constraint violation | Race on global slug; retry with new slug or return `409`. | Add global slug collision AC. |
+| Custom CNAME points to wrong IP | Reject with `422` after DNS check. | Add CNAME validation AC. |
+| User cancels build/publish mid-flight | Need idempotency key and cleanup. | Add `publish_id`/`build_id` idempotency. |
+| Disk full during `npm install` | Build fails; log `disk_full`; do not retry indefinitely. | Add failure mode test. |
+| Generated app contains `eval` or unsafe code | `npm audit`/`next lint` should catch; if not, container still executes. Need sandbox. | Add security scan or use restricted container. |
+
+### Triage
+
+| Finding | Severity | Action |
+|---|---|---|
+| Q1: No duplicate logic found; reuse helpers | — | Clean |
+| Q2: Reuse `billable_call`, route patterns, `asyncio.subprocess` | — | Continue; add to dev notes |
+| Q3: Slug global uniqueness, iframe security, disk cleanup | Non-critical | Continue; add test cases to test-first-atdd |
+| Q4: Model unavailability, Docker/Caddy API down, CNAME failure, disk full | Non-critical | Continue; add `deploy_failed` reason codes and degraded responses |
+| **Open AD-113/Caddy vs Traefik conflict** | **Critical** | **HALT before deployment code** — resolve with architect/PM whether to use Caddy (existing) or amend AD-113 to Caddy/keep Traefik |
+
+**Verdict:** Proceed to `bmad-test-first-atdd` (Step 2) **only after** resolving the reverse-proxy target decision and adding the missing edge/failure cases to the test skeleton.
 
 ## References
 
