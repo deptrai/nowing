@@ -177,10 +177,17 @@ export default function NewChatPage() {
 	const searchParams = useSearchParams();
 	const initialPrompt = searchParams.get("q") ?? undefined;
 	const isLeadsMode = searchParams.get("mode") === "leads";
+	const isWebBuilderMode = searchParams.get("mode") === "web_builder";
 	const queryClient = useQueryClient();
 	const urlChatId = useMemo(() => parseUrlChatId(params.chat_id), [params.chat_id]);
 	const [threadId, setThreadId] = useState<number | null>(() => (urlChatId > 0 ? urlChatId : null));
 	const activeThreadId = urlChatId > 0 ? urlChatId : threadId;
+	const platformMetadata = useMemo(() => {
+		// Mode query only affects brand-new threads; existing threads keep their
+		// stored platform_metadata (Story 27.1a AC-1b).
+		if (urlChatId > 0 || !isWebBuilderMode) return null;
+		return { web_builder_mode: true };
+	}, [urlChatId, isWebBuilderMode]);
 	const hasActiveView = Boolean(activeThreadId || isLeadsMode);
 	const handledLoadErrorThreadRef = useRef<number | null>(null);
 	const [currentThread, setCurrentThread] = useState<ThreadRecord | null>(null);
@@ -310,9 +317,10 @@ export default function NewChatPage() {
 			workspaceId,
 			threadId: activeThreadId,
 			priorMessages: messagesRef.current,
+			platformMetadata,
 			view: { setThreadId, setCurrentThread },
 		}),
-		[workspaceId, activeThreadId]
+		[workspaceId, activeThreadId, platformMetadata]
 	);
 
 	const hydratedMessagesRef = useRef<{

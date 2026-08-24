@@ -114,14 +114,20 @@ export async function searchThreads(workspaceId: number, title: string): Promise
 /**
  * Create a new thread
  */
-export async function createThread(workspaceId: number, title = "New Chat"): Promise<ThreadRecord> {
-	return baseApiService.post<ThreadRecord>("/api/v1/threads", undefined, {
-		body: {
-			title,
-			archived: false,
-			workspace_id: workspaceId,
-		},
-	});
+export async function createThread(
+	workspaceId: number,
+	title = "New Chat",
+	platformMetadata?: Record<string, unknown>
+): Promise<ThreadRecord> {
+	const body: Record<string, unknown> = {
+		title,
+		archived: false,
+		workspace_id: workspaceId,
+	};
+	if (platformMetadata != null) {
+		body.platform_metadata = platformMetadata;
+	}
+	return baseApiService.post<ThreadRecord>("/api/v1/threads", undefined, { body });
 }
 
 /**

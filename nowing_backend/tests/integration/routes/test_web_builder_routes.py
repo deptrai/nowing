@@ -22,7 +22,6 @@ from app.auth.context import AuthContext
 from app.db import WorkspaceApp, get_async_session
 from app.routes.web_builder_routes import router as web_builder_router
 from app.services.web_builder.schemas import (
-    CustomDomainOutput,
     WebAppBuildOutput,
     WebAppDeployOutput,
 )
@@ -135,81 +134,6 @@ class TestWebBuilderRoutes:
         data = response.json()
         assert data["status"] == "published"
         assert data["public_url"] == "https://crypto-tracker.apps.nowing.net"
-
-    def test_custom_domain_validation_and_assignment(self, client: TestClient):
-        """AC-3: POST /api/v1/web-builder/apps/{app_id}/custom-domain verifies CNAME and registers route."""
-        app_id = "test-app-001"
-        payload = {
-            "workspace_id": 1,
-            "custom_domain": "portfolio.mybrand.io",
-        }
-
-        mock_out = CustomDomainOutput(
-            app_id=app_id,
-            workspace_id=1,
-            custom_domain="portfolio.mybrand.io",
-            status="active",
-            cname_target="cname-ingress.apps.nowing.net",
-        )
-
-        with patch(
-            "app.routes.web_builder_routes.WebAppDeployService.verify_and_bind_custom_domain",
-            new_callable=AsyncMock,
-        ) as mock_cname:
-            mock_cname.return_value = mock_out
-
-            response = client.post(
-                f"/api/v1/web-builder/apps/{app_id}/custom-domain",
-                json=payload,
-            )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["custom_domain"] == "portfolio.mybrand.io"
-        assert data["status"] == "active"
-
-    def test_mark_tool_patch_endpoint(
-        self, client: TestClient, mock_db_session: AsyncMock, tmp_path
-    ):
-        """AC-4: POST /api/v1/web-builder/apps/{app_id}/mark applies visual patch to component AST."""
-        app_id = "test-app-001"
-        test_dir = tmp_path / "web-app" / "1" / app_id
-        test_dir.mkdir(parents=True, exist_ok=True)
-        app_page = test_dir / "app" / "page.tsx"
-        app_page.parent.mkdir(parents=True, exist_ok=True)
-        app_page.write_text(
-            'export default function Page() { return <h1 id="main-header">Old Title</h1>; }',
-            encoding="utf-8",
-        )
-
-        mock_app_entity = WorkspaceApp(
-            id=app_id,
-            workspace_id=1,
-            name="Test App",
-            slug="test-app",
-            storage_path=str(test_dir),
-        )
-
-        payload = {
-            "workspace_id": 1,
-            "selector": "#main-header",
-            "patch": {"type": "text", "value": "Welcome to CryptoTracker Pro"},
-            "file_path": "app/page.tsx",
-        }
-
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.first.return_value = mock_app_entity
-        mock_db_session.execute.return_value = mock_result
-
-        response = client.post(
-            f"/api/v1/web-builder/apps/{app_id}/mark",
-            json=payload,
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "patched"
-        assert "Welcome to CryptoTracker Pro" in app_page.read_text(encoding="utf-8")
 
     def test_generate_stream_endpoint(self, client: TestClient):
         """POST /api/v1/web-builder/generate/stream returns text/event-stream chunks."""

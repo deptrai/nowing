@@ -62,6 +62,7 @@ CHAT_MODES: dict[str, ChatMode] = {
         flag_key="web_builder_mode",
         label="Web Builder",
         system_prompt=_WEB_BUILDER_SYSTEM_PROMPT,
+        enabled_tools=["build_web_app"],
         workspace_feature_field="web_builder_enabled",
         global_config_attr="WEB_BUILDER_ENABLED",
         artifact_kinds=["web_app"],
@@ -92,13 +93,21 @@ CHAT_MODES: dict[str, ChatMode] = {
 
 
 def resolve_chat_mode(platform_metadata: dict[str, Any] | None) -> ChatMode:
-    """Return the first chat mode whose flag key is truthy in the metadata."""
+    """Return the first chat mode whose flag key is exactly ``True``.
+
+    Only a boolean ``True`` enables a mode (AC-1a). If more than one flag is
+    ``True`` the result is ambiguous, so we fall back to ``default``.
+    """
     metadata = platform_metadata or {}
-    for mode in CHAT_MODES.values():
-        if mode.mode_id == "default":
-            continue
-        if metadata.get(mode.flag_key):
-            return mode
+    active = [
+        mode
+        for mode in CHAT_MODES.values()
+        if mode.mode_id != "default" and metadata.get(mode.flag_key) is True
+    ]
+    if len(active) > 1:
+        return CHAT_MODES["default"]
+    if active:
+        return active[0]
     return CHAT_MODES["default"]
 
 

@@ -71,18 +71,8 @@ class PreviewRenderer:
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="{WEB_BUILDER_CSP}">
   <title>{html.escape(app_name)} - Live Preview</title>
-  
-  <!-- Tailwind CSS CDN -->
-  <!-- Fallback if any CDN fails to load -->
-  <script>
-    window.__webBuilderCdnFallback = function() {{
-      const root = document.getElementById('root');
-      if (root) {{
-        root.innerHTML = '<div class="min-h-screen flex flex-col items-center justify-center p-8 bg-slate-950 text-white text-center"><div><h1 class="text-2xl font-bold text-indigo-400 mb-2">Preview unavailable</h1><p class="text-slate-400">A required CDN resource could not be loaded. Please try again later.</p></div></div>';
-      }}
-    }};
-  </script>
 
+  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com" onerror="__webBuilderCdnFallback()"></script>
   <script>
     tailwind.config = {{
@@ -108,11 +98,11 @@ class PreviewRenderer:
     }}
   </script>
 
-  <!-- React 18 & Babel Standalone for live in-browser JSX execution -->
+  <!-- React 18 & Babel Standalone for live in-browser JSX/TSX execution -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js" onerror="__webBuilderCdnFallback()"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" onerror="__webBuilderCdnFallback()"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js" onerror="__webBuilderCdnFallback()"></script>
-  
+
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest" onerror="__webBuilderCdnFallback()"></script>
 
@@ -142,16 +132,34 @@ class PreviewRenderer:
 <body class="bg-slate-950 text-slate-50 min-h-screen antialiased selection:bg-indigo-500 selection:text-white">
   <div id="root"></div>
 
-  <script type="text/babel">
+  <!-- CDN-fallback must be defined after #root exists, or wait for load. -->
+  <script>
+    window.__webBuilderCdnFallback = function() {{
+      var fallbackHtml = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0f172a;color:#fff;font-family:Inter,sans-serif;text-align:center;padding:2rem;"><div><h1 style="font-size:1.5rem;font-weight:700;color:#818cf8;margin:0 0 .5rem;">Preview unavailable</h1><p style="color:#94a3b8;margin:0;">A required CDN resource could not be loaded. Please try again later.</p></div></div>';
+      var root = document.getElementById('root');
+      if (root) {{
+        root.innerHTML = fallbackHtml;
+      }} else {{
+        window.addEventListener('load', function() {{
+          root = document.getElementById('root');
+          if (root) root.innerHTML = fallbackHtml;
+        }});
+      }}
+    }};
+  </script>
+
+  <script type="text/babel" data-presets="react,typescript">
+    const React = window.React;
+    const ReactDOM = window.ReactDOM;
     const {{ useState, useEffect, useMemo, useRef }} = React;
 
     {sanitized_jsx}
 
     const rootElement = document.getElementById('root');
     const root = ReactDOM.createRoot(rootElement);
-    
-    const MainComponent = typeof Home !== 'undefined' ? Home : 
-                          (typeof App !== 'undefined' ? App : 
+
+    const MainComponent = typeof Home !== 'undefined' ? Home :
+                          (typeof App !== 'undefined' ? App :
                           (typeof Page !== 'undefined' ? Page : () => <div>Application Ready</div>));
 
     root.render(<MainComponent />);
@@ -192,12 +200,12 @@ class PreviewRenderer:
       if (!markToolActive) return;
       e.preventDefault();
       e.stopPropagation();
-      
+
       const target = e.target;
       const id = target.id ? '#' + target.id : '';
       const tag = target.tagName.toLowerCase();
-      const firstClass = target.className && typeof target.className === 'string' 
-        ? '.' + target.className.split(' ')[0] 
+      const firstClass = target.className && typeof target.className === 'string'
+        ? '.' + target.className.split(' ')[0]
         : '';
       const selector = id || (firstClass ? tag + firstClass : tag);
       const text = target.innerText || target.textContent || '';
@@ -222,36 +230,40 @@ class PreviewRenderer:
 
     @staticmethod
     def _sanitize_tsx_for_babel(tsx_code: str) -> str:
-        """Strip TypeScript syntax and sanitize scripts from Next.js component for browser Babel."""
+        """Sanitize TSX for in-browser Babel execution.
+
+        Babel standalone is configured with the ``typescript`` preset, so we do
+        not strip TypeScript type annotations by regex. We only escape the
+        closing ``</script>`` tag and neutralise storage/auth APIs and dynamic
+        imports that could leak data or fetch external code (P8).
+        """
         code = tsx_code
 
-        # Prevent closing Babel script tag injection
-        code = re.sub(r"</script>", r"<\/script>", code, flags=re.IGNORECASE)
+        # Prevent generated code from closing the Babel <script> tag.
+        code = re.sub(r"</script\s*>", r"<\\/script>", code, flags=re.IGNORECASE)
 
-        # Strip access to sensitive browser storage / auth tokens
-        code = re.sub(r"\bdocument\.cookie\b", "''", code)
-        code = re.sub(
-            r"\blocalStorage\b", "{ getItem: () => null, setItem: () => {} }", code
-        )
-        code = re.sub(
-            r"\bsessionStorage\b", "{ getItem: () => null, setItem: () => {} }", code
-        )
+        # Neutralise storage / auth token access. Replacing with ({}).cookie
+        # keeps the syntax valid on both read and assignment sides.
+        code = re.sub(r"\bwindow\.document\.cookie\b", "({}).cookie", code)
+        code = re.sub(r"\bdocument\[(['\"])cookie\1\]", "({}).cookie", code)
+        code = re.sub(r"\bdocument\.cookie\b", "({}).cookie", code)
+        code = re.sub(r"\blocalStorage\b", "({})", code)
+        code = re.sub(r"\bsessionStorage\b", "({})", code)
 
-        # Strip imports
-        code = re.sub(r"import\s+[^;]+;?", "", code)
+        # Strip static imports and neutralise dynamic imports/requires that
+        # could load arbitrary third-party code in the preview sandbox.
+        code = re.sub(r"^\s*import\s+[^;]+;?", "", code, flags=re.MULTILINE)
+        code = re.sub(r"\bimport\s*\(", "(function(){{return Promise.resolve({{}});}})(", code)
+        code = re.sub(r"\brequire\s*\(", "(function(){{return {{}};}})(", code)
 
-        # Replace export statements
+        # Convert ESM exports to local declarations so Babel can execute the
+        # component in the browser's global scope.
         code = re.sub(r"export\s+default\s+function\s*", "function ", code)
         code = re.sub(r"export\s+function\s*", "function ", code)
         code = re.sub(r"export\s+const\s*", "const ", code)
+        code = re.sub(r"export\s+default\s+\w+\s*;?", "", code)
 
-        # Strip interface / type blocks
-        code = re.sub(
-            r"(?:interface|type)\s+[A-Za-z0-9_]+\s*=?\s*\{[^}]*\};?", "", code
-        )
-
-        # Strip generic types and type annotations (uppercase and lowercase)
-        code = re.sub(r":\s*[A-Za-z_][a-zA-Z0-9_<>\[\]|&\s]*", "", code)
-        code = re.sub(r"as\s+[A-Za-z_][a-zA-Z0-9_<>\[\]]*", "", code)
+        # ponytail: Babel's typescript preset handles type annotations and
+        # interface/type declarations, so we no longer strip them with regex.
 
         return code

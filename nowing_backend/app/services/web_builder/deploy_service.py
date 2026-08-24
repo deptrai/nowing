@@ -1,6 +1,6 @@
-import contextlib
 import logging
 import re
+import uuid
 from pathlib import Path
 
 from sqlalchemy import select
@@ -16,22 +16,40 @@ from app.services.web_builder.schemas import (
 logger = logging.getLogger(__name__)
 
 
-def disambiguate_slug(base_slug: str, existing_slugs: set[str] | list[str]) -> str:
-    """Generate a collision-free slug by appending incremental numeric suffixes."""
+def disambiguate_slug(
+    base_slug: str,
+    existing_slugs: set[str] | list[str],
+    max_length: int = 63,
+    max_attempts: int = 100_000,
+) -> str:
+    """Generate a collision-free, DNS-label-safe slug.
+
+    The result is always <= ``max_length`` and has a bounded number of suffix
+    attempts to avoid an infinite loop (P15).
+    """
     existing = set(existing_slugs)
     # Sanitize and truncate base_slug to DNS label safe format
-    cleaned = re.sub(r"[^a-z0-9-]", "-", base_slug.strip().lower())
-    clean_base = re.sub(r"-\d+$", "", cleaned).strip("-") or "app"
-    clean_base = clean_base[:50]  # allow room for numeric suffixes up to 63 chars
+    cleaned = re.sub(r"[^a-z0-9-]", "-", base_slug.strip().lower()).strip("-") or "app"
+    # Remove a trailing numeric suffix so our own disambiguation scheme is
+    # the only source of -{n} tails.
+    cleaned = re.sub(r"-\d+$", "", cleaned).strip("-") or "app"
+    # Reserve 6 characters for the -{counter} suffix (up to -99999).
+    max_base = max_length - 6
+    if len(cleaned) > max_base:
+        cleaned = cleaned[:max_base].strip("-") or "app"
 
-    if clean_base not in existing:
-        return clean_base
+    if cleaned not in existing:
+        return cleaned
 
-    counter = 1
-    while f"{clean_base}-{counter}" in existing:
-        counter += 1
+    for counter in range(1, max_attempts + 1):
+        candidate = f"{cleaned}-{counter}"
+        if candidate not in existing:
+            return candidate
 
-    return f"{clean_base}-{counter}"
+    # Collisions exhausted the numeric range; append a short random tail.
+    tail = uuid.uuid4().hex[:6]
+    base = cleaned[: max_length - len(tail) - 1]
+    return f"{base}-{tail}"
 
 
 class WebAppDeployService:
@@ -50,58 +68,86 @@ class WebAppDeployService:
     ) -> WebAppDeployOutput:
         """Publish a generated project to https://{slug}.apps.nowing.net (Option A Static Snapshot)."""
         from app.config import config as app_config
-        from app.db import WorkspaceApp
+        from app.db import Workspace, WorkspaceApp
         from app.services.web_builder.preview_renderer import PreviewRenderer
-
-        app_entity: WorkspaceApp | None = None
-        if session:
-            stmt = select(WorkspaceApp).where(
-                WorkspaceApp.id == app_id,
-                WorkspaceApp.workspace_id == workspace_id,
-            )
-            result = await session.execute(stmt)
-            app_entity = result.scalars().first()
 
         public_apps_base = Path(app_config.WEB_BUILDER_PUBLIC_APPS_PATH).resolve()
         public_apps_base.mkdir(parents=True, exist_ok=True)
 
-        if app_entity and app_entity.storage_path:
-            project_path = Path(app_entity.storage_path).resolve()
-        else:
-            project_path = public_apps_base / str(workspace_id) / app_id
-
-        if not project_path.exists():
-            from app.services.web_builder.project_writer import ProjectWriter
-
-            project_path.mkdir(parents=True, exist_ok=True)
-            ProjectWriter.write_minimal_nextjs_scaffold(
-                project_path, app_entity.name if app_entity else "Generated Web App"
+        if not session:
+            return WebAppDeployOutput(
+                app_id=app_id,
+                workspace_id=workspace_id,
+                status="deploy_failed",
+                slug="",
+                message="Database session is required to publish an app",
             )
 
-        # 1. Disambiguate slug (global uniqueness across published apps)
-        final_slug = slug_override or (app_entity.slug if app_entity else "web-app")
-        if session:
-            all_slugs_stmt = select(WorkspaceApp.slug).where(
-                WorkspaceApp.id != app_id,
-                WorkspaceApp.status == "published",
+        # 0. Verify workspace and app gates (P3, P14).
+        ws = (
+            await session.execute(
+                select(Workspace).where(Workspace.id == workspace_id)
             )
-            res = await session.execute(all_slugs_stmt)
-            existing_slugs = {s for s in res.scalars().all() if s}
-            final_slug = disambiguate_slug(final_slug, existing_slugs)
+        ).scalars().first()
+        if ws is None or ws.web_builder_enabled is False:
+            return WebAppDeployOutput(
+                app_id=app_id,
+                workspace_id=workspace_id,
+                status="deploy_failed",
+                slug="",
+                message="Web Builder is not enabled on this workspace plan",
+            )
 
-        sanitized_slug = (
-            re.sub(r"[^a-z0-9-]", "-", final_slug.strip().lower()).strip("-") or "app"
+        stmt = select(WorkspaceApp).where(
+            WorkspaceApp.id == app_id,
+            WorkspaceApp.workspace_id == workspace_id,
         )
-        # Enforce DNS label limit (63 chars) and avoid trailing hyphen from truncation.
-        sanitized_slug = sanitized_slug[:63].strip("-") or "app"
+        app_entity = (await session.execute(stmt)).scalars().first()
+
+        if app_entity is None:
+            return WebAppDeployOutput(
+                app_id=app_id,
+                workspace_id=workspace_id,
+                status="deploy_failed",
+                slug="",
+                message="Application not found",
+            )
+
+        if not app_entity.storage_path:
+            return WebAppDeployOutput(
+                app_id=app_id,
+                workspace_id=workspace_id,
+                status="deploy_failed",
+                slug="",
+                message="Application has no generated files to publish",
+            )
+
+        project_path = Path(app_entity.storage_path).resolve()
+        if not project_path.exists() or not any(project_path.iterdir()):
+            return WebAppDeployOutput(
+                app_id=app_id,
+                workspace_id=workspace_id,
+                status="deploy_failed",
+                slug="",
+                message="Application source directory is missing or empty",
+            )
+
+        # 1. Disambiguate slug (global uniqueness across published apps).
+        final_slug = slug_override or app_entity.slug or "web-app"
+        all_slugs_stmt = select(WorkspaceApp.slug).where(
+            WorkspaceApp.id != app_id,
+            WorkspaceApp.status == "published",
+        )
+        res = await session.execute(all_slugs_stmt)
+        existing_slugs = {s for s in res.scalars().all() if s}
+        sanitized_slug = disambiguate_slug(final_slug, existing_slugs)
         public_url = f"https://{sanitized_slug}.{self.base_domain}"
 
-        # 2. Idempotency check: if already published and snapshot exists and not force
+        # 2. Idempotency check: if already published and snapshot exists and not force.
         snapshot_dir = public_apps_base / sanitized_slug
         snapshot_file = snapshot_dir / "index.html"
         if (
             not force
-            and app_entity
             and app_entity.status == "published"
             and app_entity.slug == sanitized_slug
             and snapshot_file.exists()
@@ -115,58 +161,90 @@ class WebAppDeployService:
                 message=f"Application already published at {app_entity.public_url or public_url}",
             )
 
-        # 3. Render static HTML snapshot via PreviewRenderer
+        # 3. Render static HTML snapshot via PreviewRenderer.
         try:
             static_html = PreviewRenderer.render_app_html(
                 project_path,
-                app_name=app_entity.name if app_entity else "Sales & Marketing Web App",
-            )
-
-            snapshot_dir.mkdir(parents=True, exist_ok=True)
-            snapshot_file.write_text(static_html, encoding="utf-8")
-
-            # Update app entity status
-            if session and app_entity:
-                app_entity.slug = sanitized_slug
-                app_entity.public_url = public_url
-                app_entity.status = "published"
-                app_entity.error_message = None
-
-                # Record deployment billing metrics
-                await record_token_usage(
-                    session=session,
-                    workspace_id=workspace_id,
-                    user_id=app_entity.user_id,
-                    usage_type="web_builder_deploy",
-                    cost_micros=0,  # $0 fixed platform fee for static snapshot
-                )
-                await session.commit()
-
-            return WebAppDeployOutput(
-                app_id=app_id,
-                workspace_id=workspace_id,
-                status="published",
-                public_url=public_url,
-                slug=sanitized_slug,
-                message=f"Application deployed successfully to {public_url}",
+                app_name=app_entity.name,
             )
         except Exception as e:
             logger.error(
-                f"[WebAppDeployService] Deployment failed for app {app_id}: {e}"
+                f"[WebAppDeployService] Rendering failed for app {app_id}: {e}"
             )
-            if session and app_entity:
-                app_entity.status = "deploy_failed"
-                app_entity.error_message = str(e)
-                with contextlib.suppress(Exception):
-                    await session.commit()
-
+            app_entity.status = "deploy_failed"
+            app_entity.error_message = f"Rendering failed: {e}"
+            await session.commit()
             return WebAppDeployOutput(
                 app_id=app_id,
                 workspace_id=workspace_id,
                 status="deploy_failed",
                 slug=sanitized_slug,
-                message=f"Deployment execution error: {e}",
+                message=f"Rendering failed: {e}",
             )
+
+        # 4. Commit the published state to the database *before* writing the
+        # snapshot file so a failed file write does not leave a published URL
+        # with no matching static file (P16).
+        try:
+            app_entity.slug = sanitized_slug
+            app_entity.public_url = public_url
+            app_entity.status = "published"
+            app_entity.error_message = None
+
+            # Record deployment billing metrics.
+            await record_token_usage(
+                session=session,
+                workspace_id=workspace_id,
+                user_id=app_entity.user_id,
+                usage_type="web_builder_deploy",
+                cost_micros=app_config.WEB_BUILDER_DEPLOY_COST_MICROS,
+            )
+            await session.commit()
+        except Exception as e:
+            logger.error(
+                f"[WebAppDeployService] Database publish failed for app {app_id}: {e}"
+            )
+            return WebAppDeployOutput(
+                app_id=app_id,
+                workspace_id=workspace_id,
+                status="deploy_failed",
+                slug=sanitized_slug,
+                message=f"Database publish failed: {e}",
+            )
+
+        # 5. Write the static snapshot after the DB is committed.
+        try:
+            snapshot_dir.mkdir(parents=True, exist_ok=True)
+            snapshot_file.write_text(static_html, encoding="utf-8")
+        except Exception as e:
+            logger.error(
+                f"[WebAppDeployService] Snapshot file write failed for app {app_id}: {e}"
+            )
+            # Roll back the published state if the static file cannot be saved.
+            try:
+                app_entity.status = "deploy_failed"
+                app_entity.error_message = f"Snapshot write failed: {e}"
+                await session.commit()
+            except Exception as db_err:
+                logger.error(
+                    f"[WebAppDeployService] Failed to mark app {app_id} as deploy_failed: {db_err}"
+                )
+            return WebAppDeployOutput(
+                app_id=app_id,
+                workspace_id=workspace_id,
+                status="deploy_failed",
+                slug=sanitized_slug,
+                message=f"Snapshot write failed: {e}",
+            )
+
+        return WebAppDeployOutput(
+            app_id=app_id,
+            workspace_id=workspace_id,
+            status="published",
+            public_url=public_url,
+            slug=sanitized_slug,
+            message=f"Application deployed successfully to {public_url}",
+        )
 
     async def verify_and_bind_custom_domain(
         self,

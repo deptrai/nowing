@@ -344,10 +344,10 @@ async def stream_new_chat(
     chat_thread = await session.get(NewChatThread, chat_id)
     if chat_thread is not None:
         # Story 27.1a: per-turn payload overrides thread-level metadata; if the
-        # turn omits it, fall back to the thread's stored metadata so mode is
-        # not lost on regenerate/refresh.
+        # turn omits it (or sends an empty dict), fall back to the thread's
+        # stored metadata so mode is not lost on regenerate/refresh.
         thread_metadata = getattr(chat_thread, "platform_metadata", None)
-        if platform_metadata is not None:
+        if platform_metadata:
             chat_thread.platform_metadata = platform_metadata
         elif thread_metadata is not None:
             platform_metadata = thread_metadata
@@ -885,6 +885,18 @@ async def stream_new_chat(
                 agent_id=agent_id,
                 disabled_tools=disabled_tools,
             )
+
+            # Re-apply the active chat-mode allowlist (and prompt) so a
+            # web-builder/presentation-studio thread is not downgraded to the
+            # registry's default tool set after a runtime rate-limit recovery.
+            if chat_mode.mode_id != "default":
+                if chat_mode.enabled_tools is not None:
+                    effective_enabled_tools = list(chat_mode.enabled_tools)
+                agent_config.system_instructions = _clamp_agent_instructions(
+                    get_chat_mode_system_prompt(
+                        chat_mode, agent_config.system_instructions
+                    )
+                )
 
             # Title gen used the initial llm object. After a runtime repin we
             # keep the stream focused on response recovery and skip title gen

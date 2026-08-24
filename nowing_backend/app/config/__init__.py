@@ -1809,9 +1809,9 @@ class Config:
     )
     FILE_STORAGE_LOCAL_PATH = os.getenv(
         "FILE_STORAGE_LOCAL_PATH",
-        "/app/.local_object_store"
-        if os.path.exists("/app")
-        else "./.local_object_store",
+        # Anchor the default to the project root so it is independent of the
+        # worker process CWD (e.g. Celery vs. web server).
+        str(BASE_DIR / ".local_object_store"),
     )
     WEB_BUILDER_ENABLED = os.getenv("WEB_BUILDER_ENABLED", "TRUE").upper() == "TRUE"
     WEB_BUILDER_MAX_PROMPT_CHARS = max(
@@ -1820,6 +1820,10 @@ class Config:
     WEB_BUILDER_PUBLIC_APPS_PATH = os.getenv(
         "WEB_BUILDER_PUBLIC_APPS_PATH",
         f"{FILE_STORAGE_LOCAL_PATH}/web-apps",
+    )
+    # Small fixed platform fee for static-snapshot deploy (default $0 for Option A).
+    WEB_BUILDER_DEPLOY_COST_MICROS = max(
+        0, _env_int("WEB_BUILDER_DEPLOY_COST_MICROS", 0)
     )
 
     PRESENTATION_STUDIO_ENABLED = (

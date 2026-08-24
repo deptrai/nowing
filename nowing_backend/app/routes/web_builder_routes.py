@@ -17,7 +17,6 @@ from app.db import Permission, Workspace, WorkspaceApp, get_async_session
 from app.routes.rbac_routes import check_permission
 from app.services.web_builder.deploy_service import WebAppDeployService
 from app.services.web_builder.generator import WebBuilderService
-from app.services.web_builder.mark_tool import MarkToolASTMutator
 from app.services.web_builder.preview_renderer import WEB_BUILDER_CSP, PreviewRenderer
 from app.services.web_builder.project_writer import ProjectWriter
 from app.services.web_builder.schemas import (
@@ -44,7 +43,7 @@ async def require_workspace_member(
     auth: AuthContext,
     workspace_id: int,
 ) -> AuthContext:
-    """Ensure the caller is a member of the workspace."""
+    """Ensure the caller is a member and that Web Builder is enabled."""
     await check_permission(
         session,
         auth,
@@ -52,6 +51,18 @@ async def require_workspace_member(
         Permission.WEB_BUILDER_CREATE.value,
         error_message="You don't have access to this workspace",
     )
+
+    # Fail-closed per-workspace feature gate (P2).
+    ws = (
+        await session.execute(
+            select(Workspace).where(Workspace.id == workspace_id)
+        )
+    ).scalars().first()
+    if not ws or ws.web_builder_enabled is False:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Web Builder is not enabled on this workspace plan",
+        )
     return auth
 
 
@@ -136,90 +147,29 @@ async def publish_web_app(
     return result
 
 
-@router.post("/apps/{app_id}/custom-domain", response_model=CustomDomainOutput)
 async def configure_custom_domain(
     app_id: str,
     payload: CustomDomainInput,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[AsyncSession, Depends(get_async_session)],
 ) -> CustomDomainOutput:
-    """Configure and verify custom domain CNAME routing (AC-3)."""
-    check_web_builder_enabled()
-    await require_workspace_member(session, auth, payload.workspace_id)
-    deploy_service = WebAppDeployService()
-    result = await deploy_service.verify_and_bind_custom_domain(
-        app_id=app_id,
-        workspace_id=payload.workspace_id,
-        custom_domain=payload.custom_domain,
-        session=session,
+    """Custom CNAME binding is out of scope for Story 27.1a (P27)."""
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Custom domain CNAME binding is not available in this version",
     )
-    if result.status == "failed":
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=result.message,
-        )
-    return result
 
 
-@router.post("/apps/{app_id}/mark", response_model=MarkToolOutput)
 async def apply_mark_tool_patch(
     app_id: str,
     payload: MarkToolInput,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[AsyncSession, Depends(get_async_session)],
 ) -> MarkToolOutput:
-    """Apply visual Mark Tool DOM-to-JSX AST mutation to component code (AC-4)."""
-    check_web_builder_enabled()
-    await require_workspace_member(session, auth, payload.workspace_id)
-    stmt = select(WorkspaceApp).where(
-        WorkspaceApp.id == app_id,
-        WorkspaceApp.workspace_id == payload.workspace_id,
-    )
-    res = await session.execute(stmt)
-    app_entity = res.scalars().first()
-
-    if not app_entity or not app_entity.storage_path:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Application {app_id} not found in workspace",
-        )
-
-    project_dir = Path(app_entity.storage_path)
-    target_file = (project_dir / payload.file_path).resolve()
-
-    # Safety boundary check
-    try:
-        target_file.relative_to(project_dir)
-    except ValueError as err:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid file path inside project",
-        ) from err
-
-    if not target_file.exists():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Component file not found: {payload.file_path}",
-        )
-
-    jsx_code = target_file.read_text(encoding="utf-8")
-    mutator = MarkToolASTMutator()
-    result = mutator.apply_patch(
-        jsx_code=jsx_code,
-        selector=payload.selector,
-        patch=payload.patch.model_dump(),
-    )
-
-    if result.status == "patched":
-        target_file.write_text(result.patched_code, encoding="utf-8")
-
-    return MarkToolOutput(
-        app_id=app_id,
-        workspace_id=payload.workspace_id,
-        status=result.status,
-        file_path=payload.file_path,
-        patched_code=result.patched_code if result.status == "patched" else None,
-        message=result.message,
+    """AST mutation from the Mark Tool is out of scope for Story 27.1a (P26)."""
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Mark Tool AST mutation is not available in this version",
     )
 
 
@@ -289,20 +239,25 @@ async def get_workspace_app_preview(
 
     from app.config import FILE_STORAGE_LOCAL_PATH
 
-    if app_entity.storage_path:
-        project_dir = Path(app_entity.storage_path)
-        if not project_dir.is_absolute():
-            project_dir = (
-                Path(FILE_STORAGE_LOCAL_PATH).resolve()
-                / "web-app"
-                / str(app_entity.workspace_id)
-                / app_id
-            )
+    if not app_entity.storage_path:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Application source files not found",
+        )
+
+    project_dir = Path(app_entity.storage_path)
+    if not project_dir.is_absolute():
+        project_dir = (
+            Path(FILE_STORAGE_LOCAL_PATH).resolve()
+            / "web-app"
+            / str(app_entity.workspace_id)
+            / app_id
+        )
 
     if not project_dir.exists():
-        project_dir.mkdir(parents=True, exist_ok=True)
-        ProjectWriter.write_minimal_nextjs_scaffold(
-            project_dir, app_entity.name if app_entity else "Generated App"
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Application source files not found",
         )
 
     html_content = PreviewRenderer.render_app_html(
@@ -380,13 +335,17 @@ async def get_workspace_app_files(
     return files_dict
 
 
-@host_router.get("/web-apps/host", response_class=HTMLResponse)
-@router.get("/host", response_class=HTMLResponse)
 async def host_web_app(
     request: Request,
     session: Annotated[AsyncSession, Depends(get_async_session)],
 ) -> HTMLResponse:
     """Serve published web app static HTML by Host header (Story 27.1a AC-4 / AC-6a)."""
+    if not config.WEB_BUILDER_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Web Builder is not enabled",
+        )
+
     host_header = request.headers.get("Host", "")
     if not host_header:
         raise HTTPException(
@@ -396,13 +355,21 @@ async def host_web_app(
 
     host_clean = host_header.split(":")[0].strip().lower()
     base_domain = config.HOSTING_BASE_DOMAIN.lower()
-    if base_domain and not host_clean.endswith(f".{base_domain}"):
+    if not base_domain:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Hosting base domain is not configured",
+        )
+
+    if not host_clean.endswith(f".{base_domain}"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Malformed host domain",
         )
+
     parts = host_clean.split(".")
-    if len(parts) < 2 or not parts[0]:
+    base_parts = base_domain.split(".")
+    if len(parts) != len(base_parts) + 1 or not parts[0]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Malformed host domain",

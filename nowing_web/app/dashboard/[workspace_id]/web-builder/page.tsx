@@ -612,6 +612,7 @@ export default function WebBuilderPage() {
 											id="web-builder-preview-iframe"
 											src={localPreviewUrl}
 											title={selectedApp.name}
+											sandbox="allow-scripts allow-forms allow-same-origin"
 											className="w-full h-full border-0 bg-slate-950"
 										/>
 									</div>

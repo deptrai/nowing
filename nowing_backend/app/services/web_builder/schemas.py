@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.config import config as app_config
 
@@ -20,9 +20,18 @@ class GeneratedProjectFile(BaseModel):
 class GeneratedProjectSpec(BaseModel):
     """Structured LLM specification output for a generated web application."""
 
-    name: str = Field(..., description="Human-readable application name")
-    slug: str = Field(..., description="URL-safe application identifier slug")
-    description: str | None = Field(None, description="Brief description of the app")
+    name: str = Field(
+        ..., max_length=255, description="Human-readable application name"
+    )
+    slug: str = Field(
+        ...,
+        max_length=63,
+        pattern=r"^[a-z0-9-]+$",
+        description="URL-safe application identifier slug",
+    )
+    description: str | None = Field(
+        None, max_length=1000, description="Brief description of the app"
+    )
     files: list[GeneratedProjectFile] = Field(
         default_factory=list, description="Array of project files"
     )
@@ -32,44 +41,39 @@ class WebAppBuildInput(BaseModel):
     """Input payload for generating a web application from prompt."""
 
     prompt: str = Field(
-        ..., min_length=3, description="Natural language description of the web app"
+        ...,
+        min_length=3,
+        max_length=app_config.WEB_BUILDER_MAX_PROMPT_CHARS,
+        description="Natural language description of the web app",
     )
-    language: str = Field(default="en", description="Target UI language (e.g. en, vi)")
+    language: str = Field(
+        default="en",
+        max_length=10,
+        description="Target UI language (e.g. en, vi)",
+    )
     workspace_id: int = Field(..., description="Owning workspace ID")
     user_id: UUID | None = Field(default=None, description="Requesting user ID")
-    app_id: str | None = Field(
-        default=None,
-        description="Optional existing app ID for conversational refinement",
-    )
     app_name: str | None = Field(
-        default=None, description="Optional custom name override"
+        default=None,
+        max_length=255,
+        description="Optional custom name override",
     )
-
-    @field_validator("prompt")
-    @classmethod
-    def _check_prompt_length(cls, v: str) -> str:
-        max_chars = app_config.WEB_BUILDER_MAX_PROMPT_CHARS
-        if len(v) > max_chars:
-            raise ValueError(
-                f"Prompt exceeds maximum allowed length of {max_chars} characters."
-            )
-        return v
 
 
 class WebAppBuildOutput(BaseModel):
     """Output payload after generating a web application."""
 
-    app_id: str
+    app_id: str = Field(..., max_length=36)
     workspace_id: int
-    name: str
-    slug: str
-    status: (
-        str  # generated, validation_failed, building, published, deploy_failed, error
-    )
-    preview_url: str | None = None
-    public_url: str | None = None
-    message: str | None = None
-    error: str | None = None
+    name: str = Field(..., max_length=255)
+    slug: str = Field(..., max_length=63, pattern=r"^[a-z0-9-]*$")
+    status: str = Field(
+        ..., max_length=50
+    )  # generated, validation_failed, building, published, deploy_failed, error
+    preview_url: str | None = Field(default=None, max_length=512)
+    public_url: str | None = Field(default=None, max_length=512)
+    message: str | None = Field(default=None, max_length=1000)
+    error: str | None = Field(default=None, max_length=1000)
     files: list[str] = Field(
         default_factory=list, description="List of generated file paths"
     )
@@ -80,18 +84,23 @@ class WebAppDeployInput(BaseModel):
     """Input payload for 1-click publishing an application."""
 
     workspace_id: int
-    slug: str | None = None
+    slug: str | None = Field(
+        default=None,
+        max_length=63,
+        pattern=r"^[a-z0-9-]+$",
+        description="Optional public slug override",
+    )
 
 
 class WebAppDeployOutput(BaseModel):
-    """Output payload after publishing an application container & route."""
+    """Output payload after publishing an application."""
 
-    app_id: str
+    app_id: str = Field(..., max_length=36)
     workspace_id: int
-    status: str  # published, deploy_failed, error
-    public_url: str | None = None
-    slug: str
-    message: str | None = None
+    status: str = Field(..., max_length=50)  # published, deploy_failed, error
+    public_url: str | None = Field(default=None, max_length=512)
+    slug: str = Field(..., max_length=63, pattern=r"^[a-z0-9-]*$")
+    message: str | None = Field(default=None, max_length=1000)
 
 
 class CustomDomainInput(BaseModel):
@@ -99,7 +108,10 @@ class CustomDomainInput(BaseModel):
 
     workspace_id: int
     custom_domain: str = Field(
-        ..., min_length=3, description="FQDN hostname (e.g. app.mycompany.com)"
+        ...,
+        min_length=3,
+        max_length=255,
+        description="FQDN hostname (e.g. app.mycompany.com)",
     )
 
 
@@ -131,11 +143,13 @@ class MarkToolInput(BaseModel):
 
     workspace_id: int
     selector: str = Field(
-        ..., description="DOM selector (CSS or XPath) captured from iframe"
+        ..., max_length=512, description="DOM selector (CSS or XPath) captured from iframe"
     )
     patch: MarkToolPatch = Field(..., description="Patch details")
     file_path: str = Field(
-        default="app/page.tsx", description="Target component file path"
+        default="app/page.tsx",
+        max_length=255,
+        description="Target component file path",
     )
 
 

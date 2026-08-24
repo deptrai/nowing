@@ -63,7 +63,7 @@ class TestWebBuilderServiceGeneration:
         with patch.object(
             service, "_call_llm_for_spec", new_callable=AsyncMock
         ) as mock_llm:
-            mock_llm.return_value = mock_llm_response
+            mock_llm.return_value = (mock_llm_response, {})
             output = await service.generate_project(build_input)
 
         assert output.status == "generated"
@@ -99,7 +99,7 @@ class TestWebBuilderServiceGeneration:
         with patch.object(
             service, "_call_llm_for_spec", new_callable=AsyncMock
         ) as mock_llm:
-            mock_llm.return_value = None  # Or invalid schema / exception
+            mock_llm.return_value = (None, {})  # Or invalid schema / exception
 
             output = await service.generate_project(build_input)
 

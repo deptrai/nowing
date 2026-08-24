@@ -21,6 +21,7 @@ async def execute_build_app(
         language=input_data.language,
         workspace_id=input_data.workspace_id,
         app_name=input_data.app_name,
+        user_id=input_data.user_id,
     )
 
     result = await service.generate_project(build_input, session=session)
@@ -32,6 +33,8 @@ async def execute_build_app(
         status=result.status,
         preview_url=result.preview_url,
         public_url=result.public_url,
+        files=result.files,
         files_count=len(result.files),
         message=result.message,
+        error=result.error,
     )

@@ -6564,6 +6564,14 @@ class WorkspaceApp(Base):
         UniqueConstraint("workspace_id", "slug", name="uq_workspace_apps_workspace_slug"),
         Index("ix_workspace_apps_workspace_status", "workspace_id", "status"),
         Index("ix_workspace_apps_custom_domain", "custom_domain"),
+        # Globally unique published slug so public URLs cannot collide across
+        # workspaces (Story 27.1a AC-4).
+        Index(
+            "ix_workspace_apps_published_slug",
+            "slug",
+            unique=True,
+            postgresql_where=text("status = 'published'"),
+        ),
     )
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -6580,7 +6588,8 @@ class WorkspaceApp(Base):
         index=True,
     )
     name = Column(String(255), nullable=False)
-    slug = Column(String(100), nullable=False, index=True)
+    # 63 chars is the DNS label limit for *.apps.nowing.net subdomains.
+    slug = Column(String(63), nullable=False, index=True)
     description = Column(Text, nullable=True)
     prompt = Column(Text, nullable=True)
     language = Column(

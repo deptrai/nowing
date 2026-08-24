@@ -1,5 +1,5 @@
 import { useSetAtom } from "jotai";
-import { AudioLines, Contact, FileText, ImageIcon, Presentation } from "lucide-react";
+import { AudioLines, Contact, FileText, Globe, ImageIcon, Presentation } from "lucide-react";
 import type { ComponentType } from "react";
 import { openReportPanelAtom } from "@/atoms/chat/report-panel.atom";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ const KIND_META: Record<
 	ArtifactKind,
 	{ icon: ComponentType<{ className?: string }>; label: string }
 > = {
+	web_app: { icon: Globe, label: "Web App" },
 	report: { icon: FileText, label: "Report" },
 	resume: { icon: Contact, label: "Resume" },
 	podcast: { icon: AudioLines, label: "Podcast" },

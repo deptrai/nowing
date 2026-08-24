@@ -15,6 +15,7 @@ import {
 import { ArtifactRow } from "./artifact-row";
 
 const GROUP_ORDER: { kind: ArtifactKind; label: string }[] = [
+	{ kind: "web_app", label: "Web Apps" },
 	{ kind: "report", label: "Reports" },
 	{ kind: "resume", label: "Resumes" },
 	{ kind: "podcast", label: "Podcasts" },
@@ -35,7 +36,7 @@ function EmptyState() {
 			<Boxes className="size-6 text-muted-foreground/60" />
 			<p className="text-sm font-medium text-foreground">No artifacts yet</p>
 			<p className="text-xs text-muted-foreground">
-				Reports, podcasts, presentations, and images you generate will appear here.
+				Web apps, reports, podcasts, presentations, and images you generate will appear here.
 			</p>
 		</div>
 	);

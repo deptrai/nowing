@@ -320,14 +320,44 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 				<div className="flex flex-wrap items-center justify-center gap-2 max-w-full">
 					{[
 						{
+							label: "Build a landing page",
+							icon: "🌐",
+							prompt:
+								"Build a modern high-converting landing page for a SaaS product with hero section, features, testimonials, and email signup CTA.",
+							mode: "web_builder",
+						},
+						{
+							label: "Pricing page",
+							icon: "💳",
+							prompt:
+								"Create a modern 3-tier pricing page with monthly/yearly toggle, comparison table, and FAQ section.",
+							mode: "web_builder",
+						},
+						{
+							label: "Lead capture",
+							icon: "🎯",
+							prompt:
+								"Create an engaging lead capture page with an email opt-in form, value proposition highlights, and social proof badges.",
+							mode: "web_builder",
+						},
+						{
+							label: "Waitlist page",
+							icon: "🚀",
+							prompt:
+								"Build an exciting viral waitlist coming-soon page with early access signup, countdown timer, and referral perk highlights.",
+							mode: "web_builder",
+						},
+						{
+							label: "Marketing report",
+							icon: "📊",
+							prompt:
+								"Generate a clean interactive marketing report and whitepaper showcase page with key metric callouts and download CTA.",
+							mode: "web_builder",
+						},
+						{
 							label: "Give me ideas",
 							icon: "💡",
 							prompt: tChat("card_icp_prompt"),
-						},
-						{
-							label: "New campaign",
-							icon: "➕",
-							prompt: tChat("card_bds_prompt"),
 						},
 						{
 							label: tChat("card_bds_title"),
@@ -344,7 +374,9 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 							key={chip.label}
 							type="button"
 							onClick={() => {
-								window.location.href = `/dashboard/1/new-chat?q=${encodeURIComponent(chip.prompt)}`;
+								const targetWorkspace = workspaceId || "1";
+								const modeParam = chip.mode ? `&mode=${chip.mode}` : "";
+								window.location.href = `/dashboard/${targetWorkspace}/new-chat?q=${encodeURIComponent(chip.prompt)}${modeParam}`;
 							}}
 							className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/80 bg-card hover:bg-muted/70 text-xs font-medium text-foreground transition-all hover:scale-102 cursor-pointer shadow-2xs"
 						>
@@ -731,6 +763,7 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 	const documentPickerRef = useRef<DocumentMentionPickerRef>(null);
 	const promptPickerRef = useRef<PromptPickerRef>(null);
 	const params = useParams();
+	const router = useRouter();
 	const workspaceId = getWorkspaceIdNumber(params);
 	const chat_id = params.chat_id;
 	const aui = useAui();
@@ -960,7 +993,12 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 	}, []);
 
 	const handleActionSelect = useCallback(
-		(action: { name: string; prompt: string; mode: "transform" | "explore" }) => {
+		(action: {
+			name: string;
+			prompt: string;
+			mode: "transform" | "explore";
+			isWebBuilder?: boolean;
+		}) => {
 			let userText = editorRef.current?.getText() ?? "";
 			const trigger = `/${actionQuery}`;
 			if (userText.endsWith(trigger)) {
@@ -977,8 +1015,13 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 			setShowPromptPicker(false);
 			setActionQuery("");
 			setSuggestionAnchorPoint(null);
+
+			if (action.isWebBuilder) {
+				const targetWs = workspaceId ?? 1;
+				router.replace(`/dashboard/${targetWs}/new-chat?mode=web_builder`, { scroll: false });
+			}
 		},
-		[actionQuery, aui]
+		[actionQuery, aui, router, workspaceId]
 	);
 
 	const _handleExampleSelect = useCallback(

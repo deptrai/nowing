@@ -108,6 +108,11 @@ const GenerateImageToolUI = dynamic(
 		import("@/components/tool-ui/generate-image").then((m) => ({ default: m.GenerateImageToolUI })),
 	{ ssr: false }
 );
+const GenerateWebAppToolUI = dynamic(
+	() =>
+		import("@/components/tool-ui/web-builder").then((m) => ({ default: m.GenerateWebAppToolUI })),
+	{ ssr: false }
+);
 function useCitationsFromMetadata(): SerializableCitation[] {
 	const allCitations = useAllCitationMetadata();
 	return useMemo(() => {
@@ -443,6 +448,7 @@ const BODY_TOOLS = {
 	generate_video_presentation: withArtifactAnchor(GenerateVideoPresentationToolUI),
 	display_image: withArtifactAnchor(GenerateImageToolUI),
 	generate_image: withArtifactAnchor(GenerateImageToolUI),
+	build_web_app: withArtifactAnchor(GenerateWebAppToolUI),
 } as const;
 
 const NullBodyTool: ToolCallMessagePartComponent = () => null;

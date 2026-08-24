@@ -59,4 +59,11 @@ export {
 	UpdateMemoryToolUI,
 } from "./user-memory";
 export { GenerateVideoPresentationToolUI } from "./video-presentation";
+export {
+	GenerateWebAppToolUI,
+	type WebAppBuildArgs,
+	WebAppBuildArgsSchema,
+	type WebAppBuildResult,
+	WebAppBuildResultSchema,
+} from "./web-builder";
 export { type WriteTodosData, WriteTodosSchema, WriteTodosToolUI } from "./write-todos";

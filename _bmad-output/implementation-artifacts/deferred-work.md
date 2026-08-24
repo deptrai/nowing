@@ -5,6 +5,18 @@
 - **Finding:** Isolated sandbox preview origin & script sanitization.
   - **Resolution:** Added strict Content-Security-Policy meta tags + response headers, sanitized `</script>` / browser auth storage access in `preview_renderer.py`, and added `sandbox="allow-scripts allow-forms allow-same-origin"` on the preview iframe.
 
+## Deferred from: code review of 27-1a-web-builder-chat-mode-sales-marketing-mvp (2026-08-25, round 2)
+
+- **Finding:** Content-Security-Policy is intentionally broad for generated/published apps.
+  - **Action:** Marked `[x] [Review][Defer]` in `27-1a-web-builder-chat-mode-sales-marketing-mvp.md`.
+  - **Reason / when to revisit:** The preview/public renderer relies on Babel/Tailwind/React CDN and generated apps may call external lead-form/analytics endpoints. Tightening now would break the MVP. Revisit when per-app allow-list and a hardened sanitizer are designed.
+- **Finding:** Plan gating defaults are `True` for every workspace.
+  - **Action:** Marked `[x] [Review][Defer]` in `27-1a-web-builder-chat-mode-sales-marketing-mvp.md`.
+  - **Reason / when to revisit:** The workspace-level toggle works. Plan-tier entitlement integration (free vs. paid) requires `WorkspaceLimit`/plan-entitlement design that is out of 27.1a scope.
+- **Finding:** `WebAppDeployService` returns `published` without DNS/ingress verification.
+  - **Action:** Marked `[x] [Review][Defer]` in `27-1a-web-builder-chat-mode-sales-marketing-mvp.md`.
+  - **Reason / when to revisit:** Static-snapshot publishing for 27.1a assumes the wildcard DNS/ingress is provisioned externally (Traefik/Caddy). Runtime health check and `public_url_status` belong to Story 27.1c container/CNAME work.
+
 ## Deferred from: code review of 27-1a-web-builder-chat-mode-sales-marketing-mvp (2026-08-24, chunk 1 backend)
 
 - **Finding:** Synchronous file I/O in async web-builder service methods.

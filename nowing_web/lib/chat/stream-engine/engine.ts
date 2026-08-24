@@ -94,6 +94,8 @@ export interface EngineContext {
 	threadId: number | null;
 	/** The page's current displayed messages — history/slice seed. */
 	priorMessages: ThreadMessageLike[];
+	/** Optional platform metadata to stamp on the thread and first turn. */
+	platformMetadata?: Record<string, unknown> | null;
 	view: EngineView;
 }
 
@@ -319,7 +321,7 @@ export async function cancelActiveTurn(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 export async function startNewChat(ctx: EngineContext, message: AppendMessage): Promise<void> {
-	const { workspaceId, threadId, priorMessages, view } = ctx;
+	const { workspaceId, threadId, priorMessages, view, platformMetadata } = ctx;
 
 	// Supersede any previous in-flight turn.
 	chatStreamStore.abortActive();
@@ -375,7 +377,7 @@ export async function startNewChat(ctx: EngineContext, message: AppendMessage): 
 	let isNewThread = false;
 	if (!currentThreadId) {
 		try {
-			const newThread = await createThread(workspaceId, "New Chat");
+			const newThread = await createThread(workspaceId, "New Chat", platformMetadata ?? undefined);
 			currentThreadId = newThread.id;
 			view.setThreadId(currentThreadId);
 			view.setCurrentThread(newThread);
@@ -537,6 +539,7 @@ export async function startNewChat(ctx: EngineContext, message: AppendMessage): 
 					mentioned_documents: allMentionedDocs.length > 0 ? allMentionedDocs : undefined,
 					disabled_tools: disabledTools.length > 0 ? disabledTools : undefined,
 					...(userImages.length > 0 ? { user_images: userImages } : {}),
+					...(platformMetadata ? { platform_metadata: platformMetadata } : {}),
 				}),
 				signal: controller.signal,
 			})

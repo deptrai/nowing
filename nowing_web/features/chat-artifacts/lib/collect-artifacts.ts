@@ -25,7 +25,16 @@ function isToolCallPart(part: unknown): part is ToolCallPart {
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
-	return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
+	if (typeof value === "object" && value !== null) return value as Record<string, unknown>;
+	if (typeof value === "string") {
+		try {
+			const parsed = JSON.parse(value);
+			if (typeof parsed === "object" && parsed !== null) return parsed as Record<string, unknown>;
+		} catch {
+			// ignore non-json string
+		}
+	}
+	return {};
 }
 
 function firstString(...values: unknown[]): string | null {
@@ -47,7 +56,12 @@ function describeArtifact(
 	hasResult: boolean
 ): { title: string; entityId: number | null; status: ArtifactStatus } {
 	const resultStatus = typeof result.status === "string" ? result.status : null;
-	const failed = resultStatus === "failed" || resultStatus === "error" || !!result.error;
+	const failed =
+		resultStatus === "failed" ||
+		resultStatus === "error" ||
+		resultStatus === "validation_failed" ||
+		resultStatus === "deploy_failed" ||
+		!!result.error;
 
 	switch (kind) {
 		case "report": {
@@ -90,6 +104,14 @@ function describeArtifact(
 				status: failed ? "error" : ready ? "ready" : hasResult ? "ready" : "running",
 			};
 		}
+		case "web_app": {
+			const appId = firstString(result.app_id);
+			return {
+				title: firstString(result.name, args.app_name, args.prompt) ?? "Web App",
+				entityId: null,
+				status: failed ? "error" : appId ? "ready" : "running",
+			};
+		}
 	}
 }
 
@@ -122,7 +144,13 @@ export function collectArtifacts(messages: readonly ThreadMessageLike[]): ChatAr
 			);
 			if (status === "error") continue;
 
-			const key = entityId != null ? `${kind}:${entityId}` : part.toolCallId;
+			const appId = kind === "web_app" ? firstString(result.app_id) : null;
+			const key =
+				entityId != null
+					? `${kind}:${entityId}`
+					: appId != null
+						? `${kind}:${appId}`
+						: part.toolCallId;
 			byKey.set(key, {
 				key,
 				kind,
@@ -130,7 +158,7 @@ export function collectArtifacts(messages: readonly ThreadMessageLike[]): ChatAr
 				status,
 				toolCallId: part.toolCallId,
 				entityId,
-				contentType: kind === "resume" ? "typst" : "markdown",
+				contentType: kind === "resume" ? "typst" : kind === "web_app" ? "web" : "markdown",
 			});
 		}
 	}

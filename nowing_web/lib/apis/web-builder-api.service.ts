@@ -10,6 +10,7 @@ import type {
 	WebBuilderStreamEvent,
 	WorkspaceApp,
 } from "@/contracts/types/web-builder.types";
+import { buildBackendUrl } from "@/lib/env-config";
 import { baseApiService } from "./base-api.service";
 
 class WebBuilderApiService {
@@ -22,8 +23,8 @@ class WebBuilderApiService {
 		onEvent: (event: WebBuilderStreamEvent) => void,
 		signal?: AbortSignal
 	): Promise<void> => {
-		const baseUrl = process.env.NEXT_PUBLIC_FASTAPI_BACKEND_URL || "http://localhost:8000";
-		const response = await fetch(`${baseUrl}/api/v1/web-builder/generate/stream`, {
+		const streamUrl = buildBackendUrl("/api/v1/web-builder/generate/stream");
+		const response = await fetch(streamUrl, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
