@@ -335,6 +335,7 @@ async def get_workspace_app_files(
     return files_dict
 
 
+@host_router.get("/", response_class=HTMLResponse)
 async def host_web_app(
     request: Request,
     session: Annotated[AsyncSession, Depends(get_async_session)],

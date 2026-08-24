@@ -148,21 +148,58 @@ class PreviewRenderer:
     }};
   </script>
 
-  <script type="text/babel" data-presets="react,typescript">
+  <script id="wb-source" type="text/template">
     const React = window.React;
     const ReactDOM = window.ReactDOM;
     const {{ useState, useEffect, useMemo, useRef }} = React;
+    const __wbKnownGlobals = new Set(Object.keys(window));
 
     {sanitized_jsx}
 
     const rootElement = document.getElementById('root');
     const root = ReactDOM.createRoot(rootElement);
 
-    const MainComponent = typeof Home !== 'undefined' ? Home :
-                          (typeof App !== 'undefined' ? App :
-                          (typeof Page !== 'undefined' ? Page : () => <div>Application Ready</div>));
+    const __wbAppKey = Object.keys(window).find(function(k) {{
+      if (__wbKnownGlobals.has(k)) return false;
+      if (['__wbKnownGlobals', 'MainComponent'].includes(k)) return false;
+      if (typeof window[k] !== 'function') return false;
+      return /^[A-Z]/.test(k);
+    }});
 
-    root.render(<MainComponent />);
+    const MainComponent =
+      typeof Home !== 'undefined' ? Home :
+      typeof App !== 'undefined' ? App :
+      typeof Page !== 'undefined' ? Page :
+      (__wbAppKey ? window[__wbAppKey] : function() {{ return React.createElement('div', null, 'Application Ready'); }});
+
+    root.render(React.createElement(MainComponent));
+  </script>
+
+  <script type="text/javascript">
+    (function() {{
+      if (typeof Babel === 'undefined' || typeof React === 'undefined' || typeof ReactDOM === 'undefined' || typeof lucide === 'undefined') {{
+        if (typeof __webBuilderCdnFallback === 'function') __webBuilderCdnFallback();
+        return;
+      }}
+      const source = document.getElementById('wb-source').textContent;
+      const iconMatch = source.match(/\\b[A-Z][A-Za-z0-9]+\\b/g) || [];
+      const iconNames = Array.from(new Set(iconMatch)).filter(function(k) {{
+        return k in lucide && typeof lucide[k] === 'function';
+      }});
+      const iconDecl = iconNames.length ? 'const {{ ' + iconNames.join(', ') + ' }} = lucide;' : '';
+      try {{
+        const transformed = Babel.transform(iconDecl + source, {{
+          presets: [['react', {{ runtime: 'classic' }}], 'typescript'],
+          filename: 'page.tsx',
+        }}).code;
+        const script = document.createElement('script');
+        script.textContent = transformed;
+        document.body.appendChild(script);
+      }} catch (err) {{
+        console.error('Babel transform failed:', err);
+        if (typeof __webBuilderCdnFallback === 'function') __webBuilderCdnFallback();
+      }}
+    }})();
   </script>
 
   <script>
