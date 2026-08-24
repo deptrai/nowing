@@ -1,6 +1,7 @@
 "use client";
 
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
+import { useSetAtom } from "jotai";
 import {
 	AlertCircleIcon,
 	CheckIcon,
@@ -12,10 +13,11 @@ import {
 	RocketIcon,
 	SparklesIcon,
 } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { dockActiveTabAtom, dockOpenAtom, dockWebBuilderAppIdAtom } from "@/atoms/layout/dock.atom";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -150,8 +152,10 @@ export function GenerateWebAppToolUI({
 	status,
 }: ToolCallMessagePartProps<WebAppBuildArgs, WebAppBuildResult | string>) {
 	const params = useParams();
-	const router = useRouter();
 	const workspaceId = getWorkspaceIdNumber(params) || 1;
+	const setDockOpen = useSetAtom(dockOpenAtom);
+	const setDockActiveTab = useSetAtom(dockActiveTabAtom);
+	const setDockWebBuilderAppId = useSetAtom(dockWebBuilderAppIdAtom);
 
 	const result = useMemo(() => parseToolResult(rawResult), [rawResult]);
 
@@ -219,7 +223,10 @@ export function GenerateWebAppToolUI({
 
 	const handleOpenEditor = () => {
 		if (!appId) return;
-		router.push(`/dashboard/${workspaceId}/web-builder?app_id=${appId}`);
+		// Open inline in the contextual right dock instead of navigating away.
+		setDockWebBuilderAppId(appId);
+		setDockActiveTab("web-builder");
+		setDockOpen(true);
 	};
 
 	const handleOpenLive = () => {

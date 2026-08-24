@@ -1,10 +1,11 @@
 "use client";
 
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { GripVertical, MessageSquare, Table } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { dockOpenAtom } from "@/atoms/layout/dock.atom";
 import {
 	activeDrawerLeadAtom,
 	canvasLeftWidthAtom,
@@ -14,6 +15,7 @@ import {
 	selectedLeadIdsAtom,
 } from "@/atoms/leads/leads-canvas.atoms";
 import type { FilterPresets, Lead } from "@/contracts/types/leads.types";
+import { ContextualDock } from "@/features/dock";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useDshMissionControl } from "@/lib/hooks/use-dsh-mission-control";
 import { useLeads } from "@/lib/hooks/use-leads";
@@ -52,6 +54,7 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 	const isMobile = useIsMobile();
 	const [leftWidth, setLeftWidth] = useAtom(canvasLeftWidthAtom);
 	const [isCollapsed, setIsCollapsed] = useAtom(isLeftPanelCollapsedAtom);
+	const isDockOpen = useAtomValue(dockOpenAtom);
 	const [isFullscreen] = useAtom(isMatrixFullscreenAtom);
 	const [selectedLeadIds, setSelectedLeadIds] = useAtom(selectedLeadIdsAtom);
 	const [, setSelectedLeadContext] = useAtom(selectedLeadContextAtom);
@@ -369,11 +372,11 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 			{!isFullscreen && !isCollapsed && (
 				<div
 					style={{
-						width: hasActiveThread ? `${leftWidth}px` : "100%",
+						width: hasActiveThread && isDockOpen ? `${leftWidth}px` : "100%",
 					}}
 					className={cn(
 						"h-full shrink-0 flex flex-col transition-[width] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] bg-card overflow-hidden z-10",
-						hasActiveThread ? "border-r border-border/80" : "w-full"
+						hasActiveThread && isDockOpen ? "border-r border-border/80" : "w-full"
 					)}
 				>
 					{chatSlot}
@@ -381,7 +384,7 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 			)}
 
 			{/* Center Draggable Resizer Divider */}
-			{hasActiveThread && !isFullscreen && !isCollapsed && (
+			{hasActiveThread && !isFullscreen && !isCollapsed && isDockOpen && (
 				<div
 					role="slider"
 					tabIndex={0}
@@ -411,37 +414,33 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 				</div>
 			)}
 
-			{/* Right Panel: Dynamic Context Canvas */}
+			{/* Right Panel: Contextual Dock */}
 			{hasActiveThread && (
-				<section
-					aria-label="Dynamic Context Canvas"
-					className="flex-1 h-full min-w-0 flex flex-col overflow-hidden relative animate-in fade-in slide-in-from-right-4 duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
-				>
-					<DynamicRightPanelCanvas
-						threadId={threadId ?? undefined}
-						threadContext={threadContext}
-						leads={displayLeads}
-						isLoading={loading}
-						workspaceId={workspaceId}
-						sourceFilter={sourceFilter}
-						onSourceFilterChange={setSourceFilter}
-						statusFilter={statusFilter}
-						onStatusFilterChange={setStatusFilter}
-						searchQuery={searchQuery}
-						onSearchQueryChange={setSearchQuery}
-						onRefresh={refetch}
-						onOpenReverseIcp={() => setIsReverseIcpOpen(true)}
-						shimmerCount={shimmerCount}
-						onOpenDnc={() => setIsDncOpen(true)}
-						missionControl={missionControl}
-						latestMission={latestMission}
-						missionLoading={missionLoading}
-						missionError={missionError}
-						onOpenCompanyGraph={handleOpenCompanyGraph}
-						unlockedPhones={unlockedPhones}
-						onPhoneChange={handlePhoneChange}
-					/>
-				</section>
+				<ContextualDock
+					workspaceId={workspaceId}
+					threadId={threadId}
+					messages={messages}
+					leads={displayLeads}
+					isLoading={loading}
+					threadContext={threadContext}
+					sourceFilter={sourceFilter}
+					onSourceFilterChange={setSourceFilter}
+					statusFilter={statusFilter}
+					onStatusFilterChange={setStatusFilter}
+					searchQuery={searchQuery}
+					onSearchQueryChange={setSearchQuery}
+					onRefresh={refetch}
+					onOpenReverseIcp={() => setIsReverseIcpOpen(true)}
+					onOpenDnc={() => setIsDncOpen(true)}
+					shimmerCount={shimmerCount}
+					onOpenCompanyGraph={handleOpenCompanyGraph}
+					unlockedPhones={unlockedPhones}
+					onPhoneChange={handlePhoneChange}
+					missionControl={missionControl}
+					latestMission={latestMission}
+					missionLoading={missionLoading}
+					missionError={missionError}
+				/>
 			)}
 
 			{/* Floating Bulk Action Bar */}
