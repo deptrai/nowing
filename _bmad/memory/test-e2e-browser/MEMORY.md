@@ -356,4 +356,23 @@ _Curated long-term knowledge for Nowing E2E Browser Testing._
 - **Tests & Quality:** All 15 unit/integration tests passed (`15/15 passed - 100%`), 831 capability tests passed.
 - **Artifacts:** `news_entity_search_e2e_live.png`, `news_entity_search_e2e_final.png`, `story_14_2b_browser_e2e.png`.
 
+## Story 27.1a — Web Builder Chat Mode E2E (2026-08-24)
+
+**Stack:** Backend FastAPI `:8000`, Next.js `:3000`, Postgres `:5434`, Redis `:6380`, Zero-cache `:4848`. Logged in as `e2e-test@nowing.net`.
+
+**What worked end-to-end:**
+- `/dashboard/1/new-chat?mode=web_builder` loads with quick-pick chips.
+- Chat triggered `build_web_app` with a real LLM call; DB row `PulseAI SaaS Landing` created.
+- `/dashboard/1/web-builder` lists generated apps and "1-Click Publish" flips status to `published`.
+- Public host route for `pulse-ai-landing.apps.nowing.net` now serves 200 after restoring missing `@host_router.get("/")`.
+
+**Bugs discovered and state:**
+- **Fixed in-session:** missing `@host_router.get("/")` decorator; Babel v8 automatic JSX runtime in preview causing `react/jsx-runtime` import failure.
+- **Fixed in-session:** `unpkg.com/lucide` exposes icon data objects, not React components; the preview now wraps lucide data as React SVG components.
+- **Fixed in-session:** chat stream now renders `build_web_app` with the `GenerateWebAppToolUI` deliverable card (preview, publish, copy, open editor).
+
+**Persistent noise:** `/api/v1/documents/search/titles` returns `document_type` Zod errors unrelated to 27.1a.
+
+**Session log:** `sessions/2026-08-24.md`
+
 
