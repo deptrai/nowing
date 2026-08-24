@@ -1,5 +1,5 @@
 # generated: 2026-08-08
-# last_updated: 2026-08-25  # Story 27-1: review. Story 27-1a created: Web Builder Chat Mode MVP for Sales & Marketing (Option A) — chat-first entry, standalone page kept, lightweight static publish via backend wildcard route.
+# last_updated: 2026-08-25  # 27-1: backlog (parent/tracking, split into 27-1a done, 27-1b/c/d backlog); 27-2a/27-2b ready-for-dev; 27.1a code review complete & patches applied.
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: "2026-08-25"  # Story 27-1: story file validated and rewritten with full dev context; 27-1 remains ready-for-dev. Story 24-8: 4 review decisions resolved; 11/15 patches applied; ruff/pytest unit+integration/tsc green. 3 low patches and UI popover (AC-4) remain open.
+last_updated: "2026-08-24"  # Story 27-2 split into 27-2a (Presentation Studio) and 27-2b (Speaker Diarization Meeting Minutes) — both ready-for-dev with chat-first/tool-binding/artifact pattern from 27.1a.
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # - Parsed epics.md: 24 epics, ~160 stories.
 # - Scanned _bmad-output/implementation-artifacts/ + stories/*.md for story files (frontmatter story_key/epic+story).
@@ -276,7 +276,7 @@ development_status:
   25-1: done  # Multi-Tenant User & Workspace Hub + Scoped Impersonation
   25-2: done  # Manual Credit Adjustment & Refund Desk with Dual-Audit Ledger
   25-3: done  # Affiliate Partner Payout Desk & Anti-Fraud Engine — review patches applied; ruff/pytest/tsc/biome green
-  25-4: ready-for-dev  # Realtime LLM Token Cost, Proxy Health & Celery Queue Telemetry
+  25-4: ready-for-dev  # 2026-08-24: story file created + validated against bmad-create-story checklist; ACs mapped from epics.md, dev context from TokenUsage/CreditPurchase/proxy/Celery metrics, admin UI patterns and verification commands added.
   25-5: ready-for-dev  # Dynamic Scraper Rule Engine & ReDoS Sandbox
   25-6: ready-for-dev  # Security Audit Trail Logs & In-App Broadcast Announcements
   epic-25-retrospective: optional
@@ -298,9 +298,14 @@ development_status:
 
   # === Epic 27: Full-Stack Web App Builder, Instant Hosting & Creative Studio ===
   epic-27: in-progress
-  27-1: review  # Full-Stack Web App Builder, 1-Click Hosting *.apps.nowing.net & Design View Mark Tool (AD-113, AD-114) — story file validated/expanded with full ACs, file structure, testing, and AD-113/Caddy conflict note.
-  27-1a: ready-for-review  # Web Builder Chat Mode MVP for Sales & Marketing (Option A) — chat-first entry, standalone page kept, lightweight static publish via backend wildcard route. Story file created with grill-me + edge-case hunter review applied.
-  27-2: ready-for-dev  # Manus Slides + Speaker Diarization — split into PPTX/Marp export and diarization; reuse video_presentation/reports/stt_service
+  27-1: in-progress  # Parent/tracking story — split into 27-1a (done), 27-1b/c/d (in-progress). Audit 2026-08-25 shows partial implementation; see web-builder-27-1-status-audit-2026-08-25.md.
+  27-1a: done  # Web Builder Chat Mode MVP for Sales & Marketing (Option A) — chat-first entry, standalone page kept, lightweight static publish via backend wildcard route. Code review complete & all patches applied.
+  27-1b: in-progress  # Web App Build & Preview Runner — generation/validation/registry/cost done; missing real npm install + next build/next dev preview runner (builder.py) and web_builder_build TokenUsage. See web-builder-27-1-status-audit-2026-08-25.md.
+  27-1c: in-progress  # Web App Container Deploy & Custom CNAME — static publish / host route / Dockerfile / custom-domain endpoint done; missing real Docker build/run, Traefik/Caddy route registration, and DNS CNAME validation. See web-builder-27-1-status-audit-2026-08-25.md.
+  27-1d: in-progress  # Web App Mark Tool & JSX AST Mutator — UI/iframe postMessage/regex-based patch endpoint done; missing real AST parser (@babel/parser/traverse/types) and web_builder_mark TokenUsage. See web-builder-27-1-status-audit-2026-08-25.md.
+  27-2: split  # Superseded by 27-2a and 27-2b.
+  27-2a: ready-for-dev  # Manus Slides Presentation Studio from Chat (PPTX/Marp) — chat-first, tool binding, artifact panel, feature gate.
+  27-2b: ready-for-dev  # Speaker Diarization Meeting Minutes from Chat — chat-first, tool binding, artifact panel, feature gate.
   epic-27-retrospective: optional
 
 
@@ -342,7 +347,7 @@ development_status:
   epic-13-retrospective: optional
 
   # === Epic 14: News Aggregation (Vietnam) ===
-  epic-14: in-progress
+  epic-14: re-scoped  # FR-49 [RE-SCOPED] in PRD 2026-08-24; feed/crawl infrastructure done, Nowing does not keep local news index.
   # 14-1 depends on 20.2 (NowingIngestService) and 6.8 (Generic Alert Engine).
   # Code-review verdict: PASS_WITH_WARNINGS (P0 SSRF/Atom/RSS 1.0 gaps). P0 closed 2026-08-07 (commit 6faee7e07).
   # 2026-08-14: BMAD code review round 2 fixed P0 entity-expansion DoS,
@@ -354,7 +359,7 @@ development_status:
   epic-14-retrospective: optional
 
   # === Epic 15: Financial Data (Vietnam) ===
-  epic-15: in-progress
+  epic-15: re-scoped  # FR-50 [RE-SCOPED] in PRD 2026-08-24; feed/crawl infrastructure done, Nowing does not keep local financial index.
   # 15-1 depends on 20.2 (NowingIngestService). Code-review: APPROVED.
   # P0 billing/credit-relevant scraper logic touched; pending human review.
   15-1: done
@@ -365,7 +370,7 @@ development_status:
   epic-15-retrospective: optional
 
   # === Epic 16: Company Directory (Vietnam) ===
-  epic-16: in-progress
+  epic-16: re-scoped  # FR-51 [RE-SCOPED] in PRD 2026-08-24; feed/crawl partially done (16.1, 16.5), Nowing does not keep local company index.
   # 16-1 depends on 20.2 (NowingIngestService). Mutation-gate: FAIL (P1 240+ survived mutants).
   # Remains in progress until P1 findings closed and 20.2 stable.
   16-1: done  # masothue.scrape capability + billing implemented; fixed empty page degradation logic; 128 masothue tests + ruff green; mutation gate retest deferred to next CI run due to local timeout
@@ -375,14 +380,14 @@ development_status:
   epic-16-retrospective: optional
 
   # === Epic 17: E-commerce Intelligence (Vietnam) ===
-  epic-17: in-progress
+  epic-17: re-scoped  # FR-52 [RE-SCOPED] in PRD 2026-08-24; feed/crawl partially done (17.2), 17.1/17.5 blocked-by-external XActions. Nowing does not keep local product index.
   17-1: backlog  # blocked-by-external: XActions `x_lazada_search`/`x_lazada_product` MCP tool not available; implement LazadaLeadAdapter + normalization after XActions tool lands
   17-2: done  # Shopee Vietnam In-House Scraper & Price Normalization
   17-5: backlog  # blocked-by-external: XActions `x_tiktok_shop_products` MCP tool not available; implement TikTokShopLeadAdapter + normalization after XActions tool lands; reuse ecommerce tables + Shopee alert patterns (AD-EC-1..6)
   epic-17-retrospective: optional
 
   # === Epic 18: Vertical Client Platform (Public Agent-Chat) ===
-  epic-18: in-progress  # conditional on AD-13 + AD-31 acceptance per Implementation Readiness 2026-08-20
+  epic-18: done  # FR-56/57 [DONE] in PRD 2026-08-24; public agent-chat endpoints, AgentConfig registry, client_id tenancy, rate limiting + RLS implemented (18.1-18.8 done).
   18-1: done
   18-2: done
   18-3: done
@@ -608,6 +613,7 @@ waves:
     status: backlog
     evidence_gate: PPTX export + Marp slides working; pyannote/whisper diarization working; Next.js scaffolding + *.apps.nowing.net Traefik/Caddy routing working
     stories:
-    - 27-2
+    - 27-2a
+    - 27-2b
     - 27-1
-    notes: Story 27.2 builds on existing faster-whisper and reports_routes.py; Story 27.1 is the largest scope story in the roadmap (new web generator + dynamic hosting).
+    notes: Story 27.2a/27.2b are chat-first deliverables following 27.1a pattern; Story 27.1 is the largest scope story in the roadmap (new web generator + dynamic hosting).

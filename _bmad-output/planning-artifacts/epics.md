@@ -48,17 +48,20 @@ Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Archite
 `[DONE]` **FR-45 ITviec scraper** → **E12.3 P0** (HTML server-rendered; salary hidden; legal/ToS approved, anti-bot POC passed).
 `[DONE]` **FR-46 `vn_jobs.aggregate`** → **E12.4a–e P0 (split: normalization, dedupe/conflict, PII, ingest, exposure)** (cross-source normalization, dedupe, confidence, conflict detection; legal/ToS approved).
 `[DONE]` **FR-47 PII redaction for job data** → **E12.5 P0** (mask/drop phone, email, names before memory; legal/ToS approved).
-`[BACKLOG]` **FR-49/50/51/52 News/Financial/Company/E-commerce Intelligence** → **E14/E15/E16/E17** (re-scoped 2026-08-08 — feed `chainlens-research` via `NowingIngestService`; governed by `AD-34`, `AD-35`).
-`[IN PROGRESS]` **FR-56 Public Agent-Chat API + FR-57 Agent Registry + NFR-MULTI-1** → **E18** (public API endpoints, `AgentConfig` registry, `client_id` tenancy, cost traceability, rate limiting + RLS).
+
+> **Reconciliation note (2026-08-24):** FR-43–47 are `DONE` in `epics.md` and Stories `12.1–12.5` are `done` in `sprint-status.yaml` because the code is merged. PRD tags were ratified to `[DONE]` in the 2026-08-25 `bmad-prd` pass; see `AMENDMENT-PRD-Status-Ratification-2026-08-24.md` and the updated `prd-Nowing-2026-07-22/prd.md`.
+
+`[RE-SCOPED]` **FR-49/50/51/52 News/Financial/Company/E-commerce Intelligence** → **E14/E15/E16/E17** (re-scoped 2026-08-08 — feed `chainlens-research` via `NowingIngestService`; governed by `AD-34`, `AD-35`).
+`[DONE]` **FR-56 Public Agent-Chat API + FR-57 Agent Registry + NFR-MULTI-1** → **E18** (public API endpoints, `AgentConfig` registry, `client_id` tenancy, cost traceability, rate limiting + RLS).
 `[DONE]` **FR-58 Scraper Feed + FR-59 Gap-Fill + FR-60 Private Provider + FR-61 Service Auth + FR-62 Canonical Chunk Schema** → **E20** (ingest to `chainlens-research`, `NowingPrivateProvider`, service-to-service auth + `TokenUsage`, canonical `Chunk` contract).
 
-`[DONE]` **FR-63 Intent Signal Detection** → **E21.1** (buying signals: funding, hiring, tech stack, executive moves).
-`[DONE]` **FR-64 Lead Scoring & Prioritization** → **E21.2** (composite score: fit + intent).
-`[DONE]` **FR-65 Vietnam Phone & Contact Waterfall Engine** → **E21.3 P0** (3-tier: Batdongsan Token Pool → Chotot API → Zalo UID verification + Auto-refund SLA).
-`[DONE]` **FR-66 Outbound Prospecting Automation & Panel** → **E21.4** (email + multi-source lead generation from all scrapers).
-`[DONE]` **FR-67 CRM Integration & Lark Base / Google Sheets 1-Click Sync** → **E21.5** (HubSpot, Salesforce, Lark Base, Google Sheets, Pancake/Haravan webhooks).
-`[DONE]` **FR-68 Vietnam Outbound Automation (Zalo OA & Telegram Sender)** → **E21.6 P0** (Zalo Assisted Chat Deep-link `zalo.me/{phone}`, Zalo OA ZNS, Telegram Bot alert).
-`[DONE]` **FR-69 Outcome-Based Pricing & Transparent Credit Ledger** → **E21.7** ($0 chat & sequencer, pay per verified lead / outcome meeting).
+`[IN-PROGRESS]` **FR-63 Intent Signal Detection** → **E21.1** (buying signals: funding, hiring, tech stack, executive moves).
+`[IN-PROGRESS]` **FR-64 Lead Scoring & Prioritization** → **E21.2** (composite score: fit + intent).
+`[IN-PROGRESS]` **FR-65 Vietnam Phone & Contact Waterfall Engine** → **E21.3 P0** (3-tier: Batdongsan Token Pool → Chotot API → Zalo UID verification + Auto-refund SLA).
+`[IN-PROGRESS]` **FR-66 Outbound Prospecting Automation & Panel** → **E21.4** (email + multi-source lead generation from all scrapers).
+`[IN-PROGRESS]` **FR-67 CRM Integration & Lark Base / Google Sheets 1-Click Sync** → **E21.5** (HubSpot, Salesforce, Lark Base, Google Sheets, Pancake/Haravan webhooks).
+`[IN-PROGRESS]` **FR-68 Vietnam Outbound Automation (Zalo OA & Telegram Sender)** → **E21.6 P0** (Zalo Assisted Chat Deep-link `zalo.me/{phone}`, Zalo OA ZNS, Telegram Bot alert).
+`[IN-PROGRESS]` **FR-69 Outcome-Based Pricing & Transparent Credit Ledger** → **E21.7** ($0 chat & sequencer, pay per verified lead / outcome meeting).
 `[DONE]` **FR-80 1-Click Reverse-ICP from Website / Project URL** → **E21.10** (auto-generate buyer personas, scraper targets & filter presets).
 `[DONE]` **FR-81 Actionable Turn Dispatches (Suggested Action Pills)** → **E21.11** (contextual 1-click execution chips after scrape turns).
 `[DONE]` **FR-82 Viral Social Outbound Co-pilot** → **E21.12** (AI Voice Learner + Viral post analyzer via XActions FB/Twitter).
@@ -84,8 +87,8 @@ Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Archite
 `[DONE]` **FR-91 Automated VietQR Affiliate Payout Reconciliation** → **E23.3 P1** (Instant 24/7 Napas bank settlement + cryptographic audit receipts).
 `[DONE]` **FR-92 PostgreSQL RLS & Table Partitioning for Multi-Million Leads** → **E23.4 P1** (Sub-10ms query isolation on partitioned lead stores).
 
-`[READY-FOR-DEV]` **FR-93 Full-Stack Web App Builder & Instant Hosting** → **E27.1** (Next.js/React generator, Traefik/Caddy `*.apps.nowing.net` deploy, custom CNAME; governed by `AD-113`).
-`[READY-FOR-DEV]` **FR-94 Design View Mark Tool & Presentation Studio** → **E27.2** (PPTX/Marp slides, speaker diarization, Mark Tool AST mutation; governed by `AD-114`).
+`[IN-PROGRESS]` **FR-93 Full-Stack Web App Builder & Instant Hosting** → **E27.1** (27.1a `done`; 27.1b/27.1c `in-progress`; 27.1 parent/tracking `in-progress`; governed by `AD-113`).
+`[IN-PROGRESS]` **FR-94 Design View Mark Tool & Presentation Studio** → **E27.2** (27.2a/27.2b `ready-for-dev`; 27.1d `in-progress`; governed by `AD-114`).
 
 > **⚠️ Out-of-PRD scope (FR-70–FR-92):** Các FR từ **FR-70 đến FR-92** (Telegram scraper Epic 22, lead-gen extensions Epic 21 mở rộng, infrastructure Epic 23) không xuất hiện trong PRD canonical `prd-Nowing-2026-07-22/prd.md`. Chúng được giữ lại trong `epics.md` như **implementation backlog / market-specific elaboration**, không phải nguồn sự thật về requirements. **FR-93/FR-94 (Epic 27) là in-PRD** theo PRD Amendment `AMENDMENT-Epic-27-Manus-Autonomous-Workstation-2026-08-20.md`.
 
@@ -93,7 +96,7 @@ Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Archite
 > - `FR-48` đã bị loại bỏ khỏi PRD Nowing (moved to `chainlens-research`).
 > - `FR-50`, `FR-51`, `FR-52` đã được re-scope thành "feed to `chainlens-research`"; coverage trong `epics.md` thể hiện qua `Story 20.1`, `FR-58`, `FR-62` và các story 15.1/15.2/16.1/16.2/17.1/17.2.
 > - `FR-70–FR-92` được ratify là out-of-PRD implementation backlog.
-> - `FR-93–FR-94` được đưa vào PRD canonical qua `AMENDMENT-Epic-27-Manus-Autonomous-Workstation-2026-08-20.md`; Epic 27 nâng lên `ready-for-dev`.
+> - `FR-93–FR-94` được đưa vào PRD canonical qua `AMENDMENT-Epic-27-Manus-Autonomous-Workstation-2026-08-20.md`; Epic 27 nâng lên `in-progress` (27.1a `done`, 27.1/27.1b/c/d `in-progress` per `web-builder-27-1-status-audit-2026-08-25.md`, 27.2a/27.2b `ready-for-dev`).
 > - Forward dependencies 2.10→3.15 (soft), 9.5→9.6 (deferred hard), 20.1→20.4 (prerequisite satisfied) đã được phân loại và ghi rõ trong `epics.md` và PRD Amendment `AMENDMENT-Implementation-Readiness-Closeout-2026-08-20.md`.
 
 `[DONE — NFR]` **NFR-1b/1c/1d Memory latency & injection bound** *(E3.14 done, AD-18)*.
@@ -320,25 +323,25 @@ Vietnam BĐS (batdongsan, chotot, muaban) + PostGIS spatial land zoning (`ONT`/`
 Notification, write-back, builder UI, inline keyboard, commands. **FRs:** FR-20 variants. **All done.**
 
 ### Epic 12: HR/Recruitment Vertical — Vietnam Job Market & LinkedIn B2B — 🔄 IN PROGRESS
-VietnamWorks, TopCV, ITviec, Indeed, LinkedIn Public Guest API (`seeMoreJobPostings`); job listing normalization/dedup/PII/ingest; saved searches + job market alerts. **Open:** 12.1–12.5, 12.4a–e, 12.6, 12.9, 12.10.
+VietnamWorks, TopCV, ITviec, Indeed, LinkedIn Public Guest API (`seeMoreJobPostings`); job listing normalization/dedup/PII/ingest; saved searches + job market alerts. **Done:** 12.1–12.5, 12.4a–e (code merged; FR-43–47 marked `DONE` here, PRD status to be ratified in next `bmad-prd` pass). **Open:** 12.6, 12.9, 12.10.
 
 ### Epic 13: Canonical Entity Storage & Multi-Domain Indexing — 🗑️ DROPPED 2026-08-08
 Canonical index moved to `chainlens-research`; Nowing scrapers feed via `POST /v1/ingest/scraper`.
 
-### Epic 14: News Aggregation (Vietnam) — 📋 BACKLOG
-RSS feed integration, entity enrichment. News alerts/digest merged into Epic 6.11/6.12. **Open:** 14.1–14.2, 6.11 (alert templates), 6.12 (narrative reports).
+### Epic 14: News Aggregation (Vietnam) — ♻️ RE-SCOPED
+RSS feed integration, entity enrichment. **FR-49 re-scoped 2026-08-08:** Nowing feed/crawl infrastructure is done, but Nowing does not keep a local news index. News alerts/digest merged into Epic 6.11/6.12. **Done:** 14.1, 14.2a; **Blocked/Backlog:** 14.2b.
 
-### Epic 15: Financial Data (Vietnam) — 📋 BACKLOG
-CafeF / Vietstock data. Stock price alerts/financial trend merged into Epic 6.11/6.12. **Open:** 15.1–15.2, 6.11, 6.12.
+### Epic 15: Financial Data (Vietnam) — ♻️ RE-SCOPED
+CafeF / Vietstock data. **FR-50 re-scoped 2026-08-08:** Nowing feed/crawl infrastructure is done, but Nowing does not keep a local financial index. Stock price alerts/financial trend merged into Epic 6.11/6.12. **Done:** 15.1, 15.1b, 15.2.
 
-### Epic 16: Company Directory & Public Procurement (Vietnam) — 📋 BACKLOG
-masothue.com company data, official business registry, national public procurement tenders. Company alerts/timeline merged into Epic 6.11/6.12. **Open:** 16.1–16.2, 16.5, 6.11, 6.12.
+### Epic 16: Company Directory & Public Procurement (Vietnam) — ♻️ RE-SCOPED
+masothue.com company data, official business registry, national public procurement tenders. **FR-51 re-scoped 2026-08-08:** Nowing feed/crawl partially done (16.1, 16.5), but Nowing does not keep a local company index. Company alerts/timeline merged into Epic 6.11/6.12. **Done:** 16.1, 16.5; **Backlog:** 16.2.
 
-### Epic 17: E-commerce Intelligence (Vietnam) — 📋 BACKLOG
-Lazada / Shopee / TikTok Shop product data. Price-drop alerts/competitor tracking merged into Epic 6.11. **Open:** 17.1–17.2, 17.5, 6.11. Governed by `architecture-shopee-ecommerce-2026-08-15`.
+### Epic 17: E-commerce Intelligence (Vietnam) — ♻️ RE-SCOPED
+Lazada / Shopee / TikTok Shop product data. **FR-52 re-scoped 2026-08-08:** Nowing feed/crawl partially done (17.2), 17.1 and 17.5 blocked-by-external XActions. Nowing does not keep a local product index. Price-drop alerts/competitor tracking merged into Epic 6.11. **Done:** 17.2; **Backlog/Blocked:** 17.1, 17.5. Governed by `architecture-shopee-ecommerce-2026-08-15`.
 
-### Epic 18: Vertical Client Platform (Public Agent-Chat) — 🔄 IN PROGRESS
-Public agent-chat endpoints, AgentConfig registry, client_id tenancy, cost traceability, rate limiting + RLS. **Open:** 18.1–18.8.
+### Epic 18: Vertical Client Platform (Public Agent-Chat) — ✅ DONE
+Public agent-chat endpoints, AgentConfig registry, client_id tenancy, cost traceability, rate limiting + RLS. **FR-56/57 [DONE] in PRD 2026-08-24.** **Done:** 18.1–18.8.
 
 ### Epic 20: Nowing Ecosystem Integration — Feed & Recall from chainlens-research — ✅ DONE
 `NowingIngestService` + `to_chunks()`, gap-fill caller, `NowingPrivateProvider`, service-to-service auth. **Open:** none.
@@ -3884,14 +3887,15 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 | 6.10 Mail Gateway & Scheduled 2.0 | Epic 6, Story 6.8, AD-115 | Webhook task@nowing.ai + Celery Beat Delta Analysis reporting |
 | 3.18 Projects Workspace & Skills Hub | Epic 3, AD-1 | Projects Master Instructions context auto-inject + .skill.md modular hub |
 | 27.1 Web App Builder & Design View | AD-113, AD-114 | Next.js generator + 1-click *.apps.nowing.net deploy + Mark Tool AST mutator |
-| 27.2 Manus Slides & Meeting Minutes | AD-112, AD-114 | Xuất slide PPTX/Marp 16:9 + Whisper STT & Diarization action items |
+| 27.2a Manus Slides Presentation Studio (Chat) | AD-112, AD-114 | PPTX/Marp chat-first generation, artifact panel, tool binding |
+| 27.2b Speaker Diarization Meeting Minutes (Chat) | AD-112 | Chat-first audio diarization, action items, artifact panel |
 
 > **Merge decision (2026-08-20):**
 > - 14.3, 15.3, 16.3, 17.3, 17.4 merged into **Story 6.11 — Vertical Alert Rule Templates**.
 > - 14.4, 15.4, 16.4 merged into **Story 6.12 — Narrative Report Engine for Indexed Data**.
 > - Các section cũ giữ lại dưới dạng `[MERGED INTO ...]` để traceability.
 > - 17.5 should reuse `ecommerce_products` + `ecommerce_price_history` tables and price-drop alert patterns built for Shopee (AD-EC-1..6).
-> - 27.2 should split into **PPTX/Marp export** (reuses `video_presentation` agent + `reports_routes.py`) and **Speaker Diarization meeting minutes** (reuses `stt_service.py` + `circleback_webhook_route.py`).
+> - 27.2 split into **27.2a PPTX/Marp chat-first presentation studio** and **27.2b speaker-diarization meeting minutes** (2026-08-24), both applying 27.1a chat-mode/tool-binding/artifact pattern.
 
 ---
 
@@ -3959,14 +3963,19 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 
 ---
 
-## Epic 27: Full-Stack Web App Builder, Instant Hosting & Creative Studio (2026-08-20) `[ready-for-dev]`
+## Epic 27: Full-Stack Web App Builder, Instant Hosting & Creative Studio (2026-08-20) `[in-progress]` — 27.1a `done`, 27.1 parent/children `backlog`, 27.2a/27.2b `ready-for-dev`
 **Epic goal:** Cung cấp trọn bộ công cụ sáng tạo và sản xuất phần mềm tự hành gồm Web Builder deploy `*.apps.nowing.net`, công cụ chỉnh sửa trực quan Design View (Mark Tool), studio soạn thảo slide thuyết trình PPTX/Marp, và pipeline bóc tách ghi âm cuộc họp thành Action Items.
 **FRs:** FR-93 (Web App Builder & Instant Hosting), FR-94 (Design View Mark Tool & Presentation Studio).
 **ADs:** AD-113, AD-114.
 
 **Stories:**
-- **27.1 Full-Stack Web App Builder, 1-Click Hosting `*.apps.nowing.net` & Design View Mark Tool** — **⚠️ Story scope lớn nhất trong roadmap — toàn bộ code mới.** Không có nền tảng web builder hay dynamic hosting nào trong codebase. `editor_routes.py` là Plate.js Markdown editor (không liên quan). **Code mới:** (a) LLM code generator engine sinh Next.js/React + Tailwind CSS vào `/workspace/web-app`, (b) Dockerfile template + Traefik/Caddy dynamic SSL routing lên `https://[app].apps.nowing.net`, (c) Custom CNAME manager, (d) Iframe Bounding Box Selector "Mark Tool" DOM inspector + JSX AST mutator. Governed by `AD-113`, `AD-114`.
-- **27.2 Manus Slides Presentation Studio & Speaker Diarization Meeting Minutes** — **Tận dụng code đã có:** Remotion video presentations (`video_presentations_routes.py`), export PDF/DOCX/LaTeX/EPUB (`reports_routes.py` — Pandoc + Typst), Whisper STT local (`services/stt_service.py` — `faster-whisper` transcribe), Circleback meeting notes webhook (`circleback_webhook_route.py` → Markdown document). **Code mới chỉ là:** (a) thêm `python-pptx` dependency + PPTX export route (slide 16:9, biểu đồ, Speaker Notes), (b) Marp Markdown slides renderer, (c) thêm Speaker Diarization (`pyannote.audio` hoặc `whisperx`) vào `stt_service.py` để nhận diện giọng từng người trong meeting minutes.
+- **27.1 Full-Stack Web App Builder, 1-Click Hosting `*.apps.nowing.net` & Design View Mark Tool** — `[in-progress]` parent/tracking story. Split 2026-08-24 because it bundled four subsystems. 27.1a `done`; 27.1b/c/d `in-progress` per `web-builder-27-1-status-audit-2026-08-25.md`.
+  - **27.1a Web Builder Chat Mode MVP for Sales & Marketing** — `[done]` chat-first static publish (Option A).
+  - **27.1b Web App Build & Preview Runner** — `[in-progress]` generation/validation/registry/cost done; missing real `npm install` + `next build`/preview runner.
+  - **27.1c Web App Container Deploy & Custom CNAME** — `[in-progress]` static publish / host route / Dockerfile / custom-domain endpoint done; missing real Docker build/run and CNAME DNS validation.
+  - **27.1d Web App Mark Tool & JSX AST Mutator** — `[in-progress]` UI/iframe postMessage/regex-based patch endpoint done; missing real AST parser.
+- **27.2a Manus Slides Presentation Studio from Chat (PPTX/Marp)** — `[ready-for-dev]` chat-first deliverable theo pattern 27.1a. **Tận dụng code đã có:** Video presentation model/routes (`video_presentations_routes.py`), report/export flow (`reports_routes.py`), chat tool + artifact sidebar (`build_web_app` pattern). **Code mới:** `SlidePresentation` table, `PresentationStudioService` (`python-pptx` + Marp Markdown driver), `generate_presentation` LangChain tool, `PresentationToolUI` card, quick chip `/slides`, `PRESENTATION_STUDIO_ENABLED` gate.
+- **27.2b Speaker Diarization Meeting Minutes from Chat** — `[ready-for-dev]` chat-first deliverable theo pattern 27.1a. **Tận dụng code đã có:** Whisper STT (`services/stt_service.py`), Circleback meeting notes webhook, chat tool + artifact sidebar. **Code mới:** `MeetingMinutes` table, `MeetingMinutesService` (diarization via `pyannote.audio`/`whisperx` + LLM action-item extraction), `generate_meeting_minutes` tool, `MeetingMinutesToolUI` card, quick chip `/meeting`, `MEETING_MINUTES_ENABLED` gate.
 
 
 

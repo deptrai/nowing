@@ -7,7 +7,7 @@ paradigm: 4-Tier Hybrid Reactive Architecture with Decoupled Autonomous Mission 
 scope: Full Platform (Nowing Core, ChainLens Engine, DSH Agent Orchestration Sidecar, DeepSeek V4 + Gemini Flash + Qwen)
 status: final
 created: '2026-08-17'
-updated: '2026-08-23T04:06'
+updated: '2026-08-24T12:00'
 approvedBy: Luisphan
 binds:
   - AD-101
@@ -29,6 +29,9 @@ binds:
   - AD-117
   - AD-118
   - AD-119
+  - AD-113a
+  - AD-120
+  - AD-121
 ---
 
 # Architecture Spine — Nowing + ChainLens + DSH Unified Platform
@@ -138,6 +141,7 @@ flowchart TB
   2. The `zero_publication` column list for the `leads` table MUST include only: `id`, `workspace_id`, `title`, `company_name`, `domain`, `source_url`, `fit_score`, `status`, `enriched`, `created_at`, `updated_at`. It MUST NOT include `value_hmac`, `is_blacklisted`, or any PII-derived columns.
   3. The heavy `chunks` table is explicitly EXCLUDED from `zero_publication`.
   4. [ASSUMPTION] Next.js 16 Cache Components remove implicit fetch caching; the frontend Zero client code is audited and uses explicit `'use cache'` directives where needed.
+  5. **Epic 27 deliverable sync note (AD-5 carry-forward, 2026-08-24):** New or updated rows for `meeting_minutes`, `web_app`, and `slides` MUST be published through `app/zero_publication.py` so chat-generated deliverables are visible to the web client in real time.
 
 ### AD-105 — PII Vault, Unlock Billing & Decree 13/2023/ND-CP Compliance [ADOPTED]
 - **Binds:** `verified_contacts`, `leads`, `pii_blacklists`/`dnc_records`, credit wallet, and audit logs.
@@ -154,6 +158,7 @@ flowchart TB
   5. `verified_contacts` MUST contain `is_unlocked` (boolean) and `pii_access_audit_logs` (JSONB or reference to `AuditEvent`) recording every access: `user_id`, `workspace_id`, `lead_id`, `access_type`, `timestamp`, `ip_address`.
   6. PII opt-out requests MUST be honored within 24h: add HMAC to the blacklist/DNC table, mark `verified_contacts.is_unlocked = FALSE`, return credits, and schedule PII deletion or irreversible anonymization per Decree 13/PDPD.
   7. Nowing's Terms of Service (ToS) legally structures Nowing as a *Data Processor on behalf of user*.
+- **Epic 27 credit-wallet note (AD-8 carry-forward, 2026-08-24):** `TokenUsage` MUST record distinct `usage_type` values for Epic 27 deliverable generation: `web_app`, `meeting_minutes_transcription`, and `meeting_minutes_extraction`. Each type debits the same `User.credit_micros_balance` wallet via `wallet_credit.py` but is metered separately from chat/deep-research LLM usage.
 
 ### AD-106 — DSH Agent-Team Hierarchical Delegation & Specialist Team Pattern [ADOPTED]
 - **Binds:** Agent task tree dispatch within the internal `dsh-worker` sidecar.
@@ -333,6 +338,11 @@ The architecture only requires that:
 - **Rule:** Agent sinh project Next.js/React trong `/workspace/web-app`. Deploy 1-click tự động lên `https://[app-name].apps.nowing.net` có HTTPS và dynamic routing.
 - **Production (Traefik):** web app containers được khởi chạy với Docker labels hoặc file provider để Traefik đăng ký route theo `Host`/`HostRegexp`. Caddy file-provider là fallback cho self-host / local dev.
 
+### AD-113a — Static-Hosting Exception for Chat-First Web Builder (27.1a) [ADOPTED 2026-08-24]
+- **Binds:** Story 27.1a (chat-first MVP web builder)
+- **Prevents:** blocking the 27.1a MVP on full container orchestration
+- **Rule:** For the `chat-first` / `sales-marketing` MVP, `WebAppDeployService` may use backend-served static HTML snapshots under `WEB_BUILDER_PUBLIC_APPS_PATH` with custom `*.apps.nowing.net` CNAME. This is a deliberate transient exception; full per-app Docker + Traefik is the long-term target for Story 27.1.
+
 ### AD-114 — Design View Visual "Mark Tool" Canvas AST Mutator [ADOPTED]
 - **Binds:** Nowing Canvas Web Preview và React code generator.
 - **Rule:** Iframe preview inject Bounding Box Selector. Khi user khoanh vùng phần tử UI, agent bóc DOM XPath/CSS và AST-mutate chính xác component JSX.
@@ -409,3 +419,31 @@ Các AD sau được bổ sung sau Implementation Readiness Assessment 2026-08-2
 - **Gap cần đóng (post-adoption):**
   - Chưa có Pass 2 Micro-LLM worker riêng — hiện tại record thiếu trường chỉ có `confidence` thấp và chờ Agent chính xử lý khi user hỏi.
   - Story cần tạo: `XX.Y — Micro-Extraction Worker for Low-Confidence Scraper Records` để implement Pass 2 với Tier 1 model routing.
+
+---
+
+## 11. Epic 27 Chat Deliverable Invariants (AD-120 to AD-121)
+
+> Bổ sung 2026-08-24 để đóng gap giữa chat deliverables (web builder, slides, meeting minutes) và kiến trúc tổng thể.
+
+### AD-120 — ChatMode Registry for New Chat Orchestrator [ADOPTED 2026-08-24]
+- **Binds:** Stories 27.1a, 27.2a, 27.2b
+- **Prevents:** hardcoded `if/elif` chat-mode branches in orchestrator
+- **Rule:** Implement a `ChatMode` registry (`app/tasks/chat/streaming/flows/new_chat/chat_modes.py`) that maps `mode` query param to a mode object with `system_prompt`, `allowed_tools`, and `artifact_kinds`. `stream_new_chat` resolves the mode from the registry, not from inline conditionals.
+
+### AD-121 — ArtifactKind Extension for Chat Deliverables [ADOPTED 2026-08-24]
+- **Binds:** Stories 27.2a, 27.2b
+- **Prevents:** each deliverable adding `ArtifactKind` values in separate uncoordinated PRs
+- **Rule:** New `ArtifactKind` values (`web_app`, `slides`, `meeting_minutes`) are defined once in `features/chat-artifacts/model/artifact.ts` and registered in `ARTIFACT_TOOL_KINDS`, `BODY_TOOLS`, `KIND_META`, `GROUP_ORDER`, and `collect-artifacts.ts`. This is a cross-cutting foundation step (Step 0) for any Epic 27 deliverable.
+
+---
+
+## Amendments (2026-08-24)
+
+> Ratified during the `bmad-architecture` skill update for Epic 27.
+
+- **AD-113a** — Static-hosting exception for Story 27.1a: the chat-first / sales-marketing MVP may deploy static HTML snapshots under `WEB_BUILDER_PUBLIC_APPS_PATH` with `*.apps.nowing.net` CNAME, bypassing the full per-app Docker + Traefik target of AD-113. This is a deliberate transient exception; Story 27.1 still targets full per-app container hosting.
+- **AD-120** — ChatMode registry: replaces hardcoded `if/elif` mode branches in the new-chat orchestrator with a registry that resolves `system_prompt`, `allowed_tools`, and `artifact_kinds` by `mode`.
+- **AD-121** — ArtifactKind extension: new deliverable kinds (`web_app`, `slides`, `meeting_minutes`) are added once in the canonical artifact model and propagated to all artifact consumers, preventing uncoordinated per-deliverable PRs.
+- **AD-104** — Added Epic 27 deliverable sync note: `meeting_minutes`, `web_app`, and `slides` rows must be published via `app/zero_publication.py` for real-time client visibility.
+- **AD-105** — Added Epic 27 credit-wallet note: `TokenUsage` records `web_app`, `meeting_minutes_transcription`, and `meeting_minutes_extraction` cost types separately from chat/deep-research LLM usage.

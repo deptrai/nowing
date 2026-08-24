@@ -2,7 +2,7 @@
 title: Nowing
 status: approved
 created: 2026-07-21
-updated: 2026-08-23
+updated: 2026-08-25
 canonical: true
 ---
 
@@ -266,7 +266,7 @@ Cung cấp capability `vietnamworks.scrape` gọi `POST https://ms.vietnamworks.
 - Output: typed `JobItem` với `jobId`, `jobTitle`, `companyName`, `workingLocations`, `salaryMin/Max`, `salaryCurrency`, `salaryPeriodId`, `jobDescription`, `jobRequirement`, `jobFunction`, `yearsOfExperience`, `createdOn`, `approvedOn`, `expiredOn`, `isActive`, `typeWorkingId`, `skills`, `benefits`.
 - Handles pagination (`page` 1-based, `hitsPerPage`), rate-limit (429), circuit-breaker, golden fixture regression tests.
 
-**Status:** `[PROPOSED]` — technical spike passed (200 OK, no CAPTCHA, 30 concurrent OK). Awaiting ToS review.
+**Status:** `[DONE]` — Epic 12 / Story 12.1 `done`; ToS/legal review approved 2026-08-08; VietnamWorks public-API spike passed; code merged and `bmad-code-review` passed.
 
 #### FR-44: TopCV Scraper (Vietnam Job Market)
 Cung cấp capability `topcv.scrape` để lấy job postings từ `https://www.topcv.vn` qua HTML scraping + anti-bot.
@@ -278,7 +278,7 @@ Cung cấp capability `topcv.scrape` để lấy job postings từ `https://www.
 - Requires anti-bot POC to pass before build (Cloudflare "Just a moment..." challenge observed).
 - Degrades gracefully if TopCV is unavailable or blocked.
 
-**Status:** `[PROPOSED]` — anti-bot POC required.
+**Status:** `[DONE]` — Epic 12 / Story 12.2 `done`; Cloudflare/anti-bot POC passed 2026-08-12; code merged and `bmad-code-review` passed.
 
 #### FR-45: ITviec Scraper (Vietnam Job Market)
 Cung cấp capability `itviec.scrape` để lấy job postings từ `https://itviec.com` qua HTML server-rendered parsing.
@@ -290,7 +290,7 @@ Cung cấp capability `itviec.scrape` để lấy job postings từ `https://itv
 - Selectors: `job-card ipt-2`, `h3/a`, `employer-name`, `jd-main`.
 - Salary is hidden for non-logged-in users (`Sign in to view salary`) → parse from title when possible or mark low-confidence.
 
-**Status:** `[PROPOSED]` — technical spike passed (HTML parseable, no Cloudflare).
+**Status:** `[DONE]` — Epic 12 / Story 12.3 `done`; HTML server-rendered parsing spike passed; rate-limit + user-agent rotation implemented; code merged and `bmad-code-review` passed.
 
 #### FR-46: Vietnam Job Market Aggregator (`vn_jobs.aggregate`)
 Cung cấp capability `vn_jobs.aggregate` để gom dữ liệu từ FR-43, FR-44, FR-45, chuẩn hóa, dedupe, tính confidence score, phát hiện conflict, rồi **gửi `Chunk[]` tới `chainlens-research` qua `POST /v1/ingest/scraper`** để indexing và search. Nowing không giữ local search corpus.
@@ -304,7 +304,7 @@ Cung cấp capability `vn_jobs.aggregate` để gom dữ liệu từ FR-43, FR-4
 - PII redaction (FR-47) chạy trước khi gửi `Chunk[]`.
 - Exposed via REST, MCP (`nowing_vn_jobs_aggregate`), and chat agent as a research-run that feeds the canonical index.
 
-**Status:** `[PROPOSED]`.
+**Status:** `[DONE]` — Epic 12 / Stories 12.4a–e `done`; aggregator depends on FR-43–45 (now `DONE`), canonical `Chunk[]` schema (FR-62, AD-34), and `NowingIngestService` (Epic 20 done); PII redaction (FR-47) runs before ingest; code merged and `bmad-code-review` passed.
 
 #### FR-47: PII Redaction for Job Data
 Pipeline xử lý dữ liệu từ job scrapers **trước khi gửi `Chunk[]` tới `chainlens-research`** (hoặc lưu vào private `Memory`) để phát hiện và loại bỏ/mask thông tin cá nhân (phone, email, names) trong `jobDescription` / `jobRequirement`.
@@ -315,7 +315,7 @@ Pipeline xử lý dữ liệu từ job scrapers **trước khi gửi `Chunk[]` t
 - Audit stats logged (counts only, no values).
 - Applies to all job scrapers (FR-43, FR-44, FR-45) and the aggregator (FR-46) before ingest.
 
-**Status:** `[PROPOSED]`.
+**Status:** `[DONE]` — Epic 12 / Story 12.5 `done`; shared PII redaction pipeline for job descriptions/requirements; runs before any `Chunk[]` ingest or `Memory` storage; code merged and `bmad-code-review` passed.
 
 #### FR-48: Canonical Entity Storage & Multi-Domain Indexing (Epic 13) `[REMOVED 2026-08-08 — moved to chainlens-research]`
 Canonical entity storage, multi-domain indexing, and unified search now belong to `chainlens-research`, not Nowing. Nowing domain scrapers/aggregators output `Chunk[]` to `chainlens-research` via `POST /v1/ingest/scraper`; `chainlens-research` handles deduplication, embedding, full-text/vector search, and merge history.
@@ -339,7 +339,7 @@ So that I can search and reference news articles via the Nowing chat agent.
 - Given a user searches for news, when the query is submitted, then `chainlens-research` `POST /api/v1/search` returns indexed news articles with citations.
 - Given duplicate articles (syndicated across portals), when detected, then `chainlens-research` canonical index handles deduplication.
 
-**Status:** `[PROPOSED] — re-scoped to feed chainlens-research; no local Nowing news index.`
+**Status:** `[RE-SCOPED]` — feed/crawl infrastructure in Nowing is done (Epic 14: Stories 14.1, 14.2a done; 14.2b blocked by `chainlens-research` entity-search contract). Nowing does not keep a local news index.
 
 #### FR-50: Financial Data Integration (Epic 15) `[RE-SCOPED 2026-08-08 — feed to chainlens-research]`
 As an investment researcher,
@@ -351,7 +351,7 @@ So that I can analyze company fundamentals via the Nowing chat agent.
 - Given financial data is fetched, when normalized to `Chunk[]`, then `POST /v1/ingest/scraper` on `chainlens-research` is called with `source: 'nowing_scraper'` and a stable `sourceId`.
 - Given financial data is indexed, when a user queries, then `chainlens-research` `POST /api/v1/search` returns results with citations.
 
-**Status:** `[PROPOSED] — re-scoped to feed chainlens-research; no local Nowing financial index.`
+**Status:** `[RE-SCOPED]` — feed/crawl infrastructure in Nowing is done (Epic 15: Stories 15.1, 15.1b, 15.2 done). Nowing does not keep a local financial index.
 
 #### FR-51: Company Data Integration (Epic 16) `[RE-SCOPED 2026-08-08 — feed to chainlens-research]`
 As a business researcher,
@@ -363,7 +363,7 @@ So that I can verify business partners and research market players via the Nowin
 - Given a user searches by company name or tax code, when the query is submitted, then `chainlens-research` `POST /api/v1/search` returns the company profile.
 - Given company data contains PII, before ingest, then AD-25 redaction applies.
 
-**Status:** `[PROPOSED] — re-scoped to feed chainlens-research; no local Nowing company index.`
+**Status:** `[RE-SCOPED]` — feed/crawl infrastructure partially done (Epic 16: Story 16.1 masothue and 16.5 public procurement done; 16.2 official business registry delegated to XActions). Nowing does not keep a local company index.
 
 #### FR-52: E-commerce Intelligence (Epic 17) `[RE-SCOPED 2026-08-08 — feed to chainlens-research]`
 As a product researcher,
@@ -375,7 +375,7 @@ So that I can perform pricing analysis and competitor tracking via the Nowing ch
 - Given product `Chunk[]` are produced, when the batch is ready, then `POST /v1/ingest/scraper` on `chainlens-research` is called with `source: 'nowing_scraper'` and a stable `sourceId`.
 - Given products from multiple platforms, when indexed, then `chainlens-research` canonical index handles deduplication.
 
-**Status:** `[PROPOSED] — re-scoped to feed chainlens-research; no local Nowing product index.`
+**Status:** `[RE-SCOPED]` — feed/crawl infrastructure partially done (Epic 17: Story 17.2 Shopee done; 17.1 Lazada and 17.5 TikTok Shop blocked-by-external XActions). Nowing does not keep a local product index.
 
 #### FR-53: Social Media Integration (Epic 18 — REMOVED, feature covered by E10)
 As a social media analyst,
@@ -400,7 +400,7 @@ So that I can search the web and find local businesses within Nowing.
 - Given Google Custom Search API is configured, when a user searches, then web results are returned and crawlable.
 - Given Google Places API is configured, when a user searches by location, then business listings are returned.
 
-**Status:** `[DEFERRED — covered by ChainLens generic crawl for web search]`.
+**Status:** `[REMOVED]` — ChainLens-only; no Nowing epic (Epic 19 dropped). Google Search/Maps web search is handled by `chainlens-research` generic crawl and Exa MCP (FR-8.1).
 
 > **⚠️ Epic 19 removed (2026-08-06) — duplicate with existing scrapers.** Google Custom Search trùng với ChainLens generic web crawl (FR-24, already built). Google Places data có thể complement BĐS data nhưng cần scope rõ ràng. **Potential conflict:** AD-DEFER-7 (no owned web index). Xem xét sau khi platform (E13) ship — nên dùng ChainLens thay vì build scraper riêng.
 
@@ -428,7 +428,7 @@ So that I can integrate Nowing chat into my application.
 - Given a `client_id` in the request, when the chat processes, then all data access is filtered by `client_id` (NFR-MULTI-1).
 - Given rate limit is exceeded, when the endpoint is called, then 429 is returned with `Retry-After` header.
 
-**Status:** `[PROPOSED]` — Epic 18 (Vertical Client Platform).
+**Status:** `[DONE]` — Epic 18 / Story 18.1; public agent-chat endpoints and PAT auth implemented.
 
 #### FR-57: Agent Registry
 As a platform administrator,
@@ -440,7 +440,7 @@ So that different vertical clients can have specialized chat agents.
 - Given an `agent_id` is provided in a chat request, when processed, then the system loads the corresponding `AgentConfig` or returns 404 if not found.
 - Given a chat request with `agent_id`, when the chat flow starts, then `AgentConfig.system_instructions` is prepended to the default system prompt.
 
-**Status:** `[PROPOSED]` — Epic 18 (Vertical Client Platform).
+**Status:** `[DONE]` — Epic 18 / Story 18.3; `agent_configs` table and `bdsai-listing-assistant` seed implemented.
 
 #### FR-58: Scraper Feed to chainlens-research (Ecosystem Integration)
 As a platform engineer,
@@ -456,7 +456,7 @@ So that public/vertical search data is indexed in a single canonical index owned
 - New `NowingIngestService` / adapter in `app/services/chainlens_ingest/`.
 - All scrapers/aggregators implement `to_chunks()` conforming to `AD-34`.
 
-**Status:** `[PROPOSED]` — depends on `chainlens-research` `POST /v1/ingest/scraper` (Epic 47).
+**Status:** `[DONE]` — Epic 20 / Story 20.1; `NowingIngestService` and scraper `to_chunks()` feed `chainlens-research` via `POST /v1/ingest/scraper`.
 
 #### FR-59: Gap-Fill Trigger via chainlens-research
 As a workspace user,
@@ -468,7 +468,7 @@ So that the system can fetch missing data on-demand without building a local sea
 - Given a gap-fill request, when `chainlens-research` decides a Nowing scraper is needed, then it calls the registered Nowing scraper and ingests the result.
 - Given gap-fill completion, when results are indexed, then the chat agent resumes with the updated corpus.
 
-**Status:** `[PROPOSED]` — depends on `chainlens-research` gap-fill engine (Epic 47).
+**Status:** `[DONE]` — Epic 20 / Story 20.2; gap-fill caller and cost allocation wired on the Nowing side.
 
 #### FR-60: Private Data Provider (NowingPrivateProvider)
 As a workspace user,
@@ -480,7 +480,7 @@ So that private data stays in Nowing but can still answer cross-corpus queries.
 - Given a `NowingPrivateProvider` call, when the user does not have access to a document, then it is not returned.
 - Given private chunks, when returned, then `chainlens-research` merges them into its ranked result set without storing them.
 
-**Status:** `[PROPOSED]` — governed by `AD-15`, `AD-35`.
+**Status:** `[DONE]` — Epic 20 / Story 20.3; `NowingPrivateProvider` and `POST /v1/private-data/search` implemented.
 
 #### FR-61: Cross-Project Service Auth & Cost Allocation
 As a platform operator,
@@ -492,7 +492,7 @@ So that cost and usage can be attributed correctly and the services cannot be sp
 - Given a Nowing request to `chainlens-research`, when sent, then Nowing includes a workspace-scoped Bearer token and correlation id.
 - Given a cross-project call, when completed, then `TokenUsage` records the cost with `usage_type` and workspace attribution.
 
-**Status:** `[PROPOSED]` — Epic 47.
+**Status:** `[DONE]` — Epic 20 / Story 20.4; service-to-service auth and cost ledger sync between Nowing and `chainlens-research` implemented.
 
 #### FR-62: Canonical Chunk Metadata Schema (`source` enum)
 As a platform engineer,
@@ -504,7 +504,7 @@ So that ingestion, search, and citation are consistent across the ecosystem.
 - Given a `source` value, when validated, then it matches the canonical enum defined in `chainlens-research`: `public_crawl`, `nowing_scraper`, `brave`, `searxng`, `jina`, `exa`, `tavily`, `perplexity`, `private_provider`.
 - Given missing required fields, when validated, then the request is rejected with a typed error.
 
-**Status:** `[PROPOSED]` — governed by `AD-34`.
+**Status:** `[DONE]` — Epic 20 / Story 20.1; canonical `Chunk.metadata` schema and `source` enum (`nowing_scraper`, `private_provider`, etc.) shared with `chainlens-research` implemented.
 
 ### 4.10 Lead Gen Intelligence (mới 2026-08-10)
 
@@ -514,7 +514,7 @@ So that ingestion, search, and citation are consistent across the ecosystem.
 
 **Functional Requirements:**
 
-#### FR-63: Intent Signal Detection `[PROPOSED]`
+#### FR-63: Intent Signal Detection `[IN-PROGRESS]`
 As a salesperson, I want to detect buying signals from companies (funding, hiring, tech stack changes, executive moves), so that I can reach out at the right moment.
 
 **Acceptance Criteria:**
@@ -523,9 +523,9 @@ As a salesperson, I want to detect buying signals from companies (funding, hirin
 - Given multiple signals for the same company, when aggregated, then a composite lead score is calculated.
 - Signals are sourced from: Crunchbase, LinkedIn, company websites, job boards, news.
 
-**Status:** `[PROPOSED]` — Epic 21 (Lead Gen Intelligence).
+**Status:** `[IN-PROGRESS]` — Epic 21 / Story 21.1 done; Epic 21 overall in-progress.
 
-#### FR-64: Lead Scoring & Prioritization `[PROPOSED]`
+#### FR-64: Lead Scoring & Prioritization `[IN-PROGRESS]`
 As a sales manager, I want leads scored and ranked by conversion likelihood, so that my team focuses on the highest-value prospects.
 
 **Acceptance Criteria:**
@@ -533,9 +533,9 @@ As a sales manager, I want leads scored and ranked by conversion likelihood, so 
 - Given a lead score, when displayed, then it shows score breakdown (fit vs intent), trend (improving/declining), and comparison to similar converted leads.
 - Given ICP criteria, when updated, then lead scores are recalculated for all leads in workspace.
 
-**Status:** `[PROPOSED]` — Epic 21 (Lead Gen Intelligence).
+**Status:** `[IN-PROGRESS]` — Epic 21 / Story 21.2 done; Epic 21 overall in-progress.
 
-#### FR-65: Enriched Contact Data `[PROPOSED]`
+#### FR-65: Enriched Contact Data `[IN-PROGRESS]`
 As an SDR, I want verified contact data (email, phone) for my target accounts, so that I can reach out to the right decision-makers.
 
 **Acceptance Criteria:**
@@ -544,9 +544,9 @@ As an SDR, I want verified contact data (email, phone) for my target accounts, s
 - Given enrichment results, when displayed, then data source, verification status, and confidence are shown.
 - Zero-bounce validation for emails; real-time validation for phones.
 
-**Status:** `[PROPOSED]` — Epic 21 (Lead Gen Intelligence).
+**Status:** `[IN-PROGRESS]` — Epic 21 / Story 21.3 done; 3-tier phone waterfall and PII vault in place. Epic 21 overall in-progress.
 
-#### FR-66: Outbound Prospecting Automation `[PROPOSED]`
+#### FR-66: Outbound Prospecting Automation `[IN-PROGRESS]`
 As a sales team, I want to automate personalized outreach across channels, so that I can scale outbound without sacrificing quality.
 
 **Acceptance Criteria:**
@@ -555,9 +555,9 @@ As a sales team, I want to automate personalized outreach across channels, so th
 - Given a sequence step, when executed, then the system personalizes content, tracks delivery, and logs responses.
 - Given response detection, when a lead replies, then the sequence pauses and alerts the assigned rep.
 
-**Status:** `[PROPOSED]` — Epic 21 (Lead Gen Intelligence).
+**Status:** `[IN-PROGRESS]` — Epic 21 / Story 21.4 done; outbound sequence engine and split-view panel implemented. Epic 21 overall in-progress.
 
-#### FR-67: CRM Integration & Write-Back `[PROPOSED]`
+#### FR-67: CRM Integration & Write-Back `[IN-PROGRESS]`
 As a sales operations manager, I want lead intelligence data synced with our CRM, so that reps work from a single source of truth.
 
 **Acceptance Criteria:**
@@ -565,9 +565,9 @@ As a sales operations manager, I want lead intelligence data synced with our CRM
 - Given a lead score or signal, when detected in Phase 2/3, then it writes to the corresponding CRM record.
 - Given CRM data, when imported, then it enriches Nowing's lead profiles.
 
-**Status:** `[PROPOSED]` — Epic 21 (Lead Gen Intelligence).
+**Status:** `[IN-PROGRESS]` — Epic 21 / Story 21.5 done; Lark Base / Google Sheets / HubSpot/Salesforce/Pipedrive sync and read-first dedup implemented. Epic 21 overall in-progress.
 
-#### FR-68: Zalo Integration (Vietnam Market) `[PROPOSED]`
+#### FR-68: Zalo Integration (Vietnam Market) `[IN-PROGRESS]`
 As a Vietnamese salesperson, I want to communicate with leads via Zalo, because 81% of Vietnamese professionals use Zalo as their primary messaging platform.
 
 **Acceptance Criteria:**
@@ -576,7 +576,7 @@ As a Vietnamese salesperson, I want to communicate with leads via Zalo, because 
 - Given a Zalo reply, when received, then it's logged in the lead's activity timeline.
 - Comply with Zalo's business messaging policies and Decree 356.
 
-**Status:** `[PROPOSED]` — Epic 21 (Lead Gen Intelligence).
+**Status:** `[IN-PROGRESS]` — Epic 21 / Story 21.6 done; Zalo OA deep-link, ZNS templates, and Telegram alerts implemented. Epic 21 overall in-progress.
 
 > **FR-24 đã chuyển sang §4.9.** ChainLens Research **không phải** một connector/scraper. Nó là Deep-Research Engine — dependency kiến trúc hạng nhất, governed by `AD-15` (không còn `AD-3`). Xem **§4.9**.
 
@@ -737,7 +737,7 @@ Migration `177_add_research_memory_tables` tạo bảng `memories` NHƯNG **khô
 **Status:**
 - `[DONE]` — story `3-13` completed; first research/scrape run produces memory with `source_type = SCRAPER_RUN` and provenance, and `nowing_recall` returns non-empty results after the first run.
 
-#### FR-5: AI File Sorting (REMOVED)
+#### FR-5: AI File Sorting `[REMOVED]`
 Tính năng sắp xếp file tự động bằng AI đã từng được thêm cờ `ai_file_sort_enabled` ở migration 124 nhưng đã bị gỡ bỏ hoàn toàn ở migration 172.
 
 **Gap / Removed:**
@@ -952,7 +952,7 @@ Platform admin (không phải workspace Owner/Editor/Viewer — một vai trò m
 
 _Trace: AD-8, AD-9 (mở rộng — không đổi 3 system role cấp workspace), `model_connections_routes.py`, `app/config/__init__.py` (`load_global_llm_configs`, `refresh_global_model_catalog`), `app/services/global_model_catalog.py`._
 
-#### FR-69: Outcome-Based Pricing Option `[PROPOSED]` (mới 2026-08-10)
+#### FR-69: Outcome-Based Pricing Option `[IN-PROGRESS]` (mới 2026-08-10)
 As a sales team, I want to pay per qualified meeting booked (not just per seat), so that cost is tied to actual pipeline value delivered.
 
 **Acceptance Criteria:**
@@ -969,7 +969,7 @@ As a sales team, I want to pay per qualified meeting booked (not just per seat),
 | **Outcome-based** | $50/meeting booked | $30/meeting (volume) | Custom |
 | **Lead enrichment** | $0.50/lead | $0.20/lead (volume) | Custom |
 
-**Status:** `[PROPOSED]` — Epic 21 (Lead Gen Intelligence). Depends on FR-66 (outbound automation).
+**Status:** `[IN-PROGRESS]` — Epic 21 / Story 21.7 done; $0 chat/sequencer + pay-as-you-go credit ledger for verified leads and booked meetings implemented. Depends on FR-66 (outbound automation). Epic 21 overall in-progress.
 
 ### 4.9 Deep-Research Engine Integration (ChainLens — Strategic Brain & Market GPS)
 
@@ -1143,7 +1143,7 @@ Người dùng có thể mô tả một ứng dụng web bằng ngôn ngữ tự
 - Traefik/Caddy dynamic config + `apps.nowing.net` wildcard DNS.
 - Workspace-scoped app registry.
 
-**Status:** `[BACKLOG]` — story `27.1` ready for development after this amendment.
+**Status:** `[IN-PROGRESS]` — in-PRD per `AMENDMENT-Epic-27-Manus-Autonomous-Workstation-2026-08-20.md`; 27.1a `done`; Story 27.1 parent/tracking `backlog` (children 27.1b/c/d `backlog`); 27.2a/27.2b `ready-for-dev`.
 
 #### FR-94: Design View Mark Tool & Presentation Studio
 
@@ -1159,7 +1159,7 @@ Người dùng có thể chỉnh sửa UI đã sinh bằng công cụ khoanh vù
 - Marp Markdown slide renderer.
 - Speaker diarization extension (`pyannote.audio` hoặc `whisperx`) trong `stt_service.py`.
 
-**Status:** `[BACKLOG]` — story `27.2` ready for development after this amendment.
+**Status:** `[IN-PROGRESS]` — in-PRD per `AMENDMENT-Epic-27-Manus-Autonomous-Workstation-2026-08-20.md`; 27.2a/27.2b `ready-for-dev`; Mark Tool 27.1d and container deploy 27.1c `backlog`; Story 27.1 parent/tracking `backlog`.
 
 ## 5. Non-Functional Requirements
 

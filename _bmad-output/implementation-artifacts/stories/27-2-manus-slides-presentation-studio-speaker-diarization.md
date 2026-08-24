@@ -3,10 +3,16 @@ story_key: "27-2"
 epic: "epic-27"
 story: "27.2"
 title: "Manus Slides Presentation Studio & Speaker Diarization Meeting Minutes"
-status: "ready-for-dev"
+status: "split"
 ---
 
 # Story 27.2: Manus Slides Presentation Studio & Speaker Diarization Meeting Minutes
+
+> **⚠️ SPLIT — 2026-08-24:** This story has been split into two focused chat-first stories:
+> - <ref_file file="/Users/luisphan/Documents/GitHub/nowing/_bmad-output/implementation-artifacts/stories/27-2a-manus-slides-presentation-studio-chat.md" /> — PPTX/Marp slide generation.
+> - <ref_file file="/Users/luisphan/Documents/GitHub/nowing/_bmad-output/implementation-artifacts/stories/27-2b-speaker-diarization-meeting-minutes.md" /> — speaker diarization meeting minutes.
+>
+> The original file is kept for traceability only.
 
 ## Story Overview
 

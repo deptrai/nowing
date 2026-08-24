@@ -1,4 +1,27 @@
+## Resolved from: code review of 27-1a-web-builder-chat-mode-sales-marketing-mvp (2026-08-24)
+
+- **Finding:** Multi-turn chat AST editing & conversation refinement.
+  - **Resolution:** Implemented `_call_llm_for_refinement` in `generator.py` and `app_id` parameter in `build_web_app.py` to allow iterative prompt modifications on existing applications across multi-turn chats.
+- **Finding:** Isolated sandbox preview origin & script sanitization.
+  - **Resolution:** Added strict Content-Security-Policy meta tags + response headers, sanitized `</script>` / browser auth storage access in `preview_renderer.py`, and added `sandbox="allow-scripts allow-forms allow-same-origin"` on the preview iframe.
+
+## Deferred from: code review of 27-1a-web-builder-chat-mode-sales-marketing-mvp (2026-08-24, chunk 1 backend)
+
+- **Finding:** Synchronous file I/O in async web-builder service methods.
+  - **Action:** Marked `[x] [Review][Defer]` in `27-1a-web-builder-chat-mode-sales-marketing-mvp.md`.
+  - **Reason / when to revisit:** Pre-existing blocking pattern in `WebBuilderService`/`WebAppDeployService`; revisit if preview/deploy latency spikes or if the service moves to async file operations.
+- **Finding:** `WebBuilderService.generate_project_stream` uses a new `uuid` and ignores `app_id`, so it cannot refine and does not record token usage.
+  - **Action:** Marked `[x] [Review][Defer]` in `27-1a-web-builder-chat-mode-sales-marketing-mvp.md`.
+  - **Reason / when to revisit:** Story 27.1a uses the non-streaming `generate_project` path; the streaming endpoint is pre-existing scope from Story 27.1 and out of 27.1a MVP.
+- **Finding:** `PreviewRenderer._sanitize_tsx_for_babel` strips only `document.cookie`, `localStorage`, `sessionStorage` and not other exfiltration channels (`fetch`, `XMLHttpRequest`, `navigator.sendBeacon`, `window.parent`).
+  - **Action:** Marked `[x] [Review][Defer]` in `27-1a-web-builder-chat-mode-sales-marketing-mvp.md`.
+  - **Reason / when to revisit:** Broader sandbox hardening is a security enhancement beyond the current `unsafe-inline`/`unsafe-eval` CSP sandbox; revisit when tightening the public-app threat model.
+- **Finding:** `WebBuilderService.generate_project` records hardcoded `prompt_tokens=500`, `completion_tokens=2000`, `cost_micros=15000` for token usage.
+  - **Action:** Marked `[x] [Review][Defer]` in `27-1a-web-builder-chat-mode-sales-marketing-mvp.md`.
+  - **Reason / when to revisit:** The spec requires recording `TokenUsage`, not exact metering; accurate cost measurement depends on integrating `TokenTrackingService` with LLM provider usage metadata, which can be improved later.
+
 ## Deferred from: code review of 14-2a-news-entity-extraction (2026-08-24, round 2 — groups A+B)
+
 
 - **Finding:** `NowingIngestService` can fail to persist `ChainLensIngestJob` after a successful `IngestResult` because the persistence block is best-effort and can raise.
   - **Action:** Marked `[x] [Review][Defer]` in `14-2a-news-entity-extraction.md`.
