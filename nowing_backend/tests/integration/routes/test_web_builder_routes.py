@@ -48,16 +48,22 @@ def mock_auth() -> AuthContext:
 def mock_db_session():
     """Mock async DB session."""
     session = AsyncMock()
+    mock_result = MagicMock()
+    mock_result.scalars.return_value.first.return_value = MagicMock()
+    session.execute.return_value = mock_result
     return session
 
 
 @pytest.fixture
 def client(mock_auth: AuthContext, mock_db_session: AsyncMock) -> TestClient:
     """Fixture creating test FastAPI app with Web Builder routes mounted and auth overridden."""
+    import app.routes.web_builder_routes as routes
+
     app = FastAPI()
     app.include_router(web_builder_router)
     app.dependency_overrides[get_auth_context] = lambda: mock_auth
     app.dependency_overrides[get_async_session] = lambda: mock_db_session
+    routes.require_workspace_member = AsyncMock(return_value=None)
     return TestClient(app)
 
 
@@ -254,7 +260,7 @@ class TestWebBuilderRoutes:
         mock_result.scalars.return_value.first.return_value = mock_app_entity
         mock_db_session.execute.return_value = mock_result
 
-        response = client.get(f"/api/v1/web-builder/apps/{app_id}/preview")
+        response = client.get(f"/api/v1/web-builder/apps/{app_id}/preview?workspace_id=1")
 
         assert response.status_code == 200
         assert "text/html" in response.headers["content-type"]

@@ -855,7 +855,7 @@ class Config:
     NOWING_PUBLIC_URL = os.getenv("NOWING_PUBLIC_URL")
     NEXT_FRONTEND_URL = os.getenv("NEXT_FRONTEND_URL") or NOWING_PUBLIC_URL
     # Backend URL to override the http to https in the OAuth redirect URI
-    BACKEND_URL = os.getenv("BACKEND_URL") or NOWING_PUBLIC_URL
+    BACKEND_URL = os.getenv("BACKEND_URL") or NOWING_PUBLIC_URL or "http://localhost:8000"
 
     # Messaging gateway
     # Global master switch: when FALSE, no gateway supervisors/workers start and all
@@ -1812,6 +1812,34 @@ class Config:
         "/app/.local_object_store"
         if os.path.exists("/app")
         else "./.local_object_store",
+    )
+    WEB_BUILDER_ENABLED = os.getenv("WEB_BUILDER_ENABLED", "TRUE").upper() == "TRUE"
+    WEB_BUILDER_MAX_PROMPT_CHARS = max(
+        1, _env_int("WEB_BUILDER_MAX_PROMPT_CHARS", 2000)
+    )
+    WEB_BUILDER_PUBLIC_APPS_PATH = os.getenv(
+        "WEB_BUILDER_PUBLIC_APPS_PATH",
+        f"{FILE_STORAGE_LOCAL_PATH}/web-apps",
+    )
+
+    PRESENTATION_STUDIO_ENABLED = (
+        os.getenv("PRESENTATION_STUDIO_ENABLED", "FALSE").upper() == "TRUE"
+    )
+    PRESENTATION_MAX_PROMPT_CHARS = max(
+        1, _env_int("PRESENTATION_MAX_PROMPT_CHARS", 2000)
+    )
+
+    MEETING_MINUTES_ENABLED = (
+        os.getenv("MEETING_MINUTES_ENABLED", "FALSE").upper() == "TRUE"
+    )
+    MEETING_MINUTES_MAX_PROMPT_CHARS = max(
+        1, _env_int("MEETING_MINUTES_MAX_PROMPT_CHARS", 2000)
+    )
+    MEETING_MINUTES_MAX_DURATION_SECONDS = max(
+        1, _env_int("MEETING_MINUTES_MAX_DURATION_SECONDS", 600)
+    )
+    MEETING_MINUTES_TRANSCRIPTION_MICROS_PER_SECOND = max(
+        0, _env_int("MEETING_MINUTES_TRANSCRIPTION_MICROS_PER_SECOND", 0)
     )
 
     @classmethod

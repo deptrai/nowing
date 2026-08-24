@@ -28,6 +28,7 @@ from .update_memory import (
     create_update_memory_tool,
     create_update_team_memory_tool,
 )
+from .web_builder.build_web_app import create_build_web_app_tool
 
 
 def _build_multi_source_lead_gen_tool(deps: dict[str, Any]) -> BaseTool:
@@ -84,6 +85,10 @@ _MAIN_AGENT_TOOL_FACTORIES: dict[
     "multi_source_lead_gen": (
         _build_multi_source_lead_gen_tool,
         ("workspace_id",),
+    ),
+    "build_web_app": (
+        create_build_web_app_tool,
+        ("workspace_id", "user_id"),
     ),
 }
 

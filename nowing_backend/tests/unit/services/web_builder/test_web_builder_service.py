@@ -7,6 +7,7 @@ Acceptance Criteria:
 """
 
 from unittest.mock import AsyncMock, patch
+from uuid import uuid4
 
 import pytest
 
@@ -28,7 +29,7 @@ class TestWebBuilderServiceGeneration:
             prompt="Build a SaaS landing page for an AI accounting tool with hero, pricing table, and contact form.",
             language="en",
             workspace_id=1,
-            user_id=10,
+            user_id=uuid4(),
         )
 
         mock_llm_response = {
@@ -92,7 +93,7 @@ class TestWebBuilderServiceGeneration:
             prompt="Build a blog",
             language="vi",
             workspace_id=1,
-            user_id=10,
+            user_id=uuid4(),
         )
 
         with patch.object(

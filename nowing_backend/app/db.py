@@ -426,6 +426,9 @@ class Permission(StrEnum):
     # Full access wildcard
     FULL_ACCESS = "*"
 
+    # Web Builder (Story 27.1a)
+    WEB_BUILDER_CREATE = "web_builder:create"
+
 
 # Predefined role permission sets for convenience
 # Note: Only Owner, Editor, and Viewer roles are supported.
@@ -483,6 +486,8 @@ DEFAULT_ROLE_PERMISSIONS = {
         Permission.AUTOMATIONS_READ.value,
         Permission.AUTOMATIONS_UPDATE.value,
         Permission.AUTOMATIONS_EXECUTE.value,
+        # Web Builder (Story 27.1a)
+        Permission.WEB_BUILDER_CREATE.value,
         # Memory (no delete)
         Permission.MEMORY_CREATE.value,
         Permission.MEMORY_READ.value,
@@ -1939,6 +1944,9 @@ class Workspace(BaseModel, TimestampMixin):
     )  # Enable/disable citations
     api_access_enabled = Column(
         Boolean, nullable=False, default=False, server_default="false"
+    )
+    web_builder_enabled = Column(
+        Boolean, nullable=False, default=True, server_default="true"
     )
     qna_custom_instructions = Column(
         Text, nullable=True, default=""

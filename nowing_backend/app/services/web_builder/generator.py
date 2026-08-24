@@ -1,5 +1,6 @@
 """Web Builder Project Generation Engine (Story 27.1, AC-1)."""
 
+import contextlib
 import json
 import logging
 import re
@@ -9,7 +10,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import FILE_STORAGE_LOCAL_PATH
+from app.config import FILE_STORAGE_LOCAL_PATH, config as app_config
 from app.services.token_tracking_service import record_token_usage
 from app.services.web_builder.project_writer import ProjectWriter
 from app.services.web_builder.schemas import (
@@ -108,30 +109,154 @@ class WebBuilderService:
             )
             return None
 
+    async def _call_llm_for_refinement(
+        self,
+        existing_files: dict[str, str],
+        prompt: str,
+        language: str,
+        workspace_id: int,
+        session: AsyncSession | None = None,
+    ) -> dict[str, Any] | None:
+        """Call LLM to refine an existing Next.js web application based on user request."""
+        try:
+            from app.services.llm_service import get_agent_llm
+
+            llm = await get_agent_llm(session, workspace_id) if session else None
+            if not llm:
+                from app.services.llm_service import get_planner_llm
+
+                llm = get_planner_llm()
+
+            existing_code_snippets = "\n\n".join(
+                f"--- {path} ---\n{content}"
+                for path, content in existing_files.items()
+                if path.endswith((".tsx", ".ts", ".css", ".json"))
+            )
+
+            # Cap the refinement context to avoid exceeding LLM context windows.
+            if len(existing_code_snippets) > 12_000:
+                existing_code_snippets = existing_code_snippets[:12_000]
+                # Try to end on a complete file boundary.
+                last_file = existing_code_snippets.rfind("\n\n--- ")
+                if last_file > 1000:
+                    existing_code_snippets = existing_code_snippets[:last_file]
+
+            system_instruction = (
+                "You are an expert Next.js 16 + React 19 + Tailwind CSS developer modifying an existing web app. "
+                "Preserve existing working components, styling, and sections unless explicitly asked to change them. "
+                "Apply the user's modifications cleanly.\n\n"
+                "Return ONLY a valid JSON object matching this schema:\n"
+                "{\n"
+                '  "name": "App Name",\n'
+                '  "slug": "app-slug",\n'
+                '  "description": "Short description",\n'
+                '  "files": [\n'
+                '    {"path": "app/page.tsx", "content": "..."}\n'
+                "  ]\n"
+                "}\n"
+                f"Target UI Language: {language}.\n"
+                "DO NOT wrap with markdown fences or extra explanations outside the JSON."
+            )
+
+            user_message = (
+                f"Existing Project Files:\n\n{existing_code_snippets}\n\n"
+                f"Requested Changes: {prompt}"
+            )
+
+            response = await llm.ainvoke(
+                [
+                    {"role": "system", "content": system_instruction},
+                    {"role": "user", "content": user_message},
+                ]
+            )
+
+            raw_text = (
+                response.content if hasattr(response, "content") else str(response)
+            )
+            if isinstance(raw_text, list):
+                raw_text = "".join(str(part) for part in raw_text)
+
+            cleaned_text = raw_text.strip()
+            if cleaned_text.startswith("```"):
+                cleaned_text = re.sub(r"^```(?:json)?\n", "", cleaned_text)
+                cleaned_text = re.sub(r"\n```$", "", cleaned_text)
+
+            json_match = re.search(r"(\{.*\})", cleaned_text, re.DOTALL)
+            if json_match:
+                cleaned_text = json_match.group(1)
+
+            return json.loads(cleaned_text, strict=False)
+        except Exception as e:
+            logger.warning(
+                f"[WebBuilderService] LLM refinement failed or returned invalid JSON: {e}"
+            )
+            return None
+
     async def generate_project(
         self,
         build_input: WebAppBuildInput,
         session: AsyncSession | None = None,
     ) -> WebAppBuildOutput:
-        """Generate a complete Next.js project, write files to disk, and persist WorkspaceApp."""
-        app_id = str(uuid.uuid4())
-        workspace_dir = (
-            self.storage_base_path / "web-app" / str(build_input.workspace_id) / app_id
-        )
-        # 1. Obtain LLM specification
-        spec_dict = await self._call_llm_for_spec(
-            prompt=build_input.prompt,
-            language=build_input.language,
-            workspace_id=build_input.workspace_id,
-            session=session,
-        )
+        """Generate or refine a Next.js project, write files to disk, and persist WorkspaceApp."""
+        from sqlalchemy import select
+
+        from app.db import WorkspaceApp
+        from app.services.web_builder.deploy_service import disambiguate_slug
+
+        existing_app: WorkspaceApp | None = None
+        if build_input.app_id and session:
+            stmt = select(WorkspaceApp).where(
+                WorkspaceApp.id == build_input.app_id,
+                WorkspaceApp.workspace_id == build_input.workspace_id,
+            )
+            existing_app = (await session.execute(stmt)).scalars().first()
+
+        if existing_app and existing_app.storage_path:
+            app_id = existing_app.id
+            workspace_dir = Path(existing_app.storage_path).resolve()
+            existing_files: dict[str, str] = {}
+            for file_path in workspace_dir.rglob("*"):
+                if (
+                    file_path.is_file()
+                    and "node_modules" not in file_path.parts
+                    and ".next" not in file_path.parts
+                ):
+                    rel_path = str(file_path.relative_to(workspace_dir))
+                    with contextlib.suppress(Exception):
+                        existing_files[rel_path] = file_path.read_text(encoding="utf-8")
+
+            spec_dict = await self._call_llm_for_refinement(
+                existing_files=existing_files,
+                prompt=build_input.prompt,
+                language=build_input.language,
+                workspace_id=build_input.workspace_id,
+                session=session,
+            )
+        else:
+            app_id = str(uuid.uuid4())
+            workspace_dir = (
+                self.storage_base_path
+                / "web-app"
+                / str(build_input.workspace_id)
+                / app_id
+            )
+            spec_dict = await self._call_llm_for_spec(
+                prompt=build_input.prompt,
+                language=build_input.language,
+                workspace_id=build_input.workspace_id,
+                session=session,
+            )
 
         if not spec_dict or not isinstance(spec_dict, dict) or "files" not in spec_dict:
             return WebAppBuildOutput(
                 app_id=app_id,
                 workspace_id=build_input.workspace_id,
-                name=build_input.app_name or "Generated Web App",
-                slug=slugify(build_input.app_name or "web-app"),
+                name=build_input.app_name
+                or (existing_app.name if existing_app else "Generated Web App"),
+                slug=slugify(
+                    build_input.app_name
+                    or (existing_app.slug if existing_app else "web-app")
+                ),
                 status="validation_failed",
                 message="LLM output validation failed: malformed JSON or missing files specification",
                 files=[],
@@ -143,8 +268,14 @@ class WebBuilderService:
             return WebAppBuildOutput(
                 app_id=app_id,
                 workspace_id=build_input.workspace_id,
-                name=spec_dict.get("name", "Generated Web App"),
-                slug=slugify(spec_dict.get("slug", "web-app")),
+                name=spec_dict.get(
+                    "name", existing_app.name if existing_app else "Generated Web App"
+                ),
+                slug=slugify(
+                    spec_dict.get(
+                        "slug", existing_app.slug if existing_app else "web-app"
+                    )
+                ),
                 status="validation_failed",
                 message=f"Pydantic schema validation error: {e}",
                 files=[],
@@ -162,9 +293,13 @@ class WebBuilderService:
             app_name=spec.name, slug=spec.slug
         )
         written_files.extend([f for f in scaffold_files if f not in written_files])
-        app_name = spec.name
-        app_slug = spec.slug
-        app_desc = spec.description
+        app_name = spec.name or (
+            existing_app.name if existing_app else "Generated Web App"
+        )
+        app_slug = spec.slug or (existing_app.slug if existing_app else "web-app")
+        app_desc = spec.description or (
+            existing_app.description if existing_app else None
+        )
 
         # 4. Validate project structure
         is_valid, validation_issues = validate_project_structure(workspace_dir)
@@ -175,28 +310,68 @@ class WebBuilderService:
             else f"Project validation warnings: {', '.join(validation_issues)}"
         )
 
-        preview_url = f"http://localhost:8000/api/v1/web-builder/apps/{app_id}/preview"
+        preview_url = f"{app_config.BACKEND_URL.rstrip('/')}/api/v1/web-builder/apps/{app_id}/preview"
 
         # 5. Persist to DB if session available
         if session:
             try:
-                from app.db import WorkspaceApp
+                if existing_app:
+                    # Cap prompt history at the last 10 turns to avoid unbounded growth
+                    history = existing_app.prompt or ""
+                    parts = [p for p in history.split("\n---\n") if p.strip()]
+                    parts.append(build_input.prompt)
+                    if len(parts) > 10:
+                        parts = parts[-10:]
+                    existing_app.prompt = "\n---\n".join(parts)
 
-                app_entity = WorkspaceApp(
-                    id=app_id,
-                    workspace_id=build_input.workspace_id,
-                    user_id=build_input.user_id,
-                    name=app_name,
-                    slug=app_slug,
-                    description=app_desc,
-                    prompt=build_input.prompt,
-                    language=build_input.language,
-                    status=status,
-                    preview_url=preview_url,
-                    storage_path=str(workspace_dir),
-                    error_message=message,
-                )
-                session.add(app_entity)
+                    # Allow LLM/user-provided metadata to update the existing app.
+                    # If the slug changes, clear the published URL so the old public
+                    # route does not silently serve stale content.
+                    existing_app.name = app_name
+                    existing_app.description = app_desc
+                    existing_app.language = build_input.language
+
+                    existing_slugs_res = await session.scalars(
+                        select(WorkspaceApp.slug).where(
+                            WorkspaceApp.workspace_id == build_input.workspace_id,
+                            WorkspaceApp.id != existing_app.id,
+                        )
+                    )
+                    existing_slugs = set(existing_slugs_res.all())
+                    new_slug = disambiguate_slug(app_slug, existing_slugs)
+                    if new_slug != existing_app.slug:
+                        existing_app.slug = new_slug
+                        existing_app.public_url = None
+                        existing_app.status = "generated"
+                    else:
+                        existing_app.status = status
+                    existing_app.error_message = message
+                    existing_app.preview_url = preview_url
+                    app_entity = existing_app
+                else:
+                    existing_slugs_res = await session.scalars(
+                        select(WorkspaceApp.slug).where(
+                            WorkspaceApp.workspace_id == build_input.workspace_id
+                        )
+                    )
+                    existing_slugs = set(existing_slugs_res.all())
+                    app_slug = disambiguate_slug(app_slug, existing_slugs)
+
+                    app_entity = WorkspaceApp(
+                        id=app_id,
+                        workspace_id=build_input.workspace_id,
+                        user_id=build_input.user_id,
+                        name=app_name,
+                        slug=app_slug,
+                        description=app_desc,
+                        prompt=build_input.prompt,
+                        language=build_input.language,
+                        status=status,
+                        preview_url=preview_url,
+                        storage_path=str(workspace_dir),
+                        error_message=message,
+                    )
+                    session.add(app_entity)
                 await session.commit()
 
                 # Record TokenUsage & cost attribution
@@ -340,7 +515,7 @@ class WebBuilderService:
             else f"Project validation warnings: {', '.join(validation_issues)}"
         )
 
-        preview_url = f"http://localhost:8000/api/v1/web-builder/apps/{app_id}/preview"
+        preview_url = f"{app_config.BACKEND_URL.rstrip('/')}/api/v1/web-builder/apps/{app_id}/preview"
 
         if session:
             try:

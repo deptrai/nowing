@@ -1,8 +1,11 @@
 """Pydantic schemas for Web Builder Service (Story 27.1 / AD-113 / AD-114)."""
 
 from datetime import UTC, datetime
+from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from app.config import config as app_config
 
 
 class GeneratedProjectFile(BaseModel):
@@ -33,10 +36,24 @@ class WebAppBuildInput(BaseModel):
     )
     language: str = Field(default="en", description="Target UI language (e.g. en, vi)")
     workspace_id: int = Field(..., description="Owning workspace ID")
-    user_id: int | None = Field(default=None, description="Requesting user ID")
+    user_id: UUID | None = Field(default=None, description="Requesting user ID")
+    app_id: str | None = Field(
+        default=None,
+        description="Optional existing app ID for conversational refinement",
+    )
     app_name: str | None = Field(
         default=None, description="Optional custom name override"
     )
+
+    @field_validator("prompt")
+    @classmethod
+    def _check_prompt_length(cls, v: str) -> str:
+        max_chars = app_config.WEB_BUILDER_MAX_PROMPT_CHARS
+        if len(v) > max_chars:
+            raise ValueError(
+                f"Prompt exceeds maximum allowed length of {max_chars} characters."
+            )
+        return v
 
 
 class WebAppBuildOutput(BaseModel):
@@ -52,6 +69,7 @@ class WebAppBuildOutput(BaseModel):
     preview_url: str | None = None
     public_url: str | None = None
     message: str | None = None
+    error: str | None = None
     files: list[str] = Field(
         default_factory=list, description="List of generated file paths"
     )
@@ -137,7 +155,7 @@ class WorkspaceAppRead(BaseModel):
 
     id: str
     workspace_id: int
-    user_id: int | None
+    user_id: UUID | None
     name: str
     slug: str
     description: str | None = None

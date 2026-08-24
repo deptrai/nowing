@@ -79,6 +79,10 @@ from app.tasks.chat.streaming.flows import (
     stream_resume_chat,
 )
 from app.tasks.chat.streaming.flows.new_chat.auto_pin import resolve_initial_auto_pin
+from app.tasks.chat.streaming.flows.new_chat.chat_modes import (
+    is_chat_mode_enabled,
+    resolve_chat_mode,
+)
 from app.tasks.chat.streaming.flows.shared.llm_bundle import load_llm_bundle
 from app.tenant_context import set_request_tenant_context
 from app.users import get_auth_context
@@ -824,6 +828,23 @@ async def create_thread(
                 status_code=403,
                 detail="client_id and agent_id are not accepted on internal threads",
             )
+
+        # Chat modes (web_builder, presentation_studio, meeting_minutes) are
+        # gated by a global feature flag and per-workspace setting (AD-120).
+        chat_mode = resolve_chat_mode(thread.platform_metadata)
+        if chat_mode.mode_id != "default":
+            ws = (
+                await session.execute(
+                    select(Workspace).where(Workspace.id == thread.workspace_id)
+                )
+            ).scalars().first()
+            if not is_chat_mode_enabled(
+                chat_mode, workspace=ws, app_config=config
+            ):
+                raise HTTPException(
+                    status_code=403,
+                    detail=chat_mode.error_message,
+                )
 
         # Set tenant GUCs before the insert so the 18.1 RLS WITH CHECK clause
         # on new_chat_threads allows client-scoped rows (here: unscoped/NULL).

@@ -32,6 +32,7 @@ from uuid import UUID
 
 import anyio
 from fastapi import HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.chat.multi_agent_chat import create_multi_agent_chat_deep_agent
@@ -43,10 +44,12 @@ from app.agents.chat.multi_agent_chat.shared.filesystem_selection import (
 from app.agents.chat.runtime.llm_config import AgentConfig as RuntimeAgentConfig
 from app.auth.agent_chat import _resolve_agent_config
 from app.auth.context import AuthContext
+from app.config import config as app_config
 from app.db import (
     AgentConfig as RegistryAgentConfig,
     ChatVisibility,
     NewChatThread,
+    Workspace,
     async_session_maker,
 )
 from app.observability import otel as ot
@@ -56,6 +59,11 @@ from app.tasks.chat.streaming.agent.builder import build_main_agent_for_thread
 from app.tasks.chat.streaming.contract.file_contract import log_file_contract
 from app.tasks.chat.streaming.errors.emitter import emit_stream_terminal_error
 from app.tasks.chat.streaming.flows.new_chat.auto_pin import resolve_initial_auto_pin
+from app.tasks.chat.streaming.flows.new_chat.chat_modes import (
+    get_chat_mode_system_prompt,
+    is_chat_mode_enabled,
+    resolve_chat_mode,
+)
 from app.tasks.chat.streaming.flows.new_chat.initial_thinking_step import (
     build_initial_thinking_step,
     iter_initial_thinking_step_frame,
@@ -335,7 +343,14 @@ async def stream_new_chat(
     # platform_metadata on the thread for last-turn context (P-METADATA-PERSIST).
     chat_thread = await session.get(NewChatThread, chat_id)
     if chat_thread is not None:
-        chat_thread.platform_metadata = platform_metadata
+        # Story 27.1a: per-turn payload overrides thread-level metadata; if the
+        # turn omits it, fall back to the thread's stored metadata so mode is
+        # not lost on regenerate/refresh.
+        thread_metadata = getattr(chat_thread, "platform_metadata", None)
+        if platform_metadata is not None:
+            chat_thread.platform_metadata = platform_metadata
+        elif thread_metadata is not None:
+            platform_metadata = thread_metadata
     research_thread_id = (
         chat_thread.research_thread_id if chat_thread is not None else None
     )
@@ -527,6 +542,40 @@ async def stream_new_chat(
             )
             yield streaming_service.format_done()
             return
+
+        # --- Block 1c: Chat mode gating (Story 27.1a, AD-120) ---
+        chat_mode = resolve_chat_mode(platform_metadata)
+        if chat_mode.mode_id != "default":
+            workspace = (
+                await session.execute(select(Workspace).where(Workspace.id == workspace_id))
+            ).scalars().first()
+            if not is_chat_mode_enabled(
+                chat_mode, workspace=workspace, app_config=app_config
+            ):
+                yield emit_stream_error(
+                    message=chat_mode.error_message,
+                    error_kind="user_error",
+                    error_code=chat_mode.error_code,
+                )
+                yield streaming_service.format_done()
+                return
+
+            if agent_config is None:
+                yield emit_stream_error(
+                    message=f"Failed to create agent config for {chat_mode.label}",
+                    error_kind="server_error",
+                    error_code="SERVER_ERROR",
+                )
+                yield streaming_service.format_done()
+                return
+
+            if chat_mode.enabled_tools is not None:
+                effective_enabled_tools = list(chat_mode.enabled_tools)
+            agent_config.system_instructions = _clamp_agent_instructions(
+                get_chat_mode_system_prompt(
+                    chat_mode, agent_config.system_instructions
+                )
+            )
 
         # --- Block 2: Spawn concurrent persistence; build pre-stream setup ---
 

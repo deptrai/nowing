@@ -13,6 +13,18 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+# ponytail: allow any HTTPS connect-src so generated apps can post lead forms,
+# load analytics, and call external APIs. Hardening to per-app allow-lists is
+# the next step once app authors can declare their endpoints.
+WEB_BUILDER_CSP = (
+    "default-src 'self' 'unsafe-inline' https:; "
+    "img-src 'self' data: https: blob:; "
+    "font-src 'self' data: https:; "
+    "style-src 'self' 'unsafe-inline' https: https://fonts.googleapis.com; "
+    "connect-src 'self' https:; "
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com;"
+)
+
 
 class PreviewRenderer:
     """Renders stored Next.js web application files into an interactive HTML preview."""
@@ -57,10 +69,21 @@ class PreviewRenderer:
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="{WEB_BUILDER_CSP}">
   <title>{html.escape(app_name)} - Live Preview</title>
   
   <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Fallback if any CDN fails to load -->
+  <script>
+    window.__webBuilderCdnFallback = function() {{
+      const root = document.getElementById('root');
+      if (root) {{
+        root.innerHTML = '<div class="min-h-screen flex flex-col items-center justify-center p-8 bg-slate-950 text-white text-center"><div><h1 class="text-2xl font-bold text-indigo-400 mb-2">Preview unavailable</h1><p class="text-slate-400">A required CDN resource could not be loaded. Please try again later.</p></div></div>';
+      }}
+    }};
+  </script>
+
+  <script src="https://cdn.tailwindcss.com" onerror="__webBuilderCdnFallback()"></script>
   <script>
     tailwind.config = {{
       darkMode: 'class',
@@ -86,12 +109,12 @@ class PreviewRenderer:
   </script>
 
   <!-- React 18 & Babel Standalone for live in-browser JSX execution -->
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js" onerror="__webBuilderCdnFallback()"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" onerror="__webBuilderCdnFallback()"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js" onerror="__webBuilderCdnFallback()"></script>
   
   <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/lucide@latest" onerror="__webBuilderCdnFallback()"></script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -199,8 +222,20 @@ class PreviewRenderer:
 
     @staticmethod
     def _sanitize_tsx_for_babel(tsx_code: str) -> str:
-        """Strip TypeScript syntax from Next.js component to allow execution in browser Babel."""
+        """Strip TypeScript syntax and sanitize scripts from Next.js component for browser Babel."""
         code = tsx_code
+
+        # Prevent closing Babel script tag injection
+        code = re.sub(r"</script>", r"<\/script>", code, flags=re.IGNORECASE)
+
+        # Strip access to sensitive browser storage / auth tokens
+        code = re.sub(r"\bdocument\.cookie\b", "''", code)
+        code = re.sub(
+            r"\blocalStorage\b", "{ getItem: () => null, setItem: () => {} }", code
+        )
+        code = re.sub(
+            r"\bsessionStorage\b", "{ getItem: () => null, setItem: () => {} }", code
+        )
 
         # Strip imports
         code = re.sub(r"import\s+[^;]+;?", "", code)
@@ -215,8 +250,8 @@ class PreviewRenderer:
             r"(?:interface|type)\s+[A-Za-z0-9_]+\s*=?\s*\{[^}]*\};?", "", code
         )
 
-        # Strip generic types and type annotations
-        code = re.sub(r":\s*[A-Z][a-zA-Z0-9_<>\[\]|&\s]*", "", code)
-        code = re.sub(r"as\s+[A-Z][a-zA-Z0-9_<>\[\]]*", "", code)
+        # Strip generic types and type annotations (uppercase and lowercase)
+        code = re.sub(r":\s*[A-Za-z_][a-zA-Z0-9_<>\[\]|&\s]*", "", code)
+        code = re.sub(r"as\s+[A-Za-z_][a-zA-Z0-9_<>\[\]]*", "", code)
 
         return code
