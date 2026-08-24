@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: "2026-08-25"  # Story 27-1a remains pending-human-review after lucide preview + chat card fixes. P0 surfaces: auth, data integrity, chat orchestration, external LLM cost.
+last_updated: "2026-08-25"  # Story 27-1a moved to done after human review approval. P0 surfaces: auth, data integrity, chat orchestration, external LLM cost.
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # - Parsed epics.md: 24 epics, ~160 stories.
 # - Scanned _bmad-output/implementation-artifacts/ + stories/*.md for story files (frontmatter story_key/epic+story).
@@ -299,7 +299,7 @@ development_status:
   # === Epic 27: Full-Stack Web App Builder, Instant Hosting & Creative Studio ===
   epic-27: in-progress
   27-1: in-progress  # Parent/tracking story — split into 27-1a (done), 27-1b/c/d (in-progress). Audit 2026-08-25 shows partial implementation; see web-builder-27-1-status-audit-2026-08-25.md.
-  27-1a: pending-human-review  # Web Builder Chat Mode MVP for Sales & Marketing (Option A) — P0 surfaces touched (auth, data integrity, chat orchestration, external LLM cost). Lucide preview + GenerateWebAppToolUI chat card verified; awaiting human review.
+  27-1a: done  # Web Builder Chat Mode MVP for Sales & Marketing (Option A) — human review approved. P0 surfaces acknowledged: auth, data integrity, chat orchestration, external LLM cost. Lucide preview + GenerateWebAppToolUI chat card verified.
   27-1b: in-progress  # Web App Build & Preview Runner — generation/validation/registry/cost done; missing real npm install + next build/next dev preview runner (builder.py) and web_builder_build TokenUsage. See web-builder-27-1-status-audit-2026-08-25.md.
   27-1c: in-progress  # Web App Container Deploy & Custom CNAME — static publish / host route / Dockerfile / custom-domain endpoint done; missing real Docker build/run, Traefik/Caddy route registration, and DNS CNAME validation. See web-builder-27-1-status-audit-2026-08-25.md.
   27-1d: in-progress  # Web App Mark Tool & JSX AST Mutator — UI/iframe postMessage/regex-based patch endpoint done; missing real AST parser (@babel/parser/traverse/types) and web_builder_mark TokenUsage. See web-builder-27-1-status-audit-2026-08-25.md.

@@ -4,12 +4,12 @@ story_key: 27-1a
 epic: epic-27
 story: "27.1a"
 title: "Web Builder Chat Mode MVP for Sales & Marketing (Option A)"
-status: "pending-human-review"
+status: "done"
 ---
 
 # Story 27.1a: Web Builder Chat Mode MVP for Sales & Marketing
 
-**Status:** `pending-human-review`  
+**Status:** `done`  
 **Epic:** Epic 27 — Full-Stack Web App Builder, Instant Hosting & Creative Studio  
 **Priority:** P1  
 **Scope:** MVP slice of Story 27.1 — chat-first entry, standalone page kept, lightweight static publish via backend wildcard route (`*.apps.nowing.net`).  
