@@ -54,6 +54,7 @@ class BillingUnit(StrEnum):
     TELEGRAM_MESSAGE = "telegram_message"
     ECOMMERCE_PRODUCT = "ecommerce_product"
     WEB_BUILDER_GENERATE = "web_builder_generate"
+    WEB_BUILDER_BUILD = "web_builder_build"
 
 
 class BillableInput(Protocol):

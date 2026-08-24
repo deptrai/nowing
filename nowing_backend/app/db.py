@@ -6561,7 +6561,9 @@ class WorkspaceApp(Base):
 
     __tablename__ = "workspace_apps"
     __table_args__ = (
-        UniqueConstraint("workspace_id", "slug", name="uq_workspace_apps_workspace_slug"),
+        UniqueConstraint(
+            "workspace_id", "slug", name="uq_workspace_apps_workspace_slug"
+        ),
         Index("ix_workspace_apps_workspace_status", "workspace_id", "status"),
         Index("ix_workspace_apps_custom_domain", "custom_domain"),
         # Globally unique published slug so public URLs cannot collide across
@@ -6596,8 +6598,11 @@ class WorkspaceApp(Base):
         String(10), nullable=False, default="en", server_default=text("'en'")
     )
     status = Column(
-        String(50), nullable=False, default="generated", server_default=text("'generated'")
-    )  # generated, building, published, deploy_failed, error
+        String(50),
+        nullable=False,
+        default="generated",
+        server_default=text("'generated'"),
+    )  # generated, building, preview_ready, build_failed, published, deploy_failed, error
     preview_url = Column(String(512), nullable=True)
     public_url = Column(String(512), nullable=True)
     custom_domain = Column(String(255), nullable=True)
@@ -6624,4 +6629,3 @@ class WorkspaceApp(Base):
 
     workspace = relationship("Workspace", backref="apps")
     user = relationship("User", backref="apps")
-

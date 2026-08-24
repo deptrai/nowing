@@ -74,6 +74,7 @@ class WebAppBuildOutput(BaseModel):
     public_url: str | None = Field(default=None, max_length=512)
     message: str | None = Field(default=None, max_length=1000)
     error: str | None = Field(default=None, max_length=1000)
+    error_message: str | None = Field(default=None, max_length=2000)
     files: list[str] = Field(
         default_factory=list, description="List of generated file paths"
     )
@@ -143,7 +144,9 @@ class MarkToolInput(BaseModel):
 
     workspace_id: int
     selector: str = Field(
-        ..., max_length=512, description="DOM selector (CSS or XPath) captured from iframe"
+        ...,
+        max_length=512,
+        description="DOM selector (CSS or XPath) captured from iframe",
     )
     patch: MarkToolPatch = Field(..., description="Patch details")
     file_path: str = Field(
@@ -180,7 +183,38 @@ class WorkspaceAppRead(BaseModel):
     public_url: str | None = None
     custom_domain: str | None = None
     custom_domain_status: str | None = None
+    error_message: str | None = None
     created_at: datetime
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class BuildProjectInput(BaseModel):
+    """Input payload for manually triggering web application build."""
+
+    workspace_id: int = Field(..., description="Workspace ID owning the app")
+
+
+class BuildLogsOutput(BaseModel):
+    """Output payload for build log queries."""
+
+    app_id: str
+    workspace_id: int
+    logs: str
+    lines: int
+    status: str
+
+
+class BuildResult(BaseModel):
+    """Result returned by BuilderService execution."""
+
+    status: str = Field(
+        ..., description="Build outcome status: preview_ready, build_failed"
+    )
+    success: bool = Field(default=False)
+    build_output_dir: str | None = None
+    logs: str | None = None
+    error: str | None = None
+
+    model_config = ConfigDict(arbitrary_types_allowed=False)

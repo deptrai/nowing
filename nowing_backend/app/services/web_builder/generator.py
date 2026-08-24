@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import FILE_STORAGE_LOCAL_PATH, config as app_config
 from app.services.token_tracking_service import record_token_usage
+from app.services.web_builder.builder import BuilderService
 from app.services.web_builder.project_writer import ProjectWriter
 from app.services.web_builder.schemas import (
     GeneratedProjectSpec,
@@ -147,10 +148,7 @@ class WebBuilderService:
 
         app_id = str(uuid.uuid4())
         workspace_dir = (
-            self.storage_base_path
-            / "web-app"
-            / str(build_input.workspace_id)
-            / app_id
+            self.storage_base_path / "web-app" / str(build_input.workspace_id) / app_id
         )
 
         spec_dict, token_usage = await self._call_llm_for_spec(
@@ -261,9 +259,8 @@ class WebBuilderService:
                     error_message=message,
                 )
                 session.add(app_entity)
-                await session.commit()
 
-                # Record actual TokenUsage when available (P24).
+                # Record actual TokenUsage before commit so it is persisted (R-01).
                 await record_token_usage(
                     session=session,
                     workspace_id=build_input.workspace_id,
@@ -274,6 +271,9 @@ class WebBuilderService:
                     total_tokens=token_usage.get("total_tokens", 0),
                     cost_micros=0,  # priced by usage tokens, not a fixed estimate
                 )
+                await session.commit()
+
+
             except Exception as db_err:
                 logger.error(
                     f"[WebBuilderService] DB persistence failed for app {app_id}: {db_err}"
@@ -425,7 +425,18 @@ class WebBuilderService:
 
         if session:
             try:
+                from sqlalchemy import select
+
                 from app.db import WorkspaceApp
+                from app.services.web_builder.deploy_service import disambiguate_slug
+
+                existing_slugs_res = await session.scalars(
+                    select(WorkspaceApp.slug).where(
+                        WorkspaceApp.workspace_id == build_input.workspace_id
+                    )
+                )
+                existing_slugs = set(existing_slugs_res.all())
+                app_slug = disambiguate_slug(app_slug, existing_slugs)
 
                 app_entity = WorkspaceApp(
                     id=app_id,
@@ -442,8 +453,8 @@ class WebBuilderService:
                     error_message=message,
                 )
                 session.add(app_entity)
-                await session.commit()
 
+                # Record actual TokenUsage before commit so it is persisted (R-01).
                 await record_token_usage(
                     session=session,
                     workspace_id=build_input.workspace_id,
@@ -454,6 +465,12 @@ class WebBuilderService:
                     total_tokens=prompt_tokens + completion_tokens,
                     cost_micros=0,
                 )
+                await session.commit()
+
+                if is_valid and status == "generated":
+                    await BuilderService.trigger_async_build(
+                        app_id=app_id, workspace_id=build_input.workspace_id
+                    )
             except Exception as db_err:
                 logger.error(
                     f"[WebBuilderService] DB persistence failed for app {app_id}: {db_err}"

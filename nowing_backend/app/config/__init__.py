@@ -855,7 +855,9 @@ class Config:
     NOWING_PUBLIC_URL = os.getenv("NOWING_PUBLIC_URL")
     NEXT_FRONTEND_URL = os.getenv("NEXT_FRONTEND_URL") or NOWING_PUBLIC_URL
     # Backend URL to override the http to https in the OAuth redirect URI
-    BACKEND_URL = os.getenv("BACKEND_URL") or NOWING_PUBLIC_URL or "http://localhost:8000"
+    BACKEND_URL = (
+        os.getenv("BACKEND_URL") or NOWING_PUBLIC_URL or "http://localhost:8000"
+    )
 
     # Messaging gateway
     # Global master switch: when FALSE, no gateway supervisors/workers start and all
@@ -1824,6 +1826,20 @@ class Config:
     # Small fixed platform fee for static-snapshot deploy (default $0 for Option A).
     WEB_BUILDER_DEPLOY_COST_MICROS = max(
         0, _env_int("WEB_BUILDER_DEPLOY_COST_MICROS", 0)
+    )
+    WEB_BUILDER_BUILD_COST_MICROS = max(0, _env_int("WEB_BUILDER_BUILD_COST_MICROS", 0))
+    WEB_BUILDER_BUILD_TIMEOUT_SECONDS = max(
+        10, _env_int("WEB_BUILDER_BUILD_TIMEOUT_SECONDS", 300)
+    )
+    WEB_BUILDER_MAX_CONCURRENT_BUILDS = max(
+        1, _env_int("WEB_BUILDER_MAX_CONCURRENT_BUILDS", 3)
+    )
+    WEB_BUILDER_BUILD_NODE_VERSION = os.getenv("WEB_BUILDER_BUILD_NODE_VERSION", "20")
+    WEB_BUILDER_BUILD_NODE_IMAGE_DIGEST = os.getenv(
+        "WEB_BUILDER_BUILD_NODE_IMAGE_DIGEST", ""
+    ).strip()
+    WEB_BUILDER_DOCKER_SANDBOX_ENABLED = (
+        os.getenv("WEB_BUILDER_DOCKER_SANDBOX_ENABLED", "FALSE").upper() == "TRUE"
     )
 
     PRESENTATION_STUDIO_ENABLED = (

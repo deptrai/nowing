@@ -1,0 +1,582 @@
+diff --git a/nowing_web/components/assistant-ui/assistant-message.tsx b/nowing_web/components/assistant-ui/assistant-message.tsx
+index 7404a9f78..f45700c9e 100644
+--- a/nowing_web/components/assistant-ui/assistant-message.tsx
++++ b/nowing_web/components/assistant-ui/assistant-message.tsx
+@@ -108,6 +108,11 @@ const GenerateImageToolUI = dynamic(
+ 		import("@/components/tool-ui/generate-image").then((m) => ({ default: m.GenerateImageToolUI })),
+ 	{ ssr: false }
+ );
++const GenerateWebAppToolUI = dynamic(
++	() =>
++		import("@/components/tool-ui/web-builder").then((m) => ({ default: m.GenerateWebAppToolUI })),
++	{ ssr: false }
++);
+ function useCitationsFromMetadata(): SerializableCitation[] {
+ 	const allCitations = useAllCitationMetadata();
+ 	return useMemo(() => {
+@@ -443,6 +448,7 @@ const BODY_TOOLS = {
+ 	generate_video_presentation: withArtifactAnchor(GenerateVideoPresentationToolUI),
+ 	display_image: withArtifactAnchor(GenerateImageToolUI),
+ 	generate_image: withArtifactAnchor(GenerateImageToolUI),
++	build_web_app: withArtifactAnchor(GenerateWebAppToolUI),
+ } as const;
+ 
+ const NullBodyTool: ToolCallMessagePartComponent = () => null;
+diff --git a/nowing_web/components/assistant-ui/thread.tsx b/nowing_web/components/assistant-ui/thread.tsx
+index 629dc2459..a1f0b21c2 100644
+--- a/nowing_web/components/assistant-ui/thread.tsx
++++ b/nowing_web/components/assistant-ui/thread.tsx
+@@ -319,16 +319,46 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
+ 				{/* Quick Suggestion Chips */}
+ 				<div className="flex flex-wrap items-center justify-center gap-2 max-w-full">
+ 					{[
++						{
++							label: "Build a landing page",
++							icon: "🌐",
++							prompt:
++								"Build a modern high-converting landing page for a SaaS product with hero section, features, testimonials, and email signup CTA.",
++							mode: "web_builder",
++						},
++						{
++							label: "Pricing page",
++							icon: "💳",
++							prompt:
++								"Create a modern 3-tier pricing page with monthly/yearly toggle, comparison table, and FAQ section.",
++							mode: "web_builder",
++						},
++						{
++							label: "Lead capture",
++							icon: "🎯",
++							prompt:
++								"Create an engaging lead capture page with an email opt-in form, value proposition highlights, and social proof badges.",
++							mode: "web_builder",
++						},
++						{
++							label: "Waitlist page",
++							icon: "🚀",
++							prompt:
++								"Build an exciting viral waitlist coming-soon page with early access signup, countdown timer, and referral perk highlights.",
++							mode: "web_builder",
++						},
++						{
++							label: "Marketing report",
++							icon: "📊",
++							prompt:
++								"Generate a clean interactive marketing report and whitepaper showcase page with key metric callouts and download CTA.",
++							mode: "web_builder",
++						},
+ 						{
+ 							label: "Give me ideas",
+ 							icon: "💡",
+ 							prompt: tChat("card_icp_prompt"),
+ 						},
+-						{
+-							label: "New campaign",
+-							icon: "➕",
+-							prompt: tChat("card_bds_prompt"),
+-						},
+ 						{
+ 							label: tChat("card_bds_title"),
+ 							icon: "🏢",
+@@ -344,7 +374,9 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
+ 							key={chip.label}
+ 							type="button"
+ 							onClick={() => {
+-								window.location.href = `/dashboard/1/new-chat?q=${encodeURIComponent(chip.prompt)}`;
++								const targetWorkspace = workspaceId || "1";
++								const modeParam = chip.mode ? `&mode=${chip.mode}` : "";
++								window.location.href = `/dashboard/${targetWorkspace}/new-chat?q=${encodeURIComponent(chip.prompt)}${modeParam}`;
+ 							}}
+ 							className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/80 bg-card hover:bg-muted/70 text-xs font-medium text-foreground transition-all hover:scale-102 cursor-pointer shadow-2xs"
+ 						>
+@@ -731,6 +763,7 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
+ 	const documentPickerRef = useRef<DocumentMentionPickerRef>(null);
+ 	const promptPickerRef = useRef<PromptPickerRef>(null);
+ 	const params = useParams();
++	const router = useRouter();
+ 	const workspaceId = getWorkspaceIdNumber(params);
+ 	const chat_id = params.chat_id;
+ 	const aui = useAui();
+@@ -960,7 +993,12 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
+ 	}, []);
+ 
+ 	const handleActionSelect = useCallback(
+-		(action: { name: string; prompt: string; mode: "transform" | "explore" }) => {
++		(action: {
++			name: string;
++			prompt: string;
++			mode: "transform" | "explore";
++			isWebBuilder?: boolean;
++		}) => {
+ 			let userText = editorRef.current?.getText() ?? "";
+ 			const trigger = `/${actionQuery}`;
+ 			if (userText.endsWith(trigger)) {
+@@ -977,8 +1015,13 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
+ 			setShowPromptPicker(false);
+ 			setActionQuery("");
+ 			setSuggestionAnchorPoint(null);
++
++			if (action.isWebBuilder) {
++				const targetWs = workspaceId ?? 1;
++				router.replace(`/dashboard/${targetWs}/new-chat?mode=web_builder`, { scroll: false });
++			}
+ 		},
+-		[actionQuery, aui]
++		[actionQuery, aui, router, workspaceId]
+ 	);
+ 
+ 	const _handleExampleSelect = useCallback(
+diff --git a/nowing_web/components/new-chat/prompt-picker.tsx b/nowing_web/components/new-chat/prompt-picker.tsx
+index c2c44aae7..8c3463167 100644
+--- a/nowing_web/components/new-chat/prompt-picker.tsx
++++ b/nowing_web/components/new-chat/prompt-picker.tsx
+@@ -1,7 +1,7 @@
+ "use client";
+ 
+ import { useAtomValue } from "jotai";
+-import { Plus, WandSparkles } from "lucide-react";
++import { Globe, Plus, WandSparkles } from "lucide-react";
+ import { useParams, useRouter } from "next/navigation";
+ import {
+ 	forwardRef,
+@@ -32,12 +32,76 @@ export interface PromptPickerRef {
+ 	moveDown: () => void;
+ }
+ 
++export interface PromptPickerAction {
++	name: string;
++	prompt: string;
++	mode: "transform" | "explore";
++	isWebBuilder?: boolean;
++}
++
+ interface PromptPickerProps {
+-	onSelect: (action: { name: string; prompt: string; mode: "transform" | "explore" }) => void;
++	onSelect: (action: PromptPickerAction) => void;
+ 	onDone: () => void;
+ 	externalSearch?: string;
+ }
+ 
++interface BuiltinPromptItem {
++	id: string;
++	name: string;
++	description: string;
++	prompt: string;
++	mode: "transform" | "explore";
++	isWebBuilder: boolean;
++}
++
++const BUILTIN_TEMPLATES: BuiltinPromptItem[] = [
++	{
++		id: "web-landing-page",
++		name: "/web landing page",
++		description: "High-converting SaaS / product landing page",
++		prompt:
++			"Build a modern high-converting landing page for a SaaS product with hero section, feature cards, testimonial carousel, pricing comparison, and email CTA.",
++		mode: "explore",
++		isWebBuilder: true,
++	},
++	{
++		id: "web-pricing",
++		name: "/web pricing",
++		description: "3-tier pricing page with billing toggle & FAQ",
++		prompt:
++			"Create a modern 3-tier pricing page with monthly/yearly billing toggle, feature comparison table, and FAQ accordion section.",
++		mode: "explore",
++		isWebBuilder: true,
++	},
++	{
++		id: "web-lead-capture",
++		name: "/web lead capture",
++		description: "Lead capture & opt-in page with social proof",
++		prompt:
++			"Create an engaging lead capture page with an email opt-in form, value proposition highlights, benefit bullet points, and social proof badges.",
++		mode: "explore",
++		isWebBuilder: true,
++	},
++	{
++		id: "web-waitlist",
++		name: "/web waitlist",
++		description: "Viral coming-soon waitlist page with countdown",
++		prompt:
++			"Build an exciting viral waitlist coming-soon page with early access email signup, countdown timer, and referral perk highlights.",
++		mode: "explore",
++		isWebBuilder: true,
++	},
++	{
++		id: "web-report",
++		name: "/web report",
++		description: "Interactive marketing report & whitepaper page",
++		prompt:
++			"Generate a clean interactive marketing report and whitepaper showcase page with key metric callouts, interactive charts summary, and download CTA.",
++		mode: "explore",
++		isWebBuilder: true,
++	},
++];
++
+ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(function PromptPicker(
+ 	{ onSelect, onDone, externalSearch = "" },
+ 	ref
+@@ -53,11 +117,60 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
+ 	// Defer the search value so filtering is non-urgent and the input stays responsive
+ 	const deferredSearch = useDeferredValue(externalSearch);
+ 
+-	const filtered = useMemo(() => {
++	const normalizedSearch = useMemo(() => {
++		let q = deferredSearch.trim().toLowerCase();
++		if (q.startsWith("/")) q = q.slice(1);
++		return q;
++	}, [deferredSearch]);
++
++	const filteredBuiltins = useMemo(() => {
++		if (!normalizedSearch) return BUILTIN_TEMPLATES;
++		return BUILTIN_TEMPLATES.filter(
++			(item) =>
++				item.name.toLowerCase().includes(normalizedSearch) ||
++				item.description.toLowerCase().includes(normalizedSearch) ||
++				item.prompt.toLowerCase().includes(normalizedSearch)
++		);
++	}, [normalizedSearch]);
++
++	const filteredSaved = useMemo(() => {
+ 		const list = prompts ?? [];
+-		if (!deferredSearch) return list;
+-		return list.filter((a) => a.name.toLowerCase().includes(deferredSearch.toLowerCase()));
+-	}, [prompts, deferredSearch]);
++		if (!normalizedSearch) return list;
++		return list.filter((a) => a.name.toLowerCase().includes(normalizedSearch));
++	}, [prompts, normalizedSearch]);
++
++	// Flat list of selectable items for keyboard indexing
++	const flatItems = useMemo(() => {
++		const items: {
++			id: string | number;
++			name: string;
++			prompt: string;
++			mode: "transform" | "explore";
++			isWebBuilder?: boolean;
++		}[] = [];
++
++		for (const b of filteredBuiltins) {
++			items.push({
++				id: b.id,
++				name: b.name,
++				prompt: b.prompt,
++				mode: b.mode,
++				isWebBuilder: true,
++			});
++		}
++
++		for (const s of filteredSaved) {
++			items.push({
++				id: s.id,
++				name: s.name,
++				prompt: s.prompt,
++				mode: s.mode,
++				isWebBuilder: false,
++			});
++		}
++
++		return items;
++	}, [filteredBuiltins, filteredSaved]);
+ 
+ 	// Reset highlight when the deferred (filtered) search changes
+ 	const prevSearchRef = useRef(deferredSearch);
+@@ -68,8 +181,8 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
+ 		}
+ 	}
+ 
+-	const createPromptIndex = filtered.length;
+-	const totalItems = filtered.length + 1;
++	const createPromptIndex = flatItems.length;
++	const totalItems = flatItems.length + 1;
+ 	const workspaceId = getWorkspaceIdParam(params);
+ 
+ 	const handleSelect = useCallback(
+@@ -81,11 +194,16 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
+ 				}
+ 				return;
+ 			}
+-			const action = filtered[index];
++			const action = flatItems[index];
+ 			if (!action) return;
+-			onSelect({ name: action.name, prompt: action.prompt, mode: action.mode });
++			onSelect({
++				name: action.name,
++				prompt: action.prompt,
++				mode: action.mode,
++				isWebBuilder: action.isWebBuilder,
++			});
+ 		},
+-		[filtered, onSelect, createPromptIndex, onDone, router, workspaceId]
++		[flatItems, onSelect, createPromptIndex, onDone, router, workspaceId]
+ 	);
+ 
+ 	useEffect(() => {
+@@ -123,6 +241,8 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
+ 		[totalItems, highlightedIndex, handleSelect]
+ 	);
+ 
++	const hasNoResults = flatItems.length === 0;
++
+ 	return (
+ 		<ComposerSuggestionList ref={scrollContainerRef}>
+ 			{isLoading ? (
+@@ -131,26 +251,68 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
+ 				<ComposerSuggestionMessage variant="destructive">
+ 					Failed to load prompts
+ 				</ComposerSuggestionMessage>
+-			) : filtered.length === 0 ? (
++			) : hasNoResults ? (
+ 				<ComposerSuggestionMessage>No matching prompts</ComposerSuggestionMessage>
+ 			) : (
+-				<ComposerSuggestionGroup>
+-					<ComposerSuggestionGroupHeading>Saved Prompts</ComposerSuggestionGroupHeading>
+-					{filtered.map((action, index) => (
+-						<ComposerSuggestionItem
+-							key={action.id}
+-							ref={(el) => {
+-								if (el) itemRefs.current.set(index, el);
+-								else itemRefs.current.delete(index);
+-							}}
+-							icon={<WandSparkles className="size-3.5" />}
+-							selected={index === highlightedIndex}
+-							onClick={() => handleSelect(index)}
+-							onMouseEnter={() => setHighlightedIndex(index)}
+-						>
+-							<span className="flex-1 truncate text-xs">{action.name}</span>
+-						</ComposerSuggestionItem>
+-					))}
++				<>
++					{/* Web Builder Templates Group */}
++					{filteredBuiltins.length > 0 && (
++						<ComposerSuggestionGroup>
++							<ComposerSuggestionGroupHeading>Web Builder Templates</ComposerSuggestionGroupHeading>
++							{filteredBuiltins.map((builtin, i) => {
++								const flatIdx = i;
++								return (
++									<ComposerSuggestionItem
++										key={builtin.id}
++										ref={(el) => {
++											if (el) itemRefs.current.set(flatIdx, el);
++											else itemRefs.current.delete(flatIdx);
++										}}
++										icon={<Globe className="size-3.5 text-teal-600 dark:text-teal-400" />}
++										selected={flatIdx === highlightedIndex}
++										onClick={() => handleSelect(flatIdx)}
++										onMouseEnter={() => setHighlightedIndex(flatIdx)}
++									>
++										<div className="flex flex-col min-w-0 flex-1">
++											<span className="truncate text-xs font-medium">{builtin.name}</span>
++											<span className="truncate text-[10px] text-muted-foreground">
++												{builtin.description}
++											</span>
++										</div>
++									</ComposerSuggestionItem>
++								);
++							})}
++						</ComposerSuggestionGroup>
++					)}
++
++					{filteredBuiltins.length > 0 && filteredSaved.length > 0 && (
++						<ComposerSuggestionSeparator />
++					)}
++
++					{/* Saved Prompts Group */}
++					{filteredSaved.length > 0 && (
++						<ComposerSuggestionGroup>
++							<ComposerSuggestionGroupHeading>Saved Prompts</ComposerSuggestionGroupHeading>
++							{filteredSaved.map((action, i) => {
++								const flatIdx = filteredBuiltins.length + i;
++								return (
++									<ComposerSuggestionItem
++										key={action.id}
++										ref={(el) => {
++											if (el) itemRefs.current.set(flatIdx, el);
++											else itemRefs.current.delete(flatIdx);
++										}}
++										icon={<WandSparkles className="size-3.5" />}
++										selected={flatIdx === highlightedIndex}
++										onClick={() => handleSelect(flatIdx)}
++										onMouseEnter={() => setHighlightedIndex(flatIdx)}
++									>
++										<span className="flex-1 truncate text-xs">{action.name}</span>
++									</ComposerSuggestionItem>
++								);
++							})}
++						</ComposerSuggestionGroup>
++					)}
+ 
+ 					<ComposerSuggestionSeparator />
+ 					<ComposerSuggestionItem
+@@ -166,7 +328,7 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
+ 					>
+ 						<span>Create prompt</span>
+ 					</ComposerSuggestionItem>
+-				</ComposerSuggestionGroup>
++				</>
+ 			)}
+ 		</ComposerSuggestionList>
+ 	);
+diff --git a/nowing_web/components/tool-ui/index.ts b/nowing_web/components/tool-ui/index.ts
+index a6576f065..3e3062558 100644
+--- a/nowing_web/components/tool-ui/index.ts
++++ b/nowing_web/components/tool-ui/index.ts
+@@ -59,4 +59,11 @@ export {
+ 	UpdateMemoryToolUI,
+ } from "./user-memory";
+ export { GenerateVideoPresentationToolUI } from "./video-presentation";
++export {
++	GenerateWebAppToolUI,
++	type WebAppBuildArgs,
++	WebAppBuildArgsSchema,
++	type WebAppBuildResult,
++	WebAppBuildResultSchema,
++} from "./web-builder";
+ export { type WriteTodosData, WriteTodosSchema, WriteTodosToolUI } from "./write-todos";
+diff --git a/nowing_web/features/chat-artifacts/lib/collect-artifacts.ts b/nowing_web/features/chat-artifacts/lib/collect-artifacts.ts
+index 1e01fda94..7e60eb72f 100644
+--- a/nowing_web/features/chat-artifacts/lib/collect-artifacts.ts
++++ b/nowing_web/features/chat-artifacts/lib/collect-artifacts.ts
+@@ -25,7 +25,16 @@ function isToolCallPart(part: unknown): part is ToolCallPart {
+ }
+ 
+ function asRecord(value: unknown): Record<string, unknown> {
+-	return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
++	if (typeof value === "object" && value !== null) return value as Record<string, unknown>;
++	if (typeof value === "string") {
++		try {
++			const parsed = JSON.parse(value);
++			if (typeof parsed === "object" && parsed !== null) return parsed as Record<string, unknown>;
++		} catch {
++			// ignore non-json string
++		}
++	}
++	return {};
+ }
+ 
+ function firstString(...values: unknown[]): string | null {
+@@ -47,7 +56,12 @@ function describeArtifact(
+ 	hasResult: boolean
+ ): { title: string; entityId: number | null; status: ArtifactStatus } {
+ 	const resultStatus = typeof result.status === "string" ? result.status : null;
+-	const failed = resultStatus === "failed" || resultStatus === "error" || !!result.error;
++	const failed =
++		resultStatus === "failed" ||
++		resultStatus === "error" ||
++		resultStatus === "validation_failed" ||
++		resultStatus === "deploy_failed" ||
++		!!result.error;
+ 
+ 	switch (kind) {
+ 		case "report": {
+@@ -90,6 +104,14 @@ function describeArtifact(
+ 				status: failed ? "error" : ready ? "ready" : hasResult ? "ready" : "running",
+ 			};
+ 		}
++		case "web_app": {
++			const appId = firstString(result.app_id);
++			return {
++				title: firstString(result.name, args.app_name, args.prompt) ?? "Web App",
++				entityId: null,
++				status: failed ? "error" : appId ? "ready" : "running",
++			};
++		}
+ 	}
+ }
+ 
+@@ -122,7 +144,13 @@ export function collectArtifacts(messages: readonly ThreadMessageLike[]): ChatAr
+ 			);
+ 			if (status === "error") continue;
+ 
+-			const key = entityId != null ? `${kind}:${entityId}` : part.toolCallId;
++			const appId = kind === "web_app" ? firstString(result.app_id) : null;
++			const key =
++				entityId != null
++					? `${kind}:${entityId}`
++					: appId != null
++						? `${kind}:${appId}`
++						: part.toolCallId;
+ 			byKey.set(key, {
+ 				key,
+ 				kind,
+@@ -130,7 +158,7 @@ export function collectArtifacts(messages: readonly ThreadMessageLike[]): ChatAr
+ 				status,
+ 				toolCallId: part.toolCallId,
+ 				entityId,
+-				contentType: kind === "resume" ? "typst" : "markdown",
++				contentType: kind === "resume" ? "typst" : kind === "web_app" ? "web" : "markdown",
+ 			});
+ 		}
+ 	}
+diff --git a/nowing_web/features/chat-artifacts/model/artifact.ts b/nowing_web/features/chat-artifacts/model/artifact.ts
+index d8fff5bdd..a9b94e241 100644
+--- a/nowing_web/features/chat-artifacts/model/artifact.ts
++++ b/nowing_web/features/chat-artifacts/model/artifact.ts
+@@ -1,5 +1,5 @@
+ /** Deliverable kinds the agent can produce and surface in the artifacts sidebar. */
+-export type ArtifactKind = "report" | "resume" | "podcast" | "video" | "image";
++export type ArtifactKind = "report" | "resume" | "podcast" | "video" | "image" | "web_app";
+ 
+ export type ArtifactStatus = "running" | "ready" | "error";
+ 
+@@ -16,10 +16,10 @@ export interface ChatArtifact {
+ 	status: ArtifactStatus;
+ 	/** Anchors the scroll-to-card jump back into the conversation. */
+ 	toolCallId: string;
+-	/** Backing entity id for report/resume/podcast/video; null for images. */
++	/** Backing entity id for report/resume/podcast/video; null for images and web apps. */
+ 	entityId: number | null;
+-	/** Report panel content type — "typst" for resumes, "markdown" otherwise. */
+-	contentType: "markdown" | "typst";
++	/** Report panel content type — "typst" for resumes, "web" for web apps, "markdown" otherwise. */
++	contentType: "markdown" | "typst" | "web";
+ }
+ 
+ /** Maps deliverable tool names to artifact kinds. Mirrors the body tools in assistant-message. */
+@@ -30,4 +30,5 @@ export const ARTIFACT_TOOL_KINDS: Record<string, ArtifactKind> = {
+ 	generate_video_presentation: "video",
+ 	generate_image: "image",
+ 	display_image: "image",
++	build_web_app: "web_app",
+ };
+diff --git a/nowing_web/features/chat-artifacts/ui/artifact-row.tsx b/nowing_web/features/chat-artifacts/ui/artifact-row.tsx
+index 3bf2dbc0c..e521d6be9 100644
+--- a/nowing_web/features/chat-artifacts/ui/artifact-row.tsx
++++ b/nowing_web/features/chat-artifacts/ui/artifact-row.tsx
+@@ -1,5 +1,5 @@
+ import { useSetAtom } from "jotai";
+-import { AudioLines, Contact, FileText, ImageIcon, Presentation } from "lucide-react";
++import { AudioLines, Contact, FileText, Globe, ImageIcon, Presentation } from "lucide-react";
+ import type { ComponentType } from "react";
+ import { openReportPanelAtom } from "@/atoms/chat/report-panel.atom";
+ import { Button } from "@/components/ui/button";
+@@ -12,6 +12,7 @@ const KIND_META: Record<
+ 	ArtifactKind,
+ 	{ icon: ComponentType<{ className?: string }>; label: string }
+ > = {
++	web_app: { icon: Globe, label: "Web App" },
+ 	report: { icon: FileText, label: "Report" },
+ 	resume: { icon: Contact, label: "Resume" },
+ 	podcast: { icon: AudioLines, label: "Podcast" },
+diff --git a/nowing_web/features/chat-artifacts/ui/artifacts-panel.tsx b/nowing_web/features/chat-artifacts/ui/artifacts-panel.tsx
+index fc1db13e5..3e3a0188e 100644
+--- a/nowing_web/features/chat-artifacts/ui/artifacts-panel.tsx
++++ b/nowing_web/features/chat-artifacts/ui/artifacts-panel.tsx
+@@ -15,6 +15,7 @@ import {
+ import { ArtifactRow } from "./artifact-row";
+ 
+ const GROUP_ORDER: { kind: ArtifactKind; label: string }[] = [
++	{ kind: "web_app", label: "Web Apps" },
+ 	{ kind: "report", label: "Reports" },
+ 	{ kind: "resume", label: "Resumes" },
+ 	{ kind: "podcast", label: "Podcasts" },
+@@ -35,7 +36,7 @@ function EmptyState() {
+ 			<Boxes className="size-6 text-muted-foreground/60" />
+ 			<p className="text-sm font-medium text-foreground">No artifacts yet</p>
+ 			<p className="text-xs text-muted-foreground">
+-				Reports, podcasts, presentations, and images you generate will appear here.
++				Web apps, reports, podcasts, presentations, and images you generate will appear here.
+ 			</p>
+ 		</div>
+ 	);

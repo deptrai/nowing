@@ -163,6 +163,7 @@ export function GenerateWebAppToolUI({
 	const isFailed =
 		result.status === "validation_failed" ||
 		result.status === "error" ||
+		result.status === "build_failed" ||
 		result.status === "deploy_failed" ||
 		Boolean(result.error) ||
 		Boolean(result.message && !result.app_id);
@@ -174,7 +175,7 @@ export function GenerateWebAppToolUI({
 	const files = result.files ?? [];
 
 	const effectivePublicUrl = publishedUrl || result.public_url;
-	const isPublished = Boolean(effectivePublicUrl) || result.status === "published";
+	const isPublished = result.status === "published" && Boolean(effectivePublicUrl);
 
 	const handlePublish = async () => {
 		if (!appId) {

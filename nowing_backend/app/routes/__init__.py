@@ -135,10 +135,7 @@ from .team_memory_routes import router as team_memory_router
 from .teams_add_connector_route import router as teams_add_connector_router
 from .usage_routes import router as usage_router
 from .video_presentations_routes import router as video_presentations_router
-from .web_builder_routes import (
-    host_router as web_builder_host_router,
-    router as web_builder_router,
-)
+from .web_builder_routes import router as web_builder_router
 from .workspace_tables_routes import router as workspace_tables_router
 from .workspaces_routes import router as workspaces_router
 from .youtube_routes import router as youtube_router
@@ -260,7 +257,5 @@ router.include_router(extract_entities_router)  # Test entity extraction (AC-1 /
 router.include_router(
     web_builder_router
 )  # Full-stack Web App Builder (Story 27.1 / AD-113)
-router.include_router(
-    web_builder_host_router
-)  # Wildcard Host routing for published web apps
+
 router.include_router(build_capabilities_router())  # Scraper-API capability doors (05)

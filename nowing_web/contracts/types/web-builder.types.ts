@@ -2,9 +2,19 @@ export type WebAppStatus =
 	| "generated"
 	| "validation_failed"
 	| "building"
+	| "preview_ready"
+	| "build_failed"
 	| "published"
 	| "deploy_failed"
 	| "error";
+
+export interface BuildLogsOutput {
+	app_id: string;
+	workspace_id: number;
+	logs: string;
+	lines: number;
+	status: string;
+}
 
 export interface WorkspaceApp {
 	id: string;
@@ -20,6 +30,7 @@ export interface WorkspaceApp {
 	public_url?: string;
 	custom_domain?: string;
 	custom_domain_status?: "active" | "pending_verification" | "failed";
+	error_message?: string;
 	created_at: string;
 	updated_at: string;
 }
@@ -40,6 +51,7 @@ export interface WebAppBuildOutput {
 	preview_url?: string;
 	public_url?: string;
 	message?: string;
+	error_message?: string;
 	files: string[];
 }
 

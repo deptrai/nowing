@@ -375,4 +375,21 @@ _Curated long-term knowledge for Nowing E2E Browser Testing._
 
 **Session log:** `sessions/2026-08-24.md`
 
+## Story 27.1b — Web App Build & Preview Runner E2E (2026-08-25)
+
+**Stack:** Backend FastAPI `:8000`, Next.js `:3000`, Postgres `:5434`, Redis `:6380`, Zero-cache `:4848`. Logged in as `e2e-test@nowing.net`.
+
+**Live Browser Verification Results:**
+- **Navigation & Authentication:** Logged in and accessed `http://localhost:3000/dashboard/1/web-builder`.
+- **Rebuild Trigger:** Clicked `Rebuild Application` button; verified `POST /api/v1/web-builder/apps/{app_id}/build` returns `202 Accepted` and updates state to `Building` with spinning animation and "Build started..." toast.
+- **Build Logs Panel:** Verified `data-testid="web-builder-logs-panel"` collapsible drawer opens on failure/rebuild and displays live stdout/stderr compiler logs.
+- **Interactive Preview Canvas:**
+  - Responsive mode switchers: `Desktop (100%)`, `Tablet (768px)`, `Mobile (375px)`.
+  - Live preview iframe (`data-testid="web-app-preview-frame"`) serves generated Next.js + Tailwind web application seamlessly (`http://localhost:8000/api/v1/web-builder/apps/{app_id}/preview?workspace_id=1`).
+- **Code Viewer Tab:** Syntax highlighted source code viewer renders complete Next.js project structure (`app/page.tsx`, `package.json`, `tailwind.config.ts`, `Dockerfile`, `postcss.config.mjs`).
+- **UI Fixes Applied:** Added `min-h-[600px]` to preview canvas column for responsive layout stability below 1024px breakpoint.
+- **Artifacts:** `screenshot_2026-08-24T13-44-25-127Z.png`, `screenshot_2026-08-24T13-47-53-359Z.png`, `screenshot_2026-08-24T13-51-19-322Z.png`, `screenshot_2026-08-24T13-52-09-251Z.png`.
+
+**Session log:** `sessions/2026-08-25.md`
+
 

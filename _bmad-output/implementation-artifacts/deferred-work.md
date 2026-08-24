@@ -1,3 +1,13 @@
+## Resolved from: code review of 27-1b-web-app-build-preview-runner (2026-08-25)
+
+- **Finding:** Isolated Docker container sandbox execution & Config AST sanitization for untrusted `next.config.js` / `postcss.config.mjs`.
+  - **Action:** Marked `[x] [Review][Resolved]` in `27-1b-web-app-build-preview-runner.md`.
+  - **Resolution:** Implemented 3-layer security sandbox:
+    1. Pre-build AST/regex security audit `validate_project_security` rejecting `child_process`, `execSync`, `spawn`, `fs`, `net`, `dgram`, `eval`, `process.exit`, and dangerous package.json scripts.
+    2. Subprocess execution environment scrubbing (`_get_sanitized_build_env`) stripping 100% of host credentials (`DATABASE_URL`, `SECRET_KEY`, `CHAINLENS_API_KEY`, tokens).
+    3. Docker sandbox container build runner (`WEB_BUILDER_DOCKER_SANDBOX_ENABLED`) with `--network none`, `--memory 1024m`, `--cpus 2.0`, `--security-opt no-new-privileges`.
+    4. Unit tests `test_build_project_security_audit_rejection` and `test_build_environment_sanitization` verified 100% GREEN.
+
 ## Resolved from: code review of 27-1a-web-builder-chat-mode-sales-marketing-mvp (2026-08-24)
 
 - **Finding:** Multi-turn chat AST editing & conversation refinement.
@@ -1160,3 +1170,12 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - **Finding:** Không có E2E extension tests (Review Finding).
   - **Action:** Marked `[x] [Review][Defer]` in `24-8-browser-operator-cdp-tool-and-human-live-takeover.md`.
   - **Reason / when to revisit:** Cần Playwright + real Chrome extension lifecycle để test debugger/SSE.
+
+## Deferred from: code review of 27-1b-web-app-build-preview-runner (2026-08-25)
+
+- **Finding:** Pre-existing 27.1a `PreviewRenderer` browser-compile model and CSP.
+  - **Action:** Marked `[x] [Review][Defer]` in `27-1b-web-app-build-preview-runner.md`.
+  - **Reason / when to revisit:** Out of scope for 27.1b; revisit when moving to real compiled preview or hardening public-app threat model.
+- **Finding:** Pre-existing hardcoded `*.apps.nowing.net` public URL base in `generator.py`.
+  - **Action:** Marked `[x] [Review][Defer]` in `27-1b-web-app-build-preview-runner.md`.
+  - **Reason / when to revisit:** Belongs to hosting/ingress config (Story 27.1c).

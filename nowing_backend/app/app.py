@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request as StarletteRequest
 from starlette.responses import Response as StarletteResponse
+from starlette.routing import Host
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app.agents.chat.runtime.checkpointer import (
@@ -75,6 +76,7 @@ from app.routes.hybrid_llm_routes import (
 from app.routes.lead_batch_routes import router as lead_batch_router
 from app.routes.self_host_research import router as self_host_research_router
 from app.routes.users_routes import router as users_router
+from app.routes.web_builder_routes import host_router as web_builder_host_router
 from app.routes.zero_context_routes import router as zero_context_router
 from app.schemas import UserCreate, UserRead
 from app.session_events import register_session_hooks
@@ -1198,6 +1200,18 @@ app.include_router(hybrid_internal_router, prefix="/v1", tags=["hybrid-llm-inter
 app.include_router(crud_router, prefix="/api/v1", tags=["crud"])
 app.include_router(crud_router, prefix="/api", tags=["crud"])
 app.include_router(crud_router)
+
+# Wildcard host routing for published web apps: only match *.HOSTING_BASE_DOMAIN.
+host_web_app = FastAPI()
+host_web_app.include_router(web_builder_host_router)
+app.router.routes.insert(
+    0,
+    Host(
+        f"{{subdomain}}.{config.HOSTING_BASE_DOMAIN}",
+        app=host_web_app,
+        name="web-builder-host",
+    ),
+)
 
 
 @functools.lru_cache(maxsize=1)

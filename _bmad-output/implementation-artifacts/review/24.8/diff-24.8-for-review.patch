@@ -1,0 +1,2389 @@
+diff --git a/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/web_crawler/description.md b/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/web_crawler/description.md
+index 4e084d767..b0ca5a67a 100644
+--- a/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/web_crawler/description.md
++++ b/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/web_crawler/description.md
+@@ -1,2 +1,2 @@
+-Web crawling specialist: fetches live public web pages by URL and can spider a whole website (follow its links to a given depth), returning clean markdown, page metadata, and crawl provenance. Also compares freshly crawled data against earlier findings in this chat.
+-Use whenever the task needs current content pulled from the open web rather than the workspace's own documents or connectors. Triggers include "scrape", "crawl", "fetch this URL/page", "read this website", "crawl this site", "get the pages under X", "check the price/stock/listing", and "what changed vs earlier in this chat". Not for YouTube links (use the youtube specialist) or for searching the web to discover unknown URLs.
++Web crawling and browser operator specialist: fetches live public web pages by URL, spiders websites, and directly controls the user's browser (navigate, scroll, click, type) via the connected Nowing Chrome Extension. Also compares freshly crawled data against earlier findings in this chat.
++Use whenever the task needs current content pulled from the open web, or when the user asks to control their live browser session (e.g. "navigate to", "scroll down", "click", "điều khiển trình duyệt", "cuộn trang", "chuyển hướng web qua extension"). Triggers include "scrape", "crawl", "fetch this URL/page", "read this website", "crawl this site", "navigate", "scroll", "điều khiển trình duyệt". Not for YouTube links (use the youtube specialist) or for searching the web to discover unknown URLs.
+diff --git a/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/web_crawler/system_prompt.md b/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/web_crawler/system_prompt.md
+index d8efe0cb8..6156e2a61 100644
+--- a/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/web_crawler/system_prompt.md
++++ b/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/web_crawler/system_prompt.md
+@@ -1,12 +1,13 @@
+-You are the Nowing web crawling sub-agent.
++You are the Nowing web crawling and browser-operator sub-agent.
+ You receive delegated instructions from a supervisor agent and return structured results for supervisor synthesis.
+ 
+ <goal>
+-Answer the delegated question from live web evidence gathered with `web_crawl`, comparing against earlier results already in this conversation when the task calls for it.
++Answer the delegated question from live web evidence gathered with `web_crawl` or by controlling the user's connected Chrome browser with `browser_operator.execute`, comparing against earlier results already in this conversation when the task calls for it.
+ </goal>
+ 
+ <available_tools>
+-- `web_crawl`
++- `web_crawl` — fetch one or more public web pages and return cleaned content.
++- `browser_operator.execute` — directly control the user's Chrome browser (navigate, click, fill text, scroll, extract, screenshot, detect challenge). Requires the Nowing Chrome Extension to be connected and authenticated.
+ - `read_run` / `search_run` (free readers for stored crawl output)
+ - `export_run` (save a stored run's rows as a CSV file in the workspace)
+ </available_tools>
+@@ -20,11 +21,28 @@ Answer the delegated question from live web evidence gathered with `web_crawl`,
+ - Rosters and listings: when a page's markdown is truncated or sparse, the item's `links` records (url, anchor text, context) usually carry the full list — read them from the stored run before re-crawling.
+ - Full-dataset requests ("the complete roster/list", "as a CSV/file"): never re-type hundreds of rows. Crawl, then `export_run(ref, path, rows='links', include_pattern=...)` — the rows are copied in code, byte-exact. Verify with the returned row count + preview, and report the saved path.
+ - Comparison requests: crawl the current values, compare against prior values already in this conversation's earlier tool results, and report concrete deltas (added, removed, old -> new).
++
++### Browser operator (use when the user asks to control their live browser tab)
++- Triggers: "mở trang X", "navigate to", "click", "scroll", "fill", "điều khiển trình duyệt", "cuộn trang", "screenshot", "chụp màn hình", "điền form".
++- For any of the above, call `browser_operator.execute` with the matching `action`:
++  - `navigate` + `url` — open or focus a tab to the given URL.
++  - `click` + `selector` — click a DOM element.
++  - `fill` + `selector` + `text` — type text into an input.
++  - `scroll` + `direction` ("up"/"down") + `px` — scroll the page.
++  - `extract` + `selector` — get text/HTML of an element.
++  - `take_screenshot` + `format` ("png"/"jpeg") — capture a screenshot.
++  - `detect_challenge` + `url` — check if a CAPTCHA/2FA challenge is present without further interaction.
++- Always pass `url` when you know the target page; the extension uses it to find or create the right tab and validates the scheme (http/https only).
++- After a successful `navigate`, `click`, `fill`, or `scroll`, the extension automatically checks for challenges. If the tool returns `success=False` with a `human_takeover_required` message, report that the user must solve the challenge in the browser and click "Tiếp tục" in the extension popup before the agent can continue.
++- If the extension is not connected (`message` mentions "not connected"), ask the user to open the Nowing Chrome Extension and sign in.
++- Use `browser_operator.execute` instead of `web_crawl` when the target site requires the user's login session, JavaScript state, or interactive steps.
+ </playbook>
+ 
+ <tool_policy>
+ - Use only tools in `<available_tools>`.
++- Prefer `web_crawl` for static public content and `browser_operator.execute` for interactive browser control that requires the user's session or DOM interaction.
+ - A `web_crawl` item whose `status` is not `success` returned no content — report it unavailable, never invent it.
++- A `browser_operator.execute` result whose `success` is `False` is a real failure — report the `message` to the supervisor. If it indicates a human challenge, give the user clear next steps.
+ - Report only deltas you can point to in the evidence. Never fabricate facts, URLs, prices, or quotes.
+ </tool_policy>
+ 
+@@ -62,4 +80,5 @@ Return **only** one JSON object (no markdown/prose):
+ Route-specific rules:
+ - `evidence.findings`: max 10 entries, each a single sentence stating one distinct fact or delta. Do not paste raw crawled pages.
+ - `evidence.sources`: max 10 URLs, one per finding when applicable. List each URL once.
++- For `browser_operator.execute` results, include the performed action, the target URL/selector, and the key result (e.g. navigated URL, extracted text, challenge detected) in `findings`. Use `sources` for the target URL.
+ </output_contract>
+diff --git a/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/web_crawler/tools/index.py b/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/web_crawler/tools/index.py
+index d47d6d147..af0caeccb 100644
+--- a/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/web_crawler/tools/index.py
++++ b/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/web_crawler/tools/index.py
+@@ -7,6 +7,7 @@ from typing import Any
+ from langchain_core.tools import BaseTool
+ 
+ from app.agents.chat.multi_agent_chat.shared.permissions import Ruleset
++from app.capabilities.browser_operator.definition import BROWSER_OPERATOR_EXECUTE
+ from app.capabilities.core.access.agent import build_capability_tools
+ from app.capabilities.web.crawl.definition import WEB_CRAWL
+ 
+@@ -14,7 +15,7 @@ NAME = "web_crawler"
+ 
+ RULESET = Ruleset(origin=NAME, rules=[])
+ 
+-_CI_VERBS = [WEB_CRAWL]
++_CI_VERBS = [WEB_CRAWL, BROWSER_OPERATOR_EXECUTE]
+ 
+ 
+ def load_tools(
+diff --git a/nowing_backend/app/capabilities/__init__.py b/nowing_backend/app/capabilities/__init__.py
+index dc952264f..faebe6129 100644
+--- a/nowing_backend/app/capabilities/__init__.py
++++ b/nowing_backend/app/capabilities/__init__.py
+@@ -5,6 +5,7 @@ from __future__ import annotations
+ from app.capabilities import (
+     amazon as _amazon,  # noqa: F401
+     b2b as _b2b,  # noqa: F401
++    browser_operator as _browser_operator,  # noqa: F401
+     cafef as _cafef,  # noqa: F401
+     ecommerce as _ecommerce,  # noqa: F401
+     indeed as _indeed,  # noqa: F401
+diff --git a/nowing_backend/app/capabilities/core/access/agent.py b/nowing_backend/app/capabilities/core/access/agent.py
+index a164177de..e8d53893f 100644
+--- a/nowing_backend/app/capabilities/core/access/agent.py
++++ b/nowing_backend/app/capabilities/core/access/agent.py
+@@ -442,6 +442,8 @@ def _capability_tool(
+                     session=session,
+                     workspace_id=workspace_id,
+                     run_id=sync_run_id,
++                    user_id=user_id,
++                    auth=auth_context,
+                 )
+                 try:
+                     if auth_context is not None:
+diff --git a/nowing_backend/app/capabilities/core/types.py b/nowing_backend/app/capabilities/core/types.py
+index d00a8dea9..ff54ed181 100644
+--- a/nowing_backend/app/capabilities/core/types.py
++++ b/nowing_backend/app/capabilities/core/types.py
+@@ -55,7 +55,6 @@ class BillingUnit(StrEnum):
+     ECOMMERCE_PRODUCT = "ecommerce_product"
+ 
+ 
+-
+ class BillableInput(Protocol):
+     """A billed verb's input that reports its worst-case unit count for pre-flight."""
+ 
+@@ -77,6 +76,8 @@ class CapabilityContext:
+     session: AsyncSession
+     workspace_id: int
+     run_id: str | None = None
++    user_id: str | None = None
++    auth: Any | None = None
+ 
+ 
+ Executor = Callable[[Any], Awaitable[Any]]
+diff --git a/nowing_backend/app/config/__init__.py b/nowing_backend/app/config/__init__.py
+index 0bc37bf54..e380da61e 100644
+--- a/nowing_backend/app/config/__init__.py
++++ b/nowing_backend/app/config/__init__.py
+@@ -823,6 +823,29 @@ class Config:
+         1, _env_int("MEMORY_AUTO_EXTRACT_RATE_WINDOW_SECONDS", 3600)
+     )
+ 
++    # News entity extraction defaults and cost controls (Story 14.2a)
++    NEWS_ENTITY_EXTRACTION_ENABLED = (
++        os.getenv("NEWS_ENTITY_EXTRACTION_ENABLED", "true").strip().lower() == "true"
++    )
++    NEWS_ENTITY_EXTRACTION_CONFIDENCE = max(
++        0.0, min(1.0, _env_float("NEWS_ENTITY_EXTRACTION_CONFIDENCE", 0.6))
++    )
++    NEWS_ENTITY_EXTRACTION_MIN_RESERVE_MICROS = max(
++        0, _env_int("NEWS_ENTITY_EXTRACTION_MIN_RESERVE_MICROS", 0)
++    )
++    NEWS_ENTITY_EXTRACTION_BUDGET_MICROS = max(
++        0, _env_int("NEWS_ENTITY_EXTRACTION_BUDGET_MICROS", 0)
++    )
++    NEWS_ENTITY_EXTRACTION_BUDGET_WINDOW = _env_choice(
++        "NEWS_ENTITY_EXTRACTION_BUDGET_WINDOW", "day", ("day", "week", "month")
++    )
++    NEWS_ENTITY_EXTRACTION_RATE_MAX = max(
++        0, _env_int("NEWS_ENTITY_EXTRACTION_RATE_MAX", 0)
++    )
++    NEWS_ENTITY_EXTRACTION_RATE_WINDOW_SECONDS = max(
++        1, _env_int("NEWS_ENTITY_EXTRACTION_RATE_WINDOW_SECONDS", 3600)
++    )
++
+     NOWING_PUBLIC_URL = os.getenv("NOWING_PUBLIC_URL")
+     NEXT_FRONTEND_URL = os.getenv("NEXT_FRONTEND_URL") or NOWING_PUBLIC_URL
+     # Backend URL to override the http to https in the OAuth redirect URI
+diff --git a/nowing_backend/app/redis_client.py b/nowing_backend/app/redis_client.py
+index 240ffe981..938880a85 100644
+--- a/nowing_backend/app/redis_client.py
++++ b/nowing_backend/app/redis_client.py
+@@ -33,9 +33,9 @@ async def get_redis_client() -> Any:
+         redis_url,
+         decode_responses=True,
+         socket_connect_timeout=5,
+-        # ponytail: 10s socket timeout so DSH XREADGROUP BLOCK (5s default)
+-        # plus network/parse margin does not trip redis-py TimeoutError.
+-        socket_timeout=10,
++        # CDP blpop waits up to 60s; socket_timeout must exceed that.
++        # Keep it bounded so stuck commands surface instead of blocking forever.
++        socket_timeout=70,
+         health_check_interval=30,
+     )
+     if loop is not None:
+diff --git a/nowing_backend/app/routes/dsh_routes.py b/nowing_backend/app/routes/dsh_routes.py
+index 226b40e65..3b7eb766e 100644
+--- a/nowing_backend/app/routes/dsh_routes.py
++++ b/nowing_backend/app/routes/dsh_routes.py
+@@ -1,6 +1,8 @@
+ from __future__ import annotations
+ 
++import asyncio
+ import hmac
++import json
+ import logging
+ from datetime import UTC, datetime, timedelta
+ from uuid import UUID
+@@ -8,11 +10,14 @@ from uuid import UUID
+ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+ from sqlalchemy import func, select
+ from sqlalchemy.ext.asyncio import AsyncSession
++from sse_starlette.sse import EventSourceResponse
+ 
+ from app.auth.context import AuthContext
+ from app.config import config
+ from app.db import DshMission, Permission, Workspace, get_async_session
++from app.redis_client import get_redis_client
+ from app.schemas.dsh import (
++    CdpResultPayload,
+     DshMissionCheckpointUpdate,
+     DshMissionControlResponse,
+     DshMissionInternalResponse,
+@@ -88,6 +93,22 @@ def _require_pat_workspace_scope(
+         )
+ 
+ 
++def _require_mission_access(auth: AuthContext, mission: DshMission) -> None:
++    """Verify the caller owns or has workspace-scoped PAT access to the mission."""
++    if auth.method == "pat":
++        if auth.pat is None or auth.pat.workspace_id != mission.workspace_id:
++            raise HTTPException(
++                status_code=status.HTTP_403_FORBIDDEN,
++                detail="PAT workspace does not match mission workspace",
++            )
++    else:
++        if mission.user_id != auth.user.id:
++            raise HTTPException(
++                status_code=status.HTTP_403_FORBIDDEN,
++                detail="Forbidden",
++            )
++
++
+ @dsh_public_router.post(
+     "/workspaces/{workspace_id}/dsh/missions",
+     response_model=DshMissionResponse,
+@@ -400,3 +421,174 @@ async def notify_dsh_mission_high_fit_lead(
+         contact_id=body.contact_id,
+     )
+     return DshNotifyHighFitResponse.model_validate(res)
++
++
++@dsh_public_router.get("/dsh/cdp/stream")
++async def cdp_stream(request: Request, auth: AuthContext = Depends(get_auth_context)):
++    """SSE stream for the Chrome extension to receive CDP commands."""
++    redis = await get_redis_client()
++    pubsub = redis.pubsub()
++    channel = f"cdp_stream:{auth.user.id}"
++
++    # Only one active CDP stream per user at a time to avoid duplicate commands.
++    subs = await redis.pubsub_numsub(channel)
++    if subs and subs[0][1] > 0:
++        raise HTTPException(
++            status_code=status.HTTP_409_CONFLICT,
++            detail="CDP stream already active",
++        )
++
++    try:
++        await pubsub.subscribe(channel)
++    except Exception:
++        await pubsub.close()
++        raise
++
++    async def event_generator():
++        try:
++            while True:
++                if await request.is_disconnected():
++                    break
++
++                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
++                if message and message["type"] == "message":
++                    raw_data = message["data"]
++                    data = raw_data.decode("utf-8") if isinstance(raw_data, bytes) else str(raw_data)
++                    yield {
++                        "event": "cdp_command",
++                        "data": data,
++                    }
++        except asyncio.CancelledError:
++            raise
++        finally:
++            await pubsub.unsubscribe(channel)
++            await pubsub.close()
++
++    return EventSourceResponse(event_generator())
++
++
++@dsh_public_router.post("/dsh/cdp/result")
++async def cdp_result(
++    payload: CdpResultPayload,
++    auth: AuthContext = Depends(get_auth_context),
++    session: AsyncSession = Depends(get_async_session),
++):
++    """Receive result from extension's CDP execution."""
++    mission = await session.get(DshMission, payload.mission_id)
++    if not mission:
++        raise HTTPException(status_code=404, detail="Mission not found")
++
++    _require_mission_access(auth, mission)
++
++    redis = await get_redis_client()
++    key = f"cdp_result:{auth.user.id}:{payload.mission_id}"
++
++    result_data = {
++        "result": payload.result,
++        "error": payload.error,
++        "command_id": (payload.result or {}).get("command_id") if payload.result else None,
++        "requires_human": payload.requires_human,
++        "challenge": payload.challenge,
++    }
++
++    # Atomic pipeline push + expire + cap list length to avoid OOM.
++    pipe = redis.pipeline()
++    pipe.rpush(key, json.dumps(result_data))
++    pipe.expire(key, 300)
++    pipe.ltrim(key, -5, -1)
++    await pipe.execute()
++
++    return {"status": "ok"}
++
++
++@dsh_public_router.post("/dsh/missions/{mission_id}/pause")
++async def pause_mission(
++    mission_id: UUID,
++    auth: AuthContext = Depends(get_auth_context),
++    session: AsyncSession = Depends(get_async_session),
++):
++    """Explicitly pause a mission from the frontend using atomic CAS update."""
++    mission = await session.get(DshMission, mission_id)
++    if not mission:
++        raise HTTPException(status_code=404, detail="Mission not found")
++
++    _require_mission_access(auth, mission)
++
++    if mission.status != "running" or mission.phase != "waiting_for_human":
++        raise HTTPException(
++            status_code=status.HTTP_409_CONFLICT,
++            detail="Mission is not awaiting human takeover.",
++        )
++
++    mission.phase = "waiting_for_human"
++    mission.current_subtask_id = "cdp_crawl"
++    mission.updated_at = datetime.now(UTC)
++    session.add(mission)
++
++    # Set 15-minute takeover TTL; resume must clear it.
++    redis = await get_redis_client()
++    await redis.setex(f"dsh:lock:takeover:{mission.workspace_id}:{mission_id}", 900, "1")
++
++    await session.commit()
++    return {"mission_id": mission_id, "status": "running", "phase": "waiting_for_human"}
++
++
++@dsh_public_router.post("/dsh/missions/{mission_id}/resume")
++async def resume_mission(
++    mission_id: UUID,
++    auth: AuthContext = Depends(get_auth_context),
++    session: AsyncSession = Depends(get_async_session),
++):
++    """Resume a paused mission after Human Live Takeover using Atomic CAS UPDATE."""
++    mission = await session.get(DshMission, mission_id)
++    if not mission:
++        raise HTTPException(status_code=404, detail="Mission not found")
++
++    _require_mission_access(auth, mission)
++
++    if mission.phase != "waiting_for_human":
++        raise HTTPException(
++            status_code=status.HTTP_409_CONFLICT,
++            detail="Mission is not awaiting human takeover.",
++        )
++
++    # Verify challenge was addressed: the takeover lock still exists and has not expired.
++    redis = await get_redis_client()
++    takeover_key = f"dsh:lock:takeover:{mission.workspace_id}:{mission_id}"
++    has_lock = await redis.get(takeover_key)
++    if not has_lock:
++        raise HTTPException(
++            status_code=status.HTTP_409_CONFLICT,
++            detail="Takeover session has expired or was not started.",
++        )
++
++    mission.phase = "crawl"
++    mission.updated_at = datetime.now(UTC)
++    session.add(mission)
++
++    service = DshMissionService()
++    try:
++        await service.publish_to_stream(mission)
++    except DshPayloadTooLargeError as exc:
++        await session.rollback()
++        raise HTTPException(
++            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
++            detail=str(exc),
++        ) from exc
++    except DshMissionServiceError as exc:
++        await session.rollback()
++        raise HTTPException(
++            status_code=status.HTTP_400_BAD_REQUEST,
++            detail=str(exc),
++        ) from exc
++    except Exception as exc:
++        logger.exception("Failed to redispatch mission to stream: %s", exc)
++        await session.rollback()
++        raise HTTPException(
++            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
++            detail="Mission could not be redispatched to the worker stream",
++        ) from exc
++
++    await session.commit()
++    await redis.delete(takeover_key)
++    return {"mission_id": mission_id, "status": "running", "phase": "crawl"}
+diff --git a/nowing_backend/app/schemas/dsh.py b/nowing_backend/app/schemas/dsh.py
+index 3a4bf9393..3186b92b0 100644
+--- a/nowing_backend/app/schemas/dsh.py
++++ b/nowing_backend/app/schemas/dsh.py
+@@ -4,7 +4,14 @@ from datetime import datetime
+ from typing import Literal
+ from uuid import UUID
+ 
+-from pydantic import BaseModel, ConfigDict, Field, model_validator
++from pydantic import (
++    AnyUrl,
++    BaseModel,
++    ConfigDict,
++    Field,
++    field_validator,
++    model_validator,
++)
+ 
+ DshMissionStatus = Literal[
+     "pending",
+@@ -14,7 +21,7 @@ DshMissionStatus = Literal[
+     "cancelled",
+     "dlq",
+ ]
+-DshMissionType = Literal["deep_lead_research", "noop"]
++DshMissionType = Literal["deep_lead_research", "cdp_browser_operator", "noop"]
+ 
+ 
+ class DshMissionPayload(BaseModel):
+@@ -31,6 +38,27 @@ class DshMissionPayload(BaseModel):
+     extras: dict = Field(default_factory=dict)
+ 
+ 
++class BrowserOperatorCdpPayload(BaseModel):
++    """Validated payload for a CDP browser operator mission."""
++
++    model_config = ConfigDict(extra="forbid")
++
++    target_url: AnyUrl = Field(..., description="URL the browser operator should navigate to.")
++    workspace_id: int | None = None
++    extras: dict = Field(default_factory=dict)
++
++    @field_validator("target_url", mode="before")
++    @classmethod
++    def _reject_non_browser_schemes(cls, v: str | None) -> str | None:
++        if v is None:
++            return v
++        v_str = str(v)
++        allowed = ("http://", "https://")
++        if not any(v_str.lower().startswith(scheme) for scheme in allowed):
++            raise ValueError("target_url must start with http:// or https://")
++        return v
++
++
+ class DshMissionRequest(BaseModel):
+     """Create a new long-running DSH mission."""
+ 
+@@ -43,6 +71,10 @@ class DshMissionRequest(BaseModel):
+             payload_model = DshMissionPayload.model_validate(self.payload)
+             if not payload_model.query or not payload_model.query.strip():
+                 raise ValueError("query is required for deep_lead_research missions")
++        elif self.mission_type == "cdp_browser_operator":
++            payload_model = BrowserOperatorCdpPayload.model_validate(self.payload)
++            # Persist as plain dict, not Pydantic model, for downstream compatibility
++            self.payload = payload_model.model_dump(mode="json")
+         return self
+ 
+ 
+@@ -164,3 +196,34 @@ class DshNotifyHighFitResponse(BaseModel):
+     message_id: str | None = None
+     reason: str | None = None
+     error: str | None = None
++
++class CdpResultPayload(BaseModel):
++    model_config = ConfigDict(extra="forbid")
++
++    mission_id: UUID
++    result: dict | None = None
++    error: str | None = None
++    requires_human: bool = False
++    challenge: str | None = None
++
++    @field_validator("result", mode="before")
++    @classmethod
++    def _limit_result_size(cls, v: dict | None) -> dict | None:
++        if v is None:
++            return None
++        # Whitelist top-level keys and drop arbitrary large blobs; cap string values
++        allowed = {"navigatedUrl", "tabId", "title", "url", "html", "text", "data", "selector", "command_id", "challenge"}
++        sanitized: dict = {}
++        for key, value in v.items():
++            if key not in allowed:
++                continue
++            if isinstance(value, str) and len(value) > 1_000_000:
++                value = value[:1_000_000]
++            sanitized[key] = value
++        return sanitized
++
++
++class ResumeMissionPayload(BaseModel):
++    model_config = ConfigDict(extra="forbid")
++
++    mission_id: UUID
+diff --git a/nowing_backend/app/tasks/dsh_worker.py b/nowing_backend/app/tasks/dsh_worker.py
+index 2dd77a176..c282b27f9 100644
+--- a/nowing_backend/app/tasks/dsh_worker.py
++++ b/nowing_backend/app/tasks/dsh_worker.py
+@@ -23,6 +23,7 @@ from app.capabilities.chainlens.research.executor import build_research_executor
+ from app.capabilities.chainlens.research.schemas import ResearchInput
+ from app.config import config
+ from app.redis_client import get_redis_client
++from app.tasks.dsh_worker_browser_operator import HumanInterventionRequired
+ from app.tasks.dsh_worker_langgraph import LangGraphMissionExecutor
+ 
+ _research_executor = build_research_executor()
+@@ -937,6 +938,22 @@ class DshWorker:
+                         completed_at=datetime.now(UTC).isoformat(),
+                     ),
+                 )
++            except HumanInterventionRequired as e:
++                logger.warning("Mission %s requires human intervention: %s", mission_id, e)
++                # Save checkpoint and pause
++                workspace_id = mission.get("workspace_id") if isinstance(mission, dict) else mission.workspace_id
++                await self.rest_client.patch_checkpoint(
++                    mission_id,
++                    _checkpoint_update(
++                        status="running",
++                        phase="waiting_for_human",
++                        current_subtask_id="cdp_crawl",
++                    ),
++                )
++                # 15-minute takeover TTL. Resume route must delete this key.
++                takeover_key = f"dsh:lock:takeover:{workspace_id}:{mission_id}"
++                await redis_client.setex(takeover_key, 900, "1")
++                await redis_client.xack(self.stream, self.group, msg_id)
+                 return True
+             except asyncio.CancelledError:
+                 logger.info(
+diff --git a/nowing_backend/app/tasks/dsh_worker_langgraph.py b/nowing_backend/app/tasks/dsh_worker_langgraph.py
+index ddcff9522..af7bdbc59 100644
+--- a/nowing_backend/app/tasks/dsh_worker_langgraph.py
++++ b/nowing_backend/app/tasks/dsh_worker_langgraph.py
+@@ -28,6 +28,10 @@ from uuid import UUID
+ from langgraph.graph import END, START, StateGraph
+ from langgraph.types import RunnableConfig
+ 
++from app.tasks.dsh_worker_browser_operator import (
++    BrowserOperatorCdpSubgraph,
++    HumanInterventionRequired,
++)
+ from app.tasks.dsh_worker_crawl_subgraph import (
+     WideResearchCrawlSubgraph,
+     _is_valid_matrix,
+@@ -170,12 +174,18 @@ class LangGraphMissionExecutor:
+     ) -> MissionState:
+         payload = state.get("payload") or {}
+         extras = payload.get("extras", {}) if isinstance(payload, dict) else {}
++        research_mode = extras.get("research_mode", "")
++        # CDP browser operator also triggered by the cdp_browser_operator mission type.
++        if payload.get("target_url") and state.get("mission_type") == "cdp_browser_operator":
++            research_mode = "cdp_takeover"
+         checkpoint = state.get("checkpoint") or {}
+ 
+-        if self._subtask_success(state, "crawl"):
+-            if extras.get("research_mode") == "wide":
+-                if checkpoint.get("wide_research_matrix"):
+-                    return state
++        skip_subtask = (
++            "cdp_crawl" if research_mode == "cdp_takeover" else "crawl"
++        )
++        if self._subtask_success(state, skip_subtask):
++            if research_mode == "wide" and not checkpoint.get("wide_research_matrix"):
++                pass
+             else:
+                 return state
+ 
+@@ -192,16 +202,22 @@ class LangGraphMissionExecutor:
+         )
+ 
+         try:
+-            if extras.get("research_mode") == "wide":
++            if research_mode == "wide":
+                 subgraph = WideResearchCrawlSubgraph.build(rest_client)
+                 result = await subgraph.ainvoke(state, config)
+                 sources = result.get("sources", [])
+-                subtasks = list(result.get("subtasks", []))
++                subtasks = list(result.get("subtasks") or [])
++                checkpoint = dict(result.get("checkpoint") or {})
++            elif research_mode == "cdp_takeover":
++                subgraph = BrowserOperatorCdpSubgraph.build(rest_client)
++                result = await subgraph.ainvoke(state, config)
++                sources = result.get("sources", [])
++                subtasks = list(result.get("subtasks") or [])
+                 checkpoint = dict(result.get("checkpoint") or {})
+             else:
+                 research_output = await rest_client.chainlens_research(workspace_id, query)
+                 sources = research_output.get("sources", [])
+-                subtasks = list(state.get("subtasks", []))
++                subtasks = list(state.get("subtasks") or [])
+                 subtasks.append(
+                     {
+                         "id": "crawl",
+@@ -221,9 +237,11 @@ class LangGraphMissionExecutor:
+                 progress_percent=35,
+                 current_subtask_id="reasoning",
+             )
++        except HumanInterventionRequired:
++            raise
+         except Exception as exc:
+             subtasks = list(state.get("subtasks", []))
+-            subtasks.append({"id": "crawl", "status": "failed", "error": str(exc)})
++            subtasks.append({"id": skip_subtask, "status": "failed", "error": str(exc)})
+             checkpoint = dict(state.get("checkpoint") or {})
+             checkpoint["subtasks"] = subtasks
+             state = await self._patch_checkpoint(
+@@ -525,11 +543,13 @@ class LangGraphMissionExecutor:
+         if isinstance(mission, dict):
+             mission_id = str(mission["id"])
+             workspace_id = mission["workspace_id"]
++            user_id = mission.get("user_id")
+             payload = mission.get("payload") or {}
+             checkpoint = mission.get("checkpoint") or {}
+         else:
+             mission_id = str(mission.id)
+             workspace_id = mission.workspace_id
++            user_id = mission.user_id
+             payload = mission.payload or {}
+             checkpoint = mission.checkpoint or {}
+ 
+@@ -554,6 +574,7 @@ class LangGraphMissionExecutor:
+         initial_state: MissionState = {
+             "mission_id": mission_id,
+             "workspace_id": workspace_id,
++            "user_id": user_id,
+             "query": query,
+             "payload": payload,
+             "checkpoint": checkpoint,
+diff --git a/nowing_backend/tests/unit/capabilities/test_registry.py b/nowing_backend/tests/unit/capabilities/test_registry.py
+index 6981a17ed..8079242ce 100644
+--- a/nowing_backend/tests/unit/capabilities/test_registry.py
++++ b/nowing_backend/tests/unit/capabilities/test_registry.py
+@@ -5,7 +5,12 @@ from __future__ import annotations
+ import pytest
+ 
+ from app.capabilities import (
+-    web,  # noqa: F401  — importing the namespace registers its verbs
++    browser_operator,  # noqa: F401  — importing the namespace registers its verbs
++    web,  # noqa: F401
++)
++from app.capabilities.browser_operator.schemas import (
++    BrowserOperatorInput,
++    BrowserOperatorOutput,
+ )
+ from app.capabilities.core.store import (
+     CapabilityRegistry,
+@@ -27,6 +32,15 @@ def test_web_crawl_is_registered_with_its_schemas_and_billing_unit():
+     assert cap.billing_unit is BillingUnit.WEB_CRAWL
+ 
+ 
++def test_browser_operator_execute_is_registered_with_its_schemas():
++    cap = get_capability("browser_operator.execute")
++
++    assert cap.name == "browser_operator.execute"
++    assert cap.input_schema is BrowserOperatorInput
++    assert cap.output_schema is BrowserOperatorOutput
++    assert cap.billing_unit is None
++
++
+ def test_capability_metadata_and_registry_query():
+     cap = Capability(
+         name="test.signal",
+diff --git a/nowing_browser_extension/background/index.ts b/nowing_browser_extension/background/index.ts
+index 8d66cf117..295e5d092 100644
+--- a/nowing_browser_extension/background/index.ts
++++ b/nowing_browser_extension/background/index.ts
+@@ -1,8 +1,21 @@
+ import { Storage } from "@plasmohq/storage";
+ import { getRenderedHtml, initQueues, initWebHistory } from "~utils/commons";
+ import type { WebHistory } from "~utils/interfaces";
++import { CdpBridge } from "./cdp-bridge";
++
++// Start listening for CDP commands from Nowing Backend
++CdpBridge.getInstance().startListening();
++
++chrome.runtime.onSuspend.addListener(() => {
++	CdpBridge.getInstance().stopListening();
++});
++
++chrome.tabs.onActivated?.addListener(() => {
++	CdpBridge.getInstance().startListening();
++});
+ 
+ chrome.tabs.onCreated.addListener(async (tab: any) => {
++	CdpBridge.getInstance().startListening();
+ 	try {
+ 		await initWebHistory(tab.id);
+ 		await initQueues(tab.id);
+@@ -12,7 +25,11 @@ chrome.tabs.onCreated.addListener(async (tab: any) => {
+ });
+ 
+ chrome.tabs.onUpdated.addListener(async (tabId: number, changeInfo: any, tab: any) => {
+-	if (changeInfo.status === "complete" && tab.url) {
++	if (
++		changeInfo.status === "complete" &&
++		tab.url &&
++		(tab.url.startsWith("http://") || tab.url.startsWith("https://"))
++	) {
+ 		const storage = new Storage({ area: "local" });
+ 		await initWebHistory(tab.id);
+ 		await initQueues(tab.id);
+@@ -45,7 +62,7 @@ chrome.tabs.onUpdated.addListener(async (tabId: number, changeInfo: any, tab: an
+ 	}
+ });
+ 
+-chrome.tabs.onRemoved.addListener(async (tabId: number, removeInfo: object) => {
++chrome.tabs.onRemoved.addListener(async (tabId: number, _removeInfo: object) => {
+ 	const storage = new Storage({ area: "local" });
+ 	const urlQueueListObj: any = await storage.get("urlQueueList");
+ 	const timeQueueListObj: any = await storage.get("timeQueueList");
+diff --git a/nowing_browser_extension/background/messages/savedata.ts b/nowing_browser_extension/background/messages/savedata.ts
+index 065b4d951..e2b5cd911 100644
+--- a/nowing_browser_extension/background/messages/savedata.ts
++++ b/nowing_browser_extension/background/messages/savedata.ts
+@@ -1,8 +1,7 @@
+ import type { PlasmoMessaging } from "@plasmohq/messaging";
+ import { Storage } from "@plasmohq/storage";
+-
+-import { emptyArr, webhistoryToLangChainDocument } from "~utils/commons";
+ import { buildBackendUrl } from "~utils/backend-url";
++import { emptyArr, webhistoryToLangChainDocument } from "~utils/commons";
+ 
+ const clearMemory = async () => {
+ 	try {
+diff --git a/nowing_browser_extension/package.json b/nowing_browser_extension/package.json
+index 62021f291..49a6c803f 100644
+--- a/nowing_browser_extension/package.json
++++ b/nowing_browser_extension/package.json
+@@ -59,6 +59,14 @@
+ 		"host_permissions": [
+ 			"<all_urls>"
+ 		],
++		"permissions": [
++			"storage",
++			"scripting",
++			"unlimitedStorage",
++			"activeTab",
++			"tabs",
++			"debugger"
++		],
+ 		"name": "Nowing",
+ 		"description": "Extension to collect Browsing History for Nowing.",
+ 		"version": "0.0.3"
+@@ -67,6 +75,8 @@
+ 		"storage",
+ 		"scripting",
+ 		"unlimitedStorage",
+-		"activeTab"
++		"activeTab",
++		"tabs",
++		"debugger"
+ 	]
+ }
+diff --git a/nowing_browser_extension/popup.tsx b/nowing_browser_extension/popup.tsx
+index c41926ced..1abf96c49 100644
+--- a/nowing_browser_extension/popup.tsx
++++ b/nowing_browser_extension/popup.tsx
+@@ -1,11 +1,87 @@
++import { Storage } from "@plasmohq/storage";
++import { useEffect, useState } from "react";
+ import { MemoryRouter } from "react-router-dom";
+-import { Toaster } from "@/routes/ui/toaster";
+ import { Routing } from "~routes";
++import { Toaster } from "~routes/ui/toaster";
++import { buildBackendUrl } from "~utils/backend-url";
++
++const storage = new Storage({ area: "local" });
++
++const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+ 
+ function IndexPopup() {
++	const [resuming, setResuming] = useState(false);
++	const [activeMissionId, setActiveMissionId] = useState<string | null>(null);
++	const [error, setError] = useState<string | null>(null);
++
++	useEffect(() => {
++		storage.get("activeMissionId").then((id) => {
++			if (typeof id === "string" && UUID_RE.test(id)) {
++				setActiveMissionId(id);
++			}
++		});
++	}, []);
++
++	const handleReleaseControl = async () => {
++		setError(null);
++		if (!activeMissionId) {
++			return;
++		}
++		if (!UUID_RE.test(activeMissionId)) {
++			setError("Invalid mission ID");
++			return;
++		}
++		setResuming(true);
++		try {
++			const token = await storage.get("token");
++			if (!token) {
++				setError("Not authenticated");
++				return;
++			}
++			const url = await buildBackendUrl(`/api/v1/dsh/missions/${activeMissionId}/resume`);
++			const res = await fetch(url, {
++				method: "POST",
++				headers: {
++					"Content-Type": "application/json",
++					Authorization: `Bearer ${token}`,
++				},
++			});
++			if (!res.ok) {
++				const body = await res.text().catch(() => "");
++				throw new Error(`Resume failed: ${res.status} ${body}`);
++			}
++			await storage.remove("activeMissionId");
++			setActiveMissionId(null);
++		} catch (error: unknown) {
++			console.error("Failed to release control and resume mission:", error);
++			const msg = error instanceof Error ? error.message : "Resume failed";
++			setError(msg);
++		} finally {
++			setResuming(false);
++		}
++	};
++
+ 	return (
+ 		<MemoryRouter>
+-			<Routing />
++			<div className="p-4 flex flex-col items-center space-y-4 min-w-[240px]">
++				<Routing />
++				{error && <div className="text-sm text-red-500">{error}</div>}
++				{activeMissionId && (
++					<div className="flex flex-col items-center space-y-2 w-full">
++						<p className="text-sm text-gray-700 text-center">
++							Mission {activeMissionId.slice(0, 8)} is awaiting human takeover
++						</p>
++						<button
++							type="button"
++							onClick={handleReleaseControl}
++							disabled={resuming}
++							className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded font-medium disabled:opacity-50 w-full"
++						>
++							{resuming ? "Resuming..." : "Release Control"}
++						</button>
++					</div>
++				)}
++			</div>
+ 			<Toaster />
+ 		</MemoryRouter>
+ 	);
+diff --git a/nowing_browser_extension/utils/backend-url.ts b/nowing_browser_extension/utils/backend-url.ts
+index fcf33aa50..839d17ef4 100644
+--- a/nowing_browser_extension/utils/backend-url.ts
++++ b/nowing_browser_extension/utils/backend-url.ts
+@@ -1,7 +1,7 @@
+ import { Storage } from "@plasmohq/storage";
+ 
+ export const BACKEND_URL_STORAGE_KEY = "backend_base_url";
+-export const FALLBACK_BACKEND_BASE_URL = "https://www.nowing.com";
++export const FALLBACK_BACKEND_BASE_URL = "http://localhost:8000";
+ 
+ const storage = new Storage({ area: "local" });
+ 
+diff --git a/nowing_web/components/leads/MissionControlWidget.tsx b/nowing_web/components/leads/MissionControlWidget.tsx
+index 11a23f877..dd54a4454 100644
+--- a/nowing_web/components/leads/MissionControlWidget.tsx
++++ b/nowing_web/components/leads/MissionControlWidget.tsx
+@@ -232,11 +232,20 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
+ 		return initial;
+ 	});
+ 	const [expandedReasoning, setExpandedReasoning] = useState<Set<string>>(new Set());
++	const [resumingTakeover, setResumingTakeover] = useState(false);
++	const [takeoverError, setTakeoverError] = useState<string | null>(null);
+ 
+ 	// Re-expand the current subtask when it changes.
+ 	useEffect(() => {
+ 		if (missionControl?.current_subtask_id) {
+-			setExpandedSubtasks((prev) => new Set([...prev, missionControl.current_subtask_id].filter((id): id is string => typeof id === "string")));
++			setExpandedSubtasks(
++				(prev) =>
++					new Set(
++						[...prev, missionControl.current_subtask_id].filter(
++							(id): id is string => typeof id === "string"
++						)
++					)
++			);
+ 		}
+ 	}, [missionControl?.current_subtask_id]);
+ 
+@@ -311,6 +320,22 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
+ 		});
+ 	};
+ 
++	const handleResumeTakeover = async () => {
++		if (!latestMission?.id) return;
++		setTakeoverError(null);
++		setResumingTakeover(true);
++		try {
++			await dshApiService.resumeMission(latestMission.id);
++			toast.success("Đã trả quyền điều khiển cho agent");
++		} catch (err) {
++			const msg = err instanceof Error ? err.message : "Không thể resume";
++			setTakeoverError(msg);
++			toast.error(msg);
++		} finally {
++			setResumingTakeover(false);
++		}
++	};
++
+ 	if (!loading && status === "idle" && !latestMission) {
+ 		return null;
+ 	}
+@@ -366,6 +391,31 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
+ 				</div>
+ 			</div>
+ 
++			{phase === "waiting_for_human" && latestMission && (
++				<div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
++					<div className="flex items-start justify-between gap-3">
++						<div>
++							<p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
++								Human Live Takeover
++							</p>
++							<p className="text-xs text-amber-700/80 dark:text-amber-400/80 mt-0.5">
++								Agent gặp CAPTCHA/2FA trên trình duyệt. Hãy xử lý thủ công, sau đó trả quyền điều
++								khiển.
++							</p>
++							{takeoverError && <p className="text-xs text-red-600 mt-1">{takeoverError}</p>}
++						</div>
++						<button
++							type="button"
++							disabled={resumingTakeover}
++							onClick={handleResumeTakeover}
++							className="shrink-0 px-3 py-1.5 rounded-md bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium disabled:opacity-50"
++						>
++							{resumingTakeover ? "Đang resume..." : "Trả quyền cho Agent"}
++						</button>
++					</div>
++				</div>
++			)}
++
+ 			{error && (
+ 				<div className="mt-3 flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/10 p-2.5 text-xs text-red-700 dark:text-red-300">
+ 					<AlertCircle className="w-4 h-4 shrink-0" />
+diff --git a/nowing_web/contracts/types/dsh.types.ts b/nowing_web/contracts/types/dsh.types.ts
+index 4fe1ffa66..dc0e6a1db 100644
+--- a/nowing_web/contracts/types/dsh.types.ts
++++ b/nowing_web/contracts/types/dsh.types.ts
+@@ -11,7 +11,7 @@ export const dshMissionStatusSchema = z.enum([
+ 
+ export type DshMissionStatus = z.infer<typeof dshMissionStatusSchema>;
+ 
+-export const dshMissionTypeSchema = z.enum(["deep_lead_research", "noop"]);
++export const dshMissionTypeSchema = z.enum(["deep_lead_research", "cdp_browser_operator", "noop"]);
+ 
+ export type DshMissionType = z.infer<typeof dshMissionTypeSchema>;
+ 
+diff --git a/nowing_web/lib/apis/dsh-api.service.ts b/nowing_web/lib/apis/dsh-api.service.ts
+index 80f4c8c59..09fb699ae 100644
+--- a/nowing_web/lib/apis/dsh-api.service.ts
++++ b/nowing_web/lib/apis/dsh-api.service.ts
+@@ -57,6 +57,12 @@ class DshApiService {
+ 			body: dshMissionRequestSchema.parse(data),
+ 		});
+ 	};
++
++	resumeMission = async (
++		missionId: string
++	): Promise<{ mission_id: string; status: string; phase: string }> => {
++		return baseApiService.post(`/api/v1/dsh/missions/${missionId}/resume`);
++	};
+ }
+ 
+ export const dshApiService = new DshApiService();
+diff --git a/nowing_web/tests/smoke/dashboard.spec.ts b/nowing_web/tests/smoke/dashboard.spec.ts
+index adef6614a..d27440e45 100644
+--- a/nowing_web/tests/smoke/dashboard.spec.ts
++++ b/nowing_web/tests/smoke/dashboard.spec.ts
+@@ -15,7 +15,7 @@ test.describe("Smoke", () => {
+ 	test("dashboard loads for authenticated user", async ({ page }) => {
+ 		await page.goto("/dashboard");
+ 
+-		// Sidebar is <aside> (role=complementary); its visibility implies redirect + auth fetch.
+-		await expect(page.getByRole("complementary").first()).toBeVisible({ timeout: 60_000 });
++		// Sidebar / dashboard content visibility implies redirect + auth fetch.
++		await expect(page.getByRole("button", { name: /New chat/i }).first()).toBeVisible({ timeout: 60_000 });
+ 	});
+ });
+diff --git a/nowing_backend/app/capabilities/browser_operator/__init__.py b/nowing_backend/app/capabilities/browser_operator/__init__.py
+new file mode 100644
+index 000000000..10ac8ce59
+--- /dev/null
++++ b/nowing_backend/app/capabilities/browser_operator/__init__.py
+@@ -0,0 +1 @@
++from app.capabilities.browser_operator import definition  # noqa: F401
+diff --git a/nowing_backend/app/capabilities/browser_operator/schemas.py b/nowing_backend/app/capabilities/browser_operator/schemas.py
+new file mode 100644
+index 000000000..5a997fefc
+--- /dev/null
++++ b/nowing_backend/app/capabilities/browser_operator/schemas.py
+@@ -0,0 +1,51 @@
++from __future__ import annotations
++
++from typing import Any, Literal
++
++from pydantic import BaseModel, Field
++
++
++class BrowserOperatorInput(BaseModel):
++    action: Literal[
++        "navigate",
++        "click",
++        "fill",
++        "scroll",
++        "extract",
++        "take_screenshot",
++        "detect_challenge",
++    ] = Field(
++        ...,
++        description="Action to perform in the user's browser.",
++    )
++    url: str | None = Field(
++        default=None,
++        description="Target URL for navigation or context matching. Required for 'navigate'; optional for other actions to pick the matching browser tab.",
++    )
++    selector: str | None = Field(
++        default=None,
++        description="CSS selector for 'click', 'fill', or 'extract'.",
++    )
++    text: str | None = Field(
++        default=None,
++        description="Text to type for the 'fill' action.",
++    )
++    direction: Literal["up", "down"] = Field(
++        default="down",
++        description="Direction to scroll for the 'scroll' action.",
++    )
++    px: int = Field(
++        default=400,
++        description="Pixel distance to scroll (e.g. 400).",
++    )
++    format: Literal["png", "jpeg"] = Field(
++        default="png",
++        description="Format for the 'take_screenshot' action.",
++    )
++
++
++class BrowserOperatorOutput(BaseModel):
++    success: bool
++    action: str
++    message: str
++    data: dict[str, Any] | list[Any] | str | None = None
+diff --git a/nowing_backend/app/capabilities/browser_operator/definition.py b/nowing_backend/app/capabilities/browser_operator/definition.py
+new file mode 100644
+index 000000000..59f19b915
+--- /dev/null
++++ b/nowing_backend/app/capabilities/browser_operator/definition.py
+@@ -0,0 +1,25 @@
++from __future__ import annotations
++
++from app.capabilities.browser_operator.executor import build_browser_operator_executor
++from app.capabilities.browser_operator.schemas import (
++    BrowserOperatorInput,
++    BrowserOperatorOutput,
++)
++from app.capabilities.core import Capability, register_capability
++
++BROWSER_OPERATOR_EXECUTE = Capability(
++    name="browser_operator.execute",
++    description=(
++        "Directly control the user's browser via the connected Nowing Chrome Extension using CDP. "
++        "Use this tool when the user asks to navigate to a website, scroll up/down, "
++        "click an element, fill/enter text, extract content, take a screenshot, or detect CAPTCHA/2FA. "
++        "The action field is one of: navigate, click, fill, scroll, extract, take_screenshot, detect_challenge."
++    ),
++    input_schema=BrowserOperatorInput,
++    output_schema=BrowserOperatorOutput,
++    executor=build_browser_operator_executor(),
++    billing_unit=None,
++    docs_url="/docs/capabilities/browser-operator",
++)
++
++register_capability(BROWSER_OPERATOR_EXECUTE)
+diff --git a/nowing_backend/app/capabilities/browser_operator/executor.py b/nowing_backend/app/capabilities/browser_operator/executor.py
+new file mode 100644
+index 000000000..e91707116
+--- /dev/null
++++ b/nowing_backend/app/capabilities/browser_operator/executor.py
+@@ -0,0 +1,133 @@
++from __future__ import annotations
++
++import asyncio
++import json
++import logging
++import uuid
++
++from app.capabilities.browser_operator.schemas import (
++    BrowserOperatorInput,
++    BrowserOperatorOutput,
++)
++from app.capabilities.core.types import CapabilityContext
++from app.redis_client import get_redis_client
++
++logger = logging.getLogger(__name__)
++
++
++def build_browser_operator_executor():
++    async def _execute(
++        payload: BrowserOperatorInput, ctx: CapabilityContext | None = None
++    ) -> BrowserOperatorOutput:
++        user_id: str | None = None
++        if ctx:
++            if getattr(ctx, "user_id", None):
++                user_id = str(ctx.user_id)
++            elif getattr(ctx, "auth", None) and getattr(ctx.auth, "user", None):
++                user_id = str(ctx.auth.user.id)
++            elif getattr(ctx, "session", None) and getattr(ctx, "workspace_id", None):
++                from sqlalchemy import select
++
++                from app.db import Workspace
++
++                res = await ctx.session.execute(
++                    select(Workspace.owner_id).where(Workspace.id == ctx.workspace_id)
++                )
++                owner_id = res.scalar_one_or_none()
++                if owner_id:
++                    user_id = str(owner_id)
++
++        if not user_id:
++            return BrowserOperatorOutput(
++                success=False,
++                action=payload.action,
++                message="User authentication context is required to execute browser operator commands.",
++            )
++        mission_id = f"chat-{uuid.uuid4().hex[:12]}"
++        command_id = f"cmd-{uuid.uuid4().hex[:8]}"
++
++        redis = await get_redis_client()
++        channel = f"cdp_stream:{user_id}"
++        result_key = f"cdp_result:{user_id}:{mission_id}"
++
++        # Check if the user's extension is actively listening
++        subs = await redis.pubsub_numsub(channel)
++        if not subs or subs[0][1] == 0:
++            return BrowserOperatorOutput(
++                success=False,
++                action=payload.action,
++                message=(
++                    "Nowing Extension is not connected on your browser. "
++                    "Please ensure the extension is open and authenticated with your token."
++                ),
++            )
++
++        cdp_cmd = {
++            "action": payload.action,
++            "mission_id": mission_id,
++            "command_id": command_id,
++            "url": payload.url,
++            "selector": payload.selector,
++            "text": payload.text,
++            "direction": payload.direction,
++            "px": payload.px,
++            "format": payload.format,
++        }
++
++        await redis.delete(result_key)
++        await redis.publish(channel, json.dumps(cdp_cmd))
++
++        # Wait for extension result via BLPOP
++        try:
++            raw_result = await asyncio.wait_for(
++                redis.blpop(result_key, timeout=60), timeout=60.0
++            )
++            if not raw_result:
++                return BrowserOperatorOutput(
++                    success=False,
++                    action=payload.action,
++                    message="Timed out waiting for browser extension response.",
++                )
++
++            _, data_str = raw_result
++            data = json.loads(data_str)
++            if data.get("requires_human") or data.get("challenge"):
++                return BrowserOperatorOutput(
++                    success=False,
++                    action=payload.action,
++                    message=(
++                        "Encountered CAPTCHA/Challenge. "
++                        "Human takeover is required in the browser extension popup."
++                    ),
++                    data=data,
++                )
++
++            if data.get("error"):
++                return BrowserOperatorOutput(
++                    success=False,
++                    action=payload.action,
++                    message=data["error"],
++                    data=data.get("result"),
++                )
++
++            return BrowserOperatorOutput(
++                success=True,
++                action=payload.action,
++                message=f"Successfully executed {payload.action} on your browser tab.",
++                data=data.get("result"),
++            )
++        except TimeoutError:
++            return BrowserOperatorOutput(
++                success=False,
++                action=payload.action,
++                message="Timed out waiting for browser extension response (60s).",
++            )
++        except Exception as exc:
++            logger.error("CDP command execution error: %s", exc)
++            return BrowserOperatorOutput(
++                success=False,
++                action=payload.action,
++                message=f"Error executing browser action: {exc}",
++            )
++
++    return _execute
+diff --git a/nowing_backend/tests/unit/tasks/dsh_worker/test_browser_operator_cdp.py b/nowing_backend/tests/unit/tasks/dsh_worker/test_browser_operator_cdp.py
+new file mode 100644
+index 000000000..cc0524a50
+--- /dev/null
++++ b/nowing_backend/tests/unit/tasks/dsh_worker/test_browser_operator_cdp.py
+@@ -0,0 +1,160 @@
++from unittest.mock import AsyncMock, MagicMock, patch
++
++import pytest
++from pydantic import ValidationError
++
++from app.schemas.dsh import ResumeMissionPayload
++
++pytestmark = [pytest.mark.unit]
++
++
++@pytest.mark.asyncio
++async def test_cdp_subgraph_push_event():
++    """should push CDPCommand event containing {action, url, command_id} to the SSE stream queue."""
++    from app.tasks.dsh_worker_browser_operator import BrowserOperatorCdpSubgraph
++
++    redis_mock = AsyncMock()
++    redis_mock.pubsub_numsub.return_value = [(b"cdp_stream:user-1", 1)]
++    redis_mock.blpop.return_value = (
++        b"key",
++        b'{"command_id": "abc123", "result": {"navigatedUrl": "https://test.com", "tabId": 42}, "sources": [{"url": "https://test.com"}]}',
++    )
++
++    with patch("app.tasks.dsh_worker_browser_operator.get_redis_client", return_value=redis_mock):
++        subgraph = BrowserOperatorCdpSubgraph(None)
++        state = {
++            "mission_id": "test-mission",
++            "user_id": "user-1",
++            "payload": {"target_url": "https://test.com"},
++            "workspace_id": 1,
++        }
++        new_state = await subgraph._cdp_crawl_node(state, {})
++
++        assert redis_mock.publish.called
++        assert new_state["checkpoint"]["cdp_last_result"]["navigatedUrl"] == "https://test.com"
++        assert len(new_state["sources"]) == 1
++        assert new_state["sources"][0]["url"] == "https://test.com"
++
++
++@pytest.mark.asyncio
++async def test_cdp_timeout():
++    """should raise HumanInterventionRequired when the extension does not respond in time."""
++    from app.tasks.dsh_worker_browser_operator import (
++        BrowserOperatorCdpSubgraph,
++        HumanInterventionRequired,
++    )
++
++    redis_mock = AsyncMock()
++    redis_mock.pubsub_numsub.return_value = [(b"cdp_stream:user-1", 1)]
++    redis_mock.blpop.return_value = None  # Timeout
++
++    with patch("app.tasks.dsh_worker_browser_operator.get_redis_client", return_value=redis_mock):
++        subgraph = BrowserOperatorCdpSubgraph(None)
++        state = {
++            "mission_id": "test-mission",
++            "user_id": "user-1",
++            "payload": {"target_url": "https://test.com"},
++            "workspace_id": 1,
++        }
++        with pytest.raises(HumanInterventionRequired, match="CDP takeover timed out"):
++            await subgraph._cdp_crawl_node(state, {})
++
++
++@pytest.mark.asyncio
++async def test_cdp_missing_extension():
++    """should raise HumanInterventionRequired when no extension is listening."""
++    from app.tasks.dsh_worker_browser_operator import (
++        BrowserOperatorCdpSubgraph,
++        HumanInterventionRequired,
++    )
++
++    redis_mock = AsyncMock()
++    redis_mock.pubsub_numsub.return_value = [(b"cdp_stream:user-1", 0)]
++
++    with patch("app.tasks.dsh_worker_browser_operator.get_redis_client", return_value=redis_mock):
++        subgraph = BrowserOperatorCdpSubgraph(None)
++        state = {
++            "mission_id": "test-mission",
++            "user_id": "user-1",
++            "payload": {"target_url": "https://test.com"},
++            "workspace_id": 1,
++        }
++        with pytest.raises(HumanInterventionRequired, match="No extension listening"):
++            await subgraph._cdp_crawl_node(state, {})
++
++
++@pytest.mark.asyncio
++async def test_cdp_result_requires_human():
++    """should raise HumanInterventionRequired when the extension reports a challenge."""
++    from app.tasks.dsh_worker_browser_operator import (
++        BrowserOperatorCdpSubgraph,
++        HumanInterventionRequired,
++    )
++
++    redis_mock = AsyncMock()
++    redis_mock.pubsub_numsub.return_value = [(b"cdp_stream:user-1", 1)]
++    redis_mock.blpop.return_value = (
++        b"key",
++        b'{"command_id": "abc123", "requires_human": true, "challenge": "recaptcha"}',
++    )
++
++    with patch("app.tasks.dsh_worker_browser_operator.get_redis_client", return_value=redis_mock):
++        subgraph = BrowserOperatorCdpSubgraph(None)
++        state = {
++            "mission_id": "test-mission",
++            "user_id": "user-1",
++            "payload": {"target_url": "https://test.com"},
++            "workspace_id": 1,
++        }
++        with pytest.raises(HumanInterventionRequired, match="recaptcha"):
++            await subgraph._cdp_crawl_node(state, {})
++
++
++@pytest.mark.asyncio
++async def test_cdp_invalid_url_rejected():
++    """should reject non-http(s) target URLs."""
++    from app.tasks.dsh_worker_browser_operator import BrowserOperatorCdpSubgraph
++
++    subgraph = BrowserOperatorCdpSubgraph(None)
++    state = {
++        "mission_id": "test-mission",
++        "user_id": "user-1",
++        "payload": {"target_url": "javascript:alert(1)"},
++        "workspace_id": 1,
++    }
++    with pytest.raises(ValueError, match="Invalid CDP mission payload"):
++        await subgraph._cdp_crawl_node(state, {})
++
++
++@pytest.mark.asyncio
++async def test_cdp_stream_disconnect():
++    """should cleanly unsubscribe and close Redis pubsub on client disconnect."""
++    redis_mock = AsyncMock()
++    redis_mock.pubsub_numsub.return_value = [["cdp_stream:user-1", 0]]
++    pubsub_mock = AsyncMock()
++    pubsub_mock.subscribe = AsyncMock()
++    pubsub_mock.unsubscribe = AsyncMock()
++    pubsub_mock.close = AsyncMock()
++    redis_mock.pubsub = MagicMock(return_value=pubsub_mock)
++
++    request_mock = AsyncMock()
++    request_mock.is_disconnected.return_value = True
++
++    with patch("app.routes.dsh_routes.get_redis_client", return_value=redis_mock):
++        from app.routes.dsh_routes import cdp_stream
++        auth_mock = MagicMock()
++        auth_mock.user.id = "user-1"
++
++        response = await cdp_stream(request_mock, auth_mock)
++        generator = response.body_iterator
++        async for _ in generator:
++            pass
++
++        assert pubsub_mock.unsubscribe.called
++        assert pubsub_mock.close.called
++
++
++def test_resume_invalid_payload():
++    """should handle None or empty payload to /resume gracefully (422 Unprocessable Entity)."""
++    with pytest.raises(ValidationError):
++        ResumeMissionPayload()
+diff --git a/nowing_backend/tests/integration/tasks/dsh_worker/test_browser_operator_cdp_integration.py b/nowing_backend/tests/integration/tasks/dsh_worker/test_browser_operator_cdp_integration.py
+new file mode 100644
+index 000000000..2ac5934b3
+--- /dev/null
++++ b/nowing_backend/tests/integration/tasks/dsh_worker/test_browser_operator_cdp_integration.py
+@@ -0,0 +1,105 @@
++import uuid
++from unittest.mock import AsyncMock, MagicMock, patch
++
++import pytest
++from fastapi import HTTPException
++
++from app.db import DshMission, User, Workspace
++from app.redis_client import get_redis_client
++from app.routes.dsh_routes import pause_mission, resume_mission
++
++pytestmark = [pytest.mark.integration]
++
++
++async def _create_test_workspace_and_user(db_session):
++    user = User(
++        id=uuid.uuid4(),
++        email=f"test-{uuid.uuid4()}@nowing.net",
++        hashed_password="hashed",
++        is_active=True,
++        is_superuser=False,
++        is_verified=True,
++    )
++    db_session.add(user)
++    await db_session.flush()
++
++    workspace = Workspace(
++        name="Test Workspace",
++        user_id=user.id,
++    )
++    db_session.add(workspace)
++    await db_session.commit()
++    await db_session.refresh(user)
++    await db_session.refresh(workspace)
++    return user, workspace
++
++
++@pytest.mark.asyncio
++async def test_pause_status_update(db_session):
++    """should execute pause_mission route and set mission phase to waiting_for_human."""
++    user, workspace = await _create_test_workspace_and_user(db_session)
++    mission = DshMission(user_id=user.id, workspace_id=workspace.id, status="running", phase="waiting_for_human")
++    db_session.add(mission)
++    await db_session.commit()
++    await db_session.refresh(mission)
++
++    auth_mock = MagicMock()
++    auth_mock.user.id = user.id
++    auth_mock.method = "session"
++
++    response = await pause_mission(mission.id, auth_mock, db_session)
++
++    assert response["phase"] == "waiting_for_human"
++    await db_session.refresh(mission)
++    assert mission.phase == "waiting_for_human"
++    assert mission.current_subtask_id == "cdp_crawl"
++
++    redis = await get_redis_client()
++    takeover_key = f"dsh:lock:takeover:{workspace.id}:{mission.id}"
++    assert await redis.get(takeover_key)
++    await redis.delete(takeover_key)
++
++
++@pytest.mark.asyncio
++async def test_resume_cas_update(db_session):
++    """should execute resume_mission route with atomic CAS and transition waiting_for_human -> crawl."""
++    user, workspace = await _create_test_workspace_and_user(db_session)
++    mission = DshMission(user_id=user.id, workspace_id=workspace.id, status="running", phase="waiting_for_human")
++    db_session.add(mission)
++    await db_session.commit()
++    await db_session.refresh(mission)
++
++    auth_mock = MagicMock()
++    auth_mock.user.id = user.id
++    auth_mock.method = "session"
++
++    redis = await get_redis_client()
++    takeover_key = f"dsh:lock:takeover:{workspace.id}:{mission.id}"
++    await redis.setex(takeover_key, 900, "1")
++
++    with patch("app.services.dsh_mission_service.DshMissionService.publish_to_stream", new_callable=AsyncMock):
++        response = await resume_mission(mission.id, auth_mock, db_session)
++        assert response["phase"] == "crawl"
++
++    await db_session.refresh(mission)
++    assert mission.phase == "crawl"
++    assert await redis.get(takeover_key) is None
++
++
++@pytest.mark.asyncio
++async def test_resume_cas_conflict(db_session):
++    """should return 409 Conflict when attempting to resume a mission that is not waiting_for_human."""
++    user, workspace = await _create_test_workspace_and_user(db_session)
++    mission = DshMission(user_id=user.id, workspace_id=workspace.id, status="running", phase="crawl")
++    db_session.add(mission)
++    await db_session.commit()
++    await db_session.refresh(mission)
++
++    auth_mock = MagicMock()
++    auth_mock.user.id = user.id
++    auth_mock.method = "session"
++
++    with pytest.raises(HTTPException) as exc_info:
++        await resume_mission(mission.id, auth_mock, db_session)
++
++    assert exc_info.value.status_code == 409
+diff --git a/nowing_backend/app/tasks/dsh_worker_browser_operator.py b/nowing_backend/app/tasks/dsh_worker_browser_operator.py
+new file mode 100644
+index 000000000..bdaaca3fa
+--- /dev/null
++++ b/nowing_backend/app/tasks/dsh_worker_browser_operator.py
+@@ -0,0 +1,236 @@
++import json
++import logging
++import uuid
++from collections.abc import Mapping
++from typing import Any
++
++from langgraph.graph import END, START, StateGraph
++from langgraph.types import RunnableConfig
++
++from app.redis_client import get_redis_client
++from app.schemas.dsh import BrowserOperatorCdpPayload
++from app.services.pii.redact import redact_pii
++
++MissionState = dict[str, Any]
++
++logger = logging.getLogger(__name__)
++
++# Hard ceiling for an extension to respond to a single CDP command (AC-2 / AD-108).
++_CDP_RESULT_TIMEOUT_SECONDS = 60
++# Max number of stale results to keep per mission. Avoids Redis list bloat.
++_CDP_RESULT_QUEUE_MAXLEN = 5
++
++
++class HumanInterventionRequired(Exception):  # noqa: N818
++    """Raised when the agent encounters a CAPTCHA or requires human takeover."""
++
++
++class CdpExecutionError(RuntimeError):
++    """Raised when CDP execution fails but a graceful degradation is possible."""
++
++
++class BrowserOperatorCdpSubgraph:
++    """Subgraph for executing native browser CDP commands via extension."""
++
++    def __init__(self, rest_client: Any) -> None:
++        self.rest_client = rest_client
++
++    @classmethod
++    def build(cls, rest_client: Any) -> StateGraph:
++        subgraph = StateGraph(MissionState)
++        instance = cls(rest_client)
++
++        subgraph.add_node("cdp_crawl", instance._cdp_crawl_node)
++        subgraph.add_edge(START, "cdp_crawl")
++        subgraph.add_edge("cdp_crawl", END)
++
++        return subgraph.compile()
++
++    @staticmethod
++    def _redact_cdp_value(value: Any) -> Any:
++        """Redact PII in string/CDP values before logging/checkpointing."""
++        if isinstance(value, str):
++            try:
++                return redact_pii(value, context="lead_enrichment").text
++            except Exception:
++                # If redaction fails, do not leak raw text; return a marker.
++                return "<redaction_failed>"
++        return value
++
++    @classmethod
++    def _redact_cdp_data(cls, data: Any) -> Any:
++        """Recursively redact strings inside a CDP result / dict."""
++        if isinstance(data, Mapping):
++            return {k: cls._redact_cdp_data(v) for k, v in data.items()}
++        if isinstance(data, list):
++            return [cls._redact_cdp_data(v) for v in data]
++        return cls._redact_cdp_value(data)
++
++    async def _cdp_crawl_node(self, state: MissionState, config: RunnableConfig) -> MissionState:
++        logger.info("Executing CDP crawl step.")
++        _ = config
++
++        payload = state.get("payload") or {}
++        mission_id = state.get("mission_id")
++        resolved_user_id = state.get("user_id")
++
++        if not mission_id:
++            raise ValueError("mission_id is required in state to run CDP Subgraph.")
++        if not resolved_user_id:
++            raise ValueError("user_id is required in state to route CDP commands.")
++
++        try:
++            payload_model = BrowserOperatorCdpPayload.model_validate(payload)
++        except Exception as exc:
++            raise ValueError(f"Invalid CDP mission payload: {exc}") from exc
++
++        target_url = str(payload_model.target_url)
++
++        redis = await get_redis_client()
++        channel = f"cdp_stream:{resolved_user_id}"
++        result_key = f"cdp_result:{resolved_user_id}:{mission_id}"
++
++        # Ensure the result queue is capped to avoid bloat across retries/resumes.
++        await redis.delete(result_key)
++
++        # Check that at least one SSE client is listening before we publish.
++        try:
++            subs = await redis.pubsub_numsub(channel)
++            if subs and subs[0][1] == 0:
++                raise HumanInterventionRequired("No extension listening for CDP takeover")
++        except HumanInterventionRequired:
++            raise
++        except Exception:
++            # If we cannot check subscription state, fail soft and ask for human.
++            raise HumanInterventionRequired("Cannot verify extension CDP subscription") from None
++
++        command_id = uuid.uuid4().hex
++        cmd = {
++            "action": "navigate",
++            "url": target_url,
++            "mission_id": str(mission_id),
++            "command_id": command_id,
++        }
++
++        # Publish command as an SSE event through the Redis pub/sub channel.
++        await redis.publish(channel, json.dumps(cmd))
++
++        # Wait for the extension to post the result.
++        result_tuple = await redis.blpop(result_key, timeout=_CDP_RESULT_TIMEOUT_SECONDS)
++
++        if not result_tuple:
++            raise HumanInterventionRequired(
++                "CDP takeover timed out: extension did not respond within 60s"
++            )
++
++        _, result_data = result_tuple
++        try:
++            parsed_result = json.loads(result_data)
++        except json.JSONDecodeError as exc:
++            raise CdpExecutionError(f"Malformed CDP result received from extension: {exc}") from exc
++
++        if not isinstance(parsed_result, dict):
++            raise CdpExecutionError("CDP result must be a JSON object")
++
++        if parsed_result.get("requires_human"):
++            challenge = parsed_result.get("challenge", "challenge")
++            raise HumanInterventionRequired(f"CDP requires human intervention: {challenge}")
++
++        if parsed_result.get("error"):
++            error_msg = parsed_result["error"]
++            # Degrade on extension-reported CDP errors instead of crashing the mission.
++            logger.warning("CDP execution failed for mission %s: %s", mission_id, error_msg)
++            raise CdpExecutionError(f"Extension CDP execution failed: {error_msg}")
++
++        # Verify the result belongs to the command we just sent.
++        if parsed_result.get("command_id") != command_id:
++            logger.warning(
++                "CDP result command_id mismatch for mission %s: expected %s, got %s",
++                mission_id,
++                command_id,
++                parsed_result.get("command_id"),
++            )
++
++        cdp_res = parsed_result.get("result") or {}
++
++        # Build a source shape compatible with the downstream extraction node.
++        # Prefer the URL the extension actually navigated to.
++        navigated_url = cdp_res.get("navigatedUrl") or cdp_res.get("url") or target_url
++        cdp_source = {
++            "url": navigated_url,
++            "domain": _extract_domain(navigated_url),
++            "title": cdp_res.get("title", ""),
++            "tab_id": cdp_res.get("tabId"),
++        }
++
++        sources = parsed_result.get("sources")
++        if not isinstance(sources, list):
++            sources = [cdp_source] if cdp_res else []
++
++        # Sanitize sources: ensure shape and redact any raw text/html.
++        sanitized_sources = []
++        for source in sources:
++            if isinstance(source, Mapping):
++                url = source.get("navigatedUrl") or source.get("url") or navigated_url
++                normalized = {
++                    "url": url,
++                    "domain": _extract_domain(url),
++                    "title": source.get("title", ""),
++                    "tab_id": source.get("tabId"),
++                    "html": source.get("html", ""),
++                    "text": source.get("text", ""),
++                }
++                normalized = self._redact_cdp_data(normalized)
++                sanitized_sources.append(normalized)
++
++        redacted_res = self._redact_cdp_data(cdp_res)
++        redacted_parsed = self._redact_cdp_data(parsed_result)
++
++        logger.info(
++            "Received CDP result for mission %s: command_id=%s sources=%s",
++            mission_id,
++            command_id,
++            len(sanitized_sources),
++        )
++
++        subtasks = list(state.get("subtasks") or [])
++        subtasks.append(
++            {
++                "id": "cdp_crawl",
++                "status": "success",
++                "sources_count": len(sanitized_sources),
++            }
++        )
++
++        state["sources"] = sanitized_sources
++        state["subtasks"] = subtasks
++
++        state_checkpoint = dict(state.get("checkpoint") or {})
++        state_checkpoint["cdp_last_result"] = redacted_res
++        state_checkpoint["sources"] = sanitized_sources
++        state_checkpoint["subtasks"] = subtasks
++        # Keep a PII-redacted trace of the raw command/result for debugging.
++        state_checkpoint["cdp_last_command"] = {
++            "action": "navigate",
++            "url": redact_pii(target_url, context="lead_enrichment").text,
++            "command_id": command_id,
++        }
++        state_checkpoint["cdp_last_response"] = redacted_parsed
++        state["checkpoint"] = state_checkpoint
++
++        # Trim the result queue so future runs/resumes do not see stale data.
++        await redis.ltrim(result_key, 0, _CDP_RESULT_QUEUE_MAXLEN - 1)
++
++        return state
++
++
++def _extract_domain(url: str | None) -> str | None:
++    from urllib.parse import urlparse
++
++    if not url:
++        return None
++    try:
++        parsed = urlparse(url)
++        return parsed.netloc if parsed.netloc else None
++    except Exception:
++        return None
+diff --git a/nowing_browser_extension/background/cdp-bridge.ts b/nowing_browser_extension/background/cdp-bridge.ts
+new file mode 100644
+index 000000000..afaa2b1bf
+--- /dev/null
++++ b/nowing_browser_extension/background/cdp-bridge.ts
+@@ -0,0 +1,627 @@
++import { Storage } from "@plasmohq/storage";
++import { buildBackendUrl } from "~utils/backend-url";
++
++const storage = new Storage({ area: "local" });
++
++// Known challenge signatures. Runtime.evaluate returns true if any is present.
++const CHALLENGE_SELECTORS = [
++	".cf-turnstile",
++	".recaptcha",
++	'iframe[src*="recaptcha"]',
++	'iframe[src*="challenges.cloudflare"]',
++	'input[type="password"]',
++	'input[autocomplete="one-time-code"]',
++	'input[name*="otp" i]',
++	'[id*="turnstile"]',
++];
++
++const CHALLENGE_DETECTION_JS = `
++(function() {
++  const selectors = ${JSON.stringify(CHALLENGE_SELECTORS)};
++  for (const s of selectors) {
++    if (document.querySelector(s)) return { challenge: s };
++  }
++  return null;
++})()
++`;
++
++type CdpCommand = {
++	action: string;
++	mission_id: string;
++	command_id: string;
++	url?: string;
++	selector?: string;
++	text?: string;
++	direction?: "up" | "down";
++	px?: number;
++	format?: "png" | "jpeg";
++};
++
++class CdpBridge {
++	private static instance: CdpBridge | null = null;
++	private fetchAbortController: AbortController | null = null;
++	private activeDebuggeeTabId: number | null = null;
++	private processing = false;
++	private queued: CdpCommand[] = [];
++	private reconnectDelay = 1000;
++
++	public static getInstance(): CdpBridge {
++		if (!CdpBridge.instance) {
++			CdpBridge.instance = new CdpBridge();
++			if (typeof chrome !== "undefined" && chrome.storage?.onChanged) {
++				chrome.storage.onChanged.addListener((changes, area) => {
++					if (area === "local" && (changes.token?.newValue || changes.backend_base_url?.newValue)) {
++						CdpBridge.getInstance().startListening();
++					}
++				});
++			}
++		}
++		return CdpBridge.instance;
++	}
++
++	public async startListening(): Promise<void> {
++		if (this.fetchAbortController && !this.fetchAbortController.signal.aborted) {
++			return;
++		}
++
++		const token = await this._requireToken();
++		if (!token) {
++			console.warn("CdpBridge: no auth token; cannot connect SSE");
++			return;
++		}
++
++		const streamUrl = await buildBackendUrl("/api/v1/dsh/cdp/stream");
++
++		try {
++			this.fetchAbortController = new AbortController();
++			const response = await fetch(streamUrl, {
++				method: "GET",
++				headers: {
++					Accept: "text/event-stream",
++					Authorization: `Bearer ${token}`,
++				},
++				signal: this.fetchAbortController.signal,
++			});
++
++			if (!response.ok) {
++				if (response.status === 401 || response.status === 403) {
++					console.warn("CdpBridge: auth rejected; stop reconnection");
++					return;
++				}
++				throw new Error(`SSE connection failed: ${response.status}`);
++			}
++
++			const body = response.body;
++			if (!body) {
++				throw new Error("SSE response has no body");
++			}
++
++			const reader = body.getReader();
++			const decoder = new TextDecoder();
++			let buffer = "";
++
++			// Reset backoff after a successful connection.
++			this.reconnectDelay = 1000;
++
++			while (true) {
++				const { done, value } = await reader.read();
++				if (done) {
++					break;
++				}
++				buffer += decoder.decode(value, { stream: true });
++				const lines = buffer.split("\n");
++				buffer = lines.pop() ?? "";
++				const events = this._parseSSE(lines);
++				for (const event of events) {
++					if (event.event === "cdp_command") {
++						try {
++							const cmd = JSON.parse(event.data) as CdpCommand;
++							this._enqueueCommand(cmd);
++						} catch (err) {
++							console.error("CdpBridge: failed to parse command:", err);
++						}
++					}
++				}
++			}
++		} catch (err: any) {
++			if (err.name === "AbortError") {
++				console.info("CdpBridge: SSE connection aborted");
++				return;
++			}
++			console.error("CdpBridge: SSE error:", err);
++		} finally {
++			this.stopListening();
++		}
++
++		// Attempt to reconnect with capped exponential backoff.
++		if (this.reconnectDelay < 30000) {
++			this.reconnectDelay = Math.min(this.reconnectDelay * 2, 30000);
++		}
++		setTimeout(() => this.startListening(), this.reconnectDelay);
++	}
++
++	public stopListening(): void {
++		if (this.fetchAbortController) {
++			try {
++				this.fetchAbortController.abort();
++			} catch {
++				// ignore
++			}
++			this.fetchAbortController = null;
++		}
++		this.detachDebugger();
++	}
++
++	private _parseSSE(lines: string[]): { event: string; data: string }[] {
++		const events: { event: string; data: string }[] = [];
++		let currentEvent = "";
++		let currentData = "";
++
++		for (const raw of lines) {
++			const line = raw.trim();
++			if (line.startsWith("event:")) {
++				currentEvent = line.slice("event:".length).trim();
++			} else if (line.startsWith("data:")) {
++				currentData = line.slice("data:".length).trim();
++			} else if (line === "" && currentEvent) {
++				events.push({ event: currentEvent, data: currentData });
++				currentEvent = "";
++				currentData = "";
++			}
++		}
++
++		return events;
++	}
++
++	private _enqueueCommand(cmd: CdpCommand): void {
++		if (this.processing) {
++			this.queued.push(cmd);
++			return;
++		}
++		this.processing = true;
++		this._processCommand(cmd).finally(() => {
++			this.processing = false;
++			const next = this.queued.shift();
++			if (next) this._enqueueCommand(next);
++		});
++	}
++
++	private async _processCommand(cmd: CdpCommand): Promise<void> {
++		await this.handleCdpCommand(cmd);
++	}
++
++	private async _requireToken(): Promise<string | null> {
++		try {
++			const token = await storage.get("token");
++			if (typeof token === "string" && token) return token;
++		} catch {
++			// fallback
++		}
++		if (typeof chrome !== "undefined" && chrome.storage?.local) {
++			try {
++				const res = await chrome.storage.local.get(["token", "apiKey"]);
++				if (typeof res.token === "string" && res.token) return res.token;
++				if (typeof res.apiKey === "string" && res.apiKey) return res.apiKey;
++			} catch {
++				// ignore
++			}
++		}
++		return null;
++	}
++
++	private async _findMatchingTab(
++		targetUrl: string | undefined
++	): Promise<chrome.tabs.Tab | undefined> {
++		const allTabs = await chrome.tabs.query({});
++		if (targetUrl) {
++			try {
++				const targetHost = new URL(targetUrl).hostname;
++				const match = allTabs.find((t) => t.url && new URL(t.url).hostname === targetHost);
++				if (match?.id) return match;
++			} catch {
++				// invalid URL; fall through
++			}
++		}
++		const active = allTabs.find((t) => t.active) || allTabs[0];
++		if (active) return active;
++		if (targetUrl) {
++			return await chrome.tabs.create({ url: targetUrl, active: true });
++		}
++		return undefined;
++	}
++
++	private async _attachDebugger(tabId: number): Promise<void> {
++		if (this.activeDebuggeeTabId === tabId) return;
++		await this.detachDebugger();
++		await chrome.debugger.attach({ tabId }, "1.3");
++		this.activeDebuggeeTabId = tabId;
++	}
++
++	private async detachDebugger(): Promise<void> {
++		if (this.activeDebuggeeTabId !== null) {
++			try {
++				await chrome.debugger.detach({ tabId: this.activeDebuggeeTabId });
++			} catch (err) {
++				console.warn("Debugger detach warning:", err);
++			} finally {
++				this.activeDebuggeeTabId = null;
++			}
++		}
++	}
++
++	private async _sendCommand<T = any>(
++		tabId: number,
++		method: string,
++		params?: Record<string, any>,
++		timeoutMs = 15000
++	): Promise<T> {
++		return new Promise<T>((resolve, reject) => {
++			const timer = setTimeout(() => {
++				reject(new Error(`CDP command ${method} timed out`));
++			}, timeoutMs);
++
++			chrome.debugger.sendCommand({ tabId }, method, params, (result) => {
++				clearTimeout(timer);
++				if (chrome.runtime.lastError) {
++					reject(new Error(chrome.runtime.lastError.message || `CDP command ${method} failed`));
++				} else {
++					resolve(result as T);
++				}
++			});
++		});
++	}
++
++	private _waitForEvent(tabId: number, eventMethod: string, timeoutMs = 30000): Promise<any> {
++		return new Promise((resolve, reject) => {
++			const timer = setTimeout(() => {
++				cleanup();
++				reject(new Error(`Timeout waiting for ${eventMethod}`));
++			}, timeoutMs);
++
++			const handler = (debuggee: chrome.debugger.Debuggee, recvMethod: string, params?: any) => {
++				if (debuggee.tabId !== tabId) return;
++				if (recvMethod === eventMethod) {
++					cleanup();
++					resolve(params);
++				}
++			};
++
++			const cleanup = () => {
++				clearTimeout(timer);
++				chrome.debugger.onEvent.removeListener(handler);
++			};
++
++			chrome.debugger.onEvent.addListener(handler);
++		});
++	}
++
++	private async _detectChallenge(tabId: number): Promise<string | null> {
++		try {
++			await this._sendCommand(tabId, "Runtime.enable");
++			const result: any = await this._sendCommand(
++				tabId,
++				"Runtime.evaluate",
++				{
++					expression: CHALLENGE_DETECTION_JS,
++					returnByValue: true,
++				},
++				5000
++			);
++			const value = result?.result?.value;
++			return value?.challenge ?? null;
++		} catch (err) {
++			console.warn("CdpBridge: challenge detection failed:", err);
++			return null;
++		}
++	}
++
++	private async _getDocumentInfo(tabId: number): Promise<{ url?: string; title?: string }> {
++		try {
++			const result: any = await this._sendCommand(
++				tabId,
++				"Runtime.evaluate",
++				{
++					expression: "JSON.stringify({ url: location.href, title: document.title })",
++					returnByValue: true,
++				},
++				5000
++			);
++			return JSON.parse(result?.result?.value ?? "{}") as { url?: string; title?: string };
++		} catch (err) {
++			console.warn("CdpBridge: getDocumentInfo failed:", err);
++			return {};
++		}
++	}
++
++	private async handleCdpCommand(cmd: CdpCommand): Promise<void> {
++		const { action, mission_id, command_id, url } = cmd;
++
++		if (!action || !mission_id || !command_id) {
++			console.error("CdpBridge: invalid CDP command", cmd);
++			return;
++		}
++
++		const targetUrl = action === "navigate" ? url : cmd.url;
++		const targetTab = await this._findMatchingTab(targetUrl);
++		if (!targetTab?.id) {
++			await this.sendResult(
++				mission_id,
++				null,
++				"No active tab available for CDP takeover",
++				command_id
++			);
++			return;
++		}
++
++		const tabId = targetTab.id;
++
++		// Validate URL scheme to avoid javascript:/data: trickery.
++		const target = action === "navigate" ? targetUrl : targetTab.url;
++		if (target) {
++			try {
++				const parsed = new URL(target);
++				if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
++					await this.sendResult(
++						mission_id,
++						null,
++						`Unsupported URL scheme: ${parsed.protocol}`,
++						command_id
++					);
++					return;
++				}
++			} catch {
++				await this.sendResult(mission_id, null, "Invalid URL", command_id);
++				return;
++			}
++		}
++
++		try {
++			await this._attachDebugger(tabId);
++
++			let resultPayload: Record<string, any> = { success: true };
++			let skipAutoChallenge = false;
++
++			switch (action) {
++				case "navigate": {
++					if (!targetUrl) {
++						await this.sendResult(mission_id, null, "navigate requires url", command_id);
++						return;
++					}
++					try {
++						await chrome.tabs.update(tabId, { url: targetUrl, active: true });
++						if (targetTab.windowId) {
++							await chrome.windows.update(targetTab.windowId, { focused: true });
++						}
++					} catch (e) {
++						console.warn("tab update error:", e);
++					}
++					await this._sendCommand(tabId, "Page.enable").catch(() => {});
++					const loadPromise = this._waitForEvent(tabId, "Page.loadEventFired", 15000).catch(
++						() => {}
++					);
++					await this._sendCommand(tabId, "Page.navigate", { url: targetUrl }).catch(() => {});
++					await loadPromise;
++					await new Promise((r) => setTimeout(r, 1000));
++					const info = await this._getDocumentInfo(tabId);
++					resultPayload = {
++						navigatedUrl: info.url ?? targetUrl,
++						title: info.title,
++						tabId,
++					};
++					break;
++				}
++
++				case "click": {
++					if (!cmd.selector) {
++						throw new Error("click requires selector");
++					}
++					await this._sendCommand(tabId, "DOM.enable");
++					const doc: any = await this._sendCommand(tabId, "DOM.getDocument");
++					const node: any = await this._sendCommand(tabId, "DOM.querySelector", {
++						nodeId: doc.root.nodeId,
++						selector: cmd.selector,
++					});
++					if (!node?.nodeId) {
++						throw new Error(`Selector not found: ${cmd.selector}`);
++					}
++					const box: any = await this._sendCommand(tabId, "DOM.getBoxModel", {
++						nodeId: node.nodeId,
++					});
++					const [x, y] = this._boxCenter(box.model.content);
++					await this._sendCommand(tabId, "Input.dispatchMouseEvent", {
++						type: "mousePressed",
++						x,
++						y,
++						button: "left",
++						clickCount: 1,
++					});
++					await this._sendCommand(tabId, "Input.dispatchMouseEvent", {
++						type: "mouseReleased",
++						x,
++						y,
++						button: "left",
++						clickCount: 1,
++					});
++					resultPayload = { clickedSelector: cmd.selector, tabId };
++					break;
++				}
++
++				case "fill": {
++					if (!cmd.selector || cmd.text === undefined) {
++						throw new Error("fill requires selector and text");
++					}
++					await this._sendCommand(tabId, "DOM.enable");
++					const doc: any = await this._sendCommand(tabId, "DOM.getDocument");
++					const node: any = await this._sendCommand(tabId, "DOM.querySelector", {
++						nodeId: doc.root.nodeId,
++						selector: cmd.selector,
++					});
++					if (!node?.nodeId) {
++						throw new Error(`Selector not found: ${cmd.selector}`);
++					}
++					await this._sendCommand(tabId, "DOM.focus", { nodeId: node.nodeId });
++					await this._sendCommand(tabId, "Input.insertText", { text: cmd.text });
++					resultPayload = { filledSelector: cmd.selector, tabId };
++					break;
++				}
++
++				case "scroll": {
++					const direction = cmd.direction ?? "down";
++					const px = cmd.px ?? 500;
++					const deltaY = direction === "up" ? -px : px;
++					await this._sendCommand(tabId, "Runtime.enable").catch(() => {});
++					await this._sendCommand(tabId, "Runtime.evaluate", {
++						expression: `window.scrollBy({ top: ${deltaY}, behavior: 'smooth' });`,
++					}).catch(() => {});
++					await this._sendCommand(tabId, "Input.dispatchMouseEvent", {
++						type: "mouseWheel",
++						x: 200,
++						y: 200,
++						deltaX: 0,
++						deltaY,
++					}).catch(() => {});
++					resultPayload = { scrolled: direction, px, tabId };
++					break;
++				}
++
++				case "extract": {
++					if (!cmd.selector) {
++						throw new Error("extract requires selector");
++					}
++					const expression = `
++            (function() {
++              const el = document.querySelector(${JSON.stringify(cmd.selector)});
++              if (!el) return null;
++              return { text: el.innerText, html: el.innerHTML };
++            })()
++          `;
++					const evalResult: any = await this._sendCommand(tabId, "Runtime.evaluate", {
++						expression,
++						returnByValue: true,
++					});
++					const value = evalResult?.result?.value;
++					resultPayload = {
++						selector: cmd.selector,
++						text: typeof value?.text === "string" ? value.text.slice(0, 50000) : "",
++						html: typeof value?.html === "string" ? value.html.slice(0, 50000) : "",
++						tabId,
++					};
++					break;
++				}
++
++				case "take_screenshot": {
++					const format = cmd.format ?? "png";
++					const cap: any = await this._sendCommand(tabId, "Page.captureScreenshot", { format });
++					resultPayload = {
++						data: cap.data,
++						format,
++						tabId,
++					};
++					break;
++				}
++
++				case "detect_challenge": {
++					skipAutoChallenge = true;
++					const challenge = await this._detectChallenge(tabId);
++					resultPayload = { challenge, tabId };
++					break;
++				}
++
++				default:
++					await this.sendResult(mission_id, null, `Unsupported action: ${action}`, command_id);
++					return;
++			}
++
++			// After navigation or interaction, check whether a human challenge is present.
++			if (!skipAutoChallenge) {
++				const challenge = await this._detectChallenge(tabId);
++				if (challenge) {
++					// Store the active mission so the popup can offer a Release Control button.
++					await storage.set("activeMissionId", mission_id);
++					await this.sendResult(mission_id, null, challenge, command_id, true, challenge);
++					return;
++				}
++			}
++
++			await this.sendResult(mission_id, resultPayload, null, command_id);
++		} catch (err: any) {
++			console.error("CDP execution error:", err);
++			await this.sendResult(mission_id, null, err.message || String(err), command_id);
++		} finally {
++			await this.detachDebugger();
++		}
++	}
++
++	private _boxCenter(content: number[]): [number, number] {
++		// content from DOM.getBoxModel is [x1, y1, x2, y2, ...]
++		if (!content || content.length < 8) return [0, 0];
++		const [x1, y1, , , x2, y2] = content;
++		return [x1 + (x2 - x1) / 2, y1 + (y2 - y1) / 2];
++	}
++
++	private async sendResult(
++		missionId: string,
++		result: Record<string, any> | null,
++		error: string | null,
++		commandId: string,
++		requiresHuman = false,
++		challenge?: string
++	): Promise<void> {
++		const token = await this._requireToken();
++		if (!token) {
++			console.error("CdpBridge: cannot send result without auth token");
++			return;
++		}
++
++		const resultUrl = await buildBackendUrl("/api/v1/dsh/cdp/result");
++
++		const body = {
++			mission_id: missionId,
++			result: result ? { ...result, command_id: commandId } : null,
++			error,
++			requires_human: requiresHuman,
++			challenge,
++		};
++
++		for (let i = 0; i < 3; i++) {
++			try {
++				const res = await fetch(resultUrl, {
++					method: "POST",
++					headers: {
++						"Content-Type": "application/json",
++						Authorization: `Bearer ${token}`,
++					},
++					body: JSON.stringify(body),
++				});
++
++				if (res.ok) {
++					if (requiresHuman) {
++						console.info("CdpBridge: human takeover requested for mission", missionId);
++					}
++					return;
++				}
++
++				if (res.status === 401 || res.status === 403) {
++					console.warn("CdpBridge: auth rejected when sending result");
++					return;
++				}
++
++				console.warn(`CdpBridge: result POST failed (${res.status}); retry ${i + 1}/3`);
++			} catch (err) {
++				console.warn(`CdpBridge: result POST network error; retry ${i + 1}/3`, err);
++			}
++
++			if (i < 2) {
++				await this._sleep(1000 * (i + 1));
++			}
++		}
++
++		console.error("CdpBridge: failed to post CDP result after retries");
++	}
++
++	private _sleep(ms: number): Promise<void> {
++		return new Promise((resolve) => setTimeout(resolve, ms));
++	}
++}
++
++export { CdpBridge };

@@ -1,0 +1,980 @@
+diff --git a/nowing_backend/app/agents/chat/multi_agent_chat/main_agent/tools/index.py b/nowing_backend/app/agents/chat/multi_agent_chat/main_agent/tools/index.py
+index 67eebc91e..277f50f7c 100644
+--- a/nowing_backend/app/agents/chat/multi_agent_chat/main_agent/tools/index.py
++++ b/nowing_backend/app/agents/chat/multi_agent_chat/main_agent/tools/index.py
+@@ -9,6 +9,7 @@ MAIN_AGENT_NOWING_TOOL_NAMES_ORDERED: tuple[str, ...] = (
+     "update_memory",
+     "create_automation",
+     "multi_source_lead_gen",
++    "build_web_app",
+ )
+ 
+ MAIN_AGENT_NOWING_TOOL_NAMES: frozenset[str] = frozenset(
+diff --git a/nowing_backend/app/agents/chat/multi_agent_chat/main_agent/tools/registry.py b/nowing_backend/app/agents/chat/multi_agent_chat/main_agent/tools/registry.py
+index c15e4efcf..447e6c03a 100644
+--- a/nowing_backend/app/agents/chat/multi_agent_chat/main_agent/tools/registry.py
++++ b/nowing_backend/app/agents/chat/multi_agent_chat/main_agent/tools/registry.py
+@@ -28,6 +28,7 @@ from .update_memory import (
+     create_update_memory_tool,
+     create_update_team_memory_tool,
+ )
++from .web_builder.build_web_app import create_build_web_app_tool
+ 
+ 
+ def _build_multi_source_lead_gen_tool(deps: dict[str, Any]) -> BaseTool:
+@@ -85,6 +86,10 @@ _MAIN_AGENT_TOOL_FACTORIES: dict[
+         _build_multi_source_lead_gen_tool,
+         ("workspace_id",),
+     ),
++    "build_web_app": (
++        create_build_web_app_tool,
++        ("workspace_id", "user_id"),
++    ),
+ }
+ 
+ _logger = logging.getLogger(__name__)
+diff --git a/nowing_backend/app/config/__init__.py b/nowing_backend/app/config/__init__.py
+index a21c445be..183bdb61a 100644
+--- a/nowing_backend/app/config/__init__.py
++++ b/nowing_backend/app/config/__init__.py
+@@ -1813,6 +1813,14 @@ class Config:
+         if os.path.exists("/app")
+         else "./.local_object_store",
+     )
++    WEB_BUILDER_ENABLED = os.getenv("WEB_BUILDER_ENABLED", "TRUE").upper() == "TRUE"
++    WEB_BUILDER_MAX_PROMPT_CHARS = max(
++        1, _env_int("WEB_BUILDER_MAX_PROMPT_CHARS", 2000)
++    )
++    WEB_BUILDER_PUBLIC_APPS_PATH = os.getenv(
++        "WEB_BUILDER_PUBLIC_APPS_PATH",
++        f"{FILE_STORAGE_LOCAL_PATH}/web-apps",
++    )
+ 
+     @classmethod
+     def get_settings(cls):
+diff --git a/nowing_backend/app/routes/__init__.py b/nowing_backend/app/routes/__init__.py
+index c10d4c15d..9bd724e56 100644
+--- a/nowing_backend/app/routes/__init__.py
++++ b/nowing_backend/app/routes/__init__.py
+@@ -135,7 +135,10 @@ from .team_memory_routes import router as team_memory_router
+ from .teams_add_connector_route import router as teams_add_connector_router
+ from .usage_routes import router as usage_router
+ from .video_presentations_routes import router as video_presentations_router
+-from .web_builder_routes import router as web_builder_router
++from .web_builder_routes import (
++    host_router as web_builder_host_router,
++    router as web_builder_router,
++)
+ from .workspace_tables_routes import router as workspace_tables_router
+ from .workspaces_routes import router as workspaces_router
+ from .youtube_routes import router as youtube_router
+@@ -254,5 +257,10 @@ router.include_router(team_memory_router)  # Workspace team memory
+ router.include_router(automations_router)  # Automations CRUD + run history
+ router.include_router(file_storage_router)  # Original file metadata + download
+ router.include_router(extract_entities_router)  # Test entity extraction (AC-1 / AD-107)
+-router.include_router(web_builder_router)  # Full-stack Web App Builder (Story 27.1 / AD-113)
++router.include_router(
++    web_builder_router
++)  # Full-stack Web App Builder (Story 27.1 / AD-113)
++router.include_router(
++    web_builder_host_router
++)  # Wildcard Host routing for published web apps
+ router.include_router(build_capabilities_router())  # Scraper-API capability doors (05)
+diff --git a/nowing_backend/app/routes/new_chat_routes.py b/nowing_backend/app/routes/new_chat_routes.py
+index b95d4e1fb..ff275176c 100644
+--- a/nowing_backend/app/routes/new_chat_routes.py
++++ b/nowing_backend/app/routes/new_chat_routes.py
+@@ -825,6 +825,18 @@ async def create_thread(
+                 detail="client_id and agent_id are not accepted on internal threads",
+             )
+ 
++        # Web Builder mode is gated by a global feature flag until the workspace
++        # plan tier supports it (Story 27.1a AC-5).
++        if (
++            thread.platform_metadata
++            and thread.platform_metadata.get("web_builder_mode")
++            and not config.WEB_BUILDER_ENABLED
++        ):
++            raise HTTPException(
++                status_code=403,
++                detail="Web Builder is not enabled on this workspace plan",
++            )
++
+         # Set tenant GUCs before the insert so the 18.1 RLS WITH CHECK clause
+         # on new_chat_threads allows client-scoped rows (here: unscoped/NULL).
+         await set_request_tenant_context(
+diff --git a/nowing_backend/app/routes/web_builder_routes.py b/nowing_backend/app/routes/web_builder_routes.py
+index 40936ff40..2bb3516ea 100644
+--- a/nowing_backend/app/routes/web_builder_routes.py
++++ b/nowing_backend/app/routes/web_builder_routes.py
+@@ -2,16 +2,19 @@
+ 
+ import contextlib
+ import logging
++import re
+ from pathlib import Path
+ from typing import Annotated
+ 
+-from fastapi import APIRouter, Depends, HTTPException, status
++from fastapi import APIRouter, Depends, HTTPException, Request, status
+ from fastapi.responses import HTMLResponse, StreamingResponse
+ from sqlalchemy import select
+ from sqlalchemy.ext.asyncio import AsyncSession
+ 
+ from app.auth.context import AuthContext
+-from app.db import WorkspaceApp, get_async_session
++from app.config import config
++from app.db import Permission, Workspace, WorkspaceApp, get_async_session
++from app.routes.rbac_routes import check_permission
+ from app.services.web_builder.deploy_service import WebAppDeployService
+ from app.services.web_builder.generator import WebBuilderService
+ from app.services.web_builder.mark_tool import MarkToolASTMutator
+@@ -33,6 +36,32 @@ from app.users import get_auth_context
+ logger = logging.getLogger(__name__)
+ 
+ router = APIRouter(prefix="/api/v1/web-builder", tags=["web-builder"])
++host_router = APIRouter(tags=["web-builder-host"])
++
++
++async def require_workspace_member(
++    session: AsyncSession,
++    auth: AuthContext,
++    workspace_id: int,
++) -> AuthContext:
++    """Ensure the caller is a member of the workspace."""
++    await check_permission(
++        session,
++        auth,
++        workspace_id,
++        Permission.FULL_ACCESS.value,
++        error_message="You don't have access to this workspace",
++    )
++    return auth
++
++
++def check_web_builder_enabled():
++    """Fail-closed gate checking WEB_BUILDER_ENABLED configuration."""
++    if not config.WEB_BUILDER_ENABLED:
++        raise HTTPException(
++            status_code=status.HTTP_403_FORBIDDEN,
++            detail="Web Builder is not enabled on this workspace plan",
++        )
+ 
+ 
+ @router.post("/generate", response_model=WebAppBuildOutput)
+@@ -42,6 +71,8 @@ async def generate_web_app(
+     session: Annotated[AsyncSession, Depends(get_async_session)],
+ ) -> WebAppBuildOutput:
+     """Generate Next.js + Tailwind project from a natural-language description (AC-1)."""
++    check_web_builder_enabled()
++    await require_workspace_member(session, auth, payload.workspace_id)
+     payload.user_id = auth.user.id
+     service = WebBuilderService()
+     result = await service.generate_project(payload, session=session)
+@@ -55,6 +86,8 @@ async def generate_web_app_stream(
+     session: Annotated[AsyncSession, Depends(get_async_session)],
+ ):
+     """Stream real-time Next.js code generation tokens and file writing steps via SSE."""
++    check_web_builder_enabled()
++    await require_workspace_member(session, auth, payload.workspace_id)
+     payload.user_id = auth.user.id
+     service = WebBuilderService()
+     return StreamingResponse(
+@@ -76,6 +109,8 @@ async def publish_web_app(
+     session: Annotated[AsyncSession, Depends(get_async_session)],
+ ) -> WebAppDeployOutput:
+     """1-Click publish app container and dynamic HTTPS route at *.apps.nowing.net (AC-2)."""
++    check_web_builder_enabled()
++    await require_workspace_member(session, auth, payload.workspace_id)
+     deploy_service = WebAppDeployService()
+     result = await deploy_service.deploy_app(
+         app_id=app_id,
+@@ -99,6 +134,8 @@ async def configure_custom_domain(
+     session: Annotated[AsyncSession, Depends(get_async_session)],
+ ) -> CustomDomainOutput:
+     """Configure and verify custom domain CNAME routing (AC-3)."""
++    check_web_builder_enabled()
++    await require_workspace_member(session, auth, payload.workspace_id)
+     deploy_service = WebAppDeployService()
+     result = await deploy_service.verify_and_bind_custom_domain(
+         app_id=app_id,
+@@ -122,6 +159,8 @@ async def apply_mark_tool_patch(
+     session: Annotated[AsyncSession, Depends(get_async_session)],
+ ) -> MarkToolOutput:
+     """Apply visual Mark Tool DOM-to-JSX AST mutation to component code (AC-4)."""
++    check_web_builder_enabled()
++    await require_workspace_member(session, auth, payload.workspace_id)
+     stmt = select(WorkspaceApp).where(
+         WorkspaceApp.id == app_id,
+         WorkspaceApp.workspace_id == payload.workspace_id,
+@@ -181,6 +220,8 @@ async def list_workspace_apps(
+     session: Annotated[AsyncSession, Depends(get_async_session)],
+ ) -> list[WorkspaceAppRead]:
+     """List all generated and published applications for a workspace (AC-5)."""
++    check_web_builder_enabled()
++    await require_workspace_member(session, auth, workspace_id)
+     stmt = (
+         select(WorkspaceApp)
+         .where(WorkspaceApp.workspace_id == workspace_id)
+@@ -198,6 +239,8 @@ async def get_workspace_app(
+     session: Annotated[AsyncSession, Depends(get_async_session)],
+ ) -> WorkspaceAppRead:
+     """Get single application details."""
++    check_web_builder_enabled()
++    await require_workspace_member(session, auth, workspace_id)
+     stmt = select(WorkspaceApp).where(
+         WorkspaceApp.id == app_id,
+         WorkspaceApp.workspace_id == workspace_id,
+@@ -246,7 +289,20 @@ async def get_workspace_app_preview(
+         project_dir=project_dir,
+         app_name=app_entity.name if app_entity else "Generated Web App",
+     )
+-    return HTMLResponse(content=html_content, status_code=status.HTTP_200_OK)
++    return HTMLResponse(
++        content=html_content,
++        status_code=status.HTTP_200_OK,
++        headers={
++            "Content-Security-Policy": (
++                "default-src 'self' 'unsafe-inline' https:; "
++                "img-src 'self' data: https:; "
++                "font-src 'self' data: https:; "
++                "style-src 'self' 'unsafe-inline' https:; "
++                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com;"
++            ),
++            "X-Content-Type-Options": "nosniff",
++        },
++    )
+ 
+ 
+ @router.get("/apps/{app_id}/files")
+@@ -257,7 +313,12 @@ async def get_workspace_app_files(
+     session: Annotated[AsyncSession, Depends(get_async_session)],
+ ) -> dict[str, str]:
+     """Retrieve all generated source code files for a given application."""
+-    stmt = select(WorkspaceApp).where(WorkspaceApp.id == app_id)
++    check_web_builder_enabled()
++    await require_workspace_member(session, auth, workspace_id)
++    stmt = select(WorkspaceApp).where(
++        WorkspaceApp.id == app_id,
++        WorkspaceApp.workspace_id == workspace_id,
++    )
+     res = await session.execute(stmt)
+     app_entity = res.scalars().first()
+     if not app_entity:
+@@ -303,3 +364,78 @@ async def get_workspace_app_files(
+                 files_dict[rel_path] = file_path.read_text(encoding="utf-8")
+ 
+     return files_dict
++
++
++@host_router.get("/web-apps/host", response_class=HTMLResponse)
++@router.get("/host", response_class=HTMLResponse)
++async def host_web_app(
++    request: Request,
++    session: Annotated[AsyncSession, Depends(get_async_session)],
++) -> HTMLResponse:
++    """Serve published web app static HTML by Host header (Story 27.1a AC-4 / AC-6a)."""
++    host_header = request.headers.get("Host", "")
++    if not host_header:
++        raise HTTPException(
++            status_code=status.HTTP_400_BAD_REQUEST,
++            detail="Missing Host header",
++        )
++
++    host_clean = host_header.split(":")[0].strip().lower()
++    parts = host_clean.split(".")
++    if len(parts) < 2 or not parts[0]:
++        raise HTTPException(
++            status_code=status.HTTP_400_BAD_REQUEST,
++            detail="Malformed host domain",
++        )
++
++    slug = parts[0]
++    if not re.match(r"^[a-z0-9-]+$", slug):
++        raise HTTPException(
++            status_code=status.HTTP_400_BAD_REQUEST,
++            detail="Invalid host slug",
++        )
++
++    stmt = select(WorkspaceApp).where(
++        WorkspaceApp.slug == slug,
++        WorkspaceApp.status == "published",
++    )
++    res = await session.execute(stmt)
++    app_entity = res.scalars().first()
++    if not app_entity:
++        raise HTTPException(
++            status_code=status.HTTP_404_NOT_FOUND,
++            detail="Web application not found",
++        )
++
++    ws_stmt = select(Workspace).where(Workspace.id == app_entity.workspace_id)
++    ws_res = await session.execute(ws_stmt)
++    ws = ws_res.scalars().first()
++    if ws and hasattr(ws, "web_builder_enabled") and ws.web_builder_enabled is False:
++        raise HTTPException(
++            status_code=status.HTTP_403_FORBIDDEN,
++            detail="Web Builder is disabled for this workspace",
++        )
++
++    public_apps_base = Path(config.WEB_BUILDER_PUBLIC_APPS_PATH).resolve()
++    snapshot_file = public_apps_base / slug / "index.html"
++    if not snapshot_file.exists():
++        raise HTTPException(
++            status_code=status.HTTP_404_NOT_FOUND,
++            detail="Application static snapshot not found",
++        )
++
++    html_content = snapshot_file.read_text(encoding="utf-8")
++    return HTMLResponse(
++        content=html_content,
++        status_code=status.HTTP_200_OK,
++        headers={
++            "Content-Security-Policy": (
++                "default-src 'self' 'unsafe-inline' https:; "
++                "img-src 'self' data: https:; "
++                "font-src 'self' data: https:; "
++                "style-src 'self' 'unsafe-inline' https:; "
++                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com;"
++            ),
++            "X-Content-Type-Options": "nosniff",
++        },
++    )
+diff --git a/nowing_backend/app/services/web_builder/deploy_service.py b/nowing_backend/app/services/web_builder/deploy_service.py
+index 4c2e36e6e..b167b36f4 100644
+--- a/nowing_backend/app/services/web_builder/deploy_service.py
++++ b/nowing_backend/app/services/web_builder/deploy_service.py
+@@ -1,5 +1,4 @@
+-"""1-Click Instant Deployment & Domain Management Service (Story 27.1, AC-2, AC-3)."""
+-
++import contextlib
+ import logging
+ import re
+ from pathlib import Path
+@@ -7,7 +6,7 @@ from pathlib import Path
+ from sqlalchemy import select
+ from sqlalchemy.ext.asyncio import AsyncSession
+ 
+-from app.config import CNAME_INGRESS_HOST, FILE_STORAGE_LOCAL_PATH, HOSTING_BASE_DOMAIN
++from app.config import CNAME_INGRESS_HOST, HOSTING_BASE_DOMAIN
+ from app.services.token_tracking_service import record_token_usage
+ from app.services.web_builder.schemas import (
+     CustomDomainOutput,
+@@ -20,7 +19,10 @@ logger = logging.getLogger(__name__)
+ def disambiguate_slug(base_slug: str, existing_slugs: set[str] | list[str]) -> str:
+     """Generate a collision-free slug by appending incremental numeric suffixes."""
+     existing = set(existing_slugs)
+-    clean_base = re.sub(r"-\d+$", "", base_slug.strip().lower())
++    # Sanitize and truncate base_slug to DNS label safe format
++    cleaned = re.sub(r"[^a-z0-9-]", "-", base_slug.strip().lower())
++    clean_base = re.sub(r"-\d+$", "", cleaned).strip("-") or "app"
++    clean_base = clean_base[:50]  # allow room for numeric suffixes up to 63 chars
+ 
+     if clean_base not in existing:
+         return clean_base
+@@ -33,7 +35,7 @@ def disambiguate_slug(base_slug: str, existing_slugs: set[str] | list[str]) -> s
+ 
+ 
+ class WebAppDeployService:
+-    """Builds, containerizes, and routes web applications dynamically via Traefik / Caddy."""
++    """Builds, publishes static HTML snapshots, and routes web applications dynamically."""
+ 
+     def __init__(self, base_domain: str | None = None):
+         self.base_domain = base_domain or HOSTING_BASE_DOMAIN
+@@ -43,10 +45,13 @@ class WebAppDeployService:
+         app_id: str,
+         workspace_id: int,
+         slug_override: str | None = None,
++        force: bool = False,
+         session: AsyncSession | None = None,
+     ) -> WebAppDeployOutput:
+-        """Publish a generated project to https://{slug}.apps.nowing.net with SSL."""
++        """Publish a generated project to https://{slug}.apps.nowing.net (Option A Static Snapshot)."""
++        from app.config import config as app_config
+         from app.db import WorkspaceApp
++        from app.services.web_builder.preview_renderer import PreviewRenderer
+ 
+         app_entity: WorkspaceApp | None = None
+         if session:
+@@ -57,22 +62,13 @@ class WebAppDeployService:
+             result = await session.execute(stmt)
+             app_entity = result.scalars().first()
+ 
++        public_apps_base = Path(app_config.WEB_BUILDER_PUBLIC_APPS_PATH).resolve()
++        public_apps_base.mkdir(parents=True, exist_ok=True)
++
+         if app_entity and app_entity.storage_path:
+-            project_path = Path(app_entity.storage_path)
+-            if not project_path.is_absolute():
+-                project_path = (
+-                    Path(FILE_STORAGE_LOCAL_PATH).resolve()
+-                    / "web-app"
+-                    / str(workspace_id)
+-                    / app_id
+-                )
++            project_path = Path(app_entity.storage_path).resolve()
+         else:
+-            project_path = (
+-                Path(FILE_STORAGE_LOCAL_PATH).resolve()
+-                / "web-app"
+-                / str(workspace_id)
+-                / app_id
+-            )
++            project_path = public_apps_base / str(workspace_id) / app_id
+ 
+         if not project_path.exists():
+             from app.services.web_builder.project_writer import ProjectWriter
+@@ -82,25 +78,62 @@ class WebAppDeployService:
+                 project_path, app_entity.name if app_entity else "Generated Web App"
+             )
+ 
+-        # 1. Disambiguate slug
++        # 1. Disambiguate slug (global uniqueness across published apps)
+         final_slug = slug_override or (app_entity.slug if app_entity else "web-app")
+         if session:
+-            all_slugs_stmt = select(WorkspaceApp.slug).where(WorkspaceApp.id != app_id)
++            all_slugs_stmt = select(WorkspaceApp.slug).where(
++                WorkspaceApp.id != app_id,
++                WorkspaceApp.status == "published",
++            )
+             res = await session.execute(all_slugs_stmt)
+             existing_slugs = {s for s in res.scalars().all() if s}
+             final_slug = disambiguate_slug(final_slug, existing_slugs)
+ 
+-        public_url = f"https://{final_slug}.{self.base_domain}"
++        sanitized_slug = (
++            re.sub(r"[^a-z0-9-]", "-", final_slug.strip().lower()).strip("-") or "app"
++        )
++        public_url = f"https://{sanitized_slug}.{self.base_domain}"
++
++        # 2. Idempotency check: if already published and snapshot exists and not force
++        snapshot_dir = public_apps_base / sanitized_slug
++        snapshot_file = snapshot_dir / "index.html"
++        if (
++            not force
++            and app_entity
++            and app_entity.status == "published"
++            and snapshot_file.exists()
++        ):
++            return WebAppDeployOutput(
++                app_id=app_id,
++                workspace_id=workspace_id,
++                status="published",
++                public_url=app_entity.public_url or public_url,
++                slug=app_entity.slug or sanitized_slug,
++                message=f"Application already published at {app_entity.public_url or public_url}",
++            )
+ 
+-        # 2. Container build & dynamic Traefik / Caddy routing simulation/execution
++        # 3. Read project files and render static HTML snapshot via PreviewRenderer
+         try:
++            files: dict[str, str] = {}
++            for f in project_path.rglob("*"):
++                if f.is_file() and not f.name.startswith("."):
++                    rel_p = str(f.relative_to(project_path))
++                    files[rel_p] = f.read_text(encoding="utf-8", errors="ignore")
++
++            static_html = PreviewRenderer.render_app_html(
++                files,
++                app_name=app_entity.name if app_entity else "Sales & Marketing Web App",
++            )
++
++            snapshot_dir.mkdir(parents=True, exist_ok=True)
++            snapshot_file.write_text(static_html, encoding="utf-8")
++
+             # Update app entity status
+             if session and app_entity:
+-                app_entity.slug = final_slug
++                app_entity.slug = sanitized_slug
+                 app_entity.public_url = public_url
+                 app_entity.status = "published"
+                 app_entity.error_message = None
+-                await session.flush()
+ 
+                 # Record deployment billing metrics
+                 await record_token_usage(
+@@ -108,15 +141,16 @@ class WebAppDeployService:
+                     workspace_id=workspace_id,
+                     user_id=app_entity.user_id,
+                     usage_type="web_builder_deploy",
+-                    cost_micros=10000,  # $0.010 deployment cost
++                    cost_micros=0,  # $0 fixed platform fee for static snapshot
+                 )
++                await session.commit()
+ 
+             return WebAppDeployOutput(
+                 app_id=app_id,
+                 workspace_id=workspace_id,
+                 status="published",
+                 public_url=public_url,
+-                slug=final_slug,
++                slug=sanitized_slug,
+                 message=f"Application deployed successfully to {public_url}",
+             )
+         except Exception as e:
+@@ -126,13 +160,14 @@ class WebAppDeployService:
+             if session and app_entity:
+                 app_entity.status = "deploy_failed"
+                 app_entity.error_message = str(e)
+-                await session.flush()
++                with contextlib.suppress(Exception):
++                    await session.commit()
+ 
+             return WebAppDeployOutput(
+                 app_id=app_id,
+                 workspace_id=workspace_id,
+                 status="deploy_failed",
+-                slug=final_slug,
++                slug=sanitized_slug,
+                 message=f"Deployment execution error: {e}",
+             )
+ 
+diff --git a/nowing_backend/app/services/web_builder/generator.py b/nowing_backend/app/services/web_builder/generator.py
+index 12483ace0..c9b33be7b 100644
+--- a/nowing_backend/app/services/web_builder/generator.py
++++ b/nowing_backend/app/services/web_builder/generator.py
+@@ -1,5 +1,6 @@
+ """Web Builder Project Generation Engine (Story 27.1, AC-1)."""
+ 
++import contextlib
+ import json
+ import logging
+ import re
+@@ -108,30 +109,146 @@ class WebBuilderService:
+             )
+             return None
+ 
++    async def _call_llm_for_refinement(
++        self,
++        existing_files: dict[str, str],
++        prompt: str,
++        language: str,
++        workspace_id: int,
++        session: AsyncSession | None = None,
++    ) -> dict[str, Any] | None:
++        """Call LLM to refine an existing Next.js web application based on user request."""
++        try:
++            from app.services.llm_service import get_agent_llm
++
++            llm = await get_agent_llm(session, workspace_id) if session else None
++            if not llm:
++                from app.services.llm_service import get_planner_llm
++
++                llm = get_planner_llm()
++
++            existing_code_snippets = "\n\n".join(
++                f"--- {path} ---\n{content}"
++                for path, content in existing_files.items()
++                if path.endswith((".tsx", ".ts", ".css", ".json"))
++            )
++
++            system_instruction = (
++                "You are an expert Next.js 16 + React 19 + Tailwind CSS developer modifying an existing web app. "
++                "Preserve existing working components, styling, and sections unless explicitly asked to change them. "
++                "Apply the user's modifications cleanly.\n\n"
++                "Return ONLY a valid JSON object matching this schema:\n"
++                "{\n"
++                '  "name": "App Name",\n'
++                '  "slug": "app-slug",\n'
++                '  "description": "Short description",\n'
++                '  "files": [\n'
++                '    {"path": "app/page.tsx", "content": "..."}\n'
++                "  ]\n"
++                "}\n"
++                f"Target UI Language: {language}.\n"
++                "DO NOT wrap with markdown fences or extra explanations outside the JSON."
++            )
++
++            user_message = (
++                f"Existing Project Files:\n\n{existing_code_snippets}\n\n"
++                f"Requested Changes: {prompt}"
++            )
++
++            response = await llm.ainvoke(
++                [
++                    {"role": "system", "content": system_instruction},
++                    {"role": "user", "content": user_message},
++                ]
++            )
++
++            raw_text = (
++                response.content if hasattr(response, "content") else str(response)
++            )
++            if isinstance(raw_text, list):
++                raw_text = "".join(str(part) for part in raw_text)
++
++            cleaned_text = raw_text.strip()
++            if cleaned_text.startswith("```"):
++                cleaned_text = re.sub(r"^```(?:json)?\n", "", cleaned_text)
++                cleaned_text = re.sub(r"\n```$", "", cleaned_text)
++
++            json_match = re.search(r"(\{.*\})", cleaned_text, re.DOTALL)
++            if json_match:
++                cleaned_text = json_match.group(1)
++
++            return json.loads(cleaned_text, strict=False)
++        except Exception as e:
++            logger.warning(
++                f"[WebBuilderService] LLM refinement failed or returned invalid JSON: {e}"
++            )
++            return None
++
+     async def generate_project(
+         self,
+         build_input: WebAppBuildInput,
+         session: AsyncSession | None = None,
+     ) -> WebAppBuildOutput:
+-        """Generate a complete Next.js project, write files to disk, and persist WorkspaceApp."""
+-        app_id = str(uuid.uuid4())
+-        workspace_dir = (
+-            self.storage_base_path / "web-app" / str(build_input.workspace_id) / app_id
+-        )
+-        # 1. Obtain LLM specification
+-        spec_dict = await self._call_llm_for_spec(
+-            prompt=build_input.prompt,
+-            language=build_input.language,
+-            workspace_id=build_input.workspace_id,
+-            session=session,
+-        )
++        """Generate or refine a Next.js project, write files to disk, and persist WorkspaceApp."""
++        from sqlalchemy import select
++
++        from app.db import WorkspaceApp
++        from app.services.web_builder.deploy_service import disambiguate_slug
++
++        existing_app: WorkspaceApp | None = None
++        if build_input.app_id and session:
++            stmt = select(WorkspaceApp).where(
++                WorkspaceApp.id == build_input.app_id,
++                WorkspaceApp.workspace_id == build_input.workspace_id,
++            )
++            existing_app = (await session.execute(stmt)).scalars().first()
++
++        if existing_app and existing_app.storage_path:
++            app_id = existing_app.id
++            workspace_dir = Path(existing_app.storage_path).resolve()
++            existing_files: dict[str, str] = {}
++            for file_path in workspace_dir.rglob("*"):
++                if (
++                    file_path.is_file()
++                    and "node_modules" not in file_path.parts
++                    and ".next" not in file_path.parts
++                ):
++                    rel_path = str(file_path.relative_to(workspace_dir))
++                    with contextlib.suppress(Exception):
++                        existing_files[rel_path] = file_path.read_text(encoding="utf-8")
++
++            spec_dict = await self._call_llm_for_refinement(
++                existing_files=existing_files,
++                prompt=build_input.prompt,
++                language=build_input.language,
++                workspace_id=build_input.workspace_id,
++                session=session,
++            )
++        else:
++            app_id = str(uuid.uuid4())
++            workspace_dir = (
++                self.storage_base_path
++                / "web-app"
++                / str(build_input.workspace_id)
++                / app_id
++            )
++            spec_dict = await self._call_llm_for_spec(
++                prompt=build_input.prompt,
++                language=build_input.language,
++                workspace_id=build_input.workspace_id,
++                session=session,
++            )
+ 
+         if not spec_dict or not isinstance(spec_dict, dict) or "files" not in spec_dict:
+             return WebAppBuildOutput(
+                 app_id=app_id,
+                 workspace_id=build_input.workspace_id,
+-                name=build_input.app_name or "Generated Web App",
+-                slug=slugify(build_input.app_name or "web-app"),
++                name=build_input.app_name
++                or (existing_app.name if existing_app else "Generated Web App"),
++                slug=slugify(
++                    build_input.app_name
++                    or (existing_app.slug if existing_app else "web-app")
++                ),
+                 status="validation_failed",
+                 message="LLM output validation failed: malformed JSON or missing files specification",
+                 files=[],
+@@ -143,8 +260,14 @@ class WebBuilderService:
+             return WebAppBuildOutput(
+                 app_id=app_id,
+                 workspace_id=build_input.workspace_id,
+-                name=spec_dict.get("name", "Generated Web App"),
+-                slug=slugify(spec_dict.get("slug", "web-app")),
++                name=spec_dict.get(
++                    "name", existing_app.name if existing_app else "Generated Web App"
++                ),
++                slug=slugify(
++                    spec_dict.get(
++                        "slug", existing_app.slug if existing_app else "web-app"
++                    )
++                ),
+                 status="validation_failed",
+                 message=f"Pydantic schema validation error: {e}",
+                 files=[],
+@@ -162,9 +285,13 @@ class WebBuilderService:
+             app_name=spec.name, slug=spec.slug
+         )
+         written_files.extend([f for f in scaffold_files if f not in written_files])
+-        app_name = spec.name
+-        app_slug = spec.slug
+-        app_desc = spec.description
++        app_name = spec.name or (
++            existing_app.name if existing_app else "Generated Web App"
++        )
++        app_slug = spec.slug or (existing_app.slug if existing_app else "web-app")
++        app_desc = spec.description or (
++            existing_app.description if existing_app else None
++        )
+ 
+         # 4. Validate project structure
+         is_valid, validation_issues = validate_project_structure(workspace_dir)
+@@ -180,23 +307,37 @@ class WebBuilderService:
+         # 5. Persist to DB if session available
+         if session:
+             try:
+-                from app.db import WorkspaceApp
+-
+-                app_entity = WorkspaceApp(
+-                    id=app_id,
+-                    workspace_id=build_input.workspace_id,
+-                    user_id=build_input.user_id,
+-                    name=app_name,
+-                    slug=app_slug,
+-                    description=app_desc,
+-                    prompt=build_input.prompt,
+-                    language=build_input.language,
+-                    status=status,
+-                    preview_url=preview_url,
+-                    storage_path=str(workspace_dir),
+-                    error_message=message,
+-                )
+-                session.add(app_entity)
++                if existing_app:
++                    existing_app.prompt = (
++                        f"{existing_app.prompt}\n---\n{build_input.prompt}"
++                    )
++                    existing_app.status = status
++                    existing_app.error_message = message
++                    app_entity = existing_app
++                else:
++                    existing_slugs_res = await session.scalars(
++                        select(WorkspaceApp.slug).where(
++                            WorkspaceApp.workspace_id == build_input.workspace_id
++                        )
++                    )
++                    existing_slugs = set(existing_slugs_res.all())
++                    app_slug = disambiguate_slug(app_slug, existing_slugs)
++
++                    app_entity = WorkspaceApp(
++                        id=app_id,
++                        workspace_id=build_input.workspace_id,
++                        user_id=build_input.user_id,
++                        name=app_name,
++                        slug=app_slug,
++                        description=app_desc,
++                        prompt=build_input.prompt,
++                        language=build_input.language,
++                        status=status,
++                        preview_url=preview_url,
++                        storage_path=str(workspace_dir),
++                        error_message=message,
++                    )
++                    session.add(app_entity)
+                 await session.commit()
+ 
+                 # Record TokenUsage & cost attribution
+diff --git a/nowing_backend/app/services/web_builder/preview_renderer.py b/nowing_backend/app/services/web_builder/preview_renderer.py
+index 418f8af05..21e048dee 100644
+--- a/nowing_backend/app/services/web_builder/preview_renderer.py
++++ b/nowing_backend/app/services/web_builder/preview_renderer.py
+@@ -57,6 +57,7 @@ class PreviewRenderer:
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' https:; img-src 'self' data: https: blob:; font-src 'self' data: https:; style-src 'self' 'unsafe-inline' https: https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com;">
+   <title>{html.escape(app_name)} - Live Preview</title>
+   
+   <!-- Tailwind CSS CDN -->
+@@ -199,9 +200,21 @@ class PreviewRenderer:
+ 
+     @staticmethod
+     def _sanitize_tsx_for_babel(tsx_code: str) -> str:
+-        """Strip TypeScript syntax from Next.js component to allow execution in browser Babel."""
++        """Strip TypeScript syntax and sanitize scripts from Next.js component for browser Babel."""
+         code = tsx_code
+ 
++        # Prevent closing Babel script tag injection
++        code = re.sub(r"</script>", "<\\/script>", code, flags=re.IGNORECASE)
++
++        # Strip access to sensitive browser storage / auth tokens
++        code = re.sub(r"\bdocument\.cookie\b", "''", code)
++        code = re.sub(
++            r"\blocalStorage\b", "{ getItem: () => null, setItem: () => {} }", code
++        )
++        code = re.sub(
++            r"\bsessionStorage\b", "{ getItem: () => null, setItem: () => {} }", code
++        )
++
+         # Strip imports
+         code = re.sub(r"import\s+[^;]+;?", "", code)
+ 
+diff --git a/nowing_backend/app/services/web_builder/schemas.py b/nowing_backend/app/services/web_builder/schemas.py
+index 191fc045b..9802fad07 100644
+--- a/nowing_backend/app/services/web_builder/schemas.py
++++ b/nowing_backend/app/services/web_builder/schemas.py
+@@ -1,6 +1,7 @@
+ """Pydantic schemas for Web Builder Service (Story 27.1 / AD-113 / AD-114)."""
+ 
+ from datetime import UTC, datetime
++from uuid import UUID
+ 
+ from pydantic import BaseModel, ConfigDict, Field
+ 
+@@ -33,7 +34,11 @@ class WebAppBuildInput(BaseModel):
+     )
+     language: str = Field(default="en", description="Target UI language (e.g. en, vi)")
+     workspace_id: int = Field(..., description="Owning workspace ID")
+-    user_id: int | None = Field(default=None, description="Requesting user ID")
++    user_id: UUID | None = Field(default=None, description="Requesting user ID")
++    app_id: str | None = Field(
++        default=None,
++        description="Optional existing app ID for conversational refinement",
++    )
+     app_name: str | None = Field(
+         default=None, description="Optional custom name override"
+     )
+@@ -52,6 +57,7 @@ class WebAppBuildOutput(BaseModel):
+     preview_url: str | None = None
+     public_url: str | None = None
+     message: str | None = None
++    error: str | None = None
+     files: list[str] = Field(
+         default_factory=list, description="List of generated file paths"
+     )
+diff --git a/nowing_backend/app/agents/chat/multi_agent_chat/main_agent/tools/web_builder/build_web_app.py b/nowing_backend/app/agents/chat/multi_agent_chat/main_agent/tools/web_builder/build_web_app.py
+new file mode 100644
+index 000000000..0cb29c735
+--- /dev/null
++++ b/nowing_backend/app/agents/chat/multi_agent_chat/main_agent/tools/web_builder/build_web_app.py
+@@ -0,0 +1,114 @@
++"""Main-agent tool for generating a sales/marketing web app (Story 27.1a)."""
++
++from __future__ import annotations
++
++import contextlib
++import logging
++from typing import Any
++from uuid import UUID
++
++from langchain_core.tools import tool
++
++from app.db import async_session_maker
++
++logger = logging.getLogger(__name__)
++
++
++def create_build_web_app_tool(deps: dict[str, Any]):
++    """Factory for the ``build_web_app`` chat tool."""
++
++    workspace_id: int = deps["workspace_id"]
++    user_id_val = deps.get("user_id")
++    user_id: UUID | None = None
++    if user_id_val:
++        try:
++            user_id = (
++                user_id_val if isinstance(user_id_val, UUID) else UUID(str(user_id_val))
++            )
++        except (ValueError, TypeError, AttributeError):
++            logger.warning("build_web_app: invalid user_id %r", user_id_val)
++
++    @tool
++    async def build_web_app(
++        prompt: str,
++        app_name: str | None = None,
++        language: str = "en",
++        app_id: str | None = None,
++    ) -> str:
++        """Build or modify a lightweight sales/marketing Next.js web app from a description.
++
++        Use this tool when the user wants to create or modify a landing page, pricing page,
++        lead capture form, waitlist, or marketing report site.
++        Pass app_id if refining an existing app created earlier in the conversation.
++
++        Args:
++            prompt: Natural language description of the desired web app or requested modification.
++            app_name: Optional override for the generated app name/slug.
++            language: Target UI language (e.g. "en" or "vi").
++            app_id: Optional existing app ID when modifying an existing application in follow-up turns.
++        """
++        from app.config import config as app_config
++        from app.services.web_builder.generator import WebBuilderService
++        from app.services.web_builder.schemas import (
++            WebAppBuildInput,
++            WebAppBuildOutput,
++        )
++
++        if not prompt or not prompt.strip():
++            return WebAppBuildOutput(
++                app_id=app_id or "",
++                workspace_id=workspace_id,
++                name=app_name or "Web App",
++                slug="",
++                status="validation_failed",
++                error="Prompt is required for build_web_app",
++            ).model_dump_json()
++
++        prompt = prompt.strip()
++        if len(prompt) > app_config.WEB_BUILDER_MAX_PROMPT_CHARS:
++            return WebAppBuildOutput(
++                app_id=app_id or "",
++                workspace_id=workspace_id,
++                name=app_name or "Web App",
++                slug="",
++                status="validation_failed",
++                error=(
++                    f"Prompt exceeds maximum allowed length of "
++                    f"{app_config.WEB_BUILDER_MAX_PROMPT_CHARS} characters."
++                ),
++            ).model_dump_json()
++
++        build_input = WebAppBuildInput(
++            prompt=prompt,
++            workspace_id=workspace_id,
++            user_id=user_id,
++            app_id=app_id,
++            app_name=app_name,
++            language=language,
++        )
++
++        service = WebBuilderService(
++            storage_base_path=app_config.WEB_BUILDER_PUBLIC_APPS_PATH,
++        )
++
++        session = None
++        try:
++            async with async_session_maker() as session_:
++                session = session_
++                result = await service.generate_project(build_input, session=session)
++                return result.model_dump_json()
++        except Exception as exc:
++            if session is not None:
++                with contextlib.suppress(Exception):
++                    await session.rollback()
++            logger.exception("build_web_app failed: %s", exc)
++            return WebAppBuildOutput(
++                app_id="",
++                workspace_id=workspace_id,
++                name=app_name or "Web App",
++                slug="",
++                status="error",
++                error=f"Error building web app: {exc}",
++            ).model_dump_json()
++
++    return build_web_app

@@ -2,7 +2,10 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+	AlertCircle,
 	CheckCircle2,
+	ChevronDown,
+	ChevronUp,
 	Code,
 	ExternalLink,
 	Eye,
@@ -38,6 +41,7 @@ export default function WebBuilderPage() {
 	const [patchText, setPatchText] = useState("");
 	const [customDomainInput, setCustomDomainInput] = useState("");
 	const [isDomainModalOpen, setIsDomainModalOpen] = useState(false);
+	const [isLogsOpen, setIsLogsOpen] = useState(false);
 
 	// Enhanced UI States: View Tabs, Device Switcher, Streaming Logs & Code Viewer
 	const [activeTab, setActiveTab] = useState<"preview" | "code">("preview");
@@ -55,11 +59,16 @@ export default function WebBuilderPage() {
 	const backendBaseUrl = process.env.NEXT_PUBLIC_FASTAPI_BACKEND_URL || "http://localhost:8000";
 
 	// 1. Fetch apps list
-	const { data: apps = [] } = useQuery({
+	const { data: apps = [], error: appsError } = useQuery({
 		queryKey: ["web-builder-apps", workspaceId],
 		queryFn: () => webBuilderApiService.listApps(workspaceId),
 		enabled: !!workspaceId,
 	});
+
+	// Check if workspace is feature-gated (403)
+	const isFeatureDisabled =
+		(appsError as { status?: number; response?: { status?: number } })?.status === 403 ||
+		(appsError as { status?: number; response?: { status?: number } })?.response?.status === 403;
 
 	// Auto-select latest app if none selected
 	useEffect(() => {
@@ -67,6 +76,44 @@ export default function WebBuilderPage() {
 			setSelectedApp(apps[0]);
 		}
 	}, [apps, selectedApp]);
+
+	// 2. Poll app status when building or generated
+	const isBuilding = selectedApp?.status === "building" || selectedApp?.status === "generated";
+
+	const { data: polledApp } = useQuery({
+		queryKey: ["web-builder-app-detail", selectedApp?.id, workspaceId],
+		queryFn: () => (selectedApp ? webBuilderApiService.getApp(selectedApp.id, workspaceId) : null),
+		enabled: !!selectedApp && isBuilding,
+		refetchInterval: isBuilding ? 2000 : false,
+	});
+
+	useEffect(() => {
+		if (
+			polledApp &&
+			selectedApp &&
+			polledApp.id === selectedApp.id &&
+			polledApp.status !== selectedApp.status
+		) {
+			setSelectedApp(polledApp);
+			queryClient.invalidateQueries({ queryKey: ["web-builder-apps", workspaceId] });
+			if (polledApp.status === "preview_ready") {
+				toast.success("Web application build ready!");
+				setIframeKey((prev) => prev + 1);
+			} else if (polledApp.status === "build_failed") {
+				toast.error("Web application build failed");
+				setIsLogsOpen(true);
+			}
+		}
+	}, [polledApp, selectedApp, queryClient, workspaceId]);
+
+	// 3. Fetch build logs
+	const { data: buildLogs } = useQuery({
+		queryKey: ["web-builder-build-logs", selectedApp?.id, workspaceId],
+		queryFn: () =>
+			selectedApp ? webBuilderApiService.getBuildLogs(selectedApp.id, workspaceId) : null,
+		enabled: !!selectedApp && (isLogsOpen || selectedApp?.status === "build_failed"),
+		refetchInterval: isBuilding ? 2500 : false,
+	});
 
 	// Fetch files when selected app changes or switches to code tab
 	useEffect(() => {
@@ -110,7 +157,7 @@ export default function WebBuilderPage() {
 		}
 	}, [isMarkToolActive]);
 
-	// 2. Real-time Streaming Generation
+	// 4. Real-time Streaming Generation
 	const handleStartStreamingGeneration = async () => {
 		if (!prompt.trim() || isStreaming) return;
 
@@ -179,7 +226,26 @@ export default function WebBuilderPage() {
 		}
 	};
 
-	// 3. Publish mutation
+	// 5. Rebuild mutation
+	const rebuildMutation = useMutation({
+		mutationFn: (appId: string) => webBuilderApiService.triggerBuild(appId, workspaceId),
+		onSuccess: () => {
+			toast.info("Build started...");
+			if (selectedApp) {
+				setSelectedApp({
+					...selectedApp,
+					status: "building",
+				});
+			}
+			queryClient.invalidateQueries({ queryKey: ["web-builder-apps", workspaceId] });
+			queryClient.invalidateQueries({ queryKey: ["web-builder-app-detail", selectedApp?.id] });
+		},
+		onError: (err: Error) => {
+			toast.error(err?.message || "Failed to trigger rebuild");
+		},
+	});
+
+	// 6. Publish mutation
 	const publishMutation = useMutation({
 		mutationFn: (appId: string) =>
 			webBuilderApiService.publishWebApp(appId, {
@@ -201,7 +267,7 @@ export default function WebBuilderPage() {
 		},
 	});
 
-	// 4. Mark Tool patch mutation
+	// 7. Mark Tool patch mutation
 	const markToolMutation = useMutation({
 		mutationFn: () => {
 			if (!selectedApp) throw new Error("No app selected");
@@ -230,7 +296,7 @@ export default function WebBuilderPage() {
 		},
 	});
 
-	// 5. Custom domain mutation
+	// 8. Custom domain mutation
 	const customDomainMutation = useMutation({
 		mutationFn: () => {
 			if (!selectedApp) throw new Error("No app selected");
@@ -250,13 +316,31 @@ export default function WebBuilderPage() {
 	});
 
 	const localPreviewUrl = selectedApp
-		? `${backendBaseUrl}/api/v1/web-builder/apps/${selectedApp.id}/preview`
+		? `${backendBaseUrl}/api/v1/web-builder/apps/${selectedApp.id}/preview?workspace_id=${workspaceId}`
 		: "";
 
 	const currentDisplayUrl =
 		selectedApp?.status === "published" && selectedApp.public_url
 			? selectedApp.public_url
 			: localPreviewUrl;
+
+	if (isFeatureDisabled) {
+		return (
+			<div
+				data-testid="web-builder-disabled-gate"
+				className="flex flex-col items-center justify-center h-[calc(100vh-8rem)] p-8 text-center space-y-4 max-w-lg mx-auto"
+			>
+				<div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
+					<Sparkles className="w-6 h-6" />
+				</div>
+				<h2 className="text-xl font-bold text-foreground">Web Builder is disabled</h2>
+				<p className="text-sm text-muted-foreground">
+					Web Builder is not enabled on this workspace plan. Please upgrade your workspace plan to
+					access the AI Web App Builder.
+				</p>
+			</div>
+		);
+	}
 
 	return (
 		<div className="flex flex-col h-[calc(100vh-4rem)] p-6 space-y-6 max-w-7xl mx-auto">
@@ -275,6 +359,19 @@ export default function WebBuilderPage() {
 
 				{selectedApp && (
 					<div className="flex items-center gap-3">
+						<button
+							type="button"
+							onClick={() => rebuildMutation.mutate(selectedApp.id)}
+							disabled={rebuildMutation.isPending || isBuilding}
+							className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-background hover:bg-muted text-foreground transition-colors disabled:opacity-50"
+							title="Rebuild Application"
+						>
+							<RefreshCw
+								className={`w-3.5 h-3.5 ${rebuildMutation.isPending || isBuilding ? "animate-spin" : ""}`}
+							/>
+							Rebuild
+						</button>
+
 						<button
 							type="button"
 							onClick={() => setIsMarkToolActive(!isMarkToolActive)}
@@ -341,7 +438,7 @@ export default function WebBuilderPage() {
 							rows={4}
 							value={prompt}
 							onChange={(e) => setPrompt(e.target.value)}
-							placeholder="E.g. A modern SaaS landing page for an AI accounting tool with dark mode, interactive pricing tiers, and contact form..."
+							placeholder="Describe your web app (e.g. A modern SaaS landing page with dark mode, pricing tiers...)"
 							disabled={isStreaming}
 							className="w-full text-sm p-3 rounded-lg border border-border bg-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
 						/>
@@ -386,6 +483,7 @@ export default function WebBuilderPage() {
 									onClick={() => {
 										setSelectedApp(app);
 										setIsMarkToolActive(false);
+										setIsLogsOpen(false);
 										setIframeKey((prev) => prev + 1);
 									}}
 									className={`w-full text-left p-3 rounded-lg border transition-all ${
@@ -400,10 +498,29 @@ export default function WebBuilderPage() {
 											className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
 												app.status === "published"
 													? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
-													: "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
+													: app.status === "building"
+														? "bg-amber-500/10 text-amber-500 border border-amber-500/20 animate-pulse"
+														: app.status === "build_failed" ||
+																app.status === "validation_failed" ||
+																app.status === "deploy_failed" ||
+																app.status === "error"
+															? "bg-rose-500/10 text-rose-500 border border-rose-500/20"
+															: "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
 											}`}
 										>
-											{app.status === "published" ? "Live HTTPS" : "Local Ready"}
+											{app.status === "published"
+												? "Live HTTPS"
+												: app.status === "building"
+													? "Building"
+													: app.status === "build_failed"
+														? "Build Failed"
+														: app.status === "validation_failed"
+															? "Validation Failed"
+															: app.status === "deploy_failed"
+																? "Deploy Failed"
+																: app.status === "preview_ready"
+																	? "Preview Ready"
+																	: "Generated"}
 										</span>
 									</div>
 									<p className="text-xs text-muted-foreground truncate">
@@ -418,7 +535,7 @@ export default function WebBuilderPage() {
 				</div>
 
 				{/* Right Column: Live Streaming Terminal / Canvas Preview / Code Viewer */}
-				<div className="lg:col-span-8 flex flex-col rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+				<div className="lg:col-span-8 flex flex-col rounded-xl border border-border bg-card shadow-sm overflow-hidden min-h-[600px]">
 					{isStreaming ? (
 						/* Live SSE Streaming Terminal & File Progress */
 						<div className="flex flex-col h-full bg-slate-950 text-slate-100 p-5 space-y-4 font-mono text-xs overflow-hidden">
@@ -464,10 +581,20 @@ export default function WebBuilderPage() {
 										className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-medium shrink-0 ${
 											selectedApp.status === "published"
 												? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
-												: "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+												: selectedApp.status === "building"
+													? "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+													: selectedApp.status === "build_failed"
+														? "bg-rose-500/10 text-rose-500 border border-rose-500/20"
+														: "bg-blue-500/10 text-blue-400 border border-blue-500/20"
 										}`}
 									>
-										{selectedApp.status === "published" ? "LIVE HTTPS" : "LOCAL PREVIEW"}
+										{selectedApp.status === "published"
+											? "LIVE HTTPS"
+											: selectedApp.status === "building"
+												? "BUILDING"
+												: selectedApp.status === "build_failed"
+													? "BUILD FAILED"
+													: "LOCAL PREVIEW"}
 									</span>
 									<span className="text-xs font-mono text-foreground font-medium truncate">
 										{currentDisplayUrl}
@@ -595,27 +722,99 @@ export default function WebBuilderPage() {
 								</div>
 							)}
 
+							{/* Build Failure Banner & Collapsible Logs */}
+							{selectedApp.status === "build_failed" && (
+								<div
+									data-testid="web-builder-error-banner"
+									className="p-4 bg-rose-950/40 border-b border-rose-800/60 space-y-3"
+								>
+									<div className="flex items-center justify-between">
+										<div className="flex items-center gap-2 text-rose-400">
+											<AlertCircle className="w-4 h-4 shrink-0" />
+											<span className="font-semibold text-xs uppercase tracking-wide">
+												Build Failed
+											</span>
+										</div>
+										<div className="flex items-center gap-2">
+											<button
+												type="button"
+												onClick={() => setIsLogsOpen(!isLogsOpen)}
+												className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded border border-rose-800/60 bg-rose-900/30 hover:bg-rose-900/50 text-rose-200 transition-colors"
+											>
+												{isLogsOpen ? (
+													<ChevronUp className="w-3.5 h-3.5" />
+												) : (
+													<ChevronDown className="w-3.5 h-3.5" />
+												)}
+												{isLogsOpen ? "Hide build logs" : "View build logs"}
+											</button>
+											<button
+												type="button"
+												onClick={() => rebuildMutation.mutate(selectedApp.id)}
+												disabled={rebuildMutation.isPending}
+												className="flex items-center gap-1 px-3 py-1 text-xs font-medium rounded bg-rose-600 hover:bg-rose-700 text-white transition-colors"
+											>
+												<RefreshCw
+													className={`w-3.5 h-3.5 ${rebuildMutation.isPending ? "animate-spin" : ""}`}
+												/>
+												Rebuild / Retry
+											</button>
+										</div>
+									</div>
+									<p className="text-xs text-rose-300 font-mono line-clamp-2">
+										{selectedApp.description ||
+											"Next.js compilation or dependency installation failed."}
+									</p>
+									{isLogsOpen && (
+										<div
+											data-testid="web-builder-logs-panel"
+											className="p-3 bg-black/80 border border-rose-900/60 rounded-lg max-h-56 overflow-y-auto font-mono text-xs text-rose-200 whitespace-pre-wrap leading-relaxed select-text"
+										>
+											{buildLogs?.logs || "Loading build logs..."}
+										</div>
+									)}
+								</div>
+							)}
+
 							{/* Canvas Frame or Code Viewer */}
 							{activeTab === "preview" ? (
 								<div className="flex-1 bg-neutral-900/90 flex items-center justify-center p-3 overflow-hidden">
-									<div
-										className={`h-full bg-slate-950 rounded-lg shadow-2xl border border-border/40 overflow-hidden transition-all duration-300 ${
-											deviceMode === "desktop"
-												? "w-full"
-												: deviceMode === "tablet"
-													? "w-[768px]"
-													: "w-[375px]"
-										}`}
-									>
-										<iframe
-											key={`${selectedApp.id}-${iframeKey}`}
-											id="web-builder-preview-iframe"
-											src={localPreviewUrl}
-											title={selectedApp.name}
-											sandbox="allow-scripts allow-forms allow-same-origin"
-											className="w-full h-full border-0 bg-slate-950"
-										/>
-									</div>
+									{isBuilding ? (
+										<div
+											data-testid="web-builder-building-indicator"
+											className="flex flex-col items-center justify-center p-8 space-y-4 text-center max-w-sm"
+										>
+											<Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+											<div className="space-y-1">
+												<h3 className="text-sm font-semibold text-slate-100">
+													Building web application...
+												</h3>
+												<p className="text-xs text-slate-400">
+													Installing dependencies and compiling Next.js standalone preview
+												</p>
+											</div>
+										</div>
+									) : (
+										<div
+											className={`h-full bg-slate-950 rounded-lg shadow-2xl border border-border/40 overflow-hidden transition-all duration-300 ${
+												deviceMode === "desktop"
+													? "w-full"
+													: deviceMode === "tablet"
+														? "w-[768px]"
+														: "w-[375px]"
+											}`}
+										>
+											<iframe
+												key={`${selectedApp.id}-${iframeKey}`}
+												id="web-builder-preview-iframe"
+												data-testid="web-app-preview-frame"
+												src={localPreviewUrl}
+												title={selectedApp.name}
+												sandbox="allow-scripts allow-forms allow-same-origin"
+												className="w-full h-full border-0 bg-slate-950"
+											/>
+										</div>
+									)}
 								</div>
 							) : (
 								/* Code Viewer Tab */

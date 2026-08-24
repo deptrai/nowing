@@ -1,4 +1,5 @@
 import type {
+	BuildLogsOutput,
 	CustomDomainInput,
 	CustomDomainOutput,
 	MarkToolInput,
@@ -106,6 +107,21 @@ class WebBuilderApiService {
 
 	getApp = async (appId: string, workspaceId: number | string): Promise<WorkspaceApp> => {
 		return baseApiService.get(`/api/v1/web-builder/apps/${appId}?workspace_id=${workspaceId}`);
+	};
+
+	getBuildLogs = async (appId: string, workspaceId: number | string): Promise<BuildLogsOutput> => {
+		return baseApiService.get(
+			`/api/v1/web-builder/apps/${appId}/build-logs?workspace_id=${workspaceId}`
+		);
+	};
+
+	triggerBuild = async (
+		appId: string,
+		workspaceId: number | string
+	): Promise<{ status: string; app_id: string; message: string; build_log_url?: string }> => {
+		return baseApiService.post(`/api/v1/web-builder/apps/${appId}/build`, undefined, {
+			body: { workspace_id: Number(workspaceId) },
+		});
 	};
 }
 

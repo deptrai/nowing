@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import re
 import uuid
@@ -85,10 +86,14 @@ class WebAppDeployService:
 
         # 0. Verify workspace and app gates (P3, P14).
         ws = (
-            await session.execute(
-                select(Workspace).where(Workspace.id == workspace_id)
+            (
+                await session.execute(
+                    select(Workspace).where(Workspace.id == workspace_id)
+                )
             )
-        ).scalars().first()
+            .scalars()
+            .first()
+        )
         if ws is None or ws.web_builder_enabled is False:
             return WebAppDeployOutput(
                 app_id=app_id,
@@ -161,12 +166,31 @@ class WebAppDeployService:
                 message=f"Application already published at {app_entity.public_url or public_url}",
             )
 
-        # 3. Render static HTML snapshot via PreviewRenderer.
+        # 3. Render static HTML snapshot (prefer compiled standalone build if exists, fallback to PreviewRenderer).
         try:
-            static_html = PreviewRenderer.render_app_html(
-                project_path,
-                app_name=app_entity.name,
-            )
+            candidate_index_paths = [
+                project_path / ".next" / "server" / "app" / "index.html",
+                project_path / ".next" / "server" / "app" / "page.html",
+                project_path
+                / ".next"
+                / "standalone"
+                / ".next"
+                / "server"
+                / "app"
+                / "index.html",
+                project_path / ".next" / "standalone" / "index.html",
+                project_path / "out" / "index.html",
+            ]
+            static_html = None
+            for candidate in candidate_index_paths:
+                if candidate.exists():
+                    static_html = candidate.read_text(encoding="utf-8")
+                    break
+            if not static_html:
+                static_html = PreviewRenderer.render_app_html(
+                    project_path,
+                    app_name=app_entity.name,
+                )
         except Exception as e:
             logger.error(
                 f"[WebAppDeployService] Rendering failed for app {app_id}: {e}"
@@ -253,14 +277,61 @@ class WebAppDeployService:
         custom_domain: str,
         session: AsyncSession | None = None,
     ) -> CustomDomainOutput:
-        """Validate custom domain CNAME and configure dynamic proxy route."""
+        """Validate custom domain FQDN, verify DNS proof-of-control, and bind it."""
         from app.db import WorkspaceApp
 
         clean_domain = custom_domain.strip().lower()
         cname_target = CNAME_INGRESS_HOST
 
-        # Check collision across all workspaces
+        # Basic FQDN validation (no IPs, no localhost, valid labels)
+        if not re.match(r"^[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$", clean_domain):
+            return CustomDomainOutput(
+                app_id=app_id,
+                workspace_id=workspace_id,
+                custom_domain=clean_domain,
+                status="failed",
+                cname_target=cname_target,
+                message="Invalid custom domain. Provide a valid FQDN (e.g. app.mycompany.com).",
+            )
+
+        for label in clean_domain.split("."):
+            if (
+                not label
+                or label.startswith("-")
+                or label.endswith("-")
+                or len(label) > 63
+            ):
+                return CustomDomainOutput(
+                    app_id=app_id,
+                    workspace_id=workspace_id,
+                    custom_domain=clean_domain,
+                    status="failed",
+                    cname_target=cname_target,
+                    message="Invalid custom domain label. Each DNS label must be 1-63 characters and not start/end with a hyphen.",
+                )
+
+        if re.match(r"^\d+\.\d+\.\d+\.\d+$|^\[[0-9a-f:]+\]$", clean_domain):
+            return CustomDomainOutput(
+                app_id=app_id,
+                workspace_id=workspace_id,
+                custom_domain=clean_domain,
+                status="failed",
+                cname_target=cname_target,
+                message="IP addresses are not valid custom domains.",
+            )
+
+        if clean_domain == "localhost" or clean_domain.endswith(".local"):
+            return CustomDomainOutput(
+                app_id=app_id,
+                workspace_id=workspace_id,
+                custom_domain=clean_domain,
+                status="failed",
+                cname_target=cname_target,
+                message="Local domains are not valid custom domains.",
+            )
+
         if session:
+            # Check collision across all workspaces
             collision_stmt = select(WorkspaceApp).where(
                 WorkspaceApp.custom_domain == clean_domain,
                 WorkspaceApp.id != app_id,
@@ -276,6 +347,50 @@ class WebAppDeployService:
                     message=f"Domain '{clean_domain}' is already assigned to another application",
                 )
 
+            # DNS proof-of-control: CNAME must point to the ingress host (R-11)
+            try:
+                import dns.resolver
+
+                resolver = dns.resolver.Resolver()
+                resolver.lifetime = 5
+                answers = await asyncio.to_thread(
+                    resolver.resolve, clean_domain, "CNAME"
+                )
+                cname_values = {
+                    str(rdata.target).rstrip(".").lower() for rdata in answers
+                }
+            except dns.resolver.NoAnswer:
+                cname_values = set()
+            except dns.resolver.NXDOMAIN:
+                return CustomDomainOutput(
+                    app_id=app_id,
+                    workspace_id=workspace_id,
+                    custom_domain=clean_domain,
+                    status="failed",
+                    cname_target=cname_target,
+                    message=f"DNS lookup failed: {clean_domain} does not exist.",
+                )
+            except Exception as e:
+                return CustomDomainOutput(
+                    app_id=app_id,
+                    workspace_id=workspace_id,
+                    custom_domain=clean_domain,
+                    status="failed",
+                    cname_target=cname_target,
+                    message=f"DNS verification failed: {e}",
+                )
+
+            expected = cname_target.lower().rstrip(".")
+            if expected not in cname_values:
+                return CustomDomainOutput(
+                    app_id=app_id,
+                    workspace_id=workspace_id,
+                    custom_domain=clean_domain,
+                    status="failed",
+                    cname_target=cname_target,
+                    message=f"Domain '{clean_domain}' CNAME does not point to {cname_target}.",
+                )
+
             # Update DB entity
             stmt = select(WorkspaceApp).where(
                 WorkspaceApp.id == app_id,
@@ -289,11 +404,20 @@ class WebAppDeployService:
                 app_entity.custom_domain_status = "active"
                 await session.flush()
 
+            return CustomDomainOutput(
+                app_id=app_id,
+                workspace_id=workspace_id,
+                custom_domain=clean_domain,
+                status="active",
+                cname_target=cname_target,
+                message=f"Custom domain {clean_domain} verified and bound to {cname_target}.",
+            )
+
         return CustomDomainOutput(
             app_id=app_id,
             workspace_id=workspace_id,
             custom_domain=clean_domain,
-            status="active",
+            status="pending_verification",
             cname_target=cname_target,
-            message=f"Custom domain {clean_domain} configured successfully",
+            message=f"Custom domain {clean_domain} configured. Point its CNAME to {cname_target}.",
         )

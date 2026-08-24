@@ -1,0 +1,122 @@
+[
+  {
+    "location": "nowing_backend/app/agents/chat/multi_agent_chat/main_agent/tools/web_builder/build_web_app.py:140-154",
+    "trigger_condition": "The tool is called with an invalid/missing user_id or the user is not a workspace member, so the WorkspaceMembership query returns None.",
+    "guard_snippet": "membership = (await session.execute(select(WorkspaceMembership).where(...))).scalars().first(); if membership and not (membership.is_owner or (membership.role and \"web_builder:create\" in (membership.role.permissions or []))): return ...",
+    "potential_consequence": "A missing membership is not denied; the tool proceeds to WebBuilderService.generate_project and can create apps in the workspace without authorization."
+  },
+  {
+    "location": "nowing_backend/app/agents/chat/multi_agent_chat/main_agent/tools/web_builder/build_web_app.py:71-102",
+    "trigger_condition": "prompt is 1-2 characters long (failing WebAppBuildInput min_length=3) or other Pydantic validation fails when constructing WebAppBuildInput.",
+    "guard_snippet": "if not prompt or not prompt.strip(): ...; if len(prompt) > app_config.WEB_BUILDER_MAX_PROMPT_CHARS: ...; build_input = WebAppBuildInput(...)",
+    "potential_consequence": "A short prompt bypasses the tool's checks and raises inside WebAppBuildInput(...); the outer except Exception returns app_id=\"\" and status=\"error\" instead of a clean validation_failed response."
+  },
+  {
+    "location": "nowing_backend/app/routes/web_builder_routes.py:58-75",
+    "trigger_condition": "Global WEB_BUILDER_ENABLED is true, but the workspace row has web_builder_enabled=False.",
+    "guard_snippet": "def check_web_builder_enabled(): if not config.WEB_BUILDER_ENABLED: raise HTTPException(403, ...); await require_workspace_member(session, auth, payload.workspace_id)",
+    "potential_consequence": "Workspace-level feature gating is bypassed; users in a workspace with web builder disabled can still generate, list, preview, and publish apps via the REST API."
+  },
+  {
+    "location": "nowing_backend/app/routes/web_builder_routes.py:290-308",
+    "trigger_condition": "WorkspaceApp.storage_path is None (e.g. failed generation or legacy row) and /api/v1/web-builder/apps/{app_id}/preview is requested.",
+    "guard_snippet": "if app_entity.storage_path: project_dir = Path(app_entity.storage_path); if not project_dir.is_absolute(): project_dir = Path(FILE_STORAGE_LOCAL_PATH).resolve() / \"web-app\" / ... (no else fallback)",
+    "potential_consequence": "project_dir is never assigned, causing UnboundLocalError at 'if not project_dir.exists()' and a 500 instead of a 404 or fallback preview."
+  },
+  {
+    "location": "nowing_backend/app/routes/web_builder_routes.py:139-161 and nowing_backend/app/services/web_builder/deploy_service.py:171-221",
+    "trigger_condition": "A custom-domain request is made for a non-existent app or for an app that does not belong to payload.workspace_id.",
+    "guard_snippet": "result = await deploy_service.verify_and_bind_custom_domain(...); if result.status == \"failed\": raise HTTPException(...); inside deploy_service: if app_entity: ... (no else branch)",
+    "potential_consequence": "The service returns CustomDomainOutput(status=\"active\", ...) when the WorkspaceApp is not found; the route returns 200, appearing to bind a domain to nothing."
+  },
+  {
+    "location": "nowing_backend/app/routes/web_builder_routes.py:187-214",
+    "trigger_condition": "app_entity.storage_path is a relative path or symlink, or payload.file_path contains '..' after resolution.",
+    "guard_snippet": "project_dir = Path(app_entity.storage_path); target_file = (project_dir / payload.file_path).resolve(); try: target_file.relative_to(project_dir) except ValueError: raise HTTPException(400, ...)",
+    "potential_consequence": "project_dir is not resolved/fallback to FILE_STORAGE_LOCAL_PATH, so the mark tool may read/write relative to the process CWD and can miss path-traversal when project_dir itself is outside the configured storage root."
+  },
+  {
+    "location": "nowing_backend/app/services/web_builder/deploy_service.py:92-97",
+    "trigger_condition": "A generated/disambiguated slug reaches 64+ characters and the last characters are the numeric disambiguation suffix or a trailing hyphen.",
+    "guard_snippet": "sanitized_slug = (re.sub(r\"[^a-z0-9-]\", \"-\", final_slug.strip().lower()).strip(\"-\") or \"app\"); sanitized_slug = sanitized_slug[:63].strip(\"-\") or \"app\"",
+    "potential_consequence": "[:63].strip(\"-\") can remove the disambiguation suffix, producing a slug that already exists and causing the new static snapshot to overwrite the existing published app."
+  },
+  {
+    "location": "nowing_backend/app/services/web_builder/deploy_service.py:177-221",
+    "trigger_condition": "custom_domain contains 'https://', a path, an IP, or any unvalidated string, or app_entity is None.",
+    "guard_snippet": "clean_domain = custom_domain.strip().lower(); ... if app_entity: app_entity.custom_domain = clean_domain; app_entity.custom_domain_status = \"active\"",
+    "potential_consequence": "Invalid/malformed custom domains are persisted as 'active' with no CNAME or ownership verification, and the function still returns success when the app is missing."
+  },
+  {
+    "location": "nowing_backend/app/services/web_builder/generator.py:206-250 and 315-350",
+    "trigger_condition": "A refinement request (build_input.app_id) targets an existing WorkspaceApp whose storage_path is None.",
+    "guard_snippet": "if existing_app and existing_app.storage_path: ... else: app_id = str(uuid.uuid4()); workspace_dir = self.storage_base_path / \"web-app\" / ...; if existing_app: existing_app.preview_url = preview_url",
+    "potential_consequence": "A new project directory is created under a new random app_id, but the original WorkspaceApp row is updated to point storage_path and preview_url at that new directory while keeping the old id, breaking the relationship between the app's id and its on-disk path."
+  },
+  {
+    "location": "nowing_backend/app/services/web_builder/generator.py:403-569",
+    "trigger_condition": "The streaming endpoint is called with app_id to refine an existing app, or HOSTING_BASE_DOMAIN is not 'apps.nowing.net'.",
+    "guard_snippet": "app_id = str(uuid.uuid4()) (ignores build_input.app_id); public_url: f\"https://{app_slug}.apps.nowing.net\"",
+    "potential_consequence": "Streaming cannot refine existing apps and reports a public URL on a hard-coded domain that may not match the configured HOSTING_BASE_DOMAIN."
+  },
+  {
+    "location": "nowing_backend/app/tasks/chat/streaming/flows/new_chat/orchestrator.py:572-578 and 876-887",
+    "trigger_condition": "A provider rate-limit causes reroute_to_next_auto_pin and _merge_registry_agent_config while the thread is in a chat mode with a restricted enabled_tools list (e.g. web_builder).",
+    "guard_snippet": "Main flow: if chat_mode.enabled_tools is not None: effective_enabled_tools = list(chat_mode.enabled_tools). Recovery path: (_) = await _merge_registry_agent_config(...) without re-applying chat_mode.enabled_tools.",
+    "potential_consequence": "After recovery, the agent is rebuilt with the registry's full tool list, so a web-builder conversation could invoke tools other than build_web_app."
+  },
+  {
+    "location": "nowing_backend/app/tasks/chat/streaming/flows/new_chat/orchestrator.py:344-353",
+    "trigger_condition": "A follow-up turn sends platform_metadata: {} while the thread already has non-empty mode metadata.",
+    "guard_snippet": "thread_metadata = getattr(chat_thread, \"platform_metadata\", None); if platform_metadata is not None: chat_thread.platform_metadata = platform_metadata; elif thread_metadata is not None: platform_metadata = thread_metadata",
+    "potential_consequence": "An empty dict overwrites the existing chat mode, causing resolve_chat_mode to fall back to 'default' and lose the web-builder/presentation context."
+  },
+  {
+    "location": "nowing_backend/app/tasks/chat/streaming/flows/new_chat/chat_modes.py:94-102",
+    "trigger_condition": "platform_metadata contains a mode flag with a truthy non-boolean value, such as 'web_builder_mode': 'false' or '0'.",
+    "guard_snippet": "for mode in CHAT_MODES.values(): if mode.mode_id == \"default\": continue; if metadata.get(mode.flag_key): return mode",
+    "potential_consequence": "String values like 'false' or '0' are interpreted as enabled, activating the wrong chat mode."
+  },
+  {
+    "location": "nowing_backend/app/tasks/chat/streaming/flows/new_chat/chat_modes.py:105-128 and nowing_backend/app/tasks/chat/streaming/flows/new_chat/orchestrator.py:548-561",
+    "trigger_condition": "The workspace id does not exist and a mode with only a global flag (presentation_studio or meeting_minutes) is requested.",
+    "guard_snippet": "if mode.workspace_feature_field: if workspace is None: return False; ...; return True",
+    "potential_consequence": "The mode is allowed because the global flag is checked but the workspace is not, so the stream may continue referencing a non-existent workspace."
+  },
+  {
+    "location": "nowing_backend/app/routes/web_builder_routes.py:397-403",
+    "trigger_condition": "A published app has a configured custom_domain and the visitor's Host header matches that custom domain.",
+    "guard_snippet": "if base_domain and not host_clean.endswith(f\".{base_domain}\"): raise HTTPException(400, \"Malformed host domain\")",
+    "potential_consequence": "The custom domain request is rejected with 400; only *.HOSTING_BASE_DOMAIN hosts are served, so custom-domain apps are unreachable."
+  },
+  {
+    "location": "nowing_backend/app/routes/web_builder_routes.py:383-389 and nowing_backend/app/routes/__init__.py:260-265",
+    "trigger_condition": "A visitor navigates to the bare published domain, e.g. https://slug.apps.nowing.net/.",
+    "guard_snippet": "@host_router.get(\"/web-apps/host\", response_class=HTMLResponse); router.include_router(web_builder_host_router)",
+    "potential_consequence": "FastAPI has no host= mount and the handler is at /web-apps/host, so root-path requests to the published domain return 404 unless an external layer rewrites the URL."
+  },
+  {
+    "location": "nowing_backend/app/services/web_builder/schemas.py:20-56 and nowing_backend/app/db.py:6582-6590",
+    "trigger_condition": "LLM or user supplies an app_name, slug, or language longer than the corresponding WorkspaceApp column (name 255, slug 100, language 10).",
+    "guard_snippet": "name = Column(String(255), nullable=False), slug = Column(String(100), nullable=False), language = Column(String(10), nullable=False); Pydantic fields use Field(...) / Field(default=\"en\") with no max_length.",
+    "potential_consequence": "Pydantic accepts oversized values; the DB insert may fail or truncate, producing a record that does not match the returned WebAppBuildOutput and possibly raising an unhandled 500."
+  },
+  {
+    "location": "nowing_backend/app/config/__init__.py:1810-1823 and nowing_backend/app/services/web_builder/deploy_service.py:65-66 and nowing_backend/app/routes/web_builder_routes.py:439",
+    "trigger_condition": "The environment lacks /app and FILE_STORAGE_LOCAL_PATH / WEB_BUILDER_PUBLIC_APPS_PATH are not set absolutely; the web server and workers run from different working directories.",
+    "guard_snippet": "FILE_STORAGE_LOCAL_PATH = os.getenv(..., \"/app/.local_object_store\" if os.path.exists(\"/app\") else \"./.local_object_store\"); public_apps_base = Path(app_config.WEB_BUILDER_PUBLIC_APPS_PATH).resolve()",
+    "potential_consequence": "Path(...).resolve() yields different absolute paths depending on the process CWD, so a Celery worker may write snapshots where the web server cannot find them, returning 404 for published apps."
+  },
+  {
+    "location": "nowing_backend/app/services/web_builder/preview_renderer.py:19-26",
+    "trigger_condition": "A generated or published app references or loads external HTTPS resources.",
+    "guard_snippet": "WEB_BUILDER_CSP = (\"default-src 'self' 'unsafe-inline' https:; img-src 'self' data: https: blob:; font-src 'self' data: https:; style-src 'self' 'unsafe-inline' https: https://fonts.googleapis.com; connect-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com;\")",
+    "potential_consequence": "The CSP allows arbitrary HTTPS origins for default/image/font/connect sources and permits unsafe-inline/unsafe-eval scripts, so generated apps can load third-party scripts and exfiltrate data; per-app allow-lists are noted as future work."
+  },
+  {
+    "location": "nowing_backend/app/services/web_builder/preview_renderer.py:224-256",
+    "trigger_condition": "LLM/user code contains '</script >', '< /script>', 'document[\"cookie\"]', 'window.document.cookie', 'import(\"https://...\")', 'require(...)', or 'export default function() {}'.",
+    "guard_snippet": "re.sub(r\"</script>\", ...); re.sub(r\"\\bdocument\\.cookie\\b\", ...); re.sub(r\"\\blocalStorage\\b\", ...); re.sub(r\"import\\s+[^;]+;?\", \"\", code)",
+    "potential_consequence": "The regex-based sanitizer can be bypassed, allowing script tag injection, cookie/localStorage access, and remote code loading in preview/published HTML."
+  }
+]

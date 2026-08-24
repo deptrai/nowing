@@ -7,9 +7,12 @@ interactive HTML page with live Tailwind CDN, Babel/React runtime, and Lucide ic
 from __future__ import annotations
 
 import html
+import json
 import logging
 import re
 from pathlib import Path
+
+from app.config import config as app_config
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +20,7 @@ logger = logging.getLogger(__name__)
 # load analytics, and call external APIs. Hardening to per-app allow-lists is
 # the next step once app authors can declare their endpoints.
 WEB_BUILDER_CSP = (
-    "default-src 'self' 'unsafe-inline' https:; "
+    "default-src 'self'; "
     "img-src 'self' data: https: blob:; "
     "font-src 'self' data: https:; "
     "style-src 'self' 'unsafe-inline' https: https://fonts.googleapis.com; "
@@ -70,6 +73,7 @@ class PreviewRenderer:
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="{WEB_BUILDER_CSP}">
+  <script>window.__wbAllowedOrigin = {json.dumps(app_config.NEXT_FRONTEND_URL or "")};</script>
   <title>{html.escape(app_name)} - Live Preview</title>
 
   <!-- Tailwind CSS CDN -->
@@ -235,6 +239,8 @@ class PreviewRenderer:
     let hoveredElement = null;
 
     window.addEventListener('message', (event) => {{
+      const allowedOrigin = window.__wbAllowedOrigin || window.location.origin;
+      if (allowedOrigin && event.origin !== allowedOrigin) return;
       if (event.data?.type === 'TOGGLE_MARK_TOOL') {{
         markToolActive = !!event.data.active;
         if (!markToolActive && hoveredElement) {{
@@ -275,12 +281,13 @@ class PreviewRenderer:
       const selector = id || (firstClass ? tag + firstClass : tag);
       const text = target.innerText || target.textContent || '';
 
+      const targetOrigin = window.__wbAllowedOrigin || window.location.origin;
       window.parent.postMessage({{
         type: 'MARK_ELEMENT_SELECTED',
         selector: selector,
         tag: tag,
         text: text.trim(),
-      }}, '*');
+      }}, targetOrigin);
     }}, true);
 
     window.addEventListener('DOMContentLoaded', () => {{
@@ -318,7 +325,9 @@ class PreviewRenderer:
         # Strip static imports and neutralise dynamic imports/requires that
         # could load arbitrary third-party code in the preview sandbox.
         code = re.sub(r"^\s*import\s+[^;]+;?", "", code, flags=re.MULTILINE)
-        code = re.sub(r"\bimport\s*\(", "(function(){{return Promise.resolve({{}});}})(", code)
+        code = re.sub(
+            r"\bimport\s*\(", "(function(){{return Promise.resolve({{}});}})(", code
+        )
         code = re.sub(r"\brequire\s*\(", "(function(){{return {{}};}})(", code)
 
         # Convert ESM exports to local declarations so Babel can execute the
