@@ -4,13 +4,14 @@ story_key: 27-1
 epic: epic-27
 story: "27.1"
 title: "Full-Stack Web App Builder, 1-Click Hosting *.apps.nowing.net & Design View Mark Tool"
-status: "ready-for-dev"
+status: "review"
 ---
 
 # Story 27.1: Full-Stack Web App Builder, 1-Click Hosting `*.apps.nowing.net` & Design View Mark Tool
 
-**Status:** `ready-for-dev`  
+**Status:** `review`  
 **Epic:** Epic 27 — Full-Stack Web App Builder, Instant Hosting & Creative Studio  
+**Related Story (MVP):** <ref_file file="/Users/luisphan/Documents/GitHub/nowing/_bmad-output/implementation-artifacts/stories/27-1a-web-builder-chat-mode-sales-marketing-mvp.md" /> — Story 27.1a: chat-first, sales/marketing, Option A static publish.  
 **Priority:** P1  
 **Source:** <ref_file file="/Users/luisphan/Documents/GitHub/nowing/_bmad-output/planning-artifacts/epics.md" /> (Epic 27, Story 27.1; FR-93)  
 **Related PRD:** FR-93, FR-94 in <ref_file file="/Users/luisphan/Documents/GitHub/nowing/_bmad-output/planning-artifacts/prds/prd-Nowing-2026-07-22/prd.md" /> §4.10  
@@ -19,6 +20,8 @@ status: "ready-for-dev"
 **Resolved by architect (Winston) + PO confirmation:** Production Dokploy/Nowing chạy **Traefik**. Story 27.1 vì vậy **target Traefik cho v1 production**. Caddy 2 trong `docker/docker-compose.yml` chỉ là **self-host / local dev fallback**. Deployment cần dùng **Traefik Docker provider** (labels hoặc file provider) để đăng ký `*.apps.nowing.net` và custom CNAME.
 
 > **Scope warning:** `epics.md` đánh dấu Story 27.1 là **"toàn bộ code mới" và "scope lớn nhất trong roadmap"**. Bao gồm 4 sub-system lớn: (1) LLM code generator, (2) build/preview runner, (3) 1-click hosting + custom CNAME, (4) Design View Mark Tool. Nếu sprint không đủ thời gian, ưu tiên sinh project + preview URL trước, deploy và Mark Tool theo sau.
+>
+> **MVP Split:** Story **27.1a** (`_bmad-output/implementation-artifacts/stories/27-1a-web-builder-chat-mode-sales-marketing-mvp.md`) covers the **chat-first, sales/marketing, lightweight static publish** slice. This Story 27.1 remains the broader foundation/deferred scope for full container deploy, custom CNAME, and AST Mark Tool.
 
 ## Story
 

@@ -3,7 +3,7 @@ story_key: "24-8"
 epic: "epic-24"
 story: "24.8"
 title: "Browser Operator CDP Tool for DSH Crawl Subgraph & Human Live Takeover UI"
-status: "review"
+status: "done"
 baseline_commit: "4c37acfa9"
 ---
 

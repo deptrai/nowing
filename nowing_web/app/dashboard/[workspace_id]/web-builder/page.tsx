@@ -84,8 +84,7 @@ export default function WebBuilderPage() {
 				})
 				.catch(() => {});
 		}
-	}, [selectedApp, workspaceId, activeTab]);
-
+	}, [selectedApp, workspaceId, selectedFile]);
 
 	// Listen to messages from Preview iframe (Mark Tool Click-To-Inspect)
 	useEffect(() => {

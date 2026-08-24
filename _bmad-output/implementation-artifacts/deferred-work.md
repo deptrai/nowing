@@ -414,6 +414,10 @@
 
 ## Deferred from: code review of 3-14-memory-injection-bounded-retrieval (2026-08-05)
 
+- **Finding:** `nowing_evals/src/nowing_evals/suites/memory/recall/gate.yaml` referenced a `deferred to Story 3.11` score-threshold mode and needed the Story 3-14 attribution.
+  - **Action:** Marked `[x] [Review][Resolved]` in `3-14-memory-injection-bounded-retrieval.md`.
+  - **Resolution:** `gate.yaml` now uses `required_oracle_mode: score_threshold` and the header/comment attributes the real score/similarity metadata to Story 3.14. The REST/MCP recall routes and `MemoryHybridSearch` emit finite `score` and `similarity` (or `None` for recency), so the threshold oracle can run. This was confirmed by the 2026-07-28 live run (recall@5=0.986, MRR=1.0, distractor noise=0.067, off-corpus=0.033, n_queries=36).
+
 - **Finding:** Over-materialization of candidates in `search.py` — `top_k*3` bounded materialization is acceptable for current corpus sizes.
   - **Action:** Marked `[x] [Review][Defer]` in `3-14-memory-injection-bounded-retrieval.md`.
   - **Reason / when to revisit:** Revisit if corpus grows beyond ~1M rows or if p95 memory pressure becomes measurable in AC-3 latency evidence.

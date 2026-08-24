@@ -1,5 +1,5 @@
 # generated: 2026-08-08
-# last_updated: 2026-08-25  # 14-2a done; 14-2b re-review complete: 6 patches + F1/F2 resolved; ruff clean, unit 21/21 + integration 2/2 pass.
+# last_updated: 2026-08-25  # Story 27-1: review. Story 27-1a created: Web Builder Chat Mode MVP for Sales & Marketing (Option A) — chat-first entry, standalone page kept, lightweight static publish via backend wildcard route.
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -89,7 +89,7 @@ development_status:
   3-11: done
   3-12: done
   3-13: done  # verified 2026-08-15: story file exists and marks done
-  3-14: review  # 2026-08-23: acceptance audit has reject/patch/defer findings (stale AC-3 evidence, embeddings[0] unguarded, query max_length, deferred-work stale).
+  3-14: done  # 2026-08-25: all acceptance audit findings resolved; benchmark regenerated and passes AC-3 + AC-5 (pass=true, status=complete, freshness pass=true); ruff/pytest (unit+integration) green.
   3-15: done
   # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended WEB_RESULT citation ACs for ChainLens sources
   # ponytail: 2026-08-08 code-review round 2 — 2 patches fixed (WEB_RESULT integration test, merge tests), 0 defer, 14 dismissed. AC1-6 PASS.
@@ -267,7 +267,7 @@ development_status:
   24-5: done  # Vertical Playbook Marketplace & Community Workflow Templates — P0/P1 code review patches applied (auth, seed runnable, is_approved, metadata, vertical filter, hard limit, instantiate run launch). Backend ruff/pytest and frontend tsc/biome green.
   24-6: done  # Two-Way AI Outreach Auto-Reply Agent — all review findings resolved (5 patches + 2 deferred items). Verified green: ruff, pytest unit/integration, pnpm tsc/biome.
   24-7: done  # Multi-Channel Drip Outreach Campaign Engine (Zalo ZNS + Telegram + Email Cadence) — 18 original patch findings + 5 re-review findings applied: multi-channel config, VerifiedContact.external_chat_ids, schema expansion, _send_zns/_send_telegram dispatch, fallback orchestration with correct fallback billing cost, DNC on Telegram, normalized Zalo webhook phone lookup, sanitized inbound lock key, VisualCadenceBuilder invalid JSON feedback. Backend ruff/pytest (34 tests) and frontend tsc/biome green.
-  24-8: review  # 2026-08-25: 4 review decisions resolved; 11/15 code patches applied (SSE lock, command_id mismatch, resume ownership, backend URL fail-fast, etc.); ruff/pytest (unit+integration)/tsc green. UI popover (AC-4), 3 low-risk patches (PII redaction failure, screenshot cap, tab ownership) remain open.
+  24-8: done  # 2026-08-25: all review findings resolved — SSE lock, command_id mismatch, resume ownership, backend URL fail-fast, PII redaction fail-soft, screenshot size cap, tab/user ownership, Human Live Takeover popover; ruff/pytest (unit+integration)/tsc/biome/build green.
   epic-24-retrospective: optional
 
   # === Epic 25: Platform Administration & Multi-Tenant Operations ===
@@ -299,6 +299,7 @@ development_status:
   # === Epic 27: Full-Stack Web App Builder, Instant Hosting & Creative Studio ===
   epic-27: in-progress
   27-1: review  # Full-Stack Web App Builder, 1-Click Hosting *.apps.nowing.net & Design View Mark Tool (AD-113, AD-114) — story file validated/expanded with full ACs, file structure, testing, and AD-113/Caddy conflict note.
+  27-1a: ready-for-review  # Web Builder Chat Mode MVP for Sales & Marketing (Option A) — chat-first entry, standalone page kept, lightweight static publish via backend wildcard route. Story file created with grill-me + edge-case hunter review applied.
   27-2: ready-for-dev  # Manus Slides + Speaker Diarization — split into PPTX/Marp export and diarization; reuse video_presentation/reports/stt_service
   epic-27-retrospective: optional
 

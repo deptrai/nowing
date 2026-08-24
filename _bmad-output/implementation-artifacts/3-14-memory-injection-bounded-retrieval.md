@@ -2,7 +2,7 @@
 baseline_commit: 25ba542c2
 baseline_branch: develop
 story_key: 3-14-memory-injection-bounded-retrieval
-status: review
+status: done
 ---
 
 # Story 3.14: Memory Injection — Bounded Retrieval & Latency Budget

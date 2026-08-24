@@ -62,7 +62,18 @@ chrome.tabs.onUpdated.addListener(async (tabId: number, changeInfo: any, tab: an
 	}
 });
 
+chrome.tabs.onReplaced.addListener(async (_addedTabId: number, removedTabId: number) => {
+	const bridge = CdpBridge.getInstance();
+	if (bridge.getActiveDebuggeeTabId() === removedTabId) {
+		await bridge.detachActiveDebugger();
+	}
+});
+
 chrome.tabs.onRemoved.addListener(async (tabId: number, _removeInfo: object) => {
+	const bridge = CdpBridge.getInstance();
+	if (bridge.getActiveDebuggeeTabId() === tabId) {
+		await bridge.detachActiveDebugger();
+	}
 	const storage = new Storage({ area: "local" });
 	const urlQueueListObj: any = await storage.get("urlQueueList");
 	const timeQueueListObj: any = await storage.get("timeQueueList");

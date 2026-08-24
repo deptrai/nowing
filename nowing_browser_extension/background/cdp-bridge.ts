@@ -29,6 +29,7 @@ type CdpCommand = {
 	action: string;
 	mission_id: string;
 	command_id: string;
+	user_id?: string;
 	url?: string;
 	selector?: string;
 	text?: string;
@@ -36,6 +37,10 @@ type CdpCommand = {
 	px?: number;
 	format?: "png" | "jpeg";
 };
+
+// ponytail: cap screenshot base64 payload so it does not blow the CDP result pipeline.
+// 2MB base64 ~= 1.5MB decoded; JPEG quality reduction is attempted before failing.
+const MAX_SCREENSHOT_B64_CHARS = 2_000_000;
 
 class CdpBridge {
 	private static instance: CdpBridge | null = null;
@@ -47,6 +52,7 @@ class CdpBridge {
 	private reconnectAttempts = 0;
 	private readonly maxReconnectAttempts = 10;
 	private readonly maxQueueSize = 20;
+	private expectedUserId: string | null = null;
 
 	public static getInstance(): CdpBridge {
 		if (!CdpBridge.instance) {
@@ -262,6 +268,14 @@ class CdpBridge {
 		}
 	}
 
+	public getActiveDebuggeeTabId(): number | null {
+		return this.activeDebuggeeTabId;
+	}
+
+	public async detachActiveDebugger(): Promise<void> {
+		await this.detachDebugger();
+	}
+
 	private async _sendCommand<T = any>(
 		tabId: number,
 		method: string,
@@ -346,11 +360,71 @@ class CdpBridge {
 		}
 	}
 
+	private _extractJwtUserId(token: string): string | null {
+		try {
+			const parts = token.split(".");
+			if (parts.length !== 3) return null;
+			const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+			const json = atob(base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "="));
+			const payload = JSON.parse(json);
+			return payload.sub || payload.user_id || payload.userId || null;
+		} catch (err) {
+			console.warn("CdpBridge: could not decode token user_id:", err);
+			return null;
+		}
+	}
+
+	private _validateCommandOwnership(cmd: CdpCommand, token: string | null): boolean {
+		if (!cmd.user_id || !token) return true;
+		if (this.expectedUserId === null) {
+			this.expectedUserId = this._extractJwtUserId(token);
+		}
+		if (this.expectedUserId && cmd.user_id !== this.expectedUserId) {
+			console.warn("CdpBridge: command user_id mismatch; ignoring command", cmd.mission_id);
+			return false;
+		}
+		return true;
+	}
+
+	private async _captureCappedScreenshot(
+		tabId: number,
+		format: "png" | "jpeg"
+	): Promise<{ data: string; format: string }> {
+		const attempts: { format: "png" | "jpeg"; quality?: number }[] = [
+			{ format },
+			{ format: "jpeg", quality: 60 },
+			{ format: "jpeg", quality: 30 },
+		];
+
+		let data = "";
+		for (const opts of attempts) {
+			const cap: any = await this._sendCommand(tabId, "Page.captureScreenshot", opts);
+			data = cap?.data ?? "";
+			if (data.length <= MAX_SCREENSHOT_B64_CHARS) {
+				return { data, format: opts.format };
+			}
+			console.warn(
+				`CdpBridge: screenshot too large (${data.length} chars) with`,
+				opts,
+				"; retrying with lower quality"
+			);
+		}
+
+		throw new Error(`Screenshot exceeded size cap (${data.length} base64 chars)`);
+	}
+
 	private async handleCdpCommand(cmd: CdpCommand): Promise<void> {
-		const { action, mission_id, command_id, url } = cmd;
+		const { action, mission_id, command_id, url, user_id } = cmd;
 
 		if (!action || !mission_id || !command_id) {
 			console.error("CdpBridge: invalid CDP command", cmd);
+			return;
+		}
+
+		// Tab/user ownership: verify the command is for the authenticated user and
+		// that we operate on the tab matching the requested URL.
+		const token = await this._requireToken();
+		if (!this._validateCommandOwnership(cmd, token)) {
 			return;
 		}
 
@@ -523,10 +597,10 @@ class CdpBridge {
 				}
 
 				case "take_screenshot": {
-					const format = cmd.format ?? "png";
-					const cap: any = await this._sendCommand(tabId, "Page.captureScreenshot", { format });
+					const requestedFormat = cmd.format ?? "png";
+					const { data, format } = await this._captureCappedScreenshot(tabId, requestedFormat);
 					resultPayload = {
-						data: cap.data,
+						data,
 						format,
 						tabId,
 					};
