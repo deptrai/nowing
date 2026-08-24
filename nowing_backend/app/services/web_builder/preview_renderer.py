@@ -152,7 +152,6 @@ class PreviewRenderer:
     const React = window.React;
     const ReactDOM = window.ReactDOM;
     const {{ useState, useEffect, useMemo, useRef }} = React;
-    const __wbKnownGlobals = new Set(Object.keys(window));
 
     {sanitized_jsx}
 
@@ -163,14 +162,17 @@ class PreviewRenderer:
       if (__wbKnownGlobals.has(k)) return false;
       if (['__wbKnownGlobals', 'MainComponent'].includes(k)) return false;
       if (typeof window[k] !== 'function') return false;
+      if (window[k] && window[k].__wbIcon) return false;
       return /^[A-Z]/.test(k);
     }});
 
     const MainComponent =
-      typeof Home !== 'undefined' ? Home :
-      typeof App !== 'undefined' ? App :
-      typeof Page !== 'undefined' ? Page :
-      (__wbAppKey ? window[__wbAppKey] : function() {{ return React.createElement('div', null, 'Application Ready'); }});
+      (typeof Home === 'function' && !(Home && Home.__wbIcon)) ? Home :
+      (typeof App === 'function' && !(App && App.__wbIcon)) ? App :
+      (typeof Page === 'function' && !(Page && Page.__wbIcon)) ? Page :
+      (__wbAppKey && typeof window[__wbAppKey] === 'function' && !window[__wbAppKey].__wbIcon
+        ? window[__wbAppKey]
+        : function() {{ return React.createElement('div', null, 'Application Ready'); }});
 
     root.render(React.createElement(MainComponent));
   </script>
@@ -181,14 +183,40 @@ class PreviewRenderer:
         if (typeof __webBuilderCdnFallback === 'function') __webBuilderCdnFallback();
         return;
       }}
+      window.__wbKnownGlobals = new Set(Object.keys(window));
+
       const source = document.getElementById('wb-source').textContent;
       const iconMatch = source.match(/\\b[A-Z][A-Za-z0-9]+\\b/g) || [];
       const iconNames = Array.from(new Set(iconMatch)).filter(function(k) {{
-        return k in lucide && typeof lucide[k] === 'function';
+        if (typeof window[k] !== 'undefined') return false;
+        return k in lucide && Array.isArray(lucide[k]);
       }});
-      const iconDecl = iconNames.length ? 'const {{ ' + iconNames.join(', ') + ' }} = lucide;' : '';
+
+      iconNames.forEach(function(name) {{
+        window[name] = (function(name) {{
+          var icon = lucide[name];
+          var fn = function(props) {{
+            return React.createElement('svg', Object.assign({{
+              xmlns: 'http://www.w3.org/2000/svg',
+              width: 24,
+              height: 24,
+              viewBox: '0 0 24 24',
+              fill: 'none',
+              stroke: 'currentColor',
+              strokeWidth: 2,
+              strokeLinecap: 'round',
+              strokeLinejoin: 'round'
+            }}, props), icon.map(function(node, i) {{
+              return React.createElement(node[0], Object.assign({{ key: i }}, node[1]));
+            }}));
+          }};
+          fn.__wbIcon = true;
+          return fn;
+        }})(name);
+      }});
+
       try {{
-        const transformed = Babel.transform(iconDecl + source, {{
+        const transformed = Babel.transform(source, {{
           presets: [['react', {{ runtime: 'classic' }}], 'typescript'],
           filename: 'page.tsx',
         }}).code;
