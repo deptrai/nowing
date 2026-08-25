@@ -38,7 +38,7 @@ export function ConnectorGrid() {
 								className="group flex flex-col rounded-xl border bg-card p-5 transition-colors hover:border-brand/40"
 							>
 								<span className="flex size-10 items-center justify-center rounded-lg border bg-muted/40 transition-transform duration-200 ease-out group-hover:scale-110 motion-reduce:transition-none motion-reduce:group-hover:scale-100">
-									<Icon className="size-5 text-foreground" />
+									<Icon className="size-5 text-foreground" aria-hidden="true" />
 								</span>
 								<h3 className="mt-3 font-semibold">
 									{connector.cardTitle ?? `${connector.name} API`}
@@ -48,7 +48,10 @@ export function ConnectorGrid() {
 								</p>
 								<span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-foreground">
 									Explore
-									<ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+									<ArrowRight
+										className="size-4 transition-transform group-hover:translate-x-0.5"
+										aria-hidden="true"
+									/>
 								</span>
 							</Link>
 						);
@@ -58,7 +61,7 @@ export function ConnectorGrid() {
 					<Button asChild variant="outline">
 						<Link href="/connectors">
 							View all connectors
-							<ArrowRight className="size-4" />
+							<ArrowRight className="size-4" aria-hidden="true" />
 						</Link>
 					</Button>
 				</div>

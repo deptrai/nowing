@@ -20,11 +20,11 @@ export const ExportProgressBar: React.FC<ExportProgressBarProps> = ({ job, onDis
 			<div className="flex items-start justify-between gap-3">
 				<div className="flex items-center gap-2.5">
 					{job.status === "processing" ? (
-						<Loader2 className="w-5 h-5 text-emerald-400 animate-spin" />
+						<Loader2 className="w-5 h-5 text-emerald-400 animate-spin" aria-hidden="true" />
 					) : job.status === "completed" ? (
-						<CheckCircle2 className="w-5 h-5 text-emerald-400" />
+						<CheckCircle2 className="w-5 h-5 text-emerald-400" aria-hidden="true" />
 					) : (
-						<XCircle className="w-5 h-5 text-rose-400" />
+						<XCircle className="w-5 h-5 text-rose-400" aria-hidden="true" />
 					)}
 
 					<div>
@@ -50,7 +50,7 @@ export const ExportProgressBar: React.FC<ExportProgressBarProps> = ({ job, onDis
 					onClick={onDismiss}
 					className="p-1 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
 				>
-					<X className="w-3.5 h-3.5" />
+					<X className="w-3.5 h-3.5" aria-hidden="true" />
 				</button>
 			</div>
 
@@ -75,7 +75,7 @@ export const ExportProgressBar: React.FC<ExportProgressBarProps> = ({ job, onDis
 						className="inline-flex items-center gap-1 font-medium text-emerald-400 hover:text-emerald-300 hover:underline"
 					>
 						<span>Mở liên kết</span>
-						<ExternalLink className="w-3 h-3" />
+						<ExternalLink className="w-3 h-3" aria-hidden="true" />
 					</a>
 				</div>
 			)}

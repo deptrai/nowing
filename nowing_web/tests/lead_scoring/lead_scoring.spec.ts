@@ -24,7 +24,9 @@ test.describe("Lead scoring API", () => {
 		await deleteWorkspace(request, ownerToken, workspaceId);
 	});
 
-	test("POST /workspaces/{id}/leads/score returns typed output without crashing", async ({ request }) => {
+	test("POST /workspaces/{id}/leads/score returns typed output without crashing", async ({
+		request,
+	}) => {
 		const response = await request.post(
 			`http://localhost:8000/api/v1/workspaces/${workspaceId}/leads/score`,
 			{

@@ -256,11 +256,11 @@ export function GoogleDriveFolderTree({
 							aria-label={isExpanded ? `Collapse ${item.name}` : `Expand ${item.name}`}
 						>
 							{isLoading ? (
-								<Spinner size="xs" className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+								<Spinner size="xs" className="h-2.5 w-2.5 sm:h-3 sm:w-3" aria-hidden="true" />
 							) : isExpanded ? (
-								<ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
+								<ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" aria-hidden="true" />
 							) : (
-								<ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+								<ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" aria-hidden="true" />
 							)}
 						</Button>
 					) : (
@@ -283,9 +283,15 @@ export function GoogleDriveFolderTree({
 					<div className="shrink-0">
 						{isFolder ? (
 							isExpanded ? (
-								<FolderOpen className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
+								<FolderOpen
+									className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground"
+									aria-hidden="true"
+								/>
 							) : (
-								<FolderClosed className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
+								<FolderClosed
+									className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground"
+									aria-hidden="true"
+								/>
 							)
 						) : (
 							getFileIcon(item.mimeType, "h-3 w-3 sm:h-4 sm:w-4")
@@ -335,7 +341,10 @@ export function GoogleDriveFolderTree({
 								onCheckedChange={() => toggleFolderSelection("root", "My Drive")}
 								className="shrink-0 h-3.5 w-3.5 sm:h-4 sm:w-4 border-slate-400/20 dark:border-white/20"
 							/>
-							<HardDrive className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
+							<HardDrive
+								className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground shrink-0"
+								aria-hidden="true"
+							/>
 							<Button
 								type="button"
 								variant="ghost"

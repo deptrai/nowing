@@ -182,7 +182,10 @@ async function downloadSandboxFile(threadId: string, filePath: string, fileName:
 function ExecuteLoading({ command }: { command: string }) {
 	return (
 		<div className="my-4 flex max-w-lg items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
-			<Loader2Icon className="size-4 shrink-0 animate-spin text-muted-foreground" />
+			<Loader2Icon
+				className="size-4 shrink-0 animate-spin text-muted-foreground"
+				aria-hidden="true"
+			/>
 			<code className="truncate text-sm text-muted-foreground font-mono">
 				{truncateCommand(command)}
 			</code>
@@ -195,7 +198,7 @@ function ExecuteErrorState({ command, error }: { command: string; error: string 
 		<div className="my-4 max-w-lg overflow-hidden rounded-xl border border-destructive/20 bg-destructive/5 p-4">
 			<div className="flex items-center gap-3">
 				<div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-destructive/10">
-					<AlertCircleIcon className="size-4 text-destructive" />
+					<AlertCircleIcon className="size-4 text-destructive" aria-hidden="true" />
 				</div>
 				<div className="min-w-0 flex-1">
 					<p className="text-sm font-medium text-destructive">Execution failed</p>
@@ -213,7 +216,7 @@ function ExecuteCancelledState({ command }: { command: string }) {
 	return (
 		<div className="my-4 max-w-lg rounded-xl border border-muted p-4 text-muted-foreground">
 			<p className="flex items-center gap-2 font-mono text-sm">
-				<TerminalIcon className="size-4" />
+				<TerminalIcon className="size-4" aria-hidden="true" />
 				<span className="line-through truncate">$ {command}</span>
 			</p>
 		</div>
@@ -245,11 +248,11 @@ function SandboxFileDownload({ file, threadId }: { file: SandboxFile; threadId: 
 			disabled={downloading}
 		>
 			{downloading ? (
-				<Loader2Icon className="size-3.5 animate-spin" />
+				<Loader2Icon className="size-3.5 animate-spin" aria-hidden="true" />
 			) : (
-				<DownloadIcon className="size-3.5" />
+				<DownloadIcon className="size-3.5" aria-hidden="true" />
 			)}
-			<FileIcon className="size-3 text-zinc-400" />
+			<FileIcon className="size-3 text-zinc-400" aria-hidden="true" />
 			<span className="truncate max-w-[200px]">{file.name}</span>
 			{error && <span className="text-destructive text-[10px] ml-1">{error}</span>}
 		</Button>
@@ -283,7 +286,11 @@ function ExecuteCompleted({
 						"bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
 				)}
 			>
-				{success ? <CheckCircle2Icon className="size-3" /> : <XCircleIcon className="size-3" />}
+				{success ? (
+					<CheckCircle2Icon className="size-3" aria-hidden="true" />
+				) : (
+					<XCircleIcon className="size-3" aria-hidden="true" />
+				)}
 				{parsed.exitCode}
 			</Badge>
 		);
@@ -307,7 +314,7 @@ function ExecuteCompleted({
 							!hasContent && "invisible"
 						)}
 					/>
-					<TerminalIcon className="size-3.5 shrink-0 text-muted-foreground" />
+					<TerminalIcon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
 					<code className="min-w-0 flex-1 truncate text-sm font-mono">
 						{truncateCommand(command)}
 					</code>
@@ -316,7 +323,7 @@ function ExecuteCompleted({
 							variant="outline"
 							className="gap-1 text-[10px] px-1.5 py-0 border-blue-500/30 text-blue-500"
 						>
-							<FileIcon className="size-2.5" />
+							<FileIcon className="size-2.5" aria-hidden="true" />
 							{parsed.files.length}
 						</Badge>
 					)}

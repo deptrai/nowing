@@ -75,7 +75,7 @@ export function AnnouncementSpotlight() {
 									target={current.link.url.startsWith("http") ? "_blank" : undefined}
 								>
 									{current.link.label}
-									<ExternalLink className="h-3.5 w-3.5" />
+									<ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
 								</Link>
 							</Button>
 						)}

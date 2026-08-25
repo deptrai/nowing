@@ -132,13 +132,13 @@ export function PayoutHistoryTable({ payouts, onNewPayoutClick }: PayoutHistoryT
 										<td className="px-6 py-4">
 											{payout.status === "completed" && (
 												<span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-													<IconCheck className="size-3" />
+													<IconCheck className="size-3" aria-hidden="true" />
 													<span>Thành công</span>
 												</span>
 											)}
 											{payout.status === "processing" && (
 												<span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300">
-													<IconLoader2 className="size-3 animate-spin" />
+													<IconLoader2 className="size-3 animate-spin" aria-hidden="true" />
 													<span>Đang chuyển</span>
 												</span>
 											)}
@@ -149,7 +149,7 @@ export function PayoutHistoryTable({ payouts, onNewPayoutClick }: PayoutHistoryT
 											)}
 											{payout.status === "failed" && (
 												<span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300">
-													<IconAlertCircle className="size-3" />
+													<IconAlertCircle className="size-3" aria-hidden="true" />
 													<span>Thất bại (Đã hoàn)</span>
 												</span>
 											)}
@@ -163,7 +163,10 @@ export function PayoutHistoryTable({ payouts, onNewPayoutClick }: PayoutHistoryT
 													title="Click to copy Napas Reference"
 												>
 													<span className="truncate">{payout.napas_ref}</span>
-													<IconCopy className="size-3 shrink-0 text-neutral-400" />
+													<IconCopy
+														className="size-3 shrink-0 text-neutral-400"
+														aria-hidden="true"
+													/>
 												</button>
 											) : (
 												<span className="text-neutral-400">
@@ -179,7 +182,10 @@ export function PayoutHistoryTable({ payouts, onNewPayoutClick }: PayoutHistoryT
 													onClick={() => setSelectedReceipt(payout)}
 													className="h-8 px-2.5 text-xs text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
 												>
-													<IconFileInvoice className="size-3.5 mr-1 text-emerald-600" />
+													<IconFileInvoice
+														className="size-3.5 mr-1 text-emerald-600"
+														aria-hidden="true"
+													/>
 													<span>Biên lai</span>
 												</Button>
 											)}
@@ -197,7 +203,7 @@ export function PayoutHistoryTable({ payouts, onNewPayoutClick }: PayoutHistoryT
 				<DialogContent className="sm:max-w-lg rounded-3xl p-6">
 					<DialogHeader>
 						<DialogTitle className="text-xl font-bold flex items-center gap-2">
-							<IconShieldCheck className="size-6 text-emerald-600" />
+							<IconShieldCheck className="size-6 text-emerald-600" aria-hidden="true" />
 							<span>VietQR Napas Audit Receipt</span>
 						</DialogTitle>
 						<DialogDescription>
@@ -258,7 +264,7 @@ export function PayoutHistoryTable({ payouts, onNewPayoutClick }: PayoutHistoryT
 											}
 											className="p-1 hover:text-emerald-600"
 										>
-											<IconCopy className="size-3.5" />
+											<IconCopy className="size-3.5" aria-hidden="true" />
 										</button>
 									</div>
 								</div>

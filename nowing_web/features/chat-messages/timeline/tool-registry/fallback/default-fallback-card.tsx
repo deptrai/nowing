@@ -137,9 +137,15 @@ function ResearchResultView({ result }: { result: ResearchResult }) {
 									className="flex items-start gap-2 rounded-md bg-muted/40 px-3 py-2"
 								>
 									{isKb ? (
-										<Database className="size-3.5 shrink-0 text-muted-foreground mt-0.5" />
+										<Database
+											className="size-3.5 shrink-0 text-muted-foreground mt-0.5"
+											aria-hidden="true"
+										/>
 									) : (
-										<Globe className="size-3.5 shrink-0 text-muted-foreground mt-0.5" />
+										<Globe
+											className="size-3.5 shrink-0 text-muted-foreground mt-0.5"
+											aria-hidden="true"
+										/>
 									)}
 									<div className="flex min-w-0 flex-col gap-0.5">
 										{source.url && !isKb ? (
@@ -261,15 +267,15 @@ export const DefaultFallbackCard: TimelineToolComponent = ({
 								)}
 							>
 								{isError ? (
-									<XCircleIcon className="size-3.5 text-destructive" />
+									<XCircleIcon className="size-3.5 text-destructive" aria-hidden="true" />
 								) : isDegraded ? (
-									<AlertTriangle className="size-3.5 text-amber-600" />
+									<AlertTriangle className="size-3.5 text-amber-600" aria-hidden="true" />
 								) : isCancelled ? (
-									<XCircleIcon className="size-3.5 text-muted-foreground" />
+									<XCircleIcon className="size-3.5 text-muted-foreground" aria-hidden="true" />
 								) : isRunning ? (
 									<Spinner size="sm" className="text-primary" />
 								) : (
-									<CheckIcon className="size-3.5 text-primary" />
+									<CheckIcon className="size-3.5 text-primary" aria-hidden="true" />
 								)}
 							</div>
 

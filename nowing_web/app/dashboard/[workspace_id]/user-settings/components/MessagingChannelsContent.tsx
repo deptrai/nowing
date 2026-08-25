@@ -420,7 +420,7 @@ export function MessagingChannelsContent() {
 								<p className="truncate text-xs font-medium">{connectionTitle(connection)}</p>
 								{connection.suspended_reason ? (
 									<p className="mt-1 flex items-center gap-1 text-xs text-destructive">
-										<ShieldAlert className="h-3 w-3" />
+										<ShieldAlert className="h-3 w-3" aria-hidden="true" />
 										{connection.suspended_reason}
 									</p>
 								) : null}
@@ -489,11 +489,11 @@ export function MessagingChannelsContent() {
 			{[0, 1].map((index) => (
 				<Card key={index} className="h-full overflow-hidden border-accent bg-accent/20">
 					<CardHeader className="space-y-3 p-4">
-						<Skeleton className="h-4 w-24 bg-accent" />
-						<Skeleton className="h-3 w-3/4 bg-accent" />
+						<Skeleton className="h-4 w-24 bg-accent" aria-hidden="true" />
+						<Skeleton className="h-3 w-3/4 bg-accent" aria-hidden="true" />
 					</CardHeader>
 					<CardContent className="space-y-3 p-4 pt-0">
-						<Skeleton className="h-8 w-40 bg-accent" />
+						<Skeleton className="h-8 w-40 bg-accent" aria-hidden="true" />
 						<Separator className="bg-accent" />
 						<Skeleton className="h-10 w-full bg-accent" />
 					</CardContent>

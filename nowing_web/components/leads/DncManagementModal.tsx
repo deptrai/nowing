@@ -159,7 +159,7 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 				<div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800 bg-zinc-900/80 sticky top-0 z-10">
 					<div className="flex items-center gap-3">
 						<div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">
-							<ShieldAlert className="w-5 h-5" />
+							<ShieldAlert className="w-5 h-5" aria-hidden="true" />
 						</div>
 						<div>
 							<h2 className="text-lg font-semibold text-zinc-100 flex items-center gap-2">
@@ -179,7 +179,7 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 						onClick={onClose}
 						className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
 					>
-						<X className="w-5 h-5" />
+						<X className="w-5 h-5" aria-hidden="true" />
 					</button>
 				</div>
 
@@ -198,7 +198,7 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 								: "border-transparent text-zinc-400 hover:text-zinc-200"
 						}`}
 					>
-						<Filter className="w-4 h-4" />
+						<Filter className="w-4 h-4" aria-hidden="true" />
 						Blacklist Registry ({totalCount})
 					</button>
 					<button
@@ -214,7 +214,7 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 								: "border-transparent text-zinc-400 hover:text-zinc-200"
 						}`}
 					>
-						<Plus className="w-4 h-4" />
+						<Plus className="w-4 h-4" aria-hidden="true" />
 						Add Single Record
 					</button>
 					<button
@@ -230,7 +230,7 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 								: "border-transparent text-zinc-400 hover:text-zinc-200"
 						}`}
 					>
-						<UploadCloud className="w-4 h-4" />
+						<UploadCloud className="w-4 h-4" aria-hidden="true" />
 						Bulk CSV Import
 					</button>
 				</div>
@@ -239,13 +239,13 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 				<div className="p-6 overflow-y-auto flex-1 space-y-4">
 					{error && (
 						<div className="flex items-center gap-3 p-3 rounded-lg bg-red-950/50 border border-red-800 text-red-300 text-sm">
-							<AlertCircle className="w-4 h-4 shrink-0" />
+							<AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
 							<span>{error}</span>
 						</div>
 					)}
 					{successMsg && (
 						<div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-950/50 border border-emerald-800 text-emerald-300 text-sm">
-							<CheckCircle2 className="w-4 h-4 shrink-0" />
+							<CheckCircle2 className="w-4 h-4 shrink-0" aria-hidden="true" />
 							<span>{successMsg}</span>
 						</div>
 					)}
@@ -256,7 +256,10 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 							{/* Filters Bar */}
 							<div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
 								<div className="relative w-full sm:w-72">
-									<Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+									<Search
+										className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400"
+										aria-hidden="true"
+									/>
 									<input
 										type="text"
 										value={searchQuery}
@@ -312,7 +315,10 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 										{loading ? (
 											<tr>
 												<td colSpan={5} className="px-4 py-8 text-center text-zinc-400">
-													<Loader2 className="w-6 h-6 animate-spin mx-auto text-emerald-400 mb-2" />
+													<Loader2
+														className="w-6 h-6 animate-spin mx-auto text-emerald-400 mb-2"
+														aria-hidden="true"
+													/>
 													Loading compliance records...
 												</td>
 											</tr>
@@ -353,7 +359,7 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 															className="p-1.5 rounded-md text-zinc-500 hover:text-red-400 hover:bg-red-950/40 transition-colors"
 															title="Remove from DNC"
 														>
-															<Trash2 className="w-4 h-4" />
+															<Trash2 className="w-4 h-4" aria-hidden="true" />
 														</button>
 													</td>
 												</tr>
@@ -465,7 +471,7 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 									disabled={actionLoading || !newValue.trim()}
 									className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50"
 								>
-									{actionLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+									{actionLoading && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
 									Add to DNC Blacklist
 								</button>
 							</div>
@@ -477,7 +483,7 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 						<form onSubmit={handleFileUpload} className="space-y-5 max-w-xl mx-auto py-4">
 							<div className="p-4 rounded-xl bg-zinc-950/60 border border-zinc-800 text-xs text-zinc-400 space-y-2">
 								<p className="font-semibold text-zinc-200 flex items-center gap-2">
-									<FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+									<FileSpreadsheet className="w-4 h-4 text-emerald-400" aria-hidden="true" />
 									CSV File Structure Guide
 								</p>
 								<p>
@@ -506,7 +512,10 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 									htmlFor="dnc-csv-input"
 									className="cursor-pointer flex flex-col items-center gap-2"
 								>
-									<UploadCloud className="w-10 h-10 text-zinc-400 hover:text-emerald-400 transition-colors" />
+									<UploadCloud
+										className="w-10 h-10 text-zinc-400 hover:text-emerald-400 transition-colors"
+										aria-hidden="true"
+									/>
 									<span className="text-sm font-medium text-zinc-200">
 										{selectedFile ? selectedFile.name : "Click or drag CSV file here to upload"}
 									</span>
@@ -541,7 +550,7 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 								disabled={actionLoading || !selectedFile}
 								className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50"
 							>
-								{actionLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+								{actionLoading && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
 								Upload & Process DNC CSV
 							</button>
 						</form>

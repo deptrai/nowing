@@ -73,7 +73,7 @@ export function UserDropdown({
 				<DropdownMenuGroup>
 					<DropdownMenuItem asChild className="text-xs md:text-sm">
 						<Link href="/dashboard/api-key">
-							<BadgeCheck className="mr-2 h-3.5 w-3.5 md:h-4 md:w-4" />
+							<BadgeCheck className="mr-2 h-3.5 w-3.5 md:h-4 md:w-4" aria-hidden="true" />
 							API Key
 						</Link>
 					</DropdownMenuItem>
@@ -87,7 +87,7 @@ export function UserDropdown({
 					{isLoggingOut ? (
 						<Spinner size="sm" className="mr-2" />
 					) : (
-						<LogOut className="mr-2 h-3.5 w-3.5 md:h-4 md:w-4" />
+						<LogOut className="mr-2 h-3.5 w-3.5 md:h-4 md:w-4" aria-hidden="true" />
 					)}
 					{isLoggingOut ? "Logging out..." : "Log out"}
 				</DropdownMenuItem>

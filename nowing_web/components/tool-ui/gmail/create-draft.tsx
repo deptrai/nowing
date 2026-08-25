@@ -253,7 +253,7 @@ function ApprovalCard({
 							});
 						}}
 					>
-						<Pencil className="size-3.5" />
+						<Pencil className="size-3.5" aria-hidden="true" />
 						Edit
 					</Button>
 				)}
@@ -306,19 +306,19 @@ function ApprovalCard({
 			<div className="px-5 pt-3 pb-2 space-y-1.5 select-none">
 				{(pendingEdits?.to ?? args.to) && (
 					<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-						<UserIcon className="size-3 shrink-0" />
+						<UserIcon className="size-3 shrink-0" aria-hidden="true" />
 						<span>To: {pendingEdits?.to ?? args.to}</span>
 					</div>
 				)}
 				{(pendingEdits?.cc ?? args.cc) && (pendingEdits?.cc ?? args.cc)?.trim() !== "" && (
 					<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-						<UsersIcon className="size-3 shrink-0" />
+						<UsersIcon className="size-3 shrink-0" aria-hidden="true" />
 						<span>CC: {pendingEdits?.cc ?? args.cc}</span>
 					</div>
 				)}
 				{(pendingEdits?.bcc ?? args.bcc) && (pendingEdits?.bcc ?? args.bcc)?.trim() !== "" && (
 					<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-						<UsersIcon className="size-3 shrink-0" />
+						<UsersIcon className="size-3 shrink-0" aria-hidden="true" />
 						<span>BCC: {pendingEdits?.bcc ?? args.bcc}</span>
 					</div>
 				)}
@@ -362,7 +362,7 @@ function ApprovalCard({
 								disabled={!canApprove || isPanelOpen}
 							>
 								Approve
-								<CornerDownLeftIcon className="size-3 opacity-60" />
+								<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 							</Button>
 						)}
 						{allowedDecisions.includes("reject") && (

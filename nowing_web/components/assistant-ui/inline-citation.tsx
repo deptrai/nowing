@@ -47,7 +47,7 @@ export const InlineCitation: FC<InlineCitationProps> = ({ chunkId, isDocsChunk =
 						className="ml-0.5 inline-flex h-5 min-w-5 items-center justify-center gap-0.5 rounded-md bg-popover px-1.5 text-[11px] font-medium text-popover-foreground/80 align-baseline"
 						role="note"
 					>
-						<FileText className="size-3" />
+						<FileText className="size-3" aria-hidden="true" />
 						doc
 					</span>
 				</TooltipTrigger>

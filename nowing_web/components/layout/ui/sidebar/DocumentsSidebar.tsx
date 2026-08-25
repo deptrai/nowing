@@ -147,18 +147,18 @@ export function EmbeddedDocumentsMenu({
 				</DropdownMenuTrigger>
 				<DropdownMenuContent align="end" className="w-44">
 					<DropdownMenuItem onSelect={onCreateFolder}>
-						<FolderPlus className="h-4 w-4" />
+						<FolderPlus className="h-4 w-4" aria-hidden="true" />
 						New folder
 					</DropdownMenuItem>
 					{isMobile ? (
 						<DropdownMenuItem onSelect={() => setFilterDrawerOpen(true)}>
-							<ListFilter className="h-4 w-4" />
+							<ListFilter className="h-4 w-4" aria-hidden="true" />
 							<span className="flex-1">Filter by type</span>
 						</DropdownMenuItem>
 					) : (
 						<DropdownMenuSub>
 							<DropdownMenuSubTrigger>
-								<ListFilter className="h-4 w-4" />
+								<ListFilter className="h-4 w-4" aria-hidden="true" />
 								Filter by type
 							</DropdownMenuSubTrigger>
 							<DropdownMenuSubContent className="w-52 max-h-72 overflow-y-auto">
@@ -266,19 +266,19 @@ export function EmbeddedImportMenu({
 					className="h-6 w-6 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
 					aria-label="Import documents"
 				>
-					<FilePlus className="size-3.5" />
+					<FilePlus className="size-3.5" aria-hidden="true" />
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end" className="w-56">
 				<DropdownMenuItem onSelect={() => (gate ? gate("upload files") : openDialog())}>
-					<Upload className="h-4 w-4" />
+					<Upload className="h-4 w-4" aria-hidden="true" />
 					Upload Files
 				</DropdownMenuItem>
 				{isDesktop && (
 					<DropdownMenuItem
 						onSelect={() => (gate ? gate("watch local folders") : setFolderWatchOpen(true))}
 					>
-						<FolderSync className="h-4 w-4" />
+						<FolderSync className="h-4 w-4" aria-hidden="true" />
 						Watch Local Folder
 					</DropdownMenuItem>
 				)}

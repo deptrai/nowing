@@ -121,7 +121,7 @@ export const ObsidianConnectForm: FC<ConnectFormProps> = ({ onBack }) => {
 									className="size-7 shrink-0 text-muted-foreground hover:text-accent-foreground"
 									aria-label="Copy personal access token"
 								>
-									<Copy className="size-3.5" />
+									<Copy className="size-3.5" aria-hidden="true" />
 								</Button>
 							</div>
 						) : (
@@ -133,7 +133,11 @@ export const ObsidianConnectForm: FC<ConnectFormProps> = ({ onBack }) => {
 								onClick={createAndCopyToken}
 								className="gap-2 text-xs sm:text-sm"
 							>
-								{copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+								{copied ? (
+									<Check className="size-3.5" aria-hidden="true" />
+								) : (
+									<Copy className="size-3.5" aria-hidden="true" />
+								)}
 								{copied ? "Created and copied" : "Create and copy token"}
 							</Button>
 						)}

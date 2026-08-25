@@ -17,11 +17,7 @@ test.describe("Story 21.7: Outcome Pricing & Transparent Ledger", () => {
 
 	test.beforeEach(async ({ request }) => {
 		ownerToken = await acquireTestToken(request);
-		const workspace = await createWorkspace(
-			request,
-			ownerToken,
-			`ATDD Story 21.7 ${Date.now()}`
-		);
+		const workspace = await createWorkspace(request, ownerToken, `ATDD Story 21.7 ${Date.now()}`);
 		workspaceId = workspace.id;
 	});
 

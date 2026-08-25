@@ -58,7 +58,7 @@ export const LumaConfig: FC<LumaConfigProps> = ({ connector, onConfigChange, onN
 
 				<div className="space-y-2">
 					<Label className="flex items-center gap-2 text-xs sm:text-sm">
-						<KeyRound className="h-4 w-4" />
+						<KeyRound className="h-4 w-4" aria-hidden="true" />
 						Luma API Key
 					</Label>
 					<Input

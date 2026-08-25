@@ -16,6 +16,8 @@ test.describe("Smoke", () => {
 		await page.goto("/dashboard");
 
 		// Sidebar / dashboard content visibility implies redirect + auth fetch.
-		await expect(page.getByRole("button", { name: /New chat/i }).first()).toBeVisible({ timeout: 60_000 });
+		await expect(page.getByRole("button", { name: /New chat/i }).first()).toBeVisible({
+			timeout: 60_000,
+		});
 	});
 });

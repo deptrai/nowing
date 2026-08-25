@@ -162,7 +162,7 @@ export function MemberSpendCapDialog({
 						Hủy
 					</Button>
 					<Button type="button" onClick={handleSave} disabled={saving}>
-						{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Lưu"}
+						{saving ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : "Lưu"}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

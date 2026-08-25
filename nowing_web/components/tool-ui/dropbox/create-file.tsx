@@ -227,7 +227,7 @@ function ApprovalCard({
 							});
 						}}
 					>
-						<Pencil className="size-3.5" />
+						<Pencil className="size-3.5" aria-hidden="true" />
 						Edit
 					</Button>
 				)}
@@ -351,7 +351,7 @@ function ApprovalCard({
 								onClick={handleApprove}
 								disabled={!canApprove || isPanelOpen}
 							>
-								Approve <CornerDownLeftIcon className="size-3 opacity-60" />
+								Approve <CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 							</Button>
 						)}
 						{allowedDecisions.includes("reject") && (
@@ -414,7 +414,7 @@ function SuccessCard({ result }: { result: SuccessResult }) {
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4 space-y-2 text-xs">
 				<div className="flex items-center gap-1.5">
-					<FileIcon className="size-3.5 text-muted-foreground" />
+					<FileIcon className="size-3.5 text-muted-foreground" aria-hidden="true" />
 					<span className="font-medium">{result.name}</span>
 				</div>
 				{result.web_url && (

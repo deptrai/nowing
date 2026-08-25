@@ -134,7 +134,7 @@ export const AutomationBuilderPanel: React.FC<AutomationBuilderPanelProps> = ({
 			{/* Top Controls Bar */}
 			<div className="h-10 border-b border-border/80 bg-muted/30 flex items-center justify-between px-4 shrink-0">
 				<div className="flex items-center gap-2">
-					<Zap className="w-3.5 h-3.5 text-amber-500" />
+					<Zap className="w-3.5 h-3.5 text-amber-500" aria-hidden="true" />
 					<span className="text-xs font-bold text-foreground">
 						Kịch Bản Tự Động Hóa: Cào & Thông Báo Leads Hàng Ngày
 					</span>
@@ -150,7 +150,7 @@ export const AutomationBuilderPanel: React.FC<AutomationBuilderPanelProps> = ({
 						disabled={isRunningTest}
 						className="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-md border border-border/80 bg-card hover:bg-muted text-foreground transition-colors cursor-pointer disabled:opacity-50"
 					>
-						<Play className="w-3 h-3 text-emerald-600 fill-current" />
+						<Play className="w-3 h-3 text-emerald-600 fill-current" aria-hidden="true" />
 						<span>{isRunningTest ? "Đang Test..." : "Test Run Ngay"}</span>
 					</button>
 					<button
@@ -159,7 +159,7 @@ export const AutomationBuilderPanel: React.FC<AutomationBuilderPanelProps> = ({
 						disabled={isSaving}
 						className="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-md bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer shadow-xs disabled:opacity-50"
 					>
-						<Save className="w-3 h-3" />
+						<Save className="w-3 h-3" aria-hidden="true" />
 						<span>{isSaving ? "Đang Lưu..." : "Lưu Kịch Bản"}</span>
 					</button>
 				</div>
@@ -177,7 +177,7 @@ export const AutomationBuilderPanel: React.FC<AutomationBuilderPanelProps> = ({
 						{/* Node 1: Trigger */}
 						<div className="p-3.5 rounded-xl border border-border bg-card relative shadow-xs">
 							<div className="flex items-center gap-2 text-xs font-bold text-foreground mb-1.5">
-								<Clock className="w-4 h-4 text-blue-500" />
+								<Clock className="w-4 h-4 text-blue-500" aria-hidden="true" />
 								<span>1. Lịch Chạy (Trigger)</span>
 							</div>
 							<p className="text-[11px] text-muted-foreground">
@@ -191,7 +191,7 @@ export const AutomationBuilderPanel: React.FC<AutomationBuilderPanelProps> = ({
 						{/* Node 2: Scraper Action */}
 						<div className="p-3.5 rounded-xl border border-border bg-card relative shadow-xs">
 							<div className="flex items-center gap-2 text-xs font-bold text-foreground mb-1.5">
-								<Bot className="w-4 h-4 text-emerald-500" />
+								<Bot className="w-4 h-4 text-emerald-500" aria-hidden="true" />
 								<span>2. Cào Dữ Liệu</span>
 							</div>
 							<p className="text-[11px] text-muted-foreground">
@@ -205,7 +205,7 @@ export const AutomationBuilderPanel: React.FC<AutomationBuilderPanelProps> = ({
 						{/* Node 3: Filter DNC */}
 						<div className="p-3.5 rounded-xl border border-border bg-card relative shadow-xs">
 							<div className="flex items-center gap-2 text-xs font-bold text-foreground mb-1.5">
-								<Filter className="w-4 h-4 text-purple-500" />
+								<Filter className="w-4 h-4 text-purple-500" aria-hidden="true" />
 								<span>3. Lọc & Chấm Điểm</span>
 							</div>
 							<p className="text-[11px] text-muted-foreground">
@@ -219,7 +219,7 @@ export const AutomationBuilderPanel: React.FC<AutomationBuilderPanelProps> = ({
 						{/* Node 4: Notify Action */}
 						<div className="p-3.5 rounded-xl border border-border bg-card relative shadow-xs">
 							<div className="flex items-center gap-2 text-xs font-bold text-foreground mb-1.5">
-								<Send className="w-4 h-4 text-amber-500" />
+								<Send className="w-4 h-4 text-amber-500" aria-hidden="true" />
 								<span>4. Bắn Thông Báo</span>
 							</div>
 							<p className="text-[11px] text-muted-foreground">
@@ -235,7 +235,7 @@ export const AutomationBuilderPanel: React.FC<AutomationBuilderPanelProps> = ({
 				{/* Parameter Adjuster Form */}
 				<div className="p-5 rounded-2xl border border-border bg-card space-y-4 shadow-xs">
 					<h4 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
-						<Sliders className="w-3.5 h-3.5 text-emerald-600" />
+						<Sliders className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" />
 						<span>Tùy Chỉnh Tham Số Kịch Bản</span>
 					</h4>
 

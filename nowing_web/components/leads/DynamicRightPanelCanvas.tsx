@@ -141,7 +141,7 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 							className="inline-flex items-center gap-1 px-2.5 py-1 mr-1 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors border border-emerald-500/30 shrink-0 cursor-pointer shadow-2xs"
 							title="Mở Chat Co-pilot"
 						>
-							<PanelLeftOpen className="size-3.5" />
+							<PanelLeftOpen className="size-3.5" aria-hidden="true" />
 							<span>Mở Chat</span>
 						</button>
 					)}
@@ -160,12 +160,18 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 										: "text-muted-foreground hover:text-foreground hover:bg-muted/60"
 								)}
 							>
-								<TableIcon className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+								<TableIcon
+									className="size-3.5 text-emerald-600 dark:text-emerald-400"
+									aria-hidden="true"
+								/>
 								<span className="truncate max-w-[150px]">{dynamicTitle}</span>
 								<span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-muted font-bold">
 									{props.leads.length}
 								</span>
-								<ChevronDown className="size-3 text-muted-foreground opacity-60 ml-0.5" />
+								<ChevronDown
+									className="size-3 text-muted-foreground opacity-60 ml-0.5"
+									aria-hidden="true"
+								/>
 							</button>
 
 							{/* Dynamic Category Tabs */}
@@ -181,7 +187,7 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 											: "text-muted-foreground hover:text-foreground hover:bg-muted/60"
 									)}
 								>
-									<TableIcon className="size-3 text-muted-foreground" />
+									<TableIcon className="size-3 text-muted-foreground" aria-hidden="true" />
 									<span className="truncate max-w-[100px]">{cat}</span>
 								</button>
 							))}
@@ -194,7 +200,10 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 							type="button"
 							className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-background text-foreground shadow-xs border border-border/80"
 						>
-							<Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+							<Sparkles
+								className="w-3 h-3 text-emerald-600 dark:text-emerald-400"
+								aria-hidden="true"
+							/>
 							<span className="truncate max-w-[180px]">
 								{props.threadContext?.researchReport?.title || "Báo Cáo Nghiên Cứu Chuyên Sâu"}
 							</span>
@@ -207,7 +216,7 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 							type="button"
 							className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-background text-foreground shadow-xs border border-border/80"
 						>
-							<Zap className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+							<Zap className="w-3 h-3 text-amber-600 dark:text-amber-400" aria-hidden="true" />
 							<span className="truncate max-w-[180px]">
 								{props.threadContext?.automationWorkflow?.name || "Visual Automation Pipeline"}
 							</span>
@@ -220,7 +229,10 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 							type="button"
 							className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-background text-foreground shadow-xs border border-border/80"
 						>
-							<Activity className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+							<Activity
+								className="w-3 h-3 text-indigo-600 dark:text-indigo-400"
+								aria-hidden="true"
+							/>
 							<span className="truncate max-w-[180px]">
 								Trạng thái Scraper &amp; Phone Waterfall
 							</span>
@@ -260,7 +272,7 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 											: "hover:text-foreground"
 									)}
 								>
-									<Icon className="w-3 h-3" />
+									<Icon className="w-3 h-3" aria-hidden="true" />
 								</button>
 							);
 						})}

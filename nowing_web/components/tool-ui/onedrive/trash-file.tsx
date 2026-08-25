@@ -209,7 +209,7 @@ function ApprovalCard({
 					<div className="mx-5 h-px bg-border/50" />
 					<div className="px-5 py-4 flex items-center gap-2 select-none">
 						<Button size="sm" className="rounded-lg gap-1.5" onClick={handleApprove}>
-							Approve <CornerDownLeftIcon className="size-3 opacity-60" />
+							Approve <CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 						</Button>
 						<Button
 							size="sm"
@@ -247,7 +247,7 @@ function NotFoundCard({ result }: { result: NotFoundResult }) {
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="flex items-start gap-3 px-5 py-4">
-				<InfoIcon className="size-4 mt-0.5 shrink-0 text-muted-foreground" />
+				<InfoIcon className="size-4 mt-0.5 shrink-0 text-muted-foreground" aria-hidden="true" />
 				<p className="text-sm text-muted-foreground">{result.message}</p>
 			</div>
 		</div>

@@ -109,7 +109,7 @@ export const ZnsSendModal: React.FC<ZnsSendModalProps> = ({
 						onClick={onClose}
 						className="text-xs text-zinc-400 hover:text-zinc-200 px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700"
 					>
-						<X className="w-3.5 h-3.5" />
+						<X className="w-3.5 h-3.5" aria-hidden="true" />
 					</button>
 				</div>
 
@@ -118,12 +118,12 @@ export const ZnsSendModal: React.FC<ZnsSendModalProps> = ({
 						<div className="flex items-center gap-2 text-sm font-semibold text-zinc-100">
 							{result.status === "sent" ? (
 								<>
-									<Check className="w-4 h-4 text-emerald-400" />
+									<Check className="w-4 h-4 text-emerald-400" aria-hidden="true" />
 									<span>Đã gửi ZNS</span>
 								</>
 							) : (
 								<>
-									<AlertTriangle className="w-4 h-4 text-red-400" />
+									<AlertTriangle className="w-4 h-4 text-red-400" aria-hidden="true" />
 									<span>Gửi thất bại</span>
 								</>
 							)}
@@ -217,9 +217,9 @@ export const ZnsSendModal: React.FC<ZnsSendModalProps> = ({
 								)}
 							>
 								{loading ? (
-									<Loader2 className="w-3.5 h-3.5 animate-spin" />
+									<Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
 								) : (
-									<Send className="w-3.5 h-3.5" />
+									<Send className="w-3.5 h-3.5" aria-hidden="true" />
 								)}
 								<span>{loading ? "Đang gửi..." : "Gửi ZNS"}</span>
 							</button>

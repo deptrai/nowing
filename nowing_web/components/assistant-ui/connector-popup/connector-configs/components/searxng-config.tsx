@@ -186,7 +186,7 @@ export const SearxngConfig: FC<SearxngConfigProps> = ({
 				<div className="space-y-4">
 					<div className="space-y-2">
 						<Label className="flex items-center gap-2 text-xs sm:text-sm">
-							<Globe className="h-4 w-4" />
+							<Globe className="h-4 w-4" aria-hidden="true" />
 							SearxNG Host
 						</Label>
 						<Input
@@ -202,7 +202,7 @@ export const SearxngConfig: FC<SearxngConfigProps> = ({
 
 					<div className="space-y-2">
 						<Label className="flex items-center gap-2 text-xs sm:text-sm">
-							<KeyRound className="h-4 w-4" />
+							<KeyRound className="h-4 w-4" aria-hidden="true" />
 							API Key (optional)
 						</Label>
 						<Input

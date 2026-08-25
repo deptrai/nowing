@@ -280,7 +280,7 @@ export function HeroChatDemo({
 					aria-hidden
 					className="flex size-8 items-center justify-center rounded-full text-muted-foreground"
 				>
-					<Plus className="size-4" />
+					<Plus className="size-4" aria-hidden="true" />
 				</span>
 				<Button
 					type="button"
@@ -289,7 +289,7 @@ export function HeroChatDemo({
 					aria-label="Send message"
 					className="size-9 shrink-0 rounded-full"
 				>
-					<ArrowUp className="size-5" />
+					<ArrowUp className="size-5" aria-hidden="true" />
 				</Button>
 			</div>
 		</div>

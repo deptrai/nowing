@@ -91,7 +91,7 @@ if __name__ == "__main__":
 								: "text-muted-foreground hover:text-foreground hover:bg-muted/60"
 						)}
 					>
-						<Code2 className="w-3.5 h-3.5 text-blue-500" />
+						<Code2 className="w-3.5 h-3.5 text-blue-500" aria-hidden="true" />
 						<span>zalo_zns_template.json</span>
 					</button>
 					<button
@@ -104,7 +104,7 @@ if __name__ == "__main__":
 								: "text-muted-foreground hover:text-foreground hover:bg-muted/60"
 						)}
 					>
-						<FileCode className="w-3.5 h-3.5 text-emerald-500" />
+						<FileCode className="w-3.5 h-3.5 text-emerald-500" aria-hidden="true" />
 						<span>scrape_batdongsan.py</span>
 					</button>
 				</div>
@@ -116,9 +116,9 @@ if __name__ == "__main__":
 						className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md border border-border/80 bg-card hover:bg-muted text-foreground transition-colors cursor-pointer"
 					>
 						{hasCopied ? (
-							<Check className="w-3 h-3 text-emerald-600" />
+							<Check className="w-3 h-3 text-emerald-600" aria-hidden="true" />
 						) : (
-							<Copy className="w-3 h-3" />
+							<Copy className="w-3 h-3" aria-hidden="true" />
 						)}
 						<span>{hasCopied ? "Đã chép" : "Sao chép"}</span>
 					</button>
@@ -127,7 +127,7 @@ if __name__ == "__main__":
 						onClick={handleDownload}
 						className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer shadow-xs"
 					>
-						<Download className="w-3 h-3" />
+						<Download className="w-3 h-3" aria-hidden="true" />
 						<span>Tải Về</span>
 					</button>
 				</div>

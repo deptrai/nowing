@@ -229,7 +229,7 @@ export default async function FreeModelPage({ params }: PageProps) {
 										<Button key={m.id} variant="outline" size="sm" asChild>
 											<Link href={`/free/${m.seo_slug}`}>
 												{m.name}
-												<SquareArrowOutUpRight className="size-3" />
+												<SquareArrowOutUpRight className="size-3" aria-hidden="true" />
 											</Link>
 										</Button>
 									))}

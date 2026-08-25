@@ -59,7 +59,7 @@ export function EquationElement({ children, ...props }: PlateElementProps<TEquat
 					<div ref={katexRef} className="text-center" />
 				) : (
 					<div className="flex items-center gap-2 text-sm text-muted-foreground">
-						<RadicalIcon className="size-4" />
+						<RadicalIcon className="size-4" aria-hidden="true" />
 						<span>Add an equation</span>
 					</div>
 				)}
@@ -143,7 +143,7 @@ export function InlineEquationElement({ children, ...props }: PlateElementProps<
 					<span ref={katexRef} />
 				) : (
 					<span className="text-sm text-muted-foreground">
-						<RadicalIcon className="inline size-3.5" />
+						<RadicalIcon className="inline size-3.5" aria-hidden="true" />
 					</span>
 				)}
 			</span>

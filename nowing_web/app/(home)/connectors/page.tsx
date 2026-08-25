@@ -60,7 +60,7 @@ export default function ConnectorsIndexPage() {
 								className="group flex flex-col rounded-xl border bg-card p-6 transition-colors hover:border-brand/40"
 							>
 								<span className="flex size-11 items-center justify-center rounded-lg border bg-muted/40 transition-transform duration-200 ease-out group-hover:scale-110 motion-reduce:transition-none motion-reduce:group-hover:scale-100">
-									<Icon className="size-5 text-foreground" />
+									<Icon className="size-5 text-foreground" aria-hidden="true" />
 								</span>
 								<h2 className="mt-4 text-lg font-semibold">
 									{connector.cardTitle ?? `${connector.name} API`}
@@ -70,7 +70,10 @@ export default function ConnectorsIndexPage() {
 								</p>
 								<span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-foreground">
 									Explore
-									<ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+									<ArrowRight
+										className="size-4 transition-transform group-hover:translate-x-0.5"
+										aria-hidden="true"
+									/>
 								</span>
 							</Link>
 						);
@@ -81,7 +84,7 @@ export default function ConnectorsIndexPage() {
 						className="group flex flex-col rounded-xl border bg-card p-6 transition-colors hover:border-brand/40"
 					>
 						<span className="flex size-11 items-center justify-center rounded-lg border bg-muted/40 transition-transform duration-200 ease-out group-hover:scale-110 motion-reduce:transition-none motion-reduce:group-hover:scale-100">
-							<Server className="size-5 text-foreground" />
+							<Server className="size-5 text-foreground" aria-hidden="true" />
 						</span>
 						<h2 className="mt-4 text-lg font-semibold">Nowing MCP Server</h2>
 						<p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground line-clamp-4">
@@ -90,7 +93,10 @@ export default function ConnectorsIndexPage() {
 						</p>
 						<span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-foreground">
 							Explore
-							<ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+							<ArrowRight
+								className="size-4 transition-transform group-hover:translate-x-0.5"
+								aria-hidden="true"
+							/>
 						</span>
 					</Link>
 					<Link
@@ -98,7 +104,7 @@ export default function ConnectorsIndexPage() {
 						className="group flex flex-col rounded-xl border bg-card p-6 transition-colors hover:border-brand/40"
 					>
 						<span className="flex size-11 items-center justify-center rounded-lg border bg-muted/40 transition-transform duration-200 ease-out group-hover:scale-110 motion-reduce:transition-none motion-reduce:group-hover:scale-100">
-							<Plug className="size-5 text-foreground" />
+							<Plug className="size-5 text-foreground" aria-hidden="true" />
 						</span>
 						<h2 className="mt-4 text-lg font-semibold">External MCP Connectors</h2>
 						<p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground line-clamp-4">
@@ -107,7 +113,10 @@ export default function ConnectorsIndexPage() {
 						</p>
 						<span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-foreground">
 							Explore
-							<ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+							<ArrowRight
+								className="size-4 transition-transform group-hover:translate-x-0.5"
+								aria-hidden="true"
+							/>
 						</span>
 					</Link>
 				</div>

@@ -1,5 +1,5 @@
-import React from 'react';
+import React from "react";
 
 export function PayoutRejectModal() {
-    return <div>Reject</div>;
+	return <div>Reject</div>;
 }

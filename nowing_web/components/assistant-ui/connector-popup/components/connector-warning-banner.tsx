@@ -35,7 +35,10 @@ export const ConnectorWarningBanner: FC<ConnectorWarningBannerProps> = ({
 				className
 			)}
 		>
-			<AlertTriangle className="size-4 text-yellow-600 dark:text-yellow-500 shrink-0 mt-0.5" />
+			<AlertTriangle
+				className="size-4 text-yellow-600 dark:text-yellow-500 shrink-0 mt-0.5"
+				aria-hidden="true"
+			/>
 			<div className="flex-1 min-w-0">
 				<p className="text-[12px] font-medium text-yellow-900 dark:text-yellow-200">{warning}</p>
 				{statusMessage && (

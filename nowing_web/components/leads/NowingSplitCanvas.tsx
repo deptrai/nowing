@@ -251,7 +251,7 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 									: "text-muted-foreground hover:text-foreground"
 							)}
 						>
-							<MessageSquare className="w-3.5 h-3.5" />
+							<MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
 							<span>Trò chuyện AI</span>
 						</button>
 						<button
@@ -264,7 +264,7 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 									: "text-muted-foreground hover:text-foreground"
 							)}
 						>
-							<Table className="w-3.5 h-3.5" />
+							<Table className="w-3.5 h-3.5" aria-hidden="true" />
 							<span>Bảng Leads ({displayLeads.length})</span>
 						</button>
 					</div>
@@ -303,6 +303,33 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 						</div>
 					)}
 				</div>
+
+				{/* Mobile contextual dock bottom sheet */}
+				<ContextualDock
+					workspaceId={workspaceId}
+					threadId={threadId}
+					messages={messages}
+					leads={displayLeads}
+					isLoading={loading}
+					threadContext={threadContext}
+					sourceFilter={sourceFilter}
+					onSourceFilterChange={setSourceFilter}
+					statusFilter={statusFilter}
+					onStatusFilterChange={setStatusFilter}
+					searchQuery={searchQuery}
+					onSearchQueryChange={setSearchQuery}
+					onRefresh={refetch}
+					onOpenReverseIcp={() => setIsReverseIcpOpen(true)}
+					onOpenDnc={() => setIsDncOpen(true)}
+					onOpenCompanyGraph={handleOpenCompanyGraph}
+					shimmerCount={shimmerCount}
+					unlockedPhones={unlockedPhones}
+					onPhoneChange={handlePhoneChange}
+					missionControl={missionControl}
+					latestMission={latestMission}
+					missionLoading={missionLoading}
+					missionError={missionError}
+				/>
 
 				{/* Floating Bulk Action Bar */}
 				{selectedLeadIds.length > 0 && (
@@ -409,7 +436,7 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 					)}
 				>
 					<div className="w-4 h-8 rounded-full bg-card border border-border flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
-						<GripVertical className="w-3 h-3 text-muted-foreground" />
+						<GripVertical className="w-3 h-3 text-muted-foreground" aria-hidden="true" />
 					</div>
 				</div>
 			)}

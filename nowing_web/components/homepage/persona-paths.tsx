@@ -72,7 +72,10 @@ export function PersonaPaths() {
 											className="group inline-flex items-center gap-1 text-sm font-medium text-foreground"
 										>
 											{link.label}
-											<ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+											<ArrowRight
+												className="size-4 transition-transform group-hover:translate-x-0.5"
+												aria-hidden="true"
+											/>
 										</Link>
 									))}
 								</div>

@@ -25,11 +25,7 @@ test.describe("Story 24.4: Nowing Lead Clipper — Chrome Extension Multi-Tab E2
 			// User may already exist
 		});
 		ownerToken = await acquireTestToken(request);
-		const workspace = await createWorkspace(
-			request,
-			ownerToken,
-			`E2E Clipper Space ${Date.now()}`
-		);
+		const workspace = await createWorkspace(request, ownerToken, `E2E Clipper Space ${Date.now()}`);
 		workspaceId = workspace.id;
 
 		// Simulated Personal Access Token with leads:clipper:write scope
@@ -113,9 +109,11 @@ test.describe("Story 24.4: Nowing Lead Clipper — Chrome Extension Multi-Tab E2
 		await bdsClipButton.click();
 
 		// Verify debounced state (loading spinner or disabled state)
-		await expect(bdsClipButton).toHaveAttribute("disabled", "", { timeout: 3000 }).catch(() => {
-			// Scaffolding assertion for red phase
-		});
+		await expect(bdsClipButton)
+			.toHaveAttribute("disabled", "", { timeout: 3000 })
+			.catch(() => {
+				// Scaffolding assertion for red phase
+			});
 
 		// --- Tab 2: Simulated TopCV candidate profile ---
 		const topcvTab = await context.newPage();

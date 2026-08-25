@@ -194,9 +194,9 @@ export function SidebarUserProfile({
 					className={submenuTriggerClassName}
 					onSelect={() => setMobileSubmenu("theme")}
 				>
-					<Sun className="h-4 w-4" />
+					<Sun className="h-4 w-4" aria-hidden="true" />
 					<span className="flex-1">{t("theme")}</span>
-					<ChevronRight className="h-4 w-4 text-muted-foreground" />
+					<ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
 				</DropdownMenuItem>
 			);
 		}
@@ -204,7 +204,7 @@ export function SidebarUserProfile({
 		return (
 			<DropdownMenuSub>
 				<DropdownMenuSubTrigger>
-					<Sun className="h-4 w-4" />
+					<Sun className="h-4 w-4" aria-hidden="true" />
 					{t("theme")}
 				</DropdownMenuSubTrigger>
 				<DropdownMenuPortal>
@@ -222,7 +222,7 @@ export function SidebarUserProfile({
 										isSelected && "text-primary"
 									)}
 								>
-									<Icon className="h-4 w-4" />
+									<Icon className="h-4 w-4" aria-hidden="true" />
 									<span className="flex-1">{t(themeOption.value)}</span>
 									{isSelected && <Check className="h-4 w-4 shrink-0" />}
 								</DropdownMenuItem>
@@ -241,9 +241,9 @@ export function SidebarUserProfile({
 					className={submenuTriggerClassName}
 					onSelect={() => setMobileSubmenu("language")}
 				>
-					<Languages className="h-4 w-4" />
+					<Languages className="h-4 w-4" aria-hidden="true" />
 					<span className="flex-1">{t("language")}</span>
-					<ChevronRight className="h-4 w-4 text-muted-foreground" />
+					<ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
 				</DropdownMenuItem>
 			);
 		}
@@ -251,7 +251,7 @@ export function SidebarUserProfile({
 		return (
 			<DropdownMenuSub>
 				<DropdownMenuSubTrigger>
-					<Languages className="h-4 w-4" />
+					<Languages className="h-4 w-4" aria-hidden="true" />
 					{t("language")}
 				</DropdownMenuSubTrigger>
 				<DropdownMenuPortal>
@@ -287,9 +287,9 @@ export function SidebarUserProfile({
 					className={submenuTriggerClassName}
 					onSelect={() => setMobileSubmenu("learn_more")}
 				>
-					<Info className="h-4 w-4" />
+					<Info className="h-4 w-4" aria-hidden="true" />
 					<span className="flex-1">{t("learn_more")}</span>
-					<ChevronRight className="h-4 w-4 text-muted-foreground" />
+					<ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
 				</DropdownMenuItem>
 			);
 		}
@@ -297,7 +297,7 @@ export function SidebarUserProfile({
 		return (
 			<DropdownMenuSub>
 				<DropdownMenuSubTrigger>
-					<Info className="h-4 w-4" />
+					<Info className="h-4 w-4" aria-hidden="true" />
 					{t("learn_more")}
 				</DropdownMenuSubTrigger>
 				<DropdownMenuPortal>
@@ -306,7 +306,10 @@ export function SidebarUserProfile({
 							<DropdownMenuItem key={link.key} asChild>
 								<a href={link.href} target="_blank" rel="noopener noreferrer">
 									<span className="flex-1">{t(link.key)}</span>
-									<ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+									<ExternalLink
+										className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+										aria-hidden="true"
+									/>
 								</a>
 							</DropdownMenuItem>
 						))}
@@ -357,7 +360,7 @@ export function SidebarUserProfile({
 											setMobileSubmenu(null);
 										}}
 									>
-										<Icon className="h-4 w-4 text-muted-foreground" />
+										<Icon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
 										<span className="flex-1">{t(themeOption.value)}</span>
 										{isSelected && <Check className="h-4 w-4 shrink-0" />}
 									</button>
@@ -400,7 +403,10 @@ export function SidebarUserProfile({
 										onClick={() => setMobileSubmenu(null)}
 									>
 										<span className="flex-1">{t(link.key)}</span>
-										<ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+										<ExternalLink
+											className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+											aria-hidden="true"
+										/>
 									</a>
 								</Fragment>
 							))}
@@ -438,7 +444,7 @@ export function SidebarUserProfile({
 											trackDesktopDownloadClicked({ os, placement: "sidebar_collapsed" })
 										}
 									>
-										<Download className="h-4 w-4" strokeWidth={2.5} />
+										<Download className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
 									</a>
 								</Button>
 							</TooltipTrigger>
@@ -480,13 +486,13 @@ export function SidebarUserProfile({
 							</DropdownMenuLabel>
 
 							<DropdownMenuItem onClick={onUserSettings}>
-								<UserCog className="h-4 w-4" />
+								<UserCog className="h-4 w-4" aria-hidden="true" />
 								{t("user_settings")}
 							</DropdownMenuItem>
 
 							{onAnnouncements && (
 								<DropdownMenuItem onClick={onAnnouncements}>
-									<Megaphone className="h-4 w-4" />
+									<Megaphone className="h-4 w-4" aria-hidden="true" />
 									<span className="flex-1">What's New</span>
 									{announcementUnreadCount > 0 && (
 										<span className="inline-flex items-center justify-center min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-medium">
@@ -505,7 +511,7 @@ export function SidebarUserProfile({
 							{!isDesktop && !isMobileOS && (
 								<DropdownMenuItem asChild className="font-medium">
 									<a href={downloadUrl} target="_blank" rel="noopener noreferrer">
-										<Download className="h-4 w-4" strokeWidth={2.5} />
+										<Download className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
 										{downloadLabel}
 									</a>
 								</DropdownMenuItem>
@@ -517,7 +523,7 @@ export function SidebarUserProfile({
 								{isLoggingOut ? (
 									<Spinner size="sm" className="mr-2" />
 								) : (
-									<LogOut className="h-4 w-4" />
+									<LogOut className="h-4 w-4" aria-hidden="true" />
 								)}
 								{isLoggingOut ? t("loggingOut") : t("logout")}
 							</DropdownMenuItem>
@@ -544,7 +550,7 @@ export function SidebarUserProfile({
 						rel="noopener noreferrer"
 						onClick={() => trackDesktopDownloadClicked({ os, placement: "sidebar_expanded" })}
 					>
-						<Download className="h-4 w-4" strokeWidth={2.5} />
+						<Download className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
 						{downloadLabel}
 					</a>
 				</Button>
@@ -570,7 +576,7 @@ export function SidebarUserProfile({
 						</div>
 
 						{/* Chevron icon */}
-						<ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" />
+						<ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
 					</Button>
 				</DropdownMenuTrigger>
 
@@ -585,13 +591,13 @@ export function SidebarUserProfile({
 					</DropdownMenuLabel>
 
 					<DropdownMenuItem onClick={onUserSettings}>
-						<UserCog className="h-4 w-4" />
+						<UserCog className="h-4 w-4" aria-hidden="true" />
 						{t("user_settings")}
 					</DropdownMenuItem>
 
 					{onAnnouncements && (
 						<DropdownMenuItem onClick={onAnnouncements}>
-							<Megaphone className="h-4 w-4" />
+							<Megaphone className="h-4 w-4" aria-hidden="true" />
 							<span className="flex-1">What's New</span>
 							{announcementUnreadCount > 0 && (
 								<span className="inline-flex items-center justify-center min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-medium">
@@ -610,7 +616,7 @@ export function SidebarUserProfile({
 					{!isDesktop && (
 						<DropdownMenuItem asChild className="font-medium">
 							<a href={downloadUrl} target="_blank" rel="noopener noreferrer">
-								<Download className="h-4 w-4" strokeWidth={2.5} />
+								<Download className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
 								{downloadLabel}
 							</a>
 						</DropdownMenuItem>
@@ -619,7 +625,11 @@ export function SidebarUserProfile({
 					<DropdownMenuSeparator />
 
 					<DropdownMenuItem onClick={handleLogout} disabled={isLoggingOut}>
-						{isLoggingOut ? <Spinner size="sm" className="mr-2" /> : <LogOut className="h-4 w-4" />}
+						{isLoggingOut ? (
+							<Spinner size="sm" className="mr-2" />
+						) : (
+							<LogOut className="h-4 w-4" aria-hidden="true" />
+						)}
 						{isLoggingOut ? t("loggingOut") : t("logout")}
 					</DropdownMenuItem>
 				</DropdownMenuContent>

@@ -18,7 +18,7 @@ export const AffiliateBanner: React.FC = () => {
 				<div className="flex flex-col md:flex-row items-center justify-between gap-8 p-8 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-md">
 					<div className="max-w-2xl">
 						<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-semibold mb-3 border border-emerald-500/30">
-							<Coins className="w-3.5 h-3.5" />
+							<Coins className="w-3.5 h-3.5" aria-hidden="true" />
 							<span>{t("badge")}</span>
 						</div>
 
@@ -35,7 +35,7 @@ export const AffiliateBanner: React.FC = () => {
 							className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm shadow-lg shadow-emerald-500/20 transition-all hover:scale-105 active:scale-95"
 						>
 							<span>{t("btn_join")}</span>
-							<ArrowRight className="w-4 h-4" />
+							<ArrowRight className="w-4 h-4" aria-hidden="true" />
 						</Link>
 					</div>
 				</div>

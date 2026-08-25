@@ -350,9 +350,9 @@ export function AgentPermissionsContent() {
 					{["skeleton-a", "skeleton-b", "skeleton-c"].map((key) => (
 						<Card key={key} className="border-accent bg-accent/20">
 							<CardContent className="p-4 flex flex-col gap-3 min-h-24">
-								<Skeleton className="h-4 w-32 md:w-40 bg-accent" />
+								<Skeleton className="h-4 w-32 md:w-40 bg-accent" aria-hidden="true" />
 								<Skeleton className="h-3 w-full bg-accent" />
-								<Skeleton className="h-3 w-24 md:w-28 bg-accent mt-auto" />
+								<Skeleton className="h-3 w-24 md:w-28 bg-accent mt-auto" aria-hidden="true" />
 							</CardContent>
 						</Card>
 					))}
@@ -371,7 +371,7 @@ export function AgentPermissionsContent() {
 
 			{!isLoading && !isError && sortedRules.length === 0 && !showForm && (
 				<div className="rounded-lg border border-dashed border-border/60 p-8 text-center">
-					<ShieldCheck className="mx-auto size-8 text-muted-foreground/40" />
+					<ShieldCheck className="mx-auto size-8 text-muted-foreground/40" aria-hidden="true" />
 					<p className="mt-2 text-sm text-muted-foreground">No rules yet</p>
 					<p className="text-xs text-muted-foreground/60">
 						Without rules the agent uses the deployment default for every tool.
@@ -443,7 +443,7 @@ export function AgentPermissionsContent() {
 											disabled={isUpdating || isDeleting}
 											aria-label="Delete rule"
 										>
-											<Trash2 className="size-3.5" />
+											<Trash2 className="size-3.5" aria-hidden="true" />
 										</Button>
 									</div>
 								</CardContent>

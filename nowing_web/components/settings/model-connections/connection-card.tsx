@@ -58,7 +58,7 @@ export function ConnectionCard({ connection }: { connection: ConnectionRead }) {
 								disabled={deleteConnection.isPending}
 								aria-label={`Delete ${providerLabel}`}
 							>
-								<Trash2 className="h-4 w-4" />
+								<Trash2 className="h-4 w-4" aria-hidden="true" />
 							</Button>
 						</AlertDialogTrigger>
 						<AlertDialogContent>

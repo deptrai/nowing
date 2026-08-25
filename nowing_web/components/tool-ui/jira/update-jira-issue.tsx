@@ -276,7 +276,7 @@ function ApprovalCard({
 							});
 						}}
 					>
-						<Pencil className="size-3.5" />
+						<Pencil className="size-3.5" aria-hidden="true" />
 						Edit
 					</Button>
 				)}
@@ -417,7 +417,7 @@ function ApprovalCard({
 								disabled={isPanelOpen}
 							>
 								Approve
-								<CornerDownLeftIcon className="size-3 opacity-60" />
+								<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 							</Button>
 						)}
 						{allowedDecisions.includes("reject") && (

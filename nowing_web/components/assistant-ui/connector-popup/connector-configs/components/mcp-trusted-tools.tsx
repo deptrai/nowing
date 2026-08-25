@@ -66,7 +66,7 @@ export const MCPTrustedTools: FC<MCPTrustedToolsProps> = ({ connector }) => {
 										disabled={isPending}
 										aria-label={`Revoke trust for ${toolName}`}
 									>
-										<Trash2 className="h-3.5 w-3.5" />
+										<Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
 										<span className="ml-1 hidden sm:inline">Revoke</span>
 									</Button>
 								</li>

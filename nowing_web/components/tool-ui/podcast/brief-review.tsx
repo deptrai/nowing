@@ -261,7 +261,7 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 						onClick={addSpeaker}
 						disabled={draft.style === "monologue" || draft.speakers.length >= MAX_SPEAKERS}
 					>
-						<Plus className="size-4" /> Add speaker
+						<Plus className="size-4" aria-hidden="true" /> Add speaker
 					</Button>
 				</div>
 				{draft.speakers.map((speaker) => (
@@ -326,7 +326,7 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 							onClick={() => removeSpeaker(speaker.slot)}
 							disabled={draft.speakers.length <= 1}
 						>
-							<Trash2 className="size-4" />
+							<Trash2 className="size-4" aria-hidden="true" />
 						</Button>
 					</div>
 				))}
@@ -422,7 +422,7 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 					onClick={handleApprove}
 					disabled={isSubmitting || draft.duration.max_seconds < draft.duration.min_seconds}
 				>
-					{isSubmitting ? <Loader2 className="size-4 animate-spin" /> : null}
+					{isSubmitting ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
 					{isDirty ? "Approve changes & draft transcript" : "Approve & draft transcript"}
 				</Button>
 			</div>
@@ -466,7 +466,7 @@ function LanguageCombobox({
 					className="border-popover-border flex h-9 w-full items-center justify-between gap-2 rounded-md border bg-transparent px-3 py-2 text-sm whitespace-nowrap shadow-xs outline-none transition-[color,box-shadow] disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					<span className="line-clamp-1 text-left">{languageLabel(value)}</span>
-					<ChevronDown className="size-4 shrink-0 opacity-50" />
+					<ChevronDown className="size-4 shrink-0 opacity-50" aria-hidden="true" />
 				</button>
 			</PopoverTrigger>
 			<PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
@@ -492,7 +492,7 @@ function LanguageCombobox({
 							))}
 							{isNewTag ? (
 								<CommandItem value={customTag} onSelect={() => pick(customTag)}>
-									<Plus className="size-4" />
+									<Plus className="size-4" aria-hidden="true" />
 									Use “{customTag}”
 								</CommandItem>
 							) : null}

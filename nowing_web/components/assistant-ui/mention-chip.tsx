@@ -75,7 +75,9 @@ export function MentionChip({
 				className
 			)}
 		>
-			<span className="inline-flex shrink-0 text-muted-foreground">{icon}</span>
+			<span className="inline-flex shrink-0 text-muted-foreground" aria-hidden="true">
+				{icon}
+			</span>
 			<span className="max-w-[120px] truncate leading-none">{label}</span>
 		</Button>
 	);

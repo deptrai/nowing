@@ -7,7 +7,7 @@ export function RunStatusBadge({ status }: { status: string }) {
 	if (normalized === "running") {
 		return (
 			<Badge variant="secondary" className="gap-1 bg-blue-500/15 text-blue-600 dark:text-blue-400">
-				<Loader2 className="h-3 w-3 animate-spin" />
+				<Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
 				Running
 			</Badge>
 		);

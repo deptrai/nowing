@@ -37,7 +37,7 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
 	return (
 		<div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-16 text-center">
 			<span className="flex size-10 items-center justify-center rounded-full bg-destructive/10 text-destructive">
-				<TriangleAlert className="size-5" />
+				<TriangleAlert className="size-5" aria-hidden="true" />
 			</span>
 			<div>
 				<p className="text-sm font-semibold text-foreground">Couldn't load artifacts</p>
@@ -46,7 +46,7 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
 				</p>
 			</div>
 			<Button variant="outline" size="sm" onClick={onRetry} className="h-8 text-xs">
-				<RefreshCw className="size-3.5 mr-1.5" />
+				<RefreshCw className="size-3.5 mr-1.5" aria-hidden="true" />
 				Retry
 			</Button>
 		</div>
@@ -142,7 +142,10 @@ export function ArtifactsLibrary({ workspaceId }: { workspaceId: number }) {
 
 				<div className="flex items-center gap-2 w-full sm:w-auto">
 					<div className="relative flex-1 sm:w-64">
-						<Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+						<Search
+							className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground"
+							aria-hidden="true"
+						/>
 						<Input
 							placeholder="Tìm kiếm artifacts..."
 							value={searchQuery}
@@ -157,7 +160,7 @@ export function ArtifactsLibrary({ workspaceId }: { workspaceId: number }) {
 						className="h-8 px-2.5 text-xs shrink-0"
 						title="Làm mới danh sách"
 					>
-						<RefreshCw className="size-3.5" />
+						<RefreshCw className="size-3.5" aria-hidden="true" />
 					</Button>
 				</div>
 			</header>
@@ -182,7 +185,7 @@ export function ArtifactsLibrary({ workspaceId }: { workspaceId: number }) {
 										: "text-muted-foreground hover:bg-muted/60 hover:text-foreground border border-transparent"
 								)}
 							>
-								<Icon className="size-3.5" />
+								<Icon className="size-3.5" aria-hidden="true" />
 								<span>{tab.label}</span>
 								<span
 									className={cn(

@@ -161,7 +161,7 @@ function GenericApprovalCardView({
 						className="rounded-lg text-muted-foreground -mt-1 -mr-2"
 						onClick={() => setIsEditing(true)}
 					>
-						<Pencil className="size-3.5" />
+						<Pencil className="size-3.5" aria-hidden="true" />
 						Edit
 					</Button>
 				)}
@@ -203,7 +203,7 @@ function GenericApprovalCardView({
 						{allowedDecisions.includes("approve") && (
 							<Button size="sm" className="rounded-lg gap-1.5" onClick={handleApprove}>
 								{isEditing && hasChanged ? "Approve with edits" : "Approve"}
-								<CornerDownLeftIcon className="size-3 opacity-60" />
+								<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 							</Button>
 						)}
 						{canApproveAlways && (

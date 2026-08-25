@@ -120,12 +120,12 @@ export function DataRetentionManager({
 	if (isLoading || isOwner === undefined) {
 		return (
 			<div className={cn("space-y-6", className)}>
-				<Skeleton className="h-6 w-48" />
+				<Skeleton className="h-6 w-48" aria-hidden="true" />
 				<Skeleton className="h-4 w-full" />
 				<div className="space-y-4">
 					<Skeleton className="h-10 w-full" />
 					<Skeleton className="h-10 w-full" />
-					<Skeleton className="h-10 w-32" />
+					<Skeleton className="h-10 w-32" aria-hidden="true" />
 				</div>
 			</div>
 		);

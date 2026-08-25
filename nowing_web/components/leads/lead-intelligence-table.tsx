@@ -88,7 +88,7 @@ export const LeadIntelligenceTable: React.FC<LeadIntelligenceTableProps> = ({
 								{/* Company & Source */}
 								<td className="px-4 py-3.5 space-y-1">
 									<div className="flex items-center gap-1.5 font-bold text-zinc-100">
-										<Building2 className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+										<Building2 className="w-3.5 h-3.5 text-zinc-400 shrink-0" aria-hidden="true" />
 										<span className="truncate max-w-[200px]">{lead.company_name}</span>
 									</div>
 									<div className="flex items-center gap-1.5">
@@ -131,7 +131,7 @@ export const LeadIntelligenceTable: React.FC<LeadIntelligenceTableProps> = ({
 								<td className="px-4 py-3.5 space-y-1 text-xs">
 									{lead.location && (
 										<div className="flex items-center gap-1 text-zinc-400">
-											<MapPin className="w-3 h-3 text-zinc-500 shrink-0" />
+											<MapPin className="w-3 h-3 text-zinc-500 shrink-0" aria-hidden="true" />
 											<span className="truncate max-w-[150px]">{lead.location}</span>
 										</div>
 									)}
@@ -163,7 +163,7 @@ export const LeadIntelligenceTable: React.FC<LeadIntelligenceTableProps> = ({
 										className="inline-flex items-center gap-1 px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 text-[11px] transition-colors"
 										title="Xem Company Graph"
 									>
-										<Share2 className="w-3 h-3" />
+										<Share2 className="w-3 h-3" aria-hidden="true" />
 										<span>Graph</span>
 									</button>
 
@@ -175,7 +175,7 @@ export const LeadIntelligenceTable: React.FC<LeadIntelligenceTableProps> = ({
 											className="inline-flex items-center gap-1 px-2 py-1 rounded text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 text-[11px] transition-colors"
 											title="Mở bài gốc"
 										>
-											<ExternalLink className="w-3 h-3" />
+											<ExternalLink className="w-3 h-3" aria-hidden="true" />
 										</a>
 									)}
 								</td>

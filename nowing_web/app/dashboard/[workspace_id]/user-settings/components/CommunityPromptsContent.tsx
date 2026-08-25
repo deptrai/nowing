@@ -48,9 +48,9 @@ export function CommunityPromptsContent() {
 					{["skeleton-a", "skeleton-b", "skeleton-c"].map((key) => (
 						<Card key={key} className="border-accent bg-accent/20">
 							<CardContent className="p-4 flex flex-col gap-3 min-h-24">
-								<Skeleton className="h-4 w-32 md:w-40 bg-accent" />
+								<Skeleton className="h-4 w-32 md:w-40 bg-accent" aria-hidden="true" />
 								<Skeleton className="h-3 w-full bg-accent" />
-								<Skeleton className="h-3 w-24 md:w-28 bg-accent mt-auto" />
+								<Skeleton className="h-3 w-24 md:w-28 bg-accent mt-auto" aria-hidden="true" />
 							</CardContent>
 						</Card>
 					))}
@@ -67,7 +67,7 @@ export function CommunityPromptsContent() {
 
 			{!isLoading && !isError && list.length === 0 && (
 				<div className="rounded-lg border border-dashed border-border/60 p-8 text-center">
-					<Library className="mx-auto size-8 text-muted-foreground" />
+					<Library className="mx-auto size-8 text-muted-foreground" aria-hidden="true" />
 					<p className="mt-2 text-sm text-muted-foreground">No community prompts yet</p>
 					<p className="text-xs text-muted-foreground/60">
 						Share your own prompts from the My Prompts tab
@@ -121,7 +121,7 @@ export function CommunityPromptsContent() {
 									{copyingIds.has(prompt.id) ? (
 										<Spinner className="size-3" />
 									) : (
-										<Copy className="size-3" />
+										<Copy className="size-3" aria-hidden="true" />
 									)}
 									Add to mine
 								</Button>

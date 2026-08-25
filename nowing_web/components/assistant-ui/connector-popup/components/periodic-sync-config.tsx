@@ -44,7 +44,7 @@ export const PeriodicSyncConfig: FC<PeriodicSyncConfigProps> = ({
 			{/* Show disabled message when periodic sync can't be enabled */}
 			{disabled && disabledMessage && (
 				<div className="mt-3 flex items-start gap-2 text-amber-600 dark:text-amber-400">
-					<AlertCircle className="size-4 mt-0.5 shrink-0" />
+					<AlertCircle className="size-4 mt-0.5 shrink-0" aria-hidden="true" />
 					<p className="text-xs sm:text-sm">{disabledMessage}</p>
 				</div>
 			)}

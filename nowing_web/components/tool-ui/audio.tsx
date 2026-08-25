@@ -194,7 +194,7 @@ export function Audio({ id, src, title, durationMs, className }: AudioProps) {
 					className="size-7 shrink-0 -mt-0.5 -mr-2 text-muted-foreground"
 					aria-label="Download audio"
 				>
-					<DownloadIcon className="size-4" />
+					<DownloadIcon className="size-4" aria-hidden="true" />
 				</Button>
 			</div>
 
@@ -228,9 +228,9 @@ export function Audio({ id, src, title, durationMs, className }: AudioProps) {
 						{isLoading ? (
 							<div className="size-3 sm:size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
 						) : isPlaying ? (
-							<PauseIcon className="size-3.5 sm:size-4" fill="currentColor" />
+							<PauseIcon className="size-3.5 sm:size-4" fill="currentColor" aria-hidden="true" />
 						) : (
-							<PlayIcon className="size-3.5 sm:size-4" fill="currentColor" />
+							<PlayIcon className="size-3.5 sm:size-4" fill="currentColor" aria-hidden="true" />
 						)}
 					</Button>
 
@@ -243,9 +243,9 @@ export function Audio({ id, src, title, durationMs, className }: AudioProps) {
 							aria-label={isMuted ? "Unmute" : "Mute"}
 						>
 							{isMuted ? (
-								<VolumeXIcon className="size-3.5 sm:size-4" />
+								<VolumeXIcon className="size-3.5 sm:size-4" aria-hidden="true" />
 							) : (
-								<Volume2Icon className="size-3.5 sm:size-4" />
+								<Volume2Icon className="size-3.5 sm:size-4" aria-hidden="true" />
 							)}
 						</Button>
 						<div className="relative hidden h-6 w-16 items-center md:flex md:opacity-0 md:pointer-events-none md:group-hover/volume:opacity-100 md:group-hover/volume:pointer-events-auto md:transition-opacity md:duration-200">

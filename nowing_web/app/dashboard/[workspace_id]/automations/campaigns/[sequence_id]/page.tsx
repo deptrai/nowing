@@ -78,7 +78,7 @@ export default function CampaignAnalyticsPage() {
 						href={`/dashboard/${workspaceId}/automations/campaigns`}
 						className="p-2 border rounded-lg hover:bg-accent text-muted-foreground transition-colors"
 					>
-						<ArrowLeft className="w-4 h-4" />
+						<ArrowLeft className="w-4 h-4" aria-hidden="true" />
 					</Link>
 					<div>
 						<h1 className="text-xl font-bold text-foreground">
@@ -111,7 +111,7 @@ export default function CampaignAnalyticsPage() {
 				>
 					<div className="flex items-center justify-between text-muted-foreground">
 						<span className="text-xs font-medium">Tổng tham gia</span>
-						<Users className="w-4 h-4 text-blue-500" />
+						<Users className="w-4 h-4 text-blue-500" aria-hidden="true" />
 					</div>
 					<div className="text-2xl font-bold text-foreground">
 						{analytics?.total_enrolled ?? enrollments.length}
@@ -124,7 +124,7 @@ export default function CampaignAnalyticsPage() {
 				>
 					<div className="flex items-center justify-between text-muted-foreground">
 						<span className="text-xs font-medium">Đang lên lịch</span>
-						<Clock className="w-4 h-4 text-amber-500" />
+						<Clock className="w-4 h-4 text-amber-500" aria-hidden="true" />
 					</div>
 					<div className="text-2xl font-bold text-foreground">
 						{analytics?.active_scheduled ?? 0}
@@ -137,7 +137,7 @@ export default function CampaignAnalyticsPage() {
 				>
 					<div className="flex items-center justify-between text-muted-foreground">
 						<span className="text-xs font-medium">Đã gửi thành công</span>
-						<Mail className="w-4 h-4 text-emerald-500" />
+						<Mail className="w-4 h-4 text-emerald-500" aria-hidden="true" />
 					</div>
 					<div className="text-2xl font-bold text-foreground">
 						{analytics?.delivered_count ?? 0}
@@ -150,7 +150,7 @@ export default function CampaignAnalyticsPage() {
 				>
 					<div className="flex items-center justify-between text-muted-foreground">
 						<span className="text-xs font-medium">Đã phản hồi</span>
-						<MessageSquare className="w-4 h-4 text-purple-500" />
+						<MessageSquare className="w-4 h-4 text-purple-500" aria-hidden="true" />
 					</div>
 					<div className="text-2xl font-bold text-foreground">
 						{analytics?.responded_count ?? 0}
@@ -163,7 +163,7 @@ export default function CampaignAnalyticsPage() {
 				>
 					<div className="flex items-center justify-between text-muted-foreground">
 						<span className="text-xs font-medium">Đã hủy đăng ký</span>
-						<UserMinus className="w-4 h-4 text-rose-500" />
+						<UserMinus className="w-4 h-4 text-rose-500" aria-hidden="true" />
 					</div>
 					<div className="text-2xl font-bold text-foreground">
 						{analytics?.unsubscribed_count ?? 0}
@@ -176,7 +176,7 @@ export default function CampaignAnalyticsPage() {
 				>
 					<div className="flex items-center justify-between text-muted-foreground">
 						<span className="text-xs font-medium">Thất bại</span>
-						<XCircle className="w-4 h-4 text-red-500" />
+						<XCircle className="w-4 h-4 text-red-500" aria-hidden="true" />
 					</div>
 					<div className="text-2xl font-bold text-foreground">{analytics?.failed_count ?? 0}</div>
 				</div>
@@ -187,7 +187,7 @@ export default function CampaignAnalyticsPage() {
 				>
 					<div className="flex items-center justify-between text-muted-foreground">
 						<span className="text-xs font-medium">Tổng chi phí</span>
-						<Coins className="w-4 h-4 text-indigo-500" />
+						<Coins className="w-4 h-4 text-indigo-500" aria-hidden="true" />
 					</div>
 					<div className="text-2xl font-bold text-foreground">
 						${((analytics?.total_cost_micros ?? 0) / 1_000_000 || 0).toFixed(3)}
@@ -198,7 +198,7 @@ export default function CampaignAnalyticsPage() {
 			{/* Channel Breakdown */}
 			<div className="bg-card border rounded-xl p-5 shadow-sm space-y-4">
 				<h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
-					<BarChart3 className="w-4 h-4 text-primary" />
+					<BarChart3 className="w-4 h-4 text-primary" aria-hidden="true" />
 					Phân tích theo kênh (Channel Breakdown)
 				</h3>
 				<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -234,7 +234,7 @@ export default function CampaignAnalyticsPage() {
 				{/* Steps Config */}
 				<div className="bg-card border rounded-xl p-5 shadow-sm space-y-4">
 					<h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
-						<BarChart3 className="w-4 h-4 text-primary" />
+						<BarChart3 className="w-4 h-4 text-primary" aria-hidden="true" />
 						Cấu hình các bước trong chuỗi
 					</h3>
 					<div className="space-y-3">
@@ -275,7 +275,7 @@ export default function CampaignAnalyticsPage() {
 				{/* Recent Events Log */}
 				<div className="bg-card border rounded-xl p-5 shadow-sm space-y-4">
 					<h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
-						<CheckCircle2 className="w-4 h-4 text-emerald-500" />
+						<CheckCircle2 className="w-4 h-4 text-emerald-500" aria-hidden="true" />
 						Nhật ký tương tác gần đây (Sequence Events)
 					</h3>
 					<div className="space-y-2 max-h-96 overflow-y-auto">

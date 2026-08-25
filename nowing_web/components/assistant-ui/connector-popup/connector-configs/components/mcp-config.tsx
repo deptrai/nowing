@@ -138,7 +138,7 @@ export const MCPConfig: FC<MCPConfigProps> = ({ connector, onConfigChange, onNam
 		console.error("MCPConfig received non-MCP connector:", connector.connector_type);
 		return (
 			<Alert className="border-red-500/50 bg-red-500/10">
-				<XCircle className="h-4 w-4 text-red-600" />
+				<XCircle className="h-4 w-4 text-red-600" aria-hidden="true" />
 				<AlertTitle>Invalid Connector Type</AlertTitle>
 				<AlertDescription>This component can only be used with MCP connectors.</AlertDescription>
 			</Alert>
@@ -170,7 +170,7 @@ export const MCPConfig: FC<MCPConfigProps> = ({ connector, onConfigChange, onNam
 			{/* Server Configuration */}
 			<div className="space-y-4">
 				<h3 className="font-medium text-sm sm:text-base flex items-center gap-2">
-					<Server className="h-4 w-4" />
+					<Server className="h-4 w-4" aria-hidden="true" />
 					Server Configuration
 				</h3>
 
@@ -219,7 +219,7 @@ export const MCPConfig: FC<MCPConfigProps> = ({ connector, onConfigChange, onNam
 						>
 							{isTesting ? (
 								<>
-									<Loader2 className="h-3.5 w-3.5 animate-spin" />
+									<Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
 									Testing Connection...
 								</>
 							) : (
@@ -238,9 +238,9 @@ export const MCPConfig: FC<MCPConfigProps> = ({ connector, onConfigChange, onNam
 							}
 						>
 							{testResult.status === "success" ? (
-								<CheckCircle2 className="h-4 w-4 text-green-600" />
+								<CheckCircle2 className="h-4 w-4 text-green-600" aria-hidden="true" />
 							) : (
-								<XCircle className="h-4 w-4 text-red-600" />
+								<XCircle className="h-4 w-4 text-red-600" aria-hidden="true" />
 							)}
 							<div className="col-start-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
 								<AlertTitle className="text-sm">
@@ -260,13 +260,13 @@ export const MCPConfig: FC<MCPConfigProps> = ({ connector, onConfigChange, onNam
 									>
 										{showDetails ? (
 											<>
-												<ChevronUp className="h-3 w-3 mr-1" />
+												<ChevronUp className="h-3 w-3 mr-1" aria-hidden="true" />
 												<span className="hidden sm:inline">Hide Details</span>
 												<span className="sm:hidden">Hide</span>
 											</>
 										) : (
 											<>
-												<ChevronDown className="h-3 w-3 mr-1" />
+												<ChevronDown className="h-3 w-3 mr-1" aria-hidden="true" />
 												<span className="hidden sm:inline">Show Details</span>
 												<span className="sm:hidden">Show</span>
 											</>

@@ -140,7 +140,7 @@ export const IndexingConfigurationView: FC<IndexingConfigurationViewProps> = ({
 				{/* Success header */}
 				<div className="flex gap-4 mb-6">
 					<div className="flex h-14 w-14 items-center justify-center rounded-xl bg-green-500/10 border border-green-500/20">
-						<Check className="size-7 text-green-500" />
+						<Check className="size-7 text-green-500" aria-hidden="true" />
 					</div>
 					<div>
 						<div className="flex flex-col">

@@ -432,9 +432,9 @@ function SidebarUsageFooter({
 				<Link
 					href={`/dashboard/${workspaceId}/earn-credits`}
 					onClick={onNavigate}
-					className="group relative z-10 mx-0.5 flex min-w-0 items-center justify-center gap-1 rounded-md px-1 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+					className="group relative z-10 mx-0.5 flex min-w-0 items-center justify-center gap-1 rounded-md px-1 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				>
-					<Zap className="h-3 w-3 shrink-0 text-amber-500" />
+					<Zap className="h-3 w-3 shrink-0 text-amber-500" aria-hidden="true" />
 					<span className="truncate">Earn</span>
 					<SidebarButtonBadge className="h-3.5 px-1 text-[9px] bg-emerald-600 text-white hover:bg-emerald-600">
 						FREE
@@ -443,9 +443,9 @@ function SidebarUsageFooter({
 				<Link
 					href={`/dashboard/${workspaceId}/buy-more`}
 					onClick={onNavigate}
-					className="group relative z-10 mx-0.5 flex min-w-0 items-center justify-center gap-1 rounded-md px-1 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+					className="group relative z-10 mx-0.5 flex min-w-0 items-center justify-center gap-1 rounded-md px-1 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				>
-					<CreditCard className="h-3 w-3 shrink-0" />
+					<CreditCard className="h-3 w-3 shrink-0" aria-hidden="true" />
 					<span className="truncate">Buy</span>
 				</Link>
 			</div>

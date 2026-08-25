@@ -15,7 +15,7 @@ export const MCPServiceConfig: FC<ConnectorConfigProps> = ({ connector }) => {
 		<div className="space-y-6">
 			<div className="rounded-xl border border-border bg-emerald-500/5 p-4 flex items-start gap-3">
 				<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 shrink-0 mt-0.5">
-					<CheckCircle2 className="size-4 text-emerald-500" />
+					<CheckCircle2 className="size-4 text-emerald-500" aria-hidden="true" />
 				</div>
 				<div className="text-xs sm:text-sm">
 					<p className="font-medium text-xs sm:text-sm">Connected</p>

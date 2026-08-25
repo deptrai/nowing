@@ -2,7 +2,10 @@
 
 export const AmbientBackground = () => {
 	return (
-		<div className="pointer-events-none absolute inset-0 z-0 h-full w-full overflow-hidden">
+		<div
+			className="pointer-events-none absolute inset-0 z-0 h-full w-full overflow-hidden"
+			aria-hidden="true"
+		>
 			<div
 				style={{
 					transform: "translateY(-350px) rotate(-45deg)",

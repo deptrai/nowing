@@ -26,11 +26,11 @@ interface MultiTableTabsProps {
 }
 
 const ICON_MAP: Record<string, React.ReactNode> = {
-	table: <TableIcon className="w-3.5 h-3.5" />,
-	home: <Home className="w-3.5 h-3.5 text-blue-400" />,
-	briefcase: <Briefcase className="w-3.5 h-3.5 text-amber-400" />,
-	building: <Building className="w-3.5 h-3.5 text-indigo-400" />,
-	users: <Users className="w-3.5 h-3.5 text-emerald-400" />,
+	table: <TableIcon className="w-3.5 h-3.5" aria-hidden="true" />,
+	home: <Home className="w-3.5 h-3.5 text-blue-400" aria-hidden="true" />,
+	briefcase: <Briefcase className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />,
+	building: <Building className="w-3.5 h-3.5 text-indigo-400" aria-hidden="true" />,
+	users: <Users className="w-3.5 h-3.5 text-emerald-400" aria-hidden="true" />,
 };
 
 export const MultiTableTabs: React.FC<MultiTableTabsProps> = ({
@@ -95,7 +95,7 @@ export const MultiTableTabs: React.FC<MultiTableTabsProps> = ({
 						: "bg-zinc-950/60 border-transparent text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50"
 				}`}
 			>
-				<TableIcon className="w-3.5 h-3.5 text-zinc-400" />
+				<TableIcon className="w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
 				<span>Tất cả Leads (All Leads)</span>
 			</button>
 
@@ -118,7 +118,7 @@ export const MultiTableTabs: React.FC<MultiTableTabsProps> = ({
 							onClick={() => !isEditing && onSelectTable(table.id)}
 							className="flex items-center gap-2 bg-transparent border-0 p-0 text-left text-xs font-medium text-inherit focus:outline-none"
 						>
-							{ICON_MAP[table.icon] || <TableIcon className="w-3.5 h-3.5" />}
+							{ICON_MAP[table.icon] || <TableIcon className="w-3.5 h-3.5" aria-hidden="true" />}
 							{!isEditing && <span className="truncate max-w-[140px]">{table.name}</span>}
 						</button>
 
@@ -143,7 +143,7 @@ export const MultiTableTabs: React.FC<MultiTableTabsProps> = ({
 									}}
 									className="p-0.5 text-emerald-400 hover:text-emerald-300"
 								>
-									<Check className="w-3.5 h-3.5" />
+									<Check className="w-3.5 h-3.5" aria-hidden="true" />
 								</button>
 								<button
 									type="button"
@@ -153,7 +153,7 @@ export const MultiTableTabs: React.FC<MultiTableTabsProps> = ({
 									}}
 									className="p-0.5 text-zinc-400 hover:text-zinc-300"
 								>
-									<X className="w-3.5 h-3.5" />
+									<X className="w-3.5 h-3.5" aria-hidden="true" />
 								</button>
 							</div>
 						)}
@@ -166,7 +166,7 @@ export const MultiTableTabs: React.FC<MultiTableTabsProps> = ({
 									className="p-0.5 rounded text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800"
 									title="Đổi tên tab"
 								>
-									<Edit2 className="w-3 h-3" />
+									<Edit2 className="w-3 h-3" aria-hidden="true" />
 								</button>
 								<button
 									type="button"
@@ -174,7 +174,7 @@ export const MultiTableTabs: React.FC<MultiTableTabsProps> = ({
 									className="p-0.5 rounded text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10"
 									title="Xóa tab"
 								>
-									<Trash2 className="w-3 h-3" />
+									<Trash2 className="w-3 h-3" aria-hidden="true" />
 								</button>
 							</div>
 						)}
@@ -212,14 +212,14 @@ export const MultiTableTabs: React.FC<MultiTableTabsProps> = ({
 						onClick={handleConfirmAdd}
 						className="p-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white transition-colors"
 					>
-						<Check className="w-3 h-3" />
+						<Check className="w-3 h-3" aria-hidden="true" />
 					</button>
 					<button
 						type="button"
 						onClick={() => setIsAdding(false)}
 						className="p-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
 					>
-						<X className="w-3 h-3" />
+						<X className="w-3 h-3" aria-hidden="true" />
 					</button>
 				</div>
 			) : (
@@ -228,7 +228,7 @@ export const MultiTableTabs: React.FC<MultiTableTabsProps> = ({
 					onClick={handleStartAdd}
 					className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg text-zinc-400 hover:text-emerald-400 hover:bg-zinc-900/60 border border-dashed border-zinc-800 hover:border-emerald-500/30 transition-colors"
 				>
-					<Plus className="w-3.5 h-3.5" />
+					<Plus className="w-3.5 h-3.5" aria-hidden="true" />
 					<span>Thêm bảng</span>
 				</button>
 			)}

@@ -167,7 +167,7 @@ export const FloatingBulkActionBar: React.FC<FloatingBulkActionBarProps> = ({
 		>
 			<div className="flex items-center gap-2 pr-3 border-r border-border">
 				<span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
-					<CheckSquare className="h-3.5 w-3.5" />
+					<CheckSquare className="h-3.5 w-3.5" aria-hidden="true" />
 				</span>
 				<span className="text-xs font-semibold text-foreground">
 					Đã chọn{" "}
@@ -205,7 +205,7 @@ export const FloatingBulkActionBar: React.FC<FloatingBulkActionBarProps> = ({
 						}
 						className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-colors shadow-sm shadow-emerald-950/20 disabled:opacity-50 disabled:cursor-not-allowed"
 					>
-						<PhoneCall className="w-3.5 h-3.5" />
+						<PhoneCall className="w-3.5 h-3.5" aria-hidden="true" />
 						Mở khóa SĐT hàng loạt ({eligibleLeads.length - unlockedCount})
 					</Button>
 				</SmartUnlockPopover>
@@ -216,7 +216,10 @@ export const FloatingBulkActionBar: React.FC<FloatingBulkActionBarProps> = ({
 						onClick={onExportLarkBase}
 						className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-muted hover:bg-muted/80 text-foreground border border-border transition-colors cursor-pointer"
 					>
-						<Download className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+						<Download
+							className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400"
+							aria-hidden="true"
+						/>
 						Xuất Lark Base
 					</button>
 				)}
@@ -227,7 +230,7 @@ export const FloatingBulkActionBar: React.FC<FloatingBulkActionBarProps> = ({
 						onClick={onBulkZalo}
 						className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors cursor-pointer shadow-sm"
 					>
-						<MessageSquare className="w-3.5 h-3.5" />
+						<MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
 						Gửi Zalo hàng loạt
 					</button>
 				)}
@@ -239,7 +242,7 @@ export const FloatingBulkActionBar: React.FC<FloatingBulkActionBarProps> = ({
 				title="Bỏ chọn tất cả"
 				className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer ml-1"
 			>
-				<X className="w-4 h-4" />
+				<X className="w-4 h-4" aria-hidden="true" />
 			</button>
 		</aside>
 	);

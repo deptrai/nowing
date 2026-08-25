@@ -57,7 +57,10 @@ export function GoogleLoginButton() {
 		<div className="relative w-full overflow-hidden">
 			<AmbientBackground />
 			<div className="mx-auto flex h-screen max-w-lg flex-col items-center justify-center px-6 md:px-0">
-				<Logo className="h-16 w-16 md:h-32 md:w-32 rounded-full my-4 md:my-8 transition-all" />
+				<Logo
+					className="h-16 w-16 md:h-32 md:w-32 rounded-full my-4 md:my-8 transition-all"
+					aria-hidden="true"
+				/>
 				{/* <h1 className="my-8 text-xl font-bold text-neutral-800 dark:text-neutral-100 md:text-4xl">
 					Login
 				</h1> */}
@@ -110,9 +113,10 @@ export function GoogleLoginButton() {
 					variant="outline"
 					className="w-full max-w-md gap-2 rounded-lg border-white bg-white px-6 py-5 font-medium text-[#1f1f1f] shadow-sm hover:bg-zinc-100 hover:text-[#1f1f1f] dark:border-white md:py-5"
 					disabled={isRedirecting}
+					aria-busy={isRedirecting}
 					onClick={handleGoogleLogin}
 				>
-					<GoogleGLogo className="h-5 w-5" />
+					<GoogleGLogo className="h-5 w-5" aria-hidden="true" />
 					<span className="text-base font-medium">{t("continue_with_google")}</span>
 				</Button>
 			</div>

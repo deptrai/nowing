@@ -20,7 +20,7 @@ const SERVICE_COLORS: Record<string, string> = {
 };
 
 function calculateServicePercentages(
-	items: ServiceBreakdownItem[],
+	items: ServiceBreakdownItem[]
 ): Array<ServiceBreakdownItem & { percentage: number; color: string }> {
 	const totalCost = items.reduce((sum, item) => sum + item.cost_micros, 0);
 

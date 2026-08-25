@@ -224,7 +224,7 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 								Visual Multi-Channel Cadence Sequence Builder
 							</h2>
 							<span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-								<ShieldCheck className="w-3.5 h-3.5" /> Story 24.7 Multi-Channel
+								<ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" /> Story 24.7 Multi-Channel
 							</span>
 						</div>
 						<p className="text-sm text-muted-foreground mt-1">
@@ -239,7 +239,7 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 						data-testid="save-sequence-btn"
 						className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50"
 					>
-						<Save className="w-4 h-4" />
+						<Save className="w-4 h-4" aria-hidden="true" />
 						{isSaving ? "Đang lưu..." : "Lưu chuỗi tiếp cận"}
 					</button>
 				</div>
@@ -328,31 +328,31 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 									<h3 className="text-sm font-semibold capitalize flex items-center gap-2">
 										{step.step_type === "send_email" && (
 											<>
-												<Mail className="w-4 h-4 text-blue-500" />
+												<Mail className="w-4 h-4 text-blue-500" aria-hidden="true" />
 												Bước gửi Email
 											</>
 										)}
 										{step.step_type === "send_zalo" && (
 											<>
-												<MessageSquare className="w-4 h-4 text-blue-600" />
+												<MessageSquare className="w-4 h-4 text-blue-600" aria-hidden="true" />
 												Bước gửi Zalo ZNS
 											</>
 										)}
 										{step.step_type === "send_telegram" && (
 											<>
-												<Send className="w-4 h-4 text-sky-500" />
+												<Send className="w-4 h-4 text-sky-500" aria-hidden="true" />
 												Bước gửi Telegram
 											</>
 										)}
 										{step.step_type === "wait" && (
 											<>
-												<Clock className="w-4 h-4 text-amber-500" />
+												<Clock className="w-4 h-4 text-amber-500" aria-hidden="true" />
 												Thời gian chờ (Wait / Delay)
 											</>
 										)}
 										{step.step_type === "condition" && (
 											<>
-												<GitBranch className="w-4 h-4 text-purple-500" />
+												<GitBranch className="w-4 h-4 text-purple-500" aria-hidden="true" />
 												Điều kiện rẽ nhánh (if replied)
 											</>
 										)}
@@ -366,7 +366,7 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 										className="text-muted-foreground hover:text-destructive transition-colors p-1"
 										title="Xóa bước này"
 									>
-										<Trash2 className="w-4 h-4" />
+										<Trash2 className="w-4 h-4" aria-hidden="true" />
 									</button>
 								)}
 							</div>
@@ -616,7 +616,7 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 					data-testid="add-step-send_email"
 					className="inline-flex items-center gap-1.5 px-3 py-2 bg-secondary text-secondary-foreground text-xs font-semibold rounded-lg border hover:bg-secondary/80 transition-colors shadow-sm"
 				>
-					<Plus className="w-3.5 h-3.5" />
+					<Plus className="w-3.5 h-3.5" aria-hidden="true" />
 					Thêm bước gửi Email
 				</button>
 
@@ -634,7 +634,7 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 					}
 					className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-500/10 text-blue-600 text-xs font-semibold rounded-lg border border-blue-500/20 hover:bg-blue-500/20 transition-colors shadow-sm disabled:opacity-50"
 				>
-					<Plus className="w-3.5 h-3.5" />
+					<Plus className="w-3.5 h-3.5" aria-hidden="true" />
 					Thêm bước Zalo ZNS
 				</button>
 
@@ -646,7 +646,7 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 					title={!isChannelAllowed("telegram") ? "Not enabled for this workspace" : undefined}
 					className="inline-flex items-center gap-1.5 px-3 py-2 bg-sky-500/10 text-sky-600 text-xs font-semibold rounded-lg border border-sky-500/20 hover:bg-sky-500/20 transition-colors shadow-sm disabled:opacity-50"
 				>
-					<Plus className="w-3.5 h-3.5" />
+					<Plus className="w-3.5 h-3.5" aria-hidden="true" />
 					Thêm bước Telegram Bot
 				</button>
 
@@ -656,7 +656,7 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 					data-testid="add-step-wait"
 					className="inline-flex items-center gap-1.5 px-3 py-2 bg-secondary text-secondary-foreground text-xs font-semibold rounded-lg border hover:bg-secondary/80 transition-colors shadow-sm"
 				>
-					<Plus className="w-3.5 h-3.5" />
+					<Plus className="w-3.5 h-3.5" aria-hidden="true" />
 					Thêm thời gian chờ (Wait)
 				</button>
 
@@ -666,7 +666,7 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 					data-testid="add-step-condition"
 					className="inline-flex items-center gap-1.5 px-3 py-2 bg-secondary text-secondary-foreground text-xs font-semibold rounded-lg border hover:bg-secondary/80 transition-colors shadow-sm"
 				>
-					<Plus className="w-3.5 h-3.5" />
+					<Plus className="w-3.5 h-3.5" aria-hidden="true" />
 					Thêm điều kiện rẽ nhánh (Condition)
 				</button>
 			</div>
@@ -685,11 +685,11 @@ function ChannelChip({
 }) {
 	const icon =
 		channel === "email" ? (
-			<Mail className="w-4 h-4 text-blue-500" />
+			<Mail className="w-4 h-4 text-blue-500" aria-hidden="true" />
 		) : channel === "zalo" ? (
-			<MessageSquare className="w-4 h-4 text-blue-600" />
+			<MessageSquare className="w-4 h-4 text-blue-600" aria-hidden="true" />
 		) : (
-			<Send className="w-4 h-4 text-sky-500" />
+			<Send className="w-4 h-4 text-sky-500" aria-hidden="true" />
 		);
 
 	const label =
@@ -717,7 +717,7 @@ function TemplateVariables({ onInsert }: { onInsert: (variable: string) => void 
 	return (
 		<div className="flex items-center gap-1.5" data-testid="template-variable-pills">
 			<span className="text-[11px] text-muted-foreground flex items-center gap-1 mr-1">
-				<Info className="w-3 h-3" /> Chèn biến:
+				<Info className="w-3 h-3" aria-hidden="true" /> Chèn biến:
 			</span>
 			{TEMPLATE_VARIABLES.map((v) => (
 				<button

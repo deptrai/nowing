@@ -66,7 +66,11 @@ export function ApiKeyField({
 					disabled={!value}
 					aria-label={showApiKey ? "Hide API key" : "Show API key"}
 				>
-					{showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+					{showApiKey ? (
+						<EyeOff className="h-4 w-4" aria-hidden="true" />
+					) : (
+						<Eye className="h-4 w-4" aria-hidden="true" />
+					)}
 				</Button>
 			</div>
 		</div>

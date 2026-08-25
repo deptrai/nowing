@@ -223,7 +223,7 @@ const DesktopNav = ({ navItems, isScrolled, scrolledBgClassName }: DesktopNavPro
 				href="/"
 				className="flex flex-1 flex-row items-center gap-0.5 hover:opacity-80 transition-opacity"
 			>
-				<Logo className="h-8 w-8 rounded-md" disableLink />
+				<Logo className="h-8 w-8 rounded-md" disableLink aria-hidden="true" />
 				<span className="dark:text-white/90 text-gray-800 text-lg font-bold">Nowing</span>
 			</Link>
 			<div className="hidden flex-1 flex-row items-center justify-center space-x-2 text-sm font-medium text-zinc-600 transition duration-200 hover:text-zinc-800 lg:flex lg:space-x-2">
@@ -317,7 +317,7 @@ const MobileNav = ({ navItems, isScrolled, scrolledBgClassName }: MobileNavProps
 					href="/"
 					className="flex flex-row items-center gap-2 hover:opacity-80 transition-opacity"
 				>
-					<Logo className="h-8 w-8 rounded-md" disableLink />
+					<Logo className="h-8 w-8 rounded-md" disableLink aria-hidden="true" />
 					<span className="dark:text-white/90 text-gray-800 text-lg font-bold">Nowing</span>
 				</Link>
 				<Button
@@ -329,9 +329,9 @@ const MobileNav = ({ navItems, isScrolled, scrolledBgClassName }: MobileNavProps
 					aria-label={open ? "Close menu" : "Open menu"}
 				>
 					{open ? (
-						<IconX className="h-6 w-6 text-black dark:text-white" />
+						<IconX className="h-6 w-6 text-black dark:text-white" aria-hidden="true" />
 					) : (
-						<IconMenu2 className="h-6 w-6 text-black dark:text-white" />
+						<IconMenu2 className="h-6 w-6 text-black dark:text-white" aria-hidden="true" />
 					)}
 				</Button>
 			</div>

@@ -43,7 +43,7 @@ export function OutcomeRoiMetricsCards({ items = [] }: { items?: ServiceBreakdow
 			<Card className="border-border/60 bg-card/50">
 				<CardHeader className="flex flex-row items-center justify-between pb-2">
 					<CardTitle className="text-sm font-medium">Cuộc hẹn B2B chốt</CardTitle>
-					<CalendarCheck className="h-4 w-4 text-emerald-500" />
+					<CalendarCheck className="h-4 w-4 text-emerald-500" aria-hidden="true" />
 				</CardHeader>
 				<CardContent>
 					<div className="text-2xl font-bold tabular-nums">
@@ -59,7 +59,7 @@ export function OutcomeRoiMetricsCards({ items = [] }: { items?: ServiceBreakdow
 			<Card className="border-border/60 bg-card/50">
 				<CardHeader className="flex flex-row items-center justify-between pb-2">
 					<CardTitle className="text-sm font-medium">Chi phí / Cuộc hẹn</CardTitle>
-					<Award className="h-4 w-4 text-primary" />
+					<Award className="h-4 w-4 text-primary" aria-hidden="true" />
 				</CardHeader>
 				<CardContent>
 					<div className="text-2xl font-bold tabular-nums">
@@ -74,7 +74,7 @@ export function OutcomeRoiMetricsCards({ items = [] }: { items?: ServiceBreakdow
 			<Card className="border-border/60 bg-card/50">
 				<CardHeader className="flex flex-row items-center justify-between pb-2">
 					<CardTitle className="text-sm font-medium">SĐT xác thực mở khóa</CardTitle>
-					<CheckCircle2 className="h-4 w-4 text-blue-500" />
+					<CheckCircle2 className="h-4 w-4 text-blue-500" aria-hidden="true" />
 				</CardHeader>
 				<CardContent>
 					<div className="text-2xl font-bold tabular-nums">
@@ -90,7 +90,7 @@ export function OutcomeRoiMetricsCards({ items = [] }: { items?: ServiceBreakdow
 			<Card className="border-border/60 bg-card/50">
 				<CardHeader className="flex flex-row items-center justify-between pb-2">
 					<CardTitle className="text-sm font-medium">Ước tính Pipeline ROI</CardTitle>
-					<TrendingUp className="h-4 w-4 text-emerald-500" />
+					<TrendingUp className="h-4 w-4 text-emerald-500" aria-hidden="true" />
 				</CardHeader>
 				<CardContent>
 					<div className="text-2xl font-bold tabular-nums text-emerald-500">

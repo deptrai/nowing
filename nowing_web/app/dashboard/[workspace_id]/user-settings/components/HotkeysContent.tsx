@@ -82,7 +82,7 @@ function HotkeyRow({
 		<div className="flex items-center justify-between gap-2.5 py-3">
 			<div className="flex items-center gap-2.5 min-w-0">
 				<div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-					<Icon className="size-3.5" />
+					<Icon className="size-3.5" aria-hidden="true" />
 				</div>
 				<p className="text-sm text-foreground truncate">{label}</p>
 			</div>
@@ -95,7 +95,7 @@ function HotkeyRow({
 						onClick={onReset}
 						title="Reset to default"
 					>
-						<RotateCcw className="size-3" />
+						<RotateCcw className="size-3" aria-hidden="true" />
 					</Button>
 				)}
 				<Button

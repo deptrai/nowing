@@ -90,11 +90,11 @@ export default function PurchaseSuccessPage() {
 			<Card className="w-full max-w-lg">
 				<CardHeader className="text-center">
 					{state.kind === "loading" || state.kind === "pending" ? (
-						<Loader2 className="mx-auto h-10 w-10 animate-spin text-primary" />
+						<Loader2 className="mx-auto h-10 w-10 animate-spin text-primary" aria-hidden="true" />
 					) : state.kind === "completed" ? (
-						<CheckCircle2 className="mx-auto h-10 w-10 text-emerald-500" />
+						<CheckCircle2 className="mx-auto h-10 w-10 text-emerald-500" aria-hidden="true" />
 					) : (
-						<AlertCircle className="mx-auto h-10 w-10 text-amber-500" />
+						<AlertCircle className="mx-auto h-10 w-10 text-amber-500" aria-hidden="true" />
 					)}
 					<CardTitle className="text-2xl">
 						{state.kind === "loading" && "Confirming payment…"}

@@ -182,7 +182,7 @@ export function LandZoningModal({
 											variant="outline"
 											className={cn(polarityClass[zone.polarity] ?? polarityClass.other)}
 										>
-											<MapPin className="mr-1 h-3 w-3" />
+											<MapPin className="mr-1 h-3 w-3" aria-hidden="true" />
 											{zone.zone_name} ({zone.zone_code})
 										</Badge>
 									))}

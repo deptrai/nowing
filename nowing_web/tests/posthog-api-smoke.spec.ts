@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { acquireTestToken } from "./helpers/api/auth";
 
 test.describe("PostHog API smoke", () => {

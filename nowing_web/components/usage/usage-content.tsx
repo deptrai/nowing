@@ -104,25 +104,25 @@ export function UsageContent() {
 			<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 				<SummaryCard
 					title={t("balance_title")}
-					icon={<Wallet className="h-4 w-4 text-muted-foreground" />}
+					icon={<Wallet className="h-4 w-4 text-muted-foreground" aria-hidden="true" />}
 					value={isSummaryLoading ? undefined : formatUsd(summary?.current_balance_micros ?? 0)}
 					description={t("balance_description")}
 				/>
 				<SummaryCard
 					title={t("reserved_title")}
-					icon={<CreditCard className="h-4 w-4 text-muted-foreground" />}
+					icon={<CreditCard className="h-4 w-4 text-muted-foreground" aria-hidden="true" />}
 					value={isSummaryLoading ? undefined : formatUsd(summary?.reserved_micros ?? 0)}
 					description={t("reserved_description")}
 				/>
 				<SummaryCard
 					title={t("tokens_title")}
-					icon={<BarChart3 className="h-4 w-4 text-muted-foreground" />}
+					icon={<BarChart3 className="h-4 w-4 text-muted-foreground" aria-hidden="true" />}
 					value={isSummaryLoading ? undefined : formatNumber(summary?.total_tokens ?? 0)}
 					description={t("range_description")}
 				/>
 				<SummaryCard
 					title={t("cost_title")}
-					icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
+					icon={<DollarSign className="h-4 w-4 text-muted-foreground" aria-hidden="true" />}
 					value={isSummaryLoading ? undefined : formatUsd(summary?.total_cost_micros ?? 0)}
 					description={t("range_description")}
 				/>
@@ -140,7 +140,7 @@ export function UsageContent() {
 			{!isSummaryLoading && !hasUsage && (
 				<Card>
 					<CardContent className="flex flex-col items-center justify-center py-12 text-center">
-						<BarChart3 className="h-12 w-12 text-muted-foreground/50" />
+						<BarChart3 className="h-12 w-12 text-muted-foreground/50" aria-hidden="true" />
 						<h3 className="mt-4 text-lg font-semibold">{t("empty_title")}</h3>
 						<p className="mt-1 max-w-sm text-sm text-muted-foreground">{t("empty_description")}</p>
 					</CardContent>
@@ -210,7 +210,7 @@ function SummaryCard({
 			</CardHeader>
 			<CardContent>
 				{value === undefined ? (
-					<Skeleton className="h-8 w-24" />
+					<Skeleton className="h-8 w-24" aria-hidden="true" />
 				) : (
 					<div className="text-2xl font-bold tabular-nums">{value}</div>
 				)}

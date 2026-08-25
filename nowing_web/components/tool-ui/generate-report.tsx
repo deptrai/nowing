@@ -232,7 +232,7 @@ function ReportCard({
 						) : (
 							<>
 								Markdown
-								{metadata.versionLabel && <Dot className="inline size-4" />}
+								{metadata.versionLabel && <Dot className="inline size-4" aria-hidden="true" />}
 								{metadata.versionLabel}
 							</>
 						)}

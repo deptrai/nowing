@@ -25,7 +25,11 @@ function CopyButton({ text }: { text: string }) {
 			aria-label={copied ? "Copied" : "Copy"}
 			className="absolute right-2 top-2 h-7 w-7 p-0"
 		>
-			{copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+			{copied ? (
+				<Check className="h-3.5 w-3.5" aria-hidden="true" />
+			) : (
+				<Copy className="h-3.5 w-3.5" aria-hidden="true" />
+			)}
 		</Button>
 	);
 }
@@ -47,7 +51,10 @@ function SchemaBlock({ title, schema }: { title: string; schema: Record<string, 
 		<details className="group rounded-md border border-border/60">
 			<summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground [&::-webkit-details-marker]:hidden">
 				<span>{title}</span>
-				<ChevronRight className="h-4 w-4 shrink-0 transition-transform group-open:rotate-90" />
+				<ChevronRight
+					className="h-4 w-4 shrink-0 transition-transform group-open:rotate-90"
+					aria-hidden="true"
+				/>
 			</summary>
 			<div className="relative border-t border-border/60">
 				<CopyButton text={json} />

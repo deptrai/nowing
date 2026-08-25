@@ -182,7 +182,7 @@ export default function ExternalMcpConnectorsPage() {
 								]}
 							/>
 							<Badge variant="outline" className="mb-5 gap-1.5 py-1">
-								<Plug className="size-3.5" />
+								<Plug className="size-3.5" aria-hidden="true" />
 								External MCP connectors
 							</Badge>
 							<h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-balance">
@@ -198,7 +198,7 @@ export default function ExternalMcpConnectorsPage() {
 								<Button asChild size="lg">
 									<Link href="/register">
 										Start for free
-										<ArrowRight className="size-4" />
+										<ArrowRight className="size-4" aria-hidden="true" />
 									</Link>
 								</Button>
 								<Button asChild variant="outline" size="lg">
@@ -210,7 +210,7 @@ export default function ExternalMcpConnectorsPage() {
 										target="_blank"
 										rel="noopener noreferrer"
 									>
-										<IconBrandGithub className="size-4" />
+										<IconBrandGithub className="size-4" aria-hidden="true" />
 										GitHub
 									</Link>
 								</Button>
@@ -338,7 +338,7 @@ export default function ExternalMcpConnectorsPage() {
 								<Button asChild size="lg">
 									<Link href="/register">
 										Start for free
-										<ArrowRight className="size-4" />
+										<ArrowRight className="size-4" aria-hidden="true" />
 									</Link>
 								</Button>
 								<Button asChild variant="outline" size="lg">

@@ -68,7 +68,7 @@ export function AnnouncementCard({ announcement }: { announcement: AnnouncementW
 						<div
 							className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted ${config.color}`}
 						>
-							<Icon className="h-4 w-4" />
+							<Icon className="h-4 w-4" aria-hidden="true" />
 						</div>
 						<div className="min-w-0 flex-1">
 							<div className="flex items-center gap-2 flex-wrap">
@@ -80,7 +80,7 @@ export function AnnouncementCard({ announcement }: { announcement: AnnouncementW
 								</Badge>
 								{announcement.isImportant && (
 									<Badge variant="destructive" className="text-[10px] px-1.5 py-0 gap-0.5">
-										<Bell className="h-2.5 w-2.5" />
+										<Bell className="h-2.5 w-2.5" aria-hidden="true" />
 										Important
 									</Badge>
 								)}
@@ -105,7 +105,7 @@ export function AnnouncementCard({ announcement }: { announcement: AnnouncementW
 							target={announcement.link.url.startsWith("http") ? "_blank" : undefined}
 						>
 							{announcement.link.label}
-							<ExternalLink className="h-3 w-3" />
+							<ExternalLink className="h-3 w-3" aria-hidden="true" />
 						</Link>
 					</Button>
 				</CardFooter>

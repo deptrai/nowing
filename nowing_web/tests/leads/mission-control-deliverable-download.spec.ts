@@ -1,10 +1,7 @@
 import { expect, test } from "../fixtures";
 
 test.describe("Mission Control — deliverable download (26.9b)", () => {
-	test("should render deliverables and download xlsx on click", async ({
-		page,
-		workspace,
-	}) => {
+	test("should render deliverables and download xlsx on click", async ({ page, workspace }) => {
 		const listPattern = new RegExp(`/api/v1/workspaces/${workspace.id}/dsh/missions(?:\\?.*)?$`);
 		const controlPattern = new RegExp(
 			`/api/v1/workspaces/${workspace.id}/dsh/missions/[\\w-]+/control$`
@@ -102,8 +99,7 @@ test.describe("Mission Control — deliverable download (26.9b)", () => {
 		await page.route(downloadPattern, async (route) => {
 			await route.fulfill({
 				status: 200,
-				contentType:
-					"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+				contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 				headers: {
 					"Content-Disposition": `attachment; filename="${filename}"`,
 				},
@@ -119,9 +115,7 @@ test.describe("Mission Control — deliverable download (26.9b)", () => {
 		await expect(page.getByTestId("mission-control-deliverables")).toBeVisible({
 			timeout: 10000,
 		});
-		await expect(
-			page.getByTestId(`mission-control-download-${filename}`)
-		).toContainText(filename);
+		await expect(page.getByTestId(`mission-control-download-${filename}`)).toContainText(filename);
 
 		const [download] = await Promise.all([
 			page.waitForEvent("download"),

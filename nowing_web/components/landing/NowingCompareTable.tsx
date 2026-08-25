@@ -73,7 +73,10 @@ export const NowingCompareTable: React.FC = () => {
 									</td>
 									<td className="py-4 px-5 font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50/40 dark:bg-emerald-950/20">
 										<div className="flex items-start gap-2">
-											<Check className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0" />
+											<Check
+												className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0"
+												aria-hidden="true"
+											/>
 											<span>{item.nowing}</span>
 										</div>
 									</td>

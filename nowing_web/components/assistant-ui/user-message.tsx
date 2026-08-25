@@ -117,11 +117,13 @@ const UserTextPart: FC = () => {
 				const doc = segment.doc;
 				const icon =
 					doc.kind === "folder" ? (
-						<FolderIcon className="size-3.5" />
+						<FolderIcon className="size-3.5" aria-hidden="true" />
 					) : doc.kind === "thread" ? (
-						<MessageSquare className="size-3.5" />
+						<MessageSquare className="size-3.5" aria-hidden="true" />
 					) : doc.kind === "connector" ? (
-						(getConnectorIcon(doc.connector_type, "size-3.5") ?? <Plug className="size-3.5" />)
+						(getConnectorIcon(doc.connector_type, "size-3.5") ?? (
+							<Plug className="size-3.5" aria-hidden="true" />
+						))
 					) : (
 						getConnectorIcon(doc.document_type ?? "UNKNOWN", "size-3.5")
 					);

@@ -109,7 +109,7 @@ export function FooterNew() {
 			<div className="max-w-7xl mx-auto text-sm text-neutral-600 dark:text-neutral-400 flex sm:flex-row flex-col justify-between items-start  md:px-8">
 				<div>
 					<div className="mr-0 md:mr-4  md:flex mb-4">
-						<Logo className="h-6 w-6 rounded-md mr-2" />
+						<Logo className="h-6 w-6 rounded-md mr-2" aria-hidden="true" />
 						<span className="dark:text-white/90 text-gray-800 text-lg font-bold">Nowing</span>
 					</div>
 
@@ -148,7 +148,7 @@ export function FooterNew() {
 											target="_blank"
 											rel="noopener noreferrer"
 										>
-											<Icon className="h-5 w-5" />
+											<Icon className="h-5 w-5" aria-hidden="true" />
 											{social.title}
 										</Link>
 									</li>

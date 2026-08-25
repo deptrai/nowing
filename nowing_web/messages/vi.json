@@ -1122,6 +1122,7 @@
 		"card_icp_prompt": "Phân tích chân dung khách hàng mục tiêu (ICP) và tìm 15 doanh nghiệp B2B tiềm năng",
 		"run_task_button": "Chạy tác vụ này →",
 		"suggested_actions_title": "Gợi ý bước tiếp theo",
+		"dismiss_suggested_actions": "Bỏ qua gợi ý",
 		"default_action_1": "Trích xuất email & người đại diện pháp luật của các công ty này",
 		"default_action_2": "Kiểm tra nhu cầu tuyển dụng để đánh giá quy mô phát triển",
 		"default_action_3": "Tạo kịch bản Zalo & Outreach tự động cho danh sách leads",

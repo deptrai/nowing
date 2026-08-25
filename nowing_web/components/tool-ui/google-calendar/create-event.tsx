@@ -341,7 +341,7 @@ function ApprovalCard({
 							});
 						}}
 					>
-						<Pencil className="size-3.5" />
+						<Pencil className="size-3.5" aria-hidden="true" />
 						Edit
 					</Button>
 				)}
@@ -409,7 +409,10 @@ function ApprovalCard({
 									<div className="space-y-2">
 										<p className="text-xs font-medium text-muted-foreground">Timezone</p>
 										<div className="flex items-center gap-2 w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm">
-											<GlobeIcon className="size-3.5 text-muted-foreground shrink-0" />
+											<GlobeIcon
+												className="size-3.5 text-muted-foreground shrink-0"
+												aria-hidden="true"
+											/>
 											{timezone}
 										</div>
 									</div>
@@ -432,7 +435,7 @@ function ApprovalCard({
 				{((pendingEdits?.start_datetime ?? args.start_datetime) ||
 					(pendingEdits?.end_datetime ?? args.end_datetime)) && (
 					<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-						<ClockIcon className="size-3.5 shrink-0" />
+						<ClockIcon className="size-3.5 shrink-0" aria-hidden="true" />
 						<span>
 							{(pendingEdits?.start_datetime ?? args.start_datetime)
 								? formatDateTime(pendingEdits?.start_datetime ?? args.start_datetime)
@@ -450,14 +453,14 @@ function ApprovalCard({
 
 				{(pendingEdits?.location ?? args.location) && (
 					<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-						<MapPinIcon className="size-3.5 shrink-0" />
+						<MapPinIcon className="size-3.5 shrink-0" aria-hidden="true" />
 						<span>{pendingEdits?.location ?? args.location}</span>
 					</div>
 				)}
 
 				{displayAttendees.length > 0 && (
 					<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-						<UsersIcon className="size-3.5 shrink-0" />
+						<UsersIcon className="size-3.5 shrink-0" aria-hidden="true" />
 						<span>{displayAttendees.join(", ")}</span>
 					</div>
 				)}
@@ -494,7 +497,7 @@ function ApprovalCard({
 								disabled={!canApprove || isPanelOpen}
 							>
 								Approve
-								<CornerDownLeftIcon className="size-3 opacity-60" />
+								<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 							</Button>
 						)}
 						{allowedDecisions.includes("reject") && (

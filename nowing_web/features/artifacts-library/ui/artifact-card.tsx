@@ -35,7 +35,7 @@ export function ArtifactCard({
 			</button>
 
 			<span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-				<Icon className="size-4" />
+				<Icon className="size-4" aria-hidden="true" />
 			</span>
 			<span className="min-w-0 flex-1">
 				<span className="block truncate text-sm font-medium text-foreground">{artifact.title}</span>
@@ -54,7 +54,7 @@ export function ArtifactCard({
 					title="Open original chat"
 					className="relative z-10 flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
 				>
-					<MessageSquareText className="size-4" />
+					<MessageSquareText className="size-4" aria-hidden="true" />
 					<span className="sr-only">Open original chat</span>
 				</Link>
 			) : null}

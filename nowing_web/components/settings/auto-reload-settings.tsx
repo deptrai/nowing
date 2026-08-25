@@ -164,7 +164,7 @@ export function AutoReloadSettings() {
 			<div className="space-y-5">
 				{settings.failed_at && (
 					<Alert variant="destructive">
-						<AlertTriangle className="h-4 w-4" />
+						<AlertTriangle className="h-4 w-4" aria-hidden="true" />
 						<AlertTitle>Last top-up failed</AlertTitle>
 						<AlertDescription>
 							Your saved card was declined and top-ups were turned off. Update your card and
@@ -176,7 +176,7 @@ export function AutoReloadSettings() {
 				<div className="space-y-6">
 					<Alert className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 						<div className="flex min-w-0 items-start gap-3">
-							<Info className="mt-0.5 h-4 w-4 shrink-0" />
+							<Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
 							<p className="text-sm leading-relaxed text-muted-foreground">
 								Automatically top up your credit balance when it drops below a threshold, using a
 								saved card. Current balance:{" "}
@@ -195,7 +195,7 @@ export function AutoReloadSettings() {
 		<div className="space-y-6">
 			{settings.failed_at && (
 				<Alert variant="destructive">
-					<AlertTriangle className="h-4 w-4" />
+					<AlertTriangle className="h-4 w-4" aria-hidden="true" />
 					<AlertTitle>Last top-up failed</AlertTitle>
 					<AlertDescription>
 						Your saved card was declined and top-ups were turned off. Update your card and re-enable

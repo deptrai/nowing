@@ -21,7 +21,7 @@ export default function PurchaseCancelPage() {
 		<div className="flex min-h-[calc(100vh-64px)] items-center justify-center px-4 py-8">
 			<Card className="w-full max-w-lg">
 				<CardHeader className="text-center">
-					<CircleSlash2 className="mx-auto h-10 w-10 text-muted-foreground" />
+					<CircleSlash2 className="mx-auto h-10 w-10 text-muted-foreground" aria-hidden="true" />
 					<CardTitle className="text-2xl">Checkout canceled</CardTitle>
 					<CardDescription>No charge was made and your account is unchanged.</CardDescription>
 				</CardHeader>

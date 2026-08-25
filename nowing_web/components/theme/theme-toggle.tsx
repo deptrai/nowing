@@ -771,7 +771,9 @@ export const ThemeToggleButton = ({
 // ///////////////////////////////////////////////////////////////////////////
 // Backwards compatible export (alias for ThemeToggleButton with default settings)
 export function ThemeTogglerComponent() {
-	return <ThemeToggleButton variant="circle" start="top-right" className="size-8" />;
+	return (
+		<ThemeToggleButton variant="circle" start="top-right" className="size-8" aria-hidden="true" />
+	);
 }
 
 /**

@@ -65,7 +65,10 @@ export const NowingHero: React.FC = () => {
 			<div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
 				{/* Top Launch Pill */}
 				<div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-emerald-200/80 bg-emerald-50/80 text-emerald-800 dark:bg-emerald-950/50 dark:border-emerald-800/80 dark:text-emerald-300 text-xs font-semibold mb-6 shadow-xs backdrop-blur-xs">
-					<span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+					<span
+						className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"
+						aria-hidden="true"
+					/>
 					<span>{t("launch_pill_title")}</span>
 					<span className="text-emerald-400">·</span>
 					<span>{t("launch_pill_desc")}</span>
@@ -85,46 +88,56 @@ export const NowingHero: React.FC = () => {
 				</p>
 
 				{/* Mode Switcher Tabs */}
-				<div className="inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 mb-4 shadow-xs">
+				<div
+					className="inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 mb-4 shadow-xs"
+					role="tablist"
+					aria-label="Search mode"
+				>
 					<button
 						type="button"
+						role="tab"
+						aria-selected={mode === "lead_gen"}
 						onClick={() => setMode("lead_gen")}
 						className={cn(
-							"flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all",
+							"flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
 							mode === "lead_gen"
 								? "bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs border border-emerald-200/60"
 								: "text-slate-600 dark:text-slate-400 hover:text-slate-900"
 						)}
 					>
-						<Target className="w-3.5 h-3.5" />
+						<Target className="w-3.5 h-3.5" aria-hidden="true" />
 						<span>{t("tab_lead_gen")}</span>
 					</button>
 
 					<button
 						type="button"
+						role="tab"
+						aria-selected={mode === "enrich"}
 						onClick={() => setMode("enrich")}
 						className={cn(
-							"flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all",
+							"flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
 							mode === "enrich"
 								? "bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs border border-emerald-200/60"
 								: "text-slate-600 dark:text-slate-400 hover:text-slate-900"
 						)}
 					>
-						<Zap className="w-3.5 h-3.5" />
+						<Zap className="w-3.5 h-3.5" aria-hidden="true" />
 						<span>{t("tab_enrich")}</span>
 					</button>
 
 					<button
 						type="button"
+						role="tab"
+						aria-selected={mode === "viral"}
 						onClick={() => setMode("viral")}
 						className={cn(
-							"flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all",
+							"flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
 							mode === "viral"
 								? "bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs border border-emerald-200/60"
 								: "text-slate-600 dark:text-slate-400 hover:text-slate-900"
 						)}
 					>
-						<Flame className="w-3.5 h-3.5" />
+						<Flame className="w-3.5 h-3.5" aria-hidden="true" />
 						<span>{t("tab_viral")}</span>
 					</button>
 				</div>
@@ -135,6 +148,7 @@ export const NowingHero: React.FC = () => {
 						rows={3}
 						value={prompt}
 						onChange={(e) => setPrompt(e.target.value)}
+						aria-label="Ask anything about your leads, data, or market"
 						placeholder={
 							mode === "lead_gen"
 								? t("placeholder_lead_gen")
@@ -159,12 +173,12 @@ export const NowingHero: React.FC = () => {
 								onClick={() => setShowUrlModal(!showUrlModal)}
 								className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 transition-colors"
 							>
-								<Globe className="w-3.5 h-3.5 text-emerald-600" />
+								<Globe className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" />
 								<span>{t("tab_enrich")}</span>
 							</button>
 
 							<span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-slate-400">
-								<ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+								<ShieldCheck className="w-3.5 h-3.5 text-emerald-500" aria-hidden="true" />
 								<span>{t("badge_compliance")}</span>
 							</span>
 						</div>
@@ -173,7 +187,7 @@ export const NowingHero: React.FC = () => {
 							<button
 								type="button"
 								onClick={() => handleSearch()}
-								className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs sm:text-sm font-semibold shadow-md transition-all active:scale-95"
+								className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs sm:text-sm font-semibold shadow-md transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
 							>
 								<span>
 									{mode === "enrich"
@@ -182,7 +196,7 @@ export const NowingHero: React.FC = () => {
 											? t("btn_analyze")
 											: t("btn_search")}
 								</span>
-								<ArrowRight className="w-4 h-4" />
+								<ArrowRight className="w-4 h-4" aria-hidden="true" />
 							</button>
 						</div>
 					</div>
@@ -238,19 +252,19 @@ export const NowingHero: React.FC = () => {
 				{/* Trust Stats Bar */}
 				<div className="mt-12 pt-8 border-t border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center justify-center gap-8 text-slate-500 dark:text-slate-400 text-xs sm:text-sm font-medium">
 					<div className="flex items-center gap-2">
-						<CheckCircle2 className="w-4 h-4 text-emerald-500" />
+						<CheckCircle2 className="w-4 h-4 text-emerald-500" aria-hidden="true" />
 						<span>
 							<strong>{t("badge_realtime")}</strong>
 						</span>
 					</div>
 					<div className="flex items-center gap-2">
-						<CheckCircle2 className="w-4 h-4 text-emerald-500" />
+						<CheckCircle2 className="w-4 h-4 text-emerald-500" aria-hidden="true" />
 						<span>
 							<strong>{t("badge_accuracy")}</strong>
 						</span>
 					</div>
 					<div className="flex items-center gap-2">
-						<CheckCircle2 className="w-4 h-4 text-emerald-500" />
+						<CheckCircle2 className="w-4 h-4 text-emerald-500" aria-hidden="true" />
 						<span>
 							<strong>{t("badge_compliance")}</strong>
 						</span>

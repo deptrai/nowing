@@ -161,7 +161,7 @@ export function WorkspaceForm({
 						<div className="flex items-center justify-between mb-4">
 							<div className="flex items-center space-x-4">
 								<span className="p-3 rounded-full bg-blue-100 dark:bg-blue-950/50">
-									<Search className="size-6 text-blue-500" />
+									<Search className="size-6 text-blue-500" aria-hidden="true" />
 								</span>
 								<h3 className="text-xl font-semibold">Workspace</h3>
 							</div>
@@ -173,7 +173,7 @@ export function WorkspaceForm({
 											size="icon"
 											className="h-8 w-8 rounded-full hover:bg-destructive/90 hover:text-destructive-foreground"
 										>
-											<Trash2 className="h-4 w-4" />
+											<Trash2 className="h-4 w-4" aria-hidden="true" />
 										</Button>
 									</AlertDialogTrigger>
 									<AlertDialogContent>
@@ -240,7 +240,7 @@ export function WorkspaceForm({
 
 					<div className="flex justify-end pt-2">
 						<Button type="submit" className="w-full sm:w-auto">
-							<Plus className="mr-2 h-4 w-4" />
+							<Plus className="mr-2 h-4 w-4" aria-hidden="true" />
 							{isEditing ? "Update" : "Create"}
 						</Button>
 					</div>

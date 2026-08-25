@@ -15,8 +15,8 @@ test.describe("PostHog privacy smoke", () => {
 		await expect(page.locator("body")).toContainText(/Nowing|workspace/i, { timeout: 30_000 });
 
 		// Ad-block or missing key should not break the page.
-		const posthogErrors = errors.filter((e) =>
-			e.toLowerCase().includes("posthog") || e.toLowerCase().includes("analytics")
+		const posthogErrors = errors.filter(
+			(e) => e.toLowerCase().includes("posthog") || e.toLowerCase().includes("analytics")
 		);
 		expect(posthogErrors, "No PostHog errors in console").toEqual([]);
 	});

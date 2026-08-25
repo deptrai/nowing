@@ -28,7 +28,7 @@ function showAnnouncementToast(announcement: Announcement) {
 	const options = {
 		description: truncateText(announcement.description, 120),
 		duration: 12000,
-		icon: <Megaphone className="h-4 w-4" />,
+		icon: <Megaphone className="h-4 w-4" aria-hidden="true" />,
 		action: announcement.link
 			? {
 					label: announcement.link.label,

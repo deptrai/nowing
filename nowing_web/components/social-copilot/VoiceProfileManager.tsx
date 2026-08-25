@@ -69,7 +69,7 @@ export function VoiceProfileManager({
 			<div className="rounded-xl border border-border bg-card p-6 shadow-sm">
 				<div className="flex items-center gap-2 mb-4">
 					<div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-						<Sparkles className="h-5 w-5" />
+						<Sparkles className="h-5 w-5" aria-hidden="true" />
 					</div>
 					<div>
 						<h3 className="font-semibold text-foreground text-base">
@@ -144,7 +144,7 @@ export function VoiceProfileManager({
 						/>
 						{!isWordCountValid && (
 							<div className="flex items-center gap-1.5 text-xs text-amber-600">
-								<AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+								<AlertCircle className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
 								<span>
 									Cần thêm ít nhất {Math.max(0, 100 - wordCount)} từ để kích hoạt thuật toán học
 									giọng văn.
@@ -159,7 +159,7 @@ export function VoiceProfileManager({
 							disabled={isLoading || !isWordCountValid || !profileName.trim()}
 							className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 						>
-							<Sparkles className="h-4 w-4" />
+							<Sparkles className="h-4 w-4" aria-hidden="true" />
 							{isLoading ? "Đang phân tích..." : "Phân tích giọng văn / Learn Voice"}
 						</button>
 					</div>
@@ -201,7 +201,7 @@ export function VoiceProfileManager({
 										</div>
 										{isActive ? (
 											<span className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600">
-												<CheckCircle2 className="h-3 w-3" /> Đang dùng
+												<CheckCircle2 className="h-3 w-3" aria-hidden="true" /> Đang dùng
 											</span>
 										) : (
 											<button

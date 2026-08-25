@@ -38,7 +38,7 @@ export function TimezoneCombobox({ value, onChange }: TimezoneComboboxProps) {
 					className="w-full justify-between border-popover-border bg-transparent font-normal hover:bg-transparent"
 				>
 					<span className="truncate">{value || "Select timezone"}</span>
-					<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+					<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" aria-hidden="true" />
 				</Button>
 			</PopoverTrigger>
 			<PopoverContent

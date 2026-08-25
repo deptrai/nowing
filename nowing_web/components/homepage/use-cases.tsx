@@ -74,7 +74,10 @@ export function UseCasesRow() {
 								className="group mt-4 inline-flex items-center gap-1 text-sm font-medium text-foreground"
 							>
 								{useCase.anchor}
-								<ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+								<ArrowRight
+									className="size-4 transition-transform group-hover:translate-x-0.5"
+									aria-hidden="true"
+								/>
 							</Link>
 						</div>
 					</Reveal>

@@ -176,6 +176,7 @@ export function TriggerCard({ trigger, automationId, canUpdate, canDelete }: Tri
 								disabled={updating || isEditing}
 								aria-label={trigger.enabled ? "Disable trigger" : "Enable trigger"}
 								className="h-5 w-9 [&>span]:h-4 [&>span]:w-4 [&>span[data-state=checked]]:translate-x-4"
+								aria-hidden="true"
 							/>
 						)}
 						{showActions && (
@@ -188,19 +189,22 @@ export function TriggerCard({ trigger, automationId, canUpdate, canDelete }: Tri
 										disabled={isEditing}
 										aria-label="Trigger actions"
 									>
-										<MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+										<MoreHorizontal
+											className="h-3.5 w-3.5 text-muted-foreground"
+											aria-hidden="true"
+										/>
 									</Button>
 								</DropdownMenuTrigger>
 								<DropdownMenuContent align="end" className="w-32 z-80">
 									{canUpdate && !isEditing && (
 										<DropdownMenuItem onSelect={startEdit}>
-											<Pencil className="mr-2 h-4 w-4" />
+											<Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
 											Edit
 										</DropdownMenuItem>
 									)}
 									{canDelete && (
 										<DropdownMenuItem onSelect={() => setDeleteOpen(true)}>
-											<Trash2 className="mr-2 h-4 w-4" />
+											<Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
 											Delete
 										</DropdownMenuItem>
 									)}

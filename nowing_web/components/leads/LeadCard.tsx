@@ -164,7 +164,10 @@ export const LeadCard: React.FC<LeadCardProps> = ({
 							)}
 							title={`Fit Score: ${fitBadge.score}/100`}
 						>
-							<span className={cn("w-1.5 h-1.5 rounded-full", fitBadge.dotClass)} />
+							<span
+								className={cn("w-1.5 h-1.5 rounded-full", fitBadge.dotClass)}
+								aria-hidden="true"
+							/>
 							<span className="font-bold">{fitBadge.score}</span>
 							<span>{fitBadge.label}</span>
 						</div>
@@ -190,7 +193,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({
 			<div>
 				<div className="flex items-start justify-between gap-2">
 					<h3 className="text-base font-bold text-zinc-100 flex items-center gap-1.5">
-						<Building2 className="w-4 h-4 text-zinc-400 shrink-0" />
+						<Building2 className="w-4 h-4 text-zinc-400 shrink-0" aria-hidden="true" />
 						<span>{lead.company_name}</span>
 					</h3>
 					{lead.industry && (
@@ -213,7 +216,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({
 
 				{lead.location && (
 					<div className="flex items-center gap-1 text-zinc-400">
-						<MapPin className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+						<MapPin className="w-3.5 h-3.5 text-zinc-500 shrink-0" aria-hidden="true" />
 						<span className="truncate max-w-[200px]">{lead.location}</span>
 					</div>
 				)}
@@ -226,7 +229,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({
 
 				{lead.created_at && (
 					<div className="inline-flex items-center gap-1 text-[11px] text-zinc-500 ml-auto">
-						<Clock className="w-3 h-3" />
+						<Clock className="w-3 h-3" aria-hidden="true" />
 						<span suppressHydrationWarning>
 							{new Date(lead.created_at).toLocaleDateString("vi-VN", {
 								hour: "2-digit",
@@ -266,7 +269,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({
 						onClick={() => onOpenCompanyGraph?.(lead.company_name)}
 						className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 transition-colors"
 					>
-						<Share2 className="w-3.5 h-3.5" />
+						<Share2 className="w-3.5 h-3.5" aria-hidden="true" />
 						<span>Xem Company Graph</span>
 					</button>
 
@@ -277,14 +280,14 @@ export const LeadCard: React.FC<LeadCardProps> = ({
 							rel="noopener noreferrer"
 							className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
 						>
-							<ExternalLink className="w-3.5 h-3.5" />
+							<ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
 							<span>Mở bài gốc</span>
 						</a>
 					)}
 				</div>
 
 				<div className="flex items-center gap-1.5 text-[11px] text-zinc-400">
-					<Sparkles className="w-3 h-3 text-amber-400" />
+					<Sparkles className="w-3 h-3 text-amber-400" aria-hidden="true" />
 					<span>
 						Intent Score: {lead.intent_score != null ? `${lead.intent_score}/100` : "Chưa chấm"}
 					</span>

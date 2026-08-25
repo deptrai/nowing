@@ -135,7 +135,7 @@ export function RevertTurnButton({ chatTurnId, variant = "button" }: RevertTurnB
 							setConfirmOpen(true);
 						}}
 					>
-						<RotateCcw className="size-3.5" />
+						<RotateCcw className="size-3.5" aria-hidden="true" />
 						<span>Revert turn</span>
 						<span className="ml-auto text-xs tabular-nums opacity-70">
 							{reversibleCount}/{totalCount}
@@ -152,7 +152,7 @@ export function RevertTurnButton({ chatTurnId, variant = "button" }: RevertTurnB
 								setConfirmOpen(true);
 							}}
 						>
-							<RotateCcw className="size-3.5" />
+							<RotateCcw className="size-3.5" aria-hidden="true" />
 							<span>Revert turn</span>
 							<span className="text-xs tabular-nums opacity-70">
 								{reversibleCount}/{totalCount}

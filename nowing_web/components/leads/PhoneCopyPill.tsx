@@ -88,9 +88,12 @@ export const PhoneCopyPill: React.FC<PhoneCopyPillProps> = ({
 			{showIcon && (
 				<span className="shrink-0">
 					{copied ? (
-						<Check className="size-3.5 text-emerald-600 dark:text-emerald-400 animate-in zoom-in-50" />
+						<Check
+							className="size-3.5 text-emerald-600 dark:text-emerald-400 animate-in zoom-in-50"
+							aria-hidden="true"
+						/>
 					) : (
-						<Phone className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+						<Phone className="size-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
 					)}
 				</span>
 			)}

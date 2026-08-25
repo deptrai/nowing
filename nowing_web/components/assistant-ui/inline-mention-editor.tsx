@@ -178,16 +178,19 @@ const MentionElement: FC<PlateElementProps<MentionElementNode>> = ({
 			<span contentEditable={false} className={`${MENTION_CHIP_CLASSNAME} cursor-default`}>
 				<span className={MENTION_CHIP_ICON_CLASSNAME}>
 					<span className="relative flex h-3 w-3 items-center justify-center">
-						<span className="flex items-center justify-center transition-opacity group-hover:opacity-0">
+						<span
+							className="flex items-center justify-center transition-opacity group-hover:opacity-0"
+							aria-hidden="true"
+						>
 							{isFolder ? (
-								<FolderIcon className="h-3 w-3" />
+								<FolderIcon className="h-3 w-3" aria-hidden="true" />
 							) : isThread ? (
-								<MessageSquareIcon className="h-3 w-3" />
+								<MessageSquareIcon className="h-3 w-3" aria-hidden="true" />
 							) : isConnector ? (
 								(getConnectorIcon(
 									element.connector_type ?? element.document_type ?? "UNKNOWN",
 									"h-3 w-3"
-								) ?? <PlugIcon className="h-3 w-3" />)
+								) ?? <PlugIcon className="h-3 w-3" aria-hidden="true" />)
 							) : (
 								getConnectorIcon(element.document_type ?? "UNKNOWN", "h-3 w-3")
 							)}
@@ -211,7 +214,7 @@ const MentionElement: FC<PlateElementProps<MentionElementNode>> = ({
 								}}
 								className="absolute inset-0 size-3 rounded-sm p-0 opacity-0 transition-opacity hover:bg-transparent hover:text-primary focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-0 group-hover:opacity-100 [&_svg]:size-3"
 							>
-								<XIcon />
+								<XIcon aria-hidden="true" />
 							</Button>
 						) : null}
 					</span>
@@ -733,6 +736,10 @@ export const InlineMentionEditor = forwardRef<InlineMentionEditorRef, InlineMent
 		const editableProps = useMemo(
 			() => ({
 				placeholder,
+				role: "textbox",
+				"aria-label": placeholder,
+				"aria-multiline": true,
+				"aria-disabled": disabled,
 				onPaste: (e: React.ClipboardEvent<HTMLDivElement>) => {
 					e.preventDefault();
 					const text = e.clipboardData.getData("text/plain");
@@ -741,7 +748,7 @@ export const InlineMentionEditor = forwardRef<InlineMentionEditorRef, InlineMent
 				},
 				onKeyDown: handleKeyDown,
 			}),
-			[editor, handleKeyDown, placeholder]
+			[editor, handleKeyDown, placeholder, disabled]
 		);
 
 		const mentionEditorContextValue = useMemo<MentionEditorContextValue>(

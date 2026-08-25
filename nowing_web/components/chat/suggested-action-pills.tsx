@@ -117,11 +117,14 @@ export const SuggestedActionPills: React.FC<SuggestedActionPillsProps> = ({
 							"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50",
 							(disabled || isDispatching) && "opacity-50 cursor-not-allowed pointer-events-none"
 						)}
-						title={action.prompt_template}
+						title={action.label}
 						data-testid={`suggested-action-pill-${index}`}
 						data-action-type={action.action_type}
 					>
-						<IconComponent className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform" />
+						<IconComponent
+							className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform"
+							aria-hidden="true"
+						/>
 						<span className="truncate max-w-[280px]">{action.label}</span>
 						{isLast && (
 							<kbd className="ml-1 rounded px-1 py-0.5 text-[9px] font-mono text-emerald-700/70 dark:text-emerald-400/60 border border-emerald-300/50 dark:border-emerald-800/60 bg-emerald-100/50 dark:bg-emerald-900/30">

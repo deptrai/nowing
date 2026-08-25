@@ -153,7 +153,10 @@ export function Citation(props: CitationProps) {
 					)}
 				</div>
 				{sanitizedHref && (
-					<ExternalLink className="size-3.5 shrink-0 opacity-0 transition-opacity group-hover:opacity-100" />
+					<ExternalLink
+						className="size-3.5 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+						aria-hidden="true"
+					/>
 				)}
 			</div>
 

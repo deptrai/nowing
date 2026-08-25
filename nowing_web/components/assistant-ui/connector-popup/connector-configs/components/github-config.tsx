@@ -96,7 +96,7 @@ export const GithubConfig: FC<GithubConfigProps> = ({
 				<div className="space-y-4">
 					<div className="space-y-2">
 						<Label className="flex items-center gap-2 text-xs sm:text-sm">
-							<KeyRound className="h-4 w-4" />
+							<KeyRound className="h-4 w-4" aria-hidden="true" />
 							GitHub Personal Access Token (optional)
 						</Label>
 						<Input

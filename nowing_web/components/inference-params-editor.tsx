@@ -142,7 +142,7 @@ export default function InferenceParamsEditor({ params, setParams }: InferencePa
 											onClick={() => handleDelete(key)}
 											aria-label={`Delete parameter ${key}`}
 										>
-											<Trash2 className="w-4 h-4" />
+											<Trash2 className="w-4 h-4" aria-hidden="true" />
 										</Button>
 									</td>
 								</tr>

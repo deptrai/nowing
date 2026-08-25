@@ -55,8 +55,8 @@ export function PerTurnUsageSection({ workspaceId, range }: PerTurnUsageSectionP
 		return (
 			<Card>
 				<CardHeader>
-					<Skeleton className="h-6 w-40" />
-					<Skeleton className="h-4 w-64" />
+					<Skeleton className="h-6 w-40" aria-hidden="true" />
+					<Skeleton className="h-4 w-64" aria-hidden="true" />
 				</CardHeader>
 				<CardContent>
 					<Skeleton className="h-[240px] w-full" />
@@ -69,7 +69,7 @@ export function PerTurnUsageSection({ workspaceId, range }: PerTurnUsageSectionP
 		return (
 			<Card>
 				<CardHeader className="flex flex-row items-center gap-2">
-					<BarChart3 className="h-5 w-5 text-muted-foreground" />
+					<BarChart3 className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
 					<CardTitle className="text-base font-medium">{t("per_turn_title")}</CardTitle>
 				</CardHeader>
 				<CardContent>
@@ -84,7 +84,7 @@ export function PerTurnUsageSection({ workspaceId, range }: PerTurnUsageSectionP
 	return (
 		<Card>
 			<CardHeader className="flex flex-row items-center gap-2">
-				<BarChart3 className="h-5 w-5 text-muted-foreground" />
+				<BarChart3 className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
 				<div>
 					<CardTitle className="text-base font-medium">{t("per_turn_title")}</CardTitle>
 					<CardDescription>{t("per_turn_description")}</CardDescription>
@@ -93,7 +93,7 @@ export function PerTurnUsageSection({ workspaceId, range }: PerTurnUsageSectionP
 			<CardContent className="space-y-4">
 				{data.reconcile_warning && (
 					<Alert variant="warning">
-						<AlertTriangle className="h-4 w-4" />
+						<AlertTriangle className="h-4 w-4" aria-hidden="true" />
 						<AlertTitle>{t("per_turn_reconcile_warning_title")}</AlertTitle>
 						<AlertDescription>{t("per_turn_reconcile_warning_description")}</AlertDescription>
 					</Alert>

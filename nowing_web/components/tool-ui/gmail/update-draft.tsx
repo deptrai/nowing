@@ -285,7 +285,7 @@ function ApprovalCard({
 							});
 						}}
 					>
-						<Pencil className="size-3.5" />
+						<Pencil className="size-3.5" aria-hidden="true" />
 						Edit
 					</Button>
 				)}
@@ -314,7 +314,10 @@ function ApprovalCard({
 										<p className="text-xs font-medium text-muted-foreground">Draft to Update</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm space-y-1">
 											<div className="flex items-center gap-1.5">
-												<MailIcon className="size-3 shrink-0 text-muted-foreground" />
+												<MailIcon
+													className="size-3 shrink-0 text-muted-foreground"
+													aria-hidden="true"
+												/>
 												<span className="font-medium">{email.subject}</span>
 											</div>
 										</div>
@@ -331,19 +334,19 @@ function ApprovalCard({
 			<div className="px-5 pt-3 pb-2 space-y-1.5 select-none">
 				{currentTo && (
 					<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-						<UserIcon className="size-3 shrink-0" />
+						<UserIcon className="size-3 shrink-0" aria-hidden="true" />
 						<span>To: {currentTo}</span>
 					</div>
 				)}
 				{currentCc && currentCc.trim() !== "" && (
 					<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-						<UsersIcon className="size-3 shrink-0" />
+						<UsersIcon className="size-3 shrink-0" aria-hidden="true" />
 						<span>CC: {currentCc}</span>
 					</div>
 				)}
 				{currentBcc && currentBcc.trim() !== "" && (
 					<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-						<UsersIcon className="size-3 shrink-0" />
+						<UsersIcon className="size-3 shrink-0" aria-hidden="true" />
 						<span>BCC: {currentBcc}</span>
 					</div>
 				)}
@@ -385,7 +388,7 @@ function ApprovalCard({
 								disabled={isPanelOpen}
 							>
 								Approve
-								<CornerDownLeftIcon className="size-3 opacity-60" />
+								<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 							</Button>
 						)}
 						{allowedDecisions.includes("reject") && (

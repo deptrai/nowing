@@ -60,7 +60,7 @@ const LeadCardContent: React.FC<LeadCardProps> = ({ lead, disabled, isOverlay, o
 				<div className="flex items-center gap-1">
 					{lead.fit_score !== undefined && lead.fit_score !== null && (
 						<span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
-							<Sparkles className="w-2.5 h-2.5" />
+							<Sparkles className="w-2.5 h-2.5" aria-hidden="true" />
 							{lead.fit_score}%
 						</span>
 					)}
@@ -74,7 +74,7 @@ const LeadCardContent: React.FC<LeadCardProps> = ({ lead, disabled, isOverlay, o
 							}}
 							aria-label="Mở chi tiết lead"
 						>
-							<ExternalLink className="w-3 h-3 text-muted-foreground" />
+							<ExternalLink className="w-3 h-3 text-muted-foreground" aria-hidden="true" />
 						</button>
 					) : null}
 				</div>
@@ -487,7 +487,10 @@ export const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = ({ workspaceId })
 							placeholder="Tìm kiếm công ty, nguồn, SĐT..."
 							className="w-full pl-9 pr-4 py-1.5 text-xs rounded-lg bg-muted/40 border border-border text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
 						/>
-						<Filter className="w-3.5 h-3.5 absolute left-3 top-2.5 text-muted-foreground" />
+						<Filter
+							className="w-3.5 h-3.5 absolute left-3 top-2.5 text-muted-foreground"
+							aria-hidden="true"
+						/>
 					</div>
 				</div>
 
@@ -499,9 +502,9 @@ export const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = ({ workspaceId })
 						className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors shadow-xs cursor-pointer"
 					>
 						{isAssigning ? (
-							<Loader2 className="w-3.5 h-3.5 animate-spin" />
+							<Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
 						) : (
-							<UserCheck className="w-3.5 h-3.5" />
+							<UserCheck className="w-3.5 h-3.5" aria-hidden="true" />
 						)}
 						Phân bổ Round-Robin
 					</button>
@@ -521,7 +524,7 @@ export const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = ({ workspaceId })
 			{conflictNotice && (
 				<div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs flex items-center justify-between gap-3 animate-in fade-in duration-200">
 					<div className="flex items-center gap-2">
-						<AlertCircle className="w-4 h-4 shrink-0" />
+						<AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
 						<span>{conflictNotice}</span>
 					</div>
 					<button

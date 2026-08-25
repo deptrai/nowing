@@ -85,7 +85,10 @@ ${citations.length > 0 ? citations.map((c) => `- [${c.title}](${c.url})${c.snipp
 								: "text-muted-foreground hover:text-foreground hover:bg-muted/60"
 						)}
 					>
-						<FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+						<FileText
+							className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400"
+							aria-hidden="true"
+						/>
 						<span>Báo Cáo Nghiên Cứu</span>
 					</button>
 					<button
@@ -98,7 +101,7 @@ ${citations.length > 0 ? citations.map((c) => `- [${c.title}](${c.url})${c.snipp
 								: "text-muted-foreground hover:text-foreground hover:bg-muted/60"
 						)}
 					>
-						<BookOpen className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+						<BookOpen className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" aria-hidden="true" />
 						<span>Nguồn Trích Dẫn & RAG ({citations.length || 8})</span>
 					</button>
 				</div>
@@ -109,7 +112,7 @@ ${citations.length > 0 ? citations.map((c) => `- [${c.title}](${c.url})${c.snipp
 						onClick={handleExportMarkdown}
 						className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md border border-border/80 bg-card hover:bg-muted text-foreground transition-colors cursor-pointer"
 					>
-						<Download className="w-3 h-3" />
+						<Download className="w-3 h-3" aria-hidden="true" />
 						<span>Xuất .MD</span>
 					</button>
 					<button
@@ -117,7 +120,7 @@ ${citations.length > 0 ? citations.map((c) => `- [${c.title}](${c.url})${c.snipp
 						onClick={handleExportPdf}
 						className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer shadow-xs"
 					>
-						<Download className="w-3 h-3" />
+						<Download className="w-3 h-3" aria-hidden="true" />
 						<span>Tải PDF</span>
 					</button>
 				</div>
@@ -130,7 +133,7 @@ ${citations.length > 0 ? citations.map((c) => `- [${c.title}](${c.url})${c.snipp
 						{/* Report Header */}
 						<div className="border-b border-border pb-4">
 							<div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-[11px] font-semibold mb-2 border border-emerald-500/20">
-								<Sparkles className="w-3 h-3" />
+								<Sparkles className="w-3 h-3" aria-hidden="true" />
 								Chainlens Deep Research Synthesis
 							</div>
 							<h1 className="text-lg sm:text-xl font-serif font-medium tracking-tight text-foreground">
@@ -270,7 +273,7 @@ ${citations.length > 0 ? citations.map((c) => `- [${c.title}](${c.url})${c.snipp
 										className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
 										title="Mở liên kết"
 									>
-										<ExternalLink className="w-3.5 h-3.5" />
+										<ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
 									</button>
 								</div>
 							))}

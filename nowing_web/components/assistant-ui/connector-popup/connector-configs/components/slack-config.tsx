@@ -134,7 +134,7 @@ export const SlackConfig: FC<SlackConfigProps> = ({ connector }) => {
 						{channelsWithBot.length > 0 && (
 							<div className={cn("p-3", channelsWithoutBot.length > 0 && "border-b border-border")}>
 								<div className="flex items-center gap-2 mb-2">
-									<CheckCircle2 className="size-3.5 text-emerald-500" />
+									<CheckCircle2 className="size-3.5 text-emerald-500" aria-hidden="true" />
 									<span className="text-[11px] font-medium">Ready to index</span>
 									<span className="text-[10px] text-muted-foreground">
 										{channelsWithBot.length} {channelsWithBot.length === 1 ? "channel" : "channels"}
@@ -152,7 +152,7 @@ export const SlackConfig: FC<SlackConfigProps> = ({ connector }) => {
 						{channelsWithoutBot.length > 0 && (
 							<div className="p-3">
 								<div className="flex items-center gap-2 mb-2">
-									<AlertCircle className="size-3.5 text-amber-500" />
+									<AlertCircle className="size-3.5 text-amber-500" aria-hidden="true" />
 									<span className="text-[11px] font-medium">Add bot to index</span>
 									<span className="text-[10px] text-muted-foreground">
 										{channelsWithoutBot.length}{" "}
@@ -181,9 +181,9 @@ const ChannelPill: FC<ChannelPillProps> = ({ channel }) => {
 	return (
 		<div className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium bg-slate-400/10 dark:bg-white/10 hover:bg-accent hover:text-accent-foreground transition-colors">
 			{channel.is_private ? (
-				<Lock className="size-2.5 text-muted-foreground" />
+				<Lock className="size-2.5 text-muted-foreground" aria-hidden="true" />
 			) : (
-				<Hash className="size-2.5 text-muted-foreground" />
+				<Hash className="size-2.5 text-muted-foreground" aria-hidden="true" />
 			)}
 			<span>{channel.name}</span>
 		</div>

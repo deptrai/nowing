@@ -293,7 +293,7 @@ function ResumeCard({
 					<p className="text-sm font-semibold text-foreground line-clamp-2">{title}</p>
 					<p className="text-xs text-muted-foreground mt-0.5">
 						PDF
-						{versionLabel && <Dot className="inline size-4" />}
+						{versionLabel && <Dot className="inline size-4" aria-hidden="true" />}
 						{versionLabel}
 					</p>
 				</div>

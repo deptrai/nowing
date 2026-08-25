@@ -31,7 +31,7 @@ function DisabledState() {
 	return (
 		<div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 pb-12 text-center">
 			<div className="flex size-12 items-center justify-center rounded-full border border-popover-border bg-muted/40">
-				<Workflow className="size-5 text-muted-foreground" strokeWidth={1.75} />
+				<Workflow className="size-5 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
 			</div>
 			<div className="flex max-w-[280px] flex-col gap-1.5">
 				<p className="text-sm font-semibold tracking-tight">Action log is disabled</p>

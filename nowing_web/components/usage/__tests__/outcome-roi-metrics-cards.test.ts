@@ -22,14 +22,11 @@ function calculateRoiMetrics(input: RoiMetricsInput): RoiMetricsOutput {
 			: 0;
 
 	const estimatedPipelineValueUsd = input.meetingsBookedCount * input.avgDealValueUsd;
-	const estimatedClosedWonUsd =
-		estimatedPipelineValueUsd * (input.closeRatePercent / 100);
+	const estimatedClosedWonUsd = estimatedPipelineValueUsd * (input.closeRatePercent / 100);
 
 	const totalSpentUsd = input.totalMeetingsCostMicros / 1_000_000;
 	const roiMultiplier =
-		totalSpentUsd > 0
-			? Number((estimatedClosedWonUsd / totalSpentUsd).toFixed(1))
-			: 0;
+		totalSpentUsd > 0 ? Number((estimatedClosedWonUsd / totalSpentUsd).toFixed(1)) : 0;
 
 	return {
 		costPerMeetingUsd,

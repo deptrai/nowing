@@ -126,7 +126,8 @@ export const indeed: ConnectorPageContent = {
 			},
 			{
 				feature: "Pricing",
-				official: "Dataset vendors charge flat fees or per-query; in-house scrapers cost engineering time",
+				official:
+					"Dataset vendors charge flat fees or per-query; in-house scrapers cost engineering time",
 				nowing: "Pay per returned job card with no dataset commitment",
 			},
 			{
@@ -150,7 +151,8 @@ export const indeed: ConnectorPageContent = {
 	},
 
 	schema: {
-		requestNote: "Provide a `keyword` (defaults to 'data engineer'). The scraper fetches full job details per listing automatically.",
+		requestNote:
+			"Provide a `keyword` (defaults to 'data engineer'). The scraper fetches full job details per listing automatically.",
 		request: [
 			{
 				name: "keyword",

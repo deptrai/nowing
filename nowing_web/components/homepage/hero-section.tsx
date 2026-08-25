@@ -695,7 +695,7 @@ function GetStartedButton() {
 				disabled={isRedirecting}
 				className="runtime-auth-google h-14 w-full cursor-pointer gap-3 rounded-lg border border-white bg-white text-center text-base font-medium text-[#1f1f1f] shadow-sm transition duration-150 hover:bg-zinc-100 hover:text-[#1f1f1f] sm:w-56 dark:border-white"
 			>
-				<GoogleLogo className="h-5 w-5" />
+				<GoogleLogo className="h-5 w-5" aria-hidden="true" />
 				<span>Continue with Google</span>
 			</Button>
 			<Button
@@ -723,7 +723,7 @@ function DownloadButton() {
 				disabled
 				className="h-14 w-full gap-2 rounded-lg border border-neutral-200 bg-white text-center text-base font-medium text-neutral-700 shadow-sm transition duration-150 sm:w-auto sm:px-6 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200"
 			>
-				<Download className="size-4" />
+				<Download className="size-4" aria-hidden="true" />
 				{mobileDisabledLabel}
 			</Button>
 		);
@@ -737,7 +737,7 @@ function DownloadButton() {
 				className="h-14 w-full gap-2 rounded-lg border border-neutral-200 bg-white text-center text-base font-medium text-neutral-700 shadow-sm transition duration-150 active:scale-98 hover:bg-neutral-50 sm:w-auto sm:px-6 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
 			>
 				<a href={fallbackUrl} target="_blank" rel="noopener noreferrer">
-					<Download className="size-4" />
+					<Download className="size-4" aria-hidden="true" />
 					Download for {os}
 				</a>
 			</Button>
@@ -752,7 +752,7 @@ function DownloadButton() {
 				className="h-auto flex-1 gap-2 rounded-l-lg rounded-r-none border border-r-0 border-neutral-200 bg-white px-5 text-base font-medium text-neutral-700 shadow-sm transition duration-150 active:scale-[0.99] hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
 			>
 				<a href={primary.url}>
-					<Download className="size-4 shrink-0" />
+					<Download className="size-4 shrink-0" aria-hidden="true" />
 					Download for {os}
 				</a>
 			</Button>
@@ -771,7 +771,7 @@ function DownloadButton() {
 					{alternatives.map((asset) => (
 						<DropdownMenuItem key={asset.name} asChild>
 							<a href={asset.url} className="cursor-pointer">
-								<Download className="mr-2 size-3.5" />
+								<Download className="mr-2 size-3.5" aria-hidden="true" />
 								{getAssetLabel(asset.name)}
 							</a>
 						</DropdownMenuItem>

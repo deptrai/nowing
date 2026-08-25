@@ -148,7 +148,7 @@ export class ImageErrorBoundary extends Component<
 				<Card className="w-full max-w-md overflow-hidden rounded-2xl border-0 shadow-none select-none">
 					<div className="aspect-square bg-muted flex items-center justify-center">
 						<div className="flex flex-col items-center gap-2 text-muted-foreground">
-							<ImageIcon className="size-8" />
+							<ImageIcon className="size-8" aria-hidden="true" />
 							<p className="text-sm">Failed to load image</p>
 						</div>
 					</div>
@@ -170,7 +170,7 @@ export function ImageSkeleton({ maxWidth = "512px" }: { maxWidth?: string }) {
 			style={{ maxWidth }}
 		>
 			<div className="aspect-square bg-muted flex items-center justify-center">
-				<ImageIcon className="size-12 text-muted-foreground/30" />
+				<ImageIcon className="size-12 text-muted-foreground/30" aria-hidden="true" />
 			</div>
 		</Card>
 	);
@@ -246,7 +246,7 @@ export function Image({
 			>
 				<div className="aspect-square bg-muted flex items-center justify-center">
 					<div className="flex flex-col items-center gap-2 text-muted-foreground">
-						<ImageIcon className="size-8" />
+						<ImageIcon className="size-8" aria-hidden="true" />
 						<p className="text-sm">Image not available</p>
 					</div>
 				</div>
@@ -348,7 +348,7 @@ export function Image({
 										unoptimized
 									/>
 								) : (
-									<ExternalLinkIcon className="size-3.5 text-white/70" />
+									<ExternalLinkIcon className="size-3.5 text-white/70" aria-hidden="true" />
 								)}
 								<span className="text-white/70 text-xs">{displayDomain}</span>
 							</div>
@@ -366,7 +366,7 @@ export function Image({
 								isGenerated ? "bg-primary/80 text-primary-foreground" : "bg-black/60 text-white"
 							)}
 						>
-							{isGenerated && <SparklesIcon className="size-3 mr-1" />}
+							{isGenerated && <SparklesIcon className="size-3 mr-1" aria-hidden="true" />}
 							{displayDomain}
 						</Badge>
 					</div>

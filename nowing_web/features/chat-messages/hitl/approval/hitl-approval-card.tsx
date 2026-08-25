@@ -229,7 +229,7 @@ const PagerBar: FC<{
 			disabled={currentStep === 0}
 			aria-label="Previous approval"
 		>
-			<ChevronLeftIcon className="h-4 w-4" />
+			<ChevronLeftIcon className="h-4 w-4" aria-hidden="true" />
 		</Button>
 		<span className="font-medium tabular-nums">
 			{currentStep + 1} / {total}
@@ -247,7 +247,7 @@ const PagerBar: FC<{
 			aria-label="Next approval"
 			title={!canAdvance ? "Decide on this action first" : undefined}
 		>
-			<ChevronRightIcon className="h-4 w-4" />
+			<ChevronRightIcon className="h-4 w-4" aria-hidden="true" />
 		</Button>
 		<span className="ml-2 truncate text-xs text-muted-foreground" title={actionName}>
 			{getToolDisplayName(actionName)}

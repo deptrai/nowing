@@ -417,7 +417,7 @@ function ApprovalCard({
 							});
 						}}
 					>
-						<Pencil className="size-3.5" />
+						<Pencil className="size-3.5" aria-hidden="true" />
 						Edit
 					</Button>
 				)}
@@ -446,7 +446,7 @@ function ApprovalCard({
 									<div className="font-medium">{event.summary}</div>
 									{(event.start || event.end) && (
 										<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-											<ClockIcon className="size-3 shrink-0" />
+											<ClockIcon className="size-3 shrink-0" aria-hidden="true" />
 											<span>
 												{event.start ? formatDateTime(event.start) : ""}
 												{event.start && event.end ? " — " : ""}
@@ -456,13 +456,13 @@ function ApprovalCard({
 									)}
 									{event.location && (
 										<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-											<MapPinIcon className="size-3 shrink-0" />
+											<MapPinIcon className="size-3 shrink-0" aria-hidden="true" />
 											<span>{event.location}</span>
 										</div>
 									)}
 									{currentAttendees.length > 0 && (
 										<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-											<UsersIcon className="size-3 shrink-0" />
+											<UsersIcon className="size-3 shrink-0" aria-hidden="true" />
 											<span>{currentAttendees.join(", ")}</span>
 										</div>
 									)}
@@ -482,7 +482,10 @@ function ApprovalCard({
 												<span className="text-muted-foreground line-through">
 													{change.oldVal || "(empty)"}
 												</span>
-												<ArrowRightIcon className="size-3 text-muted-foreground shrink-0" />
+												<ArrowRightIcon
+													className="size-3 text-muted-foreground shrink-0"
+													aria-hidden="true"
+												/>
 												<span className="font-medium text-foreground">
 													{change.newVal || "(empty)"}
 												</span>
@@ -534,7 +537,7 @@ function ApprovalCard({
 								disabled={isPanelOpen}
 							>
 								Approve
-								<CornerDownLeftIcon className="size-3 opacity-60" />
+								<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 							</Button>
 						)}
 						{allowedDecisions.includes("reject") && (

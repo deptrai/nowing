@@ -169,7 +169,7 @@ export function TaskItem({
 						aria-label="Move task up"
 						onClick={onMoveUp}
 					>
-						<ChevronUp className="h-4 w-4" />
+						<ChevronUp className="h-4 w-4" aria-hidden="true" />
 					</Button>
 					<Button
 						type="button"
@@ -180,7 +180,7 @@ export function TaskItem({
 						aria-label="Move task down"
 						onClick={onMoveDown}
 					>
-						<ChevronDown className="h-4 w-4" />
+						<ChevronDown className="h-4 w-4" aria-hidden="true" />
 					</Button>
 					<Button
 						type="button"
@@ -191,7 +191,7 @@ export function TaskItem({
 						aria-label="Remove task"
 						onClick={onRemove}
 					>
-						<Trash2 className="h-4 w-4" />
+						<Trash2 className="h-4 w-4" aria-hidden="true" />
 					</Button>
 				</div>
 			</div>
@@ -217,7 +217,7 @@ export function TaskItem({
 									htmlFor={rawJsonId}
 									className="flex items-center gap-1.5 text-xs text-muted-foreground"
 								>
-									<Code2 className="h-3.5 w-3.5" />
+									<Code2 className="h-3.5 w-3.5" aria-hidden="true" />
 									<span>Raw JSON</span>
 									<Switch id={rawJsonId} checked={rawJson} onCheckedChange={setRawJson} />
 								</label>
@@ -253,7 +253,10 @@ export function TaskItem({
 					<AccordionPrimitive.Header className="flex">
 						<AccordionPrimitive.Trigger className="group flex flex-1 items-center justify-between rounded-md py-1.5 text-left text-xs font-medium text-muted-foreground outline-none transition-all focus-visible:ring-[3px] focus-visible:ring-ring/50">
 							Advanced
-							<ChevronRight className="pointer-events-none size-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+							<ChevronRight
+								className="pointer-events-none size-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90"
+								aria-hidden="true"
+							/>
 						</AccordionPrimitive.Trigger>
 					</AccordionPrimitive.Header>
 					<AccordionContent className="pb-1">

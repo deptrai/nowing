@@ -36,15 +36,15 @@ export function calculateServicePercentages(
 function renderIcon(iconName: string) {
 	switch (iconName) {
 		case "globe":
-			return <Globe className="h-4 w-4 text-blue-500" />;
+			return <Globe className="h-4 w-4 text-blue-500" aria-hidden="true" />;
 		case "share":
-			return <Share2 className="h-4 w-4 text-pink-500" />;
+			return <Share2 className="h-4 w-4 text-pink-500" aria-hidden="true" />;
 		case "phone":
-			return <PhoneCall className="h-4 w-4 text-amber-500" />;
+			return <PhoneCall className="h-4 w-4 text-amber-500" aria-hidden="true" />;
 		case "calendar":
-			return <Calendar className="h-4 w-4 text-emerald-500" />;
+			return <Calendar className="h-4 w-4 text-emerald-500" aria-hidden="true" />;
 		default:
-			return <Bot className="h-4 w-4 text-purple-500" />;
+			return <Bot className="h-4 w-4 text-purple-500" aria-hidden="true" />;
 	}
 }
 

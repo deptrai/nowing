@@ -99,9 +99,9 @@ export function ApiKeyContent() {
 							className="group relative overflow-hidden transition-all duration-200 border-accent bg-accent/20 hover:shadow-md h-full"
 						>
 							<CardContent className="p-4 flex flex-col gap-3 h-full min-h-24">
-								<Skeleton className="h-4 w-32 md:w-40 bg-accent" />
+								<Skeleton className="h-4 w-32 md:w-40 bg-accent" aria-hidden="true" />
 								<Skeleton className="h-3 w-full bg-accent" />
-								<Skeleton className="h-3 w-24 md:w-28 bg-accent" />
+								<Skeleton className="h-3 w-24 md:w-28 bg-accent" aria-hidden="true" />
 							</CardContent>
 						</Card>
 					))}
@@ -147,7 +147,7 @@ export function ApiKeyContent() {
 										onClick={() => setDeleteTarget({ id: token.id, label: token.label })}
 										className="h-7 w-7 shrink-0 rounded-lg text-muted-foreground transition-opacity duration-150 hover:text-accent-foreground sm:opacity-0 sm:pointer-events-none sm:group-hover:opacity-100 sm:group-hover:pointer-events-auto"
 									>
-										<Trash2 className="h-4 w-4" />
+										<Trash2 className="h-4 w-4" aria-hidden="true" />
 									</Button>
 								</CardContent>
 							</Card>
@@ -230,7 +230,11 @@ export function ApiKeyContent() {
 							onClick={copyCreatedToken}
 							className="border-0 bg-muted/30 hover:bg-muted/50"
 						>
-							{copiedToken ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+							{copiedToken ? (
+								<Check className="h-4 w-4" aria-hidden="true" />
+							) : (
+								<Copy className="h-4 w-4" aria-hidden="true" />
+							)}
 						</Button>
 					</div>
 					<DialogFooter>

@@ -195,6 +195,8 @@ export function TabBar({
 			{leftActions ? <div className="flex items-center gap-0.5 shrink-0">{leftActions}</div> : null}
 			<div
 				ref={scrollRef}
+				role="tablist"
+				aria-label="Open chats and documents"
 				className="flex h-8 items-center flex-1 gap-0 pl-2 overflow-x-auto overflow-y-hidden scrollbar-hide [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden py-0"
 			>
 				{resolvedTabs.map((tab, index) => {
@@ -215,6 +217,9 @@ export function TabBar({
 								<Button
 									type="button"
 									variant="ghost"
+									role="tab"
+									aria-selected={isActive}
+									title={tab.title}
 									onClick={() => handleTabClick(tab)}
 									onMouseEnter={() => {
 										setHoveredTabIndex(index);
@@ -243,12 +248,14 @@ export function TabBar({
 										type="button"
 										variant="ghost"
 										size="icon"
+										aria-label={`Close tab ${tab.title}`}
+										title={`Close tab ${tab.title}`}
 										onClick={(e) => handleTabClose(e, tab.id)}
 										onMouseEnter={() => setHoveredTabIndex(index)}
 										onMouseLeave={() => setHoveredTabIndex(null)}
 										className="pointer-events-auto size-4 rounded-full p-0.5 hover:bg-accent hover:text-accent-foreground"
 									>
-										<X data-icon="inline-start" />
+										<X data-icon="inline-start" aria-hidden="true" />
 									</Button>
 								</div>
 							</div>
@@ -271,9 +278,10 @@ export function TabBar({
 							size="icon"
 							onClick={onNewChat}
 							className="size-8 shrink-0 text-muted-foreground transition-all duration-150 hover:bg-accent hover:text-accent-foreground"
+							aria-label="New Chat"
 							title="New Chat"
 						>
-							<Plus data-icon="inline-start" />
+							<Plus data-icon="inline-start" aria-hidden="true" />
 						</Button>
 					</div>
 				)}

@@ -183,7 +183,7 @@ export function PlaybooksContent({ workspaceId }: PlaybooksContentProps) {
 										: "text-muted-foreground hover:text-foreground"
 								}`}
 							>
-								<Icon className="h-3.5 w-3.5" />
+								<Icon className="h-3.5 w-3.5" aria-hidden="true" />
 								{cat.label}
 							</Button>
 						);
@@ -191,7 +191,10 @@ export function PlaybooksContent({ workspaceId }: PlaybooksContentProps) {
 				</div>
 
 				<div className="relative w-full sm:w-64">
-					<Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+					<Search
+						className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground"
+						aria-hidden="true"
+					/>
 					<Input
 						type="search"
 						placeholder="Tìm kiếm kịch bản..."
@@ -271,14 +274,14 @@ export function PlaybooksContent({ workspaceId }: PlaybooksContentProps) {
 								<CardFooter className="flex flex-col gap-3 pt-3 border-t border-border/40 bg-muted/10">
 									<div className="flex items-center justify-between w-full text-xs text-muted-foreground">
 										<div className="flex items-center gap-1">
-											<Coins className="h-3.5 w-3.5 text-amber-500" />
+											<Coins className="h-3.5 w-3.5 text-amber-500" aria-hidden="true" />
 											<span className="font-semibold text-foreground">
 												~{playbook.estimated_credits_cost ?? DEFAULT_CREDIT_COST}
 											</span>{" "}
 											credits/lần
 										</div>
 										<div className="flex items-center gap-1">
-											<Flame className="h-3.5 w-3.5 text-orange-500" />
+											<Flame className="h-3.5 w-3.5 text-orange-500" aria-hidden="true" />
 											<span>{formatRunCount(playbook.run_count)}</span>
 										</div>
 									</div>
@@ -288,7 +291,7 @@ export function PlaybooksContent({ workspaceId }: PlaybooksContentProps) {
 										className="w-full gap-1.5 font-medium shadow-sm transition-all group-hover:bg-primary"
 										onClick={() => setSelectedPlaybook(playbook)}
 									>
-										<Play className="h-3.5 w-3.5 fill-current" />
+										<Play className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
 										Khởi Tạo Kịch Bản
 									</Button>
 								</CardFooter>

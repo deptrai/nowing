@@ -206,7 +206,7 @@ export const LeadsContent: React.FC = () => {
 				<div>
 					<div className="flex items-center gap-2.5">
 						<div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-							<Users className="w-6 h-6" />
+							<Users className="w-6 h-6" aria-hidden="true" />
 						</div>
 						<div>
 							<h1 className="text-xl font-bold text-zinc-100 flex items-center gap-2">
@@ -229,7 +229,7 @@ export const LeadsContent: React.FC = () => {
 						onClick={() => setIsReverseIcpOpen(true)}
 						className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-black transition-colors shadow-sm shadow-emerald-500/20"
 					>
-						<Sparkles className="w-3.5 h-3.5" />
+						<Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
 						<span>1-Click Reverse-ICP</span>
 					</button>
 
@@ -238,7 +238,7 @@ export const LeadsContent: React.FC = () => {
 						onClick={() => setIsDncModalOpen(true)}
 						className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-950/40 text-red-400 hover:bg-red-900/50 hover:text-red-300 border border-red-800/50 transition-colors shadow-sm"
 					>
-						<ShieldAlert className="w-3.5 h-3.5" />
+						<ShieldAlert className="w-3.5 h-3.5" aria-hidden="true" />
 						<span>Do-Not-Call (DNC)</span>
 					</button>
 
@@ -270,7 +270,10 @@ export const LeadsContent: React.FC = () => {
 			<div className="grid grid-cols-1 md:grid-cols-12 gap-3 p-3.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 backdrop-blur-sm">
 				{/* Search Input */}
 				<div className="md:col-span-6 relative">
-					<Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+					<Search
+						className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2"
+						aria-hidden="true"
+					/>
 					<input
 						type="text"
 						value={searchQuery}
@@ -337,7 +340,7 @@ export const LeadsContent: React.FC = () => {
 						năng
 					</span>
 					<div className="flex items-center gap-1 text-[11px] text-zinc-500">
-						<Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+						<Sparkles className="w-3.5 h-3.5 text-emerald-400" aria-hidden="true" />
 						<span>Fit Score được chấm tự động theo ICP của Workspace</span>
 					</div>
 				</div>

@@ -53,7 +53,7 @@ export default function NewCampaignPage() {
 					href={`/dashboard/${workspaceId}/automations/campaigns`}
 					className="p-2 border rounded-lg hover:bg-accent text-muted-foreground transition-colors"
 				>
-					<ArrowLeft className="w-4 h-4" />
+					<ArrowLeft className="w-4 h-4" aria-hidden="true" />
 				</Link>
 				<div>
 					<h1 className="text-xl font-bold text-foreground">Thiết lập chiến dịch Outreach mới</h1>

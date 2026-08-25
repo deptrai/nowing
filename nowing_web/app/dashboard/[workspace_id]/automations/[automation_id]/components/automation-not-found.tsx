@@ -25,7 +25,7 @@ export function AutomationNotFound({ workspaceId, error }: AutomationNotFoundPro
 			</p>
 			<Button asChild variant="outline" size="sm" className="mt-6">
 				<Link href={`/dashboard/${workspaceId}/automations`}>
-					<ArrowLeft className="mr-2 h-4 w-4" />
+					<ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
 					Back to automations
 				</Link>
 			</Button>

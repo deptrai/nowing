@@ -66,10 +66,10 @@ export function WorkspaceApiAccessControl({
 				)}
 			>
 				<div className="space-y-2">
-					<Skeleton className="h-4 w-32" />
-					<Skeleton className="h-3 w-56" />
+					<Skeleton className="h-4 w-32" aria-hidden="true" />
+					<Skeleton className="h-3 w-56" aria-hidden="true" />
 				</div>
-				<Skeleton className="h-6 w-11 rounded-full" />
+				<Skeleton className="h-6 w-11 rounded-full" aria-hidden="true" />
 			</div>
 		);
 	}

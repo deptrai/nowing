@@ -328,7 +328,11 @@ export function ReportPanelContent({
 				onClick={() => handleExport("pdf")}
 				disabled={isLoading || !reportContent?.content || exporting !== null}
 			>
-				{exporting === "pdf" ? <Spinner size="xs" /> : <Download className="size-3.5" />}
+				{exporting === "pdf" ? (
+					<Spinner size="xs" />
+				) : (
+					<Download className="size-3.5" aria-hidden="true" />
+				)}
 				<span className="sr-only">Download report</span>
 			</Button>
 		) : (
@@ -340,7 +344,7 @@ export function ReportPanelContent({
 						className="size-6"
 						disabled={isLoading || !reportContent?.content}
 					>
-						<Download className="size-3.5" />
+						<Download className="size-3.5" aria-hidden="true" />
 						<span className="sr-only">Export report</span>
 					</Button>
 				</DropdownMenuTrigger>
@@ -362,7 +366,7 @@ export function ReportPanelContent({
 			<DropdownMenuTrigger asChild>
 				<Button variant="ghost" size="sm" className="h-6 gap-1 px-1.5 text-xs">
 					v{activeVersionIndex + 1}
-					<ChevronDownIcon className="size-3" />
+					<ChevronDownIcon className="size-3" aria-hidden="true" />
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent
@@ -392,7 +396,11 @@ export function ReportPanelContent({
 			}}
 			disabled={isLoading || !reportContent?.content}
 		>
-			{copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+			{copied ? (
+				<Check className="size-3.5" aria-hidden="true" />
+			) : (
+				<Copy className="size-3.5" aria-hidden="true" />
+			)}
 			<span className="sr-only">{copied ? "Copied report content" : "Copy report content"}</span>
 		</Button>
 	);
@@ -436,7 +444,7 @@ export function ReportPanelContent({
 					setIsEditing(true);
 				}}
 			>
-				<Pencil className="size-3.5" />
+				<Pencil className="size-3.5" aria-hidden="true" />
 				<span className="sr-only">Edit report</span>
 			</Button>
 		));
@@ -457,7 +465,7 @@ export function ReportPanelContent({
 								onClick={onClose}
 								className="h-7 w-7 rounded-md shrink-0 text-muted-foreground hover:text-accent-foreground"
 							>
-								<XIcon className="h-3.5 w-3.5" />
+								<XIcon className="h-3.5 w-3.5" aria-hidden="true" />
 								<span className="sr-only">Close report panel</span>
 							</Button>
 						)}

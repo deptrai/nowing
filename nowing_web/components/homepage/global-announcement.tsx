@@ -19,7 +19,7 @@ export function GlobalAnnouncement() {
 	return (
 		<div className="fixed bottom-0 left-0 right-0 z-60 w-full bg-amber-500/15 text-amber-900 backdrop-blur-md dark:bg-amber-400/10 dark:text-amber-200 border-t border-amber-500/30">
 			<div className="mx-auto flex max-w-7xl items-center justify-center gap-2 px-4 py-2 text-center text-sm font-medium">
-				<IconInfoCircle className="h-4 w-4 shrink-0" />
+				<IconInfoCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
 				<span>{message}</span>
 			</div>
 		</div>

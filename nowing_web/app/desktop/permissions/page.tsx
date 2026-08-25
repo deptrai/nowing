@@ -128,7 +128,7 @@ export default function DesktopPermissionsPage() {
 			<div className="w-full max-w-lg flex flex-col min-h-0 h-full gap-6 py-8">
 				{/* Header */}
 				<div className="text-center space-y-3 shrink-0">
-					<Logo className="w-12 h-12 mx-auto" />
+					<Logo className="w-12 h-12 mx-auto" aria-hidden="true" />
 					<div className="space-y-1">
 						<h1 className="text-2xl font-semibold tracking-tight">System Permissions</h1>
 						<p className="text-sm text-muted-foreground">

@@ -269,6 +269,7 @@ export function ModelSelector({ workspaceId, className, onChatModelSelected }: M
 			variant="ghost"
 			size="sm"
 			aria-label="Select chat model"
+			title="Select chat model"
 			className={cn(
 				"h-7 min-w-0 gap-1.5 rounded-md px-2 text-[11px] font-medium text-muted-foreground transition-colors",
 				"select-none",
@@ -286,7 +287,7 @@ export function ModelSelector({ workspaceId, className, onChatModelSelected }: M
 					{selected ? modelName(selected) : "Auto"}
 				</span>
 			)}
-			<ChevronDown className="h-3 w-3 shrink-0 opacity-70" />
+			<ChevronDown className="h-3 w-3 shrink-0 opacity-70" aria-hidden="true" />
 		</Button>
 	);
 

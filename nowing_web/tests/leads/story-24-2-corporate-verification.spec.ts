@@ -43,11 +43,7 @@ test.describe("Story 24.2: Waterfall Phone & MST Corporate Verification Engine",
 
 	test.beforeEach(async ({ request }) => {
 		ownerToken = await acquireTestToken(request);
-		const workspace = await createWorkspace(
-			request,
-			ownerToken,
-			`E2E 24.2 MST ${Date.now()}`
-		);
+		const workspace = await createWorkspace(request, ownerToken, `E2E 24.2 MST ${Date.now()}`);
 		workspaceId = workspace.id;
 
 		await createLeadViaClip(request, ownerToken, workspaceId, {

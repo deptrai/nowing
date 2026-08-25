@@ -53,7 +53,7 @@ export const SendExportDropdown: React.FC<SendExportDropdownProps> = ({
 				onClick={() => setIsOpen(!isOpen)}
 				className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-all cursor-pointer shadow-2xs focus:outline-none"
 			>
-				<Download className="size-3.5" />
+				<Download className="size-3.5" aria-hidden="true" />
 				<span>Send & Export</span>
 				<ChevronDown
 					className={`size-3.5 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
@@ -72,7 +72,7 @@ export const SendExportDropdown: React.FC<SendExportDropdownProps> = ({
 						onClick={handleDownloadCsv}
 						className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-zinc-200 hover:bg-zinc-800 hover:text-white transition-colors text-left"
 					>
-						<Download className="w-4 h-4 text-emerald-400" />
+						<Download className="w-4 h-4 text-emerald-400" aria-hidden="true" />
 						<div>
 							<div className="font-medium">Tải file CSV</div>
 							<div className="text-[10px] text-zinc-400">Xuất file Excel / CSV tải trực tiếp</div>
@@ -88,7 +88,7 @@ export const SendExportDropdown: React.FC<SendExportDropdownProps> = ({
 						}}
 						className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-zinc-200 hover:bg-zinc-800 hover:text-white transition-colors text-left"
 					>
-						<Cloud className="w-4 h-4 text-blue-400" />
+						<Cloud className="w-4 h-4 text-blue-400" aria-hidden="true" />
 						<div>
 							<div className="font-medium">Đẩy sang Lark Base</div>
 							<div className="text-[10px] text-zinc-400">1-click push Bitable tự động map cột</div>
@@ -104,7 +104,7 @@ export const SendExportDropdown: React.FC<SendExportDropdownProps> = ({
 						}}
 						className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-zinc-200 hover:bg-zinc-800 hover:text-white transition-colors text-left"
 					>
-						<FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+						<FileSpreadsheet className="w-4 h-4 text-emerald-400" aria-hidden="true" />
 						<div>
 							<div className="font-medium">Đẩy sang Google Sheets</div>
 							<div className="text-[10px] text-zinc-400">Append dòng mới vào Google Sheet</div>
@@ -119,9 +119,9 @@ export const SendExportDropdown: React.FC<SendExportDropdownProps> = ({
 							className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-zinc-200 hover:bg-zinc-800 hover:text-white transition-colors text-left"
 						>
 							{copied ? (
-								<Check className="w-4 h-4 text-emerald-400" />
+								<Check className="w-4 h-4 text-emerald-400" aria-hidden="true" />
 							) : (
-								<Share2 className="w-4 h-4 text-indigo-400" />
+								<Share2 className="w-4 h-4 text-indigo-400" aria-hidden="true" />
 							)}
 							<div>
 								<div className="font-medium">

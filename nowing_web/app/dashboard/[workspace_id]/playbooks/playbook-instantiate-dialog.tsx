@@ -136,7 +136,7 @@ export function PlaybookInstantiateDialog({
 			<DialogContent className="max-h-[90vh] overflow-y-auto max-w-xl">
 				<DialogHeader className="space-y-1.5 pb-2 border-b border-border/40">
 					<div className="flex items-center gap-2">
-						<Sparkles className="h-5 w-5 text-primary" />
+						<Sparkles className="h-5 w-5 text-primary" aria-hidden="true" />
 						<DialogTitle className="text-lg font-bold">Khởi Tạo: {playbook.name}</DialogTitle>
 					</div>
 					<DialogDescription className="text-xs text-muted-foreground">
@@ -147,7 +147,7 @@ export function PlaybookInstantiateDialog({
 
 				{/* Credit Preview Banner (AC-3) */}
 				<Alert className="bg-primary/5 border-primary/20 py-2.5">
-					<Coins className="h-4 w-4 text-primary" />
+					<Coins className="h-4 w-4 text-primary" aria-hidden="true" />
 					<AlertTitle className="text-xs font-semibold text-primary">
 						Ước tính Chi Phí & Giới Hạn
 					</AlertTitle>
@@ -165,7 +165,7 @@ export function PlaybookInstantiateDialog({
 				{detailError ? (
 					<div className="space-y-4 pt-2">
 						<Alert variant="destructive">
-							<AlertCircle className="h-4 w-4" />
+							<AlertCircle className="h-4 w-4" aria-hidden="true" />
 							<AlertTitle className="text-xs font-semibold">Lỗi tải chi tiết playbook</AlertTitle>
 							<AlertDescription className="text-[11px]">
 								{detailError.message || "Không thể tải chi tiết kịch bản. Vui lòng thử lại."}

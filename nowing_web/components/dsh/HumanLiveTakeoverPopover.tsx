@@ -80,7 +80,7 @@ export const HumanLiveTakeoverPopover: React.FC<HumanLiveTakeoverPopoverProps> =
 		<div className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 shadow-sm">
 			<div className="flex items-start gap-3">
 				<div className="mt-0.5 p-1.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
-					<AlertTriangle className="w-4 h-4" />
+					<AlertTriangle className="w-4 h-4" aria-hidden="true" />
 				</div>
 				<div className="flex-1 min-w-0">
 					<h3 className="text-sm font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-2">
@@ -112,7 +112,7 @@ export const HumanLiveTakeoverPopover: React.FC<HumanLiveTakeoverPopoverProps> =
 						</p>
 					)}
 					<div className="mt-2 flex items-center gap-2 text-amber-800 dark:text-amber-300">
-						<Clock className="w-3.5 h-3.5" />
+						<Clock className="w-3.5 h-3.5" aria-hidden="true" />
 						<span className="text-xs font-mono font-semibold tabular-nums">
 							{formatCountdown(remainingSeconds)}
 						</span>
@@ -128,7 +128,7 @@ export const HumanLiveTakeoverPopover: React.FC<HumanLiveTakeoverPopoverProps> =
 							onClick={onResume}
 							className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400 text-white text-xs font-medium transition-colors"
 						>
-							<Zap className="w-3.5 h-3.5" />
+							<Zap className="w-3.5 h-3.5" aria-hidden="true" />
 							{resuming ? "Đang resume..." : "Tiếp tục nhiệm vụ"}
 						</button>
 						<button
@@ -137,7 +137,7 @@ export const HumanLiveTakeoverPopover: React.FC<HumanLiveTakeoverPopoverProps> =
 							onClick={onRelease}
 							className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-amber-600/50 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 disabled:opacity-50 text-xs font-medium transition-colors"
 						>
-							<Hand className="w-3.5 h-3.5" />
+							<Hand className="w-3.5 h-3.5" aria-hidden="true" />
 							{releasing ? "Đang giữ quyền..." : "Giữ quyền điều khiển"}
 						</button>
 					</div>

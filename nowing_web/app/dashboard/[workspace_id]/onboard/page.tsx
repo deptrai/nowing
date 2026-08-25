@@ -32,7 +32,7 @@ export default function OnboardPage() {
 	return (
 		<div className="flex min-h-screen select-none flex-col items-center justify-center bg-main-panel p-4">
 			<div className="w-full max-w-3xl space-y-6 text-center">
-				<Logo className="mx-auto h-12 w-12" />
+				<Logo className="mx-auto h-12 w-12" aria-hidden="true" />
 				<div className="space-y-2">
 					<h1 className="text-2xl font-semibold tracking-tight">Choose a model</h1>
 					<p className="text-sm text-muted-foreground">

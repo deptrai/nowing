@@ -128,10 +128,16 @@ export function ConnectorRail({
 										</span>
 									)}
 									{health === "syncing" && (
-										<Loader2 className="size-3.5 shrink-0 animate-spin text-primary" />
+										<Loader2
+											className="size-3.5 shrink-0 animate-spin text-primary"
+											aria-hidden="true"
+										/>
 									)}
 									{health === "failed" && (
-										<TriangleAlert className="size-3.5 shrink-0 text-destructive" />
+										<TriangleAlert
+											className="size-3.5 shrink-0 text-destructive"
+											aria-hidden="true"
+										/>
 									)}
 								</Button>
 							);

@@ -80,7 +80,7 @@ export function DesktopContent() {
 			<div className="flex flex-col gap-4 md:gap-6">
 				<section>
 					<div className="flex flex-col gap-2 pb-2 md:pb-3">
-						<Skeleton className="h-6 w-48 bg-accent" />
+						<Skeleton className="h-6 w-48 bg-accent" aria-hidden="true" />
 						<Skeleton className="h-4 w-full max-w-2xl bg-accent" />
 					</div>
 					<Skeleton className="h-10 w-full bg-accent" />
@@ -90,7 +90,7 @@ export function DesktopContent() {
 
 				<section>
 					<div className="flex flex-col gap-2 pb-2 md:pb-3">
-						<Skeleton className="h-6 w-44 bg-accent" />
+						<Skeleton className="h-6 w-44 bg-accent" aria-hidden="true" />
 						<Skeleton className="h-4 w-full max-w-3xl bg-accent" />
 					</div>
 					<div className="flex flex-col gap-3">

@@ -38,7 +38,7 @@ function ImageErrorState({ prompt, error }: { prompt: string; error: string }) {
 		<div className="my-4 overflow-hidden rounded-xl border border-destructive/20 bg-destructive/5 p-4 max-w-md">
 			<div className="flex items-center gap-4">
 				<div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-destructive/10">
-					<AlertCircleIcon className="size-6 text-destructive" />
+					<AlertCircleIcon className="size-6 text-destructive" aria-hidden="true" />
 				</div>
 				<div className="flex-1 min-w-0">
 					<p className="font-medium text-destructive text-sm">Image generation failed</p>
@@ -54,7 +54,7 @@ function ImageCancelledState({ prompt }: { prompt: string }) {
 	return (
 		<div className="my-4 rounded-xl border border-muted p-4 text-muted-foreground max-w-md">
 			<p className="flex items-center gap-2">
-				<ImageIcon className="size-4" />
+				<ImageIcon className="size-4" aria-hidden="true" />
 				<span className="line-through truncate">Generate: {prompt}</span>
 			</p>
 		</div>

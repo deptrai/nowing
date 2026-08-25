@@ -135,7 +135,7 @@ export function AutomationDetailHeader({
 						href={`/dashboard/${workspaceId}/automations`}
 						className="text-xs text-muted-foreground"
 					>
-						<ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
+						<ArrowLeft className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
 						Back to automations
 					</Link>
 				</Button>
@@ -162,7 +162,7 @@ export function AutomationDetailHeader({
 								onClick={openSaveDialog}
 								className="justify-start rounded-md bg-muted px-3 hover:bg-accent"
 							>
-								<BookOpen className="mr-1 h-4 w-4" />
+								<BookOpen className="mr-1 h-4 w-4" aria-hidden="true" />
 								Save as Playbook
 							</Button>
 						)}
@@ -175,7 +175,7 @@ export function AutomationDetailHeader({
 								className="justify-start rounded-md bg-muted px-3 hover:bg-accent"
 							>
 								<Link href={`/dashboard/${workspaceId}/automations/${automation.id}/edit`}>
-									<Pencil className="mr-1 h-4 w-4" />
+									<Pencil className="mr-1 h-4 w-4" aria-hidden="true" />
 									Edit
 								</Link>
 							</Button>
@@ -196,7 +196,7 @@ export function AutomationDetailHeader({
 											: "inline-flex items-center whitespace-nowrap"
 									}
 								>
-									<PauseIcon className="mr-1 h-4 w-4" />
+									<PauseIcon className="mr-1 h-4 w-4" aria-hidden="true" />
 									{pauseLabel}
 								</span>
 								{updating && (
@@ -215,7 +215,7 @@ export function AutomationDetailHeader({
 								onClick={() => setDeleteOpen(true)}
 								className="justify-start rounded-md bg-muted px-3 hover:bg-accent"
 							>
-								<Trash2 className="mr-1 h-4 w-4" />
+								<Trash2 className="mr-1 h-4 w-4" aria-hidden="true" />
 								Delete
 							</Button>
 						)}

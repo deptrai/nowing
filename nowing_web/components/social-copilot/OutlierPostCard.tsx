@@ -55,7 +55,7 @@ export function OutlierPostCard({
 						data-testid="outlier-multiplier"
 						className="flex items-center gap-1 rounded-full bg-orange-500/10 border border-orange-500/20 px-2 py-0.5 text-xs font-bold text-orange-600"
 					>
-						<Flame className="h-3 w-3" />
+						<Flame className="h-3 w-3" aria-hidden="true" />
 						{post.baseline_ratio >= 1 ? `${post.baseline_ratio}x` : "3.0x"} baseline
 					</span>
 
@@ -76,7 +76,7 @@ export function OutlierPostCard({
 						className="text-muted-foreground hover:text-foreground transition-colors p-1"
 						title="Xem bài gốc"
 					>
-						<ExternalLink className="h-4 w-4" />
+						<ExternalLink className="h-4 w-4" aria-hidden="true" />
 					</a>
 				)}
 			</div>
@@ -100,13 +100,13 @@ export function OutlierPostCard({
 			<div className="flex items-center justify-between pt-3 border-t border-border/50 text-xs text-muted-foreground">
 				<div className="flex items-center gap-3 font-mono">
 					<span className="flex items-center gap-1">
-						<ThumbsUp className="h-3.5 w-3.5" /> {post.reactions_count}
+						<ThumbsUp className="h-3.5 w-3.5" aria-hidden="true" /> {post.reactions_count}
 					</span>
 					<span className="flex items-center gap-1">
-						<MessageSquare className="h-3.5 w-3.5" /> {post.comments_count}
+						<MessageSquare className="h-3.5 w-3.5" aria-hidden="true" /> {post.comments_count}
 					</span>
 					<span className="flex items-center gap-1">
-						<Repeat2 className="h-3.5 w-3.5" /> {post.shares_count}
+						<Repeat2 className="h-3.5 w-3.5" aria-hidden="true" /> {post.shares_count}
 					</span>
 				</div>
 
@@ -125,7 +125,7 @@ export function OutlierPostCard({
 							onClick={() => onGenerateDraft(post)}
 							className="flex items-center gap-1 rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
 						>
-							<Sparkles className="h-3 w-3" /> Tạo bản thảo
+							<Sparkles className="h-3 w-3" aria-hidden="true" /> Tạo bản thảo
 						</button>
 					)}
 				</div>

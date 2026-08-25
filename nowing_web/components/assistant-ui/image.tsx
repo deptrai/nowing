@@ -83,7 +83,7 @@ function ImagePreview({
 					data-slot="image-preview-loading"
 					className="absolute inset-0 flex items-center justify-center bg-muted/50"
 				>
-					<ImageIcon className="size-8 animate-pulse text-muted-foreground" />
+					<ImageIcon className="size-8 animate-pulse text-muted-foreground" aria-hidden="true" />
 				</div>
 			)}
 			{error ? (
@@ -91,7 +91,7 @@ function ImagePreview({
 					data-slot="image-preview-error"
 					className="flex min-h-32 items-center justify-center bg-muted/50 p-4"
 				>
-					<ImageOffIcon className="size-8 text-muted-foreground" />
+					<ImageOffIcon className="size-8 text-muted-foreground" aria-hidden="true" />
 				</div>
 			) : (
 				<NextImage

@@ -114,7 +114,7 @@ export function AutoExtractBudgetCard({ workspaceId }: AutoExtractBudgetCardProp
 		<Card>
 			<CardHeader>
 				<div className="flex items-center gap-2">
-					<PiggyBank className="h-5 w-5 text-muted-foreground" />
+					<PiggyBank className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
 					<CardTitle className="text-base font-medium">{t("auto_extract_budget_title")}</CardTitle>
 				</div>
 				<CardDescription>{t("auto_extract_budget_description")}</CardDescription>
@@ -122,7 +122,7 @@ export function AutoExtractBudgetCard({ workspaceId }: AutoExtractBudgetCardProp
 			<CardContent className="space-y-4">
 				{(showSpendWarning || showCountWarning) && (
 					<Alert variant="warning">
-						<AlertTriangle className="h-4 w-4" />
+						<AlertTriangle className="h-4 w-4" aria-hidden="true" />
 						<AlertTitle>{t("auto_extract_budget_warning_title")}</AlertTitle>
 						<AlertDescription>
 							{showSpendWarning &&
@@ -187,7 +187,7 @@ export function AutoExtractBudgetCard({ workspaceId }: AutoExtractBudgetCardProp
 
 				<div className="flex items-center gap-2">
 					<Button onClick={handleSave} disabled={mutation.isPending} size="sm">
-						<Save className="mr-2 h-4 w-4" />
+						<Save className="mr-2 h-4 w-4" aria-hidden="true" />
 						{mutation.isPending ? t("auto_extract_budget_saving") : t("auto_extract_budget_save")}
 					</Button>
 				</div>

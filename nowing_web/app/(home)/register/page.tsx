@@ -163,7 +163,11 @@ export default function RegisterPage() {
 		<div className="relative w-full overflow-hidden">
 			<AmbientBackground />
 			<div className="mx-auto flex h-screen max-w-lg flex-col items-center justify-center px-6 md:px-0">
-				<Logo priority className="h-16 w-16 md:h-32 md:w-32 rounded-md transition-all" />
+				<Logo
+					priority
+					className="h-16 w-16 md:h-32 md:w-32 rounded-md transition-all"
+					aria-hidden="true"
+				/>
 				<h1 className="mt-4 mb-6 font-serif text-2xl md:text-3xl lg:text-4xl font-normal text-neutral-800 dark:text-neutral-100 md:mt-6 md:mb-6 transition-all tracking-tight">
 					{t("create_account")}
 				</h1>
@@ -192,6 +196,7 @@ export default function RegisterPage() {
 											strokeLinecap="round"
 											strokeLinejoin="round"
 											className="flex-shrink-0 mt-0.5 text-red-500 dark:text-red-400"
+											aria-hidden="true"
 										>
 											<title>Error Icon</title>
 											<circle cx="12" cy="12" r="10" />
@@ -222,6 +227,7 @@ export default function RegisterPage() {
 												strokeWidth="2"
 												strokeLinecap="round"
 												strokeLinejoin="round"
+												aria-hidden="true"
 											>
 												<title>Close</title>
 												<line x1="18" y1="6" x2="6" y2="18" />
@@ -303,6 +309,8 @@ export default function RegisterPage() {
 						<Button
 							type="submit"
 							disabled={isRegistering}
+							aria-label={isRegistering ? "Creating account..." : t("register")}
+							aria-busy={isRegistering}
 							className="relative h-auto w-full px-4 py-1.5 text-sm md:py-2 md:text-base"
 						>
 							<span className={isRegistering ? "invisible" : ""}>{t("register")}</span>
@@ -317,7 +325,10 @@ export default function RegisterPage() {
 					<div className="mt-4 text-center text-sm">
 						<p className="text-muted-foreground">
 							{t("already_have_account")}{" "}
-							<Link href="/login" className="font-medium text-primary hover:text-primary/90">
+							<Link
+								href="/login"
+								className="font-medium text-primary hover:text-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+							>
 								{t("sign_in")}
 							</Link>
 						</p>

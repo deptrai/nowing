@@ -16,11 +16,7 @@ test.describe("Playwright Chotot multi-category scrape", () => {
 
 	test.beforeEach(async ({ request }) => {
 		ownerToken = await acquireTestToken(request);
-		const workspace = await createWorkspace(
-			request,
-			ownerToken,
-			`E2E Chotot ${Date.now()}`
-		);
+		const workspace = await createWorkspace(request, ownerToken, `E2E Chotot ${Date.now()}`);
 		workspaceId = workspace.id;
 	});
 

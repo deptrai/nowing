@@ -118,7 +118,7 @@ export function OutputViewer({ data, filenameBase }: { data: unknown; filenameBa
 				<div className="flex items-center gap-1">
 					{items && items.length > 0 && (
 						<Button type="button" variant="ghost" size="sm" onClick={exportCsv} className="gap-1.5">
-							<Download className="h-3.5 w-3.5" />
+							<Download className="h-3.5 w-3.5" aria-hidden="true" />
 							Export CSV
 						</Button>
 					)}
@@ -130,7 +130,11 @@ export function OutputViewer({ data, filenameBase }: { data: unknown; filenameBa
 						aria-label={copied ? "Copied JSON" : "Copy JSON"}
 						className="h-8 w-8 p-0"
 					>
-						{copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+						{copied ? (
+							<Check className="h-3.5 w-3.5" aria-hidden="true" />
+						) : (
+							<Copy className="h-3.5 w-3.5" aria-hidden="true" />
+						)}
 					</Button>
 				</div>
 			</div>

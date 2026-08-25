@@ -73,12 +73,12 @@ export function WorkspaceMcpToolsControl({
 	if (isLoading || isOwner === undefined) {
 		return (
 			<div className={cn("space-y-4", className)}>
-				<Skeleton className="h-4 w-40" />
+				<Skeleton className="h-4 w-40" aria-hidden="true" />
 				<div className="space-y-3">
 					{["skeleton-1", "skeleton-2", "skeleton-3", "skeleton-4", "skeleton-5"].map((key) => (
 						<div key={key} className="flex items-center justify-between">
-							<Skeleton className="h-4 w-48" />
-							<Skeleton className="h-6 w-11 rounded-full" />
+							<Skeleton className="h-4 w-48" aria-hidden="true" />
+							<Skeleton className="h-6 w-11 rounded-full" aria-hidden="true" />
 						</div>
 					))}
 				</div>

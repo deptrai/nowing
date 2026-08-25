@@ -244,12 +244,12 @@ export const ConnectorEditView: FC<ConnectorEditViewProps> = ({
 						>
 							{isQuickIndexing || isIndexing ? (
 								<>
-									<RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+									<RefreshCw className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
 									Syncing
 								</>
 							) : (
 								<>
-									<RefreshCw className="mr-2 h-4 w-4" />
+									<RefreshCw className="mr-2 h-4 w-4" aria-hidden="true" />
 									Quick Index
 								</>
 							)}

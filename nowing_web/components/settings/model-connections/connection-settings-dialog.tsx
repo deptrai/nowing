@@ -220,7 +220,7 @@ export function ConnectionSettingsDialog({
 					className="text-muted-foreground hover:text-accent-foreground"
 					aria-label={`Configure ${providerLabel}`}
 				>
-					<Settings className="h-4 w-4" />
+					<Settings className="h-4 w-4" aria-hidden="true" />
 				</Button>
 			</DialogTrigger>
 			<DialogContent className="flex max-h-[90vh] max-w-3xl flex-col overflow-hidden bg-popover p-0 text-popover-foreground">
@@ -271,7 +271,11 @@ export function ConnectionSettingsDialog({
 									disabled={!apiKeyDraft}
 									aria-label={showApiKey ? "Hide API key" : "Show API key"}
 								>
-									{showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+									{showApiKey ? (
+										<EyeOff className="h-4 w-4" aria-hidden="true" />
+									) : (
+										<Eye className="h-4 w-4" aria-hidden="true" />
+									)}
 								</Button>
 							</div>
 						</div>

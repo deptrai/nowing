@@ -326,13 +326,13 @@ export function ConnectorDetailPane({
 						</h2>
 						{isSyncing && (
 							<span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-								<Loader2 className="size-3 animate-spin" />
+								<Loader2 className="size-3 animate-spin" aria-hidden="true" />
 								Syncing
 							</span>
 						)}
 						{isFailed && (
 							<span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
-								<TriangleAlert className="size-3" />
+								<TriangleAlert className="size-3" aria-hidden="true" />
 								Failed
 							</span>
 						)}

@@ -22,6 +22,7 @@ export function useThreadDetail(threadId: number | null | undefined) {
 		queryFn: () => getThreadFull(threadId as number),
 		enabled: isValidThreadId(threadId),
 		staleTime: THREAD_DETAIL_STALE_TIME_MS,
+		meta: { suppressGlobalErrorToast: true },
 	});
 }
 
@@ -31,6 +32,7 @@ export function useThreadMessages(threadId: number | null | undefined) {
 		queryFn: () => getThreadMessages(threadId as number),
 		enabled: isValidThreadId(threadId),
 		staleTime: THREAD_MESSAGES_STALE_TIME_MS,
+		meta: { suppressGlobalErrorToast: true },
 	});
 }
 
@@ -42,11 +44,13 @@ export function prefetchThreadData(queryClient: QueryClient, threadId: number): 
 			queryKey: cacheKeys.threads.detail(threadId),
 			queryFn: () => getThreadFull(threadId),
 			staleTime: THREAD_DETAIL_STALE_TIME_MS,
+			meta: { suppressGlobalErrorToast: true },
 		}),
 		queryClient.prefetchQuery({
 			queryKey: cacheKeys.threads.messages(threadId),
 			queryFn: () => getThreadMessages(threadId),
 			staleTime: THREAD_MESSAGES_STALE_TIME_MS,
+			meta: { suppressGlobalErrorToast: true },
 		}),
 	]);
 }

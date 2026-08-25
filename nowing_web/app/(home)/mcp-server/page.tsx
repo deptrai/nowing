@@ -218,7 +218,7 @@ export default function McpServerPage() {
 								]}
 							/>
 							<Badge variant="outline" className="mb-5 gap-1.5 py-1">
-								<Server className="size-3.5" />
+								<Server className="size-3.5" aria-hidden="true" />
 								Nowing MCP server
 							</Badge>
 							<h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-balance">
@@ -234,7 +234,7 @@ export default function McpServerPage() {
 								<Button asChild size="lg">
 									<Link href="/register">
 										Get your API key
-										<ArrowRight className="size-4" />
+										<ArrowRight className="size-4" aria-hidden="true" />
 									</Link>
 								</Button>
 								<Button asChild variant="outline" size="lg">
@@ -246,7 +246,7 @@ export default function McpServerPage() {
 										target="_blank"
 										rel="noopener noreferrer"
 									>
-										<IconBrandGithub className="size-4" />
+										<IconBrandGithub className="size-4" aria-hidden="true" />
 										GitHub
 									</Link>
 								</Button>
@@ -387,7 +387,7 @@ export default function McpServerPage() {
 								<Button asChild size="lg">
 									<Link href="/register">
 										Start for free
-										<ArrowRight className="size-4" />
+										<ArrowRight className="size-4" aria-hidden="true" />
 									</Link>
 								</Button>
 								<Button asChild variant="outline" size="lg">

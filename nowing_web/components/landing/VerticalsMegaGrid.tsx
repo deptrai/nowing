@@ -136,7 +136,7 @@ export const VerticalsMegaGrid: React.FC = () => {
 									<div
 										className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 ${item.color}`}
 									>
-										<IconComp className="w-5 h-5" />
+										<IconComp className="w-5 h-5" aria-hidden="true" />
 									</div>
 
 									<h3 className="text-base font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
@@ -170,7 +170,7 @@ export const VerticalsMegaGrid: React.FC = () => {
 						className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs sm:text-sm font-semibold shadow-sm transition-all"
 					>
 						<span>Launch Lead Search</span>
-						<ArrowRight className="w-4 h-4" />
+						<ArrowRight className="w-4 h-4" aria-hidden="true" />
 					</Link>
 				</div>
 			</div>

@@ -253,7 +253,7 @@ function ApprovalCard({ args, interruptData, onDecision }: ApprovalCardProps) {
 						className="rounded-lg text-muted-foreground -mt-1 -mr-2 shrink-0"
 						onClick={() => setIsEditing(true)}
 					>
-						<Pencil className="size-3.5" />
+						<Pencil className="size-3.5" aria-hidden="true" />
 						Edit
 					</Button>
 				)}
@@ -299,7 +299,7 @@ function ApprovalCard({ args, interruptData, onDecision }: ApprovalCardProps) {
 								onClick={handleApprove}
 							>
 								Approve
-								<CornerDownLeftIcon className="size-3 opacity-60" />
+								<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 							</Button>
 						)}
 						{canReject && (

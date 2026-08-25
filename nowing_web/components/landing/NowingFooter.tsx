@@ -20,7 +20,7 @@ export const NowingFooter: React.FC = () => {
 							{t("tagline")}
 						</p>
 						<div className="flex items-center gap-2 text-xs text-emerald-400">
-							<ShieldCheck className="w-4 h-4" />
+							<ShieldCheck className="w-4 h-4" aria-hidden="true" />
 							<span>Enterprise-grade Compliance & Security</span>
 						</div>
 					</div>
@@ -120,7 +120,7 @@ export const NowingFooter: React.FC = () => {
 					<div>{t("copyright")}</div>
 					<div className="flex items-center gap-1">
 						<span>Built with</span>
-						<Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
+						<Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" aria-hidden="true" />
 						<span>for modern revenue teams</span>
 					</div>
 				</div>

@@ -259,6 +259,7 @@ export function ImageModelSelector({
 			variant="ghost"
 			size="sm"
 			aria-label="Select image model"
+			title="Select image model"
 			className={cn(
 				"h-7 min-w-0 gap-1.5 rounded-md px-2 text-[11px] font-medium text-muted-foreground transition-colors",
 				"select-none",
@@ -276,7 +277,7 @@ export function ImageModelSelector({
 					{selected ? modelName(selected) : "Auto"}
 				</span>
 			)}
-			<ChevronDown className="h-3 w-3 shrink-0 opacity-70" />
+			<ChevronDown className="h-3 w-3 shrink-0 opacity-70" aria-hidden="true" />
 		</Button>
 	);
 

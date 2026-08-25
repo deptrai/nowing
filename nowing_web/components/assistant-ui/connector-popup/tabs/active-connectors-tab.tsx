@@ -150,7 +150,7 @@ export const ActiveConnectorsTab: FC<ActiveConnectorsTabProps> = ({
 		<TabsContent value="active" className="m-0">
 			{hasSources && !hasFilteredResults && searchQuery ? (
 				<div className="flex flex-col items-center justify-center py-20 text-center">
-					<Search className="size-8 text-muted-foreground mb-3" />
+					<Search className="size-8 text-muted-foreground mb-3" aria-hidden="true" />
 					<p className="text-sm text-muted-foreground">No connectors found</p>
 					<p className="text-xs text-muted-foreground/60 mt-1">Try a different search term</p>
 				</div>
@@ -326,7 +326,7 @@ export const ActiveConnectorsTab: FC<ActiveConnectorsTabProps> = ({
 			) : (
 				<div className="flex flex-col items-center justify-center py-20 text-center">
 					<div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
-						<Unplug className="size-8 text-muted-foreground" />
+						<Unplug className="size-8 text-muted-foreground" aria-hidden="true" />
 					</div>
 					<h4 className="text-lg font-semibold">No active sources</h4>
 					<p className="text-sm text-muted-foreground mt-1 max-w-[280px]">

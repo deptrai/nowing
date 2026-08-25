@@ -6,20 +6,20 @@ export default function BlogIndexLoading() {
 			<div className="mx-auto max-w-6xl pt-12 pb-24 md:pt-20">
 				{/* Header */}
 				<div className="mb-10 md:mb-14">
-					<Skeleton className="h-10 w-24 rounded-md" />
+					<Skeleton className="h-10 w-24 rounded-md" aria-hidden="true" />
 				</div>
 
 				{/* Featured post skeleton */}
 				<div className="mb-14 overflow-hidden rounded-3xl border border-neutral-200/80 dark:border-neutral-800">
 					<Skeleton className="aspect-[2.4/1] min-h-[220px] w-full rounded-none" />
 					<div className="p-6 md:p-8 space-y-3">
-						<Skeleton className="h-5 w-24 rounded-full" />
-						<Skeleton className="h-8 w-3/4" />
+						<Skeleton className="h-5 w-24 rounded-full" aria-hidden="true" />
+						<Skeleton className="h-8 w-3/4" aria-hidden="true" />
 						<Skeleton className="h-4 w-full max-w-lg" />
 						<div className="flex items-center gap-3 pt-2">
-							<Skeleton className="h-8 w-8 rounded-full" />
-							<Skeleton className="h-4 w-28" />
-							<Skeleton className="h-4 w-20" />
+							<Skeleton className="h-8 w-8 rounded-full" aria-hidden="true" />
+							<Skeleton className="h-4 w-28" aria-hidden="true" />
+							<Skeleton className="h-4 w-20" aria-hidden="true" />
 						</div>
 					</div>
 				</div>
@@ -34,12 +34,12 @@ export default function BlogIndexLoading() {
 					{Array.from({ length: 6 }).map((_, i) => (
 						<div key={i} className="space-y-3">
 							<Skeleton className="aspect-video w-full rounded-2xl" />
-							<Skeleton className="h-5 w-3/4" />
+							<Skeleton className="h-5 w-3/4" aria-hidden="true" />
 							<Skeleton className="h-4 w-full" />
-							<Skeleton className="h-4 w-5/6" />
+							<Skeleton className="h-4 w-5/6" aria-hidden="true" />
 							<div className="flex items-center gap-2 pt-1">
-								<Skeleton className="h-6 w-6 rounded-full" />
-								<Skeleton className="h-4 w-24" />
+								<Skeleton className="h-6 w-6 rounded-full" aria-hidden="true" />
+								<Skeleton className="h-4 w-24" aria-hidden="true" />
 							</div>
 						</div>
 					))}

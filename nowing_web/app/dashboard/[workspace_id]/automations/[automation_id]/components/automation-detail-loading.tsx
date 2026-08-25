@@ -11,29 +11,29 @@ export function AutomationDetailLoading() {
 	return (
 		<>
 			<div className="space-y-3">
-				<Skeleton className="h-4 w-32" />
+				<Skeleton className="h-4 w-32" aria-hidden="true" />
 				<div className="flex items-center gap-3">
-					<Skeleton className="h-7 w-64" />
-					<Skeleton className="h-5 w-16 rounded-md" />
+					<Skeleton className="h-7 w-64" aria-hidden="true" />
+					<Skeleton className="h-5 w-16 rounded-md" aria-hidden="true" />
 				</div>
-				<Skeleton className="h-4 w-96" />
+				<Skeleton className="h-4 w-96" aria-hidden="true" />
 			</div>
 
 			<div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
 				<div className="space-y-6 min-w-0 lg:col-span-2">
 					<Card className="border-border/60 bg-accent">
 						<CardHeader>
-							<Skeleton className="h-5 w-32" />
+							<Skeleton className="h-5 w-32" aria-hidden="true" />
 						</CardHeader>
 						<CardContent className="space-y-4">
-							<Skeleton className="h-4 w-3/4" />
-							<Skeleton className="h-4 w-1/2" />
+							<Skeleton className="h-4 w-3/4" aria-hidden="true" />
+							<Skeleton className="h-4 w-1/2" aria-hidden="true" />
 							<Skeleton className="h-24 w-full" />
 						</CardContent>
 					</Card>
 					<Card className="border-border/60 bg-accent">
 						<CardHeader>
-							<Skeleton className="h-5 w-32" />
+							<Skeleton className="h-5 w-32" aria-hidden="true" />
 						</CardHeader>
 						<CardContent>
 							<Skeleton className="h-20 w-full" />
@@ -43,7 +43,7 @@ export function AutomationDetailLoading() {
 				<div className="space-y-6 min-w-0">
 					<Card className="border-border/60 bg-accent">
 						<CardHeader>
-							<Skeleton className="h-5 w-24" />
+							<Skeleton className="h-5 w-24" aria-hidden="true" />
 						</CardHeader>
 						<CardContent>
 							<Skeleton className="h-20 w-full" />

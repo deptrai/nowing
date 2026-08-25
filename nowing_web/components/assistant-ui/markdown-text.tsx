@@ -201,7 +201,11 @@ function FilePathLink({ path, className }: { path: string; className?: string })
 	const resolvedWorkspaceId = getWorkspaceIdNumber(params);
 
 	const { displayName, isFolder } = getVirtualPathDisplay(path);
-	const icon = isFolder ? <FolderIcon className="size-3.5" /> : <FileIcon className="size-3.5" />;
+	const icon = isFolder ? (
+		<FolderIcon className="size-3.5" aria-hidden="true" />
+	) : (
+		<FileIcon className="size-3.5" aria-hidden="true" />
+	);
 
 	const handleClick = useCallback(
 		(event: React.MouseEvent<HTMLButtonElement>) => {
@@ -296,7 +300,7 @@ function MarkdownImage({ src, alt }: { src?: string; alt?: string }) {
 					onClick={(e) => e.stopPropagation()}
 				>
 					Open
-					<ExternalLinkIcon className="size-3" />
+					<ExternalLinkIcon className="size-3" aria-hidden="true" />
 				</a>
 			</div>
 		</div>

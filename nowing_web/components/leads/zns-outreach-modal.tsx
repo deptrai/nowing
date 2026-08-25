@@ -204,14 +204,14 @@ export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 						onClick={onClose}
 						className="p-1.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 rounded-lg transition-colors"
 					>
-						<X className="w-5 h-5" />
+						<X className="w-5 h-5" aria-hidden="true" />
 					</button>
 				</div>
 
 				{/* Compliance Warning Banner */}
 				{!isSendingWindowOpen && (
 					<div className="bg-amber-950/40 border-b border-amber-800/40 px-6 py-2.5 flex items-center gap-2 text-xs text-amber-300">
-						<Clock className="w-4 h-4 text-amber-400 shrink-0" />
+						<Clock className="w-4 h-4 text-amber-400 shrink-0" aria-hidden="true" />
 						<span>
 							<strong>Khung giờ gửi hạn chế:</strong> Đang ngoài khung giờ hợp lệ 08:00 – 21:30
 							(Nghị định 91/2020/NĐ-CP). Tính năng gửi tạm khóa.
@@ -221,7 +221,7 @@ export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 
 				{isDncBlocked && (
 					<div className="bg-rose-950/40 border-b border-rose-800/40 px-6 py-2.5 flex items-center gap-2 text-xs text-rose-300">
-						<ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" />
+						<ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" aria-hidden="true" />
 						<span>
 							<strong>Cảnh báo DNC Blacklist:</strong> Số điện thoại này nằm trong danh sách không
 							nhận cuộc gọi/quảng cáo.
@@ -245,7 +245,10 @@ export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 								Số điện thoại người nhận
 							</label>
 							<div className="relative">
-								<Phone className="w-4 h-4 absolute left-3 top-2.5 text-zinc-500" />
+								<Phone
+									className="w-4 h-4 absolute left-3 top-2.5 text-zinc-500"
+									aria-hidden="true"
+								/>
 								<input
 									id="zns-recipient-phone"
 									type="text"
@@ -309,7 +312,7 @@ export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 						{/* Cost & Quota Estimator */}
 						<div className="p-3 rounded-xl bg-zinc-900/80 border border-zinc-800/80 flex items-center justify-between text-xs">
 							<div className="flex items-center gap-2 text-zinc-400">
-								<Info className="w-4 h-4 text-blue-400" />
+								<Info className="w-4 h-4 text-blue-400" aria-hidden="true" />
 								<span>Chi phí tin nhắn:</span>
 							</div>
 							<div className="font-semibold text-zinc-100 flex items-center gap-1.5">
@@ -320,14 +323,17 @@ export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 
 						{error && (
 							<div className="p-3 rounded-xl bg-rose-950/40 border border-rose-800/40 text-xs text-rose-300 flex items-start gap-2">
-								<AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+								<AlertTriangle
+									className="w-4 h-4 text-rose-400 shrink-0 mt-0.5"
+									aria-hidden="true"
+								/>
 								<span>{error}</span>
 							</div>
 						)}
 
 						{successMsg && (
 							<div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-800/40 text-xs text-emerald-300 flex items-center gap-2">
-								<CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+								<CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" aria-hidden="true" />
 								<span>{successMsg}</span>
 							</div>
 						)}
@@ -345,12 +351,12 @@ export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 							>
 								{loading ? (
 									<>
-										<Loader2 className="w-4 h-4 animate-spin" />
+										<Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
 										<span>Đang gửi qua Zalo OA...</span>
 									</>
 								) : (
 									<>
-										<Send className="w-4 h-4" />
+										<Send className="w-4 h-4" aria-hidden="true" />
 										<span>Gửi ZNS Template</span>
 									</>
 								)}
@@ -364,7 +370,7 @@ export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 						className="md:col-span-5 p-6 bg-zinc-950/50 flex flex-col items-center justify-center"
 					>
 						<span className="text-xs text-zinc-400 font-medium mb-3 flex items-center gap-1.5">
-							<Smartphone className="w-4 h-4 text-zinc-400" />
+							<Smartphone className="w-4 h-4 text-zinc-400" aria-hidden="true" />
 							<span>Xem trước trên Zalo mobile</span>
 						</span>
 

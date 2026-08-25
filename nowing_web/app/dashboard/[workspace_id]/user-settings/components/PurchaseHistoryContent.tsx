@@ -154,7 +154,7 @@ export function PurchaseHistoryContent() {
 	if (purchases.length === 0) {
 		return (
 			<div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
-				<ReceiptText className="h-8 w-8 text-muted-foreground" />
+				<ReceiptText className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
 				<p className="text-sm font-medium">No purchases yet</p>
 				<p className="text-xs text-muted-foreground">
 					Your credit purchases will appear here after checkout.

@@ -231,6 +231,7 @@ export function MentionTaskInput({
 						<PopoverAnchor
 							className="pointer-events-none fixed size-0"
 							style={{ left: anchorPoint.left, top: anchorPoint.top }}
+							aria-hidden="true"
 						/>
 						<ComposerSuggestionPopoverContent side="bottom">
 							<DocumentMentionPicker

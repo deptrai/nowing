@@ -16,18 +16,18 @@ export function AutomationsLoadingRows() {
 				<TableRow key={key} className="border-b border-border/60 hover:bg-transparent">
 					<TableCell className="px-4 md:px-6 py-3 border-r border-border/60">
 						<div className="flex flex-col gap-1.5">
-							<Skeleton className="h-4 w-40" />
-							<Skeleton className="h-3 w-56" />
+							<Skeleton className="h-4 w-40" aria-hidden="true" />
+							<Skeleton className="h-3 w-56" aria-hidden="true" />
 						</div>
 					</TableCell>
 					<TableCell className="px-4 py-3 border-r border-border/60 w-32">
-						<Skeleton className="h-5 w-16 rounded-md" />
+						<Skeleton className="h-5 w-16 rounded-md" aria-hidden="true" />
 					</TableCell>
 					<TableCell className="hidden md:table-cell px-4 py-3 border-r border-border/60 w-40">
-						<Skeleton className="h-3 w-20" />
+						<Skeleton className="h-3 w-20" aria-hidden="true" />
 					</TableCell>
 					<TableCell className="px-4 md:px-6 py-3 w-16">
-						<Skeleton className="h-8 w-8 rounded-md ml-auto" />
+						<Skeleton className="h-8 w-8 rounded-md ml-auto" aria-hidden="true" />
 					</TableCell>
 				</TableRow>
 			))}

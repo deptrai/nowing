@@ -53,7 +53,7 @@ function EmptyState({ onCreateClick }: { onCreateClick: () => void }) {
 				className="flex flex-col items-center gap-6 text-center"
 			>
 				<div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-					<Search className="h-10 w-10 text-primary" />
+					<Search className="h-10 w-10 text-primary" aria-hidden="true" />
 				</div>
 
 				<div className="flex flex-col gap-2">
@@ -62,7 +62,7 @@ function EmptyState({ onCreateClick }: { onCreateClick: () => void }) {
 				</div>
 
 				<Button size="lg" onClick={onCreateClick} className="gap-2">
-					<Plus className="h-5 w-5" />
+					<Plus className="h-5 w-5" aria-hidden="true" />
 					{t("create_first_button")}
 				</Button>
 			</motion.div>

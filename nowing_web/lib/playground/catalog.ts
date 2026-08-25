@@ -13,7 +13,6 @@ import {
 	RedditIcon,
 	TelegramIcon,
 	TikTokIcon,
-
 	TopcvIcon,
 	VietnamworksIcon,
 	VietstockIcon,
@@ -196,7 +195,6 @@ export const PLAYGROUND_PLATFORMS: PlaygroundPlatform[] = [
 		icon: WebIcon,
 		verbs: [{ name: "web.crawl", verb: "crawl", label: "Crawl" }],
 	},
-
 ];
 
 export function findPlatform(platformId: string): PlaygroundPlatform | undefined {

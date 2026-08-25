@@ -79,7 +79,7 @@ export const DateRangeSelector: FC<DateRangeSelectorProps> = ({
 									!startDate && "text-muted-foreground"
 								)}
 							>
-								<CalendarIcon className="mr-2 h-4 w-4" />
+								<CalendarIcon className="mr-2 h-4 w-4" aria-hidden="true" />
 								{startDate ? format(startDate, "PPP") : startDatePlaceholder}
 							</Button>
 						</PopoverTrigger>
@@ -109,7 +109,7 @@ export const DateRangeSelector: FC<DateRangeSelectorProps> = ({
 									!endDate && "text-muted-foreground"
 								)}
 							>
-								<CalendarIcon className="mr-2 h-4 w-4" />
+								<CalendarIcon className="mr-2 h-4 w-4" aria-hidden="true" />
 								{endDate ? format(endDate, "PPP") : "Default (Today)"}
 							</Button>
 						</PopoverTrigger>

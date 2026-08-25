@@ -262,7 +262,7 @@ export default async function FreeHubPage() {
 												<Button variant="ghost" size="sm" asChild>
 													<Link href={`/free/${model.seo_slug}`}>
 														Chat
-														<SquareArrowOutUpRight className="size-3" />
+														<SquareArrowOutUpRight className="size-3" aria-hidden="true" />
 													</Link>
 												</Button>
 											</TableCell>

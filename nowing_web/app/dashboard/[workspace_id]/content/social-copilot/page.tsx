@@ -230,7 +230,7 @@ export default function SocialCopilotPage() {
 						disabled={isGenerating}
 						className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50"
 					>
-						<Sparkles className="h-4 w-4" />
+						<Sparkles className="h-4 w-4" aria-hidden="true" />
 						{isGenerating ? "Đang tạo..." : "Tạo bản thảo / Generate Draft"}
 					</button>
 				</div>
@@ -249,7 +249,7 @@ export default function SocialCopilotPage() {
 							: "text-muted-foreground hover:text-foreground hover:bg-muted"
 					}`}
 				>
-					<Sparkles className="h-4 w-4" />
+					<Sparkles className="h-4 w-4" aria-hidden="true" />
 					<span>Hồ sơ giọng văn / Voice Profile</span>
 					<span className="rounded-full bg-primary/20 text-primary text-xs px-2 py-0.5">
 						{profiles.length}
@@ -267,7 +267,7 @@ export default function SocialCopilotPage() {
 							: "text-muted-foreground hover:text-foreground hover:bg-muted"
 					}`}
 				>
-					<TrendingUp className="h-4 w-4" />
+					<TrendingUp className="h-4 w-4" aria-hidden="true" />
 					<span>Bài viết Viral / Outlier Feed</span>
 					<span className="rounded-full bg-orange-500/20 text-orange-600 text-xs px-2 py-0.5">
 						{outliers.length}
@@ -285,7 +285,7 @@ export default function SocialCopilotPage() {
 							: "text-muted-foreground hover:text-foreground hover:bg-muted"
 					}`}
 				>
-					<FileText className="h-4 w-4" />
+					<FileText className="h-4 w-4" aria-hidden="true" />
 					<span>Bản thảo AI / AI Drafts</span>
 					{drafts.length > 0 && (
 						<span className="rounded-full bg-emerald-500/20 text-emerald-600 text-xs px-2 py-0.5">
@@ -310,7 +310,10 @@ export default function SocialCopilotPage() {
 				<div className="space-y-4">
 					<div className="flex items-center justify-between gap-4 flex-wrap">
 						<div className="relative flex-1 min-w-[240px]">
-							<Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+							<Search
+								className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+								aria-hidden="true"
+							/>
 							<input
 								type="text"
 								placeholder="Tìm bài viral theo từ khóa (VD: bất động sản, dòng tiền, SaaS)..."
@@ -325,7 +328,7 @@ export default function SocialCopilotPage() {
 							onClick={() => setIsManualImportOpen(true)}
 							className="flex items-center gap-2 rounded-lg border border-input bg-background px-3 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors"
 						>
-							<Plus className="h-4 w-4" /> Dán bài mẫu thủ công
+							<Plus className="h-4 w-4" aria-hidden="true" /> Dán bài mẫu thủ công
 						</button>
 					</div>
 

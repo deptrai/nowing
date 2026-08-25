@@ -146,7 +146,7 @@ export function Pricing({
 					>
 						{plan.isPopular && (
 							<div className="absolute top-0 right-0 bg-primary py-0.5 px-2 rounded-bl-xl rounded-tr-xl flex items-center">
-								<Star className="text-primary-foreground h-4 w-4 fill-current" />
+								<Star className="text-primary-foreground h-4 w-4 fill-current" aria-hidden="true" />
 								<span className="text-primary-foreground ml-1 font-sans font-semibold">
 									Popular
 								</span>
@@ -195,7 +195,7 @@ export function Pricing({
 							<ul className="mt-5 gap-2 flex flex-col">
 								{plan.features.map((feature) => (
 									<li key={feature} className="flex items-start gap-2">
-										<Check className="h-4 w-4 text-primary mt-1 flex-shrink-0" />
+										<Check className="h-4 w-4 text-primary mt-1 flex-shrink-0" aria-hidden="true" />
 										<span className="text-left">{feature}</span>
 									</li>
 								))}

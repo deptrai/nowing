@@ -97,7 +97,7 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 					<div className="sticky top-0 z-10 bg-zinc-950/90 backdrop-blur-md px-6 py-4 border-b border-zinc-800 flex items-center justify-between">
 						<div className="flex items-center gap-3">
 							<div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-								<Share2 className="w-5 h-5" />
+								<Share2 className="w-5 h-5" aria-hidden="true" />
 							</div>
 							<div>
 								<div className="flex items-center gap-2">
@@ -120,7 +120,7 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 							className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
 							aria-label="Đóng panel"
 						>
-							<X className="w-5 h-5" />
+							<X className="w-5 h-5" aria-hidden="true" />
 						</button>
 					</div>
 
@@ -145,7 +145,7 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 								{data.legal_entity && (
 									<div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 space-y-3">
 										<div className="flex items-center gap-2 text-zinc-200 font-semibold text-sm border-b border-zinc-800/80 pb-2">
-											<Scale className="w-4 h-4 text-emerald-400" />
+											<Scale className="w-4 h-4 text-emerald-400" aria-hidden="true" />
 											<span>Thông Tin Pháp Lý Doanh Nghiệp (dangkykinhdoanh.gov.vn)</span>
 										</div>
 
@@ -188,7 +188,7 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 								<div className="space-y-3">
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-2 text-zinc-200 font-semibold text-sm">
-											<UserCheck className="w-4 h-4 text-blue-400" />
+											<UserCheck className="w-4 h-4 text-blue-400" aria-hidden="true" />
 											<span>Danh Bạ Người Ra Quyết Định (Decision Makers)</span>
 										</div>
 										<span className="text-xs text-zinc-400">
@@ -216,7 +216,7 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 													{dm.phone && <PhoneCopyPill phone={dm.phone} />}
 													{dm.email && (
 														<div className="flex items-center gap-1.5 text-zinc-300 font-mono text-[11px]">
-															<Mail className="w-3 h-3 text-zinc-500" />
+															<Mail className="w-3 h-3 text-zinc-500" aria-hidden="true" />
 															<span>{dm.email}</span>
 														</div>
 													)}
@@ -229,7 +229,7 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 														rel="noopener noreferrer"
 														className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors pt-1"
 													>
-														<ExternalLink className="w-3 h-3" />
+														<ExternalLink className="w-3 h-3" aria-hidden="true" />
 														<span>LinkedIn Profile</span>
 													</a>
 												)}
@@ -242,7 +242,7 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 								<div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 space-y-3">
 									<div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
 										<div className="flex items-center gap-2 text-zinc-200 font-semibold text-sm">
-											<TrendingUp className="w-4 h-4 text-emerald-400" />
+											<TrendingUp className="w-4 h-4 text-emerald-400" aria-hidden="true" />
 											<span>Tín Hiệu Tăng Trưởng Tuyển Dụng (Hiring Velocity)</span>
 										</div>
 										{data.hiring_velocity_pct !== null &&
@@ -271,7 +271,7 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 												className="flex items-center justify-between p-2.5 rounded-lg bg-zinc-950/60 border border-zinc-800/60 text-xs"
 											>
 												<div className="flex items-center gap-2">
-													<Briefcase className="w-3.5 h-3.5 text-zinc-400" />
+													<Briefcase className="w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
 													<span className="font-medium text-zinc-200">{hs.title}</span>
 													{hs.department && (
 														<span className="text-zinc-500">• {hs.department}</span>
@@ -289,7 +289,7 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 								{data.tenders.length > 0 && (
 									<div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 space-y-3">
 										<div className="flex items-center gap-2 text-zinc-200 font-semibold text-sm border-b border-zinc-800/80 pb-2">
-											<FileText className="w-4 h-4 text-amber-400" />
+											<FileText className="w-4 h-4 text-amber-400" aria-hidden="true" />
 											<span>Gói Thầu Mua Sắm Công (muasamcong.mpi.gov.vn)</span>
 										</div>
 
@@ -324,7 +324,7 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 																className="text-blue-400 hover:underline flex items-center gap-1"
 															>
 																<span>Xem hồ sơ mời thầu</span>
-																<ExternalLink className="w-3 h-3" />
+																<ExternalLink className="w-3 h-3" aria-hidden="true" />
 															</a>
 														)}
 													</div>
@@ -346,7 +346,7 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 							}
 							className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-500 transition-colors shadow-lg shadow-emerald-950/50"
 						>
-							<Mail className="w-4 h-4" />
+							<Mail className="w-4 h-4" aria-hidden="true" />
 							<span>Khởi Tạo Email Outreach</span>
 						</button>
 
@@ -356,7 +356,7 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 								onClick={() => toast.info("Đã bật theo dõi biến động nhân sự cho công ty này!")}
 								className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-zinc-800 text-zinc-200 hover:bg-zinc-700 transition-colors border border-zinc-700"
 							>
-								<Bell className="w-3.5 h-3.5" />
+								<Bell className="w-3.5 h-3.5" aria-hidden="true" />
 								<span>Báo Khi Có Tuyển Thêm</span>
 							</button>
 

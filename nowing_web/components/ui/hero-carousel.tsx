@@ -213,7 +213,7 @@ function HeroCarousel() {
 					className="size-11 rounded-full border border-neutral-200 bg-white text-neutral-700 shadow-sm hover:bg-neutral-100 touch-manipulation dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
 					aria-label="Previous slide"
 				>
-					<ChevronLeft className="size-5" />
+					<ChevronLeft className="size-5" aria-hidden="true" />
 				</Button>
 
 				<div className="flex items-center">
@@ -246,7 +246,7 @@ function HeroCarousel() {
 					className="size-11 rounded-full border border-neutral-200 bg-white text-neutral-700 shadow-sm hover:bg-neutral-100 touch-manipulation dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
 					aria-label="Next slide"
 				>
-					<ChevronRight className="size-5" />
+					<ChevronRight className="size-5" aria-hidden="true" />
 				</Button>
 			</div>
 		</div>

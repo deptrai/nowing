@@ -195,7 +195,10 @@ export const ComposioDriveConfig: FC<ConnectorConfigProps> = ({ connector, onCon
 									className="text-xs sm:text-sm text-muted-foreground truncate flex items-center gap-1.5"
 									title={folder.name}
 								>
-									<FolderClosed className="size-3.5 shrink-0 text-muted-foreground" />
+									<FolderClosed
+										className="size-3.5 shrink-0 text-muted-foreground"
+										aria-hidden="true"
+									/>
 									<span className="flex-1 truncate">{folder.name}</span>
 									<Button
 										type="button"
@@ -205,7 +208,7 @@ export const ComposioDriveConfig: FC<ConnectorConfigProps> = ({ connector, onCon
 										className="size-5 shrink-0 rounded p-0 hover:bg-accent hover:text-accent-foreground"
 										aria-label={`Remove ${folder.name}`}
 									>
-										<X className="size-3.5" />
+										<X className="size-3.5" aria-hidden="true" />
 									</Button>
 								</div>
 							))}
@@ -225,7 +228,7 @@ export const ComposioDriveConfig: FC<ConnectorConfigProps> = ({ connector, onCon
 										className="size-5 shrink-0 rounded p-0 hover:bg-accent hover:text-accent-foreground"
 										aria-label={`Remove ${file.name}`}
 									>
-										<X className="size-3.5" />
+										<X className="size-3.5" aria-hidden="true" />
 									</Button>
 								</div>
 							))}
@@ -250,9 +253,9 @@ export const ComposioDriveConfig: FC<ConnectorConfigProps> = ({ connector, onCon
 						>
 							Change Selection
 							{isFolderTreeOpen ? (
-								<ChevronDown className="size-4" />
+								<ChevronDown className="size-4" aria-hidden="true" />
 							) : (
-								<ChevronRight className="size-4" />
+								<ChevronRight className="size-4" aria-hidden="true" />
 							)}
 						</Button>
 						{isFolderTreeOpen && (

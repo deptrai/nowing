@@ -52,7 +52,7 @@ export function MobileSidebarTrigger({ onClick }: { onClick: () => void }) {
 			onClick={onClick}
 			className="md:hidden h-8 w-8 shrink-0 text-muted-foreground hover:bg-transparent hover:text-muted-foreground"
 		>
-			<PanelLeft className="h-4 w-4" />
+			<PanelLeft className="h-4 w-4" aria-hidden="true" />
 			<span className="sr-only">Open menu</span>
 		</Button>
 	);
@@ -136,7 +136,7 @@ export function MobileSidebar({
 								onClick={onAddWorkspace}
 								className="h-10 w-10 shrink-0 rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-muted-foreground/50"
 							>
-								<Plus className="h-5 w-5 text-muted-foreground" />
+								<Plus className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
 								<span className="sr-only">Add workspace</span>
 							</Button>
 						</div>

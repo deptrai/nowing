@@ -87,11 +87,11 @@ export function VoicePreviewButton({ voiceId }: { voiceId: string }) {
 			onClick={isPlaying ? stop : play}
 		>
 			{state === "loading" ? (
-				<Loader2 className="size-4 animate-spin" />
+				<Loader2 className="size-4 animate-spin" aria-hidden="true" />
 			) : isPlaying ? (
-				<Square className="size-4" />
+				<Square className="size-4" aria-hidden="true" />
 			) : (
-				<Play className="size-4" />
+				<Play className="size-4" aria-hidden="true" />
 			)}
 		</Button>
 	);

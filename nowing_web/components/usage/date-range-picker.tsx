@@ -125,7 +125,7 @@ export function UsageDateRangePicker({ value, onChange }: UsageDateRangePickerPr
 						size="sm"
 						className={cn("gap-2", isCustomActive && "max-w-[12rem] truncate")}
 					>
-						<CalendarIcon className="h-4 w-4" />
+						<CalendarIcon className="h-4 w-4" aria-hidden="true" />
 						{label}
 					</Button>
 				</PopoverTrigger>

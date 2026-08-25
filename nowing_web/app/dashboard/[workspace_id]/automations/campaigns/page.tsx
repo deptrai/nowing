@@ -77,7 +77,7 @@ export default function CampaignsListPage() {
 						href={`/dashboard/${workspaceId}/automations/campaigns/new`}
 						className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors shadow-sm text-sm"
 					>
-						<Plus className="w-4 h-4" />
+						<Plus className="w-4 h-4" aria-hidden="true" />
 						Tạo chiến dịch mới
 					</Link>
 				</div>
@@ -90,7 +90,7 @@ export default function CampaignsListPage() {
 			) : sequences.length === 0 ? (
 				<div className="bg-card border rounded-xl p-12 text-center space-y-4">
 					<div className="w-12 h-12 rounded-full bg-primary/10 text-primary mx-auto flex items-center justify-center">
-						<Send className="w-6 h-6" />
+						<Send className="w-6 h-6" aria-hidden="true" />
 					</div>
 					<div className="space-y-1">
 						<h3 className="text-base font-semibold text-foreground">
@@ -105,7 +105,7 @@ export default function CampaignsListPage() {
 						href={`/dashboard/${workspaceId}/automations/campaigns/new`}
 						className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors shadow-sm text-sm"
 					>
-						<Plus className="w-4 h-4" />
+						<Plus className="w-4 h-4" aria-hidden="true" />
 						Bắt đầu tạo chiến dịch đầu tiên
 					</Link>
 				</div>
@@ -128,7 +128,7 @@ export default function CampaignsListPage() {
 										{seq.status === "active" ? "Đang chạy" : "Tạm dừng"}
 									</span>
 									<span className="text-xs text-muted-foreground flex items-center gap-1">
-										<Clock className="w-3.5 h-3.5" />
+										<Clock className="w-3.5 h-3.5" aria-hidden="true" />
 										{new Date(seq.created_at).toLocaleDateString("vi-VN")}
 									</span>
 								</div>
@@ -147,11 +147,11 @@ export default function CampaignsListPage() {
 								>
 									{seq.status === "active" ? (
 										<>
-											<Pause className="w-3.5 h-3.5" /> Tạm dừng
+											<Pause className="w-3.5 h-3.5" aria-hidden="true" /> Tạm dừng
 										</>
 									) : (
 										<>
-											<Play className="w-3.5 h-3.5" /> Kích hoạt
+											<Play className="w-3.5 h-3.5" aria-hidden="true" /> Kích hoạt
 										</>
 									)}
 								</button>
@@ -160,7 +160,7 @@ export default function CampaignsListPage() {
 									href={`/dashboard/${workspaceId}/automations/campaigns/${seq.id}`}
 									className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1"
 								>
-									<BarChart3 className="w-3.5 h-3.5" />
+									<BarChart3 className="w-3.5 h-3.5" aria-hidden="true" />
 									Chi tiết & Thống kê
 								</Link>
 							</div>

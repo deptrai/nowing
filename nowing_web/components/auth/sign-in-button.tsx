@@ -88,7 +88,7 @@ export const SignInButton = ({ variant = "desktop" }: SignInButtonProps) => {
 					getGoogleClassName()
 				)}
 			>
-				<GoogleLogo className="h-4 w-4" />
+				<GoogleLogo className="h-4 w-4" aria-hidden="true" />
 				<span>Sign In</span>
 			</Button>
 			<Link href="/login" className={cn("runtime-auth-local", getLocalClassName())}>

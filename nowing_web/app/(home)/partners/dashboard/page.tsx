@@ -184,7 +184,7 @@ export default function PartnerDashboardPage() {
 	if (isLoading) {
 		return (
 			<div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
-				<IconLoader2 className="size-8 animate-spin text-emerald-600" />
+				<IconLoader2 className="size-8 animate-spin text-emerald-600" aria-hidden="true" />
 				<p className="text-sm text-neutral-500">Loading your partner portal...</p>
 			</div>
 		);
@@ -197,7 +197,7 @@ export default function PartnerDashboardPage() {
 				<div className="rounded-3xl border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-neutral-900 p-8 md:p-10 shadow-xl">
 					<div className="text-center mb-8">
 						<div className="size-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center mx-auto mb-4">
-							<IconAffiliate className="size-6" />
+							<IconAffiliate className="size-6" aria-hidden="true" />
 						</div>
 						<h1 className="font-serif text-2xl md:text-3xl font-normal text-neutral-900 dark:text-white">
 							Join the Nowing Partner Program
@@ -295,7 +295,7 @@ export default function PartnerDashboardPage() {
 							className="w-full bg-emerald-500 hover:bg-emerald-600 text-neutral-950 font-bold py-6 rounded-xl mt-6 shadow-lg shadow-emerald-500/20"
 						>
 							{isSubmittingApply ? (
-								<IconLoader2 className="size-5 animate-spin" />
+								<IconLoader2 className="size-5 animate-spin" aria-hidden="true" />
 							) : (
 								"Create Partner Profile & Get Link"
 							)}
@@ -316,7 +316,7 @@ export default function PartnerDashboardPage() {
 			<div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-neutral-200 dark:border-neutral-800 pb-6">
 				<div>
 					<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 text-xs font-semibold uppercase tracking-wider mb-2">
-						<IconAffiliate className="size-3.5" />
+						<IconAffiliate className="size-3.5" aria-hidden="true" />
 						<span>Affiliate Partner Dashboard</span>
 					</div>
 					<h1 className="font-serif text-2xl sm:text-3xl font-normal text-neutral-900 dark:text-white">
@@ -339,14 +339,14 @@ export default function PartnerDashboardPage() {
 						onClick={loadDashboard}
 						className="flex items-center gap-1.5 text-xs"
 					>
-						<IconRefresh className="size-3.5" />
+						<IconRefresh className="size-3.5" aria-hidden="true" />
 						<span>Refresh Data</span>
 					</Button>
 					<Button
 						onClick={() => setIsPayoutOpen(true)}
 						className="bg-emerald-500 hover:bg-emerald-600 text-neutral-950 font-bold text-xs md:text-sm px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-md shadow-emerald-500/20"
 					>
-						<IconWallet className="size-4" />
+						<IconWallet className="size-4" aria-hidden="true" />
 						<span>Request Payout</span>
 					</Button>
 				</div>
@@ -357,7 +357,7 @@ export default function PartnerDashboardPage() {
 				<div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
 					<div className="space-y-3 max-w-2xl">
 						<h2 className="text-xl font-bold text-neutral-900 dark:text-white flex items-center gap-2">
-							<IconQrcode className="size-5 text-emerald-600" />
+							<IconQrcode className="size-5 text-emerald-600" aria-hidden="true" />
 							<span>Your Unique Referral Link</span>
 						</h2>
 						<p className="text-sm text-neutral-600 dark:text-neutral-400">
@@ -373,7 +373,11 @@ export default function PartnerDashboardPage() {
 								onClick={handleCopyLink}
 								className="bg-neutral-900 hover:bg-neutral-800 dark:bg-emerald-500 dark:hover:bg-emerald-600 dark:text-neutral-950 text-white font-semibold rounded-xl shrink-0 flex items-center gap-1.5"
 							>
-								{copied ? <IconCheck className="size-4" /> : <IconCopy className="size-4" />}
+								{copied ? (
+									<IconCheck className="size-4" aria-hidden="true" />
+								) : (
+									<IconCopy className="size-4" aria-hidden="true" />
+								)}
 								<span>{copied ? "Copied" : "Copy Link"}</span>
 							</Button>
 						</div>
@@ -398,7 +402,7 @@ export default function PartnerDashboardPage() {
 								rel="noreferrer"
 								className="inline-flex items-center gap-1 text-emerald-600 hover:underline font-medium"
 							>
-								<IconDownload className="size-3" />
+								<IconDownload className="size-3" aria-hidden="true" />
 								<span>Download QR</span>
 							</a>
 						</div>
@@ -619,7 +623,7 @@ export default function PartnerDashboardPage() {
 											: "border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400"
 									}`}
 								>
-									<IconBuildingBank className="size-4 mb-1 text-emerald-600" />
+									<IconBuildingBank className="size-4 mb-1 text-emerald-600" aria-hidden="true" />
 									<div className="font-bold">VietQR Napas 24/7</div>
 									<div className="text-[10px] text-neutral-500">Direct to bank (0% fee)</div>
 								</button>
@@ -633,7 +637,7 @@ export default function PartnerDashboardPage() {
 											: "border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400"
 									}`}
 								>
-									<IconCoins className="size-4 mb-1 text-emerald-600" />
+									<IconCoins className="size-4 mb-1 text-emerald-600" aria-hidden="true" />
 									<div className="font-bold">Platform Credits</div>
 									<div className="text-[10px] text-emerald-600 font-bold">+10% Bonus added</div>
 								</button>
@@ -696,7 +700,7 @@ export default function PartnerDashboardPage() {
 								className="bg-emerald-500 hover:bg-emerald-600 text-neutral-950 font-bold rounded-xl"
 							>
 								{isSubmittingPayout ? (
-									<IconLoader2 className="size-4 animate-spin" />
+									<IconLoader2 className="size-4 animate-spin" aria-hidden="true" />
 								) : (
 									"Confirm Withdrawal"
 								)}

@@ -41,7 +41,7 @@ export function LanguageSwitcher() {
 	return (
 		<Select value={locale} onValueChange={handleLanguageChange}>
 			<SelectTrigger className="w-[110px] sm:w-[160px] h-8 sm:h-10 text-xs sm:text-sm px-2 sm:px-3 gap-1 sm:gap-2">
-				<Globe className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+				<Globe className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
 				<SelectValue>
 					{languages.find((lang) => lang.code === locale)?.name || "English"}
 				</SelectValue>

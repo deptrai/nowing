@@ -145,7 +145,11 @@ export const ToolbarButton = withTooltip(function ToolbarButton({
 					<>
 						<div className="flex flex-1 items-center gap-2 whitespace-nowrap">{children}</div>
 						<div>
-							<ChevronDown className="size-3.5 text-muted-foreground" data-icon />
+							<ChevronDown
+								className="size-3.5 text-muted-foreground"
+								data-icon
+								aria-hidden="true"
+							/>
 						</div>
 					</>
 				) : (
@@ -234,7 +238,7 @@ export function ToolbarSplitButtonSecondary({
 			onClick={(e) => e.stopPropagation()}
 			{...(props as React.ComponentPropsWithoutRef<"button">)}
 		>
-			<ChevronDown className="size-3.5 text-muted-foreground" data-icon />
+			<ChevronDown className="size-3.5 text-muted-foreground" data-icon aria-hidden="true" />
 		</Button>
 	);
 }

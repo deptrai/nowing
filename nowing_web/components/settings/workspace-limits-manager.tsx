@@ -128,7 +128,7 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 				<CardHeader className="flex flex-row items-center justify-between pb-2">
 					<CardTitle className="text-base font-medium">{t("limits_plan_label")}</CardTitle>
 					{isLoading ? (
-						<Skeleton className="h-6 w-20" />
+						<Skeleton className="h-6 w-20" aria-hidden="true" />
 					) : (
 						<Badge variant="secondary">{data?.plan_tier ?? t("limits_plan_unknown")}</Badge>
 					)}
@@ -137,7 +137,7 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 					{isLoading
 						? ["documents", "members", "runs", "storage"].map((key) => (
 								<div key={key} className="space-y-2">
-									<Skeleton className="h-4 w-32" />
+									<Skeleton className="h-4 w-32" aria-hidden="true" />
 									<Skeleton className="h-4 w-full" />
 								</div>
 							))
@@ -155,7 +155,7 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 						<Button asChild variant="default" className="w-full sm:w-auto">
 							<a href={upgradeUrl} target="_blank" rel="noopener noreferrer">
 								{t("limits_upgrade_cta")}
-								<ExternalLink className="ml-2 h-4 w-4" />
+								<ExternalLink className="ml-2 h-4 w-4" aria-hidden="true" />
 							</a>
 						</Button>
 					)}

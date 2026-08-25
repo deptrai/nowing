@@ -79,7 +79,7 @@ export function ViralDraftReviewPanel({
 	if (!drafts || drafts.length === 0) {
 		return (
 			<div className="rounded-xl border border-dashed border-border p-12 text-center text-muted-foreground">
-				<Sparkles className="h-8 w-8 mx-auto mb-3 text-primary/60" />
+				<Sparkles className="h-8 w-8 mx-auto mb-3 text-primary/60" aria-hidden="true" />
 				<h4 className="font-semibold text-foreground text-base mb-1">Chưa có bản thảo nào</h4>
 				<p className="text-sm max-w-md mx-auto mb-4">
 					Chọn một bài viết viral từ mục "Bài viết Viral" hoặc dán nội dung thủ công để AI viết lại
@@ -92,7 +92,7 @@ export function ViralDraftReviewPanel({
 						disabled={isGenerating}
 						className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
 					>
-						<Sparkles className="h-4 w-4" />
+						<Sparkles className="h-4 w-4" aria-hidden="true" />
 						{isGenerating ? "Đang tạo..." : "Tạo bản thảo / Generate Draft"}
 					</button>
 				)}
@@ -112,12 +112,12 @@ export function ViralDraftReviewPanel({
 				<div className="rounded-xl border border-border bg-card p-5 shadow-sm space-y-4">
 					<div className="flex items-center justify-between border-b border-border/50 pb-3">
 						<div className="flex items-center gap-2">
-							<Layers className="h-4 w-4 text-primary" />
+							<Layers className="h-4 w-4 text-primary" aria-hidden="true" />
 							<h4 className="font-semibold text-foreground text-sm">Bài Viral Tham Chiếu</h4>
 						</div>
 						{originalPost?.baseline_ratio && (
 							<span className="flex items-center gap-1 text-xs font-bold text-orange-600 bg-orange-500/10 border border-orange-500/20 px-2 py-0.5 rounded-full">
-								<Flame className="h-3 w-3" />
+								<Flame className="h-3 w-3" aria-hidden="true" />
 								{originalPost.baseline_ratio}x Baseline
 							</span>
 						)}
@@ -157,7 +157,7 @@ export function ViralDraftReviewPanel({
 
 					{/* Guardrail Reminder */}
 					<div className="flex items-start gap-2 rounded-lg bg-emerald-500/10 p-3 border border-emerald-500/20 text-xs text-emerald-700">
-						<ShieldCheck className="h-4 w-4 flex-shrink-0 mt-0.5" />
+						<ShieldCheck className="h-4 w-4 flex-shrink-0 mt-0.5" aria-hidden="true" />
 						<span>
 							<strong>Human-in-the-Loop:</strong> AI chỉ hỗ trợ soạn thảo và tinh chỉnh. Bạn luôn có
 							toàn quyền kiểm duyệt trước khi sao chép và tự đăng.
@@ -205,9 +205,9 @@ export function ViralDraftReviewPanel({
 								className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-muted transition-colors border border-border"
 							>
 								{isPreviewMode ? (
-									<Edit3 className="h-3.5 w-3.5" />
+									<Edit3 className="h-3.5 w-3.5" aria-hidden="true" />
 								) : (
-									<Eye className="h-3.5 w-3.5" />
+									<Eye className="h-3.5 w-3.5" aria-hidden="true" />
 								)}
 								{isPreviewMode ? "Chỉnh sửa" : "Xem trước"}
 							</button>
@@ -218,9 +218,9 @@ export function ViralDraftReviewPanel({
 								className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
 							>
 								{copiedIndex === activeTabIndex ? (
-									<Check className="h-3.5 w-3.5" />
+									<Check className="h-3.5 w-3.5" aria-hidden="true" />
 								) : (
-									<Copy className="h-3.5 w-3.5" />
+									<Copy className="h-3.5 w-3.5" aria-hidden="true" />
 								)}
 								Sao chép / Copy
 							</button>
@@ -265,7 +265,8 @@ export function ViralDraftReviewPanel({
 
 						{isTwitterOverlimit && (
 							<span className="flex items-center gap-1 text-rose-600 font-medium">
-								<AlertTriangle className="h-3.5 w-3.5" /> Quá giới hạn 280 ký tự của tweet đơn
+								<AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" /> Quá giới hạn 280 ký tự
+								của tweet đơn
 							</span>
 						)}
 					</div>

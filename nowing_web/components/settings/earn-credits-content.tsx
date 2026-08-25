@@ -90,9 +90,9 @@ export function EarnCreditsContent() {
 						{["github", "reddit", "discord"].map((task) => (
 							<Card key={task} className="bg-transparent">
 								<CardContent className="flex items-center gap-3 p-3">
-									<Skeleton className="h-8 w-8 rounded-full bg-muted" />
+									<Skeleton className="h-8 w-8 rounded-full bg-muted" aria-hidden="true" />
 									<Skeleton className="h-4 flex-1 bg-muted" />
-									<Skeleton className="h-8 w-16 bg-muted" />
+									<Skeleton className="h-8 w-16 bg-muted" aria-hidden="true" />
 								</CardContent>
 							</Card>
 						))}
@@ -112,7 +112,7 @@ export function EarnCreditsContent() {
 										)}
 									>
 										{task.completed ? (
-											<Check className="h-3.5 w-3.5" />
+											<Check className="h-3.5 w-3.5" aria-hidden="true" />
 										) : (
 											<span className="text-[11px] font-semibold tabular-nums">
 												{formatRewardUsd(task.credit_micros_reward)}
@@ -147,7 +147,7 @@ export function EarnCreditsContent() {
 												{completeMutation.isPending ? (
 													<Spinner size="xs" />
 												) : (
-													<ExternalLink className="h-3 w-3" />
+													<ExternalLink className="h-3 w-3" aria-hidden="true" />
 												)}
 											</a>
 										)}

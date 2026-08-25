@@ -301,6 +301,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 									"size-3.5 text-muted-foreground transition-transform duration-150",
 									isSourceOpen && "rotate-180"
 								)}
+								aria-hidden="true"
 							/>
 						</button>
 
@@ -329,7 +330,10 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 											<span>{opt.label}</span>
 										</div>
 										{sourceFilter === opt.id && (
-											<Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+											<Check
+												className="size-3.5 text-emerald-600 dark:text-emerald-400"
+												aria-hidden="true"
+											/>
 										)}
 									</button>
 								))}
@@ -347,13 +351,17 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 							}}
 							className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-border/80 bg-background hover:bg-muted/60 text-xs text-foreground focus:outline-none cursor-pointer shadow-2xs shrink-0 font-medium"
 						>
-							<span className={cn("size-2 rounded-full", currentStatusOption.dotColor)} />
+							<span
+								className={cn("size-2 rounded-full", currentStatusOption.dotColor)}
+								aria-hidden="true"
+							/>
 							<span className="truncate max-w-[100px]">{currentStatusOption.label}</span>
 							<ChevronDown
 								className={cn(
 									"size-3.5 text-muted-foreground transition-transform duration-150",
 									isStatusOpen && "rotate-180"
 								)}
+								aria-hidden="true"
 							/>
 						</button>
 
@@ -375,11 +383,17 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 										)}
 									>
 										<div className="flex items-center gap-2">
-											<span className={cn("size-2 rounded-full", opt.dotColor)} />
+											<span
+												className={cn("size-2 rounded-full", opt.dotColor)}
+												aria-hidden="true"
+											/>
 											<span className="text-xs">{opt.label}</span>
 										</div>
 										{statusFilter === opt.id && (
-											<Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+											<Check
+												className="size-3.5 text-emerald-600 dark:text-emerald-400"
+												aria-hidden="true"
+											/>
 										)}
 									</button>
 								))}
@@ -389,7 +403,10 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 
 					{/* Quick Search */}
 					<div className="relative min-w-[90px] max-w-[150px]">
-						<Search className="size-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+						<Search
+							className="size-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
+							aria-hidden="true"
+						/>
 						<input
 							type="text"
 							value={searchQuery}
@@ -409,7 +426,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 							className="inline-flex items-center gap-1.5 h-8 px-2.5 text-xs font-medium rounded-lg border border-border/80 bg-background hover:bg-muted text-foreground transition-all cursor-pointer shadow-2xs"
 							title="Tìm leads tương tự qua 1-Click Reverse-ICP"
 						>
-							<Search className="size-3.5 text-muted-foreground" />
+							<Search className="size-3.5 text-muted-foreground" aria-hidden="true" />
 							<span className="hidden lg:inline">Similar leads</span>
 						</button>
 					)}
@@ -421,7 +438,10 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 							className="inline-flex items-center gap-1.5 h-8 px-2.5 text-xs font-medium rounded-lg border border-border/80 bg-background hover:bg-muted text-foreground transition-all cursor-pointer shadow-2xs"
 							title="Quản lý danh sách Do-Not-Call (DNC) tuân thủ Nghị định 13 PDPD"
 						>
-							<ShieldAlert className="size-3.5 text-amber-600 dark:text-amber-400" />
+							<ShieldAlert
+								className="size-3.5 text-amber-600 dark:text-amber-400"
+								aria-hidden="true"
+							/>
 							<span className="hidden lg:inline">DNC</span>
 						</button>
 					)}
@@ -446,6 +466,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 								"size-3.5",
 								isLoading && "animate-spin text-emerald-600 dark:text-emerald-400"
 							)}
+							aria-hidden="true"
 						/>
 					</button>
 
@@ -455,7 +476,11 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 						title={isFullscreen ? "Thu nhỏ" : "Toàn màn hình"}
 						className="size-8 rounded-lg border border-border/80 bg-background hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
 					>
-						{isFullscreen ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
+						{isFullscreen ? (
+							<Minimize2 className="size-3.5" aria-hidden="true" />
+						) : (
+							<Maximize2 className="size-3.5" aria-hidden="true" />
+						)}
 					</button>
 				</div>
 			</div>
@@ -474,7 +499,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 
 				<div className="flex items-center gap-2.5 shrink-0">
 					<span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 text-[10px] font-medium">
-						<AlertTriangle className="size-3" />
+						<AlertTriangle className="size-3" aria-hidden="true" />
 						Not sending yet
 					</span>
 					<span className="text-muted-foreground font-medium text-[11px] hidden sm:inline">
@@ -488,7 +513,10 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 				{filteredLeads.length === 0 && shimmerCount === 0 ? (
 					<div className="flex flex-col items-center justify-center h-full p-8 text-center select-none">
 						<div className="size-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-3">
-							<Sparkles className="size-5 text-emerald-600 dark:text-emerald-400" />
+							<Sparkles
+								className="size-5 text-emerald-600 dark:text-emerald-400"
+								aria-hidden="true"
+							/>
 						</div>
 						<div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-semibold mb-2 border border-emerald-500/20">
 							🎯 Bảng Săn Lead Tự Động
@@ -581,7 +609,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 											<div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 font-mono text-[10.5px] font-bold">
 												<span className="size-1.5 rounded-full bg-emerald-500" />
 												<span>{lead.fit_score ?? 85}</span>
-												<ChevronRight className="size-2.5 text-emerald-600/70" />
+												<ChevronRight className="size-2.5 text-emerald-600/70" aria-hidden="true" />
 											</div>
 										</td>
 
@@ -599,7 +627,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 														<Tooltip>
 															<TooltipTrigger asChild>
 																<span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-[9.5px] font-semibold font-mono tracking-tight shrink-0 cursor-help">
-																	<ShieldCheck className="size-2.5" />
+																	<ShieldCheck className="size-2.5" aria-hidden="true" />
 																	MST Verified
 																</span>
 															</TooltipTrigger>
@@ -608,7 +636,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 																className="max-w-xs p-2.5 space-y-1 text-left bg-popover text-popover-foreground border border-border shadow-md"
 															>
 																<div className="font-bold text-xs flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
-																	<ShieldCheck className="size-3.5" />
+																	<ShieldCheck className="size-3.5" aria-hidden="true" />
 																	MST: {lead.tax_id}
 																</div>
 																{lead.legal_representative && (
@@ -647,7 +675,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 														<Tooltip>
 															<TooltipTrigger asChild>
 																<span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 text-[9.5px] font-semibold tracking-tight shrink-0 cursor-help">
-																	<MessageSquare className="size-2.5" />
+																	<MessageSquare className="size-2.5" aria-hidden="true" />
 																	Zalo Active
 																</span>
 															</TooltipTrigger>
@@ -656,7 +684,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 																className="p-2 text-left bg-popover text-popover-foreground border border-border shadow-md text-xs"
 															>
 																<div className="font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
-																	<Check className="size-3" />
+																	<Check className="size-3" aria-hidden="true" />
 																	Đã xác thực tài khoản Zalo
 																</div>
 																<div className="text-[10.5px] text-muted-foreground mt-0.5">
@@ -679,7 +707,10 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 													onClick={(e) => e.stopPropagation()}
 													className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground hover:underline transition-colors truncate max-w-full text-xs"
 												>
-													<Globe className="size-3.5 text-muted-foreground/70 shrink-0" />
+													<Globe
+														className="size-3.5 text-muted-foreground/70 shrink-0"
+														aria-hidden="true"
+													/>
 													<span className="truncate">{lead.domain || lead.source_url}</span>
 												</a>
 											) : (
@@ -727,7 +758,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 														title="Xem sơ đồ liên kết doanh nghiệp"
 														className="size-7 p-0 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer border border-transparent hover:border-border/60"
 													>
-														<Network className="size-3.5" />
+														<Network className="size-3.5" aria-hidden="true" />
 													</button>
 												)}
 											</div>

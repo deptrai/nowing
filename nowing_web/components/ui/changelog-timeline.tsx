@@ -40,7 +40,9 @@ export const ChangelogTimeline = ({
 		<section className={cn("py-32", className)}>
 			<div className="container px-6 sm:px-8 md:px-0">
 				<div className="mx-auto max-w-3xl">
-					<h1 className="mb-3 font-serif text-3xl md:text-4xl lg:text-5xl font-normal tracking-tight">{title}</h1>
+					<h1 className="mb-3 font-serif text-3xl md:text-4xl lg:text-5xl font-normal tracking-tight">
+						{title}
+					</h1>
 					<p className="mb-6 text-sm sm:text-base text-muted-foreground font-sans">{description}</p>
 					<Separator />
 				</div>

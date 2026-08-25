@@ -128,7 +128,7 @@ export function BuyCreditsContent() {
 							: "text-muted-foreground hover:text-foreground"
 					)}
 				>
-					<QrCode className="size-4 text-emerald-500" />
+					<QrCode className="size-4 text-emerald-500" aria-hidden="true" />
 					VietQR Chuyển Khoản 24/7
 				</button>
 				<button
@@ -141,7 +141,7 @@ export function BuyCreditsContent() {
 							: "text-muted-foreground hover:text-foreground"
 					)}
 				>
-					<CreditCard className="size-4" />
+					<CreditCard className="size-4" aria-hidden="true" />
 					Thẻ Quốc Tế (Stripe)
 				</button>
 			</div>
@@ -157,7 +157,7 @@ export function BuyCreditsContent() {
 						disabled={quantity <= MIN_QUANTITY || purchaseMutation.isPending}
 						className="size-8 text-muted-foreground shadow-none transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
 					>
-						<Minus className="h-3.5 w-3.5" />
+						<Minus className="h-3.5 w-3.5" aria-hidden="true" />
 					</Button>
 					<div className="flex items-baseline gap-1.5">
 						<span className="text-lg font-semibold">$</span>
@@ -190,7 +190,7 @@ export function BuyCreditsContent() {
 						disabled={quantity >= MAX_QUANTITY || purchaseMutation.isPending}
 						className="size-8 text-muted-foreground shadow-none transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
 					>
-						<Plus className="h-3.5 w-3.5" />
+						<Plus className="h-3.5 w-3.5" aria-hidden="true" />
 					</Button>
 				</div>
 
@@ -229,7 +229,7 @@ export function BuyCreditsContent() {
 							<div className="w-full space-y-2 text-xs">
 								<div className="flex items-center justify-between border-b pb-1.5">
 									<span className="text-muted-foreground flex items-center gap-1">
-										<Building2 className="size-3.5 text-emerald-500" /> Ngân hàng
+										<Building2 className="size-3.5 text-emerald-500" aria-hidden="true" /> Ngân hàng
 									</span>
 									<span className="font-semibold">Vietcombank (VCB)</span>
 								</div>
@@ -242,9 +242,9 @@ export function BuyCreditsContent() {
 									>
 										1028384950
 										{copiedField === "Số tài khoản" ? (
-											<Check className="size-3 text-emerald-500" />
+											<Check className="size-3 text-emerald-500" aria-hidden="true" />
 										) : (
-											<Copy className="size-3" />
+											<Copy className="size-3" aria-hidden="true" />
 										)}
 									</button>
 								</div>
@@ -261,9 +261,9 @@ export function BuyCreditsContent() {
 									>
 										{totalPriceVnd.toLocaleString("vi-VN")} đ (${totalPriceUsd})
 										{copiedField === "Số tiền" ? (
-											<Check className="size-3 text-emerald-500" />
+											<Check className="size-3 text-emerald-500" aria-hidden="true" />
 										) : (
-											<Copy className="size-3" />
+											<Copy className="size-3" aria-hidden="true" />
 										)}
 									</button>
 								</div>
@@ -276,9 +276,9 @@ export function BuyCreditsContent() {
 									>
 										{transferMemo}
 										{copiedField === "Nội dung chuyển khoản" ? (
-											<Check className="size-3 text-emerald-500" />
+											<Check className="size-3 text-emerald-500" aria-hidden="true" />
 										) : (
-											<Copy className="size-3" />
+											<Copy className="size-3" aria-hidden="true" />
 										)}
 									</button>
 								</div>

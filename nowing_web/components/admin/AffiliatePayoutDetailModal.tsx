@@ -123,7 +123,7 @@ export function AffiliatePayoutDetailModal({
 				<DialogHeader className="border-b border-border/40 pb-3">
 					<div className="flex items-center justify-between">
 						<div className="flex items-center gap-2">
-							<QrCode className="h-5 w-5 text-primary" />
+							<QrCode className="h-5 w-5 text-primary" aria-hidden="true" />
 							<DialogTitle className="text-lg font-bold">
 								Chi Tiết Yêu Cầu Rút Tiền Đối Tác (Payout Desk)
 							</DialogTitle>
@@ -150,7 +150,7 @@ export function AffiliatePayoutDetailModal({
 
 				{error && (
 					<Alert variant="destructive" className="py-2.5 text-xs">
-						<AlertTriangle className="h-4 w-4" />
+						<AlertTriangle className="h-4 w-4" aria-hidden="true" />
 						<AlertTitle className="text-xs font-semibold">Lỗi Xử Lý</AlertTitle>
 						<AlertDescription>{error}</AlertDescription>
 					</Alert>
@@ -159,7 +159,7 @@ export function AffiliatePayoutDetailModal({
 				{/* High Risk Warning Alert */}
 				{isHighRisk && isPending && (
 					<Alert variant="destructive" className="bg-destructive/10 border-destructive/30 py-2.5">
-						<ShieldAlert className="h-4 w-4 text-destructive" />
+						<ShieldAlert className="h-4 w-4 text-destructive" aria-hidden="true" />
 						<AlertTitle className="text-xs font-bold text-destructive">
 							Cảnh Báo: Rủi Ro Gian Lận Mức Độ Cao (Điểm: {payout.risk_score}/100)
 						</AlertTitle>
@@ -175,7 +175,7 @@ export function AffiliatePayoutDetailModal({
 					{/* Partner Info Box */}
 					<div className="rounded-lg border border-border/70 bg-card p-3.5 space-y-2.5">
 						<div className="flex items-center gap-1.5 font-semibold text-foreground border-b border-border/40 pb-1.5">
-							<User className="h-4 w-4 text-primary" />
+							<User className="h-4 w-4 text-primary" aria-hidden="true" />
 							<span>Thông Tin Đối Tác Affiliate</span>
 						</div>
 						<div className="space-y-1.5 text-muted-foreground">
@@ -208,7 +208,7 @@ export function AffiliatePayoutDetailModal({
 					<div className="rounded-lg border border-border/70 bg-card p-3.5 space-y-2.5">
 						<div className="flex items-center justify-between border-b border-border/40 pb-1.5">
 							<div className="flex items-center gap-1.5 font-semibold text-foreground">
-								<Building className="h-4 w-4 text-primary" />
+								<Building className="h-4 w-4 text-primary" aria-hidden="true" />
 								<span>Tài Khoản Nhận Tiền</span>
 							</div>
 							<Badge
@@ -222,11 +222,11 @@ export function AffiliatePayoutDetailModal({
 								className="text-[10px] gap-1"
 							>
 								{payout.name_match_status === "100% Match" ? (
-									<CheckCircle2 className="h-3 w-3" />
+									<CheckCircle2 className="h-3 w-3" aria-hidden="true" />
 								) : payout.name_match_status === "Name Mismatch" ? (
-									<XCircle className="h-3 w-3" />
+									<XCircle className="h-3 w-3" aria-hidden="true" />
 								) : (
-									<Info className="h-3 w-3" />
+									<Info className="h-3 w-3" aria-hidden="true" />
 								)}
 								{payout.name_match_status}
 							</Badge>
@@ -254,7 +254,7 @@ export function AffiliatePayoutDetailModal({
 				<div className="rounded-lg border border-primary/20 bg-primary/5 p-3.5 space-y-2 text-xs">
 					<div className="flex items-center justify-between font-semibold text-primary border-b border-primary/20 pb-1.5">
 						<div className="flex items-center gap-1.5">
-							<Coins className="h-4 w-4" />
+							<Coins className="h-4 w-4" aria-hidden="true" />
 							<span>Bảng Kê Chi Trả & Khấu Trừ Thuế TNCN (TT 111/2013/TT-BTC)</span>
 						</div>
 					</div>
@@ -288,7 +288,7 @@ export function AffiliatePayoutDetailModal({
 				<div className="rounded-lg border border-border/70 bg-card p-3.5 space-y-2 text-xs">
 					<div className="flex items-center justify-between border-b border-border/40 pb-1.5">
 						<div className="flex items-center gap-1.5 font-semibold text-foreground">
-							<ShieldCheck className="h-4 w-4 text-primary" />
+							<ShieldCheck className="h-4 w-4 text-primary" aria-hidden="true" />
 							<span>Kết Quả Đánh Giá Anti-Fraud Engine</span>
 						</div>
 						<Button
@@ -307,7 +307,10 @@ export function AffiliatePayoutDetailModal({
 						{payout.risk_reasons && payout.risk_reasons.length > 0 ? (
 							payout.risk_reasons.map((reason) => (
 								<div key={reason} className="flex items-start gap-1.5 text-muted-foreground">
-									<ArrowRight className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+									<ArrowRight
+										className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5"
+										aria-hidden="true"
+									/>
 									<span>{reason}</span>
 								</div>
 							))
@@ -323,7 +326,7 @@ export function AffiliatePayoutDetailModal({
 				{showRejectForm && (
 					<div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3.5 space-y-3 text-xs">
 						<div className="flex items-center gap-1.5 font-semibold text-destructive">
-							<FileText className="h-4 w-4" />
+							<FileText className="h-4 w-4" aria-hidden="true" />
 							<span>Lý Do Từ Chối Yêu Cầu Payout (Ledger Rollback)</span>
 						</div>
 
@@ -421,7 +424,7 @@ export function AffiliatePayoutDetailModal({
 									{isApproving ? (
 										<Spinner className="h-3 w-3 mr-1" />
 									) : (
-										<QrCode className="h-3.5 w-3.5" />
+										<QrCode className="h-3.5 w-3.5" aria-hidden="true" />
 									)}
 									Phê Duyệt & Chuyển Tiền VietQR
 								</Button>

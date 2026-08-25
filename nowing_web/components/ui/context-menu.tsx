@@ -53,7 +53,7 @@ function ContextMenuSubTrigger({
 			{...props}
 		>
 			{children}
-			<ChevronRightIcon className="ml-auto size-4" />
+			<ChevronRightIcon className="ml-auto size-4" aria-hidden="true" />
 		</ContextMenuPrimitive.SubTrigger>
 	);
 }
@@ -133,7 +133,7 @@ function ContextMenuCheckboxItem({
 		>
 			<span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
 				<ContextMenuPrimitive.ItemIndicator>
-					<CheckIcon className="size-4" />
+					<CheckIcon className="size-4" aria-hidden="true" />
 				</ContextMenuPrimitive.ItemIndicator>
 			</span>
 			{children}
@@ -157,7 +157,7 @@ function ContextMenuRadioItem({
 		>
 			<span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
 				<ContextMenuPrimitive.ItemIndicator>
-					<CircleIcon className="size-2 fill-current" />
+					<CircleIcon className="size-2 fill-current" aria-hidden="true" />
 				</ContextMenuPrimitive.ItemIndicator>
 			</span>
 			{children}

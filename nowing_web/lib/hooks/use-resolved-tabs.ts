@@ -54,6 +54,7 @@ function getQueryOptions(tab: Tab): UseQueryOptions<unknown, Error, unknown> {
 			queryFn: () => getThreadFull(threadId),
 			enabled: true,
 			staleTime: THREAD_STALE_TIME_MS,
+			meta: { suppressGlobalErrorToast: true },
 		};
 	}
 
@@ -64,6 +65,7 @@ function getQueryOptions(tab: Tab): UseQueryOptions<unknown, Error, unknown> {
 			queryFn: () => documentsApiService.getDocument({ id: documentId }),
 			enabled: true,
 			staleTime: DOCUMENT_STALE_TIME_MS,
+			meta: { suppressGlobalErrorToast: true },
 		};
 	}
 

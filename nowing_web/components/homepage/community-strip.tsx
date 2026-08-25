@@ -26,24 +26,24 @@ export function CommunityStrip() {
 						<Button asChild size="lg">
 							<Link href="/register">
 								Start for free
-								<ArrowRight className="size-4" />
+								<ArrowRight className="size-4" aria-hidden="true" />
 							</Link>
 						</Button>
 						<Button asChild variant="outline" size="lg">
 							<Link href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
-								<IconBrandGithub className="size-4" />
+								<IconBrandGithub className="size-4" aria-hidden="true" />
 								Star on GitHub
 							</Link>
 						</Button>
 						<Button asChild variant="ghost" size="lg">
 							<Link href={DISCORD_URL} target="_blank" rel="noopener noreferrer">
-								<IconBrandDiscord className="size-4" />
+								<IconBrandDiscord className="size-4" aria-hidden="true" />
 								Join Discord
 							</Link>
 						</Button>
 						<Button asChild variant="ghost" size="lg">
 							<Link href={REDDIT_URL} target="_blank" rel="noopener noreferrer">
-								<IconBrandReddit className="size-4" />
+								<IconBrandReddit className="size-4" aria-hidden="true" />
 								r/Nowing
 							</Link>
 						</Button>

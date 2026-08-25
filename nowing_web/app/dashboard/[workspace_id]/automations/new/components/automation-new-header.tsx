@@ -18,7 +18,7 @@ export function AutomationNewHeader({ workspaceId, modeSwitcher }: AutomationNew
 						href={`/dashboard/${workspaceId}/automations`}
 						className="text-xs text-muted-foreground"
 					>
-						<ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
+						<ArrowLeft className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
 						Back to automations
 					</Link>
 				</Button>

@@ -340,14 +340,14 @@ export function AutomationBuilderForm({
 					value="form"
 					className="h-5 gap-1 px-1.5 text-[11px] select-none focus-visible:ring-0 focus-visible:ring-offset-0 data-[state=active]:bg-muted-foreground/25 data-[state=active]:text-foreground data-[state=active]:shadow-none"
 				>
-					<LayoutList className="size-3 shrink-0" />
+					<LayoutList className="size-3 shrink-0" aria-hidden="true" />
 					<span className="leading-none">Form</span>
 				</TabsTrigger>
 				<TabsTrigger
 					value="json"
 					className="h-5 gap-1 px-1.5 text-[11px] select-none focus-visible:ring-0 focus-visible:ring-offset-0 data-[state=active]:bg-muted-foreground/25 data-[state=active]:text-foreground data-[state=active]:shadow-none"
 				>
-					<Code2 className="size-3 shrink-0" />
+					<Code2 className="size-3 shrink-0" aria-hidden="true" />
 					<span className="leading-none">Edit as JSON</span>
 				</TabsTrigger>
 			</TabsList>

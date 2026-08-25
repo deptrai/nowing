@@ -160,12 +160,12 @@ export const Plan: FC<PlanProps> = ({
 			<CardHeader className="pb-3">
 				<div className="flex items-start justify-between gap-2">
 					<div className="flex-1 min-w-0 flex items-center gap-2">
-						<ListTodo className="size-5 text-muted-foreground shrink-0" />
+						<ListTodo className="size-5 text-muted-foreground shrink-0" aria-hidden="true" />
 						<CardTitle className="text-base font-semibold text-muted-foreground">{title}</CardTitle>
 					</div>
 					{isAllComplete && (
 						<div className="flex items-center gap-1 text-emerald-500">
-							<PartyPopper className="size-5" />
+							<PartyPopper className="size-5" aria-hidden="true" />
 						</div>
 					)}
 				</div>

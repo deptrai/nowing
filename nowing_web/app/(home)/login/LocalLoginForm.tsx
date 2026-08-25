@@ -107,6 +107,7 @@ export function LocalLoginForm() {
 									strokeLinecap="round"
 									strokeLinejoin="round"
 									className="flex-shrink-0 mt-0.5 text-destructive"
+									aria-hidden="true"
 								>
 									<title>Error Icon</title>
 									<circle cx="12" cy="12" r="10" />
@@ -137,6 +138,7 @@ export function LocalLoginForm() {
 										strokeWidth="2"
 										strokeLinecap="round"
 										strokeLinejoin="round"
+										aria-hidden="true"
 									>
 										<title>Close</title>
 										<line x1="18" y1="6" x2="6" y2="18" />
@@ -198,7 +200,11 @@ export function LocalLoginForm() {
 							className="absolute inset-y-0 right-0 h-full w-10 text-muted-foreground hover:bg-transparent hover:text-foreground"
 							aria-label={showPassword ? t("hide_password") : t("show_password")}
 						>
-							{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+							{showPassword ? (
+								<EyeOff className="h-4 w-4" aria-hidden="true" />
+							) : (
+								<Eye className="h-4 w-4" aria-hidden="true" />
+							)}
 						</Button>
 					</div>
 				</div>
@@ -206,6 +212,8 @@ export function LocalLoginForm() {
 				<Button
 					type="submit"
 					disabled={isLoggingIn}
+					aria-label={isLoggingIn ? "Signing in..." : t("sign_in")}
+					aria-busy={isLoggingIn}
 					className="relative h-auto w-full px-4 py-1.5 text-sm md:py-2 md:text-base"
 				>
 					<span className={isLoggingIn ? "invisible" : ""}>{t("sign_in")}</span>
@@ -221,7 +229,10 @@ export function LocalLoginForm() {
 				<div className="mt-4 text-center text-sm">
 					<p className="text-muted-foreground">
 						{t("dont_have_account")}{" "}
-						<Link href="/register" className="font-medium text-primary hover:text-primary/90">
+						<Link
+							href="/register"
+							className="font-medium text-primary hover:text-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+						>
 							{t("sign_up")}
 						</Link>
 					</p>

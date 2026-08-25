@@ -60,6 +60,7 @@ export const NowingFaq: React.FC = () => {
 											"w-4 h-4 text-slate-400 transition-transform duration-200",
 											isOpen && "rotate-180 text-emerald-600"
 										)}
+										aria-hidden="true"
 									/>
 								</button>
 								{isOpen && (

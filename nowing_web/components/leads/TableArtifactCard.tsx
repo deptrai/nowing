@@ -80,7 +80,7 @@ export const TableArtifactCard: React.FC<TableArtifactCardProps> = ({
 								: "bg-muted/80 border-border/50 text-muted-foreground group-hover:text-foreground"
 						)}
 					>
-						<TableIcon className="size-4" />
+						<TableIcon className="size-4" aria-hidden="true" />
 					</div>
 
 					<div className="min-w-0 flex-1">
@@ -120,6 +120,7 @@ export const TableArtifactCard: React.FC<TableArtifactCardProps> = ({
 									"size-3.5 transition-transform duration-200",
 									isInlineExpanded && "rotate-180"
 								)}
+								aria-hidden="true"
 							/>
 						</button>
 					)}
@@ -130,7 +131,10 @@ export const TableArtifactCard: React.FC<TableArtifactCardProps> = ({
 						className="p-0.5 rounded text-muted-foreground/60 group-hover:text-foreground transition-all cursor-pointer focus:outline-none"
 						title="Chuyển sang Bảng Leads bên phải"
 					>
-						<ChevronRight className="size-3.5 group-hover:translate-x-0.5 transition-transform" />
+						<ChevronRight
+							className="size-3.5 group-hover:translate-x-0.5 transition-transform"
+							aria-hidden="true"
+						/>
 					</button>
 				</div>
 			</div>

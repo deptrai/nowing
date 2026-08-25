@@ -109,7 +109,7 @@ export const CirclebackConfig: FC<CirclebackConfigProps> = ({ connector, onNameC
 			<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6 space-y-3 sm:space-y-4">
 				<div className="space-y-1 sm:space-y-2">
 					<h3 className="font-medium text-sm sm:text-base flex items-center gap-2">
-						<Webhook className="h-4 w-4" />
+						<Webhook className="h-4 w-4" aria-hidden="true" />
 						Webhook Configuration
 					</h3>
 				</div>
@@ -137,12 +137,12 @@ export const CirclebackConfig: FC<CirclebackConfigProps> = ({ connector, onNameC
 							>
 								{copied ? (
 									<>
-										<Check className="h-4 w-4 mr-2" />
+										<Check className="h-4 w-4 mr-2" aria-hidden="true" />
 										Copied!
 									</>
 								) : (
 									<>
-										<Copy className="h-4 w-4 mr-2" />
+										<Copy className="h-4 w-4 mr-2" aria-hidden="true" />
 										Copy
 									</>
 								)}

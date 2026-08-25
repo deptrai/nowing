@@ -280,9 +280,9 @@ export function PromptsContent() {
 					{["skeleton-a", "skeleton-b", "skeleton-c"].map((key) => (
 						<Card key={key} className="border-accent bg-accent/20">
 							<CardContent className="p-4 flex flex-col gap-3 min-h-24">
-								<Skeleton className="h-4 w-32 md:w-40 bg-accent" />
+								<Skeleton className="h-4 w-32 md:w-40 bg-accent" aria-hidden="true" />
 								<Skeleton className="h-3 w-full bg-accent" />
-								<Skeleton className="h-3 w-24 md:w-28 bg-accent mt-auto" />
+								<Skeleton className="h-3 w-24 md:w-28 bg-accent mt-auto" aria-hidden="true" />
 							</CardContent>
 						</Card>
 					))}
@@ -299,7 +299,7 @@ export function PromptsContent() {
 
 			{!isLoading && !isError && list.length === 0 && !showForm && (
 				<div className="rounded-lg border border-dashed border-border/60 p-8 text-center">
-					<Sparkles className="mx-auto size-8 text-muted-foreground/40" />
+					<Sparkles className="mx-auto size-8 text-muted-foreground/40" aria-hidden="true" />
 					<p className="mt-2 text-sm text-muted-foreground">No prompts yet</p>
 					<p className="text-xs text-muted-foreground/60">
 						Create prompts to quickly transform or explore text with /
@@ -322,7 +322,7 @@ export function PromptsContent() {
 									</span>
 									{prompt.is_public && (
 										<span className="flex items-center gap-1 rounded-md border-0 bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-											<Globe className="size-2.5" />
+											<Globe className="size-2.5" aria-hidden="true" />
 											Public
 										</span>
 									)}
@@ -351,7 +351,7 @@ export function PromptsContent() {
 										size="icon"
 										className="h-7 w-7 shrink-0 self-center rounded-lg text-muted-foreground opacity-100 pointer-events-auto transition-opacity duration-150 hover:text-accent-foreground sm:opacity-0 sm:pointer-events-none sm:group-hover:opacity-100 sm:group-hover:pointer-events-auto"
 									>
-										<MoreHorizontal className="size-3.5" />
+										<MoreHorizontal className="size-3.5" aria-hidden="true" />
 										<span className="sr-only">Prompt actions</span>
 									</Button>
 								</DropdownMenuTrigger>
@@ -363,21 +363,21 @@ export function PromptsContent() {
 										{togglingPublicIds.has(prompt.id) ? (
 											<Spinner className="size-4" />
 										) : prompt.is_public ? (
-											<Lock className="size-4" />
+											<Lock className="size-4" aria-hidden="true" />
 										) : (
-											<Globe className="size-4" />
+											<Globe className="size-4" aria-hidden="true" />
 										)}
 										{prompt.is_public ? "Make private" : "Share with community"}
 									</DropdownMenuItem>
 									<DropdownMenuItem onClick={() => handleEdit(prompt)}>
-										<Pencil className="size-4" />
+										<Pencil className="size-4" aria-hidden="true" />
 										Edit
 									</DropdownMenuItem>
 									<DropdownMenuItem
 										onClick={() => setDeleteTarget(prompt.id)}
 										className="text-destructive focus:text-destructive"
 									>
-										<Trash2 className="size-4" />
+										<Trash2 className="size-4" aria-hidden="true" />
 										Delete
 									</DropdownMenuItem>
 								</DropdownMenuContent>

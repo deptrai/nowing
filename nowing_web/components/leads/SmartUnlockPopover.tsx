@@ -102,7 +102,9 @@ export function SmartUnlockPopover({
 						disabled={isLoading}
 						className="bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
 					>
-						{isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
+						{isLoading ? (
+							<Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" aria-hidden="true" />
+						) : null}
 						{actionLabel}
 					</Button>
 				</div>

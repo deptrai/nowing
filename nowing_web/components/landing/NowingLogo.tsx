@@ -14,6 +14,7 @@ export const NowingLogo: React.FC<NowingLogoProps> = ({
 	showText = false,
 	textClassName,
 }) => {
+	const svgAccessible = !showText;
 	return (
 		<div className={cn("inline-flex items-center gap-2.5 select-none", className)}>
 			{/* Nowing Brand Geometric Icon in Mint & Emerald Green */}
@@ -27,7 +28,8 @@ export const NowingLogo: React.FC<NowingLogoProps> = ({
 					height={size * 0.65}
 					fill="currentColor"
 					xmlns="http://www.w3.org/2000/svg"
-					aria-label="Nowing Logo"
+					aria-hidden={!svgAccessible}
+					aria-label={svgAccessible ? "Nowing Logo" : undefined}
 				>
 					<path d="M12 2L2 9.5L12 17L22 9.5L12 2Z" fill="white" fillOpacity="0.95" />
 					<path d="M12 17L2 9.5L12 22L22 9.5L12 17Z" fill="white" fillOpacity="0.65" />

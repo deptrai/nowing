@@ -269,9 +269,12 @@ function NavbarGitHubStars({
 				className
 			)}
 		>
-			<IconBrandGithub className="h-5 w-5 text-neutral-700 dark:text-neutral-300 shrink-0" />
+			<IconBrandGithub
+				className="h-5 w-5 text-neutral-700 dark:text-neutral-300 shrink-0"
+				aria-hidden="true"
+			/>
 			{isLoading ? (
-				<Skeleton className="h-4 w-10" />
+				<Skeleton className="h-4 w-10" aria-hidden="true" />
 			) : (
 				<AnimatedStarCount
 					value={stars}

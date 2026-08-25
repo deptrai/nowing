@@ -86,7 +86,7 @@ function RegenerateButton({ podcast }: { podcast: LivePodcast }) {
 				className="text-muted-foreground"
 				onClick={() => setConfirming(true)}
 			>
-				<RotateCcw className="size-3.5" /> Regenerate
+				<RotateCcw className="size-3.5" aria-hidden="true" /> Regenerate
 			</Button>
 		);
 	}
@@ -112,7 +112,7 @@ function RegenerateButton({ podcast }: { podcast: LivePodcast }) {
 				onClick={regenerate}
 				disabled={isSubmitting}
 			>
-				{isSubmitting ? <Loader2 className="size-3.5 animate-spin" /> : null}
+				{isSubmitting ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : null}
 				Regenerate
 			</Button>
 		</div>
@@ -152,9 +152,9 @@ function BackOutButton({ podcastId, hasEpisode }: { podcastId: number; hasEpisod
 				}
 			>
 				{isSubmitting ? (
-					<Loader2 className="size-3.5 animate-spin" />
+					<Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
 				) : (
-					<Undo2 className="size-3.5" />
+					<Undo2 className="size-3.5" aria-hidden="true" />
 				)}
 				Keep current episode
 			</Button>
@@ -171,7 +171,7 @@ function BackOutButton({ podcastId, hasEpisode }: { podcastId: number; hasEpisod
 					className="shrink-0 text-muted-foreground"
 					disabled={isSubmitting}
 				>
-					<X className="size-3.5" /> Cancel
+					<X className="size-3.5" aria-hidden="true" /> Cancel
 				</Button>
 			</AlertDialogTrigger>
 			<AlertDialogContent>

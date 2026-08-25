@@ -37,7 +37,7 @@ export const UpdateMemoryToolUI = ({
 		return (
 			<div className="my-3 flex items-center gap-3 rounded-lg border bg-card/60 px-4 py-3">
 				<div className="flex size-8 items-center justify-center rounded-full bg-primary/10">
-					<Loader2Icon className="size-4 animate-spin text-primary" />
+					<Loader2Icon className="size-4 animate-spin text-primary" aria-hidden="true" />
 				</div>
 				<div className="flex-1">
 					<span className="text-sm text-muted-foreground">Updating memory...</span>
@@ -50,7 +50,7 @@ export const UpdateMemoryToolUI = ({
 		return (
 			<div className="my-3 flex items-center gap-3 rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3">
 				<div className="flex size-8 items-center justify-center rounded-full bg-destructive/10">
-					<XIcon className="size-4 text-destructive" />
+					<XIcon className="size-4 text-destructive" aria-hidden="true" />
 				</div>
 				<div className="flex-1">
 					<span className="text-sm text-destructive">Failed to update memory</span>
@@ -64,16 +64,19 @@ export const UpdateMemoryToolUI = ({
 		return (
 			<div className="my-3 flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
 				<div className="flex size-8 items-center justify-center rounded-full bg-primary/10">
-					<BrainIcon className="size-4 text-primary" />
+					<BrainIcon className="size-4 text-primary" aria-hidden="true" />
 				</div>
 				<div className="flex-1 min-w-0">
 					<div className="flex items-center gap-2">
-						<CheckIcon className="size-3 text-green-500 shrink-0" />
+						<CheckIcon className="size-3 text-green-500 shrink-0" aria-hidden="true" />
 						<span className="text-sm font-medium text-foreground">Memory updated</span>
 					</div>
 					{result.warning && (
 						<div className="mt-1.5 flex items-start gap-1.5">
-							<AlertTriangleIcon className="size-3 text-yellow-500 shrink-0 mt-0.5" />
+							<AlertTriangleIcon
+								className="size-3 text-yellow-500 shrink-0 mt-0.5"
+								aria-hidden="true"
+							/>
 							<p className="text-xs text-yellow-600 dark:text-yellow-400">{result.warning}</p>
 						</div>
 					)}

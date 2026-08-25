@@ -103,7 +103,11 @@ function LoginContent() {
 		<div className="relative w-full overflow-hidden flex min-h-[calc(100vh-5rem)] items-center justify-center py-8 px-4">
 			<AmbientBackground />
 			<div className="relative z-10 mx-auto flex w-full max-w-md flex-col items-center justify-center">
-				<Logo priority className="h-16 w-16 md:h-24 md:w-24 rounded-md transition-all" />
+				<Logo
+					priority
+					className="h-16 w-16 md:h-24 md:w-24 rounded-md transition-all"
+					aria-hidden="true"
+				/>
 				<h1 className="mt-4 mb-6 font-serif text-2xl md:text-3xl lg:text-4xl font-normal text-neutral-800 dark:text-neutral-100 transition-all tracking-tight text-center">
 					{t("sign_in")}
 				</h1>
@@ -130,6 +134,7 @@ function LoginContent() {
 									strokeLinecap="round"
 									strokeLinejoin="round"
 									className="flex-shrink-0 mt-0.5 text-red-500 dark:text-red-400"
+									aria-hidden="true"
 								>
 									<title>Error Icon</title>
 									<circle cx="12" cy="12" r="10" />
@@ -158,6 +163,7 @@ function LoginContent() {
 										strokeWidth="2"
 										strokeLinecap="round"
 										strokeLinejoin="round"
+										aria-hidden="true"
 									>
 										<title>Close</title>
 										<line x1="18" y1="6" x2="6" y2="18" />

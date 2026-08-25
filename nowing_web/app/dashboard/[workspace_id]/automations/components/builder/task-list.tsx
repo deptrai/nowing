@@ -52,7 +52,7 @@ export function TaskList({ tasks, errors, workspaceId, onChange }: TaskListProps
 			{errors.tasks && <p className="text-xs text-destructive">{errors.tasks}</p>}
 
 			<Button type="button" size="sm" onClick={() => onChange([...tasks, emptyTask()])}>
-				<Plus className="h-4 w-4" />
+				<Plus className="h-4 w-4" aria-hidden="true" />
 				Add task
 			</Button>
 		</div>

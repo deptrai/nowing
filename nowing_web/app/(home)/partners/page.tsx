@@ -120,7 +120,10 @@ export default function PartnersPage() {
 			{/* Hero Section */}
 			<div className="relative pt-16 md:pt-24 pb-12 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto text-center">
 				<div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300/60 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-300 text-xs md:text-sm font-semibold uppercase tracking-wider mb-6">
-					<IconAffiliate className="size-4 text-emerald-600 dark:text-emerald-400" />
+					<IconAffiliate
+						className="size-4 text-emerald-600 dark:text-emerald-400"
+						aria-hidden="true"
+					/>
 					<span>Official Affiliate & Agency Partner Program</span>
 				</div>
 
@@ -142,7 +145,7 @@ export default function PartnersPage() {
 					<Link href="/partners/dashboard">
 						<Button className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-neutral-950 font-bold px-6 py-5 rounded-xl flex items-center justify-center gap-2 text-sm transition-all shadow-lg shadow-emerald-500/20">
 							<span>Go to Partner Dashboard</span>
-							<IconArrowRight className="size-4" />
+							<IconArrowRight className="size-4" aria-hidden="true" />
 						</Button>
 					</Link>
 					<Link href="/pricing">
@@ -177,7 +180,7 @@ export default function PartnersPage() {
 								className="p-6 rounded-3xl border border-neutral-200/80 dark:border-neutral-800 bg-white/60 dark:bg-neutral-900/60 backdrop-blur-xs shadow-xs hover:border-emerald-400/60 transition-all group"
 							>
 								<div className="p-3 w-fit rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/40 mb-4 group-hover:scale-110 transition-transform">
-									<Icon className="size-6" />
+									<Icon className="size-6" aria-hidden="true" />
 								</div>
 								<h3 className="text-lg font-bold text-neutral-900 dark:text-white mb-2">
 									{prop.title}
@@ -195,7 +198,10 @@ export default function PartnersPage() {
 			<div className="max-w-5xl mx-auto px-4 my-16">
 				<div className="rounded-3xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/40 p-8 text-center">
 					<div className="flex items-center justify-center gap-2 text-neutral-700 dark:text-neutral-300 font-semibold mb-4 text-sm md:text-base">
-						<IconBuildingBank className="size-5 text-emerald-600 dark:text-emerald-400" />
+						<IconBuildingBank
+							className="size-5 text-emerald-600 dark:text-emerald-400"
+							aria-hidden="true"
+						/>
 						<span>Supported VietQR Napas 24/7 Banks for Instant Payouts</span>
 					</div>
 					<div className="flex flex-wrap items-center justify-center gap-2 md:gap-3">

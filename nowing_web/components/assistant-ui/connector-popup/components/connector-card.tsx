@@ -105,9 +105,9 @@ export const ConnectorCard: FC<ConnectorCardProps> = ({
 				{connectorType ? (
 					getConnectorIcon(connectorType, "size-6")
 				) : id === "youtube-crawler" ? (
-					<IconBrandYoutube className="size-6" />
+					<IconBrandYoutube className="size-6" aria-hidden="true" />
 				) : (
-					<FileText className="size-6" />
+					<FileText className="size-6" aria-hidden="true" />
 				)}
 			</div>
 			<div className="flex-1 min-w-0">

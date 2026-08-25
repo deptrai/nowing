@@ -69,7 +69,7 @@ export function PromptConfigManager({ workspaceId }: PromptConfigManagerProps) {
 			<div className="space-y-4 md:space-y-6">
 				<div className="space-y-3 md:space-y-4">
 					<div className="space-y-2">
-						<Skeleton className="h-5 md:h-6 w-36 md:w-48" />
+						<Skeleton className="h-5 md:h-6 w-36 md:w-48" aria-hidden="true" />
 						<Skeleton className="h-3 md:h-4 w-full max-w-md mt-2" />
 					</div>
 					<div className="space-y-3 md:space-y-4">

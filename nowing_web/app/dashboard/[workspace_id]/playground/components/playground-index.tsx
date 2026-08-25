@@ -44,26 +44,26 @@ export function PlaygroundIndex({ workspaceId }: { workspaceId: number }) {
 					className="flex items-center justify-between rounded-lg border border-border/60 bg-accent/40 px-4 py-3 transition-colors hover:bg-accent"
 				>
 					<div className="flex items-center gap-3">
-						<History className="h-5 w-5 text-muted-foreground" />
+						<History className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
 						<div>
 							<p className="text-sm font-medium">API Runs</p>
 							<p className="text-xs text-muted-foreground">See every API run in this workspace</p>
 						</div>
 					</div>
-					<ArrowRight className="h-4 w-4 text-muted-foreground" />
+					<ArrowRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
 				</Link>
 				<Link
 					href={`${base}/api-keys`}
 					className="flex items-center justify-between rounded-lg border border-border/60 bg-accent/40 px-4 py-3 transition-colors hover:bg-accent"
 				>
 					<div className="flex items-center gap-3">
-						<KeyRound className="h-5 w-5 text-muted-foreground" />
+						<KeyRound className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
 						<div>
 							<p className="text-sm font-medium">API Keys</p>
 							<p className="text-xs text-muted-foreground">Manage keys and workspace API access</p>
 						</div>
 					</div>
-					<ArrowRight className="h-4 w-4 text-muted-foreground" />
+					<ArrowRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
 				</Link>
 			</div>
 
@@ -83,7 +83,10 @@ export function PlaygroundIndex({ workspaceId }: { workspaceId: number }) {
 								>
 									<div className="flex items-center justify-between">
 										<span className="text-sm font-medium">{verb.label}</span>
-										<ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+										<ArrowRight
+											className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+											aria-hidden="true"
+										/>
 									</div>
 									<code className="mt-2 text-xs text-muted-foreground">{verb.name}</code>
 									{pricingByName.has(verb.name) ? (

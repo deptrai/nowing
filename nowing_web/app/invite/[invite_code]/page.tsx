@@ -169,7 +169,7 @@ export default function InviteAcceptPage() {
 									transition={{ type: "spring", stiffness: 200, damping: 15 }}
 									className="mx-auto mb-4 h-20 w-20 rounded-full bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 flex items-center justify-center ring-4 ring-emerald-500/20"
 								>
-									<CheckCircle2 className="h-10 w-10 text-emerald-500" />
+									<CheckCircle2 className="h-10 w-10 text-emerald-500" aria-hidden="true" />
 								</motion.div>
 								<CardTitle className="text-2xl">Welcome to the team!</CardTitle>
 								<CardDescription>
@@ -180,7 +180,7 @@ export default function InviteAcceptPage() {
 								<div className="bg-muted/50 rounded-lg p-4 space-y-3">
 									<div className="flex items-center gap-3">
 										<div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-											<Users className="h-5 w-5 text-primary" />
+											<Users className="h-5 w-5 text-primary" aria-hidden="true" />
 										</div>
 										<div>
 											<p className="font-medium">{acceptedData.workspace_name}</p>
@@ -189,7 +189,7 @@ export default function InviteAcceptPage() {
 									</div>
 									<div className="flex items-center gap-3">
 										<div className="h-10 w-10 rounded-lg bg-violet-500/10 flex items-center justify-center">
-											<Shield className="h-5 w-5 text-violet-500" />
+											<Shield className="h-5 w-5 text-violet-500" aria-hidden="true" />
 										</div>
 										<div>
 											<p className="font-medium">{acceptedData.role_name}</p>
@@ -204,7 +204,7 @@ export default function InviteAcceptPage() {
 									onClick={() => router.push(`/dashboard/${acceptedData.workspace_id}`)}
 								>
 									Go to Workspace
-									<ArrowRight className="h-4 w-4" />
+									<ArrowRight className="h-4 w-4" aria-hidden="true" />
 								</Button>
 							</CardFooter>
 						</>
@@ -217,7 +217,7 @@ export default function InviteAcceptPage() {
 									transition={{ type: "spring", stiffness: 200, damping: 15 }}
 									className="mx-auto mb-4 h-20 w-20 rounded-full bg-gradient-to-br from-destructive/20 to-destructive/5 flex items-center justify-center ring-4 ring-destructive/20"
 								>
-									<XCircle className="h-10 w-10 text-destructive" />
+									<XCircle className="h-10 w-10 text-destructive" aria-hidden="true" />
 								</motion.div>
 								<CardTitle className="text-2xl">Invalid Invite</CardTitle>
 								<CardDescription>
@@ -249,7 +249,7 @@ export default function InviteAcceptPage() {
 									transition={{ type: "spring", stiffness: 200, damping: 15 }}
 									className="mx-auto mb-4 h-20 w-20 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center ring-4 ring-primary/20"
 								>
-									<Sparkles className="h-10 w-10 text-primary" />
+									<Sparkles className="h-10 w-10 text-primary" aria-hidden="true" />
 								</motion.div>
 								<CardTitle className="text-2xl">You're Invited!</CardTitle>
 								<CardDescription>
@@ -260,7 +260,7 @@ export default function InviteAcceptPage() {
 								<div className="bg-muted/50 rounded-lg p-4 space-y-3">
 									<div className="flex items-center gap-3">
 										<div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-											<Users className="h-5 w-5 text-primary" />
+											<Users className="h-5 w-5 text-primary" aria-hidden="true" />
 										</div>
 										<div>
 											<p className="font-medium">{inviteInfo?.workspace_name}</p>
@@ -270,7 +270,7 @@ export default function InviteAcceptPage() {
 									{inviteInfo?.role_name && (
 										<div className="flex items-center gap-3">
 											<div className="h-10 w-10 rounded-lg bg-violet-500/10 flex items-center justify-center">
-												<Shield className="h-5 w-5 text-violet-500" />
+												<Shield className="h-5 w-5 text-violet-500" aria-hidden="true" />
 											</div>
 											<div>
 												<p className="font-medium">{inviteInfo.role_name}</p>
@@ -282,7 +282,7 @@ export default function InviteAcceptPage() {
 							</CardContent>
 							<CardFooter>
 								<Button className="w-full gap-2" onClick={handleLoginRedirect}>
-									<LogIn className="h-4 w-4" />
+									<LogIn className="h-4 w-4" aria-hidden="true" />
 									Sign in to Accept
 								</Button>
 							</CardFooter>
@@ -296,7 +296,7 @@ export default function InviteAcceptPage() {
 									transition={{ type: "spring", stiffness: 200, damping: 15 }}
 									className="mx-auto mb-4 h-20 w-20 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center ring-4 ring-primary/20"
 								>
-									<Sparkles className="h-10 w-10 text-primary" />
+									<Sparkles className="h-10 w-10 text-primary" aria-hidden="true" />
 								</motion.div>
 								<CardTitle className="text-2xl">You're Invited!</CardTitle>
 								<CardDescription>
@@ -307,7 +307,7 @@ export default function InviteAcceptPage() {
 								<div className="bg-muted/50 rounded-lg p-4 space-y-3">
 									<div className="flex items-center gap-3">
 										<div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-											<Users className="h-5 w-5 text-primary" />
+											<Users className="h-5 w-5 text-primary" aria-hidden="true" />
 										</div>
 										<div>
 											<p className="font-medium">{inviteInfo?.workspace_name}</p>
@@ -317,7 +317,7 @@ export default function InviteAcceptPage() {
 									{inviteInfo?.role_name && (
 										<div className="flex items-center gap-3">
 											<div className="h-10 w-10 rounded-lg bg-violet-500/10 flex items-center justify-center">
-												<Shield className="h-5 w-5 text-violet-500" />
+												<Shield className="h-5 w-5 text-violet-500" aria-hidden="true" />
 											</div>
 											<div>
 												<p className="font-medium">{inviteInfo.role_name}</p>
@@ -333,7 +333,7 @@ export default function InviteAcceptPage() {
 										animate={{ opacity: 1, y: 0 }}
 										className="flex items-center gap-2 p-3 bg-destructive/10 text-destructive rounded-lg text-sm"
 									>
-										<AlertCircle className="h-4 w-4 shrink-0" />
+										<AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
 										{error}
 									</motion.div>
 								)}
@@ -350,7 +350,7 @@ export default function InviteAcceptPage() {
 										</>
 									) : (
 										<>
-											<CheckCircle2 className="h-4 w-4" />
+											<CheckCircle2 className="h-4 w-4" aria-hidden="true" />
 											Accept Invite
 										</>
 									)}

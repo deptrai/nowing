@@ -229,12 +229,15 @@ function ApprovalCard({
 										<p className="text-xs font-medium text-muted-foreground">Event to Delete</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm space-y-1.5">
 											<div className="flex items-center gap-1.5">
-												<CalendarIcon className="size-3 shrink-0 text-muted-foreground" />
+												<CalendarIcon
+													className="size-3 shrink-0 text-muted-foreground"
+													aria-hidden="true"
+												/>
 												<span className="font-medium">{event.summary}</span>
 											</div>
 											{(event.start || event.end) && (
 												<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-													<ClockIcon className="size-3 shrink-0" />
+													<ClockIcon className="size-3 shrink-0" aria-hidden="true" />
 													<span>
 														{event.start ? formatDateTime(event.start) : ""}
 														{event.start && event.end ? " — " : ""}
@@ -244,7 +247,7 @@ function ApprovalCard({
 											)}
 											{event.location && (
 												<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-													<MapPinIcon className="size-3 shrink-0" />
+													<MapPinIcon className="size-3 shrink-0" aria-hidden="true" />
 													<span>{event.location}</span>
 												</div>
 											)}
@@ -287,7 +290,7 @@ function ApprovalCard({
 					<div className="px-5 py-4 flex items-center gap-2 select-none">
 						<Button size="sm" className="rounded-lg gap-1.5" onClick={handleApprove}>
 							Approve
-							<CornerDownLeftIcon className="size-3 opacity-60" />
+							<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 						</Button>
 						<Button
 							size="sm"

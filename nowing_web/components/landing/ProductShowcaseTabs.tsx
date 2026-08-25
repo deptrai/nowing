@@ -16,7 +16,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 				{/* Section Header */}
 				<div className="text-center max-w-3xl mx-auto mb-12">
 					<div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100/70 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 text-xs font-bold uppercase tracking-wider mb-3">
-						<Sparkles className="w-3.5 h-3.5" />
+						<Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
 						<span>{t("badge")}</span>
 					</div>
 					<h2 className="text-3xl sm:text-4xl font-serif text-slate-900 dark:text-white tracking-tight">
@@ -38,7 +38,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 									: "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
 							)}
 						>
-							<Target className="w-4 h-4" />
+							<Target className="w-4 h-4" aria-hidden="true" />
 							<span>{t("tab_leads")}</span>
 						</button>
 
@@ -52,7 +52,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 									: "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
 							)}
 						>
-							<Zap className="w-4 h-4" />
+							<Zap className="w-4 h-4" aria-hidden="true" />
 							<span>{t("tab_enrich")}</span>
 						</button>
 
@@ -66,7 +66,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 									: "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
 							)}
 						>
-							<Flame className="w-4 h-4" />
+							<Flame className="w-4 h-4" aria-hidden="true" />
 							<span>{t("tab_viral")}</span>
 						</button>
 					</div>
@@ -137,7 +137,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 												type="button"
 												className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-transform active:scale-95"
 											>
-												<MessageCircle className="w-3.5 h-3.5" />
+												<MessageCircle className="w-3.5 h-3.5" aria-hidden="true" />
 												<span>Zalo Message</span>
 											</button>
 										</td>
@@ -173,7 +173,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 												type="button"
 												className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-transform active:scale-95"
 											>
-												<MessageCircle className="w-3.5 h-3.5" />
+												<MessageCircle className="w-3.5 h-3.5" aria-hidden="true" />
 												<span>Zalo Message</span>
 											</button>
 										</td>
@@ -211,7 +211,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 												type="button"
 												className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-xs transition-transform active:scale-95"
 											>
-												<Phone className="w-3.5 h-3.5" />
+												<Phone className="w-3.5 h-3.5" aria-hidden="true" />
 												<span>Call Lead</span>
 											</button>
 										</td>
@@ -290,11 +290,11 @@ export const ProductShowcaseTabs: React.FC = () => {
 								</p>
 								<div className="space-y-2 text-xs text-slate-700 dark:text-slate-300">
 									<div className="flex items-center gap-2">
-										<CheckCircle className="w-4 h-4 text-emerald-500" />
+										<CheckCircle className="w-4 h-4 text-emerald-500" aria-hidden="true" />
 										<span>Hook classification: Contrast, Story, Value List</span>
 									</div>
 									<div className="flex items-center gap-2">
-										<CheckCircle className="w-4 h-4 text-emerald-500" />
+										<CheckCircle className="w-4 h-4 text-emerald-500" aria-hidden="true" />
 										<span>Human-in-the-loop verification & custom approval</span>
 									</div>
 								</div>

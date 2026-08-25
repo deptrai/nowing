@@ -299,7 +299,7 @@ export function PdfViewer({ pdfUrl, isPublic = false, toolbarActions }: PdfViewe
 							disabled={scale <= MIN_ZOOM}
 							className="size-7"
 						>
-							<ZoomOutIcon className="size-4" />
+							<ZoomOutIcon className="size-4" aria-hidden="true" />
 						</Button>
 						<span className="text-xs text-muted-foreground tabular-nums min-w-[40px] text-center">
 							{Math.round(scale * 100)}%
@@ -311,7 +311,7 @@ export function PdfViewer({ pdfUrl, isPublic = false, toolbarActions }: PdfViewe
 							disabled={scale >= MAX_ZOOM}
 							className="size-7"
 						>
-							<ZoomInIcon className="size-4" />
+							<ZoomInIcon className="size-4" aria-hidden="true" />
 						</Button>
 					</div>
 					<div className="flex flex-1 items-center justify-end gap-1">{toolbarActions}</div>

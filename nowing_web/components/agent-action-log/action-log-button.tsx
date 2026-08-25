@@ -41,7 +41,7 @@ export function ActionLogButton({ threadId }: ActionLogButtonProps) {
 					aria-label="Open agent action log"
 					onClick={handleClick}
 				>
-					<Workflow className="size-4 text-muted-foreground" />
+					<Workflow className="size-4 text-muted-foreground" aria-hidden="true" />
 				</Button>
 			</TooltipTrigger>
 			<TooltipContent>Agent actions</TooltipContent>

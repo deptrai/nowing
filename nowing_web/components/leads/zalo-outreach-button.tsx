@@ -136,11 +136,11 @@ export const ZaloOutreachButton: React.FC<ZaloOutreachButtonProps> = ({
 					title={`Kích hoạt kịch bản AI & Mở Zalo chat (${cleanPhone || "Chưa có SĐT"})`}
 				>
 					{loading ? (
-						<Loader2 className="size-3.5 animate-spin" />
+						<Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
 					) : copied ? (
-						<Check className="size-3.5 text-emerald-300" />
+						<Check className="size-3.5 text-emerald-300" aria-hidden="true" />
 					) : (
-						<MessageCircle className="size-3.5" />
+						<MessageCircle className="size-3.5" aria-hidden="true" />
 					)}
 					<span>{copied ? "Đã copy!" : "Zalo"}</span>
 				</button>
@@ -152,7 +152,7 @@ export const ZaloOutreachButton: React.FC<ZaloOutreachButtonProps> = ({
 					className="size-7 p-0 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border border-border/60 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
 					title="Xem & chỉnh sửa kịch bản AI trước khi gửi"
 				>
-					<Sparkles className="size-3.5 text-blue-500" />
+					<Sparkles className="size-3.5 text-blue-500" aria-hidden="true" />
 				</button>
 
 				<button
@@ -171,7 +171,7 @@ export const ZaloOutreachButton: React.FC<ZaloOutreachButtonProps> = ({
 					)}
 					title="Gửi tin nhắn ZNS (Zalo Notification Service) với template đã duyệt"
 				>
-					<Send className="size-3.5" />
+					<Send className="size-3.5" aria-hidden="true" />
 					<span>ZNS</span>
 				</button>
 			</div>
@@ -189,7 +189,7 @@ export const ZaloOutreachButton: React.FC<ZaloOutreachButtonProps> = ({
 						<div className="flex items-center justify-between pb-3 border-b border-border">
 							<div className="flex items-center gap-2">
 								<div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-500">
-									<MessageCircle className="w-4 h-4" />
+									<MessageCircle className="w-4 h-4" aria-hidden="true" />
 								</div>
 								<div>
 									<h3 className="font-semibold text-sm text-foreground">Soạn kịch bản Zalo AI</h3>
@@ -214,7 +214,10 @@ export const ZaloOutreachButton: React.FC<ZaloOutreachButtonProps> = ({
 							</div>
 							{loading ? (
 								<div className="h-32 flex items-center justify-center bg-muted/30 rounded-lg border border-border/50">
-									<Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+									<Loader2
+										className="w-5 h-5 animate-spin text-muted-foreground"
+										aria-hidden="true"
+									/>
 								</div>
 							) : (
 								<textarea
@@ -242,12 +245,12 @@ export const ZaloOutreachButton: React.FC<ZaloOutreachButtonProps> = ({
 							>
 								{copied ? (
 									<>
-										<Check className="w-3.5 h-3.5" />
+										<Check className="w-3.5 h-3.5" aria-hidden="true" />
 										<span>Đã copy &amp; Mở Zalo</span>
 									</>
 								) : (
 									<>
-										<MessageCircle className="w-3.5 h-3.5" />
+										<MessageCircle className="w-3.5 h-3.5" aria-hidden="true" />
 										<span>Copy &amp; Mở Zalo Chat</span>
 									</>
 								)}

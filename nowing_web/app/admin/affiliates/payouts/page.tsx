@@ -130,7 +130,7 @@ export default function AffiliatePayoutsPage() {
 						<CardTitle className="text-xs font-medium text-muted-foreground uppercase">
 							Chờ Phê Duyệt
 						</CardTitle>
-						<Coins className="h-4 w-4 text-primary" />
+						<Coins className="h-4 w-4 text-primary" aria-hidden="true" />
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-bold text-foreground">{metrics.pendingCount}</div>
@@ -143,7 +143,7 @@ export default function AffiliatePayoutsPage() {
 						<CardTitle className="text-xs font-medium text-muted-foreground uppercase">
 							Tổng Tiền Chờ Chi (Gross)
 						</CardTitle>
-						<FileSpreadsheet className="h-4 w-4 text-blue-500" />
+						<FileSpreadsheet className="h-4 w-4 text-blue-500" aria-hidden="true" />
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-bold text-foreground">
@@ -158,7 +158,7 @@ export default function AffiliatePayoutsPage() {
 						<CardTitle className="text-xs font-medium text-muted-foreground uppercase">
 							Thực Chi Dự Kiến (Net)
 						</CardTitle>
-						<QrCode className="h-4 w-4 text-emerald-500" />
+						<QrCode className="h-4 w-4 text-emerald-500" aria-hidden="true" />
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
@@ -173,7 +173,7 @@ export default function AffiliatePayoutsPage() {
 						<CardTitle className="text-xs font-medium text-muted-foreground uppercase">
 							Cảnh Báo Gian Lận Cao
 						</CardTitle>
-						<ShieldAlert className="h-4 w-4 text-destructive" />
+						<ShieldAlert className="h-4 w-4 text-destructive" aria-hidden="true" />
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-bold text-destructive">{metrics.highRiskCount}</div>
@@ -298,11 +298,11 @@ export default function AffiliatePayoutsPage() {
 													className="text-[10px] gap-1"
 												>
 													{item.name_match_status === "100% Match" ? (
-														<CheckCircle2 className="h-3 w-3" />
+														<CheckCircle2 className="h-3 w-3" aria-hidden="true" />
 													) : item.name_match_status === "Name Mismatch" ? (
-														<XCircle className="h-3 w-3" />
+														<XCircle className="h-3 w-3" aria-hidden="true" />
 													) : (
-														<AlertTriangle className="h-3 w-3" />
+														<AlertTriangle className="h-3 w-3" aria-hidden="true" />
 													)}
 													{item.name_match_status}
 												</Badge>
@@ -340,9 +340,9 @@ export default function AffiliatePayoutsPage() {
 													}`}
 												>
 													{isHighRisk ? (
-														<ShieldAlert className="h-3 w-3" />
+														<ShieldAlert className="h-3 w-3" aria-hidden="true" />
 													) : (
-														<ShieldCheck className="h-3 w-3" />
+														<ShieldCheck className="h-3 w-3" aria-hidden="true" />
 													)}
 													{item.risk_score}/100 • {item.risk_level.toUpperCase()}
 												</Badge>
@@ -374,7 +374,7 @@ export default function AffiliatePayoutsPage() {
 													className="h-7 text-xs gap-1 font-medium"
 													onClick={() => setSelectedPayout(item)}
 												>
-													<QrCode className="h-3 w-3" />
+													<QrCode className="h-3 w-3" aria-hidden="true" />
 													Xử Lý
 												</Button>
 											</TableCell>

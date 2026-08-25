@@ -66,7 +66,7 @@ export const ScraperPlatformMonitorPanel: React.FC<ScraperPlatformMonitorPanelPr
 			{/* Top Bar */}
 			<div className="h-10 border-b border-border/80 bg-muted/30 flex items-center justify-between px-4 shrink-0">
 				<div className="flex items-center gap-2">
-					<Activity className="w-3.5 h-3.5 text-emerald-600" />
+					<Activity className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" />
 					<span className="text-xs font-bold text-foreground">
 						Giám Sát Hạ Tầng Cào Dữ Liệu (Scraper Platforms Hub)
 					</span>
@@ -81,7 +81,10 @@ export const ScraperPlatformMonitorPanel: React.FC<ScraperPlatformMonitorPanelPr
 					disabled={isRefreshing}
 					className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md border border-border/80 bg-card hover:bg-muted text-foreground transition-colors cursor-pointer disabled:opacity-50"
 				>
-					<RefreshCw className={cn("w-3 h-3 text-emerald-600", isRefreshing && "animate-spin")} />
+					<RefreshCw
+						className={cn("w-3 h-3 text-emerald-600", isRefreshing && "animate-spin")}
+						aria-hidden="true"
+					/>
 					<span>Kiểm Tra Toàn Bộ</span>
 				</button>
 			</div>
@@ -96,7 +99,7 @@ export const ScraperPlatformMonitorPanel: React.FC<ScraperPlatformMonitorPanelPr
 						className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline"
 					>
 						<span>Quản lý Tài Khoản Scraper</span>
-						<ExternalLink className="w-3 h-3" />
+						<ExternalLink className="w-3 h-3" aria-hidden="true" />
 					</a>
 				</div>
 
@@ -160,7 +163,7 @@ export const ScraperPlatformMonitorPanel: React.FC<ScraperPlatformMonitorPanelPr
 														: "bg-amber-500/10 text-amber-700 dark:text-amber-400"
 												)}
 											>
-												<CheckCircle className="w-2.5 h-2.5" />
+												<CheckCircle className="w-2.5 h-2.5" aria-hidden="true" />
 												{isEnabled ? "Sẵn Sàng" : "Tạm Tắt"}
 											</span>
 											{item.account?.is_default && (
@@ -200,7 +203,7 @@ export const ScraperPlatformMonitorPanel: React.FC<ScraperPlatformMonitorPanelPr
 										onClick={() => handleCaptureSession(item.id)}
 										className="px-2.5 py-1 text-[11px] font-semibold rounded-md border border-border bg-background hover:bg-muted text-foreground transition-colors cursor-pointer inline-flex items-center gap-1"
 									>
-										<ShieldCheck className="w-3 h-3 text-emerald-600" />
+										<ShieldCheck className="w-3 h-3 text-emerald-600" aria-hidden="true" />
 										<span>Nạp Cookie / Session</span>
 									</button>
 								</div>

@@ -19,7 +19,7 @@ export default function Loading() {
 				<div className="mx-auto w-full max-w-(--thread-max-width) flex flex-1 flex-col gap-6 py-8">
 					{/* User message */}
 					<div className="flex justify-end">
-						<Skeleton className="h-12 w-56 rounded-2xl" />
+						<Skeleton className="h-12 w-56 rounded-2xl" aria-hidden="true" />
 					</div>
 
 					{/* Assistant message */}
@@ -31,7 +31,7 @@ export default function Loading() {
 
 					{/* User message */}
 					<div className="flex gap-2 justify-end">
-						<Skeleton className="h-12 w-72 rounded-2xl" />
+						<Skeleton className="h-12 w-72 rounded-2xl" aria-hidden="true" />
 					</div>
 
 					{/* Assistant message */}
@@ -43,7 +43,7 @@ export default function Loading() {
 
 					{/* User message */}
 					<div className="flex gap-2 justify-end">
-						<Skeleton className="h-12 w-96 rounded-2xl" />
+						<Skeleton className="h-12 w-96 rounded-2xl" aria-hidden="true" />
 					</div>
 				</div>
 

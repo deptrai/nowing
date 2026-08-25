@@ -119,7 +119,7 @@ export const ConnectorAccountsListView: FC<ConnectorAccountsListViewProps> = ({
 					onClick={onBack}
 					className="mb-6 h-auto w-fit gap-2 px-0 py-0 text-xs font-normal text-muted-foreground hover:bg-transparent hover:text-accent-foreground sm:text-sm"
 				>
-					<ArrowLeft className="size-4" />
+					<ArrowLeft className="size-4" aria-hidden="true" />
 					Back to connectors
 				</Button>
 
@@ -156,7 +156,7 @@ export const ConnectorAccountsListView: FC<ConnectorAccountsListViewProps> = ({
 							{isConnecting ? (
 								<Spinner size="xs" className="text-primary" />
 							) : (
-								<Plus className="size-3 text-primary" />
+								<Plus className="size-3 text-primary" aria-hidden="true" />
 							)}
 						</div>
 						<span className="text-xs sm:text-sm font-medium">{buttonText}</span>
@@ -171,7 +171,7 @@ export const ConnectorAccountsListView: FC<ConnectorAccountsListViewProps> = ({
 					<div className="flex flex-col items-center justify-center py-12 text-center">
 						<div className="h-16 w-16 rounded-full bg-slate-400/5 dark:bg-white/5 flex items-center justify-center mb-4">
 							{isMCP ? (
-								<Server className="h-8 w-8 text-muted-foreground" />
+								<Server className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
 							) : (
 								getConnectorIcon(connectorType, "size-8")
 							)}
@@ -280,7 +280,7 @@ export const ConnectorAccountsListView: FC<ConnectorAccountsListViewProps> = ({
 													disabled={disconnectingId === connector.id}
 												>
 													{disconnectingId === connector.id ? (
-														<RefreshCw className="size-3.5 animate-spin" />
+														<RefreshCw className="size-3.5 animate-spin" aria-hidden="true" />
 													) : (
 														"Confirm"
 													)}

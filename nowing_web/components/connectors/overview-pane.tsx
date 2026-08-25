@@ -85,7 +85,10 @@ export function OverviewPane({
 		<div className="flex h-full flex-col">
 			<div className="border-b p-3">
 				<div className="relative">
-					<Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+					<Search
+						className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+						aria-hidden="true"
+					/>
 					<Input
 						type="text"
 						placeholder="Search integrations…"
@@ -98,7 +101,7 @@ export function OverviewPane({
 			<div className="flex-1 overflow-y-auto p-4">
 				{visibleDefinitions.length === 0 ? (
 					<div className="flex flex-col items-center justify-center py-20 text-center">
-						<Search className="size-8 text-muted-foreground mb-3" />
+						<Search className="size-8 text-muted-foreground mb-3" aria-hidden="true" />
 						<p className="text-sm text-muted-foreground">No integrations found</p>
 						<p className="text-xs text-muted-foreground/60 mt-1">Try a different search term</p>
 					</div>

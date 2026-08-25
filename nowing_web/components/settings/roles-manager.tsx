@@ -513,13 +513,13 @@ function RolesContent({
 										<DropdownMenu>
 											<DropdownMenuTrigger asChild>
 												<Button variant="ghost" size="icon" className="h-8 w-8">
-													<MoreHorizontal className="h-4 w-4" />
+													<MoreHorizontal className="h-4 w-4" aria-hidden="true" />
 												</Button>
 											</DropdownMenuTrigger>
 											<DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()}>
 												{canUpdate && (
 													<DropdownMenuItem onClick={() => setEditingRoleId(role.id)}>
-														<Pencil className="h-4 w-4 mr-2" />
+														<Pencil className="h-4 w-4 mr-2" aria-hidden="true" />
 														Edit Role
 													</DropdownMenuItem>
 												)}
@@ -529,7 +529,7 @@ function RolesContent({
 														<AlertDialog>
 															<AlertDialogTrigger asChild>
 																<DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-																	<Trash2 className="h-4 w-4 mr-2" />
+																	<Trash2 className="h-4 w-4 mr-2" aria-hidden="true" />
 																	Delete Role
 																</DropdownMenuItem>
 															</AlertDialogTrigger>
@@ -573,6 +573,7 @@ function RolesContent({
 											"h-4 w-4 text-muted-foreground transition-transform duration-200",
 											isExpanded && "rotate-90"
 										)}
+										aria-hidden="true"
 									/>
 								</Button>
 							</div>
@@ -581,7 +582,10 @@ function RolesContent({
 								<div className="border-t border-border/40 px-4 py-3">
 									{isFullAccess ? (
 										<div className="flex items-center gap-3 py-2">
-											<Shield className="h-4 w-4 text-muted-foreground shrink-0" />
+											<Shield
+												className="h-4 w-4 text-muted-foreground shrink-0"
+												aria-hidden="true"
+											/>
 											<p className="text-sm text-muted-foreground">
 												Full access — all permissions granted across every category
 											</p>
@@ -601,7 +605,10 @@ function RolesContent({
 														className="flex items-center justify-between gap-3 py-2.5"
 													>
 														<div className="flex items-center gap-2 shrink-0">
-															<IconComponent className="h-3.5 w-3.5 text-muted-foreground" />
+															<IconComponent
+																className="h-3.5 w-3.5 text-muted-foreground"
+																aria-hidden="true"
+															/>
 															<span className="text-sm text-muted-foreground">{config.label}</span>
 														</div>
 														<div className="flex flex-wrap justify-end gap-1">
@@ -715,7 +722,10 @@ function PermissionsEditor({
 									className="h-auto min-w-0 flex-1 justify-start gap-2.5 p-0 text-left font-normal hover:bg-transparent hover:text-inherit focus-visible:ring-0"
 									onClick={() => toggleCategoryExpanded(category)}
 								>
-									<IconComponent className="h-4 w-4 text-muted-foreground shrink-0" />
+									<IconComponent
+										className="h-4 w-4 text-muted-foreground shrink-0"
+										aria-hidden="true"
+									/>
 									<span className="font-medium text-sm">{config.label}</span>
 									<span className="text-[11px] text-muted-foreground tabular-nums">
 										{stats.selected}/{stats.total}
@@ -741,6 +751,7 @@ function PermissionsEditor({
 												"h-4 w-4 text-muted-foreground transition-transform duration-200",
 												isExpanded && "rotate-90"
 											)}
+											aria-hidden="true"
 										/>
 									</Button>
 								</div>

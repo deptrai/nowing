@@ -68,7 +68,11 @@ export const FieldMappingModal: React.FC<FieldMappingModalProps> = ({
 									: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
 							}`}
 						>
-							{isLark ? <Cloud className="w-5 h-5" /> : <FileSpreadsheet className="w-5 h-5" />}
+							{isLark ? (
+								<Cloud className="w-5 h-5" aria-hidden="true" />
+							) : (
+								<FileSpreadsheet className="w-5 h-5" aria-hidden="true" />
+							)}
 						</div>
 						<div>
 							<h2 className="text-base font-bold text-zinc-100">
@@ -84,7 +88,7 @@ export const FieldMappingModal: React.FC<FieldMappingModalProps> = ({
 						onClick={onClose}
 						className="p-1 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
 					>
-						<X className="w-4 h-4" />
+						<X className="w-4 h-4" aria-hidden="true" />
 					</button>
 				</div>
 
@@ -191,7 +195,7 @@ export const FieldMappingModal: React.FC<FieldMappingModalProps> = ({
 						/>
 						<label htmlFor="pii-mask-toggle" className="cursor-pointer">
 							<div className="font-semibold text-zinc-200 flex items-center gap-1.5">
-								<Shield className="w-3.5 h-3.5 text-emerald-400" />
+								<Shield className="w-3.5 h-3.5 text-emerald-400" aria-hidden="true" />
 								<span>Che thông tin cá nhân (PII Masking)</span>
 							</div>
 							<p className="text-[11px] text-zinc-400 mt-0.5">
@@ -203,7 +207,7 @@ export const FieldMappingModal: React.FC<FieldMappingModalProps> = ({
 					{/* Schema Mapping preview */}
 					<div className="p-3 rounded-xl bg-zinc-950/40 border border-zinc-800/60 space-y-1.5">
 						<div className="text-[11px] font-medium text-zinc-400 flex items-center gap-1">
-							<CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+							<CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" aria-hidden="true" />
 							<span>Tự động ánh xạ 12 cột chuẩn:</span>
 						</div>
 						<p className="text-[10px] text-zinc-500 font-mono leading-relaxed">
@@ -231,7 +235,7 @@ export const FieldMappingModal: React.FC<FieldMappingModalProps> = ({
 						{loading ? (
 							<div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
 						) : (
-							<Cloud className="w-3.5 h-3.5" />
+							<Cloud className="w-3.5 h-3.5" aria-hidden="true" />
 						)}
 						<span>Bắt đầu đồng bộ ({totalLeadsCount} leads)</span>
 					</button>

@@ -139,7 +139,7 @@ function HotkeyRow({
 		<div className="flex items-center justify-between gap-2.5 border-border/60 border-b py-3 last:border-b-0">
 			<div className="flex items-center gap-2.5 min-w-0">
 				<div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-					<Icon className="size-3.5" />
+					<Icon className="size-3.5" aria-hidden="true" />
 				</div>
 				<div className="min-w-0">
 					<p className="text-sm font-medium text-foreground truncate">{label}</p>
@@ -155,7 +155,7 @@ function HotkeyRow({
 						onClick={onReset}
 						title="Reset to default"
 					>
-						<RotateCcw className="size-3" />
+						<RotateCcw className="size-3" aria-hidden="true" />
 					</Button>
 				)}
 				<Button
@@ -353,7 +353,7 @@ export default function DesktopLoginPage() {
 									disabled={isGoogleRedirecting}
 									onClick={handleGoogleLogin}
 								>
-									<GoogleGLogo className="size-4" />
+									<GoogleGLogo className="size-4" aria-hidden="true" />
 									Continue with Google
 								</Button>
 							) : (
@@ -404,9 +404,9 @@ export default function DesktopLoginPage() {
 												tabIndex={-1}
 											>
 												{showPassword ? (
-													<EyeOff className="size-3.5" />
+													<EyeOff className="size-3.5" aria-hidden="true" />
 												) : (
-													<Eye className="size-3.5" />
+													<Eye className="size-3.5" aria-hidden="true" />
 												)}
 											</Button>
 										</div>

@@ -65,7 +65,7 @@ export const CirclebackConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmit
 	return (
 		<div className="space-y-6 pb-6">
 			<Alert className="bg-slate-400/5 dark:bg-white/5 border-slate-400/20 p-2 sm:p-3">
-				<Webhook className="size-4 shrink-0" />
+				<Webhook className="size-4 shrink-0" aria-hidden="true" />
 				<AlertTitle className="text-xs sm:text-sm">Webhook-Based Integration</AlertTitle>
 				<AlertDescription className="text-[10px] sm:text-xs">
 					Circleback uses webhooks to automatically send meeting data. After connecting, you'll

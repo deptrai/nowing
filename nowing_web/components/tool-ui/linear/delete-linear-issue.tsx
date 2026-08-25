@@ -237,7 +237,7 @@ function ApprovalCard({
 					<div className="px-5 py-4 flex items-center gap-2 select-none">
 						<Button size="sm" className="rounded-lg gap-1.5" onClick={handleApprove}>
 							Approve
-							<CornerDownLeftIcon className="size-3 opacity-60" />
+							<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 						</Button>
 						<Button
 							size="sm"

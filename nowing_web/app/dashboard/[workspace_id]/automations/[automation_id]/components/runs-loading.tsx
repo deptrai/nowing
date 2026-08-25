@@ -12,10 +12,10 @@ export function RunsLoading() {
 					className="flex items-center justify-between gap-4 rounded-md border border-border/60 px-4 py-3"
 				>
 					<div className="flex items-center gap-3">
-						<Skeleton className="h-5 w-20 rounded-md" />
-						<Skeleton className="h-3 w-32" />
+						<Skeleton className="h-5 w-20 rounded-md" aria-hidden="true" />
+						<Skeleton className="h-3 w-32" aria-hidden="true" />
 					</div>
-					<Skeleton className="h-3 w-16" />
+					<Skeleton className="h-3 w-16" aria-hidden="true" />
 				</div>
 			))}
 		</div>

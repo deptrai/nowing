@@ -241,7 +241,7 @@ function AllChatsContent({ workspaceId, className }: AllChatsContentProps) {
 								>
 									<span className="font-semibold text-muted-foreground">Filter by</span>
 									<span>{selectedFilterLabel}</span>
-									<ChevronDown className="h-3 w-3 text-muted-foreground" />
+									<ChevronDown className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
 								</Button>
 							</DropdownMenuTrigger>
 							<DropdownMenuContent align="end" className="w-32">
@@ -432,7 +432,10 @@ function AllChatsContent({ workspaceId, className }: AllChatsContentProps) {
 														{isDeleting ? (
 															<Spinner size="xs" />
 														) : (
-															<MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+															<MoreHorizontal
+																className="h-4 w-4 text-muted-foreground"
+																aria-hidden="true"
+															/>
 														)}
 														<span className="sr-only">{t("more_options") || "More options"}</span>
 													</Button>

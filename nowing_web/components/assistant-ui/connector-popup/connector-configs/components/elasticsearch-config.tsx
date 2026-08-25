@@ -197,7 +197,7 @@ export const ElasticsearchConfig: FC<ElasticsearchConfigProps> = ({
 			<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6 space-y-3 sm:space-y-4">
 				<div className="space-y-1 sm:space-y-2">
 					<h3 className="font-medium text-sm sm:text-base flex items-center gap-2">
-						<Server className="h-4 w-4" />
+						<Server className="h-4 w-4" aria-hidden="true" />
 						Connection Details
 					</h3>
 				</div>
@@ -221,7 +221,7 @@ export const ElasticsearchConfig: FC<ElasticsearchConfigProps> = ({
 			<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6 space-y-3 sm:space-y-4">
 				<div className="space-y-1 sm:space-y-2">
 					<h3 className="font-medium text-sm sm:text-base flex items-center gap-2">
-						<KeyRound className="h-4 w-4" />
+						<KeyRound className="h-4 w-4" aria-hidden="true" />
 						Authentication
 					</h3>
 				</div>

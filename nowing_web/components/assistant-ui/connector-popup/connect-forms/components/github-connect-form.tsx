@@ -119,7 +119,7 @@ export const GithubConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting
 							className="font-medium underline underline-offset-4 inline-flex items-center gap-1.5"
 						>
 							Get your token
-							<ExternalLink className="h-3 w-3 sm:h-4 sm:w-4" />
+							<ExternalLink className="h-3 w-3 sm:h-4 sm:w-4" aria-hidden="true" />
 						</a>
 					</p>
 				</AlertDescription>
@@ -299,7 +299,7 @@ export const GithubConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting
 					className="text-xs sm:text-sm font-medium underline underline-offset-4 hover:text-primary transition-colors inline-flex items-center gap-1.5"
 				>
 					View GitHub Connector Documentation
-					<ExternalLink className="h-3 w-3 sm:h-4 sm:w-4" />
+					<ExternalLink className="h-3 w-3 sm:h-4 sm:w-4" aria-hidden="true" />
 				</Link>
 			</div>
 		</div>

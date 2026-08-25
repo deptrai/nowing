@@ -34,7 +34,7 @@ export function ArtifactsToggleButton() {
 						isOpen && "bg-accent text-accent-foreground"
 					)}
 				>
-					<Boxes className="h-4 w-4" />
+					<Boxes className="h-4 w-4" aria-hidden="true" />
 					<span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium text-primary-foreground tabular-nums">
 						{artifacts.length}
 					</span>

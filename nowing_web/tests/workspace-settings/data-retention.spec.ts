@@ -1,4 +1,4 @@
-import { type Page, expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { acquireTestToken, loginUser, registerUser } from "../helpers/api/auth";
 import { uploadMarkdown, waitForDocumentReady } from "../helpers/api/documents";
 import {
@@ -287,7 +287,9 @@ test.describe("Data retention workspace settings", () => {
 			const options = await strategySelect.locator("option").allTextContents();
 			expect(options).toEqual(expect.arrayContaining(["Archive", "Delete"]));
 			// No invalid action option is exposed.
-			expect(options.map((o) => o.toLowerCase()).every((o) => o === "archive" || o === "delete")).toBe(true);
+			expect(
+				options.map((o) => o.toLowerCase()).every((o) => o === "archive" || o === "delete")
+			).toBe(true);
 
 			await strategySelect.selectOption("delete");
 			await expect(strategySelect).toHaveValue("delete");

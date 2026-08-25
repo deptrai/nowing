@@ -4,12 +4,13 @@ import { CheckIcon, CopyIcon } from "lucide-react";
 import mermaid from "mermaid";
 import { memo, type ReactNode, useEffect, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { copyToClipboard } from "@/lib/utils";
+import { cn, copyToClipboard } from "@/lib/utils";
 
 type MermaidDiagramProps = {
 	source: string;
 	isDarkMode: boolean;
 	fallback: ReactNode;
+	className?: string;
 };
 
 let mermaidInitialized = false;
@@ -28,7 +29,7 @@ function initializeMermaid() {
 	mermaidInitialized = true;
 }
 
-function MermaidDiagramComponent({ source, isDarkMode, fallback }: MermaidDiagramProps) {
+function MermaidDiagramComponent({ source, isDarkMode, fallback, className }: MermaidDiagramProps) {
 	const id = useId();
 	const [svg, setSvg] = useState<string | null>(null);
 	const [hasError, setHasError] = useState(false);
@@ -103,7 +104,11 @@ function MermaidDiagramComponent({ source, isDarkMode, fallback }: MermaidDiagra
 					aria-label={hasCopied ? "Copied Mermaid source" : "Copy Mermaid source"}
 				>
 					<span className="sr-only">Copy Source</span>
-					{hasCopied ? <CheckIcon className="!size-3" /> : <CopyIcon className="!size-3" />}
+					{hasCopied ? (
+						<CheckIcon className="!size-3" aria-hidden="true" />
+					) : (
+						<CopyIcon className="!size-3" aria-hidden="true" />
+					)}
 				</Button>
 			</div>
 
@@ -113,7 +118,7 @@ function MermaidDiagramComponent({ source, isDarkMode, fallback }: MermaidDiagra
 					<img
 						src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`}
 						alt="Mermaid diagram"
-						className="mx-auto h-auto max-w-full"
+						className={cn("mx-auto h-auto max-w-full", className)}
 					/>
 				) : (
 					<div className="h-32 animate-pulse rounded bg-muted" />

@@ -598,7 +598,7 @@ function LogsSummaryDashboard({
 			<Card>
 				<CardContent className="flex items-center justify-center h-32">
 					<div className="flex flex-col items-center gap-2">
-						<AlertCircle className="h-8 w-8 text-destructive" />
+						<AlertCircle className="h-8 w-8 text-destructive" aria-hidden="true" />
 						<p className="text-sm text-destructive">{t("failed_load_summary")}</p>
 						<Button variant="outline" size="sm" onClick={onRefresh} disabled={isRefreshing}>
 							<RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
@@ -622,7 +622,7 @@ function LogsSummaryDashboard({
 				<Card>
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 						<CardTitle className="text-sm font-medium">{t("total_logs")}</CardTitle>
-						<Workflow className="h-4 w-4 text-muted-foreground" />
+						<Workflow className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-bold">{summary.total_logs}</div>
@@ -638,7 +638,7 @@ function LogsSummaryDashboard({
 				<Card>
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 						<CardTitle className="text-sm font-medium">{t("active_tasks")}</CardTitle>
-						<Clock className="h-4 w-4 text-blue-600" />
+						<Clock className="h-4 w-4 text-blue-600" aria-hidden="true" />
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-bold text-blue-600">
@@ -654,7 +654,7 @@ function LogsSummaryDashboard({
 				<Card>
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 						<CardTitle className="text-sm font-medium">{t("success_rate")}</CardTitle>
-						<CheckCircle2 className="h-4 w-4 text-green-600" />
+						<CheckCircle2 className="h-4 w-4 text-green-600" aria-hidden="true" />
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-bold text-green-600">
@@ -675,7 +675,7 @@ function LogsSummaryDashboard({
 				<Card>
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 						<CardTitle className="text-sm font-medium">{t("recent_failures")}</CardTitle>
-						<AlertCircle className="h-4 w-4 text-red-600" />
+						<AlertCircle className="h-4 w-4 text-red-600" aria-hidden="true" />
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-bold text-red-600">
@@ -951,7 +951,7 @@ function LogsTable({
 			>
 				<div className="flex h-[400px] w-full items-center justify-center">
 					<div className="flex flex-col items-center gap-2">
-						<AlertCircle className="h-8 w-8 text-destructive" />
+						<AlertCircle className="h-8 w-8 text-destructive" aria-hidden="true" />
 						<p className="text-sm text-destructive">Error loading logs</p>
 						<Button variant="outline" size="sm" onClick={onRefresh}>
 							Retry
@@ -971,7 +971,7 @@ function LogsTable({
 			>
 				<div className="flex h-[400px] w-full items-center justify-center">
 					<div className="flex flex-col items-center gap-2">
-						<Terminal className="h-8 w-8 text-muted-foreground" />
+						<Terminal className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
 						<p className="text-sm text-muted-foreground">{t("no_logs")}</p>
 					</div>
 				</div>
@@ -1212,7 +1212,7 @@ function LogRowActions({ row, t }: { row: Row<Log>; t: (key: string) => string }
 			<DropdownMenu>
 				<DropdownMenuTrigger asChild>
 					<Button variant="ghost" className="h-8 w-8 p-0">
-						<MoreHorizontal className="h-4 w-4" />
+						<MoreHorizontal className="h-4 w-4" aria-hidden="true" />
 					</Button>
 				</DropdownMenuTrigger>
 				<DropdownMenuContent align="end">

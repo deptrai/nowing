@@ -88,7 +88,7 @@ export function LinkFloatingToolbar({ state }: { state?: LinkFloatingToolbarStat
 		<div className="flex w-[330px] flex-col" {...inputProps}>
 			<div className="flex items-center">
 				<div className="flex items-center pr-1 pl-2 text-muted-foreground">
-					<Link className="size-4" />
+					<Link className="size-4" aria-hidden="true" />
 				</div>
 
 				<FloatingLinkUrlInput
@@ -100,7 +100,7 @@ export function LinkFloatingToolbar({ state }: { state?: LinkFloatingToolbarStat
 			<Separator className="my-1" />
 			<div className="flex items-center">
 				<div className="flex items-center pr-1 pl-2 text-muted-foreground">
-					<Text className="size-4" />
+					<Text className="size-4" aria-hidden="true" />
 				</div>
 				<input
 					className={inputVariants()}

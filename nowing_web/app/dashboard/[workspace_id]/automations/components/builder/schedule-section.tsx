@@ -58,7 +58,7 @@ export function ScheduleSection({
 					className="mt-3"
 					onClick={() => onScheduleChange({ mode: "preset", model: { ...DEFAULT_SCHEDULE } })}
 				>
-					<Plus className="mr-1.5 h-4 w-4" />
+					<Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
 					Add a schedule
 				</Button>
 			</div>
@@ -85,7 +85,7 @@ export function ScheduleSection({
 					aria-label="Remove schedule"
 					onClick={() => onScheduleChange(null)}
 				>
-					<X className="h-4 w-4" />
+					<X className="h-4 w-4" aria-hidden="true" />
 				</Button>
 			</div>
 

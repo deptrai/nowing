@@ -81,7 +81,7 @@ function DoomLoopCardView({
 
 	return (
 		<Alert variant={phase === "rejected" ? "default" : "destructive"} className="my-4 max-w-lg">
-			<OctagonAlert className="size-4" />
+			<OctagonAlert className="size-4" aria-hidden="true" />
 			<AlertTitle className="flex items-center gap-2">
 				<span>
 					{phase === "rejected"
@@ -149,7 +149,7 @@ function DoomLoopCardView({
 					<div className="flex items-center gap-2">
 						<Button size="sm" variant="outline" className="rounded-lg gap-1.5" onClick={handleStop}>
 							Stop and rethink
-							<CornerDownLeftIcon className="size-3 opacity-60" />
+							<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 						</Button>
 						<Button size="sm" variant="ghost" onClick={handleContinue}>
 							Continue anyway

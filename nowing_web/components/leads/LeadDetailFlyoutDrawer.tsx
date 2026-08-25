@@ -165,7 +165,7 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 							onClick={onClose}
 							className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
 						>
-							<X className="w-5 h-5" />
+							<X className="w-5 h-5" aria-hidden="true" />
 						</button>
 					</div>
 
@@ -175,7 +175,10 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 						<div className="p-4 rounded-xl bg-muted/40 border border-border space-y-3">
 							<div className="flex items-center justify-between">
 								<span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-									<Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+									<Sparkles
+										className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400"
+										aria-hidden="true"
+									/>
 									Đánh giá Điểm Tiềm Năng (Fit Score)
 								</span>
 								<span className="font-mono text-sm font-bold text-emerald-600 dark:text-emerald-400">
@@ -239,7 +242,10 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 
 							<div className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-card border border-border">
 								<div className="flex items-center gap-2">
-									<Phone className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+									<Phone
+										className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0"
+										aria-hidden="true"
+									/>
 									<PhoneUnlockPill
 										lead={lead}
 										workspaceId={workspaceId}
@@ -284,7 +290,7 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 										onClick={() => onOpenCompanyGraph(lead.company_name)}
 										className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-muted hover:bg-muted/80 text-foreground border border-border transition-colors cursor-pointer"
 									>
-										<Network className="w-3.5 h-3.5 text-blue-500" />
+										<Network className="w-3.5 h-3.5 text-blue-500" aria-hidden="true" />
 										Company Graph
 									</button>
 								)}
@@ -295,13 +301,19 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 						<div className="space-y-2 text-xs text-foreground">
 							{lead.location && (
 								<div className="flex items-start gap-2">
-									<MapPin className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
+									<MapPin
+										className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5"
+										aria-hidden="true"
+									/>
 									<span>{lead.location}</span>
 								</div>
 							)}
 							{lead.price_estimate && (
 								<div className="flex items-start gap-2">
-									<Tag className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+									<Tag
+										className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5"
+										aria-hidden="true"
+									/>
 									<span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
 										{lead.price_estimate}
 									</span>
@@ -309,13 +321,19 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 							)}
 							{lead.industry && (
 								<div className="flex items-start gap-2">
-									<Building2 className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
+									<Building2
+										className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5"
+										aria-hidden="true"
+									/>
 									<span>Ngành: {lead.industry}</span>
 								</div>
 							)}
 							{lead.created_at && (
 								<div className="flex items-start gap-2">
-									<Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
+									<Calendar
+										className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5"
+										aria-hidden="true"
+									/>
 									<span className="text-muted-foreground font-mono text-[11px]">
 										{!Number.isNaN(new Date(lead.created_at).getTime())
 											? new Date(lead.created_at).toLocaleString("vi-VN")
@@ -341,7 +359,7 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 						<div className="p-4 rounded-xl bg-muted/40 border border-border space-y-4">
 							<div className="flex items-center justify-between">
 								<h4 className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-1.5">
-									<History className="w-3.5 h-3.5 text-blue-500" />
+									<History className="w-3.5 h-3.5 text-blue-500" aria-hidden="true" />
 									Lịch Sử Tương Tác & Phân Bổ
 								</h4>
 								<span className="text-[10px] text-muted-foreground font-mono">
@@ -363,7 +381,7 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 									disabled={!newNote.trim() || isSubmittingNote}
 									className="px-3 py-1.5 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center gap-1 cursor-pointer"
 								>
-									<Send className="w-3 h-3" />
+									<Send className="w-3 h-3" aria-hidden="true" />
 									Lưu
 								</button>
 							</form>
@@ -372,7 +390,7 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 							<div className="space-y-3 relative before:absolute before:inset-0 before:left-2.5 before:w-0.5 before:bg-border/60">
 								{timelineError ? (
 									<div className="text-xs text-rose-600 dark:text-rose-400 pl-6 py-2 flex items-center gap-1.5">
-										<AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+										<AlertTriangle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
 										<span>{timelineError}</span>
 									</div>
 								) : activities.length === 0 ? (
@@ -381,19 +399,23 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 									</div>
 								) : (
 									activities.map((act) => {
-										let icon = <Clock className="w-3 h-3 text-muted-foreground" />;
+										let icon = (
+											<Clock className="w-3 h-3 text-muted-foreground" aria-hidden="true" />
+										);
 										let badgeBg = "bg-muted";
 
 										if (act.activity_type.includes("zalo") || act.activity_type.includes("zns")) {
-											icon = <MessageSquare className="w-3 h-3 text-emerald-500" />;
+											icon = (
+												<MessageSquare className="w-3 h-3 text-emerald-500" aria-hidden="true" />
+											);
 											badgeBg =
 												"bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30";
 										} else if (act.activity_type.includes("stage")) {
-											icon = <CheckCircle2 className="w-3 h-3 text-blue-500" />;
+											icon = <CheckCircle2 className="w-3 h-3 text-blue-500" aria-hidden="true" />;
 											badgeBg =
 												"bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30";
 										} else if (act.activity_type.includes("assign")) {
-											icon = <UserCheck className="w-3 h-3 text-purple-500" />;
+											icon = <UserCheck className="w-3 h-3 text-purple-500" aria-hidden="true" />;
 											badgeBg =
 												"bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/30";
 										}
@@ -437,7 +459,7 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 									rel="noopener noreferrer"
 									className="inline-flex items-center gap-1 text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
 								>
-									<ExternalLink className="w-3.5 h-3.5" />
+									<ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
 									Mở bài gốc
 								</a>
 							) : (
@@ -450,7 +472,7 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 									onClick={() => onReportInvalidPhone(lead)}
 									className="inline-flex items-center gap-1 text-rose-500/80 hover:text-rose-500 transition-colors cursor-pointer"
 								>
-									<AlertTriangle className="w-3.5 h-3.5" />
+									<AlertTriangle className="w-3.5 h-3.5" aria-hidden="true" />
 									Báo SĐT sai (Hoàn tiền 100%)
 								</button>
 							)}

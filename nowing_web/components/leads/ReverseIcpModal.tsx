@@ -152,7 +152,7 @@ export const ReverseIcpModal: React.FC<ReverseIcpModalProps> = ({
 				<div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800 bg-zinc-950/50">
 					<div className="flex items-center gap-2.5">
 						<div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-							<Sparkles className="w-5 h-5" />
+							<Sparkles className="w-5 h-5" aria-hidden="true" />
 						</div>
 						<div>
 							<h2 className="text-base font-bold text-zinc-100 flex items-center gap-2">
@@ -172,7 +172,7 @@ export const ReverseIcpModal: React.FC<ReverseIcpModalProps> = ({
 						onClick={onClose}
 						className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
 					>
-						<X className="w-5 h-5" />
+						<X className="w-5 h-5" aria-hidden="true" />
 					</button>
 				</div>
 
@@ -185,12 +185,15 @@ export const ReverseIcpModal: React.FC<ReverseIcpModalProps> = ({
 								htmlFor="target-url-input"
 								className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5"
 							>
-								<Globe className="w-3.5 h-3.5 text-emerald-400" />
+								<Globe className="w-3.5 h-3.5 text-emerald-400" aria-hidden="true" />
 								<span>URL Website / Landing Page Dự án</span>
 							</label>
 							<div className="flex gap-2">
 								<div className="relative flex-1">
-									<Search className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+									<Search
+										className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2"
+										aria-hidden="true"
+									/>
 									<input
 										id="target-url-input"
 										type="text"
@@ -208,12 +211,12 @@ export const ReverseIcpModal: React.FC<ReverseIcpModalProps> = ({
 								>
 									{loading ? (
 										<>
-											<Loader2 className="w-4 h-4 animate-spin" />
+											<Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
 											<span>Đang phân tích...</span>
 										</>
 									) : (
 										<>
-											<Zap className="w-4 h-4" />
+											<Zap className="w-4 h-4" aria-hidden="true" />
 											<span>Phân tích ICP</span>
 										</>
 									)}
@@ -254,7 +257,7 @@ export const ReverseIcpModal: React.FC<ReverseIcpModalProps> = ({
 					{/* Error Alert */}
 					{error && (
 						<div className="flex items-center gap-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs">
-							<AlertCircle className="w-4 h-4 shrink-0" />
+							<AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
 							<span>{error}</span>
 						</div>
 					)}
@@ -262,7 +265,10 @@ export const ReverseIcpModal: React.FC<ReverseIcpModalProps> = ({
 					{/* Loading State with 3 Progress Steps */}
 					{loading && (
 						<div className="p-6 rounded-2xl bg-zinc-950/60 border border-zinc-800 text-center space-y-4">
-							<Loader2 className="w-8 h-8 animate-spin text-emerald-400 mx-auto" />
+							<Loader2
+								className="w-8 h-8 animate-spin text-emerald-400 mx-auto"
+								aria-hidden="true"
+							/>
 							<div className="space-y-1.5 max-w-sm mx-auto">
 								<p className="text-xs font-semibold text-zinc-200">
 									{progressStep === 1 && "1/3 Đang cào dữ liệu web an toàn (<1s)..."}
@@ -305,7 +311,7 @@ export const ReverseIcpModal: React.FC<ReverseIcpModalProps> = ({
 							{/* Buyer Personas Tabs */}
 							<div className="space-y-3">
 								<h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
-									<Target className="w-3.5 h-3.5 text-emerald-400" />
+									<Target className="w-3.5 h-3.5 text-emerald-400" aria-hidden="true" />
 									<span>3 Chân Dung Khách Hàng Tiềm Năng (Buyer Personas)</span>
 								</h3>
 
@@ -370,7 +376,7 @@ export const ReverseIcpModal: React.FC<ReverseIcpModalProps> = ({
 							{/* Suggested Search Queries */}
 							<div className="space-y-2">
 								<h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
-									<Search className="w-3.5 h-3.5 text-emerald-400" />
+									<Search className="w-3.5 h-3.5 text-emerald-400" aria-hidden="true" />
 									<span>Truy Vấn Tìm Kiếm & Quét Lead Khuyến Nghị</span>
 								</h3>
 								<div className="flex flex-wrap gap-2">
@@ -382,9 +388,9 @@ export const ReverseIcpModal: React.FC<ReverseIcpModalProps> = ({
 											className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700/60 transition-colors"
 										>
 											{copiedQuery === q ? (
-												<Check className="w-3 h-3 text-emerald-400" />
+												<Check className="w-3 h-3 text-emerald-400" aria-hidden="true" />
 											) : (
-												<Copy className="w-3 h-3 text-zinc-400" />
+												<Copy className="w-3 h-3 text-zinc-400" aria-hidden="true" />
 											)}
 											<span>{q}</span>
 										</button>
@@ -395,7 +401,7 @@ export const ReverseIcpModal: React.FC<ReverseIcpModalProps> = ({
 							{/* Chat Starter Prompts */}
 							<div className="space-y-2">
 								<h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
-									<Bot className="w-3.5 h-3.5 text-emerald-400" />
+									<Bot className="w-3.5 h-3.5 text-emerald-400" aria-hidden="true" />
 									<span>Kích Hoạt Nhanh AI Co-pilot Săn Lead</span>
 								</h3>
 								<div className="space-y-1.5">
@@ -411,7 +417,7 @@ export const ReverseIcpModal: React.FC<ReverseIcpModalProps> = ({
 												className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-black font-semibold transition-all shrink-0 ml-3"
 											>
 												<span>Mở Chat</span>
-												<ArrowRight className="w-3 h-3" />
+												<ArrowRight className="w-3 h-3" aria-hidden="true" />
 											</button>
 										</div>
 									))}
@@ -439,7 +445,7 @@ export const ReverseIcpModal: React.FC<ReverseIcpModalProps> = ({
 									onClick={handleCreateTable}
 									className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 transition-colors"
 								>
-									<Plus className="w-3.5 h-3.5 text-zinc-400" />
+									<Plus className="w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
 									<span>Tạo Tab Bảng Mới</span>
 								</button>
 							)}
@@ -450,7 +456,7 @@ export const ReverseIcpModal: React.FC<ReverseIcpModalProps> = ({
 									onClick={handleApplyFilters}
 									className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-black shadow-sm transition-colors"
 								>
-									<Filter className="w-3.5 h-3.5" />
+									<Filter className="w-3.5 h-3.5" aria-hidden="true" />
 									<span>Áp dụng vào Bộ lọc</span>
 								</button>
 							)}

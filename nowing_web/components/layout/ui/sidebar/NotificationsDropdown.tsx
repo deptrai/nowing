@@ -331,7 +331,7 @@ export function NotificationsDropdown({
 				open && "bg-accent text-accent-foreground"
 			)}
 		>
-			<Bell className="h-4 w-4" />
+			<Bell className="h-4 w-4" aria-hidden="true" />
 			{notifications.totalUnreadCount > 0 ? (
 				<span className="absolute right-1 top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-none text-destructive-foreground">
 					{unreadLabel}

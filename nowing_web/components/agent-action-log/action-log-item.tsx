@@ -138,9 +138,9 @@ export function ActionLogItem({ action, threadId, onRevertSuccess }: ActionLogIt
 			>
 				<div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-accent">
 					{isRevertAction ? (
-						<Undo2 className="size-4 text-muted-foreground" />
+						<Undo2 className="size-4 text-muted-foreground" aria-hidden="true" />
 					) : (
-						<Icon className="size-4 text-muted-foreground" />
+						<Icon className="size-4 text-muted-foreground" aria-hidden="true" />
 					)}
 				</div>
 				<div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -197,9 +197,9 @@ export function ActionLogItem({ action, threadId, onRevertSuccess }: ActionLogIt
 									aria-label={copiedSection === "arguments" ? "Arguments copied" : "Copy arguments"}
 								>
 									{copiedSection === "arguments" ? (
-										<Check className="size-3" />
+										<Check className="size-3" aria-hidden="true" />
 									) : (
-										<Copy className="size-3" />
+										<Copy className="size-3" aria-hidden="true" />
 									)}
 								</Button>
 							</div>
@@ -235,7 +235,7 @@ export function ActionLogItem({ action, threadId, onRevertSuccess }: ActionLogIt
 							<AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
 								<AlertDialogTrigger asChild>
 									<Button size="sm" variant="secondary" className="gap-1.5">
-										<RotateCcw className="size-3.5" />
+										<RotateCcw className="size-3.5" aria-hidden="true" />
 										Revert
 									</Button>
 								</AlertDialogTrigger>

@@ -13,11 +13,7 @@ test.describe("Story 23.1: Hardware-Accelerated Realtime Ingestion Pulse & Matri
 			// User may already exist
 		});
 		ownerToken = await acquireTestToken(request);
-		const workspace = await createWorkspace(
-			request,
-			ownerToken,
-			`E2E Stream Pulse ${Date.now()}`
-		);
+		const workspace = await createWorkspace(request, ownerToken, `E2E Stream Pulse ${Date.now()}`);
 		workspaceId = workspace.id;
 	});
 
@@ -44,8 +40,10 @@ test.describe("Story 23.1: Hardware-Accelerated Realtime Ingestion Pulse & Matri
 
 		// 4. Check for streamed lead row entering animation class on dynamic ingestion
 		// The test expects rows injected via Redis Stream / Zero-cache to have class 'streamed-lead-row-entering'
-		const enteringRow = page.locator("tr.streamed-lead-row-entering, div.streamed-lead-row-entering").first();
-		
+		const enteringRow = page
+			.locator("tr.streamed-lead-row-entering, div.streamed-lead-row-entering")
+			.first();
+
 		// In RED phase before feature implementation, we verify selector expectation
 		// DEV team will activate and connect with real stream push
 		const tableBody = page.locator("table tbody, div[data-testid='leads-virtual-list']").first();
@@ -64,7 +62,9 @@ test.describe("Story 23.1: Hardware-Accelerated Realtime Ingestion Pulse & Matri
 		await page.waitForLoadState("domcontentloaded");
 
 		// Floating pill badge element
-		const floatingPill = page.locator("[data-testid='stream-update-pill'], button.stream-new-leads-badge");
+		const floatingPill = page.locator(
+			"[data-testid='stream-update-pill'], button.stream-new-leads-badge"
+		);
 		// In RED phase, verify the element contract definition
 		test.skip(true, "TDD RED Phase: Floating update pill badge pending UI implementation");
 		await expect(floatingPill).toBeVisible();

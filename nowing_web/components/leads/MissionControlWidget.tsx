@@ -366,7 +366,7 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 			<div className="flex items-center justify-between pb-3 border-b border-border">
 				<div className="flex items-center gap-2 min-w-0">
 					<div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-						<Activity className="w-4 h-4" />
+						<Activity className="w-4 h-4" aria-hidden="true" />
 					</div>
 					<div className="min-w-0">
 						<h3 className="text-sm font-semibold text-foreground">Trợ lý tìm lead</h3>
@@ -378,7 +378,7 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 				<div className="flex items-center gap-2 shrink-0">
 					{elapsed && (
 						<span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-							<Clock className="w-3 h-3" />
+							<Clock className="w-3 h-3" aria-hidden="true" />
 							{elapsed}
 						</span>
 					)}
@@ -404,7 +404,7 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 						title="Hủy nhiệm vụ (chưa hỗ trợ)"
 						className="p-1 rounded-md hover:bg-muted text-muted-foreground disabled:opacity-40 disabled:cursor-not-allowed"
 					>
-						<X className="w-3.5 h-3.5" />
+						<X className="w-3.5 h-3.5" aria-hidden="true" />
 					</button>
 				</div>
 			</div>
@@ -423,7 +423,7 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 
 			{error && (
 				<div className="mt-3 flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/10 p-2.5 text-xs text-red-700 dark:text-red-300">
-					<AlertCircle className="w-4 h-4 shrink-0" />
+					<AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
 					<span>{error}</span>
 				</div>
 			)}
@@ -466,7 +466,10 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 											: "border-border bg-muted/40 text-muted-foreground"
 								)}
 							>
-								<Icon className={cn("w-3.5 h-3.5", stepStatus === "running" && "animate-spin")} />
+								<Icon
+									className={cn("w-3.5 h-3.5", stepStatus === "running" && "animate-spin")}
+									aria-hidden="true"
+								/>
 								<span className="text-[10px] font-medium leading-tight">{step}</span>
 							</div>
 						);
@@ -552,7 +555,7 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 											: "pointer-events-none opacity-50 text-muted-foreground"
 									)}
 								>
-									<FileIcon className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+									<FileIcon className="w-3.5 h-3.5 text-emerald-500 shrink-0" aria-hidden="true" />
 									<span className="flex-1 truncate">{d.filename}</span>
 									<span className="text-[10px] text-muted-foreground shrink-0">
 										{getDeliverableMetadata(d)}
@@ -565,7 +568,10 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 											PII
 										</span>
 									)}
-									<Download className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+									<Download
+										className="w-3.5 h-3.5 text-muted-foreground shrink-0"
+										aria-hidden="true"
+									/>
 								</a>
 							);
 						})}
@@ -614,9 +620,9 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 											className="w-full flex items-center gap-1.5 text-left hover:text-foreground transition-colors"
 										>
 											{isExpanded ? (
-												<ChevronDown className="w-3 h-3 shrink-0" />
+												<ChevronDown className="w-3 h-3 shrink-0" aria-hidden="true" />
 											) : (
-												<ChevronRight className="w-3 h-3 shrink-0" />
+												<ChevronRight className="w-3 h-3 shrink-0" aria-hidden="true" />
 											)}
 											<span className="font-medium text-foreground truncate">{subtask.title}</span>
 											<span

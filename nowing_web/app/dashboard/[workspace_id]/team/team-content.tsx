@@ -254,7 +254,7 @@ export function TeamContent({ workspaceId }: TeamContentProps) {
 							tabIndex={-1}
 							className="pointer-events-none gap-1.5 md:gap-2 text-xs md:text-sm bg-black text-white dark:bg-white dark:text-black"
 						>
-							<UserPlus className="h-3.5 w-3.5 md:h-4 md:w-4" />
+							<UserPlus className="h-3.5 w-3.5 md:h-4 md:w-4" aria-hidden="true" />
 							Invite members
 						</Button>
 						<Button
@@ -265,10 +265,10 @@ export function TeamContent({ workspaceId }: TeamContentProps) {
 							tabIndex={-1}
 							className="pointer-events-none gap-1.5 md:gap-2 rounded-md bg-muted px-3 text-xs md:text-sm hover:bg-accent"
 						>
-							<Link2 className="h-3.5 w-3.5 md:h-4 md:w-4 rotate-315" />
+							<Link2 className="h-3.5 w-3.5 md:h-4 md:w-4 rotate-315" aria-hidden="true" />
 							Active invites
 							<span className="inline-flex items-center justify-center h-4 md:h-5 min-w-4 md:min-w-5 px-1 rounded-full bg-neutral-700 text-neutral-200">
-								<Skeleton className="h-2.5 w-2.5 rounded-sm bg-neutral-500/60" />
+								<Skeleton className="h-2.5 w-2.5 rounded-sm bg-neutral-500/60" aria-hidden="true" />
 							</span>
 						</Button>
 					</div>
@@ -302,16 +302,16 @@ export function TeamContent({ workspaceId }: TeamContentProps) {
 								<TableRow key={id} className="border-b border-border/60 hover:bg-transparent">
 									<TableCell className="w-[45%] py-2.5 px-4 md:px-6 border-r border-border/60">
 										<div className="flex items-center gap-3">
-											<Skeleton className="h-10 w-10 rounded-full shrink-0" />
-											<Skeleton className="h-4 w-28 md:w-32" />
+											<Skeleton className="h-10 w-10 rounded-full shrink-0" aria-hidden="true" />
+											<Skeleton className="h-4 w-28 md:w-32" aria-hidden="true" />
 										</div>
 									</TableCell>
 									<TableCell className="hidden md:table-cell w-[25%] py-2.5 border-r border-border/60">
-										<Skeleton className="h-4 w-24" />
+										<Skeleton className="h-4 w-24" aria-hidden="true" />
 									</TableCell>
 									<TableCell className="w-[30%] py-2.5 px-4 md:px-6">
 										<div className="flex justify-end">
-											<Skeleton className="h-4 w-12" />
+											<Skeleton className="h-4 w-12" aria-hidden="true" />
 										</div>
 									</TableCell>
 								</TableRow>
@@ -343,7 +343,7 @@ export function TeamContent({ workspaceId }: TeamContentProps) {
 								tabIndex={-1}
 								className="pointer-events-none gap-1.5 md:gap-2 text-xs md:text-sm bg-black text-white dark:bg-white dark:text-black"
 							>
-								<UserPlus className="h-3.5 w-3.5 md:h-4 md:w-4" />
+								<UserPlus className="h-3.5 w-3.5 md:h-4 md:w-4" aria-hidden="true" />
 								Invite members
 							</Button>
 						) : (
@@ -362,10 +362,13 @@ export function TeamContent({ workspaceId }: TeamContentProps) {
 								tabIndex={-1}
 								className="pointer-events-none gap-1.5 md:gap-2 rounded-md bg-muted px-3 text-xs md:text-sm hover:bg-accent"
 							>
-								<Link2 className="h-3.5 w-3.5 md:h-4 md:w-4 rotate-315" />
+								<Link2 className="h-3.5 w-3.5 md:h-4 md:w-4 rotate-315" aria-hidden="true" />
 								Active invites
 								<span className="inline-flex items-center justify-center h-4 md:h-5 min-w-4 md:min-w-5 px-1 rounded-full bg-neutral-700 text-neutral-200">
-									<Skeleton className="h-2.5 w-2.5 rounded-sm bg-neutral-500/60" />
+									<Skeleton
+										className="h-2.5 w-2.5 rounded-sm bg-neutral-500/60"
+										aria-hidden="true"
+									/>
 								</span>
 							</Button>
 						) : (
@@ -438,7 +441,7 @@ export function TeamContent({ workspaceId }: TeamContentProps) {
 							<TableRow>
 								<TableCell colSpan={3} className="text-center py-12">
 									<div className="flex flex-col items-center gap-2">
-										<Users className="h-8 w-8 text-muted-foreground/50" />
+										<Users className="h-8 w-8 text-muted-foreground/50" aria-hidden="true" />
 										<p className="text-muted-foreground">No members yet</p>
 									</div>
 								</TableCell>
@@ -573,7 +576,7 @@ function MemberRow({
 								className="h-auto w-[74px] justify-end gap-1.5 px-0 py-0 text-sm text-muted-foreground hover:bg-transparent hover:text-accent-foreground has-[>svg]:px-0"
 							>
 								{roleName}
-								<ChevronDown className="h-4 w-4" />
+								<ChevronDown className="h-4 w-4" aria-hidden="true" />
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent
@@ -725,7 +728,7 @@ function CreateInviteDialog({
 					size="sm"
 					className="gap-1.5 md:gap-2 text-xs md:text-sm bg-black text-white dark:bg-white dark:text-black hover:bg-black/90 dark:hover:bg-white/90"
 				>
-					<UserPlus className="h-3.5 w-3.5 md:h-4 md:w-4" />
+					<UserPlus className="h-3.5 w-3.5 md:h-4 md:w-4" aria-hidden="true" />
 					Invite members
 				</Button>
 			</DialogTrigger>
@@ -737,7 +740,7 @@ function CreateInviteDialog({
 					<>
 						<DialogHeader>
 							<DialogTitle className="flex items-center gap-2">
-								<Check className="h-5 w-5 text-emerald-500" />
+								<Check className="h-5 w-5 text-emerald-500" aria-hidden="true" />
 								Invite Created!
 							</DialogTitle>
 							<DialogDescription>
@@ -750,7 +753,11 @@ function CreateInviteDialog({
 									{window.location.origin}/invite/{createdInvite.invite_code}
 								</code>
 								<Button variant="outline" size="sm" onClick={copyLink} className="shrink-0">
-									{copiedLink ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+									{copiedLink ? (
+										<Check className="h-4 w-4" aria-hidden="true" />
+									) : (
+										<Copy className="h-4 w-4" aria-hidden="true" />
+									)}
 								</Button>
 							</div>
 							<div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
@@ -759,13 +766,13 @@ function CreateInviteDialog({
 								</span>
 								{createdInvite.max_uses && (
 									<span className="flex items-center gap-1">
-										<Hash className="h-3 w-3" />
+										<Hash className="h-3 w-3" aria-hidden="true" />
 										Max {createdInvite.max_uses} uses
 									</span>
 								)}
 								{createdInvite.expires_at && (
 									<span className="flex items-center gap-1">
-										<Clock className="h-3 w-3" />
+										<Clock className="h-3 w-3" aria-hidden="true" />
 										Expires {new Date(createdInvite.expires_at).toLocaleDateString()}
 									</span>
 								)}
@@ -836,7 +843,7 @@ function CreateInviteDialog({
 													!expiresAt && "text-muted-foreground"
 												)}
 											>
-												<Calendar className="mr-2 h-4 w-4" />
+												<Calendar className="mr-2 h-4 w-4" aria-hidden="true" />
 												{expiresAt ? expiresAt.toLocaleDateString() : "Never"}
 											</Button>
 										</PopoverTrigger>
@@ -900,7 +907,7 @@ function AllInvitesDialog({
 					size="sm"
 					className="gap-1.5 md:gap-2 rounded-md bg-muted px-3 text-xs md:text-sm hover:bg-accent"
 				>
-					<Link2 className="h-3.5 w-3.5 md:h-4 md:w-4 rotate-315" />
+					<Link2 className="h-3.5 w-3.5 md:h-4 md:w-4 rotate-315" aria-hidden="true" />
 					Active invites
 					<span className="inline-flex items-center justify-center h-4 md:h-5 min-w-4 md:min-w-5 px-1 rounded-full bg-neutral-700 text-neutral-200 text-[10px] md:text-xs font-medium">
 						{invites.length}
@@ -927,13 +934,13 @@ function AllInvitesDialog({
 										)}
 										{invite.max_uses != null && (
 											<span className="flex items-center gap-1 rounded bg-muted px-1.5 py-0.5">
-												<Hash className="h-3 w-3" />
+												<Hash className="h-3 w-3" aria-hidden="true" />
 												{invite.uses_count}/{invite.max_uses}
 											</span>
 										)}
 										{invite.expires_at && (
 											<span className="flex items-center gap-1 rounded bg-muted px-1.5 py-0.5">
-												<Clock className="h-3 w-3" />
+												<Clock className="h-3 w-3" aria-hidden="true" />
 												{new Date(invite.expires_at).toLocaleDateString()}
 											</span>
 										)}
@@ -946,7 +953,7 @@ function AllInvitesDialog({
 											size="icon"
 											className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
 										>
-											<Trash2 className="h-3.5 w-3.5" />
+											<Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
 										</Button>
 									</AlertDialogTrigger>
 									<AlertDialogContent>
@@ -984,9 +991,9 @@ function AllInvitesDialog({
 									onClick={() => copyLink(invite)}
 								>
 									{copiedId === invite.id ? (
-										<Check className="h-4 w-4" />
+										<Check className="h-4 w-4" aria-hidden="true" />
 									) : (
-										<Copy className="h-4 w-4" />
+										<Copy className="h-4 w-4" aria-hidden="true" />
 									)}
 								</Button>
 							</div>

@@ -79,7 +79,7 @@ export function HitlEditPanelContent({
 				/>
 				{onClose && showCloseButton && (
 					<Button variant="ghost" size="icon" onClick={onClose} className="size-7 shrink-0">
-						<XIcon className="size-4" />
+						<XIcon className="size-4" aria-hidden="true" />
 						<span className="sr-only">Close panel</span>
 					</Button>
 				)}

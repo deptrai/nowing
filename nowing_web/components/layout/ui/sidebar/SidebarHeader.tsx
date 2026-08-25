@@ -43,16 +43,19 @@ export function SidebarHeader({
 						<span className="truncate text-xs font-semibold">
 							{workspace?.name ?? t("select_workspace")}
 						</span>
-						<ChevronsUpDown className="h-3 w-3 shrink-0 text-muted-foreground opacity-70" />
+						<ChevronsUpDown
+							className="h-3 w-3 shrink-0 text-muted-foreground opacity-70"
+							aria-hidden="true"
+						/>
 					</Button>
 				</DropdownMenuTrigger>
 				<DropdownMenuContent align="start" className="w-48">
 					<DropdownMenuItem onClick={onManageMembers}>
-						<UserPen className="h-4 w-4" />
+						<UserPen className="h-4 w-4" aria-hidden="true" />
 						{t("manage_members")}
 					</DropdownMenuItem>
 					<DropdownMenuItem onClick={onSettings}>
-						<Settings className="h-4 w-4" />
+						<Settings className="h-4 w-4" aria-hidden="true" />
 						{t("workspace_settings")}
 					</DropdownMenuItem>
 				</DropdownMenuContent>

@@ -60,7 +60,7 @@ function RunStat({
 }) {
 	return (
 		<div className="flex items-center gap-1.5 rounded-md border border-border/60 px-2.5 py-1.5">
-			<Icon className="h-3.5 w-3.5 text-muted-foreground" />
+			<Icon className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
 			<span className="text-xs text-muted-foreground">{label}</span>
 			<span className="text-xs font-medium tabular-nums">{value}</span>
 		</div>
@@ -102,7 +102,11 @@ function EndpointCopyButton({ endpoint }: { endpoint: string }) {
 			className="h-auto max-w-full items-start justify-start gap-2 whitespace-normal rounded bg-muted/40 px-2 py-1 font-mono text-xs text-muted-foreground hover:bg-muted hover:text-foreground sm:whitespace-nowrap"
 		>
 			<code className="min-w-0 break-all text-left sm:break-normal">{endpoint}</code>
-			{copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+			{copied ? (
+				<Check className="h-3.5 w-3.5" aria-hidden="true" />
+			) : (
+				<Copy className="h-3.5 w-3.5" aria-hidden="true" />
+			)}
 			<span className="sr-only">{copied ? "Copied endpoint" : "Copy endpoint"}</span>
 		</Button>
 	);

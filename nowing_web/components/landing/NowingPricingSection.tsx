@@ -109,15 +109,15 @@ export const NowingPricingSection: React.FC = () => {
 
 							<ul className="space-y-3 text-xs sm:text-sm text-slate-600 dark:text-slate-400">
 								<li className="flex items-center gap-2">
-									<Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+									<Check className="w-4 h-4 text-emerald-500 flex-shrink-0" aria-hidden="true" />
 									<span>Dedicated Proxy Pool & Custom Scrapers</span>
 								</li>
 								<li className="flex items-center gap-2">
-									<Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+									<Check className="w-4 h-4 text-emerald-500 flex-shrink-0" aria-hidden="true" />
 									<span>Direct CRM & Webhook Sync (HubSpot, Lark)</span>
 								</li>
 								<li className="flex items-center gap-2">
-									<Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+									<Check className="w-4 h-4 text-emerald-500 flex-shrink-0" aria-hidden="true" />
 									<span>RBAC Multi-Seat Workspace Control</span>
 								</li>
 							</ul>

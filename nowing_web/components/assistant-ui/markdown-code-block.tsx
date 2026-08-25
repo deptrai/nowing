@@ -65,7 +65,11 @@ function MarkdownCodeBlockComponent({
 					aria-label={hasCopied ? "Copied code" : "Copy code"}
 				>
 					<span className="sr-only">Copy</span>
-					{hasCopied ? <CheckIcon className="!size-3" /> : <CopyIcon className="!size-3" />}
+					{hasCopied ? (
+						<CheckIcon className="!size-3" aria-hidden="true" />
+					) : (
+						<CopyIcon className="!size-3" aria-hidden="true" />
+					)}
 				</Button>
 			</div>
 

@@ -146,9 +146,15 @@ export function RunsTable({ workspaceId }: { workspaceId: number }) {
 										>
 											<TableCell>
 												{isOpen ? (
-													<ChevronDown className="h-4 w-4 text-muted-foreground" />
+													<ChevronDown
+														className="h-4 w-4 text-muted-foreground"
+														aria-hidden="true"
+													/>
 												) : (
-													<ChevronRight className="h-4 w-4 text-muted-foreground" />
+													<ChevronRight
+														className="h-4 w-4 text-muted-foreground"
+														aria-hidden="true"
+													/>
 												)}
 											</TableCell>
 											<TableCell className="font-mono text-xs">{run.capability}</TableCell>

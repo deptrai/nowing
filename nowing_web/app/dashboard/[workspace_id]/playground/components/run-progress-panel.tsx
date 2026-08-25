@@ -54,7 +54,10 @@ export function RunProgressPanel({
 		<div className="space-y-3 rounded-md border border-border/60 p-4">
 			<div className="flex items-center justify-between gap-3">
 				<div className="flex min-w-0 items-center gap-2">
-					<Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
+					<Loader2
+						className="h-4 w-4 shrink-0 animate-spin text-muted-foreground"
+						aria-hidden="true"
+					/>
 					<span className="truncate text-sm font-medium">
 						{latest ? eventLabel(latest) : "Starting…"}
 					</span>

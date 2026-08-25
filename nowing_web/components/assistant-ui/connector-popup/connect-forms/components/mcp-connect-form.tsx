@@ -137,7 +137,7 @@ export const MCPConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting })
 	return (
 		<div className="space-y-6 pb-6">
 			<Alert className="bg-slate-400/5 dark:bg-white/5 border-slate-400/20 p-2 sm:p-3">
-				<Server className="h-4 w-4 shrink-0" />
+				<Server className="h-4 w-4 shrink-0" aria-hidden="true" />
 				<AlertDescription className="text-[10px] sm:text-xs">
 					Connect to an MCP (Model Context Protocol) server. Each MCP server is added as a separate
 					connector.
@@ -214,7 +214,7 @@ export const MCPConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting })
 						>
 							{isTesting ? (
 								<>
-									<Loader2 className="h-3.5 w-3.5 animate-spin" />
+									<Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
 									Testing Connection...
 								</>
 							) : (
@@ -233,9 +233,9 @@ export const MCPConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting })
 							}
 						>
 							{testResult.status === "success" ? (
-								<CheckCircle2 className="h-4 w-4 text-green-600" />
+								<CheckCircle2 className="h-4 w-4 text-green-600" aria-hidden="true" />
 							) : (
-								<XCircle className="h-4 w-4 text-red-600" />
+								<XCircle className="h-4 w-4 text-red-600" aria-hidden="true" />
 							)}
 							<div className="col-start-2 flex items-center justify-between">
 								<AlertTitle className="text-sm">
@@ -255,13 +255,13 @@ export const MCPConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting })
 									>
 										{showDetails ? (
 											<>
-												<ChevronUp className="h-3 w-3 mr-1" />
+												<ChevronUp className="h-3 w-3 mr-1" aria-hidden="true" />
 												<span className="hidden sm:inline">Hide Details</span>
 												<span className="sm:hidden">Hide</span>
 											</>
 										) : (
 											<>
-												<ChevronDown className="h-3 w-3 mr-1" />
+												<ChevronDown className="h-3 w-3 mr-1" aria-hidden="true" />
 												<span className="hidden sm:inline">Show Details</span>
 												<span className="sm:hidden">Show</span>
 											</>
