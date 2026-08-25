@@ -1,12 +1,14 @@
 """REST API endpoints for Web Builder (Story 27.1 / Story 27.1b / AD-113 / AD-113a / AD-114)."""
 
 import asyncio
+import contextlib
 import html
 import logging
 import mimetypes
 import re
 from pathlib import Path
 from typing import Annotated
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import (
@@ -22,9 +24,11 @@ from app.auth.context import AuthContext
 from app.config import config
 from app.db import Permission, Workspace, WorkspaceApp, get_async_session
 from app.routes.rbac_routes import check_permission
+from app.services.token_tracking_service import UsageType, record_token_usage
 from app.services.web_builder.builder import BuilderService
 from app.services.web_builder.deploy_service import WebAppDeployService
 from app.services.web_builder.generator import WebBuilderService
+from app.services.web_builder.mark_tool import JSX_FILE_SUFFIXES, MarkToolASTMutator
 from app.services.web_builder.preview_renderer import WEB_BUILDER_CSP, PreviewRenderer
 from app.services.web_builder.project_writer import ProjectWriter
 from app.services.web_builder.schemas import (
@@ -225,6 +229,15 @@ async def publish_web_app(
         session=session,
     )
     if result.status == "deploy_failed":
+        # Feature-gate / permission failures must surface as 403, not 422.
+        if result.message and (
+            "Web Builder is not enabled" in result.message
+            or "workspace plan" in result.message
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=result.message,
+            )
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=result.message or "Deployment failed",
@@ -331,16 +344,119 @@ async def configure_custom_domain(
     return result
 
 
+@router.post("/apps/{app_id}/mark", response_model=MarkToolOutput)
 async def apply_mark_tool_patch(
     app_id: str,
     payload: MarkToolInput,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[AsyncSession, Depends(get_async_session)],
 ) -> MarkToolOutput:
-    """AST mutation from the Mark Tool is out of scope for Story 27.1a (P26)."""
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Mark Tool AST mutation is not available in this version",
+    """Apply a visual Mark Tool patch to a JSX/TSX source file and rebuild the preview (AC-2 / AC-4)."""
+    check_web_builder_enabled()
+    await require_workspace_member(session, auth, payload.workspace_id)
+
+    stmt = select(WorkspaceApp).where(
+        WorkspaceApp.id == app_id,
+        WorkspaceApp.workspace_id == payload.workspace_id,
+    )
+    res = await session.execute(stmt)
+    app_entity = res.scalars().first()
+    if not app_entity:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Application not found",
+        )
+
+    project_dir = _resolve_and_validate_project_dir(
+        app_entity, app_id, payload.workspace_id
+    )
+    file_path = payload.file_path or "app/page.tsx"
+    target_file = (project_dir / file_path).resolve()
+    if (
+        not target_file.is_relative_to(project_dir)
+        or not target_file.exists()
+        or not target_file.is_file()
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Target component file not found",
+        )
+    if target_file.suffix.lower() not in JSX_FILE_SUFFIXES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Target file must be a .tsx or .jsx component",
+        )
+
+    try:
+        jsx_code = await asyncio.to_thread(target_file.read_text, encoding="utf-8")
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Could not read target file: {exc}",
+        ) from exc
+
+    mutator = MarkToolASTMutator()
+    patch_dict = (
+        payload.patch.model_dump()
+        if hasattr(payload.patch, "model_dump")
+        else dict(payload.patch)
+    )
+    result = mutator.apply_patch(
+        jsx_code=jsx_code,
+        selector=payload.selector,
+        patch=patch_dict,
+    )
+
+    if result.status == "patched":
+        try:
+            await asyncio.to_thread(
+                target_file.write_text, result.patched_code, encoding="utf-8"
+            )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Could not write target file: {exc}",
+            ) from exc
+
+    # Record usage for every mark attempt, including unresolvable ones (NFR-3).
+    # Patched attempts are recorded only after the file write succeeds.
+    try:
+        call_details = {
+            "app_id": app_id,
+            "selector": payload.selector,
+            "patch_type": patch_dict.get("type"),
+            "file_path": file_path,
+            "rect": payload.rect.model_dump() if payload.rect else None,
+            "component_hint": payload.component_hint,
+            "status": result.status,
+        }
+        await record_token_usage(
+            session=session,
+            usage_type=UsageType.WEB_BUILDER_MARK,
+            workspace_id=payload.workspace_id,
+            user_id=auth.user.id,
+            cost_micros=0,
+            call_details=call_details,
+        )
+        await session.commit()
+    except Exception:
+        logger.exception("Failed to record web_builder_mark token usage")
+        with contextlib.suppress(Exception):
+            await session.rollback()
+
+    if result.status == "patched":
+        # Force a free rebuild so preview_ready apps recompile mutated source.
+        await BuilderService.trigger_async_build(
+            app_id, payload.workspace_id, force=True, skip_debit=True
+        )
+
+    return MarkToolOutput(
+        app_id=app_id,
+        workspace_id=payload.workspace_id,
+        status=result.status,
+        file_path=file_path,
+        patched_code=result.patched_code if result.status == "patched" else None,
+        message=result.message,
     )
 
 
@@ -422,11 +538,10 @@ def _resolve_and_validate_project_dir(
             detail=f"Invalid application storage path: {e}",
         ) from e
 
-    suffix_ok = resolved_dir.parts[-len(expected_suffix.parts):] == expected_suffix.parts
-    if (
-        not resolved_dir.is_relative_to(expected_scoped_dir)
-        and not suffix_ok
-    ):
+    suffix_ok = (
+        resolved_dir.parts[-len(expected_suffix.parts) :] == expected_suffix.parts
+    )
+    if not resolved_dir.is_relative_to(expected_scoped_dir) and not suffix_ok:
         logger.error(
             "Security violation: preview/files path traversal. target=%s, expected=%s",
             resolved_dir,
@@ -447,16 +562,16 @@ def _resolve_and_validate_project_dir(
 
 def _rewrite_next_static_paths(html_content: str) -> str:
     """Make Next.js static asset references relative so they hit the app-scoped _next/static route."""
-    # Replace absolute /_next/static/... with relative _next/static/... in quoted attrs
-    # and inside CSS url(...) (R-08).
+    # Rewrite both ./_next/static/ and /_next/static/ (after a quote) to _next/static/.
     html_content = re.sub(
-        r'(?<=["\'])\./?_next/static/',
-        "_next/static/",
+        r'(["\'])(?:\./|/)_next/static/',
+        r"\1_next/static/",
         html_content,
     )
+    # Preserve an optional quote inside CSS url(...).
     html_content = re.sub(
-        r'url\(["\']?/_next/static/',
-        lambda m: m.group(0).replace('/_next/static/', '_next/static/', 1),
+        r'url\((["\']?)/_next/static/',
+        r"url(\1_next/static/",
         html_content,
         flags=re.IGNORECASE,
     )
@@ -503,10 +618,62 @@ def _build_status_html(
 </html>"""
 
 
+def _origin_from_url(url: str | None) -> str:
+    """Return scheme://netloc for an absolute URL, else empty string."""
+    if not url:
+        return ""
+    parsed = urlparse(url)
+    if parsed.scheme and parsed.netloc:
+        return f"{parsed.scheme}://{parsed.netloc}"
+    return ""
+
+
+def _www_origin_variants(origin: str) -> set[str]:
+    variants = {origin}
+    if "://www." in origin:
+        variants.add(origin.replace("://www.", "://", 1))
+    elif "://" in origin:
+        variants.add(origin.replace("://", "://www.", 1))
+    return variants
+
+
+def _trusted_preview_parent_origins(config_origin: str | None) -> set[str]:
+    """Allowlist of parent origins permitted to drive the Mark Tool bridge."""
+    trusted: set[str] = set()
+    for candidate in (
+        config_origin,
+        config.NEXT_FRONTEND_URL,
+        getattr(config, "NOWING_PUBLIC_URL", None),
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ):
+        origin = _origin_from_url(candidate)
+        if origin:
+            trusted.update(_www_origin_variants(origin))
+    return trusted
+
+
+def _allowed_preview_origin(referer: str | None, config_origin: str | None) -> str:
+    """Derive the trusted parent origin for the preview iframe.
+
+    Referer is used only when its origin is on the frontend allowlist.
+    Arbitrary Referer values must not become window.__wbAllowedOrigin.
+    """
+    trusted = _trusted_preview_parent_origins(config_origin)
+    referer_origin = _origin_from_url(referer)
+    if referer_origin and referer_origin in trusted:
+        return referer_origin
+    fallback = _origin_from_url(config_origin) or _origin_from_url(
+        config.NEXT_FRONTEND_URL
+    )
+    return fallback or ""
+
+
 @router.get("/apps/{app_id}/preview", response_class=HTMLResponse)
 async def get_workspace_app_preview(
     app_id: str,
     workspace_id: int,
+    request: Request,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[AsyncSession, Depends(get_async_session)],
 ):
@@ -609,15 +776,23 @@ async def get_workspace_app_preview(
             except (OSError, RuntimeError):
                 continue
 
+    allowed_origin = _allowed_preview_origin(
+        request.headers.get("Referer"), config.NEXT_FRONTEND_URL
+    )
+
     if not html_content:
         html_content = await asyncio.to_thread(
             PreviewRenderer.render_app_html,
             project_dir=project_dir,
             app_name=app_entity.name if app_entity else "Generated Web App",
+            allowed_origin=allowed_origin,
         )
     else:
         # Make static asset references relative to the app-scoped preview URL
         html_content = _rewrite_next_static_paths(html_content)
+        html_content = PreviewRenderer.inject_mark_tool_bridge(
+            html_content, allowed_origin
+        )
 
     return HTMLResponse(
         content=html_content,
@@ -808,31 +983,33 @@ async def host_web_app(
             detail="Hosting base domain is not configured",
         )
 
-    if not host_clean.endswith(f".{base_domain}"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Malformed host domain",
-        )
+    if host_clean.endswith(f".{base_domain}"):
+        parts = host_clean.split(".")
+        base_parts = base_domain.split(".")
+        if len(parts) != len(base_parts) + 1 or not parts[0]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Malformed host domain",
+            )
 
-    parts = host_clean.split(".")
-    base_parts = base_domain.split(".")
-    if len(parts) != len(base_parts) + 1 or not parts[0]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Malformed host domain",
-        )
+        slug = parts[0]
+        if not re.match(r"^[a-z0-9-]+$", slug):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid host slug",
+            )
 
-    slug = parts[0]
-    if not re.match(r"^[a-z0-9-]+$", slug):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid host slug",
+        stmt = select(WorkspaceApp).where(
+            WorkspaceApp.slug == slug,
+            WorkspaceApp.status == "published",
         )
-
-    stmt = select(WorkspaceApp).where(
-        WorkspaceApp.slug == slug,
-        WorkspaceApp.status == "published",
-    )
+    else:
+        # Custom domain lookup
+        stmt = select(WorkspaceApp).where(
+            WorkspaceApp.custom_domain == host_clean,
+            WorkspaceApp.custom_domain_status == "active",
+            WorkspaceApp.status == "published",
+        )
     res = await session.execute(stmt)
     app_entity = res.scalars().first()
     if not app_entity:
@@ -840,6 +1017,7 @@ async def host_web_app(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Web application not found",
         )
+    slug = app_entity.slug
 
     ws_stmt = select(Workspace).where(Workspace.id == app_entity.workspace_id)
     ws_res = await session.execute(ws_stmt)
@@ -897,31 +1075,33 @@ async def host_web_app_static(
             detail="Hosting base domain is not configured",
         )
 
-    if not host_clean.endswith(f".{base_domain}"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Malformed host domain",
-        )
+    if host_clean.endswith(f".{base_domain}"):
+        parts = host_clean.split(".")
+        base_parts = base_domain.split(".")
+        if len(parts) != len(base_parts) + 1 or not parts[0]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Malformed host domain",
+            )
 
-    parts = host_clean.split(".")
-    base_parts = base_domain.split(".")
-    if len(parts) != len(base_parts) + 1 or not parts[0]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Malformed host domain",
-        )
+        slug = parts[0]
+        if not re.match(r"^[a-z0-9-]+$", slug):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid host slug",
+            )
 
-    slug = parts[0]
-    if not re.match(r"^[a-z0-9-]+$", slug):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid host slug",
+        stmt = select(WorkspaceApp).where(
+            WorkspaceApp.slug == slug,
+            WorkspaceApp.status == "published",
         )
-
-    stmt = select(WorkspaceApp).where(
-        WorkspaceApp.slug == slug,
-        WorkspaceApp.status == "published",
-    )
+    else:
+        # Custom domain lookup
+        stmt = select(WorkspaceApp).where(
+            WorkspaceApp.custom_domain == host_clean,
+            WorkspaceApp.custom_domain_status == "active",
+            WorkspaceApp.status == "published",
+        )
     res = await session.execute(stmt)
     app_entity = res.scalars().first()
     if not app_entity:
@@ -929,6 +1109,7 @@ async def host_web_app_static(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Web application not found",
         )
+    slug = app_entity.slug
 
     ws_stmt = select(Workspace).where(Workspace.id == app_entity.workspace_id)
     ws_res = await session.execute(ws_stmt)

@@ -16,7 +16,9 @@ test.describe("Story 27.1 — Web App Builder & Mark Tool", () => {
 		await page.goto("/dashboard/1/web-builder");
 	});
 
-	test.skip("AC-1: generates runnable Next.js preview from natural language prompt", async ({ page }) => {
+	test.skip("AC-1: generates runnable Next.js preview from natural language prompt", async ({
+		page,
+	}) => {
 		// 1. Enter prompt in builder input
 		const promptInput = page.getByPlaceholder(/Mô tả ứng dụng web|Describe your web app/i);
 		await expect(promptInput).toBeVisible();
@@ -32,7 +34,9 @@ test.describe("Story 27.1 — Web App Builder & Mark Tool", () => {
 		await expect(previewIframe.locator("h1")).toContainText(/Accounting/i, { timeout: 30_000 });
 	});
 
-	test.skip("AC-2: 1-Click publish deploys app to *.apps.nowing.net with HTTPS", async ({ page }) => {
+	test.skip("AC-2: 1-Click publish deploys app to *.apps.nowing.net with HTTPS", async ({
+		page,
+	}) => {
 		// 1. Click Publish button
 		const publishBtn = page.getByRole("button", { name: /Publish|Xuất bản/i });
 		await expect(publishBtn).toBeVisible();
@@ -44,7 +48,9 @@ test.describe("Story 27.1 — Web App Builder & Mark Tool", () => {
 		await expect(publicLink).toHaveAttribute("href", /https:\/\/.*\.apps\.nowing\.net/);
 	});
 
-	test.skip("AC-4: Mark Tool activates bounding box and allows visual text/style edits", async ({ page }) => {
+	test.skip("AC-4: Mark Tool activates bounding box and allows visual text/style edits", async ({
+		page,
+	}) => {
 		// 1. Activate Mark Tool mode
 		const markToolToggle = page.getByRole("button", { name: /Mark Tool|Chỉnh sửa trực quan/i });
 		await markToolToggle.click();

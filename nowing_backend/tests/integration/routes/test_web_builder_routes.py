@@ -184,7 +184,9 @@ class TestWebBuilderRoutes:
         mock_result.scalars.return_value.first.return_value = mock_app_entity
         mock_db_session.execute.return_value = mock_result
 
-        response = client.get(f"/api/v1/web-builder/apps/{app_id}/preview?workspace_id=1")
+        response = client.get(
+            f"/api/v1/web-builder/apps/{app_id}/preview?workspace_id=1"
+        )
 
         assert response.status_code == 200
         assert "text/html" in response.headers["content-type"]
@@ -202,7 +204,7 @@ class TestWebBuilderRoutes:
         app_page = test_dir / "app" / "page.tsx"
         app_page.parent.mkdir(parents=True, exist_ok=True)
         app_page.write_text(
-            'export default function Page() { return <div>Files Test</div>; }',
+            "export default function Page() { return <div>Files Test</div>; }",
             encoding="utf-8",
         )
 
@@ -225,3 +227,132 @@ class TestWebBuilderRoutes:
         assert "app/page.tsx" in data
         assert "Files Test" in data["app/page.tsx"]
 
+    def test_mark_tool_patch_endpoint(
+        self,
+        client: TestClient,
+        mock_db_session: AsyncMock,
+        tmp_path,
+    ):
+        """AC-4: POST /api/v1/web-builder/apps/{app_id}/mark applies an AST patch and triggers a rebuild."""
+        app_id = "test-mark-app"
+        test_dir = tmp_path / "web-app" / "1" / app_id
+        app_dir = test_dir / "app"
+        app_dir.mkdir(parents=True, exist_ok=True)
+        page_file = app_dir / "page.tsx"
+        page_file.write_text(
+            'export default function Page() { return <h1 id="hero-title">Original</h1>; }',
+            encoding="utf-8",
+        )
+
+        mock_app_entity = WorkspaceApp(
+            id=app_id,
+            workspace_id=1,
+            name="Mark Test",
+            slug="mark-test",
+            storage_path=str(test_dir),
+        )
+
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.first.return_value = mock_app_entity
+        mock_db_session.execute.return_value = mock_result
+
+        with (
+            patch(
+                "app.routes.web_builder_routes.BuilderService.trigger_async_build",
+                new_callable=AsyncMock,
+            ) as mock_build,
+            patch(
+                "app.routes.web_builder_routes.record_token_usage",
+                new_callable=AsyncMock,
+            ) as mock_usage,
+        ):
+            response = client.post(
+                f"/api/v1/web-builder/apps/{app_id}/mark",
+                json={
+                    "workspace_id": 1,
+                    "selector": "#hero-title",
+                    "patch": {"type": "text", "value": "Updated Heading"},
+                    "file_path": "app/page.tsx",
+                },
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "patched"
+        assert data["app_id"] == app_id
+        assert data["file_path"] == "app/page.tsx"
+
+        # The source file should have been rewritten by the route.
+        patched_source = page_file.read_text(encoding="utf-8")
+        assert "Updated Heading" in patched_source
+        assert "Original" not in patched_source
+
+        # A rebuild should be queued and token usage recorded.
+        mock_build.assert_awaited_once_with(app_id, 1, force=True, skip_debit=True)
+        mock_usage.assert_awaited_once()
+        usage_kwargs = mock_usage.await_args.kwargs
+        assert usage_kwargs["usage_type"].value == "web_builder_mark"
+        assert usage_kwargs["call_details"]["status"] == "patched"
+
+    def test_mark_tool_rejects_non_jsx_file(
+        self,
+        client: TestClient,
+        mock_db_session: AsyncMock,
+        tmp_path,
+    ):
+        app_id = "test-mark-json"
+        test_dir = tmp_path / "web-app" / "1" / app_id
+        test_dir.mkdir(parents=True, exist_ok=True)
+        pkg = test_dir / "package.json"
+        pkg.write_text("{}", encoding="utf-8")
+
+        mock_app_entity = WorkspaceApp(
+            id=app_id,
+            workspace_id=1,
+            name="Mark Test",
+            slug="mark-test",
+            storage_path=str(test_dir),
+        )
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.first.return_value = mock_app_entity
+        mock_db_session.execute.return_value = mock_result
+
+        response = client.post(
+            f"/api/v1/web-builder/apps/{app_id}/mark",
+            json={
+                "workspace_id": 1,
+                "selector": "#hero-title",
+                "patch": {"type": "text", "value": "Updated"},
+                "file_path": "package.json",
+            },
+        )
+        assert response.status_code == 422
+
+
+class TestPreviewOriginAllowlist:
+    def test_untrusted_referer_falls_back_to_config(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        from app.config import config
+        from app.routes.web_builder_routes import _allowed_preview_origin
+
+        monkeypatch.setattr(config, "NEXT_FRONTEND_URL", "http://localhost:3000")
+        assert (
+            _allowed_preview_origin(
+                "https://evil.example/phish", "http://localhost:3000"
+            )
+            == "http://localhost:3000"
+        )
+
+    def test_trusted_referer_is_accepted(self, monkeypatch: pytest.MonkeyPatch):
+        from app.config import config
+        from app.routes.web_builder_routes import _allowed_preview_origin
+
+        monkeypatch.setattr(config, "NEXT_FRONTEND_URL", "http://localhost:3000")
+        assert (
+            _allowed_preview_origin(
+                "http://localhost:3000/dashboard/1/web-builder",
+                "http://localhost:3000",
+            )
+            == "http://localhost:3000"
+        )

@@ -127,11 +127,24 @@ class CustomDomainOutput(BaseModel):
     message: str | None = None
 
 
+class MarkToolRect(BaseModel):
+    """Bounding-box rectangle for the selected DOM element (AC-1)."""
+
+    x: float = Field(
+        ..., description="Left edge of the element relative to the viewport"
+    )
+    y: float = Field(
+        ..., description="Top edge of the element relative to the viewport"
+    )
+    width: float = Field(..., description="Width of the element in pixels")
+    height: float = Field(..., description="Height of the element in pixels")
+
+
 class MarkToolPatch(BaseModel):
     """Patch operation for Design View Mark Tool."""
 
     type: str = Field(
-        ..., description="Patch type: text, className, attribute, replace"
+        ..., description="Patch type: text, className, style, attribute, replace"
     )
     value: str = Field(..., description="New replacement value or code snippet")
     attribute: str | None = Field(
@@ -153,6 +166,14 @@ class MarkToolInput(BaseModel):
         default="app/page.tsx",
         max_length=255,
         description="Target component file path",
+    )
+    rect: MarkToolRect | None = Field(
+        default=None, description="Bounding box of the selected element"
+    )
+    component_hint: str | None = Field(
+        default=None,
+        max_length=255,
+        description="Inferred component name / tag hint from the preview",
     )
 
 

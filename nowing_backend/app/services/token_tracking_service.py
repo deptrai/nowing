@@ -71,6 +71,8 @@ class UsageType(StrEnum):
     ASSISTED_DRAFT = "assisted_draft"
     HYBRID_LLM = "hybrid_llm"
     ENTITY_EXTRACTION = "entity_extraction"
+    WEB_BUILDER_MARK = "web_builder_mark"
+    PRESENTATION_GENERATE = "presentation_generate"
 
 
 @dataclass

@@ -78,7 +78,7 @@ function WebAppGeneratingState({ prompt, appName }: { prompt?: string; appName?:
 			<div className="flex items-center justify-between gap-3">
 				<div className="flex items-center gap-2.5 min-w-0">
 					<div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-pink-500/10 text-pink-600 dark:text-pink-400">
-						<GlobeIcon className="size-4.5" />
+						<GlobeIcon className="size-4.5" aria-hidden="true" />
 					</div>
 					<div className="min-w-0">
 						<h4 className="truncate text-sm font-semibold text-foreground">
@@ -88,7 +88,7 @@ function WebAppGeneratingState({ prompt, appName }: { prompt?: string; appName?:
 					</div>
 				</div>
 				<Badge variant="secondary" className="gap-1 px-2 py-0.5 text-xs">
-					<Loader2Icon className="size-3 animate-spin text-muted-foreground" />
+					<Loader2Icon className="size-3 animate-spin text-muted-foreground" aria-hidden="true" />
 					Building
 				</Badge>
 			</div>
@@ -124,7 +124,7 @@ function WebAppErrorState({
 		<div className="my-4 max-w-xl overflow-hidden rounded-2xl border border-destructive/20 bg-destructive/5 p-5 shadow-sm">
 			<div className="flex items-center gap-3">
 				<div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
-					<AlertCircleIcon className="size-5" />
+					<AlertCircleIcon className="size-5" aria-hidden="true" />
 				</div>
 				<div className="min-w-0 flex-1">
 					<h4 className="truncate text-sm font-semibold text-destructive">
@@ -260,7 +260,11 @@ export function GenerateWebAppToolUI({
 								: "bg-teal-500/10 text-teal-600 dark:text-teal-400"
 						)}
 					>
-						{isPublished ? <RocketIcon className="size-5" /> : <GlobeIcon className="size-5" />}
+						{isPublished ? (
+							<RocketIcon className="size-5" aria-hidden="true" />
+						) : (
+							<GlobeIcon className="size-5" aria-hidden="true" />
+						)}
 					</div>
 					<div className="min-w-0">
 						<div className="flex items-center gap-2">
@@ -310,7 +314,11 @@ export function GenerateWebAppToolUI({
 							className="size-7 rounded-lg text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10"
 							title="Copy URL"
 						>
-							{copied ? <CheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
+							{copied ? (
+								<CheckIcon className="size-3.5" aria-hidden="true" />
+							) : (
+								<CopyIcon className="size-3.5" aria-hidden="true" />
+							)}
 							<span className="sr-only">Copy public URL</span>
 						</Button>
 						<Button
@@ -321,7 +329,7 @@ export function GenerateWebAppToolUI({
 							className="size-7 rounded-lg text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10"
 							title="Open site"
 						>
-							<ExternalLinkIcon className="size-3.5" />
+							<ExternalLinkIcon className="size-3.5" aria-hidden="true" />
 							<span className="sr-only">Open live website</span>
 						</Button>
 					</div>
@@ -331,7 +339,7 @@ export function GenerateWebAppToolUI({
 			{/* Project Files Summary */}
 			{files.length > 0 && (
 				<div className="mt-3.5 flex items-center gap-2 text-xs text-muted-foreground">
-					<FileCode2Icon className="size-3.5 shrink-0" />
+					<FileCode2Icon className="size-3.5 shrink-0" aria-hidden="true" />
 					<span className="truncate">
 						{files.length} project file{files.length === 1 ? "" : "s"} generated
 					</span>
@@ -348,7 +356,7 @@ export function GenerateWebAppToolUI({
 						onClick={handleOpenEditor}
 						className="gap-1.5 text-xs font-semibold rounded-xl"
 					>
-						<SparklesIcon className="size-3.5" />
+						<SparklesIcon className="size-3.5" aria-hidden="true" />
 						Open Editor
 					</Button>
 				)}
@@ -363,12 +371,12 @@ export function GenerateWebAppToolUI({
 					>
 						{isPublishing ? (
 							<>
-								<Loader2Icon className="size-3.5 animate-spin" />
+								<Loader2Icon className="size-3.5 animate-spin" aria-hidden="true" />
 								Publishing...
 							</>
 						) : (
 							<>
-								<RocketIcon className="size-3.5" />
+								<RocketIcon className="size-3.5" aria-hidden="true" />
 								Publish
 							</>
 						)}
@@ -382,7 +390,7 @@ export function GenerateWebAppToolUI({
 						onClick={handleOpenLive}
 						className="gap-1.5 text-xs font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs transition-colors"
 					>
-						<ExternalLinkIcon className="size-3.5" />
+						<ExternalLinkIcon className="size-3.5" aria-hidden="true" />
 						Visit Live Site
 					</Button>
 				)}

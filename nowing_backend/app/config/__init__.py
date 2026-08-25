@@ -744,9 +744,7 @@ class Config:
         "FILE_STORAGE_LOCAL_PATH", str(BASE_DIR / ".local_object_store")
     )
 
-    # Instant web-app hosting / builder (Story 27.1)
-    HOSTING_BASE_DOMAIN = os.getenv("HOSTING_BASE_DOMAIN", "apps.nowing.net")
-    CNAME_INGRESS_HOST = os.getenv("CNAME_INGRESS_HOST", "ingress.nowing.net")
+    # Instant web-app hosting / builder (Story 27.1) - See line 1808 for canonical definition
 
     # Daytona sandbox (code execution / filesystem sandbox)
     DAYTONA_SANDBOX_ENABLED = (
@@ -1841,12 +1839,59 @@ class Config:
     WEB_BUILDER_DOCKER_SANDBOX_ENABLED = (
         os.getenv("WEB_BUILDER_DOCKER_SANDBOX_ENABLED", "FALSE").upper() == "TRUE"
     )
+    WEB_BUILDER_CONTAINER_DEPLOY_ENABLED = (
+        os.getenv("WEB_BUILDER_CONTAINER_DEPLOY_ENABLED", "FALSE").upper() == "TRUE"
+    )
+    WEB_BUILDER_DOKPLOY_NETWORK = os.getenv(
+        "WEB_BUILDER_DOKPLOY_NETWORK", "dokploy-network"
+    )
+    # Container healthcheck / lifecycle tuning.
+    WEB_BUILDER_CONTAINER_HEALTHCHECK_TIMEOUT = max(
+        5, _env_int("WEB_BUILDER_CONTAINER_HEALTHCHECK_TIMEOUT", 60)
+    )
+    WEB_BUILDER_CONTAINER_HEALTHCHECK_RETRIES = max(
+        1, _env_int("WEB_BUILDER_CONTAINER_HEALTHCHECK_RETRIES", 10)
+    )
+
+    # Self-host Caddy dynamic snippet config.
+    # Operators enable these for the Caddy 2 file-provider fallback (Story 27.1c).
+    WEB_BUILDER_CADDY_SNIPPETS_ENABLED = (
+        os.getenv("WEB_BUILDER_CADDY_SNIPPETS_ENABLED", "FALSE").upper() == "TRUE"
+    )
+    WEB_BUILDER_CADDY_SNIPPETS_PATH = os.getenv(
+        "WEB_BUILDER_CADDY_SNIPPETS_PATH",
+        "docker/proxy/web-apps.Caddyfile",
+    )
+    WEB_BUILDER_CADDY_RELOAD_ENABLED = (
+        os.getenv("WEB_BUILDER_CADDY_RELOAD_ENABLED", "FALSE").upper() == "TRUE"
+    )
+    WEB_BUILDER_CADDY_CONTAINER_NAME = os.getenv("WEB_BUILDER_CADDY_CONTAINER_NAME", "")
+    WEB_BUILDER_CADDY_BACKEND_TARGET = os.getenv(
+        "WEB_BUILDER_CADDY_BACKEND_TARGET", "backend:8000"
+    )
+
+    # Production Traefik label overrides.
+    WEB_BUILDER_TRAEFIK_ENTRYPOINT = os.getenv(
+        "WEB_BUILDER_TRAEFIK_ENTRYPOINT", "websecure"
+    )
+    WEB_BUILDER_TRAEFIK_CERTRESOLVER = os.getenv(
+        "WEB_BUILDER_TRAEFIK_CERTRESOLVER", "default"
+    )
+    WEB_BUILDER_TRAEFIK_USE_TLS = (
+        os.getenv("WEB_BUILDER_TRAEFIK_USE_TLS", "TRUE").upper() == "TRUE"
+    )
+
+    # Reserved domain blacklist (comma-separated) in addition to the configured base domain.
+    WEB_BUILDER_DOMAIN_BLACKLIST = os.getenv("WEB_BUILDER_DOMAIN_BLACKLIST", "")
 
     PRESENTATION_STUDIO_ENABLED = (
         os.getenv("PRESENTATION_STUDIO_ENABLED", "FALSE").upper() == "TRUE"
     )
     PRESENTATION_MAX_PROMPT_CHARS = max(
         1, _env_int("PRESENTATION_MAX_PROMPT_CHARS", 2000)
+    )
+    PRESENTATION_FILE_STORAGE_SUBDIR = os.getenv(
+        "PRESENTATION_FILE_STORAGE_SUBDIR", "presentations"
     )
 
     MEETING_MINUTES_ENABLED = (
@@ -1878,10 +1923,3 @@ config = Config()
 HOSTING_BASE_DOMAIN = config.HOSTING_BASE_DOMAIN
 CNAME_INGRESS_HOST = config.CNAME_INGRESS_HOST
 FILE_STORAGE_LOCAL_PATH = config.FILE_STORAGE_LOCAL_PATH
-
-# Module-level re-exports for code that imports settings directly
-# (e.g., web builder / deployment service; these are aliases to the
-# canonical ``config`` instance above).
-CNAME_INGRESS_HOST = config.CNAME_INGRESS_HOST
-FILE_STORAGE_LOCAL_PATH = config.FILE_STORAGE_LOCAL_PATH
-HOSTING_BASE_DOMAIN = config.HOSTING_BASE_DOMAIN

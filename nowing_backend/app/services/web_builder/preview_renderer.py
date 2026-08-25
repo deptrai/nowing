@@ -33,7 +33,135 @@ class PreviewRenderer:
     """Renders stored Next.js web application files into an interactive HTML preview."""
 
     @staticmethod
-    def render_app_html(project_dir: Path | str, app_name: str = "Web App") -> str:
+    def mark_tool_origin_script(allowed_origin: str | None) -> str:
+        """Emit the trusted parent origin used by the Mark Tool postMessage bridge."""
+        origin = json.dumps(allowed_origin or app_config.NEXT_FRONTEND_URL or "")
+        return f"<script>window.__wbAllowedOrigin = {origin};</script>"
+
+    @staticmethod
+    def mark_tool_style_block() -> str:
+        """Hover/selection outline styles for the Mark Tool overlay."""
+        return """<style>
+    .nowing-mark-hover {
+      outline: 2px dashed #6366f1 !important;
+      outline-offset: 2px !important;
+      cursor: crosshair !important;
+    }
+    .nowing-mark-selected {
+      outline: 2px solid #4f46e5 !important;
+      outline-offset: 2px !important;
+      background-color: rgba(99, 102, 241, 0.1) !important;
+    }
+    </style>"""
+
+    @staticmethod
+    def mark_tool_listener_script() -> str:
+        """Parent/iframe postMessage handlers that capture {selector, rect, component_hint}."""
+        return """<script>
+    let markToolActive = false;
+    let hoveredElement = null;
+
+    window.addEventListener('message', (event) => {
+      const allowedOrigin = window.__wbAllowedOrigin || '';
+      if (!allowedOrigin) return;
+      if (event.origin !== allowedOrigin) return;
+      if (event.source !== window.parent) return;
+      if (event.data && event.data.type === 'TOGGLE_MARK_TOOL') {
+        markToolActive = !!event.data.active;
+        if (!markToolActive && hoveredElement) {
+          hoveredElement.classList.remove('nowing-mark-hover');
+          hoveredElement = null;
+        }
+      }
+    });
+
+    document.addEventListener('mouseover', (e) => {
+      if (!markToolActive) return;
+      if (hoveredElement && hoveredElement !== e.target) {
+        hoveredElement.classList.remove('nowing-mark-hover');
+      }
+      hoveredElement = e.target;
+      hoveredElement.classList.add('nowing-mark-hover');
+    });
+
+    document.addEventListener('mouseout', (e) => {
+      if (!markToolActive) return;
+      if (hoveredElement) {
+        hoveredElement.classList.remove('nowing-mark-hover');
+        hoveredElement = null;
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!markToolActive) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const target = e.target;
+      const tag = target.tagName ? target.tagName.toLowerCase() : '';
+      const id = target.id ? '#' + target.id : '';
+      const rawClass = target.className && typeof target.className === 'string'
+        ? target.className
+        : '';
+      const classes = rawClass.trim().split(/\\s+/).filter(function(token) {
+        return token && token !== 'nowing-mark-hover' && token !== 'nowing-mark-selected';
+      });
+      const classSelector = classes.map(function(token) { return '.' + token; }).join('');
+      const selector = id || (classSelector ? tag + classSelector : tag);
+      const text = (target.innerText || target.textContent || '').trim();
+      const rect = target.getBoundingClientRect ? target.getBoundingClientRect() : {};
+      const componentHint = tag || '';
+
+      const targetOrigin = window.__wbAllowedOrigin || '';
+      if (!targetOrigin) return;
+      window.parent.postMessage({
+        type: 'MARK_ELEMENT_SELECTED',
+        selector: selector,
+        tag: tag,
+        text: text,
+        rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+        component_hint: componentHint,
+      }, targetOrigin);
+    }, true);
+
+    window.addEventListener('DOMContentLoaded', () => {
+      if (window.lucide) {
+        window.lucide.createIcons();
+      }
+    });
+  </script>"""
+
+    @staticmethod
+    def inject_mark_tool_bridge(html: str, allowed_origin: str | None) -> str:
+        """Ensure compiled preview HTML has origin binding and Mark Tool listeners."""
+        origin_js = json.dumps(allowed_origin or app_config.NEXT_FRONTEND_URL or "")
+        if "__wbAllowedOrigin" in html:
+            html = re.sub(
+                r"window\.__wbAllowedOrigin\s*=\s*(?:\"(?:\\.|[^\"])*\"|'(?:\\.|[^'])*'|[^;]+);",
+                f"window.__wbAllowedOrigin = {origin_js};",
+                html,
+                count=1,
+            )
+        if "TOGGLE_MARK_TOOL" in html:
+            return html
+
+        payload = (
+            PreviewRenderer.mark_tool_style_block()
+            + PreviewRenderer.mark_tool_origin_script(allowed_origin)
+            + PreviewRenderer.mark_tool_listener_script()
+        )
+        lower = html.lower()
+        body_close = lower.rfind("</body>")
+        if body_close != -1:
+            return html[:body_close] + payload + html[body_close:]
+        return html + payload
+
+    @staticmethod
+    def render_app_html(
+        project_dir: Path | str,
+        app_name: str = "Web App",
+        allowed_origin: str | None = None,
+    ) -> str:
         """Read project files and compile a self-contained interactive browser HTML document."""
         base_dir = Path(project_dir).resolve()
 
@@ -73,7 +201,7 @@ class PreviewRenderer:
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="{WEB_BUILDER_CSP}">
-  <script>window.__wbAllowedOrigin = {json.dumps(app_config.NEXT_FRONTEND_URL or "")};</script>
+  {PreviewRenderer.mark_tool_origin_script(allowed_origin)}
   <title>{html.escape(app_name)} - Live Preview</title>
 
   <!-- Tailwind CSS CDN -->
@@ -234,68 +362,7 @@ class PreviewRenderer:
     }})();
   </script>
 
-  <script>
-    let markToolActive = false;
-    let hoveredElement = null;
-
-    window.addEventListener('message', (event) => {{
-      const allowedOrigin = window.__wbAllowedOrigin || window.location.origin;
-      if (allowedOrigin && event.origin !== allowedOrigin) return;
-      if (event.data?.type === 'TOGGLE_MARK_TOOL') {{
-        markToolActive = !!event.data.active;
-        if (!markToolActive && hoveredElement) {{
-          hoveredElement.classList.remove('nowing-mark-hover');
-          hoveredElement = null;
-        }}
-      }}
-    }});
-
-    document.addEventListener('mouseover', (e) => {{
-      if (!markToolActive) return;
-      if (hoveredElement && hoveredElement !== e.target) {{
-        hoveredElement.classList.remove('nowing-mark-hover');
-      }}
-      hoveredElement = e.target;
-      hoveredElement.classList.add('nowing-mark-hover');
-    }});
-
-    document.addEventListener('mouseout', (e) => {{
-      if (!markToolActive) return;
-      if (hoveredElement) {{
-        hoveredElement.classList.remove('nowing-mark-hover');
-        hoveredElement = null;
-      }}
-    }});
-
-    document.addEventListener('click', (e) => {{
-      if (!markToolActive) return;
-      e.preventDefault();
-      e.stopPropagation();
-
-      const target = e.target;
-      const id = target.id ? '#' + target.id : '';
-      const tag = target.tagName.toLowerCase();
-      const firstClass = target.className && typeof target.className === 'string'
-        ? '.' + target.className.split(' ')[0]
-        : '';
-      const selector = id || (firstClass ? tag + firstClass : tag);
-      const text = target.innerText || target.textContent || '';
-
-      const targetOrigin = window.__wbAllowedOrigin || window.location.origin;
-      window.parent.postMessage({{
-        type: 'MARK_ELEMENT_SELECTED',
-        selector: selector,
-        tag: tag,
-        text: text.trim(),
-      }}, targetOrigin);
-    }}, true);
-
-    window.addEventListener('DOMContentLoaded', () => {{
-      if (window.lucide) {{
-        window.lucide.createIcons();
-      }}
-    }});
-  </script>
+  {PreviewRenderer.mark_tool_listener_script()}
 </body>
 </html>"""
         return html_template

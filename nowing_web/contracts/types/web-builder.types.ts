@@ -83,15 +83,24 @@ export interface CustomDomainOutput {
 	message?: string;
 }
 
+export interface MarkToolRect {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+}
+
 export interface MarkToolInput {
 	workspace_id: number;
 	selector: string;
 	patch: {
-		type: "text" | "className" | "attribute" | "replace";
+		type: "text" | "className" | "style" | "attribute" | "replace";
 		value: string;
 		attribute?: string;
 	};
 	file_path?: string;
+	rect?: MarkToolRect;
+	component_hint?: string;
 }
 
 export interface MarkToolOutput {

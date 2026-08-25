@@ -268,9 +268,13 @@ class BuilderService:
                             resolved_project_dir
                         )
                         if not is_secure:
-                            sec_err = f"Security audit failed: {', '.join(security_issues)}"
+                            sec_err = (
+                                f"Security audit failed: {', '.join(security_issues)}"
+                            )
                             logger.error(
-                                "Build security audit failure for app_id=%s: %s", app_id, sec_err
+                                "Build security audit failure for app_id=%s: %s",
+                                app_id,
+                                sec_err,
                             )
                             if app_entity:
                                 app_entity.status = "build_failed"
@@ -351,9 +355,13 @@ class BuilderService:
                             resolved_project_dir
                         )
                         if not is_secure:
-                            sec_err = f"Security audit failed: {', '.join(security_issues)}"
+                            sec_err = (
+                                f"Security audit failed: {', '.join(security_issues)}"
+                            )
                             logger.error(
-                                "Build security audit failure for app_id=%s: %s", app_id, sec_err
+                                "Build security audit failure for app_id=%s: %s",
+                                app_id,
+                                sec_err,
                             )
                             if app_entity:
                                 app_entity.status = "build_failed"
@@ -614,11 +622,23 @@ class BuilderService:
             await session.commit()
 
     @classmethod
-    async def trigger_async_build(cls, app_id: str, workspace_id: int) -> None:
+    async def trigger_async_build(
+        cls,
+        app_id: str,
+        workspace_id: int,
+        *,
+        force: bool = False,
+        skip_debit: bool = False,
+    ) -> None:
         """Trigger asynchronous background build execution.
 
         Enforces a single build per app, debits workspace credit, and transitions
         the app to the building state before compilation starts.
+
+        ``force=True`` re-runs a build even when the app is already
+        ``preview_ready`` (used by Mark Tool). ``skip_debit=True`` skips the
+        workspace credit charge — mark-triggered rebuilds are not a new paid
+        build event.
         """
 
         async def _run() -> None:
@@ -640,12 +660,17 @@ class BuilderService:
                     if not app_entity:
                         return
 
-                    # Duplicate build guard: another worker already started/finished.
-                    if app_entity.status in ("building", "preview_ready"):
+                    # Duplicate build guard: never stack on an in-flight build.
+                    # preview_ready is skipped unless Mark Tool (or similar)
+                    # explicitly forces a rebuild of already-compiled output.
+                    if app_entity.status == "building":
+                        return
+                    if app_entity.status == "preview_ready" and not force:
                         return
 
-                    # Debit build quota inside the worker so every trigger pays once.
-                    cost = config.WEB_BUILDER_BUILD_COST_MICROS
+                    # Debit build quota inside the worker so every paid trigger
+                    # pays once. Mark-triggered rebuilds pass skip_debit=True.
+                    cost = 0 if skip_debit else config.WEB_BUILDER_BUILD_COST_MICROS
                     if cost > 0:
                         ws_stmt = (
                             select(Workspace)

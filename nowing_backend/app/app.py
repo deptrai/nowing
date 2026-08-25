@@ -1213,6 +1213,16 @@ app.router.routes.insert(
     ),
 )
 
+# Catch-all host route so custom CNAMEs and arbitrary hostnames reach the
+# web-builder host router after all path routes have been tried.
+app.router.routes.append(
+    Host(
+        "{host}",
+        app=host_web_app,
+        name="web-builder-host-catchall",
+    )
+)
+
 
 @functools.lru_cache(maxsize=1)
 def _backend_build_id() -> str:

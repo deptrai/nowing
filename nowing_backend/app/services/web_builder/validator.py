@@ -21,6 +21,31 @@ def _safe_read_text(path: Path) -> str:
         return f"__read_error:{e}__"
 
 
+def _strip_balanced_parens(text: str, regex: str) -> str:
+    """Remove matched calls with balanced nested parentheses.
+
+    Used to allowlist standard Next.js patterns such as ``next/dynamic(...)``
+    and ``dynamic(...)`` before scanning for forbidden imports.
+    """
+    pattern = re.compile(regex, re.IGNORECASE)
+    result = []
+    i = 0
+    for m in pattern.finditer(text):
+        result.append(text[i : m.end()])
+        # m.end() points at the first character after the opening '('
+        depth = 1
+        j = m.end()
+        while j < len(text) and depth > 0:
+            if text[j] == "(":
+                depth += 1
+            elif text[j] == ")":
+                depth -= 1
+            j += 1
+        i = j
+    result.append(text[i:])
+    return "".join(result)
+
+
 FORBIDDEN_PATTERNS = [
     (re.compile(r"\bchild_process\b", re.IGNORECASE), "child_process execution"),
     (
@@ -46,14 +71,26 @@ FORBIDDEN_PATTERNS = [
         "unsafe system module import",
     ),
     (re.compile(r"\bdynamic\s+import\s*\(", re.IGNORECASE), "dynamic import"),
-    (re.compile(r"\bimport\s*\(", re.IGNORECASE), "dynamic import"),
+    (
+        re.compile(r"(?<![{@])\bimport\s*\(", re.IGNORECASE),
+        "dynamic import",
+    ),
     (re.compile(r"\bnew\s+Function\s*\(", re.IGNORECASE), "dynamic code evaluation"),
     (re.compile(r"\b(?:eval|Function)\s*\(", re.IGNORECASE), "dynamic code evaluation"),
 ]
 
 
 def _scan_text(text: str, source_name: str, issues: list[str]) -> None:
-    """Apply forbidden patterns to a string and collect issues."""
+    """Apply forbidden patterns to a string and collect issues.
+
+    Next.js ``next/dynamic`` and ``dynamic`` lazy-load calls are allowed
+    because the ``import()`` inside them is intentional lazy loading, not a
+    security vector. They are stripped before pattern matching.
+    """
+    # Allowlist standard Next.js dynamic import wrappers.
+    text = _strip_balanced_parens(text, r"next/dynamic\s*\(")
+    text = _strip_balanced_parens(text, r"\bdynamic\s*\(")
+
     for pattern, desc in FORBIDDEN_PATTERNS:
         if pattern.search(text):
             issues.append(f"Security violation in {source_name}: forbidden {desc}")
@@ -214,21 +251,28 @@ def validate_project_security(project_dir: str | Path) -> tuple[bool, list[str]]
     except (OSError, RuntimeError):
         pass
 
-    # Dependency bin scripts: if node_modules has been installed, validate .bin entries
+    # Dependency bin scripts: verify they resolve inside the project and scan their content.
     bin_dir = root / "node_modules" / ".bin"
     if bin_dir.exists() and bin_dir.is_dir():
         try:
             for bin_script in bin_dir.iterdir():
+                scan_target = None
+                source_label = f"node_modules/.bin/{bin_script.name}"
+
                 if bin_script.is_symlink():
-                    target = bin_script.resolve()
-                    if not target.is_relative_to(root):
+                    scan_target = bin_script.resolve()
+                    if not scan_target.is_relative_to(root):
                         issues.append(
                             f"Security violation: dependency bin script '{bin_script.name}' resolves outside the project directory"
                         )
-                if bin_script.is_file():
+                        continue
+                elif bin_script.is_file():
+                    scan_target = bin_script
+
+                if scan_target and scan_target.exists() and scan_target.is_file():
                     _scan_text(
-                        _safe_read_text(bin_script),
-                        f"node_modules/.bin/{bin_script.name}",
+                        _safe_read_text(scan_target),
+                        source_label,
                         issues,
                     )
         except (OSError, RuntimeError):

@@ -4,12 +4,12 @@ story_key: 27-1d
 epic: epic-27
 story: "27.1d"
 title: "Web App Mark Tool & JSX AST Mutator"
-status: "in-progress"
+status: "done"
 ---
 
 # Story 27.1d: Web App Mark Tool & JSX AST Mutator
 
-**Status:** `in-progress` — UI/iframe postMessage/regex-based patch endpoint done; missing real AST parser and `web_builder_mark` TokenUsage. See `web-builder-27-1-status-audit-2026-08-25.md`.  
+**Status:** `done` — Mark Tool AST mutator + 2026-08-25 review patches: force rebuild without debit, Referer allowlist, compiled-HTML Mark Tool bridge, selector/attr/style hardening, `UsageType.WEB_BUILDER_MARK`.  
 **Epic:** Epic 27 — Full-Stack Web App Builder, Instant Hosting & Creative Studio  
 **Parent Story:** <ref_file file="/Users/luisphan/Documents/GitHub/nowing/_bmad-output/implementation-artifacts/stories/27-1-full-stack-web-app-builder-instant-hosting-mark-tool.md" /> — Story 27.1 split container.  
 **Related Story (MVP):** <ref_file file="/Users/luisphan/Documents/GitHub/nowing/_bmad-output/implementation-artifacts/stories/27-1a-web-builder-chat-mode-sales-marketing-mvp.md" /> — 27.1a chat-first static publish (done; visual selector only, no mutation).  
@@ -106,3 +106,48 @@ AD-114, FR-94, web-builder, mark-tool, ast-mutation, jsx, iframe, design-view
 - `nowing_backend/app/routes/web_builder_routes.py` — add `POST /api/v1/web-builder/apps/{app_id}/mark`.
 - `nowing_web/app/dashboard/[workspace_id]/web-builder/page.tsx` — add Mark Tool toggle and overlay.
 - `nowing_web/components/web-builder/preview-iframe.tsx` — inject selector overlay.
+
+### Review Findings
+
+##### Patch
+
+- [x] [Review][Patch] Endpoint `POST /api/v1/web-builder/apps/{app_id}/mark` chưa được đăng ký route, hiện trả 501 [nowing_backend/app/routes/web_builder_routes.py:343-353]
+- [x] [Review][Patch] Mutator `MarkToolASTMutator` dùng regex thay vì AST parser Babel (`@babel/parser`, `@babel/traverse`, `@babel/types`, `@babel/generator`) trong subprocess có giới hạn [nowing_backend/app/services/web_builder/mark_tool.py:15-99]
+- [x] [Review][Patch] Patch thành công không ghi file và không trigger rebuild preview [nowing_backend/app/services/web_builder/mark_tool.py:95-99, nowing_backend/app/routes/web_builder_routes.py:343-353]
+- [x] [Review][Patch] Regex sửa nhầm tag lồng nhau, corrupt JSX con bên trong [nowing_backend/app/services/web_builder/mark_tool.py:31-42, 67-78, 83-93]
+- [x] [Review][Patch] `patch.value` không escape/validate, cho phép injection JSX attribute hoặc tag [nowing_backend/app/services/web_builder/mark_tool.py:37-41, 52-58]
+- [x] [Review][Patch] Selector không unique vẫn patch phần tử đầu tiên thay vì trả `mark_unresolvable` [nowing_backend/app/services/web_builder/mark_tool.py:69-78, 81-93]
+- [x] [Review][Patch] Chỉ hỗ trợ `text`, chưa hỗ trợ `attribute` / `replace` và frontend hardcode `type: "text"` [nowing_backend/app/services/web_builder/mark_tool.py:24-62, nowing_web/app/dashboard/\[workspace_id\]/web-builder/page.tsx:274-281, 697-723]
+- [x] [Review][Patch] postMessage giữa parent và preview iframe không verify `origin`/`source`; iframe sandbox có `allow-forms`; preview chạy cùng origin [nowing_web/app/dashboard/\[workspace_id\]/web-builder/page.tsx:136-158, 807-815, nowing_backend/app/services/web_builder/preview_renderer.py:76, 241-250, 284-290]
+- [x] [Review][Patch] Frontend không capture/transmit `rect` và `component_hint` theo AC-1 [nowing_web/app/dashboard/\[workspace_id\]/web-builder/page.tsx:136-148, 274-281]
+- [x] [Review][Patch] Không record `TokenUsage` với `usage_type="web_builder_mark"` [nowing_backend/app/routes/web_builder_routes.py:343-353, nowing_backend/app/services/web_builder/mark_tool.py:1-99]
+- [x] [Review][Patch] Thiếu file `mark-tool-overlay.tsx` và `preview-iframe.tsx` theo File Structure Requirements [nowing_web/components/web-builder/]
+- [x] [Review][Patch] Unit test quá nông, thiếu integration test cho `/mark` [nowing_backend/tests/unit/services/web_builder/test_mark_tool.py:15-82, nowing_backend/tests/integration/routes/test_web_builder_routes.py]
+
+### Review Findings (code review 2026-08-25)
+
+##### Decision needed
+
+- [x] [Review][Decision] Mark trên app `preview_ready` không rebuild — resolved: `trigger_async_build(..., force=True, skip_debit=True)`. Rebuild để compiled preview khớp source; không debit vì mark không phải lượt build mới. Frontend set `status=building` và poll tới `preview_ready`.
+- [x] [Review][Decision] Preview iframe vẫn cùng origin API — resolved: giữ preview trên API origin (cần auth cookie) + allowlist parent origin (`NEXT_FRONTEND_URL` / localhost). Tách `*.apps.nowing.net` là public deploy 27.1c, không phải authenticated preview.
+
+##### Patch
+
+- [x] [Review][Patch] `_allowed_preview_origin` tin raw `Referer` scheme/netloc, không allowlist `NEXT_FRONTEND_URL` [nowing_backend/app/routes/web_builder_routes.py:612-622]
+- [x] [Review][Patch] Nhánh compiled preview HTML không inject `__wbAllowedOrigin` / Mark Tool bridge [nowing_backend/app/routes/web_builder_routes.py:736-745]
+- [x] [Review][Patch] Selector rỗng/`#`/`.` match mọi JSX element (single-element file bị patch nhầm) [nowing_backend/app/services/web_builder/mark_tool.py:117-187]
+- [x] [Review][Patch] `attr_name` viết raw vào source; không allowlist JSX identifier [nowing_backend/app/services/web_builder/mark_tool.py:316-329]
+- [x] [Review][Patch] `file_path` không giới hạn `.tsx`/`.jsx` [nowing_backend/app/routes/web_builder_routes.py:373-383]
+- [x] [Review][Patch] Source TSX `has_error` vẫn walk/match; replace snippet không re-parse full file [nowing_backend/app/services/web_builder/mark_tool.py:68-80, 348-369]
+- [x] [Review][Patch] Không có first-class `style` patch (AC-2: text/style/className/replace) [nowing_backend/app/services/web_builder/mark_tool.py:267-287]
+- [x] [Review][Patch] Selector DOM nông (id hoặc tag+firstClass); class token rỗng khi `className` leading space [nowing_backend/app/services/web_builder/preview_renderer.py:282-291]
+- [x] [Review][Patch] `usage_type="web_builder_mark"` không có `UsageType`; record+commit trước `write_text` [nowing_backend/app/routes/web_builder_routes.py:405-434]
+- [x] [Review][Patch] Text patch thay toàn bộ children, gồm nested JSX [nowing_backend/app/services/web_builder/mark_tool.py:289-314]
+- [x] [Review][Patch] Apply không disable khi `patchType=attribute` mà `attributeName` rỗng [nowing_web/components/web-builder/mark-tool-overlay.tsx:81-84]
+- [x] [Review][Patch] Thiếu unit/integration test cho empty selector, attr-name, Referer allowlist, compiled-HTML bridge, `web_builder_mark` call_details [nowing_backend/tests/unit/services/web_builder/test_mark_tool.py, nowing_backend/tests/integration/routes/test_web_builder_routes.py]
+- [x] [Review][Patch] Selector `tag.a.b` giữ mọi class (không chỉ class cuối) [nowing_backend/app/services/web_builder/mark_tool.py]
+
+##### Defer
+
+- [x] [Review][Defer] Concurrent mark read–mutate–write không file lock [nowing_backend/app/routes/web_builder_routes.py:385-442] — deferred, pre-existing
+- [x] [Review][Defer] className/id expression (`className={cn("foo")}`) không match selector DOM [nowing_backend/app/services/web_builder/mark_tool.py:227-237] — deferred, pre-existing

@@ -93,8 +93,12 @@ services:
       - "${LISTEN_HTTPS_PORT:-443}:443"
     volumes:
       - ./proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./proxy/web-apps.Caddyfile:/etc/caddy/web-apps.Caddyfile
       - caddy_data:/data
       - caddy_config:/config
+    networks:
+      - default
+      - dokploy-network
     environment:
       NOWING_SITE_ADDRESS: ${NOWING_SITE_ADDRESS:-:80}
       CERT_EMAIL: ${CERT_EMAIL:-}
@@ -117,10 +121,16 @@ services:
     volumes:
       - shared_temp:/shared_tmp
       - object_store:/app/.local_object_store
+      - web_apps:/app/web_apps
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./proxy/web-apps.Caddyfile:/app/docker/proxy/web-apps.Caddyfile
     env_file:
       - .env
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      - default
+      - dokploy-network
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://${DB_USER:-nowing}:${DB_PASSWORD:-nowing}@${DB_HOST:-db}:${DB_PORT:-5432}/${DB_NAME:-nowing}}
       CELERY_BROKER_URL: ${REDIS_URL:-redis://redis:6379/0}
@@ -131,6 +141,11 @@ services:
       UVICORN_LOOP: asyncio
       UNSTRUCTURED_HAS_PATCHED_LOOP: "1"
       FILE_STORAGE_LOCAL_PATH: /app/.local_object_store
+      WEB_BUILDER_PUBLIC_APPS_PATH: /app/web_apps
+      WEB_BUILDER_CADDY_SNIPPETS_ENABLED: "TRUE"
+      WEB_BUILDER_CADDY_SNIPPETS_PATH: /app/docker/proxy/web-apps.Caddyfile
+      WEB_BUILDER_CADDY_RELOAD_ENABLED: "TRUE"
+      WEB_BUILDER_CADDY_CONTAINER_NAME: "nowing-proxy-1"
       NEXT_FRONTEND_URL: ${NEXT_FRONTEND_URL:-${NOWING_PUBLIC_URL:-http://localhost:${LISTEN_HTTP_PORT:-3929}}}
       BACKEND_URL: ${BACKEND_URL:-${NOWING_PUBLIC_URL:-http://localhost:${LISTEN_HTTP_PORT:-3929}}}
       WHATSAPP_BRIDGE_URL: ${WHATSAPP_BRIDGE_URL:-http://whatsapp-bridge:9929}
@@ -332,6 +347,8 @@ volumes:
     name: nowing-shared-temp
   object_store:
     name: nowing-object-store
+  web_apps:
+    name: nowing-web-apps
   zero_cache_data:
     name: nowing-zero-cache
   caddy_data:
@@ -340,3 +357,8 @@ volumes:
     name: nowing-caddy-config
   whatsapp_sessions:
     name: nowing-whatsapp-sessions
+
+networks:
+  dokploy-network:
+    name: dokploy-network
+    driver: bridge

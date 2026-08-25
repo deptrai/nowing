@@ -24,9 +24,11 @@ import {
 	Tablet,
 } from "lucide-react";
 import { useParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import type { WorkspaceApp } from "@/contracts/types/web-builder.types";
+import { MarkToolOverlay } from "@/components/web-builder/mark-tool-overlay";
+import { PreviewIframe } from "@/components/web-builder/preview-iframe";
+import type { MarkToolRect, WorkspaceApp } from "@/contracts/types/web-builder.types";
 import { webBuilderApiService } from "@/lib/apis/web-builder-api.service";
 
 export default function WebBuilderPage() {
@@ -39,6 +41,12 @@ export default function WebBuilderPage() {
 	const [isMarkToolActive, setIsMarkToolActive] = useState(false);
 	const [selectedSelector, setSelectedSelector] = useState("");
 	const [patchText, setPatchText] = useState("");
+	const [patchType, setPatchType] = useState<
+		"text" | "className" | "style" | "attribute" | "replace"
+	>("text");
+	const [attributeName, setAttributeName] = useState("");
+	const [selectedRect, setSelectedRect] = useState<MarkToolRect | undefined>(undefined);
+	const [componentHint, setComponentHint] = useState<string | undefined>(undefined);
 	const [customDomainInput, setCustomDomainInput] = useState("");
 	const [isDomainModalOpen, setIsDomainModalOpen] = useState(false);
 	const [isLogsOpen, setIsLogsOpen] = useState(false);
@@ -133,29 +141,23 @@ export default function WebBuilderPage() {
 		}
 	}, [selectedApp, workspaceId, selectedFile]);
 
-	// Listen to messages from Preview iframe (Mark Tool Click-To-Inspect)
-	useEffect(() => {
-		const handleIframeMessage = (event: MessageEvent) => {
-			if (event.data?.type === "MARK_ELEMENT_SELECTED") {
-				setSelectedSelector(event.data.selector || "");
-				setPatchText(event.data.text || "");
-				toast.info(`Selected element: ${event.data.selector}`);
-			}
-		};
-
-		window.addEventListener("message", handleIframeMessage);
-		return () => window.removeEventListener("message", handleIframeMessage);
-	}, []);
-
-	// Send toggle message to iframe when Mark Tool toggles
-	useEffect(() => {
-		const iframe = document.getElementById(
-			"web-builder-preview-iframe"
-		) as HTMLIFrameElement | null;
-		if (iframe?.contentWindow) {
-			iframe.contentWindow.postMessage({ type: "TOGGLE_MARK_TOOL", active: isMarkToolActive }, "*");
-		}
-	}, [isMarkToolActive]);
+	// Handle element selected from the preview iframe.
+	const handleMarkElementSelected = useCallback(
+		(data: {
+			selector: string;
+			tag: string;
+			text: string;
+			rect?: MarkToolRect;
+			component_hint?: string;
+		}) => {
+			setSelectedSelector(data.selector);
+			setPatchText(data.text || "");
+			setSelectedRect(data.rect);
+			setComponentHint(data.component_hint);
+			toast.info(`Selected element: ${data.selector}`);
+		},
+		[]
+	);
 
 	// 4. Real-time Streaming Generation
 	const handleStartStreamingGeneration = async () => {
@@ -274,19 +276,33 @@ export default function WebBuilderPage() {
 			return webBuilderApiService.applyMarkToolPatch(selectedApp.id, {
 				workspace_id: workspaceId,
 				selector: selectedSelector,
+				file_path: selectedFile,
 				patch: {
-					type: "text",
+					type: patchType,
 					value: patchText,
+					attribute: patchType === "attribute" ? attributeName : undefined,
 				},
+				rect: selectedRect,
+				component_hint: componentHint,
 			});
 		},
 		onSuccess: (res) => {
 			if (res.status === "patched") {
-				toast.success("Visual modification applied to JSX!");
+				toast.success("Visual modification applied. Rebuilding preview…");
 				setPatchText("");
 				setSelectedSelector("");
+				setSelectedRect(undefined);
+				setComponentHint(undefined);
 				setIsMarkToolActive(false);
-				setIframeKey((prev) => prev + 1);
+				if (selectedApp) {
+					setSelectedApp({ ...selectedApp, status: "building" });
+				}
+				queryClient.invalidateQueries({
+					queryKey: ["web-builder-apps", workspaceId],
+				});
+				queryClient.invalidateQueries({
+					queryKey: ["web-builder-app-detail", selectedApp?.id, workspaceId],
+				});
 			} else {
 				toast.warning(res.message || "Could not map selector to JSX element");
 			}
@@ -319,6 +335,14 @@ export default function WebBuilderPage() {
 		? `${backendBaseUrl}/api/v1/web-builder/apps/${selectedApp.id}/preview?workspace_id=${workspaceId}`
 		: "";
 
+	const previewOrigin = useMemo(() => {
+		try {
+			return localPreviewUrl ? new URL(localPreviewUrl).origin : "";
+		} catch {
+			return "";
+		}
+	}, [localPreviewUrl]);
+
 	const currentDisplayUrl =
 		selectedApp?.status === "published" && selectedApp.public_url
 			? selectedApp.public_url
@@ -331,7 +355,7 @@ export default function WebBuilderPage() {
 				className="flex flex-col items-center justify-center h-[calc(100vh-8rem)] p-8 text-center space-y-4 max-w-lg mx-auto"
 			>
 				<div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
-					<Sparkles className="w-6 h-6" />
+					<Sparkles className="w-6 h-6" aria-hidden="true" />
 				</div>
 				<h2 className="text-xl font-bold text-foreground">Web Builder is disabled</h2>
 				<p className="text-sm text-muted-foreground">
@@ -348,7 +372,7 @@ export default function WebBuilderPage() {
 			<div className="flex items-center justify-between">
 				<div>
 					<h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-						<Sparkles className="w-6 h-6 text-indigo-500" />
+						<Sparkles className="w-6 h-6 text-indigo-500" aria-hidden="true" />
 						Full-Stack Web App Builder
 					</h1>
 					<p className="text-sm text-muted-foreground">
@@ -381,7 +405,7 @@ export default function WebBuilderPage() {
 									: "bg-background text-foreground border-border hover:bg-muted"
 							}`}
 						>
-							<MousePointerClick className="w-4 h-4" />
+							<MousePointerClick className="w-4 h-4" aria-hidden="true" />
 							{isMarkToolActive ? "Mark Tool: Active" : "Design View Mark Tool"}
 						</button>
 
@@ -390,7 +414,7 @@ export default function WebBuilderPage() {
 							onClick={() => setIsDomainModalOpen(true)}
 							className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-background hover:bg-muted text-foreground transition-colors"
 						>
-							<Settings className="w-4 h-4 text-muted-foreground" />
+							<Settings className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
 							Custom Domain
 						</button>
 
@@ -402,17 +426,17 @@ export default function WebBuilderPage() {
 						>
 							{publishMutation.isPending ? (
 								<>
-									<Loader2 className="w-4 h-4 animate-spin" />
+									<Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
 									Publishing...
 								</>
 							) : selectedApp.status === "published" ? (
 								<>
-									<CheckCircle2 className="w-4 h-4" />
+									<CheckCircle2 className="w-4 h-4" aria-hidden="true" />
 									Published
 								</>
 							) : (
 								<>
-									<Rocket className="w-4 h-4" />
+									<Rocket className="w-4 h-4" aria-hidden="true" />
 									1-Click Publish
 								</>
 							)}
@@ -448,7 +472,7 @@ export default function WebBuilderPage() {
 								onClick={handleCancelStreaming}
 								className="w-full py-2.5 px-4 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium flex items-center justify-center gap-2 shadow-sm transition-colors"
 							>
-								<Square className="w-4 h-4 fill-current" />
+								<Square className="w-4 h-4 fill-current" aria-hidden="true" />
 								Cancel Generation
 							</button>
 						) : (
@@ -458,7 +482,7 @@ export default function WebBuilderPage() {
 								disabled={!prompt.trim()}
 								className="w-full py-2.5 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium flex items-center justify-center gap-2 shadow-sm transition-colors disabled:opacity-50"
 							>
-								<Play className="w-4 h-4 fill-current" />
+								<Play className="w-4 h-4 fill-current" aria-hidden="true" />
 								Generate App (Live Stream)
 							</button>
 						)}
@@ -542,7 +566,7 @@ export default function WebBuilderPage() {
 							{/* Live Banner */}
 							<div className="flex items-center justify-between border-b border-slate-800 pb-3">
 								<div className="flex items-center gap-2 text-indigo-400">
-									<Loader2 className="w-4 h-4 animate-spin" />
+									<Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
 									<span className="font-semibold uppercase tracking-wider">
 										AI Web Builder — {streamPhase || "Streaming"}
 									</span>
@@ -558,7 +582,7 @@ export default function WebBuilderPage() {
 											key={file}
 											className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-950/80 text-indigo-300 border border-indigo-800/60 text-[11px]"
 										>
-											<FileCode className="w-3 h-3 text-indigo-400" />
+											<FileCode className="w-3 h-3 text-indigo-400" aria-hidden="true" />
 											{file}
 										</span>
 									))}
@@ -576,7 +600,7 @@ export default function WebBuilderPage() {
 							<div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/40 gap-4">
 								{/* URL Display with Status Badge */}
 								<div className="flex items-center gap-2 flex-1 min-w-0">
-									<Globe className="w-4 h-4 text-muted-foreground shrink-0" />
+									<Globe className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
 									<span
 										className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-medium shrink-0 ${
 											selectedApp.status === "published"
@@ -615,7 +639,7 @@ export default function WebBuilderPage() {
 											}`}
 											title="Desktop View (100%)"
 										>
-											<Monitor className="w-3.5 h-3.5" />
+											<Monitor className="w-3.5 h-3.5" aria-hidden="true" />
 										</button>
 										<button
 											type="button"
@@ -627,7 +651,7 @@ export default function WebBuilderPage() {
 											}`}
 											title="Tablet View (768px)"
 										>
-											<Tablet className="w-3.5 h-3.5" />
+											<Tablet className="w-3.5 h-3.5" aria-hidden="true" />
 										</button>
 										<button
 											type="button"
@@ -639,7 +663,7 @@ export default function WebBuilderPage() {
 											}`}
 											title="Mobile View (375px)"
 										>
-											<Smartphone className="w-3.5 h-3.5" />
+											<Smartphone className="w-3.5 h-3.5" aria-hidden="true" />
 										</button>
 									</div>
 
@@ -654,7 +678,7 @@ export default function WebBuilderPage() {
 													: "text-muted-foreground hover:text-foreground"
 											}`}
 										>
-											<Eye className="w-3.5 h-3.5" />
+											<Eye className="w-3.5 h-3.5" aria-hidden="true" />
 											Preview
 										</button>
 										<button
@@ -666,7 +690,7 @@ export default function WebBuilderPage() {
 													: "text-muted-foreground hover:text-foreground"
 											}`}
 										>
-											<Code className="w-3.5 h-3.5" />
+											<Code className="w-3.5 h-3.5" aria-hidden="true" />
 											Code
 										</button>
 									</div>
@@ -678,7 +702,7 @@ export default function WebBuilderPage() {
 										className="p-1.5 rounded-lg border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
 										title="Reload Preview"
 									>
-										<RefreshCw className="w-3.5 h-3.5" />
+										<RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
 									</button>
 
 									{/* External Link */}
@@ -689,37 +713,27 @@ export default function WebBuilderPage() {
 										className="p-1.5 rounded-lg border border-border bg-background hover:bg-muted text-indigo-500 hover:text-indigo-600 transition-colors"
 										title="Open In New Window"
 									>
-										<ExternalLink className="w-3.5 h-3.5" />
+										<ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
 									</a>
 								</div>
 							</div>
 
 							{/* Mark Tool Quick Inspector Bar */}
 							{isMarkToolActive && (
-								<div className="p-3 bg-indigo-50/20 dark:bg-indigo-950/30 border-b border-indigo-500/30 flex items-center gap-3">
-									<input
-										type="text"
-										placeholder="DOM Selector (e.g. #hero-title or h1) — Click element in preview to select"
-										value={selectedSelector}
-										onChange={(e) => setSelectedSelector(e.target.value)}
-										className="text-xs px-2.5 py-1.5 rounded border border-border bg-background flex-1 focus:ring-1 focus:ring-indigo-500"
-									/>
-									<input
-										type="text"
-										placeholder="New Text Content..."
-										value={patchText}
-										onChange={(e) => setPatchText(e.target.value)}
-										className="text-xs px-2.5 py-1.5 rounded border border-border bg-background flex-1 focus:ring-1 focus:ring-indigo-500"
-									/>
-									<button
-										type="button"
-										onClick={() => markToolMutation.mutate()}
-										disabled={markToolMutation.isPending || !selectedSelector}
-										className="px-3 py-1.5 text-xs font-medium bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-									>
-										{markToolMutation.isPending ? "Patching..." : "Apply Patch"}
-									</button>
-								</div>
+								<MarkToolOverlay
+									selectedSelector={selectedSelector}
+									patchText={patchText}
+									patchType={patchType}
+									attributeName={attributeName}
+									componentHint={componentHint}
+									rect={selectedRect}
+									isPending={markToolMutation.isPending}
+									onSelectorChange={setSelectedSelector}
+									onPatchTextChange={setPatchText}
+									onPatchTypeChange={setPatchType}
+									onAttributeNameChange={setAttributeName}
+									onApply={() => markToolMutation.mutate()}
+								/>
 							)}
 
 							{/* Build Failure Banner & Collapsible Logs */}
@@ -730,7 +744,7 @@ export default function WebBuilderPage() {
 								>
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-2 text-rose-400">
-											<AlertCircle className="w-4 h-4 shrink-0" />
+											<AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
 											<span className="font-semibold text-xs uppercase tracking-wide">
 												Build Failed
 											</span>
@@ -742,9 +756,9 @@ export default function WebBuilderPage() {
 												className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded border border-rose-800/60 bg-rose-900/30 hover:bg-rose-900/50 text-rose-200 transition-colors"
 											>
 												{isLogsOpen ? (
-													<ChevronUp className="w-3.5 h-3.5" />
+													<ChevronUp className="w-3.5 h-3.5" aria-hidden="true" />
 												) : (
-													<ChevronDown className="w-3.5 h-3.5" />
+													<ChevronDown className="w-3.5 h-3.5" aria-hidden="true" />
 												)}
 												{isLogsOpen ? "Hide build logs" : "View build logs"}
 											</button>
@@ -784,7 +798,10 @@ export default function WebBuilderPage() {
 											data-testid="web-builder-building-indicator"
 											className="flex flex-col items-center justify-center p-8 space-y-4 text-center max-w-sm"
 										>
-											<Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+											<Loader2
+												className="w-8 h-8 text-indigo-500 animate-spin"
+												aria-hidden="true"
+											/>
 											<div className="space-y-1">
 												<h3 className="text-sm font-semibold text-slate-100">
 													Building web application...
@@ -804,14 +821,14 @@ export default function WebBuilderPage() {
 														: "w-[375px]"
 											}`}
 										>
-											<iframe
-												key={`${selectedApp.id}-${iframeKey}`}
-												id="web-builder-preview-iframe"
-												data-testid="web-app-preview-frame"
+											<PreviewIframe
 												src={localPreviewUrl}
+												appId={selectedApp.id}
 												title={selectedApp.name}
-												sandbox="allow-scripts allow-forms allow-same-origin"
-												className="w-full h-full border-0 bg-slate-950"
+												isMarkToolActive={isMarkToolActive}
+												previewOrigin={previewOrigin}
+												onMarkElementSelected={handleMarkElementSelected}
+												iframeKey={iframeKey}
 											/>
 										</div>
 									)}
@@ -832,7 +849,7 @@ export default function WebBuilderPage() {
 														: "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
 												}`}
 											>
-												<FileCode className="w-3.5 h-3.5" />
+												<FileCode className="w-3.5 h-3.5" aria-hidden="true" />
 												{path}
 											</button>
 										))}
@@ -849,7 +866,10 @@ export default function WebBuilderPage() {
 						</div>
 					) : (
 						<div className="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-3 text-muted-foreground">
-							<Sparkles className="w-10 h-10 text-muted-foreground/40 stroke-1" />
+							<Sparkles
+								className="w-10 h-10 text-muted-foreground/40 stroke-1"
+								aria-hidden="true"
+							/>
 							<p className="text-sm">
 								Enter a prompt on the left and click Generate App to start live building.
 							</p>

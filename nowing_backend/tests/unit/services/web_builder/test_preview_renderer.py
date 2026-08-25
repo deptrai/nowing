@@ -41,3 +41,23 @@ body { background: black; }""",
     assert "Crypto Tracker Pro" in rendered_html
     assert "TOGGLE_MARK_TOOL" in rendered_html
     assert "MARK_ELEMENT_SELECTED" in rendered_html
+
+
+def test_inject_mark_tool_bridge_adds_origin_and_listeners():
+    html = "<html><body><h1>Compiled</h1></body></html>"
+    injected = PreviewRenderer.inject_mark_tool_bridge(html, "http://localhost:3000")
+    assert "__wbAllowedOrigin" in injected
+    assert "http://localhost:3000" in injected
+    assert "TOGGLE_MARK_TOOL" in injected
+    assert "nowing-mark-hover" in injected
+
+
+def test_inject_mark_tool_bridge_updates_existing_origin():
+    html = (
+        "<html><head><script>window.__wbAllowedOrigin = "
+        '"https://evil.example";</script></head>'
+        "<body><script>TOGGLE_MARK_TOOL</script></body></html>"
+    )
+    injected = PreviewRenderer.inject_mark_tool_bridge(html, "http://localhost:3000")
+    assert "http://localhost:3000" in injected
+    assert "https://evil.example" not in injected

@@ -47,3 +47,8 @@
 {$NOWING_SITE_ADDRESS::80} {
 	import nowing_proxy
 }
+
+# Per-app Web Builder routes are generated into web-apps.Caddyfile.
+# Wildcard self-host ingress was removed in favor of per-app HTTPS blocks
+# (Story 27.1c review patch); the backend writes snippets and reloads Caddy.
+import web-apps.Caddyfile

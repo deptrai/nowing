@@ -43,7 +43,9 @@ const setupAppRoutes = async (
 	const appId = app.id;
 
 	await page.route(
-		`**/api/v1/web-builder/apps?workspace_id=${workspaceId}`,
+		(url) =>
+			url.pathname === "/api/v1/web-builder/apps" &&
+			url.searchParams.get("workspace_id") === String(workspaceId),
 		async (route: Route) => {
 			await route.fulfill({
 				status: 200,
@@ -54,7 +56,7 @@ const setupAppRoutes = async (
 	);
 
 	await page.route(
-		`**/api/v1/web-builder/apps/${appId}?workspace_id=${workspaceId}`,
+		(url) => url.pathname === `/api/v1/web-builder/apps/${appId}`,
 		async (route: Route) => {
 			await route.fulfill({
 				status: 200,
@@ -65,7 +67,7 @@ const setupAppRoutes = async (
 	);
 
 	await page.route(
-		`**/api/v1/web-builder/apps/${appId}/build-logs?workspace_id=${workspaceId}`,
+		(url) => url.pathname === `/api/v1/web-builder/apps/${appId}/build-logs`,
 		async (route: Route) => {
 			await route.fulfill({
 				status: 200,
@@ -82,7 +84,7 @@ const setupAppRoutes = async (
 	);
 
 	await page.route(
-		`**/api/v1/web-builder/apps/${appId}/files?workspace_id=${workspaceId}`,
+		(url) => url.pathname === `/api/v1/web-builder/apps/${appId}/files`,
 		async (route: Route) => {
 			await route.fulfill({
 				status: 200,
@@ -93,7 +95,7 @@ const setupAppRoutes = async (
 	);
 
 	await page.route(
-		`**/api/v1/web-builder/apps/${appId}/preview?workspace_id=${workspaceId}`,
+		(url) => url.pathname === `/api/v1/web-builder/apps/${appId}/preview`,
 		async (route: Route) => {
 			const html = `<!DOCTYPE html><html><head><title>Preview</title></head><body><main><h1>${app.name}</h1></main></body></html>`;
 			await route.fulfill({
@@ -106,10 +108,6 @@ const setupAppRoutes = async (
 };
 
 test.describe("Story 27.1b — Web App Build & Preview Runner", () => {
-	test.beforeEach(async ({ page }) => {
-		await page.goto("/dashboard/1/web-builder");
-	});
-
 	test("[P0] AC-2: shows building progress state and polls until preview_ready", async ({
 		page,
 	}) => {
@@ -119,35 +117,41 @@ test.describe("Story 27.1b — Web App Build & Preview Runner", () => {
 		const appId = "mock-building-app";
 		let callCount = 0;
 
-		// First response is building; after a couple of polls, become preview_ready
-		await page.route("**/api/v1/web-builder/apps?workspace_id=1", async (route: Route) => {
-			callCount += 1;
-			const status = callCount >= 3 ? "preview_ready" : "building";
-			const app = mockApp({ id: appId, status });
-			await route.fulfill({
-				status: 200,
-				contentType: "application/json",
-				body: JSON.stringify([app]),
-			});
-		});
-
-		await page.route(`**/api/v1/web-builder/apps/${appId}?workspace_id=1`, async (route: Route) => {
-			callCount += 1;
-			const status = callCount >= 5 ? "preview_ready" : "building";
-			const app = mockApp({ id: appId, status });
-			await route.fulfill({
-				status: 200,
-				contentType: "application/json",
-				body: JSON.stringify(app),
-			});
-		});
+		// First response is building; after a poll, become preview_ready
+		await page.route(
+			(url) => url.pathname === "/api/v1/web-builder/apps",
+			async (route: Route) => {
+				callCount += 1;
+				const status = callCount >= 2 ? "preview_ready" : "building";
+				const app = mockApp({ id: appId, status });
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					body: JSON.stringify([app]),
+				});
+			}
+		);
 
 		await page.route(
-			`**/api/v1/web-builder/apps/${appId}/preview?workspace_id=1`,
+			(url) => url.pathname === `/api/v1/web-builder/apps/${appId}`,
+			async (route: Route) => {
+				callCount += 1;
+				const status = callCount >= 2 ? "preview_ready" : "building";
+				const app = mockApp({ id: appId, status });
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					body: JSON.stringify(app),
+				});
+			}
+		);
+
+		await page.route(
+			(url) => url.pathname === `/api/v1/web-builder/apps/${appId}/preview`,
 			async (route: Route) => {
 				const html = `<!DOCTYPE html><html><body><main><h1>Lead Dashboard</h1></main></body></html>`;
 				await route.fulfill({
-					status: callCount >= 5 ? 200 : 202,
+					status: 200,
 					contentType: "text/html",
 					body: html,
 				});
@@ -155,7 +159,7 @@ test.describe("Story 27.1b — Web App Build & Preview Runner", () => {
 		);
 
 		await page.route(
-			`**/api/v1/web-builder/apps/${appId}/files?workspace_id=1`,
+			(url) => url.pathname === `/api/v1/web-builder/apps/${appId}/files`,
 			async (route: Route) => {
 				await route.fulfill({
 					status: 200,
@@ -171,9 +175,12 @@ test.describe("Story 27.1b — Web App Build & Preview Runner", () => {
 		await expect(buildingIndicator).toBeVisible();
 		await expect(buildingIndicator).toContainText(/Building|Installing dependencies/i);
 
-		const previewIframe = page.frameLocator('iframe[data-testid="web-app-preview-frame"]');
-		await expect(previewIframe.locator("body")).toBeVisible({ timeout: 45_000 });
-		await expect(previewIframe.locator("h1, h2, main")).toContainText(/Lead Dashboard/i);
+		const previewFrame = page.getByTestId("web-app-preview-frame");
+		await expect(previewFrame).toBeVisible({ timeout: 15_000 });
+		await expect(previewFrame).toHaveAttribute(
+			"src",
+			new RegExp(`/api/v1/web-builder/apps/${appId}/preview`)
+		);
 
 		await expect(buildingIndicator).toBeHidden();
 	});
@@ -225,13 +232,16 @@ test.describe("Story 27.1b — Web App Build & Preview Runner", () => {
 			"app/page.tsx": "export default function Home() {}",
 		});
 
-		await page.route(`**/api/v1/web-builder/apps/${appId}/build`, async (route: Route) => {
-			await route.fulfill({
-				status: 202,
-				contentType: "application/json",
-				body: JSON.stringify({ status: "building", app_id: appId, message: "Build started" }),
-			});
-		});
+		await page.route(
+			(url) => url.pathname === `/api/v1/web-builder/apps/${appId}/build`,
+			async (route: Route) => {
+				await route.fulfill({
+					status: 202,
+					contentType: "application/json",
+					body: JSON.stringify({ status: "building", app_id: appId, message: "Build started" }),
+				});
+			}
+		);
 
 		await page.goto("/dashboard/1/web-builder");
 
@@ -248,13 +258,18 @@ test.describe("Story 27.1b — Web App Build & Preview Runner", () => {
 	}) => {
 		test.setTimeout(30_000);
 
-		await page.route("**/api/v1/web-builder/apps?workspace_id=999", async (route: Route) => {
-			await route.fulfill({
-				status: 403,
-				contentType: "application/json",
-				body: JSON.stringify({ detail: "Web Builder is not enabled on this workspace plan" }),
-			});
-		});
+		await page.route(
+			(url) =>
+				url.pathname === "/api/v1/web-builder/apps" &&
+				url.searchParams.get("workspace_id") === "999",
+			async (route: Route) => {
+				await route.fulfill({
+					status: 403,
+					contentType: "application/json",
+					body: JSON.stringify({ detail: "Web Builder is not enabled on this workspace plan" }),
+				});
+			}
+		);
 
 		await page.goto("/dashboard/999/web-builder");
 

@@ -380,3 +380,37 @@ class TestBuilderSecurityHardening:
         assert "REDIS_URL" not in safe_env
         assert safe_env.get("NODE_ENV") == "production"
         assert safe_env.get("NEXT_TELEMETRY_DISABLED") == "1"
+
+    @pytest.mark.asyncio
+    async def test_trigger_async_build_skips_preview_ready_unless_forced(self):
+        from app.services.web_builder.builder import BuilderService
+
+        mock_app = MagicMock()
+        mock_app.status = "preview_ready"
+        mock_app.storage_path = "/tmp/web-app"
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.first.return_value = mock_app
+        mock_session.execute = AsyncMock(return_value=mock_result)
+        session_cm = MagicMock()
+        session_cm.__aenter__ = AsyncMock(return_value=mock_session)
+        session_cm.__aexit__ = AsyncMock(return_value=False)
+
+        with (
+            patch("app.db.async_session_maker", return_value=session_cm),
+            patch.object(
+                BuilderService, "build_project", new_callable=AsyncMock
+            ) as mock_build,
+        ):
+            await BuilderService.trigger_async_build("app-1", 1)
+            await asyncio.sleep(0.05)
+            mock_build.assert_not_called()
+            assert mock_app.status == "preview_ready"
+
+            await BuilderService.trigger_async_build(
+                "app-1", 1, force=True, skip_debit=True
+            )
+            await asyncio.sleep(0.05)
+
+        mock_build.assert_awaited()
+        assert mock_app.status == "building"
