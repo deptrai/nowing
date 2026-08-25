@@ -117,6 +117,7 @@ from .outbound_routes import router as outbound_router
 from .outcome_pricing_routes import router as outcome_pricing_router
 from .partner_routes import router as partner_router
 from .personal_access_tokens_routes import router as personal_access_tokens_router
+from .presentation_routes import router as presentation_router
 from .promo_code_routes import router as promo_code_router
 from .prompts_routes import router as prompts_router
 from .public_chat_routes import router as public_chat_router
@@ -257,5 +258,6 @@ router.include_router(extract_entities_router)  # Test entity extraction (AC-1 /
 router.include_router(
     web_builder_router
 )  # Full-stack Web App Builder (Story 27.1 / AD-113)
+router.include_router(presentation_router)  # Presentation Studio (Story 27.2a)
 
 router.include_router(build_capabilities_router())  # Scraper-API capability doors (05)

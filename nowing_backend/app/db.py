@@ -1948,6 +1948,9 @@ class Workspace(BaseModel, TimestampMixin):
     web_builder_enabled = Column(
         Boolean, nullable=False, default=True, server_default="true"
     )
+    presentation_studio_enabled = Column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
     qna_custom_instructions = Column(
         Text, nullable=True, default=""
     )  # User's custom instructions
@@ -6566,6 +6569,15 @@ class WorkspaceApp(Base):
         ),
         Index("ix_workspace_apps_workspace_status", "workspace_id", "status"),
         Index("ix_workspace_apps_custom_domain", "custom_domain"),
+        # Globally unique active custom domain so CNAME bindings cannot collide
+        # across workspaces (Story 27.1c AC-2). Partial so unset/failed rows are
+        # excluded and multiple NULLs remain allowed.
+        Index(
+            "uq_workspace_apps_active_custom_domain",
+            "custom_domain",
+            unique=True,
+            postgresql_where=text("custom_domain_status = 'active'"),
+        ),
         # Globally unique published slug so public URLs cannot collide across
         # workspaces (Story 27.1a AC-4).
         Index(
@@ -6629,3 +6641,70 @@ class WorkspaceApp(Base):
 
     workspace = relationship("Workspace", backref="apps")
     user = relationship("User", backref="apps")
+
+
+class SlidePresentation(Base):
+    """Generated PPTX or Marp Markdown slide deck for a workspace (Story 27.2a)."""
+
+    __tablename__ = "slide_presentations"
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id", "slug", name="uq_slide_presentations_workspace_slug"
+        ),
+        Index("ix_slide_presentations_workspace_status", "workspace_id", "status"),
+    )
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    title = Column(String(255), nullable=False)
+    slug = Column(String(63), nullable=False, index=True)
+    format = Column(String(10), nullable=False, default="pptx")
+    status = Column(
+        String(50),
+        nullable=False,
+        default="generating",
+        server_default=text("'generating'"),
+    )  # generating, ready, failed, degraded, validation_failed
+    file_path = Column(String(512), nullable=True)
+    preview_url = Column(String(512), nullable=True)
+    slide_count = Column(Integer, nullable=True)
+    degradation_reason = Column(String(50), nullable=True)
+    error_message = Column(Text, nullable=True)
+    prompt = Column(Text, nullable=True)
+    created_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
+
+    @property
+    def download_url(self) -> str | None:
+        """Public download URL for the generated deck."""
+        if not self.file_path:
+            return None
+        return (
+            f"{config.BACKEND_URL.rstrip('/')}/api/v1/presentations/{self.id}"
+            f"/download?workspace_id={self.workspace_id}"
+        )
+
+    workspace = relationship("Workspace", backref="slide_presentations")
+    user = relationship("User", backref="slide_presentations")
