@@ -91,9 +91,17 @@ function describeArtifact(
 		case "video": {
 			const entityId = numericId(result.video_presentation_id);
 			return {
-				title: firstString(result.title, args.video_title) ?? "Presentation",
+				title: firstString(result.title, args.video_title) ?? "Video Presentation",
 				entityId,
 				status: failed ? "error" : entityId != null ? "ready" : "running",
+			};
+		}
+		case "presentation": {
+			const presentationId = firstString(result.presentation_id);
+			return {
+				title: firstString(result.title, args.prompt) ?? "Slide Deck",
+				entityId: null,
+				status: failed ? "error" : presentationId ? "ready" : "running",
 			};
 		}
 		case "image": {
@@ -145,12 +153,15 @@ export function collectArtifacts(messages: readonly ThreadMessageLike[]): ChatAr
 			if (status === "error") continue;
 
 			const appId = kind === "web_app" ? firstString(result.app_id) : null;
+			const presentationId = kind === "presentation" ? firstString(result.presentation_id) : null;
 			const key =
 				entityId != null
 					? `${kind}:${entityId}`
 					: appId != null
 						? `${kind}:${appId}`
-						: part.toolCallId;
+						: presentationId != null
+							? `${kind}:${presentationId}`
+							: part.toolCallId;
 			byKey.set(key, {
 				key,
 				kind,
@@ -158,7 +169,14 @@ export function collectArtifacts(messages: readonly ThreadMessageLike[]): ChatAr
 				status,
 				toolCallId: part.toolCallId,
 				entityId,
-				contentType: kind === "resume" ? "typst" : kind === "web_app" ? "web" : "markdown",
+				contentType:
+					kind === "resume"
+						? "typst"
+						: kind === "web_app"
+							? "web"
+							: kind === "presentation"
+								? "markdown"
+								: "markdown",
 			});
 		}
 	}

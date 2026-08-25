@@ -138,6 +138,7 @@ function ComposerSuggestionAnchor({ point }: { point: ComposerSuggestionAnchorPo
 				left: point.left,
 				top: point.top,
 			}}
+			aria-hidden="true"
 		/>
 	);
 }
@@ -209,7 +210,7 @@ const PremiumQuotaPinnedAlert: FC = () => {
 	return (
 		<div className="mx-0 overflow-hidden rounded-2xl border-input bg-muted px-4 py-4 text-foreground select-none">
 			<div className="flex items-center gap-2">
-				<AlertCircle className="size-4 shrink-0 text-muted-foreground" />
+				<AlertCircle className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
 				<div className="min-w-0 flex-1">
 					<p className="text-sm">{alert.message}</p>
 				</div>
@@ -221,7 +222,7 @@ const PremiumQuotaPinnedAlert: FC = () => {
 					aria-label="Dismiss premium quota alert"
 					onClick={() => clearPremiumAlertForThread(currentThreadId)}
 				>
-					<X className="size-4" />
+					<X className="size-4" aria-hidden="true" />
 				</Button>
 			</div>
 		</div>
@@ -265,7 +266,10 @@ const _getTimeBasedGreeting = (user?: { display_name?: string | null; email?: st
 
 const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }) => {
 	const tChat = useTranslations("chat");
-	const [showBetaCard, setShowBetaCard] = useState(true);
+	const [showBetaCard, setShowBetaCard] = useState(() => {
+		if (typeof window === "undefined") return true;
+		return window.localStorage.getItem(OUTREACH_BETA_DISMISSED_KEY) !== "true";
+	});
 	const { data: user } = useAtomValue(currentUserAtom);
 	const params = useParams();
 	const workspaceId = params?.workspace_id as string | undefined;
@@ -378,9 +382,10 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 								const modeParam = chip.mode ? `&mode=${chip.mode}` : "";
 								window.location.href = `/dashboard/${targetWorkspace}/new-chat?q=${encodeURIComponent(chip.prompt)}${modeParam}`;
 							}}
-							className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/80 bg-card hover:bg-muted/70 text-xs font-medium text-foreground transition-all hover:scale-102 cursor-pointer shadow-2xs"
+							className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/80 bg-card hover:bg-muted/70 text-xs font-medium text-foreground transition-all hover:scale-102 cursor-pointer shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							title={`${chip.label}: ${chip.prompt}`}
 						>
-							<span>{chip.icon}</span>
+							<span aria-hidden="true">{chip.icon}</span>
 							<span>{chip.label}</span>
 						</button>
 					))}
@@ -388,9 +393,15 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 
 				{/* Beta Outreach Agent Setup Card */}
 				{showBetaCard && (
-					<div className="p-3.5 sm:p-4 rounded-2xl border border-pink-500/20 bg-pink-500/5 dark:bg-pink-500/10 flex items-start sm:items-center justify-between gap-3 relative">
+					<section
+						className="p-3.5 sm:p-4 rounded-2xl border border-pink-500/20 bg-pink-500/5 dark:bg-pink-500/10 flex items-start sm:items-center justify-between gap-3 relative"
+						aria-label="Set up your Outreach Agent"
+					>
 						<div className="flex items-center gap-3 min-w-0">
-							<div className="size-9 sm:size-10 rounded-2xl bg-pink-500/15 flex items-center justify-center text-lg sm:text-xl shrink-0">
+							<div
+								className="size-9 sm:size-10 rounded-2xl bg-pink-500/15 flex items-center justify-center text-lg sm:text-xl shrink-0"
+								aria-hidden="true"
+							>
 								🌸
 							</div>
 							<div className="min-w-0">
@@ -413,20 +424,27 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 							<button
 								type="button"
 								onClick={() => toast.success(tChat("modal_setup_outreach"))}
-								className="px-3.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 text-white text-xs font-semibold transition-colors cursor-pointer shadow-xs"
+								className="px-3.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 text-white text-xs font-semibold transition-colors cursor-pointer shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								title={tChat("set_it_up")}
 							>
 								{tChat("set_it_up")}
 							</button>
 							<button
 								type="button"
-								onClick={() => setShowBetaCard(false)}
-								className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+								onClick={() => {
+									setShowBetaCard(false);
+									if (typeof window !== "undefined") {
+										window.localStorage.setItem(OUTREACH_BETA_DISMISSED_KEY, "true");
+									}
+								}}
+								className="p-1 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
 								aria-label="Dismiss"
+								title="Dismiss"
 							>
-								✕
+								<X className="size-3.5" aria-hidden="true" />
 							</button>
 						</div>
-					</div>
+					</section>
 				)}
 
 				{/* Performance Summary Banner */}
@@ -441,7 +459,8 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 					<div className="flex items-center gap-3">
 						<a
 							href={workspaceId ? `/dashboard/${workspaceId}/user-settings` : "/dashboard"}
-							className="text-muted-foreground hover:text-foreground font-medium transition-colors cursor-pointer"
+							className="text-muted-foreground hover:text-foreground font-medium transition-colors cursor-pointer rounded px-1 -mx-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+							title={tChat("config_channels_link")}
 						>
 							{tChat("config_channels_link")}
 						</a>
@@ -472,7 +491,8 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 									const prompt = tChat("card_bds_prompt");
 									window.location.href = `/dashboard/${workspaceId || 1}/new-chat?q=${encodeURIComponent(prompt)}`;
 								}}
-								className="text-left text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+								className="text-left text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-current rounded px-1 -mx-1"
+								title={tChat("card_bds_prompt")}
 							>
 								{tChat("run_task_button")}
 							</button>
@@ -494,7 +514,8 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 									const prompt = tChat("card_it_prompt");
 									window.location.href = `/dashboard/${workspaceId || 1}/new-chat?q=${encodeURIComponent(prompt)}`;
 								}}
-								className="text-left text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+								className="text-left text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-current rounded px-1 -mx-1"
+								title={tChat("card_it_prompt")}
 							>
 								{tChat("run_task_button")}
 							</button>
@@ -516,7 +537,8 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 									const prompt = tChat("card_icp_prompt");
 									window.location.href = `/dashboard/${workspaceId || 1}/new-chat?q=${encodeURIComponent(prompt)}`;
 								}}
-								className="text-left text-xs font-semibold text-purple-600 dark:text-purple-400 hover:underline cursor-pointer"
+								className="text-left text-xs font-semibold text-purple-600 dark:text-purple-400 hover:underline cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-current rounded px-1 -mx-1"
+								title={tChat("card_icp_prompt")}
 							>
 								{tChat("run_task_button")}
 							</button>
@@ -537,6 +559,7 @@ const BANNER_CONNECTORS = [
 ] as const;
 
 const BANNER_DISMISSED_KEY = "nowing-connect-tools-banner-dismissed";
+const OUTREACH_BETA_DISMISSED_KEY = "nowing-outreach-beta-card-dismissed";
 
 const ConnectToolsBanner: FC<{
 	isThreadEmpty: boolean;
@@ -585,19 +608,21 @@ const ConnectToolsBanner: FC<{
 						type="button"
 						variant="ghost"
 						size="sm"
-						className="h-7 min-w-0 cursor-pointer justify-start gap-2 rounded-md px-0 text-[13px] font-normal text-muted-foreground select-none hover:bg-transparent hover:text-foreground"
+						className="h-7 min-w-0 cursor-pointer justify-start gap-2 rounded-md px-0 text-[13px] font-normal text-muted-foreground select-none hover:bg-transparent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
 						onClick={() => setConnectorDialogOpen(true)}
+						title="Connect your tools"
 					>
-						<Unplug className="size-4 shrink-0" />
+						<Unplug className="size-4 shrink-0" aria-hidden="true" />
 						<span className="truncate">Connect your tools</span>
 					</Button>
 					<div className="min-w-0 flex-1" />
-					<AvatarGroup className="shrink-0">
+					<AvatarGroup className="shrink-0" aria-hidden="true">
 						{BANNER_CONNECTORS.map(({ type }, i) => (
 							<Avatar
 								key={type}
 								className="size-5"
 								style={{ zIndex: BANNER_CONNECTORS.length - i }}
+								aria-hidden="true"
 							>
 								<AvatarFallback className="bg-accent text-[10px]">
 									{getConnectorIcon(type, "size-3")}
@@ -612,8 +637,9 @@ const ConnectToolsBanner: FC<{
 						size="icon"
 						className="size-7 shrink-0 cursor-pointer rounded-md text-muted-foreground hover:bg-transparent hover:text-foreground"
 						aria-label="Dismiss"
+						title="Dismiss"
 					>
-						<X className="size-3.5" />
+						<X className="size-3.5" aria-hidden="true" />
 					</Button>
 				</motion.div>
 			) : null}
@@ -648,7 +674,7 @@ const PendingScreenImageStrip: FC = () => {
 						className="absolute right-0.5 top-0.5 size-5 rounded-full bg-background/90 text-muted-foreground shadow-sm transition-opacity hover:bg-background/90 hover:text-accent-foreground sm:opacity-0 sm:group-hover:opacity-100"
 						aria-label="Remove screenshot"
 					>
-						<X className="size-3" />
+						<X className="size-3" aria-hidden="true" />
 					</Button>
 				</div>
 			))}
@@ -664,7 +690,7 @@ const ClipboardChip: FC<{ text: string; onDismiss: () => void }> = ({ text, onDi
 	return (
 		<div className="mx-3 mt-2 rounded-lg border border-border/40 bg-background/60">
 			<div className="flex items-center gap-2 px-3 py-2">
-				<Clipboard className="size-4 shrink-0 text-muted-foreground" />
+				<Clipboard className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
 				<span className="text-xs font-medium text-muted-foreground">From clipboard</span>
 				<div className="flex-1" />
 				{isLong && (
@@ -687,7 +713,7 @@ const ClipboardChip: FC<{ text: string; onDismiss: () => void }> = ({ text, onDi
 					size="icon"
 					className="size-5 text-muted-foreground hover:bg-transparent hover:text-accent-foreground"
 				>
-					<X className="size-3.5" />
+					<X className="size-3.5" aria-hidden="true" />
 				</Button>
 			</div>
 			<div className="px-3 pb-2">
@@ -722,7 +748,7 @@ const ChatUnavailableNotice: FC<{ workspaceId: number; canConfigure: boolean }> 
 	return (
 		<div className="relative z-0 -mb-5 flex min-w-0 items-center gap-2 rounded-t-3xl bg-popover px-4 pt-2 pb-6 shadow-sm shadow-black/5 dark:shadow-black/10">
 			<div className="flex min-w-0 items-center gap-2 text-[13px] font-normal text-muted-foreground select-none">
-				<AlertCircle className="size-4 shrink-0" />
+				<AlertCircle className="size-4 shrink-0" aria-hidden="true" />
 				<span className="truncate">
 					{canConfigure
 						? "Connect a chat model to start chatting."
@@ -757,6 +783,7 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 	const [actionQuery, setActionQuery] = useState("");
 	const [suggestionAnchorPoint, setSuggestionAnchorPoint] =
 		useState<ComposerSuggestionAnchorPoint | null>(null);
+	const [suggestedCardDismissed, setSuggestedCardDismissed] = useState(false);
 	const [_isComposerInputEmpty, setIsComposerInputEmpty] = useState(true);
 	const editorRef = useRef<InlineMentionEditorRef>(null);
 	const prevMentionedDocsRef = useRef<Map<string, MentionedDocumentInfo>>(new Map());
@@ -998,6 +1025,7 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 			prompt: string;
 			mode: "transform" | "explore";
 			isWebBuilder?: boolean;
+			isPresentationStudio?: boolean;
 		}) => {
 			let userText = editorRef.current?.getText() ?? "";
 			const trigger = `/${actionQuery}`;
@@ -1016,9 +1044,13 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 			setActionQuery("");
 			setSuggestionAnchorPoint(null);
 
+			const targetWs = workspaceId ?? 1;
 			if (action.isWebBuilder) {
-				const targetWs = workspaceId ?? 1;
 				router.replace(`/dashboard/${targetWs}/new-chat?mode=web_builder`, { scroll: false });
+			} else if (action.isPresentationStudio) {
+				router.replace(`/dashboard/${targetWs}/new-chat?mode=presentation_studio`, {
+					scroll: false,
+				});
 			}
 		},
 		[actionQuery, aui, router, workspaceId]
@@ -1300,6 +1332,13 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 		return [tChat("default_action_1"), tChat("default_action_2"), tChat("default_action_3")];
 	}, [threadMessages, tChat]);
 
+	// Reset dismissal when the assistant emits new suggestions.
+	useEffect(() => {
+		if (dynamicSuggestedActions.length > 0) {
+			setSuggestedCardDismissed(false);
+		}
+	}, [dynamicSuggestedActions]);
+
 	return (
 		<ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col gap-2 rounded-2xl">
 			<ChatSessionStatus
@@ -1310,37 +1349,57 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 			/>
 
 			{/* Nowing: Dynamic Suggested Next Actions Card */}
-			{hasActiveThread && dynamicSuggestedActions.length > 0 && (
-				<div className="rounded-xl border border-border/70 bg-card/95 p-2 shadow-2xs transition-all backdrop-blur-xs">
-					<div className="flex items-center justify-between px-1.5 pb-1">
+			{hasActiveThread && dynamicSuggestedActions.length > 0 && !suggestedCardDismissed && (
+				<section
+					className="rounded-xl border border-border/70 bg-card/95 p-1.5 shadow-2xs transition-all backdrop-blur-xs"
+					aria-label={tChat("suggested_actions_title")}
+				>
+					<div className="flex items-center justify-between px-1.5 pb-1 gap-2">
 						<div className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wider text-muted-foreground">
-							<span className="text-amber-500">💡</span>
+							<span className="text-amber-500" aria-hidden="true">
+								💡
+							</span>
 							<span>{tChat("suggested_actions_title")}</span>
 						</div>
-						<Sparkles className="size-3 text-muted-foreground opacity-60" />
+						<div className="flex items-center gap-1">
+							<Sparkles className="size-3 text-muted-foreground opacity-60" aria-hidden="true" />
+							<button
+								type="button"
+								onClick={() => setSuggestedCardDismissed(true)}
+								className="rounded p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+								aria-label={tChat("dismiss_suggested_actions")}
+								title={tChat("dismiss_suggested_actions")}
+							>
+								<X className="size-3" aria-hidden="true" />
+							</button>
+						</div>
 					</div>
-					<div className="space-y-1">
-						{dynamicSuggestedActions.map((actionText, idx) => {
-							const icon = idx === 0 ? "🚀" : idx === 1 ? "💼" : "📱";
+					<ul className="space-y-1 list-none">
+						{dynamicSuggestedActions.slice(0, 4).map((actionText, idx) => {
+							const icon = idx === 0 ? "🚀" : idx === 1 ? "💼" : idx === 2 ? "📱" : "✨";
 							return (
-								<button
-									key={actionText}
-									type="button"
-									onClick={() => handleApplySuggestedAction(actionText)}
-									className="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-muted/70 transition-colors text-xs text-foreground group cursor-pointer border border-transparent hover:border-border/50"
-									title={tChat("click_to_prompt_tooltip", { action: actionText })}
-								>
-									<span className="size-4.5 rounded-md bg-muted/80 text-foreground flex items-center justify-center text-[10px] font-bold shrink-0">
-										{icon}
-									</span>
-									<span className="leading-tight font-medium text-foreground truncate">
-										{actionText}
-									</span>
-								</button>
+								<li key={actionText}>
+									<button
+										type="button"
+										onClick={() => handleApplySuggestedAction(actionText)}
+										className="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-muted/70 transition-colors text-xs text-foreground group cursor-pointer border border-transparent hover:border-border/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+										title={tChat("click_to_prompt_tooltip", { action: actionText })}
+									>
+										<span
+											className="size-4.5 rounded-md bg-muted/80 text-foreground flex items-center justify-center text-[10px] font-bold shrink-0"
+											aria-hidden="true"
+										>
+											{icon}
+										</span>
+										<span className="leading-tight font-medium text-foreground truncate">
+											{actionText}
+										</span>
+									</button>
+								</li>
 							);
 						})}
-					</div>
-				</div>
+					</ul>
+				</section>
 			)}
 			<Popover open={showDocumentPopover} onOpenChange={handleDocumentPopoverOpenChange}>
 				{suggestionAnchorPoint ? (
@@ -1393,7 +1452,7 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 				) : null}
 				<div
 					className={cn(
-						"aui-composer-attachment-dropzone relative z-10 flex w-full flex-col overflow-hidden rounded-3xl border border-input/20 bg-muted pt-2 shadow-sm shadow-black/5 outline-none transition-[border-color,box-shadow] hover:border-input/60 focus-within:border-input/60 dark:shadow-black/10",
+						"aui-composer-attachment-dropzone relative z-10 flex w-full flex-col overflow-hidden rounded-3xl border border-input/20 bg-muted pt-2 shadow-sm shadow-black/5 outline-none transition-[border-color,box-shadow] hover:border-input/60 focus-within:border-input/60 focus-within:ring-2 focus-within:ring-ring/50 dark:shadow-black/10",
 						connectToolsTrayVisible && "rounded-b-3xl shadow-none dark:shadow-none",
 						isChatUnavailable && "shadow-none dark:shadow-none"
 					)}
@@ -1424,7 +1483,7 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 								title={tChat("dismiss_lead_context")}
 								aria-label={tChat("dismiss_lead_context")}
 							>
-								<X className="w-3.5 h-3.5" />
+								<X className="w-3.5 h-3.5" aria-hidden="true" />
 							</button>
 						</div>
 					)}
@@ -1505,7 +1564,7 @@ const ConnectedScraperIcons: FC<{ workspaceId: number }> = ({ workspaceId }) => 
 							<TooltipTrigger asChild>
 								<Avatar className="size-4" style={{ zIndex: visiblePlatforms.length - i }}>
 									<AvatarFallback className="bg-popover text-[9px]">
-										<Icon className="size-2.5" />
+										<Icon className="size-2.5" aria-hidden="true" />
 									</AvatarFallback>
 								</Avatar>
 							</TooltipTrigger>
@@ -1673,20 +1732,20 @@ const ComposerAction: FC<ComposerActionProps> = ({
 									aria-label="Upload files, manage tools and more"
 									data-joyride="connector-icon"
 								>
-									<Plus className="size-5" />
+									<Plus className="size-5" aria-hidden="true" />
 								</Button>
 							</DropdownMenuTrigger>
 							<DropdownMenuContent side="bottom" align="start" sideOffset={8}>
 								<DropdownMenuItem onSelect={() => openUploadDialog()}>
-									<Upload className="size-4" />
+									<Upload className="size-4" aria-hidden="true" />
 									Upload Files
 								</DropdownMenuItem>
 								<DropdownMenuItem onSelect={() => setMcpDrawerOpen(true)}>
-									<Unplug className="size-4" />
+									<Unplug className="size-4" aria-hidden="true" />
 									MCP Connectors
 								</DropdownMenuItem>
 								<DropdownMenuItem onSelect={() => setToolsPopoverOpen(true)}>
-									<Settings2 className="size-4" />
+									<Settings2 className="size-4" aria-hidden="true" />
 									Manage Tools
 								</DropdownMenuItem>
 							</DropdownMenuContent>
@@ -1717,7 +1776,10 @@ const ComposerAction: FC<ComposerActionProps> = ({
 														key={tool.name}
 														className="flex w-full items-center gap-3 px-4 py-2 hover:bg-accent hover:text-accent-foreground transition-colors"
 													>
-														<ToolIcon className="size-4 shrink-0 text-muted-foreground" />
+														<ToolIcon
+															className="size-4 shrink-0 text-muted-foreground"
+															aria-hidden="true"
+														/>
 														<span className="flex-1 min-w-0 text-sm font-medium truncate">
 															{formatToolName(tool.name)}
 														</span>
@@ -1765,15 +1827,24 @@ const ComposerAction: FC<ComposerActionProps> = ({
 																			draggable={false}
 																		/>
 																	) : (
-																		<Wrench className="size-4 shrink-0 text-muted-foreground" />
+																		<Wrench
+																			className="size-4 shrink-0 text-muted-foreground"
+																			aria-hidden="true"
+																		/>
 																	)}
 																	<span className="min-w-0 flex-1 truncate text-sm font-medium">
 																		{group.label}
 																	</span>
 																	{isExpanded ? (
-																		<ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+																		<ChevronDown
+																			className="size-4 shrink-0 text-muted-foreground"
+																			aria-hidden="true"
+																		/>
 																	) : (
-																		<ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+																		<ChevronRight
+																			className="size-4 shrink-0 text-muted-foreground"
+																			aria-hidden="true"
+																		/>
 																	)}
 																</Button>
 															</CollapsibleTrigger>
@@ -1825,7 +1896,10 @@ const ComposerAction: FC<ComposerActionProps> = ({
 														key={tool.name}
 														className="flex w-full items-center gap-3 px-4 py-2 hover:bg-accent hover:text-accent-foreground transition-colors"
 													>
-														<ToolIcon className="size-4 shrink-0 text-muted-foreground" />
+														<ToolIcon
+															className="size-4 shrink-0 text-muted-foreground"
+															aria-hidden="true"
+														/>
 														<span className="flex-1 min-w-0 text-sm font-medium truncate">
 															{formatToolName(tool.name)}
 														</span>
@@ -1841,20 +1915,20 @@ const ComposerAction: FC<ComposerActionProps> = ({
 									)}
 									{!filteredTools?.length && (
 										<div className="px-4 pt-3 pb-2">
-											<Skeleton className="h-3 w-16 mb-2" />
+											<Skeleton className="h-3 w-16 mb-2" aria-hidden="true" />
 											{["t1", "t2", "t3", "t4"].map((k) => (
 												<div key={k} className="flex items-center gap-3 py-2">
-													<Skeleton className="size-4 rounded shrink-0" />
+													<Skeleton className="size-4 rounded shrink-0" aria-hidden="true" />
 													<Skeleton className="h-3.5 flex-1" />
-													<Skeleton className="h-5 w-9 rounded-full shrink-0" />
+													<Skeleton className="h-5 w-9 rounded-full shrink-0" aria-hidden="true" />
 												</div>
 											))}
-											<Skeleton className="h-3 w-24 mt-3 mb-2" />
+											<Skeleton className="h-3 w-24 mt-3 mb-2" aria-hidden="true" />
 											{["c1", "c2", "c3"].map((k) => (
 												<div key={k} className="flex items-center gap-3 py-2">
-													<Skeleton className="size-4 rounded shrink-0" />
+													<Skeleton className="size-4 rounded shrink-0" aria-hidden="true" />
 													<Skeleton className="h-3.5 flex-1" />
-													<Skeleton className="h-5 w-9 rounded-full shrink-0" />
+													<Skeleton className="h-5 w-9 rounded-full shrink-0" aria-hidden="true" />
 												</div>
 											))}
 										</div>
@@ -1877,7 +1951,7 @@ const ComposerAction: FC<ComposerActionProps> = ({
 											className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8"
 											aria-label="Back"
 										>
-											<ArrowLeft className="size-5" />
+											<ArrowLeft className="size-5" aria-hidden="true" />
 										</Button>
 									</DrawerClose>
 									<DrawerTitle className="flex items-center justify-center gap-2 text-base font-semibold">
@@ -1915,7 +1989,7 @@ const ComposerAction: FC<ComposerActionProps> = ({
 											setMcpDrawerOpen(false);
 										}}
 									>
-										<Plus className="size-5 shrink-0" />
+										<Plus className="size-5 shrink-0" aria-hidden="true" />
 										<span className="flex-1 truncate text-left text-sm">
 											Browse all integrations
 										</span>
@@ -1944,7 +2018,7 @@ const ComposerAction: FC<ComposerActionProps> = ({
 								aria-label="Upload files, manage tools and more"
 								data-joyride="connector-icon"
 							>
-								<Plus className="size-4" />
+								<Plus className="size-4" aria-hidden="true" />
 							</TooltipIconButton>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent
@@ -1955,16 +2029,16 @@ const ComposerAction: FC<ComposerActionProps> = ({
 							onCloseAutoFocus={(event) => event.preventDefault()}
 						>
 							<DropdownMenuItem onSelect={() => openUploadDialog()}>
-								<Upload className="h-4 w-4" />
+								<Upload className="h-4 w-4" aria-hidden="true" />
 								Upload Files
 							</DropdownMenuItem>
 							<DropdownMenuItem onSelect={() => void handleScreenCapture()}>
-								<Camera className="h-4 w-4" />
+								<Camera className="h-4 w-4" aria-hidden="true" />
 								Take a screenshot
 							</DropdownMenuItem>
 							<DropdownMenuSub>
 								<DropdownMenuSubTrigger>
-									<Unplug className="h-4 w-4" />
+									<Unplug className="h-4 w-4" aria-hidden="true" />
 									MCP Connectors
 								</DropdownMenuSubTrigger>
 								<DropdownMenuPortal>
@@ -1993,7 +2067,7 @@ const ComposerAction: FC<ComposerActionProps> = ({
 												if (workspaceId) router.push(`/dashboard/${workspaceId}/connectors`);
 											}}
 										>
-											<Plus className="size-4" />
+											<Plus className="size-4" aria-hidden="true" />
 											Browse all integrations
 										</DropdownMenuItem>
 									</DropdownMenuSubContent>
@@ -2007,7 +2081,7 @@ const ComposerAction: FC<ComposerActionProps> = ({
 								}}
 							>
 								<DropdownMenuSubTrigger>
-									<Settings2 className="h-4 w-4" />
+									<Settings2 className="h-4 w-4" aria-hidden="true" />
 									Manage Tools
 								</DropdownMenuSubTrigger>
 								<DropdownMenuPortal>
@@ -2038,7 +2112,7 @@ const ComposerAction: FC<ComposerActionProps> = ({
 																!isDisabled && "text-primary"
 															)}
 														>
-															<ToolIcon className="h-4 w-4" />
+															<ToolIcon className="h-4 w-4" aria-hidden="true" />
 															<span className="flex-1 min-w-0 truncate">
 																{formatToolName(tool.name)}
 															</span>
@@ -2088,7 +2162,7 @@ const ComposerAction: FC<ComposerActionProps> = ({
 																		draggable={false}
 																	/>
 																) : (
-																	<Wrench className="h-4 w-4" />
+																	<Wrench className="h-4 w-4" aria-hidden="true" />
 																)}
 																<span className="min-w-0 flex-1 truncate">{group.label}</span>
 																<Switch
@@ -2159,7 +2233,7 @@ const ComposerAction: FC<ComposerActionProps> = ({
 																!isDisabled && "text-primary"
 															)}
 														>
-															<ToolIcon className="h-4 w-4" />
+															<ToolIcon className="h-4 w-4" aria-hidden="true" />
 															<span className="flex-1 min-w-0 truncate">
 																{formatToolName(tool.name)}
 															</span>
@@ -2175,12 +2249,15 @@ const ComposerAction: FC<ComposerActionProps> = ({
 										)}
 										{!filteredTools?.length && (
 											<div className="px-2 pt-1.5 pb-1">
-												<Skeleton className="h-2 w-12 mb-1.5" />
+												<Skeleton className="h-2 w-12 mb-1.5" aria-hidden="true" />
 												{["dt1", "dt2", "dt3", "dt4"].map((k) => (
 													<div key={k} className="flex items-center gap-2 py-1">
-														<Skeleton className="h-4 w-4 rounded shrink-0" />
+														<Skeleton className="h-4 w-4 rounded shrink-0" aria-hidden="true" />
 														<Skeleton className="h-3 flex-1" />
-														<Skeleton className="h-4 w-8 rounded-full shrink-0" />
+														<Skeleton
+															className="h-4 w-8 rounded-full shrink-0"
+															aria-hidden="true"
+														/>
 													</div>
 												))}
 											</div>
@@ -2220,7 +2297,7 @@ const ComposerAction: FC<ComposerActionProps> = ({
 							aria-label="Send message"
 							disabled={isSendDisabled}
 						>
-							<ArrowUpIcon className="aui-composer-send-icon size-3.5" />
+							<ArrowUpIcon className="aui-composer-send-icon size-3.5" aria-hidden="true" />
 						</TooltipIconButton>
 					</ComposerPrimitive.Send>
 				</AuiIf>
@@ -2233,8 +2310,12 @@ const ComposerAction: FC<ComposerActionProps> = ({
 							size="icon"
 							className="aui-composer-cancel size-7 shrink-0 rounded-full"
 							aria-label="Stop generating"
+							title="Stop generating"
 						>
-							<SquareIcon className="aui-composer-cancel-icon size-2.5 fill-current" />
+							<SquareIcon
+								className="aui-composer-cancel-icon size-2.5 fill-current"
+								aria-hidden="true"
+							/>
 						</Button>
 					</ComposerPrimitive.Cancel>
 				</AuiIf>
@@ -2365,8 +2446,10 @@ const EditComposer: FC = () => {
 		<MessagePrimitive.Root className="aui-edit-composer-wrapper mx-auto flex w-full max-w-(--thread-max-width) flex-col px-2 py-3">
 			<ComposerPrimitive.Root className="aui-edit-composer-root ml-auto flex w-full max-w-[85%] flex-col rounded-2xl bg-muted">
 				<ComposerPrimitive.Input
-					className="aui-edit-composer-input min-h-14 w-full resize-none bg-transparent p-4 text-foreground text-sm outline-none"
+					className="aui-edit-composer-input min-h-14 w-full resize-none bg-transparent p-4 text-foreground text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
 					autoFocus
+					aria-label="Edit message"
+					role="textbox"
 				/>
 				<div className="aui-edit-composer-footer mx-3 mb-3 flex items-center gap-2 self-end">
 					<ComposerPrimitive.Cancel asChild>

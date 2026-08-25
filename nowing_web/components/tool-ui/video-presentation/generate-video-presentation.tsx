@@ -408,8 +408,8 @@ function VideoPresentationPlayer({
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-foreground line-clamp-2">{title}</p>
 				<p className="text-xs text-muted-foreground mt-0.5 flex items-center">
-					{compiledSlides.length} slides <Dot className="size-4" /> {totalDuration.toFixed(1)}s{" "}
-					<Dot className="size-4" /> {FPS}fps
+					{compiledSlides.length} slides <Dot className="size-4" aria-hidden="true" />{" "}
+					{totalDuration.toFixed(1)}s <Dot className="size-4" aria-hidden="true" /> {FPS}fps
 				</p>
 			</div>
 
@@ -427,7 +427,7 @@ function VideoPresentationPlayer({
 				{isRendering ? (
 					<>
 						<div className="flex items-center gap-2">
-							<Loader2 className="size-3.5 animate-spin text-muted-foreground" />
+							<Loader2 className="size-3.5 animate-spin text-muted-foreground" aria-hidden="true" />
 							<span className="text-xs font-medium text-muted-foreground">
 								Rendering {renderFormat ?? ""}{" "}
 								{renderProgress !== null ? `${Math.round(renderProgress * 100)}%` : "..."}
@@ -445,7 +445,7 @@ function VideoPresentationPlayer({
 							onClick={handleCancelRender}
 							className="size-7 text-muted-foreground"
 						>
-							<X className="size-3.5" />
+							<X className="size-3.5" aria-hidden="true" />
 						</Button>
 					</>
 				) : (
@@ -456,7 +456,7 @@ function VideoPresentationPlayer({
 							onClick={handleDownload}
 							className="gap-1.5 h-7 px-2.5 text-xs text-muted-foreground"
 						>
-							<Download className="size-3.5" />
+							<Download className="size-3.5" aria-hidden="true" />
 							Download MP4
 						</Button>
 						<Button
@@ -468,12 +468,12 @@ function VideoPresentationPlayer({
 						>
 							{isPptxExporting ? (
 								<>
-									<Loader2 className="size-3.5 animate-spin" />
+									<Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
 									{pptxProgress ?? "Exporting..."}
 								</>
 							) : (
 								<>
-									<Presentation className="size-3.5" />
+									<Presentation className="size-3.5" aria-hidden="true" />
 									Download PPTX
 								</>
 							)}

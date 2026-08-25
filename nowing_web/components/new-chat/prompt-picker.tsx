@@ -1,7 +1,7 @@
 "use client";
 
 import { useAtomValue } from "jotai";
-import { Globe, Plus, WandSparkles } from "lucide-react";
+import { Globe, Plus, Presentation, WandSparkles } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import {
 	forwardRef,
@@ -37,6 +37,7 @@ export interface PromptPickerAction {
 	prompt: string;
 	mode: "transform" | "explore";
 	isWebBuilder?: boolean;
+	isPresentationStudio?: boolean;
 }
 
 interface PromptPickerProps {
@@ -52,6 +53,7 @@ interface BuiltinPromptItem {
 	prompt: string;
 	mode: "transform" | "explore";
 	isWebBuilder: boolean;
+	isPresentationStudio: boolean;
 }
 
 const BUILTIN_TEMPLATES: BuiltinPromptItem[] = [
@@ -63,6 +65,7 @@ const BUILTIN_TEMPLATES: BuiltinPromptItem[] = [
 			"Build a modern high-converting landing page for a SaaS product with hero section, feature cards, testimonial carousel, pricing comparison, and email CTA.",
 		mode: "explore",
 		isWebBuilder: true,
+		isPresentationStudio: false,
 	},
 	{
 		id: "web-pricing",
@@ -72,6 +75,7 @@ const BUILTIN_TEMPLATES: BuiltinPromptItem[] = [
 			"Create a modern 3-tier pricing page with monthly/yearly billing toggle, feature comparison table, and FAQ accordion section.",
 		mode: "explore",
 		isWebBuilder: true,
+		isPresentationStudio: false,
 	},
 	{
 		id: "web-lead-capture",
@@ -81,6 +85,7 @@ const BUILTIN_TEMPLATES: BuiltinPromptItem[] = [
 			"Create an engaging lead capture page with an email opt-in form, value proposition highlights, benefit bullet points, and social proof badges.",
 		mode: "explore",
 		isWebBuilder: true,
+		isPresentationStudio: false,
 	},
 	{
 		id: "web-waitlist",
@@ -90,6 +95,7 @@ const BUILTIN_TEMPLATES: BuiltinPromptItem[] = [
 			"Build an exciting viral waitlist coming-soon page with early access email signup, countdown timer, and referral perk highlights.",
 		mode: "explore",
 		isWebBuilder: true,
+		isPresentationStudio: false,
 	},
 	{
 		id: "web-report",
@@ -99,6 +105,37 @@ const BUILTIN_TEMPLATES: BuiltinPromptItem[] = [
 			"Generate a clean interactive marketing report and whitepaper showcase page with key metric callouts, interactive charts summary, and download CTA.",
 		mode: "explore",
 		isWebBuilder: true,
+		isPresentationStudio: false,
+	},
+	{
+		id: "presentation-pitch",
+		name: "/presentation pitch deck",
+		description: "Investor-ready pitch deck",
+		prompt:
+			"Create a 10-slide pitch deck for a startup: problem, solution, market size, business model, traction, team, financials, and ask.",
+		mode: "explore",
+		isWebBuilder: false,
+		isPresentationStudio: true,
+	},
+	{
+		id: "presentation-sales",
+		name: "/presentation sales deck",
+		description: "Product sales slide deck",
+		prompt:
+			"Create a product sales deck: customer pain points, product overview, key features, benefits, proof points, pricing, and next steps.",
+		mode: "explore",
+		isWebBuilder: false,
+		isPresentationStudio: true,
+	},
+	{
+		id: "presentation-webinar",
+		name: "/presentation webinar slides",
+		description: "Webinar or training slide deck",
+		prompt:
+			"Create a webinar slide deck with an agenda, key concepts, examples, actionable takeaways, and a Q&A slide.",
+		mode: "explore",
+		isWebBuilder: false,
+		isPresentationStudio: true,
 	},
 ];
 
@@ -132,6 +169,14 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
 				item.prompt.toLowerCase().includes(normalizedSearch)
 		);
 	}, [normalizedSearch]);
+	const filteredWebBuiltins = useMemo(
+		() => filteredBuiltins.filter((b) => b.isWebBuilder),
+		[filteredBuiltins]
+	);
+	const filteredPresentationBuiltins = useMemo(
+		() => filteredBuiltins.filter((b) => b.isPresentationStudio),
+		[filteredBuiltins]
+	);
 
 	const filteredSaved = useMemo(() => {
 		const list = prompts ?? [];
@@ -147,15 +192,28 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
 			prompt: string;
 			mode: "transform" | "explore";
 			isWebBuilder?: boolean;
+			isPresentationStudio?: boolean;
 		}[] = [];
 
-		for (const b of filteredBuiltins) {
+		for (const b of filteredPresentationBuiltins) {
 			items.push({
 				id: b.id,
 				name: b.name,
 				prompt: b.prompt,
 				mode: b.mode,
-				isWebBuilder: true,
+				isWebBuilder: false,
+				isPresentationStudio: b.isPresentationStudio,
+			});
+		}
+
+		for (const b of filteredWebBuiltins) {
+			items.push({
+				id: b.id,
+				name: b.name,
+				prompt: b.prompt,
+				mode: b.mode,
+				isWebBuilder: b.isWebBuilder,
+				isPresentationStudio: false,
 			});
 		}
 
@@ -166,11 +224,12 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
 				prompt: s.prompt,
 				mode: s.mode,
 				isWebBuilder: false,
+				isPresentationStudio: false,
 			});
 		}
 
 		return items;
-	}, [filteredBuiltins, filteredSaved]);
+	}, [filteredPresentationBuiltins, filteredWebBuiltins, filteredSaved]);
 
 	// Reset highlight when the deferred (filtered) search changes
 	const prevSearchRef = useRef(deferredSearch);
@@ -201,6 +260,7 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
 				prompt: action.prompt,
 				mode: action.mode,
 				isWebBuilder: action.isWebBuilder,
+				isPresentationStudio: action.isPresentationStudio,
 			});
 		},
 		[flatItems, onSelect, createPromptIndex, onDone, router, workspaceId]
@@ -243,6 +303,8 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
 
 	const hasNoResults = flatItems.length === 0;
 
+	const savedStartIdx = filteredPresentationBuiltins.length + filteredWebBuiltins.length;
+
 	return (
 		<ComposerSuggestionList ref={scrollContainerRef}>
 			{isLoading ? (
@@ -255,12 +317,50 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
 				<ComposerSuggestionMessage>No matching prompts</ComposerSuggestionMessage>
 			) : (
 				<>
+					{/* Presentation Studio Templates Group */}
+					{filteredPresentationBuiltins.length > 0 && (
+						<ComposerSuggestionGroup>
+							<ComposerSuggestionGroupHeading>
+								Presentation Studio Templates
+							</ComposerSuggestionGroupHeading>
+							{filteredPresentationBuiltins.map((builtin, i) => {
+								const flatIdx = i;
+								return (
+									<ComposerSuggestionItem
+										key={builtin.id}
+										ref={(el) => {
+											if (el) itemRefs.current.set(flatIdx, el);
+											else itemRefs.current.delete(flatIdx);
+										}}
+										icon={
+											<Presentation className="size-3.5 text-purple-600 dark:text-purple-400" />
+										}
+										selected={flatIdx === highlightedIndex}
+										onClick={() => handleSelect(flatIdx)}
+										onMouseEnter={() => setHighlightedIndex(flatIdx)}
+									>
+										<div className="flex flex-col min-w-0 flex-1">
+											<span className="truncate text-xs font-medium">{builtin.name}</span>
+											<span className="truncate text-[10px] text-muted-foreground">
+												{builtin.description}
+											</span>
+										</div>
+									</ComposerSuggestionItem>
+								);
+							})}
+						</ComposerSuggestionGroup>
+					)}
+
+					{filteredPresentationBuiltins.length > 0 && filteredWebBuiltins.length > 0 && (
+						<ComposerSuggestionSeparator />
+					)}
+
 					{/* Web Builder Templates Group */}
-					{filteredBuiltins.length > 0 && (
+					{filteredWebBuiltins.length > 0 && (
 						<ComposerSuggestionGroup>
 							<ComposerSuggestionGroupHeading>Web Builder Templates</ComposerSuggestionGroupHeading>
-							{filteredBuiltins.map((builtin, i) => {
-								const flatIdx = i;
+							{filteredWebBuiltins.map((builtin, i) => {
+								const flatIdx = filteredPresentationBuiltins.length + i;
 								return (
 									<ComposerSuggestionItem
 										key={builtin.id}
@@ -285,16 +385,15 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
 						</ComposerSuggestionGroup>
 					)}
 
-					{filteredBuiltins.length > 0 && filteredSaved.length > 0 && (
-						<ComposerSuggestionSeparator />
-					)}
+					{(filteredPresentationBuiltins.length > 0 || filteredWebBuiltins.length > 0) &&
+						filteredSaved.length > 0 && <ComposerSuggestionSeparator />}
 
 					{/* Saved Prompts Group */}
 					{filteredSaved.length > 0 && (
 						<ComposerSuggestionGroup>
 							<ComposerSuggestionGroupHeading>Saved Prompts</ComposerSuggestionGroupHeading>
 							{filteredSaved.map((action, i) => {
-								const flatIdx = filteredBuiltins.length + i;
+								const flatIdx = savedStartIdx + i;
 								return (
 									<ComposerSuggestionItem
 										key={action.id}

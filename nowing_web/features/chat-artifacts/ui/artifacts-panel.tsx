@@ -16,10 +16,11 @@ import { ArtifactRow } from "./artifact-row";
 
 const GROUP_ORDER: { kind: ArtifactKind; label: string }[] = [
 	{ kind: "web_app", label: "Web Apps" },
+	{ kind: "presentation", label: "Slide Decks" },
 	{ kind: "report", label: "Reports" },
 	{ kind: "resume", label: "Resumes" },
 	{ kind: "podcast", label: "Podcasts" },
-	{ kind: "video", label: "Presentations" },
+	{ kind: "video", label: "Video Presentations" },
 	{ kind: "image", label: "Images" },
 ];
 
@@ -33,7 +34,7 @@ function groupByKind(artifacts: ChatArtifact[]): { label: string; items: ChatArt
 function EmptyState() {
 	return (
 		<div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center select-none">
-			<Boxes className="size-6 text-muted-foreground/60" />
+			<Boxes className="size-6 text-muted-foreground/60" aria-hidden="true" />
 			<p className="text-sm font-medium text-foreground">No artifacts yet</p>
 			<p className="text-xs text-muted-foreground">
 				Web apps, reports, podcasts, presentations, and images you generate will appear here.
@@ -80,7 +81,7 @@ export function ArtifactsPanelContent({ onClose }: { onClose?: () => void }) {
 						onClick={onClose}
 						className="size-6 shrink-0 rounded-full text-muted-foreground hover:text-accent-foreground"
 					>
-						<XIcon className="size-3.5" />
+						<XIcon className="size-3.5" aria-hidden="true" />
 						<span className="sr-only">Close artifacts panel</span>
 					</Button>
 				)}

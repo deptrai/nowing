@@ -16,7 +16,8 @@ const KIND_META: Record<
 	report: { icon: FileText, label: "Report" },
 	resume: { icon: Contact, label: "Resume" },
 	podcast: { icon: AudioLines, label: "Podcast" },
-	video: { icon: Presentation, label: "Presentation" },
+	video: { icon: Presentation, label: "Video Presentation" },
+	presentation: { icon: Presentation, label: "Slide Deck" },
 	image: { icon: ImageIcon, label: "Image" },
 };
 
@@ -54,7 +55,7 @@ export function ArtifactRow({ artifact }: { artifact: ChatArtifact }) {
 			className="h-auto w-full justify-start gap-3 rounded-lg px-3 py-2.5 text-left font-normal hover:bg-accent hover:text-accent-foreground"
 		>
 			<span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted/60 text-muted-foreground">
-				<Icon className="size-4" />
+				<Icon className="size-4" aria-hidden="true" />
 			</span>
 			<span className="min-w-0 flex-1">
 				<span className="block truncate text-sm font-medium text-foreground">{artifact.title}</span>

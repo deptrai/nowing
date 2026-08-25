@@ -178,16 +178,19 @@ export default function NewChatPage() {
 	const initialPrompt = searchParams.get("q") ?? undefined;
 	const isLeadsMode = searchParams.get("mode") === "leads";
 	const isWebBuilderMode = searchParams.get("mode") === "web_builder";
+	const isPresentationStudioMode = searchParams.get("mode") === "presentation_studio";
 	const queryClient = useQueryClient();
 	const urlChatId = useMemo(() => parseUrlChatId(params.chat_id), [params.chat_id]);
 	const [threadId, setThreadId] = useState<number | null>(() => (urlChatId > 0 ? urlChatId : null));
 	const activeThreadId = urlChatId > 0 ? urlChatId : threadId;
 	const platformMetadata = useMemo(() => {
 		// Mode query only affects brand-new threads; existing threads keep their
-		// stored platform_metadata (Story 27.1a AC-1b).
-		if (urlChatId > 0 || !isWebBuilderMode) return null;
-		return { web_builder_mode: true };
-	}, [urlChatId, isWebBuilderMode]);
+		// stored platform_metadata (Story 27.1a AC-1b / Story 27.2a AC-1b).
+		if (urlChatId > 0) return null;
+		if (isWebBuilderMode) return { web_builder_mode: true };
+		if (isPresentationStudioMode) return { presentation_studio_mode: true };
+		return null;
+	}, [urlChatId, isWebBuilderMode, isPresentationStudioMode]);
 	const hasActiveView = Boolean(activeThreadId || isLeadsMode);
 	const handledLoadErrorThreadRef = useRef<number | null>(null);
 	const [currentThread, setCurrentThread] = useState<ThreadRecord | null>(null);

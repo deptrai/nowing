@@ -1,5 +1,12 @@
 /** Deliverable kinds the agent can produce and surface in the artifacts sidebar. */
-export type ArtifactKind = "report" | "resume" | "podcast" | "video" | "image" | "web_app";
+export type ArtifactKind =
+	| "report"
+	| "resume"
+	| "podcast"
+	| "video"
+	| "presentation"
+	| "image"
+	| "web_app";
 
 export type ArtifactStatus = "running" | "ready" | "error";
 
@@ -28,6 +35,7 @@ export const ARTIFACT_TOOL_KINDS: Record<string, ArtifactKind> = {
 	generate_resume: "resume",
 	generate_podcast: "podcast",
 	generate_video_presentation: "video",
+	generate_presentation: "presentation",
 	generate_image: "image",
 	display_image: "image",
 	build_web_app: "web_app",
