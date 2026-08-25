@@ -9,11 +9,16 @@ import {
 	PresentationIcon,
 } from "lucide-react";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { presentationApiService } from "@/lib/apis/presentation-api.service";
+import {
+	presentationApiService,
+	presentationFileExtension,
+	presentationPreviewHref,
+} from "@/lib/apis/presentation-api.service";
 import { getWorkspaceIdNumber } from "@/lib/route-params";
 
 export const PresentationBuildArgsSchema = {
@@ -79,6 +84,7 @@ export function GeneratePresentationToolUI({
 	status,
 }: ToolCallMessagePartProps<PresentationBuildArgs, PresentationBuildResult | string>) {
 	const params = useParams();
+	const tChat = useTranslations("chat");
 	const workspaceId = getWorkspaceIdNumber(params) || 1;
 
 	const result = useMemo(() => parseToolResult(rawResult), [rawResult]);
@@ -88,19 +94,18 @@ export function GeneratePresentationToolUI({
 		result.status === "validation_failed" ||
 		result.status === "error" ||
 		result.status === "failed" ||
-		Boolean(result.error);
+		Boolean(result.error && result.status !== "degraded");
 
 	const title = result.title || args.prompt || "Slide Deck";
 	const prompt = args.prompt;
 	const presentationId = result.presentation_id;
 	const format = result.format || "pptx";
+	const fileExt = presentationFileExtension(format);
 	const slideCount = result.slide_count ?? 0;
 	const downloadUrl =
 		result.download_url ||
 		(presentationId ? presentationApiService.downloadUrl(presentationId, workspaceId) : "");
-	const previewUrl =
-		result.preview_url ||
-		(presentationId ? presentationApiService.previewUrl(presentationId, workspaceId) : "");
+	const previewUrl = presentationPreviewHref(result.preview_url);
 
 	if (isRunning || (!result.presentation_id && !isFailed)) {
 		return (
@@ -111,7 +116,7 @@ export function GeneratePresentationToolUI({
 					</div>
 					<div className="min-w-0">
 						<h4 className="truncate text-sm font-semibold text-foreground">{title}</h4>
-						<TextShimmerLoader text="Designing your slides…" size="sm" />
+						<TextShimmerLoader text={tChat("presentation_generating")} size="sm" />
 					</div>
 					<Badge variant="secondary" className="ml-auto gap-1 px-2 py-0.5 text-xs">
 						<Loader2Icon className="size-3 animate-spin text-muted-foreground" aria-hidden="true" />
@@ -172,11 +177,11 @@ export function GeneratePresentationToolUI({
 				</Badge>
 			</div>
 
-			{isDegraded && (
+			{(isDegraded || (format === "marp" && !previewUrl)) && (
 				<p className="mt-3 text-xs text-muted-foreground">
 					{format === "marp"
-						? "Open this file in Marp for VS Code / Marp Web."
-						: "Preview is not available for this deck."}
+						? tChat("presentation_marp_helper")
+						: tChat("presentation_pptx_no_preview")}
 				</p>
 			)}
 
@@ -191,7 +196,7 @@ export function GeneratePresentationToolUI({
 					>
 						<a href={downloadUrl} download rel="noopener noreferrer">
 							<DownloadIcon className="size-3.5" aria-hidden="true" />
-							Download .{format}
+							Download .{fileExt}
 						</a>
 					</Button>
 				)}

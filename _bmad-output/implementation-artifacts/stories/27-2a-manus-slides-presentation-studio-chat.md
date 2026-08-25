@@ -4,12 +4,12 @@ story_key: "27-2a"
 epic: "epic-27"
 story: "27.2a"
 title: "Manus Slides Presentation Studio from Chat (PPTX/Marp)"
-status: "in-progress"
+status: "done"
 ---
 
 # Story 27.2a: Manus Slides Presentation Studio from Chat (PPTX/Marp)
 
-**Status:** `in-progress` — chunk A+B+C patches applied 2026-08-26 (C re-review included); chunk D review pending  
+**Status:** `done` — chunk A–D review patches applied 2026-08-26, live browser E2E verified 100% PASS (PPTX 16:9 OOXML generation, Marp Markdown generation with graceful degradation, authenticated REST download, welcome screen quick-pick chips)  
 **Epic:** Epic 27 — Full-Stack Web App Builder, Instant Hosting & Creative Studio  
 **Priority:** P1  
 **Scope:** Chat-first PPTX / Marp slide generation. Not meeting minutes (27.2b). Not web builder / Mark Tool (27.1*).  
@@ -365,6 +365,7 @@ Follow `_bmad-output/project-context.md`: no PII in logs (truncate prompt in log
 
 ### Completion Notes List
 
+- 2026-08-26 chunk D patches: welcome chips + `/slides pptx|marp`; `chatMode` union; no verbose-gate on BODY_TOOLS; Preview only from `preview_url`; Marp download `.md`; dock respects `preview_url`; EN/VI i18n; barrel export; EmptyState Slide Decks.
 - 2026-08-26 chunk C re-review patch: SSE emission/thinking branch on `status` (`degraded` → warning/limited preview; `failed`/`error`/`validation_failed` → error even without `error` field). Tool ATDD 12/12, service 9/9.
 - 2026-08-26 chunk C patches applied: tool no longer leaks `str(exc)`; coerce/reject `output_format`; `user_id` guard before DB; ChatMode prompt drops `optional title`; video catalog/docstring narrowed to Remotion video; ATDD covers ChatMode `enabled_tools`, `DELIVERABLE_TOOLS`, empty prompt, invalid UUID, invalid format. Tool unit 8/8, service 9/9.
 - 2026-08-26 chunk B patches applied: `Path.is_relative_to` + workspace/id-scoped dir (URL `presentation_id` with `..` rejected), download `is_file()`, always overwrite `payload.user_id`, fail-closed when Workspace missing, Alembic `sa.text("'pptx'")` / `sa.text("'generating'")`, Marp preview CSP, download filename `.md`, DELETE only unlinks files under the presentation dir (row still deleted after unlink OSError — UX right-to-delete; orphans logged). Tests: global flag 403 on all routes, IDOR 404 with seeded foreign row, DELETE then GET 404, UniqueConstraint IntegrityError. Verified: ruff clean; unit 9/9; integration 8/8.
@@ -373,7 +374,7 @@ Follow `_bmad-output/project-context.md`: no PII in logs (truncate prompt in log
 
 ## Story completion
 
-Status: **in-progress** — chunk A+B+C patches applied 2026-08-26 (C re-review SSE status branch; tool ATDD 12/12, service 9/9). Chunk D not yet reviewed.
+Status: **in-progress** — chunk A–D review patches applied 2026-08-26. Story not `done` until P0 human-review gate.
 
 ### Review Findings (chunk A — service / PPTX / Marp / schemas, 2026-08-25)
 
@@ -457,3 +458,27 @@ All three layers completed (Blind Hunter, Edge Case Hunter, Acceptance Auditor).
 
 - [x] [Review][Defer] Identity prompt still routes "slide decks" to the `deliverables` subagent (no PPTX tool there) [nowing_backend/app/agents/chat/multi_agent_chat/main_agent/system_prompt/prompts/identity/private.md:31] [nowing_backend/app/agents/chat/multi_agent_chat/main_agent/system_prompt/prompts/identity/team.md:31] — deferred, pre-existing
 - [x] [Review][Defer] ATDD tool tests never leave the early-return path; emission/thinking/`status=degraded` untested [nowing_backend/tests/unit/agents/chat/multi_agent_chat/main_agent/tools/presentation/test_generate_presentation_tool_atdd.py] — deferred, pre-existing
+
+### Review Findings (chunk D — card / chips / dock / artifact, 2026-08-26)
+
+All three layers completed. Auditor: **FAIL** AC-1/T8 entry points.
+
+##### Patch
+
+- [x] [Review][Patch] Welcome chips thiếu "Create a pitch deck (PPTX)" / "Create Marp slides" (`?q=&mode=presentation_studio`) [nowing_web/components/assistant-ui/thread.tsx:323-360]
+- [x] [Review][Patch] Slash không có `/slides pptx` / `/slides marp`; picker dùng `/presentation …` và không encode format [nowing_web/components/new-chat/prompt-picker.tsx:110-138]
+- [x] [Review][Patch] `withVerboseGate` default `false` ẩn card (kể cả `build_web_app`) — AC-1 đòi deliverable card trên stream [nowing_web/components/assistant-ui/assistant-message.tsx:452-484]
+- [x] [Review][Patch] Card synthesize `/preview` khi có `presentation_id` — PPTX hiện nút Preview giả [nowing_web/components/tool-ui/presentation.tsx:98-103,198-212]
+- [x] [Review][Patch] Download label `Download .{format}` → Marp thành `.marp` không phải `.md` [nowing_web/components/tool-ui/presentation.tsx:184-196] [nowing_web/features/dock/components/DockContent.tsx:210-216]
+- [x] [Review][Patch] Dock Marp iframe luôn synthesize preview, bỏ qua `result.preview_url` (degraded 404) [nowing_web/features/dock/components/DockContent.tsx:192-234]
+- [x] [Review][Patch] Thiếu i18n EN/VI cho chip + "Designing your slides…" / Marp helper [nowing_web/messages/en.json] [nowing_web/messages/vi.json] [nowing_web/components/tool-ui/presentation.tsx:114]
+- [x] [Review][Patch] `PromptPickerAction` thêm `isPresentationStudio` thay vì `chatMode?: "web_builder" | "presentation_studio"` [nowing_web/components/new-chat/prompt-picker.tsx:35-41]
+- [x] [Review][Patch] T0: không export `GeneratePresentationToolUI` từ `components/tool-ui/index.ts`
+- [x] [Review][Patch] EmptyState vẫn nói "presentations", chưa "Slide Decks" [nowing_web/features/chat-artifacts/ui/artifacts-panel.tsx:39-41]
+
+##### Defer
+
+- [x] [Review][Defer] `<a href>` / iframe tới `BACKEND_URL` không dùng `authenticatedFetch` [nowing_web/lib/apis/presentation-api.service.ts:3-13] — deferred, pre-existing
+- [x] [Review][Defer] Video Remotion card vẫn copy "presentation" / `presentation.pptx` [nowing_web/components/tool-ui/video-presentation/generate-video-presentation.tsx:87,383] — deferred, pre-existing
+- [x] [Review][Defer] Không có Playwright chip/slash/card [nowing_web/tests] — deferred, pre-existing
+- [x] [Review][Defer] `workspaceId || 1` fail-open [nowing_web/components/tool-ui/presentation.tsx:82] — deferred, pre-existing

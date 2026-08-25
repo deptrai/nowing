@@ -19,7 +19,11 @@ import { GeneratePodcastToolUI } from "@/components/tool-ui/podcast/generate-pod
 import { GenerateVideoPresentationToolUI } from "@/components/tool-ui/video-presentation/generate-video-presentation";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { presentationApiService } from "@/lib/apis/presentation-api.service";
+import {
+	presentationApiService,
+	presentationFileExtension,
+	presentationPreviewHref,
+} from "@/lib/apis/presentation-api.service";
 import { cn } from "@/lib/utils";
 import type { DockTabPayload, ToolCallContentPart } from "../lib/parse-dock-content";
 
@@ -170,6 +174,24 @@ function ChartDockContent({ payload }: { payload: Extract<DockTabPayload, { kind
 	);
 }
 
+function parseSlidesResult(raw: unknown): Record<string, unknown> | null {
+	if (typeof raw === "string") {
+		try {
+			const parsed: unknown = JSON.parse(raw);
+			if (typeof parsed === "object" && parsed !== null) {
+				return parsed as Record<string, unknown>;
+			}
+		} catch {
+			return null;
+		}
+		return null;
+	}
+	if (typeof raw === "object" && raw !== null) {
+		return raw as Record<string, unknown>;
+	}
+	return null;
+}
+
 function SlidesDockContent({
 	payload,
 	workspaceId,
@@ -177,22 +199,20 @@ function SlidesDockContent({
 	payload: Extract<DockTabPayload, { kind: "slides" }>;
 	workspaceId: string | number;
 }) {
-	const result =
-		typeof payload.result === "object" && payload.result !== null
-			? (payload.result as Record<string, unknown>)
-			: null;
+	const result = parseSlidesResult(payload.result);
 	const title = typeof result?.title === "string" ? result.title : "Slide deck";
 	const format = typeof result?.format === "string" ? result.format : "pptx";
+	const fileExt = presentationFileExtension(format);
 	const slideCount = typeof result?.slide_count === "number" ? result.slide_count : 0;
 	const presentationId =
 		typeof result?.presentation_id === "string" ? result.presentation_id : null;
-	const downloadUrl = presentationId
-		? presentationApiService.downloadUrl(presentationId, Number(workspaceId))
-		: null;
-	const previewUrl =
-		presentationId && format === "marp"
-			? presentationApiService.previewUrl(presentationId, Number(workspaceId))
-			: null;
+	const downloadUrl =
+		typeof result?.download_url === "string" && result.download_url
+			? result.download_url
+			: presentationId
+				? presentationApiService.downloadUrl(presentationId, Number(workspaceId))
+				: null;
+	const previewUrl = presentationPreviewHref(result?.preview_url);
 
 	return (
 		<div className="flex h-full flex-col gap-4 p-4">
@@ -211,7 +231,7 @@ function SlidesDockContent({
 					<Button variant="outline" size="sm" asChild className="gap-1.5 text-xs">
 						<a href={downloadUrl} download rel="noopener noreferrer">
 							<Download className="size-3.5" aria-hidden="true" />
-							Download .{format}
+							Download .{fileExt}
 						</a>
 					</Button>
 				)}

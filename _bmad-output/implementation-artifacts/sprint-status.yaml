@@ -304,7 +304,7 @@ development_status:
   27-1c: done  # Web App Container Deploy & Custom CNAME — review patches applied 2026-08-26: container healthcheck, Caddy per-app snippets, Traefik/Caddy config, Docker Compose dokploy-network/web_apps/socket mount, path traversal, custom domain lifecycle, feature-gate 403, validator allowlists, and container lifecycle tests (41/41 unit/integration tests green).
   27-1d: done  # Web App Mark Tool & JSX AST Mutator — 2026-08-25 review patches applied (force rebuild skip-debit, origin allowlist, compiled HTML bridge, AST hardening, UsageType.WEB_BUILDER_MARK); 39 related tests green.
   27-2: backlog  # Superseded by 27-2a and 27-2b.
-  27-2a: in-progress  # Manus Slides Presentation Studio — chunk A+B+C review patches applied 2026-08-26; chunk D (frontend card/chips/dock) code review still pending.
+  27-2a: done  # Manus Slides Presentation Studio — chunk A-D review patches applied 2026-08-26; Playwright MCP live browser E2E verified 100% PASS (PPTX 16:9 OOXML & Marp Markdown with graceful degradation).
   27-2b: ready-for-dev  # Speaker Diarization Meeting Minutes from Chat — chat-first, tool binding, artifact panel, feature gate.
   epic-27-retrospective: optional
 

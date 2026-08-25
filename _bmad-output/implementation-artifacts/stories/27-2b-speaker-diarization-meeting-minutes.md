@@ -145,7 +145,7 @@ So that the agent transcribes the audio, identifies each speaker, extracts actio
 ### [GAP] — new work
 
 1. **Config + feature gate** (`app/config/__init__.py`):
-   - `MEETING_MINUTES_ENABLED = os.getenv("MEETING_MINUTES_ENABLED", "TRUE").upper() == "TRUE"`
+   - `MEETING_MINUTES_ENABLED = os.getenv("MEETING_MINUTES_ENABLED", "FALSE").upper() == "TRUE"`
    - `MEETING_MINUTES_MAX_AUDIO_BYTES` (default 100 MB)
    - `MEETING_MINUTES_MAX_DURATION_SECONDS` (default 600 = 10 minutes)
    - `MEETING_MINUTES_DIARIZATION_ENGINE` (`pyannote` | `none`; default `pyannote`)
@@ -530,3 +530,21 @@ pnpm exec biome check components/tool-ui/meeting-minutes.tsx components/assistan
 - **Q4:** Failure modes (Celery down, LLM fail after transcription, OOM, audio download, missing document, wallet exhausted, `record_token_usage` failures) are now specified in **Edge Cases & Risks**, **AC-3/AC-4**, and **AC-6**. Add unit/integration tests for each terminal/degraded path.
 
 **Overall:** **Spec is ready for test-first ATDD.** Continue with `bmad-test-first-atdd` or `kn-spec` verification. Update test skeleton to cover all Q3/Q4 rows.
+
+### Grill-Me Re-validation (2026-08-26)
+
+Q1 — Already implemented? **No duplicate logic.** `generate_meeting_minutes`, `MeetingMinutes` model, `pyannote.audio`/diarization code, and `MeetingMinutesService` do not exist in `nowing_backend`. `chat_modes.py:84-93` and `app/config/__init__.py:1897-1905` already contain partial `meeting_minutes` mode wiring; dev should reuse/extend, not recreate.
+
+Q2 — Simpler alternative? **No simpler alternative found.** The canonical Celery + `STTService` + `billable_call` + `TokenUsage` patterns are the right reuse targets. External diarization API is not configured; `pyannote.audio` optional extra is the chosen path.
+
+Q3 — Edge cases the spec may still miss (added):
+- Workspace gating: `ChatMode.meeting_minutes` currently has no `workspace_feature_field` (only global `MEETING_MINUTES_ENABLED`). If workspace plan gating is required later, add `Workspace.meeting_minutes_enabled` and update `chat_modes.py`.
+- `faster-whisper` `word_timestamps=True` is required for per-word `words` output used in diarization overlap mapping; the spec says "when available" but does not say how to enable it.
+
+Q4 — Failure modes to add to test skeleton:
+- `pyannote.audio`/PyTorch dependency resolver conflict during `uv lock --extra meeting-minutes --extra cpu`.
+- `HUGGINGFACE_TOKEN` missing/invalid when `DIARIZATION_ENGINE=pyannote` (gated model download).
+- `Workspace` or `Document` row missing when worker loads (race with delete).
+- Celery worker not running / Redis down after tool returns `processing`.
+
+**Triage:** Clean with notes — proceed to `bmad-nowing-test-first-atdd`.

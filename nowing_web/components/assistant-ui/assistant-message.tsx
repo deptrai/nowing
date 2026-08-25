@@ -5,7 +5,6 @@ import {
 	ErrorPrimitive,
 	MessagePrimitive,
 	type ToolCallMessagePartComponent,
-	type ToolCallMessagePartProps,
 	useAui,
 	useAuiState,
 } from "@assistant-ui/react";
@@ -26,7 +25,6 @@ import dynamic from "next/dynamic";
 import type { FC } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { commentsEnabledAtom, targetCommentIdAtom } from "@/atoms/chat/current-thread.atom";
-import { dockVerboseModeAtom } from "@/atoms/layout/dock.atom";
 import {
 	globalModelConnectionsAtom,
 	modelConnectionsAtom,
@@ -444,21 +442,6 @@ const MessageInfoDropdown: FC<{ chatTurnId: string | null | undefined }> = ({ ch
 };
 
 /**
- * Gate that suppresses rich deliverable cards in the chat stream unless
- * verbose mode is active. This lets the contextual right dock own the
- * artifact surface by default, while verbose mode routes the rich output
- * back into the chat stream.
- */
-function withVerboseGate(Tool: ToolCallMessagePartComponent): ToolCallMessagePartComponent {
-	const Gated: ToolCallMessagePartComponent = (props: ToolCallMessagePartProps) => {
-		const verbose = useAtomValue(dockVerboseModeAtom);
-		if (!verbose) return null;
-		return <Tool {...props} />;
-	};
-	return Gated;
-}
-
-/**
  * Tools rendered in the message BODY — value-add deliverables only.
  *
  * Process tools (connector CRUD, sandbox execute, memory updates,
@@ -468,19 +451,19 @@ function withVerboseGate(Tool: ToolCallMessagePartComponent): ToolCallMessagePar
  * fallback — any tool name not in this map renders nothing in the
  * body and is picked up by the timeline instead.
  *
- * Each body tool is wrapped with an artifact anchor and then a verbose
- * gate: the anchor provides a DOM target for the dock/artifacts panel,
- * and the gate hides the card unless verbose mode is on.
+ * Each body tool is wrapped with an artifact anchor so the dock/artifacts
+ * panel can scroll to the card. The card itself stays visible in the stream
+ * (AC-1); verbose mode is not a gate for deliverable UI.
  */
 const BODY_TOOLS = {
-	generate_report: withVerboseGate(withArtifactAnchor(GenerateReportToolUI)),
-	generate_resume: withVerboseGate(withArtifactAnchor(GenerateResumeToolUI)),
-	generate_podcast: withVerboseGate(withArtifactAnchor(GeneratePodcastToolUI)),
-	generate_video_presentation: withVerboseGate(withArtifactAnchor(GenerateVideoPresentationToolUI)),
-	display_image: withVerboseGate(withArtifactAnchor(GenerateImageToolUI)),
-	generate_image: withVerboseGate(withArtifactAnchor(GenerateImageToolUI)),
-	build_web_app: withVerboseGate(withArtifactAnchor(GenerateWebAppToolUI)),
-	generate_presentation: withVerboseGate(withArtifactAnchor(GeneratePresentationToolUI)),
+	generate_report: withArtifactAnchor(GenerateReportToolUI),
+	generate_resume: withArtifactAnchor(GenerateResumeToolUI),
+	generate_podcast: withArtifactAnchor(GeneratePodcastToolUI),
+	generate_video_presentation: withArtifactAnchor(GenerateVideoPresentationToolUI),
+	display_image: withArtifactAnchor(GenerateImageToolUI),
+	generate_image: withArtifactAnchor(GenerateImageToolUI),
+	build_web_app: withArtifactAnchor(GenerateWebAppToolUI),
+	generate_presentation: withArtifactAnchor(GeneratePresentationToolUI),
 } as const;
 
 const NullBodyTool: ToolCallMessagePartComponent = () => null;

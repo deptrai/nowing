@@ -375,6 +375,24 @@ _Curated long-term knowledge for Nowing E2E Browser Testing._
 
 **Session log:** `sessions/2026-08-24.md`
 
+## Story 27.2a — Manus Slides Presentation Studio from Chat (PPTX/Marp) E2E (2026-08-26)
+
+**Stack:** Backend FastAPI `:8000` (`PRESENTATION_STUDIO_ENABLED=true`), Next.js `:3000`, Postgres `:5434`, Redis `:6380`, Zero-cache `:4848`. Logged in as `e2e-test@nowing.net`.
+
+**Live Browser Verification Results:**
+- **Mode & Chips:** Accessed `http://localhost:3000/dashboard/1/new-chat?mode=presentation_studio`. Verified welcome screen renders `📑 Create a pitch deck` (PPTX) and `📝 Create Marp slides` quick-pick chips.
+- **PPTX Generation Flow:**
+  - Submitted pitch deck generation query.
+  - Agent executed `generate_presentation` with `output_format="pptx"`.
+  - SSE stream rendered deliverable card: `Nowing AI SaaS - Nền tảng Lead & Knowledge Intelligence`, `5 slides · PPTX`, `Ready` status badge.
+  - Verified authenticated download URL `GET /api/v1/presentations/{id}/download?workspace_id=1` returns a valid Microsoft OOXML (`.pptx`) 16:9 file.
+- **Marp Markdown Generation & Degradation Flow:**
+  - Submitted Marp presentation query with `/slides marp`.
+  - Agent called `generate_presentation` with `output_format="marp"`.
+  - Stream rendered deliverable card: `Kiến trúc Hệ thống Nowing`, `4 slides · MARP`, with graceful fallback badge `Degraded: dependency_missing` and helper copy `Open this file in Marp for VS Code / Marp Web.` (matching AC-3).
+  - Verified authenticated download returns valid Marp Markdown with YAML front-matter (`marp: true`, `size: 16:9`, `theme: "default"`, `class: "invert"`, `paginate: true`), slide delimiters (`---`), and speaker notes.
+- **Artifacts:** `page-2026-08-25T19-57-44-332Z.png`, `page-2026-08-25T19-58-52-792Z.png`, `page-2026-08-25T20-00-35-513Z.png`, `page-2026-08-25T20-01-48-332Z.png`.
+
 ## Story 27.1c — Web App Container Deploy & Custom CNAME E2E (2026-08-25)
 
 **Stack:** Backend FastAPI `:8000`, Next.js `:3000`, Postgres `:5434`, Redis `:6380`, Zero-cache `:4848`. Logged in as `e2e-test@nowing.net`.

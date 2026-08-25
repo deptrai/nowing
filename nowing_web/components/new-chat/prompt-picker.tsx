@@ -36,8 +36,7 @@ export interface PromptPickerAction {
 	name: string;
 	prompt: string;
 	mode: "transform" | "explore";
-	isWebBuilder?: boolean;
-	isPresentationStudio?: boolean;
+	chatMode?: "web_builder" | "presentation_studio";
 }
 
 interface PromptPickerProps {
@@ -52,8 +51,7 @@ interface BuiltinPromptItem {
 	description: string;
 	prompt: string;
 	mode: "transform" | "explore";
-	isWebBuilder: boolean;
-	isPresentationStudio: boolean;
+	chatMode?: "web_builder" | "presentation_studio";
 }
 
 const BUILTIN_TEMPLATES: BuiltinPromptItem[] = [
@@ -64,8 +62,7 @@ const BUILTIN_TEMPLATES: BuiltinPromptItem[] = [
 		prompt:
 			"Build a modern high-converting landing page for a SaaS product with hero section, feature cards, testimonial carousel, pricing comparison, and email CTA.",
 		mode: "explore",
-		isWebBuilder: true,
-		isPresentationStudio: false,
+		chatMode: "web_builder",
 	},
 	{
 		id: "web-pricing",
@@ -74,8 +71,7 @@ const BUILTIN_TEMPLATES: BuiltinPromptItem[] = [
 		prompt:
 			"Create a modern 3-tier pricing page with monthly/yearly billing toggle, feature comparison table, and FAQ accordion section.",
 		mode: "explore",
-		isWebBuilder: true,
-		isPresentationStudio: false,
+		chatMode: "web_builder",
 	},
 	{
 		id: "web-lead-capture",
@@ -84,8 +80,7 @@ const BUILTIN_TEMPLATES: BuiltinPromptItem[] = [
 		prompt:
 			"Create an engaging lead capture page with an email opt-in form, value proposition highlights, benefit bullet points, and social proof badges.",
 		mode: "explore",
-		isWebBuilder: true,
-		isPresentationStudio: false,
+		chatMode: "web_builder",
 	},
 	{
 		id: "web-waitlist",
@@ -94,8 +89,7 @@ const BUILTIN_TEMPLATES: BuiltinPromptItem[] = [
 		prompt:
 			"Build an exciting viral waitlist coming-soon page with early access email signup, countdown timer, and referral perk highlights.",
 		mode: "explore",
-		isWebBuilder: true,
-		isPresentationStudio: false,
+		chatMode: "web_builder",
 	},
 	{
 		id: "web-report",
@@ -104,38 +98,25 @@ const BUILTIN_TEMPLATES: BuiltinPromptItem[] = [
 		prompt:
 			"Generate a clean interactive marketing report and whitepaper showcase page with key metric callouts, interactive charts summary, and download CTA.",
 		mode: "explore",
-		isWebBuilder: true,
-		isPresentationStudio: false,
+		chatMode: "web_builder",
 	},
 	{
-		id: "presentation-pitch",
-		name: "/presentation pitch deck",
-		description: "Investor-ready pitch deck",
+		id: "slides-pptx",
+		name: "/slides pptx",
+		description: "Pitch deck as a PowerPoint PPTX file",
 		prompt:
-			"Create a 10-slide pitch deck for a startup: problem, solution, market size, business model, traction, team, financials, and ask.",
+			"Create a 10-slide pitch deck as a PowerPoint PPTX file. Call generate_presentation with output_format=pptx. Cover problem, solution, market size, business model, traction, team, financials, and ask.",
 		mode: "explore",
-		isWebBuilder: false,
-		isPresentationStudio: true,
+		chatMode: "presentation_studio",
 	},
 	{
-		id: "presentation-sales",
-		name: "/presentation sales deck",
-		description: "Product sales slide deck",
+		id: "slides-marp",
+		name: "/slides marp",
+		description: "Marp Markdown slide deck",
 		prompt:
-			"Create a product sales deck: customer pain points, product overview, key features, benefits, proof points, pricing, and next steps.",
+			"Create Marp Markdown slides. Call generate_presentation with output_format=marp. Include YAML front-matter (theme, paginate), a title slide, content slides, and speaker notes.",
 		mode: "explore",
-		isWebBuilder: false,
-		isPresentationStudio: true,
-	},
-	{
-		id: "presentation-webinar",
-		name: "/presentation webinar slides",
-		description: "Webinar or training slide deck",
-		prompt:
-			"Create a webinar slide deck with an agenda, key concepts, examples, actionable takeaways, and a Q&A slide.",
-		mode: "explore",
-		isWebBuilder: false,
-		isPresentationStudio: true,
+		chatMode: "presentation_studio",
 	},
 ];
 
@@ -170,11 +151,11 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
 		);
 	}, [normalizedSearch]);
 	const filteredWebBuiltins = useMemo(
-		() => filteredBuiltins.filter((b) => b.isWebBuilder),
+		() => filteredBuiltins.filter((b) => b.chatMode === "web_builder"),
 		[filteredBuiltins]
 	);
 	const filteredPresentationBuiltins = useMemo(
-		() => filteredBuiltins.filter((b) => b.isPresentationStudio),
+		() => filteredBuiltins.filter((b) => b.chatMode === "presentation_studio"),
 		[filteredBuiltins]
 	);
 
@@ -191,8 +172,7 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
 			name: string;
 			prompt: string;
 			mode: "transform" | "explore";
-			isWebBuilder?: boolean;
-			isPresentationStudio?: boolean;
+			chatMode?: "web_builder" | "presentation_studio";
 		}[] = [];
 
 		for (const b of filteredPresentationBuiltins) {
@@ -201,8 +181,7 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
 				name: b.name,
 				prompt: b.prompt,
 				mode: b.mode,
-				isWebBuilder: false,
-				isPresentationStudio: b.isPresentationStudio,
+				chatMode: b.chatMode,
 			});
 		}
 
@@ -212,8 +191,7 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
 				name: b.name,
 				prompt: b.prompt,
 				mode: b.mode,
-				isWebBuilder: b.isWebBuilder,
-				isPresentationStudio: false,
+				chatMode: b.chatMode,
 			});
 		}
 
@@ -223,8 +201,6 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
 				name: s.name,
 				prompt: s.prompt,
 				mode: s.mode,
-				isWebBuilder: false,
-				isPresentationStudio: false,
 			});
 		}
 
@@ -259,8 +235,7 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
 				name: action.name,
 				prompt: action.prompt,
 				mode: action.mode,
-				isWebBuilder: action.isWebBuilder,
-				isPresentationStudio: action.isPresentationStudio,
+				chatMode: action.chatMode,
 			});
 		},
 		[flatItems, onSelect, createPromptIndex, onDone, router, workspaceId]

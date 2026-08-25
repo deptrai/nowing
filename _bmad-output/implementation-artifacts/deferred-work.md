@@ -4,6 +4,24 @@
   - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
   - **Reason / when to revisit:** Service-level truncation covers the runtime limit, so there is no user-facing bug. Revisit if the team wants Pydantic validation to be driven from the live config (requires model rebuild on config change).
 
+## Deferred from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-08-26, chunk D)
+
+- **Finding:** Card/dock download and preview use a raw `BACKEND_URL` `<a href>` / iframe with no `authenticatedFetch`.
+  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Reason / when to revisit:** Same pattern as other deliverable downloads; Docker proxy mode is same-origin. Revisit if cookie-host mismatch 401s on `api.nowing.net`.
+
+- **Finding:** Remotion video card still says "presentation" and exports `presentation.pptx`.
+  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Reason / when to revisit:** T8 backend catalog/docstring already narrowed; leftover UI copy is the existing video product. Revisit in a video-presentation copy pass.
+
+- **Finding:** No Playwright coverage for chips, `/slides`, or the presentation card.
+  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Reason / when to revisit:** 4.14 `bmad-nowing-web-e2e-gate` after chunk D patches.
+
+- **Finding:** `getWorkspaceIdNumber(params) || 1` fail-opens downloads to workspace 1.
+  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Reason / when to revisit:** Same fallback as other dashboard tools; API still membership-checks. Revisit with a shared workspace-id helper that refuses to guess.
+
 ## Deferred from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-08-26, chunk C re-review)
 
 - **Finding:** Identity prompts still list "slide decks" under the `deliverables` subagent, which has no `generate_presentation` tool.

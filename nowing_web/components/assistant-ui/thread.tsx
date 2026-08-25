@@ -359,6 +359,18 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 							mode: "web_builder",
 						},
 						{
+							label: tChat("card_pitch_title"),
+							icon: "📑",
+							prompt: tChat("card_pitch_prompt"),
+							mode: "presentation_studio",
+						},
+						{
+							label: tChat("card_marp_title"),
+							icon: "📝",
+							prompt: tChat("card_marp_prompt"),
+							mode: "presentation_studio",
+						},
+						{
 							label: "Give me ideas",
 							icon: "💡",
 							prompt: tChat("card_icp_prompt"),
@@ -1024,8 +1036,7 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 			name: string;
 			prompt: string;
 			mode: "transform" | "explore";
-			isWebBuilder?: boolean;
-			isPresentationStudio?: boolean;
+			chatMode?: "web_builder" | "presentation_studio";
 		}) => {
 			let userText = editorRef.current?.getText() ?? "";
 			const trigger = `/${actionQuery}`;
@@ -1045,9 +1056,9 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 			setSuggestionAnchorPoint(null);
 
 			const targetWs = workspaceId ?? 1;
-			if (action.isWebBuilder) {
+			if (action.chatMode === "web_builder") {
 				router.replace(`/dashboard/${targetWs}/new-chat?mode=web_builder`, { scroll: false });
-			} else if (action.isPresentationStudio) {
+			} else if (action.chatMode === "presentation_studio") {
 				router.replace(`/dashboard/${targetWs}/new-chat?mode=presentation_studio`, {
 					scroll: false,
 				});

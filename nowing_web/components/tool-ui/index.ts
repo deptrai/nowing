@@ -44,6 +44,7 @@ export {
 	type TodoStatus,
 } from "./plan";
 export { GeneratePodcastToolUI } from "./podcast";
+export { GeneratePresentationToolUI } from "./presentation";
 export {
 	type ExecuteArgs,
 	ExecuteArgsSchema,

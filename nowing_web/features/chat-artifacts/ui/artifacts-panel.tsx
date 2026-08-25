@@ -37,7 +37,8 @@ function EmptyState() {
 			<Boxes className="size-6 text-muted-foreground/60" aria-hidden="true" />
 			<p className="text-sm font-medium text-foreground">No artifacts yet</p>
 			<p className="text-xs text-muted-foreground">
-				Web apps, reports, podcasts, presentations, and images you generate will appear here.
+				Web apps, slide decks, reports, podcasts, video presentations, and images you generate will
+				appear here.
 			</p>
 		</div>
 	);
