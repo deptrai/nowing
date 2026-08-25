@@ -55,6 +55,7 @@ class BillingUnit(StrEnum):
     ECOMMERCE_PRODUCT = "ecommerce_product"
     WEB_BUILDER_GENERATE = "web_builder_generate"
     WEB_BUILDER_BUILD = "web_builder_build"
+    PRESENTATION_GENERATE = "presentation_generate"
 
 
 class BillableInput(Protocol):

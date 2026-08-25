@@ -42,16 +42,16 @@ def create_generate_video_presentation_tool(
     async def generate_video_presentation(
         source_content: str,
         runtime: ToolRuntime,
-        video_title: str = "Nowing Presentation",
+        video_title: str = "Nowing Video",
         user_prompt: str | None = None,
     ) -> Command:
-        """Generate a video presentation from the provided content.
+        """Generate a narrated Remotion video from the provided content.
 
-        Use this tool when the user asks to create a video, presentation, slides, or slide deck.
+        Use this tool when the user asks to create a narrated video.
 
         Args:
-            source_content: The text content to turn into a presentation.
-            video_title: Title for the presentation (default: "Nowing Presentation")
+            source_content: The text content to turn into a video.
+            video_title: Title for the video (default: "Nowing Video")
             user_prompt: Optional style/tone instructions.
         """
         try:

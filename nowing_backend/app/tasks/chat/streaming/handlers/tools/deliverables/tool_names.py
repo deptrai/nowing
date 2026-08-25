@@ -3,6 +3,7 @@ from __future__ import annotations
 DELIVERABLE_TOOLS: frozenset[str] = frozenset(
     {
         "build_web_app",
+        "generate_presentation",
         "generate_image",
         "generate_podcast",
         "generate_report",

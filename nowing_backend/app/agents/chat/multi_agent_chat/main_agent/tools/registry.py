@@ -28,6 +28,7 @@ from .update_memory import (
     create_update_memory_tool,
     create_update_team_memory_tool,
 )
+from .presentation.generate_presentation import create_generate_presentation_tool
 from .web_builder.build_web_app import create_build_web_app_tool
 
 
@@ -88,6 +89,10 @@ _MAIN_AGENT_TOOL_FACTORIES: dict[
     ),
     "build_web_app": (
         create_build_web_app_tool,
+        ("workspace_id", "user_id"),
+    ),
+    "generate_presentation": (
+        create_generate_presentation_tool,
         ("workspace_id", "user_id"),
     ),
 }

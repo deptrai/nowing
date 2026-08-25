@@ -10,6 +10,7 @@ MAIN_AGENT_NOWING_TOOL_NAMES_ORDERED: tuple[str, ...] = (
     "create_automation",
     "multi_source_lead_gen",
     "build_web_app",
+    "generate_presentation",
 )
 
 MAIN_AGENT_NOWING_TOOL_NAMES: frozenset[str] = frozenset(

@@ -39,7 +39,7 @@ _WEB_BUILDER_SYSTEM_PROMPT = (
 _PRESENTATION_STUDIO_SYSTEM_PROMPT = (
     "You are in Presentation Studio mode. The user wants to generate a slide deck. "
     "Ask a concise clarifying question only if the request is unclear, then call "
-    "generate_presentation with the user's description, optional title, output "
+    "generate_presentation with the user's description, output "
     "format (pptx or marp), and language."
 )
 
@@ -74,6 +74,8 @@ CHAT_MODES: dict[str, ChatMode] = {
         flag_key="presentation_studio_mode",
         label="Presentation Studio",
         system_prompt=_PRESENTATION_STUDIO_SYSTEM_PROMPT,
+        enabled_tools=["generate_presentation"],
+        workspace_feature_field="presentation_studio_enabled",
         global_config_attr="PRESENTATION_STUDIO_ENABLED",
         artifact_kinds=["presentation"],
         error_code="PRESENTATION_STUDIO_NOT_ENABLED",
