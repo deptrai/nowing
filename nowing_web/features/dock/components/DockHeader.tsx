@@ -56,17 +56,22 @@ export function DockHeader({ tabs }: DockHeaderProps) {
 							onClick={() => setOpen(false)}
 							className="size-7 -ml-1 text-muted-foreground hover:text-foreground hover:bg-muted"
 						>
-							<X className="size-3.5" />
+							<X className="size-3.5" aria-hidden="true" />
 							<span className="sr-only">Close canvas</span>
 						</Button>
 					</TooltipTrigger>
 					<TooltipContent side="bottom">Close canvas</TooltipContent>
 				</Tooltip>
 
-				<div className="flex items-center gap-0.5 overflow-x-auto no-scrollbar max-w-[calc(100%-4rem)]">
+				<div
+					role="tablist"
+					aria-label="Dock tabs"
+					className="flex flex-1 items-center gap-0.5 overflow-x-auto no-scrollbar min-w-0"
+				>
 					{sortedTabs.map((tab) => (
 						<DockTab
 							key={tab.id}
+							id={tab.id}
 							label={tab.label}
 							isActive={activeTab === tab.id}
 							hasUpdate={tab.hasUpdate}
@@ -90,9 +95,9 @@ export function DockHeader({ tabs }: DockHeaderProps) {
 						)}
 					>
 						{verbose ? (
-							<MessageSquare className="size-3.5" />
+							<MessageSquare className="size-3.5" aria-hidden="true" />
 						) : (
-							<PanelRightOpen className="size-3.5" />
+							<PanelRightOpen className="size-3.5" aria-hidden="true" />
 						)}
 						<span className="sr-only">Toggle verbose mode</span>
 					</Button>

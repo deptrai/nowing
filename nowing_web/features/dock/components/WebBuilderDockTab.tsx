@@ -117,7 +117,7 @@ export function WebBuilderDockTab({ workspaceId, result }: WebBuilderDockTabProp
 
 				{files.length > 0 && (
 					<div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-						<FileCode2Icon className="size-3.5" />
+						<FileCode2Icon className="size-3.5" aria-hidden="true" />
 						<span>
 							{files.length} file{files.length === 1 ? "" : "s"}
 						</span>
@@ -134,9 +134,9 @@ export function WebBuilderDockTab({ workspaceId, result }: WebBuilderDockTabProp
 							className="gap-1 text-xs h-7 rounded-lg bg-teal-600 hover:bg-teal-500 text-white"
 						>
 							{isPublishing ? (
-								<Loader2Icon className="size-3.5 animate-spin" />
+								<Loader2Icon className="size-3.5 animate-spin" aria-hidden="true" />
 							) : (
-								<RocketIcon className="size-3.5" />
+								<RocketIcon className="size-3.5" aria-hidden="true" />
 							)}
 							{isPublishing ? "Publishing..." : "Publish"}
 						</Button>
@@ -149,7 +149,7 @@ export function WebBuilderDockTab({ workspaceId, result }: WebBuilderDockTabProp
 							onClick={handleOpenLive}
 							className="gap-1 text-xs h-7 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white"
 						>
-							<ExternalLinkIcon className="size-3.5" />
+							<ExternalLinkIcon className="size-3.5" aria-hidden="true" />
 							Live Site
 						</Button>
 					)}
@@ -162,7 +162,11 @@ export function WebBuilderDockTab({ workspaceId, result }: WebBuilderDockTabProp
 							onClick={handleCopy}
 							className="gap-1 text-xs h-7 rounded-lg"
 						>
-							{copied ? <CheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
+							{copied ? (
+								<CheckIcon className="size-3.5" aria-hidden="true" />
+							) : (
+								<CopyIcon className="size-3.5" aria-hidden="true" />
+							)}
 							Copy URL
 						</Button>
 					)}
@@ -175,7 +179,7 @@ export function WebBuilderDockTab({ workspaceId, result }: WebBuilderDockTabProp
 						className="gap-1 text-xs h-7 rounded-lg"
 						onClick={() => toast.info("Code editor tab coming in next iteration.")}
 					>
-						<SparklesIcon className="size-3.5" />
+						<SparklesIcon className="size-3.5" aria-hidden="true" />
 						Edit Prompt
 					</Button>
 				</div>
@@ -189,7 +193,7 @@ export function WebBuilderDockTab({ workspaceId, result }: WebBuilderDockTabProp
 							href={effectivePublicUrl}
 							target="_blank"
 							rel="noopener noreferrer"
-							className="block truncate text-[11px] font-medium text-emerald-700 dark:text-emerald-400 hover:underline"
+							className="block truncate text-[11px] font-medium text-emerald-700 dark:text-emerald-400 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
 						>
 							{effectivePublicUrl}
 						</a>

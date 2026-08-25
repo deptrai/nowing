@@ -3,17 +3,23 @@
 import { cn } from "@/lib/utils";
 
 export interface DockTabProps {
+	id: string;
 	label: string;
 	isActive: boolean;
 	hasUpdate: boolean;
 	onClick: () => void;
 }
 
-export function DockTab({ label, isActive, hasUpdate, onClick }: DockTabProps) {
+export function DockTab({ id, label, isActive, hasUpdate, onClick }: DockTabProps) {
 	return (
 		<button
 			type="button"
+			id={`dock-tab-${id}`}
+			role="tab"
+			aria-selected={isActive}
+			aria-controls="dock-tabpanel"
 			onClick={onClick}
+			title={label}
 			className={cn(
 				"relative inline-flex items-center gap-1.5 shrink-0 whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-medium transition-all",
 				"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",

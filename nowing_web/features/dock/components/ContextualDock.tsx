@@ -7,17 +7,20 @@ import {
 	dockActiveTabAtom,
 	dockOpenAtom,
 	dockTabUpdatesAtom,
+	dockVerboseModeAtom,
 	dockWidthAtom,
 } from "@/atoms/layout/dock.atom";
-import { DynamicRightPanelCanvas } from "@/components/leads/DynamicRightPanelCanvas";
 import type { ThreadParsedContext } from "@/components/leads/thread-intent-detector";
 import type { DshMission, DshMissionControl } from "@/contracts/types/dsh.types";
 import type { Lead } from "@/contracts/types/leads.types";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { type ThreadMessageLike, useDockTabs } from "../hooks/useDockTabs";
+import { DockBody } from "./DockBody";
 import { DockHeader } from "./DockHeader";
+import { DockResizer } from "./DockResizer";
 import { FloatingReopenPill } from "./FloatingReopenPill";
-import { WebBuilderDockTab } from "./WebBuilderDockTab";
+import { MobileDockSheet } from "./MobileDockSheet";
 
 export interface ContextualDockProps {
 	workspaceId: number | string;
@@ -72,15 +75,22 @@ export function ContextualDock({
 	missionError,
 	className,
 }: ContextualDockProps) {
+	const isMobile = useIsMobile();
 	const [isOpen] = useAtom(dockOpenAtom);
 	const [activeTab, setActiveTab] = useAtom(dockActiveTabAtom);
-	const [width] = useAtom(dockWidthAtom); // ponytail: dock width is fixed at 420px; add a resizer in the next iteration.
+	const [width] = useAtom(dockWidthAtom);
+	const [verbose] = useAtom(dockVerboseModeAtom);
 	const [updates, setUpdates] = useAtom(dockTabUpdatesAtom);
 	const {
 		tabs,
 		activeTab: effectiveActiveTab,
+		activePayload,
 		webAppResult,
-	} = useDockTabs({ messages, leads, threadContext });
+	} = useDockTabs({
+		messages,
+		leads,
+		threadContext,
+	});
 
 	// Keep active tab in sync with available tabs.
 	useEffect(() => {
@@ -89,9 +99,6 @@ export function ContextualDock({
 			setActiveTab(tabs[0].id);
 		}
 	}, [tabs, activeTab, setActiveTab]);
-
-	// The dock only auto-opens when the user explicitly asks (e.g. "Open Editor").
-	// New contextual tabs pulse in the floating pill instead of stealing focus.
 
 	// Mark the active tab as "seen" when it is active.
 	useEffect(() => {
@@ -104,6 +111,38 @@ export function ContextualDock({
 	}, [effectiveActiveTab, updates, setUpdates]);
 
 	if (tabs.length === 0) return null;
+
+	const bodyProps = {
+		activeTab: effectiveActiveTab,
+		activePayload,
+		webAppResult,
+		workspaceId,
+		threadId,
+		leads,
+		isLoading,
+		threadContext,
+		sourceFilter,
+		onSourceFilterChange,
+		statusFilter,
+		onStatusFilterChange,
+		searchQuery,
+		onSearchQueryChange,
+		onRefresh,
+		onOpenReverseIcp,
+		onOpenDnc,
+		onOpenCompanyGraph,
+		shimmerCount,
+		unlockedPhones,
+		onPhoneChange,
+		missionControl,
+		latestMission,
+		missionLoading,
+		missionError,
+	};
+
+	if (isMobile) {
+		return <MobileDockSheet tabs={tabs} {...bodyProps} />;
+	}
 
 	if (!isOpen) {
 		return <FloatingReopenPill tabs={tabs} />;
@@ -118,36 +157,14 @@ export function ContextualDock({
 			style={{ width }}
 		>
 			<DockHeader tabs={tabs} />
-			<div className="flex-1 min-h-0 overflow-hidden">
-				{effectiveActiveTab === "leads" && (
-					<DynamicRightPanelCanvas
-						leads={leads}
-						isLoading={isLoading}
-						workspaceId={workspaceId}
-						threadId={threadId}
-						threadContext={threadContext}
-						sourceFilter={sourceFilter}
-						onSourceFilterChange={onSourceFilterChange}
-						statusFilter={statusFilter}
-						onStatusFilterChange={onStatusFilterChange}
-						searchQuery={searchQuery}
-						onSearchQueryChange={onSearchQueryChange}
-						onRefresh={onRefresh}
-						onOpenReverseIcp={onOpenReverseIcp}
-						onOpenDnc={onOpenDnc}
-						onOpenCompanyGraph={onOpenCompanyGraph}
-						shimmerCount={shimmerCount}
-						unlockedPhones={unlockedPhones}
-						onPhoneChange={onPhoneChange}
-						missionControl={missionControl}
-						latestMission={latestMission}
-						missionLoading={missionLoading}
-						missionError={missionError}
-					/>
-				)}
-				{effectiveActiveTab === "web-builder" && webAppResult && (
-					<WebBuilderDockTab workspaceId={workspaceId} result={webAppResult} />
-				)}
+			<DockResizer />
+			<div
+				id="dock-tabpanel"
+				role="tabpanel"
+				aria-labelledby={`dock-tab-${effectiveActiveTab}`}
+				className={cn("flex-1 min-h-0 overflow-hidden transition-opacity", verbose && "opacity-60")}
+			>
+				<DockBody {...bodyProps} />
 			</div>
 		</aside>
 	);
