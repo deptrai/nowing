@@ -1,262 +1,459 @@
 ---
-baseline_commit: be2efe015
+baseline_commit: 4fe46956f
 story_key: "27-2a"
 epic: "epic-27"
 story: "27.2a"
 title: "Manus Slides Presentation Studio from Chat (PPTX/Marp)"
-status: "ready-for-dev"
+status: "in-progress"
 ---
 
 # Story 27.2a: Manus Slides Presentation Studio from Chat (PPTX/Marp)
 
-**Status:** `ready-for-dev`  
+**Status:** `in-progress` — chunk A+B+C patches applied 2026-08-26 (C re-review included); chunk D review pending  
 **Epic:** Epic 27 — Full-Stack Web App Builder, Instant Hosting & Creative Studio  
 **Priority:** P1  
-**Scope:** MVP chat-first slice for slide-deck generation. Generate PPTX or Marp Markdown from a chat prompt, render as an artifact card, and let the user download / open the deck.  
-**Related Story:** <ref_file file="/Users/luisphan/Documents/GitHub/nowing/_bmad-output/implementation-artifacts/stories/27-1a-web-builder-chat-mode-sales-marketing-mvp.md" /> — 27.1a chat-mode/tool-binding pattern.  
-**Source:** <ref_file file="/Users/luisphan/Documents/GitHub/nowing/_bmad-output/planning-artifacts/epics.md" /> (Epic 27, FR-94; AD-112, AD-114).  
-**Replaces part of:** <ref_file file="/Users/luisphan/Documents/GitHub/nowing/_bmad-output/implementation-artifacts/stories/27-2-manus-slides-presentation-studio-speaker-diarization.md" /> — this story takes the PPTX/Marp slice.
+**Scope:** Chat-first PPTX / Marp slide generation. Not meeting minutes (27.2b). Not web builder / Mark Tool (27.1*).  
+**Related Story:** <ref_file file="/Users/luisphan/Documents/GitHub/nowing/_bmad-output/implementation-artifacts/stories/27-1a-web-builder-chat-mode-sales-marketing-mvp.md" />  
+**Parent (split):** <ref_file file="/Users/luisphan/Documents/GitHub/nowing/_bmad-output/implementation-artifacts/stories/27-2-manus-slides-presentation-studio-speaker-diarization.md" />  
+**Source:** <ref_file file="/Users/luisphan/Documents/GitHub/nowing/_bmad-output/planning-artifacts/epics.md" /> Epic 27 / FR-94  
+**UX:** <ref_file file="/Users/luisphan/Documents/GitHub/nowing/_bmad-output/planning-artifacts/ux-designs/ux-Nowing-2026-08-15/ux-contract-epic-27-autonomous-workstation.md" /> Flow 2  
+**Architecture:** AD-120, AD-121, AD-8, AD-10
 
 ## Story
 
 As a **sales or marketing user**,  
-I want to describe a slide deck in natural language from the chat (or via a quick chip/URL),  
-So that the agent generates a PPTX 16:9 deck or a Marp-compatible Markdown deck and surfaces it as a downloadable deliverable in the chat.
+I want to describe a slide deck in natural language from chat (chip, `/slides`, or URL),  
+so that the agent generates a 16:9 PPTX or Marp Markdown deck and shows a downloadable deliverable card.
 
 ## Goal
 
-- **Chat-first, like 27.1a:** the thread can be tagged with `platform_metadata.presentation_studio_mode=true` via a quick chip, `/slides` slash prompt, or `?mode=presentation_studio` URL.
-- **Single-turn MVP:** user describes the deck → agent calls `generate_presentation` → deliverable card appears in chat.
-- **Two output formats:** `.pptx` (for PowerPoint/Google Slides) and `.md` (Marp-compatible).
-- **Standalone page optional:** `/dashboard/[workspace_id]/presentations` can list all generated decks; chat is the primary entry point for v1.
+- Single-turn MVP: prompt → `generate_presentation` → chat card with download/preview.
+- Formats: `.pptx` (PowerPoint / Google Slides) and `.md` (Marp).
+- Chat is the v1 entry point. Standalone `/dashboard/[workspace_id]/presentations` is **out of scope**.
 
-## UX Review Notes
+## Out of scope
 
-- **Artifact group naming:** the existing `video` artifact kind is labeled **"Presentations"**. When adding `presentation`, rename `video` → **"Video Presentations"** and the new `presentation` kind → **"Slide Decks"** to avoid two groups with the same name.
-- **Output format UX:** do not rely on the user typing "Marp slides". Provide quick chips `Create a pitch deck (PPTX)` and `Create Marp slides`, plus slash templates `/slides pptx` and `/slides marp`. The `output_format` parameter is set by the chosen entry point.
-- **PPTX preview realism:** PPTX cannot be rendered inline reliably. The deliverable card shows **"Download .pptx"** as the primary CTA. A secondary **"Open in Slides"** link (Google Slides / PowerPoint online) is acceptable; true preview is out-of-scope for MVP.
-- **Marp preview fallback:** if `marp-cli` is installed, render a HTML preview; otherwise show **"Download .md"** and a helper line *"Open this file in Marp for VS Code / Marp Web."*
-- **Quick chip copy (bilingual):**
-  - English: "Create a pitch deck"
-  - Vietnamese: "Tạo slide pitch"
-- **Prompt picker mode:** extend `PromptPickerAction` / `BuiltinPromptItem` from a boolean `isWebBuilder` to a `mode` string so `/slides` slash templates can set `?mode=presentation_studio`.
-- **Loading / error / degraded copy:**
-  - Generating: *"Designing your slides…"* / *"Đang thiết kế slide…"*
-  - Dependency missing: *"Slide studio is not available on this workspace plan or installation."*
-  - Validation failed: *"Could not generate a valid deck from that description. Try a more specific outline."*
-
-## Architecture Review Notes
-
-- **Avoid chat-mode if-else chains:** 27.1a currently hardcodes `web_builder_mode` in `orchestrator.py`. Adding `presentation_studio_mode` and `meeting_minutes_mode` on top would create a 3-way `if/elif`. Use a generic `ChatMode` registry instead:
-  - `app/tasks/chat/streaming/flows/new_chat/chat_modes.py` maps `mode` → `{ enabled_tools, system_prompt_prefix, feature_flag, error_code }`.
-  - `orchestrator.py` looks up the registry and applies it without new branches.
-- **Do not exec LLM output:** `python-pptx` is safe, but only if the LLM outputs a **structured JSON deck spec** (slide list, titles, bullets, chart data) that the service maps to `pptx` objects. Never `exec()` or `eval()` generated Python/Marp code. See <ref_snippet file="/Users/luisphan/Documents/GitHub/nowing/nowing_backend/app/agents/chat/multi_agent_chat/main_agent/tools/web_builder/build_web_app.py" lines="49-73" /> for the validation-first pattern.
-- **Typed tool output with status/error:** follow the 27.1a fix for `build_web_app`: return a Pydantic output (`GeneratePresentationOutput` / `WebAppBuildOutput`) with `status: "validation_failed" | "error" | "ready"` and `error` field. Do not return raw error strings; the frontend card uses `status` to render error state.
-- **Tool session handling:** like `build_web_app`, do not call `session.commit()` in the tool after the service commits. Let `WebBuilderService` / `PresentationStudioService` own the unit of work and rollback on exception. The tool only opens the session and returns `result.model_dump_json()`.
-- **User ID parsing:** `deps["user_id"]` may arrive as `UUID` or `str`. Use the same guard as <ref_snippet file="/Users/luisphan/Documents/GitHub/nowing/nowing_backend/app/agents/chat/multi_agent_chat/main_agent/tools/web_builder/build_web_app.py" lines="21-34" />.
-- **Slug disambiguation:** `SlidePresentation.slug` must be workspace-unique. Before insert, call a `disambiguate_slug` helper that appends a short hash if the slug already exists, mirroring `WorkspaceApp`.
-- **`enabled_tools` should not isolate the agent:** the mode should inject a system prompt and keep base tools available (`memory`, `search`, etc.). Do not set `enabled_tools=["generate_presentation"]` exclusively; use a nudge prompt unless the product explicitly wants a single-tool thread.
-- **Cross-cutting artifact system change:** adding `presentation` to `ArtifactKind` touches `model/artifact.ts`, `ARTIFACT_TOOL_KINDS`, `BODY_TOOLS`, `KIND_META`, `GROUP_ORDER`, `collect-artifacts.ts`, and potentially `artifacts-library`. Treat this as **Step 0** and land before the deliverable card.
-- **Feature gate on all routes:** every `POST/GET/PUT/DELETE` in `app/routes/presentation_routes.py` must check `PRESENTATION_STUDIO_ENABLED` and return 403 if disabled, not just the chat tool.
-- **Prompt validation returns typed output:** if `prompt` is empty or too long, return `GeneratePresentationOutput(status="validation_failed", error="...").model_dump_json()` instead of a string. This keeps the deliverable card from hanging.
-- **Marp preview subprocess safety:** if `marp-cli` is invoked, run it in a temp directory, set a short timeout, validate output, and never pipe user input directly into shell arguments.
-
-## Architecture Alignment (Nowing Spine)
-
-| AD | Invariant | Alignment | Required action |
-|---|---|---|---|
-| AD-1 | Monolith module hóa | `PresentationStudioService` lives in `app/services/`, tool in `app/agents/`, routes in `app/routes/`. No new service. | ✅ None |
-| AD-2 | Async SQLA + Alembic + pgvector | New `SlidePresentation` table, `AsyncSession`, Alembic migration. | ✅ None |
-| AD-4 | Tool registry + permission middleware | Tool registered via `main_agent/tools/registry.py`; must log `AgentActionLog` and honor `PermissionMiddleware` on mutations. | ⚠️ Add `AgentActionLog` write and workspace auth to all `presentation_routes.py`. |
-| AD-5 | Zero sync real-time | Deliverable generated in seconds; no long-running state. | ✅ None |
-| AD-6 | Next.js server proxy | Frontend uses existing `/api/v1` proxy. | ✅ None |
-| AD-8 | Unified credit wallet, real cost | `TokenUsage.cost_micros` recorded post-generation; no flat billing. | ✅ None |
-| AD-9 | RBAC 3 roles | All REST routes must call `require_workspace_member` like `web_builder_routes.py`. | ⚠️ Add `require_workspace_member` to `presentation_routes.py`. |
-| AD-10 | Token usage per msg/ws/user | `usage_type="presentation_generate"` recorded. | ✅ None |
-| AD-16 | License boundary | `python-pptx` MIT, `marp-cli` MIT; code in `app/services/` (Apache/MIT), not `app/proprietary/`. | ✅ None |
-| AD-17 | Async door | Generation is fast enough to stay sync (<10s target). No new async flow needed. | ✅ None |
-| AD-21 | Client tab state pointer-only | `?mode=presentation_studio` is URL pointer; no local storage state. | ✅ None |
-| AD-30 | AgentConfig registry | Mode mapping goes through `ChatMode` registry, not hardcoded `if/elif` in `orchestrator.py`. | ⚠️ Create `app/tasks/chat/streaming/flows/new_chat/chat_modes.py`. |
-
-### Alignment action items for 27.2a
-
-1. Add `require_workspace_member` dependency to all `presentation_routes.py` endpoints.
-2. Write `AgentActionLog` entries for `generate_presentation` tool calls.
-3. Implement `ChatMode` registry and avoid a hardcoded `if is_presentation_studio_mode` block in `orchestrator.py`.
-
-## [BUILT] vs [GAP]
-
-### [BUILT] — patterns to reuse
-
-- **Video presentation model + routes** (`app/db.py:1682-1721`, `app/routes/video_presentations_routes.py`). `VideoPresentation` has `workspace_id`, `thread_id`, `title`, `status`, JSON `slides`. Good template for a `SlidePresentation` table.
-- **Report / deliverable pattern** (`app/routes/reports_routes.py`, `app/routes/export_routes.py`, `app/db.py:1724-1760`). Pandoc/Typst export flow, file storage under `FILE_STORAGE_LOCAL_PATH`, download/preview URLs.
-- **Chat tool + artifact pattern from 27.1a:** `build_web_app` in `app/agents/chat/multi_agent_chat/main_agent/tools/web_builder/build_web_app.py`, `BODY_TOOLS` and `ARTIFACT_TOOL_KINDS` in `nowing_web/components/assistant-ui/assistant-message.tsx` and `nowing_web/features/chat-artifacts/model/artifact.ts`.
-- **Tool registry** (`app/agents/chat/multi_agent_chat/main_agent/tools/index.py` and `registry.py`): adding a new `generate_presentation` tool follows the same 3-line registration as `build_web_app`.
-- **TokenUsage / cost tracking** (`app/services/token_tracking_service.py`, `app/db.py:1200-1293`): record `usage_type` and `cost_micros` post-hoc.
-- **Chat mode gating** (`app/config/__init__.py`, `app/routes/new_chat_routes.py`, `app/tasks/chat/streaming/flows/new_chat/orchestrator.py`): reuse `WEB_BUILDER_ENABLED` pattern for `PRESENTATION_STUDIO_ENABLED`.
-- **Workspace-scoped RBAC + slug uniqueness** (`WorkspaceApp.slug`, `app/db.py` unique pattern).
-
-### [GAP] — new work
-
-1. **Config + feature gate** (`app/config/__init__.py`):
-   - `PRESENTATION_STUDIO_ENABLED = os.getenv("PRESENTATION_STUDIO_ENABLED", "TRUE").upper() == "TRUE"`
-   - `PRESENTATION_MAX_PROMPT_CHARS` and `PRESENTATION_FILE_STORAGE_SUBDIR` (default `presentations/`).
-
-2. **Database model** (`app/db.py` + alembic migration):
-   - New `SlidePresentation` table: `id` (UUID PK), `workspace_id`, `user_id`, `thread_id`, `title`, `slug`, `format` (`pptx` | `marp`), `status` (`generating` | `ready` | `failed`), `file_path`, `download_url`, `preview_url`, `metadata` (JSONB slide count/theme), `created_at`, `updated_at`.
-   - `Workspace.slide_presentations` relationship.
-
-3. **Generation service** (`app/services/presentation/`):
-   - `PresentationStudioService` with two output drivers:
-     - **PPTX driver:** `python-pptx` → `Presentation` object, 16:9 `SLIDE_WIDTH/HEIGHT`, title/bullet/content placeholders, chart placeholder (`python-pptx.chart` optional), speaker notes.
-     - **Marp driver:** render Marp-flavored Markdown (`---` slide separators, `theme`, `class` directives). Provide a raw `.md` and optionally call `marp-cli` (Node) to render to HTML/PDF if installed.
-   - Prompt template for LLM: receive outline/theme and output structured deck spec (slides with title, bullets, notes, optional chart config).
-   - Save generated file to `FILE_STORAGE_LOCAL_PATH/presentations/{workspace_id}/{presentation_id}/{slug}.{format}`.
-
-4. **Pydantic schemas** (`app/services/presentation/schemas.py`):
-   - `GeneratePresentationInput`: `prompt`, `workspace_id`, `user_id` (UUID), `output_format` (`pptx` | `marp`), `title` (optional), `language`.
-   - `GeneratePresentationOutput`: `presentation_id`, `title`, `slug`, `format`, `status`, `download_url`, `preview_url`, `slide_count`.
-
-5. **LangChain tool** (`app/agents/chat/multi_agent_chat/main_agent/tools/presentation/generate_presentation.py`):
-   - Factory `create_generate_presentation_tool(deps)`.
-   - Tool `generate_presentation(prompt, output_format="pptx", title=None, language="en")`.
-   - Truncates prompt to `PRESENTATION_MAX_PROMPT_CHARS`.
-   - Calls `PresentationStudioService` with a fresh `async_session_maker()` session.
-   - Returns `GeneratePresentationOutput.model_dump_json()`.
-
-6. **Tool registration** (`app/agents/chat/multi_agent_chat/main_agent/tools/index.py` and `registry.py`):
-   - Add `generate_presentation` to `MAIN_AGENT_NOWING_TOOL_NAMES_ORDERED`.
-   - Register in `MAIN_AGENT_NOWING_TOOL_FACTORIES` with required deps `("workspace_id", "user_id")`.
-
-7. **Chat mode wiring** (`app/routes/new_chat_routes.py`, `app/tasks/chat/streaming/flows/new_chat/orchestrator.py`):
-   - Allow `platform_metadata.presentation_studio_mode=true` on thread creation.
-   - 403 if `PRESENTATION_STUDIO_ENABLED=false`.
-   - In `stream_new_chat`, when `presentation_studio_mode` is true, set `enabled_tools=["generate_presentation"]`, prepend a brief system prompt for slide-deck generation.
-   - Per-turn override + thread fallback, like 27.1a.
-
-8. **Frontend deliverable card** (`nowing_web/components/tool-ui/presentation.tsx` new file):
-   - `GeneratePresentationToolUI` shows title, format icon (PPTX/Marp), slide count, Download button, Open Preview button.
-   - States: `generating`, `ready`, `error`.
-
-9. **Artifact mapping** (`nowing_web/components/assistant-ui/assistant-message.tsx`, `nowing_web/features/chat-artifacts/model/artifact.ts`, `nowing_web/features/chat-artifacts/ui/artifact-row.tsx`, `nowing_web/features/chat-artifacts/ui/artifacts-panel.tsx`, `nowing_web/features/chat-artifacts/lib/collect-artifacts.ts`):
-   - Add `"presentation"` to `ArtifactKind`.
-   - Map `generate_presentation: "presentation"` in `ARTIFACT_TOOL_KINDS` and `BODY_TOOLS`.
-   - Add `KIND_META.presentation` icon and `GROUP_ORDER` entry.
-   - Add `describeArtifact` case for `presentation`.
-
-10. **Chat entry points** (`nowing_web/app/dashboard/[workspace_id]/new-chat/[[...chat_id]]/page.tsx`, `nowing_web/components/assistant-ui/thread.tsx`, `nowing_web/components/new-chat/prompt-picker.tsx`):
-    - Quick chip "Create slide deck".
-    - Slash prompt `/slides` with templates (sales pitch, pricing, report, pitch deck).
-    - URL query `?mode=presentation_studio&q=...` pre-fills composer.
-
-11. **REST routes for download/preview/list** (`app/routes/presentation_routes.py`):
-    - `GET /api/v1/presentations` (list workspace decks).
-    - `GET /api/v1/presentations/{presentation_id}` (read).
-    - `GET /api/v1/presentations/{presentation_id}/download` (return `FileResponse` or redirect).
-    - `GET /api/v1/presentations/{presentation_id}/preview` (for PPTX, stream to frontend; for Marp, render HTML or return raw MD).
-
-12. **Cost tracking + feature gate on routes**:
-    - Record `TokenUsage(usage_type="presentation_generate", cost_micros=...)` after generation.
-    - `PRESENTATION_STUDIO_ENABLED` 403 on generation routes and thread creation.
+- Speaker diarization / meeting minutes (27.2b).
+- Mark Tool / AST mutation on slides.
+- PDF export, Google Slides API import, live PowerPoint Online embed.
+- Executing LLM-generated Python or shelling Marp with interpolated user strings.
+- New Permission enum. If you mirror `build_web_app`'s membership+permission check, reuse `Permission.WEB_BUILDER_CREATE` for the MVP or add `Permission.PRESENTATION_CREATE` to the Editor role later; do not fail-closed on a missing permission.
+- Recreating `chat_modes.py` (already exists).
+- Per-call in-place update of an existing deck row (re-generate = **new** `SlidePresentation`; the latest card in the thread is source of truth).
+- `document_id` / crawl-URL ingestion; a URL inside the prompt is just LLM text.
+- Daytona/AD-112 sandbox (that is Excel 26.9). PPTX is in-process `python-pptx`.
+- Mark Tool on slide preview (AD-114 is 27.1d / `web_app` only).
 
 ## Acceptance Criteria
 
-### AC-1: Chat Session in Presentation Studio Mode
+### AC-1: Presentation Studio chat mode
 
-- **Given** the user is on the new-chat welcome screen,  
-  **When** they click the "Create slide deck" quick chip (or use `/slides` slash prompt or `?mode=presentation_studio` URL),  
-  **Then** a thread is created with `platform_metadata: { "presentation_studio_mode": true }`, and the chat runtime injects a slide-generation system prompt plus the `generate_presentation` tool.
+- **Given** the new-chat welcome screen,  
+  **When** the user clicks **"Create a pitch deck (PPTX)"** or **"Create Marp slides"** (or `/slides pptx` / `/slides marp`, or `?mode=presentation_studio`),  
+  **Then** the thread is created with `platform_metadata.presentation_studio_mode=true`, the ChatMode registry injects the presentation system prompt, and `generate_presentation` is available.
 
-- **Given** a presentation-studio chat session,  
+- **Given** a presentation-studio thread,  
   **When** the user submits a prompt,  
-  **Then** the agent calls `generate_presentation` with the user prompt and `output_format` defaulting to `pptx`, and the response stream includes a deliverable card with `presentation_id`, `title`, `slug`, `format`, `download_url`, `preview_url`, `slide_count`.
+  **Then** the agent calls `generate_presentation` with `output_format` from the entry point (`pptx` default; `marp` when the Marp chip/slash is used), and the stream renders a deliverable card with `presentation_id`, `title`, `slug`, `format`, `status`, `download_url`, `preview_url`, `slide_count`.
 
-### AC-2: PPTX Generation
+### AC-2: PPTX generation
 
-- **Given** a user describes a 16:9 slide deck in English or Vietnamese (e.g., "5-slide sales pitch for a B2B CRM"),  
-  **When** `PresentationStudioService` generates with `output_format=pptx`,  
-  **Then** it writes a valid `.pptx` file with at least a title slide and content slides, 16:9 aspect ratio, and speaker notes per slide.
+- **Given** a deck description in English or Vietnamese,  
+  **When** `output_format=pptx`,  
+  **Then** the service writes a valid 16:9 `.pptx` with at least a title slide, content slides, and speaker notes per slide. Optional chart only if the structured spec includes chart data.
 
-- **Given** the generated PPTX,  
-  **When** the user downloads it,  
-  **Then** the file opens in PowerPoint / Google Slides without corruption.
+- **Given** the download URL,  
+  **When** the user downloads the file,  
+  **Then** it is a real PPTX (ZIP/Open XML), not Markdown renamed.
 
-### AC-3: Marp Markdown Generation
+### AC-3: Marp Markdown generation
 
-- **Given** a user requests "Marp slides",  
-  **When** `PresentationStudioService` generates with `output_format=marp`,  
-  **Then** it writes a Marp-compatible `.md` file with `---` slide separators, front-matter `theme` and `class`, and a download/preview URL.
+- **Given** a Marp request,  
+  **When** `output_format=marp`,  
+  **Then** the service writes Marp Markdown with YAML front-matter (`theme`, `class`, `paginate`) and `---` slide separators.
 
-- **Given** the Marp file,  
-  **When** `marp-cli` is installed,  
-  **Then** the backend can optionally render it to HTML via a subprocess and serve it at `preview_url`.
+- **Given** the `marp` binary (from `@marp-team/marp-cli`) is on PATH,  
+  **When** generation succeeds,  
+  **Then** the backend MAY render HTML via `subprocess` argv list + timeout and set `preview_url`. If `marp` is missing, `preview_url` is null, `degradation_reason="dependency_missing"`, card shows Download `.md` plus helper copy — no crash.
 
-### AC-4: Workspace-Scoped Registry + Cost Tracking
+### AC-4: Registry + cost
 
-- **Given** a generated deck,  
-  **When** it is saved,  
-  **Then** a `SlidePresentation` row is written with `workspace_id`, `user_id`, `title`, `slug`, `format`, `status="ready"`, and a workspace-unique `slug`.
-
-- **Given** a deck generation completes,  
+- **Given** a successful generation,  
   **When** the service returns,  
-  **Then** `TokenUsage` is recorded with `usage_type="presentation_generate"` and `cost_micros` computed from LLM token usage.
+  **Then** a `SlidePresentation` row exists with `workspace_id`, `user_id`, workspace-unique `slug`, `format`, `status="ready"`, `file_path` under `FILE_STORAGE_LOCAL_PATH/presentations/{workspace_id}/{presentation_id}/`.
 
-### AC-5: Auth, Audit, and Workspace Scoping
+- **Given** generation completes (including LLM calls),  
+  **When** the service returns,  
+  **Then** `TokenUsage` is recorded with `usage_type=UsageType.PRESENTATION_GENERATE` (`"presentation_generate"`) and `cost_micros` from the LLM call (0 only if no LLM tokens were used). Use `record_token_usage`; add the enum member — do not pass a raw unregistered string.
 
-- **Given** any `POST/GET/PUT/DELETE` endpoint in `app/routes/presentation_routes.py`,  
-  **When** a request is received,  
-  **Then** the `require_workspace_member` dependency is applied and unauthenticated or non-member users receive `401`/`403` before any workspace data is accessed.
+### AC-5: Auth and workspace scoping
 
-- **Given** the `generate_presentation` tool is invoked in a chat turn,  
-  **When** the tool executes,  
-  **Then** it writes an `AgentActionLog` entry recording the tool name, `workspace_id`, `user_id`, `thread_id`, prompt summary, and output status.
+- **Given** any presentation REST route,  
+  **When** the request is unauthenticated or the user is not a workspace member,  
+  **Then** respond 401/403 before reading files or rows. Cross-workspace IDs return 404, not 403 leakage of existence if that is the web-builder pattern; match `web_builder_routes.require_workspace_member`.
 
-- **Given** a user tries to list, download, preview, or delete a presentation,  
-  **When** the route is processed,  
-  **Then** workspace RBAC is enforced via `require_workspace_member`; a user may not access decks outside their workspace.
+- **Given** `generate_presentation` runs in chat,  
+  **When** the tool finishes,  
+  **Then** `AgentActionLog` already has a row via `ActionLogMiddleware.aafter_tool`. **Do not insert `AgentActionLog` inside the tool.**
 
-### AC-6: Feature Gating
+### AC-6: Feature gate
 
-- **Given** `PRESENTATION_STUDIO_ENABLED=false`,  
-  **When** a user tries to create a presentation-studio thread or call the generation route,  
-  **Then** the API returns 403 with a clear message.
+- **Given** `PRESENTATION_STUDIO_ENABLED=false` (repo default),  
+  **When** the client creates a thread with `presentation_studio_mode=true` or hits presentation generate/list/download/preview,  
+  **Then** API returns 403 with `Presentation Studio is not enabled on this workspace plan`. The tool, if somehow invoked, returns typed `status="validation_failed"` — not an uncaught exception.
 
-## Consequences
+## Tasks / Subtasks
 
-- New `app/services/presentation/` module.
-- New `SlidePresentation` DB table + alembic migration.
-- `python-pptx` dependency; `marp-cli` optional (Node) for HTML preview.
-- New frontend tool card and artifact kind.
-- TokenUsage usage_type `presentation_generate`.
+- [ ] **T0 — ArtifactKind Step 0 (AC-1, AD-121)** — **this story owns Step 0**; 27.2b reuses it. Kind name is `presentation` (ChatMode + UX), **not** `slides`. (AC: 1)
+  - [ ] Add `"presentation"` to `ArtifactKind` in `nowing_web/features/chat-artifacts/model/artifact.ts`
+  - [ ] Map `generate_presentation: "presentation"` in `ARTIFACT_TOOL_KINDS`
+  - [ ] Register `BODY_TOOLS.generate_presentation` in `assistant-message.tsx`
+  - [ ] `KIND_META` / `GROUP_ORDER` / `EmptyState`: add **Slide Decks**; rename existing `video` label from **"Presentations"** → **"Video Presentations"** (update `artifact-row.tsx`, `artifacts-panel.tsx` `GROUP_ORDER`, and `EmptyState` copy)
+  - [ ] `collect-artifacts.ts` `describeArtifact` case for `presentation`. Set `key` to `result.presentation_id` (UUID, `entityId: null`); set `contentType: "markdown"` (placeholder; the body card owns the viewer).
+  - [ ] Export card from `components/tool-ui/index.ts`
 
-## Edge Cases & Risks
+- [ ] **T1 — Config + UsageType (AC-4, AC-6)** (AC: 4, 6)
+  - [ ] Keep existing `PRESENTATION_STUDIO_ENABLED` default **FALSE** (already in `app/config/__init__.py`)
+  - [ ] Add `PRESENTATION_FILE_STORAGE_SUBDIR` default `presentations`
+  - [ ] Add `UsageType.PRESENTATION_GENERATE = "presentation_generate"` next to `WEB_BUILDER_MARK`
 
-| Edge | Handling |
-|---|---|
-| `prompt` empty or whitespace | Tool returns error string before calling service. |
-| `output_format` not `pptx` or `marp` | Tool coerces to `pptx`; invalid enum from agent is logged and rejected. |
-| `python-pptx` not installed / `marp-cli` missing | Service returns `status="failed"` with `degradation_reason="dependency_missing"`; frontend shows error card. |
-| LLM returns malformed deck spec | Service returns `status="validation_failed"`, no file written. |
-| Two decks in the same workspace with the same title | Slug disambiguated by appending a short hash (same pattern as `WorkspaceApp.slug`). |
-| File storage path missing | `PresentationStudioService` creates directories before writing. |
-| Large prompt | Truncated to `PRESENTATION_MAX_PROMPT_CHARS`. |
-| `PRESENTATION_STUDIO_ENABLED=false` | 403 on thread creation and route; tool not built in chat runtime. |
+- [ ] **T2 — Model + Alembic (AC-4)** (AC: 4)
+  - [ ] `SlidePresentation` in `app/db.py` + optional `Workspace.slide_presentations` (add it only if you also add `Workspace.workspace_apps`). Primary key: `id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))` to mirror `WorkspaceApp`. Status: `generating | ready | failed | degraded` (`degraded` = file written, Marp HTML preview skipped).
+  - [ ] Unique `(workspace_id, slug)`
+  - [ ] Alembic migration. Do **not** add `slide_presentations` to `app/zero_publication.py` for the MVP: card updates flow through SSE `emit_tool_output_card` and the artifact list refreshes from thread messages. If a future real-time sync requirement arises, add it to `ZERO_PUBLICATION` and call `apply_publication` in the migration.
 
-## Verification Commands
+- [ ] **T3 — Dependency (AC-2)** (AC: 2)
+  - [ ] Add `python-pptx>=1.0.2` to `nowing_backend/pyproject.toml` (MIT). Pulls `lxml`, `pillow`, `xlsxwriter`.
+  - [ ] `uv lock` / `uv sync`. Do **not** add Node `marp-cli` as a hard dependency.
 
-Backend:
-```bash
-cd nowing_backend
-ruff check app/services/presentation app/routes/presentation_routes.py app/agents/chat/multi_agent_chat/main_agent/tools/presentation app/db.py app/config/__init__.py app/schemas/presentation.py
-ruff format app/services/presentation app/routes/presentation_routes.py app/agents/chat/multi_agent_chat/main_agent/tools/presentation app/db.py app/config/__init__.py app/schemas/presentation.py
-uv run alembic upgrade head
-uv run pytest tests/unit/services/presentation -q
-uv run pytest tests/unit/agents/multi_agent_chat/ -q
+- [ ] **T4 — Schemas + service (AC-2, AC-3, AC-4)** (AC: 2, 3, 4)
+  - [ ] `app/services/presentation/schemas.py`: `GeneratePresentationInput` / `GeneratePresentationOutput` with `status: generating | ready | validation_failed | error` and optional `error`, `degradation_reason`
+  - [ ] `PresentationStudioService`: LLM → **JSON deck spec** (pydantic) → PPTX or Marp file. Never `exec`/`eval` LLM text.
+  - [ ] LLM via `get_agent_llm(session, workspace_id)` — same as `WebBuilderService`
+  - [ ] PPTX: 16:9 (`Inches(13.333)` × `Inches(7.5)`), title + body + notes. If `DeckSpec` includes `chart`, add a `python-pptx` chart; if not, skip (do not fail). Include one unit fixture **with** chart data so FR-94 “có biểu đồ” is testable.
+  - [ ] Marp writer; optional `marp` binary (from `@marp-team/marp-cli`) via `asyncio.create_subprocess_exec` argv, cwd=temp, timeout ≤ 30s. Detect with `shutil.which("marp")`.
+  - [ ] Slug disambiguation: copy `WorkspaceApp` hash suffix
+  - [ ] Own session commit/rollback; tool does not `session.commit()` after the service
+
+- [ ] **T5 — Tool + registry (AC-1, AC-5)** (AC: 1, 5)
+  - [ ] `app/agents/chat/multi_agent_chat/main_agent/tools/presentation/generate_presentation.py` factory mirroring `build_web_app.py` (UUID `user_id` guard, empty prompt → typed validation_failed, truncate to `PRESENTATION_MAX_PROMPT_CHARS`)
+  - [ ] Append `"generate_presentation"` to `MAIN_AGENT_NOWING_TOOL_NAMES_ORDERED`. If the name is missing here, `factory.py` **silently drops** it from `enabled_tools`.
+  - [ ] Register factory in `_MAIN_AGENT_TOOL_FACTORIES` with deps `("workspace_id", "user_id")`
+  - [ ] Add `"generate_presentation"` to `app/tasks/chat/streaming/handlers/tools/deliverables/tool_names.py` `DELIVERABLE_TOOLS`
+  - [ ] Copy `deliverables/build_web_app/{emission,thinking}.py` → `deliverables/generate_presentation/` (SSE card never appears without this)
+  - [ ] **Do not** register this tool on the deliverables **subagent** (`subagents/builtins/deliverables/tools/`). Mode `enabled_tools` only binds **main-agent** names.
+  - [ ] Optional but preferred: `app/capabilities/presentation/generate/` executor so REST and tool share one path (copy `web_builder/build_app`). If you add a capability, also add `BillingUnit.PRESENTATION_GENERATE` beside `WEB_BUILDER_GENERATE` in `app/capabilities/core/types.py`.
+
+- [ ] **T6 — ChatMode wiring (AC-1, AC-6, AD-120)** (AC: 1, 6)
+  - [ ] **Do not create a new registry.** Edit existing `presentation_studio` entry in `chat_modes.py`: set `enabled_tools=["generate_presentation"]` (orchestrator **replaces** the tool list when not None — same as `web_builder`)
+  - [ ] `new_chat_routes.py` already 403s gated modes via `resolve_chat_mode` + `is_chat_mode_enabled` — do not add a third `if presentation_studio` branch
+  - [ ] Frontend: `?mode=presentation_studio` → `platform_metadata: { presentation_studio_mode: true }` in `new-chat/[[...chat_id]]/page.tsx` (today only `web_builder` is handled)
+
+- [ ] **T7 — REST (AC-5, AC-6)** (AC: 5, 6)
+  - [ ] `app/routes/presentation_routes.py` prefix `/api/v1/presentations`
+  - [ ] `GET /` list, `GET /{id}` read, `GET /{id}/download` FileResponse, `GET /{id}/preview` HTML or 404 if none, `DELETE /{id}` (UX right-to-delete; 204 after member check)
+  - [ ] Gate every route with `PRESENTATION_STUDIO_ENABLED` then `require_workspace_member`
+  - [ ] Mount in `app/app.py` like `web_builder_routes`
+  - [ ] Path traversal: resolve file under storage root, `is_relative_to`
+
+- [ ] **T8 — Frontend card + entry points (AC-1, UX Flow 2)** (AC: 1)
+  - [ ] `components/tool-ui/presentation.tsx` — `GeneratePresentationToolUI`: title, format, slide count, Download, Preview (if URL), states generating/ready/error/degraded
+  - [ ] PPTX: primary **"Download .pptx"**; secondary **"Open in Slides"** only if you have a safe `https://` viewer URL — do not fake Google Slides
+  - [ ] Marp: Preview iframe if `preview_url`; else Download `.md` + *"Open this file in Marp for VS Code / Marp Web."*
+  - [ ] Welcome chips in `thread.tsx` (same `?q=&mode=` pattern as landing-page chips)
+  - [ ] Dock: `parse-dock-content.ts` currently matches **`build_slides` / `generate_slides` (tools that do not exist)**. Map **`generate_presentation`**. `DockTabId` already includes `"slides"`; `SlidesDockContent` is a placeholder — fill or link Download/Preview, do not invent a second editor.
+  - [ ] Narrow `generate_video_presentation` to **video / Remotion** only. Update both the subagent tool in `app/agents/chat/multi_agent_chat/subagents/builtins/deliverables/tools/video_presentation.py` and the `TOOL_CATALOG` entry in `app/agents/chat/multi_agent_chat/shared/tools/catalog.py` so neither mentions “presentation,” “slides,” or “slide deck.”
+  - [ ] Extend `PromptPickerAction` / `BuiltinPromptItem` from `isWebBuilder?: boolean` to `chatMode?: "web_builder" | "presentation_studio"` (keep `isWebBuilder` as derived or migrate call sites in `thread.tsx` slash handler)
+  - [ ] Slash `/slides pptx` and `/slides marp`
+  - [ ] Copy: EN "Create a pitch deck" / VI "Tạo slide pitch"; loading "Designing your slides…" / "Đang thiết kế slide…"
+  - [ ] `messages/en.json` + `messages/vi.json` (and other locales if the chip uses `t()`)
+
+- [ ] **T9 — Tests (all ACs)** (AC: 1–6)
+  - [ ] Unit: deck spec validation, PPTX bytes start with `PK`, Marp has `---`, empty prompt, bad format coerced/rejected, slug clash, feature flag, no `exec`
+  - [ ] Integration: routes 401/403/404, download, list scoped to workspace
+  - [ ] Tool unit: UUID user_id, validation_failed JSON
+  - [ ] Frontend: optional Playwright skip-if-flag-off; typecheck + biome on touched files
+- [ ] **Red-phase ATDD scaffolds** — write failing/skipped tests from <ref_file file="/Users/luisphan/Documents/GitHub/nowing/_bmad-output/implementation-artifacts/test-artifacts/atdd-checklist-27-2a-manus-slides-presentation-studio-chat.md" /> before turning any AC green
+
+### Review Findings (2026-08-25 — inline review because subagent quota exhausted)
+
+#### decision-needed (resolved)
+- [x] [Review][Resolved] Per-workspace `Workspace.presentation_studio_enabled` column added, but Out of Scope said "keep global flag only" — confirmed intentional; spec Out of Scope updated and the finding is now closed.
+
+#### patch
+- [x] [Review][Patch] `SlidePresentationRead.download_url` is never populated on the ORM, so list/get endpoints return `null` for `download_url` (`app/services/presentation/schemas.py:97`).
+- [x] [Review][Patch] `build_pptx` copies the first content slide's notes into the title slide's notes instead of the deck-level description or no notes (`app/services/presentation/pptx_driver.py:31`).
+- [x] [Review][Patch] `_call_llm_for_deck` uses a greedy regex `(\{.*\})` for JSON extraction that can swallow trailing text or multiple JSON objects (`app/services/presentation/service.py:119`).
+- [x] [Review][Patch] `record_token_usage` is called with `cost_micros=0` and a `model_breakdown` containing the helper function name instead of the real model/cost (`app/services/presentation/service.py:279-290`).
+- [x] [Review][Patch] `delete_presentation` deletes every file in the presentation's parent directory before removing it, which is broader than the intended output files (`app/routes/presentation_routes.py:274-283`).
+- [x] [Review][Patch] `SlidesDockContent` is a placeholder and does not render the Marp HTML preview or the deck download links (`nowing_web/features/dock/components/DockContent.tsx:163-175`).
+- [x] [Review][Patch] `test_generate_presentation_tool_atdd.py` docstring still claims red-phase/skipped tests, but tests are now green (`nowing_backend/tests/unit/agents/chat/multi_agent_chat/main_agent/tools/presentation/test_generate_presentation_tool_atdd.py:1-4`).
+
+#### defer
+- [x] [Review][Defer] `test_prompt_exceeding_max_length_is_truncated_or_rejected` mutates `config.PRESENTATION_MAX_PROMPT_CHARS` at runtime, but Pydantic `GeneratePresentationInput` captures `max_length` at model import — service truncation covers the runtime limit, so no user-facing bug.
+
+## Dev Notes
+
+### Current code — READ BEFORE EDITING
+
+| File | Today | This story |
+|---|---|---|
+| `app/tasks/chat/streaming/flows/new_chat/chat_modes.py` | `presentation_studio` ChatMode exists: prompt, `PRESENTATION_STUDIO_ENABLED`, `artifact_kinds=["presentation"]`, **`enabled_tools` unset** | Set `enabled_tools=["generate_presentation"]`. Do not add `if/elif` in orchestrator. |
+| `app/config/__init__.py` ~1887 | `PRESENTATION_STUDIO_ENABLED` default **FALSE**; `PRESENTATION_MAX_PROMPT_CHARS=2000` | Keep fail-closed default. Add storage subdir only. |
+| `app/routes/new_chat_routes.py` ~832 | Already 403s any non-default ChatMode when flag off | No new branch. |
+| `app/agents/.../tools/index.py` | Tools: memory, automation, lead_gen, `build_web_app` | Append `generate_presentation`. |
+| `app/agents/.../tools/registry.py` | `_MAIN_AGENT_TOOL_FACTORIES` | Register factory. |
+| `nowing_web/.../artifact.ts` | Kinds: report, resume, podcast, **video**, image, web_app. No `presentation`. | Add `presentation`. |
+| `artifacts-panel.tsx` | `video` labeled **"Presentations"** | Rename video group; add Slide Decks. |
+| `assistant-message.tsx` `BODY_TOOLS` | Has `build_web_app`, `generate_video_presentation` | Add `generate_presentation`. |
+| `new-chat/page.tsx` | Only `mode=web_builder` → metadata | Also `presentation_studio`. |
+| `thread.tsx` chips | Web-builder chips use `?q=&mode=` | Add two slide chips. |
+| `prompt-picker.tsx` | `isWebBuilder` boolean | Generalize to chat mode string. |
+| `pyproject.toml` | `python-pptx` is only a **transitive** Docling extra; **zero** `from pptx` in app code | Add **direct** `python-pptx>=1.0.2`. |
+| `deliverables/tool_names.py` | `DELIVERABLE_TOOLS` has `build_web_app`, `generate_video_presentation`, **not** `generate_presentation` | Add the name + emission/thinking modules. |
+| `parse-dock-content.ts` | Opens slides tab for `build_slides` / `generate_slides` | Switch to `generate_presentation`. |
+| Video subagent tool | Docstring claims “slides / slide deck” | Narrow to video-only so the main-agent tool wins. |
+| `UsageType` | Has `WEB_BUILDER_MARK`; no presentation | Add `PRESENTATION_GENERATE`. |
+| `VideoPresentation` | Remotion JSON slides — **different product** | New `SlidePresentation` table. Do not overload video_presentations. |
+
+Orchestrator (`stream_new_chat`): if `chat_mode.enabled_tools is not None` it **replaces** `effective_enabled_tools`. Listing only `generate_presentation` matches `web_builder` (`["build_web_app"]`). Do not invent a merge.
+
+### LLM → file (NFR-2)
+
+1. Call `get_agent_llm`.
+2. Parse response as JSON `DeckSpec` (slides: title, bullets, notes, optional chart `{categories, series}`).
+3. If parse/validation fails → `status="validation_failed"`, no file, no row `ready`.
+4. Map spec to `python-pptx` objects or Marp markdown.
+5. **Forbidden:** `exec`, `eval`, `subprocess` with `shell=True`, interpolating prompt into `shlex` strings.
+
+### python-pptx 1.0.2 (PyPI, Aug 2024)
+
+- 16:9: `prs.slide_width = Inches(13.333); prs.slide_height = Inches(7.5)`.
+- Notes: `slide.notes_slide.notes_text_frame.text`.
+- Charts need numeric series; skip chart if spec has none.
+- MIT license → `app/services/presentation/` (not `app/proprietary/`).
+
+### Auth copy-from
+
+- Routes: `web_builder_routes.require_workspace_member` + `check_web_builder_enabled` pattern, but flag is `PRESENTATION_STUDIO_ENABLED`.
+- Tool: copy `build_web_app.py` lines 21–76 (UUID, empty prompt, feature flag typed output). Either check `Permission.WEB_BUILDER_CREATE` (Editors already have it) or add `Permission.PRESENTATION_CREATE` and include it in the Editor role; do not fail-closed on a missing permission.
+- **Do not** write `AgentActionLog` in the tool — `ActionLogMiddleware` already inserts on `aafter_tool` (`app/agents/chat/multi_agent_chat/main_agent/middleware/action_log/middleware.py`).
+
+### Session / billing
+
+- Tool opens `async_session_maker()`; service commits.
+- Tool must **not** `commit()` after the service (27.1a review finding).
+- Record usage after successful persist with `record_token_usage(..., usage_type=UsageType.PRESENTATION_GENERATE, prompt_tokens=..., completion_tokens=..., total_tokens=..., cost_micros=..., model=..., model_breakdown=..., call_details=...)`. Do not record only `cost_micros`; pass full usage metadata like `WebBuilderService` does.
+- P0 surface: `token_tracking_service.py` enum add only. `UsageType.PRESENTATION_GENERATE` is what `record_token_usage` consumes. `BillingUnit.PRESENTATION_GENERATE` is only needed if you add the optional `app/capabilities/presentation/generate/` capability.
+
+### UX copy (contract)
+
+| State | EN | VI |
+|---|---|---|
+| Chip PPTX | Create a pitch deck | Tạo slide pitch |
+| Chip Marp | Create Marp slides | Tạo slide Marp |
+| Generating | Designing your slides… | Đang thiết kế slide… |
+| Flag off | Slide studio is not available on this workspace plan or installation. | Studio slide không khả dụng trên gói/workspace này. |
+| Validation | Could not generate a valid deck from that description. Try a more specific outline. | Không tạo được deck hợp lệ. Hãy mô tả outline cụ thể hơn. |
+| Marp no CLI | Open this file in Marp for VS Code / Marp Web. | Mở file này trong Marp for VS Code / Marp Web. |
+
+PPTX cannot be previewed inline in MVP. Do not iframe binary PPTX.
+
+### Project structure
+
+```
+nowing_backend/app/services/presentation/
+  __init__.py
+  schemas.py
+  service.py          # PresentationStudioService
+  pptx_driver.py      # python-pptx mapping only
+  marp_driver.py      # markdown + optional subprocess
+nowing_backend/app/agents/chat/multi_agent_chat/main_agent/tools/presentation/
+  __init__.py
+  generate_presentation.py
+nowing_backend/app/routes/presentation_routes.py
+nowing_backend/alembic/versions/<rev>_add_slide_presentations.py
+nowing_web/components/tool-ui/presentation.tsx
+nowing_backend/tests/unit/services/presentation/
+nowing_backend/tests/integration/routes/test_presentation_routes.py
 ```
 
-Frontend:
+Optional mirror of 27.1a:
+
+```
+nowing_backend/app/capabilities/presentation/generate/{__init__,definition,executor,schemas}.py
+```
+
+### Preserve
+
+- `generate_video_presentation` / Remotion cards and `video` artifact kind.
+- Web builder chips, `web_builder_mode`, dock.
+- ChatMode `meeting_minutes` stub (27.2b) — do not implement that tool.
+
+## Architecture Compliance
+
+| AD | Action |
+|---|---|
+| AD-1 | Service in `app/services/presentation/`, routes in `app/routes/`, tool in `app/agents/`. No new process. |
+| AD-2 | Alembic + AsyncSession. |
+| AD-8 / AD-10 | Real `TokenUsage` after generation. |
+| AD-9 | `require_workspace_member` on all presentation routes. |
+| AD-16 | python-pptx MIT in `app/services/`. |
+| AD-21 | `?mode=presentation_studio` URL pointer only. |
+| AD-120 | Edit existing ChatMode entry; no orchestrator if/elif. |
+| AD-121 | Kind name **`presentation`** (already in ChatMode `artifact_kinds`). Do not add a second `slides` kind. |
+| AD-104 | MVP is REST-only (SSE `emit_tool_output_card` + artifact list). Do not add `slide_presentations` to `app/zero_publication.py`. If real-time sync becomes required later, add it to `ZERO_PUBLICATION` and call `apply_publication` in the migration. |
+
+## Testing Requirements
+
+```bash
+cd nowing_backend
+ruff check app/services/presentation app/routes/presentation_routes.py \
+  app/agents/chat/multi_agent_chat/main_agent/tools/presentation \
+  app/tasks/chat/streaming/flows/new_chat/chat_modes.py \
+  app/config/__init__.py app/db.py app/services/token_tracking_service.py
+ruff format app/services/presentation app/routes/presentation_routes.py \
+  app/agents/chat/multi_agent_chat/main_agent/tools/presentation
+uv run pytest tests/unit/services/presentation tests/integration/routes/test_presentation_routes.py -q
+```
+
 ```bash
 cd nowing_web
 pnpm tsc --noEmit
-pnpm exec biome check components/tool-ui/presentation.tsx components/assistant-ui/assistant-message.tsx features/chat-artifacts features/new-chat --diagnostic-level=error
+pnpm exec biome check --diagnostic-level=error \
+  components/tool-ui/presentation.tsx \
+  components/assistant-ui/assistant-message.tsx \
+  components/assistant-ui/thread.tsx \
+  components/new-chat/prompt-picker.tsx \
+  'app/dashboard/[workspace_id]/new-chat/[[...chat_id]]/page.tsx' \
+  features/chat-artifacts
 ```
+
+Must assert: PPTX magic `PK`; Marp contains `---`; 403 when flag false; member-only download; empty prompt → `validation_failed`; slug unique per workspace.
+
+## Previous Story Intelligence (27.1a / 27.1d)
+
+- Typed tool output with `status`/`error` — frontend cards key off `status`, not string matching.
+- Do not `session.commit()` in the tool after the service commits.
+- Three registries: main-agent factory, subagent deliverables, capability REST. 27.2a is **main-agent + optional capability executor**, same as `build_web_app`. Putting the tool only on the subagent makes ChatMode `enabled_tools` a no-op.
+- Copy pipeline: chip → `presentation_studio_mode=true` → ChatMode gate → main-agent tool → service writes file → `record_token_usage` → SSE `emit_tool_output_card` → `BODY_TOOLS` + artifacts + dock `slides` tab → REST download.
+- `deps["user_id"]` may be `UUID` or `str`.
+- Feature flags fail-closed; tool returns typed failure, not raise.
+- ChatMode registry is live — adding a third hardcoded orchestrator branch is a regression against AD-120.
+- `UsageType` enum: 27.1d added `WEB_BUILDER_MARK`; follow that, not a bare string.
+- Artifact Step 0 must land first or the card never appears in the dock/artifacts panel.
+- `ChatArtifact.entityId` is `number | null` (reports). Presentations use UUID: set `key` to the UUID string and `entityId: null` (same as web_app). Do not change `entityId` to UUID in this story.
+
+## Git Intelligence
+
+HEAD `4fe46956f` (`feat(dock): contextual right panel for leads and web-builder`). Recent work is web-builder + dock. Do not put slide preview into the web-builder dock tab.
+
+## Latest Tech
+
+- **python-pptx 1.0.2** — current PyPI (2024-08-07). Use `>=1.0.2`.
+- **marp** — optional binary from `@marp-team/marp-cli`; detect with `shutil.which("marp")` or use `npx --no-install @marp-team/marp-cli` only if you can do it without network in production. Prefer PATH `marp`.
+
+## Project Context
+
+Follow `_bmad-output/project-context.md`: no PII in logs (truncate prompt in logs); `shielded_async_session` not required for cost_micros if generation is request-scoped and short; still use `record_token_usage`. Frontend state triad: no new localStorage for mode (AD-21).
+
+## Dev Agent Record
+
+### Agent Model Used
+
+### Debug Log References
+
+### Completion Notes List
+
+- 2026-08-26 chunk C re-review patch: SSE emission/thinking branch on `status` (`degraded` → warning/limited preview; `failed`/`error`/`validation_failed` → error even without `error` field). Tool ATDD 12/12, service 9/9.
+- 2026-08-26 chunk C patches applied: tool no longer leaks `str(exc)`; coerce/reject `output_format`; `user_id` guard before DB; ChatMode prompt drops `optional title`; video catalog/docstring narrowed to Remotion video; ATDD covers ChatMode `enabled_tools`, `DELIVERABLE_TOOLS`, empty prompt, invalid UUID, invalid format. Tool unit 8/8, service 9/9.
+- 2026-08-26 chunk B patches applied: `Path.is_relative_to` + workspace/id-scoped dir (URL `presentation_id` with `..` rejected), download `is_file()`, always overwrite `payload.user_id`, fail-closed when Workspace missing, Alembic `sa.text("'pptx'")` / `sa.text("'generating'")`, Marp preview CSP, download filename `.md`, DELETE only unlinks files under the presentation dir (row still deleted after unlink OSError — UX right-to-delete; orphans logged). Tests: global flag 403 on all routes, IDOR 404 with seeded foreign row, DELETE then GET 404, UniqueConstraint IntegrityError. Verified: ruff clean; unit 9/9; integration 8/8.
+
+### File List
+
+## Story completion
+
+Status: **in-progress** — chunk A+B+C patches applied 2026-08-26 (C re-review SSE status branch; tool ATDD 12/12, service 9/9). Chunk D not yet reviewed.
+
+### Review Findings (chunk A — service / PPTX / Marp / schemas, 2026-08-25)
+
+##### Patch
+
+- [x] [Review][Patch] `DeckSpec.slides` cho phép list rỗng → PPTX chỉ có title slide, `slide_count=0` (AC-2) [nowing_backend/app/services/presentation/schemas.py:35]
+- [x] [Review][Patch] `record_token_usage(..., user_id=build_input.user_id)` khi `user_id` None: `TokenUsage.user_id` NOT NULL, commit fail [nowing_backend/app/services/presentation/service.py:302-315]
+- [x] [Review][Patch] PPTX `placeholders[1]` / `shapes.title` không guard layout thiếu placeholder [nowing_backend/app/services/presentation/pptx_driver.py:27-40]
+- [x] [Review][Patch] Path guard dùng `str.startswith` và bỏ `self.storage_base_path`; dùng `Path.is_relative_to` [nowing_backend/app/services/presentation/service.py:34-49]
+- [x] [Review][Patch] `marp` timeout `proc.kill()` không `await proc.wait()` / `communicate()` [nowing_backend/app/services/presentation/marp_driver.py:85-87]
+- [x] [Review][Patch] Title/bullets/notes LLM nhét raw vào Marp (`---` / `-->` phá slide và HTML comment) [nowing_backend/app/services/presentation/marp_driver.py:24-53]
+- [x] [Review][Patch] Token usage chỉ đọc `input_tokens`/`output_tokens`, bỏ `prompt_tokens`/`completion_tokens` [nowing_backend/app/services/presentation/service.py:131-140]
+- [x] [Review][Patch] LLM đã chạy nhưng validation_failed không `record_token_usage` (AC-4) [nowing_backend/app/services/presentation/service.py:200-225]
+- [x] [Review][Patch] Slug TOCTOU: không retry `IntegrityError` trên unique `(workspace_id, slug)` [nowing_backend/app/services/presentation/service.py:274-315]
+- [x] [Review][Patch] Ghi file trước `commit`; commit fail để orphan trên disk [nowing_backend/app/services/presentation/service.py:230-315]
+- [x] [Review][Patch] Chart `categories`/`series` lệch độ dài; `float(v)` nổ cả generation [nowing_backend/app/services/presentation/pptx_driver.py:48-60]
+- [x] [Review][Patch] `from pptx import Presentation` top-level: thiếu python-pptx làm không import được cả Marp path [nowing_backend/app/services/presentation/pptx_driver.py:8]
+- [x] [Review][Patch] `GeneratePresentationOutput.file_path` lộ filesystem path; exception raw trả client [nowing_backend/app/services/presentation/service.py:262-325]
+- [x] [Review][Patch] `response.content` list bị `str(part)` → JSON hỏng [nowing_backend/app/services/presentation/service.py:111-112]
+- [x] [Review][Patch] `mkdir`/`_resolve_storage_path` nằm ngoài try của file write [nowing_backend/app/services/presentation/service.py:227-230]
+- [x] [Review][Patch] Marp front-matter thiếu `marp: true` / `size: 16:9` [nowing_backend/app/services/presentation/marp_driver.py:17-22]
+
+##### Defer
+
+- [x] [Review][Defer] Select toàn bộ slug workspace để disambiguate (unbounded) [nowing_backend/app/services/presentation/service.py:274-279] — deferred, pre-existing
+- [x] [Review][Defer] `SlidePresentation.prompt` lưu full prompt (PII/retention) [nowing_backend/app/db.py SlidePresentation.prompt] — deferred, pre-existing
+
+### Review Findings (chunk B — routes / Alembic / tests, 2026-08-26)
+
+##### Patch
+
+- [x] [Review][Patch] `_resolve_storage_path` dùng `str.startswith` thay vì `Path.is_relative_to`; không khóa `presentations/{workspace_id}/{presentation_id}/` nên `file_path` độc hại đọc/xóa file khác dưới storage root [nowing_backend/app/routes/presentation_routes.py:132-170]
+- [x] [Review][Patch] Download chỉ `exists()`, không `is_file()` — directory fallback khi `file_path` null [nowing_backend/app/routes/presentation_routes.py:194-211]
+- [x] [Review][Patch] Generate chỉ gán `user_id` khi body omitted; client spoof được UUID khác (web_builder luôn overwrite `auth.user.id`) [nowing_backend/app/routes/presentation_routes.py:82-83]
+- [x] [Review][Patch] Feature gate fail-open khi `Workspace` row missing (`ws is None` → enabled) [nowing_backend/app/routes/presentation_routes.py:37-42]
+- [x] [Review][Patch] Alembic `server_default="pptx"` / `"generating"` là SQL identifier, không quoted literal — dùng `sa.text("'pptx'")` [nowing_backend/alembic/versions/697ee5945395_add_slide_presentations.py:40-48]
+- [x] [Review][Patch] Marp preview trả raw HTML không CSP [nowing_backend/app/routes/presentation_routes.py:250]
+- [x] [Review][Patch] Download Marp đặt filename `{slug}.marp` trong khi file là `.md` [nowing_backend/app/routes/presentation_routes.py:206]
+- [x] [Review][Patch] DELETE vẫn commit xóa row khi unlink fail; `parent.rmdir()` không kiểm tra đúng thư mục presentation [nowing_backend/app/routes/presentation_routes.py:274-289]
+- [x] [Review][Patch] Test cross-workspace dùng `id+1` không seed presentation workspace B — không chứng minh 404 IDOR [nowing_backend/tests/integration/routes/test_presentation_routes_atdd.py:62-71]
+- [x] [Review][Patch] AC-6: autouse bật global flag; chỉ test workspace flag off trên POST generate, thiếu global `PRESENTATION_STUDIO_ENABLED=false` cho list/download/preview/delete [nowing_backend/tests/integration/routes/test_presentation_routes_atdd.py:11-59]
+- [x] [Review][Patch] DELETE test không assert GET 404 / row biến mất [nowing_backend/tests/integration/routes/test_presentation_routes_atdd.py:138-157]
+- [x] [Review][Patch] UniqueConstraint `(workspace_id, slug)` không có integration test SQL thật (Pattern 6) [nowing_backend/alembic/versions/697ee5945395_add_slide_presentations.py:78-82]
+
+##### Defer
+
+- [x] [Review][Defer] List presentations không pagination [nowing_backend/app/routes/presentation_routes.py:92-106] — deferred, pre-existing
+- [x] [Review][Defer] `presentation_studio_enabled` server_default true cho mọi workspace cũ [nowing_backend/alembic/versions/2014b3fa9eda_add_workspace_presentation_studio_.py:24-31] — deferred, pre-existing
+- [x] [Review][Defer] Hunk `app.py` Host catch-all web-builder không thuộc presentation routes [nowing_backend/app/app.py] — deferred, pre-existing
+
+### Review Findings (chunk C — tool / SSE / ChatMode, 2026-08-26)
+
+Blind Hunter and Edge Case Hunter timed out (~8 min); parent reconstructed those layers. Acceptance Auditor returned 2 findings.
+
+##### Patch
+
+- [x] [Review][Patch] `except Exception` nhét `str(exc)` vào `error` (SSE card / thinking) [nowing_backend/app/agents/chat/multi_agent_chat/main_agent/tools/presentation/generate_presentation.py:164-166]
+- [x] [Review][Patch] `output_format` không coerce/reject trước Pydantic — `"PPTX"` / `"pdf"` thành `status=error` ValidationError, không `validation_failed` [nowing_backend/app/agents/chat/multi_agent_chat/main_agent/tools/presentation/generate_presentation.py:147-156]
+- [x] [Review][Patch] `user_id is None` chỉ check sau query Workspace; test empty-prompt / invalid-UUID không bật `PRESENTATION_STUDIO_ENABLED` nên hit AC-6 trước (false green) [nowing_backend/app/agents/chat/multi_agent_chat/main_agent/tools/presentation/generate_presentation.py:105-110] [nowing_backend/tests/unit/agents/chat/multi_agent_chat/main_agent/tools/presentation/test_generate_presentation_tool_atdd.py:50-99]
+- [x] [Review][Patch] ChatMode prompt bảo LLM truyền `optional title` nhưng tool schema không có `title` — extra kwarg fail ở LangChain, không typed `validation_failed` [nowing_backend/app/tasks/chat/streaming/flows/new_chat/chat_modes.py:39-43]
+- [x] [Review][Patch] T8: `generate_video_presentation` catalog + docstring vẫn nói "slides" / "slide deck" [nowing_backend/app/agents/chat/multi_agent_chat/shared/tools/catalog.py:48-50] [nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/deliverables/tools/video_presentation.py:50]
+- [x] [Review][Patch] Thiếu unit test `presentation_studio.enabled_tools == ["generate_presentation"]` và `"generate_presentation" in DELIVERABLE_TOOLS` [nowing_backend/tests/unit/agents/chat/multi_agent_chat/main_agent/tools/presentation/test_generate_presentation_tool_atdd.py]
+
+##### Defer
+
+- [x] [Review][Defer] `BillingUnit.PRESENTATION_GENERATE` không có capability executor — T5 optional [nowing_backend/app/capabilities/core/types.py:58] — deferred, pre-existing
+- [x] [Review][Defer] Hunk `WEB_BUILDER_CONTAINER_*` / Caddy / Traefik trong `config/__init__.py` thuộc 27.1c [nowing_backend/app/config/__init__.py:1842-1886] — deferred, pre-existing
+- [x] [Review][Defer] `UsageType.WEB_BUILDER_MARK` nằm cùng hunk token_tracking với 27.2a [nowing_backend/app/services/token_tracking_service.py:74] — deferred, pre-existing
+- [x] [Review][Defer] Thinking SSE nhét `prompt[:80]` (copy `build_web_app`) [nowing_backend/app/tasks/chat/streaming/handlers/tools/deliverables/generate_presentation/thinking.py:18] — deferred, pre-existing
+- [x] [Review][Defer] `output_format` từ chip/slash Marp thuộc chunk D frontend [nowing_backend/app/tasks/chat/streaming/flows/new_chat/chat_modes.py:72-78] — deferred, pre-existing
+
+### Review Findings (chunk C re-review — 2026-08-26, after patches)
+
+All three layers completed (Blind Hunter, Edge Case Hunter, Acceptance Auditor). Previous 6 patches hold. Auditor: no new AC violations.
+
+##### Patch
+
+- [x] [Review][Patch] SSE emission/thinking treats missing `error` as success — `status=degraded` (Marp preview skipped) and `failed` without error print "generated successfully" [nowing_backend/app/tasks/chat/streaming/handlers/tools/deliverables/generate_presentation/emission.py:19-27] [nowing_backend/app/tasks/chat/streaming/handlers/tools/deliverables/generate_presentation/thinking.py:33-40]
+
+##### Defer
+
+- [x] [Review][Defer] Identity prompt still routes "slide decks" to the `deliverables` subagent (no PPTX tool there) [nowing_backend/app/agents/chat/multi_agent_chat/main_agent/system_prompt/prompts/identity/private.md:31] [nowing_backend/app/agents/chat/multi_agent_chat/main_agent/system_prompt/prompts/identity/team.md:31] — deferred, pre-existing
+- [x] [Review][Defer] ATDD tool tests never leave the early-return path; emission/thinking/`status=degraded` untested [nowing_backend/tests/unit/agents/chat/multi_agent_chat/main_agent/tools/presentation/test_generate_presentation_tool_atdd.py] — deferred, pre-existing

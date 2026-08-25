@@ -1,3 +1,84 @@
+## Deferred from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-08-25)
+
+- **Finding:** `test_prompt_exceeding_max_length_is_truncated_or_rejected` mutates `config.PRESENTATION_MAX_PROMPT_CHARS` at runtime, but the Pydantic `GeneratePresentationInput` model captures `max_length` at import time.
+  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Reason / when to revisit:** Service-level truncation covers the runtime limit, so there is no user-facing bug. Revisit if the team wants Pydantic validation to be driven from the live config (requires model rebuild on config change).
+
+## Deferred from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-08-26, chunk C re-review)
+
+- **Finding:** Identity prompts still list "slide decks" under the `deliverables` subagent, which has no `generate_presentation` tool.
+  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Reason / when to revisit:** Presentation Studio mode replaces `enabled_tools` with `generate_presentation` only, so the chip/slash path is isolated. Revisit when cleaning default-mode routing so "make slides" does not go to Remotion video.
+
+- **Finding:** Tool ATDD never leaves the early-return path; emission/thinking and `status=degraded` are untested.
+  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Reason / when to revisit:** T9 only required UUID + `validation_failed` JSON for the tool. Cover emission/thinking in `bmad-testarch-test-review` (4.9).
+
+## Deferred from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-08-26, chunk C)
+
+- **Finding:** `BillingUnit.PRESENTATION_GENERATE` is added without `app/capabilities/presentation/generate/` executor.
+  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Reason / when to revisit:** T5 marks the capability as optional. Token cost already goes through `UsageType.PRESENTATION_GENERATE`. Revisit if REST and the chat tool should share one capability path.
+
+- **Finding:** `config/__init__.py` chunk C diff includes unrelated `WEB_BUILDER_CONTAINER_*` / Caddy / Traefik settings.
+  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Reason / when to revisit:** Belongs to 27.1c container deploy, not Presentation Studio.
+
+- **Finding:** `UsageType.WEB_BUILDER_MARK` appears in the same `token_tracking_service.py` hunk as `PRESENTATION_GENERATE`.
+  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Reason / when to revisit:** 27.1d Mark Tool enum; do not revert as part of 27.2a.
+
+- **Finding:** Presentation SSE thinking copies the first 80 chars of the user prompt.
+  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Reason / when to revisit:** Same pattern as `build_web_app` thinking. Revisit with a workspace-wide policy for prompt text in thinking SSE.
+
+- **Finding:** ChatMode does not encode pptx vs marp from the entry-point chip/slash.
+  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Reason / when to revisit:** Single `presentation_studio` mode; format belongs to frontend chips/`?q=` in chunk D.
+
+## Deferred from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-08-26, chunk B)
+
+- **Finding:** `GET /api/v1/presentations` returns every row for the workspace with no limit/offset.
+  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Reason / when to revisit:** Fine for MVP catalog size; add pagination when list UI exists.
+
+- **Finding:** Alembic sets `workspaces.presentation_studio_enabled` NOT NULL default `true` for all existing workspaces.
+  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Reason / when to revisit:** Global `PRESENTATION_STUDIO_ENABLED` still fail-closed. Revisit when plan-tier entitlements should disable the feature per workspace.
+
+- **Finding:** Chunk B diff includes an unrelated `Host("{host}")` web-builder catch-all in `app.py`.
+  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Reason / when to revisit:** Belongs to 27.1c hosting, not presentation REST.
+
+## Deferred from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-08-25, chunk A)
+
+- **Finding:** Slug disambiguation loads every `SlidePresentation.slug` in the workspace.
+  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Reason / when to revisit:** Fine until a workspace has a large deck catalog; switch to existence-check or hash suffix without a full scan.
+
+- **Finding:** `SlidePresentation.prompt` stores the full user prompt.
+  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Reason / when to revisit:** Useful for re-generate/debug; apply retention/redaction with workspace memory policy (28.5).
+
+## Deferred from: code review of 27-1d-web-app-mark-tool-ast-mutator (2026-08-25)
+
+- **Finding:** Concurrent mark requests race on read–mutate–write of the same JSX file with no file lock or compare-and-swap.
+  - **Action:** Marked `[x] [Review][Defer]` in `27-1d-web-app-mark-tool-ast-mutator.md`.
+  - **Reason / when to revisit:** Pre-existing file I/O pattern on a single-user design-view path; revisit if Mark Tool is used concurrently (multi-tab/multi-seat) or if lost updates show up in production.
+
+- **Finding:** Class/id matching ignores expression-valued attributes such as `className={cn("foo")}`.
+  - **Action:** Marked `[x] [Review][Defer]` in `27-1d-web-app-mark-tool-ast-mutator.md`.
+  - **Reason / when to revisit:** Generated apps currently emit string-literal `className`; evaluating JSX expressions to match live DOM classes needs a static-eval policy. Revisit when the generator emits `cn()` / template class expressions.
+
+- **Finding:** `_parse_selector` keeps only the last class segment for forms like `div.a.b`.
+  - **Action:** Resolved in the same review round — mutator now requires every class segment, and the preview click handler emits all non-empty classes (excluding `nowing-mark-*`).
+
+## Deferred from: code review of 27-1c-web-app-container-deploy-cname (2026-08-25)
+
+- **Finding:** Multi-tenant Network Isolation / Cgroup CPU & Memory Limits for Web Builder user containers.
+  - **Action:** Marked `[x] [Review][Defer]` in `27-1c-web-app-container-deploy-cname.md`.
+  - **Reason / when to revisit:** Multi-tenant resource constraints (cgroups memory/cpu limit, overlay isolation) belong to infrastructure hardening phase on Dokploy.
+
 ## Resolved from: code review of 27-1b-web-app-build-preview-runner (2026-08-25)
 
 - **Finding:** Isolated Docker container sandbox execution & Config AST sanitization for untrusted `next.config.js` / `postcss.config.mjs`.

@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: "2026-08-25"  # Story 27-1a moved to done after human review approval. P0 surfaces: auth, data integrity, chat orchestration, external LLM cost.
+last_updated: "2026-08-26"  # Story 27-2a chunk C patches applied; D pending.
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # - Parsed epics.md: 24 epics, ~160 stories.
 # - Scanned _bmad-output/implementation-artifacts/ + stories/*.md for story files (frontmatter story_key/epic+story).
@@ -298,13 +298,13 @@ development_status:
 
   # === Epic 27: Full-Stack Web App Builder, Instant Hosting & Creative Studio ===
   epic-27: in-progress
-  27-1: in-progress  # Parent/tracking story — split into 27-1a (done), 27-1b/c/d (in-progress). Audit 2026-08-25 shows partial implementation; see web-builder-27-1-status-audit-2026-08-25.md.
+  27-1: done  # Parent/tracking story — all split stories 27-1a/b/c/d are done. Mark Tool AST mutator and tests green.
   27-1a: done  # Web Builder Chat Mode MVP for Sales & Marketing (Option A) — human review approved. P0 surfaces acknowledged: auth, data integrity, chat orchestration, external LLM cost. Lucide preview + GenerateWebAppToolUI chat card verified.
-  27-1b: in-progress  # Web App Build & Preview Runner — re-review found unresolved blockers: generation TokenUsage not committed, build quota not debited, duplicate builds, Docker sandbox weak, XSS in preview/error pages, postMessage no origin. See story file.
-  27-1c: in-progress  # Web App Container Deploy & Custom CNAME — static publish / host route / Dockerfile / custom-domain endpoint done; missing real Docker build/run, Traefik/Caddy route registration, and DNS CNAME validation. See web-builder-27-1-status-audit-2026-08-25.md.
-  27-1d: in-progress  # Web App Mark Tool & JSX AST Mutator — UI/iframe postMessage/regex-based patch endpoint done; missing real AST parser (@babel/parser/traverse/types) and web_builder_mark TokenUsage. See web-builder-27-1-status-audit-2026-08-25.md.
+  27-1b: done  # Web App Build & Preview Runner — AST security audit, env scrubbing, Docker container sandbox, build logs panel, and live preview iframe verified (28/28 unit/integration tests + Chrome MCP live browser green).
+  27-1c: done  # Web App Container Deploy & Custom CNAME — review patches applied 2026-08-26: container healthcheck, Caddy per-app snippets, Traefik/Caddy config, Docker Compose dokploy-network/web_apps/socket mount, path traversal, custom domain lifecycle, feature-gate 403, validator allowlists, and container lifecycle tests (41/41 unit/integration tests green).
+  27-1d: done  # Web App Mark Tool & JSX AST Mutator — 2026-08-25 review patches applied (force rebuild skip-debit, origin allowlist, compiled HTML bridge, AST hardening, UsageType.WEB_BUILDER_MARK); 39 related tests green.
   27-2: backlog  # Superseded by 27-2a and 27-2b.
-  27-2a: ready-for-dev  # Manus Slides Presentation Studio from Chat (PPTX/Marp) — chat-first, tool binding, artifact panel, feature gate.
+  27-2a: in-progress  # Manus Slides Presentation Studio — chunk A+B+C review patches applied 2026-08-26; chunk D (frontend card/chips/dock) code review still pending.
   27-2b: ready-for-dev  # Speaker Diarization Meeting Minutes from Chat — chat-first, tool binding, artifact panel, feature gate.
   epic-27-retrospective: optional
 

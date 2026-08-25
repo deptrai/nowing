@@ -375,6 +375,22 @@ _Curated long-term knowledge for Nowing E2E Browser Testing._
 
 **Session log:** `sessions/2026-08-24.md`
 
+## Story 27.1c — Web App Container Deploy & Custom CNAME E2E (2026-08-25)
+
+**Stack:** Backend FastAPI `:8000`, Next.js `:3000`, Postgres `:5434`, Redis `:6380`, Zero-cache `:4848`. Logged in as `e2e-test@nowing.net`.
+
+**Live Browser Verification Results:**
+- **Navigation & Authentication:** Logged in via Playwright MCP and navigated to `http://localhost:3000/dashboard/1/web-builder`.
+- **1-Click Publish:** Clicked `1-Click Publish` button (`button:has-text('1-Click Publish')`); verified application publishes to `*.apps.nowing.net` with live HTTPS badge.
+- **Custom Domain Modal Flow:**
+  - Clicked `Custom Domain` button (`button:has-text('Custom Domain')`); verified modal opens with instructions `Point your DNS CNAME record to cname-ingress.apps.nowing.net to bind your custom domain.`.
+  - Filled input `e.g. app.mycompany.com` with `landing.apexflow.io` and clicked `Save Domain`.
+  - Verified backend DNS verification interception: correctly returned error toast `DNS verification failed: Domain 'landing.apexflow.io' CNAME does not point to cname-ingress.apps.nowing.net.` (confirming proof-of-control validation).
+- **Responsive Preview Canvas & Code Viewer:**
+  - Verified `Code` tab renders project files (`app/page.tsx`, `package.json`, `tailwind.config.ts`, `Dockerfile`, `postcss.config.mjs`).
+  - Verified responsive device viewports: `Desktop View (100%)`, `Tablet View (768px)`, and `Mobile View (375px)` scale smoothly.
+- **Artifacts:** `page-2026-08-25T02-38-16-904Z.png`, `page-2026-08-25T02-38-35-562Z.png`, `page-2026-08-25T02-38-42-479Z.png`, `page-2026-08-25T02-39-55-875Z.png`, `page-2026-08-25T02-40-03-832Z.png`, `page-2026-08-25T02-40-15-281Z.png`.
+
 ## Story 27.1b — Web App Build & Preview Runner E2E (2026-08-25)
 
 **Stack:** Backend FastAPI `:8000`, Next.js `:3000`, Postgres `:5434`, Redis `:6380`, Zero-cache `:4848`. Logged in as `e2e-test@nowing.net`.
