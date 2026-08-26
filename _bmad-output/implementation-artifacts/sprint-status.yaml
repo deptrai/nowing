@@ -277,7 +277,7 @@ development_status:
   25-2: done  # Manual Credit Adjustment & Refund Desk with Dual-Audit Ledger
   25-3: done  # Affiliate Partner Payout Desk & Anti-Fraud Engine — review patches applied; ruff/pytest/tsc/biome green
   25-4: done  # 2026-08-26: all 26 review-patch items applied; ruff/pytest (unit+integration)/tsc/biome green.
-  25-5: ready-for-dev  # Dynamic Scraper Rule Engine & ReDoS Sandbox
+  25-5: ready-for-dev  # Dynamic Scraper Rule Engine & ReDoS Sandbox — story validated and context-hardened 2026-08-26.
   25-6: ready-for-dev  # Security Audit Trail Logs & In-App Broadcast Announcements
   epic-25-retrospective: optional
 
