@@ -129,10 +129,10 @@ Payload rule phải chứa JSONB `rule_schema` với các trường:
 **When** backend nhận toggle,  
 **Then**:
 
-- Set `circuit_breaker.tripped = true` trong active rule hoặc tạo row `scraper_circuit_breakers(platform, tripped_at, tripped_by)`.
+- Set `rule_schema.circuit_breaker.tripped = true` và/hoặc ghi trực tiếp Redis key `circuit_breaker:scraper:{platform}=OPEN` qua `PlatformCircuitBreaker`.
 - Ngay lập tức publish `scraper_config_updated` với `circuit_breaker.tripped=true`.
-- Celery worker gặp `tripped=true` thì skip enqueue/execution các task scraper của platform đó và trả `degraded` với `reason: circuit_breaker_tripped`.
-- Admin có thể `Reset` circuit breaker từ UI; reset cũng publish event.
+- Celery worker gặp `tripped=true` hoặc `PlatformCircuitBreaker.is_available(platform)==False` thì skip enqueue/execution các task scraper của platform đó và trả `degraded` với `reason: circuit_breaker_tripped`.
+- Admin có thể `Reset` circuit breaker từ UI; reset xóa Redis key hoặc set `tripped=false`, publish event.
 
 ### AC-8 — Superadmin Guard
 
@@ -175,7 +175,7 @@ Payload rule phải chứa JSONB `rule_schema` với các trường:
     - `create_rule(session, platform, rule_schema, auth)` — tạo version mới, set active nếu là version đầu tiên.
     - `activate_rule(session, platform, version_id, auth)` — deactivate cũ, activate mới, publish Redis event.
     - `delete_rule(session, platform, version_id)` — không cho xóa version active duy nhất.
-    - `toggle_circuit_breaker(session, platform, trip: bool, auth)`.
+    - `toggle_circuit_breaker(session, platform, trip: bool, auth)` — reuse `app/lead_intelligence/services/circuit_breaker.py` (`record_failure` / `record_success` logic) để set OPEN/CLOSED.
     - Ghi `AuditEvent` mỗi lần mutate.
   - [ ] Maintain in-memory cache với TTL ngắn hoặc Redis Pub/Sub invalidation.
 
@@ -231,13 +231,20 @@ Payload rule phải chứa JSONB `rule_schema` với các trường:
 - **Platform parser selectors (hardcoded today):**
   - `nowing_backend/app/proprietary/platforms/batdongsan/parsers.py:234-260` — `soup.select("div.js__card-listing")`, `select_one("a.js__product-link-for-product-id")`, `select_one("span.js__card-title")`, `select_one("span.re__card-config-price")`.
   - `nowing_backend/app/proprietary/platforms/chotot/fetch.py:62-` — `_CATEGORY_CONFIG` dict config, nhưng không dùng CSS selectors.
+  - `nowing_backend/app/proprietary/platforms/topcv/scraper.py` — tồn tại TopCV scraper riêng, dùng `lxml_html` + XPath + regex.
+- **Existing scraper worker / circuit breaker / rate limiter:**
+  - `nowing_backend/app/tasks/lead_scrapers.py` — Celery task `run_platform_scrape_task`, queue `nowing.lead_scrapers`.
+  - `nowing_backend/app/lead_intelligence/services/circuit_breaker.py` — `PlatformCircuitBreaker` với threshold 3 lỗi, cooldown 600s. **Reuse và mở rộng** cho emergency trip thay vì viết mới.
+  - `nowing_backend/app/lead_intelligence/services/rate_limiter.py` — `PlatformRateLimiter` Lua token-bucket với `PLATFORM_RATE_LIMITS` hardcoded. Rule engine có thể cấu hình rate/delays động, fallback về hardcoded.
+- **Versioned JSONB pattern:**
+  - `nowing_backend/app/automations/persistence/models/playbook.py` — `Playbook` với `definition JSONB`, `version INTEGER`, `inputs_schema JSONB`. Đây là mẫu chuẩn cho bảng `scraper_rules`.
 - **Admin UI patterns:**
   - `nowing_web/app/admin/scraper-accounts/page.tsx` — tabs, tables, modals, toggles.
   - `nowing_web/lib/apis/scraper-platform-accounts-api.service.ts` — API service pattern với Zod.
   - `nowing_web/app/admin/admin-shell.tsx` — thêm nav link.
 - **JSONB config versioning pattern:**
   - `nowing_backend/app/db.py:1002-1029` — `ScraperPlatformAccount.usage_state` JSONB.
-  - `nowing_backend/app/db.py` các bảng `SearchSourceConnector`, `Workspace` có `config` JSONB — tham khảo cách lưu/merge.
+  - `nowing_backend/app/automations/persistence/models/playbook.py` — `Playbook` với `definition JSONB` + `version INTEGER` là mẫu versioning chuẩn nhất.
 
 ### Key Decisions
 
@@ -245,7 +252,7 @@ Payload rule phải chứa JSONB `rule_schema` với các trường:
 2. **ReDoS engine:** Ưu tiên `google-re2` vì linear-time guarantee. Nếu build phức tạp, dùng Python `re` trong thread với 50 ms timeout; `google-re2` vẫn được recommend cho production.
 3. **CSS selector validation:** Dùng `cssselect.parse` kết hợp với `lxml.html.fromstring("<html></html>")` và `cssselect.HTMLTranslator()` để xác nhận selector hợp lệ. Không cần match real DOM.
 4. **Cache invalidation:** Dùng Redis Pub/Sub `scraper_config_updated` thay vì database polling. Worker/API cache invalidate ngay khi nhận message. Cache TTL backup 5s nếu Pub/Sub fail.
-5. **Circuit breaker:** Lưu trong `rule_schema` hoặc bảng riêng. Khi tripped, worker trả `degraded` thay vì crash. Kết hợp với `anti_bot_escalations` pattern nếu cần.
+5. **Circuit breaker:** Reuse `PlatformCircuitBreaker` (`app/lead_intelligence/services/circuit_breaker.py`) cho lỗi tự động; thêm emergency trip từ admin UI bằng cách set `rule_schema.circuit_breaker.tripped=true` và/hoặc Redis key `circuit_breaker:scraper:{platform}=OPEN`. Khi tripped, worker trả `degraded` thay vì crash.
 6. **Feature flag:** `USE_DYNAMIC_SCRAPER_RULES` (default `false` hoặc `true` tùy PO) để giảm rủi ro hồi quy khi wire vào parser.
 
 ### Performance & Security Guardrails
@@ -304,6 +311,8 @@ nowing_web/
 - Admin auth pattern: `nowing_backend/app/users.py:412-426`.
 - Admin route patterns: `nowing_backend/app/routes/admin_telemetry_routes.py`, `admin_scraper_platform_accounts_routes.py`.
 - Admin UI patterns: `nowing_web/app/admin/scraper-accounts/page.tsx`, `admin-shell.tsx`, `lib/apis/scraper-platform-accounts-api.service.ts`.
+- Versioned JSONB pattern: `nowing_backend/app/automations/persistence/models/playbook.py`.
+- Existing scraper worker + circuit breaker + rate limiter: `nowing_backend/app/tasks/lead_scrapers.py`, `nowing_backend/app/lead_intelligence/services/circuit_breaker.py`, `nowing_backend/app/lead_intelligence/services/rate_limiter.py`.
 - `google-re2` PyPI docs: <https://pypi.org/project/google-re2/> (latest `1.1.20251105`).
 - `cssselect` docs: <https://cssselect.readthedocs.io/>.
 
@@ -365,7 +374,7 @@ Unit test với pattern `(a+)+$` trên input `"a" * 30 + "!"`; Python `re` sẽ 
 
 ### Q9 — What about TopCV / ItViec?
 
-Story AC ghi "Batdongsan, Chotot, TopCV, Muaban". `topcv` chưa có code trong `app/proprietary/platforms/` (chỉ có `itviec`). V1 tập trung wire `batdongsan` và tạo CRUD cho tất cả platform slug; wire parser cho các platform khác có thể deferred hoặc dùng feature flag.
+Story AC ghi "Batdongsan, Chotot, TopCV, Muaban". Các platform tương ứng tồn tại: `batdongsan/`, `chotot/`, `topcv/`, `muaban_bds/`, `masothue/`, `itviec/`. V1 tập trung wire `batdongsan` (parser dùng CSS selectors rõ ràng) và tạo CRUD cho tất cả platform slug; wire parser cho các platform khác có thể deferred hoặc dùng feature flag.
 
 ### Q10 — What dependencies need to be added?
 
