@@ -1,0 +1,74 @@
+[
+  {
+    "location": "app/services/meeting_minutes/diarization.py:65-66",
+    "trigger_condition": "pyannote speaker label không theo mẫu SPEAKER_XX",
+    "guard_snippet": "speaker_id = speaker.rsplit('_', 1)[-1] if '_' in speaker else '0'; try: label = int(speaker_id) + 1 except ValueError: label = 1",
+    "potential_consequence": "diarization crash, worker ghi failed"
+  },
+  {
+    "location": "app/services/meeting_minutes/service.py:189-190",
+    "trigger_condition": "_probe_duration trả về 0.0",
+    "guard_snippet": "if duration == 0.0: raise ValueError('audio_duration_unknown')",
+    "potential_consequence": "transcribe rỗng, reserve cost 0, kết quả rỗng"
+  },
+  {
+    "location": "app/services/meeting_minutes/service.py:207-210",
+    "trigger_condition": "stt_service.transcribe_file_segments raise non-runtime exception",
+    "guard_snippet": "except (RuntimeError, ValueError, FileNotFoundError) as exc: raise ValueError('transcription_model_error') from exc",
+    "potential_consequence": "bắt quá rộng làm mất traceback gốc"
+  },
+  {
+    "location": "app/services/meeting_minutes/service.py:480-489",
+    "trigger_condition": "word không overlap với turn nào",
+    "guard_snippet": "if best_speaker is None: best_speaker = turns[0][2] if turns else 'Speaker 1'",
+    "potential_consequence": "mất word khi chuyển giữa speaker"
+  },
+  {
+    "location": "app/services/meeting_minutes/service.py:333",
+    "trigger_condition": "delete với raise_on_cleanup=True ném RuntimeError",
+    "guard_snippet": "chỉ dùng trong test; rollback transaction ở caller",
+    "potential_consequence": "leak transaction nếu dùng production"
+  },
+  {
+    "location": "app/routes/meeting_minutes_routes.py:99-101",
+    "trigger_condition": "document_id trong payload là string",
+    "guard_snippet": "document_id = int(payload.get('document_id')) if payload.get('document_id') else None",
+    "potential_consequence": "service nhận string, query sai hoặc TypeError"
+  },
+  {
+    "location": "app/services/meeting_minutes/service.py:102-108",
+    "trigger_condition": "audio_url là whitespace",
+    "guard_snippet": "if audio_url is not None and not audio_url.strip(): raise ValueError",
+    "potential_consequence": "tạo job với URL rỗng, worker fail"
+  },
+  {
+    "location": "app/services/meeting_minutes/service.py:445",
+    "trigger_condition": "row.meeting_metadata là None",
+    "guard_snippet": "language = (row.meeting_metadata or {}).get('language')",
+    "potential_consequence": "AttributeError khi gọi .get trên None"
+  },
+  {
+    "location": "app/services/meeting_minutes/service.py:608-610",
+    "trigger_condition": "_purge_document xóa Document đang dùng ở thread khác",
+    "guard_snippet": "kiểm tra Document không được tham chiếu bởi row khác trước khi delete",
+    "potential_consequence": "mất file gốc cho các meeting minutes khác"
+  },
+  {
+    "location": "app/tasks/process_meeting_minutes.py:43-54",
+    "trigger_condition": "_mark_meeting_minutes_failed cũng lỗi",
+    "guard_snippet": "try: mark_failed ... except: logger.exception ... return failed",
+    "potential_consequence": "cả worker và mark-failed đều fail, không lưu trạng thái"
+  },
+  {
+    "location": "app/services/meeting_minutes/service.py:557-570",
+    "trigger_condition": "_resolve_agent_billing_for_workspace raise",
+    "guard_snippet": "logging lỗi billing để debug",
+    "potential_consequence": "rơi xuống except Exception, dùng fallback, không rõ lý do"
+  },
+  {
+    "location": "alembic/versions/202_add_meeting_minutes_table.py:20",
+    "trigger_condition": "down_revision trỏ tới head cũ, tạo branch",
+    "guard_snippet": "down_revision = '2014b3fa9eda'",
+    "potential_consequence": "alembic có nhiều head, upgrade thất bại"
+  }
+]

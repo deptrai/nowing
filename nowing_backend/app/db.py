@@ -130,6 +130,15 @@ class VideoPresentationStatus(StrEnum):
     FAILED = "failed"
 
 
+class MeetingMinutesStatus(StrEnum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    READY = "ready"
+    FAILED = "failed"
+    DEGRADED = "degraded"
+    VALIDATION_FAILED = "validation_failed"
+
+
 class DocumentStatus:
     """
     Helper class for document processing status (stored as JSONB).
@@ -1726,6 +1735,69 @@ class VideoPresentation(BaseModel, TimestampMixin):
     thread = relationship("NewChatThread")
 
 
+class MeetingMinutes(BaseModel, TimestampMixin):
+    """Meeting minutes model for storing AI-generated meeting minutes."""
+
+    __tablename__ = "meeting_minutes"
+
+    title = Column(String(500), nullable=True)
+    status = Column(
+        SQLAlchemyEnum(
+            MeetingMinutesStatus,
+            name="meeting_minutes_status",
+            create_type=False,
+            values_callable=lambda x: [e.value for e in x],
+        ),
+        nullable=False,
+        default=MeetingMinutesStatus.PENDING,
+        server_default="pending",
+        index=True,
+    )
+
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    workspace = relationship("Workspace", back_populates="meeting_minutes")
+
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    user = relationship("User")
+
+    thread_id = Column(
+        Integer,
+        ForeignKey("new_chat_threads.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    thread = relationship("NewChatThread")
+
+    document_id = Column(
+        Integer,
+        ForeignKey("documents.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    document = relationship("Document")
+
+    audio_source_url = Column(Text, nullable=True)
+    processing_task_id = Column(String(255), nullable=True, index=True)
+
+    transcript = Column(JSONB, nullable=True, default=list)
+    action_items = Column(JSONB, nullable=True, default=list)
+    summary = Column(Text, nullable=True)
+    raw_transcript = Column(Text, nullable=True)
+    error = Column(Text, nullable=True)
+    meeting_metadata = Column(
+        "metadata", JSONB, nullable=False, default=dict, server_default="{}"
+    )
+
+
 class Report(BaseModel, TimestampMixin):
     """Report model for storing generated reports (Markdown or Typst)."""
 
@@ -2037,6 +2109,12 @@ class Workspace(BaseModel, TimestampMixin):
         "VideoPresentation",
         back_populates="workspace",
         order_by="VideoPresentation.id.desc()",
+        cascade="all, delete-orphan",
+    )
+    meeting_minutes = relationship(
+        "MeetingMinutes",
+        back_populates="workspace",
+        order_by="MeetingMinutes.id.desc()",
         cascade="all, delete-orphan",
     )
     reports = relationship(
@@ -2793,6 +2871,13 @@ class CreditPurchase(Base, TimestampMixin):
 
     __tablename__ = "credit_purchases"
     __allow_unmapped__ = True
+    __table_args__ = (
+        Index(
+            "ix_credit_purchases_status_completed_at",
+            "status",
+            "completed_at",
+        ),
+    )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(

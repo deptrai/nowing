@@ -179,6 +179,10 @@ export default function NewChatPage() {
 	const isLeadsMode = searchParams.get("mode") === "leads";
 	const isWebBuilderMode = searchParams.get("mode") === "web_builder";
 	const isPresentationStudioMode = searchParams.get("mode") === "presentation_studio";
+	const isMeetingMinutesMode = searchParams.get("mode") === "meeting_minutes";
+	const isPresentationStudioEnabled = searchParams.get("presentation_studio_enabled") !== "false";
+	const isMeetingMinutesEnabled = searchParams.get("meeting_minutes_enabled") !== "false";
+	const isWebBuilderEnabled = searchParams.get("web_builder_enabled") !== "false";
 	const queryClient = useQueryClient();
 	const urlChatId = useMemo(() => parseUrlChatId(params.chat_id), [params.chat_id]);
 	const [threadId, setThreadId] = useState<number | null>(() => (urlChatId > 0 ? urlChatId : null));
@@ -189,8 +193,9 @@ export default function NewChatPage() {
 		if (urlChatId > 0) return null;
 		if (isWebBuilderMode) return { web_builder_mode: true };
 		if (isPresentationStudioMode) return { presentation_studio_mode: true };
+		if (isMeetingMinutesMode) return { meeting_minutes_mode: true };
 		return null;
-	}, [urlChatId, isWebBuilderMode, isPresentationStudioMode]);
+	}, [urlChatId, isWebBuilderMode, isPresentationStudioMode, isMeetingMinutesMode]);
 	const hasActiveView = Boolean(activeThreadId || isLeadsMode);
 	const handledLoadErrorThreadRef = useRef<number | null>(null);
 	const [currentThread, setCurrentThread] = useState<ThreadRecord | null>(null);
@@ -783,6 +788,27 @@ export default function NewChatPage() {
 		threadMessagesQuery.isPending &&
 		displayMessages.length === 0 &&
 		!threadMessagesQuery.error;
+
+	const disabledChatMode =
+		isPresentationStudioMode && !isPresentationStudioEnabled
+			? { label: "Presentation Studio", name: "Presentation Studio" }
+			: isMeetingMinutesMode && !isMeetingMinutesEnabled
+				? { label: "Meeting Minutes", name: "Meeting Minutes" }
+				: isWebBuilderMode && !isWebBuilderEnabled
+					? { label: "Web Builder", name: "Web App Builder" }
+					: null;
+
+	if (disabledChatMode) {
+		return (
+			<div className="flex h-full flex-col items-center justify-center p-8 text-center space-y-4">
+				<h2 className="text-xl font-bold text-foreground">{disabledChatMode.label} is disabled</h2>
+				<p className="text-sm text-muted-foreground max-w-md">
+					{disabledChatMode.label} is not enabled on this workspace plan. Please upgrade your
+					workspace plan to access the AI {disabledChatMode.name}.
+				</p>
+			</div>
+		);
+	}
 
 	if (shouldShowThreadLoadError) {
 		return (

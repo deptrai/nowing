@@ -53,6 +53,7 @@ from .admin_scraper_platform_accounts_routes import (
     router as admin_scraper_platform_accounts_router,
     scraper_accounts_alias_router,
 )
+from .admin_telemetry_routes import router as admin_telemetry_router
 from .admin_users_routes import router as admin_users_router
 from .agent_action_log_route import router as agent_action_log_router
 from .agent_chat_routes import router as agent_chat_router
@@ -104,6 +105,7 @@ from .linear_add_connector_route import router as linear_add_connector_router
 from .logs_routes import router as logs_router
 from .luma_add_connector_route import router as luma_add_connector_router
 from .mcp_oauth_route import router as mcp_oauth_router
+from .meeting_minutes_routes import router as meeting_minutes_router
 from .memories_routes import router as memories_router
 from .memory_routes import router as memory_router
 from .model_connections_routes import router as model_connections_router
@@ -219,6 +221,7 @@ router.include_router(admin_agent_registry_router)  # Platform admin agent regis
 router.include_router(
     admin_latency_router
 )  # Platform admin ChainLens latency percentiles
+router.include_router(admin_telemetry_router)  # Platform admin real-time telemetry
 router.include_router(
     admin_scraper_platform_accounts_router
 )  # Admin scraper platform credentials
@@ -259,5 +262,6 @@ router.include_router(
     web_builder_router
 )  # Full-stack Web App Builder (Story 27.1 / AD-113)
 router.include_router(presentation_router)  # Presentation Studio (Story 27.2a)
+router.include_router(meeting_minutes_router)  # Meeting Minutes (Story 27.2b)
 
 router.include_router(build_capabilities_router())  # Scraper-API capability doors (05)

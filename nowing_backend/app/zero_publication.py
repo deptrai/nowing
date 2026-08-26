@@ -158,6 +158,17 @@ DSH_MISSION_COLS = [
     "updated_at",
 ]
 
+MEETING_MINUTES_COLS = [
+    "id",
+    "workspace_id",
+    "thread_id",
+    "status",
+    "title",
+    "error",
+    "created_at",
+    "updated_at",
+]
+
 ZERO_PUBLICATION: Mapping[str, Sequence[str] | None] = {
     "notifications": None,
     "documents": DOCUMENT_COLS,
@@ -176,6 +187,7 @@ ZERO_PUBLICATION: Mapping[str, Sequence[str] | None] = {
     "lead_assignments": LEAD_ASSIGNMENT_COLS,
     "lead_activity_logs": LEAD_ACTIVITY_LOG_COLS,
     "dsh_missions": DSH_MISSION_COLS,
+    "meeting_minutes": MEETING_MINUTES_COLS,
 }
 
 

@@ -371,6 +371,12 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 							mode: "presentation_studio",
 						},
 						{
+							label: "Summarize a meeting",
+							icon: "🎙️",
+							prompt: "Paste the meeting recording URL here",
+							mode: "meeting_minutes",
+						},
+						{
 							label: "Give me ideas",
 							icon: "💡",
 							prompt: tChat("card_icp_prompt"),
@@ -1036,7 +1042,7 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 			name: string;
 			prompt: string;
 			mode: "transform" | "explore";
-			chatMode?: "web_builder" | "presentation_studio";
+			chatMode?: "web_builder" | "presentation_studio" | "meeting_minutes";
 		}) => {
 			let userText = editorRef.current?.getText() ?? "";
 			const trigger = `/${actionQuery}`;
@@ -1062,6 +1068,8 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 				router.replace(`/dashboard/${targetWs}/new-chat?mode=presentation_studio`, {
 					scroll: false,
 				});
+			} else if (action.chatMode === "meeting_minutes") {
+				router.replace(`/dashboard/${targetWs}/new-chat?mode=meeting_minutes`, { scroll: false });
 			}
 		},
 		[actionQuery, aui, router, workspaceId]

@@ -45,6 +45,12 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 				<Link href="/admin/affiliates/payouts" className="hover:underline">
 					Affiliates & Payouts
 				</Link>
+				<Link href="/admin/credits" className="hover:underline">
+					Credits
+				</Link>
+				<Link href="/admin/telemetry" className="hover:underline">
+					Telemetry
+				</Link>
 			</nav>
 			<div className="flex-1 min-h-0">{children}</div>
 		</div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useAtomValue } from "jotai";
-import { Globe, Plus, Presentation, WandSparkles } from "lucide-react";
+import { Globe, Mic, Plus, Presentation, WandSparkles } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import {
 	forwardRef,
@@ -36,7 +36,7 @@ export interface PromptPickerAction {
 	name: string;
 	prompt: string;
 	mode: "transform" | "explore";
-	chatMode?: "web_builder" | "presentation_studio";
+	chatMode?: "web_builder" | "presentation_studio" | "meeting_minutes";
 }
 
 interface PromptPickerProps {
@@ -51,7 +51,7 @@ interface BuiltinPromptItem {
 	description: string;
 	prompt: string;
 	mode: "transform" | "explore";
-	chatMode?: "web_builder" | "presentation_studio";
+	chatMode?: "web_builder" | "presentation_studio" | "meeting_minutes";
 }
 
 const BUILTIN_TEMPLATES: BuiltinPromptItem[] = [
@@ -118,6 +118,14 @@ const BUILTIN_TEMPLATES: BuiltinPromptItem[] = [
 		mode: "explore",
 		chatMode: "presentation_studio",
 	},
+	{
+		id: "meeting-minutes",
+		name: "/meeting",
+		description: "Summarize a meeting from an audio URL",
+		prompt: "Paste the meeting recording URL here",
+		mode: "explore",
+		chatMode: "meeting_minutes",
+	},
 ];
 
 export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(function PromptPicker(
@@ -158,6 +166,10 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
 		() => filteredBuiltins.filter((b) => b.chatMode === "presentation_studio"),
 		[filteredBuiltins]
 	);
+	const filteredMeetingMinutesBuiltins = useMemo(
+		() => filteredBuiltins.filter((b) => b.chatMode === "meeting_minutes"),
+		[filteredBuiltins]
+	);
 
 	const filteredSaved = useMemo(() => {
 		const list = prompts ?? [];
@@ -172,7 +184,7 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
 			name: string;
 			prompt: string;
 			mode: "transform" | "explore";
-			chatMode?: "web_builder" | "presentation_studio";
+			chatMode?: "web_builder" | "presentation_studio" | "meeting_minutes";
 		}[] = [];
 
 		for (const b of filteredPresentationBuiltins) {
@@ -195,6 +207,16 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
 			});
 		}
 
+		for (const b of filteredMeetingMinutesBuiltins) {
+			items.push({
+				id: b.id,
+				name: b.name,
+				prompt: b.prompt,
+				mode: b.mode,
+				chatMode: b.chatMode,
+			});
+		}
+
 		for (const s of filteredSaved) {
 			items.push({
 				id: s.id,
@@ -205,7 +227,12 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
 		}
 
 		return items;
-	}, [filteredPresentationBuiltins, filteredWebBuiltins, filteredSaved]);
+	}, [
+		filteredPresentationBuiltins,
+		filteredWebBuiltins,
+		filteredMeetingMinutesBuiltins,
+		filteredSaved,
+	]);
 
 	// Reset highlight when the deferred (filtered) search changes
 	const prevSearchRef = useRef(deferredSearch);
@@ -278,7 +305,10 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
 
 	const hasNoResults = flatItems.length === 0;
 
-	const savedStartIdx = filteredPresentationBuiltins.length + filteredWebBuiltins.length;
+	const savedStartIdx =
+		filteredPresentationBuiltins.length +
+		filteredWebBuiltins.length +
+		filteredMeetingMinutesBuiltins.length;
 
 	return (
 		<ComposerSuggestionList ref={scrollContainerRef}>
@@ -360,8 +390,41 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
 						</ComposerSuggestionGroup>
 					)}
 
-					{(filteredPresentationBuiltins.length > 0 || filteredWebBuiltins.length > 0) &&
+					{(filteredPresentationBuiltins.length > 0 ||
+						filteredWebBuiltins.length > 0 ||
+						filteredMeetingMinutesBuiltins.length > 0) &&
 						filteredSaved.length > 0 && <ComposerSuggestionSeparator />}
+
+					{/* Meeting Minutes Templates Group */}
+					{filteredMeetingMinutesBuiltins.length > 0 && (
+						<ComposerSuggestionGroup>
+							<ComposerSuggestionGroupHeading>Meeting Minutes</ComposerSuggestionGroupHeading>
+							{filteredMeetingMinutesBuiltins.map((builtin, i) => {
+								const flatIdx =
+									filteredPresentationBuiltins.length + filteredWebBuiltins.length + i;
+								return (
+									<ComposerSuggestionItem
+										key={builtin.id}
+										ref={(el) => {
+											if (el) itemRefs.current.set(flatIdx, el);
+											else itemRefs.current.delete(flatIdx);
+										}}
+										icon={<Mic className="size-3.5 text-emerald-600 dark:text-emerald-400" />}
+										selected={flatIdx === highlightedIndex}
+										onClick={() => handleSelect(flatIdx)}
+										onMouseEnter={() => setHighlightedIndex(flatIdx)}
+									>
+										<div className="flex flex-col min-w-0 flex-1">
+											<span className="truncate text-xs font-medium">{builtin.name}</span>
+											<span className="truncate text-[10px] text-muted-foreground">
+												{builtin.description}
+											</span>
+										</div>
+									</ComposerSuggestionItem>
+								);
+							})}
+						</ComposerSuggestionGroup>
+					)}
 
 					{/* Saved Prompts Group */}
 					{filteredSaved.length > 0 && (

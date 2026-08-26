@@ -73,6 +73,8 @@ class UsageType(StrEnum):
     ENTITY_EXTRACTION = "entity_extraction"
     WEB_BUILDER_MARK = "web_builder_mark"
     PRESENTATION_GENERATE = "presentation_generate"
+    MEETING_MINUTES_TRANSCRIPTION = "meeting_minutes_transcription"
+    MEETING_MINUTES_EXTRACTION = "meeting_minutes_extraction"
 
 
 @dataclass

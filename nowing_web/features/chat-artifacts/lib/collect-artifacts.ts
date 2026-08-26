@@ -104,6 +104,15 @@ function describeArtifact(
 				status: failed ? "error" : presentationId ? "ready" : "running",
 			};
 		}
+		case "meeting_minutes": {
+			const meetingMinutesId = numericId(result.meeting_minutes_id);
+			const ready = resultStatus === "ready" || resultStatus === "degraded";
+			return {
+				title: firstString(result.title) ?? "Meeting Minutes",
+				entityId: meetingMinutesId,
+				status: failed ? "error" : ready ? "ready" : "running",
+			};
+		}
 		case "image": {
 			const ready = typeof result.src === "string" && result.src.length > 0;
 			return {
@@ -174,7 +183,7 @@ export function collectArtifacts(messages: readonly ThreadMessageLike[]): ChatAr
 						? "typst"
 						: kind === "web_app"
 							? "web"
-							: kind === "presentation"
+							: kind === "presentation" || kind === "meeting_minutes"
 								? "markdown"
 								: "markdown",
 			});

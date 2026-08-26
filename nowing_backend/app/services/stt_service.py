@@ -67,6 +67,67 @@ class STTService:
             "duration": info.duration,
         }
 
+    def transcribe_file_segments(
+        self,
+        audio_path: str,
+        language: str | None = None,
+    ) -> dict:
+        """Transcribe audio file and return per-segment data with words.
+
+        Args:
+            audio_path: Path to audio file
+            language: Optional language code (e.g. "en", "vi")
+
+        Returns:
+            Dict with segments, language, language_probability, duration.
+            Each segment is a dict with start, end, text, and optionally words.
+        """
+        model = self._get_model()
+
+        segments, info = model.transcribe(
+            audio_path,
+            language=language,
+            beam_size=1,
+            best_of=1,
+            temperature=0,
+            vad_filter=True,
+            vad_parameters={"min_silence_duration_ms": 500},
+            word_timestamps=True,
+        )
+
+        result_segments = []
+        for segment in segments:
+            seg = {
+                "start": segment.start,
+                "end": segment.end,
+                "text": segment.text.strip(),
+            }
+            words = []
+            if hasattr(segment, "words") and segment.words:
+                for word in segment.words:
+                    words.append({
+                        "start": word.start,
+                        "end": word.end,
+                        "word": getattr(word, "word", "").strip(),
+                    })
+            elif hasattr(segment, "words_or_chars") and segment.words_or_chars:
+                for word in segment.words_or_chars:
+                    words.append({
+                        "start": word.start,
+                        "end": word.end,
+                        "word": getattr(word, "word", "").strip(),
+                    })
+            if words:
+                seg["words"] = words
+            result_segments.append(seg)
+
+        return {
+            "segments": result_segments,
+            "language": info.language,
+            "language_probability": info.language_probability,
+            "duration": info.duration,
+        }
+
     def transcribe_bytes(
         self,
         audio_bytes: bytes,

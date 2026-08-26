@@ -120,6 +120,13 @@ const GeneratePresentationToolUI = dynamic(
 		})),
 	{ ssr: false }
 );
+const MeetingMinutesToolUI = dynamic(
+	() =>
+		import("@/components/tool-ui/meeting-minutes").then((m) => ({
+			default: m.MeetingMinutesToolUI,
+		})),
+	{ ssr: false }
+);
 function useCitationsFromMetadata(): SerializableCitation[] {
 	const allCitations = useAllCitationMetadata();
 	return useMemo(() => {
@@ -464,6 +471,7 @@ const BODY_TOOLS = {
 	generate_image: withArtifactAnchor(GenerateImageToolUI),
 	build_web_app: withArtifactAnchor(GenerateWebAppToolUI),
 	generate_presentation: withArtifactAnchor(GeneratePresentationToolUI),
+	generate_meeting_minutes: withArtifactAnchor(MeetingMinutesToolUI),
 } as const;
 
 const NullBodyTool: ToolCallMessagePartComponent = () => null;

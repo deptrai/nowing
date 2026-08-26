@@ -189,6 +189,7 @@ celery_app = Celery(
         "app.tasks.celery_tasks.social_xactions_ingest",
         "app.tasks.celery_tasks.document_reindex_tasks",
         "app.tasks.celery_tasks.stale_notification_cleanup_task",
+        "app.tasks.celery_tasks.stale_meeting_minutes_cleanup_task",
         "app.tasks.celery_tasks.stripe_reconciliation_task",
         "app.tasks.celery_tasks.refresh_token_cleanup_task",
         "app.tasks.celery_tasks.auto_reload_task",
@@ -309,6 +310,15 @@ celery_app.conf.beat_schedule = {
         "schedule": crontab(minute="*/5"),  # Every 5 minutes
         "options": {
             "expires": 60,  # Task expires after 60 seconds if not picked up
+        },
+    },
+    # Cleanup stale meeting-minutes tasks every 5 minutes.
+    # Workers use a Redis heartbeat; missing heartbeats mean the worker died.
+    "cleanup-stale-meeting-minutes": {
+        "task": "cleanup_stale_meeting_minutes",
+        "schedule": crontab(minute="*/5"),  # Every 5 minutes
+        "options": {
+            "expires": 60,
         },
     },
     # Reconcile Stripe credit purchases that were paid but remained pending

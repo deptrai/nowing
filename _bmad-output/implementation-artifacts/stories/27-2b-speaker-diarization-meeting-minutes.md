@@ -4,7 +4,7 @@ story_key: "27-2b"
 epic: "epic-27"
 story: "27.2b"
 title: "Speaker Diarization Meeting Minutes from Chat"
-status: "ready-for-dev"
+status: "done"
 ---
 
 # Story 27.2b: Speaker Diarization Meeting Minutes from Chat
@@ -548,3 +548,60 @@ Q4 — Failure modes to add to test skeleton:
 - Celery worker not running / Redis down after tool returns `processing`.
 
 **Triage:** Clean with notes — proceed to `bmad-nowing-test-first-atdd`.
+
+### Review Findings
+
+- [x] [Review][Patch] Migration `202` down_revision sai tạo branch head (`alembic/versions/202_add_meeting_minutes_table.py:20`)
+- [x] [Review][Patch] Migration `id` không khai báo autoincrement (`alembic/versions/202_add_meeting_minutes_table.py:29`)
+- [x] [Review][Patch] `generate_meeting_minutes` tool bỏ qua tham số `language` (`app/agents/chat/.../tools/meeting_minutes/generate_meeting_minutes.py:31-100`)
+- [x] [Review][Patch] `/download` endpoint trả JSON thay vì file (`app/routes/meeting_minutes_routes.py:189-216`)
+- [x] [Review][Patch] `_probe_duration` chạy full transcription hai lần (`app/services/meeting_minutes/service.py:433-450`)
+- [x] [Review][Patch] Extraction/diarization lỗi vẫn đánh dấu `READY` thay vì `degraded` (`app/services/meeting_minutes/service.py:241-245, 530-588`)
+- [x] [Review][Patch] Parse speaker label trong diarization không an toàn (`app/services/meeting_minutes/diarization.py:65-66`)
+- [x] [Review][Patch] `_download_audio` đọc toàn bộ URL vào RAM (`app/services/meeting_minutes/service.py:405-413`)
+- [x] [Review][Patch] `update_status` không filter workspace (`app/services/meeting_minutes/service.py:334-352`)
+- [x] [Review][Patch] `create` route không dùng Pydantic validation (`app/routes/meeting_minutes_routes.py:89-129`)
+- [x] [Review][Patch] Tool cho phép cung cấp cả `audio_url` và `document_id` (`app/agents/chat/.../tools/meeting_minutes/generate_meeting_minutes.py:55-66`)
+- [x] [Review][Patch] `MeetingMinutes.title` không bao giờ được gán (`app/services/meeting_minutes/service.py:253-261`)
+- [x] [Review][Patch] Integration service tests phụ thuộc env var `MEETING_MINUTES_ENABLED`
+- [x] [Review][Patch] Hàng `PROCESSING` treo nếu Celery worker mất (`app/services/meeting_minutes/service.py:179`)
+- [x] [Review][Patch] Frontend chat mode / artifact panel đã implement (`nowing_web/...`)
+
+## Frontend Completion Notes
+
+The frontend chat-mode, artifact panel, and deliverable card for `meeting_minutes` have been implemented:
+
+- `meeting_minutes` added to `ArtifactKind`, `ARTIFACT_TOOL_KINDS`, `BODY_TOOLS`, and `GROUP_ORDER`.
+- `MeetingMinutesToolUI` polls `/api/v1/meeting-minutes/{id}` and renders summary, action items, transcript, download, and degraded status.
+- Artifact row/panel renders meeting minutes with `Users` icon and jumps to the card.
+- Quick chip "Summarize a meeting" and slash prompt `/meeting` set `?mode=meeting_minutes`.
+- New-chat page passes `meeting_minutes_mode` as `platform_metadata`.
+
+Verification:
+- `pnpm tsc --noEmit` passes.
+- `pnpm exec biome check` passes on changed files.
+- Backend unit/integration tests pass (17/17).
+
+One review finding remains deferred: Celery worker crash leaves `PROCESSING` rows hanging.
+
+## Deferred Items Resolution
+
+Both deferred review findings have been resolved:
+
+1. **Celery worker crash leaves `PROCESSING` rows hanging**
+   - Added `meeting_minutes_heartbeat.py` with Redis heartbeat helpers (120s TTL, 60s refresh, 10m pending TTL).
+   - `process_meeting_minutes` workers start a heartbeat, take over dead workers, and stop on completion/failure.
+   - Added `cleanup_stale_meeting_minutes` Celery task (runs every 5m) that marks PENDING/PROCESSING rows without a heartbeat as `FAILED`.
+   - `MeetingMinutesService.create` now sets a long-lived pending heartbeat so unqueued rows also time out.
+   - `_diarize` now runs in `loop.run_in_executor` so the heartbeat coroutine is not starved during CPU-heavy diarization.
+   - Added unit tests: `tests/unit/tasks/test_process_meeting_minutes.py`, `tests/unit/tasks/celery_tasks/test_stale_meeting_minutes_cleanup.py`.
+
+2. **Frontend chat mode / artifact panel**
+   - Implemented in the previous frontend pass; tsc/biome green.
+
+## Final Verification
+
+- `ruff check` on changed backend files — green.
+- `uv run pytest` meeting-minutes unit/integration + task tests — **23/23 passed**.
+- `pnpm tsc --noEmit` — green.
+- `pnpm exec biome check` — green.

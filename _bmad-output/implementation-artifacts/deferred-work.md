@@ -1,3 +1,13 @@
+## Deferred from: code review of 25-4-realtime-llm-token-cost-proxy-health-celery-queue-telemetry (2026-08-26)
+
+- **Finding:** Cost aggregation in `AdminTelemetryService` reimplements `UsageService` SQL patterns instead of reusing/extend `UsageService`.
+  - **Action:** Marked `[x] [Review][Defer]` in `25-4-realtime-llm-token-cost-proxy-health-celery-queue-telemetry.md`.
+  - **Reason / when to revisit:** Accept duplication for v1 to deliver the dashboard; refactor and share aggregation primitives in a follow-up hardening story.
+
+- **Finding:** `stalled_count` and `throughput_per_min` in Celery queue telemetry are placeholders (`0` and instantaneous count).
+  - **Action:** Marked `[x] [Review][Defer]` in `25-4-realtime-llm-token-cost-proxy-health-celery-queue-telemetry.md`.
+  - **Reason / when to revisit:** First version surfaces queue depth/worker count; implement real stalled/DLQ counts and per-minute throughput once event metrics or message-timestamp inspection is available.
+
 ## Deferred from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-08-25)
 
 - **Finding:** `test_prompt_exceeding_max_length_is_truncated_or_rejected` mutates `config.PRESENTATION_MAX_PROMPT_CHARS` at runtime, but the Pydantic `GeneratePresentationInput` model captures `max_length` at import time.
@@ -31,6 +41,16 @@
 - **Finding:** Tool ATDD never leaves the early-return path; emission/thinking and `status=degraded` are untested.
   - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
   - **Reason / when to revisit:** T9 only required UUID + `validation_failed` JSON for the tool. Cover emission/thinking in `bmad-testarch-test-review` (4.9).
+
+## Deferred from: code review of 27-2b-speaker-diarization-meeting-minutes (2026-08-26)
+
+- **Finding:** Hàng `PROCESSING` treo nếu Celery worker mất (`app/services/meeting_minutes/service.py:179`).
+  - **Action:** Resolved — implemented Redis heartbeat + stale-job reaper (`meeting_minutes_heartbeat.py`, `stale_meeting_minutes_cleanup_task.py`, `process_meeting_minutes.py`) and added unit tests (23/23 pass).
+  - **Reason / when to revisit:** Implemented 2026-08-26.
+
+- **Finding:** Frontend chat mode / artifact panel chưa implement (`nowing_web/...`).
+  - **Action:** Resolved — frontend UI, chat mode routing, slash prompt, quick chip, artifact card and panel rendering implemented and verified (tsc + biome green).
+  - **Reason / when to revisit:** Implemented 2026-08-26; remaining work is Playwright E2E full-stack run.
 
 ## Deferred from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-08-26, chunk C)
 

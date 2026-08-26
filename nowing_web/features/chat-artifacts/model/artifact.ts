@@ -5,6 +5,7 @@ export type ArtifactKind =
 	| "podcast"
 	| "video"
 	| "presentation"
+	| "meeting_minutes"
 	| "image"
 	| "web_app";
 
@@ -36,6 +37,7 @@ export const ARTIFACT_TOOL_KINDS: Record<string, ArtifactKind> = {
 	generate_podcast: "podcast",
 	generate_video_presentation: "video",
 	generate_presentation: "presentation",
+	generate_meeting_minutes: "meeting_minutes",
 	generate_image: "image",
 	display_image: "image",
 	build_web_app: "web_app",

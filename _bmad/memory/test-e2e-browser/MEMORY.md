@@ -7,8 +7,12 @@ _Curated long-term knowledge for Nowing E2E Browser Testing._
 - **Local Ports:** Postgres runs on `5434` and Redis on `6380` to avoid conflicts with host instances.
 - **PostGIS in pgvector image:** The `pgvector/pgvector:pg17` Docker image does not include PostGIS. `CREATE EXTENSION postgis` fails until `apt-get install postgresql-17-postgis-3` is run inside the container. This is required for `spatial_planning_zones` and any model using `Geometry` columns.
 - **Missing frontend deps for build:** `leaflet` and `react-leaflet` are imported in `components/realestate/land-zoning/zoning-map.tsx` but are not in `package.json`; `pnpm build` fails until they are installed.
+- **Alembic duplicate `202` heads (FIXED 2026-08-26):** Both `202_add_meeting_minutes_table.py` and `202_add_ecommerce_tables.py` declared `revision = "202"`, causing `alembic` to warn and `alembic upgrade head` to fail. Renamed meeting minutes to `233` (`alembic/versions/233_add_meeting_minutes_table.py`) and created merge `9a32642d01df` (`alembic/versions/9a32642d01df_merge_all_current_heads.py`) so `alembic heads` now returns a single head. `alembic upgrade head` still needs Docker/Postgres running to verify.
 - **Alembic two heads:** As of 2026-08-17, revisions `223_add_audit_events_table.py` and `07582243b847_merge_e2e_heads_for_testing.py` are both heads. A temporary merge revision is needed to run `alembic upgrade head` on a fresh database.
-- **E2E superuser requirement:** `/admin/scraper-accounts` (and likely all `/admin/*` pages) require `User.is_superuser=True`. The default `e2e-test@nowing.net` created by the Playwright auth setup is not a superuser, so admin E2E tests fail with 403/unexpected DOM.
+- **E2E superuser requirement:** `/admin/scraper-accounts` and `/admin/telemetry` (Story 25.4) require `User.is_superuser=True`. The default `e2e-test@nowing.net` created by the Playwright auth setup is not a superuser, so admin E2E tests fail with 403/unexpected DOM. For a local smoke test, seed a superadmin directly (`admin@nowing.net` / `AdminPass123!`) and login via `/login`.
+- **Story 25.4 (Admin Telemetry) live check:** `/admin/telemetry` renders Gross Margin, LLM Cost, Proxy Health, and Celery Queue panels. Console must stay at 0 errors after the page settles. Initial load can show transient `net::ERR_CONNECTION_REFUSED` or CORS errors if the backend was restarting; reload once the backend is ready.
+- **Story 25.4 proxy success rate UI bug:** `ProxyHealthPanel.tsx` displayed `success_rate.toFixed(0)}%` (e.g. `1%` for a 100% success rate). Fixed to multiply by 100: `(s.success_rate * 100).toFixed(0)}%`.
+- **Story 25.4 E2E spec:** `nowing_web/tests/admin/telemetry.spec.ts` mocks `/auth/session`, `/users/me`, and the four telemetry endpoints to verify the dashboard panels and auto-refresh without a pre-seeded superuser. Run with `pnpm test:e2e tests/admin/telemetry.spec.ts`.
 
 ## Flaky Selectors & DOM Patterns
 - **Header Auth Controls:** The `Sign In` link in the main navigation uses `hidden md:block`. When testing with browser MCP tools, always ensure viewport is set to desktop size (e.g. 1440x900 via `browser_resize`) or click the `Get Started` hero link if testing on small viewports.
@@ -199,21 +203,35 @@ _Curated long-term knowledge for Nowing E2E Browser Testing._
 
 ### Key fixes discovered
 - **Backend transaction commit:** `unlock_contact` and `relock_contact` in `app/routes/lead_batch_routes.py` were not calling `session.commit()`, so the `is_unlocked` flag and billing events were never persisted. Added `await session.commit()` after successful billing.
-- **Lead list sync with overrides:** `NowingSplitCanvas` had a `useEffect` that replaced `activeDrawerLead` with a raw `displayLeads` item on every render, which re-masked the phone and re-locked the UI right after a row was clicked. Fixed by merging `unlockedPhones` overrides into the updated lead before `setActiveDrawerLead`.
-- **Row-to-drawer lead state:** `NowingLeadMatrix` now passes `rowLead` (which carries `unlockedPhones` overrides) into `handleRowClick`, and `handlePhoneChange` in `NowingSplitCanvas` removes the override from `unlockedPhones` on relock so the row falls back to the masked `lead.phone`.
-- **Undo action in toast:** `PhoneUnlockPill.tsx` `toast.success` uses a React element `action` (button with `data-testid="relock-undo-button"`) so Playwright can click the undo action.
-- **Flip animation class:** `PhoneUnlockPill` adds `animate-flip` class on unlock and holds the flag for `FLIP_CLASS_HOLD_MS` (600ms) so the assertion can catch it.
-- **Test selector stabilization:** `two-tier-phone-unlock.spec.ts` uses drawer-scoped locators (`drawer.getByTestId(...)`) for `zalo-outreach-button` and `call-now-link`, and waits for `Đã mở khóa`/`Đã hoàn tác mở khóa` toasts with 15-20s timeouts to survive slow backend billing.
 
-### Backend routes changed
-- `nowing_backend/app/routes/lead_batch_routes.py` — added `await session.commit()` to `unlock_contact` and `relock_contact`.
+## Story 27.2a — Presentation Studio from Chat (PPTX/Marp) E2E (2026-08-26)
 
-### Frontend components changed
-- `nowing_web/components/leads/NowingSplitCanvas.tsx` — import `Lead`, merge `unlockedPhones` into `activeDrawerLead` sync effect.
-- `nowing_web/components/leads/NowingLeadMatrix.tsx` — `handleRowClick(rowLead)` and `handleRowClick` cleanup.
-- `nowing_web/components/leads/LeadDetailFlyoutDrawer.tsx` — (minor console cleanup after debugging).
-- `nowing_web/components/leads/PhoneUnlockPill.tsx` — `FLIP_CLASS_HOLD_MS`, toast action ReactNode, relock `onPhoneChange(null, false)`.
-- `nowing_web/tests/leads/two-tier-phone-unlock.spec.ts` — `lead-row` click to open drawer, drawer-scoped assertions, adjusted toast/bulk popover selectors.
+### Verified
+- Created `nowing_web/tests/presentation-studio/presentation-studio-chat.spec.ts` with AC-1 through AC-4 coverage.
+- Playwright run: **5 passed, 0 skipped** (AC-2/3/4 unskipped and passing with real LLM).
+- Backend run: `uv run pytest tests/unit/services/presentation tests/unit/agents/chat/multi_agent_chat/main_agent/tools/presentation tests/integration/routes/test_presentation_routes_atdd.py -q` — **29 passed** (unit service 9, tool 12, integration routes 8).
+- Lint/typecheck: `ruff check/format`, `tsc --noEmit`, `biome check` all clean.
+
+### AC mapping
+- AC-1: quick chip + slash prompt set `?mode=presentation_studio` and composer prompt.
+- AC-2: PPTX card shows `Ready`, `5 slides · PPTX`, and `Download .pptx`.
+- AC-3: Marp card shows `5 slides · MARP` (with `Degraded` / `dependency_missing` when `marp` binary is absent).
+- AC-4: `?presentation_studio_enabled=false` renders `Presentation Studio is not enabled on this workspace plan` and backend returns 403.
+- AC-5: backend integration tests cover 401/403/404 auth/workspace scoping and `AgentActionLog`.
+- AC-6: backend integration `test_all_routes_403_when_global_flag_off` and frontend client-side gate cover the feature flag.
+
+### Key selectors
+- Quick chip: `getByRole('button', { name: /Create a pitch deck/i })`.
+- Slash prompt picker item: `getByRole('button', { name: /\/slides pptx/i })`.
+- Composer text after selection: contains `Create a 10-slide pitch deck`.
+- URL mode: `/[?&]mode=presentation_studio/`.
+- Card status: `getByText(/Ready/i).first()`, `getByText(/slides · PPTX/i).first()`, `getByText(/Download \.pptx/i).first()`.
+
+### Critical behavior
+- The slash prompt picker (`scanActiveTrigger` in `inline-mention-editor.tsx`) only triggers on the **current word** that contains `/`. Typing `/slides pptx` with a space breaks the picker because the space resets `wordStart`; the second word (`pptx`) no longer starts with `/`.
+- Correct test pattern: type `/slides`, then select the `/slides pptx` (or `/slides marp`) item from the picker.
+- AC-2 needs a long test timeout (300s) because the agent can expand the short prompt beyond `PRESENTATION_MAX_PROMPT_CHARS` and retry once; the second `Generate Presentation` call eventually succeeds.
+- The `Download .pptx` element is a link (`<a>`) inside the chat card, not a `<button>`.
 
 ## 24.1 Live Manual Campaign Builder Save (2026-08-17)
 
@@ -377,21 +395,28 @@ _Curated long-term knowledge for Nowing E2E Browser Testing._
 
 ## Story 27.2a — Manus Slides Presentation Studio from Chat (PPTX/Marp) E2E (2026-08-26)
 
-**Stack:** Backend FastAPI `:8000` (`PRESENTATION_STUDIO_ENABLED=true`), Next.js `:3000`, Postgres `:5434`, Redis `:6380`, Zero-cache `:4848`. Logged in as `e2e-test@nowing.net`.
+**Stack:** Backend FastAPI `:8000` (`PRESENTATION_STUDIO_ENABLED=true`, `NEXT_FRONTEND_URL=http://localhost:3001`), Next.js `:3001`, Postgres `:5434`, Redis `:6380`, Zero-cache `:4848`. Logged in as `e2e-test@nowing.net`.
+
+**Critical environment quirk:** Playwright page served from `localhost:3000` against a backend configured with `NEXT_FRONTEND_URL=http://localhost:3001` causes `POST /api/v1/threads` to fail with `CSRF origin check failed` (HTTP 403). The frontend dev server must run on the same origin the backend trusts.
 
 **Live Browser Verification Results:**
-- **Mode & Chips:** Accessed `http://localhost:3000/dashboard/1/new-chat?mode=presentation_studio`. Verified welcome screen renders `📑 Create a pitch deck` (PPTX) and `📝 Create Marp slides` quick-pick chips.
-- **PPTX Generation Flow:**
-  - Submitted pitch deck generation query.
-  - Agent executed `generate_presentation` with `output_format="pptx"`.
-  - SSE stream rendered deliverable card: `Nowing AI SaaS - Nền tảng Lead & Knowledge Intelligence`, `5 slides · PPTX`, `Ready` status badge.
-  - Verified authenticated download URL `GET /api/v1/presentations/{id}/download?workspace_id=1` returns a valid Microsoft OOXML (`.pptx`) 16:9 file.
-- **Marp Markdown Generation & Degradation Flow:**
-  - Submitted Marp presentation query with `/slides marp`.
+- **Mode & Chips:** Accessed `http://localhost:3001/dashboard/1/new-chat?mode=presentation_studio`. Verified welcome screen renders `📑 Create a pitch deck` (PPTX) and `📝 Create Marp slides` quick-pick chips.
+- **PPTX Generation Flow (Playwright MCP):**
+  - Typed `Create a 5-slide pitch deck for Nowing` into the Plate composer and pressed `Enter`.
+  - Agent self-corrected after an initial `Prompt exceeds maximum allowed length of 2000 characters` error and called `generate_presentation` with `output_format="pptx"`.
+  - SSE stream rendered deliverable card: `Nowing: Unified Lead & Knowledge Intelligence Platform`, `5 slides · PPTX`, `Ready` status badge, `Download .pptx` button.
+  - Screenshot: `story-27-2a-pptx-mcp.png`.
+- **Marp Markdown Generation & Degradation Flow (Playwright MCP):**
+  - Prompt: `Create a 5-slide Marp deck about AI productivity, output as marp`.
   - Agent called `generate_presentation` with `output_format="marp"`.
-  - Stream rendered deliverable card: `Kiến trúc Hệ thống Nowing`, `4 slides · MARP`, with graceful fallback badge `Degraded: dependency_missing` and helper copy `Open this file in Marp for VS Code / Marp Web.` (matching AC-3).
-  - Verified authenticated download returns valid Marp Markdown with YAML front-matter (`marp: true`, `size: 16:9`, `theme: "default"`, `class: "invert"`, `paginate: true`), slide delimiters (`---`), and speaker notes.
-- **Artifacts:** `page-2026-08-25T19-57-44-332Z.png`, `page-2026-08-25T19-58-52-792Z.png`, `page-2026-08-25T20-00-35-513Z.png`, `page-2026-08-25T20-01-48-332Z.png`.
+  - Stream rendered deliverable card: `AI Productivity: Transforming Modern Workflows`, `5 slides · MARP`, `Degraded: dependency_missing` badge, helper copy `Open this file in Marp for VS Code / Marp Web.`, `Download .md` button.
+  - Screenshot: `story-27-2a-marp-mcp.png`.
+- **Playwright test suite:** `presentation-studio-chat.spec.ts` — **5 passed, 0 skipped**. AC-4 unskipped and passing: query-param `presentation_studio_enabled=false` triggers a client-side disabled state with the message `Presentation Studio is not enabled on this workspace plan`. The underlying backend 403 on `POST /api/v1/threads` for disabled `Workspace.presentation_studio_enabled` already existed.
+- **Playwright MCP live verification (AC-4 + regression):**
+  - `?mode=presentation_studio&presentation_studio_enabled=false` renders the disabled state (screenshot `mcp-ac4-feature-gate-v2.png`).
+  - `?mode=presentation_studio` still shows the composer + `Create a pitch deck` quick chip (screenshot `mcp-presentation-studio-normal.png`) — no regression.
+  - Session cookie had expired mid-flight; refreshed `playwright/.auth/user.json` from the `setup` project before the MCP run.
+- **Artifacts:** `page-2026-08-25T19-57-44-332Z.png`, `page-2026-08-25T19-58-52-792Z.png`, `page-2026-08-25T20-00-35-513Z.png`, `page-2026-08-25T20-01-48-332Z.png`, `story-27-2a-pptx-mcp.png`, `story-27-2a-marp-mcp.png`, `mcp-ac4-feature-gate-v2.png`, `mcp-presentation-studio-normal.png`.
 
 ## Story 27.1c — Web App Container Deploy & Custom CNAME E2E (2026-08-25)
 
@@ -425,5 +450,25 @@ _Curated long-term knowledge for Nowing E2E Browser Testing._
 - **Artifacts:** `screenshot_2026-08-24T13-44-25-127Z.png`, `screenshot_2026-08-24T13-47-53-359Z.png`, `screenshot_2026-08-24T13-51-19-322Z.png`, `screenshot_2026-08-24T13-52-09-251Z.png`.
 
 **Session log:** `sessions/2026-08-25.md`
+
+## Story 25.4 — Realtime Admin Telemetry E2E (2026-08-26)
+
+**Stack:** Backend FastAPI `:8000`, Next.js `:3000`, Postgres `:5434`, Redis `:6380`, Zero-cache `:4848`. Seeded superadmin `admin@nowing.net` for `/admin/telemetry` access.
+
+**Live Browser Verification Results:**
+- `/admin/telemetry` loads with four panels: Gross Margin, LLM Cost, Proxy Health, Celery Queues.
+- **Gross Margin panel:** Revenue $1.00, COGS $0.07, Non-LLM Cost $0.01, Overall Margin 93.00%, worst workspace `ws 2 (93.00%)`, worst model `gpt-4o`; chart rendered with 5 time buckets.
+- **LLM Cost panel:** Total Tokens 900, Total Cost $0.07, Unreported Cost Rows 0, Input / Output 600 / 300; by provider `openai`, by workspace `2`, by model `gpt-4o`, by usage type `chat`; line chart rendered.
+- **Proxy Health panel:** Provider `custom`, status flips between `degraded` and `dead` on refresh, latency and success % visible; no proxy credentials leaked in UI or API response.
+- **Celery Queues panel:** Hardcoded `nowing` queue rendered with queue length, healthy status; no Celery worker running so overall status `unavailable / 0 workers`.
+- **Console:** 0 errors after backend settled.
+- **Three bugs found and fixed during live verification:**
+  1. `AdminTelemetryService._bucket()` used `getattr(row, "key")` by default, but provider/model queries label columns `provider`/`model`, causing `AttributeError: key` on real data. Fixed by passing the correct `key_attr` and coercing key to `str` for workspace/usage-type integer keys.
+  2. `get_gross_margin()` accessed `worst_model_row.key`, but the model COGS query labels the model column `model`. Fixed to `.model` and updated unit-test mock `_Row` from `key` to `model`.
+  3. `ProxyHealthPanel.tsx` displayed `success_rate.toFixed(0)}%` without multiplying by 100. Fixed to `(s.success_rate * 100).toFixed(0)}%`.
+- **E2E spec added:** `nowing_web/tests/admin/telemetry.spec.ts` mocks the four telemetry endpoints and verifies all panels; run with `pnpm test:e2e tests/admin/telemetry.spec.ts`.
+- **Artifacts:** `story-25-4-telemetry-dashboard.png`, `story-25-4-telemetry-llm-cost.png`, `story-25-4-telemetry-celery.png`.
+
+**Session log:** `sessions/2026-08-26.md`
 
 

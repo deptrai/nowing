@@ -1,5 +1,5 @@
 import { useSetAtom } from "jotai";
-import { AudioLines, Contact, FileText, Globe, ImageIcon, Presentation } from "lucide-react";
+import { AudioLines, Contact, FileText, Globe, ImageIcon, Presentation, Users } from "lucide-react";
 import type { ComponentType } from "react";
 import { openReportPanelAtom } from "@/atoms/chat/report-panel.atom";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ const KIND_META: Record<
 	podcast: { icon: AudioLines, label: "Podcast" },
 	video: { icon: Presentation, label: "Video Presentation" },
 	presentation: { icon: Presentation, label: "Slide Deck" },
+	meeting_minutes: { icon: Users, label: "Meeting Minutes" },
 	image: { icon: ImageIcon, label: "Image" },
 };
 

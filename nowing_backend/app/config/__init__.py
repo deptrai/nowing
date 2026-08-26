@@ -1906,6 +1906,16 @@ class Config:
     MEETING_MINUTES_TRANSCRIPTION_MICROS_PER_SECOND = max(
         0, _env_int("MEETING_MINUTES_TRANSCRIPTION_MICROS_PER_SECOND", 0)
     )
+    MEETING_MINUTES_MAX_AUDIO_BYTES = max(
+        1, _env_int("MEETING_MINUTES_MAX_AUDIO_BYTES", 100 * 1024 * 1024)
+    )
+    MEETING_MINUTES_DIARIZATION_ENGINE = os.getenv(
+        "MEETING_MINUTES_DIARIZATION_ENGINE", "pyannote"
+    ).lower()
+    MEETING_MINUTES_MAX_SPEAKER_LABELS = max(
+        1, _env_int("MEETING_MINUTES_MAX_SPEAKER_LABELS", 10)
+    )
+    HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN", "")
 
     @classmethod
     def get_settings(cls):
