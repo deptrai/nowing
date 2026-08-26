@@ -272,13 +272,13 @@ development_status:
 
   # === Epic 25: Platform Administration & Multi-Tenant Operations ===
   # 2026-08-16: Multi-Tenant Hub, Scoped Impersonation, Manual Credit Desk, Affiliate Anti-Fraud Payouts, Telemetry & Dynamic Scraper Rules
-  epic-25: in-progress
+  epic-25: done
   25-1: done  # Multi-Tenant User & Workspace Hub + Scoped Impersonation
   25-2: done  # Manual Credit Adjustment & Refund Desk with Dual-Audit Ledger
   25-3: done  # Affiliate Partner Payout Desk & Anti-Fraud Engine — review patches applied; ruff/pytest/tsc/biome green
   25-4: done  # 2026-08-26: all 26 review-patch items applied; ruff/pytest (unit+integration)/tsc/biome green.
-  25-5: in-progress  # Dynamic Scraper Rule Engine & ReDoS Sandbox — bmad-code-review CHANGES REQUESTED; review findings written.
-  25-6: ready-for-dev  # Security Audit Trail Logs & In-App Broadcast Announcements
+  25-5: done  # 2026-08-26: all review patches applied; 53 backend unit/integration tests & 7/7 Playwright E2E tests green.
+  25-6: done  # 2026-08-27: all 3-layer code-review patches applied; 15 unit tests & 11/11 Playwright E2E tests 100% green; ruff/tsc/biome clean.
   epic-25-retrospective: optional
 
   # === Epic 26: Autonomous Lead Missions & Deep Sales Research ===

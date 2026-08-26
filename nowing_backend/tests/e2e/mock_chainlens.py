@@ -73,7 +73,7 @@ async def _event_stream(query: str, mode: str) -> None:
                 "promptTokens": 4273,
                 "completionTokens": 3677,
                 "totalTokens": 7950,
-                "model": "gemini-3.6-flash",
+                "model": "gemini-3.7-flash",
                 "costDollars": 0.0123,
             },
         },

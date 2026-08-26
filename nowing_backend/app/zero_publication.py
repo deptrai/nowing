@@ -169,6 +169,21 @@ MEETING_MINUTES_COLS = [
     "updated_at",
 ]
 
+BROADCAST_ANNOUNCEMENT_COLS = [
+    "id",
+    "title",
+    "message",
+    "banner_type",
+    "target_all",
+    "target_workspace_ids",
+    "starts_at",
+    "expires_at",
+    "dismissible",
+    "is_active",
+    "created_at",
+    "updated_at",
+]
+
 ZERO_PUBLICATION: Mapping[str, Sequence[str] | None] = {
     "notifications": None,
     "documents": DOCUMENT_COLS,
@@ -188,6 +203,7 @@ ZERO_PUBLICATION: Mapping[str, Sequence[str] | None] = {
     "lead_activity_logs": LEAD_ACTIVITY_LOG_COLS,
     "dsh_missions": DSH_MISSION_COLS,
     "meeting_minutes": MEETING_MINUTES_COLS,
+    "broadcast_announcements": BROADCAST_ANNOUNCEMENT_COLS,
 }
 
 

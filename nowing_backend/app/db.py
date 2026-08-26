@@ -1044,9 +1044,7 @@ class ScraperRule(Base, TimestampMixin):
         default=dict,
         server_default=text("'{}'::jsonb"),
     )
-    is_active = Column(
-        Boolean, nullable=False, default=False, server_default="false"
-    )
+    is_active = Column(Boolean, nullable=False, default=False, server_default="false")
     updated_at = Column(
         TIMESTAMP(timezone=True),
         nullable=False,
@@ -1066,7 +1064,9 @@ class ScraperRule(Base, TimestampMixin):
     )
 
     __table_args__ = (
-        UniqueConstraint("platform", "version", name="uq_scraper_rules_platform_version"),
+        UniqueConstraint(
+            "platform", "version", name="uq_scraper_rules_platform_version"
+        ),
         Index(
             "uq_scraper_rules_active_per_platform",
             "platform",
@@ -6840,3 +6840,79 @@ class SlidePresentation(Base):
 
     workspace = relationship("Workspace", backref="slide_presentations")
     user = relationship("User", backref="slide_presentations")
+
+
+class BroadcastAnnouncement(Base):
+    """In-app broadcast announcements for system alerts, maintenance, and promotions (Story 25.6)."""
+
+    __tablename__ = "broadcast_announcements"
+    __table_args__ = (
+        Index(
+            "ix_broadcast_announcements_active_window",
+            "is_active",
+            "starts_at",
+            "expires_at",
+        ),
+        Index(
+            "ix_broadcast_announcements_target_workspace_ids",
+            "target_workspace_ids",
+            postgresql_using="gin",
+        ),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    title = Column(String(255), nullable=False)
+    message = Column(Text, nullable=False)
+    banner_type = Column(
+        String(20), nullable=False, default="info", server_default=text("'info'")
+    )
+    target_all = Column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )
+    target_workspace_ids = Column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    starts_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
+    expires_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    dismissible = Column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )
+    is_active = Column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )
+    created_by_user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    updated_by_user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
+
+    created_by_user = relationship(
+        "User", foreign_keys=[created_by_user_id], backref="created_broadcasts"
+    )
+    updated_by_user = relationship(
+        "User", foreign_keys=[updated_by_user_id], backref="updated_broadcasts"
+    )

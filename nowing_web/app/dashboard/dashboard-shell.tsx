@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { USER_QUERY_KEY } from "@/atoms/user/user-query.atoms";
+import { BroadcastBanner } from "@/components/broadcasts/BroadcastBanner";
 import { useGlobalLoadingEffect } from "@/hooks/use-global-loading";
 import { useSession } from "@/hooks/use-session";
 import { redirectToLogin } from "@/lib/auth-utils";
@@ -34,6 +35,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
 	return (
 		<div className="h-full flex flex-col ">
+			<BroadcastBanner />
 			<div className="flex-1 min-h-0">{children}</div>
 		</div>
 	);

@@ -11,8 +11,22 @@ _Curated long-term knowledge for Nowing E2E Browser Testing._
 - **Alembic two heads:** As of 2026-08-17, revisions `223_add_audit_events_table.py` and `07582243b847_merge_e2e_heads_for_testing.py` are both heads. A temporary merge revision is needed to run `alembic upgrade head` on a fresh database.
 - **E2E superuser requirement:** `/admin/scraper-accounts` and `/admin/telemetry` (Story 25.4) require `User.is_superuser=True`. The default `e2e-test@nowing.net` created by the Playwright auth setup is not a superuser, so admin E2E tests fail with 403/unexpected DOM. For a local smoke test, seed a superadmin directly (`admin@nowing.net` / `AdminPass123!`) and login via `/login`.
 - **Story 25.4 (Admin Telemetry) live check:** `/admin/telemetry` renders Gross Margin, LLM Cost, Proxy Health, and Celery Queue panels. Console must stay at 0 errors after the page settles. Initial load can show transient `net::ERR_CONNECTION_REFUSED` or CORS errors if the backend was restarting; reload once the backend is ready.
-- **Story 25.4 proxy success rate UI bug:** `ProxyHealthPanel.tsx` displayed `success_rate.toFixed(0)}%` (e.g. `1%` for a 100% success rate). Fixed to multiply by 100: `(s.success_rate * 100).toFixed(0)}%`.
 - **Story 25.4 E2E spec:** `nowing_web/tests/admin/telemetry.spec.ts` mocks `/auth/session`, `/users/me`, and the four telemetry endpoints to verify the dashboard panels and auto-refresh without a pre-seeded superuser. Run with `pnpm test:e2e tests/admin/telemetry.spec.ts`.
+- **Story 25.5 (Dynamic Scraper Rules & ReDoS Sandbox) E2E:**
+  - Page: `/admin/scrapers/rules`
+  - Playwright route interception: When Next.js runs on `:3000` with requests directed to backend `:8000`, browser sends `credentials: "include"`. Route mocks MUST set `Access-Control-Allow-Origin: http://localhost:3000` (NOT `*`) and `Access-Control-Allow-Credentials: true`, plus handle `OPTIONS` preflights.
+  - Zero Context Gating: `AuthenticatedZeroProvider` blocks tree mounting if `**/zero/context*` fails; mock it with `{ userId: "11111111-1111-4111-8111-111111111111", allowedSpaceIds: [1] }`.
+  - User ID UUID format: `user` Zod schema requires RFC 4122 v4 UUID (`11111111-1111-4111-8111-111111111111`).
+  - Spec `nowing_web/tests/admin/scraper-rules.spec.ts`: 7/7 tests pass (render, CSS selector validation, ReDoS regex inline validation, circuit breaker trip/reset, and list polling every 5s).
+- **Story 25.6 (Security Audit Trail Logs & In-App Broadcast Announcements) Live E2E (2026-08-27):**
+  - **Surfaces Verified:**
+    1. `/admin/audit-logs`: Renders audit trail timeline table with action types, actor/subject emails, IP/client info, ticket ref, and date range filters. Clicking `View` opens the formatted diff details drawer. `Export CSV` downloads compliance reporting data.
+    2. `/admin/dnc`: Global DNC Blacklist Registry renders masked values, SHA256 HMACs, source tags, and action buttons. `Add Entry` modal and `Import CSV` modal open and function cleanly.
+    3. `/admin/broadcasts`: In-App Broadcast Announcements Manager renders active/expired status badges, target workspaces, schedule windows, and `New Broadcast` modal.
+    4. `/dashboard/1/new-chat`: In-App `BroadcastBanner` mounts at the top of the workspace dashboard for active platform announcements and dismisses cleanly via `button[aria-label='Dismiss banner']`, persisting dismissal to `localStorage`.
+  - **Artifacts:** `story-25-6-audit-logs.png`, `story-25-6-dnc-list.png`, `story-25-6-dnc-modal.png`, `story-25-6-broadcasts-list.png`, `story-25-6-broadcasts-modal.png`, `story-25-6-dashboard-banner.png`, `story-25-6-dashboard-banner-dismissed.png`.
+
+
 
 ## Flaky Selectors & DOM Patterns
 - **Header Auth Controls:** The `Sign In` link in the main navigation uses `hidden md:block`. When testing with browser MCP tools, always ensure viewport is set to desktop size (e.g. 1440x900 via `browser_resize`) or click the `Get Started` hero link if testing on small viewports.

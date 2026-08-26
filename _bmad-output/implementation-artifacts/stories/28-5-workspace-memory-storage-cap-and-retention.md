@@ -32,11 +32,11 @@ So that my workspace cannot grow unbounded, my costs are predictable, and I stay
 
 ## Acceptance Criteria
 
-**AC-1:** **Given** a workspace is at or over its `max_memory_count` limit, **when** any code path calls `MemoryRepository.create_memory`, **then** the request is rejected with HTTP 403 and `{"error_code": "limit_exceeded", "limit_type": "memory"}` before any new row is inserted.
+**AC-1:** **Given** a workspace is at or over its `max_memory_count` limit, **when** any code path calls `MemoryRepository.create_memory`, **then** the request is rejected with HTTP 403 and `{"error_code": "limit_exceeded", "limit_type": "memory"}` before any new row is inserted. **And** `max_memory_bytes` is a soft visibility metric only (v1 does not enforce it because pgvector/TOAST makes byte estimation unreliable).
 
 **AC-2:** **Given** a memory write matches an existing near-duplicate, **when** `MemoryRepository.create_memory` updates the existing row, **then** the limit check does not reject the write because the count does not increase.
 
-**AC-3:** **Given** a workspace with no `max_memory_count` limit (`None`) or a self-hosted deployment, **when** a memory is created, **then** the write succeeds without a limit check.
+**AC-3:** **Given** a workspace with no `max_memory_count` limit (`None`) or a self-hosted deployment, **when** a memory is created, **then** the write succeeds without a limit check. (Skip the gate whenever `workspace_limit.max_memory_count` is `None`; self-host plan defaults to `None` unless the admin explicitly overrides.)
 
 **AC-4:** **Given** the workspace owner opens workspace settings > Data retention, **when** they configure `memory_retention_days`, `memory_auto_archive_enabled`, and `memory_retention_action` (`archive` | `delete`), **then** the settings persist and are returned by `GET /workspaces/{id}`.
 
@@ -46,9 +46,9 @@ So that my workspace cannot grow unbounded, my costs are predictable, and I stay
 
 **AC-7:** **Given** `memory_retention_action=delete`, **when** the retention task processes an old memory, **then** the memory, its `MemoryVersion` rows, and its `MemoryRelation` rows are purged (they have `ondelete=CASCADE`).
 
-**AC-8:** **Given** a workspace owner calls `DELETE /workspaces/{id}/memories/{memory_id}`, **when** the erasure is confirmed, **then** the memory and its versions/relations/embedding are purged within the SLA, and an `audit_events` entry is written.
+**AC-8:** **Given** a workspace owner or a user with `memory:delete` permission calls `DELETE /workspaces/{id}/memories/{memory_id}`, **when** the erasure is confirmed, **then** the memory and its versions/relations/embedding are purged within the SLA, and an `audit_events` row is written with `action="memory_delete"`, `actor_id`, and `diff_payload={"memory_id", "reason"}`.
 
-**AC-9:** **Given** a bulk deletion of >100,000 memories by `source_type` + `source_id`, **when** the job runs, **then** it is chunked into batches of 1,000 rows with dry-run, progress reporting, and cancel-ability without corrupting the HNSW index.
+**AC-9:** **Given** a workspace owner (or admin) deletes >100,000 memories by `source_type` + `source_id` via `POST /workspaces/{id}/memories/bulk-delete`, **when** the job runs, **then** it is chunked into batches of 1,000 rows with dry-run, progress reporting, and cancel-ability without corrupting the HNSW index, and an `audit_events` row is written for the bulk job with `action="bulk_delete"`, `actor_id`, and `affected_count`.
 
 **AC-10:** **And** `ruff`, `tsc --noEmit`, `biome`, backend unit/integration tests, and Playwright E2E tests pass with no regression to Story 3.14 memory latency benchmark.
 
@@ -79,7 +79,7 @@ So that my workspace cannot grow unbounded, my costs are predictable, and I stay
 ### Decisions already ratified
 
 - **Soft-delete marker:** `Memory.archived_at` (nullable TIMESTAMP + index), **not** `Memory.status = 'archived'`. This mirrors `Document.archived_at` and the existing `data-retention-manager.tsx` pattern. <ref_snippet file="/Users/luisphan/Documents/GitHub/nowing/nowing_backend/app/db.py" lines="1547-1549" />
-- **Workspace retention fields:** `memory_retention_days` (Integer), `memory_auto_archive_enabled` (Boolean), `memory_retention_action` (String, default `"archive"`) — mirror `document_retention_*`. Self-host defaults to disabled/unlimited. <ref_snippet file="/Users/luisphan/Documents/GitHub/nowing/nowing_backend/app/db.py" lines="1967-1977" />
+- **Workspace retention fields:** `memory_retention_days` (Integer), `memory_auto_archive_enabled` (Boolean), `memory_retention_action` (String, default `"archive"`) — mirror `document_retention_*`. Defaults: cloud `memory_retention_days=365`, `memory_auto_archive_enabled=false`, `memory_retention_action="archive"`; self-host `memory_retention_days=null`, `memory_auto_archive_enabled=false` (admin takes responsibility). <ref_snippet file="/Users/luisphan/Documents/GitHub/nowing/nowing_backend/app/db.py" lines="1967-1977" />
 - **Retention action values:** reuse `DocumentRetentionAction` enum (`archive`, `delete`). `archive` sets `archived_at = now()`; `delete` hard deletes immediately (v1 has no grace period; can add `memory_grace_period_days` later if legal requires).
 - **Memory cap binds:** `AD-DEFER-4` (data lifecycle), `AD-18`/`NFR-1b/1c/1d` (memory bound). The cap is a guardrail to prevent the unbounded growth that makes `AD-18` per-turn costs explode.
 - **Source risk tier (`memory_source_legal_tiers`) is owned by Story 28.3.** Story 28.5 does NOT create this table. If it exists, the retention task MAY use per-source defaults; otherwise it uses workspace defaults.
@@ -113,11 +113,11 @@ So that my workspace cannot grow unbounded, my costs are predictable, and I stay
 ## Tasks / Subtasks
 
 - [ ] **T1 — Schema & migration**
-  - [ ] T1.1 Add `memory_retention_days` (nullable Integer), `memory_auto_archive_enabled` (Boolean, default false), `memory_retention_action` (String(20), default `"archive"`) to `Workspace`.
+  - [ ] T1.1 Add `memory_retention_days` (nullable Integer), `memory_auto_archive_enabled` (Boolean, default false), `memory_retention_action` (String(20), default `"archive"`) to `Workspace`. Cloud default: `memory_retention_days=365`; self-host default: `memory_retention_days=null`.
   - [ ] T1.2 Add a check constraint for memory retention: `NOT memory_auto_archive_enabled OR (memory_retention_days IS NOT NULL AND memory_retention_days > 0 AND memory_retention_days <= 36500)`.
   - [ ] T1.3 Add `max_memory_count` (nullable Integer) and `max_memory_bytes` (nullable BigInteger) to `WorkspaceLimit`.
   - [ ] T1.4 Add `archived_at` (nullable TIMESTAMP) to `Memory` with index.
-  - [ ] T1.5 Create Alembic migration `230_add_memory_retention_and_storage_cap.py`.
+  - [ ] T1.5 Create Alembic migration with `uv run alembic revision -m "add memory retention and storage cap"` (project uses hash-based revision IDs, e.g. `230_add_memory_retention_and_storage_cap.py` is only an illustrative name).
 
 - [ ] **T2 — Workspace limits service**
   - [ ] T2.1 Extend `ResolvedWorkspaceLimits` with `max_memory_count` and `max_memory_bytes`.
@@ -137,13 +137,13 @@ So that my workspace cannot grow unbounded, my costs are predictable, and I stay
 - [ ] **T5 — Memory retention Celery task**
   - [ ] T5.1 Create `app/tasks/celery_tasks/memory_retention_task.py` with `apply_memory_retention_policies`, mirror `document_retention_task.py`.
   - [ ] T5.2 Register task in `app/celery_app.py` `include` and `beat_schedule`.
-  - [ ] T5.3 Archive old memories (`archived_at = now`); hard delete when `memory_retention_action == "delete"`.
+  - [ ] T5.3 Archive old memories (`archived_at = now`); hard delete when `memory_retention_action == "delete"`. Write `audit_events(action="retention_purge")` with `affected_count`.
 
 - [ ] **T6 — Routes and schemas**
   - [ ] T6.1 Extend `WorkspaceUpdate` and `WorkspaceRead` with memory retention fields.
   - [ ] T6.2 Extend `WorkspaceLimitUpdate` and `WorkspaceLimitsResponse` with memory limit fields and usage.
-  - [ ] T6.3 Add `DELETE /workspaces/{workspace_id}/memories/{memory_id}` route (right-to-delete) with audit.
-  - [ ] T6.4 Add admin/owner `POST /workspaces/{workspace_id}/memories/bulk-delete` with dry-run + confirm + chunked 1,000 rows.
+  - [ ] T6.3 Add `DELETE /workspaces/{workspace_id}/memories/{memory_id}` route (right-to-delete). Guard with workspace owner or `memory:delete` permission. Hard-delete the memory + versions/relations/embedding and write `audit_events(action="memory_delete")`.
+  - [ ] T6.4 Add `POST /workspaces/{workspace_id}/memories/bulk-delete` for workspace owner/admin. Dry-run returns preview count; confirm triggers chunked 1,000-row deletes and writes `audit_events(action="bulk_delete")` when done.
   - [ ] T6.5 Seed `workspace_limits` plan defaults for `max_memory_count` (e.g., free 1_000, team 10_000, enterprise None) and `max_memory_bytes` (e.g., free 5_000_000_000, team 50_000_000_000).
 
 - [ ] **T7 — Frontend**

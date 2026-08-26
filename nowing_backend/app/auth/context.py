@@ -21,8 +21,18 @@ class AuthContext:
     impersonated_by: uuid.UUID | None = None
 
     @classmethod
-    def session(cls, user: User, is_impersonation: bool = False, impersonated_by: uuid.UUID | None = None) -> AuthContext:
-        return cls(user=user, method="session", is_impersonation=is_impersonation, impersonated_by=impersonated_by)
+    def session(
+        cls,
+        user: User,
+        is_impersonation: bool = False,
+        impersonated_by: uuid.UUID | None = None,
+    ) -> AuthContext:
+        return cls(
+            user=user,
+            method="session",
+            is_impersonation=is_impersonation,
+            impersonated_by=impersonated_by,
+        )
 
     @classmethod
     def pat_auth(cls, user: User, pat: PersonalAccessToken) -> AuthContext:
@@ -33,10 +43,13 @@ class AuthContext:
         return cls(user=user, method="system", source=source)
 
     @property
+    def user_id(self) -> uuid.UUID:
+        return self.user.id
+
+    @property
     def is_gated(self) -> bool:
         return self.method == "pat"
 
     @property
     def is_session(self) -> bool:
         return self.method == "session"
-

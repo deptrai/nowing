@@ -234,6 +234,7 @@ celery_app = Celery(
         "app.automations.triggers.builtin.memory_change.selector",
         "app.tasks.celery_tasks.partner_payout_reconciliation_task",
         "app.tasks.lead_scrapers",
+        "app.tasks.celery_tasks.broadcast_tasks",
     ],
 )
 
@@ -365,6 +366,11 @@ celery_app.conf.beat_schedule = {
         "task": "gateway.reconcile_inbox",
         "schedule": crontab(minute="*"),
         "options": {"expires": 60},
+    },
+    "expire-broadcast-announcements": {
+        "task": "expire_broadcast_announcements",
+        "schedule": crontab(minute="*"),
+        "options": {"expires": 50},
     },
     "gateway-health-check": {
         "task": "gateway.health_check",

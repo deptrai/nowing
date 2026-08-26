@@ -1298,3 +1298,9 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - **Finding:** Pre-existing hardcoded `*.apps.nowing.net` public URL base in `generator.py`.
   - **Action:** Marked `[x] [Review][Defer]` in `27-1b-web-app-build-preview-runner.md`.
   - **Reason / when to revisit:** Belongs to hosting/ingress config (Story 27.1c).
+
+## Resolved from: code review of 25-6-security-audit-trail-logs-and-in-app-broadcast-announcements (2026-08-27)
+
+- **Finding:** `normalize_domain` mis-parses URLs containing userinfo or ports (e.g. `http://user:pass@example.com:8080/path` becomes `user`).
+  - **Action:** Fixed in `nowing_backend/app/lead_intelligence/dnc/normalizer.py` by parsing with `urlparse(...).hostname`; added unit tests.
+  - **Resolved:** 2026-08-27.

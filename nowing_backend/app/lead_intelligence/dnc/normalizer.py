@@ -30,6 +30,10 @@ def normalize_phone_e164(phone: str | None) -> str | None:
     if not digits:
         return None
 
+    # Strip international IDD prefix '00'
+    if digits.startswith("00"):
+        digits = digits[2:]
+
     # Convert legacy 11-digit mobile numbers (2018 telecom reform) before E.164
     if len(digits) == 11 and digits.startswith("0"):
         from app.proprietary.platforms.xactions.phone_extractor import (
@@ -37,6 +41,10 @@ def normalize_phone_e164(phone: str | None) -> str | None:
         )
 
         digits = convert_legacy_11_digit(digits)
+
+    # Strip redundant leading 0 after Vietnam country code (e.g. +840901234567 -> +84901234567)
+    if digits.startswith("840") and len(digits) in (9, 10, 11, 12):
+        digits = f"84{digits[3:]}"
 
     # Vietnamese standard 10-digit mobile conversion (09x, 08x, 07x, 05x, 03x, 02x)
     if digits.startswith("0") and len(digits) == 10:
@@ -66,7 +74,7 @@ def hash_phone_hmac(phone_e164: str, secret_key: str | None = None) -> str:
 
 
 def normalize_domain(domain_or_url: str | None) -> str | None:
-    """Strip protocol, port, path, query and convert domain to lowercase."""
+    """Strip protocol, userinfo, port, path, query and convert domain to lowercase."""
     if not domain_or_url or not isinstance(domain_or_url, str):
         return None
 
@@ -74,21 +82,25 @@ def normalize_domain(domain_or_url: str | None) -> str | None:
     if not cleaned:
         return None
 
-    if "://" in cleaned:
-        try:
-            parsed = urlparse(cleaned)
-            netloc = parsed.netloc
-        except Exception:
-            netloc = cleaned
+    # urlparse requires a scheme or leading // to identify netloc reliably.
+    # A bare "user:pass@example.com:8080/path" would be parsed as scheme="user",
+    # so we prefix with // when there is no scheme or protocol-relative prefix.
+    if "://" not in cleaned and not cleaned.startswith("//"):
+        to_parse = "//" + cleaned
     else:
-        netloc = cleaned.split("/")[0]
+        to_parse = cleaned
 
-    # Strip port if present
-    if ":" in netloc:
-        netloc = netloc.split(":")[0]
+    try:
+        parsed = urlparse(to_parse)
+        hostname = parsed.hostname
+    except Exception:
+        hostname = None
 
-    netloc = netloc.strip(".")
-    return netloc if netloc else None
+    if not hostname:
+        # Fallback: treat the first path segment as the host
+        hostname = cleaned.split("/")[0].split(":")[0].split("@")[-1].strip(".")
+
+    return hostname if hostname else None
 
 
 def is_domain_matching(target_domain: str, rule_domain: str) -> bool:
@@ -136,7 +148,11 @@ def normalize_tax_id(tax_id: str | None) -> str | None:
         return None
 
     cleaned = re.sub(r"[^\w-]", "", tax_id.strip()).lower()
-    return cleaned if cleaned else None
+    raw_digits = cleaned.replace("-", "")
+    if not cleaned or not raw_digits or len(raw_digits) < 6:
+        return None
+
+    return cleaned
 
 
 def compute_phone_hmac(phone: str | None) -> str | None:

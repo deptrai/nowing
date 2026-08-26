@@ -58,6 +58,11 @@ class TestDomainAndEmailNormalization:
         assert normalize_domain("https://Vinhomes.vn/du-an") == "vinhomes.vn"
         assert normalize_domain("http://sub.company.com:8080/") == "sub.company.com"
         assert normalize_domain("  HARAVAN.COM  ") == "haravan.com"
+        assert (
+            normalize_domain("http://user:pass@example.com:8080/path") == "example.com"
+        )
+        assert normalize_domain("user:pass@example.com:8080/path") == "example.com"
+        assert normalize_domain("example.com:8080/path") == "example.com"
 
     def test_wildcard_domain_match(self) -> None:
         """Should support exact match and wildcard subdomains (e.g. *.vinhomes.vn)."""

@@ -44,7 +44,10 @@ from .admin_agent_registry_routes import (
 from .admin_anti_bot_escalation_routes import (
     router as admin_anti_bot_escalation_router,
 )
+from .admin_audit_logs_routes import router as admin_audit_logs_router
+from .admin_broadcasts_routes import router as admin_broadcasts_router
 from .admin_credits_routes import router as admin_credits_router
+from .admin_dnc_routes import router as admin_dnc_router
 from .admin_global_model_connections_routes import (
     router as admin_global_model_connections_router,
 )
@@ -64,6 +67,7 @@ from .agent_revert_route import router as agent_revert_router
 from .airtable_add_connector_route import (
     router as airtable_add_connector_router,
 )
+from .broadcasts_routes import router as broadcasts_router
 from .chat_comments_routes import router as chat_comments_router
 from .circleback_webhook_route import router as circleback_webhook_router
 from .clickup_add_connector_route import router as clickup_add_connector_router
@@ -226,9 +230,7 @@ router.include_router(admin_telemetry_router)  # Platform admin real-time teleme
 router.include_router(
     admin_scraper_platform_accounts_router
 )  # Admin scraper platform credentials
-router.include_router(
-    admin_scraper_rules_router
-)  # Admin dynamic scraper rules
+router.include_router(admin_scraper_rules_router)  # Admin dynamic scraper rules
 router.include_router(
     scraper_accounts_alias_router
 )  # Admin scraper platform credentials alias (/admin/scraper-accounts)
@@ -238,6 +240,18 @@ router.include_router(
 router.include_router(admin_users_router)  # Admin users and impersonation
 router.include_router(admin_affiliates_router)  # Admin affiliate partner payout desk
 router.include_router(admin_credits_router)  # Manual credit adjustments
+router.include_router(
+    admin_audit_logs_router
+)  # Platform admin audit trail logs (Story 25.6)
+router.include_router(
+    admin_dnc_router
+)  # Platform admin global DNC blacklist (Story 25.6)
+router.include_router(
+    admin_broadcasts_router
+)  # Platform admin broadcast management (Story 25.6)
+router.include_router(
+    broadcasts_router
+)  # In-app active broadcast announcements (Story 25.6)
 router.include_router(model_connections_router)  # Connection-centric model catalog
 router.include_router(model_list_router)  # Dynamic model catalogue from OpenRouter
 router.include_router(logs_router)
