@@ -140,8 +140,10 @@ class PlatformCircuitBreaker:
         try:
             redis = await self._get_redis()
             normalized_platform = platform.strip().lower()
-            await redis.delete(self._state_key(normalized_platform))
-            await redis.delete(self._failure_counter_key(normalized_platform))
+            await redis.delete(
+                self._state_key(normalized_platform),
+                self._failure_counter_key(normalized_platform),
+            )
             logger.info("CIRCUIT BREAKER RESET for %s", normalized_platform)
         except Exception as exc:
             logger.error("Failed to reset circuit breaker for %s: %s", platform, exc)

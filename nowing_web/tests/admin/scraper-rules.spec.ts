@@ -79,21 +79,68 @@ const mockRedosError = {
 	detail: "REDOS_TIMEOUT: Regex exceeds 50ms ReDoS limit",
 };
 
-async function setupApiMocks(page: Page) {
-	await page.route("/api/v1/admin/scraper-rules", async (route: Route) => {
+const CORS_HEADERS = {
+	"Access-Control-Allow-Origin": "http://localhost:3000",
+	"Access-Control-Allow-Credentials": "true",
+	"Access-Control-Allow-Headers":
+		"Content-Type, Authorization, X-Requested-With, X-E2E-Mint-Secret, x-playwright-test",
+	"Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+};
+
+async function fulfillJson(route: Route, status: number, body: unknown) {
+	if (route.request().method() === "OPTIONS") {
 		await route.fulfill({
-			status: 200,
-			contentType: "application/json",
-			body: JSON.stringify(mockRulesList),
+			status: 204,
+			headers: CORS_HEADERS,
+		});
+		return;
+	}
+	await route.fulfill({
+		status,
+		contentType: "application/json",
+		headers: CORS_HEADERS,
+		body: JSON.stringify(body),
+	});
+}
+
+async function setupApiMocks(page: Page) {
+	await page.route("**/auth/session*", async (route: Route) => {
+		await fulfillJson(route, 200, {
+			authenticated: true,
+			access_expires_at: Date.now() / 1000 + 3_600,
+			is_impersonation: false,
+			impersonated_by: null,
+			target_user: null,
 		});
 	});
 
-	await page.route("/api/v1/admin/scraper-rules/batdongsan", async (route: Route) => {
-		await route.fulfill({
-			status: 200,
-			contentType: "application/json",
-			body: JSON.stringify(mockActiveRule),
+	await page.route("**/users/me*", async (route: Route) => {
+		await fulfillJson(route, 200, {
+			id: "11111111-1111-4111-8111-111111111111",
+			email: "admin-test@nowing.net",
+			is_active: true,
+			is_superuser: true,
+			is_verified: true,
+			credit_micros_balance: 0,
+			display_name: "Admin Test",
+			avatar_url: null,
+			notification_preferences: null,
 		});
+	});
+
+	await page.route("**/zero/context*", async (route: Route) => {
+		await fulfillJson(route, 200, {
+			userId: "11111111-1111-4111-8111-111111111111",
+			allowedSpaceIds: [1],
+		});
+	});
+
+	await page.route("**/api/v1/admin/scraper-rules", async (route: Route) => {
+		await fulfillJson(route, 200, mockRulesList);
+	});
+
+	await page.route("**/api/v1/admin/scraper-rules/batdongsan", async (route: Route) => {
+		await fulfillJson(route, 200, mockActiveRule);
 	});
 }
 
@@ -104,94 +151,88 @@ test.describe("Admin Scraper Rules page", () => {
 
 	test("renders the rules list and active rule details", async ({ page }) => {
 		await page.goto("/admin/scrapers/rules");
-		await expect(page.locator("text=batdongsan")).toBeVisible();
-		await expect(page.locator("text=version 7")).toBeVisible();
-		await expect(page.locator("text=span.js__card-title")).toBeVisible();
+		await expect(page.getByText("batdongsan").first()).toBeVisible();
+		await expect(page.getByText("version 7").first()).toBeVisible();
+		await expect(page.locator("[data-testid='rule-editor-selectors-title']")).toHaveValue(
+			"span.js__card-title"
+		);
 	});
 
 	test("validates invalid CSS selector inline", async ({ page }) => {
-		await page.goto("/admin/scrapers/rules");
-		await page.fill("[data-testid='rule-editor-selectors-title']", "span[");
-		await page.route("/api/v1/admin/scraper-rules/batdongsan", async (route: Route) => {
-			await route.fulfill({
-				status: 422,
-				contentType: "application/json",
-				body: JSON.stringify(mockValidationError),
-			});
+		await page.route("**/api/v1/admin/scraper-rules/batdongsan", async (route: Route) => {
+			if (route.request().method() === "POST") {
+				await fulfillJson(route, 422, mockValidationError);
+			} else {
+				await fulfillJson(route, 200, mockActiveRule);
+			}
 		});
+		await page.goto("/admin/scrapers/rules");
+		await expect(page.locator("[data-testid='rule-editor-selectors-title']")).toHaveValue(
+			"span.js__card-title"
+		);
+		await page.fill("[data-testid='rule-editor-selectors-title']", "span[");
 		await page.click("text=Save");
-		await expect(page.locator("text=Invalid CSS selector")).toBeVisible();
+		await expect(page.getByText(/Invalid CSS selector/i)).toBeVisible();
 	});
 
 	test("validates ReDoS regex inline", async ({ page }) => {
-		await page.goto("/admin/scrapers/rules");
-		await page.fill("[data-testid='rule-editor-regexes-phone_in_title']", "(a+)+$");
-		await page.route("/api/v1/admin/scraper-rules/batdongsan", async (route: Route) => {
-			await route.fulfill({
-				status: 422,
-				contentType: "application/json",
-				body: JSON.stringify(mockRedosError),
-			});
+		await page.route("**/api/v1/admin/scraper-rules/batdongsan", async (route: Route) => {
+			if (route.request().method() === "POST") {
+				await fulfillJson(route, 422, mockRedosError);
+			} else {
+				await fulfillJson(route, 200, mockActiveRule);
+			}
 		});
+		await page.goto("/admin/scrapers/rules");
+		await expect(page.locator("[data-testid='rule-editor-regexes-phone_in_title']")).toBeVisible();
+		await page.fill("[data-testid='rule-editor-regexes-phone_in_title']", "(a+)+$");
 		await page.click("text=Save");
-		await expect(page.locator("text=REDOS_TIMEOUT")).toBeVisible();
+		await expect(page.getByText(/REDOS_TIMEOUT/i)).toBeVisible();
 	});
 
 	test("trip circuit breaker updates status", async ({ page }) => {
 		await page.goto("/admin/scrapers/rules");
 		await page.route(
-			"/api/v1/admin/scraper-rules/batdongsan/circuit-breaker/trip",
+			"**/api/v1/admin/scraper-rules/batdongsan/circuit-breaker/trip",
 			async (route: Route) => {
-				await route.fulfill({
-					status: 200,
-					contentType: "application/json",
-					body: JSON.stringify({
-						...mockActiveRule,
-						rule_schema: {
-							...mockActiveRule.rule_schema,
-							circuit_breaker: { ...mockActiveRule.rule_schema.circuit_breaker, tripped: true },
-						},
-					}),
+				await fulfillJson(route, 200, {
+					...mockActiveRule,
+					rule_schema: {
+						...mockActiveRule.rule_schema,
+						circuit_breaker: { ...mockActiveRule.rule_schema.circuit_breaker, tripped: true },
+					},
 				});
 			}
 		);
 		await page.click("text=Trip Circuit Breaker");
-		await expect(page.locator("text=tripped")).toBeVisible();
+		await expect(page.getByText("status: tripped")).toBeVisible();
 	});
 
 	test("reset circuit breaker updates status", async ({ page }) => {
 		await page.goto("/admin/scrapers/rules");
 		await page.route(
-			"/api/v1/admin/scraper-rules/batdongsan/circuit-breaker/reset",
+			"**/api/v1/admin/scraper-rules/batdongsan/circuit-breaker/reset",
 			async (route: Route) => {
-				await route.fulfill({
-					status: 200,
-					contentType: "application/json",
-					body: JSON.stringify({
-						...mockActiveRule,
-						rule_schema: {
-							...mockActiveRule.rule_schema,
-							circuit_breaker: { ...mockActiveRule.rule_schema.circuit_breaker, tripped: false },
-						},
-					}),
+				await fulfillJson(route, 200, {
+					...mockActiveRule,
+					rule_schema: {
+						...mockActiveRule.rule_schema,
+						circuit_breaker: { ...mockActiveRule.rule_schema.circuit_breaker, tripped: false },
+					},
 				});
 			}
 		);
 		await page.click("text=Reset Circuit Breaker");
-		await expect(page.locator("text=healthy")).toBeVisible();
+		await expect(page.getByText("status: healthy")).toBeVisible();
 	});
 
 	test("polls the list every 5 seconds", async ({ page }) => {
-		await page.goto("/admin/scrapers/rules");
 		let callCount = 0;
-		await page.route("/api/v1/admin/scraper-rules", async (route: Route) => {
+		await page.route("**/api/v1/admin/scraper-rules", async (route: Route) => {
 			callCount += 1;
-			await route.fulfill({
-				status: 200,
-				contentType: "application/json",
-				body: JSON.stringify({ ...mockRulesList, total: callCount }),
-			});
+			await fulfillJson(route, 200, { ...mockRulesList, total: callCount });
 		});
+		await page.goto("/admin/scrapers/rules");
 		await page.waitForTimeout(5500);
 		await expect.poll(() => callCount).toBeGreaterThanOrEqual(2);
 	});

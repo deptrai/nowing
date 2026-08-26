@@ -5,7 +5,7 @@ import logging
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select, update
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import AuditEvent, ScraperRule
@@ -39,8 +39,10 @@ def _as_rule_schema(value: Any) -> RuleSchema:
 
 async def _max_version(session: AsyncSession, platform: str) -> int | None:
     result = await session.execute(
-        select(func.max(ScraperRule.version))
+        select(ScraperRule.version)
         .where(ScraperRule.platform == platform)
+        .order_by(ScraperRule.version.desc())
+        .limit(1)
         .with_for_update()
     )
     return result.scalar()
@@ -165,8 +167,8 @@ async def activate_rule(
     session: AsyncSession,
     platform: str,
     version: int,
-    is_active: bool,
-    auth: Any,
+    is_active: bool = True,
+    auth: Any = None,
     redis: Any | None = None,
 ) -> ScraperRule:
     """Activate or deactivate a specific rule version."""
