@@ -51,6 +51,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 				<Link href="/admin/telemetry" className="hover:underline">
 					Telemetry
 				</Link>
+				<Link href="/admin/scrapers/rules" className="hover:underline">
+					Scraper Rules
+				</Link>
 			</nav>
 			<div className="flex-1 min-h-0">{children}</div>
 		</div>

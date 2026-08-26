@@ -7,6 +7,7 @@ are implemented.
 
 from __future__ import annotations
 
+import asyncio
 import importlib
 from typing import Any
 from unittest.mock import AsyncMock
@@ -64,15 +65,27 @@ class TestScraperRulePubSub:
             callback_called = True
             assert platform == "batdongsan"
 
+        message = {
+            "type": "message",
+            "data": '{"platform": "batdongsan", "version": 7}',
+        }
+        pubsub = AsyncMock()
+        pubsub.get_message.side_effect = [message, asyncio.CancelledError]
+
+        redis = AsyncMock()
+        from unittest.mock import MagicMock
+        redis.pubsub = MagicMock(return_value=pubsub)
+
         with pytest.MonkeyPatch.context() as m:
             m.setattr(
                 "app.services.scraper_rule_pubsub.get_rule_cache",
                 lambda: cache,
             )
-            await mod.start_rule_subscriber(
-                redis=AsyncMock(),
-                callback=callback,
-            )
+            with pytest.raises(asyncio.CancelledError):
+                await mod.start_rule_subscriber(
+                    redis=redis,
+                    callback=callback,
+                )
 
         assert callback_called
 

@@ -1029,6 +1029,53 @@ class ScraperPlatformAccount(Base, TimestampMixin):
     )
 
 
+class ScraperRule(Base, TimestampMixin):
+    """Versioned, admin-managed rule schema for a scraper platform."""
+
+    __tablename__ = "scraper_rules"
+    __allow_unmapped__ = True
+
+    id = Column(Integer, primary_key=True, index=True)
+    platform = Column(String(64), nullable=False, index=True)
+    version = Column(Integer, nullable=False, default=1, server_default="1")
+    rule_schema = Column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+    )
+    is_active = Column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+        onupdate=lambda: datetime.now(UTC),
+    )
+    created_by_user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    updated_by_user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    __table_args__ = (
+        UniqueConstraint("platform", "version", name="uq_scraper_rules_platform_version"),
+        Index(
+            "uq_scraper_rules_active_per_platform",
+            "platform",
+            unique=True,
+            postgresql_where=text("is_active = true"),
+        ),
+    )
+
+
 class ExternalChatBinding(Base, TimestampMixin):
     __tablename__ = "external_chat_bindings"
     __allow_unmapped__ = True

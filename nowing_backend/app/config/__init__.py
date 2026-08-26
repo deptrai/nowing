@@ -1884,6 +1884,10 @@ class Config:
     # Reserved domain blacklist (comma-separated) in addition to the configured base domain.
     WEB_BUILDER_DOMAIN_BLACKLIST = os.getenv("WEB_BUILDER_DOMAIN_BLACKLIST", "")
 
+    USE_DYNAMIC_SCRAPER_RULES = (
+        os.getenv("USE_DYNAMIC_SCRAPER_RULES", "FALSE").upper() == "TRUE"
+    )
+
     PRESENTATION_STUDIO_ENABLED = (
         os.getenv("PRESENTATION_STUDIO_ENABLED", "FALSE").upper() == "TRUE"
     )

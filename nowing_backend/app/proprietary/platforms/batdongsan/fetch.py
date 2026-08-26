@@ -19,6 +19,7 @@ from app.services.scraper_platform_account_service import cookie_string_to_playw
 from app.utils.proxy import get_proxy_url
 
 from .city_codes import CITY_SLUGS
+from .dynamic_rule import get_batdongsan_rule
 from .parsers import parse_detail_phone, parse_web_listings
 from .schemas import BatdongsanScrapeInput
 
@@ -254,6 +255,11 @@ def _raise_for_status(status: int, url: str) -> None:
 
 async def fetch_listings(payload: dict[str, Any]) -> dict[str, Any]:
     """POST to ``p_sync`` and return the decoded JSON envelope."""
+    rule = get_batdongsan_rule()
+    request_delay_s = rule.get("delays", {}).get("request_ms", 1500) / 1000.0
+    retry_base_s = rule.get("delays", {}).get("retry_base_ms", 1000) / 1000.0
+    max_attempts = rule.get("retries", {}).get("max_attempts", _MAX_ROTATIONS)
+
     headers = {
         "Content-Type": "application/x-www-form-urlencoded",
         "Origin": API_ORIGIN,
@@ -262,8 +268,9 @@ async def fetch_listings(payload: dict[str, Any]) -> dict[str, Any]:
         "Host": API_HOST,
     }
 
-    for attempt in range(_MAX_ROTATIONS + 1):
+    for attempt in range(max_attempts + 1):
         try:
+            await asyncio.sleep(request_delay_s)
             started = time.perf_counter()
             page = await AsyncFetcher.post(
                 P_SYNC_URL,
@@ -288,28 +295,28 @@ async def fetch_listings(payload: dict[str, Any]) -> dict[str, Any]:
         except BatdongsanDecodeError:
             raise
         except BatdongsanRateLimitedError:
-            if attempt < _MAX_ROTATIONS:
-                await asyncio.sleep(_retry_delay(attempt))
+            if attempt < max_attempts:
+                await asyncio.sleep(_retry_delay(attempt, retry_base_s))
                 continue
             raise
         except BatdongsanAccessBlockedError:
-            if attempt < _MAX_ROTATIONS:
+            if attempt < max_attempts:
                 logger.warning(
                     "Batdongsan block on %s, rotating proxy (attempt %s/%s)",
                     P_SYNC_URL,
                     attempt + 1,
-                    _MAX_ROTATIONS,
+                    max_attempts,
                 )
-                await asyncio.sleep(_retry_delay(attempt))
+                await asyncio.sleep(_retry_delay(attempt, retry_base_s))
                 continue
             raise
         except Exception as exc:
             logger.warning("Batdongsan POST %s failed: %s", P_SYNC_URL, exc)
-            if attempt >= _MAX_ROTATIONS:
+            if attempt >= max_attempts:
                 raise BatdongsanAccessBlockedError(
-                    f"{P_SYNC_URL} failed after {_MAX_ROTATIONS} attempts"
+                    f"{P_SYNC_URL} failed after {max_attempts} attempts"
                 ) from exc
-            await asyncio.sleep(_retry_delay(attempt))
+            await asyncio.sleep(_retry_delay(attempt, retry_base_s))
 
     raise BatdongsanAccessBlockedError(f"{P_SYNC_URL} exhausted all retries")
 
@@ -641,10 +648,10 @@ async def resolve_detail_urls(
             logger.warning("Batdongsan session close failed: %s", close_exc)
 
 
-def _retry_delay(attempt: int) -> float:
+def _retry_delay(attempt: int, base_s: float | None = None) -> float:
     """Exponential backoff for retry attempts, with a floor of 0.5s."""
-    base = max(0.5, getattr(config, "BATDONGSAN_RETRY_BACKOFF_BASE_S", 0.5))
-    return base * (2**attempt)
+    base = base_s if base_s is not None else getattr(config, "BATDONGSAN_RETRY_BACKOFF_BASE_S", 0.5)
+    return max(0.5, base) * (2**attempt)
 
 
 WEB_USER_AGENT = (
@@ -671,6 +678,11 @@ async def fetch_web_listings(payload: dict[str, Any]) -> dict[str, Any]:
     (``{"data": [...], "m": "ok" | None}``) so the scraper can treat
     both fetchers uniformly.
     """
+    rule = get_batdongsan_rule()
+    request_delay_s = rule.get("delays", {}).get("request_ms", 1500) / 1000.0
+    retry_base_s = rule.get("delays", {}).get("retry_base_ms", 1000) / 1000.0
+    max_attempts = rule.get("retries", {}).get("max_attempts", _MAX_ROTATIONS)
+
     city_code = payload.get("city", "")
     slug = CITY_SLUGS.get(city_code)
     if not slug:
@@ -686,8 +698,9 @@ async def fetch_web_listings(payload: dict[str, Any]) -> dict[str, Any]:
         "User-Agent": WEB_USER_AGENT,
     }
 
-    for attempt in range(_MAX_ROTATIONS + 1):
+    for attempt in range(max_attempts + 1):
         try:
+            await asyncio.sleep(request_delay_s)
             started = time.perf_counter()
             resp = await AsyncFetcher.get(
                 url,
@@ -716,27 +729,27 @@ async def fetch_web_listings(payload: dict[str, Any]) -> dict[str, Any]:
         except BatdongsanDecodeError:
             raise
         except BatdongsanRateLimitedError:
-            if attempt < _MAX_ROTATIONS:
-                await asyncio.sleep(_retry_delay(attempt))
+            if attempt < max_attempts:
+                await asyncio.sleep(_retry_delay(attempt, retry_base_s))
                 continue
             raise
         except BatdongsanAccessBlockedError:
-            if attempt < _MAX_ROTATIONS:
+            if attempt < max_attempts:
                 logger.warning(
                     "Batdongsan web block on %s, rotating (attempt %s/%s)",
                     url,
                     attempt + 1,
-                    _MAX_ROTATIONS,
+                    max_attempts,
                 )
-                await asyncio.sleep(_retry_delay(attempt))
+                await asyncio.sleep(_retry_delay(attempt, retry_base_s))
                 continue
             raise
         except Exception as exc:
             logger.warning("Batdongsan web GET %s failed: %s", url, exc)
-            if attempt >= _MAX_ROTATIONS:
+            if attempt >= max_attempts:
                 raise BatdongsanAccessBlockedError(
-                    f"{url} failed after {_MAX_ROTATIONS} attempts"
+                    f"{url} failed after {max_attempts} attempts"
                 ) from exc
-            await asyncio.sleep(_retry_delay(attempt))
+            await asyncio.sleep(_retry_delay(attempt, retry_base_s))
 
     raise BatdongsanAccessBlockedError(f"{url} exhausted all retries")

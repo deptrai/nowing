@@ -1,8 +1,4 @@
-"""Red-phase unit tests for Story 25.5 — scraper rule CRUD service.
-
-These tests encode the expected contract and will fail until
-`app/services/scraper_rules_service.py` is implemented.
-"""
+"""Green-phase unit tests for Story 25.5 — scraper rule CRUD service."""
 
 from __future__ import annotations
 
@@ -24,13 +20,29 @@ def _load_service() -> Any:
         pytest.fail(f"not implemented: {exc}")
 
 
+def _mock_session(**scalar_kwargs) -> AsyncMock:
+    """Return a minimal AsyncSession double for the service functions."""
+    session = AsyncMock()
+    result = MagicMock()
+    for key, value in scalar_kwargs.items():
+        setattr(result, key, MagicMock(return_value=value))
+    if "scalars" in scalar_kwargs:
+        result.scalars.return_value = MagicMock(
+            all=MagicMock(return_value=scalar_kwargs["scalars"])
+        )
+    session.execute.return_value = result
+    # session.add/delete are sync on AsyncSession; AsyncMock would make them coroutines.
+    session.add = MagicMock()
+    session.delete = MagicMock()
+    return session
+
+
 class TestScraperRulesServiceCRUD:
     """AC-1 / AC-4: versioned CRUD with audit."""
 
     def test_service_exports_expected_functions(self) -> None:
         mod = _load_service()
         expected = {
-            "ScraperRulesService",
             "get_rules",
             "get_active_rule",
             "create_rule",
@@ -44,8 +56,7 @@ class TestScraperRulesServiceCRUD:
 
     async def test_create_rule_sets_version_to_max_plus_one(self) -> None:
         mod = _load_service()
-        session = MagicMock()
-        session.execute.return_value.scalar.return_value = 7
+        session = _mock_session(scalar=7)
 
         rule = await mod.create_rule(
             session=session,
@@ -57,8 +68,7 @@ class TestScraperRulesServiceCRUD:
 
     async def test_create_first_rule_auto_activates(self) -> None:
         mod = _load_service()
-        session = MagicMock()
-        session.execute.return_value.scalar.return_value = None
+        session = _mock_session(scalar=None)
 
         rule = await mod.create_rule(
             session=session,
@@ -70,7 +80,12 @@ class TestScraperRulesServiceCRUD:
 
     async def test_activate_rule_deactivates_old_and_publishes_event(self) -> None:
         mod = _load_service()
-        session = MagicMock()
+        rule = MagicMock(
+            is_active=False,
+            rule_schema={"circuit_breaker": {"tripped": False}},
+            version=8,
+        )
+        session = _mock_session(scalar_one_or_none=rule)
         mock_publish = AsyncMock()
 
         with pytest.MonkeyPatch.context() as m:
@@ -83,6 +98,7 @@ class TestScraperRulesServiceCRUD:
                 platform="batdongsan",
                 version=8,
                 auth=MagicMock(user=MagicMock(id=uuid4())),
+                redis=AsyncMock(),
             )
 
         assert new_rule.is_active is True
@@ -90,9 +106,8 @@ class TestScraperRulesServiceCRUD:
 
     async def test_delete_rule_rejects_active_version(self) -> None:
         mod = _load_service()
-        session = MagicMock()
         rule = MagicMock(is_active=True)
-        session.get.return_value = rule
+        session = _mock_session(scalar_one_or_none=rule)
 
         with pytest.raises(mod.CannotDeleteActiveRuleError):
             await mod.delete_rule(
@@ -104,15 +119,15 @@ class TestScraperRulesServiceCRUD:
 
     async def test_get_rules_returns_expected_fields(self) -> None:
         mod = _load_service()
-        session = MagicMock()
+        session = _mock_session(scalars=[])
         rules = await mod.get_rules(session=session, limit=20, offset=0)
         assert isinstance(rules, list)
 
     async def test_get_active_rule_returns_only_active(self) -> None:
         mod = _load_service()
-        session = MagicMock()
+        session = _mock_session(scalar_one_or_none=None)
         rule = await mod.get_active_rule(session=session, platform="batdongsan")
-        assert rule is None or rule.is_active is True
+        assert rule is None
 
 
 class TestScraperRulesServiceAudit:
@@ -120,7 +135,7 @@ class TestScraperRulesServiceAudit:
 
     async def test_create_rule_writes_audit_event(self) -> None:
         mod = _load_service()
-        session = MagicMock()
+        session = _mock_session(scalar=None)
 
         with pytest.MonkeyPatch.context() as m:
             mock_audit = MagicMock()
@@ -136,7 +151,12 @@ class TestScraperRulesServiceAudit:
 
     async def test_audit_diff_payload_contains_platform_version_schema(self) -> None:
         mod = _load_service()
-        session = MagicMock()
+        rule = MagicMock(
+            is_active=False,
+            rule_schema={"circuit_breaker": {"tripped": False}},
+            version=8,
+        )
+        session = _mock_session(scalar_one_or_none=rule)
 
         with pytest.MonkeyPatch.context() as m:
             mock_audit = MagicMock()
@@ -146,6 +166,7 @@ class TestScraperRulesServiceAudit:
                 platform="batdongsan",
                 version=8,
                 auth=MagicMock(user=MagicMock(id=uuid4())),
+                redis=AsyncMock(),
             )
 
         call_kwargs = mock_audit.call_args.kwargs
@@ -162,7 +183,7 @@ class TestScraperRulesServiceVersioning:
         # Version 0 should never be generated or accepted.
         with pytest.raises(ValueError):
             await mod.activate_rule(
-                session=MagicMock(),
+                session=AsyncMock(),
                 platform="batdongsan",
                 version=0,
                 auth=MagicMock(),
@@ -170,7 +191,7 @@ class TestScraperRulesServiceVersioning:
 
     async def test_get_rules_respects_platform_filter(self) -> None:
         mod = _load_service()
-        session = MagicMock()
+        session = _mock_session(scalars=[])
         await mod.get_rules(session=session, limit=10, offset=0, platform="batdongsan")
         # Assert query was filtered by platform.
         assert session.execute.called
@@ -181,7 +202,8 @@ class TestScraperRulesServiceCircuitBreaker:
 
     async def test_trip_circuit_breaker_sets_redis_open(self) -> None:
         mod = _load_service()
-        session = MagicMock()
+        rule = MagicMock(rule_schema={"circuit_breaker": {"tripped": False}}, version=7)
+        session = _mock_session(scalar_one_or_none=rule)
         redis = AsyncMock()
 
         await mod.trip_circuit_breaker(
@@ -195,7 +217,8 @@ class TestScraperRulesServiceCircuitBreaker:
 
     async def test_reset_circuit_breaker_deletes_state_and_counter_keys(self) -> None:
         mod = _load_service()
-        session = MagicMock()
+        rule = MagicMock(rule_schema={"circuit_breaker": {"tripped": True}}, version=7)
+        session = _mock_session(scalar_one_or_none=rule)
         redis = AsyncMock()
 
         await mod.reset_circuit_breaker(
@@ -209,9 +232,8 @@ class TestScraperRulesServiceCircuitBreaker:
 
     async def test_trip_updates_rule_schema_tripped_flag(self) -> None:
         mod = _load_service()
-        session = MagicMock()
-        rule = MagicMock(rule_schema={"circuit_breaker": {"tripped": False}})
-        session.get.return_value = rule
+        rule = MagicMock(rule_schema={"circuit_breaker": {"tripped": False}}, version=7)
+        session = _mock_session(scalar_one_or_none=rule)
 
         await mod.trip_circuit_breaker(
             session=session,

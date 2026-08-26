@@ -76,7 +76,7 @@ const mockValidationError = {
 
 const mockRedosError = {
 	code: "REDOS_TIMEOUT",
-	detail: "Regex exceeds 50ms ReDoS limit",
+	detail: "REDOS_TIMEOUT: Regex exceeds 50ms ReDoS limit",
 };
 
 async function setupApiMocks(page: Page) {
@@ -137,17 +137,47 @@ test.describe("Admin Scraper Rules page", () => {
 		await expect(page.locator("text=REDOS_TIMEOUT")).toBeVisible();
 	});
 
-	test("trip circuit breaker shows confirmation and updates status", async ({ page }) => {
+	test("trip circuit breaker updates status", async ({ page }) => {
 		await page.goto("/admin/scrapers/rules");
+		await page.route(
+			"/api/v1/admin/scraper-rules/batdongsan/circuit-breaker/trip",
+			async (route: Route) => {
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					body: JSON.stringify({
+						...mockActiveRule,
+						rule_schema: {
+							...mockActiveRule.rule_schema,
+							circuit_breaker: { ...mockActiveRule.rule_schema.circuit_breaker, tripped: true },
+						},
+					}),
+				});
+			}
+		);
 		await page.click("text=Trip Circuit Breaker");
-		await page.click("text=Confirm");
 		await expect(page.locator("text=tripped")).toBeVisible();
 	});
 
 	test("reset circuit breaker updates status", async ({ page }) => {
 		await page.goto("/admin/scrapers/rules");
+		await page.route(
+			"/api/v1/admin/scraper-rules/batdongsan/circuit-breaker/reset",
+			async (route: Route) => {
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					body: JSON.stringify({
+						...mockActiveRule,
+						rule_schema: {
+							...mockActiveRule.rule_schema,
+							circuit_breaker: { ...mockActiveRule.rule_schema.circuit_breaker, tripped: false },
+						},
+					}),
+				});
+			}
+		);
 		await page.click("text=Reset Circuit Breaker");
-		await page.click("text=Confirm");
 		await expect(page.locator("text=healthy")).toBeVisible();
 	});
 

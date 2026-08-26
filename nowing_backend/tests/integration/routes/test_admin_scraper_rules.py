@@ -182,7 +182,7 @@ class TestAdminScraperRulesValidation:
             "/api/v1/admin/scraper-rules/batdongsan", json=payload
         )
         assert res.status_code == 422
-        assert res.json()["code"] == "REDOS_TIMEOUT"
+        assert res.json()["error"]["code"] == "REDOS_TIMEOUT"
 
     async def test_request_ms_above_max_returns_422(self, admin_client):
         payload = {
@@ -249,7 +249,10 @@ class TestAdminScraperRulesCircuitBreaker:
         assert res.status_code == 200
         assert rule.rule_schema["circuit_breaker"]["tripped"] is False
 
-    async def test_refresh_publishes_scraper_config_updated(self, admin_client):
+    async def test_refresh_publishes_scraper_config_updated(
+        self, admin_client, scraper_rule_factory
+    ):
+        await scraper_rule_factory("batdongsan", 1, is_active=True)
         res = await admin_client.post(
             "/api/v1/admin/scraper-rules/batdongsan/refresh"
         )

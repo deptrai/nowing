@@ -404,7 +404,7 @@ async def require_session_context(
     if not auth.is_session:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="This action requires an interactive session",
+            detail="This action requires an interactive session; PAT-authenticated requests are not allowed",
         )
     return auth
 
