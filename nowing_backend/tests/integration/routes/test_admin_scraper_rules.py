@@ -69,11 +69,14 @@ class TestAdminScraperRulesCRUD:
         # Each item should expose version, is_active, updated_at, updated_by.
         if body["items"]:
             item = body["items"][0]
-            assert set(item.keys()) >= {"version", "is_active", "updated_at", "updated_by"}
+            assert set(item.keys()) >= {
+                "version",
+                "is_active",
+                "updated_at",
+                "updated_by",
+            }
 
-    async def test_create_rule_persists_row_and_audit(
-        self, admin_client, db_session
-    ):
+    async def test_create_rule_persists_row_and_audit(self, admin_client, db_session):
         scraper_rule_cls, audit_event_cls, _ = _load_models()
 
         payload = {
@@ -109,7 +112,9 @@ class TestAdminScraperRulesCRUD:
         assert audit is not None
         assert audit.action == "scraper_rule.create"
 
-    async def test_activate_version_switches_active_flag(self, admin_client, scraper_rule_factory, db_session):
+    async def test_activate_version_switches_active_flag(
+        self, admin_client, scraper_rule_factory, db_session
+    ):
         _old = await scraper_rule_factory("batdongsan", 1, is_active=True)
         new = await scraper_rule_factory("batdongsan", 2, is_active=False)
 
@@ -131,7 +136,9 @@ class TestAdminScraperRulesCRUD:
         )
         assert count.scalar() == 1
 
-    async def test_delete_active_rule_rejected(self, admin_client, scraper_rule_factory):
+    async def test_delete_active_rule_rejected(
+        self, admin_client, scraper_rule_factory
+    ):
         rule = await scraper_rule_factory("batdongsan", 1, is_active=True)
         res = await admin_client.delete(
             f"/api/v1/admin/scraper-rules/batdongsan/{rule.version}"
@@ -161,7 +168,7 @@ class TestAdminScraperRulesValidation:
             "/api/v1/admin/scraper-rules/batdongsan", json=payload
         )
         assert res.status_code == 422
-        assert "Invalid CSS selector" in res.json()["detail"]
+        assert res.json()["error"]["code"] == "INVALID_CSS_SELECTOR"
 
     async def test_redos_regex_returns_422(self, admin_client):
         payload = {
@@ -228,7 +235,9 @@ class TestAdminScraperRulesAuth:
 class TestAdminScraperRulesCircuitBreaker:
     """AC-7: trip/reset endpoints."""
 
-    async def test_trip_sets_redis_open_and_db_flag(self, admin_client, scraper_rule_factory):
+    async def test_trip_sets_redis_open_and_db_flag(
+        self, admin_client, scraper_rule_factory
+    ):
         rule = await scraper_rule_factory("batdongsan", 1, is_active=True)
         res = await admin_client.post(
             "/api/v1/admin/scraper-rules/batdongsan/circuit-breaker/trip"
@@ -238,7 +247,9 @@ class TestAdminScraperRulesCircuitBreaker:
         # After refresh, rule_schema.circuit_breaker.tripped must be True.
         assert rule.rule_schema["circuit_breaker"]["tripped"] is True
 
-    async def test_reset_clears_redis_and_db_flag(self, admin_client, scraper_rule_factory):
+    async def test_reset_clears_redis_and_db_flag(
+        self, admin_client, scraper_rule_factory
+    ):
         rule = await scraper_rule_factory("batdongsan", 1, is_active=True)
         await admin_client.post(
             "/api/v1/admin/scraper-rules/batdongsan/circuit-breaker/trip"
@@ -253,7 +264,5 @@ class TestAdminScraperRulesCircuitBreaker:
         self, admin_client, scraper_rule_factory
     ):
         await scraper_rule_factory("batdongsan", 1, is_active=True)
-        res = await admin_client.post(
-            "/api/v1/admin/scraper-rules/batdongsan/refresh"
-        )
+        res = await admin_client.post("/api/v1/admin/scraper-rules/batdongsan/refresh")
         assert res.status_code in (200, 204)

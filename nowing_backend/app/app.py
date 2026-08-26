@@ -60,6 +60,7 @@ from app.gateway.inbox_worker import (
 from app.observability import metrics as ot_metrics
 from app.observability.bootstrap import init_otel, shutdown_otel
 from app.rate_limiter import get_real_client_ip, limiter
+from app.redis_client import get_redis_client
 from app.routes import router as crud_router
 from app.routes.alert_rules_routes import router as alert_rules_router
 from app.routes.auth_routes import (
@@ -79,6 +80,7 @@ from app.routes.users_routes import router as users_router
 from app.routes.web_builder_routes import host_router as web_builder_host_router
 from app.routes.zero_context_routes import router as zero_context_router
 from app.schemas import UserCreate, UserRead
+from app.services import scraper_rule_pubsub
 from app.session_events import register_session_hooks
 from app.users import SECRET, allow_any_principal, auth_backend, fastapi_users
 from app.utils.perf import log_system_snapshot
@@ -698,6 +700,16 @@ async def lifespan(app: FastAPI):
     initialize_llm_router()
     initialize_image_gen_router()
 
+    # Start scraper-rule Pub/Sub subscriber for live cache invalidation.
+    try:
+        redis = await get_redis_client()
+        scraper_rule_pubsub.start_background_subscriber(redis)
+    except Exception:
+        logging.getLogger(__name__).warning(
+            "[startup] Failed to start scraper rule subscriber (non-fatal)",
+            exc_info=True,
+        )
+
     # Phase 1.7 — JIT warmup. Bounded so a stuck warmup never delays
     # worker readiness. ``shield`` so Uvicorn cancelling startup
     # doesn't leave half-warmed Pydantic schemas in an inconsistent
@@ -729,6 +741,8 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
+        for task in list(scraper_rule_pubsub.SUBSCRIBER_TASKS):
+            task.cancel()
         await stop_discord_gateway_supervisor()
         await stop_byo_long_poll_supervisors()
         await stop_gateway_inbox_worker()

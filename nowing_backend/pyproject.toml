@@ -98,6 +98,7 @@ dependencies = [
     "python-socks[asyncio]>=2.4.0",
     "google-re2>=1.1.20251105",
     "cssselect>=1.2.0",
+    "lxml>=4.9.0",
 ]
 
 [project.optional-dependencies]

@@ -114,3 +114,35 @@ class PlatformCircuitBreaker:
             await redis.delete(self._failure_counter_key(normalized_platform))
         except Exception as exc:
             logger.warning("Failed to reset circuit breaker for %s: %s", platform, exc)
+
+    async def trip(self, platform: str) -> None:
+        """Force the platform circuit to OPEN (admin emergency trip)."""
+        try:
+            redis = await self._get_redis()
+            normalized_platform = platform.strip().lower()
+            await redis.set(
+                self._state_key(normalized_platform),
+                "OPEN",
+                ex=self.cooldown_seconds,
+            )
+            await redis.delete(self._failure_counter_key(normalized_platform))
+            logger.error(
+                "CIRCUIT BREAKER MANUALLY TRIPPED for %s: cooldown for %ds",
+                normalized_platform,
+                self.cooldown_seconds,
+            )
+        except Exception as exc:
+            logger.error("Failed to trip circuit breaker for %s: %s", platform, exc)
+            raise
+
+    async def reset(self, platform: str) -> None:
+        """Force the platform circuit back to CLOSED (admin emergency reset)."""
+        try:
+            redis = await self._get_redis()
+            normalized_platform = platform.strip().lower()
+            await redis.delete(self._state_key(normalized_platform))
+            await redis.delete(self._failure_counter_key(normalized_platform))
+            logger.info("CIRCUIT BREAKER RESET for %s", normalized_platform)
+        except Exception as exc:
+            logger.error("Failed to reset circuit breaker for %s: %s", platform, exc)
+            raise

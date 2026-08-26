@@ -27,15 +27,23 @@ async def publish_rule_update(
     version: int,
     is_active: bool,
     circuit_breaker_tripped: bool,
+    updated_at: str | None = None,
 ) -> None:
-    """Publish a JSON notification that a scraper rule changed."""
+    """Publish a JSON notification that a scraper rule changed.
+
+    Payload shape aligns with AC-5:
+    ``{"platform", "version", "is_active", "updated_at"}``,
+    plus ``circuit_breaker_tripped`` for worker-side breaker checks.
+    """
     payload = json.dumps(
         {
             "platform": platform,
             "version": version,
             "is_active": is_active,
+            "updated_at": updated_at,
             "circuit_breaker_tripped": circuit_breaker_tripped,
-        }
+        },
+        default=str,
     )
     if redis is None:
         return

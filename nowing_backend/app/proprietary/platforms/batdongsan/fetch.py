@@ -15,6 +15,7 @@ from typing import Any
 from scrapling.fetchers import AsyncFetcher
 
 from app.config import config
+from app.lead_intelligence.services.circuit_breaker import PlatformCircuitBreaker
 from app.services.scraper_platform_account_service import cookie_string_to_playwright
 from app.utils.proxy import get_proxy_url
 
@@ -63,9 +64,12 @@ class BatdongsanRateLimitedError(RuntimeError):
     """Raised when Batdongsan returns 429."""
 
 
+class BatdongsanRetryableError(BatdongsanAccessBlockedError):
+    """Raised for a configured-as-retryable status (e.g. 500/502/503)."""
+
+
 class BatdongsanAccountRestrictedError(RuntimeError):
     """Raised when the authenticated account is blocked from viewing phones."""
-
 
 
 def _access_token_expires_at(credentials: dict[str, Any] | None) -> float | None:
@@ -77,9 +81,7 @@ def _access_token_expires_at(credentials: dict[str, Any] | None) -> float | None
         header, payload_b64, _ = token.split(".")
         _ = header
         payload = json.loads(
-            base64.urlsafe_b64decode(
-                payload_b64 + "=" * (-len(payload_b64) % 4)
-            )
+            base64.urlsafe_b64decode(payload_b64 + "=" * (-len(payload_b64) % 4))
         )
         exp = payload.get("exp")
         return float(exp) if exp is not None else None
@@ -87,9 +89,7 @@ def _access_token_expires_at(credentials: dict[str, Any] | None) -> float | None
         return None
 
 
-def _cookie_expires_at(
-    credentials: dict[str, Any] | None, name: str
-) -> float | None:
+def _cookie_expires_at(credentials: dict[str, Any] | None, name: str) -> float | None:
     """Return the ``expires`` timestamp of a named cookie from credentials."""
     if not credentials:
         return None
@@ -244,21 +244,29 @@ def decode_response(raw: bytes) -> dict[str, Any]:
         ) from exc
 
 
-def _raise_for_status(status: int, url: str) -> None:
-    if status == 429:
+def _raise_for_status(status: int, url: str, retry_statuses: set[int]) -> None:
+    if status == 429 and 429 in retry_statuses:
         raise BatdongsanRateLimitedError(f"{url} returned 429")
-    if status in {403, *range(500, 600)}:
-        raise BatdongsanAccessBlockedError(f"{url} returned {status}")
+    if status in retry_statuses:
+        raise BatdongsanRetryableError(f"{url} returned {status}")
     if status != 200:
         raise BatdongsanAccessBlockedError(f"{url} returned {status}")
 
 
 async def fetch_listings(payload: dict[str, Any]) -> dict[str, Any]:
     """POST to ``p_sync`` and return the decoded JSON envelope."""
-    rule = get_batdongsan_rule()
+    rule = await get_batdongsan_rule()
+    if rule.get("circuit_breaker", {}).get("tripped"):
+        raise BatdongsanAccessBlockedError("batdongsan circuit breaker tripped")
+    if not await PlatformCircuitBreaker().is_available("batdongsan"):
+        raise BatdongsanAccessBlockedError("batdongsan platform circuit breaker open")
+
     request_delay_s = rule.get("delays", {}).get("request_ms", 1500) / 1000.0
     retry_base_s = rule.get("delays", {}).get("retry_base_ms", 1000) / 1000.0
     max_attempts = rule.get("retries", {}).get("max_attempts", _MAX_ROTATIONS)
+    retry_statuses = set(
+        rule.get("retries", {}).get("statuses", [403, 429, 500, 502, 503])
+    )
 
     headers = {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -291,7 +299,7 @@ async def fetch_listings(payload: dict[str, Any]) -> dict[str, Any]:
             if page.status == 200:
                 return decode_response(page.body)
 
-            _raise_for_status(page.status, P_SYNC_URL)
+            _raise_for_status(page.status, P_SYNC_URL, retry_statuses)
         except BatdongsanDecodeError:
             raise
         except BatdongsanRateLimitedError:
@@ -299,16 +307,18 @@ async def fetch_listings(payload: dict[str, Any]) -> dict[str, Any]:
                 await asyncio.sleep(_retry_delay(attempt, retry_base_s))
                 continue
             raise
-        except BatdongsanAccessBlockedError:
+        except BatdongsanRetryableError:
             if attempt < max_attempts:
                 logger.warning(
-                    "Batdongsan block on %s, rotating proxy (attempt %s/%s)",
+                    "Batdongsan retryable status on %s (attempt %s/%s)",
                     P_SYNC_URL,
                     attempt + 1,
                     max_attempts,
                 )
                 await asyncio.sleep(_retry_delay(attempt, retry_base_s))
                 continue
+            raise
+        except BatdongsanAccessBlockedError:
             raise
         except Exception as exc:
             logger.warning("Batdongsan POST %s failed: %s", P_SYNC_URL, exc)
@@ -598,9 +608,7 @@ async def resolve_detail_urls(
                 try:
                     session = await _open_stealth_session(credentials)
                 except Exception as exc:
-                    logger.warning(
-                        "Batdongsan could not open stealth session: %s", exc
-                    )
+                    logger.warning("Batdongsan could not open stealth session: %s", exc)
                     break
 
             if session:
@@ -650,7 +658,11 @@ async def resolve_detail_urls(
 
 def _retry_delay(attempt: int, base_s: float | None = None) -> float:
     """Exponential backoff for retry attempts, with a floor of 0.5s."""
-    base = base_s if base_s is not None else getattr(config, "BATDONGSAN_RETRY_BACKOFF_BASE_S", 0.5)
+    base = (
+        base_s
+        if base_s is not None
+        else getattr(config, "BATDONGSAN_RETRY_BACKOFF_BASE_S", 0.5)
+    )
     return max(0.5, base) * (2**attempt)
 
 
@@ -659,6 +671,7 @@ WEB_USER_AGENT = (
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/126.0.0.0 Safari/537.36"
 )
+
 
 def build_web_listings_url(listing_type: str, slug: str, page: int) -> str:
     """Build the SSR URL for a city-level buy/rent listing page."""
@@ -678,10 +691,18 @@ async def fetch_web_listings(payload: dict[str, Any]) -> dict[str, Any]:
     (``{"data": [...], "m": "ok" | None}``) so the scraper can treat
     both fetchers uniformly.
     """
-    rule = get_batdongsan_rule()
+    rule = await get_batdongsan_rule()
+    if rule.get("circuit_breaker", {}).get("tripped"):
+        raise BatdongsanAccessBlockedError("batdongsan circuit breaker tripped")
+    if not await PlatformCircuitBreaker().is_available("batdongsan"):
+        raise BatdongsanAccessBlockedError("batdongsan platform circuit breaker open")
+
     request_delay_s = rule.get("delays", {}).get("request_ms", 1500) / 1000.0
     retry_base_s = rule.get("delays", {}).get("retry_base_ms", 1000) / 1000.0
     max_attempts = rule.get("retries", {}).get("max_attempts", _MAX_ROTATIONS)
+    retry_statuses = set(
+        rule.get("retries", {}).get("statuses", [403, 429, 500, 502, 503])
+    )
 
     city_code = payload.get("city", "")
     slug = CITY_SLUGS.get(city_code)
@@ -694,7 +715,7 @@ async def fetch_web_listings(payload: dict[str, Any]) -> dict[str, Any]:
 
     headers = {
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9",
-        "Accept-Language": "vi-VN,vi;q=0.9,en;q=0.8",
+        "Accept-Language": "vi-VN,vi;q=0.8",
         "User-Agent": WEB_USER_AGENT,
     }
 
@@ -725,7 +746,7 @@ async def fetch_web_listings(payload: dict[str, Any]) -> dict[str, Any]:
                 more = "ok" if len(items) >= 20 else None
                 return {"data": items, "m": more}
 
-            _raise_for_status(resp.status, url)
+            _raise_for_status(resp.status, url, retry_statuses)
         except BatdongsanDecodeError:
             raise
         except BatdongsanRateLimitedError:
@@ -733,16 +754,18 @@ async def fetch_web_listings(payload: dict[str, Any]) -> dict[str, Any]:
                 await asyncio.sleep(_retry_delay(attempt, retry_base_s))
                 continue
             raise
-        except BatdongsanAccessBlockedError:
+        except BatdongsanRetryableError:
             if attempt < max_attempts:
                 logger.warning(
-                    "Batdongsan web block on %s, rotating (attempt %s/%s)",
+                    "Batdongsan web retryable status on %s (attempt %s/%s)",
                     url,
                     attempt + 1,
                     max_attempts,
                 )
                 await asyncio.sleep(_retry_delay(attempt, retry_base_s))
                 continue
+            raise
+        except BatdongsanAccessBlockedError:
             raise
         except Exception as exc:
             logger.warning("Batdongsan web GET %s failed: %s", url, exc)

@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Path, status
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,9 +16,12 @@ from app.schemas.admin_scraper_rules import (
     ScraperRuleCreate,
     ScraperRuleListItem,
     ScraperRuleListResponse,
+    ScraperRuleMetricsResponse,
     ScraperRuleRead,
     ScraperRuleUpdate,
 )
+from app.services import scraper_rule_cache
+from app.services.scraper_rule_metrics import get_error_rate
 from app.services.scraper_rule_validator import (
     InvalidRegexError,
     InvalidSelectorError,
@@ -43,35 +46,29 @@ router = APIRouter(prefix="/admin/scraper-rules", tags=["admin"])
 
 
 def _handle_validation_error(exc: Exception) -> HTTPException:
-    """Map sandbox validation errors to 422 with the expected code shape."""
+    """Map sandbox validation errors to a single 422 envelope."""
     if isinstance(exc, InvalidSelectorError):
         return HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail=f"Invalid CSS selector: {exc}",
+            detail={"code": "INVALID_CSS_SELECTOR", "detail": str(exc)},
         )
     if isinstance(exc, (ReDoSTimeoutError, InvalidRegexError)):
+        code = (
+            "REDOS_TIMEOUT" if isinstance(exc, ReDoSTimeoutError) else "INVALID_REGEX"
+        )
         return HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail={"code": "REDOS_TIMEOUT", "message": str(exc)},
+            detail={"code": code, "detail": str(exc)},
+        )
+    if isinstance(exc, ValidationError):
+        return HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={"code": "VALIDATION_ERROR", "detail": exc.errors()},
         )
     return HTTPException(
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-        detail=f"Validation error: {exc}",
+        detail={"code": "VALIDATION_ERROR", "detail": str(exc)},
     )
-
-
-def _rule_to_read(rule: ScraperRule) -> dict[str, Any]:
-    return {
-        "id": rule.id,
-        "platform": rule.platform,
-        "version": rule.version,
-        "rule_schema": rule.rule_schema,
-        "is_active": rule.is_active,
-        "created_by_user_id": rule.created_by_user_id,
-        "updated_by_user_id": rule.updated_by_user_id,
-        "created_at": rule.created_at,
-        "updated_at": rule.updated_at,
-    }
 
 
 @router.get("", response_model=ScraperRuleListResponse)
@@ -121,7 +118,7 @@ async def _count_rules(session: AsyncSession, platform: str | None) -> int:
     status_code=status.HTTP_201_CREATED,
 )
 async def create_scraper_rule(
-    platform: str,
+    platform: Annotated[str, Path(min_length=1, max_length=64)],
     payload: ScraperRuleCreate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(require_superuser),
@@ -137,10 +134,7 @@ async def create_scraper_rule(
     except (InvalidSelectorError, ReDoSTimeoutError, InvalidRegexError) as exc:
         raise _handle_validation_error(exc) from None
     except ValidationError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail=exc.errors(),
-        ) from exc
+        raise _handle_validation_error(exc) from exc
     return rule
 
 
@@ -149,24 +143,20 @@ async def create_scraper_rule(
     response_model=ScraperRuleRead,
 )
 async def activate_scraper_rule(
-    platform: str,
-    version: int,
+    platform: Annotated[str, Path(min_length=1, max_length=64)],
+    version: Annotated[int, Path(ge=1)],
     payload: ScraperRuleUpdate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(require_superuser),
     redis: Any = Depends(get_redis_client),
 ) -> ScraperRule:
-    """Activate a specific rule version."""
-    if not payload.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="Use DELETE to deactivate; PATCH only supports activation",
-        )
+    """Activate or deactivate a specific rule version."""
     try:
         rule = await activate_rule(
             session=session,
             platform=platform,
             version=version,
+            is_active=payload.is_active,
             auth=auth,
             redis=redis,
         )
@@ -180,8 +170,8 @@ async def activate_scraper_rule(
 
 @router.delete("/{platform}/{version}")
 async def delete_scraper_rule(
-    platform: str,
-    version: int,
+    platform: Annotated[str, Path(min_length=1, max_length=64)],
+    version: Annotated[int, Path(ge=1)],
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(require_superuser),
 ) -> dict[str, Any]:
@@ -208,7 +198,7 @@ async def delete_scraper_rule(
 
 @router.get("/{platform}", response_model=ScraperRuleRead)
 async def get_active_scraper_rule(
-    platform: str,
+    platform: Annotated[str, Path(min_length=1, max_length=64)],
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(require_superuser),
 ) -> ScraperRule:
@@ -224,7 +214,7 @@ async def get_active_scraper_rule(
 
 @router.post("/{platform}/circuit-breaker/trip", response_model=ScraperRuleRead)
 async def trip_scraper_circuit_breaker(
-    platform: str,
+    platform: Annotated[str, Path(min_length=1, max_length=64)],
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(require_superuser),
     redis: Any = Depends(get_redis_client),
@@ -247,7 +237,7 @@ async def trip_scraper_circuit_breaker(
 
 @router.post("/{platform}/circuit-breaker/reset", response_model=ScraperRuleRead)
 async def reset_scraper_circuit_breaker(
-    platform: str,
+    platform: Annotated[str, Path(min_length=1, max_length=64)],
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(require_superuser),
     redis: Any = Depends(get_redis_client),
@@ -270,7 +260,7 @@ async def reset_scraper_circuit_breaker(
 
 @router.post("/{platform}/refresh")
 async def refresh_scraper_rule(
-    platform: str,
+    platform: Annotated[str, Path(min_length=1, max_length=64)],
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(require_superuser),
     redis: Any = Depends(get_redis_client),
@@ -284,13 +274,24 @@ async def refresh_scraper_rule(
         )
     from app.services.scraper_rule_pubsub import publish_rule_update
 
+    scraper_rule_cache.invalidate(platform)
     await publish_rule_update(
         redis=redis,
         platform=platform,
         version=rule.version,
         is_active=True,
+        updated_at=rule.updated_at.isoformat() if rule.updated_at else None,
         circuit_breaker_tripped=rule.rule_schema.get("circuit_breaker", {}).get(
             "tripped", False
         ),
     )
     return {"refreshed": True, "platform": platform, "version": rule.version}
+
+
+@router.get("/{platform}/metrics", response_model=ScraperRuleMetricsResponse)
+async def get_scraper_rule_metrics(
+    platform: Annotated[str, Path(min_length=1, max_length=64)],
+    auth: AuthContext = Depends(require_superuser),
+) -> ScraperRuleMetricsResponse:
+    """Return recent success/error metrics for a platform."""
+    return ScraperRuleMetricsResponse.model_validate(await get_error_rate(platform))

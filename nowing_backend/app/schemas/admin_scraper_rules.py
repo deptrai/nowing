@@ -21,7 +21,7 @@ class RuleRetries(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     max_attempts: int = Field(default=3, ge=0, le=10)
-    statuses: list[int] = Field(default_factory=lambda: [429, 500, 502, 503])
+    statuses: list[int] = Field(default_factory=lambda: [403, 429, 500, 502, 503])
 
 
 class RuleCircuitBreaker(BaseModel):
@@ -31,7 +31,7 @@ class RuleCircuitBreaker(BaseModel):
 
     error_threshold_pct: int = Field(default=20, ge=0, le=100)
     min_calls: int = Field(default=10, ge=0)
-    trip_duration_seconds: int = Field(default=300, ge=0, le=3600)
+    trip_duration_seconds: int = Field(default=300, ge=1, le=3600)
     tripped: bool = Field(default=False)
 
 
@@ -100,3 +100,13 @@ class ScraperRuleListResponse(BaseModel):
 
     items: list[ScraperRuleListItem]
     total: int
+
+
+class ScraperRuleMetricsResponse(BaseModel):
+    """Recent success/error metrics for a scraper platform."""
+
+    platform: str
+    successes: int
+    errors: int
+    total: int
+    error_rate_pct: float

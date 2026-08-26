@@ -1,6 +1,8 @@
 """Celery application configuration and setup."""
 
+import asyncio
 import contextlib
+import threading
 import time
 
 from celery import Celery
@@ -99,6 +101,27 @@ def _set_celery_span_attributes(task=None, **_kwargs):
         pass
 
 
+async def _run_scraper_rule_subscriber() -> None:
+    """Celery worker background: listen for scraper-rule invalidations."""
+    from app.redis_client import get_redis_client
+    from app.services import scraper_rule_pubsub
+
+    try:
+        redis = await get_redis_client()
+        await scraper_rule_pubsub.start_rule_subscriber(redis)
+    except Exception:
+        # Worker TTL cache (5s) provides a safe fallback when pub/sub is down.
+        pass
+
+
+def _start_scraper_rule_subscriber_thread() -> None:
+    threading.Thread(
+        target=lambda: asyncio.run(_run_scraper_rule_subscriber()),
+        daemon=True,
+        name="scraper-rule-subscriber",
+    ).start()
+
+
 @worker_process_init.connect
 def init_worker(**kwargs):
     """Initialize the LLM Router and Image Gen Router when a Celery worker process starts.
@@ -121,6 +144,7 @@ def init_worker(**kwargs):
     initialize_pricing_registration()
     initialize_llm_router()
     initialize_image_gen_router()
+    _start_scraper_rule_subscriber_thread()
 
 
 # Celery configuration, sourced from the central Config singleton

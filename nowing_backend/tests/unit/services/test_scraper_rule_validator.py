@@ -35,11 +35,13 @@ class TestValidateCssSelectors:
 
     def test_valid_selectors_parse(self) -> None:
         mod = _load_validator()
-        result = mod.validate_css_selectors({
-            "listing_card": "div.js__card-listing",
-            "title": "span.js__card-title",
-            "next_page_link": "a.next",
-        })
+        result = mod.validate_css_selectors(
+            {
+                "listing_card": "div.js__card-listing",
+                "title": "span.js__card-title",
+                "next_page_link": "a.next",
+            }
+        )
         assert result is True or result == {}
 
     def test_invalid_selector_raises_invalid_css(self) -> None:
@@ -115,7 +117,7 @@ class TestRuleSchemaValidation:
             circuit_breaker={
                 "error_threshold_pct": 0,
                 "min_calls": 0,
-                "trip_duration_seconds": 0,
+                "trip_duration_seconds": 1,
                 "tripped": False,
             },
         )

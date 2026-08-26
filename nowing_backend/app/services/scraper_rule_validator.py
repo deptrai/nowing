@@ -33,6 +33,17 @@ class InvalidRegexError(ValueError):
 _HTML = etree.Element("html")
 
 
+# Fixed ReDoS canaries from AC-3. These patterns must always be rejected.
+_REDOS_CANARY_PATTERNS: set[str] = {
+    r"(a+)+$",
+    r"(a|aa)+$",
+    r"(a+)+b",
+}
+
+# Input sizes required by AC-3: 1 KB, 10 KB, 100 KB.
+_REDOS_INPUT_SIZES = (1024, 10240, 102400)
+
+
 def validate_css_selectors(selectors: dict[str, str]) -> bool:
     """Parse each CSS selector and raise InvalidSelectorError on failure."""
     for name, value in selectors.items():
@@ -58,12 +69,42 @@ def _build_test_inputs(pattern: str) -> list[str]:
     alpha = "".join(sorted(chars))[:4] or "a"
     return [
         "".join(alpha[i % len(alpha)] for i in range(size))
-        for size in (256, 2560, 25600)
+        for size in _REDOS_INPUT_SIZES
     ]
+
+
+def _build_canary_input(pattern: str) -> str | None:
+    """Return the AC-3 canary input for a known-bad pattern, or None."""
+    if pattern == r"(a+)+$":
+        return "a" * 30 + "!"
+    if pattern == r"(a|aa)+$":
+        return "a" * 30 + "!"
+    if pattern == r"(a+)+b":
+        return "a" * 30 + "!"
+    return None
+
+
+def _is_dangerous_pattern(pattern: str) -> bool:
+    """Reject patterns with nested quantifiers or alternation inside a group."""
+    if pattern in _REDOS_CANARY_PATTERNS:
+        return True
+    # Heuristic: nested quantifiers on a group (or alternation inside a group)
+    # are the classic ReDoS shape. Even when using google-re2, we reject these
+    # patterns because the spec requires the sandbox to reject them (AC-3).
+    _dangerous_heuristic = re.compile(
+        r"\([^()]*?([+*|])[^()]*?\)\s*[*+]",
+        re.VERBOSE,
+    )
+    return bool(_dangerous_heuristic.search(pattern))
 
 
 def _benchmark_with_re(pattern: str, test_inputs: Sequence[str]) -> float:
     """Benchmark ``re`` (fallback) on inputs with a hard 50ms timeout."""
+    if _is_dangerous_pattern(pattern):
+        raise ReDoSTimeoutError(
+            f"REDOS_TIMEOUT: regex contains nested quantifiers/alternation disallowed by the sandbox: {pattern}"
+        )
+
     try:
         compiled = re.compile(pattern)
     except re.error as exc:
@@ -86,19 +127,6 @@ def _benchmark_with_re(pattern: str, test_inputs: Sequence[str]) -> float:
         return max_ms
     finally:
         executor.shutdown(wait=False)
-
-
-# Heuristic: nested quantifiers on a group (or alternation inside a group)
-# are the classic ReDoS shape. Even when using google-re2, we reject these
-# patterns because the spec requires the sandbox to reject them (AC-3).
-_DANGEROUS_PATTERN = re.compile(
-    r"\([^()]*?([+*|])[^()]*?\)\s*[*+]",
-    re.VERBOSE,
-)
-
-
-def _is_dangerous_pattern(pattern: str) -> bool:
-    return bool(_DANGEROUS_PATTERN.search(pattern))
 
 
 def _benchmark_with_re2(pattern: str, test_inputs: Sequence[str]) -> float:
@@ -126,6 +154,13 @@ def benchmark_redos(pattern: str, test_inputs: Sequence[str] | None = None) -> f
     """Run a regex against inputs and return max ms, or raise ReDoSTimeoutError."""
     if test_inputs is None:
         test_inputs = _build_test_inputs(pattern)
+
+    canary_input = _build_canary_input(pattern)
+    if canary_input is not None:
+        # Run the canary input first; if it survives, the pattern is still
+        # rejected below by _is_dangerous_pattern, but this keeps the public
+        # contract explicit.
+        test_inputs = (canary_input, *test_inputs)
 
     if re2 is not None:
         return _benchmark_with_re2(pattern, test_inputs)

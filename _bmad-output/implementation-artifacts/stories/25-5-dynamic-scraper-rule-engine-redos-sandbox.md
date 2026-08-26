@@ -51,7 +51,7 @@ Payload rule phải chứa JSONB `rule_schema` với các trường:
     "next_page_link": "a.next"
   },
   "regexes": {
-    "phone_in_title": "(?:(?<=[^\d])|^)(?:\+84|84|0)[0-9\s\.\-]{8,15}(?:(?=[^\d])|$)"
+    "phone_in_title": "(?:^|[^\d])(?:\+84|84|0)[0-9\s\.\-]{8,15}(?:[^\d]|$)"
   },
   "delays": {
     "request_ms": 1500,
@@ -335,7 +335,7 @@ nowing_web/
 
 - Align với `admin_*_routes.py` naming và `Admin` service naming (`admin_scraper_rules_routes.py`, `scraper_rules_service.py`).
 - Align với `nowing_web/app/admin/[feature]/page.tsx` structure. Không tạo layout mới; dùng `AdminShell`.
-- `rule_schema` JSONB nên tương thích với cả `selectors` CSS, `regexes`, `delays`, `retries`, `circuit_breaker`. Để lại room cho extension (`headers`, `user_agent`, `cookies`).
+- `rule_schema` JSONB nên tương thích với cả `selectors` CSS, `regexes`, `delays`, `retries`, `circuit_breaker`. Để lại room cho extension (`headers`, `user_agent`, `cookies`) at the JSONB/DB layer; the Pydantic `RuleSchema` uses `extra="forbid"` to reject unknown top-level keys until they are explicitly promoted in a future schema release.
 - Dùng `shadcn/ui` components có sẵn: `table`, `card`, `dialog`, `button`, `badge`, `switch`, `select`, `input`, `textarea`, `tabs`, `sonner` toast.
 - `ScraperRule` model nên đặt trong `app/db.py` (giống `ScraperPlatformAccount`) để `Base.metadata` tự động đăng ký; hoặc import `app/models/scraper_rule.py` trong `app/db.py`.
 - Router prefix chỉ là `/admin/scraper-rules`; `/api/v1` được thêm bởi `app.app:app.include_router(crud_router, prefix="/api/v1")`.
@@ -459,34 +459,34 @@ Full triaged list with evidence and suggested fixes: `_bmad-output/implementatio
 
 ### Decision needed
 
-- [ ] [Review][Decision] Spec contradiction: AC-1 example regex uses lookaround, but `google-re2` rejects it — `_bmad-output/implementation-artifacts/review/story-25-5/review-findings.md#1`
-- [ ] [Review][Decision] `RuleSchema.extra="forbid"` vs spec note about room for `headers`/`user_agent`/`cookies` extensions — `_bmad-output/implementation-artifacts/review/story-25-5/review-findings.md#2`
+- [x] [Review][Decision] Spec contradiction: AC-1 example regex uses lookaround, but `google-re2` rejects it — `_bmad-output/implementation-artifacts/review/story-25-5/review-findings.md#1`
+- [x] [Review][Decision] `RuleSchema.extra="forbid"` vs spec note about room for `headers`/`user_agent`/`cookies` extensions — `_bmad-output/implementation-artifacts/review/story-25-5/review-findings.md#2`
 
 ### Patch (high severity)
 
-- [ ] [Review][Patch] Mutating service functions lack `session.commit()` — data not persisted — `scraper_rules_service.py`
-- [ ] [Review][Patch] In-place `JSONB` mutation not persisted (no `flag_modified`) — `scraper_rules_service.py:267-268,314-315`
-- [ ] [Review][Patch] Worker/cache integration non-functional: cache never set, no DB fallback, subscriber not started — `batdongsan/dynamic_rule.py`, `scraper_rule_cache.py`, `scraper_rule_pubsub.py`, `app/app.py`, `celery_app.py`
-- [ ] [Review][Patch] ReDoS validation runs synchronously on async event loop — `scraper_rules_service.py:79-80`
-- [ ] [Review][Patch] ReDoS fallback uses unsafe `ThreadPoolExecutor` that cannot kill hung thread — `scraper_rule_validator.py:65-88`
-- [ ] [Review][Patch] ReDoS benchmark input sizes / fixed patterns not per AC-3 — `scraper_rule_validator.py:50-62`
-- [ ] [Review][Patch] `batdongsan/scraper.py` main loop still hardcoded, not using dynamic rule — `batdongsan/scraper.py`
-- [ ] [Review][Patch] Circuit breaker key/value mismatch and no worker integration — `scraper_rules_service.py:35,272-319`, `lead_intelligence/services/circuit_breaker.py`, `batdongsan/scraper.py`
-- [ ] [Review][Patch] Validation error responses use three different shapes — `admin_scraper_rules_routes.py:45-60`
-- [ ] [Review][Patch] `PATCH` cannot deactivate a version — `admin_scraper_rules_routes.py:160-164`
-- [ ] [Review][Patch] First rule creation does not publish `scraper_config_updated` — `scraper_rules_service.py:111-118`
-- [ ] [Review][Patch] Pub/Sub payload shape deviates from AC-5 — `scraper_rule_pubsub.py:31-39`
+- [x] [Review][Patch] Mutating service functions lack `session.commit()` — data not persisted — `scraper_rules_service.py`
+- [x] [Review][Patch] In-place `JSONB` mutation not persisted (no `flag_modified`) — `scraper_rules_service.py:267-268,314-315`
+- [x] [Review][Patch] Worker/cache integration non-functional: cache never set, no DB fallback, subscriber not started — `batdongsan/dynamic_rule.py`, `scraper_rule_cache.py`, `scraper_rule_pubsub.py`, `app/app.py`, `celery_app.py`
+- [x] [Review][Patch] ReDoS validation runs synchronously on async event loop — `scraper_rules_service.py:79-80`
+- [x] [Review][Patch] ReDoS fallback uses unsafe `ThreadPoolExecutor` that cannot kill hung thread — `scraper_rule_validator.py:65-88`
+- [x] [Review][Patch] ReDoS benchmark input sizes / fixed patterns not per AC-3 — `scraper_rule_validator.py:50-62`
+- [x] [Review][Patch] `batdongsan/scraper.py` main loop still hardcoded, not using dynamic rule — `batdongsan/scraper.py`
+- [x] [Review][Patch] Circuit breaker key/value mismatch and no worker integration — `scraper_rules_service.py:35,272-319`, `lead_intelligence/services/circuit_breaker.py`, `batdongsan/scraper.py`
+- [x] [Review][Patch] Validation error responses use three different shapes — `admin_scraper_rules_routes.py:45-60`
+- [x] [Review][Patch] `PATCH` cannot deactivate a version — `admin_scraper_rules_routes.py:160-164`
+- [x] [Review][Patch] First rule creation does not publish `scraper_config_updated` — `scraper_rules_service.py:111-118`
+- [x] [Review][Patch] Pub/Sub payload shape deviates from AC-5 — `scraper_rule_pubsub.py:31-39`
 
 ### Patch (medium severity)
 
-- [ ] [Review][Patch] Audit event names and `diff_payload` keys deviate from AC-4 — `scraper_rules_service.py`
-- [ ] [Review][Patch] `lxml` imported but not declared as direct dependency — `pyproject.toml`
-- [ ] [Review][Patch] Path parameters not validated; negative `version` can 500 — `admin_scraper_rules_routes.py`
-- [ ] [Review][Patch] `trip_duration_seconds` can be `0`, causing Redis `EX 0` error — `admin_scraper_rules.py:34`
-- [ ] [Review][Patch] `tripped_at` uses `perf_counter()` not wall clock — `scraper_rules_service.py:38-41,272-275`
-- [ ] [Review][Patch] Redis connection errors in trip/reset not caught — `scraper_rules_service.py:272-319`
-- [ ] [Review][Patch] `fetch_listings`/`fetch_web_listings` ignore `retries.statuses` and `circuit_breaker.tripped` — `batdongsan/fetch.py`
-- [ ] [Review][Patch] `fetch_listings` delay applied per attempt, not per request — `batdongsan/fetch.py:271-273`
-- [ ] [Review][Patch] Version create/activate lacks `SELECT ... FOR UPDATE` — `scraper_rules_service.py:50-54,123-155`
-- [ ] [Review][Patch] `refresh` endpoint does not invalidate local cache — `admin_scraper_rules_routes.py:271-296`
-- [ ] [Review][Patch] No error-rate metric / auto-rollback for INV-25.6 — AC-5
+- [x] [Review][Patch] Audit event names and `diff_payload` keys deviate from AC-4 — `scraper_rules_service.py`
+- [x] [Review][Patch] `lxml` imported but not declared as direct dependency — `pyproject.toml`
+- [x] [Review][Patch] Path parameters not validated; negative `version` can 500 — `admin_scraper_rules_routes.py`
+- [x] [Review][Patch] `trip_duration_seconds` can be `0`, causing Redis `EX 0` error — `admin_scraper_rules.py:34`
+- [x] [Review][Patch] `tripped_at` uses `perf_counter()` not wall clock — `scraper_rules_service.py:38-41,272-275`
+- [x] [Review][Patch] Redis connection errors in trip/reset not caught — `scraper_rules_service.py:272-319`
+- [x] [Review][Patch] `fetch_listings`/`fetch_web_listings` ignore `retries.statuses` and `circuit_breaker.tripped` — `batdongsan/fetch.py`
+- [x] [Review][Patch] `fetch_listings` delay applied per attempt, not per request — `batdongsan/fetch.py:271-273`
+- [x] [Review][Patch] Version create/activate lacks `SELECT ... FOR UPDATE` — `scraper_rules_service.py:50-54,123-155`
+- [x] [Review][Patch] `refresh` endpoint does not invalidate local cache — `admin_scraper_rules_routes.py:271-296`
+- [x] [Review][Patch] No error-rate metric / auto-rollback for INV-25.6 — AC-5

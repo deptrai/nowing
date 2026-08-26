@@ -45,7 +45,7 @@ const mockActiveRule = {
 			next_page_link: "a.next",
 		},
 		regexes: {
-			phone_in_title: "(?:(?<=\\D)|^)(?:\\+84|84|0)[0-9\\s.\\-]{8,15}(?:(?=\\D)|$)",
+			phone_in_title: "(?:^|[^\\d])(?:\\+84|84|0)[0-9\\s.\\-]{8,15}(?:[^\\d]|$)",
 		},
 		delays: {
 			request_ms: 1500,

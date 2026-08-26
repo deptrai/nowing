@@ -16,6 +16,7 @@ from app.services.scraper_platform_account_service import (
     ScraperPlatformAccountRotator,
     ScraperPlatformAccountService,
 )
+from app.services.scraper_rule_metrics import record_failure, record_success
 
 from .fetch import (
     AsyncStealthySession,
@@ -38,9 +39,6 @@ from .schemas import BatdongsanListing, BatdongsanScrapeInput, BatdongsanScrapeO
 logger = logging.getLogger(__name__)
 
 FetchFn = Callable[[dict[str, Any]], Awaitable[dict[str, Any]]]
-
-# Retry a single page this many times before giving up on that page.
-_MAX_RETRIES = 2
 
 # Phone detail fetches are slow and expensive; bound concurrency and per-call
 # wall time so a run does not wait on many sequential browser sessions.
@@ -78,11 +76,6 @@ def _build_page_payload(
         "pagesize": 20,
     }
     return payload
-
-
-def _page_delay() -> float:
-    """Pacing between page requests, so pagination stays polite."""
-    return max(0.0, getattr(config, "BATDONGSAN_PAGE_DELAY_S", 0.5))
 
 
 def _web_fallback_applicable(input_model: BatdongsanScrapeInput) -> bool:
@@ -137,27 +130,23 @@ async def scrape_batdongsan(
         page_failed = False
 
         active_fetch = web_fetch_fn if using_web else fetch
-        for attempt in range(_MAX_RETRIES + 1):
-            try:
-                result = await active_fetch(payload)
-                page_data = result.get("data") or []
-                page_meta = result.get("m")
-                break
-            except BatdongsanRateLimitedError:
-                rate_limited_seen = True
-                if attempt < _MAX_RETRIES:
-                    await asyncio.sleep(_page_delay())
-                    continue
-                page_failed = True
-                break
-            except BatdongsanDecodeError:
-                degraded = True
-                degradation_reason = "decode_error"
-                page_failed = True
-                break
-            except (BatdongsanAccessBlockedError, Exception):
-                page_failed = True
-                break
+        try:
+            result = await active_fetch(payload)
+            page_data = result.get("data") or []
+            page_meta = result.get("m")
+            await record_success("batdongsan")
+        except BatdongsanDecodeError:
+            degraded = True
+            degradation_reason = "decode_error"
+            page_failed = True
+            await record_failure("batdongsan")
+        except BatdongsanRateLimitedError:
+            rate_limited_seen = True
+            page_failed = True
+            await record_failure("batdongsan")
+        except (BatdongsanAccessBlockedError, Exception):
+            page_failed = True
+            await record_failure("batdongsan")
 
         # Web fallback: only on page 1 when mobile gave nothing, the
         # query is city-level, and a web fetcher is wired.
@@ -168,29 +157,24 @@ async def scrape_batdongsan(
             and web_fetch_fn is not None
             and _web_fallback_applicable(input_model)
         ):
-            for attempt in range(_MAX_RETRIES + 1):
-                try:
-                    web_result = await web_fetch_fn(payload)
-                    web_data = web_result.get("data") or []
-                    if web_data:
-                        page_data = web_data
-                        page_meta = web_result.get("m")
-                        using_web = True
-                        logger.info(
-                            "[batdongsan] web fallback engaged for city=%s "
-                            "page=%s (%d items)",
-                            input_model.city,
-                            page,
-                            len(web_data),
-                        )
-                    break
-                except BatdongsanRateLimitedError:
-                    if attempt < _MAX_RETRIES:
-                        await asyncio.sleep(_page_delay())
-                        continue
-                    break
-                except (BatdongsanAccessBlockedError, BatdongsanDecodeError, Exception):
-                    break
+            try:
+                web_result = await web_fetch_fn(payload)
+                web_data = web_result.get("data") or []
+                if web_data:
+                    page_data = web_data
+                    page_meta = web_result.get("m")
+                    using_web = True
+                    logger.info(
+                        "[batdongsan] web fallback engaged for city=%s "
+                        "page=%s (%d items)",
+                        input_model.city,
+                        page,
+                        len(web_data),
+                    )
+            except BatdongsanRateLimitedError:
+                rate_limited_seen = True
+            except (BatdongsanAccessBlockedError, BatdongsanDecodeError, Exception):
+                pass
 
         if page_failed:
             if degradation_reason is None:
@@ -227,8 +211,8 @@ async def scrape_batdongsan(
         if not page_data or page_meta is None:
             break
 
-        if page < max_pages and len(items) < cap:
-            await asyncio.sleep(_page_delay())
+        # Inter-page pacing is handled inside fetch_listings / fetch_web_listings
+        # via ``delays.request_ms`` from the active scraper rule.
 
     # Best-effort: resolve detail URLs and then fetch phone numbers.  The
     # mobile ``p_sync`` API no longer reliably includes ``url``, so we
@@ -257,7 +241,9 @@ async def scrape_batdongsan(
                         cooldown_seconds=config.BATDONGSAN_PHONE_COOLDOWN_S,
                         max_consecutive_failures=config.BATDONGSAN_PHONE_MAX_CONSECUTIVE_FAILURES,
                     )
-                    rotator = ScraperPlatformAccountRotator(service, "batdongsan", limit)
+                    rotator = ScraperPlatformAccountRotator(
+                        service, "batdongsan", limit
+                    )
 
                     # Grab one account for the (rare) web-listing resolver.
                     _web_account, web_credentials = await rotator.get_credentials(
@@ -303,8 +289,13 @@ async def scrape_batdongsan(
                             if token_fresh:
                                 async with semaphore:
                                     try:
-                                        async with asyncio.timeout(_PHONE_RESOLVE_TIMEOUT_S):
-                                            phone, phone_display = await fetch_detail_phone(
+                                        async with asyncio.timeout(
+                                            _PHONE_RESOLVE_TIMEOUT_S
+                                        ):
+                                            (
+                                                phone,
+                                                phone_display,
+                                            ) = await fetch_detail_phone(
                                                 item.detail_url, credentials=credentials
                                             )
                                         await rotator.record_use(account, success=True)
@@ -321,14 +312,19 @@ async def scrape_batdongsan(
                                             exc,
                                         )
                                         await rotator.record_use(
-                                            account, success=False, error_type="restricted"
+                                            account,
+                                            success=False,
+                                            error_type="restricted",
                                         )
                                     except BatdongsanRateLimitedError:
                                         logger.warning(
-                                            "Batdongsan rate limited for %s", item.detail_url
+                                            "Batdongsan rate limited for %s",
+                                            item.detail_url,
                                         )
                                         await rotator.record_use(
-                                            account, success=False, error_type="rate_limited"
+                                            account,
+                                            success=False,
+                                            error_type="rate_limited",
                                         )
                                     except Exception:
                                         logger.exception(
