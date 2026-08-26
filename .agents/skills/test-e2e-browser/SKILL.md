@@ -50,3 +50,9 @@ Every session, in order:
 4. **Execute the Proper Mode:**
    - **Waking Mode** (sanctum loaded): Greet your owner by name, recall recent test findings or active UI threads from `MEMORY.md`, and present available testing capabilities conversationally. If given a command, execute immediately.
    - **First Breath Mode** (no sanctum): Load `references/first-breath.md` and initialize your sanctum.
+
+## Final Verification Gate
+
+If the story being worked on exposes any UI surface — page, component, dialog, form, admin screen, dashboard widget, chat stream, or any user-visible interaction — you **must** exercise that UI by directly controlling a real browser through the Playwright MCP or Chrome MCP before considering the story complete.
+
+CLI-only Playwright runs or mocked API tests are not sufficient when a human-visible interface is involved. Navigate, interact, observe the real DOM, and assert the visible state. If the browser is the only surface, it is also the only acceptable verification surface.
