@@ -1215,29 +1215,6 @@ app.include_router(crud_router, prefix="/api/v1", tags=["crud"])
 app.include_router(crud_router, prefix="/api", tags=["crud"])
 app.include_router(crud_router)
 
-# Wildcard host routing for published web apps: only match *.HOSTING_BASE_DOMAIN.
-host_web_app = FastAPI()
-host_web_app.include_router(web_builder_host_router)
-app.router.routes.insert(
-    0,
-    Host(
-        f"{{subdomain}}.{config.HOSTING_BASE_DOMAIN}",
-        app=host_web_app,
-        name="web-builder-host",
-    ),
-)
-
-# Catch-all host route so custom CNAMEs and arbitrary hostnames reach the
-# web-builder host router after all path routes have been tried.
-app.router.routes.append(
-    Host(
-        "{host}",
-        app=host_web_app,
-        name="web-builder-host-catchall",
-    )
-)
-
-
 @functools.lru_cache(maxsize=1)
 def _backend_build_id() -> str:
     """Resolve the running backend's git commit for build-label verification.
@@ -1323,3 +1300,26 @@ async def authenticated_route(
     session: AsyncSession = Depends(get_async_session),
 ):
     return {"message": "Token is valid", "method": auth.method}
+
+
+# Wildcard host routing for published web apps: only match *.HOSTING_BASE_DOMAIN.
+host_web_app = FastAPI()
+host_web_app.include_router(web_builder_host_router)
+app.router.routes.insert(
+    0,
+    Host(
+        f"{{subdomain}}.{config.HOSTING_BASE_DOMAIN}",
+        app=host_web_app,
+        name="web-builder-host",
+    ),
+)
+
+# Catch-all host route so custom CNAMEs and arbitrary hostnames reach the
+# web-builder host router after all path routes have been tried.
+app.router.routes.append(
+    Host(
+        "{host}",
+        app=host_web_app,
+        name="web-builder-host-catchall",
+    )
+)
