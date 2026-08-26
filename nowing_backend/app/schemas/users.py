@@ -29,3 +29,8 @@ class UserUpdate(schemas.BaseUserUpdate):
 
 class UserNotificationPreferencesUpdate(BaseModel):
     notification_preferences: dict[str, Any]
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
