@@ -1,6 +1,6 @@
 ---
 story_key: 25-5-dynamic-scraper-rule-engine-redos-sandbox
-status: ready-for-dev
+status: pending-human-review
 baseline_commit: 0371c1147
 epic: 25
 story: 5
@@ -8,7 +8,7 @@ story: 5
 
 # Story 25.5: Dynamic Scraper Rule Engine & ReDoS Sandbox
 
-**Status:** `ready-for-dev`
+**Status:** `pending-human-review`
 
 **Governed by:** `INV-25.6` (Dynamic Scraper Rule Invalidation via Redis Pub/Sub), `INV-25.7` (ReDoS Sandbox Hard Limit & Schema AST Validation), `INV-25.8` (Fail-Closed Superadmin Guard & PAT Rejection), Epic 25 trong [`_bmad-output/planning-artifacts/epics.md`](../planning-artifacts/epics.md) dòng 3531–3640.
 
