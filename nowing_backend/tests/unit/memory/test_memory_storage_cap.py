@@ -8,10 +8,11 @@ Tests:
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 from fastapi import HTTPException
 
-from app.db import Memory, MemoryType, MemorySourceType
+from app.db import Memory, MemorySourceType, MemoryType
 from app.services.memory.repository import MemoryRepository
 from app.services.workspace_limits import ResolvedWorkspaceLimits, WorkspaceLimitService
 
@@ -52,7 +53,7 @@ class TestWorkspaceMemoryStorageCap:
                 "error_code": "limit_exceeded",
                 "limit_type": "memory",
             }
-            mock_assert.assert_awaited_once_with(session, 1)
+            mock_assert.assert_awaited_once_with(session, 1, additional=1)
 
     @pytest.mark.asyncio
     async def test_ac2_near_duplicate_update_bypasses_limit_check(self):
@@ -69,7 +70,9 @@ class TestWorkspaceMemoryStorageCap:
         repo._find_near_duplicate = AsyncMock(return_value=existing_memory)
         repo.update_memory = AsyncMock(return_value=existing_memory)
 
-        with patch.object(WorkspaceLimitService, "assert_can_create_memory") as mock_assert:
+        with patch.object(
+            WorkspaceLimitService, "assert_can_create_memory"
+        ) as mock_assert:
             result = await repo.create_memory(
                 workspace_id=1,
                 content="Updated memory content",
@@ -105,15 +108,21 @@ class TestWorkspaceMemoryStorageCap:
             max_memory_bytes=None,
         )
 
-        with patch.object(WorkspaceLimitService, "get_limits", return_value=limits):
-            with patch.object(WorkspaceLimitService, "assert_can_create_memory", return_value=None):
-                memory = await repo.create_memory(
-                    workspace_id=1,
-                    content="Self-hosted unlimited memory",
-                    type=MemoryType.SEMANTIC,
-                    source_type=MemorySourceType.MANUAL,
-                )
+        with (
+            patch.object(
+                WorkspaceLimitService, "get_effective_limits", return_value=limits
+            ),
+            patch.object(
+                WorkspaceLimitService, "assert_can_create_memory", return_value=None
+            ),
+        ):
+            memory = await repo.create_memory(
+                workspace_id=1,
+                content="Self-hosted unlimited memory",
+                type=MemoryType.SEMANTIC,
+                source_type=MemorySourceType.MANUAL,
+            )
 
-                assert memory is not None
-                assert memory.content == "Self-hosted unlimited memory"
-                session.add.assert_called_once()
+            assert memory is not None
+            assert memory.content == "Self-hosted unlimited memory"
+            session.add.assert_called_once()

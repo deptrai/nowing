@@ -247,18 +247,34 @@ def _drop_policies(table: str) -> None:
 
 def _create_rls(table: str) -> None:
     _drop_policies(table)
-    # alert_snapshots and alert_subscriptions have no client_id column.
-    predicate = (
-        _workspace_predicate(table)
-        if table in ("alert_snapshots", "alert_subscriptions")
-        else _tenant_predicate(table)
-    )
+    if table == "alert_snapshots":
+        # Snapshots do not carry workspace_id; enforce tenancy through their parent alert_rule.
+        predicate = """(
+            alert_rule_id IN (
+                SELECT id FROM alert_rules
+                WHERE workspace_id IS NOT DISTINCT FROM current_setting('app.workspace_id', true)::int
+            )
+        )"""
+    elif table in ("alert_snapshots", "alert_subscriptions"):
+        predicate = _workspace_predicate(table)
+    else:
+        predicate = _tenant_predicate(table)
+
+    if table == "alert_snapshots":
+        read_predicate = predicate
+    else:
+        read_predicate = (
+            _workspace_predicate(table)
+            if table in ("alert_snapshots", "alert_subscriptions")
+            else _tenant_predicate(table)
+        )
+
     op.execute(f"""
         CREATE POLICY {table}_tenant_read_policy ON {table}
             AS PERMISSIVE
             FOR SELECT
             TO PUBLIC
-            USING ({_workspace_predicate(table)});
+            USING ({read_predicate});
     """)
     op.execute(f"""
         CREATE POLICY {table}_tenant_write_policy ON {table}

@@ -30,6 +30,9 @@ class WorkspaceUpdate(BaseModel):
     document_retention_days: int | None = None
     auto_archive_enabled: bool | None = None
     document_retention_action: Literal["archive", "delete"] | None = None
+    memory_retention_days: int | None = None
+    memory_auto_archive_enabled: bool | None = None
+    memory_retention_action: Literal["archive", "delete"] | None = None
     memory_auto_extract_enabled: bool | None = None
     auto_reply_enabled: bool | None = None
     auto_reply_collections: list[int] | None = None
@@ -51,6 +54,9 @@ class WorkspaceRead(WorkspaceBase, IDModel, TimestampModel):
     document_retention_days: int | None = None
     auto_archive_enabled: bool = False
     document_retention_action: str = "archive"
+    memory_retention_days: int | None = None
+    memory_auto_archive_enabled: bool = False
+    memory_retention_action: str = "archive"
     memory_auto_extract_enabled: bool = True
     auto_reply_enabled: bool = False
     auto_reply_collections: list[int] = []
@@ -89,6 +95,8 @@ class WorkspaceLimitUsage(BaseModel):
     members: int
     runs: int
     storage_bytes: int
+    memory_count: int = 0
+    memory_bytes: int = 0
 
 
 class AutoExtractUsage(BaseModel):
@@ -105,6 +113,8 @@ class WorkspaceLimitsResponse(BaseModel):
     max_members: int | None
     max_runs: int | None
     max_storage_bytes: int | None
+    max_memory_count: int | None = None
+    max_memory_bytes: int | None = None
     run_period_hours: int
     # Story 8.14: auto-extract budget caps.
     auto_extract_item_cap: int | None = None
@@ -121,6 +131,8 @@ class WorkspaceLimitsResponse(BaseModel):
 class WorkspaceLimitUpdate(BaseModel):
     """Owner-editable workspace limit overrides."""
 
+    max_memory_count: int | None = Field(default=None, ge=0)
+    max_memory_bytes: int | None = Field(default=None, ge=0)
     auto_extract_item_cap: int | None = Field(default=None, ge=0)
     auto_extract_spend_cap_micros: int | None = Field(default=None, ge=0)
     auto_extract_wallet_pre_check: bool | None = None

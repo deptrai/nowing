@@ -7,10 +7,14 @@ Tests:
 """
 
 import pytest
-from sqlalchemy import select, func
-from app.db import Memory, MemoryType, MemorySourceType, Workspace, WorkspaceLimit, DocumentRetentionAction
+
+from app.db import (
+    MemorySourceType,
+    MemoryType,
+    Workspace,
+    WorkspaceLimit,
+)
 from app.services.memory.repository import MemoryRepository
-from app.services.workspace_limits import WorkspaceLimitService
 
 
 @pytest.mark.integration
@@ -18,15 +22,17 @@ class TestMemoryStorageCapIntegration:
     """Integration test suite against real PostgreSQL database."""
 
     @pytest.mark.asyncio
-    async def test_memory_count_limit_lifecycle(self, db_session):
+    async def test_memory_count_limit_lifecycle(
+        self, db_session, db_workspace: Workspace, monkeypatch
+    ):
         """Verify memory insertion, cap enforcement, and near-duplicate behavior."""
-        # 1. Create test workspace with limit = 2
-        ws = Workspace(name="Memory Cap Test WS", user_id=None)
-        db_session.add(ws)
-        await db_session.flush()
+        from app.config import Config
 
+        monkeypatch.setattr(Config, "DEPLOYMENT_MODE", "cloud")
+
+        # 1. Set limit = 2 on workspace
         limit = WorkspaceLimit(
-            workspace_id=ws.id,
+            workspace_id=db_workspace.id,
             max_memory_count=2,
         )
         db_session.add(limit)
@@ -36,7 +42,7 @@ class TestMemoryStorageCapIntegration:
 
         # 2. Insert memory 1
         m1 = await repo.create_memory(
-            workspace_id=ws.id,
+            workspace_id=db_workspace.id,
             content="First memory item",
             type=MemoryType.SEMANTIC,
             source_type=MemorySourceType.MANUAL,
@@ -45,7 +51,7 @@ class TestMemoryStorageCapIntegration:
 
         # 3. Insert memory 2
         m2 = await repo.create_memory(
-            workspace_id=ws.id,
+            workspace_id=db_workspace.id,
             content="Second memory item",
             type=MemoryType.SEMANTIC,
             source_type=MemorySourceType.MANUAL,
@@ -55,7 +61,7 @@ class TestMemoryStorageCapIntegration:
         # 4. Insert memory 3 should be blocked with 403
         with pytest.raises(Exception) as exc_info:
             await repo.create_memory(
-                workspace_id=ws.id,
+                workspace_id=db_workspace.id,
                 content="Third memory item over limit",
                 type=MemoryType.SEMANTIC,
                 source_type=MemorySourceType.MANUAL,

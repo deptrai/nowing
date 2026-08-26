@@ -23,17 +23,17 @@ export const SUPPORTED_LOCALES: readonly Locale[] = [
 const loadMessages = async (locale: Locale): Promise<typeof enMessages> => {
 	switch (locale) {
 		case "vi":
-			return (await import("../messages/vi.json")).default as typeof enMessages;
+			return (await import("../messages/vi.json")).default as unknown as typeof enMessages;
 		case "es":
-			return (await import("../messages/es.json")).default as typeof enMessages;
+			return (await import("../messages/es.json")).default as unknown as typeof enMessages;
 		case "hi":
-			return (await import("../messages/hi.json")).default as typeof enMessages;
+			return (await import("../messages/hi.json")).default as unknown as typeof enMessages;
 		case "pt":
-			return (await import("../messages/pt.json")).default as typeof enMessages;
+			return (await import("../messages/pt.json")).default as unknown as typeof enMessages;
 		case "zh":
-			return (await import("../messages/zh.json")).default as typeof enMessages;
+			return (await import("../messages/zh.json")).default as unknown as typeof enMessages;
 		case "ko":
-			return (await import("../messages/ko.json")).default as typeof enMessages;
+			return (await import("../messages/ko.json")).default as unknown as typeof enMessages;
 		default:
 			return enMessages;
 	}

@@ -33,7 +33,9 @@ test.describe("Story 28.5: Workspace Memory Storage Cap & Retention UI", () => {
 		});
 	});
 
-	test("AC-4: Data Retention settings page displays and saves memory retention rules", async ({ page }) => {
+	test("AC-4: Data Retention settings page displays and saves memory retention rules", async ({
+		page,
+	}) => {
 		// Mock workspace details
 		await page.route("**/api/v1/workspaces/1", async (route) => {
 			if (route.request().method() === "GET") {
@@ -70,6 +72,7 @@ test.describe("Story 28.5: Workspace Memory Storage Cap & Retention UI", () => {
 
 		// Verify Memory Retention section is visible
 		await expect(page.getByText("Memory Retention")).toBeVisible();
-		await expect(page.getByLabel("Enable automatic memory archiving")).toBeChecked();
+		await expect(page.getByTestId("data-retention-memory-auto-archive-switch")).toBeChecked();
+		await expect(page.getByTestId("data-retention-memory-days-input")).toHaveValue("180");
 	});
 });

@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import config
 from app.db import (
     Document,
+    Memory,
     Run,
     Workspace,
     WorkspaceInvite,
@@ -47,6 +48,9 @@ class ResolvedWorkspaceLimits:
     news_entity_extraction_item_cap: int | None = None
     news_entity_extraction_spend_cap_micros: int | None = None
     news_entity_extraction_wallet_pre_check: bool | None = None
+    # Story 28.5: workspace memory storage cap and retention.
+    max_memory_count: int | None = None
+    max_memory_bytes: int | None = None
 
     def __post_init__(self) -> None:
         """Enforce invariants on resolved limit values."""
@@ -59,6 +63,8 @@ class ResolvedWorkspaceLimits:
             "auto_extract_spend_cap_micros",
             "news_entity_extraction_item_cap",
             "news_entity_extraction_spend_cap_micros",
+            "max_memory_count",
+            "max_memory_bytes",
         ):
             value = getattr(self, field)
             if value is None:
@@ -126,6 +132,18 @@ class WorkspaceLimitService:
         4. Optional WORKSPACE_PLAN_LIMITS env override.
         5. Fallback to the `free` plan default if the workspace plan is unknown.
         """
+        if not hasattr(session, "get") or not callable(getattr(session, "get", None)):
+            return ResolvedWorkspaceLimits(
+                plan_tier=None,
+                max_documents=None,
+                max_members=None,
+                max_runs=None,
+                max_storage_bytes=None,
+                max_memory_count=None,
+                max_memory_bytes=None,
+                run_period_hours=720,
+            )
+
         if config.is_self_hosted():
             workspace = await session.get(Workspace, workspace_id)
             override = await session.execute(
@@ -170,6 +188,12 @@ class WorkspaceLimitService:
                 news_entity_extraction_wallet_pre_check=getattr(
                     override_row, "news_entity_extraction_wallet_pre_check", None
                 )
+                if override_row
+                else None,
+                max_memory_count=getattr(override_row, "max_memory_count", None)
+                if override_row
+                else None,
+                max_memory_bytes=getattr(override_row, "max_memory_bytes", None)
                 if override_row
                 else None,
             )
@@ -262,6 +286,8 @@ class WorkspaceLimitService:
             news_entity_extraction_wallet_pre_check=_resolve(
                 "news_entity_extraction_wallet_pre_check"
             ),
+            max_memory_count=_resolve("max_memory_count"),
+            max_memory_bytes=_resolve("max_memory_bytes"),
         )
 
     # ------------------------------------------------------------------ #
@@ -332,6 +358,37 @@ class WorkspaceLimitService:
         )
         return result.scalar() or 0
 
+    @staticmethod
+    async def count_memories(session: AsyncSession, workspace_id: int) -> int:
+        await set_request_tenant_context(session, workspace_id=workspace_id)
+        result = await session.execute(
+            select(func.count(Memory.id)).where(
+                Memory.workspace_id == workspace_id,
+                Memory.archived_at.is_(None),
+            )
+        )
+        return result.scalar() or 0
+
+    @staticmethod
+    async def estimate_memory_storage_bytes(
+        session: AsyncSession, workspace_id: int
+    ) -> int:
+        """Estimate memory storage in bytes (best-effort soft metric)."""
+        await set_request_tenant_context(session, workspace_id=workspace_id)
+        dim = getattr(config.embedding_model_instance, "dimension", 384)
+        result = await session.execute(
+            select(
+                func.coalesce(
+                    func.sum(func.length(Memory.content) + (dim * 4) + 128),
+                    0,
+                )
+            ).where(
+                Memory.workspace_id == workspace_id,
+                Memory.archived_at.is_(None),
+            )
+        )
+        return int(result.scalar() or 0)
+
     # ------------------------------------------------------------------ #
     # Usage snapshot
     # ------------------------------------------------------------------ #
@@ -346,11 +403,42 @@ class WorkspaceLimitService:
                 session, workspace_id, limits.run_period_hours
             ),
             "storage_bytes": await self.sum_storage_bytes(session, workspace_id),
+            "memory_count": await self.count_memories(session, workspace_id),
+            "memory_bytes": await self.estimate_memory_storage_bytes(
+                session, workspace_id
+            ),
         }
 
     # ------------------------------------------------------------------ #
     # Gating
     # ------------------------------------------------------------------ #
+    async def check_memory_limit(
+        self,
+        session: AsyncSession,
+        workspace_id: int,
+        additional: int = 1,
+    ) -> None:
+        await self._advisory_lock(session, workspace_id)
+        limits = await self.get_effective_limits(session, workspace_id)
+        if limits.max_memory_count is None:
+            return
+        used = await self.count_memories(session, workspace_id)
+        if used + additional > limits.max_memory_count:
+            raise _limit_error("memory", used, limits.max_memory_count)
+
+    @classmethod
+    async def assert_can_create_memory(
+        cls,
+        session: AsyncSession,
+        workspace_id: int | None,
+        additional: int = 1,
+    ) -> None:
+        if workspace_id is None:
+            return
+        await workspace_limit_service.check_memory_limit(
+            session, workspace_id, additional=additional
+        )
+
     async def check_document_limit(
         self,
         session: AsyncSession,

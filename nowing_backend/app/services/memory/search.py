@@ -98,6 +98,9 @@ class MemoryHybridSearch:
             conditions.append(Memory.client_id == client_id)
         else:
             conditions.append(Memory.client_id.is_(None))
+
+        # Story 28.5 (AC-6): exclude archived memories from search and recall.
+        conditions.append(Memory.archived_at.is_(None))
         return conditions
 
     async def search(

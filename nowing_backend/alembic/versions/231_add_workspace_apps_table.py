@@ -93,10 +93,20 @@ def upgrade() -> None:
             "workspace_apps",
             ["custom_domain"],
         )
+        op.create_index(
+            "uq_workspace_apps_active_custom_domain",
+            "workspace_apps",
+            ["custom_domain"],
+            unique=True,
+            postgresql_where=sa.text("custom_domain_status = 'active'"),
+        )
 
 
 def downgrade() -> None:
     if _table_exists("workspace_apps"):
+        op.drop_index(
+            "uq_workspace_apps_active_custom_domain", table_name="workspace_apps"
+        )
         op.drop_index("ix_workspace_apps_custom_domain", table_name="workspace_apps")
         op.drop_index("ix_workspace_apps_workspace_status", table_name="workspace_apps")
         op.drop_table("workspace_apps")

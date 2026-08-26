@@ -392,7 +392,9 @@ async def test_run_extraction_skips_non_success_run(db_session, scraper_run):
     assert llm.ainvoke.await_count == 0
 
 
-@pytest.mark.skip(reason="Run.workspace_id has ON DELETE CASCADE; deleting the workspace also deletes the run, so this path cannot be reached without disabling the FK. AC-4 is covered by the missing-workspace branch in the service.")
+@pytest.mark.skip(
+    reason="Run.workspace_id has ON DELETE CASCADE; deleting the workspace also deletes the run, so this path cannot be reached without disabling the FK. AC-4 is covered by the missing-workspace branch in the service."
+)
 @pytest.mark.asyncio
 async def test_run_extraction_skips_when_workspace_deleted(db_session, scraper_run):
     """Edge: workspace deleted before extraction -> terminal skip, not stuck pending."""

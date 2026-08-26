@@ -9,11 +9,13 @@ Create Date: 2026-08-15 00:00:00.000000
 from collections.abc import Sequence
 
 from sqlalchemy import (
+    ARRAY,
     TIMESTAMP,
     Boolean,
     Column,
     Float,
     ForeignKey,
+    ForeignKeyConstraint,
     Integer,
     String,
     Text,
@@ -50,7 +52,7 @@ def upgrade() -> None:
             Integer,
             ForeignKey("workspaces.id", ondelete="CASCADE"),
             nullable=False,
-            index=True,
+            primary_key=True,
         ),
         Column("client_id", CITEXT, nullable=True, index=True),
         Column("source", String(100), nullable=False, index=True),
@@ -61,7 +63,12 @@ def upgrade() -> None:
         Column("industry", String(100), nullable=True, index=True),
         Column("company_size", String(50), nullable=True),
         Column("location", String(100), nullable=True),
-        Column("tech_stack", JSONB, nullable=True, server_default=text("'[]'::jsonb")),
+        Column(
+            "tech_stack",
+            ARRAY(String),
+            nullable=True,
+            server_default=text("ARRAY[]::varchar[]"),
+        ),
         Column("fit_score", Float, nullable=True),
         Column("intent_score", Float, nullable=True),
         Column("composite_score", Float, nullable=True),
@@ -69,8 +76,8 @@ def upgrade() -> None:
             "status",
             String(50),
             nullable=False,
-            default="open",
-            server_default=text("'open'"),
+            default="new",
+            server_default=text("'new'"),
         ),
         Column(
             "enriched",
@@ -92,6 +99,10 @@ def upgrade() -> None:
             TIMESTAMP(timezone=True),
             nullable=False,
             server_default=text("now()"),
+        ),
+        UniqueConstraint(
+            "id",
+            name="uq_leads_id",
         ),
         UniqueConstraint(
             "workspace_id",
@@ -120,7 +131,6 @@ def upgrade() -> None:
         Column(
             "lead_id",
             UUID(as_uuid=True),
-            ForeignKey("leads.id", ondelete="CASCADE"),
             nullable=False,
             index=True,
         ),
@@ -161,6 +171,12 @@ def upgrade() -> None:
             TIMESTAMP(timezone=True),
             nullable=False,
             server_default=text("now()"),
+        ),
+        ForeignKeyConstraint(
+            ["lead_id", "workspace_id"],
+            ["leads.id", "leads.workspace_id"],
+            ondelete="CASCADE",
+            name="fk_lead_scores_lead_id_workspace_id",
         ),
     )
 

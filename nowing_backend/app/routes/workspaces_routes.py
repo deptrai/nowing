@@ -290,6 +290,9 @@ async def update_workspace(
             "document_retention_days",
             "auto_archive_enabled",
             "document_retention_action",
+            "memory_retention_days",
+            "memory_auto_archive_enabled",
+            "memory_retention_action",
         }
         touches_retention = bool(retention_fields & update_data.keys())
 
@@ -309,7 +312,7 @@ async def update_workspace(
         if not db_workspace:
             raise HTTPException(status_code=404, detail="Workspace not found")
 
-        # Compute effective final state for retention fields.
+        # Compute effective final state for document retention fields.
         new_auto_archive = update_data.get(
             "auto_archive_enabled", db_workspace.auto_archive_enabled
         )
@@ -330,7 +333,7 @@ async def update_workspace(
                 status_code=400, detail="document_retention_action cannot be null"
             )
 
-        # Validate the final retention invariant.
+        # Validate the final document retention invariant.
         if new_auto_archive:
             if new_days is None or not isinstance(new_days, int) or new_days <= 0:
                 raise HTTPException(
@@ -346,6 +349,50 @@ async def update_workspace(
                 raise HTTPException(
                     status_code=400,
                     detail="document_retention_action is required when auto_archive_enabled is true",
+                )
+
+        # Compute and validate memory retention fields (Story 28.5).
+        new_mem_auto_archive = update_data.get(
+            "memory_auto_archive_enabled", db_workspace.memory_auto_archive_enabled
+        )
+        new_mem_days = update_data.get(
+            "memory_retention_days", db_workspace.memory_retention_days
+        )
+        new_mem_action = update_data.get(
+            "memory_retention_action", db_workspace.memory_retention_action
+        )
+
+        if (
+            "memory_auto_archive_enabled" in update_data
+            and new_mem_auto_archive is None
+        ):
+            raise HTTPException(
+                status_code=400, detail="memory_auto_archive_enabled cannot be null"
+            )
+        if "memory_retention_action" in update_data and new_mem_action is None:
+            raise HTTPException(
+                status_code=400, detail="memory_retention_action cannot be null"
+            )
+
+        if new_mem_auto_archive:
+            if (
+                new_mem_days is None
+                or not isinstance(new_mem_days, int)
+                or new_mem_days <= 0
+            ):
+                raise HTTPException(
+                    status_code=400,
+                    detail="memory_retention_days must be a positive integer when memory_auto_archive_enabled is true",
+                )
+            if new_mem_days > 36500:
+                raise HTTPException(
+                    status_code=400,
+                    detail="memory_retention_days must not exceed 36500 (100 years)",
+                )
+            if not new_mem_action:
+                raise HTTPException(
+                    status_code=400,
+                    detail="memory_retention_action is required when memory_auto_archive_enabled is true",
                 )
 
         for key, value in update_data.items():
@@ -450,6 +497,8 @@ async def get_workspace_limits(
             max_members=limits.max_members,
             max_runs=limits.max_runs,
             max_storage_bytes=limits.max_storage_bytes,
+            max_memory_count=limits.max_memory_count,
+            max_memory_bytes=limits.max_memory_bytes,
             run_period_hours=limits.run_period_hours,
             auto_extract_item_cap=limits.auto_extract_item_cap,
             auto_extract_spend_cap_micros=limits.auto_extract_spend_cap_micros,
@@ -502,6 +551,10 @@ async def update_workspace_limits(
             session.add(override)
 
         # Only overwrite supplied fields; keep existing overrides for others.
+        if body.max_memory_count is not None:
+            override.max_memory_count = body.max_memory_count
+        if body.max_memory_bytes is not None:
+            override.max_memory_bytes = body.max_memory_bytes
         if body.auto_extract_item_cap is not None:
             override.auto_extract_item_cap = body.auto_extract_item_cap
         if body.auto_extract_spend_cap_micros is not None:
@@ -535,6 +588,8 @@ async def update_workspace_limits(
             max_members=limits.max_members,
             max_runs=limits.max_runs,
             max_storage_bytes=limits.max_storage_bytes,
+            max_memory_count=limits.max_memory_count,
+            max_memory_bytes=limits.max_memory_bytes,
             run_period_hours=limits.run_period_hours,
             auto_extract_item_cap=limits.auto_extract_item_cap,
             auto_extract_spend_cap_micros=limits.auto_extract_spend_cap_micros,

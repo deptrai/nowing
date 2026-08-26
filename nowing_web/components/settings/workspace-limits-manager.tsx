@@ -97,6 +97,19 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 			limit: data?.max_storage_bytes ?? null,
 			formatter: formatBytes,
 		},
+		{
+			key: "memories",
+			title: t("limits_memories"),
+			used: data?.usage.memory_count ?? 0,
+			limit: data?.max_memory_count ?? null,
+		},
+		{
+			key: "memory_storage",
+			title: t("limits_memory_storage"),
+			used: data?.usage.memory_bytes ?? 0,
+			limit: data?.max_memory_bytes ?? null,
+			formatter: formatBytes,
+		},
 	];
 
 	const showUpgradeCta =

@@ -6,6 +6,8 @@ Tests:
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import UUID
+
 import pytest
 
 from app.db import Memory, User
@@ -24,7 +26,7 @@ class TestMemoryRightToDelete:
         service = MemoryErasureService(session)
 
         mock_user = MagicMock(spec=User)
-        mock_user.id = "11111111-1111-4111-8111-111111111111"
+        mock_user.id = UUID("11111111-1111-4111-8111-111111111111")
         mock_user.email = "admin@example.com"
 
         mock_memory = MagicMock(spec=Memory)
@@ -44,7 +46,10 @@ class TestMemoryRightToDelete:
                 action="memory_delete",
                 workspace_id=1,
                 actor_id=mock_user.id,
-                diff_payload={"memory_id": 123, "reason": "GDPR right-to-be-forgotten request"},
+                diff_payload={
+                    "memory_id": 123,
+                    "reason": "GDPR right-to-be-forgotten request",
+                },
             )
 
     @pytest.mark.asyncio
@@ -55,7 +60,9 @@ class TestMemoryRightToDelete:
         session = AsyncMock()
         service = MemoryErasureService(session)
 
-        with patch.object(service, "count_matching_memories", return_value=1500) as mock_count:
+        with patch.object(
+            service, "count_matching_memories", return_value=1500
+        ) as mock_count:
             result = await service.bulk_delete_memories(
                 workspace_id=1,
                 source_type="batdongsan",

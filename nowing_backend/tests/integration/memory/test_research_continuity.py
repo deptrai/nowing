@@ -346,7 +346,9 @@ async def test_continue_context_includes_chunk_citations_without_url(
     )
 
 
-async def test_continue_context_includes_run_citation(client, db_session, db_workspace, db_user):
+async def test_continue_context_includes_run_citation(
+    client, db_session, db_workspace, db_user
+):
     """AC-1b: scraper-run citations are returned with label, url=None, and source_type=run."""
     from app.db import (
         NewChatMessage,
@@ -385,9 +387,7 @@ async def test_continue_context_includes_run_citation(client, db_session, db_wor
     )
     assert resp.status_code == 200
     citations = resp.json()["citations"]
-    run_citation = next(
-        (c for c in citations if c.get("source_type") == "run"), None
-    )
+    run_citation = next((c for c in citations if c.get("source_type") == "run"), None)
     assert run_citation is not None
     assert run_citation["url"] is None
     assert run_citation["label"] == run_id
@@ -495,9 +495,7 @@ async def test_continue_context_citations_capped_at_limit(
     await db_session.flush()
 
     # 55 distinct URL markers; the cap should drop the last 5.
-    markers = " ".join(
-        f"[citation:https://example.com/cite/{i}]" for i in range(55)
-    )
+    markers = " ".join(f"[citation:https://example.com/cite/{i}]" for i in range(55))
     db_session.add(
         NewChatMessage(
             thread_id=chat.id,

@@ -5,11 +5,25 @@ Revises: f984b591d763
 Create Date: 2026-08-25 00:00:00.000000
 
 """
+
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+from sqlalchemy import text
 
 from alembic import op
+
+
+def _table_exists(conn, table: str) -> bool:
+    row = conn.execute(
+        text(
+            "SELECT 1 FROM information_schema.tables "
+            "WHERE table_schema = current_schema() AND table_name = :table"
+        ),
+        {"table": table},
+    ).fetchone()
+    return row is not None
+
 
 # revision identifiers, used by Alembic.
 revision: str = "c50707287216"
@@ -20,6 +34,10 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     """Upgrade schema."""
+    conn = op.get_bind()
+    if not _table_exists(conn, "workspace_apps"):
+        return
+
     # Resolve any existing duplicate active custom domains before adding the
     # partial unique index. The most recently updated row is kept active;
     # older duplicates are downgraded to failed so the index can be created.

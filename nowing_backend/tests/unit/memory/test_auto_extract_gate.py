@@ -394,7 +394,9 @@ async def test_record_extraction_increments_and_sets_ttl_on_first(
     client.ttls.clear()
     await record_extraction(7)
     assert client.store[key] == 2
-    assert key not in client.ttls, "fixed window must not re-set TTL on later increments"
+    assert key not in client.ttls, (
+        "fixed window must not re-set TTL on later increments"
+    )
 
 
 async def test_record_extraction_is_noop_when_rate_limit_disabled(monkeypatch):

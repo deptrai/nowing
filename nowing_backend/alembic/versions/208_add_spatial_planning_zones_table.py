@@ -22,6 +22,8 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    op.execute("CREATE EXTENSION IF NOT EXISTS postgis")
+
     op.create_table(
         "spatial_planning_zones",
         sa.Column("id", BigInteger, primary_key=True, autoincrement=True),
@@ -107,7 +109,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute("DROP TRIGGER IF EXISTS trg_spatial_planning_subdivide ON spatial_planning_zones")
+    op.execute(
+        "DROP TRIGGER IF EXISTS trg_spatial_planning_subdivide ON spatial_planning_zones"
+    )
     op.execute("DROP FUNCTION IF EXISTS trg_spatial_planning_subdivide()")
     op.drop_index("idx_spatial_planning_loc", table_name="spatial_planning_zones")
     op.drop_index("idx_spatial_planning_code", table_name="spatial_planning_zones")

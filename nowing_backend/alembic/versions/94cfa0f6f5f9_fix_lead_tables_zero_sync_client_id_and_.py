@@ -5,6 +5,7 @@ Revises: e88d2cc290f2
 Create Date: 2026-08-17 03:57:56.190101
 
 """
+
 from collections.abc import Sequence
 
 import sqlalchemy as sa
@@ -14,8 +15,8 @@ from alembic import op
 from app.zero_publication import apply_publication
 
 # revision identifiers, used by Alembic.
-revision: str = '94cfa0f6f5f9'
-down_revision: str | None = 'e88d2cc290f2'
+revision: str = "94cfa0f6f5f9"
+down_revision: str | None = "e88d2cc290f2"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -46,19 +47,37 @@ def _publication_exists(conn) -> bool:
     return row is not None
 
 
+def _published_tables(conn) -> list[str]:
+    if not _publication_exists(conn):
+        return []
+    rows = conn.execute(
+        text(
+            "SELECT tablename FROM pg_publication_tables "
+            "WHERE pubname = 'zero_publication' AND schemaname = current_schema()"
+        )
+    ).fetchall()
+    return [r[0] for r in rows]
+
+
+def _drop_from_publication(conn, tables: tuple[str, ...]) -> None:
+    published = set(_published_tables(conn))
+    to_drop = [t for t in tables if t in published]
+    if to_drop:
+        conn.execute(
+            text(
+                'ALTER PUBLICATION "zero_publication" DROP TABLE '
+                + ", ".join(f'"{t}"' for t in to_drop)
+            )
+        )
+
+
 def upgrade() -> None:
     bind = op.get_bind()
 
     # Remove the lead tables from zero_publication while we alter their columns.
     # Postgres forbids ALTER COLUMN ... TYPE on a column that a publication
     # depends on, so we drop and re-add them at the end.
-    if _publication_exists(bind):
-        bind.execute(
-            text(
-                "ALTER PUBLICATION \"zero_publication\" DROP TABLE "
-                + ", ".join(f"\"{t}\"" for t in _ZERO_TABLES)
-            )
-        )
+    _drop_from_publication(bind, _ZERO_TABLES)
 
     # Add missing updated_at to leads so it can be published by zero_publication.
     if _column_type(bind, "leads", "updated_at") is None:
@@ -73,7 +92,9 @@ def upgrade() -> None:
     for table in _ZERO_TABLES:
         if _column_type(bind, table, "client_id") == "citext":
             bind.execute(
-                text(f'ALTER TABLE "{table}" ALTER COLUMN client_id TYPE text USING client_id::text')
+                text(
+                    f'ALTER TABLE "{table}" ALTER COLUMN client_id TYPE text USING client_id::text'
+                )
             )
 
     # Reconcile zero_publication to the canonical shape now that the columns are
@@ -84,18 +105,14 @@ def upgrade() -> None:
 def downgrade() -> None:
     bind = op.get_bind()
 
-    if _publication_exists(bind):
-        bind.execute(
-            text(
-                "ALTER PUBLICATION \"zero_publication\" DROP TABLE "
-                + ", ".join(f"\"{t}\"" for t in _ZERO_TABLES)
-            )
-        )
+    _drop_from_publication(bind, _ZERO_TABLES)
 
     for table in _ZERO_TABLES:
         if _column_type(bind, table, "client_id") == "text":
             bind.execute(
-                text(f'ALTER TABLE "{table}" ALTER COLUMN client_id TYPE citext USING client_id::citext')
+                text(
+                    f'ALTER TABLE "{table}" ALTER COLUMN client_id TYPE citext USING client_id::citext'
+                )
             )
 
     if _column_type(bind, "leads", "updated_at") is not None:

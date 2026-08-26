@@ -248,6 +248,14 @@ def _constraint_exists(conn, table: str, constraint: str) -> bool:
 def upgrade() -> None:
     conn = op.get_bind()
 
+    # 0. Add value_hmac to leads if it does not exist yet (e.g. unpartitioned
+    #    table without the canonical hash column).
+    if not _column_exists(conn, "leads", "value_hmac"):
+        op.add_column(
+            "leads",
+            sa.Column("value_hmac", sa.String(64), nullable=True),
+        )
+
     # 1. Add blind-index columns to verified_contacts if they do not exist yet.
     if not _column_exists(conn, "verified_contacts", "phone_hmac"):
         op.add_column(

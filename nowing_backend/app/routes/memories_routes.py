@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
@@ -107,9 +108,7 @@ async def create_memory(
 
     # AC-18.6: client_id/agent_id must come from the auth scope. Intersect the
     # request body with the PAT scope so callers cannot widen beyond their tenant.
-    client_id, agent_id = _resolved_tenant_ids(
-        auth, body.client_id, body.agent_id
-    )
+    client_id, agent_id = _resolved_tenant_ids(auth, body.client_id, body.agent_id)
 
     repo = MemoryRepository(session)
     memory = await repo.create_memory(
@@ -179,7 +178,10 @@ async def search_memory(
         status = 500 if exc.reason == "provider_error" else 422
         raise HTTPException(
             status_code=status,
-            detail={"code": exc.reason, "message": f"embedding validation failed: {exc.reason}"},
+            detail={
+                "code": exc.reason,
+                "message": f"embedding validation failed: {exc.reason}",
+            },
         ) from exc
 
     return MemorySearchResponse(
@@ -355,3 +357,69 @@ async def delete_memory(
 
     await repo.delete_memory(memory_id)
     return None
+
+
+class MemoryBulkDeleteRequest(BaseModel):
+    source_type: str | None = None
+    source_id: int | None = None
+    source_entity_type: str | None = None
+    dry_run: bool = False
+
+
+@router.delete("/workspaces/{workspace_id}/memories/{memory_id}", status_code=204)
+async def right_to_delete_memory(
+    workspace_id: int,
+    memory_id: int,
+    reason: str | None = Query(default=None),
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """Right-to-Delete single memory erasure with audit trail logging (Story 28.5, AC-8)."""
+    await check_permission(
+        session,
+        auth,
+        workspace_id,
+        Permission.MEMORY_DELETE.value,
+        error_message="You don't have permission to delete this memory",
+    )
+    from app.services.memory.erasure_service import MemoryErasureService
+
+    service = MemoryErasureService(session)
+    deleted = await service.delete_memory(
+        workspace_id=workspace_id,
+        memory_id=memory_id,
+        actor=auth.user,
+        reason=reason,
+    )
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Memory not found")
+    return None
+
+
+@router.post("/workspaces/{workspace_id}/memories/bulk-delete")
+async def bulk_delete_memories(
+    workspace_id: int,
+    body: MemoryBulkDeleteRequest,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """Chunked bulk memory deletion with dry-run and audit trail logging (Story 28.5, AC-9)."""
+    await check_permission(
+        session,
+        auth,
+        workspace_id,
+        Permission.MEMORY_DELETE.value,
+        error_message="You don't have permission to delete memories in bulk",
+    )
+    from app.services.memory.erasure_service import MemoryErasureService
+
+    service = MemoryErasureService(session)
+    result = await service.bulk_delete_memories(
+        workspace_id=workspace_id,
+        source_type=body.source_type,
+        source_id=body.source_id,
+        source_entity_type=body.source_entity_type,
+        actor=auth.user,
+        dry_run=body.dry_run,
+    )
+    return result

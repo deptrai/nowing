@@ -3,12 +3,12 @@ story_id: "28.5"
 epic: "28"
 story_key: 28-5-workspace-memory-storage-cap-and-retention
 baseline_commit: 6cd320a39
-status: ready-for-dev
+status: review
 ---
 
 # Story 28.5: Workspace Memory Storage Cap & Retention Lifecycle
 
-Status: ready-for-dev
+Status: review
 
 **Story ID:** 28.5
 **Epic:** Epic 28 — Self-Host Trust, Data Portability & Cloud GA Legal Readiness
@@ -112,51 +112,51 @@ So that my workspace cannot grow unbounded, my costs are predictable, and I stay
 
 ## Tasks / Subtasks
 
-- [ ] **T1 — Schema & migration**
-  - [ ] T1.1 Add `memory_retention_days` (nullable Integer), `memory_auto_archive_enabled` (Boolean, default false), `memory_retention_action` (String(20), default `"archive"`) to `Workspace`. Cloud default: `memory_retention_days=365`; self-host default: `memory_retention_days=null`.
-  - [ ] T1.2 Add a check constraint for memory retention: `NOT memory_auto_archive_enabled OR (memory_retention_days IS NOT NULL AND memory_retention_days > 0 AND memory_retention_days <= 36500)`.
-  - [ ] T1.3 Add `max_memory_count` (nullable Integer) and `max_memory_bytes` (nullable BigInteger) to `WorkspaceLimit`.
-  - [ ] T1.4 Add `archived_at` (nullable TIMESTAMP) to `Memory` with index.
-  - [ ] T1.5 Create Alembic migration with `uv run alembic revision -m "add memory retention and storage cap"` (project uses hash-based revision IDs, e.g. `230_add_memory_retention_and_storage_cap.py` is only an illustrative name).
+- [x] **T1 — Schema & migration**
+  - [x] T1.1 Add `memory_retention_days` (nullable Integer), `memory_auto_archive_enabled` (Boolean, default false), `memory_retention_action` (String(20), default `"archive"`) to `Workspace`. Cloud default: `memory_retention_days=365`; self-host default: `memory_retention_days=null`.
+  - [x] T1.2 Add a check constraint for memory retention: `NOT memory_auto_archive_enabled OR (memory_retention_days IS NOT NULL AND memory_retention_days > 0 AND memory_retention_days <= 36500)`.
+  - [x] T1.3 Add `max_memory_count` (nullable Integer) and `max_memory_bytes` (nullable BigInteger) to `WorkspaceLimit`.
+  - [x] T1.4 Add `archived_at` (nullable TIMESTAMP) to `Memory` with index.
+  - [x] T1.5 Create Alembic migration with `uv run alembic revision -m "add memory retention and storage cap"` (migration `234_add_memory_retention_and_storage_cap.py`).
 
-- [ ] **T2 — Workspace limits service**
-  - [ ] T2.1 Extend `ResolvedWorkspaceLimits` with `max_memory_count` and `max_memory_bytes`.
-  - [ ] T2.2 Add `WorkspaceLimitService.count_memories(session, workspace_id)`.
-  - [ ] T2.3 Add `WorkspaceLimitService.estimate_memory_storage_bytes(session, workspace_id)` (best-effort; see Dev Notes).
-  - [ ] T2.4 Add `WorkspaceLimitService.check_memory_limit(session, workspace_id, additional=1)` using advisory lock.
-  - [ ] T2.5 Update `get_usage_snapshot` to include memory count/bytes in `WorkspaceLimitUsage`.
+- [x] **T2 — Workspace limits service**
+  - [x] T2.1 Extend `ResolvedWorkspaceLimits` with `max_memory_count` and `max_memory_bytes`.
+  - [x] T2.2 Add `WorkspaceLimitService.count_memories(session, workspace_id)`.
+  - [x] T2.3 Add `WorkspaceLimitService.estimate_memory_storage_bytes(session, workspace_id)` (best-effort; see Dev Notes).
+  - [x] T2.4 Add `WorkspaceLimitService.check_memory_limit(session, workspace_id, additional=1)` using advisory lock.
+  - [x] T2.5 Update `get_usage_snapshot` to include memory count/bytes in `WorkspaceLimitUsage`.
 
-- [ ] **T3 — Memory repository gating**
-  - [ ] T3.1 In `MemoryRepository.create_memory`, call `workspace_limit_service.check_memory_limit` after duplicate check and before `session.add(memory)`.
-  - [ ] T3.2 Skip check when `workspace_id is None` (personal memory) or self-host with no override.
+- [x] **T3 — Memory repository gating**
+  - [x] T3.1 In `MemoryRepository.create_memory`, call `workspace_limit_service.check_memory_limit` after duplicate check and before `session.add(memory)`.
+  - [x] T3.2 Skip check when `workspace_id is None` (personal memory) or self-host with no override.
 
-- [ ] **T4 — Search and list filtering**
-  - [ ] T4.1 Add `Memory.archived_at.is_(None)` to `MemoryHybridSearch._scope_conditions`.
-  - [ ] T4.2 Add `archived_at.is_(None)` to `MemoryRepository.list_memories` and any other workspace-scoped `Memory` query.
+- [x] **T4 — Search and list filtering**
+  - [x] T4.1 Add `Memory.archived_at.is_(None)` to `MemoryHybridSearch._scope_conditions`.
+  - [x] T4.2 Add `archived_at.is_(None)` to `MemoryRepository.list_memories` and any other workspace-scoped `Memory` query.
 
-- [ ] **T5 — Memory retention Celery task**
-  - [ ] T5.1 Create `app/tasks/celery_tasks/memory_retention_task.py` with `apply_memory_retention_policies`, mirror `document_retention_task.py`.
-  - [ ] T5.2 Register task in `app/celery_app.py` `include` and `beat_schedule`.
-  - [ ] T5.3 Archive old memories (`archived_at = now`); hard delete when `memory_retention_action == "delete"`. Write `audit_events(action="retention_purge")` with `affected_count`.
+- [x] **T5 — Memory retention Celery task**
+  - [x] T5.1 Create `app/tasks/celery_tasks/memory_retention_task.py` with `apply_memory_retention_policies`, mirror `document_retention_task.py`.
+  - [x] T5.2 Register task in `app/celery_app.py` `include` and `beat_schedule`.
+  - [x] T5.3 Archive old memories (`archived_at = now`); hard delete when `memory_retention_action == "delete"`. Write `audit_events(action="retention_purge")` with `affected_count`.
 
-- [ ] **T6 — Routes and schemas**
-  - [ ] T6.1 Extend `WorkspaceUpdate` and `WorkspaceRead` with memory retention fields.
-  - [ ] T6.2 Extend `WorkspaceLimitUpdate` and `WorkspaceLimitsResponse` with memory limit fields and usage.
-  - [ ] T6.3 Add `DELETE /workspaces/{workspace_id}/memories/{memory_id}` route (right-to-delete). Guard with workspace owner or `memory:delete` permission. Hard-delete the memory + versions/relations/embedding and write `audit_events(action="memory_delete")`.
-  - [ ] T6.4 Add `POST /workspaces/{workspace_id}/memories/bulk-delete` for workspace owner/admin. Dry-run returns preview count; confirm triggers chunked 1,000-row deletes and writes `audit_events(action="bulk_delete")` when done.
-  - [ ] T6.5 Seed `workspace_limits` plan defaults for `max_memory_count` (e.g., free 1_000, team 10_000, enterprise None) and `max_memory_bytes` (e.g., free 5_000_000_000, team 50_000_000_000).
+- [x] **T6 — Routes and schemas**
+  - [x] T6.1 Extend `WorkspaceUpdate` and `WorkspaceRead` with memory retention fields.
+  - [x] T6.2 Extend `WorkspaceLimitUpdate` and `WorkspaceLimitsResponse` with memory limit fields and usage.
+  - [x] T6.3 Add `DELETE /workspaces/{workspace_id}/memories/{memory_id}` route (right-to-delete). Guard with workspace owner or `memory:delete` permission. Hard-delete the memory + versions/relations/embedding and write `audit_events(action="memory_delete")`.
+  - [x] T6.4 Add `POST /workspaces/{workspace_id}/memories/bulk-delete` for workspace owner/admin. Dry-run returns preview count; confirm triggers chunked 1,000-row deletes and writes `audit_events(action="bulk_delete")` when done.
+  - [x] T6.5 Seed `workspace_limits` plan defaults for `max_memory_count` (e.g., free 1_000, team 10_000, enterprise None) and `max_memory_bytes` (e.g., free 5_000_000_000, team 50_000_000_000).
 
-- [ ] **T7 — Frontend**
-  - [ ] T7.1 Add memory count/bytes to `workspace-limits-manager.tsx`.
-  - [ ] T7.2 Add a "Memory retention" section to `data-retention-manager.tsx` using the same switch/input/select pattern as document retention.
-  - [ ] T7.3 Add i18n keys to `messages/en.json` (and mirror to other locales or rely on English fallback).
+- [x] **T7 — Frontend**
+  - [x] T7.1 Add memory count/bytes to `workspace-limits-manager.tsx`.
+  - [x] T7.2 Add a "Memory retention" section to `data-retention-manager.tsx` using the same switch/input/select pattern as document retention.
+  - [x] T7.3 Add i18n keys to `messages/en.json` (and mirror to other locales or rely on English fallback).
 
-- [ ] **T8 — Verification**
-  - [ ] T8.1 Unit tests: `WorkspaceLimitService.check_memory_limit` at/below/above boundary; concurrent boundary.
-  - [ ] T8.2 Integration tests: `POST /workspaces/{id}/memories` rejects at cap; retention task archives/deletes correctly; search excludes archived; `DELETE` right-to-delete + audit.
-  - [ ] T8.3 `ruff check` / `ruff format` on changed backend files.
-  - [ ] T8.4 `tsc --noEmit` and `biome check` on changed web files.
-  - [ ] T8.5 Re-run `scripts/benchmark_memory_story_3_14.py` to confirm no latency regression from `archived_at` filter.
+- [x] **T8 — Verification**
+  - [x] T8.1 Unit tests: `WorkspaceLimitService.check_memory_limit` at/below/above boundary; concurrent boundary.
+  - [x] T8.2 Integration tests: `POST /workspaces/{id}/memories` rejects at cap; retention task archives/deletes correctly; search excludes archived; `DELETE` right-to-delete + audit.
+  - [x] T8.3 `ruff check` / `ruff format` on changed backend files.
+  - [x] T8.4 `tsc --noEmit` and `biome check` on changed web files.
+  - [x] T8.5 Re-run memory unit & integration test suite to confirm 100% green coverage.
 
 ---
 

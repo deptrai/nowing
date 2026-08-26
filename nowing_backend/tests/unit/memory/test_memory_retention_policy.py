@@ -9,10 +9,15 @@ Tests:
 
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 
-from app.db import DocumentRetentionAction, Memory, MemoryType, MemorySourceType, Workspace
-from app.schemas.workspace import WorkspaceRead, WorkspaceUpdate
+from app.db import (
+    DocumentRetentionAction,
+    Memory,
+    Workspace,
+)
+from app.schemas.workspace import WorkspaceUpdate
 from app.services.memory.search import MemoryHybridSearch
 
 
@@ -41,7 +46,7 @@ class TestMemoryRetentionPolicy:
             research_thread_id=None,
             client_id=None,
         )
-        
+
         # Verify that Memory.archived_at.is_(None) is part of scope conditions
         condition_strs = [str(c) for c in conditions]
         assert any("memories.archived_at IS NULL" in c for c in condition_strs)
@@ -49,7 +54,9 @@ class TestMemoryRetentionPolicy:
     @pytest.mark.asyncio
     async def test_ac5_retention_task_archives_old_memories(self):
         """AC-5: Retention task sets archived_at for memories older than retention window."""
-        from app.tasks.celery_tasks.memory_retention_task import apply_memory_retention_policies_async
+        from app.tasks.celery_tasks.memory_retention_task import (
+            apply_memory_retention_policies_async,
+        )
 
         session = AsyncMock()
         mock_ws = MagicMock(spec=Workspace)
@@ -65,8 +72,17 @@ class TestMemoryRetentionPolicy:
         mock_old_memory.created_at = datetime.now(UTC) - timedelta(days=45)
 
         # Mock database query results
-        with patch("app.tasks.celery_tasks.memory_retention_task.async_session_maker") as mock_maker:
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = [mock_ws]
+        session.execute = AsyncMock(return_value=mock_result)
+
+        with patch(
+            "app.tasks.celery_tasks.memory_retention_task.get_celery_session_maker"
+        ) as mock_get_maker:
+            mock_maker = MagicMock()
             mock_maker.return_value.__aenter__.return_value = session
+            mock_get_maker.return_value = mock_maker
             # Execute retention task
             result = await apply_memory_retention_policies_async()
             assert result is not None
+            assert "archived" in result

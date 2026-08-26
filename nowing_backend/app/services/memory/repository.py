@@ -107,6 +107,7 @@ class MemoryRepository:
         client_id = client_id or None
         conditions = [
             Memory.workspace_id == workspace_id,
+            Memory.archived_at.is_(None),
             Memory.embedding.op("<=>", return_type=Float)(embedding) < 0.08,
         ]
         # AC-18.6: scope deduplication by client_id so one vertical client's
@@ -405,6 +406,13 @@ class MemoryRepository:
                     )
                 return loaded
 
+        # Story 28.5 (AC-1, AC-3): enforce workspace memory count cap before inserting new row.
+        from app.services.workspace_limits import WorkspaceLimitService
+
+        await WorkspaceLimitService.assert_can_create_memory(
+            self.session, workspace_id, additional=1
+        )
+
         memory = Memory(
             workspace_id=workspace_id,
             content=content,
@@ -578,6 +586,7 @@ class MemoryRepository:
         type: str | MemoryType | None = None,
         tags: list[str] | None = None,
         client_id: str | None = None,
+        include_archived: bool = False,
     ) -> list[Memory]:
         """List workspace memories, newest first, with optional type/tags filters."""
         # AC-18.8: an empty client_id string is treated the same as NULL so the
@@ -592,6 +601,8 @@ class MemoryRepository:
             client_id=client_id,
         )
         conditions = [Memory.workspace_id == workspace_id]
+        if not include_archived:
+            conditions.append(Memory.archived_at.is_(None))
         if client_id is not None:
             conditions.append(Memory.client_id == client_id)
         else:

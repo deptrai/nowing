@@ -18,6 +18,9 @@ export const workspace = z.object({
 	document_retention_days: z.number().nullable().optional(),
 	auto_archive_enabled: z.boolean().optional().default(false),
 	document_retention_action: z.string().optional().default("archive"),
+	memory_retention_days: z.number().nullable().optional(),
+	memory_auto_archive_enabled: z.boolean().optional().default(false),
+	memory_retention_action: z.string().optional().default("archive"),
 	memory_auto_extract_enabled: z.boolean().optional().default(true),
 	auto_reply_enabled: z.boolean().optional(),
 	auto_reply_collections: z.array(z.number()).optional().default([]),
@@ -77,6 +80,9 @@ export const updateWorkspaceRequest = z.object({
 			document_retention_days: true,
 			auto_archive_enabled: true,
 			document_retention_action: true,
+			memory_retention_days: true,
+			memory_auto_archive_enabled: true,
+			memory_retention_action: true,
 			memory_auto_extract_enabled: true,
 			auto_reply_enabled: true,
 			auto_reply_collections: true,
@@ -139,6 +145,8 @@ export const workspaceLimitUsage = z.object({
 	members: z.number(),
 	runs: z.number(),
 	storage_bytes: z.number(),
+	memory_count: z.number().optional().default(0),
+	memory_bytes: z.number().optional().default(0),
 });
 
 export const autoExtractUsage = z.object({
@@ -153,6 +161,8 @@ export const getWorkspaceLimitsResponse = z.object({
 	max_members: z.number().nullable(),
 	max_runs: z.number().nullable(),
 	max_storage_bytes: z.number().nullable(),
+	max_memory_count: z.number().nullable().optional(),
+	max_memory_bytes: z.number().nullable().optional(),
 	run_period_hours: z.number(),
 	auto_extract_item_cap: z.number().nullable().optional(),
 	auto_extract_spend_cap_micros: z.number().nullable().optional(),
@@ -163,6 +173,8 @@ export const getWorkspaceLimitsResponse = z.object({
 
 export const updateWorkspaceLimitsRequest = z.object({
 	id: z.number(),
+	max_memory_count: z.number().nullable().optional(),
+	max_memory_bytes: z.number().nullable().optional(),
 	auto_extract_item_cap: z.number().nullable().optional(),
 	auto_extract_spend_cap_micros: z.number().nullable().optional(),
 	auto_extract_wallet_pre_check: z.boolean().nullable().optional(),

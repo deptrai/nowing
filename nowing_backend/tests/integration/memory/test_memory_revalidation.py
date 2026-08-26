@@ -106,18 +106,23 @@ async def test_revalidate_run_memory_match_bumps_confidence(
 
     fake_output = _make_fake_output(answer="Widget costs 19.99 USD")
 
-    with patch(
-        "app.services.memory.revalidation_service.get_capability",
-        return_value=_FakeCapability(),
-    ), patch(
-        "app.services.memory.revalidation_service.execute_with_context",
-        new=AsyncMock(return_value=fake_output),
-    ), patch(
-        "app.services.memory.revalidation_service.charge_capability",
-        new=AsyncMock(return_value=3500),
-    ), patch(
-        "app.services.memory.revalidation_service.gate_capability",
-        new=AsyncMock(return_value=None),
+    with (
+        patch(
+            "app.services.memory.revalidation_service.get_capability",
+            return_value=_FakeCapability(),
+        ),
+        patch(
+            "app.services.memory.revalidation_service.execute_with_context",
+            new=AsyncMock(return_value=fake_output),
+        ),
+        patch(
+            "app.services.memory.revalidation_service.charge_capability",
+            new=AsyncMock(return_value=3500),
+        ),
+        patch(
+            "app.services.memory.revalidation_service.gate_capability",
+            new=AsyncMock(return_value=None),
+        ),
     ):
         service = RevalidationService(db_session)
         result = await service.revalidate(memory.id, workspace_id=db_workspace.id)
@@ -154,18 +159,23 @@ async def test_revalidate_run_memory_mismatch_creates_version(
 
     fake_output = _make_fake_output(answer="Widget costs 29.99 USD")
 
-    with patch(
-        "app.services.memory.revalidation_service.get_capability",
-        return_value=_FakeCapability(),
-    ), patch(
-        "app.services.memory.revalidation_service.execute_with_context",
-        new=AsyncMock(return_value=fake_output),
-    ), patch(
-        "app.services.memory.revalidation_service.charge_capability",
-        new=AsyncMock(return_value=3500),
-    ), patch(
-        "app.services.memory.revalidation_service.gate_capability",
-        new=AsyncMock(return_value=None),
+    with (
+        patch(
+            "app.services.memory.revalidation_service.get_capability",
+            return_value=_FakeCapability(),
+        ),
+        patch(
+            "app.services.memory.revalidation_service.execute_with_context",
+            new=AsyncMock(return_value=fake_output),
+        ),
+        patch(
+            "app.services.memory.revalidation_service.charge_capability",
+            new=AsyncMock(return_value=3500),
+        ),
+        patch(
+            "app.services.memory.revalidation_service.gate_capability",
+            new=AsyncMock(return_value=None),
+        ),
     ):
         service = RevalidationService(db_session)
         result = await service.revalidate(memory.id, workspace_id=db_workspace.id)
@@ -240,8 +250,12 @@ async def test_revalidate_memory_with_none_input_not_revalidatable(
     )
     llm = AsyncMock()
     llm.ainvoke = AsyncMock(return_value=type("R", (), {"content": facts_json})())
-    with patch("app.services.memory.run_extraction.get_agent_llm", AsyncMock(return_value=llm)):
-        created = await RunMemoryExtractionService(session=db_session).extract_from_run(run.id)
+    with patch(
+        "app.services.memory.run_extraction.get_agent_llm", AsyncMock(return_value=llm)
+    ):
+        created = await RunMemoryExtractionService(session=db_session).extract_from_run(
+            run.id
+        )
 
     assert len(created) == 1
     memory = created[0]
@@ -280,18 +294,23 @@ async def test_revalidate_works_after_source_run_deleted(
 
     fake_output = _make_fake_output(answer="Widget costs 19.99 USD")
 
-    with patch(
-        "app.services.memory.revalidation_service.get_capability",
-        return_value=_FakeCapability(),
-    ), patch(
-        "app.services.memory.revalidation_service.execute_with_context",
-        new=AsyncMock(return_value=fake_output),
-    ), patch(
-        "app.services.memory.revalidation_service.charge_capability",
-        new=AsyncMock(return_value=3500),
-    ), patch(
-        "app.services.memory.revalidation_service.gate_capability",
-        new=AsyncMock(return_value=None),
+    with (
+        patch(
+            "app.services.memory.revalidation_service.get_capability",
+            return_value=_FakeCapability(),
+        ),
+        patch(
+            "app.services.memory.revalidation_service.execute_with_context",
+            new=AsyncMock(return_value=fake_output),
+        ),
+        patch(
+            "app.services.memory.revalidation_service.charge_capability",
+            new=AsyncMock(return_value=3500),
+        ),
+        patch(
+            "app.services.memory.revalidation_service.gate_capability",
+            new=AsyncMock(return_value=None),
+        ),
     ):
         service = RevalidationService(db_session)
         result = await service.revalidate(memory.id, workspace_id=db_workspace.id)
@@ -322,18 +341,23 @@ async def test_revalidate_records_cost_for_metered_capability(
 
     fake_output = _make_fake_output(answer="Widget costs 19.99 USD")
 
-    with patch(
-        "app.services.memory.revalidation_service.get_capability",
-        return_value=_FakeCapability(),
-    ), patch(
-        "app.services.memory.revalidation_service.execute_with_context",
-        new=AsyncMock(return_value=fake_output),
-    ), patch(
-        "app.services.memory.revalidation_service.charge_capability",
-        new=AsyncMock(return_value=3500),
-    ), patch(
-        "app.services.memory.revalidation_service.gate_capability",
-        new=AsyncMock(return_value=None),
+    with (
+        patch(
+            "app.services.memory.revalidation_service.get_capability",
+            return_value=_FakeCapability(),
+        ),
+        patch(
+            "app.services.memory.revalidation_service.execute_with_context",
+            new=AsyncMock(return_value=fake_output),
+        ),
+        patch(
+            "app.services.memory.revalidation_service.charge_capability",
+            new=AsyncMock(return_value=3500),
+        ),
+        patch(
+            "app.services.memory.revalidation_service.gate_capability",
+            new=AsyncMock(return_value=None),
+        ),
     ):
         service = RevalidationService(db_session)
         result = await service.revalidate(memory.id, workspace_id=db_workspace.id)
@@ -364,18 +388,23 @@ async def test_revalidate_route_returns_memory(
 
     fake_output = _make_fake_output(answer="Widget costs 19.99 USD")
 
-    with patch(
-        "app.services.memory.revalidation_service.get_capability",
-        return_value=_FakeCapability(),
-    ), patch(
-        "app.services.memory.revalidation_service.execute_with_context",
-        new=AsyncMock(return_value=fake_output),
-    ), patch(
-        "app.services.memory.revalidation_service.charge_capability",
-        new=AsyncMock(return_value=3500),
-    ), patch(
-        "app.services.memory.revalidation_service.gate_capability",
-        new=AsyncMock(return_value=None),
+    with (
+        patch(
+            "app.services.memory.revalidation_service.get_capability",
+            return_value=_FakeCapability(),
+        ),
+        patch(
+            "app.services.memory.revalidation_service.execute_with_context",
+            new=AsyncMock(return_value=fake_output),
+        ),
+        patch(
+            "app.services.memory.revalidation_service.charge_capability",
+            new=AsyncMock(return_value=3500),
+        ),
+        patch(
+            "app.services.memory.revalidation_service.gate_capability",
+            new=AsyncMock(return_value=None),
+        ),
     ):
         resp = await client.post(
             f"/api/v1/workspaces/{db_workspace.id}/memories/{memory.id}/revalidate"
@@ -465,12 +494,15 @@ async def test_revalidate_capability_failure_returns_failed_not_500(
     cap = _FakeCapability()
     cap.executor = AsyncMock(side_effect=RuntimeError("upstream blew up"))
 
-    with patch(
-        "app.services.memory.revalidation_service.get_capability",
-        return_value=cap,
-    ), patch(
-        "app.services.memory.revalidation_service.gate_capability",
-        new=AsyncMock(return_value=None),
+    with (
+        patch(
+            "app.services.memory.revalidation_service.get_capability",
+            return_value=cap,
+        ),
+        patch(
+            "app.services.memory.revalidation_service.gate_capability",
+            new=AsyncMock(return_value=None),
+        ),
     ):
         service = RevalidationService(db_session)
         result = await service.revalidate(memory.id, workspace_id=db_workspace.id)

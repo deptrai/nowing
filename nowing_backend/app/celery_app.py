@@ -218,6 +218,7 @@ celery_app = Celery(
         "app.tasks.celery_tasks.refresh_token_cleanup_task",
         "app.tasks.celery_tasks.auto_reload_task",
         "app.tasks.celery_tasks.document_retention_task",
+        "app.tasks.celery_tasks.memory_retention_task",
         "app.tasks.celery_tasks.memory_extraction_task",
         "app.tasks.celery_tasks.run_memory_extraction_task",
         "app.tasks.celery_tasks.gateway_tasks",
@@ -385,6 +386,11 @@ celery_app.conf.beat_schedule = {
     "apply-document-retention-policies": {
         "task": "apply_document_retention_policies",
         "schedule": crontab(hour="3", minute="0"),
+        "options": {"expires": 600},
+    },
+    "apply-memory-retention-policies": {
+        "task": "apply_memory_retention_policies",
+        "schedule": crontab(hour="3", minute="15"),
         "options": {"expires": 600},
     },
     "apply-anti-bot-screenshot-retention": {

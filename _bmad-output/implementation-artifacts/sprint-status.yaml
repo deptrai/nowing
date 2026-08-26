@@ -404,7 +404,7 @@ development_status:
   28-2: backlog  # Encryption-at-Rest for Cloud Memory
   28-3: backlog  # ToS / Legal Review & Retention Policy
   28-4: backlog  # Self-Host OSS Onboarding in Under 10 Minutes
-  28-5: ready-for-dev  # Workspace Memory Storage Cap & Retention Lifecycle
+  28-5: review  # Workspace Memory Storage Cap & Retention Lifecycle
   epic-28-retrospective: optional
 
   # === Tech Debt (from code review deferred items) ===

@@ -54,6 +54,11 @@ export function DataRetentionManager({
 	const [autoArchive, setAutoArchive] = useState(false);
 	const [retentionDays, setRetentionDays] = useState<string>("");
 	const [action, setAction] = useState<"archive" | "delete">("archive");
+
+	const [memoryAutoArchive, setMemoryAutoArchive] = useState(false);
+	const [memoryRetentionDays, setMemoryRetentionDays] = useState<string>("");
+	const [memoryAction, setMemoryAction] = useState<"archive" | "delete">("archive");
+
 	const [saving, setSaving] = useState(false);
 	const initializedRef = useRef(false);
 
@@ -65,6 +70,12 @@ export function DataRetentionManager({
 				workspace.document_retention_days ? String(workspace.document_retention_days) : ""
 			);
 			setAction((workspace.document_retention_action as "archive" | "delete") ?? "archive");
+
+			setMemoryAutoArchive(workspace.memory_auto_archive_enabled ?? false);
+			setMemoryRetentionDays(
+				workspace.memory_retention_days ? String(workspace.memory_retention_days) : ""
+			);
+			setMemoryAction((workspace.memory_retention_action as "archive" | "delete") ?? "archive");
 		}
 	}, [workspace]);
 
@@ -75,12 +86,24 @@ export function DataRetentionManager({
 	const hasChanges = useMemo(() => {
 		if (!workspace) return false;
 		const days = retentionDays.trim() === "" ? null : Number(retentionDays);
+		const memDays = memoryRetentionDays.trim() === "" ? null : Number(memoryRetentionDays);
 		return (
 			autoArchive !== (workspace.auto_archive_enabled ?? false) ||
 			days !== (workspace.document_retention_days ?? null) ||
-			action !== (workspace.document_retention_action ?? "archive")
+			action !== (workspace.document_retention_action ?? "archive") ||
+			memoryAutoArchive !== (workspace.memory_auto_archive_enabled ?? false) ||
+			memDays !== (workspace.memory_retention_days ?? null) ||
+			memoryAction !== (workspace.memory_retention_action ?? "archive")
 		);
-	}, [workspace, autoArchive, retentionDays, action]);
+	}, [
+		workspace,
+		autoArchive,
+		retentionDays,
+		action,
+		memoryAutoArchive,
+		memoryRetentionDays,
+		memoryAction,
+	]);
 
 	const handleSave = useCallback(
 		async (e?: React.FormEvent) => {
@@ -92,7 +115,17 @@ export function DataRetentionManager({
 
 			const days = retentionDays.trim() === "" ? null : Number(retentionDays);
 			if (autoArchive && (!Number.isInteger(days) || (days as number) <= 0)) {
-				toast.error("Retention days must be a positive integer when auto-archive is enabled");
+				toast.error(
+					"Document retention days must be a positive integer when auto-archive is enabled"
+				);
+				return;
+			}
+
+			const memDays = memoryRetentionDays.trim() === "" ? null : Number(memoryRetentionDays);
+			if (memoryAutoArchive && (!Number.isInteger(memDays) || (memDays as number) <= 0)) {
+				toast.error(
+					"Memory retention days must be a positive integer when auto-archive is enabled"
+				);
 				return;
 			}
 
@@ -104,6 +137,9 @@ export function DataRetentionManager({
 						auto_archive_enabled: autoArchive,
 						document_retention_days: days,
 						document_retention_action: action,
+						memory_auto_archive_enabled: memoryAutoArchive,
+						memory_retention_days: memDays,
+						memory_retention_action: memoryAction,
 					},
 				});
 				await refetch();
@@ -114,7 +150,18 @@ export function DataRetentionManager({
 				setSaving(false);
 			}
 		},
-		[isOwner, workspaceId, autoArchive, retentionDays, action, updateWorkspace, refetch]
+		[
+			isOwner,
+			workspaceId,
+			autoArchive,
+			retentionDays,
+			action,
+			memoryAutoArchive,
+			memoryRetentionDays,
+			memoryAction,
+			updateWorkspace,
+			refetch,
+		]
 	);
 
 	if (isLoading || isOwner === undefined) {
@@ -196,6 +243,71 @@ export function DataRetentionManager({
 						<option value="delete">{t("data_retention_action_delete")}</option>
 					</select>
 					<p className="text-xs text-muted-foreground">{t("data_retention_action_description")}</p>
+				</div>
+
+				<div className="border-t pt-6 space-y-6">
+					<div className="space-y-1">
+						<h3 className="text-base font-medium">{t("data_retention_memory_section_title")}</h3>
+						<p className="text-sm text-muted-foreground">
+							{t("data_retention_memory_section_description")}
+						</p>
+					</div>
+
+					<div className="flex items-start justify-between gap-4 rounded-lg border p-4">
+						<div className="space-y-1">
+							<Label htmlFor="memory-auto-archive-enabled">
+								{t("data_retention_memory_auto_archive_label")}
+							</Label>
+							<p className="text-xs text-muted-foreground">
+								{t("data_retention_memory_auto_archive_description")}
+							</p>
+						</div>
+						<Switch
+							id="memory-auto-archive-enabled"
+							data-testid="data-retention-memory-auto-archive-switch"
+							checked={memoryAutoArchive}
+							disabled={!isOwner || saving}
+							onCheckedChange={setMemoryAutoArchive}
+						/>
+					</div>
+
+					<div className="space-y-2">
+						<Label htmlFor="memory-retention-days">{t("data_retention_memory_days_label")}</Label>
+						<Input
+							id="memory-retention-days"
+							data-testid="data-retention-memory-days-input"
+							type="number"
+							value={memoryRetentionDays}
+							disabled={!isOwner || saving}
+							onChange={(e) => setMemoryRetentionDays(e.target.value)}
+							placeholder="90"
+						/>
+						<p className="text-xs text-muted-foreground">
+							{t("data_retention_memory_days_description")}
+						</p>
+					</div>
+
+					<div className="space-y-2">
+						<Label htmlFor="memory-retention-action">
+							{t("data_retention_memory_action_label")}
+						</Label>
+						<select
+							id="memory-retention-action"
+							data-testid="data-retention-memory-action-select"
+							disabled={!isOwner || saving}
+							value={memoryAction}
+							onChange={(e) => setMemoryAction(e.target.value as "archive" | "delete")}
+							className={cn(
+								"flex h-9 w-[200px] rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+							)}
+						>
+							<option value="archive">{t("data_retention_memory_action_archive")}</option>
+							<option value="delete">{t("data_retention_memory_action_delete")}</option>
+						</select>
+						<p className="text-xs text-muted-foreground">
+							{t("data_retention_memory_action_description")}
+						</p>
+					</div>
 				</div>
 
 				<div className="flex justify-end">

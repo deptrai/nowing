@@ -2030,6 +2030,14 @@ class Workspace(BaseModel, TimestampMixin):
             ")",
             name="ck_workspace_retention_invariant",
         ),
+        CheckConstraint(
+            "NOT memory_auto_archive_enabled OR ("
+            "memory_retention_days IS NOT NULL AND "
+            "memory_retention_days > 0 AND "
+            "memory_retention_days <= 36500"
+            ")",
+            name="ck_workspace_memory_retention_invariant",
+        ),
     )
 
     name = Column(String(100), nullable=False, index=True)
@@ -2100,6 +2108,16 @@ class Workspace(BaseModel, TimestampMixin):
         Boolean, nullable=False, default=False, server_default="false", index=True
     )
     document_retention_action = Column(
+        String(20),
+        nullable=False,
+        default=DocumentRetentionAction.ARCHIVE,
+        server_default="archive",
+    )
+    memory_retention_days = Column(Integer, nullable=True)
+    memory_auto_archive_enabled = Column(
+        Boolean, nullable=False, default=False, server_default="false", index=True
+    )
+    memory_retention_action = Column(
         String(20),
         nullable=False,
         default=DocumentRetentionAction.ARCHIVE,
@@ -2406,6 +2424,8 @@ class WorkspaceLimit(BaseModel, TimestampMixin):
     max_members = Column(Integer, nullable=True)
     max_runs = Column(Integer, nullable=True)
     max_storage_bytes = Column(BigInteger, nullable=True)
+    max_memory_count = Column(Integer, nullable=True)
+    max_memory_bytes = Column(BigInteger, nullable=True)
     run_period_hours = Column(
         Integer,
         nullable=False,
@@ -2582,6 +2602,11 @@ class Memory(BaseModel, TimestampMixin):
             "workspace_id",
             "client_id",
         ),
+        Index(
+            "ix_memories_archived_at_workspace_id",
+            "archived_at",
+            "workspace_id",
+        ),
     )
 
     workspace_id = Column(
@@ -2610,6 +2635,7 @@ class Memory(BaseModel, TimestampMixin):
     )
     client_id = Column(CITEXT, nullable=True, index=True)
     agent_id = Column(Text, nullable=True)
+    archived_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
     type = Column(
         SQLAlchemyEnum(
             MemoryType,
