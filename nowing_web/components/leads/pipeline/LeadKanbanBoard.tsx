@@ -207,6 +207,7 @@ export const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = ({ workspaceId })
 		return {
 			id: row.id,
 			workspace_id: row.workspaceId,
+			client_id: row.clientId ?? null,
 			name: row.name,
 			slug: row.slug,
 			position: row.position,
@@ -220,6 +221,7 @@ export const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = ({ workspaceId })
 	const mapZeroLeadFields = useCallback((row: ZeroLead) => {
 		return {
 			workspace_id: row.workspaceId,
+			client_id: row.clientId ?? null,
 			source: row.source,
 			company_name: row.companyName,
 			domain: row.domain ?? null,
