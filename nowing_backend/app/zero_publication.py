@@ -82,9 +82,7 @@ PODCAST_COLS = [
 LEADS_COLS = [
     "id",
     "workspace_id",
-    # `client_id` is stored as CITEXT; Zero does not support that type, so it is
-    # deliberately excluded from the publication. Client scoping is still
-    # available via REST/API for lead lists and filters.
+    "client_id",
     "source",
     "source_url",
     "company_name",
@@ -111,7 +109,7 @@ LEADS_COLS = [
 LEAD_PIPELINE_STAGE_COLS = [
     "id",
     "workspace_id",
-    # `client_id` is CITEXT and not supported by Zero.
+    "client_id",
     "name",
     "slug",
     "position",
@@ -124,7 +122,7 @@ LEAD_PIPELINE_STAGE_COLS = [
 LEAD_ASSIGNMENT_COLS = [
     "id",
     "workspace_id",
-    # `client_id` is CITEXT and not supported by Zero.
+    "client_id",
     "lead_id",
     "assigned_to_user_id",
     "assigned_by_user_id",
@@ -138,7 +136,7 @@ LEAD_ASSIGNMENT_COLS = [
 LEAD_ACTIVITY_LOG_COLS = [
     "id",
     "workspace_id",
-    # `client_id` is CITEXT and not supported by Zero.
+    "client_id",
     "lead_id",
     "actor_user_id",
     "activity_type",
