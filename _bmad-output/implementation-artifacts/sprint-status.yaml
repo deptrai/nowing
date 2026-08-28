@@ -415,7 +415,7 @@ development_status:
   td-2: done  # 2026-08-28: Redis event bus subscribe failure state leak fixed with mutex & automatic recovery handler; unit tests green
   td-3: backlog  # Storage sum does not reconcile deleted backend files (8-12 defer: workspace_limits.py:199-209)
   td-4: backlog  # Concurrent notification preference merge race condition (11-1 defer: _merge_notification_preferences read-merge-overwrite)
-  td-5: backlog  # title_gen.py lacks timeout/retry on litellm.acompletion (P1, affects chat UX)
+  td-5: done  # 2026-08-28: background title_gen.py timeout and retry logic implemented; unit tests green
   td-6: backlog  # verify_chat_image_capability.py lacks num_retries (P3, diagnostic script)
   td-7: backlog  # No unit test coverage for test_model function (P2, integration tests mock it)
   td-8: done  # Epic 13 canonical entity cleanup — `app/canonical/`, `canonical_entities_routes.py`, models, tests removed; migration `d33c362fa627` dropped tables (commit 542b84d61, 2026-08-22). Fast-track approved at code review; deprecation period skipped because zero live callers verified.
