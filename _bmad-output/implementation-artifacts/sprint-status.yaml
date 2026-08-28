@@ -79,7 +79,7 @@ development_status:
   epic-2-retrospective: done
 
   # === Epic 3: Knowledge Base + Long-Term Memory ===
-  epic-3: in-progress
+  epic-3: done
   3-6: done
   3-7: done
   # ponytail: 2026-08-15 reopened all followups to ready-for-dev
@@ -98,7 +98,7 @@ development_status:
   # ponytail: 2026-08-11 sprint planning — moved to in-progress.
   3-17: done
   # ponytail: 2026-08-13 implementation + code review + benchmark all PASS; patches applied (logger, tests, comment); AC1-4 satisfied.
-  3-18: backlog  # Recall Precision / Noise Gate Ratification (mới 2026-08-21 từ PRFAQ)
+  3-18: done  # 2026-08-28: Ratified memory recall thresholds in memory-recall-thresholds-2026-08-21.md from run 2026-07-28T16-28-54Z; 171/171 eval tests pass.
   epic-3-retrospective: done
 
   # === Epic 4: Chat & Agents ===
