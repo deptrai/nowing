@@ -76,7 +76,13 @@ def to_litellm(
 
     if api_version := extra.get("api_version"):
         kwargs["api_version"] = api_version
-    kwargs.update(extra.get("litellm_params", {}))
+    litellm_params = extra.get("litellm_params") or {}
+    # ``model`` in litellm_params conflicts with the explicit ``model``
+    # argument passed to LiteLLM call-sites; the model string is always
+    # derived from connection + model_id above.
+    if "model" in litellm_params:
+        model_string = litellm_params.pop("model")
+    kwargs.update(litellm_params)
     kwargs.update(extra.get("kwargs", {}))
     if provider_key == "bedrock" and (
         bearer_token := kwargs.pop("aws_bearer_token_bedrock", None)

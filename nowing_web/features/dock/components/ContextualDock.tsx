@@ -1,15 +1,17 @@
 "use client";
 
 import { useAtom } from "jotai";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import {
 	type DockTabId,
 	dockActiveTabAtom,
+	dockExpandedAtom,
 	dockOpenAtom,
 	dockTabUpdatesAtom,
 	dockVerboseModeAtom,
 	dockWidthAtom,
 } from "@/atoms/layout/dock.atom";
+import { canvasLeftWidthAtom } from "@/atoms/leads/leads-canvas.atoms";
 import type { ThreadParsedContext } from "@/components/leads/thread-intent-detector";
 import type { DshMission, DshMissionControl } from "@/contracts/types/dsh.types";
 import type { Lead } from "@/contracts/types/leads.types";
@@ -78,7 +80,9 @@ export function ContextualDock({
 	const isMobile = useIsMobile();
 	const [isOpen] = useAtom(dockOpenAtom);
 	const [activeTab, setActiveTab] = useAtom(dockActiveTabAtom);
-	const [width] = useAtom(dockWidthAtom);
+	const [storedWidth] = useAtom(dockWidthAtom);
+	const [isExpanded] = useAtom(dockExpandedAtom);
+	const [leftWidth] = useAtom(canvasLeftWidthAtom);
 	const [verbose] = useAtom(dockVerboseModeAtom);
 	const [updates, setUpdates] = useAtom(dockTabUpdatesAtom);
 	const {
@@ -148,13 +152,20 @@ export function ContextualDock({
 		return <FloatingReopenPill tabs={tabs} />;
 	}
 
+	const expandedWidth = useMemo(() => {
+		if (typeof window === "undefined") return storedWidth;
+		return Math.max(840, window.innerWidth - leftWidth - 56);
+	}, [leftWidth, storedWidth]);
+
+	const effectiveWidth = isExpanded ? expandedWidth : storedWidth;
+
 	return (
 		<aside
 			className={cn(
 				"relative flex h-full shrink-0 flex-col overflow-hidden border-l bg-panel text-sidebar-foreground",
 				className
 			)}
-			style={{ width }}
+			style={{ width: effectiveWidth }}
 		>
 			<DockHeader tabs={tabs} />
 			<DockResizer />

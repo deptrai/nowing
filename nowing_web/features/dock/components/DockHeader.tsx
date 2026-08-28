@@ -1,10 +1,11 @@
 "use client";
 
 import { useAtom, useSetAtom } from "jotai";
-import { MessageSquare, PanelRightOpen, X } from "lucide-react";
+import { Expand, MessageSquare, PanelRightOpen, Shrink, X } from "lucide-react";
 import {
 	type DockTabId,
 	dockActiveTabAtom,
+	dockExpandedAtom,
 	dockOpenAtom,
 	dockVerboseModeAtom,
 } from "@/atoms/layout/dock.atom";
@@ -37,6 +38,7 @@ export function DockHeader({ tabs }: DockHeaderProps) {
 	const [activeTab, setActiveTab] = useAtom(dockActiveTabAtom);
 	const setOpen = useSetAtom(dockOpenAtom);
 	const [verbose, setVerbose] = useAtom(dockVerboseModeAtom);
+	const [isExpanded, setIsExpanded] = useAtom(dockExpandedAtom);
 
 	const sortedTabs = [...tabs].sort((a, b) => {
 		const ai = TAB_ORDER.indexOf(a.id as DockTabId);
@@ -61,6 +63,30 @@ export function DockHeader({ tabs }: DockHeaderProps) {
 						</Button>
 					</TooltipTrigger>
 					<TooltipContent side="bottom">Close canvas</TooltipContent>
+				</Tooltip>
+
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<Button
+							type="button"
+							variant="ghost"
+							size="icon"
+							onClick={() => setIsExpanded((v) => !v)}
+							className="size-7 -ml-1 text-muted-foreground hover:text-foreground hover:bg-muted"
+						>
+							{isExpanded ? (
+								<Shrink className="size-3.5" aria-hidden="true" />
+							) : (
+								<Expand className="size-3.5" aria-hidden="true" />
+							)}
+							<span className="sr-only">
+								{isExpanded ? "Thu nhỏ panel" : "Mở rộng panel"}
+							</span>
+						</Button>
+					</TooltipTrigger>
+					<TooltipContent side="bottom">
+						{isExpanded ? "Thu nhỏ panel" : "Mở rộng panel"}
+					</TooltipContent>
 				</Tooltip>
 
 				<div
