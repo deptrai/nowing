@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
+import re
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -11,20 +13,170 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.lead_intelligence.adapters.base import (
+    LeadIntent,
     LeadSourceAdapter,
     LeadSourceCategory,
     NormalizedLead,
 )
 from app.lead_intelligence.adapters.registry import LeadSourceAdapterRegistry
 from app.lead_intelligence.confidence import ConfidenceGate
+from app.lead_intelligence.confidence.numbers import price_to_float
 from app.lead_intelligence.services.deduplication_service import (
     EntityDeduplicationService,
 )
 from app.lead_intelligence.services.micro_extraction_worker import (
     MicroExtractionWorker,
 )
+from app.services.lead_batch_service import _truncate_bytes
+from app.services.location_normalize import remove_diacritics, resolve_city_code
 
 logger = logging.getLogger(__name__)
+
+
+def _detect_lead_intent(query: str | None) -> LeadIntent:
+    """Infer commercial intent (buy / sell / neutral) from a Vietnamese query.
+
+    Sell signals are first-person seller phrases ("tôi cần bán", "ký gửi").
+    Buy signals are buyer/search phrases ("tìm nhà", "cần mua").
+    """
+    if not query:
+        return LeadIntent.NEUTRAL
+
+    raw = query.lower()
+    plain = remove_diacritics(raw)
+
+    # First-person seller / listing intent (strongest signal)
+    sell_markers = [
+        "toi can ban",
+        "tôi cần bán",
+        "toi muon ban",
+        "tôi muốn bán",
+        "toi dang ban",
+        "tôi đang bán",
+        "can ban gap",
+        "cần bán gấp",
+        "rao ban",
+        "rao bán",
+        "ky gui",
+        "ký gửi",
+        "tim khach mua",
+        "tìm khách mua",
+        "co nha ban",
+        "có nhà bán",
+        "co dat ban",
+        "có đất bán",
+        "muon ban nha",
+        "muốn bán nhà",
+        "muon ban dat",
+        "muốn bán đất",
+    ]
+    # Buyer / search intent
+    buy_markers = [
+        "toi can mua",
+        "tôi cần mua",
+        "toi muon mua",
+        "tôi muốn mua",
+        "toi dang tim",
+        "tôi đang tìm",
+        "can mua",
+        "cần mua",
+        "tim nha",
+        "tìm nhà",
+        "tim dat",
+        "tìm đất",
+        "tim chung cu",
+        "tìm chung cư",
+        "mua nha",
+        "mua nhà",
+        "mua dat",
+        "mua đất",
+        "mua can ho",
+        "mua căn hộ",
+    ]
+
+    if any(m in raw or remove_diacritics(m) in plain for m in sell_markers):
+        return LeadIntent.SELL
+    if any(m in raw or remove_diacritics(m) in plain for m in buy_markers):
+        return LeadIntent.BUY
+    return LeadIntent.NEUTRAL
+
+
+def _parse_max_price(query: str | None) -> float | None:
+    """Extract an upper-bound price from Vietnamese phrases like 'dưới 8 tỷ'."""
+    if not query:
+        return None
+    raw = query.lower()
+    # Look for 'dưới', 'dưới hơn', 'không quá', 'tối đa' followed by a price.
+    match = re.search(
+        r"(?:dưới|duoi|dưới hơn|duoi hon|không quá|khong qua|tối đa|toi da)\s+(.{0,40}?)(tỷ|ty|tỉ|triệu|trieu|tr|tỉ đồng|tỷ đồng)",
+        raw,
+    )
+    if match:
+        return price_to_float(match.group(1) + " " + match.group(2))
+    # Fallback: any price phrase followed by 'trở xuống' or 'trở xuống'.
+    match = re.search(
+        r"(.{0,40}?)(tỷ|ty|tỉ|triệu|trieu|tr)\s+(?:trở xuống|tro xuong|xuống|xuong|trở lại|tro lai)",
+        raw,
+    )
+    if match:
+        return price_to_float(match.group(1) + " " + match.group(2))
+    return None
+
+
+def _location_matches(lead: NormalizedLead, locations: list[str] | None) -> bool:
+    """Check whether a lead's city/address matches any requested location."""
+    if not locations:
+        return True
+    lead_text = f"{lead.city or ''} {lead.address or ''}"
+    lead_plain = remove_diacritics(lead_text)
+    lead_code = resolve_city_code(lead_text)
+    for loc in locations:
+        loc_plain = remove_diacritics(loc)
+        if not loc_plain:
+            continue
+        if loc_plain in lead_plain or (lead_plain and lead_plain in loc_plain):
+            return True
+        # Canonical city code match (e.g. "TP.HCM" vs "Hồ Chí Minh" both -> SG).
+        if lead_code and lead_code == resolve_city_code(loc):
+            return True
+    return False
+
+
+def _post_filter_leads(
+    leads: list[NormalizedLead],
+    query: str | None,
+    filters: dict[str, Any] | None,
+) -> list[NormalizedLead]:
+    """Drop leads that violate price or location constraints (safety net only)."""
+    max_price = _parse_max_price(query)
+    if filters:
+        explicit_max = filters.get("max_price") or filters.get("maxPrice")
+        if explicit_max is not None:
+            with contextlib.suppress(TypeError, ValueError):
+                max_price = float(explicit_max)
+    locations = (filters or {}).get("locations") or []
+
+    filtered: list[NormalizedLead] = []
+    for lead in leads:
+        if max_price is not None and lead.price is not None and lead.price > max_price:
+            logger.info(
+                "Post-filter dropped %s: price %s > max %s",
+                lead.source_name,
+                lead.price,
+                max_price,
+            )
+            continue
+        if not _location_matches(lead, locations):
+            logger.info(
+                "Post-filter dropped %s: location mismatch (city=%s address=%s locations=%s)",
+                lead.source_name,
+                lead.city,
+                lead.address,
+                locations,
+            )
+            continue
+        filtered.append(lead)
+    return filtered
 
 
 class SubTaskPlan(BaseModel):
@@ -37,6 +189,7 @@ class SubTaskPlan(BaseModel):
     limit: int = 50
     filters: dict[str, Any] = Field(default_factory=dict)
     category: LeadSourceCategory = LeadSourceCategory.GENERAL
+    intent: LeadIntent = LeadIntent.NEUTRAL
 
 
 class DispatchedScrapeJobResponse(BaseModel):
@@ -63,6 +216,7 @@ class LeadGenOrchestratorResult(BaseModel):
     table_id: str | None = None
     subtask_plans: list[SubTaskPlan] = Field(default_factory=list)
     deduplication_summary: dict[str, Any] = Field(default_factory=dict)
+    intent: LeadIntent = LeadIntent.NEUTRAL
 
 
 class LeadGenOrchestrator:
@@ -98,11 +252,13 @@ class LeadGenOrchestrator:
         from app.tasks.lead_scrapers import run_platform_scrape_task
 
         job_id = f"lead-job-{uuid4()}"
-        target_sources = (
-            sources
-            if sources is not None
-            else ["batdongsan", "chotot", "topcv", "masothue"]
-        )
+        if sources is not None:
+            target_sources = sources
+        else:
+            # Route by query intent so a bare dispatch does not leak job-market
+            # scrapers into a real-estate (or other mismatched) query.
+            adapters = self.registry.resolve_adapters_for_intent(query)
+            target_sources = [a.source_name for a in adapters]
 
         dispatched_tasks: list[dict[str, Any]] = []
         for platform in target_sources:
@@ -141,6 +297,17 @@ class LeadGenOrchestrator:
 
     async def decompose_query(self, prompt: str) -> list[SubTaskPlan]:
         """Decompose user prompt into structured sub-tasks across scraper categories."""
+        detected_intent = _detect_lead_intent(prompt)
+        def _coerce_category(value: Any) -> LeadSourceCategory:
+            if isinstance(value, LeadSourceCategory):
+                return value
+            if isinstance(value, str):
+                try:
+                    return LeadSourceCategory(value)
+                except ValueError:
+                    pass
+            return LeadSourceCategory.GENERAL
+
         try:
             llm_plans = await self._plan_subtasks_with_llm(prompt)
             if llm_plans:
@@ -149,7 +316,8 @@ class LeadGenOrchestrator:
                         source_name=p.get("source_name", "general"),
                         query=p.get("query", prompt),
                         limit=p.get("limit", 50),
-                        category=LeadSourceCategory(p.get("category", "GENERAL")),
+                        category=_coerce_category(p.get("category", "GENERAL")),
+                        intent=detected_intent,
                     )
                     for p in llm_plans
                 ]
@@ -157,13 +325,16 @@ class LeadGenOrchestrator:
             logger.debug("LLM subtask decomposition fallback: %s", exc)
 
         # Heuristic intent matching fallback
-        adapters = self.registry.resolve_adapters_for_intent(prompt)
+        adapters = self.registry.resolve_adapters_for_intent(
+            prompt, intent=detected_intent
+        )
         return [
             SubTaskPlan(
                 source_name=a.source_name,
                 query=prompt,
                 limit=50,
-                category=a.category,
+                category=_coerce_category(a.category),
+                intent=detected_intent,
             )
             for a in adapters
         ]
@@ -216,15 +387,15 @@ class LeadGenOrchestrator:
         filters: dict[str, Any] | None = None,
         table_id: str | None = None,
         concurrency_limit: int = 5,
-        adapter_timeout_seconds: float = 12.0,
+        adapter_timeout_seconds: float = 90.0,
         limit: int = 50,
     ) -> LeadGenOrchestratorResult:
         """
         Execute multi-source scraper searches concurrently with semaphore bounding,
         per-adapter timeout isolation, graceful degradation, and entity deduplication.
         """
-        adapters = self.registry.resolve_adapters_for_intent(query)
-        if not adapters:
+        subtask_plans = await self.decompose_query(query)
+        if not subtask_plans:
             return LeadGenOrchestratorResult(
                 status="degraded",
                 total_discovered=0,
@@ -232,7 +403,18 @@ class LeadGenOrchestrator:
                 leads=[],
                 degraded_sources=["no_adapters_available"],
                 table_id=table_id,
+                intent=_detect_lead_intent(query),
             )
+
+        detected_intent = subtask_plans[0].intent
+        adapters = self.registry.resolve_adapters_for_intent(
+            query, intent=detected_intent
+        )
+        logger.info(
+            "execute_multi_source_lead_gen adapters: %s for intent=%s",
+            [a.source_name for a in adapters],
+            detected_intent,
+        )
 
         sem = asyncio.Semaphore(concurrency_limit)
         degraded_sources: list[str] = []
@@ -251,6 +433,11 @@ class LeadGenOrchestrator:
                             limit=limit,
                         ),
                         timeout=adapter_timeout_seconds,
+                    )
+                    logger.info(
+                        "Adapter %s returned %s raw records",
+                        adapter.source_name,
+                        len(raw_records),
                     )
                     is_degraded = (
                         getattr(adapter, "last_execution_status", "ok") == "degraded"
@@ -306,9 +493,18 @@ class LeadGenOrchestrator:
         dedup_result = self.deduplication_service.deduplicate_leads(scored_leads)
 
         final_leads = dedup_result.unified_leads
+        logger.info(
+            "Deduplication: discovered=%s unified=%s",
+            total_discovered,
+            len(final_leads),
+        )
+
+        # Post-filter: price and location safety net before returning/persisting.
+        filtered_leads = _post_filter_leads(final_leads, query, filters)
+        post_filtered_count = len(filtered_leads)
 
         # Determine overall execution status
-        if not final_leads and degraded_sources:
+        if not filtered_leads and degraded_sources:
             overall_status = "degraded"
         elif degraded_sources:
             overall_status = "partial"
@@ -318,17 +514,19 @@ class LeadGenOrchestrator:
         return LeadGenOrchestratorResult(
             status=overall_status,
             total_discovered=total_discovered,
-            total_deduplicated=len(final_leads),
-            leads=final_leads,
+            total_deduplicated=post_filtered_count,
+            leads=filtered_leads,
             degraded_sources=sorted(set(degraded_sources)),
             table_id=table_id,
+            subtask_plans=subtask_plans,
             deduplication_summary={
                 "raw_count": total_discovered,
-                "deduplicated_count": len(final_leads),
+                "deduplicated_count": post_filtered_count,
                 # DNC filtering is delegated to LeadBatchService at persistence time.
                 # The real suppression count is reported by execute_and_persist.
                 "dnc_suppressed_count": 0,
             },
+            intent=detected_intent,
         )
 
     async def _assign_new_leads(
@@ -393,11 +591,26 @@ class LeadGenOrchestrator:
             table_id=table_id,
             limit=limit,
         )
+        logger.info(
+            "execute_and_persist pre-persist: total=%s intent=%s",
+            search_result.total_deduplicated,
+            search_result.intent,
+        )
         if not search_result.leads:
             return search_result
 
         lead_dicts: list[dict[str, Any]] = []
         for lead in search_result.leads:
+            # Build external_chat_ids from non-primary contact candidates.
+            external_chat_ids: dict[str, str] = {}
+            primary_values = {lead.primary_phone, lead.primary_email}
+            for candidate in lead.contact_candidates:
+                if not candidate.value or candidate.value in primary_values:
+                    continue
+                # Keep the first occurrence per channel; later ones are duplicates.
+                if candidate.channel not in external_chat_ids:
+                    external_chat_ids[candidate.channel] = candidate.value
+
             lead_dicts.append(
                 {
                     "client_id": client_id,
@@ -412,7 +625,9 @@ class LeadGenOrchestrator:
                         or lead.raw_data.get("detail_url")
                         or lead.raw_data.get("dossier_url")
                     ),
-                    "company_name": lead.company_name or lead.title or "Doanh nghiệp",
+                    "company_name": _truncate_bytes(
+                        lead.company_name or lead.title or "Doanh nghiệp", 70
+                    ),
                     "domain": lead.canonical_domain,
                     "industry": lead.raw_data.get("industry"),
                     "location": lead.city or lead.address,
@@ -423,8 +638,11 @@ class LeadGenOrchestrator:
                     "phone": lead.primary_phone,
                     "email": lead.primary_email,
                     "tax_id": lead.tax_id,
-                    "contact_name": lead.contact_name or lead.legal_rep,
-                    "title": lead.title,
+                    "contact_name": _truncate_bytes(
+                        lead.contact_name or lead.legal_rep or "", 70
+                    ),
+                    "title": _truncate_bytes(lead.title or "", 70),
+                    "external_chat_ids": external_chat_ids,
                 }
             )
 
@@ -465,4 +683,10 @@ class LeadGenOrchestrator:
             "dnc_suppressed_count": summary.get("skipped_blacklisted_count", 0),
             "failed_count": summary.get("failed_count", 0),
         }
+        logger.info(
+            "execute_and_persist post-persist: accepted=%s dnc=%s failed=%s",
+            len(search_result.leads),
+            summary.get("skipped_blacklisted_count", 0),
+            summary.get("failed_count", 0),
+        )
         return search_result

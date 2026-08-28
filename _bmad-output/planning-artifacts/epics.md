@@ -2894,6 +2894,8 @@ So that I obtain verified, callable phone numbers without wasting credits on dea
 - **Given** successful phone resolution, **When** contact is stored, **Then** raw phone is encrypted via AES-256 in `VerifiedContact` table (PII Vault, AD-25) and masked in standard API responses (`0908***456`).
 - **Given** phone resolution succeeds, **When** billed, **Then** it debits 1.5 credits (1,500đ) into `BillingEvent` with `usage_type = "contact_enrichment"`. If all tiers fail, 0 credits are debited.
 - **Given** a user reports a dead/disconnected number within 24h, **When** verified, **Then** `BillingService.auto_refund_lead()` refunds 100% credits back to `User.credit_micros_balance` and marks the number `invalid`.
+|- **Given** a BĐS listing scraped by the `batdongsan`, `chotot`, or `muaban_bds` adapter, **When** phone resolution is configured, **Then** the adapter MUST attempt extraction with a per-adapter timeout (90s default) and a circuit breaker that degrades to `needs_enrichment` on repeated timeout, and any resolved phone is persisted into `VerifiedContact`.
+|- **Given** phone resolution fails or is skipped for a listing, **When** the row is rendered in `NowingLeadMatrix`, **Then** the UI MUST show an explicit "Mở khóa SĐT" action that debits 1.5 credits on click and retries resolution.
 
 **Validation & Testing:**
 - Unit test: `test_waterfall_failover_circuit.py` — verifies transition Tier 1 $\to$ Tier 2 $\to$ Tier 3.
@@ -3095,6 +3097,10 @@ So that Nowing's AI Orchestrator automatically plans and triggers parallel searc
 - **Given** a chat prompt (e.g. *"Tìm 30 công ty IT tại Hà Nội và 20 môi giới BĐS Cầu Giấy"*), **When** `LeadGenOrchestrator` executes, **Then** it decomposes the query into sub-tasks and invokes all relevant scraper adapters concurrently via `asyncio.gather(return_exceptions=True)`.
 - **Given** raw multi-source streams, **When** ingested, **Then** `EntityDeduplicationService` unifies duplicates by Phone/Email/TaxID into standard `Lead` records.
 - **Given** lead creation, **When** persisted, **Then** Zero-cache (`zero.nowing.net`) streams rows directly into the active Table tab with cell highlight animation.
+- **Given** a chat prompt containing seller intent (e.g., "tôi cần bán", "tìm khách mua", "ký gửi"), **When** `LeadGenOrchestrator.decompose_query` runs, **Then** it MUST return `intent="sell"` and the adapter selection MUST prioritize buyer-demand sources (social/alert groups) or return listings with a seller-framed summary.
+- **Given** a chat prompt containing buyer intent (e.g., "tôi cần mua", "tìm nhà"), **When** `LeadGenOrchestrator.decompose_query` runs, **Then** it MUST return `intent="buy"` and the adapter selection MUST return seller listings.
+- **Given** `multi_source_lead_gen` returns BĐS listings (seller-side data), **When** the agent responds in chat, **Then** it MUST NOT call them "khách hàng tiềm năng" or "nguồn khách tiềm năng" unless the source is verified buyer-demand.
+- **Given** the user intent is "sell" (e.g., user has inventory to sell), **When** the agent returns BĐS listings, **Then** it MUST frame them as "tin đăng bán tương tự / đối thủ cạnh tranh" and offer 1-click follow-up actions: (a) Tìm người mua, (b) Lấy SĐT chủ tin, (c) Phân tích giá.
 
 _FR-85 · AD-31 · AD-37 · AD-44_
 
@@ -3111,6 +3117,10 @@ So that I can interactively chat with AI while inspecting, filtering, and managi
 - **Given** the visual system, **When** rendered, **Then** it applies CSS Design Tokens: Emerald `#10B981`, Sọc Caro Grid Paper background, font `Plus Jakarta Sans` and `JetBrains Mono` numbers with proportional sizing (13.5px body, 11px uppercase headers, h-10 row height).
 - **Given** user navigation, **When** clicking the 4-Mode Switcher, **Then** the canvas switches smoothly between `Leads Matrix`, `Research Studio`, `Automation Flow`, and `Scraper Health` without losing chat history.
 - **Given** real features integration, **When** interacted with, **Then** Credits balance dynamically tracks `currentUserAtom`, Empty State renders 1-click Quickstart Action cards, Research Studio exports real `.md` downloads and printable PDF, and Scraper / Automation tabs connect to live backend APIs.
+- **Given** a lead row in `NowingLeadMatrix` without a phone, **When** rendered, **Then** it MUST display a primary action "Mở khóa SĐT" (Unlock phone) in the Hành động column, not only disabled Zalo/ZNS buttons.
+- **Given** the user clicks "Mở khóa SĐT", **When** the phone is successfully resolved, **Then** the row MUST update in-place (Zero sync) to show the masked phone and enable Zalo/ZNS buttons.
+- **Given** the agent stream has completed, **When** the user focuses the Slate editor, **Then** the Send message button MUST be enabled and reactive to editor value changes.
+- **Given** the editor value is set programmatically (e.g., from a suggested action), **When** the value changes, **Then** the submit button MUST update its disabled state reactively.
 
 _FR-86 · AD-31 · UX-Contract-Lead-Panel_
 
@@ -3168,6 +3178,8 @@ So that I can immediately see, persist, and act on verified BĐS, recruitment, a
 - **Given** normalized leads, **when** persistence is triggered, **then** `LeadBatchService.ingest_batch` is used to create `Lead` and `VerifiedContact` rows with correct `value_hmac`, DNC filtering, and PII encryption.
 - **Given** a lead with phone or email, **when** persisted, **then** `VerifiedContact` is created with `verification_status="verified"`, `consent=True`, `legal_basis="legitimate_interest"`.
 - **Given** job-market leads without direct contact, **when** persisted, **then** `Lead` is still created using `company_name` for `value_hmac` and no `VerifiedContact` is created.
+|- **Given** a BĐS lead scraped by `batdongsan`, `chotot`, or `muaban_bds`, **when** `resolve_phones` is enabled, **then** the adapter attempts phone resolution and creates a `VerifiedContact` with the resolved phone.
+|- **Given** phone resolution fails or is disabled, **when** the lead is persisted, **then** `VerifiedContact` is not created and the row is rendered with an "Mở khóa SĐT" action.
 - **Given** the feature, **when** `ruff check` and `pytest` run, **then** lint/type errors are 0 and relevant tests pass.
 
 _FR-89 · AD-42 · AD-44_
@@ -3186,6 +3198,7 @@ So that the prompt, routing, capability description, and adapter registry stay c
 - **Given** a recruitment-related chat prompt, **when** `multi_source_lead_gen` runs, **then** `VnJobsLeadAdapter` calls `aggregate_jobs(..., ctx=None)` to fetch across TopCV/ITviec/VietnamWorks without self-persisting, and `VietnamWorksLeadAdapter` is dispatched only when the query explicitly mentions "vietnamworks".
 - **Given** a public-procurement-related chat prompt, **when** `multi_source_lead_gen` runs, **then** `MuaSamCongLeadAdapter` calls `MuasamcongScraper.search_tenders()` and returns company/tender leads.
 - **Given** the new adapters are registered, **when** `LeadSourceAdapterRegistry.resolve_adapters_for_intent(query)` is called, **then** it returns the right adapters and avoids duplicate calls across `vn_jobs`/`vietnamworks`/`job_market`.
+|- **Given** a BĐS-related chat prompt, **when** `multi_source_lead_gen` runs with `resolve_phones` enabled, **then** `MuabanBdsLeadAdapter` attempts phone resolution with a 90s timeout and circuit breaker, persisting resolved phones into `VerifiedContact`.
 - **Given** the feature, **when** `ruff check` and `pytest` run, **then** lint/type errors are 0 and relevant tests pass.
 
 _FR-85 · FR-43 · FR-44 · FR-45 · FR-46 · AD-42_

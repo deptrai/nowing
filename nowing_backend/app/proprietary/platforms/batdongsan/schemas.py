@@ -53,8 +53,10 @@ class BatdongsanListing(BaseModel):
     title: str | None = None
     price: str | None = None
     price_raw: str | None = None
+    price_value: int | None = None
     area: str | None = None
     area_raw: str | None = None
+    area_value: float | None = None
     location: str | None = None
     district: str | None = None
     city: str | None = None

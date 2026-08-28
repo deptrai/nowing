@@ -423,6 +423,13 @@ def _install_inline_task_dispatcher(app) -> None:
     app.dependency_overrides[get_task_dispatcher] = lambda: _InlineTaskDispatcher()
 
 
+def _install_lead_scraper_fakes() -> None:
+    """Install deterministic fake scraper adapters for lead-gen smoke tests."""
+    from tests.e2e.fakes.lead_scrapers import install_lead_scraper_fakes
+
+    install_lead_scraper_fakes()
+
+
 def _bootstrap():
     """Run the full E2E bootstrap and return the production FastAPI app.
 
@@ -452,6 +459,7 @@ def _bootstrap():
     _install_synthetic_global_llm_config()
     production_app = _import_production_app()
     _patch_llm_bindings()
+    _install_lead_scraper_fakes()
     _install_runtime_fakes()
     _install_test_only_app_extensions(production_app)
     _install_inline_task_dispatcher(production_app)

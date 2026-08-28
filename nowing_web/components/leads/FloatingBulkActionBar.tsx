@@ -114,7 +114,12 @@ export const FloatingBulkActionBar: React.FC<FloatingBulkActionBarProps> = ({
 		for (const lead of eligibleLeads) {
 			if (!lead.contact_id) continue;
 			try {
-				const res = await leadsApiService.unlockContact(workspaceId, lead.id, lead.contact_id);
+				const res = await leadsApiService.unlockContact(
+					workspaceId,
+					lead.id,
+					lead.contact_id,
+					"phone"
+				);
 				if (res.is_unlocked && typeof res.phone === "string") {
 					onPhoneChange?.(lead.id, res.phone, true);
 					success++;
@@ -182,7 +187,7 @@ export const FloatingBulkActionBar: React.FC<FloatingBulkActionBarProps> = ({
 				<SmartUnlockPopover
 					open={isOpen}
 					onOpenChange={setIsOpen}
-					maskedPhone={previewPhone}
+					maskedValue={previewPhone}
 					costCredits={totalCost}
 					fastUnlockEnabled={fastUnlockEnabled}
 					onToggleFastUnlock={setFastUnlockEnabled}

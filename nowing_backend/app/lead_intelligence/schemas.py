@@ -89,6 +89,8 @@ class LeadRead(BaseModel):
     is_unlocked: bool = False
     is_valid: bool | None = None
     consent_status: str | None = None
+    unlocked_channels: list[str] = []
+    external_chat_ids: dict[str, str] | None = None
 
 
 class LeadListResponse(BaseModel):
@@ -326,3 +328,4 @@ class MultiSourceLeadGenResponse(BaseModel):
     leads: list[dict[str, Any]] = Field(default_factory=list)
     degraded_sources: list[str] = Field(default_factory=list)
     table_id: str | None = None
+    intent: str = "neutral"

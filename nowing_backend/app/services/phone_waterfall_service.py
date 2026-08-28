@@ -223,6 +223,44 @@ class PhoneWaterfallService:
         self._redis_client = redis_client
         self.encryption = VerifiedContactEncryption()
 
+    async def _existing_verified_phone(
+        self, lead_id: UUID, workspace_id: int
+    ) -> tuple[str, VerifiedContact] | None:
+        """Return the first unblocked, valid phone from the lead's VerifiedContacts."""
+        from sqlalchemy import select
+
+        stmt = (
+            select(VerifiedContact)
+            .where(VerifiedContact.workspace_id == workspace_id)
+            .where(VerifiedContact.lead_id == lead_id)
+            .where(VerifiedContact.phone.isnot(None))
+            .order_by(VerifiedContact.created_at.desc())
+        )
+        result = await self.session.execute(stmt)
+        contacts = list(await result.scalars())
+        for contact in contacts:
+            if contact.is_valid is False or contact.consent_status == "withdrawn":
+                continue
+            try:
+                phone = self.encryption.decrypt(contact.phone)
+                normalized = normalize_vn_phone(phone)
+                if phone and normalized:
+                    return normalized, contact
+            except Exception:
+                continue
+        return None
+
+    async def _unlock_existing_contact(
+        self, contact: VerifiedContact, user_id: UUID | None
+    ) -> None:
+        """Mark an existing VerifiedContact as unlocked when the user pays to reveal it."""
+        contact.is_unlocked = True
+        if "phone" not in (contact.unlocked_channels or []):
+            contact.unlocked_channels = [
+                *list(contact.unlocked_channels or []),
+                "phone",
+            ]
+
     # ─────────────────────────────────────────────────────────────
     # Tier 1: Batdongsan Token Pool & Phone Reveal
     # ─────────────────────────────────────────────────────────────
@@ -604,7 +642,38 @@ class PhoneWaterfallService:
             )
 
         effective_url = source_url or lead.source_url or ""
+        existing = await self._existing_verified_phone(lead_id, workspace_id)
         effective_text = raw_text or f"{lead.company_name} {lead.location or ''}"
+        if existing:
+            existing_phone, existing_contact = existing
+            effective_text = f"{effective_text} {existing_phone}"
+            # Re-use a phone the scraper already discovered; no extra charge.
+            await self._unlock_existing_contact(existing_contact, user_id)
+            return PhoneResolutionResult(
+                lead_id=lead_id,
+                phone=existing_phone,
+                phone_masked=mask_phone(existing_phone),
+                phone_hash=compute_phone_hmac(existing_phone),
+                tier_reached=3,
+                provider_used="verified_contact",
+                status="success",
+                cost_micros=0,
+                confidence=0.95,
+                carrier=get_carrier_name(existing_phone),
+                is_cached=False,
+                contact_id=existing_contact.id,
+            )
+        else:
+            existing_phone, existing_contact = None, None
+        logger.info(
+            "[PhoneWaterfall] lead_id=%s existing_phone=%s company_name=%s location=%s raw_text=%s effective_text=%s",
+            lead_id,
+            existing_phone,
+            lead.company_name,
+            lead.location,
+            raw_text,
+            effective_text,
+        )
 
         # 2. Check 24h Redis Cache (by lead_id and URL/name hash)
         redis = get_redis()
@@ -762,6 +831,15 @@ class PhoneWaterfallService:
                 lead=lead, source_url=effective_url, raw_text=effective_text
             )
 
+        logger.info(
+            "[PhoneWaterfall] lead_id=%s tier=%s provider=%s phone=%s masked=%s",
+            lead_id,
+            res.tier,
+            res.provider,
+            res.phone,
+            mask_phone(res.phone) if res.phone else "",
+        )
+
         # If all 3 tiers fail: charge 0 credit, log failure
         if not res.phone:
             failed_log = PhoneWaterfallLog(
@@ -874,7 +952,9 @@ class PhoneWaterfallService:
                 degradation_reason="no_domain_or_phone_for_dedup",
             )
 
-        # Create or update VerifiedContact
+        # Create or update VerifiedContact.
+        # A user-initiated resolution (user_id is not None) both creates the
+        # contact and unlocks it, because the caller already paid 1.5 credits.
         contact = VerifiedContact(
             workspace_id=workspace_id,
             client_id=client_id,
@@ -891,6 +971,8 @@ class PhoneWaterfallService:
             consent_status="legitimate_interest",
             legal_basis="legitimate_interest",
             is_valid=True,
+            is_unlocked=user_id is not None,
+            unlocked_channels=["phone"] if user_id is not None else [],
             value_hmac=value_hmac,
             phone_hmac=compute_phone_hmac(norm_phone),
             email_hmac=None,

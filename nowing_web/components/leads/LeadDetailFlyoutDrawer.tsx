@@ -11,7 +11,6 @@ import {
 	MapPin,
 	MessageSquare,
 	Network,
-	Phone,
 	Send,
 	Sparkles,
 	Tag,
@@ -24,7 +23,7 @@ import type { LeadActivityLog } from "@/contracts/types/lead-pipeline.types";
 import type { Lead } from "@/contracts/types/leads.types";
 import { leadPipelineApiService } from "@/lib/apis/lead-pipeline-api.service";
 import { isAllowedUrl } from "@/lib/utils";
-import { PhoneUnlockPill } from "./PhoneUnlockPill";
+import { ContactChannels } from "./ContactChannels";
 import { ZaloOutreachButton } from "./zalo-outreach-button";
 
 export interface LeadDetailFlyoutDrawerProps {
@@ -52,13 +51,16 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 	const [timelineError, setTimelineError] = useState<string | null>(null);
 	const [newNote, setNewNote] = useState("");
 	const [isSubmittingNote, setIsSubmittingNote] = useState(false);
-	const [leadUnlocked, setLeadUnlocked] = useState(lead?.is_unlocked ?? false);
+	const [, setLeadUnlocked] = useState(
+		lead?.unlocked_channels?.includes("phone") ?? lead?.is_unlocked ?? false
+	);
 	const [localUnlockedPhone, setLocalUnlockedPhone] = useState<string | null>(
 		externalUnlockedPhone ?? lead?.phone ?? null
 	);
 
 	const displayPhone = localUnlockedPhone ?? lead?.phone ?? null;
-	const isContactUnlocked = leadUnlocked;
+	const isPhoneUnlocked = lead?.unlocked_channels?.includes("phone") ?? lead?.is_unlocked ?? false;
+	const isContactUnlocked = isPhoneUnlocked;
 
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
@@ -71,9 +73,9 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 	}, [isOpen, onClose]);
 
 	useEffect(() => {
-		setLeadUnlocked(lead?.is_unlocked ?? false);
+		setLeadUnlocked(lead?.unlocked_channels?.includes("phone") ?? lead?.is_unlocked ?? false);
 		setLocalUnlockedPhone(externalUnlockedPhone ?? lead?.phone ?? null);
-	}, [lead?.is_unlocked, lead?.phone, externalUnlockedPhone]);
+	}, [lead?.unlocked_channels, lead?.is_unlocked, lead?.phone, externalUnlockedPhone]);
 
 	useEffect(() => {
 		if (isOpen && lead?.id) {
@@ -240,30 +242,23 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 								Thông Tin Liên Hệ & Tiếp Cận
 							</h4>
 
-							<div className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-card border border-border">
-								<div className="flex items-center gap-2">
-									<Phone
-										className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0"
-										aria-hidden="true"
-									/>
-									<PhoneUnlockPill
-										lead={lead}
-										workspaceId={workspaceId}
-										onUnlock={setLeadUnlocked}
-										onPhoneChange={(leadId, phone, unlocked) => {
-											setLeadUnlocked(unlocked);
-											setLocalUnlockedPhone(phone);
-											onPhoneChange?.(leadId, phone, unlocked);
-										}}
-									/>
-								</div>
+							<div className="p-2.5 rounded-lg bg-card border border-border">
+								<ContactChannels
+									lead={lead}
+									workspaceId={workspaceId}
+									onPhoneChange={(leadId, phone, unlocked) => {
+										setLeadUnlocked(unlocked);
+										setLocalUnlockedPhone(phone);
+										onPhoneChange?.(leadId, phone, unlocked);
+									}}
+								/>
 								{(() => {
 									const cleanDigits = (displayPhone ?? "").replace(/[^0-9+]/g, "");
 									return isContactUnlocked && cleanDigits.length >= 8 ? (
 										<a
 											href={`tel:${cleanDigits}`}
 											data-testid="call-now-link"
-											className="px-2.5 py-1 text-xs font-medium rounded-md bg-muted hover:bg-muted/80 text-foreground transition-colors"
+											className="mt-2 inline-flex px-2.5 py-1 text-xs font-medium rounded-md bg-muted hover:bg-muted/80 text-foreground transition-colors"
 										>
 											Gọi ngay
 										</a>

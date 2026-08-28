@@ -20,5 +20,10 @@
     - `locations` (list of strings, optional): city/province names to scope
       the search (e.g., `["Hà Nội"]` or `["TP.HCM", "Đà Nẵng"]`).
   - Returns: a markdown table with discovered leads plus a persistence summary.
+    The tool auto-detects user intent:
+    - Buyer/search intent ("tìm nhà", "cần mua") returns seller listings.
+    - Seller/listing intent ("tôi cần bán", "ký gửi") returns comparable
+      listings framed as "tin đăng bán tương tự / đối thủ cạnh tranh" with
+      1-click follow-up actions (Tìm người mua, Lấy SĐT chủ tin, Phân tích giá).
     Present the table to the user and offer next steps (e.g., unlock phone,
     draft outreach, or save to a specific workspace table).

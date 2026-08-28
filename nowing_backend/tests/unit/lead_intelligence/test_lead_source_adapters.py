@@ -106,36 +106,114 @@ class TestLeadSourceAdapterRegistry:
 
     def test_registry_resolve_adapters_for_intent(self) -> None:
         """Should route user intent keywords to relevant adapters."""
+        from app.lead_intelligence.adapters.base import LeadSourceCategory
         from app.lead_intelligence.adapters.batdongsan import BatdongsanLeadAdapter
         from app.lead_intelligence.adapters.chotot import ChototLeadAdapter
         from app.lead_intelligence.adapters.enterprise import (
             EnterpriseProcurementLeadAdapter,
         )
         from app.lead_intelligence.adapters.job_market import JobMarketLeadAdapter
+        from app.lead_intelligence.adapters.muaban_bds import MuabanBdsLeadAdapter
+        from app.lead_intelligence.adapters.muasamcong import MuaSamCongLeadAdapter
+        from app.lead_intelligence.adapters.registry import LeadSourceAdapterRegistry
+        from app.lead_intelligence.adapters.social import SocialLeadAdapter
+        from app.lead_intelligence.adapters.telegram import TelegramLeadAdapter
+        from app.lead_intelligence.adapters.vietnamworks import VietnamWorksLeadAdapter
+        from app.lead_intelligence.adapters.vn_jobs import VnJobsLeadAdapter
+
+        registry = LeadSourceAdapterRegistry()
+        registry.register(BatdongsanLeadAdapter())
+        registry.register(ChototLeadAdapter())
+        registry.register(MuabanBdsLeadAdapter())
+        registry.register(JobMarketLeadAdapter())
+        registry.register(VnJobsLeadAdapter())
+        registry.register(VietnamWorksLeadAdapter())
+        registry.register(EnterpriseProcurementLeadAdapter())
+        registry.register(MuaSamCongLeadAdapter())
+        registry.register(SocialLeadAdapter())
+        registry.register(TelegramLeadAdapter())
+
+        def names(matched: list[Any]) -> set[str]:
+            return {a.source_name for a in matched}
+
+        # Intent: Real estate & property — BĐS keywords
+        bds_matched = registry.resolve_adapters_for_intent(
+            "Tìm nhà đất chung cư biệt thự Hà Nội"
+        )
+        assert names(bds_matched) == {"batdongsan", "chotot", "muaban_bds"}
+        for a in bds_matched:
+            assert a.category == LeadSourceCategory.REAL_ESTATE
+
+        # Intent: location + price with no BĐS keyword should default to REAL_ESTATE
+        price_location_matched = registry.resolve_adapters_for_intent(
+            "quận 7 TP.HCM giá dưới 8 tỷ"
+        )
+        assert names(price_location_matched) == {"batdongsan", "chotot", "muaban_bds"}
+
+        # Intent: job recruitment (priority order may pick vn_jobs first)
+        jobs_matched = registry.resolve_adapters_for_intent(
+            "Tìm công ty IT đang tuyển dụng Golang Developer"
+        )
+        assert all(a.category == LeadSourceCategory.JOB_MARKET for a in jobs_matched)
+        assert len(jobs_matched) == 1
+
+        # Intent: procurement
+        proc_matched = registry.resolve_adapters_for_intent("gói thầu xây dựng TP.HCM")
+        assert names(proc_matched) == {"muasamcong"}
+
+        # Intent: enterprise tax
+        ent_matched = registry.resolve_adapters_for_intent("mã số thuế 0123456789")
+        assert names(ent_matched) == {"enterprise"}
+
+        # Intent: broker with BĐS keyword must not route to social
+        broker_matched = registry.resolve_adapters_for_intent(
+            "môi giới bất động sản quận 7"
+        )
+        assert names(broker_matched) == {"batdongsan", "chotot", "muaban_bds"}
+
+        # Intent: broad query with no signal falls back to all adapters
+        fallback_matched = registry.resolve_adapters_for_intent(
+            "cho tôi thông tin"
+        )
+        assert len(fallback_matched) == 10
+
+    def test_registry_resolve_adapters_for_intent_with_lead_intent(self) -> None:
+        """Should route seller intent to social first, then BĐS fallback."""
+        from app.lead_intelligence.adapters.base import LeadIntent
+        from app.lead_intelligence.adapters.batdongsan import BatdongsanLeadAdapter
+        from app.lead_intelligence.adapters.chotot import ChototLeadAdapter
+        from app.lead_intelligence.adapters.muaban_bds import MuabanBdsLeadAdapter
         from app.lead_intelligence.adapters.registry import LeadSourceAdapterRegistry
         from app.lead_intelligence.adapters.social import SocialLeadAdapter
 
         registry = LeadSourceAdapterRegistry()
         registry.register(BatdongsanLeadAdapter())
         registry.register(ChototLeadAdapter())
-        registry.register(JobMarketLeadAdapter())
-        registry.register(EnterpriseProcurementLeadAdapter())
+        registry.register(MuabanBdsLeadAdapter())
         registry.register(SocialLeadAdapter())
 
-        # Intent: Real estate & property
-        bds_matched = registry.resolve_adapters_for_intent(
-            "Tìm nhà đất chung cư biệt thự Hà Nội"
-        )
-        names = [a.source_name for a in bds_matched]
-        assert "batdongsan" in names
-        assert "chotot" in names
+        def names(matched: list[Any]) -> set[str]:
+            return {a.source_name for a in matched}
 
-        # Intent: IT hiring & job recruitment
-        jobs_matched = registry.resolve_adapters_for_intent(
-            "Tìm công ty IT đang tuyển dụng Golang Developer"
+        # Seller intent should prefer social (buyer-demand) adapters.
+        sell_matched = registry.resolve_adapters_for_intent(
+            "Tôi cần bán 10 lô đất ký gửi quận 7",
+            intent=LeadIntent.SELL,
         )
-        job_names = [a.source_name for a in jobs_matched]
-        assert "job_market" in job_names
+        assert "social" in names(sell_matched)
+
+        # Buyer intent should still route to BĐS listings.
+        buy_matched = registry.resolve_adapters_for_intent(
+            "Tìm 10 nhà bán quận 7 TP.HCM giá dưới 8 tỷ",
+            intent=LeadIntent.BUY,
+        )
+        assert names(buy_matched) == {"batdongsan", "chotot", "muaban_bds"}
+
+        # Neutral / missing intent must remain backward-compatible.
+        neutral_matched = registry.resolve_adapters_for_intent(
+            "quận 7 TP.HCM giá dưới 8 tỷ"
+        )
+        assert names(neutral_matched) == {"batdongsan", "chotot", "muaban_bds"}
 
     def test_registry_raises_key_error_for_unknown_adapter(self) -> None:
         """Should raise KeyError when requesting non-existent adapter."""
@@ -717,3 +795,86 @@ class TestLeadSourceAdapterStateRecovery:
             )
             assert records
             assert adapter.last_execution_status == "ok"
+
+
+class TestMultiChannelContactExtraction:
+    """Contact extraction should surface phones, emails, and social handles."""
+
+    def test_extract_emails_and_social_from_text(self) -> None:
+        """Should extract emails and social IDs from BĐS description text."""
+        from app.lead_intelligence.adapters.base import (
+            extract_emails_from_text,
+            extract_social_ids_from_text,
+        )
+
+        text = (
+            "Liên hệ chính chủ 0901234567 hoặc email owner@example.com. "
+            "Zalo: 0901234567, facebook.com/seller.page"
+        )
+        assert extract_emails_from_text(text) == ["owner@example.com"]
+        social = extract_social_ids_from_text(text)
+        assert "zalo" in social
+        assert "facebook" in social
+
+    def test_batdongsan_extracts_email_and_zalo(self) -> None:
+        """Batdongsan adapter should extract email and social candidates."""
+        from app.lead_intelligence.adapters.base import RawLeadRecord
+        from app.lead_intelligence.adapters.batdongsan import BatdongsanLeadAdapter
+
+        adapter = BatdongsanLeadAdapter()
+        raw = RawLeadRecord(
+            source_name="batdongsan",
+            source_id="bds_123",
+            data={
+                "title": "Bán nhà phố quận 7",
+                "description": "Liên hệ a.example@domain.vn hoặc zalo 0909876543",
+                "phone": "0901234567",
+            },
+        )
+        candidates = adapter.extract_contact_candidates(raw)
+        channels = {c.channel for c in candidates}
+        assert "phone" in channels
+        assert "email" in channels
+        assert "zalo" in channels
+
+
+class TestLeadGenPostFilter:
+    """LeadGenOrchestrator post-filter should drop price and location outliers."""
+
+    def test_post_filter_drops_price_and_location_outliers(self) -> None:
+        """Should drop leads with price above max or in wrong location."""
+        from app.lead_intelligence.adapters.base import NormalizedLead
+        from app.lead_intelligence.services.lead_gen_orchestrator import (
+            _post_filter_leads,
+        )
+
+        leads = [
+            NormalizedLead(
+                source_name="batdongsan",
+                source_id="1",
+                title="Nhà quận 7",
+                price=7_000_000_000,
+                city="Hồ Chí Minh",
+            ),
+            NormalizedLead(
+                source_name="batdongsan",
+                source_id="2",
+                title="Nhà quận 7",
+                price=9_000_000_000,
+                city="Hồ Chí Minh",
+            ),
+            NormalizedLead(
+                source_name="batdongsan",
+                source_id="3",
+                title="Nhà quận 7",
+                price=6_000_000_000,
+                city="Hà Nội",
+            ),
+        ]
+        filtered = _post_filter_leads(
+            leads,
+            query="nhà quận 7 TP.HCM giá dưới 8 tỷ",
+            filters={"locations": ["TP.HCM"]},
+        )
+        assert len(filtered) == 1
+        assert filtered[0].source_id == "1"
