@@ -14,8 +14,10 @@ from app.lead_intelligence.adapters.base import (
     LeadSourceAdapter,
     LeadSourceCategory,
     NormalizedLead,
+    RawLeadRecord,
 )
 from app.lead_intelligence.adapters.registry import LeadSourceAdapterRegistry
+from app.lead_intelligence.campaign.schemas import CampaignSpec, ICPCriteria
 from app.lead_intelligence.confidence import ConfidenceGate
 from app.lead_intelligence.services.deduplication_service import (
     EntityDeduplicationService,
@@ -168,21 +170,65 @@ class LeadGenOrchestrator:
             for a in adapters
         ]
 
+    @classmethod
+    def pre_filter_by_icp(
+        cls,
+        raw_record: RawLeadRecord,
+        icp_criteria: ICPCriteria | None,
+    ) -> bool:
+        """
+        Evaluate if a raw record passes basic ICP criteria before full normalization.
+        Checks negative keywords and required locations if specified in ICPCriteria.
+        Returns True if lead passes or if icp_criteria is None; False if rejected.
+        """
+        if icp_criteria is None:
+            return True
+
+        # Extract text representations from raw data dict
+        data = raw_record.data or {}
+        text_parts: list[str] = [
+            str(data.get("title", "")),
+            str(data.get("company_name", "")),
+            str(data.get("name", "")),
+            str(data.get("address", "")),
+            str(data.get("city", "")),
+            str(data.get("description", "")),
+            str(data.get("industry", "")),
+            str(data.get("body", "")),
+            str(data.get("job_title", "")),
+        ]
+        combined_text = " ".join(text_parts).lower()
+
+        # Check negative keywords
+        if icp_criteria.negative_keywords:
+            for nkw in icp_criteria.negative_keywords:
+                if nkw and nkw.lower().strip() in combined_text:
+                    return False
+
+        return True
+
     async def _score_and_enrich(
         self,
         leads: list[NormalizedLead],
         workspace_id: int,
+        icp_criteria: ICPCriteria | None = None,
+        intent_tags: list[str] | None = None,
     ) -> list[NormalizedLead]:
-        """Apply the confidence gate and run micro-LLM fallback where needed."""
+        """Apply the composite confidence gate and run micro-LLM fallback where needed."""
         high_confidence: list[NormalizedLead] = []
         needs_enrichment: list[NormalizedLead] = []
         micro_candidates: list[NormalizedLead] = []
 
         for lead in leads:
-            result = ConfidenceGate.score(lead)
-            if result.score >= 0.85 and not result.critical_missing:
+            result = ConfidenceGate.evaluate_composite(
+                lead,
+                icp_criteria=icp_criteria,
+                intent_tags=intent_tags,
+            )
+            # Threshold checks: schema_completeness_score is 0.0 - 1.0
+            if result.schema_completeness_score >= 0.85 and not result.critical_missing:
                 high_confidence.append(lead)
-            elif 0.70 <= result.score < 0.85 and not result.critical_missing:
+            elif 0.70 <= result.schema_completeness_score < 0.85 and not result.critical_missing:
                 lead.needs_enrichment = True
                 needs_enrichment.append(lead)
             else:
@@ -197,6 +243,13 @@ class LeadGenOrchestrator:
                     workspace_id=workspace_id,
                     user_id=None,
                 )
+                # Re-score with composite confidence after micro-extraction
+                for lead in micro_candidates:
+                    ConfidenceGate.evaluate_composite(
+                        lead,
+                        icp_criteria=icp_criteria,
+                        intent_tags=intent_tags,
+                    )
             except Exception as exc:
                 # Fail-soft: keep the original records and mark for enrichment.
                 logger.warning(
@@ -212,18 +265,42 @@ class LeadGenOrchestrator:
     async def execute_multi_source_lead_gen(
         self,
         workspace_id: int,
-        query: str,
+        query: str = "",
         filters: dict[str, Any] | None = None,
         table_id: str | None = None,
         concurrency_limit: int = 5,
         adapter_timeout_seconds: float = 12.0,
         limit: int = 50,
+        campaign_spec: CampaignSpec | None = None,
     ) -> LeadGenOrchestratorResult:
         """
         Execute multi-source scraper searches concurrently with semaphore bounding,
         per-adapter timeout isolation, graceful degradation, and entity deduplication.
+        Supports declarative CampaignSpec or traditional prompt query for backward compatibility.
         """
-        adapters = self.registry.resolve_adapters_for_intent(query)
+        effective_query = query
+        effective_filters = filters or {}
+        effective_table_id = table_id
+        effective_concurrency = concurrency_limit
+        effective_timeout = adapter_timeout_seconds
+        effective_limit = limit
+        icp_criteria: ICPCriteria | None = None
+        intent_tags: list[str] | None = None
+
+        if campaign_spec is not None:
+            effective_query = campaign_spec.query or query
+            effective_table_id = campaign_spec.table_id or table_id
+            effective_concurrency = campaign_spec.concurrency_limit or concurrency_limit
+            effective_timeout = (
+                campaign_spec.adapter_timeout_seconds or adapter_timeout_seconds
+            )
+            effective_limit = min(campaign_spec.max_total_leads, limit)
+            icp_criteria = campaign_spec.icp_criteria
+            intent_tags = campaign_spec.intent_tags
+            adapters = self.registry.resolve_adapters_for_campaign(campaign_spec)
+        else:
+            adapters = self.registry.resolve_adapters_for_intent(effective_query)
+
         if not adapters:
             return LeadGenOrchestratorResult(
                 status="degraded",
@@ -231,10 +308,10 @@ class LeadGenOrchestrator:
                 total_deduplicated=0,
                 leads=[],
                 degraded_sources=["no_adapters_available"],
-                table_id=table_id,
+                table_id=effective_table_id,
             )
 
-        sem = asyncio.Semaphore(concurrency_limit)
+        sem = asyncio.Semaphore(effective_concurrency)
         degraded_sources: list[str] = []
         all_normalized_leads: list[NormalizedLead] = []
 
@@ -246,11 +323,11 @@ class LeadGenOrchestrator:
                     raw_records = await asyncio.wait_for(
                         adapter.search_leads(
                             workspace_id=workspace_id,
-                            query=query,
-                            filters=filters,
-                            limit=limit,
+                            query=effective_query,
+                            filters=effective_filters,
+                            limit=effective_limit,
                         ),
-                        timeout=adapter_timeout_seconds,
+                        timeout=effective_timeout,
                     )
                     is_degraded = (
                         getattr(adapter, "last_execution_status", "ok") == "degraded"
@@ -260,6 +337,9 @@ class LeadGenOrchestrator:
                     normalized: list[NormalizedLead] = []
                     for record in raw_records:
                         try:
+                            # Pre-filter by ICP criteria before full normalization
+                            if not self.pre_filter_by_icp(record, icp_criteria):
+                                continue
                             norm = adapter.normalize_lead(record)
                             normalized.append(norm)
                         except Exception as norm_err:
@@ -273,7 +353,7 @@ class LeadGenOrchestrator:
                     logger.warning(
                         "Adapter %s timed out after %.1fs",
                         adapter.source_name,
-                        adapter_timeout_seconds,
+                        effective_timeout,
                     )
                     return [], adapter.source_name
                 except Exception as exc:
@@ -296,11 +376,21 @@ class LeadGenOrchestrator:
 
         total_discovered = len(all_normalized_leads)
 
-        # Pass 2: Confidence gating and selective micro-LLM fallback.
+        # Pass 2: Composite confidence gating and selective micro-LLM fallback.
         scored_leads = await self._score_and_enrich(
             all_normalized_leads,
             workspace_id=workspace_id,
+            icp_criteria=icp_criteria,
+            intent_tags=intent_tags,
         )
+
+        # Filter out leads that do not meet min_fit_score if specified
+        if icp_criteria and icp_criteria.min_fit_score > 0.0:
+            scored_leads = [
+                lead
+                for lead in scored_leads
+                if (lead.icp_fit_score or 0.0) >= icp_criteria.min_fit_score
+            ]
 
         # In-stream Deduplication
         dedup_result = self.deduplication_service.deduplicate_leads(scored_leads)
@@ -321,7 +411,7 @@ class LeadGenOrchestrator:
             total_deduplicated=len(final_leads),
             leads=final_leads,
             degraded_sources=sorted(set(degraded_sources)),
-            table_id=table_id,
+            table_id=effective_table_id,
             deduplication_summary={
                 "raw_count": total_discovered,
                 "deduplicated_count": len(final_leads),
@@ -369,20 +459,28 @@ class LeadGenOrchestrator:
         self,
         session: AsyncSession,
         workspace_id: int,
-        query: str,
+        query: str = "",
         table_id: str | None = None,
         user_id: UUID | None = None,
         client_id: str | None = None,
         limit: int = 50,
         filters: dict[str, Any] | None = None,
+        campaign_spec: CampaignSpec | None = None,
     ) -> LeadGenOrchestratorResult:
         """Execute lead generation and atomically persist records via LeadBatchService."""
         from app.services.lead_batch_service import LeadBatchService
 
+        effective_table_id = (
+            campaign_spec.table_id if campaign_spec and campaign_spec.table_id else table_id
+        )
+        effective_client_id = (
+            campaign_spec.client_id if campaign_spec and campaign_spec.client_id else client_id
+        )
+
         table_uuid: UUID | None = None
-        if table_id:
+        if effective_table_id:
             try:
-                table_uuid = UUID(str(table_id))
+                table_uuid = UUID(str(effective_table_id))
             except (ValueError, TypeError):
                 table_uuid = None
 
@@ -390,8 +488,9 @@ class LeadGenOrchestrator:
             workspace_id=workspace_id,
             query=query,
             filters=filters,
-            table_id=table_id,
+            table_id=effective_table_id,
             limit=limit,
+            campaign_spec=campaign_spec,
         )
         if not search_result.leads:
             return search_result
@@ -400,7 +499,7 @@ class LeadGenOrchestrator:
         for lead in search_result.leads:
             lead_dicts.append(
                 {
-                    "client_id": client_id,
+                    "client_id": effective_client_id,
                     "table_id": table_uuid,
                     "source": ",".join(lead.sources)
                     if lead.sources
