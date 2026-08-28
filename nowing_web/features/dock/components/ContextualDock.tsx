@@ -12,6 +12,7 @@ import {
 	dockWidthAtom,
 } from "@/atoms/layout/dock.atom";
 import { canvasLeftWidthAtom } from "@/atoms/leads/leads-canvas.atoms";
+import { useSidebarContextSafe } from "@/components/layout/hooks";
 import type { ThreadParsedContext } from "@/components/leads/thread-intent-detector";
 import type { DshMission, DshMissionControl } from "@/contracts/types/dsh.types";
 import type { Lead } from "@/contracts/types/leads.types";
@@ -85,6 +86,7 @@ export function ContextualDock({
 	const [leftWidth] = useAtom(canvasLeftWidthAtom);
 	const [verbose] = useAtom(dockVerboseModeAtom);
 	const [updates, setUpdates] = useAtom(dockTabUpdatesAtom);
+	const sidebarContext = useSidebarContextSafe();
 	const {
 		tabs,
 		activeTab: effectiveActiveTab,
@@ -116,8 +118,16 @@ export function ContextualDock({
 
 	const expandedWidth = useMemo(() => {
 		if (typeof window === "undefined") return storedWidth;
-		return Math.max(840, window.innerWidth - leftWidth - 56);
-	}, [leftWidth, storedWidth]);
+		const iconRailWidth = 56;
+		const sidebarExpandedWidth = 240;
+		const sidebarCollapsedWidth = 51;
+		const resizerWidth = 6;
+		const sidebarWidth = sidebarContext?.isCollapsed ? sidebarCollapsedWidth : sidebarExpandedWidth;
+		return Math.max(
+			840,
+			window.innerWidth - iconRailWidth - sidebarWidth - leftWidth - resizerWidth
+		);
+	}, [leftWidth, storedWidth, sidebarContext?.isCollapsed]);
 
 	const effectiveWidth = isExpanded ? expandedWidth : storedWidth;
 

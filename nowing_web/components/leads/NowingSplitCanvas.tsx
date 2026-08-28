@@ -5,7 +5,7 @@ import { GripVertical, MessageSquare, Table } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { dockOpenAtom } from "@/atoms/layout/dock.atom";
+import { dockExpandedAtom, dockOpenAtom } from "@/atoms/layout/dock.atom";
 import {
 	activeDrawerLeadAtom,
 	canvasLeftWidthAtom,
@@ -16,6 +16,7 @@ import {
 } from "@/atoms/leads/leads-canvas.atoms";
 import type { FilterPresets, Lead } from "@/contracts/types/leads.types";
 import { ContextualDock } from "@/features/dock";
+import { useSidebarContextSafe } from "@/components/layout/hooks";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useDshMissionControl } from "@/lib/hooks/use-dsh-mission-control";
 import { useLeads } from "@/lib/hooks/use-leads";
@@ -55,6 +56,10 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 	const [leftWidth, setLeftWidth] = useAtom(canvasLeftWidthAtom);
 	const [isCollapsed, setIsCollapsed] = useAtom(isLeftPanelCollapsedAtom);
 	const isDockOpen = useAtomValue(dockOpenAtom);
+	const isDockExpanded = useAtomValue(dockExpandedAtom);
+	const [preExpandLeftWidth, setPreExpandLeftWidth] = useState<number | null>(null);
+	const [preExpandSidebarCollapsed, setPreExpandSidebarCollapsed] = useState<boolean | null>(null);
+	const sidebarContext = useSidebarContextSafe();
 	const [isFullscreen] = useAtom(isMatrixFullscreenAtom);
 	const [selectedLeadIds, setSelectedLeadIds] = useAtom(selectedLeadIdsAtom);
 	const [, setSelectedLeadContext] = useAtom(selectedLeadContextAtom);
@@ -94,12 +99,45 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 	const [statusFilter, setStatusFilter] = useState("all");
 	const [searchQuery, setSearchQuery] = useState("");
 
+	// When the dock is expanded, collapse the outer sidebar and the left chat
+	// panel to their minimums so the right dock can take up the whole workspace.
+	// Restore previous sizes when collapsing the dock again.
+	useEffect(() => {
+		if (isDockOpen && isDockExpanded) {
+			if (preExpandLeftWidth === null) {
+				setPreExpandLeftWidth(leftWidth);
+			}
+			if (preExpandSidebarCollapsed === null && sidebarContext) {
+				setPreExpandSidebarCollapsed(sidebarContext.isCollapsed);
+				sidebarContext.setIsCollapsed(true);
+			}
+			setLeftWidth(MIN_LEFT_WIDTH);
+		} else if (!isDockExpanded && preExpandLeftWidth !== null) {
+			setLeftWidth(preExpandLeftWidth);
+			setPreExpandLeftWidth(null);
+			if (preExpandSidebarCollapsed !== null && sidebarContext) {
+				sidebarContext.setIsCollapsed(preExpandSidebarCollapsed);
+				setPreExpandSidebarCollapsed(null);
+			}
+		}
+	}, [
+		isDockOpen,
+		isDockExpanded,
+		leftWidth,
+		preExpandLeftWidth,
+		preExpandSidebarCollapsed,
+		sidebarContext,
+		setLeftWidth,
+	]);
+
 	// Cleanup state on workspace switch or unmount
 	useEffect(() => {
 		setSelectedLeadIds([]);
 		setSelectedLeadContext(null);
 		setActiveDrawerLead(null);
 		setIsCollapsed(false);
+		setPreExpandLeftWidth(null);
+		setPreExpandSidebarCollapsed(null);
 	}, [setSelectedLeadIds, setSelectedLeadContext, setActiveDrawerLead, setIsCollapsed]);
 
 	// Session-Scoped context parser: derives intent, leads, research, and workflows strictly for THIS thread
