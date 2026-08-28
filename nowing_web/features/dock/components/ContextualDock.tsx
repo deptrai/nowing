@@ -114,6 +114,13 @@ export function ContextualDock({
 		}
 	}, [effectiveActiveTab, updates, setUpdates]);
 
+	const expandedWidth = useMemo(() => {
+		if (typeof window === "undefined") return storedWidth;
+		return Math.max(840, window.innerWidth - leftWidth - 56);
+	}, [leftWidth, storedWidth]);
+
+	const effectiveWidth = isExpanded ? expandedWidth : storedWidth;
+
 	if (tabs.length === 0) return null;
 
 	const bodyProps = {
@@ -151,13 +158,6 @@ export function ContextualDock({
 	if (!isOpen) {
 		return <FloatingReopenPill tabs={tabs} />;
 	}
-
-	const expandedWidth = useMemo(() => {
-		if (typeof window === "undefined") return storedWidth;
-		return Math.max(840, window.innerWidth - leftWidth - 56);
-	}, [leftWidth, storedWidth]);
-
-	const effectiveWidth = isExpanded ? expandedWidth : storedWidth;
 
 	return (
 		<aside
