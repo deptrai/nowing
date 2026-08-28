@@ -54,10 +54,10 @@ test.describe("Broker E2E smoke: real-estate lead routing + Right Dock", () => {
 			timeout: 60_000,
 		});
 
-		// 3. Wait for the turn to finish.
+		// 3. Wait for the turn to finish streaming.
 		const messageStream = page.locator(".aui-assistant-message-content").first();
-		await messageStream.evaluate((el: HTMLElement) => el.textContent?.length ?? 0);
-		await page.waitForTimeout(3000);
+		await expect(messageStream).toBeVisible({ timeout: 60_000 });
+		await expect(sendButton).toBeEnabled({ timeout: 90_000 });
 
 		// 4. Chat output must not expose a raw DEGRADED/PARTIAL status.
 		await expect(page.locator("text=/DEGRADED/i")).not.toBeVisible();
@@ -126,31 +126,28 @@ test.describe("Broker E2E smoke: real-estate lead routing + Right Dock", () => {
 			true
 		);
 
-		// Find a row with a phone-unlock action and click it.
+		// 12. Find a row with a phone-unlock action and click it deterministically.
 		const unlockRow = page
 			.locator("[data-testid='lead-row'], tr")
 			.filter({ hasText: /Mở khóa SĐT/i })
 			.first();
 
-		// If there is no row still needing unlock (phones may already be resolved), skip.
-		const hasUnlock = await unlockRow.isVisible().catch(() => false);
-		if (hasUnlock) {
-			const pill = unlockRow.locator("[data-testid='phone-resolve-pill']").first();
-			await pill.click();
+		await expect(unlockRow).toBeVisible({ timeout: 30_000 });
+		const pill = unlockRow.locator("[data-testid='phone-resolve-pill']").first();
+		await pill.click();
 
-			const popover = page.getByTestId("smart-unlock-popover");
-			await expect(popover).toBeVisible();
-			await popover.getByRole("button", { name: /Mở khóa SĐT/i }).click();
+		const popover = page.getByTestId("smart-unlock-popover");
+		await expect(popover).toBeVisible();
+		await popover.getByRole("button", { name: /Mở khóa SĐT/i }).click();
 
-			// After unlock, the phone pill should no longer show the unlock action.
-			await expect(pill).not.toBeVisible({ timeout: 60_000 });
+		// After unlock, the phone pill should no longer show the unlock action.
+		await expect(pill).not.toBeVisible({ timeout: 60_000 });
 
-			// The Zalo button in the same row should now be enabled.
-			const zaloButton = unlockRow
-				.locator("[data-testid='zalo-outreach-button'], button")
-				.filter({ hasText: /Zalo/i })
-				.first();
-			await expect(zaloButton).toBeEnabled({ timeout: 30_000 });
-		}
+		// The Zalo button in the same row should now be enabled.
+		const zaloButton = unlockRow
+			.locator("[data-testid='zalo-outreach-button'], button")
+			.filter({ hasText: /Zalo/i })
+			.first();
+		await expect(zaloButton).toBeEnabled({ timeout: 30_000 });
 	});
 });

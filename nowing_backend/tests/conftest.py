@@ -21,6 +21,7 @@ if not os.environ.get("EMBEDDING_MODEL"):
 # exported shell AUTH_TYPE.
 os.environ.setdefault("AUTH_TYPE", "LOCAL")
 os.environ.setdefault("REGISTRATION_ENABLED", "TRUE")
+os.environ.setdefault("SECRET_KEY", "test-secret-key-must-be-long-enough-12345678")
 
 # The ETL pipeline requires a parser provider. DOCLING is installed and used
 # across both local tests and E2E, so default to it when the operator has not
