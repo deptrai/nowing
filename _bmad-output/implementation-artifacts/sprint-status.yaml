@@ -410,9 +410,9 @@ development_status:
   # === Tech Debt (from code review deferred items) ===
   # ponytail: 2026-08-08 Winston backlog audit — 4 critical deferred items from code reviews that need dedicated stories.
   # Each is a real correctness/robustness issue, not a nice-to-have. See deferred-work.md for evidence.
-  tech-debt: backlog  # epic tracker reopened; td-* items remain backlog
+  tech-debt: in-progress  # active items being resolved
   td-1: backlog  # Idempotency key for POST /automations/{id}/run (7-7 defer: double-submit, no dedup lock)
-  td-2: backlog  # Redis event bus subscribe failure state leak (9-3 defer: channel stays in subscribers on timeout)
+  td-2: done  # 2026-08-28: Redis event bus subscribe failure state leak fixed with mutex & automatic recovery handler; unit tests green
   td-3: backlog  # Storage sum does not reconcile deleted backend files (8-12 defer: workspace_limits.py:199-209)
   td-4: backlog  # Concurrent notification preference merge race condition (11-1 defer: _merge_notification_preferences read-merge-overwrite)
   td-5: backlog  # title_gen.py lacks timeout/retry on litellm.acompletion (P1, affects chat UX)
