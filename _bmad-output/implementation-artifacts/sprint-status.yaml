@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: "2026-08-26"  # Story 27-2a chunk C patches applied; D pending. Story 25.5 file created.
+last_updated: "2026-08-28"  # Added upstream sync stories 2.11-2.14 and 4.9-4.10; Epic 2 reopened to in-progress.
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # - Parsed epics.md: 24 epics, ~160 stories.
 # - Scanned _bmad-output/implementation-artifacts/ + stories/*.md for story files (frontmatter story_key/epic+story).
@@ -66,8 +66,8 @@ development_status:
   epic-1: done
   epic-1-retrospective: optional
 
-  # === Epic 2: Connectors (DONE — retrospective 2026-08-08) ===
-  epic-2: done
+  # === Epic 2: Connectors (re-opened 2026-08-28 for upstream sync) ===
+  epic-2: in-progress
   2-5: done
   2-6: done
   2-7: done
@@ -76,6 +76,10 @@ development_status:
   2-10: done
   # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended Exa MCP citation ACs
   # ponytail: 2026-08-08 code-review round 2 — 3 patches fixed (web_fetch_exa integration test, title metadata, rstrip !?), 1 defer, 16 dismissed. AC1-4 PASS.
+  2-11: backlog  # Walmart Scraper & Reviews — Port and Upgrade (CAP-1)
+  2-12: backlog  # Indeed Jobs Scraper — Resilience Upgrade (CAP-2)
+  2-13: backlog  # Reddit Community-Only Scrape (CAP-3)
+  2-14: backlog  # Unified Browser Lifecycle Pool (CAP-4)
   epic-2-retrospective: done
 
   # === Epic 3: Knowledge Base + Long-Term Memory ===
@@ -118,6 +122,8 @@ development_status:
   4-8h: done
   # ponytail: 2026-08-15 reopened to ready-for-dev
   4-8h-followup: backlog  # deferred: activate when ChainLens cost becomes a pain point
+  4-9: backlog  # Timeline Activity Indicator (CAP-5)
+  4-10: backlog  # Reasoning Episode Auto-scroll (CAP-6)
   epic-4-retrospective: optional
 
   # === Epic 5: Deliverables (DONE — brownfield, no individual stories) ===
