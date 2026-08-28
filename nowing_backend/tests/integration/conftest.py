@@ -16,6 +16,9 @@ from tests.e2e.fakes import composio_module as _fake_composio
 sys.modules["composio"] = _fake_composio
 
 app_config = importlib.import_module("app.config").config
+if not getattr(app_config, "SECRET_KEY", None):
+    app_config.SECRET_KEY = "test-secret-key-integration-very-secure-32chars"
+
 app_db = importlib.import_module("app.db")
 Base = app_db.Base
 DocumentType = app_db.DocumentType
@@ -175,6 +178,12 @@ def _derivation_caches_disabled(monkeypatch):
     """
     monkeypatch.setattr(app_config, "ETL_CACHE_ENABLED", False)
     monkeypatch.setattr(app_config, "EMBEDDING_CACHE_ENABLED", False)
+    # Contact unlock and PII encryption require a non-empty SECRET_KEY.
+    # Integration conftest runs before app startup, so patch a stable test key.
+    if not getattr(app_config, "SECRET_KEY", None):
+        monkeypatch.setattr(
+            app_config, "SECRET_KEY", "test-secret-key-integration-very-secure-32chars"
+        )
 
 
 @pytest.fixture

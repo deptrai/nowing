@@ -29,7 +29,7 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
-from sqlalchemy.dialects.postgresql import CITEXT, ENUM, JSONB, UUID
+from sqlalchemy.dialects.postgresql import CITEXT, ENUM, JSONB, TSVECTOR, UUID
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, backref, declared_attr, relationship
 
@@ -4733,6 +4733,16 @@ class Lead(Base, TimestampMixin):
     company_status = Column(String(100), nullable=True)
     is_zalo_active = Column(
         Boolean, nullable=False, default=False, server_default="false"
+    )
+    search_vector = Column(
+        TSVECTOR,
+        nullable=True,
+        doc="Generated full-text search vector across company, domain, tax, industry, location.",
+    )
+    embedding = Column(
+        Vector(1536),
+        nullable=True,
+        doc="Optional semantic embedding for ICP / natural-language lead matching.",
     )
     updated_at = Column(
         TIMESTAMP(timezone=True),
