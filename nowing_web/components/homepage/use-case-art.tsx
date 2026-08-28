@@ -27,6 +27,7 @@ function Pulse({
 			r={5}
 			className="fill-brand/40"
 			style={{ transformBox: "fill-box", transformOrigin: "center" }}
+			initial={false}
 			animate={{ scale: [1, 2.4], opacity: [0.5, 0] }}
 			transition={{ duration: 2, ease: "easeOut", repeat: Infinity, delay }}
 		/>
@@ -39,7 +40,7 @@ function PriceArt({ reduce }: { reduce: boolean }) {
 		<motion.svg
 			viewBox="0 0 240 96"
 			className="h-auto w-full"
-			initial={reduce ? undefined : "hidden"}
+			initial={reduce ? false : "hidden"}
 			whileInView="visible"
 			viewport={VIEWPORT}
 		>
@@ -101,7 +102,7 @@ function BrandArt({ reduce }: { reduce: boolean }) {
 		<motion.svg
 			viewBox="0 0 240 96"
 			className="h-auto w-full"
-			initial={reduce ? undefined : "hidden"}
+			initial={reduce ? false : "hidden"}
 			whileInView="visible"
 			viewport={VIEWPORT}
 		>
@@ -155,7 +156,7 @@ function LeadsArt({ reduce }: { reduce: boolean }) {
 		<motion.svg
 			viewBox="0 0 240 96"
 			className="h-auto w-full"
-			initial={reduce ? undefined : "hidden"}
+			initial={reduce ? false : "hidden"}
 			whileInView="visible"
 			viewport={VIEWPORT}
 		>
@@ -212,7 +213,7 @@ function SerpArt({ reduce }: { reduce: boolean }) {
 		<motion.svg
 			viewBox="0 0 240 96"
 			className="h-auto w-full"
-			initial={reduce ? undefined : "hidden"}
+			initial={reduce ? false : "hidden"}
 			whileInView="visible"
 			viewport={VIEWPORT}
 		>
@@ -293,7 +294,7 @@ function ChatArt({ reduce }: { reduce: boolean }) {
 		<motion.svg
 			viewBox="0 0 240 96"
 			className="h-auto w-full"
-			initial={reduce ? undefined : "hidden"}
+			initial={reduce ? false : "hidden"}
 			whileInView="visible"
 			viewport={VIEWPORT}
 		>
@@ -355,7 +356,7 @@ function ApiArt({ reduce }: { reduce: boolean }) {
 		<motion.svg
 			viewBox="0 0 240 96"
 			className="h-auto w-full"
-			initial={reduce ? undefined : "hidden"}
+			initial={reduce ? false : "hidden"}
 			whileInView="visible"
 			viewport={VIEWPORT}
 		>
@@ -412,6 +413,7 @@ function ApiArt({ reduce }: { reduce: boolean }) {
 				height="10"
 				className="fill-brand"
 				variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}
+				initial={reduce ? false : { opacity: 1 }}
 				animate={reduce ? undefined : { opacity: [1, 1, 0, 0] }}
 				transition={
 					reduce

@@ -49,7 +49,16 @@ export function AnnouncementSpotlight() {
 
 	return (
 		<Dialog open={ready} onOpenChange={handleOpenChange}>
-			<DialogContent className="max-w-md gap-0 overflow-hidden p-0">
+			<DialogContent
+				className="max-w-md gap-0 overflow-hidden p-0"
+				onInteractOutside={(e) => {
+					// Allow the user to click through the overlay; outside clicks
+					// dismiss the announcement without blocking the underlying UI.
+					e.preventDefault();
+					markRead(current.id);
+				}}
+				overlayClassName="pointer-events-none bg-black/30"
+			>
 				{current.image && (
 					<div className="relative aspect-video w-full border-b bg-muted">
 						<Image
