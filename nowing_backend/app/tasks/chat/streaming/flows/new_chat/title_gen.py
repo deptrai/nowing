@@ -119,18 +119,50 @@ async def _generate_title(
             "{user_query}", title_seed[:500] or "(message)"
         )
         messages = [{"role": "user", "content": prompt}]
+        timeout_seconds = 10.0
+        max_retries = 2
+        response = None
 
-        if getattr(llm, "model", None) == "auto":
-            router = LLMRouterService.get_router()
-            response = await router.acompletion(model="auto", messages=messages)
-        else:
-            raw_model = getattr(llm, "model", "") or ""
-            response = await acompletion(
-                model=raw_model,
-                messages=messages,
-                api_key=getattr(llm, "api_key", None),
-                api_base=getattr(llm, "api_base", None),
-            )
+        for attempt in range(max_retries):
+            try:
+                if getattr(llm, "model", None) == "auto":
+                    router = LLMRouterService.get_router()
+                    response = await asyncio.wait_for(
+                        router.acompletion(
+                            model="auto",
+                            messages=messages,
+                            timeout=timeout_seconds,
+                        ),
+                        timeout=timeout_seconds + 2.0,
+                    )
+                else:
+                    raw_model = getattr(llm, "model", "") or ""
+                    response = await asyncio.wait_for(
+                        acompletion(
+                            model=raw_model,
+                            messages=messages,
+                            api_key=getattr(llm, "api_key", None),
+                            api_base=getattr(llm, "api_base", None),
+                            timeout=timeout_seconds,
+                            num_retries=1,
+                        ),
+                        timeout=timeout_seconds + 2.0,
+                    )
+                if response:
+                    break
+            except Exception as e:
+                logger.warning(
+                    "[TitleGen] acompletion attempt %d/%d failed: %s",
+                    attempt + 1,
+                    max_retries,
+                    e,
+                )
+                if attempt == max_retries - 1:
+                    return None, None
+                await asyncio.sleep(0.5)
+
+        if not response or not getattr(response, "choices", None):
+            return None, None
 
         usage_info = None
         usage = getattr(response, "usage", None)
