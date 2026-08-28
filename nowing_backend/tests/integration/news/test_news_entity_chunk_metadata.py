@@ -150,7 +150,8 @@ async def test_news_entity_chunk_metadata_ingested_to_chainlens(
         assert chunk.metadata.contentType == "news", chunk.metadata.contentType
         assert chunk.metadata.domain == "vnexpress.net", chunk.metadata.domain
         assert chunk.metadata.pubDate == article.pub_date, chunk.metadata.pubDate
-        assert chunk.metadata.source == article.source, chunk.metadata.source
+        assert chunk.metadata.source == "nowing_scraper", chunk.metadata.source
+        assert chunk.metadata.publisher == article.source, chunk.metadata.publisher
         assert chunk.metadata.entities == data["entities"], chunk.metadata.entities
         # Person names must not leak into chunk content as-is.
         for entity in data["entities"]:
@@ -193,7 +194,8 @@ async def test_news_entity_chunk_metadata_ingested_to_chainlens(
         assert meta["contentType"] == "news"
         assert meta["domain"] == "vnexpress.net"
         assert meta["pubDate"] == article.pub_date
-        assert meta["source"] == article.source
+        assert meta["source"] == "nowing_scraper"
+        assert meta["publisher"] == article.source
         assert meta["entities"] == data["entities"]
 
     # Pattern 6: the job is persisted in the same transactional session.

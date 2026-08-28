@@ -38,3 +38,31 @@ class SchemaCompletenessResult(BaseModel):
         default=False,
         description="True if the record should be scheduled for async enrichment.",
     )
+
+
+class CompositeConfidenceResult(BaseModel):
+    """Result of composite confidence evaluation combining schema completeness, ICP fit, and intent signals."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    confidence_score: float = Field(
+        ..., ge=0.0, le=100.0, description="Aggregate composite score (0-100)."
+    )
+    schema_completeness_score: float = Field(
+        ..., ge=0.0, le=1.0, description="Schema completeness score (0-1)."
+    )
+    icp_fit_score: float = Field(
+        ..., ge=0.0, le=100.0, description="ICP fit score (0-100)."
+    )
+    intent_signal_score: float = Field(
+        ..., ge=0.0, le=100.0, description="Intent signal score (0-100)."
+    )
+    needs_enrichment: bool = Field(
+        default=False,
+        description="True if the record needs downstream enrichment.",
+    )
+    critical_missing: bool = Field(
+        default=False,
+        description="True if any critical schema field is missing.",
+    )
+

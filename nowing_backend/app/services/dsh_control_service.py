@@ -231,8 +231,9 @@ class MissionControlService:
             payload = mission.payload or {}
             if isinstance(payload, dict):
                 takeover_target_url = payload.get("target_url")
-        if not takeover_expires_at and mission.updated_at:
-            takeover_expires_at = mission.updated_at + timedelta(seconds=900)
+        mission_updated_at = getattr(mission, "updated_at", None)
+        if not takeover_expires_at and mission_updated_at:
+            takeover_expires_at = mission_updated_at + timedelta(seconds=900)
 
         now = datetime.now(UTC)
         return DshMissionControlResponse(

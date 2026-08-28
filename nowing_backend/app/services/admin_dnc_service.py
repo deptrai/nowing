@@ -152,7 +152,7 @@ class AdminDncService:
         if hasattr(res, "scalars"):
             scalars_res = res.scalars()
             existing = (
-                await scalars_res.first() if hasattr(scalars_res, "first") else None
+                scalars_res.first() if hasattr(scalars_res, "first") else None
             )
         else:
             existing = None

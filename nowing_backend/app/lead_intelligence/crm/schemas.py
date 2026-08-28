@@ -76,3 +76,30 @@ class CrmDedupInput(BaseModel):
     """Trigger a read-only dedup."""
 
     lead_ids: list[UUID] | None = None
+
+
+class CrmConversionLogInput(BaseModel):
+    """Log a CRM lead conversion / deal outcome event."""
+
+    lead_id: UUID
+    event_type: str = "outcome_meeting_booked"
+    attribution: str = "crm_sync"
+    cost_micros: int = 0
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    sync_to_crm: bool = False
+    connection_id: UUID | None = None
+
+
+class CrmConversionRead(BaseModel):
+    """Read model for a logged conversion outcome."""
+
+    id: UUID
+    workspace_id: int
+    client_id: str | None
+    lead_id: UUID
+    event_type: str
+    attribution: str
+    cost_micros: int
+    outcome_metadata: dict[str, Any]
+    created_at: datetime
+

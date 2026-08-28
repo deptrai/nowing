@@ -175,6 +175,12 @@ async def test_deepseek_reasoning_debits_credit_wallet_and_persists_cost(
     )
     monkeypatch.setattr(mod, "get_redis_client", AsyncMock(return_value=fake_redis))
     monkeypatch.setattr(mod, "acompletion", mock_litellm_deepseek)
+    # Test asserts a deterministic 5000 micro cost regardless of live litellm pricing.
+    monkeypatch.setattr(
+        mod.HybridLLMRouter,
+        "_compute_cost_micros",
+        lambda self, model, prompt_tokens, completion_tokens: 5000,
+    )
 
     router = mod.HybridLLMRouter()
     response = await router.ainvoke(

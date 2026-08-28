@@ -1,0 +1,12 @@
+baseline_ratified: true
+thresholds:
+  min_precision_at_k: 0.85
+  min_recall_at_source: 0.80
+  min_icp_match_rate: 0.85
+  min_intent_signal_precision: 0.80
+  min_contact_accuracy: 0.85
+  max_duplicate_rate: 0.40
+  max_false_positive_rate: 0.05
+  max_time_to_first_lead_ms: 2000.0
+  min_cases: 50
+baseline_source: "Story 21.15 / Story 28.5 AI Lead Generation Enterprise Benchmark Baseline"

@@ -125,6 +125,154 @@ class LeadSourceAdapterRegistry:
         """Find adapters matching a specific domain category."""
         return [a for a in self._adapters.values() if a.category == category]
 
+    def resolve_adapters_for_campaign(self, campaign_spec: Any) -> list[LeadSourceAdapter]:
+        """
+        Dynamically route and select scraper adapters for a structured CampaignSpec.
+        Considers explicit target sources, ICP vertical criteria, buying signal triggers,
+        intent tags, and source budget constraints.
+        """
+        # 1. Handle explicit target_sources if provided
+        target_sources = getattr(campaign_spec, "target_sources", None) or []
+        excluded_sources = {
+            s.lower().strip() for s in (getattr(campaign_spec, "excluded_sources", None) or [])
+        }
+
+        if target_sources:
+            selected: list[LeadSourceAdapter] = []
+            for src_name in target_sources:
+                key = src_name.lower().strip()
+                if key in self._adapters and key not in excluded_sources:
+                    selected.append(self._adapters[key])
+            return selected
+
+        # 2. Check source budgets for zero/negative allocations
+        budget_sources = getattr(campaign_spec, "source_budgets", None) or []
+        for b in budget_sources:
+            if getattr(b, "max_leads", 1) <= 0:
+                excluded_sources.add(getattr(b, "source_name", "").lower().strip())
+
+        matched_adapters: list[LeadSourceAdapter] = []
+
+        # 3. Resolve via ICP target_categories
+        icp_criteria = getattr(campaign_spec, "icp_criteria", None)
+        if icp_criteria is not None:
+            target_categories = getattr(icp_criteria, "target_categories", []) or []
+            for cat in target_categories:
+                for a in self.find_by_category(cat):
+                    if a not in matched_adapters and a.source_name.lower() not in excluded_sources:
+                        matched_adapters.append(a)
+
+            # Check target industries & keywords for vertical intent
+            target_industries = [
+                i.lower() for i in (getattr(icp_criteria, "target_industries", []) or [])
+            ]
+            target_keywords = [
+                k.lower() for k in (getattr(icp_criteria, "target_keywords", []) or [])
+            ]
+            all_text = " ".join(target_industries + target_keywords)
+            if all_text:
+                raw_lower = all_text.lower()
+                plain_lower = _strip_vietnamese_diacritics(raw_lower)
+                # Only add if specifically matched keywords
+                bds_keywords = [
+                    "bđs", "bds", "bất động sản", "bat dong san", "nhà đất", "nha dat",
+                    "chung cư", "chung cu", "biệt thự", "biet thu", "căn hộ", "can ho",
+                    "mặt bằng", "mat bang", "nhà phố", "nha pho", "đất nền", "dat nen",
+                    "cho thuê", "cho thue", "ocean park", "vinhome", "vinhomes",
+                ]
+                if any(k in raw_lower or k in plain_lower for k in bds_keywords):
+                    for a in self.find_by_category(LeadSourceCategory.REAL_ESTATE):
+                        if a not in matched_adapters and a.source_name.lower() not in excluded_sources:
+                            matched_adapters.append(a)
+
+                job_keywords = [
+                    "tuyển dụng", "tuyen dung", "tuyen", "hiring", "developer", "engineer",
+                    "nhân sự", "nhan su", "việc làm", "viec lam", "topcv", "itviec",
+                    "vietnamworks", "vn_jobs", "vnjobs", "recruitment", "software",
+                    "information technology", "công nghệ thông tin", "lap trinh",
+                ]
+                if any(k in raw_lower or k in plain_lower for k in job_keywords) or re.search(r"\bhr\b", raw_lower):
+                    for a in self.find_by_category(LeadSourceCategory.JOB_MARKET):
+                        if a not in matched_adapters and a.source_name.lower() not in excluded_sources:
+                            matched_adapters.append(a)
+
+        # 4. Resolve via buying signal triggers and intent tags
+        signal_triggers = [
+            s.lower().strip() for s in (getattr(campaign_spec, "signal_triggers", []) or [])
+        ]
+        intent_tags = [
+            t.lower().strip() for t in (getattr(campaign_spec, "intent_tags", []) or [])
+        ]
+        all_signals = set(signal_triggers + intent_tags)
+
+        if "hiring" in all_signals or "recruitment" in all_signals or "jobs" in all_signals:
+            for a in self.find_by_category(LeadSourceCategory.JOB_MARKET):
+                if a not in matched_adapters and a.source_name.lower() not in excluded_sources:
+                    matched_adapters.append(a)
+
+        if "tender" in all_signals or "bidding" in all_signals or "procurement" in all_signals or "muasamcong" in all_signals:
+            for a in self.find_by_category(LeadSourceCategory.ENTERPRISE):
+                if a.source_name == "muasamcong" and a not in matched_adapters and a.source_name.lower() not in excluded_sources:
+                    matched_adapters.append(a)
+
+        if "enterprise" in all_signals or "funding" in all_signals or "tax" in all_signals or "mst" in all_signals:
+            for a in self.find_by_category(LeadSourceCategory.ENTERPRISE):
+                if a.source_name == "enterprise" and a not in matched_adapters and a.source_name.lower() not in excluded_sources:
+                    matched_adapters.append(a)
+
+        if "real_estate" in all_signals or "bds" in all_signals or "property" in all_signals:
+            for a in self.find_by_category(LeadSourceCategory.REAL_ESTATE):
+                if a not in matched_adapters and a.source_name.lower() not in excluded_sources:
+                    matched_adapters.append(a)
+
+        if "social" in all_signals or "community" in all_signals or "telegram" in all_signals:
+            for a in self.find_by_category(LeadSourceCategory.SOCIAL):
+                if a not in matched_adapters and a.source_name.lower() not in excluded_sources:
+                    matched_adapters.append(a)
+
+        # 5. If query is provided and nothing or few matched, check query intent
+        query = getattr(campaign_spec, "query", "") or ""
+        if not matched_adapters and query:
+            matched_adapters = self.resolve_adapters_for_intent(query)
+
+        # 6. Fallback: if still empty, return all registered non-excluded adapters
+        if not matched_adapters:
+            matched_adapters = [
+                a for a in self.list_all() if a.source_name.lower() not in excluded_sources
+            ]
+        else:
+            matched_adapters = [
+                a for a in matched_adapters if a.source_name.lower() not in excluded_sources
+            ]
+
+        # Prioritize and deduplicate JOB_MARKET adapters if multiple are present
+        by_category: dict[LeadSourceCategory, list[LeadSourceAdapter]] = {}
+        for a in matched_adapters:
+            by_category.setdefault(a.category, []).append(a)
+
+        deduped: list[LeadSourceAdapter] = []
+        for category, adapters in by_category.items():
+            if category == LeadSourceCategory.JOB_MARKET and len(adapters) > 1 and query:
+                selected: list[LeadSourceAdapter] = [
+                    a for a in adapters if _source_keyword_present(a.source_name, query)
+                ]
+                if not selected:
+                    for name in _JOB_MARKET_PRIORITY:
+                        for a in adapters:
+                            if a.source_name == name:
+                                selected.append(a)
+                                break
+                        if selected:
+                            break
+                if selected:
+                    deduped.extend(selected)
+                else:
+                    deduped.extend(adapters)
+            else:
+                deduped.extend(adapters)
+
+        return deduped
+
     def resolve_adapters_for_intent(self, prompt: str) -> list[LeadSourceAdapter]:
         """
         Route natural language user query to the most relevant scraper adapters.

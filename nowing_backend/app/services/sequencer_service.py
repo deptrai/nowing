@@ -203,7 +203,9 @@ class SequencerService:
                 f"Channel '{channel}' is deferred out of MVP (AD-41 / DEF-102). Only {allowed} supported."
             )
         # AD-41 / DEF-102 legal gate: Zalo requires explicit re-activation.
-        if channel.lower() == "zalo" and not getattr(config, "AD_41_REACTIVATED", False):
+        if channel.lower() == "zalo" and not getattr(
+            config, "AD_41_REACTIVATED", False
+        ):
             raise DeferredChannelError(
                 "Channel 'zalo' is gated by AD-41 / DEF-102. Set AD_41_REACTIVATED=true after SCP sign-off."
             )
@@ -243,10 +245,13 @@ class SequencerService:
         if channel == "telegram" and not external_chat_ids.get("telegram_chat_id"):
             return False
 
-        dnc_key = (
-            getattr(config, "SECRET_KEY", None)
-            or "nowing-secret-key-for-dnc-compliance-32"
-        )
+        dnc_key = getattr(config, "SECRET_KEY", None)
+        if not dnc_key:
+            logger.error(
+                "[SequencerService] SECRET_KEY is not configured — failing closed for DNC pre-check"
+            )
+            return False
+
         dnc_svc = DncComplianceService(secret_key=dnc_key)
 
         # Check DNC by email/phone domain/tax when available.
@@ -299,7 +304,9 @@ class SequencerService:
         body: str,
     ) -> str:
         """Dispatch email via SMTP and return provider message id."""
-        return await self._send_email_async(to_email=to_email, subject=subject, body=body)
+        return await self._send_email_async(
+            to_email=to_email, subject=subject, body=body
+        )
 
     async def _send_telegram_dispatch(
         self,
@@ -362,7 +369,9 @@ class SequencerService:
         await self.validate_step_channel(step.channel)
 
         # 1. Resolve verified contact with external chat IDs for the primary channel.
-        contact = await self._resolve_verified_contact(session, lead, channel=step.channel)
+        contact = await self._resolve_verified_contact(
+            session, lead, channel=step.channel
+        )
         if not contact or not contact.consent or not contact.is_valid:
             logger.info(
                 "Skipping send step for lead %s: no consented contact for %s",
@@ -410,7 +419,9 @@ class SequencerService:
             except Exception:
                 raw_phone = contact.phone
             if step.channel == "telegram":
-                telegram_chat_id = (contact.external_chat_ids or {}).get("telegram_chat_id")
+                telegram_chat_id = (contact.external_chat_ids or {}).get(
+                    "telegram_chat_id"
+                )
                 if not telegram_chat_id and raw_phone:
                     # Best-effort fallback: normalize phone is not a chat id, so fail.
                     pass
@@ -463,7 +474,9 @@ class SequencerService:
 
         if cost_micros > 0 and attributed_user_id:
             try:
-                await wallet_credit.check_balance(session, attributed_user_id, cost_micros)
+                await wallet_credit.check_balance(
+                    session, attributed_user_id, cost_micros
+                )
             except wallet_credit.InsufficientCreditsError:
                 return await self._fail_step(
                     session,
@@ -493,7 +506,9 @@ class SequencerService:
         fallback_channels = step.fallback_channels or []
         channels_to_try = [primary_channel, *list(fallback_channels)]
         channels_to_try = list(
-            dict.fromkeys([c.strip().lower() for c in channels_to_try if c and c.strip()])
+            dict.fromkeys(
+                [c.strip().lower() for c in channels_to_try if c and c.strip()]
+            )
         )
 
         last_error: str | None = None
@@ -1011,7 +1026,9 @@ class SequencerService:
                 template_data.get("subject", "Cơ hội hợp tác từ Nowing"),
                 context_vars,
             )
-            body = interpolate_template_variables(template_data.get("body", ""), context_vars)
+            body = interpolate_template_variables(
+                template_data.get("body", ""), context_vars
+            )
             msg_id = await self._send_email_dispatch(
                 to_email=norm_email, subject=subject, body=body
             )
@@ -1038,8 +1055,14 @@ class SequencerService:
             if dnc_result.is_blocked:
                 raise ValueError("dnc_blocked")
 
-            zalo_template = template_data.get("template_id") or template_data.get("zalo_template_id")
-            zalo_data = template_data.get("template_data") or template_data.get("zalo_template_data") or {}
+            zalo_template = template_data.get("template_id") or template_data.get(
+                "zalo_template_id"
+            )
+            zalo_data = (
+                template_data.get("template_data")
+                or template_data.get("zalo_template_data")
+                or {}
+            )
             if not zalo_template:
                 raise ValueError("missing_zalo_template_id")
 
@@ -1539,7 +1562,9 @@ class SequencerService:
 
         if channel == "email" and not contact.email:
             return None
-        if channel == "telegram" and not (contact.external_chat_ids or {}).get("telegram_chat_id"):
+        if channel == "telegram" and not (contact.external_chat_ids or {}).get(
+            "telegram_chat_id"
+        ):
             # Fallback: if phone-based chat id exists in the lead, accept it later.
             return None
         if channel == "zalo" and not contact.phone:
@@ -1598,12 +1623,11 @@ class SequencerService:
             analytics.total_cost_micros = ev_res[1] or 0
 
         # Per-channel breakdown: aggregate raw events in Python for driver safety.
-        cb_stmt = (
-            select(SequenceEvent.channel, SequenceEvent.event_type, SequenceEvent.cost_micros)
-            .where(
-                SequenceEvent.sequence_id == sequence_id,
-                SequenceEvent.workspace_id == workspace_id,
-            )
+        cb_stmt = select(
+            SequenceEvent.channel, SequenceEvent.event_type, SequenceEvent.cost_micros
+        ).where(
+            SequenceEvent.sequence_id == sequence_id,
+            SequenceEvent.workspace_id == workspace_id,
         )
         cb_res = await session.execute(cb_stmt)
         breakdown: dict[str, dict[str, int]] = {}

@@ -22,6 +22,27 @@ limiter.enabled = False
 
 
 @pytest_asyncio.fixture
+async def client(db_session: AsyncSession) -> AsyncGenerator[httpx.AsyncClient, None]:
+    async def override_session() -> AsyncGenerator[AsyncSession, None]:
+        yield db_session
+
+    previous_overrides = app.dependency_overrides.copy()
+    app.dependency_overrides[get_async_session] = override_session
+
+    try:
+        async with httpx.AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            timeout=30.0,
+            follow_redirects=False,
+        ) as test_client:
+            yield test_client
+    finally:
+        app.dependency_overrides.clear()
+        app.dependency_overrides.update(previous_overrides)
+
+
+@pytest_asyncio.fixture
 async def db_superuser(db_session: AsyncSession) -> User:
     user = User(
         id=uuid4(),
