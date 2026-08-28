@@ -111,7 +111,7 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 				setPreExpandSidebarCollapsed(sidebarContext.isCollapsed);
 				sidebarContext.setIsCollapsed(true);
 			}
-			setLeftWidth(MIN_LEFT_WIDTH);
+			setLeftWidth(0);
 		} else if (!isDockExpanded && preExpandLeftWidth !== null) {
 			setLeftWidth(preExpandLeftWidth);
 			setPreExpandLeftWidth(null);
