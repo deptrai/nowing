@@ -17,6 +17,12 @@ from app.services.meeting_minutes.schemas import (
 from app.services.meeting_minutes.service import MeetingMinutesService
 
 
+@pytest.fixture(autouse=True)
+def _enable_meeting_minutes(monkeypatch):
+    from app.config import config
+    monkeypatch.setattr(config, "MEETING_MINUTES_ENABLED", True)
+
+
 @pytest.mark.unit
 async def test_service_validates_input_requires_exactly_one_source():
     """AC-1: missing audio_url and document_id returns validation_failed."""

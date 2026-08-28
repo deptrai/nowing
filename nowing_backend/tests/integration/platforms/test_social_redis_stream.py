@@ -5,6 +5,7 @@ Requires PostgreSQL and Redis. Skipped automatically when either is unavailable.
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 import uuid
 
 import pytest
@@ -15,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import config
 from app.db import Lead, SocialMonitoredTarget, SocialPost
 from app.proprietary.platforms.xactions.adapter import STREAM_SOCIAL_RAW_POSTS
+import app.tasks.social_stream_worker as stream_worker
 from app.tasks.social_stream_worker import run_social_stream_consumer
 
 pytestmark = [pytest.mark.integration]
@@ -67,8 +69,15 @@ async def test_social_redis_stream_event_processing(
     platform_db_session: AsyncSession,
     platform_db_workspace,
     db_social_target,
+    monkeypatch,
 ):
     """A raw event pushed to stream:social:raw_posts is consumed and persisted."""
+    @asynccontextmanager
+    async def _test_session_maker():
+        yield platform_db_session
+
+    monkeypatch.setattr(stream_worker, "async_session_maker", _test_session_maker)
+
     redis_client = aioredis.from_url(config.REDIS_APP_URL, decode_responses=True)
     try:
         # Use a unique consumer name so repeated test runs don't share pending state.

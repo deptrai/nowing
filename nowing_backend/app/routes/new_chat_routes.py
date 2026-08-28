@@ -1885,6 +1885,17 @@ async def handle_new_chat(
             user_id=str(user.id),
         )
 
+        # Fail-fast resolution of the registry AgentConfig.  The actual merge
+        # into the runtime config happens inside ``stream_new_chat`` so the
+        # streaming session can re-merge after a mid-turn rate-limit recovery.
+        agent_config_override: AgentConfig | None = None
+        if effective_agent_id:
+            agent_config_override = await _resolve_agent_config(
+                session,
+                client_id=effective_client_id,  # type: ignore[arg-type]
+                agent_id=effective_agent_id,
+            )
+
         # Resolve the concrete LLM config id before loading the bundle. Auto
         # (0 or null) may repin to a concrete model based on workspace settings.
         pin_result = await resolve_initial_auto_pin(
@@ -1908,17 +1919,6 @@ async def handle_new_chat(
         )
         if llm_load_error:
             raise HTTPException(status_code=500, detail=llm_load_error)
-
-        # Fail-fast resolution of the registry AgentConfig.  The actual merge
-        # into the runtime config happens inside ``stream_new_chat`` so the
-        # streaming session can re-merge after a mid-turn rate-limit recovery.
-        agent_config_override: AgentConfig | None = None
-        if effective_agent_id:
-            agent_config_override = await _resolve_agent_config(
-                session,
-                client_id=effective_client_id,  # type: ignore[arg-type]
-                agent_id=effective_agent_id,
-            )
 
         # Release the read-transaction so we don't hold ACCESS SHARE locks
         # on workspaces/documents for the entire duration of the stream.

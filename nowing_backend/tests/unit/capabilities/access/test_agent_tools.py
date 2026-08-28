@@ -285,6 +285,7 @@ async def test_tool_registers_web_result_citations_when_output_has_sources(
     """Output with ``sources`` → Command carries WEB_RESULT entries + RUN citation."""
     from app.capabilities.core.access import agent as mod
 
+    monkeypatch.setattr(mod.config, "DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED", True)
     run_id = "660e8400-e29b-41d4-a716-446655440001"
     monkeypatch.setattr(mod, "record_run", AsyncMock(return_value=run_id))
     monkeypatch.setattr(

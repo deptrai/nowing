@@ -66,9 +66,7 @@ async def test_add_dnc_entry_writes_audit(service) -> None:
     # Simulate no existing record
     service.session.execute = AsyncMock(
         return_value=MagicMock(
-            scalars=MagicMock(
-                return_value=MagicMock(first=AsyncMock(return_value=None))
-            )
+            scalars=MagicMock(return_value=MagicMock(first=MagicMock(return_value=None)))
         )
     )
     service.session.add = MagicMock()
@@ -103,9 +101,7 @@ async def test_add_dnc_entry_updates_existing_writes_update_audit(service) -> No
 
     service.session.execute = AsyncMock(
         return_value=MagicMock(
-            scalars=MagicMock(
-                return_value=MagicMock(first=AsyncMock(return_value=existing))
-            )
+            scalars=MagicMock(return_value=MagicMock(first=MagicMock(return_value=existing)))
         )
     )
     service.session.add = MagicMock()

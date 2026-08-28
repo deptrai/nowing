@@ -983,6 +983,7 @@ class DshWorker:
                 with contextlib.suppress(asyncio.CancelledError):
                     await heartbeat_task
 
+            return True
         except asyncio.CancelledError:
             logger.info(
                 "Mission %s cancelled (heartbeat/lock lost or shutdown)", mission_id

@@ -191,7 +191,14 @@ if os.environ.get("COSMIC_RAY") == "1":
 
 import pytest  # noqa: E402
 
+from app.config import config as _app_config  # noqa: E402
 from app.db import DocumentType  # noqa: E402
+
+# Many unit and integration tests rely on PII encryption, DNC hashing, and JWT
+# signing. The `SECRET_KEY` env var may be unset in CI/hermetic environments, so
+# ensure a stable test key is present before any service/route module is loaded.
+if not getattr(_app_config, "SECRET_KEY", None):
+    _app_config.SECRET_KEY = "test-secret-key-integration-very-secure-32chars"
 from app.indexing_pipeline.connector_document import ConnectorDocument  # noqa: E402
 from app.rate_limiter import limiter  # noqa: E402
 

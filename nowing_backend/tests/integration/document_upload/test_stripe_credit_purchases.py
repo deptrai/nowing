@@ -112,6 +112,7 @@ async def _cleanup_credit_purchases():
 
 
 def _configure_credit_buying(monkeypatch) -> None:
+    monkeypatch.setattr(stripe_routes.config, "STRIPE_SECRET_KEY", "sk_test_fake")
     monkeypatch.setattr(stripe_routes.config, "STRIPE_CREDIT_BUYING_ENABLED", True)
     monkeypatch.setattr(
         stripe_routes.config, "STRIPE_CREDIT_PRICE_ID", "price_credit_1"

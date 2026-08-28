@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -65,6 +66,9 @@ class LeadGenOrchestratorResult(BaseModel):
     table_id: str | None = None
     subtask_plans: list[SubTaskPlan] = Field(default_factory=list)
     deduplication_summary: dict[str, Any] = Field(default_factory=dict)
+    execution_time_ms: float = 0.0
+    source_latency_ms: dict[str, float] = Field(default_factory=dict)
+    deduplication_rate: float = 0.0
 
 
 class LeadGenOrchestrator:
@@ -278,6 +282,7 @@ class LeadGenOrchestrator:
         per-adapter timeout isolation, graceful degradation, and entity deduplication.
         Supports declarative CampaignSpec or traditional prompt query for backward compatibility.
         """
+        start_time = time.perf_counter()
         effective_query = query
         effective_filters = filters or {}
         effective_table_id = table_id
@@ -302,6 +307,7 @@ class LeadGenOrchestrator:
             adapters = self.registry.resolve_adapters_for_intent(effective_query)
 
         if not adapters:
+            total_duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
             return LeadGenOrchestratorResult(
                 status="degraded",
                 total_discovered=0,
@@ -309,15 +315,20 @@ class LeadGenOrchestrator:
                 leads=[],
                 degraded_sources=["no_adapters_available"],
                 table_id=effective_table_id,
+                execution_time_ms=total_duration_ms,
+                source_latency_ms={},
+                deduplication_rate=0.0,
             )
 
         sem = asyncio.Semaphore(effective_concurrency)
         degraded_sources: list[str] = []
         all_normalized_leads: list[NormalizedLead] = []
+        source_latency_ms: dict[str, float] = {}
 
         async def _run_single_adapter(
             adapter: LeadSourceAdapter,
-        ) -> tuple[list[NormalizedLead], str | None]:
+        ) -> tuple[list[NormalizedLead], str | None, str, float]:
+            adapter_start = time.perf_counter()
             async with sem:
                 try:
                     raw_records = await asyncio.wait_for(
@@ -329,6 +340,7 @@ class LeadGenOrchestrator:
                         ),
                         timeout=effective_timeout,
                     )
+                    latency = round((time.perf_counter() - adapter_start) * 1000, 2)
                     is_degraded = (
                         getattr(adapter, "last_execution_status", "ok") == "degraded"
                     )
@@ -348,29 +360,32 @@ class LeadGenOrchestrator:
                                 adapter.source_name,
                                 norm_err,
                             )
-                    return normalized, degraded_name
+                    return normalized, degraded_name, adapter.source_name, latency
                 except TimeoutError:
+                    latency = round((time.perf_counter() - adapter_start) * 1000, 2)
                     logger.warning(
                         "Adapter %s timed out after %.1fs",
                         adapter.source_name,
                         effective_timeout,
                     )
-                    return [], adapter.source_name
+                    return [], adapter.source_name, adapter.source_name, latency
                 except Exception as exc:
+                    latency = round((time.perf_counter() - adapter_start) * 1000, 2)
                     logger.error(
                         "Adapter %s failed with error: %s",
                         adapter.source_name,
                         exc,
                     )
-                    return [], adapter.source_name
+                    return [], adapter.source_name, adapter.source_name, latency
 
         tasks = [_run_single_adapter(a) for a in adapters]
         batch_results = await asyncio.gather(*tasks, return_exceptions=True)
 
         for res in batch_results:
             if isinstance(res, tuple):
-                leads_list, degraded_name = res
+                leads_list, degraded_name, source_name, latency = res
                 all_normalized_leads.extend(leads_list)
+                source_latency_ms[source_name] = latency
                 if degraded_name:
                     degraded_sources.append(degraded_name)
 
@@ -405,6 +420,34 @@ class LeadGenOrchestrator:
         else:
             overall_status = "completed"
 
+        execution_time_ms = round((time.perf_counter() - start_time) * 1000, 2)
+        deduplication_rate = (
+            round(1.0 - (len(final_leads) / total_discovered), 4)
+            if total_discovered > 0
+            else 0.0
+        )
+
+        def _resolve_adapter_category(adapter: Any) -> LeadSourceCategory:
+            cat = getattr(adapter, "category", None)
+            if isinstance(cat, LeadSourceCategory):
+                return cat
+            if isinstance(cat, str):
+                try:
+                    return LeadSourceCategory(cat)
+                except ValueError:
+                    return LeadSourceCategory.GENERAL
+            return LeadSourceCategory.GENERAL
+
+        subtask_plans = [
+            SubTaskPlan(
+                source_name=getattr(a, "source_name", "unknown"),
+                query=effective_query,
+                limit=effective_limit,
+                category=_resolve_adapter_category(a),
+            )
+            for a in adapters
+        ]
+
         return LeadGenOrchestratorResult(
             status=overall_status,
             total_discovered=total_discovered,
@@ -412,6 +455,7 @@ class LeadGenOrchestrator:
             leads=final_leads,
             degraded_sources=sorted(set(degraded_sources)),
             table_id=effective_table_id,
+            subtask_plans=subtask_plans,
             deduplication_summary={
                 "raw_count": total_discovered,
                 "deduplicated_count": len(final_leads),
@@ -419,6 +463,9 @@ class LeadGenOrchestrator:
                 # The real suppression count is reported by execute_and_persist.
                 "dnc_suppressed_count": 0,
             },
+            execution_time_ms=execution_time_ms,
+            source_latency_ms=source_latency_ms,
+            deduplication_rate=deduplication_rate,
         )
 
     async def _assign_new_leads(
