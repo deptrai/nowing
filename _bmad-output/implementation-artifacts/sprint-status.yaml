@@ -102,7 +102,7 @@ development_status:
   epic-3-retrospective: done
 
   # === Epic 4: Chat & Agents ===
-  epic-4: in-progress
+  epic-4: done
   4-7: done
   4-8a: done
   4-8b: done
@@ -151,7 +151,7 @@ development_status:
   epic-7-retrospective: optional
 
   # === Epic 8: Workspace Billing & Usage Transparency ===
-  epic-8: in-progress
+  epic-8: done
   8-3: done
   8-7: done
   8-8: done
@@ -166,7 +166,7 @@ development_status:
   epic-8-retrospective: optional
 
   # === Epic 9: Deep Research đáng tin cậy ===
-  epic-9: in-progress
+  epic-9: done
   9-1a: done
   9-1b: done
   9-2: done
