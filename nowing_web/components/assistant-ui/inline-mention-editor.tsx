@@ -405,6 +405,7 @@ export const InlineMentionEditor = forwardRef<InlineMentionEditorRef, InlineMent
 			disabled = false,
 			className,
 			initialText,
+			...props
 		},
 		ref
 	) => {
