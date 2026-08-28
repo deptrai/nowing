@@ -3,12 +3,12 @@ story_id: "28.5"
 epic: "28"
 story_key: 28-5-workspace-memory-storage-cap-and-retention
 baseline_commit: 6cd320a39
-status: review
+status: done
 ---
 
 # Story 28.5: Workspace Memory Storage Cap & Retention Lifecycle
 
-Status: review
+Status: done
 
 **Story ID:** 28.5
 **Epic:** Epic 28 — Self-Host Trust, Data Portability & Cloud GA Legal Readiness

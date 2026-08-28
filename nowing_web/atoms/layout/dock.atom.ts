@@ -24,7 +24,10 @@ export const dockOpenAtom = atom(false);
 export const dockActiveTabAtom = atom<DockTabId>("leads");
 
 /** Dock width in pixels. */
-export const dockWidthAtom = atom<number>(420);
+export const dockWidthAtom = atom<number>(840);
+
+/** Whether the dock is expanded to fill the available workspace. */
+export const dockExpandedAtom = atom(false);
 
 /** Verbose mode: show rich content inline in the chat stream instead of (or in addition to) the dock. */
 export const dockVerboseModeAtom = atom(false);
