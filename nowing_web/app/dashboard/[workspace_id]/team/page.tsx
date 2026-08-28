@@ -1,4 +1,9 @@
+import type { Metadata } from "next";
 import { TeamContent } from "./team-content";
+
+export const metadata: Metadata = {
+	title: "Team",
+};
 
 export default async function TeamPage({ params }: { params: Promise<{ workspace_id: string }> }) {
 	const { workspace_id } = await params;
