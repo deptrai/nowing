@@ -1,4 +1,9 @@
+import type { Metadata } from "next";
 import { AutomationsContent } from "./automations-content";
+
+export const metadata: Metadata = {
+	title: "Automations",
+};
 
 export default async function AutomationsPage({
 	params,

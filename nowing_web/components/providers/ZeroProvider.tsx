@@ -1,19 +1,24 @@
 "use client";
 
+import type { LogSink } from "@rocicorp/logger";
 import {
 	useConnectionState,
 	useZero,
 	ZeroProvider as ZeroReactProvider,
 } from "@rocicorp/zero/react";
+import { AlertTriangle, CloudOff } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "@/hooks/use-session";
 import { authenticatedFetch, getDesktopAccessToken } from "@/lib/auth-fetch";
 import { handleUnauthorized, isPublicRoute, refreshSession } from "@/lib/auth-utils";
 import { buildBackendUrl } from "@/lib/env-config";
+import { cn } from "@/lib/utils";
 import type { Context } from "@/types/zero";
 import { queries } from "@/zero/queries";
 import { schema } from "@/zero/schema";
+
+const isDev = process.env.NODE_ENV === "development";
 
 const configuredCacheURL = process.env.NEXT_PUBLIC_ZERO_CACHE_URL;
 type ZeroContext = Exclude<Context, undefined>;
@@ -59,17 +64,97 @@ const MAX_ZERO_AUTH_REFRESH_ATTEMPTS = 3;
 const ZERO_AUTH_REFRESH_BASE_DELAY_MS = 1_000;
 const ZERO_AUTH_REFRESH_MAX_DELAY_MS = 30_000;
 
+// Throttle repeated WebSocket/connection error logs so a down zero-cache does
+// not flood the console while still keeping `error`-level output in dev.
+const MAX_CONNECTION_LOGS_PER_MINUTE = 3;
+const connectionLogWindowMs = 60_000;
+
+// Number of consecutive connection failures before we treat the sync layer as
+// offline and show a non-blocking banner.
+const OFFLINE_BANNER_THRESHOLD = 2;
+
+/** Deduplicating log sink that swallows the noisiest Zero log lines. */
+const zeroLogSink: LogSink = {
+	log(level, _context, ...args) {
+		const message = String(args[0] ?? "");
+
+		// Always surface auth and schema/version errors.
+		const alwaysShow = /needs-auth|401|403|version|schema/i.test(message);
+
+		// Downgrade repetitive connection noise unless in dev.
+		const isConnectionNoise = /connect|websocket|ws|socket|disconnected|retry/i.test(message);
+		if (isConnectionNoise && !alwaysShow) {
+			if (level === "error" || level === "warn") {
+				if (isDev) {
+					// Rate-limit dev logs so the console stays readable.
+					throttledLog(level, args);
+				}
+				return;
+			}
+		}
+
+		console[level]?.(message, ...args.slice(1));
+	},
+	flush: () => Promise.resolve(),
+};
+
+let logBucket: { count: number; resetAt: number } | null = null;
+
+function throttledLog(level: "error" | "warn", args: unknown[]) {
+	const now = Date.now();
+	if (!logBucket || now > logBucket.resetAt) {
+		logBucket = { count: 1, resetAt: now + connectionLogWindowMs };
+	} else {
+		logBucket.count += 1;
+	}
+
+	if (logBucket.count <= MAX_CONNECTION_LOGS_PER_MINUTE) {
+		console[level]?.(
+			`[zero] connection log throttled (${logBucket.count}/${MAX_CONNECTION_LOGS_PER_MINUTE} in 60s):`,
+			...args
+		);
+	}
+}
+
+function ZeroConnectionBanner({ state, failures }: { state: ConnectionState; failures: number }) {
+	if (state.name === "connected" || failures < OFFLINE_BANNER_THRESHOLD) return null;
+
+	const isAuthError = state.name === "needs-auth" || state.name === "error";
+	const Icon = isAuthError ? AlertTriangle : CloudOff;
+	const message = isAuthError
+		? "Sync service is paused. Waiting for a fresh session."
+		: "Real-time sync is offline. Retrying in the background.";
+
+	return (
+		<output
+			aria-live="polite"
+			className={cn(
+				"fixed bottom-4 left-1/2 z-50 -translate-x-1/2",
+				"flex items-center gap-2 rounded-full px-4 py-2 text-sm shadow-lg",
+				"bg-background/95 text-foreground border border-border backdrop-blur-sm"
+			)}
+		>
+			<Icon className="h-4 w-4 text-amber-500" aria-hidden="true" />
+			<span>{message}</span>
+		</output>
+	);
+}
+
 function ZeroAuthSync({ isDesktop }: { isDesktop: boolean }) {
 	const zero = useZero();
 	const connectionState = useConnectionState();
 	const refreshAttemptsRef = useRef(0);
 	const refreshInFlightRef = useRef(false);
+	const [consecutiveFailures, setConsecutiveFailures] = useState(0);
 
-	// Once a connection is established, clear the backoff so future
-	// auth expirations get a fresh set of refresh attempts.
+	// Track connection health: increment on terminal error / disconnected states,
+	// reset on success. `connecting` is Zero's own retry and is not a failure.
 	useEffect(() => {
 		if (connectionState.name === "connected") {
+			setConsecutiveFailures(0);
 			refreshAttemptsRef.current = 0;
+		} else if (connectionState.name === "disconnected" || connectionState.name === "error") {
+			setConsecutiveFailures((prev) => prev + 1);
 		}
 	}, [connectionState.name]);
 
@@ -129,7 +214,7 @@ function ZeroAuthSync({ isDesktop }: { isDesktop: boolean }) {
 		});
 	}, [zero]);
 
-	return null;
+	return <ZeroConnectionBanner state={connectionState} failures={consecutiveFailures} />;
 }
 
 function AuthenticatedZeroProvider({
@@ -226,6 +311,10 @@ function ZeroClientProvider({
 			context,
 			cacheURL,
 			auth: isDesktop ? desktopAuth : undefined,
+			// Route Zero's internal logs through our throttled sink so a missing
+			// zero-cache does not spam the browser console.
+			logSink: zeroLogSink,
+			logLevel: isDev ? "info" : "error",
 		}),
 		[userID, context, cacheURL, isDesktop, desktopAuth]
 	);

@@ -112,6 +112,7 @@ interface InlineMentionEditorProps {
 	disabled?: boolean;
 	className?: string;
 	initialText?: string;
+	"data-testid"?: string;
 }
 
 type MentionStatusKind = "pending" | "processing" | "ready" | "failed";
@@ -733,11 +734,14 @@ export const InlineMentionEditor = forwardRef<InlineMentionEditorRef, InlineMent
 			[editor.selection, getCurrentValue, onKeyDown, onSubmit, removeChip]
 		);
 
+		const dataTestId = (props as { "data-testid"?: string })["data-testid"];
+
 		const editableProps = useMemo(
 			() => ({
 				placeholder,
 				role: "textbox",
-				"aria-label": placeholder,
+				"aria-label": placeholder || "Chat message input",
+				"data-testid": dataTestId ?? "chat-composer-input",
 				"aria-multiline": true,
 				"aria-disabled": disabled,
 				onPaste: (e: React.ClipboardEvent<HTMLDivElement>) => {
@@ -748,7 +752,7 @@ export const InlineMentionEditor = forwardRef<InlineMentionEditorRef, InlineMent
 				},
 				onKeyDown: handleKeyDown,
 			}),
-			[editor, handleKeyDown, placeholder, disabled]
+			[editor, handleKeyDown, placeholder, disabled, dataTestId]
 		);
 
 		const mentionEditorContextValue = useMemo<MentionEditorContextValue>(

@@ -1524,6 +1524,7 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 							onDocumentRemove={handleDocumentRemove}
 							onSubmit={handleSubmit}
 							onKeyDown={handleKeyDown}
+							data-testid="chat-composer-input"
 							className="min-h-[48px] sm:min-h-[24px] **:data-slate-placeholder:font-normal"
 						/>
 					</div>

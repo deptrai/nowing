@@ -215,10 +215,11 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 
 	const pillContent = (
 		<motion.span
+			initial={false}
 			animate={
 				isFlipped
 					? { rotateX: [0, 90, 0], scale: [1, 1.05, 1], opacity: [1, 0.8, 1] }
-					: { rotateX: 0, scale: 1, opacity: 1 }
+					: { rotateX: 0, scale: 1 }
 			}
 			transition={{ duration: FLIP_DURATION_MS / 1000 }}
 			style={{ transformOrigin: "center center" }}

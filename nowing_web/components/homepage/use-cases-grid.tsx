@@ -58,10 +58,13 @@ function UseCaseCard({
 	return (
 		<>
 			<motion.div
-				initial={{ opacity: 0, y: 24 }}
-				whileInView={{ opacity: 1, y: 0 }}
+				initial="hidden"
+				whileInView="visible"
 				viewport={{ once: true, margin: "-60px" }}
-				transition={{ duration: 0.5, ease: "easeOut" }}
+				variants={{
+					hidden: { opacity: 0, y: 24 },
+					visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
+				}}
 				className={`group overflow-hidden rounded-2xl border border-neutral-200/60 bg-white shadow-sm transition-shadow duration-300 hover:shadow-xl dark:border-neutral-700/60 dark:bg-neutral-900 ${className ?? ""}`}
 			>
 				{/* biome-ignore lint/a11y/useSemanticElements: div wraps img, button would break layout */}
