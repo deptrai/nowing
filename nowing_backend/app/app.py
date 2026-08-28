@@ -311,7 +311,11 @@ def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
     """Custom 429 handler that returns JSON matching our error envelope."""
     rid = _get_request_id(request)
     ot_metrics.record_rate_limit_rejection(scope="slowapi")
-    retry_after = exc.detail.split("per")[-1].strip() if exc.detail else "60"
+    detail = getattr(exc, "detail", None)
+    if isinstance(detail, str):
+        retry_after = detail.split("per")[-1].strip() or "60"
+    else:
+        retry_after = "60"
     return _build_error_response(
         429,
         "Too many requests. Please slow down and try again.",
