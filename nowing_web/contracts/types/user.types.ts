@@ -31,7 +31,10 @@ export const updateUserRequest = z.object({
  */
 export const updateUserResponse = user;
 
+export const changePasswordResponse = user;
+
 export type User = z.infer<typeof user>;
 export type GetMeResponse = z.infer<typeof getMeResponse>;
 export type UpdateUserRequest = z.infer<typeof updateUserRequest>;
 export type UpdateUserResponse = z.infer<typeof updateUserResponse>;
+export type ChangePasswordResponse = z.infer<typeof changePasswordResponse>;

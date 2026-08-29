@@ -210,7 +210,10 @@ export function EditorPanelContent({
 
 	const { data: chunkData } = useQuery({
 		queryKey: ["editor-chunk", chunkId],
-		queryFn: () => documentsApiService.getDocumentByChunk({ chunk_id: chunkId!, chunk_window: 0 }),
+		queryFn: () => {
+			if (!chunkId) return Promise.reject(new Error("No chunkId provided"));
+			return documentsApiService.getDocumentByChunk({ chunk_id: chunkId, chunk_window: 0 });
+		},
 		enabled: kind === "document" && !!chunkId,
 		staleTime: 5 * 60 * 1000,
 	});

@@ -5,7 +5,12 @@ import { GripVertical, MessageSquare, Table } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { dockExpandedAtom, dockOpenAtom } from "@/atoms/layout/dock.atom";
+import {
+	dockActiveTabAtom,
+	dockExpandedAtom,
+	dockOpenAtom,
+	dockTabUpdatesAtom,
+} from "@/atoms/layout/dock.atom";
 import {
 	activeDrawerLeadAtom,
 	canvasLeftWidthAtom,
@@ -55,8 +60,10 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 	const isMobile = useIsMobile();
 	const [leftWidth, setLeftWidth] = useAtom(canvasLeftWidthAtom);
 	const [isCollapsed, setIsCollapsed] = useAtom(isLeftPanelCollapsedAtom);
-	const isDockOpen = useAtomValue(dockOpenAtom);
+	const [isDockOpen, setDockOpen] = useAtom(dockOpenAtom);
 	const isDockExpanded = useAtomValue(dockExpandedAtom);
+	const [, setDockActiveTab] = useAtom(dockActiveTabAtom);
+	const [, setDockTabUpdates] = useAtom(dockTabUpdatesAtom);
 	const [preExpandLeftWidth, setPreExpandLeftWidth] = useState<number | null>(null);
 	const [preExpandSidebarCollapsed, setPreExpandSidebarCollapsed] = useState<boolean | null>(null);
 	const sidebarContext = useSidebarContextSafe();
@@ -156,15 +163,58 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 		search: searchQuery || undefined,
 	});
 
-	// Merged display leads: prioritize live parsed leads from current thread;
-	// fall back to the API list when no chat thread is active so the Leads tab
-	// still shows workspace leads.
+	// Merged display leads: prefer real persisted leads (apiLeads) over chat
+	// preview rows when the same phone appears in both, so phone-unlock
+	// actions hit real lead/contact IDs instead of transient preview IDs.
 	const displayLeads = useMemo(() => {
-		if (threadContext.leads && threadContext.leads.length > 0) {
+		if (!threadContext.leads || threadContext.leads.length === 0) {
+			return apiLeads;
+		}
+		if (apiLeads.length === 0) {
 			return threadContext.leads;
 		}
-		return apiLeads;
+		const apiById = new Map(apiLeads.map((l) => [l.id, l]));
+		const apiByPhone = new Map<string, Lead>();
+		for (const l of apiLeads) {
+			const match = l.company_name?.match(/(?:\+84|84|0)[1-9][0-9]{7,9}/);
+			if (match) apiByPhone.set(match[0], l);
+		}
+		return threadContext.leads.map((l) => {
+			if (apiById.get(l.id)) return apiById.get(l.id) as Lead;
+			const match = l.company_name?.match(/(?:\+84|84|0)[1-9][0-9]{7,9}/);
+			if (match && apiByPhone.get(match[0])) return apiByPhone.get(match[0]) as Lead;
+			return l;
+		});
 	}, [threadContext.leads, apiLeads]);
+
+	// Auto-open the right dock to the Leads tab when a chat turn produces fresh leads.
+	const previousThreadLeadsRef = useRef(0);
+	useEffect(() => {
+		const threadLeadCount = threadContext.leads?.length ?? 0;
+		const hasNewThreadLeads =
+			hasActiveThread && threadLeadCount > 0 && previousThreadLeadsRef.current === 0;
+		previousThreadLeadsRef.current = threadLeadCount;
+
+		if (hasNewThreadLeads) {
+			if (!isDockOpen) setDockOpen(true);
+			setDockActiveTab("leads");
+			setDockTabUpdates((prev) => ({
+				...prev,
+				leads: (prev.leads ?? 0) + 1,
+			}));
+			// Refresh persisted leads so we can merge real lead/contact IDs into the
+			// preview rows; this is what makes phone unlock work on chat-generated leads.
+			void refetch();
+		}
+	}, [
+		hasActiveThread,
+		threadContext.leads?.length,
+		isDockOpen,
+		setDockOpen,
+		setDockActiveTab,
+		setDockTabUpdates,
+		refetch,
+	]);
 
 	const selectedLeads = useMemo(() => {
 		return displayLeads.filter((lead) => selectedLeadIds.includes(lead.id));

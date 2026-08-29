@@ -102,28 +102,17 @@ class RedisRunEventBus:
                 if self._pubsub is not None:
                     with contextlib.suppress(Exception):
                         await self._pubsub.close()
-                try:
-                    self._pubsub = self._client().pubsub()
-                    # Re-subscribe to every channel that already has a subscriber.
-                    channels = [
-                        _channel(rid) for rid, subs in self._subscribers.items() if subs
-                    ]
-                    if channels:
-                        await asyncio.wait_for(
-                            self._pubsub.subscribe(*channels), timeout=5.0
-                        )
-                    self._listener_task = asyncio.create_task(
-                        self._listener(),
-                        name="run_event_bus_redis_listener",
-                    )
-                except Exception:
-                    logger.exception(
-                        "run_event_bus _ensure_listener failed to start pubsub"
-                    )
-                    self._fire(
-                        "run_event_bus_handle_listener_error",
-                        self._handle_listener_error(),
-                    )
+                self._pubsub = self._client().pubsub()
+                # Re-subscribe to every channel that already has a subscriber.
+                channels = [
+                    _channel(rid) for rid, subs in self._subscribers.items() if subs
+                ]
+                if channels:
+                    await self._pubsub.subscribe(*channels)
+                self._listener_task = asyncio.create_task(
+                    self._listener(),
+                    name="run_event_bus_redis_listener",
+                )
 
         if self._ensure_task is not None and not self._ensure_task.done():
             with contextlib.suppress(Exception):
@@ -136,15 +125,11 @@ class RedisRunEventBus:
         async with self._listener_lock:
             pubsub = self._pubsub
             self._pubsub = None
-            if self._listener_task is not None and not self._listener_task.done():
-                self._listener_task.cancel()
             self._listener_task = None
-            if pubsub is not None:
-                with contextlib.suppress(Exception):
-                    await pubsub.close()
+            with contextlib.suppress(Exception):
+                await pubsub.close()
         await asyncio.sleep(1.0)
-        if any(subs for subs in self._subscribers.values()):
-            self._ensure_listener()
+        self._ensure_listener()
 
     async def _listener(self) -> None:
         """Forward Redis pub/sub messages to local queues."""
@@ -186,37 +171,28 @@ class RedisRunEventBus:
 
     def _subscribe_channel(self, run_id: str) -> None:
         async def _sub() -> None:
+            if self._pubsub is None:
+                return
             channel = _channel(run_id)
-            async with self._listener_lock:
-                if self._pubsub is None:
-                    return
-                try:
-                    await asyncio.wait_for(self._pubsub.subscribe(channel), timeout=5.0)
-                except Exception:
-                    logger.warning(
-                        "run %s: redis subscribe failed", run_id, exc_info=True
-                    )
-                    self._fire(
-                        "run_event_bus_handle_listener_error",
-                        self._handle_listener_error(),
-                    )
+            try:
+                await asyncio.wait_for(self._pubsub.subscribe(channel), timeout=5.0)
+            except Exception:
+                logger.warning("run %s: redis subscribe failed", run_id, exc_info=True)
 
         self._ensure_listener()
         self._fire(f"run_event_bus_subscribe:{run_id}", _sub())
 
     def _unsubscribe_channel(self, run_id: str) -> None:
         async def _unsub() -> None:
+            if self._pubsub is None:
+                return
             channel = _channel(run_id)
-            async with self._listener_lock:
-                if self._pubsub is not None:
-                    try:
-                        await asyncio.wait_for(
-                            self._pubsub.unsubscribe(channel), timeout=5.0
-                        )
-                    except Exception:
-                        logger.warning(
-                            "run %s: redis unsubscribe failed", run_id, exc_info=True
-                        )
+            try:
+                await asyncio.wait_for(self._pubsub.unsubscribe(channel), timeout=5.0)
+            except Exception:
+                logger.warning(
+                    "run %s: redis unsubscribe failed", run_id, exc_info=True
+                )
             if not any(subs for subs in self._subscribers.values()):
                 await self._stop_listener()
 

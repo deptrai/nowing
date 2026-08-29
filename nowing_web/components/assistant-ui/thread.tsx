@@ -802,7 +802,7 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 	const [suggestionAnchorPoint, setSuggestionAnchorPoint] =
 		useState<ComposerSuggestionAnchorPoint | null>(null);
 	const [suggestedCardDismissed, setSuggestedCardDismissed] = useState(false);
-	const [_isComposerInputEmpty, setIsComposerInputEmpty] = useState(true);
+	const [isComposerInputEmpty, setIsComposerInputEmpty] = useState(true);
 	const editorRef = useRef<InlineMentionEditorRef>(null);
 	const prevMentionedDocsRef = useRef<Map<string, MentionedDocumentInfo>>(new Map());
 	const documentPickerRef = useRef<DocumentMentionPickerRef>(null);
@@ -853,6 +853,8 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 	const tChat = useTranslations("chat");
 	const isThreadEmpty = useAuiState(({ thread }) => thread.isEmpty);
 	const isThreadRunning = useAuiState(({ thread }) => thread.isRunning);
+	const pendingScreenImages = useAtomValue(pendingUserImageDataUrlsAtom);
+	const isComposerEmpty = isComposerInputEmpty && pendingScreenImages.length === 0;
 	const [connectToolsTrayVisible, setConnectToolsTrayVisible] = useState(false);
 	const [selectedLeadContext, setSelectedLeadContext] = useAtom(selectedLeadContextAtom);
 
@@ -1530,6 +1532,7 @@ const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }> = ({
 					</div>
 					<ComposerAction
 						isBlockedByOtherUser={isBlockedByOtherUser}
+						isComposerEmpty={isComposerEmpty}
 						workspaceId={workspaceId ?? 0}
 						onChatModelSelected={handleChatModelSelected}
 					/>
@@ -1611,16 +1614,17 @@ const ConnectedScraperIcons: FC<{ workspaceId: number }> = ({ workspaceId }) => 
 
 interface ComposerActionProps {
 	isBlockedByOtherUser?: boolean;
+	isComposerEmpty?: boolean;
 	workspaceId: number;
 	onChatModelSelected?: () => void;
 }
 
 const ComposerAction: FC<ComposerActionProps> = ({
 	isBlockedByOtherUser = false,
+	isComposerEmpty: isComposerEmptyProp = true,
 	workspaceId,
 	onChatModelSelected,
 }) => {
-	const mentionedDocuments = useAtomValue(mentionedDocumentsAtom);
 	const setImportRequest = useSetAtom(importConnectorRequestAtom);
 	const router = useRouter();
 	const [toolsPopoverOpen, setToolsPopoverOpen] = useState(false);
@@ -1635,12 +1639,7 @@ const ComposerAction: FC<ComposerActionProps> = ({
 	const setPendingScreenImages = useSetAtom(pendingUserImageDataUrlsAtom);
 	const electronAPI = useElectronAPI();
 
-	const isComposerTextEmpty = useAuiState(({ composer }) => {
-		const text = composer.text?.trim() || "";
-		return text.length === 0;
-	});
-	const isComposerEmpty =
-		isComposerTextEmpty && mentionedDocuments.length === 0 && pendingScreenImages.length === 0;
+	const isComposerEmpty = isComposerEmptyProp;
 
 	const handleScreenCapture = useCallback(async () => {
 		const url = electronAPI?.captureFullScreen

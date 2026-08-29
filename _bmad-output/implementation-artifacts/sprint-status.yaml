@@ -83,7 +83,7 @@ development_status:
   epic-2-retrospective: done
 
   # === Epic 3: Knowledge Base + Long-Term Memory ===
-  epic-3: done
+  epic-3: in-progress
   3-6: done
   3-7: done
   # ponytail: 2026-08-15 reopened all followups to ready-for-dev
@@ -102,11 +102,11 @@ development_status:
   # ponytail: 2026-08-11 sprint planning — moved to in-progress.
   3-17: done
   # ponytail: 2026-08-13 implementation + code review + benchmark all PASS; patches applied (logger, tests, comment); AC1-4 satisfied.
-  3-18: done  # 2026-08-28: Ratified memory recall thresholds in memory-recall-thresholds-2026-08-21.md from run 2026-07-28T16-28-54Z; 171/171 eval tests pass.
+  3-18: backlog  # Recall Precision / Noise Gate Ratification (mới 2026-08-21 từ PRFAQ)
   epic-3-retrospective: done
 
   # === Epic 4: Chat & Agents ===
-  epic-4: done
+  epic-4: in-progress
   4-7: done
   4-8a: done
   4-8b: done
@@ -149,7 +149,7 @@ development_status:
   epic-6-retrospective: optional
 
   # === Epic 7: Multi-surface Clients ===
-  epic-7: done
+  epic-7: in-progress
   7-4: done
   # ponytail: 2026-08-09 bmad-code-review — 4 decisions resolved, 12 patches applied, all tests pass
   7-7: done
@@ -157,7 +157,7 @@ development_status:
   epic-7-retrospective: optional
 
   # === Epic 8: Workspace Billing & Usage Transparency ===
-  epic-8: done
+  epic-8: in-progress
   8-3: done
   8-7: done
   8-8: done
@@ -172,7 +172,7 @@ development_status:
   epic-8-retrospective: optional
 
   # === Epic 9: Deep Research đáng tin cậy ===
-  epic-9: done
+  epic-9: in-progress
   9-1a: done
   9-1b: done
   9-2: done
@@ -221,10 +221,10 @@ development_status:
   # UX contracts created 2026-08-11; outbound scope: Email only (Zalo/LinkedIn disabled); lead sources = all FR-6 scrapers.
   # 2026-08-15: PO decision — store phone numbers; admin can hide PII fields. Governance gates accepted. Epic opened for dev.
   # 2026-08-20: Reopened to wire lead source adapters to live scrapers and persist leads (Story 21.19).
-  epic-21: done
+  epic-21: in-progress
   21-1: done
   21-2: done
-  21-3: done  # 2026-08-15: 3-tier waterfall + PII vault + anti-ReDoS + auto-refund SLA done; 11 code review patches applied; 16/16 unit tests passed
+  21-3: done  # 2026-08-28 SCP amended: re-enable BĐS phone resolution (resolve_phones circuit breaker) + per-contact unlock UI; verified 2026-08-28: ruff/pytest/tsc green, broker-smoke E2E green.
   21-4: done  # 2026-08-15: BMAD code review re-run; fake data removed, permissions + Zero sync + client_id filter applied
   21-5: done  # 2026-08-16: BMAD 3-layer code review; 11 patches applied (tenant state scoping, false positive dedup fix, RLS tenant isolation, NULLIF, async error flush, naive UTC conflict, FastMCP list guard, pagination); 34 unit tests pass, ruff clean
   21-6: done  # 2026-08-15: all review findings resolved, AI Draft now LLM-based with fallback; 30 tests pass; remaining items are pre-existing 21.3/10.8 scope
@@ -236,12 +236,12 @@ development_status:
   21-12: done  # 2026-08-15: Viral Social Outbound Co-pilot (Voice Learner, Outlier Analyzer, Split Review UI, 3 capabilities registered, unit/integration/E2E green, ruff/tsc/biome clean)
   21-13: done  # 2026-08-15: Multi-Table Tabs & Send/Export Hub (Zero-cache live reactive sync, CSV/Lark Export)
   21-14: done  # 2026-08-15: Smart Whitelist & DNC Compliance Engine
-  21-15: done  # 2026-08-16: Unified Multi-Source AI Lead Generation Orchestrator & Universal Scraper Adapters; 7 review patches applied, 169 unit tests passing, ruff clean
-  21-16: done  # 2026-08-16: Nowing Split-View Canvas & Workspace Modernization (340px Chat + Dynamic 4-Mode Matrix, Real Credits Atom, Empty State Quickstart Deck, Markdown Blob Exporter, Live Scraper & Automation APIs, Suggested Actions, tsc/biome/E2E clean)
+  21-15: done  # 2026-08-28: buy/sell/neutral intent disambiguation + honest chat framing for BĐS listings implemented; ruff/pytest green.
+  21-16: done  # 2026-08-28: Slate composer Send button reactive to editor value changes; ruff/pytest/tsc green.
   21-17: done  # 2026-08-16: Complete Origami Landing Page (10 sections) + Mint Green OrigamiLogo + Verticals grid; tsc/biome clean
   21-18: done  # 2026-08-16: Partners Affiliate Portal & $0 Pricing Page Deployment (Alembic 215, PartnerService, 15% commission hook, VietQR payouts, PricingLeadCalculator, PartnerEarningsCalculator, /partners & /partners/dashboard, 13/13 backend pytest green, ruff/tsc/biome 100% clean)
-  21-19: done  # Lead Source Adapter Live Data Integration & Persistence — review completed, 12 patches applied, tests green; remaining source-list gap deferred to 21.20.
-  21-20: done  # Extend Multi-Source Lead Gen Adapters — review applied (degraded latch, location default, price regex, source_url, fake email, registry dedup); tests green.
+  21-19: done  # 2026-08-28 SCP amended: update AC for resolve_phones + VerifiedContact on BĐS listings.
+  21-20: done  # 2026-08-28 SCP amended: apply resolve_phones strategy to MuabanBdsLeadAdapter + adapter registry.
   21-21: done  # Deterministic Confidence Gate & Selective Micro-LLM Fallback Worker — review findings resolved, 217 unit tests green.
   epic-21-retrospective: optional
 
@@ -265,7 +265,7 @@ development_status:
 
   # === Epic 24: Enterprise Lead Conversion, Automated Multi-Channel Outreach & Team CRM Ecosystem ===
   # 2026-08-16: Strategic Lead Conversion, Visual Drip Outreach, Waterfall MST Verification, Multi-Seat CRM, Lead Clipper Extension
-  epic-24: done
+  epic-24: in-progress
   24-1: done  # Multi-Channel Drip Outreach Campaign Engine (Email-first MVP, Sequence bounded context, AD-39/41/42/43/45/49); chunk 1 (API/tests/migration), chunk 2 (core services/scheduler), and chunk 3 (frontend) resolved — patches applied.
   24-2: done  # Waterfall Phone & B2B Tax Code (MST) Corporate Verification Engine — all batch 1/2 code review patches applied, phone output canonicalized (E.164 hash/DNC/cache, domestic display), retry queue verified (Celery phone worker + masothue in-process retries), 74 unit tests pass
   24-3: done  # Multi-Seat Team CRM Pipeline & Shared Workspace Credit Pooling — backend ruff/pytest (23 unit + 3 integration) green, frontend tsc/biome green, E2E Playwright kanban-multicontext-sync.spec.ts reaches Kanban render and lead card visibility; remaining drag-and-drop/OCC 409 assertion is flaky locally and tracked in e2e-gate-24-3.md. Deferred test-quality/direct-debit items belong to other stories.
@@ -289,7 +289,7 @@ development_status:
 
   # === Epic 26: Autonomous Lead Missions & Deep Sales Research ===
   # 2026-08-17: Governed by Architecture Spine (AD-101 to AD-110). FastMCP, Stateless ChainLens Ingest, dsh-worker Sidecar, Hybrid Router.
-  epic-26: done
+  epic-26: in-progress
   26-1: done  # FastMCP Ingest Gateway, Batch Ingestion & Stateless ChainLens Pipeline
   26-2: done  # dsh-worker Sidecar Container, Redis Streams & Task Resumption
   26-3: done  # Multi-Tier Hybrid LLM Router (Gemini Flash Free Tier + DeepSeek V4 + Qwen 3.8); unit tests pass
@@ -303,13 +303,13 @@ development_status:
   epic-26-retrospective: optional
 
   # === Epic 27: Full-Stack Web App Builder, Instant Hosting & Creative Studio ===
-  epic-27: done
+  epic-27: in-progress
   27-1: done  # Parent/tracking story — all split stories 27-1a/b/c/d are done. Mark Tool AST mutator and tests green.
   27-1a: done  # Web Builder Chat Mode MVP for Sales & Marketing (Option A) — human review approved. P0 surfaces acknowledged: auth, data integrity, chat orchestration, external LLM cost. Lucide preview + GenerateWebAppToolUI chat card verified.
   27-1b: done  # Web App Build & Preview Runner — AST security audit, env scrubbing, Docker container sandbox, build logs panel, and live preview iframe verified (28/28 unit/integration tests + Chrome MCP live browser green).
   27-1c: done  # Web App Container Deploy & Custom CNAME — review patches applied 2026-08-26: container healthcheck, Caddy per-app snippets, Traefik/Caddy config, Docker Compose dokploy-network/web_apps/socket mount, path traversal, custom domain lifecycle, feature-gate 403, validator allowlists, and container lifecycle tests (41/41 unit/integration tests green).
   27-1d: done  # Web App Mark Tool & JSX AST Mutator — 2026-08-25 review patches applied (force rebuild skip-debit, origin allowlist, compiled HTML bridge, AST hardening, UsageType.WEB_BUILDER_MARK); 39 related tests green.
-  27-2: done  # Superseded by 27-2a and 27-2b (both done).
+  27-2: backlog  # Superseded by 27-2a and 27-2b.
   27-2a: done  # Manus Slides Presentation Studio — chunk A-D review patches applied 2026-08-26; Playwright MCP live browser E2E verified 100% PASS (PPTX 16:9 OOXML & Marp Markdown with graceful degradation).
   27-2b: done  # Speaker Diarization Meeting Minutes from Chat — backend, frontend, and deferred worker-crash reaper complete; ruff/pytest/tsc/biome green.
   epic-27-retrospective: optional
@@ -317,14 +317,14 @@ development_status:
 
 
   # === Epic 11: Telegram Automation & Bot ===
-  epic-11: done
+  epic-11: in-progress
   11-1: done
   11-2: done
   11-3: done
   epic-11-retrospective: optional
 
   # === Epic 12: HR/Recruitment Vertical — Vietnam Job Market Pilot ===
-  epic-12: done
+  epic-12: in-progress
   12-0: done
   12-1: done
   12-2: done  # TopCV Scraper — bmad-code-review passed, patches applied
@@ -405,23 +405,23 @@ development_status:
   epic-18-retrospective: optional
 
   # === Epic 28: Self-Host Trust, Data Portability & Cloud GA Legal Readiness (mới 2026-08-21 từ PRFAQ) ===
-  epic-28: in-progress
+  epic-28: backlog
   28-1: backlog  # Workspace Memory & Research Data Export
   28-2: backlog  # Encryption-at-Rest for Cloud Memory
   28-3: backlog  # ToS / Legal Review & Retention Policy
   28-4: backlog  # Self-Host OSS Onboarding in Under 10 Minutes
-  28-5: done  # Workspace Memory Storage Cap & Retention Lifecycle — 2026-08-28: verified unit/integration tests green
+  28-5: review  # Workspace Memory Storage Cap & Retention Lifecycle
   epic-28-retrospective: optional
 
   # === Tech Debt (from code review deferred items) ===
   # ponytail: 2026-08-08 Winston backlog audit — 4 critical deferred items from code reviews that need dedicated stories.
   # Each is a real correctness/robustness issue, not a nice-to-have. See deferred-work.md for evidence.
-  tech-debt: in-progress  # active items being resolved
+  tech-debt: backlog  # epic tracker reopened; td-* items remain backlog
   td-1: backlog  # Idempotency key for POST /automations/{id}/run (7-7 defer: double-submit, no dedup lock)
-  td-2: done  # 2026-08-28: Redis event bus subscribe failure state leak fixed with mutex & automatic recovery handler; unit tests green
+  td-2: backlog  # Redis event bus subscribe failure state leak (9-3 defer: channel stays in subscribers on timeout)
   td-3: backlog  # Storage sum does not reconcile deleted backend files (8-12 defer: workspace_limits.py:199-209)
   td-4: backlog  # Concurrent notification preference merge race condition (11-1 defer: _merge_notification_preferences read-merge-overwrite)
-  td-5: done  # 2026-08-28: background title_gen.py timeout and retry logic implemented; unit tests green
+  td-5: backlog  # title_gen.py lacks timeout/retry on litellm.acompletion (P1, affects chat UX)
   td-6: backlog  # verify_chat_image_capability.py lacks num_retries (P3, diagnostic script)
   td-7: backlog  # No unit test coverage for test_model function (P2, integration tests mock it)
   td-8: done  # Epic 13 canonical entity cleanup — `app/canonical/`, `canonical_entities_routes.py`, models, tests removed; migration `d33c362fa627` dropped tables (commit 542b84d61, 2026-08-22). Fast-track approved at code review; deprecation period skipped because zero live callers verified.

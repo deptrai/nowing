@@ -49,13 +49,38 @@ def _reject_degenerate_leads(leads: list[dict[str, Any]]) -> None:
             )
 
 
+def _truncate_bytes(value: str | None, max_bytes: int) -> str:
+    """Truncate a string so its UTF-8 encoded form fits within ``max_bytes``."""
+    if not value:
+        return ""
+    encoded = value.encode("utf-8")
+    if len(encoded) <= max_bytes:
+        return value
+    return encoded[:max_bytes].decode("utf-8", errors="ignore")
+
+
+def _clamp_encrypted(value: str | None, max_bytes: int) -> str | None:
+    """Clamp an already-encrypted token so it fits a fixed-width DB column.
+
+    Encrypted values (Fernet base64 tokens) can exceed the declared width when
+    the plaintext is long. This is a fail-closed regression guard: a truncated
+    encrypted token will not decrypt, but it prevents a ``StringDataRight
+    TruncationError`` from killing the batch ingest.
+    """
+    if not value:
+        return value
+    return _truncate_bytes(value, max_bytes)
+
+
 def _prepare_lead_record(
     workspace_id: int,
     item: dict[str, Any],
     secret_key: str,
 ) -> dict[str, Any]:
     """Return a lead dict with the existing stream-compatible ``value_hmac``."""
-    company = item.get("company_name") or item.get("title") or "Doanh nghiệp"
+    company = _truncate_bytes(
+        item.get("company_name") or item.get("title") or "Doanh nghiệp", 70
+    )
     domain = normalize_domain(item.get("domain"))
     value_hmac = item.get("value_hmac") or generate_lead_hmac(
         workspace_id, company, domain
@@ -64,7 +89,7 @@ def _prepare_lead_record(
     return {
         "id": uuid4(),
         "workspace_id": workspace_id,
-        "client_id": item.get("client_id", "default"),
+        "client_id": item.get("client_id") or None,
         "table_id": item.get("table_id"),
         "source": item.get("source", "batch_ingest"),
         "source_url": item.get("source_url"),
@@ -189,6 +214,7 @@ def _build_contacts_upsert_stmt(contacts: list[dict[str, Any]]) -> Any:
             "phone": stmt.excluded.phone,
             "phone_hmac": stmt.excluded.phone_hmac,
             "email_hmac": stmt.excluded.email_hmac,
+            "external_chat_ids": stmt.excluded.external_chat_ids,
             "confidence": stmt.excluded.confidence,
             "source_provider": stmt.excluded.source_provider,
         },
@@ -267,28 +293,45 @@ class LeadBatchService:
             lead_id = hmac_to_id.get(lead["value_hmac"])
             if lead_id is None:
                 continue
-            if not any([lead.get("phone"), lead.get("email")]):
+            if not any(
+                [lead.get("phone"), lead.get("email"), lead.get("external_chat_ids")]
+            ):
                 continue
 
             domain = lead.get("domain")
             contact_hmac = compute_verified_contact_hmac(
-                lead.get("phone"), lead.get("email"), domain
+                lead.get("phone"),
+                lead.get("email"),
+                domain,
+                company_name=lead.get("company_name"),
             )
             if contact_hmac is None:
                 # Degenerate: no phone, email, or domain to deduplicate by.
                 continue
 
+            # Encrypt additional chat/social handles while preserving structure.
+            raw_external_chat_ids = lead.get("external_chat_ids") or {}
+            encrypted_external_chat_ids = {
+                channel: _clamp_encrypted(self._cipher.encrypt(value), 500)
+                for channel, value in raw_external_chat_ids.items()
+                if value
+            }
+
+            contact_name = _truncate_bytes(
+                lead.get("contact_name") or lead.get("company_name") or "", 70
+            )
+            contact_title = _truncate_bytes(lead.get("title") or "", 70)
+            contact_email = _truncate_bytes(lead.get("email") or "", 70)
+            contact_phone = _truncate_bytes(lead.get("phone") or "", 30)
             contact = {
                 "id": uuid4(),
                 "workspace_id": workspace_id,
                 "client_id": lead.get("client_id"),
                 "lead_id": lead_id,
-                "name": self._cipher.encrypt(
-                    lead.get("contact_name") or lead.get("company_name")
-                ),
-                "title": self._cipher.encrypt(lead.get("title")),
-                "email": self._cipher.encrypt(lead.get("email")),
-                "phone": self._cipher.encrypt(lead.get("phone")),
+                "name": _clamp_encrypted(self._cipher.encrypt(contact_name), 200),
+                "title": _clamp_encrypted(self._cipher.encrypt(contact_title), 200),
+                "email": _clamp_encrypted(self._cipher.encrypt(contact_email), 255) if contact_email else None,
+                "phone": _clamp_encrypted(self._cipher.encrypt(contact_phone), 200) if contact_phone else None,
                 "verification_status": "verified",
                 "confidence": 0.0,
                 "source_provider": "batch_ingest",
@@ -303,6 +346,7 @@ class LeadBatchService:
                     normalize_phone_e164(lead.get("phone"))
                 ),
                 "email_hmac": compute_email_hmac(normalize_email(lead.get("email"))),
+                "external_chat_ids": encrypted_external_chat_ids,
             }
             contacts_to_insert.append(contact)
 

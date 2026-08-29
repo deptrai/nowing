@@ -129,7 +129,19 @@
 		"copy": "क्लिपबोर्ड पर कॉपी करें",
 		"no_api_key": "कोई API कुंजी नहीं मिली",
 		"usage_title": "कैसे उपयोग करें",
-		"usage_description": "Authorization हेडर में अपनी API कुंजी शामिल करें:"
+		"usage_description": "Authorization हेडर में अपनी API कुंजी शामिल करें:",
+		"password_nav_label": "Password",
+		"password_title": "Password",
+		"password_description": "Update your account password",
+		"current_password": "Current password",
+		"new_password": "New password",
+		"new_password_hint": "Must be at least 8 characters",
+		"confirm_password": "Confirm new password",
+		"password_mismatch": "Passwords do not match",
+		"password_too_short": "Password must be at least 8 characters",
+		"password_save": "Update password",
+		"password_saved": "Password updated successfully",
+		"password_save_error": "Failed to update password"
 	},
 	"dashboard": {
 		"title": "डैशबोर्ड",

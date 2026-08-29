@@ -636,6 +636,11 @@ class FakeChatLLM(BaseChatModel):
             and not has_clickup_evidence
         ):
             return f"Manual upload MD content found: {MANUAL_UPLOAD_MD_CANARY_TOKEN}"
+        # Lead generation: echo the tool's markdown table back so the chat message
+        # contains a parseable lead table and the Right Dock opens.
+        if latest_tool_name == "multi_source_lead_gen":
+            return latest_tool_text
+
         return f"E2E fake assistant received: {latest_human}"
 
     def _tool_call_message_for(self, messages: list[BaseMessage]) -> AIMessage | None:
@@ -939,6 +944,36 @@ class FakeChatLLM(BaseChatModel):
                         "name": "search",
                         "args": {"query": NOTION_CANARY_TITLE},
                         "id": "call_e2e_search_notion",
+                    }
+                ],
+            )
+
+        # Main agent: trigger multi-source lead generation for real-estate/broker prompts.
+        if latest_tool is None and _contains_any(
+            latest_human,
+            (
+                "môi giới bất động sản",
+                "bán nhà",
+                "nhà bán",
+                "bất động sản",
+                "nhà phố",
+                "cần bán",
+                "ký gửi",
+                "tìm khách mua",
+                "có đất bán",
+                "có nhà bán",
+            ),
+        ):
+            return AIMessage(
+                content="",
+                tool_calls=[
+                    {
+                        "name": "multi_source_lead_gen",
+                        "args": {
+                            "query": latest_human,
+                            "locations": ["TP.HCM", "Hồ Chí Minh"],
+                        },
+                        "id": "call_e2e_multi_source_lead_gen",
                     }
                 ],
             )

@@ -45,6 +45,7 @@ def build_multi_source_lead_gen_executor() -> Callable[
             leads=[item.model_dump() for item in result.leads],
             degraded_sources=result.degraded_sources,
             table_id=result.table_id,
+            intent=result.intent.value,
         )
 
     return _execute

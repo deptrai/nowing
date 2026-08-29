@@ -179,7 +179,7 @@ Nowing **không** xây `canonical_entities` table, `pgvector` index, `to_tsvecto
 
 ## 4. Features
 
-> **Chỉ mục FR (theo số):** FR-1..4, FR-10 (Auth/RBAC §4.1) · FR-6,7,8,**43..47,49..52,58..62** (Connectors / Ecosystem §4.2) · FR-9,11,12,13,32,33,34,36,5 (Knowledge Base & Memory §4.3) · FR-14,15,16,17,42 (Chat §4.4) · FR-21,22,23 (Deliverables §4.5) · FR-18,19,20,35 (Automations §4.6) · FR-25,26,27,28,29 (Clients §4.7) · FR-30,31,**41,69** (Billing §4.8) · **FR-24,37,38,39 (Deep-Research Engine & Provenance §4.9)** · **FR-56,57 (Vertical Client Platform)** · **FR-63..68 (Lead Gen Intelligence §4.10)**. *(ID toàn cục, không tuần tự theo section.)*
+> **Chỉ mục FR (theo số):** FR-1..4, FR-10 (Auth/RBAC §4.1) · FR-6,7,8,**43..47,49..52,58..62** (Connectors / Ecosystem §4.2) · FR-9,11,12,13,32,33,34,36,5 (Knowledge Base & Memory §4.3) · FR-14,15,16,17,42 (Chat §4.4) · FR-21,22,23 (Deliverables §4.5) · FR-18,19,20,35 (Automations §4.6) · FR-25,26,27,28,29 (Clients §4.7) · FR-30,31,**41,69** (Billing §4.8) · **FR-24,37,38,39 (Deep-Research Engine & Provenance §4.9)** · **FR-56,57 (Vertical Client Platform)** · **FR-63..68,85 (Lead Gen Intelligence §4.10)**. *(ID toàn cục, không tuần tự theo section.)*
 >
 > **⚠️ Thay đổi 2026-07-26:** **FR-41 mới** — Admin UI cho Global LLM Model Configuration (§4.8). Global model config hiện chỉ sửa được qua YAML/env + restart; chưa có UI admin.
 >
@@ -970,6 +970,19 @@ As a sales team, I want to pay per qualified meeting booked (not just per seat),
 | **Lead enrichment** | $0.50/lead | $0.20/lead (volume) | Custom |
 
 **Status:** `[IN-PROGRESS]` — Epic 21 / Story 21.7 done; $0 chat/sequencer + pay-as-you-go credit ledger for verified leads and booked meetings implemented. Depends on FR-66 (outbound automation). Epic 21 overall in-progress.
+
+#### FR-85: Unified Multi-Source AI Lead Generation Orchestrator `[IN-PROGRESS]` (mới 2026-08-10)
+As an active sales rep or researcher,
+I want to describe my target prospect in natural language in the chat,
+So that Nowing's AI Orchestrator automatically plans and triggers parallel searches across all available scrapers, deduplicates results, enriches verified phone numbers, and streams a structured Lead Table in real-time.
+
+**Acceptance Criteria:**
+- Given a chat prompt containing seller intent (e.g., "tôi cần bán", "tìm khách mua", "ký gửi"), when `LeadGenOrchestrator.decompose_query` runs, then it returns `intent="sell"` and the adapter selection prioritizes buyer-demand sources or returns listings with a seller-framed summary.
+- Given a chat prompt containing buyer intent (e.g., "tôi cần mua", "tìm nhà"), when `LeadGenOrchestrator.decompose_query` runs, then it returns `intent="buy"` and the adapter selection returns seller listings.
+- Given `multi_source_lead_gen` returns BĐS listings (seller-side data), when the agent responds in chat, then it does not call them "khách hàng tiềm năng" unless the source is verified buyer-demand.
+- Given the user intent is "sell" and the agent returns BĐS listings, when framing the result, then it describes them as "tin đăng bán tương tự / đối thủ cạnh tranh" and offers 1-click follow-up actions: (a) Tìm người mua, (b) Lấy SĐT chủ tin, (c) Phân tích giá.
+
+**Status:** `[IN-PROGRESS]` — Epic 21 / Story 21.15 done; 2026-08-28 SCP amended with intent disambiguation + chat framing.
 
 ### 4.9 Deep-Research Engine Integration (ChainLens — Strategic Brain & Market GPS)
 

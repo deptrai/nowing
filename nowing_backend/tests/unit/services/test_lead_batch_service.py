@@ -390,3 +390,36 @@ class TestHermeticAndCostGate:
 
         assert httpx_client_mock.call_count == 0
         assert embed_mock.call_count == 0
+
+
+# ============================================================================
+# AC-5: PII Truncation Regression Guard
+# ============================================================================
+
+
+class TestPIITruncationRegression:
+    """AC-5: long encrypted tokens and plaintext fields are clamped before insert."""
+
+    def test_truncate_bytes_fits_max_bytes(self) -> None:
+        """_truncate_bytes must never exceed max_bytes when UTF-8 encoded."""
+        long_value = "a" * 300
+        truncated = lead_batch_service._truncate_bytes(long_value, 200)
+        assert len(truncated.encode("utf-8")) <= 200
+
+    def test_clamp_encrypted_truncates_token(self) -> None:
+        """_clamp_encrypted must clamp an encrypted token to the column width."""
+        # Simulate a Fernet-style base64 token (alphanumeric + punctuation).
+        token = "gAAAAAB" + "x" * 500
+        clamped = lead_batch_service._clamp_encrypted(token, 200)
+        assert clamped is not None
+        assert len(clamped.encode("utf-8")) <= 200
+
+    def test_prepare_lead_record_truncates_long_title(self) -> None:
+        """Long company names/titles must be truncated before upsert."""
+        long_title = "C" * 200
+        record = lead_batch_service._prepare_lead_record(
+            workspace_id=1,
+            item={"title": long_title},
+            secret_key="test-secret",
+        )
+        assert len(record["company_name"].encode("utf-8")) <= 70

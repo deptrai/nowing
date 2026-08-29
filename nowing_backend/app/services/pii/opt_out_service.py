@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from uuid import UUID, uuid4
+from uuid import UUID, uuid4, uuid5
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -90,7 +90,11 @@ async def _find_original_unlock_billing_event(
     verified_contact_id: UUID,
     workspace_id: int,
 ) -> BillingEvent | None:
-    """Return the original contact_unlock BillingEvent for a contact."""
+    """Return the original contact_unlock BillingEvent for a contact.
+
+    For per-channel unlocks, the ``event_id`` may be a deterministic uuid5
+    derived from the contact id and the channel name.
+    """
     result = await session.execute(
         select(BillingEvent)
         .where(
@@ -331,12 +335,20 @@ class OptOutService:
             self.session, workspace_id
         )
 
+        def _channel_billing_id(contact: VerifiedContact, channel: str) -> UUID:
+            """Deterministic per-channel billing identity (matches ContactUnlockService)."""
+            return uuid5(contact.id, f"channel:{channel}")
+
         purged_count = 0
         refunded_micros = 0
         for contact in contacts:
             was_unlocked = bool(contact.is_unlocked)
+            unlocked_channels = getattr(contact, "unlocked_channels", None) or []
+            if not isinstance(unlocked_channels, list):
+                unlocked_channels = []
 
             if was_unlocked and refundable_slots > 0:
+                # 1. Refund the legacy whole-contact event (if any).
                 original_event = await _find_original_unlock_billing_event(
                     self.session, contact.id, workspace_id
                 )
@@ -350,6 +362,25 @@ class OptOutService:
                     if refund > 0:
                         refunded_micros += refund
                         refundable_slots -= 1
+
+                # 2. Refund each per-channel event while slots remain.
+                for channel in unlocked_channels:
+                    if refundable_slots <= 0:
+                        break
+                    billing_id = _channel_billing_id(contact, str(channel))
+                    channel_event = await _find_original_unlock_billing_event(
+                        self.session, billing_id, workspace_id
+                    )
+                    if channel_event is not None:
+                        refund = await self._refund_credit(
+                            contact,
+                            channel_event,
+                            workspace_id,
+                            actor_user_id,
+                        )
+                        if refund > 0:
+                            refunded_micros += refund
+                            refundable_slots -= 1
 
             _anonymize_contact(contact)
             _append_opt_out_audit_log(

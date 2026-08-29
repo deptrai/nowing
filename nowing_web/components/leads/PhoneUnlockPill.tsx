@@ -48,20 +48,24 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 	const fastUnlockKey = makeFastUnlockKey(workspaceId, currentUser?.id);
 	const [fastUnlockSession, setFastUnlockSession] = useAtom(fastUnlockSessionAtom(fastUnlockKey));
 
-	const [isUnlocked, setIsUnlocked] = useState(lead.is_unlocked);
+	const PHONE_CHANNEL = "phone";
+	const [isUnlocked, setIsUnlocked] = useState(
+		lead.unlocked_channels?.includes(PHONE_CHANNEL) ?? lead.is_unlocked
+	);
 	const [displayPhone, setDisplayPhone] = useState(lead.phone ?? "");
 	const [copied, setCopied] = useState(false);
 	const [isOpen, setIsOpen] = useState(false);
 	const [isUnlocking, setIsUnlocking] = useState(false);
+	const [isResolving, setIsResolving] = useState(false);
 	const [isRelocking, setIsRelocking] = useState(false);
 	const [fastUnlockEnabled, setFastUnlockEnabled] = useState(false);
 	const [isFlipped, setIsFlipped] = useState(false);
 	const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	useEffect(() => {
-		setIsUnlocked(lead.is_unlocked);
+		setIsUnlocked(lead.unlocked_channels?.includes(PHONE_CHANNEL) ?? lead.is_unlocked);
 		setDisplayPhone(lead.phone ?? "");
-	}, [lead.is_unlocked, lead.phone]);
+	}, [lead.unlocked_channels, lead.is_unlocked, lead.phone]);
 
 	useEffect(() => {
 		return () => {
@@ -74,7 +78,7 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 	const contactId = lead.contact_id;
 	const isDnc = lead.consent_status === "withdrawn";
 	const isInvalid = lead.is_valid === false;
-	const isDisabled = !contactId || isDnc || isInvalid;
+	const isDisabled = isDnc || isInvalid;
 
 	const isFastUnlockActive = !!fastUnlockSession && fastUnlockSession.expires_at > Date.now();
 
@@ -82,7 +86,10 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 	const isMasked = safePhone.includes("*");
 	const isPhoneValid = isValidPhoneString(safePhone);
 
-	if (!isPhoneValid) {
+	const hasPhone = isPhoneValid;
+	const canResolve = !hasPhone && !isDnc && !isInvalid;
+
+	if (!hasPhone && !canResolve) {
 		if (lead.is_new_from_zero) {
 			return (
 				<span className="text-emerald-600/80 text-xs font-medium animate-pulse select-none">
@@ -128,7 +135,12 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 		}
 
 		try {
-			const res = await leadsApiService.unlockContact(workspaceId, lead.id, contactId);
+			const res = await leadsApiService.unlockContact(
+				workspaceId,
+				lead.id,
+				contactId,
+				PHONE_CHANNEL
+			);
 			const newPhone = typeof res.phone === "string" ? res.phone : "";
 
 			if (!res.is_unlocked || !isValidPhoneString(newPhone)) {
@@ -174,7 +186,12 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 		if (!contactId || isRelocking) return;
 		setIsRelocking(true);
 		try {
-			const res = await leadsApiService.relockContact(workspaceId, lead.id, contactId);
+			const res = await leadsApiService.relockContact(
+				workspaceId,
+				lead.id,
+				contactId,
+				PHONE_CHANNEL
+			);
 			const maskedPhone = res.phone ?? lead.phone ?? "";
 			setIsUnlocked(false);
 			onUnlock?.(false);
@@ -190,6 +207,42 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 		}
 	};
 
+	const performResolve = async () => {
+		if (isResolving) return;
+		setIsResolving(true);
+
+		if (isFastUnlockActive || fastUnlockEnabled) {
+			applyFastUnlockSession(true);
+		}
+
+		try {
+			const res = await leadsApiService.resolvePhone(workspaceId, lead.id, {
+				source_url: lead.source_url || undefined,
+				raw_text: lead.company_name || undefined,
+			});
+
+			if (res.status === "success" && res.phone && isValidPhoneString(res.phone)) {
+				setIsUnlocked(true);
+				setDisplayPhone(res.phone);
+				onUnlock?.(true);
+				onPhoneChange?.(lead.id, res.phone, true);
+				setIsFlipped(true);
+				setTimeout(() => setIsFlipped(false), FLIP_CLASS_HOLD_MS);
+				toast.success(`Đã mở khóa SĐT -${res.cost_credits ?? UNLOCK_COST_CREDITS} credits`);
+			} else if (res.degraded && res.degradation_reason) {
+				toast.warning(`Mở khóa SĐT tạm dừng: ${res.degradation_reason}`);
+			} else {
+				toast.error(res.degradation_reason || "Không thể mở khóa SĐT");
+			}
+		} catch (err) {
+			const message = err instanceof Error ? err.message : "Không thể mở khóa SĐT";
+			toast.error(message);
+		} finally {
+			setIsResolving(false);
+			setIsOpen(false);
+		}
+	};
+
 	const handlePillClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
 		if (isDisabled) return;
@@ -200,7 +253,11 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 		}
 
 		if (isFastUnlockActive) {
-			void performUnlock();
+			if (hasPhone && contactId) {
+				void performUnlock();
+			} else if (canResolve) {
+				void performResolve();
+			}
 			return;
 		}
 
@@ -210,7 +267,13 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 
 	const handleConfirm = () => {
 		applyFastUnlockSession(fastUnlockEnabled);
-		void performUnlock();
+		if (hasPhone && contactId) {
+			void performUnlock();
+		} else if (canResolve) {
+			void performResolve();
+		} else {
+			setIsOpen(false);
+		}
 	};
 
 	const pillContent = (
@@ -255,6 +318,20 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 		</motion.span>
 	);
 
+	const resolveButton = (
+		<motion.span
+			whileTap={{ scale: 0.97 }}
+			className={cn(
+				"inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium cursor-pointer select-none focus:outline-none focus:ring-1 focus:ring-emerald-500/50 bg-emerald-600 text-white hover:bg-emerald-700",
+				isDisabled && "opacity-50 cursor-not-allowed"
+			)}
+			data-testid="phone-resolve-pill"
+		>
+			{showIcon && <Phone className="size-3.5" aria-hidden="true" />}
+			<span>Mở khóa SĐT</span>
+		</motion.span>
+	);
+
 	if (isUnlocked) {
 		return (
 			<button
@@ -269,17 +346,46 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 		);
 	}
 
+	if (!hasPhone && canResolve) {
+		return (
+			<SmartUnlockPopover
+				open={isOpen}
+				onOpenChange={setIsOpen}
+				maskedValue="—"
+				costCredits={UNLOCK_COST_CREDITS}
+				fastUnlockEnabled={fastUnlockEnabled}
+				onToggleFastUnlock={setFastUnlockEnabled}
+				onConfirm={handleConfirm}
+				onCancel={() => setIsOpen(false)}
+				isLoading={isResolving}
+				title="Xác nhận mở khóa SĐT"
+				actionLabel="Mở khóa SĐT"
+			>
+				<button
+					type="button"
+					disabled={isDisabled}
+					aria-label="Mở khóa số điện thoại"
+					title={isDisabled ? "Không thể mở khóa" : "Click để mở khóa SĐT"}
+					onClick={handlePillClick}
+					className="inline-flex disabled:cursor-not-allowed"
+				>
+					{resolveButton}
+				</button>
+			</SmartUnlockPopover>
+		);
+	}
+
 	return (
 		<SmartUnlockPopover
 			open={isOpen}
 			onOpenChange={setIsOpen}
-			maskedPhone={safePhone}
+			maskedValue={safePhone}
 			costCredits={UNLOCK_COST_CREDITS}
 			fastUnlockEnabled={fastUnlockEnabled}
 			onToggleFastUnlock={setFastUnlockEnabled}
 			onConfirm={handleConfirm}
 			onCancel={() => setIsOpen(false)}
-			isLoading={isUnlocking}
+			isLoading={isUnlocking || isResolving}
 		>
 			<button
 				type="button"

@@ -8,7 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 
 export interface SmartUnlockPopoverProps {
 	children: React.ReactNode;
-	maskedPhone: string;
+	maskedValue: string;
 	costCredits: number;
 	fastUnlockEnabled: boolean;
 	onToggleFastUnlock: (enabled: boolean) => void;
@@ -20,11 +20,13 @@ export interface SmartUnlockPopoverProps {
 	onOpenChange: (open: boolean) => void;
 	className?: string;
 	isLoading?: boolean;
+	title?: string;
+	actionLabel?: string;
 }
 
 export function SmartUnlockPopover({
 	children,
-	maskedPhone,
+	maskedValue,
 	costCredits,
 	fastUnlockEnabled,
 	onToggleFastUnlock,
@@ -36,10 +38,12 @@ export function SmartUnlockPopover({
 	onOpenChange,
 	className,
 	isLoading = false,
+	title = "Xác nhận mở khóa SĐT",
+	actionLabel: actionLabelProp,
 }: SmartUnlockPopoverProps) {
 	const checkboxId = useId();
 
-	const actionLabel = isBulk ? `Mở khóa SĐT hàng loạt` : `Mở khóa SĐT`;
+	const actionLabel = actionLabelProp ?? (isBulk ? `Mở khóa SĐT hàng loạt` : `Mở khóa SĐT`);
 	const displayCost = costCredits % 1 === 0 ? costCredits.toString() : costCredits.toFixed(1);
 
 	const triggerChild = React.isValidElement(children)
@@ -61,12 +65,12 @@ export function SmartUnlockPopover({
 				sideOffset={6}
 			>
 				<div className="space-y-1">
-					<p className="text-sm font-medium text-foreground">Xác nhận mở khóa SĐT</p>
+					<p className="text-sm font-medium text-foreground">{title}</p>
 					<p
 						className="font-mono text-2xl font-semibold tracking-tight text-emerald-600 dark:text-emerald-400"
-						data-testid="smart-unlock-phone-preview"
+						data-testid="smart-unlock-value-preview"
 					>
-						{maskedPhone}
+						{maskedValue}
 					</p>
 					<p className="text-sm text-muted-foreground">
 						{isBulk ? `${selectedCount} SĐT · ` : ""}
