@@ -63,10 +63,10 @@ def _build_page_payload(
         "street": -1,
         "room": -1,
         "direct": -1,
-        "minprice": 0,
-        "maxprice": 0,
-        "minarea": 0,
-        "maxarea": 0,
+        "minprice": input_model.min_price if input_model.min_price is not None else 0,
+        "maxprice": input_model.max_price if input_model.max_price is not None else 0,
+        "minarea": input_model.min_area if input_model.min_area is not None else 0,
+        "maxarea": input_model.max_area if input_model.max_area is not None else 0,
         "projectid": -1,
         "sort": 0,
         "page": page,
@@ -76,28 +76,6 @@ def _build_page_payload(
         "pagesize": 20,
     }
     return payload
-
-
-def _item_passes_filters(
-    item: BatdongsanListing, input_model: BatdongsanScrapeInput
-) -> bool:
-    """Apply price/area filters client-side after parsing."""
-    if input_model.min_price is not None and (
-        item.price_value is None or item.price_value < input_model.min_price
-    ):
-        return False
-    if input_model.max_price is not None and (
-        item.price_value is None or item.price_value > input_model.max_price
-    ):
-        return False
-    if input_model.min_area is not None and (
-        item.area_value is None or item.area_value < input_model.min_area
-    ):
-        return False
-    return not (
-        input_model.max_area is not None
-        and (item.area_value is None or item.area_value > input_model.max_area)
-    )
 
 
 def _web_fallback_applicable(input_model: BatdongsanScrapeInput) -> bool:
@@ -221,8 +199,6 @@ async def scrape_batdongsan(
         for listing in parse_listings(page_data):
             if len(items) >= cap:
                 break
-            if not _item_passes_filters(listing, input_model):
-                continue
             # Promoted listings can repeat across pages; dedupe so the same
             # listing is never returned (or billed) twice.
             if listing.listing_id is not None:

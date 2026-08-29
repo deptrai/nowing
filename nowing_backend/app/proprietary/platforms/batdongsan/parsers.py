@@ -38,91 +38,30 @@ def _extract_number_and_unit(text: str | None) -> str | None:
     return text.strip() or None
 
 
-def _parse_price_string(raw: str | None) -> int | None:
-    """Parse a Vietnamese price string such as "3,65 tỷ" or "Giá 3.65 tỷ" into VND."""
-    if not raw:
-        return None
-    lowered = raw.lower()
-
-    # Try to find a number + unit pair so we prefer the price over unrelated
-    # numbers (e.g. a 200tr discount in the title).
-    unit_patterns = [
-        (r"(tỷ|tỉ|ty)\b", 1_000_000_000),
-        (r"\btriệu\b|(?:^|\s|\d)tr(\b|\.|\s)", 1_000_000),
-        (r"\b(nghìn|ngàn)\b|\bk\b", 1_000),
-    ]
-    for pattern, multiplier in unit_patterns:
-        unit_match = re.search(pattern, lowered)
-        if not unit_match:
-            continue
-        # Look for the closest preceding numeric token.
-        before = lowered[: unit_match.start()]
-        num_match = re.search(r"[\d.,]+(?=\s*$|\s+\D{0,20}$)", before)
-        if not num_match:
-            num_match = re.search(r"[\d.,]+", before)
-        if num_match:
-            num_str = num_match.group(0).replace(",", ".")
-            try:
-                value = float(num_str)
-            except ValueError:
-                return None
-            result = value * multiplier
-            if result > 1e15:
-                return None
-            return int(result)
-
-    # Fallback: first number in the string, no unit.
-    match = re.search(r"[\d.,]+", lowered)
-    if not match:
-        return None
-    num_str = match.group(0).replace(",", ".")
-    try:
-        value = float(num_str)
-    except ValueError:
-        return None
-    if value > 1e15:
-        return None
-    return int(value)
-
-
-def _parse_price(raw: Any) -> tuple[str | None, str | None, int | None]:
-    """Return ``(price, price_raw, price_value)`` from a Batdongsan price string.
+def _parse_price(raw: Any) -> tuple[str | None, str | None]:
+    """Return ``(price, price_raw)`` from a Batdongsan price string.
 
     ``Thỏa thuận`` and non-price strings are kept in ``price_raw`` only.
     """
     raw_str = _normalize_whitespace(raw)
     if raw_str is None:
-        return None, None, None
+        return None, None
 
     if re.search(r"[\d.,]+", raw_str):
         normalized = _extract_number_and_unit(raw_str) or raw_str
-        return normalized, raw_str, _parse_price_string(raw_str)
-    return None, raw_str, None
+        return normalized, raw_str
+    return None, raw_str
 
 
-def _parse_area_string(raw: str | None) -> float | None:
-    """Parse a Vietnamese area string such as "75 m²" into square meters."""
-    if not raw:
-        return None
-    match = re.search(r"[\d.,]+", raw)
-    if not match:
-        return None
-    num_str = match.group(0).replace(".", "").replace(",", ".")
-    try:
-        return float(num_str)
-    except ValueError:
-        return None
-
-
-def _parse_area(raw: Any) -> tuple[str | None, str | None, float | None]:
-    """Return ``(area, area_raw, area_value)`` from an area string like ``75 m²``."""
+def _parse_area(raw: Any) -> tuple[str | None, str | None]:
+    """Return ``(area, area_raw)`` from an area string like ``75 m²``."""
     raw_str = _normalize_whitespace(raw)
     if raw_str is None:
-        return None, None, None
+        return None, None
     if re.search(r"[\d.,]+", raw_str):
         normalized = _extract_number_and_unit(raw_str) or raw_str
-        return normalized, raw_str, _parse_area_string(raw_str)
-    return None, raw_str, None
+        return normalized, raw_str
+    return None, raw_str
 
 
 def _strip_prefixes(text: str, prefixes: tuple[str, ...]) -> str:
@@ -249,8 +188,8 @@ def parse_listing(raw: dict[str, Any]) -> BatdongsanListing:
     """Map a single raw data dict to a typed listing."""
     address = _normalize_whitespace(raw.get("address"))
     district, city = _split_address(address) if address else (None, None)
-    price, price_raw, price_value = _parse_price(raw.get("price"))
-    area, area_raw, area_value = _parse_area(raw.get("area"))
+    price, price_raw = _parse_price(raw.get("price"))
+    area, area_raw = _parse_area(raw.get("area"))
 
     # If the city is still empty after stripping prefixes, fall back to the
     # last segment untouched.
@@ -264,10 +203,8 @@ def parse_listing(raw: dict[str, Any]) -> BatdongsanListing:
         title=_normalize_whitespace(raw.get("title")),
         price=price,
         price_raw=price_raw,
-        price_value=price_value,
         area=area,
         area_raw=area_raw,
-        area_value=area_value,
         location=address,
         district=district,
         city=city,
