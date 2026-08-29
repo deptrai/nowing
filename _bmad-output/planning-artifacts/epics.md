@@ -448,6 +448,96 @@ _FR-8 · FR-8.1 · OQ-4._
 
 > **Dependency note:** Story 2.10 reuses the `WEB_RESULT` citation contract that Story 3.15 will finalize. Because 2.10 was completed on 2026-08-05, it uses a provisional citation format; when 3.15 is merged, the E2 team should regression-test 2.10 against the final 3.15 citation contract.
 
+### Story 2.11: Walmart Scraper & Reviews — Port and Upgrade
+
+As an e-commerce analyst,
+I want to scrape Walmart product listings and customer reviews with structured output,
+So that I can monitor competitor pricing, ratings, and customer feedback via REST, chat, or MCP.
+
+**Acceptance Criteria:**
+
+**Given** the upstream delta from PR #1614,
+**When** the files are copied to `nowing_backend/app/proprietary/platforms/walmart/`,
+**Then** the package contains `fetch.py`, `parsers.py`, `schemas.py`, `scraper.py`, `url_resolver.py`, and `next_data.py` aligned with upstream.
+**And** no `surfsense_*` strings remain in any ported file.
+**And** `nowing_backend/app/capabilities/walmart/scrape/` and `walmart/reviews/` are created or updated as thin adapters.
+**And** the MCP tool `nowing_walmart_scrape` and `nowing_walmart_reviews` mirror the backend schemas.
+
+**Given** a product search or product page URL,
+**When** I call the Walmart scraper,
+**Then** it returns product title, price, rating, seller, availability, and review summary.
+**Given** a product with reviews,
+**When** I request reviews,
+**Then** it returns paginated review text, rating, date, and verified status.
+**And** deep breadcrumb structures and blocked/captcha pages are handled without crashing.
+
+_FR-1/2/3/4/5 · CAP-1 · AD-1, AD-2, AD-3, AD-4, AD-7, AD-8, AD-11._
+
+### Story 2.12: Indeed Jobs Scraper — Resilience Upgrade
+
+As a recruiter or market researcher,
+I want to retrieve Indeed job postings with robust pagination and anti-bot mitigation,
+So that I can track hiring trends and job market signals without losing partial results on challenge pages.
+
+**Acceptance Criteria:**
+
+**Given** the upstream delta from PR #1605,
+**When** the `indeed_jobs` platform is ported to `nowing_backend/app/proprietary/platforms/indeed/`,
+**Then** the package contains `fetch.py`, `parsers.py`, `schemas.py`, `scraper.py`, and `url_resolver.py`.
+**And** the existing `scraper.py` is refactored to use the new modular files.
+**And** no `surfsense_*` references remain.
+
+**Given** a job query with keywords, location, and pagination,
+**When** the scraper runs,
+**Then** it returns a paged list of job postings with title, company, location, salary, summary, and posting date.
+**Given** the scraper hits a pagination challenge or block page,
+**When** the challenge is detected,
+**Then** it preserves collected results and returns them without timing out the orchestrator.
+
+_FR-6/7/8 · CAP-2 · AD-1, AD-2, AD-3, AD-4, AD-7, AD-8, AD-11._
+
+### Story 2.13: Reddit Community-Only Scrape
+
+As a market researcher,
+I want to scrape recent and top posts from a Reddit subreddit without providing a search keyword,
+So that I can monitor community conversations directly.
+
+**Acceptance Criteria:**
+
+**Given** a request with `community` provided and `search_queries` empty,
+**When** the Reddit scraper is invoked,
+**Then** it returns the latest subreddit feed for that community.
+**And** requests with non-empty `search_queries` continue to work as before.
+**And** the MCP tool `nowing_reddit_scrape` allows optional `search_queries` when `community` is provided.
+
+**Given** the upstream Reddit delta,
+**When** the platform files are updated in `nowing_backend/app/proprietary/platforms/reddit/`,
+**Then** `url_resolver.py` and `scraper.py` accept `community` and optional `search_queries`.
+**And** `parsers.py` returns the latest subreddit feed when `search_queries` is empty.
+**And** no `surfsense_*` references remain.
+
+_FR-9/10 · CAP-3 · AD-1, AD-2, AD-3, AD-4, AD-7, AD-8, AD-11._
+
+### Story 2.14: Unified Browser Lifecycle Pool
+
+As a backend engineer,
+I want all headless scrapers to acquire and release browser instances through a shared lifecycle pool,
+So that concurrent multi-platform scraping does not leave orphaned chromium processes.
+
+**Acceptance Criteria:**
+
+**Given** the upstream browser loop refactor,
+**When** the crawler lifecycle manager in `nowing_backend/app/proprietary/platforms/crawler/` is aligned with Nowing,
+**Then** Walmart, Indeed, and Reddit scrapers call the lifecycle manager to get/return browser contexts.
+**And** existing Vietnamese scrapers continue to work without modification.
+
+**Given** a test running Walmart, Indeed, and Reddit scrapers concurrently,
+**When** all jobs finish or time out,
+**Then** no residual `chrome` or `chromium` processes from the test remain.
+**And** the test is added to `nowing_backend/tests` and passes.
+
+_FR-11/12 · CAP-4 · AD-1, AD-2, AD-7, AD-8, AD-11._
+
 ---
 
 ## Epic 3: Knowledge Base + Long-Term Memory
@@ -901,6 +991,48 @@ So that `chat/regression` passes latency, TTFB, and cost gates without losing an
 **Given** `mode=auto` and a single-document question, **When** the agent has made **5 tool calls**, **Then** a tool-call budget forces it to answer.
 **And** `chat/regression` with the large-doc dataset passes all p95 latency, TTFB, and cost gates; `chat/quality` still passes correctness/citation/completeness. Detailed spec: `@doc/specs/2026-08-05/new-chat-mode-aware-latency-cost-policy`.
 _FR-42 · NFR-10 · `sprint-change-proposal-2026-08-05-chat-mode-policy.md`._
+
+### Story 4.9: Timeline Activity Indicator
+
+As a user in a chat session,
+I want to see an animated, pulse-based Activity Indicator with clear progress titles during agent execution,
+So that I know what the agent is doing and no longer see the legacy pixel-grid loader.
+
+**Acceptance Criteria:**
+
+**Given** the upstream `timeline-activity-indicator.tsx` as reference,
+**When** the component is created in `nowing_web/components/ui/timeline-activity-indicator.tsx`,
+**Then** it renders animated step status, canonical progress titles, and a pulse indicator.
+**And** it uses Tailwind classes and keyframes from `nowing_web/app/globals.css`.
+**And** `nowing_web/lib/chat/activity-journal.ts` manages client-side activity state smoothly.
+
+**Given** a chat stream producing activity journal events,
+**When** the journal is consumed,
+**Then** the Timeline component renders the current step and status without using the pixel-grid loader.
+
+**And** user-facing labels support Vietnamese i18n while technical identifiers remain in English.
+
+_FR-13/14/15 · CAP-5 · AD-5, AD-10, AD-11._
+
+### Story 4.10: Reasoning Episode Auto-scroll
+
+As a user watching a long reasoning trace,
+I want the reasoning block to auto-scroll to the current line during streaming and show scroll indicators when collapsed,
+So that I can follow the model's thinking without losing the overall chat context.
+
+**Acceptance Criteria:**
+
+**Given** a reasoning block that streams many lines,
+**When** a new line is appended,
+**Then** the reasoning container scrolls to the current line using `scrollIntoView({ behavior: 'smooth', block: 'nearest' })` or `IntersectionObserver`.
+**And** the overall chat viewport does not scroll unexpectedly.
+
+**Given** a reasoning episode longer than the collapsed height,
+**When** it is in the collapsed state,
+**Then** a visual scroll/fade indicator appears.
+**And** the episode can be expanded to full height.
+
+_FR-16/17 · CAP-6 · AD-6, AD-10, AD-11._
 
 ### Story 4.8h-followup: Mode-Aware Chat Policy Hardening  `(tech debt)`  `[backlog]`
 As a platform engineer,
