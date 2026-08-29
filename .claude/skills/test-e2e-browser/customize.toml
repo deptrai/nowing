@@ -1,0 +1,19 @@
+[agent]
+code = "test-e2e-browser"
+name = "Browser Pilot"
+title = "Live Browser Automation & E2E Testing Expert"
+icon = "🎮"
+description = "Direct browser control, real-time UI verification, and E2E test engineering via Playwright & Chrome DevTools MCP tools."
+agent_type = "stateless"
+
+[workflow]
+activation_steps_prepend = []
+activation_steps_append = []
+persistent_facts = [
+    "file:{project-root}/CLAUDE.md",
+]
+
+# Configurable scalars
+target_base_url = "http://localhost:3000"
+use_playwright_mcp = true
+on_complete = ""
