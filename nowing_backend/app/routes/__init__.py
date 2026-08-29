@@ -79,7 +79,7 @@ from .crm_oauth_routes import router as crm_oauth_router
 from .crm_routes import router as crm_router
 from .discord_add_connector_route import router as discord_add_connector_router
 from .dnc_routes import router as dnc_router
-from .documents_routes import router as documents_router
+from .documents import router as documents_router
 from .dropbox_add_connector_route import router as dropbox_add_connector_router
 from .editor_routes import router as editor_router
 from .enrichment_routes import router as enrichment_router
