@@ -1207,6 +1207,14 @@ class Config:
     )
     CHAINLENS_SERVICE_TOKEN = os.getenv("CHAINLENS_SERVICE_TOKEN", "")
     CHAINLENS_API_KEY = os.getenv("CHAINLENS_API_KEY", "")
+    # Local/self-host HMAC fast-path: when CHAINLENS_AUTH_CONTEXT_SECRET is set,
+    # Nowing signs an x-user-ctx header for the ChainLens HmacAuthGuard.  This
+    # lets local dev bypass Supabase/JWT auth and the QuotaGuard when the target
+    # ChainLens instance is configured with the same MCP_SERVICE_USER_ID.
+    CHAINLENS_AUTH_CONTEXT_SECRET = os.getenv("CHAINLENS_AUTH_CONTEXT_SECRET", "")
+    CHAINLENS_HMAC_USER_ID = os.getenv(
+        "CHAINLENS_HMAC_USER_ID", "00000000-0000-0000-0000-000000000001"
+    )
     CHAINLENS_REQUEST_TIMEOUT_SECONDS = float(
         os.getenv("CHAINLENS_REQUEST_TIMEOUT_SECONDS", "300")
     )

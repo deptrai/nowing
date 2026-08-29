@@ -29,15 +29,16 @@ class MultiSourceLeadGenTool:
 
     name = "multi_source_lead_gen"
     description = (
-        "Tìm kiếm và quét khách hàng tiềm năng đa nguồn (Batdongsan, Chợ Tốt, TopCV, ITviec, "
-        "Masothue, Mua Sắm Công, Mạng xã hội), tự động khử trùng lặp và làm giàu số điện thoại."
+        "Sales Copilot: tìm kiếm và quét khách hàng tiềm năng đa nguồn (Batdongsan, Chợ Tốt, "
+        "Mua Bán, TopCV, ITviec, VietnamWorks, Masothue, Mua Sắm Công, Mạng xã hội, Web crawl, "
+        "ChainLens), tự động khử trùng lặp, làm giàu số điện thoại và hỗ trợ smoke test."
     )
     parameters: dict[str, Any] = {
         "type": "object",
         "properties": {
             "query": {
                 "type": "string",
-                "description": "Mô tả đối tượng khách hàng hoặc doanh nghiệp cần tìm bằng tiếng Việt tự nhiên",
+                "description": "Mô tả đối tượng khách hàng hoặc doanh nghiệp cần tìm bằng tiếng Việt/Anh tự nhiên",
             },
             "table_id": {
                 "type": "string",
@@ -47,6 +48,67 @@ class MultiSourceLeadGenTool:
                 "type": "array",
                 "items": {"type": "string"},
                 "description": "Danh sách tỉnh/thành phố cần giới hạn phạm vi",
+            },
+            "campaign_id": {
+                "type": "string",
+                "description": "ID chiến dịch để theo dõi / tiếp tục",
+            },
+            "smoke_test": {
+                "type": "boolean",
+                "default": False,
+                "description": "Chạy thử nghiệm nhỏ trước khi tốn credits",
+            },
+            "target_sources": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Danh sách nguồn cụ thể, ví dụ [\"batdongsan\", \"topcv\", \"masothue\"]",
+            },
+            "target_keywords": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Từ khóa cộng hưởng điểm fit",
+            },
+            "negative_keywords": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Từ khóa loại trừ",
+            },
+            "min_fit_score": {
+                "type": "number",
+                "default": 0.0,
+                "description": "Điểm ICP tối thiểu (0-100)",
+            },
+            "enrichment_depth": {
+                "type": "string",
+                "enum": ["light", "standard", "deep"],
+                "default": "standard",
+                "description": "Mức độ làm giàu dữ liệu",
+            },
+            "intent": {
+                "type": "string",
+                "enum": ["buy", "sell", "hire", "partner", "invest", "rent", "research"],
+                "default": "buy",
+                "description": "Hành vi mua/bán/tuyển dụng/...",
+            },
+            "product_type": {
+                "type": "string",
+                "description": "Loại sản phẩm/dịch vụ, ví dụ SaaS HR, BĐS",
+            },
+            "price_segment": {
+                "type": "string",
+                "description": "Phân khúc giá: premium, mid-market, SMB",
+            },
+            "preferred_channels": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Kênh outreach: email, phone, zalo, linkedin, facebook",
+            },
+            "limit": {
+                "type": "integer",
+                "default": 50,
+                "minimum": 1,
+                "maximum": 200,
+                "description": "Số leads tối đa",
             },
         },
         "required": ["query"],
@@ -66,12 +128,64 @@ class MultiSourceLeadGenTool:
         query: str,
         table_id: str | None = None,
         locations: list[str] | None = None,
+        campaign_id: str | None = None,
+        smoke_test: bool = False,
+        target_sources: list[str] | None = None,
+        target_keywords: list[str] | None = None,
+        negative_keywords: list[str] | None = None,
+        min_fit_score: float = 0.0,
+        enrichment_depth: str = "standard",
+        intent: str = "buy",
+        product_type: str | None = None,
+        price_segment: str | None = None,
+        preferred_channels: list[str] | None = None,
+        limit: int = 50,
         **kwargs: Any,
     ) -> str:
         """Execute orchestrator and return formatted Markdown summary for chat turn."""
+        from app.lead_intelligence.campaign.schemas import (
+            CampaignSpec,
+            ICPCriteria,
+        )
+
         filters: dict[str, Any] = {}
         if locations:
             filters["locations"] = locations
+        if target_sources:
+            filters["target_sources"] = target_sources
+        if target_keywords:
+            filters["target_keywords"] = target_keywords
+        if negative_keywords:
+            filters["negative_keywords"] = negative_keywords
+        if preferred_channels:
+            filters["preferred_channels"] = preferred_channels
+
+        campaign_spec = None
+        if campaign_id or smoke_test or target_sources or intent:
+            campaign_spec = CampaignSpec(
+                name=campaign_id or f"sales-copilot-{workspace_id}",
+                workspace_id=workspace_id,
+                client_id=campaign_id,
+                table_id=table_id,
+                query=query,
+                icp_criteria=ICPCriteria(
+                    target_keywords=target_keywords or [],
+                    negative_keywords=negative_keywords or [],
+                    target_locations=locations or [],
+                    target_industries=[product_type] if product_type else [],
+                    min_fit_score=min_fit_score,
+                ),
+                intent_tags=[intent, product_type] if product_type else [intent],
+                target_sources=target_sources or [],
+                max_total_leads=min(limit, 10) if smoke_test else limit,
+                metadata={
+                    "smoke_test": smoke_test,
+                    "enrichment_depth": enrichment_depth,
+                    "product_type": product_type,
+                    "price_segment": price_segment,
+                    "preferred_channels": preferred_channels or [],
+                },
+            )
 
         if self.db_session is not None:
             result = await self.orchestrator.execute_and_persist(
@@ -79,14 +193,18 @@ class MultiSourceLeadGenTool:
                 workspace_id=workspace_id,
                 query=query,
                 table_id=table_id,
-                filters=filters,
+                limit=min(limit, 10) if smoke_test else limit,
+                filters=filters or None,
+                campaign_spec=campaign_spec,
             )
         else:
             result = await self.orchestrator.execute_multi_source_lead_gen(
                 workspace_id=workspace_id,
                 query=query,
-                filters=filters,
+                filters=filters or None,
                 table_id=table_id,
+                limit=min(limit, 10) if smoke_test else limit,
+                campaign_spec=campaign_spec,
             )
 
         total = result.total_deduplicated

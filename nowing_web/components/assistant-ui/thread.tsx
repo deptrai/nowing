@@ -124,6 +124,7 @@ import {
 	type DocumentMentionPickerRef,
 	promoteRecentMention,
 } from "../new-chat/document-mention-picker";
+import { QuickstartPlaybookBuilder } from "./quickstart-playbook-builder";
 
 type ComposerSuggestionAnchorPoint = {
 	left: number;
@@ -485,84 +486,8 @@ const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialPrompt }
 					</div>
 				</div>
 
-				{/* Actionable Quickstart Cards */}
-				<div className="space-y-3">
-					<div className="text-xs text-muted-foreground">
-						<strong className="text-foreground">{tChat("quickstart_title")}</strong> •{" "}
-						{tChat("quickstart_subtitle")}
-					</div>
-
-					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-						<div className="p-4 rounded-2xl border border-border/80 bg-card hover:border-border transition-all flex flex-col justify-between gap-3 shadow-2xs min-w-0">
-							<div className="space-y-2">
-								<div className="w-7 h-7 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-sm font-bold">
-									🏠
-								</div>
-								<h4 className="text-xs font-bold text-foreground leading-snug">
-									{tChat("card_bds_title")}
-								</h4>
-								<p className="text-[11px] text-muted-foreground">{tChat("card_bds_desc")}</p>
-							</div>
-							<button
-								type="button"
-								onClick={() => {
-									const prompt = tChat("card_bds_prompt");
-									window.location.href = `/dashboard/${workspaceId || 1}/new-chat?q=${encodeURIComponent(prompt)}`;
-								}}
-								className="text-left text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-current rounded px-1 -mx-1"
-								title={tChat("card_bds_prompt")}
-							>
-								{tChat("run_task_button")}
-							</button>
-						</div>
-
-						<div className="p-4 rounded-2xl border border-border/80 bg-card hover:border-border transition-all flex flex-col justify-between gap-3 shadow-2xs min-w-0">
-							<div className="space-y-2">
-								<div className="w-7 h-7 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center text-sm font-bold">
-									💼
-								</div>
-								<h4 className="text-xs font-bold text-foreground leading-snug">
-									{tChat("card_it_title")}
-								</h4>
-								<p className="text-[11px] text-muted-foreground">{tChat("card_it_desc")}</p>
-							</div>
-							<button
-								type="button"
-								onClick={() => {
-									const prompt = tChat("card_it_prompt");
-									window.location.href = `/dashboard/${workspaceId || 1}/new-chat?q=${encodeURIComponent(prompt)}`;
-								}}
-								className="text-left text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-current rounded px-1 -mx-1"
-								title={tChat("card_it_prompt")}
-							>
-								{tChat("run_task_button")}
-							</button>
-						</div>
-
-						<div className="p-4 rounded-2xl border border-border/80 bg-card hover:border-border transition-all flex flex-col justify-between gap-3 shadow-2xs sm:col-span-2 lg:col-span-1 min-w-0">
-							<div className="space-y-2">
-								<div className="w-7 h-7 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center text-sm font-bold">
-									🌐
-								</div>
-								<h4 className="text-xs font-bold text-foreground leading-snug">
-									{tChat("card_icp_title")}
-								</h4>
-								<p className="text-[11px] text-muted-foreground">{tChat("card_icp_desc")}</p>
-							</div>
-							<button
-								type="button"
-								onClick={() => {
-									const prompt = tChat("card_icp_prompt");
-									window.location.href = `/dashboard/${workspaceId || 1}/new-chat?q=${encodeURIComponent(prompt)}`;
-								}}
-								className="text-left text-xs font-semibold text-purple-600 dark:text-purple-400 hover:underline cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-current rounded px-1 -mx-1"
-								title={tChat("card_icp_prompt")}
-							>
-								{tChat("run_task_button")}
-							</button>
-						</div>
-					</div>
-				</div>
+				{/* Conversational Quickstart Playbook Builder */}
+				<QuickstartPlaybookBuilder />
 			</section>
 		</div>
 	);
