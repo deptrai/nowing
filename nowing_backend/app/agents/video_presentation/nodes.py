@@ -1,6 +1,7 @@
 import asyncio
 import contextlib
 import json
+import logging
 import math
 import os
 import shutil
@@ -40,6 +41,8 @@ from .state import (
 )
 from .utils import get_voice_for_provider
 
+logger = logging.getLogger(__name__)
+
 MAX_REFINE_ATTEMPTS = 3
 
 
@@ -55,7 +58,7 @@ async def create_presentation_slides(
     llm = await get_agent_llm(state.db_session, workspace_id)
     if not llm:
         error_message = f"No LLM configured for workspace {workspace_id}"
-        print(error_message)
+        logger.error(error_message)
         raise RuntimeError(error_message)
 
     prompt = get_slide_generation_prompt(user_prompt)
@@ -73,7 +76,7 @@ async def create_presentation_slides(
     try:
         presentation = PresentationSlides.model_validate(json.loads(content))
     except (json.JSONDecodeError, TypeError, ValueError) as e:
-        print(f"Direct JSON parsing failed, trying fallback approach: {e!s}")
+        logger.warning(f"Direct JSON parsing failed, trying fallback approach: {e!s}")
 
         try:
             json_start = content.find("{")
@@ -82,16 +85,16 @@ async def create_presentation_slides(
                 json_str = content[json_start:json_end]
                 parsed_data = json.loads(json_str)
                 presentation = PresentationSlides.model_validate(parsed_data)
-                print("Successfully parsed presentation slides using fallback approach")
+                logger.warning("Successfully parsed presentation slides using fallback approach")
             else:
                 error_message = f"Could not find valid JSON in LLM response. Raw response: {content}"
-                print(error_message)
+                logger.error(error_message)
                 raise ValueError(error_message)
 
         except (json.JSONDecodeError, TypeError, ValueError) as e2:
             error_message = f"Error parsing LLM response (fallback also failed): {e2!s}"
-            print(f"Error parsing LLM response: {e2!s}")
-            print(f"Raw response: {content}")
+            logger.error(f"Error parsing LLM response: {e2!s}")
+            logger.info(f"Raw response: {content}")
             raise
 
     return {"slides": presentation.slides}
@@ -162,7 +165,7 @@ async def create_slide_audio(state: State, config: RunnableConfig) -> dict[str, 
         )
 
         if not has_transcripts:
-            print(
+            logger.info(
                 f"Slide {slide.slide_number}: no speaker_transcripts, "
                 f"using default duration ({DEFAULT_DURATION_IN_FRAMES} frames)"
             )
@@ -186,7 +189,7 @@ async def create_slide_audio(state: State, config: RunnableConfig) -> dict[str, 
             ]
 
             for i, text in enumerate(slide.speaker_transcripts):
-                print(
+                logger.info(
                     f"  Slide {slide.slide_number} chunk {i + 1}/"
                     f"{len(slide.speaker_transcripts)}: "
                     f'"{text[:60]}..."'
@@ -204,7 +207,7 @@ async def create_slide_audio(state: State, config: RunnableConfig) -> dict[str, 
             if len(chunk_paths) == 1:
                 shutil.move(chunk_paths[0], output_file)
             else:
-                print(
+                logger.info(
                     f"  Concatenating {len(chunk_paths)} chunks for slide "
                     f"{slide.slide_number} with ffmpeg"
                 )
@@ -221,7 +224,7 @@ async def create_slide_audio(state: State, config: RunnableConfig) -> dict[str, 
             )
 
         except Exception as e:
-            print(f"Error generating audio for slide {slide.slide_number}: {e!s}")
+            logger.error(f"Error generating audio for slide {slide.slide_number}: {e!s}")
             raise
         finally:
             for p in chunk_paths:
@@ -233,7 +236,7 @@ async def create_slide_audio(state: State, config: RunnableConfig) -> dict[str, 
 
     audio_results_sorted = sorted(audio_results, key=lambda r: r.slide_number)
 
-    print(
+    logger.info(
         f"Generated audio for {len(audio_results_sorted)} slides "
         f"(total duration: {sum(r.duration_seconds for r in audio_results_sorted):.1f}s)"
     )
@@ -265,7 +268,7 @@ async def _get_audio_duration(file_path: str) -> float:
         if proc.returncode == 0 and stdout.strip():
             return float(stdout.strip())
     except Exception as e:
-        print(f"ffprobe failed for {file_path}: {e!s}, using file-size estimation")
+        logger.warning(f"ffprobe failed for {file_path}: {e!s}, using file-size estimation")
 
     try:
         file_size = os.path.getsize(file_path)
@@ -320,13 +323,13 @@ async def _assign_themes_with_llm(
                 result[sn] = (theme, mode)
 
         if len(result) == total:
-            print(
+            logger.info(
                 "LLM theme assignment: "
                 + ", ".join(f"S{sn}={t}/{m}" for sn, (t, m) in sorted(result.items()))
             )
             return result
 
-        print(
+        logger.warning(
             f"LLM returned {len(result)}/{total} valid assignments, "
             "filling gaps with fallback"
         )
@@ -338,7 +341,7 @@ async def _assign_themes_with_llm(
         return result
 
     except Exception as e:
-        print(f"LLM theme assignment failed ({e!s}), using fallback")
+        logger.warning(f"LLM theme assignment failed ({e!s}), using fallback")
         return {
             s.slide_number: pick_theme_and_mode_fallback(s.slide_number - 1, total)
             for s in slides
@@ -412,7 +415,7 @@ async def generate_slide_scene_codes(
             HumanMessage(content=user_prompt),
         ]
 
-        print(
+        logger.info(
             f"Generating scene code for slide {slide.slide_number}/{total_slides}: "
             f'"{slide.title}" ({duration} frames)'
         )
@@ -424,7 +427,7 @@ async def generate_slide_scene_codes(
 
         code = await _refine_if_needed(llm, code, slide.slide_number)
 
-        print(f"Scene code ready for slide {slide.slide_number} ({len(code)} chars)")
+        logger.info(f"Scene code ready for slide {slide.slide_number} ({len(code)} chars)")
 
         return SlideSceneCode(
             slide_number=slide.slide_number,
@@ -482,7 +485,7 @@ async def _refine_if_needed(llm, code: str, slide_number: int) -> str:
         return code
 
     for attempt in range(1, MAX_REFINE_ATTEMPTS + 1):
-        print(
+        logger.error(
             f"Slide {slide_number}: syntax issue (attempt {attempt}/{MAX_REFINE_ATTEMPTS}): {error}"
         )
 
@@ -501,7 +504,7 @@ async def _refine_if_needed(llm, code: str, slide_number: int) -> str:
 
         error = _basic_syntax_check(code)
         if error is None:
-            print(f"Slide {slide_number}: fixed on attempt {attempt}")
+            logger.info(f"Slide {slide_number}: fixed on attempt {attempt}")
             return code
 
     raise RuntimeError(

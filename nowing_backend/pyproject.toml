@@ -202,7 +202,6 @@ select = [
 ignore = [
     "E501",   # Line too long (handled by formatter)
     "B008",   # Do not perform function calls in argument defaults
-    "T201",   # Print found (allow print statements)
     "RUF012", # Mutable class attributes should be annotated with `typing.ClassVar`
 ]
 
@@ -214,6 +213,15 @@ unfixable = []
 
 # Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.per-file-ignores]
+# CLI tools and test benches intentionally write to stdout/stderr.
+"app/proprietary/web_crawler/testbench/__main__.py" = ["T201"]
+"app/proprietary/web_crawler/testbench/core.py" = ["T201"]
+"app/proprietary/web_crawler/testbench/suite_extraction.py" = ["T201"]
+"app/proprietary/web_crawler/testbench/suite_stealth.py" = ["T201"]
+"app/zero_publication.py" = ["T201"]
+"tests/integration/document_upload/conftest.py" = ["T201"]
 
 [tool.ruff.format]
 # Use double quotes for strings.

@@ -144,14 +144,28 @@ def _build_error_response(
 def _nowing_error_handler(request: Request, exc: NowingError) -> JSONResponse:
     """Handle our own structured exceptions."""
     rid = _get_request_id(request)
+    user_id = getattr(request.state, "user_id", None)
+    workspace_id = getattr(request.state, "workspace_id", None)
     if exc.status_code >= 500:
         _error_logger.error(
-            "[%s] %s - %s: %s",
+            "[%s] user=%s workspace=%s path=%s - %s: %s",
             rid,
+            user_id,
+            workspace_id,
             request.url.path,
             exc.code,
             exc,
             exc_info=True,
+        )
+    elif exc.status_code >= 400:
+        _error_logger.warning(
+            "[%s] user=%s workspace=%s path=%s - %s: %s",
+            rid,
+            user_id,
+            workspace_id,
+            request.url.path,
+            exc.code,
+            exc,
         )
     message = exc.message if exc.safe_for_client else GENERIC_5XX_MESSAGE
     return _build_error_response(
@@ -276,10 +290,14 @@ def _validation_error_handler(
 def _unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Catch-all: log full traceback, return sanitized 500."""
     rid = _get_request_id(request)
+    user_id = getattr(request.state, "user_id", None)
+    workspace_id = getattr(request.state, "workspace_id", None)
     ot_metrics.record_auth_failure(reason="unhandled_exception")
     _error_logger.error(
-        "[%s] Unhandled exception on %s %s",
+        "[%s] user=%s workspace=%s Unhandled exception on %s %s",
         rid,
+        user_id,
+        workspace_id,
         request.method,
         request.url.path,
         exc_info=True,
@@ -621,6 +639,19 @@ async def _warm_agent_jit_caches() -> None:
         )
 
 
+def initialize_event_loop_policy() -> None:
+    """Set the default asyncio event loop policy at startup.
+
+    Must be called explicitly during application lifespan or worker startup,
+    not at module import time, to avoid side effects on import.
+    """
+    try:
+        asyncio.set_event_loop_policy(asyncio.DefaultEventLoopPolicy())
+    except RuntimeError:
+        logger = logging.getLogger(__name__)
+        logger.warning("Failed to set default event loop policy", exc_info=True)
+
+
 async def _warm_embedding_model() -> None:
     """Pre-load/JIT the embedding model so the first KB search is fast.
 
@@ -685,6 +716,11 @@ async def lifespan(app: FastAPI):
     # sooner (default 700/10/10 → 700/10/5). This reduces peak RSS
     # with minimal CPU overhead.
     gc.set_threshold(700, 10, 5)
+
+    # Ensure the standard asyncio event loop policy is selected before any
+    # other imports or warmups create a loop. Previously this ran as a
+    # documents_routes module side effect.
+    initialize_event_loop_policy()
 
     _enable_slow_callback_logging(threshold_sec=0.5)
     init_otel(app)

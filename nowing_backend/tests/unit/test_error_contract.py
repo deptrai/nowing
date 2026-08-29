@@ -23,11 +23,23 @@ from app.exceptions import (
     ISSUES_URL,
     ConfigurationError,
     ConnectorError,
+    ContextOverflowError,
     DatabaseError,
+    DocumentError,
+    ExternalAPIError,
     ExternalServiceError,
     ForbiddenError,
+    IndexingError,
+    LLMError,
+    ModelUnavailableError,
     NotFoundError,
     NowingError,
+    OAuthError,
+    ParseError,
+    PermissionDeniedError,
+    RateLimitError,
+    StorageError,
+    UploadError,
     ValidationError,
 )
 
@@ -127,6 +139,50 @@ def _make_test_app():
     @app.get("/nowing-validation")
     async def raise_validation():
         raise ValidationError("Email is invalid")
+
+    @app.get("/nowing-permission-denied")
+    async def raise_permission_denied():
+        raise PermissionDeniedError()
+
+    @app.get("/nowing-oauth")
+    async def raise_oauth():
+        raise OAuthError("Google token expired")
+
+    @app.get("/nowing-indexing")
+    async def raise_indexing():
+        raise IndexingError("Connector indexing failed")
+
+    @app.get("/nowing-rate-limit")
+    async def raise_rate_limit():
+        raise RateLimitError()
+
+    @app.get("/nowing-upload")
+    async def raise_upload():
+        raise UploadError("File too large")
+
+    @app.get("/nowing-parse")
+    async def raise_parse():
+        raise ParseError("PDF parsing failed")
+
+    @app.get("/nowing-storage")
+    async def raise_storage():
+        raise StorageError("S3 upload failed")
+
+    @app.get("/nowing-llm")
+    async def raise_llm():
+        raise LLMError("OpenAI request failed")
+
+    @app.get("/nowing-context-overflow")
+    async def raise_context_overflow():
+        raise ContextOverflowError()
+
+    @app.get("/nowing-model-unavailable")
+    async def raise_model_unavailable():
+        raise ModelUnavailableError()
+
+    @app.get("/nowing-external-api")
+    async def raise_external_api():
+        raise ExternalAPIError("Third-party API failed")
 
     @app.get("/unhandled")
     async def raise_unhandled():
@@ -262,6 +318,50 @@ class TestNowingErrorHandler:
         body = _assert_envelope(client.get("/nowing-validation"), 422)
         assert body["error"]["code"] == "VALIDATION_ERROR"
 
+    def test_permission_denied_error(self, client):
+        body = _assert_envelope(client.get("/nowing-permission-denied"), 403)
+        assert body["error"]["code"] == "PERMISSION_DENIED"
+
+    def test_oauth_error(self, client):
+        body = _assert_envelope(client.get("/nowing-oauth"), 502)
+        assert body["error"]["code"] == "OAUTH_ERROR"
+
+    def test_indexing_error(self, client):
+        body = _assert_envelope(client.get("/nowing-indexing"), 502)
+        assert body["error"]["code"] == "INDEXING_ERROR"
+
+    def test_rate_limit_error(self, client):
+        body = _assert_envelope(client.get("/nowing-rate-limit"), 429)
+        assert body["error"]["code"] == "RATE_LIMITED"
+
+    def test_upload_error(self, client):
+        body = _assert_envelope(client.get("/nowing-upload"), 400)
+        assert body["error"]["code"] == "UPLOAD_ERROR"
+
+    def test_parse_error(self, client):
+        body = _assert_envelope(client.get("/nowing-parse"), 422)
+        assert body["error"]["code"] == "PARSE_ERROR"
+
+    def test_storage_error(self, client):
+        body = _assert_envelope(client.get("/nowing-storage"), 500)
+        assert body["error"]["code"] == "STORAGE_ERROR"
+
+    def test_llm_error(self, client):
+        body = _assert_envelope(client.get("/nowing-llm"), 502)
+        assert body["error"]["code"] == "LLM_ERROR"
+
+    def test_context_overflow_error(self, client):
+        body = _assert_envelope(client.get("/nowing-context-overflow"), 413)
+        assert body["error"]["code"] == "CONTEXT_OVERFLOW"
+
+    def test_model_unavailable_error(self, client):
+        body = _assert_envelope(client.get("/nowing-model-unavailable"), 503)
+        assert body["error"]["code"] == "MODEL_UNAVAILABLE"
+
+    def test_external_api_error(self, client):
+        body = _assert_envelope(client.get("/nowing-external-api"), 502)
+        assert body["error"]["code"] == "EXTERNAL_API_ERROR"
+
 
 # ---------------------------------------------------------------------------
 # Unhandled exception (catch-all)
@@ -381,3 +481,38 @@ class TestNowingErrorClasses:
     def test_custom_code(self):
         err = ConnectorError("x", code="GITHUB_TOKEN_EXPIRED")
         assert err.code == "GITHUB_TOKEN_EXPIRED"
+
+    def test_permission_denied_defaults(self):
+        err = PermissionDeniedError()
+        assert err.status_code == 403
+        assert err.code == "PERMISSION_DENIED"
+
+    def test_oauth_error(self):
+        err = OAuthError("token expired")
+        assert err.code == "OAUTH_ERROR"
+        assert err.status_code == 502
+
+    def test_indexing_error(self):
+        err = IndexingError("connector failed")
+        assert err.code == "INDEXING_ERROR"
+        assert err.status_code == 502
+
+    def test_rate_limit_error(self):
+        err = RateLimitError()
+        assert err.code == "RATE_LIMITED"
+        assert err.status_code == 429
+
+    def test_document_error_subclasses(self):
+        assert UploadError("x").status_code == 400
+        assert ParseError("x").status_code == 422
+        assert StorageError("x").status_code == 500
+
+    def test_llm_error_subclasses(self):
+        assert LLMError("x").status_code == 502
+        assert ContextOverflowError().status_code == 413
+        assert ModelUnavailableError().status_code == 503
+
+    def test_external_api_error(self):
+        err = ExternalAPIError("x")
+        assert err.code == "EXTERNAL_API_ERROR"
+        assert err.status_code == 502

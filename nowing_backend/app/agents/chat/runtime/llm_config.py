@@ -10,6 +10,7 @@ It also provides utilities for creating ChatLiteLLM instances and
 managing prompt configurations.
 """
 
+import logging
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from pathlib import Path
@@ -33,6 +34,8 @@ from app.services.llm_router_service import (
     ChatLiteLLMRouter,
     _sanitize_content,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _sanitize_messages(messages: list[BaseMessage]) -> list[BaseMessage]:
@@ -255,7 +258,7 @@ def load_llm_config_from_yaml(llm_config_id: int = -1) -> dict | None:
     if not config_file.exists():
         config_file = base_dir / "app" / "config" / "global_llm_config.example.yaml"
         if not config_file.exists():
-            print("Error: No global_llm_config.yaml or example file found")
+            logger.error("No global_llm_config.yaml or example file found")
             return None
 
     try:
@@ -266,10 +269,10 @@ def load_llm_config_from_yaml(llm_config_id: int = -1) -> dict | None:
                 if isinstance(cfg, dict) and cfg.get("id") == llm_config_id:
                     return cfg
 
-            print(f"Error: Global LLM config id {llm_config_id} not found")
+            logger.error("Global LLM config id %d not found", llm_config_id)
             return None
-    except Exception as e:
-        print(f"Error loading config: {e}")
+    except Exception:
+        logger.exception("Error loading config")
         return None
 
 
@@ -321,8 +324,8 @@ def create_chat_litellm_from_agent_config(
 ) -> ChatLiteLLM | ChatLiteLLMRouter | None:
     """Create a ChatLiteLLM from an already resolved concrete model config."""
     if agent_config.is_auto_mode:
-        print(
-            "Error: Auto mode must be resolved to a concrete model before LLM creation"
+        logger.error(
+            "Auto mode must be resolved to a concrete model before LLM creation"
         )
         return None
 

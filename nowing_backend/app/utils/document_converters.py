@@ -89,14 +89,16 @@ def get_model_context_window(model_name: str) -> int:
         context_window = model_info.get("max_input_tokens")
         # Handle case where key exists but value is None
         if context_window is None:
-            print(
-                f"Warning: max_input_tokens is None for {model_name}, using default 4096 tokens."
+            logger.warning(
+                "max_input_tokens is None for %s, using default 4096 tokens.",
+                model_name,
             )
             return 4096  # Conservative fallback
         return context_window
-    except Exception as e:
-        print(
-            f"Warning: Could not get model info for {model_name}, using default 4096 tokens. Error: {e}"
+    except Exception:
+        logger.exception(
+            "Could not get model info for %s, using default 4096 tokens.",
+            model_name,
         )
         return 4096  # Conservative fallback
 
@@ -139,7 +141,7 @@ def optimize_content_for_context_window(
     available_tokens = context_window - reserved_tokens
 
     if available_tokens <= 100:  # Minimum viable content
-        print(f"Warning: Very limited tokens available for content: {available_tokens}")
+        logger.warning("Very limited tokens available for content: %s", available_tokens)
         return content[:500]  # Fallback to first 500 chars
 
     # Binary search to find optimal content length
@@ -167,9 +169,11 @@ def optimize_content_for_context_window(
     )
 
     if optimal_length < len(content):
-        print(
-            f"Content optimized: {len(content)} -> {optimal_length} chars "
-            f"to fit in {available_tokens} available tokens"
+        logger.info(
+            "Content optimized: %d -> %d chars to fit in %s available tokens",
+            len(content),
+            optimal_length,
+            available_tokens,
         )
 
     return optimized_content

@@ -1,9 +1,12 @@
 import asyncio
+import logging
 from pathlib import Path
 
 import soundfile as sf
 import torch
 from kokoro import KPipeline
+
+logger = logging.getLogger(__name__)
 
 
 class KokoroTTSService:
@@ -33,8 +36,8 @@ class KokoroTTSService:
         """Initialize the Kokoro pipeline."""
         try:
             self.pipeline = KPipeline(lang_code=self.lang_code)
-        except Exception as e:
-            print(f"Error initializing Kokoro pipeline: {e}")
+        except Exception:
+            logger.exception("Error initializing Kokoro pipeline")
             raise
 
     async def generate_speech(
@@ -75,9 +78,9 @@ class KokoroTTSService:
             if isinstance(voice, str) and voice.endswith(".pt"):
                 try:
                     voice_param = torch.load(voice, weights_only=True)
-                except Exception as e:
-                    print(
-                        f"Warning: Could not load voice tensor from {voice}, using default: {e}"
+                except Exception:
+                    logger.warning(
+                        "Could not load voice tensor from %s, using default", voice
                     )
                     voice_param = "af_heart"
 
@@ -111,8 +114,8 @@ class KokoroTTSService:
 
             return output_path
 
-        except Exception as e:
-            print(f"Error generating speech with Kokoro: {e}")
+        except Exception:
+            logger.exception("Error generating speech with Kokoro")
             raise
 
 

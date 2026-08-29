@@ -29,7 +29,7 @@ import redis
 from dateutil.parser import isoparse
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, ValidationError
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -108,7 +108,7 @@ async def _run_indexing_heartbeat_loop(notification_id: int) -> None:
             try:
                 get_heartbeat_redis_client().setex(key, HEARTBEAT_TTL_SECONDS, "alive")
                 ot_metrics.record_celery_heartbeat_refresh(heartbeat_type="connector")
-            except Exception as e:
+            except (redis.RedisError, OSError, TypeError, ValueError) as e:
                 ot_metrics.record_celery_heartbeat_failure(heartbeat_type="connector")
                 logger.warning(
                     f"Failed to refresh Redis heartbeat for notification "
@@ -162,7 +162,7 @@ async def list_github_repositories(
         # Handle invalid token error specifically
         logger.error(f"GitHub PAT validation failed for user {user.id}: {e!s}")
         raise HTTPException(status_code=400, detail=f"Invalid GitHub PAT: {e!s}") from e
-    except Exception as e:
+    except (ConnectionError, OSError, RuntimeError, TypeError) as e:
         logger.error(f"Failed to fetch GitHub repositories for user {user.id}: {e!s}")
         raise HTTPException(
             status_code=500, detail="Failed to fetch GitHub repositories."
@@ -300,7 +300,7 @@ async def create_search_source_connector(
     except HTTPException:
         await session.rollback()
         raise
-    except Exception as e:
+    except SQLAlchemyError as e:
         logger.error(f"Failed to create search source connector: {e!s}")
         await session.rollback()
         raise HTTPException(
@@ -345,7 +345,8 @@ async def read_search_source_connectors(
         return result.scalars().all()
     except HTTPException:
         raise
-    except Exception as e:
+    except SQLAlchemyError as e:
+        await session.rollback()
         raise HTTPException(
             status_code=500,
             detail=f"Failed to fetch search source connectors: {e!s}",
@@ -388,7 +389,8 @@ async def read_search_source_connector(
         return connector
     except HTTPException:
         raise
-    except Exception as e:
+    except SQLAlchemyError as e:
+        await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to fetch search source connector: {e!s}"
         ) from e
@@ -616,7 +618,7 @@ async def update_search_source_connector(
         raise HTTPException(
             status_code=409, detail=f"Database integrity error during update: {e!s}"
         ) from e
-    except Exception as e:
+    except SQLAlchemyError as e:
         await session.rollback()
         logger.error(
             f"Failed to update search source connector {connector_id}: {e}",
@@ -707,7 +709,7 @@ async def delete_search_source_connector(
                             f"Failed to delete Composio connected account {composio_connected_account_id} "
                             f"for connector {connector_id}"
                         )
-                except Exception as composio_error:
+                except (OSError, RuntimeError, TypeError, ValueError) as composio_error:
                     logger.warning(
                         f"Error deleting Composio connected account {composio_connected_account_id}: {composio_error!s}"
                     )
@@ -781,7 +783,7 @@ async def delete_search_source_connector(
         }
     except HTTPException:
         raise
-    except Exception as e:
+    except SQLAlchemyError as e:
         await session.rollback()
         raise HTTPException(
             status_code=500,
@@ -1283,7 +1285,7 @@ async def index_connector_content(
         }
     except HTTPException:
         raise
-    except Exception as e:
+    except SQLAlchemyError as e:
         logger.error(
             f"Failed to initiate indexing for connector {connector_id}: {e}",
             exc_info=True,
@@ -1316,7 +1318,7 @@ async def _update_connector_timestamp_by_id(session: AsyncSession, connector_id:
             )  # Use UTC for timezone consistency
             await session.commit()
             logger.info(f"Updated last_indexed_at for connector {connector_id}")
-    except Exception as e:
+    except SQLAlchemyError as e:
         logger.error(
             f"Failed to update last_indexed_at for connector {connector_id}: {e!s}"
         )
@@ -1364,7 +1366,7 @@ async def _persist_auth_expired(session: AsyncSession, connector_id: int) -> Non
             flag_modified(connector, "config")
             await session.commit()
             logger.info(f"Marked connector {connector_id} as auth_expired")
-    except Exception:
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
         logger.warning(
             f"Failed to persist auth_expired for connector {connector_id}",
             exc_info=True,
@@ -1457,7 +1459,7 @@ async def _run_indexing_with_notifications(
                     ot_metrics.record_celery_heartbeat_refresh(
                         heartbeat_type="connector"
                     )
-                except Exception as e:
+                except (redis.RedisError, OSError, TypeError, ValueError) as e:
                     ot_metrics.record_celery_heartbeat_failure(
                         heartbeat_type="connector"
                     )
@@ -1510,7 +1512,7 @@ async def _run_indexing_with_notifications(
                         wait_seconds=wait_seconds,
                     )
                     await session.commit()
-                except Exception as e:
+                except (redis.RedisError, OSError, TypeError, ValueError) as e:
                     # Don't let notification errors break the indexing
                     logger.warning(f"Failed to update retry notification: {e}")
 
@@ -1531,7 +1533,7 @@ async def _run_indexing_with_notifications(
                     ot_metrics.record_celery_heartbeat_refresh(
                         heartbeat_type="connector"
                     )
-                except Exception as e:
+                except (redis.RedisError, OSError, TypeError, ValueError) as e:
                     # Don't let Redis errors break the indexing
                     ot_metrics.record_celery_heartbeat_failure(
                         heartbeat_type="connector"
@@ -1550,7 +1552,7 @@ async def _run_indexing_with_notifications(
                         )
                     )
                     await session.commit()
-                except Exception as e:
+                except (redis.RedisError, OSError, TypeError, ValueError) as e:
                     # Don't let notification errors break the indexing
                     logger.warning(f"Failed to update heartbeat notification: {e}")
 
@@ -1750,14 +1752,14 @@ async def _run_indexing_with_notifications(
                     is_warning=True,  # Mark as warning since partial data was indexed
                 )
                 await session.commit()
-            except Exception as notif_error:
+            except (SQLAlchemyError, OSError, TypeError, ValueError) as notif_error:
                 logger.error(
                     f"Failed to update notification on soft timeout: {notif_error!s}"
                 )
 
         # Re-raise so Celery knows the task was terminated
         raise
-    except Exception as e:
+    except Exception as e:  # Celery task boundary: catch all unhandled indexing failures to release resources and update notifications.
         logger.error(f"Error in indexing task: {e!s}", exc_info=True)
 
         if _is_auth_error(str(e)):
@@ -1775,7 +1777,7 @@ async def _run_indexing_with_notifications(
                     error_message=str(e),
                     skipped_count=None,  # Unknown on exception
                 )
-            except Exception as notif_error:
+            except (redis.RedisError, OSError, TypeError, ValueError) as notif_error:
                 logger.error(f"Failed to update notification: {notif_error!s}")
     finally:
         # Stop the background heartbeat refresher BEFORE deleting the
@@ -1790,7 +1792,7 @@ async def _run_indexing_with_notifications(
             try:
                 heartbeat_key = _get_heartbeat_key(notification.id)
                 get_heartbeat_redis_client().delete(heartbeat_key)
-            except Exception:
+            except Exception:  # defensive: ignore cleanup failures
                 pass  # Ignore cleanup errors - key will expire anyway
         if connector_lock_acquired:
             with suppress(Exception):
@@ -2183,7 +2185,7 @@ async def run_google_drive_indexing(
                     errors.append(f"Folder '{folder.name}': {error_message}")
                 else:
                     total_indexed += indexed_count
-            except Exception as e:
+            except (OSError, RuntimeError, TypeError, ValueError) as e:
                 errors.append(f"Folder '{folder.name}': {e!s}")
                 logger.error(
                     f"Error indexing folder {folder.name} ({folder.id}): {e}",
@@ -2207,7 +2209,7 @@ async def run_google_drive_indexing(
                 )
                 total_indexed += indexed_count
                 errors.extend(file_errors)
-            except Exception as e:
+            except (OSError, RuntimeError, TypeError, ValueError) as e:
                 errors.append(f"File batch indexing: {e!s}")
                 logger.error(
                     f"Error batch indexing files: {e}",
@@ -2257,7 +2259,7 @@ async def run_google_drive_indexing(
                 unsupported_count=total_unsupported,
             )
 
-    except Exception as e:
+    except Exception as e:  # Celery task boundary: catch all unhandled indexing failures to release resources and update notifications.
         logger.error(
             f"Critical error in run_google_drive_indexing for connector {connector_id}: {e}",
             exc_info=True,
@@ -2274,7 +2276,7 @@ async def run_google_drive_indexing(
                     indexed_count=0,
                     error_message=str(e),
                 )
-            except Exception as notif_error:
+            except (SQLAlchemyError, OSError, TypeError, ValueError) as notif_error:
                 logger.error(f"Failed to update notification: {notif_error!s}")
 
 
@@ -2374,7 +2376,7 @@ async def run_onedrive_indexing(
                 unsupported_count=total_unsupported,
             )
 
-    except Exception as e:
+    except Exception as e:  # Celery task boundary: catch all unhandled indexing failures to release resources and update notifications.
         logger.error(
             f"Critical error in run_onedrive_indexing for connector {connector_id}: {e}",
             exc_info=True,
@@ -2388,7 +2390,7 @@ async def run_onedrive_indexing(
                     indexed_count=0,
                     error_message=str(e),
                 )
-            except Exception as notif_error:
+            except (SQLAlchemyError, OSError, TypeError, ValueError) as notif_error:
                 logger.error(f"Failed to update notification: {notif_error!s}")
 
 
@@ -2488,7 +2490,7 @@ async def run_dropbox_indexing(
                 unsupported_count=total_unsupported,
             )
 
-    except Exception as e:
+    except Exception as e:  # Celery task boundary: catch all unhandled indexing failures to release resources and update notifications.
         logger.error(
             f"Critical error in run_dropbox_indexing for connector {connector_id}: {e}",
             exc_info=True,
@@ -2502,7 +2504,7 @@ async def run_dropbox_indexing(
                     indexed_count=0,
                     error_message=str(e),
                 )
-            except Exception as notif_error:
+            except (SQLAlchemyError, OSError, TypeError, ValueError) as notif_error:
                 logger.error(f"Failed to update notification: {notif_error!s}")
 
 
@@ -2747,7 +2749,7 @@ async def create_mcp_connector(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except SQLAlchemyError as e:
         logger.error(f"Failed to create MCP connector: {e!s}", exc_info=True)
         await session.rollback()
         raise HTTPException(
@@ -2799,7 +2801,7 @@ async def list_mcp_connectors(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except SQLAlchemyError as e:
         logger.error(f"Failed to list MCP connectors: {e!s}", exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Failed to list MCP connectors: {e!s}"
@@ -2851,7 +2853,7 @@ async def get_mcp_connector(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except SQLAlchemyError as e:
         logger.error(f"Failed to get MCP connector: {e!s}", exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Failed to get MCP connector: {e!s}"
@@ -2927,7 +2929,7 @@ async def update_mcp_connector(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except SQLAlchemyError as e:
         logger.error(f"Failed to update MCP connector: {e!s}", exc_info=True)
         await session.rollback()
         raise HTTPException(
@@ -2986,7 +2988,7 @@ async def delete_mcp_connector(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except SQLAlchemyError as e:
         logger.error(f"Failed to delete MCP connector: {e!s}", exc_info=True)
         await session.rollback()
         raise HTTPException(
@@ -3054,7 +3056,7 @@ async def test_mcp_server_connection(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except (ConnectionError, OSError, RuntimeError, TypeError, ValueError) as e:
         logger.error(f"Failed to test MCP connection: {e!s}", exc_info=True)
         return {
             "status": "error",
@@ -3140,7 +3142,7 @@ async def get_drive_picker_token(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except SQLAlchemyError as e:
         logger.error(f"Failed to get Drive picker token: {e!s}", exc_info=True)
         if _is_auth_error(str(e)):
             await _persist_auth_expired(session, connector_id)
@@ -3232,7 +3234,7 @@ async def trust_mcp_tool(
         raise
     except LookupError as e:
         raise HTTPException(status_code=404, detail="MCP connector not found") from e
-    except Exception as e:
+    except SQLAlchemyError as e:
         logger.error(f"Failed to trust MCP tool: {e!s}", exc_info=True)
         await session.rollback()
         raise HTTPException(
@@ -3275,7 +3277,7 @@ async def untrust_mcp_tool(
         raise
     except LookupError as e:
         raise HTTPException(status_code=404, detail="MCP connector not found") from e
-    except Exception as e:
+    except SQLAlchemyError as e:
         logger.error(f"Failed to untrust MCP tool: {e!s}", exc_info=True)
         await session.rollback()
         raise HTTPException(

@@ -1,9 +1,11 @@
-# Force asyncio to use standard event loop before unstructured imports
 import asyncio
+import logging
+import os
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel as PydanticBaseModel, Field
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
@@ -41,15 +43,6 @@ from app.services.task_dispatcher import TaskDispatcher, get_task_dispatcher
 from app.services.workspace_limits import workspace_limit_service
 from app.users import get_auth_context
 from app.utils.rbac import check_permission
-
-try:
-    asyncio.set_event_loop_policy(asyncio.DefaultEventLoopPolicy())
-except RuntimeError as e:
-    print("Error setting event loop policy", e)
-    pass
-
-import logging
-import os
 
 os.environ["UNSTRUCTURED_HAS_PATCHED_LOOP"] = "1"
 
@@ -118,7 +111,7 @@ async def create_documents(
         }
     except HTTPException:
         raise
-    except Exception as e:
+    except SQLAlchemyError as e:
         await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to process documents: {e!s}"
@@ -275,7 +268,7 @@ async def create_documents_file_upload(
 
             except HTTPException:
                 raise
-            except Exception as e:
+            except (ValueError, TypeError, OSError, SQLAlchemyError) as e:
                 os.unlink(temp_path)
                 raise HTTPException(
                     status_code=422,
@@ -313,7 +306,7 @@ async def create_documents_file_upload(
                     mime_type=content_type,
                     created_by_id=str(user.id),
                 )
-            except Exception as storage_error:
+            except (OSError, SQLAlchemyError, TypeError, ValueError) as storage_error:
                 logger.warning(
                     "Failed to store original upload for document %s: %s",
                     document.id,
@@ -343,7 +336,7 @@ async def create_documents_file_upload(
         }
     except HTTPException:
         raise
-    except Exception as e:
+    except SQLAlchemyError as e:
         await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to upload files: {e!s}"
@@ -539,7 +532,8 @@ async def read_documents(
         )
     except HTTPException:
         raise
-    except Exception as e:
+    except SQLAlchemyError as e:
+        await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to fetch documents: {e!s}"
         ) from e
@@ -713,7 +707,8 @@ async def search_documents(
         )
     except HTTPException:
         raise
-    except Exception as e:
+    except SQLAlchemyError as e:
+        await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to search documents: {e!s}"
         ) from e
@@ -789,7 +784,8 @@ async def search_documents_semantic(
             scope=scope,
             top_k=request.top_k,
         )
-    except Exception as e:
+    except SQLAlchemyError as e:
+        await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Semantic search failed: {e!s}"
         ) from e
@@ -918,7 +914,8 @@ async def search_document_titles(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except SQLAlchemyError as e:
+        await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to search document titles: {e!s}"
         ) from e
@@ -974,7 +971,8 @@ async def get_document_by_virtual_path(
         )
     except HTTPException:
         raise
-    except Exception as e:
+    except SQLAlchemyError as e:
+        await session.rollback()
         raise HTTPException(
             status_code=500,
             detail=f"Failed to resolve document by virtual path: {e!s}",
@@ -1043,7 +1041,8 @@ async def get_documents_status(
         return DocumentStatusBatchResponse(items=items)
     except HTTPException:
         raise
-    except Exception as e:
+    except SQLAlchemyError as e:
+        await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to fetch document status: {e!s}"
         ) from e
@@ -1107,7 +1106,8 @@ async def get_document_type_counts(
         return type_counts
     except HTTPException:
         raise
-    except Exception as e:
+    except SQLAlchemyError as e:
+        await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to fetch document type counts: {e!s}"
         ) from e
@@ -1209,7 +1209,8 @@ async def get_document_by_chunk_id(
         )
     except HTTPException:
         raise
-    except Exception as e:
+    except SQLAlchemyError as e:
+        await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to retrieve document: {e!s}"
         ) from e
@@ -1314,7 +1315,8 @@ async def get_document_chunks_paginated(
         )
     except HTTPException:
         raise
-    except Exception as e:
+    except SQLAlchemyError as e:
+        await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to fetch chunks: {e!s}"
         ) from e
@@ -1385,7 +1387,8 @@ async def read_document(
         )
     except HTTPException:
         raise
-    except Exception as e:
+    except SQLAlchemyError as e:
+        await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to fetch document: {e!s}"
         ) from e
@@ -1447,7 +1450,7 @@ async def update_document(
         )
     except HTTPException:
         raise
-    except Exception as e:
+    except SQLAlchemyError as e:
         await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to update document: {e!s}"
@@ -1514,7 +1517,7 @@ async def delete_document(
             from app.tasks.celery_tasks.document_tasks import delete_document_task
 
             delete_document_task.delay(document_id)
-        except Exception as dispatch_error:
+        except (ConnectionError, OSError, RuntimeError, TypeError, ValueError) as dispatch_error:
             document.status = {"state": "ready"}
             await session.commit()
             raise HTTPException(
@@ -1525,7 +1528,7 @@ async def delete_document(
         return {"message": "Document deleted successfully"}
     except HTTPException:
         raise
-    except Exception as e:
+    except SQLAlchemyError as e:
         await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to delete document: {e!s}"

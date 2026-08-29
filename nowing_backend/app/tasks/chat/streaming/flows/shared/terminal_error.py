@@ -67,11 +67,19 @@ def handle_terminal_exception(
     with __suppress():
         ot.record_error(chat_span, exc)
     error_message = f"Error during {flow_label}: {exc!s}"
-    # Match the original behavior: log full traceback via ``print`` so it lands
-    # in stderr regardless of the logger config.
-    print(f"[{log_prefix}] {error_message}")
-    print(f"[{log_prefix}] Exception type: {type(exc).__name__}")
-    print(f"[{log_prefix}] Traceback:\n{traceback.format_exc()}")
+    # Stream the full traceback through the configured logger; the original
+    # intent was to guarantee it surfaced even when logging was misconfigured,
+    # but ``logger.exception`` with proper handler setup is the production-safe
+    # equivalent.
+    logger.exception(
+        "[%s] %s\n[%s] Exception type: %s\n[%s] Traceback:\n%s",
+        log_prefix,
+        error_message,
+        log_prefix,
+        type(exc).__name__,
+        log_prefix,
+        traceback.format_exc(),
+    )
 
     def _iter_frames() -> Iterator[str]:
         if error_code == "TURN_CANCELLING":

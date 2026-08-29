@@ -104,8 +104,8 @@ def _read_global_config_yaml(path_str: str) -> dict:
     try:
         with open(f, encoding="utf-8") as fh:
             return yaml.safe_load(fh) or {}
-    except Exception as e:
-        print(f"Warning: Failed to read global_llm_config.yaml: {e}")
+    except Exception:
+        logger.warning("Failed to read global_llm_config.yaml", exc_info=True)
         return {}
 
 
@@ -127,8 +127,8 @@ def _global_config_data() -> dict:
         try:
             decoded = base64.b64decode(b64).decode("utf-8")
             return yaml.safe_load(decoded) or {}
-        except Exception as e:
-            print(f"Warning: Failed to decode GLOBAL_LLM_CONFIG_B64: {e}")
+        except Exception:
+            logger.warning("Failed to decode GLOBAL_LLM_CONFIG_B64", exc_info=True)
 
     path = BASE_DIR / "app" / "config" / "global_llm_config.yaml"
     return _read_global_config_yaml(str(path))
@@ -198,7 +198,7 @@ def load_global_llm_configs():
             if cfg.get("seo_enabled") and cfg.get("seo_slug"):
                 slug = cfg["seo_slug"]
                 if slug in seen_slugs:
-                    print(
+                    logger.warning(
                         f"Warning: Duplicate seo_slug '{slug}' in global LLM configs "
                         f"(ids {seen_slugs[slug]} and {cfg.get('id')})"
                     )
@@ -223,8 +223,8 @@ def load_global_llm_configs():
                 # hand-picked dead OR model is still dead. _enrich_health
                 # re-stamps health_gated for them on the next refresh tick.
                 cfg["health_gated"] = False
-        except Exception as e:
-            print(f"Warning: Failed to score global LLM configs: {e}")
+        except Exception:
+            logger.warning("Failed to score global LLM configs", exc_info=True)
 
         # Planner LLM is a singleton role. If an operator accidentally
         # marks multiple configs ``is_planner: true``, only the first one
@@ -233,15 +233,13 @@ def load_global_llm_configs():
         planner_cfgs = [c for c in configs if c.get("is_planner") is True]
         if len(planner_cfgs) > 1:
             extra_ids = [c.get("id") for c in planner_cfgs[1:]]
-            print(
-                "Warning: Multiple global LLM configs marked is_planner=true "
+            logger.warning("Warning: Multiple global LLM configs marked is_planner=true "
                 f"(ids {[c.get('id') for c in planner_cfgs]}); using id "
-                f"{planner_cfgs[0].get('id')} and ignoring {extra_ids}"
-            )
+                f"{planner_cfgs[0].get('id')} and ignoring {extra_ids}")
 
         return configs
-    except Exception as e:
-        print(f"Warning: Failed to load global LLM configs: {e}")
+    except Exception:
+        logger.warning("Failed to load global LLM configs", exc_info=True)
         return []
 
 
@@ -269,8 +267,8 @@ def load_router_settings():
         settings = data.get("router_settings", {})
         # Merge with defaults
         return {**default_settings, **settings}
-    except Exception as e:
-        print(f"Warning: Failed to load router settings: {e}")
+    except Exception:
+        logger.warning("Failed to load router settings", exc_info=True)
         return default_settings
 
 
@@ -293,8 +291,8 @@ def load_global_image_gen_configs():
                 default_billing = "premium" if tier == "pro" else tier or "free"
                 cfg.setdefault("billing_tier", default_billing)
         return configs
-    except Exception as e:
-        print(f"Warning: Failed to load global image generation configs: {e}")
+    except Exception:
+        logger.warning("Failed to load global image generation configs", exc_info=True)
         return []
 
 
@@ -319,8 +317,8 @@ def load_image_gen_router_settings():
     try:
         settings = data.get("image_generation_router_settings", {})
         return {**default_settings, **settings}
-    except Exception as e:
-        print(f"Warning: Failed to load image generation router settings: {e}")
+    except Exception:
+        logger.warning("Failed to load image generation router settings", exc_info=True)
         return default_settings
 
 
@@ -346,19 +344,15 @@ def load_openrouter_integration_settings() -> dict | None:
             return None
 
         if "billing_tier" in settings:
-            print(
-                "Warning: openrouter_integration.billing_tier is deprecated; "
+            logger.warning("Warning: openrouter_integration.billing_tier is deprecated; "
                 "tier is now derived per model from OpenRouter data "
-                "(':free' suffix or zero pricing). Remove this key."
-            )
+                "(':free' suffix or zero pricing). Remove this key.")
 
         if "anonymous_enabled" in settings:
-            print(
-                "Warning: openrouter_integration.anonymous_enabled is "
+            logger.warning("Warning: openrouter_integration.anonymous_enabled is "
                 "deprecated; use anonymous_enabled_paid and/or "
                 "anonymous_enabled_free instead. Both new flags have been "
-                "seeded from the legacy value for back-compat."
-            )
+                "seeded from the legacy value for back-compat.")
             settings.setdefault("anonymous_enabled_paid", settings["anonymous_enabled"])
             settings.setdefault("anonymous_enabled_free", settings["anonymous_enabled"])
 
@@ -372,8 +366,8 @@ def load_openrouter_integration_settings() -> dict | None:
         settings.setdefault("vision_enabled", False)
 
         return settings
-    except Exception as e:
-        print(f"Warning: Failed to load OpenRouter integration settings: {e}")
+    except Exception:
+        logger.warning("Failed to load OpenRouter integration settings", exc_info=True)
         return None
 
 
@@ -407,12 +401,10 @@ def initialize_openrouter_integration():
             premium_count = sum(
                 1 for c in new_configs if c.get("billing_tier") == "premium"
             )
-            print(
-                f"Info: OpenRouter integration added {len(new_configs)} models "
-                f"(free={free_count}, premium={premium_count})"
-            )
+            logger.info(f"Info: OpenRouter integration added {len(new_configs)} models "
+                f"(free={free_count}, premium={premium_count})")
         else:
-            print("Info: OpenRouter integration enabled but no models fetched")
+            logger.info("Info: OpenRouter integration enabled but no models fetched")
 
         # Image generation emissions reuse the catalogue already cached by
         # ``service.initialize``
@@ -422,18 +414,16 @@ def initialize_openrouter_integration():
                 image_configs = service.get_image_generation_configs()
                 if image_configs:
                     config.GLOBAL_IMAGE_GEN_CONFIGS.extend(image_configs)
-                    print(
-                        f"Info: OpenRouter integration added {len(image_configs)} "
-                        f"image-generation models"
-                    )
-            except Exception as e:
-                print(f"Warning: Failed to inject OpenRouter image-gen configs: {e}")
+                    logger.info(f"Info: OpenRouter integration added {len(image_configs)} "
+                        f"image-generation models")
+            except Exception:
+                logger.warning("Failed to inject OpenRouter image-gen configs", exc_info=True)
 
         # Global catalog refresh is intentionally deferred to the async
         # lifespan so DB-managed GLOBAL rows can be merged.
         pass
-    except Exception as e:
-        print(f"Warning: Failed to initialize OpenRouter integration: {e}")
+    except Exception:
+        logger.warning("Failed to initialize OpenRouter integration", exc_info=True)
 
 
 def materialize_global_configs():
@@ -515,8 +505,8 @@ def initialize_pricing_registration():
 
         register_pricing_from_global_configs()
         register_pricing_for_managed_global_models()
-    except Exception as e:
-        print(f"Warning: Failed to register LiteLLM pricing: {e}")
+    except Exception:
+        logger.warning("Failed to register LiteLLM pricing", exc_info=True)
 
 
 def initialize_llm_router():
@@ -533,22 +523,18 @@ def initialize_llm_router():
     router_settings = config.ROUTER_SETTINGS
 
     if not all_configs:
-        print(
-            "Info: No global LLM configs found; global Auto pool is unavailable. "
-            "Auto can still use enabled BYOK models."
-        )
+        logger.info("Info: No global LLM configs found; global Auto pool is unavailable. "
+            "Auto can still use enabled BYOK models.")
         return
 
     try:
         from app.services.llm_router_service import LLMRouterService
 
         LLMRouterService.initialize(all_configs, router_settings)
-        print(
-            f"Info: LLM Router initialized with {len(all_configs)} models "
-            f"(strategy: {router_settings.get('routing_strategy', 'usage-based-routing')})"
-        )
-    except Exception as e:
-        print(f"Warning: Failed to initialize LLM Router: {e}")
+        logger.info(f"Info: LLM Router initialized with {len(all_configs)} models "
+            f"(strategy: {router_settings.get('routing_strategy', 'usage-based-routing')})")
+    except Exception:
+        logger.warning("Failed to initialize LLM Router", exc_info=True)
 
 
 def initialize_image_gen_router():
@@ -563,7 +549,7 @@ def initialize_image_gen_router():
     router_settings = config.IMAGE_GEN_ROUTER_SETTINGS
 
     if not image_gen_configs:
-        print(
+        logger.warning(
             "Info: No global image generation configs found, "
             "Image Generation Auto mode will not be available"
         )
@@ -573,12 +559,10 @@ def initialize_image_gen_router():
         from app.services.image_gen_router_service import ImageGenRouterService
 
         ImageGenRouterService.initialize(image_gen_configs, router_settings)
-        print(
-            f"Info: Image Generation Router initialized with {len(image_gen_configs)} models "
-            f"(strategy: {router_settings.get('routing_strategy', 'usage-based-routing')})"
-        )
-    except Exception as e:
-        print(f"Warning: Failed to initialize Image Generation Router: {e}")
+        logger.info(f"Info: Image Generation Router initialized with {len(image_gen_configs)} models "
+            f"(strategy: {router_settings.get('routing_strategy', 'usage-based-routing')})")
+    except Exception:
+        logger.warning("Failed to initialize Image Generation Router", exc_info=True)
 
 
 class Config:
@@ -1302,35 +1286,27 @@ class Config:
     if (
         os.getenv("PREMIUM_TOKEN_LIMIT") or os.getenv("PREMIUM_CREDIT_MICROS_LIMIT")
     ) and not os.getenv("DEFAULT_CREDIT_MICROS_BALANCE"):
-        print(
-            "Warning: PREMIUM_TOKEN_LIMIT / PREMIUM_CREDIT_MICROS_LIMIT are "
+        logger.warning("Warning: PREMIUM_TOKEN_LIMIT / PREMIUM_CREDIT_MICROS_LIMIT are "
             "deprecated; rename to DEFAULT_CREDIT_MICROS_BALANCE. The old keys "
-            "will be removed in a future release."
-        )
+            "will be removed in a future release.")
     if os.getenv("STRIPE_TOKENS_PER_UNIT") and not os.getenv(
         "STRIPE_CREDIT_MICROS_PER_UNIT"
     ):
-        print(
-            "Warning: STRIPE_TOKENS_PER_UNIT is deprecated; rename to "
+        logger.warning("Warning: STRIPE_TOKENS_PER_UNIT is deprecated; rename to "
             "STRIPE_CREDIT_MICROS_PER_UNIT (1:1 numerical mapping). "
-            "The old key will be removed in a future release."
-        )
+            "The old key will be removed in a future release.")
     if os.getenv("STRIPE_PREMIUM_TOKEN_PRICE_ID") and not os.getenv(
         "STRIPE_CREDIT_PRICE_ID"
     ):
-        print(
-            "Warning: STRIPE_PREMIUM_TOKEN_PRICE_ID is deprecated; rename to "
+        logger.warning("Warning: STRIPE_PREMIUM_TOKEN_PRICE_ID is deprecated; rename to "
             "STRIPE_CREDIT_PRICE_ID. The old key will be removed in a future "
-            "release."
-        )
+            "release.")
     if os.getenv("STRIPE_TOKEN_BUYING_ENABLED") and not os.getenv(
         "STRIPE_CREDIT_BUYING_ENABLED"
     ):
-        print(
-            "Warning: STRIPE_TOKEN_BUYING_ENABLED is deprecated; rename to "
+        logger.warning("Warning: STRIPE_TOKEN_BUYING_ENABLED is deprecated; rename to "
             "STRIPE_CREDIT_BUYING_ENABLED. The old key will be removed in a "
-            "future release."
-        )
+            "future release.")
 
     # Anonymous / no-login mode settings
     NOLOGIN_MODE_ENABLED = os.getenv("NOLOGIN_MODE_ENABLED", "FALSE").upper() == "TRUE"

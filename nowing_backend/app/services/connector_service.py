@@ -1,10 +1,12 @@
 import asyncio
+import logging
 import time
 from datetime import datetime
 from threading import Lock
 from typing import Any
 
 from sqlalchemy import func
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -20,6 +22,8 @@ from app.db import (
 from app.retriever.chunks_hybrid_search import ChucksHybridSearchRetriever
 from app.retriever.documents_hybrid_search import DocumentHybridSearchRetriever
 from app.utils.perf import get_perf_logger
+
+logger = logging.getLogger(__name__)
 
 
 class ConnectorService:
@@ -51,12 +55,15 @@ class ConnectorService:
                 )
                 chunk_count = result.scalar() or 0
                 self.source_id_counter = chunk_count + 1
-                print(
-                    f"Initialized source_id_counter to {self.source_id_counter} for workspace {self.workspace_id}"
+                logger.info(
+                    "Initialized source_id_counter to %d for workspace %s",
+                    self.source_id_counter,
+                    self.workspace_id,
                 )
-            except Exception as e:
-                print(f"Error initializing source_id_counter: {e!s}")
-                # Fallback to default value
+            except SQLAlchemyError:
+                logger.exception("Error initializing source_id_counter")
+                # Fallback to default value when the database is unreachable or
+                # the schema relationship is temporarily inconsistent.
                 self.source_id_counter = 1
 
     async def search_files(
@@ -575,12 +582,10 @@ class ConnectorService:
             visit_date = metadata.get("VisitedWebPageDateWithTimeInISOString", "")
             title = webpage_title
             if visit_date:
-                try:
-                    formatted_date = (
-                        visit_date.split("T")[0] if "T" in visit_date else visit_date
-                    )
+                if "T" in visit_date:
+                    formatted_date = visit_date.split("T")[0]
                     title += f" (visited: {formatted_date})"
-                except Exception:
+                else:
                     title += f" (visited: {visit_date})"
             return title
 
@@ -597,6 +602,9 @@ class ConnectorService:
             if visit_duration:
                 try:
                     duration_seconds = int(visit_duration) / 1000
+                except (ValueError, TypeError):
+                    duration_seconds = None
+                if duration_seconds is not None:
                     duration_text = (
                         f"{duration_seconds:.1f} seconds"
                         if duration_seconds < 60
@@ -605,8 +613,6 @@ class ConnectorService:
                     description = (description + f" | Duration: {duration_text}").strip(
                         " |"
                     )
-                except Exception:
-                    pass
             return description
 
         sources_list = self._build_chunk_sources_from_documents(
