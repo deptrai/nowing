@@ -264,8 +264,8 @@ Các story có UI vẫn cần UX spec riêng trước khi build UI chi tiết. U
 - **OQ-8 HR/Recruitment Vertical in Vietnam** → **E12 P0** (ToS, legal classification, anti-bot, salary hidden, willingness-to-pay, PII).
 - **SM-12 HR pilot metrics** → **E12 P0** (workspace active, aggregate queries, listings indexed, dedupe, confidence, PII coverage).
 - **AR-11 HR anti-bot validation** → **E12.2 P0** (TopCV Cloudflare bypass/residential proxy feasibility).
-- **Mới 2026-08-10 (Market Research → Lead Intelligence) — đã hoàn thành 2026-08-16:** FR-63 (Intent Signals) → **E21.1** `[DONE]` · FR-64 (Lead Scoring) → **E21.2** `[DONE]` · FR-65 (Contact Enrichment) → **E21.3** `[DONE]` · FR-66 (Outbound Automation) → **E21.4** `[DONE]` (Email/Zalo/Telegram outbound done) · FR-67 (CRM Integration) → **E21.5** `[DONE]` · FR-68 (Zalo Integration) → **E21.6** `[DONE]` · FR-69 (Outcome Pricing) → **E21.7** `[DONE]` · FR-85 (Lead Gen Orchestration & Micro-Extraction) → **E21.15, E21.19, E21.20, E21.21** `[ready-for-dev]`.
-- **Mới 2026-08-29 (Customer Location Profile & Pre-Flight Lead Plan):** FR-69.2 (Location Profile) → **E21.25** `[ready-for-dev]` · FR-69.3 (Location-Aware Adapter Routing) → **E21.26** `[ready-for-dev]` · FR-69.4 (Pre-Flight Plan Summary) → **E21.27** `[ready-for-dev]` · FR-69.5 (Source Coverage in Right-Canvas) → **E21.28** `[ready-for-dev]` · FR-69.6 (Smoke Test Feedback Loop) → **E21.29** `[ready-for-dev]`.
+- **Mới 2026-08-10 (Market Research → Lead Intelligence) — đã hoàn thành 2026-08-16:** FR-63 (Intent Signals) → **E26.1** `[DONE]` · FR-64 (Lead Scoring) → **E26.2** `[DONE]` · FR-65 (Contact Enrichment / Phone Waterfall) → **E23.2** `[DONE]` · FR-66 (Outbound Automation) → **E23.3** `[DONE]` · FR-67 (CRM Integration) → **E24.3** `[DONE]` · FR-68 (Zalo Integration) → **E24.7** `[backlog]` · FR-69 (Outcome Pricing) → **E23.4** `[DONE]` · FR-80 (Reverse-ICP) → **E26.x** `[DONE]` · FR-81/82/83 (Actionable dispatches / Viral copilot / Social) → **E24.6 / E23.x** · FR-84 (DNC) → **E25.x** · FR-85 (Lead Orchestration) → **E26.x** `[ready-for-dev]` · FR-86 (Split Canvas) → **E25 / E27** · FR-87 (Landing page) → **E25 / E27** · FR-88 (Affiliate) → **E25.x** · FR-91 (VietQR) → **E25.x`. **Epic 21 là umbrella tracking; Epic con E23–E26/E25 nhận việc.**
+- **Mới 2026-08-29 (Customer Location Profile & Pre-Flight Lead Plan):** FR-69.2 (Location Profile) → **E26.25** `[ready-for-dev]` · FR-69.3 (Location-Aware Adapter Routing) → **E26.26** `[ready-for-dev]` · FR-69.4 (Pre-Flight Plan Summary) → **E26.27** `[ready-for-dev]` · FR-69.5 (Source Coverage in Right-Canvas) → **E26.28** `[ready-for-dev]` · FR-69.6 (Smoke Test Feedback Loop) → **E26.29** `[ready-for-dev]`. *(Tạm map theo umbrella E26; điều chỉnh khi sprint planning xác nhận epic con.)*
 
 ## Epic List
 
@@ -288,7 +288,7 @@ Built-in scrapers + OAuth connectors + external MCP connectors; connectors là m
 > **⚠️ 2026-07-25: FR-24 (ChainLens) đã rời Epic 2 → Epic 9.** ChainLens không phải connector. Story `2-4-chainlens-research-mcp-tool` giữ `done` làm lịch sử — nó đã ship tool thật; việc còn lại thuộc Epic 9.
 
 ### Epic 3: Knowledge Base + Long-Term Memory — ✅ DONE
-KB + long-term research memory. **FRs:** FR-9,11,12,13,32,33,34, **FR-40** *(mới)*, **NFR-1b/1c/1d** *(mới)*, **FR-99** *(mới 2026-08-21 — recall precision/noise gate từ PRFAQ)*. **Open:** 3.15 run citations `[ready-for-dev]`, 3.16 OKF export `[ready-for-dev]`, 3.17 memory injection perf gate `[ready-for-dev]`, 3.18 recall precision gate `[backlog]`.
+KB + long-term research memory. **FRs:** FR-9,11,12,13,32,33,34, **FR-40** *(mới)*, **NFR-1b/1c/1d** *(mới)*, **FR-99** *(mới 2026-08-21 — recall precision/noise gate từ PRFAQ)*. **Story 3.18 (FR-99)** là backlog thuộc Epic 3; thuật toán gate được triển khai trong `nowing_evals`, gán về Epic 3 vì đây là memory recall gate. **Open:** 3.15 run citations `[ready-for-dev]`, 3.16 OKF export `[ready-for-dev]`, 3.17 memory injection perf gate `[ready-for-dev]`, 3.18 recall precision gate `[backlog]`.
 > **🆕 2026-07-25 (readiness Nhóm 3):** hai story mới, cả hai đều là **gap trước đây không có FR lẫn epic**. **3.13** — `MemoryExtractionService` chỉ có `extract_from_turn` và workspace mới không seed gì ⇒ `nowing_recall` session đầu **rỗng theo cấu trúc**, **M1 (first-run value ≤15 phút) không tồn tại**. **3.14** — `MemoryInjectionMiddleware` **chặn mọi lượt chat** với `SELECT` không LIMIT, bỏ qua cả HNSW + GIN index đã có sẵn ⇒ chi phí mỗi lượt tăng tuyến tính theo mức dùng. **3.14 nên chạy trước khi chốt số SM-10 của 3.9.**
 
 ### Epic 4: Chat & Agents — ✅ DONE
@@ -352,14 +352,14 @@ Public agent-chat endpoints, AgentConfig registry, client_id tenancy, cost trace
 ### Epic 20: Nowing Ecosystem Integration — Feed & Recall from chainlens-research — ✅ DONE
 `NowingIngestService` + `to_chunks()`, gap-fill caller, `NowingPrivateProvider`, service-to-service auth. **Open:** none.
 
-### Epic 21: Lead Gen Intelligence & Social Graph — ⏳ IN-PROGRESS
-Toàn diện hóa hệ thống Săn Lead & Tiếp cận Khách hàng Đa kênh: Phone Waterfall 3 tầng (Batdongsan/Chotot/Zalo), Zalo OA & Telegram Outbound Waterfall, XActions Social Ingress (Facebook Groups/Twitter), 1-Click Reverse-ICP từ Website/Dự án, AI Actionable Turn Dispatches, Viral Social Outbound Co-pilot, Multi-Table Tabs & Export Hub (Lark Base, Google Sheets), DNC Compliance Engine, Origami Workspace, Partners Affiliate Portal, $0 Pricing, Selective Micro-LLM Fallback Extraction, Customer Location Profile & Pre-Flight Lead Plan. **Stories:** 21.1–21.29 (21.3, 21.6, 21.14 P0; 21.21, 21.25–21.29 ready-for-dev). Governed by `architecture-xactions-social-integration-2026-08-15` & `architecture-linkedin-b2b-2026-08-15` & `AD-119`.
+### Epic 21: Lead Gen Intelligence — ⏳ IN-PROGRESS *(umbrella)*
+Umbrella / tracking epic cho hệ sinh thái săn lead: Lead Capture & Enrichment (E23), Multi-Channel Outreach & CRM (E24), Platform Admin & Multi-Tenant (E25), Autonomous Lead Missions / DSH (E26), Growth & Affiliate (E29). Chi tiết triển khai đã chuyển sang các epic con. **FRs:** FR-63–69, FR-80–88, FR-91. **Dependencies:** E10, E12, E22. _Tách 2026-08-29: epic con E23–E26/E29 nhận stories từ Epic 21 nguyên bản. Customer Location Profile & Pre-Flight Lead Plan stories (21.25–21.29 từ main) tạm map E26.25–E26.29._
 
 ### Epic 22: Telegram Scraper & Channel Ingestion Engine — ⏳ READY-FOR-DEV
 Public channel web preview, MTProto Userbot session pool, distributed mutex lock, FloodWait cooldown state machine, regex entity extractor, S3 media chunk streaming, realtime stream daemon, Alert Engine trigger, AI Agent tools. **Stories:** 22.1–22.3. Governed by `architecture-telegram-scraper-2026-08-15`.
 
 ### Epic 28: Self-Host Trust, Data Portability & Cloud GA Legal Readiness — 📋 BACKLOG *(mới 2026-08-21 từ PRFAQ)*
-Người dùng self-host và cloud có thể tin tưởng Nowing với research memory dài hạn: dữ liệu có thể xuất, được mã hóa, quản lý bởi policy rõ ràng, và self-host chạy trong <10 phút. **FRs:** FR-95, FR-96, FR-97, FR-98. **ARs:** AR-11, AR-12, AR-13, AR-14. **UX-DRs:** UX-DR-PRFAQ-2 (self-host onboarding). **Stories:** 28.1–28.5. **Dependencies:** Epic 1 (auth), Epic 3 (memory schema), Epic 8 (billing/cost). Post-MVP UX-DR-PRFAQ-1/3 (memory browser/correction) thuộc Epic 3.
+Người dùng self-host và cloud có thể tin tưởng Nowing với research memory dài hạn: dữ liệu có thể xuất, được mã hóa, quản lý bởi policy rõ ràng, và self-host chạy trong <10 phút. **FRs:** FR-95 (Data export & portability), FR-96 (Encryption-at-rest & key management), FR-97 (ToS/legal review + retention), FR-98 (Self-host OSS onboarding <10 min), **FR-99** (recall precision/noise gate — GA launch gate). **ARs:** AR-11, AR-12, AR-13, AR-14, AR-15. **UX-DRs:** UX-DR-PRFAQ-2 (self-host onboarding), UX-DR-PRFAQ-4 (cost control dashboard). **Stories:** 28.1–28.6 (28.6 = recall precision ratification, FR-99). **Dependencies:** Epic 1 (auth), Epic 3 (memory schema), Epic 8 (billing/cost). Post-MVP UX-DR-PRFAQ-1/3 (memory browser/correction) thuộc Epic 3.
 
 ---
 
@@ -439,6 +439,11 @@ So that the agent can answer questions with up-to-date web search and full-page 
 **Given** the Exa MCP server returns a 401/403, 429 rate-limit, or times out during `web_search_exa`/`web_fetch_exa`, **When** the tool is invoked, **Then** the capability returns `degraded=true` with `degradation_reason` and does not crash the chat turn.
 
 **Kỹ thuật:** add `EXA_MCP_CONNECTOR` to `SearchSourceConnectorType`, `MCP_SERVICES`, connector agent/searchable maps, and validation; create route-level `server_config` builder from `exa_api_key`; reuse `mcp_discovery` subagent with curated `allowed_tools` / `readonly_tools`.
+
+**Regression (post-Story 3.15):**
+**Given** Story 3.15 finalizes the `WEB_RESULT` citation contract and `register_web_citations()` helper, **When** the Exa MCP `web_search_exa` and `web_fetch_exa` tools are invoked, **Then** their result URLs are registered as `WEB_RESULT` citations and render as `UrlCitation` chips in chat.
+**Given** the 3.15 citation contract changes, **When** Exa MCP tool tests run, **Then** they pass without modification to the Exa connector logic (only citation registration call site may need updating).
+
 _FR-8 · FR-8.1 · OQ-4._
 
 > **🆕 Extend 2026-08-08 (SCP `sprint-change-proposal-2026-08-08.md`):** `web_search_exa`/`web_fetch_exa` là MCP tools return text trực tiếp — không qua `_capability_tool` hay citation registry. Agent nhận search results nhưng không có `[n]` labels để cite. Append ACs dưới đây.
@@ -2844,9 +2849,9 @@ _Kỹ thuật: Middleware in `app/middleware/tenant_context.py`, rate limiter wi
 ---
 
 
-## Epic 21: Lead Gen Intelligence & Social Graph `[in-progress]`
+## Epic 21: Lead Gen Intelligence `[in-progress]` *(umbrella — implementation ở E23, E24, E25, E26)*
 
-> **Epic Goal:** Trung tâm Xử lý, Chấm điểm và Quản trị Lead tập trung (Lead Intelligence & CRM Hub) của toàn hệ thống Nowing. Tiếp nhận dữ liệu khách hàng tiềm năng từ TẤT CẢ các phễu cào (BĐS Epic 10, Tuyển dụng Epic 12, Đấu thầu/Pháp lý Epic 16, TMĐT Epic 17, Telegram Epic 22 và Mạng xã hội qua `XActions`), bóc tách thông tin liên hệ (SĐT, Email, Tên), phân loại ý định thương mại (Intent Signals), chấm điểm Fit Score, lưu trữ vào Lead CRM và kích hoạt chiến dịch Outbound Automation (Zalo OA, Telegram, Email, Lark Base, Google Sheets).
+> **Epic Goal:** Umbrella / tracking epic cho hệ sinh thái săn lead. Implementation chi tiết đã phân tán sang các epic con: E23 (Lead Capture, Real-Time Enrichment & Automated Outreach), E24 (Enterprise Lead Conversion & Multi-Channel Outreach + Team CRM), E25 (Platform Administration & Multi-Tenant Operations), E26 (Autonomous Lead Missions & Deep Sales Research). Epic 21 detailed stories (21.1–21.21) below are **superseded** by E23–E26 stories; kept for historical traceability.
 
 **Status:** `[in-progress]`  
 **Governed by Architecture Spines:** `architecture-xactions-social-integration-2026-08-15`, `architecture-linkedin-b2b-2026-08-15`, `epic21-architecture-update.md` (AD-31 to AD-49).  
