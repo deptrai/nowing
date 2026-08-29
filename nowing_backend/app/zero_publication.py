@@ -82,8 +82,7 @@ PODCAST_COLS = [
 LEADS_COLS = [
     "id",
     "workspace_id",
-    # client_id is stored as citext and is not Zero-compatible; keep it
-    # available via REST/API and exclude it from the Zero publication.
+    "client_id",
     "source",
     "source_url",
     "company_name",
@@ -110,6 +109,7 @@ LEADS_COLS = [
 LEAD_PIPELINE_STAGE_COLS = [
     "id",
     "workspace_id",
+    "client_id",
     "name",
     "slug",
     "position",
@@ -122,6 +122,7 @@ LEAD_PIPELINE_STAGE_COLS = [
 LEAD_ASSIGNMENT_COLS = [
     "id",
     "workspace_id",
+    "client_id",
     "lead_id",
     "assigned_to_user_id",
     "assigned_by_user_id",
@@ -135,6 +136,7 @@ LEAD_ASSIGNMENT_COLS = [
 LEAD_ACTIVITY_LOG_COLS = [
     "id",
     "workspace_id",
+    "client_id",
     "lead_id",
     "actor_user_id",
     "activity_type",

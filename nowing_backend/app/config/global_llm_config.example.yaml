@@ -346,15 +346,16 @@ image_generation_router_settings:
 # =============================================================================
 global_image_generation_configs:
   - id: -2001
-    name: "Gemini 3.1 Flash Image"
+    name: "Azure GPT Image 1.5"
     billing_tier: "premium"
-    provider: "openrouter"
-    model_name: "google/gemini-3.1-flash-image"
-    api_key: "your-openrouter-api-key-here"
-    api_base: "https://openrouter.ai/api/v1"
+    provider: "azure"
+    model_name: "gpt-image-1.5"
+    api_key: "your-azure-api-key-here"
+    api_base: "https://your-resource.openai.azure.com"
+    # api_version: "2025-04-01-preview"
     rpm: 60
     litellm_params:
-      base_model: "openrouter/google/gemini-3.1-flash-image"
+      base_model: "gpt-image-1.5"
 
   - id: -2002
     name: "Azure GPT Image 1 Mini"
