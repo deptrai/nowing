@@ -18,9 +18,14 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
-import type { PlaybookSummary } from "@/contracts/types/playbook.types";
+import type { PlaybookInstantiateRequest, PlaybookSummary } from "@/contracts/types/playbook.types";
+import { useAutomationEligibleModels } from "@/hooks/use-automation-eligible-models";
 import { playbooksApiService } from "@/lib/apis/playbooks-api.service";
 import { cacheKeys } from "@/lib/query-client/cache-keys";
+import {
+	AutomationModelFields,
+	type AutomationModelSelection,
+} from "../automations/components/builder/automation-model-fields";
 
 interface PlaybookInstantiateDialogProps {
 	playbook: PlaybookSummary;
@@ -78,6 +83,12 @@ export function PlaybookInstantiateDialog({
 	const router = useRouter();
 	const { mutateAsync: instantiate, isPending } = useAtomValue(instantiatePlaybookMutationAtom);
 	const [instantiateError, setInstantiateError] = useState<string | null>(null);
+	const eligibleModels = useAutomationEligibleModels({ mode: "playbook" });
+	const [modelSelection, setModelSelection] = useState<AutomationModelSelection>({
+		chatModelId: 0,
+		imageConfigId: 0,
+		visionConfigId: 0,
+	});
 
 	const {
 		data: detail,
@@ -92,8 +103,32 @@ export function PlaybookInstantiateDialog({
 	useEffect(() => {
 		if (open) {
 			setInstantiateError(null);
+			setModelSelection({
+				chatModelId: eligibleModels.llm.defaultId || 0,
+				imageConfigId: eligibleModels.image.defaultId || 0,
+				visionConfigId: eligibleModels.vision.defaultId || 0,
+			});
 		}
-	}, [open]);
+	}, [
+		open,
+		eligibleModels.llm.defaultId,
+		eligibleModels.image.defaultId,
+		eligibleModels.vision.defaultId,
+	]);
+
+	const resolvedModels = useMemo<AutomationModelSelection>(
+		() => ({
+			chatModelId: modelSelection.chatModelId || eligibleModels.llm.defaultId || 0,
+			imageConfigId: modelSelection.imageConfigId || eligibleModels.image.defaultId || 0,
+			visionConfigId: modelSelection.visionConfigId || eligibleModels.vision.defaultId || 0,
+		}),
+		[
+			modelSelection,
+			eligibleModels.llm.defaultId,
+			eligibleModels.image.defaultId,
+			eligibleModels.vision.defaultId,
+		]
+	);
 
 	const inputsSchema = detail?.inputs_schema as Record<string, unknown> | undefined;
 	const hasInputs = !!(
@@ -115,12 +150,28 @@ export function PlaybookInstantiateDialog({
 	async function handleSubmit(values?: Record<string, unknown>) {
 		setInstantiateError(null);
 		try {
+			const hasSelectedModels =
+				resolvedModels.chatModelId !== 0 ||
+				resolvedModels.imageConfigId !== 0 ||
+				resolvedModels.visionConfigId !== 0;
+
+			const requestPayload: PlaybookInstantiateRequest = {
+				workspace_id: workspaceId,
+				inputs: hasInputs ? (values ?? {}) : {},
+				...(hasSelectedModels
+					? {
+							models: {
+								chat_model_id: resolvedModels.chatModelId,
+								image_gen_model_id: resolvedModels.imageConfigId,
+								vision_model_id: resolvedModels.visionConfigId,
+							},
+						}
+					: {}),
+			};
+
 			const automation = await instantiate({
 				playbookId: playbook.id,
-				request: {
-					workspace_id: workspaceId,
-					inputs: hasInputs ? (values ?? {}) : {},
-				},
+				request: requestPayload,
 			});
 			onOpenChange(false);
 			router.push(`/dashboard/${workspaceId}/automations/${automation.id}`);
@@ -161,6 +212,17 @@ export function PlaybookInstantiateDialog({
 						(INV-24.6).
 					</AlertDescription>
 				</Alert>
+
+				{!detailError && !isLoading && (
+					<div className="space-y-2 pt-1 border-t border-border/40">
+						<AutomationModelFields
+							mode="playbook"
+							workspaceId={workspaceId}
+							value={resolvedModels}
+							onChange={(patch) => setModelSelection((prev) => ({ ...prev, ...patch }))}
+						/>
+					</div>
+				)}
 
 				{detailError ? (
 					<div className="space-y-4 pt-2">
