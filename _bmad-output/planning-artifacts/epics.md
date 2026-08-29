@@ -4375,7 +4375,9 @@ So that I can understand usage patterns, justify cost, and decide when to upgrad
 
 **Given** the workspace approaches its plan quota (memory count, credits, storage bytes) defined by `WorkspaceLimit` rows for the workspace's `plan_tier`, **When** the threshold exceeds 80%, **Then** the dashboard surfaces an upgrade CTA with the estimated tier needed, without blocking current usage.
 
-**Given** the user has the `analytics_read` permission on their `WorkspaceRole`, **When** they access the dashboard, **Then** they see the full dashboard; members with `memory_read` but not `analytics_read` see a reduced public snapshot.
+**Given** the user has the `analytics_read` permission on their `WorkspaceRole`, **When** they access the dashboard, **Then** they see the full dashboard; members with `memory_read` but not `analytics_read` see a reduced public snapshot. (If Story 29.1 has not shipped, `Owner`/`Editor` can access the full dashboard and `analytics_read` falls back to `Owner` until 29.1 lands.)
+
+**Given** the "source coverage gap" metric is computed, **When** the formula is applied, **Then** it counts `source_type` values that are (a) enabled in the workspace and (b) have zero `Memory` rows with `created_at` in the last 30 days, scoped to `workspace_id`.
 
 **And** the dashboard is instrumented with analytics events and can be exported to CSV/JSON.
 
@@ -4389,7 +4391,7 @@ So that Nowing can operate as a multi-tenant SaaS with predictable unit economic
 
 **Acceptance Criteria:**
 
-**Given** the Superadmin opens `/admin/saas/plans`, **When** the page loads, **Then** it lists all `WorkspaceLimit` plan definitions with limits: `max_members`, `max_memory_count`, `max_memory_bytes`, `max_monthly_credits`, `max_sources`, `support_level`, `price_micros`, `currency` (default `USD` for consistency with AD-8), and enabled/disabled flags.
+**Given** the Superadmin opens `/admin/saas/plans`, **When** the page loads, **Then** it lists all `WorkspaceLimit` plan definitions with limits: `max_members`, `max_memory_count`, `max_memory_bytes`, `max_monthly_credits`, `max_sources`, `support_level`, `price_micros`, `currency` (default `USD` for consistency with AD-8), and enabled/disabled flags. Plan definitions use `WorkspaceLimit` rows where `plan_tier` is set and `workspace_id IS NULL` (existing XOR constraint). Columns `max_monthly_credits`, `max_sources`, `support_level`, `price_micros`, `currency` are added by Story 29.3 if they do not already exist; per-workspace overrides continue to set `workspace_id` with `plan_tier IS NULL`.
 
 **Given** a workspace is on the `Free` plan, **When** the Superadmin (or Owner via self-serve) upgrades to `Team`, **Then** the backend creates a `subscription_change` record (`id`, `workspace_id`, `from_plan`, `to_plan`, `effective_at`, `status`, `initiated_by`, `payment_method_id`, `immediate`, `reversible_until`), sets `effective_at` to now + 7 days by default (INV-29.4), and queues an email confirmation with quota delta and first charge.
 
@@ -4413,7 +4415,7 @@ So that I can respond to abuse, compliance requests, and tenant-wide changes saf
 
 **Acceptance Criteria:**
 
-**Given** the admin opens `/admin/saas/bulk-ops`, **When** they build a filter, **Then** the UI uses a structured filter builder (not free-form NLP) against an allow-list of fields and operators, and the backend returns a paginated preview with exact `COUNT(*)` from the target table.
+**Given** the admin opens `/admin/saas/bulk-ops`, **When** they build a filter, **Then** the UI uses a structured filter builder (not free-form NLP) against an allow-list of fields and operators, and the backend returns a paginated preview with exact `COUNT(*)` from the target table. (Actions `assign_role` and `apply_tier` require Stories 29.1 and 29.3; remaining actions can ship independently.)
 
 **Given** the admin selects an action from `BulkAction` enum (`archive_inactive_workspaces`, `rotate_api_keys`, `assign_role`, `delete_source_type_memories`, `apply_tier`, `revoke_membership`), **When** they click "Dry-run", **Then** the system simulates the action, lists affected subjects, estimates affected row count, and reports conflicts without mutating data.
 
@@ -4435,7 +4437,7 @@ So that I can verify facts, trace research lineage, and flag outdated or low-con
 
 **Acceptance Criteria:**
 
-**Given** the Analyst opens `/dashboard/[workspace_id]/memory-browser`, **When** the page loads, **Then** it shows a paginated, sortable list of `Memory` rows scoped to the workspace, with columns: content snippet, source type, source URL, confidence, created at, updated at, created by, version count, and flag status.
+**Given** the Analyst opens `/dashboard/[workspace_id]/memory-browser`, **When** the page loads, **Then** it shows a paginated, sortable list of `Memory` rows scoped to the workspace, with default page size 50 and selector 25/50/100, and columns: content snippet, source type, source URL, confidence, created at, updated at, created by, version count, and flag status.
 
 **Given** the Analyst uses the filter bar, **When** they select source type, confidence range, time range, creator, or search by keyword, **Then** the backend applies `workspace_id` filter in SQL WHERE (INV-29.3), plus indexes on `(workspace_id, source_type, confidence)`, `(workspace_id, created_at DESC)`, and `(workspace_id, user_id)` to return results in < 300ms for workspaces up to 100,000 memories.
 
@@ -4467,7 +4469,9 @@ So that Nowing cloud stays compliant with scraped-source ToS and data-subject re
 
 **Given** the Owner receives a right-to-delete request, **When** they approve it, **Then** the system runs a dry-run listing affected `Memory` rows, versions, and relations, and only purges after explicit confirmation; bulk deletion > 100,000 rows is chunked into 1,000-row batches with progress and cancel-ability.
 
-**Given** a DNC phone/email/tax code is added to workspace DNC, **When** the entry is saved, **Then** it propagates to the workspace blacklist within < 1s, suppresses future scraping/messaging for that value, and writes an `audit_events` entry. Global DNC (Epic 25.6, `WorkspaceDncRecord` or global list) is configurable tùy deploy mode.
+**Given** a DNC phone/email/tax code is added to workspace DNC (`WorkspaceDncRecord`), **When** the entry is saved, **Then** it propagates to the workspace blacklist within < 1s, suppresses future scraping/messaging for that value, and writes an `audit_events` entry.
+
+**Given** the platform is configured to use a global DNC list (Epic 25.6, `global_dnc_records` or platform-level list), **When** a workspace entry conflicts with a global entry, **Then** the global entry wins and the workspace entry is marked `superseded_by_global`. (Deploy mode flag `GLOBAL_DNC_ENABLED` controls whether the global list is consulted.)
 
 **Given** self-host vs cloud deployment, **When** the policy is published, **Then** it clearly states that self-host users retain responsibility for source compliance, while cloud Nowing acts as a processor with documented retention windows (tái khẳng định Story 28.3).
 
@@ -4483,7 +4487,7 @@ _FR-97 · FR-104 · AR-13 · AR-17 · AR-18 · UX-DR-PRFAQ-5 · UX-DR-PRFAQ-6 ·
 | **FR-101** Workspace health & adoption analytics dashboard | **29.2** | Health metrics, drill-down, quota CTA, export, `workspace_health_daily` pre-aggregation. |
 | **FR-102** Tenant subscription tier & quota management | **29.3** | `WorkspaceLimit` plan directory, `subscription_change` table, trial, upgrade/downgrade, 7-day reversal, `price_micros` currency (AD-8, AD-53). |
 | **FR-103** Admin bulk operations console | **29.4** | Structured filter builder, `BulkAction` enum, `bulk_op_job`/`bulk_op_errors`, `Idempotency-Key`, per-subject `audit_events` (AD-54). |
-| **FR-104** Memory browser & research timeline for analyst | **29.5** | Paginated memory list, index-backed filters, `MemoryVersion`, `ResearchThread` grouping, `memory_review_queue` (AD-11, AD-55). |
+| **FR-104** Memory browser & research timeline for analyst | **29.5** | Paginated memory list, index-backed filters, `MemoryVersion`, `ResearchThread` grouping, `memory_review_queue`, default page size 50 (AD-11, AD-55). |
 | **AR-17** SaaS admin operations console | **29.1–29.6** | Custom roles, health dashboard, tier, bulk ops, memory browser, governance. |
 | **AR-18** Auditability & traceability admin bulk op | **29.1, 29.3–29.6** | `audit_events` cho custom role changes, tier change, bulk op, retention, DNC, right-to-delete. |
 | **UX-DR-PRFAQ-5** SaaS admin operations console | **29.1–29.4, 29.6** | `/admin/saas` and `/dashboard/[workspace_id]` role/tier/quota/health/bulk/governance console. |

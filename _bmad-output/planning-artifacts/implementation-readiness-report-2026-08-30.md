@@ -291,47 +291,67 @@ None for Epic 29. No technical-milestone epic, no forward dependency, no epic-si
 6. **Story 29.6:** Split "workspace DNC (`WorkspaceDncRecord`)" from "global DNC (Epic 25.6)" into two distinct AC bullets.
 
 
+## Remediation Log (2026-08-30)
+
+The following critical and major issues from the original assessment have been addressed:
+
+### 1. PRD missing FR-100..FR-104 — RESOLVED
+
+- Added new section `### 4.11 SaaS Operations, Advanced Admin Governance & Analyst Workspace` to `_bmad-output/planning-artifacts/prds/prd-Nowing-2026-07-22/prd.md`.
+- Added FR-100, FR-101, FR-102, FR-103, FR-104 with full AC, consequences, status, and architecture binding.
+- Updated PRD frontmatter `updated: 2026-08-30`.
+- Updated consolidated amendments matrix in §0 with "SaaS Operations & Admin Governance" row.
+
+### 2. Missing UX contracts for UX-DR-PRFAQ-5 — RESOLVED
+
+- Created `_bmad-output/planning-artifacts/ux-designs/ux-Nowing-2026-08-15/ux-contract-epic-29-saas-admin-analytics.md`.
+- Covered RB (Roles), HD (Health Dashboard), PM (Plan Management), BO (Bulk Ops), GV (Governance), and MB (Memory Browser) with mandatory UI states.
+- Updated mapping to stories and architecture decisions.
+
+### 3. 29.5 stale traceability (E3/FR-95) — RESOLVED
+
+- Updated `ux-contract-readiness-gaps.md` §8 traceability: `Memory Browser / Research Timeline` now maps to `Epic 29.5 / FR-104 / UX-DR-PRFAQ-1+6`.
+
+### 4. Epic 29 AC refinements — RESOLVED
+
+- **29.2:** Defined `source coverage gap` formula; added fallback note for `analytics_read` if 29.1 not shipped.
+- **29.3:** Clarified `WorkspaceLimit` plan-definition XOR constraint and which columns are added by 29.3.
+- **29.4:** Noted `assign_role`/`apply_tier` same-epic dependencies.
+- **29.5:** Added default page size 50 and page-size selector.
+- **29.6:** Split workspace DNC (`WorkspaceDncRecord`) from global DNC (Epic 25.6) into two distinct AC bullets.
+
+---
+
 ## Summary and Recommendations
 
 ### Overall Readiness Status
 
-**NEEDS WORK**
+**READY FOR CREATE-STORY**
 
-Dự án đã có PRD, Architecture, Epics, và UX đầy đủ cho phần lớn hệ thống. Epic 29 vừa được tạo mới (2026-08-29) với architecture spine (AD-51..AD-55) và AC chất lượng tốt, nhưng chưa sẵn sàng để chuyển sang `create-story` vì 2 lỗ hổng traceability nghiêm trọng: FR-100..FR-104 chưa có trong PRD và 5/6 story của Epic 29 thiếu UX contract.
+Sau khi bổ sung PRD, UX contract, và chỉnh sửa Epic 29 AC, các lỗ hổng traceability và thiết kế chính đã được khắc phục. Epic 29 giờ có FR đầy đủ trong PRD, UX contract rõ ràng, architecture spine AD-51..AD-55, và AC đã được làm rõ.
 
 ### Critical Issues Requiring Immediate Action
 
-1. **PRD thiếu FR-100..FR-104.** Epic 29 trích dẫn 5 FR này nhưng `prd.md` không chứa chúng. Cần amend PRD hoặc viết `AMENDMENT-Epic-29.md` để tránh sai lệch source of truth.
-2. **Thiếu UX contract cho UX-DR-PRFAQ-5.** Stories 29.1, 29.2, 29.3, 29.4, 29.6 mô tả route/dashboard nhưng không có wireframe hoặc `EXPERIENCE.md`. Đội dev sẽ phải tự định nghĩa UX.
-3. **`WorkspaceLimit` schema drift trong 29.3.** Các trường `max_monthly_credits`, `max_sources`, `support_level`, `price_micros`, `currency` có thể chưa tồn tại. Story 29.3 phải rõ ràng liệt kê cột hiện có và cột cần thêm.
+Không còn critical issue nào chặn `create-story`.
 
-### Major Issues
+### Major Issues Remaining
 
-1. **29.2 phụ thuộc permission `analytics_read`** do 29.1 định nghĩa. Cần ship 29.1 trước hoặc fallback tạm vào Owner/Editor.
-2. **29.4 `assign_role` / `apply_tier`** phụ thuộc cùng-epic 29.1 và 29.3. Nên tách 29.4 thành các action độc lập.
-3. **29.2 "source coverage gap" chưa được định nghĩa.** Cần công thức rõ ràng trong AC.
-4. **29.6 conflates Global DNC vs Workspace DNC.** Cần tách thành 2 bullet riêng.
-
-### Minor Concerns
-
-1. **29.5 UX contract traceability cũ** (`E3/FR-95/PRFAQ-1`) cần được cập nhật thành `Epic 29.5/FR-104/PRFAQ-1+6`.
-2. **29.5 pagination default** chưa được chỉ định.
-3. **29.4 `rotate_api_keys` MFA** chưa có AD/UX về cách lưu trữ và xác minh MFA cho superadmin.
+1. **Story sizing vẫn lớn** — 29.1..29.6 mỗi story có 6–7 AC lớn. Khuyến nghị đội create-story xem xét tách nhỏ khi viết story files (ví dụ 29.4 dry-run vs execute).
+2. **Thứ tự triển khai** — 29.1 nên ship trước 29.2/29.4 để `analytics_read` và `assign_role` có ý nghĩa.
+3. **MFA cho `rotate_api_keys`** — UX contract đã có BO-6 nhưng cần architecture decision riêng về cách lưu trữ/xác minh MFA cho superadmin (nằm ngoài scope Epic 29 hiện tại, nên tách thành spike hoặc sub-story).
 
 ### Recommended Next Steps
 
-1. **Amend PRD:** thêm FR-100..FR-104 vào `prd.md` hoặc tạo tài liệu amendment riêng, liên kết ngược đến Epic 29.
-2. **Author UX contracts:** viết `ux-contract-epic-29-saas-admin.md` cho UX-DR-PRFAQ-5 (roles, health, plans, bulk ops, governance) và cập nhật `ux-contract-readiness-gaps.md` §7.1/§8 cho 29.5.
-3. **Clarify schema in 29.3:** liệt kê `WorkspaceLimit` columns hiện có và columns mới trong AC.
-4. **Refine 29.2 AC:** định nghĩa "source coverage gap" bằng công thức cụ thể.
-5. **Split 29.4 story sizing:** nếu cần, tách `dry-run`/`execute` hoặc các action nhóm (superadmin vs workspace owner) thành sub-stories.
-6. **Sau khi khắc phục:** chạy `/bmad:bmm:workflows:create-story` cho 29.1..29.6 theo thứ tự 29.1 → 29.2 → 29.3 → 29.4 → 29.5 → 29.6.
+1. Chạy `/bmad:bmm:workflows:create-story` cho 29.1..29.6, tuân thủ thứ tự 29.1 → 29.2 → 29.3 → 29.4 → 29.5 → 29.6.
+2. Khi create-story, xem xét tách 29.4 thành dry-run + execute + idempotency sub-stories.
+3. Chuẩn bị migration schema cho `workspace_health_daily`, `subscription_change`, `bulk_op_job`, `bulk_op_errors`, `idempotency_keys`, `memory_review_queue`.
+4. Kiểm tra lại `WorkspaceLimit` columns hiện có trước khi viết migration cho 29.3.
 
 ### Final Note
 
-Đánh giá này đã xác định **2 vấn đề critical, 4 vấn đề major, và 3 vấn đề minor** trong tài liệu Epic 29. Các vấn đề này có thể khắc phục trong 1–2 ngày nếu có PM/UX hỗ trợ. Không nên bắt đầu `create-story` cho đến khi PRD và UX contract được hoàn thiện.
+Đánh giá ban đầu xác định 2 critical + 4 major + 3 minor. Sau remediation: 0 critical, 0 major chặn create-story, 1 major về sizing, 1 major về MFA cần spike. Epic 29 đã sẵn sàng để chuyển sang giai đoạn create-story.
 
 ---
 
 **Assessor:** Implementation Readiness Facilitator  
-**Date:** 2026-08-30
+**Remediation Date:** 2026-08-30
