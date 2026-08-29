@@ -1061,7 +1061,9 @@
 		"playbook_next_button": "Next",
 		"playbook_back_button": "Back",
 		"playbook_run_smoke_test": "Smoke test (5 leads)",
-		"playbook_run_full": "Run full campaign"
+		"playbook_run_full": "Run full campaign",
+		"playbook_preset_jewelry": "珠宝与黄金首饰",
+		"playbook_preset_jewelry_desc": "寻找金银首饰店、金匠、宝石商和高端零售商"
 	},
 	"leads": {
 		"matrix_title": "Lead Intelligence Matrix",

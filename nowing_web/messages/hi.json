@@ -1061,7 +1061,9 @@
 		"playbook_next_button": "Next",
 		"playbook_back_button": "Back",
 		"playbook_run_smoke_test": "Smoke test (5 leads)",
-		"playbook_run_full": "Run full campaign"
+		"playbook_run_full": "Run full campaign",
+		"playbook_preset_jewelry": "आभूषण और रत्न",
+		"playbook_preset_jewelry_desc": "आभूषण स्टोर, सुनार, रत्न व्यापारी और लक्जरी खुदरा विक्रेता खोजें"
 	},
 	"leads": {
 		"matrix_title": "Lead Intelligence Matrix",

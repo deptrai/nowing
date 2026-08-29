@@ -1061,7 +1061,9 @@
 		"dismiss_lead_context": "Deselect lead context",
 		"table_artifact_title": "Customer & Leads Data Matrix",
 		"modal_setup_outreach": "Open Outreach Agent Setup",
-		"set_it_up": "Set it up"
+		"set_it_up": "Set it up",
+		"playbook_preset_jewelry": "보석 및 금은방",
+		"playbook_preset_jewelry_desc": "귀금속 매장, 금세공인, 보석상 및 고급 소매업체 찾기"
 	},
 	"leads": {
 		"matrix_title": "Lead Intelligence Matrix",

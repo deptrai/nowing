@@ -71,6 +71,15 @@ const PLAYBOOK_PRESETS: PlaybookPreset[] = [
 		defaultSources: ["topcv", "facebook", "web"],
 		exampleProduct: "Tiếng Anh doanh nghiệp",
 	},
+	{
+		id: "jewelry_gemstones",
+		icon: "💍",
+		titleKey: "playbook_preset_jewelry",
+		descKey: "playbook_preset_jewelry_desc",
+		defaultIntent: "sell",
+		defaultSources: ["masothue", "facebook", "chotot"],
+		exampleProduct: "Trang sức vàng bạc đá quý",
+	},
 ];
 
 const INTENTS = [

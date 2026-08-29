@@ -1061,7 +1061,9 @@
 		"playbook_next_button": "Next",
 		"playbook_back_button": "Back",
 		"playbook_run_smoke_test": "Smoke test (5 leads)",
-		"playbook_run_full": "Run full campaign"
+		"playbook_run_full": "Run full campaign",
+		"playbook_preset_jewelry": "Joyería y Gemas",
+		"playbook_preset_jewelry_desc": "Encuentre joyerías, orfebres, comerciantes de gemas y minoristas de lujo"
 	},
 	"leads": {
 		"matrix_title": "Lead Intelligence Matrix",
