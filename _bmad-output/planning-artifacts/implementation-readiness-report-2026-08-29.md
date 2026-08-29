@@ -9,6 +9,7 @@ stepsCompleted:
   - ux-alignment
   - epic-quality-review
   - final-assessment
+  - document-discovery-recheck
 output_type: implementation-readiness-report
 documents_included:
   prd:
@@ -584,6 +585,7 @@ Nowing has strong documentation coverage (PRD, Architecture, Epics, UX) and most
    - Updated `epics.md` to make Epic 21 an **umbrella/tracking epic**.
    - Lead-gen implementation distributed to existing child epics: **E23 (Lead Capture, Real-Time Enrichment & Automated Outreach), E24 (Enterprise Lead Conversion & Multi-Channel Outreach + Team CRM), E25 (Platform Administration & Multi-Tenant Operations), E26 (Autonomous Lead Missions & Deep Sales Research)**.
    - Detailed Epic 21 stories (21.1–21.21) marked as superseded and kept for historical traceability.
+   - **Recheck 2026-08-29:** `Story 21.25–21.29` (Customer Location Profile & Pre-Flight Lead Plan) từ `main` branch đã được **remap sang `Story 26.25–26.29`** trong Epic 26; FR-69.2–69.6 cập nhật theo E26.
 
 2. **FR-99 / Story 3.18 assigned.**
    - Updated `epics.md`: FR-99 → **Epic 3 (Knowledge Base + Long-Term Memory), Story 3.18**.
@@ -630,7 +632,7 @@ None remaining from the readiness assessment. The following should be monitored 
 
 ### Final Note
 
-The readiness blockers (Epic 21 mega-epic, FR-99 assignment, 2.10→3.15 citation dependency, FR-95–99 mapping, UX code alignment) have been **resolved in `epics.md`**. The project is now ready to proceed to Phase 4 implementation. Ongoing monitoring of the umbrella epic structure and FR-99 gate is required.
+The readiness blockers (Epic 21 mega-epic, FR-99 assignment, 2.10→3.15 citation dependency, FR-95–99 mapping, UX code alignment, post-merge 21.25–21.29 remap) have been **resolved in `epics.md`**. The project is now ready to proceed to Phase 4 implementation. Ongoing monitoring of the umbrella epic structure and FR-99 gate is required.
 
 **Assessor:** Claude (bmad-check-implementation-readiness skill)
 **Report date:** 2026-08-29
