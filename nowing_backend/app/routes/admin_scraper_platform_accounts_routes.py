@@ -4,9 +4,6 @@ from __future__ import annotations
 
 import logging
 import os
-import subprocess
-import sys
-import uuid
 from pathlib import Path
 from typing import Any
 
@@ -154,10 +151,9 @@ async def capture_scraper_platform_session(
 ) -> CaptureSessionResponse:
     """Open a headed browser so an admin can log in and refresh auth cookies.
 
-    The capture runs in a background process so the HTTP request returns
-    immediately. Once the admin completes login, the process writes the
-    captured cookies to the default `ScraperPlatformAccount` for the
-    platform.  Only supported for platforms that ship a capture script.
+    The capture is dispatched to a Celery worker so the HTTP request returns
+    immediately. Once the admin completes login, the capture script writes the
+    cookies to the default `ScraperPlatformAccount` for the platform.
     """
     script = _capture_script_path(platform)
     if not script.exists():
@@ -166,45 +162,15 @@ async def capture_scraper_platform_session(
             detail=f"Session capture is not supported for platform '{platform}'",
         )
 
-    # Ensure the backend package is importable by the script.
-    root = Path(__file__).resolve().parents[2]
-    env = os.environ.copy()
-    existing_pythonpath = env.get("PYTHONPATH", "")
-    env["PYTHONPATH"] = (
-        f"{root}{os.pathsep}{existing_pythonpath}" if existing_pythonpath else str(root)
+    cdp_url = os.getenv("BATDONGSAN_CAPTURE_CDP_URL")
+    # Lazy import to avoid pulling the Celery task graph into the API
+    # process startup path.
+    from app.tasks.celery_tasks.scraper_capture_tasks import (
+        capture_scraper_session_task,
     )
 
-    capture_id = str(uuid.uuid4())[:8]
-    cdp_url = os.getenv("BATDONGSAN_CAPTURE_CDP_URL")
-    try:
-        # Start Playwright capture in the background; it may run for several
-        # minutes while the admin completes OAuth. If BATDONGSAN_CAPTURE_CDP_URL
-        # is set, the script will attach to the admin's existing Chrome instead
-        # of launching its own automated browser (which many OAuth providers block).
-        cmd = [
-            sys.executable,
-            str(script),
-            "--auto",
-            "--timeout",
-            "300",
-            "--platform",
-            platform,
-        ]
-        if cdp_url:
-            cmd.extend(["--cdp", cdp_url])
-        subprocess.Popen(
-            cmd,
-            cwd=str(root),
-            env=env,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            close_fds=True,
-        )
-    except OSError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Could not start capture process: {exc}",
-        ) from exc
+    result = capture_scraper_session_task.delay(platform, cdp_url)
+    capture_id = result.id[:8]
 
     return CaptureSessionResponse(
         message="A browser window has opened. Please log in; cookies will be saved automatically.",
