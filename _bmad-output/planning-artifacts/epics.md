@@ -118,6 +118,12 @@ Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Archite
 `[BACKLOG]` **FR-98 Self-host OSS onboarding <10 min** → README + `docker compose` + local LLM/embedding config để dev tự host trong 10 phút (PRFAQ Q6, IQ6, RS-13).
 `[BACKLOG]` **FR-99 Recall precision/noise gate before scale** → chốt ngưỡng precision và top-k noise trên `nowing_evals` trước khi mở rộng auto-extract (PRFAQ IQ1, Q8, RS-7).
 
+`[NEW — BACKLOG]` **FR-100 Custom Workspace Roles & Permissions Builder** → workspace owner hoặc superuser có thể tạo/custom role ngoài 3 system roles mặc định, gán permissions chi tiết theo resource/action (PRD FR-10, PRFAQ Q9 context, admin nâng cấp cho SaaS operations).
+`[NEW — BACKLOG]` **FR-101 Workspace Health & Adoption Analytics Dashboard** → owner/admin/analyst xem tổng quan workspace (active members, memory growth, query volume, credit burn, source coverage, recall quality) để quản lý adoption và cost.
+`[NEW — BACKLOG]` **FR-102 Tenant Subscription Tier & Quota Management** → superadmin quản lý plan/trial/upgrade/downgrade cho workspace, gán quota memory/credits/users theo tier, ghi ledger thay đổi.
+`[NEW — BACKLOG]` **FR-103 Admin Bulk Operations Console** → superadmin thực hiện bulk credit, suspend, export, delete, broadcast trên nhiều workspace/user từ một màn hình với dry-run và audit log.
+`[NEW — BACKLOG]` **FR-104 Memory Browser & Research Timeline for Analyst** → analyst/owner duyệt memory theo thread, source type, confidence, time; click-to-source citation; filter và flag noisy/corrupted facts (PRFAQ Q9, UX-DR-PRFAQ-1).
+
 ### NonFunctional Requirements
 `[DONE]` NFR-2 Security · NFR-3 Observability · NFR-4 Reliability · NFR-5 Multi-tenancy isolation · **NFR-6 Citation jump-to-source** *(cải chính 2026-07-25: `editorPanelAtom` CÓ `chunkId`; `AD-DEFER-1` đã đóng)* · **NFR-7 Usage dashboard** *(story `8-3` = done)* · **NFR-8 Recall quality eval-gate** *(story `3-9` = done; baseline ratified 2026-08-04)* · **NFR-9 Deep-research latency & availability budget** *(story `9-3` = done; State A async deliverable default; State B sync chat-mode gated on measured p95 `balanced` ≤30s)* · **NFR-10 Chat Response Regression Gate** *(mới 2026-08-04 — stories 4.8b/4.8e/4.8f/4.8g/4.8h done; `chat/regression` baseline ratification pending measured run)*.  **NFR-11 Scraping compliance & anti-bot resilience (Vietnam job market)** *(mới 2026-08-05 — ToS review, legal counsel, anti-bot POC, PII pipeline)*. `[PARTIAL]` NFR-1 Performance (bounds mơ hồ — **và không có epic nào nhận**, xem readiness C-1).
 
@@ -139,6 +145,8 @@ Starter template: **KHÔNG — brownfield**. Component mới thật sự duy nh�
 - **AR-14** Self-host onboarding <10 phút (`docker compose up`, local LLM/embedding, README mới) (PRFAQ Q6/IQ6 — OSS motion / aha moment).
 - **AR-15** Refine recall precision gate: xác định ngưỡng precision/noise trên `nowing_evals` trước khi scale (PRFAQ IQ1 — rủi ro sản phẩm #1; NFR-8 đã có, cần chốt số).
 - **AR-16** Epic 13 canonical entity cleanup — `CanonicalEntity` / `app/canonical/` / `canonical_entities_routes.py` và migration/schema liên quan đã dropped khỏi kiến trúc, migration `d33c362fa627` drop tables shipped (commit `542b84d61`, 2026-08-22). [DONE 2026-08-22 — fast-track approved; deprecation skipped because zero live callers verified].
+- **AR-17** Admin console nâng cấp cho SaaS operations: custom workspace roles, tenant subscription tier, bulk operations, workspace health analytics, memory browser/research timeline (PRFAQ Q9, PRD FR-10, admin/SaaS/analyst upgrade — **Epic 29**).
+- **AR-18** Auditability & traceability cho mọi admin bulk op và tier change: append-only `audit_events` với `actor_id`, `subject_type`, `subject_id`, `diff_payload`, `idempotency_key`.
 
 **Requirements signals:** RS-1 auto-extract budget (item-cap + spend-cap + wallet pre-check + rate-limit done) · RS-2 recall top_k≤5 (verify) · RS-3 beachhead agent-builder→team · RS-4 "MCP trước UI sau"/"semantic facts first" · RS-5 docs-sync bắt buộc · RS-6 right-to-delete + self-host/cloud split · RS-7 eval-gated launch + chốt số SM · RS-8 data export · RS-9 "project memory"=`ResearchThread`? · RS-10 cost/turn beta trước pricing · **RS-11 legal/ToS + retention policy trước GA cloud (PRFAQ)** · **RS-12 encryption-at-rest + key management cho cloud (PRFAQ)** · **RS-13 self-host onboarding <10 phút / aha recall (PRFAQ)**.
 
@@ -172,6 +180,14 @@ Các story có UI vẫn cần UX spec riêng trước khi build UI chi tiết. U
 **UX-DR-PRFAQ-4: Cost control / per-workspace auto-extract budget**
 - Dashboard hiển thị chi phí extract + embedding + recall per turn, cấu hình ngân sách và toggle auto-extract.
 - *Priority:* fast-follow (PRFAQ Q7/IQ5).
+
+**UX-DR-PRFAQ-5: SaaS Admin Operations Console (post-MVP / Epic 29)**
+- Admin console `/admin/saas` hiển thị workspace directory với plan/tier, quota usage, health score, search, filter, bulk action bar; consistent với design system `/admin/*` hiện có.
+- *Priority:* fast-follow cho SaaS positioning và analyst workspace (PRFAQ Q9 context, Epic 29).
+
+**UX-DR-PRFAQ-6: Analyst Memory Browser / Research Timeline (post-MVP / Epic 29)**
+- Analyst dùng web UI xem danh sách memory theo research thread, filter theo source type / confidence / time / workspace, click-to-source citation, flag/update fact, xem version history.
+- *Priority:* fast-follow sau 4 MCP tools và Memory correction/version (PRFAQ Q9/IQ7, Epic 29).
 
 #### UX Design Requirements — Epic 26 Mission Control & Two-Tier Phone Unlock Refinement
 
@@ -360,6 +376,9 @@ Public channel web preview, MTProto Userbot session pool, distributed mutex lock
 
 ### Epic 28: Self-Host Trust, Data Portability & Cloud GA Legal Readiness — 📋 BACKLOG *(mới 2026-08-21 từ PRFAQ)*
 Người dùng self-host và cloud có thể tin tưởng Nowing với research memory dài hạn: dữ liệu có thể xuất, được mã hóa, quản lý bởi policy rõ ràng, và self-host chạy trong <10 phút. **FRs:** FR-95 (Data export & portability), FR-96 (Encryption-at-rest & key management), FR-97 (ToS/legal review + retention), FR-98 (Self-host OSS onboarding <10 min), **FR-99** (recall precision/noise gate — GA launch gate). **ARs:** AR-11, AR-12, AR-13, AR-14, AR-15. **UX-DRs:** UX-DR-PRFAQ-2 (self-host onboarding), UX-DR-PRFAQ-4 (cost control dashboard). **Stories:** 28.1–28.6 (28.6 = recall precision ratification, FR-99). **Dependencies:** Epic 1 (auth), Epic 3 (memory schema), Epic 8 (billing/cost). Post-MVP UX-DR-PRFAQ-1/3 (memory browser/correction) thuộc Epic 3.
+
+### Epic 29: SaaS Operations, Advanced Admin Governance & Analyst Workspace — 📋 BACKLOG *(mới 2026-08-29 — admin nâng cấp, SaaS operations, analyst)*
+Nowing nâng cấp từ single-tenant ops lên SaaS operations console: superadmin quản lý workspace/tenant, subscription tier/quota, bulk operations, audit; owner/admin/analyst có dashboard health/adoption và memory browser/research timeline. **FRs:** FR-100 (Custom workspace roles & permissions builder), FR-101 (Workspace health & adoption analytics dashboard), FR-102 (Tenant subscription tier & quota management), FR-103 (Admin bulk operations console), FR-104 (Memory browser & research timeline for analyst). **ARs:** AR-17, AR-18. **UX-DRs:** UX-DR-PRFAQ-5 (SaaS admin operations console), UX-DR-PRFAQ-6 (analyst memory browser / research timeline). **Stories:** 29.1–29.6. **Dependencies:** Epic 1 (auth/RBAC), Epic 3 (memory schema/provenance), Epic 8 (billing/cost/wallet), Epic 25 (admin platform operations baseline), Epic 28 (retention/right-to-delete cho 29.6).
 
 ---
 
@@ -4263,10 +4282,14 @@ _FR-97 (retention/right-to-delete) · NFR-1b/1c/1d (memory bound) · AD-18 · AR
 | **AR-13** ToS/legal review + right-to-delete | **Epic 28** | Same as FR-97. |
 | **AR-14** Self-host onboarding <10 phút | **Epic 28** | Same as FR-98. |
 | **AR-15** Refine recall precision gate | **Epic 3** | Same as FR-99. |
-| **UX-DR-PRFAQ-1** Memory browser / research timeline | **Epic 3** *(post-MVP)* | UI cho analyst duyệt memory theo thread/source/confidence. |
+| **AR-17** SaaS admin operations console | **Epic 29** | Custom roles, subscription tier, bulk operations, health analytics, memory browser (29.1–29.6). |
+| **AR-18** Auditability & traceability admin bulk op | **Epic 29** | Append-only `audit_events` cho mọi bulk op và tier change. |
+| **UX-DR-PRFAQ-1** Memory browser / research timeline | **Epic 29** *(chính)* | UI cho analyst duyệt memory theo thread/source/confidence (29.5). |
 | **UX-DR-PRFAQ-2** Self-host onboarding flow | **Epic 28** | Landing page + README hướng dẫn `docker compose` + MCP. |
 | **UX-DR-PRFAQ-3** Memory correction / version history | **Epic 3** *(post-MVP)* | UI flag/update fact, xem version history & relations. |
 | **UX-DR-PRFAQ-4** Cost control / auto-extract budget dashboard | **Epic 8** *(chính)* | Per-workspace budget toggle + cost/turn panel (8.14). |
+| **UX-DR-PRFAQ-5** SaaS admin operations console | **Epic 29** | `/admin/saas` workspace directory, plan/tier, quota usage, health score, bulk action. |
+| **UX-DR-PRFAQ-6** Analyst memory browser / research timeline | **Epic 29** | Filter memory theo thread/source/confidence/time, click-to-source, flag fact. |
 
 ---
 
@@ -4293,4 +4316,177 @@ _FR-97 (retention/right-to-delete) · NFR-1b/1c/1d (memory bound) · AD-18 · AR
 | `NFR-5` Multi-tenancy | **Epic 26** | Workspace-scoped mission data, fast unlock session. |
 
 
+---
 
+## Epic 29: SaaS Operations, Advanced Admin Governance & Analyst Workspace (mới 2026-08-29)
+
+**Epic goal:** Nowing nâng cấp từ single-tenant ops lên SaaS operations console: superadmin quản lý workspace/tenant, subscription tier/quota, bulk operations, audit; owner/admin/analyst có dashboard health/adoption và memory browser/research timeline.
+
+**FRs:** FR-100 (Custom workspace roles & permissions builder), FR-101 (Workspace health & adoption analytics dashboard), FR-102 (Tenant subscription tier & quota management), FR-103 (Admin bulk operations console), FR-104 (Memory browser & research timeline for analyst).
+
+**ARs:** AR-17 (SaaS admin operations console), AR-18 (Auditability & traceability admin bulk op).
+
+**UX-DRs:** UX-DR-PRFAQ-5 (SaaS admin operations console), UX-DR-PRFAQ-6 (Analyst memory browser / research timeline).
+
+**Dependencies:** Epic 1 (auth/RBAC), Epic 3 (memory schema/provenance/versioning), Epic 8 (billing/cost/wallet), Epic 25 (admin platform operations baseline), Epic 28 (retention/right-to-delete cho 29.6).
+
+### Architectural Invariants (INV-29.1 – INV-29.4)
+
+- **INV-29.1 (Custom Role Boundary):** Vai trò custom trong workspace không thể vượt quyền của `Owner` (giá trị trần mặc định), không thể tự ý sửa/xóa `Owner`, không thể gán quyền `is_superuser` hay `billing_admin` cho bản thân khi không được phép.
+- **INV-29.2 (Bulk Operation Idempotency):** Mọi admin bulk op (xóa, cấp/quỷ quyền, gán tier) bắt buộc gửi kèm `Idempotency-Key` do client sinh ra; backend lưu kết quả 24h, từ chối thực thi lại khi key đã tồn tại trừ khi request body khớp byte-by-byte.
+- **INV-29.3 (Analyst Browser Isolation):** `MemoryBrowser` chỉ trả memory thuộc workspace mà analyst được gán; query bắt buộc áp dụng `workspace_id` RLS + row-level permission check trước khi lọc theo source/confidence/time.
+- **INV-29.4 (Subscription Tier Reversibility):** Thay đổi tier (upgrade/downgrade) được ghi nhận nhưng có hiệu lực tối đa 7 ngày sau (hoặc ngay nếu owner xác nhận); downgrade gây ảnh hưởng hạ tầng được cảnh báo, rollback trong 7 ngày không mất dữ liệu nếu quota mới vẫn chứa được.
+
+### Story 29.1: Custom Workspace Roles & Permissions Builder `[backlog]`
+
+As a workspace Owner,
+I want to define custom roles (e.g. Analyst, Editor, Billing Viewer) with a fine-grained permissions matrix,
+So that I can delegate access without granting full admin or accidentally leaking sensitive operations.
+
+**Acceptance Criteria:**
+
+**Given** the Owner opens `/workspace-settings/roles`, **When** they click "New Role", **Then** they can name the role, choose a base template (`Viewer`, `Editor`, `Analyst`, `Billing`), and toggle individual permissions across categories: `memory_read`, `memory_write`, `memory_delete`, `source_configure`, `tool_enable`, `billing_read`, `billing_manage`, `member_invite`, `member_remove`, `analytics_read`, `settings_read`, `settings_write`.
+
+**Given** a permission toggle that conflicts with the base template (e.g. `member_remove` on an Analyst template), **When** the Owner enables it, **Then** the UI shows a warning ("This exceeds the recommended template") but allows save if the Owner confirms.
+
+**Given** a custom role is saved, **When** the backend receives `POST /workspaces/{id}/roles`, **Then** it validates that no permission exceeds the `Owner` ceiling (INV-29.1), persists the role to `workspace_roles`, and immediately invalidates the workspace permission cache.
+
+**Given** a user is assigned a custom role, **When** they call any API or load any UI, **Then** the permission resolver merges system roles, custom role, and workspace-scoped overrides; `403` is returned for any disallowed action without leaking the existence of unauthorized resources.
+
+**Given** migration 72 removed the `Admin` system role, **When** the role builder renders system roles, **Then** `Admin` is reserved and cannot be re-created as a custom role name; any legacy `Admin` assignment is mapped to the closest template (`Editor` + `billing_read`).
+
+**And** the role builder supports clone, archive, and version history with `audit_events` per change.
+
+_FR-100 · AR-17 · UX-DR-PRFAQ-5 · NFR-2 · NFR-5 · INV-29.1 · AD-RBAC-1._
+
+### Story 29.2: Workspace Health & Adoption Analytics Dashboard `[backlog]`
+
+As a workspace Owner or Admin,
+I want a SaaS-style health dashboard showing adoption, memory growth, query volume, credit burn, and source coverage,
+So that I can understand usage patterns, justify cost, and decide when to upgrade.
+
+**Acceptance Criteria:**
+
+**Given** the Owner opens `/dashboard/health`, **When** the page loads, **Then** it displays aggregate metrics: active members (daily/weekly), total memories, memory growth rate, `nowing_recall` / `nowing_remember` / `nowing_research` query volume, credits consumed, cost per turn, top sources, and source coverage gaps.
+
+**Given** the dashboard has a time-range selector (7d/30d/90d/custom), **When** the user changes range, **Then** all charts and tables refresh in < 500ms from pre-aggregated materialized views (`workspace_health_daily`).
+
+**Given** the user clicks a metric (e.g. "Top source: Reddit"), **When** the drill-down opens, **Then** it shows the underlying memory count, query count, and cost attribution for that source within the selected period, filtered by workspace RLS.
+
+**Given** the workspace approaches its plan quota (memory count, credits, storage bytes), **When** the threshold exceeds 80%, **Then** the dashboard surfaces an upgrade CTA with the estimated tier needed, without blocking current usage.
+
+**Given** the user has the `analytics_read` permission, **When** they access the dashboard, **Then** they see only data they are authorized to view; members with `memory_read` but not `analytics_read` see a reduced public snapshot.
+
+**And** the dashboard is instrumented with analytics events and can be exported to CSV/JSON.
+
+_FR-101 · AR-17 · UX-DR-PRFAQ-5 · NFR-1 · NFR-5 · INV-29.3._
+
+### Story 29.3: Tenant Subscription Tier & Quota Management `[backlog]`
+
+As a Superadmin,
+I want to manage tenant workspaces by plan tier (Free / Team / Growth / Enterprise), trial status, quotas, and reversible upgrades/downgrades,
+So that Nowing can operate as a multi-tenant SaaS with predictable unit economics.
+
+**Acceptance Criteria:**
+
+**Given** the Superadmin opens `/admin/saas/plans`, **When** the page loads, **Then** it lists all plan definitions with limits: `max_members`, `max_memory_count`, `max_memory_bytes`, `max_monthly_credits`, `max_sources`, `support_level`, `price_vnd`, and enabled/disabled flags.
+
+**Given** a workspace is on the `Free` plan, **When** the Superadmin (or Owner via self-serve) upgrades to `Team`, **Then** the backend creates a `subscription_change` record, sets `effective_at` to now + 7 days by default (INV-29.4), and sends an email confirmation with quota delta and first charge.
+
+**Given** the Owner requests an immediate downgrade from `Growth` to `Team`, **When** the current usage (memory count, members, credits) exceeds the new tier limits, **Then** the backend rejects with `409 conflict` and a checklist of what must be reduced; the change can be scheduled 7 days out with a remediation email.
+
+**Given** a subscription change is within the 7-day reversible window, **When** the Owner or Superadmin clicks "Undo tier change", **Then** the tier reverts, no data is lost, and the reversal is logged to `audit_events` with `diff_payload`.
+
+**Given** the trial period ends, **When** the cron job runs, **Then** it converts the workspace to `Free` if no payment method exists, suspends new writes if over `Free` quota, and notifies the Owner with a grace period of 72 hours.
+
+**Given** the Superadmin edits a plan definition, **When** the change affects active workspaces, **Then** it only applies to new workspaces or workspaces that explicitly re-select the plan; existing workspaces keep grandfathered limits with a visible "legacy plan" badge.
+
+**And** quota enforcement hooks into `MemoryRepository.create_memory`, member invite, and source enable; proration credits are calculated daily.
+
+_FR-102 · AR-17 · AR-18 · UX-DR-PRFAQ-5 · NFR-1 · NFR-5 · INV-29.2 · INV-29.4 · AD-BILLING-1._
+
+### Story 29.4: Admin Bulk Operations Console `[backlog]`
+
+As a Superadmin or delegated Workspace Owner,
+I want a bulk operations console to query, dry-run, and execute actions across workspaces or members,
+So that I can respond to abuse, compliance requests, and tenant-wide changes safely and auditably.
+
+**Acceptance Criteria:**
+
+**Given** the admin opens `/admin/saas/bulk-ops`, **When** they build a query (e.g. "workspaces on Free plan with > 1000 memories"), **Then** the backend validates the query against an allow-list of filterable fields and returns a paginated preview with exact row count.
+
+**Given** the admin selects an action (e.g. `archive_inactive_workspaces`, `rotate_api_keys`, `assign_role`, `delete_source_type_memories`), **When** they click "Dry-run", **Then** the system simulates the action, lists affected subjects, estimates duration/credits, and reports conflicts without mutating data.
+
+**Given** the admin confirms a dry-run and provides an `Idempotency-Key`, **When** the backend executes, **Then** it schedules an async `bulk_op_job`, returns `202 Accepted` with `job_id`, and enforces INV-29.2 by rejecting duplicate keys with identical effect.
+
+**Given** a bulk op is running, **When** the admin polls `GET /admin/saas/bulk-ops/{job_id}`, **Then** they see progress %, processed count, failed rows, and a cancel button if the job supports cancellation.
+
+**Given** any bulk op completes or fails, **When** the job finishes, **Then** it writes one `audit_events` row per affected subject (`actor_id`, `subject_type`, `subject_id`, `diff_payload`, `idempotency_key`) and a summary row; failed rows are written to `bulk_op_errors` for retry.
+
+**And** only Superadmin can execute cross-workspace actions; Workspace Owner can only execute within their own workspace and must hold `settings_write` + `member_remove`.
+
+_FR-103 · AR-17 · AR-18 · UX-DR-PRFAQ-5 · NFR-2 · NFR-5 · INV-29.1 · INV-29.2 · AD-AUDIT-1._
+
+### Story 29.5: Memory Browser & Research Timeline for Analyst `[backlog]`
+
+As an Analyst in a workspace,
+I want a memory browser that lists, filters, and explores research memories with source citation and version history,
+So that I can verify facts, trace research lineage, and flag outdated or low-confidence claims.
+
+**Acceptance Criteria:**
+
+**Given** the Analyst opens `/workspace/memory-browser`, **When** the page loads, **Then** it shows a paginated, sortable list of `Memory` rows scoped to the workspace, with columns: content snippet, source type, source URL, confidence, created at, updated at, created by, version count, and flag status.
+
+**Given** the Analyst uses the filter bar, **When** they select source type, confidence range, time range, creator, or search by keyword, **Then** the backend applies `workspace_id` RLS first (INV-29.3), then filters, and returns results in < 300ms for workspaces up to 100,000 memories.
+
+**Given** the Analyst clicks a memory row, **When** the detail panel opens, **Then** it shows: full content, all source citations with click-to-source, version history (who changed what, when), linked research threads, and a "Flag for review" action.
+
+**Given** the Analyst flags a memory as outdated or incorrect, **When** they submit a note, **Then** the system creates a `memory_review_queue` entry with `flag_reason`, notifies the Owner/Editor, and does not auto-delete or auto-rewrite the memory.
+
+**Given** the Analyst has only `memory_read` permission, **When** they try to flag or edit, **Then** the UI hides the actions and the backend rejects with `403`; with `memory_write` they can propose an edit that goes through approval workflow.
+
+**Given** the Analyst toggles "Research timeline" view, **When** the view switches, **Then** memories are grouped by research thread, ordered chronologically, with branch/merge markers when a memory appears in multiple threads.
+
+**And** the browser is reachable from the analyst workspace dashboard and is keyboard-navigable / screen-reader friendly.
+
+_FR-104 · AR-17 · UX-DR-PRFAQ-1 · UX-DR-PRFAQ-6 · NFR-1 · NFR-2 · NFR-5 · INV-29.3 · AD-MEMORY-1._
+
+### Story 29.6: Data Governance & Retention Policy Console `[backlog]`
+
+As a workspace Owner or Superadmin,
+I want a governance console to define retention policy, source risk tiers, DNC list, and right-to-delete flows,
+So that Nowing cloud stays compliant with scraped-source ToS and data-subject requests.
+
+**Acceptance Criteria:**
+
+**Given** the Owner opens `/workspace/governance`, **When** the page loads, **Then** it shows the active retention policy (`memory_retention_days`, `memory_auto_archive_enabled`, `memory_retention_action`), source risk tier mapping, DNC list entries, and a "Right-to-delete" request queue.
+
+**Given** the Owner edits the retention policy, **When** they save, **Then** the backend validates the window against source risk tiers (shortest required window wins), schedules the lifecycle job, and logs the change to `audit_events`.
+
+**Given** a source risk tier is changed from `low` to `high`, **When** the change is saved, **Then** the system pauses all active scrapes for that source type across the workspace and shows a warning requiring explicit opt-in before resuming.
+
+**Given** the Owner receives a right-to-delete request, **When** they approve it, **Then** the system runs a dry-run listing affected `Memory` rows, versions, relations, and embeddings, and only purges after explicit confirmation; bulk deletion > 100,000 rows is chunked into 1,000-row batches with progress and cancel-ability.
+
+**Given** a DNC phone/email/tax code is added, **When** the entry is saved, **Then** it propagates to the workspace blacklist within < 1s, suppresses future scraping/messaging for that value, and writes an `audit_events` entry.
+
+**Given** self-host vs cloud deployment, **When** the policy is published, **Then** it clearly states that self-host users retain responsibility for source compliance, while cloud Nowing acts as a processor with documented retention windows (tái khẳng định Story 28.3).
+
+**And** all bulk lifecycle actions are idempotent, auditable (AR-18), and reversible within 7 days for archived rows.
+
+_FR-97 · FR-104 · AR-13 · AR-17 · AR-18 · UX-DR-PRFAQ-5 · UX-DR-PRFAQ-6 · NFR-1 · NFR-2 · NFR-5 · INV-28.2 · INV-29.2 · AD-28.3._
+
+### Epic 29 — Requirements Coverage Map
+
+| Requirement | Story | Notes |
+|---|---|---|
+| **FR-100** Custom workspace roles & permissions builder | **29.1** | Permission matrix, custom CRUD, Owner ceiling, `Admin` name reservation. |
+| **FR-101** Workspace health & adoption analytics dashboard | **29.2** | Health metrics, drill-down, quota CTA, export. |
+| **FR-102** Tenant subscription tier & quota management | **29.3** | Plan directory, trial, upgrade/downgrade, 7-day reversal, proration. |
+| **FR-103** Admin bulk operations console | **29.4** | Query builder, dry-run, Idempotency-Key, async job, per-subject audit. |
+| **FR-104** Memory browser & research timeline for analyst | **29.5** | Paginated memory list, filter, click-to-source, flag, version/timeline. |
+| **AR-17** SaaS admin operations console | **29.1–29.6** | Custom roles, health dashboard, tier, bulk ops, memory browser, governance. |
+| **AR-18** Auditability & traceability admin bulk op | **29.3–29.6** | `audit_events` cho tier change, bulk op, retention, DNC, right-to-delete. |
+| **UX-DR-PRFAQ-5** SaaS admin operations console | **29.1–29.4** | `/admin/saas` role/tier/quota/health/bulk console. |
+| **UX-DR-PRFAQ-6** Analyst memory browser / research timeline | **29.5** | UI filter memory theo thread/source/confidence/time, click-to-source, flag. |
+
+**Story count:** 29.1–29.6 (6 stories) · **Status:** all `[backlog]` · **Dependencies:** Epic 1, Epic 3, Epic 8, Epic 25, Epic 28.
