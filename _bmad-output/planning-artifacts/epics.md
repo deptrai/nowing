@@ -67,6 +67,11 @@ Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Archite
 `[DONE]` **FR-82 Viral Social Outbound Co-pilot** → **E21.12** (AI Voice Learner + Viral post analyzer via XActions FB/Twitter).
 `[DONE]` **FR-84 Smart Whitelist & Do-Not-Call (DNC) Compliance Engine** → **E21.14 P0** (Decree 91/2020/NĐ-CP, CSV import, opt-out protection).
 `[DONE]` **FR-85 Unified Multi-Source AI Lead Generation Orchestrator** → **E21.15 P0** (1-chat parallel retrieval across all 15+ scrapers into live table).
+`[NEW]` **FR-69.2 Customer Location Profile** → **E21.25** (progressive province/district/ward selector, GSO/TCTK codes, smart search & quick chips).
+`[NEW]` **FR-69.3 Location-Aware Adapter Routing** → **E21.26** (coverage quality, location-weighted fit scoring, adapter re-ranking).
+`[NEW]` **FR-69.4 Pre-Flight Lead Plan Summary** → **E21.27** (PlanSummaryCard, estimated leads/cost, source coverage badges).
+`[NEW]` **FR-69.5 Source Coverage in Right-Canvas** → **E21.28** (source status panel, contextual coverage badges, enable/disable per source).
+`[NEW]` **FR-69.6 Smoke Test Feedback Loop** → **E21.29** (5-lead preview, location refinement, re-run diff).
 `[DONE]` **FR-86 Nowing Split-View Canvas & Workspace Modernization** → **E21.16 P0** (Unified New Chat, 340px Chat + Dynamic Multi-Mode Matrix, Real Credits & APIs, Sọc Caro, Emerald Green).
 `[DONE]` **FR-87 Complete Origami Landing Page & Public Site Transformation** → **E21.17 P0** (10 sections, Origami Mint Logo, 12 verticals).
 `[DONE]` **FR-88 Partners Affiliate Portal & $0 Pricing Page Deployment** → **E21.18 P1** ($0 Free tier, 15% recurring affiliate ledger).
@@ -259,7 +264,8 @@ Các story có UI vẫn cần UX spec riêng trước khi build UI chi tiết. U
 - **OQ-8 HR/Recruitment Vertical in Vietnam** → **E12 P0** (ToS, legal classification, anti-bot, salary hidden, willingness-to-pay, PII).
 - **SM-12 HR pilot metrics** → **E12 P0** (workspace active, aggregate queries, listings indexed, dedupe, confidence, PII coverage).
 - **AR-11 HR anti-bot validation** → **E12.2 P0** (TopCV Cloudflare bypass/residential proxy feasibility).
-- **Mới 2026-08-10 (Market Research → Lead Intelligence) — đã hoàn thành 2026-08-16:** FR-63 (Intent Signals) → **E26.1** `[DONE]` · FR-64 (Lead Scoring) → **E26.2** `[DONE]` · FR-65 (Contact Enrichment / Phone Waterfall) → **E23.2** `[DONE]` · FR-66 (Outbound Automation) → **E23.3** `[DONE]` · FR-67 (CRM Integration) → **E24.3** `[DONE]` · FR-68 (Zalo Integration) → **E24.7** `[backlog]` · FR-69 (Outcome Pricing) → **E23.4** `[DONE]` · FR-80 (Reverse-ICP) → **E26.x** `[DONE]` · FR-81/82/83 (Actionable dispatches / Viral copilot / Social) → **E24.6 / E23.x** · FR-84 (DNC) → **E25.x** · FR-85 (Lead Orchestration) → **E26.x** `[ready-for-dev]` · FR-86 (Split Canvas) → **E25 / E27** · FR-87 (Landing page) → **E25 / E27** · FR-88 (Affiliate) → **E25.x** · FR-91 (VietQR) → **E25.x**. **Epic 21 là umbrella tracking; Epic con E23–E26/E25 nhận việc._
+- **Mới 2026-08-10 (Market Research → Lead Intelligence) — đã hoàn thành 2026-08-16:** FR-63 (Intent Signals) → **E26.1** `[DONE]` · FR-64 (Lead Scoring) → **E26.2** `[DONE]` · FR-65 (Contact Enrichment / Phone Waterfall) → **E23.2** `[DONE]` · FR-66 (Outbound Automation) → **E23.3** `[DONE]` · FR-67 (CRM Integration) → **E24.3** `[DONE]` · FR-68 (Zalo Integration) → **E24.7** `[backlog]` · FR-69 (Outcome Pricing) → **E23.4** `[DONE]` · FR-80 (Reverse-ICP) → **E26.x** `[DONE]` · FR-81/82/83 (Actionable dispatches / Viral copilot / Social) → **E24.6 / E23.x** · FR-84 (DNC) → **E25.x** · FR-85 (Lead Orchestration) → **E26.x** `[ready-for-dev]` · FR-86 (Split Canvas) → **E25 / E27** · FR-87 (Landing page) → **E25 / E27** · FR-88 (Affiliate) → **E25.x** · FR-91 (VietQR) → **E25.x`. **Epic 21 là umbrella tracking; Epic con E23–E26/E25 nhận việc.**
+- **Mới 2026-08-29 (Customer Location Profile & Pre-Flight Lead Plan):** FR-69.2 (Location Profile) → **E26.25** `[ready-for-dev]` · FR-69.3 (Location-Aware Adapter Routing) → **E26.26** `[ready-for-dev]` · FR-69.4 (Pre-Flight Plan Summary) → **E26.27** `[ready-for-dev]` · FR-69.5 (Source Coverage in Right-Canvas) → **E26.28** `[ready-for-dev]` · FR-69.6 (Smoke Test Feedback Loop) → **E26.29** `[ready-for-dev]`. **Đã remap từ Story 21.25–21.29 sang E26.25–E26.29 (Autonomous Lead Missions)._
 
 ## Epic List
 
@@ -347,7 +353,7 @@ Public agent-chat endpoints, AgentConfig registry, client_id tenancy, cost trace
 `NowingIngestService` + `to_chunks()`, gap-fill caller, `NowingPrivateProvider`, service-to-service auth. **Open:** none.
 
 ### Epic 21: Lead Gen Intelligence — ⏳ IN-PROGRESS *(umbrella)*
-Umbrella / tracking epic cho hệ sinh thái săn lead: Lead Capture & Enrichment (E23), Multi-Channel Outreach & CRM (E24), Platform Admin & Multi-Tenant (E25), Autonomous Lead Missions / DSH (E26), Growth & Affiliate (E29). Chi tiết triển khai đã chuyển sang các epic con. **FRs:** FR-63–69, FR-80–88, FR-91. **Dependencies:** E10, E12, E22. _Tách 2026-08-29: epic con E23–E26/E29 nhận stories từ Epic 21 nguyên bản._
+Umbrella / tracking epic cho hệ sinh thái săn lead: Lead Capture & Enrichment (E23), Multi-Channel Outreach & CRM (E24), Platform Admin & Multi-Tenant (E25), Autonomous Lead Missions / DSH (E26), Growth & Affiliate (E29). Chi tiết triển khai đã chuyển sang các epic con. **FRs:** FR-63–69, FR-80–88, FR-91. **Dependencies:** E10, E12, E22. _Tách 2026-08-29: epic con E23–E26/E29 nhận stories từ Epic 21 nguyên bản. Customer Location Profile & Pre-Flight Lead Plan stories (21.25–21.29 từ main) tạm map E26.25–E26.29._
 
 ### Epic 22: Telegram Scraper & Channel Ingestion Engine — ⏳ READY-FOR-DEV
 Public channel web preview, MTProto Userbot session pool, distributed mutex lock, FloodWait cooldown state machine, regex entity extractor, S3 media chunk streaming, realtime stream daemon, Alert Engine trigger, AI Agent tools. **Stories:** 22.1–22.3. Governed by `architecture-telegram-scraper-2026-08-15`.
@@ -3221,6 +3227,97 @@ _FR-85 · AD-103 · AD-119 (Rules 1-3, 6) · Decree 13/2023 Compliance_
 
 ---
 
+### Story 26.25: Customer Location Profile Selector with Progressive Disclosure `[ready-for-dev]`
+
+As a sales rep or broker in Vietnam,
+I want to specify where my target customers live, work, and transact using a structured province/district/ward selector that starts simple and expands only when I need more detail,
+So that lead searches match the right geography without overwhelming me with too many fields up front.
+
+**Acceptance Criteria:**
+- **Given** the Playbook Builder reaches the location step, **When** the user opens it, **Then** a `LocationSelector` component is displayed with a required Province/Thành phố combobox, an optional Quận/Huyện multi-select that appears after a province is selected, and an optional Phường/Xã multi-select collapsed behind a "Khu vực chi tiết (nâng cao)" toggle.
+- **Given** the location type row, **When** the user sees it, **Then** the default is "both" (residence + transaction) and the user can switch to "customer_residence", "customer_work", or "transaction".
+- **Given** a smart-search text box, **When** the user types a ward, district, province, or common alias ("HCM", "Saigon", "Hà Nội", "Ha Noi"), **Then** the system normalizes Unicode and diacritics, suggests matching GSO/TCTK codes, and tags the selected location as chips.
+- **Given** quick-location chips ("Hà Nội", "TP.HCM", "Đà Nẵng", "Hải Phòng", "Cần Thơ"), **When** the user clicks one, **Then** the corresponding province code is selected and nearby districts are optionally suggested.
+- **Given** a selected province, **When** the user opens the district dropdown, **Then** it lists only districts belonging to that province; when a district is selected, the ward dropdown lists only wards belonging to that district.
+- **Given** the user selects multiple districts or wards, **When** the selection is saved, **Then** the UI displays compact chips with remove buttons and `location_text` is updated for the final summary.
+- **Given** no province selected, **When** the user tries to proceed, **Then** the form shows a validation error and prevents advancing.
+
+_FR-69.2 · FR-85 · AD-31 · UX-Origami-Split-Canvas_
+
+---
+
+### Story 26.26: Location-Aware Adapter Routing & Coverage Quality `[ready-for-dev]`
+
+As a lead generation orchestrator,
+I want the system to prefer and rank adapters that actually cover the selected provinces, districts, and wards,
+So that scraping budget is spent on sources that are most likely to return relevant local leads.
+
+**Acceptance Criteria:**
+- **Given** a `LeadSourceAdapter` implementation, **When** it is registered, **Then** it may declare `supported_provinces: list[str]` and `coverage_quality_by_location: dict[str, float | str]` (province/district code → quality enum or score).
+- **Given** a campaign with a `LocationProfile`, **When** `resolve_adapters_for_campaign()` runs, **Then** the system first resolves adapters by intent/keyword/category as today, then re-orders the result using a composite score: `location_coverage_score * 0.4 + vertical_relevance_score * 0.4 + cost_efficiency_score * 0.2`.
+- **Given** two adapters in the same category, **When** one has `coverage_quality_by_location` >= "medium" for the target province and the other has "low" or none, **Then** the higher-coverage adapter gets a larger budget share and higher execution priority.
+- **Given** no location match, **When** all adapters are otherwise available, **Then** the system falls back to keyword-based routing and surfaces a warning in the plan summary.
+- **Given** the orchestrator filters leads, **When** `pre_filter_by_icp()` runs with a `LocationProfile`, **Then** it tokenizes and normalizes the lead's `city`, `address`, `title`, and `content_snippet`, matches province/district/ward codes against the location name trie with Unicode normalization and diacritic stripping, and rejects leads that do not match.
+- **Given** adversarial inputs (e.g. "Quận 1" vs "Quận 10-12", "Châu Thành" in multiple provinces, mixed NFD/NFC), **When** the matcher runs, **Then** it uses word-boundary token matching and hierarchical precedence (ward → district → province) to avoid false positives.
+- **Given** a lead matches the target location, **When** fit scoring runs, **Then** `location_weight` (default 0.3) is applied to blend the location match (0–100) with the existing `fit_score`.
+
+_FR-69.2 · FR-69.3 · FR-85 · AD-31 · AD-42 · NFR-1_
+
+---
+
+### Story 26.27: Pre-Flight Lead Plan Summary & PlanSummaryCard `[ready-for-dev]`
+
+As a sales rep,
+I want to review a concise plan summary (sources, locations, intent, product, channels, estimated lead count, estimated cost) before the system starts scraping,
+So that I can adjust inputs without wasting credits on a poorly targeted run.
+
+**Acceptance Criteria:**
+- **Given** a completed playbook wizard, **When** the user reaches the final step, **Then** a `PlanSummaryCard` is rendered inside the playbook dialog and a mirror of the card is available in the Right-Canvas (Origami split-view) for persistent review.
+- **Given** the plan summary, **When** it is displayed, **Then** it shows: selected preset, intent, product, `LocationProfile` summary, active channels, target sources, estimated reachable lead count, and estimated credit cost.
+- **Given** each source in the plan, **When** the user expands its coverage badge, **Then** the card displays `supported_provinces`, `coverage_quality_by_location` for the selected locations (high/medium/low/none), and any `degraded` reason.
+- **Given** a source with insufficient coverage for the selected location, **When** the plan is rendered, **Then** the card shows a warning and suggests a broader province or nearby alternative.
+- **Given** the smoke-test button, **When** clicked, **Then** the plan runs with `limit=5`, updates the card with actual reachable and cost numbers, and switches the CTA to "Chạy đầy đủ" or "Chỉnh sửa kế hoạch".
+- **Given** the plan summary, **When** the user clicks "Quay lại", **Then** they can edit any previous step without losing selections; when they click "Chạy chiến dịch", **Then** the multi-source lead orchestrator starts the full run.
+
+_FR-69.4 · FR-85 · FR-86 · AD-31 · UX-Origami-Split-Canvas_
+
+---
+
+### Story 26.28: Source Coverage Badge in Right-Canvas `[ready-for-dev]`
+
+As a sales rep actively monitoring a lead discovery run,
+I want to see source status and coverage context inside the Right-Canvas instead of a separate page,
+So that I can keep the chat/table in focus while checking why a source is slow, degraded, or missing from the plan.
+
+**Acceptance Criteria:**
+- **Given** a playbook run or active multi-source search, **When** the Right-Canvas is open, **Then** it renders a `SourceStatusPanel` showing each source's `last_execution_status`, `coverage_quality_by_location` for the current `LocationProfile`, and toggle to enable/disable the source for this run.
+- **Given** a source in the panel, **When** its coverage for the selected location is "high", "medium", "low", or "none", **Then** the badge uses the corresponding color and tooltip text, and the panel explains what the rating means.
+- **Given** a degraded source, **When** the user expands it, **Then** the panel shows the reason (rate-limited, proxy down, anti-bot, location unsupported) and the last successful/failed heartbeat time.
+- **Given** a source is toggled off, **When** the user runs the playbook, **Then** the orchestrator excludes that source for this run only and updates the plan summary in real time.
+- **Given** the user is not in an active run, **When** they open Right-Canvas, **Then** the panel shows the global source health dashboard from cached `capability status` data without requiring a new run.
+
+_FR-69.4 · FR-86 · AD-31 · AD-42 · UX-Origami-Split-Canvas_
+
+---
+
+### Story 26.29: Smoke Test Feedback Loop for Location Refinement `[ready-for-dev]`
+
+As a sales rep,
+I want a 5-lead smoke test that previews real results and lets me refine the location profile before committing a full run,
+So that I can correct location mismatches early and avoid paying for irrelevant leads.
+
+**Acceptance Criteria:**
+- **Given** a playbook plan summary, **When** the user clicks "Chạy thử 5 lead", **Then** the orchestrator runs a low-cost preview, returns up to 5 leads, and renders a compact `NowingLeadMatrix` preview with location, source, and content snippet.
+- **Given** the smoke test results, **When** the user is asked "Địa điểm có đúng không?", **Then** they can choose "Đúng — chạy đầy đủ", "Thu hẹp khu vực", "Mở rộng khu vực", "Đổi nguồn", or "Chỉnh vị trí chi tiết".
+- **Given** the user chooses to refine the location, **When** the location step reopens, **Then** the previous `LocationProfile` is pre-filled and the user can add/remove province, district, or ward selections.
+- **Given** a refined location, **When** the user re-runs smoke test, **Then** the new 5-lead preview reflects the updated profile and a diff summary highlights what changed (added/removed locations, source order, estimated cost).
+- **Given** the user approves after smoke test, **When** they click "Chạy đầy đủ", **Then** the full run uses the final `LocationProfile` and the smoke-test leads are included in the final results with deduplication.
+- **Given** the smoke test returns 0 leads, **When** the panel renders, **Then** it explains why (no source coverage, too narrow, source degraded) and suggests next actions.
+
+_FR-69.4 · FR-85 · AD-31 · UX-Origami-Split-Canvas_
+
+---
+
 ---
 
 ## Epic 22: Telegram Scraper & Channel Ingestion Engine `ready-for-dev`
@@ -3645,6 +3742,8 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 *Governed by Architecture Spine: `architecture-unified-nowing-chainlens-dsh-2026-08-17/ARCHITECTURE-SPINE.md` (AD-101 to AD-110) & BMAD Full-Spectrum Panel (Winston, John, Mary, Amelia, Murat, Sally, DevOps)*
 
 > **UX Refinement (2026-08-20):** Epic 26 bổ sung story cải tiến UX cho `MissionControlWidget` (Glass Box) và `PhoneUnlockPill` / `SmartUnlockPopover` (Two-Tier Phone Unlock) dựa trên `ux-spec-epic26-mission-control-phone-unlock-2026-08-20.md` (UX-DR1–UX-DR12). Mục tiêu: mission minh bạch chi phí, tránh mất tiền oan, đảm bảo accessibility và analytics đầy đủ.
+>
+> **Stories 26.25–26.29 (Customer Location Profile & Pre-Flight Lead Plan):** được remap từ Epic 21.25–21.29 sau merge 2026-08-29. Các story này thuộc E26 vì liên quan Autonomous Lead Missions / Pre-Flight Plan / DSH Location Profile.
 
 ### Architectural Invariants (AD-101 – AD-110)
 - **AD-101 (Stateless ChainLens & Unified pgvector Ingestion):** ChainLens chỉ đóng vai trò Crawler/Parser không lưu trạng thái. Chunks được đẩy về `POST /v1/chainlens/ingest` để Nowing tự tạo embeddings và lưu vào PostgreSQL 16 `chunks` (HNSW).
