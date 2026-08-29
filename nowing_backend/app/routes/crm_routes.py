@@ -12,6 +12,8 @@ from app.auth.context import AuthContext
 from app.db import CrmSyncLog, get_async_session
 from app.lead_intelligence.crm.schemas import (
     CrmConnectionCreate,
+    CrmConversionLogInput,
+    CrmConversionRead,
     CrmDedupInput,
     CrmSyncInput,
 )
@@ -205,3 +207,59 @@ async def list_crm_sync_logs(
         }
         for log in logs
     ]
+
+
+@router.post("/{workspace_id}/crm/conversions", response_model=CrmConversionRead)
+async def log_crm_conversion(
+    workspace_id: int,
+    request: CrmConversionLogInput,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(require_session_context),
+):
+    """Log a lead conversion event and attribute it (Story 27.5)."""
+    service = CrmSyncService(session)
+    outcome_event = await service.log_conversion(auth, workspace_id, request)
+    return CrmConversionRead(
+        id=outcome_event.id,
+        workspace_id=outcome_event.workspace_id,
+        client_id=outcome_event.client_id,
+        lead_id=outcome_event.lead_id,
+        event_type=outcome_event.event_type,
+        attribution=outcome_event.attribution,
+        cost_micros=outcome_event.cost_micros,
+        outcome_metadata=outcome_event.outcome_metadata or {},
+        created_at=outcome_event.created_at,
+    )
+
+
+@router.get("/{workspace_id}/crm/conversions", response_model=list[CrmConversionRead])
+async def list_crm_conversions(
+    workspace_id: int,
+    lead_id: UUID | None = None,
+    limit: int = 50,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(require_session_context),
+):
+    """List logged conversions for attribution reporting (Story 27.5)."""
+    service = CrmSyncService(session)
+    events = await service.list_conversions(
+        auth=auth,
+        workspace_id=workspace_id,
+        lead_id=lead_id,
+        limit=limit,
+    )
+    return [
+        CrmConversionRead(
+            id=e.id,
+            workspace_id=e.workspace_id,
+            client_id=e.client_id,
+            lead_id=e.lead_id,
+            event_type=e.event_type,
+            attribution=e.attribution,
+            cost_micros=e.cost_micros,
+            outcome_metadata=e.outcome_metadata or {},
+            created_at=e.created_at,
+        )
+        for e in events
+    ]
+

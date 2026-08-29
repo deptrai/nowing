@@ -129,7 +129,19 @@
 		"copy": "클립보드에 복사",
 		"no_api_key": "API 키를 찾을 수 없습니다",
 		"usage_title": "사용 방법",
-		"usage_description": "Authorization 헤더에 API 키를 포함하세요:"
+		"usage_description": "Authorization 헤더에 API 키를 포함하세요:",
+		"password_nav_label": "Password",
+		"password_title": "Password",
+		"password_description": "Update your account password",
+		"current_password": "Current password",
+		"new_password": "New password",
+		"new_password_hint": "Must be at least 8 characters",
+		"confirm_password": "Confirm new password",
+		"password_mismatch": "Passwords do not match",
+		"password_too_short": "Password must be at least 8 characters",
+		"password_save": "Update password",
+		"password_saved": "Password updated successfully",
+		"password_save_error": "Failed to update password"
 	},
 	"dashboard": {
 		"title": "대시보드",

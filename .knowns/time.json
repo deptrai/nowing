@@ -1,3 +1,11 @@
 {
-  "active": []
+  "active": [
+    {
+      "taskId": "hjo8zh",
+      "taskTitle": "[lead-gen-fix-01] Fix multi-source lead gen relevance for real estate: intent routing, location/price filter, phone extraction, chat/dock UX",
+      "startedAt": "2026-08-27T04:54:36.903Z",
+      "pausedAt": null,
+      "totalPausedMs": 0
+    }
+  ]
 }

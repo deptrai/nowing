@@ -22,6 +22,7 @@ from app.db import (
     VerifiedContact,
     WorkspaceMembership,
     get_async_session,
+    has_permission,
 )
 from app.lead_intelligence.reverse_icp import ReverseIcpService
 from app.lead_intelligence.schemas import (
@@ -49,7 +50,7 @@ from app.services.phone_waterfall_service import PhoneWaterfallService
 from app.tasks.phone_waterfall_worker import resolve_phone_waterfall_task
 from app.tenant_context import set_request_tenant_context
 from app.users import get_auth_context
-from app.utils.rbac import check_permission, has_permission
+from app.utils.rbac import check_permission, get_user_permissions
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +127,9 @@ def _map_lead_to_read(lead: Lead) -> LeadRead:
         raw_contacts = [
             c
             for c in lead.verified_contacts
-            if getattr(c, "phone", None) or getattr(c, "email", None)
+            if getattr(c, "phone", None)
+            or getattr(c, "email", None)
+            or getattr(c, "external_chat_ids", None)
         ]
     first_contact = raw_contacts[0] if raw_contacts else None
 
@@ -153,18 +156,52 @@ def _map_lead_to_read(lead: Lead) -> LeadRead:
     raw_email = getattr(first_contact, "email", None) if first_contact else None
     raw_name = getattr(first_contact, "name", None) if first_contact else None
 
+    raw_unlocked_channels = getattr(first_contact, "unlocked_channels", None) or []
+    if not isinstance(raw_unlocked_channels, list):
+        raw_unlocked_channels = []
+    unlocked_channels = [str(c) for c in raw_unlocked_channels]
     is_unlocked = bool(getattr(first_contact, "is_unlocked", False))
+
+    def _is_channel_unlocked(channel: str) -> bool:
+        if is_unlocked and not unlocked_channels:
+            return True
+        return channel in unlocked_channels
+
+    def _mask_value(value: str) -> str:
+        if len(value) <= 4:
+            return "*" * len(value)
+        return f"{value[:2]}...{value[-2:]}"
+
     plain_phone = _decrypt_pii(raw_phone)
     plain_email = _decrypt_pii(raw_email)
     plain_name = _decrypt_pii(raw_name)
-    if is_unlocked:
+    if _is_channel_unlocked("phone"):
         first_phone = plain_phone
-        first_email = plain_email
-        first_name = plain_name
     else:
         first_phone = mask_phone(plain_phone) if plain_phone else None
+    if _is_channel_unlocked("email"):
+        first_email = plain_email
+    else:
         first_email = mask_email(plain_email) if plain_email else None
-        first_name = mask_name(plain_name) if plain_name else None
+    first_name = (
+        plain_name if is_unlocked else (mask_name(plain_name) if plain_name else None)
+    )
+
+    # Decrypt or mask external chat/social handles per channel.
+    raw_external = getattr(first_contact, "external_chat_ids", None) or {}
+    if not isinstance(raw_external, dict):
+        raw_external = {}
+    external_chat_ids: dict[str, str] = {}
+    for channel, enc_value in raw_external.items():
+        if not enc_value or not isinstance(enc_value, str):
+            continue
+        plain_value = _decrypt_pii(enc_value)
+        if not plain_value:
+            continue
+        if _is_channel_unlocked(channel):
+            external_chat_ids[channel] = plain_value
+        else:
+            external_chat_ids[channel] = _mask_value(plain_value)
 
     # Derive intent and snippet from available metadata or source
     derived_intent = getattr(lead, "intent", None)
@@ -237,6 +274,8 @@ def _map_lead_to_read(lead: Lead) -> LeadRead:
         is_unlocked=is_unlocked,
         is_valid=getattr(first_contact, "is_valid", None),
         consent_status=getattr(first_contact, "consent_status", None),
+        unlocked_channels=unlocked_channels,
+        external_chat_ids=external_chat_ids if external_chat_ids else None,
     )
 
 
@@ -537,7 +576,9 @@ async def get_company_graph(
         .distinct()
     )
     if membership and not _can_view_all_leads(membership):
-        contacts_stmt = contacts_stmt.where(Lead.assigned_to_user_id == membership.user_id)
+        contacts_stmt = contacts_stmt.where(
+            Lead.assigned_to_user_id == membership.user_id
+        )
     contacts_result = await session.execute(contacts_stmt)
     db_contacts = contacts_result.scalars().all()
 
@@ -715,19 +756,18 @@ async def resolve_lead_phone_endpoint(
     Debits 1.5 credits (1,500,000 micros) via BillingEvent only upon success.
     """
     # RBAC: Enforce LEADS_ENRICH or LEADS_WRITE (Viewer LEADS_READ alone cannot trigger paid mutations)
-    has_enrich = await has_permission(
-        session, auth, workspace_id, Permission.LEADS_ENRICH.value
-    )
-    has_write = await has_permission(
-        session, auth, workspace_id, Permission.LEADS_WRITE.value
-    )
+    user_permissions = await get_user_permissions(session, auth.user.id, workspace_id)
+    has_enrich = has_permission(user_permissions, Permission.LEADS_ENRICH.value)
+    has_write = has_permission(user_permissions, Permission.LEADS_WRITE.value)
     if not (has_enrich or has_write):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to resolve lead contacts in this workspace (requires LEADS_ENRICH or LEADS_WRITE)",
         )
 
-    client_id = auth.current_client_id
+    client_id = getattr(auth, "current_client_id", None)
+    if client_id is None and auth.pat is not None:
+        client_id = auth.pat.client_id
 
     if body.async_mode:
         task = resolve_phone_waterfall_task.delay(
@@ -766,8 +806,8 @@ async def resolve_lead_phone_endpoint(
     )
 
     # Check if caller is authorized to view plaintext PII (AD-25 / AD-49)
-    can_read_contacts = await has_permission(
-        session, auth, workspace_id, Permission.CONTACTS_READ.value
+    can_read_contacts = has_permission(
+        user_permissions, Permission.CONTACTS_READ.value
     )
     if not can_read_contacts:
         can_read_contacts = has_enrich or has_write

@@ -311,7 +311,11 @@ def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
     """Custom 429 handler that returns JSON matching our error envelope."""
     rid = _get_request_id(request)
     ot_metrics.record_rate_limit_rejection(scope="slowapi")
-    retry_after = exc.detail.split("per")[-1].strip() if exc.detail else "60"
+    detail = getattr(exc, "detail", None)
+    if isinstance(detail, str):
+        retry_after = detail.split("per")[-1].strip() or "60"
+    else:
+        retry_after = "60"
     return _build_error_response(
         429,
         "Too many requests. Please slow down and try again.",
@@ -1215,29 +1219,6 @@ app.include_router(crud_router, prefix="/api/v1", tags=["crud"])
 app.include_router(crud_router, prefix="/api", tags=["crud"])
 app.include_router(crud_router)
 
-# Wildcard host routing for published web apps: only match *.HOSTING_BASE_DOMAIN.
-host_web_app = FastAPI()
-host_web_app.include_router(web_builder_host_router)
-app.router.routes.insert(
-    0,
-    Host(
-        f"{{subdomain}}.{config.HOSTING_BASE_DOMAIN}",
-        app=host_web_app,
-        name="web-builder-host",
-    ),
-)
-
-# Catch-all host route so custom CNAMEs and arbitrary hostnames reach the
-# web-builder host router after all path routes have been tried.
-app.router.routes.append(
-    Host(
-        "{host}",
-        app=host_web_app,
-        name="web-builder-host-catchall",
-    )
-)
-
-
 @functools.lru_cache(maxsize=1)
 def _backend_build_id() -> str:
     """Resolve the running backend's git commit for build-label verification.
@@ -1323,3 +1304,26 @@ async def authenticated_route(
     session: AsyncSession = Depends(get_async_session),
 ):
     return {"message": "Token is valid", "method": auth.method}
+
+
+# Wildcard host routing for published web apps: only match *.HOSTING_BASE_DOMAIN.
+host_web_app = FastAPI()
+host_web_app.include_router(web_builder_host_router)
+app.router.routes.insert(
+    0,
+    Host(
+        f"{{subdomain}}.{config.HOSTING_BASE_DOMAIN}",
+        app=host_web_app,
+        name="web-builder-host",
+    ),
+)
+
+# Catch-all host route so custom CNAMEs and arbitrary hostnames reach the
+# web-builder host router after all path routes have been tried.
+app.router.routes.append(
+    Host(
+        "{host}",
+        app=host_web_app,
+        name="web-builder-host-catchall",
+    )
+)

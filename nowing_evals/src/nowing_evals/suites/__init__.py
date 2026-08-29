@@ -55,10 +55,15 @@ def discover_suites() -> list[str]:
         except Exception as exc:  # noqa: BLE001
             logger.warning("Failed to import suite domain %s: %s", domain_name, exc)
             continue
-        for benchmark_name in _iter_subpackages(domain_pkg):
-            try:
-                importlib.import_module(benchmark_name)
-                imported.append(benchmark_name)
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("Failed to import benchmark %s: %s", benchmark_name, exc)
+        subpkgs = list(_iter_subpackages(domain_pkg))
+        if not subpkgs:
+            # Single-level domain package that registers benchmarks in __init__.py
+            imported.append(domain_name)
+        else:
+            for benchmark_name in subpkgs:
+                try:
+                    importlib.import_module(benchmark_name)
+                    imported.append(benchmark_name)
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("Failed to import benchmark %s: %s", benchmark_name, exc)
     return imported

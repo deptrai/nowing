@@ -17,6 +17,7 @@ import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agents.chat.runtime.llm_config import AgentConfig as RuntimeAgentConfig
 from app.db import (
     AgentConfig,
     ChatVisibility,
@@ -26,6 +27,7 @@ from app.db import (
     Workspace,
 )
 from app.routes import new_chat_routes
+from app.tasks.chat.streaming.flows.new_chat.auto_pin import AutoPinResult
 
 pytestmark = pytest.mark.integration
 
@@ -135,6 +137,17 @@ class TestCreateThread:
 
 
 class TestNewChat:
+    @pytest.fixture(autouse=True)
+    def _mock_llm_auto_pin_and_bundle(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        async def _fake_resolve_pin(*args: Any, **kwargs: Any) -> AutoPinResult:
+            return AutoPinResult(llm_config_id=-1, error=None)
+
+        async def _fake_load_bundle(*args: Any, **kwargs: Any) -> tuple[Any, RuntimeAgentConfig, None]:
+            return (object(), RuntimeAgentConfig.from_auto_mode(), None)
+
+        monkeypatch.setattr(new_chat_routes, "resolve_initial_auto_pin", _fake_resolve_pin)
+        monkeypatch.setattr(new_chat_routes, "load_llm_bundle", _fake_load_bundle)
+
     @pytest.mark.expensive
     async def test_post_new_chat_with_agent_id_resolves_system_instructions(
         self,

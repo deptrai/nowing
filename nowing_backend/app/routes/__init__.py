@@ -68,6 +68,7 @@ from .airtable_add_connector_route import (
     router as airtable_add_connector_router,
 )
 from .broadcasts_routes import router as broadcasts_router
+from .campaign_routes import router as campaign_router
 from .chat_comments_routes import router as chat_comments_router
 from .circleback_webhook_route import router as circleback_webhook_router
 from .clickup_add_connector_route import router as clickup_add_connector_router
@@ -165,6 +166,7 @@ router.include_router(dnc_router)
 router.include_router(outbound_router)
 router.include_router(zns_router)
 router.include_router(enrichment_router)
+router.include_router(campaign_router)
 router.include_router(crm_router, prefix="/workspaces")
 router.include_router(crm_oauth_router)
 router.include_router(rbac_router)  # RBAC routes for roles, members, invites

@@ -9,6 +9,11 @@ const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
 	ssr: false,
 });
 
+import type { Monaco } from "@monaco-editor/react";
+import type { editor } from "monaco-editor";
+
+type EditorInstance = editor.IStandaloneCodeEditor;
+
 interface SourceCodeEditorProps {
 	value: string;
 	onChange: (next: string) => void;
@@ -42,6 +47,22 @@ function offsetToLineColumn(text: string, offset: number): { line: number; colum
 	return { line, column };
 }
 
+function resolveCssColorToHex(cssColorValue: string): string | null {
+	if (typeof document === "undefined") return null;
+	const probe = document.createElement("div");
+	probe.style.color = cssColorValue;
+	probe.style.position = "absolute";
+	probe.style.pointerEvents = "none";
+	probe.style.opacity = "0";
+	document.body.appendChild(probe);
+	const computedColor = getComputedStyle(probe).color;
+	probe.remove();
+	const match = computedColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+	if (!match) return null;
+	const toHex = (value: string) => Number(value).toString(16).padStart(2, "0");
+	return `#${toHex(match[1])}${toHex(match[2])}${toHex(match[3])}`;
+}
+
 export function SourceCodeEditor({
 	value,
 	onChange,
@@ -58,8 +79,8 @@ export function SourceCodeEditor({
 }: SourceCodeEditorProps) {
 	const { resolvedTheme } = useTheme();
 	const onSaveRef = useRef(onSave);
-	const monacoRef = useRef<any>(null);
-	const editorRef = useRef<any>(null);
+	const monacoRef = useRef<Monaco | null>(null);
+	const editorRef = useRef<EditorInstance | null>(null);
 	const highlightDecorationRef = useRef<string[]>([]);
 	const highlightTextRef = useRef(highlightText);
 	const highlightOffsetRef = useRef(highlightOffset);
@@ -79,48 +100,35 @@ export function SourceCodeEditor({
 		onSaveRef.current = onSave;
 	}, [onSave]);
 
-	const resolveCssColorToHex = (cssColorValue: string): string | null => {
-		if (typeof document === "undefined") return null;
-		const probe = document.createElement("div");
-		probe.style.color = cssColorValue;
-		probe.style.position = "absolute";
-		probe.style.pointerEvents = "none";
-		probe.style.opacity = "0";
-		document.body.appendChild(probe);
-		const computedColor = getComputedStyle(probe).color;
-		probe.remove();
-		const match = computedColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
-		if (!match) return null;
-		const toHex = (value: string) => Number(value).toString(16).padStart(2, "0");
-		return `#${toHex(match[1])}${toHex(match[2])}${toHex(match[3])}`;
-	};
-
-	const applySidebarTheme = (monaco: any) => {
-		const isDark = resolvedTheme === "dark";
-		const themeName = isDark ? "nowing-dark" : "nowing-light";
-		const fallbackBg = isDark ? "#1e1e1e" : "#ffffff";
-		const sidebarBgHex = resolveCssColorToHex("var(--sidebar)") ?? fallbackBg;
-		monaco.editor.defineTheme(themeName, {
-			base: isDark ? "vs-dark" : "vs",
-			inherit: true,
-			rules: [],
-			colors: {
-				"editor.background": sidebarBgHex,
-				"editorGutter.background": sidebarBgHex,
-				"minimap.background": sidebarBgHex,
-				"editorLineNumber.background": sidebarBgHex,
-				"editor.lineHighlightBackground": "#00000000",
-			},
-		});
-		monaco.editor.setTheme(themeName);
-	};
+	const applySidebarTheme = useCallback(
+		(monaco: Monaco) => {
+			const isDark = resolvedTheme === "dark";
+			const themeName = isDark ? "nowing-dark" : "nowing-light";
+			const fallbackBg = isDark ? "#1e1e1e" : "#ffffff";
+			const sidebarBgHex = resolveCssColorToHex("var(--sidebar)") ?? fallbackBg;
+			monaco.editor.defineTheme(themeName, {
+				base: isDark ? "vs-dark" : "vs",
+				inherit: true,
+				rules: [],
+				colors: {
+					"editor.background": sidebarBgHex,
+					"editorGutter.background": sidebarBgHex,
+					"minimap.background": sidebarBgHex,
+					"editorLineNumber.background": sidebarBgHex,
+					"editor.lineHighlightBackground": "#00000000",
+				},
+			});
+			monaco.editor.setTheme(themeName);
+		},
+		[resolvedTheme]
+	);
 
 	useEffect(() => {
 		if (!monacoRef.current) return;
 		applySidebarTheme(monacoRef.current);
-	}, [resolvedTheme]);
+	}, [applySidebarTheme]);
 
-	const clearHighlight = useCallback((editor: any, monaco: any) => {
+	const clearHighlight = useCallback((editor: EditorInstance, monaco: Monaco) => {
 		if (!editor || !monaco) return;
 		if (highlightTimeoutRef.current) {
 			clearTimeout(highlightTimeoutRef.current);
@@ -130,7 +138,11 @@ export function SourceCodeEditor({
 	}, []);
 
 	const applyHighlight = useCallback(
-		(editor: any, monaco: any, { layoutOnly = false }: { layoutOnly?: boolean } = {}) => {
+		(
+			editor: EditorInstance,
+			monaco: Monaco,
+			{ layoutOnly = false }: { layoutOnly?: boolean } = {}
+		) => {
 			if (!editor || !monaco) return;
 			const model = editor.getModel();
 			if (!model) return;

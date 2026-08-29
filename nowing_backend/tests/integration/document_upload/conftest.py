@@ -24,8 +24,15 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
 
-from app.app import app, limiter
 from app.config import config as app_config
+
+# Integration tests run before app startup, so ensure a stable secret key is
+# present for JWT signing and PII encryption. Patch only when missing so local
+# developer overrides are respected.
+if not getattr(app_config, "SECRET_KEY", None):
+    app_config.SECRET_KEY = "test-secret-key-integration-very-secure-32chars"
+
+from app.app import app, limiter
 from app.db import Base
 from app.services.task_dispatcher import get_task_dispatcher
 from tests.integration.conftest import TEST_DATABASE_URL
@@ -99,10 +106,34 @@ app.dependency_overrides[get_task_dispatcher] = lambda: InlineTaskDispatcher()
 async def _ensure_tables():
     """Create DB tables and extensions once per session."""
     engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
+
     async with engine.begin() as conn:
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS citext"))
+
+    has_postgis = False
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
+            has_postgis = True
+    except Exception:
+        has_postgis = False
+
+    async with engine.begin() as conn:
+        if has_postgis:
+            await conn.run_sync(Base.metadata.create_all)
+        else:
+            tables_to_create = [
+                t for t in Base.metadata.sorted_tables
+                if t.name != "spatial_planning_zones"
+            ]
+            await conn.run_sync(
+                lambda sync_conn: Base.metadata.create_all(
+                    sync_conn, tables=tables_to_create
+                )
+            )
+
     await engine.dispose()
 
 

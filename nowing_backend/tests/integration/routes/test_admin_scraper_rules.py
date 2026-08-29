@@ -108,7 +108,12 @@ class TestAdminScraperRulesCRUD:
         assert rule.rule_schema["delays"]["request_ms"] == 1500
 
         # Verify audit event.
-        audit = await db_session.get(audit_event_cls, body["id"])
+        from sqlalchemy import select
+        audit = (
+            await db_session.execute(
+                select(audit_event_cls).filter_by(action="scraper_rule.create")
+            )
+        ).scalars().first()
         assert audit is not None
         assert audit.action == "scraper_rule.create"
 

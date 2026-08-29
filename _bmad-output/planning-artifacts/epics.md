@@ -448,6 +448,96 @@ _FR-8 · FR-8.1 · OQ-4._
 
 > **Dependency note:** Story 2.10 reuses the `WEB_RESULT` citation contract that Story 3.15 will finalize. Because 2.10 was completed on 2026-08-05, it uses a provisional citation format; when 3.15 is merged, the E2 team should regression-test 2.10 against the final 3.15 citation contract.
 
+### Story 2.11: Walmart Scraper & Reviews — Port and Upgrade
+
+As an e-commerce analyst,
+I want to scrape Walmart product listings and customer reviews with structured output,
+So that I can monitor competitor pricing, ratings, and customer feedback via REST, chat, or MCP.
+
+**Acceptance Criteria:**
+
+**Given** the upstream delta from PR #1614,
+**When** the files are copied to `nowing_backend/app/proprietary/platforms/walmart/`,
+**Then** the package contains `fetch.py`, `parsers.py`, `schemas.py`, `scraper.py`, `url_resolver.py`, and `next_data.py` aligned with upstream.
+**And** no `surfsense_*` strings remain in any ported file.
+**And** `nowing_backend/app/capabilities/walmart/scrape/` and `walmart/reviews/` are created or updated as thin adapters.
+**And** the MCP tool `nowing_walmart_scrape` and `nowing_walmart_reviews` mirror the backend schemas.
+
+**Given** a product search or product page URL,
+**When** I call the Walmart scraper,
+**Then** it returns product title, price, rating, seller, availability, and review summary.
+**Given** a product with reviews,
+**When** I request reviews,
+**Then** it returns paginated review text, rating, date, and verified status.
+**And** deep breadcrumb structures and blocked/captcha pages are handled without crashing.
+
+_FR-1/2/3/4/5 · CAP-1 · AD-1, AD-2, AD-3, AD-4, AD-7, AD-8, AD-11._
+
+### Story 2.12: Indeed Jobs Scraper — Resilience Upgrade
+
+As a recruiter or market researcher,
+I want to retrieve Indeed job postings with robust pagination and anti-bot mitigation,
+So that I can track hiring trends and job market signals without losing partial results on challenge pages.
+
+**Acceptance Criteria:**
+
+**Given** the upstream delta from PR #1605,
+**When** the `indeed_jobs` platform is ported to `nowing_backend/app/proprietary/platforms/indeed/`,
+**Then** the package contains `fetch.py`, `parsers.py`, `schemas.py`, `scraper.py`, and `url_resolver.py`.
+**And** the existing `scraper.py` is refactored to use the new modular files.
+**And** no `surfsense_*` references remain.
+
+**Given** a job query with keywords, location, and pagination,
+**When** the scraper runs,
+**Then** it returns a paged list of job postings with title, company, location, salary, summary, and posting date.
+**Given** the scraper hits a pagination challenge or block page,
+**When** the challenge is detected,
+**Then** it preserves collected results and returns them without timing out the orchestrator.
+
+_FR-6/7/8 · CAP-2 · AD-1, AD-2, AD-3, AD-4, AD-7, AD-8, AD-11._
+
+### Story 2.13: Reddit Community-Only Scrape
+
+As a market researcher,
+I want to scrape recent and top posts from a Reddit subreddit without providing a search keyword,
+So that I can monitor community conversations directly.
+
+**Acceptance Criteria:**
+
+**Given** a request with `community` provided and `search_queries` empty,
+**When** the Reddit scraper is invoked,
+**Then** it returns the latest subreddit feed for that community.
+**And** requests with non-empty `search_queries` continue to work as before.
+**And** the MCP tool `nowing_reddit_scrape` allows optional `search_queries` when `community` is provided.
+
+**Given** the upstream Reddit delta,
+**When** the platform files are updated in `nowing_backend/app/proprietary/platforms/reddit/`,
+**Then** `url_resolver.py` and `scraper.py` accept `community` and optional `search_queries`.
+**And** `parsers.py` returns the latest subreddit feed when `search_queries` is empty.
+**And** no `surfsense_*` references remain.
+
+_FR-9/10 · CAP-3 · AD-1, AD-2, AD-3, AD-4, AD-7, AD-8, AD-11._
+
+### Story 2.14: Unified Browser Lifecycle Pool
+
+As a backend engineer,
+I want all headless scrapers to acquire and release browser instances through a shared lifecycle pool,
+So that concurrent multi-platform scraping does not leave orphaned chromium processes.
+
+**Acceptance Criteria:**
+
+**Given** the upstream browser loop refactor,
+**When** the crawler lifecycle manager in `nowing_backend/app/proprietary/platforms/crawler/` is aligned with Nowing,
+**Then** Walmart, Indeed, and Reddit scrapers call the lifecycle manager to get/return browser contexts.
+**And** existing Vietnamese scrapers continue to work without modification.
+
+**Given** a test running Walmart, Indeed, and Reddit scrapers concurrently,
+**When** all jobs finish or time out,
+**Then** no residual `chrome` or `chromium` processes from the test remain.
+**And** the test is added to `nowing_backend/tests` and passes.
+
+_FR-11/12 · CAP-4 · AD-1, AD-2, AD-7, AD-8, AD-11._
+
 ---
 
 ## Epic 3: Knowledge Base + Long-Term Memory
@@ -901,6 +991,48 @@ So that `chat/regression` passes latency, TTFB, and cost gates without losing an
 **Given** `mode=auto` and a single-document question, **When** the agent has made **5 tool calls**, **Then** a tool-call budget forces it to answer.
 **And** `chat/regression` with the large-doc dataset passes all p95 latency, TTFB, and cost gates; `chat/quality` still passes correctness/citation/completeness. Detailed spec: `@doc/specs/2026-08-05/new-chat-mode-aware-latency-cost-policy`.
 _FR-42 · NFR-10 · `sprint-change-proposal-2026-08-05-chat-mode-policy.md`._
+
+### Story 4.9: Timeline Activity Indicator
+
+As a user in a chat session,
+I want to see an animated, pulse-based Activity Indicator with clear progress titles during agent execution,
+So that I know what the agent is doing and no longer see the legacy pixel-grid loader.
+
+**Acceptance Criteria:**
+
+**Given** the upstream `timeline-activity-indicator.tsx` as reference,
+**When** the component is created in `nowing_web/components/ui/timeline-activity-indicator.tsx`,
+**Then** it renders animated step status, canonical progress titles, and a pulse indicator.
+**And** it uses Tailwind classes and keyframes from `nowing_web/app/globals.css`.
+**And** `nowing_web/lib/chat/activity-journal.ts` manages client-side activity state smoothly.
+
+**Given** a chat stream producing activity journal events,
+**When** the journal is consumed,
+**Then** the Timeline component renders the current step and status without using the pixel-grid loader.
+
+**And** user-facing labels support Vietnamese i18n while technical identifiers remain in English.
+
+_FR-13/14/15 · CAP-5 · AD-5, AD-10, AD-11._
+
+### Story 4.10: Reasoning Episode Auto-scroll
+
+As a user watching a long reasoning trace,
+I want the reasoning block to auto-scroll to the current line during streaming and show scroll indicators when collapsed,
+So that I can follow the model's thinking without losing the overall chat context.
+
+**Acceptance Criteria:**
+
+**Given** a reasoning block that streams many lines,
+**When** a new line is appended,
+**Then** the reasoning container scrolls to the current line using `scrollIntoView({ behavior: 'smooth', block: 'nearest' })` or `IntersectionObserver`.
+**And** the overall chat viewport does not scroll unexpectedly.
+
+**Given** a reasoning episode longer than the collapsed height,
+**When** it is in the collapsed state,
+**Then** a visual scroll/fade indicator appears.
+**And** the episode can be expanded to full height.
+
+_FR-16/17 · CAP-6 · AD-6, AD-10, AD-11._
 
 ### Story 4.8h-followup: Mode-Aware Chat Policy Hardening  `(tech debt)`  `[backlog]`
 As a platform engineer,
@@ -2894,6 +3026,8 @@ So that I obtain verified, callable phone numbers without wasting credits on dea
 - **Given** successful phone resolution, **When** contact is stored, **Then** raw phone is encrypted via AES-256 in `VerifiedContact` table (PII Vault, AD-25) and masked in standard API responses (`0908***456`).
 - **Given** phone resolution succeeds, **When** billed, **Then** it debits 1.5 credits (1,500đ) into `BillingEvent` with `usage_type = "contact_enrichment"`. If all tiers fail, 0 credits are debited.
 - **Given** a user reports a dead/disconnected number within 24h, **When** verified, **Then** `BillingService.auto_refund_lead()` refunds 100% credits back to `User.credit_micros_balance` and marks the number `invalid`.
+|- **Given** a BĐS listing scraped by the `batdongsan`, `chotot`, or `muaban_bds` adapter, **When** phone resolution is configured, **Then** the adapter MUST attempt extraction with a per-adapter timeout (90s default) and a circuit breaker that degrades to `needs_enrichment` on repeated timeout, and any resolved phone is persisted into `VerifiedContact`.
+|- **Given** phone resolution fails or is skipped for a listing, **When** the row is rendered in `NowingLeadMatrix`, **Then** the UI MUST show an explicit "Mở khóa SĐT" action that debits 1.5 credits on click and retries resolution.
 
 **Validation & Testing:**
 - Unit test: `test_waterfall_failover_circuit.py` — verifies transition Tier 1 $\to$ Tier 2 $\to$ Tier 3.
@@ -3095,6 +3229,10 @@ So that Nowing's AI Orchestrator automatically plans and triggers parallel searc
 - **Given** a chat prompt (e.g. *"Tìm 30 công ty IT tại Hà Nội và 20 môi giới BĐS Cầu Giấy"*), **When** `LeadGenOrchestrator` executes, **Then** it decomposes the query into sub-tasks and invokes all relevant scraper adapters concurrently via `asyncio.gather(return_exceptions=True)`.
 - **Given** raw multi-source streams, **When** ingested, **Then** `EntityDeduplicationService` unifies duplicates by Phone/Email/TaxID into standard `Lead` records.
 - **Given** lead creation, **When** persisted, **Then** Zero-cache (`zero.nowing.net`) streams rows directly into the active Table tab with cell highlight animation.
+- **Given** a chat prompt containing seller intent (e.g., "tôi cần bán", "tìm khách mua", "ký gửi"), **When** `LeadGenOrchestrator.decompose_query` runs, **Then** it MUST return `intent="sell"` and the adapter selection MUST prioritize buyer-demand sources (social/alert groups) or return listings with a seller-framed summary.
+- **Given** a chat prompt containing buyer intent (e.g., "tôi cần mua", "tìm nhà"), **When** `LeadGenOrchestrator.decompose_query` runs, **Then** it MUST return `intent="buy"` and the adapter selection MUST return seller listings.
+- **Given** `multi_source_lead_gen` returns BĐS listings (seller-side data), **When** the agent responds in chat, **Then** it MUST NOT call them "khách hàng tiềm năng" or "nguồn khách tiềm năng" unless the source is verified buyer-demand.
+- **Given** the user intent is "sell" (e.g., user has inventory to sell), **When** the agent returns BĐS listings, **Then** it MUST frame them as "tin đăng bán tương tự / đối thủ cạnh tranh" and offer 1-click follow-up actions: (a) Tìm người mua, (b) Lấy SĐT chủ tin, (c) Phân tích giá.
 
 _FR-85 · AD-31 · AD-37 · AD-44_
 
@@ -3111,6 +3249,10 @@ So that I can interactively chat with AI while inspecting, filtering, and managi
 - **Given** the visual system, **When** rendered, **Then** it applies CSS Design Tokens: Emerald `#10B981`, Sọc Caro Grid Paper background, font `Plus Jakarta Sans` and `JetBrains Mono` numbers with proportional sizing (13.5px body, 11px uppercase headers, h-10 row height).
 - **Given** user navigation, **When** clicking the 4-Mode Switcher, **Then** the canvas switches smoothly between `Leads Matrix`, `Research Studio`, `Automation Flow`, and `Scraper Health` without losing chat history.
 - **Given** real features integration, **When** interacted with, **Then** Credits balance dynamically tracks `currentUserAtom`, Empty State renders 1-click Quickstart Action cards, Research Studio exports real `.md` downloads and printable PDF, and Scraper / Automation tabs connect to live backend APIs.
+- **Given** a lead row in `NowingLeadMatrix` without a phone, **When** rendered, **Then** it MUST display a primary action "Mở khóa SĐT" (Unlock phone) in the Hành động column, not only disabled Zalo/ZNS buttons.
+- **Given** the user clicks "Mở khóa SĐT", **When** the phone is successfully resolved, **Then** the row MUST update in-place (Zero sync) to show the masked phone and enable Zalo/ZNS buttons.
+- **Given** the agent stream has completed, **When** the user focuses the Slate editor, **Then** the Send message button MUST be enabled and reactive to editor value changes.
+- **Given** the editor value is set programmatically (e.g., from a suggested action), **When** the value changes, **Then** the submit button MUST update its disabled state reactively.
 
 _FR-86 · AD-31 · UX-Contract-Lead-Panel_
 
@@ -3168,6 +3310,8 @@ So that I can immediately see, persist, and act on verified BĐS, recruitment, a
 - **Given** normalized leads, **when** persistence is triggered, **then** `LeadBatchService.ingest_batch` is used to create `Lead` and `VerifiedContact` rows with correct `value_hmac`, DNC filtering, and PII encryption.
 - **Given** a lead with phone or email, **when** persisted, **then** `VerifiedContact` is created with `verification_status="verified"`, `consent=True`, `legal_basis="legitimate_interest"`.
 - **Given** job-market leads without direct contact, **when** persisted, **then** `Lead` is still created using `company_name` for `value_hmac` and no `VerifiedContact` is created.
+|- **Given** a BĐS lead scraped by `batdongsan`, `chotot`, or `muaban_bds`, **when** `resolve_phones` is enabled, **then** the adapter attempts phone resolution and creates a `VerifiedContact` with the resolved phone.
+|- **Given** phone resolution fails or is disabled, **when** the lead is persisted, **then** `VerifiedContact` is not created and the row is rendered with an "Mở khóa SĐT" action.
 - **Given** the feature, **when** `ruff check` and `pytest` run, **then** lint/type errors are 0 and relevant tests pass.
 
 _FR-89 · AD-42 · AD-44_
@@ -3186,6 +3330,7 @@ So that the prompt, routing, capability description, and adapter registry stay c
 - **Given** a recruitment-related chat prompt, **when** `multi_source_lead_gen` runs, **then** `VnJobsLeadAdapter` calls `aggregate_jobs(..., ctx=None)` to fetch across TopCV/ITviec/VietnamWorks without self-persisting, and `VietnamWorksLeadAdapter` is dispatched only when the query explicitly mentions "vietnamworks".
 - **Given** a public-procurement-related chat prompt, **when** `multi_source_lead_gen` runs, **then** `MuaSamCongLeadAdapter` calls `MuasamcongScraper.search_tenders()` and returns company/tender leads.
 - **Given** the new adapters are registered, **when** `LeadSourceAdapterRegistry.resolve_adapters_for_intent(query)` is called, **then** it returns the right adapters and avoids duplicate calls across `vn_jobs`/`vietnamworks`/`job_market`.
+|- **Given** a BĐS-related chat prompt, **when** `multi_source_lead_gen` runs with `resolve_phones` enabled, **then** `MuabanBdsLeadAdapter` attempts phone resolution with a 90s timeout and circuit breaker, persisting resolved phones into `VerifiedContact`.
 - **Given** the feature, **when** `ruff check` and `pytest` run, **then** lint/type errors are 0 and relevant tests pass.
 
 _FR-85 · FR-43 · FR-44 · FR-45 · FR-46 · AD-42_

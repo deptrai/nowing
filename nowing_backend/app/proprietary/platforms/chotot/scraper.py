@@ -93,11 +93,24 @@ def _resolve_region_v2(city: str, regions: dict[str, Any]) -> int:
     except (ValueError, OverflowError):
         pass
 
+    # Try exact match first.
     for region_id, region in regions.items():
         name = region.get("name", "")
         if not isinstance(name, str) or not name:
             continue
         if _normalize_text(name) == city_norm:
+            try:
+                return int(region_id)
+            except (ValueError, OverflowError):
+                continue
+
+    # Fuzzy fallback: any known city name contained in the query or vice versa.
+    for region_id, region in regions.items():
+        name = region.get("name", "")
+        if not isinstance(name, str) or not name:
+            continue
+        norm_name = _normalize_text(name)
+        if city_norm in norm_name or norm_name in city_norm:
             try:
                 return int(region_id)
             except (ValueError, OverflowError):
@@ -330,10 +343,11 @@ async def scrape_chotot(
     for item in items:
         item.scrapedAt = _now_iso()
 
-    # Attempt to resolve the public phone number for each listing.
-    # This is a best-effort call: if the phone API blocks us we keep the
-    # listing and leave ``phone`` as ``None``.
-    if items:
+    # Attempt to resolve the public phone number for each listing only when
+    # explicitly requested. Phone fetches are slow and often time out, so
+    # default scraper runs return listings and let downstream extract contacts
+    # from title/description or unlock per-channel.
+    if items and getattr(effective_input, "resolve_phones", False):
         _phone_semaphore = asyncio.Semaphore(3)
 
         async def _resolve_phone(item: Any) -> None:

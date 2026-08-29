@@ -5,7 +5,7 @@ import type React from "react";
 import { useEffect, useState } from "react";
 import type { Lead } from "@/contracts/types/leads.types";
 import { cn, isAllowedUrl } from "@/lib/utils";
-import { PhoneCopyPill } from "./PhoneCopyPill";
+import { ContactChannels } from "./ContactChannels";
 import { ZaloOutreachButton } from "./zalo-outreach-button";
 
 export interface LeadCardProps {
@@ -212,7 +212,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({
 
 			{/* Contact & Location Attributes */}
 			<div className="flex flex-wrap items-center gap-3 pt-1 text-xs">
-				{lead.phone && <PhoneCopyPill phone={lead.phone} />}
+				<ContactChannels lead={lead} workspaceId={lead.workspace_id} className="gap-1.5" />
 
 				{lead.location && (
 					<div className="flex items-center gap-1 text-zinc-400">

@@ -28,6 +28,20 @@ _Curated long-term knowledge for Nowing E2E Browser Testing._
 
 
 
+## Lead Gen User Flow — Real Estate Broker Smoke (2026-08-27)
+- **Environment gotcha:** zero-cache must be running for the Leads Right Dock to sync cleanly; without it, `WebSocket ws://localhost:4848` fails repeatedly and the DOM can be stale.
+- **Tool behavior (FIXED):** `multi_source_lead_gen` now routes BĐS keywords (`bán nhà`, `mua đất`, `môi giới`, `quận 7`) exclusively to BĐS scrapers (`batdongsan`, `chotot`, `muaban_bds`); no more job-market leakage.
+- **Flow status (FIXED):** Right Dock auto-opens to the Leads tab, SSE stream completes without `DEGRADED` banners, and 10 real-estate rows render reliably.
+- **Remaining product gap — seller vs buyer intent:** A broker asking "tôi cần bán 10 lô đất / tìm khách mua" still receives **listings of properties for sale** (sellers), not **buyer contacts**. The agent chat frames these as "khách hàng tiềm năng" which is misleading.
+- **Outreach still blocked:** All rows show `—` for phone and `Zalo`/`ZNS` buttons are disabled with tooltip `Kích hoạt kịch bản AI & Mở Zalo chat (Chưa có SĐT)`. This is because `resolve_phones=False` was set on BĐS adapters to avoid timeouts.
+- **Composer quirk:** After a streamed turn, the `Send message` button can remain disabled if the Slate editor value is set programmatically; use `browser_type` into `.slate-editor` and `removeAttribute('disabled')` on the submit button if needed for ad-hoc MCP runs.
+- **Fixes to pursue:**
+  1. Intent disambiguation: differentiate "I want to sell" (find buyer demand) vs "I want to buy" (find listings).
+  2. Re-enable phone extraction (`resolve_phones=True`) with adaptive timeout and circuit breaker so Zalo/ZNS outreach is usable.
+  3. Honest chat framing: call listings what they are, and offer buyer-finding as a follow-up.
+  4. Add a visible per-row unlock/detail affordance for phone and metadata.
+- **Artifacts:** `sessions/2026-08-27.md`, `real-estate-sales-pilot-01.png`, `real-estate-sales-pilot-02.png`, `screenshots/lead-gen-real-estate-dock-2026-08-27.png`, `screenshots/lead-gen-real-estate-job-leaks-2026-08-27.png`.
+
 ## Flaky Selectors & DOM Patterns
 - **Header Auth Controls:** The `Sign In` link in the main navigation uses `hidden md:block`. When testing with browser MCP tools, always ensure viewport is set to desktop size (e.g. 1440x900 via `browser_resize`) or click the `Get Started` hero link if testing on small viewports.
 - **Chat Prompt & Turn Trace:** Chat prompt input is accessible via `getByRole('textbox')`. Tool trace details and execution steps expand via `getByRole('button', { name: 'Reviewed' })` or `getByRole('button', { name: 'Open agent action log' })`. Modals can be safely dismissed with `keyboard.press('Escape')`.

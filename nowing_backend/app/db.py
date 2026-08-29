@@ -29,7 +29,7 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
-from sqlalchemy.dialects.postgresql import CITEXT, ENUM, JSONB, UUID
+from sqlalchemy.dialects.postgresql import CITEXT, ENUM, JSONB, TSVECTOR, UUID
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, backref, declared_attr, relationship
 
@@ -4734,6 +4734,16 @@ class Lead(Base, TimestampMixin):
     is_zalo_active = Column(
         Boolean, nullable=False, default=False, server_default="false"
     )
+    search_vector = Column(
+        TSVECTOR,
+        nullable=True,
+        doc="Generated full-text search vector across company, domain, tax, industry, location.",
+    )
+    embedding = Column(
+        Vector(1536),
+        nullable=True,
+        doc="Optional semantic embedding for ICP / natural-language lead matching.",
+    )
     updated_at = Column(
         TIMESTAMP(timezone=True),
         nullable=True,
@@ -5296,6 +5306,9 @@ class VerifiedContact(Base, TimestampMixin):
     )
     external_chat_ids = Column(
         JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+    unlocked_channels = Column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
     )
     refunded_at = Column(TIMESTAMP(timezone=True), nullable=True)
     invalid_reason = Column(String(255), nullable=True)

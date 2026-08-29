@@ -34,6 +34,7 @@ def create_multi_source_lead_gen_tool(
 
         Dùng khi user muốn tìm lead từ nhiều nguồn (Batdongsan, Chợ Tốt,
         TopCV, ITviec, Masothue) bằng mô tả tự nhiên tiếng Việt.
+        Tự động nhận diện ý định mua/bán để trả về kết quả đúng khung ngữ cảnh.
 
         Args:
             query: Mô tả đối tượng khách hàng hoặc doanh nghiệp cần tìm.

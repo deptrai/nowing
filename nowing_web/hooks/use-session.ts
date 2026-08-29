@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { authenticatedFetch } from "@/lib/auth-fetch";
+import { isPublicRoute } from "@/lib/auth-utils";
 import { buildBackendUrl } from "@/lib/env-config";
 
 type SessionState =
@@ -84,6 +85,19 @@ export function useSession() {
 	}, []);
 
 	useEffect(() => {
+		// Public routes do not need an active session; skip the /auth/session
+		// call to avoid noisy 401 console errors for unauthenticated visitors.
+		if (typeof window !== "undefined" && isPublicRoute(window.location.pathname)) {
+			setState({
+				status: "unauthenticated",
+				authenticated: false,
+				accessExpiresAt: null,
+				isImpersonation: false,
+				impersonatedBy: null,
+				targetUser: null,
+			});
+			return;
+		}
 		void refresh();
 	}, [refresh]);
 

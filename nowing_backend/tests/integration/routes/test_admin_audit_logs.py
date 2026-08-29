@@ -36,12 +36,11 @@ class TestAdminAuditLogsRoutes:
         assert res.status_code == 403
 
     async def test_audit_logs_rejects_pat_token(
-        self, client: AsyncClient, db_superuser
+        self, pat_client: AsyncClient
     ):
         """INV-25.8: PAT tokens are fail-closed rejected on all admin routes."""
-        res = await client.get(
+        res = await pat_client.get(
             "/api/v1/admin/audit-logs",
-            headers={"Authorization": "Bearer pat_test_token_12345678"},
         )
         assert res.status_code in (401, 403)
 

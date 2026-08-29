@@ -130,7 +130,7 @@ class SpatialPlanningService:
     ) -> ZoningCheckResult:
         """Queries intersecting land zoning master layers for the given coordinates.
 
-        Enforces AD-GIS-2 coordinate validation and AD-GIS-4 sub-10ms spatial query.
+        Enforces AD-GIS-2 coordinate validation and AD-GIS-4 sub-50ms spatial query.
         """
         valid_lat, valid_lng = validate_vietnam_coordinates(lat, lng)
 

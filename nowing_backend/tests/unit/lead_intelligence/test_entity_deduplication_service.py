@@ -200,12 +200,16 @@ class TestEntityDeduplicationService:
             service,
             "_check_dnc_batch",
             return_value={"0999999999": True, "0911223344": False},
-        ):
+        ) as mock_check:
             filtered_result = service.apply_dnc_compliance(
                 [lead_clean, lead_dnc],
                 workspace_id=1,
                 suppress_dnc=True,
+                secret_key="test_secret",
+                workspace_dnc_hashes=set(),
+                global_dnc_hashes=set(),
             )
+            mock_check.assert_called_once()
 
             # lead_dnc is suppressed from outreach-ready list
             assert len(filtered_result.compliant_leads) == 1

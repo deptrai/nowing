@@ -1,4 +1,9 @@
+import type { Metadata } from "next";
 import { PlaygroundIndex } from "./components/playground-index";
+
+export const metadata: Metadata = {
+	title: "Playground",
+};
 
 export default async function PlaygroundPage({
 	params,

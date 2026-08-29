@@ -359,3 +359,37 @@ class TestLeadGenOrchestratorPersist:
         assert result.deduplication_summary["deduplicated_count"] == 1
         assert result.deduplication_summary["dnc_suppressed_count"] == 1
         assert result.leads[0].company_name == "Vinhomes"
+
+
+class TestLeadIntentDetection:
+    """Test buyer/seller/neutral intent detection in query decomposition."""
+
+    def test_detect_buy_intent(self) -> None:
+        """Buyer phrases should yield BUY intent."""
+        from app.lead_intelligence.services.lead_gen_orchestrator import (
+            LeadIntent,
+            _detect_lead_intent,
+        )
+
+        assert _detect_lead_intent("Tôi cần mua nhà quận 7") == LeadIntent.BUY
+        assert _detect_lead_intent("tìm chung cư Hà Nội") == LeadIntent.BUY
+
+    def test_detect_sell_intent(self) -> None:
+        """Seller phrases should yield SELL intent."""
+        from app.lead_intelligence.services.lead_gen_orchestrator import (
+            LeadIntent,
+            _detect_lead_intent,
+        )
+
+        assert _detect_lead_intent("Tôi cần bán nhà quận 7") == LeadIntent.SELL
+        assert _detect_lead_intent("ký gửi bất động sản Cầu Giấy") == LeadIntent.SELL
+
+    def test_detect_neutral_intent(self) -> None:
+        """Generic or unrelated queries should yield NEUTRAL intent."""
+        from app.lead_intelligence.services.lead_gen_orchestrator import (
+            LeadIntent,
+            _detect_lead_intent,
+        )
+
+        assert _detect_lead_intent("công ty AI tuyển dụng") == LeadIntent.NEUTRAL
+        assert _detect_lead_intent("") == LeadIntent.NEUTRAL

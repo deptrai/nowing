@@ -11,7 +11,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.db import CrmConnection, CrmSyncLog, Lead, MemorySourceType, Permission
+from app.db import (
+    CrmConnection,
+    CrmSyncLog,
+    Lead,
+    MemorySourceType,
+    OutcomeEvent,
+    Permission,
+)
 from app.lead_intelligence.crm.field_mapping import get_field_mapping
 from app.lead_intelligence.crm.oauth import (
     build_auth_url,
@@ -23,6 +30,7 @@ from app.lead_intelligence.crm.providers import (
     PipedriveProvider,
     SalesforceProvider,
 )
+from app.lead_intelligence.crm.schemas import CrmConversionLogInput
 from app.services.memory.repository import MemoryRepository
 from app.services.pii.redact import redact_pii
 from app.utils.rbac import check_permission
@@ -369,3 +377,82 @@ class CrmSyncService:
             tags=["crm_context"],
             commit=False,
         )
+
+    async def log_conversion(
+        self,
+        auth: AuthContext,
+        workspace_id: int,
+        conversion_data: CrmConversionLogInput,
+    ) -> OutcomeEvent:
+        """Log a lead conversion outcome event and optionally push update to CRM (Story 27.5)."""
+        await check_permission(self.session, auth, workspace_id, Permission.CRM_WRITE)
+
+        lead = await self._get_lead(workspace_id, conversion_data.lead_id)
+
+        outcome_event = OutcomeEvent(
+            workspace_id=workspace_id,
+            client_id=lead.client_id,
+            event_type=conversion_data.event_type,
+            lead_id=conversion_data.lead_id,
+            attribution=conversion_data.attribution,
+            cost_micros=conversion_data.cost_micros,
+            outcome_metadata=conversion_data.metadata or {},
+        )
+        self.session.add(outcome_event)
+        await self.session.flush()
+
+        if conversion_data.sync_to_crm and conversion_data.connection_id:
+            try:
+                await self.push_lead(
+                    auth=auth,
+                    workspace_id=workspace_id,
+                    connection_id=conversion_data.connection_id,
+                    lead_id=conversion_data.lead_id,
+                )
+            except Exception as sync_err:
+                # Fail-soft on external CRM sync error while keeping the local conversion event
+                pass
+
+        # Also store conversion context in memory
+        conversion_summary = (
+            f"Conversion logged for lead {lead.company_name or lead.id} "
+            f"event_type={conversion_data.event_type} attribution={conversion_data.attribution}."
+        )
+        redacted = redact_pii(conversion_summary, context="lead_enrichment")
+        repo = MemoryRepository(self.session)
+        await repo.create_memory(
+            workspace_id=workspace_id,
+            client_id=lead.client_id,
+            content=redacted.text,
+            source_type=MemorySourceType.MANUAL,
+            source_uuid=outcome_event.id,
+            source_entity_type="outcome_event",
+            tags=["crm_conversion", "attribution"],
+            commit=False,
+        )
+        await self.session.commit()
+        await self.session.refresh(outcome_event)
+        return outcome_event
+
+    async def list_conversions(
+        self,
+        auth: AuthContext,
+        workspace_id: int,
+        lead_id: UUID | None = None,
+        limit: int = 50,
+    ) -> list[OutcomeEvent]:
+        """List conversion outcome events for a workspace (Story 27.5)."""
+        await check_permission(self.session, auth, workspace_id, Permission.CRM_READ)
+
+        stmt = (
+            select(OutcomeEvent)
+            .where(OutcomeEvent.workspace_id == workspace_id)
+            .order_by(OutcomeEvent.created_at.desc())
+            .limit(limit)
+        )
+        if lead_id:
+            stmt = stmt.where(OutcomeEvent.lead_id == lead_id)
+
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+

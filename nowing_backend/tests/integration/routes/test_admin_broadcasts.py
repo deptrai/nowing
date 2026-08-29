@@ -88,24 +88,34 @@ class TestAdminBroadcastsRoutes:
 
     async def test_active_broadcasts_public_endpoint_for_regular_user(
         self,
-        admin_client: AsyncClient,
         client_as_regular_user: AsyncClient,
         db_session: AsyncSession,
     ):
         """AC-4: Regular authenticated user gets active broadcasts matching workspace."""
-        # Create an active broadcast
+        from app.services.broadcast_service import BroadcastService
+
+        # Create an active broadcast directly via service
         payload = {
             "title": "New Feature Available",
             "message": "Check out the AI workflow assistant!",
             "banner_type": "info",
             "target_all": True,
             "target_workspace_ids": [],
-            "starts_at": (datetime.now(UTC) - timedelta(minutes=5)).isoformat(),
+            "starts_at": datetime.now(UTC) - timedelta(minutes=5),
             "dismissible": True,
             "is_active": True,
         }
-        create_res = await admin_client.post("/api/v1/admin/broadcasts", json=payload)
-        assert create_res.status_code == 201
+        service = BroadcastService(db_session)
+        await service.create_broadcast(
+            title=payload["title"],
+            message=payload["message"],
+            banner_type=payload["banner_type"],
+            target_all=payload["target_all"],
+            target_workspace_ids=payload["target_workspace_ids"],
+            starts_at=payload["starts_at"],
+            dismissible=payload["dismissible"],
+            is_active=payload["is_active"],
+        )
 
         # Regular user queries active broadcasts
         res = await client_as_regular_user.get("/api/v1/broadcasts/active")

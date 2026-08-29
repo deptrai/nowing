@@ -14,6 +14,10 @@ from app.lead_intelligence.adapters.base import (
     normalize_vietnamese_phone,
 )
 from app.lead_intelligence.confidence.gate import ConfidenceGate
+from app.lead_intelligence.dnc.normalizer import (
+    hash_phone_hmac,
+    normalize_phone_e164,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -271,19 +275,52 @@ class EntityDeduplicationService:
         ConfidenceGate.score(merged_lead)
         return merged_lead
 
-    def _check_dnc_batch(self, phones: list[str], workspace_id: int) -> dict[str, bool]:
-        """Check phone numbers against DNC registry (Stub or DncComplianceService link)."""
-        return dict.fromkeys(phones, False)
+    def _check_dnc_batch(
+        self,
+        phones: list[str],
+        workspace_id: int,
+        secret_key: str,
+        workspace_hashes: set[str],
+        global_hashes: set[str],
+    ) -> dict[str, bool]:
+        """Check phone numbers against pre-loaded DNC hashes using keyed HMAC-SHA256."""
+        result: dict[str, bool] = {}
+        for raw_phone in phones:
+            e164 = normalize_phone_e164(raw_phone)
+            if e164:
+                phone_hash = hash_phone_hmac(e164, secret_key=secret_key)
+                result[raw_phone] = (
+                    phone_hash in workspace_hashes or phone_hash in global_hashes
+                )
+            else:
+                result[raw_phone] = False
+        return result
 
     def apply_dnc_compliance(
         self,
         leads: list[NormalizedLead],
         workspace_id: int,
         suppress_dnc: bool = True,
+        secret_key: str | None = None,
+        workspace_dnc_hashes: set[str] | None = None,
+        global_dnc_hashes: set[str] | None = None,
     ) -> DncComplianceResult:
-        """Filter out contacts on National Do-Not-Call (DNC) or Workspace Blacklist."""
+        """Filter out contacts on National Do-Not-Call (DNC) or Workspace Blacklist.
+
+        Callers with an active database session should pre-fetch DNC hashes via
+        ``DncComplianceService`` and pass them in; otherwise the method falls back
+        to an empty hash set and all leads are treated as compliant. This keeps the
+        service synchronous and usable from sync benchmark scripts while the real
+        DNC gate in ``LeadBatchService`` runs against the database.
+        """
         all_phones = [item.primary_phone for item in leads if item.primary_phone]
-        dnc_map = self._check_dnc_batch(all_phones, workspace_id)
+        dnc_map = self._check_dnc_batch(
+            all_phones,
+            workspace_id,
+            secret_key=secret_key or "",
+            workspace_hashes=workspace_dnc_hashes or set(),
+            global_hashes=global_dnc_hashes or set(),
+        )
 
         compliant: list[NormalizedLead] = []
         suppressed: list[NormalizedLead] = []

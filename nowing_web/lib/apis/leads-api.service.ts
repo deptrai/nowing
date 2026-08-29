@@ -1,4 +1,14 @@
 import {
+	type Campaign,
+	type CampaignCreateInput,
+	type CampaignListResponse,
+	type CampaignUpdateInput,
+	campaignListResponseSchema,
+	campaignSchema,
+	type WorkbenchLead,
+	workbenchLeadSchema,
+} from "@/contracts/types/campaign.types";
+import {
 	type CompanyGraph,
 	type ContactUnlockResponse,
 	companyGraphSchema,
@@ -8,6 +18,8 @@ import {
 	type ListLeadsParams,
 	leadListResponseSchema,
 	leadSchema,
+	type PhoneResolutionResponse,
+	phoneResolutionResponseSchema,
 	type ReverseIcpResponse,
 	reverseIcpResponseSchema,
 	type ZaloDraftResponse,
@@ -105,25 +117,114 @@ class LeadsApiService {
 		);
 	};
 
+	resolvePhone = async (
+		workspaceId: number | string,
+		leadId: string,
+		body: {
+			source_url?: string;
+			raw_text?: string;
+			force_refresh?: boolean;
+			async_mode?: boolean;
+		} = {}
+	): Promise<PhoneResolutionResponse> => {
+		return baseApiService.post(
+			`${base(workspaceId)}/leads/${leadId}/resolve-phone`,
+			phoneResolutionResponseSchema,
+			{ body }
+		);
+	};
+
 	unlockContact = async (
 		workspaceId: number | string,
 		leadId: string,
-		contactId: string
+		contactId: string,
+		channel?: string
 	): Promise<ContactUnlockResponse> => {
 		return baseApiService.post(
 			`${base(workspaceId)}/leads/${leadId}/contacts/${contactId}/unlock`,
-			contactUnlockResponseSchema
+			contactUnlockResponseSchema,
+			{
+				body: channel ? { channel } : {},
+			}
 		);
 	};
 
 	relockContact = async (
 		workspaceId: number | string,
 		leadId: string,
-		contactId: string
+		contactId: string,
+		channel?: string
 	): Promise<ContactUnlockResponse> => {
 		return baseApiService.post(
 			`${base(workspaceId)}/leads/${leadId}/contacts/${contactId}/relock`,
-			contactUnlockResponseSchema
+			contactUnlockResponseSchema,
+			{
+				body: channel ? { channel } : {},
+			}
+		);
+	};
+
+	// Campaign Management APIs (Story 21.15)
+	listCampaigns = async (
+		workspaceId: number | string,
+		params: { limit?: number; offset?: number; status?: string } = {}
+	): Promise<CampaignListResponse> => {
+		const qs = new URLSearchParams();
+		if (params.limit !== undefined) qs.set("limit", String(params.limit));
+		if (params.offset !== undefined) qs.set("offset", String(params.offset));
+		if (params.status) qs.set("status", params.status);
+		const query = qs.toString();
+		return baseApiService.get(
+			`${base(workspaceId)}/campaigns${query ? `?${query}` : ""}`,
+			campaignListResponseSchema
+		);
+	};
+
+	getCampaign = async (workspaceId: number | string, campaignId: string): Promise<Campaign> => {
+		return baseApiService.get(`${base(workspaceId)}/campaigns/${campaignId}`, campaignSchema);
+	};
+
+	createCampaign = async (
+		workspaceId: number | string,
+		input: CampaignCreateInput
+	): Promise<Campaign> => {
+		return baseApiService.post(`${base(workspaceId)}/campaigns`, campaignSchema, { body: input });
+	};
+
+	updateCampaign = async (
+		workspaceId: number | string,
+		campaignId: string,
+		input: CampaignUpdateInput
+	): Promise<Campaign> => {
+		return baseApiService.patch(`${base(workspaceId)}/campaigns/${campaignId}`, campaignSchema, {
+			body: input,
+		});
+	};
+
+	launchCampaign = async (workspaceId: number | string, campaignId: string): Promise<Campaign> => {
+		return baseApiService.post(
+			`${base(workspaceId)}/campaigns/${campaignId}/launch`,
+			campaignSchema
+		);
+	};
+
+	pauseCampaign = async (workspaceId: number | string, campaignId: string): Promise<Campaign> => {
+		return baseApiService.post(
+			`${base(workspaceId)}/campaigns/${campaignId}/pause`,
+			campaignSchema
+		);
+	};
+
+	qualifyLead = async (
+		workspaceId: number | string,
+		leadId: string,
+		sdrStatus: string,
+		note?: string
+	): Promise<WorkbenchLead> => {
+		return baseApiService.post(
+			`${base(workspaceId)}/leads/${leadId}/qualify`,
+			workbenchLeadSchema,
+			{ body: { sdr_status: sdrStatus, note } }
 		);
 	};
 }

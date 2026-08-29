@@ -336,6 +336,13 @@ export default function NewChatPage() {
 		data: typeof threadMessagesQuery.data;
 	}>({ threadId: null, data: undefined });
 
+	// Update document title for the active chat so tabs and E2E tests can
+	// identify the route without relying on the generic app title.
+	useEffect(() => {
+		if (typeof document === "undefined") return;
+		document.title = activeThreadId ? `Chat #${activeThreadId} | Nowing` : "New Chat | Nowing";
+	}, [activeThreadId]);
+
 	// Reset thread-local runtime state on route/workspace changes. The durable
 	// streaming overlay is preserved for any still-running thread (and the newly
 	// viewed thread) via ``clearInactive`` so an in-flight turn survives nav.

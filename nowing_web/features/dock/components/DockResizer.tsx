@@ -7,7 +7,7 @@ import { canvasLeftWidthAtom } from "@/atoms/leads/leads-canvas.atoms";
 import { cn } from "@/lib/utils";
 
 const MIN_DOCK_WIDTH = 360;
-const DEFAULT_DOCK_WIDTH = 420;
+const DEFAULT_DOCK_WIDTH = 840;
 const CENTER_RESIZER_WIDTH = 6;
 const RIGHT_EDGE_MARGIN = 16;
 
@@ -91,7 +91,7 @@ export function DockResizer() {
 			aria-valuemax={max}
 			aria-orientation="vertical"
 			tabIndex={0}
-			title="Kéo để điều chỉnh kích thước / Nhấp đúp để đặt lại 420px"
+			title="Kéo để điều chỉnh kích thước / Nhấp đúp để đặt lại 840px"
 			onMouseDown={handleMouseDown}
 			onDoubleClick={handleDoubleClick}
 			onKeyDown={handleKeyDown}
