@@ -39,6 +39,12 @@ _KIND_LABEL: dict[ModelKind, str] = {
     "vision": "vision model",
 }
 
+_KIND_CAPABILITY: dict[ModelKind, str] = {
+    "chat": "supports_chat",
+    "image": "supports_image_generation",
+    "vision": "supports_image_input",
+}
+
 
 def _get_global_model(model_id: int) -> dict | None:
     """Return the global model record for a negative (global) model id."""
@@ -79,16 +85,30 @@ def _classify(
         return True, ""
 
     # Negative id -> global model. Always allowed if the caller explicitly chose
-    # a global model; otherwise only premium globals are allowed.
+    # a known, enabled, capable global model; otherwise only premium globals are
+    # allowed.
     if allow_global_model_selection:
         model = _get_global_model(model_id)
-        if model:
-            return True, ""
-        return (
-            False,
-            f"The {label} references an unknown global model. "
-            "Please select a valid global model.",
-        )
+        if not model:
+            return (
+                False,
+                f"The {label} references an unknown global model. "
+                "Please select a valid global model.",
+            )
+        if not model.get("enabled", True):
+            return (
+                False,
+                f"The {label} references a disabled global model. "
+                "Please select an enabled global model.",
+            )
+        capability_key = _KIND_CAPABILITY[kind]
+        if not model.get(capability_key, False):
+            return (
+                False,
+                f"The {label} does not support {label} output. "
+                "Please select a model with the right capability.",
+            )
+        return True, ""
 
     if _is_premium_global(model_id):
         return True, ""

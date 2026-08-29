@@ -173,11 +173,19 @@ class AutomationService:
             #     non-billable pick), then accept it.
             existing_models = (automation.definition or {}).get("models")
             provided_models = new_def.get("models")
+            # Playbook-derived automations were created with an explicit model
+            # selection that may include non-premium global models. Preserve
+            # that permission on edit so users can tweak other definition fields
+            # without the model snapshot being rejected.
+            allow_global = automation.derived_from_playbook_id is not None
             if provided_models is None:
                 if existing_models is not None:
                     new_def["models"] = existing_models
             elif provided_models != existing_models:
-                self._assert_selected_models_billable(patch.definition.models)
+                self._assert_selected_models_billable(
+                    patch.definition.models,
+                    allow_global_model_selection=allow_global,
+                )
             automation.definition = new_def
             automation.version += 1
 

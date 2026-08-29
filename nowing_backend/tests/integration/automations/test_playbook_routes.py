@@ -361,9 +361,9 @@ async def test_instantiate_playbook_with_explicit_global_models(
         app_config,
         "GLOBAL_MODELS",
         [
-            {"id": -10, "billing_tier": "free", "model_id": "free-chat"},
-            {"id": -11, "billing_tier": "free", "model_id": "free-img"},
-            {"id": -12, "billing_tier": "premium", "model_id": "premium-vision"},
+            {"id": -10, "billing_tier": "free", "model_id": "free-chat", "supports_chat": True},
+            {"id": -11, "billing_tier": "free", "model_id": "free-img", "supports_image_generation": True},
+            {"id": -12, "billing_tier": "premium", "model_id": "premium-vision", "supports_image_input": True},
         ],
         raising=False,
     )

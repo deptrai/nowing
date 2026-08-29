@@ -84,11 +84,7 @@ export function PlaybookInstantiateDialog({
 	const { mutateAsync: instantiate, isPending } = useAtomValue(instantiatePlaybookMutationAtom);
 	const [instantiateError, setInstantiateError] = useState<string | null>(null);
 	const eligibleModels = useAutomationEligibleModels({ mode: "playbook" });
-	const [modelSelection, setModelSelection] = useState<AutomationModelSelection>({
-		chatModelId: 0,
-		imageConfigId: 0,
-		visionConfigId: 0,
-	});
+	const [modelSelection, setModelSelection] = useState<AutomationModelSelection | null>(null);
 
 	const {
 		data: detail,
@@ -101,7 +97,7 @@ export function PlaybookInstantiateDialog({
 	});
 
 	useEffect(() => {
-		if (open) {
+		if (open && modelSelection === null) {
 			setInstantiateError(null);
 			setModelSelection({
 				chatModelId: eligibleModels.llm.defaultId || 0,
@@ -111,17 +107,19 @@ export function PlaybookInstantiateDialog({
 		}
 	}, [
 		open,
+		modelSelection,
 		eligibleModels.llm.defaultId,
 		eligibleModels.image.defaultId,
 		eligibleModels.vision.defaultId,
 	]);
 
 	const resolvedModels = useMemo<AutomationModelSelection>(
-		() => ({
-			chatModelId: modelSelection.chatModelId || eligibleModels.llm.defaultId || 0,
-			imageConfigId: modelSelection.imageConfigId || eligibleModels.image.defaultId || 0,
-			visionConfigId: modelSelection.visionConfigId || eligibleModels.vision.defaultId || 0,
-		}),
+		() =>
+			modelSelection ?? {
+				chatModelId: eligibleModels.llm.defaultId || 0,
+				imageConfigId: eligibleModels.image.defaultId || 0,
+				visionConfigId: eligibleModels.vision.defaultId || 0,
+			},
 		[
 			modelSelection,
 			eligibleModels.llm.defaultId,
@@ -150,23 +148,14 @@ export function PlaybookInstantiateDialog({
 	async function handleSubmit(values?: Record<string, unknown>) {
 		setInstantiateError(null);
 		try {
-			const hasSelectedModels =
-				resolvedModels.chatModelId !== 0 ||
-				resolvedModels.imageConfigId !== 0 ||
-				resolvedModels.visionConfigId !== 0;
-
 			const requestPayload: PlaybookInstantiateRequest = {
 				workspace_id: workspaceId,
 				inputs: hasInputs ? (values ?? {}) : {},
-				...(hasSelectedModels
-					? {
-							models: {
-								chat_model_id: resolvedModels.chatModelId,
-								image_gen_model_id: resolvedModels.imageConfigId,
-								vision_model_id: resolvedModels.visionConfigId,
-							},
-						}
-					: {}),
+				models: {
+					chat_model_id: resolvedModels.chatModelId,
+					image_gen_model_id: resolvedModels.imageConfigId,
+					vision_model_id: resolvedModels.visionConfigId,
+				},
 			};
 
 			const automation = await instantiate({
@@ -219,7 +208,12 @@ export function PlaybookInstantiateDialog({
 							mode="playbook"
 							workspaceId={workspaceId}
 							value={resolvedModels}
-							onChange={(patch) => setModelSelection((prev) => ({ ...prev, ...patch }))}
+							onChange={(patch) =>
+								setModelSelection((prev) => ({
+									...(prev ?? resolvedModels),
+									...patch,
+								}))
+							}
 						/>
 					</div>
 				)}
