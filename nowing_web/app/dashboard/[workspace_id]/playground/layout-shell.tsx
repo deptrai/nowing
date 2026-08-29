@@ -1,6 +1,6 @@
 "use client";
 
-import { useSelectedLayoutSegments } from "next/navigation";
+import { usePathname, useSelectedLayoutSegments } from "next/navigation";
 import type React from "react";
 import { useMemo } from "react";
 import {
@@ -15,9 +15,16 @@ interface PlaygroundLayoutShellProps {
 	children: React.ReactNode;
 }
 
+function usePlaygroundBase(workspaceId: string, pathname: string | null) {
+	const userSettingsBase = `/dashboard/${workspaceId}/user-settings/playground`;
+	if (pathname?.startsWith(userSettingsBase)) return userSettingsBase;
+	return `/dashboard/${workspaceId}/playground`;
+}
+
 export function PlaygroundLayoutShell({ workspaceId, children }: PlaygroundLayoutShellProps) {
+	const pathname = usePathname();
+	const base = usePlaygroundBase(workspaceId, pathname);
 	const segments = useSelectedLayoutSegments();
-	const base = `/dashboard/${workspaceId}/playground`;
 
 	const topLevelItems = useMemo(() => getPlaygroundNavItems(base), [base]);
 	const providerGroups = useMemo(() => getPlaygroundNavGroups(base), [base]);

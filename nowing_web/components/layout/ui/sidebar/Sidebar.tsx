@@ -52,8 +52,6 @@ interface SidebarProps {
 	onToggleCollapse?: () => void;
 	navItems: NavItem[];
 	onNavItemClick?: (item: NavItem) => void;
-	onPlaygroundItemClick?: (item: NavItem) => void;
-	isPlaygroundSidebarOpen?: boolean;
 	chats: ChatItem[];
 	activeChatId?: number | null;
 	onNewChat: () => void;
@@ -91,8 +89,6 @@ export function Sidebar({
 	onToggleCollapse,
 	navItems,
 	onNavItemClick,
-	onPlaygroundItemClick,
-	isPlaygroundSidebarOpen,
 	chats,
 	activeChatId,
 	onNewChat,
@@ -140,10 +136,6 @@ export function Sidebar({
 	);
 	const artifactsItem = useMemo(
 		() => navItems.find((item) => item.url.endsWith("/artifacts")),
-		[navItems]
-	);
-	const playgroundItem = useMemo(
-		() => navItems.find((item) => item.url.endsWith("/playground")),
 		[navItems]
 	);
 	const footerNavItems = useMemo(
@@ -257,18 +249,7 @@ export function Sidebar({
 							tooltipContent={isCollapsed ? artifactsItem.title : undefined}
 						/>
 					)}
-					{playgroundItem && (
-						<SidebarButton
-							icon={playgroundItem.icon}
-							label={playgroundItem.title}
-							onClick={() => (onPlaygroundItemClick ?? onNavItemClick)?.(playgroundItem)}
-							isCollapsed={isCollapsed}
-							isActive={isPlaygroundSidebarOpen ?? playgroundItem.isActive}
-							badge={<SidebarButtonBadge>New</SidebarButtonBadge>}
-							tooltipContent={isCollapsed ? playgroundItem.title : undefined}
-						/>
-					)}
-				</div>
+					</div>
 
 				{/* Chat sections - fills available space */}
 				{isCollapsed ? (

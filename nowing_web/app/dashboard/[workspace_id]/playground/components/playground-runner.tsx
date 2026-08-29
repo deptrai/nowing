@@ -12,6 +12,7 @@ import { useScraperCapabilities } from "@/hooks/use-scraper-capabilities";
 import { scrapersApiService } from "@/lib/apis/scrapers-api.service";
 import { AppError } from "@/lib/error";
 import { findVerb } from "@/lib/playground/catalog";
+import { usePathname } from "next/navigation";
 import { fieldErrorsFromError } from "@/lib/playground/field-errors";
 import { formatCost, formatDuration, formatPricing } from "@/lib/playground/format";
 import { buildPayload, initialFormValues, parseSchemaFields } from "@/lib/playground/json-schema";
@@ -110,6 +111,13 @@ function EndpointCopyButton({ endpoint }: { endpoint: string }) {
 			<span className="sr-only">{copied ? "Copied endpoint" : "Copy endpoint"}</span>
 		</Button>
 	);
+}
+
+function usePlaygroundBase(workspaceId: number) {
+	const pathname = usePathname();
+	const userSettingsBase = `/dashboard/${workspaceId}/user-settings/playground`;
+	if (pathname?.startsWith(userSettingsBase)) return userSettingsBase;
+	return `/dashboard/${workspaceId}/playground`;
 }
 
 export function PlaygroundRunner({ workspaceId, platform, verb }: PlaygroundRunnerProps) {

@@ -2,14 +2,22 @@
 
 import { ArrowRight, History, Info, KeyRound } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useMemo } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useScraperCapabilities } from "@/hooks/use-scraper-capabilities";
 import { PLAYGROUND_PLATFORMS } from "@/lib/playground/catalog";
 import { formatPricing } from "@/lib/playground/format";
 
+function usePlaygroundBase(workspaceId: number) {
+	const pathname = usePathname();
+	const userSettingsBase = `/dashboard/${workspaceId}/user-settings/playground`;
+	if (pathname?.startsWith(userSettingsBase)) return userSettingsBase;
+	return `/dashboard/${workspaceId}/playground`;
+}
+
 export function PlaygroundIndex({ workspaceId }: { workspaceId: number }) {
-	const base = `/dashboard/${workspaceId}/playground`;
+	const base = usePlaygroundBase(workspaceId);
 
 	// The grid renders from the static catalog immediately; pricing fills in
 	// once the capabilities fetch lands (blank while loading, never blocking).

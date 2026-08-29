@@ -41,8 +41,6 @@ const DocumentTabContent = dynamic(
 	}
 );
 
-const PLAYGROUND_SIDEBAR_COLLAPSED_COOKIE = "nowing_playground_sidebar_collapsed";
-const PLAYGROUND_SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
 function MacDesktopTitleBar({
 	isSidebarCollapsed,
@@ -116,8 +114,6 @@ interface LayoutShellProps {
 	showTabs?: boolean;
 	onTabSwitch?: (tab: ResolvedTab) => void;
 	onTabPrefetch?: (tab: ResolvedTab) => void;
-	playgroundSidebar?: React.ReactNode;
-	initialPlaygroundSidebarCollapsed?: boolean;
 }
 
 function MainContentPanel({
@@ -223,16 +219,11 @@ export function LayoutShell({
 	showTabs = true,
 	onTabSwitch,
 	onTabPrefetch,
-	playgroundSidebar,
-	initialPlaygroundSidebarCollapsed = true,
 }: LayoutShellProps) {
 	const isMobile = useIsMobile();
 	const electronAPI = useElectronAPI();
 	const isMacDesktop = electronAPI?.versions.platform === "darwin";
 	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-	const [isPlaygroundSidebarCollapsed, setIsPlaygroundSidebarCollapsed] = useState(
-		initialPlaygroundSidebarCollapsed
-	);
 	const { isCollapsed, setIsCollapsed, toggleCollapsed } = useSidebarState(defaultCollapsed);
 	const {
 		sidebarWidth,
@@ -258,14 +249,6 @@ export function LayoutShell({
 		() => ({ isCollapsed, setIsCollapsed, toggleCollapsed }),
 		[isCollapsed, setIsCollapsed, toggleCollapsed]
 	);
-	const handlePlaygroundSidebarToggle = () => {
-		setIsPlaygroundSidebarCollapsed((collapsed) => {
-			const nextCollapsed = !collapsed;
-			const secureAttribute = window.location.protocol === "https:" ? "; Secure" : "";
-			document.cookie = `${PLAYGROUND_SIDEBAR_COLLAPSED_COOKIE}=${nextCollapsed}; Path=/; Max-Age=${PLAYGROUND_SIDEBAR_COOKIE_MAX_AGE}; SameSite=Lax${secureAttribute}`;
-			return nextCollapsed;
-		});
-	};
 
 	// Mobile layout
 	if (isMobile) {
@@ -385,12 +368,6 @@ export function LayoutShell({
 								onToggleCollapse={toggleCollapsed}
 								navItems={navItems}
 								onNavItemClick={onNavItemClick}
-								onPlaygroundItemClick={
-									playgroundSidebar ? handlePlaygroundSidebarToggle : undefined
-								}
-								isPlaygroundSidebarOpen={
-									playgroundSidebar ? !isPlaygroundSidebarCollapsed : undefined
-								}
 								chats={chats}
 								activeChatId={activeChatId}
 								onNewChat={onNewChat}
@@ -443,20 +420,6 @@ export function LayoutShell({
 							)}
 						</div>
 
-						{playgroundSidebar ? (
-							<div
-								aria-hidden={isPlaygroundSidebarCollapsed}
-								className={cn(
-									"hidden md:flex shrink-0 overflow-hidden -mr-2 bg-panel transition-[width,opacity] duration-200 ease-out",
-									isPlaygroundSidebarCollapsed
-										? "w-0 opacity-0 pointer-events-none"
-										: "w-[240px] opacity-100",
-									isMacDesktop && !isPlaygroundSidebarCollapsed && "border-t"
-								)}
-							>
-								<div className="w-[240px] shrink-0">{playgroundSidebar}</div>
-							</div>
-						) : null}
 
 						<DesktopWorkspaceRegion>
 							{useWorkspacePanel ? (

@@ -9,7 +9,6 @@ import {
 	BookOpen,
 	Puzzle,
 	Shapes,
-	SquareTerminal,
 } from "lucide-react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -61,18 +60,15 @@ import { resetUser, trackLogout } from "@/lib/posthog/events";
 import { cacheKeys } from "@/lib/query-client/cache-keys";
 import type { ChatItem, NavItem, Workspace } from "../types/layout.types";
 import { CreateWorkspaceDialog } from "../ui/dialogs";
-import { PlaygroundSidebar } from "../ui/playground/PlaygroundSidebar";
 import { LayoutShell } from "../ui/shell";
 
 interface LayoutDataProviderProps {
 	workspaceId: string;
-	initialPlaygroundSidebarCollapsed: boolean;
 	children: React.ReactNode;
 }
 
 export function LayoutDataProvider({
 	workspaceId,
-	initialPlaygroundSidebarCollapsed,
 	children,
 }: LayoutDataProviderProps) {
 	const t = useTranslations("dashboard");
@@ -295,13 +291,12 @@ export function LayoutDataProvider({
 	}, [threadsData, workspaceId]);
 
 	// Navigation items
-	// Automations and Artifacts are rendered explicitly below "New chat"
+	// Automations, Artifacts, and Playbooks are rendered explicitly below "New chat"
 	// in the sidebar. Documents is embedded below Recents; notifications and
 	// announcements live in the avatar rail/dropdown.
 	const isAutomationsActive = pathname?.includes("/automations") === true;
 	const isArtifactsActive = pathname?.endsWith("/artifacts") === true;
 	const isPlaybooksActive = pathname?.includes("/playbooks") === true;
-	const isPlaygroundRoute = pathname?.includes("/playground") === true;
 	const isUsageActive = pathname?.includes("/usage") === true;
 	const isConnectorsActive = pathname?.includes("/connectors") === true;
 	const navItems: NavItem[] = useMemo(
@@ -338,12 +333,6 @@ export function LayoutDataProvider({
 						icon: Shapes,
 						isActive: isArtifactsActive,
 					},
-					{
-						title: "Playground",
-						url: `/dashboard/${workspaceId}/playground`,
-						icon: SquareTerminal,
-						isActive: isPlaygroundRoute,
-					},
 				] as (NavItem | null)[]
 			).filter((item): item is NavItem => item !== null),
 		[
@@ -352,7 +341,6 @@ export function LayoutDataProvider({
 			isConnectorsActive,
 			isAutomationsActive,
 			isArtifactsActive,
-			isPlaygroundRoute,
 			tNav,
 			isPlaybooksActive,
 		]
@@ -649,7 +637,6 @@ export function LayoutDataProvider({
 	const isTeamPage = pathname?.endsWith("/team") === true;
 	const isAutomationsPage = pathname?.includes("/automations") === true;
 	const isArtifactsPage = pathname?.endsWith("/artifacts") === true;
-	const isPlaygroundPage = pathname?.includes("/playground") === true;
 	const isAllChatsPage = pathname?.endsWith("/chats") === true;
 	const isNewChatRoot = pathname?.endsWith("/new-chat") === true;
 	const handleViewAllChats = useCallback(() => {
@@ -666,7 +653,6 @@ export function LayoutDataProvider({
 		isTeamPage ||
 		isAutomationsPage ||
 		isArtifactsPage ||
-		isPlaygroundPage ||
 		isAllChatsPage;
 	const showTabs = !useWorkspacePanel && !isNewChatRoot;
 
@@ -718,7 +704,6 @@ export function LayoutDataProvider({
 					isTeamPage ||
 					isAutomationsPage ||
 					isArtifactsPage ||
-					isPlaygroundPage ||
 					isAllChatsPage
 						? "items-start justify-center px-6 py-8 md:px-10 md:pb-10 md:pt-16"
 						: undefined
@@ -752,8 +737,6 @@ export function LayoutDataProvider({
 				}}
 				onTabSwitch={handleTabSwitch}
 				onTabPrefetch={handleTabPrefetch}
-				playgroundSidebar={<PlaygroundSidebar workspaceId={workspaceId} />}
-				initialPlaygroundSidebarCollapsed={initialPlaygroundSidebarCollapsed}
 			>
 				<Fragment key={chatResetKey}>{children}</Fragment>
 			</LayoutShell>
