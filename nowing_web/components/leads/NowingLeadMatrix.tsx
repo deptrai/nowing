@@ -529,7 +529,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 						</p>
 					</div>
 				) : (
-					<table className="w-full min-w-max text-left border-collapse text-xs sm:text-[13px] table-auto">
+					<table className="w-full text-left border-collapse text-xs sm:text-[13px] table-auto">
 						{/* Table Header Row */}
 						<thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur-md border-b border-border/80 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/90 select-none">
 							<tr className="h-8">
@@ -543,11 +543,11 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 								</th>
 								<th className="w-8 px-1.5 font-mono text-center shrink-0">#</th>
 								<th className="w-24 px-2.5 shrink-0">FIT SCORE &gt;</th>
-								<th className="px-3 min-w-[140px] max-w-[200px]">TÊN DOANH NGHIỆP</th>
-								<th className="px-3 min-w-[80px] max-w-[120px]">WEBSITE</th>
-								<th className="px-3 min-w-[80px] max-w-[120px]">NGÀNH</th>
-								<th className="px-3 min-w-[90px] max-w-[130px]">ĐIỆN THOẠI</th>
-								<th className="min-w-[100px] px-3 text-right shrink-0">HÀNH ĐỘNG</th>
+								<th className="px-3 min-w-[150px] max-w-[280px]">TÊN DOANH NGHIỆP</th>
+								<th className="px-3 min-w-[100px] max-w-[180px]">WEBSITE</th>
+								<th className="px-3 min-w-[90px] max-w-[140px]">NGÀNH</th>
+								<th className="px-3 min-w-[110px] max-w-[150px]">ĐIỆN THOẠI</th>
+								<th className="w-32 px-3 text-right shrink-0">HÀNH ĐỘNG</th>
 							</tr>
 						</thead>
 
@@ -565,17 +565,8 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 								const unlockedPhone = unlockedPhones?.[lead.id];
 								const hasPhoneOverride = lead.id in (unlockedPhones ?? {});
 								const rowPhone = hasPhoneOverride ? unlockedPhone : lead.phone;
-								const phoneUnlocked = lead.unlocked_channels?.includes("phone") ?? lead.is_unlocked;
-								const rowIsUnlocked = hasPhoneOverride ? Boolean(unlockedPhone) : phoneUnlocked;
-								const rowUnlockedChannels = rowIsUnlocked
-									? Array.from(new Set([...(lead.unlocked_channels ?? []), "phone"]))
-									: (lead.unlocked_channels ?? []);
-								const rowLead: Lead = {
-									...lead,
-									phone: rowPhone,
-									is_unlocked: rowIsUnlocked,
-									unlocked_channels: rowUnlockedChannels,
-								};
+								const rowIsUnlocked = hasPhoneOverride ? Boolean(unlockedPhone) : lead.is_unlocked;
+								const rowLead: Lead = { ...lead, phone: rowPhone, is_unlocked: rowIsUnlocked };
 
 								return (
 									<tr
@@ -623,9 +614,9 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 										</td>
 
 										{/* Company Name */}
-										<td className="px-3 font-medium text-foreground min-w-[140px] max-w-[200px]">
-											<div className="flex flex-wrap items-center gap-1.5">
-												<span className="break-words whitespace-normal">{lead.company_name}</span>
+										<td className="px-3 font-medium text-foreground min-w-[150px] max-w-[280px]">
+											<div className="flex items-center gap-1.5 truncate">
+												<span className="truncate">{lead.company_name}</span>
 												{lead.source === "chat_scraper" && (
 													<span className="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[9px] font-bold uppercase shrink-0">
 														Mới
@@ -707,7 +698,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 										</td>
 
 										{/* Website */}
-										<td className="px-3 text-muted-foreground min-w-[80px] max-w-[120px]">
+										<td className="px-3 text-muted-foreground min-w-[100px] max-w-[180px]">
 											{lead.domain || lead.source_url ? (
 												<a
 													href={lead.source_url || `https://${lead.domain}`}
@@ -728,13 +719,13 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 										</td>
 
 										{/* Industry */}
-										<td className="px-3 text-muted-foreground text-xs min-w-[80px] max-w-[120px]">
+										<td className="px-3 text-muted-foreground text-xs min-w-[90px] max-w-[140px]">
 											<span className="truncate block">{lead.industry || "Bất động sản"}</span>
 										</td>
 
 										{/* Phone Pill */}
 										<td
-											className="px-3 min-w-[90px] max-w-[130px]"
+											className="px-3 min-w-[110px] max-w-[150px]"
 											onClick={(e) => e.stopPropagation()}
 											onKeyDown={(e) => e.stopPropagation()}
 										>
@@ -747,7 +738,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 
 										{/* Actions */}
 										<td
-											className="min-w-[100px] px-3 text-right shrink-0"
+											className="w-32 px-3 text-right shrink-0"
 											onClick={(e) => e.stopPropagation()}
 											onKeyDown={(e) => e.stopPropagation()}
 										>
@@ -758,7 +749,6 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 													companyName={lead.company_name}
 													workspaceId={workspaceId}
 													size="sm"
-													compact
 													disabled={!rowIsUnlocked}
 												/>
 												{onOpenCompanyGraph && (

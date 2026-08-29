@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
-import contextlib
 import logging
 from typing import Any
 
@@ -23,7 +21,6 @@ from app.lead_intelligence.adapters.base import (
     extract_phones_from_text,
     normalize_vietnamese_phone,
 )
-from app.lead_intelligence.services.circuit_breaker import PlatformCircuitBreaker
 
 logger = logging.getLogger(__name__)
 
@@ -60,36 +57,15 @@ class ChototLeadAdapter(LeadSourceAdapter):
             city=city,
             min_price=min_price,
             max_price=max_price,
-            max_items=min(limit, 10),
-            max_pages=2,
-            resolve_phones=True,
+            max_items=min(limit, 20),
+            max_pages=5,
         )
-
-        breaker = PlatformCircuitBreaker()
-        if not await breaker.is_available(self.source_name):
-            logger.warning("Circuit breaker open for %s", self.source_name)
-            self.last_execution_status = "degraded"
-            return []
-
-        try:
-            output = await asyncio.wait_for(
-                scrape_chotot(input_model, limit=min(limit, 20)),
-                timeout=90.0,
-            )
-        except TimeoutError:
-            logger.warning("Chotot scraper timed out after 90s")
-            await breaker.record_failure(self.source_name, "timeout")
-            self.last_execution_status = "degraded"
-            return []
-        except Exception:
-            await breaker.record_failure(self.source_name, "scraper_error")
-            raise
-
-        with contextlib.suppress(Exception):
-            await breaker.record_success(self.source_name)
+        output = await scrape_chotot(input_model, limit=min(limit, 20))
 
         if output.degraded:
-            logger.warning("Chotot scraper degraded: %s", output.degradation_reason)
+            logger.warning(
+                "Chotot scraper degraded: %s", output.degradation_reason
+            )
             self.last_execution_status = "degraded"
 
         return [item.to_output() for item in output.items]
@@ -173,17 +149,10 @@ class ChototLeadAdapter(LeadSourceAdapter):
     def extract_contact_candidates(
         self, raw_record: RawLeadRecord
     ) -> list[ContactCandidate]:
-        """Extract phone, email, and social contact candidates from Chợ Tốt record."""
-        from app.lead_intelligence.adapters.base import (
-            extract_emails_from_text,
-            extract_social_ids_from_text,
-        )
-
+        """Extract phone contact candidates from Chợ Tốt record."""
         data = raw_record.data
         candidates: list[ContactCandidate] = []
         seen_phones: set[str] = set()
-        seen_emails: set[str] = set()
-        seen_social: set[str] = set()
 
         direct_phone = data.get("phone") or data.get("contact_phone")
         if direct_phone:
@@ -199,8 +168,8 @@ class ChototLeadAdapter(LeadSourceAdapter):
                     )
                 )
 
-        text = f"{data.get('title') or data.get('subject') or ''} {data.get('body') or data.get('description') or ''}"
-        for phone in extract_phones_from_text(text):
+        body_text = data.get("body") or data.get("description") or ""
+        for phone in extract_phones_from_text(body_text):
             if phone not in seen_phones:
                 seen_phones.add(phone)
                 candidates.append(
@@ -211,31 +180,5 @@ class ChototLeadAdapter(LeadSourceAdapter):
                         metadata={"source_field": "body_text"},
                     )
                 )
-
-        for email in extract_emails_from_text(text):
-            if email not in seen_emails:
-                seen_emails.add(email)
-                candidates.append(
-                    ContactCandidate(
-                        channel="email",
-                        value=email,
-                        confidence=0.8,
-                        metadata={"source_field": "body_text"},
-                    )
-                )
-
-        for channel, values in extract_social_ids_from_text(text).items():
-            for value in values:
-                key = f"{channel}:{value}"
-                if key not in seen_social:
-                    seen_social.add(key)
-                    candidates.append(
-                        ContactCandidate(
-                            channel=channel,
-                            value=value,
-                            confidence=0.6,
-                            metadata={"source_field": "body_text"},
-                        )
-                    )
 
         return candidates

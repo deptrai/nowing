@@ -591,9 +591,8 @@ export const InlineMentionEditor = forwardRef<InlineMentionEditorRef, InlineMent
 						editor.tf.removeNodes({ at: path });
 					}
 				});
-				emitState(getCurrentValue());
 			},
-			[editor, emitState, getCurrentValue]
+			[editor]
 		);
 
 		// Single removal call site for Backspace and the X button so the

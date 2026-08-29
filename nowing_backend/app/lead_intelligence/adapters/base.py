@@ -24,22 +24,13 @@ class LeadSourceCategory(StrEnum):
     GENERAL = "GENERAL"
 
 
-class LeadIntent(StrEnum):
-    """Commercial intent inferred from a natural-language lead query."""
-
-    BUY = "buy"
-    SELL = "sell"
-    NEUTRAL = "neutral"
-
-
 class ContactCandidate(BaseModel):
     """Potential contact method extracted from raw records or unmasked listings."""
 
     model_config = ConfigDict(from_attributes=True)
 
     channel: str = Field(
-        ...,
-        description="Contact channel: 'phone', 'email', 'zalo', 'facebook', 'telegram', 'messenger', 'username'",
+        ..., description="Contact channel: 'phone', 'email', 'zalo', 'linkedin'"
     )
     value: str = Field(..., description="Normalized contact value")
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
@@ -99,28 +90,6 @@ _CLEAN_NON_DIGITS = re.compile(r"[^\d+]")
 _PHONE_TOKEN_PATTERN = re.compile(
     r"(?:(?<=[^\d])|^)(?:\+84|84|0)[0-9\s\.\-]{8,15}(?:(?=[^\d])|$)"
 )
-_EMAIL_TOKEN_PATTERN = re.compile(
-    r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}",
-    re.IGNORECASE,
-)
-_SOCIAL_PATTERNS: dict[str, re.Pattern[str]] = {
-    "zalo": re.compile(
-        r"(?:zalo[\s:]*|zalo\.me/|sdt\s*zalo[\s:]*)([\w\.\-@]+)", re.IGNORECASE
-    ),
-    "facebook": re.compile(
-        r"(?:facebook[\s:]*|fb[\s:]*|facebook\.com/|fb\.com/)([\w\.\-@]+)",
-        re.IGNORECASE,
-    ),
-    "telegram": re.compile(
-        r"(?:telegram[\s:]*|tg[\s:]*|t\.me/)([\w\.\-@]+)", re.IGNORECASE
-    ),
-    "messenger": re.compile(
-        r"(?:messenger[\s:]*|m\.me/)([\w\.\-@]+)", re.IGNORECASE
-    ),
-}
-_USERNAME_PATTERNS = [
-    re.compile(r"(?:id[\s:]*|username[\s:]*|tên[\s:]*|nick[\s:]*)@?([\w\.\-@]{3,50})", re.IGNORECASE),
-]
 _VALID_VN_PREFIXES = (
     # Viettel / Vinaphone / Mobifone / Vietnamobile / Gmobile / Itelecom / Wintel / FPT
     "032",
@@ -229,43 +198,6 @@ def extract_phones_from_text(text: str) -> list[str]:
             found_phones.add(norm)
 
     return sorted(found_phones)
-
-
-def extract_emails_from_text(text: str) -> list[str]:
-    """Extract unique, plausible email addresses from text."""
-    if not text or not isinstance(text, str):
-        return []
-    bounded_text = text[:50000]
-    found: set[str] = set()
-    for match in _EMAIL_TOKEN_PATTERN.finditer(bounded_text):
-        candidate = match.group(0).lower().strip()
-        if "." in candidate and "@" in candidate:
-            found.add(candidate)
-    return sorted(found)
-
-
-def extract_social_ids_from_text(text: str) -> dict[str, list[str]]:
-    """Extract social/chat handles from text, keyed by channel."""
-    if not text or not isinstance(text, str):
-        return {}
-    bounded_text = text[:50000]
-    by_channel: dict[str, list[str]] = {}
-    for channel, pattern in _SOCIAL_PATTERNS.items():
-        seen: set[str] = set()
-        for match in pattern.finditer(bounded_text):
-            value = match.group(1).strip().lower()
-            if value and value not in seen:
-                seen.add(value)
-                by_channel.setdefault(channel, []).append(value)
-
-    # Generic username fallback only when no explicit social signal matched.
-    if not by_channel:
-        for pattern in _USERNAME_PATTERNS:
-            for match in pattern.finditer(bounded_text):
-                value = match.group(1).strip().lower()
-                if value:
-                    by_channel.setdefault("username", []).append(value)
-    return by_channel
 
 
 class LeadSourceAdapter(ABC):

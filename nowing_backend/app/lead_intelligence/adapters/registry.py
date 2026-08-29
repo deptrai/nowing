@@ -8,7 +8,6 @@ import unicodedata
 from typing import ClassVar
 
 from app.lead_intelligence.adapters.base import (
-    LeadIntent,
     LeadSourceAdapter,
     LeadSourceCategory,
 )
@@ -47,78 +46,6 @@ def _source_keyword_present(source_name: str, prompt: str) -> bool:
         if keyword in raw_lower or keyword_plain in plain:
             return True
     return False
-
-
-_PRICE_KEYWORDS = [
-    "tỷ",
-    "triệu",
-    "đồng",
-    "vnđ",
-    "vnd",
-    "usd",
-    "giá bán",
-    "giá thuê",
-    "giá dưới",
-    "giá trên",
-    "giá từ",
-    "tổng giá",
-    "mức giá",
-]
-
-
-_LOCATION_KEYWORDS = [
-    "quận",
-    "quan",
-    "huyện",
-    "huyen",
-    "phường",
-    "phuong",
-    "thị trấn",
-    "thi tran",
-    "thành phố",
-    "thanh pho",
-    "tỉnh",
-    "tinh",
-    "hà nội",
-    "ha noi",
-    "hồ chí minh",
-    "ho chi minh",
-    "tp.hcm",
-    "tphcm",
-    "đà nẵng",
-    "da nang",
-    "hải phòng",
-    "hai phong",
-    "cần thơ",
-    "can tho",
-    "huế",
-    "nha trang",
-    "đà lạt",
-]
-
-
-def _has_keyword(prompt: str, keywords: list[str]) -> bool:
-    """Check whether any keyword appears in the prompt (accented or unaccented)."""
-    if not prompt:
-        return False
-    raw_lower = prompt.lower()
-    plain = _strip_vietnamese_diacritics(raw_lower)
-    return any(k in raw_lower or _strip_vietnamese_diacritics(k) in plain for k in keywords)
-
-
-def _has_price_reference(prompt: str) -> bool:
-    """Detect price references in the prompt."""
-    return _has_keyword(prompt, _PRICE_KEYWORDS)
-
-
-def _has_location_reference(prompt: str) -> bool:
-    """Detect location / administrative unit references in the prompt."""
-    raw_lower = prompt.lower() if prompt else ""
-    plain = _strip_vietnamese_diacritics(raw_lower)
-    if any(k in raw_lower or _strip_vietnamese_diacritics(k) in plain for k in _LOCATION_KEYWORDS):
-        return True
-    # Common two-letter city/province abbreviations used in Vietnamese listings.
-    return bool(re.search(r"\b(hn|sg|dn|hp|ct)\b", raw_lower))
 
 
 class LeadSourceAdapterRegistry:
@@ -346,27 +273,15 @@ class LeadSourceAdapterRegistry:
 
         return deduped
 
-    def resolve_adapters_for_intent(
-        self,
-        prompt: str,
-        intent: LeadIntent | None = None,
-    ) -> list[LeadSourceAdapter]:
+    def resolve_adapters_for_intent(self, prompt: str) -> list[LeadSourceAdapter]:
         """
         Route natural language user query to the most relevant scraper adapters.
-
-        Categories are mutually exclusive with REAL_ESTATE taking precedence,
-        because a Vietnamese property query almost always contains location and
-        price words that can look like generic keywords. If no specific domain
-        signal is found but the prompt contains both a location and a price
-        reference, we default to REAL_ESTATE. Broad queries with no signal fall
-        back to all registered adapters.
-
-        When ``intent`` is ``sell``, social buyer-demand sources are preferred
-        (e.g., Facebook groups of buyers); if none are available or the query is
-        clearly BĐS-related, the method falls back to BĐS listing adapters so the
-        seller can still see comparable listings.
+        Supports accented and non-accented Vietnamese with boundary matching.
+        Falls back to all available adapters if query is broad or multi-intent.
         """
         raw_lower = (prompt or "").lower()
+        plain_lower = _strip_vietnamese_diacritics(raw_lower)
+        matched: list[LeadSourceAdapter] = []
 
         # Real Estate keywords (accented + unaccented)
         bds_keywords = [
@@ -394,6 +309,10 @@ class LeadSourceAdapterRegistry:
             "vinhome",
             "vinhomes",
         ]
+        if any(k in raw_lower or k in plain_lower for k in bds_keywords):
+            for a in self.find_by_category(LeadSourceCategory.REAL_ESTATE):
+                if a not in matched:
+                    matched.append(a)
 
         # Recruitment / Hiring keywords
         job_keywords = [
@@ -414,8 +333,16 @@ class LeadSourceAdapterRegistry:
             "vnjobs",
             "recruitment",
         ]
+        # Check boundary words or substrings
+        if any(k in raw_lower or k in plain_lower for k in job_keywords) or re.search(
+            r"\bhr\b", raw_lower
+        ):
+            for a in self.find_by_category(LeadSourceCategory.JOB_MARKET):
+                if a not in matched:
+                    matched.append(a)
 
-        # Public Procurement keywords — trigger only Mua Sắm Công.
+        # Public Procurement keywords — trigger only Mua Sắm Công, not the
+        # Masothue enterprise directory.
         proc_keywords = [
             "muasamcong",
             "mua sắm công",
@@ -429,6 +356,12 @@ class LeadSourceAdapterRegistry:
             "chủ đầu tư",
             "chu dau tu",
         ]
+        if any(
+            k in raw_lower or k in plain_lower for k in proc_keywords
+        ) or re.search(r"\bmuasamcong\b", raw_lower):
+            for a in self.find_by_category(LeadSourceCategory.ENTERPRISE):
+                if a.source_name == "muasamcong" and a not in matched:
+                    matched.append(a)
 
         # Enterprise / Tax keywords
         ent_keywords = [
@@ -436,6 +369,12 @@ class LeadSourceAdapterRegistry:
             "ma so thue",
             "mst",
         ]
+        if any(k in raw_lower or k in plain_lower for k in ent_keywords) or re.search(
+            r"\bmst\b", raw_lower
+        ):
+            for a in self.find_by_category(LeadSourceCategory.ENTERPRISE):
+                if a.source_name == "enterprise" and a not in matched:
+                    matched.append(a)
 
         # Social & Telegram keywords
         social_keywords = [
@@ -454,79 +393,48 @@ class LeadSourceAdapterRegistry:
             "nhom",
             "bài đăng",
             "bai dang",
+            "môi giới",
+            "moi gioi",
         ]
 
-        # Select a single category using mutual-exclusion with REAL_ESTATE first.
-        selected_category: LeadSourceCategory | None = None
-        if _has_keyword(prompt, bds_keywords):
-            selected_category = LeadSourceCategory.REAL_ESTATE
-        elif _has_keyword(prompt, job_keywords) or re.search(r"\bhr\b", raw_lower):
-            selected_category = LeadSourceCategory.JOB_MARKET
-        elif (
-            _has_keyword(prompt, proc_keywords)
-            or _has_keyword(prompt, ent_keywords)
-            or re.search(r"\bmuasamcong\b", raw_lower)
-            or re.search(r"\bmst\b", raw_lower)
-        ):
-            selected_category = LeadSourceCategory.ENTERPRISE
-        elif _has_keyword(prompt, social_keywords) or re.search(r"\bpost\b", raw_lower):
-            selected_category = LeadSourceCategory.SOCIAL
-        elif _has_price_reference(prompt) and _has_location_reference(prompt):
-            # Default to real estate for queries that only provide location + price.
-            selected_category = LeadSourceCategory.REAL_ESTATE
+        if any(
+            k in raw_lower or k in plain_lower for k in social_keywords
+        ) or re.search(r"\bpost\b", raw_lower):
+            for a in self.find_by_category(LeadSourceCategory.SOCIAL):
+                if a not in matched:
+                    matched.append(a)
 
-        # Seller intent: try buyer-demand sources first, then fall back to BĐS listings.
-        if intent == LeadIntent.SELL:
-            social_adapters = self.find_by_category(LeadSourceCategory.SOCIAL)
-            bds_adapters: list[LeadSourceAdapter] = []
-            if selected_category == LeadSourceCategory.REAL_ESTATE:
-                bds_adapters = self.find_by_category(LeadSourceCategory.REAL_ESTATE)
-            if social_adapters:
-                return social_adapters + bds_adapters
-            if selected_category is None:
-                selected_category = LeadSourceCategory.REAL_ESTATE
-            candidates = self.find_by_category(selected_category)
-            if not candidates:
-                candidates = self.find_by_category(LeadSourceCategory.REAL_ESTATE)
-            return candidates
+        # ponytail: job-market category now has multiple overlapping adapters
+        # (vn_jobs aggregate, job_market direct, vietnamworks direct). For a
+        # generic job query we want one call; for an explicit source keyword we
+        # select that source (or all explicitly named sources). Upgrade path:
+        # richer per-source keyword model.
+        if not matched:
+            matched = self.list_all()
 
-        if selected_category is None:
-            return self.list_all()
+        by_category: dict[LeadSourceCategory, list[LeadSourceAdapter]] = {}
+        for a in matched:
+            by_category.setdefault(a.category, []).append(a)
 
-        candidates = self.find_by_category(selected_category)
-
-        # Enterprise contains both "enterprise" and "muasamcong"; disambiguate.
-        if selected_category == LeadSourceCategory.ENTERPRISE:
-            if _has_keyword(prompt, proc_keywords) or re.search(r"\bmuasamcong\b", raw_lower):
-                candidates = [a for a in candidates if a.source_name == "muasamcong"]
-            elif _has_keyword(prompt, ent_keywords) or re.search(r"\bmst\b", raw_lower):
-                candidates = [a for a in candidates if a.source_name == "enterprise"]
-            else:
-                # Generic enterprise query without a subtype; keep all enterprise adapters.
-                pass
-
-        # Job market has overlapping adapters (vn_jobs, job_market, vietnamworks).
-        # If the user explicitly names a source, use it; otherwise pick one generic
-        # adapter using a priority list to avoid redundant calls.
-        if selected_category == LeadSourceCategory.JOB_MARKET and len(candidates) > 1:
-            selected = [a for a in candidates if _source_keyword_present(a.source_name, prompt)]
-            if not selected:
-                for name in _JOB_MARKET_PRIORITY:
-                    for a in candidates:
-                        if a.source_name == name:
-                            selected.append(a)
-                            break
-                    if selected:
-                        break
-            candidates = selected if selected else candidates
-
-        # Preserve stable ordering and remove duplicates.
-        seen: set[str] = set()
         deduped: list[LeadSourceAdapter] = []
-        for a in candidates:
-            key = a.source_name.strip().lower()
-            if key not in seen:
-                seen.add(key)
-                deduped.append(a)
+        for category, adapters in by_category.items():
+            if category == LeadSourceCategory.JOB_MARKET and len(adapters) > 1:
+                selected: list[LeadSourceAdapter] = [
+                    a for a in adapters if _source_keyword_present(a.source_name, prompt)
+                ]
+                if not selected:
+                    for name in _JOB_MARKET_PRIORITY:
+                        for a in adapters:
+                            if a.source_name == name:
+                                selected.append(a)
+                                break
+                        if selected:
+                            break
+                if selected:
+                    deduped.extend(selected)
+                else:
+                    deduped.extend(adapters)
+            else:
+                deduped.extend(adapters)
 
         return deduped

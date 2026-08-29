@@ -6,8 +6,9 @@ import html
 import logging
 from typing import Any
 
-from app.lead_intelligence.adapters.base import LeadIntent
-from app.lead_intelligence.services.lead_gen_orchestrator import LeadGenOrchestrator
+from app.lead_intelligence.services.lead_gen_orchestrator import (
+    LeadGenOrchestrator,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -91,58 +92,24 @@ class MultiSourceLeadGenTool:
         total = result.total_deduplicated
         sources_used = sorted({s for lead in result.leads for s in lead.sources})
         source_str = ", ".join(sources_used) if sources_used else "đa nguồn"
-        is_real_estate = any(
-            s in {"batdongsan", "chotot", "muaban_bds"} for s in sources_used
-        )
-        is_social = any(s == "social" for s in sources_used)
-        is_sell = result.intent == LeadIntent.SELL
-
-        if total == 0 and not result.leads:
-            return "Không tìm thấy leads phù hợp. Bạn có thể thử mở rộng địa điểm, giá, hoặc thêm từ khóa BĐS/công ty cụ thể hơn."
-
-        status_text = (
-            "Một số nguồn bị gián đoạn"
-            if result.degraded_sources
-            else "Hoàn tất"
-        )
-
-        if is_sell and is_social:
-            header = "### Nguồn Cầu / Người Mua Tiềm Năng"
-            count_label = f"{total} nguồn cầu tiềm năng"
-        elif is_sell and is_real_estate:
-            header = "### Tin Đăng Bán Tương Tự / Đối Thủ Cạnh Tranh"
-            count_label = f"{total} tin đăng bán tương tự"
-        else:
-            header = "### Kết Quả Tìm Kiếm Khách Hàng Tiềm Năng (Lead Generation)"
-            count_label = f"{total} leads"
 
         lines = [
-            header,
+            "### Kết Quả Tìm Kiếm Khách Hàng Tiềm Năng (Lead Generation)",
             "",
-            f"- **Tìm thấy:** {count_label} (từ {result.total_discovered} bản ghi thô qua {source_str}) — *{status_text}*",
+            f"- **Trạng thái:** `{result.status.upper()}`",
+            f"- **Đã tìm thấy:** `{total} leads` (Khử trùng từ {result.total_discovered} bản ghi thô từ nguồn {source_str})",
         ]
 
         if table_id:
             safe_table_id = html.escape(str(table_id))
             lines.append(
-                f"- **Bảng dữ liệu:** [Xem chi tiết](#table_id={safe_table_id})"
+                f"- **Tab Bảng Dữ Liệu:** [Xem Bảng Dữ Liệu Live](#table_id={safe_table_id})"
             )
-
-        # CTA to open the Right Dock / Leads panel.
-        if is_sell and is_real_estate:
-            lines.append(
-                "- 👉 [Mở Right Dock để xem toàn bộ tin đăng, lấy SĐT chủ tin, và phân tích giá](#right-dock=leads)"
-            )
-        else:
-            lines.append("- 👉 [Mở Right Dock để xem toàn bộ leads và mở khóa liên hệ](#right-dock=leads)")
-
-        if is_sell and is_real_estate:
-            lines.append("- **Gợi ý hành động tiếp theo:** Tìm người mua · Lấy SĐT chủ tin · Phân tích giá")
 
         if result.degraded_sources:
             safe_degraded = [html.escape(s) for s in result.degraded_sources]
             lines.append(
-                f"- _Nguồn gián đoạn (vẫn có dữ liệu từ các nguồn khác):_ `{'`, `'.join(safe_degraded)}`"
+                f"- ⚠️ **Nguồn bị gián đoạn/bỏ qua:** {', '.join(safe_degraded)}"
             )
 
         lines.append("")

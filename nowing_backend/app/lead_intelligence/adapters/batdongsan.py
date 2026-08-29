@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
-import contextlib
 import logging
 from typing import Any
 
@@ -22,7 +20,6 @@ from app.lead_intelligence.adapters.base import (
     extract_phones_from_text,
     normalize_vietnamese_phone,
 )
-from app.lead_intelligence.services.circuit_breaker import PlatformCircuitBreaker
 
 logger = logging.getLogger(__name__)
 
@@ -58,38 +55,14 @@ class BatdongsanLeadAdapter(LeadSourceAdapter):
             listing_type=listing_type,
             min_price=min_price,
             max_price=max_price,
-            max_items=min(limit, 10),
-            max_pages=2,
-            resolve_phones=True,
+            max_items=min(limit, 20),
         )
-
-        breaker = PlatformCircuitBreaker()
-        if not await breaker.is_available(self.source_name):
-            logger.warning("Circuit breaker open for %s", self.source_name)
-            self.last_execution_status = "degraded"
-            return []
-
-        try:
-            output = await asyncio.wait_for(
-                scrape_batdongsan(
-                    input_model, resolve_phones=input_model.resolve_phones
-                ),
-                timeout=90.0,
-            )
-        except TimeoutError:
-            logger.warning("Batdongsan scraper timed out after 90s")
-            await breaker.record_failure(self.source_name, "timeout")
-            self.last_execution_status = "degraded"
-            return []
-        except Exception:
-            await breaker.record_failure(self.source_name, "scraper_error")
-            raise
-
-        with contextlib.suppress(Exception):
-            await breaker.record_success(self.source_name)
+        output = await scrape_batdongsan(input_model)
 
         if output.degraded:
-            logger.warning("Batdongsan scraper degraded: %s", output.degradation_reason)
+            logger.warning(
+                "Batdongsan scraper degraded: %s", output.degradation_reason
+            )
             self.last_execution_status = "degraded"
 
         results = []
@@ -107,8 +80,6 @@ class BatdongsanLeadAdapter(LeadSourceAdapter):
                     "contact_phone": data.get("phone"),
                     "description": data.get("description") or "",
                     "url": data.get("detail_url"),
-                    "price_value": data.get("price_value"),
-                    "area_value": data.get("area_value"),
                 }
             )
         return results
@@ -171,10 +142,7 @@ class BatdongsanLeadAdapter(LeadSourceAdapter):
             company_name=data.get("project_name") or data.get("agency_name"),
             primary_phone=primary_phone,
             contact_name=data.get("contact_name") or data.get("author"),
-            price=_to_float(
-                data.get("price_value") or data.get("price_vnd") or data.get("price")
-            )
-            or None,
+            price=_to_float(data.get("price_vnd") or data.get("price")) or None,
             city=data.get("location") or data.get("city"),
             address=data.get("address") or data.get("location"),
             confidence_score=85.0 if primary_phone else 65.0,
@@ -186,17 +154,10 @@ class BatdongsanLeadAdapter(LeadSourceAdapter):
     def extract_contact_candidates(
         self, raw_record: RawLeadRecord
     ) -> list[ContactCandidate]:
-        """Extract phone, email, and social handles from raw listing metadata and description."""
-        from app.lead_intelligence.adapters.base import (
-            extract_emails_from_text,
-            extract_social_ids_from_text,
-        )
-
+        """Extract verified phone numbers from raw listing metadata and description."""
         data = raw_record.data
         candidates: list[ContactCandidate] = []
         seen_phones: set[str] = set()
-        seen_emails: set[str] = set()
-        seen_social: set[str] = set()
 
         # 1. Unmasked / direct phone fields
         direct_phone = (
@@ -217,9 +178,10 @@ class BatdongsanLeadAdapter(LeadSourceAdapter):
                     )
                 )
 
-        # 2. Extract from title + description text
-        text = f"{data.get('title') or ''} {data.get('description') or ''}"
-        for phone in extract_phones_from_text(text):
+        # 2. Extract from description text
+        desc = data.get("description") or ""
+        text_phones = extract_phones_from_text(desc)
+        for phone in text_phones:
             if phone not in seen_phones:
                 seen_phones.add(phone)
                 candidates.append(
@@ -230,31 +192,5 @@ class BatdongsanLeadAdapter(LeadSourceAdapter):
                         metadata={"source_field": "description_text"},
                     )
                 )
-
-        for email in extract_emails_from_text(text):
-            if email not in seen_emails:
-                seen_emails.add(email)
-                candidates.append(
-                    ContactCandidate(
-                        channel="email",
-                        value=email,
-                        confidence=0.8,
-                        metadata={"source_field": "description_text"},
-                    )
-                )
-
-        for channel, values in extract_social_ids_from_text(text).items():
-            for value in values:
-                key = f"{channel}:{value}"
-                if key not in seen_social:
-                    seen_social.add(key)
-                    candidates.append(
-                        ContactCandidate(
-                            channel=channel,
-                            value=value,
-                            confidence=0.6,
-                            metadata={"source_field": "description_text"},
-                        )
-                    )
 
         return candidates

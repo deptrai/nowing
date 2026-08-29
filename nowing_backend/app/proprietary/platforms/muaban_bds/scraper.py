@@ -313,9 +313,7 @@ async def scrape_muaban_bds(
         # Best-effort: fetch each detail page to read phone_display/phone_enc
         # and try the server-side phone API.  Full phone is usually gated by
         # login/Cloudflare, so we keep the masked display number on failure.
-        # Phone fetch is off by default: it is slow and brittle; downstream
-        # adapters extract phones from title/description instead.
-        if listings and session is not None and input_model.resolve_phones:
+        if listings and session is not None:
             for listing in listings:
                 if not listing.detail_url:
                     continue

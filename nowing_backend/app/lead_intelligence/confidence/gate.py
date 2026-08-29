@@ -259,7 +259,7 @@ class ConfidenceGate:
         if normalized.area is not None and normalized.area > 0:
             return True
         raw_area_str = normalized.raw_data.get("area")
-        parsed, _, _ = _parse_area(raw_area_str)
+        parsed, _ = _parse_area(raw_area_str)
         if parsed:
             number = _extract_number_and_unit(parsed) or parsed
             return normalize_number(number) is not None

@@ -91,7 +91,7 @@ export function DockResizer() {
 			aria-valuemax={max}
 			aria-orientation="vertical"
 			tabIndex={0}
-			title="Kéo để điều chỉnh kích thước / Nhấp đúp để đặt lại 840px"
+			title="Kéo để điều chỉnh kích thước / Nhấp đúp để đặt lại 420px"
 			onMouseDown={handleMouseDown}
 			onDoubleClick={handleDoubleClick}
 			onKeyDown={handleKeyDown}

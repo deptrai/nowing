@@ -448,7 +448,7 @@ class MicroExtractionWorker:
             return float(value) if value > 0 else None
 
         text = str(value).strip()
-        area, _, _ = _parse_area(text)
+        area, _ = _parse_area(text)
         if not area:
             area = text
 

@@ -89,8 +89,7 @@ class TelegramLeadAdapter(LeadSourceAdapter):
 
         primary_phone = phones[0] if phones else None
         primary_email = emails[0] if emails else None
-        city = data.get("city") or (locations[0] if locations else None)
-        address = data.get("address")
+        city = locations[0] if locations else None
 
         title = text[:100] if text else "Telegram Post"
 
@@ -118,7 +117,6 @@ class TelegramLeadAdapter(LeadSourceAdapter):
             primary_phone=primary_phone,
             primary_email=primary_email,
             city=city,
-            address=address,
             price=price_val,
             contact_candidates=contact_candidates,
             raw_data=raw_data,

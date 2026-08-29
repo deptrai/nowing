@@ -129,19 +129,7 @@
 		"copy": "Sao chép vào clipboard",
 		"no_api_key": "Không tìm thấy API key",
 		"usage_title": "Cách sử dụng",
-		"usage_description": "Đính kèm API key của bạn vào Authorization header:",
-		"password_nav_label": "Mật khẩu",
-		"password_title": "Mật khẩu",
-		"password_description": "Cập nhật mật khẩu tài khoản",
-		"current_password": "Mật khẩu hiện tại",
-		"new_password": "Mật khẩu mới",
-		"new_password_hint": "Ít nhất 8 ký tự",
-		"confirm_password": "Xác nhận mật khẩu mới",
-		"password_mismatch": "Mật khẩu không khớp",
-		"password_too_short": "Mật khẩu phải có ít nhất 8 ký tự",
-		"password_save": "Cập nhật mật khẩu",
-		"password_saved": "Cập nhật mật khẩu thành công",
-		"password_save_error": "Không thể cập nhật mật khẩu"
+		"usage_description": "Đính kèm API key của bạn vào Authorization header:"
 	},
 	"dashboard": {
 		"title": "Bảng điều khiển",

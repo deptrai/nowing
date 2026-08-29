@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ipaddress
 import logging
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
@@ -15,9 +16,9 @@ from app.auth.context import AuthContext
 from app.db import Lead, Permission, VerifiedContact, Workspace, get_async_session
 from app.rate_limiter import limiter
 from app.services import wallet_credit
+from app.services.billing_event_service import BillingEventService
 from app.services.contact_unlock_service import ContactUnlockService
 from app.services.lead_batch_service import LeadBatchService, LeadItemValidationError
-from app.services.pii.mask import mask_email, mask_name, mask_phone
 from app.services.pii.opt_out_service import OptOutService, OptOutValidationError
 from app.services.pii.verified_contact_encryption import VerifiedContactEncryption
 from app.users import get_auth_context
@@ -168,31 +169,16 @@ class PIIOptOutResponse(BaseModel):
     dnc_record_id: UUID
 
 
-class ContactUnlockRequest(BaseModel):
-    """Optional channel to unlock."""
-
-    channel: str | None = None
-
-
-class ContactRelockRequest(BaseModel):
-    """Optional channel to relock."""
-
-    channel: str | None = None
-
-
 class ContactUnlockResponse(BaseModel):
     """Contact unlock response."""
 
     contact_id: UUID
     is_unlocked: bool
     cost_micros: int
-    channel: str | None = None
-    unlocked_channels: list[str] = []
     name: str | None = None
     title: str | None = None
     email: str | None = None
     phone: str | None = None
-    external_chat_ids: dict[str, str] | None = None
 
 
 @router.post(
@@ -206,11 +192,10 @@ async def unlock_contact(
     workspace_id: int,
     lead_id: UUID,
     contact_id: UUID,
-    body: ContactUnlockRequest = Body(default_factory=ContactUnlockRequest),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
 ) -> ContactUnlockResponse:
-    """Unlock a verified contact or a single channel; bill 1500 micros per channel."""
+    """Unlock a verified contact, bill 1500 micros, and record an audit log."""
     await check_permission(
         session,
         auth,
@@ -250,7 +235,6 @@ async def unlock_contact(
         workspace_id=workspace_id,
         contact=contact,
         user_id=auth.user.id,
-        channel=body.channel,
         lead=lead,
         ip_address=_get_client_ip(request),
         reason="contact_unlock",
@@ -260,13 +244,10 @@ async def unlock_contact(
         contact_id=result.contact_id,
         is_unlocked=result.is_unlocked,
         cost_micros=result.cost_micros,
-        channel=result.channel,
-        unlocked_channels=result.unlocked_channels,
         name=result.name,
         title=result.title,
         email=result.email,
         phone=result.phone,
-        external_chat_ids=result.external_chat_ids,
     )
 
 
@@ -281,11 +262,10 @@ async def relock_contact(
     workspace_id: int,
     lead_id: UUID,
     contact_id: UUID,
-    body: ContactRelockRequest = Body(default_factory=ContactRelockRequest),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
 ) -> ContactUnlockResponse:
-    """Accidentally re-lock a contact/channel and refund the per-channel unlock."""
+    """Accidentally re-lock a contact and refund the 1.5 credit unlock (Story 26.5)."""
     await check_permission(
         session,
         auth,
@@ -311,19 +291,33 @@ async def relock_contact(
             detail="Contact not found",
         )
 
-    service = ContactUnlockService()
+    # ponytail: set is_unlocked and audit log before the billing service call so
+    # the single commit inside BillingEventService.record_contact_relock persists
+    # everything atomically. If the refund fails, the contact stays unlocked.
+    contact.is_unlocked = False
+    existing_logs = list(contact.pii_access_audit_logs or [])
+    contact.pii_access_audit_logs = [
+        *existing_logs,
+        {
+            "user_id": str(auth.user.id),
+            "workspace_id": workspace_id,
+            "lead_id": str(lead_id),
+            "contact_id": str(contact_id),
+            "access_type": "relock",
+            "timestamp": datetime.now(UTC).isoformat(),
+            "ip_address": _get_client_ip(request),
+            "reason": "accidental_unlock",
+        },
+    ]
+
     try:
-        result = await service.relock_contact(
-            session=session,
+        await BillingEventService().record_contact_relock(
+            session,
+            verified_contact_id=contact.id,
             workspace_id=workspace_id,
-            contact=contact,
             user_id=auth.user.id,
-            channel=body.channel,
-            ip_address=_get_client_ip(request),
-            reason="accidental_unlock",
+            cost_micros=1_500,
         )
-    except HTTPException:
-        raise
     except ValueError as exc:
         detail = str(exc)
         if "relock window expired" in detail:
@@ -336,14 +330,10 @@ async def relock_contact(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Không thể hoàn tác: đã hết hạn mức hoàn tiền tự động",
             ) from exc
-        if "refund already processed" in detail or "no unlock" in detail:
-            # Treat missing original event as 200 with no refund (idempotent).
-            pass
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to relock contact.",
-            ) from exc
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=detail,
+        ) from exc
     except Exception as exc:
         logger.exception("Failed to relock contact %s: %s", contact_id, exc)
         raise HTTPException(
@@ -351,7 +341,7 @@ async def relock_contact(
             detail="Failed to relock contact.",
         ) from exc
 
-    await session.commit()
+    from app.services.pii.mask import mask_email, mask_name, mask_phone
 
     enc = VerifiedContactEncryption()
 
@@ -365,17 +355,15 @@ async def relock_contact(
                 return None
         return value
 
+    await session.commit()
     return ContactUnlockResponse(
-        contact_id=result.contact_id,
-        is_unlocked=result.is_unlocked,
+        contact_id=contact.id,
+        is_unlocked=False,
         cost_micros=0,
-        channel=result.channel,
-        unlocked_channels=result.unlocked_channels,
         name=mask_name(_decrypt_field(contact.name)),
         title=mask_name(_decrypt_field(contact.title)),
         email=mask_email(_decrypt_field(contact.email)),
         phone=mask_phone(_decrypt_field(contact.phone)),
-        external_chat_ids=None,
     )
 
 

@@ -129,19 +129,7 @@
 		"copy": "Copy to clipboard",
 		"no_api_key": "No API key found",
 		"usage_title": "How to use",
-		"usage_description": "Include your API key in the Authorization header:",
-		"password_nav_label": "Password",
-		"password_title": "Password",
-		"password_description": "Update your account password",
-		"current_password": "Current password",
-		"new_password": "New password",
-		"new_password_hint": "Must be at least 8 characters",
-		"confirm_password": "Confirm new password",
-		"password_mismatch": "Passwords do not match",
-		"password_too_short": "Password must be at least 8 characters",
-		"password_save": "Update password",
-		"password_saved": "Password updated successfully",
-		"password_save_error": "Failed to update password"
+		"usage_description": "Include your API key in the Authorization header:"
 	},
 	"dashboard": {
 		"title": "Dashboard",

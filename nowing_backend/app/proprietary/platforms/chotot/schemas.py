@@ -92,7 +92,6 @@ class ChototScrapeInput(BaseModel):
     max_price: int | None = Field(default=None, ge=0)
     min_area: int | None = Field(default=None, ge=0)
     max_area: int | None = Field(default=None, ge=0)
-    resolve_phones: bool = False
 
     @model_validator(mode="after")
     def _price_bounds(self) -> ChototScrapeInput:

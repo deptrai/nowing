@@ -5307,9 +5307,6 @@ class VerifiedContact(Base, TimestampMixin):
     external_chat_ids = Column(
         JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
     )
-    unlocked_channels = Column(
-        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
-    )
     refunded_at = Column(TIMESTAMP(timezone=True), nullable=True)
     invalid_reason = Column(String(255), nullable=True)
 

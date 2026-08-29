@@ -2,15 +2,11 @@
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Request
 
 from app.auth.context import AuthContext
 from app.schemas import UserRead
-from app.schemas.users import (
-    ChangePasswordRequest,
-    UserNotificationPreferencesUpdate,
-    UserUpdate,
-)
+from app.schemas.users import UserNotificationPreferencesUpdate, UserUpdate
 from app.users import (
     UserManager,
     get_auth_context,
@@ -72,31 +68,4 @@ async def update_current_user_notification_preferences(
         safe=True,
         request=request,
     )
-    return updated_user
-
-
-@router.post("/me/change-password", response_model=UserRead)
-async def change_current_user_password(
-    body: ChangePasswordRequest,
-    request: Request,
-    auth: AuthContext = Depends(require_session_context),
-    user_manager: UserManager = Depends(get_user_manager),
-):
-    """Change the current user's password after verifying the current one."""
-    user = auth.user
-
-    if user.hashed_password:
-        is_valid, _ = user_manager.password_helper.verify_and_update(
-            body.current_password, user.hashed_password
-        )
-        if not is_valid:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="INVALID_CURRENT_PASSWORD",
-            )
-
-    await user_manager.validate_password(body.new_password, user)
-    hashed_password = user_manager.password_helper.hash(body.new_password)
-    updated_user = await user_manager._update(user, {"hashed_password": hashed_password})
-    await user_manager.on_after_update(updated_user, {"hashed_password": hashed_password}, request)
     return updated_user

@@ -129,19 +129,7 @@
 		"copy": "复制到剪贴板",
 		"no_api_key": "未找到API密钥",
 		"usage_title": "使用方法",
-		"usage_description": "在Authorization请求头中包含您的API密钥：",
-		"password_nav_label": "Password",
-		"password_title": "Password",
-		"password_description": "Update your account password",
-		"current_password": "Current password",
-		"new_password": "New password",
-		"new_password_hint": "Must be at least 8 characters",
-		"confirm_password": "Confirm new password",
-		"password_mismatch": "Passwords do not match",
-		"password_too_short": "Password must be at least 8 characters",
-		"password_save": "Update password",
-		"password_saved": "Password updated successfully",
-		"password_save_error": "Failed to update password"
+		"usage_description": "在Authorization请求头中包含您的API密钥："
 	},
 	"dashboard": {
 		"title": "仪表盘",

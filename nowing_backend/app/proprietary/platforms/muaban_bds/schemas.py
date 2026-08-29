@@ -23,7 +23,6 @@ class MuabanBdsScrapeInput(BaseModel):
     max_price: int | None = None
     min_area: int | None = None
     max_area: int | None = None
-    resolve_phones: bool = False
 
 
 class MuabanBdsListing(BaseModel):

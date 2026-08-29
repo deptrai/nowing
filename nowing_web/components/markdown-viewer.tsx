@@ -3,7 +3,7 @@ import { createMathPlugin } from "@streamdown/math";
 import { Streamdown, type StreamdownProps } from "streamdown";
 import "katex/dist/katex.min.css";
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { processChildrenWithCitations } from "@/components/citations/citation-renderer";
 import { type CitationUrlMap, preprocessCitationMarkdown } from "@/lib/citations/citation-parser";
 import { cn } from "@/lib/utils";
@@ -80,7 +80,7 @@ export function MarkdownViewer({
 	const isTruncated = maxLength != null && content.length > maxLength;
 	const displayContent = isTruncated ? content.slice(0, maxLength) : content;
 
-	const clearHighlight = useCallback(() => {
+	const clearHighlight = () => {
 		if (highlightTimeoutRef.current) {
 			clearTimeout(highlightTimeoutRef.current);
 			highlightTimeoutRef.current = null;
@@ -91,7 +91,7 @@ export function MarkdownViewer({
 		}
 		const selection = window.getSelection();
 		if (selection) selection.removeAllRanges();
-	}, []);
+	};
 
 	useEffect(() => {
 		const container = containerRef.current;
@@ -163,7 +163,7 @@ export function MarkdownViewer({
 		highlightTimeoutRef.current = setTimeout(() => {
 			clearHighlight();
 		}, 3000);
-	}, [highlightText, highlightPosition, totalChunks, clearHighlight]);
+	}, [highlightText, highlightPosition, totalChunks]);
 
 	// Rewrite citation URLs before markdown autolinking can split them.
 	const { processedContent, urlMap } = useMemo(() => {
