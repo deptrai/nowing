@@ -388,20 +388,30 @@ class MultiSourceLeadGenRequest(BaseModel):
     @classmethod
     def _normalize_intent(cls, v: Any) -> str:
         if v is None:
-            return BuyerIntent.BUY
+            return BuyerIntent.BUY.value
         s = str(v).strip().lower()
-        # Accept common Vietnamese / English synonyms
+        if not s:
+            return BuyerIntent.BUY.value
+        # Accept common Vietnamese / English synonyms & participles
         synonym_map: dict[str, str] = {
             "mua": "buy",
+            "buying": "buy",
             "bán": "sell",
             "bán hàng": "sell",
+            "selling": "sell",
             "tuyển dụng": "hire",
             "tuyển": "hire",
+            "hiring": "hire",
             "hợp tác": "partner",
+            "partnering": "partner",
             "đầu tư": "invest",
+            "investing": "invest",
             "thuê": "rent",
+            "cho thuê": "rent",
+            "renting": "rent",
             "nghiên cứu": "research",
             "tìm hiểu": "research",
+            "researching": "research",
         }
         mapped = synonym_map.get(s, s)
         allowed = {e.value for e in BuyerIntent}

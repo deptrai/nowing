@@ -118,13 +118,18 @@ export const QuickstartPlaybookBuilder: FC = () => {
 		if (!selectedPreset) return "";
 		const limit = smokeTest ? "5" : "20";
 		const sources = selectedPreset.defaultSources.join(", ");
-		const loc = location || "Việt Nam";
-		const query = `Tìm ${limit} leads ${product} tại ${loc} để ${intent} từ các nguồn ${sources}`;
+		const cleanProduct = product.trim() || selectedPreset.exampleProduct;
+		const cleanLoc = location.trim() || "Việt Nam";
+		const channelSuffix =
+			selectedChannels.length > 0 ? ` qua kênh ${selectedChannels.join(", ")}` : "";
+		const query = `Tìm ${limit} leads ${cleanProduct} tại ${cleanLoc} để ${intent} từ các nguồn ${sources}${channelSuffix}`;
 		return query;
 	};
 
 	const run = (smokeTest = false) => {
-		const targetWorkspace = workspaceId || "1";
+		const rawWorkspaceId = params?.workspace_id;
+		const workspaceId = Array.isArray(rawWorkspaceId) ? rawWorkspaceId[0] : rawWorkspaceId;
+		const targetWorkspace = workspaceId ? String(workspaceId) : "1";
 		const query = buildPrompt(smokeTest);
 		const q = encodeURIComponent(query);
 		resetWizard();
