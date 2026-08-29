@@ -35,22 +35,24 @@ interface AutomationModelFieldsProps {
 	value: AutomationModelSelection;
 	onChange: (patch: Partial<AutomationModelSelection>) => void;
 	workspaceId: number;
+	mode?: "automation" | "playbook";
 	errors?: Partial<Record<keyof AutomationModelSelection, string>>;
 }
 
 /**
  * Three eligible-only model pickers (Chat / Image / Vision) for the
- * automation builder + chat approval card. Options come from
- * {@link useAutomationEligibleModels} (premium globals + BYOK only); selection
+ * automation builder + chat approval card + playbook instantiate dialog.
+ * Options come from {@link useAutomationEligibleModels}; selection
  * is validated + snapshotted onto `definition.models` at create time.
  */
 export function AutomationModelFields({
 	value,
 	onChange,
 	workspaceId,
+	mode = "automation",
 	errors,
 }: AutomationModelFieldsProps) {
-	const { llm, image, vision, isLoading } = useAutomationEligibleModels();
+	const { llm, image, vision, isLoading } = useAutomationEligibleModels({ mode });
 	const rolesHref = `/dashboard/${workspaceId}/workspace-settings/models`;
 
 	return (
@@ -61,6 +63,7 @@ export function AutomationModelFields({
 				value={value.chatModelId}
 				isLoading={isLoading}
 				rolesHref={rolesHref}
+				mode={mode}
 				error={errors?.chatModelId}
 				onChange={(id) => onChange({ chatModelId: id })}
 			/>
@@ -70,6 +73,7 @@ export function AutomationModelFields({
 				value={value.imageConfigId}
 				isLoading={isLoading}
 				rolesHref={rolesHref}
+				mode={mode}
 				error={errors?.imageConfigId}
 				onChange={(id) => onChange({ imageConfigId: id })}
 			/>
@@ -79,6 +83,7 @@ export function AutomationModelFields({
 				value={value.visionConfigId}
 				isLoading={isLoading}
 				rolesHref={rolesHref}
+				mode={mode}
 				error={errors?.visionConfigId}
 				onChange={(id) => onChange({ visionConfigId: id })}
 			/>
@@ -92,6 +97,7 @@ interface ModelSelectFieldProps {
 	value: number;
 	isLoading: boolean;
 	rolesHref: string;
+	mode: "automation" | "playbook";
 	error?: string;
 	onChange: (id: number) => void;
 }
@@ -102,6 +108,7 @@ const ModelSelectField = memo(function ModelSelectField({
 	value,
 	isLoading,
 	rolesHref,
+	mode,
 	error,
 	onChange,
 }: ModelSelectFieldProps) {
@@ -122,19 +129,31 @@ const ModelSelectField = memo(function ModelSelectField({
 					<TriangleAlert aria-hidden />
 					<AlertTitle>No eligible models</AlertTitle>
 					<AlertDescription className="block leading-5">
-						Use a premium model or your own (BYOK) model in{" "}
-						<Link href={rolesHref} className="font-medium underline underline-offset-2">
-							role settings
-						</Link>
+						{mode === "playbook" ? (
+							<>
+								Configure models in{" "}
+								<Link href={rolesHref} className="font-medium underline underline-offset-2">
+									role settings
+								</Link>
+							</>
+						) : (
+							<>
+								Use a premium model or your own (BYOK) model in{" "}
+								<Link href={rolesHref} className="font-medium underline underline-offset-2">
+									role settings
+								</Link>
+							</>
+						)}
 					</AlertDescription>
 				</Alert>
 			</Field>
 		);
 	}
 
-	const premium = kind.options.filter((o) => !o.isBYOK);
+	const globals = kind.options.filter((o) => !o.isBYOK);
 	const byok = kind.options.filter((o) => o.isBYOK);
 	const selected = value ? kind.byId.get(value) : undefined;
+	const globalLabel = mode === "playbook" ? "Global" : "Premium";
 
 	return (
 		<Field label={label} htmlFor={triggerId} error={error}>
@@ -155,15 +174,21 @@ const ModelSelectField = memo(function ModelSelectField({
 					)}
 				</SelectTrigger>
 				<SelectContent matchTriggerWidth={false} className="w-auto min-w-80 max-w-[90vw]">
-					{premium.length > 0 ? (
+					{globals.length > 0 ? (
 						<SelectGroup>
-							<SelectLabel>Premium</SelectLabel>
-							{premium.map((option) => (
-								<ModelOption key={option.id} option={option} badge="Premium" />
-							))}
+							<SelectLabel>{globalLabel}</SelectLabel>
+							{globals.map((option) => {
+								const badge: "Premium" | "Free" =
+									mode === "playbook"
+										? option.tier === "premium"
+											? "Premium"
+											: "Free"
+										: "Premium";
+								return <ModelOption key={option.id} option={option} badge={badge} />;
+							})}
 						</SelectGroup>
 					) : null}
-					{premium.length > 0 && byok.length > 0 ? <SelectSeparator /> : null}
+					{globals.length > 0 && byok.length > 0 ? <SelectSeparator /> : null}
 					{byok.length > 0 ? (
 						<SelectGroup>
 							<SelectLabel>Your models</SelectLabel>
@@ -183,7 +208,7 @@ function ModelOption({
 	badge,
 }: {
 	option: EligibleModelOption;
-	badge: "Premium" | "BYOK";
+	badge: "Premium" | "Free" | "BYOK";
 }) {
 	return (
 		<SelectItem value={String(option.id)} description={option.modelName}>

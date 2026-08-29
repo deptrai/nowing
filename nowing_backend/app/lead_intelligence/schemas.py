@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from datetime import UTC, datetime
+from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
@@ -298,8 +299,35 @@ class ReverseIcpResponse(BaseModel):
     raw_metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class EnrichmentDepth(StrEnum):
+    """Depth of post-processing and enrichment applied to discovered leads."""
+
+    LIGHT = "light"
+    STANDARD = "standard"
+    DEEP = "deep"
+
+
+class BuyerIntent(StrEnum):
+    """High-level buying intent classification for the target audience."""
+
+    BUY = "buy"
+    SELL = "sell"
+    HIRE = "hire"
+    PARTNER = "partner"
+    INVEST = "invest"
+    RENT = "rent"
+    RESEARCH = "research"
+
+
 class MultiSourceLeadGenRequest(BaseModel):
-    """Payload for triggering unified multi-source lead generation (Story 21.15)."""
+    """Payload for triggering unified multi-source lead generation (Story 21.15).
+
+    P0 — Sales Copilot Loop: this schema doubles as the public surface for the
+    6-phase Sales Copilot (discovery → smoke test → plan approval → execute →
+    outreach → optimize).  Fields like ``smoke_test``, ``intent``,
+    ``target_sources`` and ``campaign_id`` let the agent build a campaign spec
+    without asking the user for repetition.
+    """
 
     query: str = Field(
         ..., min_length=1, description="Natural language search description"
@@ -313,6 +341,83 @@ class MultiSourceLeadGenRequest(BaseModel):
     limit: int = Field(
         default=50, ge=1, le=200, description="Maximum total leads to return"
     )
+
+    # --- Sales Copilot campaign context ------------------------------------
+    campaign_id: str | None = Field(
+        default=None, description="Optional campaign ID for tracking / resume"
+    )
+    smoke_test: bool = Field(
+        default=False,
+        description="If true, run a low-cost preview before committing credits",
+    )
+    target_sources: list[str] = Field(
+        default_factory=list,
+        description="Explicit source adapters to query (e.g. batdongsan, topcv, masothue, social). If empty, auto-resolve from intent.",
+    )
+    target_keywords: list[str] = Field(
+        default_factory=list,
+        description="Positive keyword filters used for scoring and adapter selection"
+    )
+    negative_keywords: list[str] = Field(
+        default_factory=list,
+        description="Negative keywords that should disqualify a lead"
+    )
+    min_fit_score: float = Field(
+        default=0.0, ge=0.0, le=100.0, description="Minimum ICP fit score (0-100)"
+    )
+    enrichment_depth: EnrichmentDepth = Field(
+        default=EnrichmentDepth.STANDARD,
+        description="How aggressively to enrich and verify contact/company data"
+    )
+    intent: BuyerIntent | str = Field(
+        default=BuyerIntent.BUY,
+        description="High-level intent: buy, sell, hire, partner, invest, rent, research"
+    )
+    product_type: str | None = Field(
+        default=None, description="Product or service being sold (e.g. SaaS, BĐS, recruitment)"
+    )
+    price_segment: str | None = Field(
+        default=None, description="Price or budget segment (e.g. premium, mid-market, SMB)"
+    )
+    preferred_channels: list[str] = Field(
+        default_factory=list,
+        description="Outbound channels the user wants (e.g. email, phone, zalo, linkedin, facebook)"
+    )
+
+    @field_validator("intent", mode="before")
+    @classmethod
+    def _normalize_intent(cls, v: Any) -> str:
+        if v is None:
+            return BuyerIntent.BUY.value
+        s = str(v).strip().lower()
+        if not s:
+            return BuyerIntent.BUY.value
+        # Accept common Vietnamese / English synonyms & participles
+        synonym_map: dict[str, str] = {
+            "mua": "buy",
+            "buying": "buy",
+            "bán": "sell",
+            "bán hàng": "sell",
+            "selling": "sell",
+            "tuyển dụng": "hire",
+            "tuyển": "hire",
+            "hiring": "hire",
+            "hợp tác": "partner",
+            "partnering": "partner",
+            "đầu tư": "invest",
+            "investing": "invest",
+            "thuê": "rent",
+            "cho thuê": "rent",
+            "renting": "rent",
+            "nghiên cứu": "research",
+            "tìm hiểu": "research",
+            "researching": "research",
+        }
+        mapped = synonym_map.get(s, s)
+        allowed = {e.value for e in BuyerIntent}
+        if mapped not in allowed:
+            raise ValueError(f"intent must be one of {sorted(allowed)}, got {v!r}")
+        return mapped
 
 
 class MultiSourceLeadGenResponse(BaseModel):

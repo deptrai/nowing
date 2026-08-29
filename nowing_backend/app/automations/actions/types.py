@@ -32,6 +32,9 @@ class ActionContext:
     # tests constructing ``ActionContext`` directly) get today's strict 1..5
     # ``continue_research`` behaviour rather than the legacy 1..100 path.
     schema_version: str = "1.1"
+    # Playbook-instantiated runs deliberately allow non-premium global models
+    # because the user explicitly picked a concrete model at instantiation time.
+    allow_global_model_selection: bool = False
 
 
 ActionHandler = Callable[[dict[str, Any]], Awaitable[Any]]

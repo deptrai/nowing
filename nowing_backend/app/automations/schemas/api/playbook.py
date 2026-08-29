@@ -7,7 +7,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from app.automations.schemas.definition import AutomationDefinition
+from app.automations.schemas.definition import AutomationDefinition, AutomationModels
 
 
 class PlaybookCreate(BaseModel):
@@ -35,7 +35,13 @@ class PlaybookUpdate(BaseModel):
 
 
 class PlaybookInstantiate(BaseModel):
-    """Create a new automation from a playbook with a set of inputs."""
+    """Create a new automation from a playbook with a set of inputs.
+
+    Clients may supply an explicit per-slot model selection to override the
+    target workspace's default role models. This is the only path that allows
+    non-premium global models (``allow_global_model_selection=True``), because
+    the user has deliberately picked a concrete model for this playbook run.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -43,6 +49,7 @@ class PlaybookInstantiate(BaseModel):
     inputs: dict[str, Any] = Field(default_factory=dict)
     name: str | None = Field(default=None, min_length=1, max_length=200)
     description: str | None = None
+    models: AutomationModels | None = None
 
 
 class PlaybookSummary(BaseModel):

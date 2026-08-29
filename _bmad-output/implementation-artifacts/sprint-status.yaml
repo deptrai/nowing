@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: "2026-08-28"  # Marked done: 28-5, 27-2; marked done epics: 7, 11, 12, 21, 24, 26, 27.
+last_updated: "2026-08-29"  # Remapped 26.25-26.29 (Customer Location Profile, Location-Aware Routing, PlanSummaryCard, Source Coverage Badge, Smoke Test Feedback Loop) from Epic 21 to Epic 26. 28-5, 27-2 done prior.
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # - Parsed epics.md: 24 epics, ~160 stories.
 # - Scanned _bmad-output/implementation-artifacts/ + stories/*.md for story files (frontmatter story_key/epic+story).
@@ -283,7 +283,8 @@ development_status:
 
   # === Epic 26: Autonomous Lead Missions & Deep Sales Research ===
   # 2026-08-17: Governed by Architecture Spine (AD-101 to AD-110). FastMCP, Stateless ChainLens Ingest, dsh-worker Sidecar, Hybrid Router.
-  epic-26: done
+  # 2026-08-29: Reopened to in-progress because FR-69.2-69.6 (Customer Location Profile & Pre-Flight Lead Plan) were remapped from Epic 21 to new stories 26.25-26.29.
+  epic-26: in-progress
   26-1: done  # FastMCP Ingest Gateway, Batch Ingestion & Stateless ChainLens Pipeline
   26-2: done  # dsh-worker Sidecar Container, Redis Streams & Task Resumption
   26-3: done  # Multi-Tier Hybrid LLM Router (Gemini Flash Free Tier + DeepSeek V4 + Qwen 3.8); unit tests pass
@@ -294,6 +295,12 @@ development_status:
   26-8: done  # LangGraph DSH Mission Executor & Feature Flag — spike complete, DSH_EXECUTOR_ENGINE flag added, unit/wiring + local Postgres/Redis smoke tests green, ruff clean
   26-9a: done  # Wide Research Crawl Subgraph: LangGraph crawl node dispatch to subgraph, calls chainlens.research with output=table + outputSchema (Direction A, unblocked by 26.8; AD-102, AD-106, AD-108, AD-112)
   26-9b: done  # Pro Excel Formatter in Daytona Sandbox (input from 26.9a checkpoint matrix; AD-112)
+  # 2026-08-29: Remapped from Epic 21.25-21.29 to Epic 26.25-26.29 per PRD/UX alignment (Customer Location Profile & Pre-Flight Lead Plan).
+  26-25: backlog  # Customer Location Profile Selector with Progressive Disclosure — UX spec exists; depends on LocationSelector, GSO/TCTK name trie, smart-search normalization
+  26-26: backlog  # Location-Aware Adapter Routing & Coverage Quality — depends on adapter `coverage_quality_by_location` registry, routing score, and 26-25 LocationProfile
+  26-27: backlog  # Pre-Flight Lead Plan Summary & PlanSummaryCard — depends on PlanSummaryCard in Right-Canvas, cost estimate, and 26-25/26-26
+  26-28: backlog  # Source Coverage Badge in Right-Canvas — depends on SourceStatusPanel with coverage quality badges and source toggles
+  26-29: backlog  # Smoke Test Feedback Loop for Location Refinement — depends on 5-lead preview orchestrator, location refinement, and 26-27 plan summary
   epic-26-retrospective: optional
 
   # === Epic 27: Full-Stack Web App Builder, Instant Hosting & Creative Studio ===
@@ -370,6 +377,7 @@ development_status:
   epic-15-retrospective: optional
 
   # === Epic 16: Company Directory (Vietnam) ===
+  # 2026-08-29: Epic cannot be marked done because 16-2/20.2/20.4 mutation gate P1 findings are not closed; it cannot be marked backlog because done stories are substantial. Retaining in-progress as an intentional blocked-by-external/epic state. Action: run mutation-gate retest on masothue when CI is available, or decide to drop/defer 16-2 to close Epic 16.
   epic-16: in-progress  # FR-51 [RE-SCOPED] in PRD 2026-08-24; feed/crawl partially done (16.1, 16.5), Nowing does not keep local company index.
   # 16-1 depends on 20.2 (NowingIngestService). Mutation-gate: FAIL (P1 240+ survived mutants).
   # Remains in progress until P1 findings closed and 20.2 stable.
@@ -380,6 +388,7 @@ development_status:
   epic-16-retrospective: optional
 
   # === Epic 17: E-commerce Intelligence (Vietnam) ===
+  # 2026-08-29: Kept in-progress to reflect active platform capability (Shopee done) while 17.1/17.5 are explicitly blocked-by-external (XActions Lazada/TikTok tools). No coding can occur until XActions ships tools; monitoring only.
   epic-17: in-progress  # FR-52 [RE-SCOPED] in PRD 2026-08-24; feed/crawl partially done (17.2), 17.1/17.5 blocked-by-external XActions. Nowing does not keep local product index.
   17-1: backlog  # blocked-by-external: XActions `x_lazada_search`/`x_lazada_product` MCP tool not available; implement LazadaLeadAdapter + normalization after XActions tool lands
   17-2: done  # Shopee Vietnam In-House Scraper & Price Normalization
@@ -399,6 +408,7 @@ development_status:
   epic-18-retrospective: optional
 
   # === Epic 28: Self-Host Trust, Data Portability & Cloud GA Legal Readiness (mới 2026-08-21 từ PRFAQ) ===
+  # 2026-08-29: Epic 28 is intentionally opened for GA readiness. 28-5 done provides the retention/cap foundation. 28-1/28-2/28-3 are legal/ops gated; 28-4 is self-host onboarding. Decision: keep in-progress and treat 28-1 as next story once legal export spec is available, or run create-story for 28-1 to start.
   epic-28: in-progress
   28-1: backlog  # Workspace Memory & Research Data Export
   28-2: backlog  # Encryption-at-Rest for Cloud Memory
@@ -410,6 +420,7 @@ development_status:
   # === Tech Debt (from code review deferred items) ===
   # ponytail: 2026-08-08 Winston backlog audit — 4 critical deferred items from code reviews that need dedicated stories.
   # Each is a real correctness/robustness issue, not a nice-to-have. See deferred-work.md for evidence.
+  # 2026-08-29: Tech-debt is in-progress because td-2 and td-8 were recently closed. Remaining td-1/3/4/6/7 are valid backlog. Recommendation: schedule td-1 (idempotency) as next because it prevents double-submit on automations; td-3/4 are medium-priority correctness; td-6/7 are test/diagnostic P2/P3.
   tech-debt: in-progress  # active items being resolved
   td-1: backlog  # Idempotency key for POST /automations/{id}/run (7-7 defer: double-submit, no dedup lock)
   td-2: done  # 2026-08-28: Redis event bus subscribe failure state leak fixed with mutex & automatic recovery handler; unit tests green

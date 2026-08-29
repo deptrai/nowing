@@ -160,6 +160,7 @@ async def run_agent_task(
             chat_model_id=ctx.chat_model_id,
             image_gen_model_id=ctx.image_gen_model_id,
             vision_model_id=ctx.vision_model_id,
+            allow_global_model_selection=ctx.allow_global_model_selection,
         )
 
         agent = await create_multi_agent_chat_deep_agent(

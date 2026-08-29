@@ -36,7 +36,7 @@ from app.automations.schemas.definition.plan_step import PlanStep
 from app.automations.services.automation import AutomationService
 from app.automations.services.model_policy import (
     AutomationModelPolicyError,
-    assert_automation_models_billable,
+    assert_models_billable,
 )
 from app.db import Permission, Workspace, get_async_session
 from app.users import get_auth_context
@@ -282,7 +282,7 @@ class PlaybookService:
         # Pin the instance to the playbook version it was created from.
         self._validate_inputs(playbook, payload.inputs)
 
-        workspace = await self._assert_models_billable(payload.workspace_id)
+        workspace = await self._get_workspace_or_raise(payload.workspace_id)
 
         try:
             definition = AutomationDefinition.model_validate(playbook.definition)
@@ -306,14 +306,28 @@ class PlaybookService:
                 meta_extra["derived_from_automation_id"] = definition.metadata.model_extra["derived_from_automation_id"]
             definition.metadata = Metadata.model_validate(meta_extra)
 
-        # Capture a billable model snapshot from the target workspace.
-        # Playbooks are workspace-agnostic templates; instances always inherit the
-        # target workspace's current billable model profile.
-        definition.models = AutomationModels(
-            chat_model_id=workspace.chat_model_id or 0,
-            image_gen_model_id=workspace.image_gen_model_id or 0,
-            vision_model_id=workspace.vision_model_id or 0,
-        )
+        # Capture a billable model snapshot. If the client explicitly selected
+        # models (playbook-instantiate dialog), validate with
+        # ``allow_global_model_selection=True`` so any known global model is
+        # accepted because the user deliberately picked it. Otherwise fall back
+        # to the target workspace's current billable model profile.
+        if payload.models is not None:
+            try:
+                assert_models_billable(
+                    chat_model_id=payload.models.chat_model_id,
+                    image_gen_model_id=payload.models.image_gen_model_id,
+                    vision_model_id=payload.models.vision_model_id,
+                    allow_global_model_selection=True,
+                )
+            except AutomationModelPolicyError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+            definition.models = payload.models
+        else:
+            definition.models = AutomationModels(
+                chat_model_id=workspace.chat_model_id or 0,
+                image_gen_model_id=workspace.image_gen_model_id or 0,
+                vision_model_id=workspace.vision_model_id or 0,
+            )
 
         triggers = self._build_triggers_from_definition(definition)
 
@@ -327,7 +341,10 @@ class PlaybookService:
 
         # Reuse the existing automation creation path so plan + trigger validation is identical.
         automation_service = AutomationService(session=self.session, auth=self.auth)
-        automation = await automation_service.create(create_payload)
+        automation = await automation_service.create(
+            create_payload,
+            allow_global_model_selection=payload.models is not None,
+        )
 
         # Apply lineage pinning after creation so the instance never silently drifts.
         automation.derived_from_playbook_id = playbook.id
@@ -461,16 +478,6 @@ class PlaybookService:
         workspace = await self.session.get(Workspace, workspace_id)
         if workspace is None:
             raise HTTPException(status_code=404, detail=f"workspace {workspace_id} not found")
-        return workspace
-
-    async def _assert_models_billable(self, workspace_id: int) -> Workspace:
-        workspace = await self.session.get(Workspace, workspace_id)
-        if workspace is None:
-            raise HTTPException(status_code=404, detail=f"workspace {workspace_id} not found")
-        try:
-            assert_automation_models_billable(workspace)
-        except AutomationModelPolicyError as exc:
-            raise HTTPException(status_code=422, detail=str(exc)) from exc
         return workspace
 
     async def _get_playbook_or_raise(self, playbook_id: int) -> Playbook:

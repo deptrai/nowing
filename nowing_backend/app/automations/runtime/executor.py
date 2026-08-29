@@ -198,6 +198,11 @@ def _build_action_ctx(
 ) -> ActionContext:
     automation = run.automation
     models = definition.models
+    # Playbook-instantiated automations may carry non-premium global model
+    # snapshots because the user explicitly selected them at instantiation time.
+    # Thread that permission through so the runtime backstop does not reject
+    # a captured model that was deliberately chosen.
+    allow_global = automation.derived_from_playbook_id is not None
     return ActionContext(
         session=session,
         run_id=run.id,
@@ -208,4 +213,5 @@ def _build_action_ctx(
         image_gen_model_id=models.image_gen_model_id if models else None,
         vision_model_id=models.vision_model_id if models else None,
         schema_version=definition.schema_version,
+        allow_global_model_selection=allow_global,
     )

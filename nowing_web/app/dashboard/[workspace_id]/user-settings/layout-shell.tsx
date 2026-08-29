@@ -10,6 +10,7 @@ import {
 	Palette,
 	ReceiptText,
 	ShieldCheck,
+	SquareTerminal,
 	WandSparkles,
 } from "lucide-react";
 import { useSelectedLayoutSegment } from "next/navigation";
@@ -29,7 +30,8 @@ export type UserSettingsTab =
 	| "purchases"
 	| "desktop"
 	| "hotkeys"
-	| "messaging-channels";
+	| "messaging-channels"
+	| "playground";
 
 const DEFAULT_TAB: UserSettingsTab = "profile";
 
@@ -109,6 +111,12 @@ export function UserSettingsLayoutShell({ workspaceId, children }: UserSettingsL
 						},
 					]
 				: []),
+			{
+				value: "playground" as const,
+				label: "API Playground",
+				href: `/dashboard/${workspaceId}/user-settings/playground`,
+				icon: <SquareTerminal className="h-4 w-4" aria-hidden="true" />,
+			},
 		],
 		[t, isDesktop, workspaceId]
 	);
