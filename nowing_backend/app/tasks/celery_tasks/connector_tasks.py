@@ -106,7 +106,7 @@ async def _index_notion_pages(
     end_date: str,
 ):
     """Index Notion pages with new session."""
-    from app.routes.search_source_connectors_routes import (
+    from app.routes.connectors.indexing import (
         run_notion_indexing,
     )
 
@@ -141,7 +141,7 @@ async def _index_github_repos(
     end_date: str,
 ):
     """Index GitHub repositories with new session."""
-    from app.routes.search_source_connectors_routes import (
+    from app.routes.connectors.indexing import (
         run_github_indexing,
     )
 
@@ -176,7 +176,7 @@ async def _index_confluence_pages(
     end_date: str,
 ):
     """Index Confluence pages with new session."""
-    from app.routes.search_source_connectors_routes import (
+    from app.routes.connectors.indexing import (
         run_confluence_indexing,
     )
 
@@ -215,7 +215,7 @@ async def _index_google_calendar_events(
     end_date: str,
 ):
     """Index Google Calendar events with new session."""
-    from app.routes.search_source_connectors_routes import (
+    from app.routes.connectors.indexing import (
         run_google_calendar_indexing,
     )
 
@@ -250,7 +250,7 @@ async def _index_google_gmail_messages(
     end_date: str,
 ):
     """Index Google Gmail messages with new session."""
-    from app.routes.search_source_connectors_routes import (
+    from app.routes.connectors.indexing import (
         run_google_gmail_indexing,
     )
 
@@ -286,7 +286,7 @@ async def _index_google_drive_files(
     items_dict: dict,  # Dictionary with 'folders', 'files', and 'indexing_options'
 ):
     """Index Google Drive folders and files with new session."""
-    from app.routes.search_source_connectors_routes import (
+    from app.routes.connectors.indexing import (
         run_google_drive_indexing,
     )
 
@@ -326,7 +326,7 @@ async def _index_onedrive_files(
     items_dict: dict,
 ):
     """Index OneDrive folders and files with new session."""
-    from app.routes.search_source_connectors_routes import (
+    from app.routes.connectors.indexing import (
         run_onedrive_indexing,
     )
 
@@ -366,7 +366,7 @@ async def _index_dropbox_files(
     items_dict: dict,
 ):
     """Index Dropbox folders and files with new session."""
-    from app.routes.search_source_connectors_routes import (
+    from app.routes.connectors.indexing import (
         run_dropbox_indexing,
     )
 
@@ -405,7 +405,7 @@ async def _index_elasticsearch_documents(
     end_date: str,
 ):
     """Index Elasticsearch documents with new session."""
-    from app.routes.search_source_connectors_routes import (
+    from app.routes.connectors.indexing import (
         run_elasticsearch_indexing,
     )
 
@@ -440,7 +440,7 @@ async def _index_bookstack_pages(
     end_date: str,
 ):
     """Index BookStack pages with new session."""
-    from app.routes.search_source_connectors_routes import (
+    from app.routes.connectors.indexing import (
         run_bookstack_indexing,
     )
 
@@ -476,7 +476,7 @@ async def _index_composio_connector(
 ):
     """Index Composio connector content with new session and real-time notifications."""
     # Import from routes to use the notification-wrapped version
-    from app.routes.search_source_connectors_routes import (
+    from app.routes.connectors.indexing import (
         run_composio_indexing,
     )
 

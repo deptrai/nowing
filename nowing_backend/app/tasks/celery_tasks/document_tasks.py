@@ -23,7 +23,7 @@ from app.tasks.document_processors import (
 logger = logging.getLogger(__name__)
 
 # ===== Redis heartbeat for document processing tasks =====
-# Same mechanism as connector indexing heartbeats (search_source_connectors_routes.py).
+# Same mechanism as connector indexing heartbeats (app/routes/connectors/_shared.py).
 # A background coroutine refreshes a Redis key every 60s with a 2-min TTL.
 # If the Celery worker crashes, the coroutine dies, the key expires, and the
 # stale_notification_cleanup_task detects the missing key and marks the

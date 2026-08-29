@@ -74,6 +74,7 @@ from .circleback_webhook_route import router as circleback_webhook_router
 from .clickup_add_connector_route import router as clickup_add_connector_router
 from .composio_routes import router as composio_router
 from .confluence_add_connector_route import router as confluence_add_connector_router
+from .connectors import router as search_source_connectors_router
 from .crm_oauth_routes import router as crm_oauth_router
 from .crm_routes import router as crm_router
 from .discord_add_connector_route import router as discord_add_connector_router
@@ -133,7 +134,6 @@ from .rbac_routes import router as rbac_router
 from .reports_routes import router as reports_router
 from .research_threads_routes import router as research_threads_router
 from .sandbox_routes import router as sandbox_router
-from .search_source_connectors_routes import router as search_source_connectors_router
 from .sequence_routes import router as sequence_router
 from .signals_routes import router as signals_router
 from .slack_add_connector_route import router as slack_add_connector_router
