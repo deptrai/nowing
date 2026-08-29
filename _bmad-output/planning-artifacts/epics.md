@@ -369,7 +369,7 @@ Public agent-chat endpoints, AgentConfig registry, client_id tenancy, cost trace
 `NowingIngestService` + `to_chunks()`, gap-fill caller, `NowingPrivateProvider`, service-to-service auth. **Open:** none.
 
 ### Epic 21: Lead Gen Intelligence — ✅ DONE *(umbrella)*
-Umbrella / tracking epic cho hệ sinh thái săn lead: Lead Capture & Enrichment (E23), Multi-Channel Outreach & CRM (E24), Platform Admin & Multi-Tenant (E25), Autonomous Lead Missions / DSH (E26), Growth & Affiliate (E29). Chi tiết triển khai đã chuyển sang các epic con. **FRs:** FR-63–69, FR-80–88, FR-91. **Dependencies:** E10, E12, E22. _Tách 2026-08-29: epic con E23–E26/E29 nhận stories từ Epic 21 nguyên bản. Customer Location Profile & Pre-Flight Lead Plan stories (21.25–21.29 từ main) đã remap E26.25–E26.29._
+Umbrella / tracking epic cho hệ sinh thái săn lead: Lead Capture & Enrichment (E23), Multi-Channel Outreach & CRM (E24), Platform Admin & Multi-Tenant (E25), Autonomous Lead Missions / DSH (E26), SaaS Operations & Admin Analytics (E29). Chi tiết triển khai đã chuyển sang các epic con. **FRs:** FR-63–69, FR-80–88, FR-91. **Dependencies:** E10, E12, E22. _Tách 2026-08-29: epic con E23–E26/E29 nhận stories từ Epic 21 nguyên bản. Customer Location Profile & Pre-Flight Lead Plan stories (21.25–21.29 từ main) đã remap E26.25–E26.29._
 
 ### Epic 22: Telegram Scraper & Channel Ingestion Engine — ⏳ READY-FOR-DEV
 Public channel web preview, MTProto Userbot session pool, distributed mutex lock, FloodWait cooldown state machine, regex entity extractor, S3 media chunk streaming, realtime stream daemon, Alert Engine trigger, AI Agent tools. **Stories:** 22.1–22.3. Governed by `architecture-telegram-scraper-2026-08-15`.
@@ -4332,50 +4332,50 @@ _FR-97 (retention/right-to-delete) · NFR-1b/1c/1d (memory bound) · AD-18 · AR
 
 ### Architectural Invariants (INV-29.1 – INV-29.4)
 
-- **INV-29.1 (Custom Role Boundary):** Vai trò custom trong workspace không thể vượt quyền của `Owner` (giá trị trần mặc định), không thể tự ý sửa/xóa `Owner`, không thể gán quyền `is_superuser` hay `billing_admin` cho bản thân khi không được phép.
-- **INV-29.2 (Bulk Operation Idempotency):** Mọi admin bulk op (xóa, cấp/quỷ quyền, gán tier) bắt buộc gửi kèm `Idempotency-Key` do client sinh ra; backend lưu kết quả 24h, từ chối thực thi lại khi key đã tồn tại trừ khi request body khớp byte-by-byte.
-- **INV-29.3 (Analyst Browser Isolation):** `MemoryBrowser` chỉ trả memory thuộc workspace mà analyst được gán; query bắt buộc áp dụng `workspace_id` RLS + row-level permission check trước khi lọc theo source/confidence/time.
-- **INV-29.4 (Subscription Tier Reversibility):** Thay đổi tier (upgrade/downgrade) được ghi nhận nhưng có hiệu lực tối đa 7 ngày sau (hoặc ngay nếu owner xác nhận); downgrade gây ảnh hưởng hạ tầng được cảnh báo, rollback trong 7 ngày không mất dữ liệu nếu quota mới vẫn chứa được.
+- **INV-29.1 (Custom Role Boundary):** Custom roles (`WorkspaceRole.is_system_role=False`) cannot grant permissions beyond the `Owner` system role ceiling. The maximum permission set for custom roles is defined as the union of all `WorkspaceRole.permissions` entries on the `Owner` system role. Custom roles cannot modify/delete system roles. `is_superuser` and platform-admin routes are not workspace-role-gated and are unreachable by custom roles (AD-9).
+- **INV-29.2 (Bulk Operation Idempotency):** Mọi admin bulk op (xóa, cấp/quỷ quyền, gán tier) bắt buộc gửi kèm `Idempotency-Key` do client sinh ra; backend lưu kết quả trong `idempotency_keys` table (key, request_hash, response, expires_at) với TTL 24h; từ chối thực thi lại khi key đã tồn tại trừ khi request body khớp SHA-256 hash. Cleanup qua periodic task mỗi 6h.
+- **INV-29.3 (Analyst Browser Isolation):** `MemoryBrowser` chỉ trả memory thuộc workspace mà user được gán qua `WorkspaceMembership`; query bắt buộc áp dụng `workspace_id` filter trong SQL WHERE clause (không chỉ RLS policy) + permission check (`memory_read` hoặc `analytics_read` trên `WorkspaceRole.permissions` của user) trước khi lọc theo source/confidence/time.
+- **INV-29.4 (Subscription Tier Reversibility):** Thay đổi tier (upgrade/downgrade) được ghi nhận nhưng có hiệu lực tối đa 7 ngày sau (hoặc ngay nếu owner xác nhận qua `immediate=true`); downgrade gây ảnh hưởng hạ tầng (memory count > new `max_memory_count`, members > new `max_members`) được cảnh báo với checklist, rollback trong 7 ngày không mất dữ liệu nếu quota mới vẫn chứa được.
 
 ### Story 29.1: Custom Workspace Roles & Permissions Builder `[backlog]`
 
 As a workspace Owner,
 I want to define custom roles (e.g. Analyst, Editor, Billing Viewer) with a fine-grained permissions matrix,
-So that I can delegate access without granting full admin or accidentally leaking sensitive operations.
+So that I can delegate access without granting full Owner or accidentally leaking sensitive operations.
 
 **Acceptance Criteria:**
 
-**Given** the Owner opens `/workspace-settings/roles`, **When** they click "New Role", **Then** they can name the role, choose a base template (`Viewer`, `Editor`, `Analyst`, `Billing`), and toggle individual permissions across categories: `memory_read`, `memory_write`, `memory_delete`, `source_configure`, `tool_enable`, `billing_read`, `billing_manage`, `member_invite`, `member_remove`, `analytics_read`, `settings_read`, `settings_write`.
+**Given** the Owner opens `/dashboard/[workspace_id]/settings/roles`, **When** they click "New Role", **Then** they can name the role, choose a base template (`Viewer`, `Editor`, `Analyst`, `Billing`, `Custom`), and toggle individual permissions from the allowed set on `WorkspaceRole.permissions` (ARRAY of enum strings). Permissions include `memory_read`, `memory_write`, `memory_delete`, `source_configure`, `tool_enable`, `billing_read`, `billing_manage`, `member_invite`, `member_remove`, `analytics_read`, `settings_read`, `settings_write`.
 
 **Given** a permission toggle that conflicts with the base template (e.g. `member_remove` on an Analyst template), **When** the Owner enables it, **Then** the UI shows a warning ("This exceeds the recommended template") but allows save if the Owner confirms.
 
-**Given** a custom role is saved, **When** the backend receives `POST /workspaces/{id}/roles`, **Then** it validates that no permission exceeds the `Owner` ceiling (INV-29.1), persists the role to `workspace_roles`, and immediately invalidates the workspace permission cache.
+**Given** a custom role is saved, **When** the backend receives `POST /workspaces/{workspace_id}/roles`, **Then** it validates that `WorkspaceRole.is_system_role=False`, that the chosen name is unique per workspace, that no permission exceeds the Owner ceiling (INV-29.1, AD-9, AD-51), persists the role, and invalidates the workspace permission cache.
 
-**Given** a user is assigned a custom role, **When** they call any API or load any UI, **Then** the permission resolver merges system roles, custom role, and workspace-scoped overrides; `403` is returned for any disallowed action without leaking the existence of unauthorized resources.
+**Given** a user is assigned a custom role via `WorkspaceMembership.role_id`, **When** they call any API or load any UI, **Then** the permission resolver reads the single `WorkspaceRole` record assigned to that membership, resolves `permissions` as a set, and returns `403` for disallowed actions without leaking unauthorized resources.
 
-**Given** migration 72 removed the `Admin` system role, **When** the role builder renders system roles, **Then** `Admin` is reserved and cannot be re-created as a custom role name; any legacy `Admin` assignment is mapped to the closest template (`Editor` + `billing_read`).
+**Given** migration 72 removed the `Admin` system role, **When** the role builder renders system roles, **Then** only `Owner`, `Editor`, `Viewer` are shown as system roles; `Admin` is a reserved name blocked at the DB unique constraint plus an API name-reservation check; any legacy `Admin` assignment in the UI is mapped to `Editor` + `billing_read` custom template.
 
-**And** the role builder supports clone, archive, and version history with `audit_events` per change.
+**And** the role builder supports clone, archive, and `audit_events` per change (AR-18 applies to 29.1 role changes).
 
-_FR-100 · AR-17 · UX-DR-PRFAQ-5 · NFR-2 · NFR-5 · INV-29.1 · AD-RBAC-1._
+_FR-100 · AR-17 · AR-18 · UX-DR-PRFAQ-5 · NFR-2 · NFR-5 · INV-29.1 · AD-9 · AD-51._
 
 ### Story 29.2: Workspace Health & Adoption Analytics Dashboard `[backlog]`
 
-As a workspace Owner or Admin,
+As a workspace Owner or delegated analyst,
 I want a SaaS-style health dashboard showing adoption, memory growth, query volume, credit burn, and source coverage,
 So that I can understand usage patterns, justify cost, and decide when to upgrade.
 
 **Acceptance Criteria:**
 
-**Given** the Owner opens `/dashboard/health`, **When** the page loads, **Then** it displays aggregate metrics: active members (daily/weekly), total memories, memory growth rate, `nowing_recall` / `nowing_remember` / `nowing_research` query volume, credits consumed, cost per turn, top sources, and source coverage gaps.
+**Given** the user opens `/dashboard/[workspace_id]/health`, **When** the page loads, **Then** it displays aggregate metrics: active members (daily/weekly), total memories, memory growth rate, `nowing_recall` / `nowing_remember` / `nowing_research` query volume, credits consumed, cost per turn, top sources, and source coverage gaps.
 
-**Given** the dashboard has a time-range selector (7d/30d/90d/custom), **When** the user changes range, **Then** all charts and tables refresh in < 500ms from pre-aggregated materialized views (`workspace_health_daily`).
+**Given** the dashboard has a time-range selector (7d/30d/90d/custom), **When** the user changes range, **Then** all charts and tables refresh in < 500ms from pre-aggregated table `workspace_health_daily` (materialized view or per-day roll-up table) keyed by `workspace_id` and `date`.
 
-**Given** the user clicks a metric (e.g. "Top source: Reddit"), **When** the drill-down opens, **Then** it shows the underlying memory count, query count, and cost attribution for that source within the selected period, filtered by workspace RLS.
+**Given** the user clicks a metric (e.g. "Top source: Reddit"), **When** the drill-down opens, **Then** it shows the underlying memory count, query count, and cost attribution for that source within the selected period, filtered by `workspace_id` in SQL WHERE and `memory_read` permission.
 
-**Given** the workspace approaches its plan quota (memory count, credits, storage bytes), **When** the threshold exceeds 80%, **Then** the dashboard surfaces an upgrade CTA with the estimated tier needed, without blocking current usage.
+**Given** the workspace approaches its plan quota (memory count, credits, storage bytes) defined by `WorkspaceLimit` rows for the workspace's `plan_tier`, **When** the threshold exceeds 80%, **Then** the dashboard surfaces an upgrade CTA with the estimated tier needed, without blocking current usage.
 
-**Given** the user has the `analytics_read` permission, **When** they access the dashboard, **Then** they see only data they are authorized to view; members with `memory_read` but not `analytics_read` see a reduced public snapshot.
+**Given** the user has the `analytics_read` permission on their `WorkspaceRole`, **When** they access the dashboard, **Then** they see the full dashboard; members with `memory_read` but not `analytics_read` see a reduced public snapshot.
 
 **And** the dashboard is instrumented with analytics events and can be exported to CSV/JSON.
 
@@ -4383,49 +4383,49 @@ _FR-101 · AR-17 · UX-DR-PRFAQ-5 · NFR-1 · NFR-5 · INV-29.3._
 
 ### Story 29.3: Tenant Subscription Tier & Quota Management `[backlog]`
 
-As a Superadmin,
+As a platform superuser (`User.is_superuser=True` gated by `require_superuser()`),
 I want to manage tenant workspaces by plan tier (Free / Team / Growth / Enterprise), trial status, quotas, and reversible upgrades/downgrades,
 So that Nowing can operate as a multi-tenant SaaS with predictable unit economics.
 
 **Acceptance Criteria:**
 
-**Given** the Superadmin opens `/admin/saas/plans`, **When** the page loads, **Then** it lists all plan definitions with limits: `max_members`, `max_memory_count`, `max_memory_bytes`, `max_monthly_credits`, `max_sources`, `support_level`, `price_vnd`, and enabled/disabled flags.
+**Given** the Superadmin opens `/admin/saas/plans`, **When** the page loads, **Then** it lists all `WorkspaceLimit` plan definitions with limits: `max_members`, `max_memory_count`, `max_memory_bytes`, `max_monthly_credits`, `max_sources`, `support_level`, `price_micros`, `currency` (default `USD` for consistency with AD-8), and enabled/disabled flags.
 
-**Given** a workspace is on the `Free` plan, **When** the Superadmin (or Owner via self-serve) upgrades to `Team`, **Then** the backend creates a `subscription_change` record, sets `effective_at` to now + 7 days by default (INV-29.4), and sends an email confirmation with quota delta and first charge.
+**Given** a workspace is on the `Free` plan, **When** the Superadmin (or Owner via self-serve) upgrades to `Team`, **Then** the backend creates a `subscription_change` record (`id`, `workspace_id`, `from_plan`, `to_plan`, `effective_at`, `status`, `initiated_by`, `payment_method_id`, `immediate`, `reversible_until`), sets `effective_at` to now + 7 days by default (INV-29.4), and queues an email confirmation with quota delta and first charge.
 
-**Given** the Owner requests an immediate downgrade from `Growth` to `Team`, **When** the current usage (memory count, members, credits) exceeds the new tier limits, **Then** the backend rejects with `409 conflict` and a checklist of what must be reduced; the change can be scheduled 7 days out with a remediation email.
+**Given** the Owner requests an immediate downgrade from `Growth` to `Team`, **When** the current usage (memory count, members, credits) exceeds the new tier limits, **Then** the backend rejects with `409 Conflict` and a checklist of what must be reduced; the change can be scheduled 7 days out with a remediation email.
 
-**Given** a subscription change is within the 7-day reversible window, **When** the Owner or Superadmin clicks "Undo tier change", **Then** the tier reverts, no data is lost, and the reversal is logged to `audit_events` with `diff_payload`.
+**Given** a subscription change is within the 7-day reversible window, **When** the Owner or Superadmin clicks "Undo tier change", **Then** the tier reverts, `Workspace.plan_tier` is restored, no data is lost, and the reversal is logged to `audit_events` with `diff_payload`.
 
 **Given** the trial period ends, **When** the cron job runs, **Then** it converts the workspace to `Free` if no payment method exists, suspends new writes if over `Free` quota, and notifies the Owner with a grace period of 72 hours.
 
 **Given** the Superadmin edits a plan definition, **When** the change affects active workspaces, **Then** it only applies to new workspaces or workspaces that explicitly re-select the plan; existing workspaces keep grandfathered limits with a visible "legacy plan" badge.
 
-**And** quota enforcement hooks into `MemoryRepository.create_memory`, member invite, and source enable; proration credits are calculated daily.
+**And** quota enforcement hooks into memory creation, member invite, and source enable; proration credits are calculated daily against `User.credit_micros_balance` / `Workspace.credit_micros_balance` (AD-8).
 
-_FR-102 · AR-17 · AR-18 · UX-DR-PRFAQ-5 · NFR-1 · NFR-5 · INV-29.2 · INV-29.4 · AD-BILLING-1._
+_FR-102 · AR-17 · AR-18 · UX-DR-PRFAQ-5 · NFR-1 · NFR-5 · INV-29.2 · INV-29.4 · AD-8 · AD-53._
 
 ### Story 29.4: Admin Bulk Operations Console `[backlog]`
 
-As a Superadmin or delegated Workspace Owner,
+As a platform superuser or delegated Workspace Owner,
 I want a bulk operations console to query, dry-run, and execute actions across workspaces or members,
 So that I can respond to abuse, compliance requests, and tenant-wide changes safely and auditably.
 
 **Acceptance Criteria:**
 
-**Given** the admin opens `/admin/saas/bulk-ops`, **When** they build a query (e.g. "workspaces on Free plan with > 1000 memories"), **Then** the backend validates the query against an allow-list of filterable fields and returns a paginated preview with exact row count.
+**Given** the admin opens `/admin/saas/bulk-ops`, **When** they build a filter, **Then** the UI uses a structured filter builder (not free-form NLP) against an allow-list of fields and operators, and the backend returns a paginated preview with exact `COUNT(*)` from the target table.
 
-**Given** the admin selects an action (e.g. `archive_inactive_workspaces`, `rotate_api_keys`, `assign_role`, `delete_source_type_memories`), **When** they click "Dry-run", **Then** the system simulates the action, lists affected subjects, estimates duration/credits, and reports conflicts without mutating data.
+**Given** the admin selects an action from `BulkAction` enum (`archive_inactive_workspaces`, `rotate_api_keys`, `assign_role`, `delete_source_type_memories`, `apply_tier`, `revoke_membership`), **When** they click "Dry-run", **Then** the system simulates the action, lists affected subjects, estimates affected row count, and reports conflicts without mutating data.
 
-**Given** the admin confirms a dry-run and provides an `Idempotency-Key`, **When** the backend executes, **Then** it schedules an async `bulk_op_job`, returns `202 Accepted` with `job_id`, and enforces INV-29.2 by rejecting duplicate keys with identical effect.
+**Given** the admin confirms a dry-run and provides an `Idempotency-Key` header, **When** the backend executes, **Then** it schedules an async `bulk_op_job` (fields: `id`, `actor_id`, `action`, `filter`, `status`, `affected_count`, `processed_count`, `error_count`, `started_at`, `finished_at`, `idempotency_key`), returns `202 Accepted` with `job_id`, and enforces INV-29.2 by rejecting duplicate keys unless request SHA-256 hash matches.
 
-**Given** a bulk op is running, **When** the admin polls `GET /admin/saas/bulk-ops/{job_id}`, **Then** they see progress %, processed count, failed rows, and a cancel button if the job supports cancellation.
+**Given** a bulk op is running, **When** the admin polls `GET /admin/saas/bulk-ops/{job_id}`, **Then** they see progress percent, processed count, failed rows, and a cancel button if the action is in the cancelable set.
 
-**Given** any bulk op completes or fails, **When** the job finishes, **Then** it writes one `audit_events` row per affected subject (`actor_id`, `subject_type`, `subject_id`, `diff_payload`, `idempotency_key`) and a summary row; failed rows are written to `bulk_op_errors` for retry.
+**Given** any bulk op completes or fails, **When** the job finishes, **Then** it writes one `audit_events` row per affected subject (`actor_id`, `subject_type`, `subject_id`, `diff_payload`, `idempotency_key`) and a summary row; failed rows are written to `bulk_op_errors` (`job_id`, `subject_type`, `subject_id`, `error_message`, `retryable`) for retry.
 
-**And** only Superadmin can execute cross-workspace actions; Workspace Owner can only execute within their own workspace and must hold `settings_write` + `member_remove`.
+**And** only Superadmin can execute cross-workspace actions; Workspace Owner can only execute within their own workspace and must hold `settings_write` + `member_remove`. `rotate_api_keys` is marked high-risk and requires explicit password / MFA confirmation.
 
-_FR-103 · AR-17 · AR-18 · UX-DR-PRFAQ-5 · NFR-2 · NFR-5 · INV-29.1 · INV-29.2 · AD-AUDIT-1._
+_FR-103 · AR-17 · AR-18 · UX-DR-PRFAQ-5 · NFR-2 · NFR-5 · INV-29.1 · INV-29.2 · AD-9 · AD-54._
 
 ### Story 29.5: Memory Browser & Research Timeline for Analyst `[backlog]`
 
@@ -4435,43 +4435,43 @@ So that I can verify facts, trace research lineage, and flag outdated or low-con
 
 **Acceptance Criteria:**
 
-**Given** the Analyst opens `/workspace/memory-browser`, **When** the page loads, **Then** it shows a paginated, sortable list of `Memory` rows scoped to the workspace, with columns: content snippet, source type, source URL, confidence, created at, updated at, created by, version count, and flag status.
+**Given** the Analyst opens `/dashboard/[workspace_id]/memory-browser`, **When** the page loads, **Then** it shows a paginated, sortable list of `Memory` rows scoped to the workspace, with columns: content snippet, source type, source URL, confidence, created at, updated at, created by, version count, and flag status.
 
-**Given** the Analyst uses the filter bar, **When** they select source type, confidence range, time range, creator, or search by keyword, **Then** the backend applies `workspace_id` RLS first (INV-29.3), then filters, and returns results in < 300ms for workspaces up to 100,000 memories.
+**Given** the Analyst uses the filter bar, **When** they select source type, confidence range, time range, creator, or search by keyword, **Then** the backend applies `workspace_id` filter in SQL WHERE (INV-29.3), plus indexes on `(workspace_id, source_type, confidence)`, `(workspace_id, created_at DESC)`, and `(workspace_id, user_id)` to return results in < 300ms for workspaces up to 100,000 memories.
 
-**Given** the Analyst clicks a memory row, **When** the detail panel opens, **Then** it shows: full content, all source citations with click-to-source, version history (who changed what, when), linked research threads, and a "Flag for review" action.
+**Given** the Analyst clicks a memory row, **When** the detail panel opens, **Then** it shows: full content, all source citations with click-to-source, version history (who changed what, when via `MemoryVersion`), linked research threads (via `Memory.research_thread_id` per AD-11), and a "Flag for review" action.
 
-**Given** the Analyst flags a memory as outdated or incorrect, **When** they submit a note, **Then** the system creates a `memory_review_queue` entry with `flag_reason`, notifies the Owner/Editor, and does not auto-delete or auto-rewrite the memory.
+**Given** the Analyst flags a memory as outdated or incorrect, **When** they submit a note, **Then** the system creates a `memory_review_queue` entry (`id`, `memory_id`, `flag_reason`, `flagged_by`, `status`, `created_at`) with status `open`, notifies Owner/Editor, and does not auto-delete or auto-rewrite the memory. v1 phạm vi chỉ flag + notify, không có approval-edit workflow.
 
-**Given** the Analyst has only `memory_read` permission, **When** they try to flag or edit, **Then** the UI hides the actions and the backend rejects with `403`; with `memory_write` they can propose an edit that goes through approval workflow.
+**Given** the Analyst has only `memory_read` permission, **When** they try to flag or edit, **Then** the UI hides the actions and the backend rejects with `403`; `memory_write` or `memory_delete` are required for destructive actions.
 
-**Given** the Analyst toggles "Research timeline" view, **When** the view switches, **Then** memories are grouped by research thread, ordered chronologically, with branch/merge markers when a memory appears in multiple threads.
+**Given** the Analyst toggles "Research timeline" view, **When** the view switches, **Then** memories are grouped by `ResearchThread` via `research_thread_id` (AD-11), ordered chronologically, with branch/merge markers when a memory appears in multiple `MemoryRelation` rows.
 
 **And** the browser is reachable from the analyst workspace dashboard and is keyboard-navigable / screen-reader friendly.
 
-_FR-104 · AR-17 · UX-DR-PRFAQ-1 · UX-DR-PRFAQ-6 · NFR-1 · NFR-2 · NFR-5 · INV-29.3 · AD-MEMORY-1._
+_FR-104 · AR-17 · UX-DR-PRFAQ-1 · UX-DR-PRFAQ-6 · NFR-1 · NFR-2 · NFR-5 · INV-29.3 · AD-11 · AD-55._
 
 ### Story 29.6: Data Governance & Retention Policy Console `[backlog]`
 
-As a workspace Owner or Superadmin,
+As a workspace Owner or platform superuser,
 I want a governance console to define retention policy, source risk tiers, DNC list, and right-to-delete flows,
 So that Nowing cloud stays compliant with scraped-source ToS and data-subject requests.
 
 **Acceptance Criteria:**
 
-**Given** the Owner opens `/workspace/governance`, **When** the page loads, **Then** it shows the active retention policy (`memory_retention_days`, `memory_auto_archive_enabled`, `memory_retention_action`), source risk tier mapping, DNC list entries, and a "Right-to-delete" request queue.
+**Given** the Owner opens `/dashboard/[workspace_id]/governance`, **When** the page loads, **Then** it shows the active retention policy (`memory_retention_days`, `memory_auto_archive_enabled`, `memory_retention_action`), source risk tier mapping, DNC list entries (workspace `WorkspaceDncRecord`), and a "Right-to-delete" request queue.
 
-**Given** the Owner edits the retention policy, **When** they save, **Then** the backend validates the window against source risk tiers (shortest required window wins), schedules the lifecycle job, and logs the change to `audit_events`.
+**Given** the Owner edits the retention policy, **When** they save, **Then** the backend validates the window against source risk tiers (shortest required window wins), schedules the lifecycle job, and logs the change to `audit_events`. Story 28.3 vẫn là nơi định nghĩa policy mặc định; Story 29.6 chỉ cung cấp UI console.
 
 **Given** a source risk tier is changed from `low` to `high`, **When** the change is saved, **Then** the system pauses all active scrapes for that source type across the workspace and shows a warning requiring explicit opt-in before resuming.
 
-**Given** the Owner receives a right-to-delete request, **When** they approve it, **Then** the system runs a dry-run listing affected `Memory` rows, versions, relations, and embeddings, and only purges after explicit confirmation; bulk deletion > 100,000 rows is chunked into 1,000-row batches with progress and cancel-ability.
+**Given** the Owner receives a right-to-delete request, **When** they approve it, **Then** the system runs a dry-run listing affected `Memory` rows, versions, and relations, and only purges after explicit confirmation; bulk deletion > 100,000 rows is chunked into 1,000-row batches with progress and cancel-ability.
 
-**Given** a DNC phone/email/tax code is added, **When** the entry is saved, **Then** it propagates to the workspace blacklist within < 1s, suppresses future scraping/messaging for that value, and writes an `audit_events` entry.
+**Given** a DNC phone/email/tax code is added to workspace DNC, **When** the entry is saved, **Then** it propagates to the workspace blacklist within < 1s, suppresses future scraping/messaging for that value, and writes an `audit_events` entry. Global DNC (Epic 25.6, `WorkspaceDncRecord` or global list) is configurable tùy deploy mode.
 
 **Given** self-host vs cloud deployment, **When** the policy is published, **Then** it clearly states that self-host users retain responsibility for source compliance, while cloud Nowing acts as a processor with documented retention windows (tái khẳng định Story 28.3).
 
-**And** all bulk lifecycle actions are idempotent, auditable (AR-18), and reversible within 7 days for archived rows.
+**And** archived rows (via `archived_at` per AD-28.3) are reversible (unarchive) within 7 days; right-to-delete after hard delete is not reversible. Bulk lifecycle actions are idempotent (INV-29.2) and auditable (AR-18).
 
 _FR-97 · FR-104 · AR-13 · AR-17 · AR-18 · UX-DR-PRFAQ-5 · UX-DR-PRFAQ-6 · NFR-1 · NFR-2 · NFR-5 · INV-28.2 · INV-29.2 · AD-28.3._
 
@@ -4479,14 +4479,14 @@ _FR-97 · FR-104 · AR-13 · AR-17 · AR-18 · UX-DR-PRFAQ-5 · UX-DR-PRFAQ-6 ·
 
 | Requirement | Story | Notes |
 |---|---|---|
-| **FR-100** Custom workspace roles & permissions builder | **29.1** | Permission matrix, custom CRUD, Owner ceiling, `Admin` name reservation. |
-| **FR-101** Workspace health & adoption analytics dashboard | **29.2** | Health metrics, drill-down, quota CTA, export. |
-| **FR-102** Tenant subscription tier & quota management | **29.3** | Plan directory, trial, upgrade/downgrade, 7-day reversal, proration. |
-| **FR-103** Admin bulk operations console | **29.4** | Query builder, dry-run, Idempotency-Key, async job, per-subject audit. |
-| **FR-104** Memory browser & research timeline for analyst | **29.5** | Paginated memory list, filter, click-to-source, flag, version/timeline. |
+| **FR-100** Custom workspace roles & permissions builder | **29.1** | Permission matrix, custom CRUD, Owner ceiling, `Admin` name reservation, `WorkspaceRole.is_system_role` guard (AD-9, AD-51). |
+| **FR-101** Workspace health & adoption analytics dashboard | **29.2** | Health metrics, drill-down, quota CTA, export, `workspace_health_daily` pre-aggregation. |
+| **FR-102** Tenant subscription tier & quota management | **29.3** | `WorkspaceLimit` plan directory, `subscription_change` table, trial, upgrade/downgrade, 7-day reversal, `price_micros` currency (AD-8, AD-53). |
+| **FR-103** Admin bulk operations console | **29.4** | Structured filter builder, `BulkAction` enum, `bulk_op_job`/`bulk_op_errors`, `Idempotency-Key`, per-subject `audit_events` (AD-54). |
+| **FR-104** Memory browser & research timeline for analyst | **29.5** | Paginated memory list, index-backed filters, `MemoryVersion`, `ResearchThread` grouping, `memory_review_queue` (AD-11, AD-55). |
 | **AR-17** SaaS admin operations console | **29.1–29.6** | Custom roles, health dashboard, tier, bulk ops, memory browser, governance. |
-| **AR-18** Auditability & traceability admin bulk op | **29.3–29.6** | `audit_events` cho tier change, bulk op, retention, DNC, right-to-delete. |
-| **UX-DR-PRFAQ-5** SaaS admin operations console | **29.1–29.4** | `/admin/saas` role/tier/quota/health/bulk console. |
+| **AR-18** Auditability & traceability admin bulk op | **29.1, 29.3–29.6** | `audit_events` cho custom role changes, tier change, bulk op, retention, DNC, right-to-delete. |
+| **UX-DR-PRFAQ-5** SaaS admin operations console | **29.1–29.4, 29.6** | `/admin/saas` and `/dashboard/[workspace_id]` role/tier/quota/health/bulk/governance console. |
 | **UX-DR-PRFAQ-6** Analyst memory browser / research timeline | **29.5** | UI filter memory theo thread/source/confidence/time, click-to-source, flag. |
 
 **Story count:** 29.1–29.6 (6 stories) · **Status:** all `[backlog]` · **Dependencies:** Epic 1, Epic 3, Epic 8, Epic 25, Epic 28.
