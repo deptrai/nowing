@@ -5,7 +5,6 @@ import {
 	Keyboard,
 	KeyRound,
 	Library,
-	Lock,
 	MessageCircle,
 	Monitor,
 	Palette,
@@ -30,8 +29,7 @@ export type UserSettingsTab =
 	| "purchases"
 	| "desktop"
 	| "hotkeys"
-	| "messaging-channels"
-	| "password";
+	| "messaging-channels";
 
 const DEFAULT_TAB: UserSettingsTab = "profile";
 
@@ -94,12 +92,6 @@ export function UserSettingsLayoutShell({ workspaceId, children }: UserSettingsL
 				label: "Purchase History",
 				href: `/dashboard/${workspaceId}/user-settings/purchases`,
 				icon: <ReceiptText className="h-4 w-4" aria-hidden="true" />,
-			},
-			{
-				value: "password" as const,
-				label: t("password_nav_label"),
-				href: `/dashboard/${workspaceId}/user-settings/password`,
-				icon: <Lock className="h-4 w-4" aria-hidden="true" />,
 			},
 			...(isDesktop
 				? [

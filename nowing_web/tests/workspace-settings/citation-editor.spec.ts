@@ -67,9 +67,9 @@ test.describe("Citation scroll-to-highlight in editor", () => {
 	async function openCitationAndEditor(
 		page: import("@playwright/test").Page,
 		request: Parameters<typeof createThread>[0],
-		_documentId: number,
+		documentId: number,
 		chunkId: number,
-		_chunkContent: string,
+		chunkContent: string,
 		documentTitle: string
 	) {
 		const thread = await createThread(request, ownerToken, workspaceId);
