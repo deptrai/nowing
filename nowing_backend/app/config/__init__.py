@@ -26,6 +26,8 @@ from app.config._helpers import (  # noqa: E402
     initialize_llm_router,
     initialize_openrouter_integration,
     initialize_pricing_registration,
+    load_global_llm_configs,
+    load_openrouter_integration_settings,
     materialize_global_configs,
     refresh_global_model_catalog,
 )
@@ -121,6 +123,8 @@ __all__ = [
     "initialize_llm_router",
     "initialize_openrouter_integration",
     "initialize_pricing_registration",
+    "load_global_llm_configs",
+    "load_openrouter_integration_settings",
     "materialize_global_configs",
     "refresh_global_model_catalog",
 ]

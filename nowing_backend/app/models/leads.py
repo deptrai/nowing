@@ -1865,3 +1865,7 @@ class SequenceEvent(Base):
     sequence = relationship(
         "Sequence", back_populates="events", overlaps="enrollment,events"
     )
+
+
+# Backwards-compatible alias for legacy naming (db.py).
+OutboundMessage = ZaloMessageLog

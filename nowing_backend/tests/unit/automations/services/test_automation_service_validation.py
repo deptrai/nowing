@@ -225,6 +225,7 @@ async def test_update_normalizes_schema_version_to_current(
         workspace_id=1,
         definition={"name": "A", "plan": [], "schema_version": "1.0"},
         version=3,
+        derived_from_playbook_id=None,
     )
 
     async def _noop_authorize(self, *_a, **_k):

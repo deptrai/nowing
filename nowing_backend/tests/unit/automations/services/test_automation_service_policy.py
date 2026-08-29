@@ -197,7 +197,7 @@ async def test_create_honors_selected_models_when_provided(
     )
     validated: dict[str, Any] = {}
 
-    def _assert_ok(*, chat_model_id, image_gen_model_id, vision_model_id):
+    def _assert_ok(*, chat_model_id, image_gen_model_id, vision_model_id, allow_global_model_selection=False):
         validated["ids"] = (
             chat_model_id,
             image_gen_model_id,
@@ -243,7 +243,7 @@ async def test_create_rejects_unbillable_selected_models(
 ) -> None:
     """A non-billable explicit selection maps the policy error to HTTP 422."""
 
-    def _raise(*, chat_model_id, image_gen_model_id, vision_model_id):
+    def _raise(*, chat_model_id, image_gen_model_id, vision_model_id, allow_global_model_selection=False):
         raise AutomationModelPolicyError(
             [{"kind": "llm", "model_id": -3, "reason": "free model"}]
         )
@@ -287,6 +287,7 @@ async def test_update_preserves_captured_models(
         workspace_id=1,
         definition={"name": "A", "plan": [], "models": captured},
         version=3,
+        derived_from_playbook_id=None,
     )
 
     async def _noop_authorize(self, *_a, **_k):
@@ -326,10 +327,11 @@ async def test_update_honors_changed_models_when_valid(
             },
         },
         version=3,
+        derived_from_playbook_id=None,
     )
     validated: dict[str, Any] = {}
 
-    def _assert_ok(*, chat_model_id, image_gen_model_id, vision_model_id):
+    def _assert_ok(*, chat_model_id, image_gen_model_id, vision_model_id, allow_global_model_selection=False):
         validated["ids"] = (
             chat_model_id,
             image_gen_model_id,
@@ -387,9 +389,10 @@ async def test_update_rejects_changed_unbillable_models(
             },
         },
         version=3,
+        derived_from_playbook_id=None,
     )
 
-    def _raise(*, chat_model_id, image_gen_model_id, vision_model_id):
+    def _raise(*, chat_model_id, image_gen_model_id, vision_model_id, allow_global_model_selection=False):
         raise AutomationModelPolicyError(
             [{"kind": "llm", "model_id": -7, "reason": "free model"}]
         )
@@ -441,9 +444,10 @@ async def test_update_keeps_unchanged_models_without_revalidation(
         workspace_id=1,
         definition={"name": "A", "plan": [], "models": captured},
         version=3,
+        derived_from_playbook_id=None,
     )
 
-    def _fail(*_a, **_k):
+    def _fail(*, chat_model_id, image_gen_model_id, vision_model_id, allow_global_model_selection=False, **_k):
         raise AssertionError("unchanged models must not be re-validated")
 
     monkeypatch.setattr(automation_mod, "assert_models_billable", _fail)
