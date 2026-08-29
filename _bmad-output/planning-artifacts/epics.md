@@ -265,7 +265,7 @@ Các story có UI vẫn cần UX spec riêng trước khi build UI chi tiết. U
 - **SM-12 HR pilot metrics** → **E12 P0** (workspace active, aggregate queries, listings indexed, dedupe, confidence, PII coverage).
 - **AR-11 HR anti-bot validation** → **E12.2 P0** (TopCV Cloudflare bypass/residential proxy feasibility).
 - **Mới 2026-08-10 (Market Research → Lead Intelligence) — đã hoàn thành 2026-08-16:** FR-63 (Intent Signals) → **E26.1** `[DONE]` · FR-64 (Lead Scoring) → **E26.2** `[DONE]` · FR-65 (Contact Enrichment / Phone Waterfall) → **E23.2** `[DONE]` · FR-66 (Outbound Automation) → **E23.3** `[DONE]` · FR-67 (CRM Integration) → **E24.3** `[DONE]` · FR-68 (Zalo Integration) → **E24.7** `[backlog]` · FR-69 (Outcome Pricing) → **E23.4** `[DONE]` · FR-80 (Reverse-ICP) → **E26.x** `[DONE]` · FR-81/82/83 (Actionable dispatches / Viral copilot / Social) → **E24.6 / E23.x** · FR-84 (DNC) → **E25.x** · FR-85 (Lead Orchestration) → **E26.x** `[ready-for-dev]` · FR-86 (Split Canvas) → **E25 / E27** · FR-87 (Landing page) → **E25 / E27** · FR-88 (Affiliate) → **E25.x** · FR-91 (VietQR) → **E25.x`. **Epic 21 là umbrella tracking; Epic con E23–E26/E25 nhận việc.**
-- **Mới 2026-08-29 (Customer Location Profile & Pre-Flight Lead Plan):** FR-69.2 (Location Profile) → **E26.25** `[ready-for-dev]` · FR-69.3 (Location-Aware Adapter Routing) → **E26.26** `[ready-for-dev]` · FR-69.4 (Pre-Flight Plan Summary) → **E26.27** `[ready-for-dev]` · FR-69.5 (Source Coverage in Right-Canvas) → **E26.28** `[ready-for-dev]` · FR-69.6 (Smoke Test Feedback Loop) → **E26.29** `[ready-for-dev]`. *(Tạm map theo umbrella E26; điều chỉnh khi sprint planning xác nhận epic con.)*
+- **Mới 2026-08-29 (Customer Location Profile & Pre-Flight Lead Plan):** FR-69.2 (Location Profile) → **E26.25** `[ready-for-dev]` · FR-69.3 (Location-Aware Adapter Routing) → **E26.26** `[ready-for-dev]` · FR-69.4 (Pre-Flight Plan Summary) → **E26.27** `[ready-for-dev]` · FR-69.5 (Source Coverage in Right-Canvas) → **E26.28** `[ready-for-dev]` · FR-69.6 (Smoke Test Feedback Loop) → **E26.29** `[ready-for-dev]`. **Đã remap từ Story 21.25–21.29 sang E26.25–E26.29 (Autonomous Lead Missions)._
 
 ## Epic List
 
@@ -3227,7 +3227,7 @@ _FR-85 · AD-103 · AD-119 (Rules 1-3, 6) · Decree 13/2023 Compliance_
 
 ---
 
-### Story 21.25: Customer Location Profile Selector with Progressive Disclosure `[ready-for-dev]`
+### Story 26.25: Customer Location Profile Selector with Progressive Disclosure `[ready-for-dev]`
 
 As a sales rep or broker in Vietnam,
 I want to specify where my target customers live, work, and transact using a structured province/district/ward selector that starts simple and expands only when I need more detail,
@@ -3246,7 +3246,7 @@ _FR-69.2 · FR-85 · AD-31 · UX-Origami-Split-Canvas_
 
 ---
 
-### Story 21.26: Location-Aware Adapter Routing & Coverage Quality `[ready-for-dev]`
+### Story 26.26: Location-Aware Adapter Routing & Coverage Quality `[ready-for-dev]`
 
 As a lead generation orchestrator,
 I want the system to prefer and rank adapters that actually cover the selected provinces, districts, and wards,
@@ -3265,7 +3265,7 @@ _FR-69.2 · FR-69.3 · FR-85 · AD-31 · AD-42 · NFR-1_
 
 ---
 
-### Story 21.27: Pre-Flight Lead Plan Summary & PlanSummaryCard `[ready-for-dev]`
+### Story 26.27: Pre-Flight Lead Plan Summary & PlanSummaryCard `[ready-for-dev]`
 
 As a sales rep,
 I want to review a concise plan summary (sources, locations, intent, product, channels, estimated lead count, estimated cost) before the system starts scraping,
@@ -3283,7 +3283,7 @@ _FR-69.4 · FR-85 · FR-86 · AD-31 · UX-Origami-Split-Canvas_
 
 ---
 
-### Story 21.28: Source Coverage Badge in Right-Canvas `[ready-for-dev]`
+### Story 26.28: Source Coverage Badge in Right-Canvas `[ready-for-dev]`
 
 As a sales rep actively monitoring a lead discovery run,
 I want to see source status and coverage context inside the Right-Canvas instead of a separate page,
@@ -3300,7 +3300,7 @@ _FR-69.4 · FR-86 · AD-31 · AD-42 · UX-Origami-Split-Canvas_
 
 ---
 
-### Story 21.29: Smoke Test Feedback Loop for Location Refinement `[ready-for-dev]`
+### Story 26.29: Smoke Test Feedback Loop for Location Refinement `[ready-for-dev]`
 
 As a sales rep,
 I want a 5-lead smoke test that previews real results and lets me refine the location profile before committing a full run,
@@ -3742,6 +3742,8 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 *Governed by Architecture Spine: `architecture-unified-nowing-chainlens-dsh-2026-08-17/ARCHITECTURE-SPINE.md` (AD-101 to AD-110) & BMAD Full-Spectrum Panel (Winston, John, Mary, Amelia, Murat, Sally, DevOps)*
 
 > **UX Refinement (2026-08-20):** Epic 26 bổ sung story cải tiến UX cho `MissionControlWidget` (Glass Box) và `PhoneUnlockPill` / `SmartUnlockPopover` (Two-Tier Phone Unlock) dựa trên `ux-spec-epic26-mission-control-phone-unlock-2026-08-20.md` (UX-DR1–UX-DR12). Mục tiêu: mission minh bạch chi phí, tránh mất tiền oan, đảm bảo accessibility và analytics đầy đủ.
+>
+> **Stories 26.25–26.29 (Customer Location Profile & Pre-Flight Lead Plan):** được remap từ Epic 21.25–21.29 sau merge 2026-08-29. Các story này thuộc E26 vì liên quan Autonomous Lead Missions / Pre-Flight Plan / DSH Location Profile.
 
 ### Architectural Invariants (AD-101 – AD-110)
 - **AD-101 (Stateless ChainLens & Unified pgvector Ingestion):** ChainLens chỉ đóng vai trò Crawler/Parser không lưu trạng thái. Chunks được đẩy về `POST /v1/chainlens/ingest` để Nowing tự tạo embeddings và lưu vào PostgreSQL 16 `chunks` (HNSW).
