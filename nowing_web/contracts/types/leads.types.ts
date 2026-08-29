@@ -57,8 +57,6 @@ export const leadSchema = z.object({
 	charter_capital_vnd: z.number().nullable().optional(),
 	company_status: z.string().nullable().optional(),
 	is_zalo_active: z.boolean().nullable().optional(),
-	unlocked_channels: z.array(z.string()).default([]),
-	external_chat_ids: z.record(z.string(), z.string()).nullable().optional(),
 	created_at: z.string(),
 	updated_at: z.string().nullable().optional(),
 });
@@ -162,36 +160,13 @@ export const contactUnlockResponseSchema = z.object({
 	contact_id: z.string().uuid(),
 	is_unlocked: z.boolean(),
 	cost_micros: z.number(),
-	channel: z.string().nullable().optional(),
-	unlocked_channels: z.array(z.string()).default([]),
 	name: z.string().nullable().optional(),
 	title: z.string().nullable().optional(),
 	email: z.string().nullable().optional(),
 	phone: z.string().nullable().optional(),
-	external_chat_ids: z.record(z.string(), z.string()).nullable().optional(),
 });
 
 export type ContactUnlockResponse = z.infer<typeof contactUnlockResponseSchema>;
-
-export const phoneResolutionResponseSchema = z.object({
-	lead_id: z.string().uuid(),
-	phone_masked: z.string(),
-	phone: z.string().nullable().optional(),
-	tier_reached: z.number(),
-	provider_used: z.string(),
-	status: z.string(),
-	cost_credits: z.number().default(1.5),
-	cost_micros: z.number().default(1_500_000),
-	confidence: z.number().default(0.95),
-	carrier: z.string().default("Unknown"),
-	is_cached: z.boolean().default(false),
-	contact_id: z.string().uuid().nullable().optional(),
-	degraded: z.boolean().default(false),
-	degradation_reason: z.string().nullable().optional(),
-	task_id: z.string().nullable().optional(),
-});
-
-export type PhoneResolutionResponse = z.infer<typeof phoneResolutionResponseSchema>;
 
 export const zaloDraftResponseSchema = z.object({
 	lead_id: z.string(),

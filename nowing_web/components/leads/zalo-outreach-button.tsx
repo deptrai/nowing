@@ -17,7 +17,6 @@ export interface ZaloOutreachButtonProps {
 	contentSnippet?: string | null;
 	className?: string;
 	size?: "sm" | "md";
-	compact?: boolean;
 	disabled?: boolean;
 }
 
@@ -49,7 +48,6 @@ export const ZaloOutreachButton: React.FC<ZaloOutreachButtonProps> = ({
 	source,
 	className,
 	size = "sm",
-	compact = false,
 	disabled = false,
 }) => {
 	const [loading, setLoading] = useState(false);
@@ -133,7 +131,7 @@ export const ZaloOutreachButton: React.FC<ZaloOutreachButtonProps> = ({
 					className={cn(
 						"inline-flex items-center font-medium transition-all cursor-pointer select-none",
 						"bg-blue-600 hover:bg-blue-500 text-white active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs",
-						compact ? "h-7 w-7 justify-center rounded-md" : sizeClasses[size]
+						sizeClasses[size]
 					)}
 					title={`Kích hoạt kịch bản AI & Mở Zalo chat (${cleanPhone || "Chưa có SĐT"})`}
 				>
@@ -144,7 +142,7 @@ export const ZaloOutreachButton: React.FC<ZaloOutreachButtonProps> = ({
 					) : (
 						<MessageCircle className="size-3.5" aria-hidden="true" />
 					)}
-					{!compact && <span>{copied ? "Đã copy!" : "Zalo"}</span>}
+					<span>{copied ? "Đã copy!" : "Zalo"}</span>
 				</button>
 
 				<button
@@ -169,12 +167,12 @@ export const ZaloOutreachButton: React.FC<ZaloOutreachButtonProps> = ({
 						"inline-flex items-center font-medium transition-all select-none",
 						"bg-emerald-600 hover:bg-emerald-500 text-white active:scale-95 shadow-2xs",
 						"disabled:opacity-50 disabled:cursor-not-allowed",
-						compact ? "h-7 w-7 justify-center rounded-md" : sizeClasses[size]
+						sizeClasses[size]
 					)}
 					title="Gửi tin nhắn ZNS (Zalo Notification Service) với template đã duyệt"
 				>
 					<Send className="size-3.5" aria-hidden="true" />
-					{!compact && <span>ZNS</span>}
+					<span>ZNS</span>
 				</button>
 			</div>
 

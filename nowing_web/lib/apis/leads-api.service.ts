@@ -18,8 +18,6 @@ import {
 	type ListLeadsParams,
 	leadListResponseSchema,
 	leadSchema,
-	type PhoneResolutionResponse,
-	phoneResolutionResponseSchema,
 	type ReverseIcpResponse,
 	reverseIcpResponseSchema,
 	type ZaloDraftResponse,
@@ -117,50 +115,25 @@ class LeadsApiService {
 		);
 	};
 
-	resolvePhone = async (
-		workspaceId: number | string,
-		leadId: string,
-		body: {
-			source_url?: string;
-			raw_text?: string;
-			force_refresh?: boolean;
-			async_mode?: boolean;
-		} = {}
-	): Promise<PhoneResolutionResponse> => {
-		return baseApiService.post(
-			`${base(workspaceId)}/leads/${leadId}/resolve-phone`,
-			phoneResolutionResponseSchema,
-			{ body }
-		);
-	};
-
 	unlockContact = async (
 		workspaceId: number | string,
 		leadId: string,
-		contactId: string,
-		channel?: string
+		contactId: string
 	): Promise<ContactUnlockResponse> => {
 		return baseApiService.post(
 			`${base(workspaceId)}/leads/${leadId}/contacts/${contactId}/unlock`,
-			contactUnlockResponseSchema,
-			{
-				body: channel ? { channel } : {},
-			}
+			contactUnlockResponseSchema
 		);
 	};
 
 	relockContact = async (
 		workspaceId: number | string,
 		leadId: string,
-		contactId: string,
-		channel?: string
+		contactId: string
 	): Promise<ContactUnlockResponse> => {
 		return baseApiService.post(
 			`${base(workspaceId)}/leads/${leadId}/contacts/${contactId}/relock`,
-			contactUnlockResponseSchema,
-			{
-				body: channel ? { channel } : {},
-			}
+			contactUnlockResponseSchema
 		);
 	};
 

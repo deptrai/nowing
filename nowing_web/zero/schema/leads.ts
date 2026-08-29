@@ -4,6 +4,7 @@ export const leadsTable = table("leads")
 	.columns({
 		id: string(),
 		workspaceId: number().from("workspace_id"),
+		clientId: string().optional().from("client_id"),
 		source: string(),
 		companyName: string().from("company_name"),
 		domain: string().optional(),
@@ -28,6 +29,7 @@ export const leadPipelineStageTable = table("lead_pipeline_stages")
 	.columns({
 		id: string(),
 		workspaceId: number().from("workspace_id"),
+		clientId: string().optional().from("client_id"),
 		name: string(),
 		slug: string(),
 		position: number(),
