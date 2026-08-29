@@ -6,11 +6,15 @@ import {
 	Check,
 	ChevronDown,
 	ChevronRight,
+	Copy,
+	ExternalLink,
 	Globe,
+	Mail,
 	Maximize2,
 	MessageSquare,
 	Minimize2,
 	Network,
+	Phone,
 	RefreshCw,
 	Search,
 	ShieldAlert,
@@ -20,6 +24,7 @@ import {
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { copyToClipboard } from "@/lib/utils";
 import {
 	activeDrawerLeadAtom,
 	canvasHighlightTriggerAtom,
@@ -202,13 +207,6 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 	};
 
 	const handleRowClick = (lead: Lead) => {
-		// ponytail: chat-scraper rows are live preview leads parsed from
-		// assistant tables; they are not persisted, so opening the detail
-		// drawer would 404 on /leads/{id}/activities.
-		if (lead.source === "chat_scraper") {
-			toast.info("Lead này là bản xem trước — chưa được lưu.");
-			return;
-		}
 		setSelectedLeadContext(lead);
 		setActiveDrawerLead(lead);
 	};
@@ -544,9 +542,9 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 								<th className="w-8 px-1.5 font-mono text-center shrink-0">#</th>
 								<th className="w-24 px-2.5 shrink-0">FIT SCORE &gt;</th>
 								<th className="px-3 min-w-[150px] max-w-[280px]">TÊN DOANH NGHIỆP</th>
-								<th className="px-3 min-w-[100px] max-w-[180px]">WEBSITE</th>
+								<th className="px-3 min-w-[100px] max-w-[180px]">WEBSITE / NGUỒN</th>
 								<th className="px-3 min-w-[90px] max-w-[140px]">NGÀNH</th>
-								<th className="px-3 min-w-[110px] max-w-[150px]">ĐIỆN THOẠI</th>
+								<th className="px-3 min-w-[150px] max-w-[240px]">LIÊN HỆ & THÔNG TIN</th>
 								<th className="w-32 px-3 text-right shrink-0">HÀNH ĐỘNG</th>
 							</tr>
 						</thead>
@@ -723,17 +721,62 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 											<span className="truncate block">{lead.industry || "Bất động sản"}</span>
 										</td>
 
-										{/* Phone Pill */}
+										{/* Contact & Multi-channel Info */}
 										<td
-											className="px-3 min-w-[110px] max-w-[150px]"
+											className="px-3 min-w-[150px] max-w-[240px]"
 											onClick={(e) => e.stopPropagation()}
 											onKeyDown={(e) => e.stopPropagation()}
 										>
-											<PhoneUnlockPill
-												lead={rowLead}
-												workspaceId={workspaceId}
-												onPhoneChange={onPhoneChange}
-											/>
+											<div className="flex flex-col gap-1">
+												{/* Phone */}
+												{rowLead.phone ? (
+													<PhoneUnlockPill
+														lead={rowLead}
+														workspaceId={workspaceId}
+														onPhoneChange={onPhoneChange}
+													/>
+												) : null}
+
+												{/* Email */}
+												{rowLead.email ? (
+													<div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+														<Mail className="size-3 text-blue-500 shrink-0" aria-hidden="true" />
+														<span className="truncate max-w-[130px] font-mono">{rowLead.email}</span>
+														<button
+															type="button"
+															onClick={(e) => {
+																e.stopPropagation();
+																if (rowLead.email) {
+																	copyToClipboard(rowLead.email);
+																	toast.success("Đã sao chép email!");
+																}
+															}}
+															title="Sao chép email"
+															className="p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted/80 cursor-pointer"
+														>
+															<Copy className="size-2.5" aria-hidden="true" />
+														</button>
+													</div>
+												) : null}
+
+												{/* Fallback if no phone and no email: show domain/source link or subtitle */}
+												{!rowLead.phone && !rowLead.email ? (
+													rowLead.source_url ? (
+														<a
+															href={rowLead.source_url}
+															target="_blank"
+															rel="noopener noreferrer"
+															onClick={(e) => e.stopPropagation()}
+															className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground hover:underline transition-colors truncate max-w-full"
+														>
+															<ExternalLink className="size-3 text-purple-500 shrink-0" aria-hidden="true" />
+															<span className="truncate">{rowLead.source || "Mạng xã hội"}</span>
+														</a>
+													) : (
+														<span className="text-muted-foreground/40 text-xs">—</span>
+													)
+												) : null}
+											</div>
 										</td>
 
 										{/* Actions */}

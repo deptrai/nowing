@@ -1,6 +1,6 @@
 "use client";
 
-import type { LogSink } from "@rocicorp/logger";
+import type { LogLevel, LogSink } from "@rocicorp/logger";
 import {
 	useConnectionState,
 	useZero,
@@ -115,6 +115,8 @@ function throttledLog(level: "error" | "warn", args: unknown[]) {
 		);
 	}
 }
+
+type ConnectionState = ReturnType<typeof useConnectionState>;
 
 function ZeroConnectionBanner({ state, failures }: { state: ConnectionState; failures: number }) {
 	if (state.name === "connected" || failures < OFFLINE_BANNER_THRESHOLD) return null;
@@ -314,7 +316,7 @@ function ZeroClientProvider({
 			// Route Zero's internal logs through our throttled sink so a missing
 			// zero-cache does not spam the browser console.
 			logSink: zeroLogSink,
-			logLevel: isDev ? "info" : "error",
+			logLevel: (isDev ? "info" : "error") as LogLevel,
 		}),
 		[userID, context, cacheURL, isDesktop, desktopAuth]
 	);
