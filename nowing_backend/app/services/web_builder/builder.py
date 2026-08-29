@@ -486,6 +486,8 @@ class BuilderService:
                 safe_env[key] = os.environ[key]
         return safe_env
 
+    _ALLOWED_BUILD_COMMANDS = frozenset({"npm", "npx", "sh", "node"})
+
     async def _run_subprocess(
         self,
         cmd: list[str],
@@ -493,6 +495,12 @@ class BuilderService:
         network: str | None = None,
     ) -> tuple[int, str, str]:
         """Execute a subprocess asynchronously with strict timeout bounding and process group cleanup."""
+        if not cmd:
+            raise ValueError("Empty build command")
+        program = cmd[0]
+        # When Docker is enabled the first arg may be `docker`; the real command follows the image.
+        if not config.WEB_BUILDER_DOCKER_SANDBOX_ENABLED and program not in self._ALLOWED_BUILD_COMMANDS:
+            raise ValueError(f"Build command not allowed: {program}")
         actual_cmd = cmd
         env = self._get_sanitized_build_env(cwd)
         container_name: str | None = None

@@ -184,8 +184,25 @@ class WebAppDeployService:
 
         return resolved_dir
 
+    _CONTAINER_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_.-]*$", re.ASCII)
+
+    def _is_safe_container_id(self, container_id_or_name: str) -> bool:
+        """Docker IDs/Names only contain safe characters (no shell metacharacters)."""
+        if not container_id_or_name:
+            return False
+        if len(container_id_or_name) <= 64 and self._CONTAINER_NAME_RE.match(container_id_or_name):
+            return True
+        # Docker short ID is 12 hex characters
+        return (
+            len(container_id_or_name) == 12
+            and re.fullmatch(r"[a-f0-9]{12}", container_id_or_name, re.ASCII) is not None
+        )
+
     async def _is_container_running(self, container_id: str) -> bool:
         """Best-effort check whether a container is still running."""
+        if not self._is_safe_container_id(container_id):
+            logger.warning("Refusing to inspect container with unsafe id/name: %s", container_id)
+            return False
         docker_bin = shutil.which("docker")
         if not docker_bin:
             return False
@@ -208,6 +225,9 @@ class WebAppDeployService:
 
     async def _stop_container(self, container_id_or_name: str) -> None:
         """Remove a running container, ignoring errors."""
+        if not self._is_safe_container_id(container_id_or_name):
+            logger.warning("Refusing to stop container with unsafe id/name: %s", container_id_or_name)
+            return
         docker_bin = shutil.which("docker")
         if not docker_bin:
             return

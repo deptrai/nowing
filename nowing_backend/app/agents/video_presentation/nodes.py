@@ -249,6 +249,12 @@ async def _get_audio_duration(file_path: str) -> float:
 
     Falls back to file-size estimation if ffprobe fails.
     """
+    path = Path(file_path)
+    if not path.is_file():
+        logger.warning("Audio file not found for ffprobe: %s", file_path)
+        return DEFAULT_DURATION_IN_FRAMES / FPS
+
+    proc: asyncio.subprocess.Process | None = None
     try:
         import subprocess
 
@@ -260,15 +266,29 @@ async def _get_audio_duration(file_path: str) -> float:
             "format=duration",
             "-of",
             "default=noprint_wrappers=1:nokey=1",
-            file_path,
+            str(path.resolve()),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=10)
+        try:
+            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=10)
+        except TimeoutError:
+            logger.warning("ffprobe timed out for %s", file_path)
+            if proc.returncode is None:
+                with contextlib.suppress(Exception):
+                    proc.kill()
+                    await proc.communicate()
+            return DEFAULT_DURATION_IN_FRAMES / FPS
+
         if proc.returncode == 0 and stdout.strip():
             return float(stdout.strip())
-    except Exception as e:
-        logger.warning(f"ffprobe failed for {file_path}: {e!s}, using file-size estimation")
+    except (OSError, ValueError) as e:
+        logger.warning("ffprobe failed for %s: %s", file_path, e)
+    finally:
+        if proc is not None and proc.returncode is None:
+            with contextlib.suppress(Exception):
+                proc.kill()
+                await proc.communicate()
 
     try:
         file_size = os.path.getsize(file_path)
@@ -276,7 +296,7 @@ async def _get_audio_duration(file_path: str) -> float:
             return file_size / (16000 * 2)
         else:
             return file_size / 16000
-    except Exception:
+    except (OSError, ValueError):
         return DEFAULT_DURATION_IN_FRAMES / FPS
 
 

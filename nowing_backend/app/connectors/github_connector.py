@@ -7,6 +7,7 @@ it from any Python event loop/async complexity that can cause hangs in Celery.
 
 import logging
 import os
+import re
 import subprocess
 import tempfile
 from dataclasses import dataclass
@@ -82,6 +83,16 @@ class GitHubConnector:
         Returns:
             RepositoryDigest or None if ingestion fails.
         """
+        # Validate repo_full_name to prevent command-injection through
+        # malformed arguments. Only ``owner/repo`` with safe characters is
+        # accepted; branch/tag names are restricted to a conservative pattern.
+        if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo_full_name or ""):
+            logger.error(f"Invalid repository name: {repo_full_name}")
+            return None
+        if branch and not re.fullmatch(r"[A-Za-z0-9_.@~^/:-]+", branch):
+            logger.error(f"Invalid branch/tag name: {branch}")
+            return None
+
         repo_url = f"https://github.com/{repo_full_name}"
 
         logger.info(f"Starting gitingest CLI for repository: {repo_full_name}")

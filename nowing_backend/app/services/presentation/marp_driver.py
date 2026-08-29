@@ -84,6 +84,14 @@ async def render_marp_html(
 
     Returns ``(ok, error_reason)``.
     """
+    if not md_path.is_file():
+        logger.warning("Marp markdown input does not exist: %s", md_path)
+        return False, "input_missing"
+
+    output_dir = output_html_path.parent
+    if output_dir and not output_dir.exists():
+        output_dir.mkdir(parents=True, exist_ok=True)
+
     binary = shutil.which("marp")
     if not binary:
         return False, "dependency_missing"
@@ -92,9 +100,9 @@ async def render_marp_html(
     try:
         proc = await asyncio.create_subprocess_exec(
             binary,
-            str(md_path),
+            str(md_path.resolve()),
             "--output",
-            str(output_html_path),
+            str(output_html_path.resolve()),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
