@@ -67,11 +67,11 @@ Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Archite
 `[DONE]` **FR-82 Viral Social Outbound Co-pilot** → **E21.12** (AI Voice Learner + Viral post analyzer via XActions FB/Twitter).
 `[DONE]` **FR-84 Smart Whitelist & Do-Not-Call (DNC) Compliance Engine** → **E21.14 P0** (Decree 91/2020/NĐ-CP, CSV import, opt-out protection).
 `[DONE]` **FR-85 Unified Multi-Source AI Lead Generation Orchestrator** → **E21.15 P0** (1-chat parallel retrieval across all 15+ scrapers into live table).
-`[NEW]` **FR-69.2 Customer Location Profile** → **E21.25** (progressive province/district/ward selector, GSO/TCTK codes, smart search & quick chips).
-`[NEW]` **FR-69.3 Location-Aware Adapter Routing** → **E21.26** (coverage quality, location-weighted fit scoring, adapter re-ranking).
-`[NEW]` **FR-69.4 Pre-Flight Lead Plan Summary** → **E21.27** (PlanSummaryCard, estimated leads/cost, source coverage badges).
-`[NEW]` **FR-69.5 Source Coverage in Right-Canvas** → **E21.28** (source status panel, contextual coverage badges, enable/disable per source).
-`[NEW]` **FR-69.6 Smoke Test Feedback Loop** → **E21.29** (5-lead preview, location refinement, re-run diff).
+`[NEW]` **FR-69.2 Customer Location Profile** → **E26.25** (progressive province/district/ward selector, GSO/TCTK codes, smart search & quick chips).
+`[NEW]` **FR-69.3 Location-Aware Adapter Routing** → **E26.26** (coverage quality, location-weighted fit scoring, adapter re-ranking).
+`[NEW]` **FR-69.4 Pre-Flight Lead Plan Summary** → **E26.27** (PlanSummaryCard, estimated leads/cost, source coverage badges).
+`[NEW]` **FR-69.5 Source Coverage in Right-Canvas** → **E26.28** (source status panel, contextual coverage badges, enable/disable per source).
+`[NEW]` **FR-69.6 Smoke Test Feedback Loop** → **E26.29** (5-lead preview, location refinement, re-run diff).
 `[DONE]` **FR-86 Nowing Split-View Canvas & Workspace Modernization** → **E21.16 P0** (Unified New Chat, 340px Chat + Dynamic Multi-Mode Matrix, Real Credits & APIs, Sọc Caro, Emerald Green).
 `[DONE]` **FR-87 Complete Origami Landing Page & Public Site Transformation** → **E21.17 P0** (10 sections, Origami Mint Logo, 12 verticals).
 `[DONE]` **FR-88 Partners Affiliate Portal & $0 Pricing Page Deployment** → **E21.18 P1** ($0 Free tier, 15% recurring affiliate ledger).
@@ -352,8 +352,8 @@ Public agent-chat endpoints, AgentConfig registry, client_id tenancy, cost trace
 ### Epic 20: Nowing Ecosystem Integration — Feed & Recall from chainlens-research — ✅ DONE
 `NowingIngestService` + `to_chunks()`, gap-fill caller, `NowingPrivateProvider`, service-to-service auth. **Open:** none.
 
-### Epic 21: Lead Gen Intelligence — ⏳ IN-PROGRESS *(umbrella)*
-Umbrella / tracking epic cho hệ sinh thái săn lead: Lead Capture & Enrichment (E23), Multi-Channel Outreach & CRM (E24), Platform Admin & Multi-Tenant (E25), Autonomous Lead Missions / DSH (E26), Growth & Affiliate (E29). Chi tiết triển khai đã chuyển sang các epic con. **FRs:** FR-63–69, FR-80–88, FR-91. **Dependencies:** E10, E12, E22. _Tách 2026-08-29: epic con E23–E26/E29 nhận stories từ Epic 21 nguyên bản. Customer Location Profile & Pre-Flight Lead Plan stories (21.25–21.29 từ main) tạm map E26.25–E26.29._
+### Epic 21: Lead Gen Intelligence — ✅ DONE *(umbrella)*
+Umbrella / tracking epic cho hệ sinh thái săn lead: Lead Capture & Enrichment (E23), Multi-Channel Outreach & CRM (E24), Platform Admin & Multi-Tenant (E25), Autonomous Lead Missions / DSH (E26), Growth & Affiliate (E29). Chi tiết triển khai đã chuyển sang các epic con. **FRs:** FR-63–69, FR-80–88, FR-91. **Dependencies:** E10, E12, E22. _Tách 2026-08-29: epic con E23–E26/E29 nhận stories từ Epic 21 nguyên bản. Customer Location Profile & Pre-Flight Lead Plan stories (21.25–21.29 từ main) đã remap E26.25–E26.29._
 
 ### Epic 22: Telegram Scraper & Channel Ingestion Engine — ⏳ READY-FOR-DEV
 Public channel web preview, MTProto Userbot session pool, distributed mutex lock, FloodWait cooldown state machine, regex entity extractor, S3 media chunk streaming, realtime stream daemon, Alert Engine trigger, AI Agent tools. **Stories:** 22.1–22.3. Governed by `architecture-telegram-scraper-2026-08-15`.
