@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import pytest
 
+import app.observability.metrics.genai as genai_metrics
+import app.observability.metrics.research as research_metrics
 from app.utils.crawl.classifier import BlockType
 
 pytestmark = pytest.mark.unit
@@ -24,13 +26,13 @@ async def test_record_chainlens_degradation_uses_low_cardinality_labels():
     assert fn is not None
 
     recorded = {}
-    original_add = metrics._add
+    original_add = research_metrics._add
 
     def _capture_add(counter, value, attrs):
         recorded["counter"] = counter
         recorded["attrs"] = attrs
 
-    metrics._add = _capture_add
+    research_metrics._add = _capture_add
     try:
         fn(
             degradation_reason="not_configured",
@@ -41,7 +43,7 @@ async def test_record_chainlens_degradation_uses_low_cardinality_labels():
             engine_reason="missing_key",
         )
     finally:
-        metrics._add = original_add
+        research_metrics._add = original_add
 
     labels = str(recorded.get("attrs", {}))
     forbidden = [
@@ -64,13 +66,13 @@ async def test_record_chainlens_degradation_passes_closed_vocabulary_engine_reas
     assert fn is not None
 
     recorded = {}
-    original_add = metrics._add
+    original_add = research_metrics._add
 
     def _capture_add(counter, value, attrs):
         recorded["counter"] = counter
         recorded["attrs"] = attrs
 
-    metrics._add = _capture_add
+    research_metrics._add = _capture_add
     try:
         fn(
             degradation_reason="timeout",
@@ -81,7 +83,7 @@ async def test_record_chainlens_degradation_passes_closed_vocabulary_engine_reas
             engine_reason="  TimeOut  ",
         )
     finally:
-        metrics._add = original_add
+        research_metrics._add = original_add
 
     assert recorded["attrs"]["engine_reason"] == "timeout"
 
@@ -93,17 +95,17 @@ async def test_record_blocked_url_coverage_counts_by_block_type():
     assert fn is not None
 
     recorded = []
-    original_add = metrics._add
+    original_add = research_metrics._add
 
     def _capture_add(counter, value, attrs):
         recorded.append(attrs)
 
-    metrics._add = _capture_add
+    research_metrics._add = _capture_add
     try:
         fn(block_type=BlockType.CLOUDFLARE)
         fn(block_type=BlockType.CAPTCHA_RECAPTCHA)
     finally:
-        metrics._add = original_add
+        research_metrics._add = original_add
 
     block_types = [r["block_type"] for r in recorded]
     assert BlockType.CLOUDFLARE in block_types
@@ -120,18 +122,18 @@ async def test_record_kb_fallback_hit_count_is_exact():
     assert fn is not None
 
     recorded = {}
-    original_record = metrics._record
+    original_record = research_metrics._record
 
     def _capture_record(counter, value, attrs):
         recorded["counter"] = counter
         recorded["value"] = value
         recorded["attrs"] = attrs
 
-    metrics._record = _capture_record
+    research_metrics._record = _capture_record
     try:
         fn(3)
     finally:
-        metrics._record = original_record
+        research_metrics._record = original_record
 
     assert recorded["value"] == 3
     assert recorded["attrs"].get("hit_bucket") == "1-5"
@@ -143,17 +145,16 @@ async def test_kb_search_duration_is_recorded_and_bounded(monkeypatch):
         search_chunks,
     )
     from app.agents.chat.multi_agent_chat.shared.retrieval.models import SearchScope
-    from app.observability import metrics
 
     recorded = {}
-    original_record = metrics._record
+    original_record = genai_metrics._record
 
     def _capture_record(counter, value, attrs):
         recorded["counter"] = counter
         recorded["value"] = value
         recorded["attrs"] = attrs
 
-    monkeypatch.setattr(metrics, "_record", _capture_record)
+    monkeypatch.setattr(genai_metrics, "_record", _capture_record)
 
     class _FakeTime:
         _times = [1000.0, 1000.0045]
@@ -188,4 +189,4 @@ async def test_kb_search_duration_is_recorded_and_bounded(monkeypatch):
     assert recorded.get("attrs", {}).get("workspace.id") == 7
     assert recorded.get("value", float("inf")) <= 100.0
 
-    monkeypatch.setattr(metrics, "_record", original_record)
+    monkeypatch.setattr(genai_metrics, "_record", original_record)
