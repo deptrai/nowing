@@ -8,4 +8,4 @@ from app.services.connectors import (
     invalidate_connector_discovery_cache,
 )
 
-__all__ = ["async_session_maker", "ConnectorService", "invalidate_connector_discovery_cache"]
+__all__ = ["ConnectorService", "async_session_maker", "invalidate_connector_discovery_cache"]

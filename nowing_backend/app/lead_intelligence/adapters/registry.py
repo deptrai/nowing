@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import re
 import unicodedata
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from app.lead_intelligence.adapters.base import (
     LeadSourceAdapter,

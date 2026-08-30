@@ -1,5 +1,6 @@
 """CRM connection and sync services (Story 21.5)."""
 
+import contextlib
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -402,16 +403,13 @@ class CrmSyncService:
         await self.session.flush()
 
         if conversion_data.sync_to_crm and conversion_data.connection_id:
-            try:
+            with contextlib.suppress(Exception):
                 await self.push_lead(
                     auth=auth,
                     workspace_id=workspace_id,
                     connection_id=conversion_data.connection_id,
                     lead_id=conversion_data.lead_id,
                 )
-            except Exception as sync_err:
-                # Fail-soft on external CRM sync error while keeping the local conversion event
-                pass
 
         # Also store conversion context in memory
         conversion_summary = (
