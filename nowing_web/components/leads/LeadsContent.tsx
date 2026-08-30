@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import type { FilterPresets } from "@/contracts/types/leads.types";
 import { useLeads } from "@/lib/hooks/use-leads";
 import { useWorkspaceTables } from "@/lib/hooks/use-workspace-tables";
-import { CampaignBuilder } from "./CampaignBuilder";
+import { CampaignBuilder } from "./campaign-builder/CampaignBuilder";
 import { DncManagementModal } from "./DncManagementModal";
 import { LeadCard } from "./LeadCard";
 import { LeadWorkbench } from "./LeadWorkbench";
