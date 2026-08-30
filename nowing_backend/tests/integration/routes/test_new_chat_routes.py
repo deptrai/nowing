@@ -26,7 +26,7 @@ from app.db import (
     VerticalClient,
     Workspace,
 )
-from app.routes import new_chat_routes
+from app.routes.new_chat import chat as new_chat_chat
 from app.tasks.chat.streaming.flows.new_chat.auto_pin import AutoPinResult
 
 pytestmark = pytest.mark.integration
@@ -145,8 +145,8 @@ class TestNewChat:
         async def _fake_load_bundle(*args: Any, **kwargs: Any) -> tuple[Any, RuntimeAgentConfig, None]:
             return (object(), RuntimeAgentConfig.from_auto_mode(), None)
 
-        monkeypatch.setattr(new_chat_routes, "resolve_initial_auto_pin", _fake_resolve_pin)
-        monkeypatch.setattr(new_chat_routes, "load_llm_bundle", _fake_load_bundle)
+        monkeypatch.setattr(new_chat_chat, "resolve_initial_auto_pin", _fake_resolve_pin)
+        monkeypatch.setattr(new_chat_chat, "load_llm_bundle", _fake_load_bundle)
 
     @pytest.mark.expensive
     async def test_post_new_chat_with_agent_id_resolves_system_instructions(
@@ -171,7 +171,7 @@ class TestNewChat:
             calls.append((args, kwargs))
             yield b'data: {"type":"text","content":"hello"}\n\n'
 
-        monkeypatch.setattr(new_chat_routes, "stream_new_chat", _fake_stream)
+        monkeypatch.setattr(new_chat_chat, "stream_new_chat", _fake_stream)
 
         response = await client_as_regular_user.post(
             "/api/v1/new_chat",
@@ -235,7 +235,7 @@ class TestNewChat:
             calls.append((args, kwargs))
             yield b'data: {"type":"text","content":"ok"}\n\n'
 
-        monkeypatch.setattr(new_chat_routes, "stream_new_chat", _fake_stream)
+        monkeypatch.setattr(new_chat_chat, "stream_new_chat", _fake_stream)
 
         response = await client_as_regular_user.post(
             "/api/v1/new_chat",

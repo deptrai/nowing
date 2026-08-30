@@ -7,6 +7,7 @@ from app.app.errors import (
     _validation_error_handler,
 )
 from app.app.factory import RequestIDMiddleware, app
+from app.rate_limiter import limiter
 
 __all__ = [
     "RequestIDMiddleware",
@@ -15,4 +16,5 @@ __all__ = [
     "_unhandled_exception_handler",
     "_validation_error_handler",
     "app",
+    "limiter",
 ]
