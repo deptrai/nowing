@@ -25,7 +25,6 @@ from app.exceptions import (
     ConnectorError,
     ContextOverflowError,
     DatabaseError,
-    DocumentError,
     ExternalAPIError,
     ExternalServiceError,
     ForbiddenError,
