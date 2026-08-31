@@ -73,6 +73,8 @@ Historical note: The original spec mentioned a separate "Snapshot storage table"
 | Schedule checker | `nowing_backend/app/tasks/celery_tasks/schedule_checker_task.py` | Pattern for claiming due scheduled items. |
 | DSH executor | `nowing_backend/app/tasks/dsh_worker_langgraph.py` | `LangGraphMissionExecutor`, checkpoint semantics, `ingestion`/`reasoning`/`crawl`/`deliver` nodes. |
 | DSH service/routes | `nowing_backend/app/services/dsh_mission_service.py`, `nowing_backend/app/routes/dsh_routes.py` | Mission CRUD, public mission state; update `DshMissionService.create_mission()` to accept `schedule`, `source`, `request_text`, `next_fire_at`. |
+| Outbound SMTP helper | `nowing_backend/app/alerts/engine/notify.py` | `_send_email_smtp(to_email, subject, body)` is a sync helper already used by alert engine. Prefer wrapping it in `app/gateway/email/sender.py` for reply threads rather than reimplementing SMTP. |
+| Gateway base adapter | `nowing_backend/app/gateway/base/adapter.py` | `ParsedInboundEvent` is the canonical normalized event shape. Inbound email parser should return `ParsedInboundEvent(platform="email", ...)` to plug into existing gateway routing/dedupe. |
 | Alert engine tick | `nowing_backend/app/alerts/engine/tick.py` | `_claim_due_rules` pattern for claiming due scheduled rules. |
 | DSH DB model | `nowing_backend/app/db.py` (`DshMission` / `DshMissionCheckpoint`) | State machine, progress percent constraint, workspace_id status index. |
 | Document ingestion | `nowing_backend/app/services/documents/document_service.py` | PDF/DOCX/TXT/MD → `Document` row. |
@@ -83,7 +85,7 @@ Historical note: The original spec mentioned a separate "Snapshot storage table"
 |---|---|
 | `nowing_backend/app/gateway/email/adapter.py` | Provider-agnostic inbound email parser; SendGrid & Mailgun payload normalization. |
 | `nowing_backend/app/gateway/email/auth.py` | Provider signature verification. |
-| `nowing_backend/app/gateway/email/sender.py` | SMTP/SendGrid/Mailgun outbound reply sender. |
+| `nowing_backend/app/gateway/email/sender.py` | Outbound reply sender. Wrap `app/alerts/engine/notify.py:_send_email_smtp` for plain-text replies; add `Message-Id` / `In-Reply-To` headers and `Reply-To: task+{workspace_id}@nowing.ai`. |
 | `nowing_backend/app/gateway/email/models.py` | Pydantic models for `InboundEmail`, `EmailAttachment`, `EmailReply`. |
 | `nowing_backend/app/gateway/email/__init__.py` | Bundle exports. |
 | `nowing_backend/app/routes/gateway_email_routes.py` | FastAPI routes: `POST /gateway/email/inbound`, `POST /gateway/email/sendgrid`, `POST /gateway/email/mailgun`, admin test endpoint. |
@@ -119,11 +121,20 @@ SENDGRID_WEBHOOK_PUBLIC_KEY=<PEM>
 SENDGRID_API_KEY=<key for outbound>
 MAILGUN_WEBHOOK_SIGNING_KEY=<key>
 MAILGUN_API_KEY=<key for outbound>
-SMTP_REPLY_FROM=Nowing <task@nowing.ai>
+
+# Reuse existing SMTP config (also used by alert engine notifications)
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USER=
+SMTP_PASSWORD=
+SMTP_FROM=task@nowing.ai
+SMTP_TLS=true
 
 # Optional: Celery Beat schedule interval in seconds for schedule_mission_tick
 SCHEDULED_DSH_MISSION_TICK_SECONDS=60
 ```
+
+`SMTP_REPLY_FROM` is **not** a new config; use `config.SMTP_FROM` for the alert-engine-compatible reply address. Override per message with `From: Nowing <task+{workspace_id}@nowing.ai>` if needed.
 
 Also add a beat entry in `nowing_backend/app/celery_app.py` (or equivalent) to run `app.tasks.celery_tasks.schedule_mission_tick.schedule_mission_tick` every `SCHEDULED_DSH_MISSION_TICK_SECONDS`.
 
@@ -166,6 +177,46 @@ Use the existing `app/alerts/engine/cron.py` helpers (`compute_next_fire_at`) to
 - Integration tests:
   - `tests/integration/gateway/test_email_inbound.py` — end-to-end: POST webhook → `inbound_email_event` → mission created → reply queued.
   - `tests/integration/tasks/test_scheduled_mission_tick.py` — Celery tick claims and resumes mission.
+
+
+## Challenge Log (grill-me)
+
+### Q1 — Already implemented?
+- **No duplicate found** for inbound email gateway or scheduled DSH missions.
+- **Existing reusable helpers:**
+  - `app/alerts/engine/notify.py:_send_email_smtp` for outbound SMTP (alert engine).
+  - `app/gateway/base/adapter.py:ParsedInboundEvent` for normalized gateway events.
+  - `app/alerts/engine/tick.py:_claim_due_rules` for cron/claim pattern.
+- **No `ExternalChatPlatform.EMAIL` enum** currently exists; decide whether to add it or keep email as a standalone gateway bundle without `ExternalChatAccount` binding.
+
+### Q2 — Simpler alternative?
+- **Outbound reply:** Prefer wrapping `notify.py:_send_email_smtp` instead of a new SMTP implementation.
+- **Inbound normalization:** Return `ParsedInboundEvent` from email adapter to reuse `inbox.py`/`inbox_processor.py` deduplication and routing.
+- **Scheduled mission tick:** Use `AlertRule.next_fire_at`/`last_fired_at` and `_claim_due_rules` pattern as reference, not a new scheduler.
+
+### Q3 — Edge cases spec misses
+- [ ] **Email size / attachment limits:** SendGrid 30MB, Mailgun 25MB; provider rejects before webhook. Return `413` if size known.
+- [ ] **Missing/duplicate `Message-Id`:** Fallback dedupe key = hash of `(provider, from_address, to_address, subject, body_text, created_at rounded to minute)`.
+- [ ] **Multiple `To`/`Cc` recipients:** Parse all recipients; select workspace by first matching `task+{workspace_id}@`.
+- [ ] **HTML-only email:** If `body_text` empty, strip HTML to text or store `body_html` separately and use it as fallback.
+- [ ] **Unknown / unverified sender:** Decision needed — bounce, queue manual review, or create draft mission.
+- [ ] **Attachment malware scan:** Store attachments in object storage (S3/MinIO), not local disk; add `malware_scan_status` placeholder.
+- [ ] **Reply threading:** Add `In-Reply-To` / `References` headers using original `Message-Id`.
+
+### Q4 — Failure modes unspecified
+- [ ] **Provider webhook signature fail:** Return `401` immediately, log `audit_events`, do not parse payload.
+- [ ] **SMTP reply fail (5xx / missing config):** Mission still completes, but set `inbound_email_event.status=replied_failed` and emit metric.
+- [ ] **Postgres down on webhook intake:** Return `503`; SendGrid/Mailgun will retry.
+- [ ] **DSH executor error mid-run:** Set `dsh_missions.status=error`, send failure reply, do not create duplicate on retry.
+- [ ] **Credit/token budget exceeded during mission:** Mission must respect `WorkspaceLimit` and `User.credit_micros_balance` (defer to `DshRestClient` / cost ledger).
+- [ ] **Attachment object storage upload fail:** Reject attachment, still create mission from body text, send "attachment failed" reply.
+- [ ] **Object storage not configured:** Skip attachment persistence, return `507` if attachment is required.
+
+### Triage
+- **Q1:** Clean — no duplicate, but strong reuse opportunities identified.
+- **Q2:** Continue — use existing `_send_email_smtp`, `ParsedInboundEvent`, `tick.py` patterns.
+- **Q3/Q4:** Non-critical — add to test skeleton in `bmad-nowing-test-first-atdd`.
+
 
 ### Non-Goals
 
