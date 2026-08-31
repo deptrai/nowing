@@ -254,3 +254,18 @@ Use the existing `app/alerts/engine/cron.py` helpers (`compute_next_fire_at`) to
 **ready-for-dev**
 
 Ultimate context engine analysis completed — comprehensive developer guide created.
+
+
+### Review Findings (bmad-code-review 2026-09-01)
+
+- [x] [Review][Patch] Fix missing `await session.commit()` in webhook endpoint [gateway_email_routes.py:441]
+- [x] [Review][Patch] Fix JSONB serialization for EmailAttachment models [gateway_email_routes.py:237]
+- [x] [Review][Patch] Fix AttributeError on attachment access [gateway_email_routes.py:186]
+- [x] [Review][Patch] Enforce fail-closed signature verification when keys are missing [gateway_email_routes.py:126]
+- [x] [Review][Patch] Prevent duplicate webhooks from corrupting completed mission state [gateway_email_routes.py:406]
+- [x] [Review][Patch] Fix Celery Beat infinite retry loop on mission error [schedule_mission_tick.py:318]
+- [x] [Review][Patch] Correct inverted `resume_from_checkpoint` logic [schedule_mission_tick.py:145]
+- [x] [Review][Patch] Strip style and script tags and contents from email HTML [adapter.py:80]
+- [x] [Review][Patch] Add timestamp replay window check for SendGrid webhook [auth.py:65]
+- [x] [Review][Patch] Add integer overflow guard on workspace_id [adapter.py:65]
+- [x] [Review][Decision] Scaffold placeholders for Celery worker persistence and reply hook retained for Story 6.10 [dsh_worker_scheduled_mission.py:98]
