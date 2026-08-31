@@ -2,7 +2,7 @@
 title: Nowing
 status: approved
 created: 2026-07-21
-updated: 2026-08-25
+updated: 2026-08-30
 canonical: true
 ---
 
@@ -34,6 +34,7 @@ Tài liệu này là **Bản PRD Hợp Nhất (Canonical PRD)** tích hợp toà
 | **Autonomous Deep Lead Missions (DSH)** *(Amendment 2)* | **Epic 26 (AD-101..119)** | LangGraph Supervisor Loop, Multi-Tier LLM Router, $0 Token Gate, Distributed DLQ Worker | `[DONE]` |
 | **Autonomous Workstation Studio** *(Amendment 3)* | **FR-93 .. FR-94** | Web App Builder & Traefik Hosting, Design View Mark Tool & AST Mutator (Epic 27) | `[IN-PROGRESS]` |
 | **Enterprise Readiness & Compliance** *(Amendment 4 & 5)* | **FR-95 .. FR-99** | OKF Data Portability, Encryption-at-Rest BYOK, ToS Legal Compliance, OSS Onboarding | `[IN-PROGRESS]` |
+| **SaaS Operations & Admin Governance** *(Amendment 6)* | **FR-100 .. FR-104** | Custom Roles, Workspace Health, Subscription Tiers, Bulk Operations, Memory Browser | `[PROPOSED]` |
 
 ---
 
@@ -1160,6 +1161,93 @@ Người dùng có thể chỉnh sửa UI đã sinh bằng công cụ khoanh vù
 - Speaker diarization extension (`pyannote.audio` hoặc `whisperx`) trong `stt_service.py`.
 
 **Status:** `[IN-PROGRESS]` — in-PRD per `AMENDMENT-Epic-27-Manus-Autonomous-Workstation-2026-08-20.md`; 27.2a/27.2b `ready-for-dev`; Mark Tool 27.1d and container deploy 27.1c `backlog`; Story 27.1 parent/tracking `backlog`.
+
+
+### 4.11 SaaS Operations, Advanced Admin Governance & Analyst Workspace
+
+**Description:** Epic 29 mở rộng Nowing từ single-team workspace thành nền tảng SaaS có khả năng quản trị đa workspace, phân quyền tuỳ chỉnh, dashboard sức khoẻ workspace, quản lý tier/subscription, thao tác hàng loạt và trình duyệt memory dành cho analyst. Tất cả tính năng đều ràng buộc vào các AD hiện có (AD-9 RBAC, AD-8 wallet/micros, AD-11 memory, AD-28.3 retention) và không được phát minh lại vai trò hệ thống `Admin`.
+
+**Epic:** Epic 29 — SaaS Operations, Advanced Admin Governance & Analyst Workspace.
+
+#### FR-100: Custom Workspace Roles
+
+Workspace Owner có thể tạo, sao chép và xoá các vai trò tuỳ chỉnh (`is_system_role=False`) dựa trên mẫu `Viewer`, `Editor`, `Analyst`, `Billing`, hoặc `Custom`. Mỗi vai trò là một bản ghi `WorkspaceRole` với tập quyền `permissions` là tập con của quyền `Owner` cho workspace đó. Chuỗi `"Admin"` bị cấm đặt tên. Thay đổi vai trò được ghi `audit_events`.
+
+**Acceptance Criteria:**
+- Given workspace Owner đang ở trang Roles, when họ tạo role từ template `Analyst`, then bản ghi `WorkspaceRole` mới có `is_system_role=False`, `name` duy nhất trong workspace, và `permissions` là tập con của `Owner`.
+- Given một role tuỳ chỉnh đã tồn tại, when Owner đổi tên thành `"Admin"`, then API từ chối với `400 Bad Request` và ghi `audit_events`.
+- Given thành viên workspace được gán role `Analyst`, when họ truy cập dashboard, then họ chỉ thấy các tính năng nằm trong `permissions` của role đó.
+
+**Consequences:**
+- `WorkspaceRole` là SSoT cho mọi vai trò workspace. Chỉ `Owner`, `Editor`, `Viewer` có `is_system_role=True`.
+- API POST/PUT `/workspaces/{id}/roles` validate permission subset trước khi ghi.
+- `WorkspaceMembership.role_id` trỏ đến đúng một `WorkspaceRole`; không stacking role trong v1.
+
+**Status:** `[PROPOSED]` — Epic 29, Story 29.1.
+
+#### FR-101: Workspace Health Dashboard
+
+Workspace Owner hoặc user có quyền `analytics_read` có thể xem dashboard sức khoẻ workspace: số thành viên hoạt động (DAU/WAU), tốc độ tăng trưởng memory, số truy vấn recall/research/remember, credit tiêu thụ, chi phí mỗi turn, nguồn dữ liệu hàng đầu, và khoảng trống nguồn (source type đã kích hoạt nhưng không có memory mới trong 30 ngày). Dashboard sử dụng bảng/materialized view `workspace_health_daily` được làm mới hàng ngày; ngưỡng quota so sánh với `WorkspaceLimit` của workspace.
+
+**Acceptance Criteria:**
+- Given Owner mở `/dashboard/[workspace_id]/health`, when dữ liệu ngày hôm qua đã được rollup, then dashboard hiển thị các metric trên trong `< 500ms`.
+- Given một metric vượt 80% giá trị tối đa trong `WorkspaceLimit`, when dashboard render, then hiển thị CTA nâng cấp plan hoặc giảm sử dụng.
+- Given user click vào metric "source coverage gap", when drill-down, then mở danh sách các `source_type` đã bật nhưng không có memory mới trong 30 ngày, lọc theo `workspace_id`.
+
+**Consequences:**
+- Bảng `workspace_health_daily` hoặc materialized view `mv_workspace_health_daily` với khoá `(workspace_id, date)`.
+- Celery task `refresh_workspace_health_daily` tính toán mỗi ngày từ `TokenUsage`, `Memory`, `ChatThread`, `BillingEvent`.
+- Composite index trên `Memory` và `TokenUsage` theo `workspace_id` + thời gian.
+
+**Status:** `[PROPOSED]` — Epic 29, Story 29.2.
+
+#### FR-102: Subscription Tier & Quota Management
+
+Superadmin (qua `User.is_superuser` + `require_superuser()`) có thể quản lý các định nghĩa plan (Free/Team/Growth/Enterprise) dưới dạng các bản ghi `WorkspaceLimit` với `plan_tier` và `workspace_id IS NULL`. Workspace Owner có thể yêu cầu đổi tier, ghi vào `subscription_change` với `effective_at` mặc định = now()+7 ngày, trừ khi `immediate=true` và Owner xác nhận. Downgrade bị từ chối `409 Conflict` nếu số memory, thành viên hoặc credit hiện tại vượt quá giới hạn mới. Grandfathering được bảo toàn: cập nhật plan definition không retroactively thay đổi `Workspace.plan_tier` của workspace đang hoạt động. Giá được lưu bằng `price_micros` theo `currency` mặc định `USD` (AD-8).
+
+**Acceptance Criteria:**
+- Given superadmin cập nhật `WorkspaceLimit` của plan `Growth`, when một workspace hiện tại đang ở `Growth`, then workspace đó giữ nguyên giới hạn cũ cho đến khi Owner chọn plan mới (grandfathering).
+- Given Owner yêu cầu downgrade từ `Team` xuống `Free`, when số memory hiện tại > `max_memory_count` của `Free`, then API trả `409 Conflict` với checklist các điều kiện cần giải quyết.
+- Given Owner xác nhận `immediate=true` và đủ điều kiện, when subscription_change hoàn tất, then `Workspace.plan_tier` cập nhật ngay lập tức và ghi `audit_events`.
+
+**Consequences:**
+- `WorkspaceLimit` giữ định nghĩa plan (XOR `plan_tier` vs `workspace_id`).
+- Bảng `subscription_change` mới với các cột: `id`, `workspace_id`, `from_plan`, `to_plan`, `status`, `initiated_by`, `payment_method_id`, `effective_at`, `reversible_until`, `immediate`, `diff_payload`.
+- Quota enforcement tại `memory create`, `member invite`, `source enable`.
+
+**Status:** `[PROPOSED]` — Epic 29, Story 29.3.
+
+#### FR-103: Admin Bulk Operations
+
+Superadmin hoặc workspace Owner có thể thực hiện các thao tác hàng loạt trên một tập đối tượng được chọn qua structured filter builder (không NLP query). Mỗi yêu cầu phải có `Idempotency-Key`; backend lưu hash SHA-256 của body trong `idempotency_keys` với TTL 24h. Dry-run trả về số dòng sẽ bị ảnh hưởng trước khi thực thi. Thực thi được lên lịch qua `bulk_op_job` và polling bằng `job_id`. Mỗi dòng bị lỗi ghi vào `bulk_op_errors`; mỗi dòng thành công ghi `audit_events`.
+
+**Acceptance Criteria:**
+- Given superadmin chọn action `archive_inactive_workspaces` với filter `last_activity_at < 90 days ago`, when họ chọn dry-run, then hệ thống trả số lượng workspace phù hợp mà không thay đổi dữ liệu.
+- Given cùng filter và action, when superadmin gửi yêu cầu thực thi với `Idempotency-Key` mới, then API trả `202 Accepted` và `job_id`, bắt đầu xử lý async.
+- Given hai yêu cầu giống hệt nhau gửi cùng `Idempotency-Key`, when backend so sánh hash body, then yêu cầu thứ hai trả kết quả đã lưu nếu hash khớp.
+
+**Consequences:**
+- `BulkAction` enum allow-list: `archive_inactive_workspaces`, `rotate_api_keys`, `assign_role`, `delete_source_type_memories`, `apply_tier`, `revoke_membership`.
+- Bảng `bulk_op_job`, `bulk_op_errors`, `idempotency_keys` mới.
+- Structured filter builder với allow-list field/operator theo từng bảng đích.
+
+**Status:** `[PROPOSED]` — Epic 29, Story 29.4.
+
+#### FR-104: Memory Browser & Research Timeline
+
+Người dùng có quyền `memory_read` và `analytics_read` có thể duyệt toàn bộ memory của workspace qua trình duyệt chuyên dụng tại `/dashboard/[workspace_id]/memory-browser`, với lọc theo `source_type`, `confidence`, `created_at`, `user_id`, tìm kiếm toàn văn, và drill-down vào `MemoryVersion`, `ResearchThread`, `MemoryRelation`. "Research timeline" nhóm memory theo `ResearchThread` và hiển thị branch/merge markers. "Flag for review" tạo row `memory_review_queue` (`status=open`) và thông báo Owner/Editor. v1 không có approval-edit workflow.
+
+**Acceptance Criteria:**
+- Given Analyst mở memory browser, when họ chọn filter `source_type=SCRAPER_RUN` và `confidence>=0.8`, then danh sách memory được lọc theo `workspace_id` và các điều kiện đã chọn trong `< 300ms` với 100k memory.
+- Given user click vào một memory, when panel chi tiết mở, then hiển thị `MemoryVersion` history, `source_type`/`source_id`, và linked `ResearchThread`.
+- Given Analyst bấm "Flag for review" với lý do, then tạo `memory_review_queue` row, gửi thông báo, và không cho phép edit nội dung memory trực tiếp.
+
+**Consequences:**
+- Composite indexes: `(workspace_id, source_type, confidence)`, `(workspace_id, created_at DESC)`, `(workspace_id, user_id)`. Full-text index trên `content` nếu cần tìm kiếm keyword.
+- Trang mới `/dashboard/[workspace_id]/memory-browser` không expose `source_input` (recipe) từ AD-11.1.
+- `memory_review_queue` bảng mới với các cột `id`, `memory_id`, `flag_reason`, `flagged_by`, `status`, `created_at`.
+
+**Status:** `[PROPOSED]` — Epic 29, Story 29.5.
 
 ## 5. Non-Functional Requirements
 

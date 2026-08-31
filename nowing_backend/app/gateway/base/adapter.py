@@ -21,6 +21,7 @@ class ParsedInboundEvent:
     display_name: str | None = None
     username: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
+    provider: str | None = None
 
 
 @dataclass(frozen=True)

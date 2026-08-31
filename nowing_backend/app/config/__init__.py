@@ -1454,6 +1454,37 @@ class Config:
     SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
     SMTP_FROM = os.getenv("SMTP_FROM")
     SMTP_TLS = os.getenv("SMTP_TLS", "TRUE").upper() == "TRUE"
+    SMTP_TIMEOUT_SECONDS = float(os.getenv("SMTP_TIMEOUT_SECONDS", "30.0"))
+
+    # Inbound email gateway (Story 6.10)
+    GATEWAY_EMAIL_ENABLED = (
+        os.getenv("GATEWAY_EMAIL_ENABLED", "TRUE").upper() == "TRUE"
+    )
+    GATEWAY_EMAIL_PROVIDER = os.getenv("GATEWAY_EMAIL_PROVIDER", "sendgrid")
+    GATEWAY_EMAIL_DOMAIN = os.getenv("GATEWAY_EMAIL_DOMAIN", "nowing.ai")
+    SENDGRID_WEBHOOK_PUBLIC_KEY = os.getenv("SENDGRID_WEBHOOK_PUBLIC_KEY", "")
+    SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
+    MAILGUN_WEBHOOK_SIGNING_KEY = os.getenv("MAILGUN_WEBHOOK_SIGNING_KEY", "")
+    MAILGUN_API_KEY = os.getenv("MAILGUN_API_KEY", "")
+
+    # Inbound email limits (Story 6.10)
+    GATEWAY_EMAIL_MAX_SIZE_BYTES = int(
+        os.getenv("GATEWAY_EMAIL_MAX_SIZE_BYTES", str(30 * 1024 * 1024))
+    )
+    GATEWAY_EMAIL_MAX_ATTACHMENT_BYTES = int(
+        os.getenv("GATEWAY_EMAIL_MAX_ATTACHMENT_BYTES", str(25 * 1024 * 1024))
+    )
+    GATEWAY_EMAIL_MAX_REPLY_BODY_BYTES = int(
+        os.getenv("GATEWAY_EMAIL_MAX_REPLY_BODY_BYTES", str(2 * 1024 * 1024))
+    )
+    GATEWAY_EMAIL_MAX_REQUEST_TEXT_LENGTH = int(
+        os.getenv("GATEWAY_EMAIL_MAX_REQUEST_TEXT_LENGTH", str(100 * 1024))
+    )
+
+    # Scheduled DSH mission tick interval (Story 6.10)
+    SCHEDULED_DSH_MISSION_TICK_SECONDS = int(
+        os.getenv("SCHEDULED_DSH_MISSION_TICK_SECONDS", "60")
+    )
 
     # Dropbox OAuth
     DROPBOX_APP_KEY = os.getenv("DROPBOX_APP_KEY")
