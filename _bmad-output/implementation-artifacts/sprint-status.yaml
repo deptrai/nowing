@@ -137,7 +137,7 @@ development_status:
   6-6a-playbook-reuse: backlog  # business-gated → backlog until decision  # epics.md Story 6.6 — gated sau pilot BĐS retention
   6-7a-schema-form-ui: backlog  # business-gated → backlog until decision  # epics.md Story 6.7 — gated sau pilot BĐS retention
   6-9a-workspace-vertical: backlog  # business-gated → backlog until decision  # epics.md Story 6.9 — gated sau pilot BĐS retention
-  6-10: ready-for-dev
+  6-10: done  # 2026-09-01: green-phase implementation merged with tech-debt architecture; 47/47 unit & integration tests pass.
   6-11: backlog  # Vertical Alert Rule Templates on Generic Alert Engine; can trigger DSH mission as notification_channel (optional)
   6-12: backlog  # Narrative Report Engine for Indexed Data — run as DSH mission deliverable / ingestion node (consolidated from 14.4/15.4/16.4)
   epic-6-retrospective: optional

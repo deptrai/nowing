@@ -2,7 +2,8 @@
 title: Story 6.10 — Inbound Mail Gateway (`task@nowing.ai`) & Stateful Scheduled Tasks 2.0
 epic: 6
 story: 10
-status: ready-for-dev
+status: done
+completed: 2026-09-01
 priority: P0
 created: 2026-08-30
 ---
@@ -178,6 +179,19 @@ Use the existing `app/alerts/engine/cron.py` helpers (`compute_next_fire_at`) to
   - `tests/integration/gateway/test_email_inbound.py` — end-to-end: POST webhook → `inbound_email_event` → mission created → reply queued.
   - `tests/integration/tasks/test_scheduled_mission_tick.py` — Celery tick claims and resumes mission.
 
+
+
+### Post-Refactor Architecture Mapping (Tech-Debt Cleanup 2026-08-30)
+
+| Story Component | Legacy Path | Refactored Path | Notes |
+|---|---|---|---|
+| Inbound Email Model | `app/db.py` | `app/models/chat.py` / `app/db/__init__.py` | Model `InboundEmailEvent` re-exported in `app.db`. |
+| Inbound Email Enum | `app/db.py` | `app/db/enums.py` | Enum `InboundEmailEventStatus`. |
+| DSH Mission Model | `app/db.py` | `app/models/leads/core.py` | Added `schedule`, `source`, `request_text`, `next_fire_at`, `last_fired_at`. |
+| Gateway Config | `app/config/__init__.py` | `app/config/gateway.py` | `GATEWAY_EMAIL_*`, `SENDGRID_*`, `MAILGUN_*`. |
+| DSH Config | `app/config/__init__.py` | `app/config/dsh.py` | `SCHEDULED_DSH_MISSION_TICK_SECONDS`. |
+| SMTP Config | `app/config/__init__.py` | `app/config/oauth.py` | `SMTP_TIMEOUT_SECONDS`. |
+| Gateway Route | `app/routes/__init__.py` | `app/routes/__init__.py` + `app/app/factory.py` | Included in `crud_router` registered by factory. |
 
 ## Challenge Log (grill-me)
 
