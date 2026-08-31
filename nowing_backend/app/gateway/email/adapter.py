@@ -61,7 +61,11 @@ def _extract_workspace_id(address: str) -> int | None:
     """Return the numeric workspace ID from a task+{id}@nowing.ai address."""
     match = re.match(r"^task\+(\d+)@", address.strip().lower())
     if match:
-        return int(match.group(1))
+        val = int(match.group(1))
+        # Guard against PostgreSQL 32-bit Integer overflow
+        if val > 2147483647:
+            return None
+        return val
     return None
 
 
@@ -75,8 +79,11 @@ def _select_recipient(recipients: list[str], *, domain: str) -> str | None:
 
 
 def _strip_html(value: str) -> str:
-    """Remove HTML tags and decode entities to plain text."""
-    text = re.sub(r"<[^>]+>", " ", value)
+    """Remove HTML tags (including script and style blocks) and decode entities to plain text."""
+    # First remove style and script tags with their inner contents
+    text = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", value, flags=re.DOTALL | re.IGNORECASE)
+    # Strip remaining HTML tags
+    text = re.sub(r"<[^>]+>", " ", text)
     text = html.unescape(text)
     text = re.sub(r"\s+", " ", text).strip()
     return text

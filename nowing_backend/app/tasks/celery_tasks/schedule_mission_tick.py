@@ -142,7 +142,7 @@ def _ingestion_result(
         mission_id=mission_id,
         workspace_id=0,
         schedule=schedule,
-        checkpoint={} if not resume_from_checkpoint else None,
+        checkpoint={"version": 1, "phase": "ingestion", "subtasks": []} if resume_from_checkpoint else None,
     )
 
     try:
@@ -309,20 +309,43 @@ def schedule_mission_tick() -> None:
                     mission.schedule if hasattr(mission, "schedule") else mission.get("schedule", {})
                 )
 
-                run_scheduled_mission(
+                result = run_scheduled_mission(
                     mission_id=mission_id,
                     resume_from_checkpoint=True,
                     schedule=schedule,
                 )
 
-                next_fire_at = _advance_next_fire_at(schedule, datetime.now(UTC))
-                await _update_mission_status_async(
-                    session,
-                    mission_id,
-                    status=DshMissionStatus.PENDING.value,
-                    next_fire_at=next_fire_at,
-                    last_fired_at=datetime.now(UTC),
-                )
+                if result.get("status") == "error":
+                    retry_count = result.get("retry_count", 1)
+                    if retry_count < _MAX_RETRIES:
+                        next_fire_at = _advance_next_fire_at(schedule, datetime.now(UTC))
+                        await _update_mission_status_async(
+                            session,
+                            mission_id,
+                            status=DshMissionStatus.ERROR.value,
+                            retry_count=retry_count,
+                            next_fire_at=next_fire_at,
+                            last_fired_at=datetime.now(UTC),
+                        )
+                    else:
+                        await _update_mission_status_async(
+                            session,
+                            mission_id,
+                            status=DshMissionStatus.DLQ.value,
+                            retry_count=retry_count,
+                            next_fire_at=None,
+                            last_fired_at=datetime.now(UTC),
+                        )
+                else:
+                    next_fire_at = _advance_next_fire_at(schedule, datetime.now(UTC))
+                    await _update_mission_status_async(
+                        session,
+                        mission_id,
+                        status=DshMissionStatus.PENDING.value,
+                        retry_count=0,
+                        next_fire_at=next_fire_at,
+                        last_fired_at=datetime.now(UTC),
+                    )
 
             await session.commit()
 

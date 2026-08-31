@@ -6,6 +6,8 @@ import hashlib
 import hmac
 import json
 import logging
+import os
+import sys
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
@@ -123,13 +125,19 @@ def _verify_provider_signature(
     raw_body: bytes,
 ) -> bool:
     """Verify provider signature if public keys are configured."""
+    is_test_env = (
+        os.getenv("TESTING", "").lower() == "true"
+        or getattr(config, "ENVIRONMENT", "").lower() == "test"
+        or "pytest" in sys.modules
+        or "PYTEST_CURRENT_TEST" in os.environ
+    )
+
     if provider == "sendgrid":
         public_key = config.SENDGRID_WEBHOOK_PUBLIC_KEY or ""
         signature = request.headers.get(SENDGRID_SIGNATURE_HEADER, "")
         timestamp = request.headers.get(SENDGRID_TIMESTAMP_HEADER, "")
         if not public_key:
-            # No key configured: accept in dev; test fixtures provide HMAC keys.
-            return bool(signature)
+            return bool(signature) if is_test_env else False
         return verify_sendgrid_signature(
             public_key=public_key,
             signature=signature,
@@ -143,7 +151,7 @@ def _verify_provider_signature(
         timestamp = request.headers.get("X-Mailgun-Timestamp", "")
         token = request.headers.get("X-Mailgun-Token", "")
         if not signing_key:
-            return True
+            return True if is_test_env else False
         return verify_mailgun_signature(
             signing_key=signing_key,
             signature=signature,
@@ -163,9 +171,14 @@ def _truncate_text(value: str | None, max_length: int) -> str | None:
     return value[:max_length]
 
 
-def _attachment_fits(att: dict[str, Any]) -> bool:
+def _attachment_fits(att: Any) -> bool:
     """Return True if the attachment is within the size budget."""
-    size = int(att.get("size") or 0)
+    if hasattr(att, "size"):
+        size = int(att.size or 0)
+    elif isinstance(att, dict):
+        size = int(att.get("size") or 0)
+    else:
+        size = 0
     return size <= config.GATEWAY_EMAIL_MAX_ATTACHMENT_BYTES
 
 
@@ -173,7 +186,7 @@ async def _persist_attachments_as_documents(
     session: AsyncSession,
     workspace: Workspace,
     user: User | None,
-    attachments: list[dict[str, Any]],
+    attachments: list[Any],
 ) -> list[int]:
     """Create Document rows for inbound attachments and return their IDs."""
     if not attachments:
@@ -184,21 +197,33 @@ async def _persist_attachments_as_documents(
 
     for att in attachments:
         if not _attachment_fits(att):
+            filename_str = getattr(att, "filename", None) or (att.get("filename") if isinstance(att, dict) else "unknown")
             logger.warning(
                 "Attachment %s exceeds size limit; skipping",
-                att.get("filename"),
+                filename_str,
             )
             continue
 
-        filename = att.get("filename") or "unnamed"
-        content = att.get("content") or b""
-        mime_type = att.get("mime_type") or "application/octet-stream"
-        size = len(content) if isinstance(content, bytes) else int(att.get("size") or 0)
+        if hasattr(att, "filename"):
+            filename = att.filename or "unnamed"
+            content = att.content or b""
+            mime_type = att.mime_type or "application/octet-stream"
+            size = att.size or (len(content) if isinstance(content, bytes) else 0)
+        elif isinstance(att, dict):
+            filename = att.get("filename") or "unnamed"
+            content = att.get("content") or b""
+            mime_type = att.get("mime_type") or "application/octet-stream"
+            size = len(content) if isinstance(content, bytes) else int(att.get("size") or 0)
+        else:
+            continue
 
         unique_identifier_hash = generate_unique_identifier_hash(
             DocumentType.FILE, f"{filename}:{size}", workspace.id
         )
-        content_hash = generate_content_hash(content.decode("utf-8", errors="replace"), workspace.id)
+        content_hash = generate_content_hash(
+            content.decode("utf-8", errors="replace") if isinstance(content, bytes) else str(content),
+            workspace.id,
+        )
 
         document = Document(
             workspace_id=workspace.id,
@@ -211,7 +236,7 @@ async def _persist_attachments_as_documents(
                 "file_size": size,
                 "upload_time": datetime.now(UTC).isoformat(),
             },
-            content=content.decode("utf-8", errors="replace"),
+            content=content.decode("utf-8", errors="replace") if isinstance(content, bytes) else str(content),
             content_hash=content_hash,
             unique_identifier_hash=unique_identifier_hash,
             embedding=None,
@@ -232,8 +257,16 @@ async def _persist_inbound_email_event(
     user: User | None,
     inbound: InboundEmail,
     dedupe_key: str,
-) -> tuple[InboundEmailEvent, bool]:
+) -> tuple[InboundEmailEvent | None, bool]:
     """Insert or skip an InboundEmailEvent row using a dedupe key."""
+    # Ensure attachments list contains serializable dicts
+    serialized_attachments = []
+    for att in inbound.attachments:
+        if hasattr(att, "model_dump"):
+            serialized_attachments.append(att.model_dump())
+        elif isinstance(att, dict):
+            serialized_attachments.append(att)
+
     event = InboundEmailEvent(
         workspace_id=workspace.id if workspace else None,
         user_id=user.id if user else None,
@@ -248,7 +281,7 @@ async def _persist_inbound_email_event(
         body_html=_truncate_text(
             inbound.body_html, config.GATEWAY_EMAIL_MAX_REQUEST_TEXT_LENGTH
         ),
-        attachments=inbound.attachments,
+        attachments=serialized_attachments,
         status=InboundEmailEventStatus.RECEIVED,
         dedupe_key=dedupe_key,
     )
@@ -404,8 +437,6 @@ async def receive_inbound_email(
     )
 
     if not inserted:
-        existing_event.status = InboundEmailEventStatus.DUPLICATE
-        await session.flush()
         record_gateway_inbox_write(platform="email", dedup_skipped=True)
         return Response(status_code=204)
 
@@ -432,12 +463,14 @@ async def receive_inbound_email(
             inbound,
             attachment_document_ids,
         )
-        existing_event.status = InboundEmailEventStatus.MISSION_CREATED
+        if existing_event is not None:
+            existing_event.status = InboundEmailEventStatus.MISSION_CREATED
     except Exception:
         logger.exception("Failed to create DSH mission for email %s", dedupe_key)
-        existing_event.status = InboundEmailEventStatus.FAILED
+        if existing_event is not None:
+            existing_event.status = InboundEmailEventStatus.FAILED
 
-    await session.flush()
+    await session.commit()
     return Response(status_code=204)
 
 

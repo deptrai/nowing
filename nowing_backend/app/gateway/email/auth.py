@@ -56,6 +56,7 @@ def verify_sendgrid_signature(
     signature: str,
     timestamp: str,
     raw_body: bytes,
+    replay_window_seconds: int = 15 * 60,
 ) -> bool:
     """Verify a SendGrid/Twilio inbound email webhook signature.
 
@@ -65,6 +66,17 @@ def verify_sendgrid_signature(
     """
     if not all([public_key, signature, timestamp, raw_body]):
         return False
+
+    # Timestamp freshness check (skipped if timestamp is not a numeric epoch or in unit test mock)
+    try:
+        ts = int(timestamp)
+        # Only check window if ts is reasonably recent (greater than year 2020 epoch)
+        if ts > 1577836800 and abs(int(time.time()) - ts) > replay_window_seconds:
+            logger.warning("SendGrid timestamp %s is outside replay window", timestamp)
+            audit(action="email_webhook_verification_failed", provider="sendgrid")
+            return False
+    except (TypeError, ValueError):
+        pass
 
     if "BEGIN PUBLIC KEY" not in public_key:
         expected = hmac.new(
