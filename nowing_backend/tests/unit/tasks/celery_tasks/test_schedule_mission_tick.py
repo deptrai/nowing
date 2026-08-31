@@ -6,17 +6,21 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-pytestmark = [pytest.mark.unit, pytest.mark.skip("TDD red phase - Story 6.10 not implemented")]
+pytestmark = [pytest.mark.unit]
 
 
-@pytest.mark.skip("TDD red phase - Story 6.10 not implemented")
 def test_tick_claims_missions_due_now(mocker):
     """AC-6 P1: claim missions where next_fire_at <= now and status in pending/running."""
     from app.tasks.celery_tasks.schedule_mission_tick import schedule_mission_tick
 
+    mission = mocker.MagicMock()
+    mission.id = "m1"
+    mission.workspace_id = 1
+    mission.schedule = {}
+
     claim_mock = mocker.patch(
         "app.tasks.celery_tasks.schedule_mission_tick._claim_due_missions",
-        return_value=[{"id": "m1", "workspace_id": 1}],
+        return_value=[mission],
     )
     run_mock = mocker.patch(
         "app.tasks.celery_tasks.schedule_mission_tick.run_scheduled_mission",
@@ -31,7 +35,6 @@ def test_tick_claims_missions_due_now(mocker):
     assert call.kwargs["resume_from_checkpoint"] is True
 
 
-@pytest.mark.skip("TDD red phase - Story 6.10 not implemented")
 def test_tick_skips_missions_not_due(mocker):
     """AC-6 P1: missions with next_fire_at > now are skipped."""
     from app.tasks.celery_tasks.schedule_mission_tick import schedule_mission_tick
@@ -49,7 +52,6 @@ def test_tick_skips_missions_not_due(mocker):
     assert run_mock.called is False
 
 
-@pytest.mark.skip("TDD red phase - Story 6.10 not implemented")
 def test_postgres_connection_error_logs_and_retries(mocker):
     """AC-6 P2: Postgres connection error during claim logs exception and retries next tick."""
     from app.tasks.celery_tasks.schedule_mission_tick import schedule_mission_tick
@@ -66,7 +68,6 @@ def test_postgres_connection_error_logs_and_retries(mocker):
     assert "scheduled_mission_tick_failed" in str(log_mock.call_args.args[0])
 
 
-@pytest.mark.skip("TDD red phase - Story 6.10 not implemented")
 def test_executor_timeout_sets_status_error_and_increment_retry(mocker):
     """AC-6 P2: LangGraphMissionExecutor timeout sets status=error and retry_count++."""
     from app.tasks.celery_tasks.schedule_mission_tick import run_scheduled_mission
@@ -86,15 +87,19 @@ def test_executor_timeout_sets_status_error_and_increment_retry(mocker):
     assert update_mock.call_args.kwargs["retry_count"] == 1
 
 
-@pytest.mark.skip("TDD red phase - Story 6.10 not implemented")
 def test_past_due_mission_run_once_and_advance(mocker):
     """AC-6 P3: next_fire_at > 24h past still runs once and advances."""
     from app.tasks.celery_tasks.schedule_mission_tick import schedule_mission_tick
 
     past = datetime.now(timezone.utc) - timedelta(hours=25)
+    mission = mocker.MagicMock()
+    mission.id = "m1"
+    mission.workspace_id = 1
+    mission.schedule = {}
+
     claim_mock = mocker.patch(
         "app.tasks.celery_tasks.schedule_mission_tick._claim_due_missions",
-        return_value=[{"id": "m1", "workspace_id": 1, "next_fire_at": past}],
+        return_value=[mission],
     )
     run_mock = mocker.patch(
         "app.tasks.celery_tasks.schedule_mission_tick.run_scheduled_mission",
@@ -110,7 +115,6 @@ def test_past_due_mission_run_once_and_advance(mocker):
     advance_mock.assert_called_once()
 
 
-@pytest.mark.skip("TDD red phase - Story 6.10 not implemented")
 def test_error_status_with_retry_count_below_max_retries(mocker):
     """AC-6 P3: status=error and retry_count < MAX_RETRIES is retried on next tick."""
     from app.tasks.celery_tasks.schedule_mission_tick import _should_retry
@@ -119,7 +123,6 @@ def test_error_status_with_retry_count_below_max_retries(mocker):
     assert _should_retry("error", retry_count=3, max_retries=3) is False
 
 
-@pytest.mark.skip("TDD red phase - Story 6.10 not implemented")
 def test_concurrent_claim_only_one_wins(mocker):
     """AC-6 P3: two Beat workers claim same mission, only one wins status transition."""
     from app.tasks.celery_tasks.schedule_mission_tick import _claim_mission
@@ -133,7 +136,6 @@ def test_concurrent_claim_only_one_wins(mocker):
     assert result is None
 
 
-@pytest.mark.skip("TDD red phase - Story 6.10 not implemented")
 def test_batch_size_computed_min_tick_batch_and_remaining():
     """AC-6 P4: batch size = min(_TICK_BATCH, remaining_due)."""
     from app.tasks.celery_tasks.schedule_mission_tick import _compute_batch_size
@@ -142,7 +144,6 @@ def test_batch_size_computed_min_tick_batch_and_remaining():
     assert _compute_batch_size(remaining_due=250, tick_batch=200) == 200
 
 
-@pytest.mark.skip("TDD red phase - Story 6.10 not implemented")
 def test_next_fire_at_advanced_even_on_no_op(mocker):
     """AC-6 P4: next_fire_at still advanced when ingestion is no-op."""
     from app.tasks.celery_tasks.schedule_mission_tick import run_scheduled_mission

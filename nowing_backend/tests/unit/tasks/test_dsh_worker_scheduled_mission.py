@@ -6,10 +6,9 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-pytestmark = [pytest.mark.unit, pytest.mark.skip("TDD red phase - Story 6.10 not implemented")]
+pytestmark = [pytest.mark.unit]
 
 
-@pytest.mark.skip("TDD red phase - Story 6.10 not implemented")
 def test_ingestion_writes_schedule_state_to_checkpoint(mocker):
     """AC-5 P1: checkpoint['schedule_state'] written, subtasks preserved."""
     from app.tasks.dsh_worker_scheduled_mission import ScheduledMissionWorker
@@ -31,7 +30,6 @@ def test_ingestion_writes_schedule_state_to_checkpoint(mocker):
     assert patch_mock.call_args.kwargs["checkpoint"]["subtasks"] == []
 
 
-@pytest.mark.skip("TDD red phase - Story 6.10 not implemented")
 def test_resume_from_checkpoint_compares_previous_state(mocker):
     """AC-5 P1/P3: next run loads checkpoint and resumes from last state."""
     from app.tasks.dsh_worker_scheduled_mission import ScheduledMissionWorker
@@ -52,7 +50,6 @@ def test_resume_from_checkpoint_compares_previous_state(mocker):
     assert worker.checkpoint["schedule_state"]["last_run_sources"] == [{"url": "vcb.com"}]
 
 
-@pytest.mark.skip("TDD red phase - Story 6.10 not implemented")
 def test_first_run_with_empty_schedule_state_full_run(mocker):
     """AC-5 P3: empty schedule_state means no comparison, full run."""
     from app.tasks.dsh_worker_scheduled_mission import ScheduledMissionWorker
@@ -66,7 +63,6 @@ def test_first_run_with_empty_schedule_state_full_run(mocker):
     assert "schedule_state" in worker.checkpoint
 
 
-@pytest.mark.skip("TDD red phase - Story 6.10 not implemented")
 def test_ingestion_error_sets_status_error(mocker):
     """AC-5 P2: ingestion node throwing sets mission status=error and logs audit."""
     from app.tasks.dsh_worker_scheduled_mission import ScheduledMissionWorker
@@ -83,7 +79,6 @@ def test_ingestion_error_sets_status_error(mocker):
     assert audit_mock.call_args.kwargs["action"] == "scheduled_mission_ingestion_failed"
 
 
-@pytest.mark.skip("TDD red phase - Story 6.10 not implemented")
 def test_progress_percent_computed_from_ingested_count():
     """AC-5 P4: progress_percent = min(100, int(ingested/expected * 100))."""
     from app.tasks.dsh_worker_scheduled_mission import _compute_progress
@@ -94,7 +89,6 @@ def test_progress_percent_computed_from_ingested_count():
     assert _compute_progress(ingested_count=15, expected_count=10) == 100
 
 
-@pytest.mark.skip("TDD red phase - Story 6.10 not implemented")
 def test_next_fire_at_advanced_after_successful_ingestion(mocker):
     """AC-5 P4: next_fire_at updated using compute_next_fire_at."""
     from app.tasks.dsh_worker_scheduled_mission import ScheduledMissionWorker
@@ -111,7 +105,6 @@ def test_next_fire_at_advanced_after_successful_ingestion(mocker):
     assert args > datetime.now(timezone.utc)
 
 
-@pytest.mark.skip("TDD red phase - Story 6.10 not implemented")
 def test_checkpoint_size_exceeds_max_prunes_history(mocker):
     """AC-5 P3: checkpoint > MAX_CHECKPOINT_BYTES prunes schedule_state history."""
     from app.tasks.dsh_worker_scheduled_mission import ScheduledMissionWorker
@@ -130,7 +123,6 @@ def test_checkpoint_size_exceeds_max_prunes_history(mocker):
     prune_mock.assert_called_once()
 
 
-@pytest.mark.skip("TDD red phase - Story 6.10 not implemented")
 def test_redis_publish_failure_rollback_and_503(mocker):
     """AC-4 P2: Redis stream publish fails -> 503 and DB rollback."""
     from app.tasks.dsh_worker_scheduled_mission import ScheduledMissionWorker
@@ -147,13 +139,13 @@ def test_redis_publish_failure_rollback_and_503(mocker):
     rollback_mock.assert_called_once()
 
 
-@pytest.mark.skip("TDD red phase - Story 6.10 not implemented")
-def test_create_recurring_report_mission_accepts_schedule_and_source(mocker):
+async def test_create_recurring_report_mission_accepts_schedule_and_source(mocker):
     """AC-4 P1/P2: DshMissionService.create_mission accepts schedule, source, request_text, next_fire_at."""
     from app.services.dsh_mission_service import DshMissionService
 
     service = DshMissionService()
     session = mocker.AsyncMock()
+    session.add = mocker.MagicMock()
     payload = {
         "query": "Theo dõi giá cổ phiếu VCB trong 30 ngày",
         "source": "email",
@@ -166,7 +158,7 @@ def test_create_recurring_report_mission_accepts_schedule_and_source(mocker):
         "next_fire_at": (datetime.now(timezone.utc) + timedelta(minutes=360)).isoformat(),
     }
 
-    mission = service.create_mission(
+    mission = await service.create_mission(
         session=session,
         workspace_id=1,
         user_id=None,

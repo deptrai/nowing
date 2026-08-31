@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-pytestmark = [pytest.mark.unit, pytest.mark.skip("TDD red phase - Story 6.10 not implemented")]
+pytestmark = [pytest.mark.unit]
 
 
-@pytest.mark.skip("TDD red phase - Story 6.10 not implemented")
 def test_reply_uses_original_from_as_to_and_smtp_from(mocker):
     """AC-7 P1: reply To=original From, From=SMTP_FROM, Reply-To=task+workspace_id."""
     from app.gateway.email.sender import send_email_reply
@@ -32,7 +31,6 @@ def test_reply_uses_original_from_as_to_and_smtp_from(mocker):
     assert args["headers"]["In-Reply-To"] == "<orig-1@example.com>"
 
 
-@pytest.mark.skip("TDD red phase - Story 6.10 not implemented")
 def test_reply_includes_degradation_reasons():
     """AC-7 P1: reply includes degradation reasons when degraded."""
     from app.gateway.email.sender import build_reply_body
@@ -48,7 +46,6 @@ def test_reply_includes_degradation_reasons():
     assert "missing attachment" in body
 
 
-@pytest.mark.skip("TDD red phase - Story 6.10 not implemented")
 def test_smtp_exception_sets_status_replied_failed(mocker):
     """AC-7 P2: smtplib.SMTPException sets inbound_email_event.status=replied_failed."""
     from app.gateway.email.sender import send_email_reply
@@ -69,7 +66,6 @@ def test_smtp_exception_sets_status_replied_failed(mocker):
     assert audit_mock.call_args.kwargs["action"] == "email_reply_failed"
 
 
-@pytest.mark.skip("TDD red phase - Story 6.10 not implemented")
 def test_missing_smtp_host_logs_warning(mocker):
     """AC-7 P2: missing SMTP_HOST logs warning but mission still completes."""
     from app.gateway.email.sender import send_email_reply
@@ -89,7 +85,6 @@ def test_missing_smtp_host_logs_warning(mocker):
     assert result is not None
 
 
-@pytest.mark.skip("TDD red phase - Story 6.10 not implemented")
 def test_invalid_from_address_skips_send():
     """AC-7 P3: invalid From address does not attempt send."""
     from app.gateway.email.sender import send_email_reply
@@ -105,7 +100,6 @@ def test_invalid_from_address_skips_send():
     assert result["attempted"] is False
 
 
-@pytest.mark.skip("TDD red phase - Story 6.10 not implemented")
 def test_reply_body_truncated_when_too_large():
     """AC-7 P3: reply body > MAX_REPLY_BODY_BYTES is truncated."""
     from app.gateway.email.sender import build_reply_body

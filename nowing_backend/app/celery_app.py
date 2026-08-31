@@ -223,6 +223,7 @@ celery_app = Celery(
         "app.tasks.celery_tasks.run_memory_extraction_task",
         "app.tasks.celery_tasks.gateway_tasks",
         "app.tasks.celery_tasks.enrichment_tasks",
+        "app.tasks.celery_tasks.schedule_mission_tick",
         "app.tasks.phone_waterfall_worker",
         "app.etl_pipeline.cache.eviction.task",
         "app.indexing_pipeline.cache.eviction.task",
@@ -428,6 +429,14 @@ celery_app.conf.beat_schedule = {
     "evaluate-sequences": {
         "task": "evaluate_sequences",
         "schedule": crontab(minute="*"),
+        "options": {"expires": 50},
+    },
+    # Fire due scheduled DSH missions (Story 6.10).
+    "scheduled-dsh-mission-tick": {
+        "task": "schedule_mission_tick",
+        "schedule": crontab(
+            minute=f"*/{max(1, getattr(config, 'SCHEDULED_DSH_MISSION_TICK_SECONDS', 60) // 60)}"
+        ),
         "options": {"expires": 50},
     },
 }

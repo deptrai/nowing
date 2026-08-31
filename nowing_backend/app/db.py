@@ -1258,6 +1258,80 @@ class ExternalChatInboundEvent(Base, TimestampMixin):
     )
 
 
+class InboundEmailEventStatus(StrEnum):
+    """Lifecycle of an inbound email received through the gateway."""
+
+    RECEIVED = "received"
+    PARSED = "parsed"
+    MISSION_CREATED = "mission_created"
+    REPLIED = "replied"
+    REPLIED_FAILED = "replied_failed"
+    FAILED = "failed"
+    DUPLICATE = "duplicate"
+    MANUAL_REVIEW = "manual_review"
+
+
+class InboundEmailEvent(Base, TimestampMixin):
+    """Durable record of an inbound email received from SendGrid/Mailgun."""
+
+    __tablename__ = "inbound_email_event"
+    __allow_unmapped__ = True
+
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    provider = Column(String(32), nullable=False)
+    message_id = Column(Text, nullable=True)
+    from_address = Column(Text, nullable=False)
+    to_address = Column(Text, nullable=False)
+    subject = Column(Text, nullable=True)
+    body_text = Column(Text, nullable=True)
+    body_html = Column(Text, nullable=True)
+    attachments = Column(
+        JSONB,
+        nullable=False,
+        default=list,
+        server_default=text("'[]'::jsonb"),
+    )
+    status = Column(
+        String(32),
+        nullable=False,
+        default=InboundEmailEventStatus.RECEIVED,
+        server_default=text(f"'{InboundEmailEventStatus.RECEIVED.value}'"),
+        index=True,
+    )
+    dedupe_key = Column(String(64), nullable=False, index=True)
+    processed_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "provider",
+            "message_id",
+            name="uq_inbound_email_event_provider_message_id",
+        ),
+        Index(
+            "ix_inbound_email_event_status_created_at",
+            "status",
+            "created_at",
+        ),
+    )
+
+
 class TokenUsage(BaseModel, TimestampMixin):
     """
     Tracks LLM token consumption per assistant turn.
@@ -3915,6 +3989,7 @@ class DshMissionStatus(StrEnum):
     DLQ = "dlq"
 
 
+
 class DshMission(Base, TimestampMixin):
     """
     Long-running DSH mission state. PII/full payload and checkpoint are kept
@@ -3935,6 +4010,12 @@ class DshMission(Base, TimestampMixin):
             name="chk_dsh_missions_progress_percent",
         ),
         Index("ix_dsh_missions_workspace_id_status", "workspace_id", "status"),
+        Index(
+            "ix_dsh_missions_next_fire_at",
+            "workspace_id",
+            "status",
+            "next_fire_at",
+        ),
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -3985,6 +4066,12 @@ class DshMission(Base, TimestampMixin):
         onupdate=lambda: datetime.now(UTC),
         index=True,
     )
+    # Story 6.10: scheduled recurring report support.
+    schedule = Column(JSONB, nullable=True, default=dict, server_default=text("'{}'::jsonb"))
+    source = Column(String(32), nullable=True)
+    request_text = Column(Text, nullable=True)
+    next_fire_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    last_fired_at = Column(TIMESTAMP(timezone=True), nullable=True)
     payload = Column(
         JSONB,
         nullable=False,

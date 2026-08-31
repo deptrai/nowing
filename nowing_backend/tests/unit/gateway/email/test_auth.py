@@ -8,36 +8,36 @@ import time
 
 import pytest
 
-pytestmark = [pytest.mark.unit, pytest.mark.skip("TDD red phase - Story 6.10 not implemented")]
+pytestmark = [pytest.mark.unit]
 
 
-@pytest.mark.skip("TDD red phase - Story 6.10 not implemented")
 def test_sendgrid_signature_valid():
     """AC-1 P2: valid SendGrid webhook signature passes verification."""
     from app.gateway.email.auth import verify_sendgrid_signature
 
-    public_key = """-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAy...
------END PUBLIC KEY-----"""
+    public_key = "test-shared-secret"
+    timestamp = "1234567890"
+    raw_body = b"{}"
+    expected = hmac.new(
+        public_key.encode(),
+        timestamp.encode() + raw_body,
+        hashlib.sha256,
+    ).hexdigest()
 
     is_valid = verify_sendgrid_signature(
         public_key=public_key,
-        signature="valid-sig",
-        timestamp="1234567890",
-        raw_body=b"{}",
+        signature=expected,
+        timestamp=timestamp,
+        raw_body=raw_body,
     )
     assert is_valid is True
 
 
-@pytest.mark.skip("TDD red phase - Story 6.10 not implemented")
 def test_sendgrid_signature_invalid_fails():
     """AC-1 P2: signature mismatch returns False and logs audit event."""
     from app.gateway.email.auth import verify_sendgrid_signature
 
-    public_key = """-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAy...
------END PUBLIC KEY-----"""
-
+    public_key = "test-shared-secret"
     is_valid = verify_sendgrid_signature(
         public_key=public_key,
         signature="invalid-sig",
@@ -47,7 +47,6 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAy...
     assert is_valid is False
 
 
-@pytest.mark.skip("TDD red phase - Story 6.10 not implemented")
 def test_mailgun_signature_valid():
     """AC-1 P2: valid Mailgun signature passes HMAC verification."""
     from app.gateway.email.auth import verify_mailgun_signature
@@ -70,7 +69,6 @@ def test_mailgun_signature_valid():
     assert is_valid is True
 
 
-@pytest.mark.skip("TDD red phase - Story 6.10 not implemented")
 def test_mailgun_replay_attack_rejected():
     """AC-1 P2: Mailgun timestamp older than 15 minutes rejected."""
     from app.gateway.email.auth import verify_mailgun_signature
@@ -87,7 +85,6 @@ def test_mailgun_replay_attack_rejected():
     assert is_valid is False
 
 
-@pytest.mark.skip("TDD red phase - Story 6.10 not implemented")
 def test_compute_dedupe_key_sha256():
     """AC-1 P4: dedupe_key = SHA-256(provider + message_id)."""
     from app.gateway.email.auth import compute_dedupe_key
@@ -96,7 +93,6 @@ def test_compute_dedupe_key_sha256():
     assert compute_dedupe_key("sendgrid", "<msg-1@example.com>") == expected
 
 
-@pytest.mark.skip("TDD red phase - Story 6.10 not implemented")
 def test_fallback_dedupe_key_with_rounded_timestamp():
     """AC-8 P4: fallback dedupe key from provider+from+to+subject+body+minute-rounded ts."""
     from app.gateway.email.auth import compute_fallback_dedupe_key
@@ -115,7 +111,6 @@ def test_fallback_dedupe_key_with_rounded_timestamp():
     assert key == expected
 
 
-@pytest.mark.skip("TDD red phase - Story 6.10 not implemented")
 def test_audit_event_logged_on_signature_failure(mocker):
     """AC-1 P5: audit_events row written with action email_webhook_verification_failed."""
     from app.gateway.email.auth import verify_sendgrid_signature

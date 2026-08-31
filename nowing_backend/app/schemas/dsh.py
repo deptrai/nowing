@@ -21,7 +21,12 @@ DshMissionStatus = Literal[
     "cancelled",
     "dlq",
 ]
-DshMissionType = Literal["deep_lead_research", "cdp_browser_operator", "noop"]
+DshMissionType = Literal[
+    "deep_lead_research",
+    "cdp_browser_operator",
+    "recurring_report",
+    "noop",
+]
 
 
 class DshMissionPayload(BaseModel):
