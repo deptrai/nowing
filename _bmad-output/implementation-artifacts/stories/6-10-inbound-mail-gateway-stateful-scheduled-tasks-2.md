@@ -36,19 +36,19 @@ Historical note: The original spec mentioned a separate "Snapshot storage table"
 **Given** SendGrid or Mailgun POSTs an inbound email event to Nowing, **when** the payload reaches `/api/v1/gateway/email/inbound`, **then** the endpoint validates the provider signature (SendGrid `X-Twilio-Email-Event-Webhook-Signature` or Mailgun `signature`/`token`/`timestamp`), parses `From`, `To`, `Subject`, `TextBody`, `HtmlBody`, and attachments, and persists an `inbound_email_event` row.
 
 ### AC-2 — Email address resolution
-**Given** an inbound email to `task@nowing.ai`, **when** the gateway processes it, **then** it resolves the sender via `From` address to a `User` (verified email match) and a target `Workspace` from `To` address parsing (`task+{workspace_short_id}@nowing.ai` or default workspace from user profile). If no match, the event is queued for manual review and a bounce/reply is sent.
+**Given** an inbound email to `task@nowing.ai`, **when** the gateway processes it, **then** it resolves the sender via `From` address to a `User` (verified email match) and a target `Workspace` from `To` address parsing. The primary format is `task+{workspace_id}@nowing.ai` (numeric workspace ID) because `Workspace` does not currently expose a public `short_id`; a slug/short-id mapping table (`email_workspace_alias`) may be added in this story if UX requires human-readable addresses. If no match, the event is queued for manual review and a bounce/reply is sent.
 
 ### AC-3 — Attachment ingestion
 **Given** an inbound email with attachments, **when** the attachments are parsed, **then** PDF/DOCX/TXT/MD attachments are stored as `Document` rows under the target workspace, and other MIME types trigger a reply saying "Unsupported attachment type".
 
 ### AC-4 — Natural-language mission creation
-**Given** the email body contains a plain-text request (e.g. "Theo dõi giá cổ phiếu VCB trong 30 ngày"), **when** the gateway classifies the request, **then** it creates a `DSH mission` with `schedule_type=recurring_report`, `request_text` from the email body, `source=email`, and enqueues it via `LangGraphMissionExecutor`.
+**Given** the email body contains a plain-text request (e.g. "Theo dõi giá cổ phiếu VCB trong 30 ngày"), **when** the gateway classifies the request, **then** it creates a `DSH mission` with `mission_type="recurring_report"` (extend `DshMissionType` in `app/schemas/dsh.py`), `payload.query` = the email subject + body, `payload.source` = `"email"`, `payload.from_address`, `payload.attachment_document_ids`, and a `schedule` JSONB (cron + timezone). The mission is enqueued via `DshMissionService.create_mission()` and published to the Redis stream.
 
 ### AC-5 — Stateful scheduled DSH mission
-**Given** a `DSH mission` with `schedule_type=recurring_report`, **when** the `ingestion` node writes checkpoint data, **then** it writes into `dsh_missions.checkpoint` JSONB under a `schedule_state` key. The next Celery Beat tick can load this checkpoint, compare with the previous run, and resume without losing intermediate state.
+**Given** a `DSH mission` with `mission_type="recurring_report"`, **when** the `ingestion` node writes checkpoint data, **then** it writes into `dsh_missions.checkpoint` JSONB under a `schedule_state` key. The mission also updates `dsh_missions.next_fire_at` from its `schedule` JSONB. The next Celery Beat tick can load this checkpoint, compare with the previous run, and resume without losing intermediate state.
 
 ### AC-6 — Celery Beat recurring trigger
-**Given** a mission with a valid `schedule` (cron expression or interval), **when** Celery Beat fires, **then** the new task `dsh_worker_scheduled_mission` loads the mission by `id`, checks `dsh_missions.status` is `pending`/`running`, calls `LangGraphMissionExecutor` with `resume_from_checkpoint=True`, and only runs the `ingestion` node if new data arrived.
+**Given** a mission with a valid `schedule` (cron expression or interval), **when** Celery Beat fires `schedule_mission_tick`, **then** the task claims missions where `dsh_missions.next_fire_at <= now()` and `dsh_missions.status IN ('pending','running')`, calls `LangGraphMissionExecutor` with `resume_from_checkpoint=True`, and advances `next_fire_at` after a successful `ingestion` node. If no new data arrived, the `ingestion` node is a no-op and `next_fire_at` is still advanced.
 
 ### AC-7 — Reply via SMTP
 **Given** the mission completes or fails, **when** the final `deliver` node runs, **then** it sends an email reply to the original `From` address via configured SMTP relay (SendGrid/Mailgun/Postmark) with a summary, a link to the deliverable, and `degradation_reasons` if degraded.
@@ -72,7 +72,7 @@ Historical note: The original spec mentioned a separate "Snapshot storage table"
 | Celery Beat | `nowing_backend/app/tasks/celery_app.py` | Beat schedule, Celery task registration. |
 | Schedule checker | `nowing_backend/app/tasks/celery_tasks/schedule_checker_task.py` | Pattern for claiming due scheduled items. |
 | DSH executor | `nowing_backend/app/tasks/dsh_worker_langgraph.py` | `LangGraphMissionExecutor`, checkpoint semantics, `ingestion`/`reasoning`/`crawl`/`deliver` nodes. |
-| DSH service/routes | `nowing_backend/app/services/dsh_mission_service.py`, `nowing_backend/app/routes/dsh_routes.py` | Mission CRUD, public mission state. |
+| DSH service/routes | `nowing_backend/app/services/dsh_mission_service.py`, `nowing_backend/app/routes/dsh_routes.py` | Mission CRUD, public mission state; update `DshMissionService.create_mission()` to accept `schedule`, `source`, `request_text`, `next_fire_at`. |
 | Alert engine tick | `nowing_backend/app/alerts/engine/tick.py` | `_claim_due_rules` pattern for claiming due scheduled rules. |
 | DSH DB model | `nowing_backend/app/db.py` (`DshMission` / `DshMissionCheckpoint`) | State machine, progress percent constraint, workspace_id status index. |
 | Document ingestion | `nowing_backend/app/services/documents/document_service.py` | PDF/DOCX/TXT/MD → `Document` row. |
@@ -88,21 +88,24 @@ Historical note: The original spec mentioned a separate "Snapshot storage table"
 | `nowing_backend/app/gateway/email/__init__.py` | Bundle exports. |
 | `nowing_backend/app/routes/gateway_email_routes.py` | FastAPI routes: `POST /gateway/email/inbound`, `POST /gateway/email/sendgrid`, `POST /gateway/email/mailgun`, admin test endpoint. |
 | `nowing_backend/app/tasks/dsh_worker_scheduled_mission.py` | Celery task: load recurring `dsh_missions`, resume from `checkpoint`, run `ingestion` if new data. |
-| `nowing_backend/app/tasks/celery_tasks/schedule_mission_tick.py` (or add to `celery_app.py`) | Beat tick that claims due scheduled DSH missions. |
+| `nowing_backend/app/tasks/celery_tasks/schedule_mission_tick.py` | Beat tick that claims due scheduled DSH missions. |
+| `nowing_backend/app/schemas/dsh.py` (update) | Add `"recurring_report"` to `DshMissionType`; add `RecurringReportPayload` and `RecurringReportSchedule` models. |
 
 ### New DB Artifacts
 
 | Table | Columns | Why |
 |---|---|---|
 | `inbound_email_event` | `id` (UUID PK), `workspace_id` (FK), `user_id` (FK), `provider` (SendGrid/Mailgun), `message_id` (unique per provider), `from_address`, `to_address`, `subject`, `body_text`, `body_html`, `attachments` (JSONB list of `{filename, mime_type, size, document_id}`), `status` (`received`, `parsed`, `mission_created`, `replied`, `failed`, `duplicate`), `dedupe_key` (hash of `message_id`), `created_at`, `processed_at`, `audit_events` FK optional. | Persistence, idempotency, replay, audit. |
-| `dsh_missions` columns to use | `schedule_type`, `schedule` (cron/interval JSONB), `source` (`email`, `chat`, `api`), `request_text`, `checkpoint` (JSONB, key `schedule_state`). | Reuse existing table; no new snapshot table. |
+| `dsh_missions` columns to use | Add `schedule` (cron/interval JSONB), `source` (`email`, `chat`, `api`), `request_text`, `next_fire_at`, `last_fired_at`, and `checkpoint` (JSONB, key `schedule_state`). `mission_type` is extended to include `"recurring_report"`. | Reuse existing table; no new snapshot table. |
 
 ### DB Migration
 
-Create `alembic/versions/NNN_add_inbound_email_event.py` with:
-- `inbound_email_event` table with composite unique index on `(provider, message_id)` and `workspace_id` RLS.
-- Add `schedule_type` and `schedule` columns to `dsh_missions` if not present.
-- Ensure `dsh_missions.checkpoint` JSONB can store `schedule_state`.
+Create `nowing_backend/alembic/versions/236_add_inbound_email_and_scheduled_dsh_missions.py` with:
+- `inbound_email_event` table with composite unique index on `(provider, message_id)`, `workspace_id` RLS, and `status` enum index.
+- Add `email_workspace_alias` table (`workspace_id`, `alias`, `created_at`, unique `alias`) if short-id addressing is implemented; otherwise document the decision to use numeric `workspace_id`.
+- Add to `dsh_missions`: `schedule` (JSONB, nullable, default `{}`), `source` (String, nullable), `request_text` (Text, nullable), `next_fire_at` (TIMESTAMP TZ, nullable, index), `last_fired_at` (TIMESTAMP TZ, nullable).
+- Update `chk_dsh_missions_status` only if needed (do not alter existing values).
+- Ensure `dsh_missions.checkpoint` JSONB already supports `schedule_state` (no change).
 
 ### Configuration
 
@@ -117,12 +120,42 @@ SENDGRID_API_KEY=<key for outbound>
 MAILGUN_WEBHOOK_SIGNING_KEY=<key>
 MAILGUN_API_KEY=<key for outbound>
 SMTP_REPLY_FROM=Nowing <task@nowing.ai>
+
+# Optional: Celery Beat schedule interval in seconds for schedule_mission_tick
+SCHEDULED_DSH_MISSION_TICK_SECONDS=60
 ```
+
+Also add a beat entry in `nowing_backend/app/celery_app.py` (or equivalent) to run `app.tasks.celery_tasks.schedule_mission_tick.schedule_mission_tick` every `SCHEDULED_DSH_MISSION_TICK_SECONDS`.
 
 ### Provider-Specific Notes
 
 - **SendGrid Inbound Parse**: POSTs `email` MIME multipart to a webhook; use `email` stdlib to parse. Webhook verification is via `X-Twilio-Email-Event-Webhook-Signature` (public key in config).
 - **Mailgun Routes**: POSTs parsed JSON fields (`sender`, `recipient`, `subject`, `body-plain`, `body-html`, `attachments`); signature is `hmac_sha256(timestamp+token, signing_key)`.
+
+### `schedule` JSONB Schema
+
+The `dsh_missions.schedule` column follows the same pattern as `alert_rules.cron`/`next_fire_at`:
+
+```json
+{
+  "type": "cron",
+  "expression": "0 9 * * 1",
+  "timezone": "Asia/Ho_Chi_Minh",
+  "next_fire_at": "2026-09-07T02:00:00+00:00"
+}
+```
+
+or interval:
+
+```json
+{
+  "type": "interval",
+  "minutes": 360,
+  "next_fire_at": "2026-09-07T02:00:00+00:00"
+}
+```
+
+Use the existing `app/alerts/engine/cron.py` helpers (`compute_next_fire_at`) to compute `next_fire_at`.
 
 ### Testing Requirements
 
