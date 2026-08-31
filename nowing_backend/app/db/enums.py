@@ -105,6 +105,19 @@ class MeetingMinutesStatus(StrEnum):
     VALIDATION_FAILED = "validation_failed"
 
 
+class InboundEmailEventStatus(StrEnum):
+    """Lifecycle of an inbound email received through the gateway."""
+
+    RECEIVED = "received"
+    PARSED = "parsed"
+    MISSION_CREATED = "mission_created"
+    REPLIED = "replied"
+    REPLIED_FAILED = "replied_failed"
+    FAILED = "failed"
+    DUPLICATE = "duplicate"
+    MANUAL_REVIEW = "manual_review"
+
+
 class DocumentStatus:
     """
     Helper class for document processing status (stored as JSONB).

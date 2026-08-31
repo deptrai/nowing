@@ -1,15 +1,15 @@
 # Sprint Priority — Dependency Order
 
 > Generated: 2026-08-22
-> Updated: 2026-08-22
+> Updated: 2026-08-30
 > Sorting: dependency impact (foundation first, standalone last)
 > Source: `_bmad-output/implementation-artifacts/sprint-status.yaml` + `planning-artifacts/epics.md` + architecture spine
 
 ## Next recommended work
 
-The next item to pick is **`td-2`** (Redis event bus subscribe failure state leak), then **`25-4`** (Realtime LLM Token Cost / Proxy Health / Celery Queue Telemetry).
+The next item to pick is **`td-2`** (Redis event bus subscribe failure state leak), then **`25-4`** (Realtime LLM Token Cost / Proxy Health / Celery Queue Telemetry). **After platform primitives are stable, Epic 29 (SaaS Operations & Admin Analytics) becomes the next business-critical stream.**
 
-These two are platform primitives: every real-time event, async task, and LLM/scraper call depends on them. Fix them before taking on higher-level features.
+These two are platform primitives: every real-time event, async task, and LLM/scraper call depends on them. Fix them before taking on higher-level features. Epic 29 has been declared READY FOR CREATE-STORY and should enter Tier 2 once 29-1 (Custom Workspace Roles) is created.
 
 ---
 
@@ -36,25 +36,31 @@ These two are platform primitives: every real-time event, async task, and LLM/sc
 16. `4-8d-followup` — Chat Quality LLM-as-Judge (follow-up)
 17. `4-8h-followup` — Mode-Aware Chat Policy (follow-up)
 
-## Tier 2 — Vertical data + dashboard (affects one domain or UI)
+## Tier 2 — Vertical data + dashboard + SaaS admin/analytics (affects one domain or UI)
 
-18. `16-2` — Official Business Registry (dangkykinhdoanh.gov.vn)
-19. `17-1` — Lazada Product Data
-20. `17-5` — TikTok Shop Product & Trending SKUs
-21. `8-14` — Cost & Auto-Extract Budget Dashboard
-22. `7-8` — Vietnamese i18n & Smart Geo-Locale Auto-Detection
+18. `29-1` — Custom Workspace Roles & Permissions Builder (Epic 29, FR-100) — **foundation for 29-2/29-4**
+19. `29-2` — Workspace Health & Adoption Analytics Dashboard (Epic 29, FR-101)
+20. `29-3` — Tenant Subscription Tier & Quota Management (Epic 29, FR-102)
+21. `29-4` — Admin Bulk Operations Console (Epic 29, FR-103) — depends on 29-1 and 29-3
+22. `29-5` — Memory Browser & Research Timeline for Analyst (Epic 29, FR-104)
+23. `29-6` — Data Governance & Retention Policy Console (Epic 29, FR-104)
+24. `16-2` — Official Business Registry (dangkykinhdoanh.gov.vn)
+25. `17-1` — Lazada Product Data
+26. `17-5` — TikTok Shop Product & Trending SKUs
+27. `8-14` — Cost & Auto-Extract Budget Dashboard
+28. `7-8` — Vietnamese i18n & Smart Geo-Locale Auto-Detection
 
 ## Tier 3 — New product surface / business-gated / post-MVP
 
-23. `27-1` — Full-Stack Web App Builder, 1-Click Hosting, Design Mark Tool
-24. `27-2` — Manus Slides + Speaker Diarization
-25. `28-1` — Workspace Memory & Research Data Export
-26. `28-2` — Encryption-at-Rest for Cloud Memory
-27. `28-3` — ToS / Legal Review & Retention Policy
-28. `28-4` — Self-Host OSS Onboarding in Under 10 Minutes
-29. `6-6a-playbook-reuse` — Playbook Reuse (business-gated)
-30. `6-7a-schema-form-ui` — Schema-Driven Form UI (business-gated)
-31. `6-9a-workspace-vertical` — Workspace Vertical & Playbook Library (business-gated)
+29. `27-1` — Full-Stack Web App Builder, 1-Click Hosting, Design Mark Tool
+30. `27-2` — Manus Slides + Speaker Diarization
+31. `28-1` — Workspace Memory & Research Data Export
+32. `28-2` — Encryption-at-Rest for Cloud Memory
+33. `28-3` — ToS / Legal Review & Retention Policy
+34. `28-4` — Self-Host OSS Onboarding in Under 10 Minutes
+35. `6-6a-playbook-reuse` — Playbook Reuse (business-gated)
+36. `6-7a-schema-form-ui` — Schema-Driven Form UI (business-gated)
+37. `6-9a-workspace-vertical` — Workspace Vertical & Playbook Library (business-gated)
 
 ## Tech debt remaining (interleave with related epics)
 

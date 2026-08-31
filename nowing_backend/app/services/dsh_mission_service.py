@@ -75,6 +75,11 @@ class DshMissionService:
         user_id: uuid.UUID | None,
         mission_type: str,
         payload: dict[str, Any],
+        *,
+        schedule: dict[str, Any] | None = None,
+        source: str | None = None,
+        request_text: str | None = None,
+        next_fire_at: datetime | None = None,
     ) -> DshMission:
         """Insert a pending mission row and flush so the UUID is generated."""
         mission = DshMission(
@@ -86,6 +91,10 @@ class DshMissionService:
             progress_percent=0,
             payload=payload or {},
             checkpoint=self._default_checkpoint(),
+            schedule=schedule if schedule is not None else {},
+            source=source,
+            request_text=request_text,
+            next_fire_at=next_fire_at,
         )
         session.add(mission)
         await session.flush()

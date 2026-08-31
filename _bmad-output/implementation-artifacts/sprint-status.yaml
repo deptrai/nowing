@@ -1,5 +1,5 @@
 # generated: 2026-08-08
-# last_updated: 2026-08-26  # 7-8 marked done after validation; Story 27-2a chunk C patches applied; D pending.
+# last_updated: 2026-08-30
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: "2026-08-29"  # Remapped 26.25-26.29 (Customer Location Profile, Location-Aware Routing, PlanSummaryCard, Source Coverage Badge, Smoke Test Feedback Loop) from Epic 21 to Epic 26. 28-5, 27-2 done prior.
+last_updated: 2026-08-30  # Story 6-10 created and marked ready-for-dev.
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # - Parsed epics.md: 24 epics, ~160 stories.
 # - Scanned _bmad-output/implementation-artifacts/ + stories/*.md for story files (frontmatter story_key/epic+story).
@@ -137,7 +137,7 @@ development_status:
   6-6a-playbook-reuse: backlog  # business-gated → backlog until decision  # epics.md Story 6.6 — gated sau pilot BĐS retention
   6-7a-schema-form-ui: backlog  # business-gated → backlog until decision  # epics.md Story 6.7 — gated sau pilot BĐS retention
   6-9a-workspace-vertical: backlog  # business-gated → backlog until decision  # epics.md Story 6.9 — gated sau pilot BĐS retention
-  6-10: backlog  # split: keep Mail Gateway, evaluate Scheduled Tasks portion against 26.8 before implementation
+  6-10: ready-for-dev
   6-11: backlog  # Vertical Alert Rule Templates on Generic Alert Engine; can trigger DSH mission as notification_channel (optional)
   6-12: backlog  # Narrative Report Engine for Indexed Data — run as DSH mission deliverable / ingestion node (consolidated from 14.4/15.4/16.4)
   epic-6-retrospective: optional
@@ -416,6 +416,18 @@ development_status:
   28-4: backlog  # Self-Host OSS Onboarding in Under 10 Minutes
   28-5: done  # Workspace Memory Storage Cap & Retention Lifecycle — 2026-08-28: verified unit/integration tests green
   epic-28-retrospective: optional
+
+  # === Epic 29: SaaS Operations, Advanced Admin Governance & Analyst Workspace (mới 2026-08-29) ===
+  # 2026-08-29: Created from user review — admin/SaaS/analyst upgrade stories previously missing from backlog.
+  # All stories are in planning only; no implementation files yet. Next step: run create-story for 29-1 once Epic 28/25 dependencies are stable.
+  epic-29: backlog
+  29-1: backlog  # Custom Workspace Roles & Permissions Builder
+  29-2: backlog  # Workspace Health & Adoption Analytics Dashboard
+  29-3: backlog  # Tenant Subscription Tier & Quota Management
+  29-4: backlog  # Admin Bulk Operations Console
+  29-5: backlog  # Memory Browser & Research Timeline for Analyst
+  29-6: backlog  # Data Governance & Retention Policy Console
+  epic-29-retrospective: optional
 
   # === Tech Debt (from code review deferred items) ===
   # ponytail: 2026-08-08 Winston backlog audit — 4 critical deferred items from code reviews that need dedicated stories.

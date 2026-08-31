@@ -71,6 +71,7 @@ SMTP_USER = os.getenv("SMTP_USER")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 SMTP_FROM = os.getenv("SMTP_FROM")
 SMTP_TLS = os.getenv("SMTP_TLS", "TRUE").upper() == "TRUE"
+SMTP_TIMEOUT_SECONDS = float(os.getenv("SMTP_TIMEOUT_SECONDS", "30.0"))
 
 # Dropbox OAuth
 DROPBOX_APP_KEY = os.getenv("DROPBOX_APP_KEY")

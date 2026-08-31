@@ -44,6 +44,12 @@ class DshMission(Base, TimestampMixin):
             name="chk_dsh_missions_progress_percent",
         ),
         Index("ix_dsh_missions_workspace_id_status", "workspace_id", "status"),
+        Index(
+            "ix_dsh_missions_next_fire_at",
+            "workspace_id",
+            "status",
+            "next_fire_at",
+        ),
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -94,6 +100,12 @@ class DshMission(Base, TimestampMixin):
         onupdate=lambda: datetime.now(UTC),
         index=True,
     )
+    # Story 6.10: scheduled recurring report support.
+    schedule = Column(JSONB, nullable=True, default=dict, server_default=text("'{}'::jsonb"))
+    source = Column(String(32), nullable=True)
+    request_text = Column(Text, nullable=True)
+    next_fire_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    last_fired_at = Column(TIMESTAMP(timezone=True), nullable=True)
     payload = Column(
         JSONB,
         nullable=False,

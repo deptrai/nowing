@@ -147,7 +147,7 @@ User cần biết khi memory injection bị bound/truncate để không ngạc n
 | Outcome-Based Pricing | E21.7 / FR-69 |
 | CRM Integration | E21.5 / FR-67 |
 | Bounded Memory Injection | E3.14 / E3.17 / NFR-1b |
-| Memory Browser / Research Timeline | E3 (post-MVP) / FR-95 / UX-DR-PRFAQ-1 |
+| Memory Browser / Research Timeline | Epic 29.5 / FR-104 / UX-DR-PRFAQ-1+6 |
 | Self-Host Onboarding Flow | E28.4 / FR-98 / UX-DR-PRFAQ-2 |
 | Memory Correction / Version History | E3 (post-MVP) / FR-34 / UX-DR-PRFAQ-3 |
 | Cost Control / Auto-Extract Budget | E8.14 / FR-30 / UX-DR-PRFAQ-4 |

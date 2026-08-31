@@ -86,6 +86,7 @@ from .enrichment_routes import router as enrichment_router
 from .export_routes import router as export_router
 from .extract_entities_routes import router as extract_entities_router
 from .folders_routes import router as folders_router
+from .gateway_email_routes import router as gateway_email_router
 from .gateway_webhook_routes import (
     config_router as gateway_config_router,
     router as gateway_router,
@@ -182,6 +183,9 @@ router.include_router(
 )
 router.include_router(
     gateway_whatsapp_baileys_router, dependencies=_gateway_enabled_dep
+)
+router.include_router(
+    gateway_email_router, dependencies=_gateway_enabled_dep
 )
 router.include_router(notes_router)
 router.include_router(new_chat_router)  # Chat with assistant-ui persistence
