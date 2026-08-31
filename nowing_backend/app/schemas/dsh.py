@@ -110,6 +110,11 @@ class DshMissionResponse(BaseModel):
     progress_percent: int | None
     current_subtask_id: str | None
     retry_count: int
+    schedule: dict | None = None
+    source: str | None = None
+    request_text: str | None = None
+    next_fire_at: datetime | None = None
+    last_fired_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
