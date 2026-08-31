@@ -1,5 +1,5 @@
 # generated: 2026-08-08
-# last_updated: 2026-08-29  # Epic 29 stories ACs rewritten to bind AD-9/AD-8/AD-11/AD-28.3; architecture spine AD-51..AD-55 added.
+# last_updated: 2026-08-30
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: "2026-08-29"  # Remapped 26.25-26.29 (Customer Location Profile, Location-Aware Routing, PlanSummaryCard, Source Coverage Badge, Smoke Test Feedback Loop) from Epic 21 to Epic 26. 28-5, 27-2 done prior. Added Epic 29 (29.1–29.6) — admin/SaaS/analyst backlog.
+last_updated: 2026-08-30  # Story 6-10 created and marked ready-for-dev.
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # - Parsed epics.md: 24 epics, ~160 stories.
 # - Scanned _bmad-output/implementation-artifacts/ + stories/*.md for story files (frontmatter story_key/epic+story).
@@ -137,7 +137,7 @@ development_status:
   6-6a-playbook-reuse: backlog  # business-gated → backlog until decision  # epics.md Story 6.6 — gated sau pilot BĐS retention
   6-7a-schema-form-ui: backlog  # business-gated → backlog until decision  # epics.md Story 6.7 — gated sau pilot BĐS retention
   6-9a-workspace-vertical: backlog  # business-gated → backlog until decision  # epics.md Story 6.9 — gated sau pilot BĐS retention
-  6-10: backlog  # split: keep Mail Gateway, evaluate Scheduled Tasks portion against 26.8 before implementation
+  6-10: ready-for-dev
   6-11: backlog  # Vertical Alert Rule Templates on Generic Alert Engine; can trigger DSH mission as notification_channel (optional)
   6-12: backlog  # Narrative Report Engine for Indexed Data — run as DSH mission deliverable / ingestion node (consolidated from 14.4/15.4/16.4)
   epic-6-retrospective: optional
