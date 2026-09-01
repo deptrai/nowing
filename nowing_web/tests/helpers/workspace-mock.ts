@@ -42,8 +42,9 @@ export async function mockWorkspaceReady(page: Page) {
 		await fulfillJson(route, 200, [mockWorkspace]);
 	});
 
-	// Workspace detail
-	await page.route("**/api/v1/workspaces/1**", async (route: Route) => {
+	// Workspace detail (exact id, no trailing wildcard, so sub-routes
+	// like /llm-setup-status and /model-roles are not swallowed).
+	await page.route("**/api/v1/workspaces/1", async (route: Route) => {
 		if (route.request().method() === "GET") {
 			await fulfillJson(route, 200, { ...mockWorkspace, member_count: undefined });
 		} else {
