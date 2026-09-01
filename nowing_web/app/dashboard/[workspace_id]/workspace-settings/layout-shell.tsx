@@ -39,12 +39,6 @@ export function WorkspaceSettingsLayoutShell({
 				icon: <Settings className="h-4 w-4" aria-hidden="true" />,
 			},
 			{
-				value: "models" as const,
-				label: t("nav_models"),
-				href: `/dashboard/${workspaceId}/workspace-settings/models`,
-				icon: <Cpu className="h-4 w-4" aria-hidden="true" />,
-			},
-			{
 				value: "team-roles" as const,
 				label: t("nav_team_roles"),
 				href: `/dashboard/${workspaceId}/workspace-settings/team-roles`,
