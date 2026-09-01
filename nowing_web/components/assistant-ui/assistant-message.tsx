@@ -60,6 +60,7 @@ import {
 	DrawerTitle,
 } from "@/components/ui/drawer";
 import { DropdownMenuLabel } from "@/components/ui/dropdown-menu";
+import { QuestionChoiceApproval } from "@/features/chat-messages/hitl";
 import { withArtifactAnchor } from "@/features/chat-artifacts";
 import { useComments } from "@/hooks/use-comments";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -448,6 +449,17 @@ const MessageInfoDropdown: FC<{ chatTurnId: string | null | undefined }> = ({ ch
 	);
 };
 
+const AskUserQuestionToolUI: ToolCallMessagePartComponent = (props) => {
+	return (
+		<QuestionChoiceApproval
+			toolCallId={props.toolCallId}
+			toolName={props.toolName}
+			args={(props.args ?? {}) as Record<string, unknown>}
+			result={props.result as import("@/features/chat-messages/hitl").InterruptResult}
+		/>
+	);
+};
+
 /**
  * Tools rendered in the message BODY — value-add deliverables only.
  *
@@ -463,6 +475,8 @@ const MessageInfoDropdown: FC<{ chatTurnId: string | null | undefined }> = ({ ch
  * (AC-1); verbose mode is not a gate for deliverable UI.
  */
 const BODY_TOOLS = {
+	ask_user_question: AskUserQuestionToolUI,
+	prompt_clarification: AskUserQuestionToolUI,
 	generate_report: withArtifactAnchor(GenerateReportToolUI),
 	generate_resume: withArtifactAnchor(GenerateResumeToolUI),
 	generate_podcast: withArtifactAnchor(GeneratePodcastToolUI),

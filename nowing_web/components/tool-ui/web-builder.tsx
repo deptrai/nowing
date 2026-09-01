@@ -166,6 +166,7 @@ export function GenerateWebAppToolUI({
 	const isRunning = status.type === "running" || status.type === "requires-action";
 	const isFailed =
 		result.status === "validation_failed" ||
+		result.status === "llm_error" ||
 		result.status === "error" ||
 		result.status === "build_failed" ||
 		result.status === "deploy_failed" ||

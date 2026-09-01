@@ -73,6 +73,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 				<Link href="/admin/scrapers/rules" className="hover:underline">
 					Scraper Rules
 				</Link>
+				<Link href="/admin/global-model-connections" className="hover:underline">
+					Global Models
+				</Link>
 				<Link href="/admin/audit-logs" className="hover:underline">
 					Audit Logs
 				</Link>

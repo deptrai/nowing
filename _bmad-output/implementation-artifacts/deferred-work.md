@@ -52,6 +52,30 @@
   - **Action:** Resolved — frontend UI, chat mode routing, slash prompt, quick chip, artifact card and panel rendering implemented and verified (tsc + biome green).
   - **Reason / when to revisit:** Implemented 2026-08-26; remaining work is Playwright E2E full-stack run.
 
+## Deferred from: code review of 4-8e-ci-deploy-gate-for-chat-regression (2026-09-02)
+
+- **Workflow references non-existent GitHub Action versions [chat-regression-gate.yml:44,47,52] — high**
+- **Missing dataset ingestion step before running benchmark [chat-regression-gate.yml:68-74] — medium**
+- **Missing --n / max-cases input in GitHub Action [chat-regression-gate.yml, runner.py:648] — high**
+- **Missing --backend-build-id in workflow inputs/run step [chat-regression-gate.yml] — medium**
+- **Missing --fail-on-unratified in workflow inputs/run step [chat-regression-gate.yml] — medium**
+- **actions/upload-artifact only uploads run_artifact.json, omits raw.jsonl [chat-regression-gate.yml:81] — medium**
+- **cancel-in-progress: true may abort running evaluations [chat-regression-gate.yml:34-36] — low**
+- **Missing NOWING_JWT support in workflow env [chat-regression-gate.yml:60-67] — low**
+- **CHAT_EVAL_* env vars not parsed by config/runner [.env.example, core/config.py] — medium**
+- **Telegram/Slack Markdown escaping edge cases remain [notifications.py:29-39] — low**
+- **Artifact URL concatenation missing slash normalization [notifications.py:19-26] — medium**
+- **notifications.py reads os.environ directly instead of Config [notifications.py:207-209] — low**
+- **Cost cap raises before artifact write and notification [runner.py:1106-1110,1133,1148] — high**
+- **max_total_cost_micros truthiness treats 0 as falsy [runner.py:1107] — medium**
+- **gate_violations not stored in run_artifact.json [runner.py:1134-1143] — low**
+- **Notification only sent on gate_violations, not cost cap/unratified [runner.py:1107-1173] — medium**
+- **run_artifact_str is absolute local path when URL prefix unset [runner.py:1146] — low**
+- **Missing docs/ops/deploy-gate.md and README updates [README.md:89-135] — medium**
+- **Missing unit test for cost-cap early-exit [tests/suites/chat/test_regression.py] — medium**
+- **Missing respx-mocked test for Slack/Telegram notification payload [tests/core/] — medium**
+- **Missing test coverage for gate failure notifications and unratified handling [tests/suites/chat/test_regression.py] — high**
+
 ## Deferred from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-08-26, chunk C)
 
 - **Finding:** `BillingUnit.PRESENTATION_GENERATE` is added without `app/capabilities/presentation/generate/` executor.
