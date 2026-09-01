@@ -772,7 +772,34 @@ export default function NewChatPage() {
 	}, [buildCtx, pendingInterrupts, activeThreadId]);
 
 	// Surface the thread's deliverables to the layout-level artifacts sidebar.
-	useSyncChatArtifacts(displayMessages);
+	// Standalone / Hydrated interactive choice dispatcher (e.g. question card)
+		useEffect(() => {
+			const handleChoice = (e: Event) => {
+				if (pendingInterrupts.length > 0) return;
+				const detail = (e as CustomEvent).detail as {
+					decisions?: Array<{
+						type: string;
+						message?: string;
+						edited_action?: { name: string; args: Record<string, unknown> };
+					}>;
+				};
+				const targetDecision = detail?.decisions?.[0];
+				const answerText =
+					targetDecision?.message ||
+					(targetDecision?.edited_action?.args?.selected_answer as string) ||
+					"";
+				if (answerText && activeThreadId != null) {
+					void onNew({
+						content: [{ type: "text", text: answerText }],
+					} as unknown as AppendMessage);
+				}
+			};
+			window.addEventListener("hitl-decision", handleChoice);
+			return () => window.removeEventListener("hitl-decision", handleChoice);
+		}, [pendingInterrupts.length, activeThreadId, onNew]);
+
+		// Surface the thread's deliverables to the layout-level artifacts sidebar.
+		useSyncChatArtifacts(displayMessages);
 
 	// Create external store runtime
 	const runtime = useExternalStoreRuntime({

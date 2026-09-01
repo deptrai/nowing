@@ -42,8 +42,9 @@ export async function mockWorkspaceReady(page: Page) {
 		await fulfillJson(route, 200, [mockWorkspace]);
 	});
 
-	// Workspace detail
-	await page.route("**/api/v1/workspaces/1**", async (route: Route) => {
+	// Workspace detail (exact id, no trailing wildcard, so sub-routes
+	// like /llm-setup-status and /model-roles are not swallowed).
+	await page.route("**/api/v1/workspaces/1", async (route: Route) => {
 		if (route.request().method() === "GET") {
 			await fulfillJson(route, 200, { ...mockWorkspace, member_count: undefined });
 		} else {
@@ -61,7 +62,12 @@ export async function mockWorkspaceReady(page: Page) {
 		});
 	});
 
-	// Model connections (empty)
+	// Global model connections (empty)
+	await page.route("**/api/v1/global-model-connections**", async (route: Route) => {
+		await fulfillJson(route, 200, []);
+	});
+
+	// Workspace model connections (empty)
 	await page.route("**/api/v1/model-connections**", async (route: Route) => {
 		await fulfillJson(route, 200, []);
 	});
@@ -143,6 +149,21 @@ export async function mockWorkspaceReady(page: Page) {
 			items: [],
 			has_more: false,
 		});
+	});
+
+	// Search source connectors (sidebar / chat context)
+	await page.route("**/api/v1/search-source-connectors**", async (route: Route) => {
+		await fulfillJson(route, 200, []);
+	});
+
+	// Agent flags (feature toggles)
+	await page.route("**/api/v1/agent/flags**", async (route: Route) => {
+		await fulfillJson(route, 200, {});
+	});
+
+	// Agent tools catalog
+	await page.route("**/api/v1/agent/tools**", async (route: Route) => {
+		await fulfillJson(route, 200, []);
 	});
 
 	// Scraper capabilities

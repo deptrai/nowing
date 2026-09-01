@@ -63,6 +63,17 @@ class Config:
     data_dir: Path
     reports_dir: Path
 
+    # Chat regression gate defaults.
+    chat_eval_search_space_id: int | None = None
+    chat_eval_workspace_id: int | None = None
+    chat_eval_max_cases: int | None = None
+
+    # Notification targets for benchmark gate failures.
+    slack_webhook_url: str | None = None
+    telegram_bot_token: str | None = None
+    telegram_chat_id: str | None = None
+    artifact_url_prefix: str | None = None
+
     # Required only by the memory-recall suite. It intentionally stays
     # separate from ``search_space_id`` because the memory API is
     # workspace-scoped; a default preserves Config's existing callers.
@@ -134,6 +145,24 @@ def load_config() -> Config:
                     "Ignoring NOWING_EVAL_WORKSPACE_ID=%r: must be positive.",
                     raw_workspace_id,
                 )
+
+    def _optional_int(var_name: str, *, positive: bool = False) -> int | None:
+        raw = os.environ.get(var_name)
+        if not raw:
+            return None
+        try:
+            parsed = int(raw)
+        except ValueError:
+            logger.warning("Ignoring %s=%r: not an integer.", var_name, raw)
+            return None
+        if positive and parsed <= 0:
+            logger.warning("Ignoring %s=%r: must be > 0.", var_name, raw)
+            return None
+        if parsed < 0:
+            logger.warning("Ignoring %s=%r: must be >= 0.", var_name, raw)
+            return None
+        return parsed
+
     return Config(
         nowing_api_base=os.environ.get("NOWING_API_BASE", "http://localhost:8000").rstrip("/"),
         memory_workspace_id=memory_workspace_id,
@@ -145,6 +174,13 @@ def load_config() -> Config:
         nowing_refresh_token=os.environ.get("NOWING_REFRESH_TOKEN") or None,
         nowing_user_email=os.environ.get("NOWING_USER_EMAIL") or None,
         nowing_user_password=os.environ.get("NOWING_USER_PASSWORD") or None,
+        chat_eval_search_space_id=_optional_int("CHAT_EVAL_SEARCH_SPACE_ID", positive=True),
+        chat_eval_workspace_id=_optional_int("CHAT_EVAL_WORKSPACE_ID", positive=True),
+        chat_eval_max_cases=_optional_int("CHAT_EVAL_MAX_CASES", positive=True),
+        slack_webhook_url=os.environ.get("SLACK_WEBHOOK_URL") or None,
+        telegram_bot_token=os.environ.get("TELEGRAM_BOT_TOKEN") or None,
+        telegram_chat_id=os.environ.get("TELEGRAM_CHAT_ID") or None,
+        artifact_url_prefix=os.environ.get("NOWING_EVALS_ARTIFACT_URL_PREFIX") or None,
         data_dir=data_dir,
         reports_dir=reports_dir,
     )

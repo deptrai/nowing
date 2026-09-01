@@ -156,6 +156,7 @@ class RunArtifact:
     raw_path: Path
     metrics: dict[str, Any] = field(default_factory=dict)
     extra: dict[str, Any] = field(default_factory=dict)
+    notifications_sent: bool = False
 
 
 @dataclass

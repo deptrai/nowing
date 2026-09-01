@@ -112,7 +112,21 @@ python -m nowing_evals run chat regression --search-space-id 42 --profile quick
 # 5. stress mode: run each case in 4 parallel chat threads
 python -m nowing_evals run chat regression --search-space-id 42 --concurrency 2 --threads 4
 
-# 6. report
+# 6. CI deploy gate (Story 4.8e): cap cases and cost, tag the backend build
+python -m nowing_evals run chat regression \
+  --search-space-id 42 \
+  --n 10 \
+  --max-total-cost-micros 500000 \
+  --backend-build-id $BUILD_SHA \
+  --environment production
+
+# 7. force failure while gate baseline is not yet ratified
+python -m nowing_evals run chat regression \
+  --search-space-id 42 \
+  --max-total-cost-micros 500000 \
+  --fail-on-unratified
+
+# 8. report
 python -m nowing_evals report --suite chat
 ```
 
@@ -132,6 +146,7 @@ Notes:
 - Multi-turn cases reuse a single thread and produce per-turn latency/TTFB/citation/keyword hits plus a `context_drift_score`.
 - The report includes **per-mode**, **per-tier**, and **per-mode × tier** tables plus an **"Operational / Stability"** section.
 - Gate thresholds live in `src/nowing_evals/suites/chat/regression/gate.yaml` and are provisional until `baseline_ratified` is flipped.
+- The CI workflow in `.github/workflows/chat-regression-gate.yml` runs the gate with cost cap and Slack/Telegram notifications.
 - See `docs/benchmark-stability.md` for a stability-metric reference.
 
 ## Asymmetric scenarios — the "vision-extract once, answer cheap" play

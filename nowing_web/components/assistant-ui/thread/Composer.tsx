@@ -2,11 +2,12 @@
 
 import { ComposerPrimitive, useAui, useAuiState } from "@assistant-ui/react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { Sparkles, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Sparkles, X } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { type FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { chatSessionStateAtom } from "@/atoms/chat/chat-session-state.atom";
+import { suggestedActionsSessionMapAtom } from "@/atoms/chat/suggested-actions.atom";
 import {
 	type MentionedDocumentInfo,
 	mentionedDocumentsAtom,
@@ -543,7 +544,12 @@ export const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }>
 	);
 
 	const threadMessages = useAuiState(({ thread }) => thread.messages);
+	const threadIdKey = String(chat_id?.[0] || chat_id || "default");
+	const [sessionSuggestedMap, setSessionSuggestedMap] = useAtom(suggestedActionsSessionMapAtom);
 
+	const isSessionDismissed = Boolean(sessionSuggestedMap[threadIdKey]?.isDismissed);
+
+	// Extract real suggested actions from the last assistant message
 	const dynamicSuggestedActions = useMemo(() => {
 		if (!threadMessages || threadMessages.length === 0) return [];
 
@@ -555,6 +561,24 @@ export const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }>
 			}
 		}
 		if (!lastAssistantMsg) return [];
+
+		// Check if the assistant message contains an active interrupt/question - if so, hide suggested next actions
+		if (Array.isArray(lastAssistantMsg.content)) {
+			for (const part of lastAssistantMsg.content) {
+				if (
+					typeof part === "object" &&
+					part !== null &&
+					"type" in part &&
+					part.type === "tool-call" &&
+					"result" in part &&
+					typeof part.result === "object" &&
+					part.result !== null &&
+					"__interrupt__" in (part.result as Record<string, unknown>)
+				) {
+					return [];
+				}
+			}
+		}
 
 		// 1. Check data-suggested-actions part
 		if (Array.isArray(lastAssistantMsg.content)) {
@@ -606,16 +630,22 @@ export const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }>
 			}
 		}
 
-		// 3. Fallback high-value proactive suggestions for active thread
-		return [tChat("default_action_1"), tChat("default_action_2"), tChat("default_action_3")];
-	}, [threadMessages, tChat]);
+		return [];
+	}, [threadMessages]);
 
-	// Reset dismissal when the assistant emits new suggestions.
-	useEffect(() => {
-		if (dynamicSuggestedActions.length > 0) {
-			setSuggestedCardDismissed(false);
-		}
-	}, [dynamicSuggestedActions]);
+	const handleDismissSuggestions = () => {
+		setSessionSuggestedMap((prev) => ({
+			...prev,
+			[threadIdKey]: { isDismissed: true },
+		}));
+	};
+
+	const handleReopenSuggestions = () => {
+		setSessionSuggestedMap((prev) => ({
+			...prev,
+			[threadIdKey]: { isDismissed: false },
+		}));
+	};
 
 	return (
 		<ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col gap-2 rounded-2xl">
@@ -626,13 +656,28 @@ export const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }>
 				members={members ?? []}
 			/>
 
+			{/* Reopen Pill Trigger when user collapsed/dismissed suggestions */}
+			{hasActiveThread && !isThreadRunning && dynamicSuggestedActions.length > 0 && isSessionDismissed && (
+				<div className="flex justify-start px-1 animate-in fade-in duration-200">
+					<button
+						type="button"
+						onClick={handleReopenSuggestions}
+						className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-muted/80 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/80 transition-all shadow-2xs select-none cursor-pointer"
+					>
+						<span className="text-amber-500">💡</span>
+						<span>{dynamicSuggestedActions.length} gợi ý bước tiếp theo</span>
+						<ChevronUp className="size-3 opacity-60" />
+					</button>
+				</div>
+			)}
+
 			{/* Nowing: Dynamic Suggested Next Actions Card */}
-			{hasActiveThread && dynamicSuggestedActions.length > 0 && !suggestedCardDismissed && (
+			{hasActiveThread && !isThreadRunning && dynamicSuggestedActions.length > 0 && !isSessionDismissed && (
 				<section
-					className="rounded-xl border border-border/70 bg-card/95 p-1.5 shadow-2xs transition-all backdrop-blur-xs"
+					className="rounded-xl border border-border/70 bg-card/95 p-2 shadow-2xs transition-all backdrop-blur-xs animate-in fade-in slide-in-from-bottom-2 duration-200"
 					aria-label={tChat("suggested_actions_title")}
 				>
-					<div className="flex items-center justify-between px-1.5 pb-1 gap-2">
+					<div className="flex items-center justify-between px-1.5 pb-1.5 gap-2 border-b border-border/40">
 						<div className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wider text-muted-foreground">
 							<span className="text-amber-500" aria-hidden="true">
 								💡
@@ -643,16 +688,16 @@ export const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }>
 							<Sparkles className="size-3 text-muted-foreground opacity-60" aria-hidden="true" />
 							<button
 								type="button"
-								onClick={() => setSuggestedCardDismissed(true)}
+								onClick={handleDismissSuggestions}
 								className="rounded p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
 								aria-label={tChat("dismiss_suggested_actions")}
-								title={tChat("dismiss_suggested_actions")}
+								title="Thu gọn gợi ý (Lưu cho phiên này)"
 							>
 								<X className="size-3" aria-hidden="true" />
 							</button>
 						</div>
 					</div>
-					<ul className="space-y-1 list-none">
+					<ul className="space-y-1 list-none mt-1.5">
 						{dynamicSuggestedActions.slice(0, 4).map((actionText, idx) => {
 							const icon = idx === 0 ? "🚀" : idx === 1 ? "💼" : idx === 2 ? "📱" : "✨";
 							return (

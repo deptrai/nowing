@@ -251,15 +251,6 @@ export function ModelSelector({ workspaceId, className, onChatModelSelected }: M
 					))
 				)}
 			</div>
-			<div className="p-2">
-				<Button
-					variant="ghost"
-					className="w-full justify-start rounded-md bg-foreground/5 hover:bg-foreground/10 hover:text-foreground"
-					onClick={manageModelConnections}
-				>
-					<SlidersHorizontal className="h-4 w-4" /> Manage models
-				</Button>
-			</div>
 		</div>
 	);
 

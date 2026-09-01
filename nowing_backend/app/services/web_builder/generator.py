@@ -53,87 +53,210 @@ class WebBuilderService:
         response so token/cost tracking is not hard-coded (P24).
         """
         from app.services.llm_service import get_agent_llm, get_planner_llm
+        from app.agents.chat.runtime.llm_config import create_chat_litellm_from_config
 
-        llm = await get_agent_llm(session, workspace_id) if session else None
-        if not llm:
-            llm = get_planner_llm()
+        # Build a prioritized list of LLM candidates
+        llm_candidates: list[Any] = []
+
+        if session:
+            agent_llm = await get_agent_llm(session, workspace_id, disable_streaming=True)
+            if agent_llm:
+                logger.info("[WebBuilderService] Using workspace chat LLM")
+                llm_candidates.append(agent_llm)
+
+        planner_llm = get_planner_llm()
+        if planner_llm:
+            logger.info("[WebBuilderService] Using planner LLM")
+            llm_candidates.append(planner_llm)
+
+        if app_config.GLOBAL_LLM_CONFIGS:
+            for cfg in app_config.GLOBAL_LLM_CONFIGS:
+                if cfg.get("model_name"):
+                    global_llm = create_chat_litellm_from_config(cfg)
+                    if global_llm:
+                        logger.info("[WebBuilderService] Adding global LLM candidate: %s", cfg.get("name"))
+                        llm_candidates.append(global_llm)
+
+        if not llm_candidates:
+            logger.error("[WebBuilderService] No LLM available for project generation")
+            return None, {}
 
         system_instruction = (
             "You are an expert single-page Next.js 16 + React 19 + Tailwind CSS "
             "developer for sales and marketing sites.\n\n"
+            "CRITICAL: Return ONLY a single, valid JSON object. No prose, no markdown "
+            "fences, no explanation before or after the JSON.\n\n"
             "Generate ONE of these five lightweight, single-page templates:\n"
             "- landing: hero, value props, social proof, CTA\n"
             "- pricing: 2-4 tier pricing table with feature bullets\n"
             "- lead-capture: headline, benefit bullets, lead form\n"
             "- waitlist: coming soon, email signup, launch details\n"
             "- report: featured report/whitepaper with download CTA\n\n"
-            "Return ONLY a valid JSON object matching this schema:\n"
-            "{\n"
-            '  "name": "App Name",\n'
-            '  "slug": "app-slug",\n'
-            '  "description": "Short description",\n'
-            '  "files": [\n'
-            '    {"path": "package.json", "content": "..."},\n'
-            '    {"path": "app/layout.tsx", "content": "..."},\n'
-            '    {"path": "app/page.tsx", "content": "..."},\n'
-            '    {"path": "app/globals.css", "content": "..."},\n'
-            '    {"path": "tailwind.config.ts", "content": "..."}\n'
-            "  ]\n"
-            "}\n"
+            "Your JSON MUST match this exact schema and be minified/compact when possible:\n"
+            '{"name":"App Name","slug":"app-slug","description":"Short description","files":[{"path":"package.json","content":"..."},{"path":"app/layout.tsx","content":"..."},{"path":"app/page.tsx","content":"..."},{"path":"app/globals.css","content":"..."},{"path":"tailwind.config.ts","content":"..."}]}\n'
             f"Target UI Language: {language}.\n"
             "The app must be a SINGLE PAGE. No multi-page routing, no API routes, "
             "no database, no backend logic, and no container lifecycle.\n"
             "If the user asks for anything out of scope, return:\n"
-            '{"status": "validation_failed", "error": "v1 supports single-page sales/marketing sites only. Choose from: landing, pricing, lead-capture, waitlist, report.", "files": []}\n'
+            '{"status":"validation_failed","error":"v1 supports single-page sales/marketing sites only. Choose from: landing, pricing, lead-capture, waitlist, report.","files":[]}\n'
             "DO NOT wrap with markdown fences or add explanations outside the JSON."
         )
 
-        try:
-            response = await llm.ainvoke(
-                [
-                    {"role": "system", "content": system_instruction},
-                    {"role": "user", "content": prompt},
-                ]
-            )
+        def _extract_json(text: str) -> dict[str, Any] | None:
+            """Extract the first valid top-level JSON object from arbitrary LLM text."""
+            if not text:
+                return None
 
-            raw_text = (
-                response.content if hasattr(response, "content") else str(response)
-            )
-            if isinstance(raw_text, list):
-                raw_text = "".join(str(part) for part in raw_text)
+            cleaned = text.strip()
 
-            # Strip possible markdown code fences
-            cleaned_text = raw_text.strip()
-            if cleaned_text.startswith("```"):
-                cleaned_text = re.sub(r"^```(?:json)?\n", "", cleaned_text)
-                cleaned_text = re.sub(r"\n```$", "", cleaned_text)
+            if cleaned.startswith("```"):
+                cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
+                cleaned = re.sub(r"\s*```$", "", cleaned)
 
-            # Try extracting json substring if surrounding text exists
-            json_match = re.search(r"(\{.*\})", cleaned_text, re.DOTALL)
-            if json_match:
-                cleaned_text = json_match.group(1)
+            try:
+                return json.loads(cleaned, strict=False)
+            except json.JSONDecodeError:
+                pass
 
-            spec = json.loads(cleaned_text, strict=False)
+            decoder = json.JSONDecoder()
+            for start_idx in (m.start() for m in re.finditer(r"(?<!\\)\{", cleaned)):
+                try:
+                    obj, end = decoder.raw_decode(cleaned, start_idx)
+                    if isinstance(obj, dict):
+                        return obj
+                except (json.JSONDecodeError, ValueError):
+                    continue
 
-            # Extract token usage from the LLM response when available.
-            usage = getattr(response, "usage_metadata", None) or {}
-            if not usage:
-                rm = getattr(response, "response_metadata", None) or {}
-                usage = rm.get("token_usage") or {}
-            token_usage = {
-                "prompt_tokens": int(usage.get("input_tokens", 0)),
-                "completion_tokens": int(usage.get("output_tokens", 0)),
-                "total_tokens": int(
-                    usage.get("total_tokens", 0)
-                    or usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
-                ),
-            }
-            return spec, token_usage
-        except Exception as e:
-            logger.warning(
-                f"[WebBuilderService] LLM generation failed or returned invalid JSON: {e}"
-            )
-            return None, {}
+            fence_match = re.search(r"```(?:json)?\n(.*?)\n```", text, re.DOTALL)
+            if fence_match:
+                try:
+                    return json.loads(fence_match.group(1), strict=False)
+                except json.JSONDecodeError:
+                    pass
+
+            return None
+
+        def _classify_error(e: BaseException) -> str:
+            error_str = str(e).lower()
+            if any(k in error_str for k in ["quota", "rate", "429", "exhausted"]):
+                return "AI model service is temporarily unavailable due to rate limit. Please try again in a few minutes."
+            if any(k in error_str for k in ["timeout", "timed out"]):
+                return "AI model service timed out. Please try a shorter prompt or try again later."
+            if any(k in error_str for k in ["no llm", "none", "not configured"]):
+                return "No AI model is configured for this workspace."
+            if "content" in error_str and "moderation" in error_str:
+                return "Content was rejected by the AI safety filter. Please rephrase your request."
+            return f"AI generation failed: {e}"
+
+        last_error: BaseException | None = None
+        for attempt, current_llm in enumerate(llm_candidates, start=1):
+            try:
+                model_name = getattr(current_llm, "model", getattr(current_llm, "model_name", "unknown"))
+                logger.info("[WebBuilderService] LLM attempt %d with %s", attempt, model_name)
+
+                # Gemini/OpenAI-compatible providers support response_format json_object
+                invoke_kwargs: dict[str, Any] = {}
+                if isinstance(model_name, str):
+                    m = model_name.lower()
+                    if any(p in m for p in ["openai", "gemini", "gpt", "claude"]):
+                        invoke_kwargs["response_format"] = {"type": "json_object"}
+
+                response = await current_llm.ainvoke(
+                    [
+                        {"role": "system", "content": system_instruction},
+                        {"role": "user", "content": prompt},
+                    ],
+                    **invoke_kwargs,
+                )
+
+                raw_text = ""
+                if hasattr(response, "content"):
+                    content = response.content
+                    if isinstance(content, str):
+                        raw_text = content
+                    elif isinstance(content, list):
+                        parts = []
+                        for block in content:
+                            if isinstance(block, str):
+                                parts.append(block)
+                            elif isinstance(block, dict):
+                                if block.get("type") == "text" and isinstance(block.get("text"), str):
+                                    parts.append(block["text"])
+                                elif isinstance(block.get("text"), str):
+                                    # OpenAI / compatible text blocks
+                                    parts.append(block["text"])
+                                elif isinstance(block.get("content"), str):
+                                    parts.append(block["content"])
+                            # Skip non-text blocks (e.g. Anthropic thinking) to avoid
+                            # injecting the stringified dict into JSON extraction.
+                        raw_text = "".join(parts)
+                    else:
+                        raw_text = str(content)
+                else:
+                    raw_text = str(response)
+
+                logger.info(
+                    "[WebBuilderService] Raw LLM response length: %d chars",
+                    len(raw_text),
+                )
+                if raw_text:
+                    logger.info(
+                        "[WebBuilderService] Raw LLM response (first 1500 chars): %s",
+                        raw_text[:1500],
+                    )
+
+                spec = _extract_json(raw_text)
+
+                if spec is None and raw_text:
+                    first_brace = raw_text.find("{")
+                    last_brace = raw_text.rfind("}")
+                    if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
+                        retry_text = raw_text[first_brace : last_brace + 1]
+                        logger.warning("[WebBuilderService] Retry JSON extraction with bounded braces")
+                        spec = _extract_json(retry_text)
+
+                usage = getattr(response, "usage_metadata", None) or {}
+                if not usage:
+                    rm = getattr(response, "response_metadata", None) or {}
+                    usage = rm.get("token_usage") or {}
+                token_usage = {
+                    "prompt_tokens": int(usage.get("input_tokens", 0)),
+                    "completion_tokens": int(usage.get("output_tokens", 0)),
+                    "total_tokens": int(
+                        usage.get("total_tokens", 0)
+                        or usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
+                    ),
+                }
+
+                if spec is None:
+                    logger.warning(
+                        "[WebBuilderService] Could not parse JSON from LLM output on attempt %d",
+                        attempt,
+                    )
+                    last_error = ValueError("LLM returned output that could not be parsed as JSON")
+                    continue
+
+                return spec, token_usage
+
+            except Exception as e:
+                logger.warning(
+                    "[WebBuilderService] LLM attempt %d failed: %s: %s",
+                    attempt,
+                    type(e).__name__,
+                    e,
+                )
+                last_error = e
+                continue
+
+        logger.error(
+            "[WebBuilderService] All %d LLM candidates failed. Last error: %s",
+            len(llm_candidates),
+            last_error,
+        )
+
+        error_message = _classify_error(last_error or Exception("Unknown error"))
+        return {"__llm_error__": True, "__error_message__": error_message}, {}
+
 
     async def generate_project(
         self,
@@ -177,14 +300,25 @@ class WebBuilderService:
             )
 
         if not spec_dict or not isinstance(spec_dict, dict) or "files" not in spec_dict:
+            # Distinguish between an LLM infrastructure failure and a malformed output
+            if spec_dict and spec_dict.get("__llm_error__") is True:
+                error = spec_dict.get(
+                    "__error_message__",
+                    "AI model service unavailable. Please try again later.",
+                )
+                status = "llm_error"
+            else:
+                error = "LLM output validation failed: malformed JSON or missing files specification"
+                status = "validation_failed"
+
             return WebAppBuildOutput(
                 app_id=app_id,
                 workspace_id=build_input.workspace_id,
                 name=build_input.app_name or "Generated Web App",
                 slug="",
-                status="validation_failed",
-                error="LLM output validation failed: malformed JSON or missing files specification",
-                message="LLM output validation failed: malformed JSON or missing files specification",
+                status=status,
+                error=error,
+                message=error,
                 files=[],
             )
 
