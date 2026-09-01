@@ -62,7 +62,12 @@ export async function mockWorkspaceReady(page: Page) {
 		});
 	});
 
-	// Model connections (empty)
+	// Global model connections (empty)
+	await page.route("**/api/v1/global-model-connections**", async (route: Route) => {
+		await fulfillJson(route, 200, []);
+	});
+
+	// Workspace model connections (empty)
 	await page.route("**/api/v1/model-connections**", async (route: Route) => {
 		await fulfillJson(route, 200, []);
 	});
@@ -144,6 +149,21 @@ export async function mockWorkspaceReady(page: Page) {
 			items: [],
 			has_more: false,
 		});
+	});
+
+	// Search source connectors (sidebar / chat context)
+	await page.route("**/api/v1/search-source-connectors**", async (route: Route) => {
+		await fulfillJson(route, 200, []);
+	});
+
+	// Agent flags (feature toggles)
+	await page.route("**/api/v1/agent/flags**", async (route: Route) => {
+		await fulfillJson(route, 200, {});
+	});
+
+	// Agent tools catalog
+	await page.route("**/api/v1/agent/tools**", async (route: Route) => {
+		await fulfillJson(route, 200, []);
 	});
 
 	// Scraper capabilities
