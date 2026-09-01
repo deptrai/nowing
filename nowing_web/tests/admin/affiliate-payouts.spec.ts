@@ -1,5 +1,7 @@
 import type { Page, Request, Route } from "@playwright/test";
 import { expect, test } from "../fixtures";
+import { corsHeaders } from "../helpers/cors";
+import { mockAdminAuth } from "../helpers/admin-auth";
 
 /**
  * Story 25.3: Affiliate Partner Payout Desk & Anti-Fraud Engine — E2E scaffold.
@@ -53,41 +55,10 @@ const highRiskPayout = {
 };
 
 async function setupPayoutMocks(page: Page) {
-	// Pretend the non-admin test user is a superuser so the admin shell renders.
-	await page.route(/.*\/auth\/session(\?.*)?$/, async (route: Route) => {
-		await route.fulfill({
-			status: 200,
-			contentType: "application/json",
-			body: JSON.stringify({
-				authenticated: true,
-				access_expires_at: Date.now() / 1000 + 3_600,
-				is_impersonation: false,
-				impersonated_by: null,
-				target_user: null,
-			}),
-		});
-	});
-
-	await page.route(/.*\/users\/me(\?.*)?$/, async (route: Route) => {
-		await route.fulfill({
-			status: 200,
-			contentType: "application/json",
-			body: JSON.stringify({
-				id: "admin-test-user-0000-0000-0000-000000000001",
-				email: "admin-test@nowing.net",
-				is_active: true,
-				is_superuser: true,
-				is_verified: true,
-				credit_micros_balance: 0,
-				display_name: "Admin Test",
-				avatar_url: null,
-				notification_preferences: null,
-			}),
-		});
-	});
+	await mockAdminAuth(page);
 
 	await page.route(
-		/\/api\/v1\/admin\/affiliates\/payouts/,
+		"**/api/v1/admin/affiliates/payouts**",
 		async (route: Route, request: Request) => {
 			const url = request.url();
 			const method = request.method();
@@ -96,6 +67,7 @@ async function setupPayoutMocks(page: Page) {
 				await route.fulfill({
 					status: 200,
 					contentType: "application/json",
+					headers: await corsHeaders(route),
 					body: JSON.stringify({
 						payout_id: MOCK_PAYOUT_ID,
 						risk_score: lowRiskPayout.risk_score,
@@ -111,6 +83,7 @@ async function setupPayoutMocks(page: Page) {
 				await route.fulfill({
 					status: 200,
 					contentType: "application/json",
+					headers: await corsHeaders(route),
 					body: JSON.stringify({
 						status: "processing",
 						payout_id: MOCK_PAYOUT_ID,
@@ -126,6 +99,7 @@ async function setupPayoutMocks(page: Page) {
 				await route.fulfill({
 					status: 200,
 					contentType: "application/json",
+					headers: await corsHeaders(route),
 					body: JSON.stringify({
 						status: "rejected",
 						payout_id: MOCK_PAYOUT_ID,
@@ -143,6 +117,7 @@ async function setupPayoutMocks(page: Page) {
 				await route.fulfill({
 					status: 200,
 					contentType: "application/json",
+					headers: await corsHeaders(route),
 					body: JSON.stringify({
 						items: offset === 0 ? [lowRiskPayout, highRiskPayout] : [],
 						total,
@@ -178,8 +153,11 @@ test.describe("Admin Affiliate Payout Desk", () => {
 	test("[P0] should open detail modal and enable Approve for low-risk / name-match payout", async ({
 		page,
 	}) => {
-		const row = page.getByRole("row").filter({ hasText: /NGUYEN VAN MINH/ });
-		await row.getByRole("button", { name: /Xử Lý/i }).click();
+		await expect(page.getByText("NGUYEN VAN MINH")).toBeVisible();
+		const row = page.getByRole("row").filter({ hasText: /NGUYEN VAN MINH/i });
+		const handleBtn = row.getByRole("button", { name: /Xử Lý/i }).first();
+		await expect(handleBtn).toBeVisible();
+		await handleBtn.click();
 
 		const modal = page.getByRole("dialog");
 		await expect(modal).toBeVisible();
@@ -188,11 +166,14 @@ test.describe("Admin Affiliate Payout Desk", () => {
 
 		const approveBtn = modal.getByRole("button", { name: /Phê Duyệt & Chuyển Tiền VietQR/i });
 		await expect(approveBtn).toBeEnabled();
+		await modal.getByRole("button", { name: /Đóng/i }).click();
+		await expect(modal).not.toBeVisible();
 	});
 
 	test("[P0] should disable Approve for high-risk / name-mismatch payout", async ({ page }) => {
-		const row = page.getByRole("row").filter({ hasText: /Fraudster Ring/ });
-		await row.getByRole("button", { name: /Xử Lý/i }).click();
+		const handleBtn = page.getByRole("button", { name: /Xử Lý/i }).nth(1);
+		await expect(handleBtn).toBeVisible();
+		await handleBtn.click();
 
 		const modal = page.getByRole("dialog");
 		await expect(modal).toBeVisible();
@@ -201,13 +182,17 @@ test.describe("Admin Affiliate Payout Desk", () => {
 
 		const approveBtn = modal.getByRole("button", { name: /Phê Duyệt & Chuyển Tiền VietQR/i });
 		await expect(approveBtn).toBeDisabled();
+		await modal.getByRole("button", { name: /Đóng/i }).click();
+		await expect(modal).not.toBeVisible();
 	});
 
 	test("[P1] should reject payout with a reason and close modal", async ({ page }) => {
-		const row = page.getByRole("row").filter({ hasText: /Fraudster Ring/ });
-		await row.getByRole("button", { name: /Xử Lý/i }).click();
+		const handleBtn = page.getByRole("button", { name: /Xử Lý/i }).nth(1);
+		await expect(handleBtn).toBeVisible();
+		await handleBtn.click();
 
 		const modal = page.getByRole("dialog");
+		await expect(modal).toBeVisible();
 		await modal.getByRole("button", { name: /Từ Chối Payout/i }).click();
 
 		// Select a rejection reason

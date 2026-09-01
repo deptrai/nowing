@@ -1,5 +1,7 @@
 import type { Page, Route } from "@playwright/test";
 import { expect, test } from "../fixtures";
+import { fulfillJson } from "../helpers/cors";
+import { mockAdminAuth } from "../helpers/admin-auth";
 
 /**
  * Story 25.6: Global DNC (Do-Not-Call) & PII Blacklist Manager.
@@ -33,55 +35,10 @@ const mockDncList = {
 	offset: 0,
 };
 
-const CORS_HEADERS = {
-	"Access-Control-Allow-Origin": "http://localhost:3000",
-	"Access-Control-Allow-Credentials": "true",
-	"Access-Control-Allow-Headers":
-		"Content-Type, Authorization, X-Requested-With, X-E2E-Mint-Secret, x-playwright-test",
-	"Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
-};
-
-async function fulfillJson(route: Route, status: number, body: unknown) {
-	if (route.request().method() === "OPTIONS") {
-		await route.fulfill({ status: 204, headers: CORS_HEADERS });
-		return;
-	}
-	await route.fulfill({
-		status,
-		contentType: "application/json",
-		headers: CORS_HEADERS,
-		body: JSON.stringify(body),
-	});
-}
 
 test.describe("Admin Global DNC Blacklist Manager (Story 25.6 ATDD)", () => {
 	test.beforeEach(async ({ page }: { page: Page }) => {
-		await page.route("**/auth/session*", async (route: Route) => {
-			await fulfillJson(route, 200, {
-				authenticated: true,
-				access_expires_at: Date.now() / 1000 + 3_600,
-				is_impersonation: false,
-				impersonated_by: null,
-				target_user: null,
-			});
-		});
-
-		await page.route("**/users/me*", async (route: Route) => {
-			await fulfillJson(route, 200, {
-				id: "11111111-1111-4111-8111-111111111111",
-				email: "superadmin@nowing.net",
-				is_active: true,
-				is_superuser: true,
-				is_verified: true,
-			});
-		});
-
-		await page.route("**/zero/context*", async (route: Route) => {
-			await fulfillJson(route, 200, {
-				userId: "11111111-1111-4111-8111-111111111111",
-				allowedSpaceIds: [1],
-			});
-		});
+		await mockAdminAuth(page);
 
 		await page.route("**/api/v1/admin/dnc/**", async (route: Route) => {
 			if (route.request().method() === "GET") {

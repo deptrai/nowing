@@ -156,17 +156,40 @@ export function AffiliatePayoutDetailModal({
 					</Alert>
 				)}
 
-				{/* High Risk Warning Alert */}
-				{isHighRisk && isPending && (
-					<Alert variant="destructive" className="bg-destructive/10 border-destructive/30 py-2.5">
-						<ShieldAlert className="h-4 w-4 text-destructive" aria-hidden="true" />
-						<AlertTitle className="text-xs font-bold text-destructive">
-							Cảnh Báo: Rủi Ro Gian Lận Mức Độ Cao (Điểm: {payout.risk_score}/100)
+				{/* Risk Assessment Alert */}
+				{isPending && (
+					<Alert
+						variant={isHighRisk ? "destructive" : "default"}
+						className={
+							isHighRisk
+								? "bg-destructive/10 border-destructive/30 py-2.5"
+								: "bg-emerald-500/10 border-emerald-500/30 py-2.5"
+						}
+					>
+						{isHighRisk ? (
+							<ShieldAlert className="h-4 w-4 text-destructive" aria-hidden="true" />
+						) : (
+							<ShieldCheck className="h-4 w-4 text-emerald-600" aria-hidden="true" />
+						)}
+						<AlertTitle
+							className={
+								isHighRisk
+									? "text-xs font-bold text-destructive"
+									: "text-xs font-bold text-emerald-600"
+							}
+						>
+							{isHighRisk
+								? `Cảnh Báo: Rủi Ro Gian Lận Mức Độ Cao (Điểm: ${payout.risk_score}/100)`
+								: `Rủi Ro Thấp (Điểm: ${payout.risk_score}/100 • LOW)`}
 						</AlertTitle>
-						<AlertDescription className="text-[11px] text-destructive/90">
-							Hệ thống phát hiện dấu hiệu bất thường (Self-referral ring hoặc không khớp tên ngân
-							hàng). Quy trình 1-click Napas bị tạm khóa cho đến khi có sự phê duyệt từ quản lý cấp
-							cao.
+						<AlertDescription
+							className={
+								isHighRisk ? "text-[11px] text-destructive/90" : "text-[11px] text-emerald-600/90"
+							}
+						>
+							{isHighRisk
+								? "Hệ thống phát hiện dấu hiệu bất thường (Self-referral ring hoặc không khớp tên ngân hàng). Quy trình 1-click Napas bị tạm khóa cho đến khi có sự phê duyệt từ quản lý cấp cao."
+								: "Không có cảnh báo rủi ro nào được ghi nhận. Payout đủ điều kiện phê duyệt 1-click VietQR Napas 24/7."}
 						</AlertDescription>
 					</Alert>
 				)}

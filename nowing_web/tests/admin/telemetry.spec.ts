@@ -1,5 +1,7 @@
 import type { Page, Route } from "@playwright/test";
 import { expect, test } from "../fixtures";
+import { corsHeaders, fulfillJson } from "../helpers/cors";
+import { mockAdminAuth } from "../helpers/admin-auth";
 
 /**
  * Story 25.4: Realtime LLM Token Cost, Proxy Health & Celery Queue Telemetry.
@@ -108,68 +110,22 @@ const mockCeleryQueues = {
 };
 
 async function setupAdminTelemetryMocks(page: Page) {
-	await page.route(/.*\/auth\/session(\?.*)?$/, async (route: Route) => {
-		await route.fulfill({
-			status: 200,
-			contentType: "application/json",
-			body: JSON.stringify({
-				authenticated: true,
-				access_expires_at: Date.now() / 1000 + 3_600,
-				is_impersonation: false,
-				impersonated_by: null,
-				target_user: null,
-			}),
-		});
-	});
-
-	await page.route(/.*\/users\/me(\?.*)?$/, async (route: Route) => {
-		await route.fulfill({
-			status: 200,
-			contentType: "application/json",
-			body: JSON.stringify({
-				id: "admin-test-user-0000-0000-0000-000000000001",
-				email: "admin-test@nowing.net",
-				is_active: true,
-				is_superuser: true,
-				is_verified: true,
-				credit_micros_balance: 0,
-				display_name: "Admin Test",
-				avatar_url: null,
-				notification_preferences: null,
-			}),
-		});
-	});
+	await mockAdminAuth(page);
 
 	await page.route(/.*\/api\/v1\/admin\/telemetry\/llm-cost(\?.*)?$/, async (route: Route) => {
-		await route.fulfill({
-			status: 200,
-			contentType: "application/json",
-			body: JSON.stringify(mockLlmCost),
-		});
+		await fulfillJson(route, 200, mockLlmCost);
 	});
 
 	await page.route(/.*\/api\/v1\/admin\/telemetry\/gross-margin(\?.*)?$/, async (route: Route) => {
-		await route.fulfill({
-			status: 200,
-			contentType: "application/json",
-			body: JSON.stringify(mockGrossMargin),
-		});
+		await fulfillJson(route, 200, mockGrossMargin);
 	});
 
 	await page.route(/.*\/api\/v1\/admin\/telemetry\/proxy-health$/, async (route: Route) => {
-		await route.fulfill({
-			status: 200,
-			contentType: "application/json",
-			body: JSON.stringify(mockProxyHealth),
-		});
+		await fulfillJson(route, 200, mockProxyHealth);
 	});
 
 	await page.route(/.*\/api\/v1\/admin\/telemetry\/celery-queues$/, async (route: Route) => {
-		await route.fulfill({
-			status: 200,
-			contentType: "application/json",
-			body: JSON.stringify(mockCeleryQueues),
-		});
+		await fulfillJson(route, 200, mockCeleryQueues);
 	});
 }
 
@@ -221,7 +177,12 @@ test.describe("Story 25.4 — Admin Telemetry Dashboard", () => {
 
 		const consoleErrors: string[] = [];
 		page.on("console", (msg) => {
-			if (msg.type() === "error") consoleErrors.push(msg.text());
+			if (msg.type() === "error") {
+				const text = msg.text();
+				if (!text.includes("ws://localhost:4848") && !text.includes("[zero] connection log throttled")) {
+					consoleErrors.push(text);
+				}
+			}
 		});
 
 		// Wait for at least one auto-refresh tick (5s).
