@@ -37,6 +37,9 @@ from .operational import _classify_error_text, summarize_operational
 logger = logging.getLogger(__name__)
 
 
+COST_CAP_EXCEEDED_MSG = "Run cost {cost} micros exceeds cap {cap}."
+
+
 _DESCRIPTION = (
     "Chat response regression: per-turn latency, token/cost, citations, "
     "finish status, and optional keyword checks."
@@ -741,11 +744,23 @@ class ChatRegressionBenchmark:
         logger.info("Wrote default %d sample cases to %s", len(_DEFAULT_DATASET), target)
 
     async def run(self, ctx: RunContext, **opts: Any) -> RunArtifact:
-        search_space_id = opts.get("search_space_id") or ctx.search_space_id
+        # Precedence: explicit CLI flag > suite state > env default.
+        # Use ``is None`` so ``0`` is honored as an explicit value (e.g. --n 0).
+        # ``ctx.search_space_id`` defaults to 0 when the suite has not been set
+        # up, so treat 0 the same as None for the suite-state fallback.
+        search_space_id = opts.get("search_space_id")
+        if search_space_id is None:
+            search_space_id = ctx.search_space_id or None
+        if search_space_id is None:
+            search_space_id = ctx.config.chat_eval_search_space_id
         if not search_space_id:
             raise RuntimeError("--search-space-id or a suite setup with a SearchSpace is required.")
         workspace_id = opts.get("workspace_id")
+        if workspace_id is None:
+            workspace_id = ctx.config.chat_eval_workspace_id
         sample_n = opts.get("sample_n")
+        if sample_n is None:
+            sample_n = ctx.config.chat_eval_max_cases
         concurrency = max(1, int(opts.get("concurrency") or 1))
         threads = max(1, int(opts.get("threads") or 1))
         tags_filter = opts.get("tags")
@@ -774,6 +789,8 @@ class ChatRegressionBenchmark:
                 raise RuntimeError("--timeout must be > 0.")
         build_id = opts.get("backend_build_id")
         max_total_cost_micros = opts.get("max_total_cost_micros")
+        if max_total_cost_micros is not None and max_total_cost_micros < 0:
+            raise RuntimeError("--max-total-cost-micros must be >= 0.")
         fail_on_unratified = bool(opts.get("fail_on_unratified"))
 
         if profile == "quick":
@@ -1035,8 +1052,51 @@ class ChatRegressionBenchmark:
                     operational=operational,
                 )
 
+        # Track running cost so we can abort early as soon as the cap is
+        # exceeded instead of burning the full matrix.
+        accumulated_cost_micros = 0
+        cost_cap_exceeded = False
+        cost_cap_cancelled = asyncio.Event()
+
+        async def _run_one_guarded(case: _Case, mode: str) -> _CaseResult:
+            nonlocal accumulated_cost_micros, cost_cap_exceeded
+            if cost_cap_cancelled.is_set():
+                return _CaseResult(
+                    case_id=case.case_id,
+                    tags=case.tags,
+                    query=case.query,
+                    text="",
+                    error="Cost cap cancelled",
+                    error_code="CostCapCancelled",
+                    latency_ms=0,
+                    ttfb_ms=None,
+                    prompt_tokens=0,
+                    completion_tokens=0,
+                    total_tokens=0,
+                    cost_micros=0,
+                    citation_count=0,
+                    finished_normally=False,
+                    expected_contains=case.expected_contains,
+                    contains_hits=0,
+                    mode=mode,
+                    tier=case.tier,
+                    environment=environment,
+                )
+            result = await _run_one(case, mode)
+            if max_total_cost_micros is not None:
+                accumulated_cost_micros += result.cost_micros
+                if not cost_cap_exceeded and accumulated_cost_micros > max_total_cost_micros:
+                    cost_cap_exceeded = True
+                    cost_cap_cancelled.set()
+                    logger.warning(
+                        "Cost cap of %d micros exceeded at %d micros; cancelling remaining cases.",
+                        max_total_cost_micros,
+                        accumulated_cost_micros,
+                    )
+            return result
+
         raw_results = await asyncio.gather(
-            *(_run_one(c, m) for c, m in matrix),
+            *(_run_one_guarded(c, m) for c, m in matrix),
             return_exceptions=True,
         )
         results: list[_CaseResult] = []
@@ -1104,9 +1164,9 @@ class ChatRegressionBenchmark:
                 )
 
         total_cost_micros = sum(r.cost_micros for r in results)
-        if max_total_cost_micros and total_cost_micros > max_total_cost_micros:
-            raise RuntimeError(
-                f"Run cost {total_cost_micros} micros exceeds cap {max_total_cost_micros}."
+        if not cost_cap_exceeded:
+            cost_cap_exceeded = (
+                max_total_cost_micros is not None and total_cost_micros > max_total_cost_micros
             )
 
         metrics = self._aggregate(results, concurrency=concurrency, threads=threads)
@@ -1131,45 +1191,95 @@ class ChatRegressionBenchmark:
         }
 
         run_artifact_path = run_dir / "run_artifact.json"
-        _write_json_atomic(
-            run_artifact_path,
-            {
-                "suite": self.suite,
-                "benchmark": self.name,
-                "raw_path": "raw.jsonl",
-                "metrics": metrics,
-                "extra": extra,
-            },
-        )
+        if cost_cap_exceeded:
+            cap_str = str(max_total_cost_micros) if max_total_cost_micros is not None else "unknown"
+            cost_cap_reason = COST_CAP_EXCEEDED_MSG.format(cost=total_cost_micros, cap=cap_str)
+        else:
+            cost_cap_reason = None
+        unratified_reason = None
+        if fail_on_unratified and not top.get("baseline_ratified"):
+            unratified_reason = "Chat regression gate is not ratified (baseline_ratified=false)."
+        stored_violations: list[str] = list(gate_violations)
+        if cost_cap_reason:
+            stored_violations.append(cost_cap_reason)
+        if unratified_reason:
+            stored_violations.append(unratified_reason)
+        if stored_violations:
+            metrics["gate_violations"] = stored_violations
 
-        if gate_violations:
-            run_artifact_str = str(run_artifact_path)
-            try:
-                await notify_gate_failure(
-                    self.suite,
-                    self.name,
-                    run_timestamp,
-                    gate_violations,
-                    run_artifact_str,
-                    extra,
-                )
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("Failed to send gate failure notification: %s", exc)
-            if top.get("baseline_ratified"):
-                raise RuntimeError(
-                    f"Chat regression gate failed for {environment}: " + "; ".join(gate_violations)
-                )
-            else:
+        run_artifact_str = str(run_artifact_path)
+        notifications_sent = False
+
+        # Notify on any failure condition, then write the artifact and raise.
+        # The artifact is written in a ``finally`` block so the post-mortem
+        # data (including the final ``notifications_sent`` flag) is always
+        # available, even when the gate fails.
+        failing_reasons: list[str] = list(gate_violations)
+        if cost_cap_reason:
+            failing_reasons.append(cost_cap_reason)
+        if unratified_reason:
+            failing_reasons.append(unratified_reason)
+
+        # Avoid false-positive alerts on dry-runs: only notify when the gate
+        # will actually fail (baseline ratified + threshold violations, cost
+        # cap breach, or explicit --fail-on-unratified).
+        notify_reasons: list[str] = []
+        if cost_cap_reason:
+            notify_reasons.append(cost_cap_reason)
+        if gate_violations and top.get("baseline_ratified"):
+            notify_reasons.extend(gate_violations)
+        if unratified_reason:
+            notify_reasons.append(unratified_reason)
+
+        try:
+            if notify_reasons:
+                try:
+                    notifications_sent = await notify_gate_failure(
+                        self.suite,
+                        self.name,
+                        run_timestamp,
+                        notify_reasons,
+                        run_artifact_str,
+                        extra,
+                        slack_url=ctx.config.slack_webhook_url,
+                        telegram_bot_token=ctx.config.telegram_bot_token,
+                        telegram_chat_id=ctx.config.telegram_chat_id,
+                        prefix=ctx.config.artifact_url_prefix,
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("Failed to send gate failure notification: %s", exc)
+
+            if cost_cap_exceeded:
+                raise RuntimeError(cost_cap_reason)
+
+            if gate_violations:
+                if top.get("baseline_ratified"):
+                    raise RuntimeError(
+                        f"Chat regression gate failed for {environment}: "
+                        + "; ".join(gate_violations)
+                    )
                 logger.warning(
                     "Chat regression gate violations detected but baseline is not ratified "
                     "(baseline_ratified=false): %s",
                     "; ".join(gate_violations),
                 )
 
-        if fail_on_unratified and not top.get("baseline_ratified"):
-            raise RuntimeError(
-                "Chat regression gate is not ratified (baseline_ratified=false). "
-                "Run with measured baseline and flip gate.yaml, or omit --fail-on-unratified."
+            if fail_on_unratified and not top.get("baseline_ratified"):
+                raise RuntimeError(
+                    "Chat regression gate is not ratified (baseline_ratified=false). "
+                    "Run with measured baseline and flip gate.yaml, or omit --fail-on-unratified."
+                )
+        finally:
+            _write_json_atomic(
+                run_artifact_path,
+                {
+                    "suite": self.suite,
+                    "benchmark": self.name,
+                    "raw_path": "raw.jsonl",
+                    "metrics": metrics,
+                    "extra": extra,
+                    "notifications_sent": notifications_sent,
+                },
             )
 
         return RunArtifact(
@@ -1179,6 +1289,7 @@ class ChatRegressionBenchmark:
             raw_path=raw_path,
             metrics=metrics,
             extra=extra,
+            notifications_sent=notifications_sent,
         )
 
     def _aggregate(

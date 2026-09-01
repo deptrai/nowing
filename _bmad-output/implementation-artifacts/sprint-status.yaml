@@ -1,5 +1,5 @@
 # generated: 2026-08-08
-# last_updated: 2026-08-30
+# last_updated: 2026-09-02
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: 2026-08-30  # Story 6-10 created and marked ready-for-dev.
+last_updated: 2026-09-02  # Story 4-8e marked done after code review and fixes.
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # - Parsed epics.md: 24 epics, ~160 stories.
 # - Scanned _bmad-output/implementation-artifacts/ + stories/*.md for story files (frontmatter story_key/epic+story).
@@ -112,7 +112,7 @@ development_status:
   4-8d: done
   # ponytail: 2026-08-15 reopened to ready-for-dev
   4-8d-followup: backlog  # deferred: depends on 4-8d active use and code-review items
-  4-8e: done
+  4-8e: done  # 2026-09-02: CI deploy gate implemented, code review findings fixed, tests pass.
   4-8f: done
   4-8g: done
   4-8h: done
