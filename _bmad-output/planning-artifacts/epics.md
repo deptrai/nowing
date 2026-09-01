@@ -4494,3 +4494,19 @@ _FR-97 · FR-104 · AR-13 · AR-17 · AR-18 · UX-DR-PRFAQ-5 · UX-DR-PRFAQ-6 ·
 | **UX-DR-PRFAQ-6** Analyst memory browser / research timeline | **29.5** | UI filter memory theo thread/source/confidence/time, click-to-source, flag. |
 
 **Story count:** 29.1–29.6 (6 stories) · **Status:** all `[backlog]` · **Dependencies:** Epic 1, Epic 3, Epic 8, Epic 25, Epic 28.
+
+---
+
+## Epic 30: Technical Debt
+
+Tập hợp các mục nợ kỹ thuật được trích xuất từ code-review, deferred-work và backlog.
+
+### Story 30.1: Idempotency key for automations run
+### Story 30.2: Redis event bus subscribe failure state leak
+### Story 30.3: Storage sum reconciles deleted backend files
+### Story 30.4: Concurrent notification preference merge race condition
+### Story 30.5: Background title generator timeout and retry logic
+### Story 30.6: Verify chat image capability num retries
+### Story 30.7: Unit test coverage for test model function
+### Story 30.8: Epic 13 canonical entity cleanup
+
