@@ -89,6 +89,7 @@ class NewChatThreadCreate(NewChatThreadBase):
     """Schema for creating a new thread."""
 
     workspace_id: int
+    project_id: int | None = None
     # Visibility defaults to PRIVATE, but can be set on creation
     visibility: ChatVisibility = ChatVisibility.PRIVATE
     client_id: str | None = Field(
@@ -134,6 +135,7 @@ class NewChatThreadUpdate(BaseModel):
 
     title: str | None = None
     archived: bool | None = None
+    project_id: int | None = None
 
 
 class NewChatThreadVisibilityUpdate(BaseModel):
@@ -148,6 +150,7 @@ class NewChatThreadRead(NewChatThreadBase, IDModel):
     """
 
     workspace_id: int
+    project_id: int | None = None
     visibility: ChatVisibility
     created_by_id: UUID | None = None
     created_at: datetime
@@ -190,6 +193,7 @@ class ThreadListItem(BaseModel):
     id: int
     title: str
     archived: bool
+    project_id: int | None = None
     visibility: ChatVisibility
     created_by_id: UUID | None = None
     is_own_thread: bool = False
@@ -356,6 +360,7 @@ class NewChatRequest(BaseModel):
     chat_id: int
     user_query: str
     workspace_id: int
+    project_id: int | None = None
     messages: list[ChatMessage] | None = None  # Optional chat history from frontend
     mentioned_document_ids: list[int] | None = (
         None  # Optional document IDs mentioned with @ in the chat

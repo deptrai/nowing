@@ -137,10 +137,21 @@ class NewChatThread(BaseModel, TimestampMixin):
         nullable=True,
         index=True,
     )
+    project_id = Column(
+        Integer,
+        ForeignKey("projects.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     # Relationships
     workspace = relationship("Workspace", back_populates="new_chat_threads")
     created_by = relationship("User", back_populates="new_chat_threads")
+    project = relationship(
+        "Project",
+        back_populates="new_chat_threads",
+        foreign_keys=[project_id],
+    )
     messages = relationship(
         "NewChatMessage",
         back_populates="thread",

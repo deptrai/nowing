@@ -128,6 +128,7 @@ from .outcome_pricing_routes import router as outcome_pricing_router
 from .partner_routes import router as partner_router
 from .personal_access_tokens_routes import router as personal_access_tokens_router
 from .presentation_routes import router as presentation_router
+from .projects_routes import router as projects_router
 from .promo_code_routes import router as promo_code_router
 from .prompts_routes import router as prompts_router
 from .public_chat_routes import router as public_chat_router
@@ -137,6 +138,7 @@ from .research_threads_routes import router as research_threads_router
 from .sandbox_routes import router as sandbox_router
 from .sequence_routes import router as sequence_router
 from .signals_routes import router as signals_router
+from .skills_routes import router as skills_router
 from .slack_add_connector_route import router as slack_add_connector_router
 from .social_copilot_routes import router as social_copilot_router
 from .social_routes import router as social_routes
@@ -154,6 +156,8 @@ from .zns_routes import router as zns_router
 router = APIRouter()
 
 router.include_router(workspaces_router)
+router.include_router(projects_router)
+router.include_router(skills_router)
 router.include_router(workspace_tables_router)
 router.include_router(sequence_router)
 router.include_router(outcome_pricing_router)

@@ -35,12 +35,14 @@ from app.db import ChatVisibility, NewChatThread, async_session_maker
 from app.observability import otel as ot
 from app.services.chat_session_state_service import set_ai_responding
 from app.services.new_streaming_service import VercelStreamingService
+from app.services.project_context_service import ProjectContextService
 from app.tasks.chat.content_builder import AssistantContentBuilder
 from app.tasks.chat.streaming.agent.builder import build_main_agent_for_thread
 from app.tasks.chat.streaming.contract.file_contract import log_file_contract
 from app.tasks.chat.streaming.errors.emitter import emit_stream_terminal_error
 from app.tasks.chat.streaming.flows.new_chat.orchestrator import (
     _AgentNotFoundError,
+    _clamp_agent_instructions,
     _merge_registry_agent_config,
 )
 from app.tasks.chat.streaming.flows.resume_chat.assistant_shell import (
@@ -359,6 +361,30 @@ async def stream_resume_chat(
             yield streaming_service.format_done()
             return
 
+        # --- Project context injection (Story 3.18) ---
+        if chat_thread is not None and getattr(chat_thread, "project_id", None):
+            project, pinned_pairs = (
+                await ProjectContextService.load_project_with_pinned_docs(
+                    session, chat_thread.project_id, workspace_id
+                )
+            )
+            if project:
+                proj_ctx = ProjectContextService.build_project_context(
+                    project, pinned_pairs, llm=llm
+                )
+                if proj_ctx:
+                    base_instructions = agent_config.system_instructions or ""
+                    agent_config.system_instructions = (
+                        f"{proj_ctx}\n\n{base_instructions}".strip()
+                        if base_instructions
+                        else proj_ctx
+                    )
+
+        if agent_config.system_instructions:
+            agent_config.system_instructions = _clamp_agent_instructions(
+                agent_config.system_instructions
+            )
+
         # --- Pre-stream setup ---
 
         _t0 = time.perf_counter()
@@ -523,6 +549,30 @@ async def stream_resume_chat(
                 return None
             llm = new_llm
             agent_config = new_agent_config
+
+            # Re-apply project context if linked (Story 3.18)
+            if chat_thread is not None and getattr(chat_thread, "project_id", None):
+                project, pinned_pairs = (
+                    await ProjectContextService.load_project_with_pinned_docs(
+                        session, chat_thread.project_id, workspace_id
+                    )
+                )
+                if project:
+                    proj_ctx = ProjectContextService.build_project_context(
+                        project, pinned_pairs, llm=llm
+                    )
+                    if proj_ctx:
+                        base_instructions = agent_config.system_instructions or ""
+                        agent_config.system_instructions = (
+                            f"{proj_ctx}\n\n{base_instructions}".strip()
+                            if base_instructions
+                            else proj_ctx
+                        )
+
+            if agent_config.system_instructions:
+                agent_config.system_instructions = _clamp_agent_instructions(
+                    agent_config.system_instructions
+                )
 
             _t_rebuild = time.perf_counter()
             new_agent = await build_main_agent_for_thread(
