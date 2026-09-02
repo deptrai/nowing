@@ -27,14 +27,16 @@ class SkillCreate(SkillBase):
 
 
 class SkillUpdate(BaseModel):
-    name: str | None = Field(default=None, min_length=1, max_length=255)
-    slug: str | None = Field(default=None, min_length=1, max_length=100, pattern=r"^[a-z0-9-_]+$")
-    description: str | None = None
-    trigger_pattern: str | None = Field(default=None, min_length=1, max_length=255)
-    content_markdown: str | None = Field(default=None, min_length=1)
-    skill_type: Literal["prompt", "workflow"] | None = None
-    parameters_schema: dict[str, Any] | None = None
-    is_active: bool | None = None
+    name: str = Field(default=None, min_length=1, max_length=255)
+    slug: str = Field(
+        default=None, min_length=1, max_length=100, pattern=r"^[a-z0-9-_]+$"
+    )
+    description: str = None
+    trigger_pattern: str = Field(default=None, min_length=1, max_length=255)
+    content_markdown: str = Field(default=None, min_length=1)
+    skill_type: Literal["prompt", "workflow"] = None
+    parameters_schema: dict[str, Any] = None
+    is_active: bool = None
 
 
 class SkillRead(SkillBase, IDModel, TimestampModel):
@@ -46,7 +48,12 @@ class SkillRead(SkillBase, IDModel, TimestampModel):
 
 
 class SkillParseRequest(BaseModel):
-    file_content: str = Field(..., min_length=1, description="Raw .skill.md content with YAML frontmatter")
+    file_content: str = Field(
+        ...,
+        min_length=1,
+        max_length=1_000_000,
+        description="Raw .skill.md content with YAML frontmatter",
+    )
 
 
 class SkillParseResponse(BaseModel):
@@ -54,7 +61,7 @@ class SkillParseResponse(BaseModel):
     slug: str
     description: str | None = None
     trigger_pattern: str
-    skill_type: str = "prompt"
+    skill_type: Literal["prompt", "workflow"] = "prompt"
     parameters_schema: dict[str, Any] = Field(default_factory=dict)
     content_markdown: str
 

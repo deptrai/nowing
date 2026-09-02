@@ -6,17 +6,23 @@ Create Date: 2026-09-02 00:00:00.000000
 
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
+from alembic import op
+
+try:
+    from app.zero_publication import apply_publication
+except ImportError:
+    apply_publication = None
+
 # revision identifiers, used by Alembic.
 revision: str = "237_add_projects_and_skills"
-down_revision: Union[str, Sequence[str], None] = "e84a71b56b48"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = "e84a71b56b48"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def _table_exists(table_name: str) -> bool:
@@ -234,6 +240,9 @@ def upgrade() -> None:
             "new_chat_threads",
             ["project_id"],
         )
+
+    if apply_publication:
+        apply_publication(op.get_bind())
 
 
 def downgrade() -> None:

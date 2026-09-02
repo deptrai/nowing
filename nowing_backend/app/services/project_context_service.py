@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import logging
 from typing import TYPE_CHECKING
 
@@ -22,6 +23,10 @@ except Exception:  # pragma: no cover - optional dep
 logger = logging.getLogger(__name__)
 
 MAX_PINNED_DOCS_TOKENS = 4000
+
+# Leave headroom for base system prompt, mode prompt and tool rules when the
+# final combined instructions are clamped to _MAX_INSTRUCTIONS_LEN chars.
+MAX_PROJECT_CONTEXT_CHARS = 6000
 
 
 def _approx_tokens(text: str) -> int:
@@ -52,7 +57,14 @@ def _count_tokens(text: str, *, llm: BaseChatModel | None = None) -> int:
         tcm = profile.get("token_count_model")
         if isinstance(tcm, str) and tcm and tcm not in model_names:
             model_names.append(tcm)
-    model_name = model_names[0] if model_names else getattr(llm, "model", None)
+
+    model_name = model_names[0] if model_names else None
+    if not model_name:
+        # LangChain chat models commonly use ``model_name`` rather than ``model``.
+        model_name = getattr(llm, "model_name", None)
+    if not model_name:
+        model_name = getattr(llm, "model", None)
+
     if not isinstance(model_name, str) or not model_name or token_counter is None:
         return _approx_tokens(text)
 
@@ -65,6 +77,28 @@ def _count_tokens(text: str, *, llm: BaseChatModel | None = None) -> int:
         )
     except Exception:
         return _approx_tokens(text)
+
+
+def _truncate_text(text: str, remaining_chars: int) -> str:
+    """Trim ``text`` to ``remaining_chars`` while avoiding mid-word breaks.
+
+    Falls back to a hard character cut when no whitespace break is available
+    (e.g. URLs, CJK text, minified code).
+    """
+    if remaining_chars <= 0:
+        return ""
+
+    if len(text) <= remaining_chars:
+        return text
+
+    # Account for the "...[truncated]" suffix we append later.
+    truncated = text[:remaining_chars]
+    # ``rfind`` returns -1 on no space, which lets us fall back cleanly.
+    last_space = truncated.rfind(" ")
+    if last_space > 0:
+        return truncated[:last_space]
+    # No whitespace in the budget window: hard cut.
+    return truncated
 
 
 class ProjectContextService:
@@ -112,22 +146,30 @@ class ProjectContextService:
         *,
         llm: BaseChatModel | None = None,
         max_pinned_tokens: int = MAX_PINNED_DOCS_TOKENS,
+        max_total_chars: int = MAX_PROJECT_CONTEXT_CHARS,
     ) -> str:
         """Build formatted string containing Master Instructions and Pinned Documents.
 
-        Pinned documents are truncated to `max_pinned_tokens` (default 4000 tokens)
-        ordered by most recently pinned first.
+        Pinned documents are truncated to ``max_pinned_tokens`` (default 4000
+        tokens) ordered by most recently pinned first. The total returned string
+        is also bounded by ``max_total_chars`` to avoid starving the rest of the
+        combined system prompt when ``_clamp_agent_instructions`` runs.
         """
         sections: list[str] = []
 
         # 1. Project Master Instructions
         master_instructions = (project.master_instructions or "").strip()
         if master_instructions:
+            safe_master = html.escape(master_instructions)
+            safe_name = html.escape(project.name)
             sections.append(
-                f"<project_master_instructions name=\"{project.name}\">\n"
-                f"{master_instructions}\n"
+                f"<project_master_instructions name=\"{safe_name}\">\n"
+                f"{safe_master}\n"
                 f"</project_master_instructions>"
             )
+
+        # Track overall character budget for the whole project context.
+        accumulated_chars = sum(len(s) for s in sections)
 
         # 2. Pinned Documents
         if pinned_pairs:
@@ -135,35 +177,70 @@ class ProjectContextService:
             accumulated_tokens = 0
 
             for _pin, doc in pinned_pairs:
-                doc_title = doc.title or "Untitled Document"
+                doc_title = (doc.title or "Untitled Document").strip()
+                safe_title = html.escape(doc_title)
                 # Content prioritization: summary/source_markdown/content
                 raw_text = doc.source_markdown or doc.content or ""
                 raw_text = raw_text.strip()
                 if not raw_text:
                     continue
 
+                safe_raw = html.escape(raw_text)
+
                 # Prepare block header/footer
-                block_prefix = f"<pinned_document id=\"{doc.id}\" title=\"{doc_title}\">\n"
+                block_prefix = f"<pinned_document id=\"{doc.id}\" title=\"{safe_title}\">\n"
                 block_suffix = "\n</pinned_document>"
 
                 # Check token consumption
-                block_candidate = f"{block_prefix}{raw_text}{block_suffix}"
+                block_candidate = f"{block_prefix}{safe_raw}{block_suffix}"
                 block_tokens = _count_tokens(block_candidate, llm=llm)
 
                 if accumulated_tokens + block_tokens <= max_pinned_tokens:
+                    if accumulated_chars + len(block_candidate) > max_total_chars:
+                        # Whole block would exceed the char budget: attempt a truncation.
+                        suffix = "\n...[truncated]"
+                        available_chars = max(
+                            0,
+                            max_total_chars
+                            - accumulated_chars
+                            - len(block_prefix)
+                            - len(block_suffix)
+                            - len(suffix),
+                        )
+                        truncated = _truncate_text(safe_raw, available_chars)
+                        if truncated:
+                            block = f"{block_prefix}{truncated}{suffix}{block_suffix}"
+                            if accumulated_chars + len(block) <= max_total_chars:
+                                doc_blocks.append(block)
+                                accumulated_chars += len(block)
+                        break
+
                     doc_blocks.append(block_candidate)
                     accumulated_tokens += block_tokens
+                    accumulated_chars += len(block_candidate)
                 else:
                     # Budget remaining
                     remaining_budget = max_pinned_tokens - accumulated_tokens
                     if remaining_budget <= 50:
                         break  # Not enough space for meaningful content
 
-                    # Estimate chars allowed
-                    allowed_chars = remaining_budget * 4
-                    truncated_text = raw_text[:allowed_chars].rsplit(" ", 1)[0] + "\n...[truncated]"
-                    truncated_candidate = f"{block_prefix}{truncated_text}{block_suffix}"
+                    # Estimate chars allowed, but also respect the total char cap.
+                    remaining_chars = min(
+                        remaining_budget * 4,
+                        max(0, max_total_chars - accumulated_chars - len(block_prefix) - len(block_suffix) - 50),
+                    )
+                    if remaining_chars <= 0:
+                        break
+
+                    truncated_text = _truncate_text(safe_raw, int(remaining_chars))
+                    if not truncated_text:
+                        break
+
+                    truncated_candidate = (
+                        f"{block_prefix}{truncated_text}\n...[truncated]{block_suffix}"
+                    )
                     doc_blocks.append(truncated_candidate)
+                    accumulated_chars += len(truncated_candidate)
                     break
 
             if doc_blocks:
@@ -176,8 +253,9 @@ class ProjectContextService:
         if not sections:
             return ""
 
+        safe_name = html.escape(project.name)
         return (
-            f"<project_context id=\"{project.id}\" name=\"{project.name}\">\n"
+            f"<project_context id=\"{project.id}\" name=\"{safe_name}\">\n"
             + "\n\n".join(sections)
             + "\n</project_context>"
         )

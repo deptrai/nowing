@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 from uuid import UUID
 
@@ -12,6 +13,8 @@ from app.db import WorkspaceSkill
 from app.services.dsh_mission_service import DshMissionService
 
 logger = logging.getLogger(__name__)
+
+_SKILL_PLACEHOLDER_PATTERN = re.compile(r"\{\{([a-zA-Z0-9_\-]+)\}\}")
 
 
 class SkillExecutionService:
@@ -53,10 +56,19 @@ class SkillExecutionService:
                 "status": mission.status.value,
             }
 
-        # prompt skill: simple string template substitution if parameters given
-        content = skill.content_markdown
-        for key, val in params.items():
-            content = content.replace(f"{{{{{key}}}}}", str(val))
+        # prompt skill: single-pass template substitution with explicit
+        # {{key}} placeholders. Values are escaped to prevent recursive/cascading
+        # template injection.
+        def _replace(match: re.Match[str]) -> str:
+            key = match.group(1)
+            value = params.get(key)
+            if value is None:
+                return match.group(0)
+            # Render the value, but never re-introduce a placeholder.
+            rendered = str(value).replace("{", "[").replace("}", "]")
+            return rendered
+
+        content = _SKILL_PLACEHOLDER_PATTERN.sub(_replace, skill.content_markdown)
 
         return {
             "type": "prompt",

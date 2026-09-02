@@ -7,6 +7,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
@@ -147,7 +148,14 @@ async def create_skill(
         updated_at=now,
     )
     session.add(skill)
-    await session.commit()
+    try:
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Skill with slug '{payload.slug}' already exists in this workspace",
+        ) from None
     await session.refresh(skill)
 
     return SkillRead.model_validate(skill)
@@ -242,7 +250,14 @@ async def update_skill(
 
     skill.updated_at = datetime.now(UTC)
     session.add(skill)
-    await session.commit()
+    try:
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Skill with slug '{payload.slug}' already exists in this workspace",
+        ) from None
     await session.refresh(skill)
 
     return SkillRead.model_validate(skill)

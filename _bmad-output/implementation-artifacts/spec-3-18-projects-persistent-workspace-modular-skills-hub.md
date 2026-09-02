@@ -3,7 +3,7 @@ title: 'Story 3.18: Projects Persistent Workspace & Modular Skills Hub'
 type: feature
 created: '2026-09-02'
 baseline_commit: 0bd64b972d8f038864c038134c355a9d1ff74856
-status: done
+status: review
 review_loop_iteration: 0
 context:
   - _bmad-output/implementation-artifacts/epic-3-context.md
@@ -139,3 +139,42 @@ context:
 **Manual checks:**
 - Confirm project context appears in prompt when chat with `project_id` set.
 - Confirm `_clamp_agent_instructions` still clamps total combined instructions to 8k chars.
+
+## Review Findings
+
+### Code review complete. 0 decision-needed, 19 patch, 3 defer, 4 dismissed as noise.
+
+**Patch findings:**
+
+- [ ] [Review][Patch] `project_context_service.py:170` — `raw_text[:allowed_chars].rsplit(" ", 1)[0]` fails on spaceless text (URLs, CJK, minified JSON). [patch]
+- [ ] [Review][Patch] `project_context_service.py` — Pseudo-XML context tags interpolate raw content without escaping; prompt-injection/XML-breakout risk. [patch]
+- [ ] [Review][Patch] `new_chat` / `resume_chat` orchestrator — Project context (up to 4,000 tokens ~ 16k chars) prepended before `_clamp_agent_instructions` (8k char limit) can starve base system prompt and tool rules. [patch]
+- [ ] [Review][Patch] `project_context_service.py:54-65` — `_count_tokens` checks `getattr(llm, "model", None)` but misses LangChain `model_name` attribute. [patch]
+- [ ] [Review][Patch] `routes/new_chat/threads.py:219` — `search_threads` constructs `ThreadListItem` without `project_id`, stripping project association from search results. [patch]
+- [ ] [Review][Patch] `routes/new_chat/threads.py:308-317` / `536-538` — `create_thread` and `update_thread` accept `project_id` without validating workspace/archived ownership. [patch]
+- [ ] [Review][Patch] `routes/projects_routes.py:86-95` — `_get_project_with_pins` loads `pinned_documents` but not nested `Document`, causing `document_title`/`document_type` to resolve as `None`. [patch]
+- [ ] [Review][Patch] `routes/projects_routes.py:405-410` — `pin_document` does not reject archived documents or cross-workspace documents. [patch]
+- [ ] [Review][Patch] `routes/projects_routes.py:423` / `skills_routes.py:688` — Duplicate pin/skill slug under concurrent requests not caught as `IntegrityError`, leading to 500 instead of idempotent 200/409. [patch]
+- [ ] [Review][Patch] `app/zero_publication.py:61-65` — `NEW_CHAT_THREAD_COLS` missing `project_id`, breaking Zero publication for project-linked threads. [patch]
+- [ ] [Review][Patch] `alembic/versions/237_add_projects_and_skills.py` — Migration does not call `apply_publication(op.get_bind())` per project invariants. [patch]
+- [ ] [Review][Patch] `skill_parser.py:319-328` — Frontmatter regex `^---` fails with leading BOM/whitespace. [patch]
+- [ ] [Review][Patch] `skill_parser.py:364-367` — Non-dict `parameters` silently reset to `{}` instead of raising `SkillParseError`. [patch]
+- [ ] [Review][Patch] `skill_execution_service.py:253-255` — Naive `str.replace` template substitution allows cascading/re-entrant replacement. [patch]
+- [ ] [Review][Patch] `schemas/skills_schemas.py:57` — `SkillParseResponse.skill_type` typed as `str` instead of `Literal["prompt", "workflow"]`. [patch]
+- [ ] [Review][Patch] `routes/skills_routes.py:504-541` — `parse_skill_file` accepts unbounded `file_content`, risking ReDoS/memory exhaustion. [patch]
+- [ ] [Review][Patch] `routes/skills_routes.py:755-797` — `execute_skill` passes `parameters` to `SkillExecutionService` without validating against `skill.parameters_schema`. [patch]
+- [ ] [Review][Patch] `models/projects.py:36-38` — Single-column `is_archived` index has low cardinality; prefer composite `(workspace_id, is_archived)`. [patch]
+- [ ] [Review][Patch] `models/projects.py` — `ProjectSkill` link table lacks `created_at`/`updated_at` audit timestamps. [patch]
+
+**Defer findings:**
+
+- [x] [Review][Defer] `alembic/versions/237_add_projects_and_skills.py` — Redundant explicit indexes on primary key columns (dismissed as minor optimization, Postgres creates unique indexes for PK automatically). [defer]
+- [x] [Review][Defer] `schemas/projects_schemas.py:58-61` — `ProjectListParams` defined but not wired as `Depends()` in routes (future pagination refactor). [defer]
+- [x] [Review][Defer] `tests/*` — Missing dedicated unit tests for `SkillExecutionService` and orchestrator project context injection (addressed in test-first hardening pass). [defer]
+
+**Dismissed findings:**
+
+- RLS policy gap (other tenant-scoped tables use RBAC in app layer; DB RLS not required by current spec). [dismiss]
+- Migration docstring revision line mismatch (cosmetic). [dismiss]
+- `Project.new_chat_threads` `foreign_keys` string syntax (functional in SQLAlchemy 2.0). [dismiss]
+- `models/users.py` missing reciprocal relationships for `created_by` (optional navigation). [dismiss]

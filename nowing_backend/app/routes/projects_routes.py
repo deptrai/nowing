@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -33,7 +34,11 @@ async def _get_project_with_pins(
 ) -> Project | None:
     stmt = (
         select(Project)
-        .options(selectinload(Project.pinned_documents))
+        .options(
+            selectinload(Project.pinned_documents).selectinload(
+                ProjectPinnedDocument.document
+            )
+        )
         .where(Project.id == project_id, Project.workspace_id == workspace_id)
     )
     res = await session.execute(stmt)
@@ -348,7 +353,7 @@ async def pin_document(
         )
 
     doc = await session.get(Document, document_id)
-    if not doc or doc.workspace_id != workspace_id:
+    if not doc or doc.workspace_id != workspace_id or doc.archived_at is not None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Document {document_id} not found in workspace {workspace_id}",
@@ -360,15 +365,22 @@ async def pin_document(
         ProjectPinnedDocument.document_id == document_id,
     )
     existing = (await session.execute(existing_stmt)).scalars().first()
-    if not existing:
-        new_pin = ProjectPinnedDocument(
-            project_id=project_id,
-            document_id=document_id,
-            pinned_at=datetime.now(UTC),
-        )
-        session.add(new_pin)
-        project.updated_at = datetime.now(UTC)
+    if existing:
+        return {"status": "ok", "message": "Document pinned successfully"}
+
+    new_pin = ProjectPinnedDocument(
+        project_id=project_id,
+        document_id=document_id,
+        pinned_at=datetime.now(UTC),
+    )
+    session.add(new_pin)
+    project.updated_at = datetime.now(UTC)
+    try:
         await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        # Concurrent duplicate pin is idempotent per spec.
+        return {"status": "ok", "message": "Document pinned successfully"}
 
     return {"status": "ok", "message": "Document pinned successfully"}
 

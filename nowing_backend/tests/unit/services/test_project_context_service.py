@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -11,7 +10,6 @@ import pytest
 from app.models.documents import Document
 from app.models.projects import Project, ProjectPinnedDocument
 from app.services.project_context_service import (
-    MAX_PINNED_DOCS_TOKENS,
     ProjectContextService,
     _approx_tokens,
     _count_tokens,
@@ -127,7 +125,10 @@ def test_build_project_context_pinned_docs_budget_truncation():
 
     pinned_pairs = [(pin1, doc1), (pin2, doc2)]
     result = ProjectContextService.build_project_context(
-        project, pinned_pairs, max_pinned_tokens=4000
+        project,
+        pinned_pairs,
+        max_pinned_tokens=4000,
+        max_total_chars=25000,
     )
 
     assert "<pinned_document id=\"201\" title=\"Big Doc 1\">" in result

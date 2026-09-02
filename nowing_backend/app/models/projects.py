@@ -29,12 +29,15 @@ class Project(BaseModel, TimestampMixin):
     """
 
     __tablename__ = "projects"
+    __table_args__ = (
+        Index("ix_projects_workspace_archived", "workspace_id", "is_archived"),
+    )
 
     name = Column(String(255), nullable=False, index=True)
     description = Column(String(1000), nullable=True)
     master_instructions = Column(Text, nullable=True)
     is_archived = Column(
-        Boolean, nullable=False, default=False, server_default="false", index=True
+        Boolean, nullable=False, default=False, server_default="false"
     )
     workspace_id = Column(
         Integer,
@@ -169,7 +172,7 @@ class WorkspaceSkill(BaseModel, TimestampMixin):
     )
 
 
-class ProjectSkill(BaseModel):
+class ProjectSkill(BaseModel, TimestampMixin):
     """
     Link table connecting projects with workspace skills.
     """

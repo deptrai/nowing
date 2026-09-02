@@ -36,8 +36,11 @@ def _slugify(text: str) -> str:
 class SkillParser:
     """Parses .skill.md content into a structured SkillDefinition."""
 
-    # Matches frontmatter enclosed between two `---` lines at the start of the string
-    FRONTMATTER_PATTERN = re.compile(r"^---\r?\n(.*?)\r?\n---\r?\n?(.*)$", re.DOTALL)
+    # Matches frontmatter enclosed between two `---` lines at the start of the string.
+    # Tolerates a leading UTF-8 BOM and optional whitespace before the opening fence.
+    FRONTMATTER_PATTERN = re.compile(
+        r"^(?:﻿\s*)?---\r?\n(.*?)\r?\n---\r?\n?(.*)$", re.DOTALL
+    )
 
     @classmethod
     def parse(cls, content: str) -> SkillDefinition:
@@ -49,7 +52,8 @@ class SkillParser:
         if not content or not content.strip():
             raise SkillParseError("File content is empty")
 
-        match = cls.FRONTMATTER_PATTERN.match(content.strip())
+        # Strip leading whitespace and optional BOM only for fence matching.
+        match = cls.FRONTMATTER_PATTERN.match(content.lstrip("﻿").lstrip())
         if not match:
             raise SkillParseError("Missing frontmatter delimiters (must start with '---')")
 
@@ -95,8 +99,10 @@ class SkillParser:
             raise SkillParseError(f"Invalid skill_type '{skill_type}'. Allowed: 'prompt', 'workflow'")
 
         parameters = frontmatter.get("parameters") or frontmatter.get("parameters_schema")
-        if not isinstance(parameters, dict):
+        if parameters is None:
             parameters = {}
+        elif not isinstance(parameters, dict):
+            raise SkillParseError("'parameters' must be a YAML mapping (dictionary)")
 
         return SkillDefinition(
             name=name,
