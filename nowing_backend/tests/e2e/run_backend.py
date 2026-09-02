@@ -376,6 +376,8 @@ def _install_test_only_app_extensions(app) -> None:
     limit so Playwright workers can authenticate without thrashing the
     production auth surface. See tests/e2e/auth_mint.py.
     """
+    from starlette.routing import Host
+
     from tests.e2e.auth_mint import install as install_e2e_mint
     from tests.e2e.document_archive import _install as install_e2e_document_archive
     from tests.e2e.middleware.scenario import ScenarioMiddleware
@@ -383,6 +385,15 @@ def _install_test_only_app_extensions(app) -> None:
     app.add_middleware(ScenarioMiddleware)
     install_e2e_mint(app)
     install_e2e_document_archive(app)
+
+    # The production app appends a catch-all Host("{host}", ...) route at the
+    # end of app.router.routes. Because Starlette matches routes in order, that
+    # catch-all host matches every request (including localhost) before the
+    # /__e2e__ path routes added above are reached, causing 404s for all E2E
+    # helpers. Move Host routes to the end of the list so path routes win.
+    non_host_routes = [r for r in app.router.routes if not isinstance(r, Host)]
+    host_routes = [r for r in app.router.routes if isinstance(r, Host)]
+    app.router.routes = non_host_routes + host_routes
 
 
 class _InlineTaskDispatcher:
