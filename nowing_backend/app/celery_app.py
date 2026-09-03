@@ -237,6 +237,7 @@ celery_app = Celery(
         "app.tasks.celery_tasks.partner_payout_reconciliation_task",
         "app.tasks.lead_scrapers",
         "app.tasks.celery_tasks.broadcast_tasks",
+        "app.tasks.celery_tasks.health_probe_task",
     ],
 )
 
@@ -438,5 +439,51 @@ celery_app.conf.beat_schedule = {
             minute=f"*/{max(1, getattr(config, 'SCHEDULED_DSH_MISSION_TICK_SECONDS', 60) // 60)}"
         ),
         "options": {"expires": 50},
+    },
+    # Third-Party Health Probes (Story 25.7)
+    "health-probe-infra": {
+        "task": "health_probe_infra",
+        "schedule": 30.0,  # Every 30 seconds
+        "options": {"expires": 30},
+    },
+    "health-probe-model": {
+        "task": "health_probe_model",
+        "schedule": crontab(minute="*/2"),  # Every 2 minutes
+        "options": {"expires": 60},
+    },
+    "health-probe-scraper": {
+        "task": "health_probe_scraper",
+        "schedule": crontab(minute="*/5"),  # Every 5 minutes
+        "options": {"expires": 120},
+    },
+    "health-probe-connector": {
+        "task": "health_probe_connector",
+        "schedule": crontab(minute="*/15"),  # Every 15 minutes
+        "options": {"expires": 300},
+    },
+    "health-probe-proxy": {
+        "task": "health_probe_proxy",
+        "schedule": crontab(minute="*/5"),  # Every 5 minutes
+        "options": {"expires": 120},
+    },
+    "health-probe-research": {
+        "task": "health_probe_research",
+        "schedule": crontab(minute="*/5"),  # Every 5 minutes
+        "options": {"expires": 120},
+    },
+    "health-probe-messaging": {
+        "task": "health_probe_messaging",
+        "schedule": crontab(minute="*/5"),  # Every 5 minutes
+        "options": {"expires": 120},
+    },
+    "health-probe-payment": {
+        "task": "health_probe_payment",
+        "schedule": crontab(minute="*/5"),  # Every 5 minutes
+        "options": {"expires": 120},
+    },
+    "health-probe-storage": {
+        "task": "health_probe_storage",
+        "schedule": crontab(minute="*/5"),  # Every 5 minutes
+        "options": {"expires": 120},
     },
 }

@@ -10,6 +10,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
 from app.db import get_async_session
+from app.schemas.admin_health import (
+    HealthAlertAcknowledgeRequest,
+    HealthAlertItem,
+    HealthAlertsListResponse,
+    HealthHistoryListResponse,
+    HealthOverviewResponse,
+    HealthProbeResultResponse,
+    HealthStatusesListResponse,
+)
 from app.schemas.admin_telemetry import (
     CeleryQueueResponse,
     GrossMarginSummary,
@@ -18,6 +27,7 @@ from app.schemas.admin_telemetry import (
     PurgeDeadQueueResponse,
 )
 from app.services.admin_telemetry_service import AdminTelemetryService
+from app.services.health.third_party_health_service import ThirdPartyHealthService
 from app.users import require_superuser
 
 logger = logging.getLogger(__name__)
@@ -97,3 +107,98 @@ async def purge_celery_queue(
             detail=str(exc),
         ) from exc
     return result
+
+
+# ============================================================================
+# Third-Party Health & Operations Endpoints (Story 25.7)
+# ============================================================================
+
+
+@router.get("/health/overview", response_model=HealthOverviewResponse)
+async def get_health_overview(
+    session: AsyncSession = Depends(get_async_session),
+    _auth: AuthContext = Depends(require_superuser),
+) -> dict[str, Any]:
+    """Return aggregated platform health overview and counts."""
+    return await ThirdPartyHealthService.get_overview(session)
+
+
+@router.get("/health/statuses", response_model=HealthStatusesListResponse)
+async def get_health_statuses(
+    category: str | None = Query(default=None, max_length=50),
+    service_id: str | None = Query(default=None, max_length=255),
+    session: AsyncSession = Depends(get_async_session),
+    _auth: AuthContext = Depends(require_superuser),
+) -> dict[str, Any]:
+    """List current health status snapshots across services or filtered by category."""
+    items = await ThirdPartyHealthService.get_statuses(session, category=category, service_id=service_id)
+    return {"items": items, "total": len(items)}
+
+
+@router.get("/health/alerts", response_model=HealthAlertsListResponse)
+async def get_health_alerts(
+    session: AsyncSession = Depends(get_async_session),
+    _auth: AuthContext = Depends(require_superuser),
+) -> dict[str, Any]:
+    """List active (unresolved, unexpired) health alert incidents."""
+    items = await ThirdPartyHealthService.get_active_alerts(session)
+    return {"items": items, "total": len(items)}
+
+
+@router.post("/health/alerts/{alert_id}/acknowledge", response_model=HealthAlertItem)
+async def acknowledge_health_alert(
+    alert_id: int,
+    payload: HealthAlertAcknowledgeRequest = HealthAlertAcknowledgeRequest(),
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(require_superuser),
+) -> Any:
+    """Acknowledge an active health alert and snooze notifications/banner."""
+    if not auth.user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
+    user_id = auth.user.id
+    alert = await ThirdPartyHealthService.acknowledge_alert(
+        session=session,
+        alert_id=alert_id,
+        user_id=user_id,
+        duration_minutes=payload.duration_minutes,
+    )
+    if not alert:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Alert not found",
+        )
+    return alert
+
+
+@router.get("/health/history/{service_id:path}", response_model=HealthHistoryListResponse)
+async def get_health_history(
+    service_id: str,
+    hours: int = Query(default=24, ge=1, le=168),
+    session: AsyncSession = Depends(get_async_session),
+    _auth: AuthContext = Depends(require_superuser),
+) -> dict[str, Any]:
+    """Return historical probe logs for a specific service ID."""
+    clean_id = service_id.strip()
+    items = await ThirdPartyHealthService.get_history(session, service_id=clean_id, hours=hours)
+    return {"service_id": service_id, "items": items, "total": len(items)}
+
+
+@router.post("/health/probe/{service_id:path}", response_model=HealthProbeResultResponse)
+async def run_single_health_probe(
+    service_id: str,
+    session: AsyncSession = Depends(get_async_session),
+    _auth: AuthContext = Depends(require_superuser),
+) -> Any:
+    """Trigger an on-demand probe execution for a single service."""
+    clean_id = service_id.strip()
+    result = await ThirdPartyHealthService.run_single_probe(session, service_id=clean_id)
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Service '{service_id}' probe not registered",
+        )
+    return result
+

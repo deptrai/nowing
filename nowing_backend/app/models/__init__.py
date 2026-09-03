@@ -8,6 +8,7 @@ from __future__ import annotations
 
 # Domain model submodules (imported to register tables on Base.metadata)
 from app.models import (
+    admin_health as admin_health,
     billing as billing,
     chat as chat,
     connectors as connectors,
@@ -22,6 +23,7 @@ from app.models import (
 )
 
 __all__ = [
+    "admin_health",
     "billing",
     "chat",
     "connectors",

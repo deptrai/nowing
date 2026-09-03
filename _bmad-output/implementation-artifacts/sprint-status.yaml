@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '2026-09-02'     # Story 4-8e marked done after code review and fixes.
+last_updated: '09-04-2026 04:31'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # - Parsed epics.md: 24 epics, ~160 stories.
 # - Scanned _bmad-output/implementation-artifacts/ + stories/*.md for story files (frontmatter story_key/epic+story).
@@ -89,7 +89,7 @@ development_status:
   3-16-open-knowledge-format-okf-export: done
   3-17-memory-injection-bounded-retrieval-performance-gate: done
   3-18-recall-precision-noise-gate-ratification: done
-  3-18-projects-persistent-workspace-modular-skills-hub: review
+  3-18-projects-persistent-workspace-modular-skills-hub: done
   epic-3-retrospective: done
 
   epic-4: done
@@ -295,6 +295,7 @@ development_status:
   25-4-realtime-llm-token-cost-proxy-health-celery-queue-telemetry: done
   25-5-dynamic-scraper-rule-engine-redos-sandbox: done
   25-6-security-audit-trail-logs-in-app-broadcast-announcements: done
+  25-7-third-party-health-operations-dashboard: review
   epic-25-retrospective: optional
 
   epic-26: in-progress
@@ -354,6 +355,25 @@ development_status:
   30-8-epic-13-canonical-entity-cleanup: done
   epic-30-retrospective: optional
 validation_reports:
+  - story: "3.18"
+    type: "code-review"
+    commit: "tbd"
+    report: "_bmad-output/implementation-artifacts/code-reviews/3.18-skill-execution-2026-09-03.md"
+    verdict: "APPROVED"
+    reviewed_by: "bmad-code-review"
+    notes: "Skill execution AC-5 covered. Unit tests (6 passed) and E2E API tests
+      (7 passed). Bug fixed: mission.status value handling and response payload consistency."
+  - story: "3.18"
+    type: "testarch-trace"
+    report: "_bmad-output/test-artifacts/traceability-matrix-3.18-and-4.8e-2026-09-03.md"
+    verdict: "PASS_WITH_WARNINGS"
+    notes: "5/5 AC covered; AC-2 chat context injection E2E still missing."
+  - story: "3.18"
+    type: "testarch-test-review"
+    report: "_bmad-output/test-artifacts/test-review-3.18-and-4.8e-2026-09-03.md"
+    verdict: "PASS_WITH_WARNINGS"
+    notes: "Score 85/100. Minor: conditional E2E assertion, missing token-clamping
+      test."
   - story: "16-1"
     type: "mutation-gate"
     commit: "bf599358c"

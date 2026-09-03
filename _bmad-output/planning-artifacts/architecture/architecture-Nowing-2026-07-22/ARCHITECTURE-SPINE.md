@@ -914,6 +914,7 @@ Pin actual versions from `pyproject.toml` / `package.json`; do not use "latest".
 | MCP server | `nowing_mcp/mcp_server/` | AD-7 |
 | Token usage tracking | `nowing_backend/app/services/token_tracking_service.py`, `app/db.py` (TokenUsage) | AD-2, AD-10 |
 | Credit wallet | `nowing_backend/app/services/wallet_credit.py`, `app/db.py` (User.credit_micros_balance, CreditPurchase) | AD-2, AD-8 |
+| Admin third-party health dashboard | `nowing_backend/app/services/health/`, `app/routes/admin_telemetry_routes.py` (extended), `nowing_web/app/admin/telemetry/page.tsx` (extended) | **AD-25.7**, AD-1, AD-2, AD-8, AD-33 |
 | VietnamWorks scraper | `nowing_backend/app/proprietary/platforms/vietnamworks/`, `app/capabilities/vietnamworks/scrape/` | AD-22, AD-3, AD-16, AD-25, AD-26 |
 | TopCV scraper | `nowing_backend/app/proprietary/platforms/topcv/`, `app/capabilities/topcv/scrape/` | AD-23, AD-3, AD-16, AD-19, AD-25, AD-26 |
 | ITviec scraper | `nowing_backend/app/proprietary/platforms/itviec/`, `app/capabilities/itviec/scrape/` | AD-23, AD-3, AD-16, AD-25, AD-26 |
@@ -1449,6 +1450,27 @@ Các quyết định kiến trúc được cố ý hoãn lại hoặc chưa có:
   - "Flag for review" creates a `memory_review_queue` row (`id`, `memory_id`, `flag_reason`, `flagged_by`, `status`, `created_at`) with `status = open` and notifies Owner/Editor. v1 does **not** include an approval-edit workflow; editing memory still requires `memory_write`/`memory_delete` and follows existing `MemoryVersion` semantics.
   - The page is keyboard-navigable and screen-reader friendly; it does not expose `source_input` (raw recipe) from AD-11.1.
 - **Consequence:** PRFAQ Q9 (analyst memory browser / research timeline UI) is now implementable within the existing `Memory`/`ResearchThread` model without new storage primitives.
+
+### AD-25.7 — Admin Third-Party Health & Operations Dashboard `[NEW 2026-09-03]`
+- **Binds:** FR-41b, Story 25.7, Epic 25, Story 25.4, Story 6.8, Story 8.11, Story 26.3
+- **Prevents:** a second ad-hoc telemetry stack; alert rules scattered outside `app/alerts/`; probes mutating state or auto-disabling services; credential leakage in probe metadata
+- **Rule:**
+  - Health monitoring is a **platform-superadmin** concern only. All endpoints are under `/api/v1/admin/health/*` or co-located with existing `/api/v1/admin/telemetry/*` and gated by `require_superuser()` (INV-25.8).
+  - Probe logic lives in a single module: `app/services/health/`. The public facade is `ThirdPartyHealthService`; scheduling is `HealthProbeScheduler`; registration is `HealthProbeRegistry`; persistence is `HealthResultStore`; alert evaluation is `AdminHealthAlertEngine`.
+  - Probes are **read-only by default** and never auto-disable a model, scraper, or connector in v1. The dashboard may show a `suggested_action`, but any disable/enable is a manual admin action.
+  - The system reuses existing subsystems:
+    - `CapabilityRegistry` to enumerate scraper/connector/messaging targets.
+    - `model_connection_service.verify_connection()` / `test_model()` for LLM/connection health.
+    - `admin_telemetry_service` proxy/Celery probes for proxy pool and queue health.
+    - `hybrid_llm_router._vllm_health()` for local vLLM health.
+    - `app/alerts/` Generic Alert Engine for rule scheduling, diff, and notification dispatch (`in_app`, `email`, `telegram`, `slack`).
+  - Data store is **two-tier**: Redis holds the latest snapshot and publishes `nowing:health:updates`; PostgreSQL holds `admin_health_status` (current) and `admin_health_history` (time-series) with a 30-day retention default.
+  - Probe intervals are category-specific and must not hammer third-party APIs: infrastructure 30s, LLM/AI 2m, scrapers 5m, connectors 15m, messaging/payments/storage/ChainLens 5m.
+  - Concurrency is bounded: `asyncio.gather` with `asyncio.Semaphore(20)` inside `HealthProbeScheduler`.
+  - Alert rules are seeded with 5 defaults (infra unavailable, model dead, scraper degraded, proxy dead, ChainLens degraded). Rules are scoped to admin/health and reuse `AlertRule`/`AlertSnapshot`/`AlertSubscription` tables.
+  - DB migrations must create `admin_health_status`, `admin_health_history`, `admin_health_alert_rules`, `admin_health_alerts`.
+  - The UI extends `/admin/telemetry` with tabbed sections (Overview, Infrastructure, LLM/AI, Scrapers, Connectors, Messaging, Payments, Storage), an Active Alerts banner, and a drill-down panel with 24h charts and recent error logs.
+- **Consequence:** A unified Admin Operations Center for all third-party health without duplicating the alert/notification stack or inventing a new microservice. Probes are safe, throttled, and auditable.
 
 
 ---

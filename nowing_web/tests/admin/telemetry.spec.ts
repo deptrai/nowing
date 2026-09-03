@@ -134,8 +134,8 @@ test.describe("Story 25.4 — Admin Telemetry Dashboard", () => {
 		await setupAdminTelemetryMocks(page);
 		await page.goto("/admin/telemetry");
 
-		await expect(page.getByRole("heading", { name: "Admin: Telemetry" })).toBeVisible();
-		await expect(page.getByText("Refreshes every 5s")).toBeVisible();
+		await expect(page.getByRole("heading", { name: "Admin: Operations & Telemetry" })).toBeVisible();
+		await page.getByTestId("tab-trigger-telemetry").click();
 
 		// Gross Margin panel
 		await expect(page.getByRole("heading", { name: "Gross Margin" })).toBeVisible();
@@ -163,6 +163,7 @@ test.describe("Story 25.4 — Admin Telemetry Dashboard", () => {
 	test("[P0] panel refreshes after window change without console errors", async ({ page }) => {
 		await setupAdminTelemetryMocks(page);
 		await page.goto("/admin/telemetry");
+		await page.getByTestId("tab-trigger-telemetry").click();
 
 		const llmWindow = page
 			.locator("div")

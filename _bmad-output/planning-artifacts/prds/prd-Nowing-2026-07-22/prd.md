@@ -953,6 +953,26 @@ Platform admin (không phải workspace Owner/Editor/Viewer — một vai trò m
 
 _Trace: AD-8, AD-9 (mở rộng — không đổi 3 system role cấp workspace), `model_connections_routes.py`, `app/config/__init__.py` (`load_global_llm_configs`, `refresh_global_model_catalog`), `app/services/global_model_catalog.py`._
 
+#### FR-41b: Third-Party Health & Operations Dashboard
+
+As a platform superadmin,
+I want a unified health dashboard that monitors all third-party integrations (LLM/embedding models, scrapers, proxies, connectors, messaging, payments, storage, infrastructure)
+so that I can detect and respond to outages, degradation, and cost anomalies before users are affected.
+
+**Acceptance Criteria:**
+- Given `/admin/telemetry` is loaded, when the dashboard renders, then it displays health status cards grouped by category (Infrastructure, LLM/AI, Scrapers, Connectors, Messaging, Payments, Storage).
+- Given a third-party service (e.g. `batdongsan.scrape` or `azure/gpt-5.1`), when its health probe fails or latency exceeds threshold, then the dashboard shows a red/degraded badge and the service appears in an active alerts banner.
+- Given an alert triggers, when the superadmin views it, then they see the service name, failure reason, last successful probe time, recommended action, and an acknowledge button.
+- Given the alert rule is configured, when a critical service stays unavailable for 2 consecutive probes, then the system sends a notification to configured admin channels.
+
+**Consequences:**
+- New backend service `app/services/health/third_party_health_service.py` with pluggable probes.
+- New DB tables: `admin_health_status`, `admin_health_history`, `admin_health_alert_rules`, `admin_health_alerts`.
+- Reuses `CapabilityRegistry`, `Generic Alert Engine`, `model_connection_service.verify_connection()`, `admin_telemetry_service` proxy/celery probes.
+- Extends `/admin/telemetry` with tabbed sections; no new admin route required.
+
+**Status:** `[PROPOSED]` — Epic 25, Story 25.7.
+
 #### FR-69: Outcome-Based Pricing Option `[IN-PROGRESS]` (mới 2026-08-10)
 As a sales team, I want to pay per qualified meeting booked (not just per seat), so that cost is tied to actual pipeline value delivered.
 

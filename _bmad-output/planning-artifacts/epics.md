@@ -3755,6 +3755,29 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
     **When** admin creates an announcement banner (Maintenance / Promo),  
     **Then** the banner mounts on top of `/dashboard/*` for targeted or all workspaces via Zero-cache realtime push.
 
+### Story 25.7: Third-Party Health & Operations Dashboard
+- **User Value:** Platform superadmin can monitor the health of every third-party integration (LLM/embedding models, scrapers, proxies, connectors, messaging, payments, storage, infrastructure) from a unified dashboard with real-time status, drill-down, and alerting.
+- **Acceptance Criteria:**
+  - **Given** `/admin/telemetry` is loaded,
+    **When** the dashboard renders,
+    **Then** it shows tabbed sections: Infrastructure, LLM/AI, Scrapers, Connectors, Messaging, Payments, Storage, and a top Active Alerts banner.
+  - **Given** a probe target (e.g. `azure/gpt-5.1`, `batdongsan.scrape`, `chainlens/research`, `telegram/bot`),
+    **When** the scheduler runs,
+    **Then** it records `latency_ms`, `status` (`healthy`/`degraded`/`unavailable`/`not_configured`/`disabled`), `error_rate_15m`, and `last_error`.
+  - **Given** a critical service fails 2 consecutive probes,
+    **When** the alert engine evaluates rules,
+    **Then** it creates an `admin_health_alerts` row and dispatches via configured channels (in-app, email, Telegram, Slack).
+  - **Given** the superadmin clicks a service card,
+    **When** the drill-down opens,
+    **Then** it displays a 24h latency/success-rate chart and recent error logs.
+- **Consequences:**
+  - New `app/services/health/` module with `ThirdPartyHealthService`, `HealthProbeScheduler`, `HealthProbeRegistry`, `HealthResultStore`, `AdminHealthAlertEngine`.
+  - New or extended admin routes (`admin_telemetry_routes.py` or `admin_operations_routes.py`) and frontend tabbed `/admin/telemetry` page.
+  - DB migrations for `admin_health_status`, `admin_health_history`, `admin_health_alert_rules`, `admin_health_alerts`.
+  - Reuses `CapabilityRegistry` to discover probe targets; reuses Generic Alert Engine (`app/alerts/`) for rule scheduling and notification.
+  - Reuses `model_connection_service` for model/connection verification, `admin_telemetry_service` for proxy/celery, `hybrid_llm_router._vllm_health()` for vLLM.
+- **Dependencies:** Story 25.4 (Realtime Telemetry), Story 6.8 (Generic Alert Engine), Story 8.11 (Global Model Config), Story 26.3 (Hybrid LLM Router — optional for vLLM health).
+
 ---
 
 ## Epic 26: Autonomous Lead Missions & Deep Sales Research
