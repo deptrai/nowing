@@ -45,7 +45,10 @@ from app.db import get_async_session
 from app.exceptions import NowingError
 from app.rate_limiter import limiter
 from app.routes import router as crud_router
-from app.routes.alert_rules_routes import router as alert_rules_router
+from app.routes.alert_rules_routes import (
+    alerts_alias_router,
+    router as alert_rules_router,
+)
 from app.routes.auth_routes import (
     resolve_google_user,
     router as auth_router,
@@ -259,6 +262,7 @@ app.include_router(auth_router)
 app.include_router(session_router)
 app.include_router(zero_context_router)
 app.include_router(alert_rules_router)
+app.include_router(alerts_alias_router)
 
 if config.AUTH_TYPE == "GOOGLE":
     from fastapi.responses import RedirectResponse

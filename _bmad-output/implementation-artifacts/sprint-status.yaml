@@ -118,7 +118,7 @@ development_status:
   6-8-generic-alert-engine: done
   6-9-workspace-vertical-playbook-library: done
   6-10-inbound-mail-gateway-task-nowing-ai-stateful-scheduled-tasks: done
-  6-11-vertical-alert-rule-templates: ready-for-dev
+  6-11-vertical-alert-rule-templates: in-progress
   6-12-narrative-report-engine-for-indexed-data: backlog
   epic-6-retrospective: optional
 

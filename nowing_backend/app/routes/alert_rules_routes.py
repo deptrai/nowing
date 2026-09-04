@@ -16,6 +16,7 @@ from app.alerts.schemas import (
     AlertRuleUpdate,
     AlertSubscriptionCreate,
     AlertSubscriptionRead,
+    CreateAlertFromTemplateRequest,
 )
 from app.alerts.services import (
     create_alert_rule,
@@ -25,6 +26,12 @@ from app.alerts.services import (
     list_alert_rules,
     list_snapshots,
     update_alert_rule,
+)
+from app.alerts.templates import (
+    AlertTemplateRead,
+    TemplateCompilationError,
+    VerticalAlertTemplateRegistry,
+    compile_template,
 )
 from app.auth.context import AuthContext
 from app.db import Permission, WorkspaceMembership, get_async_session
@@ -89,6 +96,92 @@ async def create_alert_rule_route(
         client_id=None,
         user_id=auth.user.id,
         data=data,
+    )
+
+
+# ============================================================================
+# Story 6.11: Vertical Alert Rule Templates Endpoints
+# Placed before /{alert_rule_id} to avoid matching "templates" as UUID
+# ============================================================================
+
+
+@router.get("/templates", response_model=list[AlertTemplateRead])
+async def list_alert_templates_route(
+    workspace_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """List available vertical alert rule templates with live capability availability."""
+    await check_permission(
+        session,
+        auth,
+        workspace_id,
+        Permission.AUTOMATIONS_READ.value,
+        "You don't have permission to read alert templates in this workspace",
+    )
+    return VerticalAlertTemplateRegistry.list_templates()
+
+
+@router.post("/from-template", response_model=AlertRuleRead, status_code=status.HTTP_201_CREATED)
+async def create_alert_from_template_route(
+    workspace_id: int,
+    data: CreateAlertFromTemplateRequest,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """Instantiate a new alert rule from a vertical alert template in 1 click."""
+    await check_permission(
+        session,
+        auth,
+        workspace_id,
+        Permission.AUTOMATIONS_CREATE.value,
+        "You don't have permission to create alert rules in this workspace",
+    )
+
+    template = VerticalAlertTemplateRegistry.get_template(data.template_id)
+    if template is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Alert template '{data.template_id}' not found",
+        )
+
+    # Check live capability availability
+    available_templates = {t.template_id: t for t in VerticalAlertTemplateRegistry.list_templates()}
+    current_meta = available_templates.get(data.template_id)
+    if not current_meta or not current_meta.is_available:
+        reason = current_meta.unavailable_reason if current_meta else "Capability unavailable"
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "CAPABILITY_UNAVAILABLE",
+                "message": f"Template '{data.template_id}' is unavailable: {reason}",
+            },
+        )
+
+    resolved_cap = current_meta.required_capability
+
+    try:
+        compiled_rule_create = compile_template(
+            template,
+            name=data.name,
+            parameters=data.parameters,
+            schedule=data.schedule,
+            notification_channels=data.notification_channels,
+            resolved_capability_id=resolved_cap,
+            workspace_id=workspace_id,
+        )
+    except TemplateCompilationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Template parameter compilation error: {exc}",
+        ) from exc
+
+    return await create_alert_rule(
+        session=session,
+        workspace_id=workspace_id,
+        client_id=None,
+        user_id=auth.user.id,
+        data=compiled_rule_create,
     )
 
 
@@ -230,3 +323,24 @@ async def list_snapshots_route(
         alert_rule_id=alert_rule_id,
         limit=limit,
     )
+
+
+# Also mount alias router for `/workspaces/{workspace_id}/alerts/templates`
+alerts_alias_router = APIRouter(
+    tags=["alert-rules-alias"], prefix="/workspaces/{workspace_id}/alerts"
+)
+alerts_alias_router.add_api_route(
+    "/templates",
+    list_alert_templates_route,
+    methods=["GET"],
+    response_model=list[AlertTemplateRead],
+)
+alerts_alias_router.add_api_route(
+    "/from-template",
+    create_alert_from_template_route,
+    methods=["POST"],
+    response_model=AlertRuleRead,
+    status_code=status.HTTP_201_CREATED,
+)
+
+

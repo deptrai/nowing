@@ -1,6 +1,6 @@
 ---
 story_key: 6-11-vertical-alert-rule-templates
-status: ready-for-dev
+status: in-progress
 baseline_commit: 098260ef9
 epic: 6
 story: 11
@@ -8,7 +8,7 @@ story: 11
 
 # Story 6.11: Vertical Alert Rule Templates
 
-**Status:** `ready-for-dev`  
+**Status:** `in-progress`  
 **Epic:** 6 — Automations  
 **Governed by:** AD-33 (Generic Alert Engine), AD-34, AD-35, FR-44/49/50/51/52, `epics.md` lines 4075–4110.  
 **Consolidated from:** Story 14.3 (News Alerts), Story 15.3 (Stock Price Alerts), Story 16.3 (Company Alerts), Story 17.3 (Price Drop Alerts), Story 17.4 (Competitor Tracking).
@@ -91,18 +91,18 @@ so that I can activate intelligent scheduled monitoring in 1 click without manua
 
 ## Tasks / Subtasks
 
-- [ ] Backend Template Architecture (`app/alerts/templates/`)
-  - [ ] Define `AlertTemplate` data structures and metadata (id, name, description, category, required_capability, diff_strategy, default_schedule, parameter_schema).
-  - [ ] Implement `VerticalAlertTemplateRegistry` with built-in templates (News, Stock, Company, E-commerce Price Drop, Competitor Tracking).
-  - [ ] Implement parameter compiler transforming template inputs into valid `AlertRuleCreate` payload.
-- [ ] Backend Routes & API
-  - [ ] Add `GET /workspaces/{workspace_id}/alerts/templates` to `app/routes/alert_rules_routes.py`.
-  - [ ] Add `POST /workspaces/{workspace_id}/alerts/from-template` route with validation and auto-subscription.
-- [ ] Frontend Contracts & Service
-  - [ ] Add TypeScript interfaces to `contracts/types/alert-rules.types.ts`.
-  - [ ] Extend `adminHealthApiService` / `alertRulesApiService` with template endpoints.
-  - [ ] Add "Create from Template" UI modal or card selector in `nowing_web`.
-- [ ] Verification & Tests
-  - [ ] Write unit tests in `nowing_backend/tests/unit/alerts/test_alert_templates.py`.
-  - [ ] Write integration test in `nowing_backend/tests/integration/alerts/test_alert_templates_routes.py`.
-  - [ ] Run `ruff check` and pytest suite.
+- [x] Backend Template Architecture (`app/alerts/templates/`)
+  - [x] Define `AlertTemplate` data structures and metadata (id, name, description, category, required_capability, diff_strategy, default_schedule, parameter_schema).
+  - [x] Implement `VerticalAlertTemplateRegistry` with built-in templates (News, Stock, Company, E-commerce Price Drop, Competitor Tracking).
+  - [x] Implement parameter compiler transforming template inputs into valid `AlertRuleCreate` payload.
+- [x] Backend Routes & API
+  - [x] Add `GET /workspaces/{workspace_id}/alerts/templates` to `app/routes/alert_rules_routes.py`.
+  - [x] Add `POST /workspaces/{workspace_id}/alerts/from-template` route with validation and auto-subscription.
+- [x] Frontend Contracts & Service
+  - [x] Add TypeScript interfaces to `contracts/types/alert-rules.types.ts`.
+  - [x] Extend `adminHealthApiService` / `alertRulesApiService` with template endpoints.
+  - [x] Add "Create from Template" UI modal or card selector in `nowing_web`.
+- [x] Verification & Tests
+  - [x] Write unit tests in `nowing_backend/tests/unit/alerts/test_alert_templates.py`.
+  - [x] Write integration test in `nowing_backend/tests/integration/alerts/test_alert_templates_routes.py`.
+  - [x] Run `ruff check` and pytest suite.
