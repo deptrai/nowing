@@ -61,6 +61,7 @@ from app.routes.hybrid_llm_routes import (
     hybrid_public_router,
 )
 from app.routes.lead_batch_routes import router as lead_batch_router
+from app.routes.narrative_reports_routes import router as narrative_reports_router
 from app.routes.self_host_research import router as self_host_research_router
 from app.routes.users_routes import router as users_router
 from app.routes.web_builder_routes import host_router as web_builder_host_router
@@ -263,6 +264,7 @@ app.include_router(session_router)
 app.include_router(zero_context_router)
 app.include_router(alert_rules_router)
 app.include_router(alerts_alias_router)
+app.include_router(narrative_reports_router)
 
 if config.AUTH_TYPE == "GOOGLE":
     from fastapi.responses import RedirectResponse

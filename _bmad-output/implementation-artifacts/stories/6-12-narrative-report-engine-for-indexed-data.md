@@ -1,6 +1,6 @@
 ---
 story_key: 6-12-narrative-report-engine-for-indexed-data
-status: ready-for-dev
+status: in-progress
 baseline_commit: fb2613d66
 epic: 6
 story: 12
@@ -8,7 +8,7 @@ story: 12
 
 # Story 6.12: Narrative Report Engine for Indexed Data
 
-**Status:** `ready-for-dev`  
+**Status:** `in-progress`  
 **Epic:** 6 — Automations  
 **Governed by:** AD-33 (Generic Alert Engine Scheduler), AD-34 (Citation & Provenance Architecture), AD-35 (Graceful Degradation Contract), `epics.md` lines 4092–4105.  
 **Consolidated from:** Story 14.4 (News Digest & Synthesis), Story 15.4 (Financial Trend Detection), Story 16.4 (Company Timeline).
@@ -84,19 +84,19 @@ so that I can understand longitudinal market trends and company evolutions in se
 
 ## Tasks / Subtasks
 
-- [ ] Backend Narrative Report Architecture (`app/reports/narrative/`)
-  - [ ] Define schemas and models: `NarrativeTemplate`, `NarrativeReportCreate`, `SourceCitation`, `NarrativeReportMetadata` in `app/reports/narrative/models.py`.
-  - [ ] Implement `NarrativeTemplateRegistry` with `news_digest`, `financial_trend`, `company_timeline` templates.
-  - [ ] Implement `NarrativeSynthesisEngine` (`app/reports/narrative/engine.py`): data fetching, prompt assembly, LiteLLM generation, citation extraction, degradation handling.
-- [ ] Backend API Routes & Integration (`app/routes/narrative_reports_routes.py`)
-  - [ ] Add `GET /workspaces/{workspace_id}/reports/narrative/templates` route.
-  - [ ] Add `POST /workspaces/{workspace_id}/reports/narrative` on-demand generation route.
-  - [ ] Mount route in `app/app/factory.py` with RBAC checks (`REPORTS_READ`, `REPORTS_CREATE`).
-- [ ] Frontend Contracts & UI Integration
-  - [ ] Add TypeScript types to `contracts/types/reports.types.ts`.
-  - [ ] Add service methods in `lib/apis/reports-api.service.ts`.
-  - [ ] Add Narrative Generator modal / drawer in `nowing_web`.
-- [ ] Verification & Tests
-  - [ ] Write unit tests in `nowing_backend/tests/unit/reports/test_narrative_engine.py`.
-  - [ ] Write integration test in `nowing_backend/tests/integration/reports/test_narrative_routes.py`.
-  - [ ] Run `ruff check` and pytest suite.
+- [x] Backend Narrative Report Architecture (`app/reports/narrative/`)
+  - [x] Define schemas and models: `NarrativeTemplate`, `NarrativeReportCreate`, `SourceCitation`, `NarrativeReportMetadata` in `app/reports/narrative/models.py`.
+  - [x] Implement `NarrativeTemplateRegistry` with `news_digest`, `financial_trend`, `company_timeline` templates.
+  - [x] Implement `NarrativeSynthesisEngine` (`app/reports/narrative/engine.py`): data fetching, prompt assembly, LiteLLM generation, citation extraction, degradation handling.
+- [x] Backend API Routes & Integration (`app/routes/narrative_reports_routes.py`)
+  - [x] Add `GET /workspaces/{workspace_id}/reports/narrative/templates` route.
+  - [x] Add `POST /workspaces/{workspace_id}/reports/narrative` on-demand generation route.
+  - [x] Mount route in `app/app/factory.py` with RBAC checks (`REPORTS_READ`, `REPORTS_CREATE`).
+- [x] Frontend Contracts & UI Integration
+  - [x] Add TypeScript types to `contracts/types/reports.types.ts`.
+  - [x] Add service methods in `lib/apis/reports-api.service.ts`.
+  - [x] Add Narrative Generator modal / drawer in `nowing_web`.
+- [x] Verification & Tests
+  - [x] Write unit tests in `nowing_backend/tests/unit/reports/test_narrative_engine.py`.
+  - [x] Write integration test in `nowing_backend/tests/integration/reports/test_narrative_routes.py`.
+  - [x] Run `ruff check` and pytest suite.
