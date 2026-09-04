@@ -1,6 +1,6 @@
 ---
 story_key: 26-25-customer-location-profile-selector-with-progressive-disclosu
-status: ready-for-dev
+status: done
 baseline_commit: ad0c6f3c1
 epic: 26
 story: 25
@@ -8,7 +8,7 @@ story: 25
 
 # Story 26.25: Customer Location Profile Selector with Progressive Disclosure
 
-**Status:** `ready-for-dev`  
+**Status:** `done`  
 **Epic:** 26 — Lead Intelligence  
 **Governed by:** FR-69.2, FR-85, AD-31, `epics.md` lines 3249–3265, `architecture-xactions-social-integration-2026-08-15`.  
 **Dependencies:** `app/services/location_normalize/` (Vietnamese geo normalization), Playbook Builder.
@@ -128,17 +128,49 @@ Clicking any chip immediately selects that province and populates the available 
 
 ## Tasks / Subtasks
 
-- [ ] Vietnamese Geography Catalog & API (`nowing_backend/app/services/location_normalize/`)
-  - [ ] Extend `location_normalize` with canonical GSO province/district catalog mapping or lightweight API endpoint `GET /api/v1/geo/vietnam-locations`.
-  - [ ] Add unit test covering province and district hierarchy resolution in `tests/unit/services/location_normalize/`.
-- [ ] Frontend Location Profile Types & Catalog (`nowing_web/`)
-  - [ ] Add `LocationProfile` Zod schema and types to `contracts/types/leads.types.ts`.
-  - [ ] Create Vietnamese administrative divisions catalog (`lib/geo/vietnam-divisions.ts`).
-  - [ ] Implement `LocationSelector` component with progressive disclosure (`components/leads/LocationSelector.tsx`).
-- [ ] Integration into Playbook Builder & Lead Search
-  - [ ] Embed `LocationSelector` into Lead Discovery filter panel / Playbook wizard step.
-  - [ ] Connect quick-location chips and location type selector.
-- [ ] Verification & Tests
-  - [ ] Unit tests for `LocationSelector` rendering and cascading logic.
-  - [ ] Run `tsc --noEmit`, `biome check`, and pytest.
+- [x] Vietnamese Geography Catalog & API (`nowing_backend/app/services/location_normalize/`)
+  - [x] Extend `location_normalize` with canonical GSO province/district catalog mapping or lightweight API endpoint `GET /api/v1/geo/vietnam-locations`.
+  - [x] Add unit test covering province and district hierarchy resolution in `tests/unit/services/location_normalize/`.
+- [x] Frontend Location Profile Types & Catalog (`nowing_web/`)
+  - [x] Add `LocationProfile` Zod schema and types to `contracts/types/leads.types.ts`.
+  - [x] Create Vietnamese administrative divisions catalog (`lib/geo/vietnam-divisions.ts`).
+  - [x] Implement `LocationSelector` component with progressive disclosure (`components/leads/LocationSelector.tsx`).
+- [x] Integration into Playbook Builder & Lead Search
+  - [x] Embed `LocationSelector` into Lead Discovery filter panel / Playbook wizard step.
+  - [x] Connect quick-location chips and location type selector.
+- [x] Verification & Tests
+  - [x] Unit tests for `LocationSelector` rendering and cascading logic.
+  - [x] Run `tsc --noEmit`, `biome check`, and pytest.
+
+---
+
+## Suggested Review Order
+
+**Backend Geography & Administrative Divisions**
+
+- Catalog definitions, canonical codes, and format summary helper
+  [`divisions.py:16`](../../../nowing_backend/app/services/location_normalize/divisions.py#L16)
+
+- Export and normalization integration
+  [`__init__.py:12`](../../../nowing_backend/app/services/location_normalize/__init__.py#L12)
+
+**Frontend Types & Component**
+
+- Location profile Zod schemas and types
+  [`leads.types.ts:265`](../../../nowing_web/contracts/types/leads.types.ts#L265)
+
+- Vietnamese administrative divisions catalog and search helper
+  [`vietnam-divisions.ts:25`](../../../nowing_web/lib/geo/vietnam-divisions.ts#L25)
+
+- Progressive disclosure LocationSelector component
+  [`LocationSelector.tsx:48`](../../../nowing_web/components/leads/LocationSelector.tsx#L48)
+
+**Test Suites**
+
+- Backend unit tests for geography resolution and diacritics normalization
+  [`test_divisions.py:13`](../../../nowing_backend/tests/unit/services/location_normalize/test_divisions.py#L13)
+
+- Frontend Playwright specs for location profile and search
+  [`location-selector.spec.ts:8`](../../../nowing_web/tests/leads/location-selector.spec.ts#L8)
+
 

@@ -260,3 +260,29 @@ export const reverseIcpResponseSchema = z.object({
 });
 
 export type ReverseIcpResponse = z.infer<typeof reverseIcpResponseSchema>;
+
+// =============================================================================
+// Story 26.25: Location Profile Types
+// =============================================================================
+
+export const locationTypeSchema = z.enum([
+	"both",
+	"customer_residence",
+	"customer_work",
+	"transaction",
+]);
+
+export type LocationType = z.infer<typeof locationTypeSchema>;
+
+export const locationProfileSchema = z.object({
+	location_type: locationTypeSchema.default("both"),
+	province_code: z.string(),
+	province_name: z.string(),
+	district_codes: z.array(z.string()).default([]),
+	district_names: z.array(z.string()).default([]),
+	ward_codes: z.array(z.string()).default([]),
+	ward_names: z.array(z.string()).default([]),
+	location_text: z.string(),
+});
+
+export type LocationProfile = z.infer<typeof locationProfileSchema>;
