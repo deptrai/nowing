@@ -96,14 +96,14 @@ development_status:
   4-7-pointer-based-tabs-with-live-title-resolution: done
   4-8a-extend-newchatclient-telemetry: done
   4-8b-chat-regression-benchmark-suite: done
-  4-8c-production-query-sampler-anonymizer: backlog
+  4-8c-production-query-sampler-anonymizer: done
   4-8c-followup-sampler-hardening: done
-  4-8d-chat-quality-benchmark-with-llm-as-judge: backlog
+  4-8d-chat-quality-benchmark-with-llm-as-judge: done
   4-8d-followup-quality-benchmark-test-robustness: done
   4-8e-ci-deploy-gate-for-chat-regression: done
   4-8f-benchmark-stability: done
   4-8g-benchmark-mode-tier-matrix-and-local-vs-production-parity: done
-  4-8h-mode-aware-chat-policy-for-latency-cost: backlog
+  4-8h-mode-aware-chat-policy-for-latency-cost: done
   4-8h-followup-mode-aware-chat-policy-hardening: done
   epic-4-retrospective: optional
 
@@ -134,7 +134,7 @@ development_status:
   8-8-auto-extract-kill-switch-safe-default-mới-đánh-lại-số-từ-8-4: done
   8-9-memory-cost-turn-observability-mới-đánh-lại-số-từ-8-5: done
   8-10-docs-readme-vision-sync-mới-đánh-lại-số-từ-8-6: done
-  8-11-admin-ui-for-global-llm-model-configuration: backlog
+  8-11-admin-ui-for-global-llm-model-configuration: done
   8-11-followup-admin-model-config-hardening: done
   8-12-workspace-limits: done
   8-13-posthog-product-analytics: done
@@ -148,7 +148,7 @@ development_status:
   9-3-latency-budget-state-a-b-gate: done
   9-4-docs: done
   9-5-metered-deep-research-endpoint-cho-self-host: done
-  9-6-memory-provenance-re-validation: backlog
+  9-6-memory-provenance-re-validation: done
   9-6-followup-re-validation-hardening: done
   9-6c-memory-provenance-end-to-end-revalidation-gate: done
   epic-9-retrospective: optional
@@ -182,8 +182,6 @@ development_status:
   12-4e-vietnam-job-aggregator-exposure: done
   12-5-pii-redaction-for-job-data: done
   12-6-saved-searches: done
-  12-7-property-price-alerts: backlog
-  12-8-cross-source-entity-timeline: backlog
   12-9-job-market-alerts: done
   12-10-linkedin-public-guest-jobs-headcount-growth-signals: done
   epic-12-retrospective: optional
@@ -195,22 +193,16 @@ development_status:
   14-1-rss-feed-integration: done
   14-2a-news-entity-extraction: done
   14-2b-news-entity-search: done
-  14-3-news-alerts-topic-monitoring: backlog
-  14-4-news-digest-synthesis: backlog
   epic-14-retrospective: optional
 
   epic-15: done
   15-1-cafef-financial-data-integration: done
   15-2-vietstock-deep-financials: done
-  15-3-stock-price-alerts: backlog
-  15-4-financial-trend-detection: backlog
   epic-15-retrospective: optional
 
   epic-16: in-progress
   16-1-masothue-com-company-data: done
   16-2-official-business-registry: backlog
-  16-3-company-alerts: backlog
-  16-4-company-timeline: backlog
   16-5-national-public-procurement-tender-intelligence: done
   epic-16-retrospective: optional
 
@@ -218,8 +210,6 @@ development_status:
   17-1-lazada-product-data: backlog
   17-2-shopee-vietnam-in-house-scraper-price-normalization: done
   17-5-tiktok-shop-product-trending-skus-ingestion: backlog
-  17-3-price-drop-alerts: backlog
-  17-4-competitor-tracking: backlog
   epic-17-retrospective: optional
 
   epic-18: done
@@ -311,7 +301,7 @@ development_status:
   26-5-split-canvas-glass-box-mission-control-two-tier-phone-unlock: done
   26-6-telegram-interactive-checkpoint-bot-1-click-auto-refund-dial: done
   26-7-hermetic-quality-gates-benchmark-suite-anti-zombie-chaos-tes: done
-  26-10-mission-control-glass-box-ux-refinement: backlog
+  26-10-mission-control-glass-box-ux-refinement: done
   26-11-two-tier-phone-unlock-ux-refinement: backlog
   26-9a-wide-research-crawl-subgraph: done
   26-9b-pro-excel-formatter-in-daytona-sandbox: done
