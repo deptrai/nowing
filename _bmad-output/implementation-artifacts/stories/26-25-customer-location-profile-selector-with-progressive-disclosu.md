@@ -90,6 +90,42 @@ Clicking any chip immediately selects that province and populates the available 
 
 ---
 
+## Technical Guardrails & Developer Notes
+
+### 1. Reusable Primitives (Do NOT Reinvent)
+- **Diacritics & Alias engine:** Reuse `nowing_backend/app/services/location_normalize/` (`remove_diacritics`, `CITY_CODES`, `CITY_ALIASES`).
+- **UI Components:** Reuse shadcn primitives in `nowing_web/components/ui/`:
+  - `popover.tsx` & `command.tsx` for combobox searchable dropdown.
+  - `badge.tsx` for compact selected chips.
+  - `switch.tsx` for "Khu vực chi tiết (nâng cao)" progressive toggle.
+  - `button.tsx` for quick chips.
+- **Form State:** Controlled component interface:
+  ```typescript
+  interface LocationSelectorProps {
+    value?: LocationProfile | null;
+    onChange: (value: LocationProfile) => void;
+    className?: string;
+  }
+  ```
+
+### 2. Administrative Divisions Data Structure
+- `nowing_web/lib/geo/vietnam-divisions.ts` contains typed province/district records:
+  ```typescript
+  export interface Province {
+    code: string; // e.g. "SG", "HN", "DN"
+    name: string; // e.g. "TP. Hồ Chí Minh"
+    aliases: string[]; // ["saigon", "sg", "tphcm"]
+    districts: District[];
+  }
+  export interface District {
+    code: string;
+    name: string; // e.g. "Quận 1", "Cầu Giấy"
+    wards?: string[];
+  }
+  ```
+
+---
+
 ## Tasks / Subtasks
 
 - [ ] Vietnamese Geography Catalog & API (`nowing_backend/app/services/location_normalize/`)
@@ -105,3 +141,4 @@ Clicking any chip immediately selects that province and populates the available 
 - [ ] Verification & Tests
   - [ ] Unit tests for `LocationSelector` rendering and cascading logic.
   - [ ] Run `tsc --noEmit`, `biome check`, and pytest.
+
