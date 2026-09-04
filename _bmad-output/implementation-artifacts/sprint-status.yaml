@@ -302,7 +302,7 @@ development_status:
   26-6-telegram-interactive-checkpoint-bot-1-click-auto-refund-dial: done
   26-7-hermetic-quality-gates-benchmark-suite-anti-zombie-chaos-tes: done
   26-10-mission-control-glass-box-ux-refinement: done
-  26-11-two-tier-phone-unlock-ux-refinement: backlog
+  26-11-two-tier-phone-unlock-ux-refinement: done
   26-9a-wide-research-crawl-subgraph: done
   26-9b-pro-excel-formatter-in-daytona-sandbox: done
   epic-26-retrospective: optional
@@ -318,10 +318,10 @@ development_status:
   epic-27-retrospective: optional
 
   epic-28: in-progress
-  28-1-workspace-memory-research-data-export: backlog
+  28-1-workspace-memory-research-data-export: done
   28-2-encryption-at-rest-for-cloud-memory: backlog
-  28-3-tos-legal-review-retention-policy-for-long-term-scrape-data: backlog
-  28-4-self-host-oss-onboarding-in-under-10-minutes: backlog
+  28-3-tos-legal-review-retention-policy-for-long-term-scrape-data: done
+  28-4-self-host-oss-onboarding-in-under-10-minutes: done
   28-5-workspace-memory-storage-cap-retention-lifecycle: done
   epic-28-retrospective: optional
 
