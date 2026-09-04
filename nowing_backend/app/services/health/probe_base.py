@@ -26,6 +26,8 @@ class HealthResult:
     success_rate_15m: float = 100.0
     metadata: dict[str, Any] = field(default_factory=dict)
     probed_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    next_probe_at: datetime | None = None
+    interval_seconds: int = 300
 
     def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary for caching and serialization."""
@@ -42,6 +44,8 @@ class HealthResult:
             "success_rate_15m": self.success_rate_15m,
             "metadata": self.metadata,
             "probed_at": self.probed_at.isoformat(),
+            "next_probe_at": self.next_probe_at.isoformat() if self.next_probe_at else None,
+            "interval_seconds": self.interval_seconds,
         }
 
 

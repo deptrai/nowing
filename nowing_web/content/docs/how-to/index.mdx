@@ -4,23 +4,69 @@ description: Step-by-step guides for common tasks
 ---
 
 import { Card, Cards } from 'fumadocs-ui/components/card';
+import { RefreshCw, Users, Search, Bot, Globe, Presentation, Megaphone, LayoutTemplate, Wallet, Database } from 'lucide-react';
 
 Practical guides to help you get the most out of Nowing.
 
 <Cards>
   <Card
+    icon={<RefreshCw />}
     title="Real-Time Sync with Zero"
     description="How Nowing uses Rocicorp Zero for instant real-time data synchronization"
     href="/docs/how-to/zero-sync"
   />
   <Card
+    icon={<Users />}
     title="Realtime Collaboration"
     description="Invite teammates, share chats, and collaborate in realtime"
     href="/docs/how-to/realtime-collaboration"
   />
   <Card
+    icon={<Search />}
     title="Web Search"
     description="Configure SearXNG web search and residential proxies for production"
     href="/docs/how-to/web-search"
+  />
+  <Card
+    icon={<Bot />}
+    title="Projects & Skills Hub"
+    description="Organize work into projects and build reusable agent skills"
+    href="/docs/how-to/projects-and-skills"
+  />
+  <Card
+    icon={<Globe />}
+    title="Web Builder"
+    description="Build, preview, and deploy full-stack web apps from chat"
+    href="/docs/how-to/web-builder"
+  />
+  <Card
+    icon={<Presentation />}
+    title="Presentation Studio"
+    description="Generate slide decks and meeting minutes from chat"
+    href="/docs/how-to/presentation-studio"
+  />
+  <Card
+    icon={<Megaphone />}
+    title="Lead Intelligence & Outbound"
+    description="B2B lead scoring, phone verification, and multi-channel outreach"
+    href="/docs/how-to/lead-intelligence"
+  />
+  <Card
+    icon={<LayoutTemplate />}
+    title="Automations & Playbooks"
+    description="Memory-driven automations and reusable playbook templates"
+    href="/docs/how-to/automations"
+  />
+  <Card
+    icon={<Wallet />}
+    title="Usage & Credits"
+    description="Workspace credit dashboards, spend budgets, and quota management"
+    href="/docs/how-to/usage-credits"
+  />
+  <Card
+    icon={<Database />}
+    title="MCP Server"
+    description="Connect the Nowing MCP server to Claude Code, Codex, OpenCode, Cursor, and other MCP clients, step by step"
+    href="/docs/how-to/mcp-server"
   />
 </Cards>

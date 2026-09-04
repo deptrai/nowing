@@ -68,7 +68,7 @@ test.describe("CafeF chat subagent", () => {
 		await context.clearCookies();
 		await page.reload();
 		await expect(page).toHaveURL(/\/login/, { timeout: 30_000 });
-		await expect(page.getByRole("heading", { name: /sign in/i })).toBeVisible();
+		await expect(page.getByRole("heading", { name: /sign in|Đăng nhập/i })).toBeVisible();
 	});
 
 	test("should load the new-chat page without a white-screen crash", async ({

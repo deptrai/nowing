@@ -87,6 +87,7 @@ export const ConnectorCard: FC<ConnectorCardProps> = ({
 
 	const cardContent = (
 		<div
+			data-testid={`connector-card-${id}`}
 			className={cn(
 				"group relative flex items-center gap-4 p-4 rounded-xl text-left transition-all duration-200 w-full border",
 				status.status === "warning"

@@ -59,11 +59,19 @@ class ThirdPartyHealthService:
             if st in category_summary[cat]:
                 category_summary[cat][st] += 1
 
-        overall_status = "healthy"
-        if status_counts["unavailable"] > 0:
-            overall_status = "degraded"  # or unavailable if major
-        elif status_counts["degraded"] > 0:
-            overall_status = "degraded"
+        total = sum(status_counts.values())
+        if total == 0:
+            overall_status = "not_configured"
+        else:
+            unavailable_ratio = status_counts["unavailable"] / total
+            if unavailable_ratio == 1.0:
+                overall_status = "unavailable"
+            elif unavailable_ratio >= 0.5 or status_counts["unavailable"] > 0:
+                overall_status = "degraded"
+            elif status_counts["degraded"] > 0:
+                overall_status = "degraded"
+            else:
+                overall_status = "healthy"
 
         return {
             "overall_status": overall_status,
@@ -88,9 +96,11 @@ class ThirdPartyHealthService:
         session: AsyncSession,
         service_id: str,
         hours: int = 24,
+        limit: int = 10000,
+        offset: int = 0,
     ) -> list[AdminHealthHistory]:
         """Fetch historical probe logs for a service."""
-        return await HealthResultStore.get_history(session, service_id=service_id, hours=hours)
+        return await HealthResultStore.get_history(session, service_id=service_id, hours=hours, limit=limit, offset=offset)
 
     @staticmethod
     async def run_category_probes(
@@ -127,3 +137,42 @@ class ThirdPartyHealthService:
             acknowledged_by=user_id,
             duration_minutes=duration_minutes,
         )
+
+    @staticmethod
+    async def resolve_alert(
+        session: AsyncSession,
+        alert_id: int,
+    ) -> AdminHealthAlert | None:
+        """Manually resolve an active alert."""
+        return await AdminHealthAlertEngine.resolve_alert(session=session, alert_id=alert_id)
+
+    @staticmethod
+    async def list_rules(session: AsyncSession) -> list[AdminHealthAlertRule]:
+        """List admin health alert rules."""
+        return await AdminHealthAlertEngine.get_rules(session)
+
+    @staticmethod
+    async def get_rule(session: AsyncSession, rule_id: int) -> AdminHealthAlertRule | None:
+        """Get a single admin health alert rule."""
+        return await AdminHealthAlertEngine.get_rule(session, rule_id)
+
+    @staticmethod
+    async def create_rule(
+        session: AsyncSession,
+        rule: AdminHealthAlertRule,
+    ) -> AdminHealthAlertRule:
+        """Create a new admin health alert rule."""
+        return await AdminHealthAlertEngine.create_rule(session, rule)
+
+    @staticmethod
+    async def update_rule(
+        session: AsyncSession,
+        rule: AdminHealthAlertRule,
+    ) -> AdminHealthAlertRule:
+        """Update an admin health alert rule."""
+        return await AdminHealthAlertEngine.update_rule(session, rule)
+
+    @staticmethod
+    async def delete_rule(session: AsyncSession, rule_id: int) -> bool:
+        """Delete an admin health alert rule."""
+        return await AdminHealthAlertEngine.delete_rule(session, rule_id)

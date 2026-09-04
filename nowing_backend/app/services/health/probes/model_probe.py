@@ -7,22 +7,26 @@ import re
 import time
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import func, select
-
-from app.db import async_session_maker
-from app.models.admin_health import AdminHealthHistory
+from app.config import config
 from app.models.connectors import Connection
 from app.services.health.probe_base import HealthProbe, HealthResult, HealthStatus
 from app.services.model_connection_service import verify_connection
 
 logger = logging.getLogger(__name__)
 
-_SECRET_PATTERN = re.compile(r"(key|token|secret|password|bearer\s+|auth\s+)[=:\s]*([^\s,;&]+)", re.IGNORECASE)
+_SECRET_PATTERN = re.compile(
+    r"(key|token|secret|password|bearer\s+|auth\s+|api[-_]?key)[=:\s]*([^\s,;&\"\']+)",
+    re.IGNORECASE,
+)
+
+# Standard URL userinfo credential pattern (e.g. https://user:pass@host)
+_URL_CRED_PATTERN = re.compile(r"^(\w+://)[^@]+@", re.IGNORECASE)
 
 
 def _sanitize_string(text: str | None) -> str | None:
     if not text:
         return text
+    text = _URL_CRED_PATTERN.sub(r"\1***:***@", text)
     return _SECRET_PATTERN.sub(r"\1=***", text)
 
 
@@ -46,6 +50,28 @@ class ModelHealthProbe(HealthProbe):
         self._display_group = display_group
         self._connection = connection
         self._base_url = base_url
+
+    @staticmethod
+    def _connection_from_global_config(provider: str, model_name: str) -> Connection:
+        """Build a Connection from in-memory global LLM config for the provider/model."""
+        for cfg in getattr(config, "GLOBAL_LLM_CONFIGS", []) or []:
+            if cfg.get("litellm_provider") == provider or cfg.get("provider") == provider:
+                if not model_name or (cfg.get("model_name") == model_name or cfg.get("name") == model_name):
+                    from app.services.model_resolver import native_connection_from_config
+
+                    conn_dict = native_connection_from_config(cfg)
+                    return Connection(
+                        provider=conn_dict["provider"],
+                        base_url=conn_dict["base_url"],
+                        api_key=conn_dict.get("api_key"),
+                        extra=conn_dict.get("extra", {}),
+                    )
+        return Connection(
+            provider=provider,
+            base_url=None,
+            api_key=None,
+            extra={},
+        )
 
     @property
     def service_id(self) -> str:
@@ -112,12 +138,8 @@ class ModelHealthProbe(HealthProbe):
                     last_error = _sanitize_string(verify_res.message)
 
             else:
-                # Standalone verification without DB Connection model
-                temp_conn = Connection(
-                    provider=self._provider,
-                    base_url=self._base_url,
-                    extra={"model_ids": [self._model_id]} if self._model_id else {},
-                )
+                # Standalone verification using global config or DB fallback
+                temp_conn = self._connection_from_global_config(self._provider, self._model_id)
                 verify_res = await verify_connection(temp_conn)
                 latency_ms = int((time.perf_counter() - start) * 1000)
                 if verify_res.verified:
@@ -142,31 +164,11 @@ class ModelHealthProbe(HealthProbe):
             last_error = _sanitize_string(f"Probe execution error: {type(exc).__name__}")
             suggested_action = "Verify model connection credentials and network routes"
 
-        # Compute 15-minute success/error rate from actual history
-        success_rate = 100.0 if status in {"healthy", "degraded", "not_configured"} else 0.0
-        error_rate = 0.0 if status in {"healthy", "not_configured"} else (50.0 if status == "degraded" else 100.0)
-
-        try:
-            async with async_session_maker() as session:
-                cutoff = datetime.now(UTC) - timedelta(minutes=15)
-                tot_query = select(func.count()).select_from(AdminHealthHistory).where(
-                    AdminHealthHistory.service_id == self._service_id,
-                    AdminHealthHistory.probe_at >= cutoff,
-                )
-                err_query = select(func.count()).select_from(AdminHealthHistory).where(
-                    AdminHealthHistory.service_id == self._service_id,
-                    AdminHealthHistory.probe_at >= cutoff,
-                    AdminHealthHistory.status.in_(["unavailable"]),
-                )
-                tot_res = await session.execute(tot_query)
-                err_res = await session.execute(err_query)
-                tot_count = tot_res.scalar() or 0
-                err_count = err_res.scalar() or 0
-                if tot_count > 0:
-                    error_rate = round((err_count / tot_count) * 100.0, 1)
-                    success_rate = round(100.0 - error_rate, 1)
-        except Exception as hist_exc:
-            logger.debug("History calculation note for %s: %s", self._service_id, hist_exc)
+        # Success/error rate is computed by HealthResultStore from actual history.
+        # We leave the defaults as the current probe's outcome so that callers
+        # without persisted history still see a sensible instantaneous value.
+        success_rate = 100.0 if status in {"healthy", "not_configured"} else (50.0 if status == "degraded" else 0.0)
+        error_rate = 100.0 - success_rate
 
         safe_metadata = {
             "provider": self._provider,

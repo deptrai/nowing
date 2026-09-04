@@ -124,7 +124,7 @@ export function TaskItem({
 	);
 
 	return (
-		<div className="rounded-md border border-border/60 bg-transparent p-3 space-y-3">
+		<div data-testid={`task-item-${index}`} className="rounded-md border border-border/60 bg-transparent p-3 space-y-3">
 			<div className="flex items-center justify-between gap-2">
 				<div className="flex items-center gap-2">
 					<span className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground">

@@ -92,40 +92,50 @@ class InfrastructureHealthProbe(HealthProbe):
                 metadata["queues"] = stats.get("queues", [])
 
             elif self._component == "caddy":
-                caddy_url = getattr(config, "CADDY_ADMIN_URL", "http://localhost:2019/metrics")
-                try:
-                    async with httpx.AsyncClient(timeout=2.0) as client:
-                        resp = await client.get(caddy_url)
-                        latency_ms = int((time.perf_counter() - start) * 1000)
-                        if resp.status_code >= 400:
-                            status = "degraded"
-                            last_error = f"Caddy returned HTTP {resp.status_code}"
-                            suggested_action = "Inspect Caddy reverse proxy logs"
-                        else:
-                            status = "healthy"
-                except Exception as exc:
+                caddy_url = getattr(config, "CADDY_ADMIN_URL", "")
+                if not caddy_url:
                     latency_ms = int((time.perf_counter() - start) * 1000)
-                    status = "unavailable"
-                    last_error = f"Caddy connect failure: {type(exc).__name__}"
-                    suggested_action = "Verify Caddy service is running and admin API is accessible"
+                    status = "not_configured"
+                    suggested_action = "Set CADDY_ADMIN_URL environment variable to enable Caddy health probe"
+                else:
+                    try:
+                        async with httpx.AsyncClient(timeout=2.0) as client:
+                            resp = await client.get(caddy_url)
+                            latency_ms = int((time.perf_counter() - start) * 1000)
+                            if resp.status_code >= 400:
+                                status = "degraded"
+                                last_error = f"Caddy returned HTTP {resp.status_code}"
+                                suggested_action = "Inspect Caddy reverse proxy logs"
+                            else:
+                                status = "healthy"
+                    except Exception as exc:
+                        latency_ms = int((time.perf_counter() - start) * 1000)
+                        status = "unavailable"
+                        last_error = f"Caddy connect failure: {type(exc).__name__}"
+                        suggested_action = "Verify Caddy service is running and admin API is accessible"
 
             elif self._component == "zero":
-                zero_url = getattr(config, "ZERO_CACHE_KEEPALIVE_URL", "http://localhost:4848/keepalive")
-                try:
-                    async with httpx.AsyncClient(timeout=2.0) as client:
-                        resp = await client.get(zero_url)
-                        latency_ms = int((time.perf_counter() - start) * 1000)
-                        if resp.status_code >= 400:
-                            status = "degraded"
-                            last_error = f"Zero Cache returned HTTP {resp.status_code}"
-                            suggested_action = "Inspect Zero Cache service status"
-                        else:
-                            status = "healthy"
-                except Exception as exc:
+                zero_url = getattr(config, "ZERO_CACHE_KEEPALIVE_URL", "")
+                if not zero_url:
                     latency_ms = int((time.perf_counter() - start) * 1000)
-                    status = "unavailable"
-                    last_error = f"Zero Cache connect failure: {type(exc).__name__}"
-                    suggested_action = "Check Zero Cache sync engine process"
+                    status = "not_configured"
+                    suggested_action = "Set ZERO_CACHE_KEEPALIVE_URL environment variable to enable Zero Cache probe"
+                else:
+                    try:
+                        async with httpx.AsyncClient(timeout=2.0) as client:
+                            resp = await client.get(zero_url)
+                            latency_ms = int((time.perf_counter() - start) * 1000)
+                            if resp.status_code >= 400:
+                                status = "degraded"
+                                last_error = f"Zero Cache returned HTTP {resp.status_code}"
+                                suggested_action = "Inspect Zero Cache service status"
+                            else:
+                                status = "healthy"
+                    except Exception as exc:
+                        latency_ms = int((time.perf_counter() - start) * 1000)
+                        status = "unavailable"
+                        last_error = f"Zero Cache connect failure: {type(exc).__name__}"
+                        suggested_action = "Check Zero Cache sync engine process"
 
             else:
                 latency_ms = int((time.perf_counter() - start) * 1000)

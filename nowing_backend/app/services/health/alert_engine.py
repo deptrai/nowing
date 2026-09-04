@@ -6,17 +6,20 @@ import asyncio
 import logging
 import re
 from datetime import UTC, datetime, timedelta
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db import User
 from app.models.admin_health import (
     AdminHealthAlert,
     AdminHealthAlertRule,
     AdminHealthHistory,
     AdminHealthStatus,
 )
+from app.notifications.service.facade import NotificationService
 from app.services.health.probe_base import HealthResult
 
 logger = logging.getLogger(__name__)
@@ -24,6 +27,60 @@ logger = logging.getLogger(__name__)
 
 class AdminHealthAlertEngine:
     """Evaluates probe results against health alert rules, dedupes, and emits incidents."""
+
+    # Default rules used when the database table is empty or until migrations run.
+    DEFAULT_RULES: list[dict[str, Any]] = [
+        {
+            "name": "Core infra unavailable",
+            "category": "infra",
+            "service_id_pattern": None,
+            "condition_json": {"status": "unavailable", "consecutive_probes": 1},
+            "severity": "critical",
+            "channels": ["in_app", "email"],
+            "cooldown_minutes": 15,
+            "enabled": True,
+        },
+        {
+            "name": "LLM/AI model dead",
+            "category": "model",
+            "service_id_pattern": None,
+            "condition_json": {"status": "unavailable", "consecutive_probes": 2},
+            "severity": "high",
+            "channels": ["in_app", "email"],
+            "cooldown_minutes": 15,
+            "enabled": True,
+        },
+        {
+            "name": "Scraper degraded",
+            "category": "scraper",
+            "service_id_pattern": None,
+            "condition_json": {"metric": "success_rate_15m", "op": "<", "threshold": 50.0},
+            "severity": "medium",
+            "channels": ["in_app"],
+            "cooldown_minutes": 15,
+            "enabled": True,
+        },
+        {
+            "name": "Proxy dead",
+            "category": "proxy",
+            "service_id_pattern": None,
+            "condition_json": {"status": "unavailable", "consecutive_probes": 1},
+            "severity": "high",
+            "channels": ["in_app", "email"],
+            "cooldown_minutes": 15,
+            "enabled": True,
+        },
+        {
+            "name": "ChainLens research degraded",
+            "category": "research",
+            "service_id_pattern": None,
+            "condition_json": {"status_not": "healthy", "consecutive_probes": 2},
+            "severity": "medium",
+            "channels": ["in_app"],
+            "cooldown_minutes": 15,
+            "enabled": True,
+        },
+    ]
 
     @classmethod
     async def evaluate_result(
@@ -34,26 +91,54 @@ class AdminHealthAlertEngine:
         """Evaluate a single probe result against matching active rules."""
         now = datetime.now(UTC)
 
-        # 1. Auto-resolve logic: if result is healthy, resolve open alerts for this service
+        # 1. Auto-resolve logic: if result is healthy, resolve open alerts for this service.
+        #    Requires 2 consecutive healthy probes before resolving to avoid flapping.
         if result.status == "healthy":
-            open_alerts_stmt = select(AdminHealthAlert).where(
-                AdminHealthAlert.service_id == result.service_id,
-                AdminHealthAlert.status.in_(["open", "acknowledged"]),
+            healthy_count = 1
+            hist_stmt = (
+                select(AdminHealthHistory.status)
+                .where(AdminHealthHistory.service_id == result.service_id)
+                .order_by(AdminHealthHistory.probe_at.desc())
+                .limit(1)
             )
-            open_res = await session.execute(open_alerts_stmt)
-            open_alerts = open_res.scalars().all()
-            for oa in open_alerts:
-                oa.status = "resolved"
-                oa.resolved_at = now
-                oa.updated_at = now
-            if open_alerts:
-                await session.commit()
+            hist_res = await session.execute(hist_stmt)
+            past_statuses = list(hist_res.scalars().all())
+            if past_statuses and past_statuses[0] == "healthy":
+                healthy_count = 2
+
+            if healthy_count >= 2:
+                open_alerts_stmt = select(AdminHealthAlert).where(
+                    AdminHealthAlert.service_id == result.service_id,
+                    AdminHealthAlert.status.in_(["open", "acknowledged"]),
+                )
+                open_res = await session.execute(open_alerts_stmt)
+                open_alerts = list(open_res.scalars().all())
+                for oa in open_alerts:
+                    oa.status = "resolved"
+                    oa.resolved_at = now
+                    oa.updated_at = now
+
+                # Clear snooze on the corresponding status record
+                if open_alerts:
+                    status_stmt = select(AdminHealthStatus).where(
+                        AdminHealthStatus.service_id == result.service_id
+                    )
+                    status_res = await session.execute(status_stmt)
+                    status_rec = status_res.scalar_one_or_none()
+                    if status_rec:
+                        status_rec.acknowledged_until = None
+                        status_rec.updated_at = now
+                    await session.commit()
             return []
 
-        # Query active rules matching category or global
+        # 2. Load rules, falling back to in-code defaults if none exist in DB.
         stmt = select(AdminHealthAlertRule).where(AdminHealthAlertRule.enabled.is_(True))
         res = await session.execute(stmt)
-        rules = res.scalars().all()
+        rules = list(res.scalars().all())
+
+        if not rules:
+            # Hydrate ephemeral default rules when the table is empty.
+            rules = [AdminHealthAlertRule(**r) for r in cls.DEFAULT_RULES]
 
         triggered_alerts: list[AdminHealthAlert] = []
 
@@ -75,7 +160,7 @@ class AdminHealthAlertEngine:
             if not matches:
                 continue
 
-            # Check deduplication & existing open/acknowledged alert
+            # Check deduplication & cooldown against open/acknowledged/resolved alerts
             existing_alert_stmt = select(AdminHealthAlert).where(
                 AdminHealthAlert.service_id == result.service_id,
                 AdminHealthAlert.rule_id == rule.id,
@@ -85,10 +170,28 @@ class AdminHealthAlertEngine:
             existing_alert = existing_res.scalar_one_or_none()
 
             if existing_alert is not None:
-                # Update triggered_at to now instead of creating duplicate
-                existing_alert.triggered_at = now
-                existing_alert.updated_at = now
-                continue
+                # Re-open expired acknowledged alerts before checking cooldown
+                if existing_alert.status == "acknowledged" and (
+                    existing_alert.acknowledged_until is None or existing_alert.acknowledged_until < now
+                ):
+                    existing_alert.status = "open"
+                    existing_alert.acknowledged_until = None
+                    existing_alert.updated_at = now
+                elif existing_alert.triggered_at and rule.cooldown_minutes and rule.cooldown_minutes > 0:
+                    cooldown_end = existing_alert.triggered_at + timedelta(minutes=rule.cooldown_minutes)
+                    if now < cooldown_end:
+                        # Update timestamp only (no triggered_at overwrite)
+                        existing_alert.updated_at = now
+                        continue
+                    else:
+                        # Cooldown elapsed: re-open if acknowledged and treat as new incident
+                        existing_alert.status = "open"
+                        existing_alert.acknowledged_until = None
+                        existing_alert.triggered_at = now
+                        existing_alert.updated_at = now
+                else:
+                    existing_alert.updated_at = now
+                    continue
 
             # Create new incident alert
             msg = (
@@ -106,7 +209,7 @@ class AdminHealthAlertEngine:
             session.add(alert)
             triggered_alerts.append(alert)
 
-            # Dispatch notification (in-app, email, telegram)
+            # Dispatch notification via Generic Alert Engine
             await cls._dispatch_notification(session, rule, alert, result)
 
         if triggered_alerts:
@@ -139,7 +242,7 @@ class AdminHealthAlertEngine:
                     .limit(consecutive_probes)
                 )
                 hist_res = await session.execute(hist_stmt)
-                past_statuses = hist_res.scalars().all()
+                past_statuses = list(hist_res.scalars().all())
                 if len(past_statuses) < consecutive_probes or any(s != target_status for s in past_statuses):
                     return False
             return True
@@ -157,17 +260,44 @@ class AdminHealthAlertEngine:
                     .limit(consecutive_probes)
                 )
                 hist_res = await session.execute(hist_stmt)
-                past_statuses = hist_res.scalars().all()
+                past_statuses = list(hist_res.scalars().all())
                 if len(past_statuses) < consecutive_probes or any(s == status_not for s in past_statuses):
                     return False
             return True
 
-        # 3. Metric threshold check (e.g. success_rate_15m < 50.0)
+        # 3. Metric threshold check (supports success_rate_15m, error_rate_15m, latency_ms with <, >, <=, >=, ==, !=)
         metric = cond.get("metric")
         op = cond.get("op")
         threshold = cond.get("threshold")
-        if metric == "success_rate_15m" and op == "<" and threshold is not None:
-            return result.success_rate_15m < float(threshold)
+        if metric and op and threshold is not None:
+            value: float | int | None = None
+            if metric == "success_rate_15m":
+                value = result.success_rate_15m
+            elif metric == "error_rate_15m":
+                value = result.error_rate_15m
+            elif metric == "latency_ms":
+                value = result.latency_ms or 0
+
+            if value is None:
+                return False
+
+            try:
+                target = float(threshold)
+            except (TypeError, ValueError):
+                return False
+
+            if op == "<":
+                return value < target
+            elif op == ">":
+                return value > target
+            elif op == "<=":
+                return value <= target
+            elif op == ">=":
+                return value >= target
+            elif op in ("==", "="):
+                return abs(value - target) < 1e-9
+            elif op in ("!=", "<>"):
+                return abs(value - target) >= 1e-9
 
         return False
 
@@ -180,6 +310,14 @@ class AdminHealthAlertEngine:
         result: HealthResult,
     ) -> None:
         """Best-effort notification dispatch to configured channels (in-app, email, telegram)."""
+        from app.alerts.engine.notify import _send_email_smtp
+        from app.automations.services.telegram_notifications import (
+            account_token,
+            resolve_telegram_binding_for_run,
+        )
+        from app.gateway.telegram.adapter import TelegramAdapter
+        from app.gateway.telegram.formatting import escape_markdown_v2
+
         try:
             channels = rule.channels or ["in_app"]
             logger.info(
@@ -189,16 +327,11 @@ class AdminHealthAlertEngine:
                 channels,
             )
 
-            # Query superusers for notification delivery
-            from app.db import User
-
             su_stmt = select(User).where(User.is_superuser.is_(True))
             su_res = await session.execute(su_stmt)
             superusers = list(su_res.scalars().all())
 
             if "in_app" in channels:
-                from app.notifications.service import NotificationService
-
                 for su in superusers:
                     try:
                         await NotificationService.create_notification(
@@ -218,12 +351,16 @@ class AdminHealthAlertEngine:
                         logger.warning("Failed to create in-app notification for superuser %s: %s", su.id, err)
 
             if "email" in channels:
-                from app.alerts.engine.notify import _send_email_smtp
                 from app.config import config
 
                 if config.SMTP_HOST:
                     subject = f"[ALERT - {rule.severity.upper()}] Third-Party Health: {result.service_name}"
-                    body = f"Service: {result.service_name} ({result.service_id})\nStatus: {result.status}\nError: {result.last_error or 'None'}\n\nMessage: {alert.message}"
+                    body = (
+                        f"Service: {result.service_name} ({result.service_id})\n"
+                        f"Status: {result.status}\n"
+                        f"Error: {result.last_error or 'None'}\n\n"
+                        f"Message: {alert.message}"
+                    )
                     for su in superusers:
                         if su.email:
                             try:
@@ -234,8 +371,26 @@ class AdminHealthAlertEngine:
                     logger.warning("Email channel requested for health alert but SMTP_HOST is not configured")
 
             if "telegram" in channels:
-                # Telegram dispatch for platform admin alerts
-                logger.info("Telegram channel selected for health alert (admin alert dispatch)")
+                from app.automations.services.telegram_notifications import account_token
+
+                for su in superusers:
+                    try:
+                        binding = await resolve_telegram_binding_for_run(session, su.id, workspace_id=0)
+                        if not binding or not binding.external_peer_id:
+                            continue
+                        token = account_token(binding.account)
+                        if not token:
+                            continue
+                        adapter = TelegramAdapter(token)
+                        raw_text = f"[ALERT - {rule.severity.upper()}] Third-Party Health: {result.service_name}\n\n{alert.message}"
+                        escaped_text = escape_markdown_v2(raw_text)
+                        await adapter.send_message(
+                            external_peer_id=binding.external_peer_id,
+                            text=escaped_text,
+                            parse_mode="MarkdownV2",
+                        )
+                    except Exception as err:
+                        logger.warning("Failed to dispatch telegram alert for superuser %s: %s", su.id, err)
 
         except Exception as exc:
             logger.warning("Error during alert dispatch: %s", exc)
@@ -253,6 +408,10 @@ class AdminHealthAlertEngine:
         res = await session.execute(stmt)
         alert = res.scalar_one_or_none()
         if not alert:
+            return None
+
+        # 404 for already-resolved alerts
+        if alert.status == "resolved":
             return None
 
         now = datetime.now(UTC)
@@ -275,9 +434,103 @@ class AdminHealthAlertEngine:
         return alert
 
     @classmethod
+    async def resolve_alert(cls, session: AsyncSession, alert_id: int) -> AdminHealthAlert | None:
+        """Manually resolve an active health alert."""
+        stmt = select(AdminHealthAlert).where(AdminHealthAlert.id == alert_id)
+        res = await session.execute(stmt)
+        alert = res.scalar_one_or_none()
+        if not alert:
+            return None
+
+        if alert.status == "resolved":
+            return alert
+
+        now = datetime.now(UTC)
+        alert.status = "resolved"
+        alert.resolved_at = now
+        alert.updated_at = now
+
+        status_stmt = select(AdminHealthStatus).where(AdminHealthStatus.service_id == alert.service_id)
+        status_res = await session.execute(status_stmt)
+        status_rec = status_res.scalar_one_or_none()
+        if status_rec:
+            status_rec.acknowledged_until = None
+            status_rec.updated_at = now
+
+        await session.commit()
+        await session.refresh(alert)
+        return alert
+
+    @classmethod
+    @classmethod
+    async def get_rules(
+        cls,
+        session: AsyncSession,
+        enabled_only: bool = True,
+    ) -> list[AdminHealthAlertRule]:
+        """Return alert rules, optionally only enabled ones."""
+        stmt = select(AdminHealthAlertRule)
+        if enabled_only:
+            stmt = stmt.where(AdminHealthAlertRule.enabled.is_(True))
+        res = await session.execute(stmt)
+        return list(res.scalars().all())
+
+    @classmethod
+    async def get_rule(cls, session: AsyncSession, rule_id: int) -> AdminHealthAlertRule | None:
+        """Return a single alert rule by ID."""
+        return await session.get(AdminHealthAlertRule, rule_id)
+
+    @classmethod
+    async def create_rule(
+        cls,
+        session: AsyncSession,
+        rule: AdminHealthAlertRule,
+    ) -> AdminHealthAlertRule:
+        """Create a new alert rule."""
+        session.add(rule)
+        await session.commit()
+        await session.refresh(rule)
+        return rule
+
+    @classmethod
+    async def update_rule(
+        cls,
+        session: AsyncSession,
+        rule: AdminHealthAlertRule,
+    ) -> AdminHealthAlertRule:
+        """Update an existing alert rule."""
+        await session.commit()
+        await session.refresh(rule)
+        return rule
+
+    @classmethod
+    async def delete_rule(cls, session: AsyncSession, rule_id: int) -> bool:
+        """Delete an alert rule by ID."""
+        rule = await session.get(AdminHealthAlertRule, rule_id)
+        if not rule:
+            return False
+        await session.delete(rule)
+        await session.commit()
+        return True
+
+    @classmethod
     async def get_active_alerts(cls, session: AsyncSession) -> list[AdminHealthAlert]:
         """Return active open alerts (excluding snoozed acknowledged alerts)."""
         now = datetime.now(UTC)
+
+        # Re-open any acknowledged alerts whose snooze has expired
+        expired_stmt = select(AdminHealthAlert).where(
+            AdminHealthAlert.status == "acknowledged",
+            AdminHealthAlert.acknowledged_until.isnot(None),
+            AdminHealthAlert.acknowledged_until < now,
+        )
+        expired_res = await session.execute(expired_stmt)
+        for alert in expired_res.scalars().all():
+            alert.status = "open"
+            alert.acknowledged_until = None
+            alert.updated_at = now
+        await session.commit()
+
         stmt = (
             select(AdminHealthAlert)
             .where(

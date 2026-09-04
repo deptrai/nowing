@@ -287,8 +287,8 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 						Kênh tiếp cận được bật (Outbound Channels)
 					</span>
 					<div className="flex flex-wrap gap-3">
-						<ChannelChip channel="email" allowed={isChannelAllowed("email")} />
-						<ChannelChip
+						<ChannelChipInternal channel="email" allowed={isChannelAllowed("email")} />
+						<ChannelChipInternal
 							channel="zalo"
 							allowed={isChannelAllowed("zalo") && ad41Reactivated}
 							disabledReason={
@@ -299,7 +299,7 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 										: undefined
 							}
 						/>
-						<ChannelChip
+						<ChannelChipInternal
 							channel="telegram"
 							allowed={isChannelAllowed("telegram")}
 							disabledReason={
@@ -674,7 +674,7 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 	);
 };
 
-function ChannelChip({
+function ChannelChipInternal({
 	channel,
 	allowed,
 	disabledReason,
@@ -683,6 +683,8 @@ function ChannelChip({
 	allowed: boolean;
 	disabledReason?: string;
 }) {
+	const testId = `channel-option-${channel}`;
+	const isDeferred = disabledReason?.includes("Deferred") ?? false;
 	const icon =
 		channel === "email" ? (
 			<Mail className="w-4 h-4 text-blue-500" aria-hidden="true" />
@@ -697,6 +699,9 @@ function ChannelChip({
 
 	return (
 		<div
+			data-testid={testId}
+			data-deferred={isDeferred ? "true" : undefined}
+			aria-disabled={!allowed}
 			className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium ${
 				allowed
 					? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600"

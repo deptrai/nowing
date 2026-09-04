@@ -40,7 +40,22 @@ class ProxyHealthProbe(HealthProbe):
 
     async def probe(self) -> HealthResult:
         telemetry_service = AdminTelemetryService(session=None)  # type: ignore[arg-type]
-        raw = await telemetry_service.get_proxy_health()
+        try:
+            raw = await telemetry_service.get_proxy_health()
+        except Exception as exc:
+            return HealthResult(
+                service_id=self._service_id,
+                service_name=self._service_name,
+                category=self.category,
+                display_group=self.display_group,
+                status="unavailable",
+                latency_ms=0,
+                last_error=f"Proxy telemetry service failed: {type(exc).__name__}: {exc}",
+                error_rate_15m=100.0,
+                success_rate_15m=0.0,
+                metadata={"provider": "unknown", "total": 0, "healthy": 0, "degraded": 0, "dead": 0},
+                probed_at=datetime.now(UTC),
+            )
 
         raw_status = raw.get("status", "dead")
         if raw_status == "healthy":

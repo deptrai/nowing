@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections import defaultdict
 from typing import ClassVar
@@ -72,6 +73,7 @@ class HealthProbeRegistry:
     _probes_by_id: ClassVar[dict[str, HealthProbe]] = {}
     _probes_by_category: ClassVar[dict[str, list[HealthProbe]]] = defaultdict(list)
     _initialized: ClassVar[bool] = False
+    _init_lock: ClassVar[asyncio.Lock] = asyncio.Lock()
 
     @classmethod
     def register(cls, probe: HealthProbe) -> None:
@@ -82,15 +84,22 @@ class HealthProbeRegistry:
         cls._probes_by_category[probe.category] = [p for p in cat_list if p.service_id != probe.service_id] + [probe]
 
     @classmethod
+    def _ensure_sync(cls) -> None:
+        """Synchronously ensure the registry is initialized."""
+        if not cls._initialized:
+            cls.discover_default_probes()
+            cls._initialized = True
+
+    @classmethod
     def get_probe(cls, service_id: str) -> HealthProbe | None:
         """Lookup a probe by its unique service_id."""
-        cls.ensure_initialized()
+        cls._ensure_sync()
         return cls._probes_by_id.get(service_id)
 
     @classmethod
     def get_probes(cls, category: str | None = None) -> list[HealthProbe]:
         """Get all registered probes, optionally filtered by category."""
-        cls.ensure_initialized()
+        cls._ensure_sync()
         if category:
             return list(cls._probes_by_category.get(category, []))
         return list(cls._probes_by_id.values())
@@ -98,16 +107,19 @@ class HealthProbeRegistry:
     @classmethod
     def get_categories(cls) -> list[str]:
         """Return list of distinct registered categories."""
-        cls.ensure_initialized()
+        cls._ensure_sync()
         return sorted(cls._probes_by_category.keys())
 
     @classmethod
-    def ensure_initialized(cls) -> None:
-        """Auto-discover default probes if not yet initialized."""
+    async def ensure_initialized(cls) -> None:
+        """Thread-safe async variant of ensure_initialized."""
         if cls._initialized:
             return
-        cls.discover_default_probes()
-        cls._initialized = True
+        async with cls._init_lock:
+            if cls._initialized:
+                return
+            cls.discover_default_probes()
+            cls._initialized = True
 
     @classmethod
     def reset(cls) -> None:

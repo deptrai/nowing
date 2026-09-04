@@ -42,11 +42,19 @@ async def test_connector_probe_healthy_when_active_accounts() -> None:
 
     mock_session = AsyncMock()
     mock_res = MagicMock()
+    mock_res.scalar_one_or_none.return_value = None
     mock_res.scalar.return_value = 3
     mock_session.execute.return_value = mock_res
 
-    with patch("app.services.health.probes.connector_probe.async_session_maker") as mock_maker:
+    with patch("app.services.health.probes.connector_probe.async_session_maker") as mock_maker, \
+         patch("app.services.health.probes.connector_probe.httpx.AsyncClient") as mock_client_cls:
         mock_maker.return_value.__aenter__.return_value = mock_session
+
+        mock_client = AsyncMock()
+        mock_resp = AsyncMock()
+        mock_resp.status_code = 200
+        mock_client.get.return_value = mock_resp
+        mock_client_cls.return_value.__aenter__.return_value = mock_client
 
         result = await probe.probe()
         assert result.status == "healthy"

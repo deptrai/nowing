@@ -52,8 +52,10 @@ class SkillExecutionService:
             )
             return {
                 "type": "workflow",
+                "skill_id": skill.id,
+                "skill_slug": skill.slug,
                 "mission_id": str(mission.id),
-                "status": mission.status.value,
+                "status": mission.status,
             }
 
         # prompt skill: single-pass template substitution with explicit

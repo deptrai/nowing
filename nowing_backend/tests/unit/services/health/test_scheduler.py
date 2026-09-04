@@ -46,10 +46,12 @@ async def test_scheduler_run_category() -> None:
     probes = [DummyTestProbe(f"infra/test_{i}", "infra") for i in range(5)]
 
     with patch("app.services.health.scheduler.HealthProbeRegistry.get_probes", return_value=probes), \
-         patch("app.services.health.scheduler.HealthResultStore.save_result", new_callable=AsyncMock) as mock_save:
+         patch("app.services.health.scheduler.HealthResultStore.save_result", new_callable=AsyncMock) as mock_save, \
+         patch("app.services.health.scheduler.AdminHealthAlertEngine.evaluate_result", new_callable=AsyncMock) as mock_eval:
         mock_session = AsyncMock()
 
         results = await HealthProbeScheduler.run_category("infra", session=mock_session)
         assert len(results) == 5
         assert all(r.status == "healthy" for r in results)
         assert mock_save.call_count == 5
+        assert mock_eval.call_count == 5

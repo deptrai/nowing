@@ -30,9 +30,12 @@ export function AutomationRunsSection({
 		<Card className="border-border/60 bg-accent">
 			<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
 				<div className="space-y-1">
-					<CardTitle className="text-base font-semibold inline-flex items-center gap-2">
-						Recent runs
-					</CardTitle>
+					<CardTitle
+							data-testid="automation-recent-runs-heading"
+							className="text-base font-semibold inline-flex items-center gap-2"
+						>
+							Recent runs
+						</CardTitle>
 					<p className="text-xs text-muted-foreground">
 						Most recent first. Click a row to inspect step results, output and artifacts.
 					</p>

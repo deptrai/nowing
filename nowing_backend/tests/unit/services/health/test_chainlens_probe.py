@@ -15,10 +15,21 @@ async def test_chainlens_probe_healthy() -> None:
     assert probe.service_id == "chainlens/research"
 
     mock_client = AsyncMock()
-    mock_resp = AsyncMock()
-    mock_resp.status_code = 200
-    mock_resp.json.return_value = {"status": "ok", "version": "1.0.0"}
-    mock_client.get.return_value = mock_resp
+    mock_resp_health = AsyncMock()
+    mock_resp_health.status_code = 200
+    mock_resp_search = AsyncMock()
+    mock_resp_search.status_code = 200
+
+    def _client_get(url, *args, **kwargs):
+        if "/api/v1/health" in url:
+            return mock_resp_health
+        return mock_resp_search
+
+    def _client_post(url, *args, **kwargs):
+        return mock_resp_search
+
+    mock_client.get.side_effect = _client_get
+    mock_client.post.side_effect = _client_post
 
     with patch("app.services.health.probes.chainlens_probe.httpx.AsyncClient") as mock_cls, \
          patch("app.services.health.probes.chainlens_probe.config.CHAINLENS_API_KEY", "mock-key"):

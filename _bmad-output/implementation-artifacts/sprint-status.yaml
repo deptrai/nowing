@@ -295,7 +295,7 @@ development_status:
   25-4-realtime-llm-token-cost-proxy-health-celery-queue-telemetry: done
   25-5-dynamic-scraper-rule-engine-redos-sandbox: done
   25-6-security-audit-trail-logs-in-app-broadcast-announcements: done
-  25-7-third-party-health-operations-dashboard: review
+  25-7-third-party-health-operations-dashboard: in-progress
   epic-25-retrospective: optional
 
   epic-26: in-progress

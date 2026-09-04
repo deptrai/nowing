@@ -57,7 +57,10 @@ from .admin_scraper_platform_accounts_routes import (
     scraper_accounts_alias_router,
 )
 from .admin_scraper_rules_routes import router as admin_scraper_rules_router
-from .admin_telemetry_routes import router as admin_telemetry_router
+from .admin_telemetry_routes import (
+    health_router as admin_health_router,
+    router as admin_telemetry_router,
+)
 from .admin_users_routes import router as admin_users_router
 from .agent_action_log_route import router as agent_action_log_router
 from .agent_chat_routes import router as agent_chat_router
@@ -237,6 +240,7 @@ router.include_router(
     admin_latency_router
 )  # Platform admin ChainLens latency percentiles
 router.include_router(admin_telemetry_router)  # Platform admin real-time telemetry
+router.include_router(admin_health_router)  # /api/v1/admin/health aliases
 router.include_router(
     admin_scraper_platform_accounts_router
 )  # Admin scraper platform credentials

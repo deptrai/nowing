@@ -81,6 +81,32 @@ export async function createWorkspace(
 	return (await response.json()) as WorkspaceRow;
 }
 
+export type ModelRolesUpdate = {
+	chat_model_id?: number | null;
+	image_gen_model_id?: number | null;
+	vision_model_id?: number | null;
+};
+
+export async function setWorkspaceModelRoles(
+	request: APIRequestContext,
+	token: string,
+	workspaceId: number,
+	roles: ModelRolesUpdate
+): Promise<void> {
+	const response = await request.put(
+		`${BACKEND_URL}/api/v1/workspaces/${workspaceId}/model-roles`,
+		{
+			headers: authHeaders(token),
+			data: roles,
+		}
+	);
+	if (!response.ok()) {
+		throw new Error(
+			`setWorkspaceModelRoles failed (${response.status()}): ${await response.text()}`
+		);
+	}
+}
+
 export async function deleteWorkspace(
 	request: APIRequestContext,
 	token: string,

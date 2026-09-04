@@ -314,7 +314,7 @@ export function PlaygroundRunner({ workspaceId, platform, verb }: PlaygroundRunn
 					</div>
 				</div>
 
-				<div className="space-y-3">
+				<div className="space-y-3" data-testid="playground-output">
 					<h2 className="text-sm font-medium text-muted-foreground">Output</h2>
 					{isRunning ? (
 						<RunProgressPanel latest={run.latest} events={run.events} elapsedMs={run.elapsedMs} />

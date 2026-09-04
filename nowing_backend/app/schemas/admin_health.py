@@ -57,7 +57,6 @@ class HealthAlertItem(BaseModel):
     message: str
     triggered_at: datetime
     resolved_at: datetime | None = None
-    acknowledged_at: datetime | None = None
     acknowledged_by: UUID | None = None
     acknowledged_until: datetime | None = None
 
@@ -68,6 +67,50 @@ class HealthAlertAcknowledgeRequest(BaseModel):
     """Request to snooze/acknowledge an open alert."""
 
     duration_minutes: int = Field(default=60, ge=5, le=1440)
+
+
+class HealthAlertResolveRequest(BaseModel):
+    """Request to resolve an active alert."""
+
+    pass
+
+
+class HealthAlertRuleCreateRequest(BaseModel):
+    """Request to create or update an admin health alert rule."""
+
+    name: str = Field(..., min_length=1, max_length=255)
+    category: str | None = Field(default=None, max_length=50)
+    service_id_pattern: str | None = Field(default=None, max_length=255)
+    condition_json: dict[str, Any] = Field(default_factory=dict)
+    severity: str = Field(default="high", pattern=r"^(critical|high|medium|low)$")
+    channels: list[str] = Field(default_factory=lambda: ["in_app"])
+    cooldown_minutes: int = Field(default=15, ge=0, le=1440)
+    enabled: bool = True
+
+
+class HealthAlertRuleItem(BaseModel):
+    """Admin health alert rule record."""
+
+    id: int
+    name: str
+    category: str | None
+    service_id_pattern: str | None
+    condition_json: dict[str, Any]
+    severity: str
+    channels: list[str]
+    cooldown_minutes: int
+    enabled: bool
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class HealthAlertRuleListResponse(BaseModel):
+    """List response for admin health alert rules."""
+
+    items: list[HealthAlertRuleItem]
+    total: int
 
 
 class HealthProbeRunRequest(BaseModel):
@@ -89,8 +132,10 @@ class HealthProbeResultResponse(BaseModel):
     suggested_action: str | None = None
     error_rate_15m: float = 0.0
     success_rate_15m: float = 100.0
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    metadata_payload: dict[str, Any] = Field(default_factory=dict)
     probed_at: datetime
+    next_probe_at: datetime | None = None
+    interval_seconds: int = 300
 
 
 class HealthOverviewResponse(BaseModel):
@@ -124,3 +169,5 @@ class HealthHistoryListResponse(BaseModel):
     service_id: str
     items: list[HealthHistoryItem]
     total: int
+    limit: int = 10000
+    offset: int = 0

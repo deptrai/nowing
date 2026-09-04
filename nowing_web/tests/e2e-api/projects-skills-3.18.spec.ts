@@ -196,4 +196,121 @@ When the user asks about a competitor, research the latest news and provide a co
 		const inactiveSkills = (await listInactive.json()) as (typeof created)[];
 		expect(inactiveSkills.some((s) => s.id === created.id)).toBe(true);
 	});
+
+	test("execute prompt skill renders parameters and returns content", async () => {
+		const create = await api.post(`${BACKEND_URL}/api/v1/workspaces/${workspaceId}/skills`, {
+			data: {
+				name: "Local Market Summary",
+				slug: "local-market-summary",
+				description: "Summarize local market news",
+				trigger_pattern: "local market",
+				skill_type: "prompt",
+				content_markdown: "Summarize top 3 {{topic}} stories in {{location}}.",
+				parameters_schema: {
+					topic: { type: "string" },
+					location: { type: "string" },
+				},
+				is_active: true,
+			},
+		});
+		expect(create.ok()).toBeTruthy();
+		const created = (await create.json()) as {
+			id: number;
+			workspace_id: number;
+			slug: string;
+		};
+
+		const exec = await api.post(
+			`${BACKEND_URL}/api/v1/workspaces/${workspaceId}/skills/${created.id}/execute`,
+			{
+				data: { parameters: { topic: "real estate", location: "District 2" } },
+			}
+		);
+		expect(exec.ok()).toBeTruthy();
+		const result = (await exec.json()) as {
+			type: string;
+			skill_id: number;
+			skill_slug: string;
+			content: string;
+		};
+		expect(result.type).toBe("prompt");
+		expect(result.skill_id).toBe(created.id);
+		expect(result.skill_slug).toBe("local-market-summary");
+		expect(result.content).toContain("real estate");
+		expect(result.content).toContain("District 2");
+	});
+
+	test("execute workflow skill dispatches a DSH mission", async () => {
+		const create = await api.post(`${BACKEND_URL}/api/v1/workspaces/${workspaceId}/skills`, {
+			data: {
+				name: "Lead Scraping Mission",
+				slug: "lead-scraping-mission",
+				description: "Trigger lead scraping workflow",
+				trigger_pattern: "/scrape-leads",
+				skill_type: "workflow",
+				content_markdown: "# Lead scraping workflow",
+				parameters_schema: { competitor: { type: "string" } },
+				is_active: true,
+			},
+		});
+		expect(create.ok()).toBeTruthy();
+		const created = (await create.json()) as {
+			id: number;
+			workspace_id: number;
+			slug: string;
+		};
+
+		const exec = await api.post(
+			`${BACKEND_URL}/api/v1/workspaces/${workspaceId}/skills/${created.id}/execute`,
+			{
+				data: { parameters: { competitor: "VinGroup" } },
+			}
+		);
+		expect(exec.ok()).toBeTruthy();
+		const result = (await exec.json()) as {
+			type: string;
+			skill_id: number;
+			mission_id: string;
+			status: string;
+		};
+		expect(result.type).toBe("workflow");
+		expect(result.skill_id).toBe(created.id);
+		expect(result.mission_id).toBeTruthy();
+		expect(result.status).toBe("pending");
+
+		// Verify the mission payload references the skill and parameters.
+		const missionId = result.mission_id;
+		const mission = await api.get(`${BACKEND_URL}/api/v1/dsh/missions/${missionId}`);
+		if (mission.ok()) {
+			const missionBody = (await mission.json()) as {
+				payload: { skill_id: number; skill_slug: string; parameters: { competitor: string } };
+			};
+			expect(missionBody.payload.skill_id).toBe(created.id);
+			expect(missionBody.payload.skill_slug).toBe("lead-scraping-mission");
+			expect(missionBody.payload.parameters.competitor).toBe("VinGroup");
+		}
+	});
+
+	test("execute inactive skill returns 400", async () => {
+		const create = await api.post(`${BACKEND_URL}/api/v1/workspaces/${workspaceId}/skills`, {
+			data: {
+				name: "Inactive Skill",
+				slug: "inactive-skill",
+				description: "Should not run",
+				trigger_pattern: "inactive",
+				skill_type: "prompt",
+				content_markdown: "Do nothing.",
+				parameters_schema: {},
+				is_active: false,
+			},
+		});
+		expect(create.ok()).toBeTruthy();
+		const created = (await create.json()) as { id: number };
+
+		const exec = await api.post(
+			`${BACKEND_URL}/api/v1/workspaces/${workspaceId}/skills/${created.id}/execute`,
+			{ data: { parameters: {} } }
+		);
+		expect(exec.status()).toBe(400);
+	});
 });

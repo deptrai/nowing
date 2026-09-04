@@ -6,6 +6,8 @@ import logging
 import time
 from datetime import UTC, datetime
 
+import httpx
+
 from app.config import config
 from app.services.health.probe_base import HealthProbe, HealthResult, HealthStatus
 
@@ -41,6 +43,53 @@ class MessagingHealthProbe(HealthProbe):
     def interval_seconds(self) -> int:
         return 300  # 5 minutes
 
+    async def _ping_telegram(self, token: str) -> tuple[HealthStatus, str | None]:
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(f"https://api.telegram.org/bot{token}/getMe")
+            if resp.status_code == 200 and resp.json().get("ok"):
+                return ("healthy", None)
+            if resp.status_code in (401, 403):
+                return ("degraded", "Telegram bot token rejected")
+            if resp.status_code >= 500:
+                return ("unavailable", f"Telegram API returned HTTP {resp.status_code}")
+            return ("degraded", f"Telegram API returned HTTP {resp.status_code}")
+        except Exception as exc:
+            return ("unavailable", f"Telegram ping failed: {type(exc).__name__}: {exc}")
+
+    async def _ping_slack(self, token: str) -> tuple[HealthStatus, str | None]:
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(
+                    "https://slack.com/api/auth.test",
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+            data = resp.json()
+            if data.get("ok"):
+                return ("healthy", None)
+            if data.get("error") in {"invalid_auth", "account_inactive"}:
+                return ("degraded", f"Slack auth error: {data.get('error')}")
+            return ("unavailable", f"Slack auth.test failed: {data.get('error')}")
+        except Exception as exc:
+            return ("unavailable", f"Slack ping failed: {type(exc).__name__}: {exc}")
+
+    async def _ping_discord(self, token: str) -> tuple[HealthStatus, str | None]:
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(
+                    "https://discord.com/api/v10/users/@me",
+                    headers={"Authorization": f"Bot {token}"},
+                )
+            if resp.status_code == 200:
+                return ("healthy", None)
+            if resp.status_code in (401, 403):
+                return ("degraded", f"Discord bot token rejected (HTTP {resp.status_code})")
+            if resp.status_code >= 500:
+                return ("unavailable", f"Discord API returned HTTP {resp.status_code}")
+            return ("degraded", f"Discord API returned HTTP {resp.status_code}")
+        except Exception as exc:
+            return ("unavailable", f"Discord ping failed: {type(exc).__name__}: {exc}")
+
     async def probe(self) -> HealthResult:
         start = time.perf_counter()
         status: HealthStatus = "healthy"
@@ -54,21 +103,27 @@ class MessagingHealthProbe(HealthProbe):
                     status = "not_configured"
                     suggested_action = "Configure TELEGRAM_BOT_TOKEN in environment"
                 else:
-                    status = "healthy"
+                    status, last_error = await self._ping_telegram(bot_token)
+                    if status != "healthy":
+                        suggested_action = "Verify Telegram bot token and network reachability"
             elif self._provider == "slack":
                 slack_token = getattr(config, "SLACK_BOT_TOKEN", None)
                 if not slack_token:
                     status = "not_configured"
                     suggested_action = "Configure SLACK_BOT_TOKEN in environment"
                 else:
-                    status = "healthy"
+                    status, last_error = await self._ping_slack(slack_token)
+                    if status != "healthy":
+                        suggested_action = "Verify Slack bot token and workspace permissions"
             elif self._provider == "discord":
                 discord_token = getattr(config, "DISCORD_BOT_TOKEN", None)
                 if not discord_token:
                     status = "not_configured"
                     suggested_action = "Configure DISCORD_BOT_TOKEN in environment"
                 else:
-                    status = "healthy"
+                    status, last_error = await self._ping_discord(discord_token)
+                    if status != "healthy":
+                        suggested_action = "Verify Discord bot token and gateway permissions"
             else:
                 status = "not_configured"
                 suggested_action = f"Configure credentials for messaging provider {self._provider}"
@@ -80,8 +135,8 @@ class MessagingHealthProbe(HealthProbe):
             last_error = f"Messaging probe error: {type(exc).__name__}"
             suggested_action = "Verify messaging provider configuration and network access"
 
-        success_rate = 100.0 if status in {"healthy", "not_configured"} else 0.0
-        error_rate = 0.0 if status in {"healthy", "not_configured"} else 100.0
+        success_rate = 100.0 if status == "healthy" else (50.0 if status == "degraded" else 0.0)
+        error_rate = 0.0 if status == "healthy" else (50.0 if status == "degraded" else 100.0)
 
         return HealthResult(
             service_id=self._service_id,

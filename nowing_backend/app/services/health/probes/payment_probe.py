@@ -6,6 +6,8 @@ import logging
 import time
 from datetime import UTC, datetime
 
+import httpx
+
 from app.config import config
 from app.services.health.probe_base import HealthProbe, HealthResult, HealthStatus
 
@@ -41,6 +43,25 @@ class PaymentHealthProbe(HealthProbe):
     def interval_seconds(self) -> int:
         return 300  # 5 minutes
 
+    async def _ping_stripe(self, api_key: str) -> tuple[HealthStatus, str | None]:
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(
+                    "https://api.stripe.com/v1/account",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                )
+            if resp.status_code == 200:
+                return ("healthy", None)
+            if resp.status_code in (401, 403):
+                return ("degraded", f"Stripe API key rejected (HTTP {resp.status_code})")
+            if resp.status_code == 429:
+                return ("degraded", "Stripe rate limit exceeded")
+            if resp.status_code >= 500:
+                return ("unavailable", f"Stripe API returned HTTP {resp.status_code}")
+            return ("degraded", f"Stripe API returned HTTP {resp.status_code}")
+        except Exception as exc:
+            return ("unavailable", f"Stripe ping failed: {type(exc).__name__}: {exc}")
+
     async def probe(self) -> HealthResult:
         start = time.perf_counter()
         status: HealthStatus = "healthy"
@@ -54,7 +75,9 @@ class PaymentHealthProbe(HealthProbe):
                     status = "not_configured"
                     suggested_action = "Configure STRIPE_SECRET_KEY in environment"
                 else:
-                    status = "healthy"
+                    status, last_error = await self._ping_stripe(api_key)
+                    if status != "healthy":
+                        suggested_action = "Verify Stripe API key and network reachability"
             else:
                 status = "not_configured"
                 suggested_action = f"Configure credentials for payment provider {self._provider}"
@@ -66,8 +89,8 @@ class PaymentHealthProbe(HealthProbe):
             last_error = f"Payment probe error: {type(exc).__name__}"
             suggested_action = "Inspect payment gateway configuration and keys"
 
-        success_rate = 100.0 if status in {"healthy", "not_configured"} else 0.0
-        error_rate = 0.0 if status in {"healthy", "not_configured"} else 100.0
+        success_rate = 100.0 if status == "healthy" else (50.0 if status == "degraded" else 0.0)
+        error_rate = 0.0 if status == "healthy" else (50.0 if status == "degraded" else 100.0)
 
         return HealthResult(
             service_id=self._service_id,

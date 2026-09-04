@@ -14,6 +14,36 @@ from app.services.health.probe_base import HealthProbe, HealthResult, HealthStat
 logger = logging.getLogger(__name__)
 
 
+# Platform -> canonical docs/health landing or CDN endpoint
+_CANONICAL_PLATFORM_ENDPOINTS: dict[str, str] = {
+    "amazon": "https://www.amazon.com",
+    "batdongsan": "https://batdongsan.com.vn",
+    "cafef": "https://cafef.vn",
+    "chotot": "https://www.chotot.com",
+    "crawler": "https://httpbin.org/get",
+    "google_maps": "https://maps.googleapis.com",
+    "google_search": "https://www.google.com",
+    "indeed": "https://www.indeed.com",
+    "instagram": "https://www.instagram.com",
+    "itviec": "https://itviec.com",
+    "linkedin": "https://www.linkedin.com",
+    "masothue": "https://masothue.com",
+    "muaban_bds": "https://muaban.net",
+    "muasamcong": "https://muasamcong.gov.vn",
+    "reddit": "https://www.reddit.com",
+    "shopee": "https://shopee.vn",
+    "spatial_planning": "https://httpbin.org/get",
+    "telegram": "https://t.me",
+    "tiktok": "https://www.tiktok.com",
+    "topcv": "https://www.topcv.vn",
+    "vietnamworks": "https://www.vietnamworks.com",
+    "vietstock": "https://vietstock.vn",
+    "walmart": "https://www.walmart.com",
+    "xactions": "https://x.com",
+    "youtube": "https://www.youtube.com",
+}
+
+
 class ScraperHealthProbe(HealthProbe):
     """Probes a specific scraper platform or capability."""
 
@@ -28,7 +58,7 @@ class ScraperHealthProbe(HealthProbe):
         self._service_id = f"scraper/{platform}"
         self._service_name = service_name or platform.replace("_", " ").title()
         self._display_group = display_group
-        self._endpoint = endpoint
+        self._endpoint = endpoint or _CANONICAL_PLATFORM_ENDPOINTS.get(platform, "https://httpbin.org/get")
 
     @property
     def service_id(self) -> str:
@@ -50,6 +80,18 @@ class ScraperHealthProbe(HealthProbe):
     def interval_seconds(self) -> int:
         return 300  # 5 minutes
 
+    def _is_cap_registered(self) -> bool:
+        """Check whether a capability is registered in the CapabilityRegistry for this platform."""
+        for cap in CapabilityRegistry.all():
+            if self._platform in cap.name:
+                return True
+            if cap.metadata:
+                if cap.metadata.get("platform") == self._platform:
+                    return True
+                if cap.metadata.get("category") in ("scraper", "search"):
+                    return True
+        return False
+
     async def probe(self) -> HealthResult:
         start = time.perf_counter()
         status: HealthStatus = "healthy"
@@ -57,61 +99,62 @@ class ScraperHealthProbe(HealthProbe):
         suggested_action: str | None = None
         latency_ms: int | None = None
 
+        cap_registered = self._is_cap_registered()
+
+        # 1. Check proxy pool reachability via active provider
+        proxy_configured = False
+        proxy_dict = None
         try:
-            # 1. Check if capability is registered in CapabilityRegistry
-            matching_caps = [
-                cap for cap in CapabilityRegistry.all()
-                if self._platform in cap.name or (cap.metadata and cap.metadata.get("platform") == self._platform)
-            ]
+            from app.utils.proxy import get_active_provider
 
-            # 2. Check proxy pool reachability via active provider
-            proxy_configured = False
-            proxy_dict = None
-            try:
-                from app.utils.proxy import get_active_provider
+            provider = get_active_provider()
+            if provider:
+                proxy_dict = provider.get_requests_proxies()
+                proxy_configured = bool(proxy_dict)
+        except Exception as proxy_err:
+            logger.debug("Proxy resolution note for %s: %s", self._service_id, proxy_err)
 
-                provider = get_active_provider()
-                if provider:
-                    proxy_dict = provider.get_requests_proxies()
-                    proxy_configured = bool(proxy_dict)
-            except Exception as proxy_err:
-                logger.debug("Proxy resolution note for %s: %s", self._service_id, proxy_err)
-
-            # 3. Non-mutating lightweight probe: safe HTTP HEAD to neutral endpoint via proxy or direct
-            try:
-                # Use a neutral target (e.g., httpbin or icanhazip) to avoid platform anti-bot triggers
-                test_url = "https://1.1.1.1"
-                proxies = proxy_dict.get("https") if proxy_dict else None
-                async with httpx.AsyncClient(proxy=proxies, timeout=3.0, verify=False) as client:
-                    resp = await client.head(test_url)
-                    if resp.status_code >= 500:
-                        status = "degraded"
-                        suggested_action = "Rotate proxy pool or inspect gateway upstream"
-            except Exception as net_exc:
-                # Network or proxy timeout
-                if proxy_configured:
+        # 2. Non-mutating lightweight probe: safe HTTP HEAD to platform endpoint via proxy or direct
+        try:
+            proxy_url = proxy_dict.get("http") if proxy_dict else None
+            async with httpx.AsyncClient(proxy=proxy_url, timeout=3.0, follow_redirects=True) as client:
+                resp = await client.head(self._endpoint)
+                if resp.status_code >= 500:
                     status = "degraded"
-                    suggested_action = "Rotate proxy pool endpoints"
-                    last_error = f"Proxy latency/connect warning: {type(net_exc).__name__}"
-                else:
-                    # Without proxy configured and registration missing
-                    if not matching_caps:
+                    suggested_action = "Rotate proxy pool or inspect gateway upstream"
+                elif resp.status_code in (401, 403, 407):
+                    # Auth walls are expected for some platforms; only report degraded if proxy is absent
+                    if not proxy_configured:
                         status = "degraded"
-                        suggested_action = "Verify capability registration in CapabilityRegistry"
-
-            latency_ms = int((time.perf_counter() - start) * 1000)
-            if latency_ms > 4000 and status == "healthy":
+                        suggested_action = "Ensure proxy or credentials are configured for this platform"
+                    last_error = f"HTTP {resp.status_code} from {self._endpoint}"
+                elif resp.status_code >= 400:
+                    status = "degraded"
+                    suggested_action = "Verify target endpoint and proxy configuration"
+                    last_error = f"HTTP {resp.status_code} from {self._endpoint}"
+        except Exception as net_exc:
+            if proxy_configured:
                 status = "degraded"
-                suggested_action = "Investigate network latency for scraper probe"
+                suggested_action = "Rotate proxy pool endpoints"
+                last_error = f"Proxy latency/connect warning: {type(net_exc).__name__}: {net_exc}"
+            else:
+                # No proxy and capability not registered -> not really a failure, just not configured
+                if not cap_registered:
+                    status = "not_configured"
+                    suggested_action = "Verify capability registration in CapabilityRegistry"
+                    last_error = f"No capability registered and network probe failed: {type(net_exc).__name__}"
+                else:
+                    status = "unavailable"
+                    suggested_action = "Verify target endpoint and proxy configuration"
+                    last_error = f"Network probe failed: {type(net_exc).__name__}: {net_exc}"
 
-        except Exception as exc:
-            latency_ms = int((time.perf_counter() - start) * 1000)
-            status = "unavailable"
-            last_error = f"Scraper probe error: {type(exc).__name__}"
-            suggested_action = "Check scraper configuration and proxy pool connectivity"
+        latency_ms = int((time.perf_counter() - start) * 1000)
+        if latency_ms > 4000 and status in {"healthy", "degraded"}:
+            status = "degraded"
+            suggested_action = suggested_action or "Investigate network latency for scraper probe"
 
-        success_rate = 100.0 if status == "healthy" else (60.0 if status == "degraded" else 0.0)
-        error_rate = 0.0 if status == "healthy" else (40.0 if status == "degraded" else 100.0)
+        success_rate = 100.0 if status == "healthy" else (50.0 if status == "degraded" else 0.0)
+        error_rate = 0.0 if status == "healthy" else (50.0 if status == "degraded" else 100.0)
 
         return HealthResult(
             service_id=self._service_id,
@@ -124,6 +167,6 @@ class ScraperHealthProbe(HealthProbe):
             suggested_action=suggested_action,
             error_rate_15m=error_rate,
             success_rate_15m=success_rate,
-            metadata={"platform": self._platform, "endpoint": self._endpoint},
+            metadata={"platform": self._platform, "endpoint": self._endpoint, "capability_registered": cap_registered},
             probed_at=datetime.now(UTC),
         )

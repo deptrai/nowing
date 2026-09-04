@@ -271,7 +271,12 @@ export function RoutedSectionShell({
 						<h2 className="text-lg font-semibold">{selectedLabel}</h2>
 						<Separator className="mt-4 bg-border" />
 					</div>
-				) : null}
+				) : (
+					<div className="hidden md:block">
+						<h1 className="text-lg font-semibold">{title}</h1>
+						<Separator className="mt-4 bg-border" />
+					</div>
+				)}
 				<div className={cn("min-w-0", desktopNav ? "pt-4" : "pt-4 md:pt-0", contentClassName)}>
 					{children}
 				</div>
