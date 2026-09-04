@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -31,7 +31,9 @@ class NarrativeReportMetadata(BaseModel):
     citations: list[SourceCitation] = Field(default_factory=list)
     degraded: bool = Field(default=False, description="True if data was empty or fallback triggered")
     degradation_reasons: list[str] = Field(default_factory=list)
-    generated_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    generated_at: str = Field(
+        default_factory=lambda: datetime.now(UTC).isoformat()
+    )
 
 
 class NarrativeTemplateParameter(BaseModel):
