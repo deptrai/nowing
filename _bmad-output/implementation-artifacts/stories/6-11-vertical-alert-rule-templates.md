@@ -107,6 +107,10 @@ so that I can activate intelligent scheduled monitoring in 1 click without manua
   - [x] Write integration test in `nowing_backend/tests/integration/alerts/test_alert_templates_routes.py`.
   - [x] Run `ruff check` and pytest suite.
 
+### Review Findings
+
+- [x] [Review][Defer] Multi-channel selection in CreateFromTemplateModal [`CreateFromTemplateModal.tsx:107`] — deferred, pre-existing (in-app is standard default; add multi-select channel toggles in follow-up UX pass)
+
 ---
 
 ## Suggested Review Order

@@ -1,3 +1,9 @@
+## Deferred from: code review of 6-11-vertical-alert-rule-templates (2026-09-04)
+
+- **Finding:** `CreateFromTemplateModal.tsx` currently defaults `notification_channels` to `["in_app"]` without interactive multi-select UI for Telegram/Email notifications.
+  - **Action:** Marked `[x] [Review][Defer]` in `6-11-vertical-alert-rule-templates.md`.
+  - **Reason / when to revisit:** In-app notifications are the primary delivery mechanism; Telegram integration requires existing workspace bot linkage. Add channel toggle controls in follow-up UX refinement pass.
+
 ## Deferred from: code review of 25-4-realtime-llm-token-cost-proxy-health-celery-queue-telemetry (2026-08-26)
 
 - **Finding:** Cost aggregation in `AdminTelemetryService` reimplements `UsageService` SQL patterns instead of reusing/extend `UsageService`.
