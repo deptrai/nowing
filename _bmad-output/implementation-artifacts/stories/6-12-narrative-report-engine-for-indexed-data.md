@@ -1,6 +1,6 @@
 ---
 story_key: 6-12-narrative-report-engine-for-indexed-data
-status: in-progress
+status: done
 baseline_commit: fb2613d66
 epic: 6
 story: 12
@@ -8,7 +8,7 @@ story: 12
 
 # Story 6.12: Narrative Report Engine for Indexed Data
 
-**Status:** `in-progress`  
+**Status:** `done`  
 **Epic:** 6 — Automations  
 **Governed by:** AD-33 (Generic Alert Engine Scheduler), AD-34 (Citation & Provenance Architecture), AD-35 (Graceful Degradation Contract), `epics.md` lines 4092–4105.  
 **Consolidated from:** Story 14.4 (News Digest & Synthesis), Story 15.4 (Financial Trend Detection), Story 16.4 (Company Timeline).
@@ -100,3 +100,40 @@ so that I can understand longitudinal market trends and company evolutions in se
   - [x] Write unit tests in `nowing_backend/tests/unit/reports/test_narrative_engine.py`.
   - [x] Write integration test in `nowing_backend/tests/integration/reports/test_narrative_routes.py`.
   - [x] Run `ruff check` and pytest suite.
+
+---
+
+## Suggested Review Order
+
+**Narrative Synthesis Engine & Data Models**
+
+- Defines template definitions, parameters schema, citations, and metadata
+  [`models.py:11`](../../../nowing_backend/app/reports/narrative/models.py#L11)
+
+- Template registry with canonical news digest, financial trend, and corporate timeline templates
+  [`registry.py:14`](../../../nowing_backend/app/reports/narrative/registry.py#L14)
+
+- Synthesis engine with data ingress, prompt assembly, and graceful degradation contract
+  [`engine.py:42`](../../../nowing_backend/app/reports/narrative/engine.py#L42)
+
+**API Routes & RBAC**
+
+- Template catalog and on-demand report generation REST endpoints
+  [`narrative_reports_routes.py:27`](../../../nowing_backend/app/routes/narrative_reports_routes.py#L27)
+
+**Frontend Modal & Contracts**
+
+- TypeScript contracts for narrative templates and generation payloads
+  [`reports.types.ts:32`](../../../nowing_web/contracts/types/reports.types.ts#L32)
+
+- Interactive modal component for synthesizing grounded narrative reports
+  [`NarrativeReportModal.tsx:42`](../../../nowing_web/components/reports/NarrativeReportModal.tsx#L42)
+
+**Test Suites**
+
+- Unit tests for template registry, markdown synthesis, citation extraction, and degradation
+  [`test_narrative_engine.py:10`](../../../nowing_backend/tests/unit/reports/test_narrative_engine.py#L10)
+
+- Integration tests for templates catalog and on-demand report lifecycle
+  [`test_narrative_routes.py:84`](../../../nowing_backend/tests/integration/reports/test_narrative_routes.py#L84)
+
