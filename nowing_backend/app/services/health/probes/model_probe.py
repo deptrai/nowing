@@ -5,13 +5,12 @@ from __future__ import annotations
 import logging
 import re
 import time
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from app.config import config
 from app.models.connectors import Connection
 from app.services.health.probe_base import HealthProbe, HealthResult, HealthStatus
 from app.services.model_connection_service import verify_connection
-from app.services.provider_registry import spec_for
 
 logger = logging.getLogger(__name__)
 
@@ -56,17 +55,20 @@ class ModelHealthProbe(HealthProbe):
     def _connection_from_global_config(provider: str, model_name: str) -> Connection:
         """Build a Connection from in-memory global LLM config for the provider/model."""
         for cfg in getattr(config, "GLOBAL_LLM_CONFIGS", []) or []:
-            if cfg.get("litellm_provider") == provider or cfg.get("provider") == provider:
-                if not model_name or (cfg.get("model_name") == model_name or cfg.get("name") == model_name):
-                    from app.services.model_resolver import native_connection_from_config
+            provider_match = cfg.get("litellm_provider") == provider or cfg.get("provider") == provider
+            model_match = not model_name or (cfg.get("model_name") == model_name or cfg.get("name") == model_name)
+            if provider_match and model_match:
+                from app.services.model_resolver import (
+                    native_connection_from_config,
+                )
 
-                    conn_dict = native_connection_from_config(cfg)
-                    return Connection(
-                        provider=conn_dict["provider"],
-                        base_url=conn_dict["base_url"],
-                        api_key=conn_dict.get("api_key"),
-                        extra=conn_dict.get("extra", {}),
-                    )
+                conn_dict = native_connection_from_config(cfg)
+                return Connection(
+                    provider=conn_dict["provider"],
+                    base_url=conn_dict["base_url"],
+                    api_key=conn_dict.get("api_key"),
+                    extra=conn_dict.get("extra", {}),
+                )
         return Connection(
             provider=provider,
             base_url=None,

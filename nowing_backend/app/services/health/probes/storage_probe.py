@@ -97,8 +97,8 @@ class StorageHealthProbe(HealthProbe):
             endpoint = f"{endpoint.rstrip('/')}/{bucket}"
 
         # Build a ListObjectsV2 request signed with AWS SigV4
-        import hmac
         import hashlib
+        import hmac
         from datetime import UTC, datetime
 
         now = datetime.now(UTC)
@@ -127,7 +127,7 @@ class StorageHealthProbe(HealthProbe):
         k_date = hmac.new(f"AWS4{secret_key}".encode(), date_stamp.encode(), hashlib.sha256).digest()
         k_region = hmac.new(k_date, region.encode(), hashlib.sha256).digest()
         k_service = hmac.new(k_region, service.encode(), hashlib.sha256).digest()
-        k_signing = hmac.new(k_service, "aws4_request".encode(), hashlib.sha256).digest()
+        k_signing = hmac.new(k_service, b"aws4_request", hashlib.sha256).digest()
         signature = hmac.new(k_signing, string_to_sign.encode(), hashlib.sha256).hexdigest()
 
         auth_header = (

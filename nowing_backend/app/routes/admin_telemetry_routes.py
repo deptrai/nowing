@@ -24,7 +24,6 @@ from app.schemas.admin_health import (
     HealthHistoryListResponse,
     HealthOverviewResponse,
     HealthProbeResultResponse,
-    HealthProbeRunRequest,
     HealthStatusesListResponse,
 )
 from app.schemas.admin_telemetry import (

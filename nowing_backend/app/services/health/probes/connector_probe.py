@@ -89,9 +89,7 @@ class ConnectorHealthProbe(HealthProbe):
             "google_gmail",
             "google_calendar",
             "google_sheets",
-        }:
-            headers["Authorization"] = f"Bearer {token}"
-        elif self._connector_type in {"slack", "github", "airtable", "clickup"}:
+        } or self._connector_type in {"slack", "github", "airtable", "clickup"}:
             headers["Authorization"] = f"Bearer {token}"
         elif self._connector_type == "discord":
             headers["Authorization"] = f"Bot {token}"
@@ -148,8 +146,7 @@ class ConnectorHealthProbe(HealthProbe):
         latest_connection: Connection | None = None
 
         try:
-            async with _CONNECTOR_DB_SESSION_SEMAPHORE:
-                async with async_session_maker() as session:
+            async with _CONNECTOR_DB_SESSION_SEMAPHORE, async_session_maker() as session:
                     query = select(Connection).where(
                         and_(
                             Connection.provider == self._connector_type,

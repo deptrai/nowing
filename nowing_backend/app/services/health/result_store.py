@@ -6,8 +6,9 @@ import json
 import logging
 import re
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
-from sqlalchemy import func, insert, select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 

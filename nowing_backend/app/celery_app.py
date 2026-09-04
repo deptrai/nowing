@@ -238,6 +238,7 @@ celery_app = Celery(
         "app.tasks.lead_scrapers",
         "app.tasks.celery_tasks.broadcast_tasks",
         "app.tasks.celery_tasks.health_probe_task",
+        "app.tasks.celery_tasks.health_retention_task",
     ],
 )
 
@@ -497,5 +498,11 @@ celery_app.conf.beat_schedule = {
         "task": "health_probe_storage",
         "schedule": crontab(minute="*/5"),  # Every 5 minutes
         "options": {"expires": 120},
+    },
+    # Purge stale admin health history daily (30-day retention by default).
+    "cleanup-admin-health-history": {
+        "task": "cleanup_admin_health_history",
+        "schedule": crontab(hour="2", minute="0"),
+        "options": {"expires": 600},
     },
 }

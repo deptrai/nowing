@@ -153,3 +153,30 @@ async def test_admin_health_endpoints_require_superuser(
 
     res = await client_as_regular_user.post("/api/v1/admin/telemetry/health/alerts/1/acknowledge")
     assert res.status_code == 403, res.text
+
+
+@pytest.mark.asyncio
+async def test_admin_health_probe_unregistered_returns_404(admin_client: AsyncClient) -> None:
+    """POST /health/probe/{service_id} returns 404 for an unregistered service."""
+    res = await admin_client.post("/api/v1/admin/telemetry/health/probe/unregistered/unknown-service")
+    assert res.status_code == 404, res.text
+    assert "not registered" in res.text.lower() or "not found" in res.text.lower()
+
+
+@pytest.mark.asyncio
+async def test_admin_health_acknowledge_resolved_returns_404(admin_client: AsyncClient) -> None:
+    """POST /health/alerts/{alert_id}/acknowledge returns 404 for resolved alert."""
+    with patch("app.services.health.ThirdPartyHealthService.acknowledge_alert", new_callable=AsyncMock, return_value=None):
+        res = await admin_client.post(
+            "/api/v1/admin/telemetry/health/alerts/42/acknowledge",
+            json={"duration_minutes": 30},
+        )
+        assert res.status_code == 404, res.text
+        assert "not found" in res.text.lower() or "resolved" in res.text.lower()
+
+
+@pytest.mark.asyncio
+async def test_admin_health_endpoints_reject_pat(pat_client: AsyncClient) -> None:
+    """Personal access tokens (non-superuser) are rejected from admin health endpoints."""
+    res = await pat_client.get("/api/v1/admin/telemetry/health/overview")
+    assert res.status_code == 403, res.text

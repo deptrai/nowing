@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.admin_health import (
     AdminHealthAlert,
+    AdminHealthAlertRule,
     AdminHealthHistory,
     AdminHealthStatus,
 )

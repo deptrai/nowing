@@ -52,7 +52,7 @@ class HealthProbeScheduler:
                     result.interval_seconds = probe.interval_seconds
                     result.next_probe_at = result.probed_at + timedelta(seconds=probe.interval_seconds)
                     return result
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     logger.error("Probe timeout for %s after %ss", probe.service_id, PROBE_TIMEOUT_SECONDS)
                     return HealthResult(
                         service_id=probe.service_id,
@@ -119,7 +119,7 @@ class HealthProbeScheduler:
             result = await asyncio.wait_for(probe.probe(), timeout=PROBE_TIMEOUT_SECONDS)
             result.interval_seconds = probe.interval_seconds
             result.next_probe_at = result.probed_at + timedelta(seconds=probe.interval_seconds)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.error("Probe timeout for %s after %ss", service_id, PROBE_TIMEOUT_SECONDS)
             result = HealthResult(
                 service_id=probe.service_id,
