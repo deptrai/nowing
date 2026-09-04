@@ -26,6 +26,41 @@ class ThirdPartyHealthService:
     """Facade for managing third-party probes, snapshots, alerts, and history."""
 
     @staticmethod
+    def list_categories() -> list[dict[str, Any]]:
+        """Return metadata for every registered health probe category."""
+        probes = HealthProbeRegistry.get_probes()
+        by_category: dict[str, list] = {}
+        for probe in probes:
+            by_category.setdefault(probe.category, []).append(probe)
+
+        category_meta = {
+            "infra": ("Infrastructure", 30),
+            "model": ("LLM / AI Models", 120),
+            "scraper": ("Platform Scrapers", 300),
+            "connector": ("SaaS Connectors", 900),
+            "messaging": ("Messaging & Notifications", 300),
+            "payment": ("Payment Providers", 300),
+            "storage": ("Storage Backends", 300),
+            "research": ("ChainLens Research", 300),
+            "proxy": ("Proxy Pool", 300),
+        }
+
+        items = []
+        for key in sorted(by_category.keys()):
+            probe_count = len(by_category[key])
+            first = by_category[key][0]
+            label, default_interval = category_meta.get(key, (key.replace("_", " ").title(), first.interval_seconds))
+            items.append(
+                {
+                    "key": key,
+                    "label": label,
+                    "default_interval_seconds": default_interval,
+                    "probe_count": probe_count,
+                }
+            )
+        return items
+
+    @staticmethod
     async def get_overview(session: AsyncSession) -> dict[str, Any]:
         """Compute aggregated health overview across all categories."""
         statuses = await HealthResultStore.get_latest_status(session)

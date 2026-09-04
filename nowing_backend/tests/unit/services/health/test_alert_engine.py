@@ -32,7 +32,9 @@ async def test_alert_engine_creates_alert_on_unavailable() -> None:
         error_rate_15m=100.0,
     )
 
-    mock_session = AsyncMock()
+    mock_session = MagicMock()
+    mock_session.commit = AsyncMock()
+    mock_session.add = MagicMock()
 
     # 1. rules query
     mock_rules_res = MagicMock()

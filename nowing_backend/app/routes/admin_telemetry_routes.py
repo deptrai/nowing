@@ -20,6 +20,7 @@ from app.schemas.admin_health import (
     HealthAlertRuleItem,
     HealthAlertRuleListResponse,
     HealthAlertsListResponse,
+    HealthCategoriesListResponse,
     HealthHistoryListResponse,
     HealthOverviewResponse,
     HealthProbeResultResponse,
@@ -128,8 +129,10 @@ async def purge_celery_queue(
 def _build_health_routes() -> None:
     """Register health endpoints on both /admin/telemetry and /admin/health prefixes."""
     for target in (router, health_router):
+        # health_router already has /admin/health prefix; its subpaths must not repeat /health.
+        prefix = "" if target is health_router else "/health"
 
-        @target.get("/health/overview", response_model=HealthOverviewResponse)
+        @target.get(f"{prefix}/overview", response_model=HealthOverviewResponse)
         async def get_health_overview(
             session: AsyncSession = Depends(get_async_session),
             _auth: AuthContext = Depends(require_superuser),
@@ -137,7 +140,15 @@ def _build_health_routes() -> None:
             """Return aggregated platform health overview and counts."""
             return await ThirdPartyHealthService.get_overview(session)
 
-        @target.get("/health/statuses", response_model=HealthStatusesListResponse)
+        @target.get(f"{prefix}/categories", response_model=HealthCategoriesListResponse)
+        async def get_health_categories(
+            _auth: AuthContext = Depends(require_superuser),
+        ) -> dict[str, Any]:
+            """List all registered health probe categories and counts."""
+            items = ThirdPartyHealthService.list_categories()
+            return {"items": items, "total": len(items)}
+
+        @target.get(f"{prefix}/statuses", response_model=HealthStatusesListResponse)
         async def get_health_statuses(
             category: str | None = Query(default=None, max_length=50),
             service_id: str | None = Query(default=None, max_length=255),
@@ -153,7 +164,7 @@ def _build_health_routes() -> None:
             total = len(items)
             return {"items": items[offset : offset + limit], "total": total}
 
-        @target.get("/health/alerts", response_model=HealthAlertsListResponse)
+        @target.get(f"{prefix}/alerts", response_model=HealthAlertsListResponse)
         async def get_health_alerts(
             session: AsyncSession = Depends(get_async_session),
             _auth: AuthContext = Depends(require_superuser),
@@ -162,7 +173,7 @@ def _build_health_routes() -> None:
             items = await ThirdPartyHealthService.get_active_alerts(session)
             return {"items": items, "total": len(items)}
 
-        @target.post("/health/alerts/{alert_id}/acknowledge", response_model=HealthAlertItem)
+        @target.post(f"{prefix}/alerts/{{alert_id}}/acknowledge", response_model=HealthAlertItem)
         @limiter.limit("20/minute")
         async def acknowledge_health_alert(
             request: Request,
@@ -191,7 +202,7 @@ def _build_health_routes() -> None:
                 )
             return alert
 
-        @target.post("/health/alerts/{alert_id}/resolve", response_model=HealthAlertItem)
+        @target.post(f"{prefix}/alerts/{{alert_id}}/resolve", response_model=HealthAlertItem)
         @limiter.limit("20/minute")
         async def resolve_health_alert(
             request: Request,
@@ -214,7 +225,7 @@ def _build_health_routes() -> None:
                 )
             return alert
 
-        @target.get("/health/history/{service_id:path}", response_model=HealthHistoryListResponse)
+        @target.get(f"{prefix}/history/{{service_id:path}}", response_model=HealthHistoryListResponse)
         async def get_health_history(
             service_id: str,
             hours: int = Query(default=24, ge=1, le=168),
@@ -240,7 +251,7 @@ def _build_health_routes() -> None:
                 "offset": offset,
             }
 
-        @target.post("/health/probe/category/{category}", response_model=list[HealthProbeResultResponse])
+        @target.post(f"{prefix}/probe/category/{{category}}", response_model=list[HealthProbeResultResponse])
         @limiter.limit("10/minute")
         async def run_category_health_probe(
             request: Request,
@@ -257,7 +268,7 @@ def _build_health_routes() -> None:
                 )
             return results
 
-        @target.post("/health/probe/{service_id:path}", response_model=HealthProbeResultResponse)
+        @target.post(f"{prefix}/probe/{{service_id:path}}", response_model=HealthProbeResultResponse)
         @limiter.limit("30/minute")
         async def run_single_health_probe(
             request: Request,
@@ -275,7 +286,7 @@ def _build_health_routes() -> None:
                 )
             return result
 
-        @target.get("/health/rules", response_model=HealthAlertRuleListResponse)
+        @target.get(f"{prefix}/rules", response_model=HealthAlertRuleListResponse)
         async def get_health_rules(
             session: AsyncSession = Depends(get_async_session),
             _auth: AuthContext = Depends(require_superuser),
@@ -284,7 +295,7 @@ def _build_health_routes() -> None:
             items = await ThirdPartyHealthService.list_rules(session)
             return {"items": items, "total": len(items)}
 
-        @target.get("/health/rules/{rule_id}", response_model=HealthAlertRuleItem)
+        @target.get(f"{prefix}/rules/{{rule_id}}", response_model=HealthAlertRuleItem)
         async def get_health_rule(
             rule_id: int,
             session: AsyncSession = Depends(get_async_session),
@@ -299,7 +310,7 @@ def _build_health_routes() -> None:
                 )
             return rule
 
-        @target.post("/health/rules", response_model=HealthAlertRuleItem, status_code=status.HTTP_201_CREATED)
+        @target.post(f"{prefix}/rules", response_model=HealthAlertRuleItem, status_code=status.HTTP_201_CREATED)
         @limiter.limit("10/minute")
         async def create_health_rule(
             request: Request,
@@ -321,7 +332,7 @@ def _build_health_routes() -> None:
             created = await ThirdPartyHealthService.create_rule(session, rule)
             return created
 
-        @target.put("/health/rules/{rule_id}", response_model=HealthAlertRuleItem)
+        @target.put(f"{prefix}/rules/{{rule_id}}", response_model=HealthAlertRuleItem)
         @limiter.limit("10/minute")
         async def update_health_rule(
             request: Request,
@@ -348,7 +359,7 @@ def _build_health_routes() -> None:
             updated = await ThirdPartyHealthService.update_rule(session, rule)
             return updated
 
-        @target.delete("/health/rules/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
+        @target.delete(f"{prefix}/rules/{{rule_id}}", status_code=status.HTTP_204_NO_CONTENT)
         @limiter.limit("10/minute")
         async def delete_health_rule(
             request: Request,

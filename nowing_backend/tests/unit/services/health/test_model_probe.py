@@ -10,6 +10,21 @@ from app.services.health.probes.model_probe import ModelHealthProbe
 
 
 @pytest.mark.asyncio
+async def test_model_probe_not_configured_without_credentials() -> None:
+    probe = ModelHealthProbe(
+        service_id="model/test-chat",
+        service_name="Test Chat",
+        provider="openai",
+        model_id="gpt-4o",
+    )
+
+    result = await probe.probe()
+    assert result.service_id == "model/test-chat"
+    assert result.status == "not_configured"
+    assert "credentials" in (result.suggested_action or "").lower()
+
+
+@pytest.mark.asyncio
 async def test_model_probe_healthy() -> None:
     probe = ModelHealthProbe(
         service_id="model/test-chat",
@@ -22,7 +37,8 @@ async def test_model_probe_healthy() -> None:
     mock_res.verified = True
     mock_res.message = "OK"
 
-    with patch("app.services.health.probes.model_probe.verify_connection", new_callable=AsyncMock) as mock_verify:
+    with patch("app.services.health.probes.model_probe.verify_connection", new_callable=AsyncMock) as mock_verify, \
+         patch.object(probe, "_has_credentials", return_value=True):
         mock_verify.return_value = mock_res
 
         result = await probe.probe()
@@ -47,7 +63,8 @@ async def test_model_probe_degraded_on_rate_limit() -> None:
     mock_res.code = "RATE_LIMITED"
     mock_res.message = "Rate limit exceeded"
 
-    with patch("app.services.health.probes.model_probe.verify_connection", new_callable=AsyncMock) as mock_verify:
+    with patch("app.services.health.probes.model_probe.verify_connection", new_callable=AsyncMock) as mock_verify, \
+         patch.object(probe, "_has_credentials", return_value=True):
         mock_verify.return_value = mock_res
 
         result = await probe.probe()
@@ -69,7 +86,8 @@ async def test_model_probe_unavailable_on_failure() -> None:
     mock_res.code = "SERVER_ERROR"
     mock_res.message = "Bearer secret_token_123 failed"
 
-    with patch("app.services.health.probes.model_probe.verify_connection", new_callable=AsyncMock) as mock_verify:
+    with patch("app.services.health.probes.model_probe.verify_connection", new_callable=AsyncMock) as mock_verify, \
+         patch.object(probe, "_has_credentials", return_value=True):
         mock_verify.return_value = mock_res
 
         result = await probe.probe()
@@ -92,7 +110,8 @@ async def test_model_probe_not_configured_on_auth_failed() -> None:
     mock_res.code = "AUTH_FAILED"
     mock_res.message = "Missing API key"
 
-    with patch("app.services.health.probes.model_probe.verify_connection", new_callable=AsyncMock) as mock_verify:
+    with patch("app.services.health.probes.model_probe.verify_connection", new_callable=AsyncMock) as mock_verify, \
+         patch.object(probe, "_has_credentials", return_value=True):
         mock_verify.return_value = mock_res
 
         result = await probe.probe()

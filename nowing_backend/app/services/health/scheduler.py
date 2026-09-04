@@ -172,7 +172,11 @@ class HealthProbeScheduler:
         session: AsyncSession,
         results: list[HealthResult],
     ) -> None:
-        """Persist probe results and evaluate alert engine rules."""
+        """Persist probe results and evaluate alert engine rules.
+
+        Failures for individual results are isolated: the batch continues so one
+        misbehaving probe does not abort the entire scheduler run.
+        """
         for res in results:
             try:
                 await HealthResultStore.save_result(session, res)
@@ -183,5 +187,3 @@ class HealthProbeScheduler:
                     await session.rollback()
                 except Exception as rb_exc:
                     logger.warning("Rollback error on %s: %s", res.service_id, rb_exc)
-                # Re-raise after rollback so the caller can surface the failure
-                raise

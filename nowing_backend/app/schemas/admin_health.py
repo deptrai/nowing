@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Self
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class HealthStatusItem(BaseModel):
@@ -87,6 +87,27 @@ class HealthAlertRuleCreateRequest(BaseModel):
     cooldown_minutes: int = Field(default=15, ge=0, le=1440)
     enabled: bool = True
 
+    @field_validator("channels")
+    @classmethod
+    def validate_channels(cls, v: list[str]) -> list[str]:
+        allowed = {"in_app", "email", "telegram", "slack"}
+        if not v:
+            raise ValueError("channels cannot be empty")
+        for ch in v:
+            if ch not in allowed:
+                raise ValueError(f"Unsupported channel: {ch!r}. Allowed: {sorted(allowed)}")
+        return v
+
+    @model_validator(mode="after")
+    def validate_condition_json(self) -> Self:
+        from app.services.health.alert_engine import AdminHealthAlertEngine
+
+        try:
+            AdminHealthAlertEngine.validate_condition(self.condition_json)
+        except ValueError as exc:
+            raise ValueError(f"Invalid condition_json: {exc}") from exc
+        return self
+
 
 class HealthAlertRuleItem(BaseModel):
     """Admin health alert rule record."""
@@ -136,6 +157,22 @@ class HealthProbeResultResponse(BaseModel):
     probed_at: datetime
     next_probe_at: datetime | None = None
     interval_seconds: int = 300
+
+
+class HealthCategoryInfo(BaseModel):
+    """Category metadata returned by the categories endpoint."""
+
+    key: str
+    label: str
+    default_interval_seconds: int | None = None
+    probe_count: int = 0
+
+
+class HealthCategoriesListResponse(BaseModel):
+    """List of registered health probe categories."""
+
+    items: list[HealthCategoryInfo]
+    total: int
 
 
 class HealthOverviewResponse(BaseModel):

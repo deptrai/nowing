@@ -28,6 +28,22 @@ async def test_admin_health_overview_shape(admin_client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_admin_health_categories_list(admin_client: AsyncClient) -> None:
+    """GET /health/categories returns registered health probe categories."""
+    res = await admin_client.get("/api/v1/admin/telemetry/health/categories")
+    assert res.status_code == 200, res.text
+    data = res.json()
+    assert "items" in data
+    assert "total" in data
+    assert data["total"] >= 0
+    for item in data["items"]:
+        assert "key" in item
+        assert "label" in item
+        assert "default_interval_seconds" in item
+        assert "probe_count" in item
+
+
+@pytest.mark.asyncio
 async def test_admin_health_statuses_list(admin_client: AsyncClient) -> None:
     """GET /health/statuses returns service status list."""
     res = await admin_client.get("/api/v1/admin/telemetry/health/statuses")
@@ -127,6 +143,9 @@ async def test_admin_health_endpoints_require_superuser(
     ]:
         res = await client_as_regular_user.get(path)
         assert res.status_code == 403, f"{path}: {res.text}"
+
+    res = await client_as_regular_user.get("/api/v1/admin/telemetry/health/categories")
+    assert res.status_code == 403, res.text
 
     # POST endpoints require superuser
     res = await client_as_regular_user.post("/api/v1/admin/telemetry/health/probe/infra/postgres")

@@ -86,8 +86,15 @@ class StorageHealthProbe(HealthProbe):
         secret_key = creds.get("secret_key")
         region = creds.get("region") or "us-east-1"
 
-        if not (endpoint and bucket and access_key and secret_key):
-            return ("not_configured", "S3 endpoint, bucket, access key and secret key are required")
+        if not (bucket and access_key and secret_key):
+            return ("not_configured", "S3 bucket, access key and secret key are required")
+
+        # Standard AWS S3 virtual-hosted-style endpoint when none is provided.
+        if not endpoint:
+            endpoint = f"https://{bucket}.s3.{region}.amazonaws.com"
+        elif "s3" not in endpoint.lower() and ".amazonaws.com" not in endpoint.lower():
+            # If endpoint looks like a raw domain, treat it as a MinIO/R2-style base URL
+            endpoint = f"{endpoint.rstrip('/')}/{bucket}"
 
         # Build a ListObjectsV2 request signed with AWS SigV4
         import hmac

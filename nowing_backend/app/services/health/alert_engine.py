@@ -11,14 +11,21 @@ from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.db import User
+from app.db.enums import (
+    ExternalChatBindingState,
+    ExternalChatHealthStatus,
+    ExternalChatPlatform,
+)
 from app.models.admin_health import (
     AdminHealthAlert,
     AdminHealthAlertRule,
     AdminHealthHistory,
     AdminHealthStatus,
 )
+from app.models.chat import ExternalChatAccount, ExternalChatBinding
 from app.notifications.service.facade import NotificationService
 from app.services.health.probe_base import HealthResult
 
@@ -217,6 +224,58 @@ class AdminHealthAlertEngine:
 
         return triggered_alerts
 
+    @staticmethod
+    def validate_condition(condition_json: dict[str, Any] | None) -> dict[str, Any]:
+        """Validate and normalize an alert rule condition JSON.
+
+        Supported shapes:
+        - {"status": "<status>", "consecutive_probes": 1}
+        - {"status_not": "<status>", "consecutive_probes": 1}
+        - {"metric": "success_rate_15m"|"error_rate_15m"|"latency_ms", "op": "<"|">"|"<="|">="|"=="|"!=", "threshold": number}
+
+        Raises ValueError for unsupported or malformed conditions.
+        """
+        cond = condition_json or {}
+        if not cond:
+            raise ValueError("condition_json cannot be empty")
+
+        # Status equality / inequality with optional consecutive_probes
+        if "status" in cond or "status_not" in cond:
+            target_status = cond.get("status") or cond.get("status_not")
+            if not isinstance(target_status, str):
+                raise ValueError("status/status_not must be a string")
+            consecutive = cond.get("consecutive_probes", 1)
+            if not isinstance(consecutive, int) or consecutive < 1:
+                raise ValueError("consecutive_probes must be a positive integer")
+            allowed = {"status", "status_not", "consecutive_probes"}
+            if set(cond.keys()) - allowed:
+                raise ValueError(f"Unsupported keys for status condition: {set(cond.keys()) - allowed}")
+            return cond
+
+        # Metric threshold
+        if "metric" in cond:
+            metric = cond.get("metric")
+            if metric not in ("success_rate_15m", "error_rate_15m", "latency_ms"):
+                raise ValueError(f"Unsupported metric: {metric}")
+            op = cond.get("op")
+            if op not in ("<", ">", "<=", ">=", "==", "!=", "=", "<>"):
+                raise ValueError(f"Unsupported operator: {op}")
+            threshold = cond.get("threshold")
+            if threshold is None:
+                raise ValueError("threshold is required for metric conditions")
+            try:
+                float(threshold)
+            except (TypeError, ValueError) as exc:
+                raise ValueError("threshold must be a number") from exc
+            allowed = {"metric", "op", "threshold"}
+            if set(cond.keys()) - allowed:
+                raise ValueError(f"Unsupported keys for metric condition: {set(cond.keys()) - allowed}")
+            return cond
+
+        raise ValueError(
+            "condition_json must contain one of: 'status', 'status_not', or 'metric'"
+        )
+
     @classmethod
     async def _check_rule_condition(
         cls,
@@ -225,7 +284,11 @@ class AdminHealthAlertEngine:
         result: HealthResult,
     ) -> bool:
         """Inspect rule condition JSON against the current and recent probe state."""
-        cond = rule.condition_json or {}
+        try:
+            cond = cls.validate_condition(rule.condition_json)
+        except ValueError as exc:
+            logger.warning("Invalid condition_json for rule %s: %s", rule.id, exc)
+            return False
 
         # 1. Direct status check
         target_status = cond.get("status")
@@ -302,6 +365,31 @@ class AdminHealthAlertEngine:
         return False
 
     @classmethod
+    async def _resolve_telegram_binding_for_admin(
+        cls,
+        session: AsyncSession,
+        user_id: Any,
+    ) -> ExternalChatBinding | None:
+        """Return the most recently created bound Telegram binding for a user (any workspace)."""
+        stmt = (
+            select(ExternalChatBinding)
+            .join(ExternalChatAccount)
+            .options(selectinload(ExternalChatBinding.account))
+            .where(
+                ExternalChatBinding.user_id == user_id,
+                ExternalChatBinding.state == ExternalChatBindingState.BOUND,
+                ExternalChatBinding.revoked_at.is_(None),
+                ExternalChatBinding.suspended_at.is_(None),
+                ExternalChatAccount.platform == ExternalChatPlatform.TELEGRAM,
+                ExternalChatAccount.suspended_at.is_(None),
+                ExternalChatAccount.health_status != ExternalChatHealthStatus.FAILING,
+            )
+            .order_by(ExternalChatBinding.created_at.desc())
+        )
+        result = await session.execute(stmt)
+        return result.scalars().first()
+
+    @classmethod
     async def _dispatch_notification(
         cls,
         session: AsyncSession,
@@ -309,12 +397,11 @@ class AdminHealthAlertEngine:
         alert: AdminHealthAlert,
         result: HealthResult,
     ) -> None:
-        """Best-effort notification dispatch to configured channels (in-app, email, telegram)."""
+        """Best-effort notification dispatch to configured channels (in-app, email, telegram, slack)."""
         from app.alerts.engine.notify import _send_email_smtp
-        from app.automations.services.telegram_notifications import (
-            account_token,
-            resolve_telegram_binding_for_run,
-        )
+        from app.automations.services.telegram_notifications import account_token
+        from app.config import config
+        from app.gateway.slack.adapter import SlackAdapter
         from app.gateway.telegram.adapter import TelegramAdapter
         from app.gateway.telegram.formatting import escape_markdown_v2
 
@@ -351,8 +438,6 @@ class AdminHealthAlertEngine:
                         logger.warning("Failed to create in-app notification for superuser %s: %s", su.id, err)
 
             if "email" in channels:
-                from app.config import config
-
                 if config.SMTP_HOST:
                     subject = f"[ALERT - {rule.severity.upper()}] Third-Party Health: {result.service_name}"
                     body = (
@@ -371,11 +456,9 @@ class AdminHealthAlertEngine:
                     logger.warning("Email channel requested for health alert but SMTP_HOST is not configured")
 
             if "telegram" in channels:
-                from app.automations.services.telegram_notifications import account_token
-
                 for su in superusers:
                     try:
-                        binding = await resolve_telegram_binding_for_run(session, su.id, workspace_id=0)
+                        binding = await cls._resolve_telegram_binding_for_admin(session, su.id)
                         if not binding or not binding.external_peer_id:
                             continue
                         token = account_token(binding.account)
@@ -391,6 +474,30 @@ class AdminHealthAlertEngine:
                         )
                     except Exception as err:
                         logger.warning("Failed to dispatch telegram alert for superuser %s: %s", su.id, err)
+
+            if "slack" in channels:
+                slack_bot_token = getattr(config, "SLACK_BOT_TOKEN", None)
+                slack_alert_channel = getattr(config, "SLACK_ALERT_CHANNEL", None)
+                if slack_bot_token and slack_alert_channel:
+                    try:
+                        adapter = SlackAdapter(slack_bot_token)
+                        text = (
+                            f"[{rule.severity.upper()}] Third-Party Health Alert\n"
+                            f"Service: {result.service_name} ({result.service_id})\n"
+                            f"Status: {result.status}\n"
+                            f"Error: {result.last_error or 'None'}\n\n"
+                            f"Message: {alert.message}"
+                        )
+                        await adapter.send_message(
+                            external_peer_id=slack_alert_channel,
+                            text=text,
+                        )
+                    except Exception as err:
+                        logger.warning("Failed to dispatch slack alert: %s", err)
+                else:
+                    logger.warning(
+                        "Slack channel requested for health alert but SLACK_BOT_TOKEN and/or SLACK_ALERT_CHANNEL not configured"
+                    )
 
         except Exception as exc:
             logger.warning("Error during alert dispatch: %s", exc)
@@ -461,7 +568,6 @@ class AdminHealthAlertEngine:
         await session.refresh(alert)
         return alert
 
-    @classmethod
     @classmethod
     async def get_rules(
         cls,

@@ -11,6 +11,7 @@ from app.config import config
 from app.models.connectors import Connection
 from app.services.health.probe_base import HealthProbe, HealthResult, HealthStatus
 from app.services.model_connection_service import verify_connection
+from app.services.provider_registry import spec_for
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +82,18 @@ class ModelHealthProbe(HealthProbe):
     def service_name(self) -> str:
         return self._service_name
 
+    def _has_credentials(self) -> bool:
+        """Check whether the probe has enough credentials for a real API call."""
+        if self._connection is not None:
+            return bool(self._connection.api_key or (self._connection.extra or {}).get("api_key"))
+        for cfg in getattr(config, "GLOBAL_LLM_CONFIGS", []) or []:
+            if (
+                cfg.get("litellm_provider") == self._provider
+                or cfg.get("provider") == self._provider
+            ) and (cfg.get("api_key") or cfg.get("credentials")):
+                return True
+        return False
+
     @property
     def category(self) -> str:
         return "model"
@@ -115,6 +128,10 @@ class ModelHealthProbe(HealthProbe):
                     status = "unavailable"
                     last_error = "vLLM server unreachable or returned unhealthy status"
                     suggested_action = "Restart local vLLM container or inspect GPU logs"
+
+            elif not self._has_credentials():
+                status = "not_configured"
+                suggested_action = f"Configure API credentials for {self._provider.upper()}"
 
             elif self._connection is not None:
                 verify_res = await verify_connection(self._connection)
