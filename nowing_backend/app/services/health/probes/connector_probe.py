@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from datetime import UTC, datetime
@@ -15,6 +16,9 @@ from app.models.connectors import Connection
 from app.services.health.probe_base import HealthProbe, HealthResult, HealthStatus
 
 logger = logging.getLogger(__name__)
+
+# Limit concurrent DB sessions opened by connector probes to avoid pool exhaustion.
+_CONNECTOR_DB_SESSION_SEMAPHORE = asyncio.Semaphore(5)
 
 
 _CONNECTOR_HEALTH_PING: dict[str, tuple[str, str, dict[str, Any] | None]] = {
@@ -144,32 +148,33 @@ class ConnectorHealthProbe(HealthProbe):
         latest_connection: Connection | None = None
 
         try:
-            async with async_session_maker() as session:
-                query = select(Connection).where(
-                    and_(
-                        Connection.provider == self._connector_type,
-                        Connection.enabled.is_(True),
-                        or_(
-                            Connection.api_key.isnot(None),
-                            Connection.extra.isnot(None),
-                        ),
-                    )
-                ).order_by(Connection.created_at.desc()).limit(1)
-                res = await session.execute(query)
-                latest_connection = res.scalar_one_or_none()
+            async with _CONNECTOR_DB_SESSION_SEMAPHORE:
+                async with async_session_maker() as session:
+                    query = select(Connection).where(
+                        and_(
+                            Connection.provider == self._connector_type,
+                            Connection.enabled.is_(True),
+                            or_(
+                                Connection.api_key.isnot(None),
+                                Connection.extra.isnot(None),
+                            ),
+                        )
+                    ).order_by(Connection.created_at.desc()).limit(1)
+                    res = await session.execute(query)
+                    latest_connection = res.scalar_one_or_none()
 
-                count_query = select(func.count()).select_from(Connection).where(
-                    and_(
-                        Connection.provider == self._connector_type,
-                        Connection.enabled.is_(True),
-                        or_(
-                            Connection.api_key.isnot(None),
-                            Connection.extra.isnot(None),
-                        ),
+                    count_query = select(func.count()).select_from(Connection).where(
+                        and_(
+                            Connection.provider == self._connector_type,
+                            Connection.enabled.is_(True),
+                            or_(
+                                Connection.api_key.isnot(None),
+                                Connection.extra.isnot(None),
+                            ),
+                        )
                     )
-                )
-                count_res = await session.execute(count_query)
-                active_accounts = count_res.scalar() or 0
+                    count_res = await session.execute(count_query)
+                    active_accounts = count_res.scalar() or 0
 
             latency_ms = int((time.perf_counter() - start) * 1000)
             if active_accounts == 0:

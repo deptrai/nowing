@@ -101,22 +101,41 @@ class ScraperHealthProbe(HealthProbe):
 
         cap_registered = self._is_cap_registered()
 
+        # If the capability is not registered at all, the probe is not configured
+        # rather than a real failure (human-in-the-loop, no false outage).
+        if not cap_registered:
+            latency_ms = int((time.perf_counter() - start) * 1000)
+            return HealthResult(
+                service_id=self._service_id,
+                service_name=self._service_name,
+                category=self.category,
+                display_group=self.display_group,
+                status="not_configured",
+                latency_ms=latency_ms,
+                last_error=None,
+                suggested_action="Register this platform in CapabilityRegistry to enable scraper health monitoring",
+                error_rate_15m=0.0,
+                success_rate_15m=100.0,
+                metadata={"platform": self._platform, "endpoint": self._endpoint, "capability_registered": False},
+                probed_at=datetime.now(UTC),
+            )
+
         # 1. Check proxy pool reachability via active provider
         proxy_configured = False
-        proxy_dict = None
+        proxy_url: str | None = None
         try:
             from app.utils.proxy import get_active_provider
 
             provider = get_active_provider()
             if provider:
                 proxy_dict = provider.get_requests_proxies()
-                proxy_configured = bool(proxy_dict)
+                proxy_url = proxy_dict.get("http") if isinstance(proxy_dict, dict) else proxy_dict
+                proxy_configured = bool(proxy_url)
         except Exception as proxy_err:
             logger.debug("Proxy resolution note for %s: %s", self._service_id, proxy_err)
 
         # 2. Non-mutating lightweight probe: safe HTTP HEAD to platform endpoint via proxy or direct
         try:
-            proxy_url = proxy_dict.get("http") if proxy_dict else None
             async with httpx.AsyncClient(proxy=proxy_url, timeout=3.0, follow_redirects=True) as client:
                 resp = await client.head(self._endpoint)
                 if resp.status_code >= 500:
@@ -138,15 +157,9 @@ class ScraperHealthProbe(HealthProbe):
                 suggested_action = "Rotate proxy pool endpoints"
                 last_error = f"Proxy latency/connect warning: {type(net_exc).__name__}: {net_exc}"
             else:
-                # No proxy and capability not registered -> not really a failure, just not configured
-                if not cap_registered:
-                    status = "not_configured"
-                    suggested_action = "Verify capability registration in CapabilityRegistry"
-                    last_error = f"No capability registered and network probe failed: {type(net_exc).__name__}"
-                else:
-                    status = "unavailable"
-                    suggested_action = "Verify target endpoint and proxy configuration"
-                    last_error = f"Network probe failed: {type(net_exc).__name__}: {net_exc}"
+                status = "unavailable"
+                suggested_action = "Verify target endpoint and proxy configuration"
+                last_error = f"Network probe failed: {type(net_exc).__name__}: {net_exc}"
 
         latency_ms = int((time.perf_counter() - start) * 1000)
         if latency_ms > 4000 and status in {"healthy", "degraded"}:

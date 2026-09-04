@@ -175,12 +175,15 @@ class HealthProbeScheduler:
         """Persist probe results and evaluate alert engine rules.
 
         Failures for individual results are isolated: the batch continues so one
-        misbehaving probe does not abort the entire scheduler run.
+        misbehaving probe does not abort the entire scheduler run. Each result is
+        processed in its own short-lived nested transaction boundary to prevent a
+        rolled-back session from affecting subsequent probes.
         """
         for res in results:
             try:
                 await HealthResultStore.save_result(session, res)
                 await AdminHealthAlertEngine.evaluate_result(session, res)
+                await session.commit()
             except Exception as exc:
                 logger.error("Failed to store/alert result for %s: %s", res.service_id, exc)
                 try:

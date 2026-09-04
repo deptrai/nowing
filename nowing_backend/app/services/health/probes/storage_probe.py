@@ -166,9 +166,9 @@ class StorageHealthProbe(HealthProbe):
 
         try:
             creds = self._read_credentials()
-            if not (creds["endpoint"] and creds["access_key"] and creds["bucket"]):
+            if not (creds["endpoint"] and creds["access_key"] and creds["secret_key"] and creds["bucket"]):
                 status = "not_configured"
-                suggested_action = "Configure S3/Storage credentials (S3_ENDPOINT_URL, S3_ACCESS_KEY_ID, S3_BUCKET_NAME)"
+                suggested_action = "Configure S3/Storage credentials (S3_ENDPOINT_URL, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_BUCKET_NAME)"
             else:
                 status, last_error = await self._ping_s3(creds)
                 if status != "healthy":
@@ -190,7 +190,7 @@ class StorageHealthProbe(HealthProbe):
             "endpoint": creds.get("endpoint"),
             "bucket": creds.get("bucket"),
             "region": creds.get("region"),
-            "configured": bool(creds["endpoint"] and creds["access_key"] and creds["bucket"]),
+            "configured": bool(creds["endpoint"] and creds["access_key"] and creds["secret_key"] and creds["bucket"]),
         }
 
         return HealthResult(

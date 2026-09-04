@@ -74,7 +74,7 @@ class ChainLensHealthProbe(HealthProbe):
             if resp.status_code == 200:
                 return ("healthy", None, latency_ms)
             if resp.status_code in (401, 403):
-                return ("degraded", f"ChainLens search rejected auth (HTTP {resp.status_code})", latency_ms)
+                return ("not_configured", f"ChainLens auth rejected (HTTP {resp.status_code}) - check service token", latency_ms)
             if resp.status_code == 429:
                 return ("degraded", "ChainLens search rate limited", latency_ms)
             if resp.status_code >= 500:
@@ -94,7 +94,7 @@ class ChainLensHealthProbe(HealthProbe):
             if resp.status_code == 200:
                 return ("healthy", None, latency_ms)
             if resp.status_code in (401, 403):
-                return ("degraded", f"Authentication rejected with HTTP {resp.status_code}", latency_ms)
+                return ("not_configured", f"Authentication rejected with HTTP {resp.status_code} - check service token", latency_ms)
             if resp.status_code == 429:
                 return ("degraded", "ChainLens health endpoint rate limited", latency_ms)
             if resp.status_code >= 500:

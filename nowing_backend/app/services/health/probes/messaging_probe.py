@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import time
 from datetime import UTC, datetime
 
@@ -98,7 +99,7 @@ class MessagingHealthProbe(HealthProbe):
 
         try:
             if self._provider == "telegram":
-                bot_token = getattr(config, "TELEGRAM_BOT_TOKEN", None)
+                bot_token = os.getenv("TELEGRAM_BOT_TOKEN") or getattr(config, "TELEGRAM_BOT_TOKEN", None)
                 if not bot_token:
                     status = "not_configured"
                     suggested_action = "Configure TELEGRAM_BOT_TOKEN in environment"
@@ -107,7 +108,7 @@ class MessagingHealthProbe(HealthProbe):
                     if status != "healthy":
                         suggested_action = "Verify Telegram bot token and network reachability"
             elif self._provider == "slack":
-                slack_token = getattr(config, "SLACK_BOT_TOKEN", None)
+                slack_token = os.getenv("SLACK_BOT_TOKEN") or getattr(config, "SLACK_BOT_TOKEN", None)
                 if not slack_token:
                     status = "not_configured"
                     suggested_action = "Configure SLACK_BOT_TOKEN in environment"
@@ -116,7 +117,7 @@ class MessagingHealthProbe(HealthProbe):
                     if status != "healthy":
                         suggested_action = "Verify Slack bot token and workspace permissions"
             elif self._provider == "discord":
-                discord_token = getattr(config, "DISCORD_BOT_TOKEN", None)
+                discord_token = os.getenv("DISCORD_BOT_TOKEN") or getattr(config, "DISCORD_BOT_TOKEN", None)
                 if not discord_token:
                     status = "not_configured"
                     suggested_action = "Configure DISCORD_BOT_TOKEN in environment"

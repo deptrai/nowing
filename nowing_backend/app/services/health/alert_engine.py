@@ -214,12 +214,23 @@ class AdminHealthAlertEngine:
                 triggered_at=now,
             )
             session.add(alert)
+            await session.flush()
+            await session.refresh(alert)
             triggered_alerts.append(alert)
 
+            # Persist the alert before attempting best-effort notification dispatch.
+            # If dispatch fails, the alert row is already committed and will not be lost.
+            await session.commit()
+
             # Dispatch notification via Generic Alert Engine
-            await cls._dispatch_notification(session, rule, alert, result)
+            try:
+                await cls._dispatch_notification(session, rule, alert, result)
+            except Exception as dispatch_exc:
+                logger.warning("Notification dispatch failed for alert %s: %s", alert.id, dispatch_exc)
 
         if triggered_alerts:
+            # Ensure any in-memory updates (e.g., existing_alert re-open) are committed
+            # when no new alert was created for this rule but an existing one was touched.
             await session.commit()
 
         return triggered_alerts

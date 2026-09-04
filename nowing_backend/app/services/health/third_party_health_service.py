@@ -99,11 +99,15 @@ class ThirdPartyHealthService:
             overall_status = "not_configured"
         else:
             unavailable_ratio = status_counts["unavailable"] / total
+            degraded_ratio = status_counts["degraded"] / total
             if unavailable_ratio == 1.0:
                 overall_status = "unavailable"
-            elif unavailable_ratio >= 0.5 or status_counts["unavailable"] > 0:
+            elif unavailable_ratio >= 0.5:
                 overall_status = "degraded"
-            elif status_counts["degraded"] > 0:
+            elif status_counts["unavailable"] > 0:
+                # Some services are hard-down but not a majority; surface degraded
+                overall_status = "degraded"
+            elif degraded_ratio >= 0.5 or status_counts["degraded"] > 0:
                 overall_status = "degraded"
             else:
                 overall_status = "healthy"

@@ -14,7 +14,11 @@ logger = logging.getLogger(__name__)
 class ProxyHealthProbe(HealthProbe):
     """Probes the active proxy pool and egress connectivity."""
 
-    def __init__(self, service_id: str = "proxy/dataimpulse", service_name: str = "DataImpulse Proxy Pool") -> None:
+    def __init__(
+        self,
+        service_id: str = "proxy/dataimpulse",
+        service_name: str = "DataImpulse Proxy Pool",
+    ) -> None:
         self._service_id = service_id
         self._service_name = service_name
 

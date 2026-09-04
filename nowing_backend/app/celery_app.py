@@ -246,6 +246,7 @@ celery_app = Celery(
 # Connectors queue: slow, long-running indexing tasks (Notion, Gmail, web crawl, …)
 CONNECTORS_QUEUE = f"{CELERY_TASK_DEFAULT_QUEUE}.connectors"
 LEAD_SCRAPERS_QUEUE = "nowing.lead_scrapers"
+HEALTH_QUEUE = "nowing.health"
 
 # Celery configuration
 celery_app.conf.update(
@@ -297,6 +298,17 @@ celery_app.conf.update(
             "queue": LEAD_SCRAPERS_QUEUE
         },
         "run_platform_scrape_task": {"queue": LEAD_SCRAPERS_QUEUE},
+        # Health probes → dedicated queue so frequent 30s probes do not starve
+        # user-facing tasks (Story 25.7).
+        "health_probe_infra": {"queue": HEALTH_QUEUE},
+        "health_probe_model": {"queue": HEALTH_QUEUE},
+        "health_probe_scraper": {"queue": HEALTH_QUEUE},
+        "health_probe_connector": {"queue": HEALTH_QUEUE},
+        "health_probe_proxy": {"queue": HEALTH_QUEUE},
+        "health_probe_research": {"queue": HEALTH_QUEUE},
+        "health_probe_messaging": {"queue": HEALTH_QUEUE},
+        "health_probe_payment": {"queue": HEALTH_QUEUE},
+        "health_probe_storage": {"queue": HEALTH_QUEUE},
         # Everything else (document processing, podcasts, reindexing,
         # schedule checker, cleanup) stays on the default fast queue.
         "gateway.reconcile_inbox": {"queue": f"{CELERY_TASK_DEFAULT_QUEUE}.gateway"},
