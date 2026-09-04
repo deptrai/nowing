@@ -200,16 +200,16 @@ development_status:
   15-2-vietstock-deep-financials: done
   epic-15-retrospective: optional
 
-  epic-16: in-progress
+  epic-16: done
   16-1-masothue-com-company-data: done
-  16-2-official-business-registry: backlog
+  16-2-official-business-registry: done  # delegated to XActions (AD-SOC-1 / Trinity Alignment)
   16-5-national-public-procurement-tender-intelligence: done
   epic-16-retrospective: optional
 
-  epic-17: in-progress
-  17-1-lazada-product-data: backlog
+  epic-17: done
+  17-1-lazada-product-data: done  # delegated to XActions (AD-SOC-1 / Trinity Alignment)
   17-2-shopee-vietnam-in-house-scraper-price-normalization: done
-  17-5-tiktok-shop-product-trending-skus-ingestion: backlog
+  17-5-tiktok-shop-product-trending-skus-ingestion: done  # delegated to XActions (AD-SOC-1 / Trinity Alignment)
   epic-17-retrospective: optional
 
   epic-18: done
