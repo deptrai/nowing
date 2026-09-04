@@ -1,6 +1,6 @@
 ---
 story_key: 25-7-third-party-health-operations-dashboard
-status: ready-for-dev
+status: done
 baseline_commit: 40a7a5031
 epic: 25
 story: 7
@@ -8,7 +8,7 @@ story: 7
 
 # Story 25.7: Third-Party Health & Operations Dashboard
 
-**Status:** `ready-for-dev`
+**Status:** `done`
 
 **Governed by:** `FR-41b` (PRD §4.8), Story 25.4, Story 6.8, Story 8.11, Story 26.3, `AD-25.7`, `INV-25.8`, Epic 25 in [`_bmad-output/planning-artifacts/epics.md`](../planning-artifacts/epics.md) lines 3758–3779.
 
