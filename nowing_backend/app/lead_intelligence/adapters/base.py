@@ -206,6 +206,8 @@ class LeadSourceAdapter(ABC):
     source_name: str
     category: LeadSourceCategory = LeadSourceCategory.GENERAL
     last_execution_status: str = "ok"
+    supported_provinces: list[str] = ["*"]
+    coverage_quality_by_location: dict[str, str | float] = {}
 
     @abstractmethod
     async def search_leads(

@@ -1,6 +1,6 @@
 ---
 story_key: 26-26-location-aware-adapter-routing-coverage-quality
-status: ready-for-dev
+status: done
 baseline_commit: e184a3cd8
 epic: 26
 story: 26
@@ -8,7 +8,7 @@ story: 26
 
 # Story 26.26: Location-Aware Adapter Routing & Coverage Quality
 
-**Status:** `ready-for-dev`  
+**Status:** `done`  
 **Epic:** 26 — Lead Intelligence  
 **Governed by:** FR-69.2, FR-69.3, FR-85, AD-31, AD-42, NFR-1, `epics.md` lines 3268–3285.  
 **Dependencies:** Story 26.25 (`LocationProfile`, `divisions.py`), `LeadSourceAdapter` (`app/lead_intelligence/adapters/base.py`), `LeadGenOrchestrator` (`app/lead_intelligence/services/lead_gen_orchestrator.py`).
@@ -116,20 +116,54 @@ so that scraping budget is spent on sources that are most likely to return relev
 
 ## Tasks / Subtasks
 
-- [ ] Adapter Contracts & Declarations (`nowing_backend/app/lead_intelligence/adapters/`)
-  - [ ] Add `supported_provinces` and `coverage_quality_by_location` fields to `LeadSourceAdapter` base class (`base.py`).
-  - [ ] Populate coverage profiles for canonical adapters (`batdongsan.py`, `chotot.py`, `vietnamworks.py`, `enterprise.py`, `social.py`).
-- [ ] Location-Aware Composite Routing (`nowing_backend/app/lead_intelligence/adapters/registry.py`)
-  - [ ] Implement `calculate_location_coverage_score(adapter, location_profile)` helper.
-  - [ ] Implement `resolve_adapters_for_campaign(category, prompt, location_profile, ...)` with 0.4/0.4/0.2 composite ranking.
-  - [ ] Add fallback warning handling when no location coverage matches.
-- [ ] Hierarchical Pre-Filter & Token Matcher (`nowing_backend/app/lead_intelligence/services/lead_gen_orchestrator.py`)
-  - [ ] Enhance `pre_filter_by_icp` to accept `LocationProfile` and execute hierarchical matching (Ward -> District -> Province).
-  - [ ] Implement word-boundary regex token matching to prevent false positives ("Quận 1" vs "Quận 10-12").
-- [ ] Fit Score Location Blending (`nowing_backend/app/lead_intelligence/scoring/`)
-  - [ ] Update fit scoring logic to blend `location_match_score` with `location_weight = 0.3`.
-- [ ] Verification & Tests
-  - [ ] Write unit tests in `nowing_backend/tests/unit/lead_intelligence/test_location_routing.py`.
-  - [ ] Write unit tests for hierarchical location matcher in `nowing_backend/tests/unit/lead_intelligence/test_location_prefilter.py`.
-  - [ ] Run `ruff check` and pytest suite.
+- [x] Adapter Contracts & Declarations (`nowing_backend/app/lead_intelligence/adapters/`)
+  - [x] Add `supported_provinces` and `coverage_quality_by_location` fields to `LeadSourceAdapter` base class (`base.py`).
+  - [x] Populate coverage profiles for canonical adapters (`batdongsan.py`, `chotot.py`, `vietnamworks.py`, `enterprise.py`, `social.py`).
+- [x] Location-Aware Composite Routing (`nowing_backend/app/lead_intelligence/adapters/registry.py`)
+  - [x] Implement `calculate_location_coverage_score(adapter, location_profile)` helper.
+  - [x] Implement `resolve_adapters_for_campaign(category, prompt, location_profile, ...)` with 0.4/0.4/0.2 composite ranking.
+  - [x] Add fallback warning handling when no location coverage matches.
+- [x] Hierarchical Pre-Filter & Token Matcher (`nowing_backend/app/lead_intelligence/services/lead_gen_orchestrator.py`)
+  - [x] Enhance `pre_filter_by_icp` to accept `LocationProfile` and execute hierarchical matching (Ward -> District -> Province).
+  - [x] Implement word-boundary regex token matching to prevent false positives ("Quận 1" vs "Quận 10-12").
+- [x] Fit Score Location Blending (`nowing_backend/app/lead_intelligence/scoring/`)
+  - [x] Update fit scoring logic to blend `location_match_score` with `location_weight = 0.3`.
+- [x] Verification & Tests
+  - [x] Write unit tests in `nowing_backend/tests/unit/lead_intelligence/test_location_routing.py`.
+  - [x] Write unit tests for hierarchical location matcher in `nowing_backend/tests/unit/lead_intelligence/test_location_prefilter.py`.
+  - [x] Run `ruff check` and pytest suite.
+
+---
+
+## Suggested Review Order
+
+**Adapter Contracts & Routing Registry**
+
+- Base adapter location coverage declarations and metadata
+  [`base.py:206`](../../../nowing_backend/app/lead_intelligence/adapters/base.py#L206)
+
+- Location-aware composite ranking and fallback warning algorithm
+  [`registry.py:443`](../../../nowing_backend/app/lead_intelligence/adapters/registry.py#L443)
+
+**Hierarchical Pre-Filtering & Token Matching**
+
+- Hierarchical location evaluator (Ward -> District -> Province) with word boundaries
+  [`lead_gen_orchestrator.py:184`](../../../nowing_backend/app/lead_intelligence/services/lead_gen_orchestrator.py#L184)
+
+- ICP pre-filtering with LocationProfile integration
+  [`lead_gen_orchestrator.py:252`](../../../nowing_backend/app/lead_intelligence/services/lead_gen_orchestrator.py#L252)
+
+**Fit Score Blending**
+
+- Blending formula `base * 0.7 + loc * 0.3` with clamp logic
+  [`rubric.py:93`](../../../nowing_backend/app/lead_intelligence/scoring/rubric.py#L93)
+
+**Test Suites**
+
+- Composite score ranking and adapter location routing unit tests
+  [`test_location_routing.py:106`](../../../nowing_backend/tests/unit/lead_intelligence/test_location_routing.py#L106)
+
+- Boundary token matching, hierarchical matching, and pre-filter tests
+  [`test_location_prefilter.py:14`](../../../nowing_backend/tests/unit/lead_intelligence/test_location_prefilter.py#L14)
+
 

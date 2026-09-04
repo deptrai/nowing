@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import time
 from typing import Any
 from uuid import UUID, uuid4
@@ -25,6 +26,11 @@ from app.lead_intelligence.services.deduplication_service import (
 )
 from app.lead_intelligence.services.micro_extraction_worker import (
     MicroExtractionWorker,
+)
+from app.services.location_normalize import remove_diacritics
+from app.services.location_normalize.divisions import (
+    PROVINCES_DATA,
+    get_districts_by_province,
 )
 
 logger = logging.getLogger(__name__)
@@ -175,17 +181,115 @@ class LeadGenOrchestrator:
         ]
 
     @classmethod
+    def _contains_word_boundary_token(cls, text: str, keyword: str) -> bool:
+        """Check if keyword appears in text with sanitized word-boundary token matching (AC-3)."""
+        clean_kw = remove_diacritics(keyword).lower().strip()
+        if not clean_kw:
+            return False
+        clean_text = remove_diacritics(text).lower()
+        # Use boundary matching safe against Vietnamese diacritics
+        pattern = rf"(?<![a-z0-9]){re.escape(clean_kw)}(?![a-z0-9])"
+        return bool(re.search(pattern, clean_text))
+
+    @classmethod
+    def evaluate_hierarchical_location_match(
+        cls,
+        text: str,
+        location_profile: Any | None,
+    ) -> tuple[bool, float]:
+        """Hierarchically match lead text against LocationProfile (Ward -> District -> Province).
+
+        Returns (is_matched, location_match_score) where score is:
+          - 100 for exact ward match
+          - 90 for target district match
+          - 75 for target province match
+          - 0 for no match
+        """
+        if location_profile is None:
+            return True, 75.0
+
+        p_code = (
+            getattr(location_profile, "province_code", None)
+            or (
+                location_profile.get("province_code")
+                if isinstance(location_profile, dict)
+                else None
+            )
+            or ""
+        ).upper().strip()
+
+        if not p_code:
+            return True, 75.0
+
+        clean_text = remove_diacritics(text)
+
+        # 1. Ward Matching (highest precedence)
+        ward_names = (
+            getattr(location_profile, "ward_names", [])
+            or (
+                location_profile.get("ward_names")
+                if isinstance(location_profile, dict)
+                else []
+            )
+            or []
+        )
+        if ward_names:
+            for w in ward_names:
+                if w and cls._contains_word_boundary_token(clean_text, w):
+                    return True, 100.0
+
+        # 2. District Matching
+        d_codes = set(
+            getattr(location_profile, "district_codes", [])
+            or (
+                location_profile.get("district_codes")
+                if isinstance(location_profile, dict)
+                else []
+            )
+            or []
+        )
+        districts = get_districts_by_province(p_code)
+        target_district_names = [
+            d["name"] for d in districts if not d_codes or d["code"] in d_codes
+        ]
+
+        if d_codes:
+            for dname in target_district_names:
+                if cls._contains_word_boundary_token(clean_text, dname):
+                    return True, 90.0
+
+        # 3. Province Matching
+        target_prov = next((p for p in PROVINCES_DATA if p["code"] == p_code), None)
+        if target_prov:
+            prov_candidates = [
+                target_prov["name"],
+                target_prov["code"],
+                *target_prov.get("aliases", []),
+            ]
+            for candidate in prov_candidates:
+                if cls._contains_word_boundary_token(clean_text, candidate):
+                    # If user specified specific districts but only the province was matched
+                    score = 75.0 if not d_codes else 65.0
+                    # If specific districts were required, reject unless broad match allowed
+                    if d_codes:
+                        return False, 0.0
+                    return True, score
+
+        return False, 0.0
+
+    @classmethod
     def pre_filter_by_icp(
         cls,
         raw_record: RawLeadRecord,
         icp_criteria: ICPCriteria | None,
+        location_profile: Any | None = None,
     ) -> bool:
         """
         Evaluate if a raw record passes basic ICP criteria before full normalization.
         Checks negative keywords and required locations if specified in ICPCriteria.
         Returns True if lead passes or if icp_criteria is None; False if rejected.
         """
-        if icp_criteria is None:
+        if icp_criteria is None and location_profile is None:
             return True
 
         # Extract text representations from raw data dict
@@ -204,10 +308,18 @@ class LeadGenOrchestrator:
         combined_text = " ".join(text_parts).lower()
 
         # Check negative keywords
-        if icp_criteria.negative_keywords:
+        if icp_criteria and icp_criteria.negative_keywords:
             for nkw in icp_criteria.negative_keywords:
                 if nkw and nkw.lower().strip() in combined_text:
                     return False
+
+        # Hierarchical Location Pre-filter (AC-3)
+        if location_profile:
+            matched, _ = cls.evaluate_hierarchical_location_match(
+                combined_text, location_profile
+            )
+            if not matched:
+                return False
 
         return True
 

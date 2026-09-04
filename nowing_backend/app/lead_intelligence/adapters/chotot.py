@@ -30,6 +30,15 @@ class ChototLeadAdapter(LeadSourceAdapter):
 
     source_name = "chotot"
     category = LeadSourceCategory.REAL_ESTATE
+    supported_provinces = ["SG", "HN", "BD", "CT", "DN", "DNA", "*"]
+    coverage_quality_by_location = {
+        "SG": "high",
+        "HN": "medium",
+        "BD": "high",
+        "CT": "high",
+        "DN": "medium",
+        "DNA": "medium",
+    }
 
     def __init__(self) -> None:
         self.last_execution_status = "ok"

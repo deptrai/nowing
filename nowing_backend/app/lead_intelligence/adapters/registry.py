@@ -125,7 +125,7 @@ class LeadSourceAdapterRegistry:
         """Find adapters matching a specific domain category."""
         return [a for a in self._adapters.values() if a.category == category]
 
-    def resolve_adapters_for_campaign(self, campaign_spec: Any) -> list[LeadSourceAdapter]:
+    def resolve_adapters_for_spec(self, campaign_spec: Any) -> list[LeadSourceAdapter]:
         """
         Dynamically route and select scraper adapters for a structured CampaignSpec.
         Considers explicit target sources, ICP vertical criteria, buying signal triggers,
@@ -438,3 +438,127 @@ class LeadSourceAdapterRegistry:
                 deduped.extend(adapters)
 
         return deduped
+
+    @classmethod
+    def calculate_location_coverage_score(
+        cls,
+        adapter: LeadSourceAdapter,
+        location_profile: Any | None,
+    ) -> float:
+        """Calculate a 0.0 - 1.0 coverage score for an adapter based on location targeting (AC-2)."""
+        if location_profile is None:
+            return 1.0
+
+        p_code = (
+            getattr(location_profile, "province_code", None)
+            or (
+                location_profile.get("province_code")
+                if isinstance(location_profile, dict)
+                else None
+            )
+            or ""
+        ).upper().strip()
+
+        if not p_code:
+            return 1.0
+
+        supported = getattr(adapter, "supported_provinces", ["*"]) or ["*"]
+        coverage_map = getattr(adapter, "coverage_quality_by_location", {}) or {}
+
+        quality_scores = {
+            "high": 1.0,
+            "medium": 0.7,
+            "low": 0.4,
+            "none": 0.0,
+        }
+
+        # Check district override if present
+        d_codes = (
+            getattr(location_profile, "district_codes", [])
+            or (
+                location_profile.get("district_codes")
+                if isinstance(location_profile, dict)
+                else []
+            )
+            or []
+        )
+        for dc in d_codes:
+            if dc in coverage_map:
+                q = coverage_map[dc]
+                return (
+                    quality_scores.get(str(q).lower(), 0.7)
+                    if isinstance(q, str)
+                    else float(q)
+                )
+
+        # Check province in coverage map
+        if p_code in coverage_map:
+            q = coverage_map[p_code]
+            return (
+                quality_scores.get(str(q).lower(), 0.7)
+                if isinstance(q, str)
+                else float(q)
+            )
+
+        # Check if province is supported directly
+        if p_code in supported:
+            return 0.7
+
+        # Check if nationwide adapter
+        if "*" in supported:
+            return 0.6
+
+        return 0.0
+
+    def resolve_adapters_for_campaign(
+        self,
+        prompt: Any = "",
+        category: LeadSourceCategory | None = None,
+        location_profile: Any | None = None,
+    ) -> Any:
+        """Resolve, composite-rank, and return candidate adapters with fallback warning (AC-2).
+
+        Supports both:
+          1. CampaignSpec object signature -> returns list[LeadSourceAdapter]
+          2. (prompt, category, location_profile) -> returns tuple[list[LeadSourceAdapter], bool]
+        """
+        # Overload 1: CampaignSpec object passed as first positional arg
+        if not isinstance(prompt, str) and hasattr(prompt, "__dict__"):
+            return self.resolve_adapters_for_spec(prompt)
+
+        # Overload 2: Keyword / prompt based resolution with location profile
+        query_text = str(prompt or "")
+        if category:
+            candidates = self.find_by_category(category)
+            if not candidates:
+                candidates = self.resolve_adapters_for_intent(query_text)
+        else:
+            candidates = self.resolve_adapters_for_intent(query_text)
+
+        if not candidates:
+            candidates = self.list_all()
+
+        # Compute composite scores (0.4 location + 0.4 vertical + 0.2 cost)
+        ranked: list[tuple[float, LeadSourceAdapter]] = []
+        any_location_match = False
+
+        for a in candidates:
+            loc_score = self.calculate_location_coverage_score(a, location_profile)
+            if loc_score > 0.0:
+                any_location_match = True
+
+            # Vertical relevance score (1.0 if category matches exactly, 0.8 otherwise)
+            vert_score = 1.0 if (category and a.category == category) else 0.8
+
+            # Cost efficiency score (default baseline 0.8 for internal scrapers)
+            cost_score = 0.8
+
+            composite = (loc_score * 0.4) + (vert_score * 0.4) + (cost_score * 0.2)
+            ranked.append((composite, a))
+
+        # Re-order candidate adapters descending by composite score
+        ranked.sort(key=lambda x: x[0], reverse=True)
+
+        location_fallback = bool(location_profile and not any_location_match)
+        return [a for _, a in ranked], location_fallback
+
