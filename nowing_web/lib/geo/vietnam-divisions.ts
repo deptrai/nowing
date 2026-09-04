@@ -237,7 +237,7 @@ export function removeDiacritics(text: string): string {
 }
 
 /**
- * Match a user search query against province names and aliases.
+ * Match a user search query against province names, aliases, and district names/codes.
  */
 export function searchProvinces(query: string): Province[] {
 	const cleanQuery = removeDiacritics(query);
@@ -247,27 +247,46 @@ export function searchProvinces(query: string): Province[] {
 		const cleanName = removeDiacritics(p.name);
 		const cleanCode = p.code.toLowerCase();
 		if (cleanName.includes(cleanQuery) || cleanCode.includes(cleanQuery)) return true;
-		return p.aliases.some((alias) => removeDiacritics(alias).includes(cleanQuery));
+		if (p.aliases.some((alias) => removeDiacritics(alias).includes(cleanQuery))) return true;
+
+		// Match district name or district code inside the province
+		return p.districts.some((d) => {
+			const dName = removeDiacritics(d.name);
+			const dCode = d.code.toLowerCase();
+			return dName.includes(cleanQuery) || dCode.includes(cleanQuery);
+		});
 	});
 }
 
 /**
- * Build a concise location summary string from selected IDs.
+ * Build a concise location summary string from selected IDs and wards.
  */
-export function buildLocationSummary(provinceCode: string, districtCodes: string[] = []): string {
-	const prov = VIETNAM_PROVINCES.find((p) => p.code === provinceCode);
+export function buildLocationSummary(
+	provinceCode: string,
+	districtCodes: string[] = [],
+	wardNames: string[] = []
+): string {
+	if (!provinceCode) return "";
+	const pCodeUpper = provinceCode.toUpperCase();
+	const prov = VIETNAM_PROVINCES.find((p) => p.code.toUpperCase() === pCodeUpper);
 	if (!prov) return provinceCode;
 
-	if (districtCodes.length === 0) {
-		return prov.name;
+	const parts: string[] = [];
+
+	if (districtCodes && districtCodes.length > 0) {
+		const selectedNames = prov.districts
+			.filter((d) => districtCodes.includes(d.code))
+			.map((d) => d.name);
+		parts.push(...selectedNames);
 	}
 
-	const selectedNames = prov.districts
-		.filter((d) => districtCodes.includes(d.code))
-		.map((d) => d.name);
+	if (wardNames && wardNames.length > 0) {
+		const cleanWards = wardNames.map((w) => w.trim()).filter(Boolean);
+		parts.push(...cleanWards);
+	}
 
-	if (selectedNames.length > 0) {
-		return `${prov.name} (${selectedNames.join(", ")})`;
+	if (parts.length > 0) {
+		return `${prov.name} (${parts.join(", ")})`;
 	}
 
 	return prov.name;

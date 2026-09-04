@@ -175,6 +175,56 @@ PROVINCES_DATA: list[ProvinceRecord] = [
             {"code": "742", "name": "Nhơn Trạch"},
         ],
     },
+    {
+        "code": "VT",
+        "name": "Bà Rịa - Vũng Tàu",
+        "aliases": ["vungtau", "vung-tau", "ba-ria", "vt"],
+        "districts": [
+            {"code": "747", "name": "Vũng Tàu"},
+            {"code": "748", "name": "Bà Rịa"},
+            {"code": "750", "name": "Châu Đức"},
+            {"code": "751", "name": "Xuyên Mộc"},
+            {"code": "752", "name": "Long Điền"},
+            {"code": "753", "name": "Đất Đỏ"},
+            {"code": "754", "name": "Phú Mỹ"},
+            {"code": "755", "name": "Côn Đảo"},
+        ],
+    },
+    {
+        "code": "KH",
+        "name": "Khánh Hòa",
+        "aliases": ["nhatrang", "nha-trang", "khanh-hoa"],
+        "districts": [
+            {"code": "568", "name": "Nha Trang"},
+            {"code": "569", "name": "Cam Ranh"},
+            {"code": "570", "name": "Cam Lâm"},
+            {"code": "571", "name": "Vạn Ninh"},
+            {"code": "572", "name": "Ninh Hòa"},
+            {"code": "573", "name": "Khánh Vĩnh"},
+            {"code": "574", "name": "Diên Khánh"},
+            {"code": "575", "name": "Khánh Sơn"},
+            {"code": "576", "name": "Trường Sa"},
+        ],
+    },
+    {
+        "code": "LD",
+        "name": "Lâm Đồng",
+        "aliases": ["dalat", "da-lat", "lam-dong"],
+        "districts": [
+            {"code": "672", "name": "Đà Lạt"},
+            {"code": "673", "name": "Bảo Lộc"},
+            {"code": "674", "name": "Đam Rông"},
+            {"code": "675", "name": "Lạc Dương"},
+            {"code": "676", "name": "Lâm Hà"},
+            {"code": "677", "name": "Đơn Dương"},
+            {"code": "678", "name": "Đức Trọng"},
+            {"code": "679", "name": "Di Linh"},
+            {"code": "680", "name": "Bảo Lâm"},
+            {"code": "681", "name": "Đạ Huoai"},
+            {"code": "682", "name": "Đạ Tẻh"},
+            {"code": "683", "name": "Cát Tiên"},
+        ],
+    },
 ]
 
 
@@ -184,11 +234,20 @@ def get_all_provinces() -> list[dict[str, str]]:
 
 
 def get_districts_by_province(province_code: str) -> list[DistrictRecord]:
-    """Return all districts for a given province code."""
-    p_code = (province_code or "").upper().strip()
+    """Return all districts for a given province code or alias."""
+    if not province_code:
+        return []
+    p_code = province_code.upper().strip()
     for p in PROVINCES_DATA:
         if p["code"] == p_code:
-            return p["districts"]
+            return [dict(d) for d in p["districts"]]
+
+    # Fallback to check alias
+    p_code_lower = province_code.lower().strip()
+    for p in PROVINCES_DATA:
+        if any(alias == p_code_lower for alias in p["aliases"]):
+            return [dict(d) for d in p["districts"]]
+
     return []
 
 
@@ -198,8 +257,16 @@ def format_location_summary(
     ward_names: list[str] | None = None,
 ) -> str:
     """Produce a human-readable location string like 'TP. Hồ Chí Minh (Quận 1, Thủ Đức)'."""
-    p_code = (province_code or "").upper().strip()
+    if not province_code:
+        return ""
+    p_code = province_code.upper().strip()
     target_prov = next((p for p in PROVINCES_DATA if p["code"] == p_code), None)
+    if not target_prov:
+        p_code_lower = province_code.lower().strip()
+        target_prov = next(
+            (p for p in PROVINCES_DATA if any(alias == p_code_lower for alias in p["aliases"])),
+            None,
+        )
     if not target_prov:
         return province_code
 
@@ -213,8 +280,9 @@ def format_location_summary(
     if selected_districts:
         parts.extend(selected_districts)
     if ward_names:
-        parts.extend(ward_names)
+        parts.extend([w.strip() for w in ward_names if w and w.strip()])
 
     if parts:
         return f"{p_name} ({', '.join(parts)})"
     return p_name
+

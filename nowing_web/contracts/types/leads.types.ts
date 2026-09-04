@@ -276,8 +276,8 @@ export type LocationType = z.infer<typeof locationTypeSchema>;
 
 export const locationProfileSchema = z.object({
 	location_type: locationTypeSchema.default("both"),
-	province_code: z.string(),
-	province_name: z.string(),
+	province_code: z.string().trim().min(1, "Vui lòng chọn ít nhất một Tỉnh / Thành phố"),
+	province_name: z.string().trim().min(1, "Vui lòng chọn ít nhất một Tỉnh / Thành phố"),
 	district_codes: z.array(z.string()).default([]),
 	district_names: z.array(z.string()).default([]),
 	ward_codes: z.array(z.string()).default([]),

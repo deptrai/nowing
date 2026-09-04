@@ -14,13 +14,14 @@ import {
 	Target,
 	X,
 } from "lucide-react";
-
+import { LocationSelector } from "@/components/leads/LocationSelector";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { CampaignIntent, IcpVerticalTemplate } from "@/contracts/types/campaign.types";
+import type { LocationProfile } from "@/contracts/types/leads.types";
 
 import { VERTICAL_PRESETS } from "../constants";
 import type { UseCampaignBuilderReturn } from "../types";
@@ -173,39 +174,38 @@ export function IcpBuilderStep({
 						</div>
 
 						<div>
-							<Label className="text-xs text-zinc-300">Khu vực / Tỉnh thành</Label>
-							<div className="flex gap-2 mt-1.5">
-								<Input
-									value={builder.locationInput}
-									onChange={(e) => builder.setLocationInput(e.target.value)}
-									onKeyDown={(e) => {
-										if (e.key === "Enter") {
-											e.preventDefault();
+							<Label className="text-xs text-zinc-300">Khu vực / Địa bàn mục tiêu</Label>
+							<div className="mt-2">
+								<LocationSelector
+									className="bg-zinc-950/70 border-zinc-800"
+									onChange={(profile: LocationProfile) => {
+										if (
+											profile.location_text &&
+											!builder.locations.includes(profile.location_text)
+										) {
+											builder.setLocationInput(profile.location_text);
 											builder.addLocation();
 										}
 									}}
-									placeholder="Hà Nội, TP.HCM, Bình Dương..."
-									className="text-xs bg-zinc-950/70 border-zinc-800"
 								/>
-								<Button type="button" size="sm" variant="secondary" onClick={builder.addLocation}>
-									<Plus className="w-3.5 h-3.5" />
-								</Button>
 							</div>
-							<div className="flex flex-wrap gap-1.5 mt-2">
-								{builder.locations.map((loc, idx) => (
-									<span
-										key={loc}
-										className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] bg-zinc-800 text-zinc-300 border border-zinc-700"
-									>
-										<MapPin className="w-3 h-3 text-zinc-400" />
-										{loc}
-										<X
-											className="w-3 h-3 cursor-pointer hover:text-white"
-											onClick={() => builder.removeLocation(idx)}
-										/>
-									</span>
-								))}
-							</div>
+							{builder.locations.length > 0 && (
+								<div className="flex flex-wrap gap-1.5 mt-2.5">
+									{builder.locations.map((loc, idx) => (
+										<span
+											key={loc}
+											className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] bg-zinc-800 text-zinc-200 border border-zinc-700"
+										>
+											<MapPin className="w-3 h-3 text-emerald-400" />
+											{loc}
+											<X
+												className="w-3 h-3 cursor-pointer hover:text-white"
+												onClick={() => builder.removeLocation(idx)}
+											/>
+										</span>
+									))}
+								</div>
+							)}
 						</div>
 
 						<div>

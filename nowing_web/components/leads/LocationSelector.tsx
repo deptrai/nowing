@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 export interface LocationSelectorProps {
 	value?: LocationProfile | null;
 	onChange: (value: LocationProfile) => void;
+	errorMessage?: string;
 	className?: string;
 }
 
@@ -55,7 +56,12 @@ const LOCATION_TYPE_OPTIONS: Array<{ value: LocationType; label: string; descrip
 	},
 ];
 
-export function LocationSelector({ value, onChange, className }: LocationSelectorProps) {
+export function LocationSelector({
+	value,
+	onChange,
+	errorMessage,
+	className,
+}: LocationSelectorProps) {
 	const [provinceOpen, setProvinceOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [showAdvanced, setShowAdvanced] = useState(
@@ -65,7 +71,8 @@ export function LocationSelector({ value, onChange, className }: LocationSelecto
 
 	const selectedProvince = useMemo(() => {
 		if (!value?.province_code) return null;
-		return VIETNAM_PROVINCES.find((p) => p.code === value.province_code) || null;
+		const codeUpper = value.province_code.toUpperCase();
+		return VIETNAM_PROVINCES.find((p) => p.code.toUpperCase() === codeUpper) || null;
 	}, [value?.province_code]);
 
 	const filteredProvinces = useMemo(() => {
@@ -78,7 +85,7 @@ export function LocationSelector({ value, onChange, className }: LocationSelecto
 
 	// Handlers
 	const handleSelectProvince = (prov: Province) => {
-		const isSame = value?.province_code === prov.code;
+		const isSame = value?.province_code?.toUpperCase() === prov.code.toUpperCase();
 		const nextProfile: LocationProfile = {
 			location_type: value?.location_type || "both",
 			province_code: prov.code,
@@ -101,15 +108,16 @@ export function LocationSelector({ value, onChange, className }: LocationSelecto
 		const isSelected = currentCodes.includes(dist.code);
 
 		let nextCodes: string[];
-		let nextNames: string[];
 
 		if (isSelected) {
 			nextCodes = currentCodes.filter((c) => c !== dist.code);
-			nextNames = (value?.district_names || []).filter((n) => n !== dist.name);
 		} else {
 			nextCodes = [...currentCodes, dist.code];
-			nextNames = [...(value?.district_names || []), dist.name];
 		}
+
+		const nextNames = selectedProvince.districts
+			.filter((d) => nextCodes.includes(d.code))
+			.map((d) => d.name);
 
 		onChange({
 			location_type: value?.location_type || "both",
@@ -119,7 +127,11 @@ export function LocationSelector({ value, onChange, className }: LocationSelecto
 			district_names: nextNames,
 			ward_codes: value?.ward_codes || [],
 			ward_names: value?.ward_names || [],
-			location_text: buildLocationSummary(selectedProvince.code, nextCodes),
+			location_text: buildLocationSummary(
+				selectedProvince.code,
+				nextCodes,
+				value?.ward_names || []
+			),
 		});
 	};
 
@@ -135,7 +147,7 @@ export function LocationSelector({ value, onChange, className }: LocationSelecto
 		if (!customWardText.trim() || !value || !selectedProvince) return;
 		const nextWard = customWardText.trim();
 		const currentWards = value.ward_names || [];
-		if (currentWards.includes(nextWard)) {
+		if (currentWards.some((w) => w.toLowerCase().trim() === nextWard.toLowerCase())) {
 			setCustomWardText("");
 			return;
 		}
@@ -145,7 +157,7 @@ export function LocationSelector({ value, onChange, className }: LocationSelecto
 		onChange({
 			...value,
 			ward_names: nextWards,
-			location_text: `${buildLocationSummary(selectedProvince.code, value.district_codes)} (${nextWards.join(", ")})`,
+			location_text: buildLocationSummary(selectedProvince.code, value.district_codes, nextWards),
 		});
 	};
 
@@ -155,10 +167,7 @@ export function LocationSelector({ value, onChange, className }: LocationSelecto
 		onChange({
 			...value,
 			ward_names: nextWards,
-			location_text:
-				nextWards.length > 0
-					? `${buildLocationSummary(selectedProvince.code, value.district_codes)} (${nextWards.join(", ")})`
-					: buildLocationSummary(selectedProvince.code, value.district_codes),
+			location_text: buildLocationSummary(selectedProvince.code, value.district_codes, nextWards),
 		});
 	};
 
@@ -204,7 +213,13 @@ export function LocationSelector({ value, onChange, className }: LocationSelecto
 				<Label className="text-xs font-semibold">
 					Tỉnh / Thành phố <span className="text-destructive">*</span>
 				</Label>
-				<Popover open={provinceOpen} onOpenChange={setProvinceOpen}>
+				<Popover
+					open={provinceOpen}
+					onOpenChange={(open) => {
+						setProvinceOpen(open);
+						if (!open) setSearchQuery("");
+					}}
+				>
 					<PopoverTrigger asChild>
 						<Button
 							variant="outline"
@@ -258,6 +273,11 @@ export function LocationSelector({ value, onChange, className }: LocationSelecto
 						</Command>
 					</PopoverContent>
 				</Popover>
+				{errorMessage && (
+					<p className="text-xs text-destructive mt-1" data-testid="location-error-message">
+						{errorMessage}
+					</p>
+				)}
 			</div>
 
 			{/* Location Type Selector */}
