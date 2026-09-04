@@ -1,6 +1,6 @@
 ---
 story_key: 6-11-vertical-alert-rule-templates
-status: in-review
+status: done
 baseline_commit: 098260ef9
 epic: 6
 story: 11
@@ -8,7 +8,7 @@ story: 11
 
 # Story 6.11: Vertical Alert Rule Templates
 
-**Status:** `in-review`  
+**Status:** `done`  
 **Epic:** 6 — Automations  
 **Governed by:** AD-33 (Generic Alert Engine), AD-34, AD-35, FR-44/49/50/51/52, `epics.md` lines 4075–4110.  
 **Consolidated from:** Story 14.3 (News Alerts), Story 15.3 (Stock Price Alerts), Story 16.3 (Company Alerts), Story 17.3 (Price Drop Alerts), Story 17.4 (Competitor Tracking).
@@ -106,3 +106,37 @@ so that I can activate intelligent scheduled monitoring in 1 click without manua
   - [x] Write unit tests in `nowing_backend/tests/unit/alerts/test_alert_templates.py`.
   - [x] Write integration test in `nowing_backend/tests/integration/alerts/test_alert_templates_routes.py`.
   - [x] Run `ruff check` and pytest suite.
+
+---
+
+## Suggested Review Order
+
+**Vertical Template Registry & Data Models**
+
+- Defines template definitions, parameters schema, and availability check
+  [`registry.py:27`](../../../nowing_backend/app/alerts/templates/registry.py#L27)
+
+- Parameter compiler transforming user inputs to AlertRuleCreate with validation
+  [`compiler.py:15`](../../../nowing_backend/app/alerts/templates/compiler.py#L15)
+
+**API Routes & Workspace RBAC**
+
+- Template catalog listing and 1-click instantiation routes with auto-subscription
+  [`alert_rules_routes.py:100`](../../../nowing_backend/app/routes/alert_rules_routes.py#L100)
+
+**Frontend UI & Modal**
+
+- Interactive modal with instant validation and dynamic vertical form fields
+  [`CreateFromTemplateModal.tsx:44`](../../../nowing_web/components/alerts/CreateFromTemplateModal.tsx#L44)
+
+- Saved searches workspace listing with 1-click template launcher
+  [`saved-searches-list-content.tsx:29`](../../../nowing_web/app/dashboard/[workspace_id]/research/saved-searches/saved-searches-list-content.tsx#L29)
+
+**Test Suites**
+
+- Unit tests for template registry, validation rules, and compiler edge cases
+  [`test_alert_templates.py:17`](../../../nowing_backend/tests/unit/alerts/test_alert_templates.py#L17)
+
+- Integration tests for template catalog, instantiation, and permission enforcement
+  [`test_alert_templates_routes.py:88`](../../../nowing_backend/tests/integration/alerts/test_alert_templates_routes.py#L88)
+
