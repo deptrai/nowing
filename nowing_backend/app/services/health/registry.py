@@ -7,6 +7,12 @@ import logging
 from collections import defaultdict
 from typing import ClassVar
 
+from sqlalchemy import and_, or_, select
+
+from app.capabilities.core.store import CapabilityRegistry
+from app.config import config
+from app.db import async_session_maker
+from app.models.connectors import Connection
 from app.services.health.probe_base import HealthProbe
 from app.services.health.probes.chainlens_probe import ChainLensHealthProbe
 from app.services.health.probes.connector_probe import ConnectorHealthProbe
@@ -20,7 +26,7 @@ from app.services.health.probes.storage_probe import StorageHealthProbe
 
 logger = logging.getLogger(__name__)
 
-# Canonical list of 25 platform scrapers
+# Canonical seed lists used when dynamic sources are unavailable.
 CANONICAL_SCRAPER_PLATFORMS = [
     ("amazon", "Amazon Product Scraper", "E-Commerce"),
     ("batdongsan", "Batdongsan.com.vn", "Vietnam Real Estate"),
@@ -67,6 +73,23 @@ CANONICAL_CONNECTORS = [
 ]
 
 
+def _platform_from_capability_name(name: str) -> str:
+    """Map a capability name like 'cafef.scrape' to a platform slug."""
+    first_part = name.split(".", 1)[0].lower()
+    # Map composite namespaces to canonical platform slugs.
+    aliases = {
+        "b2b": "xactions",
+        "ecommerce": "amazon",
+        "google_maps": "google_maps",
+        "google_search": "google_search",
+        "realestate": "spatial_planning",
+        "recruitment": "linkedin",
+        "vn_bds": "batdongsan",
+        "vn_jobs": "topcv",
+    }
+    return aliases.get(first_part, first_part)
+
+
 class HealthProbeRegistry:
     """Registry maintaining all active health probes grouped by category."""
 
@@ -85,7 +108,7 @@ class HealthProbeRegistry:
 
     @classmethod
     def _ensure_sync(cls) -> None:
-        """Synchronously ensure the registry is initialized."""
+        """Synchronously ensure the registry is initialized with at least seed data."""
         if not cls._initialized:
             cls.discover_default_probes()
             cls._initialized = True
@@ -112,13 +135,15 @@ class HealthProbeRegistry:
 
     @classmethod
     async def ensure_initialized(cls) -> None:
-        """Thread-safe async variant of ensure_initialized."""
+        """Thread-safe async variant that also discovers DB- and config-backed probes."""
         if cls._initialized:
             return
         async with cls._init_lock:
             if cls._initialized:
                 return
+            # Seed first, then overlay dynamic discovery.
             cls.discover_default_probes()
+            await cls._discover_dynamic_probes()
             cls._initialized = True
 
     @classmethod
@@ -129,79 +154,143 @@ class HealthProbeRegistry:
         cls._initialized = False
 
     @classmethod
-    def discover_default_probes(cls) -> None:
-        """Populate the default probe set across all required categories."""
-        # 1. Infrastructure probes
+    def _register_infrastructure_probes(cls) -> None:
         for component in ["postgres", "redis", "celery", "caddy", "zero"]:
             cls.register(InfrastructureHealthProbe(component=component))
 
-        # 2. LLM / AI Model probes
-        cls.register(
-            ModelHealthProbe(
-                service_id="model/azure-gpt-5",
-                service_name="Azure OpenAI GPT-5",
-                provider="azure",
-                model_id="gpt-5",
-                display_group="Chat Models",
-            )
-        )
-        cls.register(
-            ModelHealthProbe(
-                service_id="model/deepseek-chat",
-                service_name="DeepSeek Chat",
-                provider="deepseek",
-                model_id="deepseek-chat",
-                display_group="Chat Models",
-            )
-        )
-        cls.register(
-            ModelHealthProbe(
-                service_id="model/gemini-1.5-flash",
-                service_name="Google Gemini 1.5 Flash",
-                provider="gemini",
-                model_id="gemini-1.5-flash",
-                display_group="Chat Models",
-            )
-        )
-        cls.register(
-            ModelHealthProbe(
-                service_id="local/vllm",
-                service_name="Local vLLM Qwen 14B",
-                provider="vllm",
-                model_id="qwen",
-                display_group="Local Inference",
-            )
-        )
-        cls.register(
-            ModelHealthProbe(
-                service_id="model/text-embedding-3-small",
-                service_name="OpenAI Text Embedding Small",
-                provider="openai",
-                model_id="text-embedding-3-small",
-                display_group="Embedding Models",
-            )
-        )
+    @classmethod
+    def _register_model_probes(cls) -> None:
+        """Discover model probes from in-memory global config/catalog."""
+        global_models = getattr(config, "GLOBAL_MODELS", []) or []
+        if not global_models:
+            # Seed with a safe default set when no catalog is configured.
+            global_models = [
+                {"model_id": "azure-gpt-5", "display_name": "Azure OpenAI GPT-5", "provider": "azure"},
+                {"model_id": "deepseek-chat", "display_name": "DeepSeek Chat", "provider": "deepseek"},
+                {"model_id": "gemini-1.5-flash", "display_name": "Google Gemini 1.5 Flash", "provider": "gemini"},
+                {"model_id": "qwen", "display_name": "Local vLLM Qwen 14B", "provider": "vllm"},
+                {"model_id": "text-embedding-3-small", "display_name": "OpenAI Text Embedding Small", "provider": "openai"},
+            ]
 
-        # 3. Scrapers probes (25 canonical platforms)
-        for platform, name, group in CANONICAL_SCRAPER_PLATFORMS:
+        seen_ids = set()
+        for model in global_models:
+            model_id = str(model.get("model_id") or "")
+            provider = str(model.get("provider") or model.get("litellm_provider") or "openai")
+            display_name = model.get("display_name") or model_id
+            service_id = f"model/{model_id}" if provider != "vllm" else f"local/{model_id}"
+            if service_id in seen_ids:
+                continue
+            seen_ids.add(service_id)
+            cls.register(
+                ModelHealthProbe(
+                    service_id=service_id,
+                    service_name=display_name,
+                    provider=provider,
+                    model_id=model_id,
+                    display_group=model.get("role", "Chat Models") if isinstance(model.get("role"), str) else "Chat Models",
+                )
+            )
+
+    @classmethod
+    def _register_scraper_probes(cls, capability_platforms: set[str]) -> None:
+        """Register scraper probes, overlaying seed list with discovered capabilities."""
+        registered_platforms: set[str] = set()
+
+        for cap in CapabilityRegistry.all():
+            platform = _platform_from_capability_name(cap.name)
+            if platform in registered_platforms:
+                continue
+            if any(p == platform for p, _, _ in CANONICAL_SCRAPER_PLATFORMS):
+                name = next((n for p, n, _ in CANONICAL_SCRAPER_PLATFORMS if p == platform), platform.replace("_", " ").title())
+                group = next((g for p, _, g in CANONICAL_SCRAPER_PLATFORMS if p == platform), "Platform Scrapers")
+            else:
+                name = cap.description or platform.replace("_", " ").title()
+                group = "Platform Scrapers"
             cls.register(ScraperHealthProbe(platform=platform, service_name=name, display_group=group))
+            registered_platforms.add(platform)
 
-        # 4. SaaS Connectors
-        for conn_type, name, group in CANONICAL_CONNECTORS:
+        for platform, name, group in CANONICAL_SCRAPER_PLATFORMS:
+            if platform not in registered_platforms and platform not in capability_platforms:
+                cls.register(ScraperHealthProbe(platform=platform, service_name=name, display_group=group))
+                registered_platforms.add(platform)
+
+    @classmethod
+    async def _register_connector_probes(cls) -> None:
+        """Discover active connector probes from the database, falling back to seed list."""
+        db_types: set[str] = set()
+        try:
+            async with async_session_maker() as session:
+                stmt = select(Connection.provider).where(
+                    and_(
+                        Connection.enabled.is_(True),
+                        or_(
+                            Connection.api_key.isnot(None),
+                            Connection.extra.isnot(None),
+                        ),
+                    )
+                ).distinct()
+                res = await session.execute(stmt)
+                db_types = {str(row[0]).lower() for row in res.fetchall() if row[0]}
+        except Exception as exc:
+            logger.warning("Failed to discover connector probes from DB: %s", exc)
+
+        seed_by_type = {t: (n, g) for t, n, g in CANONICAL_CONNECTORS}
+
+        for conn_type in db_types:
+            name, group = seed_by_type.get(conn_type, (conn_type.replace("_", " ").title(), "SaaS Connectors"))
             cls.register(ConnectorHealthProbe(connector_type=conn_type, service_name=name, display_group=group))
 
-        # 5. Proxy probe
-        cls.register(ProxyHealthProbe())
+        for conn_type, name, group in CANONICAL_CONNECTORS:
+            if conn_type not in db_types:
+                cls.register(ConnectorHealthProbe(connector_type=conn_type, service_name=name, display_group=group))
 
-        # 6. ChainLens Research probe
+    @classmethod
+    def _register_messaging_payment_storage_proxy_research(cls) -> None:
+        cls.register(ProxyHealthProbe())
         cls.register(ChainLensHealthProbe())
-        # 7. Messaging
         for msg_provider in ["telegram", "slack", "discord"]:
             cls.register(MessagingHealthProbe(provider=msg_provider))
-
-        # 8. Payment
         cls.register(PaymentHealthProbe(provider="stripe"))
-
-        # 9. Storage
         cls.register(StorageHealthProbe(provider="s3"))
 
+    @classmethod
+    async def _discover_dynamic_probes(cls) -> None:
+        """Overlay dynamic scraper/model/connector discovery on top of seed data."""
+        capability_platforms = {
+            _platform_from_capability_name(cap.name) for cap in CapabilityRegistry.all()
+        }
+
+        # Scraper discovery happens synchronously; re-register in case capabilities changed.
+        # Reset scraper category so we do not keep stale probes.
+        cls._probes_by_category["scraper"] = [p for p in cls._probes_by_category.get("scraper", []) if False]
+        for probe in list(cls._probes_by_id.values()):
+            if probe.category == "scraper":
+                del cls._probes_by_id[probe.service_id]
+        cls._register_scraper_probes(capability_platforms)
+
+        # Model discovery from config.
+        for probe in list(cls._probes_by_id.values()):
+            if probe.category == "model":
+                del cls._probes_by_id[probe.service_id]
+        cls._probes_by_category["model"] = []
+        cls._register_model_probes()
+
+        # Connector discovery from DB.
+        for probe in list(cls._probes_by_id.values()):
+            if probe.category == "connector":
+                del cls._probes_by_id[probe.service_id]
+        cls._probes_by_category["connector"] = []
+        await cls._register_connector_probes()
+
+    @classmethod
+    def discover_default_probes(cls) -> None:
+        """Populate the default probe set across all required categories.
+
+        This synchronous method is used for fast sync access. The async
+        ``ensure_initialized`` path overlays dynamic discovery from the DB and
+        CapabilityRegistry.
+        """
+        cls._register_infrastructure_probes()
+        cls._register_model_probes()
+        cls._register_scraper_probes(set())
+        cls._register_messaging_payment_storage_proxy_research()
