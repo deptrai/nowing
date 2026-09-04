@@ -48,6 +48,8 @@ def compile_template(
             raise TemplateCompilationError("price_threshold is required for stock price alerts")
         try:
             threshold_val = float(price_threshold)
+            if threshold_val <= 0:
+                raise TemplateCompilationError("price_threshold must be a positive number greater than 0")
         except (ValueError, TypeError) as exc:
             raise TemplateCompilationError(f"Invalid price_threshold numeric value: {price_threshold}") from exc
 
@@ -96,6 +98,11 @@ def compile_template(
         if not keyword:
             raise TemplateCompilationError("keyword cannot be empty for ecommerce price drop alerts")
         percent_drop = float(params.get("percent_drop") or 0.05)
+        # Normalize e.g. 5 or 10 into 0.05 or 0.10 if user enters 5 instead of 0.05
+        if percent_drop > 1.0:
+            percent_drop = percent_drop / 100.0
+        if percent_drop <= 0:
+            raise TemplateCompilationError("percent_drop must be greater than 0")
         absolute_delta = params.get("absolute_delta")
         abs_delta_val = float(absolute_delta) if absolute_delta is not None else None
 

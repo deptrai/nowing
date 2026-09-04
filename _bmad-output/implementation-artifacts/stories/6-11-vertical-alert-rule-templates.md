@@ -1,6 +1,6 @@
 ---
 story_key: 6-11-vertical-alert-rule-templates
-status: in-progress
+status: in-review
 baseline_commit: 098260ef9
 epic: 6
 story: 11
@@ -8,7 +8,7 @@ story: 11
 
 # Story 6.11: Vertical Alert Rule Templates
 
-**Status:** `in-progress`  
+**Status:** `in-review`  
 **Epic:** 6 — Automations  
 **Governed by:** AD-33 (Generic Alert Engine), AD-34, AD-35, FR-44/49/50/51/52, `epics.md` lines 4075–4110.  
 **Consolidated from:** Story 14.3 (News Alerts), Story 15.3 (Stock Price Alerts), Story 16.3 (Company Alerts), Story 17.3 (Price Drop Alerts), Story 17.4 (Competitor Tracking).
