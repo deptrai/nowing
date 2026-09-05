@@ -29,7 +29,9 @@
 		"test:e2e:install": "playwright install --with-deps chromium",
 		"test:connectors": "tsx lib/connectors/group-connectors-by-type.test.ts",
 		"test:connectors-rail": "tsx tests/connectors/connector-rail-health.test.ts",
-		"test:automations-builder": "tsx tests/automations/builder-schema.test.ts"
+		"test:automations-builder": "tsx tests/automations/builder-schema.test.ts",
+		"test:plan-summary": "tsx tests/leads/plan-summary-schema.test.ts",
+		"test:source-status": "tsx tests/leads/source-status-panel.test.ts"
 	},
 	"dependencies": {
 		"@ai-sdk/react": "^1.2.12",

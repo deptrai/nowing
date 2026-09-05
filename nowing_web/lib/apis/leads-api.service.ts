@@ -26,6 +26,16 @@ import {
 	zaloDraftResponseSchema,
 	znsSendResponseSchema,
 } from "@/contracts/types/leads.types";
+import {
+	campaignPlanResponseSchema,
+	leadGenOrchestratorResultSchema,
+	sourcePlanAllocationSchema,
+	type CampaignPlanResponse,
+	type LeadGenOrchestratorResult,
+	type SourcePlanAllocation,
+} from "@/contracts/types/campaign.types";
+import { z } from "zod";
+
 import { baseApiService } from "./base-api.service";
 
 const base = (workspaceId: number | string) => `/api/v1/workspaces/${workspaceId}`;
@@ -172,6 +182,51 @@ class LeadsApiService {
 		return baseApiService.patch(`${base(workspaceId)}/campaigns/${campaignId}`, campaignSchema, {
 			body: input,
 		});
+	};
+
+
+
+	// Global Scraper Adapter Health & Location Coverage Status (Story 26.28)
+	getSourceStatuses = async (
+		workspaceId: number | string,
+		params: { province_code?: string; district_codes?: string[] } = {}
+	): Promise<SourcePlanAllocation[]> => {
+		const qs = new URLSearchParams();
+		if (params.province_code) qs.set("province_code", params.province_code);
+		if (params.district_codes && params.district_codes.length > 0) {
+			for (const dc of params.district_codes) {
+				qs.append("district_codes", dc);
+			}
+		}
+		const query = qs.toString();
+		return baseApiService.get(
+			`${base(workspaceId)}/campaigns/sources/status${query ? `?${query}` : ""}`,
+			z.array(sourcePlanAllocationSchema)
+		);
+	};
+
+	// Pre-Flight Campaign Plan (Story 26.27)
+	planCampaign = async (
+		workspaceId: number | string,
+		spec: CampaignCreateInput
+	): Promise<CampaignPlanResponse> => {
+		return baseApiService.post(
+			`${base(workspaceId)}/campaigns/plan`,
+			campaignPlanResponseSchema,
+			{ body: spec }
+		);
+	};
+
+	executeCampaign = async (
+		workspaceId: number | string,
+		spec: CampaignCreateInput,
+		persist = true
+	): Promise<LeadGenOrchestratorResult> => {
+		return baseApiService.post(
+			`${base(workspaceId)}/campaigns/execute?persist=${persist}`,
+			leadGenOrchestratorResultSchema,
+			{ body: spec }
+		);
 	};
 
 	launchCampaign = async (workspaceId: number | string, campaignId: string): Promise<Campaign> => {

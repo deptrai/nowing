@@ -263,9 +263,27 @@ export function searchProvinces(query: string): Province[] {
  */
 export function buildLocationSummary(
 	provinceCode: string,
+	districtCodes?: string[],
+	wardNames?: string[]
+): string;
+export function buildLocationSummary(locationProfile: {
+	province_code: string;
+	district_codes?: string[];
+	ward_names?: string[];
+}): string;
+export function buildLocationSummary(
+	arg1: string | { province_code: string; district_codes?: string[]; ward_names?: string[] },
 	districtCodes: string[] = [],
 	wardNames: string[] = []
 ): string {
+	let provinceCode: string;
+	if (typeof arg1 === "string") {
+		provinceCode = arg1;
+	} else {
+		provinceCode = arg1.province_code;
+		districtCodes = arg1.district_codes ?? districtCodes;
+		wardNames = arg1.ward_names ?? wardNames;
+	}
 	if (!provinceCode) return "";
 	const pCodeUpper = provinceCode.toUpperCase();
 	const prov = VIETNAM_PROVINCES.find((p) => p.code.toUpperCase() === pCodeUpper);
