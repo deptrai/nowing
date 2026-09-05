@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
@@ -17,7 +17,12 @@ from app.lead_intelligence.campaign.presets import (
     get_vertical_preset,
     list_vertical_presets,
 )
-from app.lead_intelligence.campaign.schemas import CampaignSpec, SubTaskPlan
+from app.lead_intelligence.campaign.schemas import (
+    CampaignPlanResponse,
+    CampaignSpec,
+    SourcePlanAllocation,
+    SubTaskPlan,
+)
 from app.lead_intelligence.services.lead_gen_orchestrator import (
     LeadGenOrchestrator,
     LeadGenOrchestratorResult,
@@ -37,14 +42,7 @@ class ReverseIcpRequest(BaseModel):
     )
 
 
-class CampaignPlanResponse(BaseModel):
-    """Execution plan breakdown for a campaign spec."""
 
-    campaign_name: str
-    workspace_id: int
-    total_planned_sources: int
-    expected_sources: list[str]
-    subtasks: list[SubTaskPlan]
 
 
 @router.get("/{workspace_id}/campaigns/presets", response_model=list[VerticalPreset])
@@ -88,31 +86,30 @@ async def analyze_reverse_icp(
 @router.post("/{workspace_id}/campaigns/plan", response_model=CampaignPlanResponse)
 async def plan_campaign(
     workspace_id: int,
-    spec: CampaignSpec,
+    payload: dict[str, Any],
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(require_session_context),
 ) -> CampaignPlanResponse:
-    """Preview subtasks, budget splits, and source adapter allocations for a CampaignSpec."""
+    """Preview subtasks, budget splits, source adapter allocations, and cost estimates."""
     await check_permission(session, auth, workspace_id, Permission.LEADS_READ)
-    if spec.workspace_id != workspace_id:
-        spec.workspace_id = workspace_id
+    if payload.get("workspace_id") != workspace_id:
+        payload["workspace_id"] = workspace_id
 
+    try:
+        spec = CampaignSpec.from_payload(payload)
+    except (ValidationError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Cấu hình chiến dịch không hợp lệ: {exc}",
+        )
     planner = LeadGenPlanner()
-    subtasks, expected_sources = planner.plan_from_campaign(spec)
-
-    return CampaignPlanResponse(
-        campaign_name=spec.name,
-        workspace_id=workspace_id,
-        total_planned_sources=len(expected_sources),
-        expected_sources=expected_sources,
-        subtasks=subtasks,
-    )
+    return planner.create_preflight_plan(spec)
 
 
 @router.post("/{workspace_id}/campaigns/execute", response_model=LeadGenOrchestratorResult)
 async def execute_campaign(
     workspace_id: int,
-    spec: CampaignSpec,
+    payload: dict[str, Any],
     persist: bool = Query(
         default=True, description="Whether to atomically persist results into database"
     ),
@@ -126,9 +123,16 @@ async def execute_campaign(
     perm = Permission.LEADS_WRITE if persist else Permission.LEADS_READ
     await check_permission(session, auth, workspace_id, perm)
 
-    if spec.workspace_id != workspace_id:
-        spec.workspace_id = workspace_id
+    if payload.get("workspace_id") != workspace_id:
+        payload["workspace_id"] = workspace_id
 
+    try:
+        spec = CampaignSpec.from_payload(payload)
+    except (ValidationError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Cấu hình chiến dịch không hợp lệ: {exc}",
+        )
     orchestrator = LeadGenOrchestrator()
 
     if persist:
@@ -146,3 +150,28 @@ async def execute_campaign(
         )
 
     return result
+
+
+@router.get("/{workspace_id}/campaigns/sources/status", response_model=list[SourcePlanAllocation])
+async def get_campaign_sources_status(
+    workspace_id: int,
+    province_code: str | None = None,
+    district_codes: list[str] = Query(default=[]),
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(require_session_context),
+) -> list[SourcePlanAllocation]:
+    """Retrieve operational status, latency, and location coverage across all registered scraper adapters."""
+    await check_permission(session, auth, workspace_id, Permission.LEADS_READ)
+
+    location_profile = None
+    if province_code:
+        from app.lead_intelligence.schemas import LocationProfilePayload
+        location_profile = LocationProfilePayload(
+            province_code=province_code,
+            province_name=province_code,
+            district_codes=district_codes,
+        )
+
+    from app.lead_intelligence.adapters.registry import LeadSourceAdapterRegistry
+    registry = LeadSourceAdapterRegistry.get_default()
+    return registry.get_all_source_statuses(location_profile=location_profile)

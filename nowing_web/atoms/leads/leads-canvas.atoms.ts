@@ -1,6 +1,10 @@
 import { atom } from "jotai";
 import { atomWithStorage, createJSONStorage } from "jotai/utils";
 import { atomFamily } from "jotai-family";
+import type {
+	CampaignCreateInput,
+	CampaignPlanResponse,
+} from "@/contracts/types/campaign.types";
 import type { FilterPresets, Lead } from "@/contracts/types/leads.types";
 
 export interface FastUnlockSessionState {
@@ -24,13 +28,17 @@ export function makeFastUnlockKey(workspaceId: number | string, userId?: string 
 	return `${workspaceId}:${userId ?? "anon"}`;
 }
 
-export type CanvasMode = "leads" | "research" | "automations" | "scrapers" | "artifacts";
+export type CanvasMode = "leads" | "research" | "automations" | "scrapers" | "artifacts" | "plan";
 
 // Global fallback mode (for fresh new-chat sessions)
 export const canvasModeAtom = atom<CanvasMode>("leads");
 
 // Thread-scoped active canvas modes: key is thread_id, value is CanvasMode
 export const threadCanvasModeMapAtom = atom<Record<string, CanvasMode>>({});
+
+// Pre-Flight Plan active spec and response for the Right Panel Canvas (Story 26.27)
+export const activePlanSpecAtom = atom<CampaignCreateInput | null>(null);
+export const activeCampaignPlanAtom = atom<CampaignPlanResponse | null>(null);
 
 // Left Chat Panel width in pixels (clamped: min 280px, max 520px, default 340px)
 export const canvasLeftWidthAtom = atom<number>(340);

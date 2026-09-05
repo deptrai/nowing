@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { leadSchema } from "./leads.types";
+import { leadSchema, locationProfileSchema } from "./leads.types";
 
 export const campaignStatusSchema = z.enum([
 	"draft",
@@ -37,6 +37,7 @@ export const icpConfigSchema = z.object({
 	negative_keywords: z.array(z.string()).default([]),
 	reverse_icp_url: z.string().url().nullable().optional().or(z.literal("")),
 	custom_instructions: z.string().nullable().optional(),
+	location_profile: locationProfileSchema.nullable().optional(),
 });
 
 export type IcpConfig = z.infer<typeof icpConfigSchema>;
@@ -90,6 +91,7 @@ export type Campaign = z.infer<typeof campaignSchema>;
 export const campaignCreateInputSchema = z.object({
 	name: z.string().min(1, "Tên chiến dịch không được để trống"),
 	description: z.string().nullable().optional(),
+	workspace_id: z.number().optional(),
 	icp_config: icpConfigSchema,
 	source_budget_config: sourceBudgetConfigSchema,
 	launch_config: launchConfigSchema,
@@ -111,6 +113,67 @@ export const campaignListResponseSchema = z.object({
 });
 
 export type CampaignListResponse = z.infer<typeof campaignListResponseSchema>;
+
+
+// =============================================================================
+// Story 26.27: Pre-Flight Lead Plan Summary
+// =============================================================================
+
+export const sourcePlanAllocationSchema = z.object({
+	source_name: z.string(),
+	category: z.string(),
+	allocated_limit: z.number(),
+	priority: z.number(),
+	location_coverage_quality: z.string().default("none"),
+	location_coverage_score: z.number().default(0),
+	supported_provinces: z.array(z.string()).default([]),
+	status: z.string().default("ready"),
+	degraded_reason: z.string().nullable().optional(),
+});
+
+export type SourcePlanAllocation = z.infer<typeof sourcePlanAllocationSchema>;
+
+export const subTaskPlanSchema = z.object({
+	source_name: z.string(),
+	query: z.string(),
+	limit: z.number(),
+	filters: z.record(z.string(), z.any()).default({}),
+	priority: z.number(),
+});
+
+export type SubTaskPlan = z.infer<typeof subTaskPlanSchema>;
+
+export const leadGenOrchestratorResultSchema = z.object({
+	status: z.string().default("completed"),
+	total_discovered: z.number().default(0),
+	total_deduplicated: z.number().default(0),
+	leads: z.array(leadSchema).default([]),
+	degraded_sources: z.array(z.string()).default([]),
+	table_id: z.string().nullable().optional(),
+	subtask_plans: z.array(subTaskPlanSchema).default([]),
+	deduplication_summary: z.record(z.string(), z.any()).default({}),
+	execution_time_ms: z.number().default(0),
+	source_latency_ms: z.record(z.string(), z.number()).default({}),
+	deduplication_rate: z.number().default(0),
+});
+
+export type LeadGenOrchestratorResult = z.infer<typeof leadGenOrchestratorResultSchema>;
+
+export const campaignPlanResponseSchema = z.object({
+	campaign_name: z.string(),
+	workspace_id: z.number(),
+	total_planned_sources: z.number(),
+	expected_sources: z.array(z.string()),
+	subtasks: z.array(subTaskPlanSchema),
+	source_allocations: z.array(sourcePlanAllocationSchema).default([]),
+	estimated_reachable_leads: z.number().default(0),
+	estimated_cost_micros: z.number().default(0),
+	estimated_cost_vnd: z.number().default(0),
+	warnings: z.array(z.string()).default([]),
+});
+
+export type CampaignPlanResponse = z.infer<typeof campaignPlanResponseSchema>;
+
 
 // Lead Workbench Specific Types (Story 21.15 & SDR Pipeline)
 export const leadPipelineStatusSchema = z.enum([

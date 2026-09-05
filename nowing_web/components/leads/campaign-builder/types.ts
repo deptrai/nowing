@@ -1,9 +1,12 @@
 import type {
 	Campaign,
+	CampaignCreateInput,
 	CampaignIntent,
+	CampaignPlanResponse,
 	IcpVerticalTemplate,
 	LaunchConfig,
 } from "@/contracts/types/campaign.types";
+import type { LocationProfile } from "@/contracts/types/leads.types";
 
 export interface CampaignBuilderProps {
 	workspaceId: string | number;
@@ -41,6 +44,10 @@ export interface CampaignBuilderState {
 	excludeDnc: boolean;
 	autoUnlockPhones: boolean;
 	maxDailySpend: number;
+
+	locationProfile: LocationProfile | null;
+	activePlan: CampaignPlanResponse | null;
+	isPlanning: boolean;
 
 	scheduleType: LaunchConfig["schedule_type"];
 	cronExp: string;
@@ -86,12 +93,21 @@ export interface UseCampaignBuilderReturn extends CampaignBuilderState {
 	setExcludeDnc: (value: boolean) => void;
 	setAutoUnlockPhones: (value: boolean) => void;
 
+	setLocationProfile: (value: LocationProfile | null) => void;
+	setActivePlan: (value: CampaignPlanResponse | null) => void;
+	setActivePlanSpec: (value: CampaignCreateInput | null) => void;
+	setActiveCampaignPlan: (value: CampaignPlanResponse | null) => void;
+
 	setScheduleType: (value: LaunchConfig["schedule_type"]) => void;
 	setCronExp: (value: string) => void;
 	setExportDestination: (value: CampaignBuilderState["exportDestination"]) => void;
 
 	estimatedCost: number;
 
+	buildPlanSpec: () => CampaignCreateInput;
 	handleAnalyzeReverseIcp: () => Promise<void>;
+	handleGetPlan: () => Promise<void>;
+	handleSmokeTest: () => Promise<void>;
+	handleLaunchCampaign: () => Promise<void>;
 	handleSaveCampaign: (andLaunch?: boolean) => Promise<void>;
 }

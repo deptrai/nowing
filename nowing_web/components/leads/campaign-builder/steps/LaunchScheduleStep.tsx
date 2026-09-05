@@ -2,6 +2,7 @@
 
 import { Calendar, ChevronLeft, Loader2, Play, Rocket } from "lucide-react";
 
+import { PlanSummaryCard } from "@/components/leads/PlanSummaryCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -137,6 +138,17 @@ export function LaunchScheduleStep({ builder }: { builder: UseCampaignBuilderRet
 										</option>
 									))}
 								</select>
+							</div>
+
+							<div className="pt-2">
+								<PlanSummaryCard
+									plan={builder.activePlan}
+									icpConfig={builder.locationProfile ? { ...builder.buildPlanSpec().icp_config, location_profile: builder.locationProfile } : builder.buildPlanSpec().icp_config}
+									isLoading={builder.isPlanning}
+									onRequestPlan={builder.handleGetPlan}
+									onSmokeTest={() => builder.handleSmokeTest()}
+									onApplyPlan={() => builder.handleLaunchCampaign()}
+								/>
 							</div>
 						</CardContent>
 					</Card>

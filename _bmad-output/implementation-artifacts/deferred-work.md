@@ -1340,3 +1340,8 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - **Finding:** `normalize_domain` mis-parses URLs containing userinfo or ports (e.g. `http://user:pass@example.com:8080/path` becomes `user`).
   - **Action:** Fixed in `nowing_backend/app/lead_intelligence/dnc/normalizer.py` by parsing with `urlparse(...).hostname`; added unit tests.
   - **Resolved:** 2026-08-27.
+
+
+## Deferred from: code review of story-26.27 (2026-09-05)
+
+- [x] [Review][Defer] Sprint status marked `done` prematurely for 26-27 — `sprint-status.yaml:214` (deferred to status sync)
