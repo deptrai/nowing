@@ -242,19 +242,22 @@ export function useCampaignBuilder({
 			const spec = buildPlanSpec();
 			spec.source_budget_config.expected_leads_target = 5;
 			spec.source_budget_config.max_contacts_per_lead = 1;
-			const previous = locationProfile;
+			// Keep the location profile from the PREVIOUS run so the diff card
+			// compares against the last smoke test, not the current one.
+			const priorRunProfile = activeSmokeTestResult?.location_profile ?? locationProfile;
+			const currentRunProfile = locationProfile;
 
 			const result = await leadsApiService.executeCampaign(workspaceId, spec, false);
 			const run = {
 				run_id: crypto.randomUUID(),
 				executed_at: new Date().toISOString(),
 				result,
-				location_profile: previous,
+				location_profile: currentRunProfile,
 				spec,
 			};
 			setActiveSmokeTestResult(run);
 			setSmokeTestHistory((prev) => [...prev, run]);
-			setPreviousLocationProfile(previous);
+			setPreviousLocationProfile(priorRunProfile);
 
 			if (!activePlan) {
 				return;

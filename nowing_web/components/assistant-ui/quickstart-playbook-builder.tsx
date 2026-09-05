@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { type FC, useState } from "react";
+import { type FC, useRef, useState } from "react";
 import { toast } from "sonner";
 import { LocationSelector } from "@/components/leads/LocationSelector";
 import { PlanSummaryCard } from "@/components/leads/PlanSummaryCard";
@@ -14,7 +14,6 @@ import { Label } from "@/components/ui/label";
 import type { CampaignCreateInput, CampaignPlanResponse } from "@/contracts/types/campaign.types";
 import type { LocationProfile } from "@/contracts/types/leads.types";
 import { leadsApiService } from "@/lib/apis/leads-api.service";
-import { cn } from "@/lib/utils";
 
 interface PlaybookPreset {
 	id: string;
@@ -116,6 +115,7 @@ export const QuickstartPlaybookBuilder: FC = () => {
 	const [previousPlaybookLocation, setPreviousPlaybookLocation] = useState<LocationProfile | null>(
 		null
 	);
+	const lastSmokeLocationRef = useRef<LocationProfile | null>(null);
 
 	const resetWizard = () => {
 		setSelectedPreset(null);
@@ -160,6 +160,7 @@ export const QuickstartPlaybookBuilder: FC = () => {
 			spec.source_budget_config.expected_leads_target = 20;
 		}
 
+		const currentRunLocation = locationProfile;
 		setIsPlanningPlaybook(true);
 		try {
 			const result = await leadsApiService.executeCampaign(targetWorkspace, spec, !smokeTest);
@@ -169,8 +170,13 @@ export const QuickstartPlaybookBuilder: FC = () => {
 					: `Đã chạy chiến dịch: tìm thấy ${result.total_discovered} lead`
 			);
 			if (smokeTest) {
+				// Shift the location profile stored in the previous run into
+				// previousPlaybookLocation before overwriting with current results.
+				if (playbookSmokeResult) {
+					setPreviousPlaybookLocation(lastSmokeLocationRef.current);
+				}
+				lastSmokeLocationRef.current = currentRunLocation;
 				setPlaybookSmokeResult(result);
-				setPreviousPlaybookLocation(locationProfile);
 			} else {
 				resetWizard();
 				router.push(`/dashboard/${targetWorkspace}/leads`);

@@ -1,6 +1,6 @@
 ---
 story_key: 26-29-smoke-test-feedback-loop-for-location-refinement
-status: review
+status: done
 baseline_commit: b1557c268
 epic: 26
 story: 29
@@ -8,7 +8,7 @@ story: 29
 
 # Story 26.29: Smoke Test Feedback Loop for Location Refinement
 
-**Status:** `ready-for-dev`  
+**Status:** `done`  
 **Epic:** 26 — Lead Intelligence  
 **Governed by:** FR-69.4, FR-69.6, FR-85, AD-31, AD-42, `epics.md` lines 3322–3336, `epic-26-context.md`.  
 **Dependencies:** Story 26.25 (`LocationProfile`, `LocationSelector`), Story 26.26 (`calculate_location_coverage_score`), Story 26.27 (`PlanSummaryCard`, `execute_campaign` with `persist=false`), Story 26.28 (`SourceCoverageBadge`, `SourceStatusPanel`).
@@ -228,4 +228,11 @@ claude-sonnet-5[1m]
 - Playwright: `smoke-test.spec.ts` created (requires live backend to run E2E).
 
 ### Status
-- Story 26.29: `in-progress` → `review`
+- Story 26.29: `in-progress` → `review` → `done`
+
+### Code Review Fixes Applied (Post-Review)
+- **Defect 1 (HIGH):** Added `LocationSelector` dialog modal in `LaunchScheduleStep.tsx` bound to `builder.locationRefineOpen` so "Chỉnh vị trí chi tiết" and "Thu hẹp khu vực" open the refinement UI.
+- **Defect 2 (HIGH):** Fixed `smoke-test-diff-summary` guard in `PlanSummaryCard.tsx` to show diff whenever `provinceChanged`, `addedDistricts`, `removedDistricts`, `addedWards`, or `removedWards` have values.
+- **Defect 3 (MEDIUM):** Added `addedWards` / `removedWards` rendering to the diff summary card.
+- **Defect 4 (MEDIUM):** Fixed `previousLocationProfile` timing in `use-campaign-builder.ts` and `quickstart-playbook-builder.tsx` so diff compares against the previous smoke test run, not the current one.
+- **Defect 5 (LOW):** Added `location_match_score: z.number().nullable().optional()` to `leadSchema` in `leads.types.ts` and removed the unsafe type cast in `PlanSummaryCard.tsx`.

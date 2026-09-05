@@ -293,7 +293,7 @@ development_status:
   26-26-location-aware-adapter-routing-coverage-quality: done
   26-27-pre-flight-lead-plan-summary-plansummarycard: done
   26-28-source-coverage-badge-in-right-canvas: done
-  26-29-smoke-test-feedback-loop-for-location-refinement: review
+  26-29-smoke-test-feedback-loop-for-location-refinement: done
   26-1-fastmcp-ingest-gateway-batch-ingestion-stateless-chainlens-p: done
   26-2-dsh-worker-sidecar-container-redis-streams-task-resumption: done
   26-3-multi-tier-hybrid-llm-router: done

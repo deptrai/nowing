@@ -111,6 +111,14 @@ export function PlanSummaryCard({
 			? computeLocationDiff(previousLocationProfile, currentLocationProfile)
 			: null;
 
+	const hasLocationDiff =
+		locationDiff &&
+		(locationDiff.provinceChanged ||
+			locationDiff.addedDistricts.length > 0 ||
+			locationDiff.removedDistricts.length > 0 ||
+			locationDiff.addedWards.length > 0 ||
+			locationDiff.removedWards.length > 0);
+
 	const smokeLeads: Lead[] = smokeTestResult?.leads?.slice(0, 5) ?? [];
 	const locationMetadata = smokeTestResult?.location_match_metadata;
 
@@ -419,8 +427,7 @@ export function PlanSummaryCard({
 							</div>
 							<div className="divide-y divide-zinc-800/60">
 								{smokeLeads.map((lead, idx) => {
-									const matched =
-										(lead as { location_match_score?: number }).location_match_score ?? 0;
+									const matched = lead.location_match_score ?? 0;
 									const isOutside = matched < 65;
 									return (
 										<div
@@ -464,7 +471,7 @@ export function PlanSummaryCard({
 					)}
 
 					{/* AC-4: Diff summary on re-run */}
-					{locationDiff?.provinceChanged && (
+					{hasLocationDiff && locationDiff && (
 						<div
 							data-testid="smoke-test-diff-summary"
 							className="p-3 rounded-lg bg-zinc-950/50 border border-zinc-800 text-[11px]"
@@ -479,14 +486,28 @@ export function PlanSummaryCard({
 							{locationDiff.addedDistricts.length > 0 && (
 								<div className="mt-1">
 									<span className="text-emerald-400">
-										+ {locationDiff.addedDistricts.map((d) => d.name).join(", ")}
+										+ Quận/Huyện: {locationDiff.addedDistricts.map((d) => d.name).join(", ")}
 									</span>
 								</div>
 							)}
 							{locationDiff.removedDistricts.length > 0 && (
 								<div className="mt-1">
 									<span className="text-rose-400">
-										- {locationDiff.removedDistricts.map((d) => d.name).join(", ")}
+										- Quận/Huyện: {locationDiff.removedDistricts.map((d) => d.name).join(", ")}
+									</span>
+								</div>
+							)}
+							{locationDiff.addedWards.length > 0 && (
+								<div className="mt-1">
+									<span className="text-emerald-400">
+										+ Phường/Xã: {locationDiff.addedWards.join(", ")}
+									</span>
+								</div>
+							)}
+							{locationDiff.removedWards.length > 0 && (
+								<div className="mt-1">
+									<span className="text-rose-400">
+										- Phường/Xã: {locationDiff.removedWards.join(", ")}
 									</span>
 								</div>
 							)}
