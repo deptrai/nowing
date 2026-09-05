@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '09-05-2026 13:45'
+last_updated: '09-06-2026 02:25'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # - Parsed epics.md: 24 epics, ~160 stories.
 # - Scanned _bmad-output/implementation-artifacts/ + stories/*.md for story files (frontmatter story_key/epic+story).
@@ -305,7 +305,7 @@ development_status:
   26-11-two-tier-phone-unlock-ux-refinement: done
   26-9a-wide-research-crawl-subgraph: done
   26-9b-pro-excel-formatter-in-daytona-sandbox: done
-  epic-26-retrospective: optional
+  epic-26-retrospective: done
 
   epic-27: done
   27-1-full-stack-web-app-builder-1-click-hosting-design-view-mark: done
@@ -620,3 +620,32 @@ waves:
     notes: Story 27.2a/27.2b are chat-first deliverables following 27.1a 
       pattern; Story 27.1 is the largest scope story in the roadmap (new web 
       generator + dynamic hosting).
+action_items:
+  - id: "epic-26-retro-item-1-tối-ưu-hóa-bộ-nhớ-đệm-cache-cho-danh-mục"
+    epic: 26
+    action: "Tối ưu hóa bộ nhớ đệm cache cho danh mục 63 tỉnh/thành và alias tìm kiếm
+      địa lý"
+    owner: "Amelia"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-26-retro-2026-09-06.md"
+  - id: "epic-26-retro-item-2-thêm-helper-safeclick-tự-động-scroll-vào"
+    epic: 26
+    action: "Thêm helper safeClick tự động scroll vào viewport trong test suite Playwright
+      E2E"
+    owner: "Charlie"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-26-retro-2026-09-06.md"
+  - id: "epic-26-retro-item-3-bổ-sung-sự-kiện-telemetry-posthog-theo-d"
+    epic: 26
+    action: "Bổ sung sự kiện telemetry PostHog theo dõi tần suất các mã chẩn đoán
+      zero-leads"
+    owner: "Alice"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-26-retro-2026-09-06.md"
+  - id: "epic-26-retro-item-4-mở-rộng-metadata-cho-các-adapter-còn-lại"
+    epic: 26
+    action: "Mở rộng metadata cho các adapter còn lại để hỗ trợ bộ lọc địa bàn tự
+      nhiên"
+    owner: "Winston"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-26-retro-2026-09-06.md"
