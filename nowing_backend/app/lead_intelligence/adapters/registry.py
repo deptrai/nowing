@@ -482,14 +482,19 @@ class LeadSourceAdapterRegistry:
             )
             or []
         )
+        district_score = None
         for dc in d_codes:
             if dc in coverage_map:
                 q = coverage_map[dc]
-                return (
+                score = (
                     quality_scores.get(str(q).lower(), 0.7)
                     if isinstance(q, str)
                     else float(q)
                 )
+                if district_score is None or score > district_score:
+                    district_score = score
+        if district_score is not None:
+            return district_score
 
         # Check province in coverage map
         if p_code in coverage_map:
@@ -515,26 +520,29 @@ class LeadSourceAdapterRegistry:
         prompt: Any = "",
         category: LeadSourceCategory | None = None,
         location_profile: Any | None = None,
-    ) -> Any:
+    ) -> tuple[list[LeadSourceAdapter], bool]:
         """Resolve, composite-rank, and return candidate adapters with fallback warning (AC-2).
 
-        Supports both:
-          1. CampaignSpec object signature -> returns list[LeadSourceAdapter]
-          2. (prompt, category, location_profile) -> returns tuple[list[LeadSourceAdapter], bool]
+        Accepts either a ``CampaignSpec`` object or a (prompt, category, location_profile)
+        keyword argument set. Always returns a tuple of (ranked adapters, location_fallback).
         """
-        # Overload 1: CampaignSpec object passed as first positional arg
-        if not isinstance(prompt, str) and hasattr(prompt, "__dict__"):
-            return self.resolve_adapters_for_spec(prompt)
+        campaign_spec = None
+        if not isinstance(prompt, str) and (hasattr(prompt, "__dict__") or isinstance(prompt, dict)):
+            campaign_spec = prompt
+            query_text = str(getattr(campaign_spec, "query", "") or "")
+            icp_criteria = getattr(campaign_spec, "icp_criteria", None)
+            if icp_criteria is not None:
+                category = category or getattr(icp_criteria, "target_categories", [None])[0] if getattr(icp_criteria, "target_categories", []) else category
+            location_profile = location_profile or getattr(campaign_spec, "location_profile", None)
+        else:
+            query_text = str(prompt or "")
 
-        # Overload 2: Keyword / prompt based resolution with location profile
-        query_text = str(prompt or "")
-        if category:
-            candidates = self.find_by_category(category)
+        candidates = self.resolve_adapters_for_spec(campaign_spec) if campaign_spec is not None else []
+        if not candidates:
+            if category:
+                candidates = self.find_by_category(category)
             if not candidates:
                 candidates = self.resolve_adapters_for_intent(query_text)
-        else:
-            candidates = self.resolve_adapters_for_intent(query_text)
-
         if not candidates:
             candidates = self.list_all()
 
@@ -560,5 +568,11 @@ class LeadSourceAdapterRegistry:
         ranked.sort(key=lambda x: x[0], reverse=True)
 
         location_fallback = bool(location_profile and not any_location_match)
+
+        # Apply priority/quota hints based on composite score bands
+        for idx, (_, a) in enumerate(ranked):
+            a.priority = max(1, min(10, 10 - idx))
+            a.lead_quota = max(10, 100 - idx * 10)
+
         return [a for _, a in ranked], location_fallback
 

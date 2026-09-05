@@ -135,6 +135,130 @@ so that scraping budget is spent on sources that are most likely to return relev
 
 ---
 
+### Review Findings (bmad-code-review 2026-09-05)
+
+#### [Review][Patch] 1. Location-aware routing bypassed for `CampaignSpec` objects [registry.py:526-527]
+
+`resolve_adapters_for_campaign` detects a `CampaignSpec` instance by `hasattr(prompt, "__dict__")` and immediately delegates to `resolve_adapters_for_spec`, which performs legacy keyword/category matching without computing `location_coverage_score` or the 0.4/0.4/0.2 composite ranking. Both `LeadGenOrchestrator.execute_multi_source_lead_gen` and `LeadGenPlanner.plan_from_campaign` pass `CampaignSpec` objects in production, so the location-aware ranking logic is bypassed in the primary campaign paths. **AC-2.2, AC-2.3**
+
+- Suggested fix: unify the two overloads so `CampaignSpec` is unpacked (query, category, location_profile) and routed through the composite-ranking path; or make `resolve_adapters_for_spec` location-aware.
+
+#### [Review][Patch] 2. Inconsistent return type for `resolve_adapters_for_campaign` [registry.py:513-563]
+
+Calling with a `CampaignSpec` returns `list[LeadSourceAdapter]`; calling with `(prompt, category, location_profile)` returns `tuple[list[LeadSourceAdapter], bool]`. `LeadGenPlanner.plan_from_campaign` expects a list and iterates over the result, so a tuple would raise `TypeError`. This overload should return a single, predictable type. **Architectural consistency**
+
+- Suggested fix: always return the same shape (e.g. `tuple[list[LeadSourceAdapter], bool]`) and update both callers to consume the fallback flag; or keep list-only and expose a separate `resolve_adapters_for_campaign_with_fallback` method.
+
+#### [Review][Patch] 3. Orchestrator does not pass `location_profile` to `pre_filter_by_icp` [lead_gen_orchestrator.py:465]
+
+`execute_multi_source_lead_gen` calls `self.pre_filter_by_icp(record, icp_criteria)` without the `location_profile` keyword. Because the parameter defaults to `None`, `evaluate_hierarchical_location_match` returns `(True, 75.0)` for every record, so no geographic pre-filtering occurs during real multi-source runs. **AC-3.4**
+
+- Suggested fix: extract `location_profile` from `campaign_spec` (once `CampaignSpec` has the field) and pass it to `pre_filter_by_icp(record, icp_criteria, location_profile=location_profile)`.
+
+#### [Review][Patch] 4. `blend_location_fit_score` is dead code, not integrated into scoring pipeline [rubric.py:92-104, scoring/service.py, confidence/gate.py]
+
+The function is defined and exported but never called. `LeadScoringService._fit_score`, `ConfidenceGate.evaluate_icp_fit`, and `LeadGenOrchestrator._score_and_enrich` do not blend location match scores, so AC-4's final fit score formula is not applied to production leads. **AC-4.1, AC-4.2**
+
+- Suggested fix: wire `blend_location_fit_score` into the lead scoring path, passing the `location_match_score` computed during pre-filtering; or call it from `ConfidenceGate.evaluate_icp_fit` / `LeadScoringService._fit_score`.
+
+#### [Review][Patch] 5. `CampaignSpec` and `ICPCriteria` lack `location_profile` field [campaign/schemas.py:61-113]
+
+`LocationProfilePayload` exists in `lead_intelligence/schemas.py` but is not attached to `CampaignSpec` or `ICPCriteria`. Campaign requests cannot carry a structured `LocationProfile`, so the planner and orchestrator have no `location_profile` to consume. **AC-2, AC-3**
+
+- Suggested fix: add `location_profile: LocationProfilePayload | None = None` to `CampaignSpec` and, if needed, to `ICPCriteria`; import `LocationProfilePayload` from `app.lead_intelligence.schemas`.
+
+#### [Review][Patch] 6. Province codes collide with common Vietnamese abbreviations [lead_gen_orchestrator.py:264-270]
+
+`prov_candidates` includes the raw 2-letter province code (e.g. `CT`, `DN`). With the regex `(?<![a-z0-9])CT(?![a-z0-9])`, text such as "CT TNHH" (công ty trách nhiệm hữu hạn) or "DN" inside "doanh nghiệp" will match Cần Thơ / Đà Nẵng and return a province score of 75.0. **AC-3.2, AC-3.3**
+
+- Suggested fix: do not match raw 2-letter codes alone in `prov_candidates`; require at least 3-letter tokens or use a deny-list of common abbreviation collisions, or boost matching only when `province_name` or `aliases` are found.
+
+#### [Review][Patch] 7. Ward name matching false positives on single-digit numbers [lead_gen_orchestrator.py:237-239]
+
+Ward names such as "1", "2", or "10" are matched with `(?<![a-z0-9])<ward>(?![a-z0-9])`. This matches prices ("1 tỷ"), floor numbers ("tầng 1"), and room counts ("1 phòng ngủ"), producing a 100.0 exact-ward score for unrelated text. **AC-3.3**
+
+- Suggested fix: require ward tokens to appear with a prefix like "phường", "P.", "P", or "phuong", or filter out purely numeric ward tokens that are not prefixed by a ward indicator.
+
+#### [Review][Patch] 8. District matching does not verify target province for ambiguous districts [lead_gen_orchestrator.py:256-259]
+
+`evaluate_hierarchical_location_match` returns `True, 90.0` as soon as any target district name matches text, without checking whether the text also contains the target province or contradicts it. Districts such as "Châu Thành" exist in multiple provinces and will match across provinces. **AC-3.3**
+
+- Suggested fix: after a district name match, require either a target-province token or the absence of a contradictory province token in the same text, or use the `location_profile.district_codes` to scope the match with a province check.
+
+#### [Review][Patch] 9. Province catalog only covers 10 provinces [divisions.py, lead_gen_orchestrator.py:262]
+
+`PROVINCES_DATA` currently contains only 10 provinces. `evaluate_hierarchical_location_match` looks up `p_code` with `next(...)` and returns `(False, 0.0)` when the target province is not in the catalog, rejecting 100% of leads from the other 53 Vietnamese provinces. **AC-3.2**
+
+- Suggested fix: expand `PROVINCES_DATA` to all 63 Vietnamese provinces, or fall back to `location_profile.province_name` and `location_profile.district_names` when the code is not in the catalog.
+
+#### [Review][Patch] 10. `pre_filter_by_icp` omits `content_snippet` from text extraction [lead_gen_orchestrator.py:296-306]
+
+AC-3.1 explicitly lists `city`, `address`, `title`, `description`, and `content_snippet` as fields to extract and normalize. `pre_filter_by_icp` does not include `content_snippet`, so adapters that store text excerpts in that field (e.g. social/search adapters) may produce false-negative location rejections. **AC-3.1**
+
+- Suggested fix: add `str(data.get("content_snippet", ""))` to `text_parts`.
+
+#### [Review][Patch] 11. `EnterpriseProcurementLeadAdapter` missing coverage profile [enterprise.py]
+
+AC-1.3 requires existing canonical adapters (`BatdongsanAdapter`, `ChototAdapter`, `VietnamworksAdapter`, `EnterpriseProcurementLeadAdapter`, `SocialAdapter`) to declare coverage profiles. `enterprise.py` was not updated and inherits the base `supported_provinces = ["*"]` / `coverage_quality_by_location = {}` defaults. **AC-1.3**
+
+- Suggested fix: add explicit `supported_provinces` and `coverage_quality_by_location` for `EnterpriseProcurementLeadAdapter` based on its actual coverage (nationwide for enterprise/tender data).
+
+#### [Review][Patch] 12. Nationwide wildcard in all canonical adapters prevents fallback warning [batdongsan.py:32, chotot.py:33, social.py:28, vietnamworks.py]
+
+Every canonical adapter includes `"*"` in `supported_provinces`. `calculate_location_coverage_score` returns a baseline `0.6` for any province when `"*"` is present, so `any_location_match` is always `True` and `location_fallback` is never `True` for realistic registry state. **AC-2.5**
+
+- Suggested fix: either remove `"*"` from adapters that are not truly nationwide, or distinguish between explicit province coverage and wildcard fallback in the coverage map so fallback can still trigger when no explicit match exists.
+
+#### [Review][Patch] 13. District coverage scoring returns on first match only [registry.py:485-492]
+
+When `location_profile.district_codes` contains multiple districts, `calculate_location_coverage_score` returns the score for the first district found in `coverage_map`. It does not aggregate or choose the best score across all targeted districts. **AC-2.2**
+
+- Suggested fix: compute the maximum quality score across all matching `d_codes` (or average if that is the intended contract) and fall back to province-level scoring only when no district matches.
+
+#### [Review][Patch] 14. Word-boundary regex does not match technical guardrail [lead_gen_orchestrator.py:191]
+
+Technical Guardrail #2 specifies `rf"(?<![\wÀ-ỹ]){re.escape(clean_keyword)}(?![\wÀ-ỹ])"`. The implementation uses `(?<![a-z0-9])...(?![a-z0-9])`, which treats accented Vietnamese characters as word-boundary characters and can produce incorrect matches. **Technical Guardrail #2**
+
+- Suggested fix: use the documented pattern with `\wÀ-ỹ` (or equivalent Unicode-aware boundary) as in the spec.
+
+#### [Review][Patch] 15. Composite ranking does not set execution priority or lead allocation quotas [registry.py:559-563]
+
+AC-2.4 requires adapters with higher coverage quality to receive higher execution priority and larger lead allocation quotas. The current code only re-orders the adapter list; it does not update `priority` or compute `max_leads` quotas. **AC-2.4**
+
+- Suggested fix: return per-adapter `priority`/`quota` metadata alongside the ranked adapters, or update the `SubTaskPlan` / source budget logic in `LeadGenPlanner` to consume the composite rank.
+
+#### [Review][Patch] 16. Province match branch contains unreachable 65.0 score [lead_gen_orchestrator.py:271-276]
+
+The code sets `score = 75.0 if not d_codes else 65.0`, but the next `if d_codes: return False, 0.0` means `65.0` is never returned. **Code quality**
+
+- Suggested fix: remove the unreachable branch or change the logic to return `65.0` when `d_codes` are present but the district is not matched yet the province is matched (if broad matching is desired).
+
+#### [Review][Patch] 17. Base adapter class uses mutable class-level defaults [base.py:209-210]
+
+`supported_provinces: list[str] = ["*"]` and `coverage_quality_by_location: dict[str, str | float] = {}` are mutable objects defined at class level. In-place mutation by any subclass or instance will affect all other adapters that inherit the default. **Code quality / correctness**
+
+- Suggested fix: use `Field(default_factory=list)` / `Field(default_factory=dict)` if these become Pydantic fields, or define them as instance attributes in `__init__`, or use immutable tuples/frozen dict defaults.
+
+#### [Review][Patch] 18. `location_coverage_fallback` warning is not emitted or attached to plan summary [registry.py:562-563, planner.py]
+
+The fallback flag is returned as a boolean in the tuple overload but is not converted into a warning log entry or attached to `LeadPlanSummaryCard` / `SubTaskPlan`. AC-2.5 and AC-5 require the warning to appear in the plan summary. **AC-2.5, AC-5**
+
+- Suggested fix: log a warning when `location_fallback` is `True` and include a `warnings: list[str]` field in the planner/orchestrator response payload.
+
+#### [Review][Patch] 19. Missing "Châu Thành" disambiguation unit test [test_location_prefilter.py]
+
+AC-5 explicitly requires unit tests for boundary token matching including `"Quận 1" vs "Quận 12"` and `"Châu Thành" disambiguation`. The existing tests cover only the Quận cases. **AC-5**
+
+- Suggested fix: add a test that passes a `LocationProfile` for a specific province with a "Châu Thành" district and verifies that a lead mentioning "Châu Thành" in a different province is rejected.
+
+#### [Review][Patch] 20. Missing integration tests for end-to-end routing and fallback warning [tests/integration/]
+
+AC-5 requires integration tests verifying end-to-end `resolve_adapters_for_campaign` with fallback warning. No integration test was added under `tests/integration/lead_intelligence/` for this behavior. **AC-5**
+
+- Suggested fix: add an integration test that registers real adapters, calls `LeadGenPlanner.plan_from_campaign` or `LeadGenOrchestrator.execute_multi_source_lead_gen` with a `LocationProfile`, and asserts the fallback warning is raised when no adapter covers the target.
+
+---
+
 ## Suggested Review Order
 
 **Adapter Contracts & Routing Registry**

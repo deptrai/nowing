@@ -124,21 +124,19 @@ def test_pre_filter_by_icp_with_location_profile() -> None:
 
     icp = ICPCriteria()
 
-    # Valid lead passes
-    assert (
-        LeadGenOrchestrator.pre_filter_by_icp(
-            valid_record, icp, location_profile=hcm_profile
-        )
-        is True
+    # Valid lead passes with district match score 90.0
+    passes, score = LeadGenOrchestrator.pre_filter_by_icp(
+        valid_record, icp, location_profile=hcm_profile
     )
+    assert passes is True
+    assert score == 90.0
 
     # Out-of-area lead rejected
-    assert (
-        LeadGenOrchestrator.pre_filter_by_icp(
-            out_of_area_record, icp, location_profile=hcm_profile
-        )
-        is False
+    passes, score = LeadGenOrchestrator.pre_filter_by_icp(
+        out_of_area_record, icp, location_profile=hcm_profile
     )
+    assert passes is False
+    assert score == 0.0
 
 
 def test_blend_location_fit_score() -> None:
@@ -151,3 +149,29 @@ def test_blend_location_fit_score() -> None:
 
     # Base fit score 70.0, broad province match 75.0: 70 * 0.7 + 75 * 0.3 = 49 + 22.5 = 71.5
     assert blend_location_fit_score(70.0, 75.0, location_weight=0.3) == 71.5
+
+def test_chau_thanh_disambiguation() -> None:
+    """AC-3: 'Châu Thành' must be scoped to the target province, not any Châu Thành."""
+    tiengiang_profile = LocationProfilePayload(
+        province_code="TG",
+        province_name="Tiền Giang",
+        district_codes=["821"],
+        district_names=["Châu Thành"],
+    )
+
+    # Lead from a different province with a Châu Thành district should not match
+    bentre_text = "Bán đất huyện Châu Thành, tỉnh Bến Tre"
+    matched, score = LeadGenOrchestrator.evaluate_hierarchical_location_match(
+        bentre_text, tiengiang_profile
+    )
+    assert matched is False
+    assert score == 0.0
+
+    # Lead within the target province should match
+    tiengiang_text = "Bán đất huyện Châu Thành, tỉnh Tiền Giang"
+    matched, score = LeadGenOrchestrator.evaluate_hierarchical_location_match(
+        tiengiang_text, tiengiang_profile
+    )
+    assert matched is True
+    assert score == 90.0
+

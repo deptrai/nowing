@@ -24,6 +24,12 @@ class EnterpriseProcurementLeadAdapter(LeadSourceAdapter):
 
     source_name = "enterprise"
     category = LeadSourceCategory.ENTERPRISE
+    supported_provinces = ["*"]
+    coverage_quality_by_location = {
+        "HN": "medium",
+        "SG": "medium",
+        "DN": "low",
+    }
 
     def __init__(self) -> None:
         self.last_execution_status = "ok"

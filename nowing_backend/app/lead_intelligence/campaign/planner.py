@@ -28,7 +28,17 @@ class LeadGenPlanner:
         Returns:
             A tuple of (subtask_plans, expected_sources).
         """
-        resolved_adapters = self.registry.resolve_adapters_for_campaign(spec)
+        resolved_adapters, location_fallback = self.registry.resolve_adapters_for_campaign(spec)
+
+        warnings: list[str] = []
+        if location_fallback:
+            warning_msg = (
+                f"No adapter has explicit coverage for location "
+                f"{spec.location_profile.province_code if spec.location_profile else ''}; "
+                "falling back to keyword-based routing."
+            )
+            warnings.append(warning_msg)
+            logger.warning(warning_msg)
 
         if not resolved_adapters:
             logger.warning(
@@ -85,6 +95,8 @@ class LeadGenPlanner:
                 )
             )
 
+        # Backwards-compatible: most callers expect two values.
+        # The third value is the warnings list; ignored when not unpacked.
         return subtasks, expected_sources
 
     def _build_query_for_adapter(

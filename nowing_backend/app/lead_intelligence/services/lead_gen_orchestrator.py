@@ -188,7 +188,7 @@ class LeadGenOrchestrator:
             return False
         clean_text = remove_diacritics(text).lower()
         # Use boundary matching safe against Vietnamese diacritics
-        pattern = rf"(?<![a-z0-9]){re.escape(clean_kw)}(?![a-z0-9])"
+        pattern = rf"(?<![\wÀ-ỹ]){re.escape(clean_kw)}(?![\wÀ-ỹ])"
         return bool(re.search(pattern, clean_text))
 
     @classmethod
@@ -235,7 +235,12 @@ class LeadGenOrchestrator:
         )
         if ward_names:
             for w in ward_names:
-                if w and cls._contains_word_boundary_token(clean_text, w):
+                if not w:
+                    continue
+                # Purely numeric ward tokens are too noisy; require a ward prefix
+                if _is_numeric_only(remove_diacritics(w).strip()) and not _has_ward_prefix(clean_text, w):
+                    continue
+                if cls._contains_word_boundary_token(clean_text, w):
                     return True, 100.0
 
         # 2. District Matching
@@ -248,32 +253,75 @@ class LeadGenOrchestrator:
             )
             or []
         )
-        districts = get_districts_by_province(p_code)
-        target_district_names = [
-            d["name"] for d in districts if not d_codes or d["code"] in d_codes
-        ]
+        fallback_district_names = (
+            getattr(location_profile, "district_names", [])
+            or (
+                location_profile.get("district_names")
+                if isinstance(location_profile, dict)
+                else []
+            )
+            or []
+        )
 
-        if d_codes:
+        # Look up target province first so district matching can disambiguate
+        target_prov = next((p for p in PROVINCES_DATA if p["code"] == p_code), None)
+
+        districts = get_districts_by_province(p_code)
+        if not districts and fallback_district_names:
+            target_district_names = fallback_district_names
+        else:
+            target_district_names = [
+                d["name"] for d in districts if not d_codes or d["code"] in d_codes
+            ]
+            if d_codes and fallback_district_names:
+                target_district_names = list(set(target_district_names) | set(fallback_district_names))
+
+        # Build province candidates for disambiguation
+        prov_text = ""
+        if target_prov is not None:
+            prov_text = remove_diacritics(
+                " ".join([target_prov["name"], *target_prov.get("aliases", [])])
+            ).lower()
+        fallback_prov_name = remove_diacritics(
+            getattr(location_profile, "province_name", "")
+            or (location_profile.get("province_name") if isinstance(location_profile, dict) else "")
+            or ""
+        ).lower()
+        prov_text = f"{prov_text} {fallback_prov_name}".strip()
+
+        if d_codes or target_district_names:
             for dname in target_district_names:
+                if not dname:
+                    continue
                 if cls._contains_word_boundary_token(clean_text, dname):
+                    # Ambiguous district names (e.g. "Châu Thành") require province context
+                    if _is_ambiguous_district_name(dname) and prov_text and not _any_token_present(clean_text, prov_text.split()):
+                        continue
                     return True, 90.0
 
         # 3. Province Matching
-        target_prov = next((p for p in PROVINCES_DATA if p["code"] == p_code), None)
-        if target_prov:
-            prov_candidates = [
-                target_prov["name"],
-                target_prov["code"],
-                *target_prov.get("aliases", []),
-            ]
-            for candidate in prov_candidates:
-                if cls._contains_word_boundary_token(clean_text, candidate):
-                    # If user specified specific districts but only the province was matched
-                    score = 75.0 if not d_codes else 65.0
-                    # If specific districts were required, reject unless broad match allowed
-                    if d_codes:
-                        return False, 0.0
-                    return True, score
+        if target_prov is None:
+            # Fallback: use province_name from the profile
+            fallback_prov_name = (
+                getattr(location_profile, "province_name", None)
+                or (location_profile.get("province_name") if isinstance(location_profile, dict) else None)
+                or ""
+            ).strip()
+            if fallback_prov_name and cls._contains_word_boundary_token(clean_text, fallback_prov_name):
+                return True, 75.0
+            return False, 0.0
+
+        # Use name and aliases only; raw 2-letter codes cause false positives
+        prov_candidates = [
+            target_prov["name"],
+            *target_prov.get("aliases", []),
+        ]
+        for candidate in prov_candidates:
+            if cls._contains_word_boundary_token(clean_text, candidate):
+                if d_codes:
+                    # District required but only province matched: partial match
+                    return True, 65.0
+                return True, 75.0
 
         return False, 0.0
 
@@ -283,14 +331,14 @@ class LeadGenOrchestrator:
         raw_record: RawLeadRecord,
         icp_criteria: ICPCriteria | None,
         location_profile: Any | None = None,
-    ) -> bool:
+    ) -> tuple[bool, float]:
         """
         Evaluate if a raw record passes basic ICP criteria before full normalization.
         Checks negative keywords and required locations if specified in ICPCriteria.
-        Returns True if lead passes or if icp_criteria is None; False if rejected.
+        Returns (pass, location_match_score) tuple; location_match_score is 0.0-100.0.
         """
         if icp_criteria is None and location_profile is None:
-            return True
+            return True, 100.0
 
         # Extract text representations from raw data dict
         data = raw_record.data or {}
@@ -301,6 +349,7 @@ class LeadGenOrchestrator:
             str(data.get("address", "")),
             str(data.get("city", "")),
             str(data.get("description", "")),
+            str(data.get("content_snippet", "")),
             str(data.get("industry", "")),
             str(data.get("body", "")),
             str(data.get("job_title", "")),
@@ -311,17 +360,18 @@ class LeadGenOrchestrator:
         if icp_criteria and icp_criteria.negative_keywords:
             for nkw in icp_criteria.negative_keywords:
                 if nkw and nkw.lower().strip() in combined_text:
-                    return False
+                    return False, 0.0
 
         # Hierarchical Location Pre-filter (AC-3)
         if location_profile:
-            matched, _ = cls.evaluate_hierarchical_location_match(
+            matched, loc_score = cls.evaluate_hierarchical_location_match(
                 combined_text, location_profile
             )
             if not matched:
-                return False
+                return False, 0.0
+            return True, loc_score
 
-        return True
+        return True, 100.0
 
     async def _score_and_enrich(
         self,
@@ -414,7 +464,7 @@ class LeadGenOrchestrator:
             effective_limit = min(campaign_spec.max_total_leads, limit)
             icp_criteria = campaign_spec.icp_criteria
             intent_tags = campaign_spec.intent_tags
-            adapters = self.registry.resolve_adapters_for_campaign(campaign_spec)
+            adapters, _ = self.registry.resolve_adapters_for_campaign(campaign_spec)
         else:
             adapters = self.registry.resolve_adapters_for_intent(effective_query)
 
@@ -459,12 +509,21 @@ class LeadGenOrchestrator:
                     degraded_name = adapter.source_name if is_degraded else None
 
                     normalized: list[NormalizedLead] = []
+                    loc_profile = (
+                        getattr(campaign_spec, "location_profile", None)
+                        if campaign_spec is not None
+                        else None
+                    )
                     for record in raw_records:
                         try:
                             # Pre-filter by ICP criteria before full normalization
-                            if not self.pre_filter_by_icp(record, icp_criteria):
+                            passes, loc_score = self.pre_filter_by_icp(
+                                record, icp_criteria, location_profile=loc_profile
+                            )
+                            if not passes:
                                 continue
                             norm = adapter.normalize_lead(record)
+                            norm.location_match_score = loc_score
                             normalized.append(norm)
                         except Exception as norm_err:
                             logger.warning(
@@ -724,3 +783,35 @@ class LeadGenOrchestrator:
             "failed_count": summary.get("failed_count", 0),
         }
         return search_result
+
+
+def _is_numeric_only(text: str) -> bool:
+    """Return True if text contains only digits (after removing punctuation)."""
+    return bool(text) and text.replace(".", "").replace(",", "").isdigit()
+
+
+def _has_ward_prefix(text: str, ward: str) -> bool:
+    """Return True if a numeric ward token is preceded by a ward indicator."""
+    clean_text = remove_diacritics(text).lower()
+    if not _is_numeric_only(remove_diacritics(ward).strip()):
+        return True
+    # Look for phường / phuong / P. / p. / P<space> before the number
+    pattern = rf"(?:phường|phuong|p\.)\s*{re.escape(ward)}|(?:phường|phuong)\s+{re.escape(ward)}"
+    return bool(re.search(pattern, clean_text, re.IGNORECASE))
+
+
+def _is_ambiguous_district_name(name: str) -> bool:
+    """Return True for district names known to exist in multiple provinces."""
+    ambiguous = {"châu thành", "chau thanh", "huyện châu thành"}
+    return remove_diacritics(name).lower().strip() in ambiguous
+
+
+def _any_token_present(text: str, tokens: list[str]) -> bool:
+    """Return True if any token appears as a word-boundary token in text."""
+    for token in tokens:
+        if not token:
+            continue
+        if LeadGenOrchestrator._contains_word_boundary_token(text, token):
+            return True
+    return False
+

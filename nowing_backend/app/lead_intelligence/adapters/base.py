@@ -6,7 +6,7 @@ import re
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, ClassVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -79,6 +79,7 @@ class NormalizedLead(BaseModel):
     sources: list[str] = Field(default_factory=list)
     contact_candidates: list[ContactCandidate] = Field(default_factory=list)
     raw_data: dict[str, Any] = Field(default_factory=dict)
+    location_match_score: float | None = None
 
     def model_post_init(self, __context: Any) -> None:
         if not self.sources and self.source_name:
@@ -206,8 +207,10 @@ class LeadSourceAdapter(ABC):
     source_name: str
     category: LeadSourceCategory = LeadSourceCategory.GENERAL
     last_execution_status: str = "ok"
-    supported_provinces: list[str] = ["*"]
-    coverage_quality_by_location: dict[str, str | float] = {}
+    supported_provinces: ClassVar[list[str]] = ["*"]
+    coverage_quality_by_location: ClassVar[dict[str, str | float]] = {}
+    priority: int = 1
+    lead_quota: int = 50
 
     @abstractmethod
     async def search_leads(

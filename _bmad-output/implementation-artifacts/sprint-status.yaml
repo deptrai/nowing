@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '09-04-2026 04:31'
+last_updated: '09-05-2026 09:15'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # - Parsed epics.md: 24 epics, ~160 stories.
 # - Scanned _bmad-output/implementation-artifacts/ + stories/*.md for story files (frontmatter story_key/epic+story).
@@ -290,7 +290,7 @@ development_status:
 
   epic-26: in-progress
   26-25-customer-location-profile-selector-with-progressive-disclosu: done
-  26-26-location-aware-adapter-routing-coverage-quality: done
+  26-26-location-aware-adapter-routing-coverage-quality: in-progress
   26-27-pre-flight-lead-plan-summary-plansummarycard: backlog
   26-28-source-coverage-badge-in-right-canvas: backlog
   26-29-smoke-test-feedback-loop-for-location-refinement: backlog
