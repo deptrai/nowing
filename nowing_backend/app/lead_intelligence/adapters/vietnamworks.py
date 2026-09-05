@@ -60,6 +60,14 @@ class VietnamWorksLeadAdapter(LeadSourceAdapter):
 
     source_name = "vietnamworks"
     category = LeadSourceCategory.JOB_MARKET
+    supported_provinces = ["HN", "SG", "DN", "BD", "DNA", "HP", "CT", "*"]
+    coverage_quality_by_location = {
+        "HN": "high",
+        "SG": "high",
+        "DN": "medium",
+        "BD": "medium",
+        "DNA": "medium",
+    }
 
     def __init__(self) -> None:
         self.last_execution_status = "ok"

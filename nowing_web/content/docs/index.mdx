@@ -5,7 +5,7 @@ icon: BookOpen
 ---
 
 import { Card, Cards } from 'fumadocs-ui/components/card';
-import { Download, Container, Wrench, Cable, BookOpen, FlaskConical, Heart, MessageCircle, Cpu } from 'lucide-react';
+import { Download, Container, Wrench, Cable, BookOpen, FlaskConical, Heart, MessageCircle, Cpu, Bot, LayoutTemplate, Presentation, LineChart, Globe, Megaphone, Shield, Wallet } from 'lucide-react';
 
 **Nowing is open-core research memory for AI agents — it remembers what it went and found, not just what you told it.**
 
@@ -63,5 +63,58 @@ The fastest way to run Nowing is the [Docker installation](/docs/docker-installa
     title="Code of Conduct"
     description="Community guidelines and expectations"
     href="/docs/code-of-conduct"
+  />
+</Cards>
+
+## Feature Highlights
+
+<Cards>
+  <Card
+    icon={<Bot />}
+    title="Projects & Skills Hub"
+    description="Persistent workspace projects and a modular skills system for reusable agent instructions"
+    href="/docs/how-to/projects-and-skills"
+  />
+  <Card
+    icon={<Globe />}
+    title="Web Builder"
+    description="Build, preview, and deploy full-stack web apps and landing pages from chat"
+    href="/docs/how-to/web-builder"
+  />
+  <Card
+    icon={<Presentation />}
+    title="Presentation Studio"
+    description="Generate slide decks and meeting minutes from chat with speaker diarization"
+    href="/docs/how-to/presentation-studio"
+  />
+  <Card
+    icon={<Megaphone />}
+    title="Lead Intelligence & Outbound"
+    description="B2B lead scoring, phone verification, multi-channel drip campaigns, and CRM sync"
+    href="/docs/how-to/lead-intelligence"
+  />
+  <Card
+    icon={<LayoutTemplate />}
+    title="Automations & Playbooks"
+    description="Memory-driven automations, schema-driven forms, and reusable playbook templates"
+    href="/docs/how-to/automations"
+  />
+  <Card
+    icon={<Wallet />}
+    title="Usage & Credits"
+    description="Workspace credit dashboards, spend budgets, and per-tenant quota management"
+    href="/docs/how-to/usage-credits"
+  />
+  <Card
+    icon={<Shield />}
+    title="Security & Compliance"
+    description="PII vault, row-level security, audit logs, and data-retention lifecycle"
+    href="/docs/observability"
+  />
+  <Card
+    icon={<LineChart />}
+    title="Real-Time Sync with Zero"
+    description="Instant real-time data synchronization for chat, notifications, and live dashboards"
+    href="/docs/how-to/zero-sync"
   />
 </Cards>

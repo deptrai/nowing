@@ -46,9 +46,9 @@ test.describe("Data retention workspace settings", () => {
 			const section = page.getByRole("region", { name: /data retention/i });
 			await expect(section).toBeVisible();
 
-			const daysInput = page.getByRole("spinbutton", { name: /retention days/i });
-			const autoArchiveSwitch = page.getByRole("switch", { name: /auto.*archive/i });
-			const strategySelect = page.getByRole("combobox", { name: /strategy/i });
+			const daysInput = page.getByTestId("data-retention-days-input");
+			const autoArchiveSwitch = page.getByTestId("data-retention-auto-archive-switch");
+			const strategySelect = page.getByTestId("data-retention-action-select");
 			const saveButton = page.getByRole("button", { name: /save/i });
 
 			await expect(daysInput).toBeVisible();
@@ -126,9 +126,9 @@ test.describe("Data retention workspace settings", () => {
 			const section = memberPage.getByRole("region", { name: /data retention/i });
 			await expect(section).toBeVisible();
 
-			const daysInput = memberPage.getByRole("spinbutton", { name: /retention days/i });
-			const autoArchiveSwitch = memberPage.getByRole("switch", { name: /auto.*archive/i });
-			const strategySelect = memberPage.getByRole("combobox", { name: /strategy/i });
+			const daysInput = memberPage.getByTestId("data-retention-days-input");
+			const autoArchiveSwitch = memberPage.getByTestId("data-retention-auto-archive-switch");
+			const strategySelect = memberPage.getByTestId("data-retention-action-select");
 
 			await expect(daysInput).toBeDisabled();
 			await expect(autoArchiveSwitch).toBeDisabled();
@@ -207,8 +207,8 @@ test.describe("Data retention workspace settings", () => {
 			await page.goto(`/dashboard/${workspaceId}/workspace-settings/data-retention`);
 			await dismissOnboardingModal(page);
 
-			const autoArchiveSwitch = page.getByRole("switch", { name: /auto.*archive/i });
-			const daysInput = page.getByRole("spinbutton", { name: /retention days/i });
+			const autoArchiveSwitch = page.getByTestId("data-retention-auto-archive-switch");
+			const daysInput = page.getByTestId("data-retention-days-input");
 			const saveButton = page.getByRole("button", { name: /save/i });
 
 			// Validation only fires when auto-archive is enabled (see data-retention-manager).
@@ -243,8 +243,8 @@ test.describe("Data retention workspace settings", () => {
 			await page.goto(`/dashboard/${workspaceId}/workspace-settings/data-retention`);
 			await dismissOnboardingModal(page);
 
-			const autoArchiveSwitch = page.getByRole("switch", { name: /auto.*archive/i });
-			const daysInput = page.getByRole("spinbutton", { name: /retention days/i });
+			const autoArchiveSwitch = page.getByTestId("data-retention-auto-archive-switch");
+			const daysInput = page.getByTestId("data-retention-days-input");
 			const saveButton = page.getByRole("button", { name: /save/i });
 
 			await autoArchiveSwitch.check();
@@ -278,7 +278,7 @@ test.describe("Data retention workspace settings", () => {
 			await page.goto(`/dashboard/${workspaceId}/workspace-settings/data-retention`);
 			await dismissOnboardingModal(page);
 
-			const strategySelect = page.getByRole("combobox", { name: /strategy|action/i });
+			const strategySelect = page.getByTestId("data-retention-action-select");
 
 			// The action <select> is constrained to the two valid options, so an
 			// invalid action cannot be submitted through the UI — this IS the

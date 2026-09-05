@@ -1,0 +1,84 @@
+---
+title: Usage & Credits
+description: Workspace credit dashboards, spend budgets, and per-tenant quota management
+---
+
+# Usage & Credits
+
+Nowing tracks usage and credits per workspace so teams can monitor spend, set budgets, and avoid surprise overages.
+
+## Credit system
+
+Nowing uses a **credit ledger** for metered operations:
+
+- Scraper calls
+- Model calls
+- Knowledge base searches
+- Connector syncs
+- Automation runs
+- Subagent invocations
+- Storage
+
+Credits are deducted in real time as operations run. The ledger records every transaction with a reason, timestamp, and cost.
+
+## Usage dashboard
+
+The **Usage** page in your workspace shows:
+
+- Current credit balance
+- Daily / monthly spend
+- Top operations by cost
+- Per-model token usage
+- Connector and scraper spend
+- Team member usage
+
+There are two dashboard generations:
+
+- **Usage Dashboard v1** — basic charts and totals.
+- **Usage Dashboard v2** — richer breakdowns, historical trends, and export.
+
+## Budgets and limits
+
+Workspace owners and admins can configure:
+
+- **Workspace credit limit** — hard cap on monthly spend.
+- **Auto-extract spend budget** — limit on agent-driven extraction and research.
+- **Rate limits** — per-tenant throttling on expensive operations.
+- **Kill switch** — disable costly operations globally or per workspace.
+
+## Manual adjustments
+
+Admins can issue manual credit adjustments or refunds through the admin panel. Each adjustment is recorded with:
+
+- Reason
+- Amount
+- Approver
+- Timestamp
+
+This creates a dual-audit trail for billing disputes.
+
+## How to check usage
+
+1. Open **Usage** from your workspace sidebar.
+2. Select a date range.
+3. Review the summary cards and charts.
+4. Drill into specific operations or team members.
+5. Export the data if needed.
+
+## How to set a budget
+
+1. Go to **Workspace Settings → Billing & Usage**.
+2. Set a monthly credit cap.
+3. Configure alert thresholds (if available on your plan).
+4. Save changes.
+
+When the workspace reaches its limit, metered operations will be blocked unless an admin increases the cap.
+
+## PostHog product analytics
+
+Nowing also sends product analytics to **PostHog** for behavior and funnel tracking. This is separate from the credit ledger and used for product improvement.
+
+## Learn more
+
+- [Observability](/docs/observability)
+- [Lead Intelligence & Outbound](/docs/how-to/lead-intelligence)

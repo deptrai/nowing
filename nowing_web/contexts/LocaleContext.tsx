@@ -57,21 +57,10 @@ const LOCALE_STORAGE_KEY = "nowing-locale";
 export function detectInitialLocale(): Locale {
 	if (typeof window === "undefined") return "en";
 
-	// 1. Check browser navigator languages
-	const navLangs = window.navigator.languages || [window.navigator.language || ""];
-	for (const lang of navLangs) {
-		if (!lang) continue;
-		const code = lang.toLowerCase();
-		if (code.startsWith("vi")) return "vi";
-		if (code.startsWith("es")) return "es";
-		if (code.startsWith("pt")) return "pt";
-		if (code.startsWith("hi")) return "hi";
-		if (code.startsWith("zh")) return "zh";
-		if (code.startsWith("ko")) return "ko";
-		if (code.startsWith("en")) return "en";
-	}
-
-	// 2. Check timezone for Vietnam / Indochina
+	// 1. Check timezone for Vietnam / Indochina first. A user physically in
+	// Vietnam should see Vietnamese even if their browser language is English,
+	// matching the Story 7.8 geo-locale E2E expectation (Asia/Ho_Chi_Minh +
+	// en-US -> vi).
 	try {
 		const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 		if (
@@ -84,6 +73,20 @@ export function detectInitialLocale(): Locale {
 		}
 	} catch {
 		// Ignore timezone detection errors
+	}
+
+	// 2. Check browser navigator languages
+	const navLangs = window.navigator.languages || [window.navigator.language || ""];
+	for (const lang of navLangs) {
+		if (!lang) continue;
+		const code = lang.toLowerCase();
+		if (code.startsWith("vi")) return "vi";
+		if (code.startsWith("es")) return "es";
+		if (code.startsWith("pt")) return "pt";
+		if (code.startsWith("hi")) return "hi";
+		if (code.startsWith("zh")) return "zh";
+		if (code.startsWith("ko")) return "ko";
+		if (code.startsWith("en")) return "en";
 	}
 
 	return "en";

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { test as base } from "@playwright/test";
 import { acquireTestToken } from "../helpers/api/auth";
-import { createWorkspace, deleteWorkspace, type WorkspaceRow } from "../helpers/api/workspaces";
+import { createWorkspace, deleteWorkspace, setWorkspaceModelRoles, type WorkspaceRow } from "../helpers/api/workspaces";
 import { uniqueWorkspaceName } from "../helpers/canary";
 
 export type WorkspaceFixtures = {
@@ -68,6 +68,11 @@ export const workspaceFixtures = base.extend<WorkspaceFixtures, { apiTokenWorker
 			apiToken,
 			uniqueWorkspaceName("composio-drive-e2e")
 		);
+		await setWorkspaceModelRoles(request, apiToken, space.id, {
+			chat_model_id: -1,
+			image_gen_model_id: -101,
+			vision_model_id: -1,
+		});
 		try {
 			await use(space);
 		} finally {

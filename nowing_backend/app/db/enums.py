@@ -411,6 +411,19 @@ class Permission(StrEnum):
     # Web Builder (Story 27.1a)
     WEB_BUILDER_CREATE = "web_builder:create"
 
+    # Projects (Story 3.18)
+    PROJECTS_CREATE = "projects:create"
+    PROJECTS_READ = "projects:read"
+    PROJECTS_UPDATE = "projects:update"
+    PROJECTS_DELETE = "projects:delete"
+
+    # Skills (Story 3.18)
+    SKILLS_CREATE = "skills:create"
+    SKILLS_READ = "skills:read"
+    SKILLS_UPDATE = "skills:update"
+    SKILLS_DELETE = "skills:delete"
+    SKILLS_EXECUTE = "skills:execute"
+
 
 DEFAULT_ROLE_PERMISSIONS = {
     "Owner": [Permission.FULL_ACCESS.value],
@@ -471,6 +484,15 @@ DEFAULT_ROLE_PERMISSIONS = {
         Permission.MEMORY_CREATE.value,
         Permission.MEMORY_READ.value,
         Permission.MEMORY_UPDATE.value,
+        # Projects (no delete)
+        Permission.PROJECTS_CREATE.value,
+        Permission.PROJECTS_READ.value,
+        Permission.PROJECTS_UPDATE.value,
+        # Skills (no delete)
+        Permission.SKILLS_CREATE.value,
+        Permission.SKILLS_READ.value,
+        Permission.SKILLS_UPDATE.value,
+        Permission.SKILLS_EXECUTE.value,
     ],
     "Viewer": [
         # Documents (read only)
@@ -506,6 +528,10 @@ DEFAULT_ROLE_PERMISSIONS = {
         Permission.AUTOMATIONS_READ.value,
         # Memory (read only)
         Permission.MEMORY_READ.value,
+        # Projects (read only)
+        Permission.PROJECTS_READ.value,
+        # Skills (read only)
+        Permission.SKILLS_READ.value,
     ],
 }
 

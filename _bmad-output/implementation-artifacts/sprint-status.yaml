@@ -1,195 +1,177 @@
-generated: 2026-08-21 07:19
-last_updated: 2026-09-02
+# generated: 2026-08-08
+# last_updated: 2026-09-02
+# project: Nowing
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog -> in-progress: Automatically when first story is created (via create-story)
+#   - in-progress -> done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# Action Item Status:
+#   - open: Committed during a retrospective, not yet addressed
+#   - in-progress: Actively being worked on
+#   - done: Completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+# - Retrospective appends its action items to action_items; sprint-status surfaces open ones
+
+generated: "2026-08-21 07:19"
+last_updated: '09-05-2026 09:15'
+# bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
+# - Parsed epics.md: 24 epics, ~160 stories.
+# - Scanned _bmad-output/implementation-artifacts/ + stories/*.md for story files (frontmatter story_key/epic+story).
+# - Existing sprint-status.yaml preserved with manual statuses; no backlog story upgraded because all file-backed stories already >= ready-for-dev.
+# - 10 dropped/merged stories (12-7, 12-8, 14-3/4, 15-3/4, 16-3/4, 17-3/4) correctly excluded from status.
+# - 5 manual/implementation story keys preserved:
+#   * 15-1b  -> stories/15-1b-cafef-chat-subagent-integration.md (done)
+#   * 26-8   -> 26-8-langgraph-dsh-worker-executor.md (done)
+#   * 6-6a-playbook-reuse, 6-7a-schema-form-ui, 6-9a-workspace-vertical -> manual business-gated splits of 6-6/6-7/6-9 (backlog).
+# - 5 orphan story files not mapped to current epics.md (kept in artifacts, not added to status): 3-8, 4-5, 4-6, 9-6a, 9-6b.
+
+# ponytail: 2026-08-14 — reopened deferred/business-gated/dropped to backlog; 16-1 mutation gate reopened; 15-2 moved to review; tech-debt tracker reopened.
+# ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended citation ACs to 3.15 (WEB_RESULT), 9.3 (async delivery), 2.10 (Exa MCP). 3 stories → review.
+# ponytail: 2026-08-08 sprint-planning — added Epic 1, 5 (DONE brownfield); added 9.1a, 9.1b, 4.8a-4.8h, 13.2a-13.2e; upgraded 12.1-12.5 to ready-for-dev (story files exist); 12.0 DONE (legal approved).
 project: Nowing
 project_key: NOKEY
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
+
 development_status:
+  # === Epic 1: Identity, Auth & Workspace RBAC (DONE — brownfield, no individual stories) ===
   epic-1: done
   epic-1-retrospective: optional
+
   epic-2: done
-  2-5-workspace-mcp-tool-toggle: done
+  2-5-per-workspace-mcp-tool-enable-disable-toggle: done
   2-6-indeed-jobs-scraper: done
   2-7-walmart-product-reviews-scraper: done
   2-8-amazon-eu-marketplaces: done
-  2-9-scraper-input-validation: done
+  2-9-scraper-api-input-validation-error-handling: done
   2-10-exa-mcp-search-connector: done
   epic-2-retrospective: done
+
   epic-3: done
-  3-6-citation-scroll-to-highlight-in-full-document-editor-new-gap: done
-  3-7-data-retention-lifecycle-new-gap: done
-  3-7-followup: done
+  3-6-citation-scroll-to-highlight-in-full-document-editor: done
+  3-7-memory-retention-right-to-delete-legal-readiness: done
+  3-7-followup-retention-hardening: done
   3-9-memory-recall-eval-gate: done
-  3-10-legacy-memory-data-safety-forensic-backfill-guard: done
+  3-10-legacy-memory-data-safety: done
   3-11-memory-dedupe-confidence-tuning: done
-  3-12-memory-security-rbac-enforcement-isolation-audit: done
-  3-13-review-chunk-1-edge-case-hunter: done
-  3-14-review-blind-hunter: done
-  3-15-run-citations: done
-  3-16-okf-knowledge-export: done
+  3-12-memory-security: done
+  3-13-first-run-value: done
+  3-14-memory-injection: done
+  3-15-run-citations-as-verifiable-sources: done
+  3-16-open-knowledge-format-okf-export: done
   3-17-memory-injection-bounded-retrieval-performance-gate: done
   3-18-recall-precision-noise-gate-ratification: done
+  3-18-projects-persistent-workspace-modular-skills-hub: done
   epic-3-retrospective: done
+
   epic-4: done
-  4-7-pointer-based-tabs: done
-  4-8a-extend-new-chat-client-telemetry: done
-  4-8b-chat-regression-suite: done
-  4-8c-production-query-sampler: done
-  4-8c-followup: backlog
-  4-8d-chat-quality-llm-judge: done
-  4-8d-followup: backlog
-  4-8e-ci-deploy-gate: done
-  4-8f-benchmark-stability-scrape-captcha-rate-limit: done
-  4-8g-benchmark-mode-tier-matrix-local-prod: done
-  4-8h-mode-aware-chat-policy: done
-  4-8h-followup: backlog
+  4-7-pointer-based-tabs-with-live-title-resolution: done
+  4-8a-extend-newchatclient-telemetry: done
+  4-8b-chat-regression-benchmark-suite: done
+  4-8c-production-query-sampler-anonymizer: done
+  4-8c-followup-sampler-hardening: done
+  4-8d-chat-quality-benchmark-with-llm-as-judge: done
+  4-8d-followup-quality-benchmark-test-robustness: done
+  4-8e-ci-deploy-gate-for-chat-regression: done
+  4-8f-benchmark-stability: done
+  4-8g-benchmark-mode-tier-matrix-and-local-vs-production-parity: done
+  4-8h-mode-aware-chat-policy-for-latency-cost: done
+  4-8h-followup-mode-aware-chat-policy-hardening: done
   epic-4-retrospective: optional
+
   epic-5: done
   epic-5-retrospective: optional
-  epic-6: in-progress
-  6-4-direct-write-back-actions-new-gap: done
+
+  epic-6: done
+  6-4-direct-write-back-actions: done
   6-5-memory-driven-automations: done
-  6-6-playbook-reuse-expose-inputs-schema: done
+  6-6-playbook-reuse: done
   6-7-schema-driven-form-ui-cho-playbook-action: done
   6-8-generic-alert-engine: done
   6-9-workspace-vertical-playbook-library: done
-  6-6a-playbook-reuse: backlog
-  6-7a-schema-form-ui: backlog
-  6-9a-workspace-vertical: backlog
-  6-10-inbound-mail-gateway-stateful-scheduled-tasks: done
-  6-11-vertical-alert-rule-templates: backlog
-  6-12-narrative-report-engine-for-indexed-data: backlog
+  6-10-inbound-mail-gateway-task-nowing-ai-stateful-scheduled-tasks: done
+  6-11-vertical-alert-rule-templates: done
+  6-12-narrative-report-engine-for-indexed-data: done
   epic-6-retrospective: optional
+
   epic-7: done
   7-4-dedicated-connectors-layout: done
   7-7-mcp-server-tool-expansion: done
-  7-8-vietnamese-i18n-and-geo-locale-auto-detection: done
+  7-8-vietnamese-i18n-smart-geo-locale-auto-detection: done
   epic-7-retrospective: optional
+
   epic-8: done
-  8-3-usage-credit-dashboard-new-gap: done
-  8-7-review-blind-hunter: done
-  8-8-auto-extract-kill-switch-safe-default: done
-  8-9-memory-cost-turn-observability: done
-  8-10-docs-readme-vision-sync: done
-  8-11-admin-ui-global-llm-model-config: done
-  8-11-followup: backlog
+  8-3-usage-credit-dashboard: done
+  8-7-auto-extract-spend-budget-cap-wallet-pre-check-rate-limit: done
+  8-8-auto-extract-kill-switch-safe-default-mới-đánh-lại-số-từ-8-4: done
+  8-9-memory-cost-turn-observability-mới-đánh-lại-số-từ-8-5: done
+  8-10-docs-readme-vision-sync-mới-đánh-lại-số-từ-8-6: done
+  8-11-admin-ui-for-global-llm-model-configuration: done
+  8-11-followup-admin-model-config-hardening: done
   8-12-workspace-limits: done
-  8-13-trace: done
-  8-14-usage-credit-dashboard-v2-per-turn-cost-auto-extract-budget: done
+  8-13-posthog-product-analytics: done
+  8-14-usage-credit-dashboard-v2: done
   epic-8-retrospective: optional
+
   epic-9: done
-  9-1a-research-degradation-selfhost-independence: done
+  9-1a-research-degradation-self-host-independence: done
   9-1b-research-contract-regression-guard: done
   9-2-deep-research-cost-metering: done
   9-3-latency-budget-state-a-b-gate: done
-  9-4-docs-sync: done
+  9-4-docs: done
   9-5-metered-deep-research-endpoint-cho-self-host: done
   9-6-memory-provenance-re-validation: done
-  9-6-followup: backlog
+  9-6-followup-re-validation-hardening: done
   9-6c-memory-provenance-end-to-end-revalidation-gate: done
   epic-9-retrospective: optional
+
   epic-10: done
-  10-1-batdongsan-scraper: done
-  10-2-chotot-bds-scraper: done
-  10-3-muaban-bds-scraper: done
-  10-4-vn-bds-aggregator: done
+  10-1-batdongsan-com-vn-scraper: done
+  10-2-chotot-vn-nhà-tốt-scraper: done
+  10-3-muaban-net-bđs-scraper: done
+  10-4-vietnam-bđs-listing-aggregator-cross-source-trust-score: done
   10-5-anti-bot-captcha-screenshot-escalation: done
-  10-6-chotot-multi-category-scraper: done
-  10-7-chotot-multi-category-capability-and-billing: done
-  10-8-spatial-planning-land-zoning-gis-postgis-map-layers: done
+  10-6-chợ-tốt-multi-category-scraper: done
+  10-7-chợ-tốt-multi-category-capability-and-billing: done
+  10-8-spatial-planning-land-zoning-gis: done
   epic-10-retrospective: optional
-  epic-20: done
-  20-1-nowing-scraper-to_chunks-nowingingestservice: done
-  20-2-gap-fill-caller-cost-allocation-nowing-side: done
-  20-3-nowingprivateprovider-for-post-v1-private-data-search: done
-  20-4-service-to-service-auth-cost-ledger-sync: done
-  epic-20-retrospective: optional
-  epic-21: done
-  21-1-intent-signal-detection: done
-  21-2-lead-scoring-prioritization: done
-  21-3-vietnam-phone-contact-waterfall-engine: done
-  21-4-lead-intelligence-panel-company-graph: done
-  21-5-crm-integration-lark-base-google-sheets-1-click-sync: done
-  21-6-vietnam-outbound-automation-zalo-oa-telegram-sender: done
-  21-7-outcome-pricing: done
-  21-8-social-ingress-via-xactions-integration: done
-  21-9-executive-decision-maker-mapping-b2b-outreach: done
-  21-10-1-click-reverse-icp: done
-  21-11-actionable-turn-dispatches-suggested-action-pills: done
-  21-12-viral-social-co-pilot: done
-  21-13-multi-table-tabs-send-export-hub: done
-  21-14-smart-whitelist-and-dnc-compliance-engine: done
-  21-15-unified-multi-source-ai-lead-generation-orchestrator: done
-  21-16-nowing-split-view-canvas-workspace-modernization: done
-  21-17-complete-origami-landing-page-public-site-transformation: done
-  21-18-partners-affiliate-portal-and-0-pricing-page-deployment: done
-  21-19-lead-source-adapter-live-data-integration-persistence: done
-  21-20-extend-multi-source-lead-gen-adapters: done
-  21-21-deterministic-confidence-gate-selective-micro-llm-fallback-worker: done
-  epic-21-retrospective: optional
-  epic-22: done
-  22-1-telegram-storage-schema-public-web-preview-ingestion-engine: done
-  22-2-telegram-mtproto-userbot-client-encrypted-session-pool-anti-ban-cooldown: done
-  22-3-telegram-data-enrichment-realtime-alert-trigger-ai-agent-tools-scraper-ui: done
-  epic-22-retrospective: optional
-  epic-23: done
-  23-1-asynchronous-scraper-worker-pool: done
-  23-2-official-zalo-oa-webhook-and-zns-template-automation: done
-  23-3-automated-vietqr-affiliate-payout-reconciliation: done
-  23-4-postgresql-rls-and-table-partitioning: done
-  epic-23-retrospective: optional
-  epic-24: done
-  24-1-multi-channel-drip-outreach-campaign-engine: done
-  24-2-waterfall-phone-b2b-tax-code-mst-corporate-verification-engine: done
-  24-3-multi-seat-team-crm-pipeline-shared-workspace-credit-pooling: done
-  24-4-nowing-lead-clipper-chrome-extension-for-1-click-lead-capture: done
-  24-5-vertical-playbook-marketplace-community-workflow-templates: done
-  24-6-two-way-ai-outreach-auto-reply-agent: done
-  24-7-multi-channel-drip-outreach-campaign-engine: done
-  24-8-browser-operator-cdp: done
-  epic-24-retrospective: optional
-  epic-25: done
-  25-1-multi-tenant-user-workspace-hub-scoped-impersonation: done
-  25-2-manual-credit-adjustment-refund-desk-with-dual-audit-ledger: done
-  25-3-affiliate-partner-payout-desk-anti-fraud-engine: done
-  25-4-realtime-llm-token-cost-proxy-health-celery-queue-telemetry: done
-  25-5-dynamic-scraper-rule-engine-redos-sandbox: done
-  25-6-security-audit-trail-logs-in-app-broadcast-announcements-realtime: done
-  epic-25-retrospective: optional
-  epic-26: in-progress
-  26-1-fastmcp-batch-ingest-and-stateless-chainlens-pipeline: done
-  26-2-dsh-worker-sidecar-redis-streams-and-task-resumption: done
-  26-3-multi-tier-hybrid-llm-router: done
-  26-4-pii-vault-hmac-deduplication-decree-13-opt-out: done
-  26-5-split-canvas-glass-box-mission-control-two-tier-phone-unlock-shimmer-influx: done
-  26-6-telegram-interactive-checkpoint-bot-1-click-auto-refund-dialog: done
-  26-7-hermetic-quality-gates-benchmark-anti-zombie: done
-  26-8-langgraph-dsh-worker-executor: done
-  26-9a-wide-research-crawl-subgraph: done
-  26-9b-pro-excel-formatter-daytona: done
-  26-25-customer-location-profile-selector-with-progressive-disclosure: backlog
-  26-26-location-aware-adapter-routing-coverage-quality: backlog
-  26-27-pre-flight-lead-plan-summary-plansummarycard: backlog
-  26-28-source-coverage-badge-in-right-canvas: backlog
-  26-29-smoke-test-feedback-loop-for-location-refinement: backlog
-  epic-26-retrospective: optional
-  epic-27: done
-  27-1-full-stack-web-app-builder-instant-hosting-creative-studio: done
-  27-1a-web-builder-chat-mode-mvp-for-sales-marketing: done
-  27-1b-web-app-build-preview-runner: done
-  27-1c-web-app-container-deploy-custom-cname: done
-  27-1d-web-app-mark-tool-jsx-ast-mutator: done
-  27-2-design-view-mark-tool-presentation-studio: done
-  27-2a-manus-slides-presentation-studio: done
-  27-2b-speaker-diarization-meeting-minutes-from-chat: done
-  epic-27-retrospective: optional
+
   epic-11: done
   11-1-telegram-notification-foundation: done
-  11-2-telegram-write-back-and-builder: done
-  11-3-telegram-interactive-bot-and-commands: done
+  11-2-telegram-write-back-builder-ui-chat-resolution: done
+  11-3-telegram-interactive-bot-commands: done
   epic-11-retrospective: optional
+
   epic-12: done
-  12-0-tos-legal-review-prerequisite: done
+  12-0-tos-legal-review: done
   12-1-vietnamworks-scraper: done
   12-2-topcv-scraper: done
   12-3-itviec-scraper: done
@@ -197,34 +179,39 @@ development_status:
   12-4b-vietnam-job-deduplication-confidence-conflict-detection: done
   12-4c-pii-redaction-for-job-data-chunks: done
   12-4d-job-chunks-ingest-to-chainlens-research: done
-  12-4e-vietnam-job-aggregator-exposure-rest-mcp-chat-agent: done
+  12-4e-vietnam-job-aggregator-exposure: done
   12-5-pii-redaction-for-job-data: done
   12-6-saved-searches: done
   12-9-job-market-alerts: done
   12-10-linkedin-public-guest-jobs-headcount-growth-signals: done
   epic-12-retrospective: optional
+
   epic-13: done
   epic-13-retrospective: optional
+
   epic-14: done
   14-1-rss-feed-integration: done
   14-2a-news-entity-extraction: done
   14-2b-news-entity-search: done
   epic-14-retrospective: optional
+
   epic-15: done
   15-1-cafef-financial-data-integration: done
-  15-1b-cafef-chat-subagent-integration: done
   15-2-vietstock-deep-financials: done
   epic-15-retrospective: optional
-  epic-16: in-progress
-  16-1-masothue-company-data: done
-  16-2-official-business-registry-dangkykinhdoanh-gov-vn: backlog
+
+  epic-16: done
+  16-1-masothue-com-company-data: done
+  16-2-official-business-registry: done  # delegated to XActions (AD-SOC-1 / Trinity Alignment)
   16-5-national-public-procurement-tender-intelligence: done
   epic-16-retrospective: optional
-  epic-17: in-progress
-  17-1-lazada-product-data: backlog
+
+  epic-17: done
+  17-1-lazada-product-data: done  # delegated to XActions (AD-SOC-1 / Trinity Alignment)
   17-2-shopee-vietnam-in-house-scraper-price-normalization: done
-  17-5-tiktok-shop-product-trending-skus-ingestion: backlog
+  17-5-tiktok-shop-product-trending-skus-ingestion: done  # delegated to XActions (AD-SOC-1 / Trinity Alignment)
   epic-17-retrospective: optional
+
   epic-18: done
   18-1-public-agent-chat-endpoints: done
   18-2-newchatrequest-extension: done
@@ -235,13 +222,109 @@ development_status:
   18-7-cost-traceability: done
   18-8-rate-limiting-tenant-isolation: done
   epic-18-retrospective: optional
+
+  epic-20: done
+  20-4-service-to-service-auth-cost-ledger-sync: done
+  20-1-nowing-scraper-to_chunks: done
+  20-2-gap-fill-caller-cost-allocation: done
+  20-3-nowingprivateprovider-for: done
+  epic-20-retrospective: optional
+
+  epic-21: done
+  21-1-intent-signal-detection: done
+  21-2-lead-scoring-prioritization: done
+  21-3-vietnam-phone-contact-waterfall-engine: done
+  21-4-outbound-prospecting-automation-panel: done
+  21-5-crm-integration-lark-base-google-sheets-1-click-sync: done
+  21-6-vietnam-outbound-automation: done
+  21-7-outcome-based-pricing-transparent-credit-ledger: done
+  21-8-social-ingress-via-xactions-integration: done
+  21-9-executive-decision-maker-mapping-b2b-lead-outreach: done
+  21-10-1-click-reverse-icp-from-website-project-url: done
+  21-11-actionable-turn-dispatches: done
+  21-12-viral-social-outbound-co-pilot: done
+  21-13-multi-table-tabs-send-export-hub: done
+  21-14-smart-whitelist-do-not-call-dnc-compliance-engine: done
+  21-15-unified-multi-source-ai-lead-generation-orchestrator-univers: done
+  21-16-nowing-split-view-canvas-workspace-modernization: done
+  21-17-complete-origami-landing-page-public-site-transformation: done
+  21-18-partners-affiliate-portal-0-pricing-page-deployment: done
+  21-19-lead-source-adapter-live-data-integration-persistence: done
+  21-20-extend-multi-source-lead-gen-adapters: done
+  21-21-deterministic-confidence-gate-selective-micro-llm-fallback-w: done
+  epic-21-retrospective: optional
+
+  epic-22: done
+  22-1-telegram-storage-schema-public-web-preview-ingestion-engine: done
+  22-2-telegram-mtproto-userbot-client-encrypted-session-pool-anti: done
+  22-3-telegram-data-enrichment-realtime-alert-trigger-ai-agent-too: done
+  epic-22-retrospective: optional
+
+  epic-23: done
+  23-1-asynchronous-scraper-worker-pool: done
+  23-2-official-zalo-oa-webhook-zns-template-automation-hub: done
+  23-3-automated-vietqr-affiliate-payout-reconciliation: done
+  23-4-postgresql-row-level-security-rls-table-partitioning-for-mul: done
+  epic-23-retrospective: optional
+
+  epic-24: done
+  24-1-multi-channel-drip-outreach-campaign-engine-sequence-backend: done
+  24-2-waterfall-phone-b2b-tax-code-mst-corporate-verification-engi: done
+  24-3-multi-seat-team-crm-pipeline-shared-workspace-credit-pooling: done
+  24-4-nowing-lead-clipper: done
+  24-5-vertical-playbook-marketplace-community-workflow-templates: done
+  24-6-two-way-ai-outreach-auto-reply-agent: done
+  24-7-multi-channel-drip-outreach-campaign-engine: done
+  24-8-browser-operator-cdp-tool-for-dsh-crawl-human-live-takeover: done
+  epic-24-retrospective: optional
+
+  epic-25: done
+  25-1-multi-tenant-user-workspace-hub-scoped-impersonation: done
+  25-2-manual-credit-adjustment-refund-desk-with-dual-audit-ledger: done
+  25-3-affiliate-partner-payout-desk-anti-fraud-engine: done
+  25-4-realtime-llm-token-cost-proxy-health-celery-queue-telemetry: done
+  25-5-dynamic-scraper-rule-engine-redos-sandbox: done
+  25-6-security-audit-trail-logs-in-app-broadcast-announcements: done
+  25-7-third-party-health-operations-dashboard: done
+  epic-25-retrospective: optional
+
+  epic-26: in-progress
+  26-25-customer-location-profile-selector-with-progressive-disclosu: done
+  26-26-location-aware-adapter-routing-coverage-quality: done
+  26-27-pre-flight-lead-plan-summary-plansummarycard: backlog
+  26-28-source-coverage-badge-in-right-canvas: backlog
+  26-29-smoke-test-feedback-loop-for-location-refinement: backlog
+  26-1-fastmcp-ingest-gateway-batch-ingestion-stateless-chainlens-p: done
+  26-2-dsh-worker-sidecar-container-redis-streams-task-resumption: done
+  26-3-multi-tier-hybrid-llm-router: done
+  26-4-pii-vault-aes-256-encryption-hmac-deduplication-decree-13-op: done
+  26-5-split-canvas-glass-box-mission-control-two-tier-phone-unlock: done
+  26-6-telegram-interactive-checkpoint-bot-1-click-auto-refund-dial: done
+  26-7-hermetic-quality-gates-benchmark-suite-anti-zombie-chaos-tes: done
+  26-10-mission-control-glass-box-ux-refinement: done
+  26-11-two-tier-phone-unlock-ux-refinement: done
+  26-9a-wide-research-crawl-subgraph: done
+  26-9b-pro-excel-formatter-in-daytona-sandbox: done
+  epic-26-retrospective: optional
+
+  epic-27: done
+  27-1-full-stack-web-app-builder-1-click-hosting-design-view-mark: done
+  27-1a-web-builder-chat-mode-mvp-for-sales-marketing: done
+  27-1b-web-app-build-preview-runner: done
+  27-1c-web-app-container-deploy-custom-cname: done
+  27-1d-web-app-mark-tool-jsx-ast-mutator: done
+  27-2a-manus-slides-presentation-studio-from-chat: done
+  27-2b-speaker-diarization-meeting-minutes-from-chat: done
+  epic-27-retrospective: optional
+
   epic-28: in-progress
-  28-1-workspace-memory-research-data-export: backlog
+  28-1-workspace-memory-research-data-export: done
   28-2-encryption-at-rest-for-cloud-memory: backlog
-  28-3-tos-legal-review-retention-policy: backlog
-  28-4-self-host-oss-onboarding-in-under-10-minutes: backlog
+  28-3-tos-legal-review-retention-policy-for-long-term-scrape-data: done
+  28-4-self-host-oss-onboarding-in-under-10-minutes: done
   28-5-workspace-memory-storage-cap-retention-lifecycle: done
   epic-28-retrospective: optional
+
   epic-29: backlog
   29-1-custom-workspace-roles-permissions-builder: backlog
   29-2-workspace-health-adoption-analytics-dashboard: backlog
@@ -250,264 +333,290 @@ development_status:
   29-5-memory-browser-research-timeline-for-analyst: backlog
   29-6-data-governance-retention-policy-console: backlog
   epic-29-retrospective: optional
+
   epic-30: in-progress
-  30-1-idempotency-key-for-automations-run: backlog
+  30-1-idempotency-key-for-post-automations-id-run: backlog
   30-2-redis-event-bus-subscribe-failure-state-leak: done
-  30-3-storage-sum-reconciles-deleted-backend-files: backlog
+  30-3-storage-sum-does-not-reconcile-deleted-backend-files: backlog
   30-4-concurrent-notification-preference-merge-race-condition: backlog
-  30-5-background-title-generator-timeout-and-retry-logic: done
-  30-6-verify-chat-image-capability-num-retries: backlog
-  30-7-unit-test-coverage-for-test-model-function: backlog
+  30-5-title_gen-py-lacks-timeout-retry-on-litellm-acompletion: done
+  30-6-verify_chat_image_capability-py-lacks-num_retries: backlog
+  30-7-no-unit-test-coverage-for-test_model-function: backlog
   30-8-epic-13-canonical-entity-cleanup: done
   epic-30-retrospective: optional
 validation_reports:
-- story: 16-1
-  type: mutation-gate
-  commit: bf599358c
-  report: _bmad-output/test-artifacts/mutation-nowing-masothue-20260807T001124Z.json
-  session: _bmad-output/test-artifacts/mutation-nowing-masothue-filtered-20260806T234648Z.sqlite
-  verdict: FAIL
-  mutation_score: 55.01
-  killed: 324
-  survived: 265
-  p0: 0
-  p1: 265
-  p2: 0
-- story: 16-1
-  type: mutation-gate
-  commit: b5f9a17d2
-  report: _bmad-output/test-artifacts/mutation-nowing-masothue-20260807T003726Z.json
-  session: _bmad-output/test-artifacts/mutation-nowing-masothue-20260807T001601Z.sqlite
-  verdict: FAIL
-  mutation_score: 59.25
-  killed: 349
-  survived: 240
-  p0: 0
-  p1: 240
-  p2: 0
-- story: 16-1
-  type: mutation-gate
-  commit: 51211b0bc
-  report: _bmad-output/test-artifacts/mutation-nowing-masothue-20260807T010212Z.json
-  session: _bmad-output/test-artifacts/mutation-nowing-masothue-final.sqlite
-  verdict: FAIL
-  mutation_score: 59.76
-  killed: 352
-  survived: 237
-  p0: 0
-  p1: 237
-  p2: 0
-- story: 16-1
-  type: mutation-gate
-  commit: 1aa5ba32a
-  report: _bmad-output/test-artifacts/mutation-nowing-masothue-20260807T015148Z.json
-  session: _bmad-output/test-artifacts/mutation-nowing-masothue-20260807T081500Z.sqlite
-  verdict: PASS_WITH_WARNINGS
-  mutation_score: 61.12
-  killed: 360
-  survived: 229
-  p0: 0
-  p1: 229
-  p2: 0
-- story: 16-1
-  type: human-review-gate
-  commit: 25db348b2
-  verdict: PASS
-  p0_areas_touched:
-  - Token tracking / quota / credit
-  reviewed_by: human
-  notes: P0 credit surface touched via MASOTHUE_COMPANY billing unit and cost_micros
-    calculation.
-- story: 13-3
-  type: code-review
-  commit: eda4fcd76
-  report: _bmad-output/implementation-artifacts/code-reviews/13-3-unified-search-code-review.md
-  verdict: CHANGES_REQUESTED
-  reviewed_by: bmad-code-review
-  notes: '2 must-fix (view_sources dead href; FTS index english/simple mismatch),
-    5 should-fix (pagination, document collapse, filter validation, canonical_data
-    preview, date column mismatch, RRF zero weights), 3 watch. Tests: ruff pass, 34
-    pytest pass.'
-- story: 14-1
-  type: code-review
-  commit: 6b7169380
-  report: _bmad-output/implementation-artifacts/code-reviews/14-1-rss-feed-integration-code-review.md
-  verdict: PASS_WITH_WARNINGS
-  p0: 2
-  p1: 5
-  p2: 2
-  notes: 'BMAD adversarial review: functional for default RSS 2.0 feeds, but P0 SSRF/feed_url
-    validation and Atom/RSS 1.0 namespace parsing gaps need attention.'
-- story: 15-1
-  type: code-review
-  commit: 09f8c8c24
-  report: _bmad-output/implementation-artifacts/code-reviews/15-1-cafef-financial-data-code-review.md
-  verdict: CHANGES_REQUESTED
-  p0: 2
-  p1: 5
-  p2: 3
-  notes: 'BMAD adversarial review: quote/news live endpoints 404; parser does not
-    reject isSuccess:false; missing headers/redirects/cloudflare handling; process-local
-    rate throttle without 429 retry.'
-- story: 13-1
-  type: code-review
-  commit: 72806b18d
-  report: _bmad-output/implementation-artifacts/code-reviews/13-1-canonical-persistence-tenancy-convention-code-review.md
-  verdict: CHANGES_REQUESTED
-  p0: 2
-  p1: 5
-  p2: 4
-  notes: 'BMAD adversarial review: RLS context missing in Celery embedding backfill;
-    version CAS guard is incorrect; outbox and aggregator workspace_id contract gaps.'
-- story: 13-2
-  type: code-review
-  commit: 7f964ca4a
-  report: _bmad-output/implementation-artifacts/code-reviews/13-2-canonical-persistence-code-review.md
-  verdict: CHANGES_REQUESTED
-  p0: 3
-  p1: 4
-  p2: 6
-  notes: 'BMAD adversarial review for 13.2a-e: canonical_persist_outbox has no retry
-    worker; upsert version CAS uses new_version in WHERE; missing-id source_record_id
-    fallback collides; phone_key uses unkeyed SHA-256; ruff I001/F841/SIM108 remain.
-    Tests: 26 unit + 48 integration + 6 dedup benchmark passes.'
-- story: docs-correct-course
-  type: architecture-review
-  commit: 24ea83b68
-  report: thread review 2026-08-07
-  verdict: CHANGES_REQUESTED
-  notes: Split Epic 18 from Epic 13; AD-29/30/31 required; do not mark 13.1-13.3 done
-    while P0 code reviews open; readiness 18/18 overclaim retracted.
-- story: 13-p0-closeout
-  type: code-review-closeout
-  verdict: PASS
-  notes: '13.1 P0 already on HEAD (embedding workspace context + CAS). 13.2 remaining
-    P0: outbox worker + HMAC phone digest shipped. 13.3 P0 already on HEAD (sources
-    route + simple FTS). AD-29/30/31 accepted.'
-- story: ad-29-30-31
-  type: architecture-accept
-  verdict: PASS
-  notes: AD-29/30/31 accepted 2026-08-07 by owner.
-- story: epic-18-entry-gate
-  type: design-gate
-  verdict: PASS
-  notes: 'Entry #1 E13 P0 closed; #2 AD-29/30/31 accepted; #3 PAT scope + composite
-    RLS test plan + threat model published 2026-08-07.'
-- story: 18-8
-  type: test
-  verdict: PASS
-  notes: ruff clean; alembic upgrade head + downgrade -1 pass; pytest tests/integration/rls/test_composite_client_rls.py
-    8/8 pass; pytest memory integration suites (changed_event, provenance_recipe,
-    memory_routes, extraction, run_extraction) 56+ pass with 1 skip.
-- story: 18-8
-  type: code-review
-  verdict: PASS-with-changes
-  notes: 3-layer review found 2 high findings (save_memory GUC, update_memory client
-    transfer) and 2 decisions (NULLIF pattern, export scope). All resolved in commit
-    3c0902c19; 2 items deferred to epic (L2/L3/L5 tests, memory_relations/versions
-    RLS).
-- story: 18-2
-  type: code-review
-  verdict: PASS-with-changes
-  notes: 'Adversarial + acceptance review: 10 patch findings applied (client/agent
-    scoping in create/handle/resume/regenerate, platform_metadata persistence, ResumeRequest
-    extension, tenant GUC ordering, NULLIF RLS migration, user_id in set_request_tenant_context).
-    5 deferred, 1 dismissed. ruff/ruff format pass; pytest tests/unit/schemas/test_new_chat.py
-    (24), tests/unit/tasks/chat/test_new_chat_orchestrator.py (5), tests/integration/routes/test_new_chat_routes.py
-    (4), tests/integration/agent_chat/test_schema_and_guc.py (16), tests/integration/chat/test_thread_visibility.py
-    (5), tests/unit/canonical/test_tenant_context.py (5) all pass.'
-- story: 21-9
-  type: code-review
-  verdict: PASS-with-changes
-  reviewed_by: bmad-code-review
-  notes: '3-layer adversarial review: 10 patch findings applied (non-blocking DNS
-    MX resolution with LRU cache, Alembic migration 206 for company_decision_makers,
-    dork query injection sanitization, ValueError exception handling in dorker, Western/VN
-    name ordering heuristics, DDG URL-encoded redirect matching, pipe/bullet delimiters
-    & Vietnamese prepositions in title parser, non-dotted honorifics & degree suffix
-    stripping, raw HTML entity unescaping, empty signal details fix). 0 deferred,
-    7 dismissed. All 30 unit tests pass, ruff clean.'
-- story: 21-5
-  type: code-review
-  verdict: PASS-with-changes
-  reviewed_by: bmad-code-review
-  notes: '3-layer adversarial review: 11 patch findings applied (OAuth callback workspace
-    scoping, false-positive duplicate check fix, RLS tenant isolation read policy,
-    NULLIF integer casting in migration 201, async flush for error sync logs and context
-    memory persistence, UTC naive timezone normalization in conflict resolver, empty
-    entity_ids FastMCP handling, auth client_id propagation, sync-logs pagination,
-    field-mapping lowercasing, client_secret validation). 2 deferred, 1 dismissed.
-    34 unit tests pass, ruff clean.'
-- story: 23-3
-  type: code-review
-  verdict: PASS-with-changes
-  reviewed_by: bmad-code-review
-  notes: '3-layer adversarial review: 8 patch findings applied (TaxCalculationResult.tax_code
-    AttributeError fix, Double Balance Deduction in request_payout fix, Replay attack
-    idempotency on FAILED webhook, session/webhook_secret parameter alignment, Fail-Closed
-    webhook signature verification, Two-Generals NOT_FOUND refund >15m & HMAC seal
-    in Celery reconciliation worker, TT 111 >= 2M VND threshold comparison, frontend
-    defensive null checks & KPI typo fix). 0 deferred, 0 dismissed. 9 unit + 4 PostgreSQL
-    integration tests pass, tsc & biome clean.'
-- story: 24-4
-  type: code-review
-  verdict: PASS-with-changes
-  reviewed_by: bmad-code-review
-  notes: '3-layer adversarial review: 5 patch findings applied (concurrency rollback
-    recovery on duplicate commit, phone +84(0)9 leading-zero normalizer fix, multi-tenant
-    client_id & domain propagation, expanded social ad tracking param scrubbing, lead
-    context price/content preservation in VerifiedContact.title). 0 deferred, 6 dismissed.
-    17 unit tests pass, ruff clean.'
+  - story: "3.18"
+    type: "code-review"
+    commit: "tbd"
+    report: "_bmad-output/implementation-artifacts/code-reviews/3.18-skill-execution-2026-09-03.md"
+    verdict: "APPROVED"
+    reviewed_by: "bmad-code-review"
+    notes: "Skill execution AC-5 covered. Unit tests (6 passed) and E2E API tests
+      (7 passed). Bug fixed: mission.status value handling and response payload consistency."
+  - story: "3.18"
+    type: "testarch-trace"
+    report: "_bmad-output/test-artifacts/traceability-matrix-3.18-and-4.8e-2026-09-03.md"
+    verdict: "PASS_WITH_WARNINGS"
+    notes: "5/5 AC covered; AC-2 chat context injection E2E still missing."
+  - story: "3.18"
+    type: "testarch-test-review"
+    report: "_bmad-output/test-artifacts/test-review-3.18-and-4.8e-2026-09-03.md"
+    verdict: "PASS_WITH_WARNINGS"
+    notes: "Score 85/100. Minor: conditional E2E assertion, missing token-clamping
+      test."
+  - story: "16-1"
+    type: "mutation-gate"
+    commit: "bf599358c"
+    report: "_bmad-output/test-artifacts/mutation-nowing-masothue-20260807T001124Z.json"
+    session: "_bmad-output/test-artifacts/mutation-nowing-masothue-filtered-20260806T234648Z.sqlite"
+    verdict: "FAIL"
+    mutation_score: 55.01
+    killed: 324
+    survived: 265
+    p0: 0
+    p1: 265
+    p2: 0
+  - story: "16-1"
+    type: "mutation-gate"
+    commit: "b5f9a17d2"
+    report: "_bmad-output/test-artifacts/mutation-nowing-masothue-20260807T003726Z.json"
+    session: "_bmad-output/test-artifacts/mutation-nowing-masothue-20260807T001601Z.sqlite"
+    verdict: "FAIL"
+    mutation_score: 59.25
+    killed: 349
+    survived: 240
+    p0: 0
+    p1: 240
+    p2: 0
+  - story: "16-1"
+    type: "mutation-gate"
+    commit: "51211b0bc"
+    report: "_bmad-output/test-artifacts/mutation-nowing-masothue-20260807T010212Z.json"
+    session: "_bmad-output/test-artifacts/mutation-nowing-masothue-final.sqlite"
+    verdict: "FAIL"
+    mutation_score: 59.76
+    killed: 352
+    survived: 237
+    p0: 0
+    p1: 237
+    p2: 0
+  - story: "16-1"
+    type: "mutation-gate"
+    commit: "1aa5ba32a"
+    report: "_bmad-output/test-artifacts/mutation-nowing-masothue-20260807T015148Z.json"
+    session: "_bmad-output/test-artifacts/mutation-nowing-masothue-20260807T081500Z.sqlite"
+    verdict: "PASS_WITH_WARNINGS"
+    mutation_score: 61.12
+    killed: 360
+    survived: 229
+    p0: 0
+    p1: 229
+    p2: 0
+  - story: "16-1"
+    type: "human-review-gate"
+    commit: "25db348b2"
+    verdict: "PASS"
+    p0_areas_touched:
+      - "Token tracking / quota / credit"
+    reviewed_by: "human"
+    notes: "P0 credit surface touched via MASOTHUE_COMPANY billing unit and cost_micros
+      calculation."
+  - story: "13-3"
+    type: "code-review"
+    commit: "eda4fcd76"
+    report: "_bmad-output/implementation-artifacts/code-reviews/13-3-unified-search-code-review.md"
+    verdict: "CHANGES_REQUESTED"
+    reviewed_by: "bmad-code-review"
+    notes: "2 must-fix (view_sources dead href; FTS index english/simple mismatch),
+      5 should-fix (pagination, document collapse, filter validation, canonical_data
+      preview, date column mismatch, RRF zero weights), 3 watch. Tests: ruff pass,
+      34 pytest pass."
+  - story: "14-1"
+    type: "code-review"
+    commit: "6b7169380"
+    report: "_bmad-output/implementation-artifacts/code-reviews/14-1-rss-feed-integration-code-review.md"
+    verdict: "PASS_WITH_WARNINGS"
+    p0: 2
+    p1: 5
+    p2: 2
+    notes: "BMAD adversarial review: functional for default RSS 2.0 feeds, but P0
+      SSRF/feed_url validation and Atom/RSS 1.0 namespace parsing gaps need attention."
+  - story: "15-1"
+    type: "code-review"
+    commit: "09f8c8c24"
+    report: "_bmad-output/implementation-artifacts/code-reviews/15-1-cafef-financial-data-code-review.md"
+    verdict: "CHANGES_REQUESTED"
+    p0: 2
+    p1: 5
+    p2: 3
+    notes: "BMAD adversarial review: quote/news live endpoints 404; parser does not
+      reject isSuccess:false; missing headers/redirects/cloudflare handling; process-local
+      rate throttle without 429 retry."
+  - story: "13-1"
+    type: "code-review"
+    commit: "72806b18d"
+    report: "_bmad-output/implementation-artifacts/code-reviews/13-1-canonical-persistence-tenancy-convention-code-review.md"
+    verdict: "CHANGES_REQUESTED"
+    p0: 2
+    p1: 5
+    p2: 4
+    notes: "BMAD adversarial review: RLS context missing in Celery embedding backfill;
+      version CAS guard is incorrect; outbox and aggregator workspace_id contract
+      gaps."
+  - story: "13-2"
+    type: "code-review"
+    commit: "7f964ca4a"
+    report: "_bmad-output/implementation-artifacts/code-reviews/13-2-canonical-persistence-code-review.md"
+    verdict: "CHANGES_REQUESTED"
+    p0: 3
+    p1: 4
+    p2: 6
+    notes: "BMAD adversarial review for 13.2a-e: canonical_persist_outbox has no retry
+      worker; upsert version CAS uses new_version in WHERE; missing-id source_record_id
+      fallback collides; phone_key uses unkeyed SHA-256; ruff I001/F841/SIM108 remain.
+      Tests: 26 unit + 48 integration + 6 dedup benchmark passes."
+  - story: "docs-correct-course"
+    type: "architecture-review"
+    commit: "24ea83b68"
+    report: "thread review 2026-08-07"
+    verdict: "CHANGES_REQUESTED"
+    notes: "Split Epic 18 from Epic 13; AD-29/30/31 required; do not mark 13.1-13.3
+      done while P0 code reviews open; readiness 18/18 overclaim retracted."
+  - story: "13-p0-closeout"
+    type: "code-review-closeout"
+    verdict: "PASS"
+    notes: "13.1 P0 already on HEAD (embedding workspace context + CAS). 13.2 remaining
+      P0: outbox worker + HMAC phone digest shipped. 13.3 P0 already on HEAD (sources
+      route + simple FTS). AD-29/30/31 accepted."
+  - story: "ad-29-30-31"
+    type: "architecture-accept"
+    verdict: "PASS"
+    notes: "AD-29/30/31 accepted 2026-08-07 by owner."
+  - story: "epic-18-entry-gate"
+    type: "design-gate"
+    verdict: "PASS"
+    notes: "Entry #1 E13 P0 closed; #2 AD-29/30/31 accepted; #3 PAT scope + composite
+      RLS test plan + threat model published 2026-08-07."
+  - story: "18-8"
+    type: "test"
+    verdict: "PASS"
+    notes: "ruff clean; alembic upgrade head + downgrade -1 pass; pytest tests/integration/rls/test_composite_client_rls.py
+      8/8 pass; pytest memory integration suites (changed_event, provenance_recipe,
+      memory_routes, extraction, run_extraction) 56+ pass with 1 skip."
+  - story: "18-8"
+    type: "code-review"
+    verdict: "PASS-with-changes"
+    notes: "3-layer review found 2 high findings (save_memory GUC, update_memory client
+      transfer) and 2 decisions (NULLIF pattern, export scope). All resolved in commit
+      3c0902c19; 2 items deferred to epic (L2/L3/L5 tests, memory_relations/versions
+      RLS)."
+  - story: "18-2"
+    type: "code-review"
+    verdict: "PASS-with-changes"
+    notes: "Adversarial + acceptance review: 10 patch findings applied (client/agent
+      scoping in create/handle/resume/regenerate, platform_metadata persistence, ResumeRequest
+      extension, tenant GUC ordering, NULLIF RLS migration, user_id in set_request_tenant_context).
+      5 deferred, 1 dismissed. ruff/ruff format pass; pytest tests/unit/schemas/test_new_chat.py
+      (24), tests/unit/tasks/chat/test_new_chat_orchestrator.py (5), tests/integration/routes/test_new_chat_routes.py
+      (4), tests/integration/agent_chat/test_schema_and_guc.py (16), tests/integration/chat/test_thread_visibility.py
+      (5), tests/unit/canonical/test_tenant_context.py (5) all pass."
+  - story: "21-9"
+    type: "code-review"
+    verdict: "PASS-with-changes"
+    reviewed_by: "bmad-code-review"
+    notes: "3-layer adversarial review: 10 patch findings applied (non-blocking DNS
+      MX resolution with LRU cache, Alembic migration 206 for company_decision_makers,
+      dork query injection sanitization, ValueError exception handling in dorker,
+      Western/VN name ordering heuristics, DDG URL-encoded redirect matching, pipe/bullet
+      delimiters & Vietnamese prepositions in title parser, non-dotted honorifics
+      & degree suffix stripping, raw HTML entity unescaping, empty signal details
+      fix). 0 deferred, 7 dismissed. All 30 unit tests pass, ruff clean."
+  - story: "21-5"
+    type: "code-review"
+    verdict: "PASS-with-changes"
+    reviewed_by: "bmad-code-review"
+    notes: "3-layer adversarial review: 11 patch findings applied (OAuth callback
+      workspace scoping, false-positive duplicate check fix, RLS tenant isolation
+      read policy, NULLIF integer casting in migration 201, async flush for error
+      sync logs and context memory persistence, UTC naive timezone normalization in
+      conflict resolver, empty entity_ids FastMCP handling, auth client_id propagation,
+      sync-logs pagination, field-mapping lowercasing, client_secret validation).
+      2 deferred, 1 dismissed. 34 unit tests pass, ruff clean."
+  - story: "23-3"
+    type: "code-review"
+    verdict: "PASS-with-changes"
+    reviewed_by: "bmad-code-review"
+    notes: "3-layer adversarial review: 8 patch findings applied (TaxCalculationResult.tax_code
+      AttributeError fix, Double Balance Deduction in request_payout fix, Replay attack
+      idempotency on FAILED webhook, session/webhook_secret parameter alignment, Fail-Closed
+      webhook signature verification, Two-Generals NOT_FOUND refund >15m & HMAC seal
+      in Celery reconciliation worker, TT 111 >= 2M VND threshold comparison, frontend
+      defensive null checks & KPI typo fix). 0 deferred, 0 dismissed. 9 unit + 4 PostgreSQL
+      integration tests pass, tsc & biome clean."
+  - story: "24-4"
+    type: "code-review"
+    verdict: "PASS-with-changes"
+    reviewed_by: "bmad-code-review"
+    notes: "3-layer adversarial review: 5 patch findings applied (concurrency rollback
+      recovery on duplicate commit, phone +84(0)9 leading-zero normalizer fix, multi-tenant
+      client_id & domain propagation, expanded social ad tracking param scrubbing,
+      lead context price/content preservation in VerifiedContact.title). 0 deferred,
+      6 dismissed. 17 unit tests pass, ruff clean."
+
 waves:
-- wave: 0
-  theme: P0 — Lead Intelligence & DSH Substrate Integration
-  status: in-progress
-  evidence_gate: ChainLens Epic 52 output=wide_research live; dsh-worker active; FastMCP
-    batch ingestion and Daytona Sandbox ready
-  stories:
-  - 26-1
-  - 26-3
-  - 26-5
-  - 26-7
-  - 26-9
-  notes: Story 26.9 depends on ChainLens 52-2 API contract; executes openpyxl Pro
-    Formatter in Daytona sandbox without building new container.
-- wave: 1
-  theme: P0 — Interactive Browser Operator & Projects Workspace
-  status: backlog
-  evidence_gate: Plasmo extension CDP debugger enabled; `browser_operator.execute`
-    capability and `web_crawler` prompt-in-UI working; Human Live Takeover UI partially
-    wired in popup; mission pause/resume TTL and dashboard popover still open
-  stories:
-  - 24-8
-  - 3-18
-  - 24-3
-  - 24-5
-  - 24-6
-  - 24-7
-  notes: Story 24.8 extends Lead Clipper 24.4 with chrome.debugger CDP bridge; Story
-    3.18 provides Master Instructions context injection for all downstream agent turns.
-- wave: 2
-  theme: P1 — Inbound Mail Gateway & Long-running Automations
-  status: backlog
-  evidence_gate: Webhook task@nowing.ai processing attachments; Celery Beat stateful
-    delta snapshots comparing runs
-  stories:
-  - 6-10
-  - 25-3
-  - 25-4
-  - 25-5
-  - 25-6
-  notes: Story 6.10 integrates into gateway_webhook_routes.py and adds delta analysis
-    to existing Celery Beat scheduler.
-- wave: 3
-  theme: P1/P2 — Creative Studio & Full-Stack Web Builder
-  status: backlog
-  evidence_gate: PPTX export + Marp slides working; pyannote/whisper diarization working;
-    Next.js scaffolding + *.apps.nowing.net Traefik/Caddy routing working
-  stories:
-  - 27-2a
-  - 27-2b
-  - 27-1
-  notes: Story 27.2a/27.2b are chat-first deliverables following 27.1a pattern; Story
-    27.1 is the largest scope story in the roadmap (new web generator + dynamic hosting).
+  - wave: 0
+    theme: P0 — Lead Intelligence & DSH Substrate Integration
+    status: in-progress
+    evidence_gate: ChainLens Epic 52 output=wide_research live; dsh-worker 
+      active; FastMCP batch ingestion and Daytona Sandbox ready
+    stories:
+      - 26-1
+      - 26-3
+      - 26-5
+      - 26-7
+      - 26-9
+    notes: Story 26.9 depends on ChainLens 52-2 API contract; executes openpyxl 
+      Pro Formatter in Daytona sandbox without building new container.
+  - wave: 1
+    theme: P0 — Interactive Browser Operator & Projects Workspace
+    status: backlog
+    evidence_gate: Plasmo extension CDP debugger enabled; 
+      `browser_operator.execute` capability and `web_crawler` prompt-in-UI 
+      working; Human Live Takeover UI partially wired in popup; mission 
+      pause/resume TTL and dashboard popover still open
+    stories:
+      - 24-8
+      - 3-18
+      - 24-3
+      - 24-5
+      - 24-6
+      - 24-7
+    notes: Story 24.8 extends Lead Clipper 24.4 with chrome.debugger CDP bridge;
+      Story 3.18 provides Master Instructions context injection for all 
+      downstream agent turns.
+  - wave: 2
+    theme: P1 — Inbound Mail Gateway & Long-running Automations
+    status: backlog
+    evidence_gate: Webhook task@nowing.ai processing attachments; Celery Beat 
+      stateful delta snapshots comparing runs
+    stories:
+      - 6-10
+      - 25-3
+      - 25-4
+      - 25-5
+      - 25-6
+    notes: Story 6.10 integrates into gateway_webhook_routes.py and adds delta 
+      analysis to existing Celery Beat scheduler.
+  - wave: 3
+    theme: P1/P2 — Creative Studio & Full-Stack Web Builder
+    status: backlog
+    evidence_gate: PPTX export + Marp slides working; pyannote/whisper 
+      diarization working; Next.js scaffolding + *.apps.nowing.net Traefik/Caddy
+      routing working
+    stories:
+      - 27-2a
+      - 27-2b
+      - 27-1
+    notes: Story 27.2a/27.2b are chat-first deliverables following 27.1a 
+      pattern; Story 27.1 is the largest scope story in the roadmap (new web 
+      generator + dynamic hosting).

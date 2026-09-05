@@ -654,7 +654,7 @@ export function LayoutDataProvider({
 		isAutomationsPage ||
 		isArtifactsPage ||
 		isAllChatsPage;
-	const showTabs = !useWorkspacePanel && !isNewChatRoot;
+	const showTabs = !useWorkspacePanel;
 
 	return (
 		<>

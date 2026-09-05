@@ -237,6 +237,8 @@ celery_app = Celery(
         "app.tasks.celery_tasks.partner_payout_reconciliation_task",
         "app.tasks.lead_scrapers",
         "app.tasks.celery_tasks.broadcast_tasks",
+        "app.tasks.celery_tasks.health_probe_task",
+        "app.tasks.celery_tasks.health_retention_task",
     ],
 )
 
@@ -245,6 +247,7 @@ celery_app = Celery(
 # Connectors queue: slow, long-running indexing tasks (Notion, Gmail, web crawl, …)
 CONNECTORS_QUEUE = f"{CELERY_TASK_DEFAULT_QUEUE}.connectors"
 LEAD_SCRAPERS_QUEUE = "nowing.lead_scrapers"
+HEALTH_QUEUE = "nowing.health"
 
 # Celery configuration
 celery_app.conf.update(
@@ -296,6 +299,17 @@ celery_app.conf.update(
             "queue": LEAD_SCRAPERS_QUEUE
         },
         "run_platform_scrape_task": {"queue": LEAD_SCRAPERS_QUEUE},
+        # Health probes → dedicated queue so frequent 30s probes do not starve
+        # user-facing tasks (Story 25.7).
+        "health_probe_infra": {"queue": HEALTH_QUEUE},
+        "health_probe_model": {"queue": HEALTH_QUEUE},
+        "health_probe_scraper": {"queue": HEALTH_QUEUE},
+        "health_probe_connector": {"queue": HEALTH_QUEUE},
+        "health_probe_proxy": {"queue": HEALTH_QUEUE},
+        "health_probe_research": {"queue": HEALTH_QUEUE},
+        "health_probe_messaging": {"queue": HEALTH_QUEUE},
+        "health_probe_payment": {"queue": HEALTH_QUEUE},
+        "health_probe_storage": {"queue": HEALTH_QUEUE},
         # Everything else (document processing, podcasts, reindexing,
         # schedule checker, cleanup) stays on the default fast queue.
         "gateway.reconcile_inbox": {"queue": f"{CELERY_TASK_DEFAULT_QUEUE}.gateway"},
@@ -438,5 +452,57 @@ celery_app.conf.beat_schedule = {
             minute=f"*/{max(1, getattr(config, 'SCHEDULED_DSH_MISSION_TICK_SECONDS', 60) // 60)}"
         ),
         "options": {"expires": 50},
+    },
+    # Third-Party Health Probes (Story 25.7)
+    "health-probe-infra": {
+        "task": "health_probe_infra",
+        "schedule": 30.0,  # Every 30 seconds
+        "options": {"expires": 30},
+    },
+    "health-probe-model": {
+        "task": "health_probe_model",
+        "schedule": crontab(minute="*/2"),  # Every 2 minutes
+        "options": {"expires": 60},
+    },
+    "health-probe-scraper": {
+        "task": "health_probe_scraper",
+        "schedule": crontab(minute="*/5"),  # Every 5 minutes
+        "options": {"expires": 120},
+    },
+    "health-probe-connector": {
+        "task": "health_probe_connector",
+        "schedule": crontab(minute="*/15"),  # Every 15 minutes
+        "options": {"expires": 300},
+    },
+    "health-probe-proxy": {
+        "task": "health_probe_proxy",
+        "schedule": crontab(minute="*/5"),  # Every 5 minutes
+        "options": {"expires": 120},
+    },
+    "health-probe-research": {
+        "task": "health_probe_research",
+        "schedule": crontab(minute="*/5"),  # Every 5 minutes
+        "options": {"expires": 120},
+    },
+    "health-probe-messaging": {
+        "task": "health_probe_messaging",
+        "schedule": crontab(minute="*/5"),  # Every 5 minutes
+        "options": {"expires": 120},
+    },
+    "health-probe-payment": {
+        "task": "health_probe_payment",
+        "schedule": crontab(minute="*/5"),  # Every 5 minutes
+        "options": {"expires": 120},
+    },
+    "health-probe-storage": {
+        "task": "health_probe_storage",
+        "schedule": crontab(minute="*/5"),  # Every 5 minutes
+        "options": {"expires": 120},
+    },
+    # Purge stale admin health history daily (30-day retention by default).
+    "cleanup-admin-health-history": {
+        "task": "cleanup_admin_health_history",
+        "schedule": crontab(hour="2", minute="0"),
+        "options": {"expires": 600},
     },
 }

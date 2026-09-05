@@ -88,8 +88,8 @@ test.describe("Pointer-Based Tabs — Story 4-7", () => {
 			timeout: 30_000,
 		});
 
-		// Click the first tab to switch back
-		await page.locator(`[data-tab-id="chat-${thread1.id}"]`).getByRole("button").first().click();
+		// Click the first tab (role="tab") to switch back
+		await page.locator(`[data-tab-id="chat-${thread1.id}"]`).getByRole("tab").click();
 
 		// URL should navigate back to thread1
 		await expect(page).toHaveURL(new RegExp(`/dashboard/${workspace.id}/new-chat/${thread1.id}`), {

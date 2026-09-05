@@ -1,10 +1,29 @@
 import { expect, test } from "@playwright/test";
 
+async function markWorkspaceSetupReady(
+	page: import("@playwright/test").Page,
+	workspaceId: number
+) {
+	await page.route(`**/api/v1/workspaces/${workspaceId}/llm-setup-status`, async (route) => {
+		await route.fulfill({
+			status: 200,
+			contentType: "application/json",
+			body: JSON.stringify({
+				status: "ready",
+				source: "global_config",
+				can_configure: true,
+				stage: "ready",
+			}),
+		});
+	});
+}
+
 test.describe("Story 24.1: Multi-Channel Drip Outreach Campaign Engine (VisualCadenceBuilder & Analytics)", () => {
 	test("AC-1: creates a multi-step sequence with send_email, wait, condition and email-only channel", async ({
 		page,
 	}) => {
 		// 1. Navigate to New Campaign Builder
+		await markWorkspaceSetupReady(page, 1);
 		await page.goto("/dashboard/1/automations/campaigns/new");
 
 		// 2. Verify Cadence Builder Canvas is rendered
@@ -16,11 +35,11 @@ test.describe("Story 24.1: Multi-Channel Drip Outreach Campaign Engine (VisualCa
 		await expect(emailChannel).toBeEnabled();
 
 		const zaloChannel = page.locator('[data-testid="channel-option-zalo"]');
-		await expect(zaloChannel).toBeDisabled();
 		await expect(zaloChannel).toHaveAttribute("data-deferred", "true");
+		await expect(zaloChannel).toHaveAttribute("aria-disabled", "true");
 
 		const telegramChannel = page.locator('[data-testid="channel-option-telegram"]');
-		await expect(telegramChannel).toBeDisabled();
+		await expect(telegramChannel).toHaveAttribute("aria-disabled", "true");
 
 		// 4. Add Step 2: Send Email (step 1 is the initial default email node)
 		const addEmailStepBtn = page.locator('[data-testid="add-step-send_email"]');
@@ -65,6 +84,7 @@ test.describe("Story 24.1: Multi-Channel Drip Outreach Campaign Engine (VisualCa
 		page,
 	}) => {
 		// 1. Navigate to existing Campaign Analytics view
+		await markWorkspaceSetupReady(page, 1);
 		await page.goto("/dashboard/1/automations/campaigns/test-seq-123");
 
 		// 2. Verify Analytics Dashboard Header

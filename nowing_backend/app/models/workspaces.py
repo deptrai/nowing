@@ -292,6 +292,18 @@ class Workspace(BaseModel, TimestampMixin):
         cascade="all, delete-orphan",
         uselist=False,
     )
+    projects = relationship(
+        "Project",
+        back_populates="workspace",
+        cascade="all, delete-orphan",
+        order_by="Project.created_at.desc()",
+    )
+    skills = relationship(
+        "WorkspaceSkill",
+        back_populates="workspace",
+        cascade="all, delete-orphan",
+        order_by="WorkspaceSkill.created_at.desc()",
+    )
     leads = relationship(
         "Lead",
         back_populates="workspace",

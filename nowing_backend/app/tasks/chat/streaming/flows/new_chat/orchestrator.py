@@ -54,6 +54,7 @@ from app.db import (
 )
 from app.observability import otel as ot
 from app.services.new_streaming_service import VercelStreamingService
+from app.services.project_context_service import ProjectContextService
 from app.tasks.chat.content_builder import AssistantContentBuilder
 from app.tasks.chat.streaming.agent.builder import build_main_agent_for_thread
 from app.tasks.chat.streaming.contract.file_contract import log_file_contract
@@ -571,10 +572,34 @@ async def stream_new_chat(
 
             if chat_mode.enabled_tools is not None:
                 effective_enabled_tools = list(chat_mode.enabled_tools)
-            agent_config.system_instructions = _clamp_agent_instructions(
+            agent_config.system_instructions = (
                 get_chat_mode_system_prompt(
                     chat_mode, agent_config.system_instructions
                 )
+            )
+
+        # --- Block 1d: Project context injection (Story 3.18) ---
+        if chat_thread is not None and getattr(chat_thread, "project_id", None):
+            project, pinned_pairs = (
+                await ProjectContextService.load_project_with_pinned_docs(
+                    session, chat_thread.project_id, workspace_id
+                )
+            )
+            if project:
+                proj_ctx = ProjectContextService.build_project_context(
+                    project, pinned_pairs, llm=llm
+                )
+                if proj_ctx:
+                    base_instructions = agent_config.system_instructions or ""
+                    agent_config.system_instructions = (
+                        f"{proj_ctx}\n\n{base_instructions}".strip()
+                        if base_instructions
+                        else proj_ctx
+                    )
+
+        if agent_config.system_instructions:
+            agent_config.system_instructions = _clamp_agent_instructions(
+                agent_config.system_instructions
             )
 
         # --- Block 2: Spawn concurrent persistence; build pre-stream setup ---
@@ -892,10 +917,34 @@ async def stream_new_chat(
             if chat_mode.mode_id != "default":
                 if chat_mode.enabled_tools is not None:
                     effective_enabled_tools = list(chat_mode.enabled_tools)
-                agent_config.system_instructions = _clamp_agent_instructions(
+                agent_config.system_instructions = (
                     get_chat_mode_system_prompt(
                         chat_mode, agent_config.system_instructions
                     )
+                )
+
+            # Re-apply project context if linked (Story 3.18)
+            if chat_thread is not None and getattr(chat_thread, "project_id", None):
+                project, pinned_pairs = (
+                    await ProjectContextService.load_project_with_pinned_docs(
+                        session, chat_thread.project_id, workspace_id
+                    )
+                )
+                if project:
+                    proj_ctx = ProjectContextService.build_project_context(
+                        project, pinned_pairs, llm=llm
+                    )
+                    if proj_ctx:
+                        base_instructions = agent_config.system_instructions or ""
+                        agent_config.system_instructions = (
+                            f"{proj_ctx}\n\n{base_instructions}".strip()
+                            if base_instructions
+                            else proj_ctx
+                        )
+
+            if agent_config.system_instructions:
+                agent_config.system_instructions = _clamp_agent_instructions(
+                    agent_config.system_instructions
                 )
 
             # Title gen used the initial llm object. After a runtime repin we

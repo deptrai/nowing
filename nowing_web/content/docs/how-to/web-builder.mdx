@@ -1,0 +1,74 @@
+---
+title: Web Builder
+description: Build, preview, and deploy full-stack web apps from a chat prompt
+---
+
+# Full-Stack Web App Builder
+
+Nowing's **Web Builder** lets you generate, preview, and deploy full-stack Next.js applications from a natural-language prompt. It is designed for marketing pages, internal tools, and lightweight SaaS frontends.
+
+## What it does
+
+From the **Web Builder** panel in your workspace:
+
+1. **Describe the app** you want in plain English.
+2. **Watch it build live** — the AI streams the plan, generated files, and build progress in real time.
+3. **Preview interactively** in desktop, tablet, and mobile viewports.
+4. **Edit visually** with the **Design Mark Tool** — click an element in the preview and patch its text, class, style, or attribute without touching code.
+5. **Publish with one click** to a `*.apps.nowing.net` subdomain or a custom CNAME domain.
+
+## Generated stack
+
+The builder outputs a production-ready Next.js application:
+
+- **Framework:** Next.js 16+ with App Router
+- **Styling:** Tailwind CSS
+- **Build output:** Standalone output for containerized hosting
+- **Deployment:** 1-Click publish to Nowing's app hosting infrastructure
+
+## Key features
+
+| Feature | Description |
+|---------|-------------|
+| Live streaming generation | See the model's reasoning, file writes, and build status as they happen |
+| Interactive preview | Render the generated app in an iframe with device switching |
+| Code viewer | Inspect and browse generated source files |
+| Design Mark Tool | Click any element in the preview to apply a visual patch |
+| Custom domains | Point a CNAME record to `cname-ingress.apps.nowing.net` and bind it to your app |
+| Rebuild / retry | Re-run the build if it fails or after applying patches |
+
+## How to build an app
+
+1. Open **Web Builder** from your workspace sidebar.
+2. Enter a prompt, for example:
+
+   > A modern SaaS landing page with dark mode, pricing tiers, testimonials, and a waitlist form.
+
+3. Click **Generate App (Live Stream)**.
+4. Wait for the status to become **Preview Ready**.
+5. Switch between **Preview** and **Code** tabs to inspect the result.
+6. Enable the **Design View Mark Tool**, click an element, and apply a patch.
+7. Click **1-Click Publish** when you are happy with the result.
+
+## Statuses
+
+- `generated` — initial generation in progress
+- `preview_ready` — the app is built and ready to preview
+- `building` — a rebuild or patch is being applied
+- `build_failed` — the build failed; view logs and retry
+- `published` — the app is live on a public URL
+
+## Custom domain setup
+
+1. Publish the app first.
+2. Open **Custom Domain** and enter your domain (e.g., `app.mycompany.com`).
+3. Add a DNS CNAME record pointing to `cname-ingress.apps.nowing.net`.
+4. Save the domain in Nowing.
+
+The app will be served over HTTPS once the DNS record propagates and the certificate is issued.
+
+## Limitations
+
+- Web Builder availability depends on your workspace plan.
+- Complex backend logic beyond the generated Next.js API routes is not supported.
+- Very long or ambiguous prompts may need multiple iterations.

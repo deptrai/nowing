@@ -142,7 +142,10 @@ export function AutomationDetailHeader({
 
 				<div className="flex items-start justify-between gap-4 flex-wrap">
 					<div className="space-y-2 min-w-0 flex-1">
-						<h1 className="font-serif text-2xl sm:text-3xl font-normal text-foreground break-words">
+						<h1
+							data-testid="automation-detail-name"
+							className="font-serif text-2xl sm:text-3xl font-normal text-foreground break-words"
+						>
 							{automation.name}
 						</h1>
 						{automation.description && (

@@ -13,6 +13,14 @@ from __future__ import annotations
 import re
 import unicodedata
 
+from app.services.location_normalize.divisions import (
+    DistrictRecord,
+    ProvinceRecord,
+    format_location_summary,
+    get_all_provinces,
+    get_districts_by_province,
+)
+
 # Batdongsan city code → URL slug mapping.  This is a V1 snapshot of the
 # proprietary ``app.proprietary.platforms.batdongsan.city_codes`` table, kept
 # local so the aggregator can resolve free-form city input without triggering
@@ -159,3 +167,19 @@ def resolve_city_code(user_city: str | None) -> str | None:
                 return CITY_ALIASES[stripped]
 
     return None
+
+
+__all__ = [
+    "CITY_ALIASES",
+    "CITY_CODES",
+    "DistrictRecord",
+    "ProvinceRecord",
+    "format_location_summary",
+    "get_all_provinces",
+    "get_districts_by_province",
+    "remove_diacritics",
+    "resolve_city_code",
+    "to_slug",
+]
+
+

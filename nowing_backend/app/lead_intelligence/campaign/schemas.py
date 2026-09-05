@@ -10,6 +10,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.lead_intelligence.adapters.base import LeadSourceCategory
+from app.lead_intelligence.schemas import LocationProfilePayload
 
 
 class ScheduleFrequency(StrEnum):
@@ -72,6 +73,7 @@ class ICPCriteria(BaseModel):
     negative_keywords: list[str] = Field(default_factory=list)
     min_fit_score: float = Field(default=0.0, ge=0.0, le=100.0)
     weights: dict[str, float] = Field(default_factory=dict)
+    location_profile: LocationProfilePayload | None = None
 
 
 class CampaignSpec(BaseModel):
@@ -107,6 +109,8 @@ class CampaignSpec(BaseModel):
     max_total_leads: int = Field(default=100, ge=1, le=5000)
     concurrency_limit: int = Field(default=5, ge=1, le=20)
     adapter_timeout_seconds: float = Field(default=12.0, ge=1.0, le=60.0)
+
+    location_profile: LocationProfilePayload | None = None
 
     # Schedule & Automation
     schedule: ScheduleConfig = Field(default_factory=ScheduleConfig)

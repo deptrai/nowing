@@ -431,3 +431,19 @@ class MultiSourceLeadGenResponse(BaseModel):
     leads: list[dict[str, Any]] = Field(default_factory=list)
     degraded_sources: list[str] = Field(default_factory=list)
     table_id: str | None = None
+
+
+class LocationProfilePayload(BaseModel):
+    """Pydantic model for customer location profile (Story 26.25 & 26.26)."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    location_type: str = "both"
+    province_code: str
+    province_name: str
+    district_codes: list[str] = Field(default_factory=list)
+    district_names: list[str] = Field(default_factory=list)
+    ward_codes: list[str] = Field(default_factory=list)
+    ward_names: list[str] = Field(default_factory=list)
+    location_text: str = ""
+

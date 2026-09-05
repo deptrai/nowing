@@ -172,6 +172,12 @@ from app.models.presentations import (
     SlidePresentation,
     VideoPresentation,
 )
+from app.models.projects import (
+    Project,
+    ProjectPinnedDocument,
+    ProjectSkill,
+    WorkspaceSkill,
+)
 from app.models.scraper import (
     AntiBotEscalation,
     Run,
@@ -335,6 +341,9 @@ __all__ = [
     "Podcast",
     "PodcastStatus",
     "PricingPlan",
+    "Project",
+    "ProjectPinnedDocument",
+    "ProjectSkill",
     "PromoCode",
     "PromoCodeRedemption",
     "Prompt",
@@ -377,6 +386,7 @@ __all__ = [
     "WorkspaceMcpToolSetting",
     "WorkspaceMembership",
     "WorkspaceRole",
+    "WorkspaceSkill",
     "WorkspaceTable",
     "ZaloConnection",
     "ZaloMessageLog",

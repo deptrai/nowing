@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,6 +19,7 @@ from app.db import (
     NewChatMessage,
     NewChatThread,
     Permission,
+    Project,
     Workspace,
     get_async_session,
 )
@@ -47,6 +48,23 @@ from app.users import get_auth_context
 from app.utils.rbac import check_permission
 
 router = APIRouter()
+
+
+async def _validate_thread_project(
+    session: AsyncSession,
+    workspace_id: int,
+    project_id: int | None,
+) -> None:
+    """Reject project_id that is missing, cross-workspace, or archived."""
+    if project_id is None:
+        return
+
+    project = await session.get(Project, project_id)
+    if not project or project.workspace_id != workspace_id or project.is_archived:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid project_id for this workspace",
+        )
 
 @router.get("/threads", response_model=ThreadListResponse)
 async def list_threads(
@@ -124,6 +142,7 @@ async def list_threads(
                 id=thread.id,
                 title=thread.title,
                 archived=thread.archived,
+                project_id=thread.project_id,
                 visibility=thread.visibility,
                 created_by_id=thread.created_by_id,
                 is_own_thread=is_own_thread,
@@ -219,6 +238,7 @@ async def search_threads(
                 id=thread.id,
                 title=thread.title,
                 archived=thread.archived,
+                project_id=thread.project_id,
                 visibility=thread.visibility,
                 created_by_id=thread.created_by_id,
                 # Legacy threads (no creator) are treated as own threads for owner
@@ -303,12 +323,17 @@ async def create_thread(
             None,
         )
 
+        await _validate_thread_project(
+            session, thread.workspace_id, thread.project_id
+        )
+
         now = datetime.now(UTC)
         db_thread = NewChatThread(
             title=thread.title,
             archived=thread.archived,
             visibility=thread.visibility,
             workspace_id=thread.workspace_id,
+            project_id=thread.project_id,
             created_by_id=user.id,
             platform_metadata=thread.platform_metadata,
             updated_at=now,
@@ -531,6 +556,14 @@ async def update_thread(
 
         # Update fields
         update_data = thread_update.model_dump(exclude_unset=True)
+
+        if "project_id" in update_data:
+            await _validate_thread_project(
+                session,
+                db_thread.workspace_id,
+                update_data["project_id"],
+            )
+
         for key, value in update_data.items():
             setattr(db_thread, key, value)
 

@@ -29,6 +29,18 @@ class BatdongsanLeadAdapter(LeadSourceAdapter):
 
     source_name = "batdongsan"
     category = LeadSourceCategory.REAL_ESTATE
+    supported_provinces = ["HN", "SG", "DN", "BD", "DNA", "HP", "VT", "KH", "LD", "*"]
+    coverage_quality_by_location = {
+        "HN": "high",
+        "SG": "high",
+        "DN": "high",
+        "BD": "high",
+        "DNA": "medium",
+        "HP": "medium",
+        "VT": "medium",
+        "KH": "medium",
+        "LD": "medium",
+    }
 
     def __init__(self) -> None:
         self.last_execution_status = "ok"

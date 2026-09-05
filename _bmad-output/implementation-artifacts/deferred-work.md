@@ -1,3 +1,9 @@
+## Deferred from: code review of 6-11-vertical-alert-rule-templates (2026-09-04)
+
+- **Finding:** `CreateFromTemplateModal.tsx` currently defaults `notification_channels` to `["in_app"]` without interactive multi-select UI for Telegram/Email notifications.
+  - **Action:** Marked `[x] [Review][Defer]` in `6-11-vertical-alert-rule-templates.md`.
+  - **Reason / when to revisit:** In-app notifications are the primary delivery mechanism; Telegram integration requires existing workspace bot linkage. Add channel toggle controls in follow-up UX refinement pass.
+
 ## Deferred from: code review of 25-4-realtime-llm-token-cost-proxy-health-celery-queue-telemetry (2026-08-26)
 
 - **Finding:** Cost aggregation in `AdminTelemetryService` reimplements `UsageService` SQL patterns instead of reusing/extend `UsageService`.
@@ -841,6 +847,12 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - **Finding:** Celery `apply_async` failure after `launch_run` commits leaves a run stuck PENDING forever.
   - **Action:** Marked `[x] [Review][Defer]` in `7-7-mcp-server-tool-expansion.md`.
   - **Reason / when to revisit:** Pre-existing `launch_run` commit-before-enqueue pattern; fix by rolling back or retrying enqueue.
+
+## Deferred from: code review of 25-7-third-party-health-operations-dashboard (chunk 1 backend, 2026-09-04)
+
+- **Finding:** `HealthProbeRegistry` uses hardcoded canonical lists of 25 scrapers / 14 connectors / 5 models instead of dynamic discovery from `CapabilityRegistry` and service registries.
+  - **Action:** Marked `[x] [Review][Defer]` in `25-7-third-party-health-operations-dashboard.md`.
+  - **Reason / when to revisit:** AC-2 calls for discovery from `CapabilityRegistry` and existing service registries. The static lists are a functional v1 seed that satisfies the dashboard MVP; revisit when a new scraper/connector can be added without a code deploy, or when the registry must reflect live `Connection`/`Model` rows and capability metadata.
 
 ## Deferred from: quick-dev review of 12-2-topcv-scraper (2026-08-10)
 

@@ -23,7 +23,8 @@ test.describe("Connectors page", () => {
 		await expect(page.getByText("Notion").first()).toBeVisible();
 
 		// Click a connector card's Connect button.
-		const notionCard = page.locator("div", { hasText: "Notion" }).first();
+		const notionCard = page.getByTestId("connector-card-notion-connector");
+		await expect(notionCard).toBeVisible();
 		await notionCard.getByRole("button", { name: "Connect" }).click();
 
 		// Detail pane should open with a back button and connector title.

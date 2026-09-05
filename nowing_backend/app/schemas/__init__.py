@@ -97,6 +97,15 @@ from .new_chat import (
     ThreadListItem,
     ThreadListResponse,
 )
+from .projects_schemas import (
+    ProjectBase,
+    ProjectCreate,
+    ProjectListParams,
+    ProjectPinnedDocumentRead,
+    ProjectRead,
+    ProjectSkillLinkRead,
+    ProjectUpdate,
+)
 from .rbac_schemas import (
     InviteAcceptRequest,
     InviteAcceptResponse,
@@ -130,6 +139,15 @@ from .search_source_connector import (
     SearchSourceConnectorCreate,
     SearchSourceConnectorRead,
     SearchSourceConnectorUpdate,
+)
+from .skills_schemas import (
+    SkillBase,
+    SkillCreate,
+    SkillExecuteRequest,
+    SkillParseRequest,
+    SkillParseResponse,
+    SkillRead,
+    SkillUpdate,
 )
 from .stripe import (
     CreateCreditCheckoutSessionRequest,
@@ -287,6 +305,14 @@ __all__ = [
     "PagePurchaseHistoryResponse",
     "PagePurchaseRead",
     "PaginatedResponse",
+    # Project schemas
+    "ProjectBase",
+    "ProjectCreate",
+    "ProjectListParams",
+    "ProjectPinnedDocumentRead",
+    "ProjectRead",
+    "ProjectSkillLinkRead",
+    "ProjectUpdate",
     # Usage schemas
     "PerTurnUsageItem",
     "PerTurnUsageResponse",
@@ -309,6 +335,14 @@ __all__ = [
     "SearchSourceConnectorCreate",
     "SearchSourceConnectorRead",
     "SearchSourceConnectorUpdate",
+    # Skill schemas
+    "SkillBase",
+    "SkillCreate",
+    "SkillExecuteRequest",
+    "SkillParseRequest",
+    "SkillParseResponse",
+    "SkillRead",
+    "SkillUpdate",
     "StripeWebhookResponse",
     "SuggestedAction",
     "SuggestedActionList",

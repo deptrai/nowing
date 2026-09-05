@@ -1,0 +1,59 @@
+---
+title: Projects & Skills Hub
+description: Persistent workspace projects and modular reusable skills for AI agents
+---
+
+# Projects & Skills Hub
+
+Nowing lets you organize work into **Projects** inside a workspace and attach reusable **Skills** to those projects. This gives every chat a persistent, context-rich home instead of starting from a blank thread.
+
+## What are Projects?
+
+A project is a persistent domain workspace within a Nowing workspace. It carries:
+
+- **Master instructions** — high-level context the agent reads before every turn in that project.
+- **Pinned documents** — workspace documents pinned for quick reference.
+- **Linked skills** — reusable `.skill.md` instructions that activate when a trigger pattern matches.
+- **Chat thread linkage** — research and chat threads can be associated with a project, so context survives across sessions.
+
+You can list, create, update, archive, and delete projects through the REST API or MCP tools. Archiving a project hides it from default lists without deleting its history.
+
+## What are Skills?
+
+Skills are modular instruction blocks registered at the workspace level:
+
+| Field | Purpose |
+|-------|---------|
+| `name` / `slug` | Human and machine identifiers |
+| `description` | What the skill does |
+| `trigger_pattern` | When the skill should activate (e.g., a keyword or intent) |
+| `content_markdown` | The actual instructions given to the agent |
+| `parameters_schema` | JSON Schema for parameters the skill can accept |
+| `skill_type` | Currently `prompt` (extensible for future skill runtimes) |
+
+Each skill is scoped to a workspace and can be linked to one or more projects. When a chat is tied to a project, only the active skills attached to that project are considered, keeping context focused.
+
+## How to use it
+
+1. **Create a project** from your workspace with a name, description, and master instructions.
+2. **Pin documents** that the project should always reference.
+3. **Register workspace skills** with a clear trigger pattern and instruction body.
+4. **Link skills** to the project so they are available in project-scoped chats.
+5. **Start a chat** in the context of that project — the agent loads the master instructions, pinned documents, and active skills automatically.
+
+## API surface
+
+- `GET /workspaces/{id}/projects` — list projects
+- `POST /workspaces/{id}/projects` — create a project
+- `GET /workspaces/{id}/projects/{project_id}` — get project with pinned documents
+- `PATCH /workspaces/{id}/projects/{project_id}` — update project
+- `DELETE /workspaces/{id}/projects/{project_id}` — delete project
+- `POST /workspaces/{id}/projects/{project_id}/documents/{document_id}/pin` — pin a document
+- `DELETE /workspaces/{id}/projects/{project_id}/documents/{document_id}/pin` — unpin a document
+
+Skills are managed through the modular skill execution service and can also be invoked via the Nowing MCP server.
+
+## Learn more
+
+- [MCP Server guide](/docs/how-to/mcp-server)
+- [Chat and agent features](https://github.com/deptrai/nowing)
