@@ -309,3 +309,68 @@ export function buildLocationSummary(
 
 	return prov.name;
 }
+
+/**
+ * Compute the diff between two LocationProfile states for smoke-test re-run UI.
+ */
+export interface LocationDiffResult {
+	addedDistricts: { code: string; name: string }[];
+	removedDistricts: { code: string; name: string }[];
+	addedWards: string[];
+	removedWards: string[];
+	provinceChanged: boolean;
+	prevProvinceName?: string;
+	nextProvinceName?: string;
+}
+
+export function computeLocationDiff(
+	prev: { province_code: string; district_codes?: string[]; ward_names?: string[] } | null,
+	next: { province_code: string; district_codes?: string[]; ward_names?: string[] } | null
+): LocationDiffResult {
+	const result: LocationDiffResult = {
+		addedDistricts: [],
+		removedDistricts: [],
+		addedWards: [],
+		removedWards: [],
+		provinceChanged: false,
+	};
+
+	const prevProv = prev?.province_code ?? "";
+	const nextProv = next?.province_code ?? "";
+
+	if (prevProv !== nextProv) {
+		result.provinceChanged = true;
+		const prevName = VIETNAM_PROVINCES.find((p) => p.code === prevProv)?.name;
+		const nextName = VIETNAM_PROVINCES.find((p) => p.code === nextProv)?.name;
+		result.prevProvinceName = prevName ?? prevProv;
+		result.nextProvinceName = nextName ?? nextProv;
+		return result;
+	}
+
+	const prevDistricts = new Set(prev?.district_codes ?? []);
+	const nextDistricts = new Set(next?.district_codes ?? []);
+	const prevWards = new Set((prev?.ward_names ?? []).map((w) => w.trim()));
+	const nextWards = new Set((next?.ward_names ?? []).map((w) => w.trim()));
+
+	const prov = VIETNAM_PROVINCES.find((p) => p.code === prevProv);
+	const nameByCode = new Map(prov?.districts.map((d) => [d.code, d.name]) ?? []);
+
+	for (const code of nextDistricts) {
+		if (!prevDistricts.has(code)) {
+			result.addedDistricts.push({ code, name: nameByCode.get(code) ?? code });
+		}
+	}
+	for (const code of prevDistricts) {
+		if (!nextDistricts.has(code)) {
+			result.removedDistricts.push({ code, name: nameByCode.get(code) ?? code });
+		}
+	}
+	for (const w of nextWards) {
+		if (!prevWards.has(w)) result.addedWards.push(w);
+	}
+	for (const w of prevWards) {
+		if (!nextWards.has(w)) result.removedWards.push(w);
+	}
+
+	return result;
+}

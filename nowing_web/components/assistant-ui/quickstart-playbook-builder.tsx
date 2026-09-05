@@ -1,24 +1,19 @@
 "use client";
 
-import { useState, type FC } from "react";
-import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { type FC, useState } from "react";
+import { toast } from "sonner";
 import { LocationSelector } from "@/components/leads/LocationSelector";
 import { PlanSummaryCard } from "@/components/leads/PlanSummaryCard";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import type { CampaignCreateInput, CampaignPlanResponse } from "@/contracts/types/campaign.types";
 import type { LocationProfile } from "@/contracts/types/leads.types";
 import { leadsApiService } from "@/lib/apis/leads-api.service";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface PlaybookPreset {
@@ -115,6 +110,12 @@ export const QuickstartPlaybookBuilder: FC = () => {
 	const [selectedChannels, setSelectedChannels] = useState<string[]>(["zalo"]);
 	const [playbookPlan, setPlaybookPlan] = useState<CampaignPlanResponse | null>(null);
 	const [isPlanningPlaybook, setIsPlanningPlaybook] = useState(false);
+	const [playbookSmokeResult, setPlaybookSmokeResult] = useState<
+		import("@/contracts/types/campaign.types").LeadGenOrchestratorResult | null
+	>(null);
+	const [previousPlaybookLocation, setPreviousPlaybookLocation] = useState<LocationProfile | null>(
+		null
+	);
 
 	const resetWizard = () => {
 		setSelectedPreset(null);
@@ -161,18 +162,19 @@ export const QuickstartPlaybookBuilder: FC = () => {
 
 		setIsPlanningPlaybook(true);
 		try {
-			const result = await leadsApiService.executeCampaign(
-				targetWorkspace,
-				spec,
-				!smokeTest
-			);
+			const result = await leadsApiService.executeCampaign(targetWorkspace, spec, !smokeTest);
 			toast.success(
 				smokeTest
 					? `Chạy thử xong: tìm thấy ${result.total_discovered} lead`
 					: `Đã chạy chiến dịch: tìm thấy ${result.total_discovered} lead`
 			);
-			resetWizard();
-			router.push(`/dashboard/${targetWorkspace}/leads`);
+			if (smokeTest) {
+				setPlaybookSmokeResult(result);
+				setPreviousPlaybookLocation(locationProfile);
+			} else {
+				resetWizard();
+				router.push(`/dashboard/${targetWorkspace}/leads`);
+			}
 		} catch (_err) {
 			toast.error("Không thể chạy playbook. Vui lòng thử lại.");
 		} finally {
@@ -185,7 +187,6 @@ export const QuickstartPlaybookBuilder: FC = () => {
 			prev.includes(channel) ? prev.filter((c) => c !== channel) : [...prev, channel]
 		);
 	};
-
 
 	const fetchPlaybookSpec = (): CampaignCreateInput => {
 		return {
@@ -384,11 +385,37 @@ export const QuickstartPlaybookBuilder: FC = () => {
 								<div className="pt-2">
 									<PlanSummaryCard
 										plan={playbookPlan}
-										icpConfig={locationProfile ? { ...fetchPlaybookSpec().icp_config, location_profile: locationProfile } : fetchPlaybookSpec().icp_config}
+										icpConfig={
+											locationProfile
+												? { ...fetchPlaybookSpec().icp_config, location_profile: locationProfile }
+												: fetchPlaybookSpec().icp_config
+										}
 										isLoading={isPlanningPlaybook}
 										onRequestPlan={fetchPlaybookPlan}
 										onSmokeTest={() => run(true)}
 										onApplyPlan={() => run(false)}
+										smokeTestResult={playbookSmokeResult}
+										previousLocationProfile={previousPlaybookLocation}
+										onRefineLocation={(action) => {
+											if (action === "expand" && locationProfile) {
+												setLocationProfile({
+													...locationProfile,
+													district_codes: [],
+													district_names: [],
+													ward_codes: [],
+													ward_names: [],
+													location_text:
+														locationProfile.province_name || locationProfile.province_code,
+												});
+											}
+											if (action === "custom") {
+												setStep(2);
+											}
+											if (action === "switch-source") {
+												setStep(4);
+											}
+										}}
+										onConfirmFullRun={() => run(false)}
 									/>
 								</div>
 

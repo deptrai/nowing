@@ -140,6 +140,14 @@ class CampaignSpec(BaseModel):
         description="Explicit source adapters to include. If empty, dynamic resolution applies.",
     )
     excluded_sources: list[str] = Field(default_factory=list)
+    excluded_identities: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Identity keys (canonical_domain, primary_phone, tax_id, primary_email) "
+            "of leads already returned by a smoke test. The orchestrator filters these "
+            "out so a subsequent full run does not double-charge or duplicate them."
+        ),
+    )
     max_total_leads: int = Field(default=100, ge=1, le=5000)
     concurrency_limit: int = Field(default=5, ge=1, le=20)
     adapter_timeout_seconds: float = Field(default=12.0, ge=1.0, le=60.0)
@@ -235,6 +243,7 @@ class CampaignSpec(BaseModel):
             source_budgets=budgets,
             target_sources=[s for s in source_budget_config.get("sources", [])],
             excluded_sources=[],
+            excluded_identities=payload.get("excluded_identities") or [],
             max_total_leads=source_budget_config.get("expected_leads_target", 50),
             location_profile=location_profile,
             metadata={"launch_config": launch_config},

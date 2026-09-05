@@ -49,6 +49,12 @@ export interface CampaignBuilderState {
 	activePlan: CampaignPlanResponse | null;
 	isPlanning: boolean;
 
+	smokeTestResult: import("@/contracts/types/campaign.types").LeadGenOrchestratorResult | null;
+	smokeTestHistory: import("@/atoms/leads/leads-canvas.atoms").SmokeTestRun[];
+	activeSmokeTestResult: import("@/atoms/leads/leads-canvas.atoms").SmokeTestRun | null;
+	locationRefineOpen: boolean;
+	previousLocationProfile: import("@/contracts/types/leads.types").LocationProfile | null;
+
 	scheduleType: LaunchConfig["schedule_type"];
 	cronExp: string;
 	autoStart: boolean;
@@ -108,6 +114,8 @@ export interface UseCampaignBuilderReturn extends CampaignBuilderState {
 	handleAnalyzeReverseIcp: () => Promise<void>;
 	handleGetPlan: () => Promise<void>;
 	handleSmokeTest: () => Promise<void>;
+	handleRefineLocation: (action: "narrow" | "expand" | "switch-source" | "custom") => void;
 	handleLaunchCampaign: () => Promise<void>;
 	handleSaveCampaign: (andLaunch?: boolean) => Promise<void>;
+	setLocationRefineOpen: (open: boolean) => void;
 }

@@ -29,9 +29,15 @@ import {
 import type {
 	CampaignPlanResponse,
 	IcpConfig,
+	LeadGenOrchestratorResult,
 	SourcePlanAllocation,
 } from "@/contracts/types/campaign.types";
-import { buildLocationSummary } from "@/lib/geo/vietnam-divisions";
+import type { Lead } from "@/contracts/types/leads.types";
+import {
+	buildLocationSummary,
+	computeLocationDiff,
+	type LocationDiffResult,
+} from "@/lib/geo/vietnam-divisions";
 import { cn } from "@/lib/utils";
 import { SourceCoverageBadge } from "./SourceCoverageBadge";
 
@@ -42,6 +48,10 @@ export interface PlanSummaryCardProps {
 	onRequestPlan?: () => void;
 	onApplyPlan?: (plan: CampaignPlanResponse) => void;
 	onSmokeTest?: () => void;
+	smokeTestResult?: LeadGenOrchestratorResult | null;
+	previousLocationProfile?: import("@/contracts/types/leads.types").LocationProfile | null;
+	onRefineLocation?: (action: "narrow" | "expand" | "switch-source" | "custom") => void;
+	onConfirmFullRun?: () => void;
 	className?: string;
 	inRightCanvas?: boolean;
 }
@@ -53,6 +63,10 @@ export function PlanSummaryCard({
 	onRequestPlan,
 	onApplyPlan,
 	onSmokeTest,
+	smokeTestResult,
+	previousLocationProfile,
+	onRefineLocation,
+	onConfirmFullRun,
 	className,
 	inRightCanvas = false,
 }: PlanSummaryCardProps) {
@@ -91,6 +105,16 @@ export function PlanSummaryCard({
 	const locationText = locationProfile ? buildLocationSummary(locationProfile) : null;
 
 	const locationType = effectiveIcp?.location_profile?.location_type ?? "both";
+	const currentLocationProfile = effectiveIcp?.location_profile ?? null;
+	const locationDiff: LocationDiffResult | null =
+		previousLocationProfile && currentLocationProfile
+			? computeLocationDiff(previousLocationProfile, currentLocationProfile)
+			: null;
+
+	const smokeLeads: Lead[] = smokeTestResult?.leads?.slice(0, 5) ?? [];
+	const locationMetadata = smokeTestResult?.location_match_metadata;
+
+	const hasZeroLeads = smokeTestResult && smokeTestResult.total_discovered === 0;
 
 	if (isLoading) {
 		return (
@@ -375,6 +399,213 @@ export function PlanSummaryCard({
 					</div>
 				</div>
 			</CardContent>
+
+			{/* Smoke Test Preview & Feedback Loop (Story 26.29) */}
+			{smokeTestResult && !inRightCanvas && (
+				<div className="px-4 pb-4 space-y-3">
+					{/* AC-1: Compact lead matrix preview */}
+					{smokeLeads.length > 0 && (
+						<div className="rounded-lg border border-emerald-800/40 bg-emerald-950/10 overflow-hidden">
+							<div className="px-3 py-2 border-b border-emerald-800/30 flex items-center justify-between">
+								<span className="text-[11px] font-semibold text-emerald-300">
+									Preview {smokeLeads.length} lead
+								</span>
+								{locationMetadata && (
+									<span className="text-[10px] text-zinc-400">
+										Đúng địa bàn: {locationMetadata.matched_count} / Ngoài:{" "}
+										{locationMetadata.outside_count}
+									</span>
+								)}
+							</div>
+							<div className="divide-y divide-zinc-800/60">
+								{smokeLeads.map((lead, idx) => {
+									const matched =
+										(lead as { location_match_score?: number }).location_match_score ?? 0;
+									const isOutside = matched < 65;
+									return (
+										<div
+											key={lead.id ?? `smoke-${idx}`}
+											data-testid={`smoke-lead-${idx}`}
+											className="px-3 py-2 text-[11px] space-y-1"
+										>
+											<div className="flex items-center justify-between gap-2">
+												<span className="font-medium text-zinc-200 truncate">
+													{lead.company_name || lead.name || "Lead"}
+												</span>
+												<Badge
+													variant={isOutside ? "destructive" : "default"}
+													className={cn(
+														"text-[9px] h-5",
+														isOutside
+															? "bg-rose-950/40 text-rose-300 border-rose-800/40"
+															: "bg-emerald-950/40 text-emerald-300 border-emerald-800/40"
+													)}
+												>
+													{isOutside ? "Ngoài địa bàn" : "Đúng địa bàn"}
+												</Badge>
+											</div>
+											<div className="flex items-center gap-1.5 text-zinc-400">
+												<MapPin className="w-3 h-3 shrink-0" />
+												<span className="truncate">{lead.location || "—"}</span>
+											</div>
+											<div className="flex items-center justify-between gap-2">
+												<Badge variant="secondary" className="text-[9px] bg-zinc-800 text-zinc-300">
+													{lead.source}
+												</Badge>
+												<span className="text-zinc-500 truncate max-w-[60%]">
+													{lead.content_snippet || ""}
+												</span>
+											</div>
+										</div>
+									);
+								})}
+							</div>
+						</div>
+					)}
+
+					{/* AC-4: Diff summary on re-run */}
+					{locationDiff?.provinceChanged && (
+						<div
+							data-testid="smoke-test-diff-summary"
+							className="p-3 rounded-lg bg-zinc-950/50 border border-zinc-800 text-[11px]"
+						>
+							<div className="font-semibold text-zinc-200 mb-1.5">Thay đổi địa bàn</div>
+							{locationDiff.provinceChanged && (
+								<div className="text-zinc-300">
+									Đổi tỉnh <span className="text-rose-400">{locationDiff.prevProvinceName}</span>{" "}
+									sang <span className="text-emerald-400">{locationDiff.nextProvinceName}</span>
+								</div>
+							)}
+							{locationDiff.addedDistricts.length > 0 && (
+								<div className="mt-1">
+									<span className="text-emerald-400">
+										+ {locationDiff.addedDistricts.map((d) => d.name).join(", ")}
+									</span>
+								</div>
+							)}
+							{locationDiff.removedDistricts.length > 0 && (
+								<div className="mt-1">
+									<span className="text-rose-400">
+										- {locationDiff.removedDistricts.map((d) => d.name).join(", ")}
+									</span>
+								</div>
+							)}
+						</div>
+					)}
+
+					{/* AC-6: Zero-leads diagnostic card */}
+					{hasZeroLeads && (
+						<div
+							data-testid="zero-leads-diagnostic"
+							className="p-3 rounded-lg bg-rose-950/30 border border-rose-800/40 text-rose-300 space-y-2"
+						>
+							<div className="flex items-center gap-1.5 font-semibold text-[11px]">
+								<AlertTriangle className="w-3.5 h-3.5 shrink-0 text-rose-400" />
+								<span>Không tìm thấy lead nào</span>
+							</div>
+							<p className="text-[11px] text-rose-300/90">
+								{locationMetadata?.zero_leads_reason === "NO_DATA_IN_LOCATION"
+									? "Không có dữ liệu tại địa bàn đã chọn."
+									: locationMetadata?.zero_leads_reason === "SOURCE_DEGRADED"
+										? "Nguồn cào suy giảm hoặc ngoại tuyến."
+										: "Bộ lọc quá hẹp."}
+							</p>
+							<div className="flex flex-wrap gap-2">
+								{locationProfile && (
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										onClick={() => onRefineLocation?.("expand")}
+										className="text-[10px] h-7 border-rose-700 text-rose-300 hover:bg-rose-950/40"
+									>
+										Mở rộng ra toàn {locationProfile.province_name}
+									</Button>
+								)}
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									onClick={() => onRefineLocation?.("switch-source")}
+									className="text-[10px] h-7 border-rose-700 text-rose-300 hover:bg-rose-950/40"
+								>
+									Bật thêm nguồn toàn quốc
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									onClick={() => onRefineLocation?.("narrow")}
+									className="text-[10px] h-7 border-rose-700 text-rose-300 hover:bg-rose-950/40"
+								>
+									Giảm ngưỡng lọc tương đồng
+								</Button>
+							</div>
+						</div>
+					)}
+
+					{/* AC-2: Location feedback banner */}
+					{smokeLeads.length > 0 && (
+						<div
+							data-testid="location-feedback-banner"
+							className="p-3 rounded-lg bg-sky-950/20 border border-sky-800/40 text-sky-100"
+						>
+							<div className="text-[11px] font-medium mb-2">Địa điểm có đúng không?</div>
+							<div className="flex flex-wrap gap-2">
+								<Button
+									type="button"
+									size="sm"
+									data-testid="btn-confirm-full-run"
+									onClick={onConfirmFullRun}
+									className="text-[10px] h-7 bg-emerald-500 hover:bg-emerald-400 text-black"
+								>
+									Đúng — chạy đầy đủ
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									data-testid="btn-refine-narrow"
+									onClick={() => onRefineLocation?.("narrow")}
+									className="text-[10px] h-7 border-sky-500/40 text-sky-300 hover:bg-sky-500/10"
+								>
+									Thu hẹp khu vực
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									data-testid="btn-refine-expand"
+									onClick={() => onRefineLocation?.("expand")}
+									className="text-[10px] h-7 border-sky-500/40 text-sky-300 hover:bg-sky-500/10"
+								>
+									Mở rộng khu vực
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									data-testid="btn-refine-switch-source"
+									onClick={() => onRefineLocation?.("switch-source")}
+									className="text-[10px] h-7 border-sky-500/40 text-sky-300 hover:bg-sky-500/10"
+								>
+									Đổi nguồn
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									data-testid="btn-refine-custom-location"
+									onClick={() => onRefineLocation?.("custom")}
+									className="text-[10px] h-7 border-sky-500/40 text-sky-300 hover:bg-sky-500/10"
+								>
+									Chỉnh vị trí chi tiết
+								</Button>
+							</div>
+						</div>
+					)}
+				</div>
+			)}
 
 			{!inRightCanvas && onSmokeTest && (
 				<CardFooter className="pt-2 pb-4 px-4 border-t border-zinc-800 flex flex-col gap-2">

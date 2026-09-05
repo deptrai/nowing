@@ -143,11 +143,24 @@ export function LaunchScheduleStep({ builder }: { builder: UseCampaignBuilderRet
 							<div className="pt-2">
 								<PlanSummaryCard
 									plan={builder.activePlan}
-									icpConfig={builder.locationProfile ? { ...builder.buildPlanSpec().icp_config, location_profile: builder.locationProfile } : builder.buildPlanSpec().icp_config}
+									icpConfig={
+										builder.locationProfile
+											? {
+													...builder.buildPlanSpec().icp_config,
+													location_profile: builder.locationProfile,
+												}
+											: builder.buildPlanSpec().icp_config
+									}
 									isLoading={builder.isPlanning}
 									onRequestPlan={builder.handleGetPlan}
 									onSmokeTest={() => builder.handleSmokeTest()}
 									onApplyPlan={() => builder.handleLaunchCampaign()}
+									smokeTestResult={builder.smokeTestResult}
+									previousLocationProfile={builder.previousLocationProfile}
+									onRefineLocation={builder.handleRefineLocation}
+									onConfirmFullRun={() => {
+										builder.handleLaunchCampaign();
+									}}
 								/>
 							</div>
 						</CardContent>

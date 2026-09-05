@@ -250,3 +250,71 @@ class LeadGenPlanner:
         if category == LeadSourceCategory.ENTERPRISE:
             return "Doanh nghiệp đấu thầu"
         return "Tìm kiếm doanh nghiệp"
+
+    @staticmethod
+    def diagnose_zero_leads_cause(
+        spec: CampaignSpec,
+        adapter_results: list[dict[str, Any]] | None = None,
+        status: str | None = None,
+    ) -> dict[str, Any]:
+        """Return an actionable diagnostic when a smoke test produces zero leads.
+
+        ``adapter_results`` is a list of dicts like {"source_name": str, "count": int,
+        "degraded_reason": str | None} used to disambiguate source-level failures.
+        """
+        reason = "NO_DATA_IN_LOCATION"
+        recovery: list[str] = []
+
+        if spec.location_profile is not None:
+            province = getattr(spec.location_profile, "province_name", "") or ""
+            district_codes = list(
+                getattr(spec.location_profile, "district_codes", []) or []
+            )
+            ward_names = list(
+                getattr(spec.location_profile, "ward_names", []) or []
+            )
+            if district_codes:
+                recovery.append(f"Mở rộng ra toàn tỉnh {province}")
+            if ward_names:
+                recovery.append("Bỏ lọc phường/xã")
+
+        narrow = False
+        if spec.icp_criteria:
+            narrow = (
+                spec.icp_criteria.min_fit_score > 75.0
+                or bool(spec.icp_criteria.negative_keywords)
+                or bool(spec.icp_criteria.target_keywords)
+            )
+        if narrow:
+            reason = "FILTERS_TOO_NARROW"
+            recovery.append("Giảm ngưỡng lọc tương đồng")
+
+        has_degraded = False
+        degraded_names: list[str] = []
+        if adapter_results:
+            for ar in adapter_results:
+                if ar.get("degraded_reason") or ar.get("count", 1) == 0:
+                    has_degraded = True
+                    src_name = ar.get("source_name", "nguồn") or "nguồn"
+                    degraded_names.append(src_name)
+
+        if status == "degraded" or (status is None and has_degraded):
+            reason = "SOURCE_DEGRADED"
+            if degraded_names:
+                for d in degraded_names:
+                    recovery.append(f"Bật thêm nguồn toàn quốc {d}")
+            else:
+                recovery.append("Bật thêm nguồn toàn quốc")
+
+        if not recovery and spec.location_profile is not None:
+            province = getattr(spec.location_profile, "province_name", "") or ""
+            if province:
+                recovery.append(f"Mở rộng ra toàn tỉnh {province}")
+            else:
+                recovery.append("Mở rộng ra toàn tỉnh/Thành phố")
+
+        return {
+            "reason": reason,
+            "recovery_actions": list(dict.fromkeys(recovery)),
+            "degraded_sources": list(dict.fromkeys(degraded_names)),
+        }
