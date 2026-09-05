@@ -97,7 +97,9 @@ export const campaignCreateInputSchema = z.object({
 	launch_config: launchConfigSchema,
 });
 
-export type CampaignCreateInput = z.infer<typeof campaignCreateInputSchema>;
+export type CampaignCreateInput = z.infer<typeof campaignCreateInputSchema> & {
+	excluded_identities?: string[];
+};
 
 export const campaignUpdateInputSchema = campaignCreateInputSchema.partial().extend({
 	status: campaignStatusSchema.optional(),
@@ -113,7 +115,6 @@ export const campaignListResponseSchema = z.object({
 });
 
 export type CampaignListResponse = z.infer<typeof campaignListResponseSchema>;
-
 
 // =============================================================================
 // Story 26.27: Pre-Flight Lead Plan Summary
@@ -143,6 +144,16 @@ export const subTaskPlanSchema = z.object({
 
 export type SubTaskPlan = z.infer<typeof subTaskPlanSchema>;
 
+export const locationMatchMetadataSchema = z.object({
+	matched_count: z.number().default(0),
+	outside_count: z.number().default(0),
+	threshold: z.number().default(65),
+	zero_leads_reason: z.string().nullable().optional(),
+	zero_leads_diagnostics: z.array(z.string()).default([]),
+});
+
+export type LocationMatchMetadata = z.infer<typeof locationMatchMetadataSchema>;
+
 export const leadGenOrchestratorResultSchema = z.object({
 	status: z.string().default("completed"),
 	total_discovered: z.number().default(0),
@@ -155,6 +166,7 @@ export const leadGenOrchestratorResultSchema = z.object({
 	execution_time_ms: z.number().default(0),
 	source_latency_ms: z.record(z.string(), z.number()).default({}),
 	deduplication_rate: z.number().default(0),
+	location_match_metadata: locationMatchMetadataSchema.nullable().optional(),
 });
 
 export type LeadGenOrchestratorResult = z.infer<typeof leadGenOrchestratorResultSchema>;
@@ -173,7 +185,6 @@ export const campaignPlanResponseSchema = z.object({
 });
 
 export type CampaignPlanResponse = z.infer<typeof campaignPlanResponseSchema>;
-
 
 // Lead Workbench Specific Types (Story 21.15 & SDR Pipeline)
 export const leadPipelineStatusSchema = z.enum([
