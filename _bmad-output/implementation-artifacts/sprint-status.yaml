@@ -325,8 +325,8 @@ development_status:
   28-5-workspace-memory-storage-cap-retention-lifecycle: done
   epic-28-retrospective: optional
 
-  epic-29: backlog
-  29-1-custom-workspace-roles-permissions-builder: backlog
+  epic-29: in-progress
+  29-1-custom-workspace-roles-permissions-builder: ready-for-dev
   29-2-workspace-health-adoption-analytics-dashboard: backlog
   29-3-tenant-subscription-tier-quota-management: backlog
   29-4-admin-bulk-operations-console: backlog
