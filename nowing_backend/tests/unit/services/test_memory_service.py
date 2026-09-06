@@ -34,6 +34,10 @@ class _FakeMemory:
         self.content = content
         self.created_at = created_at
         self.type = type
+        self.key_id = None
+        self.encryption_iv = None
+        self.encryption_algo = None
+        self.source_input = None
 
 
 class _FakeSession:
