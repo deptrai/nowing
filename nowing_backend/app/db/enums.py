@@ -424,6 +424,13 @@ class Permission(StrEnum):
     SKILLS_DELETE = "skills:delete"
     SKILLS_EXECUTE = "skills:execute"
 
+    # Epic 29: SaaS Operations & Admin Governance (Story 29.1)
+    ANALYTICS_READ = "analytics:read"
+    BILLING_READ = "billing:read"
+    BILLING_MANAGE = "billing:manage"
+    SOURCE_CONFIGURE = "source:configure"
+    TOOLS_ENABLE = "tools:enable"
+
 
 DEFAULT_ROLE_PERMISSIONS = {
     "Owner": [Permission.FULL_ACCESS.value],
@@ -493,6 +500,9 @@ DEFAULT_ROLE_PERMISSIONS = {
         Permission.SKILLS_READ.value,
         Permission.SKILLS_UPDATE.value,
         Permission.SKILLS_EXECUTE.value,
+        # Sources & Tools (Story 29.1)
+        Permission.SOURCE_CONFIGURE.value,
+        Permission.TOOLS_ENABLE.value,
     ],
     "Viewer": [
         # Documents (read only)
