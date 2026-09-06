@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import Memory, User
 from app.services.memory.document import parse_memory_document, render_memory_document
+from app.services.memory.encryption import MemoryEncryptionService
 from app.services.memory.parser import parse_memory_markdown_to_facts
 from app.services.memory.renderer import render_memory_markdown
 from app.services.memory.repository import MemoryRepository
@@ -121,6 +122,9 @@ async def read_memory(
             )
         )
         memories = result.scalars().all()
+        encryption = MemoryEncryptionService.from_env()
+        for memory in memories:
+            encryption.to_plaintext(memory)
         return render_memory_markdown(list(memories), scope="user")
 
     workspace_id = int(target_id)
@@ -132,6 +136,9 @@ async def read_memory(
         )
     )
     memories = result.scalars().all()
+    encryption = MemoryEncryptionService.from_env()
+    for memory in memories:
+        encryption.to_plaintext(memory)
     return render_memory_markdown(list(memories), scope="team")
 
 

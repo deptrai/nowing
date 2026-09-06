@@ -18,6 +18,7 @@ from typing import Any
 import yaml
 
 from app.db import Chunk, Document, Memory, MemoryRelation, MemorySourceType
+from app.services.memory.encryption import MemoryEncryptionService
 from app.services.okf.redaction import redact_secrets
 from app.services.okf.type_mapping import (
     okf_chunk_type,
@@ -53,8 +54,24 @@ def _tags_from_metadata(metadata: dict[str, Any] | None) -> list[str] | None:
     return None
 
 
+def _memory_plaintext(memory: Memory) -> str:
+    """Return plaintext memory content, decrypting Tier-1 fields if needed."""
+    plaintext = memory.content or ""
+    if memory.key_id is not None:
+        try:
+            encryption = MemoryEncryptionService.from_env()
+            if encryption.is_enabled():
+                encryption.decrypt_memory(memory)
+                plaintext = memory.content or ""
+        except Exception:
+            # Fail safe: return the stored ciphertext rather than crash export
+            # if the key material for this legacy/rotated row is not available.
+            plaintext = memory.content or ""
+    return plaintext
+
+
 def _memory_title(memory: Memory) -> str:
-    content = (memory.content or "").replace("\n", " ").strip()
+    content = _memory_plaintext(memory).replace("\n", " ").strip()
     if not content:
         return "Memory"
     if len(content) <= 80:
@@ -72,7 +89,7 @@ def _citation_label(memory: Memory) -> str | None:
 
 def _memory_body(memory: Memory) -> str:
     """Memory body is its content; optional source recipe is kept in the citation."""
-    return memory.content or ""
+    return _memory_plaintext(memory)
 
 
 def _citation_body(memory: Memory) -> str:

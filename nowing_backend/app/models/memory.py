@@ -288,6 +288,19 @@ class Memory(BaseModel, TimestampMixin):
     # memory remains re-executable after the run log is cleaned up.
     source_capability = Column(String(100), nullable=True)
     source_input = Column(JSONB, nullable=True)
+    # ``content_search`` holds a tsvector literal derived from plaintext content
+    # at write time.  It is stored unencrypted so hybrid search can rank
+    # keyword matches over a token stream without keeping the raw content.
+    # Populated by ``MemoryEncryptionService.encrypt_memory`` when encryption
+    # is enabled; otherwise NULL.
+    content_search = Column(Text, nullable=True)
+    # Encryption-at-rest metadata.
+    # ``key_id`` identifies which key encrypted this row; ``encryption_iv`` and
+    # ``encryption_algo`` let the decryptor reconstruct the cipher context.
+    # ``key_id`` NULL or 'legacy' means the row is plaintext.
+    key_id = Column(String(64), nullable=True)
+    encryption_iv = Column(Text, nullable=True)
+    encryption_algo = Column(String(32), nullable=True)
     tags = Column(ARRAY(String), nullable=True, default=list)
     confidence = Column(Float, nullable=False, default=1.0, server_default="1.0")
     updated_at = Column(
@@ -327,6 +340,10 @@ class MemoryVersion(BaseModel, TimestampMixin):
     )
     previous_content = Column(Text, nullable=False)
     corrected_content = Column(Text, nullable=False)
+    # Encryption-at-rest metadata for version rows.
+    key_id = Column(String(64), nullable=True)
+    encryption_iv = Column(Text, nullable=True)
+    encryption_algo = Column(String(32), nullable=True)
     corrected_by_id = Column(
         UUID(as_uuid=True),
         ForeignKey("user.id", ondelete="SET NULL"),
@@ -374,6 +391,11 @@ class MemoryRelation(BaseModel, TimestampMixin):
         nullable=False,
     )
     weight = Column(Float, nullable=False, default=1.0, server_default="1.0")
+    # Encryption-at-rest metadata (placeholder for future PII edge metadata;
+    # v1 has no PII payload).
+    key_id = Column(String(64), nullable=True)
+    encryption_iv = Column(Text, nullable=True)
+    encryption_algo = Column(String(32), nullable=True)
 
     workspace = relationship("Workspace", back_populates="memory_relations")
     memory = relationship(

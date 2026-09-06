@@ -319,7 +319,7 @@ development_status:
 
   epic-28: in-progress
   28-1-workspace-memory-research-data-export: done
-  28-2-encryption-at-rest-for-cloud-memory: backlog
+  28-2-encryption-at-rest-for-cloud-memory: pending-human-review
   28-3-tos-legal-review-retention-policy-for-long-term-scrape-data: done
   28-4-self-host-oss-onboarding-in-under-10-minutes: done
   28-5-workspace-memory-storage-cap-retention-lifecycle: done

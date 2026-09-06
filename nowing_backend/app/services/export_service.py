@@ -568,7 +568,9 @@ async def build_export_zip(
 
 def _memory_title(memory: Memory) -> str:
     """Stable memory title for index/log entries."""
-    content = (memory.content or "").replace("\n", " ").strip()
+    from app.services.okf.serializer import _memory_plaintext
+
+    content = _memory_plaintext(memory).replace("\n", " ").strip()
     if not content:
         return "Memory"
     if len(content) <= 80:
