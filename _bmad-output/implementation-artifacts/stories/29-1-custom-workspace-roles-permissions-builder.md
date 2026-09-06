@@ -1,6 +1,6 @@
 ---
 story_key: 29-1-custom-workspace-roles-permissions-builder
-status: ready-for-dev
+status: done
 baseline_commit: 9d2e043a1
 epic: 29
 story: 1
@@ -8,7 +8,7 @@ story: 1
 
 # Story 29.1: Custom Workspace Roles & Permissions Builder
 
-**Status:** `ready-for-dev`  
+**Status:** `done`  
 **Epic:** 29 — SaaS Operations, Advanced Admin Governance & Analyst Workspace  
 **Governed by:** FR-100, AR-17, AR-18, UX-DR-PRFAQ-5, NFR-2, NFR-5, INV-29.1, AD-9, AD-51, `epics.md` lines 4370–4390, `ux-contract-epic-29-saas-admin-analytics.md` §1 (RB-1..RB-5).  
 **Dependencies:** Existing `WorkspaceRole`, `WorkspaceMembership`, `Permission` enum (`nowing_backend/app/db/enums.py`), `rbac_routes.py`, `nowing_web/components/settings/roles-manager.tsx`.
@@ -91,40 +91,46 @@ so that **I can safely delegate operational access without granting full Owner p
 
 ## Tasks / Subtasks
 
-- [ ] Task 1 — Backend Permissions & Security Guardrails (AC: 1, 2, 4)
-  - [ ] 1.1 Add new enum keys in `nowing_backend/app/db/enums.py`:
+- [x] Task 1 — Backend Permissions & Security Guardrails (AC: 1, 2, 4)
+  - [x] 1.1 Add new enum keys in `nowing_backend/app/db/enums.py`:
     - `ANALYTICS_READ = "analytics:read"`
     - `BILLING_READ = "billing:read"`
     - `BILLING_MANAGE = "billing:manage"`
     - `SOURCE_CONFIGURE = "source:configure"`
     - `TOOLS_ENABLE = "tools:enable"`
-  - [ ] 1.2 Update `PERMISSION_DESCRIPTIONS` in `nowing_backend/app/routes/rbac_routes.py` with descriptions for the new permissions.
-  - [ ] 1.3 In `create_role` and `update_role` (`rbac_routes.py`):
+  - [x] 1.2 Update `PERMISSION_DESCRIPTIONS` in `nowing_backend/app/routes/rbac_routes.py` with descriptions for the new permissions.
+  - [x] 1.3 In `create_role` and `update_role` (`rbac_routes.py`):
     - Enforce reserved `"Admin"` name check (`if role_data.name.strip().lower() == "admin": raise HTTPException(400, "The role name 'Admin' is reserved")`).
     - Enforce system role protection on `update_role` and `delete_role` (`if db_role.is_system_role: raise HTTPException(403, "System roles cannot be modified or deleted")`).
     - Enforce Owner ceiling: reject if `*` is present or if any permission is outside valid system permissions.
-  - [ ] 1.4 Add `audit_events` emission in `create_role`, `update_role`, `delete_role`.
+  - [x] 1.4 Add `audit_events` emission in `create_role`, `update_role`, `delete_role`.
 
-- [ ] Task 2 — Frontend Role Builder UI & Template Presets (AC: 2, 3, 4)
-  - [ ] 2.1 Update TypeScript contracts in `nowing_web/contracts/types/permissions.types.ts` to include the new permissions and categories.
-  - [ ] 2.2 Define template configurations in `nowing_web/components/settings/roles-manager.tsx`:
+- [x] Task 2 — Frontend Role Builder UI & Template Presets (AC: 2, 3, 4)
+  - [x] 2.1 Update TypeScript contracts in `nowing_web/contracts/types/permissions.types.ts` to include the new permissions and categories.
+  - [x] 2.2 Define template configurations in `nowing_web/components/settings/roles-manager.tsx`:
     - Add `ROLE_TEMPLATES` dictionary containing presets for `viewer`, `editor`, `analyst`, `billing`, and `custom`.
-  - [ ] 2.3 Update `CreateRoleDialog`:
+  - [x] 2.3 Update `CreateRoleDialog`:
     - Add template `<Select>` dropdown at the top.
     - When template changes, auto-populate `selectedPermissions`.
     - Detect when selected permissions diverge from template and render warning chip: *"This exceeds the recommended template"*.
     - Add inline validation for role name `"Admin"` with helper text and disabled save button.
-  - [ ] 2.4 Add "Clone Role" in role card actions dropdown menu.
-  - [ ] 2.5 In `nowing_web/atoms/roles/roles-mutation.atoms.ts`, add invalidation for `cacheKeys.members.myAccess` and `cacheKeys.members.all`.
+  - [x] 2.4 Add "Clone Role" in role card actions dropdown menu.
+  - [x] 2.5 In `nowing_web/atoms/roles/roles-mutation.atoms.ts`, add invalidation for `cacheKeys.members.myAccess` and `cacheKeys.members.all`.
 
-- [ ] Task 3 — Automated Verification & Testing (AC: 1, 2, 3, 4)
-  - [ ] 3.1 Backend unit tests in `nowing_backend/tests/unit/routes/test_rbac_custom_roles.py`:
+- [x] Task 3 — Automated Verification & Testing (AC: 1, 2, 3, 4)
+  - [x] 3.1 Backend unit tests in `nowing_backend/tests/unit/routes/test_rbac_custom_roles.py`:
     - Test "Admin" name rejection on create and update.
     - Test system role modification/deletion rejection (HTTP 403).
     - Test Owner ceiling validation rejection when attempting to assign `*` or invalid permissions.
     - Test successful custom role creation and update with extended permissions (`analytics:read`, `billing:read`).
-  - [ ] 3.2 Frontend component tests for template presets, warning chip visibility, and Admin name validation.
-  - [ ] 3.3 E2E test in `nowing_web/tests/settings/custom-roles-builder.spec.ts` verifying role creation, template preset loading, and role cloning.
+  - [x] 3.2 Frontend component tests for template presets, warning chip visibility, and Admin name validation.
+  - [x] 3.3 E2E test in `nowing_web/tests/settings/custom-roles-builder.spec.ts` verifying role creation, template preset loading, and role cloning.
+
+### Review Findings
+- [x] [Review][Patch] Permission deduplication on role create/update [`nowing_backend/app/routes/rbac_routes.py:230, 427`] — Applied
+- [x] [Review][Patch] Empty role name guard on create/update [`nowing_backend/app/routes/rbac_routes.py:188, 392`] — Applied
+- [x] [Review][Patch] Optional chaining guard for workspace_id in mutation onSuccess [`nowing_web/atoms/roles/roles-mutation.atoms.ts:23, 49, 78`] — Applied
+- [x] [Review][Patch] Unit tests for permission deduplication and empty permissions list [`nowing_backend/tests/unit/routes/test_rbac_custom_roles.py:377-422`] — Applied
 
 ---
 
@@ -148,6 +154,37 @@ so that **I can safely delegate operational access without granting full Owner p
 
 ---
 
+## Challenge Log (grill-me)
+
+### Q1 — Already implemented?
+- Basic RBAC CRUD (`/workspaces/{workspace_id}/roles`, `WorkspaceRole`, `WorkspaceMembership`, `Permission` enum) exists.
+- Extended permissions (`analytics:read`, `billing:read`, `billing:manage`, `source:configure`, `tools:enable`), Owner ceiling guard, immutable system role protection, "Admin" reserved name guard, template presets, conflict warning chips, role cloning, dual-principal `AuditEvent`, and client cache invalidation are NOT implemented.
+- Clean — No duplicate logic found.
+
+### Q2 — Simpler alternative?
+- Existing `AuditEvent` model (`nowing_backend/app/models/billing.py:616`) can be directly reused without creating new database tables or migrations (AD-51, INV-29.1 compliance).
+- Existing `WorkspaceRole` table has `is_system_role` flag and `permissions` JSONB column — no schema migration required.
+- Existing `roles-manager.tsx` can directly house `ROLE_TEMPLATES`, template selector, warning chip, and clone action without external libraries.
+- Clean — No simpler alternative needed, reuse existing models & components.
+
+### Q3 — Edge cases spec misses (Pattern 3)
+- [ ] Boundary: Role name `"Admin"` case variations (`"admin"`, `"ADMIN"`, `"  Admin  "`). Enforce `.strip().lower() == "admin"`.
+- [ ] Boundary: Custom role permission cannot contain `*` (FULL_ACCESS). Must reject with HTTP 400 `"Custom roles cannot grant permissions exceeding Owner ceiling"`.
+- [ ] Null/empty: Role name with whitespace only (`"   "`) rejected by backend validator (`min_length=1`).
+- [ ] Null/empty: Role `permissions` array empty `[]` — valid for Custom template initially, but if saved, members have 0 permissions.
+- [ ] Foreign Key / Delete: Deleting a custom role currently referenced by members/invites sets `role_id = NULL` safely (`ondelete="SET NULL"` on `WorkspaceMembership` and `WorkspaceInvite`).
+- [ ] Duplicate Name: Case-insensitive role name conflict within the same workspace.
+
+### Q4 — Failure modes unspecified (Pattern 2, 4)
+- [ ] System Role Mutation: Attempt to `PUT` or `DELETE` system roles (`is_system_role=True`) must return HTTP 403 Forbidden with detail `"System roles cannot be modified or deleted"`.
+- [ ] Audit Event Consistency: `AuditEvent` row creation should be committed in the same database transaction as the role mutation; if DB commit fails, both roll back.
+- [ ] Role Clone Non-Existent: Attempting to clone a non-existent `role_id` or cross-workspace `role_id` should fail gracefully in UI or API (HTTP 404).
+
+### Triage
+- Clean — No critical architectural blockers. All findings incorporated into test skeleton and implementation plan.
+
+---
+
 ## Dev Agent Record
 
 ### Agent Model Used
@@ -156,7 +193,18 @@ Claude Sonnet 5
 ### Completion Notes List
 - Validated against AD-51, INV-29.1, and UX Contract Epic 29 §1.
 - Detailed canonical permission mapping, template presets, and audit event schema.
+- Conducted multi-layer adversarial code review (Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor).
+- Applied review patches: permission deduplication, clean whitespace validation, mutation guard for workspace_id, and 2 new regression unit tests (18 passed).
+- Next.js Turbopack build 114/114 pages compiled successfully.
 
 ### File List
 - `_bmad-output/implementation-artifacts/stories/29-1-custom-workspace-roles-permissions-builder.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/test-artifacts/atdd-checklist-29-1-custom-workspace-roles-permissions-builder.md`
+- `nowing_backend/app/db/enums.py`
+- `nowing_backend/app/routes/rbac_routes.py`
+- `nowing_backend/tests/unit/routes/test_rbac_custom_roles.py`
+- `nowing_web/contracts/types/permissions.types.ts`
+- `nowing_web/atoms/roles/roles-mutation.atoms.ts`
+- `nowing_web/components/settings/roles-manager.tsx`
+- `nowing_web/tests/settings/custom-roles-builder.spec.ts`
