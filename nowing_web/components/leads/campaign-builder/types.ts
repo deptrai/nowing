@@ -48,6 +48,7 @@ export interface CampaignBuilderState {
 	locationProfile: LocationProfile | null;
 	activePlan: CampaignPlanResponse | null;
 	isPlanning: boolean;
+	workspaceId: string | number;
 
 	smokeTestResult: import("@/contracts/types/campaign.types").LeadGenOrchestratorResult | null;
 	smokeTestHistory: import("@/atoms/leads/leads-canvas.atoms").SmokeTestRun[];
