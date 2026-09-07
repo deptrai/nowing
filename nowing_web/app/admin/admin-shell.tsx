@@ -64,6 +64,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 				<Link href="/admin/saas/plans" className="hover:underline">
 					SaaS Plans
 				</Link>
+				<Link href="/admin/saas/bulk-ops" className="hover:underline">
+					Bulk Ops
+				</Link>
 				<Link href="/admin/affiliates/payouts" className="hover:underline">
 					Affiliates & Payouts
 				</Link>

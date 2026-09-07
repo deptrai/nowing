@@ -101,6 +101,13 @@ from app.models.billing import (
     TokenUsage,
     UserIncentiveTask,
 )
+from app.models.bulk_ops import (
+    BulkAction,
+    BulkOpError,
+    BulkOpJob,
+    BulkOpJobStatus,
+    IdempotencyKey,
+)
 from app.models.chat import (
     ChatComment,
     ChatCommentMention,
@@ -259,6 +266,10 @@ __all__ = [
     "BaseModel",
     "BillingEvent",
     "BroadcastAnnouncement",
+    "BulkAction",
+    "BulkOpError",
+    "BulkOpJob",
+    "BulkOpJobStatus",
     "CachedEmbeddingSet",
     "CachedParse",
     "ChainLensChunk",
@@ -300,6 +311,7 @@ __all__ = [
     "Folder",
     "FolderRevision",
     "GlobalDncRecord",
+    "IdempotencyKey",
     "ImageGeneration",
     "InboundEmailEvent",
     "InboundEmailEventStatus",
