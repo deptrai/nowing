@@ -431,6 +431,7 @@ export function useCampaignBuilder({
 		locationProfile,
 		activePlan,
 		isPlanning,
+		workspaceId,
 
 		smokeTestResult: activeSmokeTestResult?.result ?? null,
 		smokeTestHistory,

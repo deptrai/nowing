@@ -159,6 +159,7 @@ export function LaunchScheduleStep({ builder }: { builder: UseCampaignBuilderRet
 									onApplyPlan={() => builder.handleLaunchCampaign()}
 									smokeTestResult={builder.smokeTestResult}
 									previousLocationProfile={builder.previousLocationProfile}
+									workspaceId={Number(builder.workspaceId)}
 									onRefineLocation={builder.handleRefineLocation}
 									onConfirmFullRun={() => {
 										builder.handleLaunchCampaign();

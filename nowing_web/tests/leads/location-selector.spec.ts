@@ -77,3 +77,12 @@ test.describe("Story 26.25: Customer Location Profile Selector", () => {
 		expect(validResult.success).toBe(true);
 	});
 });
+
+test("cached search results match unmemoized search (retro-1 geo cache)", () => {
+	// First call warms the diacritics cache.
+	const first = searchProvinces("ha noi");
+	// Second call reuses cached clean strings and must produce the same result.
+	const second = searchProvinces("ha noi");
+	expect(second).toEqual(first);
+	expect(second.some((p) => p.code === "HN")).toBe(true);
+});

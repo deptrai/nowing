@@ -80,8 +80,11 @@ class LeadSourceAdapterRegistry:
         from app.lead_intelligence.adapters.job_market import JobMarketLeadAdapter
         from app.lead_intelligence.adapters.muaban_bds import MuabanBdsLeadAdapter
         from app.lead_intelligence.adapters.muasamcong import MuaSamCongLeadAdapter
+        from app.lead_intelligence.adapters.news import NewsLeadAdapter
+        from app.lead_intelligence.adapters.shopee import ShopeeLeadAdapter
         from app.lead_intelligence.adapters.social import SocialLeadAdapter
         from app.lead_intelligence.adapters.telegram import TelegramLeadAdapter
+        from app.lead_intelligence.adapters.tiktok_shop import TiktokShopLeadAdapter
         from app.lead_intelligence.adapters.vietnamworks import VietnamWorksLeadAdapter
         from app.lead_intelligence.adapters.vn_jobs import VnJobsLeadAdapter
 
@@ -95,6 +98,10 @@ class LeadSourceAdapterRegistry:
         self.register(MuaSamCongLeadAdapter())
         self.register(SocialLeadAdapter())
         self.register(TelegramLeadAdapter())
+        # Epic 26 retro item-4: expose additional adapters with location metadata.
+        self.register(ShopeeLeadAdapter())
+        self.register(TiktokShopLeadAdapter())
+        self.register(NewsLeadAdapter())
 
     def register(self, adapter: LeadSourceAdapter) -> None:
         """Register a concrete adapter."""
@@ -401,6 +408,44 @@ class LeadSourceAdapterRegistry:
             k in raw_lower or k in plain_lower for k in social_keywords
         ) or re.search(r"\bpost\b", raw_lower):
             for a in self.find_by_category(LeadSourceCategory.SOCIAL):
+                if a not in matched:
+                    matched.append(a)
+
+        # E-Commerce keywords (Shopee / TikTok Shop / Lazada-style listings)
+        ecommerce_keywords = [
+            "shopee",
+            "sàn thương mại",
+            "san thuong mai",
+            "tiktok shop",
+            "tiktokshop",
+            "lazada",
+            "e-commerce",
+            "ecommerce",
+            "sản phẩm",
+            "san pham",
+            "shop bán",
+            "shop ban",
+        ]
+        if any(k in raw_lower or k in plain_lower for k in ecommerce_keywords):
+            for a in self.find_by_category(LeadSourceCategory.E_COMMERCE):
+                if a not in matched:
+                    matched.append(a)
+
+        # News / press keywords
+        news_keywords = [
+            "tin tức",
+            "tin tuc",
+            "báo chí",
+            "bao chi",
+            "press release",
+            "news",
+            "báo",
+            "bao",
+            "article",
+            "article",
+        ]
+        if any(k in raw_lower or k in plain_lower for k in news_keywords):
+            for a in self.find_by_category(LeadSourceCategory.NEWS):
                 if a not in matched:
                     matched.append(a)
 
