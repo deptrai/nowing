@@ -9,10 +9,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.db import get_async_session, Permission
+from app.db import get_async_session, MemorySourceType, Permission
 from app.schemas.memory_browser import (
     MemoryBrowserListResponse,
     MemoryBrowserDetailResponse,
+    MemoryReviewQueueCreate,
     MemoryReviewQueueRead,
 )
 from app.services.memory.memory_browser_service import MemoryBrowserService
@@ -20,6 +21,11 @@ from app.users import get_auth_context
 from app.utils.rbac import check_permission
 
 router = APIRouter()
+
+
+def _pat_client_id(auth: AuthContext) -> str | None:
+    """Return the client_id bound to the authenticated PAT, if any."""
+    return getattr(auth.pat, "client_id", None) if auth.pat else None
 
 
 @router.get(
@@ -37,7 +43,7 @@ async def list_memories(
     created_before: datetime | None = Query(None),
     created_by: str | None = Query(None),
     keyword: str | None = Query(None),
-    sort: str = Query("created_at"),
+    sort: str = Query("created_at", pattern="^(created_at|updated_at|confidence)$"),
     sort_dir: str = Query("desc", pattern="^(asc|desc)$"),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
@@ -48,8 +54,20 @@ async def list_memories(
         workspace_id,
         Permission.MEMORY_READ.value,
     )
-    created_by_uuid = uuid.UUID(created_by) if created_by else None
+    try:
+        created_by_uuid = uuid.UUID(created_by) if created_by else None
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="Invalid created_by UUID") from exc
     source_types_list = source_types.split(",") if source_types else None
+    if source_types_list:
+        try:
+            source_types_list = [
+                MemorySourceType[st.strip().upper()].value
+                for st in source_types_list
+                if st.strip()
+            ]
+        except KeyError as exc:
+            raise HTTPException(status_code=422, detail=f"Invalid source_type: {exc}") from exc
     service = MemoryBrowserService(session)
     try:
         return await service.list_memories(
@@ -63,11 +81,12 @@ async def list_memories(
             created_before=created_before,
             created_by=created_by_uuid,
             keyword=keyword,
+            client_id=_pat_client_id(auth),
             sort=sort,
             sort_dir=sort_dir,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.get(
@@ -90,7 +109,13 @@ async def get_memory_detail(
     try:
         return await service.get_memory_detail(workspace_id, memory_id)
     except Exception as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        message = str(exc).lower()
+        if "not found" in message or "no result" in message:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=500,
+            detail="An internal error occurred. Please try again or report this issue if it persists.",
+        ) from exc
 
 
 @router.post(
@@ -101,7 +126,7 @@ async def get_memory_detail(
 async def flag_memory_for_review(
     workspace_id: int,
     memory_id: int,
-    payload: dict,
+    payload: MemoryReviewQueueCreate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
 ):
@@ -111,16 +136,21 @@ async def flag_memory_for_review(
         workspace_id,
         Permission.MEMORY_UPDATE.value,
     )
-    flag_reason = payload.get("flag_reason", "")
     service = MemoryBrowserService(session)
     try:
         return await service.flag_for_review(
             workspace_id=workspace_id,
             memory_id=memory_id,
-            flag_reason=flag_reason,
+            flag_reason=payload.flag_reason,
             flagged_by=auth.user.id,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        message = str(exc).lower()
+        if "not found" in message or "no result" in message:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=500,
+            detail="An internal error occurred. Please try again or report this issue if it persists.",
+        ) from exc

@@ -335,6 +335,7 @@ __all__ = [
     "MemorySourceType",
     "MemoryType",
     "MemoryVersion",
+    "MemoryReviewQueue",
     "Model",
     "ModelSource",
     "NewChatMessage",
