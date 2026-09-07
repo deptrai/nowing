@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import type { MemoryBrowserListItem, MemoryBrowserDetailResponse } from "@/contracts/types/memory-browser.types";
 import { memoryBrowserApiService } from "@/lib/apis/memory-browser-api.service";
+import { usePermissionGate } from "@/atoms/members/members-query.atoms";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +27,7 @@ export function MemoryBrowserPageContent({ workspaceId }: MemoryBrowserPageConte
   const [selected, setSelected] = useState<MemoryBrowserDetailResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const canUpdateMemory = usePermissionGate("memory:update");
 
   const fetchList = useCallback(async () => {
     setLoading(true);
@@ -120,9 +122,11 @@ export function MemoryBrowserPageContent({ workspaceId }: MemoryBrowserPageConte
                       <Button size="sm" variant="outline" onClick={() => handleView(item.id)}>
                         {t("view")}
                       </Button>
-                      <Button size="sm" variant="secondary" onClick={() => handleFlag(item.id, "Flagged for review")}>
-                        {t("flag")}
-                      </Button>
+                      {canUpdateMemory && (
+                        <Button size="sm" variant="secondary" onClick={() => handleFlag(item.id, "Flagged for review")}>
+                          {t("flag")}
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))}
