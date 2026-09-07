@@ -922,17 +922,28 @@ function CreateRoleDialog({
 	onOpenChange,
 	groupedPermissions,
 	onCreateRole,
+	cloneRole,
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	groupedPermissions: Record<string, PermissionWithDescription[]>;
 	onCreateRole: (data: CreateRoleRequest["data"]) => Promise<Role>;
+	cloneRole?: Role | null;
 }) {
 	const [creating, setCreating] = useState(false);
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
 	const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
 	const [isDefault, setIsDefault] = useState(false);
+
+	useEffect(() => {
+		if (cloneRole) {
+			setName(`${cloneRole.name} (Copy)`);
+			setDescription(cloneRole.description || "");
+			setSelectedPermissions([...cloneRole.permissions]);
+			setIsDefault(false);
+		}
+	}, [cloneRole]);
 
 	const handleClose = () => {
 		onOpenChange(false);

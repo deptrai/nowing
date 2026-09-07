@@ -208,7 +208,8 @@
 		"manage_connectors": "管理连接器",
 		"logs": "日志",
 		"all_workspaces": "所有搜索空间",
-		"team": "团队"
+		"team": "团队",
+		"health_analytics": "健康与分析"
 	},
 	"pricing": {
 		"title": "Nowing 定价",

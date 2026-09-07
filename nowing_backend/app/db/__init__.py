@@ -218,6 +218,7 @@ from app.automations.persistence import (
 from app.etl_pipeline.cache.persistence.models import CachedParse
 from app.file_storage.persistence import DocumentFile
 from app.indexing_pipeline.cache.persistence.models import CachedEmbeddingSet
+from app.models.workspace_health import WorkspaceHealthDaily
 from app.models.workspaces import (
     BroadcastAnnouncement,
     GlobalDncRecord,
@@ -381,6 +382,7 @@ __all__ = [
     "Workspace",
     "WorkspaceApp",
     "WorkspaceDncRecord",
+    "WorkspaceHealthDaily",
     "WorkspaceInvite",
     "WorkspaceLimit",
     "WorkspaceMcpToolSetting",

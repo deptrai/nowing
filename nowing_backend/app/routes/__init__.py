@@ -151,6 +151,7 @@ from .teams_add_connector_route import router as teams_add_connector_router
 from .usage_routes import router as usage_router
 from .video_presentations_routes import router as video_presentations_router
 from .web_builder_routes import router as web_builder_router
+from .workspace_health_routes import router as workspace_health_router
 from .workspace_tables_routes import router as workspace_tables_router
 from .workspaces_routes import router as workspaces_router
 from .youtube_routes import router as youtube_router
@@ -158,6 +159,7 @@ from .zns_routes import router as zns_router
 
 router = APIRouter()
 
+router.include_router(workspace_health_router)  # Workspace Health & Adoption Analytics (Story 29.2)
 router.include_router(workspaces_router)
 router.include_router(projects_router)
 router.include_router(skills_router)

@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
+	Activity,
 	AlarmClock,
 	AlertTriangle,
 	BarChart3,
@@ -67,10 +68,7 @@ interface LayoutDataProviderProps {
 	children: React.ReactNode;
 }
 
-export function LayoutDataProvider({
-	workspaceId,
-	children,
-}: LayoutDataProviderProps) {
+export function LayoutDataProvider({ workspaceId, children }: LayoutDataProviderProps) {
 	const t = useTranslations("dashboard");
 	const tCommon = useTranslations("common");
 	const tSidebar = useTranslations("sidebar");
@@ -297,12 +295,19 @@ export function LayoutDataProvider({
 	const isAutomationsActive = pathname?.includes("/automations") === true;
 	const isArtifactsActive = pathname?.endsWith("/artifacts") === true;
 	const isPlaybooksActive = pathname?.includes("/playbooks") === true;
+	const isHealthActive = pathname?.includes("/health") === true;
 	const isUsageActive = pathname?.includes("/usage") === true;
 	const isConnectorsActive = pathname?.includes("/connectors") === true;
 	const navItems: NavItem[] = useMemo(
 		() =>
 			(
 				[
+					{
+						title: tNav("health_analytics"),
+						url: `/dashboard/${workspaceId}/health`,
+						icon: Activity,
+						isActive: isHealthActive,
+					},
 					{
 						title: tNav("usage"),
 						url: `/dashboard/${workspaceId}/usage`,
@@ -337,6 +342,7 @@ export function LayoutDataProvider({
 			).filter((item): item is NavItem => item !== null),
 		[
 			workspaceId,
+			isHealthActive,
 			isUsageActive,
 			isConnectorsActive,
 			isAutomationsActive,

@@ -208,7 +208,8 @@
 		"manage_connectors": "Administrar conectores",
 		"logs": "Registros",
 		"all_workspaces": "Todos los espacios de búsqueda",
-		"team": "Equipo"
+		"team": "Equipo",
+		"health_analytics": "Salud y Analíticas"
 	},
 	"pricing": {
 		"title": "Precios de Nowing",

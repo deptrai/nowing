@@ -209,7 +209,8 @@
 		"logs": "Logs",
 		"all_workspaces": "All Workspaces",
 		"team": "Team",
-		"usage": "Usage"
+		"usage": "Usage",
+		"health_analytics": "Health & Analytics"
 	},
 	"usage": {
 		"title": "Usage & Credits",
