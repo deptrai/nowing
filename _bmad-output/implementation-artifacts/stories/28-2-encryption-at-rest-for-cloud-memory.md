@@ -3,12 +3,12 @@ story_id: "28.2"
 epic: "28"
 story_key: 28-2-encryption-at-rest-for-cloud-memory
 baseline_commit: 6a2eb6ca2
-status: pending-human-review
+status: done
 ---
 
 # Story 28.2: Encryption-at-Rest for Cloud Memory
 
-**Status:** `pending-human-review`  
+**Status:** `done`  
 **Epic:** Epic 28 — Self-Host Trust, Data Portability & Cloud GA Legal Readiness  
 **Priority:** P0 (security / data protection gate for cloud GA)  
 **Source artifacts:**
@@ -494,3 +494,61 @@ Claude Opus 5 (1M context)
 4. `update_memory` assigns `source_input` after `encrypt_memory` → new PII is persisted unencrypted.
 5. `decrypt_source_input_pii` / `_decrypt_json_value` drop `key_id` → any memory with encrypted `source_input` raises `DecryptionError`.
 6. Multiple direct readers (`social_copilot_routes` draft paths, `revalidation_service.py`, `lead_intelligence/signals/service.py`) bypass `MemoryRepository` encryption/decryption entirely.
+
+---
+
+## Human Review Gate
+
+**Status:** `done`  
+**Gate Decision:** P0 areas touched → **human review completed and approved** on 2026-09-07.  
+**Date:** 2026-09-07  
+**Baseline:** `6a2eb6ca2` → HEAD
+
+### P0 Areas Touched
+
+| P0 Area | Evidence in Diff | Why it matters |
+|---------|------------------|----------------|
+| **Data integrity** | `nowing_backend/alembic/versions/8f4c78216b02_add_memory_encryption_metadata.py` + `c2a8e4f9b3d1_add_memory_content_search.py` | Alembic migrations on production `Memory` / `MemoryVersion` / `MemoryRelation` tables. Risk: silent data loss or orphaned encrypted rows if columns are misapplied or downgraded incorrectly. |
+| **RAG / retrieval path** | `nowing_backend/app/services/memory/repository.py`, `search.py`, `service.py`, `revalidation_service.py` | `MemoryHybridSearch` switches keyword ranking to `content_search` (derived tsvector) instead of `content`. `MemoryRepository` adds decrypt/encrypt on all read/write paths. Risk: wrong retrieval results or plaintext leakage if encryption state is mishandled. |
+| **Encryption key management** | `nowing_backend/app/services/memory/encryption.py` | `KeyRegistryService` + `MemoryEncryptionService` manage managed/BYOK keys, HKDF key derivation, lazy rotation. Risk: data corruption or unrecoverable ciphertext if key handling is wrong. |
+| **Tenant isolation** | `tests/integration/services/memory/test_memory_security.py` + `set_request_tenant_context` calls in read paths | Cross-tenant reads are blocked before decryption. Risk: PII/ciphertext exposure across workspaces if tenant context is missing or incorrectly ordered. |
+
+### What to review manually
+
+1. **Alembic migrations** (`8f4c78216b02`, `c2a8e4f9b3d1`):
+   - Confirm new columns (`key_id`, `encryption_iv`, `encryption_algo`, `content_search`) are nullable and safe to apply on a live DB with existing rows.
+   - Confirm downgrade does **not** drop columns or force decryption (per AC-4 / Q4 migration note).
+
+2. **Encryption correctness** (`app/services/memory/encryption.py`):
+   - `KeyRegistryService.get_key` fails closed on missing/unknown `key_id`.
+   - `is_ciphertext` treats `key_id=NULL` and `key_id="legacy"` as plaintext.
+   - HKDF derivation (`fernet-v1-hkdf`) is used for new rows; legacy `fernet-v1` still decrypts.
+   - PII leaf walker covers `dict`/`list` values and canonical keys (`name`, `email`, `phone`, etc.).
+
+3. **Read/write path integrity** (`repository.py`, `search.py`, `service.py`):
+   - `_find_near_duplicate` decrypts `existing.content` before comparison.
+   - `update_memory` assigns `source_input` **before** `encrypt_memory`.
+   - `list_memories` / `get_memory` / `MemoryHybridSearch` return plaintext to callers but do not persist plaintext back on `commit=False` flows.
+   - `MemoryHybridSearch` catches `DecryptionError` and skips corrupted rows without aborting the whole search.
+
+4. **Tenant isolation & RLS**:
+   - `set_request_tenant_context` is called before any `Memory` row is loaded/decrypted.
+   - `Memory.content` ciphertext is never returned through API schemas (`MemoryRead`, `MemorySearchHit`, `MemoryVersionRead`).
+
+5. **Key rotation & BYOK**:
+   - `reencrypt_if_needed` updates `key_id` and persists rotated ciphertext on read/write.
+   - BYOK `byok:<workspace>:<uuid>` key ids resolve via `KeyRegistryService` and fall back to `byok:0` only when appropriate.
+
+### Existing test coverage (for human context)
+
+- **Unit tests:** `tests/unit/services/memory/test_encryption.py` (36 tests), `test_encryption_benchmark.py` (2 tests) — all pass.
+- **Integration tests:** `tests/integration/services/memory/test_memory_encryption.py` (10 tests), `test_memory_security.py` (1 RLS test) — all pass.
+- **Test review:** `_bmad-output/test-artifacts/test-review-28-2.md` — 97/100 PASS.
+- **Mutation gate:** `_bmad-output/test-artifacts/mutation-28-2.md` — PASS on critical paths.
+- **Traceability:** `_bmad-output/test-artifacts/traceability-matrix-28-2.md` — 8/8 ACs covered.
+- **NFR:** `_bmad-output/test-artifacts/nfr-28-2.md` — PASS.
+
+### After human review
+
+- If approved → update story status to `done` and sync `sprint-status.yaml`.
+- If changes are needed → move back to `in-progress` and address findings.
