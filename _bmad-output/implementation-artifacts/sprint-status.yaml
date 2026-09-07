@@ -330,7 +330,7 @@ development_status:
   29-2-workspace-health-adoption-analytics-dashboard: done
   29-3-tenant-subscription-tier-quota-management: done
   29-4-admin-bulk-operations-console: done
-  29-5-memory-browser-research-timeline-for-analyst: ready-for-dev
+  29-5-memory-browser-research-timeline-for-analyst: done
   29-6-data-governance-retention-policy-console: backlog
   epic-29-retrospective: optional
 

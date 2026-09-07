@@ -1,6 +1,6 @@
 ---
 story_key: 29-5-memory-browser-research-timeline-for-analyst
-status: ready-for-dev
+status: done
 baseline_commit: 0aad40ba21a2524b99dd7af2607c8b71e5c0d3e8
 epic: 29
 story: 5
