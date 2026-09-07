@@ -1215,5 +1215,28 @@
 		"btn_start_reverse_icp": "Start Reverse-ICP Discovery",
 		"dnc_modal_title": "Do-Not-Call (DNC) & Blacklist Management",
 		"dnc_modal_desc": "Prevent cold-calling or emailing specific phone numbers, domains, and tax IDs."
+	},
+	"bulkOps": {
+		"title": "Admin Bulk Operations",
+		"description": "Safely execute cross-tenant batch updates, cleanups, role assignments, and key rotations with dry-run simulation.",
+		"select_action": "Select Bulk Action",
+		"operation_parameters": "Operation Parameters",
+		"target_filters": "Target Filters",
+		"add_filter": "Add Filter Clause",
+		"idempotency_key": "Idempotency Key",
+		"dry_run_simulation": "Dry-Run Simulation",
+		"run_simulation": "Run Simulation",
+		"simulating": "Simulating...",
+		"affected_count": "Affected Count",
+		"execution_safety": "Execution Safety",
+		"warnings_conflicts": "Warnings / Conflicts",
+		"safe_to_execute": "Safe to Execute",
+		"execution_blocked": "Execution Blocked",
+		"execute_operation": "Execute Operation",
+		"queuing_job": "Queuing Job...",
+		"high_risk_badge": "High Risk Action",
+		"reauth_title": "Re-authentication Required",
+		"cancel_job": "Cancel Job",
+		"job_status": "Job Status"
 	}
 }

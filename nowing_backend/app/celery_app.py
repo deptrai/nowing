@@ -240,6 +240,7 @@ celery_app = Celery(
         "app.tasks.celery_tasks.health_probe_task",
         "app.tasks.celery_tasks.health_retention_task",
         "app.tasks.celery_tasks.workspace_health_tasks",
+        "app.tasks.celery_tasks.bulk_op_tasks",
     ],
 )
 
@@ -417,6 +418,12 @@ celery_app.conf.beat_schedule = {
     "purge-refresh-tokens": {
         "task": "purge_refresh_tokens",
         "schedule": crontab(hour="3", minute="41"),
+        "options": {"expires": 600},
+    },
+    # Clean up expired bulk ops idempotency keys (Story 29.4 / AD-54)
+    "cleanup-bulk-op-idempotency-keys": {
+        "task": "cleanup_expired_idempotency_keys",
+        "schedule": crontab(hour="3", minute="50"),
         "options": {"expires": 600},
     },
     # Roll up workspace health & adoption daily metrics (Story 29.2 / AD-52)

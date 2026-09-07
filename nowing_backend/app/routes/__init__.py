@@ -46,6 +46,7 @@ from .admin_anti_bot_escalation_routes import (
 )
 from .admin_audit_logs_routes import router as admin_audit_logs_router
 from .admin_broadcasts_routes import router as admin_broadcasts_router
+from .admin_bulk_ops_routes import router as admin_bulk_ops_router
 from .admin_credits_routes import router as admin_credits_router
 from .admin_dnc_routes import router as admin_dnc_router
 from .admin_global_model_connections_routes import (
@@ -269,6 +270,9 @@ router.include_router(
 router.include_router(
     admin_saas_router
 )  # Platform admin SaaS plan catalog (Story 29.3)
+router.include_router(
+    admin_bulk_ops_router
+)  # Platform admin bulk operations console (Story 29.4)
 router.include_router(
     broadcasts_router
 )  # In-app active broadcast announcements (Story 25.6)
