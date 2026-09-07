@@ -317,7 +317,7 @@ development_status:
   27-2b-speaker-diarization-meeting-minutes-from-chat: done
   epic-27-retrospective: optional
 
-  epic-28: in-progress
+  epic-28: done
   28-1-workspace-memory-research-data-export: done
   28-2-encryption-at-rest-for-cloud-memory: done
   28-3-tos-legal-review-retention-policy-for-long-term-scrape-data: done
