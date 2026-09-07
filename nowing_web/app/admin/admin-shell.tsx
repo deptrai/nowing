@@ -61,6 +61,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 				<Link href="/admin/workspaces" className="hover:underline">
 					Workspaces
 				</Link>
+				<Link href="/admin/saas/plans" className="hover:underline">
+					SaaS Plans
+				</Link>
 				<Link href="/admin/affiliates/payouts" className="hover:underline">
 					Affiliates & Payouts
 				</Link>

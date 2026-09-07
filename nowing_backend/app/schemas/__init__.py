@@ -172,6 +172,14 @@ from .video_presentations import (
 )
 from .workspace import (
     AutoExtractUsage,
+    PlanDefinitionBase,
+    PlanDefinitionCreate,
+    PlanDefinitionRead,
+    PlanDefinitionUpdate,
+    SubscriptionChangeConflict,
+    SubscriptionChangeConflictDetail,
+    SubscriptionChangeCreate,
+    SubscriptionChangeRead,
     WorkspaceApiAccessUpdate,
     WorkspaceBase,
     WorkspaceCreate,
@@ -181,6 +189,7 @@ from .workspace import (
     WorkspaceMcpToolRead,
     WorkspaceMcpToolUpdate,
     WorkspaceRead,
+    WorkspaceSubscriptionResponse,
     WorkspaceUpdate,
     WorkspaceWithStats,
 )
@@ -305,6 +314,15 @@ __all__ = [
     "PagePurchaseHistoryResponse",
     "PagePurchaseRead",
     "PaginatedResponse",
+    # Usage schemas
+    "PerTurnUsageItem",
+    "PerTurnUsageResponse",
+    "PermissionInfo",
+    "PermissionsListResponse",
+    "PlanDefinitionBase",
+    "PlanDefinitionCreate",
+    "PlanDefinitionRead",
+    "PlanDefinitionUpdate",
     # Project schemas
     "ProjectBase",
     "ProjectCreate",
@@ -313,11 +331,6 @@ __all__ = [
     "ProjectRead",
     "ProjectSkillLinkRead",
     "ProjectUpdate",
-    # Usage schemas
-    "PerTurnUsageItem",
-    "PerTurnUsageResponse",
-    "PermissionInfo",
-    "PermissionsListResponse",
     # Podcast schemas
     "RefreshTokenRequest",
     "RefreshTokenResponse",
@@ -344,6 +357,10 @@ __all__ = [
     "SkillRead",
     "SkillUpdate",
     "StripeWebhookResponse",
+    "SubscriptionChangeConflict",
+    "SubscriptionChangeConflictDetail",
+    "SubscriptionChangeCreate",
+    "SubscriptionChangeRead",
     "SuggestedAction",
     "SuggestedActionList",
     "ThreadCitation",
@@ -371,6 +388,7 @@ __all__ = [
     "WorkspaceMcpToolRead",
     "WorkspaceMcpToolUpdate",
     "WorkspaceRead",
+    "WorkspaceSubscriptionResponse",
     "WorkspaceUpdate",
     "WorkspaceWithStats",
 ]
