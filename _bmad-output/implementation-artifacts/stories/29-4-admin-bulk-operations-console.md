@@ -1,6 +1,6 @@
 ---
 story_key: 29-4-admin-bulk-operations-console
-status: ready-for-dev
+status: done
 baseline_commit: 179c9cfac52ff63e147fe6e8e1002167d73e018d
 epic: 29
 story: 4
