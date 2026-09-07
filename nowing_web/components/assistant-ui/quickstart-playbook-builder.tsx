@@ -422,6 +422,7 @@ export const QuickstartPlaybookBuilder: FC = () => {
 											}
 										}}
 										onConfirmFullRun={() => run(false)}
+										workspaceId={workspaceId ? Number(workspaceId) : undefined}
 									/>
 								</div>
 
