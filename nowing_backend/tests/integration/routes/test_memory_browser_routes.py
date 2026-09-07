@@ -3,15 +3,21 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 
+import httpx
 import pytest
+import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db import Memory, MemorySourceType, MemoryType
-from app.models.users import User
+from app.app import app
+from app.auth.context import AuthContext
+from app.db import Memory, MemorySourceType, MemoryType, Permission, WorkspaceRole, get_async_session
+from app.models.users import User, WorkspaceMembership
 from app.models.workspaces import Workspace
+from app.users import get_auth_context
 from tests.integration.conftest import _EMBEDDING_DIM
 
 pytestmark = [pytest.mark.integration]
@@ -127,3 +133,58 @@ class TestMemoryBrowserRoutes:
         data = response.json()
         assert data["flag_reason"] == "outdated fact"
         assert data["status"] == "open"
+
+    async def test_flag_returns_403_for_read_only_member(
+        self, db_session: AsyncSession, db_workspace: Workspace
+    ):
+        """Member with only memory:read cannot flag."""
+        read_only_user = User(
+            id=uuid.uuid4(),
+            email="readonly@example.com",
+            hashed_password="x",
+            is_active=True,
+        )
+        db_session.add(read_only_user)
+        role = WorkspaceRole(
+            name="Analyst",
+            description="Read-only memory access",
+            permissions=[Permission.MEMORY_READ.value],
+            is_default=False,
+            is_system_role=False,
+            workspace_id=db_workspace.id,
+        )
+        db_session.add(role)
+        await db_session.flush()
+        membership = WorkspaceMembership(
+            user_id=read_only_user.id,
+            workspace_id=db_workspace.id,
+            is_owner=False,
+            role_id=role.id,
+        )
+        db_session.add(membership)
+        await db_session.commit()
+        await db_session.refresh(read_only_user)
+
+        async def override_auth() -> AuthContext:
+            return AuthContext.session(read_only_user)
+
+        async def override_session() -> AsyncGenerator[AsyncSession, None]:
+            yield db_session
+
+        app.dependency_overrides[get_auth_context] = override_auth
+        app.dependency_overrides[get_async_session] = override_session
+
+        try:
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app),
+                base_url="http://test",
+            ) as read_client:
+                memory = await _seed_memory(db_session, db_workspace, read_only_user)
+                response = await read_client.post(
+                    f"/api/v1/workspaces/{db_workspace.id}/memory-browser/{memory.id}/flag",
+                    json={"flag_reason": "should fail"},
+                )
+                assert response.status_code == 403
+        finally:
+            app.dependency_overrides.pop(get_auth_context, None)
+            app.dependency_overrides.pop(get_async_session, None)
