@@ -8,6 +8,7 @@ import {
 	AlertTriangle,
 	BarChart3,
 	BookOpen,
+	Brain,
 	Puzzle,
 	Shapes,
 } from "lucide-react";
@@ -298,6 +299,7 @@ export function LayoutDataProvider({ workspaceId, children }: LayoutDataProvider
 	const isHealthActive = pathname?.includes("/health") === true;
 	const isUsageActive = pathname?.includes("/usage") === true;
 	const isConnectorsActive = pathname?.includes("/connectors") === true;
+	const isMemoryBrowserActive = pathname?.includes("/research/memory-browser") === true;
 	const navItems: NavItem[] = useMemo(
 		() =>
 			(
@@ -319,6 +321,12 @@ export function LayoutDataProvider({ workspaceId, children }: LayoutDataProvider
 						url: `/dashboard/${workspaceId}/connectors`,
 						icon: Puzzle,
 						isActive: isConnectorsActive,
+					},
+					{
+						title: tNav("memory_browser"),
+						url: `/dashboard/${workspaceId}/research/memory-browser`,
+						icon: Brain,
+						isActive: isMemoryBrowserActive,
 					},
 					{
 						title: "Automations",
@@ -347,6 +355,7 @@ export function LayoutDataProvider({ workspaceId, children }: LayoutDataProvider
 			isConnectorsActive,
 			isAutomationsActive,
 			isArtifactsActive,
+			isMemoryBrowserActive,
 			tNav,
 			isPlaybooksActive,
 		]

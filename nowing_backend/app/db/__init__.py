@@ -173,6 +173,7 @@ from app.models.memory import (
     Model,
     Prompt,
 )
+from app.models.memory_review_queue import MemoryReviewQueue
 from app.models.presentations import (
     MeetingMinutes,
     Report,
