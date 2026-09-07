@@ -9,10 +9,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.db import get_async_session, MemorySourceType, Permission
+from app.db import MemorySourceType, Permission, get_async_session
 from app.schemas.memory_browser import (
-    MemoryBrowserListResponse,
     MemoryBrowserDetailResponse,
+    MemoryBrowserListResponse,
     MemoryReviewQueueCreate,
     MemoryReviewQueueRead,
 )

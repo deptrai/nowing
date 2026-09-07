@@ -3,16 +3,16 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
-from typing import Any, Sequence
+from collections.abc import Sequence
+from datetime import datetime
+from typing import Any
 
-from sqlalchemy import Float, func, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import (
     Memory,
     MemoryRelation,
-    MemorySourceType,
     MemoryVersion,
     ResearchThread,
     User,
