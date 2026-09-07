@@ -46,6 +46,7 @@ export const cacheKeys = {
 	},
 	admin: {
 		globalModelConnections: () => ["admin", "global-model-connections"] as const,
+		saasPlans: () => ["admin", "saas-plans"] as const,
 	},
 	auth: {
 		user: ["auth", "user"] as const,
@@ -57,28 +58,22 @@ export const cacheKeys = {
 		detail: (workspaceId: string) => ["workspaces", workspaceId] as const,
 		mcpTools: (workspaceId: number) => ["workspace-mcp-tools", workspaceId] as const,
 		limits: (workspaceId: number) => ["workspaces", "limits", workspaceId] as const,
-			health: {
-				summary: (
-					workspaceId: number | string,
-					range?: string,
-					startDate?: string,
-					endDate?: string
-				) =>
-					[
-						"workspaces",
-						"health",
-						"summary",
-						workspaceId,
-						range,
-						startDate,
-						endDate,
-					] as const,
-				sourceDrilldown: (workspaceId: number | string, sourceType: string) =>
-					["workspaces", "health", "source", workspaceId, sourceType] as const,
-				coverageGaps: (workspaceId: number | string) =>
-					["workspaces", "health", "coverage-gaps", workspaceId] as const,
-			},
+		subscription: (workspaceId: number) => ["workspaces", "subscription", workspaceId] as const,
+		subscriptionChanges: (workspaceId: number) =>
+			["workspaces", "subscription-changes", workspaceId] as const,
+		health: {
+			summary: (
+				workspaceId: number | string,
+				range?: string,
+				startDate?: string,
+				endDate?: string
+			) => ["workspaces", "health", "summary", workspaceId, range, startDate, endDate] as const,
+			sourceDrilldown: (workspaceId: number | string, sourceType: string) =>
+				["workspaces", "health", "source", workspaceId, sourceType] as const,
+			coverageGaps: (workspaceId: number | string) =>
+				["workspaces", "health", "coverage-gaps", workspaceId] as const,
 		},
+	},
 	user: {
 		current: () => ["user", "me"] as const,
 	},
