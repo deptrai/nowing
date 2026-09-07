@@ -396,6 +396,12 @@ class Workspace(BaseModel, TimestampMixin):
         order_by="WorkspaceHealthDaily.date.desc()",
         cascade="all, delete-orphan",
     )
+    subscription_changes = relationship(
+        "SubscriptionChange",
+        back_populates="workspace",
+        order_by="SubscriptionChange.created_at.desc()",
+        cascade="all, delete-orphan",
+    )
 
 
 class WorkspaceMcpToolSetting(BaseModel, TimestampMixin):
@@ -469,9 +475,83 @@ class WorkspaceLimit(BaseModel, TimestampMixin):
     news_entity_extraction_spend_cap_micros = Column(BigInteger, nullable=True)
     news_entity_extraction_wallet_pre_check = Column(Boolean, nullable=True)
 
+    # Story 29.3: expanded plan catalog columns (AD-8, AD-51, PM-1)
+    max_monthly_credits = Column(BigInteger, nullable=True)
+    max_sources = Column(Integer, nullable=True)
+    support_level = Column(String(50), nullable=True)
+    price_micros = Column(BigInteger, nullable=True)
+    currency = Column(
+        String(3),
+        nullable=True,
+        default="USD",
+        server_default=text("'USD'"),
+    )
+
     workspace = relationship(
         "Workspace", back_populates="workspace_limits", uselist=False
     )
+
+    @property
+    def is_system_default(self) -> bool:
+        return (self.plan_tier or "").lower() in (
+            "free",
+            "team",
+            "growth",
+            "enterprise",
+        )
+
+
+class SubscriptionChange(BaseModel, TimestampMixin):
+    """
+    Tracks workspace subscription plan changes, safety grace period, and reversibility.
+    (Story 29.3 / FR-102 / PM-4, PM-5, PM-6)
+    """
+
+    __tablename__ = "subscription_changes"
+    __table_args__ = (
+        Index("ix_subscription_changes_status", "status"),
+        Index("ix_subscription_changes_effective_at", "effective_at"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    from_plan = Column(String(20), nullable=False)
+    to_plan = Column(String(20), nullable=False)
+    effective_at = Column(TIMESTAMP(timezone=True), nullable=False)
+    reversible_until = Column(TIMESTAMP(timezone=True), nullable=True)
+    status = Column(
+        String(20),
+        nullable=False,
+        default="pending",
+        server_default=text("'pending'"),
+    )  # pending, active, cancelled, reverted, expired
+    initiated_by = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    payment_method_id = Column(String(255), nullable=True)
+    immediate = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
+    )
+    diff_payload = Column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+    )
+
+    workspace = relationship("Workspace", back_populates="subscription_changes")
+    initiated_by_user = relationship("User", foreign_keys=[initiated_by])
 
 
 class ResearchThread(BaseModel, TimestampMixin):

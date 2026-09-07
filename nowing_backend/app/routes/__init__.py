@@ -52,6 +52,7 @@ from .admin_global_model_connections_routes import (
     router as admin_global_model_connections_router,
 )
 from .admin_latency_routes import router as admin_latency_router
+from .admin_saas_routes import router as admin_saas_router
 from .admin_scraper_platform_accounts_routes import (
     router as admin_scraper_platform_accounts_router,
     scraper_accounts_alias_router,
@@ -265,6 +266,9 @@ router.include_router(
 router.include_router(
     admin_broadcasts_router
 )  # Platform admin broadcast management (Story 25.6)
+router.include_router(
+    admin_saas_router
+)  # Platform admin SaaS plan catalog (Story 29.3)
 router.include_router(
     broadcasts_router
 )  # In-app active broadcast announcements (Story 25.6)

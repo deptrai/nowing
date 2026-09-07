@@ -22,6 +22,7 @@ from app.db import (
     WorkspaceMembership,
 )
 from app.file_storage.persistence.models import DocumentFile
+from app.schemas import PlanDefinitionCreate, PlanDefinitionUpdate
 from app.services.workspace_limits import ResolvedWorkspaceLimits, WorkspaceLimitService
 
 pytestmark = pytest.mark.integration
@@ -511,3 +512,162 @@ async def test_concurrent_document_limit_boundary(async_engine, monkeypatch):
     assert exceptions[0].status_code == 403
     assert exceptions[0].detail["error_code"] == "limit_exceeded"
     assert exceptions[0].detail["limit_type"] == "documents"
+
+
+async def test_check_plan_change_conflicts_blocks_downgrade(
+    db_session: AsyncSession, db_workspace: Workspace, monkeypatch
+):
+    monkeypatch.setattr(Config, "DEPLOYMENT_MODE", "cloud")
+    await _seed_plan_defaults(db_session)
+    db_workspace.plan_tier = "team"
+    await db_session.flush()
+
+    # Add 6 documents (exceeds free plan limit of 5)
+    for i in range(6):
+        db_session.add(
+            Document(
+                workspace_id=db_workspace.id,
+                title=f"Doc {i}",
+                document_type="FILE",
+                content="...",
+                content_hash=f"hash_{i}",
+                unique_identifier_hash=f"uniq_{i}",
+            )
+        )
+    await db_session.flush()
+
+    service = WorkspaceLimitService()
+    free_plan = await service.get_plan_definition(db_session, "free")
+    assert free_plan is not None
+
+    conflicts = await service.check_plan_change_conflicts(
+        db_session, db_workspace.id, "free"
+    )
+    assert "documents" in conflicts
+    assert conflicts["documents"]["current"] == 6
+    assert conflicts["documents"]["limit"] == free_plan.max_documents
+
+    with pytest.raises(HTTPException) as exc_info:
+        await service.create_subscription_change(
+            db_session, db_workspace.id, "free", immediate=True
+        )
+    assert exc_info.value.status_code == 409
+    assert exc_info.value.detail["error_code"] == "quota_conflict"
+
+
+async def test_create_subscription_change_scheduled_and_cancel(
+    db_session: AsyncSession, db_workspace: Workspace, monkeypatch
+):
+    monkeypatch.setattr(Config, "DEPLOYMENT_MODE", "cloud")
+    await _seed_plan_defaults(db_session)
+    db_workspace.plan_tier = "free"
+    await db_session.flush()
+
+    service = WorkspaceLimitService()
+    change = await service.create_subscription_change(
+        db_session, db_workspace.id, "team", immediate=False
+    )
+    assert change.status == "pending"
+    assert change.from_plan == "free"
+    assert change.to_plan == "team"
+    assert change.effective_at > datetime.now(UTC) + timedelta(days=6)
+    assert db_workspace.plan_tier == "free"
+
+    # Cancel the pending change
+    cancelled = await service.cancel_subscription_change(
+        db_session, db_workspace.id, change.id
+    )
+    assert cancelled.status == "cancelled"
+
+
+async def test_create_subscription_change_immediate_and_revert(
+    db_session: AsyncSession, db_workspace: Workspace, monkeypatch
+):
+    monkeypatch.setattr(Config, "DEPLOYMENT_MODE", "cloud")
+    await _seed_plan_defaults(db_session)
+    db_workspace.plan_tier = "free"
+    await db_session.flush()
+
+    service = WorkspaceLimitService()
+    change = await service.create_subscription_change(
+        db_session, db_workspace.id, "team", immediate=True
+    )
+    assert change.status == "active"
+    assert change.from_plan == "free"
+    assert change.to_plan == "team"
+    assert change.reversible_until is not None
+    assert change.reversible_until > datetime.now(UTC) + timedelta(days=6)
+    assert db_workspace.plan_tier == "team"
+
+    # Revert within the 7-day window
+    reverted = await service.revert_subscription_change(
+        db_session, db_workspace.id, change.id
+    )
+    assert reverted.status == "reverted"
+    assert db_workspace.plan_tier == "free"
+
+
+async def test_admin_plan_definition_crud_and_grandfathering(
+    db_session: AsyncSession, db_workspace: Workspace, monkeypatch
+):
+    monkeypatch.setattr(Config, "DEPLOYMENT_MODE", "cloud")
+    await _seed_plan_defaults(db_session)
+
+    service = WorkspaceLimitService()
+
+    # 1. Create custom plan
+    created = await service.create_plan_definition(
+        db_session,
+        PlanDefinitionCreate(
+            plan_tier="custom_tier",
+            max_documents=50,
+            max_members=5,
+            price_micros=15_000_000,
+            support_level="email",
+        ),
+    )
+    assert created.plan_tier == "custom_tier"
+    assert created.max_documents == 50
+    assert created.is_system_default is False
+
+    # Assign workspace to custom_tier
+    db_workspace.plan_tier = "custom_tier"
+    await db_session.flush()
+
+    # 2. Update plan definition -> triggers grandfathering
+    await service.update_plan_definition(
+        db_session,
+        "custom_tier",
+        PlanDefinitionUpdate(max_documents=30),
+    )
+    await db_session.flush()
+
+    # Check that workspace got grandfathered override with old limit (50)
+    from sqlalchemy import select
+
+    res = await db_session.execute(
+        select(WorkspaceLimit).where(
+            WorkspaceLimit.workspace_id == db_workspace.id,
+            WorkspaceLimit.plan_tier.is_(None),
+        )
+    )
+    override_row = res.scalars().first()
+    assert override_row is not None
+    assert override_row.max_documents == 50
+
+    # 3. System defaults cannot be deleted
+    with pytest.raises(HTTPException) as exc_free:
+        await service.delete_plan_definition(db_session, "free")
+    assert exc_free.value.status_code == 400
+
+    # 4. Cannot delete custom_tier while assigned to workspace
+    with pytest.raises(HTTPException) as exc_custom:
+        await service.delete_plan_definition(db_session, "custom_tier")
+    assert exc_custom.value.status_code == 409
+
+    # Move workspace off and delete
+    db_workspace.plan_tier = "free"
+    await db_session.flush()
+    await service.delete_plan_definition(db_session, "custom_tier")
+    plan = await service.get_plan_definition(db_session, "custom_tier")
+    assert plan is None
