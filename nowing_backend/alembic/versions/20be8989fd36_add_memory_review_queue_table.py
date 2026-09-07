@@ -40,7 +40,7 @@ def upgrade() -> None:
     op.create_index(
         'ix_memories_browser_list',
         'memories',
-        ['workspace_id', 'source_type', 'confidence', 'created_at'],
+        ['workspace_id', 'source_type', 'confidence', sa.text('created_at DESC')],
         postgresql_where=None,
     )
 
