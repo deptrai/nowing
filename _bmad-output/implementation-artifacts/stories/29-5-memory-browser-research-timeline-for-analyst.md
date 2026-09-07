@@ -223,3 +223,37 @@ so that **I can verify facts, trace research lineage, and flag outdated or low-c
 - `nowing_web/app/dashboard/[workspace_id]/health/page.tsx` — dashboard page pattern.
 - `_bmad-output/planning-artifacts/ux-designs/ux-Nowing-2026-08-15/ux-contract-epic-29-saas-admin-analytics.md` — MB-1..MB-6.
 - `_bmad-output/planning-artifacts/epics.md:4462` — Epic 29 / Story 29.5 source AC.
+
+## Challenge Log (grill-me)
+
+### Q1 — Already implemented?
+- **No duplicate logic found for the full browser UX.** `GET /workspaces/{workspace_id}/memories` exists but only supports `type`/`tags`/`client_id`/`limit` filters and returns a flat `list[MemoryRead]`. `MemoryHybridSearch` is a ranked search (max 5 results, RRF fusion) — not a paginated list. No `memory_review_queue` model, no browser route, no `MemoryBrowserListResponse` schema, and no source-derivation helper exist.
+- **Existing building blocks to reuse:** `Memory`, `MemoryVersion`, `MemoryRelation`, `ResearchThread`, `check_permission`, `MemoryEncryptionService`, `NotificationService`, `to_tsvector('english', Memory.content)` keyword expression, and `MemoryRead` `citation` logic.
+- **Verdict:** Proceed.
+
+### Q2 — Simpler alternative?
+- **Keyword search expression** can reuse the existing `to_tsvector('english', Memory.content).op('@@')(func.plainto_tsquery('english', q))` pattern from `app/services/memory/search.py`; do not call `MemoryHybridSearch.search()` because it is limited to top-5 and returns `ScoredMemory`.
+- **Source link derivation** should be computed in the new `MemoryBrowserListItem` Pydantic schema from `source_run_id`/`source_uuid`/`source_entity_type`/`source_id` (no dedicated service needed).
+- **Creator dropdown** is a straightforward `select(User)` joined through `WorkspaceMembership`.
+- **Verdict:** Reuse patterns; no HALT.
+
+### Q3 — Edge cases spec misses (Pattern 3)
+- [ ] Boundary: `confidence` min=0.0 / max=1.0; `min > max` rejected with 422; `page_size` > 100 rejected with 422; `page` zero/negative rejected.
+- [ ] Null/empty: `research_thread_id` NULL → "Untitled thread #{id}"; all source pointers NULL → fallback to source type badge; `MemoryVersion.corrected_by_id` NULL → show "unknown"; `MemoryRelation.to_memory_id` NULL → render relation without target link.
+- [ ] Concurrent: double `POST /review-flag` from same or different analysts — create two queue rows (no idempotency key required, v1); flagging a memory from another workspace must 404.
+- [ ] Encrypted rows: `content_search` NULL and `key_id` set → keyword filter falls back to `content ILIKE` *after* decryption (or returns no match if decryption fails); search must work over `content_search` when present to exploit GIN index.
+- [ ] Tenant boundary: `client_id`/`agent_id` scoping from `Memory` must be respected (AC-18.6 pattern). Default to `Memory.client_id.is_(None)` for regular workspace analysts; superadmin/vertical clients may pass `client_id` filter.
+
+### Q4 — Failure modes unspecified (Pattern 2, 4)
+- [ ] `MemoryEncryptionService.decrypt_memory` throws `DecryptionError` → return 500 with error code `decryption_failed` (do not render raw error message to UI).
+- [ ] `MemoryEncryptionService.decrypt_memory_version` throws for version rows → detail panel returns 500, row must not be partially rendered with mixed plaintext/ciphertext.
+- [ ] `NotificationService.create_notification` fails → flag creation should rollback as part of same DB transaction (flag + notification atomic).
+- [ ] `WorkspaceMembership` creator query empty → UI shows empty creator dropdown and filter is disabled.
+- [ ] `check_permission` returns 403 for `MEMORY_READ` → route shows access-denied, nav item hidden/visible depending on permission.
+- [ ] `GET /memories/{id}` with mismatched workspace → 404 (not 403) to avoid existence leak.
+- [ ] `MemoryRelation.to_memory_id` points to deleted `Memory` → detail panel renders relation without target link.
+
+### Triage
+- **Critical:** None. No duplicate, no cheaper alternative that eliminates the spec.
+- **Non-critical gaps to fold into ATDD:** boundary validation, encryption fallback behavior, `client_id` scoping, notification transactionality, dangling relation handling.
+- **Action:** Proceed to `bmad-nowing-test-first-atdd`.
