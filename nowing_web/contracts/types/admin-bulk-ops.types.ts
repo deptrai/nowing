@@ -127,7 +127,9 @@ export const ACTION_METADATA: Record<BulkAction, ActionFilterMeta> = {
 				type: "number",
 			},
 			plan_tier: { label: "Plan Tier", operators: ["eq", "neq", "in"], type: "string" },
-			created_at: { label: "Created At", operators: ["lte", "lt", "gte", "gt"], type: "date" },
+			is_active: { label: "Is Active", operators: ["eq", "neq"], type: "string" },
+			workspace_id: { label: "Workspace ID", operators: ["eq", "in"], type: "number" },
+			id: { label: "Workspace ID", operators: ["eq", "in"], type: "number" },
 		},
 		cancelableWhileRunning: true,
 		superadminOnly: true,
@@ -136,6 +138,8 @@ export const ACTION_METADATA: Record<BulkAction, ActionFilterMeta> = {
 		fields: {
 			workspace_id: { label: "Workspace ID", operators: ["eq", "in"], type: "number" },
 			plan_tier: { label: "Plan Tier", operators: ["eq", "neq", "in"], type: "string" },
+			id: { label: "Workspace ID", operators: ["eq", "in"], type: "number" },
+			api_access_enabled: { label: "API Access Enabled", operators: ["eq", "neq"], type: "string" },
 		},
 		isHighRisk: true,
 		cancelableWhileRunning: false,
@@ -144,9 +148,9 @@ export const ACTION_METADATA: Record<BulkAction, ActionFilterMeta> = {
 	assign_role: {
 		fields: {
 			workspace_id: { label: "Workspace ID", operators: ["eq"], type: "number" },
-			current_role_id: { label: "Current Role ID", operators: ["eq", "neq", "in"], type: "number" },
+			role_id: { label: "Current Role ID", operators: ["eq", "neq", "in"], type: "number" },
 			user_id: { label: "User ID", operators: ["eq", "in"], type: "string" },
-			joined_at: { label: "Joined At", operators: ["lte", "gte"], type: "date" },
+			is_owner: { label: "Is Owner", operators: ["eq", "neq"], type: "string" },
 		},
 		requiredParams: {
 			target_role_id: { label: "Target Role ID", type: "number" },
@@ -162,7 +166,9 @@ export const ACTION_METADATA: Record<BulkAction, ActionFilterMeta> = {
 				operators: ["eq", "in"],
 				type: "string",
 			},
-			created_at: { label: "Created At", operators: ["lte", "gte"], type: "date" },
+			created_before: { label: "Created Before", operators: ["lt", "lte"], type: "date" },
+			created_after: { label: "Created After", operators: ["gt", "gte"], type: "date" },
+			memory_type: { label: "Memory Type", operators: ["eq", "neq", "in"], type: "string" },
 		},
 		cancelableWhileRunning: true,
 		superadminOnly: false,
@@ -170,8 +176,9 @@ export const ACTION_METADATA: Record<BulkAction, ActionFilterMeta> = {
 	apply_tier: {
 		fields: {
 			workspace_id: { label: "Workspace ID", operators: ["eq", "in"], type: "number" },
-			current_tier: { label: "Current Tier", operators: ["eq", "neq", "in"], type: "string" },
-			created_at: { label: "Created At", operators: ["lte", "gte"], type: "date" },
+			plan_tier: { label: "Current Plan Tier", operators: ["eq", "neq", "in"], type: "string" },
+			is_active: { label: "Is Active", operators: ["eq", "neq"], type: "string" },
+			id: { label: "Workspace ID", operators: ["eq", "in"], type: "number" },
 		},
 		requiredParams: {
 			target_tier: { label: "Target Tier (e.g. pro, enterprise)", type: "string" },
@@ -183,8 +190,8 @@ export const ACTION_METADATA: Record<BulkAction, ActionFilterMeta> = {
 		fields: {
 			workspace_id: { label: "Workspace ID", operators: ["eq"], type: "number" },
 			role_id: { label: "Role ID", operators: ["eq", "neq", "in"], type: "number" },
-			inactive_days: { label: "Inactive Days", operators: ["gte", "gt"], type: "number" },
 			user_id: { label: "User ID", operators: ["eq", "in"], type: "string" },
+			is_owner: { label: "Is Owner", operators: ["eq", "neq"], type: "string" },
 		},
 		cancelableWhileRunning: true,
 		superadminOnly: false,

@@ -23,6 +23,7 @@ from typing import Any
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.enums import MemorySourceType
@@ -184,6 +185,18 @@ class BulkOpsService:
                         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                         detail="Filter 'inactive_days' must be a non-negative integer",
                     ) from None
+
+            elif clause.field in ("created_before", "created_after"):
+                if clause.field == "created_before" and clause.operator not in ("lt", "lte"):
+                    raise HTTPException(
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail="Filter 'created_before' requires operator 'lt' or 'lte'",
+                    )
+                if clause.field == "created_after" and clause.operator not in ("gt", "gte"):
+                    raise HTTPException(
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail="Filter 'created_after' requires operator 'gt' or 'gte'",
+                    )
 
             elif clause.field == "is_active":
                 if not isinstance(clause.value, bool):
@@ -367,6 +380,16 @@ class BulkOpsService:
                         "message": f"Target role with ID {target_role_id} not found in role catalog",
                     },
                 )
+            # Prevent cross-tenant role assignment: the target role must belong
+            # to the same workspace or be a system role.
+            if workspace_id is not None and role.workspace_id is not None and role.workspace_id != workspace_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail={
+                        "error_code": "cross_tenant_role",
+                        "message": "Cannot assign a role that belongs to a different workspace",
+                    },
+                )
 
         if action == BulkAction.APPLY_TIER:
             target_tier = action_params.get("target_tier")
@@ -531,15 +554,14 @@ class BulkOpsService:
                         },
                     )
             elif mfa_token:
-                clean_mfa = mfa_token.strip()
-                if not (clean_mfa.isdigit() and len(clean_mfa) == 6):
-                    raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        detail={
-                            "error_code": "invalid_mfa",
-                            "message": "Invalid 6-digit MFA token",
-                        },
-                    )
+                # v1: MFA is not yet implemented. Require password confirmation instead.
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail={
+                        "error_code": "reauth_required",
+                        "message": "Password confirmation is required for high-risk actions. MFA is not enabled in this release.",
+                    },
+                )
 
         # Dependency check for 29.1 and 29.3
         if action == BulkAction.ASSIGN_ROLE:
@@ -556,6 +578,16 @@ class BulkOpsService:
                     detail={
                         "error_code": "missing_dependency",
                         "message": f"Target role with ID {target_role_id} not found in role catalog",
+                    },
+                )
+            # Prevent cross-tenant role assignment: the target role must belong
+            # to the same workspace or be a system role.
+            if workspace_id is not None and role.workspace_id is not None and role.workspace_id != workspace_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail={
+                        "error_code": "cross_tenant_role",
+                        "message": "Cannot assign a role that belongs to a different workspace",
                     },
                 )
 
@@ -631,7 +663,10 @@ class BulkOpsService:
         session.add(job)
         await session.flush()
 
-        # Record idempotency key with 24-hour TTL
+        # Record idempotency key with 24-hour TTL.
+        # If a concurrent request with the same key wins the race, the DB
+        # unique constraint will surface IntegrityError; we translate it to
+        # 409 so the caller knows the key was already claimed.
         idemp_record = IdempotencyKey(
             key=idempotency_key,
             request_hash=request_hash,
@@ -640,7 +675,17 @@ class BulkOpsService:
             expires_at=now + timedelta(hours=24),
         )
         session.add(idemp_record)
-        await session.commit()
+        try:
+            await session.commit()
+        except IntegrityError:
+            await session.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "error_code": "idempotency_conflict",
+                    "message": "Idempotency-Key was already used by a concurrent request",
+                },
+            ) from None
         await session.refresh(job)
 
         # Dispatch Celery background task
@@ -756,13 +801,8 @@ class BulkOpsService:
         job.completed_at = datetime.now(UTC)
 
         # Revoke Celery task if possible
-        if job.celery_task_id:
-            try:
-                from app.celery_app import celery_app
-
-                celery_app.control.revoke(job.celery_task_id, terminate=True)
-            except Exception as e:
-                logger.warning("Could not revoke Celery task %s: %s", job.celery_task_id, e)
+        # Note: we intentionally do NOT send terminate=True to the worker.
+        # The Celery task loop polls job.status and exits cooperatively.
 
         await session.commit()
         return CancelJobResponse(

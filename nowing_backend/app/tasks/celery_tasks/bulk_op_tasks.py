@@ -27,7 +27,6 @@ from app.models.workspaces import Workspace
 from app.schemas.bulk_ops import FilterClause
 from app.services.bulk_ops_service import bulk_ops_service
 from app.tasks.celery_tasks import get_celery_session_maker, run_async_celery_task
-from app.utils.pat import generate_pat, hash_pat, token_prefix
 
 logger = logging.getLogger(__name__)
 
@@ -112,19 +111,10 @@ async def _execute_bulk_op(job_id_str: str) -> None:
                         )
 
                     elif action == BulkAction.ROTATE_API_KEYS:
-                        # Rotate PATs belonging to this workspace
-                        pats_stmt = select(PersonalAccessToken).where(
-                            PersonalAccessToken.workspace_id == item.id
-                        )
-                        pats_res = await session.execute(pats_stmt)
-                        pats = pats_res.scalars().all()
-                        rotated_count = 0
-                        for pat in pats:
-                            new_token = generate_pat()
-                            pat.token_hash = hash_pat(new_token)
-                            pat.token_prefix = token_prefix(new_token)
-                            rotated_count += 1
-
+                        # v1: mark api_access_enabled=False for reset, rather than rotating PATs
+                        # (avoids bricking tokens without a way to deliver replacements)
+                        was_enabled = item.api_access_enabled
+                        item.api_access_enabled = False
                         affected += 1
                         session.add(
                             AuditEvent(
@@ -134,7 +124,8 @@ async def _execute_bulk_op(job_id_str: str) -> None:
                                 ticket_ref=job.idempotency_key,
                                 diff_payload={
                                     "workspace_id": item.id,
-                                    "rotated_tokens_count": rotated_count,
+                                    "api_access_enabled": False,
+                                    "previously_enabled": was_enabled,
                                 },
                             )
                         )
@@ -162,6 +153,9 @@ async def _execute_bulk_op(job_id_str: str) -> None:
                     elif action == BulkAction.REVOKE_MEMBERSHIP:
                         user_id = item.user_id
                         ws_id = item.workspace_id
+                        # Do not let the actor revoke themselves or leave workspace ownerless
+                        if user_id == job.actor_id:
+                            raise ValueError("Actor cannot revoke their own membership")
                         await session.delete(item)
                         affected += 1
                         session.add(
@@ -232,6 +226,10 @@ async def _execute_bulk_op(job_id_str: str) -> None:
 
                 except Exception as ex:
                     errors_count += 1
+                    try:
+                        await session.rollback()
+                    except Exception:
+                        pass
                     err_record = BulkOpError(
                         job_id=job.id,
                         subject_type=target_model.__name__.lower(),
@@ -240,6 +238,7 @@ async def _execute_bulk_op(job_id_str: str) -> None:
                         retryable=False,
                     )
                     session.add(err_record)
+                    await session.commit()
                     logger.warning("Error processing item %s in bulk job %s: %s", item, job.id, ex)
 
             # Update progress per batch
