@@ -14,7 +14,7 @@ import {
 	Sparkles,
 	Wand2,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { currentUserAtom } from "@/atoms/user/user-query.atoms";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,7 @@ import {
 	computeLocationDiff,
 	type LocationDiffResult,
 } from "@/lib/geo/vietnam-divisions";
+import { trackZeroLeadsDiagnosis, type ZeroLeadsReason } from "@/lib/posthog/events";
 import { cn } from "@/lib/utils";
 import { SourceCoverageBadge } from "./SourceCoverageBadge";
 
@@ -54,6 +55,8 @@ export interface PlanSummaryCardProps {
 	onConfirmFullRun?: () => void;
 	className?: string;
 	inRightCanvas?: boolean;
+	/** Optional workspace id used for PostHog zero-leads telemetry. */
+	workspaceId?: number;
 }
 
 export function PlanSummaryCard({
@@ -69,6 +72,7 @@ export function PlanSummaryCard({
 	onConfirmFullRun,
 	className,
 	inRightCanvas = false,
+	workspaceId,
 }: PlanSummaryCardProps) {
 	const userQuery = useAtomValue(currentUserAtom);
 	const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -123,6 +127,25 @@ export function PlanSummaryCard({
 	const locationMetadata = smokeTestResult?.location_match_metadata;
 
 	const hasZeroLeads = smokeTestResult && smokeTestResult.total_discovered === 0;
+
+	useEffect(() => {
+		if (!hasZeroLeads || !workspaceId) return;
+
+		const reason: ZeroLeadsReason =
+			locationMetadata?.zero_leads_reason === "NO_DATA_IN_LOCATION"
+				? "NO_DATA_IN_LOCATION"
+				: locationMetadata?.zero_leads_reason === "SOURCE_DEGRADED"
+					? "SOURCE_DEGRADED"
+					: "FILTER_TOO_NARROW";
+
+		trackZeroLeadsDiagnosis({
+			workspaceId,
+			reason,
+			provinceCode: locationMetadata?.province_code,
+			provinceName: locationMetadata?.province_name,
+			sourceTypes: plan?.source_allocations.map((s) => s.source_name),
+		});
+	}, [hasZeroLeads, workspaceId, locationMetadata, plan?.source_allocations]);
 
 	if (isLoading) {
 		return (

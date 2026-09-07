@@ -382,6 +382,7 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 							<PlanSummaryCard
 								plan={activePlan}
 								inRightCanvas={true}
+								workspaceId={props.workspaceId ? Number(props.workspaceId) : undefined}
 								onApplyPlan={(applied) => {
 									setActivePlan(applied);
 								}}

@@ -150,6 +150,8 @@ export const locationMatchMetadataSchema = z.object({
 	threshold: z.number().default(65),
 	zero_leads_reason: z.string().nullable().optional(),
 	zero_leads_diagnostics: z.array(z.string()).default([]),
+	province_code: z.string().optional(),
+	province_name: z.string().optional(),
 });
 
 export type LocationMatchMetadata = z.infer<typeof locationMatchMetadataSchema>;

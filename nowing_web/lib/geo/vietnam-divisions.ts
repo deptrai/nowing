@@ -236,6 +236,45 @@ export function removeDiacritics(text: string): string {
 	return text.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[đĐ]/g, "d").toLowerCase().trim();
 }
 
+// Cache of precomputed diacritics-stripped strings for search matching.
+// Populated lazily on first call to `searchProvinces` and reused thereafter.
+const _cleanNameCache = new Map<string, string>();
+const _cleanAliasCache = new Map<string, string>();
+const _cleanDistrictCache = new Map<string, string>();
+
+/**
+ * Return a cached diacritics-stripped version of `text`.
+ */
+function cachedClean(text: string): string {
+	const hit = _cleanNameCache.get(text);
+	if (hit) return hit;
+	const clean = removeDiacritics(text);
+	_cleanNameCache.set(text, clean);
+	return clean;
+}
+
+/**
+ * Return a cached diacritics-stripped version of an alias string.
+ */
+function cachedCleanAlias(text: string): string {
+	const hit = _cleanAliasCache.get(text);
+	if (hit) return hit;
+	const clean = removeDiacritics(text);
+	_cleanAliasCache.set(text, clean);
+	return clean;
+}
+
+/**
+ * Return a cached diacritics-stripped version of a district name.
+ */
+function cachedCleanDistrict(text: string): string {
+	const hit = _cleanDistrictCache.get(text);
+	if (hit) return hit;
+	const clean = removeDiacritics(text);
+	_cleanDistrictCache.set(text, clean);
+	return clean;
+}
+
 /**
  * Match a user search query against province names, aliases, and district names/codes.
  */
@@ -244,14 +283,14 @@ export function searchProvinces(query: string): Province[] {
 	if (!cleanQuery) return VIETNAM_PROVINCES;
 
 	return VIETNAM_PROVINCES.filter((p) => {
-		const cleanName = removeDiacritics(p.name);
+		const cleanName = cachedClean(p.name);
 		const cleanCode = p.code.toLowerCase();
 		if (cleanName.includes(cleanQuery) || cleanCode.includes(cleanQuery)) return true;
-		if (p.aliases.some((alias) => removeDiacritics(alias).includes(cleanQuery))) return true;
+		if (p.aliases.some((alias) => cachedCleanAlias(alias).includes(cleanQuery))) return true;
 
 		// Match district name or district code inside the province
 		return p.districts.some((d) => {
-			const dName = removeDiacritics(d.name);
+			const dName = cachedCleanDistrict(d.name);
 			const dCode = d.code.toLowerCase();
 			return dName.includes(cleanQuery) || dCode.includes(cleanQuery);
 		});
