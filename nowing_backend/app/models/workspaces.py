@@ -136,6 +136,9 @@ class Workspace(BaseModel, TimestampMixin):
         Boolean, nullable=False, default=True, server_default="true"
     )
 
+    # Story 29.4: Workspace lifecycle archiving
+    archived_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
+
     # Epic 21 lead scoring ICP criteria (Story 21.2).
     icp_criteria = Column(JSONB, nullable=True)
 
