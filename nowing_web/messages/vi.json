@@ -209,7 +209,8 @@
 		"logs": "Nhật ký tác vụ",
 		"all_workspaces": "Tất cả Workspace",
 		"team": "Đội ngũ",
-		"usage": "Mức sử dụng & Credits"
+		"usage": "Mức sử dụng & Credits",
+		"health_analytics": "Sức khỏe & Phân tích"
 	},
 	"usage": {
 		"title": "Mức sử dụng & Credits",

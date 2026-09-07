@@ -390,6 +390,12 @@ class Workspace(BaseModel, TimestampMixin):
         order_by="ZaloMessageLog.created_at.desc()",
         cascade="all, delete-orphan",
     )
+    health_daily_metrics = relationship(
+        "WorkspaceHealthDaily",
+        back_populates="workspace",
+        order_by="WorkspaceHealthDaily.date.desc()",
+        cascade="all, delete-orphan",
+    )
 
 
 class WorkspaceMcpToolSetting(BaseModel, TimestampMixin):
