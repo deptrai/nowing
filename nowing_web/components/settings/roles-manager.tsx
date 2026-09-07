@@ -3,8 +3,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import {
+	AlertTriangle,
+	BarChart3,
 	Bot,
 	ChevronRight,
+	Copy,
+	CreditCard,
 	Earth,
 	FileText,
 	Image,
@@ -63,6 +67,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import type { PermissionInfo } from "@/contracts/types/permissions.types";
 import type {
@@ -84,6 +95,12 @@ const CATEGORY_CONFIG: Record<
 		icon: FileText,
 		description: "Manage files, notes, and content",
 		order: 1,
+	},
+	analytics: {
+		label: "Analytics",
+		icon: BarChart3,
+		description: "View workspace analytics & adoption metrics",
+		order: 1.5,
 	},
 	chats: {
 		label: "AI Chats",
@@ -139,11 +156,29 @@ const CATEGORY_CONFIG: Record<
 		description: "Connect external data sources",
 		order: 6,
 	},
+	source: {
+		label: "Sources & Connectors",
+		icon: Unplug,
+		description: "Configure scraper and data connector sources",
+		order: 6.1,
+	},
+	tools: {
+		label: "Agent Tools",
+		icon: Bot,
+		description: "Toggle MCP tools and agent tool configurations",
+		order: 6.2,
+	},
 	logs: {
 		label: "Activity Logs",
 		icon: Logs,
 		description: "View and manage audit trail",
 		order: 7,
+	},
+	memory: {
+		label: "Memory",
+		icon: Shield,
+		description: "Search, recall, and manage research memories",
+		order: 7.5,
 	},
 	members: {
 		label: "Team Members",
@@ -162,6 +197,12 @@ const CATEGORY_CONFIG: Record<
 		icon: Settings,
 		description: "Manage workspace settings",
 		order: 10,
+	},
+	billing: {
+		label: "Billing",
+		icon: CreditCard,
+		description: "View workspace plans, credit balances, and invoices",
+		order: 10.5,
 	},
 	public_sharing: {
 		label: "Public Chat Sharing",
@@ -186,43 +227,16 @@ const ACTION_LABELS: Record<string, string> = {
 	view: "View",
 	remove: "Remove",
 	manage_roles: "Manage Roles",
+	manage: "Manage",
+	configure: "Configure",
+	enable: "Enable",
+	execute: "Execute",
 };
 
-const ROLE_PRESETS = {
-	editor: {
-		name: "Editor",
-		description: "Create, read, and edit content. No delete or admin access.",
-		permissions: [
-			"documents:create",
-			"documents:read",
-			"documents:update",
-			"chats:create",
-			"chats:read",
-			"chats:update",
-			"comments:create",
-			"comments:read",
-			"llm_configs:create",
-			"llm_configs:read",
-			"llm_configs:update",
-			"podcasts:create",
-			"podcasts:read",
-			"podcasts:update",
-			"automations:create",
-			"automations:read",
-			"automations:update",
-			"automations:execute",
-			"connectors:create",
-			"connectors:read",
-			"connectors:update",
-			"logs:read",
-			"members:invite",
-			"members:view",
-			"roles:read",
-			"settings:view",
-		],
-	},
+export const ROLE_TEMPLATES = {
 	viewer: {
-		name: "Viewer",
+		name: "Custom Viewer",
+		label: "Viewer",
 		description: "Read-only access with ability to add comments",
 		permissions: [
 			"documents:read",
@@ -237,33 +251,76 @@ const ROLE_PRESETS = {
 			"members:view",
 			"roles:read",
 			"settings:view",
+			"memory:read",
 		],
 	},
-	contributor: {
-		name: "Contributor",
-		description: "Can add and manage their own content",
+	editor: {
+		name: "Custom Editor",
+		label: "Editor",
+		description: "Create, read, and edit content. No delete or admin access.",
 		permissions: [
-			"documents:create",
 			"documents:read",
-			"documents:update",
-			"chats:create",
 			"chats:read",
 			"comments:create",
 			"comments:read",
 			"llm_configs:read",
 			"podcasts:read",
-			"automations:create",
 			"automations:read",
-			"automations:update",
-			"automations:execute",
 			"connectors:read",
 			"logs:read",
 			"members:view",
 			"roles:read",
 			"settings:view",
+			"memory:read",
+			"documents:create",
+			"documents:update",
+			"chats:create",
+			"chats:update",
+			"automations:create",
+			"automations:update",
+			"automations:execute",
+			"connectors:create",
+			"connectors:update",
+			"members:invite",
+			"memory:create",
+			"memory:update",
+			"tools:enable",
+			"source:configure",
 		],
 	},
+	analyst: {
+		name: "Analyst",
+		label: "Analyst",
+		description: "Deep research, intelligence, documents, and analytics read-only access.",
+		permissions: [
+			"documents:read",
+			"chats:read",
+			"logs:read",
+			"members:view",
+			"memory:read",
+			"analytics:read",
+		],
+	},
+	billing: {
+		name: "Billing Viewer",
+		label: "Billing",
+		description: "Manage plans, credit balances, payment methods, and invoices.",
+		permissions: [
+			"settings:view",
+			"members:view",
+			"billing:read",
+			"billing:manage",
+		],
+	},
+	custom: {
+		name: "Custom Role",
+		label: "Custom",
+		description: "Start from scratch with an empty permission set.",
+		permissions: [] as string[],
+	},
 };
+
+export const ROLE_PRESETS = ROLE_TEMPLATES;
 
 type PermissionWithDescription = PermissionInfo;
 
@@ -407,6 +464,7 @@ function RolesContent({
 	canCreate: boolean;
 }) {
 	const [showCreateRole, setShowCreateRole] = useState(false);
+	const [cloningRole, setCloningRole] = useState<Role | null>(null);
 	const [editingRoleId, setEditingRoleId] = useState<number | null>(null);
 	const [expandedRoleId, setExpandedRoleId] = useState<number | null>(null);
 
@@ -420,13 +478,23 @@ function RolesContent({
 
 	const editingRole = editingRoleId !== null ? roles.find((r) => r.id === editingRoleId) : null;
 
+	const handleOpenCreate = () => {
+		setCloningRole(null);
+		setShowCreateRole(true);
+	};
+
+	const handleCloneRole = (role: Role) => {
+		setCloningRole(role);
+		setShowCreateRole(true);
+	};
+
 	return (
 		<div className="space-y-6">
 			{canCreate && (
 				<div className="flex justify-end">
 					<Button
 						variant="outline"
-						onClick={() => setShowCreateRole(true)}
+						onClick={handleOpenCreate}
 						className="gap-2 bg-white text-black hover:bg-accent hover:text-accent-foreground dark:bg-white dark:text-black"
 					>
 						Create Custom Role
@@ -436,9 +504,13 @@ function RolesContent({
 
 			<CreateRoleDialog
 				open={showCreateRole}
-				onOpenChange={setShowCreateRole}
+				onOpenChange={(open) => {
+					setShowCreateRole(open);
+					if (!open) setCloningRole(null);
+				}}
 				groupedPermissions={groupedPermissions}
 				onCreateRole={onCreateRole}
+				cloneRole={cloningRole}
 			/>
 
 			{editingRole && (
@@ -517,6 +589,15 @@ function RolesContent({
 												</Button>
 											</DropdownMenuTrigger>
 											<DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()}>
+												{canCreate && (
+													<DropdownMenuItem
+														data-testid={`clone-role-${role.id}`}
+														onClick={() => handleCloneRole(role)}
+													>
+														<Copy className="h-4 w-4 mr-2" aria-hidden="true" />
+														Clone Role
+													</DropdownMenuItem>
+												)}
 												{canUpdate && (
 													<DropdownMenuItem onClick={() => setEditingRoleId(role.id)}>
 														<Pencil className="h-4 w-4 mr-2" aria-hidden="true" />
@@ -643,11 +724,13 @@ function PermissionsEditor({
 	selectedPermissions,
 	onTogglePermission,
 	onToggleCategory,
+	templateBaseline,
 }: {
 	groupedPermissions: Record<string, PermissionWithDescription[]>;
 	selectedPermissions: string[];
 	onTogglePermission: (perm: string) => void;
 	onToggleCategory: (category: string) => void;
+	templateBaseline?: string[] | null;
 }) {
 	const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
 
@@ -711,9 +794,25 @@ function PermissionsEditor({
 					const stats = getCategoryStats(category);
 					const isExpanded = expandedCategories.includes(category);
 					const perms = groupedPermissions[category] || [];
+					const categoryExceedsTemplate = Boolean(
+						templateBaseline &&
+							templateBaseline.length > 0 &&
+							perms
+								.filter((p) => selectedPermissions.includes(p.value))
+								.some((p) => !templateBaseline.includes(p.value))
+					);
 
 					return (
 						<div key={category} className="rounded-lg border border-border/60 overflow-hidden">
+							{categoryExceedsTemplate && (
+								<div
+									data-testid={`exceeds-warning-${category}`}
+									className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 border-b border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-medium"
+								>
+									<AlertTriangle className="h-3 w-3 shrink-0" aria-hidden="true" />
+									<span>This exceeds the recommended template</span>
+								</div>
+							)}
 							<div className="group/category-header flex items-center justify-between px-3 py-2.5 transition-colors hover:bg-accent hover:text-accent-foreground focus-within:bg-accent focus-within:text-accent-foreground">
 								<Button
 									type="button"
@@ -727,6 +826,15 @@ function PermissionsEditor({
 										aria-hidden="true"
 									/>
 									<span className="font-medium text-sm">{config.label}</span>
+									{categoryExceedsTemplate && (
+										<span
+											data-testid={`category-warning-chip-${category}`}
+											className="hidden sm:inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-medium"
+										>
+											<AlertTriangle className="h-2.5 w-2.5 shrink-0" aria-hidden="true" />
+											Exceeds template
+										</span>
+									)}
 									<span className="text-[11px] text-muted-foreground tabular-nums">
 										{stats.selected}/{stats.total}
 									</span>
@@ -814,17 +922,28 @@ function CreateRoleDialog({
 	onOpenChange,
 	groupedPermissions,
 	onCreateRole,
+	cloneRole,
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	groupedPermissions: Record<string, PermissionWithDescription[]>;
 	onCreateRole: (data: CreateRoleRequest["data"]) => Promise<Role>;
+	cloneRole?: Role | null;
 }) {
 	const [creating, setCreating] = useState(false);
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
 	const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
 	const [isDefault, setIsDefault] = useState(false);
+
+	useEffect(() => {
+		if (cloneRole) {
+			setName(`${cloneRole.name} (Copy)`);
+			setDescription(cloneRole.description || "");
+			setSelectedPermissions([...cloneRole.permissions]);
+			setIsDefault(false);
+		}
+	}, [cloneRole]);
 
 	const handleClose = () => {
 		onOpenChange(false);

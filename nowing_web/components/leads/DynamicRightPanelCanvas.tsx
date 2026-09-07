@@ -4,14 +4,17 @@ import { useAtom, useAtomValue } from "jotai";
 import {
 	Activity,
 	ChevronDown,
+	Compass,
 	PanelLeftOpen,
+	ShieldCheck,
 	Sparkles,
 	Table as TableIcon,
 	Zap,
 } from "lucide-react";
 import type React from "react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
+	activeCampaignPlanAtom,
 	type CanvasMode,
 	isLeftPanelCollapsedAtom,
 	isMatrixFullscreenAtom,
@@ -23,9 +26,11 @@ import type { Lead } from "@/contracts/types/leads.types";
 import { cn } from "@/lib/utils";
 import { MissionControlWidget } from "./MissionControlWidget";
 import { NowingLeadMatrix } from "./NowingLeadMatrix";
+import { PlanSummaryCard } from "./PlanSummaryCard";
 import { AutomationBuilderPanel } from "./panels/AutomationBuilderPanel";
 import { ResearchStudioPanel } from "./panels/ResearchStudioPanel";
 import { ScraperPlatformMonitorPanel } from "./panels/ScraperPlatformMonitorPanel";
+import { SourceStatusPanel } from "./panels/SourceStatusPanel";
 import type { ThreadParsedContext } from "./thread-intent-detector";
 
 export type { CanvasMode };
@@ -62,6 +67,7 @@ const VIEW_MODES: Array<{
 	icon: React.ComponentType<{ className?: string }>;
 }> = [
 	{ id: "leads", label: "Leads Matrix", icon: TableIcon },
+	{ id: "plan", label: "Pre-Flight Plan", icon: Compass },
 	{ id: "research", label: "Research Studio", icon: Sparkles },
 	{ id: "automations", label: "Automation Flow", icon: Zap },
 	{ id: "scrapers", label: "Scraper Health", icon: Activity },
@@ -69,8 +75,10 @@ const VIEW_MODES: Array<{
 
 export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (props) => {
 	const [threadModesMap, setThreadModesMap] = useAtom(threadCanvasModeMapAtom);
+	const [activePlan, setActivePlan] = useAtom(activeCampaignPlanAtom);
 	const [isFullscreen] = useAtom(isMatrixFullscreenAtom);
 	const { data: currentUser } = useAtomValue(currentUserAtom);
+	const [scraperSubTab, setScraperSubTab] = useState<"sources" | "accounts">("sources");
 
 	const creditsCount = useMemo(() => {
 		if (!currentUser) return 500;
@@ -194,6 +202,22 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 						</>
 					)}
 
+					{/* Mode: Pre-Flight Plan Tabs */}
+					{activeMode === "plan" && (
+						<button
+							type="button"
+							className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-background text-foreground shadow-xs border border-border/80"
+						>
+							<Compass
+								className="w-3 h-3 text-emerald-600 dark:text-emerald-400"
+								aria-hidden="true"
+							/>
+							<span className="truncate max-w-[180px]">
+								{activePlan ? `Kế hoạch: ${activePlan.campaign_name}` : "Pre-Flight Lead Plan"}
+							</span>
+						</button>
+					)}
+
 					{/* Mode: Research Report Tabs */}
 					{activeMode === "research" && (
 						<button
@@ -225,18 +249,34 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 
 					{/* Mode: Scrapers Tabs */}
 					{activeMode === "scrapers" && (
-						<button
-							type="button"
-							className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-background text-foreground shadow-xs border border-border/80"
-						>
-							<Activity
-								className="w-3 h-3 text-indigo-600 dark:text-indigo-400"
-								aria-hidden="true"
-							/>
-							<span className="truncate max-w-[180px]">
-								Trạng thái Scraper &amp; Phone Waterfall
-							</span>
-						</button>
+						<div className="inline-flex items-center gap-1 bg-muted/60 p-0.5 rounded-lg border border-border/60">
+							<button
+								type="button"
+								onClick={() => setScraperSubTab("sources")}
+								className={cn(
+									"inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold transition-all cursor-pointer",
+									scraperSubTab === "sources"
+										? "bg-background text-foreground shadow-xs border border-border/80"
+										: "text-muted-foreground hover:text-foreground"
+								)}
+							>
+								<Activity className="w-3 h-3 text-emerald-500" aria-hidden="true" />
+								<span>Độ Phủ Nguồn</span>
+							</button>
+							<button
+								type="button"
+								onClick={() => setScraperSubTab("accounts")}
+								className={cn(
+									"inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold transition-all cursor-pointer",
+									scraperSubTab === "accounts"
+										? "bg-background text-foreground shadow-xs border border-border/80"
+										: "text-muted-foreground hover:text-foreground"
+								)}
+							>
+								<ShieldCheck className="w-3 h-3 text-indigo-500" aria-hidden="true" />
+								<span>Tài khoản Scraper</span>
+							</button>
+						</div>
 					)}
 				</div>
 
@@ -326,9 +366,33 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 					/>
 				)}
 
-				{activeMode === "scrapers" && (
-					<ScraperPlatformMonitorPanel workspaceId={props.workspaceId} />
-				)}
+				{activeMode === "scrapers" &&
+					(scraperSubTab === "sources" ? (
+						<SourceStatusPanel
+							workspaceId={props.workspaceId}
+							onOpenPlanBuilder={props.onOpenReverseIcp}
+						/>
+					) : (
+						<ScraperPlatformMonitorPanel workspaceId={props.workspaceId} />
+					))}
+
+				{activeMode === "plan" &&
+					(activePlan ? (
+						<div className="p-4 h-full overflow-y-auto">
+							<PlanSummaryCard
+								plan={activePlan}
+								inRightCanvas={true}
+								onApplyPlan={(applied) => {
+									setActivePlan(applied);
+								}}
+							/>
+						</div>
+					) : (
+						<SourceStatusPanel
+							workspaceId={props.workspaceId}
+							onOpenPlanBuilder={props.onOpenReverseIcp}
+						/>
+					))}
 			</main>
 		</div>
 	);

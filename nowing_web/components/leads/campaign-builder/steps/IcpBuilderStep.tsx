@@ -178,7 +178,9 @@ export function IcpBuilderStep({
 							<div className="mt-2">
 								<LocationSelector
 									className="bg-zinc-950/70 border-zinc-800"
+									value={builder.locationProfile ?? undefined}
 									onChange={(profile: LocationProfile) => {
+										builder.setLocationProfile(profile);
 										if (
 											profile.location_text &&
 											!builder.locations.includes(profile.location_text)

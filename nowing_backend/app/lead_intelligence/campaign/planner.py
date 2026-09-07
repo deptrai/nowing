@@ -7,7 +7,12 @@ from typing import Any
 
 from app.lead_intelligence.adapters.base import LeadSourceCategory
 from app.lead_intelligence.adapters.registry import LeadSourceAdapterRegistry
-from app.lead_intelligence.campaign.schemas import CampaignSpec, SubTaskPlan
+from app.lead_intelligence.campaign.schemas import (
+    CampaignPlanResponse,
+    CampaignSpec,
+    SourcePlanAllocation,
+    SubTaskPlan,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +104,122 @@ class LeadGenPlanner:
         # The third value is the warnings list; ignored when not unpacked.
         return subtasks, expected_sources
 
+    def _map_coverage_quality(self, score: float) -> str:
+        """Map a 0.0-1.0 location coverage score to a discrete quality tier."""
+        if score >= 0.9:
+            return "high"
+        if score >= 0.6:
+            return "medium"
+        if score >= 0.3:
+            return "low"
+        return "none"
+
+    def _build_source_allocations(
+        self, spec: CampaignSpec, resolved_adapters: list[Any]
+    ) -> list[SourcePlanAllocation]:
+        """Build pre-flight source allocations with coverage metadata."""
+        budget_map: dict[str, int] = {}
+        priority_map: dict[str, int] = {}
+        for b in spec.source_budgets:
+            src_k = b.source_name.lower().strip()
+            budget_map[src_k] = b.max_leads
+            priority_map[src_k] = b.priority
+
+        allocations: list[SourcePlanAllocation] = []
+        for adapter in resolved_adapters:
+            src_name = adapter.source_name
+            src_key = src_name.lower().strip()
+
+            coverage_score = self.registry.calculate_location_coverage_score(
+                adapter, spec.location_profile
+            )
+            coverage_quality = self._map_coverage_quality(coverage_score)
+
+            status: str = "ready"
+            degraded_reason: str | None = None
+            if coverage_quality in ("low", "none"):
+                status = "degraded"
+                degraded_reason = (
+                    f"Location coverage for {src_name} is {coverage_quality} "
+                    f"for the targeted province/districts."
+                )
+            elif getattr(adapter, "last_execution_status", "ok") != "ok":
+                status = "degraded"
+                degraded_reason = (
+                    f"Adapter {src_name} reported last execution status: "
+                    f"{adapter.last_execution_status}"
+                )
+
+            supported_provinces = list(getattr(adapter, "supported_provinces", ["*"]) or ["*"])
+
+            allocations.append(
+                SourcePlanAllocation(
+                    source_name=src_name,
+                    category=adapter.category.value,
+                    allocated_limit=budget_map.get(src_key, min(50, spec.max_total_leads)),
+                    priority=priority_map.get(src_key, 1),
+                    location_coverage_quality=coverage_quality,
+                    location_coverage_score=round(coverage_score, 4),
+                    supported_provinces=supported_provinces,
+                    status=status,
+                    degraded_reason=degraded_reason,
+                )
+            )
+
+        return allocations
+
+    def _estimate_reachable_leads(
+        self, spec: CampaignSpec, allocations: list[SourcePlanAllocation]
+    ) -> int:
+        """Estimate reachable leads as the sum of allocated limits."""
+        if not allocations:
+            return 0
+        return min(sum(a.allocated_limit for a in allocations), spec.max_total_leads)
+
+    def _estimate_cost(self, spec: CampaignSpec) -> tuple[int, int]:
+        """Return (cost_vnd, cost_micros) for the campaign."""
+        # FR-69: base lead 1,500 VND; verified unlock 5,000 VND.
+        auto_unlock = (
+            spec.source_budgets
+            and any(getattr(b, "auto_unlock", False) for b in spec.source_budgets)
+        )
+        cost_per_lead = 5000 if auto_unlock else 1500
+        cost_vnd = spec.max_total_leads * cost_per_lead
+        cost_micros = cost_vnd * 40
+        return cost_vnd, cost_micros
+
+    def create_preflight_plan(self, spec: CampaignSpec) -> CampaignPlanResponse:
+        """Build an enriched CampaignPlanResponse without mutating plan_from_campaign."""
+        subtasks, expected_sources = self.plan_from_campaign(spec)
+
+        resolved_adapters, location_fallback = self.registry.resolve_adapters_for_campaign(spec)
+
+        warnings: list[str] = []
+        if location_fallback:
+            warning_msg = (
+                f"No adapter has explicit coverage for location "
+                f"{spec.location_profile.province_code if spec.location_profile else ''}; "
+                "falling back to keyword-based routing."
+            )
+            warnings.append(warning_msg)
+
+        source_allocations = self._build_source_allocations(spec, resolved_adapters)
+        estimated_reachable_leads = self._estimate_reachable_leads(spec, source_allocations)
+        estimated_cost_vnd, estimated_cost_micros = self._estimate_cost(spec)
+
+        return CampaignPlanResponse(
+            campaign_name=spec.name,
+            workspace_id=spec.workspace_id,
+            total_planned_sources=len(expected_sources),
+            expected_sources=expected_sources,
+            subtasks=subtasks,
+            source_allocations=source_allocations,
+            estimated_reachable_leads=estimated_reachable_leads,
+            estimated_cost_micros=estimated_cost_micros,
+            estimated_cost_vnd=estimated_cost_vnd,
+            warnings=warnings,
+        )
+
     def _build_query_for_adapter(
         self, spec: CampaignSpec, category: LeadSourceCategory
     ) -> str:
@@ -129,3 +250,71 @@ class LeadGenPlanner:
         if category == LeadSourceCategory.ENTERPRISE:
             return "Doanh nghiệp đấu thầu"
         return "Tìm kiếm doanh nghiệp"
+
+    @staticmethod
+    def diagnose_zero_leads_cause(
+        spec: CampaignSpec,
+        adapter_results: list[dict[str, Any]] | None = None,
+        status: str | None = None,
+    ) -> dict[str, Any]:
+        """Return an actionable diagnostic when a smoke test produces zero leads.
+
+        ``adapter_results`` is a list of dicts like {"source_name": str, "count": int,
+        "degraded_reason": str | None} used to disambiguate source-level failures.
+        """
+        reason = "NO_DATA_IN_LOCATION"
+        recovery: list[str] = []
+
+        if spec.location_profile is not None:
+            province = getattr(spec.location_profile, "province_name", "") or ""
+            district_codes = list(
+                getattr(spec.location_profile, "district_codes", []) or []
+            )
+            ward_names = list(
+                getattr(spec.location_profile, "ward_names", []) or []
+            )
+            if district_codes:
+                recovery.append(f"Mở rộng ra toàn tỉnh {province}")
+            if ward_names:
+                recovery.append("Bỏ lọc phường/xã")
+
+        narrow = False
+        if spec.icp_criteria:
+            narrow = (
+                spec.icp_criteria.min_fit_score > 75.0
+                or bool(spec.icp_criteria.negative_keywords)
+                or bool(spec.icp_criteria.target_keywords)
+            )
+        if narrow:
+            reason = "FILTERS_TOO_NARROW"
+            recovery.append("Giảm ngưỡng lọc tương đồng")
+
+        has_degraded = False
+        degraded_names: list[str] = []
+        if adapter_results:
+            for ar in adapter_results:
+                if ar.get("degraded_reason") or ar.get("count", 1) == 0:
+                    has_degraded = True
+                    src_name = ar.get("source_name", "nguồn") or "nguồn"
+                    degraded_names.append(src_name)
+
+        if status == "degraded" or (status is None and has_degraded):
+            reason = "SOURCE_DEGRADED"
+            if degraded_names:
+                for d in degraded_names:
+                    recovery.append(f"Bật thêm nguồn toàn quốc {d}")
+            else:
+                recovery.append("Bật thêm nguồn toàn quốc")
+
+        if not recovery and spec.location_profile is not None:
+            province = getattr(spec.location_profile, "province_name", "") or ""
+            if province:
+                recovery.append(f"Mở rộng ra toàn tỉnh {province}")
+            else:
+                recovery.append("Mở rộng ra toàn tỉnh/Thành phố")
+
+        return {
+            "reason": reason,
+            "recovery_actions": list(dict.fromkeys(recovery)),
+            "degraded_sources": list(dict.fromkeys(degraded_names)),
+        }

@@ -2,6 +2,8 @@
 
 import { Calendar, ChevronLeft, Loader2, Play, Rocket } from "lucide-react";
 
+import { LocationSelector } from "@/components/leads/LocationSelector";
+import { PlanSummaryCard } from "@/components/leads/PlanSummaryCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +14,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -137,6 +140,30 @@ export function LaunchScheduleStep({ builder }: { builder: UseCampaignBuilderRet
 										</option>
 									))}
 								</select>
+							</div>
+
+							<div className="pt-2">
+								<PlanSummaryCard
+									plan={builder.activePlan}
+									icpConfig={
+										builder.locationProfile
+											? {
+													...builder.buildPlanSpec().icp_config,
+													location_profile: builder.locationProfile,
+												}
+											: builder.buildPlanSpec().icp_config
+									}
+									isLoading={builder.isPlanning}
+									onRequestPlan={builder.handleGetPlan}
+									onSmokeTest={() => builder.handleSmokeTest()}
+									onApplyPlan={() => builder.handleLaunchCampaign()}
+									smokeTestResult={builder.smokeTestResult}
+									previousLocationProfile={builder.previousLocationProfile}
+									onRefineLocation={builder.handleRefineLocation}
+									onConfirmFullRun={() => {
+										builder.handleLaunchCampaign();
+									}}
+								/>
 							</div>
 						</CardContent>
 					</Card>
@@ -264,6 +291,26 @@ export function LaunchScheduleStep({ builder }: { builder: UseCampaignBuilderRet
 					Quay lại Bước 2
 				</Button>
 			</div>
+
+			{/* Location Refinement Modal (Story 26.29 - AC-2, AC-3) */}
+			<Dialog open={builder.locationRefineOpen} onOpenChange={builder.setLocationRefineOpen}>
+				<DialogContent className="sm:max-w-md bg-zinc-950 border-zinc-800">
+					<DialogHeader>
+						<DialogTitle className="text-sm font-semibold text-zinc-100">
+							Chỉnh sửa vị trí địa bàn
+						</DialogTitle>
+					</DialogHeader>
+					<div className="py-2">
+						<LocationSelector
+							value={builder.locationProfile}
+							onChange={(profile) => {
+								builder.setLocationProfile(profile);
+								builder.setLocationRefineOpen(false);
+							}}
+						/>
+					</div>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }

@@ -1,16 +1,26 @@
 "use client";
 
+import { useAtom } from "jotai";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import {
+	activeCampaignPlanAtom,
+	activePlanSpecAtom,
+	activeSmokeTestResultAtom,
+	previousLocationProfileAtom,
+	smokeTestHistoryAtom,
+} from "@/atoms/leads/leads-canvas.atoms";
 
 import type {
 	CampaignCreateInput,
 	CampaignIntent,
+	CampaignPlanResponse,
 	IcpConfig,
 	IcpVerticalTemplate,
 	LaunchConfig,
 	SourceBudgetConfig,
 } from "@/contracts/types/campaign.types";
+import type { LocationProfile } from "@/contracts/types/leads.types";
 import { leadsApiService } from "@/lib/apis/leads-api.service";
 
 import { VERTICAL_PRESETS } from "./constants";
@@ -60,6 +70,22 @@ export function useCampaignBuilder({
 	const [excludeDnc, setExcludeDnc] = useState<boolean>(true);
 	const [autoUnlockPhones, setAutoUnlockPhones] = useState<boolean>(false);
 	const [maxDailySpend] = useState<number>(500_000);
+
+	const [locationProfile, setLocationProfile] = useState<LocationProfile | null>(null);
+	const [activePlan, setActivePlan] = useState<CampaignPlanResponse | null>(null);
+	const [isPlanning, setIsPlanning] = useState(false);
+
+	// Right-Canvas mirror sync (Story 26.27)
+	const [, setActivePlanSpec] = useAtom(activePlanSpecAtom);
+	const [, setActiveCampaignPlan] = useAtom(activeCampaignPlanAtom);
+
+	// Smoke test feedback loop state (Story 26.29)
+	const [smokeTestHistory, setSmokeTestHistory] = useAtom(smokeTestHistoryAtom);
+	const [activeSmokeTestResult, setActiveSmokeTestResult] = useAtom(activeSmokeTestResultAtom);
+	const [previousLocationProfile, setPreviousLocationProfile] = useAtom(
+		previousLocationProfileAtom
+	);
+	const [locationRefineOpen, setLocationRefineOpen] = useState(false);
 
 	const [scheduleType, setScheduleType] = useState<LaunchConfig["schedule_type"]>("once");
 	const [cronExp, setCronExp] = useState("0 8 * * 1-5");
@@ -141,6 +167,167 @@ export function useCampaignBuilder({
 		}
 	};
 
+	const buildPlanSpec = (): CampaignCreateInput => {
+		const icpConfig: IcpConfig = {
+			template: selectedTemplate,
+			target_industries: targetIndustries,
+			locations,
+			company_size_range: companySize,
+			tech_stack: techStack,
+			intents: selectedIntents,
+			negative_keywords: negativeKeywords,
+			reverse_icp_url: reverseIcpUrl || null,
+			custom_instructions: customInstructions || null,
+		};
+
+		const sourceBudgetConfig: SourceBudgetConfig = {
+			sources: selectedSources,
+			expected_leads_target: expectedLeadsTarget,
+			max_daily_spend_vnd: maxDailySpend,
+			min_fit_score: minFitScore,
+			min_intent_score: minIntentScore,
+			max_contacts_per_lead: maxContactsPerLead,
+			exclude_dnc: excludeDnc,
+			auto_unlock_verified_phones: autoUnlockPhones,
+		};
+
+		const launchConfig: LaunchConfig = {
+			schedule_type: scheduleType,
+			cron_expression: scheduleType === "recurring" ? cronExp : null,
+			auto_start: autoStart,
+			export_destination: exportDestination,
+			notification_webhook: null,
+		};
+
+		return {
+			name: campaignName,
+			description: campaignDesc || null,
+			workspace_id: Number(workspaceId),
+			icp_config: {
+				...icpConfig,
+				location_profile: locationProfile || null,
+			},
+			source_budget_config: sourceBudgetConfig,
+			launch_config: launchConfig,
+		};
+	};
+
+	const handleGetPlan = async () => {
+		if (selectedSources.length === 0) {
+			toast.error("Phải chọn ít nhất 1 nguồn dữ liệu");
+			return;
+		}
+		try {
+			setIsPlanning(true);
+			const spec = buildPlanSpec();
+			setActivePlanSpec(spec);
+			const plan = await leadsApiService.planCampaign(workspaceId, spec);
+			setActivePlan(plan);
+			setActiveCampaignPlan(plan);
+			toast.success("Đã tạo bản tổng quan kế hoạch (Pre-Flight Plan)");
+		} catch (_err) {
+			toast.error("Không thể tạo kế hoạch. Vui lòng kiểm tra cấu hình nguồn và địa bàn.");
+		} finally {
+			setIsPlanning(false);
+		}
+	};
+
+	const handleSmokeTest = async () => {
+		if (selectedSources.length === 0) {
+			toast.error("Phải chọn ít nhất 1 nguồn dữ liệu");
+			return;
+		}
+		try {
+			setIsPlanning(true);
+			const spec = buildPlanSpec();
+			spec.source_budget_config.expected_leads_target = 5;
+			spec.source_budget_config.max_contacts_per_lead = 1;
+			// Keep the location profile from the PREVIOUS run so the diff card
+			// compares against the last smoke test, not the current one.
+			const priorRunProfile = activeSmokeTestResult?.location_profile ?? locationProfile;
+			const currentRunProfile = locationProfile;
+
+			const result = await leadsApiService.executeCampaign(workspaceId, spec, false);
+			const run = {
+				run_id: crypto.randomUUID(),
+				executed_at: new Date().toISOString(),
+				result,
+				location_profile: currentRunProfile,
+				spec,
+			};
+			setActiveSmokeTestResult(run);
+			setSmokeTestHistory((prev) => [...prev, run]);
+			setPreviousLocationProfile(priorRunProfile);
+
+			if (!activePlan) {
+				return;
+			}
+			const smokePlan: CampaignPlanResponse = {
+				...activePlan,
+				estimated_reachable_leads: result.total_discovered,
+				estimated_cost_vnd: result.total_discovered * (autoUnlockPhones ? 5000 : 1500),
+				estimated_cost_micros: result.total_discovered * (autoUnlockPhones ? 5000 : 1500) * 40,
+			};
+			setActivePlan(smokePlan);
+			setActiveCampaignPlan(smokePlan);
+			toast.success(`Chạy thử xong: tìm thấy ${result.total_discovered} lead`);
+		} catch (_err) {
+			toast.error("Không thể chạy thử. Vui lòng kiểm tra cấu hình.");
+		} finally {
+			setIsPlanning(false);
+		}
+	};
+
+	const handleRefineLocation = (action: "narrow" | "expand" | "switch-source" | "custom") => {
+		if (action === "custom" || action === "narrow" || action === "expand") {
+			setLocationRefineOpen(true);
+		}
+		if (action === "switch-source") {
+			setCurrentStep(2);
+		}
+		if (action === "expand" && locationProfile) {
+			// Quick expand: drop district/ward filters to search the entire province
+			setLocationProfile({
+				...locationProfile,
+				district_codes: [],
+				district_names: [],
+				ward_codes: [],
+				ward_names: [],
+				location_text: locationProfile.province_name || locationProfile.province_code,
+			});
+		}
+	};
+
+	const handleLaunchCampaign = async () => {
+		if (selectedSources.length === 0) {
+			toast.error("Phải chọn ít nhất 1 nguồn dữ liệu");
+			return;
+		}
+		try {
+			setIsSubmitting(true);
+			const spec = buildPlanSpec();
+
+			// AC-5 dedup: exclude identities already returned by the approved smoke test
+			if (activeSmokeTestResult?.result?.leads?.length) {
+				spec.excluded_identities = activeSmokeTestResult.result.leads
+					.map((lead) => {
+						if (lead.phone) return lead.phone;
+						if (lead.domain) return lead.domain;
+						if (lead.email) return lead.email;
+						return undefined;
+					})
+					.filter((value): value is string => Boolean(value));
+			}
+
+			const result = await leadsApiService.executeCampaign(workspaceId, spec, true);
+			toast.success(`Đã chạy chiến dịch: tìm thấy ${result.total_discovered} lead`);
+		} catch (_err) {
+			toast.error("Không thể chạy chiến dịch. Vui lòng thử lại.");
+		} finally {
+			setIsSubmitting(false);
+		}
+	};
+
 	const handleAnalyzeReverseIcp = async () => {
 		if (!reverseIcpUrl) {
 			toast.error("Vui lòng nhập URL website đối thủ hoặc khách hàng mẫu");
@@ -194,44 +381,7 @@ export function useCampaignBuilder({
 
 		try {
 			setIsSubmitting(true);
-			const icpConfig: IcpConfig = {
-				template: selectedTemplate,
-				target_industries: targetIndustries,
-				locations,
-				company_size_range: companySize,
-				tech_stack: techStack,
-				intents: selectedIntents,
-				negative_keywords: negativeKeywords,
-				reverse_icp_url: reverseIcpUrl || null,
-				custom_instructions: customInstructions || null,
-			};
-
-			const sourceBudgetConfig: SourceBudgetConfig = {
-				sources: selectedSources,
-				expected_leads_target: expectedLeadsTarget,
-				max_daily_spend_vnd: maxDailySpend,
-				min_fit_score: minFitScore,
-				min_intent_score: minIntentScore,
-				max_contacts_per_lead: maxContactsPerLead,
-				exclude_dnc: excludeDnc,
-				auto_unlock_verified_phones: autoUnlockPhones,
-			};
-
-			const launchConfig: LaunchConfig = {
-				schedule_type: scheduleType,
-				cron_expression: scheduleType === "recurring" ? cronExp : null,
-				auto_start: autoStart,
-				export_destination: exportDestination,
-				notification_webhook: null,
-			};
-
-			const payload: CampaignCreateInput = {
-				name: campaignName,
-				description: campaignDesc,
-				icp_config: icpConfig,
-				source_budget_config: sourceBudgetConfig,
-				launch_config: launchConfig,
-			};
+			const payload = buildPlanSpec();
 
 			const created = await leadsApiService.createCampaign(workspaceId, payload);
 			if (created) {
@@ -277,6 +427,17 @@ export function useCampaignBuilder({
 		excludeDnc,
 		autoUnlockPhones,
 		maxDailySpend,
+
+		locationProfile,
+		activePlan,
+		isPlanning,
+
+		smokeTestResult: activeSmokeTestResult?.result ?? null,
+		smokeTestHistory,
+		activeSmokeTestResult,
+		locationRefineOpen,
+		previousLocationProfile,
+
 		scheduleType,
 		cronExp,
 		autoStart,
@@ -320,11 +481,22 @@ export function useCampaignBuilder({
 		setExcludeDnc,
 		setAutoUnlockPhones,
 
+		setLocationProfile,
+		setActivePlan,
+		setActivePlanSpec,
+		setActiveCampaignPlan,
+
 		setScheduleType,
 		setCronExp,
 		setExportDestination,
 
+		buildPlanSpec,
 		handleAnalyzeReverseIcp,
+		handleGetPlan,
+		handleSmokeTest,
+		handleRefineLocation,
+		handleLaunchCampaign,
 		handleSaveCampaign,
+		setLocationRefineOpen,
 	};
 }

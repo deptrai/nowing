@@ -22,6 +22,7 @@ from app.db import (
     MemoryType,
     MemoryVersion,
 )
+from app.services.memory.encryption import MemoryEncryptionService
 from app.services.memory.vector import (
     VectorValidationError,
     validate_embedding_vector,
@@ -60,6 +61,7 @@ class MemoryRepository:
         # dicts built while the ORM row is still loaded, so flushing after the
         # caller's commit never triggers async lazy-load on expired attributes.
         self._pending_memory_changed: list[tuple[int, dict[str, Any]]] = []
+        self._encryption = MemoryEncryptionService.from_env()
 
     async def _embed(
         self,
@@ -131,6 +133,10 @@ class MemoryRepository:
         existing = result.scalar_one_or_none()
         if existing is None:
             return None
+        if self._encryption.is_enabled():
+            # AC-28.2: decrypt existing ciphertext before comparing with the
+            # plaintext candidate; the dedup contract requires plaintext.
+            self._encryption.decrypt_memory(existing)
         if not content_match_required:
             return existing
         if existing.content.strip().lower() == content.strip().lower():
@@ -152,6 +158,18 @@ class MemoryRepository:
             .where(Memory.id == memory.id)
         )
         loaded = result.scalar_one_or_none()
+        if loaded is not None and self._encryption.is_enabled():
+            rotated = self._encryption.reencrypt_if_needed(loaded)
+            if rotated:
+                self.session.add(loaded)
+                await self.session.flush()
+            self._encryption.decrypt_memory(loaded)
+            for version in loaded.versions:
+                self._encryption.decrypt_memory_version(version)
+            # AC-28.2: detaching the decrypted row prevents a subsequent caller
+            # commit (e.g. batch extraction with commit=False) from flushing the
+            # mutated plaintext back over the ciphertext in PostgreSQL.
+            self.session.expunge(loaded)
         return loaded if loaded is not None else memory
 
     async def _persist(self, *, commit: bool) -> None:
@@ -391,6 +409,8 @@ class MemoryRepository:
                 if agent_id is not None:
                     existing.agent_id = agent_id
                 existing.updated_at = datetime.now(UTC)
+                if self._encryption.is_enabled():
+                    self._encryption.encrypt_memory(existing)
                 self.session.add(existing)
                 await self._persist(commit=commit)
                 self.session.expire(existing, ["versions"])
@@ -432,6 +452,8 @@ class MemoryRepository:
             client_id=client_id,
             agent_id=agent_id,
         )
+        if self._encryption.is_enabled():
+            self._encryption.encrypt_memory(memory)
         self.session.add(memory)
         await self._persist(commit=commit)
         self.session.expire(memory, ["versions"])
@@ -478,6 +500,16 @@ class MemoryRepository:
         if memory is None:
             return None
 
+        # Lazy key rotation and decryption for update path.
+        if self._encryption.is_enabled():
+            rotated = self._encryption.reencrypt_if_needed(memory)
+            if rotated:
+                # Persist the rotated ciphertext so the row is not left half-rotated.
+                self.session.add(memory)
+                await self.session.flush()
+            # Ensure content is plaintext before versioning/dedup.
+            self._encryption.decrypt_memory(memory)
+
         # AC-18.8: client_id and agent_id are immutable tenant attributes on
         # update.  Using the row's own scope for the GUC prevents a caller from
         # moving a memory across clients by passing a different client_id.
@@ -501,10 +533,20 @@ class MemoryRepository:
                 corrected_content=corrected_content,
                 corrected_by_id=corrected_by_id,
             )
+            if self._encryption.is_enabled():
+                # The version rows snapshot plaintext before/after; encrypt them
+                # with the same active key as the parent memory.
+                self._encryption.encrypt_memory_version(version)
             self.session.add(version)
 
         memory.content = corrected_content
         memory.updated_at = datetime.now(UTC)
+        # AC-28.2: populate ``source_input`` BEFORE encryption so PII leaf
+        # strings are encrypted before the row is written.
+        if source_input is not None and memory.source_input is None:
+            memory.source_input = source_input
+        if self._encryption.is_enabled():
+            self._encryption.encrypt_memory(memory)
 
         if source_type is not None:
             if isinstance(source_type, str):
@@ -525,8 +567,6 @@ class MemoryRepository:
         # or version rather than mutating the original recipe.
         if source_capability is not None and memory.source_capability is None:
             memory.source_capability = source_capability
-        if source_input is not None and memory.source_input is None:
-            memory.source_input = source_input
         if tags is not None:
             memory.tags = tags
         if confidence is not None:
@@ -576,7 +616,16 @@ class MemoryRepository:
             .options(selectinload(Memory.versions))
             .where(Memory.id == memory_id)
         )
-        return result.scalar_one_or_none()
+        memory = result.scalar_one_or_none()
+        if memory is not None and self._encryption.is_enabled():
+            rotated = self._encryption.reencrypt_if_needed(memory)
+            if rotated:
+                self.session.add(memory)
+                await self.session.flush()
+            self._encryption.decrypt_memory(memory)
+            for version in memory.versions:
+                self._encryption.decrypt_memory_version(version)
+        return memory
 
     async def list_memories(
         self,
@@ -626,7 +675,18 @@ class MemoryRepository:
             .order_by(Memory.created_at.desc(), Memory.id.desc())
             .limit(limit)
         )
-        return list(result.scalars().all())
+        memories = list(result.scalars().all())
+        if self._encryption.is_enabled():
+            for memory in memories:
+                rotated = self._encryption.reencrypt_if_needed(memory)
+                if rotated:
+                    self.session.add(memory)
+            await self.session.flush()
+            for memory in memories:
+                self._encryption.decrypt_memory(memory)
+                for version in memory.versions:
+                    self._encryption.decrypt_memory_version(version)
+        return memories
 
     async def delete_memory(self, memory_id: int, client_id: str | None = None) -> bool:
         # AC-18.8: load by id-token, then switch to the caller's tenant GUCs so
