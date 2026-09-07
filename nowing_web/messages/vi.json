@@ -1217,5 +1217,28 @@
 		"btn_start_reverse_icp": "Bắt đầu Khám phá Reverse-ICP",
 		"dnc_modal_title": "Quản lý Danh sách Không làm phiền (DNC)",
 		"dnc_modal_desc": "Ngăn chặn tiếp cận các số điện thoại, tên miền và mã số thuế nằm trong danh sách chặn."
+	},
+	"bulkOps": {
+		"title": "Thao tác Hàng loạt Quản trị",
+		"description": "Thực hiện an toàn các cập nhật hàng loạt đa tenant, dọn dẹp dữ liệu, gán vai trò và xoay vòng API key với mô phỏng dry-run.",
+		"select_action": "Chọn Thao tác Hàng loạt",
+		"operation_parameters": "Tham số Thao tác",
+		"target_filters": "Bộ lọc Mục tiêu",
+		"add_filter": "Thêm Điều kiện Lọc",
+		"idempotency_key": "Khóa Chống Trùng lặp (Idempotency Key)",
+		"dry_run_simulation": "Mô phỏng Thử nghiệm (Dry-Run)",
+		"run_simulation": "Chạy Mô phỏng",
+		"simulating": "Đang mô phỏng...",
+		"affected_count": "Số lượng Bị ảnh hưởng",
+		"execution_safety": "Độ An toàn Thực thi",
+		"warnings_conflicts": "Cảnh báo / Xung đột",
+		"safe_to_execute": "An toàn để Thực thi",
+		"execution_blocked": "Bị Chặn Thực thi",
+		"execute_operation": "Thực thi Thao tác",
+		"queuing_job": "Đang xếp hàng...",
+		"high_risk_badge": "Thao tác Rủi ro Cao",
+		"reauth_title": "Yêu cầu Xác thực Lại",
+		"cancel_job": "Hủy Tác vụ",
+		"job_status": "Trạng thái Tác vụ"
 	}
 }
