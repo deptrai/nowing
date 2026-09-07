@@ -120,6 +120,7 @@ from .luma_add_connector_route import router as luma_add_connector_router
 from .mcp_oauth_route import router as mcp_oauth_router
 from .meeting_minutes_routes import router as meeting_minutes_router
 from .memories_routes import router as memories_router
+from .memory_browser_routes import router as memory_browser_router
 from .memory_routes import router as memory_router
 from .model_connections_routes import router as model_connections_router
 from .model_list_routes import router as model_list_router
@@ -297,6 +298,7 @@ router.include_router(
 )  # Research-thread continuity context (4.6)
 router.include_router(memory_router)  # User personal memory (memory.md style)
 router.include_router(team_memory_router)  # Workspace team memory
+router.include_router(memory_browser_router)  # Memory browser & review flag
 router.include_router(automations_router)  # Automations CRUD + run history
 router.include_router(file_storage_router)  # Original file metadata + download
 router.include_router(extract_entities_router)  # Test entity extraction (AC-1 / AD-107)
