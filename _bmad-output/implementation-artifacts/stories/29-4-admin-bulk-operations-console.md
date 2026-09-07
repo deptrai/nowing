@@ -40,8 +40,9 @@ so that **I can respond to abuse, compliance requests, and tenant-wide changes s
 **Then**:
 1. The UI uses a structured filter builder (not free-form NLP) against an allow-list of fields and operators.
 2. Filter target table depends on action (e.g. `workspaces` for `archive_inactive_workspaces`, `workspace_memberships` for `revoke_membership`, `memories` for `delete_source_type_memories`).
-3. The backend validates all fields/operators against `BULK_FILTER_ALLOWLIST[action]` and rejects with `422` if disallowed.
-4. Dry-run preview returns exact `COUNT(*)` and paginated subject IDs without mutating data.
+3. `FilterSpec` schema is a list of clauses: `{"field": str, "operator": "eq|neq|gt|gte|lt|lte|in|not_in", "value": any}`.
+4. The backend validates all fields/operators against `BULK_FILTER_ALLOWLIST[action]` and rejects with `422` if disallowed.
+5. Dry-run preview returns exact `COUNT(*)` and paginated subject IDs without mutating data.
 
 ### AC-3 — Dry-Run & Execute with Idempotency (INV-29.2)
 **Given** the admin selects an action and completes dry-run,  
@@ -49,7 +50,7 @@ so that **I can respond to abuse, compliance requests, and tenant-wide changes s
 **Then**:
 1. Backend creates `bulk_op_job` row with `status=queued`, `action`, `filter` (JSONB), `actor_id`, `idempotency_key`, `request_hash` (SHA-256).
 2. Returns `202 Accepted` with `job_id`.
-3. Rejects duplicate `Idempotency-Key` with `409` unless the request hash matches (then returns existing job).
+3. Idempotency is enforced by a dedicated `idempotency_keys` table (`key`, `request_hash`, `response`, `expires_at`, TTL 24h) per INV-29.2; duplicate keys return `409` unless `request_hash` matches, in which case the existing job is returned.
 4. `Idempotency-Key` must be UUID v4, max 64 chars; missing or invalid returns `400`.
 
 ### AC-4 — Async Job Execution & Progress (FR-103, NFR-1)
@@ -73,6 +74,7 @@ so that **I can respond to abuse, compliance requests, and tenant-wide changes s
 1. UI requires password/MFA confirmation before submitting.
 2. Backend verifies the password/MFA token before enqueueing the job.
 3. Failure to confirm returns `403` without creating a `bulk_op_job`.
+4. v1 implementation: `rotate_api_keys` sets `Workspace.api_access_enabled = false` for matching workspaces (forces clients to re-enable and re-issue keys); full key revocation is deferred to a follow-up.
 
 ### AC-7 — UI Workflows (UX-DR-PRFAQ-5 BO-1..BO-6)
 **Given** the frontend,  **Then**:
@@ -93,10 +95,11 @@ so that **I can respond to abuse, compliance requests, and tenant-wide changes s
 - Idempotency table `bulk_op_jobs` already includes `idempotency_key` unique index; no separate `idempotency_keys` table needed for this story.
 
 ### Model Assumptions
-- `Workspace` table may need an `archived_at` / `is_active` column for `archive_inactive_workspaces`; if absent, the migration must add it.
-- `WorkspaceMembership` has `role_id`; `revoke_membership` can either delete row or set `archived_at` depending on existing convention.
-- `Memory` has `source_type` (MemorySourceType enum) and `workspace_id`; `delete_source_type_memories` uses `MemorySourceType` allow-list.
+- `Workspace` does NOT have `archived_at` / `is_active` columns — migration must add `archived_at TIMESTAMP NULL` (soft-archive) for `archive_inactive_workspaces`.
+- `WorkspaceMembership` has `role_id`; `revoke_membership` sets `status = 'REVOKED'` (existing `status` column) or deletes the row if convention requires hard delete.
+- `Memory` has `source_type` (MemorySourceType enum), `workspace_id`, `confidence` (Float), `archived_at`; `delete_source_type_memories` uses `MemorySourceType` allow-list.
 - API keys: `Workspace.api_access_enabled` can be toggled off for `rotate_api_keys` v1; full key rotation may be deferred.
+- `idempotency_keys` table is new per INV-29.2 (separate from `bulk_op_jobs`); `bulk_op_job.idempotency_key` references it logically but is not a strict FK.
 
 ### Permission Guard
 - Owner must hold both `Permission.SETTINGS_UPDATE` and `Permission.MEMBERS_REMOVE`; if custom roles (29.1) are present, resolve role permissions via `membership.role.permissions`.
@@ -115,8 +118,8 @@ so that **I can respond to abuse, compliance requests, and tenant-wide changes s
 - Optional Playwright E2E in `nowing_web/tests/admin/bulk-ops.spec.ts`.
 
 ### Files to Touch
-- `nowing_backend/app/models/bulk_ops.py` (new)
-- `nowing_backend/alembic/versions/<new>_add_bulk_op_job_and_error_tables.py` (new)
+- `nowing_backend/app/models/admin_ops.py` (new) — `BulkAction`, `BulkOpJob`, `BulkOpError`, `IdempotencyKey` models
+- `nowing_backend/alembic/versions/<new>_add_bulk_op_job_and_error_tables.py` (new) — add `archived_at` to `workspaces`, create `bulk_op_jobs`, `bulk_op_errors`, `idempotency_keys`
 - `nowing_backend/app/services/bulk_ops_service.py` (new)
 - `nowing_backend/app/tasks/celery_tasks/bulk_op_tasks.py` (new)
 - `nowing_backend/app/schemas/bulk_ops.py` (new)

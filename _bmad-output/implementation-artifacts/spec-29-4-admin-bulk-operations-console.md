@@ -25,12 +25,13 @@ context: [
 - `BulkAction` enum là allow-list duy nhất: `archive_inactive_workspaces`, `rotate_api_keys`, `assign_role`, `delete_source_type_memories`, `apply_tier`, `revoke_membership`.
 - Structured filter builder dùng allow-list field/operator theo từng action; KHÔNG cho phép free-form text query.
 - Dry-run bắt buộc trước khi execute; nút Execute disabled cho đến khi dry-run xong.
-- Mọi execute request phải gửi `Idempotency-Key` (UUID v4); backend lưu `idempotency_key` + `request_hash` (SHA-256) vào `bulk_op_job` và từ chối duplicate key trừ khi request hash khớp.
+- Mọi execute request phải gửi `Idempotency-Key` (UUID v4); backend lưu `key` + `request_hash` (SHA-256) vào `idempotency_keys` table (TTL 24h) và từ chối duplicate key trừ khi request hash khớp.
 - Job chạy async qua Celery task `bulk_op_executor`; poll `GET /admin/saas/bulk-ops/{job_id}` để xem progress.
 - `rotate_api_keys` là high-risk: bắt buộc password/MFA confirmation trước khi execute.
 - Owner chỉ được execute trong workspace của mình (`workspace_id` filter bắt buộc trong filter spec) và phải có `Permission.SETTINGS_UPDATE` + `Permission.MEMBERS_REMOVE`; superadmin có thể cross-workspace.
 - Mỗi subject thay đổi phải ghi `AuditEvent` với `actor_id`, `subject_type`, `subject_id`, `diff_payload`, `idempotency_key`.
 - `bulk_op_errors` lưu `job_id`, `subject_type`, `subject_id`, `error_message`, `retryable`; UI hiển thị link download.
+- `Workspace` chưa có `archived_at` — migration phải thêm cột này cho `archive_inactive_workspaces`.
 - Chạy `alembic revision` cho schema mới; KHÔNG sửa migration cũ.
 - Tái sử dụng `require_superuser()` cho admin routes, `check_permission` cho owner routes.
 
@@ -88,8 +89,8 @@ context: [
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `nowing_backend/app/models/bulk_ops.py` — tạo `BulkAction` enum, `BulkOpJob` (id, actor_id, action, filter, status, affected_count, processed_count, error_count, started_at, finished_at, idempotency_key, request_hash), `BulkOpError` (job_id, subject_type, subject_id, error_message, retryable).
-- [ ] `nowing_backend/alembic/versions/` — migration thêm `bulk_op_jobs` + `bulk_op_errors` với indexes (`job_id`, `status`, `actor_id`, `idempotency_key` unique).
+- [ ] `nowing_backend/app/models/admin_ops.py` (new) — `BulkAction` enum, `BulkOpJob`, `BulkOpError`, `IdempotencyKey` models; hoặc thêm vào `app/models/workspaces.py` nếu admin domain chưa có file riêng.
+- [ ] `nowing_backend/alembic/versions/` — migration thêm `archived_at` vào `workspaces`, tạo `bulk_op_jobs` + `bulk_op_errors` + `idempotency_keys` với indexes (`job_id`, `status`, `actor_id`, `idempotency_key` unique, `idempotency_keys.key` unique, `expires_at`).
 - [ ] `nowing_backend/app/services/bulk_ops_service.py` — implement `validate_filter`, `dry_run`, `execute`, `get_job`, `cancel_job`, `check_permissions` (superadmin vs owner scope), `audit_per_subject`, `record_errors`.
 - [ ] `nowing_backend/app/tasks/celery_tasks/bulk_op_tasks.py` — Celery task `bulk_op_executor` nhận `job_id`, iterate subjects, update progress, ghi audit + errors.
 - [ ] `nowing_backend/app/routes/admin_saas_routes.py` hoặc `admin_bulk_ops_routes.py` — endpoints `POST /admin/saas/bulk-ops/dry-run`, `POST /admin/saas/bulk-ops`, `GET /admin/saas/bulk-ops/{job_id}`, `GET /admin/saas/bulk-ops/{job_id}/errors`, `POST /admin/saas/bulk-ops/{job_id}/cancel` (cancelable set).
@@ -119,12 +120,13 @@ context: [
 
 - `bulk_op_job.status`: `queued`, `running`, `completed`, `failed`, `cancelled`, `partial`.
 - `bulk_op_job.filter` lưu JSONB theo `FilterSpec` (allow-list field/operator per action).
-- `idempotency_key` là UUID v4 client-generated, max 64 chars; `request_hash` = SHA-256 của body.
+- `FilterSpec` schema: list of clauses `{"field": str, "operator": "eq|neq|gt|gte|lt|lte|in|not_in", "value": any}`.
+- `idempotency_key` là UUID v4 client-generated, max 64 chars; `request_hash` = SHA-256 của body; lưu vào `idempotency_keys` table với TTL 24h.
 - Cancelable actions: `archive_inactive_workspaces`, `delete_source_type_memories`, `revoke_membership` (nếu đang `queued` hoặc `running`); `rotate_api_keys`, `apply_tier`, `assign_role` không cancel được sau khi `running`.
-- `rotate_api_keys` cần `password` hoặc `mfa_token` trong request body; backend verify trước khi enqueue.
+- `rotate_api_keys` cần `password` hoặc `mfa_token` trong request body; backend verify trước khi enqueue; v1 chỉ set `Workspace.api_access_enabled = false`.
 - Owner scope: `workspace_id` trong filter bị force bằng path param; không cho phép override.
 - `delete_source_type_memories` dùng `source_type` từ `MemorySourceType` enum; hard delete theo `workspace_id` + `source_type`.
-- `archive_inactive_workspaces` set `archived_at` hoặc `is_active=false` tùy model hiện có; nếu `Workspace` chưa có `archived_at`, thêm cột trong migration.
+- `archive_inactive_workspaces` set `Workspace.archived_at = now` (cột `archived_at` phải được migration thêm trước đó).
 - `apply_tier` gọi `workspace_limit_service.create_subscription_change` với `immediate=true` nếu không conflict; `assign_role` gọi role assignment service từ 29.1.
 - Progress update: task ghi `processed_count` sau mỗi batch (size 100), `error_count` vào `bulk_op_errors`.
 - Audit: mỗi subject → `AuditEvent(action=bulk_op.{action}.{subject_type}, actor_id, subject_id, diff_payload, idempotency_key)`; cuối job → summary `AuditEvent(action=bulk_op.{action}.summary)`.
