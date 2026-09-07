@@ -9,7 +9,14 @@ from typing import Any, Sequence
 from sqlalchemy import Float, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db import Memory, MemoryRelation, MemorySourceType, MemoryVersion, ResearchThread
+from app.db import (
+    Memory,
+    MemoryRelation,
+    MemorySourceType,
+    MemoryVersion,
+    ResearchThread,
+    User,
+)
 from app.schemas.memory_browser import (
     MemoryBrowserCreator,
     MemoryBrowserDetailCitations,
@@ -80,7 +87,12 @@ class MemoryBrowserService:
 
         if keyword and keyword.strip():
             q = keyword.strip()
-            tsvector = func.to_tsvector("english", Memory.content)
+            # Use content_search when encryption is enabled (it stores
+            # tsvector literals of plaintext); fall back to content otherwise.
+            tsvector = func.to_tsvector(
+                "english",
+                func.coalesce(Memory.content_search, Memory.content),
+            )
             tsquery = func.plainto_tsquery("english", q)
             conditions.append(tsvector.op("@@")(tsquery))
 
@@ -219,9 +231,9 @@ class MemoryBrowserService:
             status="open",
         )
         self.session.add(queue)
-        await self._notify_owners(workspace_id, memory_id, flag_reason)
         await self.session.commit()
         await self.session.refresh(queue)
+        await self._notify_owners(workspace_id, memory_id, flag_reason)
 
         return MemoryReviewQueueRead(
             id=queue.id,
@@ -325,6 +337,14 @@ class MemoryBrowserService:
         res = await self.session.execute(memories_stmt)
         memories = list(res.scalars().all())
 
+        memory_ids = [m.id for m in memories]
+        version_count_map = await self._load_version_counts(workspace_id, memory_ids)
+        flag_status_map = await self._load_review_status(workspace_id, memory_ids)
+        creator_map = await self._load_creator_emails(
+            workspace_id,
+            [m.id for m in memories if m.created_by_id is not None],
+        )
+
         title = thread.title or f"Untitled thread #{thread.id}"
         return ResearchThreadSummary(
             id=thread.id,
@@ -338,9 +358,12 @@ class MemoryBrowserService:
                     confidence=m.confidence,
                     created_at=m.created_at,
                     updated_at=m.updated_at,
-                    created_by=None,
-                    version_count=0,
-                    flag_status=None,
+                    created_by=MemoryBrowserCreator(
+                        id=str(m.created_by_id),
+                        email=creator_map.get(m.created_by_id),
+                    ) if m.created_by_id else None,
+                    version_count=version_count_map.get(m.id, 0),
+                    flag_status=flag_status_map.get(m.id),
                 )
                 for m in memories
             ],
@@ -393,8 +416,25 @@ class MemoryBrowserService:
         return out
 
     async def _load_creator_emails(self, workspace_id: int, memory_ids: Sequence[int]) -> dict[uuid.UUID, str]:
-        # Stub: in real implementation, join WorkspaceMembership -> User and return emails.
-        return {}
+        """Return created_by_id -> email for memories in the workspace."""
+        if not memory_ids:
+            return {}
+        stmt = (
+            select(Memory.created_by_id, User.email)
+            .distinct()
+            .join(User, Memory.created_by_id == User.id)
+            .where(
+                Memory.id.in_(memory_ids),
+                Memory.workspace_id == workspace_id,
+                Memory.created_by_id.isnot(None),
+            )
+        )
+        result = await self.session.execute(stmt)
+        out: dict[uuid.UUID, str] = {}
+        for row in result.all():
+            if isinstance(row, (tuple, list)) and len(row) >= 2:
+                out[row[0]] = row[1]
+        return out
 
     async def _notify_owners(self, workspace_id: int, memory_id: int, flag_reason: str) -> None:
         from app.notifications.service.facade import NotificationService
