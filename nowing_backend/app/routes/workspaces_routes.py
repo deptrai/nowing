@@ -1193,6 +1193,8 @@ async def workspace_bulk_op_execute(
         actor=auth.user,
         workspace_id=workspace_id,
         idempotency_key=idempotency_key,
+        password=body.password,
+        mfa_token=body.mfa_token,
     )
 
 

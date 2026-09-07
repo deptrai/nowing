@@ -39,7 +39,7 @@ class AdminBulkOpsApiService {
 		workspaceId?: number | null
 	): Promise<ExecuteResponse> => {
 		const url = workspaceId
-			? `/api/v1/workspaces/${workspaceId}/bulk-ops/execute`
+			? `/api/v1/workspaces/${workspaceId}/bulk-ops`
 			: "/api/v1/admin/saas/bulk-ops/execute";
 		return baseApiService.post(url, executeResponseSchema, {
 			body: payload,
