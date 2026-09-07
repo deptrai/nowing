@@ -2,7 +2,7 @@
 title: 'Story 29.4: Admin Bulk Operations Console'
 type: 'feature'
 created: '2026-09-07'
-status: 'done'
+status: 'in-review'
 baseline_commit: '09a6ba0d9c1fb6308a8832b750f0107a74a7f272'
 review_loop_iteration: 0
 context: [
