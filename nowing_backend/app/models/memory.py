@@ -216,6 +216,15 @@ class Memory(BaseModel, TimestampMixin):
             "archived_at",
             "workspace_id",
         ),
+        # AC-1: composite index for workspace-scoped list with source_type +
+        # confidence + created_at DESC (memory browser).
+        Index(
+            "ix_memories_browser_list",
+            "workspace_id",
+            "source_type",
+            "confidence",
+            text("created_at DESC"),
+        ),
     )
 
     workspace_id = Column(

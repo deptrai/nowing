@@ -37,8 +37,15 @@ def upgrade() -> None:
     op.create_index('ix_memory_review_queue_memory_id', 'memory_review_queue', ['memory_id'])
     op.create_index('ix_memory_review_queue_workspace_id', 'memory_review_queue', ['workspace_id'])
     op.create_index('ix_memory_review_queue_status', 'memory_review_queue', ['status'])
+    op.create_index(
+        'ix_memories_browser_list',
+        'memories',
+        ['workspace_id', 'source_type', 'confidence', 'created_at'],
+        postgresql_where=None,
+    )
 
 
 def downgrade() -> None:
     """Downgrade schema."""
+    op.drop_index('ix_memories_browser_list', table_name='memories')
     op.drop_table('memory_review_queue')
