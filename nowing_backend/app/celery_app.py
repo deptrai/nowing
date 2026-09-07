@@ -239,6 +239,7 @@ celery_app = Celery(
         "app.tasks.celery_tasks.broadcast_tasks",
         "app.tasks.celery_tasks.health_probe_task",
         "app.tasks.celery_tasks.health_retention_task",
+        "app.tasks.celery_tasks.workspace_health_tasks",
     ],
 )
 
@@ -417,6 +418,12 @@ celery_app.conf.beat_schedule = {
         "task": "purge_refresh_tokens",
         "schedule": crontab(hour="3", minute="41"),
         "options": {"expires": 600},
+    },
+    # Roll up workspace health & adoption daily metrics (Story 29.2 / AD-52)
+    "aggregate-workspace-health-daily": {
+        "task": "aggregate_workspace_health_daily",
+        "schedule": crontab(hour="0", minute="5"),  # Daily at 00:05 UTC
+        "options": {"expires": 3600},
     },
     # Prune the ETL parse cache (TTL + size budget) once daily, off-peak.
     "evict-etl-cache": {

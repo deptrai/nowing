@@ -45,6 +45,7 @@ class SourceBudget(BaseModel):
     max_leads: int = Field(default=50, ge=1, le=1000)
     priority: int = Field(default=1, ge=1, le=10)
     cost_limit_micros: int | None = None
+    auto_unlock: bool = Field(default=False)
 
 
 class SubTaskPlan(BaseModel):
@@ -57,6 +58,39 @@ class SubTaskPlan(BaseModel):
     limit: int = 50
     filters: dict[str, Any] = Field(default_factory=dict)
     priority: int = 1
+
+
+class SourcePlanAllocation(BaseModel):
+    """Pre-flight source allocation with coverage and cost metadata."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    source_name: str
+    category: str
+    allocated_limit: int
+    priority: int
+    location_coverage_quality: str = "none"
+    location_coverage_score: float = 0.0
+    supported_provinces: list[str] = Field(default_factory=list)
+    status: str = "ready"
+    degraded_reason: str | None = None
+
+
+class CampaignPlanResponse(BaseModel):
+    """Enriched pre-flight plan breakdown for a campaign spec."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    campaign_name: str
+    workspace_id: int
+    total_planned_sources: int
+    expected_sources: list[str]
+    subtasks: list[SubTaskPlan]
+    source_allocations: list[SourcePlanAllocation] = Field(default_factory=list)
+    estimated_reachable_leads: int = 0
+    estimated_cost_micros: int = 0
+    estimated_cost_vnd: int = 0
+    warnings: list[str] = Field(default_factory=list)
 
 
 class ICPCriteria(BaseModel):
@@ -106,6 +140,14 @@ class CampaignSpec(BaseModel):
         description="Explicit source adapters to include. If empty, dynamic resolution applies.",
     )
     excluded_sources: list[str] = Field(default_factory=list)
+    excluded_identities: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Identity keys (canonical_domain, primary_phone, tax_id, primary_email) "
+            "of leads already returned by a smoke test. The orchestrator filters these "
+            "out so a subsequent full run does not double-charge or duplicate them."
+        ),
+    )
     max_total_leads: int = Field(default=100, ge=1, le=5000)
     concurrency_limit: int = Field(default=5, ge=1, le=20)
     adapter_timeout_seconds: float = Field(default=12.0, ge=1.0, le=60.0)
@@ -115,3 +157,94 @@ class CampaignSpec(BaseModel):
     # Schedule & Automation
     schedule: ScheduleConfig = Field(default_factory=ScheduleConfig)
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+    @classmethod
+    def from_payload(cls, payload: dict[str, Any]) -> "CampaignSpec":
+        """Accept either a declarative CampaignSpec dict or a frontend CampaignCreateInput dict."""
+        if "icp_config" in payload or "source_budget_config" in payload:
+            return cls.from_campaign_create_input(payload)
+        return cls.model_validate(payload)
+
+    @classmethod
+    def from_campaign_create_input(cls, payload: dict[str, Any]) -> "CampaignSpec":
+        """Convert frontend CampaignCreateInput shape into internal CampaignSpec."""
+        icp_config = payload.get("icp_config") or {}
+        source_budget_config = payload.get("source_budget_config") or {}
+        launch_config = payload.get("launch_config") or {}
+
+        # Map ICP fields
+        location_profile_raw = icp_config.get("location_profile")
+        location_profile = None
+        if location_profile_raw and isinstance(location_profile_raw, dict) and location_profile_raw.get("province_code"):
+            from app.lead_intelligence.schemas import LocationProfilePayload
+            p_code = location_profile_raw["province_code"]
+            p_name = location_profile_raw.get("province_name") or p_code
+            location_profile = LocationProfilePayload(
+                province_code=p_code,
+                province_name=p_name,
+                district_codes=location_profile_raw.get("district_codes", []),
+                district_names=location_profile_raw.get("district_names", []),
+                ward_codes=location_profile_raw.get("ward_codes", []),
+                ward_names=location_profile_raw.get("ward_names", []),
+                street_name=location_profile_raw.get("street_name"),
+                location_type=location_profile_raw.get("location_type", "both"),
+            )
+
+        keywords = icp_config.get("keywords") or icp_config.get("target_keywords") or []
+        if isinstance(keywords, str):
+            keywords = [k.strip() for k in keywords.split(",") if k.strip()]
+
+        icp_criteria = ICPCriteria(
+            target_industries=icp_config.get("target_industries", []),
+            target_locations=icp_config.get("locations", []),
+            target_company_sizes=icp_config.get("company_size_range") and [icp_config["company_size_range"]] or [],
+            target_tech_stack=icp_config.get("tech_stack", []),
+            target_keywords=keywords,
+            negative_keywords=icp_config.get("negative_keywords", []),
+            min_fit_score=source_budget_config.get("min_fit_score", 0.0),
+            weights={},
+            location_profile=location_profile,
+        )
+
+        # Map source budget list
+        sources_list = [s for s in source_budget_config.get("sources", []) if s]
+        total_target = int(source_budget_config.get("expected_leads_target", 50) or 50)
+        num_sources = max(1, len(sources_list))
+        per_source_target = min(1000, max(10, total_target // num_sources))
+
+        budgets: list[SourceBudget] = []
+        for src in sources_list:
+            budgets.append(
+                SourceBudget(
+                    source_name=src,
+                    max_leads=per_source_target,
+                    priority=1,
+                    auto_unlock=source_budget_config.get("auto_unlock_verified_phones", False),
+                )
+            )
+
+        # Build effective query from ICP context
+        query_parts: list[str] = []
+        if icp_config.get("custom_instructions"):
+            query_parts.append(icp_config["custom_instructions"])
+        if icp_config.get("target_industries"):
+            query_parts.extend(icp_config["target_industries"][:2])
+        if icp_config.get("locations"):
+            query_parts.extend(icp_config["locations"][:2])
+        base_query = " ".join(query_parts) if query_parts else "Leads Campaign"
+
+        return cls(
+            name=payload.get("name", "Campaign"),
+            workspace_id=payload.get("workspace_id", 1),
+            query=base_query,
+            icp_criteria=icp_criteria,
+            intent_tags=icp_config.get("intents", []),
+            source_budgets=budgets,
+            target_sources=[s for s in source_budget_config.get("sources", [])],
+            excluded_sources=[],
+            excluded_identities=payload.get("excluded_identities") or [],
+            max_total_leads=source_budget_config.get("expected_leads_target", 50),
+            location_profile=location_profile,
+            metadata={"launch_config": launch_config},
+        )

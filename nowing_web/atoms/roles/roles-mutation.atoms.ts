@@ -20,8 +20,16 @@ export const createRoleMutationAtom = atomWithMutation(() => {
 		},
 		onSuccess: (_: CreateRoleResponse, request: CreateRoleRequest) => {
 			toast.success("Role created successfully");
+			if (!request?.workspace_id) return;
+			const wsId = request.workspace_id.toString();
 			queryClient.invalidateQueries({
-				queryKey: cacheKeys.roles.all(request.workspace_id.toString()),
+				queryKey: cacheKeys.roles.all(wsId),
+			});
+			queryClient.invalidateQueries({
+				queryKey: cacheKeys.members.myAccess(wsId),
+			});
+			queryClient.invalidateQueries({
+				queryKey: cacheKeys.members.all(wsId),
 			});
 		},
 		onError: () => {
@@ -38,11 +46,19 @@ export const updateRoleMutationAtom = atomWithMutation(() => {
 		},
 		onSuccess: (_: UpdateRoleResponse, request: UpdateRoleRequest) => {
 			toast.success("Role updated successfully");
+			if (!request?.workspace_id) return;
+			const wsId = request.workspace_id.toString();
 			queryClient.invalidateQueries({
-				queryKey: cacheKeys.roles.all(request.workspace_id.toString()),
+				queryKey: cacheKeys.roles.all(wsId),
 			});
 			queryClient.invalidateQueries({
-				queryKey: cacheKeys.roles.byId(request.workspace_id.toString(), request.role_id.toString()),
+				queryKey: cacheKeys.roles.byId(wsId, request.role_id.toString()),
+			});
+			queryClient.invalidateQueries({
+				queryKey: cacheKeys.members.myAccess(wsId),
+			});
+			queryClient.invalidateQueries({
+				queryKey: cacheKeys.members.all(wsId),
 			});
 		},
 		onError: () => {
@@ -59,8 +75,16 @@ export const deleteRoleMutationAtom = atomWithMutation(() => {
 		},
 		onSuccess: (_: DeleteRoleResponse, request: DeleteRoleRequest) => {
 			toast.success("Role deleted successfully");
+			if (!request?.workspace_id) return;
+			const wsId = request.workspace_id.toString();
 			queryClient.invalidateQueries({
-				queryKey: cacheKeys.roles.all(request.workspace_id.toString()),
+				queryKey: cacheKeys.roles.all(wsId),
+			});
+			queryClient.invalidateQueries({
+				queryKey: cacheKeys.members.myAccess(wsId),
+			});
+			queryClient.invalidateQueries({
+				queryKey: cacheKeys.members.all(wsId),
 			});
 		},
 		onError: () => {

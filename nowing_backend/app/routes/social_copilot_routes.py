@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 
@@ -23,6 +24,7 @@ from app.schemas.voice_profile import (
     VoiceProfileListItem,
     VoiceProfileListResponse,
 )
+from app.services.memory.encryption import MemoryEncryptionService
 from app.services.social_copilot.draft_generator import ViralDraftGenerator
 from app.services.social_copilot.mechanics_deconstructor import (
     ViralMechanicsDeconstructor,
@@ -80,9 +82,19 @@ async def create_voice_profile(
         },
         tags=["voice_profile", "social_copilot"],
     )
+    # Encrypt Tier-1 fields before the insert so the row is never persisted
+    # as plaintext; refresh() reloads ciphertext, so decrypt it back for the
+    # response serialization below.
+    encryption = MemoryEncryptionService.from_env()
+    if encryption.is_enabled():
+        encryption.encrypt_memory(memory)
+
     session.add(memory)
     await session.commit()
     await session.refresh(memory)
+
+    if encryption.is_enabled():
+        encryption.decrypt_memory(memory)
 
     profile.id = memory.id
     profile.created_at = memory.created_at
@@ -111,6 +123,14 @@ async def list_voice_profiles(
 
     result = await session.execute(stmt)
     memories = result.scalars().all()
+
+    encryption = MemoryEncryptionService.from_env()
+    if encryption.is_enabled():
+        for m in memories:
+            # Corrupt/rotated rows silently fall back to the default persona
+            # rather than aborting the listing.
+            with contextlib.suppress(Exception):
+                encryption.decrypt_memory(m)
 
     items: list[VoiceProfileListItem] = []
     for m in memories:
@@ -157,11 +177,16 @@ async def activate_voice_profile(
         any_(Memory.tags) == "voice_profile",
     )
     all_res = await session.execute(all_profiles_stmt)
+    encryption = MemoryEncryptionService.from_env()
     for mem in all_res.scalars().all():
         try:
+            if encryption.is_enabled():
+                encryption.decrypt_memory(mem)
             d = json.loads(mem.content)
             d["is_active"] = mem.id == profile_id
             mem.content = json.dumps(d)
+            if encryption.is_enabled():
+                encryption.encrypt_memory(mem)
         except Exception:
             pass
 
@@ -178,9 +203,13 @@ async def activate_voice_profile(
         )
 
     try:
+        if encryption.is_enabled():
+            encryption.decrypt_memory(memory)
         data = json.loads(memory.content)
         data["is_active"] = True
         memory.content = json.dumps(data)
+        if encryption.is_enabled():
+            encryption.encrypt_memory(memory)
         await session.commit()
         await session.refresh(memory)
         profile = VoiceProfile(**data)
@@ -281,6 +310,9 @@ async def generate_viral_drafts(
         mem = res.scalar_one_or_none()
         if mem:
             try:
+                encryption = MemoryEncryptionService.from_env()
+                if encryption.is_enabled():
+                    encryption.decrypt_memory(mem)
                 voice = VoiceProfile(**json.loads(mem.content))
                 voice.id = mem.id
             except Exception:
@@ -307,6 +339,9 @@ async def generate_viral_drafts(
         selected_mem = None
         for m in all_mems:
             try:
+                encryption = MemoryEncryptionService.from_env()
+                if encryption.is_enabled():
+                    encryption.decrypt_memory(m)
                 d = json.loads(m.content)
                 if d.get("is_active"):
                     selected_mem = m
@@ -318,6 +353,9 @@ async def generate_viral_drafts(
 
         if selected_mem:
             try:
+                encryption = MemoryEncryptionService.from_env()
+                if encryption.is_enabled():
+                    encryption.decrypt_memory(selected_mem)
                 voice = VoiceProfile(**json.loads(selected_mem.content))
                 voice.id = selected_mem.id
             except Exception:

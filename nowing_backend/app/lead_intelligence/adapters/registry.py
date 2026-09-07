@@ -576,3 +576,57 @@ class LeadSourceAdapterRegistry:
 
         return [a for _, a in ranked], location_fallback
 
+
+    def get_all_source_statuses(
+        self, location_profile: Any | None = None
+    ) -> list[Any]:
+        """Compute status, latency, and location coverage across all registered adapters (AC-4)."""
+        from app.lead_intelligence.campaign.schemas import SourcePlanAllocation
+
+        results: list[SourcePlanAllocation] = []
+        for adapter in self._adapters.values():
+            src_name = adapter.source_name
+            coverage_score = self.calculate_location_coverage_score(adapter, location_profile)
+
+            # Map score to tier
+            if coverage_score >= 0.9:
+                coverage_quality = "high"
+            elif coverage_score >= 0.6:
+                coverage_quality = "medium"
+            elif coverage_score >= 0.3:
+                coverage_quality = "low"
+            else:
+                coverage_quality = "none"
+
+            exec_status = getattr(adapter, "last_execution_status", "ok")
+            if exec_status == "offline":
+                status = "offline"
+                degraded_reason = f"Adapter {src_name} đang ngoại tuyến (offline)"
+            elif exec_status != "ok":
+                status = "degraded"
+                degraded_reason = f"Adapter {src_name} báo cáo lỗi: {exec_status}"
+            elif coverage_quality in ("low", "none") and location_profile:
+                status = "degraded"
+                degraded_reason = f"Độ phủ địa bàn thấp ({coverage_quality}) tại khu vực mục tiêu"
+            else:
+                status = "ready"
+                degraded_reason = None
+
+            supported_provinces = list(getattr(adapter, "supported_provinces", ["*"]) or ["*"])
+            category_val = adapter.category.value if hasattr(adapter.category, "value") else str(adapter.category)
+
+            results.append(
+                SourcePlanAllocation(
+                    source_name=src_name,
+                    category=category_val,
+                    allocated_limit=getattr(adapter, "lead_quota", 50),
+                    priority=getattr(adapter, "priority", 1),
+                    location_coverage_quality=coverage_quality,
+                    location_coverage_score=round(coverage_score, 4),
+                    supported_provinces=supported_provinces,
+                    status=status,
+                    degraded_reason=degraded_reason,
+                )
+            )
+
+        return results

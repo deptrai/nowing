@@ -20,6 +20,7 @@ from sqlalchemy.orm import selectinload
 
 from app.auth.context import AuthContext
 from app.db import (
+    AuditEvent,
     Permission,
     User,
     Workspace,
@@ -117,6 +118,19 @@ PERMISSION_DESCRIPTIONS = {
     "automations:update": "Edit automations and manage their triggers",
     "automations:delete": "Remove automations from the workspace",
     "automations:execute": "Manually fire automations",
+    # Analytics (Story 29.1)
+    "analytics:read": "View workspace analytics & adoption metrics",
+    # Billing (Story 29.1)
+    "billing:read": "View workspace plans, credit balances, and invoices",
+    "billing:manage": "Upgrade/downgrade plans and manage payment methods",
+    # Sources & Tools (Story 29.1)
+    "source:configure": "Enable, disable, and configure scraper/connector sources",
+    "tools:enable": "Toggle MCP tools and agent tool configurations",
+    # Memory (Story 29.1)
+    "memory:read": "Search and recall long-term research memories",
+    "memory:create": "Create research memory facts",
+    "memory:update": "Edit research memory facts",
+    "memory:delete": "Remove memory records",
     # Full access
     "*": "Full access to all features and settings",
 }
@@ -175,11 +189,24 @@ async def create_role(
             "You don't have permission to create roles",
         )
 
+        # Reserved "Admin" name guard (RB-4)
+        clean_name = role_data.name.strip()
+        if not clean_name:
+            raise HTTPException(
+                status_code=400,
+                detail="Role name cannot be empty",
+            )
+        if clean_name.lower() == "admin":
+            raise HTTPException(
+                status_code=400,
+                detail="The role name 'Admin' is reserved",
+            )
+
         # Check if role with same name already exists
         result = await session.execute(
             select(WorkspaceRole).filter(
                 WorkspaceRole.workspace_id == workspace_id,
-                WorkspaceRole.name == role_data.name,
+                WorkspaceRole.name == clean_name,
             )
         )
         if result.scalars().first():
@@ -188,8 +215,14 @@ async def create_role(
                 detail=f"A role with name '{role_data.name}' already exists in this workspace",
             )
 
-        # Validate permissions
-        valid_permissions = {p.value for p in Permission}
+        # Validate permissions & Owner ceiling (AD-51, INV-29.1)
+        if Permission.FULL_ACCESS.value in role_data.permissions:
+            raise HTTPException(
+                status_code=400,
+                detail="Custom roles cannot grant permissions exceeding Owner ceiling",
+            )
+
+        valid_permissions = {p.value for p in Permission if p != Permission.FULL_ACCESS}
         for perm in role_data.permissions:
             if perm not in valid_permissions:
                 raise HTTPException(
@@ -199,12 +232,6 @@ async def create_role(
 
         # If setting is_default to True, unset any existing default
         if role_data.is_default:
-            await session.execute(
-                select(WorkspaceRole).filter(
-                    WorkspaceRole.workspace_id == workspace_id,
-                    WorkspaceRole.is_default == True,  # noqa: E712
-                )
-            )
             existing_defaults = await session.execute(
                 select(WorkspaceRole).filter(
                     WorkspaceRole.workspace_id == workspace_id,
@@ -214,12 +241,30 @@ async def create_role(
             for existing in existing_defaults.scalars().all():
                 existing.is_default = False
 
+        role_dict = role_data.model_dump()
+        role_dict["name"] = clean_name
+        role_dict["permissions"] = list(dict.fromkeys(role_data.permissions))
+        role_dict["is_system_role"] = False
+
         db_role = WorkspaceRole(
-            **role_data.model_dump(),
+            **role_dict,
             workspace_id=workspace_id,
-            is_system_role=False,
         )
         session.add(db_role)
+        # Flush to populate db_role.id for the AuditEvent payload
+        await session.flush()
+
+        audit = AuditEvent(
+            action="workspace.role.create",
+            actor_id=auth.user.id if auth and auth.user else None,
+            diff_payload={
+                "workspace_id": workspace_id,
+                "role_id": db_role.id,
+                "role_name": db_role.name,
+                "permissions": db_role.permissions,
+            },
+        )
+        session.add(audit)
         await session.commit()
         await session.refresh(db_role)
         return db_role
@@ -349,17 +394,29 @@ async def update_role(
         if not db_role:
             raise HTTPException(status_code=404, detail="Role not found")
 
+        # System role protection (INV-29.1, AD-51)
+        if db_role.is_system_role:
+            raise HTTPException(
+                status_code=403,
+                detail="System roles cannot be modified or deleted",
+            )
+
         update_data = role_update.model_dump(exclude_unset=True)
 
-        # System roles have restrictions on what can be updated
-        if db_role.is_system_role:
-            # Can only update permissions for system roles
-            restricted_fields = {"name", "description", "is_default"}
-            if any(field in update_data for field in restricted_fields):
+        # Reserved "Admin" name guard (RB-4)
+        if "name" in update_data and update_data["name"] is not None:
+            clean_name = update_data["name"].strip()
+            if not clean_name:
                 raise HTTPException(
                     status_code=400,
-                    detail="Cannot modify name, description, or default status of system roles",
+                    detail="Role name cannot be empty",
                 )
+            if clean_name.lower() == "admin":
+                raise HTTPException(
+                    status_code=400,
+                    detail="The role name 'Admin' is reserved",
+                )
+            update_data["name"] = clean_name
 
         # Check for name conflict if updating name
         if "name" in update_data and update_data["name"] != db_role.name:
@@ -375,15 +432,21 @@ async def update_role(
                     detail=f"A role with name '{update_data['name']}' already exists",
                 )
 
-        # Validate permissions if provided
-        if "permissions" in update_data:
-            valid_permissions = {p.value for p in Permission}
+        # Validate permissions & Owner ceiling if provided
+        if "permissions" in update_data and update_data["permissions"] is not None:
+            if Permission.FULL_ACCESS.value in update_data["permissions"]:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Custom roles cannot grant permissions exceeding Owner ceiling",
+                )
+            valid_permissions = {p.value for p in Permission if p != Permission.FULL_ACCESS}
             for perm in update_data["permissions"]:
                 if perm not in valid_permissions:
                     raise HTTPException(
                         status_code=400,
                         detail=f"Invalid permission: {perm}",
                     )
+            update_data["permissions"] = list(dict.fromkeys(update_data["permissions"]))
 
         # Handle is_default change
         if update_data.get("is_default") and not db_role.is_default:
@@ -400,6 +463,17 @@ async def update_role(
         for key, value in update_data.items():
             setattr(db_role, key, value)
 
+        audit = AuditEvent(
+            action="workspace.role.update",
+            actor_id=auth.user.id if auth and auth.user else None,
+            diff_payload={
+                "workspace_id": workspace_id,
+                "role_id": db_role.id,
+                "role_name": db_role.name,
+                "permissions": db_role.permissions,
+            },
+        )
+        session.add(audit)
         await session.commit()
         await session.refresh(db_role)
         return db_role
@@ -448,10 +522,21 @@ async def delete_role(
 
         if db_role.is_system_role:
             raise HTTPException(
-                status_code=400,
-                detail="System roles cannot be deleted",
+                status_code=403,
+                detail="System roles cannot be modified or deleted",
             )
 
+        audit = AuditEvent(
+            action="workspace.role.delete",
+            actor_id=auth.user.id if auth and auth.user else None,
+            diff_payload={
+                "workspace_id": workspace_id,
+                "role_id": db_role.id,
+                "role_name": db_role.name,
+                "permissions": db_role.permissions,
+            },
+        )
+        session.add(audit)
         await session.delete(db_role)
         await session.commit()
         return {"message": "Role deleted successfully"}

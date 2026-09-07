@@ -1,19 +1,19 @@
 "use client";
 
-import { useState, type FC } from "react";
-import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { type FC, useRef, useState } from "react";
+import { toast } from "sonner";
+import { LocationSelector } from "@/components/leads/LocationSelector";
+import { PlanSummaryCard } from "@/components/leads/PlanSummaryCard";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import type { CampaignCreateInput, CampaignPlanResponse } from "@/contracts/types/campaign.types";
+import type { LocationProfile } from "@/contracts/types/leads.types";
+import { leadsApiService } from "@/lib/apis/leads-api.service";
 
 interface PlaybookPreset {
 	id: string;
@@ -104,16 +104,29 @@ export const QuickstartPlaybookBuilder: FC = () => {
 	const [step, setStep] = useState(1);
 	const [intent, setIntent] = useState("buy");
 	const [location, setLocation] = useState("");
+	const [locationProfile, setLocationProfile] = useState<LocationProfile | null>(null);
 	const [product, setProduct] = useState("");
 	const [selectedChannels, setSelectedChannels] = useState<string[]>(["zalo"]);
+	const [playbookPlan, setPlaybookPlan] = useState<CampaignPlanResponse | null>(null);
+	const [isPlanningPlaybook, setIsPlanningPlaybook] = useState(false);
+	const [playbookSmokeResult, setPlaybookSmokeResult] = useState<
+		import("@/contracts/types/campaign.types").LeadGenOrchestratorResult | null
+	>(null);
+	const [previousPlaybookLocation, setPreviousPlaybookLocation] = useState<LocationProfile | null>(
+		null
+	);
+	const lastSmokeLocationRef = useRef<LocationProfile | null>(null);
 
 	const resetWizard = () => {
 		setSelectedPreset(null);
 		setStep(1);
 		setIntent("buy");
 		setLocation("");
+		setLocationProfile(null);
 		setProduct("");
 		setSelectedChannels(["zalo"]);
+		setPlaybookPlan(null);
+		setIsPlanningPlaybook(false);
 	};
 
 	const selectPreset = (preset: PlaybookPreset) => {
@@ -135,20 +148,102 @@ export const QuickstartPlaybookBuilder: FC = () => {
 		return query;
 	};
 
-	const run = (smokeTest = false) => {
+	const run = async (smokeTest = false) => {
 		const rawWorkspaceId = params?.workspace_id;
-		const workspaceId = Array.isArray(rawWorkspaceId) ? rawWorkspaceId[0] : rawWorkspaceId;
-		const targetWorkspace = workspaceId ? String(workspaceId) : "1";
-		const query = buildPrompt(smokeTest);
-		const q = encodeURIComponent(query);
-		resetWizard();
-		router.push(`/dashboard/${targetWorkspace}/new-chat?q=${q}`);
+		const resolvedWorkspaceId = Array.isArray(rawWorkspaceId) ? rawWorkspaceId[0] : rawWorkspaceId;
+		const targetWorkspace = resolvedWorkspaceId ? String(resolvedWorkspaceId) : "1";
+		const spec = fetchPlaybookSpec();
+
+		if (smokeTest) {
+			spec.source_budget_config.expected_leads_target = 5;
+		} else {
+			spec.source_budget_config.expected_leads_target = 20;
+		}
+
+		const currentRunLocation = locationProfile;
+		setIsPlanningPlaybook(true);
+		try {
+			const result = await leadsApiService.executeCampaign(targetWorkspace, spec, !smokeTest);
+			toast.success(
+				smokeTest
+					? `Chạy thử xong: tìm thấy ${result.total_discovered} lead`
+					: `Đã chạy chiến dịch: tìm thấy ${result.total_discovered} lead`
+			);
+			if (smokeTest) {
+				// Shift the location profile stored in the previous run into
+				// previousPlaybookLocation before overwriting with current results.
+				if (playbookSmokeResult) {
+					setPreviousPlaybookLocation(lastSmokeLocationRef.current);
+				}
+				lastSmokeLocationRef.current = currentRunLocation;
+				setPlaybookSmokeResult(result);
+			} else {
+				resetWizard();
+				router.push(`/dashboard/${targetWorkspace}/leads`);
+			}
+		} catch (_err) {
+			toast.error("Không thể chạy playbook. Vui lòng thử lại.");
+		} finally {
+			setIsPlanningPlaybook(false);
+		}
 	};
 
 	const toggleChannel = (channel: string) => {
 		setSelectedChannels((prev) =>
 			prev.includes(channel) ? prev.filter((c) => c !== channel) : [...prev, channel]
 		);
+	};
+
+	const fetchPlaybookSpec = (): CampaignCreateInput => {
+		return {
+			name: selectedPreset ? `Playbook: ${tChat(selectedPreset.titleKey)}` : "Playbook campaign",
+			description: selectedPreset ? tChat(selectedPreset.descKey) : "",
+			workspace_id: workspaceId ? Number(workspaceId) : 1,
+			icp_config: {
+				template: "custom",
+				target_industries: [],
+				locations: location ? [location] : [],
+				company_size_range: null,
+				tech_stack: [],
+				intents: ["BÁN"],
+				negative_keywords: [],
+				reverse_icp_url: null,
+				custom_instructions: null,
+				location_profile: locationProfile ?? undefined,
+			},
+			source_budget_config: {
+				sources: selectedPreset?.defaultSources ?? [],
+				expected_leads_target: 20,
+				max_daily_spend_vnd: 200000,
+				min_fit_score: 60,
+				min_intent_score: 50,
+				max_contacts_per_lead: 3,
+				exclude_dnc: true,
+				auto_unlock_verified_phones: false,
+			},
+			launch_config: {
+				schedule_type: "once",
+				cron_expression: null,
+				start_time: null,
+				auto_start: true,
+				export_destination: "workspace",
+				notification_webhook: null,
+			},
+		};
+	};
+
+	const fetchPlaybookPlan = async () => {
+		if (!selectedPreset) return;
+		const targetWorkspace = workspaceId ? String(workspaceId) : "1";
+		setIsPlanningPlaybook(true);
+		try {
+			const plan = await leadsApiService.planCampaign(targetWorkspace, fetchPlaybookSpec());
+			setPlaybookPlan(plan);
+		} catch (err) {
+			console.error("Failed to plan playbook campaign:", err);
+		} finally {
+			setIsPlanningPlaybook(false);
+		}
 	};
 
 	return (
@@ -222,13 +317,14 @@ export const QuickstartPlaybookBuilder: FC = () => {
 						{step === 2 && (
 							<div className="space-y-3">
 								<Label className="text-xs font-medium">{tChat("playbook_step_location")}</Label>
-								<Input
-									value={location}
-									onChange={(e) => setLocation(e.target.value)}
-									placeholder={tChat("playbook_location_placeholder")}
-									className="text-xs"
+								<LocationSelector
+									value={locationProfile}
+									onChange={(prof: LocationProfile) => {
+										setLocationProfile(prof);
+										setLocation(prof.location_text || prof.province_name);
+									}}
 								/>
-								<div className="flex gap-2">
+								<div className="flex gap-2 pt-2">
 									<Button size="sm" variant="outline" className="flex-1" onClick={() => setStep(1)}>
 										{tChat("playbook_back_button")}
 									</Button>
@@ -291,6 +387,44 @@ export const QuickstartPlaybookBuilder: FC = () => {
 								<div className="rounded-lg border border-border/60 bg-muted/50 p-3 text-xs text-foreground leading-relaxed">
 									{buildPrompt(true)}
 								</div>
+
+								<div className="pt-2">
+									<PlanSummaryCard
+										plan={playbookPlan}
+										icpConfig={
+											locationProfile
+												? { ...fetchPlaybookSpec().icp_config, location_profile: locationProfile }
+												: fetchPlaybookSpec().icp_config
+										}
+										isLoading={isPlanningPlaybook}
+										onRequestPlan={fetchPlaybookPlan}
+										onSmokeTest={() => run(true)}
+										onApplyPlan={() => run(false)}
+										smokeTestResult={playbookSmokeResult}
+										previousLocationProfile={previousPlaybookLocation}
+										onRefineLocation={(action) => {
+											if (action === "expand" && locationProfile) {
+												setLocationProfile({
+													...locationProfile,
+													district_codes: [],
+													district_names: [],
+													ward_codes: [],
+													ward_names: [],
+													location_text:
+														locationProfile.province_name || locationProfile.province_code,
+												});
+											}
+											if (action === "custom") {
+												setStep(2);
+											}
+											if (action === "switch-source") {
+												setStep(4);
+											}
+										}}
+										onConfirmFullRun={() => run(false)}
+									/>
+								</div>
+
 								<div className="flex gap-2">
 									<Button size="sm" variant="outline" className="flex-1" onClick={() => setStep(4)}>
 										{tChat("playbook_back_button")}

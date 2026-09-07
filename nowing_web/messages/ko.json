@@ -208,7 +208,8 @@
 		"manage_connectors": "외부 MCP 커넥터 관리",
 		"logs": "로그",
 		"all_workspaces": "모든 워크스페이스",
-		"team": "팀"
+		"team": "팀",
+		"health_analytics": "헬스 및 분석"
 	},
 	"pricing": {
 		"title": "Nowing 가격",

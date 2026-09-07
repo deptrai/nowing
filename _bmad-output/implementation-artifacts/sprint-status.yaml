@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '09-05-2026 09:15'
+last_updated: '09-06-2026 02:25'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # - Parsed epics.md: 24 epics, ~160 stories.
 # - Scanned _bmad-output/implementation-artifacts/ + stories/*.md for story files (frontmatter story_key/epic+story).
@@ -288,12 +288,12 @@ development_status:
   25-7-third-party-health-operations-dashboard: done
   epic-25-retrospective: optional
 
-  epic-26: in-progress
+  epic-26: done
   26-25-customer-location-profile-selector-with-progressive-disclosu: done
   26-26-location-aware-adapter-routing-coverage-quality: done
-  26-27-pre-flight-lead-plan-summary-plansummarycard: backlog
-  26-28-source-coverage-badge-in-right-canvas: backlog
-  26-29-smoke-test-feedback-loop-for-location-refinement: backlog
+  26-27-pre-flight-lead-plan-summary-plansummarycard: done
+  26-28-source-coverage-badge-in-right-canvas: done
+  26-29-smoke-test-feedback-loop-for-location-refinement: done
   26-1-fastmcp-ingest-gateway-batch-ingestion-stateless-chainlens-p: done
   26-2-dsh-worker-sidecar-container-redis-streams-task-resumption: done
   26-3-multi-tier-hybrid-llm-router: done
@@ -305,7 +305,7 @@ development_status:
   26-11-two-tier-phone-unlock-ux-refinement: done
   26-9a-wide-research-crawl-subgraph: done
   26-9b-pro-excel-formatter-in-daytona-sandbox: done
-  epic-26-retrospective: optional
+  epic-26-retrospective: done
 
   epic-27: done
   27-1-full-stack-web-app-builder-1-click-hosting-design-view-mark: done
@@ -319,15 +319,15 @@ development_status:
 
   epic-28: in-progress
   28-1-workspace-memory-research-data-export: done
-  28-2-encryption-at-rest-for-cloud-memory: backlog
+  28-2-encryption-at-rest-for-cloud-memory: pending-human-review
   28-3-tos-legal-review-retention-policy-for-long-term-scrape-data: done
   28-4-self-host-oss-onboarding-in-under-10-minutes: done
   28-5-workspace-memory-storage-cap-retention-lifecycle: done
   epic-28-retrospective: optional
 
-  epic-29: backlog
-  29-1-custom-workspace-roles-permissions-builder: backlog
-  29-2-workspace-health-adoption-analytics-dashboard: backlog
+  epic-29: in-progress
+  29-1-custom-workspace-roles-permissions-builder: done
+  29-2-workspace-health-adoption-analytics-dashboard: done
   29-3-tenant-subscription-tier-quota-management: backlog
   29-4-admin-bulk-operations-console: backlog
   29-5-memory-browser-research-timeline-for-analyst: backlog
@@ -620,3 +620,32 @@ waves:
     notes: Story 27.2a/27.2b are chat-first deliverables following 27.1a 
       pattern; Story 27.1 is the largest scope story in the roadmap (new web 
       generator + dynamic hosting).
+action_items:
+  - id: "epic-26-retro-item-1-tối-ưu-hóa-bộ-nhớ-đệm-cache-cho-danh-mục"
+    epic: 26
+    action: "Tối ưu hóa bộ nhớ đệm cache cho danh mục 63 tỉnh/thành và alias tìm kiếm
+      địa lý"
+    owner: "Amelia"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-26-retro-2026-09-06.md"
+  - id: "epic-26-retro-item-2-thêm-helper-safeclick-tự-động-scroll-vào"
+    epic: 26
+    action: "Thêm helper safeClick tự động scroll vào viewport trong test suite Playwright
+      E2E"
+    owner: "Charlie"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-26-retro-2026-09-06.md"
+  - id: "epic-26-retro-item-3-bổ-sung-sự-kiện-telemetry-posthog-theo-d"
+    epic: 26
+    action: "Bổ sung sự kiện telemetry PostHog theo dõi tần suất các mã chẩn đoán
+      zero-leads"
+    owner: "Alice"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-26-retro-2026-09-06.md"
+  - id: "epic-26-retro-item-4-mở-rộng-metadata-cho-các-adapter-còn-lại"
+    epic: 26
+    action: "Mở rộng metadata cho các adapter còn lại để hỗ trợ bộ lọc địa bàn tự
+      nhiên"
+    owner: "Winston"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-26-retro-2026-09-06.md"

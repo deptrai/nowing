@@ -57,7 +57,28 @@ export const cacheKeys = {
 		detail: (workspaceId: string) => ["workspaces", workspaceId] as const,
 		mcpTools: (workspaceId: number) => ["workspace-mcp-tools", workspaceId] as const,
 		limits: (workspaceId: number) => ["workspaces", "limits", workspaceId] as const,
-	},
+			health: {
+				summary: (
+					workspaceId: number | string,
+					range?: string,
+					startDate?: string,
+					endDate?: string
+				) =>
+					[
+						"workspaces",
+						"health",
+						"summary",
+						workspaceId,
+						range,
+						startDate,
+						endDate,
+					] as const,
+				sourceDrilldown: (workspaceId: number | string, sourceType: string) =>
+					["workspaces", "health", "source", workspaceId, sourceType] as const,
+				coverageGaps: (workspaceId: number | string) =>
+					["workspaces", "health", "coverage-gaps", workspaceId] as const,
+			},
+		},
 	user: {
 		current: () => ["user", "me"] as const,
 	},

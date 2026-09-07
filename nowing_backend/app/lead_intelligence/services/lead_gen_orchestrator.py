@@ -59,6 +59,18 @@ class DispatchedScrapeJobResponse(BaseModel):
     dispatched_tasks: list[dict[str, Any]] = Field(default_factory=list)
 
 
+class LocationMatchMetadata(BaseModel):
+    """Aggregated location-match telemetry for a smoke-test or full run."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    matched_count: int = 0
+    outside_count: int = 0
+    threshold: float = 65.0
+    zero_leads_reason: str | None = None
+    zero_leads_diagnostics: list[str] = Field(default_factory=list)
+
+
 class LeadGenOrchestratorResult(BaseModel):
     """Execution outcome of multi-source lead generation orchestrator."""
 
@@ -75,6 +87,7 @@ class LeadGenOrchestratorResult(BaseModel):
     execution_time_ms: float = 0.0
     source_latency_ms: dict[str, float] = Field(default_factory=dict)
     deduplication_rate: float = 0.0
+    location_match_metadata: LocationMatchMetadata | None = None
 
 
 class LeadGenOrchestrator:
@@ -578,6 +591,35 @@ class LeadGenOrchestrator:
                 if (lead.icp_fit_score or 0.0) >= icp_criteria.min_fit_score
             ]
 
+        # Smoke-test deduplication guard: drop known identities from a previous preview.
+        excluded_identities: set[str] = set()
+        if campaign_spec is not None and campaign_spec.excluded_identities:
+            excluded_identities = {
+                key.strip().lower()
+                for key in campaign_spec.excluded_identities
+                if isinstance(key, str)
+            }
+
+        if excluded_identities:
+
+            def _identity_keys(lead: NormalizedLead) -> set[str]:
+                keys: set[str] = set()
+                if lead.primary_phone:
+                    keys.add(lead.primary_phone.strip().lower())
+                if lead.canonical_domain:
+                    keys.add(lead.canonical_domain.strip().lower())
+                if lead.primary_email and "@" in lead.primary_email:
+                    keys.add(lead.primary_email.strip().lower())
+                if lead.tax_id:
+                    keys.add(lead.tax_id.strip().lower())
+                return keys
+
+            scored_leads = [
+                lead
+                for lead in scored_leads
+                if not (_identity_keys(lead) & excluded_identities)
+            ]
+
         # In-stream Deduplication
         dedup_result = self.deduplication_service.deduplicate_leads(scored_leads)
 
@@ -619,6 +661,20 @@ class LeadGenOrchestrator:
             for a in adapters
         ]
 
+        # Location-match telemetry for smoke-test feedback loop.
+        loc_profile_for_meta = (
+            getattr(campaign_spec, "location_profile", None)
+            if campaign_spec is not None
+            else None
+        )
+        location_metadata = self._build_location_match_metadata(
+            final_leads=final_leads,
+            degraded_sources=degraded_sources,
+            adapters=adapters,
+            location_profile=loc_profile_for_meta,
+            icp_criteria=icp_criteria,
+        )
+
         return LeadGenOrchestratorResult(
             status=overall_status,
             total_discovered=total_discovered,
@@ -627,6 +683,7 @@ class LeadGenOrchestrator:
             degraded_sources=sorted(set(degraded_sources)),
             table_id=effective_table_id,
             subtask_plans=subtask_plans,
+            location_match_metadata=location_metadata,
             deduplication_summary={
                 "raw_count": total_discovered,
                 "deduplicated_count": len(final_leads),
@@ -783,6 +840,70 @@ class LeadGenOrchestrator:
             "failed_count": summary.get("failed_count", 0),
         }
         return search_result
+
+    @staticmethod
+    def _build_location_match_metadata(
+        final_leads: list[NormalizedLead],
+        degraded_sources: list[str],
+        adapters: list[Any],
+        location_profile: Any | None,
+        icp_criteria: ICPCriteria | None,
+    ) -> LocationMatchMetadata:
+        """Compute matched/outside counts and diagnose empty smoke-test results.
+
+        A lead counts as "matched" when its ``location_match_score`` meets the
+        province-match threshold (65.0 = district-required province match).
+        When no location profile is set every lead is treated as matched.
+        """
+        threshold = 65.0
+        metadata = LocationMatchMetadata(threshold=threshold)
+
+        if location_profile is None:
+            metadata.matched_count = len(final_leads)
+            metadata.outside_count = 0
+        else:
+            for lead in final_leads:
+                score = lead.location_match_score
+                if score is not None and score >= threshold:
+                    metadata.matched_count += 1
+                else:
+                    metadata.outside_count += 1
+
+        if final_leads:
+            return metadata
+
+        diagnostics: list[str] = []
+        reason: str | None = None
+
+        adapter_names = {getattr(a, "source_name", "") for a in adapters}
+        degraded_set = set(degraded_sources)
+        all_degraded = bool(adapter_names) and adapter_names.issubset(degraded_set)
+
+        if all_degraded or "no_adapters_available" in degraded_set:
+            reason = "SOURCE_DEGRADED"
+            diagnostics.append("SOURCE_DEGRADED")
+        elif location_profile is not None and (
+            getattr(location_profile, "district_codes", None)
+            or getattr(location_profile, "ward_names", None)
+        ):
+            reason = "NO_DATA_IN_LOCATION"
+            diagnostics.append("NO_DATA_IN_LOCATION")
+        elif (
+            icp_criteria is not None
+            and (icp_criteria.min_fit_score > 0.0 or icp_criteria.negative_keywords)
+        ):
+            reason = "FILTERS_TOO_NARROW"
+            diagnostics.append("FILTERS_TOO_NARROW")
+        elif location_profile is not None:
+            reason = "NO_DATA_IN_LOCATION"
+            diagnostics.append("NO_DATA_IN_LOCATION")
+        else:
+            reason = "FILTERS_TOO_NARROW"
+            diagnostics.append("FILTERS_TOO_NARROW")
+
+        metadata.zero_leads_reason = reason
+        metadata.zero_leads_diagnostics = diagnostics
+        return metadata
 
 
 def _is_numeric_only(text: str) -> bool:

@@ -31,6 +31,7 @@ export const leadSchema = z.object({
 	fit_score: scoreField.nullable().optional(),
 	intent_score: scoreField.nullable().optional(),
 	composite_score: scoreField.nullable().optional(),
+	location_match_score: scoreField.nullable().optional(),
 	status: z.string().default("new"),
 	intent: z.string().nullable().optional(),
 	phone: z.string().nullable().optional(),

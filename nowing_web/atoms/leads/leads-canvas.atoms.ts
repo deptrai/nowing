@@ -1,6 +1,7 @@
 import { atom } from "jotai";
 import { atomWithStorage, createJSONStorage } from "jotai/utils";
 import { atomFamily } from "jotai-family";
+import type { CampaignCreateInput, CampaignPlanResponse } from "@/contracts/types/campaign.types";
 import type { FilterPresets, Lead } from "@/contracts/types/leads.types";
 
 export interface FastUnlockSessionState {
@@ -24,13 +25,17 @@ export function makeFastUnlockKey(workspaceId: number | string, userId?: string 
 	return `${workspaceId}:${userId ?? "anon"}`;
 }
 
-export type CanvasMode = "leads" | "research" | "automations" | "scrapers" | "artifacts";
+export type CanvasMode = "leads" | "research" | "automations" | "scrapers" | "artifacts" | "plan";
 
 // Global fallback mode (for fresh new-chat sessions)
 export const canvasModeAtom = atom<CanvasMode>("leads");
 
 // Thread-scoped active canvas modes: key is thread_id, value is CanvasMode
 export const threadCanvasModeMapAtom = atom<Record<string, CanvasMode>>({});
+
+// Pre-Flight Plan active spec and response for the Right Panel Canvas (Story 26.27)
+export const activePlanSpecAtom = atom<CampaignCreateInput | null>(null);
+export const activeCampaignPlanAtom = atom<CampaignPlanResponse | null>(null);
 
 // Left Chat Panel width in pixels (clamped: min 280px, max 520px, default 340px)
 export const canvasLeftWidthAtom = atom<number>(340);
@@ -59,3 +64,18 @@ export const activeArtifactIdAtom = atom<string | null>("leads-main");
 
 // Ping / Focus trigger timestamp (when user clicks artifact card in chat to ping right panel)
 export const canvasHighlightTriggerAtom = atom<number>(0);
+
+// Smoke Test Feedback Loop (Story 26.29): consecutive preview runs & active result
+export interface SmokeTestRun {
+	run_id: string;
+	executed_at: string;
+	result: import("@/contracts/types/campaign.types").LeadGenOrchestratorResult;
+	location_profile: import("@/contracts/types/leads.types").LocationProfile | null;
+	spec: import("@/contracts/types/campaign.types").CampaignCreateInput;
+}
+
+export const smokeTestHistoryAtom = atom<SmokeTestRun[]>([]);
+export const activeSmokeTestResultAtom = atom<SmokeTestRun | null>(null);
+export const previousLocationProfileAtom = atom<
+	import("@/contracts/types/leads.types").LocationProfile | null
+>(null);

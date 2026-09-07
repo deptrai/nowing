@@ -27,6 +27,7 @@ from app.lead_intelligence.signals.schemas import (
 from app.services import pii, wallet_credit
 from app.services.billing_event_service import record_signal_scan
 from app.services.jobs_aggregator.schemas import VnJobAggregateInput
+from app.services.memory.encryption import MemoryEncryptionService
 
 logger = logging.getLogger(__name__)
 
@@ -269,6 +270,7 @@ class SignalDetectionService:
             tags=["lead_signal"],
             confidence=signal.confidence,
         )
+        MemoryEncryptionService.from_env().encrypt_memory(memory)
         session.add(memory)
 
         # For now signal scans do not use a separate LLM charge.

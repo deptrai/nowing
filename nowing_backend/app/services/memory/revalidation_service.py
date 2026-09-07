@@ -25,6 +25,7 @@ from app.capabilities.core.runs import record_run, serialize_output
 from app.capabilities.core.store import get_capability
 from app.capabilities.core.types import CapabilityContext
 from app.db import Memory, MemorySourceType
+from app.services.memory.encryption import MemoryEncryptionService
 from app.services.memory.repository import MemoryRepository
 from app.tenant_context import set_request_tenant_context
 
@@ -149,6 +150,10 @@ class RevalidationService:
 
         if memory is None:
             raise RevalidationError("memory_not_found", "Memory not found.")
+
+        # AC-28.2: decrypt in-place so source_input validation and content
+        # comparison operate on plaintext when encryption is enabled.
+        MemoryEncryptionService.from_env().decrypt_memory(memory)
 
         if workspace_id is not None and memory.workspace_id != workspace_id:
             raise RevalidationError(
