@@ -34,9 +34,9 @@ export async function safeClick(
 			timeout: options?.timeout,
 			position: options?.position,
 		});
-	} catch (error) {
+	} catch (_error) {
 		// Fall back to a native DOM click when Playwright's pointer action
 		// is intercepted by a modal/dialog root element.
-		await locator.evaluate((el) => el.click());
+		await locator.evaluate((el) => (el as HTMLElement).click());
 	}
 }

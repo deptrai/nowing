@@ -97,6 +97,7 @@ class WorkspaceLimitUsage(BaseModel):
     storage_bytes: int
     memory_count: int = 0
     memory_bytes: int = 0
+    sources: int = 0
 
 
 class AutoExtractUsage(BaseModel):
@@ -124,6 +125,12 @@ class WorkspaceLimitsResponse(BaseModel):
     news_entity_extraction_item_cap: int | None = None
     news_entity_extraction_spend_cap_micros: int | None = None
     news_entity_extraction_wallet_pre_check: bool | None = None
+    # Story 29.3: expanded plan catalog columns
+    max_monthly_credits: int | None = None
+    max_sources: int | None = None
+    support_level: str | None = None
+    price_micros: int | None = None
+    currency: str = "USD"
     auto_extract_usage: AutoExtractUsage
     usage: WorkspaceLimitUsage
 
@@ -139,3 +146,92 @@ class WorkspaceLimitUpdate(BaseModel):
     news_entity_extraction_item_cap: int | None = Field(default=None, ge=0)
     news_entity_extraction_spend_cap_micros: int | None = Field(default=None, ge=0)
     news_entity_extraction_wallet_pre_check: bool | None = None
+    max_monthly_credits: int | None = Field(default=None, ge=0)
+    max_sources: int | None = Field(default=None, ge=0)
+
+
+class PlanDefinitionBase(BaseModel):
+    plan_tier: str
+    max_documents: int | None = None
+    max_members: int | None = None
+    max_runs: int | None = None
+    max_storage_bytes: int | None = None
+    max_memory_count: int | None = None
+    max_memory_bytes: int | None = None
+    run_period_hours: int = 720
+    max_monthly_credits: int | None = None
+    max_sources: int | None = None
+    support_level: str | None = "community"
+    price_micros: int | None = 0
+    currency: str = "USD"
+
+
+class PlanDefinitionCreate(PlanDefinitionBase):
+    pass
+
+
+class PlanDefinitionUpdate(BaseModel):
+    max_documents: int | None = None
+    max_members: int | None = None
+    max_runs: int | None = None
+    max_storage_bytes: int | None = None
+    max_memory_count: int | None = None
+    max_memory_bytes: int | None = None
+    run_period_hours: int | None = None
+    max_monthly_credits: int | None = None
+    max_sources: int | None = None
+    support_level: str | None = None
+    price_micros: int | None = None
+    currency: str | None = None
+
+
+class PlanDefinitionRead(PlanDefinitionBase):
+    id: int
+    is_system_default: bool = True
+    created_at: datetime
+    updated_at: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SubscriptionChangeCreate(BaseModel):
+    to_plan: str
+    immediate: bool = False
+    payment_method_id: str | None = None
+
+
+class SubscriptionChangeConflictDetail(BaseModel):
+    current: int
+    limit: int
+
+
+class SubscriptionChangeConflict(BaseModel):
+    error_code: str = "quota_conflict"
+    message: str
+    conflicts: dict[str, SubscriptionChangeConflictDetail]
+
+
+class SubscriptionChangeRead(BaseModel):
+    id: uuid.UUID
+    workspace_id: int
+    from_plan: str
+    to_plan: str
+    effective_at: datetime
+    reversible_until: datetime | None = None
+    status: str  # pending, active, cancelled, reverted, expired
+    initiated_by: uuid.UUID | None = None
+    payment_method_id: str | None = None
+    immediate: bool = False
+    diff_payload: dict = Field(default_factory=dict)
+    created_at: datetime
+    updated_at: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class WorkspaceSubscriptionResponse(BaseModel):
+    current_plan: str
+    limits: WorkspaceLimitsResponse
+    active_change: SubscriptionChangeRead | None = None
+    available_plans: list[PlanDefinitionRead] = []
+

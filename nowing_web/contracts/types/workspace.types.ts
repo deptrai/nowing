@@ -147,6 +147,7 @@ export const workspaceLimitUsage = z.object({
 	storage_bytes: z.number(),
 	memory_count: z.number().optional().default(0),
 	memory_bytes: z.number().optional().default(0),
+	sources: z.number().optional().default(0),
 });
 
 export const autoExtractUsage = z.object({
@@ -163,6 +164,11 @@ export const getWorkspaceLimitsResponse = z.object({
 	max_storage_bytes: z.number().nullable(),
 	max_memory_count: z.number().nullable().optional(),
 	max_memory_bytes: z.number().nullable().optional(),
+	max_monthly_credits: z.number().nullable().optional(),
+	max_sources: z.number().nullable().optional(),
+	support_level: z.string().nullable().optional(),
+	price_micros: z.number().nullable().optional(),
+	currency: z.string().optional().default("USD"),
 	run_period_hours: z.number(),
 	auto_extract_item_cap: z.number().nullable().optional(),
 	auto_extract_spend_cap_micros: z.number().nullable().optional(),
@@ -175,9 +181,78 @@ export const updateWorkspaceLimitsRequest = z.object({
 	id: z.number(),
 	max_memory_count: z.number().nullable().optional(),
 	max_memory_bytes: z.number().nullable().optional(),
+	max_monthly_credits: z.number().nullable().optional(),
+	max_sources: z.number().nullable().optional(),
 	auto_extract_item_cap: z.number().nullable().optional(),
 	auto_extract_spend_cap_micros: z.number().nullable().optional(),
 	auto_extract_wallet_pre_check: z.boolean().nullable().optional(),
+});
+
+export const planDefinition = z.object({
+	id: z.string().optional(),
+	plan_tier: z.string(),
+	max_documents: z.number().nullable().optional(),
+	max_members: z.number().nullable().optional(),
+	max_runs: z.number().nullable().optional(),
+	max_storage_bytes: z.number().nullable().optional(),
+	max_memory_count: z.number().nullable().optional(),
+	max_memory_bytes: z.number().nullable().optional(),
+	max_monthly_credits: z.number().nullable().optional(),
+	max_sources: z.number().nullable().optional(),
+	support_level: z.string().nullable().optional(),
+	price_micros: z.number().nullable().optional(),
+	currency: z.string().optional().default("USD"),
+	run_period_hours: z.number().optional().default(720),
+	is_system_default: z.boolean().optional().default(false),
+	created_at: z.string().nullable().optional(),
+	updated_at: z.string().nullable().optional(),
+});
+
+export const subscriptionChangeStatus = z.enum([
+	"pending",
+	"active",
+	"cancelled",
+	"reverted",
+	"expired",
+]);
+
+export const subscriptionChange = z.object({
+	id: z.string(),
+	workspace_id: z.number(),
+	from_plan: z.string().nullable(),
+	to_plan: z.string(),
+	status: subscriptionChangeStatus,
+	effective_at: z.string(),
+	reversible_until: z.string().nullable().optional(),
+	payment_method_id: z.string().nullable().optional(),
+	created_at: z.string(),
+	updated_at: z.string(),
+});
+
+export const subscriptionChangeConflictDetail = z.object({
+	current: z.number(),
+	limit: z.number(),
+});
+
+export const subscriptionChangeConflict = z.object({
+	error_code: z.literal("quota_conflict"),
+	message: z.string(),
+	conflicts: z.record(z.string(), subscriptionChangeConflictDetail),
+});
+
+export const workspaceSubscriptionResponse = z.object({
+	current_plan: z.string().nullable(),
+	plan_definition: planDefinition.nullable().optional(),
+	effective_limits: getWorkspaceLimitsResponse,
+	active_change: subscriptionChange.nullable().optional(),
+	pending_change: subscriptionChange.nullable().optional(),
+	available_plans: z.array(planDefinition),
+});
+
+export const createSubscriptionChangeRequest = z.object({
+	to_plan: z.string(),
+	immediate: z.boolean().optional().default(false),
+	payment_method_id: z.string().nullable().optional(),
 });
 
 // Inferred types
@@ -201,3 +276,9 @@ export type DeleteWorkspaceResponse = z.infer<typeof deleteWorkspaceResponse>;
 export type WorkspaceLimitUsage = z.infer<typeof workspaceLimitUsage>;
 export type GetWorkspaceLimitsResponse = z.infer<typeof getWorkspaceLimitsResponse>;
 export type UpdateWorkspaceLimitsRequest = z.infer<typeof updateWorkspaceLimitsRequest>;
+export type PlanDefinition = z.infer<typeof planDefinition>;
+export type SubscriptionChange = z.infer<typeof subscriptionChange>;
+export type SubscriptionChangeConflictDetail = z.infer<typeof subscriptionChangeConflictDetail>;
+export type SubscriptionChangeConflict = z.infer<typeof subscriptionChangeConflict>;
+export type WorkspaceSubscriptionResponse = z.infer<typeof workspaceSubscriptionResponse>;
+export type CreateSubscriptionChangeRequest = z.infer<typeof createSubscriptionChangeRequest>;
