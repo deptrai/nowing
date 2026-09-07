@@ -3,12 +3,12 @@ story_id: "28.2"
 epic: "28"
 story_key: 28-2-encryption-at-rest-for-cloud-memory
 baseline_commit: 6a2eb6ca2
-status: pending-human-review
+status: done
 ---
 
 # Story 28.2: Encryption-at-Rest for Cloud Memory
 
-**Status:** `pending-human-review`  
+**Status:** `done`  
 **Epic:** Epic 28 — Self-Host Trust, Data Portability & Cloud GA Legal Readiness  
 **Priority:** P0 (security / data protection gate for cloud GA)  
 **Source artifacts:**
@@ -499,8 +499,8 @@ Claude Opus 5 (1M context)
 
 ## Human Review Gate
 
-**Status:** `pending-human-review`  
-**Gate Decision:** P0 areas touched → **human review required** before marking `done`.  
+**Status:** `done`  
+**Gate Decision:** P0 areas touched → **human review completed and approved** on 2026-09-07.  
 **Date:** 2026-09-07  
 **Baseline:** `6a2eb6ca2` → HEAD
 
