@@ -2,8 +2,8 @@
 title: 'Story 29.4: Admin Bulk Operations Console'
 type: 'feature'
 created: '2026-09-07'
-status: 'ready-for-dev'
-baseline_commit: '179c9cfac52ff63e147fe6e8e1002167d73e018d'
+status: 'in-progress'
+baseline_commit: '09a6ba0d9c1fb6308a8832b750f0107a74a7f272'
 review_loop_iteration: 0
 context: [
   "_bmad-output/implementation-artifacts/epic-29-context.md",
