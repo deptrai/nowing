@@ -61,6 +61,7 @@ export const governanceDncRecordSchema = z.object({
 	id: z.string().uuid(),
 	record_type: z.string(),
 	value: z.string().nullable().optional(),
+	value_masked: z.string().nullable().optional(),
 	value_hmac: z.string(),
 	reason: z.string().nullable().optional(),
 	source: z.string(),

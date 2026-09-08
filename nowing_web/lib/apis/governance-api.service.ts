@@ -22,6 +22,12 @@ import {
 	sourceRiskTierSchema,
 	workspaceStatusSchema,
 } from "@/contracts/types/governance.types";
+import {
+	type JobStatusResponse,
+	type CancelJobResponse,
+	jobStatusResponseSchema,
+	cancelJobResponseSchema,
+} from "@/contracts/types/admin-bulk-ops.types";
 import { baseApiService } from "./base-api.service";
 
 const GOVERNANCE_PREFIX = "/api/v1/workspaces";
@@ -119,6 +125,26 @@ class GovernanceApiService {
 			`${GOVERNANCE_PREFIX}/${workspaceId}/governance/right-to-delete`,
 			rightToDeleteResponseSchema,
 			{ body: payload }
+		);
+	};
+
+	/**
+	 * GET /workspaces/{id}/governance/jobs/{job_id}
+	 */
+	getBulkOpJob = async (workspaceId: number, jobId: string): Promise<JobStatusResponse> => {
+		return baseApiService.get(
+			`${GOVERNANCE_PREFIX}/${workspaceId}/governance/jobs/${jobId}`,
+			jobStatusResponseSchema
+		);
+	};
+
+	/**
+	 * POST /workspaces/{id}/governance/jobs/{job_id}/cancel
+	 */
+	cancelBulkOpJob = async (workspaceId: number, jobId: string): Promise<CancelJobResponse> => {
+		return baseApiService.post(
+			`${GOVERNANCE_PREFIX}/${workspaceId}/governance/jobs/${jobId}/cancel`,
+			cancelJobResponseSchema
 		);
 	};
 

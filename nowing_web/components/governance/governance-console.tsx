@@ -34,7 +34,11 @@ export function GovernanceConsole({ workspaceId }: GovernanceConsoleProps) {
 	const canEditGovernance = isOwner || canUpdateSettings;
 	const canEditRightToDelete = isOwner || canDeleteMemory;
 
-	const { data: overview, isLoading, refetch } = useQuery({
+	const {
+		data: overview,
+		isLoading,
+		refetch,
+	} = useQuery({
 		queryKey: ["governance", "overview", workspaceId],
 		queryFn: () => governanceApiService.getOverview(workspaceId),
 		enabled: !!workspaceId,

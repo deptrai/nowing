@@ -23,7 +23,10 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { GovernanceDncRecord, GovernanceDncRecordCreate } from "@/contracts/types/governance.types";
+import type {
+	GovernanceDncRecord,
+	GovernanceDncRecordCreate,
+} from "@/contracts/types/governance.types";
 import { governanceApiService } from "@/lib/apis/governance-api.service";
 import { toast } from "sonner";
 
@@ -128,7 +131,7 @@ export function DncPanel({ workspaceId, records, canEdit, onChanged, className }
 						records.map((record) => (
 							<TableRow key={record.id}>
 								<TableCell className="font-medium capitalize">{record.record_type}</TableCell>
-								<TableCell>{record.value || record.value_hmac}</TableCell>
+								<TableCell>{record.value_masked || record.value || record.value_hmac}</TableCell>
 								<TableCell>{record.reason || "—"}</TableCell>
 								<TableCell>{record.source}</TableCell>
 								<TableCell>
