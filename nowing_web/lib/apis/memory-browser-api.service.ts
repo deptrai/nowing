@@ -77,7 +77,7 @@ class MemoryBrowserApiService {
   };
 
   /**
-   * Get memory detail for the browser detail panel.
+   * Get version history for a memory (AC-3.3).
    */
   getMemoryVersions = async (
     workspaceId: number,
