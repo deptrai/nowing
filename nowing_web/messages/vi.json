@@ -898,10 +898,9 @@
       "active_description": "Workspace này đang hoạt động và có thể truy cập.",
       "archived_title": "Workspace đã lưu trữ",
       "archived_description": "Workspace này đã lưu trữ và API bị vô hiệu hóa.",
-      "archived": "Đã lưu trữ workspace.",
+      "archived": "Đã lưu trữ",
       "restored": "Đã khôi phục workspace.",
       "state_label": "Trạng thái",
-      "archived": "Đã lưu trữ",
       "active": "Hoạt động",
       "archive": "Lưu trữ workspace",
       "restore": "Khôi phục workspace",
@@ -939,7 +938,14 @@
       "confirm_title": "Xác nhận xóa",
       "confirm_description": "Bạn sắp xóa {count} bộ nhớ. Hành động này không thể hoàn tác.",
       "queued": "Đã xếp hàng xóa (job {jobId}).",
-      "deleted": "Đã xóa {count} bộ nhớ."
+      "deleted": "Đã xóa {count} bộ nhớ.",
+      "source_entity_type": "Loại entity nguồn",
+      "source_entity_type_placeholder": "Entity type (tùy chọn)",
+      "job_status": "Trạng thái job",
+      "job_status_text": "Trạng thái: {status} · đã xử lý {processed}/{total} · đã xoá {affected} · lỗi {errors}",
+      "cancel_job": "Huỷ job",
+      "cancelled": "Đã huỷ job xoá hàng loạt.",
+      "completed": "Hoàn tất xoá hàng loạt. {count} memories đã bị xoá."
     }
   },
   "workspaceSettings": {

@@ -150,52 +150,52 @@ class GovernanceService:
 
         # Reject explicit nulls
         if "auto_archive_enabled" in update_data and new_doc_enabled is None:
-            raise HTTPException(status_code=400, detail="auto_archive_enabled cannot be null")
+            raise HTTPException(status_code=422, detail="auto_archive_enabled cannot be null")
         if "document_retention_action" in update_data and new_doc_action is None:
             raise HTTPException(
-                status_code=400, detail="document_retention_action cannot be null"
+                status_code=422, detail="document_retention_action cannot be null"
             )
         if "memory_auto_archive_enabled" in update_data and new_mem_enabled is None:
             raise HTTPException(
-                status_code=400, detail="memory_auto_archive_enabled cannot be null"
+                status_code=422, detail="memory_auto_archive_enabled cannot be null"
             )
         if "memory_retention_action" in update_data and new_mem_action is None:
             raise HTTPException(
-                status_code=400, detail="memory_retention_action cannot be null"
+                status_code=422, detail="memory_retention_action cannot be null"
             )
 
         # Invariants
         if new_doc_enabled:
             if new_doc_days is None or new_doc_days <= 0:
                 raise HTTPException(
-                    status_code=400,
+                    status_code=422,
                     detail="document_retention_days must be positive when auto_archive_enabled is true",
                 )
             if new_doc_days > 36500:
                 raise HTTPException(
-                    status_code=400,
+                    status_code=422,
                     detail="document_retention_days must not exceed 36500",
                 )
             if not new_doc_action:
                 raise HTTPException(
-                    status_code=400,
+                    status_code=422,
                     detail="document_retention_action is required when auto_archive_enabled is true",
                 )
 
         if new_mem_enabled:
             if new_mem_days is None or new_mem_days <= 0:
                 raise HTTPException(
-                    status_code=400,
+                    status_code=422,
                     detail="memory_retention_days must be positive when memory_auto_archive_enabled is true",
                 )
             if new_mem_days > 36500:
                 raise HTTPException(
-                    status_code=400,
+                    status_code=422,
                     detail="memory_retention_days must not exceed 36500",
                 )
             if not new_mem_action:
                 raise HTTPException(
-                    status_code=400,
+                    status_code=422,
                     detail="memory_retention_action is required when memory_auto_archive_enabled is true",
                 )
 
@@ -214,7 +214,7 @@ class GovernanceService:
                     if new_mem_days < min_recommended:
                         names = [t.source_type for t in high_risk_sources]
                         raise HTTPException(
-                            status_code=400,
+                            status_code=422,
                             detail=(
                                 f"memory_retention_days={new_mem_days} is below the "
                                 f"recommended minimum of {min_recommended} days for "
@@ -228,7 +228,7 @@ class GovernanceService:
 
         # Audit
         await self._write_audit(
-            action="governance.retention_policy.update",
+            action="governance.retention_policy_update",
             actor_id=actor_id,
             subject_id=None,
             diff_payload={"workspace_id": workspace_id, **update_data},
@@ -300,7 +300,7 @@ class GovernanceService:
             )
 
         await self._write_audit(
-            action="governance.source_risk_tier.upsert",
+            action="governance.source_risk_tier_change",
             actor_id=actor_id,
             subject_id=None,
             diff_payload={"workspace_id": None, **payload.model_dump()},
@@ -360,7 +360,7 @@ class GovernanceService:
             },
         )
         await self._write_audit(
-            action="governance.scrape_paused",
+            action="governance.scrape_paused",  # internal log-only action
             actor_id=actor_id,
             subject_id=None,
             diff_payload={
@@ -412,7 +412,7 @@ class GovernanceService:
             },
         )
         await self._write_audit(
-            action="governance.source_risk_tier.resume",
+            action="governance.source_risk_tier_resume",
             actor_id=actor_id,
             subject_id=None,
             diff_payload={
@@ -440,11 +440,13 @@ class GovernanceService:
 
         out: list[DncRecordRead] = []
         for r in records:
+            masked = self._mask_dnc_value(r.record_type, r.value)
             out.append(
                 DncRecordRead(
                     id=str(r.id),
                     record_type=r.record_type,
                     value=r.value,
+                    value_masked=masked,
                     value_hmac=r.value_hmac,
                     reason=r.reason,
                     source=r.source,
@@ -477,13 +479,16 @@ class GovernanceService:
         )
 
         await self._write_audit(
-            action="governance.dnc_record.create",
+            action="governance.dnc_add",
             actor_id=actor_id,
             subject_id=None,
             diff_payload={
                 "workspace_id": workspace_id,
                 "record_id": str(record["id"]),
-                **payload.model_dump(),
+                "record_type": payload.record_type,
+                "value": self._mask_dnc_value(payload.record_type, payload.value),
+                "value_hmac": record["value_hmac"],
+                "reason": payload.reason,
             },
         )
         await self.session.commit()
@@ -510,6 +515,7 @@ class GovernanceService:
             id=record["id"],
             record_type=record["record_type"],
             value=record["value"],
+            value_masked=self._mask_dnc_value(record["record_type"], record["value"]),
             value_hmac=record["value_hmac"],
             reason=record["reason"],
             source=record["source"],
@@ -538,13 +544,14 @@ class GovernanceService:
             raise HTTPException(status_code=404, detail="DNC record not found")
 
         await self._write_audit(
-            action="governance.dnc_record.delete",
+            action="governance.dnc_remove",
             actor_id=actor_id,
             subject_id=None,
             diff_payload={
                 "workspace_id": workspace_id,
                 "record_id": str(record_id),
                 "record_type": record.record_type,
+                "value": self._mask_dnc_value(record.record_type, record.value),
                 "value_hmac": record.value_hmac,
             },
         )
@@ -794,6 +801,36 @@ class GovernanceService:
         if not ws:
             raise HTTPException(status_code=404, detail="Workspace not found")
         return ws
+
+    @staticmethod
+    def _mask_dnc_value(record_type: str, value: str | None) -> str | None:
+        """Mask DNC value for audit/display.
+
+        - phone: keep country code + last 4 digits (e.g. +84****4567)
+        - email: keep domain (e.g. ***@example.com)
+        - domain/tax_id: keep first 3 chars + *** (e.g. dom***)
+        - None/other: return None or "***"
+        """
+        if value is None:
+            return None
+        v = value.strip()
+        if not v:
+            return None
+
+        if record_type == "phone":
+            # Keep country code prefix and last 4 digits
+            if len(v) <= 7:
+                return v[:2] + "****"
+            return v[:3] + "****" + v[-4:]
+        if record_type == "email":
+            if "@" not in v:
+                return "***"
+            domain = v.split("@")[-1]
+            return "***@" + domain
+        # domain / tax_id / other
+        if len(v) <= 3:
+            return "***"
+        return v[:3] + "***"
 
     async def _write_audit(
         self,

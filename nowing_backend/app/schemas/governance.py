@@ -65,6 +65,7 @@ class DncRecordRead(BaseModel):
     id: UUID
     record_type: str
     value: str | None
+    value_masked: str | None = None
     value_hmac: str
     reason: str | None
     source: str

@@ -163,7 +163,7 @@ async def test_update_retention_policy_success_and_audit(
     # Verify audit event
     result = await db_session.execute(
         select(AuditEvent).where(
-            AuditEvent.action == "governance.retention_policy.update"
+            AuditEvent.action == "governance.retention_policy_update"
         )
     )
     audit = result.scalars().first()
@@ -193,7 +193,7 @@ async def test_update_retention_policy_rejects_high_risk_below_minimum(
             "memory_retention_action": "archive",
         },
     )
-    assert resp.status_code == 400
+    assert resp.status_code == 422
     assert "recommended minimum" in resp.json()["detail"].lower()
 
 
@@ -335,7 +335,7 @@ async def test_audit_log_filters_by_workspace_and_action_prefix(
 ):
     """AC-7: Audit log returns workspace-scoped events."""
     event = AuditEvent(
-        action="governance.retention_policy.update",
+        action="governance.retention_policy_update",
         actor_id=db_user.id,
         subject_id=None,
         diff_payload={"workspace_id": db_workspace.id, "field": "value"},

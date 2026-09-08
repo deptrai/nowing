@@ -898,10 +898,9 @@
       "active_description": "This workspace is active and accessible.",
       "archived_title": "Workspace archived",
       "archived_description": "This workspace is archived and API access is disabled.",
-      "archived": "Workspace archived.",
+      "archived": "Archived",
       "restored": "Workspace restored.",
       "state_label": "State",
-      "archived": "Archived",
       "active": "Active",
       "archive": "Archive workspace",
       "restore": "Restore workspace",
@@ -939,7 +938,14 @@
       "confirm_title": "Confirm deletion",
       "confirm_description": "You are about to delete {count} memories. This cannot be undone.",
       "queued": "Deletion queued (job {jobId}).",
-      "deleted": "Deleted {count} memories."
+      "deleted": "Deleted {count} memories.",
+      "source_entity_type": "Source entity type",
+      "source_entity_type_placeholder": "Optional entity type",
+      "job_status": "Job status",
+      "job_status_text": "Status: {status} · processed {processed}/{total} · affected {affected} · errors {errors}",
+      "cancel_job": "Cancel job",
+      "cancelled": "Bulk delete job cancelled.",
+      "completed": "Bulk delete completed. {count} memories deleted."
     }
   },
   "workspaceSettings": {

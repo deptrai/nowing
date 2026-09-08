@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
 from app.db import Permission, get_async_session
+from app.schemas.bulk_ops import CancelJobResponse, JobStatusResponse
 from app.schemas.governance import (
     AuditLogFilter,
     AuditLogRead,
@@ -27,6 +28,7 @@ from app.schemas.governance import (
     SourceRiskTierUpdate,
     WorkspaceStatusRead,
 )
+from app.services.bulk_ops_service import BulkOpsService
 from app.services.governance_service import GovernanceService
 from app.users import get_auth_context
 from app.utils.rbac import check_permission, is_workspace_owner
@@ -168,6 +170,15 @@ async def delete_dnc_record(
         Permission.SETTINGS_UPDATE.value,
         "You don't have permission to update governance settings",
     )
+    from uuid import UUID as _UUID
+
+    try:
+        _UUID(record_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422, detail="record_id must be a valid UUID"
+        ) from exc
+
     svc = GovernanceService(session)
     await svc.delete_dnc_record(
         workspace_id, record_id, actor_id=auth.user.id if auth.user else None
@@ -201,6 +212,62 @@ async def right_to_delete(
     return result
 
 
+@router.get("/jobs/{job_id}", response_model=JobStatusResponse)
+async def get_bulk_op_job(
+    workspace_id: int,
+    job_id: str,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(get_auth_context),
+) -> JobStatusResponse:
+    """Fetch bulk operation job status scoped to this workspace (AC-4/4)."""
+    await check_permission(
+        session,
+        auth,
+        workspace_id,
+        Permission.MEMORY_DELETE.value,
+        "You don't have permission to view bulk delete jobs",
+    )
+    from uuid import UUID as _UUID
+
+    try:
+        job_uuid = _UUID(job_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="job_id must be a valid UUID") from exc
+
+    if not auth.user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    svc = BulkOpsService()
+    return await svc.get_job(session, job_uuid, auth.user, workspace_id=workspace_id)
+
+
+@router.post("/jobs/{job_id}/cancel", response_model=CancelJobResponse)
+async def cancel_bulk_op_job(
+    workspace_id: int,
+    job_id: str,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(get_auth_context),
+) -> CancelJobResponse:
+    """Cancel a queued or running bulk operation job in this workspace (AC-4/4)."""
+    await check_permission(
+        session,
+        auth,
+        workspace_id,
+        Permission.MEMORY_DELETE.value,
+        "You don't have permission to cancel bulk delete jobs",
+    )
+    from uuid import UUID as _UUID
+
+    try:
+        job_uuid = _UUID(job_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="job_id must be a valid UUID") from exc
+
+    if not auth.user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    svc = BulkOpsService()
+    return await svc.cancel_job(session, job_uuid, auth.user, workspace_id=workspace_id)
+
+
 @router.get("/audit-log", response_model=list[AuditLogRead])
 async def list_audit_log(
     workspace_id: int,
@@ -222,10 +289,18 @@ async def list_audit_log(
     )
     from datetime import datetime
 
+    try:
+        after_dt = datetime.fromisoformat(created_after) if created_after else None
+        before_dt = datetime.fromisoformat(created_before) if created_before else None
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422, detail=f"Invalid ISO date format: {exc}"
+        ) from exc
+
     filters = AuditLogFilter(
         action_prefix=action_prefix,
-        created_after=datetime.fromisoformat(created_after) if created_after else None,
-        created_before=datetime.fromisoformat(created_before) if created_before else None,
+        created_after=after_dt,
+        created_before=before_dt,
         page=page,
         page_size=page_size,
     )
