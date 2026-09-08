@@ -370,7 +370,7 @@ class MemoryBrowserService:
         result = await self.session.execute(stmt)
         memory = result.scalar_one_or_none()
         if memory is None:
-            raise Exception(f"Memory {memory_id} not found")
+            raise ValueError(f"Memory {memory_id} not found")
         return memory
 
     # ------------------------------------------------------------------

@@ -501,7 +501,7 @@ class TestMemoryBrowserServiceDetail:
     async def test_detail_returns_404_for_wrong_workspace(self):
         session = _FakeSession(scalar=None)
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(ValueError) as exc_info:
             await MemoryBrowserService(session).get_memory_detail(workspace_id=7, memory_id=1)
 
         assert "not found" in str(exc_info.value).lower()
@@ -595,7 +595,7 @@ class TestMemoryBrowserServiceFlagForReview:
     async def test_flag_for_wrong_workspace_returns_404(self):
         session = _FakeSession(scalar=None)
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(ValueError) as exc_info:
             await MemoryBrowserService(session).flag_for_review(
                 workspace_id=7,
                 memory_id=1,
