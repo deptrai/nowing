@@ -12,6 +12,7 @@ from sqlalchemy import (
     String,
     Text,
     TIMESTAMP,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 
@@ -47,4 +48,11 @@ class MemoryReviewQueue(BaseModel, TimestampMixin):
         PG_UUID(as_uuid=True),
         ForeignKey("user.id", ondelete="SET NULL"),
         nullable=True,
+    )
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        server_default=text("now()"),
     )
