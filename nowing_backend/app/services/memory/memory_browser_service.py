@@ -42,6 +42,10 @@ from app.schemas.memory_browser import (
 DEFAULT_PAGE_SIZE = 50
 MAX_PAGE_SIZE = 100
 SNIPPET_LENGTH = 120
+# Upper bound on the timeline payload — a research thread can accumulate
+# thousands of memories; the UI paginates by thread so a generous cap is
+# sufficient.
+TIMELINE_LIMIT = 500
 
 # Spec AC-2.1 lists connector ``DocumentType`` values as valid ``source_types``
 # filters, but ``Memory.source_type`` only stores ``MemorySourceType`` values —
@@ -153,6 +157,8 @@ class MemoryBrowserService:
         )
         result = await self.session.execute(stmt)
         rows = list(result.scalars().all())
+        for row in rows:
+            self._decrypt_memory(row)
 
         total = await self._count_total(conditions)
 
@@ -174,15 +180,25 @@ class MemoryBrowserService:
             page_size=page_size,
         )
 
-    async def list_creators(self, workspace_id: int) -> MemoryBrowserCreatorListResponse:
-        """AC-2.4: dropdown of distinct memory creators in this workspace."""
+    async def list_creators(
+        self,
+        workspace_id: int,
+        client_id: str | None = None,
+    ) -> MemoryBrowserCreatorListResponse:
+        """AC-2.4: dropdown of distinct memory creators in this workspace,
+        scoped to the same client partition as the list endpoint."""
+        conditions = [
+            Memory.workspace_id == workspace_id,
+            Memory.created_by_id.isnot(None),
+        ]
+        if client_id is not None:
+            conditions.append(Memory.client_id == client_id)
+        else:
+            conditions.append(Memory.client_id.is_(None))
         stmt = (
             select(User.id, User.email)
             .join(Memory, Memory.created_by_id == User.id)
-            .where(
-                Memory.workspace_id == workspace_id,
-                Memory.created_by_id.isnot(None),
-            )
+            .where(*conditions)
             .distinct()
             .order_by(User.email)
         )
@@ -205,9 +221,12 @@ class MemoryBrowserService:
             .options(defer(Memory.embedding))
             .where(*conditions)
             .order_by(Memory.research_thread_id.asc().nulls_last(), Memory.created_at.asc(), Memory.id.asc())
+            .limit(TIMELINE_LIMIT)
         )
         result = await self.session.execute(stmt)
         memories = list(result.scalars().all())
+        for m in memories:
+            self._decrypt_memory(m)
 
         memory_ids = [m.id for m in memories]
         flag_status_map = await self._load_review_status(workspace_id, memory_ids)
@@ -326,8 +345,8 @@ class MemoryBrowserService:
                 source_input=memory.source_input,
             ),
             versions=await self._build_versions(memory),
-            research_thread=await self._build_thread(workspace_id, memory.research_thread_id),
-            relations=(await self._build_relations(workspace_id, memory)).items,
+            research_thread=await self._build_thread(workspace_id, memory.research_thread_id, client_id),
+            relations=(await self._build_relations(workspace_id, memory, client_id)).items,
         )
 
     async def get_memory_versions(
@@ -346,7 +365,7 @@ class MemoryBrowserService:
         client_id: str | None = None,
     ) -> MemoryRelationListResponse:
         memory = await self._get_scoped_memory(workspace_id, memory_id, client_id)
-        return await self._build_relations(workspace_id, memory)
+        return await self._build_relations(workspace_id, memory, client_id)
 
     async def _get_scoped_memory(
         self,
@@ -395,6 +414,28 @@ class MemoryBrowserService:
         from app.notifications.persistence import Notification
 
         reason = flag_reason.strip()
+
+        # Idempotency: an already-open flag on the same memory is returned
+        # as-is without stacking rows or emitting duplicate notifications.
+        existing_stmt = select(MemoryReviewQueue).where(
+            MemoryReviewQueue.memory_id == memory.id,
+            MemoryReviewQueue.workspace_id == workspace_id,
+            MemoryReviewQueue.status == "open",
+        )
+        existing = (await self.session.execute(existing_stmt)).scalar_one_or_none()
+        if existing is not None:
+            return MemoryReviewQueueRead(
+                id=existing.id,
+                memory_id=existing.memory_id,
+                workspace_id=existing.workspace_id,
+                flag_reason=existing.flag_reason,
+                flagged_by=str(existing.flagged_by) if existing.flagged_by else None,
+                status=existing.status,
+                created_at=existing.created_at,
+                resolved_at=existing.resolved_at,
+                resolved_by=str(existing.resolved_by) if existing.resolved_by else None,
+            )
+
         queue = MemoryReviewQueue(
             memory_id=memory.id,
             workspace_id=workspace_id,
@@ -464,6 +505,7 @@ class MemoryBrowserService:
                 or_(
                     WorkspaceMembership.is_owner.is_(True),
                     WorkspaceRole.permissions.any(Permission.MEMORY_UPDATE.value),
+                    WorkspaceRole.permissions.any(Permission.FULL_ACCESS.value),
                 ),
             )
             .distinct()
@@ -545,7 +587,12 @@ class MemoryBrowserService:
             )
         return out
 
-    async def _build_thread(self, workspace_id: int, research_thread_id: int | None) -> ResearchThreadSummary | None:
+    async def _build_thread(
+        self,
+        workspace_id: int,
+        research_thread_id: int | None,
+        client_id: str | None = None,
+    ) -> ResearchThreadSummary | None:
         if research_thread_id is None:
             return None
         stmt = select(ResearchThread).where(
@@ -557,17 +604,25 @@ class MemoryBrowserService:
         if thread is None:
             return None
 
+        memory_conditions = [
+            Memory.research_thread_id == thread.id,
+            Memory.workspace_id == workspace_id,
+            Memory.archived_at.is_(None),
+        ]
+        if client_id is not None:
+            memory_conditions.append(Memory.client_id == client_id)
+        else:
+            memory_conditions.append(Memory.client_id.is_(None))
         memories_stmt = (
             select(Memory)
             .options(defer(Memory.embedding))
-            .where(
-                Memory.research_thread_id == thread.id,
-                Memory.archived_at.is_(None),
-            )
+            .where(*memory_conditions)
             .order_by(Memory.created_at.asc(), Memory.id.asc())
         )
         res = await self.session.execute(memories_stmt)
         memories = list(res.scalars().all())
+        for m in memories:
+            self._decrypt_memory(m)
 
         memory_ids = [m.id for m in memories]
         version_count_map = await self._load_version_counts(workspace_id, memory_ids)
@@ -589,19 +644,24 @@ class MemoryBrowserService:
         self,
         workspace_id: int,
         memory: Any,
+        client_id: str | None = None,
     ) -> MemoryRelationListResponse:
         """AC-3.5: show both incoming and outgoing relations for the memory,
-        scoped to the workspace to satisfy hard tenant boundaries."""
-        stmt = (
-            select(MemoryRelation)
-            .where(
-                MemoryRelation.workspace_id == workspace_id,
-                or_(
-                    MemoryRelation.from_memory_id == memory.id,
-                    MemoryRelation.to_memory_id == memory.id,
-                ),
-            )
-            .order_by(MemoryRelation.created_at.asc())
+        scoped to the workspace and client partition to satisfy hard tenant
+        boundaries."""
+        conditions = [
+            MemoryRelation.workspace_id == workspace_id,
+            or_(
+                MemoryRelation.from_memory_id == memory.id,
+                MemoryRelation.to_memory_id == memory.id,
+            ),
+        ]
+        if client_id is not None:
+            conditions.append(MemoryRelation.client_id == client_id)
+        else:
+            conditions.append(MemoryRelation.client_id.is_(None))
+        stmt = select(MemoryRelation).where(*conditions).order_by(
+            MemoryRelation.created_at.asc()
         )
         result = await self.session.execute(stmt)
         relations = list(result.scalars().all())
