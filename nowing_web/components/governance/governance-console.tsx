@@ -5,6 +5,8 @@ import { useAtomValue } from "jotai";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { workspacesAtom } from "@/atoms/workspaces/workspace-query.atoms";
+import { usePermissionGate } from "@/atoms/members/members-query.atoms";
+import { CANONICAL_PERMISSIONS } from "@/contracts/types/permissions.types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { governanceApiService } from "@/lib/apis/governance-api.service";
@@ -27,6 +29,10 @@ export function GovernanceConsole({ workspaceId }: GovernanceConsoleProps) {
 		() => workspacesData?.find((w) => w.id === workspaceId)?.is_owner ?? false,
 		[workspacesData, workspaceId]
 	);
+	const canUpdateSettings = usePermissionGate(CANONICAL_PERMISSIONS.SETTINGS_UPDATE);
+	const canDeleteMemory = usePermissionGate(CANONICAL_PERMISSIONS.MEMORY_DELETE);
+	const canEditGovernance = isOwner || canUpdateSettings;
+	const canEditRightToDelete = isOwner || canDeleteMemory;
 
 	const { data: overview, isLoading, refetch } = useQuery({
 		queryKey: ["governance", "overview", workspaceId],
@@ -46,7 +52,7 @@ export function GovernanceConsole({ workspaceId }: GovernanceConsoleProps) {
 		);
 	}
 
-	const canEdit = isOwner;
+	const canEdit = canEditGovernance;
 
 	return (
 		<div className="p-6 space-y-6">
@@ -102,9 +108,7 @@ export function GovernanceConsole({ workspaceId }: GovernanceConsoleProps) {
 						canEdit={canEdit}
 						onChanged={refetch}
 					/>
-					{overview?.workspace_status?.scrape_paused_at && (
-						<RightToDeletePanel workspaceId={workspaceId} canEdit={canEdit} />
-					)}
+					<RightToDeletePanel workspaceId={workspaceId} canEdit={canEditRightToDelete} />
 				</TabsContent>
 			</Tabs>
 		</div>

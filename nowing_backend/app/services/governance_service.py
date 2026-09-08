@@ -258,6 +258,7 @@ class GovernanceService:
 
     async def upsert_source_risk_tier(
         self,
+        workspace_id: int,
         payload: SourceRiskTierUpdate,
         *,
         actor_id: UUID | None = None,
@@ -269,6 +270,7 @@ class GovernanceService:
         )
         result = await self.session.execute(stmt)
         tier = result.scalars().first()
+        previous_risk_tier = tier.risk_tier if tier else None
 
         if tier:
             tier.risk_tier = payload.risk_tier
@@ -285,9 +287,17 @@ class GovernanceService:
 
         await self.session.flush()
 
-        # AC-5: pause scraping when source reclassified to high risk.
+        # AC-3/3: pause scraping for this workspace when source reclassified to high risk.
         if payload.risk_tier == "high":
-            await self._pause_scraping_for_source(source_type, actor_id=actor_id)
+            await self._pause_scraping_for_source(
+                workspace_id, source_type, actor_id=actor_id
+            )
+        # AC-3/5: resuming from high → lower risk re-enables scraping for this
+        # workspace and writes `governance.source_risk_tier_resume` audit.
+        elif previous_risk_tier == "high" and payload.risk_tier in {"low", "medium"}:
+            await self._resume_scraping_for_source(
+                workspace_id, source_type, actor_id=actor_id
+            )
 
         await self._write_audit(
             action="governance.source_risk_tier.upsert",
@@ -308,43 +318,109 @@ class GovernanceService:
         return list(result.scalars().all())
 
     async def _pause_scraping_for_source(
-        self, source_type: str, *, actor_id: UUID | None = None
+        self,
+        workspace_id: int,
+        source_type: str,
+        *,
+        actor_id: UUID | None = None,
     ) -> None:
-        """Soft-pause scraping for a high-risk source.
+        """Soft-pause scraping for a high-risk source in the current workspace.
 
-        For `scraper_run` source_type this pauses scraping workspace-wide;
-        for other types we record the marker for governance review.
+        AC-3/3: pause is workspace-scoped (single workspace only), not global.
         """
         now = datetime.now(UTC)
         stmt = select(Workspace).where(
+            Workspace.id == workspace_id,
             Workspace.archived_at.is_(None),
             Workspace.scrape_paused_at.is_(None),
         )
         result = await self.session.execute(stmt)
-        workspaces = result.scalars().all()
+        ws = result.scalars().first()
 
-        for ws in workspaces:
-            ws.scrape_paused_at = now
-            ws.api_access_enabled = False
-
-        if workspaces:
-            logger.info(
-                "governance.scrape_paused",
+        if not ws:
+            logger.debug(
+                "governance.scrape_paused skipped",
                 extra={
+                    "workspace_id": workspace_id,
                     "source_type": source_type,
-                    "workspaces_paused": len(workspaces),
-                    "actor_id": str(actor_id) if actor_id else None,
+                    "reason": "already_paused_or_archived",
                 },
             )
-            await self._write_audit(
-                action="governance.scrape_paused",
-                actor_id=actor_id,
-                subject_id=None,
-                diff_payload={
+            return
+
+        ws.scrape_paused_at = now
+        ws.api_access_enabled = False
+
+        logger.info(
+            "governance.scrape_paused",
+            extra={
+                "workspace_id": workspace_id,
+                "source_type": source_type,
+                "actor_id": str(actor_id) if actor_id else None,
+            },
+        )
+        await self._write_audit(
+            action="governance.scrape_paused",
+            actor_id=actor_id,
+            subject_id=None,
+            diff_payload={
+                "workspace_id": workspace_id,
+                "source_type": source_type,
+                "scrape_paused_at": now.isoformat(),
+            },
+        )
+
+    async def _resume_scraping_for_source(
+        self,
+        workspace_id: int,
+        source_type: str,
+        *,
+        actor_id: UUID | None = None,
+    ) -> None:
+        """Resume scraping for this workspace when a source is downgraded.
+
+        AC-3/5: resumption writes `governance.source_risk_tier_resume` audit.
+        """
+        stmt = select(Workspace).where(
+            Workspace.id == workspace_id,
+            Workspace.archived_at.is_(None),
+            Workspace.scrape_paused_at.isnot(None),
+        )
+        result = await self.session.execute(stmt)
+        ws = result.scalars().first()
+
+        if not ws:
+            logger.debug(
+                "governance.scrape_resumed skipped",
+                extra={
+                    "workspace_id": workspace_id,
                     "source_type": source_type,
-                    "workspaces_paused": [w.id for w in workspaces],
+                    "reason": "not_paused_or_archived",
                 },
             )
+            return
+
+        ws.scrape_paused_at = None
+        ws.api_access_enabled = True
+
+        logger.info(
+            "governance.scrape_resumed",
+            extra={
+                "workspace_id": workspace_id,
+                "source_type": source_type,
+                "actor_id": str(actor_id) if actor_id else None,
+            },
+        )
+        await self._write_audit(
+            action="governance.source_risk_tier.resume",
+            actor_id=actor_id,
+            subject_id=None,
+            diff_payload={
+                "workspace_id": workspace_id,
+                "source_type": source_type,
+                "scrape_paused_at": None,
+            },
+        )
 
     # ------------------------------------------------------------------
     # DNC records
@@ -568,9 +644,16 @@ class GovernanceService:
                 )
             )
 
-        action_params: dict[str, Any] = {"reason": payload.reason}
         if payload.source_entity_type:
-            action_params["source_entity_type"] = payload.source_entity_type
+            filters.append(
+                FilterClause(
+                    field="source_entity_type",
+                    operator="eq",
+                    value=payload.source_entity_type,
+                )
+            )
+
+        action_params: dict[str, Any] = {"reason": payload.reason}
 
         if payload.dry_run:
             dry = await self.bulk_ops.dry_run(

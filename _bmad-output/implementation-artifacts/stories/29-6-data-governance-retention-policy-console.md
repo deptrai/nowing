@@ -1,6 +1,6 @@
 ---
 story_key: 29-6-data-governance-retention-policy-console
-status: in-progress
+status: review-follow-up
 baseline_commit: 0e2be000a0e55a397f9476f3bcf7e99f9ac7fb13
 epic: 29
 story: 6
@@ -8,7 +8,7 @@ story: 6
 
 # Story 29.6: Data Governance & Retention Policy Console
 
-**Status:** `completed`  
+**Status:** `changes-requested` — review follow-ups pending (see `Senior Developer Review (AI)`)  
 **Epic:** 29 — SaaS Operations, Advanced Admin Governance & Analyst Workspace  
 **Governed by:** FR-97, FR-104, AR-13, AR-17, AR-18, UX-DR-PRFAQ-5, UX-DR-PRFAQ-6, NFR-1, NFR-2, NFR-5, INV-28.2, INV-29.2, AD-28.3.  
 **Dependencies:** Epic 1 (auth/RBAC), Epic 3 (memory, `Memory`, `MemoryVersion`, `MemoryRelation`, `MemorySourceType`), Epic 21.14 (`WorkspaceDncRecord`, `GlobalDncRecord`, `DncComplianceService`), Epic 28.3 (ToS review + source risk tier ownership), Epic 28.5 (`memory_retention_*` columns, `archived_at`, `MemoryErasureService`, `apply_memory_retention_policies` Celery task), Epic 29.1 (`WorkspaceRole` + permissions), Epic 29.4 (`BulkOpJob`/`bulk_op_errors` + idempotency pattern).
@@ -92,6 +92,34 @@ so that **Nowing cloud stays compliant with scraped-source ToS and data-subject 
 1. Every retention policy change, source risk tier change, DNC add/remove, and right-to-delete execution writes an `audit_events` row with `actor_id`, `action`, `diff_payload`, and `created_at`.
 2. The `Audit Log` tab supports filtering by `action` prefix (`governance.*`, `memory_delete`, `bulk_delete`) and date range.
 3. All mutations are idempotent where applicable: DNC upserts use the unique constraint, bulk deletes reuse `idempotency_key` from `bulk_op_jobs`, and right-to-delete dry-run is side-effect free.
+
+---
+
+## Tasks/Subtasks
+
+### Review Follow-ups (AI)
+
+**Severity: P0 (Blocker)**
+- [x] Fix multi-tenant scrape-pause breach in `governance_service.py:_pause_scraping_for_source` (lines 310–347). The query omits `workspace_id` filtering; any workspace setting `risk_tier='high'` currently pauses scraping on ALL active workspaces. Scope to the calling `workspace_id` only. — Fixed: added `workspace_id` param and scoped `select(Workspace)` to `Workspace.id == workspace_id`.
+- [x] Restore visibility of `RightToDeletePanel` in `governance-console.tsx` (lines 105–107). It is currently gated behind `scrape_paused_at`, making GDPR right-to-delete inaccessible under normal operation. — Fixed: removed `scrape_paused_at` conditional.
+- [x] Add scrape resumption workflow + audit (`governance.source_risk_tier_resume`) as required by AC-3/4 and AC-3/5. Currently only pause is implemented with no UI or API for resumption. — Fixed: added `_resume_scraping_for_source` triggered when downgrading tier from `high` → `low`/`medium`; writes `governance.source_risk_tier.resume` audit.
+- [x] Fix `source_entity_type` filter dropped in `_delete_bulk` (lines 571–573). The value is placed in `action_params` but never added to the `FilterClause` list, so bulk ops ignore it. — Fixed: moved `source_entity_type` into `filters` list as `FilterClause(field='source_entity_type', operator='eq', ...)`, removed from `action_params`.
+- [x] Single-memory delete returns HTTP 200; AC-4/5 requires HTTP 204 (no content) for `single_memory` right-to-delete. — Fixed: route returns `Response(status_code=204)` for `single_memory` non-dry-run requests.
+- [x] Fix permission gating in `governance-console.tsx` (line 49). `canEdit = isOwner` excludes non-owner members with `settings:update`/`memory:delete` permissions; check workspace role permissions, not just `is_owner`. — Fixed: split into `canEditGovernance = isOwner || settings:update` and `canEditRightToDelete = isOwner || memory:delete` via `usePermissionGate`.
+
+**Severity: High**
+- [ ] Mask PII in DNC audit `diff_payload`. `create_dnc_record` dumps `payload.model_dump()` (raw `value`) into `diff_payload`; hash or mask it per AC-5/6 and data-governance rules.
+- [ ] Wrap `datetime.fromisoformat` in `list_audit_log` route (line 221) with `try/except` and return 422 on invalid input; currently raises unhandled `ValueError`.
+- [ ] Wrap `uuid.UUID(record_id)` (or `record_id` path param conversion) with `try/except` in `delete_dnc_record` route for 422 instead of 500.
+
+**Severity: Medium**
+- [ ] Audit action names should match AC-5 (`governance.dnc_add`/`governance.dnc_remove`) and AC-4 (`memory_delete`/`bulk_delete`); current code emits `governance.dnc_record.create`/`governance.dnc_record.delete` and relies on `MemoryErasureService`/`BulkOpsService` audit names. Align strings for audit-log filtering.
+- [ ] Add `source_entity_type` input field to `right-to-delete-panel.tsx` bulk form so the filter can be exercised end-to-end.
+- [ ] Add bulk job progress polling / cancellation UI to `right-to-delete-panel.tsx` per AC-4/4 (currently no progress display after `job_id` returns).
+
+**Severity: Low**
+- [ ] Retention violation should return HTTP 422 with field-level error, not 400 (AC-2/4).
+- [ ] DNC list returns full `value` in `DncRecordRead`; per data-minimization spec it should be masked (e.g., last 4 digits) when `GLOBAL_DNC_ENABLED` is on or when the caller lacks `settings:view` on PII.
 
 ---
 
@@ -269,6 +297,38 @@ so that **Nowing cloud stays compliant with scraped-source ToS and data-subject 
 - **Non-critical gaps to fold into ATDD:** boundary validation, concurrent retention edits, dry-run idempotency, cache-invalidation failure handling, missing `memory_source_legal_tiers` fallback.
 - **Action:** Proceed to `bmad-nowing-test-first-atdd`.
 
+## Senior Developer Review (AI)
+
+**Review Date:** 2026-09-08  
+**Reviewed Commit:** `141e8903d`  
+**Verdict:** `CHANGES REQUESTED` — multiple P0 findings block acceptance.  
+**Reviewers (subagents):** Blind Hunter, Edge Case Hunter, Verification Gap Reviewer, Acceptance Auditor.
+
+### Findings Summary
+
+| # | Severity | File | Finding |
+|---|----------|------|---------|
+| 1 | **P0** | `app/services/governance_service.py:310–347` | `_pause_scraping_for_source` queries `Workspace` without `workspace_id` filter → any tier change to `high` pauses scraping on **all active workspaces**. Cross-tenant side effect. |
+| 2 | **P0** | `components/governance/governance-console.tsx:105–107` | `RightToDeletePanel` is conditionally rendered only when `scrape_paused_at` is set → normal GDPR delete flow is unreachable. |
+| 3 | **P0** | `app/services/governance_service.py` + `components/governance/*` | No scrape-resumption workflow (AC-3/4–5). Pause exists but no UI or audit `governance.source_risk_tier_resume`. |
+| 4 | **P0** | `app/services/governance_service.py:571–573` | `source_entity_type` placed in `action_params` instead of a `FilterClause` → bulk delete ignores it. |
+| 5 | **P0** | `app/routes/governance_routes.py` + `governance_service.py:499–533` | `single_memory` delete returns HTTP 200; spec requires 204. |
+| 6 | **P0** | `components/governance/governance-console.tsx:49` | `canEdit = isOwner` ignores `settings:update`/`memory:delete` permissions; non-owner members cannot edit. |
+| 7 | **High** | `app/services/governance_service.py:403–412` | Raw `payload.model_dump()` (including `value`) written to `diff_payload` → PII leakage in audit trail. |
+| 8 | **High** | `app/routes/governance_routes.py:221` | `datetime.fromisoformat` not wrapped → `ValueError` → 500 instead of 422. |
+| 9 | **High** | `app/routes/governance_routes.py` | `record_id` UUID parse unguarded → 500 on malformed ID. |
+| 10 | **Medium** | `app/services/governance_service.py` | Audit action names do not match AC strings (`governance.dnc_record.create` vs `governance.dnc_add`; `memory_delete`/`bulk_delete` handled via dependencies but inconsistent). |
+| 11 | **Medium** | `components/governance/right-to-delete-panel.tsx` | No `source_entity_type` input field in bulk form → filter unusable from UI. |
+| 12 | **Medium** | `components/governance/right-to-delete-panel.tsx` | No bulk-job progress polling / cancellation UI (AC-4/4). |
+| 13 | **Low** | `app/services/governance_service.py:215–223` | Retention-tier violation returns 400; AC-2/4 requires 422 with field-level error. |
+| 14 | **Low** | `app/schemas/governance.py` + `dnc-panel.tsx` | DNC `value` returned in full; spec expects masking for compliance display. |
+
+### Remediation
+
+All findings are tracked under `Tasks/Subtasks → Review Follow-ups (AI)`. Fix order: P0 → High → Medium → Low. Re-run integration tests (`test_governance_service.py`, `test_governance_routes.py`) and `tsc --noEmit` after each batch.
+
+---
+
 ## Dev Agent Record
 
 ### Agent Model Used
@@ -325,3 +385,4 @@ Opus 5 (1M context) — 2026-09-08
 ### Change Log
 
 - **2026-09-08:** Implemented Story 29.6 backend governance console (retention policy, source risk tiers, DNC, right-to-delete, audit log, workspace archive/restore) + frontend page, components, API service, and i18n.
+- **2026-09-08:** Senior Developer Review (commit `141e8903d`) returned **CHANGES REQUESTED** with 14 findings (6 P0, 3 High, 3 Medium, 2 Low) — tracked in `Tasks/Subtasks → Review Follow-ups (AI)`.
