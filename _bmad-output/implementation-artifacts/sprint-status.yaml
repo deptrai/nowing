@@ -1,5 +1,5 @@
 # generated: 2026-08-08
-# last_updated: 2026-09-02
+# last_updated: 2026-09-08
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -331,7 +331,7 @@ development_status:
   29-3-tenant-subscription-tier-quota-management: done
   29-4-admin-bulk-operations-console: done
   29-5-memory-browser-research-timeline-for-analyst: done
-  29-6-data-governance-retention-policy-console: backlog
+  29-6-data-governance-retention-policy-console: ready-for-dev
   epic-29-retrospective: optional
 
   epic-30: in-progress
