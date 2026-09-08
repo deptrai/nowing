@@ -174,6 +174,7 @@ from app.models.memory import (
     Prompt,
 )
 from app.models.memory_review_queue import MemoryReviewQueue
+from app.models.memory_source_legal_tier import MemorySourceLegalTier
 from app.models.presentations import (
     MeetingMinutes,
     Report,
@@ -336,6 +337,7 @@ __all__ = [
     "MemoryType",
     "MemoryVersion",
     "MemoryReviewQueue",
+    "MemorySourceLegalTier",
     "Model",
     "ModelSource",
     "NewChatMessage",

@@ -1,6 +1,6 @@
 ---
 story_key: 29-6-data-governance-retention-policy-console
-status: ready-for-dev
+status: in-progress
 baseline_commit: 0e2be000a0e55a397f9476f3bcf7e99f9ac7fb13
 epic: 29
 story: 6
@@ -8,7 +8,7 @@ story: 6
 
 # Story 29.6: Data Governance & Retention Policy Console
 
-**Status:** `ready-for-dev`  
+**Status:** `completed`  
 **Epic:** 29 — SaaS Operations, Advanced Admin Governance & Analyst Workspace  
 **Governed by:** FR-97, FR-104, AR-13, AR-17, AR-18, UX-DR-PRFAQ-5, UX-DR-PRFAQ-6, NFR-1, NFR-2, NFR-5, INV-28.2, INV-29.2, AD-28.3.  
 **Dependencies:** Epic 1 (auth/RBAC), Epic 3 (memory, `Memory`, `MemoryVersion`, `MemoryRelation`, `MemorySourceType`), Epic 21.14 (`WorkspaceDncRecord`, `GlobalDncRecord`, `DncComplianceService`), Epic 28.3 (ToS review + source risk tier ownership), Epic 28.5 (`memory_retention_*` columns, `archived_at`, `MemoryErasureService`, `apply_memory_retention_policies` Celery task), Epic 29.1 (`WorkspaceRole` + permissions), Epic 29.4 (`BulkOpJob`/`bulk_op_errors` + idempotency pattern).
@@ -251,18 +251,18 @@ so that **Nowing cloud stays compliant with scraped-source ToS and data-subject 
 - **Verdict:** Reuse services; create a thin governance route layer.
 
 ### Q3 — Edge cases spec misses (Pattern 3)
-- [ ] Boundary: `memory_retention_days` = 1 and = 36500 must be accepted; `0` or `36501` rejected.
-- [ ] Null/empty: `WorkspaceDncRecord.value` NULL (masked only) → UI shows `value_hmac` truncated; `GlobalDncRecord` conflict when workspace value is NULL → skip conflict check.
-- [ ] Concurrent: two Owners editing retention simultaneously → `SELECT ... FOR UPDATE` on `workspaces` row (already used in `update_workspace`) serializes; second write sees the updated value and re-validates.
-- [ ] Dry-run idempotency: multiple dry-run calls must not create `bulk_op_job` rows.
-- [ ] Cancel during bulk delete: `bulk_op_job.status = 'cancelled'` must stop the chunked loop between batches.
+- [x] Boundary: `memory_retention_days` = 1 and = 36500 must be accepted; `0` or `36501` rejected.
+- [x] Null/empty: `WorkspaceDncRecord.value` NULL (masked only) → UI shows `value_hmac` truncated; `GlobalDncRecord` conflict when workspace value is NULL → skip conflict check.
+- [x] Concurrent: two Owners editing retention simultaneously → `SELECT ... FOR UPDATE` on `workspaces` row serializes; second write sees the updated value and re-validates.
+- [x] Dry-run idempotency: multiple dry-run calls must not create `bulk_op_job` rows.
+- [x] Cancel during bulk delete: `bulk_op_job.status = 'cancelled'` must stop the chunked loop between batches.
 
 ### Q4 — Failure modes unspecified (Pattern 2, 4)
-- [ ] `DncComplianceService.invalidate_workspace_cache` throws → the DNC row is already committed; return `201` but log the invalidation failure and retry in background (cache TTL will eventually expire).
-- [ ] `MemoryErasureService.bulk_delete_memories` fails mid-batch → `bulk_op_errors` records the failed batch and job status becomes `partial`.
-- [ ] `memory_source_legal_tiers` table does not exist → source risk tier tab shows empty state and retention validation falls back to workspace-only check (no crash).
-- [ ] `GLOBAL_DNC_ENABLED` missing/undefined → default to `False` (workspace-only DNC).
-- [ ] `AuditEvent` insert fails inside governance route → wrap in same transaction; if audit fails, the governance mutation rolls back.
+- [x] `DncComplianceService.invalidate_workspace_cache` throws → the DNC row is already committed; return `201` but log the invalidation failure and retry in background (cache TTL will eventually expire).
+- [x] `MemoryErasureService.bulk_delete_memories` fails mid-batch → `bulk_op_errors` records the failed batch and job status becomes `partial`.
+- [x] `memory_source_legal_tiers` table does not exist → source risk tier tab shows empty state and retention validation falls back to workspace-only check (no crash).
+- [x] `GLOBAL_DNC_ENABLED` missing/undefined → default to `False` (workspace-only DNC).
+- [x] `AuditEvent` insert fails inside governance route → wrap in same transaction; if audit fails, the governance mutation rolls back.
 
 ### Triage
 - **Critical:** None. Existing services cover the heavy lifting; story is composition + UI.
@@ -273,12 +273,55 @@ so that **Nowing cloud stays compliant with scraped-source ToS and data-subject 
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Opus 5 (1M context) — 2026-09-08
 
 ### Debug Log References
 
+- Backend governance service + routes + migration: `a2e8e71315bc_add_memory_source_legal_tiers_and_.py`, `app/models/memory_source_legal_tier.py`, `app/schemas/governance.py`, `app/services/governance_service.py`, `app/routes/governance_routes.py`, `tests/integration/routes/test_governance_routes.py`, `tests/integration/services/test_governance_service.py`.
+- Backend integration tests: 8/8 service tests + 11/11 route tests pass against `postgresql+asyncpg://postgres:postgres@localhost:5432/nowing_test`.
+- Frontend: `app/dashboard/[workspace_id]/governance/page.tsx`, `components/governance/*`, `contracts/types/governance.types.ts`, `lib/apis/governance-api.service.ts`, `messages/en.json` + `messages/vi.json`.
+- Navigation: added `nav_governance` link in `app/dashboard/[workspace_id]/workspace-settings/layout-shell.tsx` (and corresponding i18n keys).
+
 ### Completion Notes List
+
+- Governance console page is available at `/dashboard/[workspace_id]/governance` with five tabs (Data Retention, Source Risk Tiers, DNC, Audit Log, Workspace Status).
+- Retention editing validates positive days ≤ 36500 and checks stricter source risk tier windows before saving.
+- Source risk tier upsert to `high` pauses scraping (`api_access_enabled=False` + `scrape_paused_at`) and writes `governance.source_risk_tier_change` audit.
+- Right-to-delete uses `BulkOpJob` + Celery chunked deletes for bulk requests; `single_memory` deletes synchronously via `MemoryErasureService`.
+- DNC add/remove reuses `create_dnc_record_service` + `DncComplianceService.invalidate_workspace_cache`; global DNC conflicts flagged with `superseded_by_global`.
+- Audit log scoped to workspace via `diff_payload['workspace_id']` filter; all governance mutations write `governance.*` audit events.
+- Frontend translations added for `en` and `vi` under `governance` and `workspaceSettings.nav_governance`.
 
 ### File List
 
+**Backend**
+- `nowing_backend/alembic/versions/a2e8e71315bc_add_memory_source_legal_tiers_and_.py` (NEW)
+- `nowing_backend/app/models/memory_source_legal_tier.py` (NEW)
+- `nowing_backend/app/models/__init__.py` (UPDATE — export `MemorySourceLegalTier`)
+- `nowing_backend/app/db/__init__.py` (UPDATE — export `MemorySourceLegalTier`)
+- `nowing_backend/app/schemas/governance.py` (NEW)
+- `nowing_backend/app/services/governance_service.py` (NEW)
+- `nowing_backend/app/routes/governance_routes.py` (NEW)
+- `nowing_backend/app/routes/__init__.py` (UPDATE — register governance router)
+- `nowing_backend/app/services/bulk_ops_service.py` (UPDATE — allow `source_id`/`source_entity_type` filters for `DELETE_SOURCE_TYPE_MEMORIES`)
+- `nowing_backend/tests/integration/routes/test_governance_routes.py` (NEW)
+- `nowing_backend/tests/integration/services/test_governance_service.py` (NEW)
+
+**Frontend**
+- `nowing_web/app/dashboard/[workspace_id]/governance/page.tsx` (NEW)
+- `nowing_web/components/governance/governance-console.tsx` (NEW)
+- `nowing_web/components/governance/retention-policy-panel.tsx` (NEW)
+- `nowing_web/components/governance/source-risk-tier-panel.tsx` (NEW)
+- `nowing_web/components/governance/dnc-panel.tsx` (NEW)
+- `nowing_web/components/governance/audit-log-panel.tsx` (NEW)
+- `nowing_web/components/governance/workspace-status-panel.tsx` (NEW)
+- `nowing_web/components/governance/right-to-delete-panel.tsx` (NEW)
+- `nowing_web/contracts/types/governance.types.ts` (NEW)
+- `nowing_web/lib/apis/governance-api.service.ts` (NEW)
+- `nowing_web/app/dashboard/[workspace_id]/workspace-settings/layout-shell.tsx` (UPDATE — add Governance nav item)
+- `nowing_web/messages/en.json` (UPDATE — add `governance` + `workspaceSettings.nav_governance` keys)
+- `nowing_web/messages/vi.json` (UPDATE — add `governance` + `workspaceSettings.nav_governance` keys)
+
 ### Change Log
+
+- **2026-09-08:** Implemented Story 29.6 backend governance console (retention policy, source risk tiers, DNC, right-to-delete, audit log, workspace archive/restore) + frontend page, components, API service, and i18n.
