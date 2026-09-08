@@ -72,6 +72,8 @@ ALLOWED_FILTERS: dict[BulkAction, set[str]] = {
     BulkAction.DELETE_SOURCE_TYPE_MEMORIES: {
         "workspace_id",
         "source_type",
+        "source_id",
+        "source_entity_type",
         "created_before",
         "created_after",
         "memory_type",

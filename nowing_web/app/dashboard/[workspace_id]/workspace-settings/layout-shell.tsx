@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, BookText, Cpu, Earth, Gauge, Settings, UserKey } from "lucide-react";
+import { Archive, BookText, Cpu, Earth, Gauge, Settings, ShieldCheck, UserKey } from "lucide-react";
 import { useSelectedLayoutSegment } from "next/navigation";
 import { useTranslations } from "next-intl";
 import type React from "react";
@@ -14,6 +14,7 @@ export type WorkspaceSettingsTab =
 	| "prompts"
 	| "public-links"
 	| "data-retention"
+	| "governance"
 	| "limits";
 
 const DEFAULT_TAB: WorkspaceSettingsTab = "general";
@@ -61,6 +62,12 @@ export function WorkspaceSettingsLayoutShell({
 				label: t("nav_data_retention"),
 				href: `/dashboard/${workspaceId}/workspace-settings/data-retention`,
 				icon: <Archive className="h-4 w-4" aria-hidden="true" />,
+			},
+			{
+				value: "governance" as const,
+				label: t("nav_governance"),
+				href: `/dashboard/${workspaceId}/governance`,
+				icon: <ShieldCheck className="h-4 w-4" aria-hidden="true" />,
 			},
 			{
 				value: "limits" as const,

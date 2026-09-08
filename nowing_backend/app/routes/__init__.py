@@ -96,6 +96,7 @@ from .gateway_webhook_routes import (
     config_router as gateway_config_router,
     router as gateway_router,
 )
+from .governance_routes import router as governance_router
 from .gateway_whatsapp_baileys_routes import router as gateway_whatsapp_baileys_router
 from .gateway_whatsapp_webhook_routes import router as gateway_whatsapp_webhook_router
 from .google_calendar_add_connector_route import (
@@ -274,6 +275,9 @@ router.include_router(
 router.include_router(
     admin_bulk_ops_router
 )  # Platform admin bulk operations console (Story 29.4)
+router.include_router(
+    governance_router
+)  # Workspace governance console (Story 29.6)
 router.include_router(
     broadcasts_router
 )  # In-app active broadcast announcements (Story 25.6)

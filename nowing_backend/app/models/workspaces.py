@@ -139,6 +139,9 @@ class Workspace(BaseModel, TimestampMixin):
     # Story 29.4: Workspace lifecycle archiving
     archived_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
 
+    # Story 29.6: governance-driven scrape pause for high-risk source tiers
+    scrape_paused_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
     # Epic 21 lead scoring ICP criteria (Story 21.2).
     icp_criteria = Column(JSONB, nullable=True)
 
