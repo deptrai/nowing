@@ -8,13 +8,19 @@ from datetime import UTC, datetime
 
 import httpx
 import pytest
-import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.app import app
 from app.auth.context import AuthContext
-from app.db import Memory, MemorySourceType, MemoryType, Permission, WorkspaceRole, get_async_session
+from app.db import (
+    Memory,
+    MemorySourceType,
+    MemoryType,
+    Permission,
+    WorkspaceRole,
+    get_async_session,
+)
 from app.models.users import User, WorkspaceMembership
 from app.models.workspaces import Workspace
 from app.users import get_auth_context
@@ -126,13 +132,16 @@ class TestMemoryBrowserRoutes:
     ):
         memory = await _seed_memory(db_session, db_workspace, db_user)
         response = await client_as_regular_user.post(
-            f"/api/v1/workspaces/{db_workspace.id}/memory-browser/{memory.id}/flag",
+            f"/api/v1/workspaces/{db_workspace.id}/memory-browser/{memory.id}/review-flag",
             json={"flag_reason": "outdated fact"},
         )
         assert response.status_code == 201
         data = response.json()
         assert data["flag_reason"] == "outdated fact"
         assert data["status"] == "open"
+        assert "created_at" in data
+        assert "resolved_at" in data
+        assert "resolved_by" in data
 
     async def test_flag_returns_403_for_read_only_member(
         self, db_session: AsyncSession, db_workspace: Workspace
@@ -181,10 +190,61 @@ class TestMemoryBrowserRoutes:
             ) as read_client:
                 memory = await _seed_memory(db_session, db_workspace, read_only_user)
                 response = await read_client.post(
-                    f"/api/v1/workspaces/{db_workspace.id}/memory-browser/{memory.id}/flag",
+                    f"/api/v1/workspaces/{db_workspace.id}/memory-browser/{memory.id}/review-flag",
                     json={"flag_reason": "should fail"},
                 )
                 assert response.status_code == 403
         finally:
             app.dependency_overrides.pop(get_auth_context, None)
             app.dependency_overrides.pop(get_async_session, None)
+
+    async def test_creators_endpoint(
+        self, client_as_regular_user: AsyncClient, db_session: AsyncSession, db_user: User, db_workspace: Workspace
+    ):
+        """AC-2.4: creators dropdown returns distinct memory creators."""
+        await _seed_memory(db_session, db_workspace, db_user)
+        response = await client_as_regular_user.get(
+            f"/api/v1/workspaces/{db_workspace.id}/memory-browser/creators"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "items" in data
+        emails = [item["email"] for item in data["items"]]
+        assert db_user.email in emails
+
+    async def test_timeline_endpoint(
+        self, client_as_regular_user: AsyncClient, db_session: AsyncSession, db_user: User, db_workspace: Workspace
+    ):
+        """AC-4: timeline groups memories by thread; unthreaded listed separately."""
+        await _seed_memory(db_session, db_workspace, db_user, content="unthreaded one")
+        response = await client_as_regular_user.get(
+            f"/api/v1/workspaces/{db_workspace.id}/memory-browser/timeline"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "threads" in data
+        assert "unthreaded" in data
+
+    async def test_versions_endpoint(
+        self, client_as_regular_user: AsyncClient, db_session: AsyncSession, db_user: User, db_workspace: Workspace
+    ):
+        """AC-3.3: versions endpoint returns empty list when no versions exist."""
+        memory = await _seed_memory(db_session, db_workspace, db_user)
+        response = await client_as_regular_user.get(
+            f"/api/v1/workspaces/{db_workspace.id}/memory-browser/{memory.id}/versions"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["items"] == []
+
+    async def test_relations_endpoint(
+        self, client_as_regular_user: AsyncClient, db_session: AsyncSession, db_user: User, db_workspace: Workspace
+    ):
+        """AC-3.5: relations endpoint returns both directions."""
+        memory = await _seed_memory(db_session, db_workspace, db_user)
+        response = await client_as_regular_user.get(
+            f"/api/v1/workspaces/{db_workspace.id}/memory-browser/{memory.id}/relations"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "items" in data

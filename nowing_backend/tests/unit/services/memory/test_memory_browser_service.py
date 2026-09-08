@@ -24,12 +24,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.db import Memory, MemoryRelation, MemoryVersion, ResearchThread
 from app.schemas.memory_browser import (
+    MemoryBrowserDetailResponse,
     MemoryBrowserListItem,
     MemoryBrowserListResponse,
-    MemoryBrowserDetailResponse,
-    MemoryReviewQueueCreate,
+    MemoryRelationListResponse,
 )
 from app.services.memory.memory_browser_service import MemoryBrowserService
 
@@ -472,7 +471,7 @@ class TestMemoryBrowserServiceDetail:
              patch.object(service, "_derive_source_url", return_value=None), \
              patch.object(service, "_build_versions", return_value=[]), \
              patch.object(service, "_build_thread", return_value=None), \
-             patch.object(service, "_build_relations", return_value=[]):
+             patch.object(service, "_build_relations", return_value=MemoryRelationListResponse(items=[])):
             mock_decrypt.side_effect = lambda m: setattr(m, "content", "decrypted text") or None
             detail = await service.get_memory_detail(workspace_id=7, memory_id=1)
 
@@ -491,9 +490,11 @@ class TestMemoryBrowserServiceDetail:
         session = _FakeSession(scalar=fake)
         service = MemoryBrowserService(session)
 
-        with patch.object(service, "_decrypt_memory", side_effect=Exception("decryption_failed")):
-            with pytest.raises(Exception) as exc_info:
-                await service.get_memory_detail(workspace_id=7, memory_id=1)
+        with (
+            patch.object(service, "_decrypt_memory", side_effect=RuntimeError("decryption_failed")),
+            pytest.raises(RuntimeError) as exc_info,
+        ):
+            await service.get_memory_detail(workspace_id=7, memory_id=1)
 
         assert "decryption" in str(exc_info.value).lower()
 
@@ -507,7 +508,7 @@ class TestMemoryBrowserServiceDetail:
 
 
 class TestMemoryBrowserServiceFlagForReview:
-    """Pattern 2 + 5: flag creation and notification atomicity."""
+    """Pattern 2 + 5: flag creation, audit row, and atomic notification."""
 
     async def test_flag_creates_review_queue_row(self):
         user_id = uuid.uuid4()
@@ -515,7 +516,7 @@ class TestMemoryBrowserServiceFlagForReview:
         session = _FakeSession(scalar=fake)
         service = MemoryBrowserService(session)
 
-        with patch.object(service, "_notify_owners", new_callable=AsyncMock) as mock_notify:
+        with patch.object(service, "_load_review_recipients", new_callable=AsyncMock, return_value=[]):
             result = await service.flag_for_review(
                 workspace_id=7,
                 memory_id=1,
@@ -524,10 +525,16 @@ class TestMemoryBrowserServiceFlagForReview:
             )
 
         assert result is not None
-        assert len(session.added) == 1
-        assert session.added[0].flag_reason == "outdated"
-        assert session.added[0].flagged_by == user_id
-        assert session.added[0].status == "open"
+        # queue row + audit row are staged on the same session
+        queue_rows = [o for o in session.added if o.__class__.__name__ == "MemoryReviewQueue"]
+        audit_rows = [o for o in session.added if o.__class__.__name__ == "AuditEvent"]
+        assert len(queue_rows) == 1
+        assert queue_rows[0].flag_reason == "outdated"
+        assert queue_rows[0].flagged_by == user_id
+        assert queue_rows[0].status == "open"
+        assert len(audit_rows) == 1
+        assert audit_rows[0].action == "memory_review_flag"
+        assert audit_rows[0].actor_id == user_id
 
     async def test_flag_notification_failure_rolls_back(self):
         user_id = uuid.uuid4()
@@ -535,14 +542,42 @@ class TestMemoryBrowserServiceFlagForReview:
         session = _FakeSession(scalar=fake)
         service = MemoryBrowserService(session)
 
-        with patch.object(service, "_notify_owners", new_callable=AsyncMock, side_effect=Exception("notify failed")):
-            with pytest.raises(Exception):
-                await service.flag_for_review(
-                    workspace_id=7,
-                    memory_id=1,
-                    flag_reason="outdated",
-                    flagged_by=user_id,
-                )
+        with (
+            patch.object(
+                service,
+                "_load_review_recipients",
+                new_callable=AsyncMock,
+                side_effect=RuntimeError("notify failed"),
+            ),
+            pytest.raises(RuntimeError),
+        ):
+            await service.flag_for_review(
+                workspace_id=7,
+                memory_id=1,
+                flag_reason="outdated",
+                flagged_by=user_id,
+            )
+
+    async def test_flag_notifies_recipients_in_same_transaction(self):
+        user_id = uuid.uuid4()
+        owner_id = uuid.uuid4()
+        fake = _FakeMemory(id=1, workspace_id=7, content="x", source_type="MANUAL", confidence=1.0)
+        session = _FakeSession(scalar=fake)
+        service = MemoryBrowserService(session)
+
+        with patch.object(service, "_load_review_recipients", new_callable=AsyncMock, return_value=[owner_id]):
+            await service.flag_for_review(
+                workspace_id=7,
+                memory_id=1,
+                flag_reason="outdated",
+                flagged_by=user_id,
+            )
+
+        notifications = [o for o in session.added if o.__class__.__name__ == "Notification"]
+        assert len(notifications) == 1
+        assert notifications[0].user_id == owner_id
+        assert notifications[0].type == "memory_review_flag"
+        assert notifications[0].notification_metadata["memory_id"] == 1
 
     async def test_flag_rejects_empty_reason(self):
         user_id = uuid.uuid4()

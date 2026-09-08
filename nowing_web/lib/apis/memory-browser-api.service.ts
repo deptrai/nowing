@@ -5,10 +5,18 @@ import {
   memoryBrowserListResponseSchema,
   memoryBrowserDetailResponseSchema,
   memoryReviewQueueReadSchema,
+  memoryBrowserCreatorListResponseSchema,
+  memoryBrowserTimelineResponseSchema,
+  memoryVersionListResponseSchema,
+  memoryRelationListResponseSchema,
   type MemoryBrowserQuery,
   type MemoryBrowserListResponse,
   type MemoryBrowserDetailResponse,
   type MemoryReviewQueueRead,
+  type MemoryBrowserCreatorListResponse,
+  type MemoryBrowserTimelineResponse,
+  type MemoryVersionListResponse,
+  type MemoryRelationListResponse,
 } from "@/contracts/types/memory-browser.types";
 import { baseApiService } from "./base-api.service";
 
@@ -49,6 +57,48 @@ class MemoryBrowserApiService {
   };
 
   /**
+   * Get distinct memory creators for the creator filter dropdown (AC-2.4).
+   */
+  listCreators = async (
+    workspaceId: number
+  ): Promise<MemoryBrowserCreatorListResponse> => {
+    const url = `/api/v1/workspaces/${workspaceId}/memory-browser/creators`;
+    return baseApiService.get(url, memoryBrowserCreatorListResponseSchema);
+  };
+
+  /**
+   * Get research timeline: memories grouped by research thread (AC-4).
+   */
+  getTimeline = async (
+    workspaceId: number
+  ): Promise<MemoryBrowserTimelineResponse> => {
+    const url = `/api/v1/workspaces/${workspaceId}/memory-browser/timeline`;
+    return baseApiService.get(url, memoryBrowserTimelineResponseSchema);
+  };
+
+  /**
+   * Get memory detail for the browser detail panel.
+   */
+  getMemoryVersions = async (
+    workspaceId: number,
+    memoryId: number
+  ): Promise<MemoryVersionListResponse> => {
+    const url = `/api/v1/workspaces/${workspaceId}/memory-browser/${memoryId}/versions`;
+    return baseApiService.get(url, memoryVersionListResponseSchema);
+  };
+
+  /**
+   * Get related memories for a given memory (AC-3.5).
+   */
+  getMemoryRelations = async (
+    workspaceId: number,
+    memoryId: number
+  ): Promise<MemoryRelationListResponse> => {
+    const url = `/api/v1/workspaces/${workspaceId}/memory-browser/${memoryId}/relations`;
+    return baseApiService.get(url, memoryRelationListResponseSchema);
+  };
+
+  /**
    * Flag a memory for review by owners/editors.
    */
   flagForReview = async (
@@ -56,7 +106,7 @@ class MemoryBrowserApiService {
     memoryId: number,
     flagReason: string
   ): Promise<MemoryReviewQueueRead> => {
-    const url = `/api/v1/workspaces/${workspaceId}/memory-browser/${memoryId}/flag`;
+    const url = `/api/v1/workspaces/${workspaceId}/memory-browser/${memoryId}/review-flag`;
     return baseApiService.post(url, memoryReviewQueueReadSchema, {
       body: { flag_reason: flagReason },
     });

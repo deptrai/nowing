@@ -16,6 +16,8 @@ export const memoryBrowserListItemSchema = z.object({
   created_by: memoryBrowserCreatorSchema.nullable().optional(),
   version_count: z.number(),
   flag_status: z.string().nullable().optional(),
+  research_thread_id: z.number().nullable().optional(),
+  relation_marker: z.string().nullable().optional(),
 });
 
 export const memoryBrowserListResponseSchema = z.object({
@@ -34,7 +36,7 @@ export const memoryVersionReadSchema = z.object({
 
 export const memoryRelationReadSchema = z.object({
   relation_type: z.string(),
-  to_memory_id: z.number(),
+  to_memory_id: z.number().nullable(),
   weight: z.number().nullable().optional(),
 });
 
@@ -72,13 +74,15 @@ export const memoryBrowserDetailResponseSchema = z.object({
 });
 
 export const memoryReviewQueueReadSchema = z.object({
-  id: z.number(),
-  memory_id: z.number(),
+  id: z.number().nullable().optional(),
+  memory_id: z.number().nullable().optional(),
   workspace_id: z.number(),
   flag_reason: z.string(),
-  flagged_by: z.string(),
+  flagged_by: z.string().nullable().optional(),
   status: z.string(),
-  created_at: z.string(),
+  created_at: z.string().nullable().optional(),
+  resolved_at: z.string().nullable().optional(),
+  resolved_by: z.string().nullable().optional(),
 });
 
 export const memoryBrowserQuerySchema = z.object({
@@ -95,6 +99,29 @@ export const memoryBrowserQuerySchema = z.object({
   sort_dir: z.enum(["asc", "desc"]).optional(),
 });
 
+export const memoryBrowserCreatorListResponseSchema = z.object({
+  items: z.array(memoryBrowserCreatorSchema),
+});
+
+export const memoryBrowserTimelineThreadSchema = z.object({
+  id: z.number(),
+  title: z.string(),
+  memories: z.array(memoryBrowserListItemSchema),
+});
+
+export const memoryBrowserTimelineResponseSchema = z.object({
+  threads: z.array(memoryBrowserTimelineThreadSchema),
+  unthreaded: z.array(memoryBrowserListItemSchema).optional(),
+});
+
+export const memoryVersionListResponseSchema = z.object({
+  items: z.array(memoryVersionReadSchema),
+});
+
+export const memoryRelationListResponseSchema = z.object({
+  items: z.array(memoryRelationReadSchema),
+});
+
 export type MemoryBrowserCreator = z.infer<typeof memoryBrowserCreatorSchema>;
 export type MemoryBrowserListItem = z.infer<typeof memoryBrowserListItemSchema>;
 export type MemoryBrowserListResponse = z.infer<typeof memoryBrowserListResponseSchema>;
@@ -105,3 +132,8 @@ export type MemoryBrowserDetailCitations = z.infer<typeof memoryBrowserDetailCit
 export type MemoryBrowserDetailResponse = z.infer<typeof memoryBrowserDetailResponseSchema>;
 export type MemoryReviewQueueRead = z.infer<typeof memoryReviewQueueReadSchema>;
 export type MemoryBrowserQuery = z.infer<typeof memoryBrowserQuerySchema>;
+export type MemoryBrowserCreatorListResponse = z.infer<typeof memoryBrowserCreatorListResponseSchema>;
+export type MemoryBrowserTimelineThread = z.infer<typeof memoryBrowserTimelineThreadSchema>;
+export type MemoryBrowserTimelineResponse = z.infer<typeof memoryBrowserTimelineResponseSchema>;
+export type MemoryVersionListResponse = z.infer<typeof memoryVersionListResponseSchema>;
+export type MemoryRelationListResponse = z.infer<typeof memoryRelationListResponseSchema>;
