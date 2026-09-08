@@ -114,16 +114,20 @@ class _FakeResult:
 
 
 class _FakeSession:
-    def __init__(self, rows=None, scalar=None, count=None):
+    def __init__(self, rows=None, scalar=None, subsequent_scalar=None, count=None):
         self.rows = rows or []
         self.scalar = scalar
+        self.subsequent_scalar = subsequent_scalar
         self.count = count
         self.execute_calls = []
         self.added = []
 
     async def execute(self, stmt):
         self.execute_calls.append(stmt)
-        return _FakeResult(self.rows, self.scalar, self.count)
+        resolved_scalar = (
+            self.subsequent_scalar if self.execute_calls and len(self.execute_calls) > 1 else self.scalar
+        )
+        return _FakeResult(self.rows, resolved_scalar, self.count)
 
     async def commit(self):
         pass
@@ -513,7 +517,7 @@ class TestMemoryBrowserServiceFlagForReview:
     async def test_flag_creates_review_queue_row(self):
         user_id = uuid.uuid4()
         fake = _FakeMemory(id=1, workspace_id=7, content="x", source_type="MANUAL", confidence=1.0)
-        session = _FakeSession(scalar=fake)
+        session = _FakeSession(scalar=fake, subsequent_scalar=None)
         service = MemoryBrowserService(session)
 
         with patch.object(service, "_load_review_recipients", new_callable=AsyncMock, return_value=[]):
@@ -539,7 +543,7 @@ class TestMemoryBrowserServiceFlagForReview:
     async def test_flag_notification_failure_rolls_back(self):
         user_id = uuid.uuid4()
         fake = _FakeMemory(id=1, workspace_id=7, content="x", source_type="MANUAL", confidence=1.0)
-        session = _FakeSession(scalar=fake)
+        session = _FakeSession(scalar=fake, subsequent_scalar=None)
         service = MemoryBrowserService(session)
 
         with (
@@ -562,7 +566,7 @@ class TestMemoryBrowserServiceFlagForReview:
         user_id = uuid.uuid4()
         owner_id = uuid.uuid4()
         fake = _FakeMemory(id=1, workspace_id=7, content="x", source_type="MANUAL", confidence=1.0)
-        session = _FakeSession(scalar=fake)
+        session = _FakeSession(scalar=fake, subsequent_scalar=None)
         service = MemoryBrowserService(session)
 
         with patch.object(service, "_load_review_recipients", new_callable=AsyncMock, return_value=[owner_id]):
@@ -578,6 +582,37 @@ class TestMemoryBrowserServiceFlagForReview:
         assert notifications[0].user_id == owner_id
         assert notifications[0].type == "memory_review_flag"
         assert notifications[0].notification_metadata["memory_id"] == 1
+
+    async def test_flag_returns_existing_open_flag(self):
+        user_id = uuid.uuid4()
+        fake = _FakeMemory(id=1, workspace_id=7, content="x", source_type="MANUAL", confidence=1.0)
+        queue_fake = SimpleNamespace(
+            id=42,
+            memory_id=1,
+            workspace_id=7,
+            flag_reason="stale",
+            flagged_by=uuid.uuid4(),
+            status="open",
+            created_at=datetime.now(UTC),
+            resolved_at=None,
+            resolved_by=None,
+        )
+        session = _FakeSession(scalar=fake, subsequent_scalar=queue_fake)
+        service = MemoryBrowserService(session)
+
+        result = await service.flag_for_review(
+            workspace_id=7,
+            memory_id=1,
+            flag_reason="outdated",
+            flagged_by=user_id,
+        )
+
+        assert result.status == "open"
+        assert result.id == 42
+        assert result.flag_reason == "stale"
+        # No new queue/audit/notification rows should have been staged.
+        queue_rows = [o for o in session.added if o.__class__.__name__ == "MemoryReviewQueue"]
+        assert len(queue_rows) == 0
 
     async def test_flag_rejects_empty_reason(self):
         user_id = uuid.uuid4()

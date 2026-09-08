@@ -117,7 +117,7 @@ class MemoryRelationListResponse(BaseModel):
 
 
 class MemoryReviewQueueCreate(BaseModel):
-    flag_reason: str = Field(..., min_length=1)
+    flag_reason: str = Field(..., min_length=1, max_length=1000)
 
 
 class MemoryReviewQueueRead(BaseModel):

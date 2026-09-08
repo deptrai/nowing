@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.db import MemorySourceType, Permission, get_async_session
+from app.db import Permission, get_async_session
 from app.schemas.memory_browser import (
     MemoryBrowserCreatorListResponse,
     MemoryBrowserDetailResponse,
@@ -53,7 +53,7 @@ async def list_memories(
     created_after: datetime | None = Query(None),
     created_before: datetime | None = Query(None),
     created_by: str | None = Query(None),
-    keyword: str | None = Query(None),
+    keyword: str | None = Query(None, max_length=200),
     sort: str = Query("created_at", pattern="^(created_at|updated_at|confidence)$"),
     sort_dir: str = Query("desc", pattern="^(asc|desc)$"),
     session: AsyncSession = Depends(get_async_session),
@@ -71,14 +71,7 @@ async def list_memories(
         raise HTTPException(status_code=422, detail="Invalid created_by UUID") from exc
     source_types_list = source_types.split(",") if source_types else None
     if source_types_list:
-        try:
-            source_types_list = [
-                MemorySourceType[st.strip().upper()].value
-                for st in source_types_list
-                if st.strip()
-            ]
-        except KeyError as exc:
-            raise HTTPException(status_code=422, detail=f"Invalid source_type: {exc}") from exc
+        source_types_list = [st.strip() for st in source_types_list if st.strip()]
     service = MemoryBrowserService(session)
     try:
         return await service.list_memories(
@@ -117,7 +110,7 @@ async def list_memory_creators(
         Permission.MEMORY_READ.value,
     )
     service = MemoryBrowserService(session)
-    return await service.list_creators(workspace_id)
+    return await service.list_creators(workspace_id, client_id=_pat_client_id(auth))
 
 
 @router.get(
@@ -261,11 +254,11 @@ async def flag_memory_for_review(
             client_id=_pat_client_id(auth),
         )
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    except Exception as exc:
         message = str(exc).lower()
         if "not found" in message or "no result" in message:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
         raise HTTPException(
             status_code=500,
             detail="An internal error occurred. Please try again or report this issue if it persists.",
