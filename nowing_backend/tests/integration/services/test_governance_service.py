@@ -93,6 +93,7 @@ async def test_upsert_source_risk_tier_high_pauses_scraping(
     """AC-5: High-risk tier sets scrape_paused_at and disables API access."""
     svc = GovernanceService(db_session)
     result = await svc.upsert_source_risk_tier(
+        db_workspace.id,
         SourceRiskTierUpdate(
             source_type=MemorySourceType.SCRAPER_RUN,
             risk_tier="high",

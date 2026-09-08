@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
@@ -110,7 +110,7 @@ async def upsert_source_risk_tier(
     )
     svc = GovernanceService(session)
     return await svc.upsert_source_risk_tier(
-        payload, actor_id=auth.user.id if auth.user else None
+        workspace_id, payload, actor_id=auth.user.id if auth.user else None
     )
 
 
@@ -174,13 +174,14 @@ async def delete_dnc_record(
     )
 
 
-@router.post("/right-to-delete", response_model=RightToDeleteResponse)
+@router.post("/right-to-delete", response_model=RightToDeleteResponse | None)
 async def right_to_delete(
     workspace_id: int,
     payload: RightToDeleteRequest,
+    response: Response,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
-) -> RightToDeleteResponse:
+) -> RightToDeleteResponse | None:
     """Right-to-delete single or bulk memory (AC-4)."""
     await check_permission(
         session,
@@ -190,9 +191,14 @@ async def right_to_delete(
         "You don't have permission to delete memories",
     )
     svc = GovernanceService(session)
-    return await svc.right_to_delete(
+    result = await svc.right_to_delete(
         workspace_id, payload, actor_id=auth.user.id if auth.user else None
     )
+    # AC-4/5: single memory delete returns 204 No Content.
+    if payload.type == "single_memory" and not payload.dry_run:
+        response.status_code = status.HTTP_204_NO_CONTENT
+        return None
+    return result
 
 
 @router.get("/audit-log", response_model=list[AuditLogRead])
