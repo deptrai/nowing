@@ -465,11 +465,11 @@ export function MemoryBrowserPageContent({ workspaceId }: MemoryBrowserPageConte
 								<code className="text-xs bg-muted px-1 py-0.5 rounded">{c.source_capability}</code>
 							</div>
 						)}
-						{c.source_input && (
+						{c.source_input != null && (
 							<div>
 								<span className="font-medium">{t("sourceInput")}: </span>
 								<pre className="text-xs bg-muted p-2 rounded mt-1 overflow-auto max-h-40">
-									{JSON.stringify(c.source_input, null, 2)}
+									{JSON.stringify(c.source_input as unknown, null, 2)}
 								</pre>
 							</div>
 						)}
