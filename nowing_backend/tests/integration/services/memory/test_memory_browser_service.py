@@ -4,22 +4,20 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
-from unittest.mock import patch
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import Memory, MemorySourceType, MemoryType
 from app.models.memory_review_queue import MemoryReviewQueue
 from app.models.users import User, WorkspaceMembership
-from app.models.workspaces import Workspace, ResearchThread
+from app.models.workspaces import ResearchThread, Workspace
 from app.schemas.memory_browser import (
-    MemoryBrowserListResponse,
     MemoryBrowserDetailResponse,
+    MemoryBrowserListResponse,
 )
 from app.services.memory.memory_browser_service import MemoryBrowserService
-
 from tests.integration.conftest import _EMBEDDING_DIM
 
 pytestmark = [pytest.mark.integration]
@@ -195,42 +193,67 @@ class TestMemoryBrowserServiceIntegrationReviewFlag:
         workspace, user = await _seed_workspace_and_user(db_session)
         memory = await _seed_memory(db_session, workspace, user)
 
-        with patch("app.notifications.service.facade.NotificationService.create_notification") as mock_notify:
-            service = MemoryBrowserService(db_session)
-            result = await service.flag_for_review(
-                workspace_id=workspace.id,
-                memory_id=memory.id,
-                flag_reason="outdated fact",
-                flagged_by=user.id,
-            )
+        service = MemoryBrowserService(db_session)
+        result = await service.flag_for_review(
+            workspace_id=workspace.id,
+            memory_id=memory.id,
+            flag_reason="outdated fact",
+            flagged_by=user.id,
+        )
 
-            assert result.flag_reason == "outdated fact"
-            assert result.status == "open"
+        assert result.flag_reason == "outdated fact"
+        assert result.status == "open"
 
-            queue = await db_session.scalar(
-                select(MemoryReviewQueue).where(MemoryReviewQueue.memory_id == memory.id)
+        queue = await db_session.scalar(
+            select(MemoryReviewQueue).where(MemoryReviewQueue.memory_id == memory.id)
+        )
+        assert queue is not None
+        assert queue.workspace_id == workspace.id
+
+        # AC-5.2: audit event persisted in the same transaction.
+        from app.models.billing import AuditEvent
+        audit = await db_session.scalar(
+            select(AuditEvent).where(
+                AuditEvent.action == "memory_review_flag",
+                AuditEvent.actor_id == user.id,
             )
-            assert queue is not None
-            assert queue.workspace_id == workspace.id
+        )
+        assert audit is not None
+        assert audit.diff_payload["memory_id"] == memory.id
+        assert audit.diff_payload["review_queue_id"] == queue.id
 
     async def test_flag_notifies_owner(self, db_session: AsyncSession):
         workspace, user = await _seed_workspace_and_user(db_session)
         memory = await _seed_memory(db_session, workspace, user)
 
-        with patch("app.notifications.service.facade.NotificationService.create_notification") as mock_notify:
-            service = MemoryBrowserService(db_session)
-            await service.flag_for_review(
-                workspace_id=workspace.id,
-                memory_id=memory.id,
-                flag_reason="outdated",
-                flagged_by=user.id,
+        # Make the seeded user an owner so they receive the review notification.
+        membership = await db_session.scalar(
+            select(WorkspaceMembership).where(
+                WorkspaceMembership.user_id == user.id,
+                WorkspaceMembership.workspace_id == workspace.id,
             )
+        )
+        membership.is_owner = True
+        await db_session.commit()
 
-            mock_notify.assert_called_once()
-            call = mock_notify.call_args.kwargs
-            assert call["notification_type"] == "memory_review_flag"
-            assert call["workspace_id"] == workspace.id
-            assert call["notification_metadata"]["memory_id"] == memory.id
+        service = MemoryBrowserService(db_session)
+        await service.flag_for_review(
+            workspace_id=workspace.id,
+            memory_id=memory.id,
+            flag_reason="outdated",
+            flagged_by=user.id,
+        )
+
+        from app.notifications.persistence import Notification
+        note = await db_session.scalar(
+            select(Notification).where(
+                Notification.user_id == user.id,
+                Notification.workspace_id == workspace.id,
+                Notification.type == "memory_review_flag",
+            )
+        )
+        assert note is not None
+        assert note.notification_metadata["memory_id"] == memory.id
 
 
 class TestMemoryBrowserServiceIntegrationDetail:

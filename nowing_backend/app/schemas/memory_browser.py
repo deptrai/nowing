@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any
-from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -27,6 +26,8 @@ class MemoryBrowserListItem(BaseModel):
     created_by: MemoryBrowserCreator | None = None
     version_count: int = 0
     flag_status: str | None = None
+    research_thread_id: int | None = None
+    relation_marker: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -36,6 +37,25 @@ class MemoryBrowserListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class MemoryBrowserCreatorListResponse(BaseModel):
+    """Distinct creators for the creator filter dropdown (AC-2.4)."""
+
+    items: list[MemoryBrowserCreator]
+
+
+class MemoryBrowserTimelineThread(BaseModel):
+    id: int
+    title: str
+    memories: list[MemoryBrowserListItem]
+
+
+class MemoryBrowserTimelineResponse(BaseModel):
+    """AC-4: memories grouped by research thread, chronological order."""
+
+    threads: list[MemoryBrowserTimelineThread]
+    unthreaded: list[MemoryBrowserListItem] = []
 
 
 class MemoryVersionRead(BaseModel):
@@ -88,15 +108,25 @@ class MemoryBrowserDetailResponse(BaseModel):
     relations: list[MemoryRelationRead]
 
 
+class MemoryVersionListResponse(BaseModel):
+    items: list[MemoryVersionRead]
+
+
+class MemoryRelationListResponse(BaseModel):
+    items: list[MemoryRelationRead]
+
+
 class MemoryReviewQueueCreate(BaseModel):
     flag_reason: str = Field(..., min_length=1)
 
 
 class MemoryReviewQueueRead(BaseModel):
     id: int | None = None
-    memory_id: int
+    memory_id: int | None = None
     workspace_id: int
     flag_reason: str
-    flagged_by: str
+    flagged_by: str | None = None
     status: str
     created_at: datetime | None = None
+    resolved_at: datetime | None = None
+    resolved_by: str | None = None
