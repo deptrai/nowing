@@ -2997,27 +2997,75 @@ _FR-69 · AD-8 · AD-10 · AD-31 · AD-42_
 
 ---
 
-### Story 21.8: Social Ingress via XActions Integration
+### Story 21.8: Social Ingress via XActions Integration — Foundation
 
 As a B2B sales development representative or real estate investor,
-I want to ingest targeted Facebook Group posts and Twitter keyword searches via XActions integration (`/Users/luisphan/Documents/GitHub/XActions`),
-So that I can capture real-time social conversations and extract contact numbers without building scrapers from scratch.
+I want a foundation to ingest social posts via XActions (`/Users/luisphan/Documents/GitHub/XActions`),
+So that I can capture real-time conversations and extract contact numbers without building scrapers from scratch.
 
-**Acceptance Criteria:**
-- **Given** target groups or search keywords, **When** `XActionsSocialAdapter` calls `x_facebook_group_posts` or `x_search_tweets`, **Then** raw social posts are fetched via XActions stealth session pool with sticky 1-to-1 residential proxy IP binding per account.
-- **Given** raw post data, **When** ingested into PostgreSQL, **Then** records are saved into `social_monitored_targets` and `social_posts` with unique constraint `(platform, external_post_id)` and pushed to Redis Stream `stream:social:raw_posts`.
-- **Given** post content, **When** `SocialEntityExtractor` processes the text, **Then** it runs a 3-step pipeline (pre-normalization of letter-substitutions `o/O->0`, punctuation stripping, Vietnamese regex pattern matching) protected by a 50ms timeout against ReDoS, extracting phone numbers (formats `0912...`, `o9.xx...`, `+84...`), prices, and locations into `raw_entities JSONB`, and assigning `intent_tag: 'sell'`, `'buy'`, `'hiring'`, or `'seeking'`.
-- **Given** new ingested posts, **When** matching active `AlertRule` saved searches, **Then** `AlertEngine` fires instant notifications via Telegram/Email.
-- **Given** an AI Agent session, **When** calling `social_search_posts(platform, intent, keyword)`, **Then** matched posts with extracted contact numbers are returned.
+**Baseline Scope (Done):**
+- PostgreSQL schema `social_monitored_targets` and `social_posts` with unique constraint `(platform, external_post_id)`.
+- `SocialEntityExtractor` for Vietnamese phone/price/location/intent extraction (50ms ReDoS timeout).
+- Redis Stream `stream:social:raw_posts` producer from Python `XActionsSocialAdapter`.
+- Unit and integration tests for regex and Redis stream.
+
+**Deferred to Stories 21.8a–f:**
+- StreamableHTTP MCP transport (21.8a).
+- Redis Stream consumer Celery wiring (21.8b).
+- Multi-domain social target expansion (21.8c).
+- Universal scrape target mapper (21.8d).
+- Per-account proxy and cookie binding (21.8e).
+- XActions governance and health integration (21.8f).
 
 **Validation & Testing:**
 - Unit test: `test_obfuscated_phone_regex.py` — verifies extraction of 10+ obfuscated VN phone variants.
 - Unit test: `test_phone_regex_redos_safety.py` — asserts execution $\le 50$ms on pathological input strings.
-- Integration test: `test_social_redis_stream.py` — verifies Redis Stream ingestion and Celery processing.
+- Integration test: `test_social_redis_stream.py` — verifies Redis Stream producer and consumer.
+
+**Status:** `[done]` foundation; `[reopened]` via 21.8a–f.
 
 _AD-SOC-1 · AD-SOC-2 · AD-SOC-4 · AD-SOC-5 · AD-SOC-6 · AD-SOC-7_
 
 ---
+
+### Story 21.8a: XActions Universal Ingress Productionization
+
+As a Nowing B2B sales development representative and real estate investor,
+I want XActions social ingress to run over MCP streamable-http, support every configured platform, process the Redis stream end-to-end, and expose health/governance telemetry,
+so that I can ingest leads from any vertical reliably, without spawning Node subprocesses, without duplicate posts, and without losing data when XActions throttles or proxies fail.
+
+**Consolidated from Stories 21.8a–f:**
+- 21.8a: MCP StreamableHTTP transport
+- 21.8b: Redis Stream consumer Celery wiring
+- 21.8c: Multi-domain social target expansion
+- 21.8d: Universal scrape target mapper
+- 21.8e: Per-account proxy and cookie binding
+- 21.8f: XActions governance and health integration
+
+**Acceptance Criteria:**
+1. **Given** `XACTIONS_MCP_URL`, `XACTIONS_MCP_API_KEY`, `XACTIONS_CONSUMER_ID` configured, **When** the adapter runs, **Then** it uses `mcp.client.streamable_http.streamablehttp_client` with Bearer auth and `X-Consumer-Id` headers, and reuses sessions across calls.
+2. **Given** a tool call, **When** XActions returns JSON, **Then** the client parses `success`, `data`, `meta` (incl. `datasetArtifactPath`), and `summary` correctly, and empty/non-JSON responses degrade safely.
+3. **Given** `XACT_4291`, `PROXY_EXHAUSTED`/`XACT_5030`, `ACCOUNT_HIBERNATION`, `XACT_4010`, `XACT_5000`, **When** they occur, **Then** the client raises `XActionsMcpError` with `code`, `retry_after`, `suggested_action`; the scheduler retries 4291 after `retry_after`, pauses target on hibernation/proxy exhaustion, and stops on auth expired.
+4. **Given** messages in `stream:social:raw_posts`, **When** Celery beat enqueues `process_social_stream` every 30 seconds, **Then** the consumer group `social_processors` persists posts to `SocialPost`, creates `Lead` for high-intent posts, evaluates `AlertRule`, ACKs, and DLQs failures.
+5. **Given** `POST /workspaces/{id}/social-monitored-targets`, **When** any supported platform is used, **Then** it is accepted and persisted. Supported: `facebook_group`, `facebook_page`, `twitter_keyword`, `twitter_user`, `tiktok_hashtag`, `chotot_category`, `shopee_keyword`, `topcv_search`, `vietnamworks_search`, `linkedin_company`, `batdongsan_category`, `masothue_lookup`, `b2b_registry_search`.
+6. **Given** an existing target, **When** `GET`/`PATCH`/`DELETE` endpoints are called, **Then** the operation succeeds with workspace-scoped tenancy and permission check.
+7. **Given** a `SocialMonitoredTarget`, **When** `UniversalScrapeTargetMapper.map(target)` runs, **Then** it returns `(tool_name, arguments)` for the matching XActions tool (Facebook/Twitter named tools or `x_scrape` for VN domains; fallback to `x_crawl_post`).
+8. **Given** a target with `account_id`/`proxy_url`, **When** the scheduler runs, **Then** the request includes those values; fallback to `XACTIONS_FACEBOOK_ACCOUNT_ID` or `x_facebook_list_accounts`; bindings stored in `xactions_proxy_bindings`.
+9. **Given** admin telemetry, **When** `x_governor_status` and `x_admin_stream_metrics` are called, **Then** health/proxy/quota and stream lag metrics are returned; and `x_admin_stream_alerts` breaches send admin Telegram/Email alerts.
+10. **Given** the implementation complete, **Then** unit/integration tests cover transport, error matrix, mapper, stream end-to-end, and an opt-in MCP smoke test.
+
+**Validation & Testing:**
+- Unit test: `test_xactions_mcp_client.py` — session reuse, auth headers, envelope parsing, error codes.
+- Unit test: `test_xactions_mapper.py` — all 13 platforms return correct tool/args.
+- Integration test: `test_social_redis_stream.py` — producer/consumer end-to-end.
+- Optional smoke: `test_xactions_mcp_smoke.py` — live daemon `list_tools()`.
+
+**Status:** `[ready-for-dev]`
+
+_AD-SOC-1 · AD-SOC-2 · AD-SOC-3 · AD-SOC-4 · AD-SOC-5 · AD-SOC-6 · AD-SOC-7 · AD-SOC-8 · AD-SOC-9 · AD-SOC-10 · AD-SOC-11 · TRINITY-4_
+
+---
+
 
 ### Story 21.9: Executive Decision Maker Mapping & B2B Lead Outreach
 
