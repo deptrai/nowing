@@ -51,3 +51,27 @@ async def test_update_workspace_rejects_invalid_vertical(
         json={"vertical": "invalid_vertical"},
     )
     assert resp.status_code == 422
+
+
+async def test_create_workspace_auto_provisions_xactions_connector(
+    client_as_regular_user: httpx.AsyncClient,
+):
+    """POST /workspaces auto-provisions an XACTIONS_MCP_CONNECTOR for the new workspace."""
+    resp = await client_as_regular_user.post(
+        "/api/v1/workspaces",
+        json={"name": "XActions Auto Seed", "description": "test"},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    workspace_id = data["id"]
+
+    connectors_resp = await client_as_regular_user.get(
+        f"/api/v1/search-source-connectors?workspace_id={workspace_id}"
+    )
+    assert connectors_resp.status_code == 200
+    connectors = connectors_resp.json()
+    xactions = [c for c in connectors if c["connector_type"] == "XACTIONS_MCP_CONNECTOR"]
+    assert len(xactions) == 1
+    assert xactions[0]["name"] == "XActions"
+    assert xactions[0]["config"]["consumer_id"] == "nowing"
+    assert xactions[0]["config"]["trusted_tools"] == ["x_scrape", "x_search", "x_crawl_post"]
