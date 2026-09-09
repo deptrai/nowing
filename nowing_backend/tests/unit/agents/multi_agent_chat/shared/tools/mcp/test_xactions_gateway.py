@@ -187,3 +187,97 @@ async def test_crawl_post_requires_url_or_post_id():
         server_config={"url": "http://test:3001/mcp"},
     )
     assert res.startswith("Error")
+
+
+@pytest.mark.asyncio
+async def test_execute_xactions_tool_calls_client():
+    """_execute_xactions_tool builds correct args and passes them to XActionsMcpClient."""
+    from app.agents.chat.multi_agent_chat.shared.tools.mcp.xactions_gateway import (
+        _execute_xactions_tool,
+    )
+
+    with patch(
+        "app.agents.chat.multi_agent_chat.shared.tools.mcp.xactions_gateway.XActionsMcpClient",
+        autospec=True,
+    ) as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client_cls.return_value = mock_client
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.call_tool = AsyncMock(return_value={
+            "success": True,
+            "data": [{"id": "1"}],
+        })
+
+        result = await _execute_xactions_tool(
+            server_config={
+                "url": "http://test:3001/mcp",
+                "headers": {"X-Consumer-Id": "nowing"},
+                "api_key": "key",
+            },
+            tool_name="x_search_tweets",
+            arguments={"query": "ai", "platform": "twitter"},
+        )
+
+        assert result["success"] is True
+        mock_client.call_tool.assert_awaited_once_with(
+            "x_search_tweets",
+            {"query": "ai", "platform": "twitter", "dryRun": False},
+        )
+
+
+@pytest.mark.asyncio
+async def test_execute_xactions_tool_injects_facebook_auth():
+    """_execute_xactions_tool injects accountId for facebook tools only."""
+    from app.agents.chat.multi_agent_chat.shared.tools.mcp.xactions_gateway import (
+        _execute_xactions_tool,
+    )
+
+    with (
+        patch(
+            "app.agents.chat.multi_agent_chat.shared.tools.mcp.xactions_gateway.config.XACTIONS_FACEBOOK_ACCOUNT_ID",
+            "fb_acc_01",
+        ),
+        patch(
+            "app.agents.chat.multi_agent_chat.shared.tools.mcp.xactions_gateway.XActionsMcpClient",
+            autospec=True,
+        ) as mock_client_cls,
+    ):
+            mock_client = AsyncMock()
+            mock_client_cls.return_value = mock_client
+            mock_client.__aenter__.return_value = mock_client
+            mock_client.call_tool = AsyncMock(return_value={"success": True, "data": []})
+
+            result = await _execute_xactions_tool(
+                server_config={"url": "http://test:3001/mcp"},
+                tool_name="x_facebook_group_posts",
+                arguments={"url": "https://facebook.com/groups/test"},
+            )
+
+            call_args = mock_client.call_tool.call_args[0]
+            assert call_args[0] == "x_facebook_group_posts"
+            assert call_args[1]["accountId"] == "fb_acc_01"
+            assert call_args[1]["authCookie"]["accountId"] == "fb_acc_01"
+            assert result["success"] is True
+
+
+@pytest.mark.asyncio
+async def test_facebook_group_requires_target():
+    """Facebook group/page scrape returns an error when target/query is missing."""
+    res = await _handle_xactions_scrape(
+        server_config={"url": "http://test:3001/mcp"},
+        platform="facebook",
+        action="group_posts",
+    )
+    assert res.startswith("Error")
+    assert "group" in res.lower()
+
+
+@pytest.mark.asyncio
+async def test_facebook_page_requires_target():
+    res = await _handle_xactions_scrape(
+        server_config={"url": "http://test:3001/mcp"},
+        platform="facebook",
+        action="page_posts",
+    )
+    assert res.startswith("Error")
+    assert "page" in res.lower()

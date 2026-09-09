@@ -309,14 +309,18 @@ async def _handle_xactions_scrape(
 
     elif normalized_platform == "facebook" and act in ("group_posts", "group"):
         tool_name = "x_facebook_group_posts"
-        url = target or query or ""
+        url = target or query
+        if not url:
+            return "Error: Facebook group scrape requires a target or query (group id or URL)."
         if not url.startswith("http"):
             url = f"https://www.facebook.com/groups/{url}"
         arguments = {"url": url, "limit": limit, "dryRun": False}
 
     elif normalized_platform == "facebook" and act in ("page_posts", "page"):
         tool_name = "x_facebook_posts"
-        url = target or query or ""
+        url = target or query
+        if not url:
+            return "Error: Facebook page scrape requires a target or query (page id or URL)."
         if not url.startswith("http"):
             url = f"https://www.facebook.com/{url}"
         arguments = {"url": url, "limit": limit, "dryRun": False}
