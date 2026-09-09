@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +41,20 @@ export function RetentionPolicyPanel({
 		retention?.memory_retention_action ?? "archive"
 	);
 	const [saving, setSaving] = useState(false);
+
+	useEffect(() => {
+		if (!retention) return;
+		setDocAutoArchive(retention.auto_archive_enabled ?? false);
+		setDocDays(
+			retention.document_retention_days != null ? String(retention.document_retention_days) : ""
+		);
+		setDocAction(retention.document_retention_action ?? "archive");
+		setMemAutoArchive(retention.memory_auto_archive_enabled ?? false);
+		setMemDays(
+			retention.memory_retention_days != null ? String(retention.memory_retention_days) : ""
+		);
+		setMemAction(retention.memory_retention_action ?? "archive");
+	}, [retention]);
 
 	const hasChanges = useMemo(() => {
 		if (!retention) return false;
@@ -171,9 +185,7 @@ export function RetentionPolicyPanel({
 
 					<div className="flex items-start justify-between gap-4">
 						<div className="space-y-1">
-							<Label htmlFor="mem-auto-archive">
-								{t("retention.memory_auto_archive_label")}
-							</Label>
+							<Label htmlFor="mem-auto-archive">{t("retention.memory_auto_archive_label")}</Label>
 							<p className="text-xs text-muted-foreground">
 								{t("retention.memory_auto_archive_description")}
 							</p>
@@ -221,7 +233,7 @@ export function RetentionPolicyPanel({
 					</div>
 				</div>
 
-				<Button type="submit" disabled={!canEdit || !hasChanges || saving}>
+				<Button type="submit" disabled={!canEdit || saving}>
 					{saving ? t("retention.saving") : t("retention.save")}
 				</Button>
 			</form>

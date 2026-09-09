@@ -211,6 +211,7 @@ celery_app = Celery(
         "app.tasks.celery_tasks.obsidian_tasks",
         "app.tasks.celery_tasks.schedule_checker_task",
         "app.tasks.celery_tasks.social_xactions_ingest",
+        "app.tasks.celery_tasks.social_stream_worker",
         "app.tasks.celery_tasks.document_reindex_tasks",
         "app.tasks.celery_tasks.stale_notification_cleanup_task",
         "app.tasks.celery_tasks.stale_meeting_minutes_cleanup_task",
@@ -344,6 +345,14 @@ celery_app.conf.beat_schedule = {
         "task": "check_social_monitored_targets",
         "schedule": crontab(minute="*"),
         "options": {"expires": 50},
+    },
+    # Consume `stream:social:raw_posts` into `social_posts` + `Lead` records.
+    # Each beat enqueues a short-lived consumer task that reads a batch and
+    # ACKs messages; actual throughput is bounded by the Celery worker pool.
+    "process-social-stream": {
+        "task": "process_social_stream",
+        "schedule": 30.0,
+        "options": {"expires": 25},
     },
     # Cleanup stale connector indexing notifications every 5 minutes
     # This detects tasks that crashed or timed out without proper cleanup
@@ -510,6 +519,11 @@ celery_app.conf.beat_schedule = {
     },
     "health-probe-storage": {
         "task": "health_probe_storage",
+        "schedule": crontab(minute="*/5"),  # Every 5 minutes
+        "options": {"expires": 120},
+    },
+    "health-probe-xactions": {
+        "task": "health_probe_xactions",
         "schedule": crontab(minute="*/5"),  # Every 5 minutes
         "options": {"expires": 120},
     },

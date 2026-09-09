@@ -1,23 +1,22 @@
-"""Integration tests for Redis Stream social posts buffer & processor (Story 21.8 / Task 6.3).
+"""Integration tests for XActions Redis Stream social posts buffer & processor.
 
 Requires PostgreSQL and Redis. Skipped automatically when either is unavailable.
 """
-
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
 import uuid
+from contextlib import asynccontextmanager
 
 import pytest
 import redis.asyncio as aioredis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import app.tasks.celery_tasks.social_stream_worker as stream_worker
 from app.config import config
 from app.db import Lead, SocialMonitoredTarget, SocialPost
-from app.proprietary.platforms.xactions.adapter import STREAM_SOCIAL_RAW_POSTS
-import app.tasks.social_stream_worker as stream_worker
-from app.tasks.social_stream_worker import run_social_stream_consumer
+from app.proprietary.platforms.xactions.constants import STREAM_SOCIAL_RAW_POSTS
+from app.tasks.celery_tasks.social_stream_worker import run_social_stream_consumer
 
 pytestmark = [pytest.mark.integration]
 
@@ -80,10 +79,7 @@ async def test_social_redis_stream_event_processing(
 
     redis_client = aioredis.from_url(config.REDIS_APP_URL, decode_responses=True)
     try:
-        # Use a unique consumer name so repeated test runs don't share pending state.
         consumer_name = f"test-consumer-{uuid.uuid4().hex[:8]}"
-
-        # Drop any stale stream/group from a previous run and create a fresh one.
         await redis_client.delete(STREAM_SOCIAL_RAW_POSTS)
 
         payload = {
@@ -99,6 +95,10 @@ async def test_social_redis_stream_event_processing(
             "target_id": str(db_social_target.id),
             "workspace_id": str(platform_db_workspace.id),
             "published_at": "2026-08-15T09:30:00Z",
+            "category": "real_estate",
+            "scraper_id": "test-scraper",
+            "benchmark_health": "ok",
+            "benchmark_alert": "false",
         }
 
         await redis_client.xadd(STREAM_SOCIAL_RAW_POSTS, payload)
@@ -112,7 +112,6 @@ async def test_social_redis_stream_event_processing(
 
         assert processed == 1
 
-        # Force a fresh read from the test DB.
         post = (
             await platform_db_session.execute(
                 select(SocialPost).where(
@@ -128,8 +127,11 @@ async def test_social_redis_stream_event_processing(
         assert "0909123456" in post.raw_entities["phones"]
         assert post.intent_tag == "sell"
         assert post.fit_score > 0
+        assert post.category == "real_estate"
+        assert post.scraper_id == "test-scraper"
+        assert post.benchmark_health == "ok"
+        assert post.benchmark_alert is False
 
-        # High-intent 'sell' posts should also create a Lead.
         lead = (
             await platform_db_session.execute(
                 select(Lead).where(

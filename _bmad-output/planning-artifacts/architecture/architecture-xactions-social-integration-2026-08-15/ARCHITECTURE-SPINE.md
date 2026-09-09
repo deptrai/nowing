@@ -31,7 +31,7 @@
 * **AD-SOC-3 [ADOPTED]: Sticky SOCKS5 & Resilient Proxy Pool**
   * Tận dụng hệ thống ProxyIpPool tập trung của XActions với cơ chế auto-quarantine 5 phút và chống rò rỉ WebRTC/DNS.
 * **AD-SOC-4 [ADOPTED]: Dual-Channel Microservice Communication**
-  * *Kênh Đồng Bộ (Realtime / On-Demand):* Nowing kết nối sang XActions Daemon qua **MCP over HTTP/SSE Transport** (Port 3001) với Persistent Connection Pool (Keep-Alive), loại bỏ hoàn toàn việc spawn subprocess stdio (độ trễ <2ms).
+  * *Kênh Đồng Bộ (Realtime / On-Demand):* Nowing kết nối sang XActions Daemon qua **MCP over HTTP/SSE Transport** (Port 3001) với Persistent Connection Pool (Keep-Alive), loại bỏ hoàn toàn việc spawn subprocess stdio (độ trễ <2ms). **Note (2026-09-09):** `XActionsSocialAdapter` hiện tại vẫn dùng `stdio_client` subprocess — cần chuyển sang `streamablehttp_client` theo Story 21.8a.
   * *Kênh Bất Đồng Bộ (Bulk Ingestion):* Dữ liệu cào định kỳ được đẩy vào Redis Stream dạng Thin Event Pointers (`MAXLEN ~ 20000`).
 * **AD-SOC-5 [ADOPTED]: Automated Intent Classification & Entity Normalization**
   * Tự động gán nhãn `intent_tag` (`sell`, `buy`, `hiring`, `seeking`) và bóc tách SĐT/Email/Giá tiền vào `raw_entities JSONB`.

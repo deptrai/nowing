@@ -18,8 +18,7 @@ import os
 import re
 import shutil
 import time
-from dataclasses import asdict, dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 from urllib.parse import urlparse
 
@@ -28,60 +27,25 @@ from mcp import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
 
 from app.config import config
+from app.proprietary.platforms.xactions.adapter_v2 import (
+    XActionsSocialAdapterV2,
+)
+from app.proprietary.platforms.xactions.constants import STREAM_SOCIAL_RAW_POSTS
+from app.proprietary.platforms.xactions.mcp_client import (
+    XActionsMcpError,
+)
+from app.proprietary.platforms.xactions.models import SocialPostData
 
 logger = logging.getLogger(__name__)
 
-STREAM_SOCIAL_RAW_POSTS = "stream:social:raw_posts"
 XACTIONS_PROXY_REDIS_KEY = "xactions:account_proxies"
 _XACTIONS_MCP_SERVER = "src/mcp/server.js"
 _PROXY_REDIS_FAILURE_BACKOFF_SECONDS = 60.0
 
 
-class XActionsMcpError(RuntimeError):
-    """Raised when the XActions MCP server returns an error."""
 
 
-@dataclass
-class SocialPostData:
-    platform: str  # 'facebook', 'twitter'
-    external_post_id: str
-    author_id: str | None = None
-    author_name: str | None = None
-    author_url: str | None = None
-    post_url: str | None = None
-    content: str | None = None
-    intent_tag: str | None = None
-    fit_score: float = 0.0
-    reactions_count: int = 0
-    comments_count: int = 0
-    shares_count: int = 0
-    media_urls: list[str] = field(default_factory=list)
-    raw_entities: dict[str, Any] = field(default_factory=dict)
-    published_at: datetime | None = None
-    target_id: int | None = None
-    workspace_id: int | None = None
-    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
-    def to_dict(self) -> dict[str, Any]:
-        data = asdict(self)
-        if self.published_at:
-            data["published_at"] = self.published_at.isoformat()
-        if self.created_at:
-            data["created_at"] = self.created_at.isoformat()
-        return data
-
-
-@dataclass
-class SocialMonitoredTargetData:
-    platform: str  # 'facebook_group', 'facebook_page', 'twitter_keyword', 'twitter_user'
-    target_id: str
-    target_name: str
-    target_url: str | None = None
-    category: str = "general"
-    is_active: bool = True
-    realtime_stream: bool = False
-    scrape_interval_minutes: int = 15
-    status: str = "active"
 
 
 def _to_int(raw_value: Any) -> int:
@@ -187,6 +151,9 @@ class XActionsSocialAdapter:
 
         # AD-SOC-3: in-memory cache + durable Redis backing for proxy bindings.
         self._account_proxies: dict[str, str] = {}
+        self._adapter_v2 = XActionsSocialAdapterV2() if getattr(
+            config, "XACTIONS_TRANSPORT", "streamable-http"
+        ) == "streamable-http" else None
         self._proxy_redis_client = redis_client
         self._proxy_redis_available: bool | None = None
         self._proxy_redis_last_failure = 0.0
@@ -449,6 +416,20 @@ class XActionsSocialAdapter:
         arguments: dict[str, Any],
         timeout: float,
     ) -> Any:
+        if self._adapter_v2 is not None:
+            try:
+                async with self._adapter_v2 as adapter:
+                    return await adapter.fetch_posts_for_target({
+                        "platform": tool_name,
+                        "target_id": arguments.get("url") or arguments.get("query") or arguments.get("username") or "",
+                        "account_id": arguments.get("accountId"),
+                        "proxy_url": arguments.get("proxyUrl"),
+                    })
+            except Exception as exc:
+                raise XActionsMcpError(
+                    f"XActions MCP tool {tool_name} failed: {exc}"
+                ) from exc
+
         init_timeout = min(10.0, timeout)
 
         try:
@@ -803,7 +784,9 @@ class XActionsSocialAdapter:
             payload["workspace_id"] = str(post.workspace_id)
 
         try:
-            msg_id = await redis_client.xadd(STREAM_SOCIAL_RAW_POSTS, payload)
+            msg_id = await redis_client.xadd(
+                STREAM_SOCIAL_RAW_POSTS, payload, maxlen=20000, approximate=True
+            )
         except Exception as exc:
             raise RuntimeError(
                 f"Redis xadd failed on {STREAM_SOCIAL_RAW_POSTS}: {exc}"

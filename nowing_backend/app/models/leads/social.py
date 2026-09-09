@@ -71,6 +71,7 @@ class SocialMonitoredTarget(Base, TimestampMixin):
     last_polled_at = Column(TIMESTAMP(timezone=True), nullable=True)
     last_scraped_at = Column(TIMESTAMP(timezone=True), nullable=True)
     proxy_url = Column(Text, nullable=True)
+    account_id = Column(String(255), nullable=True)
 
     workspace = relationship("Workspace", back_populates="social_monitored_targets")
     posts = relationship(
@@ -148,6 +149,36 @@ class SocialPost(Base, TimestampMixin):
 
     workspace = relationship("Workspace", back_populates="social_posts")
     target = relationship("SocialMonitoredTarget", back_populates="posts")
+
+
+class XActionsProxyBinding(Base, TimestampMixin):
+    """Binds a Nowing workspace to an XActions account and proxy (Story 21.8e)."""
+
+    __tablename__ = "xactions_proxy_bindings"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id", "account_id", "platform",
+            name="uq_xactions_proxy_binding",
+        ),
+        Index("idx_xactions_proxy_bindings_workspace_id", "workspace_id"),
+        Index("idx_xactions_proxy_bindings_active", "is_active"),
+    )
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    account_id = Column(String(255), nullable=False)
+    proxy_url = Column(Text, nullable=True)
+    platform = Column(String(50), nullable=False)
+    is_active = Column(Boolean, nullable=False, default=True, server_default="true")
+    last_bound_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
+    workspace = relationship("Workspace")
+
 class ZaloConnection(Base, TimestampMixin):
     """Zalo Official Account connection for a workspace (Story 21.6 / AD-41)."""
 
