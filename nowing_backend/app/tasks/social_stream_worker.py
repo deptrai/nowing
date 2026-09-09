@@ -34,7 +34,7 @@ from app.db import (
     Workspace,
     async_session_maker,
 )
-from app.proprietary.platforms.xactions.adapter import STREAM_SOCIAL_RAW_POSTS
+from app.proprietary.platforms.xactions.constants import STREAM_SOCIAL_RAW_POSTS
 from app.proprietary.platforms.xactions.phone_extractor import SocialEntityExtractor
 
 logger = logging.getLogger(__name__)
@@ -72,6 +72,20 @@ class SocialPostEvent(BaseModel):
     shares_count: int | str | None = 0
     media_urls: list[str] | str | None = Field(default_factory=list)
     published_at: datetime | str | None = None
+    category: str | None = None
+    storage_ref: str | None = None
+    scraper_id: str | None = None
+    benchmark_health: str | None = None
+    benchmark_alert: bool | str | None = False
+
+    @field_validator("benchmark_alert", mode="before")
+    @classmethod
+    def _bool_like(cls, value: Any) -> bool:
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            return value.strip().lower() in ("1", "true", "yes", "on")
+        return bool(value)
 
     @field_validator("platform", "external_post_id", mode="after")
     @classmethod
@@ -402,6 +416,11 @@ async def process_social_post_event(
         "media_urls": event.media_urls,
         "raw_entities": extracted,
         "published_at": event.published_at,
+        "category": event.category,
+        "storage_ref": event.storage_ref,
+        "scraper_id": event.scraper_id,
+        "benchmark_health": event.benchmark_health,
+        "benchmark_alert": event.benchmark_alert,
     }
 
     if session is not None:
@@ -450,6 +469,11 @@ async def process_social_post_event(
                 "fit_score": stmt.excluded.fit_score,
                 "published_at": stmt.excluded.published_at,
                 "media_urls": stmt.excluded.media_urls,
+                "category": stmt.excluded.category,
+                "storage_ref": stmt.excluded.storage_ref,
+                "scraper_id": stmt.excluded.scraper_id,
+                "benchmark_health": stmt.excluded.benchmark_health,
+                "benchmark_alert": stmt.excluded.benchmark_alert,
                 "updated_at": datetime.now(UTC),
             },
         )
