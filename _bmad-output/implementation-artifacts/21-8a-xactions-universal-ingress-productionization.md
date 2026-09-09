@@ -1,6 +1,6 @@
 # Story 21.8a: XActions Universal Ingress Productionization
 
-Status: in-progress
+Status: done
 
 <!-- Note: Consolidated from 21.8a–f. Governed by architecture-xactions-social-integration-2026-08-15 (AD-SOC-1 to AD-SOC-11) + TRINITY-4 + INTEGRATION-PLAN-2026-09-09.md (Option A: MCP streamable-http approved) -->
 
@@ -38,46 +38,46 @@ Current gaps to fix:
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: `XActionsMcpClient` productionize (AC: 1, 2, 3)
-  - [ ] 1.1 Fix `mcp_client.py` session lifecycle: `connect()` must store the `streamablehttp_client` context manager and exit it cleanly; no `self.client._session.__aexit__` hack in `adapter_v2.py`.
-  - [ ] 1.2 Add `list_tools()` and a `health_check()` helper that calls `x_actions_list` or `x_governor_status`.
-  - [ ] 1.3 Improve `call_tool` non-JSON / empty handling; if `datasetArtifactPath` present, fetch artifact via HTTP GET or shared volume and merge with preview data.
-  - [ ] 1.4 Add test: `test_xactions_mcp_client_lifecycle.py` (session reuse, transport close).
-- [ ] Task 2: Replace stdio adapter with streamable-http (AC: 1, 7)
-  - [ ] 2.1 Update `adapter.py` (`XActionsSocialAdapter`) to use `XActionsMcpClient` via `async with`; remove or gate `stdio_client` behind `XACTIONS_TRANSPORT=stdio`.
-  - [ ] 2.2 Finalize `adapter_v2.py` (`XActionsSocialAdapterV2`) and `UniversalScrapeTargetMapper`; fix session lifecycle per 1.1.
-  - [ ] 2.3 Export `STREAM_SOCIAL_RAW_POSTS` from `adapter_v2.py` or move to `xactions/constants.py`; do not import stream constant from `adapter.py` (v1) to avoid coupling.
-  - [ ] 2.4 Move `SocialPostData` / `SocialMonitoredTargetData` dataclasses to `xactions/models.py` or keep in `adapter.py` and re-export from `adapter_v2.py`; ensure `ingest_social_target_task` handles a single type.
-  - [ ] 2.5 Wire `adapter_v2` into `social_xactions_ingest.py` `ingest_social_target_task` so it actually gets used instead of the empty `facebook_page`/`twitter_user` branches.
-- [ ] Task 3: Scheduler error handling (AC: 3)
-  - [ ] 3.1 In `social_xactions_ingest.py`, catch `XActionsMcpError`; retry `XACT_4291` with `countdown=exc.retry_after`; pause target for `ACCOUNT_HIBERNATION`, `PROXY_EXHAUSTED`, `XACT_5030`; halt on `XACT_4010`.
-  - [ ] 3.2 Track target `status` transitions (`active` → `paused` → `error`) and `last_scraped_at`.
-- [ ] Task 4: Redis stream consumer Celery wiring (AC: 4)
-  - [ ] 4.1 Verify `celery_tasks/social_stream_worker.py` calls `run_social_stream_consumer` correctly (consumer group `social_processors`, block, batch size).
-  - [ ] 4.2 Verify `celery_app.py` beat schedule `process-social-stream` exists, expires=25, and is routed to `CELERY_TASK_DEFAULT_QUEUE` or a new `nowing.social` queue (not `CONNECTORS_QUEUE` which is for indexing).
-  - [ ] 4.3 Add DLQ behavior and ACK guarantees in `social_stream_worker.py` if missing.
-  - [ ] 4.4 Ensure `xadd` to `stream:social:raw_posts` uses `maxlen=20000, approximate=True` per AD-SOC-4.
-  - [ ] 4.5 Integration test: `test_social_redis_stream_end_to_end.py`.
-- [ ] Task 5: Multi-domain platform expansion (AC: 5, 6, 7)
-  - [ ] 5.1 Update `SocialTargetCreate.platform` regex in `social_routes.py` and `SUPPORTED_PLATFORMS` in `social_xactions_ingest.py` to 13 platforms.
-  - [ ] 5.2 Add `GET`, `PATCH`, `DELETE` endpoints to `social_routes.py`.
-  - [ ] 5.3 Implement `UniversalScrapeTargetMapper` arg builders for all 13 platforms (see Dev Notes for action args).
-- [ ] Task 6: Per-account proxy/cookie binding (AC: 8)
-  - [ ] 6.1 Add `account_id` column to `SocialMonitoredTarget` (Alembic migration 212 or later).
-  - [ ] 6.2 Add `xactions_proxy_bindings` table via new `XActionsProxyBinding` model in `app/models/leads/xactions.py` and register in `app/db/__init__.py`.
-  - [ ] 6.3 Update `SocialTargetCreate`/`SocialTargetRead` schemas to include `account_id`.
-  - [ ] 6.4 In `ingest_social_target_task`, inject `accountId`/`proxyUrl` from target; fallback to `XACTIONS_FACEBOOK_ACCOUNT_ID` or `x_facebook_list_accounts` (only if `XACTIONS_MODE=local`; remote mode requires explicit `account_id`).
-- [ ] Task 7: Governance and health integration (AC: 9)
-  - [ ] 7.1 Add Celery beat `health_probe_xactions` every 5 minutes calling `x_governor_status` and `x_admin_stream_metrics` (reuse `health_probe_task.py` pattern or create `xactions_health_task.py`).
-  - [ ] 7.2 Expose internal admin endpoint (or `HealthProbe`) returning `x_governor_status` + `x_admin_stream_metrics`.
-  - [ ] 7.3 On `x_admin_stream_alerts` breach, call `execute_alert_rule(session=session, alert_rule=rule, fired_at=datetime.now(UTC))` for each matching rule; send Telegram/Email via existing alert channels.
-- [ ] Task 8: Config, env, and migrations (AC: 1, 8)
-  - [ ] 8.1 Ensure `app/config/entities.py` exports all `XACTIONS_MCP_*` variables and they are in `app/config/__init__.py`; add `XACTIONS_TRANSPORT` (default `streamable-http`) and `XACTIONS_MODE` (default `local`).
-  - [ ] 8.2 Add `XACTIONS_MCP_URL`, `XACTIONS_MCP_API_KEY`, `XACTIONS_FACEBOOK_ACCOUNT_ID`, `XACTIONS_TRANSPORT`, `XACTIONS_MODE` to `.env.local` and env templates.
-  - [ ] 8.3 Create Alembic migration(s): `account_id` on `social_monitored_targets`; `xactions_proxy_bindings`; new `category/storage_ref/scraper_id/benchmark_health/benchmark_alert` columns on `social_posts` if not already present (check `app/models/leads/social.py` and existing migrations).
-- [ ] Task 9: Tests and shadow-run (AC: 10)
-  - [ ] 9.1 Unit tests: `mcp_client`, `adapter_v2`, `UniversalScrapeTargetMapper`.
-  - [ ] 9.2 Integration: Redis stream consumer end-to-end.
+- [x] Task 1: `XActionsMcpClient` productionize (AC: 1, 2, 3)
+  - [x] 1.1 Fix `mcp_client.py` session lifecycle: `connect()` must store the `streamablehttp_client` context manager and exit it cleanly; no `self.client._session.__aexit__` hack in `adapter_v2.py`.
+  - [x] 1.2 Add `list_tools()` and a `health_check()` helper that calls `x_actions_list` or `x_governor_status`.
+  - [x] 1.3 Improve `call_tool` non-JSON / empty handling; if `datasetArtifactPath` present, fetch artifact via HTTP GET or shared volume and merge with preview data.
+  - [x] 1.4 Add test: `test_xactions_mcp_client_lifecycle.py` (session reuse, transport close).
+- [x] Task 2: Replace stdio adapter with streamable-http (AC: 1, 7)
+  - [x] 2.1 Update `adapter.py` (`XActionsSocialAdapter`) to use `XActionsMcpClient` via `async with`; remove or gate `stdio_client` behind `XACTIONS_TRANSPORT=stdio`.
+  - [x] 2.2 Finalize `adapter_v2.py` (`XActionsSocialAdapterV2`) and `UniversalScrapeTargetMapper`; fix session lifecycle per 1.1.
+  - [x] 2.3 Export `STREAM_SOCIAL_RAW_POSTS` from `adapter_v2.py` or move to `xactions/constants.py`; do not import stream constant from `adapter.py` (v1) to avoid coupling.
+  - [x] 2.4 Move `SocialPostData` / `SocialMonitoredTargetData` dataclasses to `xactions/models.py` or keep in `adapter.py` and re-export from `adapter_v2.py`; ensure `ingest_social_target_task` handles a single type.
+  - [x] 2.5 Wire `adapter_v2` into `social_xactions_ingest.py` `ingest_social_target_task` so it actually gets used instead of the empty `facebook_page`/`twitter_user` branches.
+- [x] Task 3: Scheduler error handling (AC: 3)
+  - [x] 3.1 In `social_xactions_ingest.py`, catch `XActionsMcpError`; retry `XACT_4291` with `countdown=exc.retry_after`; pause target for `ACCOUNT_HIBERNATION`, `PROXY_EXHAUSTED`, `XACT_5030`; halt on `XACT_4010`.
+  - [x] 3.2 Track target `status` transitions (`active` → `paused` → `error`) and `last_scraped_at`.
+- [x] Task 4: Redis stream consumer Celery wiring (AC: 4)
+  - [x] 4.1 Verify `celery_tasks/social_stream_worker.py` calls `run_social_stream_consumer` correctly (consumer group `social_processors`, block, batch size).
+  - [x] 4.2 Verify `celery_app.py` beat schedule `process-social-stream` exists, expires=25, and is routed to `CELERY_TASK_DEFAULT_QUEUE` or a new `nowing.social` queue (not `CONNECTORS_QUEUE` which is for indexing).
+  - [x] 4.3 Add DLQ behavior and ACK guarantees in `social_stream_worker.py` if missing.
+  - [x] 4.4 Ensure `xadd` to `stream:social:raw_posts` uses `maxlen=20000, approximate=True` per AD-SOC-4.
+  - [x] 4.5 Integration test: `test_social_redis_stream_end_to_end.py`.
+- [x] Task 5: Multi-domain platform expansion (AC: 5, 6, 7)
+  - [x] 5.1 Update `SocialTargetCreate.platform` regex in `social_routes.py` and `SUPPORTED_PLATFORMS` in `social_xactions_ingest.py` to 13 platforms.
+  - [x] 5.2 Add `GET`, `PATCH`, `DELETE` endpoints to `social_routes.py`.
+  - [x] 5.3 Implement `UniversalScrapeTargetMapper` arg builders for all 13 platforms (see Dev Notes for action args).
+- [x] Task 6: Per-account proxy/cookie binding (AC: 8)
+  - [x] 6.1 Add `account_id` column to `SocialMonitoredTarget` (Alembic migration 212 or later).
+  - [x] 6.2 Add `xactions_proxy_bindings` table via new `XActionsProxyBinding` model in `app/models/leads/xactions.py` and register in `app/db/__init__.py`.
+  - [x] 6.3 Update `SocialTargetCreate`/`SocialTargetRead` schemas to include `account_id`.
+  - [x] 6.4 In `ingest_social_target_task`, inject `accountId`/`proxyUrl` from target; fallback to `XACTIONS_FACEBOOK_ACCOUNT_ID` or `x_facebook_list_accounts` (only if `XACTIONS_MODE=local`; remote mode requires explicit `account_id`).
+- [x] Task 7: Governance and health integration (AC: 9)
+  - [x] 7.1 Add Celery beat `health_probe_xactions` every 5 minutes calling `x_governor_status` and `x_admin_stream_metrics` (reuse `health_probe_task.py` pattern or create `xactions_health_task.py`).
+  - [x] 7.2 Expose internal admin endpoint (or `HealthProbe`) returning `x_governor_status` + `x_admin_stream_metrics`.
+  - [x] 7.3 On `x_admin_stream_alerts` breach, call `execute_alert_rule(session=session, alert_rule=rule, fired_at=datetime.now(UTC))` for each matching rule; send Telegram/Email via existing alert channels.
+- [x] Task 8: Config, env, and migrations (AC: 1, 8)
+  - [x] 8.1 Ensure `app/config/entities.py` exports all `XACTIONS_MCP_*` variables and they are in `app/config/__init__.py`; add `XACTIONS_TRANSPORT` (default `streamable-http`) and `XACTIONS_MODE` (default `local`).
+  - [x] 8.2 Add `XACTIONS_MCP_URL`, `XACTIONS_MCP_API_KEY`, `XACTIONS_FACEBOOK_ACCOUNT_ID`, `XACTIONS_TRANSPORT`, `XACTIONS_MODE` to `.env.local` and env templates.
+  - [x] 8.3 Create Alembic migration(s): `account_id` on `social_monitored_targets`; `xactions_proxy_bindings`; new `category/storage_ref/scraper_id/benchmark_health/benchmark_alert` columns on `social_posts` if not already present (check `app/models/leads/social.py` and existing migrations).
+- [x] Task 9: Tests and shadow-run (AC: 10)
+  - [x] 9.1 Unit tests: `mcp_client`, `adapter_v2`, `UniversalScrapeTargetMapper`.
+  - [x] 9.2 Integration: Redis stream consumer end-to-end.
   - [ ] 9.3 Optional smoke: live XActions MCP `list_tools()`.
   - [ ] 9.4 Shadow-run: run new and old adapter side-by-side for 7 days only if legacy code not yet removed; success criteria: post count parity ≥ 99%, extracted phone overlap ≥ 95%, no missing platforms.
 
@@ -173,4 +173,4 @@ claude-opus-5[1m]
 - [x] [Review][Patch] `XACTIONS_CONSUMER_ID` bị bỏ khỏi `__all__` trong `config/entities.py` — patched 2026-09-09
 - [x] [Review][Patch] `.env.local` ghi đè `NEXT_FRONTEND_URL=3002` thay vì 3000 — patched 2026-09-09
 - [x] [Review][Patch] `category` model/migration default mismatch (`server_default='general'` vs `nullable=True`) — patched 2026-09-09 — `social.py:143` / migration
-- [ ] [Review][Defer] Một số file unit test mới chưa bao phủ lifecycle, health probe, route CRUD — deferred post-merge
+- [x] [Review][Defer] Một số file unit test mới chưa bao phủ lifecycle, health probe, route CRUD — resolved (added test_xactions_probe.py & test_social_routes.py)
