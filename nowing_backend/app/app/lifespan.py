@@ -319,10 +319,12 @@ async def lifespan(app: FastAPI):
     _warn_if_build_id_unknown()
     await create_db_and_tables()
     from app.automations.services.playbook_seed_service import seed_system_playbooks
+    from app.services.xactions_connector_seed import seed_xactions_connectors
     from app.db import async_session_maker
 
     async with async_session_maker() as _seed_sess:
         await seed_system_playbooks(_seed_sess)
+        await seed_xactions_connectors(_seed_sess)
     await _sweep_stale_scraper_runs()
     await setup_checkpointer_tables()
     initialize_openrouter_integration()

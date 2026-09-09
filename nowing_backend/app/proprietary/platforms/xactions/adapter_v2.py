@@ -11,7 +11,7 @@ XActions running with `MCP_TRANSPORT=http PORT=3001`.
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 
 from app.config import config
@@ -131,6 +131,8 @@ class UniversalScrapeTargetMapper:
         target_url = getattr(target, "target_url", None) or getattr(target, "target_id", "")
         if not target_url:
             raise ValueError("x_crawl_post fallback requires a target_url or target_id")
+        if not target_url.startswith(("http://", "https://")):
+            raise ValueError(f"x_crawl_post fallback requires a valid HTTP(S) URL, got {target_url!r}")
         return "x_crawl_post", {"url": target_url}
 
 
@@ -140,7 +142,7 @@ class XActionsSocialAdapterV2:
     def __init__(
         self,
         client: XActionsMcpClient | None = None,
-        default_account_id: str ^ None = None,
+        default_account_id: str | None = None,
     ):
         self.client = client
         self._owns_client = client is None
@@ -164,6 +166,11 @@ class XActionsSocialAdapterV2:
             arguments["accountId"] = account_id
         if getattr(target, "proxy_url", None):
             arguments["proxyUrl"] = target.proxy_url
+
+        # XActions scraping tools default to dryRun=true; force execution when
+        # the caller actually wants data (unless explicitly set).
+        if "dryRun" not in arguments:
+            arguments["dryRun"] = False
 
         try:
             result = await client.call_tool(tool_name, arguments)

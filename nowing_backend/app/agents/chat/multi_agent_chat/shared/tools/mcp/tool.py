@@ -620,6 +620,7 @@ async def _load_http_mcp_tools(
     *,
     bypass_internal_hitl: bool = False,
     cached_tools: CachedMCPTools | None = None,
+    connector_type: str | None = None,
 ) -> list[StructuredTool]:
     """Load tools from an HTTP-based MCP server.
 
@@ -632,7 +633,46 @@ async def _load_http_mcp_tools(
             disambiguation (e.g. ``linear_25``).
         cached_tools: If provided, skip live discovery and rebuild wrappers
             from the persisted definitions.
+        connector_type: The connector_type string (e.g. ``XACTIONS_MCP_CONNECTOR``).
     """
+    if connector_type == "XACTIONS_MCP_CONNECTOR":
+        from app.agents.chat.multi_agent_chat.shared.tools.mcp.xactions_gateway import (
+            create_xactions_meta_tools,
+        )
+
+        meta_tools = create_xactions_meta_tools(
+            connector_id,
+            connector_name,
+            server_config,
+            trusted_tools=trusted_tools,
+            bypass_internal_hitl=bypass_internal_hitl,
+        )
+        if tool_name_prefix:
+            for tool in meta_tools:
+                tool.metadata["mcp_original_tool_name"] = tool.name
+                tool.name = f"{tool_name_prefix}_{tool.name}"
+                if tool.description and not tool.description.startswith("[Account:"):
+                    tool.description = f"[Account: {connector_name}] {tool.description}"
+        if cached_tools is None:
+            tool_definitions = [
+                {
+                    "name": t.name,
+                    "description": t.description,
+                    "input_schema": (
+                        t.args_schema.model_json_schema() if t.args_schema else {}
+                    ),
+                }
+                for t in meta_tools
+            ]
+            await write_cached_tools(
+                connector_id,
+                tool_definitions,
+                server_name="xactions-meta-gateway",
+                server_version="1.0.0",
+                transport=server_config.get("transport", "streamable-http"),
+            )
+        return meta_tools
+
     tools: list[StructuredTool] = []
 
     url = server_config.get("url")
@@ -1187,6 +1227,7 @@ async def discover_single_mcp_connector(connector_id: int) -> None:
                     is_generic_mcp=svc_cfg is None,
                     bypass_internal_hitl=True,
                     cached_tools=None,
+                    connector_type=ct,
                 ),
                 timeout=_MCP_DISCOVERY_TIMEOUT_SECONDS,
             )
@@ -1329,6 +1370,7 @@ async def load_mcp_tools(
                     {
                         "connector_id": connector.id,
                         "connector_name": connector.name,
+                        "connector_type": ct,
                         "server_config": server_config,
                         "trusted_tools": trusted_tools,
                         "allowed_tools": allowed_tools,
@@ -1365,6 +1407,7 @@ async def load_mcp_tools(
                             is_generic_mcp=task.get("is_generic_mcp", False),
                             bypass_internal_hitl=bypass_internal_hitl,
                             cached_tools=cached_tools,
+                            connector_type=task.get("connector_type"),
                         ),
                         timeout=_MCP_DISCOVERY_TIMEOUT_SECONDS,
                     )

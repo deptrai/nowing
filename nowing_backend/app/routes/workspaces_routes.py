@@ -126,6 +126,13 @@ async def create_workspace(
         # Create default roles and owner membership
         await create_default_roles_and_membership(session, db_workspace.id, user.id)
 
+        # Auto-provision XActions connector for the workspace
+        from app.services.xactions_connector_seed import (
+            ensure_workspace_xactions_connector,
+        )
+
+        await ensure_workspace_xactions_connector(session, db_workspace.id, user.id)
+
         await session.commit()
         await session.refresh(db_workspace)
 

@@ -17,6 +17,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from app.config import config
 from app.db import SearchSourceConnectorType
 
 # Linear hosted MCP (https://linear.app/docs/mcp). Tool names are matched at
@@ -261,6 +262,19 @@ MCP_SERVICES: dict[str, MCPServiceConfig] = {
         readonly_tools=frozenset({"web_search_exa", "web_fetch_exa"}),
         account_metadata_keys=["user_email"],
     ),
+    "xactions": MCPServiceConfig(
+        name="XActions",
+        mcp_url=getattr(config, "XACTIONS_MCP_URL", "http://localhost:3001/mcp"),
+        connector_type="XACTIONS_MCP_CONNECTOR",
+        supports_dcr=False,
+        allowed_tools=[
+            "x_scrape",
+            "x_search",
+            "x_crawl_post",
+        ],
+        readonly_tools=frozenset({"x_scrape", "x_search", "x_crawl_post"}),
+        account_metadata_keys=["consumer_id"],
+    ),
 }
 
 _CONNECTOR_TYPE_TO_SERVICE: dict[str, MCPServiceConfig] = {
@@ -287,6 +301,7 @@ LIVE_CONNECTOR_TYPES: frozenset[SearchSourceConnectorType] = frozenset(
         SearchSourceConnectorType.NOTION_CONNECTOR,
         SearchSourceConnectorType.CONFLUENCE_CONNECTOR,
         SearchSourceConnectorType.EXA_MCP_CONNECTOR,
+        SearchSourceConnectorType.XACTIONS_MCP_CONNECTOR,
     }
 )
 

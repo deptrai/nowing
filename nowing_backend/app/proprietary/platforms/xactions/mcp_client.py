@@ -26,6 +26,8 @@ from app.config import config
 
 logger = logging.getLogger(__name__)
 
+XACTIONS_MCP_DEFAULT_TIMEOUT_SECONDS = float(os.environ.get("XACTIONS_MCP_TIMEOUT", "60.0"))
+
 
 class XActionsMcpError(RuntimeError):
     """Raised when the XActions MCP server returns a structured error."""
@@ -65,6 +67,7 @@ class XActionsMcpClient:
         self.consumer_id = consumer_id or getattr(
             config, "XACTIONS_CONSUMER_ID", "nowing"
         )
+        self.admin_token = getattr(config, "XACTIONS_ADMIN_TOKEN", "")
         self._session: ClientSession | None = None
         self._transport_cm = None
         self._headers: dict[str, str] = {
@@ -75,7 +78,9 @@ class XActionsMcpClient:
 
     async def __aenter__(self) -> XActionsMcpClient:
         self._transport_cm = streamablehttp_client(
-            self.url, headers=self._headers
+            self.url,
+            headers=self._headers,
+            timeout=XACTIONS_MCP_DEFAULT_TIMEOUT_SECONDS,
         )
         read, write, _ = await self._transport_cm.__aenter__()
         self._session = ClientSession(read, write)
@@ -124,6 +129,12 @@ class XActionsMcpClient:
             for tool in response.tools
         ]
 
+    def _admin_args(self, arguments: dict[str, Any]) -> dict[str, Any]:
+        """Inject admin token into admin-only tools, preserving caller overrides."""
+        if self.admin_token and "token" not in arguments:
+            return {**arguments, "token": self.admin_token}
+        return arguments
+
     async def call_tool(
         self,
         tool_name: str,
@@ -133,8 +144,15 @@ class XActionsMcpClient:
         if not self._session:
             raise RuntimeError("MCP session not initialized. Use `async with client:`.")
 
+        if tool_name.startswith("x_admin_"):
+            arguments = self._admin_args(arguments)
+
         logger.info("Calling XActions MCP tool %s", tool_name)
-        response = await self._session.call_tool(tool_name, arguments=arguments)
+        response = await self._session.call_tool(
+            tool_name,
+            arguments=arguments,
+            read_timeout_seconds=XACTIONS_MCP_DEFAULT_TIMEOUT_SECONDS,
+        )
 
         texts = []
         for content in response.content:
@@ -189,7 +207,9 @@ class XActionsMcpClient:
         """Fetch a large dataset artifact exported by XActions."""
         # Artifact path is expected to be a URL or a local path on a shared volume.
         if artifact_path.startswith(("http://", "https://")):
-            async with httpx.AsyncClient() as http_client:
+            async with httpx.AsyncClient(
+                timeout=httpx.Timeout(XACTIONS_MCP_DEFAULT_TIMEOUT_SECONDS)
+            ) as http_client:
                 resp = await http_client.get(artifact_path, headers=self._headers)
                 resp.raise_for_status()
                 try:
