@@ -27,6 +27,12 @@ class SocialPostData:
     target_id: int | None = None
     workspace_id: int | None = None
     client_id: str | None = None
+    # Thin-event payload fields (Story 21.8a)
+    category: str | None = None
+    storage_ref: str | None = None
+    scraper_id: str | None = None
+    benchmark_health: str | None = None
+    benchmark_alert: bool | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:

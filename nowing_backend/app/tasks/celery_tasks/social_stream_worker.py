@@ -29,7 +29,6 @@ def process_social_stream_task(self) -> int:
         try:
             return await run_social_stream_consumer(
                 redis_client=redis_client,
-                consumer_name=f"nowing-{self.request.id}",
                 batch_size=10,
                 block_ms=2000,
             )

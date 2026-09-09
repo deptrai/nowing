@@ -83,3 +83,9 @@ def health_probe_storage() -> dict[str, Any]:
     """Periodic probe for object storage (5m)."""
     return run_async_celery_task(lambda: _run_health_probe_for_category("storage"))
 
+
+@celery_app.task(name="health_probe_xactions")
+def health_probe_xactions() -> dict[str, Any]:
+    """Periodic probe for XActions MCP daemon (5m)."""
+    return run_async_celery_task(lambda: _run_health_probe_for_category("scraper"))
+

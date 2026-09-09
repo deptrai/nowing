@@ -239,7 +239,7 @@ development_status:
   21-6-vietnam-outbound-automation: done
   21-7-outcome-based-pricing-transparent-credit-ledger: done
   21-8-social-ingress-via-xactions-integration: done  # baseline: schema, extractor, producer tests; reopened via 21.8a
-  21-8a-xactions-universal-ingress-productionization: ready-for-dev
+  21-8a-xactions-universal-ingress-productionization: in-progress
   21-9-executive-decision-maker-mapping-b2b-lead-outreach: done
   21-10-1-click-reverse-icp-from-website-project-url: done
   21-11-actionable-turn-dispatches: done

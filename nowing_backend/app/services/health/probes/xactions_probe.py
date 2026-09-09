@@ -5,8 +5,12 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime, timedelta
 
+from app.alerts.engine.execute import execute_alert_rule
+from app.alerts.persistence.models.alert_rule import AlertRule
+from app.db import async_session_maker
 from app.proprietary.platforms.xactions.mcp_client import XActionsMcpClient
 from app.services.health.probe_base import HealthProbe, HealthResult
+from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
 
@@ -27,12 +31,24 @@ class XActionsHealthProbe(HealthProbe):
                 result = await client.call_tool("x_governor_status", {})
                 governor_data = result.get("data", {})
 
-                metrics_result = await client.call_tool("x_admin_stream_metrics", {})
-                metrics_data = metrics_result.get("metrics", {})
+                try:
+                    metrics_result = await client.call_tool("x_admin_stream_metrics", {})
+                    metrics_data = metrics_result.get("metrics") or metrics_result.get("data") or {}
+                except Exception:
+                    metrics_data = {}
 
-                # Determine status from governor health
-                healthy_proxies = governor_data.get("healthyProxies", 0)
-                backpressure = governor_data.get("backpressure", "none")
+                # AC 9: evaluate XActions stream alerts and trigger admin alerts
+                # via the Nowing alert engine when a breach is reported.
+                try:
+                    alerts_result = await client.call_tool("x_admin_stream_alerts", {})
+                    alerts = alerts_result.get("data") or alerts_result.get("alerts") or []
+                except Exception:
+                    alerts = []
+
+                # Determine status from governor health (XActions returns
+                # `healthyProxyCount`; keep fallbacks for older payloads).
+                healthy_proxies = governor_data.get("healthyProxyCount") or governor_data.get("healthyProxies") or 0
+                backpressure = governor_data.get("backpressure") or "none"
 
                 if backpressure == "critical" or healthy_proxies == 0:
                     status = "unavailable"
@@ -43,6 +59,13 @@ class XActionsHealthProbe(HealthProbe):
                 else:
                     status = "healthy"
                     error = None
+
+                # If XActions reports an active stream alert, mark degraded
+                # and, if admin rules exist, fire matching alert rules.
+                if alerts:
+                    status = "degraded"
+                    error = error or f"XActions stream alert: {alerts[0]!s}"
+                    await self._fire_alert_rules_for_stream_breach(alerts)
 
                 return HealthResult(
                     service_id=self.service_id,
@@ -59,6 +82,7 @@ class XActionsHealthProbe(HealthProbe):
                         "healthy_proxies": healthy_proxies,
                         "backpressure": backpressure,
                         "stream_metrics": metrics_data,
+                        "stream_alerts": alerts,
                     },
                     probed_at=datetime.now(UTC),
                     interval_seconds=self.interval_seconds,
@@ -80,5 +104,47 @@ class XActionsHealthProbe(HealthProbe):
                 metadata={},
                 probed_at=datetime.now(UTC),
                 interval_seconds=self.interval_seconds,
-                next_probe_at=datetime.now(UTC).replace(microsecond=0) + timedelta(seconds=self.interval_seconds),
+                next_probe_at=datetime.now(UTC).replace(
+                    microsecond=0
+                ) + timedelta(seconds=self.interval_seconds),
             )
+
+    async def _fire_alert_rules_for_stream_breach(self, alerts: list) -> None:
+        """Fire Nowing alert rules for XActions stream breach reports.
+
+        AC 9 requires Telegram/Email notification when XActions admin stream
+        alerts are reported. We look up admin/global alert rules that have
+        capability "health" (or use a generic admin social trigger) and call
+        execute_alert_rule for each match. Exact matching is intentionally
+        broad because XActions alert shapes vary by deployment.
+        """
+        try:
+            async with async_session_maker() as session:
+                result = await session.execute(
+                    select(AlertRule).where(
+                        AlertRule.enabled.is_(True),
+                        AlertRule.capability_id == "xactions_admin_stream",
+                    )
+                )
+                rules = result.scalars().all()
+                if not rules:
+                    logger.info(
+                        "XActions stream alerts present but no matching AlertRule; skip firing"
+                    )
+                    return
+
+                fired_at = datetime.now(UTC)
+                for rule in rules:
+                    try:
+                        await execute_alert_rule(
+                            session=session,
+                            alert_rule=rule,
+                            fired_at=fired_at,
+                        )
+                    except Exception:
+                        logger.exception(
+                            "Failed to fire XActions stream alert rule %s", rule.id
+                        )
+                await session.commit()
+        except Exception:
+            logger.exception("Failed to evaluate XActions stream alert rules")

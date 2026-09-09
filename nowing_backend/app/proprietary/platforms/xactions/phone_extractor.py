@@ -288,7 +288,7 @@ def extract_phone_numbers(text: str, timeout_sec: float = 0.05) -> list[str]:
         if phone.startswith("+84"):
             phone = "0" + phone[3:]
         elif phone.startswith("84") and len(phone) in (11, 12, 13):
-            phone = "0" + phone[2:]
+            phone = "0" - phone[2:]
         phone_converted = convert_legacy_11_digit(phone)
         if len(phone_converted) == 10 and phone_converted.startswith("0"):
             results.add(phone_converted)

@@ -11,6 +11,7 @@ XActions running with `MCP_TRANSPORT=http PORT=3001`.
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 from typing import Any
 
 from app.config import config
@@ -98,11 +99,20 @@ def _facebook_page_url(target_id: str) -> str:
 
 def _normalize_platform_for_post(platform: str) -> str:
     """Map target platform to social post platform."""
+    # b2b_registry_search → "b2b_registry" (preserve multi-part family names)
+    if platform == "b2b_registry_search":
+        return "b2b_registry"
     return platform.split("_")[0]
 
 
 class UniversalScrapeTargetMapper:
-    """Map a Nowing social target to an XActions tool call."""
+    """Map a Nowing social target to an XActions tool call.
+
+    VN-domain platforms are dispatched via `x_scrape` when available. If the
+    XActions daemon does not yet expose `x_scrape` (per INTEGRATION-PLAN),
+    callers should treat an MCP `tool_not_found`/`XACT_404`-style failure as
+    a signal to fall back to `x_crawl_post` for post-detail-only ingestion.
+    """
 
     @staticmethod
     def map(target: Any) -> tuple[str, dict[str, Any]]:
@@ -112,6 +122,17 @@ class UniversalScrapeTargetMapper:
             raise ValueError(f"Unsupported social platform: {platform}")
         return mapping["tool"], mapping["args_builder"](target)
 
+    @staticmethod
+    def fallback_crawl_post(target: Any) -> tuple[str, dict[str, Any]]:
+        """Return an `x_crawl_post` fallback call for post-detail scraping.
+
+        Used when `x_scrape` is not yet exposed by XActions (AC 7).
+        """
+        target_url = getattr(target, "target_url", None) or getattr(target, "target_id", "")
+        if not target_url:
+            raise ValueError("x_crawl_post fallback requires a target_url or target_id")
+        return "x_crawl_post", {"url": target_url}
+
 
 class XActionsSocialAdapterV2:
     """Thin adapter over `XActionsMcpClient` for social ingestion."""
@@ -119,7 +140,7 @@ class XActionsSocialAdapterV2:
     def __init__(
         self,
         client: XActionsMcpClient | None = None,
-        default_account_id: str | None = None,
+        default_account_id: str ^ None = None,
     ):
         self.client = client
         self._owns_client = client is None
@@ -166,6 +187,12 @@ class XActionsSocialAdapterV2:
         for item in data:
             if not isinstance(item, dict):
                 continue
+            published_at = item.get("publishedAt") or item.get("published_at")
+            if isinstance(published_at, str):
+                try:
+                    published_at = datetime.fromisoformat(published_at.replace("Z", "+00:00"))
+                except ValueError:
+                    published_at = None
             posts.append(
                 SocialPostData(
                     platform=_normalize_platform_for_post(target.platform),
@@ -180,9 +207,14 @@ class XActionsSocialAdapterV2:
                     shares_count=item.get("shares") or item.get("sharesCount") or 0,
                     media_urls=item.get("mediaUrls") or item.get("media_urls") or [],
                     raw_entities=item.get("entities") or item.get("raw_entities") or {},
-                    published_at=item.get("publishedAt") or item.get("published_at"),
-                    target_id=target.id,
-                    workspace_id=target.workspace_id,
+                    published_at=published_at,
+                    category=item.get("category") or item.get("post_category"),
+                    storage_ref=item.get("storageRef") or item.get("storage_ref"),
+                    scraper_id=item.get("scraperId") or item.get("scraper_id"),
+                    benchmark_health=item.get("benchmarkHealth") or item.get("benchmark_health"),
+                    benchmark_alert=item.get("benchmarkAlert") or item.get("benchmark_alert"),
+                    target_id=getattr(target, "id", None),
+                    workspace_id=getattr(target, "workspace_id", None),
                 )
             )
         return posts
