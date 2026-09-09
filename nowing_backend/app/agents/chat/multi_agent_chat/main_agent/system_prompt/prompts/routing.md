@@ -101,7 +101,7 @@ https://www.nowing.com/docs. There is no docs-search tool; give the link.
 
 #### G. User Context & Connected Apps
 - **`knowledge_base`** — All reads, writes, edits, and searches in user workspace documents and folders. You have NO direct filesystem tools.
-- **`mcp_discovery`** — All connected enterprise tools: Slack, Linear, Jira, ClickUp, Notion, Airtable, Gmail, Google Calendar, and custom MCP connectors.
+- **`mcp_discovery`** — All connected enterprise tools: Slack, Linear, Jira, ClickUp, Notion, Airtable, Gmail, Google Calendar, and custom MCP connectors. Includes `XACTIONS_MCP_CONNECTOR` for live XActions social search, scrape, and post crawl across Twitter/X, Facebook, Facebook Marketplace, TikTok, Shopee, Chợ Tốt, TopCV, Batdongsan, Masothuế, and B2B registries.
 - **`deliverables`** — Podcasts (renders live card in chat), slide presentations, and exportable reports.
 
 ---

@@ -40,6 +40,24 @@ async def test_xactions_probe_healthy(probe: XActionsHealthProbe) -> None:
 
 
 @pytest.mark.asyncio
+async def test_xactions_probe_calls_x_governor_status(probe: XActionsHealthProbe) -> None:
+    mock_client = AsyncMock()
+    mock_client.call_tool.side_effect = [
+        {"data": {"healthyProxyCount": 5, "backpressure": "none"}},
+        {"metrics": {}},
+        {"data": []},
+    ]
+
+    with patch("app.services.health.probes.xactions_probe.XActionsMcpClient") as mock_cls:
+        mock_cls.return_value.__aenter__.return_value = mock_client
+        mock_cls.return_value.__aexit__.return_value = False
+
+        await probe.probe()
+
+    assert mock_client.call_tool.call_args_list[0].args[0] == "x_governor_status"
+
+
+@pytest.mark.asyncio
 async def test_xactions_probe_degraded_low_proxies(probe: XActionsHealthProbe) -> None:
     mock_client = AsyncMock()
     mock_client.call_tool.side_effect = [
@@ -122,7 +140,7 @@ async def test_xactions_probe_stream_alerts_triggers_degraded_and_fires_rules(
     mock_client.call_tool.side_effect = [
         {"data": {"healthyProxyCount": 5, "backpressure": "none"}},
         {"metrics": {}},
-        {"data": ["queue_depth_exceeded"]},
+        {"data": {"activeAlerts": ["queue_depth_exceeded"]}},
     ]
 
     with patch("app.services.health.probes.xactions_probe.XActionsMcpClient") as mock_cls, \

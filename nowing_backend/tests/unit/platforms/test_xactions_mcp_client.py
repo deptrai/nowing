@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import json
-from contextlib import asynccontextmanager
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -358,3 +357,32 @@ class TestXActionsMcpError:
         assert err.code == "XACT_4010"
         assert err.retry_after == 30
         assert err.suggested_action == "halt"
+
+
+@pytest.mark.asyncio
+async def test_admin_token_injection_preserves_explicit():
+    """Admin token is injected for x_admin_ tools but never overwrites explicit token."""
+    client = XActionsMcpClient()
+    client.admin_token = "default-admin"
+    args = client._admin_args({"token": "caller-token"})
+    assert args["token"] == "caller-token"
+
+    args2 = client._admin_args({})
+    assert args2["token"] == "default-admin"
+
+
+@pytest.mark.asyncio
+async def test_admin_token_injected_for_x_admin_tools():
+    """call_tool injects admin token for x_admin_ tools."""
+    client = XActionsMcpClient()
+    client.admin_token = "admin-token"
+    client._session = AsyncMock()
+    mock_result = MagicMock()
+    mock_result.isError = False
+    mock_content = MagicMock()
+    mock_content.text = '{"success": true, "data": []}'
+    mock_result.content = [mock_content]
+    client._session.call_tool = AsyncMock(return_value=mock_result)
+    await client.call_tool("x_admin_stream_metrics", {})
+    _, call_kwargs = client._session.call_tool.call_args
+    assert call_kwargs["arguments"]["token"] == "admin-token"

@@ -5,12 +5,13 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime, timedelta
 
+from sqlalchemy import select
+
 from app.alerts.engine.execute import execute_alert_rule
 from app.alerts.persistence.models.alert_rule import AlertRule
 from app.db import async_session_maker
 from app.proprietary.platforms.xactions.mcp_client import XActionsMcpClient
 from app.services.health.probe_base import HealthProbe, HealthResult
-from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
 
@@ -29,11 +30,16 @@ class XActionsHealthProbe(HealthProbe):
         try:
             async with XActionsMcpClient() as client:
                 result = await client.call_tool("x_governor_status", {})
-                governor_data = result.get("data", {})
+                governor_data = result.get("data", {}) or {}
+                if isinstance(governor_data, list):
+                    governor_data = governor_data[0] if governor_data else {}
 
                 try:
                     metrics_result = await client.call_tool("x_admin_stream_metrics", {})
                     metrics_data = metrics_result.get("metrics") or metrics_result.get("data") or {}
+                    if isinstance(metrics_data, list):
+                        metrics_data = metrics_data[0] if metrics_data else {}
+                        metrics_data = metrics_data.get("metrics") or metrics_data
                 except Exception:
                     metrics_data = {}
 
@@ -42,6 +48,9 @@ class XActionsHealthProbe(HealthProbe):
                 try:
                     alerts_result = await client.call_tool("x_admin_stream_alerts", {})
                     alerts = alerts_result.get("data") or alerts_result.get("alerts") or []
+                    if isinstance(alerts, list):
+                        first = alerts[0] if alerts else {}
+                        alerts = first.get("alerts") if isinstance(first, dict) else first
                 except Exception:
                     alerts = []
 
@@ -62,10 +71,11 @@ class XActionsHealthProbe(HealthProbe):
 
                 # If XActions reports an active stream alert, mark degraded
                 # and, if admin rules exist, fire matching alert rules.
-                if alerts:
+                active_alerts = alerts.get("activeAlerts") if isinstance(alerts, dict) else alerts
+                if active_alerts:
                     status = "degraded"
-                    error = error or f"XActions stream alert: {alerts[0]!s}"
-                    await self._fire_alert_rules_for_stream_breach(alerts)
+                    error = error or f"XActions stream alert: {active_alerts[0]!s}"
+                    await self._fire_alert_rules_for_stream_breach(active_alerts)
 
                 return HealthResult(
                     service_id=self.service_id,

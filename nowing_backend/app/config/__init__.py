@@ -15,6 +15,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 env_file = BASE_DIR / ".env"
 load_dotenv(env_file)
 
+# Load local overrides if present (takes precedence over .env)
+local_env_file = BASE_DIR / ".env.local"
+if local_env_file.exists():
+    load_dotenv(local_env_file, override=True)
+
 os.environ.setdefault("OR_APP_NAME", "Nowing")
 os.environ.setdefault("OR_SITE_URL", "https://nowing.com")
 

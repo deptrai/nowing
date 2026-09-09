@@ -1345,3 +1345,10 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 ## Deferred from: code review of story-26.27 (2026-09-05)
 
 - [x] [Review][Defer] Sprint status marked `done` prematurely for 26-27 — `sprint-status.yaml:214` (deferred to status sync)
+
+
+## Deferred from: code review of 21-8g-xactions-mcp-chat-connector (2026-09-09)
+
+- seed_xactions_connectors performs N+1 query at startup [nowing_backend/app/services/xactions_connector_seed.py:97-137]
+- config/__init__.py loads .env.local with override=True [nowing_backend/app/config/__init__.py]
+- XActions meta-tools are built statically and bypass cache invalidation on daemon schema changes [nowing_backend/app/agents/chat/multi_agent_chat/shared/tools/mcp/tool.py]

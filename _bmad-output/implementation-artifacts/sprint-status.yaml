@@ -41,8 +41,9 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '09-09-2026 04:00'
+last_updated: '09-09-2026 13:00'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
+# manual update 2026-09-09: split Story 21.8 into 21.8a–f per sprint-change-proposal-2026-09-09-xactions-21-8-correction.md; audit 2026-09-09: 21.8a–f done, 21.8g in-progress
 # - Parsed epics.md: 24 epics, ~160 stories.
 # - Scanned _bmad-output/implementation-artifacts/ + stories/*.md for story files (frontmatter story_key/epic+story).
 # - Existing sprint-status.yaml preserved with manual statuses; no backlog story upgraded because all file-backed stories already >= ready-for-dev.
@@ -230,7 +231,7 @@ development_status:
   20-3-nowingprivateprovider-for: done
   epic-20-retrospective: optional
 
-  epic-21: done
+  epic-21: in-progress
   21-1-intent-signal-detection: done
   21-2-lead-scoring-prioritization: done
   21-3-vietnam-phone-contact-waterfall-engine: done
@@ -238,8 +239,14 @@ development_status:
   21-5-crm-integration-lark-base-google-sheets-1-click-sync: done
   21-6-vietnam-outbound-automation: done
   21-7-outcome-based-pricing-transparent-credit-ledger: done
-  21-8-social-ingress-via-xactions-integration: done  # baseline: schema, extractor, producer tests; reopened via 21.8a
-  21-8a-xactions-universal-ingress-productionization: done
+  21-8-social-ingress-via-xactions-integration: done  # baseline: schema, extractor, producer tests
+  21-8a-mcp-streamablehttp-transport: done
+  21-8b-redis-stream-consumer-celery-wiring: done
+  21-8c-multi-domain-social-target-expansion: done
+  21-8d-universal-scrape-target-mapper: done
+  21-8e-per-account-proxy-cookie-binding: done
+  21-8f-xactions-governance-health-integration: done
+  21-8g-xactions-mcp-chat-connector: in-progress
   21-9-executive-decision-maker-mapping-b2b-lead-outreach: done
   21-10-1-click-reverse-icp-from-website-project-url: done
   21-11-actionable-turn-dispatches: done

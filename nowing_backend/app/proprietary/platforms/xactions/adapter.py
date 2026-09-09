@@ -29,15 +29,14 @@ from mcp.client.stdio import StdioServerParameters, stdio_client
 from app.config import config
 from app.proprietary.platforms.xactions.adapter_v2 import (
     XActionsSocialAdapterV2,
-    UniversalScrapeTargetMapper,
 )
 from app.proprietary.platforms.xactions.constants import STREAM_SOCIAL_RAW_POSTS
 from app.proprietary.platforms.xactions.mcp_client import (
     XActionsMcpError,
 )
 from app.proprietary.platforms.xactions.models import (
-    SocialPostData,
     SocialMonitoredTargetData,
+    SocialPostData,
 )
 
 logger = logging.getLogger(__name__)
