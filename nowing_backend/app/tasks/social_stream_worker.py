@@ -452,7 +452,7 @@ async def process_social_post_event(
 
         stmt = pg_insert(SocialPost).values(**result_data)
         upsert_stmt = stmt.on_conflict_do_update(
-            index_elements=["platform", "external_post_id"],
+            index_elements=["workspace_id", "platform", "external_post_id"],
             set_={
                 "target_id": stmt.excluded.target_id,
                 "workspace_id": stmt.excluded.workspace_id,

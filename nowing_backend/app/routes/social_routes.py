@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -167,10 +167,17 @@ async def create_social_target(
 )
 async def list_social_targets(
     workspace_id: int,
+    platform: str | None = None,
+    is_active: bool | None = None,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
 ) -> list[SocialTargetRead]:
-    """List all social monitored targets for a workspace."""
+    """List social monitored targets for a workspace.
+
+    Results are paginated and ordered by id for determinism.
+    """
     await _require_permission(
         session,
         auth,
@@ -180,11 +187,16 @@ async def list_social_targets(
     )
 
     from sqlalchemy import select
-    result = await session.execute(
-        select(SocialMonitoredTarget).where(
-            SocialMonitoredTarget.workspace_id == workspace_id
-        )
+    stmt = select(SocialMonitoredTarget).where(
+        SocialMonitoredTarget.workspace_id == workspace_id
     )
+    if platform:
+        stmt = stmt.where(SocialMonitoredTarget.platform == platform)
+    if is_active is not None:
+        stmt = stmt.where(SocialMonitoredTarget.is_active.is_(is_active))
+    stmt = stmt.order_by(SocialMonitoredTarget.id).limit(limit).offset(offset)
+
+    result = await session.execute(stmt)
     targets = result.scalars().all()
     return [SocialTargetRead.model_validate(t) for t in targets]
 

@@ -1,18 +1,12 @@
 {
   "dimension": "mutation",
-  "runAt": "2026-08-21T16:26:47.474637+00:00",
+  "runAt": "2026-09-09T05:28:11.976683+00:00",
   "services": [
     {
-      "service": "admin_affiliates_routes",
+      "service": "proprietary/platforms/xactions/mcp_client",
       "verdict": "FAIL",
-      "error": "cosmic-ray baseline failed for mutation-nowing-admin_affiliates_routes-20260821T162535Z.toml (exit code 1)",
-      "traceback": "Traceback (most recent call last):\n  File \"/Users/luisphan/Documents/GitHub/nowing/scripts/mutation-gate.py\", line 570, in main\n    run_cosmic_ray(\n  File \"/Users/luisphan/Documents/GitHub/nowing/scripts/mutation-gate.py\", line 331, in run_cosmic_ray\n    raise RuntimeError(f\"cosmic-ray {step} failed for {config.name} (exit code {result.returncode})\")\nRuntimeError: cosmic-ray baseline failed for mutation-nowing-admin_affiliates_routes-20260821T162535Z.toml (exit code 1)\n"
-    },
-    {
-      "service": "affiliate_anti_fraud",
-      "verdict": "FAIL",
-      "error": "cosmic-ray init failed for mutation-nowing-affiliate_anti_fraud-20260821T162635Z.toml (exit code 66)",
-      "traceback": "Traceback (most recent call last):\n  File \"/Users/luisphan/Documents/GitHub/nowing/scripts/mutation-gate.py\", line 570, in main\n    run_cosmic_ray(\n  File \"/Users/luisphan/Documents/GitHub/nowing/scripts/mutation-gate.py\", line 331, in run_cosmic_ray\n    raise RuntimeError(f\"cosmic-ray {step} failed for {config.name} (exit code {result.returncode})\")\nRuntimeError: cosmic-ray init failed for mutation-nowing-affiliate_anti_fraud-20260821T162635Z.toml (exit code 66)\n"
+      "error": "cosmic-ray baseline failed for mutation-nowing-proprietary-platforms-xactions-mcp_client-20260909T052807Z.toml (exit code 1)",
+      "traceback": "Traceback (most recent call last):\n  File \"/Users/luisphan/Documents/GitHub/nowing/scripts/mutation-gate.py\", line 570, in main\n    run_cosmic_ray(\n  File \"/Users/luisphan/Documents/GitHub/nowing/scripts/mutation-gate.py\", line 331, in run_cosmic_ray\n    raise RuntimeError(f\"cosmic-ray {step} failed for {config.name} (exit code {result.returncode})\")\nRuntimeError: cosmic-ray baseline failed for mutation-nowing-proprietary-platforms-xactions-mcp_client-20260909T052807Z.toml (exit code 1)\n"
     }
   ]
 }

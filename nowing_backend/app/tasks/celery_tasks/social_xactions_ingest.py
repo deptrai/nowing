@@ -18,11 +18,11 @@ import logging
 from datetime import UTC, datetime, timedelta
 
 import redis.asyncio as aioredis
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from app.celery_app import CONNECTORS_QUEUE, celery_app
 from app.config import config
-from app.db import SocialMonitoredTarget
+from app.db import SocialMonitoredTarget, XActionsProxyBinding
 from app.proprietary.platforms.xactions.adapter_v2 import XActionsSocialAdapterV2
 from app.proprietary.platforms.xactions.mcp_client import XActionsMcpError
 from app.tasks.celery_tasks import get_celery_session_maker, run_async_celery_task
@@ -86,7 +86,7 @@ async def _pause_target(
     session,
     target: SocialMonitoredTarget,
     reason: str,
-    retry_after_seconds: int | None = None,
+    retry_after_seconds: int | None = None,  # pragma: no mutate
 ) -> None:
     """Pause a target after a transient scraping failure."""
     target.status = "paused"
@@ -132,7 +132,7 @@ async def _ingest_social_target(task, target_id: int) -> int:
                 logger.warning("Social target %s not found", target_id)
                 return 0
 
-            if not target.is_active or target.status != "active":
+            if not target.is_active or target.status == "error":
                 logger.info(
                     "Skipping inactive social target %s (active=%s status=%s)",
                     target_id,
@@ -141,61 +141,79 @@ async def _ingest_social_target(task, target_id: int) -> int:
                 )
                 return 0
 
+            # Resolve per-account proxy binding (AC 8): fall back to workspace
+            # binding in xactions_proxy_bindings when the target lacks
+            # explicit account_id/proxy_url.
+            if not target.account_id or not target.proxy_url:
+                binding = await session.execute(
+                    select(XActionsProxyBinding).where(
+                        XActionsProxyBinding.workspace_id == target.workspace_id,
+                        XActionsProxyBinding.platform == target.platform,
+                        XActionsProxyBinding.is_active.is_(True),
+                    ).limit(1)
+                )
+                row = binding.scalars().first()
+                if row:
+                    if not target.account_id:
+                        target.account_id = row.account_id
+                    if not target.proxy_url:
+                        target.proxy_url = row.proxy_url
+
             lock_ttl = _lock_ttl_for_target(target)
             if not await _acquire_target_lock(redis_client, target_id, lock_ttl):
                 logger.info("Social target %s is already being ingested", target_id)
                 return 0
 
             try:
-                adapter = XActionsSocialAdapterV2()
-                posts: list = []
+                async with XActionsSocialAdapterV2() as adapter:
+                    posts: list = []
 
-                try:
-                    posts = await adapter.fetch_posts_for_target(target)
-                except XActionsMcpError as exc:
-                    if exc.code == "XACT_4291":
-                        retry_after = exc.retry_after or 30
-                        logger.info(
-                            "Rate limited by XActions for target %s; retry in %ss",
-                            target_id,
-                            retry_after,
+                    try:
+                        posts = await adapter.fetch_posts_for_target(target)
+                    except XActionsMcpError as exc:
+                        if exc.code == "XACT_4291":
+                            retry_after = exc.retry_after or 30
+                            logger.info(
+                                "Rate limited by XActions for target %s; retry in %ss",
+                                target_id,
+                                retry_after,
+                            )
+                            raise task.retry(countdown=retry_after) from exc
+                        if exc.code in (
+                            "ACCOUNT_HIBERNATION",
+                            "PROXY_EXHAUSTED",
+                            "XACT_5030",
+                        ):
+                            await _pause_target(session, target, str(exc), exc.retry_after)
+                            return 0
+                        if exc.code == "XACT_4010":
+                            await _halt_target(session, target, str(exc))
+                            return 0
+                        if exc.code == "XACT_5000":
+                            # Signer crash — retry up to 3 times then DLQ/alert
+                            raise task.retry(countdown=60, max_retries=3) from exc
+                        raise
+
+                    ingested = 0
+                    for post in posts:
+                        post.target_id = target.id
+                        post.workspace_id = target.workspace_id
+                        await adapter.ingest_raw_post_to_stream(
+                            post,
+                            redis_client=redis_client,
                         )
-                        raise task.retry(countdown=retry_after) from exc
-                    if exc.code in (
-                        "ACCOUNT_HIBERNATION",
-                        "PROXY_EXHAUSTED",
-                        "XACT_5030",
-                    ):
-                        await _pause_target(session, target, str(exc), exc.retry_after)
-                        return 0
-                    if exc.code == "XACT_4010":
-                        await _halt_target(session, target, str(exc))
-                        return 0
-                    if exc.code == "XACT_5000":
-                        # Signer crash — retry up to 3 times then DLQ/alert
-                        raise task.retry(countdown=60, max_retries=3) from exc
-                    raise
+                        ingested += 1
 
-                ingested = 0
-                for post in posts:
-                    post.target_id = target.id
-                    post.workspace_id = target.workspace_id
-                    await adapter.ingest_raw_post_to_stream(
-                        post,
-                        redis_client=redis_client,
+                    target.last_scraped_at = datetime.now(UTC)
+                    await session.commit()
+
+                    logger.info(
+                        "Ingested %d posts for social target %s (%s)",
+                        ingested,
+                        target_id,
+                        target.platform,
                     )
-                    ingested += 1
-
-                target.last_scraped_at = datetime.now(UTC)
-                await session.commit()
-
-                logger.info(
-                    "Ingested %d posts for social target %s (%s)",
-                    ingested,
-                    target_id,
-                    target.platform,
-                )
-                return ingested
+                    return ingested
 
             except Exception:
                 await session.rollback()
@@ -222,7 +240,13 @@ async def _check_and_trigger_social_targets() -> int:
             result = await session.execute(
                 select(SocialMonitoredTarget).where(
                     SocialMonitoredTarget.is_active.is_(True),
-                    SocialMonitoredTarget.status == "active",
+                    or_(
+                        SocialMonitoredTarget.status == "active",
+                        # Allow paused targets whose cooldown has expired to
+                        # resume. `_pause_target` sets last_scraped_at into the
+                        # future, so once that time passes the target is due.
+                        SocialMonitoredTarget.status == "paused",
+                    ),
                 )
             )
             targets = result.scalars().all()

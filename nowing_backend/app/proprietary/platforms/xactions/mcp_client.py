@@ -13,8 +13,11 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+from pathlib import Path
 from typing import Any
 
+import anyio
 import httpx
 from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
@@ -88,6 +91,24 @@ class XActionsMcpClient:
             await self._transport_cm.__aexit__(exc_type, exc, tb)
             self._transport_cm = None
 
+    @staticmethod
+    def _resolve_artifact_path(artifact_root: str, artifact_path: str) -> str:
+        """Resolve a local artifact path under a trusted root.
+
+        Rejects absolute paths and traversal attempts that escape the root.
+        """
+        root = Path(artifact_root).resolve()
+        candidate = Path(artifact_path)
+        if candidate.is_absolute():
+            resolved = candidate.resolve()
+        else:
+            resolved = (root / candidate).resolve()
+        if not str(resolved).startswith(str(root)):
+            raise ValueError(
+                f"Artifact path {artifact_path} escapes configured root {artifact_root}"
+            )
+        return str(resolved)
+
     async def list_tools(self) -> list[dict[str, Any]]:
         """Return available XActions tools."""
         if not self._session:
@@ -133,18 +154,22 @@ class XActionsMcpClient:
         except json.JSONDecodeError as exc:
             raise RuntimeError(f"Non-JSON XActions response for {tool_name}: {exc}") from exc
 
-        artifact_path = envelope.get("meta", {}).get("datasetArtifactPath")
+        artifact_path = (envelope.get("meta") or {}).get("datasetArtifactPath")
         artifact_data: list[Any] = []
         if artifact_path:
             logger.info("XActions returned artifact for %s: %s", tool_name, artifact_path)
             artifact_data = await self._fetch_artifact(artifact_path)
 
         if response.isError:
-            error = envelope.get("error", {})
+            error = envelope.get("error") or {}
+            retry_after = error.get("retryAfter")
+            retry_after_ms = error.get("retryAfterMs")
+            if retry_after is None and retry_after_ms is not None:
+                retry_after = retry_after_ms / 1000
             raise XActionsMcpError(
                 message=error.get("message", f"XActions tool {tool_name} failed"),
                 code=error.get("code"),
-                retry_after=error.get("retryAfter") or error.get("retryAfterMs"),
+                retry_after=retry_after,
                 suggested_action=error.get("suggestedAction"),
             )
 
@@ -172,12 +197,28 @@ class XActionsMcpClient:
                 except Exception:
                     logger.warning("Artifact %s is not valid JSON", artifact_path)
                     return []
-        # Local shared volume path
+        # Local shared volume path — require a configured, absolute root and
+        # prevent traversal outside that root (Story 21.8a security hardening).
+        artifact_root = getattr(config, "XACTIONS_ARTIFACT_ROOT", None)
+        if not artifact_root:
+            logger.warning(
+                "Local artifact %s dropped: XACTIONS_ARTIFACT_ROOT not configured",
+                artifact_path,
+            )
+            return []
+
         try:
-            with open(artifact_path, encoding="utf-8") as f:
-                return json.load(f)
+            safe_path = self._resolve_artifact_path(artifact_root, artifact_path)
+        except ValueError as exc:
+            logger.warning("Rejected unsafe artifact path: %s", exc)
+            return []
+
+        try:
+            return await anyio.to_thread.run_sync(
+                lambda: json.load(open(safe_path, encoding="utf-8"))
+            )
         except Exception as exc:
-            logger.warning("Failed to read artifact %s: %s", artifact_path, exc)
+            logger.warning("Failed to read artifact %s: %s", safe_path, exc)
             return []
 
     async def health_check(self) -> dict[str, Any]:

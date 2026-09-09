@@ -86,7 +86,9 @@ class SocialPost(Base, TimestampMixin):
     __tablename__ = "social_posts"
 
     __table_args__ = (
-        UniqueConstraint("platform", "external_post_id", name="uq_social_post"),
+        UniqueConstraint(
+            "workspace_id", "platform", "external_post_id", name="uq_social_post"
+        ),
         Index("idx_social_posts_platform_ext", "platform", "external_post_id"),
         Index("idx_social_posts_published", "published_at"),
         Index("idx_social_posts_intent", "intent_tag"),
@@ -140,7 +142,7 @@ class SocialPost(Base, TimestampMixin):
     embedding = Column(Vector(config.embedding_model_instance.dimension), nullable=True)
     published_at = Column(TIMESTAMP(timezone=True), nullable=True)
     # Extended fields for thin-event payload (Story 21.8a)
-    category = Column(String(50), nullable=True)
+    category = Column(String(50), nullable=True, server_default="general")
     storage_ref = Column(Text, nullable=True)
     scraper_id = Column(String(100), nullable=True)
     benchmark_health = Column(String(10), nullable=True)
@@ -184,7 +186,7 @@ class XActionsProxyBinding(Base, TimestampMixin):
     is_active = Column(Boolean, nullable=False, default=True, server_default="true")
     last_bound_at = Column(TIMESTAMP(timezone=True), nullable=True)
 
-    workspace = relationship("Workspace")
+    workspace = relationship("Workspace", back_populates="xactions_proxy_bindings")
 
 class ZaloConnection(Base, TimestampMixin):
     """Zalo Official Account connection for a workspace (Story 21.6 / AD-41)."""

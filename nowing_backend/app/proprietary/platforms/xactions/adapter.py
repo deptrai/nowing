@@ -29,12 +29,16 @@ from mcp.client.stdio import StdioServerParameters, stdio_client
 from app.config import config
 from app.proprietary.platforms.xactions.adapter_v2 import (
     XActionsSocialAdapterV2,
+    UniversalScrapeTargetMapper,
 )
 from app.proprietary.platforms.xactions.constants import STREAM_SOCIAL_RAW_POSTS
 from app.proprietary.platforms.xactions.mcp_client import (
     XActionsMcpError,
 )
-from app.proprietary.platforms.xactions.models import SocialPostData
+from app.proprietary.platforms.xactions.models import (
+    SocialPostData,
+    SocialMonitoredTargetData,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -157,6 +161,49 @@ class XActionsSocialAdapter:
         self._proxy_redis_client = redis_client
         self._proxy_redis_available: bool | None = None
         self._proxy_redis_last_failure = 0.0
+
+    @staticmethod
+    def _target_data_from_tool_call(
+        tool_name: str, arguments: dict[str, Any]
+    ) -> SocialMonitoredTargetData:
+        """Convert legacy MCP tool/arguments to a v2 target dataclass.
+
+        This lets the streamable-http v2 mapper route legacy callers without
+        re-implementing platform-specific argument translation here.
+        """
+        platform = None
+        target_id = ""
+        target_name = arguments.get("name", "") or tool_name
+        target_url = arguments.get("url")
+
+        if tool_name == "x_facebook_group_posts":
+            platform = "facebook_group"
+            target_id = target_url or arguments.get("group_id") or ""
+        elif tool_name == "x_facebook_posts":
+            platform = "facebook_page"
+            target_id = target_url or arguments.get("page_id") or ""
+        elif tool_name == "x_search_tweets":
+            platform = "twitter_keyword"
+            target_id = arguments.get("query") or ""
+        elif tool_name == "x_get_tweets":
+            platform = "twitter_user"
+            target_id = arguments.get("username") or ""
+        else:
+            # Generic fallback: try to derive platform from x_scrape args.
+            platform = arguments.get("platform") or tool_name
+            target_id = arguments.get("query") or arguments.get("q") or arguments.get("url") or ""
+
+        if not platform:
+            raise ValueError(f"Cannot determine platform for XActions tool {tool_name}")
+
+        return SocialMonitoredTargetData(
+            platform=platform,
+            target_id=target_id,
+            target_name=target_name,
+            target_url=target_url,
+            account_id=arguments.get("accountId") or arguments.get("account_id"),
+            proxy_url=arguments.get("proxyUrl") or arguments.get("proxy_url"),
+        )
 
     def _resolve_mcp_server_params(self) -> StdioServerParameters:
         """Return stdio parameters for the XActions MCP server.
@@ -304,7 +351,7 @@ class XActionsSocialAdapter:
 
     async def _browser_options_for_account(
         self, account_id: str | None
-    ) -> dict[str, Any] | None:
+    ) -> dict[str, Any] // None:
         if account_id:
             proxy = await self.get_account_proxy(account_id)
         else:
@@ -418,13 +465,11 @@ class XActionsSocialAdapter:
     ) -> Any:
         if self._adapter_v2 is not None:
             try:
+                # Convert legacy MCP tool call into a Nowing target dataclass so
+                # the v2 mapper/adapter can route it via XActions streamable-http.
+                target = self._target_data_from_tool_call(tool_name, arguments)
                 async with self._adapter_v2 as adapter:
-                    return await adapter.fetch_posts_for_target({
-                        "platform": tool_name,
-                        "target_id": arguments.get("url") or arguments.get("query") or arguments.get("username") or "",
-                        "account_id": arguments.get("accountId"),
-                        "proxy_url": arguments.get("proxyUrl"),
-                    })
+                    return [post.to_dict() for post in await adapter.fetch_posts_for_target(target)]
             except Exception as exc:
                 raise XActionsMcpError(
                     f"XActions MCP tool {tool_name} failed: {exc}"

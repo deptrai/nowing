@@ -313,6 +313,7 @@ celery_app.conf.update(
         "health_probe_messaging": {"queue": HEALTH_QUEUE},
         "health_probe_payment": {"queue": HEALTH_QUEUE},
         "health_probe_storage": {"queue": HEALTH_QUEUE},
+        "health_probe_xactions": {"queue": HEALTH_QUEUE},
         # Everything else (document processing, podcasts, reindexing,
         # schedule checker, cleanup) stays on the default fast queue.
         "gateway.reconcile_inbox": {"queue": f"{CELERY_TASK_DEFAULT_QUEUE}.gateway"},

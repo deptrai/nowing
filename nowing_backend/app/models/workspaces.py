@@ -384,6 +384,12 @@ class Workspace(BaseModel, TimestampMixin):
         order_by="SocialPost.id",
         cascade="all, delete-orphan",
     )
+    xactions_proxy_bindings = relationship(
+        "XActionsProxyBinding",
+        back_populates="workspace",
+        order_by="XActionsProxyBinding.id",
+        cascade="all, delete-orphan",
+    )
     zalo_connections = relationship(
         "ZaloConnection",
         back_populates="workspace",

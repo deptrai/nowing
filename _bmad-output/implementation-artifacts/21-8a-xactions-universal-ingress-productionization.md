@@ -1,6 +1,6 @@
 # Story 21.8a: XActions Universal Ingress Productionization
 
-Status: ready-for-dev
+Status: in-progress
 
 <!-- Note: Consolidated from 21.8a–f. Governed by architecture-xactions-social-integration-2026-08-15 (AD-SOC-1 to AD-SOC-11) + TRINITY-4 + INTEGRATION-PLAN-2026-09-09.md (Option A: MCP streamable-http approved) -->
 
@@ -150,3 +150,27 @@ claude-opus-5[1m]
 - `nowing_backend/tests/unit/platforms/test_xactions_mcp_client.py` (new)
 - `nowing_backend/tests/unit/platforms/test_xactions_mapper.py` (new)
 - `nowing_backend/tests/integration/platforms/test_social_redis_stream.py` (update/extend)
+
+### Review Findings (2026-09-09)
+
+- [x] [Review][Patch] Celery beat `health_probe_xactions` chưa register task — patched 2026-09-09 — `nowing_backend/app/celery_app.py:525`
+- [x] [Review][Patch] `XActionsSocialAdapter._call_mcp_tool` bridge qua v2 bị truyền dict thay vì object — patched 2026-09-09 — `adapter.py:419`
+- [x] [Review][Patch] `published_at` string chưa parse datetime gây `AttributeError` khi `to_dict()` — patched 2026-09-09 — `adapter_v2.py:183` / `models.py`
+- [x] [Review][Patch] `XActionsSocialAdapterV2` không được `close()` / `async with` trong Celery task, leak kết nối — patched 2026-09-09 — `social_xactions_ingest.py:1449`
+- [x] [Review][Patch] `test_social_xactions_ingest.py` cũ bị broken (import `XActionsSocialAdapter` + thiếu `task` param) — patched 2026-09-09 — `tests/unit/tasks/celery_tasks/test_social_xactions_ingest.py`
+- [x] [Review][Patch] `XActionsProxyBinding` chưa được đọc/tra cứu trong ingestion — patched 2026-09-09 — `adapter_v2.py:587` / `social_xactions_ingest.py`
+- [x] [Review][Patch] `XActionsHealthProbe` dùng sai key `healthyProxies` thay vì `healthyProxyCount` — patched 2026-09-09 — `xactions_probe.py:34`
+- [x] [Review][Patch] `XActionsProxyBinding` thiếu relationship `workspace`/`back_populates` — patched 2026-09-09 — `models/workspaces.py`
+- [x] [Review][Patch] `_normalize_platform_for_post` cắt ngắn `b2b_registry_search` thành `b2b` — patched 2026-09-09 — `adapter_v2.py:545`
+- [x] [Review][Patch] Thiếu `x_crawl_post` fallback trong `UniversalScrapeTargetMapper` — patched 2026-09-09 — `adapter_v2.py`
+- [x] [Review][Patch] `paused` target không tự động resume do scheduler chỉ lọc `status == active` — patched 2026-09-09 — `social_xactions_ingest.py:223`
+- [x] [Review][Patch] `retry_after` từ `retryAfterMs` không chia 1000 gây countdown sai đơn vị — patched 2026-09-09 — `mcp_client.py:147` / `social_xactions_ingest.py:156`
+- [x] [Review][Patch] Consumer name dùng `nowing-{request.id}` mới mỗi lần chạy, gây PEL leak — patched 2026-09-09 — `social_stream_worker.py:32`
+- [x] [Review][Patch] `SocialPostData` thiếu thin-event fields `category/storage_ref/scraper_id/benchmark_health/benchmark_alert` — patched 2026-09-09 — `models.py`
+- [x] [Review][Patch] `_fetch_artifact` đọc file sync block event loop, thiếu path traversal guard — patched 2026-09-09 — `mcp_client.py:163`
+- [x] [Review][Patch] `list_social_targets` thiếu pagination, ordering, filter — patched 2026-09-09 — `social_routes.py:168`
+- [x] [Review][Patch] Thiếu tích hợp `x_admin_stream_alerts` với `execute_alert_rule` — patched 2026-09-09 — `xactions_probe.py`
+- [x] [Review][Patch] `XACTIONS_CONSUMER_ID` bị bỏ khỏi `__all__` trong `config/entities.py` — patched 2026-09-09
+- [x] [Review][Patch] `.env.local` ghi đè `NEXT_FRONTEND_URL=3002` thay vì 3000 — patched 2026-09-09
+- [x] [Review][Patch] `category` model/migration default mismatch (`server_default='general'` vs `nullable=True`) — patched 2026-09-09 — `social.py:143` / migration
+- [ ] [Review][Defer] Một số file unit test mới chưa bao phủ lifecycle, health probe, route CRUD — deferred post-merge
