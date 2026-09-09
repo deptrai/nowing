@@ -12,7 +12,7 @@ import redis.asyncio as aioredis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import app.tasks.celery_tasks.social_stream_worker as stream_worker
+import app.tasks.social_stream_worker as stream_worker
 from app.config import config
 from app.db import Lead, SocialMonitoredTarget, SocialPost
 from app.proprietary.platforms.xactions.constants import STREAM_SOCIAL_RAW_POSTS

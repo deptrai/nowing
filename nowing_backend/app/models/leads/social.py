@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
+import sqlalchemy as sa
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     ARRAY,
@@ -138,6 +139,12 @@ class SocialPost(Base, TimestampMixin):
     media_urls = Column(ARRAY(Text), nullable=True)
     embedding = Column(Vector(config.embedding_model_instance.dimension), nullable=True)
     published_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    # Extended fields for thin-event payload (Story 21.8a)
+    category = Column(String(50), nullable=True)
+    storage_ref = Column(Text, nullable=True)
+    scraper_id = Column(String(100), nullable=True)
+    benchmark_health = Column(String(10), nullable=True)
+    benchmark_alert = Column(Boolean, nullable=True, server_default=sa.false())
     updated_at = Column(
         TIMESTAMP(timezone=True),
         nullable=False,
