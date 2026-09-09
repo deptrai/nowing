@@ -65,109 +65,145 @@ const mockXActionsDegradedStatus = {
 	},
 };
 
-const mockStatuses = [
-	{
-		service_id: "infra/postgres",
-		service_name: "PostgreSQL Database",
-		category: "infra",
-		display_group: "Infrastructure",
-		status: "healthy",
-		latency_ms: 12,
-		success_rate_15m: 100.0,
-		error_rate_15m: 0.0,
-		last_error: null,
-		last_probe_at: new Date().toISOString(),
-		suggested_action: null,
-		metadata_payload: { pool_size: 10 },
-	},
-	mockXActionsHealthyStatus,
-];
+const mockStatuses = {
+	items: [
+		{
+			service_id: "infra/postgres",
+			service_name: "PostgreSQL Database",
+			category: "infra",
+			display_group: "Infrastructure",
+			status: "healthy",
+			latency_ms: 12,
+			success_rate_15m: 100.0,
+			error_rate_15m: 0.0,
+			last_error: null,
+			last_probe_at: new Date().toISOString(),
+			suggested_action: null,
+			metadata_payload: { pool_size: 10 },
+		},
+		mockXActionsHealthyStatus,
+	],
+	total: 2,
+};
+
+const mockAlerts = [];
+
+async function setupXActionsHealthMocks(page: Page, degraded = false) {
+	await page.route(/.*\/api\/v1\/admin\/telemetry\/health\/overview$/, async (route: Route) => {
+		await fulfillJson(route, 200, {
+			...mockOverviewWithXActions,
+			overall_status: degraded ? "degraded" : "healthy",
+			active_alerts_count: degraded ? 1 : 0,
+		});
+	});
+
+	await page.route(/.*\/api\/v1\/admin\/telemetry\/health\/statuses(\?.*)?$/, async (route: Route) => {
+		const url = new URL(route.request().url());
+		const cat = url.searchParams.get("category");
+		const items = degraded
+			? [mockStatuses.items[0], mockXActionsDegradedStatus]
+			: mockStatuses.items;
+		const filtered = cat ? items.filter((s) => s.category === cat) : items;
+		await fulfillJson(route, 200, { items: filtered, total: filtered.length });
+	});
+
+	await page.route(/.*\/api\/v1\/admin\/telemetry\/health\/alerts$/, async (route: Route) => {
+		await fulfillJson(route, 200, {
+			items: degraded
+				? [
+						{
+							id: "alert-xactions-01",
+							service_id: "scraper/xactions",
+							severity: "warning",
+							message: "XActions stream alert: queue_depth_exceeded",
+							created_at: new Date().toISOString(),
+						},
+				  ]
+				: mockAlerts,
+			total: degraded ? 1 : 0,
+		});
+	});
+
+	await page.route(/.*\/api\/v1\/admin\/telemetry\/health\/history\/.*$/, async (route: Route) => {
+		await fulfillJson(route, 200, { items: [], total: 0 });
+	});
+
+	await page.route(/.*\/api\/v1\/admin\/telemetry\/health\/probe\/.*$/, async (route: Route) => {
+		await fulfillJson(route, 200, {
+			...mockXActionsHealthyStatus,
+			probed_at: new Date().toISOString(),
+		});
+	});
+}
 
 test.describe("Story 21.8a: XActions Universal Ingress & Health Operations", () => {
 	test.beforeEach(async ({ page }) => {
 		await mockAdminAuth(page);
-
-		await page.route("**/api/v1/admin/health/overview", async (route: Route) => {
-			await fulfillJson(route, 200, mockOverviewWithXActions);
-		});
-
-		await page.route("**/api/v1/admin/health/statuses*", async (route: Route) => {
-			await fulfillJson(route, 200, mockStatuses);
-		});
-
-		await page.route("**/api/v1/admin/health/alerts", async (route: Route) => {
-			await fulfillJson(route, 200, []);
-		});
 	});
 
 	test("displays XActions service card under scraper category with healthy proxy count", async ({ page }) => {
-		await page.goto("/admin/health");
+		await setupXActionsHealthMocks(page);
+		await page.goto("/admin/telemetry");
 
-		// Click on scraper category tab
-		const scraperTab = page.getByRole("tab", { name: /scraper/i });
-		if (await scraperTab.isVisible()) {
-			await scraperTab.click();
-		}
+		await expect(page.getByRole("heading", { name: "Admin: Operations & Telemetry" })).toBeVisible();
+
+		// Switch to scraper category tab
+		const scraperTab = page.getByTestId("tab-category-scraper");
+		await expect(scraperTab).toBeVisible();
+		await scraperTab.click();
 
 		// Verify XActions service card is visible
-		const xactionsCard = page.getByText("XActions Social Graph");
+		const xactionsCard = page.getByTestId("health-card-scraper/xactions");
 		await expect(xactionsCard).toBeVisible();
 
 		// Click on card to open drilldown modal
 		await xactionsCard.click();
 
 		// Check modal details
-		await expect(page.getByText("healthy_proxies")).toBeVisible();
-		await expect(page.getByText("8")).toBeVisible();
+		const modal = page.getByTestId("health-drilldown-modal");
+		await expect(modal.getByText("healthy_proxies")).toBeVisible();
+		// Scopes to the metadata <pre> that contains the raw JSON payload
+		await expect(modal.locator("pre")).toContainText('"healthy_proxies": 8');
 	});
 
 	test("reflects degraded state with low proxies and triggers alert banner", async ({ page }) => {
-		// Mock degraded status and active alert
-		await page.route("**/api/v1/admin/health/overview", async (route: Route) => {
-			await fulfillJson(route, 200, {
-				...mockOverviewWithXActions,
-				overall_status: "degraded",
-				active_alerts_count: 1,
-			});
-		});
-
-		await page.route("**/api/v1/admin/health/statuses*", async (route: Route) => {
-			await fulfillJson(route, 200, [mockStatuses[0], mockXActionsDegradedStatus]);
-		});
-
-		await page.route("**/api/v1/admin/health/alerts", async (route: Route) => {
-			await fulfillJson(route, 200, [
-				{
-					id: "alert-xactions-01",
-					service_id: "scraper/xactions",
-					severity: "warning",
-					message: "XActions stream alert: queue_depth_exceeded",
-					created_at: new Date().toISOString(),
-				},
-			]);
-		});
-
-		await page.goto("/admin/health");
+		await setupXActionsHealthMocks(page, true);
+		await page.goto("/admin/telemetry");
 
 		// Alert banner should be rendered
-		await expect(page.getByText("queue_depth_exceeded")).toBeVisible();
+		const alertBanner = page.getByTestId("health-alert-banner");
+		await expect(alertBanner).toBeVisible();
+		await expect(alertBanner.getByText("queue_depth_exceeded")).toBeVisible();
 
-		// Verify card shows degraded status
-		await expect(page.getByText("XActions Social Graph")).toBeVisible();
+		// Switch to scraper tab and verify degraded card
+		const scraperTab = page.getByTestId("tab-category-scraper");
+		await expect(scraperTab).toBeVisible();
+		await scraperTab.click();
+
+		const xactionsCard = page.getByTestId("health-card-scraper/xactions");
+		await expect(xactionsCard).toBeVisible();
 	});
 
 	test("on-demand probe execution triggers refresh", async ({ page }) => {
 		let probed = false;
 
-		await page.route("**/api/v1/admin/health/probe/scraper%2Fxactions", async (route: Route) => {
+		await setupXActionsHealthMocks(page);
+		await page.route(/.*\/api\/v1\/admin\/telemetry\/health\/probe\/.*$/, async (route: Route) => {
 			probed = true;
-			await fulfillJson(route, 200, mockXActionsHealthyStatus);
+			await fulfillJson(route, 200, {
+				...mockXActionsHealthyStatus,
+				probed_at: new Date().toISOString(),
+			});
 		});
 
-		await page.goto("/admin/health");
+		await page.goto("/admin/telemetry");
 
-		// Open card modal
-		await page.getByText("XActions Social Graph").click();
+		// Open scraper category and card drilldown
+		const scraperTab = page.getByTestId("tab-category-scraper");
+		await expect(scraperTab).toBeVisible();
+		await scraperTab.click();
+
+		await page.getByTestId("health-card-scraper/xactions").click();
 
 		// Trigger probe now button
 		const probeButton = page.getByRole("button", { name: /probe now|test now|refresh/i });
