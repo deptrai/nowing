@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.config import config as app_config
 
@@ -41,7 +41,6 @@ class GeneratePresentationInput(BaseModel):
     prompt: str = Field(
         ...,
         min_length=1,
-        max_length=app_config.PRESENTATION_MAX_PROMPT_CHARS,
         description="Natural language description of the slide deck",
     )
     output_format: str = Field(
@@ -56,6 +55,16 @@ class GeneratePresentationInput(BaseModel):
         max_length=10,
         description="Target UI language (e.g. en, vi)",
     )
+
+    @field_validator("prompt")
+    @classmethod
+    def validate_prompt_length(cls, v: str) -> str:
+        max_chars = app_config.PRESENTATION_MAX_PROMPT_CHARS
+        if len(v) > max_chars:
+            raise ValueError(
+                f"Prompt exceeds maximum allowed length of {max_chars} characters (got {len(v)})"
+            )
+        return v
 
 
 class GeneratePresentationOutput(BaseModel):
