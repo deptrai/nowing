@@ -8,7 +8,7 @@ status: done
 
 # Story 8.14: Usage & Credit Dashboard v2 — Per-Turn Cost & Auto-Extract Budget Toggle
 
-Status: in-progress
+Status: done
 
 > **Re-scope 2026-08-23:** Story này là **follow-up / v2** của **Story 8.3 (Usage & Credit Dashboard)**. Không duplicate 8.3; 8.3 vẫn `done` với aggregate theo workspace/model/time. Story 8.14 mở rộng thêm **per-turn cost breakdown** và **auto-extract budget toggle UI** trên cùng data.
 

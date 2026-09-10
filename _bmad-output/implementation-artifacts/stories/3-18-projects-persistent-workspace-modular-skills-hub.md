@@ -9,7 +9,7 @@ baseline_commit: b68173656c506d3c1fae361d751fd1df4d59ecf7
 
 # Story 3.18: Projects Persistent Workspace & Modular Skills Hub
 
-Status: ready-for-dev
+Status: done
 
 <!-- Governed by PRD (Epic 3), Architecture Decisions AD-1, AD-112, and Skills Hub Specification -->
 

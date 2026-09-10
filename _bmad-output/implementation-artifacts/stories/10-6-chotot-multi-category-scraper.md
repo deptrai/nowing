@@ -5,7 +5,7 @@ status: done
 
 # Story 10.6: Chợ Tốt Multi-Category Scraper
 
-Status: review
+Status: done
 
 ## Story
 

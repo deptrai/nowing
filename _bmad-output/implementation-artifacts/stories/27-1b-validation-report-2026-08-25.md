@@ -7,7 +7,7 @@ status: done
 
 **Story file:** `_bmad-output/implementation-artifacts/stories/27-1b-web-app-build-preview-runner.md`  
 **Baseline:** `d06d121a0`  
-**Status:** `in-progress`  
+**Status:** `done`  
 **Validator:** Devin  
 
 ---

@@ -5,7 +5,7 @@ status: done
 
 # Story 18.6: Memory Tagging + RAG Filter
 
-Status: in-progress
+Status: done
 
 Baseline commit: 1e5f46b86
 

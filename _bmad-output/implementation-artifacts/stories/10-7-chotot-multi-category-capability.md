@@ -5,7 +5,7 @@ status: done
 
 # Story 10.7: Chợ Tốt Multi-Category Capability and Billing
 
-Status: review
+Status: done
 
 ## Story
 
