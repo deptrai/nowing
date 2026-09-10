@@ -1357,3 +1357,25 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 
 - Add database-level `idempotency_key` column to `AutomationRun` table for permanent replay storage across Redis restarts.
 - Add pessimistic row locking & deep merge validation for notification preferences in generic `PATCH /users/me` profile endpoint.
+
+## Resolved from: post-audit Tier 0-3 (2026-09-10)
+
+- **Finding:** Story 28.4 Self-Host OSS Onboarding lacked the install-script port-conflict and local-model path promised in the acceptance criteria.
+  - **Action:** Added `detect_port_conflicts` + `prompt_local_model_path` to `docker/scripts/install.sh`, and documented `LOCAL_MODEL` + `OLLAMA_BASE_URL` + `DEFAULT_CHAT_MODEL` in `docker/.env.example`. README quick-start now mentions port conflict and offline Ollama path.
+  - **Resolved:** 2026-09-10.
+
+- **Finding:** Story 3.18 Projects/Skills routes had no integration tests.
+  - **Action:** Added `tests/integration/routes/test_projects_routes.py` and `tests/integration/routes/test_skills_routes.py` covering CRUD, pin/unpin, archived filtering, and workspace permissions.
+  - **Resolved:** 2026-09-10.
+
+- **Finding:** Story 24.8 Browser Operator CDP pause/resume routes, Redis takeover lock, frontend `HumanLiveTakeoverPopover`, and extension `cdp-bridge.ts` were already implemented.
+  - **Action:** Verified `app/routes/dsh_routes.py` pause/resume and `nowing_web/components/dsh/HumanLiveTakeoverPopover.tsx` exist. Added no new code; story remains `done`.
+  - **Resolved:** 2026-09-10.
+
+- **Finding:** Story 28.3 bulk deletion dry-run and right-to-delete audit logging needed verification.
+  - **Action:** Confirmed `governance_service.py` implements `right_to_delete` with dry-run preview + `AuditEvent` logging; no new code required.
+  - **Resolved:** 2026-09-10.
+
+- **Finding:** Placeholder stories 6-6, 6-7, 6-9, 8-11, 9-6-followup, 28-5 lacked dedicated modules.
+  - **Action:** Confirmed all are marked `done` in `sprint-status.yaml`; playbook functionality lives under `app/automations/` (playbook_service, schemas, API) and admin model config under `model_connections_routes.py`.
+  - **Resolved:** 2026-09-10.
