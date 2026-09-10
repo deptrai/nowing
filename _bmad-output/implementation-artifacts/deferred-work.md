@@ -1347,11 +1347,19 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - [x] [Review][Defer] Sprint status marked `done` prematurely for 26-27 — `sprint-status.yaml:214` (deferred to status sync)
 
 
-## Deferred from: code review of 21-8g-xactions-mcp-chat-connector (2026-09-09)
+## Resolved from: code review of 21-8g-xactions-mcp-chat-connector (2026-09-10)
 
-- seed_xactions_connectors performs N+1 query at startup [nowing_backend/app/services/xactions_connector_seed.py:97-137]
-- config/__init__.py loads .env.local with override=True [nowing_backend/app/config/__init__.py]
-- XActions meta-tools are built statically and bypass cache invalidation on daemon schema changes [nowing_backend/app/agents/chat/multi_agent_chat/shared/tools/mcp/tool.py]
+- **Finding:** `seed_xactions_connectors` performed N+1 queries at startup and could re-provision connectors for `[DELETING]` workspaces.
+  - **Action:** Replaced per-workspace existence checks with a single set lookup of existing XActions connector `workspace_id`s; added a `[DELETING]` guard in `ensure_workspace_xactions_connector`. Added integration tests for N+1-safe seeding, idempotency and deletion skip.
+  - **Resolved:** 2026-09-10.
+
+- **Finding:** `config/__init__.py` loaded `.env.local` with `override=True` without documenting the intended precedence.
+  - **Action:** Added explicit comments clarifying the base `.env` is loaded without override, and `.env.local` (git-ignored per-machine overrides) is loaded with `override=True` so local values win.
+  - **Resolved:** 2026-09-10.
+
+- **Finding:** XActions meta-tools were built statically and bypassed cache invalidation on daemon schema changes.
+  - **Action:** `_load_http_mcp_tools` for `XACTIONS_MCP_CONNECTOR` now always re-creates meta-tools from the live `create_xactions_meta_tools` gateway instead of honoring a stale `cached_tools` shortcut, while still persisting the current surface for observability.
+  - **Resolved:** 2026-09-10.
 
 ## Resolved from: code review of story-30.9 (2026-09-10)
 
