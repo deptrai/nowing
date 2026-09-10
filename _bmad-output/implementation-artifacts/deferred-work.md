@@ -17,7 +17,7 @@
 ## Deferred from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-08-25)
 
 - **Finding:** `test_prompt_exceeding_max_length_is_truncated_or_rejected` mutates `config.PRESENTATION_MAX_PROMPT_CHARS` at runtime, but the Pydantic `GeneratePresentationInput` model captures `max_length` at import time.
-  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Action:** Resolved from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-09-11). Added dynamic `@field_validator("prompt")` on `GeneratePresentationInput` validating against live `app_config.PRESENTATION_MAX_PROMPT_CHARS` at validation time without requiring a model rebuild. Updated `test_prompt_exceeding_max_length_is_truncated_or_rejected` in `tests/unit/services/presentation/test_presentation_atdd.py`.
   - **Reason / when to revisit:** Service-level truncation covers the runtime limit, so there is no user-facing bug. Revisit if the team wants Pydantic validation to be driven from the live config (requires model rebuild on config change).
 
 ## Deferred from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-08-26, chunk D)
