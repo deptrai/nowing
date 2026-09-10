@@ -1,3 +1,8 @@
+---
+story_key: 6-4-direct-write-back-actions
+status: done
+---
+
 # Story 6.4: Direct Write-Back Actions
 
 Status: done

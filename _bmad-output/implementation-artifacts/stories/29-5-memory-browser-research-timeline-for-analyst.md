@@ -8,7 +8,7 @@ story: 5
 
 # Story 29.5: Memory Browser & Research Timeline for Analyst
 
-**Status:** `ready-for-dev`  
+**Status:** `done`  
 **Epic:** 29 — SaaS Operations, Advanced Admin Governance & Analyst Workspace  
 **Governed by:** FR-104, AR-17, AR-18, UX-DR-PRFAQ-1, UX-DR-PRFAQ-6, NFR-1, NFR-2, NFR-5, INV-29.3, AD-11, AD-55.  
 **Dependencies:** Epic 1 (auth/RBAC), Epic 3 (memory, `MemoryVersion`, `ResearchThread`, `MemoryRelation`), Epic 8 (billing/cost/wallet), Epic 25 (admin baseline), Epic 29.1 (`WorkspaceRole` + permission `memory:read`/`memory:update`/`memory:delete`).

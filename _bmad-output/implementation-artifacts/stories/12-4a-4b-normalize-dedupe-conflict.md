@@ -1,10 +1,6 @@
 ---
-title: Story 12.4a+4b — Vietnam Job Normalization, Dedupe & Conflict Detection
-epic: 12
-story: 4a-4b
+story_key: 12-4a-vietnam-job-listing-normalization
 status: done
-priority: P0
-baseline_commit: e0ed91f21
 ---
 
 # Story 12.4a+4b — Vietnam Job Normalization, Dedupe & Conflict Detection

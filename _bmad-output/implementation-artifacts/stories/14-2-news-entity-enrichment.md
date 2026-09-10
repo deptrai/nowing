@@ -1,6 +1,6 @@
 ---
-baseline_commit: d3c10413812e5a801a22c2ec05043fe0dd24e7ef
-status: ready-for-dev
+story_key: 14-2a-news-entity-extraction
+status: done
 ---
 
 # Story 14.2: News Entity Enrichment

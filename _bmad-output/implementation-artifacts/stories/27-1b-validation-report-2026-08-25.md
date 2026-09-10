@@ -1,3 +1,8 @@
+---
+story_key: 27-1b-web-app-build-preview-runner
+status: done
+---
+
 # Story 27.1b Validation Report — 2026-08-25
 
 **Story file:** `_bmad-output/implementation-artifacts/stories/27-1b-web-app-build-preview-runner.md`  

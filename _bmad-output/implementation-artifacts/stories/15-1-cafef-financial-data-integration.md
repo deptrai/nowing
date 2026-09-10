@@ -1,3 +1,8 @@
+---
+story_key: 15-1-cafef-financial-data-integration
+status: done
+---
+
 # Story 15.1: CafeF Financial Data Integration
 
 **Status:** done

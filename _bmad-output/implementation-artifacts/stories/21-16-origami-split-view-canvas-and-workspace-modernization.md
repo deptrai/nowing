@@ -1,5 +1,6 @@
 ---
-baseline_commit: 591bc6a16
+story_key: 21-16-nowing-split-view-canvas-workspace-modernization
+status: done
 ---
 
 # Story 21.16: Nowing Split-View Canvas & Workspace Modernization

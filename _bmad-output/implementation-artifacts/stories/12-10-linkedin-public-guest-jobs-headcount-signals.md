@@ -1,3 +1,8 @@
+---
+story_key: 12-10-linkedin-public-guest-jobs-headcount-growth-signals
+status: done
+---
+
 # Story 12.10: LinkedIn Public Guest Jobs & Headcount Growth Signals
 
 Status: done

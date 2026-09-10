@@ -8,7 +8,7 @@ story: 4
 
 # Story 29.4: Admin Bulk Operations Console
 
-**Status:** `ready-for-dev`  
+**Status:** `done`  
 **Epic:** 29 — SaaS Operations, Advanced Admin Governance & Analyst Workspace  
 **Governed by:** FR-103, AR-17, AR-18, UX-DR-PRFAQ-5, INV-29.1, INV-29.2, AD-9, AD-54.  
 **Dependencies:** Epic 1 (auth/RBAC), Epic 3 (memory/schema), Epic 8 (billing/cost/wallet), Epic 25 (admin baseline), Epic 29.1 (custom roles for `assign_role`), Epic 29.3 (tier/quota for `apply_tier`).

@@ -1,5 +1,6 @@
 ---
-baseline_commit: 457993915f0ac27026e16643a1fe4e2c1b3bc38b
+story_key: 10-7-chợ-tốt-multi-category-capability-and-billing
+status: done
 ---
 
 # Story 10.7: Chợ Tốt Multi-Category Capability and Billing

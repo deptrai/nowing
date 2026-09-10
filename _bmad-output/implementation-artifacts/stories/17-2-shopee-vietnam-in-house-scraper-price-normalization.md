@@ -1,3 +1,8 @@
+---
+story_key: 17-2-shopee-vietnam-in-house-scraper-price-normalization
+status: done
+---
+
 # Story 17.2: Shopee Vietnam In-House Scraper & Price Normalization
 
 Status: done

@@ -1,3 +1,8 @@
+---
+story_key: 22-2-telegram-mtproto-userbot-client-encrypted-session-pool-anti
+status: done
+---
+
 story_key: 22-2-telegram-mtproto-userbot-client-encrypted-session-pool
 status: done
 baseline_commit: d1877927ca8681283e1858a7da054b1f413a9686

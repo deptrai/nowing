@@ -1,9 +1,6 @@
 ---
-title: Story 12.4c+4d+4e — PII Redaction, Chunk Ingest & Aggregator Exposure
-epic: 12
-story: 4c-4d-4e
+story_key: 12-4c-pii-redaction-for-job-data-chunks
 status: done
-priority: P0
 ---
 
 # Story 12.4c+4d+4e — PII Redaction, Chunk Ingest & Aggregator Exposure
