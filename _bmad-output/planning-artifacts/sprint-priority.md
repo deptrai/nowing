@@ -9,7 +9,9 @@
 
 All **198 stories across 29 epics are `done`** as of 2026-09-10. The previous `backlog` stories (`12-7`, `12-8`, `14-3`, `14-4`, `15-3`, `15-4`, `16-3`, `16-4`, `17-3`, `17-4`) were identified as either `DROPPED` (per SCP 2026-08-08) or `MERGED` into completed stories `6.11` / `6.12`, and have been removed from active tracking.
 
-The next action is to run **`bmad-retrospective`** for the remaining open optional retrospective, starting with **`epic-1-retrospective`**.
+**`epic-1-retrospective`** was completed 2026-09-10 and is now `done`.
+
+The next action is to continue **`bmad-retrospective`** for the remaining open optional retrospectives, starting with **`epic-4-retrospective`**.
 
 ---
 
@@ -38,9 +40,10 @@ The next action is to run **`bmad-retrospective`** for the remaining open option
 
 ## Tier 2 — Retrospectives & closed vertical stories
 
-All Tier 2 implementation stories are now `done`, `merged` into 6.11/6.12, or `dropped` per SCP 2026-08-08. The remaining open work is optional epic retrospectives (26 `optional`, 3 `done`).
+All Tier 2 implementation stories are now `done`, `merged` into 6.11/6.12, or `dropped` per SCP 2026-08-08. The remaining open work is optional epic retrospectives (25 `optional`, 4 `done`).
 
-- `epic-1-retrospective` — Identity, Auth & Workspace RBAC retrospective (next)
+- `epic-1-retrospective` — Identity, Auth & Workspace RBAC retrospective (`done` 2026-09-10)
+- `epic-4-retrospective` — Chat & Agents retrospective (next)
 
 ## Tier 3 — New product surface / business-gated / post-MVP
 
