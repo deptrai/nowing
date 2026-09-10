@@ -36,6 +36,9 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Fallback title used when LLM title generation fails after all retries.
+DEFAULT_TITLE = "Cuộc trò chuyện"
+
 
 def spawn_title_task(
     *,
@@ -158,11 +161,15 @@ async def _generate_title(
                     e,
                 )
                 if attempt == max_retries - 1:
-                    return None, None
+                    logger.warning(
+                        "[TitleGen] title generation exhausted retries; using fallback title"
+                    )
+                    return DEFAULT_TITLE, None
                 await asyncio.sleep(0.5)
 
         if not response or not getattr(response, "choices", None):
-            return None, None
+            logger.warning("[TitleGen] empty response from LLM; using fallback title")
+            return DEFAULT_TITLE, None
 
         usage_info = None
         usage = getattr(response, "usage", None)
@@ -185,8 +192,8 @@ async def _generate_title(
             return raw_title.strip("\"'"), usage_info
         return None, usage_info
     except Exception:
-        logger.exception("[TitleGen] _generate_title failed")
-        return None, None
+        logger.exception("[TitleGen] _generate_title failed; using fallback title")
+        return DEFAULT_TITLE, None
 
 
 async def maybe_emit_title_update(
