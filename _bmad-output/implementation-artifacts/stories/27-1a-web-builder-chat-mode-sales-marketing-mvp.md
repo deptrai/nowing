@@ -1,10 +1,10 @@
 ---
 baseline_commit: f6166911d
-story_key: 27-1a
+story_key: 27-1a-web-builder-chat-mode-mvp-for-sales-marketing
 epic: epic-27
 story: "27.1a"
 title: "Web Builder Chat Mode MVP for Sales & Marketing (Option A)"
-status: "done"
+status: done
 ---
 
 # Story 27.1a: Web Builder Chat Mode MVP for Sales & Marketing

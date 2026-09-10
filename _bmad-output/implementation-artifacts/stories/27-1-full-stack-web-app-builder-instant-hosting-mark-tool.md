@@ -1,10 +1,10 @@
 ---
 baseline_commit: d06d121a0
-story_key: 27-1
+story_key: 27-1-full-stack-web-app-builder-1-click-hosting-design-view-mark
 epic: epic-27
 story: "27.1"
 title: "Full-Stack Web App Builder, 1-Click Hosting *.apps.nowing.net & Design View Mark Tool"
-status: "in-progress"
+status: done
 ---
 
 # Story 27.1: Full-Stack Web App Builder, 1-Click Hosting `*.apps.nowing.net` & Design View Mark Tool
