@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '09-10-2026 14:57'
+last_updated: '09-10-2026 15:01'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # manual update 2026-09-09: split Story 21.8 into 21.8a–f per sprint-change-proposal-2026-09-09-xactions-21-8-correction.md; audit 2026-09-09: 21.8a–f done, 21.8g in-progress
 # - Parsed epics.md: 24 epics, ~160 stories.
@@ -185,7 +185,7 @@ development_status:
   12-6-saved-searches: done
   12-9-job-market-alerts: done
   12-10-linkedin-public-guest-jobs-headcount-growth-signals: done
-  epic-12-retrospective: optional
+  epic-12-retrospective: done
 
   epic-13: done
   epic-13-retrospective: optional
