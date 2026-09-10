@@ -231,10 +231,10 @@
   - **Action:** Marked `[x] [Review][Defer]` in `3-7-followup-retention-hardening.md`.
   - **Reason / when to revisit:** Pre-existing from Story 3-7; revisit if retention task is run with multiple workers or if duplicate `delete_document_task` calls are observed.
 - **Finding:** Concurrency test does not prove `with_for_update` is necessary.
-  - **Action:** Marked `[x] [Review][Defer]` in `3-7-followup-retention-hardening.md`.
+  - **Action:** Resolved from: code review of 3-7-followup-retention-hardening (2026-09-11). Added `test_retention_update_proves_with_for_update_locks_row` in `tests/integration/workspaces/test_data_retention_concurrency.py` proving retention updates block while an exclusive row lock is held and non-retention updates do not contend.
   - **Reason / when to revisit:** Test-only improvement; revisit during test review / mutation gate.
 - **Finding:** `data-retention.spec.ts` should also skip when backend is down.
-  - **Action:** Marked `[x] [Review][Defer]` in `3-7-followup-retention-hardening.md`.
+  - **Action:** Resolved from: code review of 3-7-followup-retention-hardening (2026-09-11). Added `test.beforeAll` health check skipping the suite gracefully when backend `/health` is unreachable.
   - **Reason / when to revisit:** Nice-to-have E2E robustness; revisit when centralizing Playwright health-check fixtures.
 - **Finding:** `data-retention.spec.ts` cleanup leaves invited member user behind.
   - **Action:** Marked `[x] [Review][Defer]` in `3-7-followup-retention-hardening.md`.
