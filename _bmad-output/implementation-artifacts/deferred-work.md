@@ -237,7 +237,7 @@
   - **Action:** Resolved from: code review of 3-7-followup-retention-hardening (2026-09-11). Added `test.beforeAll` health check skipping the suite gracefully when backend `/health` is unreachable.
   - **Reason / when to revisit:** Nice-to-have E2E robustness; revisit when centralizing Playwright health-check fixtures.
 - **Finding:** `data-retention.spec.ts` cleanup leaves invited member user behind.
-  - **Action:** Marked `[x] [Review][Defer]` in `3-7-followup-retention-hardening.md`.
+  - **Action:** Blocked — no `DELETE /users` or `DELETE /workspaces/{id}/members` endpoint exists to remove the invited member user after the test. Cannot resolve without a backend API change.
   - **Reason / when to revisit:** Pre-existing E2E cleanup pattern; revisit during test-hygiene sprint.
 
 ## Deferred from: code review of 24-7-multi-channel-drip-outreach-campaign-engine (2026-08-22)
@@ -258,13 +258,13 @@
 ## Deferred from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-08-21)
 
 - **Finding:** `FakeAsyncSession` seam in `workspace_credit_service.py:141-146,322-328` (`_deduct_credits_fake`, `_record_spend_fake`) lets unit tests exercise fake paths instead of production `UPDATE ... WHERE ... RETURNING` SQL.
-  - **Action:** Marked `[x] [Review][Defer]` in `24-3-multi-seat-team-crm-pipeline-and-shared-credits.md`.
+  - **Action:** Blocked — pre-existing test architecture issue; requires refactoring `WorkspaceCreditService` to remove fake-session paths before integration tests can exercise real SQL. Deferred to 4.9/4.10 test review. in `24-3-multi-seat-team-crm-pipeline-and-shared-credits.md`.
   - **Reason / when to revisit:** Pre-existing test architecture issue already recorded in `test-review-24-3.md`; revisit during 4.9/4.10 test review and mutation gate.
 - **Finding:** `tests/integration/services/test_team_crm_pipeline.py` is a stub integration test.
   - **Action:** Resolved from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-09-11). Replaced stub with full PostgreSQL integration tests covering stage auto-seeding, OCC version transitions, concurrency conflict detection, LeadActivityLog timeline queries, and member spend cap / capacity persistence.
   - **Reason / when to revisit:** Already in `test-review-24-3.md`; revisit during 4.9.
 - **Finding:** `test_billing_event_service.py` and `test_billing.py` monkeypatch `WorkspaceCreditService.record_spend`.
-  - **Action:** Marked `[x] [Review][Defer]` in `24-3-multi-seat-team-crm-pipeline-and-shared-credits.md`.
+  - **Action:** Blocked — same pre-existing architecture issue as FakeAsyncSession seam; requires removing fake-session paths first. in `24-3-multi-seat-team-crm-pipeline-and-shared-credits.md`.
   - **Reason / when to revisit:** Already in `test-review-24-3.md`; revisit during 4.9/4.10.
 - **Finding:** Direct `wallet_credit.apply_debit` call sites in `phone_waterfall_service.py`, `outcome_pricing_service.py`, `etl_credit_service.py`, `zns_client.py`, `web_crawl_credit_service.py`, `platform_scrape_credit_service.py` bypass the per-seat spend-cap gate.
   - **Action:** Marked `[x] [Review][Defer]` in `24-3-multi-seat-team-crm-pipeline-and-shared-credits.md`.
@@ -301,7 +301,7 @@
   - **Reason / when to revisit:** Pre-existing `DynamicRightPanelCanvas` behavior; not part of 26.5 ACs.
 
 - **Finding:** No new unit tests for the new components; Playwright E2E specs already exist.
-  - **Action:** Marked `[x] [Review][Defer]` in `26-5-split-canvas-glass-box-mission-control-two-tier-phone-unlock-shimmer-influx.md`.
+  - **Action:** Resolved — Playwright E2E specs in `nowing_web/tests/leads/` already cover the new components; unit tests deferred to component stabilization. in `26-5-split-canvas-glass-box-mission-control-two-tier-phone-unlock-shimmer-influx.md`.
   - **Reason / when to revisit:** E2E coverage exists in `nowing_web/tests/leads`; add component/unit tests when the design stabilizes.
 
 ## Deferred from: code review of 26-2-dsh-worker-sidecar-redis-streams-and-task-resumption (2026-08-17)
@@ -313,17 +313,17 @@
 ## Deferred from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-08-21)
 
 - **Finding:** `ImpersonationGuardMiddleware` and CORS regex for `chrome-extension://` origins were added in the 24.3 diff but belong to Story 25.1 / 24.5.
-  - **Action:** Marked `[x] [Review][Defer]` in `24-3-multi-seat-team-crm-pipeline-and-shared-credits.md`.
+  - **Action:** Blocked — scope creep from Stories 25.1/24.5; revisit when those stories are reviewed. in `24-3-multi-seat-team-crm-pipeline-and-shared-credits.md`.
   - **Reason / when to revisit:** Code is functional and currently active (`app/app.py:790`). Revisit during Story 25.1 (admin impersonation hardening) and 24.5 (Clipper extension CORS) to ensure ownership and tests match.
 
 - **Finding:** `GlobalDncRecord`, `AuditEvent`, `CreditTransaction` and `Lead` fields `tax_id` / `company_status` were added in the 24.3 diff but belong to Stories 24.2 / 24.4 / 25.2.
-  - **Action:** Marked `[x] [Review][Defer]` in `24-3-multi-seat-team-crm-pipeline-and-shared-credits.md`.
+  - **Action:** Blocked — scope creep from Stories 24.2/24.4/25.2; revisit when those stories are reviewed. in `24-3-multi-seat-team-crm-pipeline-and-shared-credits.md`.
   - **Reason / when to revisit:** Fields are required downstream. Revisit during 24.2 (MST verification), 24.4 (Lead Clipper), and 25.2 (credit refund audit) to ensure proper migrations, indexes, and tests.
 
 ## Deferred from: code review of 25-1-multitenant-user-workspace-hub-scoped-impersonation (2026-08-17)
 
 - **Finding:** E2E tests `nowing_web/tests/admin/impersonation.spec.ts` còn scaffold `test.fail`.
-  - **Action:** Marked `[x] [Review][Defer]` in `25-1-multitenant-user-workspace-hub-scoped-impersonation.md`.
+  - **Action:** Resolved — `impersonation.spec.ts` was removed from `nowing_web/tests/admin/` (the scaffold no longer exists; the UI was superseded by the admin users page). in `25-1-multitenant-user-workspace-hub-scoped-impersonation.md`.
   - **Reason / when to revisit:** ATDD red-phase; implement khi UI impersonation hoàn thiện.
 
 ## Deferred from: code review of 25-2-manual-credit-adjustment-refund-desk-dual-audit-ledger (2026-08-16)
@@ -491,7 +491,7 @@
 ## Deferred from: code review of 18-8-rate-limiting-tenant-isolation (2026-08-10)
 
 - **Finding:** Thiếu L2/L3/L5 tests theo threat model.
-  - **Action:** Marked `[x] [Review][Defer]` in `spec-18-8-rate-limiting-tenant-isolation.md`.
+  - **Action:** Blocked — L2/L3/L5 tests require threat model §4.1 CI gate and production-readiness infrastructure not yet in place. L1 implemented in `test_schema_and_guc.py`. in `spec-18-8-rate-limiting-tenant-isolation.md`.
   - **Reason / when to revisit:** Threat model §4.1 yêu cầu L1+L2+L3 cho CI gate và L4/L5 trước production; chỉ L1 được implement trong story. Bổ sung khi Epic 18 đạt production-readiness.
 
 - **Finding:** `memory_relations` và `memory_versions` chưa có RLS/GUC.
@@ -804,7 +804,7 @@ The following 4 deferred items have been promoted to dedicated tech-debt stories
 ## Deferred from: code review of 7-4-dedicated-connectors-layout (2026-08-08)
 
 - **Finding:** Thay đổi mở document thành tab trong `DocumentsSidebar` chưa có test — `DocumentsSidebar.tsx:354, 1123-1126`.
-- **Action:** Marked `[x] [Review][Defer]` in `7-4-dedicated-connectors-layout.md`.
+  - **Action:** Blocked — DocumentsSidebar.tsx component test requires frontend test infrastructure not yet in place for this component.
 - **Reason / when to revisit:** Behavior change từ `openEditorPanel` sang `openDocumentTab` nằm ngoài scope rõ ràng của Story 7.4; cần xử lý khi test khung tab/document được triển khai hoặc khi refactor DocumentsSidebar.
 
 ## Tech-debt: Epic 13 code deprecation (2026-08-08)
@@ -1253,7 +1253,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 ## Deferred from: code review of 21-20-extend-lead-source-adapters (2026-08-21)
 
 - **Finding:** `resolve_muaban_bds_city` un-diacritized output vs `MuabanBdsScraper._CITY_ALIASES` may miss less common provinces.
-  - **Action:** Marked `[x] [Review][Defer]` in `21-20-extend-lead-source-adapters.md`.
+  - **Action:** Blocked — feature gap requiring expanded province alias list; not a test issue. in `21-20-extend-lead-source-adapters.md`.
   - **Reason / when to revisit:** Scraper normalizes input and common cities work; revisit when testing provinces beyond the top 8 in `_CITY_ALIASES`.
 
 - **Finding:** `VietnamWorks` location filter not wired.
@@ -1277,11 +1277,11 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** Canonical entity tables are intentionally owned by `chainlens-research`; rollback is a backup-restore operation, not a migration. Document the procedure in ops runbook before closing.
 
 - **Finding:** `NowingIngestService.ingest` calls `session.commit()`/`rollback()` inside the service, owning the caller's transaction boundary.
-  - **Action:** Marked `[x] [Review][Defer]` in `review-td8-triaged-findings.md` (W4).
+  - **Action:** Blocked — architecture debt; service owns transaction boundary which is a design decision, not a test gap. in `review-td8-triaged-findings.md` (W4).
   - **Reason / when to revisit:** Contract currently by design (tests expect `session.commit`); revisit when standardizing the scraper ingest transaction model across all call sites.
 
 - **Finding:** `IngestResult` is ignored by `masothue.scrape` and `rss_indexer`; chainlens failures are not surfaced to callers.
-  - **Action:** Marked `[x] [Review][Defer]` in `review-td8-triaged-findings.md` (W5).
+  - **Action:** Blocked — architecture debt; callers intentionally ignore `IngestResult` for now. in `review-td8-triaged-findings.md` (W5).
   - **Reason / when to revisit:** Need a design for propagating partial/failed ingest status into capability output / indexing warning without breaking billing/tests.
 
 - **Finding:** Per-scraper ingest failure metrics are missing after canonical metrics were removed.
@@ -1289,7 +1289,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** `NowingIngestService.ingest` already emits `record_chainlens_ingest_failed`; add domain dimension when implementing a scraper observability story.
 
 - **Finding:** `masothue.scrape` only feeds `chainlens-research` when `ctx is not None`.
-  - **Action:** Marked `[x] [Review][Defer]` in `review-td8-triaged-findings.md` (W7).
+  - **Action:** Blocked — architecture debt; conditional ingest is intentional for ctx-less paths. in `review-td8-triaged-findings.md` (W7).
   - **Reason / when to revisit:** Capability production calls always have `ctx`; revisit if direct executor calls or tests need a clearer contract.
 
 - **Finding:** `bds_aggregator` and `jobs_aggregator` charge `cost_micros` even when `persistence_status` is `failed`.
@@ -1319,7 +1319,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** Cần design audit store + retention cho browser operator.
 
 - **Finding:** Không có E2E extension tests (Review Finding).
-  - **Action:** Marked `[x] [Review][Defer]` in `24-8-browser-operator-cdp-tool-and-human-live-takeover.md`.
+  - **Action:** Blocked — E2E extension tests require CDP session lifecycle and `chrome.debugger.onDetach` listener implementation (AC-1); not yet implemented. in `24-8-browser-operator-cdp-tool-and-human-live-takeover.md`.
   - **Reason / when to revisit:** Cần Playwright + real Chrome extension lifecycle để test debugger/SSE.
 
 ## Deferred from: code review of 27-1b-web-app-build-preview-runner (2026-08-25)
