@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '09-10-2026 15:44'
+last_updated: '09-10-2026 15:51'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # manual update 2026-09-09: split Story 21.8 into 21.8a–f per sprint-change-proposal-2026-09-09-xactions-21-8-correction.md; audit 2026-09-09: 21.8a–f done, 21.8g in-progress
 # - Parsed epics.md: 24 epics, ~160 stories.
@@ -266,7 +266,7 @@ development_status:
   22-1-telegram-storage-schema-public-web-preview-ingestion-engine: done
   22-2-telegram-mtproto-userbot-client-encrypted-session-pool-anti: done
   22-3-telegram-data-enrichment-realtime-alert-trigger-ai-agent-too: done
-  epic-22-retrospective: optional
+  epic-22-retrospective: done
 
   epic-23: done
   23-1-asynchronous-scraper-worker-pool: done
