@@ -787,23 +787,23 @@ The following 4 deferred items have been promoted to dedicated tech-debt stories
 - **Issue:** Concurrent `PATCH /users/me/notification-preferences` updates can lose keys because `_merge_notification_preferences` reads the user row, merges in memory, and overwrites the whole JSONB column.
 - **Fix:** Use `SELECT FOR UPDATE` on the user row, or optimistic lock on `updated_at`, or PostgreSQL `jsonb_set` for atomic merge.
 
-### td-5: title_gen.py lacks timeout/retry on litellm.acompletion
+### td-5: title_gen.py timeout/retry verification
 - **Source:** code review of fix-model-test-infinite-save (2026-08-08)
-- **Issue:** `app/tasks/chat/streaming/flows/new_chat/title_gen.py` calls `litellm.acompletion()` without explicit `timeout` or `num_retries`, using LiteLLM defaults (60s+ timeout, 2 retries). Same class of bug as the infinite-save fix — can hang chat title generation for 120s+ on slow/flaky models.
-- **Fix:** Add `timeout=15.0, num_retries=1` to the `acompletion` call.
-- **Priority:** P1 — affects chat UX on slow models.
+- **Issue:** `app/tasks/chat/streaming/flows/new_chat/title_gen.py` calls `litellm.acompletion()` without explicit `timeout` or `num_retries`.
+- **Action:** Verified the current code already sets `timeout=10.0` and `num_retries=1` (with a 2-attempt outer retry loop and `asyncio.wait_for` guard of `timeout + 2.0` seconds) for non-router LLM calls. No change required.
+- **Resolved:** 2026-09-10.
 
-### td-6: verify_chat_image_capability.py lacks num_retries
+### td-6: verify_chat_image_capability.py num_retries verification
 - **Source:** code review of fix-model-test-infinite-save (2026-08-08)
-- **Issue:** `scripts/verify_chat_image_capability.py` calls `litellm.acompletion` and `litellm.aimage_generation` with explicit timeouts (60s, 120s) but no `num_retries`, using LiteLLM default 2 retries. Diagnostic script could hang in CI.
-- **Fix:** Add `num_retries=1` to both calls.
-- **Priority:** P3 — diagnostic script, not production code.
+- **Issue:** `scripts/verify_chat_image_capability.py` calls `litellm.acompletion` and `litellm.aimage_generation` with explicit timeouts but no `num_retries`.
+- **Action:** Verified `_live_chat_image_call` already passes `num_retries=1` and `_live_image_gen_call` already passes `num_retries=1`. No change required.
+- **Resolved:** 2026-09-10.
 
-### td-7: No unit test coverage for test_model function
+### td-7: Unit test coverage for `test_model` function
 - **Source:** code review of fix-model-test-infinite-save (2026-08-08)
-- **Issue:** `tests/unit/services/test_model_connections.py` only tests resolver functions (`to_litellm`, `strip_version_suffix`), not `test_model()` itself. Integration tests mock `test_model` entirely. The timeout/retry parameters passed to `litellm.acompletion` are never verified.
-- **Fix:** Add a unit test that mocks `litellm.acompletion` and asserts `num_retries=0` and `timeout=TEST_TIMEOUT_SECONDS` are passed correctly.
-- **Priority:** P2 — test gap for P0-adjacent function (model routing).
+- **Issue:** `tests/unit/services/test_model_connections.py` only tested resolver functions, not `test_model()` itself.
+- **Action:** Added `test_test_model_passes_timeout_and_num_retries_to_litellm` mocking `litellm.acompletion` and asserting `timeout=TEST_TIMEOUT_SECONDS` and `num_retries=0` are forwarded correctly.
+- **Resolved:** 2026-09-10.
 
 ## Deferred from: code review of 7-4-dedicated-connectors-layout (2026-08-08)
 
