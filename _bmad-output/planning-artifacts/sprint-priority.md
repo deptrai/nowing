@@ -7,11 +7,11 @@
 
 ## Next recommended work
 
-All **198 stories across 29 epics are `done`** as of 2026-09-10. The previous `backlog` stories (`12-7`, `12-8`, `14-3`, `14-4`, `15-3`, `15-4`, `16-3`, `16-4`, `17-3`, `17-4`) were identified as either `DROPPED` (per SCP 2026-08-08) or `MERGED` into completed stories `6.11` / `6.12`, and have been removed from active tracking.
+All **198 stories across 29 epics are `done`** as of 2026-09-10. All **29 epic retrospectives are `done`**. The previous `backlog` stories (`12-7`, `12-8`, `14-3`, `14-4`, `15-3`, `15-4`, `16-3`, `16-4`, `17-3`, `17-4`) were identified as either `DROPPED` (per SCP 2026-08-08) or `MERGED` into completed stories `6.11` / `6.12`, and have been removed from active tracking.
 
-**`epic-16-retrospective`** was completed 2026-09-10 and is now `done`.
+The retrospective phase is **complete**. Remaining work is **platform hardening, correctness, and technical-debt follow-ups** that were consolidated or deferred during the sprint.
 
-The next action is to continue **`bmad-retrospective`** for the remaining open optional retrospectives, starting with **all epic retrospectives complete**.
+The next action is **Tier 0 — Platform primitives / correctness**, starting with **`30-2-redis-event-bus-subscribe-failure-state-leak`**, followed by **`30-5-title_gen-py-lacks-timeout-retry-on-litellm-acompletion`**. These are the highest-impact remaining items because they affect every chat turn and event-bus delivery.
 
 ---
 
@@ -40,35 +40,12 @@ The next action is to continue **`bmad-retrospective`** for the remaining open o
 
 
 
-All Tier 2 implementation stories are now `done`, `merged` into 6.11/6.12, or `dropped` per SCP 2026-08-08. The remaining open work is optional epic retrospectives (0 `optional`, 29 `done`).
+All Tier 2 implementation stories are now `done`, `merged` into 6.11/6.12, or `dropped` per SCP 2026-08-08. All 29 epic retrospectives are `done` (0 `optional` remaining).
 
-- `epic-1-retrospective` — Identity, Auth & Workspace RBAC retrospective (`done` 2026-09-10)
-- `epic-4-retrospective` — Chat & Agents retrospective (`done` 2026-09-10)
-- `epic-5-retrospective` — Deliverables retrospective (`done` 2026-09-10)
-- `epic-6-retrospective` — Automations retrospective (`done` 2026-09-10)
-- `epic-7-retrospective` — Multi-surface Clients retrospective (`done` 2026-09-10)
-- `epic-8-retrospective` — Cost Control & Billing retrospective (`done` 2026-09-10)
-- `epic-9-retrospective` — Deep Research retrospective (`done` 2026-09-10)
-- `epic-10-retrospective` — Connector & Scraper Expansion (`done` 2026-09-10)
-- `epic-11-retrospective` — Telegram Automation & Bot (`done` 2026-09-10)
-- `epic-12-retrospective` — HR/Recruitment Vertical (`done` 2026-09-10)
-- `epic-13-retrospective` — Canonical Entity Storage (`done` 2026-09-10)
-- `epic-14-retrospective` — News Aggregation (`done` 2026-09-10)
-- `epic-15-retrospective` — Financial Data (`done` 2026-09-10)
-- `epic-16-retrospective` — Company Directory & Public Procurement (`done` 2026-09-10)
-- `epic-17-retrospective` — E-commerce Intelligence (`done` 2026-09-10)
-- `epic-18-retrospective` — Public Agent Chat & Agent Registry (`done` 2026-09-10)
-- `epic-20-retrospective` — Service Mesh & Cost Ledger (`done` 2026-09-10)
-- `epic-21-retrospective` — Lead Gen Intelligence (`done` 2026-09-10)
-- `epic-22-retrospective` — Telegram Storage & Public Web Preview (`done` 2026-09-10)
-- `epic-23-retrospective` — Lead Capture & Outreach Infrastructure (`done` 2026-09-10)
-- `epic-24-retrospective` — Enterprise Lead Conversion & Team CRM (`done` 2026-09-10)
-- `epic-25-retrospective` — Platform Administration & Multi-Tenant Operations (`done` 2026-09-10)
-- `epic-26-retrospective` — Autonomous Lead Missions & Deep Sales Research (`done` 2026-09-06, see `epic-26-retro-2026-09-06.md`)
-- `epic-27-retrospective` — Full-Stack Web App Builder & Manus Slides (`done` 2026-09-10)
-- `epic-28-retrospective` — Self-Host Trust, Data Portability & Legal Readiness (`done` 2026-09-10)
-- `epic-29-retrospective` — Workspace, Admin & Data Governance (`done` 2026-09-10)
-- `epic-30-retrospective` — Technical Debt Retirement (`done` 2026-09-10)
+Epic retrospectives completed (29/29, 2026-09-10 or earlier):
+- `epic-1` through `epic-30` (minus epic-19 which was removed) — all `done`
+- `epic-26-retro-2026-09-06.md` — 17 stories, verdict accepted
+- All other retros dated 2026-09-10
 
 ## Tier 3 — New product surface / business-gated / post-MVP
 
