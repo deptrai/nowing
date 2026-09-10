@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '09-10-2026 14:51'
+last_updated: '09-10-2026 14:54'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # manual update 2026-09-09: split Story 21.8 into 21.8a–f per sprint-change-proposal-2026-09-09-xactions-21-8-correction.md; audit 2026-09-09: 21.8a–f done, 21.8g in-progress
 # - Parsed epics.md: 24 epics, ~160 stories.
@@ -163,7 +163,7 @@ development_status:
   10-6-chợ-tốt-multi-category-scraper: done
   10-7-chợ-tốt-multi-category-capability-and-billing: done
   10-8-spatial-planning-land-zoning-gis: done
-  epic-10-retrospective: optional
+  epic-10-retrospective: done
 
   epic-11: done
   11-1-telegram-notification-foundation: done
