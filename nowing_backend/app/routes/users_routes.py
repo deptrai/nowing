@@ -2,9 +2,12 @@
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
+from app.db import User, get_async_session
 from app.schemas import UserRead
 from app.schemas.users import UserNotificationPreferencesUpdate, UserUpdate
 from app.users import (
@@ -57,14 +60,22 @@ async def update_current_user_notification_preferences(
     request: Request,
     auth: AuthContext = Depends(require_session_context),
     user_manager: UserManager = Depends(get_user_manager),
+    session: AsyncSession = Depends(get_async_session),
 ):
+    # Lock the user row to prevent race conditions during concurrent merges (Story 30.4)
+    stmt = select(User).where(User.id == auth.user.id).with_for_update()
+    result = await session.execute(stmt)
+    locked_user = result.scalar_one_or_none()
+    if locked_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
     merged = _merge_notification_preferences(
-        auth.user.notification_preferences,
+        locked_user.notification_preferences,
         update.notification_preferences,
     )
     updated_user = await user_manager.update(
         UserUpdate(notification_preferences=merged),
-        auth.user,
+        locked_user,
         safe=True,
         request=request,
     )

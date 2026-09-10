@@ -181,3 +181,30 @@ async def test_manual_run_requires_execute_permission(
 
     assert resp.status_code == 403, resp.text
     assert enqueue_spy == []
+
+
+async def test_manual_run_with_idempotency_key_returns_same_run(
+    client, db_session, db_user, db_workspace, enqueue_spy
+):
+    """Calling POST /automations/{id}/run twice with the same Idempotency-Key returns the existing run."""
+    automation = await _make_automation(db_session, db_workspace, db_user)
+    idempotency_header = {"Idempotency-Key": "client-uuid-12345"}
+
+    resp1 = await client.post(
+        f"/api/v1/automations/{automation.id}/run",
+        headers=idempotency_header,
+    )
+    assert resp1.status_code == 200, resp1.text
+    run_1 = resp1.json()
+
+    resp2 = await client.post(
+        f"/api/v1/automations/{automation.id}/run",
+        headers=idempotency_header,
+    )
+    assert resp2.status_code == 200, resp2.text
+    run_2 = resp2.json()
+
+    # Must return the identical run ID
+    assert run_1["id"] == run_2["id"]
+    # Only 1 run was actually created and enqueued
+    assert len(enqueue_spy) == 1

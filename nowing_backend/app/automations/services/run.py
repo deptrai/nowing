@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import contextlib
+import logging
+
 from fastapi import Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.context import AuthContext
 from app.automations.dispatch.errors import DispatchError
 from app.automations.dispatch.launch import launch_run
+from app.automations.persistence.enums.run_status import RunStatus
 from app.automations.persistence.enums.trigger_type import TriggerType
 from app.automations.persistence.models.automation import Automation
 from app.automations.persistence.models.run import AutomationRun
@@ -16,6 +20,8 @@ from app.automations.persistence.models.trigger import AutomationTrigger
 from app.db import Permission, get_async_session
 from app.users import get_auth_context
 from app.utils.rbac import check_permission
+
+logger = logging.getLogger(__name__)
 
 
 class RunService:
@@ -60,8 +66,10 @@ class RunService:
             raise HTTPException(status_code=404, detail=f"run {run_id} not found")
         return run
 
-    async def launch(self, *, automation_id: int) -> AutomationRun:
-        """Kick off a manual run for an automation, returning the PENDING run.
+    async def launch(
+        self, *, automation_id: int, idempotency_key: str | None = None
+    ) -> AutomationRun:
+        """Kick off a manual run for an automation with dedup & idempotency protection (Story 30.1).
 
         Mirrors the Telegram ``_handle_rerun`` pattern: authorize with
         ``AUTOMATIONS_EXECUTE``, build a transient ``MANUAL`` trigger, and
@@ -69,6 +77,58 @@ class RunService:
         Fire-and-return — the caller does not wait for execution.
         """
         await self._authorize(automation_id, Permission.AUTOMATIONS_EXECUTE.value)
+
+        # Idempotency & Dedup Lock via Redis (Story 30.1)
+        redis = None
+        lock_key = None
+        lock_acquired = True
+        ttl = 60 if idempotency_key else 5
+        key_suffix = idempotency_key if idempotency_key else "manual"
+        lock_key = f"automation_run_lock:{automation_id}:{key_suffix}"
+
+        try:
+            from app.redis_client import get_redis_client
+
+            redis = await get_redis_client()
+            res = await redis.set(lock_key, "in_flight", nx=True, ex=ttl)
+            lock_acquired = bool(res)
+        except Exception as exc:
+            logger.warning(
+                "Redis dedup lock unavailable for automation %s: %s",
+                automation_id,
+                exc,
+            )
+            lock_acquired = True
+
+        if not lock_acquired and redis is not None:
+            # Check if an earlier run with this idempotency key already created an AutomationRun
+            with contextlib.suppress(Exception):
+                cached_val = await redis.get(lock_key)
+                if cached_val and str(cached_val).isdigit():
+                    cached_run_id = int(cached_val)
+                    cached_run = await self.session.get(AutomationRun, cached_run_id)
+                    if cached_run is not None:
+                        return cached_run
+
+            stmt = (
+                select(AutomationRun)
+                .where(
+                    AutomationRun.automation_id == automation_id,
+                    AutomationRun.status.in_([RunStatus.PENDING, RunStatus.RUNNING]),
+                )
+                .order_by(AutomationRun.created_at.desc())
+                .limit(1)
+            )
+            existing_res = await self.session.execute(stmt)
+            existing_run = existing_res.scalar_one_or_none()
+            if existing_run is not None:
+                return existing_run
+
+            raise HTTPException(
+                status_code=409,
+                detail=f"An execution for automation {automation_id} is already in progress.",
+            )
+
         trigger = AutomationTrigger(
             automation_id=automation_id,
             type=TriggerType.MANUAL,
@@ -76,16 +136,28 @@ class RunService:
             static_inputs={},
         )
         try:
-            return await launch_run(
+            run = await launch_run(
                 session=self.session,
                 trigger=trigger,
                 runtime_inputs={"fired_by": "mcp"},
             )
+            if redis is not None and lock_key:
+                with contextlib.suppress(Exception):
+                    await redis.set(lock_key, str(run.id), ex=ttl)
+            return run
         except DispatchError as exc:
+            if redis is not None and lock_key:
+                with contextlib.suppress(Exception):
+                    await redis.delete(lock_key)
             message = str(exc)
             if "not found" in message:
                 raise HTTPException(status_code=404, detail=message) from exc
             raise HTTPException(status_code=400, detail=message) from exc
+        except Exception:
+            if redis is not None and lock_key:
+                with contextlib.suppress(Exception):
+                    await redis.delete(lock_key)
+            raise
 
     async def _authorize(self, automation_id: int, permission: str) -> Automation:
         automation = await self.session.get(Automation, automation_id)

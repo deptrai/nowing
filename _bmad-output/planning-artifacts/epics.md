@@ -4589,7 +4589,7 @@ Add explicit `timeout` and `num_retries` to `title_gen.py` `litellm.acompletion(
 ### Story 30.8: Epic 13 canonical entity cleanup `[done]`
 Remove `app/canonical/`, `canonical_entities_routes.py`, models, tests, and migration `d33c362fa627` dropping canonical tables after verifying zero live callers.
 
-### Story 30.9: Technical Debt Retirement & System Hardening `[in-progress]`
+### Story 30.9: Technical Debt Retirement & System Hardening `[done]`
 Consolidation of micro-scope technical debt stories (30.1, 30.3, 30.4, 30.6, 30.7):
 - **30.1**: Idempotency key & dedup lock for `POST /automations/{id}/run`.
 - **30.3**: Storage quota reconciliation between `DocumentFile` and storage backend.
