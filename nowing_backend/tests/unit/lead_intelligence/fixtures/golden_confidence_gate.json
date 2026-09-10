@@ -8,7 +8,9 @@
     "address": "Phường Tân Phú, Quận 7, TP.HCM",
     "price": 5000000000,
     "area": 75,
-    "raw_data": {"description": "Bán nhà Quận 7, giá 5 tỷ, 75m2, lh 0912345678"},
+    "raw_data": {
+      "description": "Bán nhà Quận 7, giá 5 tỷ, 75m2, lh 0912345678"
+    },
     "expected_score": 1.0,
     "expected_route": "direct"
   },
@@ -21,7 +23,9 @@
     "address": "Phường Linh Trung, Thủ Đức, TP.HCM",
     "price": 3200000000,
     "area": null,
-    "raw_data": {"area": "120 m²"},
+    "raw_data": {
+      "area": "120 m²"
+    },
     "expected_score": 1.0,
     "expected_route": "direct"
   },
@@ -47,7 +51,9 @@
     "address": "Phường 5, Quận 3, TP.HCM",
     "price": 12000000000,
     "area": 60,
-    "raw_data": {"description": "Bán nhà mặt tiền Quận 3, giá 12 tỷ, lh không chín một hai ba bốn năm sáu bảy tám"},
+    "raw_data": {
+      "description": "Bán nhà mặt tiền Quận 3, giá 12 tỷ, lh không chín một hai ba bốn năm sáu bảy tám"
+    },
     "expected_score": 0.8,
     "expected_route": "micro"
   },
@@ -73,7 +79,9 @@
     "address": "Quận 10, TP.HCM",
     "price": 4500000000,
     "area": 50,
-    "raw_data": {"title": "Bán căn hộ Quận 10"},
+    "raw_data": {
+      "title": "Bán căn hộ Quận 10"
+    },
     "expected_score": 0.8,
     "expected_route": "enrichment"
   },
@@ -99,7 +107,9 @@
     "address": "Thủ Dầu Một, Bình Dương",
     "price": 2100000000,
     "area": null,
-    "raw_data": {"area": "150m2"},
+    "raw_data": {
+      "area": "150m2"
+    },
     "expected_score": 1.0,
     "expected_route": "direct"
   },
@@ -112,7 +122,9 @@
     "address": "Cầu Giấy, Hà Nội",
     "price": 8200000000,
     "area": 120,
-    "raw_data": {"description": "Bán nhà Cầu Giấy, giá 8.2 tỷ, liên hệ 0919888777"},
+    "raw_data": {
+      "description": "Bán nhà Cầu Giấy, giá 8.2 tỷ, liên hệ 0919888777"
+    },
     "expected_score": 0.8,
     "expected_route": "micro"
   },
@@ -126,6 +138,1284 @@
     "price": 5000000,
     "area": 25,
     "raw_data": {},
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "batdongsan",
+    "source_id": "bat_011",
+    "title": "Bán nhà Quận 1 TP.HCM",
+    "company_name": "Đại lý BĐS Quận 1",
+    "primary_phone": "0900112233",
+    "address": "Phường 1, Quận 1, TP.HCM",
+    "price": 1000000000,
+    "area": 50,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Quận 1 TP.HCM"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "chotot",
+    "source_id": "cho_012",
+    "title": "Bán nhà Quận 3 TP.HCM",
+    "company_name": "Đại lý BĐS Quận 3",
+    "primary_phone": "0801556677",
+    "address": "Phường 2, Quận 3, TP.HCM",
+    "price": 2000000000,
+    "area": 53,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Quận 3 TP.HCM"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "muaban",
+    "source_id": "mua_013",
+    "title": "Bất động sản rao bán",
+    "company_name": "Công ty Quận 7",
+    "primary_phone": "0902334455",
+    "address": "Đường số 3, Quận 7, TP.HCM",
+    "price": 3700000000,
+    "area": 80.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "enrichment"
+  },
+  {
+    "source_name": "cafef",
+    "source_id": "caf_014",
+    "title": "Bán đất view sông Quận 10",
+    "company_name": "Sàn BĐS",
+    "primary_phone": null,
+    "address": "Xã Phước Kiển, Quận 10, TP.HCM",
+    "price": 4000000000,
+    "area": 100.0,
+    "raw_data": {
+      "description": "Liên hệ ngay để xem sổ"
+    },
+    "expected_score": 0.8,
+    "expected_route": "micro"
+  },
+  {
+    "source_name": "facebook_group",
+    "source_id": "fac_015",
+    "title": "Bán nhà Bình Thạnh TP.HCM",
+    "company_name": "Đại lý BĐS Bình Thạnh",
+    "primary_phone": "0904112233",
+    "address": "Phường 5, Bình Thạnh, TP.HCM",
+    "price": 5000000000,
+    "area": 62,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Bình Thạnh TP.HCM"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "zalo_group",
+    "source_id": "zal_016",
+    "title": "Bán nhà Thủ Đức TP.HCM",
+    "company_name": "Đại lý BĐS Thủ Đức",
+    "primary_phone": "0805556677",
+    "address": "Phường 6, Thủ Đức, TP.HCM",
+    "price": 6000000000,
+    "area": 65,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Thủ Đức TP.HCM"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "batdongsan",
+    "source_id": "bat_017",
+    "title": "Bất động sản rao bán",
+    "company_name": "Công ty Gò Vấp",
+    "primary_phone": "0906334455",
+    "address": "Đường số 7, Gò Vấp, TP.HCM",
+    "price": 4100000000,
+    "area": 80.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "enrichment"
+  },
+  {
+    "source_name": "chotot",
+    "source_id": "cho_018",
+    "title": "Bán xưởng sản xuất Phú Nhuận",
+    "company_name": "KCN",
+    "primary_phone": "0907001122",
+    "address": "Khu phố 2, Phú Nhuận, TP.HCM",
+    "price": 0,
+    "area": 500.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "micro"
+  },
+  {
+    "source_name": "muaban",
+    "source_id": "mua_019",
+    "title": "Bán nhà Tân Bình TP.HCM",
+    "company_name": "Đại lý BĐS Tân Bình",
+    "primary_phone": "0908112233",
+    "address": "Phường 9, Tân Bình, TP.HCM",
+    "price": 9000000000,
+    "area": 74,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Tân Bình TP.HCM"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "cafef",
+    "source_id": "caf_020",
+    "title": "Bán nhà Bình Tân TP.HCM",
+    "company_name": "Đại lý BĐS Bình Tân",
+    "primary_phone": "0809556677",
+    "address": "Phường 10, Bình Tân, TP.HCM",
+    "price": 10000000000,
+    "area": 77,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Bình Tân TP.HCM"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "facebook_group",
+    "source_id": "fac_021",
+    "title": "Bất động sản rao bán",
+    "company_name": "Công ty Cầu Giấy",
+    "primary_phone": "0910334455",
+    "address": "Đường số 11, Cầu Giấy, Hà Nội",
+    "price": 4500000000,
+    "area": 80.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "enrichment"
+  },
+  {
+    "source_name": "zalo_group",
+    "source_id": "zal_022",
+    "title": "Bán kho bãi tại Hà Nội",
+    "company_name": null,
+    "primary_phone": "0911998877",
+    "address": "Hà Nội",
+    "price": 15000000000,
+    "area": 1200.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "micro"
+  },
+  {
+    "source_name": "batdongsan",
+    "source_id": "bat_023",
+    "title": "Bán nhà Ba Đình Hà Nội",
+    "company_name": "Đại lý BĐS Ba Đình",
+    "primary_phone": "0912112233",
+    "address": "Phường 3, Ba Đình, Hà Nội",
+    "price": 13000000000,
+    "area": 86,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Ba Đình Hà Nội"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "chotot",
+    "source_id": "cho_024",
+    "title": "Bán nhà Hai Bà Trưng Hà Nội",
+    "company_name": "Đại lý BĐS Hai Bà Trưng",
+    "primary_phone": "0813556677",
+    "address": "Phường 4, Hai Bà Trưng, Hà Nội",
+    "price": 14000000000,
+    "area": 89,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Hai Bà Trưng Hà Nội"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "muaban",
+    "source_id": "mua_025",
+    "title": "Bất động sản rao bán",
+    "company_name": "Công ty Hoàn Kiếm",
+    "primary_phone": "0914334455",
+    "address": "Đường số 15, Hoàn Kiếm, Hà Nội",
+    "price": 4900000000,
+    "area": 80.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "enrichment"
+  },
+  {
+    "source_name": "cafef",
+    "source_id": "caf_026",
+    "title": "Bán đất view sông Thanh Xuân",
+    "company_name": "Sàn BĐS",
+    "primary_phone": null,
+    "address": "Xã Phước Kiển, Thanh Xuân, Hà Nội",
+    "price": 4000000000,
+    "area": 100.0,
+    "raw_data": {
+      "description": "Liên hệ ngay để xem sổ"
+    },
+    "expected_score": 0.8,
+    "expected_route": "micro"
+  },
+  {
+    "source_name": "facebook_group",
+    "source_id": "fac_027",
+    "title": "Bán nhà Hải Châu Đà Nẵng",
+    "company_name": "Đại lý BĐS Hải Châu",
+    "primary_phone": "0916112233",
+    "address": "Phường 7, Hải Châu, Đà Nẵng",
+    "price": 17000000000,
+    "area": 98,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Hải Châu Đà Nẵng"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "zalo_group",
+    "source_id": "zal_028",
+    "title": "Bán nhà Sơn Trà Đà Nẵng",
+    "company_name": "Đại lý BĐS Sơn Trà",
+    "primary_phone": "0817556677",
+    "address": "Phường 8, Sơn Trà, Đà Nẵng",
+    "price": 18000000000,
+    "area": 101,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Sơn Trà Đà Nẵng"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "batdongsan",
+    "source_id": "bat_029",
+    "title": "Bất động sản rao bán",
+    "company_name": "Công ty Thủ Dầu Một",
+    "primary_phone": "0918334455",
+    "address": "Đường số 19, Thủ Dầu Một, Bình Dương",
+    "price": 5300000000,
+    "area": 80.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "enrichment"
+  },
+  {
+    "source_name": "chotot",
+    "source_id": "cho_030",
+    "title": "Bán xưởng sản xuất Biên Hòa",
+    "company_name": "KCN",
+    "primary_phone": "0919001122",
+    "address": "Khu phố 2, Biên Hòa, Đồng Nai",
+    "price": 0,
+    "area": 500.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "micro"
+  },
+  {
+    "source_name": "muaban",
+    "source_id": "mua_031",
+    "title": "Bán nhà Ninh Kiều Cần Thơ",
+    "company_name": "Đại lý BĐS Ninh Kiều",
+    "primary_phone": "0920112233",
+    "address": "Phường 1, Ninh Kiều, Cần Thơ",
+    "price": 21000000000,
+    "area": 110,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Ninh Kiều Cần Thơ"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "cafef",
+    "source_id": "caf_032",
+    "title": "Bán nhà Hồng Bàng Hải Phòng",
+    "company_name": "Đại lý BĐS Hồng Bàng",
+    "primary_phone": "0821556677",
+    "address": "Phường 2, Hồng Bàng, Hải Phòng",
+    "price": 22000000000,
+    "area": 113,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Hồng Bàng Hải Phòng"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "facebook_group",
+    "source_id": "fac_033",
+    "title": "Bất động sản rao bán",
+    "company_name": "Công ty Nha Trang",
+    "primary_phone": "0922334455",
+    "address": "Đường số 3, Nha Trang, Khánh Hòa",
+    "price": 5700000000,
+    "area": 80.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "enrichment"
+  },
+  {
+    "source_name": "zalo_group",
+    "source_id": "zal_034",
+    "title": "Bán kho bãi tại Lâm Đồng",
+    "company_name": null,
+    "primary_phone": "0923998877",
+    "address": "Lâm Đồng",
+    "price": 15000000000,
+    "area": 1200.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "micro"
+  },
+  {
+    "source_name": "batdongsan",
+    "source_id": "bat_035",
+    "title": "Bán nhà Quận 1 TP.HCM",
+    "company_name": "Đại lý BĐS Quận 1",
+    "primary_phone": "0924112233",
+    "address": "Phường 5, Quận 1, TP.HCM",
+    "price": 25000000000,
+    "area": 122,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Quận 1 TP.HCM"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "chotot",
+    "source_id": "cho_036",
+    "title": "Bán nhà Quận 3 TP.HCM",
+    "company_name": "Đại lý BĐS Quận 3",
+    "primary_phone": "0825556677",
+    "address": "Phường 6, Quận 3, TP.HCM",
+    "price": 26000000000,
+    "area": 125,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Quận 3 TP.HCM"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "muaban",
+    "source_id": "mua_037",
+    "title": "Bất động sản rao bán",
+    "company_name": "Công ty Quận 7",
+    "primary_phone": "0926334455",
+    "address": "Đường số 7, Quận 7, TP.HCM",
+    "price": 6100000000,
+    "area": 80.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "enrichment"
+  },
+  {
+    "source_name": "cafef",
+    "source_id": "caf_038",
+    "title": "Bán đất view sông Quận 10",
+    "company_name": "Sàn BĐS",
+    "primary_phone": null,
+    "address": "Xã Phước Kiển, Quận 10, TP.HCM",
+    "price": 4000000000,
+    "area": 100.0,
+    "raw_data": {
+      "description": "Liên hệ ngay để xem sổ"
+    },
+    "expected_score": 0.8,
+    "expected_route": "micro"
+  },
+  {
+    "source_name": "facebook_group",
+    "source_id": "fac_039",
+    "title": "Bán nhà Bình Thạnh TP.HCM",
+    "company_name": "Đại lý BĐS Bình Thạnh",
+    "primary_phone": "0928112233",
+    "address": "Phường 9, Bình Thạnh, TP.HCM",
+    "price": 29000000000,
+    "area": 134,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Bình Thạnh TP.HCM"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "zalo_group",
+    "source_id": "zal_040",
+    "title": "Bán nhà Thủ Đức TP.HCM",
+    "company_name": "Đại lý BĐS Thủ Đức",
+    "primary_phone": "0829556677",
+    "address": "Phường 10, Thủ Đức, TP.HCM",
+    "price": 30000000000,
+    "area": 137,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Thủ Đức TP.HCM"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "batdongsan",
+    "source_id": "bat_041",
+    "title": "Bất động sản rao bán",
+    "company_name": "Công ty Gò Vấp",
+    "primary_phone": "0930334455",
+    "address": "Đường số 11, Gò Vấp, TP.HCM",
+    "price": 6500000000,
+    "area": 80.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "enrichment"
+  },
+  {
+    "source_name": "chotot",
+    "source_id": "cho_042",
+    "title": "Bán xưởng sản xuất Phú Nhuận",
+    "company_name": "KCN",
+    "primary_phone": "0931001122",
+    "address": "Khu phố 2, Phú Nhuận, TP.HCM",
+    "price": 0,
+    "area": 500.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "micro"
+  },
+  {
+    "source_name": "muaban",
+    "source_id": "mua_043",
+    "title": "Bán nhà Tân Bình TP.HCM",
+    "company_name": "Đại lý BĐS Tân Bình",
+    "primary_phone": "0932112233",
+    "address": "Phường 3, Tân Bình, TP.HCM",
+    "price": 33000000000,
+    "area": 146,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Tân Bình TP.HCM"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "cafef",
+    "source_id": "caf_044",
+    "title": "Bán nhà Bình Tân TP.HCM",
+    "company_name": "Đại lý BĐS Bình Tân",
+    "primary_phone": "0833556677",
+    "address": "Phường 4, Bình Tân, TP.HCM",
+    "price": 34000000000,
+    "area": 149,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Bình Tân TP.HCM"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "facebook_group",
+    "source_id": "fac_045",
+    "title": "Bất động sản rao bán",
+    "company_name": "Công ty Cầu Giấy",
+    "primary_phone": "0934334455",
+    "address": "Đường số 15, Cầu Giấy, Hà Nội",
+    "price": 6900000000,
+    "area": 80.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "enrichment"
+  },
+  {
+    "source_name": "zalo_group",
+    "source_id": "zal_046",
+    "title": "Bán kho bãi tại Hà Nội",
+    "company_name": null,
+    "primary_phone": "0935998877",
+    "address": "Hà Nội",
+    "price": 15000000000,
+    "area": 1200.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "micro"
+  },
+  {
+    "source_name": "batdongsan",
+    "source_id": "bat_047",
+    "title": "Bán nhà Ba Đình Hà Nội",
+    "company_name": "Đại lý BĐS Ba Đình",
+    "primary_phone": "0936112233",
+    "address": "Phường 7, Ba Đình, Hà Nội",
+    "price": 37000000000,
+    "area": 158,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Ba Đình Hà Nội"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "chotot",
+    "source_id": "cho_048",
+    "title": "Bán nhà Hai Bà Trưng Hà Nội",
+    "company_name": "Đại lý BĐS Hai Bà Trưng",
+    "primary_phone": "0837556677",
+    "address": "Phường 8, Hai Bà Trưng, Hà Nội",
+    "price": 38000000000,
+    "area": 161,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Hai Bà Trưng Hà Nội"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "muaban",
+    "source_id": "mua_049",
+    "title": "Bất động sản rao bán",
+    "company_name": "Công ty Hoàn Kiếm",
+    "primary_phone": "0938334455",
+    "address": "Đường số 19, Hoàn Kiếm, Hà Nội",
+    "price": 7300000000,
+    "area": 80.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "enrichment"
+  },
+  {
+    "source_name": "cafef",
+    "source_id": "caf_050",
+    "title": "Bán đất view sông Thanh Xuân",
+    "company_name": "Sàn BĐS",
+    "primary_phone": null,
+    "address": "Xã Phước Kiển, Thanh Xuân, Hà Nội",
+    "price": 4000000000,
+    "area": 100.0,
+    "raw_data": {
+      "description": "Liên hệ ngay để xem sổ"
+    },
+    "expected_score": 0.8,
+    "expected_route": "micro"
+  },
+  {
+    "source_name": "facebook_group",
+    "source_id": "fac_051",
+    "title": "Bán nhà Hải Châu Đà Nẵng",
+    "company_name": "Đại lý BĐS Hải Châu",
+    "primary_phone": "0940112233",
+    "address": "Phường 1, Hải Châu, Đà Nẵng",
+    "price": 41000000000,
+    "area": 170,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Hải Châu Đà Nẵng"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "zalo_group",
+    "source_id": "zal_052",
+    "title": "Bán nhà Sơn Trà Đà Nẵng",
+    "company_name": "Đại lý BĐS Sơn Trà",
+    "primary_phone": "0841556677",
+    "address": "Phường 2, Sơn Trà, Đà Nẵng",
+    "price": 42000000000,
+    "area": 173,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Sơn Trà Đà Nẵng"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "batdongsan",
+    "source_id": "bat_053",
+    "title": "Bất động sản rao bán",
+    "company_name": "Công ty Thủ Dầu Một",
+    "primary_phone": "0942334455",
+    "address": "Đường số 3, Thủ Dầu Một, Bình Dương",
+    "price": 7700000000,
+    "area": 80.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "enrichment"
+  },
+  {
+    "source_name": "chotot",
+    "source_id": "cho_054",
+    "title": "Bán xưởng sản xuất Biên Hòa",
+    "company_name": "KCN",
+    "primary_phone": "0943001122",
+    "address": "Khu phố 2, Biên Hòa, Đồng Nai",
+    "price": 0,
+    "area": 500.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "micro"
+  },
+  {
+    "source_name": "muaban",
+    "source_id": "mua_055",
+    "title": "Bán nhà Ninh Kiều Cần Thơ",
+    "company_name": "Đại lý BĐS Ninh Kiều",
+    "primary_phone": "0944112233",
+    "address": "Phường 5, Ninh Kiều, Cần Thơ",
+    "price": 45000000000,
+    "area": 182,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Ninh Kiều Cần Thơ"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "cafef",
+    "source_id": "caf_056",
+    "title": "Bán nhà Hồng Bàng Hải Phòng",
+    "company_name": "Đại lý BĐS Hồng Bàng",
+    "primary_phone": "0845556677",
+    "address": "Phường 6, Hồng Bàng, Hải Phòng",
+    "price": 46000000000,
+    "area": 185,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Hồng Bàng Hải Phòng"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "facebook_group",
+    "source_id": "fac_057",
+    "title": "Bất động sản rao bán",
+    "company_name": "Công ty Nha Trang",
+    "primary_phone": "0946334455",
+    "address": "Đường số 7, Nha Trang, Khánh Hòa",
+    "price": 8100000000,
+    "area": 80.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "enrichment"
+  },
+  {
+    "source_name": "zalo_group",
+    "source_id": "zal_058",
+    "title": "Bán kho bãi tại Lâm Đồng",
+    "company_name": null,
+    "primary_phone": "0947998877",
+    "address": "Lâm Đồng",
+    "price": 15000000000,
+    "area": 1200.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "micro"
+  },
+  {
+    "source_name": "batdongsan",
+    "source_id": "bat_059",
+    "title": "Bán nhà Quận 1 TP.HCM",
+    "company_name": "Đại lý BĐS Quận 1",
+    "primary_phone": "0948112233",
+    "address": "Phường 9, Quận 1, TP.HCM",
+    "price": 49000000000,
+    "area": 194,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Quận 1 TP.HCM"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "chotot",
+    "source_id": "cho_060",
+    "title": "Bán nhà Quận 3 TP.HCM",
+    "company_name": "Đại lý BĐS Quận 3",
+    "primary_phone": "0849556677",
+    "address": "Phường 10, Quận 3, TP.HCM",
+    "price": 50000000000,
+    "area": 197,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Quận 3 TP.HCM"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "muaban",
+    "source_id": "mua_061",
+    "title": "Bất động sản rao bán",
+    "company_name": "Công ty Quận 7",
+    "primary_phone": "0950334455",
+    "address": "Đường số 11, Quận 7, TP.HCM",
+    "price": 8500000000,
+    "area": 80.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "enrichment"
+  },
+  {
+    "source_name": "cafef",
+    "source_id": "caf_062",
+    "title": "Bán đất view sông Quận 10",
+    "company_name": "Sàn BĐS",
+    "primary_phone": null,
+    "address": "Xã Phước Kiển, Quận 10, TP.HCM",
+    "price": 4000000000,
+    "area": 100.0,
+    "raw_data": {
+      "description": "Liên hệ ngay để xem sổ"
+    },
+    "expected_score": 0.8,
+    "expected_route": "micro"
+  },
+  {
+    "source_name": "facebook_group",
+    "source_id": "fac_063",
+    "title": "Bán nhà Bình Thạnh TP.HCM",
+    "company_name": "Đại lý BĐS Bình Thạnh",
+    "primary_phone": "0952112233",
+    "address": "Phường 3, Bình Thạnh, TP.HCM",
+    "price": 53000000000,
+    "area": 56,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Bình Thạnh TP.HCM"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "zalo_group",
+    "source_id": "zal_064",
+    "title": "Bán nhà Thủ Đức TP.HCM",
+    "company_name": "Đại lý BĐS Thủ Đức",
+    "primary_phone": "0853556677",
+    "address": "Phường 4, Thủ Đức, TP.HCM",
+    "price": 54000000000,
+    "area": 59,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Thủ Đức TP.HCM"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "batdongsan",
+    "source_id": "bat_065",
+    "title": "Bất động sản rao bán",
+    "company_name": "Công ty Gò Vấp",
+    "primary_phone": "0954334455",
+    "address": "Đường số 15, Gò Vấp, TP.HCM",
+    "price": 8900000000,
+    "area": 80.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "enrichment"
+  },
+  {
+    "source_name": "chotot",
+    "source_id": "cho_066",
+    "title": "Bán xưởng sản xuất Phú Nhuận",
+    "company_name": "KCN",
+    "primary_phone": "0955001122",
+    "address": "Khu phố 2, Phú Nhuận, TP.HCM",
+    "price": 0,
+    "area": 500.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "micro"
+  },
+  {
+    "source_name": "muaban",
+    "source_id": "mua_067",
+    "title": "Bán nhà Tân Bình TP.HCM",
+    "company_name": "Đại lý BĐS Tân Bình",
+    "primary_phone": "0956112233",
+    "address": "Phường 7, Tân Bình, TP.HCM",
+    "price": 57000000000,
+    "area": 68,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Tân Bình TP.HCM"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "cafef",
+    "source_id": "caf_068",
+    "title": "Bán nhà Bình Tân TP.HCM",
+    "company_name": "Đại lý BĐS Bình Tân",
+    "primary_phone": "0857556677",
+    "address": "Phường 8, Bình Tân, TP.HCM",
+    "price": 58000000000,
+    "area": 71,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Bình Tân TP.HCM"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "facebook_group",
+    "source_id": "fac_069",
+    "title": "Bất động sản rao bán",
+    "company_name": "Công ty Cầu Giấy",
+    "primary_phone": "0958334455",
+    "address": "Đường số 19, Cầu Giấy, Hà Nội",
+    "price": 9300000000,
+    "area": 80.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "enrichment"
+  },
+  {
+    "source_name": "zalo_group",
+    "source_id": "zal_070",
+    "title": "Bán kho bãi tại Hà Nội",
+    "company_name": null,
+    "primary_phone": "0959998877",
+    "address": "Hà Nội",
+    "price": 15000000000,
+    "area": 1200.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "micro"
+  },
+  {
+    "source_name": "batdongsan",
+    "source_id": "bat_071",
+    "title": "Bán nhà Ba Đình Hà Nội",
+    "company_name": "Đại lý BĐS Ba Đình",
+    "primary_phone": "0960112233",
+    "address": "Phường 1, Ba Đình, Hà Nội",
+    "price": 61000000000,
+    "area": 80,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Ba Đình Hà Nội"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "chotot",
+    "source_id": "cho_072",
+    "title": "Bán nhà Hai Bà Trưng Hà Nội",
+    "company_name": "Đại lý BĐS Hai Bà Trưng",
+    "primary_phone": "0861556677",
+    "address": "Phường 2, Hai Bà Trưng, Hà Nội",
+    "price": 62000000000,
+    "area": 83,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Hai Bà Trưng Hà Nội"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "muaban",
+    "source_id": "mua_073",
+    "title": "Bất động sản rao bán",
+    "company_name": "Công ty Hoàn Kiếm",
+    "primary_phone": "0962334455",
+    "address": "Đường số 3, Hoàn Kiếm, Hà Nội",
+    "price": 9700000000,
+    "area": 80.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "enrichment"
+  },
+  {
+    "source_name": "cafef",
+    "source_id": "caf_074",
+    "title": "Bán đất view sông Thanh Xuân",
+    "company_name": "Sàn BĐS",
+    "primary_phone": null,
+    "address": "Xã Phước Kiển, Thanh Xuân, Hà Nội",
+    "price": 4000000000,
+    "area": 100.0,
+    "raw_data": {
+      "description": "Liên hệ ngay để xem sổ"
+    },
+    "expected_score": 0.8,
+    "expected_route": "micro"
+  },
+  {
+    "source_name": "facebook_group",
+    "source_id": "fac_075",
+    "title": "Bán nhà Hải Châu Đà Nẵng",
+    "company_name": "Đại lý BĐS Hải Châu",
+    "primary_phone": "0964112233",
+    "address": "Phường 5, Hải Châu, Đà Nẵng",
+    "price": 65000000000,
+    "area": 92,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Hải Châu Đà Nẵng"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "zalo_group",
+    "source_id": "zal_076",
+    "title": "Bán nhà Sơn Trà Đà Nẵng",
+    "company_name": "Đại lý BĐS Sơn Trà",
+    "primary_phone": "0865556677",
+    "address": "Phường 6, Sơn Trà, Đà Nẵng",
+    "price": 66000000000,
+    "area": 95,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Sơn Trà Đà Nẵng"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "batdongsan",
+    "source_id": "bat_077",
+    "title": "Bất động sản rao bán",
+    "company_name": "Công ty Thủ Dầu Một",
+    "primary_phone": "0966334455",
+    "address": "Đường số 7, Thủ Dầu Một, Bình Dương",
+    "price": 10100000000,
+    "area": 80.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "enrichment"
+  },
+  {
+    "source_name": "chotot",
+    "source_id": "cho_078",
+    "title": "Bán xưởng sản xuất Biên Hòa",
+    "company_name": "KCN",
+    "primary_phone": "0967001122",
+    "address": "Khu phố 2, Biên Hòa, Đồng Nai",
+    "price": 0,
+    "area": 500.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "micro"
+  },
+  {
+    "source_name": "muaban",
+    "source_id": "mua_079",
+    "title": "Bán nhà Ninh Kiều Cần Thơ",
+    "company_name": "Đại lý BĐS Ninh Kiều",
+    "primary_phone": "0968112233",
+    "address": "Phường 9, Ninh Kiều, Cần Thơ",
+    "price": 69000000000,
+    "area": 104,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Ninh Kiều Cần Thơ"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "cafef",
+    "source_id": "caf_080",
+    "title": "Bán nhà Hồng Bàng Hải Phòng",
+    "company_name": "Đại lý BĐS Hồng Bàng",
+    "primary_phone": "0869556677",
+    "address": "Phường 10, Hồng Bàng, Hải Phòng",
+    "price": 70000000000,
+    "area": 107,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Hồng Bàng Hải Phòng"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "facebook_group",
+    "source_id": "fac_081",
+    "title": "Bất động sản rao bán",
+    "company_name": "Công ty Nha Trang",
+    "primary_phone": "0970334455",
+    "address": "Đường số 11, Nha Trang, Khánh Hòa",
+    "price": 10500000000,
+    "area": 80.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "enrichment"
+  },
+  {
+    "source_name": "zalo_group",
+    "source_id": "zal_082",
+    "title": "Bán kho bãi tại Lâm Đồng",
+    "company_name": null,
+    "primary_phone": "0971998877",
+    "address": "Lâm Đồng",
+    "price": 15000000000,
+    "area": 1200.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "micro"
+  },
+  {
+    "source_name": "batdongsan",
+    "source_id": "bat_083",
+    "title": "Bán nhà Quận 1 TP.HCM",
+    "company_name": "Đại lý BĐS Quận 1",
+    "primary_phone": "0972112233",
+    "address": "Phường 3, Quận 1, TP.HCM",
+    "price": 73000000000,
+    "area": 116,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Quận 1 TP.HCM"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "chotot",
+    "source_id": "cho_084",
+    "title": "Bán nhà Quận 3 TP.HCM",
+    "company_name": "Đại lý BĐS Quận 3",
+    "primary_phone": "0873556677",
+    "address": "Phường 4, Quận 3, TP.HCM",
+    "price": 74000000000,
+    "area": 119,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Quận 3 TP.HCM"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "muaban",
+    "source_id": "mua_085",
+    "title": "Bất động sản rao bán",
+    "company_name": "Công ty Quận 7",
+    "primary_phone": "0974334455",
+    "address": "Đường số 15, Quận 7, TP.HCM",
+    "price": 10900000000,
+    "area": 80.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "enrichment"
+  },
+  {
+    "source_name": "cafef",
+    "source_id": "caf_086",
+    "title": "Bán đất view sông Quận 10",
+    "company_name": "Sàn BĐS",
+    "primary_phone": null,
+    "address": "Xã Phước Kiển, Quận 10, TP.HCM",
+    "price": 4000000000,
+    "area": 100.0,
+    "raw_data": {
+      "description": "Liên hệ ngay để xem sổ"
+    },
+    "expected_score": 0.8,
+    "expected_route": "micro"
+  },
+  {
+    "source_name": "facebook_group",
+    "source_id": "fac_087",
+    "title": "Bán nhà Bình Thạnh TP.HCM",
+    "company_name": "Đại lý BĐS Bình Thạnh",
+    "primary_phone": "0976112233",
+    "address": "Phường 7, Bình Thạnh, TP.HCM",
+    "price": 77000000000,
+    "area": 128,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Bình Thạnh TP.HCM"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "zalo_group",
+    "source_id": "zal_088",
+    "title": "Bán nhà Thủ Đức TP.HCM",
+    "company_name": "Đại lý BĐS Thủ Đức",
+    "primary_phone": "0877556677",
+    "address": "Phường 8, Thủ Đức, TP.HCM",
+    "price": 78000000000,
+    "area": 131,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Thủ Đức TP.HCM"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "batdongsan",
+    "source_id": "bat_089",
+    "title": "Bất động sản rao bán",
+    "company_name": "Công ty Gò Vấp",
+    "primary_phone": "0978334455",
+    "address": "Đường số 19, Gò Vấp, TP.HCM",
+    "price": 11300000000,
+    "area": 80.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "enrichment"
+  },
+  {
+    "source_name": "chotot",
+    "source_id": "cho_090",
+    "title": "Bán xưởng sản xuất Phú Nhuận",
+    "company_name": "KCN",
+    "primary_phone": "0979001122",
+    "address": "Khu phố 2, Phú Nhuận, TP.HCM",
+    "price": 0,
+    "area": 500.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "micro"
+  },
+  {
+    "source_name": "muaban",
+    "source_id": "mua_091",
+    "title": "Bán nhà Tân Bình TP.HCM",
+    "company_name": "Đại lý BĐS Tân Bình",
+    "primary_phone": "0980112233",
+    "address": "Phường 1, Tân Bình, TP.HCM",
+    "price": 81000000000,
+    "area": 140,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Tân Bình TP.HCM"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "cafef",
+    "source_id": "caf_092",
+    "title": "Bán nhà Bình Tân TP.HCM",
+    "company_name": "Đại lý BĐS Bình Tân",
+    "primary_phone": "0881556677",
+    "address": "Phường 2, Bình Tân, TP.HCM",
+    "price": 82000000000,
+    "area": 143,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Bình Tân TP.HCM"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "facebook_group",
+    "source_id": "fac_093",
+    "title": "Bất động sản rao bán",
+    "company_name": "Công ty Cầu Giấy",
+    "primary_phone": "0982334455",
+    "address": "Đường số 3, Cầu Giấy, Hà Nội",
+    "price": 11700000000,
+    "area": 80.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "enrichment"
+  },
+  {
+    "source_name": "zalo_group",
+    "source_id": "zal_094",
+    "title": "Bán kho bãi tại Hà Nội",
+    "company_name": null,
+    "primary_phone": "0983998877",
+    "address": "Hà Nội",
+    "price": 15000000000,
+    "area": 1200.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "micro"
+  },
+  {
+    "source_name": "batdongsan",
+    "source_id": "bat_095",
+    "title": "Bán nhà Ba Đình Hà Nội",
+    "company_name": "Đại lý BĐS Ba Đình",
+    "primary_phone": "0984112233",
+    "address": "Phường 5, Ba Đình, Hà Nội",
+    "price": 85000000000,
+    "area": 152,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Ba Đình Hà Nội"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "chotot",
+    "source_id": "cho_096",
+    "title": "Bán nhà Hai Bà Trưng Hà Nội",
+    "company_name": "Đại lý BĐS Hai Bà Trưng",
+    "primary_phone": "0885556677",
+    "address": "Phường 6, Hai Bà Trưng, Hà Nội",
+    "price": 86000000000,
+    "area": 155,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Hai Bà Trưng Hà Nội"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "muaban",
+    "source_id": "mua_097",
+    "title": "Bất động sản rao bán",
+    "company_name": "Công ty Hoàn Kiếm",
+    "primary_phone": "0986334455",
+    "address": "Đường số 7, Hoàn Kiếm, Hà Nội",
+    "price": 12100000000,
+    "area": 80.0,
+    "raw_data": {},
+    "expected_score": 0.8,
+    "expected_route": "enrichment"
+  },
+  {
+    "source_name": "cafef",
+    "source_id": "caf_098",
+    "title": "Bán đất view sông Thanh Xuân",
+    "company_name": "Sàn BĐS",
+    "primary_phone": null,
+    "address": "Xã Phước Kiển, Thanh Xuân, Hà Nội",
+    "price": 4000000000,
+    "area": 100.0,
+    "raw_data": {
+      "description": "Liên hệ ngay để xem sổ"
+    },
+    "expected_score": 0.8,
+    "expected_route": "micro"
+  },
+  {
+    "source_name": "facebook_group",
+    "source_id": "fac_099",
+    "title": "Bán nhà Hải Châu Đà Nẵng",
+    "company_name": "Đại lý BĐS Hải Châu",
+    "primary_phone": "0988112233",
+    "address": "Phường 9, Hải Châu, Đà Nẵng",
+    "price": 89000000000,
+    "area": 164,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Hải Châu Đà Nẵng"
+    },
+    "expected_score": 1.0,
+    "expected_route": "direct"
+  },
+  {
+    "source_name": "zalo_group",
+    "source_id": "zal_100",
+    "title": "Bán nhà Sơn Trà Đà Nẵng",
+    "company_name": "Đại lý BĐS Sơn Trà",
+    "primary_phone": "0889556677",
+    "address": "Phường 10, Sơn Trà, Đà Nẵng",
+    "price": 90000000000,
+    "area": 167,
+    "raw_data": {
+      "description": "Cần bán gấp nhà đẹp Sơn Trà Đà Nẵng"
+    },
     "expected_score": 1.0,
     "expected_route": "direct"
   }

@@ -216,10 +216,10 @@
 ## Deferred from: code review of 21-21-deterministic-confidence-gate-selective-micro-llm-fallback-worker (2026-08-23)
 
 - **Finding:** Golden dataset chỉ 10 records, scale 100 + integration test deferred.
-  - **Action:** Marked `[x] [Review][Defer]` in `21-21-deterministic-confidence-gate-selective-micro-llm-fallback-worker.md`.
+  - **Action:** Resolved from: code review of 21-21-deterministic-confidence-gate-selective-micro-llm-fallback-worker (2026-09-11). Scaled `tests/unit/lead_intelligence/fixtures/golden_confidence_gate.json` to 100 balanced records with verified score and route fixtures.
   - **Reason / when to revisit:** Partial per spec T5.1; revisit when scaling the golden fixture or running the integration test suite.
 - **Finding:** Token budget benchmark 100 records chưa chạy.
-  - **Action:** Marked `[x] [Review][Defer]` in `21-21-deterministic-confidence-gate-selective-micro-llm-fallback-worker.md`.
+  - **Action:** Resolved from: code review of 21-21-deterministic-confidence-gate-selective-micro-llm-fallback-worker (2026-09-11). Added `test_golden_100_records_token_budget_and_leakage_benchmark` in `tests/unit/lead_intelligence/test_confidence_gate.py` asserting average prompt length <= 350 chars and zero phone leakage.
   - **Reason / when to revisit:** Depends on 100-record golden dataset; revisit during AC-5 verification.
 
 ## Deferred from: code review of 3-7-followup-retention-hardening (2026-08-23)
