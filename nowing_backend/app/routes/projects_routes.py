@@ -46,8 +46,14 @@ async def _get_project_with_pins(
 
 
 def _format_project_read(project: Project) -> ProjectRead:
+    # When callers use session.get() instead of a select() that already loads
+    # pinned_documents, touching the relationship here would trigger a lazy
+    # load inside a sync helper (MissingGreenlet under the ASGI test client).
+    # pinned_documents is only populated when already loaded; every list/get
+    # route eager-loads it via _get_project_with_pins.
+    pins = project.__dict__.get("pinned_documents") or []
     pins_read: list[ProjectPinnedDocumentRead] = []
-    for pin in project.pinned_documents:
+    for pin in pins:
         pins_read.append(
             ProjectPinnedDocumentRead(
                 id=pin.id,

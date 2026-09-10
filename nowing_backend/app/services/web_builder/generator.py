@@ -52,8 +52,8 @@ class WebBuilderService:
         Returns the parsed project specification plus usage metadata from the LLM
         response so token/cost tracking is not hard-coded (P24).
         """
-        from app.services.llm_service import get_agent_llm, get_planner_llm
         from app.agents.chat.runtime.llm_config import create_chat_litellm_from_config
+        from app.services.llm_service import get_agent_llm, get_planner_llm
 
         # Build a prioritized list of LLM candidates
         llm_candidates: list[Any] = []
@@ -121,7 +121,7 @@ class WebBuilderService:
             decoder = json.JSONDecoder()
             for start_idx in (m.start() for m in re.finditer(r"(?<!\\)\{", cleaned)):
                 try:
-                    obj, end = decoder.raw_decode(cleaned, start_idx)
+                    obj, _ = decoder.raw_decode(cleaned, start_idx)
                     if isinstance(obj, dict):
                         return obj
                 except (json.JSONDecodeError, ValueError):
