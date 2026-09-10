@@ -29,6 +29,7 @@ async def launch_run(
     session: AsyncSession,
     trigger: AutomationTrigger,
     runtime_inputs: dict[str, Any] | None = None,
+    idempotency_key: str | None = None,
 ) -> AutomationRun:
     """Resolve ``trigger``'s active automation and enqueue a PENDING run for it."""
     automation = await resolve_active_automation(session, trigger)
@@ -56,6 +57,7 @@ async def launch_run(
         inputs=inputs,
         step_results=[],
         artifacts=[],
+        idempotency_key=idempotency_key,
     )
     session.add(run)
     await session.commit()

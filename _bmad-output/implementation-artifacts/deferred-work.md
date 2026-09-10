@@ -1353,10 +1353,15 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - config/__init__.py loads .env.local with override=True [nowing_backend/app/config/__init__.py]
 - XActions meta-tools are built statically and bypass cache invalidation on daemon schema changes [nowing_backend/app/agents/chat/multi_agent_chat/shared/tools/mcp/tool.py]
 
-## Deferred from: code review of story-30.9 (2026-09-10)
+## Resolved from: code review of story-30.9 (2026-09-10)
 
-- Add database-level `idempotency_key` column to `AutomationRun` table for permanent replay storage across Redis restarts.
-- Add pessimistic row locking & deep merge validation for notification preferences in generic `PATCH /users/me` profile endpoint.
+- **Finding:** `AutomationRun` idempotency only lived in Redis and did not survive restarts.
+  - **Action:** Added `idempotency_key` column + index via migration `da41e2aa02d9`; updated `AutomationRun` model and `launch_run`/`RunService.launch` to persist the key; added DB-level replay lookup before Redis lock. Updated `RunSummary` schema to expose the key.
+  - **Resolved:** 2026-09-10.
+
+- **Finding:** `PATCH /users/me` did not use row locking or deep-merge for `notification_preferences` (only the dedicated `/me/notification-preferences` endpoint did).
+  - **Action:** Added `with_for_update` select + `_merge_notification_preferences` to `PATCH /users/me` so generic profile updates preserve unrelated channels and avoid race conditions.
+  - **Resolved:** 2026-09-10.
 
 ## Resolved from: post-audit Tier 0-3 (2026-09-10)
 

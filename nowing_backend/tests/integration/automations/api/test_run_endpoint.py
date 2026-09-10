@@ -196,6 +196,7 @@ async def test_manual_run_with_idempotency_key_returns_same_run(
     )
     assert resp1.status_code == 200, resp1.text
     run_1 = resp1.json()
+    assert run_1["idempotency_key"] == "client-uuid-12345"
 
     resp2 = await client.post(
         f"/api/v1/automations/{automation.id}/run",
@@ -208,6 +209,12 @@ async def test_manual_run_with_idempotency_key_returns_same_run(
     assert run_1["id"] == run_2["id"]
     # Only 1 run was actually created and enqueued
     assert len(enqueue_spy) == 1
+
+    # Database-level idempotency must persist the key.
+    from app.automations.persistence.models.run import AutomationRun
+
+    row = await db_session.get(AutomationRun, run_1["id"])
+    assert row.idempotency_key == "client-uuid-12345"
 
 
 async def test_manual_run_without_idempotency_key_allows_subsequent_runs(

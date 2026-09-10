@@ -87,3 +87,48 @@ async def test_patch_notification_preferences_merges_with_latest_db_state(
     prefs = res.json()["notification_preferences"]
     assert prefs["channel_a"]["email"] is True
     assert prefs["channel_b"]["in_app"] is True
+
+
+async def test_patch_users_me_deep_merges_notification_preferences(
+    client_as_regular_user,
+    db_session,
+    db_user,
+) -> None:
+    # Seed channel_a directly in the database (simulates a prior update from
+    # another session that hasn't been merged into the cached auth.user).
+    db_user.notification_preferences = {"channel_a": {"email": True}}
+    db_session.add(db_user)
+    await db_session.commit()
+
+    # PATCH /users/me should deep-merge channel_b on top of channel_a.
+    res = await client_as_regular_user.patch(
+        "/users/me",
+        json={
+            "notification_preferences": {
+                "channel_b": {"in_app": True}
+            }
+        },
+    )
+    assert res.status_code == 200
+    prefs = res.json()["notification_preferences"]
+    assert prefs["channel_a"]["email"] is True
+    assert prefs["channel_b"]["in_app"] is True
+
+
+async def test_patch_users_me_without_notification_preferences_unchanged(
+    client_as_regular_user,
+    db_session,
+    db_user,
+) -> None:
+    db_user.notification_preferences = {"channel_a": {"email": True}}
+    db_session.add(db_user)
+    await db_session.commit()
+
+    res = await client_as_regular_user.patch(
+        "/users/me",
+        json={"display_name": "Updated Name"},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["display_name"] == "Updated Name"
+    assert data["notification_preferences"]["channel_a"]["email"] is True
