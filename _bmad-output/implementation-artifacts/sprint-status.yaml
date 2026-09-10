@@ -333,13 +333,13 @@ development_status:
   28-5-workspace-memory-storage-cap-retention-lifecycle: done
   epic-28-retrospective: optional
 
-  epic-29: in-progress
+  epic-29: done
   29-1-custom-workspace-roles-permissions-builder: done
   29-2-workspace-health-adoption-analytics-dashboard: done
   29-3-tenant-subscription-tier-quota-management: done
   29-4-admin-bulk-operations-console: done
   29-5-memory-browser-research-timeline-for-analyst: done
-  29-6-data-governance-retention-policy-console: in-progress
+  29-6-data-governance-retention-policy-console: done
   epic-29-retrospective: optional
 
   epic-30: in-progress

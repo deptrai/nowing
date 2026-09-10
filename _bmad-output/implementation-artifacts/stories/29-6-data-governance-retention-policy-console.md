@@ -1,6 +1,6 @@
 ---
 story_key: 29-6-data-governance-retention-policy-console
-status: review-follow-up
+status: done
 baseline_commit: 0e2be000a0e55a397f9476f3bcf7e99f9ac7fb13
 epic: 29
 story: 6
@@ -8,7 +8,7 @@ story: 6
 
 # Story 29.6: Data Governance & Retention Policy Console
 
-**Status:** `changes-requested` — review follow-ups pending (see `Senior Developer Review (AI)`)  
+**Status:** `done`
 **Epic:** 29 — SaaS Operations, Advanced Admin Governance & Analyst Workspace  
 **Governed by:** FR-97, FR-104, AR-13, AR-17, AR-18, UX-DR-PRFAQ-5, UX-DR-PRFAQ-6, NFR-1, NFR-2, NFR-5, INV-28.2, INV-29.2, AD-28.3.  
 **Dependencies:** Epic 1 (auth/RBAC), Epic 3 (memory, `Memory`, `MemoryVersion`, `MemoryRelation`, `MemorySourceType`), Epic 21.14 (`WorkspaceDncRecord`, `GlobalDncRecord`, `DncComplianceService`), Epic 28.3 (ToS review + source risk tier ownership), Epic 28.5 (`memory_retention_*` columns, `archived_at`, `MemoryErasureService`, `apply_memory_retention_policies` Celery task), Epic 29.1 (`WorkspaceRole` + permissions), Epic 29.4 (`BulkOpJob`/`bulk_op_errors` + idempotency pattern).
@@ -109,17 +109,17 @@ so that **Nowing cloud stays compliant with scraped-source ToS and data-subject 
 
 **Severity: High**
 - [x] Mask PII in DNC audit `diff_payload`. `create_dnc_record` dumps `payload.model_dump()` (raw `value`) into `diff_payload`; hash or mask it per AC-5/6 and data-governance rules. — Fixed: added `_mask_dnc_value` helper; audit `diff_payload` now contains masked `value` + `value_hmac` only.
-- [ ] Wrap `datetime.fromisoformat` in `list_audit_log` route (line 221) with `try/except` and return 422 on invalid input; currently raises unhandled `ValueError`.
-- [ ] Wrap `uuid.UUID(record_id)` (or `record_id` path param conversion) with `try/except` in `delete_dnc_record` route for 422 instead of 500.
+- [x] Wrap `datetime.fromisoformat` in `list_audit_log` route (line 221) with `try/except` and return 422 on invalid input; currently raises unhandled `ValueError`. — Fixed in 79298d3db: wrapped with try/except ValueError returning 422.
+- [x] Wrap `uuid.UUID(record_id)` (or `record_id` path param conversion) with `try/except` in `delete_dnc_record` route for 422 instead of 500. — Fixed in 79298d3db: wrapped with try/except ValueError returning 422.
 
 **Severity: Medium**
 - [x] Audit action names should match AC-5 (`governance.dnc_add`/`governance.dnc_remove`) and AC-4 (`memory_delete`/`bulk_delete`); current code emits `governance.dnc_record.create`/`governance.dnc_record.delete` and relies on `MemoryErasureService`/`BulkOpsService` audit names. Align strings for audit-log filtering. — Fixed: DNC actions → `governance.dnc_add`/`governance.dnc_remove`; retention → `governance.retention_policy_update`; tier change/resume → `governance.source_risk_tier_change`/`governance.source_risk_tier_resume`.
-- [ ] Add `source_entity_type` input field to `right-to-delete-panel.tsx` bulk form so the filter can be exercised end-to-end.
-- [ ] Add bulk job progress polling / cancellation UI to `right-to-delete-panel.tsx` per AC-4/4 (currently no progress display after `job_id` returns).
+- [x] Add `source_entity_type` input field to `right-to-delete-panel.tsx` bulk form so the filter can be exercised end-to-end. — Fixed in 79298d3db: added field to UI form and payload mapping.
+- [x] Add bulk job progress polling / cancellation UI to `right-to-delete-panel.tsx` per AC-4/4 (currently no progress display after `job_id` returns). — Fixed in 79298d3db: added job polling loop and cancellation action.
 
 **Severity: Low**
 - [x] Retention violation should return HTTP 422 with field-level error, not 400 (AC-2/4). — Fixed: all retention validation errors in `update_retention_policy` now use `status_code=422`; test assertion updated.
-- [ ] DNC list returns full `value` in `DncRecordRead`; per data-minimization spec it should be masked (e.g., last 4 digits) when `GLOBAL_DNC_ENABLED` is on or when the caller lacks `settings:view` on PII.
+- [x] DNC list returns full `value` in `DncRecordRead`; per data-minimization spec it should be masked (e.g., last 4 digits) when `GLOBAL_DNC_ENABLED` is on or when the caller lacks `settings:view` on PII. — Fixed in 79298d3db: added value_masked to schema, service, and frontend UI.
 
 ---
 
