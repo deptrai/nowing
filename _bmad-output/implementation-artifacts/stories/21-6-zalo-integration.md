@@ -5,7 +5,7 @@ status: done
 
 # Story 21.6: Zalo Integration (Vietnam Market)
 
-Status: in-progress
+Status: done
 
 ## Story
 

@@ -10,7 +10,7 @@ status: done
 
 # Story 20.1: Nowing Scraper `to_chunks()` + `NowingIngestService`
 
-Status: completed
+Status: done
 
 ## Story
 

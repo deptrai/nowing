@@ -5,7 +5,7 @@ status: done
 
 # Story 14.2: News Entity Enrichment
 
-**Status:** ready-for-dev
+**Status:** done
 **Epic:** Epic 14 — News Aggregation (Vietnam)
 **Priority:** P1
 

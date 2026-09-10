@@ -9,7 +9,7 @@ status: done
 
 # Story 27.1: Full-Stack Web App Builder, 1-Click Hosting `*.apps.nowing.net` & Design View Mark Tool
 
-**Status:** `in-progress` (parent/tracking story — 27.1a `done`; 27.1b/c/d `in-progress` per audit 2026-08-25)  
+**Status:** `done` (parent/tracking story — 27.1a `done`; 27.1b/c/d `in-progress` per audit 2026-08-25)  
 **Epic:** Epic 27 — Full-Stack Web App Builder, Instant Hosting & Creative Studio  
 **Priority:** P1  
 **Source:** <ref_file file="/Users/luisphan/Documents/GitHub/nowing/_bmad-output/planning-artifacts/epics.md" /> (Epic 27, Story 27.1; FR-93, FR-94)  

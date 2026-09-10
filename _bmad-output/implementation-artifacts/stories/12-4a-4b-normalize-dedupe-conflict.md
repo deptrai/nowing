@@ -317,7 +317,7 @@ Total: 162 tests (105 AC-mapped + 57 helper). 0 gaps, 0 partial.
 
 ### Human Review Gate (4.13 — 2026-08-13)
 
-**Status:** approved by human (2026-08-13)
+**Status:** done by human (2026-08-13)
 **P0 areas touched:**
 
 1. **Data integrity** — `orchestrator.py` changes `conflict_flags` data shape persisted to canonical storage:

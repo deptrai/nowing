@@ -5,7 +5,7 @@ status: done
 
 # Story 18.5: ResearchThread Auto-Linkage
 
-Status: completed
+Status: done
 
 Baseline commit: 1e5f46b86
 
