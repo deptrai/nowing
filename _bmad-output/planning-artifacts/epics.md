@@ -3066,6 +3066,37 @@ _AD-SOC-1 · AD-SOC-2 · AD-SOC-3 · AD-SOC-4 · AD-SOC-5 · AD-SOC-6 · AD-SOC-
 
 ---
 
+### Story 21.8b: Redis Stream Consumer Celery Wiring
+*Status: done.* Consolidated into 21.8a; kept for historical traceability. Registers `process_social_stream` as Celery beat task.
+
+_AD-SOC-4 · AD-SOC-6 · AD-SOC-7_
+
+### Story 21.8c: Multi-Domain Social Target Expansion
+*Status: done.* Consolidated into 21.8a; kept for historical traceability. Expands platform enum to 13+ platforms.
+
+_AD-SOC-9 · AD-SOC-1_
+
+### Story 21.8d: Universal Scrape Target Mapper
+*Status: done.* Consolidated into 21.8a; kept for historical traceability. Maps `SocialMonitoredTarget` to XActions tool and arguments.
+
+_AD-SOC-9 · AD-SOC-4_
+
+### Story 21.8e: Per-Account Proxy and Cookie Binding
+*Status: done.* Consolidated into 21.8a; kept for historical traceability. Per-account XActions account and proxy binding.
+
+_AD-SOC-3 · AD-SOC-11_
+
+### Story 21.8f: XActions Governance and Health Integration
+*Status: done.* Consolidated into 21.8a; kept for historical traceability. Admin telemetry and alert hooks.
+
+_AD-SOC-11 · AD-SOC-7_
+
+### Story 21.8g: XActions MCP Chat Connector
+*Status: done.* Consolidated into 21.8a; kept for historical traceability. MCP chat connector integration.
+
+_AD-SOC-1 · AD-SOC-4_
+
+---
 
 ### Story 21.9: Executive Decision Maker Mapping & B2B Lead Outreach
 
@@ -4580,17 +4611,17 @@ _FR-97 · FR-104 · AR-13 · AR-17 · AR-18 · UX-DR-PRFAQ-5 · UX-DR-PRFAQ-6 ·
 
 **Epic goal:** Track and retire deferred correctness, reliability, and test-coverage issues from code reviews and Winston backlog audits that do not map to a single feature epic.
 
-### Story 30.2: Redis event bus subscribe failure state leak `[done]`
-On subscribe timeout, remove the channel from the `subscribers` dict and add retry with exponential backoff so cross-replica delivery does not fail silently.
+### Story 30.2: Redis event bus subscribe failure state leak
+*Status: done.* On subscribe timeout, remove the channel from the `subscribers` dict and add retry with exponential backoff so cross-replica delivery does not fail silently.
 
-### Story 30.5: title_gen.py lacks timeout/retry on litellm.acompletion `[done]`
-Add explicit `timeout` and `num_retries` to `title_gen.py` `litellm.acompletion()` calls so chat title generation cannot hang for 120s+ on slow models.
+### Story 30.5: title_gen.py lacks timeout/retry on litellm.acompletion
+*Status: done.* Add explicit `timeout` and `num_retries` to `title_gen.py` `litellm.acompletion()` calls so chat title generation cannot hang for 120s+ on slow models.
 
-### Story 30.8: Epic 13 canonical entity cleanup `[done]`
-Remove `app/canonical/`, `canonical_entities_routes.py`, models, tests, and migration `d33c362fa627` dropping canonical tables after verifying zero live callers.
+### Story 30.8: Epic 13 canonical entity cleanup
+*Status: done.* Remove `app/canonical/`, `canonical_entities_routes.py`, models, tests, and migration `d33c362fa627` dropping canonical tables after verifying zero live callers.
 
-### Story 30.9: Technical Debt Retirement & System Hardening `[done]`
-Consolidation of micro-scope technical debt stories (30.1, 30.3, 30.4, 30.6, 30.7):
+### Story 30.9: Technical Debt Retirement & System Hardening
+*Status: done.* Consolidation of micro-scope technical debt stories (30.1, 30.3, 30.4, 30.6, 30.7):
 - **30.1**: Idempotency key & dedup lock for `POST /automations/{id}/run`.
 - **30.3**: Storage quota reconciliation between `DocumentFile` and storage backend.
 - **30.4**: Atomic `SELECT ... FOR UPDATE` merge for `PATCH /users/me/notification-preferences`.

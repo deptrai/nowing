@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '09-09-2026 13:00'
+last_updated: '09-10-2026 13:14'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # manual update 2026-09-09: split Story 21.8 into 21.8a–f per sprint-change-proposal-2026-09-09-xactions-21-8-correction.md; audit 2026-09-09: 21.8a–f done, 21.8g in-progress
 # - Parsed epics.md: 24 epics, ~160 stories.
@@ -183,6 +183,8 @@ development_status:
   12-4e-vietnam-job-aggregator-exposure: done
   12-5-pii-redaction-for-job-data: done
   12-6-saved-searches: done
+  12-7-property-price-alerts: backlog
+  12-8-cross-source-entity-timeline: backlog
   12-9-job-market-alerts: done
   12-10-linkedin-public-guest-jobs-headcount-growth-signals: done
   epic-12-retrospective: optional
@@ -194,23 +196,31 @@ development_status:
   14-1-rss-feed-integration: done
   14-2a-news-entity-extraction: done
   14-2b-news-entity-search: done
+  14-3-news-alerts-topic-monitoring: backlog
+  14-4-news-digest-synthesis: backlog
   epic-14-retrospective: optional
 
   epic-15: done
   15-1-cafef-financial-data-integration: done
   15-2-vietstock-deep-financials: done
+  15-3-stock-price-alerts: backlog
+  15-4-financial-trend-detection: backlog
   epic-15-retrospective: optional
 
   epic-16: done
   16-1-masothue-com-company-data: done
-  16-2-official-business-registry: done  # delegated to XActions (AD-SOC-1 / Trinity Alignment)
+  16-2-official-business-registry: done
+  16-3-company-alerts: backlog
+  16-4-company-timeline: backlog
   16-5-national-public-procurement-tender-intelligence: done
   epic-16-retrospective: optional
 
   epic-17: done
-  17-1-lazada-product-data: done  # delegated to XActions (AD-SOC-1 / Trinity Alignment)
+  17-1-lazada-product-data: done
   17-2-shopee-vietnam-in-house-scraper-price-normalization: done
-  17-5-tiktok-shop-product-trending-skus-ingestion: done  # delegated to XActions (AD-SOC-1 / Trinity Alignment)
+  17-5-tiktok-shop-product-trending-skus-ingestion: done
+  17-3-price-drop-alerts: backlog
+  17-4-competitor-tracking: backlog
   epic-17-retrospective: optional
 
   epic-18: done
@@ -239,13 +249,13 @@ development_status:
   21-5-crm-integration-lark-base-google-sheets-1-click-sync: done
   21-6-vietnam-outbound-automation: done
   21-7-outcome-based-pricing-transparent-credit-ledger: done
-  21-8-social-ingress-via-xactions-integration: done  # baseline: schema, extractor, producer tests
-  21-8a-mcp-streamablehttp-transport: done
+  21-8-social-ingress-via-xactions-integration-foundation: done
+  21-8a-xactions-universal-ingress-productionization: done
   21-8b-redis-stream-consumer-celery-wiring: done
   21-8c-multi-domain-social-target-expansion: done
   21-8d-universal-scrape-target-mapper: done
-  21-8e-per-account-proxy-cookie-binding: done
-  21-8f-xactions-governance-health-integration: done
+  21-8e-per-account-proxy-and-cookie-binding: done
+  21-8f-xactions-governance-and-health-integration: done
   21-8g-xactions-mcp-chat-connector: done
   21-9-executive-decision-maker-mapping-b2b-lead-outreach: done
   21-10-1-click-reverse-icp-from-website-project-url: done
@@ -346,7 +356,7 @@ development_status:
   30-2-redis-event-bus-subscribe-failure-state-leak: done
   30-5-title_gen-py-lacks-timeout-retry-on-litellm-acompletion: done
   30-8-epic-13-canonical-entity-cleanup: done
-  30-9-technical-debt-retirement-and-system-hardening: done
+  30-9-technical-debt-retirement-system-hardening: done
   epic-30-retrospective: optional
 validation_reports:
   - story: "3.18"
