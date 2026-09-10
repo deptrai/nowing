@@ -75,8 +75,27 @@ class RunService:
         ``AUTOMATIONS_EXECUTE``, build a transient ``MANUAL`` trigger, and
         delegate to ``launch_run`` (resolve + validate + snapshot + enqueue).
         Fire-and-return — the caller does not wait for execution.
+
+        If an ``idempotency_key`` is provided, we first check the database for
+        an existing run with that key so the replay survives Redis restarts.
         """
         await self._authorize(automation_id, Permission.AUTOMATIONS_EXECUTE.value)
+
+        # Permanent idempotency lookup (survives Redis restarts)
+        if idempotency_key:
+            existing_stmt = (
+                select(AutomationRun)
+                .where(
+                    AutomationRun.automation_id == automation_id,
+                    AutomationRun.idempotency_key == idempotency_key,
+                )
+                .order_by(AutomationRun.created_at.desc())
+                .limit(1)
+            )
+            existing_res = await self.session.execute(existing_stmt)
+            existing_run = existing_res.scalar_one_or_none()
+            if existing_run is not None:
+                return existing_run
 
         # Idempotency & Dedup Lock via Redis (Story 30.1)
         redis = None
@@ -145,6 +164,7 @@ class RunService:
                 session=self.session,
                 trigger=trigger,
                 runtime_inputs={"fired_by": "mcp"},
+                idempotency_key=idempotency_key,
             )
             if redis is not None and lock_key:
                 with contextlib.suppress(Exception):
