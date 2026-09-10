@@ -1,6 +1,11 @@
 ---
+story_key: 20-1-nowing-scraper-to_chunks
+status: done
+---
+
+---
 baseline_commit: 5d7233975
-status: completed
+status: done
 ---
 
 # Story 20.1: Nowing Scraper `to_chunks()` + `NowingIngestService`

@@ -1,3 +1,8 @@
+---
+story_key: 18-7-cost-traceability
+status: done
+---
+
 # Story 18.7: Cost Traceability
 
 Status: done

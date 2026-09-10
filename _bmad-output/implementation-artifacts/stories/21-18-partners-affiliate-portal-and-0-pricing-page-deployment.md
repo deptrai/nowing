@@ -1,4 +1,9 @@
 ---
+story_key: 21-18-partners-affiliate-portal-0-pricing-page-deployment
+status: done
+---
+
+---
 baseline_commit: 591bc6a1672e5ec1f8ffe0afdfdcbb35f8f1a24d
 ---
 

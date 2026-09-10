@@ -1,3 +1,8 @@
+---
+story_key: 21-9-executive-decision-maker-mapping-b2b-lead-outreach
+status: done
+---
+
 # Story 21.9: Executive Decision Maker Mapping & B2B Lead Outreach
 
 Status: done

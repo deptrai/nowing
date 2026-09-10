@@ -1,4 +1,9 @@
 ---
+story_key: 6-10-inbound-mail-gateway-task-nowing-ai-stateful-scheduled-tasks
+status: done
+---
+
+---
 title: Story 6.10 — Inbound Mail Gateway (`task@nowing.ai`) & Stateful Scheduled Tasks 2.0
 epic: 6
 story: 10

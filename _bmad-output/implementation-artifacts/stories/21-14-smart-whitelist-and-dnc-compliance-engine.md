@@ -1,3 +1,8 @@
+---
+story_key: 21-14-smart-whitelist-do-not-call-dnc-compliance-engine
+status: done
+---
+
 # Story 21.14: Smart Whitelist & Do-Not-Call (DNC) Compliance Engine
 
 Status: ready-for-dev

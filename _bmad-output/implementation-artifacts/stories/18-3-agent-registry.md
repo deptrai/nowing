@@ -1,3 +1,8 @@
+---
+story_key: 18-3-agent-registry
+status: done
+---
+
 # Story 18.3: Agent Registry
 
 Status: done

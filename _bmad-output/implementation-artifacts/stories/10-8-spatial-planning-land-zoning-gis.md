@@ -1,4 +1,9 @@
 ---
+story_key: 10-8-spatial-planning-land-zoning-gis
+status: done
+---
+
+---
 baseline_commit: c098ac87dfe2a30fe3669d1056fe66bb933b02f5
 ---
 

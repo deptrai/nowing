@@ -1,6 +1,6 @@
 ---
 story_key: 29-3-tenant-subscription-tier-quota-management
-status: in-progress
+status: done
 baseline_commit: f3490b642
 epic: 29
 story: 3
@@ -8,7 +8,7 @@ story: 3
 
 # Story 29.3: Tenant Subscription Tier & Quota Management
 
-**Status:** `in-progress`  
+**Status:** `done`  
 **Epic:** 29 — SaaS Operations, Advanced Admin Governance & Analyst Workspace  
 **Governed by:** FR-102, AR-17, UX-DR-PRFAQ-5, AD-8, AD-51, `spec-29-3-tenant-subscription-tier-quota-management.md`, `ux-contract-epic-29-saas-admin-analytics.md` §3 (PM-1..PM-6).  
 **Dependencies:** Existing `Workspace`, `WorkspaceLimit`, `AuditEvent`, `SearchSourceConnector`, `Permission.SETTINGS_UPDATE`.

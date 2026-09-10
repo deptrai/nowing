@@ -1,4 +1,9 @@
 ---
+story_key: 3-18-projects-persistent-workspace-modular-skills-hub
+status: done
+---
+
+---
 baseline_commit: b68173656c506d3c1fae361d751fd1df4d59ecf7
 ---
 
