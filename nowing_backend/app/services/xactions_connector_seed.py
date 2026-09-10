@@ -60,6 +60,12 @@ async def ensure_workspace_xactions_connector(
         if connector is not None:
             return connector
 
+        # Skip workspaces that are marked for deletion so we do not re-seed a
+        # connector on rows that are about to be dropped.
+        workspace = await session.get(Workspace, workspace_id)
+        if workspace is None or workspace.name.startswith("[DELETING] "):
+            return None
+
         connector = SearchSourceConnector(
             name="XActions",
             connector_type=SearchSourceConnectorType.XACTIONS_MCP_CONNECTOR,
@@ -91,35 +97,45 @@ async def ensure_workspace_xactions_connector(
 async def seed_xactions_connectors(session: AsyncSession) -> int:
     """Scan all active workspaces and create XActions connector where missing.
 
+    Uses a single set-lookup to avoid the N+1 query pattern when checking
+    whether each workspace already has an XActions connector.
+
     Returns the count of newly created connectors.
     """
     created_count = 0
     try:
-        stmt = select(Workspace).filter(~Workspace.name.startswith("[DELETING] "))
-        result = await session.execute(stmt)
-        workspaces = result.scalars().all()
+        active_workspace_stmt = (
+            select(Workspace.id, Workspace.user_id)
+            .filter(~Workspace.name.startswith("[DELETING] "))
+            .order_by(Workspace.id)
+        )
+
+        existing_stmt = select(SearchSourceConnector.workspace_id).filter(
+            SearchSourceConnector.connector_type
+            == SearchSourceConnectorType.XACTIONS_MCP_CONNECTOR,
+        )
+        existing_result = await session.execute(existing_stmt)
+        existing_ids = set(existing_result.scalars().all())
+
+        result = await session.execute(active_workspace_stmt)
+        workspaces = result.all()
 
         for ws in workspaces:
-            existing = await session.execute(
-                select(SearchSourceConnector.id).filter(
-                    SearchSourceConnector.workspace_id == ws.id,
-                    SearchSourceConnector.connector_type
-                    == SearchSourceConnectorType.XACTIONS_MCP_CONNECTOR,
-                )
+            if ws.id in existing_ids:
+                continue
+
+            connector = SearchSourceConnector(
+                name="XActions",
+                connector_type=SearchSourceConnectorType.XACTIONS_MCP_CONNECTOR,
+                is_indexable=False,
+                config=build_xactions_connector_config(),
+                periodic_indexing_enabled=False,
+                indexing_frequency_minutes=None,
+                workspace_id=ws.id,
+                user_id=ws.user_id,
             )
-            if existing.scalars().first() is None:
-                connector = SearchSourceConnector(
-                    name="XActions",
-                    connector_type=SearchSourceConnectorType.XACTIONS_MCP_CONNECTOR,
-                    is_indexable=False,
-                    config=build_xactions_connector_config(),
-                    periodic_indexing_enabled=False,
-                    indexing_frequency_minutes=None,
-                    workspace_id=ws.id,
-                    user_id=ws.user_id,
-                )
-                session.add(connector)
-                created_count += 1
+            session.add(connector)
+            created_count += 1
 
         if created_count > 0:
             await session.commit()

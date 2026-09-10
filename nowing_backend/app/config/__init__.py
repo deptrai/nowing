@@ -12,10 +12,14 @@ from dotenv import load_dotenv
 # Get the base directory of the project
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
+# Load the base environment first, then apply local overrides.
+# `override=True` on `.env.local` is intentional: this file is meant to be
+# git-ignored and per-machine, so its values must win over the shared `.env`.
+# We avoid re-loading the base file with override=True, and we do not call
+# `load_dotenv` without a path so it cannot leak unrelated `.env` files.
 env_file = BASE_DIR / ".env"
-load_dotenv(env_file)
+load_dotenv(env_file, override=False)
 
-# Load local overrides if present (takes precedence over .env)
 local_env_file = BASE_DIR / ".env.local"
 if local_env_file.exists():
     load_dotenv(local_env_file, override=True)
@@ -106,7 +110,8 @@ for _name in list(_module.__dict__.keys()):
     if (
         not _name.startswith("_")
         and not callable(_value)
-        and _name not in {"Config", "config", "logger", "os", "sys", "Path", "load_dotenv"}
+        and _name
+        not in {"Config", "config", "logger", "os", "sys", "Path", "load_dotenv"}
     ):
         setattr(Config, _name, _value)
 

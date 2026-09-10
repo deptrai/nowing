@@ -640,6 +640,11 @@ async def _load_http_mcp_tools(
             create_xactions_meta_tools,
         )
 
+        # XActions meta-tools are built from static Pydantic schemas that
+        # mirror the daemon's tool surface.  We never rely on the persisted
+        # ``cached_tools`` shortcut here so daemon-side schema changes are
+        # picked up on every (re)discovery instead of being masked by a stale
+        # cache.
         meta_tools = create_xactions_meta_tools(
             connector_id,
             connector_name,
@@ -653,24 +658,25 @@ async def _load_http_mcp_tools(
                 tool.name = f"{tool_name_prefix}_{tool.name}"
                 if tool.description and not tool.description.startswith("[Account:"):
                     tool.description = f"[Account: {connector_name}] {tool.description}"
-        if cached_tools is None:
-            tool_definitions = [
-                {
-                    "name": t.name,
-                    "description": t.description,
-                    "input_schema": (
-                        t.args_schema.model_json_schema() if t.args_schema else {}
-                    ),
-                }
-                for t in meta_tools
-            ]
-            await write_cached_tools(
-                connector_id,
-                tool_definitions,
-                server_name="xactions-meta-gateway",
-                server_version="1.0.0",
-                transport=server_config.get("transport", "streamable-http"),
-            )
+        # Persist the current meta-tool surface so operators can inspect what
+        # the gateway exposed at discovery time (parity with generic MCP).
+        tool_definitions = [
+            {
+                "name": t.name,
+                "description": t.description,
+                "input_schema": (
+                    t.args_schema.model_json_schema() if t.args_schema else {}
+                ),
+            }
+            for t in meta_tools
+        ]
+        await write_cached_tools(
+            connector_id,
+            tool_definitions,
+            server_name="xactions-meta-gateway",
+            server_version="1.0.0",
+            transport=server_config.get("transport", "streamable-http"),
+        )
         return meta_tools
 
     tools: list[StructuredTool] = []
