@@ -9,9 +9,9 @@
 
 All **198 stories across 29 epics are `done`** as of 2026-09-10. The previous `backlog` stories (`12-7`, `12-8`, `14-3`, `14-4`, `15-3`, `15-4`, `16-3`, `16-4`, `17-3`, `17-4`) were identified as either `DROPPED` (per SCP 2026-08-08) or `MERGED` into completed stories `6.11` / `6.12`, and have been removed from active tracking.
 
-**`epic-8-retrospective`** was completed 2026-09-10 and is now `done`.
+**`epic-9-retrospective`** was completed 2026-09-10 and is now `done`.
 
-The next action is to continue **`bmad-retrospective`** for the remaining open optional retrospectives, starting with **`epic-9-retrospective`**.
+The next action is to continue **`bmad-retrospective`** for the remaining open optional retrospectives, starting with **`epic-10-retrospective`**.
 
 ---
 
@@ -48,7 +48,8 @@ All Tier 2 implementation stories are now `done`, `merged` into 6.11/6.12, or `d
 - `epic-6-retrospective` — Automations retrospective (`done` 2026-09-10)
 - `epic-7-retrospective` — Multi-surface Clients retrospective (`done` 2026-09-10)
 - `epic-8-retrospective` — Cost Control & Billing retrospective (`done` 2026-09-10)
-- `epic-9-retrospective` — Deep Research retrospective (next)
+- `epic-9-retrospective` — Deep Research retrospective (`done` 2026-09-10)
+- `epic-10-retrospective` — Connector & Scraper Expansion (next)
 
 ## Tier 3 — New product surface / business-gated / post-MVP
 
