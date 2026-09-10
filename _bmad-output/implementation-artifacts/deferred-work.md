@@ -613,7 +613,7 @@
   - **Reason / when to revisit:** Revisit if corpus grows beyond ~1M rows or if p95 memory pressure becomes measurable in AC-3 latency evidence.
 
 - **Finding:** RRF ranking tie-break tests are missing exhaustive coverage.
-  - **Action:** Marked `[x] [Review][Defer]` in `3-14-memory-injection-bounded-retrieval.md`.
+  - **Action:** Resolved from: code review of 3-14-memory-injection-bounded-retrieval (2026-09-11). Added exhaustive tie-break integration tests (`test_rrf_tie_break_by_similarity`, `test_rrf_tie_break_by_created_at`, `test_rrf_tie_break_by_id`) in `tests/integration/memory/test_hybrid_search_scope_and_bounds.py`.
   - **Reason / when to revisit:** Add dedicated tie-break tests once AC-3 p95 latency is stable and the search ordering contract is frozen.
 
 - **Finding:** `_is_templated` does not detect Jinja control-flow tags (`{% ... %}`).
@@ -979,15 +979,15 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** The query uses .limit(payload.limit) but has no offset/cursor. Users can only get the first N results, not page through them. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** Test mocks don't validate SQL queries — The test mocks the database session but doesn't verify the SQL query is correct. It could pass even if the query has bugs. (tests/unit/capabilities/test_social_search_leads.py)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** Resolved from: code review of 21-8-social-ingress-via-xactions-integration (2026-09-11). Added SQL statement inspection in `test_social_search_leads_capability_execution` and `test_social_search_leads_uses_offset` asserting `workspace_id`, `LIMIT`, and `OFFSET` in generated queries.
   - **Reason / when to revisit:** The test mocks the database session but doesn't verify the SQL query is correct. It could pass even if the query has bugs. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** ReDoS test has generous timeout — The test asserts duration < 0.10s (100ms) but the spec requires 50ms. This gives 2x headroom and could miss regressions. (tests/unit/platforms/test_phone_regex_redos_safety.py)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** Resolved from: code review of 21-8-social-ingress-via-xactions-integration (2026-09-11). Verified `assert duration < 0.05` is enforced in `tests/unit/platforms/test_phone_regex_redos_safety.py` and `tests/unit/proprietary/platforms/xactions/test_phone_extractor.py`.
   - **Reason / when to revisit:** The test asserts duration < 0.10s (100ms) but the spec requires 50ms. This gives 2x headroom and could miss regressions. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** Integration test uses mock database — Despite being marked as an integration test, it mocks the database session. This doesn't test actual database persistence. (tests/integration/platforms/test_social_redis_stream.py)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** Resolved from: code review of 21-8-social-ingress-via-xactions-integration (2026-09-11). Verified `tests/integration/platforms/test_social_redis_stream.py` uses real PostgreSQL persistence via `platform_db_session` asserting `SocialPost` and `Lead` table rows.
   - **Reason / when to revisit:** Despite being marked as an integration test, it mocks the database session. This doesn't test actual database persistence. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** No composite index on frequently queried columns — While there are indexes on platform, external_post_id, published_at, intent_tag, and raw_entities, there's no composite index on (platform, intent_tag, published_at) which the search capability likely needs. (app/db.py:4901-4907)
