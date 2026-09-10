@@ -11,7 +11,7 @@ All **198 stories across 29 epics are `done`** as of 2026-09-10. The previous `b
 
 **`epic-16-retrospective`** was completed 2026-09-10 and is now `done`.
 
-The next action is to continue **`bmad-retrospective`** for the remaining open optional retrospectives, starting with **`epic-17-retrospective`**.
+The next action is to continue **`bmad-retrospective`** for the remaining open optional retrospectives, starting with **`epic-18-retrospective`**.
 
 ---
 
@@ -38,7 +38,7 @@ The next action is to continue **`bmad-retrospective`** for the remaining open o
 16. `4-8d-followup` — Chat Quality LLM-as-Judge (follow-up)
 17. `4-8h-followup` — Mode-Aware Chat Policy (follow-up)
 
-## Tier 2 — Retrospectives & closed vertical stories
+
 
 All Tier 2 implementation stories are now `done`, `merged` into 6.11/6.12, or `dropped` per SCP 2026-08-08. The remaining open work is optional epic retrospectives (25 `optional`, 4 `done`).
 
@@ -56,7 +56,8 @@ All Tier 2 implementation stories are now `done`, `merged` into 6.11/6.12, or `d
 - `epic-14-retrospective` — News Aggregation (`done` 2026-09-10)
 - `epic-15-retrospective` — Financial Data (`done` 2026-09-10)
 - `epic-16-retrospective` — Company Directory & Public Procurement (`done` 2026-09-10)
-- `epic-17-retrospective` — E-commerce Intelligence (next)
+- `epic-17-retrospective` — E-commerce Intelligence (`done` 2026-09-10)
+- `epic-18-retrospective` — Public Agent Chat & Agent Registry (next)
 
 ## Tier 3 — New product surface / business-gated / post-MVP
 
