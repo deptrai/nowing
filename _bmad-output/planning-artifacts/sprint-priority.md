@@ -11,7 +11,7 @@ All **198 stories across 29 epics are `done`** as of 2026-09-10. The previous `b
 
 **`epic-16-retrospective`** was completed 2026-09-10 and is now `done`.
 
-The next action is to continue **`bmad-retrospective`** for the remaining open optional retrospectives, starting with **`epic-22-retrospective`**.
+The next action is to continue **`bmad-retrospective`** for the remaining open optional retrospectives, starting with **`epic-23-retrospective`**.
 
 ---
 
@@ -40,7 +40,7 @@ The next action is to continue **`bmad-retrospective`** for the remaining open o
 
 
 
-All Tier 2 implementation stories are now `done`, `merged` into 6.11/6.12, or `dropped` per SCP 2026-08-08. The remaining open work is optional epic retrospectives (21 `optional`, 8 `done`).
+All Tier 2 implementation stories are now `done`, `merged` into 6.11/6.12, or `dropped` per SCP 2026-08-08. The remaining open work is optional epic retrospectives (20 `optional`, 9 `done`).
 
 - `epic-1-retrospective` — Identity, Auth & Workspace RBAC retrospective (`done` 2026-09-10)
 - `epic-4-retrospective` — Chat & Agents retrospective (`done` 2026-09-10)
@@ -60,7 +60,8 @@ All Tier 2 implementation stories are now `done`, `merged` into 6.11/6.12, or `d
 - `epic-18-retrospective` — Public Agent Chat & Agent Registry (`done` 2026-09-10)
 - `epic-20-retrospective` — Service Mesh & Cost Ledger (`done` 2026-09-10)
 - `epic-21-retrospective` — Lead Gen Intelligence (`done` 2026-09-10)
-- `epic-22-retrospective` — Telegram Storage & Public Web Preview (next)
+- `epic-22-retrospective` — Telegram Storage & Public Web Preview (`done` 2026-09-10)
+- `epic-23-retrospective` — Lead Capture & Outreach Infrastructure (next)
 
 ## Tier 3 — New product surface / business-gated / post-MVP
 
