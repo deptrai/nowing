@@ -47,11 +47,16 @@ _VN_WORDS_COMBINED_REGEX = re.compile(
     re.IGNORECASE,
 )
 
-# Common letter substitutions in phone numbers
-_LETTER_SUBSTITUTIONS = [
-    (re.compile(r"[oOóòỏõọôốồổỗộơớờởỡợ]", re.IGNORECASE), "0"),
-    (re.compile(r"[lLiI|]", re.IGNORECASE), "1"),
-]
+# Common letter substitutions in phone numbers, pre-compiled at module level.
+_SUB_LETTER_O_REGEX = re.compile(r"[oOóòỏõọôốồổỗộơớờởỡợ]", re.IGNORECASE)
+_SUB_LETTER_L_REGEX = re.compile(r"[lLiI|]", re.IGNORECASE)
+_SUB_DELIMITERS_REGEX = re.compile(r"[/:()*]")
+
+# Match tokens with mixed letters, digits and phone punctuation, pre-compiled.
+_TOKEN_PATTERN = re.compile(
+    r"(?:\+?84|0|\b)[0-9oOóòỏõọôốồổỗộơớờởỡợlLiI|._\-\s/:()*]{7,25}(?:\b|(?=[^\w]))",
+    re.IGNORECASE,
+)
 
 # 2018 Vietnam Telecom 11-to-10 Digit Conversion Table (INV-24.3 / Story 24.2)
 _LEGACY_PREFIX_MAP = {
@@ -211,17 +216,12 @@ def normalize_vietnamese_text(text: str) -> str:
     # replace letter substitutions and handle delimiters (/, :, (), *)
     def _sub_phone_candidate(match: re.Match) -> str:
         token = match.group(0)
-        token = re.sub(r"[oOóòỏõọôốồổỗộơớờởỡợ]", "0", token)
-        token = re.sub(r"[lLiI|]", "1", token)
-        token = re.sub(r"[/:()*]", " ", token)
+        token = _SUB_LETTER_O_REGEX.sub("0", token)
+        token = _SUB_LETTER_L_REGEX.sub("1", token)
+        token = _SUB_DELIMITERS_REGEX.sub(" ", token)
         return token
 
-    # Match tokens with mixed letters, digits and phone punctuation
-    token_pattern = re.compile(
-        r"(?:\+?84|0|\b)[0-9oOóòỏõọôốồổỗộơớờởỡợlLiI|._\-\s/:()*]{7,25}(?:\b|(?=[^\w]))",
-        re.IGNORECASE,
-    )
-    normalized = token_pattern.sub(_sub_phone_candidate, normalized)
+    normalized = _TOKEN_PATTERN.sub(_sub_phone_candidate, normalized)
 
     return normalized
 
