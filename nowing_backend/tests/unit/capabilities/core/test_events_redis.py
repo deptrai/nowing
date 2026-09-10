@@ -86,3 +86,54 @@ async def test_publish_fans_out_to_local_queue_and_buffer():
     bus.close("run-2")
     assert "run-2" not in bus._subscribers
     assert "run-2" not in bus._buffers
+
+
+
+@pytest.mark.asyncio
+async def test_subscribe_failure_removes_stuck_channel_after_max_retries():
+    """td-2: On repeated subscribe failure, the channel is removed from _subscribers."""
+    bus = RedisRunEventBus(
+        buffer_size=10,
+        subscriber_queue_size=10,
+        subscribe_max_retries=3,
+        subscribe_backoff_base=0.01,
+    )
+    mock_redis = MagicMock()
+    mock_pubsub = MagicMock()
+    mock_pubsub.subscribe = AsyncMock(side_effect=TimeoutError("subscribe timed out"))
+    mock_pubsub.close = AsyncMock()
+    mock_redis.pubsub.return_value = mock_pubsub
+    bus._redis = mock_redis
+
+    queue = bus.subscribe("run-leak")
+    assert queue in bus._subscribers["run-leak"]
+
+    # Wait through all retries
+    for _ in range(50):
+        await asyncio.sleep(0.05)
+        if "run-leak" not in bus._subscribers:
+            break
+
+    assert "run-leak" not in bus._subscribers
+
+
+@pytest.mark.asyncio
+async def test_subscribe_success_clears_retry_state():
+    """td-2: Successful subscribe clears per-channel retry state."""
+    bus = RedisRunEventBus(
+        buffer_size=10,
+        subscriber_queue_size=10,
+        subscribe_backoff_base=0.01,
+    )
+    mock_redis = MagicMock()
+    mock_pubsub = MagicMock()
+    mock_pubsub.subscribe = AsyncMock()
+    mock_pubsub.close = AsyncMock()
+    mock_redis.pubsub.return_value = mock_pubsub
+    bus._redis = mock_redis
+
+    queue = bus.subscribe("run-ok")
+    await asyncio.sleep(0.05)
+    assert queue in bus._subscribers["run-ok"]
+    assert "run-ok" not in bus._subscribe_retries
+    bus.unsubscribe("run-ok", queue)
