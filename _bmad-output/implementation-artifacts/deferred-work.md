@@ -1342,9 +1342,11 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Resolved:** 2026-08-27.
 
 
-## Deferred from: code review of story-26.27 (2026-09-05)
+## Resolved from: code review of story-26.27 (2026-09-10)
 
-- [x] [Review][Defer] Sprint status marked `done` prematurely for 26-27 — `sprint-status.yaml:214` (deferred to status sync)
+- **Finding:** Sprint status marked `done` prematurely for 26-27 — `sprint-status.yaml:214` (deferred to status sync).
+  - **Action:** Verified the pre-flight plan backend (`planner.create_preflight_plan`, `CampaignPlanResponse`, `campaign_routes.py`) and frontend (`PlanSummaryCard`, `leads-canvas.atoms.ts`, `DynamicRightPanelCanvas`) are implemented. Backend unit/integration tests (`test_campaign_plan.py`, `test_campaign_plan_api.py`) pass 9/9, including smoke-test execution with `persist=false`.
+  - **Resolved:** 2026-09-10.
 
 
 ## Resolved from: code review of 21-8g-xactions-mcp-chat-connector (2026-09-10)
