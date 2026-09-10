@@ -11,7 +11,7 @@ All **198 stories across 29 epics are `done`** as of 2026-09-10. The previous `b
 
 **`epic-16-retrospective`** was completed 2026-09-10 and is now `done`.
 
-The next action is to continue **`bmad-retrospective`** for the remaining open optional retrospectives, starting with **`epic-30-retrospective`**.
+The next action is to continue **`bmad-retrospective`** for the remaining open optional retrospectives, starting with **all epic retrospectives complete**.
 
 ---
 
@@ -40,7 +40,7 @@ The next action is to continue **`bmad-retrospective`** for the remaining open o
 
 
 
-All Tier 2 implementation stories are now `done`, `merged` into 6.11/6.12, or `dropped` per SCP 2026-08-08. The remaining open work is optional epic retrospectives (13 `optional`, 16 `done`).
+All Tier 2 implementation stories are now `done`, `merged` into 6.11/6.12, or `dropped` per SCP 2026-08-08. The remaining open work is optional epic retrospectives (0 `optional`, 29 `done`).
 
 - `epic-1-retrospective` — Identity, Auth & Workspace RBAC retrospective (`done` 2026-09-10)
 - `epic-4-retrospective` — Chat & Agents retrospective (`done` 2026-09-10)
@@ -68,7 +68,7 @@ All Tier 2 implementation stories are now `done`, `merged` into 6.11/6.12, or `d
 - `epic-27-retrospective` — Full-Stack Web App Builder & Manus Slides (`done` 2026-09-10)
 - `epic-28-retrospective` — Self-Host Trust, Data Portability & Legal Readiness (`done` 2026-09-10)
 - `epic-29-retrospective` — Workspace, Admin & Data Governance (`done` 2026-09-10)
-- `epic-30-retrospective` — Technical Debt Retirement (next)
+- `epic-30-retrospective` — Technical Debt Retirement (`done` 2026-09-10)
 
 ## Tier 3 — New product surface / business-gated / post-MVP
 
