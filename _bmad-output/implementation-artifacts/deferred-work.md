@@ -329,19 +329,19 @@
 ## Deferred from: code review of 25-2-manual-credit-adjustment-refund-desk-dual-audit-ledger (2026-08-16)
 
 - **Finding:** Thiếu test AC-1 validation cho `reason` min length, `ticket_ref` missing, `workspace_id` format/negative, `amount_credits` zero/negative, `direction` invalid values.
-  - **Action:** Marked `[x] [Review][Defer]` in `25-2-manual-credit-adjustment-refund-desk-dual-audit-ledger.md`.
+  - **Action:** Resolved from: code review of 25-2-manual-credit-adjustment-refund-desk-dual-audit-ledger (2026-09-11). Added negative/zero amounts, invalid direction, short reason, missing/whitespace ticket_ref tests in `tests/unit/services/test_manual_credits.py`.
   - **Reason / when to revisit:** Pre-existing test coverage; not in the current test-additions diff.
 
 - **Finding:** Thiếu test trực tiếp Redis Redlock / Postgres `FOR UPDATE` / `lock_timeout`.
-  - **Action:** Marked `[x] [Review][Defer]` in `25-2-manual-credit-adjustment-refund-desk-dual-audit-ledger.md`.
+  - **Action:** Resolved from: code review of 25-2-manual-credit-adjustment-refund-desk-dual-audit-ledger (2026-09-11). Added `test_adjust_credits_locks_and_timeout_are_applied` in `tests/integration/services/test_manual_credits.py` verifying Redis lock acquisition/release, lock_timeout, advisory lock, and FOR UPDATE.
   - **Reason / when to revisit:** Implementation internals; revisit if concurrency lock contracts become externally observable.
 
 - **Finding:** Thiếu test quota cho `DEBIT` và non-superuser role.
-  - **Action:** Marked `[x] [Review][Defer]` in `25-2-manual-credit-adjustment-refund-desk-dual-audit-ledger.md`.
+  - **Action:** Resolved from: code review of 25-2-manual-credit-adjustment-refund-desk-dual-audit-ledger (2026-09-11). Added `test_post_admin_credits_adjust_rejected_for_non_superuser` (403 check) and `test_post_admin_credits_adjust_debit_not_consuming_quota` in `tests/integration/routes/test_admin_credits.py`.
   - **Reason / when to revisit:** Role-based staff infra not yet in place; story already documents decision to keep `require_superuser`.
 
 - **Finding:** Thiếu test CSV export, aggregate stats cards, 36px row height.
-  - **Action:** Marked `[x] [Review][Defer]` in `25-2-manual-credit-adjustment-refund-desk-dual-audit-ledger.md`.
+  - **Action:** Resolved from: code review of 25-2-manual-credit-adjustment-refund-desk-dual-audit-ledger (2026-09-11). Added Playwright E2E spec `tests/admin/credits.spec.ts` testing 4 aggregate stat cards, 36px table row height, and CSV export download.
   - **Reason / when to revisit:** AC-4 UI tests; out of scope for the current backend test diff.
 
 ## Deferred from: code review of 22-3-telegram-data-enrichment-realtime-alerts-and-scraper-ui (2026-08-16)
