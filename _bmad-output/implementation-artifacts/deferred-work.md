@@ -279,18 +279,14 @@
 ## Deferred from: code review of 26-7-hermetic-quality-gates-benchmark-anti-zombie (2026-08-19)
 
 - **Finding:** Pre-compile regex token pattern at module level in `phone_extractor.py`.
-  - **Action:** Marked `[x] [Review][Defer]` in `26-7-hermetic-quality-gates-benchmark-anti-zombie.md`.
+  - **Action:** Resolved from: code review of 26-7-hermetic-quality-gates-benchmark-anti-zombie (2026-09-10). Regex patterns moved to module-level constants (`_SUB_LETTER_O_REGEX`, `_SUB_LETTER_L_REGEX`, `_SUB_DELIMITERS_REGEX`, `_TOKEN_PATTERN`) and verified by `tests/unit/proprietary/platforms/xactions/test_phone_extractor.py`.
   - **Reason / when to revisit:** Pre-existing pattern in `xactions/phone_extractor.py`; not introduced by 26.7 diff. Revisit during phone extractor performance tuning.
 - **Finding:** Validate `is_valid_vietnam_tax_code` against 100 known-good masothue fixtures before ratifying.
-  - **Action:** Marked `[x] [Review][Defer]` in `26-7-hermetic-quality-gates-benchmark-anti-zombie.md`.
+  - **Action:** Resolved from: code review of 26-7-hermetic-quality-gates-benchmark-anti-zombie (2026-09-10). Added `tests/fixtures/masothue_tax_codes.json` with 100 valid, non-phone-like MSTs and `TestMasothueFixtures` in `tests/unit/proprietary/platforms/xactions/test_tax_code.py`.
   - **Reason / when to revisit:** Fixtures not yet available; revisit when masothue fixture corpus is consolidated.
 - **Finding:** Add FastMCP hermetic integration test for `dsh_worker` / `nowing_mcp` reusing `tests/e2e/fakes/mcp_runtime.py`.
-  - **Action:** Marked `[x] [Review][Defer]` in `26-7-hermetic-quality-gates-benchmark-anti-zombie.md`.
+  - **Action:** Resolved from: code review of 26-7-hermetic-quality-gates-benchmark-anti-zombie (2026-09-10). Enhanced `tests/e2e/fakes/mcp_runtime.py` with `**kwargs` in `_FakeClientSession.call_tool`, patch targets for `app.proprietary.platforms.xactions.mcp_client`, and `reset()`. Added `tests/integration/platforms/test_xactions_mcp_client_hermetic.py` with 5 hermetic test cases.
   - **Reason / when to revisit:** Out of scope for the `nowing_evals` cassette suite; revisit when AD-107 FastMCP transport is explicitly required for `dsh_worker`.
-
-- **Finding:** Pre-compile regex token pattern at module level in `phone_extractor.py`.
-  - **Action:** Marked `[x] [Review][Defer]` in `26-7-hermetic-quality-gates-benchmark-anti-zombie.md`.
-  - **Reason / when to revisit:** Pre-existing pattern in `xactions/phone_extractor.py`; not introduced by 26.7 diff. Revisit during phone extractor performance tuning.
 
 ## Deferred from: code review of 26-9b-pro-excel-formatter-daytona (2026-08-20)
 

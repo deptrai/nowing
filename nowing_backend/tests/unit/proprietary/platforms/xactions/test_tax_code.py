@@ -1,8 +1,12 @@
 """Unit tests for Vietnamese Tax Code (MST) Modulo-11 validator and extractor."""
 
+import json
+from pathlib import Path
+
 import pytest
 
 from app.proprietary.platforms.xactions.tax_code import (
+    _is_phone_like,
     extract_tax_ids,
     is_valid_vietnam_tax_code,
 )
@@ -108,3 +112,25 @@ class TestTaxCodeExtraction:
         assert is_valid_vietnam_tax_code("0900000002") is True
         tax_ids = extract_tax_ids("Gọi ngay 0900000002")
         assert "0900000002" not in tax_ids
+
+
+class TestMasothueFixtures:
+    """Validate the known-good masothue tax code fixture corpus."""
+
+    def test_is_valid_vietnam_tax_code_against_known_good_masothue_fixtures(self):
+        """All 100 masothue fixtures are valid MSTs and none are phone-like."""
+        fixture_path = Path(__file__).parents[4] / "fixtures" / "masothue_tax_codes.json"
+        if not fixture_path.exists():
+            pytest.skip(f"Fixture file not found: {fixture_path}")
+
+        data = json.loads(fixture_path.read_text())
+        tax_codes = data.get("tax_codes", [])
+        assert len(tax_codes) >= 50, f"Expected at least 50 fixtures, got {len(tax_codes)}"
+
+        for tax_id in tax_codes:
+            assert is_valid_vietnam_tax_code(tax_id) is True, (
+                f"Fixture {tax_id} failed Modulo-11 validation"
+            )
+            assert _is_phone_like(tax_id) is False, (
+                f"Fixture {tax_id} is phone-like and should not be in corpus"
+            )
