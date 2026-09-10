@@ -14,7 +14,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import HTTPException
-from sqlalchemy import delete as sa_delete, func, select, text
+from sqlalchemy import delete as sa_delete, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import config
@@ -379,6 +379,35 @@ class WorkspaceLimitService:
             )
         )
         return result.scalar() or 0
+
+    @staticmethod
+    async def reconcile_workspace_storage(
+        session: AsyncSession, workspace_id: int, *, purge_orphans: bool = True
+    ) -> dict[str, Any]:
+        """Reconcile workspace storage: remove orphaned DocumentFiles and compute verified total (Story 30.3)."""
+        orphaned_stmt = (
+            select(DocumentFile)
+            .outerjoin(Document, DocumentFile.document_id == Document.id)
+            .where(
+                DocumentFile.workspace_id == workspace_id,
+                or_(Document.id.is_(None), DocumentFile.size_bytes < 0),
+            )
+        )
+        orphans_res = await session.execute(orphaned_stmt)
+        orphans = orphans_res.scalars().all()
+        cleaned_count = len(orphans)
+
+        if purge_orphans and orphans:
+            for orphan in orphans:
+                await session.delete(orphan)
+            await session.flush()
+
+        active_bytes = await WorkspaceLimitService.sum_storage_bytes(session, workspace_id)
+        return {
+            "workspace_id": workspace_id,
+            "reconciled_storage_bytes": active_bytes,
+            "orphaned_files_cleaned": cleaned_count,
+        }
 
     @staticmethod
     async def count_memories(session: AsyncSession, workspace_id: int) -> int:

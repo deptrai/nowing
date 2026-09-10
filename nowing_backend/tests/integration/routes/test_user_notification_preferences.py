@@ -61,3 +61,29 @@ async def test_patch_users_me_with_null_notification_preferences_defaults_to_emp
     assert response.status_code == 200
     data = response.json()
     assert data["notification_preferences"] == {}
+
+
+async def test_patch_notification_preferences_merges_with_latest_db_state(
+    client_as_regular_user,
+    db_session,
+    db_user,
+) -> None:
+    # Update DB directly so cached auth.user in memory is stale
+    db_user.notification_preferences = {"channel_a": {"email": True}}
+    db_session.add(db_user)
+    await db_session.commit()
+    await db_session.refresh(db_user)
+
+    # Patch with channel_b - should lock DB row, fetch channel_a, and merge both
+    res = await client_as_regular_user.patch(
+        "/users/me/notification-preferences",
+        json={
+            "notification_preferences": {
+                "channel_b": {"in_app": True}
+            }
+        },
+    )
+    assert res.status_code == 200
+    prefs = res.json()["notification_preferences"]
+    assert prefs["channel_a"]["email"] is True
+    assert prefs["channel_b"]["in_app"] is True

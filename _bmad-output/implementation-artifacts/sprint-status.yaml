@@ -342,11 +342,11 @@ development_status:
   29-6-data-governance-retention-policy-console: done
   epic-29-retrospective: optional
 
-  epic-30: in-progress
+  epic-30: done
   30-2-redis-event-bus-subscribe-failure-state-leak: done
   30-5-title_gen-py-lacks-timeout-retry-on-litellm-acompletion: done
   30-8-epic-13-canonical-entity-cleanup: done
-  30-9-technical-debt-retirement-and-system-hardening: in-progress
+  30-9-technical-debt-retirement-and-system-hardening: done
   epic-30-retrospective: optional
 validation_reports:
   - story: "3.18"

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Header, Query
 
 from app.automations.schemas.api import RunDetail, RunList, RunSummary
 from app.automations.services import RunService, get_run_service
@@ -16,6 +16,7 @@ router = APIRouter()
 )
 async def run_automation(
     automation_id: int,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
     service: RunService = Depends(get_run_service),
 ) -> RunSummary:
     """Kick off a manual run for an automation, returning the PENDING run.
@@ -24,7 +25,10 @@ async def run_automation(
     PENDING and enqueued for background execution; the caller does not wait.
     Requires ``automations:execute``.
     """
-    run = await service.launch(automation_id=automation_id)
+    run = await service.launch(
+        automation_id=automation_id,
+        idempotency_key=idempotency_key,
+    )
     return RunSummary.model_validate(run)
 
 
