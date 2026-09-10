@@ -7,7 +7,7 @@
 
 ## Next recommended work
 
-The next item to pick is **`td-2`** (Redis event bus subscribe failure state leak), then **`25-4`** (Realtime LLM Token Cost / Proxy Health / Celery Queue Telemetry). **After platform primitives are stable, Epic 29 (SaaS Operations & Admin Analytics) becomes the next business-critical stream.**
+The next item to pick is **`30-9-technical-debt-retirement-and-system-hardening`** (`30-9-technical-debt-retirement-and-system-hardening`), consolidating all remaining tech debt stories (30.1, 30.3, 30.4, 30.6, 30.7).
 
 These two are platform primitives: every real-time event, async task, and LLM/scraper call depends on them. Fix them before taking on higher-level features. Epic 29 has been declared READY FOR CREATE-STORY and should enter Tier 2 once 29-1 (Custom Workspace Roles) is created.
 
@@ -15,8 +15,8 @@ These two are platform primitives: every real-time event, async task, and LLM/sc
 
 ## Tier 0 — Platform primitives / correctness (affects all epics)
 
-1. `td-2` — Redis event bus subscribe failure state leak (Epic 9.3, 6.8, 11, 12.9, 22.3)
-2. `td-5` — `title_gen.py` timeout/retry on `litellm.acompletion` (every chat turn)
+1. `30-2-redis-event-bus-subscribe-failure-state-leak` — Redis event bus subscribe failure state leak (Epic 9.3, 6.8, 11, 12.9, 22.3)
+2. `30-5-title_gen-py-lacks-timeout-retry-on-litellm-acompletion` — `title_gen.py` timeout/retry on `litellm.acompletion` (every chat turn)
 3. `25-4` — Realtime LLM Token Cost, Proxy Health & Celery Queue Telemetry
 4. `25-5` — Dynamic Scraper Rule Engine & ReDoS Sandbox
 5. `6-10` — Inbound Mail Gateway + Stateful Scheduled Tasks 2.0
@@ -30,7 +30,7 @@ These two are platform primitives: every real-time event, async task, and LLM/sc
 10. `6-12` — Narrative Report Engine for Indexed Data
 11. `8-11-followup` — Admin Global LLM Model Configuration (follow-up)
 12. `25-6` — Security Audit Trail Logs & In-App Broadcast Announcements
-13. `14-2` — News Entity Enrichment
+13. `14-2a` — News Entity Enrichment
 14. `24-8` — Browser Operator CDP capability (`browser_operator.execute`) + Human Live Takeover bridge
 15. `4-8c-followup` — Production Query Sampler (follow-up)
 16. `4-8d-followup` — Chat Quality LLM-as-Judge (follow-up)
@@ -53,7 +53,7 @@ These two are platform primitives: every real-time event, async task, and LLM/sc
 ## Tier 3 — New product surface / business-gated / post-MVP
 
 29. `27-1` — Full-Stack Web App Builder, 1-Click Hosting, Design Mark Tool
-30. `27-2` — Manus Slides + Speaker Diarization
+30. `27-2a` — Manus Slides + Speaker Diarization
 31. `28-1` — Workspace Memory & Research Data Export
 32. `28-2` — Encryption-at-Rest for Cloud Memory
 33. `28-3` — ToS / Legal Review & Retention Policy
@@ -62,13 +62,9 @@ These two are platform primitives: every real-time event, async task, and LLM/sc
 36. `6-7a-schema-form-ui` — Schema-Driven Form UI (business-gated)
 37. `6-9a-workspace-vertical` — Workspace Vertical & Playbook Library (business-gated)
 
-## Tech debt remaining (interleave with related epics)
+## Tech debt remaining (consolidated into Story 30.9)
 
-- `td-1` — Idempotency key for `POST /automations/{id}/run`
-- `td-3` — Storage sum does not reconcile deleted backend files
-- `td-4` — Concurrent notification preference merge race condition
-- `td-6` — `verify_chat_image_capability.py` lacks `num_retries`
-- `td-7` — No unit test coverage for `test_model` function
+- `30-9-technical-debt-retirement-and-system-hardening` — Technical Debt Retirement & System Hardening (consolidating td-1, td-3, td-4, td-6, td-7)
 
 ---
 
