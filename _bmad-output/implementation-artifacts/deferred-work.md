@@ -45,7 +45,7 @@
   - **Reason / when to revisit:** Presentation Studio mode replaces `enabled_tools` with `generate_presentation` only, so the chip/slash path is isolated. Revisit when cleaning default-mode routing so "make slides" does not go to Remotion video.
 
 - **Finding:** Tool ATDD never leaves the early-return path; emission/thinking and `status=degraded` are untested.
-  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Action:** Resolved from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-09-11). Added `test_tool_calls_service_and_returns_ready_status` and `test_tool_calls_service_and_returns_degraded_status` in `tests/unit/agents/chat/multi_agent_chat/main_agent/tools/presentation/test_generate_presentation_tool_atdd.py`.
   - **Reason / when to revisit:** T9 only required UUID + `validation_failed` JSON for the tool. Cover emission/thinking in `bmad-testarch-test-review` (4.9).
 
 ## Deferred from: code review of 27-2b-speaker-diarization-meeting-minutes (2026-08-26)
