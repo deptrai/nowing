@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '09-10-2026 16:35'
+last_updated: '09-10-2026 16:40'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # manual update 2026-09-09: split Story 21.8 into 21.8a–f per sprint-change-proposal-2026-09-09-xactions-21-8-correction.md; audit 2026-09-09: 21.8a–f done, 21.8g in-progress
 # - Parsed epics.md: 24 epics, ~160 stories.
@@ -340,7 +340,7 @@ development_status:
   29-4-admin-bulk-operations-console: done
   29-5-memory-browser-research-timeline-for-analyst: done
   29-6-data-governance-retention-policy-console: done
-  epic-29-retrospective: optional
+  epic-29-retrospective: done
 
   epic-30: done
   30-2-redis-event-bus-subscribe-failure-state-leak: done
