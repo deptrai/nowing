@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '09-10-2026 13:45'
+last_updated: '09-10-2026 14:14'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # manual update 2026-09-09: split Story 21.8 into 21.8a–f per sprint-change-proposal-2026-09-09-xactions-21-8-correction.md; audit 2026-09-09: 21.8a–f done, 21.8g in-progress
 # - Parsed epics.md: 24 epics, ~160 stories.
@@ -106,7 +106,7 @@ development_status:
   4-8g-benchmark-mode-tier-matrix-and-local-vs-production-parity: done
   4-8h-mode-aware-chat-policy-for-latency-cost: done
   4-8h-followup-mode-aware-chat-policy-hardening: done
-  epic-4-retrospective: optional
+  epic-4-retrospective: done
 
   epic-5: done
   epic-5-retrospective: optional
