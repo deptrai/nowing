@@ -31,7 +31,7 @@
   - **Reason / when to revisit:** T8 backend catalog/docstring already narrowed; leftover UI copy is the existing video product. Revisit in a video-presentation copy pass.
 
 - **Finding:** No Playwright coverage for chips, `/slides`, or the presentation card.
-  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Action:** Resolved from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-09-11). Playwright test suite exists in `nowing_web/tests/presentation-studio/presentation-studio-chat.spec.ts` covering AC-1 (chips, `/slides pptx`), AC-2 (PPTX deck ready & download), AC-3 (Marp deck ready), and AC-4 (403 gating).
   - **Reason / when to revisit:** 4.14 `bmad-nowing-web-e2e-gate` after chunk D patches.
 
 - **Finding:** `getWorkspaceIdNumber(params) || 1` fail-opens downloads to workspace 1.
