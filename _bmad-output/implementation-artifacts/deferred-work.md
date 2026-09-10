@@ -207,7 +207,7 @@
 ## Deferred from: code review of 4-6-research-continuity (2026-08-23)
 
 - **Finding:** Citation regex copy từ TS/evals nhưng không có parity guard.
-  - **Action:** Marked `[x] [Review][Defer]` in `4-6-research-continuity.md`.
+  - **Action:** Resolved from: code review of 4-6-research-continuity (2026-09-11). Added `test_citation_regex_parity_with_frontend_source` in `tests/unit/agents/multi_agent_chat/shared/citations/test_citation_parser.py` guarding pattern parity against `nowing_web/lib/citations/citation-parser.ts`.
   - **Reason / when to revisit:** Cross-package drift risk; revisit khi có test parity hoặc khi TS/evals regex thay đổi.
 - **Finding:** MCP dùng substring `not found` để phát hiện 404.
   - **Action:** Marked `[x] [Review][Defer]` in `4-6-research-continuity.md`.
