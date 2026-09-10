@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -151,7 +152,7 @@ class XActionsMcpClient:
         response = await self._session.call_tool(
             tool_name,
             arguments=arguments,
-            read_timeout_seconds=XACTIONS_MCP_DEFAULT_TIMEOUT_SECONDS,
+            read_timeout_seconds=timedelta(seconds=XACTIONS_MCP_DEFAULT_TIMEOUT_SECONDS),
         )
 
         texts = []

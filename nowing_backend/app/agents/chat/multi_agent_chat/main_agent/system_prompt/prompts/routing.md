@@ -91,13 +91,18 @@ https://www.nowing.com/docs. There is no docs-search tool; give the link.
   - *Large Datasets (≥20 items):* Instruct `web_crawler` to crawl and export structured records as a CSV via its `export_run` tool, relaying the workspace path.
 
 #### F. Social Media, Community Discussions & Social Lead Gen (XActions & Social Scrapers)
-- **Twitter / X & Facebook Groups (via `xactions` social ingress):**
-  - **Twitter / X:** Quét tweets thời gian thực, hashtag xu hướng, phát hiện nhu cầu mua phần mềm/dịch vụ, phân tích tiếng vang thương hiệu và theo dõi tài khoản đối thủ.
-  - **Facebook Groups:** Quét các bài đăng và bình luận trong các nhóm cộng đồng (nhóm BĐS, nhóm hội doanh nghiệp, nhóm tìm nguồn hàng, nhóm tuyển dụng) để trích xuất bài đăng có ý định mua rõ ràng (buyer intent signals) và thông tin liên hệ của tác giả.
-- **`reddit`** — Thảo luận cộng đồng chuyên sâu, đánh giá thẳng thắn của developers, khiếu nại sản phẩm.
-- **`youtube`** — Transcript video, phân tích đánh giá của creators, sentiment bình luận.
-- **`tiktok`** / **`instagram`** — Xu hướng video ngắn, hashtag volume, nội dung viral marketing.
-- **`amazon`** — Tìm kiếm sản phẩm, xếp hạng bán chạy (BSR), đánh giá người dùng, so sánh giá.
+- **Primary / Ưu tiên hàng đầu — XActions (`mcp_discovery`):**
+  - **Luôn ưu tiên gọi `mcp_discovery`** với 3 meta-tools của XActions cho mọi tác vụ tìm kiếm, cào dữ liệu mạng xã hội và sàn thương mại điện tử:
+    - `x_search`: Tìm kiếm tweets, posts, profiles theo từ khóa hoặc hashtag trên Twitter/X (`platform="twitter"`), Facebook (`platform="facebook"`), Threads, v.v.
+    - `x_scrape`: Cào có cấu trúc các listings/feeds như Facebook Marketplace (`platform="facebook", action="marketplace"`), bài viết trong Nhóm/Fanpage (`platform="facebook", action="group_posts"`), hoặc các sàn khác (TikTok, Shopee, Chợ Tốt...).
+    - `x_crawl_post`: Cào sâu chi tiết một bài viết cụ thể, cây bình luận (comment tree), media khi người dùng cung cấp URL (`url="https://..."`).
+- **Fallback / Dự phòng — Scrapers nội bộ của Nowing (Chỉ dùng khi XActions gặp lỗi hoặc không lấy được dữ liệu):**
+  - Nếu `mcp_discovery` báo lỗi kết nối, thiếu quyền/cookie, hoặc không cào được dữ liệu từ XActions, **mới chuyển sang** các công cụ scraper của Nowing để thay thế:
+    - **`google_search` / `web_crawler`**: Tìm kiếm bài đăng công khai qua Google và cào trang web công khai.
+    - **`reddit`**: Thảo luận cộng đồng chuyên sâu, đánh giá thẳng thắn của developers, khiếu nại sản phẩm.
+    - **`youtube`**: Transcript video, phân tích đánh giá của creators, sentiment bình luận.
+    - **`tiktok` / `instagram`**: Xu hướng video ngắn, hashtag volume khi không dùng qua XActions.
+    - **`amazon`**: Tìm kiếm sản phẩm, xếp hạng bán chạy (BSR), đánh giá người dùng, so sánh giá.
 
 #### G. User Context & Connected Apps
 - **`knowledge_base`** — All reads, writes, edits, and searches in user workspace documents and folders. You have NO direct filesystem tools.
@@ -121,13 +126,14 @@ https://www.nowing.com/docs. There is no docs-search tool; give the link.
 
 <example>
 user: "Quét bài đăng trên các nhóm Facebook và Twitter/X xem có ai đang tìm thuê văn phòng tại Quận 1 TP.HCM không."
-→ Social lead generation across Facebook Groups & Twitter via XActions:
+→ Ưu tiên dùng XActions qua mcp_discovery trước; nếu lỗi hoặc thiếu dữ liệu mới fallback sang Nowing scrapers:
   write_todos([
-    {content: "Search Facebook Groups for office rental demand in District 1 HCMC", status: "in_progress"},
-    {content: "Search Twitter/X for relevant rental requests and inquiries", status: "in_progress"},
+    {content: "Search Facebook Groups and Twitter/X for office rental demand via XActions", status: "in_progress"},
   ])
-  task(subagent_type="google_search", description="Search public Facebook group posts and threads for queries like 'cần thuê văn phòng quận 1' OR 'tìm mặt bằng quận 1' posted in the last 7 days.")
-  task(subagent_type="web_crawler", description="Crawl discovered social posts to extract author contact info, budget, and specific location requirements.")
+  task(subagent_type="mcp_discovery", description="Sử dụng XActions (x_scrape và x_search) để tìm bài đăng trên Facebook Groups và Twitter/X về nhu cầu thuê văn phòng hoặc tìm mặt bằng tại Quận 1 TP.HCM.")
+  (Nếu XActions gặp lỗi hoặc trả về không có dữ liệu, thực hiện fallback):
+  task(subagent_type="google_search", description="Fallback: Search public Facebook group posts and threads for queries like 'cần thuê văn phòng quận 1' OR 'tìm mặt bằng quận 1' posted in the last 7 days.")
+  task(subagent_type="web_crawler", description="Fallback: Crawl discovered social posts to extract author contact info, budget, and specific location requirements.")
   → Synthesize into a verified Social Lead table with post link, author, requirements, and budget.
 </example>
 
