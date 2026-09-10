@@ -29,6 +29,8 @@ async def test_create_xactions_meta_tools_structure():
     for t in tools:
         assert t.metadata["hitl"] is False
         assert t.metadata["mcp_transport"] == "http"
+        assert t.metadata["mcp_connector_id"] == 10
+        assert t.metadata["mcp_connector_name"] == "XActions"
 
 
 @pytest.mark.asyncio

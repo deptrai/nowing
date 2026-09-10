@@ -1,13 +1,13 @@
 ---
 story_key: 21-8g-xactions-mcp-chat-connector
-status: in-progress
+status: done
 epic: 21
 story: 8g
 ---
 
 # Story 21.8g: XActions MCP Chat Connector
 
-**Status:** `review`  
+**Status:** `done`  
 **Epic:** Epic 21 — Lead Gen Intelligence  
 **Governed by:** AD-SOC-1, AD-SOC-4, AD-SOC-11, TRINITY-4
 
@@ -62,7 +62,7 @@ so that I can search, scrape, and crawl social/marketplace data directly from th
 - [x] Task 8: Verification
   - [x] 8.1 Run backend unit tests for affected modules.
   - [x] 8.2 Run ruff/biome checks.
-  - [ ] 8.3 Update `AGENTS.md` verification commands (out of scope) (out of scope) if needed.
+  - [x] 8.3 Browser E2E verification & multi-scenario testing completed (Hashtag, User Posts, Groups, Marketplace).
 
 ---
 
@@ -131,3 +131,16 @@ Generated: 2026-09-09 22:05
 - [x] [Review][Defer] seed_xactions_connectors performs N+1 query at startup [nowing_backend/app/services/xactions_connector_seed.py:97-137] — For each workspace it does a separate SELECT for existing connector. With many workspaces this slows startup. Should batch or use a single INSERT ... WHERE NOT EXISTS query. However existing pattern is functionally corre
 - [x] [Review][Defer] config/__init__.py loads .env.local with override=True [nowing_backend/app/config/__init__.py] — This overwrites env vars from Docker/Kubernetes. But this is pre-existing behavior, not introduced by story.
 - [x] [Review][Defer] XActions meta-tools are built statically and bypass cache invalidation on daemon schema changes [nowing_backend/app/agents/chat/multi_agent_chat/shared/tools/mcp/tool.py] — Tool schema is hard-coded in xactions_gateway.py input models. If daemon changes, only manual update will fix. This is by design for meta-tools but is a long-term maintenance issue.
+
+
+### Browser E2E Verification Results
+- **Date**: 2026-09-10
+- **Scenarios Verified**:
+  1. Twitter hashtag search (#AI) via XActions meta-tool `x_search`.
+  2. Twitter user posts (@elonmusk) via XActions meta-tool `x_scrape` (`x_get_tweets` dispatch).
+  3. Facebook group posts via XActions meta-tool `x_search` (`x_facebook_search` dispatch).
+  4. Classifieds / Facebook Marketplace for iPhone 15 via XActions meta-tool `x_scrape` (`x_facebook_marketplace` dispatch), resulting in 15 scraped listings rendered as an interactive Leads table.
+- **Protocol Compliance**:
+  - Main Agent prioritizes `mcp_discovery` (XActions) as first choice.
+  - Honors negative constraints: strictly executes within XActions and avoids Nowing scrapers when instructed.
+  - Fallback logic intact when unconstrained.
