@@ -261,7 +261,7 @@
   - **Action:** Marked `[x] [Review][Defer]` in `24-3-multi-seat-team-crm-pipeline-and-shared-credits.md`.
   - **Reason / when to revisit:** Pre-existing test architecture issue already recorded in `test-review-24-3.md`; revisit during 4.9/4.10 test review and mutation gate.
 - **Finding:** `tests/integration/services/test_team_crm_pipeline.py` is a stub integration test.
-  - **Action:** Marked `[x] [Review][Defer]` in `24-3-multi-seat-team-crm-pipeline-and-shared-credits.md`.
+  - **Action:** Resolved from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-09-11). Replaced stub with full PostgreSQL integration tests covering stage auto-seeding, OCC version transitions, concurrency conflict detection, LeadActivityLog timeline queries, and member spend cap / capacity persistence.
   - **Reason / when to revisit:** Already in `test-review-24-3.md`; revisit during 4.9.
 - **Finding:** `test_billing_event_service.py` and `test_billing.py` monkeypatch `WorkspaceCreditService.record_spend`.
   - **Action:** Marked `[x] [Review][Defer]` in `24-3-multi-seat-team-crm-pipeline-and-shared-credits.md`.
