@@ -1,4 +1,11 @@
+from unittest.mock import AsyncMock, patch
+
+from app.db import Connection, Model
 from app.services.global_model_catalog import materialize_global_model_catalog
+from app.services.model_connection_service import (
+    TEST_TIMEOUT_SECONDS,
+    test_model as _test_model,
+)
 from app.services.model_resolver import ensure_v1, strip_version_suffix, to_litellm
 
 
@@ -136,3 +143,29 @@ def test_global_materialization_preserves_tier_and_keeps_key_server_side() -> No
         for connection in connections
     ]
     assert "sk-" not in repr(public_connections)
+
+
+async def test_test_model_passes_timeout_and_num_retries_to_litellm():
+    """`_test_model` forwards timeout and num_retries=0 to litellm.acompletion."""
+    conn = Connection(
+        provider="openai",
+        base_url="https://api.openai.com",
+        api_key="sk-test",
+        scope="GLOBAL",
+    )
+    model = Model(connection_id=1, model_id="gpt-4o", display_name="GPT-4o")
+
+    mock_acompletion = AsyncMock(return_value={"choices": []})
+
+    with patch(
+        "app.services.model_connection_service.litellm.acompletion",
+        mock_acompletion,
+    ):
+        result = await _test_model(conn, model)
+
+    assert result.ok is True
+    assert model.supports_chat is True
+    mock_acompletion.assert_called_once()
+    call_kwargs = mock_acompletion.call_args.kwargs
+    assert call_kwargs["timeout"] == TEST_TIMEOUT_SECONDS
+    assert call_kwargs["num_retries"] == 0
