@@ -1,15 +1,15 @@
 # Sprint Priority — Dependency Order
 
 > Generated: 2026-08-22
-> Updated: 2026-08-30
+> Updated: 2026-09-10
 > Sorting: dependency impact (foundation first, standalone last)
 > Source: `_bmad-output/implementation-artifacts/sprint-status.yaml` + `planning-artifacts/epics.md` + architecture spine
 
 ## Next recommended work
 
-The next item to pick is **`30-9-technical-debt-retirement-and-system-hardening`** (`30-9-technical-debt-retirement-and-system-hardening`), consolidating all remaining tech debt stories (30.1, 30.3, 30.4, 30.6, 30.7).
+The next item to pick is **`12-7-property-price-alerts`** (`12-7-property-price-alerts`), followed by **`12-8-cross-source-entity-timeline`**. These are the first two `backlog` stories from Epic 12 (HR/Recruitment Vertical), extending the completed scraper foundation (12.1–12.6, 12.9–12.10) into alert/timeline features.
 
-These two are platform primitives: every real-time event, async task, and LLM/scraper call depends on them. Fix them before taking on higher-level features. Epic 29 has been declared READY FOR CREATE-STORY and should enter Tier 2 once 29-1 (Custom Workspace Roles) is created.
+All Epics 1–29 and Epic 30 are `done`. The remaining `backlog` stories are vertical data features across Epics 12, 14, 15, 16, and 17.
 
 ---
 
@@ -38,33 +38,28 @@ These two are platform primitives: every real-time event, async task, and LLM/sc
 
 ## Tier 2 — Vertical data + dashboard + SaaS admin/analytics (affects one domain or UI)
 
-18. `29-1` — Custom Workspace Roles & Permissions Builder (Epic 29, FR-100) — **foundation for 29-2/29-4**
-19. `29-2` — Workspace Health & Adoption Analytics Dashboard (Epic 29, FR-101)
-20. `29-3` — Tenant Subscription Tier & Quota Management (Epic 29, FR-102)
-21. `29-4` — Admin Bulk Operations Console (Epic 29, FR-103) — depends on 29-1 and 29-3
-22. `29-5` — Memory Browser & Research Timeline for Analyst (Epic 29, FR-104)
-23. `29-6` — Data Governance & Retention Policy Console (Epic 29, FR-104)
-24. `16-2` — Official Business Registry (dangkykinhdoanh.gov.vn)
-25. `17-1` — Lazada Product Data
-26. `17-5` — TikTok Shop Product & Trending SKUs
-27. `8-14` — Cost & Auto-Extract Budget Dashboard
-28. `7-8` — Vietnamese i18n & Smart Geo-Locale Auto-Detection
+18. `12-7` — Property Price Alerts (Epic 12, backlog)
+19. `12-8` — Cross-Source Entity Timeline (Epic 12, backlog)
+20. `14-3` — News Alerts Topic Monitoring (Epic 14, backlog)
+21. `14-4` — News Digest Synthesis (Epic 14, backlog)
+22. `15-3` — Stock Price Alerts (Epic 15, backlog)
+23. `15-4` — Financial Trend Detection (Epic 15, backlog)
+24. `16-3` — Company Alerts (Epic 16, backlog)
+25. `16-4` — Company Timeline (Epic 16, backlog)
+26. `17-3` — Price Drop Alerts (Epic 17, backlog)
+27. `17-4` — Competitor Tracking (Epic 17, backlog)
 
 ## Tier 3 — New product surface / business-gated / post-MVP
 
-29. `27-1` — Full-Stack Web App Builder, 1-Click Hosting, Design Mark Tool
-30. `27-2a` — Manus Slides + Speaker Diarization
-31. `28-1` — Workspace Memory & Research Data Export
-32. `28-2` — Encryption-at-Rest for Cloud Memory
-33. `28-3` — ToS / Legal Review & Retention Policy
-34. `28-4` — Self-Host OSS Onboarding in Under 10 Minutes
-35. `6-6a-playbook-reuse` — Playbook Reuse (business-gated)
-36. `6-7a-schema-form-ui` — Schema-Driven Form UI (business-gated)
-37. `6-9a-workspace-vertical` — Workspace Vertical & Playbook Library (business-gated)
-
-## Tech debt remaining (consolidated into Story 30.9)
-
-- `30-9-technical-debt-retirement-and-system-hardening` — Technical Debt Retirement & System Hardening (consolidating td-1, td-3, td-4, td-6, td-7)
+28. `27-1` — Full-Stack Web App Builder, 1-Click Hosting, Design Mark Tool
+29. `27-2a` — Manus Slides + Speaker Diarization
+30. `28-1` — Workspace Memory & Research Data Export
+31. `28-2` — Encryption-at-Rest for Cloud Memory
+32. `28-3` — ToS / Legal Review & Retention Policy
+33. `28-4` — Self-Host OSS Onboarding in Under 10 Minutes
+34. `6-6a-playbook-reuse` — Playbook Reuse (business-gated)
+35. `6-7a-schema-form-ui` — Schema-Driven Form UI (business-gated)
+36. `6-9a-workspace-vertical` — Workspace Vertical & Playbook Library (business-gated)
 
 ---
 
