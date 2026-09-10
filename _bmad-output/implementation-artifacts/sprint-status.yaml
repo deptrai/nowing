@@ -183,8 +183,6 @@ development_status:
   12-4e-vietnam-job-aggregator-exposure: done
   12-5-pii-redaction-for-job-data: done
   12-6-saved-searches: done
-  12-7-property-price-alerts: backlog
-  12-8-cross-source-entity-timeline: backlog
   12-9-job-market-alerts: done
   12-10-linkedin-public-guest-jobs-headcount-growth-signals: done
   epic-12-retrospective: optional
@@ -196,22 +194,16 @@ development_status:
   14-1-rss-feed-integration: done
   14-2a-news-entity-extraction: done
   14-2b-news-entity-search: done
-  14-3-news-alerts-topic-monitoring: backlog
-  14-4-news-digest-synthesis: backlog
   epic-14-retrospective: optional
 
   epic-15: done
   15-1-cafef-financial-data-integration: done
   15-2-vietstock-deep-financials: done
-  15-3-stock-price-alerts: backlog
-  15-4-financial-trend-detection: backlog
   epic-15-retrospective: optional
 
   epic-16: done
   16-1-masothue-com-company-data: done
   16-2-official-business-registry: done
-  16-3-company-alerts: backlog
-  16-4-company-timeline: backlog
   16-5-national-public-procurement-tender-intelligence: done
   epic-16-retrospective: optional
 
@@ -219,8 +211,6 @@ development_status:
   17-1-lazada-product-data: done
   17-2-shopee-vietnam-in-house-scraper-price-normalization: done
   17-5-tiktok-shop-product-trending-skus-ingestion: done
-  17-3-price-drop-alerts: backlog
-  17-4-competitor-tracking: backlog
   epic-17-retrospective: optional
 
   epic-18: done

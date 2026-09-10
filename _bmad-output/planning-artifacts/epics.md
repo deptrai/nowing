@@ -2251,17 +2251,11 @@ So that I always have fresh results without manual work.
 
 _AD-33 (Generic Alert Engine — Saved Search AlertRule template)._
 
-### Story 12.7: Property Price Alerts
+**Story 12.7: Property Price Alerts — DROPPED per SCP 2026-08-08.**
+Nowing does not build canonical property entities. Property price alerting may be implemented on `chainlens-research` index data in a future Phase 2. As originally scoped, this alert required `canonical_entities` storage which is no longer built in Nowing.
 
-> **DROPPED per SCP 2026-08-08.** Nowing does not build canonical property entities. Property price alerting may be implemented on `chainlens-research` index data in a future Phase 2.
-
-_As originally scoped, this alert required `canonical_entities` storage which is no longer built in Nowing._
-
-### Story 12.8: Cross-Source Entity Timeline
-
-> **DROPPED per SCP 2026-08-08.** Nowing does not build canonical entity storage. Cross-source entity timelines (if needed) will be provided by `chainlens-research` as a product feature, not built as a Nowing index.
-
-_As originally scoped, this timeline required `canonical_entities`, source-lineage and merge-history tables which are no longer built in Nowing._
+**Story 12.8: Cross-Source Entity Timeline — DROPPED per SCP 2026-08-08.**
+Nowing does not build canonical entity storage. Cross-source entity timelines (if needed) will be provided by `chainlens-research` as a product feature, not built as a Nowing index. As originally scoped, this timeline required `canonical_entities`, source-lineage and merge-history tables which are no longer built in Nowing.
 
 ---
 
@@ -2371,7 +2365,7 @@ _AD-34 · AD-35 · AD-27_
 
 ---
 
-### Story 14.3: News Alerts & Topic Monitoring
+**Story 14.3: News Alerts & Topic Monitoring — MERGED into Story 6.11 per 2026-08-20.**
 
 > **Merged 2026-08-20:** Nội dung story này được gộp vào **Story 6.11 — Vertical Alert Rule Templates**. Giữ lại để traceability; không implement riêng.
 
@@ -2392,7 +2386,7 @@ So that I stay informed without manually checking news sites.
 
 _AD-33 (Generic Alert Engine — AlertRule template, `new_items` diff strategy) · AD-34 · AD-35_
 
-### Story 14.4: News Digest & Synthesis
+**Story 14.4: News Digest & Synthesis — MERGED into Story 6.12 per 2026-08-20.**
 
 > **Merged 2026-08-20:** Nội dung story này được gộp vào **Story 6.12 — Narrative Report Engine for Indexed Data**. Giữ lại để traceability; không implement riêng.
 
@@ -2461,7 +2455,7 @@ _AD-34 · AD-35 · AD-24 (cross-source sourceId convention)_
 
 ---
 
-### Story 15.3: Stock Price Alerts
+**Story 15.3: Stock Price Alerts — MERGED into Story 6.11 per 2026-08-20.**
 
 > **Merged 2026-08-20:** Nội dung story này được gộp vào **Story 6.11 — Vertical Alert Rule Templates**. Giữ lại để traceability; không implement riêng.
 
@@ -2482,7 +2476,7 @@ So that I can act on market movements.
 
 _AD-33 (Generic Alert Engine — AlertRule template, `price_change` diff strategy) · AD-34 · AD-35_
 
-### Story 15.4: Financial Trend Detection
+**Story 15.4: Financial Trend Detection — MERGED into Story 6.12 per 2026-08-20.**
 
 > **Merged 2026-08-20:** Nội dung story này được gộp vào **Story 6.12 — Narrative Report Engine for Indexed Data**. Giữ lại để traceability; không implement riêng.
 
@@ -2551,7 +2545,7 @@ _AD-GIS-3 · AD-GIS-5 · AD-34 · AD-35 · AD-SOC-1 · AD-SOC-9 · Governed by `
 
 ---
 
-### Story 16.3: Company Alerts
+**Story 16.3: Company Alerts — MERGED into Story 6.11 per 2026-08-20.**
 
 > **Merged 2026-08-20:** Nội dung story này được gộp vào **Story 6.11 — Vertical Alert Rule Templates**. Giữ lại để traceability; không implement riêng.
 
@@ -2574,7 +2568,7 @@ _AD-33 (Generic Alert Engine — AlertRule template, `threshold_cross` diff stra
 
 ---
 
-### Story 16.4: Company Timeline
+**Story 16.4: Company Timeline — MERGED into Story 6.12 per 2026-08-20.**
 
 > **Merged 2026-08-20:** Nội dung story này được gộp vào **Story 6.12 — Narrative Report Engine for Indexed Data**. Giữ lại để traceability; không implement riêng.
 
@@ -2688,7 +2682,7 @@ _AD-EC-1 · AD-EC-2 · AD-EC-3 · AD-EC-6 · AD-SOC-1 · AD-SOC-2 · AD-SOC-9_
 
 ---
 
-### Story 17.3: Price Drop Alerts
+**Story 17.3: Price Drop Alerts — MERGED into Story 6.11 per 2026-08-20.**
 
 > **Merged 2026-08-20:** Nội dung story này được gộp vào **Story 6.11 — Vertical Alert Rule Templates**. Giữ lại để traceability; không implement riêng.
 
@@ -2709,7 +2703,7 @@ So that I can identify pricing trends and opportunities.
 
 _AD-33 (Generic Alert Engine — AlertRule template, `price_change` diff strategy) · AD-34 · AD-35_
 
-### Story 17.4: Competitor Tracking
+**Story 17.4: Competitor Tracking — MERGED into Story 6.11 per 2026-08-20.**
 
 > **Merged 2026-08-20:** Nội dung story này được gộp vào **Story 6.11 — Vertical Alert Rule Templates**. Giữ lại để traceability; không implement riêng.
 

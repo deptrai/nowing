@@ -7,9 +7,9 @@
 
 ## Next recommended work
 
-The next item to pick is **`12-7-property-price-alerts`** (`12-7-property-price-alerts`), followed by **`12-8-cross-source-entity-timeline`**. These are the first two `backlog` stories from Epic 12 (HR/Recruitment Vertical), extending the completed scraper foundation (12.1–12.6, 12.9–12.10) into alert/timeline features.
+All **198 stories across 29 epics are `done`** as of 2026-09-10. The previous `backlog` stories (`12-7`, `12-8`, `14-3`, `14-4`, `15-3`, `15-4`, `16-3`, `16-4`, `17-3`, `17-4`) were identified as either `DROPPED` (per SCP 2026-08-08) or `MERGED` into completed stories `6.11` / `6.12`, and have been removed from active tracking.
 
-All Epics 1–29 and Epic 30 are `done`. The remaining `backlog` stories are vertical data features across Epics 12, 14, 15, 16, and 17.
+The next action is to run **`bmad-retrospective`** for the remaining open optional retrospective, starting with **`epic-1-retrospective`**.
 
 ---
 
@@ -36,18 +36,11 @@ All Epics 1–29 and Epic 30 are `done`. The remaining `backlog` stories are ver
 16. `4-8d-followup` — Chat Quality LLM-as-Judge (follow-up)
 17. `4-8h-followup` — Mode-Aware Chat Policy (follow-up)
 
-## Tier 2 — Vertical data + dashboard + SaaS admin/analytics (affects one domain or UI)
+## Tier 2 — Retrospectives & closed vertical stories
 
-18. `12-7` — Property Price Alerts (Epic 12, backlog)
-19. `12-8` — Cross-Source Entity Timeline (Epic 12, backlog)
-20. `14-3` — News Alerts Topic Monitoring (Epic 14, backlog)
-21. `14-4` — News Digest Synthesis (Epic 14, backlog)
-22. `15-3` — Stock Price Alerts (Epic 15, backlog)
-23. `15-4` — Financial Trend Detection (Epic 15, backlog)
-24. `16-3` — Company Alerts (Epic 16, backlog)
-25. `16-4` — Company Timeline (Epic 16, backlog)
-26. `17-3` — Price Drop Alerts (Epic 17, backlog)
-27. `17-4` — Competitor Tracking (Epic 17, backlog)
+All Tier 2 implementation stories are now `done`, `merged` into 6.11/6.12, or `dropped` per SCP 2026-08-08. The remaining open work is optional epic retrospectives (26 `optional`, 3 `done`).
+
+- `epic-1-retrospective` — Identity, Auth & Workspace RBAC retrospective (next)
 
 ## Tier 3 — New product surface / business-gated / post-MVP
 
