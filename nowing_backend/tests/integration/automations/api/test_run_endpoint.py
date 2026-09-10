@@ -208,3 +208,35 @@ async def test_manual_run_with_idempotency_key_returns_same_run(
     assert run_1["id"] == run_2["id"]
     # Only 1 run was actually created and enqueued
     assert len(enqueue_spy) == 1
+
+
+async def test_manual_run_without_idempotency_key_allows_subsequent_runs(
+    client, db_session, db_user, db_workspace, enqueue_spy
+):
+    """Sequential manual runs without Idempotency-Key create distinct runs."""
+    automation = await _make_automation(db_session, db_workspace, db_user)
+
+    resp1 = await client.post(f"/api/v1/automations/{automation.id}/run")
+    assert resp1.status_code == 200
+    run_1 = resp1.json()
+
+    resp2 = await client.post(f"/api/v1/automations/{automation.id}/run")
+    assert resp2.status_code == 200
+    run_2 = resp2.json()
+
+    assert run_1["id"] != run_2["id"]
+    assert len(enqueue_spy) == 2
+
+
+async def test_manual_run_with_whitespace_idempotency_key_handled_gracefully(
+    client, db_session, db_user, db_workspace, enqueue_spy
+):
+    """Whitespace-only Idempotency-Key header is stripped and treated as absent."""
+    automation = await _make_automation(db_session, db_workspace, db_user)
+
+    resp = await client.post(
+        f"/api/v1/automations/{automation.id}/run",
+        headers={"Idempotency-Key": "   "},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["automation_id"] == automation.id

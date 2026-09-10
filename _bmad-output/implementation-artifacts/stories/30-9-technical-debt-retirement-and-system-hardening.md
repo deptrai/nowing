@@ -87,6 +87,17 @@ so that **the platform avoids duplicate execution runs, race conditions, storage
 
 ---
 
+### Review Findings
+
+- [x] [Review][Patch] Fix dedup lock when Idempotency-Key is absent so manual runs within 5s are not suppressed as duplicate runs [nowing_backend/app/automations/services/run.py:84]
+- [x] [Review][Patch] Fix race condition fallback in in-flight automation run dedup query [nowing_backend/app/automations/services/run.py:117]
+- [x] [Review][Patch] Set request tenant context in reconcile_workspace_storage for RLS consistency [nowing_backend/app/services/workspace_limits.py:384]
+- [x] [Review][Patch] Handle archived documents in workspace storage reconciliation [nowing_backend/app/services/workspace_limits.py:388]
+- [x] [Review][Patch] Add storage backend blob cleanup to storage reconciliation [nowing_backend/app/services/workspace_limits.py:400]
+- [x] [Review][Patch] Strip and validate Idempotency-Key header value [nowing_backend/app/automations/api/run.py:19]
+- [x] [Review][Defer] Add database-level idempotency_key column to AutomationRun table for permanent replay storage [nowing_backend/app/automations/persistence/models/run.py] — deferred, pre-existing
+- [x] [Review][Defer] Deep merge validation for notification preferences in generic PATCH /users/me endpoint [nowing_backend/app/routes/users_routes.py:46] — deferred, pre-existing
+
 ## Dev Notes
 - Reuses existing Redis client `app/redis_client.py` for distributed locks.
 - Reuses SQLAlchemy `with_for_update()` for user row locking.
