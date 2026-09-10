@@ -343,14 +343,10 @@ development_status:
   epic-29-retrospective: optional
 
   epic-30: in-progress
-  30-1-idempotency-key-for-post-automations-id-run: backlog
   30-2-redis-event-bus-subscribe-failure-state-leak: done
-  30-3-storage-sum-does-not-reconcile-deleted-backend-files: backlog
-  30-4-concurrent-notification-preference-merge-race-condition: backlog
   30-5-title_gen-py-lacks-timeout-retry-on-litellm-acompletion: done
-  30-6-verify_chat_image_capability-py-lacks-num_retries: backlog
-  30-7-no-unit-test-coverage-for-test_model-function: backlog
   30-8-epic-13-canonical-entity-cleanup: done
+  30-9-technical-debt-retirement-and-system-hardening: in-progress
   epic-30-retrospective: optional
 validation_reports:
   - story: "3.18"

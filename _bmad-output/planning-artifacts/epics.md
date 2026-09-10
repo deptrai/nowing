@@ -4580,34 +4580,19 @@ _FR-97 · FR-104 · AR-13 · AR-17 · AR-18 · UX-DR-PRFAQ-5 · UX-DR-PRFAQ-6 ·
 
 **Epic goal:** Track and retire deferred correctness, reliability, and test-coverage issues from code reviews and Winston backlog audits that do not map to a single feature epic.
 
-### Story 30.1: Idempotency key for POST /automations/{id}/run
-
-Add an idempotency key or dedup lock (Redis SETNX or DB unique constraint on `(automation_id, idempotency_key)`) to prevent two concurrent `POST /automations/{id}/run` calls from creating two `PENDING` runs.
-
-### Story 30.2: Redis event bus subscribe failure state leak
-
+### Story 30.2: Redis event bus subscribe failure state leak `[done]`
 On subscribe timeout, remove the channel from the `subscribers` dict and add retry with exponential backoff so cross-replica delivery does not fail silently.
 
-### Story 30.3: Storage sum does not reconcile deleted backend files
-
-Add a reconciliation job that compares `DocumentFile.size_bytes` rows against the storage backend, or fix `ON DELETE CASCADE` + storage backend webhooks, so workspace storage limits do not drift.
-
-### Story 30.4: Concurrent notification preference merge race condition
-
-Replace the read-merge-overwrite pattern in `_merge_notification_preferences` with `SELECT FOR UPDATE`, an optimistic lock on `updated_at`, or PostgreSQL `jsonb_set` for atomic merges.
-
-### Story 30.5: title_gen.py lacks timeout/retry on litellm.acompletion
-
+### Story 30.5: title_gen.py lacks timeout/retry on litellm.acompletion `[done]`
 Add explicit `timeout` and `num_retries` to `title_gen.py` `litellm.acompletion()` calls so chat title generation cannot hang for 120s+ on slow models.
 
-### Story 30.6: verify_chat_image_capability.py lacks num_retries
-
-Add `num_retries=1` to `scripts/verify_chat_image_capability.py` `litellm.acompletion` and `litellm.aimage_generation` calls so the diagnostic script does not hang in CI.
-
-### Story 30.7: No unit test coverage for test_model function
-
-Add a unit test that mocks `litellm.acompletion` and asserts `test_model()` passes `num_retries=0` and `timeout=TEST_TIMEOUT_SECONDS` correctly.
-
-### Story 30.8: Epic 13 canonical entity cleanup
-
+### Story 30.8: Epic 13 canonical entity cleanup `[done]`
 Remove `app/canonical/`, `canonical_entities_routes.py`, models, tests, and migration `d33c362fa627` dropping canonical tables after verifying zero live callers.
+
+### Story 30.9: Technical Debt Retirement & System Hardening `[in-progress]`
+Consolidation of micro-scope technical debt stories (30.1, 30.3, 30.4, 30.6, 30.7):
+- **30.1**: Idempotency key & dedup lock for `POST /automations/{id}/run`.
+- **30.3**: Storage quota reconciliation between `DocumentFile` and storage backend.
+- **30.4**: Atomic `SELECT ... FOR UPDATE` merge for `PATCH /users/me/notification-preferences`.
+- **30.6**: Explicit `num_retries=1` in `scripts/verify_chat_image_capability.py`.
+- **30.7**: Comprehensive unit tests for `test_model()` in `model_connection_service.py`.
