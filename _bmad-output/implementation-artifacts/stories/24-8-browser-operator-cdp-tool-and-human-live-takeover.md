@@ -1,9 +1,9 @@
 ---
-story_key: "24-8"
+story_key: 24-8-browser-operator-cdp-tool-for-dsh-crawl-human-live-takeover
 epic: "epic-24"
 story: "24.8"
 title: "Browser Operator CDP Tool for DSH Crawl Subgraph & Human Live Takeover UI"
-status: "done"
+status: done
 baseline_commit: "4c37acfa9"
 ---
 

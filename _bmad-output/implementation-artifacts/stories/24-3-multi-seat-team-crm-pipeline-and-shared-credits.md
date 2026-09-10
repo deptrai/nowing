@@ -1,9 +1,9 @@
 ---
-story_key: "24-3"
+story_key: 24-3-multi-seat-team-crm-pipeline-shared-workspace-credit-pooling
 epic: "epic-24"
 story: "24.3"
 title: "Multi-Seat Team CRM Pipeline & Shared Workspace Credit Pooling"
-status: "done"
+status: done
 baseline_commit: "6ac305274"
 ---
 
