@@ -7,6 +7,8 @@ enforced in Story 8.12.
 
 from __future__ import annotations
 
+import contextlib
+import logging
 import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -31,6 +33,8 @@ from app.db import (
 from app.file_storage.persistence.models import DocumentFile
 from app.schemas.workspace import PlanDefinitionCreate, PlanDefinitionUpdate
 from app.tenant_context import set_request_tenant_context
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -385,6 +389,7 @@ class WorkspaceLimitService:
         session: AsyncSession, workspace_id: int, *, purge_orphans: bool = True
     ) -> dict[str, Any]:
         """Reconcile workspace storage: remove orphaned DocumentFiles and compute verified total (Story 30.3)."""
+        await set_request_tenant_context(session, workspace_id=workspace_id)
         orphaned_stmt = (
             select(DocumentFile)
             .outerjoin(Document, DocumentFile.document_id == Document.id)
@@ -395,12 +400,25 @@ class WorkspaceLimitService:
         )
         orphans_res = await session.execute(orphaned_stmt)
         orphans = orphans_res.scalars().all()
-        cleaned_count = len(orphans)
+        orphaned_found_count = len(orphans)
+        cleaned_count = 0
 
         if purge_orphans and orphans:
+            backend = None
+            try:
+                from app.file_storage.factory import get_storage_backend
+
+                backend = get_storage_backend()
+            except Exception as exc:
+                logger.warning("Storage backend not available for blob purge: %s", exc)
+
             for orphan in orphans:
+                if backend is not None and orphan.storage_key:
+                    with contextlib.suppress(Exception):
+                        await backend.delete(orphan.storage_key)
                 await session.delete(orphan)
             await session.flush()
+            cleaned_count = orphaned_found_count
 
         active_bytes = await WorkspaceLimitService.sum_storage_bytes(session, workspace_id)
         return {

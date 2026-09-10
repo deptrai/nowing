@@ -102,19 +102,24 @@ class RunService:
 
         if not lock_acquired and redis is not None:
             # Check if an earlier run with this idempotency key already created an AutomationRun
-            with contextlib.suppress(Exception):
-                cached_val = await redis.get(lock_key)
-                if cached_val and str(cached_val).isdigit():
-                    cached_run_id = int(cached_val)
-                    cached_run = await self.session.get(AutomationRun, cached_run_id)
-                    if cached_run is not None:
-                        return cached_run
+            if idempotency_key:
+                with contextlib.suppress(Exception):
+                    cached_val = await redis.get(lock_key)
+                    if cached_val and str(cached_val).isdigit():
+                        cached_run_id = int(cached_val)
+                        cached_run = await self.session.get(AutomationRun, cached_run_id)
+                        if cached_run is not None:
+                            return cached_run
 
+            from datetime import UTC, datetime, timedelta
+
+            window_start = datetime.now(UTC) - timedelta(seconds=ttl)
             stmt = (
                 select(AutomationRun)
                 .where(
                     AutomationRun.automation_id == automation_id,
                     AutomationRun.status.in_([RunStatus.PENDING, RunStatus.RUNNING]),
+                    AutomationRun.created_at >= window_start,
                 )
                 .order_by(AutomationRun.created_at.desc())
                 .limit(1)
@@ -143,7 +148,10 @@ class RunService:
             )
             if redis is not None and lock_key:
                 with contextlib.suppress(Exception):
-                    await redis.set(lock_key, str(run.id), ex=ttl)
+                    if idempotency_key:
+                        await redis.set(lock_key, str(run.id), ex=ttl)
+                    else:
+                        await redis.delete(lock_key)
             return run
         except DispatchError as exc:
             if redis is not None and lock_key:

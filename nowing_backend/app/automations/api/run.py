@@ -25,9 +25,14 @@ async def run_automation(
     PENDING and enqueued for background execution; the caller does not wait.
     Requires ``automations:execute``.
     """
+    clean_idempotency_key = (
+        idempotency_key.strip()
+        if idempotency_key and idempotency_key.strip()
+        else None
+    )
     run = await service.launch(
         automation_id=automation_id,
-        idempotency_key=idempotency_key,
+        idempotency_key=clean_idempotency_key,
     )
     return RunSummary.model_validate(run)
 

@@ -1352,3 +1352,8 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - seed_xactions_connectors performs N+1 query at startup [nowing_backend/app/services/xactions_connector_seed.py:97-137]
 - config/__init__.py loads .env.local with override=True [nowing_backend/app/config/__init__.py]
 - XActions meta-tools are built statically and bypass cache invalidation on daemon schema changes [nowing_backend/app/agents/chat/multi_agent_chat/shared/tools/mcp/tool.py]
+
+## Deferred from: code review of story-30.9 (2026-09-10)
+
+- Add database-level `idempotency_key` column to `AutomationRun` table for permanent replay storage across Redis restarts.
+- Add pessimistic row locking & deep merge validation for notification preferences in generic `PATCH /users/me` profile endpoint.

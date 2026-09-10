@@ -63,7 +63,12 @@ async def update_current_user_notification_preferences(
     session: AsyncSession = Depends(get_async_session),
 ):
     # Lock the user row to prevent race conditions during concurrent merges (Story 30.4)
-    stmt = select(User).where(User.id == auth.user.id).with_for_update()
+    stmt = (
+        select(User)
+        .where(User.id == auth.user.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
     result = await session.execute(stmt)
     locked_user = result.scalar_one_or_none()
     if locked_user is None:
