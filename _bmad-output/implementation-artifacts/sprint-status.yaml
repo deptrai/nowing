@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '09-10-2026 15:30'
+last_updated: '09-10-2026 15:37'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # manual update 2026-09-09: split Story 21.8 into 21.8a–f per sprint-change-proposal-2026-09-09-xactions-21-8-correction.md; audit 2026-09-09: 21.8a–f done, 21.8g in-progress
 # - Parsed epics.md: 24 epics, ~160 stories.
@@ -229,7 +229,7 @@ development_status:
   20-1-nowing-scraper-to_chunks: done
   20-2-gap-fill-caller-cost-allocation: done
   20-3-nowingprivateprovider-for: done
-  epic-20-retrospective: optional
+  epic-20-retrospective: done
 
   epic-21: done
   21-1-intent-signal-detection: done
