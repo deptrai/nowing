@@ -50,6 +50,23 @@ _VIETSTOCK_HEADERS = {
 _throttle_lock = asyncio.Lock()
 _last_request_at: float | None = None
 
+# Persistent HTTP client instance for reuse across requests (avoid per-request creation).
+_shared_client: httpx.AsyncClient | None = None
+_client_lock = asyncio.Lock()
+
+
+async def _get_client(timeout: float, headers: dict[str, str]) -> httpx.AsyncClient:
+    global _shared_client
+    if _shared_client is None or _shared_client.is_closed:
+        async with _client_lock:
+            if _shared_client is None or _shared_client.is_closed:
+                _shared_client = httpx.AsyncClient(
+                    timeout=timeout,
+                    follow_redirects=True,
+                )
+    return _shared_client
+
+
 # Mutable process-local cookie jar.
 # ponytail: process-local jar is sufficient for demo and single-credential
 # deployments. Replace with ScraperPlatformAccountRotator when admin-managed
@@ -63,6 +80,10 @@ class VietstockRateLimitedError(RuntimeError):
 
 class VietstockAccessBlockedError(RuntimeError):
     """Raised when Vietstock blocks or returns an unexpected error."""
+
+
+class VietstockConnectionError(VietstockAccessBlockedError):
+    """Raised when Vietstock connection fails or times out."""
 
 
 class VietstockDecodeError(ValueError):
@@ -292,17 +313,19 @@ async def _do_get(
         if cookie:
             headers["Cookie"] = cookie
 
-        async with httpx.AsyncClient(
-            timeout=_timeout(),
-            headers=headers,
-            follow_redirects=True,
-        ) as client:
-            try:
-                resp = await client.get(url, params=params)
-            except httpx.TimeoutException as exc:
-                raise VietstockAccessBlockedError(f"timeout for {url}") from exc
-            except httpx.ConnectError as exc:
-                raise VietstockAccessBlockedError(f"cannot connect to {url}") from exc
+        client = await _get_client(_timeout(), headers)
+        try:
+            resp = await client.get(url, params=params, headers=headers)
+        except httpx.TimeoutException as exc:
+            if attempt < _MAX_429_RETRIES:
+                await asyncio.sleep(_BACKOFF_BASE_S * (2**attempt))
+                continue
+            raise VietstockConnectionError(f"timeout for {url}") from exc
+        except httpx.ConnectError as exc:
+            if attempt < _MAX_429_RETRIES:
+                await asyncio.sleep(_BACKOFF_BASE_S * (2**attempt))
+                continue
+            raise VietstockConnectionError(f"cannot connect to {url}") from exc
 
         if resp.status_code in (401, 403):
             if _refreshed:
@@ -333,6 +356,18 @@ async def _do_get(
             raise VietstockRateLimitedError(f"{url} returned 429")
 
         if resp.status_code >= 500:
+            if attempt < _MAX_429_RETRIES:
+                backoff = _BACKOFF_BASE_S * (2**attempt)
+                logger.warning(
+                    "vietstock %s returned %d, backing off %.1fs before retry %d/%d",
+                    url,
+                    resp.status_code,
+                    backoff,
+                    attempt + 1,
+                    _MAX_429_RETRIES,
+                )
+                await asyncio.sleep(backoff)
+                continue
             raise VietstockAccessBlockedError(f"{url} returned {resp.status_code}")
         if resp.status_code >= 400:
             raise VietstockAccessBlockedError(f"{url} returned {resp.status_code}")
@@ -379,17 +414,19 @@ async def _do_post(
         if cookie:
             headers["Cookie"] = cookie
 
-        async with httpx.AsyncClient(
-            timeout=_timeout(),
-            headers=headers,
-            follow_redirects=True,
-        ) as client:
-            try:
-                resp = await client.post(url, data=body)
-            except httpx.TimeoutException as exc:
-                raise VietstockAccessBlockedError(f"timeout for {url}") from exc
-            except httpx.ConnectError as exc:
-                raise VietstockAccessBlockedError(f"cannot connect to {url}") from exc
+        client = await _get_client(_timeout(), headers)
+        try:
+            resp = await client.post(url, data=body, headers=headers)
+        except httpx.TimeoutException as exc:
+            if attempt < _MAX_429_RETRIES:
+                await asyncio.sleep(_BACKOFF_BASE_S * (2**attempt))
+                continue
+            raise VietstockConnectionError(f"timeout for {url}") from exc
+        except httpx.ConnectError as exc:
+            if attempt < _MAX_429_RETRIES:
+                await asyncio.sleep(_BACKOFF_BASE_S * (2**attempt))
+                continue
+            raise VietstockConnectionError(f"cannot connect to {url}") from exc
 
         # Anti-forgery token rejected or expired: refresh once.
         if resp.status_code in (401, 403) or "anti-forgery" in (resp.text or "").lower():
@@ -422,6 +459,18 @@ async def _do_post(
             raise VietstockRateLimitedError(f"{url} returned 429")
 
         if resp.status_code >= 500:
+            if attempt < _MAX_429_RETRIES:
+                backoff = _BACKOFF_BASE_S * (2**attempt)
+                logger.warning(
+                    "vietstock %s returned %d, backing off %.1fs before retry %d/%d",
+                    url,
+                    resp.status_code,
+                    backoff,
+                    attempt + 1,
+                    _MAX_429_RETRIES,
+                )
+                await asyncio.sleep(backoff)
+                continue
             raise VietstockAccessBlockedError(f"{url} returned {resp.status_code}")
         if resp.status_code >= 400:
             raise VietstockAccessBlockedError(f"{url} returned {resp.status_code}")
