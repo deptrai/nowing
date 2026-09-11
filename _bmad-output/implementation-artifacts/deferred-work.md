@@ -565,7 +565,7 @@
   - **Reason / when to revisit:** Thêm guard `workspace_id` hoặc fail fast khi build subagent; thuộc 12.4.
 
 - **Finding:** `_gate_vn_jobs_aggregate` under-reserve cho child sources bill per page, `sources=[]` mặc định all sources, fallback `max_items_per_source=10` khác schema default 50.
-  - **Action:** Blocked — under-reserve deferred to billing gate fix.
+  - **Action:** Resolved from: code review of 12-1-vietnamworks-scraper (2026-09-11). Added `max_items` floor `max(1, ...)` and non-empty `sources` fallback to `list(_JOBS_BILLING_UNIT_MAP)` in `_gate_vn_jobs_aggregate` in `app/capabilities/core/billing.py`.
   - **Reason / when to revisit:** Cần điều chỉnh gating logic cho aggregate job; thuộc 12.4/12.5.
 
 - **Finding:** `_charge_vn_jobs_aggregate` có thể charge khi child output `degraded`.
@@ -573,7 +573,7 @@
   - **Reason / when to revisit:** Bổ sung kiểm tra `output.degraded` trước khi debit; thuộc 12.4/12.5.
 
 - **Finding:** `PII_REDACTION_MIN_CONFIDENCE` config tồn tại nhưng chưa có logic sử dụng.
-  - **Action:** Blocked — PII redaction config deferred to redaction logic implementation.
+  - **Action:** Resolved from: code review of 12-1-vietnamworks-scraper (2026-09-11). Wired `PII_REDACTION_MIN_CONFIDENCE` into `redact_pii` in `app/services/pii/redact.py` with tests.
   - **Reason / when to revisit:** Gắn với PII redaction pipeline khi implement 12.5.
 
 ## Deferred from: code review of 10-5-anti-bot-captcha-screenshot-escalation (2026-08-09)
