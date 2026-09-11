@@ -138,6 +138,8 @@ def _parse_salary(raw: dict[str, Any]) -> VnJobSalary:
         salary.max = None
         salary.confidence = 0.7
     else:
+        if min_v > 0 and max_v > 0 and min_v > max_v:
+            min_v, max_v = max_v, min_v
         salary.min = min_v if min_v > 0 else None
         salary.max = max_v if max_v > 0 else None
         salary.confidence = 0.8

@@ -418,11 +418,11 @@
   - **Reason / when to revisit:** All 3 VN job sources use full forms or Vietnamese. Revisit if a new source uses abbreviations.
 
 - **Finding:** Unknown degradation reasons default to SOURCE_FAILED.
-  - **Action:** Blocked — degradation reason default deferred to normalize.py fix.
+  - **Action:** Resolved from: code review of story-12-4a-4b-normalize-dedupe-conflict round 2 (2026-09-11). Expanded `_DEGRADATION_ENUM_MAP` in `orchestrator.py` to cover TIMEOUT, NETWORK_ERROR, CIRCUIT_OPEN, SERVICE_UNAVAILABLE, AUTH_FAILED, and LEGAL_BLOCKED.
   - **Reason / when to revisit:** Raw reason available in `source_breakdown[source].degradation_reason`. Revisit if monitoring needs finer granularity.
 
 - **Finding:** No min<=max validation on salary values in `_salary_values`.
-  - **Action:** Blocked — salary validation deferred to normalize.py fix.
+  - **Action:** Resolved from: code review of story-12-4a-4b-normalize-dedupe-conflict round 2 (2026-09-11). Added min<=max validation and automatic swap in both `normalize.py` and `dedupe.py._salary_values` with unit tests.
   - **Reason / when to revisit:** Scraper responsibility. Revisit if scrapers send untrusted data.
 
 - **Finding:** O(n²) dedupe within large company groups.
@@ -1224,7 +1224,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 ## Deferred from: code review of 26-4-pii-vault-hmac-deduplication-decree-13-opt-out (2026-08-19)
 
 - **Finding:** `batch_ingest_leads` route returns without committing the session, so writes are rolled back on session close. (`nowing_backend/app/routes/lead_batch_routes.py:116`, `nowing_backend/app/db.py:4107-4109`)
-  - **Action:** Blocked — session commit deferred to route handler fix.
+  - **Action:** Resolved from: code review of 26-4-pii-vault-hmac-deduplication-decree-13-opt-out (2026-09-11). Explicit `await session.commit()` is present in `batch_ingest_leads` route in `lead_batch_routes.py`.
   - **Reason / when to revisit:** Pre-existing pattern in `lead_batch_routes.py`; the 26.4 diff does not introduce the missing `session.commit()` here. Fix when `batch_ingest_leads` persistence is addressed in a dedicated lead-ingest hardening pass or when the route is next touched.
 
 - **Finding:** Global / superadmin PII opt-out endpoint is not exposed. (`nowing_backend/app/routes/lead_batch_routes.py:289`, `nowing_backend/app/services/pii/opt_out_service.py:309-320`)

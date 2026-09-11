@@ -827,3 +827,18 @@ def test_infer_salary_period_english_abbreviations():
     assert _infer_salary_period_from_text("50k per annum") == "year"
     assert _infer_salary_period_from_text("60k/annum") == "year"
     assert _infer_salary_period_from_text("100k p.a.") == "year"
+
+
+def test_parse_salary_swaps_inverted_min_max():
+    """Verify that when raw salary_min > salary_max, min and max are swapped."""
+    raw = {
+        "title": "Senior Engineer",
+        "company": "VNG",
+        "salary_min": 50_000_000,
+        "salary_max": 30_000_000,
+        "salary_currency": "VND",
+        "salary_period_id": "month",
+    }
+    listing = normalize_listing("topcv", raw)
+    assert listing.salary.min == 30_000_000
+    assert listing.salary.max == 50_000_000
