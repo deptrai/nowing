@@ -1,7 +1,7 @@
 ## Deferred from: code review of 6-11-vertical-alert-rule-templates (2026-09-04)
 
 - **Finding:** `CreateFromTemplateModal.tsx` currently defaults `notification_channels` to `["in_app"]` without interactive multi-select UI for Telegram/Email notifications.
-  - **Action:** Blocked — multi-select UI deferred to UX refinement pass.
+  - **Action:** Resolved from: code review of 6-11-vertical-alert-rule-templates (2026-09-11). Added interactive multi-select UI with `toggleChannel` for `in_app`, `telegram`, and `email` in `nowing_web/components/alerts/CreateFromTemplateModal.tsx` with Biome check passed.
   - **Reason / when to revisit:** In-app notifications are the primary delivery mechanism; Telegram integration requires existing workspace bot linkage. Add channel toggle controls in follow-up UX refinement pass.
 
 ## Deferred from: code review of 25-4-realtime-llm-token-cost-proxy-health-celery-queue-telemetry (2026-08-26)
@@ -841,7 +841,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** Same pattern as Telegram `/run`; add idempotency key or workspace+automation dedup lock when manual-run endpoint is hardened.
 
 - **Finding:** Celery `apply_async` failure after `launch_run` commits leaves a run stuck PENDING forever.
-  - **Action:** Blocked — apply_async failure deferred to Celery task fix.
+  - **Action:** Resolved from: code review of 7-7-mcp-server-tool-expansion (2026-09-11). Wrapped `automation_run_execute.apply_async` in try/except in `launch_run` in `app/automations/dispatch/launch.py`, setting `run.status = RunStatus.FAILED` and raising `DispatchError` with unit tests.
   - **Reason / when to revisit:** Pre-existing `launch_run` commit-before-enqueue pattern; fix by rolling back or retrying enqueue.
 
 ## Deferred from: code review of 25-7-third-party-health-operations-dashboard (chunk 1 backend, 2026-09-04)
