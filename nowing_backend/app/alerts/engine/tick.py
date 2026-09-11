@@ -38,12 +38,16 @@ async def _tick() -> None:
 
         await _self_heal_null_next_fire(session, now=now)
 
-        claims = await _claim_due_rules(session, now=now)
-        if not claims:
-            return
+        while True:
+            claims = await _claim_due_rules(session, now=now)
+            if not claims:
+                break
 
-        for rule in claims:
-            await _execute_claimed_rule(session, rule, now=now)
+            for rule in claims:
+                await _execute_claimed_rule(session, rule, now=now)
+
+            if len(claims) < _TICK_BATCH:
+                break
 
 
 async def _execute_claimed_rule(
