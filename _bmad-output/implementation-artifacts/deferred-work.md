@@ -7,7 +7,7 @@
 ## Deferred from: code review of 25-4-realtime-llm-token-cost-proxy-health-celery-queue-telemetry (2026-08-26)
 
 - **Finding:** Cost aggregation in `AdminTelemetryService` reimplements `UsageService` SQL patterns instead of reusing/extend `UsageService`.
-  - **Action:** Blocked — accept duplication for v1 to deliver the dashboard; refactor and share aggregation primitives in a follow-up hardening story.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (accept duplication for v1 to deliver the dashboard; refactor and share aggregation primitives in a follow-up hardening story.)
   - **Reason / when to revisit:** Accept duplication for v1 to deliver the dashboard; refactor and share aggregation primitives in a follow-up hardening story.
 
 - **Finding:** `stalled_count` and `throughput_per_min` in Celery queue telemetry are placeholders (`0` and instantaneous count).
@@ -23,11 +23,11 @@
 ## Deferred from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-08-26, chunk D)
 
 - **Finding:** Card/dock download and preview use a raw `BACKEND_URL` `<a href>` / iframe with no `authenticatedFetch`.
-  - **Action:** Blocked — same pattern as other deliverable downloads; Docker proxy mode is same-origin. Revisit if cookie-host mismatch 401s on `api.nowing.net`.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (same pattern as other deliverable downloads; Docker proxy mode is same-origin. Revisit if cookie-host mismatch 401s on `api.nowing.net`.)
   - **Reason / when to revisit:** Same pattern as other deliverable downloads; Docker proxy mode is same-origin. Revisit if cookie-host mismatch 401s on `api.nowing.net`.
 
 - **Finding:** Remotion video card still says "presentation" and exports `presentation.pptx`.
-  - **Action:** Blocked — leftover UI copy is the existing video product; revisit in a video-presentation copy pass.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (leftover UI copy is the existing video product; revisit in a video-presentation copy pass.)
   - **Reason / when to revisit:** T8 backend catalog/docstring already narrowed; leftover UI copy is the existing video product. Revisit in a video-presentation copy pass.
 
 - **Finding:** No Playwright coverage for chips, `/slides`, or the presentation card.
@@ -41,7 +41,7 @@
 ## Deferred from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-08-26, chunk C re-review)
 
 - **Finding:** Identity prompts still list "slide decks" under the `deliverables` subagent, which has no `generate_presentation` tool.
-  - **Action:** Blocked — Presentation Studio mode replaces `enabled_tools` with `generate_presentation` only; the chip/slash path is isolated. Revisit when cleaning default-mode routing.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (Presentation Studio mode replaces `enabled_tools` with `generate_presentation` only; the chip/slash path is isolated. Revisit when cleaning default-mode routing.)
   - **Reason / when to revisit:** Presentation Studio mode replaces `enabled_tools` with `generate_presentation` only, so the chip/slash path is isolated. Revisit when cleaning default-mode routing so "make slides" does not go to Remotion video.
 
 - **Finding:** Tool ATDD never leaves the early-return path; emission/thinking and `status=degraded` are untested.
@@ -97,11 +97,11 @@
   - **Reason / when to revisit:** 27.1d Mark Tool enum; do not revert as part of 27.2a.
 
 - **Finding:** Presentation SSE thinking copies the first 80 chars of the user prompt.
-  - **Action:** Blocked — same pattern as `build_web_app` thinking; revisit with a workspace-wide policy for prompt text in thinking SSE.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (same pattern as `build_web_app` thinking; revisit with a workspace-wide policy for prompt text in thinking SSE.)
   - **Reason / when to revisit:** Same pattern as `build_web_app` thinking. Revisit with a workspace-wide policy for prompt text in thinking SSE.
 
 - **Finding:** ChatMode does not encode pptx vs marp from the entry-point chip/slash.
-  - **Action:** Blocked — single `presentation_studio` mode; format belongs to frontend chips/`?q=` in chunk D.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (single `presentation_studio` mode; format belongs to frontend chips/`?q=` in chunk D.)
   - **Reason / when to revisit:** Single `presentation_studio` mode; format belongs to frontend chips/`?q=` in chunk D.
 
 ## Deferred from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-08-26, chunk B)
@@ -111,7 +111,7 @@
   - **Reason / when to revisit:** Fine for MVP catalog size; add pagination when list UI exists.
 
 - **Finding:** Alembic sets `workspaces.presentation_studio_enabled` NOT NULL default `true` for all existing workspaces.
-  - **Action:** Blocked — global `PRESENTATION_STUDIO_ENABLED` still fail-closed; revisit when plan-tier entitlements should disable per workspace.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (global `PRESENTATION_STUDIO_ENABLED` still fail-closed; revisit when plan-tier entitlements should disable per workspace.)
   - **Reason / when to revisit:** Global `PRESENTATION_STUDIO_ENABLED` still fail-closed. Revisit when plan-tier entitlements should disable the feature per workspace.
 
 - **Finding:** Chunk B diff includes an unrelated `Host("{host}")` web-builder catch-all in `app.py`.
@@ -125,7 +125,7 @@
   - **Reason / when to revisit:** Fine until a workspace has a large deck catalog; switch to existence-check or hash suffix without a full scan.
 
 - **Finding:** `SlidePresentation.prompt` stores the full user prompt.
-  - **Action:** Blocked — useful for re-generate/debug; apply retention/redaction with workspace memory policy (28.5).
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (useful for re-generate/debug; apply retention/redaction with workspace memory policy (28.5).)
   - **Reason / when to revisit:** Useful for re-generate/debug; apply retention/redaction with workspace memory policy (28.5).
 
 ## Deferred from: code review of 27-1d-web-app-mark-tool-ast-mutator (2026-08-25)
@@ -135,7 +135,7 @@
   - **Reason / when to revisit:** Pre-existing file I/O pattern on a single-user design-view path; revisit if Mark Tool is used concurrently (multi-tab/multi-seat) or if lost updates show up in production.
 
 - **Finding:** Class/id matching ignores expression-valued attributes such as `className={cn("foo")}`.
-  - **Action:** Blocked — generated apps currently emit string-literal `className`; evaluating JSX expressions to match live DOM classes needs a static-eval policy.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (generated apps currently emit string-literal `className`; evaluating JSX expressions to match live DOM classes needs a static-eval policy.)
   - **Reason / when to revisit:** Generated apps currently emit string-literal `className`; evaluating JSX expressions to match live DOM classes needs a static-eval policy. Revisit when the generator emits `cn()` / template class expressions.
 
 - **Finding:** `_parse_selector` keeps only the last class segment for forms like `div.a.b`.
@@ -144,7 +144,7 @@
 ## Deferred from: code review of 27-1c-web-app-container-deploy-cname (2026-08-25)
 
 - **Finding:** Multi-tenant Network Isolation / Cgroup CPU & Memory Limits for Web Builder user containers.
-  - **Action:** Blocked — multi-tenant resource constraints belong to infrastructure hardening phase on Dokploy.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (multi-tenant resource constraints belong to infrastructure hardening phase on Dokploy.)
   - **Reason / when to revisit:** Multi-tenant resource constraints (cgroups memory/cpu limit, overlay isolation) belong to infrastructure hardening phase on Dokploy.
 
 ## Resolved from: code review of 27-1b-web-app-build-preview-runner (2026-08-25)
@@ -167,35 +167,35 @@
 ## Deferred from: code review of 27-1a-web-builder-chat-mode-sales-marketing-mvp (2026-08-25, round 2)
 
 - **Finding:** Content-Security-Policy is intentionally broad for generated/published apps.
-  - **Action:** Blocked — intentionally broad CSP for generated apps; tighten when security audit requires.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (intentionally broad CSP for generated apps; tighten when security audit requires.)
   - **Reason / when to revisit:** The preview/public renderer relies on Babel/Tailwind/React CDN and generated apps may call external lead-form/analytics endpoints. Tightening now would break the MVP. Revisit when per-app allow-list and a hardened sanitizer are designed.
 - **Finding:** Plan gating defaults are `True` for every workspace.
-  - **Action:** Blocked — plan gating defaults to True for MVP; add plan-tier checks when billing is integrated.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (plan gating defaults to True for MVP; add plan-tier checks when billing is integrated.)
   - **Reason / when to revisit:** The workspace-level toggle works. Plan-tier entitlement integration (free vs. paid) requires `WorkspaceLimit`/plan-entitlement design that is out of 27.1a scope.
 - **Finding:** `WebAppDeployService` returns `published` without DNS/ingress verification.
-  - **Action:** Blocked — DNS/ingress verification deferred to infrastructure hardening.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (DNS/ingress verification deferred to infrastructure hardening.)
   - **Reason / when to revisit:** Static-snapshot publishing for 27.1a assumes the wildcard DNS/ingress is provisioned externally (Traefik/Caddy). Runtime health check and `public_url_status` belong to Story 27.1c container/CNAME work.
 
 ## Deferred from: code review of 27-1a-web-builder-chat-mode-sales-marketing-mvp (2026-08-24, chunk 1 backend)
 
 - **Finding:** Synchronous file I/O in async web-builder service methods.
-  - **Action:** Blocked — sync I/O acceptable for MVP; convert to async when performance requires.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (sync I/O acceptable for MVP; convert to async when performance requires.)
   - **Reason / when to revisit:** Pre-existing blocking pattern in `WebBuilderService`/`WebAppDeployService`; revisit if preview/deploy latency spikes or if the service moves to async file operations.
 - **Finding:** `WebBuilderService.generate_project_stream` uses a new `uuid` and ignores `app_id`, so it cannot refine and does not record token usage.
-  - **Action:** Blocked — refine/token tracking deferred to follow-up story.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (refine/token tracking deferred to follow-up story.)
   - **Reason / when to revisit:** Story 27.1a uses the non-streaming `generate_project` path; the streaming endpoint is pre-existing scope from Story 27.1 and out of 27.1a MVP.
 - **Finding:** `PreviewRenderer._sanitize_tsx_for_babel` strips only `document.cookie`, `localStorage`, `sessionStorage` and not other exfiltration channels (`fetch`, `XMLHttpRequest`, `navigator.sendBeacon`, `window.parent`).
-  - **Action:** Blocked — out-of-scope or requires feature work beyond test coverage.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (out-of-scope or requires feature work beyond test coverage.)
   - **Reason / when to revisit:** Broader sandbox hardening is a security enhancement beyond the current `unsafe-inline`/`unsafe-eval` CSP sandbox; revisit when tightening the public-app threat model.
 - **Finding:** `WebBuilderService.generate_project` records hardcoded `prompt_tokens=500`, `completion_tokens=2000`, `cost_micros=15000` for token usage.
-  - **Action:** Blocked — hardcoded token costs for MVP; replace with real metering when token tracking is integrated.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (hardcoded token costs for MVP; replace with real metering when token tracking is integrated.)
   - **Reason / when to revisit:** The spec requires recording `TokenUsage`, not exact metering; accurate cost measurement depends on integrating `TokenTrackingService` with LLM provider usage metadata, which can be improved later.
 
 ## Deferred from: code review of 14-2a-news-entity-extraction (2026-08-24, round 2 — groups A+B)
 
 
 - **Finding:** `NowingIngestService` can fail to persist `ChainLensIngestJob` after a successful `IngestResult` because the persistence block is best-effort and can raise.
-  - **Action:** Blocked — best-effort persistence deferred to ingest service hardening.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (best-effort persistence deferred to ingest service hardening.)
   - **Reason / when to revisit:** Pre-existing `NowingIngestService` reliability debt; not introduced by Story 14.2a. Revisit when chainlens ingest durability is hardened or the service persistence contract is centralized.
 
 ## Deferred from: code review of 14-2a-news-entity-extraction (2026-08-24)
@@ -210,7 +210,7 @@
   - **Action:** Resolved from: code review of 4-6-research-continuity (2026-09-11). Added `test_citation_regex_parity_with_frontend_source` in `tests/unit/agents/multi_agent_chat/shared/citations/test_citation_parser.py` guarding pattern parity against `nowing_web/lib/citations/citation-parser.ts`.
   - **Reason / when to revisit:** Cross-package drift risk; revisit khi có test parity hoặc khi TS/evals regex thay đổi.
 - **Finding:** MCP dùng substring `not found` để phát hiện 404.
-  - **Action:** Blocked — substring 404 detection deferred to MCP client fix.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (substring 404 detection deferred to MCP client fix.)
   - **Reason / when to revisit:** Cần `NowingClient` expose HTTP status; revisit khi refactor error handling MCP client.
 
 ## Deferred from: code review of 21-21-deterministic-confidence-gate-selective-micro-llm-fallback-worker (2026-08-23)
@@ -237,7 +237,7 @@
   - **Action:** Resolved from: code review of 3-7-followup-retention-hardening (2026-09-11). Added `test.beforeAll` health check skipping the suite gracefully when backend `/health` is unreachable.
   - **Reason / when to revisit:** Nice-to-have E2E robustness; revisit when centralizing Playwright health-check fixtures.
 - **Finding:** `data-retention.spec.ts` cleanup leaves invited member user behind.
-  - **Action:** Blocked — no `DELETE /users` or `DELETE /workspaces/{id}/members` endpoint exists to remove the invited member user after the test. Cannot resolve without a backend API change.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (no `DELETE /users` or `DELETE /workspaces/{id}/members` endpoint exists to remove the invited member user after the test. Cannot resolve without a backend API change.)
   - **Reason / when to revisit:** Pre-existing E2E cleanup pattern; revisit during test-hygiene sprint.
 
 ## Deferred from: code review of 24-7-multi-channel-drip-outreach-campaign-engine (2026-08-22)
@@ -267,7 +267,7 @@
   - **Action:** **DISMISSED** — pre-existing test architecture seam; preserved for test isolation.
   - **Reason / when to revisit:** Already in `test-review-24-3.md`; revisit during 4.9/4.10.
 - **Finding:** Direct `wallet_credit.apply_debit` call sites in `phone_waterfall_service.py`, `outcome_pricing_service.py`, `etl_credit_service.py`, `zns_client.py`, `web_crawl_credit_service.py`, `platform_scrape_credit_service.py` bypass the per-seat spend-cap gate.
-  - **Action:** Blocked — direct apply_debit call sites deferred to per-service review.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (direct apply_debit call sites deferred to per-service review.)
   - **Reason / when to revisit:** Pre-existing / owned by other stories; revisit when each service is reviewed.
 - **Finding:** `MissionControlWidget.tsx:239` pre-existing TypeScript build fix.
   - **Action:** **DISMISSED** — out of scope for Story 24.3 review; build cleanly passing.
@@ -307,7 +307,7 @@
 ## Deferred from: code review of 26-2-dsh-worker-sidecar-redis-streams-and-task-resumption (2026-08-17)
 
 - **Finding:** Missing structured mission-lifecycle observability.
-  - **Action:** Blocked — functional logging exists; structured logs and metrics are a production-hardening follow-up.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (functional logging exists; structured logs and metrics are a production-hardening follow-up.)
   - **Reason / when to revisit:** Functional logging exists; structured logs and metrics are a production-hardening follow-up, not a 26.2 launch blocker and not in the ACs.
 
 ## Deferred from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-08-21)
@@ -351,18 +351,18 @@
   - **Reason / when to revisit:** Pre-existing notification service pattern. Revisit when alerting notification channel hardening is scheduled.
 
 - **Finding:** Connect full TanStack Query API endpoints for Telegram Userbot / Channel list on Web Admin.
-  - **Action:** Blocked — TanStack Query endpoints deferred to admin UI story.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (TanStack Query endpoints deferred to admin UI story.)
   - **Reason / when to revisit:** Frontend UI contracts are in place; live backend scraper persistence APIs for accounts/channels are scheduled for next platform sprints.
 
 ## Deferred from: code review of 21-5-crm-integration (2026-08-16)
 
 
 - **Finding:** Cross-source full CRM historical bi-directional backfill and deal pipeline sync.
-  - **Action:** Blocked — bi-directional backfill deferred to CRM sync story.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (bi-directional backfill deferred to CRM sync story.)
   - **Reason / when to revisit:** Out of scope for MVP (Spec line 468). Revisit when enterprise pipeline sync is scheduled.
 
 - **Finding:** Dedicated CRM UI tabs in frontend.
-  - **Action:** Blocked — CRM UI tabs deferred to frontend story.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (CRM UI tabs deferred to frontend story.)
   - **Reason / when to revisit:** Frontend contracts and UI components are scoped to Story 21.6 (Zalo Integration) and Story 21.13 (Multi-Table Tabs).
 
 ## Deferred from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-08-17)
@@ -384,7 +384,7 @@
 ## Deferred from: code review of story-15-2-vietstock-deep-financials (2026-08-15)
 
 - **Finding:** CafeF financials do not currently go through `to_chunks()` / `NowingIngestService.ingest()`; true cross-source merge requires updating Story 15.1 or a follow-up story.
-  - **Action:** Blocked — cross-source merge deferred to ingest service integration.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (cross-source merge deferred to ingest service integration.)
   - **Reason / when to revisit:** Pre-existing ingestion pipeline mismatch. Revisit when Story 15.1 financials are migrated to ChainLens ingest or a cross-source reconciliation story is scheduled.
 
 - **Finding:** Per-request `httpx.AsyncClient` creation in `fetch.py`.
@@ -426,7 +426,7 @@
   - **Reason / when to revisit:** Scraper responsibility. Revisit if scrapers send untrusted data.
 
 - **Finding:** O(n²) dedupe within large company groups.
-  - **Action:** Blocked — O(n²) dedupe deferred to algorithm optimization.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (O(n²) dedupe deferred to algorithm optimization.)
   - **Reason / when to revisit:** Ponytail comment documents ceiling + upgrade path (sort by posted_at + windowing). Revisit if a single company exceeds 100+ listings per query.
 
 ## Deferred from: code review of story-12-4a-4b-normalize-dedupe-conflict (2026-08-12)
@@ -442,7 +442,7 @@
   - **Reason / when to revisit:** Pre-existing class name; rename the retriever itself if a refactor pass touches it.
 
 - **Finding:** Workspace access check fetches workspace then calls `check_workspace_access` non-atomically.
-  - **Action:** Blocked — non-atomic access check deferred to auth hardening.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (non-atomic access check deferred to auth hardening.)
   - **Reason / when to revisit:** Same pattern used across many routes; revisit with a broader `get_workspace_with_membership` helper or row-level advisory lock.
 
 ## Resolved from: code review of 18-3-agent-registry (2026-08-10)
@@ -491,7 +491,7 @@
 ## Deferred from: code review of 18-8-rate-limiting-tenant-isolation (2026-08-10)
 
 - **Finding:** Thiếu L2/L3/L5 tests theo threat model.
-  - **Action:** Blocked — L2/L3/L5 tests require threat model §4.1 CI gate and production-readiness infrastructure not yet in place. L1 implemented in `test_schema_and_guc.py`. in `spec-18-8-rate-limiting-tenant-isolation.md`.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (L2/L3/L5 tests require threat model §4.1 CI gate and production-readiness infrastructure not yet in place. L1 implemented in `test_schema_and_guc.py`. in `spec-18-8-rate-limiting-tenant-isolation.md`.)
   - **Reason / when to revisit:** Threat model §4.1 yêu cầu L1+L2+L3 cho CI gate và L4/L5 trước production; chỉ L1 được implement trong story. Bổ sung khi Epic 18 đạt production-readiness.
 
 - **Finding:** `memory_relations` và `memory_versions` chưa có RLS/GUC.
@@ -519,7 +519,7 @@
 ## Deferred from: code review of 18-1-public-agent-chat-endpoints (2026-08-09)
 
 - **Finding:** `GET /threads/{thread_id}` / `agent_chat:thread:read` endpoint.
-  - **Action:** Blocked — endpoint deferred to API completion story.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (endpoint deferred to API completion story.)
   - **Reason / when to revisit:** Not in 18.1 ACs; permission vocabulary `agent_chat:thread:read` hints at future scope. Revisit in Story 18.4+ when read surface is defined.
 
 ## Deferred from: code review of story-12-9-job-market-alerts (2026-08-13)
@@ -579,11 +579,11 @@
 ## Deferred from: code review of 10-5-anti-bot-captcha-screenshot-escalation (2026-08-09)
 
 - **Finding:** Billing tracking cho screenshot storage — cần quyết định PM/Architect về billing unit; chưa có trong token_tracking_service.
-  - **Action:** Blocked — billing unit decision deferred to PM/Architect.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (billing unit decision deferred to PM/Architect.)
   - **Reason / when to revisit:** Defer sang epic cost tracking hoặc khi product yêu cầu charge storage.
 
 - **Finding:** Hardcoded TTL 30 giây và SHA256 cache key cho anti-bot cache.
-  - **Action:** Blocked — hardcoded TTL/cache key deferred to cache hardening.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (hardcoded TTL/cache key deferred to cache hardening.)
   - **Reason / when to revisit:** Chuyển vào config hoặc dùng hash đơn giản hơn nếu cache hit/miss metrics cho thấy overhead đáng kể.
 
 - **Finding:** Inconsistent `next_action` pattern giữa platform executors (batdongsan/chotot/muaban inline string, itviec/topcv dùng helper).
@@ -609,7 +609,7 @@
   - **Resolution:** `gate.yaml` now uses `required_oracle_mode: score_threshold` and the header/comment attributes the real score/similarity metadata to Story 3.14. The REST/MCP recall routes and `MemoryHybridSearch` emit finite `score` and `similarity` (or `None` for recency), so the threshold oracle can run. This was confirmed by the 2026-07-28 live run (recall@5=0.986, MRR=1.0, distractor noise=0.067, off-corpus=0.033, n_queries=36).
 
 - **Finding:** Over-materialization of candidates in `search.py` — `top_k*3` bounded materialization is acceptable for current corpus sizes.
-  - **Action:** Blocked — over-materialization acceptable for current corpus size; revisit when corpus grows.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (over-materialization acceptable for current corpus size; revisit when corpus grows.)
   - **Reason / when to revisit:** Revisit if corpus grows beyond ~1M rows or if p95 memory pressure becomes measurable in AC-3 latency evidence.
 
 - **Finding:** RRF ranking tie-break tests are missing exhaustive coverage.
@@ -804,7 +804,7 @@ The following 4 deferred items have been promoted to dedicated tech-debt stories
 ## Deferred from: code review of 7-4-dedicated-connectors-layout (2026-08-08)
 
 - **Finding:** Thay đổi mở document thành tab trong `DocumentsSidebar` chưa có test — `DocumentsSidebar.tsx:354, 1123-1126`.
-  - **Action:** Blocked — DocumentsSidebar.tsx component test requires frontend test infrastructure not yet in place for this component.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (DocumentsSidebar.tsx component test requires frontend test infrastructure not yet in place for this component.)
 - **Reason / when to revisit:** Behavior change từ `openEditorPanel` sang `openDocumentTab` nằm ngoài scope rõ ràng của Story 7.4; cần xử lý khi test khung tab/document được triển khai hoặc khi refactor DocumentsSidebar.
 
 ## Tech-debt: Epic 13 code deprecation (2026-08-08)
@@ -833,7 +833,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** Thundering-herd risk when multiple callers hit a busy thread; add jitter and/or circuit-breaker in a chat robustness pass.
 
 - **Finding:** `NowingClient.stream_sse()` has only a 600s total timeout, no per-event/idle timeout.
-  - **Action:** Blocked — timeout deferred to SSE client fix.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (timeout deferred to SSE client fix.)
   - **Reason / when to revisit:** A stalled SSE stream hangs for up to 600s; introduce `httpx.Timeout(..., read=60.0)` and/or application-level idle timer.
 
 - **Finding:** `POST /automations/{id}/run` has no idempotency key, so two concurrent POSTs create two PENDING runs.
@@ -1083,7 +1083,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** PostgreSQL FKs already have `ON DELETE CASCADE`; SQLAlchemy loads children on delete. Add `passive_deletes=True` in a performance pass.
 
 - **Finding:** Redis consumer group starts at stream ID `0` and never reclaims pending messages from crashed consumers. (app/tasks/social_stream_worker.py:500-530)
-  - **Action:** Blocked — add consumer group recovery when stream consumer is productionized.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (add consumer group recovery when stream consumer is productionized.)
   - **Reason / when to revisit:** New group reading from beginning is recoverable, and `XAUTOCLAIM` is not required for the first release. Add when consumer durability is prioritized.
 
 - **Finding:** `run_social_stream_consumer` runs a single `xreadgroup` batch and returns, not a continuous processing loop. (app/tasks/social_stream_worker.py:481-584)
@@ -1099,7 +1099,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** Boundary behavior is marginal; adjust to `>=` if product confirms inclusive thresholds.
 
 - **Finding:** Facebook group ingest always passes `auth_cookie=None`; per-target cookie store not implemented. (app/tasks/celery_tasks/social_xactions_ingest.py:115-121)
-  - **Action:** Blocked — implement per-target cookie store when Facebook group ingest is productionized.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (implement per-target cookie store when Facebook group ingest is productionized.)
   - **Reason / when to revisit:** Global env cookies are acceptable for the first release. Add per-target cookie column when multi-tenant Facebook scraping is required.
 
 - **Finding:** Email channel lacks outbound metrics, partial SMTP credentials silently skip auth, and missing-SMTP_HOST warning is logged per subscriber. (app/alerts/engine/notify.py:125-137)
@@ -1176,7 +1176,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** Refactor to async Celery task or worker loop in Story 21.3.
 
 - **Finding:** Missing migration for `VerifiedContact`/`PhoneWaterfallLog` model changes. (app/db.py)
-  - **Action:** Blocked — migration deferred to schema update story.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (migration deferred to schema update story.)
   - **Reason / when to revisit:** Add companion migration in Story 21.3 to keep alembic in sync.
 
 - **Finding:** `app/db.py` reintroduces top-level circular `SpatialPlanningZone` import. (app/db.py:4762)
@@ -1188,7 +1188,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** Align ORM/migration delete semantics when finalizing 21.6 data model.
 
 - **Finding:** `PhoneResolutionResponse` hard-codes 1.5 credits for async `pending` results. (app/routes/leads_routes.py:595-602)
-  - **Action:** Blocked — hardcoded credits deferred to pricing model update.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (hardcoded credits deferred to pricing model update.)
   - **Reason / when to revisit:** Return 0/null for pending async results in Story 21.3.
 
 ## Deferred from: code review of 21-6-zalo-integration — second pass (2026-08-15)
@@ -1212,13 +1212,13 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 ## Deferred from: code review of 24-2-waterfall-phone-mst-corporate-verification-engine (2026-08-16)
 
 - **Finding:** PII vault lacks key-rotation and encryption-failure handling. (nowing_backend/app/services/pii/verified_contact_encryption.py:40-55 and nowing_backend/app/services/phone_waterfall_service.py:692)
-  - **Action:** Blocked — key rotation and failure handling deferred to PII vault hardening story.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (key rotation and failure handling deferred to PII vault hardening story.)
   - **Reason / when to revisit:** Verified-contact encryption relies on a single `SECRET_KEY` with no rotation plan, and `resolve_lead_phone` calls `encrypt()` without guarding against transient failures. This is a cross-cutting PII-vault concern and should be handled in a dedicated PII security story.
 
 ## Deferred from: code review of 24-2-waterfall-phone-mst-corporate-verification-engine (2026-08-17)
 
 - **Finding:** PII vault lacks key-rotation and encryption-failure handling. (nowing_backend/app/services/pii/verified_contact_encryption.py:40-55 and nowing_backend/app/services/phone_waterfall_service.py:692)
-  - **Action:** Blocked — key rotation and failure handling deferred to PII vault hardening story.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (key rotation and failure handling deferred to PII vault hardening story.)
   - **Reason / when to revisit:** Confirmed in chunk 1 backend review. Verified-contact encryption relies on a single `SECRET_KEY` with no rotation plan, and `resolve_lead_phone` calls `encrypt()` without guarding against transient failures. Cross-cutting PII-vault concern; revisit in a dedicated PII security story.
 
 ## Deferred from: code review of 26-4-pii-vault-hmac-deduplication-decree-13-opt-out (2026-08-19)
@@ -1228,11 +1228,11 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** Pre-existing pattern in `lead_batch_routes.py`; the 26.4 diff does not introduce the missing `session.commit()` here. Fix when `batch_ingest_leads` persistence is addressed in a dedicated lead-ingest hardening pass or when the route is next touched.
 
 - **Finding:** Global / superadmin PII opt-out endpoint is not exposed. (`nowing_backend/app/routes/lead_batch_routes.py:289`, `nowing_backend/app/services/pii/opt_out_service.py:309-320`)
-  - **Action:** Blocked — global opt-out endpoint deferred to admin API story.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (global opt-out endpoint deferred to admin API story.)
   - **Reason / when to revisit:** Current AC does not require cross-workspace purge. Implement when product requires global Right-to-be-Forgotten flow with proper superadmin permission, audit, and scope design.
 
 - **Finding:** `BillingEvent` model has no `reason` column as suggested by AD-105 Rule 4. (`nowing_backend/app/db.py:4586-4627`, `nowing_backend/app/services/billing_event_service.py:78-89`)
-  - **Action:** Blocked — `reason` column deferred to AD-105 Rule 4 implementation.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (`reason` column deferred to AD-105 Rule 4 implementation.)
   - **Reason / when to revisit:** BillingEvent `event_type` already distinguishes unlock/refund. Detailed reason stored in `pii_access_audit_logs`. Defer to a billing schema v2 epic if a dedicated `reason` column is needed.
 
 ## Deferred from: code review of 26-6-telegram-interactive-checkpoint-bot-1-click-auto-refund-dialog (Group 1 — 2026-08-19)
@@ -1264,11 +1264,11 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 ## Deferred from: code review of td-8 Epic 13 cleanup commit 542b84d61 (2026-08-22)
 
 - **Finding:** NG-5 residual — `cafef` scraper indexes news into local KB only without forwarding `Chunk[]` to `chainlens-research`; `rss_indexer` dual-writes local `Document/Chunk` plus chainlens feed.
-  - **Action:** Blocked — NG-5 residual deferred to chainlens-research integration.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (NG-5 residual deferred to chainlens-research integration.)
   - **Reason / when to revisit:** Pre-existing inconsistency in scraper feed contract, not a regression of the Epic 13 cleanup. Revisit when standardizing scraper-to-chainlens ingestion across all connector domains.
 
 - **Finding:** `ChainLensIngestJob` observability may have been reduced at ingest path (needs verification whether intentional).
-  - **Action:** Blocked — observability reduction deferred to ingest path verification.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (observability reduction deferred to ingest path verification.)
   - **Reason / when to revisit:** Insufficient evidence in the diff to determine if metrics/observability removal was deliberate; verify with `app/services/chainlens/ingest.py` and `ingest_reception.py` before patching.
 
 ## Deferred from: blind-hunter + edge-case-hunter re-run on td-8 (2026-08-23)
@@ -1286,7 +1286,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** Need a design for propagating partial/failed ingest status into capability output / indexing warning without breaking billing/tests.
 
 - **Finding:** Per-scraper ingest failure metrics are missing after canonical metrics were removed.
-  - **Action:** Blocked — per-scraper metrics deferred to ingest metrics fix.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (per-scraper metrics deferred to ingest metrics fix.)
   - **Reason / when to revisit:** `NowingIngestService.ingest` already emits `record_chainlens_ingest_failed`; add domain dimension when implementing a scraper observability story.
 
 - **Finding:** `masothue.scrape` only feeds `chainlens-research` when `ctx is not None`.
@@ -1300,27 +1300,27 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 ## Deferred from: code review of story 24.8 (2026-08-24)
 
 - **Finding:** Thiếu `HumanLiveTakeoverPopover` riêng và countdown 15:00 (AC-4).
-  - **Action:** Blocked — HumanLiveTakeoverPopover deferred to AC-4 implementation.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (HumanLiveTakeoverPopover deferred to AC-4 implementation.)
   - **Reason / when to revisit:** Tách thành story 24.8b/UI; cần design countdown + challenge type display.
 
 - **Finding:** Thiếu scheduler chuyển mission sang `aborted_timeout` sau 15 phút (AC-6).
-  - **Action:** Blocked — timeout scheduler deferred to AC-6 implementation.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (timeout scheduler deferred to AC-6 implementation.)
   - **Reason / when to revisit:** Cần Celery Beat job hoặc delayed task; hiện chỉ set Redis lock TTL.
 
 - **Finding:** Không hoàn credits khi timeout (AC-6).
-  - **Action:** Blocked — credit refund on timeout deferred to AC-6 implementation.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (credit refund on timeout deferred to AC-6 implementation.)
   - **Reason / when to revisit:** Liên quan Epic 8/credit refund flow; cần tích hợp wallet refund.
 
 - **Finding:** Không CDP session token lifecycle và `chrome.debugger.onDetach` listener (AC-1/Review Finding).
-  - **Action:** Blocked — CDP session token lifecycle deferred to AC-1 implementation.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (CDP session token lifecycle deferred to AC-1 implementation.)
   - **Reason / when to revisit:** Hiện attach/detach mỗi lệnh; cần thiết kế session token + detach listener khi scale.
 
 - **Finding:** Thiếu audit log cho CDP commands (security).
-  - **Action:** Blocked — CDP audit log deferred to security hardening.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (CDP audit log deferred to security hardening.)
   - **Reason / when to revisit:** Cần design audit store + retention cho browser operator.
 
 - **Finding:** Không có E2E extension tests (Review Finding).
-  - **Action:** Blocked — E2E extension tests require CDP session lifecycle and `chrome.debugger.onDetach` listener implementation (AC-1); not yet implemented. in `24-8-browser-operator-cdp-tool-and-human-live-takeover.md`.
+  - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (E2E extension tests require CDP session lifecycle and `chrome.debugger.onDetach` listener implementation (AC-1); not yet implemented. in `24-8-browser-operator-cdp-tool-and-human-live-takeover.md`.)
   - **Reason / when to revisit:** Cần Playwright + real Chrome extension lifecycle để test debugger/SSE.
 
 ## Deferred from: code review of 27-1b-web-app-build-preview-runner (2026-08-25)
