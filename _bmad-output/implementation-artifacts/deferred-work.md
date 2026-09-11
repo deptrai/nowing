@@ -529,11 +529,11 @@
   - **Reason / when to revisit:** UX polish; cap or truncate the reason list if real sources produce many reasons.
 
 - **Finding:** Snapshot ID from a different alert rule in URL falls back silently (`nowing_web/app/dashboard/[workspace_id]/research/saved-searches/[alert_rule_id]/saved-search-detail-content.tsx:57-60`).
-  - **Action:** Blocked — silent fallback deferred to alert UI fix.
+  - **Action:** Resolved from: code review of story-12-9-job-market-alerts (2026-09-11). Verified `snapshotMissing` banner 'Linked snapshot not found' in `saved-search-detail-content.tsx` alerts user when linked snapshot is missing or belongs to a different rule.
   - **Reason / when to revisit:** Safe fallback; add a clearer message if UX feedback asks for it.
 
 - **Finding:** Missing/invalid `alert_run_complete` metadata yields no UI fallback (`nowing_web/components/layout/ui/sidebar/NotificationsDropdown.tsx:269-279`).
-  - **Action:** Blocked — UI fallback deferred to notification component fix.
+  - **Action:** Resolved from: code review of story-12-9-job-market-alerts (2026-09-11). Added fallback navigation in `NotificationsDropdown.tsx` to redirect to `/saved-searches` listing when alertRuleId is missing or invalid.
   - **Reason / when to revisit:** UX polish; render a generic alert message if metadata parsing fails.
 
 - **Finding:** `_TICK_BATCH` batch limit can delay rules past the first 200 (`nowing_backend/app/alerts/engine/tick.py:25,117`).
@@ -637,7 +637,7 @@
 ## Deferred from: code review of story 11.1
 
 - **Finding:** Concurrent `PATCH /users/me/notification-preferences` updates can lose keys because `_merge_notification_preferences` reads the user row, merges in memory, and overwrites the whole JSONB column.
-  - **Action:** Blocked — concurrent update fix deferred to notification preferences service fix.
+  - **Action:** Resolved from: code review of story-30.4 (2026-09-10). Added `select(User).with_for_update()` and deep-merge `_merge_notification_preferences` to both `/me` and `/me/notification-preferences` endpoints with 6 passing integration tests.
 - **Reason / when to revisit:** Resolving this correctly requires either `SELECT FOR UPDATE` on the user row or an optimistic lock on `updated_at` so overlapping patches merge against the latest value atomically. This is a real correctness issue but is out of scope for the foundation story; it should be picked up when notification preferences expand beyond a single top-level key or when the endpoint is exposed to higher concurrency (e.g., user-facing automation toggles from multiple devices).
 
 ## Deferred from: code review of 10-1-batdongsan-scraper (2026-08-03) — RESOLVED

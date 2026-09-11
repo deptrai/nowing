@@ -266,16 +266,31 @@ export function NotificationsDropdown({
 				}
 			}
 
-			if (item.type === "alert_run_complete" && isAlertRunCompleteMetadata(item.metadata)) {
-				const alertRuleId = item.metadata.alert_rule_id;
-				const snapshotId = item.metadata.snapshot_id;
-				if (item.workspace_id && alertRuleId) {
+			if (item.type === "alert_run_complete") {
+				const meta = (item.metadata || {}) as Record<string, unknown>;
+				const alertRuleId = isAlertRunCompleteMetadata(item.metadata)
+					? item.metadata.alert_rule_id
+					: typeof meta.alert_rule_id === "string"
+						? meta.alert_rule_id
+						: null;
+				const snapshotId = isAlertRunCompleteMetadata(item.metadata)
+					? item.metadata.snapshot_id
+					: typeof meta.snapshot_id === "string"
+						? meta.snapshot_id
+						: null;
+				if (item.workspace_id) {
 					setOpen(false);
 					onCloseMobileSidebar?.();
-					router.push(
-						`/dashboard/${item.workspace_id}/research/saved-searches/${alertRuleId}?snapshot=${snapshotId}`
-					);
+					if (alertRuleId) {
+						const query = snapshotId ? `?snapshot=${snapshotId}` : "";
+						router.push(
+							`/dashboard/${item.workspace_id}/research/saved-searches/${alertRuleId}${query}`
+						);
+					} else {
+						router.push(`/dashboard/${item.workspace_id}/research/saved-searches`);
+					}
 				}
+				return;
 			}
 		},
 		[markItemAsRead, onCloseMobileSidebar, router, setTargetCommentId]
