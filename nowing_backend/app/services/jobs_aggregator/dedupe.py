@@ -252,6 +252,8 @@ def _union_find(n: int, pairs: list[tuple[int, int]]) -> list[int]:
 
     for a, b in pairs:
         union(a, b)
+    for i in range(n):
+        parent[i] = find(i)
     return parent
 
 
@@ -283,13 +285,10 @@ def deduplicate(listings: list[VnJobAggregatedListing]) -> list[VnJobAggregatedL
                     pairs.append((i, j))
         parent = _union_find(n, pairs)
 
-        # Collect merged groups.
+        # Collect merged groups using fully compressed roots.
         fine_groups: dict[int, list[VnJobAggregatedListing]] = defaultdict(list)
         for i, item in enumerate(group):
-            # Find root using the same path-compressed logic.
-            root = i
-            while parent[root] != root:
-                root = parent[root]
+            root = parent[i]
             fine_groups[root].append(item)
 
         for fine_group in fine_groups.values():
