@@ -840,6 +840,18 @@ async def _charge_vn_bds_aggregate(
     if not service.billing_enabled():
         return 0
 
+    if getattr(output, "persistence_status", None) == "failed":
+        return 0
+
+    if getattr(output, "total_items", 0) == 0 and getattr(output, "degraded", False):
+        return 0
+
+    if getattr(output, "persistence_status", None) == "failed":
+        return 0
+
+    if getattr(output, "total_items", 0) == 0 and getattr(output, "degraded", False):
+        return 0
+
     cost_micros = int(getattr(output, "cost_micros", 0) or 0)
     if cost_micros <= 0:
         return 0
