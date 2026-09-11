@@ -509,7 +509,7 @@
   - **Reason / when to revisit:** `app/services/scraper_chunks/` chưa có; thuộc Epic 20.1 / AD-34.
 
 - **Finding:** Capability registration MCP/REST/Billing (AC-9).
-  - **Action:** Blocked — capability registration deferred to AC-9 implementation.
+  - **Action:** Resolved from: code review of 12-2-topcv-scraper (2026-09-11). Confirmed `topcv.scrape` is registered in `CapabilityRegistry`, REST door, MCP agent tools, and `BillingUnit.TOPCV_JOB` with unit tests.
   - **Reason / when to revisit:** Đã có sẵn trong skeleton (`definition.py`, `BillingUnit.TOPCV_JOB`, `app/capabilities/__init__.py`); không thuộc diff chunk 1.
 
 - **Finding:** Location filter `location` (AC-1).
@@ -1244,21 +1244,21 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 ## Deferred from: code review of 21-20-extend-lead-source-adapters (2026-08-21)
 
 - **Finding:**  un-diacritized output vs  may miss less common provinces.
-  - **Action:** Blocked — feature gap requiring expanded province alias list in `resolve_muaban_bds_city`; not a test issue.
+  - **Action:** Resolved from: code review of 21-20-extend-lead-source-adapters (2026-09-11). Expanded `_resolve_city_slug` in `muaban_bds/scraper.py` to resolve all 63 Vietnamese provinces using shared `location_normalize` with unit tests.
   - **Reason / when to revisit:** Scraper normalizes input and common cities work; revisit when testing provinces beyond the top 8 in .
 
 - **Finding:**  location filter not wired.
-  - **Action:** Blocked — location filter deferred to adapter fix.
+  - **Action:** Resolved from: code review of 21-20-extend-lead-source-adapters (2026-09-11). Wired location filter in `VietnamWorksLeadAdapter` to map to `locationId` and filter returned items with unit tests.
   - **Reason / when to revisit:** Spec explicitly defers location filter to v1+; revisit when  supports .
 
 ## Deferred from: code review of 21-20-extend-lead-source-adapters (2026-08-21)
 
 - **Finding:** `resolve_muaban_bds_city` un-diacritized output vs `MuabanBdsScraper._CITY_ALIASES` may miss less common provinces.
-  - **Action:** Blocked — feature gap requiring expanded province alias list; not a test issue. in `21-20-extend-lead-source-adapters.md`.
+  - **Action:** Resolved from: code review of 21-20-extend-lead-source-adapters (2026-09-11). Expanded `_resolve_city_slug` in `muaban_bds/scraper.py` to resolve all 63 Vietnamese provinces using shared `location_normalize` with unit tests.
   - **Reason / when to revisit:** Scraper normalizes input and common cities work; revisit when testing provinces beyond the top 8 in `_CITY_ALIASES`.
 
 - **Finding:** `VietnamWorks` location filter not wired.
-  - **Action:** Blocked — location filter deferred to adapter fix.
+  - **Action:** Resolved from: code review of 21-20-extend-lead-source-adapters (2026-09-11). Wired location filter in `VietnamWorksLeadAdapter` to map to `locationId` and filter returned items with unit tests.
   - **Reason / when to revisit:** Spec explicitly defers location filter to v1+; revisit when `scrape_vietnamworks` supports `locationId`.
 
 ## Deferred from: code review of td-8 Epic 13 cleanup commit 542b84d61 (2026-08-22)
