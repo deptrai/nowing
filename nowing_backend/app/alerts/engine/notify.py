@@ -142,7 +142,9 @@ def _send_email_smtp(to_email: str, subject: str, body: str) -> None:
     try:
         if not use_ssl and config.SMTP_TLS:
             server.starttls(context=ssl_context)
-        if config.SMTP_USER and config.SMTP_PASSWORD:
+        if config.SMTP_USER or config.SMTP_PASSWORD:
+            if not (config.SMTP_USER and config.SMTP_PASSWORD):
+                raise ValueError("Partial SMTP credentials configured: both SMTP_USER and SMTP_PASSWORD required")
             server.login(config.SMTP_USER, config.SMTP_PASSWORD)
         server.send_message(msg)
     finally:
@@ -165,7 +167,14 @@ async def _email(
 
     subject = _notification_title(alert_rule, snapshot)
     body = _notification_message(alert_rule, snapshot)
-    await asyncio.to_thread(_send_email_smtp, user.email, subject, body)
+    try:
+        await asyncio.to_thread(_send_email_smtp, user.email, subject, body)
+        record_gateway_outbound(platform="email", kind="send", status="sent")
+    except Exception:
+        logger.exception(
+            "Email notification for alert %s user %s failed", alert_rule.id, user_id
+        )
+        record_gateway_outbound(platform="email", kind="send", status="failed")
 
 
 async def notify_alert_run(

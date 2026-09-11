@@ -829,7 +829,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** Fragile classification; replace with error-kind dispatch or an exception class hierarchy when `app/automations/dispatch` is refactored.
 
 - **Finding:** `nowing_chat` busy-retry uses deterministic exponential backoff without jitter.
-  - **Action:** Blocked — backoff without jitter deferred to retry logic fix.
+  - **Action:** Resolved from: code review of 7-7-mcp-server-tool-expansion (2026-09-11). Added randomized jitter (0.85 to 1.15) to `_compute_turn_cancelling_retry_delay` in `app/routes/new_chat/shared.py` to prevent thundering herd on busy retries.
   - **Reason / when to revisit:** Thundering-herd risk when multiple callers hit a busy thread; add jitter and/or circuit-breaker in a chat robustness pass.
 
 - **Finding:** `NowingClient.stream_sse()` has only a 600s total timeout, no per-event/idle timeout.
@@ -1103,7 +1103,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** Global env cookies are acceptable for the first release. Add per-target cookie column when multi-tenant Facebook scraping is required.
 
 - **Finding:** Email channel lacks outbound metrics, partial SMTP credentials silently skip auth, and missing-SMTP_HOST warning is logged per subscriber. (app/alerts/engine/notify.py:125-137)
-  - **Action:** Blocked — out-of-scope or requires feature work beyond test coverage.
+  - **Action:** Resolved from: code review of story-12-9-job-market-alerts (2026-09-11). Added `record_gateway_outbound` for email channel and partial SMTP credentials validation in `app/alerts/engine/notify.py` with unit tests.
   - **Reason / when to revisit:** Operational observability improvements; add `record_gateway_outbound` and centralized env checks after core email path is stable.
 
 ## Resolved from: second pass code review of 21-8-social-ingress-via-xactions-integration (2026-08-15)
@@ -1290,7 +1290,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** `NowingIngestService.ingest` already emits `record_chainlens_ingest_failed`; add domain dimension when implementing a scraper observability story.
 
 - **Finding:** `masothue.scrape` only feeds `chainlens-research` when `ctx is not None`.
-  - **Action:** Blocked — architecture debt; conditional ingest is intentional for ctx-less paths. in `review-td8-triaged-findings.md` (W7).
+  - **Action:** Resolved from: code review of td-8 Epic 13 cleanup (2026-09-11). Set explicit `ingest_status` defaults ('no_context' when ctx is None, 'no_chunks' when empty) in `app/capabilities/masothue/scrape/executor.py` with unit tests.
   - **Reason / when to revisit:** Capability production calls always have `ctx`; revisit if direct executor calls or tests need a clearer contract.
 
 - **Finding:** `bds_aggregator` and `jobs_aggregator` charge `cost_micros` even when `persistence_status` is `failed`.

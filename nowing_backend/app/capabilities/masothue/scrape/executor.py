@@ -122,6 +122,8 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
         cost = 0 if degraded else total * rate
 
         # Feed scraper output to chainlens-research via the canonical scraper ingest contract.
+        ingest_job_id: str | None = None
+        ingest_status: str | None = "no_context" if ctx is None else None
         if ctx is not None:
             chunks: list[Any] = []
             fetched_at = datetime.now(UTC).isoformat()
@@ -139,8 +141,6 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
                     )
                 except Exception:
                     logger.exception("masothue chunk serialization failed")
-            ingest_job_id: str | None = None
-            ingest_status: str | None = None
             if chunks:
                 try:
                     ingest_service = NowingIngestService()
@@ -156,7 +156,9 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
                         ingest_status = ingest_res.status
                 except Exception as exc:
                     logger.exception("masothue chainlens ingest failed: %s", exc)
-                    ingest_status = "failed" 
+                    ingest_status = "failed"
+            else:
+                ingest_status = "no_chunks" 
 
         emit_progress(
             "done",

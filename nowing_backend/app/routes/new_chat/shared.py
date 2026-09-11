@@ -108,13 +108,15 @@ def _resolve_filesystem_selection(
 
 
 def _compute_turn_cancelling_retry_delay(attempt: int) -> int:
-    """Bounded exponential delay for TURN_CANCELLING retry hints."""
+    """Bounded exponential delay for TURN_CANCELLING retry hints with jitter."""
+    import random
     if attempt < 1:
         attempt = 1
     delay = TURN_CANCELLING_INITIAL_DELAY_MS * (
         TURN_CANCELLING_BACKOFF_FACTOR ** (attempt - 1)
     )
-    return min(delay, TURN_CANCELLING_MAX_DELAY_MS)
+    jitter = random.uniform(0.85, 1.15)
+    return int(min(delay * jitter, TURN_CANCELLING_MAX_DELAY_MS))
 
 
 def _build_turn_status_payload(thread_id: int) -> dict[str, object]:
