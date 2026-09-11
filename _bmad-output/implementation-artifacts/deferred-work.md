@@ -11,7 +11,7 @@
   - **Reason / when to revisit:** Accept duplication for v1 to deliver the dashboard; refactor and share aggregation primitives in a follow-up hardening story.
 
 - **Finding:** `stalled_count` and `throughput_per_min` in Celery queue telemetry are placeholders (`0` and instantaneous count).
-  - **Action:** Blocked — first version surfaces queue depth/worker count; implement real stalled/DLQ counts and per-minute throughput once event metrics or message-timestamp inspection is available.
+  - **Action:** Resolved from: code review of 25-4-realtime-llm-token-cost-proxy-health-celery-queue-telemetry (2026-09-11). Implemented real stalled_count and throughput_per_min via `_redis_queue_stalled_and_throughput` in `admin_telemetry_service.py` with age thresholds.
   - **Reason / when to revisit:** First version surfaces queue depth/worker count; implement real stalled/DLQ counts and per-minute throughput once event metrics or message-timestamp inspection is available.
 
 ## Deferred from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-08-25)
@@ -85,7 +85,7 @@
 ## Deferred from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-08-26, chunk C)
 
 - **Finding:** `BillingUnit.PRESENTATION_GENERATE` is added without `app/capabilities/presentation/generate/` executor.
-  - **Action:** Blocked — T5 marks the capability as optional; token cost already goes through `UsageType.PRESENTATION_GENERATE`. Revisit if REST and chat tool should share one capability path.
+  - **Action:** Resolved from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-09-11). Created `app/capabilities/presentation/generate/` capability package (schemas, executor, definition) using `BillingUnit.PRESENTATION_GENERATE`, registered in capability registry, and wired into `generate_presentation.py`.
   - **Reason / when to revisit:** T5 marks the capability as optional. Token cost already goes through `UsageType.PRESENTATION_GENERATE`. Revisit if REST and the chat tool should share one capability path.
 
 - **Finding:** `config/__init__.py` chunk C diff includes unrelated `WEB_BUILDER_CONTAINER_*` / Caddy / Traefik settings.
@@ -1054,7 +1054,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 ## Deferred from: code review of 21-8-social-ingress-via-xactions-integration (2026-08-15 second pass)
 
 - **Finding:** No trigram/GIN index on social search keyword search — `content.ilike('%...%')` and `author_name.ilike('%...%')` will full-scan `social_posts` as the table grows. (app/capabilities/social/search_leads/executor.py:65-72; app/db.py:5067)
-  - **Action:** Blocked — performance optimization; add GIN index when corpus grows.
+  - **Action:** Resolved from: code review of 21-8-social-ingress-via-xactions-integration (2026-09-11). Added `idx_social_posts_trgm_content` and `idx_social_posts_trgm_author` GIN indexes with `gin_trgm_ops` to `SocialPost.__table_args__` in `app/models/leads/social.py`.
   - **Reason / when to revisit:** Query performance issue, not correctness. Add `pg_trgm` GIN index when search latency becomes a concern or as part of an NFR/performance pass.
 
 - **Finding:** Model/migration index drift — SQLAlchemy model uses `ix_social_posts_target_id` while migration 204 creates `idx_social_posts_target_id`; `updated_at` is `index=True` in model but missing in migration; `published_at` index is `ASC` in model but `DESC` in migration. (app/db.py:5050-5120; alembic/versions/204_add_social_tables.py:78-89)
@@ -1070,7 +1070,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** SSRF risk is real but the URLs are consumed by the XActions scraper, which already has its own proxy parsing. Add `HttpUrl` validation in a hardening pass.
 
 - **Finding:** Search/target input schemas lack enum validation for platform, intent, category, status and no bounds for keyword/offset. (app/capabilities/social/search_leads/schemas.py:11-13; app/routes/social_routes.py:22-32)
-  - **Action:** Blocked — add schema validation when API contract is finalized.
+  - **Action:** Resolved from: code review of 21-8-social-ingress-via-xactions-integration (2026-09-11). Added `SocialPlatform` and `SocialIntent` Literal enums, bounded `keyword` to 500 chars, `offset` to 10000, and added `SocialTargetStatus` enum with interval bounds in `social_routes.py`.
   - **Reason / when to revisit:** Typos produce empty results rather than data corruption. Add Pydantic enums/CHECK constraints in a future validation pass.
 
 - **Finding:** Social search ordering places `NULL published_at` first. (app/capabilities/social/search_leads/executor.py:77)

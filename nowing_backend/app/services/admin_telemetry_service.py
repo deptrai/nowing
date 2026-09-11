@@ -764,6 +764,7 @@ class AdminTelemetryService:
 
         queue_names = sorted(discovered_queues)
         queue_lengths = await _redis_queue_lengths(queue_names)
+        queue_stalled_throughput = await _redis_queue_stalled_and_throughput(queue_names)
 
         queues = []
         for name in queue_names:
@@ -781,13 +782,15 @@ class AdminTelemetryService:
             elif length > 1000:
                 status = "degraded"
 
+            stalled_count, recent_throughput = queue_stalled_throughput.get(name, (0, 0))
+
             queues.append(
                 {
                     "name": name,
                     "length": length,
                     "workers": workers,
-                    "throughput_per_min": tasks,  # best-effort active-task proxy
-                    "stalled_count": 0,  # first version: not computed inline
+                    "throughput_per_min": recent_throughput or tasks,  # fallback to active-task proxy
+                    "stalled_count": stalled_count,
                     "status": status,
                 }
             )
@@ -974,3 +977,83 @@ async def _redis_queue_lengths(queue_names: list[str]) -> dict[str, int]:
             await redis_client.aclose()
 
     return lengths
+
+
+async def _redis_queue_stalled_and_throughput(
+    queue_names: list[str],
+) -> dict[str, tuple[int, int]]:
+    """Compute stalled count and throughput_per_min for Redis-backed queues.
+
+    Stalled = messages whose ``timestamps.sent`` or ``nowing.enqueued_at_ns``
+    is older than ``_CELERY_TASK_STALLED_SECONDS``. Throughput is estimated from
+    messages enqueued within the last 60 seconds.
+    """
+    import redis.asyncio as aioredis
+
+    broker_url = config.CELERY_BROKER_URL or ""
+    if not _is_redis_broker(broker_url):
+        return {}
+
+    now_wall = time.time()
+    now_mono = time.monotonic_ns()
+    threshold = _CELERY_TASK_STALLED_SECONDS
+
+    results: dict[str, tuple[int, int]] = {}
+    redis_client = None
+    try:
+        redis_client = aioredis.from_url(broker_url, socket_connect_timeout=2)
+        for name in queue_names:
+            try:
+                queue_len = int(await redis_client.llen(name) or 0)
+            except Exception:
+                queue_len = 0
+
+            stalled = 0
+            recent = 0
+            if queue_len > 0:
+                try:
+                    sample_size = min(queue_len, 500)
+                    messages = await redis_client.lrange(name, 0, sample_size - 1)
+                    for raw in messages:
+                        try:
+                            payload = json.loads(raw)
+                        except (json.JSONDecodeError, UnicodeDecodeError):
+                            stalled += 1
+                            continue
+
+                        timestamps = payload.get("properties", {}).get("timestamps", {}) or {}
+                        sent_at = timestamps.get("sent")
+                        enqueued_ns = payload.get("headers", {}).get("nowing.enqueued_at_ns")
+
+                        if sent_at is not None:
+                            try:
+                                age = now_wall - float(sent_at)
+                                if age > threshold:
+                                    stalled += 1
+                                elif age <= 60:
+                                    recent += 1
+                            except (ValueError, TypeError):
+                                pass
+                        elif enqueued_ns is not None:
+                            try:
+                                age_s = (now_mono - int(enqueued_ns)) / 1e9
+                                if age_s > threshold:
+                                    stalled += 1
+                                elif age_s <= 60:
+                                    recent += 1
+                            except (ValueError, TypeError):
+                                pass
+
+                    if sample_size < queue_len and sample_size > 0:
+                        stalled = int(stalled * (queue_len / sample_size))
+                except Exception as exc:
+                    logger.warning("Error computing stalled stats for %s: %s", name, exc)
+
+            results[name] = (stalled, recent)
+    except Exception as exc:
+        logger.warning("Redis queue stalled query failed: %s", exc)
+    finally:
+        if redis_client is not None:
+            await redis_client.aclose()
+
+    return results

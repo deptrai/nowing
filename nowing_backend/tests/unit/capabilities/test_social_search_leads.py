@@ -117,3 +117,36 @@ async def test_social_search_posts_helper(mock_db_session_factory):
     assert leads[0]["platform"] == "facebook"
     assert leads[0]["external_post_id"] == "fb_99"
     assert "0987654321" in leads[0]["phones"]
+
+
+@pytest.mark.unit
+def test_social_search_leads_input_validation():
+    """Verify bounds and validation for SocialSearchLeadsInput."""
+    from pydantic import ValidationError
+
+    # Valid payload
+    payload = SocialSearchLeadsInput(
+        platform="facebook",
+        intent="sell",
+        keyword="bds",
+        offset=100,
+        limit=50,
+    )
+    assert payload.platform == "facebook"
+    assert payload.intent == "sell"
+
+    # Invalid platform
+    with pytest.raises(ValidationError):
+        SocialSearchLeadsInput(platform="unsupported_platform")
+
+    # Invalid intent
+    with pytest.raises(ValidationError):
+        SocialSearchLeadsInput(intent="invalid_intent")
+
+    # Keyword too long (>500)
+    with pytest.raises(ValidationError):
+        SocialSearchLeadsInput(keyword="x" * 501)
+
+    # Offset exceeds upper bound (>10000)
+    with pytest.raises(ValidationError):
+        SocialSearchLeadsInput(offset=10001)
