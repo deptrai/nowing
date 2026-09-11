@@ -54,8 +54,8 @@ def _format_output_text(output: Any) -> str:
     if isinstance(output, (list, dict)):
         try:
             return json.dumps(output, ensure_ascii=False, indent=2, default=str)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Suppressed %r", exc)
     return str(output)
 
 

@@ -602,8 +602,8 @@ async def get_company_graph(
                             confidence=dm.confidence_score or 0.85,
                         )
                     )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("Suppressed %r", exc)
 
     # Query LinkedIn job postings for this company safely with nested savepoint
     db_jobs = []

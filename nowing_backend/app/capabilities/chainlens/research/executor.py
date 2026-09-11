@@ -667,8 +667,8 @@ class _SSEParser:
                     return int(
                         (Decimal(str(micros_raw))).to_integral_value(ROUND_HALF_UP)
                     )
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug("Suppressed %r", exc)
             dollars_raw = data.get(key_dollars)
             if dollars_raw is not None:
                 try:

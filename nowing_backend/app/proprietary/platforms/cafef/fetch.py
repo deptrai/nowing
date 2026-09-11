@@ -426,7 +426,8 @@ async def fetch_quote(symbol: str) -> dict[str, Any]:
         url = _quote_url(symbol, exchange=exchange)
         try:
             raw = await _do_get(url)
-        except CafeFAccessBlockedError:
+        except CafeFAccessBlockedError as exc:
+            logger.debug("Suppressed %r", exc)
             continue
         parsed = _parse_price_history(raw, symbol)
         if parsed is not None:

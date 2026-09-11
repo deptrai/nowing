@@ -101,8 +101,8 @@ class TelethonScraperClient:
         if self._raw_client is not None:
             try:
                 return bool(self._raw_client.is_connected())
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Suppressed %r", exc)
         return self._is_connected
 
     async def connect(self) -> None:

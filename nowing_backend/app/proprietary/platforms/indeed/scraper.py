@@ -169,7 +169,8 @@ def _extract_salary_numbers(
             token = token[:-1].strip()
         try:
             numbers.append(float(token) * unit)
-        except ValueError:
+        except ValueError as exc:
+            logger.debug("Suppressed %r", exc)
             continue
 
     if not numbers:

@@ -84,12 +84,12 @@ def _resolve_city_slug(name: str) -> str | None:
     if norm in _CITY_ALIASES:
         return _CITY_ALIASES[norm]
     try:
-        from app.services.location_normalize import resolve_city_code, _CITY_SLUGS
+        from app.services.location_normalize import _CITY_SLUGS, resolve_city_code
         code = resolve_city_code(name)
         if code and code in _CITY_SLUGS:
             return _CITY_SLUGS[code]
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("Suppressed %r", exc)
     return None
 
 

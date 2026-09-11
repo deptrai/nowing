@@ -99,8 +99,8 @@ class AirtableConnector:
                         error_detail = error_json.get("error", {}).get(
                             "message", error_detail
                         )
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.debug("Suppressed %r", exc)
                     return None, f"API error {response.status_code}: {error_detail}"
 
                 return response.json(), None

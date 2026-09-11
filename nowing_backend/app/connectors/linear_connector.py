@@ -281,8 +281,8 @@ class LinearConnector:
                     friendly = ext["userPresentableMessage"]
                 elif errors[0].get("message"):
                     friendly = errors[0]["message"]
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Suppressed %r", exc)
 
         raise LinearAPIError(friendly or f"Linear API error (HTTP {status_code})")
 

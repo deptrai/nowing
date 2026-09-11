@@ -64,8 +64,8 @@ class ContactUnlockService:
             decrypted = self.enc.decrypt(value)
             if decrypted is not None:
                 return decrypted
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Suppressed %r", exc)
         return value
 
     async def unlock_contact(

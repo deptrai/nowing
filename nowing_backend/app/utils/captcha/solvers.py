@@ -143,7 +143,8 @@ def _twocaptcha(
                 f"{_2CAP_RES}?key={cfg.api_key}&action=get&id={task_id}&json=1",
                 timeout=30,
             ).json()
-        except requests.RequestException:
+        except requests.RequestException as exc:
+            logger.debug("Suppressed %r", exc)
             continue
         if got.get("status") == 1:
             return got["request"] or None
@@ -257,7 +258,8 @@ def _capsolver(
                 json={"clientKey": cfg.api_key, "taskId": task_id},
                 timeout=30,
             ).json()
-        except requests.RequestException:
+        except requests.RequestException as exc:
+            logger.debug("Suppressed %r", exc)
             continue
         if got.get("errorId"):
             _raise_capsolver(

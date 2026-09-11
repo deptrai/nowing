@@ -517,8 +517,8 @@ class OpenRouterIntegrationService:
             self._enrich_task = loop.create_task(
                 self._enrich_health_safely(self._configs)
             )
-        except RuntimeError:
-            pass
+        except RuntimeError as exc:
+            logger.debug("Suppressed %r", exc)
 
         return self._configs
 

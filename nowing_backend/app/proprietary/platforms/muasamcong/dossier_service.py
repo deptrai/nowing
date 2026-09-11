@@ -99,8 +99,8 @@ class TenderDossierService:
                         Key=s3_key,
                         UploadId=upload_id,
                     )
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Suppressed %r", exc)
             raise
 
     def extract_text_from_pdf_stream(self, stream: io.BytesIO | bytes) -> str:

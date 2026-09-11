@@ -201,8 +201,8 @@ async def onedrive_callback(
                 try:
                     data = get_state_manager().validate_state(state)
                     space_id = data.get("space_id")
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug("Suppressed %r", exc)
             if space_id:
                 return RedirectResponse(
                     url=f"{config.NEXT_FRONTEND_URL}/dashboard/{space_id}/connectors/callback?error=onedrive_oauth_denied"
@@ -251,8 +251,8 @@ async def onedrive_callback(
             try:
                 error_json = token_response.json()
                 error_detail = error_json.get("error_description", error_detail)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Suppressed %r", exc)
             raise HTTPException(
                 status_code=400, detail=f"Token exchange failed: {error_detail}"
             )
@@ -482,8 +482,8 @@ async def list_onedrive_folders(
                     connector.config = {**connector.config, "auth_expired": True}
                     flag_modified(connector, "config")
                     await session.commit()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Suppressed %r", exc)
             raise HTTPException(
                 status_code=400,
                 detail="OneDrive authentication expired. Please re-authenticate.",
@@ -541,8 +541,8 @@ async def refresh_onedrive_token(
             error_json = token_response.json()
             error_detail = error_json.get("error_description", error_detail)
             error_code = error_json.get("error", "")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Suppressed %r", exc)
         error_lower = (error_detail + error_code).lower()
         if (
             "invalid_grant" in error_lower

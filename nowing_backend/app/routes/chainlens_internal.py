@@ -49,22 +49,22 @@ def _resolve_scraper_id(scraper_id: str) -> str:
     try:
         get_capability(scraper_id)
         return scraper_id
-    except KeyError:
-        pass
+    except KeyError as exc:
+        logger.debug("Suppressed %r", exc)
     if scraper_id in _DOMAIN_CAPABILITY_MAP:
         mapped = _DOMAIN_CAPABILITY_MAP[scraper_id]
         try:
             get_capability(mapped)
             return mapped
-        except KeyError:
-            pass
+        except KeyError as exc:
+            logger.debug("Suppressed %r", exc)
     # Also try the domain with a ``.scrape`` suffix as a fallback.
     candidate = f"{scraper_id}.scrape"
     try:
         get_capability(candidate)
         return candidate
-    except KeyError:
-        pass
+    except KeyError as exc:
+        logger.debug("Suppressed %r", exc)
     return scraper_id
 
 

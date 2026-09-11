@@ -125,7 +125,8 @@ class RouterConfigBuilder:
                 ctx = info.get("max_input_tokens")
                 if isinstance(ctx, int) and ctx > 0:
                     ctx_map[base_model] = ctx
-            except Exception:
+            except Exception as exc:
+                logger.debug("Suppressed %r", exc)
                 continue
 
         if not ctx_map:

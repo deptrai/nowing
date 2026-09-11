@@ -271,7 +271,8 @@ def _parse_product_html(html: str, url: str) -> dict[str, Any] | None:
     ):
         try:
             el = root.xpath(selector)
-        except Exception:
+        except Exception as exc:
+            logger.debug("Suppressed %r", exc)
             continue
         if el:
             title = " ".join(el[0].itertext()).strip()
@@ -290,7 +291,8 @@ def _parse_product_html(html: str, url: str) -> dict[str, Any] | None:
     ):
         try:
             el = root.xpath(selector)
-        except Exception:
+        except Exception as exc:
+            logger.debug("Suppressed %r", exc)
             continue
         if el:
             price_text = " ".join(el[0].itertext()).strip()
@@ -304,7 +306,8 @@ def _parse_product_html(html: str, url: str) -> dict[str, Any] | None:
     ):
         try:
             el = root.xpath(selector)
-        except Exception:
+        except Exception as exc:
+            logger.debug("Suppressed %r", exc)
             continue
         if el:
             availability = " ".join(el[0].itertext()).strip()
@@ -318,7 +321,8 @@ def _parse_product_html(html: str, url: str) -> dict[str, Any] | None:
     ):
         try:
             el = root.xpath(selector)
-        except Exception:
+        except Exception as exc:
+            logger.debug("Suppressed %r", exc)
             continue
         if el:
             seller = " ".join(el[0].itertext()).strip()
@@ -332,7 +336,8 @@ def _parse_product_html(html: str, url: str) -> dict[str, Any] | None:
     ):
         try:
             el = root.xpath(selector)
-        except Exception:
+        except Exception as exc:
+            logger.debug("Suppressed %r", exc)
             continue
         if el:
             rating = _price(" ".join(el[0].itertext()))
@@ -346,7 +351,8 @@ def _parse_product_html(html: str, url: str) -> dict[str, Any] | None:
     ):
         try:
             el = root.xpath(selector)
-        except Exception:
+        except Exception as exc:
+            logger.debug("Suppressed %r", exc)
             continue
         if el:
             image_url = el[0].get("src") or el[0].get("content")

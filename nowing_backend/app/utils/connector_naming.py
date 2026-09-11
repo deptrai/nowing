@@ -4,6 +4,7 @@ Connector Naming Utilities.
 Provides functions for generating unique, user-friendly connector names.
 """
 
+import logging
 from typing import Any
 from urllib.parse import urlparse
 from uuid import UUID
@@ -13,6 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import func
 
 from app.db import SearchSourceConnector, SearchSourceConnectorType
+
+logger = logging.getLogger(__name__)
 
 # Friendly display names for connector types
 BASE_NAME_FOR_TYPE = {
@@ -89,8 +92,8 @@ def extract_identifier_from_credentials(
                 if ".atlassian.net" in hostname:
                     return hostname.replace(".atlassian.net", "")
                 return hostname
-            except (ValueError, TypeError, AttributeError):
-                pass
+            except (ValueError, TypeError, AttributeError) as exc:
+                logger.debug("Suppressed %r", exc)
         return None
 
     # Google, Linear, Airtable require API calls - return None

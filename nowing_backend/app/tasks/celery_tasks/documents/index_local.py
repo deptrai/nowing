@@ -154,8 +154,8 @@ async def _index_local_folder_async(
                         notification=notification,
                         error_message=str(e)[:200],
                     )
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug("Suppressed %r", exc)
             raise
         finally:
             if heartbeat_task:
@@ -275,8 +275,8 @@ async def _index_uploaded_folder_files_async(
                         notification=notification,
                         error_message=str(e)[:200],
                     )
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug("Suppressed %r", exc)
             raise
         finally:
             if heartbeat_task:

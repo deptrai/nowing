@@ -83,8 +83,8 @@ def _get_thread_id() -> str | None:
         thread_id = config.get("configurable", {}).get("thread_id")
         if thread_id is not None:
             return str(thread_id)
-    except RuntimeError:
-        pass
+    except RuntimeError as exc:
+        logger.debug("Suppressed %r", exc)
     return None
 
 

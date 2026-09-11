@@ -224,7 +224,8 @@ def extract_json_ld_metadata(tree: HTMLParser) -> list[dict[str, Any]]:
         try:
             parsed = json.loads(text.strip())
             extracted.extend(_flatten_json_ld_item(parsed, target_types))
-        except (json.JSONDecodeError, UnicodeDecodeError):
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            logger.debug("Suppressed %r", exc)
             continue
     return extracted
 

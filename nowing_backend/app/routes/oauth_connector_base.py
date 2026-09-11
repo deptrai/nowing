@@ -482,8 +482,8 @@ class OAuthConnectorRoute:
                     try:
                         data = oauth._get_state_manager().validate_state(state)
                         space_id = data.get("space_id")
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.debug("Suppressed %r", exc)
                 return oauth._frontend_redirect(space_id, error=error_label)
 
             if not code:

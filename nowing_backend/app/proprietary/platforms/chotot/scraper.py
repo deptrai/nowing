@@ -90,8 +90,8 @@ def _resolve_region_v2(city: str, regions: dict[str, Any]) -> int:
     # Try direct numeric first.
     try:
         return int(city)
-    except (ValueError, OverflowError):
-        pass
+    except (ValueError, OverflowError) as exc:
+        logger.debug("Suppressed %r", exc)
 
     for region_id, region in regions.items():
         name = region.get("name", "")
@@ -100,7 +100,8 @@ def _resolve_region_v2(city: str, regions: dict[str, Any]) -> int:
         if _normalize_text(name) == city_norm:
             try:
                 return int(region_id)
-            except (ValueError, OverflowError):
+            except (ValueError, OverflowError) as exc:
+                logger.debug("Suppressed %r", exc)
                 continue
 
     raise ValueError(f"Unknown Chotot city: {city}")
@@ -125,8 +126,8 @@ def _resolve_area_v2(
         if parsed < 0:
             raise ValueError(f"Invalid negative district query: {district_query}")
         return parsed
-    except (ValueError, OverflowError):
-        pass
+    except (ValueError, OverflowError) as exc:
+        logger.debug("Suppressed %r", exc)
 
     region = regions.get(str(region_id), {})
     areas = region.get("area", {})
@@ -145,7 +146,8 @@ def _resolve_area_v2(
                 if parsed < 0:
                     continue
                 return parsed
-            except (ValueError, OverflowError):
+            except (ValueError, OverflowError) as exc:
+                logger.debug("Suppressed %r", exc)
                 continue
 
     raise ValueError(f"Unknown Chotot district: {district_query}")

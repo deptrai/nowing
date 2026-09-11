@@ -291,8 +291,8 @@ def _resolve_tool_name(request: Any) -> str:
             name = call.get("name")
             if isinstance(name, str) and name:
                 return name
-    except Exception:  # pragma: no cover - defensive
-        pass
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.debug("Suppressed %r", exc)
     return "unknown"
 
 
@@ -335,8 +335,8 @@ def _resolve_tool_call_id(request: Any) -> str | None:
             tid = call.get("id")
             if isinstance(tid, str):
                 return tid
-    except Exception:  # pragma: no cover
-        pass
+    except Exception as exc:  # pragma: no cover
+        logger.debug("Suppressed %r", exc)
     return None
 
 
@@ -366,8 +366,8 @@ def _resolve_chat_turn_id(request: Any) -> str | None:
         value = configurable.get("turn_id")
         if isinstance(value, str) and value:
             return value
-    except Exception:  # pragma: no cover - defensive
-        pass
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.debug("Suppressed %r", exc)
     return None
 
 

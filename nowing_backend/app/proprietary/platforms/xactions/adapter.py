@@ -113,8 +113,8 @@ def _parse_published_at(value: Any) -> datetime | None:
 
     try:
         return datetime.fromisoformat(v)
-    except ValueError:
-        pass
+    except ValueError as exc:
+        logger.debug("Suppressed %r", exc)
 
     for fmt in (
         "%a %b %d %H:%M:%S %z %Y",
@@ -124,7 +124,8 @@ def _parse_published_at(value: Any) -> datetime | None:
     ):
         try:
             return datetime.strptime(v, fmt)
-        except ValueError:
+        except ValueError as exc:
+            logger.debug("Suppressed %r", exc)
             continue
 
     logger.warning(

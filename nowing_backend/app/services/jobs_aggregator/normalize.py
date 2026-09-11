@@ -5,12 +5,15 @@ from __future__ import annotations
 import datetime
 import hashlib
 import json
+import logging
 import re
 from typing import Any
 
 from app.services.location_normalize import resolve_city_code
 
 from .schemas import VnJobAggregatedListing, VnJobSalary
+
+logger = logging.getLogger(__name__)
 
 _SALARY_PERIOD_MAP: dict[int | str, str] = {
     1: "hour",
@@ -50,19 +53,20 @@ def _parse_post_date(value: Any) -> datetime.date | None:
     for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"):
         try:
             return datetime.datetime.strptime(text, fmt).date()
-        except ValueError:
+        except ValueError as exc:
+            logger.debug("Suppressed %r", exc)
             continue
 
     try:
         return datetime.date.fromisoformat(text)
-    except ValueError:
-        pass
+    except ValueError as exc:
+        logger.debug("Suppressed %r", exc)
 
     try:
         iso_clean = text.replace("z", "+00:00").replace("Z", "+00:00")
         return datetime.datetime.fromisoformat(iso_clean).date()
-    except ValueError:
-        pass
+    except ValueError as exc:
+        logger.debug("Suppressed %r", exc)
 
     return None
 

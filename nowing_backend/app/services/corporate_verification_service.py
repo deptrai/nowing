@@ -229,8 +229,8 @@ def parse_charter_capital_vnd(val: Any) -> int | None:
             else:
                 mult = 1
             return int(val_f * mult)
-        except ValueError:
-            pass
+        except ValueError as exc:
+            logger.debug("Suppressed %r", exc)
 
     # Extract digits from formatted numbers (e.g. "13.000.000.000.000 VNĐ", "287,360,000,000 VND")
     digits = re.sub(r"[^\d]", "", s)
@@ -598,8 +598,8 @@ class CorporateVerificationService:
                             profile=prof,
                             is_cached=True,
                         )
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug("Suppressed %r", exc)
                 return CorporateMatchResult(
                     is_verified=False,
                     degraded=True,
@@ -674,8 +674,8 @@ class CorporateVerificationService:
                             profile=prof,
                             is_cached=True,
                         )
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug("Suppressed %r", exc)
             return CorporateMatchResult(
                 is_verified=False,
                 degraded=True,

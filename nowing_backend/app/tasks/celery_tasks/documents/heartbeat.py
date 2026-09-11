@@ -59,8 +59,8 @@ def _stop_heartbeat(notification_id: int) -> None:
     try:
         key = _get_heartbeat_key(notification_id)
         _get_doc_heartbeat_redis().delete(key)
-    except Exception:
-        pass  # Key will expire on its own
+    except Exception as exc:
+        logger.debug("Suppressed %r", exc)
 
 
 async def _run_heartbeat_loop(notification_id: int):
@@ -82,5 +82,5 @@ async def _run_heartbeat_loop(notification_id: int):
                 logger.warning(
                     f"Failed to refresh heartbeat for notification {notification_id}: {e}"
                 )
-    except asyncio.CancelledError:
-        pass  # Normal cancellation when task completes
+    except asyncio.CancelledError as exc:
+        logger.debug("Suppressed %r", exc)

@@ -595,7 +595,8 @@ async def get_manifest(
             continue
         try:
             mtime = datetime.fromisoformat(mtime_raw)
-        except ValueError:
+        except ValueError as exc:
+            logger.debug("Suppressed %r", exc)
             continue
         size_raw = meta.get("plugin_file_size")
         size = int(size_raw) if isinstance(size_raw, int) else None

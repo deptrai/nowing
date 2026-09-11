@@ -51,7 +51,8 @@ def get_cached_context_profile(router: Any) -> dict | None:
                 if token_count_model is None:
                     token_count_model = base_model
                 ctx_pairs.append((ctx, base_model))
-        except Exception:
+        except Exception as exc:
+            logger.debug("Suppressed %r", exc)
             continue
 
     if min_ctx is not None:

@@ -245,8 +245,8 @@ async def airtable_callback(
             try:
                 error_json = token_response.json()
                 error_detail = error_json.get("error_description", error_detail)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Suppressed %r", exc)
             raise HTTPException(
                 status_code=400, detail=f"Token exchange failed: {error_detail}"
             )
@@ -431,8 +431,8 @@ async def refresh_airtable_token(
                 error_json = token_response.json()
                 error_detail = error_json.get("error_description", error_detail)
                 error_code = error_json.get("error", "")
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Suppressed %r", exc)
             # Check if this is a token expiration/revocation error
             error_lower = (error_detail + error_code).lower()
             if (

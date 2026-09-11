@@ -77,14 +77,15 @@ def _parse_iso_datetime(val: Any) -> datetime | None:
             # Handle standard ISO formats
             dt = datetime.fromisoformat(val.replace("Z", "+00:00"))
             return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
-        except ValueError:
-            pass
+        except ValueError as exc:
+            logger.debug("Suppressed %r", exc)
         # Try custom e-GP format: DD/MM/YYYY HH:MM or YYYY-MM-DD HH:MM:SS
         for fmt in ("%d/%m/%Y %H:%M", "%d/%m/%Y %H:%M:%S", "%Y-%m-%d %H:%M:%S"):
             try:
                 dt = datetime.strptime(val, fmt)
                 return dt.replace(tzinfo=UTC)
-            except ValueError:
+            except ValueError as exc:
+                logger.debug("Suppressed %r", exc)
                 continue
     return None
 

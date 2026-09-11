@@ -255,8 +255,8 @@ class DshWorker:
                     )
                     executor_task.cancel()
                     break
-        except asyncio.CancelledError:
-            pass
+        except asyncio.CancelledError as exc:
+            logger.debug("Suppressed %r", exc)
 
     async def _handle_message(
         self,
@@ -618,8 +618,8 @@ class DshWorker:
                                     mission_id_str,
                                 )
                                 continue
-                        except Exception:
-                            pass
+                        except Exception as exc:
+                            logger.debug("Suppressed %r", exc)
 
                     should_ack = await self._handle_message(
                         redis_client, msg_id, fields

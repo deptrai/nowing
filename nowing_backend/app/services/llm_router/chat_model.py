@@ -149,7 +149,8 @@ class ChatLiteLLMRouter(BaseChatModel):
         for model_name in models:
             try:
                 counts.append(_tc(messages=messages, model=model_name))
-            except Exception:
+            except Exception as exc:
+                logger.debug("Suppressed %r", exc)
                 continue
         return max(counts) if counts else None
 
@@ -296,8 +297,8 @@ class ChatLiteLLMRouter(BaseChatModel):
                 if new_msg_tokens is None:
                     continue
                 running_total = running_total - orig_msg_tokens + new_msg_tokens
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Suppressed %r", exc)
 
         # Hard guarantee: if still over budget, replace remaining large
         # non-system messages with compact placeholders until we fit.

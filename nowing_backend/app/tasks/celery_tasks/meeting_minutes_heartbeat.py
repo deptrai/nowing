@@ -80,8 +80,8 @@ def stop_meeting_minutes_heartbeat(meeting_minutes_id: int) -> None:
     try:
         key = _get_heartbeat_key(meeting_minutes_id)
         _get_heartbeat_redis().delete(key)
-    except Exception:
-        pass  # Key will expire on its own
+    except Exception as exc:
+        logger.debug("Suppressed %r", exc)
 
 
 def meeting_minutes_heartbeat_is_alive(meeting_minutes_id: int) -> bool:
@@ -119,5 +119,5 @@ async def run_meeting_minutes_heartbeat_loop(meeting_minutes_id: int) -> None:
                     meeting_minutes_id,
                     exc,
                 )
-    except asyncio.CancelledError:
-        pass
+    except asyncio.CancelledError as exc:
+        logger.debug("Suppressed %r", exc)

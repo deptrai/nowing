@@ -5,10 +5,13 @@ A module for retrieving events and guest data from Luma Event Platform.
 Allows fetching event lists, event details, and guest information with date range filtering.
 """
 
+import logging
 from datetime import datetime
 from typing import Any
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 
 class LumaConnector:
@@ -256,8 +259,9 @@ class LumaConnector:
                                         event["guests"] = guests
 
                             filtered_events.append(event)
-                    except (ValueError, AttributeError):
+                    except (ValueError, AttributeError) as exc:
                         # Skip events with invalid dates
+                        logger.debug("Suppressed %r", exc)
                         continue
 
             if not filtered_events:

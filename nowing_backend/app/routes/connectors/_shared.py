@@ -68,8 +68,8 @@ async def _run_indexing_heartbeat_loop(notification_id: int) -> None:
                     f"Failed to refresh Redis heartbeat for notification "
                     f"{notification_id}: {e}"
                 )
-    except asyncio.CancelledError:
-        pass
+    except asyncio.CancelledError as exc:
+        logger.debug("Suppressed %r", exc)
 
 
 async def _update_connector_timestamp_by_id(

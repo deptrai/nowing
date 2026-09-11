@@ -62,8 +62,8 @@ def _parse_cookie_input(
             parsed = json.loads(text)
             if isinstance(parsed, list):
                 return parsed
-        except json.JSONDecodeError:
-            pass
+        except json.JSONDecodeError as exc:
+            logger.debug("Suppressed %r", exc)
     jar = SimpleCookie(text)
     return [
         {"name": key, "value": morsel.value, "domain": domain or "", "path": "/"}

@@ -115,7 +115,8 @@ async def _is_descendant_of(
             )
             grandparents = meta.get("parents", [])
             to_check.extend(grandparents)
-        except Exception:
+        except Exception as exc:
+            logger.debug("Suppressed %r", exc)
             continue
 
     return False
@@ -175,8 +176,8 @@ def categorize_change(change: dict[str, Any]) -> str:
             time_diff = abs((modified - created).total_seconds())
             if time_diff < 60:  # Within 1 minute
                 return "new"
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Suppressed %r", exc)
 
     return "modified"
 

@@ -195,9 +195,9 @@ async def scrape_masothue(
                     )
                     # Skip this item; do not bill for it.
                     continue
-                except MasothueDecodeError:
+                except MasothueDecodeError as exc:
                     # Detail page malformed; keep the summary from search.
-                    pass
+                    logger.debug("Suppressed %r", exc)
                 except Exception as exc:
                     logger.warning(
                         "masothue detail fetch unexpected error for %s: %s",

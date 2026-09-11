@@ -102,8 +102,8 @@ def _dismiss_login_modal(page: Any) -> None:
         )
         if not closed:
             page.keyboard.press("Escape")
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("Suppressed %r", exc)
 
 
 def _scroll_page(page: Any, collected: list[dict[str, Any]], target_count: int) -> None:
@@ -131,7 +131,8 @@ def _open_comments(page: Any) -> None:
     for selector in _COMMENT_ICON_SELECTORS:
         try:
             page.wait_for_selector(selector, timeout=_COMMENT_ICON_WAIT_MS)
-        except Exception:
+        except Exception as exc:
+            logger.debug("Suppressed %r", exc)
             continue
         try:
             page.click(selector, timeout=_COMMENT_ICON_WAIT_MS)
@@ -140,7 +141,8 @@ def _open_comments(page: Any) -> None:
             try:
                 page.eval_on_selector(selector, "el => el.click()")
                 return
-            except Exception:
+            except Exception as exc:
+                logger.debug("Suppressed %r", exc)
                 continue
 
 

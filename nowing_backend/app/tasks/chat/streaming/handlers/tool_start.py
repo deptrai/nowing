@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import Iterator
 from typing import Any
 
@@ -16,6 +17,8 @@ from app.tasks.chat.streaming.relay.thinking_step_completion import (
     complete_active_thinking_step,
 )
 from app.tasks.chat.streaming.relay.thinking_step_sse import emit_thinking_step_frame
+
+logger = logging.getLogger(__name__)
 
 
 def iter_tool_start_frames(
@@ -140,8 +143,8 @@ def iter_tool_start_frames(
             try:
                 json.dumps(_v)
                 _safe_input[_k] = _v
-            except (TypeError, ValueError, OverflowError):
-                pass
+            except (TypeError, ValueError, OverflowError) as exc:
+                logger.debug("Suppressed %r", exc)
     else:
         _safe_input = {"input": tool_input}
     yield streaming_service.format_tool_input_available(
