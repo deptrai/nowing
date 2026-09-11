@@ -1,12 +1,24 @@
 {
   "dimension": "mutation",
-  "runAt": "2026-09-09T05:28:11.976683+00:00",
+  "runAt": "2026-09-11T18:24:33.075760+00:00",
   "services": [
     {
       "service": "proprietary/platforms/xactions/mcp_client",
-      "verdict": "FAIL",
-      "error": "cosmic-ray baseline failed for mutation-nowing-proprietary-platforms-xactions-mcp_client-20260909T052807Z.toml (exit code 1)",
-      "traceback": "Traceback (most recent call last):\n  File \"/Users/luisphan/Documents/GitHub/nowing/scripts/mutation-gate.py\", line 570, in main\n    run_cosmic_ray(\n  File \"/Users/luisphan/Documents/GitHub/nowing/scripts/mutation-gate.py\", line 331, in run_cosmic_ray\n    raise RuntimeError(f\"cosmic-ray {step} failed for {config.name} (exit code {result.returncode})\")\nRuntimeError: cosmic-ray baseline failed for mutation-nowing-proprietary-platforms-xactions-mcp_client-20260909T052807Z.toml (exit code 1)\n"
+      "total": 44,
+      "killed": 44,
+      "survived": 0,
+      "timeout": 0,
+      "noTests": 0,
+      "mutationScore": 100.0,
+      "verdict": "PASS",
+      "triage": {
+        "P0": [],
+        "P1": [],
+        "P2": []
+      },
+      "reportPath": "/Users/luisphan/Documents/GitHub/nowing/_bmad-output/test-artifacts/mutation-nowing-proprietary-platforms-xactions-mcp_client-20260911T182433Z.json",
+      "sessionPath": "/Users/luisphan/Documents/GitHub/nowing/_bmad-output/test-artifacts/mutation-nowing-proprietary-platforms-xactions-mcp_client-20260911T182237Z.sqlite",
+      "configPath": "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/mutation-nowing-proprietary-platforms-xactions-mcp_client-20260911T182237Z.toml"
     }
   ]
 }
