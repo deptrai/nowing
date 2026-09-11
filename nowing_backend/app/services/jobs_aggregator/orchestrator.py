@@ -307,16 +307,23 @@ async def aggregate_jobs(input: VnJobAggregateInput, ctx: Any) -> VnJobAggregate
     # Upgrade path: use a canonical location taxonomy (e.g. Geonames) for
     # fuzzy matching and avoid ad-hoc normalisation.
     if input.location:
-        loc_code = resolve_city_code(input.location) or input.location.lower().strip()
-        output.items = [
-            item
-            for item in output.items
-            if (
-                resolve_city_code(item.location)
-                or (item.location or "").lower().strip()
-            )
-            == loc_code
-        ]
+        input_loc_raw = input.location.lower().strip()
+        loc_code = resolve_city_code(input.location)
+        filtered = []
+        for item in output.items:
+            item_loc_code = resolve_city_code(item.location)
+            if loc_code and item_loc_code:
+                if loc_code == item_loc_code:
+                    filtered.append(item)
+            elif item.location:
+                item_loc_raw = item.location.lower().strip()
+                if (
+                    item_loc_raw == input_loc_raw
+                    or input_loc_raw in item_loc_raw
+                    or item_loc_raw in input_loc_raw
+                ):
+                    filtered.append(item)
+        output.items = filtered
 
     session = getattr(ctx, "session", None)
     workspace_id = getattr(ctx, "workspace_id", None)

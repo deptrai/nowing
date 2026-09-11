@@ -388,15 +388,15 @@
   - **Reason / when to revisit:** Pre-existing ingestion pipeline mismatch. Revisit when Story 15.1 financials are migrated to ChainLens ingest or a cross-source reconciliation story is scheduled.
 
 - **Finding:** Per-request `httpx.AsyncClient` creation in `fetch.py`.
-  - **Action:** Blocked — per-request client creation deferred to fetch.py fix.
+  - **Action:** Resolved from: code review of story-15-2-vietstock-deep-financials (2026-09-11). Replaced per-request client creation with shared `_get_client` helper in `fetch.py`.
   - **Reason / when to revisit:** Minor performance hit, follows existing CafeF pattern. Revisit if profiling shows connection pooling matters for Vietstock throughput.
 
 - **Finding:** `httpx.TimeoutException` / `ConnectError` mapped to `VietstockAccessBlockedError`.
-  - **Action:** Blocked — out-of-scope or requires feature work beyond test coverage.
+  - **Action:** Resolved from: code review of story-15-2-vietstock-deep-financials (2026-09-11). Created `VietstockConnectionError(VietstockAccessBlockedError)` to distinguish network/timeout failures with retry logic.
   - **Reason / when to revisit:** Acceptable degradation behavior per spec. Revisit if observability needs distinguish network vs. server blocks.
 
 - **Finding:** 5xx server errors raise immediately without bounded retry.
-  - **Action:** Blocked — 5xx retry deferred to fetch.py fix.
+  - **Action:** Resolved from: code review of story-15-2-vietstock-deep-financials (2026-09-11). Added bounded retry with exponential backoff on 5xx responses in `_do_get` and `_do_post` with unit tests.
   - **Reason / when to revisit:** Spec only requires 429 retry. Revisit if live probes show transient 5xx from Vietstock.
 
 - **Finding:** 20+ years of historical data is a data-availability goal, not a runtime validation requirement.
@@ -406,7 +406,7 @@
 ## Deferred from: code review of story-12-4a-4b-normalize-dedupe-conflict round 2 (2026-08-13)
 
 - **Finding:** Location filter fallback for unknown cities — when `resolve_city_code` returns None for both input and item, comparison falls back to raw lowercased strings.
-  - **Action:** Blocked — location filter fallback deferred to normalize.py fix.
+  - **Action:** Resolved from: code review of story-12-4a-4b-normalize-dedupe-conflict round 2 (2026-09-11). Implemented bidirectional substring matching fallback for unknown city locations in `jobs_aggregator/orchestrator.py` and added unit test.
   - **Reason / when to revisit:** Only affects cities not in the 64-province table. Revisit if users query by district/ward level.
 
 - **Finding:** New city codes (DNA/HAN/HOB/QNA/TNI/VP) in shared `location_normalize` module visible to BĐS aggregator.
