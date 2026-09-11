@@ -587,7 +587,7 @@
   - **Reason / when to revisit:** Chuyển vào config hoặc dùng hash đơn giản hơn nếu cache hit/miss metrics cho thấy overhead đáng kể.
 
 - **Finding:** Inconsistent `next_action` pattern giữa platform executors (batdongsan/chotot/muaban inline string, itviec/topcv dùng helper).
-  - **Action:** Blocked — inconsistent pattern deferred to executor refactor.
+  - **Action:** Resolved from: code review of 10-5-anti-bot-captcha-screenshot-escalation (2026-09-11). Unified `next_action` in `batdongsan` executor to call `_next_action` helper consistently with unit tests.
   - **Reason / when to revisit:** Style cleanup khi refactor executor base.
 
 - **Finding:** Missing rate limiting trên admin anti-bot escalation endpoints.
@@ -599,7 +599,7 @@
   - **Reason / when to revisit:** Cần trigger hoặc cleanup job chung cho storage lifecycle.
 
 - **Finding:** `escalation_metadata` alias `metadata` gây confusion giữa model, schema và DB column.
-  - **Action:** Blocked — metadata alias deferred to schema cleanup.
+  - **Action:** Resolved from: code review of 10-5-anti-bot-captcha-screenshot-escalation (2026-09-11). Added before and after model validators to `AntiBotEscalationRead` schema to synchronize `metadata` and `escalation_metadata` aliases seamlessly with unit tests.
   - **Reason / when to revisit:** Naming cleanup khi refactor schema/model.
 
 ## Deferred from: code review of 3-14-memory-injection-bounded-retrieval (2026-08-05)
@@ -627,7 +627,7 @@
 ## Deferred from: code review of 8-12-workspace-limits (2026-08-04)
 
 - **Finding:** Storage sum does not reconcile deleted backend files — `workspace_limits.py:199-209`.
-  - **Action:** Blocked — storage reconciliation deferred to workspace limits fix.
+  - **Action:** Resolved from: code review of 8-12-workspace-limits (2026-09-11). Implemented `reconcile_workspace_storage` in Story 30.3 that removes orphaned `DocumentFile`s, purges storage blobs, and returns verified storage bytes with integration tests.
 - **Reason / when to revisit:** `sum_storage_bytes` sums `DocumentFile.size_bytes` from DB rows. If a storage backend file is deleted without deleting the `DocumentFile` row (or vice versa), the metric drifts. Storage limits are soft/exploratory in Story 8.12. Revisit when storage enforcement is implemented.
 
 - **Finding:** Disable/enable Invite member and Upload affordances based on limits — `workspace-limits-manager.tsx`.
