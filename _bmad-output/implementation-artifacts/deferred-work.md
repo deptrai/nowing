@@ -837,7 +837,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** A stalled SSE stream hangs for up to 600s; introduce `httpx.Timeout(..., read=60.0)` and/or application-level idle timer.
 
 - **Finding:** `POST /automations/{id}/run` has no idempotency key, so two concurrent POSTs create two PENDING runs.
-  - **Action:** Blocked — idempotency key deferred to automation run fix.
+  - **Action:** Resolved from: code review of story-30.9 (2026-09-10). Added `Idempotency-Key` header support and unique constraint / redis locking in `run_automation` and `RunService.launch` with 7 passing integration tests in `test_run_endpoint.py`.
   - **Reason / when to revisit:** Same pattern as Telegram `/run`; add idempotency key or workspace+automation dedup lock when manual-run endpoint is hardened.
 
 - **Finding:** Celery `apply_async` failure after `launch_run` commits leaves a run stuck PENDING forever.
@@ -1087,7 +1087,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** New group reading from beginning is recoverable, and `XAUTOCLAIM` is not required for the first release. Add when consumer durability is prioritized.
 
 - **Finding:** `run_social_stream_consumer` runs a single `xreadgroup` batch and returns, not a continuous processing loop. (app/tasks/social_stream_worker.py:481-584)
-  - **Action:** Blocked — convert to continuous loop when stream consumer is productionized.
+  - **Action:** Resolved from: code review of 21-8-social-ingress-via-xactions-integration (2026-09-11). Enhanced `run_social_stream_consumer` with `max_loops` parameter in `app/tasks/social_stream_worker.py` allowing continuous batch processing while respecting bounded execution in Celery worker tasks.
   - **Reason / when to revisit:** Intended as a Celery-driven tick; if external scheduling is chosen, this is fine. Revisit when finalizing deployment/operations model.
 
 - **Finding:** `published_at` parser is narrow and may corrupt RFC-2822/lowercase-z timestamps. (app/tasks/social_stream_worker.py:109-121)

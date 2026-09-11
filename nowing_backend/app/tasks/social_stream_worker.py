@@ -539,6 +539,7 @@ async def run_social_stream_consumer(
     batch_size: int = 10,
     block_ms: int = 2000,
     max_messages_per_batch: int = MAX_MESSAGES_PER_BATCH,
+    max_loops: int = 1,
 ) -> int:
     """Consume events from Redis stream using Consumer Groups (AD-SOC-4)."""
     created_locally = False
@@ -573,51 +574,53 @@ async def run_social_stream_consumer(
             return 0
 
         count = min(batch_size, max_messages_per_batch)
-        try:
-            entries = await redis_client.xreadgroup(
-                groupname=CONSUMER_GROUP_NAME,
-                consumername=consumer_name,
-                streams={STREAM_SOCIAL_RAW_POSTS: ">"},
-                count=count,
-                block=block_ms,
-            )
-        except Exception as exc:
-            logger.error("Error reading from social stream: %s", exc)
-            return 0
+        total_processed = 0
 
-        if not entries:
-            return 0
+        for _ in range(max(1, max_loops)):
+            try:
+                entries = await redis_client.xreadgroup(
+                    groupname=CONSUMER_GROUP_NAME,
+                    consumername=consumer_name,
+                    streams={STREAM_SOCIAL_RAW_POSTS: ">"},
+                    count=count,
+                    block=block_ms,
+                )
+            except Exception as exc:
+                logger.error("Error reading from social stream: %s", exc)
+                break
 
-        processed_count = 0
-        async with async_session_maker() as session:
-            for _stream_name, messages in entries:
-                for msg_id, payload in messages:
-                    try:
-                        result = await process_social_post_event(
-                            payload,
-                            session=session,
-                            redis_client=redis_client,
-                        )
-                        if result is not None:
-                            processed_count += 1
-                            try:
-                                await redis_client.xack(
-                                    STREAM_SOCIAL_RAW_POSTS,
-                                    CONSUMER_GROUP_NAME,
-                                    msg_id,
-                                )
-                            except Exception:
-                                logger.exception(
-                                    "Failed to ACK social stream message %s",
-                                    msg_id,
-                                )
-                    except Exception as exc:
-                        await session.rollback()
-                        logger.exception(
-                            "Failed processing social stream message %s: %s",
-                            msg_id,
-                            exc,
-                        )
+            if not entries:
+                break
+
+            async with async_session_maker() as session:
+                for _stream_name, messages in entries:
+                    for msg_id, payload in messages:
+                        try:
+                            result = await process_social_post_event(
+                                payload,
+                                session=session,
+                                redis_client=redis_client,
+                            )
+                            if result is not None:
+                                total_processed += 1
+                                try:
+                                    await redis_client.xack(
+                                        STREAM_SOCIAL_RAW_POSTS,
+                                        CONSUMER_GROUP_NAME,
+                                        msg_id,
+                                    )
+                                except Exception:
+                                    logger.exception(
+                                        "Failed to ACK social stream message %s",
+                                        msg_id,
+                                    )
+                        except Exception as exc:
+                            await session.rollback()
+                            logger.exception(
+                                "Failed processing social stream message %s: %s",
+                                msg_id,
+                                exc,
+                            )
                         try:
                             await redis_client.xadd(
                                 STREAM_SOCIAL_DEAD_LETTER,
@@ -641,7 +644,7 @@ async def run_social_stream_consumer(
 
                     await asyncio.sleep(BATCH_SLEEP_SECONDS)
 
-        return processed_count
+        return total_processed
     finally:
         if created_locally and redis_client is not None:
             try:
