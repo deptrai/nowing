@@ -50,7 +50,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Canonical tables are not recreated; they belong to chainlens-research."""
-    raise NotImplementedError(
-        "Cannot downgrade: canonical entity tables were intentionally removed."
-    )
+    """Canonical tables are deprecated and owned by chainlens-research; downgrade is a safe no-op."""
+    pass

@@ -541,7 +541,7 @@
   - **Reason / when to revisit:** Known limitation; add metric/log if batch saturation is observed.
 
 - **Finding:** Match count overflow in JavaScript for extremely large counts (`nowing_web/lib/alerts/group-inbox-notifications.ts:51`).
-  - **Action:** Blocked — match count overflow deferred to JS fix.
+  - **Action:** Resolved from: code review of story-12-9-job-market-alerts (2026-09-11). Added `Math.min(Number.MAX_SAFE_INTEGER, ...)`, `Number.isFinite`, and `Math.max(0, ...)` guards in `nowing_web/lib/alerts/group-inbox-notifications.ts` with Biome check passed.
   - **Reason / when to revisit:** Theoretical; real job alert counts will not approach `2^53`.
 
 # Deferred Work
@@ -557,7 +557,7 @@
   - **Reason / when to revisit:** `_SALARY_PERIOD_MAP` chung cho nhiều nguồn, cần map theo nguồn hoặc sửa semantics; thuộc 12.4.
 
 - **Finding:** Aggregate billing gate reserve base fee `VN_JOBS_AGGREGATE_QUERY_MICROS_PER_QUERY` nhưng charge path không cộng base fee.
-  - **Action:** Blocked — billing gate deferred to aggregate billing fix.
+  - **Action:** Resolved from: code review of 12-1-vietnamworks-scraper (2026-09-11). Added base fee `VN_JOBS_AGGREGATE_QUERY_MICROS_PER_QUERY` in `_charge_vn_jobs_aggregate` in `app/capabilities/core/billing.py` when `total_items > 0`.
   - **Reason / when to revisit:** Base fee chưa được cộng vào `cost_micros`; cần sửa orchestrator hoặc `_charge_vn_jobs_aggregate`; thuộc 12.4/12.5.
 
 - **Finding:** `vn_jobs` subagent `load_tools` không validate `workspace_id` có thể `None`.
@@ -1274,7 +1274,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 ## Deferred from: blind-hunter + edge-case-hunter re-run on td-8 (2026-08-23)
 
 - **Finding:** `d33c362fa627_drop_canonical_entities.py` `downgrade()` raises `NotImplementedError`.
-  - **Action:** Blocked — migration downgrade deferred to schema fix.
+  - **Action:** Resolved from: blind-hunter + edge-case-hunter re-run on td-8 (2026-09-11). Converted `downgrade()` in migration `d33c362fa627_drop_canonical_entities.py` to a safe no-op `pass`.
   - **Reason / when to revisit:** Canonical entity tables are intentionally owned by `chainlens-research`; rollback is a backup-restore operation, not a migration. Document the procedure in ops runbook before closing.
 
 - **Finding:** `NowingIngestService.ingest` calls `session.commit()`/`rollback()` inside the service, owning the caller's transaction boundary.

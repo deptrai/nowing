@@ -896,6 +896,12 @@ async def _charge_vn_jobs_aggregate(
         return 0
 
     cost_micros = int(getattr(output, "cost_micros", 0) or 0)
+    base_fee = (
+        int(getattr(config, "VN_JOBS_AGGREGATE_QUERY_MICROS_PER_QUERY", 5000))
+        if getattr(output, "total_items", 0) > 0
+        else 0
+    )
+    cost_micros += base_fee
     if cost_micros <= 0:
         return 0
 

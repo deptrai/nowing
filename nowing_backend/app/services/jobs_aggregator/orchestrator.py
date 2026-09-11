@@ -10,6 +10,7 @@ from typing import Any, Literal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import config
 from app.observability.metrics import record_vn_jobs_pii_detected
 from app.services.location_normalize import resolve_city_code
 from app.services.pii.redact import redact_job_pii
