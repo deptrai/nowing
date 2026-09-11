@@ -1411,3 +1411,27 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - source_spec: none
   summary: Tách tiếp services//routes/ file >800 dòng theo domain (admin_telemetry 1059, workspace_limits 1030, phone_waterfall 1012, workspaces_routes 1291, rbac_routes 1260, gateway_webhook 1207...)
   evidence: Split từ intent "fix hết" audit 2026-09-12 — refactor dài hạn nhiều PR
+
+- source_spec: '_bmad-output/implementation-artifacts/spec-31-1-dokploy-container-cgroup-network-isolation.md'
+  summary: Tenant-vs-tenant isolation trên `nowing-web-apps-net` chưa đạt — shared bridge vẫn cho ICC giữa các app container; `enable_icc=false` lại chặn cả ingress→app
+  evidence: Review 31.1 — cần quyết định posture: one-network-per-app hoặc published ports; hiện chỉ cô lập được khỏi backend/internal networks
+
+- source_spec: '_bmad-output/implementation-artifacts/spec-31-1-dokploy-container-cgroup-network-isolation.md'
+  summary: Không có egress control trên app network — user container code reach được cloud metadata (169.254.169.254), host LAN, arbitrary internet (SSRF/exfil)
+  evidence: Review 31.1 — pre-existing gap; cần egress allowlist/firewall hoặc `internal: true` + explicit ingress path
+
+- source_spec: '_bmad-output/implementation-artifacts/spec-31-1-dokploy-container-cgroup-network-isolation.md'
+  summary: Container cũ (pre-31.1) giữ nguyên 512m/dokploy-network tới khi force redeploy; workspace NULL-tier redeploy sẽ tụt 512m→256m (OOM risk)
+  evidence: Review 31.1 — `deploy_app` idempotent early-return skip redeploy; cần rollout note/backfill plan_tier hoặc reconcile job khi đổi tier
+
+- source_spec: '_bmad-output/implementation-artifacts/spec-31-1-dokploy-container-cgroup-network-isolation.md'
+  summary: `docker build` cho runtime image vẫn unbounded + `docker run` thiếu `--log-opt max-size` — tenant app spam có thể fill host disk ngoài cgroup
+  evidence: Review 31.1 — build side chưa giới hạn resource/network; log driver không cap size
+
+- source_spec: '_bmad-output/implementation-artifacts/spec-31-1-dokploy-container-cgroup-network-isolation.md'
+  summary: no-HEALTHCHECK fallback trong `_healthcheck_container` chỉ check `.State.Running` — không verify port listener (dormant: image hiện có HEALTHCHECK)
+  evidence: Review 31.1 — nếu image ngoài thiếu HEALTHCHECK, container running-nhưng-không-bind-port vẫn được coi healthy → ingress 502
+
+- source_spec: '_bmad-output/implementation-artifacts/spec-31-1-dokploy-container-cgroup-network-isolation.md'
+  summary: Healthcheck có thể sample đúng dead-window giữa các lần `--restart unless-stopped` restart → biến crash recoverable thành deploy_failed sớm
+  evidence: Review 31.1 — rare; hành vi hiện tại ưu tiên fail-fast đúng cho crash-loop, chấp nhận được nhưng nên documented

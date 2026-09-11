@@ -194,6 +194,7 @@ async def deploy_app(
                         project_path=project_path,
                         slug=sanitized_slug,
                         custom_domain=app_entity.custom_domain,
+                        plan_tier=ws.plan_tier,
                     )
                 except Exception as e:
                     logger.error(
