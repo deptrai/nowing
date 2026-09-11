@@ -2,7 +2,7 @@
 title: 'Audit hygiene cleanup — xóa dead files, root clutter, chốt ignore rules'
 type: 'chore'
 created: '2026-09-12'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
 baseline_commit: '92028fe862072331da05ff9fd70afb97c90d7237'
 context: []
@@ -73,3 +73,26 @@ context: []
 
 **Manual checks:**
 - `git status --short` sau commit: chỉ còn đúng các file Epic 31 uncommitted của user.
+
+## Suggested Review Order
+
+**Dead code & clutter removal** (tất cả đã verify 0 refs — xem commit `357f71c65`)
+
+- Record kiến trúc cho toàn bộ cleanup — đọc trước để hiểu "vì sao xóa"
+  [`AUDIT_TECHNICAL_DEBT_2026-09-12.md:92`](../../AUDIT_TECHNICAL_DEBT_2026-09-12.md#L92)
+
+- `db.py.legacy` 7.041 dòng + 2 `.bak` + 15 root files — deletion-only, verify bằng `git show 357f71c65 --stat`
+  [`spec-audit-hygiene-cleanup.md:36`](./spec-audit-hygiene-cleanup.md#L36)
+
+**Tooling guards**
+
+- `.tgrep/` + `*.bak` — chặn index local & backup files tái phạm
+  [`.gitignore:68`](../../.gitignore#L68)
+
+- Deferred items B/C được ghi sổ với `source_spec` trỏ về đây — audit trail cho phần việc chưa làm
+  [`deferred-work.md`](./deferred-work.md)
+
+**Docs**
+
+- Playbook doc được giữ lại, chỉ move vị trí
+  [`e2e-prompt-playbook-global-model.md`](../../docs/e2e-prompt-playbook-global-model.md)
