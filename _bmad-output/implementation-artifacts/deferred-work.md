@@ -146,6 +146,22 @@
 - **Finding:** Multi-tenant Network Isolation / Cgroup CPU & Memory Limits for Web Builder user containers.
   - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (multi-tenant resource constraints belong to infrastructure hardening phase on Dokploy.)
   - **Reason / when to revisit:** Multi-tenant resource constraints (cgroups memory/cpu limit, overlay isolation) belong to infrastructure hardening phase on Dokploy.
+  - **Resolved:** 2026-09-12 — implemented in Story 31.1 (`spec-31-1-dokploy-container-cgroup-network-isolation`): tier-scoped cgroups + app-network isolation (commit `41bee360c`, follow-up defer-resolution commit).
+
+## Resolved from: code review of 31-1-dokploy-container-cgroup-network-isolation (2026-09-12)
+
+- **Finding:** Tenant-to-tenant isolation — shared `nowing-web-apps-net` with default ICC lets tenant containers reach each other; `enable_icc=false` would also block proxy→app traffic.
+  - **Resolution:** Opt-in `WEB_BUILDER_PER_APP_NETWORK` mode — each app gets its own bridge `nowing-app-{ws}-{app}-net` (`service.py::_app_network_name`/`_ensure_app_network`/`_cleanup_app_network`); ingress proxy connected per-net via `WEB_BUILDER_INGRESS_PROXY_CONTAINER`; isolation by membership; off by default.
+- **Finding:** Egress restriction — app containers retain default outbound NAT (SSRF to `169.254.169.254`, LAN, exfiltration risk).
+  - **Resolution:** Documented — Docker cannot do partial egress per-network without breaking legit app outbound calls; host-firewall guidance (`iptables -I DOCKER-USER -d 169.254.169.254 -j DROP`) added to env examples + compose comment.
+- **Finding:** Free-tier rollout risk — existing apps ran flat `512m/0.5/100`; new free defaults `256m/0.25/50` could OOM previously-healthy apps on redeploy.
+  - **Resolution:** `nowing_backend/scripts/redeploy_web_apps.py` reconcile script (dry-run default, `--apply`, per-app fresh session) + OOM-watch rollout note in `docker/.env.example`.
+- **Finding:** `docker build` phase unbounded — build processes influenced by tenant source could consume host CPU/memory.
+  - **Resolution:** Documented — runtime Dockerfile has zero RUN steps so `docker build` cannot execute user code; build already time-bounded by `wait_for` timeout. Runtime log growth additionally bounded via `--log-opt max-size=10m max-file=3`.
+- **Finding:** No-HEALTHCHECK fallback treated running-but-not-serving containers as healthy → ingress 502.
+  - **Resolution:** `_exec_health_probe` — `docker exec <name> node -e "<image HEALTHCHECK probe>"` must exit 0 before a no-HEALTHCHECK container counts as healthy.
+- **Finding:** Restart dead-window — a single `running=false` inspect sample between `unless-stopped` restarts could fail the deploy.
+  - **Resolution:** `_healthcheck_container` requires 3 consecutive dead samples before failing; transient restart gaps no longer abort.
 
 ## Resolved from: code review of 27-1b-web-app-build-preview-runner (2026-08-25)
 

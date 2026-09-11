@@ -243,6 +243,7 @@ async def deploy_app(
                 )
                 if container_id:
                     await service._stop_container(container_id)
+                    await service._cleanup_app_network(workspace_id, app_id)
                 return WebAppDeployOutput(
                     app_id=app_id,
                     workspace_id=workspace_id,
@@ -261,6 +262,7 @@ async def deploy_app(
                     f"[WebAppDeployService] Caddy snippet write failed for app {app_id}: {e}"
                 )
                 await service._stop_container(container_id or "")
+                await service._cleanup_app_network(workspace_id, app_id)
                 app_entity.status = "deploy_failed"
                 app_entity.error_message = f"Caddy snippet write failed: {e}"
                 with contextlib.suppress(Exception):
@@ -285,6 +287,7 @@ async def deploy_app(
                 try:
                     if container_id:
                         await service._stop_container(container_id)
+                        await service._cleanup_app_network(workspace_id, app_id)
                     app_entity.status = "deploy_failed"
                     app_entity.error_message = f"Snapshot write failed: {e}"
                     await session.commit()
