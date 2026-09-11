@@ -119,7 +119,7 @@ def build_scrape_executor(
                 cost_micros=0,
                 degraded=True,
                 degradation_reason="rate_limited",
-                next_action="Escalated to human review; retry after credentials/proxy rotation",
+                next_action=_next_action("rate_limited"),
             )
         except BatdongsanDecodeError:
             logger.exception("batdongsan.scrape decode error")
@@ -137,7 +137,7 @@ def build_scrape_executor(
                 cost_micros=0,
                 degraded=True,
                 degradation_reason="bot_detected",
-                next_action="Escalated to human review; retry after credentials/proxy rotation",
+                next_action=_next_action("bot_detected"),
             )
         except Exception as exc:
             logger.exception("batdongsan.scrape actor failed: %s", exc)
