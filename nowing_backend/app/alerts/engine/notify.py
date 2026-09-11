@@ -47,8 +47,12 @@ def _notification_message(alert_rule: AlertRule, snapshot: AlertSnapshot) -> str
     if snapshot.run_status == "failed":
         return f"Saved search '{alert_rule.name}' failed."
     if snapshot.run_status == "degraded":
-        reasons = snapshot.degradation_reasons or []
-        return f"Saved search '{alert_rule.name}' is degraded: {', '.join(reasons)}."
+        reasons = [str(r) for r in (snapshot.degradation_reasons or []) if r]
+        if len(reasons) > 3:
+            display_reasons = f"{', '.join(reasons[:3])} (+{len(reasons) - 3} more)"
+        else:
+            display_reasons = ", ".join(reasons) or "unspecified"
+        return f"Saved search '{alert_rule.name}' is degraded: {display_reasons}."
     triggered = snapshot.new_items_count or snapshot.changed_items_count
     if triggered:
         return (
@@ -117,18 +121,27 @@ async def _telegram(
 
 
 def _send_email_smtp(to_email: str, subject: str, body: str) -> None:
-    """Synchronous helper: send a plain-text email over SMTP with explicit timeout."""
+    """Synchronous helper: send a plain-text email over SMTP with explicit timeout and SSL options."""
+    import ssl
 
-    msg = MIMEText(body)
+    msg = MIMEText(body, "plain", "utf-8")
     msg["Subject"] = subject
     msg["From"] = config.SMTP_FROM or "noreply@nowing.net"
     msg["To"] = to_email
 
-    timeout = getattr(config, "SMTP_TIMEOUT_SECONDS", 30.0)
-    server = smtplib.SMTP(config.SMTP_HOST, config.SMTP_PORT, timeout=timeout)
+    timeout = float(getattr(config, "SMTP_TIMEOUT_SECONDS", 30.0) or 30.0)
+    port = int(config.SMTP_PORT or 587)
+    use_ssl = bool(getattr(config, "SMTP_SSL", False) or port == 465)
+    ssl_context = ssl.create_default_context()
+
+    if use_ssl:
+        server = smtplib.SMTP_SSL(config.SMTP_HOST, port, timeout=timeout, context=ssl_context)
+    else:
+        server = smtplib.SMTP(config.SMTP_HOST, port, timeout=timeout)
+
     try:
-        if config.SMTP_TLS:
-            server.starttls()
+        if not use_ssl and config.SMTP_TLS:
+            server.starttls(context=ssl_context)
         if config.SMTP_USER and config.SMTP_PASSWORD:
             server.login(config.SMTP_USER, config.SMTP_PASSWORD)
         server.send_message(msg)

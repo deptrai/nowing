@@ -132,3 +132,34 @@ async def test_notify_creates_in_app_notification():
     assert call_kwargs["user_id"] == user_id
     assert call_kwargs["workspace_id"] == 1
     assert call_kwargs["notification_type"] == "alert_run_complete"
+
+
+def test_notification_message_bounds_large_degradation_reasons():
+    """Verify that more than 3 degradation reasons are capped with (+N more)."""
+    rule = _FakeRule(name="Test Rule", workspace_id=1, id=uuid4())
+    snapshot = _FakeSnapshot(
+        id=uuid4(),
+        run_status="degraded",
+        degradation_reasons=["reason_1", "reason_2", "reason_3", "reason_4", "reason_5"],
+    )
+
+    msg = _notification_message(rule, snapshot)
+    assert "reason_1, reason_2, reason_3 (+2 more)" in msg
+
+
+def test_send_email_smtp_ssl_mode(monkeypatch):
+    """Verify SMTP_SSL is used when SMTP_SSL config is True or port is 465."""
+    from app.alerts.engine.notify import _send_email_smtp
+
+    monkeypatch.setattr("app.config.config.SMTP_HOST", "smtp.example.com")
+    monkeypatch.setattr("app.config.config.SMTP_PORT", 465)
+    monkeypatch.setattr("app.config.config.SMTP_SSL", True, raising=False)
+    monkeypatch.setattr("app.config.config.SMTP_USER", "")
+    monkeypatch.setattr("app.config.config.SMTP_PASSWORD", "")
+
+    mock_server = mock.MagicMock()
+    with mock.patch("smtplib.SMTP_SSL", return_value=mock_server) as mock_ssl:
+        _send_email_smtp("test@example.com", "Subject", "Body")
+        mock_ssl.assert_called_once()
+        mock_server.send_message.assert_called_once()
+        mock_server.quit.assert_called_once()

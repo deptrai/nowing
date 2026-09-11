@@ -347,7 +347,7 @@
 ## Deferred from: code review of 22-3-telegram-data-enrichment-realtime-alerts-and-scraper-ui (2026-08-16)
 
 - **Finding:** Configure timeout and SSL options for smtplib.SMTP in alert notifications.
-  - **Action:** Blocked — SMTP timeout/SSL deferred to email hardening.
+  - **Action:** Resolved from: code review of 22-3-telegram-data-enrichment-realtime-alerts-and-scraper-ui (2026-09-11). Added explicit SMTP timeout and SSL/TLS context options (`SMTP_SSL` for port 465 / `SMTP_SSL` config) in `_send_email_smtp` in `notify.py` with unit tests.
   - **Reason / when to revisit:** Pre-existing notification service pattern. Revisit when alerting notification channel hardening is scheduled.
 
 - **Finding:** Connect full TanStack Query API endpoints for Telegram Userbot / Channel list on Web Admin.
@@ -525,7 +525,7 @@
 ## Deferred from: code review of story-12-9-job-market-alerts (2026-08-13)
 
 - **Finding:** Large `degradation_reasons` array can produce a very long notification message (`nowing_backend/app/alerts/engine/notify.py:44-46`).
-  - **Action:** Blocked — notification message length deferred to alert engine fix.
+  - **Action:** Resolved from: code review of story-12-9-job-market-alerts (2026-09-11). Bounded `degradation_reasons` to first 3 items with (+N more) suffix in `_notification_message` in `notify.py` with unit tests.
   - **Reason / when to revisit:** UX polish; cap or truncate the reason list if real sources produce many reasons.
 
 - **Finding:** Snapshot ID from a different alert rule in URL falls back silently (`nowing_web/app/dashboard/[workspace_id]/research/saved-searches/[alert_rule_id]/saved-search-detail-content.tsx:57-60`).
@@ -537,7 +537,7 @@
   - **Reason / when to revisit:** UX polish; render a generic alert message if metadata parsing fails.
 
 - **Finding:** `_TICK_BATCH` batch limit can delay rules past the first 200 (`nowing_backend/app/alerts/engine/tick.py:25,117`).
-  - **Action:** Blocked — batch limit deferred to tick engine fix.
+  - **Action:** Resolved from: code review of story-12-9-job-market-alerts (2026-09-11). Implemented batch loop in `_tick` in `tick.py` to process all due rules at current timestamp across consecutive batches without starvation.
   - **Reason / when to revisit:** Known limitation; add metric/log if batch saturation is observed.
 
 - **Finding:** Match count overflow in JavaScript for extremely large counts (`nowing_web/lib/alerts/group-inbox-notifications.ts:51`).
