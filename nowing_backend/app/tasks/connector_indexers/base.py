@@ -80,7 +80,8 @@ def parse_date_flexible(date_str: str) -> datetime:
     for fmt in formats:
         try:
             return datetime.strptime(date_str.rstrip("Z"), fmt)
-        except ValueError:
+        except ValueError as exc:
+            logger.debug("Suppressed %r", exc)
             continue
 
     # Try ISO format as fallback

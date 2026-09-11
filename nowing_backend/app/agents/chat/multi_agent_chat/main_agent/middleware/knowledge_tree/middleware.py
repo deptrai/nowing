@@ -72,8 +72,8 @@ def _count_tokens(text: str, *, llm: BaseChatModel | None) -> int:
     if callable(count_fn):
         try:
             return int(count_fn([{"role": "user", "content": text}]))
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Suppressed %r", exc)
     profile = getattr(llm, "profile", None)
     model_names: list[str] = []
     if isinstance(profile, dict):
@@ -171,8 +171,8 @@ class KnowledgeTreeMiddleware(AgentMiddleware):  # type: ignore[type-arg]
             loop = asyncio.get_running_loop()
             if loop.is_running():
                 return None
-        except RuntimeError:
-            pass
+        except RuntimeError as exc:
+            logger.debug("Suppressed %r", exc)
         return asyncio.run(self.abefore_agent(state, runtime))
 
     # ------------------------------------------------------------------ render

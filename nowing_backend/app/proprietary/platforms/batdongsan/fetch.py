@@ -103,8 +103,8 @@ def _cookie_expires_at(credentials: dict[str, Any] | None, name: str) -> float |
                 expires = cookie.get("expires")
                 if expires is not None and expires >= 0:
                     return float(expires)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("Suppressed %r", exc)
     return None
 
 

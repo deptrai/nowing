@@ -142,15 +142,15 @@ def _validate_tier_override(
         try:
             if float(raw) > 0:
                 return str(raw).strip()
-        except (TypeError, ValueError):
-            pass
+        except (TypeError, ValueError) as exc:
+            logger.debug("Suppressed %r", exc)
     elif key == "pids_limit":
         try:
             pids = int(raw)
             if 1 <= pids <= _TIER_PIDS_MAX:
                 return pids
-        except (TypeError, ValueError):
-            pass
+        except (TypeError, ValueError) as exc:
+            logger.debug("Suppressed %r", exc)
     logger.warning(
         "Invalid %s[%r]=%r; using default %r", env_name, tier, raw, default
     )

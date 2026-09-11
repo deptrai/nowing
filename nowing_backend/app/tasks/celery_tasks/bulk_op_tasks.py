@@ -22,7 +22,7 @@ from app.models.bulk_ops import (
     BulkOpJobStatus,
     IdempotencyKey,
 )
-from app.models.users import PersonalAccessToken, WorkspaceMembership
+from app.models.users import WorkspaceMembership
 from app.models.workspaces import Workspace
 from app.schemas.bulk_ops import FilterClause
 from app.services.bulk_ops_service import bulk_ops_service
@@ -228,8 +228,8 @@ async def _execute_bulk_op(job_id_str: str) -> None:
                     errors_count += 1
                     try:
                         await session.rollback()
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.debug("Suppressed %r", exc)
                     err_record = BulkOpError(
                         job_id=job.id,
                         subject_type=target_model.__name__.lower(),

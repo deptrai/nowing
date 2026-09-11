@@ -62,8 +62,8 @@ def _safe_log(
     try:
         message = _build_message(msg, ctx, **extra)
         level_fn(message, exc_info=exc_info)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("Suppressed %r", exc)
 
 
 # ── prepare_for_indexing ──────────────────────────────────────────────────────

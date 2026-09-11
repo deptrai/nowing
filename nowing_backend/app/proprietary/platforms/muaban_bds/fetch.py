@@ -216,8 +216,8 @@ async def fetch_detail_phone(
                     full = _normalize_whitespace(data.get("phone"))
                     if full:
                         return full, phone_display, phone_enc
-                except (json.JSONDecodeError, UnicodeDecodeError):
-                    pass
+                except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+                    logger.debug("Suppressed %r", exc)
             else:
                 logger.info(
                     "Muaban phone API returned %s for %s; full phone unavailable without auth",

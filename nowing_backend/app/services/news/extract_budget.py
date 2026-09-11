@@ -358,8 +358,8 @@ async def record_news_entity_extraction(
                 ws = await session.get(Workspace, resolved_workspace_id)
                 if ws and ws.user_id:
                     effective_user_id = ws.user_id
-            except AttributeError:
-                pass
+            except AttributeError as exc:
+                logger.debug("Suppressed %r", exc)
 
     if record_usage:
         # 1. Record TokenUsage row first. If it fails, do not inflate the

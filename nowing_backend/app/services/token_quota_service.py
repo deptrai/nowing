@@ -645,8 +645,8 @@ class TokenQuotaService:
             from app.services.auto_reload_service import maybe_trigger_auto_reload
 
             await maybe_trigger_auto_reload(user_id)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Suppressed %r", exc)
 
         return QuotaResult(
             allowed=True,

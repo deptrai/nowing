@@ -173,8 +173,8 @@ async def scrape_batdongsan(
                     )
             except BatdongsanRateLimitedError:
                 rate_limited_seen = True
-            except (BatdongsanAccessBlockedError, BatdongsanDecodeError, Exception):
-                pass
+            except (BatdongsanAccessBlockedError, BatdongsanDecodeError, Exception) as exc:
+                logger.debug("Suppressed %r", exc)
 
         if page_failed:
             if degradation_reason is None:

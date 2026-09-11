@@ -1060,8 +1060,8 @@ def _is_auth_error(exc: Exception) -> bool:
 
         if isinstance(exc, httpx.HTTPStatusError):
             return exc.response.status_code == 401
-    except ImportError:
-        pass
+    except ImportError as exc:
+        logger.debug("Suppressed %r", exc)
     err_str = str(exc).lower()
     return "401" in err_str or "unauthorized" in err_str
 

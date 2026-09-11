@@ -117,7 +117,8 @@ def _rows_from_body(body: str, rows: str) -> list[dict[str, Any]]:
     for line in body.split("\n"):
         try:
             item = json.loads(line)
-        except (json.JSONDecodeError, ValueError):
+        except (json.JSONDecodeError, ValueError) as exc:
+            logger.debug("Suppressed %r", exc)
             continue
         if not isinstance(item, dict):
             continue

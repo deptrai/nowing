@@ -80,7 +80,8 @@ async def start_rule_subscriber(
 
             try:
                 data = json.loads(message["data"])
-            except (json.JSONDecodeError, KeyError, TypeError):
+            except (json.JSONDecodeError, KeyError, TypeError) as exc:
+                logger.debug("Suppressed %r", exc)
                 continue
 
             platform = data.get("platform")

@@ -118,8 +118,8 @@ def _get_cached_entities(cache_key: str) -> list[NewsEntity] | None:
                     try:
                         data = json.loads(raw)
                         return [NewsEntity(**item) for item in data]
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.debug("Suppressed %r", exc)
     return None
 
 
@@ -593,8 +593,8 @@ def clear_entity_cache() -> None:
         r = _redis_client()
         for key in r.scan_iter("news_entity*"):
             r.delete(key)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("Suppressed %r", exc)
 
 
 __all__ = [

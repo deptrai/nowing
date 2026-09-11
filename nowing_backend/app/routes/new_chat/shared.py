@@ -214,7 +214,8 @@ def _find_pre_turn_checkpoint_id(
             return last_pre_turn_target
         try:
             last_pre_turn_target = cp_tuple.config["configurable"]["checkpoint_id"]
-        except (KeyError, TypeError):
+        except (KeyError, TypeError) as exc:
+            _logger.debug("Suppressed %r", exc)
             continue
     return last_pre_turn_target
 
@@ -463,8 +464,8 @@ def _try_delete_sandbox(thread_id: int) -> None:
         task = loop.create_task(_bg())
         _background_tasks.add(task)
         task.add_done_callback(_background_tasks.discard)
-    except RuntimeError:
-        pass
+    except RuntimeError as exc:
+        _logger.debug("Suppressed %r", exc)
 
 
 async def check_thread_access(

@@ -220,8 +220,8 @@ def _schedule_sandbox_delete(sandbox: _TimeoutAwareSandbox) -> None:
     try:
         loop = asyncio.get_running_loop()
         loop.run_in_executor(None, _delete)
-    except RuntimeError:
-        pass
+    except RuntimeError as exc:
+        logger.debug("Suppressed %r", exc)
 
 
 async def sync_files_to_sandbox(

@@ -178,7 +178,8 @@ async def _run_discord_gateway() -> None:
             break
         try:
             await asyncio.wait_for(_shutdown_event.wait(), timeout=30.0)
-        except (TimeoutError, AttributeError):
+        except (TimeoutError, AttributeError) as exc:
+            logger.debug("Suppressed %r", exc)
             continue
 
 

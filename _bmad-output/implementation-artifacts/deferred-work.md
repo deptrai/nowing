@@ -1411,18 +1411,22 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - source_spec: `_bmad-output/implementation-artifacts/spec-audit-hygiene-cleanup.md` (gốc: `AUDIT_TECHNICAL_DEBT_2026-09-12.md`)
   summary: Mở rộng check_pr_guards — cấm `except Exception` mới ở tasks//agents//gateway//connectors/ + cấm `except: pass` mới toàn app/
   evidence: Split từ intent "fix hết" audit 2026-09-12 — ratchet hiện chỉ phủ routes/+services/ nên nợ dồn sang dirs khác
+  resolved: 2026-09-12 — `except Exception` mới FAIL ở routes/+services/, WARN toàn app/ còn lại; `except:pass/continue/...` mới FAIL toàn app/; console.log/debug mới FAIL trong nowing_web prod dirs (commit 37a63026f)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-audit-hygiene-cleanup.md` (gốc: `AUDIT_TECHNICAL_DEBT_2026-09-12.md`)
   summary: Biome `no-console` rule + sweep 287 `console.*` trong nowing_web
   evidence: Split từ intent "fix hết" audit 2026-09-12 — console.* tăng 262→287
+  resolved: 2026-09-12 (phần ratchet) — check_pr_guards FAIL trên console.log/debug MỚI trong app//components//lib//hooks//atoms/ (commit 37a63026f). CÒN LẠI: sweep 287 console.* hiện hữu — nợ cũ, chưa cấm retroactive
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-audit-hygiene-cleanup.md` (gốc: `AUDIT_TECHNICAL_DEBT_2026-09-12.md`)
   summary: CI job `alembic downgrade -1` smoke test trên test DB (296 versions, chỉ vài migration có roundtrip test)
   evidence: Split từ intent "fix hết" audit 2026-09-12 — downgrade() chưa được verify tổng quát
+  resolved: 2026-09-12 — job `migration-downgrade-smoke` trong backend-tests.yml: upgrade head → downgrade -1 → upgrade head trên pgvector service, wired vào test-gate (commit 37a63026f)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-audit-hygiene-cleanup.md` (gốc: `AUDIT_TECHNICAL_DEBT_2026-09-12.md`)
   summary: Fix mutation-gate baseline — `mutation-nowing-summary-latest.json` verdict FAIL: cosmic-ray baseline failed cho `proprietary/platforms/xactions/mcp_client` (exit 1)
   evidence: Split từ intent "fix hết" audit 2026-09-12 — gate hỏng = mất tín hiệu test-effectiveness
+  resolved: 2026-09-12 — root cause là quoting `-m "unit or not integration"` bị ăn qua chuỗi TOML→shell (refactor 40697ef8e) → deselect hết test không mark → baseline exit 1. Fix bằng single-quote; gate chạy end-to-end, 44/44 killed với --skip-noise-operators = 100% PASS (commit 37a63026f)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-audit-hygiene-cleanup.md` (gốc: `AUDIT_TECHNICAL_DEBT_2026-09-12.md`)
   summary: Dọn git history (git-filter-repo/BFG) — `db.py.legacy` 7K dòng + screenshots đã git rm nhưng objects lớn vẫn nằm trong history
@@ -1431,6 +1435,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - source_spec: `_bmad-output/implementation-artifacts/spec-audit-hygiene-cleanup.md` (gốc: `AUDIT_TECHNICAL_DEBT_2026-09-12.md`)
   summary: Codemod 89 block `except Exception: pass/continue` thành logger.debug/exception có context
   evidence: Split từ intent "fix hết" audit 2026-09-12 — blast radius rộng, cần review từng call-site
+  resolved: 2026-09-12 — AST codemod `scripts/codemod_silent_except.py` rewrite 201 block (scanner rộng hơn đếm của audit): `except E:` → `except E as exc:` + `logger.debug("Suppressed %r", exc)`; giữ `continue`, giữ comment, inject module logger khi thiếu (~120 file)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-audit-hygiene-cleanup.md` (gốc: `AUDIT_TECHNICAL_DEBT_2026-09-12.md`)
   summary: Tạo FastAPI dependency RequirePermission và migrate dần 268 call-site check_permission thủ công (70 file)

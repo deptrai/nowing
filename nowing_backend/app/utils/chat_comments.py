@@ -2,8 +2,11 @@
 Utility functions for chat comments, including mention parsing.
 """
 
+import logging
 import re
 from uuid import UUID
+
+logger = logging.getLogger(__name__)
 
 # Pattern to match @[uuid] mentions in comment content
 MENTION_PATTERN = re.compile(r"@\[([0-9a-fA-F-]{36})\]")
@@ -29,8 +32,9 @@ def parse_mentions(content: str) -> list[UUID]:
             if uuid not in seen:
                 seen.add(uuid)
                 unique_uuids.append(uuid)
-        except ValueError:
+        except ValueError as exc:
             # Invalid UUID format, skip
+            logger.debug("Suppressed %r", exc)
             continue
 
     return unique_uuids

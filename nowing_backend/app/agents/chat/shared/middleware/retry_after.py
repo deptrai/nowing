@@ -92,14 +92,14 @@ def _extract_retry_after_seconds(exc: BaseException) -> float | None:
         if ms is not None:
             try:
                 return float(ms) / 1000.0
-            except (TypeError, ValueError):
-                pass
+            except (TypeError, ValueError) as exc:
+                logger.debug("Suppressed %r", exc)
         seconds = norm.get("retry-after")
         if seconds is not None:
             try:
                 return float(seconds)
-            except (TypeError, ValueError):
-                pass
+            except (TypeError, ValueError) as exc:
+                logger.debug("Suppressed %r", exc)
 
     # Last resort: scan the message for "retry after Xs" or "X seconds"
     msg = str(exc)

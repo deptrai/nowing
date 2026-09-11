@@ -214,7 +214,8 @@ async def execute_alert_rule(
             for mid in matched_items:
                 try:
                     lead_ids.append(UUID(str(mid)))
-                except (ValueError, TypeError):
+                except (ValueError, TypeError) as exc:
+                    logger.debug("Suppressed %r", exc)
                     continue
             if lead_ids:
                 await sequencer.enroll_leads(

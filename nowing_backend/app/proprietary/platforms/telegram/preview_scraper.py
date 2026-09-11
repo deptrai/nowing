@@ -143,7 +143,8 @@ def parse_messages(html: str, channel_username: str) -> list[TelegramMessagePars
             # Strip query params like ?single from grouped media posts
             msg_id_str = raw_id_part.split("?")[0]
             message_id = int(msg_id_str)
-        except (ValueError, IndexError):
+        except (ValueError, IndexError) as exc:
+            logger.debug("Suppressed %r", exc)
             continue
 
         if message_id in seen_ids:

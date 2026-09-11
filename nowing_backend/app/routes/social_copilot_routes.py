@@ -187,8 +187,8 @@ async def activate_voice_profile(
             mem.content = json.dumps(d)
             if encryption.is_enabled():
                 encryption.encrypt_memory(mem)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Suppressed %r", exc)
 
     stmt = select(Memory).where(
         Memory.id == profile_id,
@@ -346,8 +346,8 @@ async def generate_viral_drafts(
                 if d.get("is_active"):
                     selected_mem = m
                     break
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Suppressed %r", exc)
         if not selected_mem and all_mems:
             selected_mem = all_mems[0]
 

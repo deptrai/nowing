@@ -890,16 +890,16 @@ class AdminTelemetryService:
                     try:
                         if now_wall - float(sent_at) > threshold:
                             stale = True
-                    except (ValueError, TypeError):
-                        pass
+                    except (ValueError, TypeError) as exc:
+                        logger.debug("Suppressed %r", exc)
                 elif enqueued_ns is not None:
                     # ``nowing.enqueued_at_ns`` is set with time.monotonic_ns(),
                     # so compare with time.monotonic_ns().
                     try:
                         if (now_mono - int(enqueued_ns)) / 1e9 > threshold:
                             stale = True
-                    except (ValueError, TypeError):
-                        pass
+                    except (ValueError, TypeError) as exc:
+                        logger.debug("Suppressed %r", exc)
 
                 if stale:
                     purged += 1
@@ -1032,8 +1032,8 @@ async def _redis_queue_stalled_and_throughput(
                                     stalled += 1
                                 elif age <= 60:
                                     recent += 1
-                            except (ValueError, TypeError):
-                                pass
+                            except (ValueError, TypeError) as exc:
+                                logger.debug("Suppressed %r", exc)
                         elif enqueued_ns is not None:
                             try:
                                 age_s = (now_mono - int(enqueued_ns)) / 1e9
@@ -1041,8 +1041,8 @@ async def _redis_queue_stalled_and_throughput(
                                     stalled += 1
                                 elif age_s <= 60:
                                     recent += 1
-                            except (ValueError, TypeError):
-                                pass
+                            except (ValueError, TypeError) as exc:
+                                logger.debug("Suppressed %r", exc)
 
                     if sample_size < queue_len and sample_size > 0:
                         stalled = int(stalled * (queue_len / sample_size))

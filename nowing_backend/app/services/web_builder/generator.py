@@ -115,8 +115,8 @@ class WebBuilderService:
 
             try:
                 return json.loads(cleaned, strict=False)
-            except json.JSONDecodeError:
-                pass
+            except json.JSONDecodeError as exc:
+                logger.debug("Suppressed %r", exc)
 
             decoder = json.JSONDecoder()
             for start_idx in (m.start() for m in re.finditer(r"(?<!\\)\{", cleaned)):
@@ -124,15 +124,16 @@ class WebBuilderService:
                     obj, _ = decoder.raw_decode(cleaned, start_idx)
                     if isinstance(obj, dict):
                         return obj
-                except (json.JSONDecodeError, ValueError):
+                except (json.JSONDecodeError, ValueError) as exc:
+                    logger.debug("Suppressed %r", exc)
                     continue
 
             fence_match = re.search(r"```(?:json)?\n(.*?)\n```", text, re.DOTALL)
             if fence_match:
                 try:
                     return json.loads(fence_match.group(1), strict=False)
-                except json.JSONDecodeError:
-                    pass
+                except json.JSONDecodeError as exc:
+                    logger.debug("Suppressed %r", exc)
 
             return None
 

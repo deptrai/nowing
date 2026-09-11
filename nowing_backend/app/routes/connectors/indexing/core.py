@@ -970,8 +970,8 @@ async def _run_indexing_with_notifications(
             try:
                 heartbeat_key = _get_heartbeat_key(notification.id)
                 get_heartbeat_redis_client().delete(heartbeat_key)
-            except Exception:  # defensive: ignore cleanup failures
-                pass  # Ignore cleanup errors - key will expire anyway
+            except Exception as exc:  # defensive: ignore cleanup failures
+                logger.debug("Suppressed %r", exc)
         if connector_lock_acquired:
             with suppress(Exception):
                 release_connector_indexing_lock(connector_id)

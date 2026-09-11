@@ -237,8 +237,8 @@ async def discord_callback(
                 error_detail = error_json.get(
                     "error_description", error_json.get("error", error_detail)
                 )
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Suppressed %r", exc)
             raise HTTPException(
                 status_code=400, detail=f"Token exchange failed: {error_detail}"
             )
@@ -463,8 +463,8 @@ async def refresh_discord_token(
                 error_detail = error_json.get(
                     "error_description", error_json.get("error", error_detail)
                 )
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Suppressed %r", exc)
             # If refresh fails, bot token from config is still valid
             logger.warning(
                 f"OAuth token refresh failed for connector {connector.id}: {error_detail}. "
@@ -772,8 +772,8 @@ async def get_discord_channels(
             try:
                 error_json = channels_response.json()
                 error_detail = error_json.get("message", error_detail)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Suppressed %r", exc)
             raise HTTPException(
                 status_code=channels_response.status_code,
                 detail=f"Failed to fetch Discord channels: {error_detail}",

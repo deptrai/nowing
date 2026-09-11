@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import logging
+
 import redis.asyncio as aioredis
 
 from app.celery_app import celery_app
 from app.config import config
 from app.tasks.celery_tasks import run_async_celery_task
 from app.tasks.social_stream_worker import run_social_stream_consumer
+
+logger = logging.getLogger(__name__)
 
 
 @celery_app.task(
@@ -35,12 +39,12 @@ def process_social_stream_task(self) -> int:
         finally:
             try:
                 await redis_client.aclose()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Suppressed %r", exc)
 
     try:
         return run_async_celery_task(_consume)
     except Exception as exc:
         # Retry on transient Redis or DB errors; permanent failures should land
         # in the dead-letter queue inside run_social_stream_consumer.
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc

@@ -96,8 +96,8 @@ def _extract_text(output: Any, capability_name: str) -> str:
                     for item in dump["items"]
                 )
             return json.dumps(dump, default=str, ensure_ascii=False)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Suppressed %r", exc)
 
     if isinstance(output, dict):
         if "answer" in output:

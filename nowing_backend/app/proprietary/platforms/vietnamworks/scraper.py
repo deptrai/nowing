@@ -73,13 +73,13 @@ def _parse_date(value: Any) -> str | None:
         try:
             dt = datetime.fromisoformat(text)
             return dt.date().isoformat()
-        except ValueError:
-            pass
+        except ValueError as exc:
+            logger.debug("Suppressed %r", exc)
         # Fallback to date-only ISO.
         try:
             return date.fromisoformat(text)
-        except ValueError:
-            pass
+        except ValueError as exc:
+            logger.debug("Suppressed %r", exc)
         # Numeric timestamp passed as a string.
         try:
             ts = float(text)
@@ -116,8 +116,8 @@ def _to_int(value: Any) -> int | None:
         if cleaned.count(".") == 1:
             try:
                 return int(float(cleaned))
-            except ValueError:
-                pass
+            except ValueError as exc:
+                logger.debug("Suppressed %r", exc)
 
         # Otherwise treat any remaining dots as thousands separators.
         try:

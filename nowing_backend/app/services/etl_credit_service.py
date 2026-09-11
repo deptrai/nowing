@@ -11,6 +11,7 @@ self-hosted / OSS installs) every check/charge is a no-op, preserving the prior
 effectively-unlimited ETL behaviour.
 """
 
+import logging
 import os
 from pathlib import Path, PurePosixPath
 
@@ -18,6 +19,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import config
+
+logger = logging.getLogger(__name__)
 
 
 class InsufficientCreditsError(Exception):
@@ -132,8 +135,8 @@ class EtlCreditService:
             from app.services.auto_reload_service import maybe_trigger_auto_reload
 
             await maybe_trigger_auto_reload(user_id)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Suppressed %r", exc)
 
         return user.credit_micros_balance
 
@@ -385,7 +388,7 @@ class EtlCreditService:
                 with open(file_path, "rb") as f:
                     pdf_reader = pypdf.PdfReader(f)
                     return len(pdf_reader.pages)
-            except Exception:
-                pass  # fall through to size-based estimation
+            except Exception as exc:
+                logger.debug("Suppressed %r", exc)
 
         return self.estimate_pages_from_metadata(file_ext, file_size)

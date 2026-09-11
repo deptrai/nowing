@@ -285,8 +285,8 @@ async def mcp_oauth_callback(
             try:
                 data = _get_state_manager().validate_state(state)
                 space_id = data.get("space_id")
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Suppressed %r", exc)
         return _frontend_redirect(
             space_id,
             error=f"{service}_mcp_oauth_denied",

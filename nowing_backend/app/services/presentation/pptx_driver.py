@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import io
+import logging
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 try:
     from pptx import Presentation
@@ -93,7 +96,8 @@ def build_pptx(deck_spec: dict[str, Any]) -> Any:
                     continue
                 try:
                     values.append(float(v))
-                except (TypeError, ValueError):
+                except (TypeError, ValueError) as exc:
+                    logger.debug("Suppressed %r", exc)
                     continue
             n = min(len(categories), len(values))
             categories, values = categories[:n], values[:n]

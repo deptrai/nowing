@@ -1,8 +1,11 @@
 """Validation utilities for generated Web Builder projects (Story 27.1, AC-1)."""
 
 import json
+import logging
 import re
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # Maximum file size to read for security text scans (1 MiB)
 _MAX_SCAN_BYTES = 1_048_576
@@ -245,11 +248,12 @@ def validate_project_security(project_dir: str | Path) -> tuple[bool, list[str]]
                     continue
                 content = _safe_read_text(source_path)
                 _scan_text(content, str(source_path.relative_to(root)), issues)
-            except (OSError, RuntimeError):
+            except (OSError, RuntimeError) as exc:
                 # Likely a symlink loop or unreadable file; skip but log
+                logger.debug("Suppressed %r", exc)
                 continue
-    except (OSError, RuntimeError):
-        pass
+    except (OSError, RuntimeError) as exc:
+        logger.debug("Suppressed %r", exc)
 
     # Dependency bin scripts: verify they resolve inside the project and scan their content.
     bin_dir = root / "node_modules" / ".bin"
@@ -275,7 +279,7 @@ def validate_project_security(project_dir: str | Path) -> tuple[bool, list[str]]
                         source_label,
                         issues,
                     )
-        except (OSError, RuntimeError):
-            pass
+        except (OSError, RuntimeError) as exc:
+            logger.debug("Suppressed %r", exc)
 
     return len(issues) == 0, issues

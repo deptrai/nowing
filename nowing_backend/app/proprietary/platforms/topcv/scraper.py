@@ -153,7 +153,8 @@ def _extract_salary_numbers(
         try:
             numbers.append(float(token))
             units.append(unit)
-        except ValueError:
+        except ValueError as exc:
+            logger.debug("Suppressed %r", exc)
             continue
 
     if not numbers:

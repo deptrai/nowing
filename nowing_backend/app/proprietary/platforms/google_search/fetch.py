@@ -330,15 +330,16 @@ async def _expand_blocks(page):
         if more:
             await more.click(timeout=1500)
             clicked += 1
-    except Exception:  # clamp absent/detached; the collapsed text still parses
-        pass
+    except Exception as exc:  # clamp absent/detached; the collapsed text still parses
+        logger.debug("Suppressed %r", exc)
     try:
         pairs = await page.query_selector_all("div.related-question-pair")
         for pair in pairs[:_PAA_EXPAND_LIMIT]:
             try:
                 await pair.click(timeout=1500)
                 clicked += 1
-            except Exception:  # stale handle/overlay; skip pair
+            except Exception as exc:  # stale handle/overlay; skip pair
+                logger.debug("Suppressed %r", exc)
                 continue
     except Exception as e:  # never fail the render over PAA
         logger.debug("[google_search] PAA expansion skipped: %s", e)

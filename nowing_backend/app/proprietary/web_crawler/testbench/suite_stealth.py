@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import logging
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -42,6 +43,8 @@ from .core import (
     EvalCell,
     make_page_action,
 )
+
+logger = logging.getLogger(__name__)
 
 # Parser: (page, eval_cell) -> (status, numeric, detail).
 Parser = Callable[[Any, EvalCell], "tuple[CheckStatus, float | None, str]"]
@@ -70,8 +73,8 @@ def _full_text(page: Any, limit: int = 200_000) -> str:
         txt = page.get_all_text()
         if txt:
             return str(txt)[:limit]
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("Suppressed %r", exc)
     try:
         return str(page.html_content or "")[:limit]
     except Exception:

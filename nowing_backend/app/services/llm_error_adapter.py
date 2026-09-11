@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 class LLMErrorCategory(StrEnum):
@@ -109,7 +112,8 @@ def _parse_error_payload(message: str) -> dict[str, Any] | None:
             parsed = json.loads(candidate)
             if isinstance(parsed, dict):
                 return parsed
-        except Exception:
+        except Exception as exc:
+            logger.debug("Suppressed %r", exc)
             continue
     return None
 
@@ -138,7 +142,8 @@ def _extract_provider_status_code(parsed: dict[str, Any] | None) -> int | None:
             if value is None:
                 continue
             return int(value)
-        except Exception:
+        except Exception as exc:
+            logger.debug("Suppressed %r", exc)
             continue
     return None
 

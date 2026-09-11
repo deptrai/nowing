@@ -91,8 +91,8 @@ class RedisRunEventBus:
         """Log exceptions from fire-and-forget tasks to avoid asyncio swallowing them."""
         try:
             task.result()
-        except asyncio.CancelledError:
-            pass
+        except asyncio.CancelledError as exc:
+            logger.debug("Suppressed %r", exc)
         except Exception:
             logger.exception("run_event_bus background task %r failed", task.get_name())
 

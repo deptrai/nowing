@@ -773,7 +773,8 @@ async def get_workspace_app_preview(
                     resolved_candidate.read_text, encoding="utf-8"
                 )
                 break
-            except (OSError, RuntimeError):
+            except (OSError, RuntimeError) as exc:
+                logger.debug("Suppressed %r", exc)
                 continue
 
     allowed_origin = _allowed_preview_origin(
@@ -948,9 +949,11 @@ async def get_workspace_app_files(
                     rel_path = str(entry.relative_to(project_dir))
                     try:
                         files_dict[rel_path] = entry.read_text(encoding="utf-8")
-                    except Exception:
+                    except Exception as exc:
+                        logger.debug("Suppressed %r", exc)
                         continue
-        except (OSError, PermissionError):
+        except (OSError, PermissionError) as exc:
+            logger.debug("Suppressed %r", exc)
             continue
 
     return files_dict

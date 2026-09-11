@@ -39,7 +39,8 @@ async def _events_from_sse(
                 continue
             try:
                 data = json.loads(payload)
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as exc:
+                logger.debug("Suppressed %r", exc)
                 continue
             event_type = str(data.get("type") or "")
             if event_type == "text-delta":

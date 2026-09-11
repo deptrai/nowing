@@ -36,8 +36,8 @@ class DoclingService:
 
                     os.environ["SSL_CERT_FILE"] = certifi.where()
                     os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
-                except ImportError:
-                    pass
+                except ImportError as exc:
+                    logger.debug("Suppressed %r", exc)
 
             logger.info("🔐 SSL environment configured for model downloads")
         except Exception as e:
