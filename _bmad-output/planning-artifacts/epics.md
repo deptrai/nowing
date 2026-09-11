@@ -4621,3 +4621,159 @@ _FR-97 · FR-104 · AR-13 · AR-17 · AR-18 · UX-DR-PRFAQ-5 · UX-DR-PRFAQ-6 ·
 - **30.4**: Atomic `SELECT ... FOR UPDATE` merge for `PATCH /users/me/notification-preferences`.
 - **30.6**: Explicit `num_retries=1` in `scripts/verify_chat_image_capability.py`.
 - **30.7**: Comprehensive unit tests for `test_model()` in `model_connection_service.py`.
+
+## Epic 31: Web Builder Container Isolation, AST Security & Entitlements
+
+*Status: backlog.* Provides enterprise multi-tenant container isolation on Dokploy, AST security policy, and plan-tier entitlements.
+
+### Story 31.1: Dokploy Multi-Tenant Container Resource Constraints (Cgroup CPU/Memory) & Network Isolation
+As a Platform Administrator,
+I want deployed user web app containers to be constrained by Cgroup CPU and memory quotas and placed in isolated Docker networks,
+So that no single user application can exhaust server resources or inspect other tenant containers on Dokploy.
+
+**Acceptance Criteria:**
+- **Given** a web app container deploy request on Dokploy, **When** the service starts the container, **Then** it specifies explicit `nano_cpus` and `memory_bytes` limits from workspace tier config.
+- **And** the container is placed on an isolated bridge network with no ingress access to the internal Docker daemon or backend databases.
+
+### Story 31.2: Strict CNAME DNS/Ingress Ownership Verification
+As a Workspace Owner,
+I want to attach custom CNAME domains to my published web apps,
+So that my end-users see my branded domain with validated SSL certificates.
+
+**Acceptance Criteria:**
+- **Given** a user inputs a custom CNAME, **When** DNS verification runs, **Then** the backend checks TXT ownership token before configuring Traefik/Caddy routes.
+- **And** requests to unverified domains are rejected with HTTP 400.
+
+### Story 31.3: AST Static-Eval Policy for Dynamic JSX Expression Matching in Mark Tool
+As a Frontend Developer using Web Builder,
+I want the Mark Tool to match elements whose className uses dynamic template literals or utility expressions,
+So that I can highlight and mutate components using modern CSS-in-JS or clsx patterns.
+
+**Acceptance Criteria:**
+- **Given** a JSX AST with dynamic class expressions, **When** the mark tool evaluates elements, **Then** it applies a safe static-eval policy to resolve static string concatenations.
+
+### Story 31.4: Entitlement-driven Presentation Studio Format Selection from Chat Entry Points
+As a Presentation Studio User,
+I want my chat slash/chip commands to select PPTX or Marp format based on plan entitlements,
+So that higher-tier workspaces get native PowerPoint export while free workspaces receive Markdown slides.
+
+**Acceptance Criteria:**
+- **Given** a user triggers presentation generation via chat mode, **When** the workspace plan is resolved, **Then** the input schema auto-selects PPTX or Marp according to the workspace tier entitlement.
+
+
+## Epic 32: Browser Operator Runtime, Interactive Takeover & CDP Lifecycle
+
+*Status: backlog.* Provides live human takeover, session token validation, and robust CDP lifecycle hooks for browser automation.
+
+### Story 32.1: HumanLiveTakeoverPopover UI with Countdown Timer and Abort Scheduler
+As an Analyst monitoring an automated browser crawl,
+I want an interactive takeover popover with a 15-minute countdown timer,
+So that I can intervene manually when a site presents complex interactive challenges.
+
+**Acceptance Criteria:**
+- **Given** an active browser operator session hits a manual roadblock, **When** takeover is requested, **Then** the UI shows a live 15:00 countdown timer.
+- **And** if no human interaction occurs within 15 minutes, the session transitions to `aborted_timeout` and releases resources.
+
+### Story 32.2: Chrome Extension chrome.debugger.onDetach Recovery & Reconnection
+As a Browser Automation Engineer,
+I want the extension controller to detect onDetach events cleanly,
+So that user closure of DevTools does not orphan backend task threads or leak WebSocket handles.
+
+**Acceptance Criteria:**
+- **Given** a user manually closes DevTools or navigates away, **When** `chrome.debugger.onDetach` fires, **Then** the backend marks the active step cancelled and cleans up the CDP socket.
+
+### Story 32.3: Cryptographic CDP Session Token Lifecycle & Audited Command Log
+As a Security Auditor,
+I want all browser operator CDP commands authenticated via cryptographic session tokens and persisted to an audit log,
+So that automation runs can be traced for security compliance.
+
+**Acceptance Criteria:**
+- **Given** an incoming CDP command from an external agent, **When** verified against the session secret, **Then** the execution metadata is logged to `browser_operator_audit_events`.
+
+
+## Epic 33: Enterprise Cryptographic PII Vault & Global Right-to-be-Forgotten
+
+*Status: backlog.* Enterprise cryptographic key rotation, GDPR/Decree 13 superadmin purge, and transactional credit safety.
+
+### Story 33.1: Automated Zero-Downtime SECRET_KEY Rotation with Dual-Key Fallback
+As an Enterprise Security Officer,
+I want to rotate the PII vault's `SECRET_KEY` without downtime,
+So that compromised or aging encryption keys can be updated seamlessly.
+
+**Acceptance Criteria:**
+- **Given** a new primary encryption key, **When** reading existing `VerifiedContact` records, **Then** the vault falls back to the secondary key to decrypt and re-encrypts using the new primary key.
+
+### Story 33.2: Superadmin Cross-Workspace Global Right-to-be-Forgotten (DNC) Purge Engine
+As a Compliance Administrator,
+I want a unified API to purge an individual's phone/email across all workspaces simultaneously,
+So that Decree 13 and GDPR deletion requests are fully honored enterprise-wide.
+
+**Acceptance Criteria:**
+- **Given** a verified opt-out request, **When** executed by Superadmin, **Then** all `VerifiedContact`, `Lead`, and `SocialPost` records containing the phone/email hash across all workspaces are purged and refunded.
+
+### Story 33.3: Two-Phase Transactional Credit Locking for Phone Waterfall Provider
+As a Finance Manager,
+I want credit reservation and deduction for phone waterfall resolution executed in a strict two-phase commit,
+So that failed provider invocations or network interruptions never leak credits.
+
+**Acceptance Criteria:**
+- **Given** a phone waterfall lookup, **When** provider resolution fails, **Then** the locked balance is released atomically without calling Celery refund tasks.
+
+
+## Epic 34: Bi-Directional CRM Synchronization & Unified Channel Operations
+
+*Status: backlog.* Enterprise two-way CRM deal pipelines, Telegram Userbot web administration, and dedicated CRM frontend tabs.
+
+### Story 34.1: Bi-Directional Deal Stage & Activity Synchronization for HubSpot/Salesforce
+As a Sales Representative,
+I want leads discovered in Nowing to sync bi-directionally with HubSpot and Salesforce deal pipelines,
+So that stage updates in the external CRM reflect back into Nowing and vice versa.
+
+**Acceptance Criteria:**
+- **Given** a deal stage change in HubSpot/Salesforce, **When** webhook arrives, **Then** Nowing updates the corresponding `Lead.status` and logs an activity timeline entry.
+
+### Story 34.2: Web Admin Management Endpoints for Telegram Userbots & Monitored Channels
+As a Workspace Admin,
+I want a web management console for Telegram userbot sessions, channel lists, and ingest filters,
+So that I do not need terminal CLI commands to manage Telegram monitored channels.
+
+**Acceptance Criteria:**
+- **Given** the user navigates to `/dashboard/[workspace_id]/channels/telegram`, **When** requesting channel status, **Then** the frontend loads all active userbot sessions and allows toggling channel monitoring.
+
+### Story 34.3: Dedicated CRM Deal Pipeline & Customer Activity Timeline UI Tabs
+As a Sales Lead,
+I want dedicated CRM Pipeline and Activity Timeline tabs in the web workspace,
+So that I can manage sales pipelines directly within Nowing.
+
+**Acceptance Criteria:**
+- **Given** the workspace has CRM enabled, **When** navigating to the CRM section, **Then** a Kanban deal board and unified chronological interaction timeline are rendered.
+
+
+## Epic 35: High-Scale Ingestion, Stream Resilience & Algorithmic Deduplication
+
+*Status: backlog.* High-throughput stream recovery, sub-quadratic entity deduplication, and per-scraper ingest observability.
+
+### Story 35.1: Redis Consumer Group Pending Message Auto-Claim (XAUTOCLAIM) & DLQ Replay
+As a Data Infrastructure Engineer,
+I want consumer groups on `stream:social:raw_posts` to automatically reclaim pending messages from dead worker processes,
+So that worker crashes during high-volume ingress do not leave messages stuck in PEL.
+
+**Acceptance Criteria:**
+- **Given** messages stuck in PEL longer than `min_idle_time`, **When** the stream worker runs, **Then** `XAUTOCLAIM` reassigns them to active workers before reading new messages.
+
+### Story 35.2: O(n log n) Spatial/Windowed Deduplication for Mass Entity Datasets
+As a Data Pipeline Engineer,
+I want cross-source deduplication of job and real estate postings to use windowed title/location sorting,
+So that company groupings with thousands of items do not suffer O(n²) performance degradation.
+
+**Acceptance Criteria:**
+- **Given** a cluster of 5,000+ postings for a single enterprise, **When** deduplication runs, **Then** pairwise comparisons are bounded to sliding date/title windows in O(n log n) time.
+
+### Story 35.3: Per-Platform Scraper Failure Metrics & SSE Streaming Idle Heartbeat Guards
+As a System Reliability Engineer,
+I want per-scraper ingest failure counters and SSE stream idle heartbeat guards,
+So that scraper failures are surfaced immediately on Prometheus and idle client connections do not hang.
+
+**Acceptance Criteria:**
+- **Given** an ingest failure from any platform scraper, **When** error occurs, **Then** `record_scraper_ingest_failure(platform, reason)` increments.
+- **And** long-running SSE connections emit keep-alive comments every 15 seconds.

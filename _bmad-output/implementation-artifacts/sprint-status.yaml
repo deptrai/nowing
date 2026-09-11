@@ -1,5 +1,5 @@
 # generated: 2026-08-08
-# last_updated: 2026-09-09
+# last_updated: 2026-09-11
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -348,6 +348,27 @@ development_status:
   30-8-epic-13-canonical-entity-cleanup: done
   30-9-technical-debt-retirement-system-hardening: done
   epic-30-retrospective: done
+  epic-31: backlog
+  31-1-dokploy-container-cgroup-network-isolation: backlog
+  31-2-custom-cname-dns-txt-verification: backlog
+  31-3-ast-static-eval-dynamic-jsx-mark-tool: backlog
+  31-4-entitlement-presentation-format-selection: backlog
+  epic-32: backlog
+  32-1-human-live-takeover-popover-countdown-scheduler: backlog
+  32-2-chrome-extension-ondetach-reconnection: backlog
+  32-3-cryptographic-cdp-session-token-audit-log: backlog
+  epic-33: backlog
+  33-1-automated-secret-key-rotation-dual-key-fallback: backlog
+  33-2-superadmin-cross-workspace-dnc-purge-engine: backlog
+  33-3-two-phase-transactional-credit-locking-waterfall: backlog
+  epic-34: backlog
+  34-1-bidirectional-deal-stage-sync-hubspot-salesforce: backlog
+  34-2-web-admin-telegram-userbot-channels-console: backlog
+  34-3-dedicated-crm-deal-pipeline-activity-timeline-ui: backlog
+  epic-35: backlog
+  35-1-redis-consumer-group-xautoclaim-dlq-replay: backlog
+  35-2-sub-quadratic-windowed-deduplication: backlog
+  35-3-per-platform-scraper-failure-metrics-sse-heartbeat: backlog
 validation_reports:
   - story: "3.18"
     type: "code-review"
