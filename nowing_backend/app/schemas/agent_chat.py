@@ -47,7 +47,12 @@ class AgentChatThreadCreate(BaseModel):
     @field_validator("client_id", "agent_id", mode="before")
     @classmethod
     def _strip_whitespace(cls, v: str | None) -> str | None:
-        return v.strip() if isinstance(v, str) else v
+        if isinstance(v, str):
+            stripped = v.strip()
+            if not stripped:
+                raise ValueError("cannot be empty or whitespace-only")
+            return stripped
+        return v
 
     # ponytail: client_id is supplied by the PAT scope; route-level checks
     # enforce that any body client_id/agent_id is a subset of that scope.

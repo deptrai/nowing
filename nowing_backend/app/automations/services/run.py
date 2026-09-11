@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.automations.dispatch.errors import DispatchError
+from app.automations.dispatch.errors import DispatchError, DispatchNotFoundError
 from app.automations.dispatch.launch import launch_run
 from app.automations.persistence.enums.run_status import RunStatus
 from app.automations.persistence.enums.trigger_type import TriggerType
@@ -173,14 +173,18 @@ class RunService:
                     else:
                         await redis.delete(lock_key)
             return run
+        except DispatchNotFoundError as exc:
+            if redis is not None and lock_key:
+                with contextlib.suppress(Exception):
+                    await redis.delete(lock_key)
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
         except DispatchError as exc:
             if redis is not None and lock_key:
                 with contextlib.suppress(Exception):
                     await redis.delete(lock_key)
             message = str(exc)
-            if "not found" in message:
-                raise HTTPException(status_code=404, detail=message) from exc
-            raise HTTPException(status_code=400, detail=message) from exc
+            status_code = 404 if "not found" in message.lower() else 400
+            raise HTTPException(status_code=status_code, detail=message) from exc
         except Exception:
             if redis is not None and lock_key:
                 with contextlib.suppress(Exception):

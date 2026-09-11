@@ -26,3 +26,13 @@ def test_dispatch_error_is_exception_subclass_and_carries_message() -> None:
 
     with pytest.raises(DispatchError):
         raise error
+
+
+def test_dispatch_not_found_error_subclasses_dispatch_error() -> None:
+    """``DispatchNotFoundError`` is a typed subclass of ``DispatchError``."""
+    from app.automations.dispatch.errors import DispatchNotFoundError
+
+    error = DispatchNotFoundError("automation 42 not found")
+    assert isinstance(error, DispatchError)
+    assert isinstance(error, Exception)
+    assert str(error) == "automation 42 not found"

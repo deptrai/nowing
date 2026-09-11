@@ -477,7 +477,7 @@
   - **Reason / when to revisit:** Current code now commits/closes before streaming; verify in the next chunk review (orchestrator/input_state).
 
 - **Finding:** Whitespace-only `client_id`/`agent_id` produces overlapping field/model errors.
-  - **Action:** Blocked — overlapping errors deferred to validation cleanup.
+  - **Action:** Resolved from: code review of 18-2-newchatrequest-extension (2026-09-11). Enhanced `_strip_whitespace` validator in `AgentChatThreadCreate` in `app/schemas/agent_chat.py` to raise clear `ValueError` on whitespace-only input with unit tests.
   - **Reason / when to revisit:** Cosmetic; the field-level `pattern`/`min_length` error is authoritative. Revisit if UX feedback says the double error is confusing.
 
 - **Finding:** `AgentChatMessageCreate` conflates `external_metadata` and `platform_metadata` validators.
@@ -825,7 +825,7 @@ The following 4 deferred items have been promoted to dedicated tech-debt stories
 Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full rationale. These remain pre-existing/cross-cutting and are not introduced by 7.7.
 
 - **Finding:** `RunService.launch` maps `DispatchError` to HTTP 404/400 by substring `"not found"`.
-  - **Action:** Blocked — substring mapping deferred to error handling fix.
+  - **Action:** Resolved from: code review of 7-7-mcp-server-tool-expansion (2026-09-11). Created `DispatchNotFoundError(DispatchError)` in `app/automations/dispatch/errors.py`, raised in `resolve.py`, and caught explicitly in `RunService.launch` with unit tests.
   - **Reason / when to revisit:** Fragile classification; replace with error-kind dispatch or an exception class hierarchy when `app/automations/dispatch` is refactored.
 
 - **Finding:** `nowing_chat` busy-retry uses deterministic exponential backoff without jitter.
