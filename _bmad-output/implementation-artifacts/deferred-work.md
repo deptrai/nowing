@@ -1391,3 +1391,23 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - **Finding:** Placeholder stories 6-6, 6-7, 6-9, 8-11, 9-6-followup, 28-5 lacked dedicated modules.
   - **Action:** Resolved. Confirmed all are marked `done` in `sprint-status.yaml`; playbook functionality lives under `app/automations/` (playbook_service, schemas, API) and admin model config under `model_connections_routes.py`.
   - **Resolved:** 2026-09-10.
+
+- source_spec: none
+  summary: Mở rộng quality gates — check_pr_guards cấm `except Exception` mới ở tasks//agents//gateway//connectors/ + cấm `except: pass` mới; biome `no-console` + sweep 287 console.*; alembic downgrade -1 CI smoke; fix mutation-gate baseline xactions/mcp_client
+  evidence: Split từ intent "fix hết" audit 2026-09-12 — nhóm B (guards/CI) độc lập với hygiene cleanup
+
+- source_spec: none
+  summary: Codemod 89 block `except Exception: pass/continue` thành logger.debug/exception có context
+  evidence: Split từ intent "fix hết" audit 2026-09-12 — blast radius rộng, cần review từng call-site
+
+- source_spec: none
+  summary: Tạo FastAPI dependency RequirePermission và migrate dần 268 call-site check_permission thủ công (70 file)
+  evidence: Split từ intent "fix hết" audit 2026-09-12 — chạm authz, cần spec + review riêng
+
+- source_spec: none
+  summary: Adopt NowingError hierarchy theo domain (hiện 49 raise/16 file so với 1.800 except Exception)
+  evidence: Split từ intent "fix hết" audit 2026-09-12 — multi-PR effort theo từng domain
+
+- source_spec: none
+  summary: Tách tiếp services//routes/ file >800 dòng theo domain (admin_telemetry 1059, workspace_limits 1030, phone_waterfall 1012, workspaces_routes 1291, rbac_routes 1260, gateway_webhook 1207...)
+  evidence: Split từ intent "fix hết" audit 2026-09-12 — refactor dài hạn nhiều PR

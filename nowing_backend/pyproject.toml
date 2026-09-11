@@ -221,6 +221,7 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 "app/proprietary/web_crawler/testbench/suite_extraction.py" = ["T201"]
 "app/proprietary/web_crawler/testbench/suite_stealth.py" = ["T201"]
 "app/zero_publication.py" = ["T201"]
+"app/connectors/luma_connector.py" = ["T201"]
 "tests/integration/document_upload/conftest.py" = ["T201"]
 
 [tool.ruff.format]
