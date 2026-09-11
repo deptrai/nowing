@@ -63,10 +63,15 @@ async def launch_run(
     await session.commit()
     await session.refresh(run)
 
-    automation_run_execute.apply_async(
-        args=[run.id],
-        time_limit=definition.execution.timeout_seconds,
-    )
+    try:
+        automation_run_execute.apply_async(
+            args=[run.id],
+            time_limit=definition.execution.timeout_seconds,
+        )
+    except Exception as exc:
+        run.status = RunStatus.FAILED
+        await session.commit()
+        raise DispatchError(f"failed to enqueue execution for run {run.id}: {exc}") from exc
     return run
 
 
