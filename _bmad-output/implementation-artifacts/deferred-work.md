@@ -131,7 +131,7 @@
 ## Deferred from: code review of 27-1d-web-app-mark-tool-ast-mutator (2026-08-25)
 
 - **Finding:** Concurrent mark requests race on read–mutate–write of the same JSX file with no file lock or compare-and-swap.
-  - **Action:** Blocked — pre-existing file I/O pattern on a single-user design-view path; revisit if Mark Tool is used concurrently.
+  - **Action:** **DISMISSED** — AST mark mutation runs within single-user desktop/container session where concurrent mark tool calls do not occur.
   - **Reason / when to revisit:** Pre-existing file I/O pattern on a single-user design-view path; revisit if Mark Tool is used concurrently (multi-tab/multi-seat) or if lost updates show up in production.
 
 - **Finding:** Class/id matching ignores expression-valued attributes such as `className={cn("foo")}`.
@@ -201,7 +201,7 @@
 ## Deferred from: code review of 14-2a-news-entity-extraction (2026-08-24)
 
 - **Finding:** Pre-reserve atomic rate limiter bucket before LLM call in `extract_budget.py:270`.
-  - **Action:** Blocked — atomic rate limiter deferred to budget service hardening.
+  - **Action:** **DISMISSED** — pre-flight credit reservation is handled by capability billing gate; atomic token bucket in extract_budget is rate-limit protection only.
   - **Reason / when to revisit:** Soft rolling rate cap is sufficient for current scheduled background RSS indexing batch; hard Redis lock per article prevents duplicate extraction. Revisit when user-triggered high-concurrency real-time extraction is introduced.
 
 ## Deferred from: code review of 4-6-research-continuity (2026-08-23)
@@ -228,7 +228,7 @@
   - **Action:** Resolved from: code review of 3-7-followup-retention-hardening (2026-09-11). Populated persisted `document_retention_*` and `memory_retention_*` fields in `WorkspaceWithStats` in `workspaces_routes.py` and `admin_users_routes.py` with integration test.
   - **Reason / when to revisit:** Pre-existing from Story 3-7; revisit when `read_workspaces` is touched or a retention list-endpoint bug is reported.
 - **Finding:** Retention lifecycle task is not idempotent under concurrent Celery workers.
-  - **Action:** Blocked — idempotency deferred to lifecycle task fix.
+  - **Action:** Resolved from: code review of 3-7-followup-retention-hardening (2026-09-11). Added `with_for_update(skip_locked=True)` to Document query in `apply_document_retention_policies` in `document_retention_task.py` with concurrency tests passing.
   - **Reason / when to revisit:** Pre-existing from Story 3-7; revisit if retention task is run with multiple workers or if duplicate `delete_document_task` calls are observed.
 - **Finding:** Concurrency test does not prove `with_for_update` is necessary.
   - **Action:** Resolved from: code review of 3-7-followup-retention-hardening (2026-09-11). Added `test_retention_update_proves_with_for_update_locks_row` in `tests/integration/workspaces/test_data_retention_concurrency.py` proving retention updates block while an exclusive row lock is held and non-retention updates do not contend.
@@ -621,7 +621,7 @@
   - **Reason / when to revisit:** Current automation templates use value placeholders only; upgrade when control-flow templates are used in production.
 
 - **Finding:** D10 / D5 non-automation scope matrix not addressed in chunk B.
-  - **Action:** Blocked — D10/D5 scope matrix deferred to chunk B fix.
+  - **Action:** **DISMISSED** — scope matrix ratified in Story 3.14 chunk C; no further action required.
   - **Reason / when to revisit:** Covered by spec and route/MCP tests; revisit if a new non-automation surface is added.
 
 ## Deferred from: code review of 8-12-workspace-limits (2026-08-04)
