@@ -49,7 +49,7 @@ from app.services.phone_waterfall_service import PhoneWaterfallService
 from app.tasks.phone_waterfall_worker import resolve_phone_waterfall_task
 from app.tenant_context import set_request_tenant_context
 from app.users import get_auth_context
-from app.utils.rbac import check_permission, has_permission
+from app.utils.rbac import check_permission, get_user_permissions, has_permission
 
 logger = logging.getLogger(__name__)
 
@@ -715,12 +715,9 @@ async def resolve_lead_phone_endpoint(
     Debits 1.5 credits (1,500,000 micros) via BillingEvent only upon success.
     """
     # RBAC: Enforce LEADS_ENRICH or LEADS_WRITE (Viewer LEADS_READ alone cannot trigger paid mutations)
-    has_enrich = await has_permission(
-        session, auth, workspace_id, Permission.LEADS_ENRICH.value
-    )
-    has_write = await has_permission(
-        session, auth, workspace_id, Permission.LEADS_WRITE.value
-    )
+    perms = await get_user_permissions(session, auth, workspace_id)
+    has_enrich = has_permission(perms, Permission.LEADS_ENRICH.value)
+    has_write = has_permission(perms, Permission.LEADS_WRITE.value)
     if not (has_enrich or has_write):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -766,9 +763,7 @@ async def resolve_lead_phone_endpoint(
     )
 
     # Check if caller is authorized to view plaintext PII (AD-25 / AD-49)
-    can_read_contacts = await has_permission(
-        session, auth, workspace_id, Permission.CONTACTS_READ.value
-    )
+    can_read_contacts = has_permission(perms, Permission.CONTACTS_READ.value)
     if not can_read_contacts:
         can_read_contacts = has_enrich or has_write
 

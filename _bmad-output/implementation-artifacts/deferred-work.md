@@ -1168,7 +1168,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 ## Deferred from: code review of 21-6-zalo-integration (2026-08-15)
 
 - **Finding:** `leads_routes.py` awaits sync `has_permission` with 4 args (pre-existing 21.3 issue, unrelated to 21.6). (app/routes/leads_routes.py:640-645,691)
-  - **Action:** Blocked — pre-existing 21.3 issue; revisit when 21.3 is reviewed.
+  - **Action:** Resolved from: code review of 21-6-zalo-integration (2026-09-11). Replaced invalid `await has_permission(session, auth, workspace_id, ...)` with `get_user_permissions` and synchronous `has_permission` in `app/routes/leads_routes.py` with 12 passing tests.
   - **Reason / when to revisit:** Fix when resolving phone-waterfall RBAC in Story 21.3; use `check_permission` or correct `has_permission` helper.
 
 - **Finding:** Phone waterfall worker `asyncio.run` inside a sync Celery task and refund exception swallow. (app/tasks/phone_waterfall_worker.py:69,109-116)
