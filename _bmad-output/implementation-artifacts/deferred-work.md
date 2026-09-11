@@ -107,7 +107,7 @@
 ## Deferred from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-08-26, chunk B)
 
 - **Finding:** `GET /api/v1/presentations` returns every row for the workspace with no limit/offset.
-  - **Action:** Blocked — fine for MVP catalog size; add pagination when list UI exists.
+  - **Action:** Resolved from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-09-11). Added `limit` (default 50, max 100) and `offset` (default 0) Query parameters with integration test in `test_presentation_routes_atdd.py`.
   - **Reason / when to revisit:** Fine for MVP catalog size; add pagination when list UI exists.
 
 - **Finding:** Alembic sets `workspaces.presentation_studio_enabled` NOT NULL default `true` for all existing workspaces.
@@ -225,7 +225,7 @@
 ## Deferred from: code review of 3-7-followup-retention-hardening (2026-08-23)
 
 - **Finding:** `WorkspaceWithStats` list endpoint returns default retention values instead of persisted ones.
-  - **Action:** Blocked — retention values deferred to endpoint fix.
+  - **Action:** Resolved from: code review of 3-7-followup-retention-hardening (2026-09-11). Populated persisted `document_retention_*` and `memory_retention_*` fields in `WorkspaceWithStats` in `workspaces_routes.py` and `admin_users_routes.py` with integration test.
   - **Reason / when to revisit:** Pre-existing from Story 3-7; revisit when `read_workspaces` is touched or a retention list-endpoint bug is reported.
 - **Finding:** Retention lifecycle task is not idempotent under concurrent Celery workers.
   - **Action:** Blocked — idempotency deferred to lifecycle task fix.

@@ -7,7 +7,7 @@ import mimetypes
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import FileResponse, HTMLResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -169,13 +169,17 @@ async def list_presentations(
     workspace_id: int,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[AsyncSession, Depends(get_async_session)],
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
 ) -> list[SlidePresentationRead]:
-    """List all slide decks for a workspace."""
+    """List all slide decks for a workspace with pagination."""
     await require_workspace_member(session, auth, workspace_id)
     stmt = (
         select(SlidePresentation)
         .where(SlidePresentation.workspace_id == workspace_id)
         .order_by(SlidePresentation.created_at.desc())
+        .offset(offset)
+        .limit(limit)
     )
     result = await session.execute(stmt)
     return list(result.scalars().all())

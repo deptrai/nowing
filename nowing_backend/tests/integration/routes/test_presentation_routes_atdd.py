@@ -251,3 +251,44 @@ async def test_unique_slug_per_workspace_enforced_by_db(
     with pytest.raises(IntegrityError):
         await db_session.flush()
     await db_session.rollback()
+
+
+@pytest.mark.integration
+async def test_list_presentations_pagination_limit_and_offset(
+    client_as_regular_user,
+    db_session,
+    db_user,
+    db_workspace,
+):
+    """Verify limit and offset pagination on GET /api/v1/presentations."""
+    for i in range(5):
+        pres = SlidePresentation(
+            workspace_id=db_workspace.id,
+            user_id=db_user.id,
+            title=f"Deck {i}",
+            slug=f"deck-page-{i}",
+            format="pptx",
+            status="ready",
+        )
+        db_session.add(pres)
+    await db_session.flush()
+
+    # Limit = 2, offset = 0
+    resp = await client_as_regular_user.get(
+        f"/api/v1/presentations?workspace_id={db_workspace.id}&limit=2&offset=0",
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 2
+
+    # Limit = 2, offset = 2
+    resp2 = await client_as_regular_user.get(
+        f"/api/v1/presentations?workspace_id={db_workspace.id}&limit=2&offset=2",
+    )
+    assert resp2.status_code == 200
+    data2 = resp2.json()
+    assert len(data2) == 2
+    # Ensure disjoint items
+    ids1 = {d["id"] for d in data}
+    ids2 = {d["id"] for d in data2}
+    assert ids1.isdisjoint(ids2)
