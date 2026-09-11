@@ -279,9 +279,9 @@ def generate_toml(backend: Path, service: str, project_root: Path, timeout: floa
     # integration marker so real-DB tests (e.g. route mutation for Story 24.3)
     # are selected instead of filtered out.
     if test_files and any(t.startswith("tests/integration") for t in test_files):
-        marker = '-m "integration"'
+        marker = "-m 'integration'"
     else:
-        marker = '-m "unit or not integration"'
+        marker = "-m 'unit or not integration'"
     test_cmd = f'bash -c "COSMIC_RAY=1 .venv/bin/python -m pytest {" ".join(test_files)} {marker} -x 2>&1"'
     test_cmd_toml = test_cmd.replace("\\", "\\\\").replace('"', '\\"')
 
