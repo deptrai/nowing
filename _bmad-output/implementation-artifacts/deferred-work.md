@@ -291,7 +291,7 @@
 ## Deferred from: code review of 26-9b-pro-excel-formatter-daytona (2026-08-20)
 
 - **Finding:** Hardcoded `filename == "wide_research_output.xlsx"` in `DshDeliverSubgraph` (`dsh_worker_deliver_subgraph.py:136`).
-  - **Action:** Blocked — pre-existing single-deliverable design; revisit when multi-deliverable support is required.
+  - **Action:** Resolved from: code review of 26-9b-pro-excel-formatter-daytona (2026-09-11). Replaced hardcoded string with dynamic `Path(SANDBOX_OUTPUT_PATH).name` in `dsh_worker_deliver_subgraph.py`.
   - **Reason / when to revisit:** Pre-existing single-deliverable design; revisit when multi-deliverable support or versioned filenames are required.
 
 ## Deferred from: code review of 26-5-split-canvas-glass-box-mission-control-two-tier-phone-unlock-shimmer-influx (2026-08-21)
@@ -481,7 +481,7 @@
   - **Reason / when to revisit:** Cosmetic; the field-level `pattern`/`min_length` error is authoritative. Revisit if UX feedback says the double error is confusing.
 
 - **Finding:** `AgentChatMessageCreate` conflates `external_metadata` and `platform_metadata` validators.
-  - **Action:** Blocked — validator conflation deferred to schema cleanup.
+  - **Action:** Resolved from: code review of 18-2-newchatrequest-extension (2026-09-11). Separated `_validate_external_metadata` and `_validate_platform_metadata` field validators in `AgentChatMessageCreate` in `app/schemas/agent_chat.py`.
   - **Reason / when to revisit:** Defer until product confirms whether `external_metadata` must stay flat for `TokenUsage`/`NewChatMessage` consumers or can adopt the nested `_bounded_chat_metadata` shape.
 
 - **Finding:** `platform_metadata` persistence / `ResumeRequest` field gaps are tracked as decision-needed items.
@@ -569,7 +569,7 @@
   - **Reason / when to revisit:** Cần điều chỉnh gating logic cho aggregate job; thuộc 12.4/12.5.
 
 - **Finding:** `_charge_vn_jobs_aggregate` có thể charge khi child output `degraded`.
-  - **Action:** Blocked — charge on degraded deferred to billing gate fix.
+  - **Action:** Resolved from: code review of 12-1-vietnamworks-scraper (2026-09-11). Guarded `_charge_vn_jobs_aggregate` in `app/capabilities/core/billing.py` to return 0 cost when degraded and `total_items == 0`.
   - **Reason / when to revisit:** Bổ sung kiểm tra `output.degraded` trước khi debit; thuộc 12.4/12.5.
 
 - **Finding:** `PII_REDACTION_MIN_CONFIDENCE` config tồn tại nhưng chưa có logic sử dụng.
@@ -1294,7 +1294,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** Capability production calls always have `ctx`; revisit if direct executor calls or tests need a clearer contract.
 
 - **Finding:** `bds_aggregator` and `jobs_aggregator` charge `cost_micros` even when `persistence_status` is `failed`.
-  - **Action:** Blocked — charge on failed persistence deferred to aggregator fix.
+  - **Action:** Resolved from: code review of blind-hunter + edge-case-hunter re-run on td-8 (2026-09-11). Guarded `_charge_vn_bds_aggregate` and `_charge_vn_jobs_aggregate` in `app/capabilities/core/billing.py` to skip debit when `persistence_status == 'failed'` or when degraded with zero items.
   - **Reason / when to revisit:** Pre-existing business rule; decide whether scraper cost and ingest cost should be separate billing events in a pricing review.
 
 ## Deferred from: code review of story 24.8 (2026-08-24)

@@ -70,9 +70,14 @@ class AgentChatMessageCreate(BaseModel):
         default=None, description="Optional platform metadata for this turn."
     )
 
-    @field_validator("external_metadata", "platform_metadata")
+    @field_validator("external_metadata")
     @classmethod
-    def _validate_external_metadata(cls, v):
+    def _validate_external_metadata(cls, v: dict[str, Any] | None) -> dict[str, Any] | None:
+        return _bounded_chat_metadata(v)
+
+    @field_validator("platform_metadata")
+    @classmethod
+    def _validate_platform_metadata(cls, v: dict[str, Any] | None) -> dict[str, Any] | None:
         return _bounded_chat_metadata(v)
 
 
