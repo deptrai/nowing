@@ -155,6 +155,7 @@ async def test_service_generate_pptx_with_mocked_llm():
     )
     session = MagicMock()
     session.scalars = AsyncMock(return_value=MagicMock(all=MagicMock(return_value=[])))
+    session.scalar = AsyncMock(return_value=None)
     session.execute = AsyncMock()
     session.commit = AsyncMock()
 
@@ -190,12 +191,9 @@ async def test_workspace_scoped_slug_is_unique_with_mocked_llm():
         )
     )
     session = MagicMock()
-    session.scalars = AsyncMock(
-        side_effect=[
-            MagicMock(all=MagicMock(return_value=[])),
-            MagicMock(all=MagicMock(return_value=["pitch-deck"])),
-        ]
-    )
+    # First call: no existing slug → r1 gets "pitch-deck"
+    # Second call: slug exists → r2 gets "pitch-deck-1"
+    session.scalar = AsyncMock(side_effect=[None, "existing-id", None])
     session.execute = AsyncMock()
     session.commit = AsyncMock()
 

@@ -152,7 +152,7 @@ export function GenerateWebAppToolUI({
 	status,
 }: ToolCallMessagePartProps<WebAppBuildArgs, WebAppBuildResult | string>) {
 	const params = useParams();
-	const workspaceId = getWorkspaceIdNumber(params) || 1;
+	const workspaceId = getWorkspaceIdNumber(params);
 	const setDockOpen = useSetAtom(dockOpenAtom);
 	const setDockActiveTab = useSetAtom(dockActiveTabAtom);
 	const setDockWebBuilderAppId = useSetAtom(dockWebBuilderAppIdAtom);
@@ -185,6 +185,10 @@ export function GenerateWebAppToolUI({
 	const handlePublish = async () => {
 		if (!appId) {
 			toast.error("Missing app ID for publishing");
+			return;
+		}
+		if (!workspaceId) {
+			toast.error("Missing workspace ID for publishing");
 			return;
 		}
 

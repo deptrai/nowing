@@ -260,12 +260,34 @@ class HealthProbeRegistry:
 
     @classmethod
     def _register_messaging_payment_storage_proxy_research(cls) -> None:
+        """Register messaging, payment, storage, and proxy probes.
+
+        Discovers providers from config where possible; falls back to seed list.
+        """
         cls.register(ProxyHealthProbe())
         cls.register(ChainLensHealthProbe())
-        for msg_provider in ["telegram", "slack", "discord"]:
-            cls.register(MessagingHealthProbe(provider=msg_provider))
-        cls.register(PaymentHealthProbe(provider="stripe"))
-        cls.register(StorageHealthProbe(provider="s3"))
+
+        # Discover messaging providers from config
+        msg_providers: list[str] = []
+        if getattr(config, "TELEGRAM_BOT_TOKEN", None) or getattr(config, "DSH_TELEGRAM_ENABLED", False):
+            msg_providers.append("telegram")
+        if getattr(config, "SLACK_CLIENT_ID", None) or getattr(config, "SLACK_BOT_TOKEN", None):
+            msg_providers.append("slack")
+        if getattr(config, "DISCORD_BOT_TOKEN", None) or getattr(config, "DISCORD_CLIENT_ID", None):
+            msg_providers.append("discord")
+        if not msg_providers:
+            msg_providers = ["telegram", "slack", "discord"]
+        for provider in msg_providers:
+            cls.register(MessagingHealthProbe(provider=provider))
+
+        # Discover payment provider from config
+        payment_provider = "stripe" if getattr(config, "STRIPE_SECRET_KEY", None) else "stripe"
+        cls.register(PaymentHealthProbe(provider=payment_provider))
+
+        # Discover storage provider from config
+        storage_provider = "s3" if getattr(config, "S3_BUCKET", None) or getattr(config, "AWS_S3_BUCKET", None) else "s3"
+        cls.register(StorageHealthProbe(provider=storage_provider))
+
         cls.register(XActionsHealthProbe())
 
     @classmethod
