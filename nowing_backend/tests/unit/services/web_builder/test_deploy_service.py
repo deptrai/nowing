@@ -849,6 +849,9 @@ class TestContainerCgroupAndIsolation:
         assert "--tmpfs /tmp:rw,noexec,nosuid,size=64m" in cmd
         # Writable Next.js ISR/image cache on the read-only rootfs.
         assert "--tmpfs /app/.next/cache:rw,noexec,nosuid,size=128m" in cmd
+        # json-file logs bounded so a noisy tenant cannot fill the host disk.
+        assert "--log-opt max-size=10m" in cmd
+        assert "--log-opt max-file=3" in cmd
         # Never mount the docker socket or any host path; no extra caps.
         assert "docker.sock" not in cmd
         assert "-v" not in run_cmd and "--volume" not in run_cmd
@@ -1107,6 +1110,310 @@ class TestContainerCgroupAndIsolation:
         assert not deploy_service._is_safe_container_id("x" * 256)
         assert not deploy_service._is_safe_container_id("name; rm -rf /")
         assert not deploy_service._is_safe_container_id("$(whoami)")
+
+    @pytest.mark.asyncio
+    async def test_no_healthcheck_fallback_execs_http_probe(self, deploy_service):
+        """No-HEALTHCHECK images must prove the :3000 listener via docker
+        exec — 'running' alone is not enough."""
+        calls, router = self._docker_router(b"<no value>|true|0|false|")
+        with patch(
+            "shutil.which", return_value="/usr/bin/docker"
+        ), patch("asyncio.create_subprocess_exec", side_effect=router):
+            ok = await deploy_service._healthcheck_container(
+                "nowing-app-1-my-app", timeout_seconds=5, retries=5
+            )
+        assert ok is True
+        exec_calls = [c for c in calls if len(c) > 1 and c[1] == "exec"]
+        assert exec_calls, "expected a docker exec http probe"
+        assert "node" in exec_calls[0] and "127.0.0.1:3000" in " ".join(
+            exec_calls[0]
+        )
+
+    @pytest.mark.asyncio
+    async def test_no_healthcheck_failed_probe_keeps_polling(
+        self, deploy_service
+    ):
+        """A running container whose exec probe exits non-zero is NOT
+        healthy — keep polling until the deadline."""
+        calls: list[list[str]] = []
+        probe_results = iter([1, 1, 0])  # probe fails twice, then passes
+
+        def _router(*args, **kwargs):
+            argv = [str(a) for a in args]
+            calls.append(argv)
+            sub = argv[1] if len(argv) > 1 else ""
+            if sub == "inspect":
+                return self._proc(0, b"<no value>|true|0|false|")
+            if sub == "exec":
+                return self._proc(next(probe_results, 0))
+            return self._proc(0)
+
+        with patch(
+            "shutil.which", return_value="/usr/bin/docker"
+        ), patch("asyncio.create_subprocess_exec", side_effect=_router):
+            ok = await deploy_service._healthcheck_container(
+                "nowing-app-1-my-app", timeout_seconds=5, retries=50
+            )
+        assert ok is True
+        assert len([c for c in calls if c[1] == "exec"]) == 3
+
+    @pytest.mark.asyncio
+    async def test_dead_window_samples_need_three_consecutive(
+        self, deploy_service
+    ):
+        """A single running=false/nonzero-exit sample can land between
+        --restart unless-stopped restarts — it must not fail the deploy."""
+        calls: list[list[str]] = []
+        states = iter(
+            [
+                b"<no value>|false|1|false|",  # dead sample 1 (restart gap)
+                b"<no value>|false|1|false|",  # dead sample 2
+                b"healthy|true|0|false|",      # recovered on next poll
+            ]
+        )
+
+        def _router(*args, **kwargs):
+            argv = [str(a) for a in args]
+            calls.append(argv)
+            if argv[1] == "inspect":
+                return self._proc(0, next(states, b"healthy|true|0|false|"))
+            return self._proc(0)
+
+        with patch(
+            "shutil.which", return_value="/usr/bin/docker"
+        ), patch("asyncio.create_subprocess_exec", side_effect=_router):
+            ok = await deploy_service._healthcheck_container(
+                "nowing-app-1-my-app", timeout_seconds=5, retries=50
+            )
+        assert ok is True
+
+    @pytest.mark.asyncio
+    async def test_persistent_crashloop_fails_after_three_dead_samples(
+        self, deploy_service
+    ):
+        calls: list[list[str]] = []
+
+        def _router(*args, **kwargs):
+            argv = [str(a) for a in args]
+            calls.append(argv)
+            return self._proc(0, b"unhealthy|false|137|true|oom")
+
+        with patch(
+            "shutil.which", return_value="/usr/bin/docker"
+        ), patch("asyncio.create_subprocess_exec", side_effect=_router):
+            ok = await deploy_service._healthcheck_container(
+                "nowing-app-1-my-app", timeout_seconds=30, retries=50
+            )
+        assert ok is False
+        # Failed fast on the 3rd consecutive dead sample, not the deadline.
+        assert len([c for c in calls if c[1] == "inspect"]) == 3
+
+
+@pytest.mark.unit
+class TestPerAppNetworkIsolation:
+    """Story 31.1: opt-in per-app bridge networks (tenant-vs-tenant)."""
+
+    @pytest.fixture
+    def deploy_service(self):
+        return WebAppDeployService(base_domain="apps.nowing.net")
+
+    @staticmethod
+    def _make_standalone(tmp_path: Path) -> Path:
+        project_dir = tmp_path / "web-app" / "1" / "app-123"
+        standalone = project_dir / ".next" / "standalone"
+        standalone.mkdir(parents=True)
+        (standalone / "server.js").write_text("// mock")
+        return project_dir
+
+    @staticmethod
+    def _proc(returncode: int = 0, stdout: bytes = b"", stderr: bytes = b""):
+        proc = AsyncMock()
+        proc.returncode = returncode
+        proc.communicate = AsyncMock(return_value=(stdout, stderr))
+        proc.kill = MagicMock()
+        return proc
+
+    def test_app_network_name_sanitizes_and_bounds(self, deploy_service):
+        assert (
+            deploy_service._app_network_name(1, "app-123")
+            == "nowing-app-1-app-123-net"
+        )
+        # Uppercase / unsafe app_id chars are normalized to [a-z0-9_.-]
+        # (underscore is valid; ';' and ' ' each become '-').
+        assert (
+            deploy_service._app_network_name(1, "APP_X; rm -rf")
+            == "nowing-app-1-app_x--rm--rf-net"
+        )
+        # Bound: total name length never exceeds 255.
+        long_name = deploy_service._app_network_name(1, "a" * 300)
+        assert len(long_name) <= 255
+
+    def _router(self, network_fail: str | None = None):
+        calls: list[list[str]] = []
+
+        def _route(*args, **kwargs):
+            argv = [str(a) for a in args]
+            calls.append(argv)
+            sub = argv[1] if len(argv) > 1 else ""
+            if sub == "run":
+                return self._proc(0, b"container-id-123")
+            if sub == "inspect":
+                return self._proc(0, b"healthy|true|0|false|")
+            if sub == "network" and network_fail == "already":
+                # Idempotent redeploy: net exists, proxy already connected.
+                if argv[2] == "create":
+                    return self._proc(1, stderr=b"network already exists")
+                if argv[2] == "connect":
+                    return self._proc(
+                        1,
+                        stderr=b"container is already connected to network",
+                    )
+            return self._proc(0)
+
+        return calls, _route
+
+    @pytest.mark.asyncio
+    async def test_per_app_network_sequence(self, deploy_service, tmp_path):
+        project_dir = self._make_standalone(tmp_path)
+        calls, router = self._router()
+        with patch(
+            "app.config.config.FILE_STORAGE_LOCAL_PATH", str(tmp_path)
+        ), patch(
+            "app.config.config.WEB_BUILDER_PER_APP_NETWORK", True
+        ), patch(
+            "app.config.config.WEB_BUILDER_INGRESS_PROXY_CONTAINER",
+            "dokploy-traefik",
+        ), patch(
+            "shutil.which", return_value="/usr/bin/docker"
+        ), patch(
+            "asyncio.create_subprocess_exec", side_effect=router
+        ):
+            container_id, _ = await deploy_service.deploy_container(
+                app_id="app-123",
+                workspace_id=1,
+                project_path=project_dir,
+                slug="my-app",
+            )
+        assert container_id == "container-id"
+        app_net = "nowing-app-1-app-123-net"
+        net_create = next(
+            c for c in calls if c[1:3] == ["network", "create"]
+        )
+        net_connect = next(
+            c for c in calls if c[1:3] == ["network", "connect"]
+        )
+        assert net_create[-1] == app_net
+        assert net_connect[3:] == [app_net, "dokploy-traefik"]
+        run_cmd = next(c for c in calls if c[1] == "run")
+        assert run_cmd[run_cmd.index("--network") + 1] == app_net
+        # Order: network create + connect BEFORE docker run.
+        subs = [c[1] for c in calls]
+        assert subs.index("network") < subs.index("run")
+
+    @pytest.mark.asyncio
+    async def test_per_app_network_idempotent_redeploy(
+        self, deploy_service, tmp_path
+    ):
+        project_dir = self._make_standalone(tmp_path)
+        _, router = self._router(network_fail="already")
+        with patch(
+            "app.config.config.FILE_STORAGE_LOCAL_PATH", str(tmp_path)
+        ), patch(
+            "app.config.config.WEB_BUILDER_PER_APP_NETWORK", True
+        ), patch(
+            "app.config.config.WEB_BUILDER_INGRESS_PROXY_CONTAINER",
+            "dokploy-traefik",
+        ), patch(
+            "shutil.which", return_value="/usr/bin/docker"
+        ), patch(
+            "asyncio.create_subprocess_exec", side_effect=router
+        ):
+            container_id, _ = await deploy_service.deploy_container(
+                app_id="app-123",
+                workspace_id=1,
+                project_path=project_dir,
+                slug="my-app",
+            )
+        assert container_id == "container-id"
+
+    @pytest.mark.asyncio
+    async def test_per_app_missing_proxy_container_refuses(
+        self, deploy_service, tmp_path
+    ):
+        project_dir = self._make_standalone(tmp_path)
+        with patch(
+            "app.config.config.FILE_STORAGE_LOCAL_PATH", str(tmp_path)
+        ), patch(
+            "app.config.config.WEB_BUILDER_PER_APP_NETWORK", True
+        ), patch(
+            "app.config.config.WEB_BUILDER_INGRESS_PROXY_CONTAINER", ""
+        ), patch(
+            "shutil.which", return_value="/usr/bin/docker"
+        ), patch(
+            "asyncio.create_subprocess_exec", new_callable=AsyncMock
+        ) as mock_exec, pytest.raises(
+            RuntimeError, match="WEB_BUILDER_INGRESS_PROXY_CONTAINER"
+        ):
+            await deploy_service.deploy_container(
+                app_id="app-123",
+                workspace_id=1,
+                project_path=project_dir,
+                slug="my-app",
+            )
+        # Refused BEFORE any docker CLI call — fail loud, no half-created net.
+        mock_exec.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_per_app_failure_disconnects_and_removes_network(
+        self, deploy_service, tmp_path
+    ):
+        project_dir = self._make_standalone(tmp_path)
+        calls: list[list[str]] = []
+
+        # Force a persistently-dead container so healthcheck fails fast.
+        def _dead(*args, **kwargs):
+            argv = [str(a) for a in args]
+            calls.append(argv)
+            sub = argv[1] if len(argv) > 1 else ""
+            if sub == "inspect":
+                return self._proc(0, b"unhealthy|false|1|false|boom")
+            if sub == "run":
+                return self._proc(0, b"container-id-123")
+            return self._proc(0)
+
+        with patch(
+            "app.config.config.FILE_STORAGE_LOCAL_PATH", str(tmp_path)
+        ), patch(
+            "app.config.config.WEB_BUILDER_PER_APP_NETWORK", True
+        ), patch(
+            "app.config.config.WEB_BUILDER_INGRESS_PROXY_CONTAINER",
+            "dokploy-traefik",
+        ), patch(
+            "app.config.config.WEB_BUILDER_CONTAINER_HEALTHCHECK_TIMEOUT", 2
+        ), patch(
+            "app.config.config.WEB_BUILDER_CONTAINER_HEALTHCHECK_RETRIES", 10
+        ), patch(
+            "shutil.which", return_value="/usr/bin/docker"
+        ), patch(
+            "asyncio.create_subprocess_exec", side_effect=_dead
+        ), pytest.raises(RuntimeError, match="failed healthcheck"):
+            await deploy_service.deploy_container(
+                app_id="app-123",
+                workspace_id=1,
+                project_path=project_dir,
+                slug="my-app",
+            )
+        app_net = "nowing-app-1-app-123-net"
+        disconnect = [
+            c for c in calls if c[1:3] == ["network", "disconnect"]
+        ]
+        net_rm = [c for c in calls if c[1:3] == ["network", "rm"]]
+        assert disconnect and disconnect[0][3:] == [app_net, "dokploy-traefik"]
+        assert net_rm and net_rm[0][-1] == app_net
+        # Teardown ordering: container rm -f happens before network removal.
+        rm_idx = max(i for i, c in enumerate(calls) if c[1] == "rm")
+        net_rm_idx = calls.index(net_rm[0])
+        assert rm_idx < net_rm_idx
 
 
 @pytest.mark.unit

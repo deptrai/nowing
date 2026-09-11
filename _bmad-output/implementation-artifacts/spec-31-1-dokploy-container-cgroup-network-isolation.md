@@ -86,6 +86,14 @@ context: ['_bmad-output/implementation-artifacts/stories/31-1-dokploy-container-
 
 ## Spec Change Log
 
+- **2026-09-12 (defer resolution)** — All 6 review-deferred items resolved post-commit `41bee360c`:
+  1. *Tenant-vs-tenant* → opt-in `WEB_BUILDER_PER_APP_NETWORK` mode: each app gets its own bridge `nowing-app-{ws}-{app}-net` (`_app_network_name`/`_ensure_app_network`/`_cleanup_app_network`); isolation by membership; requires `WEB_BUILDER_INGRESS_PROXY_CONTAINER`; off by default = zero regression.
+  2. *Egress* → documented resolution: Docker can't do partial egress per-network; host-firewall guidance (`iptables -I DOCKER-USER -d 169.254.169.254 -j DROP`) in env examples + compose comment.
+  3. *Rollout* → `nowing_backend/scripts/redeploy_web_apps.py` (dry-run default, `--apply`, fresh session per app) + OOM-watch note for the 512m→256m free-tier drop.
+  4. *Log bounding* → `--log-opt max-size=10m max-file=3` on `docker run`; build phase noted as inherently safe (runtime Dockerfile has zero RUN steps + existing wait_for timeout).
+  5. *No-HEALTHCHECK fallback* → `_exec_health_probe` runs the image's own HTTP check via `docker exec` — running alone no longer counts as healthy.
+  6. *Restart dead-window* → 3-consecutive-dead-sample streak in `_healthcheck_container` tolerates `unless-stopped` restart gaps.
+
 ## Design Notes
 
 - Healthcheck reason: `_healthcheck_container` TCP-connects to `{container_name}:3000`, which only resolves while backend shares the app network. Moving apps to `nowing-web-apps-net` breaks that DNS — inspect-based polling removes the dependency entirely (Dockerfile HEALTHCHECK already exists).

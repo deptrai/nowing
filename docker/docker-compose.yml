@@ -384,6 +384,13 @@ networks:
   # Caveat: icc=false drops ALL inter-container traffic on the bridge —
   # including proxy -> app — so that posture requires one-network-per-app
   # or published ports instead of container-name ingress.
+  # Alternative: WEB_BUILDER_PER_APP_NETWORK=TRUE gives each app its own
+  # bridge network (isolation by membership, no ICC needed) — requires
+  # WEB_BUILDER_INGRESS_PROXY_CONTAINER set to this stack's proxy container.
+  # Egress: app containers retain outbound internet access; Docker cannot do
+  # partial per-network egress — restrict at the host firewall if needed,
+  # e.g. `iptables -I DOCKER-USER -d 169.254.169.254 -j DROP` (cloud
+  # metadata) on the docker host.
   nowing-web-apps-net:
     name: nowing-web-apps-net
     driver: bridge
