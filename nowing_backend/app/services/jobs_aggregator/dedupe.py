@@ -110,13 +110,18 @@ def _salary_values(group: list[VnJobAggregatedListing]) -> list[int]:
     """Extract non-zero salary values for comparison.
 
     Zero values mean "negotiable/hidden" and are skipped per Q4 failure mode.
+    Validates min <= max when both values are present.
     """
     values: list[int] = []
     for item in group:
-        if item.salary.min and item.salary.min > 0:
-            values.append(item.salary.min)
-        if item.salary.max and item.salary.max > 0:
-            values.append(item.salary.max)
+        s_min = item.salary.min if (item.salary.min and item.salary.min > 0) else None
+        s_max = item.salary.max if (item.salary.max and item.salary.max > 0) else None
+        if s_min is not None and s_max is not None and s_min > s_max:
+            s_min, s_max = s_max, s_min
+        if s_min is not None:
+            values.append(s_min)
+        if s_max is not None:
+            values.append(s_max)
     return values
 
 
