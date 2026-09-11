@@ -842,3 +842,26 @@ def test_parse_salary_swaps_inverted_min_max():
     listing = normalize_listing("topcv", raw)
     assert listing.salary.min == 30_000_000
     assert listing.salary.max == 50_000_000
+
+
+def test_parse_post_date_full_iso_datetime():
+    """Verify that full-ISO datetimes with T, Z, or timezone offset are parsed."""
+    import datetime
+    from app.services.jobs_aggregator.normalize import _parse_post_date
+
+    assert _parse_post_date("2026-08-10T14:30:00Z") == datetime.date(2026, 8, 10)
+    assert _parse_post_date("2026-08-10T14:30:00+07:00") == datetime.date(2026, 8, 10)
+    assert _parse_post_date("2026-08-10T14:30:00.123456Z") == datetime.date(2026, 8, 10)
+
+
+def test_vietnamworks_salary_period_id_one_maps_to_month():
+    """VietnamWorks salary_period_id: 1 maps to month in aggregator schema."""
+    raw = {
+        "title": "Backend Dev",
+        "company": "VNG",
+        "salary_min": 30_000_000,
+        "salary_max": 40_000_000,
+        "salary_period_id": 1,
+    }
+    listing = normalize_listing("vietnamworks", raw)
+    assert listing.salary.period == "month"
