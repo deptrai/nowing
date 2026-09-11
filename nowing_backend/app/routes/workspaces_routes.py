@@ -237,6 +237,13 @@ async def read_workspaces(
                     citations_enabled=space.citations_enabled,
                     api_access_enabled=space.api_access_enabled,
                     qna_custom_instructions=space.qna_custom_instructions,
+                    document_retention_days=space.document_retention_days,
+                    auto_archive_enabled=space.auto_archive_enabled,
+                    document_retention_action=space.document_retention_action,
+                    memory_retention_days=space.memory_retention_days,
+                    memory_auto_archive_enabled=space.memory_auto_archive_enabled,
+                    memory_retention_action=space.memory_retention_action,
+                    memory_auto_extract_enabled=space.memory_auto_extract_enabled,
                     member_count=member_count,
                     is_owner=is_owner,
                 )
