@@ -356,10 +356,9 @@ async def _gate_vn_jobs_aggregate(
     if owner_user_id is None:
         return
 
-    sources = getattr(payload, "sources", list(_JOBS_BILLING_UNIT_MAP)) or list(
-        _JOBS_BILLING_UNIT_MAP
-    )
-    max_items = getattr(payload, "max_items_per_source", 10) or 0
+    raw_sources = getattr(payload, "sources", None)
+    sources = raw_sources if raw_sources else list(_JOBS_BILLING_UNIT_MAP)
+    max_items = max(1, getattr(payload, "max_items_per_source", 10) or 10)
 
     required_micros = int(
         getattr(config, "VN_JOBS_AGGREGATE_QUERY_MICROS_PER_QUERY", 5000)
@@ -896,12 +895,6 @@ async def _charge_vn_jobs_aggregate(
         return 0
 
     cost_micros = int(getattr(output, "cost_micros", 0) or 0)
-    base_fee = (
-        int(getattr(config, "VN_JOBS_AGGREGATE_QUERY_MICROS_PER_QUERY", 5000))
-        if getattr(output, "total_items", 0) > 0
-        else 0
-    )
-    cost_micros += base_fee
     if cost_micros <= 0:
         return 0
 
