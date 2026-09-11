@@ -85,7 +85,7 @@ export function GeneratePresentationToolUI({
 }: ToolCallMessagePartProps<PresentationBuildArgs, PresentationBuildResult | string>) {
 	const params = useParams();
 	const tChat = useTranslations("chat");
-	const workspaceId = getWorkspaceIdNumber(params) || 1;
+	const workspaceId = getWorkspaceIdNumber(params);
 
 	const result = useMemo(() => parseToolResult(rawResult), [rawResult]);
 
@@ -104,7 +104,9 @@ export function GeneratePresentationToolUI({
 	const slideCount = result.slide_count ?? 0;
 	const downloadUrl =
 		result.download_url ||
-		(presentationId ? presentationApiService.downloadUrl(presentationId, workspaceId) : "");
+		(presentationId && workspaceId
+			? presentationApiService.downloadUrl(presentationId, workspaceId)
+			: "");
 	const previewUrl = presentationPreviewHref(result.preview_url);
 
 	if (isRunning || (!result.presentation_id && !isFailed)) {

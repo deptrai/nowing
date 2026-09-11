@@ -15,6 +15,7 @@ from lxml import html as lxml_html
 from scrapling.fetchers import StealthyFetcher
 
 from app.config import config
+from app.services.pii.redact import redact_job_pii
 from app.utils.crawl import BlockType
 
 logger = logging.getLogger(__name__)
@@ -458,8 +459,8 @@ def _parse_search_page(html: str) -> list[dict[str, Any]]:
         results.append(
             {
                 "id": f"topcv:{job_id}",
-                "title": title,
-                "company": company,
+                "title": redact_job_pii(title).text if title else title,
+                "company": redact_job_pii(company).text if company else company,
                 "location": location,
                 "source_url": source_url,
                 "salary_raw": salary_raw,
@@ -485,9 +486,9 @@ def _parse_search_page(html: str) -> list[dict[str, Any]]:
 
 def _apply_detail(item: dict[str, Any], detail: dict[str, Any]) -> None:
     if detail.get("job_description"):
-        item["job_description"] = detail["job_description"]
+        item["job_description"] = redact_job_pii(detail["job_description"]).text
     if detail.get("job_requirement"):
-        item["job_requirement"] = detail["job_requirement"]
+        item["job_requirement"] = redact_job_pii(detail["job_requirement"]).text
     if detail.get("location"):
         item["location"] = detail["location"]
     if detail.get("employment_type"):
@@ -710,6 +711,7 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
         config.TOPCV_MAX_PAGES,
     )
     start_page = max(1, int(params.get("page", 1) or 1))
+    location_filter = (params.get("location") or "").strip().lower()
 
     if max_items == 0 or max_pages == 0:
         return {
@@ -762,6 +764,11 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
                     if detail:
                         _apply_detail(card, detail)
                         cost_micros += config.TOPCV_SCRAPE_MICROS_PER_ITEM
+                # Apply location filter if specified
+                if location_filter:
+                    card_location = (card.get("location") or "").lower()
+                    if location_filter not in card_location:
+                        continue
                 items.append(card)
 
                 if len(items) >= max_items:
@@ -793,12 +800,34 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _items_to_chunks(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Convert scraped TopCV items to ChainLens chunks (AC-8)."""
+    from app.services.scraper_chunks.serializer import to_chunks
+
+    chunks: list[dict[str, Any]] = []
+    for item in items:
+        try:
+            item_chunks = to_chunks(
+                domain="topcv",
+                data=item,
+                fetched_at=item.get("fetched_at") or "",
+                content_type="job",
+            )
+            chunks.extend([c.model_dump() for c in item_chunks])
+        except Exception as exc:
+            logger.warning("Failed to convert TopCV item to chunks: %s", exc)
+    return chunks
+
+
 async def scrape_topcv(params: dict[str, Any]) -> dict[str, Any]:
     """Fetch and parse TopCV job search + detail pages."""
     if not config.TOPCV_ENABLED:
         return _degraded("legal_blocked")
     try:
-        return await _scrape(params)
+        result = await _scrape(params)
+        if not result.get("degraded") and result.get("items"):
+            result["chunks"] = _items_to_chunks(result["items"])
+        return result
     except TimeoutError:
         return _degraded("timeout")
     except Exception as exc:

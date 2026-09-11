@@ -128,10 +128,22 @@ class SocialPostEvent(BaseModel):
         if isinstance(value, datetime):
             return value
         if isinstance(value, str):
+            normalized = value.strip()
+            # Handle lowercase 'z' and RFC-2822 style dates
+            if normalized.endswith("z"):
+                normalized = normalized[:-1] + "+00:00"
+            elif normalized.endswith("Z"):
+                normalized = normalized[:-1] + "+00:00"
             try:
-                return datetime.fromisoformat(value.replace("Z", "+00:00"))
+                return datetime.fromisoformat(normalized)
             except (ValueError, TypeError):
-                logger.warning("Malformed published_at %r; using None", value)
+                try:
+                    # RFC-2822 fallback (e.g., "Mon, 01 Jan 2024 00:00:00 GMT")
+                    from email.utils import parsedate_to_datetime
+
+                    return parsedate_to_datetime(normalized)
+                except (ValueError, TypeError):
+                    logger.warning("Malformed published_at %r; using None", value)
         return None
 
 
@@ -161,7 +173,7 @@ def compute_fit_score(
         score += 0.10
 
     # Social engagement bonus
-    if reactions > 10 or comments > 5:
+    if reactions >= 10 or comments >= 5:
         score += 0.05
 
     return min(1.0, round(score, 2))

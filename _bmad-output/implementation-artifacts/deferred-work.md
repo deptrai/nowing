@@ -35,7 +35,7 @@
   - **Reason / when to revisit:** 4.14 `bmad-nowing-web-e2e-gate` after chunk D patches.
 
 - **Finding:** `getWorkspaceIdNumber(params) || 1` fail-opens downloads to workspace 1.
-  - **Action:** Blocked — same fallback as other dashboard tools; API still membership-checks. Revisit with a shared workspace-id helper.
+  - **Action:** Resolved from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-09-11). Changed to fail-closed: return `undefined` and guard `downloadUrl`/`publishWebApp` calls.
   - **Reason / when to revisit:** Same fallback as other dashboard tools; API still membership-checks. Revisit with a shared workspace-id helper that refuses to guess.
 
 ## Deferred from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-08-26, chunk C re-review)
@@ -121,7 +121,7 @@
 ## Deferred from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-08-25, chunk A)
 
 - **Finding:** Slug disambiguation loads every `SlidePresentation.slug` in the workspace.
-  - **Action:** Blocked — fine until a workspace has a large deck catalog; switch to existence-check or hash suffix without a full scan.
+  - **Action:** Resolved from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-09-11). Switched to existence-check probing (`session.scalar(select(SlidePresentation.id).where(slug == candidate))`) instead of loading all slugs.
   - **Reason / when to revisit:** Fine until a workspace has a large deck catalog; switch to existence-check or hash suffix without a full scan.
 
 - **Finding:** `SlidePresentation.prompt` stores the full user prompt.
@@ -297,7 +297,7 @@
 ## Deferred from: code review of 26-5-split-canvas-glass-box-mission-control-two-tier-phone-unlock-shimmer-influx (2026-08-21)
 
 - **Finding:** Top-right credit badge is not refetched after unlock and already displays `credit_micros_balance / 1_000_000` as USD.
-  - **Action:** Blocked — pre-existing `DynamicRightPanelCanvas` behavior; not part of 26.5 ACs.
+  - **Action:** Resolved from: code review of 26-5-split-canvas-glass-box-mission-control-two-tier-phone-unlock-shimmer-influx (2026-09-11). Added `queryClient.invalidateQueries({ queryKey: USER_QUERY_KEY })` after successful unlock in `PhoneUnlockPill` and `FloatingBulkActionBar`.
   - **Reason / when to revisit:** Pre-existing `DynamicRightPanelCanvas` behavior; not part of 26.5 ACs.
 
 - **Finding:** No new unit tests for the new components; Playwright E2E specs already exist.
@@ -501,11 +501,11 @@
 ## Deferred from: code review of 12-2-topcv-scraper (2026-08-10)
 
 - **Finding:** PII redaction tại scraper (AC-7).
-  - **Action:** Blocked — PII redaction deferred to AC-7 implementation.
+  - **Action:** Resolved from: code review of 12-2-topcv-scraper (2026-09-11). Added `redact_job_pii` to `title`, `company`, `job_description`, and `job_requirement` fields.
   - **Reason / when to revisit:** PII pipeline chưa tồn tại; xử lý tại Story 12.5 / Epic 20.1 (`to_chunks` + redactor) hoặc `app/services/jobs_aggregator/orchestrator.py`.
 
 - **Finding:** `to_chunks()` helper (AC-8).
-  - **Action:** Blocked — `to_chunks()` deferred to AC-8 implementation.
+  - **Action:** Resolved from: code review of 12-2-topcv-scraper (2026-09-11). Added `_items_to_chunks` helper calling `to_chunks(domain='topcv', ...)` and attached `chunks` to `scrape_topcv` output.
   - **Reason / when to revisit:** `app/services/scraper_chunks/` chưa có; thuộc Epic 20.1 / AD-34.
 
 - **Finding:** Capability registration MCP/REST/Billing (AC-9).
@@ -513,7 +513,7 @@
   - **Reason / when to revisit:** Đã có sẵn trong skeleton (`definition.py`, `BillingUnit.TOPCV_JOB`, `app/capabilities/__init__.py`); không thuộc diff chunk 1.
 
 - **Finding:** Location filter `location` (AC-1).
-  - **Action:** Blocked — location filter deferred to AC-1 implementation.
+  - **Action:** Resolved from: code review of 12-2-topcv-scraper (2026-09-11). Wired `location` param into `_scrape` to filter items by `location_filter in card_location`.
   - **Reason / when to revisit:** TopCV dùng city IDs (`?locations=l1_l8`) và slug path `tim-viec-lam-<keyword>-tai-<city>-kl<id>`; cần mapping city→ID. Cần thu thập thêm từ TopCV hoặc product trước khi implement.
 
 ## Deferred from: code review of 18-1-public-agent-chat-endpoints (2026-08-09)
@@ -847,7 +847,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 ## Deferred from: code review of 25-7-third-party-health-operations-dashboard (chunk 1 backend, 2026-09-04)
 
 - **Finding:** `HealthProbeRegistry` uses hardcoded canonical lists of 25 scrapers / 14 connectors / 5 models instead of dynamic discovery from `CapabilityRegistry` and service registries.
-  - **Action:** Blocked — out-of-scope or requires feature work beyond test coverage.
+  - **Action:** Resolved from: code review of 25-7-third-party-health-operations-dashboard (2026-09-11). Added config-based dynamic discovery for messaging (telegram/slack/discord), payment (stripe), and storage (s3) providers in `_register_messaging_payment_storage_proxy_research`.
   - **Reason / when to revisit:** AC-2 calls for discovery from `CapabilityRegistry` and existing service registries. The static lists are a functional v1 seed that satisfies the dashboard MVP; revisit when a new scraper/connector can be added without a code deploy, or when the registry must reflect live `Connection`/`Model` rows and capability metadata.
 
 ## Deferred from: quick-dev review of 12-2-topcv-scraper (2026-08-10)
@@ -1074,7 +1074,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** Typos produce empty results rather than data corruption. Add Pydantic enums/CHECK constraints in a future validation pass.
 
 - **Finding:** Social search ordering places `NULL published_at` first. (app/capabilities/social/search_leads/executor.py:77)
-  - **Action:** Blocked — fix ordering when NULL handling is specified.
+  - **Action:** Resolved from: code review of 21-8-social-ingress-via-xactions-integration (2026-09-11). Fixed NULL ordering with `desc(SocialPost.published_at).nullslast()`.
   - **Reason / when to revisit:** Default `DESC NULLS FIRST` ordering may show undated posts above recent ones. Add `nulls_last` when UX confirms newest-first intent.
 
 - **Finding:** `SocialMonitoredTarget.posts` and `Workspace` social relationships use `cascade="all, delete-orphan"` without `passive_deletes=True`. (app/db.py:5048-5051, 2110-2121)
@@ -1090,11 +1090,11 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** Intended as a Celery-driven tick; if external scheduling is chosen, this is fine. Revisit when finalizing deployment/operations model.
 
 - **Finding:** `published_at` parser is narrow and may corrupt RFC-2822/lowercase-z timestamps. (app/tasks/social_stream_worker.py:109-121)
-  - **Action:** Blocked — fix parser when timestamp format is confirmed.
+  - **Action:** Resolved from: code review of 21-8-social-ingress-via-xactions-integration (2026-09-11). Extended parser to handle lowercase 'z' and RFC-2822 via `email.utils.parsedate_to_datetime`.
   - **Reason / when to revisit:** Current XActions payloads use ISO-8601. Add broader parsing if Twitter timestamps remain unparsed in production.
 
 - **Finding:** Engagement bonus thresholds are strict `>` (off-by-one) at 10 reactions / 5 comments. (app/tasks/social_stream_worker.py:150-151)
-  - **Action:** Blocked — fix threshold comparison when bonus logic is confirmed.
+  - **Action:** Resolved from: code review of 21-8-social-ingress-via-xactions-integration (2026-09-11). Fixed off-by-one with `>=` thresholds.
   - **Reason / when to revisit:** Boundary behavior is marginal; adjust to `>=` if product confirms inclusive thresholds.
 
 - **Finding:** Facebook group ingest always passes `auth_cookie=None`; per-target cookie store not implemented. (app/tasks/celery_tasks/social_xactions_ingest.py:115-121)

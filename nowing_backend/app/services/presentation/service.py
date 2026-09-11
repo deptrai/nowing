@@ -355,13 +355,17 @@ class PresentationStudioService:
         slug = base_slug
         last_error: Exception | None = None
         for _attempt in range(3):
-            existing_slugs_result = await session.scalars(
-                select(SlidePresentation.slug).where(
-                    SlidePresentation.workspace_id == build_input.workspace_id
+            # Existence-check: probe only the candidate slug instead of loading every slug
+            slug_exists = await session.scalar(
+                select(SlidePresentation.id).where(
+                    SlidePresentation.workspace_id == build_input.workspace_id,
+                    SlidePresentation.slug == slug,
                 )
             )
-            existing_slugs = set(existing_slugs_result.all())
-            slug = disambiguate_slug(base_slug, existing_slugs)
+            if slug_exists:
+                # Generate a new candidate and re-check on the next attempt
+                slug = disambiguate_slug(base_slug, {slug})
+                continue
 
             entity = SlidePresentation(
                 id=presentation_id,
