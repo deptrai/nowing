@@ -304,3 +304,21 @@ def test_routes_permission_denied(app: FastAPI, fake_auth: AuthContext) -> None:
         resp = client.get("/workspaces/10/social-monitored-targets")
 
     assert resp.status_code == status.HTTP_403_FORBIDDEN
+
+
+def test_create_social_target_invalid_url_scheme(app: FastAPI, fake_auth: AuthContext, fake_workspace: Workspace) -> None:
+    """Invalid URL scheme (not http/https) should fail validation with 422."""
+    session = _FakeSession(workspace=fake_workspace)
+    app.dependency_overrides[get_async_session] = lambda: session
+    app.dependency_overrides[get_auth_context] = lambda: fake_auth
+
+    with patch("app.routes.social_routes.check_permission", new=AsyncMock()):
+        client = TestClient(app)
+        payload = {
+            "platform": "facebook_group",
+            "target_id": "bds_hanoi",
+            "target_name": "BDS Group",
+            "target_url": "ftp://facebook.com/group",
+        }
+        resp = client.post("/workspaces/10/social-monitored-targets", json=payload)
+    assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY

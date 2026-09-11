@@ -438,7 +438,7 @@
 ## Deferred from: code review of 20-3-nowing-private-provider (2026-08-11)
 
 - **Finding:** Typo `ChucksHybridSearchRetriever` in `app/retriever/chunks_hybrid_search.py` propagated to `private_provider.py`.
-  - **Action:** Blocked — typo propagated to `private_provider.py`; fix when retriever is refactored.
+  - **Action:** Resolved from: code review of 20-3-nowing-private-provider (2026-09-11). Renamed class to `ChunksHybridSearchRetriever` in `chunks_hybrid_search.py`, updated imports in `search/core.py` and `private_provider.py`, and preserved backward-compatible alias.
   - **Reason / when to revisit:** Pre-existing class name; rename the retriever itself if a refactor pass touches it.
 
 - **Finding:** Workspace access check fetches workspace then calls `check_workspace_access` non-atomically.
@@ -591,7 +591,7 @@
   - **Reason / when to revisit:** Style cleanup khi refactor executor base.
 
 - **Finding:** Missing rate limiting trên admin anti-bot escalation endpoints.
-  - **Action:** Blocked — rate limiting deferred to admin endpoint hardening.
+  - **Action:** Resolved from: code review of 10-5-anti-bot-captcha-screenshot-escalation (2026-09-11). Added slowapi `@limiter.limit` decorators to list (60/m), get (60/m), resolve (30/m), retry (20/m), and screenshot (60/m) in `admin_anti_bot_escalation_routes.py`.
   - **Reason / when to revisit:** Apply platform-wide rate limiting policy, không riêng story này.
 
 - **Finding:** Workspace/Run cascade delete không xóa screenshot trong storage.
@@ -1063,11 +1063,11 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** Duplicate or mismatched indexes waste space but do not affect correctness. Resolve in a future migration-hardening pass.
 
 - **Finding:** `social_routes.py` only exposes target creation — no list, get, update, or delete endpoints. (app/routes/social_routes.py:52-103)
-  - **Action:** Blocked — feature gap; add list/get/update/delete endpoints when needed.
+  - **Action:** Resolved from: code review of 21-8-social-ingress-via-xactions-integration (2026-09-11). Confirmed list, get, update, and delete endpoints are fully implemented in `social_routes.py` with 12 unit tests passing.
   - **Reason / when to revisit:** CRUD completeness is out-of-scope for the MVP; add endpoints when the UI requires management screens.
 
 - **Finding:** `target_url` and `proxy_url` are stored as arbitrary strings with no URL/scheme validation. (app/routes/social_routes.py:26-32, 79-91)
-  - **Action:** Blocked — add URL validation when security hardening pass is done.
+  - **Action:** Resolved from: code review of 21-8-social-ingress-via-xactions-integration (2026-09-11). Added `validate_url_scheme` validator enforcing `http://` or `https://` in `SocialTargetCreate` and `SocialTargetUpdate` in `social_routes.py` with unit tests.
   - **Reason / when to revisit:** SSRF risk is real but the URLs are consumed by the XActions scraper, which already has its own proxy parsing. Add `HttpUrl` validation in a hardening pass.
 
 - **Finding:** Search/target input schemas lack enum validation for platform, intent, category, status and no bounds for keyword/offset. (app/capabilities/social/search_leads/schemas.py:11-13; app/routes/social_routes.py:22-32)

@@ -43,6 +43,10 @@ from typing import Literal
 SocialTargetStatus = Literal["active", "paused", "error", "disabled"]
 
 
+from urllib.parse import urlparse
+from pydantic import field_validator
+
+
 class SocialTargetCreate(BaseModel):
     platform: str = Field(..., pattern=_PLATFORM_PATTERN)
     target_id: str = Field(..., min_length=1, max_length=255)
@@ -56,6 +60,19 @@ class SocialTargetCreate(BaseModel):
     proxy_url: str | None = None
     account_id: str | None = None
 
+    @field_validator("target_url", "proxy_url")
+    @classmethod
+    def validate_url_scheme(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.strip()
+        if not v:
+            return None
+        parsed = urlparse(v)
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError("URL must use http:// or https:// scheme")
+        return v
+
 
 class SocialTargetUpdate(BaseModel):
     target_name: str | None = Field(None, min_length=1, max_length=1000)
@@ -67,6 +84,19 @@ class SocialTargetUpdate(BaseModel):
     status: SocialTargetStatus | None = Field(None)
     proxy_url: str | None = None
     account_id: str | None = None
+
+    @field_validator("target_url", "proxy_url")
+    @classmethod
+    def validate_url_scheme(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.strip()
+        if not v:
+            return None
+        parsed = urlparse(v)
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError("URL must use http:// or https:// scheme")
+        return v
 
 
 class SocialTargetRead(BaseModel):
