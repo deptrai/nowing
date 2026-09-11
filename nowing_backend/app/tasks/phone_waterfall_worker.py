@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
+from app.tasks.celery_tasks import run_async_celery_task
 from typing import Any
 from uuid import UUID
 
@@ -66,7 +66,7 @@ def resolve_phone_waterfall_task(
             }
 
     try:
-        return asyncio.run(_run())
+        return run_async_celery_task(_run)
     except Exception as exc:
         logger.exception("resolve_phone_waterfall_task failed for lead %s", lead_id)
         if self.request.retries < self.max_retries:
@@ -106,9 +106,11 @@ def auto_refund_lead_task(
             )
 
     try:
-        return asyncio.run(_run())
+        return run_async_celery_task(_run)
     except Exception as exc:
         logger.exception("auto_refund_lead_task failed for lead %s", lead_id)
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=exc) from exc
         return {
             "lead_id": lead_id,
             "refunded": False,

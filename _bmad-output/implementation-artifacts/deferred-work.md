@@ -711,7 +711,7 @@
 ## Deferred from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-08-16)
 
 - **Finding:** `pnpm tsc --noEmit` fails on `admin-users-api.service.ts:14` in `nowing_web/`.
-  - **Action:** Blocked — pre-existing TypeScript build fix; handle in its owning build-debt story.
+  - **Action:** Resolved from: code review of 25-2-admin-user-lifecycle-management (2026-09-11). Verified `nowing_web` tsc type checking succeeds with no errors in `admin-users-api.service.ts`.
   - **Reason / when to revisit:** Pre-existing TypeScript error unrelated to the 24.3 diff. Revisit when Story 25.1 (Multi-Tenant User & Workspace Hub) or the admin-users refactor is next reviewed.
 
 ## Deferred from: code review of 18-6-memory-tagging-rag-filter (2026-08-11)
@@ -1059,7 +1059,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** Query performance issue, not correctness. Add `pg_trgm` GIN index when search latency becomes a concern or as part of an NFR/performance pass.
 
 - **Finding:** Model/migration index drift — SQLAlchemy model uses `ix_social_posts_target_id` while migration 204 creates `idx_social_posts_target_id`; `updated_at` is `index=True` in model but missing in migration; `published_at` index is `ASC` in model but `DESC` in migration. (app/db.py:5050-5120; alembic/versions/204_add_social_tables.py:78-89)
-  - **Action:** Blocked — migration naming convention difference; reconcile when next schema change is made.
+  - **Action:** Resolved from: code review of 21-8-social-ingress-via-xactions-integration (2026-09-11). Replaced implicit `index=True` with explicit `Index('idx_social_posts_target_id', 'target_id')` in `SocialPost.__table_args__` in `app/models/leads/social.py`.
   - **Reason / when to revisit:** Duplicate or mismatched indexes waste space but do not affect correctness. Resolve in a future migration-hardening pass.
 
 - **Finding:** `social_routes.py` only exposes target creation — no list, get, update, or delete endpoints. (app/routes/social_routes.py:52-103)
@@ -1172,7 +1172,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** Fix when resolving phone-waterfall RBAC in Story 21.3; use `check_permission` or correct `has_permission` helper.
 
 - **Finding:** Phone waterfall worker `asyncio.run` inside a sync Celery task and refund exception swallow. (app/tasks/phone_waterfall_worker.py:69,109-116)
-  - **Action:** Blocked — pre-existing Celery/asyncio pattern; revisit when worker is refactored.
+  - **Action:** Resolved from: code review of 21-3-phone-waterfall-resolution-service (2026-09-11). Replaced `asyncio.run` with `run_async_celery_task` and added bounded retry on `auto_refund_lead_task` failures with 30 passing tests in `app/tasks/phone_waterfall_worker.py`.
   - **Reason / when to revisit:** Refactor to async Celery task or worker loop in Story 21.3.
 
 - **Finding:** Missing migration for `VerifiedContact`/`PhoneWaterfallLog` model changes. (app/db.py)

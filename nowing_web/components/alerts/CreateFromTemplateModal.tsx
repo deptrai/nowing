@@ -56,10 +56,10 @@ export default function CreateFromTemplateModal({
 	const [ruleName, setRuleName] = useState("");
 	const [parameters, setParameters] = useState<Record<string, unknown>>({});
 	const [schedule, setSchedule] = useState<"daily" | "weekly" | "none">("daily");
-	const [channels, setChannels] = useState<string[]>(["in_app"]);
+	const [channels, setChannels] = useState<("in_app" | "telegram" | "email")[]>(["in_app"]);
 	const [submitting, setSubmitting] = useState(false);
 
-	const toggleChannel = (channelId: string) => {
+	const toggleChannel = (channelId: "in_app" | "telegram" | "email") => {
 		setChannels((prev) => {
 			if (prev.includes(channelId)) {
 				if (prev.length === 1) return prev;
@@ -342,11 +342,13 @@ export default function CreateFromTemplateModal({
 											Notification Channels
 										</Label>
 										<div className="flex items-center gap-2 pt-0.5">
-											{[
-												{ id: "in_app", label: "In-App", icon: Bell },
-												{ id: "telegram", label: "Telegram", icon: Send },
-												{ id: "email", label: "Email", icon: Mail },
-											].map((ch) => {
+											{(
+												[
+													{ id: "in_app" as const, label: "In-App", icon: Bell },
+													{ id: "telegram" as const, label: "Telegram", icon: Send },
+													{ id: "email" as const, label: "Email", icon: Mail },
+												]
+											).map((ch) => {
 												const active = channels.includes(ch.id);
 												const Icon = ch.icon;
 												return (
