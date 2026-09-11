@@ -119,6 +119,7 @@ class SocialPost(Base, TimestampMixin):
             postgresql_where=text("embedding IS NOT NULL"),
         ),
         Index("idx_social_posts_workspace_id", "workspace_id"),
+        Index("idx_social_posts_target_id", "target_id"),
     )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -131,7 +132,6 @@ class SocialPost(Base, TimestampMixin):
         BigInteger,
         ForeignKey("social_monitored_targets.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     platform = Column(String(50), nullable=False)  # 'facebook', 'twitter'
     external_post_id = Column(String(255), nullable=False)
