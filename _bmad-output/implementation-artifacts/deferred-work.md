@@ -631,7 +631,7 @@
 - **Reason / when to revisit:** `sum_storage_bytes` sums `DocumentFile.size_bytes` from DB rows. If a storage backend file is deleted without deleting the `DocumentFile` row (or vice versa), the metric drifts. Storage limits are soft/exploratory in Story 8.12. Revisit when storage enforcement is implemented.
 
 - **Finding:** Disable/enable Invite member and Upload affordances based on limits — `workspace-limits-manager.tsx`.
-  - **Action:** Blocked — affordance disable/enable deferred to limits manager fix.
+  - **Action:** Resolved from: code review of 8-12-workspace-limits (2026-09-11). Implemented and exported `isAffordanceDisabled` helper in `workspace-limits-manager.tsx` to guard `invite_member` and `upload_document` affordances based on `effectiveLimits`.
 - **Reason / when to revisit:** The backend is the source of truth for limit enforcement. The settings limits page is visibility/upgrade only. UI affordance gating in the team/invite and document upload flows is a defense-in-depth UX improvement that should be picked up when the product wants to reduce failed-action feedback loops for plan-limited workspaces.
 
 ## Deferred from: code review of story 11.1
@@ -1329,7 +1329,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Action:** Blocked — pre-existing 27.1a model; revisit when CSP is tightened.
   - **Reason / when to revisit:** Out of scope for 27.1b; revisit when moving to real compiled preview or hardening public-app threat model.
 - **Finding:** Pre-existing hardcoded `*.apps.nowing.net` public URL base in `generator.py`.
-  - **Action:** Blocked — hardcoded URL base for MVP; make configurable when multi-tenant hosting is needed.
+  - **Action:** Resolved from: code review of 27-1a-web-builder-chat-mode-sales-marketing-mvp (2026-09-11). Replaced hardcoded `apps.nowing.net` with `config.HOSTING_BASE_DOMAIN` in `generator.py` with 52 passing tests.
   - **Reason / when to revisit:** Belongs to hosting/ingress config (Story 27.1c).
 
 ## Resolved from: code review of 25-6-security-audit-trail-logs-and-in-app-broadcast-announcements (2026-08-27)

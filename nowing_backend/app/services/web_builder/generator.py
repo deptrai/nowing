@@ -619,7 +619,7 @@ class WebBuilderService:
                 "slug": app_slug,
                 "status": status,
                 "preview_url": preview_url,
-                "public_url": f"https://{app_slug}.apps.nowing.net",
+                "public_url": f"https://{app_slug}.{(getattr(app_config, 'HOSTING_BASE_DOMAIN', 'apps.nowing.net') or 'apps.nowing.net').lower().lstrip('.')}",
                 "files": written_files,
                 "message": message,
             },
