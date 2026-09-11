@@ -41,7 +41,7 @@
 | P2-12 | `nowing_web` 3.6 GB | 🔶 Không phải vấn đề repo | Giờ 6.1 GB nhưng gần hết là `node_modules` 3.3G + `.next` 2.5G — dev artifacts đã gitignore. Bundle-size audit vẫn chưa có bằng chứng. |
 | P2-13 | Hub UI primitives (Button in-degree 788) | ❓ Chưa đo lại | Chưa thấy ADR freeze API. |
 | P2-14 | Alembic `downgrade()` không test | 🔶 Một phần | Có roundtrip test cho vài migration (180, 186); chưa có CI job `downgrade -1` tổng quát. 296 versions. |
-| P2-15 | `check_permission` gọi thủ công | ❌ Chưa | Vẫn **268 calls / 70 file**; `require_permission` dependency chỉ 6 hits / 1 file. |
+| P2-15 | `check_permission` gọi thủ công | ❌ Chưa | Vẫn **268 calls / 70 file** (`app/utils/rbac.py`); `require_permission` dependency chỉ 6 hits / 1 file. |
 | P2-16 | `web_builder` subprocess injection | ✅ Đã sandbox | `builder.py` giờ chạy `docker run --rm --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges --memory 1024m --cpus 2.0` + timeout + `killpg` cleanup + force `docker rm -f`. ADR-5 landed. |
 | P2-17 | `Popen` trong admin scraper route | ✅ Đã fix | Chuyển sang `celery_tasks/scraper_capture_tasks.py` với `asyncio.create_subprocess_exec` + comment giải thích rõ. |
 | P3-18 | `console.*` 262 lần | ⚠️ Tệ hơn nhẹ | **287** hits / 126 file (+25). |
@@ -91,9 +91,9 @@ Top-level packages mới so với audit cũ: `admin/`, `alerts/`, `automations/`
 
 #### 2. Dead/backup files committed vào git
 - `nowing_backend/app/db.py.legacy` — **7.041 dòng**, tên file không thể import → dead code hoàn toàn, chỉ gây nhiễu search/refactor.
-- `nowing_backend/app/config/global_llm_config.yaml.bak` — file `.bak` trong git.
-- **143 file rác tracked ở root**: ~15 screenshot PNG, `dump.rdb`, `mcp-26-9-test.js`, `mcp-route-test.js`, `new_chat_response.txt`, `session_*_transcript.md`.
-- **Đề xuất**: xóa (đã gitignore `.local_object_store` 7.2G đúng cách); thêm `check-added-large-files` đã có nhưng cần dọn lịch sử.
+- `nowing_backend/app/config/global_llm_config.yaml.bak` và `_bmad/config.toml.bak` — file `.bak` trong git.
+- **~15 file rác tracked ở root**: 13 screenshot `chat-*.png`/`saved-search-detail.png`, `new_chat_response.txt`, `session_acidic-stallion_transcript_clean.md`. (Ngoài ra `dump.rdb`, `mcp-*-test.js` tồn tại nhưng untracked — đã được `.gitignore` phủ bởi `*.rdb`/`mcp-*.png`-style rules.)
+- **Đề xuất**: `git rm` (đã làm trong cleanup kèm audit này); objects lớn vẫn nằm trong git history — dọn history bằng filter-repo/BFG là việc destructive, đã defer.
 
 ### P1 — High
 
@@ -104,11 +104,12 @@ Top-level packages mới so với audit cũ: `admin/`, `alerts/`, `automations/`
 - **Đề xuất**: tiếp tục pattern `connectors/` đã chứng minh — tách theo domain khi file chạm ~800 dòng, đừng chờ 2.000.
 
 #### 4. `check_permission` vẫn gọi thủ công 268 chỗ / 70 file
-- Không có FastAPI dependency `RequirePermission` được adopt (6 hits / 1 file).
+- Hàm ở `nowing_backend/app/utils/rbac.py`; không có FastAPI dependency `RequirePermission` được adopt (6 hits / 1 file).
 - **Đề xuất**: giữ nguyên đề xuất cũ — dependency injection cho RBAC; 268 call sites là audit surface lớn cho authz bugs.
 
 #### 5. Mutation-gate baseline đang hỏng
-- `mutation-nowing-summary-latest.json` (2026-09-09): verdict **FAIL** — `cosmic-ray baseline failed` cho `proprietary/platforms/xactions/mcp_client` (exit 1). Gate không chạy được = không có tín hiệu test-effectiveness cho surface đó.
+- Artifact: `_bmad-output/test-artifacts/mutation-nowing-summary-latest.json` (2026-09-09): verdict **FAIL** — `cosmic-ray baseline failed` cho `proprietary/platforms/xactions/mcp_client` (exit 1), từ `scripts/mutation-gate.py:331`. Reproduce: `python scripts/mutation-gate.py --services proprietary/platforms/xactions/mcp_client --project-root .`.
+- Gate không chạy được = không có tín hiệu test-effectiveness cho surface đó.
 - **Đề xuất**: sửa baseline trước khi gate mất uy tín; thêm alert khi verdict=FAIL.
 
 ### P2 — Medium
@@ -154,6 +155,43 @@ Top-level packages mới so với audit cũ: `admin/`, `alerts/`, `automations/`
 5. **`RequirePermission` dependency** — giảm 268 call-site authz thủ công, đây là attack surface thật.
 6. **Tiếp tục tách `services/`/`routes/` theo domain** ở ngưỡng ~800 dòng — duy trì đà refactor đang rất tốt, đừng để thế hệ giant mới hình thành.
 7. **`no-console` rule + alembic downgrade CI** — quick wins còn nợ từ audit trước.
+
+## Phụ lục — Methodology & Reproduction
+
+Toàn bộ con số trong audit này tái tạo được bằng các lệnh sau (chạy từ repo root):
+
+```bash
+# Graph stats / test gaps / blast radius
+# → code-review-graph MCP: build_or_update_graph_tool(base=9d1fca0b8), get_minimal_context_tool, get_impact_radius_tool
+
+# LOC & file count per component (python walk, skip node_modules/.next/.venv/__pycache__)
+python3 - <<'PY'
+import os
+def loc(path, exts):
+    t=f=0
+    for r,d,fs in os.walk(path):
+        d[:]=[x for x in d if x not in ('node_modules','.next','.venv','__pycache__','dist','.turbo')]
+        for x in fs:
+            if x.endswith(exts):
+                f+=1; t+=sum(1 for _ in open(os.path.join(r,x),'rb'))
+    return f,t
+for name,p,e in [('backend app','nowing_backend/app',('.py',)),('backend tests','nowing_backend/tests',('.py',)),('web','nowing_web',('.ts','.tsx')),('evals','nowing_evals',('.py',))]:
+    print(name, loc(p,e))
+PY
+
+# Pattern counts (except Exception, print(, os.getenv, subprocess, console.*, check_permission, redact_pii, NowingError)
+# → cùng walker trên với re.compile(pattern) tương ứng; except:pass = dòng except theo sau bởi pass|continue
+# .only( / .skip( tương tự trên nowing_web (*.ts,*.tsx); pytest.mark.skip trên nowing_backend/tests
+
+# Tracked-vs-untracked: git ls-files | grep -v '/'  (root), git check-ignore <path>
+# File refs: git grep -l "<filename>"
+# Disk: du -sh nowing_web nowing_backend nowing_backend/.[!.]*
+# Commits: git log 9d1fca0b8..HEAD --oneline | wc -l  (=248)
+# Docs drift: python3 scripts/check-docs-drift.py  → PASSED
+# Mutation gate: cat _bmad-output/test-artifacts/mutation-nowing-summary-latest.json
+```
+
+Test counts: `find nowing_backend/tests/{unit,integration,e2e} -name '*.py' | wc -l`; Playwright: `find nowing_web -name '*.spec.ts' -not -path '*/node_modules/*' | wc -l`.
 
 ## 7. Kết luận
 

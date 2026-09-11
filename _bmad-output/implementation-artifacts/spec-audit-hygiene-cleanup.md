@@ -2,7 +2,7 @@
 title: 'Audit hygiene cleanup — xóa dead files, root clutter, chốt ignore rules'
 type: 'chore'
 created: '2026-09-12'
-status: 'in-progress'
+status: 'in-review'
 review_loop_iteration: 0
 baseline_commit: '92028fe862072331da05ff9fd70afb97c90d7237'
 context: []
@@ -46,18 +46,18 @@ context: []
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `nowing_backend/app/db.py.legacy` — `git rm` — dead code 7K dòng, 0 refs
-- [ ] `nowing_backend/app/config/global_llm_config.yaml.bak` + `_bmad/config.toml.bak` — `git rm` — backup files không thuộc repo
-- [ ] 15 root files (Code Map) — `git rm` — debug artifacts, 0 refs
-- [ ] `e2e-prompt-playbook-global-model.md` — `git mv` vào `docs/` — giữ nội dung doc
-- [ ] `.gitignore` — thêm `.tgrep/` — chặn index local bị commit nhầm
-- [ ] `nowing_backend/pyproject.toml` — thêm `"app/connectors/luma_connector.py" = ["T201"]` vào per-file-ignores — prints ở `__main__` là hợp lệ, tránh flag khi file bị touch
-- [ ] `AUDIT_TECHNICAL_DEBT_2026-09-12.md` — `git add` — record của cleanup
+- [x] `nowing_backend/app/db.py.legacy` — `git rm` — dead code 7K dòng, 0 refs
+- [x] `nowing_backend/app/config/global_llm_config.yaml.bak` + `_bmad/config.toml.bak` — `git rm` — backup files không thuộc repo
+- [x] 15 root files (Code Map) — `git rm` — debug artifacts, 0 refs
+- [x] `e2e-prompt-playbook-global-model.md` — `git mv` vào `docs/` — giữ nội dung doc
+- [x] `.gitignore` — thêm `.tgrep/` + `*.bak` — chặn index local & backup files bị commit nhầm
+- [x] ~~`nowing_backend/pyproject.toml` — thêm T201 per-file-ignore~~ **đã revert trong review**: block `__main__` của `luma_connector.py` nằm trong `"""` comment string, không phải code thực thi — ruff không flag, không cần ignore
+- [x] `AUDIT_TECHNICAL_DEBT_2026-09-12.md` — `git add` — record của cleanup
 
 **Acceptance Criteria:**
-- Given repo ở HEAD mới, when `git ls-files` chạy, then không còn `*.legacy`, `*.bak`, screenshot/transcript/dump txt ở root.
+- Given repo ở HEAD mới, when `git ls-files -- '*.legacy' '*.bak' '*.png' '*.txt' | grep -E '^[^/]+$'` chạy, then 0 kết quả ở root.
 - Given `nowing_backend`, when `uv run python -c "from app.app import app"` chạy, then import thành công không lỗi.
-- Given file luma_connector bị sửa trong PR tương lai, when `ruff check` chạy, then `__main__` prints không bị T201 flag.
+- Given `docs/`, when kiểm tra, then `docs/e2e-prompt-playbook-global-model.md` tồn tại và bản root đã hết.
 
 ## Spec Change Log
 
@@ -67,7 +67,9 @@ context: []
 - `cd nowing_backend && uv run python -c "from app.app import app; print('app import OK')"` — expected: `app import OK`
 - `cd nowing_backend && uv run pytest tests/unit/db -q` — expected: pass (smoke cho `app.db` package sau khi xóa legacy)
 - `git grep -l "db.py.legacy\|global_llm_config.yaml.bak\|config.toml.bak"` — expected: 0 kết quả
-- `cd nowing_backend && ruff check app/connectors/luma_connector.py` — expected: pass (T201 đã ignore)
+- `git ls-files -- '*.legacy' '*.bak' '*.png' '*.txt' | grep -cE '^[^/]+$'` — expected: 0
+- `ls docs/e2e-prompt-playbook-global-model.md` — expected: tồn tại
+- `cd nowing_backend && ruff check app/connectors/luma_connector.py` — expected: pass (prints trong comment string, không cần ignore)
 
 **Manual checks:**
-- `git status` sau commit: chỉ còn đúng các file Epic 31 uncommitted của user.
+- `git status --short` sau commit: chỉ còn đúng các file Epic 31 uncommitted của user.

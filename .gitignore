@@ -65,6 +65,7 @@ nowing_backend/_bmad-output/
 # Git worktrees & dumps
 .worktrees/
 *.rdb
+*.bak
 
 
 # Local search/tooling indexes

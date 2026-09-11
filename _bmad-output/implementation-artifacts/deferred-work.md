@@ -1392,46 +1392,38 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Action:** Resolved. Confirmed all are marked `done` in `sprint-status.yaml`; playbook functionality lives under `app/automations/` (playbook_service, schemas, API) and admin model config under `model_connections_routes.py`.
   - **Resolved:** 2026-09-10.
 
-- source_spec: none
-  summary: Mở rộng quality gates — check_pr_guards cấm `except Exception` mới ở tasks//agents//gateway//connectors/ + cấm `except: pass` mới; biome `no-console` + sweep 287 console.*; alembic downgrade -1 CI smoke; fix mutation-gate baseline xactions/mcp_client
-  evidence: Split từ intent "fix hết" audit 2026-09-12 — nhóm B (guards/CI) độc lập với hygiene cleanup
+- source_spec: `_bmad-output/implementation-artifacts/spec-audit-hygiene-cleanup.md` (gốc: `AUDIT_TECHNICAL_DEBT_2026-09-12.md`)
+  summary: Mở rộng check_pr_guards — cấm `except Exception` mới ở tasks//agents//gateway//connectors/ + cấm `except: pass` mới toàn app/
+  evidence: Split từ intent "fix hết" audit 2026-09-12 — ratchet hiện chỉ phủ routes/+services/ nên nợ dồn sang dirs khác
 
-- source_spec: none
+- source_spec: `_bmad-output/implementation-artifacts/spec-audit-hygiene-cleanup.md` (gốc: `AUDIT_TECHNICAL_DEBT_2026-09-12.md`)
+  summary: Biome `no-console` rule + sweep 287 `console.*` trong nowing_web
+  evidence: Split từ intent "fix hết" audit 2026-09-12 — console.* tăng 262→287
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-audit-hygiene-cleanup.md` (gốc: `AUDIT_TECHNICAL_DEBT_2026-09-12.md`)
+  summary: CI job `alembic downgrade -1` smoke test trên test DB (296 versions, chỉ vài migration có roundtrip test)
+  evidence: Split từ intent "fix hết" audit 2026-09-12 — downgrade() chưa được verify tổng quát
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-audit-hygiene-cleanup.md` (gốc: `AUDIT_TECHNICAL_DEBT_2026-09-12.md`)
+  summary: Fix mutation-gate baseline — `mutation-nowing-summary-latest.json` verdict FAIL: cosmic-ray baseline failed cho `proprietary/platforms/xactions/mcp_client` (exit 1)
+  evidence: Split từ intent "fix hết" audit 2026-09-12 — gate hỏng = mất tín hiệu test-effectiveness
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-audit-hygiene-cleanup.md` (gốc: `AUDIT_TECHNICAL_DEBT_2026-09-12.md`)
+  summary: Dọn git history (git-filter-repo/BFG) — `db.py.legacy` 7K dòng + screenshots đã git rm nhưng objects lớn vẫn nằm trong history
+  evidence: Split từ intent "fix hết" audit 2026-09-12 — history rewrite là destructive, cần quyết định riêng của human
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-audit-hygiene-cleanup.md` (gốc: `AUDIT_TECHNICAL_DEBT_2026-09-12.md`)
   summary: Codemod 89 block `except Exception: pass/continue` thành logger.debug/exception có context
   evidence: Split từ intent "fix hết" audit 2026-09-12 — blast radius rộng, cần review từng call-site
 
-- source_spec: none
+- source_spec: `_bmad-output/implementation-artifacts/spec-audit-hygiene-cleanup.md` (gốc: `AUDIT_TECHNICAL_DEBT_2026-09-12.md`)
   summary: Tạo FastAPI dependency RequirePermission và migrate dần 268 call-site check_permission thủ công (70 file)
   evidence: Split từ intent "fix hết" audit 2026-09-12 — chạm authz, cần spec + review riêng
 
-- source_spec: none
-  summary: Adopt NowingError hierarchy theo domain (hiện 49 raise/16 file so với 1.800 except Exception)
+- source_spec: `_bmad-output/implementation-artifacts/spec-audit-hygiene-cleanup.md` (gốc: `AUDIT_TECHNICAL_DEBT_2026-09-12.md`)
+  summary: Adopt NowingError hierarchy theo domain (hiện 49 raise/16 file so với 1.800 except Exception; hierarchy ở `app/exceptions.py`)
   evidence: Split từ intent "fix hết" audit 2026-09-12 — multi-PR effort theo từng domain
 
-- source_spec: none
+- source_spec: `_bmad-output/implementation-artifacts/spec-audit-hygiene-cleanup.md` (gốc: `AUDIT_TECHNICAL_DEBT_2026-09-12.md`)
   summary: Tách tiếp services//routes/ file >800 dòng theo domain (admin_telemetry 1059, workspace_limits 1030, phone_waterfall 1012, workspaces_routes 1291, rbac_routes 1260, gateway_webhook 1207...)
   evidence: Split từ intent "fix hết" audit 2026-09-12 — refactor dài hạn nhiều PR
-
-- source_spec: '_bmad-output/implementation-artifacts/spec-31-1-dokploy-container-cgroup-network-isolation.md'
-  summary: Tenant-vs-tenant isolation trên `nowing-web-apps-net` chưa đạt — shared bridge vẫn cho ICC giữa các app container; `enable_icc=false` lại chặn cả ingress→app
-  evidence: Review 31.1 — cần quyết định posture: one-network-per-app hoặc published ports; hiện chỉ cô lập được khỏi backend/internal networks
-
-- source_spec: '_bmad-output/implementation-artifacts/spec-31-1-dokploy-container-cgroup-network-isolation.md'
-  summary: Không có egress control trên app network — user container code reach được cloud metadata (169.254.169.254), host LAN, arbitrary internet (SSRF/exfil)
-  evidence: Review 31.1 — pre-existing gap; cần egress allowlist/firewall hoặc `internal: true` + explicit ingress path
-
-- source_spec: '_bmad-output/implementation-artifacts/spec-31-1-dokploy-container-cgroup-network-isolation.md'
-  summary: Container cũ (pre-31.1) giữ nguyên 512m/dokploy-network tới khi force redeploy; workspace NULL-tier redeploy sẽ tụt 512m→256m (OOM risk)
-  evidence: Review 31.1 — `deploy_app` idempotent early-return skip redeploy; cần rollout note/backfill plan_tier hoặc reconcile job khi đổi tier
-
-- source_spec: '_bmad-output/implementation-artifacts/spec-31-1-dokploy-container-cgroup-network-isolation.md'
-  summary: `docker build` cho runtime image vẫn unbounded + `docker run` thiếu `--log-opt max-size` — tenant app spam có thể fill host disk ngoài cgroup
-  evidence: Review 31.1 — build side chưa giới hạn resource/network; log driver không cap size
-
-- source_spec: '_bmad-output/implementation-artifacts/spec-31-1-dokploy-container-cgroup-network-isolation.md'
-  summary: no-HEALTHCHECK fallback trong `_healthcheck_container` chỉ check `.State.Running` — không verify port listener (dormant: image hiện có HEALTHCHECK)
-  evidence: Review 31.1 — nếu image ngoài thiếu HEALTHCHECK, container running-nhưng-không-bind-port vẫn được coi healthy → ingress 502
-
-- source_spec: '_bmad-output/implementation-artifacts/spec-31-1-dokploy-container-cgroup-network-isolation.md'
-  summary: Healthcheck có thể sample đúng dead-window giữa các lần `--restart unless-stopped` restart → biến crash recoverable thành deploy_failed sớm
-  evidence: Review 31.1 — rare; hành vi hiện tại ưu tiên fail-fast đúng cho crash-loop, chấp nhận được nhưng nên documented
