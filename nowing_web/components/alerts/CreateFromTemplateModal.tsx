@@ -342,13 +342,11 @@ export default function CreateFromTemplateModal({
 											Notification Channels
 										</Label>
 										<div className="flex items-center gap-2 pt-0.5">
-											{(
-												[
-													{ id: "in_app" as const, label: "In-App", icon: Bell },
-													{ id: "telegram" as const, label: "Telegram", icon: Send },
-													{ id: "email" as const, label: "Email", icon: Mail },
-												]
-											).map((ch) => {
+											{[
+												{ id: "in_app" as const, label: "In-App", icon: Bell },
+												{ id: "telegram" as const, label: "Telegram", icon: Send },
+												{ id: "email" as const, label: "Email", icon: Mail },
+											].map((ch) => {
 												const active = channels.includes(ch.id);
 												const Icon = ch.icon;
 												return (
