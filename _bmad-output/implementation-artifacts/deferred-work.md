@@ -549,11 +549,11 @@
 ## Deferred from: code review of 12-1-vietnamworks-scraper (2026-08-10)
 
 - **Finding:** `posted_at` full-ISO datetime không tương thích với `app/services/jobs_aggregator/normalize.py`.
-  - **Action:** Blocked — datetime format incompatibility deferred to normalize.py update.
+  - **Action:** Resolved from: code review of 12-1-vietnamworks-scraper (2026-09-11). Extended `_parse_post_date` in `normalize.py` to parse full-ISO datetime strings with time, Z, or timezone offsets via `datetime.fromisoformat`.
   - **Reason / when to revisit:** Cần cập nhật normalizer để parse full ISO datetime hoặc đổi scraper trả `datetime`; thuộc scope aggregator story 12.4.
 
 - **Finding:** `salary_period_id:1` của VietnamWorks bị `normalize.py` map thành "hour" thay vì "month".
-  - **Action:** Blocked — salary period mapping deferred to normalize.py update.
+  - **Action:** Resolved from: code review of 12-1-vietnamworks-scraper (2026-09-11). Added source parameter to `_normalize_salary_period` and `_parse_salary` in `normalize.py` to map `salary_period_id: 1` to 'month' for VietnamWorks.
   - **Reason / when to revisit:** `_SALARY_PERIOD_MAP` chung cho nhiều nguồn, cần map theo nguồn hoặc sửa semantics; thuộc 12.4.
 
 - **Finding:** Aggregate billing gate reserve base fee `VN_JOBS_AGGREGATE_QUERY_MICROS_PER_QUERY` nhưng charge path không cộng base fee.
@@ -561,7 +561,7 @@
   - **Reason / when to revisit:** Base fee chưa được cộng vào `cost_micros`; cần sửa orchestrator hoặc `_charge_vn_jobs_aggregate`; thuộc 12.4/12.5.
 
 - **Finding:** `vn_jobs` subagent `load_tools` không validate `workspace_id` có thể `None`.
-  - **Action:** Blocked — workspace_id validation deferred to subagent fix.
+  - **Action:** Resolved from: code review of 12-1-vietnamworks-scraper (2026-09-11). Added validation in `vn_jobs/tools/index.py:load_tools` returning `[]` when `workspace_id` is None or <= 0 with unit tests.
   - **Reason / when to revisit:** Thêm guard `workspace_id` hoặc fail fast khi build subagent; thuộc 12.4.
 
 - **Finding:** `_gate_vn_jobs_aggregate` under-reserve cho child sources bill per page, `sources=[]` mặc định all sources, fallback `max_items_per_source=10` khác schema default 50.

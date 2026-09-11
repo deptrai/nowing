@@ -58,6 +58,12 @@ def _parse_post_date(value: Any) -> datetime.date | None:
     except ValueError:
         pass
 
+    try:
+        iso_clean = text.replace("z", "+00:00").replace("Z", "+00:00")
+        return datetime.datetime.fromisoformat(iso_clean).date()
+    except ValueError:
+        pass
+
     return None
 
 
@@ -84,22 +90,27 @@ def _infer_salary_period_from_text(text: str | None) -> str | None:
     return None
 
 
-def _normalize_salary_period(raw: Any, text: str | None = None) -> str:
+def _normalize_salary_period(
+    raw: Any, text: str | None = None, source: str | None = None
+) -> str:
     """Map source salary period identifiers to the common schema.
 
     When the source ``salary_period_id`` is inconsistent with the raw text
     (e.g. VietnamWorks text says "/tháng" but id maps to hour), infer from
     the text because that is what the user actually reads.
+    For VietnamWorks, salary_period_id: 1 maps to 'month'.
     """
     inferred = _infer_salary_period_from_text(text)
     if inferred:
         return inferred
+    if source == "vietnamworks" and raw == 1:
+        return "month"
     if raw is None:
         return "month"
     return _SALARY_PERIOD_MAP.get(raw, "month")
 
 
-def _parse_salary(raw: dict[str, Any]) -> VnJobSalary:
+def _parse_salary(raw: dict[str, Any], source: str | None = None) -> VnJobSalary:
     """Build a ``VnJobSalary`` from normalized source fields."""
     text = raw.get("salary_raw")
     salary = VnJobSalary(raw=text, confidence=0.0)
@@ -118,10 +129,10 @@ def _parse_salary(raw: dict[str, Any]) -> VnJobSalary:
         salary.confidence = 0.5
     elif not text and has_salary_fields:
         # No raw text but numeric fields present — derive from numbers.
-        salary.period = _normalize_salary_period(raw.get("salary_period_id"))
+        salary.period = _normalize_salary_period(raw.get("salary_period_id"), text=text, source=source)
         salary.confidence = 0.6
     else:
-        salary.period = _normalize_salary_period(raw.get("salary_period_id"), text=text)
+        salary.period = _normalize_salary_period(raw.get("salary_period_id"), text=text, source=source)
         salary.confidence = 0.6
 
     min_v = int(min_val) if min_val is not None else 0
@@ -241,7 +252,7 @@ def normalize_listing(source: str, raw: dict[str, Any]) -> VnJobAggregatedListin
         employment_type=raw.get("employment_type"),
         experience_years=_normalize_experience(raw.get("experience_years")),
         skills=raw.get("skills") or [],
-        salary=_parse_salary(raw),
+        salary=_parse_salary(raw, source=source),
         posted_at=_parse_post_date(raw.get("posted_at")),
         job_description=_normalize_text(raw.get("job_description")),
         job_requirement=_normalize_text(raw.get("job_requirement")),
