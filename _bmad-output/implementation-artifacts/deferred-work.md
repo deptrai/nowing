@@ -1180,11 +1180,11 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** Add companion migration in Story 21.3 to keep alembic in sync.
 
 - **Finding:** `app/db.py` reintroduces top-level circular `SpatialPlanningZone` import. (app/db.py:4762)
-  - **Action:** Blocked — circular import deferred to db.py refactor.
+  - **Action:** Resolved from: code review of 21-8-social-ingress-via-xactions-integration (2026-09-11). Replaced circular import from `app.db` with direct import from `app.db.base` in `app/proprietary/platforms/spatial_planning/models.py`.
   - **Reason / when to revisit:** Fix in Story 10.8 by moving import inside `create_db_and_tables`.
 
 - **Finding:** SQLAlchemy `cascade="delete-orphan"` for `ZaloMessageLog` conflicts with migration `ON DELETE SET NULL`. (app/db.py:5157-5161,5222-5224)
-  - **Action:** Blocked — cascade conflict deferred to migration fix.
+  - **Action:** Resolved from: code review of 21-8-social-ingress-via-xactions-integration (2026-09-11). Changed `Lead.zalo_message_logs` cascade to `"save-update, merge"` with `passive_deletes=True` in `app/models/leads/main.py` to align with `ON DELETE SET NULL` DDL constraint.
   - **Reason / when to revisit:** Align ORM/migration delete semantics when finalizing 21.6 data model.
 
 - **Finding:** `PhoneResolutionResponse` hard-codes 1.5 credits for async `pending` results. (app/routes/leads_routes.py:595-602)

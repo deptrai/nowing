@@ -138,7 +138,8 @@ class Lead(Base, TimestampMixin):
         back_populates="lead",
         primaryjoin="and_(ZaloMessageLog.lead_id == Lead.id, ZaloMessageLog.workspace_id == Lead.workspace_id)",
         order_by="ZaloMessageLog.created_at.desc()",
-        cascade="all, delete-orphan",
+        cascade="save-update, merge",
+        passive_deletes=True,
         overlaps="workspace,zalo_message_logs",
     )
     outcome_events = relationship(
