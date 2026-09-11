@@ -410,7 +410,7 @@
   - **Reason / when to revisit:** Only affects cities not in the 64-province table. Revisit if users query by district/ward level.
 
 - **Finding:** New city codes (DNA/HAN/HOB/QNA/TNI/VP) in shared `location_normalize` module visible to BĐS aggregator.
-  - **Action:** Blocked — city codes deferred to location_normalize update.
+  - **Action:** Resolved from: code review of story-12-4a-4b-normalize-dedupe-conflict round 2 (2026-09-11). Verified DNA, HAN, HOB, QNA, TNI, VP are defined in `_CITY_SLUGS` in `location_normalize` and added unit test in `bds_aggregator/test_normalize.py`.
   - **Reason / when to revisit:** These are valid Vietnamese provinces; BĐS queries benefit. No regression — only new matches.
 
 - **Finding:** Salary period inference missing English abbreviations ("hrly", "daily", "wkly", "mo", "yr", "annum").
@@ -432,7 +432,7 @@
 ## Deferred from: code review of story-12-4a-4b-normalize-dedupe-conflict (2026-08-12)
 
 - **Finding:** Union-find path compression in `_union_find()` is not reused by the manual root-finding traversal at `dedupe.py:271-273`.
-  - **Action:** Blocked — union-find reuse deferred to dedupe.py fix.
+  - **Action:** Resolved from: code review of story-12-4a-4b-normalize-dedupe-conflict (2026-09-11). Added full path compression pass in `_union_find()` in `jobs_aggregator/dedupe.py` so `deduplicate()` directly reads `parent[i]`.
   - **Reason / when to revisit:** Negligible impact since n ≤ 20 per coarse group and traversal happens once per element. Revisit if dedupe scales to 1000+ listings per company.
 
 ## Deferred from: code review of 20-3-nowing-private-provider (2026-08-11)
@@ -617,7 +617,7 @@
   - **Reason / when to revisit:** Add dedicated tie-break tests once AC-3 p95 latency is stable and the search ordering contract is frozen.
 
 - **Finding:** `_is_templated` does not detect Jinja control-flow tags (`{% ... %}`).
-  - **Action:** Blocked — Jinja control-flow detection deferred to template detection fix.
+  - **Action:** Resolved from: code review of 3-14-memory-injection-bounded-retrieval (2026-09-11). Added `_JINJA_BLOCK_PATTERN` and balanced tag validation for `{% ... %}` in `app/automations/actions/validation.py` with unit tests.
   - **Reason / when to revisit:** Current automation templates use value placeholders only; upgrade when control-flow templates are used in production.
 
 - **Finding:** D10 / D5 non-automation scope matrix not addressed in chunk B.

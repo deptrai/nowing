@@ -87,3 +87,15 @@ def test_first_failing_step_raises() -> None:
         validate_plan_steps([good, bad])
 
     assert exc.value.step_id == "s2"
+
+
+def test_templated_field_with_control_flow_tag() -> None:
+    """Detect Jinja control-flow blocks like {% if ... %}."""
+    from app.automations.actions.validation import _is_templated
+
+    assert _is_templated("{% if x %}5{% else %}1{% endif %}") is True
+    assert _is_templated("{% for item in items %}{{ item }}{% endfor %}") is True
+
+    # Unmatched block raises ValueError
+    with pytest.raises(ValueError, match="malformed Jinja control-flow"):
+        _is_templated("{% unclosed tag")

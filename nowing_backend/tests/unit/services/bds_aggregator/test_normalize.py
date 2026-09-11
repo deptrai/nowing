@@ -107,3 +107,15 @@ def test_canonical_id_is_deterministic():
     a = make_canonical_id({"batdongsan": 1, "chotot_bds": 2})
     b = make_canonical_id({"chotot_bds": 2, "batdongsan": 1})
     assert a == b
+
+
+def test_resolve_new_city_codes_dna_han_hob_qna_tni_vp():
+    """Verify DNA, HAN, HOB, QNA, TNI, VP are resolved by shared location_normalize."""
+    from app.services.location_normalize import resolve_city_code
+
+    assert resolve_city_code("Đồng Nai") == "DNA"
+    assert resolve_city_code("Hà Nam") == "HAN"
+    assert resolve_city_code("Hòa Bình") == "HOB"
+    assert resolve_city_code("Quảng Nam") == "QNA"
+    assert resolve_city_code("Tây Ninh") == "TNI"
+    assert resolve_city_code("Vĩnh Phúc") == "VP"
