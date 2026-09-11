@@ -38,16 +38,21 @@ SUPPORTED_PLATFORMS = [
 _PLATFORM_PATTERN = f"^({'|'.join(SUPPORTED_PLATFORMS)})$"
 
 
+from typing import Literal
+
+SocialTargetStatus = Literal["active", "paused", "error", "disabled"]
+
+
 class SocialTargetCreate(BaseModel):
     platform: str = Field(..., pattern=_PLATFORM_PATTERN)
     target_id: str = Field(..., min_length=1, max_length=255)
     target_name: str = Field(..., min_length=1, max_length=1000)
     target_url: str | None = None
-    category: str = Field(default="general", max_length=50)
+    category: str = Field(default="general", min_length=1, max_length=50)
     is_active: bool = True
     realtime_stream: bool = False
-    scrape_interval_minutes: int = Field(default=15, ge=1)
-    status: str = Field(default="active", max_length=50)
+    scrape_interval_minutes: int = Field(default=15, ge=1, le=10080)
+    status: SocialTargetStatus = Field(default="active")
     proxy_url: str | None = None
     account_id: str | None = None
 
@@ -55,11 +60,11 @@ class SocialTargetCreate(BaseModel):
 class SocialTargetUpdate(BaseModel):
     target_name: str | None = Field(None, min_length=1, max_length=1000)
     target_url: str | None = None
-    category: str | None = Field(None, max_length=50)
+    category: str | None = Field(None, min_length=1, max_length=50)
     is_active: bool | None = None
     realtime_stream: bool | None = None
-    scrape_interval_minutes: int | None = Field(None, ge=1)
-    status: str | None = Field(None, max_length=50)
+    scrape_interval_minutes: int | None = Field(None, ge=1, le=10080)
+    status: SocialTargetStatus | None = Field(None)
     proxy_url: str | None = None
     account_id: str | None = None
 

@@ -100,6 +100,18 @@ class SocialPost(Base, TimestampMixin):
         ),
         Index("idx_social_posts_gin_entities", "raw_entities", postgresql_using="gin"),
         Index(
+            "idx_social_posts_trgm_content",
+            "content",
+            postgresql_using="gin",
+            postgresql_ops={"content": "gin_trgm_ops"},
+        ),
+        Index(
+            "idx_social_posts_trgm_author",
+            "author_name",
+            postgresql_using="gin",
+            postgresql_ops={"author_name": "gin_trgm_ops"},
+        ),
+        Index(
             "idx_social_posts_embedding_hnsw",
             "embedding",
             postgresql_using="hnsw",
