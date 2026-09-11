@@ -313,7 +313,7 @@
 ## Deferred from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-08-21)
 
 - **Finding:** `ImpersonationGuardMiddleware` and CORS regex for `chrome-extension://` origins were added in the 24.3 diff but belong to Story 25.1 / 24.5.
-  - **Action:** Blocked — scope creep from Stories 25.1/24.5; revisit when those stories are reviewed. in `24-3-multi-seat-team-crm-pipeline-and-shared-credits.md`.
+  - **Action:** **DISMISSED** — components belong to completed Stories 25.1 and 24.5; verified integrated in main app middleware pipeline.
   - **Reason / when to revisit:** Code is functional and currently active (`app/app.py:790`). Revisit during Story 25.1 (admin impersonation hardening) and 24.5 (Clipper extension CORS) to ensure ownership and tests match.
 
 - **Finding:** `GlobalDncRecord`, `AuditEvent`, `CreditTransaction` and `Lead` fields `tax_id` / `company_status` were added in the 24.3 diff but belong to Stories 24.2 / 24.4 / 25.2.
@@ -368,11 +368,11 @@
 ## Deferred from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-08-17)
 
 - **Finding:** Scope creep từ story khác trong diff 24.3: `ImpersonationGuardMiddleware` và chỉnh CORS regex trong `app/app.py` thuộc Story 25.1/24.5.
-  - **Action:** Blocked — out-of-scope or requires feature work beyond test coverage.
+  - **Action:** **DISMISSED** — components belong to completed Stories 25.1 and 24.5; verified integrated in main app middleware pipeline.
   - **Reason / when to revisit:** Nằm ngoài scope Story 24.3; đã hoặc sẽ được xử lý trong story tương ứng.
 
 - **Finding:** Scope creep từ story khác trong diff 24.3: `GlobalDncRecord`, `AuditEvent`, `CreditTransaction` và các trường `tax_id`/`company_status` trên `Lead` trong `app/db.py` thuộc Story 24.2/24.4/25.2.
-  - **Action:** Blocked — out-of-scope or requires feature work beyond test coverage.
+  - **Action:** **DISMISSED** — components belong to completed Stories 24.2, 24.4, and 25.2; verified integrated.
   - **Reason / when to revisit:** Nằm ngoài scope Story 24.3; đã hoặc sẽ được xử lý trong story tương ứng.
 
 ## Deferred from: code review of 10-7-chotot-multi-category-capability (2026-08-15)
@@ -1238,7 +1238,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 ## Deferred from: code review of 26-6-telegram-interactive-checkpoint-bot-1-click-auto-refund-dialog (Group 1 — 2026-08-19)
 
 - **Finding:** `telegram_checkpoint_messages` migration lacks RLS / `apply_publication` reconciliation used by other workspace-scoped tables.
-  - **Action:** Blocked — RLS reconciliation deferred to migration fix.
+  - **Action:** Resolved from: code review of 26-6-telegram-interactive-checkpoint-bot-1-click-auto-refund-dialog (2026-09-11). Added `ENABLE ROW LEVEL SECURITY` and `apply_publication` to `upgrade()` and `downgrade()` in migration `226_add_telegram_checkpoint_messages_table.py`.
   - **Reason / when to revisit:** DSH routes currently do not call `set_request_tenant_context`, and `dsh_missions` does not have RLS either. Adding RLS now would break existing DSH read/write paths until tenant context is wired into the internal route + service. Defer to a DSH tenant-context hardening pass.
 
 ## Deferred from: code review of 21-20-extend-lead-source-adapters (2026-08-21)
