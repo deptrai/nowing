@@ -66,3 +66,6 @@ nowing_backend/_bmad-output/
 .worktrees/
 *.rdb
 
+
+# Local search/tooling indexes
+.tgrep/
