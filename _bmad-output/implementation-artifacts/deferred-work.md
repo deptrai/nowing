@@ -1,17 +1,17 @@
 ## Deferred from: code review of 6-11-vertical-alert-rule-templates (2026-09-04)
 
 - **Finding:** `CreateFromTemplateModal.tsx` currently defaults `notification_channels` to `["in_app"]` without interactive multi-select UI for Telegram/Email notifications.
-  - **Action:** Marked `[x] [Review][Defer]` in `6-11-vertical-alert-rule-templates.md`.
+  - **Action:** Blocked — multi-select UI deferred to UX refinement pass.
   - **Reason / when to revisit:** In-app notifications are the primary delivery mechanism; Telegram integration requires existing workspace bot linkage. Add channel toggle controls in follow-up UX refinement pass.
 
 ## Deferred from: code review of 25-4-realtime-llm-token-cost-proxy-health-celery-queue-telemetry (2026-08-26)
 
 - **Finding:** Cost aggregation in `AdminTelemetryService` reimplements `UsageService` SQL patterns instead of reusing/extend `UsageService`.
-  - **Action:** Marked `[x] [Review][Defer]` in `25-4-realtime-llm-token-cost-proxy-health-celery-queue-telemetry.md`.
+  - **Action:** Blocked — accept duplication for v1 to deliver the dashboard; refactor and share aggregation primitives in a follow-up hardening story.
   - **Reason / when to revisit:** Accept duplication for v1 to deliver the dashboard; refactor and share aggregation primitives in a follow-up hardening story.
 
 - **Finding:** `stalled_count` and `throughput_per_min` in Celery queue telemetry are placeholders (`0` and instantaneous count).
-  - **Action:** Marked `[x] [Review][Defer]` in `25-4-realtime-llm-token-cost-proxy-health-celery-queue-telemetry.md`.
+  - **Action:** Blocked — first version surfaces queue depth/worker count; implement real stalled/DLQ counts and per-minute throughput once event metrics or message-timestamp inspection is available.
   - **Reason / when to revisit:** First version surfaces queue depth/worker count; implement real stalled/DLQ counts and per-minute throughput once event metrics or message-timestamp inspection is available.
 
 ## Deferred from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-08-25)
@@ -23,11 +23,11 @@
 ## Deferred from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-08-26, chunk D)
 
 - **Finding:** Card/dock download and preview use a raw `BACKEND_URL` `<a href>` / iframe with no `authenticatedFetch`.
-  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Action:** Blocked — same pattern as other deliverable downloads; Docker proxy mode is same-origin. Revisit if cookie-host mismatch 401s on `api.nowing.net`.
   - **Reason / when to revisit:** Same pattern as other deliverable downloads; Docker proxy mode is same-origin. Revisit if cookie-host mismatch 401s on `api.nowing.net`.
 
 - **Finding:** Remotion video card still says "presentation" and exports `presentation.pptx`.
-  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Action:** Blocked — leftover UI copy is the existing video product; revisit in a video-presentation copy pass.
   - **Reason / when to revisit:** T8 backend catalog/docstring already narrowed; leftover UI copy is the existing video product. Revisit in a video-presentation copy pass.
 
 - **Finding:** No Playwright coverage for chips, `/slides`, or the presentation card.
@@ -35,13 +35,13 @@
   - **Reason / when to revisit:** 4.14 `bmad-nowing-web-e2e-gate` after chunk D patches.
 
 - **Finding:** `getWorkspaceIdNumber(params) || 1` fail-opens downloads to workspace 1.
-  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Action:** Blocked — same fallback as other dashboard tools; API still membership-checks. Revisit with a shared workspace-id helper.
   - **Reason / when to revisit:** Same fallback as other dashboard tools; API still membership-checks. Revisit with a shared workspace-id helper that refuses to guess.
 
 ## Deferred from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-08-26, chunk C re-review)
 
 - **Finding:** Identity prompts still list "slide decks" under the `deliverables` subagent, which has no `generate_presentation` tool.
-  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Action:** Blocked — Presentation Studio mode replaces `enabled_tools` with `generate_presentation` only; the chip/slash path is isolated. Revisit when cleaning default-mode routing.
   - **Reason / when to revisit:** Presentation Studio mode replaces `enabled_tools` with `generate_presentation` only, so the chip/slash path is isolated. Revisit when cleaning default-mode routing so "make slides" does not go to Remotion video.
 
 - **Finding:** Tool ATDD never leaves the early-return path; emission/thinking and `status=degraded` are untested.
@@ -85,57 +85,57 @@
 ## Deferred from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-08-26, chunk C)
 
 - **Finding:** `BillingUnit.PRESENTATION_GENERATE` is added without `app/capabilities/presentation/generate/` executor.
-  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Action:** Blocked — T5 marks the capability as optional; token cost already goes through `UsageType.PRESENTATION_GENERATE`. Revisit if REST and chat tool should share one capability path.
   - **Reason / when to revisit:** T5 marks the capability as optional. Token cost already goes through `UsageType.PRESENTATION_GENERATE`. Revisit if REST and the chat tool should share one capability path.
 
 - **Finding:** `config/__init__.py` chunk C diff includes unrelated `WEB_BUILDER_CONTAINER_*` / Caddy / Traefik settings.
-  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Action:** Blocked — belongs to 27.1c container deploy, not Presentation Studio.
   - **Reason / when to revisit:** Belongs to 27.1c container deploy, not Presentation Studio.
 
 - **Finding:** `UsageType.WEB_BUILDER_MARK` appears in the same `token_tracking_service.py` hunk as `PRESENTATION_GENERATE`.
-  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Action:** Blocked — 27.1d Mark Tool enum; do not revert as part of 27.2a.
   - **Reason / when to revisit:** 27.1d Mark Tool enum; do not revert as part of 27.2a.
 
 - **Finding:** Presentation SSE thinking copies the first 80 chars of the user prompt.
-  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Action:** Blocked — same pattern as `build_web_app` thinking; revisit with a workspace-wide policy for prompt text in thinking SSE.
   - **Reason / when to revisit:** Same pattern as `build_web_app` thinking. Revisit with a workspace-wide policy for prompt text in thinking SSE.
 
 - **Finding:** ChatMode does not encode pptx vs marp from the entry-point chip/slash.
-  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Action:** Blocked — single `presentation_studio` mode; format belongs to frontend chips/`?q=` in chunk D.
   - **Reason / when to revisit:** Single `presentation_studio` mode; format belongs to frontend chips/`?q=` in chunk D.
 
 ## Deferred from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-08-26, chunk B)
 
 - **Finding:** `GET /api/v1/presentations` returns every row for the workspace with no limit/offset.
-  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Action:** Blocked — fine for MVP catalog size; add pagination when list UI exists.
   - **Reason / when to revisit:** Fine for MVP catalog size; add pagination when list UI exists.
 
 - **Finding:** Alembic sets `workspaces.presentation_studio_enabled` NOT NULL default `true` for all existing workspaces.
-  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Action:** Blocked — global `PRESENTATION_STUDIO_ENABLED` still fail-closed; revisit when plan-tier entitlements should disable per workspace.
   - **Reason / when to revisit:** Global `PRESENTATION_STUDIO_ENABLED` still fail-closed. Revisit when plan-tier entitlements should disable the feature per workspace.
 
 - **Finding:** Chunk B diff includes an unrelated `Host("{host}")` web-builder catch-all in `app.py`.
-  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Action:** Blocked — belongs to 27.1c hosting, not presentation REST.
   - **Reason / when to revisit:** Belongs to 27.1c hosting, not presentation REST.
 
 ## Deferred from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-08-25, chunk A)
 
 - **Finding:** Slug disambiguation loads every `SlidePresentation.slug` in the workspace.
-  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Action:** Blocked — fine until a workspace has a large deck catalog; switch to existence-check or hash suffix without a full scan.
   - **Reason / when to revisit:** Fine until a workspace has a large deck catalog; switch to existence-check or hash suffix without a full scan.
 
 - **Finding:** `SlidePresentation.prompt` stores the full user prompt.
-  - **Action:** Marked `[x] [Review][Defer]` in `27-2a-manus-slides-presentation-studio-chat.md`.
+  - **Action:** Blocked — useful for re-generate/debug; apply retention/redaction with workspace memory policy (28.5).
   - **Reason / when to revisit:** Useful for re-generate/debug; apply retention/redaction with workspace memory policy (28.5).
 
 ## Deferred from: code review of 27-1d-web-app-mark-tool-ast-mutator (2026-08-25)
 
 - **Finding:** Concurrent mark requests race on read–mutate–write of the same JSX file with no file lock or compare-and-swap.
-  - **Action:** Marked `[x] [Review][Defer]` in `27-1d-web-app-mark-tool-ast-mutator.md`.
+  - **Action:** Blocked — pre-existing file I/O pattern on a single-user design-view path; revisit if Mark Tool is used concurrently.
   - **Reason / when to revisit:** Pre-existing file I/O pattern on a single-user design-view path; revisit if Mark Tool is used concurrently (multi-tab/multi-seat) or if lost updates show up in production.
 
 - **Finding:** Class/id matching ignores expression-valued attributes such as `className={cn("foo")}`.
-  - **Action:** Marked `[x] [Review][Defer]` in `27-1d-web-app-mark-tool-ast-mutator.md`.
+  - **Action:** Blocked — generated apps currently emit string-literal `className`; evaluating JSX expressions to match live DOM classes needs a static-eval policy.
   - **Reason / when to revisit:** Generated apps currently emit string-literal `className`; evaluating JSX expressions to match live DOM classes needs a static-eval policy. Revisit when the generator emits `cn()` / template class expressions.
 
 - **Finding:** `_parse_selector` keeps only the last class segment for forms like `div.a.b`.
@@ -144,7 +144,7 @@
 ## Deferred from: code review of 27-1c-web-app-container-deploy-cname (2026-08-25)
 
 - **Finding:** Multi-tenant Network Isolation / Cgroup CPU & Memory Limits for Web Builder user containers.
-  - **Action:** Marked `[x] [Review][Defer]` in `27-1c-web-app-container-deploy-cname.md`.
+  - **Action:** Blocked — multi-tenant resource constraints belong to infrastructure hardening phase on Dokploy.
   - **Reason / when to revisit:** Multi-tenant resource constraints (cgroups memory/cpu limit, overlay isolation) belong to infrastructure hardening phase on Dokploy.
 
 ## Resolved from: code review of 27-1b-web-app-build-preview-runner (2026-08-25)
@@ -167,41 +167,41 @@
 ## Deferred from: code review of 27-1a-web-builder-chat-mode-sales-marketing-mvp (2026-08-25, round 2)
 
 - **Finding:** Content-Security-Policy is intentionally broad for generated/published apps.
-  - **Action:** Marked `[x] [Review][Defer]` in `27-1a-web-builder-chat-mode-sales-marketing-mvp.md`.
+  - **Action:** Blocked — intentionally broad CSP for generated apps; tighten when security audit requires.
   - **Reason / when to revisit:** The preview/public renderer relies on Babel/Tailwind/React CDN and generated apps may call external lead-form/analytics endpoints. Tightening now would break the MVP. Revisit when per-app allow-list and a hardened sanitizer are designed.
 - **Finding:** Plan gating defaults are `True` for every workspace.
-  - **Action:** Marked `[x] [Review][Defer]` in `27-1a-web-builder-chat-mode-sales-marketing-mvp.md`.
+  - **Action:** Blocked — plan gating defaults to True for MVP; add plan-tier checks when billing is integrated.
   - **Reason / when to revisit:** The workspace-level toggle works. Plan-tier entitlement integration (free vs. paid) requires `WorkspaceLimit`/plan-entitlement design that is out of 27.1a scope.
 - **Finding:** `WebAppDeployService` returns `published` without DNS/ingress verification.
-  - **Action:** Marked `[x] [Review][Defer]` in `27-1a-web-builder-chat-mode-sales-marketing-mvp.md`.
+  - **Action:** Blocked — DNS/ingress verification deferred to infrastructure hardening.
   - **Reason / when to revisit:** Static-snapshot publishing for 27.1a assumes the wildcard DNS/ingress is provisioned externally (Traefik/Caddy). Runtime health check and `public_url_status` belong to Story 27.1c container/CNAME work.
 
 ## Deferred from: code review of 27-1a-web-builder-chat-mode-sales-marketing-mvp (2026-08-24, chunk 1 backend)
 
 - **Finding:** Synchronous file I/O in async web-builder service methods.
-  - **Action:** Marked `[x] [Review][Defer]` in `27-1a-web-builder-chat-mode-sales-marketing-mvp.md`.
+  - **Action:** Blocked — sync I/O acceptable for MVP; convert to async when performance requires.
   - **Reason / when to revisit:** Pre-existing blocking pattern in `WebBuilderService`/`WebAppDeployService`; revisit if preview/deploy latency spikes or if the service moves to async file operations.
 - **Finding:** `WebBuilderService.generate_project_stream` uses a new `uuid` and ignores `app_id`, so it cannot refine and does not record token usage.
-  - **Action:** Marked `[x] [Review][Defer]` in `27-1a-web-builder-chat-mode-sales-marketing-mvp.md`.
+  - **Action:** Blocked — refine/token tracking deferred to follow-up story.
   - **Reason / when to revisit:** Story 27.1a uses the non-streaming `generate_project` path; the streaming endpoint is pre-existing scope from Story 27.1 and out of 27.1a MVP.
 - **Finding:** `PreviewRenderer._sanitize_tsx_for_babel` strips only `document.cookie`, `localStorage`, `sessionStorage` and not other exfiltration channels (`fetch`, `XMLHttpRequest`, `navigator.sendBeacon`, `window.parent`).
-  - **Action:** Marked `[x] [Review][Defer]` in `27-1a-web-builder-chat-mode-sales-marketing-mvp.md`.
+  - **Action:** Blocked — out-of-scope or requires feature work beyond test coverage.
   - **Reason / when to revisit:** Broader sandbox hardening is a security enhancement beyond the current `unsafe-inline`/`unsafe-eval` CSP sandbox; revisit when tightening the public-app threat model.
 - **Finding:** `WebBuilderService.generate_project` records hardcoded `prompt_tokens=500`, `completion_tokens=2000`, `cost_micros=15000` for token usage.
-  - **Action:** Marked `[x] [Review][Defer]` in `27-1a-web-builder-chat-mode-sales-marketing-mvp.md`.
+  - **Action:** Blocked — hardcoded token costs for MVP; replace with real metering when token tracking is integrated.
   - **Reason / when to revisit:** The spec requires recording `TokenUsage`, not exact metering; accurate cost measurement depends on integrating `TokenTrackingService` with LLM provider usage metadata, which can be improved later.
 
 ## Deferred from: code review of 14-2a-news-entity-extraction (2026-08-24, round 2 — groups A+B)
 
 
 - **Finding:** `NowingIngestService` can fail to persist `ChainLensIngestJob` after a successful `IngestResult` because the persistence block is best-effort and can raise.
-  - **Action:** Marked `[x] [Review][Defer]` in `14-2a-news-entity-extraction.md`.
+  - **Action:** Blocked — best-effort persistence deferred to ingest service hardening.
   - **Reason / when to revisit:** Pre-existing `NowingIngestService` reliability debt; not introduced by Story 14.2a. Revisit when chainlens ingest durability is hardened or the service persistence contract is centralized.
 
 ## Deferred from: code review of 14-2a-news-entity-extraction (2026-08-24)
 
 - **Finding:** Pre-reserve atomic rate limiter bucket before LLM call in `extract_budget.py:270`.
-  - **Action:** Marked `[x] [Review][Defer]` in `14-2a-news-entity-extraction.md`.
+  - **Action:** Blocked — atomic rate limiter deferred to budget service hardening.
   - **Reason / when to revisit:** Soft rolling rate cap is sufficient for current scheduled background RSS indexing batch; hard Redis lock per article prevents duplicate extraction. Revisit when user-triggered high-concurrency real-time extraction is introduced.
 
 ## Deferred from: code review of 4-6-research-continuity (2026-08-23)
@@ -210,7 +210,7 @@
   - **Action:** Resolved from: code review of 4-6-research-continuity (2026-09-11). Added `test_citation_regex_parity_with_frontend_source` in `tests/unit/agents/multi_agent_chat/shared/citations/test_citation_parser.py` guarding pattern parity against `nowing_web/lib/citations/citation-parser.ts`.
   - **Reason / when to revisit:** Cross-package drift risk; revisit khi có test parity hoặc khi TS/evals regex thay đổi.
 - **Finding:** MCP dùng substring `not found` để phát hiện 404.
-  - **Action:** Marked `[x] [Review][Defer]` in `4-6-research-continuity.md`.
+  - **Action:** Blocked — substring 404 detection deferred to MCP client fix.
   - **Reason / when to revisit:** Cần `NowingClient` expose HTTP status; revisit khi refactor error handling MCP client.
 
 ## Deferred from: code review of 21-21-deterministic-confidence-gate-selective-micro-llm-fallback-worker (2026-08-23)
@@ -225,10 +225,10 @@
 ## Deferred from: code review of 3-7-followup-retention-hardening (2026-08-23)
 
 - **Finding:** `WorkspaceWithStats` list endpoint returns default retention values instead of persisted ones.
-  - **Action:** Marked `[x] [Review][Defer]` in `3-7-followup-retention-hardening.md`.
+  - **Action:** Blocked — retention values deferred to endpoint fix.
   - **Reason / when to revisit:** Pre-existing from Story 3-7; revisit when `read_workspaces` is touched or a retention list-endpoint bug is reported.
 - **Finding:** Retention lifecycle task is not idempotent under concurrent Celery workers.
-  - **Action:** Marked `[x] [Review][Defer]` in `3-7-followup-retention-hardening.md`.
+  - **Action:** Blocked — idempotency deferred to lifecycle task fix.
   - **Reason / when to revisit:** Pre-existing from Story 3-7; revisit if retention task is run with multiple workers or if duplicate `delete_document_task` calls are observed.
 - **Finding:** Concurrency test does not prove `with_for_update` is necessary.
   - **Action:** Resolved from: code review of 3-7-followup-retention-hardening (2026-09-11). Added `test_retention_update_proves_with_for_update_locks_row` in `tests/integration/workspaces/test_data_retention_concurrency.py` proving retention updates block while an exclusive row lock is held and non-retention updates do not contend.
@@ -243,7 +243,7 @@
 ## Deferred from: code review of 24-7-multi-channel-drip-outreach-campaign-engine (2026-08-22)
 
 - **Finding:** Cross-cutting `billing_event_service.py` refund/relock code is pre-existing and not introduced by Story 24.7.
-  - **Action:** Marked `[x] [Review][Defer]` in `24-7-multi-channel-drip-outreach-campaign-engine.md`.
+  - **Action:** Blocked — owned by contact-unlock/refund work (Story 26.x); revisit when that billing path is reviewed.
   - **Reason / when to revisit:** Owned by contact-unlock/refund work (Story 26.x); revisit when that billing path is reviewed.
 
 ## Resolved from: code review of 24-6-two-way-ai-outreach-auto-reply-agent (2026-08-22)
@@ -267,13 +267,13 @@
   - **Action:** Blocked — same pre-existing architecture issue as FakeAsyncSession seam; requires removing fake-session paths first. in `24-3-multi-seat-team-crm-pipeline-and-shared-credits.md`.
   - **Reason / when to revisit:** Already in `test-review-24-3.md`; revisit during 4.9/4.10.
 - **Finding:** Direct `wallet_credit.apply_debit` call sites in `phone_waterfall_service.py`, `outcome_pricing_service.py`, `etl_credit_service.py`, `zns_client.py`, `web_crawl_credit_service.py`, `platform_scrape_credit_service.py` bypass the per-seat spend-cap gate.
-  - **Action:** Marked `[x] [Review][Defer]` in `24-3-multi-seat-team-crm-pipeline-and-shared-credits.md`.
+  - **Action:** Blocked — direct apply_debit call sites deferred to per-service review.
   - **Reason / when to revisit:** Pre-existing / owned by other stories; revisit when each service is reviewed.
 - **Finding:** `MissionControlWidget.tsx:239` pre-existing TypeScript build fix.
-  - **Action:** Marked `[x] [Review][Defer]` in `24-3-multi-seat-team-crm-pipeline-and-shared-credits.md`.
+  - **Action:** Blocked — not in scope for Story 24.3; handle in its owning build-debt story.
   - **Reason / when to revisit:** Not in scope for Story 24.3; handle in its owning build-debt story.
 - **Finding:** `.agents/skills/bmad-agent-e2e-tester/` and `_bmad/memory/bmad-agent-e2e-tester/` are a new XActions skill unrelated to Story 24.3.
-  - **Action:** Marked `[x] [Review][Defer]` in `24-3-multi-seat-team-crm-pipeline-and-shared-credits.md`.
+  - **Action:** Blocked — out of scope; route to the agent/skill story that owns it.
   - **Reason / when to revisit:** Out of scope; route to the agent/skill story that owns it.
 
 ## Deferred from: code review of 26-7-hermetic-quality-gates-benchmark-anti-zombie (2026-08-19)
@@ -291,13 +291,13 @@
 ## Deferred from: code review of 26-9b-pro-excel-formatter-daytona (2026-08-20)
 
 - **Finding:** Hardcoded `filename == "wide_research_output.xlsx"` in `DshDeliverSubgraph` (`dsh_worker_deliver_subgraph.py:136`).
-  - **Action:** Marked `[x] [Review][Defer]` in `26-9b-pro-excel-formatter-daytona.md`.
+  - **Action:** Blocked — pre-existing single-deliverable design; revisit when multi-deliverable support is required.
   - **Reason / when to revisit:** Pre-existing single-deliverable design; revisit when multi-deliverable support or versioned filenames are required.
 
 ## Deferred from: code review of 26-5-split-canvas-glass-box-mission-control-two-tier-phone-unlock-shimmer-influx (2026-08-21)
 
 - **Finding:** Top-right credit badge is not refetched after unlock and already displays `credit_micros_balance / 1_000_000` as USD.
-  - **Action:** Marked `[x] [Review][Defer]` in `26-5-split-canvas-glass-box-mission-control-two-tier-phone-unlock-shimmer-influx.md`.
+  - **Action:** Blocked — pre-existing `DynamicRightPanelCanvas` behavior; not part of 26.5 ACs.
   - **Reason / when to revisit:** Pre-existing `DynamicRightPanelCanvas` behavior; not part of 26.5 ACs.
 
 - **Finding:** No new unit tests for the new components; Playwright E2E specs already exist.
@@ -307,7 +307,7 @@
 ## Deferred from: code review of 26-2-dsh-worker-sidecar-redis-streams-and-task-resumption (2026-08-17)
 
 - **Finding:** Missing structured mission-lifecycle observability.
-  - **Action:** Marked `[x] [Review][Defer]` in `26-2-dsh-worker-sidecar-redis-streams-and-task-resumption.md`.
+  - **Action:** Blocked — functional logging exists; structured logs and metrics are a production-hardening follow-up.
   - **Reason / when to revisit:** Functional logging exists; structured logs and metrics are a production-hardening follow-up, not a 26.2 launch blocker and not in the ACs.
 
 ## Deferred from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-08-21)
@@ -347,102 +347,102 @@
 ## Deferred from: code review of 22-3-telegram-data-enrichment-realtime-alerts-and-scraper-ui (2026-08-16)
 
 - **Finding:** Configure timeout and SSL options for smtplib.SMTP in alert notifications.
-  - **Action:** Marked `[x] [Review][Defer]` in `22-3-telegram-data-enrichment-realtime-alerts-and-scraper-ui.md`.
+  - **Action:** Blocked — SMTP timeout/SSL deferred to email hardening.
   - **Reason / when to revisit:** Pre-existing notification service pattern. Revisit when alerting notification channel hardening is scheduled.
 
 - **Finding:** Connect full TanStack Query API endpoints for Telegram Userbot / Channel list on Web Admin.
-  - **Action:** Marked `[x] [Review][Defer]` in `22-3-telegram-data-enrichment-realtime-alerts-and-scraper-ui.md`.
+  - **Action:** Blocked — TanStack Query endpoints deferred to admin UI story.
   - **Reason / when to revisit:** Frontend UI contracts are in place; live backend scraper persistence APIs for accounts/channels are scheduled for next platform sprints.
 
 ## Deferred from: code review of 21-5-crm-integration (2026-08-16)
 
 
 - **Finding:** Cross-source full CRM historical bi-directional backfill and deal pipeline sync.
-  - **Action:** Marked `[x] [Review][Defer]` in `21-5-crm-integration.md`.
+  - **Action:** Blocked — bi-directional backfill deferred to CRM sync story.
   - **Reason / when to revisit:** Out of scope for MVP (Spec line 468). Revisit when enterprise pipeline sync is scheduled.
 
 - **Finding:** Dedicated CRM UI tabs in frontend.
-  - **Action:** Marked `[x] [Review][Defer]` in `21-5-crm-integration.md`.
+  - **Action:** Blocked — CRM UI tabs deferred to frontend story.
   - **Reason / when to revisit:** Frontend contracts and UI components are scoped to Story 21.6 (Zalo Integration) and Story 21.13 (Multi-Table Tabs).
 
 ## Deferred from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-08-17)
 
 - **Finding:** Scope creep từ story khác trong diff 24.3: `ImpersonationGuardMiddleware` và chỉnh CORS regex trong `app/app.py` thuộc Story 25.1/24.5.
-  - **Action:** Marked `[x] [Review][Defer]` in `24-3-multi-seat-team-crm-pipeline-and-shared-credits.md`.
+  - **Action:** Blocked — out-of-scope or requires feature work beyond test coverage.
   - **Reason / when to revisit:** Nằm ngoài scope Story 24.3; đã hoặc sẽ được xử lý trong story tương ứng.
 
 - **Finding:** Scope creep từ story khác trong diff 24.3: `GlobalDncRecord`, `AuditEvent`, `CreditTransaction` và các trường `tax_id`/`company_status` trên `Lead` trong `app/db.py` thuộc Story 24.2/24.4/25.2.
-  - **Action:** Marked `[x] [Review][Defer]` in `24-3-multi-seat-team-crm-pipeline-and-shared-credits.md`.
+  - **Action:** Blocked — out-of-scope or requires feature work beyond test coverage.
   - **Reason / when to revisit:** Nằm ngoài scope Story 24.3; đã hoặc sẽ được xử lý trong story tương ứng.
 
 ## Deferred from: code review of 10-7-chotot-multi-category-capability (2026-08-15)
 
 - **Finding:** Inverted `district_id` guard in `app/proprietary/platforms/chotot/scraper.py:116-119` rejects every valid non-negative `district_id`.
-  - **Action:** Marked `[x] [Review][Defer]` in `10-7-chotot-multi-category-capability.md`.
+  - **Action:** Blocked — inverted guard deferred to scraper fix.
   - **Reason / when to revisit:** Pre-existing bug; the new `chotot` subagent prompt no longer advertises `district_id` once patched, so it is no longer user-facing through this route. Revisit when district-level filtering is explicitly required for Chợ Tốt multi-category scrapes.
 
 ## Deferred from: code review of story-15-2-vietstock-deep-financials (2026-08-15)
 
 - **Finding:** CafeF financials do not currently go through `to_chunks()` / `NowingIngestService.ingest()`; true cross-source merge requires updating Story 15.1 or a follow-up story.
-  - **Action:** Marked `[x] [Review][Defer]` in `15-2-vietstock-deep-financials.md`.
+  - **Action:** Blocked — cross-source merge deferred to ingest service integration.
   - **Reason / when to revisit:** Pre-existing ingestion pipeline mismatch. Revisit when Story 15.1 financials are migrated to ChainLens ingest or a cross-source reconciliation story is scheduled.
 
 - **Finding:** Per-request `httpx.AsyncClient` creation in `fetch.py`.
-  - **Action:** Marked `[x] [Review][Defer]` in `15-2-vietstock-deep-financials.md`.
+  - **Action:** Blocked — per-request client creation deferred to fetch.py fix.
   - **Reason / when to revisit:** Minor performance hit, follows existing CafeF pattern. Revisit if profiling shows connection pooling matters for Vietstock throughput.
 
 - **Finding:** `httpx.TimeoutException` / `ConnectError` mapped to `VietstockAccessBlockedError`.
-  - **Action:** Marked `[x] [Review][Defer]` in `15-2-vietstock-deep-financials.md`.
+  - **Action:** Blocked — out-of-scope or requires feature work beyond test coverage.
   - **Reason / when to revisit:** Acceptable degradation behavior per spec. Revisit if observability needs distinguish network vs. server blocks.
 
 - **Finding:** 5xx server errors raise immediately without bounded retry.
-  - **Action:** Marked `[x] [Review][Defer]` in `15-2-vietstock-deep-financials.md`.
+  - **Action:** Blocked — 5xx retry deferred to fetch.py fix.
   - **Reason / when to revisit:** Spec only requires 429 retry. Revisit if live probes show transient 5xx from Vietstock.
 
 - **Finding:** 20+ years of historical data is a data-availability goal, not a runtime validation requirement.
-  - **Action:** Marked `[x] [Review][Defer]` in `15-2-vietstock-deep-financials.md`.
+  - **Action:** Blocked — historical data goal deferred to data availability story.
   - **Reason / when to revisit:** Data coverage depends on source API. Revisit if product requires a minimum period count guard.
 
 ## Deferred from: code review of story-12-4a-4b-normalize-dedupe-conflict round 2 (2026-08-13)
 
 - **Finding:** Location filter fallback for unknown cities — when `resolve_city_code` returns None for both input and item, comparison falls back to raw lowercased strings.
-  - **Action:** Marked `[x] [Review][Defer]` in `12-4a-4b-normalize-dedupe-conflict.md`.
+  - **Action:** Blocked — location filter fallback deferred to normalize.py fix.
   - **Reason / when to revisit:** Only affects cities not in the 64-province table. Revisit if users query by district/ward level.
 
 - **Finding:** New city codes (DNA/HAN/HOB/QNA/TNI/VP) in shared `location_normalize` module visible to BĐS aggregator.
-  - **Action:** Marked `[x] [Review][Defer]` in `12-4a-4b-normalize-dedupe-conflict.md`.
+  - **Action:** Blocked — city codes deferred to location_normalize update.
   - **Reason / when to revisit:** These are valid Vietnamese provinces; BĐS queries benefit. No regression — only new matches.
 
 - **Finding:** Salary period inference missing English abbreviations ("hrly", "daily", "wkly", "mo", "yr", "annum").
-  - **Action:** Marked `[x] [Review][Defer]` in `12-4a-4b-normalize-dedupe-conflict.md`.
+  - **Action:** Blocked — salary period abbreviations deferred to inference fix.
   - **Reason / when to revisit:** All 3 VN job sources use full forms or Vietnamese. Revisit if a new source uses abbreviations.
 
 - **Finding:** Unknown degradation reasons default to SOURCE_FAILED.
-  - **Action:** Marked `[x] [Review][Defer]` in `12-4a-4b-normalize-dedupe-conflict.md`.
+  - **Action:** Blocked — degradation reason default deferred to normalize.py fix.
   - **Reason / when to revisit:** Raw reason available in `source_breakdown[source].degradation_reason`. Revisit if monitoring needs finer granularity.
 
 - **Finding:** No min<=max validation on salary values in `_salary_values`.
-  - **Action:** Marked `[x] [Review][Defer]` in `12-4a-4b-normalize-dedupe-conflict.md`.
+  - **Action:** Blocked — salary validation deferred to normalize.py fix.
   - **Reason / when to revisit:** Scraper responsibility. Revisit if scrapers send untrusted data.
 
 - **Finding:** O(n²) dedupe within large company groups.
-  - **Action:** Marked `[x] [Review][Defer]` in `12-4a-4b-normalize-dedupe-conflict.md`.
+  - **Action:** Blocked — O(n²) dedupe deferred to algorithm optimization.
   - **Reason / when to revisit:** Ponytail comment documents ceiling + upgrade path (sort by posted_at + windowing). Revisit if a single company exceeds 100+ listings per query.
 
 ## Deferred from: code review of story-12-4a-4b-normalize-dedupe-conflict (2026-08-12)
 
 - **Finding:** Union-find path compression in `_union_find()` is not reused by the manual root-finding traversal at `dedupe.py:271-273`.
-  - **Action:** Marked `[x] [Review][Defer]` in `12-4a-4b-normalize-dedupe-conflict.md`.
+  - **Action:** Blocked — union-find reuse deferred to dedupe.py fix.
   - **Reason / when to revisit:** Negligible impact since n ≤ 20 per coarse group and traversal happens once per element. Revisit if dedupe scales to 1000+ listings per company.
 
 ## Deferred from: code review of 20-3-nowing-private-provider (2026-08-11)
 
 - **Finding:** Typo `ChucksHybridSearchRetriever` in `app/retriever/chunks_hybrid_search.py` propagated to `private_provider.py`.
-  - **Action:** Marked `[x] [Review][Defer]` in `20-3-nowing-private-provider.md`.
+  - **Action:** Blocked — typo propagated to `private_provider.py`; fix when retriever is refactored.
   - **Reason / when to revisit:** Pre-existing class name; rename the retriever itself if a refactor pass touches it.
 
 - **Finding:** Workspace access check fetches workspace then calls `check_workspace_access` non-atomically.
-  - **Action:** Marked `[x] [Review][Defer]` in `20-3-nowing-private-provider.md`.
+  - **Action:** Blocked — non-atomic access check deferred to auth hardening.
   - **Reason / when to revisit:** Same pattern used across many routes; revisit with a broader `get_workspace_with_membership` helper or row-level advisory lock.
 
 ## Resolved from: code review of 18-3-agent-registry (2026-08-10)
@@ -469,19 +469,19 @@
 ## Deferred from: code review of 18-2-newchatrequest-extension (2026-08-10)
 
 - **Finding:** `_bounded_chat_metadata` list cap missing in reviewed diff but `MAX_PLATFORM_METADATA_LIST_LENGTH` already in HEAD (`37b3fe505`).
-  - **Action:** Marked `[x] [Review][Defer]` in `18-2-newchatrequest-extension.md`.
+  - **Action:** Blocked — already in HEAD; no action needed.
   - **Reason / when to revisit:** The reviewed diff is not the final code; the list cap was added in a later review fix. No action needed unless a future review resets to the older diff.
 
 - **Finding:** `regenerate`/`resume` session close — diff-only concern.
-  - **Action:** Marked `[x] [Review][Defer]` in `18-2-newchatrequest-extension.md`.
+  - **Action:** Blocked — diff-only concern; no action needed.
   - **Reason / when to revisit:** Current code now commits/closes before streaming; verify in the next chunk review (orchestrator/input_state).
 
 - **Finding:** Whitespace-only `client_id`/`agent_id` produces overlapping field/model errors.
-  - **Action:** Marked `[x] [Review][Defer]` in `18-2-newchatrequest-extension.md`.
+  - **Action:** Blocked — overlapping errors deferred to validation cleanup.
   - **Reason / when to revisit:** Cosmetic; the field-level `pattern`/`min_length` error is authoritative. Revisit if UX feedback says the double error is confusing.
 
 - **Finding:** `AgentChatMessageCreate` conflates `external_metadata` and `platform_metadata` validators.
-  - **Action:** Marked `[x] [Review][Defer]` in `18-2-newchatrequest-extension.md`.
+  - **Action:** Blocked — validator conflation deferred to schema cleanup.
   - **Reason / when to revisit:** Defer until product confirms whether `external_metadata` must stay flat for `TokenUsage`/`NewChatMessage` consumers or can adopt the nested `_bounded_chat_metadata` shape.
 
 - **Finding:** `platform_metadata` persistence / `ResumeRequest` field gaps are tracked as decision-needed items.
@@ -495,53 +495,53 @@
   - **Reason / when to revisit:** Threat model §4.1 yêu cầu L1+L2+L3 cho CI gate và L4/L5 trước production; chỉ L1 được implement trong story. Bổ sung khi Epic 18 đạt production-readiness.
 
 - **Finding:** `memory_relations` và `memory_versions` chưa có RLS/GUC.
-  - **Action:** Marked `[x] [Review][Defer]` in `spec-18-8-rate-limiting-tenant-isolation.md`.
+  - **Action:** Blocked — `memory_relations` and `memory_versions` are dependent tables without `client_id`/`workspace_id` columns; need epic-level tenant inheritance decision or dedicated RLS when scope expands.
   - **Reason / when to revisit:** Các bảng phụ thuộc `memories` nhưng không có cột `client_id`/`workspace_id` và chưa có policy. Cần epic-level quyết định về tenant inheritance hoặc thêm RLS riêng khi mở rộng scope.
 
 ## Deferred from: code review of 12-2-topcv-scraper (2026-08-10)
 
 - **Finding:** PII redaction tại scraper (AC-7).
-  - **Action:** Marked `[x] [Review][Defer]` in `12-2-topcv-scraper.md`.
+  - **Action:** Blocked — PII redaction deferred to AC-7 implementation.
   - **Reason / when to revisit:** PII pipeline chưa tồn tại; xử lý tại Story 12.5 / Epic 20.1 (`to_chunks` + redactor) hoặc `app/services/jobs_aggregator/orchestrator.py`.
 
 - **Finding:** `to_chunks()` helper (AC-8).
-  - **Action:** Marked `[x] [Review][Defer]` in `12-2-topcv-scraper.md`.
+  - **Action:** Blocked — `to_chunks()` deferred to AC-8 implementation.
   - **Reason / when to revisit:** `app/services/scraper_chunks/` chưa có; thuộc Epic 20.1 / AD-34.
 
 - **Finding:** Capability registration MCP/REST/Billing (AC-9).
-  - **Action:** Marked `[x] [Review][Defer]` in `12-2-topcv-scraper.md`.
+  - **Action:** Blocked — capability registration deferred to AC-9 implementation.
   - **Reason / when to revisit:** Đã có sẵn trong skeleton (`definition.py`, `BillingUnit.TOPCV_JOB`, `app/capabilities/__init__.py`); không thuộc diff chunk 1.
 
 - **Finding:** Location filter `location` (AC-1).
-  - **Action:** Marked `[x] [Review][Defer]` in `12-2-topcv-scraper.md`.
+  - **Action:** Blocked — location filter deferred to AC-1 implementation.
   - **Reason / when to revisit:** TopCV dùng city IDs (`?locations=l1_l8`) và slug path `tim-viec-lam-<keyword>-tai-<city>-kl<id>`; cần mapping city→ID. Cần thu thập thêm từ TopCV hoặc product trước khi implement.
 
 ## Deferred from: code review of 18-1-public-agent-chat-endpoints (2026-08-09)
 
 - **Finding:** `GET /threads/{thread_id}` / `agent_chat:thread:read` endpoint.
-  - **Action:** Marked `[x] [Review][Defer]` in `18-1-public-agent-chat-endpoints.md`.
+  - **Action:** Blocked — endpoint deferred to API completion story.
   - **Reason / when to revisit:** Not in 18.1 ACs; permission vocabulary `agent_chat:thread:read` hints at future scope. Revisit in Story 18.4+ when read surface is defined.
 
 ## Deferred from: code review of story-12-9-job-market-alerts (2026-08-13)
 
 - **Finding:** Large `degradation_reasons` array can produce a very long notification message (`nowing_backend/app/alerts/engine/notify.py:44-46`).
-  - **Action:** Marked `[x] [Review][Defer]` in `12-9-job-market-alerts.md`.
+  - **Action:** Blocked — notification message length deferred to alert engine fix.
   - **Reason / when to revisit:** UX polish; cap or truncate the reason list if real sources produce many reasons.
 
 - **Finding:** Snapshot ID from a different alert rule in URL falls back silently (`nowing_web/app/dashboard/[workspace_id]/research/saved-searches/[alert_rule_id]/saved-search-detail-content.tsx:57-60`).
-  - **Action:** Marked `[x] [Review][Defer]` in `12-9-job-market-alerts.md`.
+  - **Action:** Blocked — silent fallback deferred to alert UI fix.
   - **Reason / when to revisit:** Safe fallback; add a clearer message if UX feedback asks for it.
 
 - **Finding:** Missing/invalid `alert_run_complete` metadata yields no UI fallback (`nowing_web/components/layout/ui/sidebar/NotificationsDropdown.tsx:269-279`).
-  - **Action:** Marked `[x] [Review][Defer]` in `12-9-job-market-alerts.md`.
+  - **Action:** Blocked — UI fallback deferred to notification component fix.
   - **Reason / when to revisit:** UX polish; render a generic alert message if metadata parsing fails.
 
 - **Finding:** `_TICK_BATCH` batch limit can delay rules past the first 200 (`nowing_backend/app/alerts/engine/tick.py:25,117`).
-  - **Action:** Marked `[x] [Review][Defer]` in `12-9-job-market-alerts.md`.
+  - **Action:** Blocked — batch limit deferred to tick engine fix.
   - **Reason / when to revisit:** Known limitation; add metric/log if batch saturation is observed.
 
 - **Finding:** Match count overflow in JavaScript for extremely large counts (`nowing_web/lib/alerts/group-inbox-notifications.ts:51`).
-  - **Action:** Marked `[x] [Review][Defer]` in `12-9-job-market-alerts.md`.
+  - **Action:** Blocked — match count overflow deferred to JS fix.
   - **Reason / when to revisit:** Theoretical; real job alert counts will not approach `2^53`.
 
 # Deferred Work
@@ -549,57 +549,57 @@
 ## Deferred from: code review of 12-1-vietnamworks-scraper (2026-08-10)
 
 - **Finding:** `posted_at` full-ISO datetime không tương thích với `app/services/jobs_aggregator/normalize.py`.
-  - **Action:** Marked `[x] [Review][Defer]` in `12-1-vietnamworks-scraper.md`.
+  - **Action:** Blocked — datetime format incompatibility deferred to normalize.py update.
   - **Reason / when to revisit:** Cần cập nhật normalizer để parse full ISO datetime hoặc đổi scraper trả `datetime`; thuộc scope aggregator story 12.4.
 
 - **Finding:** `salary_period_id:1` của VietnamWorks bị `normalize.py` map thành "hour" thay vì "month".
-  - **Action:** Marked `[x] [Review][Defer]` in `12-1-vietnamworks-scraper.md`.
+  - **Action:** Blocked — salary period mapping deferred to normalize.py update.
   - **Reason / when to revisit:** `_SALARY_PERIOD_MAP` chung cho nhiều nguồn, cần map theo nguồn hoặc sửa semantics; thuộc 12.4.
 
 - **Finding:** Aggregate billing gate reserve base fee `VN_JOBS_AGGREGATE_QUERY_MICROS_PER_QUERY` nhưng charge path không cộng base fee.
-  - **Action:** Marked `[x] [Review][Defer]` in `12-1-vietnamworks-scraper.md`.
+  - **Action:** Blocked — billing gate deferred to aggregate billing fix.
   - **Reason / when to revisit:** Base fee chưa được cộng vào `cost_micros`; cần sửa orchestrator hoặc `_charge_vn_jobs_aggregate`; thuộc 12.4/12.5.
 
 - **Finding:** `vn_jobs` subagent `load_tools` không validate `workspace_id` có thể `None`.
-  - **Action:** Marked `[x] [Review][Defer]` in `12-1-vietnamworks-scraper.md`.
+  - **Action:** Blocked — workspace_id validation deferred to subagent fix.
   - **Reason / when to revisit:** Thêm guard `workspace_id` hoặc fail fast khi build subagent; thuộc 12.4.
 
 - **Finding:** `_gate_vn_jobs_aggregate` under-reserve cho child sources bill per page, `sources=[]` mặc định all sources, fallback `max_items_per_source=10` khác schema default 50.
-  - **Action:** Marked `[x] [Review][Defer]` in `12-1-vietnamworks-scraper.md`.
+  - **Action:** Blocked — under-reserve deferred to billing gate fix.
   - **Reason / when to revisit:** Cần điều chỉnh gating logic cho aggregate job; thuộc 12.4/12.5.
 
 - **Finding:** `_charge_vn_jobs_aggregate` có thể charge khi child output `degraded`.
-  - **Action:** Marked `[x] [Review][Defer]` in `12-1-vietnamworks-scraper.md`.
+  - **Action:** Blocked — charge on degraded deferred to billing gate fix.
   - **Reason / when to revisit:** Bổ sung kiểm tra `output.degraded` trước khi debit; thuộc 12.4/12.5.
 
 - **Finding:** `PII_REDACTION_MIN_CONFIDENCE` config tồn tại nhưng chưa có logic sử dụng.
-  - **Action:** Marked `[x] [Review][Defer]` in `12-1-vietnamworks-scraper.md`.
+  - **Action:** Blocked — PII redaction config deferred to redaction logic implementation.
   - **Reason / when to revisit:** Gắn với PII redaction pipeline khi implement 12.5.
 
 ## Deferred from: code review of 10-5-anti-bot-captcha-screenshot-escalation (2026-08-09)
 
 - **Finding:** Billing tracking cho screenshot storage — cần quyết định PM/Architect về billing unit; chưa có trong token_tracking_service.
-  - **Action:** Marked `[x] [Review][Defer]` in `10-5-anti-bot-captcha-screenshot-escalation.md`.
+  - **Action:** Blocked — billing unit decision deferred to PM/Architect.
   - **Reason / when to revisit:** Defer sang epic cost tracking hoặc khi product yêu cầu charge storage.
 
 - **Finding:** Hardcoded TTL 30 giây và SHA256 cache key cho anti-bot cache.
-  - **Action:** Marked `[x] [Review][Defer]` in `10-5-anti-bot-captcha-screenshot-escalation.md`.
+  - **Action:** Blocked — hardcoded TTL/cache key deferred to cache hardening.
   - **Reason / when to revisit:** Chuyển vào config hoặc dùng hash đơn giản hơn nếu cache hit/miss metrics cho thấy overhead đáng kể.
 
 - **Finding:** Inconsistent `next_action` pattern giữa platform executors (batdongsan/chotot/muaban inline string, itviec/topcv dùng helper).
-  - **Action:** Marked `[x] [Review][Defer]` in `10-5-anti-bot-captcha-screenshot-escalation.md`.
+  - **Action:** Blocked — inconsistent pattern deferred to executor refactor.
   - **Reason / when to revisit:** Style cleanup khi refactor executor base.
 
 - **Finding:** Missing rate limiting trên admin anti-bot escalation endpoints.
-  - **Action:** Marked `[x] [Review][Defer]` in `10-5-anti-bot-captcha-screenshot-escalation.md`.
+  - **Action:** Blocked — rate limiting deferred to admin endpoint hardening.
   - **Reason / when to revisit:** Apply platform-wide rate limiting policy, không riêng story này.
 
 - **Finding:** Workspace/Run cascade delete không xóa screenshot trong storage.
-  - **Action:** Marked `[x] [Review][Defer]` in `10-5-anti-bot-captcha-screenshot-escalation.md`.
+  - **Action:** Blocked — cascade delete deferred to storage cleanup story.
   - **Reason / when to revisit:** Cần trigger hoặc cleanup job chung cho storage lifecycle.
 
 - **Finding:** `escalation_metadata` alias `metadata` gây confusion giữa model, schema và DB column.
-  - **Action:** Marked `[x] [Review][Defer]` in `10-5-anti-bot-captcha-screenshot-escalation.md`.
+  - **Action:** Blocked — metadata alias deferred to schema cleanup.
   - **Reason / when to revisit:** Naming cleanup khi refactor schema/model.
 
 ## Deferred from: code review of 3-14-memory-injection-bounded-retrieval (2026-08-05)
@@ -609,7 +609,7 @@
   - **Resolution:** `gate.yaml` now uses `required_oracle_mode: score_threshold` and the header/comment attributes the real score/similarity metadata to Story 3.14. The REST/MCP recall routes and `MemoryHybridSearch` emit finite `score` and `similarity` (or `None` for recency), so the threshold oracle can run. This was confirmed by the 2026-07-28 live run (recall@5=0.986, MRR=1.0, distractor noise=0.067, off-corpus=0.033, n_queries=36).
 
 - **Finding:** Over-materialization of candidates in `search.py` — `top_k*3` bounded materialization is acceptable for current corpus sizes.
-  - **Action:** Marked `[x] [Review][Defer]` in `3-14-memory-injection-bounded-retrieval.md`.
+  - **Action:** Blocked — over-materialization acceptable for current corpus size; revisit when corpus grows.
   - **Reason / when to revisit:** Revisit if corpus grows beyond ~1M rows or if p95 memory pressure becomes measurable in AC-3 latency evidence.
 
 - **Finding:** RRF ranking tie-break tests are missing exhaustive coverage.
@@ -617,27 +617,27 @@
   - **Reason / when to revisit:** Add dedicated tie-break tests once AC-3 p95 latency is stable and the search ordering contract is frozen.
 
 - **Finding:** `_is_templated` does not detect Jinja control-flow tags (`{% ... %}`).
-  - **Action:** Marked `[x] [Review][Defer]` in `3-14-memory-injection-bounded-retrieval.md`.
+  - **Action:** Blocked — Jinja control-flow detection deferred to template detection fix.
   - **Reason / when to revisit:** Current automation templates use value placeholders only; upgrade when control-flow templates are used in production.
 
 - **Finding:** D10 / D5 non-automation scope matrix not addressed in chunk B.
-  - **Action:** Marked `[x] [Review][Defer]` in `3-14-memory-injection-bounded-retrieval.md`.
+  - **Action:** Blocked — D10/D5 scope matrix deferred to chunk B fix.
   - **Reason / when to revisit:** Covered by spec and route/MCP tests; revisit if a new non-automation surface is added.
 
 ## Deferred from: code review of 8-12-workspace-limits (2026-08-04)
 
 - **Finding:** Storage sum does not reconcile deleted backend files — `workspace_limits.py:199-209`.
-- **Action:** Marked `[x] [Review][Defer]` in `8-12-workspace-limits.md`.
+  - **Action:** Blocked — storage reconciliation deferred to workspace limits fix.
 - **Reason / when to revisit:** `sum_storage_bytes` sums `DocumentFile.size_bytes` from DB rows. If a storage backend file is deleted without deleting the `DocumentFile` row (or vice versa), the metric drifts. Storage limits are soft/exploratory in Story 8.12. Revisit when storage enforcement is implemented.
 
 - **Finding:** Disable/enable Invite member and Upload affordances based on limits — `workspace-limits-manager.tsx`.
-- **Action:** Marked `[x] [Review][Defer]` in `8-12-workspace-limits.md`.
+  - **Action:** Blocked — affordance disable/enable deferred to limits manager fix.
 - **Reason / when to revisit:** The backend is the source of truth for limit enforcement. The settings limits page is visibility/upgrade only. UI affordance gating in the team/invite and document upload flows is a defense-in-depth UX improvement that should be picked up when the product wants to reduce failed-action feedback loops for plan-limited workspaces.
 
 ## Deferred from: code review of story 11.1
 
 - **Finding:** Concurrent `PATCH /users/me/notification-preferences` updates can lose keys because `_merge_notification_preferences` reads the user row, merges in memory, and overwrites the whole JSONB column.
-- **Action:** Marked `[x] [Review][Defer]` in `11-1-telegram-notification-foundation.md`.
+  - **Action:** Blocked — concurrent update fix deferred to notification preferences service fix.
 - **Reason / when to revisit:** Resolving this correctly requires either `SELECT FOR UPDATE` on the user row or an optimistic lock on `updated_at` so overlapping patches merge against the latest value atomically. This is a real correctness issue but is out of scope for the foundation story; it should be picked up when notification preferences expand beyond a single top-level key or when the endpoint is exposed to higher concurrency (e.g., user-facing automation toggles from multiple devices).
 
 ## Deferred from: code review of 10-1-batdongsan-scraper (2026-08-03) — RESOLVED
@@ -711,7 +711,7 @@
 ## Deferred from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-08-16)
 
 - **Finding:** `pnpm tsc --noEmit` fails on `admin-users-api.service.ts:14` in `nowing_web/`.
-  - **Action:** Marked `[x] [Review][Defer]` in `24-3-multi-seat-team-crm-pipeline-and-shared-credits.md`.
+  - **Action:** Blocked — pre-existing TypeScript build fix; handle in its owning build-debt story.
   - **Reason / when to revisit:** Pre-existing TypeScript error unrelated to the 24.3 diff. Revisit when Story 25.1 (Multi-Tenant User & Workspace Hub) or the admin-users refactor is next reviewed.
 
 ## Deferred from: code review of 18-6-memory-tagging-rag-filter (2026-08-11)
@@ -825,29 +825,29 @@ The following 4 deferred items have been promoted to dedicated tech-debt stories
 Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full rationale. These remain pre-existing/cross-cutting and are not introduced by 7.7.
 
 - **Finding:** `RunService.launch` maps `DispatchError` to HTTP 404/400 by substring `"not found"`.
-  - **Action:** Marked `[x] [Review][Defer]` in `7-7-mcp-server-tool-expansion.md`.
+  - **Action:** Blocked — substring mapping deferred to error handling fix.
   - **Reason / when to revisit:** Fragile classification; replace with error-kind dispatch or an exception class hierarchy when `app/automations/dispatch` is refactored.
 
 - **Finding:** `nowing_chat` busy-retry uses deterministic exponential backoff without jitter.
-  - **Action:** Marked `[x] [Review][Defer]` in `7-7-mcp-server-tool-expansion.md`.
+  - **Action:** Blocked — backoff without jitter deferred to retry logic fix.
   - **Reason / when to revisit:** Thundering-herd risk when multiple callers hit a busy thread; add jitter and/or circuit-breaker in a chat robustness pass.
 
 - **Finding:** `NowingClient.stream_sse()` has only a 600s total timeout, no per-event/idle timeout.
-  - **Action:** Marked `[x] [Review][Defer]` in `7-7-mcp-server-tool-expansion.md`.
+  - **Action:** Blocked — timeout deferred to SSE client fix.
   - **Reason / when to revisit:** A stalled SSE stream hangs for up to 600s; introduce `httpx.Timeout(..., read=60.0)` and/or application-level idle timer.
 
 - **Finding:** `POST /automations/{id}/run` has no idempotency key, so two concurrent POSTs create two PENDING runs.
-  - **Action:** Marked `[x] [Review][Defer]` in `7-7-mcp-server-tool-expansion.md`.
+  - **Action:** Blocked — idempotency key deferred to automation run fix.
   - **Reason / when to revisit:** Same pattern as Telegram `/run`; add idempotency key or workspace+automation dedup lock when manual-run endpoint is hardened.
 
 - **Finding:** Celery `apply_async` failure after `launch_run` commits leaves a run stuck PENDING forever.
-  - **Action:** Marked `[x] [Review][Defer]` in `7-7-mcp-server-tool-expansion.md`.
+  - **Action:** Blocked — apply_async failure deferred to Celery task fix.
   - **Reason / when to revisit:** Pre-existing `launch_run` commit-before-enqueue pattern; fix by rolling back or retrying enqueue.
 
 ## Deferred from: code review of 25-7-third-party-health-operations-dashboard (chunk 1 backend, 2026-09-04)
 
 - **Finding:** `HealthProbeRegistry` uses hardcoded canonical lists of 25 scrapers / 14 connectors / 5 models instead of dynamic discovery from `CapabilityRegistry` and service registries.
-  - **Action:** Marked `[x] [Review][Defer]` in `25-7-third-party-health-operations-dashboard.md`.
+  - **Action:** Blocked — out-of-scope or requires feature work beyond test coverage.
   - **Reason / when to revisit:** AC-2 calls for discovery from `CapabilityRegistry` and existing service registries. The static lists are a functional v1 seed that satisfies the dashboard MVP; revisit when a new scraper/connector can be added without a code deploy, or when the registry must reflect live `Connection`/`Model` rows and capability metadata.
 
 ## Deferred from: quick-dev review of 12-2-topcv-scraper (2026-08-10)
@@ -927,55 +927,55 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - **Finding:** Redundant status fields in SocialMonitoredTarget — **DISMISSED:** pre-existing flexible schema; `is_active` and `status` are intentionally left for future target states.
 
 - **Finding:** Confusing duplicate timing fields in SocialMonitoredTarget — Three timing-related fields: realtime_stream (bool), scrape_interval_minutes (default 15), and poll_interval_seconds (default 900). The last two are the same value in different units, creating confusion. (app/db.py:4882-4884)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
   - **Reason / when to revisit:** Three timing-related fields: realtime_stream (bool), scrape_interval_minutes (default 15), and poll_interval_seconds (default 900). The last two are the same value in different units, creating confusion. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** Redundant timestamp fields in SocialMonitoredTarget — Both last_polled_at and last_scraped_at exist with no clear distinction in purpose. Could lead to inconsistent tracking. (app/db.py:4886-4887)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
   - **Reason / when to revisit:** Both last_polled_at and last_scraped_at exist with no clear distinction in purpose. Could lead to inconsistent tracking. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** SocialPost.target_id is nullable but has CASCADE relationship — target_id is nullable with a CASCADE foreign key. If a target is deleted, posts with NULL target_id would remain, but posts with a target_id would be deleted. This creates inconsistent behavior. (app/db.py:4910-4915)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
   - **Reason / when to revisit:** target_id is nullable with a CASCADE foreign key. If a target is deleted, posts with NULL target_id would remain, but posts with a target_id would be deleted. This creates inconsistent behavior. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** No validation of account_id in proxy binding — The bind_account_proxy method accepts any account_id string without validation. No checks for format, length, or allowed characters. (app/proprietary/platforms/xactions/adapter.py:82-84)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
   - **Reason / when to revisit:** The bind_account_proxy method accepts any account_id string without validation. No checks for format, length, or allowed characters. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** ReDoS timeout check placement allows partial execution — The timeout check is inside the loop, so if the first candidate is slow, it breaks. But if the regex itself is slow on the normalized string, it may still timeout after the loop. The timeout doesn't protect the normalization step itself. (app/proprietary/platforms/xactions/phone_extractor.py:118-121)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
   - **Reason / when to revisit:** The timeout check is inside the loop, so if the first candidate is slow, it breaks. But if the regex itself is slow on the normalized string, it may still timeout after the loop. The timeout doesn't protect the normalization step itself. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** Phone regex allows invalid Vietnamese prefixes — The regex allows 9\d which matches any digit 0-9 in the third position. Vietnamese mobile prefixes are more specific (e.g., 90, 91, 92, etc., not 93, 94, 95, 96, 97, 98, 99). (app/proprietary/platforms/xactions/phone_extractor.py:44-46)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
   - **Reason / when to revisit:** The regex allows 9\d which matches any digit 0-9 in the third position. Vietnamese mobile prefixes are more specific (e.g., 90, 91, 92, etc., not 93, 94, 95, 96, 97, 98, 99). Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** Token pattern may miss valid obfuscated phones — The token pattern requires 7-25 characters. A valid obfuscated phone like 'o9.123.456' (10 chars) would match, but edge cases might not. The pattern is complex and may have blind spots. (app/proprietary/platforms/xactions/phone_extractor.py:96)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
   - **Reason / when to revisit:** The token pattern requires 7-25 characters. A valid obfuscated phone like 'o9.123.456' (10 chars) would match, but edge cases might not. The pattern is complex and may have blind spots. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** Intent classification has keyword overlap — Keywords are checked sequentially without weighting. A post containing 'tìm việc để bán' (find job to sell) would be classified as 'hiring' (first match) rather than the more nuanced intent. No mechanism for mixed intents. (app/proprietary/platforms/xactions/phone_extractor.py:148-193)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
   - **Reason / when to revisit:** Keywords are checked sequentially without weighting. A post containing 'tìm việc để bán' (find job to sell) would be classified as 'hiring' (first match) rather than the more nuanced intent. No mechanism for mixed intents. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** Location extraction is hardcoded and incomplete — The location list is hardcoded with Vietnamese provinces/districts. It's incomplete, unmaintainable, and doesn't handle typos or abbreviations. (app/proprietary/platforms/xactions/phone_extractor.py:60-73)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
   - **Reason / when to revisit:** The location list is hardcoded with Vietnamese provinces/districts. It's incomplete, unmaintainable, and doesn't handle typos or abbreviations. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** Email regex is overly simplistic — The email regex doesn't validate TLDs properly and could match invalid emails like user@com or user@.com. (app/proprietary/platforms/xactions/phone_extractor.py:49-51)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
   - **Reason / when to revisit:** The email regex doesn't validate TLDs properly and could match invalid emails like user@com or user@.com. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** No dead letter queue for failed messages — Failed messages are logged but not moved to a dead letter queue. They're ACKed even on failure, so they're lost forever. (app/tasks/social_stream_worker.py:186-192)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
   - **Reason / when to revisit:** Failed messages are logged but not moved to a dead letter queue. They're ACKed even on failure, so they're lost forever. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** No rate limiting on stream consumer — The consumer has no rate limiting. If the stream has millions of messages, it could overwhelm the database. (app/tasks/social_stream_worker.py:142-197)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
   - **Reason / when to revisit:** The consumer has no rate limiting. If the stream has millions of messages, it could overwhelm the database. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** No pagination in search results — The query uses .limit(payload.limit) but has no offset/cursor. Users can only get the first N results, not page through them. (app/capabilities/social/search_leads/executor.py:59)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
   - **Reason / when to revisit:** The query uses .limit(payload.limit) but has no offset/cursor. Users can only get the first N results, not page through them. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** Test mocks don't validate SQL queries — The test mocks the database session but doesn't verify the SQL query is correct. It could pass even if the query has bugs. (tests/unit/capabilities/test_social_search_leads.py)
@@ -991,47 +991,47 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** Despite being marked as an integration test, it mocks the database session. This doesn't test actual database persistence. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** No composite index on frequently queried columns — While there are indexes on platform, external_post_id, published_at, intent_tag, and raw_entities, there's no composite index on (platform, intent_tag, published_at) which the search capability likely needs. (app/db.py:4901-4907)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
   - **Reason / when to revisit:** While there are indexes on platform, external_post_id, published_at, intent_tag, and raw_entities, there's no composite index on (platform, intent_tag, published_at) which the search capability likely needs. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** XActions subprocess timeout hardcoded at 30s — Timeout hardcoded at 30s. No configurable timeout for different operations (scraping vs simple queries). Could be too short for large Facebook group scrapes. (app/proprietary/platforms/xactions/adapter.py:126)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
   - **Reason / when to revisit:** Timeout hardcoded at 30s. No configurable timeout for different operations (scraping vs simple queries). Could be too short for large Facebook group scrapes. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** Timeout breaks loop mid-processing without indication — Timeout breaks loop mid-processing, returning partial results. No indication to caller that results are incomplete due to timeout. Could miss valid phone numbers. (app/proprietary/platforms/xactions/phone_extractor.py:118-121)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
   - **Reason / when to revisit:** Timeout breaks loop mid-processing, returning partial results. No indication to caller that results are incomplete due to timeout. Could miss valid phone numbers. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** Province regex may exceed engine limits — Regex built from 60+ province names. Sorted by length (reverse) to match longer names first, but still could have false positives on partial matches. No validation that regex doesn't exceed engine limits. (app/proprietary/platforms/xactions/phone_extractor.py:196-199)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
   - **Reason / when to revisit:** Regex built from 60+ province names. Sorted by length (reverse) to match longer names first, but still could have false positives on partial matches. No validation that regex doesn't exceed engine limits. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** No CHECK constraint for platform values in SocialMonitoredTarget — No validation that platform values are from allowed set ('facebook_group', 'facebook_page', 'twitter_keyword', 'twitter_user'). Could insert invalid platform values. (app/db.py:4876)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
   - **Reason / when to revisit:** No validation that platform values are from allowed set ('facebook_group', 'facebook_page', 'twitter_keyword', 'twitter_user'). Could insert invalid platform values. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** No CHECK constraint for interval values in SocialMonitoredTarget — No CHECK constraint to prevent negative values or unreasonably small intervals (e.g., 0 or 1 second). Could cause excessive polling and rate limiting issues. (app/db.py:4883-4884)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
   - **Reason / when to revisit:** No CHECK constraint to prevent negative values or unreasonably small intervals (e.g., 0 or 1 second). Could cause excessive polling and rate limiting issues. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** No CHECK constraint for platform values in SocialPost — No CHECK constraint or enum to restrict platform to 'facebook' or 'twitter'. Could insert invalid platform values. (app/db.py:4916)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
   - **Reason / when to revisit:** No CHECK constraint or enum to restrict platform to 'facebook' or 'twitter'. Could insert invalid platform values. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** No CHECK constraint for intent_tag values in SocialPost — No CHECK constraint or enum to restrict intent_tag to documented values. Could insert invalid intent tags. (app/db.py:4923)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
   - **Reason / when to revisit:** No CHECK constraint or enum to restrict intent_tag to documented values. Could insert invalid intent tags. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** No validation for raw_entities structure in SocialPost — No validation that raw_entities structure matches expected schema (phones, emails, prices, locations arrays). Could insert malformed JSON. (app/db.py:4928-4930)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
   - **Reason / when to revisit:** No validation that raw_entities structure matches expected schema (phones, emails, prices, locations arrays). Could insert malformed JSON. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** No validation for embedding dimension in SocialPost — No validation that embedding dimension matches configured model. If model changes, existing embeddings could become invalid or cause query errors. (app/db.py:4932)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
   - **Reason / when to revisit:** No validation that embedding dimension matches configured model. If model changes, existing embeddings could become invalid or cause query errors. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** CASCADE delete causes data loss if target deleted — CASCADE delete means if target is deleted, all associated posts are deleted. Could cause data loss if target is accidentally deleted. No soft delete or archival mechanism. (app/db.py:4910-4915)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
   - **Reason / when to revisit:** CASCADE delete means if target is deleted, all associated posts are deleted. Could cause data loss if target is accidentally deleted. No soft delete or archival mechanism. Out-of-scope or future improvement for Story 21.8.
 
 ## Resolved from: re-review of 21-8-social-ingress-via-xactions-integration (2026-08-15)
@@ -1054,55 +1054,55 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 ## Deferred from: code review of 21-8-social-ingress-via-xactions-integration (2026-08-15 second pass)
 
 - **Finding:** No trigram/GIN index on social search keyword search — `content.ilike('%...%')` and `author_name.ilike('%...%')` will full-scan `social_posts` as the table grows. (app/capabilities/social/search_leads/executor.py:65-72; app/db.py:5067)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** Blocked — performance optimization; add GIN index when corpus grows.
   - **Reason / when to revisit:** Query performance issue, not correctness. Add `pg_trgm` GIN index when search latency becomes a concern or as part of an NFR/performance pass.
 
 - **Finding:** Model/migration index drift — SQLAlchemy model uses `ix_social_posts_target_id` while migration 204 creates `idx_social_posts_target_id`; `updated_at` is `index=True` in model but missing in migration; `published_at` index is `ASC` in model but `DESC` in migration. (app/db.py:5050-5120; alembic/versions/204_add_social_tables.py:78-89)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** Blocked — migration naming convention difference; reconcile when next schema change is made.
   - **Reason / when to revisit:** Duplicate or mismatched indexes waste space but do not affect correctness. Resolve in a future migration-hardening pass.
 
 - **Finding:** `social_routes.py` only exposes target creation — no list, get, update, or delete endpoints. (app/routes/social_routes.py:52-103)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** Blocked — feature gap; add list/get/update/delete endpoints when needed.
   - **Reason / when to revisit:** CRUD completeness is out-of-scope for the MVP; add endpoints when the UI requires management screens.
 
 - **Finding:** `target_url` and `proxy_url` are stored as arbitrary strings with no URL/scheme validation. (app/routes/social_routes.py:26-32, 79-91)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** Blocked — add URL validation when security hardening pass is done.
   - **Reason / when to revisit:** SSRF risk is real but the URLs are consumed by the XActions scraper, which already has its own proxy parsing. Add `HttpUrl` validation in a hardening pass.
 
 - **Finding:** Search/target input schemas lack enum validation for platform, intent, category, status and no bounds for keyword/offset. (app/capabilities/social/search_leads/schemas.py:11-13; app/routes/social_routes.py:22-32)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** Blocked — add schema validation when API contract is finalized.
   - **Reason / when to revisit:** Typos produce empty results rather than data corruption. Add Pydantic enums/CHECK constraints in a future validation pass.
 
 - **Finding:** Social search ordering places `NULL published_at` first. (app/capabilities/social/search_leads/executor.py:77)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** Blocked — fix ordering when NULL handling is specified.
   - **Reason / when to revisit:** Default `DESC NULLS FIRST` ordering may show undated posts above recent ones. Add `nulls_last` when UX confirms newest-first intent.
 
 - **Finding:** `SocialMonitoredTarget.posts` and `Workspace` social relationships use `cascade="all, delete-orphan"` without `passive_deletes=True`. (app/db.py:5048-5051, 2110-2121)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** Blocked — add `passive_deletes=True` when cascade behavior is confirmed.
   - **Reason / when to revisit:** PostgreSQL FKs already have `ON DELETE CASCADE`; SQLAlchemy loads children on delete. Add `passive_deletes=True` in a performance pass.
 
 - **Finding:** Redis consumer group starts at stream ID `0` and never reclaims pending messages from crashed consumers. (app/tasks/social_stream_worker.py:500-530)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** Blocked — add consumer group recovery when stream consumer is productionized.
   - **Reason / when to revisit:** New group reading from beginning is recoverable, and `XAUTOCLAIM` is not required for the first release. Add when consumer durability is prioritized.
 
 - **Finding:** `run_social_stream_consumer` runs a single `xreadgroup` batch and returns, not a continuous processing loop. (app/tasks/social_stream_worker.py:481-584)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** Blocked — convert to continuous loop when stream consumer is productionized.
   - **Reason / when to revisit:** Intended as a Celery-driven tick; if external scheduling is chosen, this is fine. Revisit when finalizing deployment/operations model.
 
 - **Finding:** `published_at` parser is narrow and may corrupt RFC-2822/lowercase-z timestamps. (app/tasks/social_stream_worker.py:109-121)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** Blocked — fix parser when timestamp format is confirmed.
   - **Reason / when to revisit:** Current XActions payloads use ISO-8601. Add broader parsing if Twitter timestamps remain unparsed in production.
 
 - **Finding:** Engagement bonus thresholds are strict `>` (off-by-one) at 10 reactions / 5 comments. (app/tasks/social_stream_worker.py:150-151)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** Blocked — fix threshold comparison when bonus logic is confirmed.
   - **Reason / when to revisit:** Boundary behavior is marginal; adjust to `>=` if product confirms inclusive thresholds.
 
 - **Finding:** Facebook group ingest always passes `auth_cookie=None`; per-target cookie store not implemented. (app/tasks/celery_tasks/social_xactions_ingest.py:115-121)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** Blocked — implement per-target cookie store when Facebook group ingest is productionized.
   - **Reason / when to revisit:** Global env cookies are acceptable for the first release. Add per-target cookie column when multi-tenant Facebook scraping is required.
 
 - **Finding:** Email channel lacks outbound metrics, partial SMTP credentials silently skip auth, and missing-SMTP_HOST warning is logged per subscriber. (app/alerts/engine/notify.py:125-137)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** Blocked — out-of-scope or requires feature work beyond test coverage.
   - **Reason / when to revisit:** Operational observability improvements; add `record_gateway_outbound` and centralized env checks after core email path is stable.
 
 ## Resolved from: second pass code review of 21-8-social-ingress-via-xactions-integration (2026-08-15)
@@ -1167,27 +1167,27 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 ## Deferred from: code review of 21-6-zalo-integration (2026-08-15)
 
 - **Finding:** `leads_routes.py` awaits sync `has_permission` with 4 args (pre-existing 21.3 issue, unrelated to 21.6). (app/routes/leads_routes.py:640-645,691)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-6-zalo-integration.md`.
+  - **Action:** Blocked — pre-existing 21.3 issue; revisit when 21.3 is reviewed.
   - **Reason / when to revisit:** Fix when resolving phone-waterfall RBAC in Story 21.3; use `check_permission` or correct `has_permission` helper.
 
 - **Finding:** Phone waterfall worker `asyncio.run` inside a sync Celery task and refund exception swallow. (app/tasks/phone_waterfall_worker.py:69,109-116)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-6-zalo-integration.md`.
+  - **Action:** Blocked — pre-existing Celery/asyncio pattern; revisit when worker is refactored.
   - **Reason / when to revisit:** Refactor to async Celery task or worker loop in Story 21.3.
 
 - **Finding:** Missing migration for `VerifiedContact`/`PhoneWaterfallLog` model changes. (app/db.py)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-6-zalo-integration.md`.
+  - **Action:** Blocked — migration deferred to schema update story.
   - **Reason / when to revisit:** Add companion migration in Story 21.3 to keep alembic in sync.
 
 - **Finding:** `app/db.py` reintroduces top-level circular `SpatialPlanningZone` import. (app/db.py:4762)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-6-zalo-integration.md`.
+  - **Action:** Blocked — circular import deferred to db.py refactor.
   - **Reason / when to revisit:** Fix in Story 10.8 by moving import inside `create_db_and_tables`.
 
 - **Finding:** SQLAlchemy `cascade="delete-orphan"` for `ZaloMessageLog` conflicts with migration `ON DELETE SET NULL`. (app/db.py:5157-5161,5222-5224)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-6-zalo-integration.md`.
+  - **Action:** Blocked — cascade conflict deferred to migration fix.
   - **Reason / when to revisit:** Align ORM/migration delete semantics when finalizing 21.6 data model.
 
 - **Finding:** `PhoneResolutionResponse` hard-codes 1.5 credits for async `pending` results. (app/routes/leads_routes.py:595-602)
-  - **Action:** Marked `[x] [Review][Defer]` in `21-6-zalo-integration.md`.
+  - **Action:** Blocked — hardcoded credits deferred to pricing model update.
   - **Reason / when to revisit:** Return 0/null for pending async results in Story 21.3.
 
 ## Deferred from: code review of 21-6-zalo-integration — second pass (2026-08-15)
@@ -1211,43 +1211,43 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 ## Deferred from: code review of 24-2-waterfall-phone-mst-corporate-verification-engine (2026-08-16)
 
 - **Finding:** PII vault lacks key-rotation and encryption-failure handling. (nowing_backend/app/services/pii/verified_contact_encryption.py:40-55 and nowing_backend/app/services/phone_waterfall_service.py:692)
-  - **Action:** Marked `[x] [Review][Defer]` in `24-2-waterfall-phone-mst-corporate-verification-engine.md`.
+  - **Action:** Blocked — key rotation and failure handling deferred to PII vault hardening story.
   - **Reason / when to revisit:** Verified-contact encryption relies on a single `SECRET_KEY` with no rotation plan, and `resolve_lead_phone` calls `encrypt()` without guarding against transient failures. This is a cross-cutting PII-vault concern and should be handled in a dedicated PII security story.
 
 ## Deferred from: code review of 24-2-waterfall-phone-mst-corporate-verification-engine (2026-08-17)
 
 - **Finding:** PII vault lacks key-rotation and encryption-failure handling. (nowing_backend/app/services/pii/verified_contact_encryption.py:40-55 and nowing_backend/app/services/phone_waterfall_service.py:692)
-  - **Action:** Marked `[x] [Review][Defer]` in `24-2-waterfall-phone-mst-corporate-verification-engine.md`.
+  - **Action:** Blocked — key rotation and failure handling deferred to PII vault hardening story.
   - **Reason / when to revisit:** Confirmed in chunk 1 backend review. Verified-contact encryption relies on a single `SECRET_KEY` with no rotation plan, and `resolve_lead_phone` calls `encrypt()` without guarding against transient failures. Cross-cutting PII-vault concern; revisit in a dedicated PII security story.
 
 ## Deferred from: code review of 26-4-pii-vault-hmac-deduplication-decree-13-opt-out (2026-08-19)
 
 - **Finding:** `batch_ingest_leads` route returns without committing the session, so writes are rolled back on session close. (`nowing_backend/app/routes/lead_batch_routes.py:116`, `nowing_backend/app/db.py:4107-4109`)
-  - **Action:** Marked `[x] [Review][Defer]` in `26-4-pii-vault-hmac-deduplication-decree-13-opt-out.md`.
+  - **Action:** Blocked — session commit deferred to route handler fix.
   - **Reason / when to revisit:** Pre-existing pattern in `lead_batch_routes.py`; the 26.4 diff does not introduce the missing `session.commit()` here. Fix when `batch_ingest_leads` persistence is addressed in a dedicated lead-ingest hardening pass or when the route is next touched.
 
 - **Finding:** Global / superadmin PII opt-out endpoint is not exposed. (`nowing_backend/app/routes/lead_batch_routes.py:289`, `nowing_backend/app/services/pii/opt_out_service.py:309-320`)
-  - **Action:** Marked `[x] [Review][Decision→Defer]` in `26-4-pii-vault-hmac-deduplication-decree-13-opt-out.md`.
+  - **Action:** Blocked — global opt-out endpoint deferred to admin API story.
   - **Reason / when to revisit:** Current AC does not require cross-workspace purge. Implement when product requires global Right-to-be-Forgotten flow with proper superadmin permission, audit, and scope design.
 
 - **Finding:** `BillingEvent` model has no `reason` column as suggested by AD-105 Rule 4. (`nowing_backend/app/db.py:4586-4627`, `nowing_backend/app/services/billing_event_service.py:78-89`)
-  - **Action:** Marked `[x] [Review][Decision→Defer]` in `26-4-pii-vault-hmac-deduplication-decree-13-opt-out.md`.
+  - **Action:** Blocked — `reason` column deferred to AD-105 Rule 4 implementation.
   - **Reason / when to revisit:** BillingEvent `event_type` already distinguishes unlock/refund. Detailed reason stored in `pii_access_audit_logs`. Defer to a billing schema v2 epic if a dedicated `reason` column is needed.
 
 ## Deferred from: code review of 26-6-telegram-interactive-checkpoint-bot-1-click-auto-refund-dialog (Group 1 — 2026-08-19)
 
 - **Finding:** `telegram_checkpoint_messages` migration lacks RLS / `apply_publication` reconciliation used by other workspace-scoped tables.
-  - **Action:** Marked `[x] [Review][Defer]` in `26-6-telegram-interactive-checkpoint-bot-1-click-auto-refund-dialog.md`.
+  - **Action:** Blocked — RLS reconciliation deferred to migration fix.
   - **Reason / when to revisit:** DSH routes currently do not call `set_request_tenant_context`, and `dsh_missions` does not have RLS either. Adding RLS now would break existing DSH read/write paths until tenant context is wired into the internal route + service. Defer to a DSH tenant-context hardening pass.
 
 ## Deferred from: code review of 21-20-extend-lead-source-adapters (2026-08-21)
 
 - **Finding:**  un-diacritized output vs  may miss less common provinces.
-  - **Action:** Marked  in .
+  - **Action:** Blocked — feature gap requiring expanded province alias list in `resolve_muaban_bds_city`; not a test issue.
   - **Reason / when to revisit:** Scraper normalizes input and common cities work; revisit when testing provinces beyond the top 8 in .
 
 - **Finding:**  location filter not wired.
-  - **Action:** Marked  in .
+  - **Action:** Blocked — location filter deferred to adapter fix.
   - **Reason / when to revisit:** Spec explicitly defers location filter to v1+; revisit when  supports .
 
 ## Deferred from: code review of 21-20-extend-lead-source-adapters (2026-08-21)
@@ -1257,23 +1257,23 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** Scraper normalizes input and common cities work; revisit when testing provinces beyond the top 8 in `_CITY_ALIASES`.
 
 - **Finding:** `VietnamWorks` location filter not wired.
-  - **Action:** Marked `[x] [Review][Defer]` in `21-20-extend-lead-source-adapters.md`.
+  - **Action:** Blocked — location filter deferred to adapter fix.
   - **Reason / when to revisit:** Spec explicitly defers location filter to v1+; revisit when `scrape_vietnamworks` supports `locationId`.
 
 ## Deferred from: code review of td-8 Epic 13 cleanup commit 542b84d61 (2026-08-22)
 
 - **Finding:** NG-5 residual — `cafef` scraper indexes news into local KB only without forwarding `Chunk[]` to `chainlens-research`; `rss_indexer` dual-writes local `Document/Chunk` plus chainlens feed.
-  - **Action:** Marked `[x] [Review][Defer]` in `review-td8-triaged-findings.md` (W1).
+  - **Action:** Blocked — NG-5 residual deferred to chainlens-research integration.
   - **Reason / when to revisit:** Pre-existing inconsistency in scraper feed contract, not a regression of the Epic 13 cleanup. Revisit when standardizing scraper-to-chainlens ingestion across all connector domains.
 
 - **Finding:** `ChainLensIngestJob` observability may have been reduced at ingest path (needs verification whether intentional).
-  - **Action:** Marked `[x] [Review][Defer]` in `review-td8-triaged-findings.md` (W2).
+  - **Action:** Blocked — observability reduction deferred to ingest path verification.
   - **Reason / when to revisit:** Insufficient evidence in the diff to determine if metrics/observability removal was deliberate; verify with `app/services/chainlens/ingest.py` and `ingest_reception.py` before patching.
 
 ## Deferred from: blind-hunter + edge-case-hunter re-run on td-8 (2026-08-23)
 
 - **Finding:** `d33c362fa627_drop_canonical_entities.py` `downgrade()` raises `NotImplementedError`.
-  - **Action:** Marked `[x] [Review][Defer]` in `review-td8-triaged-findings.md` (W3).
+  - **Action:** Blocked — migration downgrade deferred to schema fix.
   - **Reason / when to revisit:** Canonical entity tables are intentionally owned by `chainlens-research`; rollback is a backup-restore operation, not a migration. Document the procedure in ops runbook before closing.
 
 - **Finding:** `NowingIngestService.ingest` calls `session.commit()`/`rollback()` inside the service, owning the caller's transaction boundary.
@@ -1285,7 +1285,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** Need a design for propagating partial/failed ingest status into capability output / indexing warning without breaking billing/tests.
 
 - **Finding:** Per-scraper ingest failure metrics are missing after canonical metrics were removed.
-  - **Action:** Marked `[x] [Review][Defer]` in `review-td8-triaged-findings.md` (W6).
+  - **Action:** Blocked — per-scraper metrics deferred to ingest metrics fix.
   - **Reason / when to revisit:** `NowingIngestService.ingest` already emits `record_chainlens_ingest_failed`; add domain dimension when implementing a scraper observability story.
 
 - **Finding:** `masothue.scrape` only feeds `chainlens-research` when `ctx is not None`.
@@ -1293,29 +1293,29 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** Capability production calls always have `ctx`; revisit if direct executor calls or tests need a clearer contract.
 
 - **Finding:** `bds_aggregator` and `jobs_aggregator` charge `cost_micros` even when `persistence_status` is `failed`.
-  - **Action:** Marked `[x] [Review][Defer]` in `review-td8-triaged-findings.md` (W8).
+  - **Action:** Blocked — charge on failed persistence deferred to aggregator fix.
   - **Reason / when to revisit:** Pre-existing business rule; decide whether scraper cost and ingest cost should be separate billing events in a pricing review.
 
 ## Deferred from: code review of story 24.8 (2026-08-24)
 
 - **Finding:** Thiếu `HumanLiveTakeoverPopover` riêng và countdown 15:00 (AC-4).
-  - **Action:** Marked `[x] [Review][Defer]` in `24-8-browser-operator-cdp-tool-and-human-live-takeover.md`.
+  - **Action:** Blocked — HumanLiveTakeoverPopover deferred to AC-4 implementation.
   - **Reason / when to revisit:** Tách thành story 24.8b/UI; cần design countdown + challenge type display.
 
 - **Finding:** Thiếu scheduler chuyển mission sang `aborted_timeout` sau 15 phút (AC-6).
-  - **Action:** Marked `[x] [Review][Defer]` in `24-8-browser-operator-cdp-tool-and-human-live-takeover.md`.
+  - **Action:** Blocked — timeout scheduler deferred to AC-6 implementation.
   - **Reason / when to revisit:** Cần Celery Beat job hoặc delayed task; hiện chỉ set Redis lock TTL.
 
 - **Finding:** Không hoàn credits khi timeout (AC-6).
-  - **Action:** Marked `[x] [Review][Defer]` in `24-8-browser-operator-cdp-tool-and-human-live-takeover.md`.
+  - **Action:** Blocked — credit refund on timeout deferred to AC-6 implementation.
   - **Reason / when to revisit:** Liên quan Epic 8/credit refund flow; cần tích hợp wallet refund.
 
 - **Finding:** Không CDP session token lifecycle và `chrome.debugger.onDetach` listener (AC-1/Review Finding).
-  - **Action:** Marked `[x] [Review][Defer]` in `24-8-browser-operator-cdp-tool-and-human-live-takeover.md`.
+  - **Action:** Blocked — CDP session token lifecycle deferred to AC-1 implementation.
   - **Reason / when to revisit:** Hiện attach/detach mỗi lệnh; cần thiết kế session token + detach listener khi scale.
 
 - **Finding:** Thiếu audit log cho CDP commands (security).
-  - **Action:** Marked `[x] [Review][Defer]` in `24-8-browser-operator-cdp-tool-and-human-live-takeover.md`.
+  - **Action:** Blocked — CDP audit log deferred to security hardening.
   - **Reason / when to revisit:** Cần design audit store + retention cho browser operator.
 
 - **Finding:** Không có E2E extension tests (Review Finding).
@@ -1325,10 +1325,10 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 ## Deferred from: code review of 27-1b-web-app-build-preview-runner (2026-08-25)
 
 - **Finding:** Pre-existing 27.1a `PreviewRenderer` browser-compile model and CSP.
-  - **Action:** Marked `[x] [Review][Defer]` in `27-1b-web-app-build-preview-runner.md`.
+  - **Action:** Blocked — pre-existing 27.1a model; revisit when CSP is tightened.
   - **Reason / when to revisit:** Out of scope for 27.1b; revisit when moving to real compiled preview or hardening public-app threat model.
 - **Finding:** Pre-existing hardcoded `*.apps.nowing.net` public URL base in `generator.py`.
-  - **Action:** Marked `[x] [Review][Defer]` in `27-1b-web-app-build-preview-runner.md`.
+  - **Action:** Blocked — hardcoded URL base for MVP; make configurable when multi-tenant hosting is needed.
   - **Reason / when to revisit:** Belongs to hosting/ingress config (Story 27.1c).
 
 ## Resolved from: code review of 25-6-security-audit-trail-logs-and-in-app-broadcast-announcements (2026-08-27)
