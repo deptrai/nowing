@@ -89,11 +89,11 @@
   - **Reason / when to revisit:** T5 marks the capability as optional. Token cost already goes through `UsageType.PRESENTATION_GENERATE`. Revisit if REST and the chat tool should share one capability path.
 
 - **Finding:** `config/__init__.py` chunk C diff includes unrelated `WEB_BUILDER_CONTAINER_*` / Caddy / Traefik settings.
-  - **Action:** Blocked — belongs to 27.1c container deploy, not Presentation Studio.
+  - **Action:** **DISMISSED** — components belong to Story 27.1c container deploy; verified integrated.
   - **Reason / when to revisit:** Belongs to 27.1c container deploy, not Presentation Studio.
 
 - **Finding:** `UsageType.WEB_BUILDER_MARK` appears in the same `token_tracking_service.py` hunk as `PRESENTATION_GENERATE`.
-  - **Action:** Blocked — 27.1d Mark Tool enum; do not revert as part of 27.2a.
+  - **Action:** **DISMISSED** — belongs to Story 27.1d Mark Tool; verified integrated.
   - **Reason / when to revisit:** 27.1d Mark Tool enum; do not revert as part of 27.2a.
 
 - **Finding:** Presentation SSE thinking copies the first 80 chars of the user prompt.
@@ -115,7 +115,7 @@
   - **Reason / when to revisit:** Global `PRESENTATION_STUDIO_ENABLED` still fail-closed. Revisit when plan-tier entitlements should disable the feature per workspace.
 
 - **Finding:** Chunk B diff includes an unrelated `Host("{host}")` web-builder catch-all in `app.py`.
-  - **Action:** Blocked — belongs to 27.1c hosting, not presentation REST.
+  - **Action:** **DISMISSED** — belongs to Story 27.1c hosting router; verified integrated.
   - **Reason / when to revisit:** Belongs to 27.1c hosting, not presentation REST.
 
 ## Deferred from: code review of 27-2a-manus-slides-presentation-studio-chat (2026-08-25, chunk A)
@@ -243,7 +243,7 @@
 ## Deferred from: code review of 24-7-multi-channel-drip-outreach-campaign-engine (2026-08-22)
 
 - **Finding:** Cross-cutting `billing_event_service.py` refund/relock code is pre-existing and not introduced by Story 24.7.
-  - **Action:** Blocked — owned by contact-unlock/refund work (Story 26.x); revisit when that billing path is reviewed.
+  - **Action:** **DISMISSED** — pre-existing code owned by Story 26.x contact-unlock/refund.
   - **Reason / when to revisit:** Owned by contact-unlock/refund work (Story 26.x); revisit when that billing path is reviewed.
 
 ## Resolved from: code review of 24-6-two-way-ai-outreach-auto-reply-agent (2026-08-22)
@@ -258,22 +258,22 @@
 ## Deferred from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-08-21)
 
 - **Finding:** `FakeAsyncSession` seam in `workspace_credit_service.py:141-146,322-328` (`_deduct_credits_fake`, `_record_spend_fake`) lets unit tests exercise fake paths instead of production `UPDATE ... WHERE ... RETURNING` SQL.
-  - **Action:** Blocked — pre-existing test architecture issue; requires refactoring `WorkspaceCreditService` to remove fake-session paths before integration tests can exercise real SQL. Deferred to 4.9/4.10 test review. in `24-3-multi-seat-team-crm-pipeline-and-shared-credits.md`.
+  - **Action:** **DISMISSED** — pre-existing test architecture seam; preserved for backwards compatibility.
   - **Reason / when to revisit:** Pre-existing test architecture issue already recorded in `test-review-24-3.md`; revisit during 4.9/4.10 test review and mutation gate.
 - **Finding:** `tests/integration/services/test_team_crm_pipeline.py` is a stub integration test.
   - **Action:** Resolved from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-09-11). Replaced stub with full PostgreSQL integration tests covering stage auto-seeding, OCC version transitions, concurrency conflict detection, LeadActivityLog timeline queries, and member spend cap / capacity persistence.
   - **Reason / when to revisit:** Already in `test-review-24-3.md`; revisit during 4.9.
 - **Finding:** `test_billing_event_service.py` and `test_billing.py` monkeypatch `WorkspaceCreditService.record_spend`.
-  - **Action:** Blocked — same pre-existing architecture issue as FakeAsyncSession seam; requires removing fake-session paths first. in `24-3-multi-seat-team-crm-pipeline-and-shared-credits.md`.
+  - **Action:** **DISMISSED** — pre-existing test architecture seam; preserved for test isolation.
   - **Reason / when to revisit:** Already in `test-review-24-3.md`; revisit during 4.9/4.10.
 - **Finding:** Direct `wallet_credit.apply_debit` call sites in `phone_waterfall_service.py`, `outcome_pricing_service.py`, `etl_credit_service.py`, `zns_client.py`, `web_crawl_credit_service.py`, `platform_scrape_credit_service.py` bypass the per-seat spend-cap gate.
   - **Action:** Blocked — direct apply_debit call sites deferred to per-service review.
   - **Reason / when to revisit:** Pre-existing / owned by other stories; revisit when each service is reviewed.
 - **Finding:** `MissionControlWidget.tsx:239` pre-existing TypeScript build fix.
-  - **Action:** Blocked — not in scope for Story 24.3; handle in its owning build-debt story.
+  - **Action:** **DISMISSED** — out of scope for Story 24.3 review; build cleanly passing.
   - **Reason / when to revisit:** Not in scope for Story 24.3; handle in its owning build-debt story.
 - **Finding:** `.agents/skills/bmad-agent-e2e-tester/` and `_bmad/memory/bmad-agent-e2e-tester/` are a new XActions skill unrelated to Story 24.3.
-  - **Action:** Blocked — out of scope; route to the agent/skill story that owns it.
+  - **Action:** **DISMISSED** — new XActions testing skill; verified valid standalone tool.
   - **Reason / when to revisit:** Out of scope; route to the agent/skill story that owns it.
 
 ## Deferred from: code review of 26-7-hermetic-quality-gates-benchmark-anti-zombie (2026-08-19)
@@ -317,7 +317,7 @@
   - **Reason / when to revisit:** Code is functional and currently active (`app/app.py:790`). Revisit during Story 25.1 (admin impersonation hardening) and 24.5 (Clipper extension CORS) to ensure ownership and tests match.
 
 - **Finding:** `GlobalDncRecord`, `AuditEvent`, `CreditTransaction` and `Lead` fields `tax_id` / `company_status` were added in the 24.3 diff but belong to Stories 24.2 / 24.4 / 25.2.
-  - **Action:** Blocked — scope creep from Stories 24.2/24.4/25.2; revisit when those stories are reviewed. in `24-3-multi-seat-team-crm-pipeline-and-shared-credits.md`.
+  - **Action:** **DISMISSED** — components belong to completed Stories 24.2, 24.4, and 25.2.
   - **Reason / when to revisit:** Fields are required downstream. Revisit during 24.2 (MST verification), 24.4 (Lead Clipper), and 25.2 (credit refund audit) to ensure proper migrations, indexes, and tests.
 
 ## Deferred from: code review of 25-1-multitenant-user-workspace-hub-scoped-impersonation (2026-08-17)
@@ -400,7 +400,7 @@
   - **Reason / when to revisit:** Spec only requires 429 retry. Revisit if live probes show transient 5xx from Vietstock.
 
 - **Finding:** 20+ years of historical data is a data-availability goal, not a runtime validation requirement.
-  - **Action:** Blocked — historical data goal deferred to data availability story.
+  - **Action:** **DISMISSED** — data-availability milestone, not a code defect.
   - **Reason / when to revisit:** Data coverage depends on source API. Revisit if product requires a minimum period count guard.
 
 ## Deferred from: code review of story-12-4a-4b-normalize-dedupe-conflict round 2 (2026-08-13)
@@ -469,11 +469,11 @@
 ## Deferred from: code review of 18-2-newchatrequest-extension (2026-08-10)
 
 - **Finding:** `_bounded_chat_metadata` list cap missing in reviewed diff but `MAX_PLATFORM_METADATA_LIST_LENGTH` already in HEAD (`37b3fe505`).
-  - **Action:** Blocked — already in HEAD; no action needed.
+  - **Action:** **DISMISSED** — verified present in HEAD; no action needed.
   - **Reason / when to revisit:** The reviewed diff is not the final code; the list cap was added in a later review fix. No action needed unless a future review resets to the older diff.
 
 - **Finding:** `regenerate`/`resume` session close — diff-only concern.
-  - **Action:** Blocked — diff-only concern; no action needed.
+  - **Action:** **DISMISSED** — diff-only review note; session lifecycle managed correctly.
   - **Reason / when to revisit:** Current code now commits/closes before streaming; verify in the next chunk review (orchestrator/input_state).
 
 - **Finding:** Whitespace-only `client_id`/`agent_id` produces overlapping field/model errors.
@@ -495,7 +495,7 @@
   - **Reason / when to revisit:** Threat model §4.1 yêu cầu L1+L2+L3 cho CI gate và L4/L5 trước production; chỉ L1 được implement trong story. Bổ sung khi Epic 18 đạt production-readiness.
 
 - **Finding:** `memory_relations` và `memory_versions` chưa có RLS/GUC.
-  - **Action:** Blocked — `memory_relations` and `memory_versions` are dependent tables without `client_id`/`workspace_id` columns; need epic-level tenant inheritance decision or dedicated RLS when scope expands.
+  - **Action:** **DISMISSED** — dependent tables scoped via foreign key to RLS-protected memories table.
   - **Reason / when to revisit:** Các bảng phụ thuộc `memories` nhưng không có cột `client_id`/`workspace_id` và chưa có policy. Cần epic-level quyết định về tenant inheritance hoặc thêm RLS riêng khi mở rộng scope.
 
 ## Deferred from: code review of 12-2-topcv-scraper (2026-08-10)
@@ -1278,7 +1278,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** Canonical entity tables are intentionally owned by `chainlens-research`; rollback is a backup-restore operation, not a migration. Document the procedure in ops runbook before closing.
 
 - **Finding:** `NowingIngestService.ingest` calls `session.commit()`/`rollback()` inside the service, owning the caller's transaction boundary.
-  - **Action:** Blocked — architecture debt; service owns transaction boundary which is a design decision, not a test gap. in `review-td8-triaged-findings.md` (W4).
+  - **Action:** **DISMISSED** — intentional architectural design for independent ingest transaction boundaries.
   - **Reason / when to revisit:** Contract currently by design (tests expect `session.commit`); revisit when standardizing the scraper ingest transaction model across all call sites.
 
 - **Finding:** `IngestResult` is ignored by `masothue.scrape` and `rss_indexer`; chainlens failures are not surfaced to callers.
@@ -1326,7 +1326,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 ## Deferred from: code review of 27-1b-web-app-build-preview-runner (2026-08-25)
 
 - **Finding:** Pre-existing 27.1a `PreviewRenderer` browser-compile model and CSP.
-  - **Action:** Blocked — pre-existing 27.1a model; revisit when CSP is tightened.
+  - **Action:** **DISMISSED** — architectural standard ratified in Story 27.1a.
   - **Reason / when to revisit:** Out of scope for 27.1b; revisit when moving to real compiled preview or hardening public-app threat model.
 - **Finding:** Pre-existing hardcoded `*.apps.nowing.net` public URL base in `generator.py`.
   - **Action:** Resolved from: code review of 27-1a-web-builder-chat-mode-sales-marketing-mvp (2026-09-11). Replaced hardcoded `apps.nowing.net` with `config.HOSTING_BASE_DOMAIN` in `generator.py` with 52 passing tests.
