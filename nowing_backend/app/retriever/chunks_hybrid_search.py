@@ -46,7 +46,7 @@ def _instrument_search(mode: str):
     return _decorator
 
 
-class ChucksHybridSearchRetriever:
+class ChunksHybridSearchRetriever:
     def __init__(self, db_session):
         """
         Initialize the hybrid search retriever with a database session.
@@ -513,3 +513,7 @@ class ChucksHybridSearchRetriever:
             document_type,
         )
         return final_docs
+
+
+# Backward-compatible alias for typo fix
+ChucksHybridSearchRetriever = ChunksHybridSearchRetriever

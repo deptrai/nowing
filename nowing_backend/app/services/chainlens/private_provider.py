@@ -20,7 +20,7 @@ from app.db import (
     SearchSourceConnector,
     Workspace,
 )
-from app.retriever.chunks_hybrid_search import ChucksHybridSearchRetriever
+from app.retriever.chunks_hybrid_search import ChunksHybridSearchRetriever
 from app.retriever.documents_hybrid_search import DocumentHybridSearchRetriever
 from app.services.chainlens.schemas import (
     PrivateDataSearchRequest,
@@ -112,7 +112,7 @@ class PrivateProviderService:
 
     def __init__(self, session):
         self.session = session
-        self._chunk_retriever = ChucksHybridSearchRetriever(session)
+        self._chunk_retriever = ChunksHybridSearchRetriever(session)
         self._document_retriever = DocumentHybridSearchRetriever(session)
 
     async def search(
