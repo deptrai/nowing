@@ -810,3 +810,20 @@ def test_normalize_listing_missing_id_uses_hash():
     listing = normalize_listing("vietnamworks", raw)
     assert listing.id.startswith("vietnamworks:")
     assert listing._source_record_ids == {"vietnamworks": listing.id}
+
+
+def test_infer_salary_period_english_abbreviations():
+    """Verify inference for English salary abbreviations (hrly, daily, wkly, mo, yr, annum)."""
+    from app.services.jobs_aggregator.normalize import _infer_salary_period_from_text
+
+    assert _infer_salary_period_from_text("$25 hrly") == "hour"
+    assert _infer_salary_period_from_text("$20/hr") == "hour"
+    assert _infer_salary_period_from_text("500k daily") == "day"
+    assert _infer_salary_period_from_text("5M wkly") == "week"
+    assert _infer_salary_period_from_text("5M/wk") == "week"
+    assert _infer_salary_period_from_text("20M/mo") == "month"
+    assert _infer_salary_period_from_text("25M mo.") == "month"
+    assert _infer_salary_period_from_text("300M/yr") == "year"
+    assert _infer_salary_period_from_text("50k per annum") == "year"
+    assert _infer_salary_period_from_text("60k/annum") == "year"
+    assert _infer_salary_period_from_text("100k p.a.") == "year"

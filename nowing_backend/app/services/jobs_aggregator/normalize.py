@@ -62,11 +62,11 @@ def _parse_post_date(value: Any) -> datetime.date | None:
 
 
 _SALARY_PERIOD_BY_TEXT: list[tuple[tuple[str, ...], str]] = [
-    (("/giờ", "/gio", "/h", " per hour", " per hr", "/hour"), "hour"),
-    (("/ngày", "/ngay", " per day", "/day"), "day"),
-    (("/tuần", "/tuan", " per week", "/week"), "week"),
-    (("/tháng", "/thang", " per month", "/month", " monthly"), "month"),
-    (("/năm", "/nam", " per year", "/year", " annually"), "year"),
+    (("/giờ", "/gio", "/h", " per hour", " per hr", "/hour", "hrly", "/hr"), "hour"),
+    (("/ngày", "/ngay", " per day", "/day", "daily"), "day"),
+    (("/tuần", "/tuan", " per week", "/week", "wkly", "/wk"), "week"),
+    (("/tháng", "/thang", " per month", "/month", " monthly", "/mo", "mo."), "month"),
+    (("/năm", "/nam", " per year", "/year", " annually", "/yr", "yr.", "per annum", "/annum", "p.a."), "year"),
 ]
 
 

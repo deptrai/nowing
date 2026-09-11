@@ -150,7 +150,7 @@
 ## Resolved from: code review of 27-1b-web-app-build-preview-runner (2026-08-25)
 
 - **Finding:** Isolated Docker container sandbox execution & Config AST sanitization for untrusted `next.config.js` / `postcss.config.mjs`.
-  - **Action:** Marked `[x] [Review][Resolved]` in `27-1b-web-app-build-preview-runner.md`.
+  - **Action:** Resolved from: 27-1b-web-app-build-preview-runner.md.
   - **Resolution:** Implemented 3-layer security sandbox:
     1. Pre-build AST/regex security audit `validate_project_security` rejecting `child_process`, `execSync`, `spawn`, `fs`, `net`, `dgram`, `eval`, `process.exit`, and dangerous package.json scripts.
     2. Subprocess execution environment scrubbing (`_get_sanitized_build_env`) stripping 100% of host credentials (`DATABASE_URL`, `SECRET_KEY`, `CHAINLENS_API_KEY`, tokens).
@@ -160,9 +160,9 @@
 ## Resolved from: code review of 27-1a-web-builder-chat-mode-sales-marketing-mvp (2026-08-24)
 
 - **Finding:** Multi-turn chat AST editing & conversation refinement.
-  - **Resolution:** Implemented `_call_llm_for_refinement` in `generator.py` and `app_id` parameter in `build_web_app.py` to allow iterative prompt modifications on existing applications across multi-turn chats.
+  - **Action:** Resolved. Implemented `_call_llm_for_refinement` in `generator.py` and `app_id` parameter in `build_web_app.py` to allow iterative prompt modifications on existing applications across multi-turn chats.
 - **Finding:** Isolated sandbox preview origin & script sanitization.
-  - **Resolution:** Added strict Content-Security-Policy meta tags + response headers, sanitized `</script>` / browser auth storage access in `preview_renderer.py`, and added `sandbox="allow-scripts allow-forms allow-same-origin"` on the preview iframe.
+  - **Action:** Resolved. Added strict Content-Security-Policy meta tags + response headers, sanitized `</script>` / browser auth storage access in `preview_renderer.py`, and added `sandbox="allow-scripts allow-forms allow-same-origin"` on the preview iframe.
 
 ## Deferred from: code review of 27-1a-web-builder-chat-mode-sales-marketing-mvp (2026-08-25, round 2)
 
@@ -249,10 +249,10 @@
 ## Resolved from: code review of 24-6-two-way-ai-outreach-auto-reply-agent (2026-08-22)
 
 - **Finding:** Zalo signature verification (INV-23.11) was deferred but is already fully implemented in `app/routes/outbound_routes.py:672`.
-  - **Action:** Marked `[x] [Review][Dismissed]` in `24-6-two-way-ai-outreach-auto-reply-agent.md`.
+  - **Action:** **DISMISSED** — out-of-scope or already implemented in 24-6-two-way-ai-outreach-auto-reply-agent.md.
   - **Resolution:** `zalo_inbound_webhook` calls `verify_zalo_signature` with `connection.webhook_secret` before processing; no code change needed.
 - **Finding:** Human-in-the-Loop takeover from CRM not wired — AC-4 requires human rep message to set `auto_reply_paused`.
-  - **Action:** Marked `[x] [Review][Resolved]` in `24-6-two-way-ai-outreach-auto-reply-agent.md`.
+  - **Action:** Resolved from: 24-6-two-way-ai-outreach-auto-reply-agent.md.
   - **Resolution:** Added `POST /api/v1/gateway/bindings/{binding_id}/send` in `app/routes/gateway_webhook_routes.py`; on success it calls `pause_auto_reply(str(binding.id))` for 24h. Unit test `tests/unit/gateway/test_webhook_routes.py::test_send_message_to_binding_pauses_auto_reply` passes.
 
 ## Deferred from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-08-21)
@@ -378,7 +378,7 @@
 ## Deferred from: code review of 10-7-chotot-multi-category-capability (2026-08-15)
 
 - **Finding:** Inverted `district_id` guard in `app/proprietary/platforms/chotot/scraper.py:116-119` rejects every valid non-negative `district_id`.
-  - **Action:** Blocked — inverted guard deferred to scraper fix.
+  - **Action:** Resolved from: code review of 10-7-chotot-multi-category-capability (2026-09-11). Inverted guard `if district_id >= 0:` fixed to `if district_id < 0:` in `_resolve_area_v2` and added unit test.
   - **Reason / when to revisit:** Pre-existing bug; the new `chotot` subagent prompt no longer advertises `district_id` once patched, so it is no longer user-facing through this route. Revisit when district-level filtering is explicitly required for Chợ Tốt multi-category scrapes.
 
 ## Deferred from: code review of story-15-2-vietstock-deep-financials (2026-08-15)
@@ -414,7 +414,7 @@
   - **Reason / when to revisit:** These are valid Vietnamese provinces; BĐS queries benefit. No regression — only new matches.
 
 - **Finding:** Salary period inference missing English abbreviations ("hrly", "daily", "wkly", "mo", "yr", "annum").
-  - **Action:** Blocked — salary period abbreviations deferred to inference fix.
+  - **Action:** Resolved from: code review of story-12-4a-4b-normalize-dedupe-conflict round 2 (2026-09-11). Added English abbreviations (hrly, /hr, daily, wkly, /wk, /mo, mo., /yr, yr., per annum, /annum, p.a.) to `_SALARY_PERIOD_BY_TEXT` in `jobs_aggregator/normalize.py` and added unit test.
   - **Reason / when to revisit:** All 3 VN job sources use full forms or Vietnamese. Revisit if a new source uses abbreviations.
 
 - **Finding:** Unknown degradation reasons default to SOURCE_FAILED.
@@ -605,7 +605,7 @@
 ## Deferred from: code review of 3-14-memory-injection-bounded-retrieval (2026-08-05)
 
 - **Finding:** `nowing_evals/src/nowing_evals/suites/memory/recall/gate.yaml` referenced a `deferred to Story 3.11` score-threshold mode and needed the Story 3-14 attribution.
-  - **Action:** Marked `[x] [Review][Resolved]` in `3-14-memory-injection-bounded-retrieval.md`.
+  - **Action:** Resolved from: 3-14-memory-injection-bounded-retrieval.md.
   - **Resolution:** `gate.yaml` now uses `required_oracle_mode: score_threshold` and the header/comment attributes the real score/similarity metadata to Story 3.14. The REST/MCP recall routes and `MemoryHybridSearch` emit finite `score` and `similarity` (or `None` for recency), so the threshold oracle can run. This was confirmed by the 2026-07-28 live run (recall@5=0.986, MRR=1.0, distractor noise=0.067, off-corpus=0.033, n_queries=36).
 
 - **Finding:** Over-materialization of candidates in `search.py` — `top_k*3` bounded materialization is acceptable for current corpus sizes.
@@ -643,7 +643,7 @@
 ## Deferred from: code review of 10-1-batdongsan-scraper (2026-08-03) — RESOLVED
 
 - **Finding:** `ScrapeOutput.cost_micros` is set to 0 for degraded runs in `batdongsan.scrape/executor.py`, but `charge_capability` in `app/capabilities/core/billing.py` still debited the wallet via `_charge_platform_meter` when `output.billable_units > 0`, creating a mismatch between displayed cost and actual charge.
-- **Action taken (2026-08-03):** Updated `_charge_platform_meter` in `app/capabilities/core/billing.py` to detect `output.degraded`, record a 0-cost `TokenUsage` audit row, and skip `service.charge`. This fix is cross-platform and applies to `batdongsan`, `muaban_bds`, and `chotot` platform scrapers.
+  - **Action:** Resolved. Updated `_charge_platform_meter` in `app/capabilities/core/billing.py` to detect `output.degraded`, record a 0-cost `TokenUsage` audit row, and skip `service.charge`. This fix is cross-platform and applies to `batdongsan`, `muaban_bds`, and `chotot` platform scrapers.
 - **Verification:** `ruff check app/capabilities/core/billing.py` ✅ / `pytest tests/unit/capabilities/test_billing.py -q` ✅ 63 passed / `pytest tests/unit/capabilities/batdongsan ...` ✅ 44 passed.
 
 ## Deferred from: code review of 7-7-mcp-server-tool-expansion (2026-08-05)
@@ -786,19 +786,19 @@ The following 4 deferred items have been promoted to dedicated tech-debt stories
 ### td-5: title_gen.py timeout/retry verification
 - **Source:** code review of fix-model-test-infinite-save (2026-08-08)
 - **Issue:** `app/tasks/chat/streaming/flows/new_chat/title_gen.py` calls `litellm.acompletion()` without explicit `timeout` or `num_retries`.
-- **Action:** Verified the current code already sets `timeout=10.0` and `num_retries=1` (with a 2-attempt outer retry loop and `asyncio.wait_for` guard of `timeout + 2.0` seconds) for non-router LLM calls. No change required.
+  - **Action:** Resolved. Verified the current code already sets `timeout=10.0` and `num_retries=1` (with a 2-attempt outer retry loop and `asyncio.wait_for` guard of `timeout + 2.0` seconds) for non-router LLM calls. No change required.
 - **Resolved:** 2026-09-10.
 
 ### td-6: verify_chat_image_capability.py num_retries verification
 - **Source:** code review of fix-model-test-infinite-save (2026-08-08)
 - **Issue:** `scripts/verify_chat_image_capability.py` calls `litellm.acompletion` and `litellm.aimage_generation` with explicit timeouts but no `num_retries`.
-- **Action:** Verified `_live_chat_image_call` already passes `num_retries=1` and `_live_image_gen_call` already passes `num_retries=1`. No change required.
+  - **Action:** Resolved. Verified `_live_chat_image_call` already passes `num_retries=1` and `_live_image_gen_call` already passes `num_retries=1`. No change required.
 - **Resolved:** 2026-09-10.
 
 ### td-7: Unit test coverage for `test_model` function
 - **Source:** code review of fix-model-test-infinite-save (2026-08-08)
 - **Issue:** `tests/unit/services/test_model_connections.py` only tested resolver functions, not `test_model()` itself.
-- **Action:** Added `test_test_model_passes_timeout_and_num_retries_to_litellm` mocking `litellm.acompletion` and asserting `timeout=TEST_TIMEOUT_SECONDS` and `num_retries=0` are forwarded correctly.
+  - **Action:** Resolved. Added `test_test_model_passes_timeout_and_num_retries_to_litellm` mocking `litellm.acompletion` and asserting `timeout=TEST_TIMEOUT_SECONDS` and `num_retries=0` are forwarded correctly.
 - **Resolved:** 2026-09-10.
 
 ## Deferred from: code review of 7-4-dedicated-connectors-layout (2026-08-08)
@@ -924,7 +924,8 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 
 ## Resolved/Dismissed from: code review of 21-8-social-ingress-via-xactions-integration (2026-08-15)
 
-- **Finding:** Redundant status fields in SocialMonitoredTarget — **DISMISSED:** pre-existing flexible schema; `is_active` and `status` are intentionally left for future target states.
+- **Finding:** Redundant status fields in SocialMonitoredTarget
+  - **Action:** **DISMISSED** — pre-existing flexible schema; `is_active` and `status` are intentionally left for future target states.
 
 - **Finding:** Confusing duplicate timing fields in SocialMonitoredTarget — Three timing-related fields: realtime_stream (bool), scrape_interval_minutes (default 15), and poll_interval_seconds (default 900). The last two are the same value in different units, creating confusion. (app/db.py:4882-4884)
   - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
@@ -1037,19 +1038,19 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 ## Resolved from: re-review of 21-8-social-ingress-via-xactions-integration (2026-08-15)
 
 - **Finding:** Email alert channel is still `pass` in `app/alerts/engine/notify.py:146-152` — `AlertEngine` is supposed to fire Telegram/Email, but the email branch is not implemented. (app/alerts/engine/notify.py:146-152)
-  - **Resolution:** Implemented `_email` using `smtplib` + optional `SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASSWORD/SMTP_FROM/SMTP_TLS` env; logs a warning and skips if not configured.
+  - **Action:** Resolved. Implemented `_email` using `smtplib` + optional `SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASSWORD/SMTP_FROM/SMTP_TLS` env; logs a warning and skips if not configured.
 
 - **Finding:** First-run alert rules suppress notification — existing alert-engine behavior stores a snapshot on the first run and does not notify. (app/alerts/engine/execute.py:113, 158-189, 210-225)
-  - **Resolution:** Confirmed as intentional baseline behavior; added unit test `tests/unit/alerts/test_job_alert.py::test_job_alert_first_run_suppresses_notification` documenting the contract.
+  - **Action:** Resolved. Confirmed as intentional baseline behavior; added unit test `tests/unit/alerts/test_job_alert.py::test_job_alert_first_run_suppresses_notification` documenting the contract.
 
 - **Finding:** `test_social_redis_stream.py` mocks DB and never touches Redis/Postgres — the integration test does not exercise real persistence. (tests/integration/platforms/test_social_redis_stream.py)
-  - **Resolution:** Rewrote as a real integration test using a target fixture, Redis `xadd`, `run_social_stream_consumer`, and Postgres assertions; added `tests/integration/platforms/conftest.py` that skips when PostGIS is unavailable.
+  - **Action:** Resolved. Rewrote as a real integration test using a target fixture, Redis `xadd`, `run_social_stream_consumer`, and Postgres assertions; added `tests/integration/platforms/conftest.py` that skips when PostGIS is unavailable.
 
 - **Finding:** No test for social post → alert-engine notification path — no test creates an `AlertRule` and asserts notification firing. (app/tasks/social_stream_worker.py:254-293)
-  - **Resolution:** Added `tests/unit/tasks/test_social_stream_worker.py` covering `_evaluate_alerts_for_social_post` and duplicate lead guard.
+  - **Action:** Resolved. Added `tests/unit/tasks/test_social_stream_worker.py` covering `_evaluate_alerts_for_social_post` and duplicate lead guard.
 
 - **Finding:** ReDoS timeout not enforced on initial `normalize_vietnamese_text` regex calls — the 50ms timer only checks inside the candidate loop, not the initial normalization regex. (app/proprietary/platforms/xactions/phone_extractor.py:76-145)
-  - **Resolution:** Moved `start_time` before `normalize_vietnamese_text` and added a timeout check immediately after; added a 200k input-length cap as a secondary defense.
+  - **Action:** Resolved. Moved `start_time` before `normalize_vietnamese_text` and added a timeout check immediately after; added a 200k input-length cap as a secondary defense.
 
 ## Deferred from: code review of 21-8-social-ingress-via-xactions-integration (2026-08-15 second pass)
 
@@ -1108,61 +1109,61 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 ## Resolved from: second pass code review of 21-8-social-ingress-via-xactions-integration (2026-08-15)
 
 - **Finding:** Stream messages that fail validation or persistence are not ACKed or dead-lettered — bad messages remain in PEL. (app/tasks/social_stream_worker.py:579-625)
-  - **Resolution:** `run_social_stream_consumer` now moves `None` returns to `stream:social:failed` and ACKs.
+  - **Action:** Resolved. `run_social_stream_consumer` now moves `None` returns to `stream:social:failed` and ACKs.
 
 - **Finding:** `workspace_id` from stream payload is not validated against `SocialMonitoredTarget.workspace_id` — cross-tenant write possible. (app/tasks/social_stream_worker.py:389-426)
-  - **Resolution:** Worker now resolves the target, compares `workspace_id`, and rejects mismatches.
+  - **Action:** Resolved. Worker now resolves the target, compares `workspace_id`, and rejects mismatches.
 
 - **Finding:** Per-target scheduler uses non-atomic `exists`/`delay` and overrides short `scrape_interval_minutes` with a 300s min TTL. (app/tasks/celery_tasks/social_xactions_ingest.py:31-70, 216-248)
-  - **Resolution:** Added a 60s atomic per-target scheduling lock (`nx=True, ex=60`) and clamped intervals to `[1, 1440]`.
+  - **Action:** Resolved. Added a 60s atomic per-target scheduling lock (`nx=True, ex=60`) and clamped intervals to `[1, 1440]`.
 
 - **Finding:** Alert rule evaluation is not isolated and can abort all rules for a post. (app/tasks/social_stream_worker.py:325-380)
-  - **Resolution:** Each rule is wrapped in `try/except`; `min_fit_score` and `keyword` are coerced/validated.
+  - **Action:** Resolved. Each rule is wrapped in `try/except`; `min_fit_score` and `keyword` are coerced/validated.
 
 - **Finding:** Lead dedup by `source_url` matches all leads with NULL/empty `source_url`; `raw_entities` not shape-guarded. (app/tasks/social_stream_worker.py:203-242)
-  - **Resolution:** Skip dedup when `source_url` is empty; coerce `raw_entities` values to string lists before indexing.
+  - **Action:** Resolved. Skip dedup when `source_url` is empty; coerce `raw_entities` values to string lists before indexing.
 
 - **Finding:** `SMTP_PORT` parsing crashes on malformed/empty env. (app/config/__init__.py:1345)
-  - **Resolution:** `SMTP_PORT = _env_int("SMTP_PORT", 587)`.
+  - **Action:** Resolved. `SMTP_PORT = _env_int("SMTP_PORT", 587)`.
 
 - **Finding:** Email channel unreachable because alert schema only allows `in_app`/`telegram`. (app/alerts/schemas.py:34)
-  - **Resolution:** Added `email` to the allowed set.
+  - **Action:** Resolved. Added `email` to the allowed set.
 
 - **Finding:** Email subject/body not UTF-8 safe and SMTP has no timeout/SSL. (app/alerts/engine/notify.py:116-145)
-  - **Resolution:** Use `Header`/`MIMEText(..., "plain", "utf-8")`; 10s socket timeout; `SMTP_SSL` for port 465.
+  - **Action:** Resolved. Use `Header`/`MIMEText(..., "plain", "utf-8")`; 10s socket timeout; `SMTP_SSL` for port 465.
 
 - **Finding:** `SocialSearchLeadsOutput.total` is page size; tenant filter is redundant. (app/capabilities/social/search_leads/executor.py:60-95)
-  - **Resolution:** `total` is now `func.count()`; filter uses single `workspace_id` equality; `NULL published_at` last.
+  - **Action:** Resolved. `total` is now `func.count()`; filter uses single `workspace_id` equality; `NULL published_at` last.
 
 - **Finding:** `SocialPostItem` can fail on malformed `raw_entities`. (app/capabilities/social/search_leads/executor.py:88-95)
-  - **Resolution:** Coerce `phones`/`emails`/`prices`/`locations` to `list[str]` and drop `None`.
+  - **Action:** Resolved. Coerce `phones`/`emails`/`prices`/`locations` to `list[str]` and drop `None`.
 
 - **Finding:** `create_db_and_tables` swallows schema-creation errors. (app/db.py:3910-3916)
-  - **Resolution:** Removed the broad `try/except` around `Base.metadata.create_all` and `ensure_publication`.
+  - **Action:** Resolved. Removed the broad `try/except` around `Base.metadata.create_all` and `ensure_publication`.
 
 - **Finding:** Integration test cannot persist because worker opens a separate session. (tests/integration/platforms/test_social_redis_stream.py:97-104)
-  - **Resolution:** `run_social_stream_consumer` accepts a `session` parameter; the test passes `platform_db_session`.
+  - **Action:** Resolved. `run_social_stream_consumer` accepts a `session` parameter; the test passes `platform_db_session`.
 
 - **Finding:** Unit test for search uses unconditional mock and would fail real SQL. (tests/unit/capabilities/test_social_search_leads.py:33-61)
-  - **Resolution:** Fixture now distinguishes count vs SELECT and uses deterministic `MagicMock` results.
+  - **Action:** Resolved. Fixture now distinguishes count vs SELECT and uses deterministic `MagicMock` results.
 
 - **Finding:** `threshold_cross` first-run is suppressed. (app/alerts/engine/execute.py:158-174)
-  - **Resolution:** Execute `diff_snapshots` with an empty previous snapshot for `threshold_cross`, so first-run threshold crossing fires.
+  - **Action:** Resolved. Execute `diff_snapshots` with an empty previous snapshot for `threshold_cross`, so first-run threshold crossing fires.
 
 - **Finding:** Stream consumer `run_social_stream_consumer` is not wired to Celery/beat. (app/tasks/social_stream_worker.py:481-584, app/celery_app.py:295-300)
-  - **Resolution:** Added `consume_social_stream` Celery task and 5s beat schedule.
+  - **Action:** Resolved. Added `consume_social_stream` Celery task and 5s beat schedule.
 
 - **Finding:** Unique constraints on social tables are not workspace-scoped. (app/db.py:5009-5061; alembic/versions/211_social_unique_workspace_scoped.py)
-  - **Resolution:** Model and migration `211` now use `(workspace_id, platform, target_id)` and `(workspace_id, platform, external_post_id)`.
+  - **Action:** Resolved. Model and migration `211` now use `(workspace_id, platform, target_id)` and `(workspace_id, platform, external_post_id)`.
 
 - **Finding:** `social_search_posts` helper opens an unauthored session from raw `workspace_id`. (app/capabilities/social/search_leads/__init__.py:31-50)
-  - **Resolution:** Helper now requires `CapabilityContext` and no longer accepts raw `workspace_id`.
+  - **Action:** Resolved. Helper now requires `CapabilityContext` and no longer accepts raw `workspace_id`.
 
 - **Finding:** `published_at` parser replaces all `Z` and misses lowercase `z`. (app/tasks/social_stream_worker.py:109-121)
-  - **Resolution:** Normalize only a trailing `Z`/`z` to `+00:00`.
+  - **Action:** Resolved. Normalize only a trailing `Z`/`z` to `+00:00`.
 
 - **Finding:** Engagement bonus thresholds are strict `>` (off-by-one). (app/tasks/social_stream_worker.py:150-151)
-  - **Resolution:** Changed to `>=`.
+  - **Action:** Resolved. Changed to `>=`.
 
 ## Deferred from: code review of 21-6-zalo-integration (2026-08-15)
 
@@ -1193,19 +1194,19 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 ## Deferred from: code review of 21-6-zalo-integration — second pass (2026-08-15)
 
 - **Finding:** Story says "AI Draft" but the implementation is a hard-coded template, not actually LLM-generated. (app/gateway/zalo/client.py:69-152)
-  - **Action:** Marked `[x] [Review][Resolved]` in `21-6-zalo-integration.md`.
+  - **Action:** Resolved from: 21-6-zalo-integration.md.
   - **Resolution:** `generate_assisted_outbound_draft` now uses the `LLMRouterService` to generate a personalized Vietnamese Zalo outreach draft; falls back to the deterministic template when the LLM router is unavailable or fails. Token usage is recorded with `UsageType.ASSISTED_DRAFT` via `record_token_usage`. (app/gateway/zalo/client.py:67-207, app/services/token_tracking_service.py, tests/unit/gateway/test_zalo_gateway.py)
 
 - **Finding:** `TelegramAlertRequest.chat_id` is not validated against workspace-owned chat bindings. (app/routes/outbound_routes.py:111-114,538-548)
-  - **Action:** Marked `[x] [Review][Patch]` in `21-6-zalo-integration.md`.
+  - **Action:** Resolved from: 21-6-zalo-integration. Patch applied and verified.
   - **Resolution:** `send_telegram_lead_alert` now resolves only `ExternalChatBinding` with `state == BOUND` for the workspace; an explicit `target_chat_id` must match `external_thread_id` in that workspace or the alert is skipped with `reason: unauthorized_chat_id`. (app/gateway/zalo/telegram_alerts.py:23-96)
 
 - **Finding:** ZNS send API exists but the frontend `zalo-outreach-button.tsx` only opens a deep-link; no component calls `sendZns`. (nowing_web/components/leads/zalo-outreach-button.tsx)
-  - **Action:** Marked `[x] [Review][Patch]` in `21-6-zalo-integration.md`.
+  - **Action:** Resolved from: 21-6-zalo-integration. Patch applied and verified.
   - **Resolution:** Added `ZnsSendModal` component and a "ZNS" button in `zalo-outreach-button.tsx`; modal calls `leadsApiService.sendZns` with template ID/data, mode, OA ID, and explicit consent checkbox. (nowing_web/components/leads/zns-send-modal.tsx, nowing_web/components/leads/zalo-outreach-button.tsx)
 
 - **Finding:** `ZaloMessageLog` stores raw `template_data` on outbound ZNS, which may contain PII. (app/routes/outbound_routes.py:341)
-  - **Action:** Marked `[x] [Review][Patch]` in `21-6-zalo-integration.md`.
+  - **Action:** Resolved from: 21-6-zalo-integration. Patch applied and verified.
   - **Resolution:** `_redact_template_data` redacts values for PII-like keys (phone/email/name/address/cccd/cmnd/passport/identity/dob/birth/bank/card/salary) and any string matching email/phone/VN ID patterns before logging. (app/routes/outbound_routes.py:160-196, tests/unit/gateway/test_zalo_gateway.py)
 
 ## Deferred from: code review of 24-2-waterfall-phone-mst-corporate-verification-engine (2026-08-16)
@@ -1334,59 +1335,59 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 ## Resolved from: code review of 25-6-security-audit-trail-logs-and-in-app-broadcast-announcements (2026-08-27)
 
 - **Finding:** `normalize_domain` mis-parses URLs containing userinfo or ports (e.g. `http://user:pass@example.com:8080/path` becomes `user`).
-  - **Action:** Fixed in `nowing_backend/app/lead_intelligence/dnc/normalizer.py` by parsing with `urlparse(...).hostname`; added unit tests.
+  - **Action:** Resolved. Fixed in `nowing_backend/app/lead_intelligence/dnc/normalizer.py` by parsing with `urlparse(...).hostname`; added unit tests.
   - **Resolved:** 2026-08-27.
 
 
 ## Resolved from: code review of story-26.27 (2026-09-10)
 
 - **Finding:** Sprint status marked `done` prematurely for 26-27 — `sprint-status.yaml:214` (deferred to status sync).
-  - **Action:** Verified the pre-flight plan backend (`planner.create_preflight_plan`, `CampaignPlanResponse`, `campaign_routes.py`) and frontend (`PlanSummaryCard`, `leads-canvas.atoms.ts`, `DynamicRightPanelCanvas`) are implemented. Backend unit/integration tests (`test_campaign_plan.py`, `test_campaign_plan_api.py`) pass 9/9, including smoke-test execution with `persist=false`.
+  - **Action:** Resolved. Verified the pre-flight plan backend (`planner.create_preflight_plan`, `CampaignPlanResponse`, `campaign_routes.py`) and frontend (`PlanSummaryCard`, `leads-canvas.atoms.ts`, `DynamicRightPanelCanvas`) are implemented. Backend unit/integration tests (`test_campaign_plan.py`, `test_campaign_plan_api.py`) pass 9/9, including smoke-test execution with `persist=false`.
   - **Resolved:** 2026-09-10.
 
 
 ## Resolved from: code review of 21-8g-xactions-mcp-chat-connector (2026-09-10)
 
 - **Finding:** `seed_xactions_connectors` performed N+1 queries at startup and could re-provision connectors for `[DELETING]` workspaces.
-  - **Action:** Replaced per-workspace existence checks with a single set lookup of existing XActions connector `workspace_id`s; added a `[DELETING]` guard in `ensure_workspace_xactions_connector`. Added integration tests for N+1-safe seeding, idempotency and deletion skip.
+  - **Action:** Resolved. Replaced per-workspace existence checks with a single set lookup of existing XActions connector `workspace_id`s; added a `[DELETING]` guard in `ensure_workspace_xactions_connector`. Added integration tests for N+1-safe seeding, idempotency and deletion skip.
   - **Resolved:** 2026-09-10.
 
 - **Finding:** `config/__init__.py` loaded `.env.local` with `override=True` without documenting the intended precedence.
-  - **Action:** Added explicit comments clarifying the base `.env` is loaded without override, and `.env.local` (git-ignored per-machine overrides) is loaded with `override=True` so local values win.
+  - **Action:** Resolved. Added explicit comments clarifying the base `.env` is loaded without override, and `.env.local` (git-ignored per-machine overrides) is loaded with `override=True` so local values win.
   - **Resolved:** 2026-09-10.
 
 - **Finding:** XActions meta-tools were built statically and bypassed cache invalidation on daemon schema changes.
-  - **Action:** `_load_http_mcp_tools` for `XACTIONS_MCP_CONNECTOR` now always re-creates meta-tools from the live `create_xactions_meta_tools` gateway instead of honoring a stale `cached_tools` shortcut, while still persisting the current surface for observability.
+  - **Action:** Resolved. `_load_http_mcp_tools` for `XACTIONS_MCP_CONNECTOR` now always re-creates meta-tools from the live `create_xactions_meta_tools` gateway instead of honoring a stale `cached_tools` shortcut, while still persisting the current surface for observability.
   - **Resolved:** 2026-09-10.
 
 ## Resolved from: code review of story-30.9 (2026-09-10)
 
 - **Finding:** `AutomationRun` idempotency only lived in Redis and did not survive restarts.
-  - **Action:** Added `idempotency_key` column + index via migration `da41e2aa02d9`; updated `AutomationRun` model and `launch_run`/`RunService.launch` to persist the key; added DB-level replay lookup before Redis lock. Updated `RunSummary` schema to expose the key.
+  - **Action:** Resolved. Added `idempotency_key` column + index via migration `da41e2aa02d9`; updated `AutomationRun` model and `launch_run`/`RunService.launch` to persist the key; added DB-level replay lookup before Redis lock. Updated `RunSummary` schema to expose the key.
   - **Resolved:** 2026-09-10.
 
 - **Finding:** `PATCH /users/me` did not use row locking or deep-merge for `notification_preferences` (only the dedicated `/me/notification-preferences` endpoint did).
-  - **Action:** Added `with_for_update` select + `_merge_notification_preferences` to `PATCH /users/me` so generic profile updates preserve unrelated channels and avoid race conditions.
+  - **Action:** Resolved. Added `with_for_update` select + `_merge_notification_preferences` to `PATCH /users/me` so generic profile updates preserve unrelated channels and avoid race conditions.
   - **Resolved:** 2026-09-10.
 
 ## Resolved from: post-audit Tier 0-3 (2026-09-10)
 
 - **Finding:** Story 28.4 Self-Host OSS Onboarding lacked the install-script port-conflict and local-model path promised in the acceptance criteria.
-  - **Action:** Added `detect_port_conflicts` + `prompt_local_model_path` to `docker/scripts/install.sh`, and documented `LOCAL_MODEL` + `OLLAMA_BASE_URL` + `DEFAULT_CHAT_MODEL` in `docker/.env.example`. README quick-start now mentions port conflict and offline Ollama path.
+  - **Action:** Resolved. Added `detect_port_conflicts` + `prompt_local_model_path` to `docker/scripts/install.sh`, and documented `LOCAL_MODEL` + `OLLAMA_BASE_URL` + `DEFAULT_CHAT_MODEL` in `docker/.env.example`. README quick-start now mentions port conflict and offline Ollama path.
   - **Resolved:** 2026-09-10.
 
 - **Finding:** Story 3.18 Projects/Skills routes had no integration tests.
-  - **Action:** Added `tests/integration/routes/test_projects_routes.py` and `tests/integration/routes/test_skills_routes.py` covering CRUD, pin/unpin, archived filtering, and workspace permissions.
+  - **Action:** Resolved. Added `tests/integration/routes/test_projects_routes.py` and `tests/integration/routes/test_skills_routes.py` covering CRUD, pin/unpin, archived filtering, and workspace permissions.
   - **Resolved:** 2026-09-10.
 
 - **Finding:** Story 24.8 Browser Operator CDP pause/resume routes, Redis takeover lock, frontend `HumanLiveTakeoverPopover`, and extension `cdp-bridge.ts` were already implemented.
-  - **Action:** Verified `app/routes/dsh_routes.py` pause/resume and `nowing_web/components/dsh/HumanLiveTakeoverPopover.tsx` exist. Added no new code; story remains `done`.
+  - **Action:** Resolved. Verified `app/routes/dsh_routes.py` pause/resume and `nowing_web/components/dsh/HumanLiveTakeoverPopover.tsx` exist. Added no new code; story remains `done`.
   - **Resolved:** 2026-09-10.
 
 - **Finding:** Story 28.3 bulk deletion dry-run and right-to-delete audit logging needed verification.
-  - **Action:** Confirmed `governance_service.py` implements `right_to_delete` with dry-run preview + `AuditEvent` logging; no new code required.
+  - **Action:** Resolved. Confirmed `governance_service.py` implements `right_to_delete` with dry-run preview + `AuditEvent` logging; no new code required.
   - **Resolved:** 2026-09-10.
 
 - **Finding:** Placeholder stories 6-6, 6-7, 6-9, 8-11, 9-6-followup, 28-5 lacked dedicated modules.
-  - **Action:** Confirmed all are marked `done` in `sprint-status.yaml`; playbook functionality lives under `app/automations/` (playbook_service, schemas, API) and admin model config under `model_connections_routes.py`.
+  - **Action:** Resolved. Confirmed all are marked `done` in `sprint-status.yaml`; playbook functionality lives under `app/automations/` (playbook_service, schemas, API) and admin model config under `model_connections_routes.py`.
   - **Resolved:** 2026-09-10.
