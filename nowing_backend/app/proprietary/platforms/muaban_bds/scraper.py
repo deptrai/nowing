@@ -77,10 +77,20 @@ def _normalize_text(text: str) -> str:
 
 
 def _resolve_city_slug(name: str) -> str | None:
-    """Resolve a city name or slug to a Muaban city slug."""
+    """Resolve a city name or slug to a Muaban city slug, expanding across all provinces."""
     if all(c == "-" or c.isalnum() for c in name) and "-" in name:
         return name.strip().lower()
-    return _CITY_ALIASES.get(_normalize_text(name))
+    norm = _normalize_text(name)
+    if norm in _CITY_ALIASES:
+        return _CITY_ALIASES[norm]
+    try:
+        from app.services.location_normalize import resolve_city_code, _CITY_SLUGS
+        code = resolve_city_code(name)
+        if code and code in _CITY_SLUGS:
+            return _CITY_SLUGS[code]
+    except Exception:
+        pass
+    return None
 
 
 def _property_slug(listing_type: str, property_type: str) -> str:
