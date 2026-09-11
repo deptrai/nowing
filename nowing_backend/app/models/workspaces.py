@@ -377,12 +377,14 @@ class Workspace(BaseModel, TimestampMixin):
         back_populates="workspace",
         order_by="SocialMonitoredTarget.id",
         cascade="all, delete-orphan",
+        passive_deletes=True,
     )
     social_posts = relationship(
         "SocialPost",
         back_populates="workspace",
         order_by="SocialPost.id",
         cascade="all, delete-orphan",
+        passive_deletes=True,
     )
     xactions_proxy_bindings = relationship(
         "XActionsProxyBinding",

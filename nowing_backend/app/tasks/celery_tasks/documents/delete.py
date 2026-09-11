@@ -160,6 +160,23 @@ async def _delete_workspace_background(workspace_id: int) -> None:
             await session.execute(sa_delete(Document).where(Document.id.in_(doc_ids)))
             await session.commit()
 
+        # Purge anti-bot screenshots for this workspace before cascade delete
+        from app.db import AntiBotEscalation
+        from app.file_storage.factory import get_storage_backend
+        backend = get_storage_backend()
+        if backend is not None:
+            esc_result = await session.execute(
+                select(AntiBotEscalation).where(AntiBotEscalation.workspace_id == workspace_id)
+            )
+            for esc in esc_result.scalars():
+                meta = dict(esc.escalation_metadata) if esc.escalation_metadata else {}
+                storage_key = meta.get("storage_key")
+                if storage_key:
+                    try:
+                        await backend.delete(storage_key)
+                    except Exception:
+                        pass
+
         space = await session.get(Workspace, workspace_id)
         if space:
             await session.delete(space)

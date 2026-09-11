@@ -595,7 +595,7 @@
   - **Reason / when to revisit:** Apply platform-wide rate limiting policy, không riêng story này.
 
 - **Finding:** Workspace/Run cascade delete không xóa screenshot trong storage.
-  - **Action:** Blocked — cascade delete deferred to storage cleanup story.
+  - **Action:** Resolved from: code review of 10-5-anti-bot-captcha-screenshot-escalation (2026-09-11). Added screenshot storage blob purge in `_delete_workspace_background` in `app/tasks/celery_tasks/documents/delete.py` before database cascade delete.
   - **Reason / when to revisit:** Cần trigger hoặc cleanup job chung cho storage lifecycle.
 
 - **Finding:** `escalation_metadata` alias `metadata` gây confusion giữa model, schema và DB column.
@@ -1079,7 +1079,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** Default `DESC NULLS FIRST` ordering may show undated posts above recent ones. Add `nulls_last` when UX confirms newest-first intent.
 
 - **Finding:** `SocialMonitoredTarget.posts` and `Workspace` social relationships use `cascade="all, delete-orphan"` without `passive_deletes=True`. (app/db.py:5048-5051, 2110-2121)
-  - **Action:** Blocked — add `passive_deletes=True` when cascade behavior is confirmed.
+  - **Action:** Resolved from: code review of 21-8-social-ingress-via-xactions-integration (2026-09-11). Added `passive_deletes=True` to `SocialMonitoredTarget.posts` and `Workspace.social_*` relationships in `app/models/leads/social.py` and `app/models/workspaces.py`.
   - **Reason / when to revisit:** PostgreSQL FKs already have `ON DELETE CASCADE`; SQLAlchemy loads children on delete. Add `passive_deletes=True` in a performance pass.
 
 - **Finding:** Redis consumer group starts at stream ID `0` and never reclaims pending messages from crashed consumers. (app/tasks/social_stream_worker.py:500-530)
@@ -1282,7 +1282,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** Contract currently by design (tests expect `session.commit`); revisit when standardizing the scraper ingest transaction model across all call sites.
 
 - **Finding:** `IngestResult` is ignored by `masothue.scrape` and `rss_indexer`; chainlens failures are not surfaced to callers.
-  - **Action:** Blocked — architecture debt; callers intentionally ignore `IngestResult` for now. in `review-td8-triaged-findings.md` (W5).
+  - **Action:** Resolved from: code review of 10-5-anti-bot-captcha-screenshot-escalation (2026-09-11). Surfaced `chainlens_ingest_job_id` and `chainlens_ingest_status` in `masothue` `ScrapeOutput` schema and executor with unit tests.
   - **Reason / when to revisit:** Need a design for propagating partial/failed ingest status into capability output / indexing warning without breaking billing/tests.
 
 - **Finding:** Per-scraper ingest failure metrics are missing after canonical metrics were removed.

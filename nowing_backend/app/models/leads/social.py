@@ -79,6 +79,7 @@ class SocialMonitoredTarget(Base, TimestampMixin):
         "SocialPost",
         back_populates="target",
         cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 class SocialPost(Base, TimestampMixin):
     """Ingested social post from Facebook or Twitter (Story 21.8 / AD-SOC-1 to AD-SOC-7)."""
