@@ -26,6 +26,10 @@ from app.db import (
     WorkspaceMembership,
     get_async_session,
 )
+from app.dependencies.auth import (
+    RequirePermissionFromBody,
+    RequirePermissionFromEntity,
+)
 from app.schemas import (
     ImageGenerationCreate,
     ImageGenerationListRead,
@@ -247,6 +251,12 @@ async def create_image_generation(
     data: ImageGenerationCreate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromBody(
+            Permission.IMAGE_GENERATIONS_CREATE.value,
+            "You don't have permission to create image generations in this workspace",
+        )
+    ),
 ):
     user = auth.user
     """Create and execute an image generation request.
@@ -270,14 +280,6 @@ async def create_image_generation(
        scenarios — clients already know how to surface those).
     """
     try:
-        await check_permission(
-            session,
-            auth,
-            data.workspace_id,
-            Permission.IMAGE_GENERATIONS_CREATE.value,
-            "You don't have permission to create image generations in this workspace",
-        )
-
         result = await session.execute(
             select(Workspace).filter(Workspace.id == data.workspace_id)
         )
@@ -421,6 +423,14 @@ async def get_image_generation(
     image_gen_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "ImageGeneration",
+            "image_gen_id",
+            Permission.IMAGE_GENERATIONS_READ.value,
+            "You don't have permission to read image generations in this workspace",
+        )
+    ),
 ):
     """Get a specific image generation by ID."""
     try:
@@ -431,13 +441,6 @@ async def get_image_generation(
         if not image_gen:
             raise HTTPException(status_code=404, detail="Image generation not found")
 
-        await check_permission(
-            session,
-            auth,
-            image_gen.workspace_id,
-            Permission.IMAGE_GENERATIONS_READ.value,
-            "You don't have permission to read image generations in this workspace",
-        )
         return image_gen
 
     except HTTPException:
@@ -453,6 +456,14 @@ async def delete_image_generation(
     image_gen_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "ImageGeneration",
+            "image_gen_id",
+            Permission.IMAGE_GENERATIONS_DELETE.value,
+            "You don't have permission to delete image generations in this workspace",
+        )
+    ),
 ):
     """Delete an image generation record."""
     try:
@@ -462,14 +473,6 @@ async def delete_image_generation(
         db_image_gen = result.scalars().first()
         if not db_image_gen:
             raise HTTPException(status_code=404, detail="Image generation not found")
-
-        await check_permission(
-            session,
-            auth,
-            db_image_gen.workspace_id,
-            Permission.IMAGE_GENERATIONS_DELETE.value,
-            "You don't have permission to delete image generations in this workspace",
-        )
 
         await session.delete(db_image_gen)
         await session.commit()

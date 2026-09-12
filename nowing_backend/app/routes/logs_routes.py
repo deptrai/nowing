@@ -15,7 +15,11 @@ from app.db import (
     WorkspaceMembership,
     get_async_session,
 )
-from app.dependencies.auth import RequirePermission
+from app.dependencies.auth import (
+    RequirePermission,
+    RequirePermissionFromBody,
+    RequirePermissionFromEntity,
+)
 from app.schemas import LogCreate, LogRead, LogUpdate
 from app.users import get_auth_context
 from app.utils.rbac import check_permission
@@ -28,21 +32,18 @@ async def create_log(
     log: LogCreate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromBody(
+            Permission.LOGS_READ.value,
+            "You don't have permission to access logs in this workspace",
+        )
+    ),
 ):
     """
     Create a new log entry.
     Note: This is typically called internally. Requires LOGS_READ permission (since logs are usually system-generated).
     """
     try:
-        # Check if the user has access to the workspace
-        await check_permission(
-            session,
-            auth,
-            log.workspace_id,
-            Permission.LOGS_READ.value,
-            "You don't have permission to access logs in this workspace",
-        )
-
         db_log = Log(**log.model_dump())
         session.add(db_log)
         await session.commit()
@@ -139,6 +140,14 @@ async def read_log(
     log_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "Log",
+            "log_id",
+            Permission.LOGS_READ.value,
+            "You don't have permission to read logs in this workspace",
+        )
+    ),
 ):
     """
     Get a specific log by ID.
@@ -150,15 +159,6 @@ async def read_log(
 
         if not log:
             raise HTTPException(status_code=404, detail="Log not found")
-
-        # Check permission for the workspace
-        await check_permission(
-            session,
-            auth,
-            log.workspace_id,
-            Permission.LOGS_READ.value,
-            "You don't have permission to read logs in this workspace",
-        )
 
         return log
     except HTTPException:
@@ -175,6 +175,14 @@ async def update_log(
     log_update: LogUpdate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "Log",
+            "log_id",
+            Permission.LOGS_READ.value,
+            "You don't have permission to access logs in this workspace",
+        )
+    ),
 ):
     """
     Update a log entry.
@@ -186,15 +194,6 @@ async def update_log(
 
         if not db_log:
             raise HTTPException(status_code=404, detail="Log not found")
-
-        # Check permission for the workspace
-        await check_permission(
-            session,
-            auth,
-            db_log.workspace_id,
-            Permission.LOGS_READ.value,
-            "You don't have permission to access logs in this workspace",
-        )
 
         # Update only provided fields
         update_data = log_update.model_dump(exclude_unset=True)
@@ -218,6 +217,14 @@ async def delete_log(
     log_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "Log",
+            "log_id",
+            Permission.LOGS_DELETE.value,
+            "You don't have permission to delete logs in this workspace",
+        )
+    ),
 ):
     """
     Delete a log entry.
@@ -229,15 +236,6 @@ async def delete_log(
 
         if not db_log:
             raise HTTPException(status_code=404, detail="Log not found")
-
-        # Check permission for the workspace
-        await check_permission(
-            session,
-            auth,
-            db_log.workspace_id,
-            Permission.LOGS_DELETE.value,
-            "You don't have permission to delete logs in this workspace",
-        )
 
         await session.delete(db_log)
         await session.commit()

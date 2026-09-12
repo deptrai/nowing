@@ -19,8 +19,10 @@ from app.db import (
     NewChatThread,
     Permission,
     TokenUsage,
+    WorkspaceMembership,
     get_async_session,
 )
+from app.dependencies.auth import RequirePermissionFromEntity
 from app.routes.new_chat.shared import (
     _perf_log,
     check_thread_access,
@@ -29,7 +31,6 @@ from app.schemas.new_chat import (
     NewChatMessageRead,
 )
 from app.users import get_auth_context
-from app.utils.rbac import check_permission
 
 router = APIRouter()
 
@@ -39,6 +40,14 @@ async def append_message(
     request: Request,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "NewChatThread",
+            "thread_id",
+            Permission.CHATS_UPDATE.value,
+            "You don't have permission to update chats in this workspace",
+        )
+    ),
 ):
     user = auth.user
     """
@@ -116,14 +125,6 @@ async def append_message(
 
         if not thread:
             raise HTTPException(status_code=404, detail="Thread not found")
-
-        await check_permission(
-            session,
-            auth,
-            thread.workspace_id,
-            Permission.CHATS_UPDATE.value,
-            "You don't have permission to update chats in this workspace",
-        )
 
         # Check thread-level access based on visibility
         await check_thread_access(session, thread, user)
@@ -346,6 +347,14 @@ async def list_messages(
     limit: int = 100,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "NewChatThread",
+            "thread_id",
+            Permission.CHATS_READ.value,
+            "You don't have permission to read chats in this workspace",
+        )
+    ),
 ):
     user = auth.user
     """
@@ -366,14 +375,6 @@ async def list_messages(
 
         if not thread:
             raise HTTPException(status_code=404, detail="Thread not found")
-
-        await check_permission(
-            session,
-            auth,
-            thread.workspace_id,
-            Permission.CHATS_READ.value,
-            "You don't have permission to read chats in this workspace",
-        )
 
         # Check thread-level access based on visibility
         await check_thread_access(session, thread, user)

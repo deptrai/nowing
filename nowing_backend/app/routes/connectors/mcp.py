@@ -18,8 +18,10 @@ from app.db import (
     Permission,
     SearchSourceConnector,
     SearchSourceConnectorType,
+    WorkspaceMembership,
     get_async_session,
 )
+from app.dependencies.auth import RequirePermission, RequirePermissionFromEntity
 from app.schemas import (
     MCPConnectorCreate,
     MCPConnectorRead,
@@ -29,7 +31,6 @@ from app.schemas import (
 from app.services.composio_service import get_composio_service
 from app.users import get_auth_context
 from app.utils.connector_naming import ensure_unique_connector_name
-from app.utils.rbac import check_permission
 
 from ._shared import (
     DRIVE_CONNECTOR_TYPES,
@@ -52,6 +53,12 @@ async def create_mcp_connector(
     workspace_id: int = Query(..., description="Workspace ID"),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.CONNECTORS_CREATE.value,
+            "You don't have permission to create connectors in this workspace",
+        )
+    ),
 ):
     user = auth.user
     """
@@ -73,15 +80,6 @@ async def create_mcp_connector(
         HTTPException: If workspace not found or permission denied
     """
     try:
-        # Check user has permission to create connectors
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.CONNECTORS_CREATE.value,
-            "You don't have permission to create connectors in this workspace",
-        )
-
         # Ensure unique name across MCP connectors in this workspace
         unique_name = await ensure_unique_connector_name(
             session, connector_data.name, workspace_id, user.id
@@ -132,6 +130,12 @@ async def list_mcp_connectors(
     workspace_id: int = Query(..., description="Workspace ID"),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.CONNECTORS_READ.value,
+            "You don't have permission to view connectors in this workspace",
+        )
+    ),
 ):
     """
     List all MCP connectors for a workspace.
@@ -145,15 +149,6 @@ async def list_mcp_connectors(
         List of MCP connectors with their tool configurations
     """
     try:
-        # Check user has permission to read connectors
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.CONNECTORS_READ.value,
-            "You don't have permission to view connectors in this workspace",
-        )
-
         # Fetch MCP connectors
         result = await session.execute(
             select(SearchSourceConnector).filter(
@@ -183,6 +178,14 @@ async def get_mcp_connector(
     connector_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "SearchSourceConnector",
+            "connector_id",
+            Permission.CONNECTORS_READ.value,
+            "You don't have permission to view this connector",
+        )
+    ),
 ):
     """
     Get a specific MCP connector by ID.
@@ -209,15 +212,6 @@ async def get_mcp_connector(
         if not connector:
             raise HTTPException(status_code=404, detail="MCP connector not found")
 
-        # Check user has permission to read connectors
-        await check_permission(
-            session,
-            auth,
-            connector.workspace_id,
-            Permission.CONNECTORS_READ.value,
-            "You don't have permission to view this connector",
-        )
-
         connector_read = SearchSourceConnectorRead.model_validate(connector)
         return MCPConnectorRead.from_connector(connector_read)
 
@@ -236,6 +230,14 @@ async def update_mcp_connector(
     connector_update: MCPConnectorUpdate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "SearchSourceConnector",
+            "connector_id",
+            Permission.CONNECTORS_UPDATE.value,
+            "You don't have permission to update this connector",
+        )
+    ),
 ):
     """
     Update an MCP connector.
@@ -262,15 +264,6 @@ async def update_mcp_connector(
 
         if not connector:
             raise HTTPException(status_code=404, detail="MCP connector not found")
-
-        # Check user has permission to update connectors
-        await check_permission(
-            session,
-            auth,
-            connector.workspace_id,
-            Permission.CONNECTORS_UPDATE.value,
-            "You don't have permission to update this connector",
-        )
 
         # Update fields
         if connector_update.name is not None:
@@ -312,6 +305,14 @@ async def delete_mcp_connector(
     connector_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "SearchSourceConnector",
+            "connector_id",
+            Permission.CONNECTORS_DELETE.value,
+            "You don't have permission to delete this connector",
+        )
+    ),
 ):
     """
     Delete an MCP connector.
@@ -334,15 +335,6 @@ async def delete_mcp_connector(
 
         if not connector:
             raise HTTPException(status_code=404, detail="MCP connector not found")
-
-        # Check user has permission to delete connectors
-        await check_permission(
-            session,
-            auth,
-            connector.workspace_id,
-            Permission.CONNECTORS_DELETE.value,
-            "You don't have permission to delete this connector",
-        )
 
         workspace_id = connector.workspace_id
         await session.delete(connector)
@@ -444,6 +436,14 @@ async def get_drive_picker_token(
     connector_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "SearchSourceConnector",
+            "connector_id",
+            Permission.CONNECTORS_READ.value,
+            "You don't have permission to access this connector",
+        )
+    ),
 ):
     """Return an OAuth access token + client ID for the Google Picker API."""
     result = await session.execute(
@@ -452,14 +452,6 @@ async def get_drive_picker_token(
     connector = result.scalars().first()
     if not connector:
         raise HTTPException(status_code=404, detail="Connector not found")
-
-    await check_permission(
-        session,
-        auth,
-        connector.workspace_id,
-        Permission.CONNECTORS_READ.value,
-        "You don't have permission to access this connector",
-    )
 
     if connector.connector_type not in DRIVE_CONNECTOR_TYPES:
         raise HTTPException(

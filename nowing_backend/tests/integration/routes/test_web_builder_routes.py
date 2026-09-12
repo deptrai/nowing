@@ -54,8 +54,14 @@ def mock_db_session():
 
 
 @pytest.fixture
-def client(mock_auth: AuthContext, mock_db_session: AsyncMock) -> TestClient:
+def client(
+    mock_auth: AuthContext, mock_db_session: AsyncMock, monkeypatch
+) -> TestClient:
     """Fixture creating test FastAPI app with Web Builder routes mounted and auth overridden."""
+    monkeypatch.setattr(
+        "app.dependencies.auth.check_permission",
+        AsyncMock(return_value=MagicMock(is_owner=True)),
+    )
     import app.routes.web_builder_routes as routes
 
     app = FastAPI()

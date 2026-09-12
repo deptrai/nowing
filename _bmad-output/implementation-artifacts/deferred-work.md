@@ -1487,18 +1487,36 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   resolved: 2026-09-12 — Migrate tất cả call-sites có workspace_id path param còn lại sang Depends(RequirePermission/RequireWorkspaceAccess). 65 sites migrated trên 20 files. 12 unit tests social_routes pass. Còn lại ~115 call-sites cần dynamic resolver (workspace_id từ body/query/entity lookup).
   evidence: Batch 5 — final sweep of all path-param call-sites via 4 parallel agents
 
+- source_spec: `_bmad-output/implementation-artifacts/spec-require-permission-batch-6.md`
+  summary: Dynamic workspace_id resolvers + migration Batch 6 (~77 call-sites across 35 files)
+  resolved: >-
+    2026-09-12 — Thêm 4 dynamic dependency classes vào `app.dependencies.auth`:
+    `RequirePermissionFromEntity`, `RequireWorkspaceAccessFromEntity`,
+    `RequirePermissionFromBody`, `RequireWorkspaceAccessFromBody`.
+    Migrate 77 call-sites (entity lookups: folders, threads, connectors, video presentations,
+    documents, logs; body params: threads, chat, image gen, folders, upload; required query params: usage, mcp, upload, titles;
+    helpers: signals, minutes, presentations, web_builder, reports; bug fix: zns arg order).
+    203 unit route tests + 33 integration tests pass 100%.
+
 - source_spec: none
-  summary: Extend RequirePermission cho dynamic workspace_id resolution (~115 call-sites remaining)
+  summary: RequirePermission migration — remaining ~38 intentional non-migrated call-sites
   evidence: >-
-    Batch 1-5 đã migrate 180 call-sites (workspace_id path param).
-    Remaining: ~115 call-sites trên 44 files cần dynamic resolver vì
-    workspace_id không phải path param:
-    - Entity lookup: folders(11), threads(6), connectors/crud(5), video_presentations(4), etc.
-    - Query param: usage(4), logs(5), connectors/mcp(6), image_generation(4), etc.
-    - Request body: new_chat/chat(3), gateway_webhook/bindings(4), documents/upload(4), etc.
-    - Dynamic permission: enrichment(2), campaign(1).
-    Cần thiết kế dependency mới (e.g., RequirePermissionForBody, RequirePermissionForEntity)
-    hoặc middleware-level resolution.
+    Tổng cộng qua 6 batches: 257 / 295 call-sites đã migrate sang declarative Depends(...) (~87%).
+    Còn 38 call-sites được cố ý giữ manual vì lý do kiến trúc / thiết kế:
+    1. Optional workspace_id (9 sites): `read_logs`, `read_reports`, `read_video_presentations`,
+       `list_image_generations`, `list_connections`, `read_search_source_connectors`, `read_documents`,
+       `get_document_type_counts`, `search_documents` — lọc toàn user khi workspace_id=None.
+    2. Dynamic permission resolution (3 sites): `campaign_routes:132` (LEADS_WRITE vs READ theo query),
+       `enrichment_routes:52,60` (_require_lead_read thử LEADS_READ rồi fallback CONTACTS_READ).
+    3. Multi-workspace loops (1 site): `folders_routes:512` (bulk_move lặp qua nhiều workspace_id).
+    4. Personal entity bypass (6 sites): `memories_routes:246,299,341` (personal memories bypass),
+       `model_connections_routes:311,359,387,437,477,887` (personal vs search_space scoped connections).
+    5. Connector ownership pre-checks (6 sites): slack, onedrive, dropbox, discord, google_drive,
+       composio listers — PAT fail-closed static assertion yêu cầu inline check.
+    6. Chunk without direct workspace_id FK (1 site): `documents/crud/misc:132` (join Chunk→Document).
+    7. Cross-space reconciliation 404 guard (1 site): `connectors/indexing/core:105`.
+    8. Conditional memory export (1 site): `export_routes:51` (chỉ check khi có memories).
+    9. Internal helpers (3 sites): `lead_clipper_routes:171`, `obsidian_plugin_routes:198,247`.
 
 - source_spec: none
   summary: Migrate remaining ~1.794 `except Exception` toàn app sang typed exceptions / NowingError hierarchy — theo từng domain

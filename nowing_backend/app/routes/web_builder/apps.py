@@ -13,7 +13,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.db import WorkspaceApp, get_async_session
+from app.db import Permission, WorkspaceApp, WorkspaceMembership, get_async_session
+from app.dependencies.auth import (
+    RequirePermission,
+    RequirePermissionFromBody,
+)
 from app.services.token_tracking_service import UsageType, record_token_usage
 from app.services.web_builder.builder import BuilderService
 from app.services.web_builder.deploy_service import WebAppDeployService
@@ -48,6 +52,12 @@ async def publish_web_app(
     payload: WebAppDeployInput,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[AsyncSession, Depends(get_async_session)],
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromBody(
+            Permission.WEB_BUILDER_CREATE.value,
+            "You don't have access to this workspace",
+        )
+    ),
 ) -> WebAppDeployOutput:
     """1-Click publish app container and dynamic HTTPS route at *.apps.nowing.net (AC-2)."""
     check_web_builder_enabled()
@@ -92,6 +102,12 @@ async def trigger_build_web_app(
     payload: BuildProjectInput,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[AsyncSession, Depends(get_async_session)],
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromBody(
+            Permission.WEB_BUILDER_CREATE.value,
+            "You don't have access to this workspace",
+        )
+    ),
 ):
     """Trigger Next.js build compilation for an application (Story 27.1b AC-2)."""
     check_web_builder_enabled()
@@ -127,6 +143,12 @@ async def get_web_app_build_logs(
     workspace_id: int,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[AsyncSession, Depends(get_async_session)],
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.WEB_BUILDER_CREATE.value,
+            "You don't have access to this workspace",
+        )
+    ),
 ) -> BuildLogsOutput:
     """Retrieve build stdout/stderr logs for an application (Story 27.1b AC-5)."""
     check_web_builder_enabled()
@@ -161,6 +183,12 @@ async def configure_custom_domain(
     payload: CustomDomainInput,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[AsyncSession, Depends(get_async_session)],
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromBody(
+            Permission.WEB_BUILDER_CREATE.value,
+            "You don't have access to this workspace",
+        )
+    ),
 ) -> CustomDomainOutput:
     """Bind a custom CNAME domain to a published web application (Story 27.1c handoff)."""
     check_web_builder_enabled()
@@ -191,6 +219,12 @@ async def apply_mark_tool_patch(
     payload: MarkToolInput,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[AsyncSession, Depends(get_async_session)],
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromBody(
+            Permission.WEB_BUILDER_CREATE.value,
+            "You don't have access to this workspace",
+        )
+    ),
 ) -> MarkToolOutput:
     """Apply a visual Mark Tool patch to a JSX/TSX source file and rebuild the preview (AC-2 / AC-4)."""
     check_web_builder_enabled()
@@ -306,6 +340,12 @@ async def list_workspace_apps(
     workspace_id: int,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[AsyncSession, Depends(get_async_session)],
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.WEB_BUILDER_CREATE.value,
+            "You don't have access to this workspace",
+        )
+    ),
 ) -> list[WorkspaceAppRead]:
     """List all generated and published applications for a workspace (AC-5)."""
     check_web_builder_enabled()
@@ -325,6 +365,12 @@ async def get_workspace_app(
     workspace_id: int,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[AsyncSession, Depends(get_async_session)],
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.WEB_BUILDER_CREATE.value,
+            "You don't have access to this workspace",
+        )
+    ),
 ) -> WorkspaceAppRead:
     """Get single application details."""
     check_web_builder_enabled()

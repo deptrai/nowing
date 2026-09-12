@@ -17,7 +17,12 @@ from app.db import (
     NewChatThread,
     Permission,
     Workspace,
+    WorkspaceMembership,
     get_async_session,
+)
+from app.dependencies.auth import (
+    RequirePermissionFromBody,
+    RequirePermissionFromEntity,
 )
 from app.routes.new_chat.shared import (
     _build_turn_status_payload,
@@ -38,7 +43,6 @@ from app.tasks.chat.streaming.flows.new_chat.auto_pin import resolve_initial_aut
 from app.tasks.chat.streaming.flows.shared.llm_bundle import load_llm_bundle
 from app.tenant_context import set_request_tenant_context
 from app.users import get_auth_context
-from app.utils.rbac import check_permission
 
 router = APIRouter()
 
@@ -48,6 +52,12 @@ async def handle_new_chat(
     http_request: Request,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromBody(
+            Permission.CHATS_CREATE.value,
+            "You don't have permission to chat in this workspace",
+        )
+    ),
 ):
     user = auth.user
     """
@@ -72,15 +82,6 @@ async def handle_new_chat(
 
         if not workspace:
             raise HTTPException(status_code=404, detail="Workspace not found")
-
-        # Authorize the workspace before we set request-derived tenant scope.
-        await check_permission(
-            session,
-            auth,
-            workspace.id,
-            Permission.CHATS_CREATE.value,
-            "You don't have permission to chat in this workspace",
-        )
 
         # Set workspace + user GUC for the thread lookup.  client_id is *not*
         # set before the thread is verified (AD-29/AD-31 ordering).  The user
@@ -278,6 +279,14 @@ async def cancel_active_turn(
     response: Response,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "NewChatThread",
+            "thread_id",
+            Permission.CHATS_UPDATE.value,
+            "You don't have permission to update chats in this workspace",
+        )
+    ),
 ):
     user = auth.user
     """Signal cancellation for the currently running turn on ``thread_id``."""
@@ -288,13 +297,6 @@ async def cancel_active_turn(
     if not thread:
         raise HTTPException(status_code=404, detail="Thread not found")
 
-    await check_permission(
-        session,
-        auth,
-        thread.workspace_id,
-        Permission.CHATS_UPDATE.value,
-        "You don't have permission to update chats in this workspace",
-    )
     await check_thread_access(session, thread, user)
 
     status_payload = _build_turn_status_payload(thread_id)
@@ -330,6 +332,14 @@ async def get_turn_status(
     thread_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "NewChatThread",
+            "thread_id",
+            Permission.CHATS_READ.value,
+            "You don't have permission to view chats in this workspace",
+        )
+    ),
 ):
     user = auth.user
     result = await session.execute(
@@ -339,13 +349,6 @@ async def get_turn_status(
     if not thread:
         raise HTTPException(status_code=404, detail="Thread not found")
 
-    await check_permission(
-        session,
-        auth,
-        thread.workspace_id,
-        Permission.CHATS_READ.value,
-        "You don't have permission to view chats in this workspace",
-    )
     await check_thread_access(session, thread, user)
 
     status_payload = _build_turn_status_payload(thread_id)
