@@ -10,10 +10,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.db import Document, DocumentType, Permission, get_async_session
+from app.db import (
+    Document,
+    DocumentType,
+    Permission,
+    WorkspaceMembership,
+    get_async_session,
+)
+from app.dependencies.auth import RequirePermission
 from app.schemas import DocumentRead, PaginatedResponse
 from app.users import get_auth_context
-from app.utils.rbac import check_permission
 
 router = APIRouter()
 
@@ -29,6 +35,12 @@ async def create_note(
     request: CreateNoteRequest,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.DOCUMENTS_CREATE.value,
+            "You don't have permission to create notes in this workspace",
+        )
+    ),
 ):
     user = auth.user
     """
@@ -36,15 +48,6 @@ async def create_note(
 
     Requires DOCUMENTS_CREATE permission.
     """
-    # Check RBAC permission
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.DOCUMENTS_CREATE.value,
-        "You don't have permission to create notes in this workspace",
-    )
-
     if not request.title or not request.title.strip():
         raise HTTPException(status_code=400, detail="Title is required")
 
@@ -101,21 +104,18 @@ async def list_notes(
     page_size: int = 50,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.DOCUMENTS_READ.value,
+            "You don't have permission to read notes in this workspace",
+        )
+    ),
 ):
     """
     List all notes in a workspace.
 
     Requires DOCUMENTS_READ permission.
     """
-    # Check RBAC permission
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.DOCUMENTS_READ.value,
-        "You don't have permission to read notes in this workspace",
-    )
-
     from sqlalchemy import func
 
     # Build query
@@ -196,21 +196,18 @@ async def delete_note(
     note_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.DOCUMENTS_DELETE.value,
+            "You don't have permission to delete notes in this workspace",
+        )
+    ),
 ):
     """
     Delete a note.
 
     Requires DOCUMENTS_DELETE permission.
     """
-    # Check RBAC permission
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.DOCUMENTS_DELETE.value,
-        "You don't have permission to delete notes in this workspace",
-    )
-
     # Get document
     result = await session.execute(
         select(Document).where(

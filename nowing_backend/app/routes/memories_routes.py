@@ -9,7 +9,14 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.db import Memory, MemoryType, Permission, get_async_session
+from app.db import (
+    Memory,
+    MemoryType,
+    Permission,
+    WorkspaceMembership,
+    get_async_session,
+)
+from app.dependencies.auth import RequirePermission
 from app.schemas.memory import (
     MemoryCreate,
     MemoryRead,
@@ -97,15 +104,13 @@ async def create_memory(
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
     x_automation_run_id: int | None = Header(default=None),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.MEMORY_CREATE.value,
+            "You don't have permission to create memory in this workspace",
+        )
+    ),
 ):
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.MEMORY_CREATE.value,
-        error_message="You don't have permission to create memory in this workspace",
-    )
-
     # AC-18.6: client_id/agent_id must come from the auth scope. Intersect the
     # request body with the PAT scope so callers cannot widen beyond their tenant.
     client_id, agent_id = _resolved_tenant_ids(auth, body.client_id, body.agent_id)
@@ -142,15 +147,13 @@ async def search_memory(
     body: MemorySearchRequest,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.MEMORY_READ.value,
+            "You don't have permission to search memory in this workspace",
+        )
+    ),
 ):
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.MEMORY_READ.value,
-        error_message="You don't have permission to search memory in this workspace",
-    )
-
     # AC-18.6: recall must stay within the caller's tenant scope.
     client_id, _ = _resolved_tenant_ids(auth, body.client_id)
 
@@ -206,15 +209,13 @@ async def list_memories(
     type: MemoryType | None = Query(default=None),
     tags: str | None = Query(default=None),
     client_id: str | None = Query(default=None),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.MEMORY_READ.value,
+            "You don't have permission to read memory in this workspace",
+        )
+    ),
 ):
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.MEMORY_READ.value,
-        error_message="You don't have permission to read memory in this workspace",
-    )
-
     # AC-18.6: list must stay within the caller's tenant scope.
     client_id, _ = _resolved_tenant_ids(auth, client_id)
 
@@ -373,15 +374,14 @@ async def right_to_delete_memory(
     reason: str | None = Query(default=None),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.MEMORY_DELETE.value,
+            "You don't have permission to delete this memory",
+        )
+    ),
 ):
     """Right-to-Delete single memory erasure with audit trail logging (Story 28.5, AC-8)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.MEMORY_DELETE.value,
-        error_message="You don't have permission to delete this memory",
-    )
     from app.services.memory.erasure_service import MemoryErasureService
 
     service = MemoryErasureService(session)
@@ -402,15 +402,14 @@ async def bulk_delete_memories(
     body: MemoryBulkDeleteRequest,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.MEMORY_DELETE.value,
+            "You don't have permission to delete memories in bulk",
+        )
+    ),
 ):
     """Chunked bulk memory deletion with dry-run and audit trail logging (Story 28.5, AC-9)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.MEMORY_DELETE.value,
-        error_message="You don't have permission to delete memories in bulk",
-    )
     from app.services.memory.erasure_service import MemoryErasureService
 
     service = MemoryErasureService(session)

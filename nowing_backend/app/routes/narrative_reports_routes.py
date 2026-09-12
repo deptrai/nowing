@@ -10,8 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.context import AuthContext
 from app.db import (
     Permission,
+    WorkspaceMembership,
     get_async_session,
 )
+from app.dependencies.auth import RequirePermission, RequireWorkspaceAccess
 from app.reports.narrative import (
     NarrativeReportCreateRequest,
     NarrativeSynthesisEngine,
@@ -20,7 +22,6 @@ from app.reports.narrative import (
 )
 from app.schemas.reports import ReportContentRead
 from app.users import get_auth_context
-from app.utils.rbac import check_permission, check_workspace_access
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +36,9 @@ async def list_narrative_templates_route(
     workspace_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ):
     """List available pre-configured narrative report templates."""
-    await check_workspace_access(session, auth, workspace_id)
     return NarrativeTemplateRegistry.list_all()
 
 
@@ -47,17 +48,14 @@ async def generate_narrative_report_route(
     data: NarrativeReportCreateRequest,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.AUTOMATIONS_CREATE.value,
+            "You don't have permission to generate narrative reports in this workspace",
+        )
+    ),
 ):
     """Generate and persist a structured narrative report with grounded citations."""
-    await check_workspace_access(session, auth, workspace_id)
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.AUTOMATIONS_CREATE.value,
-        "You don't have permission to generate narrative reports in this workspace",
-    )
-
     template = NarrativeTemplateRegistry.get(data.template_id)
     if template is None:
         raise HTTPException(

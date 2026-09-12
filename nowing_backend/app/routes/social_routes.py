@@ -3,16 +3,24 @@
 from __future__ import annotations
 
 import logging
+from typing import Literal
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.db import Permission, SocialMonitoredTarget, Workspace, get_async_session
+from app.db import (
+    Permission,
+    SocialMonitoredTarget,
+    Workspace,
+    WorkspaceMembership,
+    get_async_session,
+)
+from app.dependencies.auth import RequirePermission
 from app.users import get_auth_context
-from app.utils.rbac import check_permission
 
 logger = logging.getLogger(__name__)
 
@@ -37,14 +45,7 @@ SUPPORTED_PLATFORMS = [
 
 _PLATFORM_PATTERN = f"^({'|'.join(SUPPORTED_PLATFORMS)})$"
 
-
-from typing import Literal
-
 SocialTargetStatus = Literal["active", "paused", "error", "disabled"]
-
-
-from urllib.parse import urlparse
-from pydantic import field_validator
 
 
 class SocialTargetCreate(BaseModel):
@@ -131,16 +132,6 @@ async def _get_target(
     return target
 
 
-async def _require_permission(
-    session: AsyncSession,
-    auth: AuthContext,
-    workspace_id: int,
-    permission: Permission,
-    message: str,
-) -> None:
-    await check_permission(session, auth, workspace_id, permission.value, message)
-
-
 @router.post(
     "",
     response_model=SocialTargetRead,
@@ -151,16 +142,14 @@ async def create_social_target(
     payload: SocialTargetCreate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_WRITE.value,
+            "You don't have permission to create social targets in this workspace",
+        )
+    ),
 ) -> SocialTargetRead:
     """Create a new social monitored target."""
-    await _require_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_WRITE,
-        "You don't have permission to create social targets in this workspace",
-    )
-
     workspace = await session.get(Workspace, workspace_id)
     if workspace is None:
         raise HTTPException(
@@ -208,19 +197,17 @@ async def list_social_targets(
     offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_READ.value,
+            "You don't have permission to view social targets in this workspace",
+        )
+    ),
 ) -> list[SocialTargetRead]:
     """List social monitored targets for a workspace.
 
     Results are paginated and ordered by id for determinism.
     """
-    await _require_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_READ,
-        "You don't have permission to view social targets in this workspace",
-    )
-
     from sqlalchemy import select
     stmt = select(SocialMonitoredTarget).where(
         SocialMonitoredTarget.workspace_id == workspace_id
@@ -245,16 +232,14 @@ async def get_social_target(
     target_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_READ.value,
+            "You don't have permission to view social targets in this workspace",
+        )
+    ),
 ) -> SocialTargetRead:
     """Get a social monitored target."""
-    await _require_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_READ,
-        "You don't have permission to view social targets in this workspace",
-    )
-
     target = await _get_target(session, workspace_id, target_id)
     return SocialTargetRead.model_validate(target)
 
@@ -269,16 +254,14 @@ async def update_social_target(
     payload: SocialTargetUpdate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_WRITE.value,
+            "You don't have permission to update social targets in this workspace",
+        )
+    ),
 ) -> SocialTargetRead:
     """Update a social monitored target."""
-    await _require_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_WRITE,
-        "You don't have permission to update social targets in this workspace",
-    )
-
     target = await _get_target(session, workspace_id, target_id)
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(target, field, value)
@@ -305,16 +288,14 @@ async def delete_social_target(
     target_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_WRITE.value,
+            "You don't have permission to delete social targets in this workspace",
+        )
+    ),
 ) -> None:
     """Delete a social monitored target and its posts."""
-    await _require_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_WRITE,
-        "You don't have permission to delete social targets in this workspace",
-    )
-
     target = await _get_target(session, workspace_id, target_id)
     await session.delete(target)
     await session.commit()

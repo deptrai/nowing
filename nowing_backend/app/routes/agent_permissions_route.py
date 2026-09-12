@@ -36,11 +36,11 @@ from app.db import (
     AgentPermissionRule,
     NewChatThread,
     Permission,
-    Workspace,
+    WorkspaceMembership,
     get_async_session,
 )
+from app.dependencies.auth import RequirePermission
 from app.users import get_auth_context
-from app.utils.rbac import check_permission
 
 logger = logging.getLogger(__name__)
 
@@ -132,22 +132,6 @@ def _to_read(row: AgentPermissionRule) -> AgentPermissionRuleRead:
     )
 
 
-async def _ensure_workspace_membership_admin(
-    session: AsyncSession, auth: AuthContext, workspace_id: int
-) -> None:
-    """Curating agent rules == "settings" administration on the space."""
-    space = await session.get(Workspace, workspace_id)
-    if space is None:
-        raise HTTPException(status_code=404, detail="Workspace not found.")
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.SETTINGS_UPDATE.value,
-        "You don't have permission to manage agent permission rules in this space.",
-    )
-
-
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
@@ -161,10 +145,14 @@ async def list_rules(
     workspace_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_UPDATE.value,
+            "You don't have permission to manage agent permission rules in this space.",
+        )
+    ),
 ) -> list[AgentPermissionRuleRead]:
-    user = auth.user
     _flag_guard()
-    await _ensure_workspace_membership_admin(session, user, workspace_id)
 
     stmt = (
         select(AgentPermissionRule)
@@ -185,10 +173,14 @@ async def create_rule(
     payload: AgentPermissionRuleCreate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_UPDATE.value,
+            "You don't have permission to manage agent permission rules in this space.",
+        )
+    ),
 ) -> AgentPermissionRuleRead:
-    user = auth.user
     _flag_guard()
-    await _ensure_workspace_membership_admin(session, user, workspace_id)
 
     permission = _validate_permission_string(payload.permission.strip())
     pattern = payload.pattern.strip() or "*"
@@ -235,10 +227,14 @@ async def update_rule(
     payload: AgentPermissionRuleUpdate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_UPDATE.value,
+            "You don't have permission to manage agent permission rules in this space.",
+        )
+    ),
 ) -> AgentPermissionRuleRead:
-    user = auth.user
     _flag_guard()
-    await _ensure_workspace_membership_admin(session, user, workspace_id)
 
     row = await session.get(AgentPermissionRule, rule_id)
     if row is None or row.workspace_id != workspace_id:
@@ -270,10 +266,14 @@ async def delete_rule(
     rule_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_UPDATE.value,
+            "You don't have permission to manage agent permission rules in this space.",
+        )
+    ),
 ) -> None:
-    user = auth.user
     _flag_guard()
-    await _ensure_workspace_membership_admin(session, user, workspace_id)
 
     row = await session.get(AgentPermissionRule, rule_id)
     if row is None or row.workspace_id != workspace_id:

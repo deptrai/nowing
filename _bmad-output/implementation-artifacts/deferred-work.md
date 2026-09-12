@@ -1482,17 +1482,23 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   resolved: 2026-09-12 — Migrate 40 call-sites trên 6 route files Lead Intelligence & Sequences sang Depends(RequirePermission) / Depends(RequireWorkspaceAccess). lead_pipeline inject membership vào handler. Cập nhật 5 test files patch targets sang app.dependencies.auth. 12 unit tests + 10 integration tests pass 100% (1 xfail pre-existing).
   evidence: Batch 4 trong chuỗi migration declarative RBAC sang Depends(RequirePermission)
 
+- source_spec: `_bmad-output/implementation-artifacts/spec-require-permission-batch-5.md`
+  summary: RequirePermission migration Batch 5 — path-param call-sites sweep (~65 sites across 20 files)
+  resolved: 2026-09-12 — Migrate tất cả call-sites có workspace_id path param còn lại sang Depends(RequirePermission/RequireWorkspaceAccess). 65 sites migrated trên 20 files. 12 unit tests social_routes pass. Còn lại ~115 call-sites cần dynamic resolver (workspace_id từ body/query/entity lookup).
+  evidence: Batch 5 — final sweep of all path-param call-sites via 4 parallel agents
+
 - source_spec: none
-  summary: Migrate remaining ~160 check_permission call-sites sang `Depends(RequirePermission(...))` theo từng route family
+  summary: Extend RequirePermission cho dynamic workspace_id resolution (~115 call-sites remaining)
   evidence: >-
-    Batch 1 (workspaces 20 sites) + Batch 2 (rbac 13, outcome_pricing 3, threads 2 = 18 sites)
-    + Batch 3 (alert_rules 10, projects 8, skills 7, memory_browser 7, workspace_tables 5 = 37 sites)
-    + Batch 4 (sequence 11, lead_pipeline 10, leads 6, lead_scoring 5, lead_batch 4, dnc 4 = 40 sites)
-    đã xong. Tổng 115 sites migrated. Remaining: ~160 sites trên ~30 files.
-    Lưu ý kiến trúc đã giải quyết: RequirePermission đã có default message.
-    Nhiều files còn lại có workspace_id trong path và dùng RequirePermission trực tiếp được.
-    Một số files cần dynamic resolver (lookup workspace_id từ entity id hoặc body):
-    folders (11), governance (13), outbound (6), logs (6).
+    Batch 1-5 đã migrate 180 call-sites (workspace_id path param).
+    Remaining: ~115 call-sites trên 44 files cần dynamic resolver vì
+    workspace_id không phải path param:
+    - Entity lookup: folders(11), threads(6), connectors/crud(5), video_presentations(4), etc.
+    - Query param: usage(4), logs(5), connectors/mcp(6), image_generation(4), etc.
+    - Request body: new_chat/chat(3), gateway_webhook/bindings(4), documents/upload(4), etc.
+    - Dynamic permission: enrichment(2), campaign(1).
+    Cần thiết kế dependency mới (e.g., RequirePermissionForBody, RequirePermissionForEntity)
+    hoặc middleware-level resolution.
 
 - source_spec: none
   summary: Migrate remaining ~1.794 `except Exception` toàn app sang typed exceptions / NowingError hierarchy — theo từng domain

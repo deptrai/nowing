@@ -18,10 +18,12 @@ from app.config import config
 from app.db import (
     Lead,
     Permission,
+    WorkspaceMembership,
     ZaloConnection,
     ZaloMessageLog,
     get_async_session,
 )
+from app.dependencies.auth import RequirePermission
 from app.gateway.zalo.client import (
     ZaloClient,
     format_vietnam_phone,
@@ -35,7 +37,6 @@ from app.gateway.zalo.webhook import (
 )
 from app.users import get_auth_context
 from app.utils.oauth_security import TokenEncryption
-from app.utils.rbac import check_permission
 
 logger = logging.getLogger(__name__)
 
@@ -179,6 +180,9 @@ async def generate_zalo_draft(
     payload: ZaloDraftRequest | None = None,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(Permission.LEADS_READ.value)
+    ),
 ) -> ZaloDraftResponse:
     """Generate personalized Vietnamese outreach message for Assisted Zalo Co-pilot.
 
@@ -187,8 +191,6 @@ async def generate_zalo_draft(
     """
     lead = await _get_lead_or_404(session, lead_id, workspace_id)
     target_ws = lead.workspace_id
-
-    await check_permission(session, auth, target_ws, Permission.LEADS_READ)
 
     raw_phone = _resolve_lead_phone(lead)
     phone_meta = format_vietnam_phone(raw_phone)
@@ -256,6 +258,9 @@ async def send_zns_message(
     workspace_id: int | None = None,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(Permission.LEADS_WRITE.value)
+    ),
 ) -> ZnsSendResponse:
     """Send transactional notification via official Zalo OA ZNS endpoint.
 
@@ -263,8 +268,6 @@ async def send_zns_message(
     """
     lead = await _get_lead_or_404(session, lead_id, workspace_id)
     target_ws = lead.workspace_id
-
-    await check_permission(session, auth, target_ws, Permission.LEADS_WRITE)
 
     # Decree 356 Consent Verification Guardrail
     has_consent = (
@@ -397,11 +400,10 @@ async def get_workspace_zalo_connection(
     workspace_id: int,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(Permission.SETTINGS_VIEW.value)
+    ),
 ) -> ZaloConnectionRead | None:
-    await check_permission(
-        session, auth, workspace_id, Permission.SETTINGS_VIEW
-    )
-
     stmt = select(ZaloConnection).where(
         ZaloConnection.workspace_id == workspace_id,
         ZaloConnection.is_active.is_(True),
@@ -433,9 +435,10 @@ async def upsert_workspace_zalo_connection(
     payload: ZaloConnectionCreate,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(Permission.SETTINGS_UPDATE.value)
+    ),
 ) -> ZaloConnectionRead:
-    await check_permission(session, auth, workspace_id, Permission.SETTINGS_UPDATE)
-
     secret = config.SECRET_KEY or ""
     enc = TokenEncryption(secret) if secret else None
 
@@ -520,10 +523,11 @@ async def delete_workspace_zalo_connection(
     workspace_id: int,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(Permission.SETTINGS_UPDATE.value)
+    ),
 ) -> dict[str, Any]:
     """Mark the workspace's active Zalo OA connection as inactive (revoke)."""
-    await check_permission(session, auth, workspace_id, Permission.SETTINGS_UPDATE)
-
     stmt = select(ZaloConnection).where(
         ZaloConnection.workspace_id == workspace_id,
         ZaloConnection.is_active.is_(True),
@@ -559,11 +563,12 @@ async def dispatch_lead_telegram_alert(
     workspace_id: int | None = None,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(Permission.LEADS_READ.value)
+    ),
 ) -> TelegramAlertResponse:
     lead = await _get_lead_or_404(session, lead_id, workspace_id)
     target_ws = lead.workspace_id
-
-    await check_permission(session, auth, target_ws, Permission.LEADS_READ)
 
     raw_phone = _resolve_lead_phone(lead)
     content = (

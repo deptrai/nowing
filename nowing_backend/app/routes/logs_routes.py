@@ -15,6 +15,7 @@ from app.db import (
     WorkspaceMembership,
     get_async_session,
 )
+from app.dependencies.auth import RequirePermission
 from app.schemas import LogCreate, LogRead, LogUpdate
 from app.users import get_auth_context
 from app.utils.rbac import check_permission
@@ -256,21 +257,18 @@ async def get_logs_summary(
     hours: int = 24,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LOGS_READ.value,
+            "You don't have permission to read logs in this workspace",
+        )
+    ),
 ):
     """
     Get a summary of logs for a workspace in the last X hours.
     Requires LOGS_READ permission for the workspace.
     """
     try:
-        # Check permission
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.LOGS_READ.value,
-            "You don't have permission to read logs in this workspace",
-        )
-
         # Calculate time window
         since = datetime.utcnow().replace(microsecond=0) - timedelta(hours=hours)
 

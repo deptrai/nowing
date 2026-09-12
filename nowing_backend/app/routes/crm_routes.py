@@ -9,7 +9,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.db import CrmSyncLog, get_async_session
+from app.db import CrmSyncLog, Permission, WorkspaceMembership, get_async_session
+from app.dependencies.auth import RequirePermission
 from app.lead_intelligence.crm.schemas import (
     CrmConnectionCreate,
     CrmConversionLogInput,
@@ -174,14 +175,12 @@ async def list_crm_sync_logs(
     connection_id: UUID,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(require_session_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(Permission.CRM_READ.value)
+    ),
 ):
     """List sync logs for a CRM connection."""
     from sqlalchemy import select
-
-    from app.db import Permission
-    from app.utils.rbac import check_permission
-
-    await check_permission(session, auth, workspace_id, Permission.CRM_READ)
 
     result = await session.execute(
         select(CrmSyncLog)

@@ -14,7 +14,14 @@ from sse_starlette.sse import EventSourceResponse
 
 from app.auth.context import AuthContext
 from app.config import config
-from app.db import DshMission, Permission, Workspace, get_async_session
+from app.db import (
+    DshMission,
+    Permission,
+    Workspace,
+    WorkspaceMembership,
+    get_async_session,
+)
+from app.dependencies.auth import RequirePermission
 from app.redis_client import get_redis_client
 from app.schemas.dsh import (
     CdpResultPayload,
@@ -37,7 +44,6 @@ from app.services.dsh_mission_service import (
 from app.services.dsh_telegram_checkpoint_service import DshTelegramCheckpointService
 from app.services.pii.redact import redact_pii
 from app.users import get_auth_context
-from app.utils.rbac import check_permission
 
 logger = logging.getLogger(__name__)
 
@@ -122,16 +128,14 @@ async def create_dsh_mission(
     body: DshMissionRequest,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_WRITE.value,
+            "You don't have permission to create leads in this workspace",
+        )
+    ),
 ) -> DshMissionResponse:
     """Create a pending DSH mission and publish it to the Redis Stream."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_WRITE.value,
-        error_message="You don't have permission to create leads in this workspace",
-    )
-
     workspace = await session.get(Workspace, workspace_id)
     if workspace is None:
         raise HTTPException(
@@ -186,16 +190,14 @@ async def get_public_dsh_mission(
     mission_id: UUID,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_READ.value,
+            "You don't have permission to view leads in this workspace",
+        )
+    ),
 ) -> DshMissionResponse:
     """Public, PII-safe mission status."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_READ.value,
-        error_message="You don't have permission to view leads in this workspace",
-    )
-
     service = DshMissionService()
     try:
         mission = await service.get_mission_for_workspace(
@@ -228,16 +230,14 @@ async def list_dsh_missions(
     offset: int = Query(0, ge=0),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_READ.value,
+            "You don't have permission to view leads in this workspace",
+        )
+    ),
 ) -> DshMissionListResponse:
     """List recent DSH missions for the workspace."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_READ.value,
-        error_message="You don't have permission to view leads in this workspace",
-    )
-
     service = DshMissionService()
     missions = await service.list_missions_for_workspace(
         session,
@@ -281,16 +281,14 @@ async def get_dsh_mission_control(
     mission_id: UUID,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_READ.value,
+            "You don't have permission to view leads in this workspace",
+        )
+    ),
 ) -> DshMissionControlResponse:
     """Public, PII-safe mission control view (Glass Box data source)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_READ.value,
-        error_message="You don't have permission to view leads in this workspace",
-    )
-
     service = DshMissionService()
     try:
         mission = await service.get_mission_for_workspace(

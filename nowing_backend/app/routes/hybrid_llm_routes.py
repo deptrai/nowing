@@ -7,11 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
 from app.config import config
-from app.db import Permission, get_async_session
+from app.db import Permission, WorkspaceMembership, get_async_session
+from app.dependencies.auth import RequirePermission
 from app.schemas.hybrid_llm import HybridLLMRequest, HybridLLMResponse
 from app.services.hybrid_llm_service import HybridLLMService
 from app.users import get_auth_context
-from app.utils.rbac import check_permission
 
 hybrid_public_router = APIRouter(tags=["hybrid-llm"])
 hybrid_internal_router = APIRouter(tags=["hybrid-llm-internal"])
@@ -56,17 +56,10 @@ async def invoke_hybrid_llm_public(
     body: HybridLLMRequest,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(Permission.CHATS_CREATE.value)
+    ),
 ) -> HybridLLMResponse:
-    try:
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.CHATS_CREATE.value,
-        )
-    except Exception:
-        raise HTTPException(status_code=403, detail="forbidden") from None
-
     body.workspace_id = workspace_id
     body.user_id = auth.user.id
 
