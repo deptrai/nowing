@@ -139,7 +139,7 @@ def test_create_role_rejects_admin_name(app: FastAPI, name: str):
     app.dependency_overrides[get_auth_context] = _fake_auth
     app.dependency_overrides[get_async_session] = lambda: fake_session
 
-    with patch("app.routes.rbac_routes.check_permission", AsyncMock(return_value=None)):
+    with patch("app.routes.rbac.roles.check_permission", AsyncMock(return_value=None)):
         client = TestClient(app)
         res = client.post(
             "/workspaces/1/roles",
@@ -171,7 +171,7 @@ def test_update_role_rejects_admin_name(app: FastAPI, name: str):
     app.dependency_overrides[get_auth_context] = _fake_auth
     app.dependency_overrides[get_async_session] = lambda: fake_session
 
-    with patch("app.routes.rbac_routes.check_permission", AsyncMock(return_value=None)):
+    with patch("app.routes.rbac.roles.check_permission", AsyncMock(return_value=None)):
         client = TestClient(app)
         res = client.put(
             "/workspaces/1/roles/2",
@@ -198,7 +198,7 @@ def test_update_system_role_forbidden(app: FastAPI):
     app.dependency_overrides[get_auth_context] = _fake_auth
     app.dependency_overrides[get_async_session] = lambda: fake_session
 
-    with patch("app.routes.rbac_routes.check_permission", AsyncMock(return_value=None)):
+    with patch("app.routes.rbac.roles.check_permission", AsyncMock(return_value=None)):
         client = TestClient(app)
         res = client.put(
             "/workspaces/1/roles/1",
@@ -225,7 +225,7 @@ def test_delete_system_role_forbidden(app: FastAPI):
     app.dependency_overrides[get_auth_context] = _fake_auth
     app.dependency_overrides[get_async_session] = lambda: fake_session
 
-    with patch("app.routes.rbac_routes.check_permission", AsyncMock(return_value=None)):
+    with patch("app.routes.rbac.roles.check_permission", AsyncMock(return_value=None)):
         client = TestClient(app)
         res = client.delete("/workspaces/1/roles/1")
         assert res.status_code == 403
@@ -238,7 +238,7 @@ def test_create_role_rejects_wildcard_ceiling(app: FastAPI):
     app.dependency_overrides[get_auth_context] = _fake_auth
     app.dependency_overrides[get_async_session] = lambda: fake_session
 
-    with patch("app.routes.rbac_routes.check_permission", AsyncMock(return_value=None)):
+    with patch("app.routes.rbac.roles.check_permission", AsyncMock(return_value=None)):
         client = TestClient(app)
         res = client.post(
             "/workspaces/1/roles",
@@ -268,7 +268,7 @@ def test_update_role_rejects_wildcard_ceiling(app: FastAPI):
     app.dependency_overrides[get_auth_context] = _fake_auth
     app.dependency_overrides[get_async_session] = lambda: fake_session
 
-    with patch("app.routes.rbac_routes.check_permission", AsyncMock(return_value=None)):
+    with patch("app.routes.rbac.roles.check_permission", AsyncMock(return_value=None)):
         client = TestClient(app)
         res = client.put(
             "/workspaces/1/roles/2",
@@ -284,7 +284,7 @@ def test_create_role_forces_is_system_role_false(app: FastAPI):
     app.dependency_overrides[get_auth_context] = _fake_auth
     app.dependency_overrides[get_async_session] = lambda: fake_session
 
-    with patch("app.routes.rbac_routes.check_permission", AsyncMock(return_value=None)):
+    with patch("app.routes.rbac.roles.check_permission", AsyncMock(return_value=None)):
         client = TestClient(app)
         res = client.post(
             "/workspaces/1/roles",
@@ -312,7 +312,7 @@ def test_role_mutations_emit_audit_event(app: FastAPI):
     app.dependency_overrides[get_auth_context] = lambda: _fake_auth(user_id)
     app.dependency_overrides[get_async_session] = lambda: fake_session_create
 
-    with patch("app.routes.rbac_routes.check_permission", AsyncMock(return_value=None)):
+    with patch("app.routes.rbac.roles.check_permission", AsyncMock(return_value=None)):
         client = TestClient(app)
         res = client.post(
             "/workspaces/10/roles",
@@ -343,7 +343,7 @@ def test_role_mutations_emit_audit_event(app: FastAPI):
     fake_session_update = _FakeSession(scalar=role, rows=[role])
     app.dependency_overrides[get_async_session] = lambda: fake_session_update
 
-    with patch("app.routes.rbac_routes.check_permission", AsyncMock(return_value=None)):
+    with patch("app.routes.rbac.roles.check_permission", AsyncMock(return_value=None)):
         client = TestClient(app)
         res = client.put(
             "/workspaces/10/roles/5",
@@ -363,7 +363,7 @@ def test_role_mutations_emit_audit_event(app: FastAPI):
     fake_session_delete = _FakeSession(scalar=role, rows=[role])
     app.dependency_overrides[get_async_session] = lambda: fake_session_delete
 
-    with patch("app.routes.rbac_routes.check_permission", AsyncMock(return_value=None)):
+    with patch("app.routes.rbac.roles.check_permission", AsyncMock(return_value=None)):
         client = TestClient(app)
         res = client.delete("/workspaces/10/roles/5")
         assert res.status_code == 200
@@ -381,7 +381,7 @@ def test_create_and_update_role_deduplicates_permissions(app: FastAPI):
     app.dependency_overrides[get_auth_context] = _fake_auth
     app.dependency_overrides[get_async_session] = lambda: fake_session
 
-    with patch("app.routes.rbac_routes.check_permission", AsyncMock(return_value=None)):
+    with patch("app.routes.rbac.roles.check_permission", AsyncMock(return_value=None)):
         client = TestClient(app)
         res = client.post(
             "/workspaces/1/roles",
@@ -412,7 +412,7 @@ def test_update_role_empty_permissions_allowed(app: FastAPI):
     app.dependency_overrides[get_auth_context] = _fake_auth
     app.dependency_overrides[get_async_session] = lambda: fake_session
 
-    with patch("app.routes.rbac_routes.check_permission", AsyncMock(return_value=None)):
+    with patch("app.routes.rbac.roles.check_permission", AsyncMock(return_value=None)):
         client = TestClient(app)
         res = client.put(
             "/workspaces/1/roles/3",
