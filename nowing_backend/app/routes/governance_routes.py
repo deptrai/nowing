@@ -12,7 +12,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.db import Permission, get_async_session
+from app.db import Permission, WorkspaceMembership, get_async_session
+from app.dependencies.auth import RequirePermission
 from app.schemas.bulk_ops import CancelJobResponse, JobStatusResponse
 from app.schemas.governance import (
     AuditLogFilter,
@@ -31,7 +32,7 @@ from app.schemas.governance import (
 from app.services.bulk_ops_service import BulkOpsService
 from app.services.governance_service import GovernanceService
 from app.users import get_auth_context
-from app.utils.rbac import check_permission, is_workspace_owner
+from app.utils.rbac import is_workspace_owner
 
 logger = logging.getLogger(__name__)
 
@@ -43,15 +44,14 @@ async def get_governance_overview(
     workspace_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_VIEW.value,
+            "You don't have permission to view governance settings",
+        )
+    ),
 ) -> GovernanceOverviewRead:
     """Return combined governance console payload (AC-1)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.SETTINGS_VIEW.value,
-        "You don't have permission to view governance settings",
-    )
     svc = GovernanceService(session)
     return await svc.get_overview(workspace_id)
 
@@ -62,15 +62,14 @@ async def update_retention_policy(
     payload: RetentionPolicyUpdate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_UPDATE.value,
+            "You don't have permission to update governance settings",
+        )
+    ),
 ) -> RetentionPolicyRead:
     """Update workspace retention policy (AC-2/AC-3)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.SETTINGS_UPDATE.value,
-        "You don't have permission to update governance settings",
-    )
     svc = GovernanceService(session)
     return await svc.update_retention_policy(
         workspace_id, payload, actor_id=auth.user.id if auth.user else None
@@ -82,15 +81,14 @@ async def list_source_risk_tiers(
     workspace_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_VIEW.value,
+            "You don't have permission to view governance settings",
+        )
+    ),
 ) -> list[SourceRiskTierRead]:
     """List configured source risk tiers (AC-3)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.SETTINGS_VIEW.value,
-        "You don't have permission to view governance settings",
-    )
     svc = GovernanceService(session)
     return await svc.list_source_risk_tiers()
 
@@ -101,15 +99,14 @@ async def upsert_source_risk_tier(
     payload: SourceRiskTierUpdate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_UPDATE.value,
+            "You don't have permission to update governance settings",
+        )
+    ),
 ) -> SourceRiskTierRead:
     """Create or update a source risk tier; pause scraping on high risk (AC-5)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.SETTINGS_UPDATE.value,
-        "You don't have permission to update governance settings",
-    )
     svc = GovernanceService(session)
     return await svc.upsert_source_risk_tier(
         workspace_id, payload, actor_id=auth.user.id if auth.user else None
@@ -121,15 +118,14 @@ async def list_dnc_records(
     workspace_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_VIEW.value,
+            "You don't have permission to view governance settings",
+        )
+    ),
 ) -> list[DncRecordRead]:
     """List workspace DNC records with global supersession flags (AC-6)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.SETTINGS_VIEW.value,
-        "You don't have permission to view governance settings",
-    )
     svc = GovernanceService(session)
     return await svc.list_dnc_records(workspace_id)
 
@@ -140,15 +136,14 @@ async def create_dnc_record(
     payload: DncRecordCreate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_UPDATE.value,
+            "You don't have permission to update governance settings",
+        )
+    ),
 ) -> DncRecordRead:
     """Create a workspace DNC record (AC-6)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.SETTINGS_UPDATE.value,
-        "You don't have permission to update governance settings",
-    )
     svc = GovernanceService(session)
     return await svc.create_dnc_record(
         workspace_id, payload, actor_id=auth.user.id if auth.user else None
@@ -161,15 +156,14 @@ async def delete_dnc_record(
     record_id: str,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_UPDATE.value,
+            "You don't have permission to update governance settings",
+        )
+    ),
 ) -> None:
     """Delete a workspace DNC record (AC-6)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.SETTINGS_UPDATE.value,
-        "You don't have permission to update governance settings",
-    )
     from uuid import UUID as _UUID
 
     try:
@@ -192,15 +186,14 @@ async def right_to_delete(
     response: Response,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.MEMORY_DELETE.value,
+            "You don't have permission to delete memories",
+        )
+    ),
 ) -> RightToDeleteResponse | None:
     """Right-to-delete single or bulk memory (AC-4)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.MEMORY_DELETE.value,
-        "You don't have permission to delete memories",
-    )
     svc = GovernanceService(session)
     result = await svc.right_to_delete(
         workspace_id, payload, actor_id=auth.user.id if auth.user else None
@@ -218,15 +211,14 @@ async def get_bulk_op_job(
     job_id: str,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.MEMORY_DELETE.value,
+            "You don't have permission to view bulk delete jobs",
+        )
+    ),
 ) -> JobStatusResponse:
     """Fetch bulk operation job status scoped to this workspace (AC-4/4)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.MEMORY_DELETE.value,
-        "You don't have permission to view bulk delete jobs",
-    )
     from uuid import UUID as _UUID
 
     try:
@@ -246,15 +238,14 @@ async def cancel_bulk_op_job(
     job_id: str,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.MEMORY_DELETE.value,
+            "You don't have permission to cancel bulk delete jobs",
+        )
+    ),
 ) -> CancelJobResponse:
     """Cancel a queued or running bulk operation job in this workspace (AC-4/4)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.MEMORY_DELETE.value,
-        "You don't have permission to cancel bulk delete jobs",
-    )
     from uuid import UUID as _UUID
 
     try:
@@ -278,15 +269,14 @@ async def list_audit_log(
     page_size: int = Query(default=50, ge=1, le=100),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_VIEW.value,
+            "You don't have permission to view governance settings",
+        )
+    ),
 ) -> list[AuditLogRead]:
     """Query governance audit events for the workspace (AC-7)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.SETTINGS_VIEW.value,
-        "You don't have permission to view governance settings",
-    )
     from datetime import datetime
 
     try:
@@ -313,15 +303,14 @@ async def archive_workspace(
     workspace_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_UPDATE.value,
+            "You don't have permission to archive this workspace",
+        )
+    ),
 ) -> WorkspaceStatusRead:
     """Archive the workspace (AC-8)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.SETTINGS_UPDATE.value,
-        "You don't have permission to archive this workspace",
-    )
     if not await is_workspace_owner(session, auth.user.id, workspace_id):
         raise HTTPException(
             status_code=403, detail="Only workspace owner can archive the workspace"
@@ -337,15 +326,14 @@ async def restore_workspace(
     workspace_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_UPDATE.value,
+            "You don't have permission to restore this workspace",
+        )
+    ),
 ) -> WorkspaceStatusRead:
     """Restore an archived workspace (AC-8)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.SETTINGS_UPDATE.value,
-        "You don't have permission to restore this workspace",
-    )
     if not await is_workspace_owner(session, auth.user.id, workspace_id):
         raise HTTPException(
             status_code=403, detail="Only workspace owner can restore the workspace"

@@ -12,7 +12,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
 from app.config import config
-from app.db import Memory, MemorySourceType, MemoryType, get_async_session
+from app.db import (
+    Memory,
+    MemorySourceType,
+    MemoryType,
+    WorkspaceMembership,
+    get_async_session,
+)
+from app.dependencies.auth import RequireWorkspaceAccess
 from app.schemas.voice_profile import (
     GenerateDraftsRequest,
     GenerateDraftsResponse,
@@ -32,7 +39,6 @@ from app.services.social_copilot.mechanics_deconstructor import (
 from app.services.social_copilot.outlier_detector import OutlierDetector
 from app.services.social_copilot.voice_learner import VoiceProfileLearner
 from app.users import get_auth_context
-from app.utils.rbac import check_workspace_access
 
 router = APIRouter(prefix="/api/workspaces/{workspace_id}")
 logger = logging.getLogger(__name__)
@@ -48,10 +54,9 @@ async def create_voice_profile(
     request: VoiceAnalysisRequest,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> VoiceProfile:
     """Analyze writing sample (>= 100 words) and persist learned VoiceProfile in memories table."""
-    await check_workspace_access(session, auth, workspace_id)
-
     client_id = getattr(auth.user, "client_id", None) or "default"
     learner = VoiceProfileLearner()
     try:
@@ -106,10 +111,9 @@ async def list_voice_profiles(
     workspace_id: int,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> VoiceProfileListResponse:
     """List stored voice profiles for the workspace with tenant isolation (AD-31)."""
-    await check_workspace_access(session, auth, workspace_id)
-
     client_id = getattr(auth.user, "client_id", None) or "default"
     stmt = (
         select(Memory)
@@ -165,10 +169,9 @@ async def activate_voice_profile(
     profile_id: int,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> VoiceProfile:
     """Set the specified voice profile as active exclusively across workspace & client."""
-    await check_workspace_access(session, auth, workspace_id)
-
     client_id = getattr(auth.user, "client_id", None) or "default"
     # First, deactivate all other profiles in this workspace/client
     all_profiles_stmt = select(Memory).where(
@@ -229,10 +232,9 @@ async def get_outlier_posts(
     min_multiplier: float = Query(default=3.0, ge=1.0),
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> OutlierPostsResponse:
     """Find viral outlier posts (>= 3x author baseline) with Redis caching and graceful fallback."""
-    await check_workspace_access(session, auth, workspace_id)
-
     client_id = getattr(auth.user, "client_id", None) or "default"
     try:
         detector = OutlierDetector(session=session)
@@ -266,10 +268,9 @@ async def manual_post_ingest(
     request: ManualIngestRequest,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> ManualIngestResponse:
     """Manual URL/Text ingestion endpoint for degraded scrapers or unsupported platforms (AC 5)."""
-    await check_workspace_access(session, auth, workspace_id)
-
     deconstructor = ViralMechanicsDeconstructor()
     sanitized_text = await deconstructor.sanitize_and_redact(request.raw_text)
     elements = await deconstructor.deconstruct(sanitized_text)
@@ -291,10 +292,9 @@ async def generate_viral_drafts(
     request: GenerateDraftsRequest,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> GenerateDraftsResponse:
     """Generate 3 platform-constrained, voice-matched viral post drafts."""
-    await check_workspace_access(session, auth, workspace_id)
-
     client_id = getattr(auth.user, "client_id", None) or "default"
     # Resolve voice profile
     voice: VoiceProfile

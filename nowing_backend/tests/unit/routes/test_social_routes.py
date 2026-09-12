@@ -132,7 +132,7 @@ def test_create_social_target_success(app: FastAPI, fake_auth: AuthContext, fake
     app.dependency_overrides[get_async_session] = lambda: session
     app.dependency_overrides[get_auth_context] = lambda: fake_auth
 
-    with patch("app.routes.social_routes.check_permission", new=AsyncMock()):
+    with patch("app.dependencies.auth.check_permission", new=AsyncMock()):
         client = TestClient(app)
         payload = {
             "platform": "facebook_group",
@@ -157,13 +157,14 @@ def test_create_social_target_invalid_platform(app: FastAPI, fake_auth: AuthCont
     app.dependency_overrides[get_async_session] = lambda: session
     app.dependency_overrides[get_auth_context] = lambda: fake_auth
 
-    client = TestClient(app)
-    payload = {
-        "platform": "unsupported_platform",
-        "target_id": "123",
-        "target_name": "Test",
-    }
-    resp = client.post("/workspaces/10/social-monitored-targets", json=payload)
+    with patch("app.dependencies.auth.check_permission", new=AsyncMock()):
+        client = TestClient(app)
+        payload = {
+            "platform": "unsupported_platform",
+            "target_id": "123",
+            "target_name": "Test",
+        }
+        resp = client.post("/workspaces/10/social-monitored-targets", json=payload)
     assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
@@ -172,7 +173,7 @@ def test_create_social_target_workspace_not_found(app: FastAPI, fake_auth: AuthC
     app.dependency_overrides[get_async_session] = lambda: session
     app.dependency_overrides[get_auth_context] = lambda: fake_auth
 
-    with patch("app.routes.social_routes.check_permission", new=AsyncMock()):
+    with patch("app.dependencies.auth.check_permission", new=AsyncMock()):
         client = TestClient(app)
         payload = {
             "platform": "tiktok_hashtag",
@@ -191,7 +192,7 @@ def test_create_social_target_duplicate_conflict(app: FastAPI, fake_auth: AuthCo
     app.dependency_overrides[get_async_session] = lambda: session
     app.dependency_overrides[get_auth_context] = lambda: fake_auth
 
-    with patch("app.routes.social_routes.check_permission", new=AsyncMock()):
+    with patch("app.dependencies.auth.check_permission", new=AsyncMock()):
         client = TestClient(app)
         payload = {
             "platform": "chotot_category",
@@ -211,7 +212,7 @@ def test_list_social_targets_success(app: FastAPI, fake_auth: AuthContext) -> No
     app.dependency_overrides[get_async_session] = lambda: session
     app.dependency_overrides[get_auth_context] = lambda: fake_auth
 
-    with patch("app.routes.social_routes.check_permission", new=AsyncMock()):
+    with patch("app.dependencies.auth.check_permission", new=AsyncMock()):
         client = TestClient(app)
         resp = client.get("/workspaces/10/social-monitored-targets?limit=10&offset=0")
 
@@ -228,7 +229,7 @@ def test_get_social_target_success(app: FastAPI, fake_auth: AuthContext) -> None
     app.dependency_overrides[get_async_session] = lambda: session
     app.dependency_overrides[get_auth_context] = lambda: fake_auth
 
-    with patch("app.routes.social_routes.check_permission", new=AsyncMock()):
+    with patch("app.dependencies.auth.check_permission", new=AsyncMock()):
         client = TestClient(app)
         resp = client.get("/workspaces/10/social-monitored-targets/5")
 
@@ -241,7 +242,7 @@ def test_get_social_target_not_found(app: FastAPI, fake_auth: AuthContext) -> No
     app.dependency_overrides[get_async_session] = lambda: session
     app.dependency_overrides[get_auth_context] = lambda: fake_auth
 
-    with patch("app.routes.social_routes.check_permission", new=AsyncMock()):
+    with patch("app.dependencies.auth.check_permission", new=AsyncMock()):
         client = TestClient(app)
         resp = client.get("/workspaces/10/social-monitored-targets/999")
 
@@ -254,7 +255,7 @@ def test_get_social_target_wrong_workspace_returns_404(app: FastAPI, fake_auth: 
     app.dependency_overrides[get_async_session] = lambda: session
     app.dependency_overrides[get_auth_context] = lambda: fake_auth
 
-    with patch("app.routes.social_routes.check_permission", new=AsyncMock()):
+    with patch("app.dependencies.auth.check_permission", new=AsyncMock()):
         client = TestClient(app)
         resp = client.get("/workspaces/10/social-monitored-targets/5")
 
@@ -267,7 +268,7 @@ def test_update_social_target_success(app: FastAPI, fake_auth: AuthContext) -> N
     app.dependency_overrides[get_async_session] = lambda: session
     app.dependency_overrides[get_auth_context] = lambda: fake_auth
 
-    with patch("app.routes.social_routes.check_permission", new=AsyncMock()):
+    with patch("app.dependencies.auth.check_permission", new=AsyncMock()):
         client = TestClient(app)
         resp = client.patch(
             "/workspaces/10/social-monitored-targets/1",
@@ -286,7 +287,7 @@ def test_delete_social_target_success(app: FastAPI, fake_auth: AuthContext) -> N
     app.dependency_overrides[get_async_session] = lambda: session
     app.dependency_overrides[get_auth_context] = lambda: fake_auth
 
-    with patch("app.routes.social_routes.check_permission", new=AsyncMock()):
+    with patch("app.dependencies.auth.check_permission", new=AsyncMock()):
         client = TestClient(app)
         resp = client.delete("/workspaces/10/social-monitored-targets/1")
 
@@ -299,7 +300,7 @@ def test_routes_permission_denied(app: FastAPI, fake_auth: AuthContext) -> None:
     app.dependency_overrides[get_async_session] = lambda: session
     app.dependency_overrides[get_auth_context] = lambda: fake_auth
 
-    with patch("app.routes.social_routes.check_permission", side_effect=HTTPException(status_code=403, detail="Forbidden")):
+    with patch("app.dependencies.auth.check_permission", side_effect=HTTPException(status_code=403, detail="Forbidden")):
         client = TestClient(app)
         resp = client.get("/workspaces/10/social-monitored-targets")
 
@@ -312,7 +313,7 @@ def test_create_social_target_invalid_url_scheme(app: FastAPI, fake_auth: AuthCo
     app.dependency_overrides[get_async_session] = lambda: session
     app.dependency_overrides[get_auth_context] = lambda: fake_auth
 
-    with patch("app.routes.social_routes.check_permission", new=AsyncMock()):
+    with patch("app.dependencies.auth.check_permission", new=AsyncMock()):
         client = TestClient(app)
         payload = {
             "platform": "facebook_group",

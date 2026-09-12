@@ -21,7 +21,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.db import Permission, ResearchThread, get_async_session
+from app.db import Permission, ResearchThread, WorkspaceMembership, get_async_session
+from app.dependencies.auth import RequirePermission
 from app.schemas.memory import MemorySearchHit, ResearchThreadContext
 from app.services.memory.search import MemoryHybridSearch
 from app.services.memory.thread_citations import collect_thread_citations
@@ -31,7 +32,6 @@ from app.services.memory.vector import (
 )
 from app.users import get_auth_context
 from app.utils.document_converters import embed_texts
-from app.utils.rbac import check_permission
 from app.utils.strict_fields import strict_top_k
 
 router = APIRouter()
@@ -61,16 +61,13 @@ async def get_research_thread_context(
     ] = 5,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.MEMORY_READ.value,
+            "You don't have permission to read memory in this workspace",
+        )
+    ),
 ) -> ResearchThreadContext:
-    # Continuity is a read of the thread's memory/context — reuse memory:read.
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.MEMORY_READ.value,
-        error_message="You don't have permission to read memory in this workspace",
-    )
-
     # Load by id AND workspace_id so a thread from another workspace is not
     # reachable (AC-4 isolation). No implicit creation on miss (AC-2).
     thread = await session.scalar(
