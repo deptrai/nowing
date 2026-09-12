@@ -1461,3 +1461,15 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
     chainlens executor 1151, web_builder_routes 1150, task_tool 1133,
     report.py 1107, notion_history 1081, kb_postgres 1069
     (deploy/service.py 1081 = user Epic 31 — skip).
+
+- source_spec: none
+  summary: RequirePermission FastAPI dependency + migrate ~268 manual check_permission call-sites (70 files), theo từng route family
+  evidence: Re-deferred từ "giải quyết hết defer work" round 2 — authz surface lớn, cần spec + regression tests riêng; làm sau khi xong oversized split đợt 2
+
+- source_spec: none
+  summary: NowingError adoption pilot tại 1 domain P0 (billing/credits) rồi nhân rộng — hiện 49 raise/16 file vs ~1.800 except Exception
+  evidence: Re-deferred từ "giải quyết hết defer work" round 2 — multi-PR effort theo domain; làm sau oversized split đợt 2
+
+- source_spec: none
+  summary: Git history cleanup (git filter-repo xóa db.py.legacy + screenshots khỏi history) — destructive, force-push, cần team coordination
+  evidence: Re-deferred từ "giải quyết hết defer work" round 2 — không tự ý chạy; chờ user chốt thời điểm + báo team
