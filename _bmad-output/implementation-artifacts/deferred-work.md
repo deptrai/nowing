@@ -1446,5 +1446,18 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   evidence: Split từ intent "fix hết" audit 2026-09-12 — multi-PR effort theo từng domain
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-audit-hygiene-cleanup.md` (gốc: `AUDIT_TECHNICAL_DEBT_2026-09-12.md`)
-  summary: Tách tiếp services//routes/ file >800 dòng theo domain (admin_telemetry 1059, workspace_limits 1030, phone_waterfall 1012, workspaces_routes 1291, rbac_routes 1260, gateway_webhook 1207...)
-  evidence: Split từ intent "fix hết" audit 2026-09-12 — refactor dài hạn nhiều PR
+  summary: Tách tiếp services//routes/ file >800 dòng theo domain
+  evidence: >-
+    DONE (5 file audit flag, commits 57befe8c0/faf343a9e/ef5248edb):
+    workspaces_routes 1291 -> routes/workspaces/{core,settings,subscriptions,bulk_ops};
+    rbac_routes 1260 -> routes/rbac/{roles,members,invites};
+    gateway_webhook 1207 -> routes/gateway_webhook/{_helpers,oauth,webhooks,config_ep,bindings};
+    admin_telemetry 1059 -> services/admin_telemetry/{_helpers,costs,margin,health,queues,service} (mixins);
+    workspace_limits 1030 -> services/workspace_limits/{service,counting,checks,plans} (mixins).
+    Compat shims giữ import path cũ; route counts/paths verify identical;
+    test patch targets cập nhật về module mới. phone_waterfall đã tách trước (118L).
+    REMAINING (phát hiện thêm, >1000L): agents/chat mcp/tool.py 1496,
+    kb_persistence/middleware 1483, new_chat orchestrator 1202,
+    chainlens executor 1151, web_builder_routes 1150, task_tool 1133,
+    report.py 1107, notion_history 1081, kb_postgres 1069
+    (deploy/service.py 1081 = user Epic 31 — skip).
