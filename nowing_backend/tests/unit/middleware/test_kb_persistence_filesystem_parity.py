@@ -16,7 +16,7 @@ import numpy as np
 import pytest
 
 from app.agents.chat.multi_agent_chat.main_agent.middleware.kb_persistence import (
-    middleware as kb_persistence,
+    _helpers as kb_persistence,
 )
 from app.db import Document
 
