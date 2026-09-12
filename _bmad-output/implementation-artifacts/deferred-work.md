@@ -1416,7 +1416,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - source_spec: `_bmad-output/implementation-artifacts/spec-audit-hygiene-cleanup.md` (gốc: `AUDIT_TECHNICAL_DEBT_2026-09-12.md`)
   summary: Biome `no-console` rule + sweep 287 `console.*` trong nowing_web
   evidence: Split từ intent "fix hết" audit 2026-09-12 — console.* tăng 262→287
-  resolved: 2026-09-12 (phần ratchet) — check_pr_guards FAIL trên console.log/debug MỚI trong app//components//lib//hooks//atoms/ (commit 37a63026f). CÒN LẠI: sweep 287 console.* hiện hữu — nợ cũ, chưa cấm retroactive
+  resolved: 2026-09-12 — check_pr_guards FAIL trên console.log/debug MỚI trong prod dirs (37a63026f), dev-util files (*.selfcheck/test/spec/stories) được exclude. Sweep hiện hữu: audit 287 = chủ yếu console.error/warn (252) là error surfacing hợp lệ (browser console = logging channel, không có logger infra → không wrap); console.log thật chỉ ~18 và tất cả đều dev-gated (IS_DEV, RevertDebug=false), selfcheck/test files, hoặc docstring — không cần xóa
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-audit-hygiene-cleanup.md` (gốc: `AUDIT_TECHNICAL_DEBT_2026-09-12.md`)
   summary: CI job `alembic downgrade -1` smoke test trên test DB (296 versions, chỉ vài migration có roundtrip test)
