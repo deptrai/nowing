@@ -35,8 +35,8 @@ from app.alerts.templates import (
 )
 from app.auth.context import AuthContext
 from app.db import Permission, WorkspaceMembership, get_async_session
+from app.dependencies.auth import RequirePermission
 from app.users import get_auth_context
-from app.utils.rbac import check_permission
 
 router = APIRouter(
     tags=["alert-rules"], prefix="/workspaces/{workspace_id}/alert-rules"
@@ -65,14 +65,13 @@ async def list_alert_rules_route(
     workspace_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.AUTOMATIONS_READ.value,
+            "You don't have permission to read alert rules in this workspace",
+        )
+    ),
 ):
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.AUTOMATIONS_READ.value,
-        "You don't have permission to read alert rules in this workspace",
-    )
     return await list_alert_rules(session=session, workspace_id=workspace_id)
 
 
@@ -82,14 +81,13 @@ async def create_alert_rule_route(
     data: AlertRuleCreate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.AUTOMATIONS_CREATE.value,
+            "You don't have permission to create alert rules in this workspace",
+        )
+    ),
 ):
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.AUTOMATIONS_CREATE.value,
-        "You don't have permission to create alert rules in this workspace",
-    )
     return await create_alert_rule(
         session=session,
         workspace_id=workspace_id,
@@ -110,15 +108,14 @@ async def list_alert_templates_route(
     workspace_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.AUTOMATIONS_READ.value,
+            "You don't have permission to read alert templates in this workspace",
+        )
+    ),
 ):
     """List available vertical alert rule templates with live capability availability."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.AUTOMATIONS_READ.value,
-        "You don't have permission to read alert templates in this workspace",
-    )
     return VerticalAlertTemplateRegistry.list_templates()
 
 
@@ -128,15 +125,14 @@ async def create_alert_from_template_route(
     data: CreateAlertFromTemplateRequest,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.AUTOMATIONS_CREATE.value,
+            "You don't have permission to create alert rules in this workspace",
+        )
+    ),
 ):
     """Instantiate a new alert rule from a vertical alert template in 1 click."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.AUTOMATIONS_CREATE.value,
-        "You don't have permission to create alert rules in this workspace",
-    )
 
     template = VerticalAlertTemplateRegistry.get_template(data.template_id)
     if template is None:
@@ -191,14 +187,13 @@ async def get_alert_rule_route(
     alert_rule_id: UUID,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.AUTOMATIONS_READ.value,
+            "You don't have permission to read alert rules in this workspace",
+        )
+    ),
 ):
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.AUTOMATIONS_READ.value,
-        "You don't have permission to read alert rules in this workspace",
-    )
     return await _load_rule(session, workspace_id, alert_rule_id)
 
 
@@ -209,14 +204,13 @@ async def update_alert_rule_route(
     data: AlertRuleUpdate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.AUTOMATIONS_UPDATE.value,
+            "You don't have permission to update alert rules in this workspace",
+        )
+    ),
 ):
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.AUTOMATIONS_UPDATE.value,
-        "You don't have permission to update alert rules in this workspace",
-    )
     rule = await _load_rule(session, workspace_id, alert_rule_id)
     return await update_alert_rule(session=session, rule=rule, data=data)
 
@@ -227,14 +221,13 @@ async def delete_alert_rule_route(
     alert_rule_id: UUID,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.AUTOMATIONS_DELETE.value,
+            "You don't have permission to delete alert rules in this workspace",
+        )
+    ),
 ):
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.AUTOMATIONS_DELETE.value,
-        "You don't have permission to delete alert rules in this workspace",
-    )
     rule = await _load_rule(session, workspace_id, alert_rule_id)
     await delete_alert_rule(session=session, rule=rule)
 
@@ -245,15 +238,14 @@ async def run_alert_rule_route(
     alert_rule_id: UUID,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.AUTOMATIONS_EXECUTE.value,
+            "You don't have permission to execute alert rules in this workspace",
+        )
+    ),
 ):
     """Manually trigger an alert rule (async Celery task)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.AUTOMATIONS_EXECUTE.value,
-        "You don't have permission to execute alert rules in this workspace",
-    )
     rule = await _load_rule(session, workspace_id, alert_rule_id)
     alert_engine_tick.apply_async()  # Simpler: full tick; could optimize to single rule.
     return {"status": "queued", "alert_rule_id": str(rule.id)}
@@ -270,14 +262,13 @@ async def create_subscription_route(
     data: AlertSubscriptionCreate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.AUTOMATIONS_UPDATE.value,
+            "You don't have permission to update alert rules in this workspace",
+        )
+    ),
 ):
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.AUTOMATIONS_UPDATE.value,
-        "You don't have permission to update alert rules in this workspace",
-    )
     rule = await _load_rule(session, workspace_id, alert_rule_id)
 
     # Only workspace members can be subscribed to alerts.
@@ -308,14 +299,13 @@ async def list_snapshots_route(
     limit: int = 20,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.AUTOMATIONS_READ.value,
+            "You don't have permission to read alert rules in this workspace",
+        )
+    ),
 ):
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.AUTOMATIONS_READ.value,
-        "You don't have permission to read alert rules in this workspace",
-    )
     await _load_rule(session, workspace_id, alert_rule_id)
     return await list_snapshots(
         session=session,

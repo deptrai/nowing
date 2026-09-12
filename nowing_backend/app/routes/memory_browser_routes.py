@@ -9,7 +9,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.db import Permission, get_async_session
+from app.db import Permission, WorkspaceMembership, get_async_session
+from app.dependencies.auth import RequirePermission
 from app.schemas.memory_browser import (
     MemoryBrowserCreatorListResponse,
     MemoryBrowserDetailResponse,
@@ -22,7 +23,6 @@ from app.schemas.memory_browser import (
 )
 from app.services.memory.memory_browser_service import MemoryBrowserService
 from app.users import get_auth_context
-from app.utils.rbac import check_permission
 
 router = APIRouter()
 
@@ -58,13 +58,10 @@ async def list_memories(
     sort_dir: str = Query("desc", pattern="^(asc|desc)$"),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(Permission.MEMORY_READ.value)
+    ),
 ):
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.MEMORY_READ.value,
-    )
     try:
         created_by_uuid = uuid.UUID(created_by) if created_by else None
     except ValueError as exc:
@@ -101,14 +98,11 @@ async def list_memory_creators(
     workspace_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(Permission.MEMORY_READ.value)
+    ),
 ):
     """Populate the creator filter dropdown (AC-2.4)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.MEMORY_READ.value,
-    )
     service = MemoryBrowserService(session)
     return await service.list_creators(workspace_id, client_id=_pat_client_id(auth))
 
@@ -121,14 +115,11 @@ async def get_memory_timeline(
     workspace_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(Permission.MEMORY_READ.value)
+    ),
 ):
     """Research timeline view: memories grouped by research thread (AC-4)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.MEMORY_READ.value,
-    )
     service = MemoryBrowserService(session)
     return await service.get_timeline(workspace_id, client_id=_pat_client_id(auth))
 
@@ -142,13 +133,10 @@ async def get_memory_detail(
     memory_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(Permission.MEMORY_READ.value)
+    ),
 ):
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.MEMORY_READ.value,
-    )
     service = MemoryBrowserService(session)
     try:
         return await service.get_memory_detail(
@@ -173,13 +161,10 @@ async def get_memory_versions(
     memory_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(Permission.MEMORY_READ.value)
+    ),
 ):
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.MEMORY_READ.value,
-    )
     service = MemoryBrowserService(session)
     try:
         return await service.get_memory_versions(
@@ -204,13 +189,10 @@ async def get_memory_relations(
     memory_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(Permission.MEMORY_READ.value)
+    ),
 ):
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.MEMORY_READ.value,
-    )
     service = MemoryBrowserService(session)
     try:
         return await service.get_memory_relations(
@@ -237,13 +219,10 @@ async def flag_memory_for_review(
     payload: MemoryReviewQueueCreate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(Permission.MEMORY_UPDATE.value)
+    ),
 ):
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.MEMORY_UPDATE.value,
-    )
     service = MemoryBrowserService(session)
     try:
         return await service.flag_for_review(

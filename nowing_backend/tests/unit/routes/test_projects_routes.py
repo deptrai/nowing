@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
@@ -110,7 +110,7 @@ def test_list_projects(app: FastAPI):
     app.dependency_overrides[get_auth_context] = _fake_auth
     app.dependency_overrides[get_async_session] = lambda: fake_session
 
-    with patch("app.routes.projects_routes.check_permission", AsyncMock(return_value=None)):
+    with patch("app.dependencies.auth.check_permission", AsyncMock(return_value=None)):
         client = TestClient(app)
         res = client.get("/workspaces/10/projects")
         assert res.status_code == 200
@@ -138,7 +138,7 @@ def test_create_project(app: FastAPI):
     app.dependency_overrides[get_auth_context] = _fake_auth
     app.dependency_overrides[get_async_session] = lambda: fake_session
 
-    with patch("app.routes.projects_routes.check_permission", AsyncMock(return_value=None)):
+    with patch("app.dependencies.auth.check_permission", AsyncMock(return_value=None)):
         client = TestClient(app)
         res = client.post(
             "/workspaces/10/projects",
@@ -171,7 +171,7 @@ def test_get_project_found(app: FastAPI):
     app.dependency_overrides[get_auth_context] = _fake_auth
     app.dependency_overrides[get_async_session] = lambda: fake_session
 
-    with patch("app.routes.projects_routes.check_permission", AsyncMock(return_value=None)):
+    with patch("app.dependencies.auth.check_permission", AsyncMock(return_value=None)):
         client = TestClient(app)
         res = client.get("/workspaces/10/projects/1")
         assert res.status_code == 200
@@ -186,7 +186,7 @@ def test_get_project_not_found(app: FastAPI):
     app.dependency_overrides[get_auth_context] = _fake_auth
     app.dependency_overrides[get_async_session] = lambda: fake_session
 
-    with patch("app.routes.projects_routes.check_permission", AsyncMock(return_value=None)):
+    with patch("app.dependencies.auth.check_permission", AsyncMock(return_value=None)):
         client = TestClient(app)
         res = client.get("/workspaces/10/projects/999")
         assert res.status_code == 404
@@ -210,7 +210,7 @@ def test_update_project(app: FastAPI):
     app.dependency_overrides[get_auth_context] = _fake_auth
     app.dependency_overrides[get_async_session] = lambda: fake_session
 
-    with patch("app.routes.projects_routes.check_permission", AsyncMock(return_value=None)):
+    with patch("app.dependencies.auth.check_permission", AsyncMock(return_value=None)):
         client = TestClient(app)
         res = client.patch(
             "/workspaces/10/projects/1",
@@ -239,7 +239,7 @@ def test_delete_project(app: FastAPI):
     app.dependency_overrides[get_auth_context] = _fake_auth
     app.dependency_overrides[get_async_session] = lambda: fake_session
 
-    with patch("app.routes.projects_routes.check_permission", AsyncMock(return_value=None)):
+    with patch("app.dependencies.auth.check_permission", AsyncMock(return_value=None)):
         client = TestClient(app)
         res = client.delete("/workspaces/10/projects/1")
         assert res.status_code == 204
@@ -264,7 +264,7 @@ def test_archive_project(app: FastAPI):
     app.dependency_overrides[get_auth_context] = _fake_auth
     app.dependency_overrides[get_async_session] = lambda: fake_session
 
-    with patch("app.routes.projects_routes.check_permission", AsyncMock(return_value=None)):
+    with patch("app.dependencies.auth.check_permission", AsyncMock(return_value=None)):
         client = TestClient(app)
         res = client.post("/workspaces/10/projects/1/archive")
         assert res.status_code == 200
@@ -295,7 +295,7 @@ def test_pin_document(app: FastAPI):
     app.dependency_overrides[get_auth_context] = _fake_auth
     app.dependency_overrides[get_async_session] = lambda: fake_session
 
-    with patch("app.routes.projects_routes.check_permission", AsyncMock(return_value=None)):
+    with patch("app.dependencies.auth.check_permission", AsyncMock(return_value=None)):
         client = TestClient(app)
         res = client.post("/workspaces/10/projects/1/documents/101/pin")
         assert res.status_code == 200
@@ -325,7 +325,7 @@ def test_unpin_document(app: FastAPI):
     app.dependency_overrides[get_auth_context] = _fake_auth
     app.dependency_overrides[get_async_session] = lambda: fake_session
 
-    with patch("app.routes.projects_routes.check_permission", AsyncMock(return_value=None)):
+    with patch("app.dependencies.auth.check_permission", AsyncMock(return_value=None)):
         client = TestClient(app)
         res = client.delete("/workspaces/10/projects/1/documents/101/pin")
         assert res.status_code == 200
