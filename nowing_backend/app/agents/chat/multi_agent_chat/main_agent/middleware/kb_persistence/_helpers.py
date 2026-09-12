@@ -19,6 +19,10 @@ from langchain_core.callbacks import adispatch_custom_event
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agents.chat.multi_agent_chat.shared.receipts.receipt import (
+    Receipt,
+    make_receipt,
+)
 from app.agents.chat.runtime.path_resolver import (
     DOCUMENTS_ROOT,
     parse_documents_path,
@@ -631,3 +635,111 @@ async def _snapshot_folder_pre_mkdir(
             exc,
         )
         return None
+
+
+async def _resolve_action_ids(
+    session: AsyncSession,
+    *,
+    thread_id: int | None,
+    snapshot_enabled: bool,
+    staged_dir_tool_calls: dict[str, str],
+    pending_moves: list[dict[str, Any]],
+    dirty_path_tool_calls: dict[str, str],
+    file_delete_paths: dict[str, str],
+    dir_delete_paths: dict[str, str],
+) -> dict[str, int]:
+    """Resolve all action-id bindings in one SELECT per turn, not per op."""
+    if not (snapshot_enabled and thread_id is not None):
+        return {}
+    tool_call_ids: set[str] = set()
+    tool_call_ids.update(tcid for tcid in staged_dir_tool_calls.values() if tcid)
+    for move in pending_moves:
+        tcid = str(move.get("tool_call_id") or "")
+        if tcid:
+            tool_call_ids.add(tcid)
+    tool_call_ids.update(tcid for tcid in dirty_path_tool_calls.values() if tcid)
+    tool_call_ids.update(tcid for tcid in file_delete_paths.values() if tcid)
+    tool_call_ids.update(tcid for tcid in dir_delete_paths.values() if tcid)
+    return await _find_action_ids_batch(
+        session,
+        thread_id=thread_id,
+        tool_call_ids=tool_call_ids,
+    )
+
+
+def _build_commit_receipts(
+    *,
+    committed_creates: list[dict[str, Any]],
+    committed_updates: list[dict[str, Any]],
+    applied_moves: list[dict[str, Any]],
+    staged_dirs: list[str],
+    committed_deletes: list[dict[str, Any]],
+    committed_folder_deletes: list[dict[str, Any]],
+) -> list[Receipt]:
+    """Build ground-truth Receipts for each committed mutation."""
+    receipts: list[Receipt] = []
+
+    def _kb_receipt(
+        *,
+        type: str,
+        operation: str,
+        path: str,
+        external_id: int | None = None,
+    ) -> None:
+        if not path:
+            return
+        preview = path.rsplit("/", 1)[-1] or path
+        receipts.append(
+            make_receipt(
+                route="knowledge_base",
+                type=type,
+                operation=operation,
+                status="success",
+                external_id=str(external_id) if external_id is not None else path,
+                preview=preview,
+            )
+        )
+
+    for payload in committed_creates:
+        path = str(payload.get("virtualPath") or "")
+        _kb_receipt(
+            type="file",
+            operation="write_file",
+            path=path,
+            external_id=payload.get("id"),
+        )
+    for payload in committed_updates:
+        path = str(payload.get("virtualPath") or "")
+        _kb_receipt(
+            type="file",
+            operation="edit_file",
+            path=path,
+            external_id=payload.get("id"),
+        )
+    for payload in applied_moves:
+        path = str(payload.get("virtualPath") or "")
+        _kb_receipt(
+            type="file",
+            operation="move_file",
+            path=path,
+            external_id=payload.get("id"),
+        )
+    for path in staged_dirs:
+        _kb_receipt(type="folder", operation="mkdir", path=path)
+    for payload in committed_deletes:
+        path = str(payload.get("virtualPath") or "")
+        _kb_receipt(
+            type="file",
+            operation="rm",
+            path=path,
+            external_id=payload.get("id"),
+        )
+    for payload in committed_folder_deletes:
+        path = str(payload.get("virtualPath") or "")
+        _kb_receipt(
+            type="folder",
+            operation="rmdir",
+            path=path,
+            external_id=payload.get("id"),
+        )
+    return receipts
