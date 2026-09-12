@@ -26,7 +26,7 @@ pytestmark = pytest.mark.unit
 def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     """Test client for the lead-batch router with mocked service and auth."""
     monkeypatch.setattr(
-        lead_batch_routes, "check_permission", AsyncMock(return_value=None)
+        "app.dependencies.auth.check_permission", AsyncMock(return_value=None)
     )
 
     async def _mock_ingest(*args: Any, **kwargs: Any) -> dict[str, Any]:

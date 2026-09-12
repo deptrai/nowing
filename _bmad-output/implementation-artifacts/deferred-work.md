@@ -1477,15 +1477,22 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   resolved: 2026-09-12 — Migrate 37 call-sites trên 5 route files có path param workspace_id và get_auth_context sang Depends(RequirePermission). Hỗ trợ default message trong RequirePermission.__init__. Cập nhật 15 unit mock patch targets sang app.dependencies.auth.check_permission. 18 unit tests + 40 integration tests pass 100%.
   evidence: Batch 3 trong chuỗi migration declarative RBAC sang Depends(RequirePermission)
 
+- source_spec: `_bmad-output/implementation-artifacts/spec-require-permission-batch-4.md`
+  summary: RequirePermission migration Batch 4 (sequence 11, lead_pipeline 10, leads 6, lead_scoring 5, lead_batch 4, dnc 4 = 40 call-sites)
+  resolved: 2026-09-12 — Migrate 40 call-sites trên 6 route files Lead Intelligence & Sequences sang Depends(RequirePermission) / Depends(RequireWorkspaceAccess). lead_pipeline inject membership vào handler. Cập nhật 5 test files patch targets sang app.dependencies.auth. 12 unit tests + 10 integration tests pass 100% (1 xfail pre-existing).
+  evidence: Batch 4 trong chuỗi migration declarative RBAC sang Depends(RequirePermission)
+
 - source_spec: none
-  summary: Migrate remaining ~200 check_permission call-sites sang `Depends(RequirePermission(...))` theo từng route family
+  summary: Migrate remaining ~160 check_permission call-sites sang `Depends(RequirePermission(...))` theo từng route family
   evidence: >-
     Batch 1 (workspaces 20 sites) + Batch 2 (rbac 13, outcome_pricing 3, threads 2 = 18 sites)
     + Batch 3 (alert_rules 10, projects 8, skills 7, memory_browser 7, workspace_tables 5 = 37 sites)
-    đã xong. Tổng 75 sites migrated. Remaining: ~200 sites.
+    + Batch 4 (sequence 11, lead_pipeline 10, leads 6, lead_scoring 5, lead_batch 4, dnc 4 = 40 sites)
+    đã xong. Tổng 115 sites migrated. Remaining: ~160 sites trên ~30 files.
     Lưu ý kiến trúc đã giải quyết: RequirePermission đã có default message.
-    Các nhóm tiếp theo cần dynamic resolver (lookup workspace_id từ DB qua entity id hoặc body):
-    folders (11), lead_pipeline (10), governance (13), sequence (11), leads (6), outbound (6), logs (6).
+    Nhiều files còn lại có workspace_id trong path và dùng RequirePermission trực tiếp được.
+    Một số files cần dynamic resolver (lookup workspace_id từ entity id hoặc body):
+    folders (11), governance (13), outbound (6), logs (6).
 
 - source_spec: none
   summary: Migrate remaining ~1.794 `except Exception` toàn app sang typed exceptions / NowingError hierarchy — theo từng domain
