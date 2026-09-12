@@ -1,8 +1,9 @@
 """``stream_new_chat`` — public entry point for a fresh chat turn.
 
 Slim composition layer over the per-concern modules in this folder and the
-building blocks under ``flows/shared/``. Each phase corresponds to a numbered
-block in the surrounding code so the on-the-wire ordering stays explicit:
+building blocks under ``flows/shared/``. Stage bodies live in ``_stages.py``;
+each phase corresponds to a numbered block in the surrounding code so the
+on-the-wire ordering stays explicit:
 
   1. Validation / config — auto-pin, LLM bundle, capability, premium reserve.
   2. Concurrent persistence + pre-stream setup — spawn DB writes, build the
@@ -20,91 +21,65 @@ block in the surrounding code so the on-the-wire ordering stays explicit:
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import inspect
 import logging
-import re
 import time
 from collections.abc import AsyncGenerator
 from functools import partial
 from typing import Any, Literal
 from uuid import UUID
 
-import anyio
-from fastapi import HTTPException
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.agents.chat.multi_agent_chat import create_multi_agent_chat_deep_agent
-from app.agents.chat.multi_agent_chat.main_agent.middleware.busy_mutex import end_turn
 from app.agents.chat.multi_agent_chat.shared.filesystem_selection import (
     FilesystemMode,
     FilesystemSelection,
 )
 from app.agents.chat.runtime.llm_config import AgentConfig as RuntimeAgentConfig
-from app.auth.agent_chat import _resolve_agent_config
 from app.auth.context import AuthContext
-from app.config import config as app_config
 from app.db import (
     AgentConfig as RegistryAgentConfig,
     ChatVisibility,
     NewChatThread,
-    Workspace,
     async_session_maker,
 )
 from app.observability import otel as ot
 from app.services.new_streaming_service import VercelStreamingService
-from app.services.project_context_service import ProjectContextService
-from app.tasks.chat.content_builder import AssistantContentBuilder
 from app.tasks.chat.streaming.agent.builder import build_main_agent_for_thread
 from app.tasks.chat.streaming.contract.file_contract import log_file_contract
 from app.tasks.chat.streaming.errors.emitter import emit_stream_terminal_error
-from app.tasks.chat.streaming.flows.new_chat.auto_pin import resolve_initial_auto_pin
-from app.tasks.chat.streaming.flows.new_chat.chat_modes import (
-    get_chat_mode_system_prompt,
-    is_chat_mode_enabled,
-    resolve_chat_mode,
+from app.tasks.chat.streaming.flows.new_chat._recovery import (
+    _RateLimitRecoveryState,
+    _recover_provider_rate_limit,
 )
-from app.tasks.chat.streaming.flows.new_chat.initial_thinking_step import (
-    build_initial_thinking_step,
-    iter_initial_thinking_step_frame,
+from app.tasks.chat.streaming.flows.new_chat._stages import (
+    _MAX_INSTRUCTIONS_LEN,
+    _AgentNotFoundError,
+    _clamp_agent_instructions,
+    _emit_pre_stream_frames,
+    _merge_registry_agent_config,
+    _PreStreamOutcome,
+    _resolve_model_and_config,
+    _run_turn_cleanup,
 )
 from app.tasks.chat.streaming.flows.new_chat.input_state import (
     build_new_chat_input_state,
 )
-from app.tasks.chat.streaming.flows.new_chat.llm_capability import (
-    check_image_input_capability,
-)
 from app.tasks.chat.streaming.flows.new_chat.persistence_spawn import (
-    await_persist_task,
-    spawn_persist_assistant_shell_task,
     spawn_persist_user_task,
     spawn_set_ai_responding_bg,
-)
-from app.tasks.chat.streaming.flows.new_chat.runtime_context import (
-    build_new_chat_runtime_context,
 )
 from app.tasks.chat.streaming.flows.new_chat.title_gen import (
     await_pending_title_update,
     maybe_emit_title_update,
-    spawn_title_task,
-)
-from app.tasks.chat.streaming.flows.shared.assistant_finalize import (
-    finalize_assistant_message,
 )
 from app.tasks.chat.streaming.flows.shared.finalize_emit import (
     iter_suggested_actions_frame,
     iter_token_usage_frame,
 )
 from app.tasks.chat.streaming.flows.shared.finally_cleanup import (
-    close_session_and_clear_ai_responding,
     run_gc_pass,
 )
-from app.tasks.chat.streaming.flows.shared.first_frames import (
-    iter_final_frames,
-    iter_initial_frames,
-)
-from app.tasks.chat.streaming.flows.shared.llm_bundle import load_llm_bundle
+from app.tasks.chat.streaming.flows.shared.first_frames import iter_final_frames
 from app.tasks.chat.streaming.flows.shared.pre_stream_setup import (
     get_chat_checkpointer,
     setup_connector_service,
@@ -112,14 +87,6 @@ from app.tasks.chat.streaming.flows.shared.pre_stream_setup import (
 from app.tasks.chat.streaming.flows.shared.premium_quota import (
     CreditReservation,
     finalize_credit,
-    needs_credit_quota,
-    release_credit,
-    reserve_credit,
-)
-from app.tasks.chat.streaming.flows.shared.rate_limit_recovery import (
-    can_recover_provider_rate_limit,
-    log_rate_limit_recovered,
-    reroute_to_next_auto_pin,
 )
 from app.tasks.chat.streaming.flows.shared.span import (
     close_chat_request_span,
@@ -137,104 +104,20 @@ from app.utils.perf import get_perf_logger, log_system_snapshot
 logger = logging.getLogger(__name__)
 _perf_log = get_perf_logger()
 
-# AC-18.4: runtime guard for admin-injected system instructions.
-_MAX_INSTRUCTIONS_LEN = 8_000
-
 # Holds spawned background tasks (set_ai_responding, persist_user, persist_asst)
 # so the GC doesn't drop them before they finish. Kept at module level so it
 # survives across turns within one process.
 _background_tasks: set[asyncio.Task] = set()
 
-
-class _AgentNotFoundError(Exception):
-    """Raised when a requested agent_id cannot be resolved from the registry."""
-
-    def __init__(self, message: str, error_code: str = "AGENT_NOT_FOUND") -> None:
-        self.message = message
-        self.error_code = error_code
-        self.error_kind = "user_error"
-        super().__init__(message)
-
-
-def _clamp_agent_instructions(instructions: str | None) -> str | None:
-    """Enforce AC-18.4 guards: max 8k chars and no Jinja-like markers.
-
-    Only the documented ``{resolved_today}`` placeholder is allowed. Any other
-    ``{`` or ``}`` characters are stripped to prevent secret interpolation.
-    """
-    if instructions is None:
-        return None
-    s = instructions[:_MAX_INSTRUCTIONS_LEN]
-    # Escape literal braces except the documented placeholder.
-    placeholder = "\x00resolved_today\x00"
-    s = s.replace("{resolved_today}", placeholder)
-    s = re.sub(r"[{}]", "", s)
-    return s.replace(placeholder, "{resolved_today}")
-
-
-async def _merge_registry_agent_config(
-    session: AsyncSession,
-    *,
-    agent_config: RuntimeAgentConfig,
-    agent_config_override: RegistryAgentConfig | None,
-    client_id: str | None,
-    agent_id: str | None,
-    disabled_tools: list[str] | None = None,
-) -> tuple[RuntimeAgentConfig, list[str] | None, list[str] | None]:
-    """Load and merge the registry AgentConfig into the runtime config.
-
-    If ``agent_config_override`` is provided it is used directly; otherwise the
-    existing ``_resolve_agent_config`` helper is reused for fail-closed 404.
-    Returns the merged runtime config plus the effective ``enabled_tools`` and
-    ``disabled_tools`` lists for this turn.
-    """
-    registry = agent_config_override
-    if registry is None and agent_id and client_id:
-        try:
-            registry = await _resolve_agent_config(session, client_id, agent_id)
-        except HTTPException as exc:
-            raise _AgentNotFoundError(exc.detail) from exc
-    if agent_id and not registry:
-        raise _AgentNotFoundError("agent not found or inactive")
-
-    effective_enabled: list[str] | None = None
-    effective_disabled: list[str] | None = (
-        list(disabled_tools) if disabled_tools else None
-    )
-
-    if registry:
-        # AC-18.4: AgentConfig.system_instructions is *prepended* to the default
-        # system prompt; the additive prompt builder keeps the default body.
-        if registry.system_instructions is not None:
-            agent_config.system_instructions = _clamp_agent_instructions(
-                registry.system_instructions
-            )
-        if registry.citations_enabled is not None:
-            agent_config.citations_enabled = registry.citations_enabled
-        if registry.model_name:
-            agent_config.model_name = registry.model_name
-
-        # Fail-closed: an explicit empty list means "no tools", while None or
-        # a missing registry means "no restriction". This matches AD-30's
-        # deny-by-default stance for new connectors.
-        if registry.enabled_tools is not None:
-            effective_enabled = list(registry.enabled_tools)
-        if registry.disabled_tools is not None:
-            if effective_disabled is None:
-                effective_disabled = []
-            effective_disabled.extend(registry.disabled_tools)
-
-        logger.info(
-            "agent-config merged for client_id=%s agent_id=%s "
-            "instructions_len=%d enabled_tools=%s disabled_tools=%s",
-            registry.client_id,
-            registry.slug,
-            len(agent_config.system_instructions or ""),
-            effective_enabled,
-            effective_disabled,
-        )
-
-    return agent_config, effective_enabled, effective_disabled
+# Re-exported for ``resume_chat.orchestrator`` and tests that historically
+# imported them from this module.
+__all__ = [
+    "_MAX_INSTRUCTIONS_LEN",
+    "_AgentNotFoundError",
+    "_clamp_agent_instructions",
+    "_merge_registry_agent_config",
+    "stream_new_chat",
+]
 
 
 async def stream_new_chat(
@@ -359,7 +242,6 @@ async def stream_new_chat(
     # Declared at function scope so SSE-yield join points and the finally
     # clause see them on every exit path.
     persist_user_task: asyncio.Task[int | None] | None = None
-    persist_asst_task: asyncio.Task[int | None] | None = None
     try:
         spawn_set_ai_responding_bg(
             chat_id=chat_id, user_id=user_id, background_tasks=_background_tasks
@@ -370,237 +252,39 @@ async def stream_new_chat(
         requested_llm_config_id = llm_config_id
         requires_image_input = bool(user_image_data_urls)
 
-        _t0 = time.perf_counter()
-        pin_result = await resolve_initial_auto_pin(
+        error_frames, resolved = await _resolve_model_and_config(
             session,
             chat_id=chat_id,
             workspace_id=workspace_id,
             user_id=user_id,
-            selected_llm_config_id=llm_config_id,
-            requires_image_input=requires_image_input,
+            llm_config_id=llm_config_id,
             requested_llm_config_id=requested_llm_config_id,
+            requires_image_input=requires_image_input,
+            user_image_data_urls=user_image_data_urls,
+            llm=llm,
+            agent_config=agent_config,
+            agent_config_override=agent_config_override,
+            client_id=client_id,
+            agent_id=agent_id,
+            disabled_tools=disabled_tools,
+            platform_metadata=platform_metadata,
+            chat_thread=chat_thread,
+            flow=flow,
+            request_id=request_id,
+            emit_error=emit_stream_error,
+            streaming_service=streaming_service,
         )
-        if pin_result.error is not None:
-            message, error_code, error_kind = pin_result.error
-            yield emit_stream_error(
-                message=message, error_kind=error_kind, error_code=error_code
-            )
-            yield streaming_service.format_done()
+        premium_reservation = resolved.premium_reservation
+        if error_frames is not None:
+            for frame in error_frames:
+                yield frame
             return
-        llm_config_id = pin_result.llm_config_id  # type: ignore[assignment]
-
-        if llm is None or agent_config is None:
-            llm, agent_config, llm_load_error = await load_llm_bundle(
-                session, config_id=llm_config_id, workspace_id=workspace_id
-            )
-            if llm_load_error:
-                yield emit_stream_error(
-                    message=llm_load_error,
-                    error_kind="server_error",
-                    error_code="SERVER_ERROR",
-                )
-                yield streaming_service.format_done()
-                return
-            _perf_log.info(
-                "[stream_new_chat] LLM config loaded in %.3fs (config_id=%s)",
-                time.perf_counter() - _t0,
-                llm_config_id,
-            )
-
-        capability_error = check_image_input_capability(
-            user_image_data_urls=user_image_data_urls, agent_config=agent_config
-        )
-        if capability_error is not None:
-            message, error_code = capability_error
-            yield emit_stream_error(
-                message=message,
-                error_kind="user_error",
-                error_code=error_code,
-            )
-            yield streaming_service.format_done()
-            return
-
-        if needs_credit_quota(agent_config, user_id):
-            premium_reservation = await reserve_credit(
-                agent_config=agent_config,
-                user_id=user_id,  # type: ignore[arg-type]
-            )
-            if not premium_reservation.allowed:
-                ot.add_event("quota.denied", {"quota.code": "PREMIUM_QUOTA_EXHAUSTED"})
-                if requested_llm_config_id == 0:
-                    pin_fallback = await resolve_initial_auto_pin(
-                        session,
-                        chat_id=chat_id,
-                        workspace_id=workspace_id,
-                        user_id=user_id,
-                        selected_llm_config_id=0,
-                        requires_image_input=requires_image_input,
-                        requested_llm_config_id=requested_llm_config_id,
-                        force_repin_free=True,
-                    )
-                    if pin_fallback.error is not None:
-                        message, error_code, error_kind = pin_fallback.error
-                        yield emit_stream_error(
-                            message=message,
-                            error_kind=error_kind,
-                            error_code=error_code,
-                        )
-                        yield streaming_service.format_done()
-                        return
-                    llm_config_id = pin_fallback.llm_config_id  # type: ignore[assignment]
-                    ot.add_event(
-                        "model.repin",
-                        {
-                            "repin.reason": "premium_quota_exhausted",
-                            "repin.to_config_id": llm_config_id,
-                        },
-                    )
-                    llm, agent_config, llm_load_error = await load_llm_bundle(
-                        session,
-                        config_id=llm_config_id,
-                        workspace_id=workspace_id,
-                    )
-                    if llm_load_error:
-                        yield emit_stream_error(
-                            message=llm_load_error,
-                            error_kind="server_error",
-                            error_code="SERVER_ERROR",
-                        )
-                        yield streaming_service.format_done()
-                        return
-                    premium_reservation = None
-                    # Re-route to free fallback logged via the structured
-                    # stream-error logger so cost/analytics see the auto-switch.
-                    from app.tasks.chat.streaming.errors.classifier import (
-                        log_chat_stream_error,
-                    )
-
-                    log_chat_stream_error(
-                        flow=flow,
-                        error_kind="premium_quota_exhausted",
-                        error_code="PREMIUM_QUOTA_EXHAUSTED",
-                        severity="info",
-                        is_expected=True,
-                        request_id=request_id,
-                        thread_id=chat_id,
-                        workspace_id=workspace_id,
-                        user_id=user_id,
-                        message=(
-                            "Premium quota exhausted on pinned model; "
-                            "auto-fallback switched to a free model"
-                        ),
-                        extra={
-                            "fallback_config_id": llm_config_id,
-                            "auto_fallback": True,
-                        },
-                    )
-                else:
-                    yield emit_stream_error(
-                        message=(
-                            "Buy more credits to continue with this model, or "
-                            "switch to a free model"
-                        ),
-                        error_kind="premium_quota_exhausted",
-                        error_code="PREMIUM_QUOTA_EXHAUSTED",
-                        severity="info",
-                        is_expected=True,
-                        extra={
-                            "resolved_config_id": llm_config_id,
-                            "auto_fallback": False,
-                        },
-                    )
-                    yield streaming_service.format_done()
-                    return
-
-        # --- Block 1b: AgentConfig merge ---
-        try:
-            (
-                agent_config,
-                effective_enabled_tools,
-                effective_disabled_tools,
-            ) = await _merge_registry_agent_config(
-                session,
-                agent_config=agent_config,
-                agent_config_override=agent_config_override,
-                client_id=client_id,
-                agent_id=agent_id,
-                disabled_tools=disabled_tools,
-            )
-        except _AgentNotFoundError as exc:
-            yield emit_stream_error(
-                message=exc.message,
-                error_kind=exc.error_kind,
-                error_code=exc.error_code,
-            )
-            yield streaming_service.format_done()
-            return
-
-        if not llm:
-            yield emit_stream_error(
-                message="Failed to create LLM instance",
-                error_kind="server_error",
-                error_code="SERVER_ERROR",
-            )
-            yield streaming_service.format_done()
-            return
-
-        # --- Block 1c: Chat mode gating (Story 27.1a, AD-120) ---
-        chat_mode = resolve_chat_mode(platform_metadata)
-        if chat_mode.mode_id != "default":
-            workspace = (
-                await session.execute(select(Workspace).where(Workspace.id == workspace_id))
-            ).scalars().first()
-            if not is_chat_mode_enabled(
-                chat_mode, workspace=workspace, app_config=app_config
-            ):
-                yield emit_stream_error(
-                    message=chat_mode.error_message,
-                    error_kind="user_error",
-                    error_code=chat_mode.error_code,
-                )
-                yield streaming_service.format_done()
-                return
-
-            if agent_config is None:
-                yield emit_stream_error(
-                    message=f"Failed to create agent config for {chat_mode.label}",
-                    error_kind="server_error",
-                    error_code="SERVER_ERROR",
-                )
-                yield streaming_service.format_done()
-                return
-
-            if chat_mode.enabled_tools is not None:
-                effective_enabled_tools = list(chat_mode.enabled_tools)
-            agent_config.system_instructions = (
-                get_chat_mode_system_prompt(
-                    chat_mode, agent_config.system_instructions
-                )
-            )
-
-        # --- Block 1d: Project context injection (Story 3.18) ---
-        if chat_thread is not None and getattr(chat_thread, "project_id", None):
-            project, pinned_pairs = (
-                await ProjectContextService.load_project_with_pinned_docs(
-                    session, chat_thread.project_id, workspace_id
-                )
-            )
-            if project:
-                proj_ctx = ProjectContextService.build_project_context(
-                    project, pinned_pairs, llm=llm
-                )
-                if proj_ctx:
-                    base_instructions = agent_config.system_instructions or ""
-                    agent_config.system_instructions = (
-                        f"{proj_ctx}\n\n{base_instructions}".strip()
-                        if base_instructions
-                        else proj_ctx
-                    )
-
-        if agent_config.system_instructions:
-            agent_config.system_instructions = _clamp_agent_instructions(
-                agent_config.system_instructions
-            )
+        llm_config_id = resolved.llm_config_id
+        llm = resolved.llm
+        agent_config = resolved.agent_config
+        effective_enabled_tools = resolved.effective_enabled_tools
+        effective_disabled_tools = resolved.effective_disabled_tools
+        chat_mode = resolved.chat_mode
 
         # --- Block 2: Spawn concurrent persistence; build pre-stream setup ---
 
@@ -736,111 +420,28 @@ async def stream_new_chat(
             "recursion_limit": 10_000,
         }
 
-        # --- Block 4: First SSE frames ---
-
-        for sse in iter_initial_frames(
-            streaming_service, turn_id=stream_result.turn_id
-        ):
-            yield sse
-
-        # --- Block 5: Persistence join + message-id frames ---
-
-        user_message_id = await await_persist_task(
-            persist_user_task,
-            chat_id=chat_id,
-            turn_id=stream_result.turn_id,
-            log_label="persist_user_task",
-        )
-        if user_message_id is None:
-            yield emit_stream_error(
-                message="We couldn't save your message. Please try again in a moment.",
-                error_kind="server_error",
-                error_code="MESSAGE_PERSIST_FAILED",
-            )
-            for sse in iter_final_frames(streaming_service):
-                yield sse
-            return
-
-        # Emit canonical user message id BEFORE any LLM streaming so the FE
-        # can rename its optimistic ``msg-user-XXX`` placeholder to
-        # ``msg-{user_message_id}`` and unlock features gated on a real DB id
-        # (comments, edit-from-this-message). See B4 in the
-        # ``sse-based_message_id_handshake`` plan.
-        yield streaming_service.format_data(
-            "user-message-id",
-            {"message_id": user_message_id, "turn_id": stream_result.turn_id},
-        )
-
-        # Spawned only after the user row is confirmed, so a user-persist
-        # failure can't orphan an assistant shell on the same turn.
-        persist_asst_task = spawn_persist_assistant_shell_task(
-            chat_id=chat_id,
-            user_id=user_id,
-            turn_id=stream_result.turn_id,
-            background_tasks=_background_tasks,
-            platform_metadata=platform_metadata,
-        )
-        assistant_message_id = await await_persist_task(
-            persist_asst_task,
-            chat_id=chat_id,
-            turn_id=stream_result.turn_id,
-            log_label="persist_asst_task",
-        )
-        if assistant_message_id is None:
-            # Genuine DB failure — abort the turn rather than stream into a
-            # void. The user row is already persisted so the legacy
-            # ghost-thread gate isn't reopened.
-            yield emit_stream_error(
-                message=(
-                    "We couldn't initialize the assistant message. Please try again."
-                ),
-                error_kind="server_error",
-                error_code="MESSAGE_PERSIST_FAILED",
-            )
-            for sse in iter_final_frames(streaming_service):
-                yield sse
-            return
-
-        yield streaming_service.format_data(
-            "assistant-message-id",
-            {"message_id": assistant_message_id, "turn_id": stream_result.turn_id},
-        )
-
-        stream_result.assistant_message_id = assistant_message_id
-        stream_result.content_builder = AssistantContentBuilder()
-
-        # --- Block 6: Initial thinking step + title task + runtime context ---
-
-        initial_step = build_initial_thinking_step(
-            user_query=user_query,
-            user_image_data_urls=user_image_data_urls,
-        )
-        for sse in iter_initial_thinking_step_frame(
-            initial_step,
-            streaming_service=streaming_service,
-            content_builder=stream_result.content_builder,
-        ):
-            yield sse
-
-        initial_step_id = initial_step.step_id
-        initial_step_title = initial_step.title
-        initial_step_items = initial_step.items
         # Drop the heavy ORM objects + the container that holds them so they
         # aren't retained for the entire streaming duration. ``input_state``
         # already carries the langchain_messages list independently.
         del assembled
 
-        title_task = spawn_title_task(
+        # --- Blocks 4-6: first frames, persistence join, thinking step ---
+
+        pre_stream = _PreStreamOutcome()
+        async for sse in _emit_pre_stream_frames(
+            out=pre_stream,
+            streaming_service=streaming_service,
+            stream_result=stream_result,
+            emit_error=emit_stream_error,
             chat_id=chat_id,
+            user_id=user_id,
             user_query=user_query,
             user_image_data_urls=user_image_data_urls,
-            assistant_message_id=assistant_message_id,
+            platform_metadata=platform_metadata,
+            persist_user_task=persist_user_task,
+            background_tasks=_background_tasks,
             llm=llm,
             agent_config=agent_config,
-        )
-        title_emitted = False
-
-        runtime_context = build_new_chat_runtime_context(
             workspace_id=workspace_id,
             mentioned_document_ids=mentioned_document_ids,
             accepted_folder_ids=accepted_folder_ids,
@@ -848,13 +449,18 @@ async def stream_new_chat(
             mentioned_connector_ids=mentioned_connector_ids,
             mentioned_connectors=mentioned_connectors,
             request_id=request_id,
-            turn_id=stream_result.turn_id,
-        )
+        ):
+            yield sse
+        if pre_stream.abort:
+            return
+
+        title_task = pre_stream.title_task
+        title_emitted = False
+        runtime_context = pre_stream.runtime_context
 
         # --- Block 7: Stream loop ---
 
         _t_stream_start = time.perf_counter()
-        runtime_rate_limit_recovered = False
 
         def _on_first_event() -> None:
             _perf_log.info(
@@ -865,132 +471,41 @@ async def stream_new_chat(
                 chat_id,
             )
 
-        async def _recover(exc: BaseException, first_event_seen: bool):
-            nonlocal llm_config_id, llm, agent_config, runtime_rate_limit_recovered
-            nonlocal title_task, effective_enabled_tools, effective_disabled_tools
-            if not can_recover_provider_rate_limit(
-                exc,
-                first_event_seen=first_event_seen,
-                runtime_rate_limit_recovered=runtime_rate_limit_recovered,
-                requested_llm_config_id=requested_llm_config_id,
-                current_llm_config_id=llm_config_id,
-            ):
-                return None
-            runtime_rate_limit_recovered = True
-            previous_config_id = llm_config_id
-            llm_config_id = await reroute_to_next_auto_pin(
-                session,
-                chat_id=chat_id,
-                workspace_id=workspace_id,
-                user_id=user_id,
-                current_llm_config_id=llm_config_id,
-                requires_image_input=requires_image_input,
-            )
-            new_llm, new_agent_config, llm_load_err = await load_llm_bundle(
-                session, config_id=llm_config_id, workspace_id=workspace_id
-            )
-            if llm_load_err:
-                # Re-raise the original so the terminal-error path classifies
-                # it correctly (don't swallow as "config load error").
-                return None
-            llm = new_llm
-            agent_config = new_agent_config
-
-            # Re-apply the registry AgentConfig to the new LLM bundle so
-            # custom system instructions/tool allowlists survive the repin.
-            (
-                agent_config,
-                effective_enabled_tools,
-                effective_disabled_tools,
-            ) = await _merge_registry_agent_config(
-                session,
-                agent_config=agent_config,
-                agent_config_override=agent_config_override,
-                client_id=client_id,
-                agent_id=agent_id,
-                disabled_tools=disabled_tools,
-            )
-
-            # Re-apply the active chat-mode allowlist (and prompt) so a
-            # web-builder/presentation-studio thread is not downgraded to the
-            # registry's default tool set after a runtime rate-limit recovery.
-            if chat_mode.mode_id != "default":
-                if chat_mode.enabled_tools is not None:
-                    effective_enabled_tools = list(chat_mode.enabled_tools)
-                agent_config.system_instructions = (
-                    get_chat_mode_system_prompt(
-                        chat_mode, agent_config.system_instructions
-                    )
-                )
-
-            # Re-apply project context if linked (Story 3.18)
-            if chat_thread is not None and getattr(chat_thread, "project_id", None):
-                project, pinned_pairs = (
-                    await ProjectContextService.load_project_with_pinned_docs(
-                        session, chat_thread.project_id, workspace_id
-                    )
-                )
-                if project:
-                    proj_ctx = ProjectContextService.build_project_context(
-                        project, pinned_pairs, llm=llm
-                    )
-                    if proj_ctx:
-                        base_instructions = agent_config.system_instructions or ""
-                        agent_config.system_instructions = (
-                            f"{proj_ctx}\n\n{base_instructions}".strip()
-                            if base_instructions
-                            else proj_ctx
-                        )
-
-            if agent_config.system_instructions:
-                agent_config.system_instructions = _clamp_agent_instructions(
-                    agent_config.system_instructions
-                )
-
-            # Title gen used the initial llm object. After a runtime repin we
-            # keep the stream focused on response recovery and skip title gen
-            # for this turn.
-            if title_task is not None and not title_task.done():
-                title_task.cancel()
-            title_task = None
-
-            _t_rebuild = time.perf_counter()
-            new_agent = await build_main_agent_for_thread(
-                agent_factory,
-                llm=llm,
-                workspace_id=workspace_id,
-                db_session=session,
-                connector_service=connector_service,
-                checkpointer=checkpointer,
-                user_id=user_id,
-                thread_id=chat_id,
-                agent_config=agent_config,
-                thread_visibility=visibility,
-                filesystem_selection=filesystem_selection,
-                enabled_tools=effective_enabled_tools,
-                disabled_tools=effective_disabled_tools,
-                mentioned_document_ids=mentioned_document_ids,
-                auth_context=auth_context,
-                research_thread_id=research_thread_id,
-                client_id=client_id,
-            )
-            _perf_log.info(
-                "[stream_new_chat] Runtime rate-limit recovery repinned "
-                "config_id=%s -> %s and rebuilt agent in %.3fs",
-                previous_config_id,
-                llm_config_id,
-                time.perf_counter() - _t_rebuild,
-            )
-            log_rate_limit_recovered(
-                flow=flow,
-                request_id=request_id,
-                chat_id=chat_id,
-                workspace_id=workspace_id,
-                user_id=user_id,
-                previous_config_id=previous_config_id,
-                new_config_id=llm_config_id,
-            )
-            return new_agent
+        recovery_state = _RateLimitRecoveryState(
+            llm_config_id=llm_config_id,
+            llm=llm,
+            agent_config=agent_config,
+            runtime_rate_limit_recovered=False,
+            title_task=title_task,
+            effective_enabled_tools=effective_enabled_tools,
+            effective_disabled_tools=effective_disabled_tools,
+        )
+        _recover = partial(
+            _recover_provider_rate_limit,
+            state=recovery_state,
+            session=session,
+            requested_llm_config_id=requested_llm_config_id,
+            requires_image_input=requires_image_input,
+            chat_id=chat_id,
+            workspace_id=workspace_id,
+            user_id=user_id,
+            agent_config_override=agent_config_override,
+            client_id=client_id,
+            agent_id=agent_id,
+            disabled_tools=disabled_tools,
+            chat_mode=chat_mode,
+            chat_thread=chat_thread,
+            agent_factory=agent_factory,
+            connector_service=connector_service,
+            checkpointer=checkpointer,
+            visibility=visibility,
+            filesystem_selection=filesystem_selection,
+            mentioned_document_ids=mentioned_document_ids,
+            auth_context=auth_context,
+            research_thread_id=research_thread_id,
+            flow=flow,
+            request_id=request_id,
+        )
 
         async for sse in run_stream_loop(
             agent=agent,
@@ -999,9 +514,9 @@ async def stream_new_chat(
             input_data=input_state,
             stream_result=stream_result,
             step_prefix="thinking",
-            initial_step_id=initial_step_id,
-            initial_step_title=initial_step_title,
-            initial_step_items=initial_step_items,
+            initial_step_id=pre_stream.initial_step_id,
+            initial_step_title=pre_stream.initial_step_title,
+            initial_step_items=pre_stream.initial_step_items,
             fallback_commit_workspace_id=workspace_id,
             fallback_commit_created_by_id=user_id,
             fallback_commit_filesystem_mode=(
@@ -1031,6 +546,10 @@ async def stream_new_chat(
             # title — flip the flag anyway so we don't keep checking it.
             if title_task is not None and title_task.done() and not title_emitted:
                 title_emitted = True
+
+        # A successful in-stream recovery may have replaced/cancelled the
+        # title task; pick up the current value from the recovery state.
+        title_task = recovery_state.title_task
 
         _perf_log.info(
             "[stream_new_chat] Agent stream completed in %.3fs (chat_id=%s)",
@@ -1128,61 +647,21 @@ async def stream_new_chat(
             yield sse
 
     finally:
-        # Shield the ENTIRE async cleanup from anyio cancel-scope cancellation.
-        # Starlette's BaseHTTPMiddleware uses anyio task groups; on client
-        # disconnect, it cancels the scope with level-triggered cancellation
-        # — every unshielded ``await`` would raise CancelledError immediately.
-        # Without this the very first ``await`` (session.rollback) would
-        # raise, ``except Exception`` wouldn't catch it (CancelledError is a
-        # BaseException), and the rest of cleanup — including session.close()
-        # — would never run.
-        with anyio.CancelScope(shield=True):
-            # Authoritative fallback cleanup for lock/cancel state. Middleware
-            # teardown can be skipped on some client-abort paths.
-            end_turn(str(chat_id))
-
-            if premium_reservation is not None and user_id:
-                await release_credit(reservation=premium_reservation, user_id=user_id)
-
-            await close_session_and_clear_ai_responding(session, chat_id)
-
-            await finalize_assistant_message(
-                stream_result=stream_result,
-                chat_id=chat_id,
-                workspace_id=workspace_id,
-                user_id=user_id,
-                accumulator=accumulator,
-                log_prefix="stream_new_chat",
-                client_id=client_id,
-                external_metadata=external_metadata,
-                run_id=run_id,
-                platform_metadata=platform_metadata,
-                research_thread_id=research_thread_id,
-            )
-
-        # Persist any sandbox-produced files to local storage so they remain
-        # downloadable after the Daytona sandbox auto-deletes.
-        if stream_result and stream_result.sandbox_files:
-            with contextlib.suppress(Exception):
-                from app.agents.chat.multi_agent_chat.shared.middleware.filesystem.sandbox import (
-                    is_sandbox_enabled,
-                    persist_and_delete_sandbox,
-                )
-
-                if is_sandbox_enabled():
-                    with anyio.CancelScope(shield=True):
-                        await persist_and_delete_sandbox(
-                            chat_id, stream_result.sandbox_files
-                        )
-
-        # ``aafter_agent`` doesn't fire on ``interrupt()`` or early bailout.
-        # Skip on ``BusyError`` (caller never acquired the lock).
-        if not busy_error_raised:
-            with contextlib.suppress(Exception):
-                end_turn(str(chat_id))
-                _perf_log.info(
-                    "[stream_new_chat] end_turn cleanup (chat_id=%s)", chat_id
-                )
+        await _run_turn_cleanup(
+            chat_id=chat_id,
+            workspace_id=workspace_id,
+            user_id=user_id,
+            session=session,
+            stream_result=stream_result,
+            accumulator=accumulator,
+            premium_reservation=premium_reservation,
+            busy_error_raised=busy_error_raised,
+            client_id=client_id,
+            external_metadata=external_metadata,
+            run_id=run_id,
+            platform_metadata=platform_metadata,
+            research_thread_id=research_thread_id,
+        )
 
         # Break circular refs held by the agent graph, tools, and LLM
         # wrappers so the GC can reclaim them in a single pass.
