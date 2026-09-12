@@ -142,11 +142,11 @@ def install(active_patches: list[Any]) -> None:
     """Patch production MCP streamable-HTTP boundaries exactly once."""
     targets = [
         (
-            "app.agents.chat.multi_agent_chat.shared.tools.mcp.tool.streamablehttp_client",
+            "app.agents.chat.multi_agent_chat.shared.tools.mcp.tool.http.streamablehttp_client",
             _fake_streamablehttp_client,
         ),
         (
-            "app.agents.chat.multi_agent_chat.shared.tools.mcp.tool.ClientSession",
+            "app.agents.chat.multi_agent_chat.shared.tools.mcp.tool.http.ClientSession",
             _FakeClientSession,
         ),
         (
