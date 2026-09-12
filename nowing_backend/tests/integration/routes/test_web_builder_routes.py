@@ -262,7 +262,7 @@ class TestWebBuilderRoutes:
                 new_callable=AsyncMock,
             ) as mock_build,
             patch(
-                "app.routes.web_builder_routes.record_token_usage",
+                "app.routes.web_builder.apps.record_token_usage",
                 new_callable=AsyncMock,
             ) as mock_usage,
         ):
