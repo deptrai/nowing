@@ -120,7 +120,7 @@ async def apply_debit(
         from app.services.auto_reload_service import maybe_trigger_auto_reload
 
         await maybe_trigger_auto_reload(user_id)
-    except Exception as exc:
+    except Exception as exc:  # best-effort post-commit hook; never fail the debit
         logger.debug("Suppressed %r", exc)
 
     return user.credit_micros_balance

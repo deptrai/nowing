@@ -1462,13 +1462,23 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
     report.py 1107, notion_history 1081, kb_postgres 1069
     (deploy/service.py 1081 = user Epic 31 — skip).
 
-- source_spec: none
+- source_spec: `_bmad-output/implementation-artifacts/spec-require-permission-workspaces-pilot.md`
   summary: RequirePermission FastAPI dependency + migrate ~268 manual check_permission call-sites (70 files), theo từng route family
+  resolved: 2026-09-12 — Pilot migrate `app/routes/workspaces/` (20 call-sites, 4 files: core/settings/subscriptions/bulk_ops) sang `Depends(RequirePermission/RequireWorkspaceAccess)`. Multi-permission endpoints (bulk_ops) dùng 2 Depends riêng. 49 integration tests workspaces pass. Remaining: ~248 call-sites ngoài workspaces/ → follow-up per route family.
   evidence: Re-deferred từ "giải quyết hết defer work" round 2 — authz surface lớn, cần spec + regression tests riêng; làm sau khi xong oversized split đợt 2
 
-- source_spec: none
+- source_spec: `_bmad-output/implementation-artifacts/spec-require-permission-workspaces-pilot.md`
   summary: NowingError adoption pilot tại 1 domain P0 (billing/credits) rồi nhân rộng — hiện 49 raise/16 file vs ~1.800 except Exception
+  resolved: 2026-09-12 — Pilot refactor 6 `except Exception` trong billing/credits services (wallet_credit, billing_service ×2, billing_event_service, manual_credit_service ×2) với comment giải thích narrow-choice. Best-effort paths giữ swallow; critical path (billing_event_service apply_debit fail → refund + raise) giữ nguyên propagate. Remaining: ~1.794 except Exception toàn app → follow-up per domain.
   evidence: Re-deferred từ "giải quyết hết defer work" round 2 — multi-PR effort theo domain; làm sau oversized split đợt 2
+
+- source_spec: none
+  summary: Migrate remaining ~248 check_permission call-sites ngoài `app/routes/workspaces/` sang `Depends(RequirePermission(...))` — theo từng route family (billing, leads, connectors, ...)
+  evidence: Follow-up từ workspaces pilot 2026-09-12 — pattern đã chứng minh, nhân rộng dần
+
+- source_spec: none
+  summary: Migrate remaining ~1.794 `except Exception` toàn app sang typed exceptions / NowingError hierarchy — theo từng domain
+  evidence: Follow-up từ billing/credits pilot 2026-09-12 — nguyên tắc narrow-first đã chứng minh
 
 - source_spec: none
   summary: Git history cleanup (git filter-repo xóa db.py.legacy + screenshots khỏi history) — destructive, force-push, cần team coordination
