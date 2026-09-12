@@ -1472,19 +1472,20 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   resolved: 2026-09-12 — Pilot refactor 6 `except Exception` trong billing/credits services (wallet_credit, billing_service ×2, billing_event_service, manual_credit_service ×2) với comment giải thích narrow-choice. Best-effort paths giữ swallow; critical path (billing_event_service apply_debit fail → refund + raise) giữ nguyên propagate. Remaining: ~1.794 except Exception toàn app → follow-up per domain.
   evidence: Re-deferred từ "giải quyết hết defer work" round 2 — multi-PR effort theo domain; làm sau oversized split đợt 2
 
+- source_spec: `_bmad-output/implementation-artifacts/spec-require-permission-batch-3.md`
+  summary: RequirePermission migration Batch 3 (alert_rules 10, projects 8, skills 7, memory_browser 7, workspace_tables 5 = 37 call-sites)
+  resolved: 2026-09-12 — Migrate 37 call-sites trên 5 route files có path param workspace_id và get_auth_context sang Depends(RequirePermission). Hỗ trợ default message trong RequirePermission.__init__. Cập nhật 15 unit mock patch targets sang app.dependencies.auth.check_permission. 18 unit tests + 40 integration tests pass 100%.
+  evidence: Batch 3 trong chuỗi migration declarative RBAC sang Depends(RequirePermission)
+
 - source_spec: none
-  summary: Migrate remaining ~237 check_permission call-sites sang `Depends(RequirePermission(...))` theo từng route family
+  summary: Migrate remaining ~200 check_permission call-sites sang `Depends(RequirePermission(...))` theo từng route family
   evidence: >-
-    Batch 1 (workspaces, 20 sites) + Batch 2 (rbac 13 sites, outcome_pricing 3 sites,
-    new_chat/threads 2 sites = 18 sites) đã xong (commits a9682cc4c, 5b063be2c, f80361a8f).
-    Tổng 38 sites migrated. Remaining: ~237 sites.
-    Lưu ý kiến trúc phát hiện ở Batch 2:
-    (1) Endpoints lấy workspace_id từ body/thread-lookup (chat, messages, resume, threads CRUD)
-    cần RequirePermission hỗ trợ dynamic resolver trước khi migrate.
-    (2) Endpoints dùng require_session_context (như usage_routes) cần RequireWorkspaceAccess
-    hỗ trợ session context.
-    Nên ưu tiên các route families dùng path param trực tiếp tiếp theo:
-    folders, projects, alert_rules, skills, memory_browser.
+    Batch 1 (workspaces 20 sites) + Batch 2 (rbac 13, outcome_pricing 3, threads 2 = 18 sites)
+    + Batch 3 (alert_rules 10, projects 8, skills 7, memory_browser 7, workspace_tables 5 = 37 sites)
+    đã xong. Tổng 75 sites migrated. Remaining: ~200 sites.
+    Lưu ý kiến trúc đã giải quyết: RequirePermission đã có default message.
+    Các nhóm tiếp theo cần dynamic resolver (lookup workspace_id từ DB qua entity id hoặc body):
+    folders (11), lead_pipeline (10), governance (13), sequence (11), leads (6), outbound (6), logs (6).
 
 - source_spec: none
   summary: Migrate remaining ~1.794 `except Exception` toàn app sang typed exceptions / NowingError hierarchy — theo từng domain

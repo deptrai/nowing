@@ -52,7 +52,11 @@ class RequirePermission:
     the permission via ``check_permission``, returning the membership.
     """
 
-    def __init__(self, permission: str, message: str) -> None:
+    def __init__(
+        self,
+        permission: str,
+        message: str = "You don't have permission to perform this action",
+    ) -> None:
         self.permission = permission
         self.message = message
 

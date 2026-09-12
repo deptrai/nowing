@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
@@ -91,7 +91,7 @@ def test_parse_skill_endpoint(app: FastAPI):
     app.dependency_overrides[get_auth_context] = _fake_auth
     app.dependency_overrides[get_async_session] = lambda: _FakeSession()
 
-    with patch("app.routes.skills_routes.check_permission", AsyncMock(return_value=None)):
+    with patch("app.dependencies.auth.check_permission", AsyncMock(return_value=None)):
         client = TestClient(app)
         res = client.post(
             "/workspaces/10/skills/parse",
@@ -118,7 +118,7 @@ def test_parse_skill_endpoint_invalid_yaml(app: FastAPI):
     app.dependency_overrides[get_auth_context] = _fake_auth
     app.dependency_overrides[get_async_session] = lambda: _FakeSession()
 
-    with patch("app.routes.skills_routes.check_permission", AsyncMock(return_value=None)):
+    with patch("app.dependencies.auth.check_permission", AsyncMock(return_value=None)):
         client = TestClient(app)
         res = client.post(
             "/workspaces/10/skills/parse",
@@ -148,7 +148,7 @@ def test_list_skills(app: FastAPI):
     app.dependency_overrides[get_auth_context] = _fake_auth
     app.dependency_overrides[get_async_session] = lambda: fake_session
 
-    with patch("app.routes.skills_routes.check_permission", AsyncMock(return_value=None)):
+    with patch("app.dependencies.auth.check_permission", AsyncMock(return_value=None)):
         client = TestClient(app)
         res = client.get("/workspaces/10/skills")
         assert res.status_code == 200
@@ -163,7 +163,7 @@ def test_create_skill(app: FastAPI):
     app.dependency_overrides[get_auth_context] = _fake_auth
     app.dependency_overrides[get_async_session] = lambda: fake_session
 
-    with patch("app.routes.skills_routes.check_permission", AsyncMock(return_value=None)):
+    with patch("app.dependencies.auth.check_permission", AsyncMock(return_value=None)):
         client = TestClient(app)
         res = client.post(
             "/workspaces/10/skills",
@@ -208,7 +208,7 @@ def test_execute_skill(app: FastAPI):
     }
 
     with (
-        patch("app.routes.skills_routes.check_permission", AsyncMock(return_value=None)),
+        patch("app.dependencies.auth.check_permission", AsyncMock(return_value=None)),
         patch(
             "app.routes.skills_routes.SkillExecutionService.execute",
             AsyncMock(return_value=mock_exec_result),
