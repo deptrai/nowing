@@ -9,8 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
 from app.config import config
-from app.db import Permission, Workspace
-from app.routes.rbac_routes import check_permission
+from app.db import Workspace
 
 logger = logging.getLogger(__name__)
 
@@ -27,15 +26,7 @@ async def require_workspace_member(
     auth: AuthContext,
     workspace_id: int,
 ) -> AuthContext:
-    """Ensure the caller is a member and that Web Builder is enabled."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.WEB_BUILDER_CREATE.value,
-        error_message="You don't have access to this workspace",
-    )
-
+    """Ensure that Web Builder is enabled for the workspace."""
     # Fail-closed per-workspace feature gate (AC-4 / P2).
     ws = (
         (await session.execute(select(Workspace).where(Workspace.id == workspace_id)))

@@ -13,11 +13,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
 from app.config import config
-from app.db import MeetingMinutes, Permission, Workspace, get_async_session
-from app.routes.rbac_routes import check_permission
+from app.db import (
+    MeetingMinutes,
+    Workspace,
+    WorkspaceMembership,
+    get_async_session,
+)
+from app.dependencies.auth import (
+    RequireWorkspaceAccess,
+    RequireWorkspaceAccessFromBody,
+)
 from app.services.meeting_minutes.schemas import GenerateMeetingMinutesInput
 from app.services.meeting_minutes.service import MeetingMinutesService
 from app.users import get_auth_context
+from app.utils.rbac import check_workspace_access
 
 router = APIRouter(prefix="/api/v1/meeting-minutes", tags=["meeting-minutes"])
 
@@ -37,13 +46,7 @@ async def require_workspace_member(
     workspace_id: int,
 ) -> None:
     """Ensure the caller is a member and the feature is enabled."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.FULL_ACCESS.value,
-        error_message="You don't have access to this workspace",
-    )
+    await check_workspace_access(session, auth, workspace_id)
 
     ws = (
         (await session.execute(select(Workspace).where(Workspace.id == workspace_id)))
@@ -62,10 +65,10 @@ async def list_meeting_minutes(
     workspace_id: Annotated[int, Query()],
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[AsyncSession, Depends(get_async_session)],
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ):
     """List meeting minutes for a workspace."""
     check_meeting_minutes_enabled()
-    await require_workspace_member(session, auth, workspace_id)
 
     rows = (
         await session.execute(
@@ -94,6 +97,7 @@ async def create_meeting_minutes(
     request: Request,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[AsyncSession, Depends(get_async_session)],
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccessFromBody()),
 ):
     """Create a meeting minutes job from audio_url or document_id."""
     check_meeting_minutes_enabled()
@@ -106,8 +110,6 @@ async def create_meeting_minutes(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Invalid payload: {exc}",
         ) from exc
-
-    await require_workspace_member(session, auth, data.workspace_id)
 
     service = MeetingMinutesService()
     result = await service.create(
@@ -137,10 +139,10 @@ async def get_meeting_minutes(
     workspace_id: Annotated[int, Query()],
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[AsyncSession, Depends(get_async_session)],
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ):
     """Get a single meeting minutes record."""
     check_meeting_minutes_enabled()
-    await require_workspace_member(session, auth, workspace_id)
 
     service = MeetingMinutesService()
     try:
@@ -172,10 +174,10 @@ async def delete_meeting_minutes(
     workspace_id: Annotated[int, Query()],
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[AsyncSession, Depends(get_async_session)],
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ):
     """Delete a meeting minutes record and its transcript."""
     check_meeting_minutes_enabled()
-    await require_workspace_member(session, auth, workspace_id)
 
     service = MeetingMinutesService()
     deleted = await service.delete(session, meeting_minutes_id, workspace_id)
@@ -194,10 +196,10 @@ async def download_meeting_minutes(
     workspace_id: Annotated[int, Query()],
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[AsyncSession, Depends(get_async_session)],
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ):
     """Return a JSON download of the meeting minutes."""
     check_meeting_minutes_enabled()
-    await require_workspace_member(session, auth, workspace_id)
 
     service = MeetingMinutesService()
     try:

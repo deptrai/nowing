@@ -21,7 +21,12 @@ from app.db import (
     ExternalChatBindingState,
     ExternalChatPlatform,
     Permission,
+    WorkspaceMembership,
     get_async_session,
+)
+from app.dependencies.auth import (
+    RequirePermissionFromEntity,
+    RequireWorkspaceAccessFromBody,
 )
 from app.gateway.accounts import (
     get_or_create_system_telegram_account,
@@ -32,7 +37,6 @@ from app.gateway.pairing import generate_pairing_code, pairing_expires_at
 from app.gateway.registry import resolve_platform_bundle
 from app.services.auto_reply_agent import pause_auto_reply
 from app.users import get_auth_context
-from app.utils.rbac import check_permission, check_workspace_access
 
 from ._helpers import (
     _active_whatsapp_account_mode,
@@ -73,9 +77,11 @@ async def start_binding(
     body: StartBindingRequest,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(
+        RequireWorkspaceAccessFromBody()
+    ),
 ) -> StartBindingResponse:
     user = auth.user
-    await check_workspace_access(session, auth, body.workspace_id)
     code = generate_pairing_code()
     if body.platform == ExternalChatPlatform.TELEGRAM:
         if not _telegram_gateway_enabled():
@@ -333,6 +339,9 @@ async def update_binding_workspace(
     body: UpdateBindingWorkspaceRequest,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(
+        RequireWorkspaceAccessFromBody()
+    ),
 ) -> dict[str, bool]:
     user = auth.user
     binding = await session.get(ExternalChatBinding, binding_id)
@@ -349,7 +358,6 @@ async def update_binding_workspace(
     if account is None or _is_inactive_whatsapp_account(account):
         raise HTTPException(status_code=404, detail="Binding not found")
 
-    await check_workspace_access(session, auth, body.workspace_id)
     if binding.workspace_id != body.workspace_id:
         binding.workspace_id = body.workspace_id
         binding.new_chat_thread_id = None
@@ -364,6 +372,9 @@ async def update_gateway_account_workspace(
     body: UpdateAccountWorkspaceRequest,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(
+        RequireWorkspaceAccessFromBody()
+    ),
 ) -> dict[str, bool]:
     user = auth.user
     account = await session.get(ExternalChatAccount, account_id)
@@ -376,7 +387,6 @@ async def update_gateway_account_workspace(
     ):
         raise HTTPException(status_code=404, detail="Gateway account not found")
 
-    await check_workspace_access(session, auth, body.workspace_id)
     account.owner_workspace_id = body.workspace_id
     account.updated_at = datetime.now(UTC)
 
@@ -478,6 +488,14 @@ async def send_message_to_binding(
     body: SendBindingMessageRequest,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "ExternalChatBinding",
+            "binding_id",
+            Permission.LEADS_WRITE.value,
+            "You don't have permission to send messages in this workspace",
+        )
+    ),
 ) -> dict[str, Any]:
     """Allow a workspace member to send a message to an external chat thread.
 
@@ -486,14 +504,6 @@ async def send_message_to_binding(
     binding = await session.get(ExternalChatBinding, binding_id)
     if binding is None:
         raise HTTPException(status_code=404, detail="Binding not found")
-
-    await check_permission(
-        session,
-        auth,
-        binding.workspace_id,
-        Permission.LEADS_WRITE,
-        error_message="You don't have permission to send messages in this workspace",
-    )
 
     account = await session.get(ExternalChatAccount, binding.account_id)
     if account is None or _is_inactive_whatsapp_account(account):

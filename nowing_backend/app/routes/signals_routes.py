@@ -12,11 +12,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
 from app.db import (
-    Permission,
     SignalEvent,
     Workspace,
+    WorkspaceMembership,
     get_async_session,
 )
+from app.dependencies.auth import RequireWorkspaceAccess
 from app.lead_intelligence.signals.schemas import (
     SignalDetectInput,
     SignalEventRead,
@@ -26,7 +27,7 @@ from app.lead_intelligence.signals.schemas import (
 )
 from app.lead_intelligence.signals.service import SIGNAL_TYPES, SignalDetectionService
 from app.users import get_auth_context
-from app.utils.rbac import check_permission
+from app.utils.rbac import check_workspace_access
 
 router = APIRouter()
 
@@ -37,13 +38,7 @@ async def require_workspace_member(
     workspace_id: int,
 ) -> AuthContext:
     """Ensure the caller is a member of the workspace."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.FULL_ACCESS.value,
-        error_message="You don't have access to this workspace",
-    )
+    await check_workspace_access(session, auth, workspace_id)
     return auth
 
 
@@ -57,10 +52,9 @@ async def detect_signals(
     body: SignalDetectInput,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> SignalOutput:
     """Run a one-time signal detection for a company."""
-    await require_workspace_member(session, auth, workspace_id)
-
     workspace = await session.get(Workspace, workspace_id)
     if workspace is None:
         raise HTTPException(
@@ -114,10 +108,9 @@ async def list_signals(
     offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> SignalListResponse:
     """List signal events for a workspace."""
-    await require_workspace_member(session, auth, workspace_id)
-
     if limit > 100:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -190,10 +183,9 @@ async def get_signal(
     signal_id: UUID,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> SignalEventRead:
     """Return a single signal event by ID."""
-    await require_workspace_member(session, auth, workspace_id)
-
     row = (
         await session.execute(
             select(SignalEvent).where(

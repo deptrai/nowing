@@ -18,11 +18,12 @@ from app.db import (
     ExternalChatHealthStatus,
     ExternalChatPlatform,
     User,
+    WorkspaceMembership,
     get_async_session,
 )
+from app.dependencies.auth import RequireWorkspaceAccessFromBody
 from app.gateway.whatsapp.adapter_baileys import WhatsAppBaileysAdapter
 from app.users import get_auth_context
-from app.utils.rbac import check_workspace_access
 
 router = APIRouter(prefix="/gateway/whatsapp/baileys", tags=["gateway"])
 
@@ -63,10 +64,12 @@ async def request_pairing_code(
     body: BaileysPairRequest,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(
+        RequireWorkspaceAccessFromBody()
+    ),
 ) -> dict[str, Any]:
     user = auth.user
     _ensure_baileys_enabled()
-    await check_workspace_access(session, auth, body.workspace_id)
     adapter = WhatsAppBaileysAdapter()
     try:
         pairing = await adapter.request_pairing_code(phone_number=body.phone_number)

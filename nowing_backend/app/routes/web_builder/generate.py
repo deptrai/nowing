@@ -10,7 +10,8 @@ from fastapi.responses import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.db import get_async_session
+from app.db import Permission, WorkspaceMembership, get_async_session
+from app.dependencies.auth import RequirePermissionFromBody
 from app.services.web_builder.builder import BuilderService
 from app.services.web_builder.generator import WebBuilderService
 from app.services.web_builder.schemas import (
@@ -33,6 +34,12 @@ async def generate_web_app(
     payload: WebAppBuildInput,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[AsyncSession, Depends(get_async_session)],
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromBody(
+            Permission.WEB_BUILDER_CREATE.value,
+            "You don't have access to this workspace",
+        )
+    ),
 ) -> WebAppBuildOutput:
     """Generate Next.js + Tailwind project from a natural-language description (AC-1)."""
     check_web_builder_enabled()
@@ -51,6 +58,12 @@ async def generate_web_app_stream(
     payload: WebAppBuildInput,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[AsyncSession, Depends(get_async_session)],
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromBody(
+            Permission.WEB_BUILDER_CREATE.value,
+            "You don't have access to this workspace",
+        )
+    ),
 ):
     """Stream real-time Next.js code generation tokens and file writing steps via SSE."""
     check_web_builder_enabled()

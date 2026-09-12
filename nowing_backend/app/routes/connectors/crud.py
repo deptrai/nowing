@@ -18,8 +18,10 @@ from app.db import (
     Permission,
     SearchSourceConnector,
     SearchSourceConnectorType,
+    WorkspaceMembership,
     get_async_session,
 )
+from app.dependencies.auth import RequirePermission, RequirePermissionFromEntity
 from app.schemas import (
     SearchSourceConnectorBase,
     SearchSourceConnectorCreate,
@@ -80,6 +82,12 @@ async def create_search_source_connector(
     ),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.CONNECTORS_CREATE.value,
+            "You don't have permission to create connectors in this workspace",
+        )
+    ),
 ):
     user = auth.user
     """
@@ -95,15 +103,6 @@ async def create_search_source_connector(
         # generic route rather than a dedicated OAuth route, so this is the
         # single choke point that must enforce the deprecation.
         raise_if_connector_deprecated(connector.connector_type)
-
-        # Check if user has permission to create connectors
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.CONNECTORS_CREATE.value,
-            "You don't have permission to create connectors in this workspace",
-        )
 
         # Check if a connector with the same type already exists for this workspace
         # (for non-OAuth connectors that don't support multiple accounts)
@@ -263,6 +262,14 @@ async def read_search_source_connector(
     connector_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "SearchSourceConnector",
+            "connector_id",
+            Permission.CONNECTORS_READ.value,
+            "You don't have permission to view this connector",
+        )
+    ),
 ):
     """
     Get a specific search source connector by ID.
@@ -279,15 +286,6 @@ async def read_search_source_connector(
 
         if not connector:
             raise HTTPException(status_code=404, detail="Connector not found")
-
-        # Check permission
-        await check_permission(
-            session,
-            auth,
-            connector.workspace_id,
-            Permission.CONNECTORS_READ.value,
-            "You don't have permission to view this connector",
-        )
 
         return connector
     except HTTPException:
@@ -307,6 +305,14 @@ async def update_search_source_connector(
     connector_update: SearchSourceConnectorUpdate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "SearchSourceConnector",
+            "connector_id",
+            Permission.CONNECTORS_UPDATE.value,
+            "You don't have permission to update this connector",
+        )
+    ),
 ):
     user = auth.user
     """
@@ -322,15 +328,6 @@ async def update_search_source_connector(
 
     if not db_connector:
         raise HTTPException(status_code=404, detail="Connector not found")
-
-    # Check permission
-    await check_permission(
-        session,
-        auth,
-        db_connector.workspace_id,
-        Permission.CONNECTORS_UPDATE.value,
-        "You don't have permission to update this connector",
-    )
 
     # Convert the sparse update data (only fields present in request) to a dict
     update_data = connector_update.model_dump(exclude_unset=True)
@@ -538,6 +535,14 @@ async def delete_search_source_connector(
     connector_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "SearchSourceConnector",
+            "connector_id",
+            Permission.CONNECTORS_DELETE.value,
+            "You don't have permission to delete this connector",
+        )
+    ),
 ):
     """
     Delete a search source connector and all its associated documents.
@@ -565,15 +570,6 @@ async def delete_search_source_connector(
 
         if not db_connector:
             raise HTTPException(status_code=404, detail="Connector not found")
-
-        # Check permission
-        await check_permission(
-            session,
-            auth,
-            db_connector.workspace_id,
-            Permission.CONNECTORS_DELETE.value,
-            "You don't have permission to delete this connector",
-        )
 
         # Store connector info before deletion
         connector_name = db_connector.name

@@ -14,8 +14,10 @@ from app.auth.context import AuthContext
 from app.db import (
     Document,
     Permission,
+    WorkspaceMembership,
     get_async_session,
 )
+from app.dependencies.auth import RequirePermissionFromEntity
 from app.routes.documents.crud.router import router
 from app.schemas import (
     DocumentRead,
@@ -23,7 +25,6 @@ from app.schemas import (
 from app.services.export_service import resolve_document_markdown
 from app.services.okf import document_to_concept
 from app.users import get_auth_context
-from app.utils.rbac import check_permission
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,14 @@ async def read_document(
     request: Request,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "Document",
+            "document_id",
+            Permission.DOCUMENTS_READ.value,
+            "You don't have permission to read documents in this workspace",
+        )
+    ),
 ):
     """
     Get a specific document by ID.
@@ -55,15 +64,6 @@ async def read_document(
             raise HTTPException(
                 status_code=404, detail=f"Document with id {document_id} not found"
             )
-
-        # Check permission for the workspace
-        await check_permission(
-            session,
-            auth,
-            document.workspace_id,
-            Permission.DOCUMENTS_READ.value,
-            "You don't have permission to read documents in this workspace",
-        )
 
         # ponytail: substring match, not RFC 7231 q-values (OKF is the only non-JSON view).
         if "text/markdown" in request.headers.get("accept", ""):

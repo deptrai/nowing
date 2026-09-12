@@ -14,14 +14,12 @@ from sqlalchemy.future import select
 from app.auth.context import AuthContext
 from app.db import (
     DshMission,
-    NewChatThread,
     Permission,
     WorkspaceMembership,
     get_async_session,
 )
-from app.dependencies.auth import RequirePermission
+from app.dependencies.auth import RequirePermission, RequirePermissionFromEntity
 from app.users import get_auth_context
-from app.utils.rbac import check_permission
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +55,14 @@ async def download_sandbox_file(
     path: str = Query(..., description="Absolute path of the file inside the sandbox"),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "NewChatThread",
+            "thread_id",
+            Permission.CHATS_READ.value,
+            "You don't have permission to access files in this thread",
+        )
+    ),
 ):
     """Download a file from the Daytona sandbox associated with a chat thread."""
 
@@ -67,21 +73,6 @@ async def download_sandbox_file(
 
     if not is_sandbox_enabled():
         raise HTTPException(status_code=404, detail="Sandbox is not enabled")
-
-    result = await session.execute(
-        select(NewChatThread).filter(NewChatThread.id == thread_id)
-    )
-    thread = result.scalars().first()
-    if not thread:
-        raise HTTPException(status_code=404, detail="Thread not found")
-
-    await check_permission(
-        session,
-        auth,
-        thread.workspace_id,
-        Permission.CHATS_READ.value,
-        "You don't have permission to access files in this thread",
-    )
 
     from app.agents.chat.multi_agent_chat.shared.middleware.filesystem.sandbox import (
         get_local_sandbox_file,

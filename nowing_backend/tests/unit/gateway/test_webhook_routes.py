@@ -12,10 +12,7 @@ import pytest
 from app.auth.context import AuthContext
 from app.db import ExternalChatAccount, ExternalChatAccountMode, ExternalChatPlatform
 from app.routes import gateway_webhook_routes as routes
-from app.routes.gateway_webhook import (
-    oauth as oauth_routes,
-    webhooks as webhook_routes,
-)
+from app.routes.gateway_webhook import webhooks as webhook_routes
 
 
 @pytest.fixture(autouse=True)
@@ -332,7 +329,9 @@ async def test_discord_gateway_install_returns_oauth_url(monkeypatch, mocker):
         "http://localhost:8000/api/v1/gateway/discord/callback",
     )
     monkeypatch.setattr(routes.config, "SECRET_KEY", "test-secret")
-    monkeypatch.setattr(oauth_routes, "check_workspace_access", mocker.AsyncMock())
+    monkeypatch.setattr(
+        "app.dependencies.auth.check_workspace_access", mocker.AsyncMock()
+    )
 
     response = await routes.install_discord_gateway(
         workspace_id=123,

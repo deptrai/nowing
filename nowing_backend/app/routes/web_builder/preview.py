@@ -19,7 +19,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
 from app.config import config
-from app.db import WorkspaceApp, get_async_session
+from app.db import Permission, WorkspaceApp, WorkspaceMembership, get_async_session
+from app.dependencies.auth import RequirePermission
 from app.services.web_builder.builder import BuilderService
 from app.services.web_builder.preview_renderer import WEB_BUILDER_CSP, PreviewRenderer
 from app.services.web_builder.project_writer import ProjectWriter
@@ -207,6 +208,12 @@ async def get_workspace_app_preview(
     request: Request,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[AsyncSession, Depends(get_async_session)],
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.WEB_BUILDER_CREATE.value,
+            "You don't have access to this workspace",
+        )
+    ),
 ):
     """Render and serve interactive live HTML preview for the generated web app (Story 27.1b Option A)."""
     check_web_builder_enabled()
@@ -343,6 +350,12 @@ async def get_workspace_app_static(
     path: str,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[AsyncSession, Depends(get_async_session)],
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.WEB_BUILDER_CREATE.value,
+            "You don't have access to this workspace",
+        )
+    ),
 ):
     """Serve a Next.js static asset for the app preview (D1)."""
     check_web_builder_enabled()
@@ -426,6 +439,12 @@ async def get_workspace_app_files(
     workspace_id: int,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[AsyncSession, Depends(get_async_session)],
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.WEB_BUILDER_CREATE.value,
+            "You don't have access to this workspace",
+        )
+    ),
 ) -> dict[str, str]:
     """Retrieve all generated source code files for a given application."""
     check_web_builder_enabled()

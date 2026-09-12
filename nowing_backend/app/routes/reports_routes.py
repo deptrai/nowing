@@ -35,6 +35,7 @@ from app.db import (
     WorkspaceMembership,
     get_async_session,
 )
+from app.dependencies.auth import RequireWorkspaceAccessFromEntity
 from app.schemas import ReportContentRead, ReportContentUpdate, ReportRead
 from app.schemas.reports import ReportVersionInfo
 from app.templates.export_helpers import (
@@ -161,21 +162,17 @@ def _normalize_latex_delimiters(text: str) -> str:
 async def _get_report_with_access(
     report_id: int,
     session: AsyncSession,
-    auth: AuthContext,
+    auth: AuthContext | None = None,
 ) -> Report:
     """Fetch a report and verify the user belongs to its workspace.
 
-    Raises HTTPException(404) if not found, HTTPException(403) if no access.
+    Raises HTTPException(404) if not found.
     """
     result = await session.execute(select(Report).filter(Report.id == report_id))
     report = result.scalars().first()
 
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
-
-    # Lightweight membership check - no granular RBAC, just "is the user a
-    # member of the workspace this report belongs to?"
-    await check_workspace_access(session, auth, report.workspace_id)
 
     return report
 
@@ -252,6 +249,11 @@ async def read_report(
     report_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequireWorkspaceAccessFromEntity(
+            "Report", "report_id", not_found_detail="Report not found"
+        )
+    ),
 ):
     user = auth.user
     """
@@ -272,6 +274,11 @@ async def read_report_content(
     report_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequireWorkspaceAccessFromEntity(
+            "Report", "report_id", not_found_detail="Report not found"
+        )
+    ),
 ):
     user = auth.user
     """
@@ -305,6 +312,11 @@ async def update_report_content(
     body: ReportContentUpdate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequireWorkspaceAccessFromEntity(
+            "Report", "report_id", not_found_detail="Report not found"
+        )
+    ),
 ):
     user = auth.user
     """
@@ -347,6 +359,11 @@ async def preview_report_pdf(
     report_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequireWorkspaceAccessFromEntity(
+            "Report", "report_id", not_found_detail="Report not found"
+        )
+    ),
 ):
     user = auth.user
     """
@@ -403,6 +420,11 @@ async def export_report(
     ),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequireWorkspaceAccessFromEntity(
+            "Report", "report_id", not_found_detail="Report not found"
+        )
+    ),
 ):
     user = auth.user
     """
@@ -582,6 +604,11 @@ async def delete_report(
     report_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequireWorkspaceAccessFromEntity(
+            "Report", "report_id", not_found_detail="Report not found"
+        )
+    ),
 ):
     user = auth.user
     """

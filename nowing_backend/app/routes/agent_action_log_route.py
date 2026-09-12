@@ -32,12 +32,12 @@ from app.agents.chat.multi_agent_chat.shared.feature_flags import get_flags
 from app.auth.context import AuthContext
 from app.db import (
     AgentActionLog,
-    NewChatThread,
     Permission,
+    WorkspaceMembership,
     get_async_session,
 )
+from app.dependencies.auth import RequirePermissionFromEntity
 from app.users import get_auth_context
-from app.utils.rbac import check_permission
 
 logger = logging.getLogger(__name__)
 
@@ -112,6 +112,14 @@ async def list_thread_actions(
     page_size: int = Query(50, ge=1, le=200),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "NewChatThread",
+            "thread_id",
+            Permission.CHATS_READ.value,
+            "You don't have permission to view this thread's action log.",
+        )
+    ),
 ) -> AgentActionListResponse:
     """List agent actions for a thread, newest first.
 
@@ -125,18 +133,6 @@ async def list_thread_actions(
     """
 
     _flag_guard()
-
-    thread = await session.get(NewChatThread, thread_id)
-    if thread is None:
-        raise HTTPException(status_code=404, detail="Thread not found.")
-
-    await check_permission(
-        session,
-        auth,
-        thread.workspace_id,
-        Permission.CHATS_READ.value,
-        "You don't have permission to view this thread's action log.",
-    )
 
     total_stmt = select(func.count(AgentActionLog.id)).where(
         AgentActionLog.thread_id == thread_id

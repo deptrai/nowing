@@ -13,15 +13,16 @@ from app.auth.context import AuthContext
 from app.db import (
     Document,
     Permission,
+    WorkspaceMembership,
     get_async_session,
 )
+from app.dependencies.auth import RequirePermissionFromEntity
 from app.routes.documents.crud.router import router
 from app.schemas import (
     DocumentRead,
     DocumentUpdate,
 )
 from app.users import get_auth_context
-from app.utils.rbac import check_permission
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,14 @@ async def update_document(
     document_update: DocumentUpdate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "Document",
+            "document_id",
+            Permission.DOCUMENTS_UPDATE.value,
+            "You don't have permission to update documents in this workspace",
+        )
+    ),
 ):
     """
     Update a document.
@@ -50,15 +59,6 @@ async def update_document(
             raise HTTPException(
                 status_code=404, detail=f"Document with id {document_id} not found"
             )
-
-        # Check permission for the workspace
-        await check_permission(
-            session,
-            auth,
-            db_document.workspace_id,
-            Permission.DOCUMENTS_UPDATE.value,
-            "You don't have permission to update documents in this workspace",
-        )
 
         update_data = document_update.model_dump(exclude_unset=True)
         for key, value in update_data.items():
@@ -94,6 +94,14 @@ async def delete_document(
     document_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "Document",
+            "document_id",
+            Permission.DOCUMENTS_DELETE.value,
+            "You don't have permission to delete documents in this workspace",
+        )
+    ),
 ):
     """
     Delete a document.
@@ -128,15 +136,6 @@ async def delete_document(
                 status_code=409,
                 detail="Document is already being deleted.",
             )
-
-        # Check permission for the workspace
-        await check_permission(
-            session,
-            auth,
-            document.workspace_id,
-            Permission.DOCUMENTS_DELETE.value,
-            "You don't have permission to delete documents in this workspace",
-        )
 
         # Mark the document as "deleting" so it's excluded from searches,
         # then commit immediately so the user gets a fast response.

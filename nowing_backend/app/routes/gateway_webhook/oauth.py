@@ -23,8 +23,10 @@ from app.db import (
     ExternalChatHealthStatus,
     ExternalChatPeerKind,
     ExternalChatPlatform,
+    WorkspaceMembership,
     get_async_session,
 )
+from app.dependencies.auth import RequireWorkspaceAccess
 from app.gateway.accounts import (
     get_discord_account_by_guild,
     get_slack_account_by_team,
@@ -33,7 +35,6 @@ from app.gateway.discord.adapter import discord_user_peer_id
 from app.gateway.slack.adapter import slack_user_peer_id
 from app.users import get_auth_context
 from app.utils.oauth_security import OAuthStateManager, TokenEncryption
-from app.utils.rbac import check_workspace_access
 
 from ._helpers import (
     _discord_frontend_redirect,
@@ -83,13 +84,13 @@ async def install_slack_gateway(
     workspace_id: int,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> dict[str, str]:
     user = auth.user
     if not _slack_gateway_enabled():
         raise HTTPException(
             status_code=500, detail="Slack gateway OAuth is not configured"
         )
-    await check_workspace_access(session, auth, workspace_id)
     state = _get_state_manager().generate_secure_state(workspace_id, user.id)
     auth_params = {
         "client_id": config.GATEWAY_SLACK_CLIENT_ID,
@@ -243,13 +244,13 @@ async def install_discord_gateway(
     workspace_id: int,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> dict[str, str]:
     user = auth.user
     if not _discord_gateway_enabled():
         raise HTTPException(
             status_code=500, detail="Discord gateway OAuth is not configured"
         )
-    await check_workspace_access(session, auth, workspace_id)
     state = _get_state_manager().generate_secure_state(workspace_id, user.id)
     auth_params = {
         "client_id": config.DISCORD_CLIENT_ID,
