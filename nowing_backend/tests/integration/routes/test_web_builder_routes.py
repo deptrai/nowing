@@ -63,6 +63,13 @@ def client(mock_auth: AuthContext, mock_db_session: AsyncMock) -> TestClient:
     app.dependency_overrides[get_auth_context] = lambda: mock_auth
     app.dependency_overrides[get_async_session] = lambda: mock_db_session
     routes.require_workspace_member = AsyncMock(return_value=None)
+    import app.routes.web_builder.apps as _wb_apps
+    import app.routes.web_builder.generate as _wb_gen
+    import app.routes.web_builder.preview as _wb_preview
+
+    _wb_preview.require_workspace_member = routes.require_workspace_member
+    _wb_apps.require_workspace_member = routes.require_workspace_member
+    _wb_gen.require_workspace_member = routes.require_workspace_member
     return TestClient(app)
 
 

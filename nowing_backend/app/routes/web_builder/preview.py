@@ -30,7 +30,6 @@ from ._helpers import check_web_builder_enabled, require_workspace_member
 logger = logging.getLogger(__name__)
 
 
-logger = logging.getLogger(__name__)
 router = APIRouter()
 
 

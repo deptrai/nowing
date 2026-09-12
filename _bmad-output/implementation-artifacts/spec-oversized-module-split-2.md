@@ -2,7 +2,7 @@
 title: 'Oversized module split — round 2 (agents/chat, chainlens, connectors)'
 type: 'refactor'
 created: '2026-09-12'
-status: 'in-progress'
+status: 'in-review'
 baseline_commit: '127dde4ee4ccc0c29bea2870d11275cb1e5dbf39'
 review_loop_iteration: 0
 context: []
@@ -93,3 +93,66 @@ Bẫy đã gặp ở đợt 1 — áp dụng cho toàn bộ đợt 2:
 - `cd nowing_backend && .venv/bin/python -c "import app.app; print('OK')"` — expected: `OK`
 - Per file: `pytest tests/unit/<area liên quan> -q` — expected: pass như trước split
 - Per route file: so sánh `git show HEAD:<f> | grep -oE '@router\.(get|post|patch|delete)\("[^"]*"'` với set mới — expected: diff rỗng
+
+## Suggested Review Order
+
+**Route Compatibility & Shims**
+
+- Compat shim re-export facade — verifies every old import path still resolves
+  [`web_builder_routes.py:1`](../../nowing_backend/app/routes/web_builder_routes.py#L1)
+- Shared route helpers — single source of truth for member/quota checks
+  [`_helpers.py:1`](../../nowing_backend/app/routes/web_builder/_helpers.py#L1)
+- Core app lifecycle endpoints — publish/build endpoints moved here
+  [`apps.py:45`](../../nowing_backend/app/routes/web_builder/apps.py#L45)
+- Preview & static files serving — complex iframe proxy + routing logic
+  [`preview.py:204`](../../nowing_backend/app/routes/web_builder/preview.py#L204)
+- Streaming generation endpoints — SSE/SSE-like handler moved
+  [`generate.py:31`](../../nowing_backend/app/routes/web_builder/generate.py#L31)
+- Public host router — catches wildcard domains to serve apps
+  [`host.py:17`](../../nowing_backend/app/routes/web_builder/host.py#L17)
+
+**Chat Flow & Orchestrator**
+
+- Main entry orchestrator — stream processing pipeline now delegates to stages
+  [`orchestrator.py:1`](../../nowing_backend/app/tasks/chat/streaming/flows/new_chat/orchestrator.py#L1)
+- Stream stage logic — extracted per-step logic (memory, tools, models)
+  [`_stages.py:1`](../../nowing_backend/app/tasks/chat/streaming/flows/new_chat/_stages.py#L1)
+- In-stream rate-limit recovery — dedicated error handling module
+  [`_recovery.py:1`](../../nowing_backend/app/tasks/chat/streaming/flows/new_chat/_recovery.py#L1)
+
+**Agent Tools & Middleware**
+
+- Task tool factory split — registration/composition surface
+  [`task_tool/__init__.py:1`](../../nowing_backend/app/agents/chat/multi_agent_chat/main_agent/middleware/checkpointed_subagent_middleware/task_tool/__init__.py#L1)
+- Task tool core factory — internal builder helpers moved
+  [`task_tool/_factory.py:1`](../../nowing_backend/app/agents/chat/multi_agent_chat/main_agent/middleware/checkpointed_subagent_middleware/task_tool/_factory.py#L1)
+- MCP tool package init — dynamic `__getattr__` handles singletons
+  [`tool/__init__.py:1`](../../nowing_backend/app/agents/chat/multi_agent_chat/shared/tools/mcp/tool/__init__.py#L1)
+- MCP tool HTTP logic — external API communication split
+  [`tool/http.py:1`](../../nowing_backend/app/agents/chat/multi_agent_chat/shared/tools/mcp/tool/http.py#L1)
+- KB persistence middleware — LangGraph state bridging core
+  [`middleware.py:1`](../../nowing_backend/app/agents/chat/multi_agent_chat/main_agent/middleware/kb_persistence/middleware.py#L1)
+- KB persistence helpers — extracted I/O + serialization logic
+  [`kb_persistence/_helpers.py:1`](../../nowing_backend/app/agents/chat/multi_agent_chat/main_agent/middleware/kb_persistence/_helpers.py#L1)
+
+**Backend & Capabilities**
+
+- Postgres filesystem backend — read/write methods split into mixin
+  [`backend.py:1`](../../nowing_backend/app/agents/chat/multi_agent_chat/shared/middleware/filesystem/backends/kb_postgres/backend.py#L1)
+- Postgres search queries — specialized Grep/Glob logic
+  [`search.py:1`](../../nowing_backend/app/agents/chat/multi_agent_chat/shared/middleware/filesystem/backends/kb_postgres/search.py#L1)
+- ChainLens executor core — streaming/coordination entrypoint
+  [`executor.py:1`](../../nowing_backend/app/capabilities/chainlens/research/executor.py#L1)
+- SSE parser split — specialized SSE chunk handling extracted
+  [`sse_parser.py:1`](../../nowing_backend/app/capabilities/chainlens/research/sse_parser.py#L1)
+- Notion history service — connector fetch logic modularized
+  [`service.py:1`](../../nowing_backend/app/connectors/notion_history/service.py#L1)
+
+**Peripherals (Tests)**
+
+- Fixed shim monkeypatch — binds `require_workspace_member` to handler namespaces
+  [`test_web_builder_routes.py:65`](../../nowing_backend/tests/integration/routes/test_web_builder_routes.py#L65)
+- Fixed shim monkeypatch — applied identically to build routes
+  [`test_web_builder_build_routes.py:63`](../../nowing_backend/tests/integration/routes/test_web_builder_build_routes.py#L63)
+- Updated patch targets — `_stages` module monkeypatch updates
+  [`test_new_chat_orchestrator.py:32`](../../nowing_backend/tests/unit/tasks/chat/test_new_chat_orchestrator.py#L32)

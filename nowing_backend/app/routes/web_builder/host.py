@@ -20,7 +20,6 @@ from app.services.web_builder.preview_renderer import WEB_BUILDER_CSP
 logger = logging.getLogger(__name__)
 
 
-logger = logging.getLogger(__name__)
 host_router = APIRouter(tags=["web-builder-host"])
 
 
