@@ -1473,8 +1473,18 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   evidence: Re-deferred từ "giải quyết hết defer work" round 2 — multi-PR effort theo domain; làm sau oversized split đợt 2
 
 - source_spec: none
-  summary: Migrate remaining ~248 check_permission call-sites ngoài `app/routes/workspaces/` sang `Depends(RequirePermission(...))` — theo từng route family (billing, leads, connectors, ...)
-  evidence: Follow-up từ workspaces pilot 2026-09-12 — pattern đã chứng minh, nhân rộng dần
+  summary: Migrate remaining ~237 check_permission call-sites sang `Depends(RequirePermission(...))` theo từng route family
+  evidence: >-
+    Batch 1 (workspaces, 20 sites) + Batch 2 (rbac 13 sites, outcome_pricing 3 sites,
+    new_chat/threads 2 sites = 18 sites) đã xong (commits a9682cc4c, 5b063be2c, f80361a8f).
+    Tổng 38 sites migrated. Remaining: ~237 sites.
+    Lưu ý kiến trúc phát hiện ở Batch 2:
+    (1) Endpoints lấy workspace_id từ body/thread-lookup (chat, messages, resume, threads CRUD)
+    cần RequirePermission hỗ trợ dynamic resolver trước khi migrate.
+    (2) Endpoints dùng require_session_context (như usage_routes) cần RequireWorkspaceAccess
+    hỗ trợ session context.
+    Nên ưu tiên các route families dùng path param trực tiếp tiếp theo:
+    folders, projects, alert_rules, skills, memory_browser.
 
 - source_spec: none
   summary: Migrate remaining ~1.794 `except Exception` toàn app sang typed exceptions / NowingError hierarchy — theo từng domain
