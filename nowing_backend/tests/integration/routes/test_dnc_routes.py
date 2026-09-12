@@ -54,11 +54,8 @@ class TestDncRoutes:
         """Should return 403 Forbidden if user lacks permission."""
         from fastapi import HTTPException
 
-        import app.routes.dnc_routes as dnc_routes
-
-        with patch.object(
-            dnc_routes,
-            "check_permission",
+        with patch(
+            "app.dependencies.auth.check_permission",
             AsyncMock(
                 side_effect=HTTPException(status_code=403, detail="Permission denied")
             ),
@@ -73,13 +70,11 @@ class TestDncRoutes:
         self, test_app: FastAPI, mock_auth: AuthContext
     ) -> None:
         """Should create a new DNC record with normalized HMAC hash."""
-        import app.routes.dnc_routes as dnc_routes
-
         record_id = uuid4()
         now = datetime.now(UTC)
 
         with (
-            patch.object(dnc_routes, "check_permission", AsyncMock(return_value=True)),
+            patch("app.dependencies.auth.check_permission", AsyncMock(return_value=True)),
             patch(
                 "app.routes.dnc_routes.create_dnc_record_service",
                 AsyncMock(
@@ -117,12 +112,10 @@ class TestDncRoutes:
         self, test_app: FastAPI, mock_auth: AuthContext
     ) -> None:
         """Should bulk-import DNC entries from CSV file."""
-        import app.routes.dnc_routes as dnc_routes
-
         csv_content = b"type,value,reason\nphone,0908111222,Spam Opt-out\ndomain,*.competitor.vn,Partner Exclude\n"
 
         with (
-            patch.object(dnc_routes, "check_permission", AsyncMock(return_value=True)),
+            patch("app.dependencies.auth.check_permission", AsyncMock(return_value=True)),
             patch(
                 "app.routes.dnc_routes.bulk_import_dnc_csv_service",
                 AsyncMock(
@@ -153,16 +146,14 @@ class TestDncRoutes:
         self, test_app: FastAPI, mock_auth: AuthContext
     ) -> None:
         """Should permanently delete plaintext PII and add HMAC to DNC on DELETE /leads/{id}/pii."""
-        import app.routes.leads_routes as leads_routes
-
         lead_id = uuid4()
         now = datetime.now(UTC)
         fake_lead = SimpleNamespace(id=lead_id, workspace_id=1)
 
         with (
             patch("app.db.get_async_session"),
-            patch.object(
-                leads_routes, "check_permission", AsyncMock(return_value=True)
+            patch(
+                "app.dependencies.auth.check_permission", AsyncMock(return_value=True)
             ),
             patch(
                 "app.routes.leads_routes.purge_lead_pii_service",

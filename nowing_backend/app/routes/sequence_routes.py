@@ -17,8 +17,10 @@ from app.db import (
     SequenceEnrollment,
     SequenceEvent,
     SequenceStep,
+    WorkspaceMembership,
     get_async_session,
 )
+from app.dependencies.auth import RequireWorkspaceAccess
 from app.schemas.sequence import (
     ChannelBreakdown,
     SequenceAnalyticsResponse,
@@ -36,7 +38,6 @@ from app.services.sequencer_service import (
 )
 from app.tenant_context import set_request_tenant_context
 from app.users import get_auth_context
-from app.utils.rbac import check_workspace_access
 
 logger = logging.getLogger(__name__)
 
@@ -52,9 +53,9 @@ async def create_sequence(
     payload: SequenceCreate,
     session: AsyncSession = Depends(get_async_session),
     auth_ctx: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> SequenceDetailRead:
     """Create a new outreach Sequence with ordered steps (AD-39, AD-41)."""
-    await check_workspace_access(session, auth_ctx, workspace_id)
     await set_request_tenant_context(session, workspace_id=workspace_id)
 
     sequencer = SequencerService()
@@ -127,9 +128,9 @@ async def list_sequences(
     workspace_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth_ctx: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> list[SequenceRead]:
     """List all sequences in the workspace."""
-    await check_workspace_access(session, auth_ctx, workspace_id)
     await set_request_tenant_context(session, workspace_id=workspace_id)
 
     stmt = (
@@ -150,9 +151,9 @@ async def get_sequence(
     sequence_id: UUID,
     session: AsyncSession = Depends(get_async_session),
     auth_ctx: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> SequenceDetailRead:
     """Get sequence details including all configured steps."""
-    await check_workspace_access(session, auth_ctx, workspace_id)
     await set_request_tenant_context(session, workspace_id=workspace_id)
 
     sequence = (
@@ -178,9 +179,9 @@ async def update_sequence(
     payload: SequenceUpdate,
     session: AsyncSession = Depends(get_async_session),
     auth_ctx: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> SequenceDetailRead:
     """Update sequence name, description, status, and/or replace steps."""
-    await check_workspace_access(session, auth_ctx, workspace_id)
     await set_request_tenant_context(session, workspace_id=workspace_id)
 
     sequence = (
@@ -280,9 +281,9 @@ async def delete_sequence(
     sequence_id: UUID,
     session: AsyncSession = Depends(get_async_session),
     auth_ctx: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> None:
     """Soft-delete / archive a sequence."""
-    await check_workspace_access(session, auth_ctx, workspace_id)
     await set_request_tenant_context(session, workspace_id=workspace_id)
 
     sequence = (
@@ -307,9 +308,9 @@ async def enroll_leads(
     payload: SequenceEnrollRequest,
     session: AsyncSession = Depends(get_async_session),
     auth_ctx: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> list[SequenceEnrollmentRead]:
     """Enroll leads into the outreach sequence after validating consent (AC-4 / AD-25)."""
-    await check_workspace_access(session, auth_ctx, workspace_id)
     await set_request_tenant_context(session, workspace_id=workspace_id)
 
     sequencer = SequencerService()
@@ -333,9 +334,9 @@ async def pause_sequence(
     sequence_id: UUID,
     session: AsyncSession = Depends(get_async_session),
     auth_ctx: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> SequenceRead:
     """Pause an active sequence."""
-    await check_workspace_access(session, auth_ctx, workspace_id)
     await set_request_tenant_context(session, workspace_id=workspace_id)
     sequence = await session.get(Sequence, (sequence_id, workspace_id))
     if not sequence:
@@ -352,9 +353,9 @@ async def resume_sequence(
     sequence_id: UUID,
     session: AsyncSession = Depends(get_async_session),
     auth_ctx: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> SequenceRead:
     """Resume a paused sequence."""
-    await check_workspace_access(session, auth_ctx, workspace_id)
     await set_request_tenant_context(session, workspace_id=workspace_id)
     sequence = await session.get(Sequence, (sequence_id, workspace_id))
     if not sequence:
@@ -371,9 +372,9 @@ async def get_sequence_analytics(
     sequence_id: UUID,
     session: AsyncSession = Depends(get_async_session),
     auth_ctx: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> SequenceAnalyticsResponse:
     """Get real-time aggregated metrics for a sequence (AC-8)."""
-    await check_workspace_access(session, auth_ctx, workspace_id)
     await set_request_tenant_context(session, workspace_id=workspace_id)
 
     sequencer = SequencerService()
@@ -411,9 +412,9 @@ async def list_sequence_enrollments(
     sequence_id: UUID,
     session: AsyncSession = Depends(get_async_session),
     auth_ctx: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> list[SequenceEnrollmentRead]:
     """List all lead enrollments for a sequence."""
-    await check_workspace_access(session, auth_ctx, workspace_id)
     await set_request_tenant_context(session, workspace_id=workspace_id)
 
     stmt = (
@@ -434,9 +435,9 @@ async def list_sequence_events(
     sequence_id: UUID,
     session: AsyncSession = Depends(get_async_session),
     auth_ctx: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> list[SequenceEventRead]:
     """List all delivery and interaction events for a sequence."""
-    await check_workspace_access(session, auth_ctx, workspace_id)
     await set_request_tenant_context(session, workspace_id=workspace_id)
 
     stmt = (

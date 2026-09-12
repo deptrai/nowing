@@ -13,7 +13,15 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.db import Lead, Permission, VerifiedContact, Workspace, get_async_session
+from app.db import (
+    Lead,
+    Permission,
+    VerifiedContact,
+    Workspace,
+    WorkspaceMembership,
+    get_async_session,
+)
+from app.dependencies.auth import RequirePermission
 from app.rate_limiter import limiter
 from app.services import wallet_credit
 from app.services.billing_event_service import BillingEventService
@@ -22,7 +30,6 @@ from app.services.lead_batch_service import LeadBatchService, LeadItemValidation
 from app.services.pii.opt_out_service import OptOutService, OptOutValidationError
 from app.services.pii.verified_contact_encryption import VerifiedContactEncryption
 from app.users import get_auth_context
-from app.utils.rbac import check_permission
 
 router = APIRouter()
 
@@ -119,15 +126,14 @@ async def batch_ingest_leads(
     body: BatchLeadIngestRequest = Body(...),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_WRITE.value,
+            "You don't have permission to create leads in this workspace",
+        )
+    ),
 ) -> BatchLeadIngestResponse:
     """Ingest a batch of leads with DNC filtering and PII encryption."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_WRITE.value,
-        error_message="You don't have permission to create leads in this workspace",
-    )
 
     workspace = await session.get(Workspace, workspace_id)
     if workspace is None:
@@ -194,15 +200,14 @@ async def unlock_contact(
     contact_id: UUID,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_WRITE.value,
+            "You don't have permission to unlock contacts in this workspace",
+        )
+    ),
 ) -> ContactUnlockResponse:
     """Unlock a verified contact, bill 1500 micros, and record an audit log."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_WRITE.value,
-        error_message="You don't have permission to unlock contacts in this workspace",
-    )
 
     workspace = await session.get(Workspace, workspace_id)
     if workspace is None:
@@ -264,15 +269,14 @@ async def relock_contact(
     contact_id: UUID,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_WRITE.value,
+            "You don't have permission to relock contacts in this workspace",
+        )
+    ),
 ) -> ContactUnlockResponse:
     """Accidentally re-lock a contact and refund the 1.5 credit unlock (Story 26.5)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_WRITE.value,
-        error_message="You don't have permission to relock contacts in this workspace",
-    )
 
     contact = (
         await session.execute(
@@ -379,15 +383,14 @@ async def pii_opt_out(
     body: PIIOptOutRequest = Body(...),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_WRITE.value,
+            "You don't have permission to opt-out PII in this workspace",
+        )
+    ),
 ) -> PIIOptOutResponse:
     """Process a PDPD Decree 13 opt-out request (Right to be Forgotten)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_WRITE.value,
-        error_message="You don't have permission to opt-out PII in this workspace",
-    )
 
     workspace = await session.get(Workspace, workspace_id)
     if workspace is None:
