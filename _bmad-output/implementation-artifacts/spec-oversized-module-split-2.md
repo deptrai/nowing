@@ -67,8 +67,8 @@ Files cần tách (theo thứ tự đề xuất — dễ → khó):
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] Mỗi file trong Code Map — tách theo plan, một file = một commit theo thứ tự listed — mechanical split, verify per-file trước khi sang file kế
-- [ ] `tests/` — cập nhật patch target khi module path đổi — chỉ sửa patch string/import, không đổi test logic
+- [x] Mỗi file trong Code Map — tách theo plan, một file = một commit theo thứ tự listed — mechanical split, verify per-file trước khi sang file kế
+- [x] `tests/` — cập nhật patch target khi module path đổi — chỉ sửa patch string/import, không đổi test logic
 
 **Acceptance Criteria:**
 - Given file đã tách, when chạy `grep -rn "from <old_path> import" app/ tests/` và import mỗi symbol, then tất cả resolve được và `python -c "import app.app"` OK
