@@ -20,9 +20,11 @@ from app.auth.context import AuthContext
 from app.db import (
     AuditEvent,
     Permission,
+    WorkspaceMembership,
     WorkspaceRole,
     get_async_session,
 )
+from app.dependencies.auth import RequirePermission
 from app.schemas import (
     PermissionInfo,
     PermissionsListResponse,
@@ -31,9 +33,6 @@ from app.schemas import (
     RoleUpdate,
 )
 from app.users import get_auth_context
-from app.utils.rbac import (
-    check_permission,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -154,19 +153,18 @@ async def create_role(
     role_data: RoleCreate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.ROLES_CREATE.value,
+            "You don't have permission to create roles",
+        )
+    ),
 ):
     """
     Create a new custom role in a workspace.
     Requires ROLES_CREATE permission.
     """
     try:
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.ROLES_CREATE.value,
-            "You don't have permission to create roles",
-        )
 
         # Reserved "Admin" name guard (RB-4)
         clean_name = role_data.name.strip()
@@ -266,19 +264,18 @@ async def list_roles(
     workspace_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.ROLES_READ.value,
+            "You don't have permission to view roles",
+        )
+    ),
 ):
     """
     List all roles in a workspace.
     Requires ROLES_READ permission.
     """
     try:
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.ROLES_READ.value,
-            "You don't have permission to view roles",
-        )
 
         result = await session.execute(
             select(WorkspaceRole).filter(WorkspaceRole.workspace_id == workspace_id)
@@ -302,19 +299,18 @@ async def get_role(
     role_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.ROLES_READ.value,
+            "You don't have permission to view roles",
+        )
+    ),
 ):
     """
     Get a specific role by ID.
     Requires ROLES_READ permission.
     """
     try:
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.ROLES_READ.value,
-            "You don't have permission to view roles",
-        )
 
         result = await session.execute(
             select(WorkspaceRole).filter(
@@ -347,6 +343,12 @@ async def update_role(
     role_update: RoleUpdate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.ROLES_UPDATE.value,
+            "You don't have permission to update roles",
+        )
+    ),
 ):
     """
     Update a role.
@@ -354,13 +356,6 @@ async def update_role(
     System roles can only have their permissions updated, not name/description.
     """
     try:
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.ROLES_UPDATE.value,
-            "You don't have permission to update roles",
-        )
 
         result = await session.execute(
             select(WorkspaceRole).filter(
@@ -475,6 +470,12 @@ async def delete_role(
     role_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.ROLES_DELETE.value,
+            "You don't have permission to delete roles",
+        )
+    ),
 ):
     """
     Delete a custom role.
@@ -482,13 +483,6 @@ async def delete_role(
     System roles cannot be deleted.
     """
     try:
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.ROLES_DELETE.value,
-            "You don't have permission to delete roles",
-        )
 
         result = await session.execute(
             select(WorkspaceRole).filter(

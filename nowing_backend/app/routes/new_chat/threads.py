@@ -21,8 +21,10 @@ from app.db import (
     Permission,
     Project,
     Workspace,
+    WorkspaceMembership,
     get_async_session,
 )
+from app.dependencies.auth import RequirePermission
 from app.routes.new_chat.shared import (
     _try_delete_sandbox,
     check_thread_access,
@@ -72,6 +74,12 @@ async def list_threads(
     limit: int | None = None,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.CHATS_READ.value,
+            "You don't have permission to read chats in this workspace",
+        )
+    ),
 ):
     user = auth.user
     """
@@ -90,14 +98,6 @@ async def list_threads(
     Requires CHATS_READ permission.
     """
     try:
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.CHATS_READ.value,
-            "You don't have permission to read chats in this workspace",
-        )
-
         # Check if user is the workspace owner (for legacy thread visibility)
         workspace_query = select(Workspace).filter(Workspace.id == workspace_id)
         workspace_result = await session.execute(workspace_query)
@@ -178,6 +178,12 @@ async def search_threads(
     title: str,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.CHATS_READ.value,
+            "You don't have permission to read chats in this workspace",
+        )
+    ),
 ):
     user = auth.user
     """
@@ -195,14 +201,6 @@ async def search_threads(
     Requires CHATS_READ permission.
     """
     try:
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.CHATS_READ.value,
-            "You don't have permission to read chats in this workspace",
-        )
-
         # Check if user is the workspace owner (for legacy thread visibility)
         workspace_query = select(Workspace).filter(Workspace.id == workspace_id)
         workspace_result = await session.execute(workspace_query)

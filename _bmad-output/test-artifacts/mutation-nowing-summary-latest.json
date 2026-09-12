@@ -1,24 +1,18 @@
 {
   "dimension": "mutation",
-  "runAt": "2026-09-11T18:24:33.075760+00:00",
+  "runAt": "2026-08-12T12:20:09.969968+00:00",
   "services": [
     {
-      "service": "proprietary/platforms/xactions/mcp_client",
-      "total": 44,
-      "killed": 44,
-      "survived": 0,
-      "timeout": 0,
-      "noTests": 0,
-      "mutationScore": 100.0,
-      "verdict": "PASS",
-      "triage": {
-        "P0": [],
-        "P1": [],
-        "P2": []
-      },
-      "reportPath": "/Users/luisphan/Documents/GitHub/nowing/_bmad-output/test-artifacts/mutation-nowing-proprietary-platforms-xactions-mcp_client-20260911T182433Z.json",
-      "sessionPath": "/Users/luisphan/Documents/GitHub/nowing/_bmad-output/test-artifacts/mutation-nowing-proprietary-platforms-xactions-mcp_client-20260911T182237Z.sqlite",
-      "configPath": "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/mutation-nowing-proprietary-platforms-xactions-mcp_client-20260911T182237Z.toml"
+      "service": "jobs_aggregator/dedupe",
+      "verdict": "FAIL",
+      "error": "cosmic-ray baseline failed for mutation-nowing-jobs_aggregator-dedupe-20260812T121942Z.toml",
+      "traceback": "Traceback (most recent call last):\n  File \"/Users/luisphan/Documents/GitHub/nowing/scripts/mutation-gate.py\", line 469, in main\n    run_cosmic_ray(backend, config, session)\n  File \"/Users/luisphan/Documents/GitHub/nowing/scripts/mutation-gate.py\", line 259, in run_cosmic_ray\n    raise RuntimeError(f\"cosmic-ray {step} failed for {config.name}\")\nRuntimeError: cosmic-ray baseline failed for mutation-nowing-jobs_aggregator-dedupe-20260812T121942Z.toml\n"
+    },
+    {
+      "service": "jobs_aggregator/normalize",
+      "verdict": "FAIL",
+      "error": "cosmic-ray baseline failed for mutation-nowing-jobs_aggregator-normalize-20260812T121948Z.toml",
+      "traceback": "Traceback (most recent call last):\n  File \"/Users/luisphan/Documents/GitHub/nowing/scripts/mutation-gate.py\", line 469, in main\n    run_cosmic_ray(backend, config, session)\n  File \"/Users/luisphan/Documents/GitHub/nowing/scripts/mutation-gate.py\", line 259, in run_cosmic_ray\n    raise RuntimeError(f\"cosmic-ray {step} failed for {config.name}\")\nRuntimeError: cosmic-ray baseline failed for mutation-nowing-jobs_aggregator-normalize-20260812T121948Z.toml\n"
     }
   ]
 }

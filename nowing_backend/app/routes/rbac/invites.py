@@ -26,6 +26,7 @@ from app.db import (
     WorkspaceRole,
     get_async_session,
 )
+from app.dependencies.auth import RequirePermission
 from app.schemas import (
     InviteAcceptRequest,
     InviteAcceptResponse,
@@ -37,7 +38,6 @@ from app.schemas import (
 from app.services.workspace_limits import workspace_limit_service
 from app.users import get_auth_context
 from app.utils.rbac import (
-    check_permission,
     generate_invite_code,
     get_default_role,
 )
@@ -58,6 +58,12 @@ async def create_invite(
     invite_data: InviteCreate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.MEMBERS_INVITE.value,
+            "You don't have permission to create invites",
+        )
+    ),
 ):
     user = auth.user
     """
@@ -65,13 +71,6 @@ async def create_invite(
     Requires MEMBERS_INVITE permission.
     """
     try:
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.MEMBERS_INVITE.value,
-            "You don't have permission to create invites",
-        )
 
         # Enforce workspace member limit before creating the invite.
         await workspace_limit_service.check_member_limit(
@@ -129,19 +128,18 @@ async def list_invites(
     workspace_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.MEMBERS_INVITE.value,
+            "You don't have permission to view invites",
+        )
+    ),
 ):
     """
     List all invites for a workspace.
     Requires MEMBERS_INVITE permission.
     """
     try:
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.MEMBERS_INVITE.value,
-            "You don't have permission to view invites",
-        )
 
         result = await session.execute(
             select(WorkspaceInvite)
@@ -168,19 +166,18 @@ async def update_invite(
     invite_update: InviteUpdate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.MEMBERS_INVITE.value,
+            "You don't have permission to update invites",
+        )
+    ),
 ):
     """
     Update an invite.
     Requires MEMBERS_INVITE permission.
     """
     try:
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.MEMBERS_INVITE.value,
-            "You don't have permission to update invites",
-        )
 
         result = await session.execute(
             select(WorkspaceInvite)
@@ -234,19 +231,18 @@ async def revoke_invite(
     invite_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.MEMBERS_INVITE.value,
+            "You don't have permission to revoke invites",
+        )
+    ),
 ):
     """
     Revoke (delete) an invite.
     Requires MEMBERS_INVITE permission.
     """
     try:
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.MEMBERS_INVITE.value,
-            "You don't have permission to revoke invites",
-        )
 
         result = await session.execute(
             select(WorkspaceInvite).filter(

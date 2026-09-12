@@ -26,17 +26,14 @@ from app.db import (
     WorkspaceRole,
     get_async_session,
 )
+from app.dependencies.auth import RequirePermission, RequireWorkspaceAccess
 from app.schemas import (
     MembershipRead,
     MembershipUpdate,
     UserWorkspaceAccess,
 )
 from app.users import get_auth_context
-from app.utils.rbac import (
-    check_permission,
-    check_workspace_access,
-    get_user_permissions,
-)
+from app.utils.rbac import get_user_permissions
 
 logger = logging.getLogger(__name__)
 
@@ -53,19 +50,18 @@ async def list_members(
     workspace_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.MEMBERS_VIEW.value,
+            "You don't have permission to view members",
+        )
+    ),
 ):
     """
     List all members of a workspace.
     Requires MEMBERS_VIEW permission.
     """
     try:
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.MEMBERS_VIEW.value,
-            "You don't have permission to view members",
-        )
 
         result = await session.execute(
             select(WorkspaceMembership)
@@ -123,6 +119,12 @@ async def update_member_role(
     membership_update: MembershipUpdate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.MEMBERS_MANAGE_ROLES.value,
+            "You don't have permission to manage member roles",
+        )
+    ),
 ):
     """
     Update a member's role.
@@ -130,13 +132,6 @@ async def update_member_role(
     Cannot change owner's role.
     """
     try:
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.MEMBERS_MANAGE_ROLES.value,
-            "You don't have permission to manage member roles",
-        )
 
         result = await session.execute(
             select(WorkspaceMembership)
@@ -265,6 +260,12 @@ async def remove_member(
     membership_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.MEMBERS_REMOVE.value,
+            "You don't have permission to remove members",
+        )
+    ),
 ):
     """
     Remove a member from a workspace.
@@ -272,13 +273,6 @@ async def remove_member(
     Cannot remove the owner.
     """
     try:
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.MEMBERS_REMOVE.value,
-            "You don't have permission to remove members",
-        )
 
         result = await session.execute(
             select(WorkspaceMembership).filter(
@@ -322,13 +316,13 @@ async def get_my_access(
     workspace_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ):
     user = auth.user
     """
     Get the current user's access info for a workspace.
     """
     try:
-        membership = await check_workspace_access(session, auth, workspace_id)
 
         # Get workspace name
         result = await session.execute(

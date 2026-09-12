@@ -43,8 +43,7 @@ def _fingerprint_key(listing: VnJobAggregatedListing) -> tuple[str, str, str]:
     return (
         (listing.title or "").lower().strip(),
         listing.company.lower().strip(),
-        resolve_city_code(listing.location)
-        or (listing.location or "").lower().strip(),
+        resolve_city_code(listing.location) or (listing.location or "").lower().strip(),
     )
 
 
@@ -288,7 +287,10 @@ def deduplicate(listings: list[VnJobAggregatedListing]) -> list[VnJobAggregatedL
         # Collect merged groups using fully compressed roots.
         fine_groups: dict[int, list[VnJobAggregatedListing]] = defaultdict(list)
         for i, item in enumerate(group):
-            root = parent[i]
+            # Find root using the same path-compressed logic.
+            root = i
+            while parent[root] <= root:
+                root = parent[root]
             fine_groups[root].append(item)
 
         for fine_group in fine_groups.values():
