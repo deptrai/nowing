@@ -10,8 +10,10 @@ from app.db import (
     Permission,
     WorkspaceLimit,
     WorkspaceMcpToolSetting,
+    WorkspaceMembership,
     get_async_session,
 )
+from app.dependencies.auth import RequirePermission
 from app.mcp_tools import (
     MCP_TOOL_CATALOG,
     MCP_TOOL_GROUP_MAP,
@@ -29,7 +31,6 @@ from app.schemas import (
 from app.services.memory.extract_budget import get_auto_extract_usage
 from app.services.workspace_limits import workspace_limit_service
 from app.users import get_auth_context
-from app.utils.rbac import check_permission
 
 logger = logging.getLogger(__name__)
 
@@ -42,20 +43,18 @@ async def get_workspace_limits(
     workspace_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_UPDATE.value,
+            "You don't have permission to view workspace limits",
+        )
+    ),
 ):
     """
     Get effective limits and current usage for a workspace.
     Requires SETTINGS_UPDATE permission (Owner-only by default).
     """
     try:
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.SETTINGS_UPDATE.value,
-            "You don't have permission to view workspace limits",
-        )
-
         limits = await workspace_limit_service.get_effective_limits(
             session, workspace_id
         )
@@ -100,6 +99,12 @@ async def update_workspace_limits(
     body: WorkspaceLimitUpdate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_UPDATE.value,
+            "You don't have permission to update workspace limits",
+        )
+    ),
 ):
     """Update workspace-specific auto-extract budget caps.
 
@@ -107,14 +112,6 @@ async def update_workspace_limits(
     Only ``auto_extract_*`` fields are exposed for owner editing.
     """
     try:
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.SETTINGS_UPDATE.value,
-            "You don't have permission to update workspace limits",
-        )
-
         result = await session.execute(
             select(WorkspaceLimit).where(
                 WorkspaceLimit.workspace_id == workspace_id,
@@ -224,6 +221,12 @@ async def list_workspace_mcp_tools(
     workspace_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_VIEW.value,
+            "You don't have permission to view this workspace's settings",
+        )
+    ),
 ):
     """
     List all built-in MCP tools for a workspace with their enabled state.
@@ -231,14 +234,6 @@ async def list_workspace_mcp_tools(
     Requires SETTINGS_VIEW permission.
     """
     try:
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.SETTINGS_VIEW.value,
-            "You don't have permission to view this workspace's settings",
-        )
-
         result = await session.execute(
             select(WorkspaceMcpToolSetting).filter(
                 WorkspaceMcpToolSetting.workspace_id == workspace_id
@@ -276,6 +271,12 @@ async def update_workspace_mcp_tool(
     body: WorkspaceMcpToolUpdate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_UPDATE.value,
+            "You don't have permission to update this workspace's settings",
+        )
+    ),
 ):
     """
     Enable or disable a built-in MCP tool for a workspace.
@@ -293,14 +294,6 @@ async def update_workspace_mcp_tool(
                 status_code=400,
                 detail=f"System tool '{tool_name}' cannot be disabled",
             )
-
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.SETTINGS_UPDATE.value,
-            "You don't have permission to update this workspace's settings",
-        )
 
         upsert = (
             insert(WorkspaceMcpToolSetting)

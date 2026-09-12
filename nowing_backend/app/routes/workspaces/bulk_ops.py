@@ -7,8 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.context import AuthContext
 from app.db import (
     Permission,
+    WorkspaceMembership,
     get_async_session,
 )
+from app.dependencies.auth import RequirePermission
 from app.schemas.bulk_ops import (
     BulkOpErrorRead,
     CancelJobResponse,
@@ -20,7 +22,6 @@ from app.schemas.bulk_ops import (
 )
 from app.services.bulk_ops_service import OWNER_ALLOWED_ACTIONS, bulk_ops_service
 from app.users import get_auth_context
-from app.utils.rbac import check_permission
 
 router = APIRouter()
 
@@ -38,25 +39,23 @@ async def workspace_bulk_op_dry_run(
     body: DryRunRequest,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership_update: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_UPDATE.value,
+            "You don't have permission to perform bulk operations in this workspace",
+        )
+    ),
+    _membership_remove: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.MEMBERS_REMOVE.value,
+            "You don't have permission to perform bulk operations in this workspace",
+        )
+    ),
 ) -> DryRunResponse:
     """Preview a bulk operation scoped to this workspace.
 
     Requires SETTINGS_UPDATE and MEMBERS_REMOVE permissions.
     """
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.SETTINGS_UPDATE.value,
-        "You don't have permission to perform bulk operations in this workspace",
-    )
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.MEMBERS_REMOVE.value,
-        "You don't have permission to perform bulk operations in this workspace",
-    )
 
     if body.action not in OWNER_ALLOWED_ACTIONS:
         raise HTTPException(
@@ -84,25 +83,23 @@ async def workspace_bulk_op_execute(
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership_update: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_UPDATE.value,
+            "You don't have permission to perform bulk operations in this workspace",
+        )
+    ),
+    _membership_remove: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.MEMBERS_REMOVE.value,
+            "You don't have permission to perform bulk operations in this workspace",
+        )
+    ),
 ) -> ExecuteResponse:
     """Execute a bulk operation scoped to this workspace.
 
     Requires SETTINGS_UPDATE and MEMBERS_REMOVE permissions and Idempotency-Key.
     """
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.SETTINGS_UPDATE.value,
-        "You don't have permission to perform bulk operations in this workspace",
-    )
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.MEMBERS_REMOVE.value,
-        "You don't have permission to perform bulk operations in this workspace",
-    )
 
     if body.action not in OWNER_ALLOWED_ACTIONS:
         raise HTTPException(
@@ -138,15 +135,14 @@ async def workspace_bulk_op_get_job(
     job_id: uuid.UUID,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_VIEW.value,
+            "You don't have permission to view bulk operations in this workspace",
+        )
+    ),
 ) -> JobStatusResponse:
     """Poll progress for a workspace bulk operation job."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.SETTINGS_VIEW.value,
-        "You don't have permission to view bulk operations in this workspace",
-    )
     return await bulk_ops_service.get_job(
         session=session,
         job_id=job_id,
@@ -164,15 +160,14 @@ async def workspace_bulk_op_cancel_job(
     job_id: uuid.UUID,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_UPDATE.value,
+            "You don't have permission to cancel bulk operations in this workspace",
+        )
+    ),
 ) -> CancelJobResponse:
     """Cancel a workspace bulk operation job."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.SETTINGS_UPDATE.value,
-        "You don't have permission to cancel bulk operations in this workspace",
-    )
     return await bulk_ops_service.cancel_job(
         session=session,
         job_id=job_id,
@@ -190,15 +185,14 @@ async def workspace_bulk_op_get_errors(
     job_id: uuid.UUID,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_VIEW.value,
+            "You don't have permission to view bulk operation errors",
+        )
+    ),
 ) -> list[BulkOpErrorRead]:
     """Retrieve error records for failed subjects in a workspace bulk job."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.SETTINGS_VIEW.value,
-        "You don't have permission to view bulk operation errors",
-    )
     return await bulk_ops_service.get_job_errors(
         session=session,
         job_id=job_id,

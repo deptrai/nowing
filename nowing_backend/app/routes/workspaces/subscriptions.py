@@ -7,8 +7,10 @@ from app.auth.context import AuthContext
 from app.db import (
     Permission,
     Workspace,
+    WorkspaceMembership,
     get_async_session,
 )
+from app.dependencies.auth import RequirePermission
 from app.schemas import (
     AutoExtractUsage,
     PlanDefinitionRead,
@@ -21,7 +23,6 @@ from app.schemas import (
 from app.services.memory.extract_budget import get_auto_extract_usage
 from app.services.workspace_limits import workspace_limit_service
 from app.users import get_auth_context
-from app.utils.rbac import check_permission
 
 router = APIRouter()
 
@@ -38,6 +39,12 @@ async def get_workspace_subscription(
     workspace_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_VIEW.value,
+            "You don't have permission to view workspace subscription",
+        )
+    ),
 ):
     """Get current workspace subscription details, active pending/recent change,
     and available plan catalog definitions.
@@ -45,13 +52,6 @@ async def get_workspace_subscription(
     Requires SETTINGS_VIEW permission.
     """
     try:
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.SETTINGS_VIEW.value,
-            "You don't have permission to view workspace subscription",
-        )
         workspace = await session.get(Workspace, workspace_id)
         if not workspace:
             raise HTTPException(status_code=404, detail="Workspace not found")
@@ -121,6 +121,12 @@ async def create_workspace_subscription_change(
     body: SubscriptionChangeCreate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_UPDATE.value,
+            "You don't have permission to change workspace subscription",
+        )
+    ),
 ):
     """Request a subscription plan change (upgrade/downgrade).
 
@@ -128,13 +134,6 @@ async def create_workspace_subscription_change(
     Returns 409 if resource usage exceeds target plan limits.
     """
     try:
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.SETTINGS_UPDATE.value,
-            "You don't have permission to change workspace subscription",
-        )
         change = await workspace_limit_service.create_subscription_change(
             session=session,
             workspace_id=workspace_id,
@@ -163,19 +162,18 @@ async def list_workspace_subscription_changes(
     workspace_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_VIEW.value,
+            "You don't have permission to view workspace subscription changes",
+        )
+    ),
 ):
     """List audit history of subscription changes for a workspace.
 
     Requires SETTINGS_VIEW permission.
     """
     try:
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.SETTINGS_VIEW.value,
-            "You don't have permission to view workspace subscription changes",
-        )
         changes = await workspace_limit_service.get_subscription_changes(
             session=session,
             workspace_id=workspace_id,
@@ -198,19 +196,18 @@ async def revert_workspace_subscription_change(
     change_id: uuid.UUID,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_UPDATE.value,
+            "You don't have permission to revert workspace subscription",
+        )
+    ),
 ):
     """Revert a subscription plan change within the 7-day reversible window.
 
     Requires SETTINGS_UPDATE permission.
     """
     try:
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.SETTINGS_UPDATE.value,
-            "You don't have permission to revert workspace subscription",
-        )
         change = await workspace_limit_service.revert_subscription_change(
             session=session,
             workspace_id=workspace_id,
@@ -238,19 +235,18 @@ async def cancel_workspace_subscription_change(
     change_id: uuid.UUID,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_UPDATE.value,
+            "You don't have permission to cancel workspace subscription change",
+        )
+    ),
 ):
     """Cancel a pending scheduled subscription plan change before it takes effect.
 
     Requires SETTINGS_UPDATE permission.
     """
     try:
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.SETTINGS_UPDATE.value,
-            "You don't have permission to cancel workspace subscription change",
-        )
         change = await workspace_limit_service.cancel_subscription_change(
             session=session,
             workspace_id=workspace_id,

@@ -15,6 +15,7 @@ from app.db import (
     get_async_session,
     get_default_roles_config,
 )
+from app.dependencies.auth import RequirePermission, RequireWorkspaceAccess
 from app.routes.model_connections_routes import compute_llm_setup_status
 from app.schemas import (
     WorkspaceApiAccessUpdate,
@@ -24,7 +25,7 @@ from app.schemas import (
     WorkspaceWithStats,
 )
 from app.users import allow_any_principal, get_auth_context, require_session_context
-from app.utils.rbac import check_permission, check_workspace_access, is_workspace_owner
+from app.utils.rbac import is_workspace_owner
 
 logger = logging.getLogger(__name__)
 
@@ -228,15 +229,13 @@ async def read_workspace(
     workspace_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ):
     """
     Get a specific workspace by ID.
     Requires SETTINGS_VIEW permission or membership.
     """
     try:
-        # Check if user has access (is a member)
-        await check_workspace_access(session, auth, workspace_id)
-
         result = await session.execute(
             select(Workspace).filter(Workspace.id == workspace_id)
         )
@@ -265,21 +264,18 @@ async def update_workspace(
     workspace_update: WorkspaceUpdate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_UPDATE.value,
+            "You don't have permission to update this workspace",
+        )
+    ),
 ):
     """
     Update a workspace.
     Requires SETTINGS_UPDATE permission.
     """
     try:
-        # Check permission (no row lock needed here)
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.SETTINGS_UPDATE.value,
-            "You don't have permission to update this workspace",
-        )
-
         update_data = workspace_update.model_dump(exclude_unset=True)
 
         # Only serialize concurrent updates that touch retention settings.
@@ -422,6 +418,12 @@ async def update_workspace_api_access(
     body: WorkspaceApiAccessUpdate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.API_ACCESS_MANAGE.value,
+            "You don't have permission to manage API access for this workspace",
+        )
+    ),
 ):
     """
     Toggle programmatic API/PAT access for a workspace.
@@ -433,14 +435,6 @@ async def update_workspace_api_access(
                 status_code=403,
                 detail="This action requires an interactive session",
             )
-
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.API_ACCESS_MANAGE.value,
-            "You don't have permission to manage API access for this workspace",
-        )
 
         result = await session.execute(
             select(Workspace).filter(Workspace.id == workspace_id)
@@ -468,6 +462,12 @@ async def delete_workspace(
     workspace_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_DELETE.value,
+            "You don't have permission to delete this workspace",
+        )
+    ),
 ):
     """
     Delete a workspace.
@@ -477,15 +477,6 @@ async def delete_workspace(
     to Celery so the response is immediate and durable across API restarts.
     """
     try:
-        # Check permission - only those with SETTINGS_DELETE can delete
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.SETTINGS_DELETE.value,
-            "You don't have permission to delete this workspace",
-        )
-
         result = await session.execute(
             select(Workspace).filter(Workspace.id == workspace_id)
         )
