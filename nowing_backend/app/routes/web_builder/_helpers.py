@@ -14,8 +14,6 @@ from app.routes.rbac_routes import check_permission
 
 logger = logging.getLogger(__name__)
 
-logger = logging.getLogger(__name__)
-
 
 def is_web_builder_enabled_for_workspace(ws: Workspace | None) -> bool:
     """Check both global and workspace-level Web Builder feature flags."""

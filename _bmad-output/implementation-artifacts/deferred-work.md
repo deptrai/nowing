@@ -1473,3 +1473,12 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - source_spec: none
   summary: Git history cleanup (git filter-repo xóa db.py.legacy + screenshots khỏi history) — destructive, force-push, cần team coordination
   evidence: Re-deferred từ "giải quyết hết defer work" round 2 — không tự ý chạy; chờ user chốt thời điểm + báo team
+- source_spec: `_bmad-output/implementation-artifacts/spec-oversized-module-split-2.md`
+  summary: Tách tiếp `app/agents/chat/multi_agent_chat/main_agent/middleware/kb_persistence/middleware.py` (hiện 903 dòng) thành mixin/submodule
+  evidence: Spec acceptance criteria yêu cầu không file nào trong list còn >800 dòng. File đã giảm từ 1483 -> 903 nhưng vẫn quá khổ. Class `KBPersistenceMiddleware` tightly coupled, cần plan tách mixin riêng để tránh phá LangGraph lifecycle.
+- source_spec: `_bmad-output/implementation-artifacts/spec-oversized-module-split-2.md`
+  summary: Clean up `_token_enc` mutable singleton delegation pattern trong `mcp.tool.__init__.py`
+  evidence: `__getattr__` delegate đọc về `oauth._token_enc` nhưng không có `__setattr__`. Cần thêm `__setattr__` hoặc `_get_token_enc()` delegation để hỗ trợ test monkeypatching đúng target trong tương lai.
+- source_spec: `_bmad-output/implementation-artifacts/spec-oversized-module-split-2.md`
+  summary: Refactor `_background_tasks` module-level state trong `new_chat/orchestrator.py`
+  evidence: `_background_tasks: set[asyncio.Task] = set()` giữ nguyên từ code gốc nhưng là process-wide mutable state, có rủi ro memory retention/cross-tenant concurrency issues (out-of-scope của mechanical split hiện tại).

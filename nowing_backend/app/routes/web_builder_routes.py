@@ -4,6 +4,7 @@ Keeps ``from app.routes.web_builder_routes import router, host_router`` working
 and re-exports symbols patched/imported by tests.
 """
 
+from app.db import get_async_session
 from app.routes.web_builder import host_router, router
 from app.routes.web_builder._helpers import (
     check_web_builder_enabled,
@@ -18,6 +19,7 @@ from app.routes.web_builder.apps import (
 )
 from app.routes.web_builder.generate import WebBuilderService
 from app.routes.web_builder.preview import _allowed_preview_origin
+from app.users import get_auth_context
 
 __all__ = [
     "BuilderService",
@@ -25,6 +27,8 @@ __all__ = [
     "WebBuilderService",
     "_allowed_preview_origin",
     "check_web_builder_enabled",
+    "get_async_session",
+    "get_auth_context",
     "host_router",
     "is_web_builder_enabled_for_workspace",
     "record_token_usage",
