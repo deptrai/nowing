@@ -455,7 +455,9 @@ def test_feed_line_ignores_empty_and_event_lines():
 
 def test_feed_line_done_and_empty_payload_never_calls_json_loads():
     parser = _SSEParser()
-    with patch("app.capabilities.chainlens.research.executor.json.loads") as mock_loads:
+    with patch(
+        "app.capabilities.chainlens.research.sse_parser.json.loads"
+    ) as mock_loads:
         parser.feed_line("data: [DONE]")
         parser.feed_line("data:")
         parser.feed_line("data:   ")
@@ -465,7 +467,7 @@ def test_feed_line_done_and_empty_payload_never_calls_json_loads():
 def test_feed_line_valid_payload_calls_json_loads_and_done_is_parsed():
     parser = _SSEParser()
     with patch(
-        "app.capabilities.chainlens.research.executor.json.loads",
+        "app.capabilities.chainlens.research.sse_parser.json.loads",
         wraps=json.loads,
     ) as mock_loads:
         parser.feed_line(_sse_line({"type": "done", "chatId": "chat-1"}))
