@@ -164,8 +164,15 @@ _WEB_PROD_DIRS = ("nowing_web/app/", "nowing_web/components/", "nowing_web/lib/"
                   "nowing_web/hooks/", "nowing_web/atoms/")
 
 
+_WEB_DEV_UTIL = re.compile(r"\.(selfcheck|test|spec|stories)\.(ts|tsx|js|jsx)$")
+
+
 def _is_web_prod_code(rel: str) -> bool:
-    return rel.startswith(_WEB_PROD_DIRS) and rel.endswith((".ts", ".tsx", ".js", ".jsx"))
+    return (
+        rel.startswith(_WEB_PROD_DIRS)
+        and rel.endswith((".ts", ".tsx", ".js", ".jsx"))
+        and not _WEB_DEV_UTIL.search(rel)
+    )
 
 
 def main() -> int:
