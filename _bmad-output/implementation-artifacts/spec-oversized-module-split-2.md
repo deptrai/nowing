@@ -2,7 +2,7 @@
 title: 'Oversized module split — round 2 (agents/chat, chainlens, connectors)'
 type: 'refactor'
 created: '2026-09-12'
-status: 'in-review'
+status: 'done'
 baseline_commit: '127dde4ee4ccc0c29bea2870d11275cb1e5dbf39'
 review_loop_iteration: 0
 context: []

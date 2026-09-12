@@ -20,6 +20,8 @@ This ``__init__`` re-exports the original ``tool.py`` symbol surface so
 existing ``from ...tools.mcp.tool import X`` paths keep working.
 """
 
+from typing import Any
+
 from app.agents.chat.multi_agent_chat.shared.tools.mcp.tool._helpers import (
     _CITABLE_MCP_TOOLS,
     _MAX_EXTRACTED_URLS,
@@ -96,14 +98,27 @@ __all__ = [
 ]
 
 
-def __getattr__(name: str):
-    """Delegate the mutable ``_token_enc`` singleton to ``.oauth``.
+import sys as _sys
+import types as _types
 
-    A static re-export would freeze the ``None`` snapshot taken at package
-    import time; the real owner (``.oauth``) mutates it in ``_get_token_enc``.
-    """
-    if name == "_token_enc":
-        from app.agents.chat.multi_agent_chat.shared.tools.mcp.tool import oauth
 
-        return oauth._token_enc
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+class _ToolPackageModule(_types.ModuleType):
+    """Module proxy delegating mutable _token_enc reads and writes to .oauth."""
+
+    def __getattr__(self, name: str) -> Any:
+        if name == "_token_enc":
+            from app.agents.chat.multi_agent_chat.shared.tools.mcp.tool import oauth
+
+            return oauth._token_enc
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name == "_token_enc":
+            from app.agents.chat.multi_agent_chat.shared.tools.mcp.tool import oauth
+
+            oauth._token_enc = value
+            return
+        super().__setattr__(name, value)
+
+
+_sys.modules[__name__].__class__ = _ToolPackageModule

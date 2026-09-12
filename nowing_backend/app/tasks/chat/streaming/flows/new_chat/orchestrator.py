@@ -242,9 +242,10 @@ async def stream_new_chat(
     # Declared at function scope so SSE-yield join points and the finally
     # clause see them on every exit path.
     persist_user_task: asyncio.Task[int | None] | None = None
+    turn_background_tasks: set[asyncio.Task[Any]] = set()
     try:
         spawn_set_ai_responding_bg(
-            chat_id=chat_id, user_id=user_id, background_tasks=_background_tasks
+            chat_id=chat_id, user_id=user_id, background_tasks=turn_background_tasks
         )
 
         # --- Block 1: LLM config + capability ---
@@ -295,7 +296,7 @@ async def stream_new_chat(
             user_query=user_query,
             user_image_data_urls=user_image_data_urls,
             mentioned_documents=mentioned_documents,
-            background_tasks=_background_tasks,
+            background_tasks=turn_background_tasks,
             platform_metadata=platform_metadata,
         )
 
@@ -439,7 +440,7 @@ async def stream_new_chat(
             user_image_data_urls=user_image_data_urls,
             platform_metadata=platform_metadata,
             persist_user_task=persist_user_task,
-            background_tasks=_background_tasks,
+            background_tasks=turn_background_tasks,
             llm=llm,
             agent_config=agent_config,
             workspace_id=workspace_id,
@@ -665,6 +666,7 @@ async def stream_new_chat(
 
         # Break circular refs held by the agent graph, tools, and LLM
         # wrappers so the GC can reclaim them in a single pass.
+        turn_background_tasks.clear()
         agent = llm = connector_service = None
         input_state = stream_result = None
         session = None
