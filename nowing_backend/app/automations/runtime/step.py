@@ -82,7 +82,7 @@ async def execute_step(
             backoff=default_retry_backoff,
             timeout=timeout,
         )
-    except Exception as exc:  # automation step error; record failure and continue
+    except Exception as exc:  # playbook run step error; record failure and halt
         return _result(
             step, "failed", started_at, attempts=max_retries + 1, error=_error(exc)
         )
