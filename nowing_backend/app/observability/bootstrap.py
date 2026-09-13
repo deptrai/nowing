@@ -116,7 +116,7 @@ def _metric_exporter():
 def _safe_instrument(name: str, instrument: Any) -> bool:
     try:
         instrument()
-    except Exception:
+    except Exception:  # best-effort telemetry/alerting; don't fail primary op
         logger.warning("OpenTelemetry %s instrumentation failed", name, exc_info=True)
         return False
     return True
@@ -125,7 +125,7 @@ def _safe_instrument(name: str, instrument: Any) -> bool:
 def _url_without_query(raw_url: Any) -> str | None:
     try:
         parts = urlsplit(str(raw_url))
-    except Exception:
+    except Exception:  # best-effort telemetry/alerting; don't fail primary op
         return None
     if not parts.scheme or not parts.netloc:
         return None
@@ -278,7 +278,7 @@ def init_traces(app: Any | None = None) -> None:
 
     try:
         trace.set_tracer_provider(provider)
-    except Exception:
+    except Exception:  # best-effort telemetry/alerting; don't fail primary op
         logger.warning(
             "OpenTelemetry tracer provider was already set; reusing existing provider",
             exc_info=True,
@@ -311,7 +311,7 @@ def init_metrics() -> None:
 
     try:
         metrics.set_meter_provider(provider)
-    except Exception:
+    except Exception:  # best-effort telemetry/alerting; don't fail primary op
         logger.warning(
             "OpenTelemetry meter provider was already set; reusing existing provider",
             exc_info=True,

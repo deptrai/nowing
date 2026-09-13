@@ -223,7 +223,7 @@ async def create_slide_audio(state: State, config: RunnableConfig) -> dict[str, 
                 duration_in_frames=max(duration_in_frames, DEFAULT_DURATION_IN_FRAMES),
             )
 
-        except Exception as e:
+        except Exception as e:  # slide audio generation failure; re-raise after temp cleanup
             logger.error(f"Error generating audio for slide {slide.slide_number}: {e!s}")
             raise
         finally:
@@ -360,7 +360,7 @@ async def _assign_themes_with_llm(
                 )
         return result
 
-    except Exception as e:
+    except Exception as e:  # LLM theme assignment failure; fall back to deterministic theme
         logger.warning(f"LLM theme assignment failed ({e!s}), using fallback")
         return {
             s.slide_number: pick_theme_and_mode_fallback(s.slide_number - 1, total)

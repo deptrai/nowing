@@ -109,7 +109,7 @@ def _safe_message_text(msg: Any) -> str:
     """
     try:
         content = getattr(msg, "content", None)
-    except Exception:
+    except Exception:  # message content attribute lookup failure; return empty string
         content = None
     if content is None:
         return ""
@@ -178,7 +178,7 @@ def _return_command_with_state_update(result: dict, tool_call_id: str) -> Comman
     # Trace is observability-only; never let a bad frame kill the turn.
     try:
         tool_trace = _build_tool_trace(messages)
-    except Exception:
+    except Exception:  # subagent tool trace construction failure; continue without trace
         logger.exception(
             "Failed to build tool_trace for subagent return; continuing without trace."
         )
@@ -207,7 +207,7 @@ def _resolve_context_hint(
         return None
     try:
         hint = provider(runtime.state, description)
-    except Exception:
+    except Exception:  # context-hint provider execution failure; skip hint
         logger.exception(
             "Context-hint provider for subagent %r raised; skipping hint.",
             subagent_type,
@@ -300,7 +300,7 @@ def _merge_batch_results(
         message_blocks.append(f"[task {task_index}] {last_text or '<empty>'}")
         try:
             child_trace = _build_tool_trace(messages)
-        except Exception:
+        except Exception:  # batch subagent trace construction failure; continue without trace
             logger.exception(
                 "Failed to build tool_trace for batch task_index=%d; continuing.",
                 task_index,
@@ -421,7 +421,7 @@ async def _ainvoke_one_batch_child(
                 ),
                 None,
             )
-        except Exception as exc:
+        except Exception as exc:  # batch child subagent task failure; format error result
             logger.exception(
                 "Batch child %d (%s) raised: %s",
                 task_index,

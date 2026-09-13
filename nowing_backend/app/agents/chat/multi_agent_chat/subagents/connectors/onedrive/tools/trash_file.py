@@ -254,7 +254,7 @@ def create_delete_onedrive_file_tool(
                         )
                     else:
                         logger.warning(f"Document {document_id} not found in KB")
-                except Exception as e:
+                except Exception as e:  # KB document cleanup failure; rollback and attach warning
                     logger.error(f"Failed to delete document from KB: {e}")
                     await db_session.rollback()
                     trash_result["warning"] = (
@@ -269,7 +269,7 @@ def create_delete_onedrive_file_tool(
 
             return trash_result
 
-        except Exception as e:
+        except Exception as e:  # tool execution failure → return error result
             from langgraph.errors import GraphInterrupt
 
             if isinstance(e, GraphInterrupt):

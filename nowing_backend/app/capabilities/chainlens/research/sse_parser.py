@@ -128,7 +128,7 @@ def _parse_engine_ts(value: Any) -> int | None:
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=datetime.UTC)
         return int(dt.timestamp() * 1000)
-    except Exception:
+    except Exception:  # timestamp parsing error; return None timestamp
         logger.warning("Ignoring unparseable engine timestamp: %r", value)
         return None
 
@@ -658,7 +658,7 @@ class _SSEParser:
                     return int(
                         (Decimal(str(micros_raw))).to_integral_value(ROUND_HALF_UP)
                     )
-                except Exception as exc:
+                except Exception as exc:  # decimal micros conversion error; log debug and fall through to dollars
                     logger.debug("Suppressed %r", exc)
             dollars_raw = data.get(key_dollars)
             if dollars_raw is not None:
@@ -666,7 +666,7 @@ class _SSEParser:
                     return ChainLensServiceAuth.cost_dollars_to_micros(
                         float(dollars_raw)
                     )
-                except Exception:
+                except Exception:  # dollars float/micros conversion error; return None
                     return None
             return None
 

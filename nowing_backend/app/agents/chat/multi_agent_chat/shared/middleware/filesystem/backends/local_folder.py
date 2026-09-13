@@ -489,7 +489,7 @@ class LocalFolderBackend:
                 resolved = hit.resolve()
                 if not resolved.is_relative_to(self._root):
                     continue
-            except Exception as exc:
+            except Exception as exc:  # path resolution or symlink cycle failure; skip candidate
                 logger.debug("Suppressed %r", exc)
                 continue
             matches.append(
@@ -535,7 +535,7 @@ class LocalFolderBackend:
                 lines = file_path.read_text(
                     encoding="utf-8", errors="replace"
                 ).splitlines()
-            except Exception as exc:
+            except Exception as exc:  # unreadable or corrupted file; skip file in grep
                 logger.debug("Suppressed %r", exc)
                 continue
             for idx, line in enumerate(lines, start=1):
@@ -572,7 +572,7 @@ class LocalFolderBackend:
                 responses.append(
                     FileUploadResponse(path=virtual_path, error=_IS_DIRECTORY)
                 )
-            except Exception:
+            except Exception:  # sandbox upload failure → surface typed error
                 responses.append(
                     FileUploadResponse(path=virtual_path, error=_INVALID_PATH)
                 )
@@ -607,7 +607,7 @@ class LocalFolderBackend:
                         path=virtual_path, content=target.read_bytes(), error=None
                     )
                 )
-            except Exception:
+            except Exception:  # sandbox download failure → surface typed error
                 responses.append(
                     FileDownloadResponse(
                         path=virtual_path, content=None, error=_INVALID_PATH

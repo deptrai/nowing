@@ -139,7 +139,7 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
                             category="company",
                         )
                     )
-                except Exception:
+                except Exception:  # per-item serialization error; skip item and continue batch
                     logger.exception("masothue chunk serialization failed")
             if chunks:
                 try:
@@ -154,7 +154,7 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
                     if ingest_res:
                         ingest_job_id = ingest_res.ingest_job_id or ingest_res.parent_ingest_job_id
                         ingest_status = ingest_res.status
-                except Exception as exc:
+                except Exception as exc:  # chainlens ingest failure; record failed status and continue
                     logger.exception("masothue chainlens ingest failed: %s", exc)
                     ingest_status = "failed"
             else:

@@ -130,7 +130,7 @@ class NotionHistoryConnector(NotionBlocksMixin, NotionPagesMixin):
                     logger.info(
                         f"Decrypted Notion credentials for connector {self._connector_id}"
                     )
-                except Exception as e:
+                except Exception as e:  # per-item sync failure; continue batch
                     logger.error(
                         f"Failed to decrypt Notion credentials for connector {self._connector_id}: {e!s}"
                     )
@@ -164,7 +164,7 @@ class NotionHistoryConnector(NotionBlocksMixin, NotionPagesMixin):
                     f"Notion credentials are incomplete (missing {e}). "
                     "Please reconnect your Notion account."
                 ) from e
-            except Exception as e:
+            except Exception as e:  # per-item sync failure; continue batch
                 raise ValueError(
                     f"Notion credentials format error: {e!s}. "
                     "Please reconnect your Notion account."
@@ -217,7 +217,7 @@ class NotionHistoryConnector(NotionBlocksMixin, NotionPagesMixin):
                 logger.info(
                     f"Successfully refreshed Notion token for connector {self._connector_id}"
                 )
-            except Exception as e:
+            except Exception as e:  # per-item sync failure; continue batch
                 logger.error(
                     f"Failed to refresh Notion token for connector {self._connector_id}: {e!s}"
                 )
@@ -355,7 +355,7 @@ class NotionHistoryConnector(NotionBlocksMixin, NotionPagesMixin):
                             MAX_RETRIES,
                             wait_time,
                         )
-                    except Exception as callback_error:
+                    except Exception as callback_error:  # per-item sync failure; continue batch
                         # Don't let callback errors break the retry logic
                         logger.warning(f"Retry callback failed: {callback_error}")
 

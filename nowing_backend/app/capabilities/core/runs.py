@@ -139,11 +139,11 @@ async def record_run(
         await _maybe_cleanup(session, "runs", RUNS_RETENTION_DAYS)
         await session.commit()
         return run_id
-    except Exception:
+    except Exception:  # capability executor failure; return structured error
         logger.exception("record_run failed for capability=%s", capability)
         try:
             await session.rollback()
-        except Exception:
+        except Exception:  # capability executor failure; return structured error
             logger.exception("record_run rollback failed")
         return None
 
@@ -189,11 +189,11 @@ async def create_pending_run(
         run_id = str(run.id)
         await session.commit()
         return run_id
-    except Exception:
+    except Exception:  # capability executor failure; return structured error
         logger.exception("create_pending_run failed for capability=%s", capability)
         try:
             await session.rollback()
-        except Exception:
+        except Exception:  # capability executor failure; return structured error
             logger.exception("create_pending_run rollback failed")
         return None
 
@@ -259,11 +259,11 @@ async def finalize_run(
         await _maybe_cleanup(session, "runs", RUNS_RETENTION_DAYS)
         await session.commit()
         return True
-    except Exception:
+    except Exception:  # capability executor failure; return structured error
         logger.exception("finalize_run failed for run=%s", run_id)
         try:
             await session.rollback()
-        except Exception:
+        except Exception:  # capability executor failure; return structured error
             logger.exception("finalize_run rollback failed")
         return False
 
@@ -290,11 +290,11 @@ async def fail_stale_running_runs(session: AsyncSession) -> int:
         )
         await session.commit()
         return result.rowcount or 0
-    except Exception:
+    except Exception:  # capability executor failure; return structured error
         logger.exception("fail_stale_running_runs failed")
         try:
             await session.rollback()
-        except Exception:
+        except Exception:  # capability executor failure; return structured error
             logger.exception("fail_stale_running_runs rollback failed")
         return 0
 
@@ -337,11 +337,11 @@ async def record_spill(
         await _maybe_cleanup(session, "tool_output_spills", SPILLS_RETENTION_DAYS)
         await session.commit()
         return spill_id
-    except Exception:
+    except Exception:  # capability executor failure; return structured error
         logger.exception("record_spill failed")
         try:
             await session.rollback()
-        except Exception:
+        except Exception:  # capability executor failure; return structured error
             logger.exception("record_spill rollback failed")
         return None
 

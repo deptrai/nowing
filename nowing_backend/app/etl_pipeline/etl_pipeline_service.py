@@ -78,7 +78,7 @@ class EtlPipelineService:
 
                 result = await self._extract_document(request)
                 return result
-            except Exception as exc:
+            except Exception as exc:  # extraction failure; categorize error and re-raise
                 status = "error"
                 error_category = ot_metrics.categorize_exception(exc)
                 raise
@@ -120,7 +120,7 @@ class EtlPipelineService:
                     etl_service="VISION_LLM",
                     content_type="image",
                 )
-            except Exception as exc:
+            except Exception as exc:  # vision LLM image parse failure; fallback to document parser
                 # Special-case quota exhaustion so we log a clearer message
                 # — the vision LLM didn't "fail", the user just ran out of
                 # premium credit. Falling through to the document parser
@@ -292,7 +292,7 @@ class EtlPipelineService:
                 sp.set_attribute("image.skipped.too_large", result.skipped_too_large)
                 sp.set_attribute("image.skipped.duplicate", result.skipped_duplicate)
                 sp.set_attribute("etl.status", "success")
-        except Exception as exc:
+        except Exception as exc:  # picture description failure; log and return raw parser markdown
             # Picture description is additive; never let it fail an
             # otherwise-successful document extraction.
             ot.add_event(
@@ -355,7 +355,7 @@ class EtlPipelineService:
                 return await parse_with_azure_doc_intelligence(
                     request.file_path, processing_mode=mode_value
                 )
-            except Exception as exc:
+            except Exception as exc:  # Azure Document Intelligence failure; record telemetry and fallback to LlamaCloud
                 ot.add_event(
                     "etl.fallback",
                     {

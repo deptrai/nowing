@@ -294,7 +294,7 @@ def create_generate_image_tool(
                 tool_call_id=runtime.tool_call_id,
             )
 
-        except Exception as e:
+        except Exception as e:  # tool execution failure → return failed status payload
             logger.exception("Image generation failed in tool")
             err = f"Image generation failed: {e!s}"
             return _failed(

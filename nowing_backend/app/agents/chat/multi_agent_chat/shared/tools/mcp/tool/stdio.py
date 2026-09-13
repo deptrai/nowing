@@ -89,7 +89,7 @@ async def _create_mcp_tool_from_definition_stdio(
                 async with mcp_client.connect():
                     result = await mcp_client.call_tool(tool_name, call_kwargs)
                     return str(result)
-            except Exception as e:
+            except Exception as e:  # stdio tool execution failure; retry or re-raise
                 last_error = e
                 if attempt < _TOOL_CALL_MAX_RETRIES - 1:
                     delay = _TOOL_CALL_RETRY_DELAY * (2**attempt)
@@ -196,7 +196,7 @@ async def _load_stdio_mcp_tools(
                 bypass_internal_hitl=bypass_internal_hitl,
             )
             tools.append(tool)
-        except Exception as e:
+        except Exception as e:  # stdio tool creation failure; skip tool
             logger.exception(
                 "Failed to create tool '%s' from connector %d: %s",
                 tool_def.get("name"),

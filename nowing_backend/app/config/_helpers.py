@@ -102,7 +102,7 @@ def _read_global_config_yaml(path_str: str) -> dict:
     try:
         with open(f, encoding="utf-8") as fh:
             return yaml.safe_load(fh) or {}
-    except Exception:
+    except Exception:  # yaml file read/parse failure; fallback to empty dict
         logger.warning("Failed to read global_llm_config.yaml", exc_info=True)
         return {}
 
@@ -125,7 +125,7 @@ def _global_config_data() -> dict:
         try:
             decoded = base64.b64decode(b64).decode("utf-8")
             return yaml.safe_load(decoded) or {}
-        except Exception:
+        except Exception:  # base64 decode or yaml parse failure; log and fallback to file
             logger.warning("Failed to decode GLOBAL_LLM_CONFIG_B64", exc_info=True)
 
     from app.config import BASE_DIR
@@ -222,7 +222,7 @@ def load_global_llm_configs():
                 # hand-picked dead OR model is still dead. _enrich_health
                 # re-stamps health_gated for them on the next refresh tick.
                 cfg["health_gated"] = False
-        except Exception:
+        except Exception:  # static scoring computation failure; log and continue loading configs
             logger.warning("Failed to score global LLM configs", exc_info=True)
 
         # Planner LLM is a singleton role. If an operator accidentally
@@ -237,7 +237,7 @@ def load_global_llm_configs():
                 f"{planner_cfgs[0].get('id')} and ignoring {extra_ids}")
 
         return configs
-    except Exception:
+    except Exception:  # global LLM configs loading failure; log and return empty list
         logger.warning("Failed to load global LLM configs", exc_info=True)
         return []
 
@@ -266,7 +266,7 @@ def load_router_settings():
         settings = data.get("router_settings", {})
         # Merge with defaults
         return {**default_settings, **settings}
-    except Exception:
+    except Exception:  # router settings merge failure; log and fallback to default settings
         logger.warning("Failed to load router settings", exc_info=True)
         return default_settings
 
@@ -290,7 +290,7 @@ def load_global_image_gen_configs():
                 default_billing = "premium" if tier == "pro" else tier or "free"
                 cfg.setdefault("billing_tier", default_billing)
         return configs
-    except Exception:
+    except Exception:  # image generation configs loading failure; log and return empty list
         logger.warning("Failed to load global image generation configs", exc_info=True)
         return []
 
@@ -316,7 +316,7 @@ def load_image_gen_router_settings():
     try:
         settings = data.get("image_generation_router_settings", {})
         return {**default_settings, **settings}
-    except Exception:
+    except Exception:  # image generation router settings load failure; log and fallback to default
         logger.warning("Failed to load image generation router settings", exc_info=True)
         return default_settings
 
@@ -365,7 +365,7 @@ def load_openrouter_integration_settings() -> dict | None:
         settings.setdefault("vision_enabled", False)
 
         return settings
-    except Exception:
+    except Exception:  # OpenRouter settings parse failure; log and return None
         logger.warning("Failed to load OpenRouter integration settings", exc_info=True)
         return None
 
@@ -417,13 +417,13 @@ def initialize_openrouter_integration():
                     config.GLOBAL_IMAGE_GEN_CONFIGS.extend(image_configs)
                     logger.info(f"Info: OpenRouter integration added {len(image_configs)} "
                         f"image-generation models")
-            except Exception:
+            except Exception:  # OpenRouter image-gen config injection failure; log and continue
                 logger.warning("Failed to inject OpenRouter image-gen configs", exc_info=True)
 
         # Global catalog refresh is intentionally deferred to the async
         # lifespan so DB-managed GLOBAL rows can be merged.
         pass
-    except Exception:
+    except Exception:  # OpenRouter integration initialization failure; log and continue
         logger.warning("Failed to initialize OpenRouter integration", exc_info=True)
 
 
@@ -467,7 +467,7 @@ async def refresh_global_model_catalog(
 
                 register_pricing_from_global_configs()
                 register_pricing_for_managed_global_models()
-            except Exception as exc:
+            except Exception as exc:  # pricing registration failure; log and surface error
                 logger.exception("Pricing registration failed after catalog refresh")
                 raise RuntimeError(f"Pricing registration failed: {exc}") from exc
 
@@ -478,7 +478,7 @@ async def refresh_global_model_catalog(
                     getattr(__import__('app.config', fromlist=['config']).config, 'GLOBAL_LLM_CONFIGS', []),
                     getattr(__import__('app.config', fromlist=['config']).config, 'ROUTER_SETTINGS', []),
                 )
-            except Exception as exc:
+            except Exception as exc:  # LLM router rebuild failure; log and surface error
                 logger.exception("LLM Router rebuild failed after catalog refresh")
                 raise RuntimeError(f"LLM Router rebuild failed: {exc}") from exc
 
@@ -506,7 +506,7 @@ def initialize_pricing_registration():
 
         register_pricing_from_global_configs()
         register_pricing_for_managed_global_models()
-    except Exception:
+    except Exception:  # startup pricing registration failure; log warning and continue
         logger.warning("Failed to register LiteLLM pricing", exc_info=True)
 
 
@@ -535,7 +535,7 @@ def initialize_llm_router():
         LLMRouterService.initialize(all_configs, router_settings)
         logger.info(f"Info: LLM Router initialized with {len(all_configs)} models "
             f"(strategy: {router_settings.get('routing_strategy', 'usage-based-routing')})")
-    except Exception:
+    except Exception:  # startup LLM router initialization failure; log warning and continue
         logger.warning("Failed to initialize LLM Router", exc_info=True)
 
 
@@ -564,7 +564,7 @@ def initialize_image_gen_router():
         ImageGenRouterService.initialize(image_gen_configs, router_settings)
         logger.info(f"Info: Image Generation Router initialized with {len(image_gen_configs)} models "
             f"(strategy: {router_settings.get('routing_strategy', 'usage-based-routing')})")
-    except Exception:
+    except Exception:  # image generation router initialization failure; log warning and continue
         logger.warning("Failed to initialize Image Generation Router", exc_info=True)
 
 

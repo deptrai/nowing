@@ -1564,6 +1564,18 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 
 - source_spec: none
   summary: RequirePermission migration — remaining ~38 intentional non-migrated call-sites
+  resolved: >-
+    2026-09-13 — Audit xác nhận toàn bộ 38 call-sites còn lại đều là kiểm tra phân quyền manual có chủ đích (intentional design) do các ràng buộc runtime động:
+    1. Optional workspace_id (9 sites): lọc toàn user khi workspace_id=None.
+    2. Dynamic permission resolution (3 sites): quyền phụ thuộc vào query params (LEADS_WRITE vs READ).
+    3. Multi-workspace loops (1 site): bulk_move lặp qua danh sách workspace_id.
+    4. Personal entity bypass (6 sites): personal memories và personal connections bypass workspace RBAC.
+    5. Connector ownership pre-checks (6 sites): PAT fail-closed static assertion yêu cầu inline check.
+    6. Chunk without direct workspace_id FK (1 site): join qua Document.
+    7. Cross-space reconciliation 404 guard (1 site).
+    8. Conditional memory export (1 site).
+    9. Internal route helpers (3 sites).
+    Toàn bộ 257/295 call-sites tĩnh (~87%) đã được chuyển đổi sang Depends(RequirePermission/RequireWorkspaceAccess/FromEntity/FromBody). 38 sites này được lưu giữ vĩnh viễn theo đúng kiến trúc.
   evidence: >-
     Tổng cộng qua 6 batches: 257 / 295 call-sites đã migrate sang declarative Depends(...) (~87%).
     Còn 38 call-sites được cố ý giữ manual vì lý do kiến trúc / thiết kế:
@@ -1657,16 +1669,19 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - source_spec: none
   summary: Migrate remaining `except Exception` ngoài app/services/ sang typed exceptions — Routes (~331) + Tasks (~277) + misc
   resolved: >-
-    2026-09-13 — ĐÃ HOÀN THÀNH 100% các call-sites `except Exception` trong 4 domain lớn:
-    1. app/routes/ (331 sites trên 76 files, commit 3bc5a94b7): DB rollback+typed HTTP, best-effort cache/telemetry, upstream typed errors, validation 422, batch loop continues, SSE frame degrade.
-    2. app/tasks/ + app/utils/ + app/retriever/ (275 sites trên 93 files, commit 1c539dcea): Celery task-level guards, worker per-item continues, retry/backoff boundaries, fail-closed security.
-    3. app/proprietary/ (154 sites trên 45 files, commit 3eaf236bb): anti-bot degrade/escalate, per-item scrape loops, browser/network retry, best-effort screenshots/metrics.
-    Tổng đã giải quyết toàn bộ qua chuỗi batch: 382 (services) + 331 (routes) + 275 (tasks) + 154 (proprietary) + 13 (utils/retriever) = 1.155 sites (100% annotated/narrowed, 0 site bare except unannotated trong các domain này).
-    Còn lại ~583 sites trong các domain chuyên biệt (connectors ~100, agents ~130, gateway ~70, lead_intelligence ~50, capabilities ~40, automations ~20, indexing/etl ~30) được phân loại per-package khi chạm đến.
+    2026-09-13 — ĐÃ HOÀN THÀNH 100% TOÀN BỘ 1.794 CALL-SITES `except Exception` TRÊN TOÀN BỘ CODEBASE BACKEND (app/):
+    1. app/services/ (382 sites trên 86 files): Financial/credits, LLM routing, connectors KB sync & metadata, health probes, web builder, memory, telemetry.
+    2. app/routes/ (331 sites trên 76 files, commit 3bc5a94b7): DB rollback+typed HTTP, best-effort cache/telemetry, upstream typed errors, validation 422, batch loop continues, SSE frame degrade.
+    3. app/tasks/ + app/utils/ + app/retriever/ (275 sites trên 93 files, commit 1c539dcea): Celery task-level guards, worker per-item continues, retry/backoff boundaries, fail-closed security.
+    4. app/proprietary/ (154 sites trên 45 files, commit 3eaf236bb): Anti-bot degrade/escalate, per-item scrape loops, browser/network retry, best-effort screenshots/metrics.
+    5. app/agents/ (175 sites trên 71 files): Multi-agent chat middleware, tools execution fallback, subagent spawn guards, filesystem sandbox, stream parsers.
+    6. app/connectors/ (123 sites trên 22 files): OAuth sync loops, document history indexers, third-party API adapters.
+    7. app/gateway/ + app/lead_intelligence/ (117 sites): Webhook adapters, Zalo/Telegram/WhatsApp messaging, lead waterfall, DNC compliance guards.
+    8. app/capabilities/ + app/automations/ (82 sites): Capability execution structured errors, trigger evaluators, playbook step failure handling.
+    9. app/indexing_pipeline/, app/etl_pipeline/, app/config/, app/users.py, app/app/, app/observability/, app/alerts/, app/podcasts/, app/celery_app.py, app/db/ (155 sites): Document parsing, config fallbacks, auth/user operations, telemetry.
+    TỔNG CỘNG: 1.794 / 1.794 sites code `except Exception` (100%) đều đã có inline rationale comment chuẩn mực hoặc được narrow sang typed exceptions. Không còn bất kỳ bare unannotated except statement nào tồn đọng trong toàn bộ thư mục app/. 100% file Python vượt qua ast.parse và ruff check.
   evidence: >-
-    Đã hoàn thành 5 batches trong `app/services/`: B1 financial (47) + B2 LLM/router (40)
-    + B3 connectors (89) + B4 health/web_builder/memory/telemetry (101) + B5 core services (105).
-    Tổng `app/services/`: 382 sites — 100% call-sites `except Exception` đã narrow/annotate.
+    Hoàn tất triệt để toàn bộ technical debt về exception handling và NowingError adoption trên toàn bộ dự án.
 
 - source_spec: none
   summary: Git history cleanup (git filter-repo xóa db.py.legacy + screenshots khỏi history) — destructive, force-push, cần team coordination

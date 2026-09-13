@@ -139,7 +139,7 @@ def build_scrape_executor(
                 degradation_reason="bot_detected",
                 next_action=_next_action("bot_detected"),
             )
-        except Exception as exc:
+        except Exception as exc:  # unexpected actor failure → structured degraded failure response
             logger.exception("batdongsan.scrape actor failed: %s", exc)
             return ScrapeOutput(
                 items=[],

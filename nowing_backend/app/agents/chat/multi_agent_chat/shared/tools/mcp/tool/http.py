@@ -204,7 +204,7 @@ async def _create_mcp_tool_from_definition_http(
             )
             return _with_citations(result_str)
 
-        except Exception as first_err:
+        except Exception as first_err:  # HTTP tool execution failure; check 401 recovery or return error
             if not _is_auth_error(first_err) or connector_id is None:
                 logger.exception(
                     "MCP HTTP tool '%s' execution failed: %s", exposed_name, first_err
@@ -231,7 +231,7 @@ async def _create_mcp_tool_from_definition_http(
                     exposed_name,
                 )
                 return _with_citations(result_str)
-            except Exception as retry_err:
+            except Exception as retry_err:  # HTTP tool execution retry failure; return error message
                 logger.exception(
                     "MCP HTTP tool '%s' still failing after token refresh: %s",
                     exposed_name,
@@ -403,7 +403,7 @@ async def _load_http_mcp_tools(
     else:
         try:
             server_info, tool_definitions = await _discover(headers)
-        except Exception as first_err:
+        except Exception as first_err:  # HTTP discovery failure; check 401 recovery or re-raise
             if not _is_auth_error(first_err) or connector_id is None:
                 logger.exception(
                     "Failed to connect to HTTP MCP server at '%s' (connector %d): %s",
@@ -433,7 +433,7 @@ async def _load_http_mcp_tools(
                     "HTTP MCP discovery for connector %d succeeded after 401 recovery",
                     connector_id,
                 )
-            except Exception as retry_err:
+            except Exception as retry_err:  # HTTP discovery retry failure; return empty tool list
                 logger.exception(
                     "HTTP MCP discovery for connector %d still failing after refresh: %s",
                     connector_id,
@@ -502,7 +502,7 @@ async def _load_http_mcp_tools(
                 bypass_internal_hitl=bypass_internal_hitl,
             )
             tools.append(tool)
-        except Exception as e:
+        except Exception as e:  # HTTP tool creation failure; skip tool
             logger.exception(
                 "Failed to create HTTP tool '%s' from connector %d: %s",
                 tool_def.get("name"),

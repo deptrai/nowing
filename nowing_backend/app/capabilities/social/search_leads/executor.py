@@ -112,7 +112,7 @@ def build_search_leads_executor() -> Callable[..., Awaitable[SocialSearchLeadsOu
                         published_at=published_at,
                     )
                 )
-        except Exception as exc:
+        except Exception as exc:  # query execution error → structured degraded failure response
             logger.exception("Error executing social.search_leads: %s", exc)
             return SocialSearchLeadsOutput(
                 items=[],

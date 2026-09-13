@@ -144,7 +144,7 @@ class LeadGenOrchestrator:
                         "queue": "nowing.lead_scrapers",
                     }
                 )
-            except Exception as exc:
+            except Exception as exc:  # lead intelligence operation fallback
                 logger.error("Failed to enqueue scrape task for %s: %s", platform, exc)
                 dispatched_tasks.append(
                     {
@@ -178,7 +178,7 @@ class LeadGenOrchestrator:
                     )
                     for p in llm_plans
                 ]
-        except Exception as exc:
+        except Exception as exc:  # lead intelligence operation fallback
             logger.debug("LLM subtask decomposition fallback: %s", exc)
 
         # Heuristic intent matching fallback
@@ -429,7 +429,7 @@ class LeadGenOrchestrator:
                         icp_criteria=icp_criteria,
                         intent_tags=intent_tags,
                     )
-            except Exception as exc:
+            except Exception as exc:  # lead intelligence operation fallback
                 # Fail-soft: keep the original records and mark for enrichment.
                 logger.warning(
                     "Micro-extraction worker failed for workspace %s: %s",
@@ -538,7 +538,7 @@ class LeadGenOrchestrator:
                             norm = adapter.normalize_lead(record)
                             norm.location_match_score = loc_score
                             normalized.append(norm)
-                        except Exception as norm_err:
+                        except Exception as norm_err:  # lead intelligence operation fallback
                             logger.warning(
                                 "Failed to normalize lead from %s: %s",
                                 adapter.source_name,
@@ -553,7 +553,7 @@ class LeadGenOrchestrator:
                         effective_timeout,
                     )
                     return [], adapter.source_name, adapter.source_name, latency
-                except Exception as exc:
+                except Exception as exc:  # lead intelligence operation fallback
                     latency = round((time.perf_counter() - adapter_start) * 1000, 2)
                     logger.error(
                         "Adapter %s failed with error: %s",
@@ -723,7 +723,7 @@ class LeadGenOrchestrator:
                 len(new_lead_ids),
                 workspace_id,
             )
-        except Exception as exc:
+        except Exception as exc:  # lead intelligence operation fallback
             logger.exception(
                 "Failed to auto-assign new leads for workspace %s: %s",
                 workspace_id,
@@ -805,7 +805,7 @@ class LeadGenOrchestrator:
         service = LeadBatchService()
         try:
             summary = await service.ingest_batch(session, workspace_id, lead_dicts)
-        except Exception as exc:
+        except Exception as exc:  # lead intelligence operation fallback
             logger.error("Failed to persist leads via LeadBatchService: %s", exc)
             return LeadGenOrchestratorResult(
                 status="degraded",

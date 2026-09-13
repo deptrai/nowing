@@ -113,7 +113,7 @@ async def _telegram(
         )
         record_gateway_outbound(platform="telegram", kind="send", status="sent")
 
-    except Exception:
+    except Exception:  # best-effort telemetry/alerting; don't fail primary op
         logger.exception(
             "Telegram notification for alert %s user %s failed", alert_rule.id, user_id
         )
@@ -170,7 +170,7 @@ async def _email(
     try:
         await asyncio.to_thread(_send_email_smtp, user.email, subject, body)
         record_gateway_outbound(platform="email", kind="send", status="sent")
-    except Exception:
+    except Exception:  # best-effort telemetry/alerting; don't fail primary op
         logger.exception(
             "Email notification for alert %s user %s failed", alert_rule.id, user_id
         )
@@ -225,7 +225,7 @@ async def notify_alert_run(
                         channel,
                         alert_rule.id,
                     )
-            except Exception:
+            except Exception:  # best-effort telemetry/alerting; don't fail primary op
                 # One failing subscriber/channel must not abort the others.
                 logger.exception(
                     "alert %s notification channel %s failed for user %s",

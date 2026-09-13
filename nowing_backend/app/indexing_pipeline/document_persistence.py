@@ -21,7 +21,7 @@ async def rollback_and_persist_failure(
     """
     try:
         await session.rollback()
-    except Exception:
+    except Exception:  # session rollback error; abort failure persistence
         logger.warning(
             "Rollback failed; cannot persist failed status for document %s",
             getattr(document, "id", "unknown"),
@@ -33,7 +33,7 @@ async def rollback_and_persist_failure(
         document.updated_at = datetime.now(UTC)
         document.status = DocumentStatus.failed(message)
         await session.commit()
-    except Exception:
+    except Exception:  # failed status commit error; suppress and retry next sync
         logger.warning(
             "Could not persist failed status for document %s; will retry next sync",
             getattr(document, "id", "unknown"),

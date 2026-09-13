@@ -105,7 +105,7 @@ class MCPClient:
                             self.session = None
                         return
 
-            except Exception as e:
+            except Exception as e:  # MCP session connection failure; retry or re-raise
                 self.session = None
                 if connected:
                     raise
@@ -168,7 +168,7 @@ class MCPClient:
             logger.info("Listed %d tools from MCP server", len(tools))
             return tools
 
-        except Exception as e:
+        except Exception as e:  # MCP tool listing failure; re-raise
             logger.error("Failed to list tools from MCP server: %s", e, exc_info=True)
             raise
 
@@ -317,7 +317,7 @@ async def test_mcp_http_connection(
                 "tools": tools,
             }
 
-    except Exception as e:
+    except Exception as e:  # MCP HTTP test connection failure; return error payload
         logger.error("Failed to connect to HTTP MCP server: %s", e, exc_info=True)
         return {
             "status": "error",

@@ -161,7 +161,7 @@ def _embedding_token_count(query: str) -> int | None:
         return None
     try:
         return int(count_fn(query))
-    except Exception:
+    except Exception:  # token count error; best-effort usage telemetry
         logger.debug("embedding_model.count_tokens failed for telemetry")
         return None
 
@@ -223,7 +223,7 @@ async def execute_with_context(
     except ChainLensError as exc:
         degradation_reason = "upstream_error"
         engine_reason = str(exc)
-    except Exception as exc:
+    except Exception as exc:  # research search error; mark engine_unavailable upstream_error
         if isinstance(exc, asyncio.CancelledError):
             raise
         logger.exception("ChainLens research failed")
@@ -327,7 +327,7 @@ async def execute_with_context(
                     kb_fallback_embedding_cost_micros=0,
                     kb_fallback_search_cost_micros=0,
                 )
-        except Exception as exc:
+        except Exception as exc:  # KB fallback query error; mark fallback_kb_error and return degraded output
             if isinstance(exc, asyncio.CancelledError):
                 raise
             logger.exception("KB fallback failed")

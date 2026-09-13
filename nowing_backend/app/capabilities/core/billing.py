@@ -70,7 +70,7 @@ async def _debit_with_workspace_spend_cap(
 
     try:
         return await wallet_credit.apply_debit(session, user_id, cost_micros)
-    except Exception:
+    except Exception:  # billing debit failure → rollback spend and raise
         # Undo the monthly-spent increment if the wallet debit failed.
         await credit_svc.refund_member_spend(
             workspace_id=workspace_id,
@@ -611,7 +611,7 @@ async def _record_deep_research_token_usage(
             ttfb_ms=ttfb_ms,
             run_id=ctx.run_id,
         )
-    except Exception:
+    except Exception:  # best-effort usage telemetry; log and continue
         logger.exception("Failed to record deep_research token usage; continuing")
 
 
@@ -749,7 +749,7 @@ async def _record_chainlens_cost_allocation(
                 ttfb_ms=ttfb_ms,
                 run_id=ctx.run_id,
             )
-        except Exception:
+        except Exception:  # best-effort usage telemetry; log and continue
             logger.exception(
                 "Failed to record %s token usage for run %s; continuing",
                 usage_type,

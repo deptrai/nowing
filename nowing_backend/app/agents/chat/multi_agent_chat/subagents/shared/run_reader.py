@@ -196,7 +196,7 @@ async def _save_export_document(
             doc_id = doc.id
     except ValueError as exc:
         return f"Error: {exc}. Pick a different path."
-    except Exception:
+    except Exception:  # storage failure saving export document; return error message
         logger.exception("export_run: document create failed for %s", path)
         return "Error: could not save the export document (storage failure)."
 
@@ -208,7 +208,7 @@ async def _save_export_document(
             "document_created",
             {"id": doc_id, "title": path.rsplit("/", 1)[-1], "virtualPath": path},
         )
-    except Exception:
+    except Exception:  # best-effort document_created event dispatch; continue return
         logger.debug("export_run: document_created dispatch failed", exc_info=True)
     return doc_id, path
 

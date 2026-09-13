@@ -29,7 +29,7 @@ def _maybe_enqueue_run_notification(run_id: int) -> None:
         )
 
         notify_telegram_run_complete.apply_async(args=(run_id,), expires=3600)
-    except Exception:
+    except Exception:  # notification dispatch best-effort; log and continue
         logger.exception("Failed to enqueue run notification for run %s", run_id)
 
 
@@ -44,7 +44,7 @@ async def execute_run(session: AsyncSession, run_id: int) -> None:
 
     try:
         definition = AutomationDefinition.model_validate(run.definition_snapshot)
-    except Exception as exc:
+    except Exception as exc:  # validation error → mark run failed and raise
         await repository.mark_failed(
             session,
             run,

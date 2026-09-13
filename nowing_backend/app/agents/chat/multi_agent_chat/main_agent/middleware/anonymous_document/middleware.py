@@ -76,7 +76,7 @@ class AnonymousDocumentMiddleware(AgentMiddleware):  # type: ignore[type-arg]
                 payload = json.loads(data)
             finally:
                 await redis_client.aclose()
-        except Exception as exc:
+        except Exception as exc:  # Redis lookup failure for anonymous document; return None
             logger.warning("Failed to load anonymous document from Redis: %s", exc)
             return None
 

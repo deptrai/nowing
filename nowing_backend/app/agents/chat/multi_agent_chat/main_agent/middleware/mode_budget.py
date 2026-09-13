@@ -91,7 +91,7 @@ def _config_from_runtime(runtime: Runtime[Any] | None) -> dict[str, Any]:
     """Best-effort RunnableConfig: prefer ``get_config()``, fall back to ``runtime.config``."""
     try:
         cfg = get_config() or {}
-    except Exception:
+    except Exception:  # LangGraph config lookup failure; fall back to runtime config
         logger.debug(
             "get_config() failed, falling back to runtime.config", exc_info=True
         )

@@ -50,7 +50,7 @@ def _build_message(msg: str, ctx: PipelineLogContext, **extra) -> str:
         for key, val in extra.items():
             parts.append(f"{key}={val}")
         return " ".join(parts)
-    except Exception:
+    except Exception:  # log context formatting failure; return unformatted message
         return msg
 
 
@@ -62,7 +62,7 @@ def _safe_log(
     try:
         message = _build_message(msg, ctx, **extra)
         level_fn(message, exc_info=exc_info)
-    except Exception as exc:
+    except Exception as exc:  # best-effort safe logging failure; suppress exception
         logger.debug("Suppressed %r", exc)
 
 

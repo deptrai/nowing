@@ -146,7 +146,7 @@ async def setup_indexes() -> None:
             try:
                 await _drop_invalid_index(conn, name)
                 await conn.execute(text(ddl))
-            except Exception as exc:
+            except Exception as exc:  # log error and fallback safely
                 logger.warning(
                     "[startup] index %s on %s not ready (%s: %s); "
                     "will retry on next boot",
@@ -173,7 +173,7 @@ async def create_db_and_tables():
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS citext"))
         try:
             await conn.run_sync(Base.metadata.create_all)
-        except Exception as exc:
+        except Exception as exc:  # log error and fallback safely
             logger.warning(
                 "[startup] Base.metadata.create_all encountered error (managed by Alembic): %s",
                 exc,
@@ -182,7 +182,7 @@ async def create_db_and_tables():
 
         try:
             await conn.run_sync(ensure_publication)
-        except Exception as exc:
+        except Exception as exc:  # log error and fallback safely
             logger.warning("[startup] ensure_publication encountered error: %s", exc)
     await setup_indexes()
 

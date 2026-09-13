@@ -31,7 +31,7 @@ async def execute_step(
     if step.when is not None:
         try:
             should_run = evaluate_predicate(step.when, template_context)
-        except Exception as exc:
+        except Exception as exc:  # step condition evaluation failure; record failure and halt
             return _result(
                 step, "failed", started_at, attempts=0, error=_error(exc, "when")
             )
@@ -40,7 +40,7 @@ async def execute_step(
 
     try:
         resolved_params = render_value(step.params, template_context)
-    except Exception as exc:
+    except Exception as exc:  # param template rendering failure; record failure and halt
         return _result(
             step, "failed", started_at, attempts=0, error=_error(exc, "render")
         )
@@ -82,7 +82,7 @@ async def execute_step(
             backoff=default_retry_backoff,
             timeout=timeout,
         )
-    except Exception as exc:
+    except Exception as exc:  # automation step error; record failure and continue
         return _result(
             step, "failed", started_at, attempts=max_retries + 1, error=_error(exc)
         )

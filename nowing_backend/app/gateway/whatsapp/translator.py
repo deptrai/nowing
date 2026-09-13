@@ -69,7 +69,7 @@ class WhatsAppCloudStreamTranslator(BaseStreamTranslator):
                 inbound_message_id=self.inbound_message_id
             )
             record_gateway_outbound(platform="whatsapp", kind="typing", status="sent")
-        except Exception:
+        except Exception:  # channel message delivery failure; fallback
             logger.debug("WhatsApp typing indicator failed", exc_info=True)
             record_gateway_outbound(platform="whatsapp", kind="typing", status="failed")
 
@@ -79,7 +79,7 @@ class WhatsAppCloudStreamTranslator(BaseStreamTranslator):
                 external_peer_id=self.external_peer_id,
                 text=text,
             )
-        except Exception:
+        except Exception:  # channel message delivery failure; fallback
             record_gateway_outbound(platform="whatsapp", kind="send", status="failed")
             raise
         record_gateway_outbound(platform="whatsapp", kind="send", status="sent")

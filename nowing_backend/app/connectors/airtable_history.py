@@ -98,7 +98,7 @@ class AirtableHistoryConnector:
                     logger.info(
                         f"Decrypted Airtable credentials for connector {self._connector_id}"
                     )
-                except Exception as e:
+                except Exception as e:  # per-item sync failure; continue batch
                     logger.error(
                         f"Failed to decrypt Airtable credentials for connector {self._connector_id}: {e!s}"
                     )
@@ -118,7 +118,7 @@ class AirtableHistoryConnector:
 
             try:
                 self._credentials = AirtableAuthCredentialsBase.from_dict(config_data)
-            except Exception as e:
+            except Exception as e:  # per-item sync failure; continue batch
                 raise ValueError(f"Invalid Airtable credentials: {e!s}") from e
 
         # Check if token is expired and refreshable
@@ -166,7 +166,7 @@ class AirtableHistoryConnector:
                 logger.info(
                     f"Successfully refreshed Airtable token for connector {self._connector_id}"
                 )
-            except Exception as e:
+            except Exception as e:  # per-item sync failure; continue batch
                 logger.error(
                     f"Failed to refresh Airtable token for connector {self._connector_id}: {e!s}"
                 )

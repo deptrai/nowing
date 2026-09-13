@@ -429,7 +429,7 @@ async def _dispatch_reversibility_update(action_id: int | None) -> None:
             "action_log_updated",
             {"id": int(action_id), "reversible": True},
         )
-    except Exception:
+    except Exception:  # best-effort action_log_updated event dispatch; continue execution
         logger.debug(
             "kb_persistence.aafter_agent failed to dispatch action_log_updated",
             exc_info=True,

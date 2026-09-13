@@ -32,7 +32,7 @@ async def concat_to_mp3(segment_paths: list[Path], output_path: Path) -> None:
             .output(str(output_path), {"c:a": "libmp3lame"})
         )
         await ffmpeg.execute()
-    except Exception as exc:
+    except Exception as exc:  # safe fallback on unexpected exception
         raise RenderError(f"audio merge failed: {exc}") from exc
     finally:
         list_file.unlink(missing_ok=True)

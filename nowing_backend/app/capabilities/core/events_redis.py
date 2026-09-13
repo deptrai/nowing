@@ -96,7 +96,7 @@ class RedisRunEventBus:
             task.result()
         except asyncio.CancelledError as exc:
             logger.debug("Suppressed %r", exc)
-        except Exception:
+        except Exception:  # background task unhandled exception; log and prevent silent loss
             logger.exception("run_event_bus background task %r failed", task.get_name())
 
     def _fire(self, name: str, coro: Any) -> None:
@@ -120,7 +120,7 @@ class RedisRunEventBus:
                         name="run_event_bus_redis_listener",
                     )
                     self._listener_retries = 0
-                except Exception:
+                except Exception:  # pubsub listener initialization error; schedule error handler
                     logger.exception(
                         "run_event_bus _ensure_listener failed to start pubsub"
                     )
@@ -213,7 +213,7 @@ class RedisRunEventBus:
                     ignore_subscribe_messages=True,
                     timeout=1.0,
                 )
-            except Exception:
+            except Exception:  # redis listener receive error; handle error and terminate listener loop
                 logger.exception("run_event_bus redis listener error")
                 await self._handle_listener_error()
                 return
@@ -251,7 +251,7 @@ class RedisRunEventBus:
                     return
                 try:
                     await asyncio.wait_for(self._pubsub.subscribe(channel), timeout=5.0)
-                except Exception:
+                except Exception:  # redis channel subscribe error; schedule retry handler
                     logger.warning(
                         "run %s: redis subscribe failed", run_id, exc_info=True
                     )
@@ -278,7 +278,7 @@ class RedisRunEventBus:
                         await asyncio.wait_for(
                             self._pubsub.unsubscribe(channel), timeout=5.0
                         )
-                    except Exception:
+                    except Exception:  # redis channel unsubscribe error; log warning and continue teardown
                         logger.warning(
                             "run %s: redis unsubscribe failed", run_id, exc_info=True
                         )
@@ -342,7 +342,7 @@ class RedisRunEventBus:
                         attempt + 1,
                         self._publish_max_retries,
                     )
-                except Exception:
+                except Exception:  # redis publish error; retry or drop from cross-replica fanout
                     logger.warning(
                         "run %s: redis publish failed (attempt %d/%d)",
                         run_id,

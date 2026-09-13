@@ -37,7 +37,7 @@ class NotionPagesMixin:
 
             return None
 
-        except Exception as e:
+        except Exception as e:  # per-item sync failure; continue batch
             logger.error(f"Error finding accessible parent page: {e}")
             return None
 
@@ -133,7 +133,7 @@ class NotionPagesMixin:
                 "status": "error",
                 "message": f"Failed to create Notion page: {error_msg}",
             }
-        except Exception as e:
+        except Exception as e:  # per-item sync failure; continue batch
             logger.error(f"Unexpected error creating Notion page: {e}")
             return {
                 "status": "error",
@@ -174,7 +174,7 @@ class NotionPagesMixin:
                             "status": "error",
                             "message": "Content conversion failed: no valid blocks generated",
                         }
-                except Exception as e:
+                except Exception as e:  # per-item sync failure; continue batch
                     logger.error(f"Failed to convert markdown to blocks: {e}")
                     return {
                         "status": "error",
@@ -202,7 +202,7 @@ class NotionPagesMixin:
                         if len(appended_block_ids) > 5
                         else f"Appended block IDs: {appended_block_ids}"
                     )
-                except Exception as e:
+                except Exception as e:  # per-item sync failure; continue batch
                     logger.error(f"Failed to append content blocks: {e}")
                     return {
                         "status": "error",
@@ -232,7 +232,7 @@ class NotionPagesMixin:
                 "status": "error",
                 "message": f"Failed to update Notion page: {error_msg}",
             }
-        except Exception as e:
+        except Exception as e:  # per-item sync failure; continue batch
             logger.error(f"Unexpected error updating Notion page: {e}")
             return {
                 "status": "error",
@@ -281,7 +281,7 @@ class NotionPagesMixin:
                 "status": "error",
                 "message": f"Failed to delete Notion page: {error_msg}",
             }
-        except Exception as e:
+        except Exception as e:  # per-item sync failure; continue batch
             logger.error(f"Unexpected error deleting Notion page: {e}")
             return {
                 "status": "error",

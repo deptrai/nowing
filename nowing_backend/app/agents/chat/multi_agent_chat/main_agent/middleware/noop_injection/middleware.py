@@ -65,7 +65,7 @@ def _provider_needs_noop(model: Any) -> bool:
     try:
         ls_params = model._get_ls_params()
         provider = str(ls_params.get("ls_provider", "")).lower()
-    except Exception:
+    except Exception:  # model provider inspection failure; fall back to class name heuristic
         provider = ""
 
     if not provider:

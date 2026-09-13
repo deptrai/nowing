@@ -148,7 +148,7 @@ def _build_client() -> discord.Client:
         )
         try:
             await _persist_message(message, bot_user_id=bot_user_id)
-        except Exception:
+        except Exception:  # message persistence failure; log and drop event
             logger.exception(
                 "Discord gateway failed to persist message_id=%s", message.id
             )
@@ -169,7 +169,7 @@ async def _run_discord_gateway() -> None:
             await _client.start(token)
         except asyncio.CancelledError:
             raise
-        except Exception:
+        except Exception:  # Discord gateway WebSocket failure; retry loop
             logger.exception("Discord gateway WebSocket failed; retrying in 30s")
         finally:
             if _client is not None and not _client.is_closed():

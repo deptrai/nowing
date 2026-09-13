@@ -103,7 +103,7 @@ class MuabanBdsLeadAdapter(LeadSourceAdapter):
                     )
                     for idx, item in enumerate(items)
                 ]
-            except Exception as exc:
+            except Exception as exc:  # lead intelligence operation fallback
                 last_exc = exc
                 logger.warning("Muaban BĐS search attempt %d failed: %s", attempt, exc)
 
