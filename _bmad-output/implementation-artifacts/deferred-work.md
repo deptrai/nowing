@@ -1575,15 +1575,29 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
     (5 memory integration failures + 1 unit failure are pre-existing on baseline:
     VectorValidationError invalid_dimension — embedding model env issue, unrelated.)
 
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-nowingerror-batch-5.md`
+  summary: NowingError & Exception Narrowing — Batch 5 (105 sites across 45 remaining core service files)
+  resolved: >-
+    2026-09-13 — Refactor 105 call-sites `except Exception` còn lại trong `app/services/`:
+    meeting_minutes (7: diarization degrade transcript-only, LLM summary -> empty, billing
+    fallback free/auto), auto_reply_agent (7: fail-closed pause check, safe fallback text),
+    scraper_rules/metrics/pubsub (12: best-effort cache/pubsub/metric, Redis->zeros),
+    presentation (8: usage recording best-effort, DeckSpec -> structured validation failure),
+    aggregators jobs+bds (9: per-source/per-listing degrade), sequencer (4: decrypt fallback,
+    per-channel fallback), docling (5: GPU->CPU fallback, init->RuntimeError), misc 14 files
+    (turnstile fail-closed, PII redaction fail-closed, okf decrypt fail-safe...).
+    Fix 4 pre-existing F401 unused imports (governance_service, jobs_aggregator/orchestrator).
+    `app/services/` nay đã 100% annotated/narrowed: 0 site `except Exception` không comment.
+
 - source_spec: none
-  summary: Migrate remaining ~1.517 `except Exception` toàn app sang typed exceptions / NowingError hierarchy — theo từng domain
+  summary: Migrate remaining `except Exception` ngoài app/services/ sang typed exceptions — Routes (~331) + Tasks (~277) + misc
   evidence: >-
-    Đã hoàn thành Batch 1 (47 sites financial/credits/verification) + Batch 2 (40 sites LLM/Model Routing)
-    + Batch 3 (89 sites External Integrations & Connectors) + Batch 4 (101 sites Health/Web Builder/Memory/Telemetry).
-    Tổng đã giải quyết: 277 sites trong app/services/ (~72% của app/services/).
-    Các domain tiếp theo:
-    - Core services còn lại (~108 sites: root-level services + misc)
-    - Routes (~331 sites) và Tasks (~277 sites)
+    Đã hoàn thành 5 batches trong `app/services/`: B1 financial (47) + B2 LLM/router (40)
+    + B3 connectors (89) + B4 health/web_builder/memory/telemetry (101) + B5 core services (105).
+    Tổng `app/services/`: 382 sites — 100% call-sites `except Exception` đã narrow/annotate.
+    Còn lại ngoài services: Routes (~331 sites), Tasks/Celery workers (~277 sites),
+    và các package khác (middleware, retriever, utils...).
 
 - source_spec: none
   summary: Git history cleanup (git filter-repo xóa db.py.legacy + screenshots khỏi history) — destructive, force-push, cần team coordination
