@@ -77,7 +77,7 @@ async def _execute_claimed_rule(
 
     try:
         await execute_alert_rule(session=session, alert_rule=fresh, fired_at=now)
-    except Exception:  # best-effort telemetry/alerting; don't fail primary op
+    except Exception:  # alert rule execution failure; rollback and continue scheduler loop
         logger.exception("alert rule %s execution failed", rule.id)
         await session.rollback()
 
