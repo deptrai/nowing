@@ -99,6 +99,12 @@ services:
     networks:
       - default
       - dokploy-network
+      # Story 31.1: proxy must join the dedicated app bridge so Caddy can
+      # still resolve {container_name}:3000 for user-deployed web apps when
+      # WEB_BUILDER_DOKPLOY_NETWORK=nowing-web-apps-net. The backend itself
+      # stays OFF this network (tenant isolation); it only launches
+      # containers onto it via the Docker socket.
+      - nowing-web-apps-net
     environment:
       NOWING_SITE_ADDRESS: ${NOWING_SITE_ADDRESS:-:80}
       CERT_EMAIL: ${CERT_EMAIL:-}
@@ -361,4 +367,30 @@ volumes:
 networks:
   dokploy-network:
     name: dokploy-network
+    driver: bridge
+  # Dedicated bridge for user-deployed web-app containers (Story 31.1).
+  # Set WEB_BUILDER_DOKPLOY_NETWORK=nowing-web-apps-net in .env to move app
+  # containers off dokploy-network (which the backend joins for platform
+  # ingress — user code must not be able to reach backend:8000).
+  # IMPORTANT: the network name here MUST equal WEB_BUILDER_DOKPLOY_NETWORK
+  # for the `proxy` attachment above to carry ingress — if you point that env
+  # var at a differently-named network, attach `proxy` to it yourself or app
+  # URLs will 502.
+  # Only the ingress proxy joins this network; db/redis/zero-cache/backend
+  # stay on `default`/`dokploy-network`.
+  # For hard tenant-vs-tenant isolation the operator may instead pre-create
+  # the network externally and mark it `external: true` here:
+  #   docker network create -o com.docker.network.bridge.enable_icc=false nowing-web-apps-net
+  # Caveat: icc=false drops ALL inter-container traffic on the bridge —
+  # including proxy -> app — so that posture requires one-network-per-app
+  # or published ports instead of container-name ingress.
+  # Alternative: WEB_BUILDER_PER_APP_NETWORK=TRUE gives each app its own
+  # bridge network (isolation by membership, no ICC needed) — requires
+  # WEB_BUILDER_INGRESS_PROXY_CONTAINER set to this stack's proxy container.
+  # Egress: app containers retain outbound internet access; Docker cannot do
+  # partial per-network egress — restrict at the host firewall if needed,
+  # e.g. `iptables -I DOCKER-USER -d 169.254.169.254 -j DROP` (cloud
+  # metadata) on the docker host.
+  nowing-web-apps-net:
+    name: nowing-web-apps-net
     driver: bridge

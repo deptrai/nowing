@@ -91,7 +91,7 @@ async def maybe_trigger_auto_reload(user_id: str) -> None:
         )
 
         auto_reload_credits_task.delay(str(user_id))
-    except Exception:
+    except Exception:  # best-effort celery task enqueue; log and continue if broker unavailable
         logger.warning(
             "Failed to enqueue auto_reload_credits task for user %s",
             user_id,

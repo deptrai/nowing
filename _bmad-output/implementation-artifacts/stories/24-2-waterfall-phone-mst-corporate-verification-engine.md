@@ -1,9 +1,9 @@
 ---
-story_key: "24-2"
+story_key: 24-2-waterfall-phone-b2b-tax-code-mst-corporate-verification-engi
 epic: "epic-24"
 story: "24.2"
 title: "Waterfall Phone & B2B Tax Code (MST) Corporate Verification Engine"
-status: "in-progress"
+status: done
 baseline_commit: "6ac305274"
 ---
 

@@ -103,7 +103,7 @@ def _parse_mime_message(mime_text: str) -> InboundEmail:
     """Parse a full MIME message (SendGrid Inbound Parse ``email`` field)."""
     try:
         msg = email.message_from_string(mime_text, policy=default_policy)
-    except Exception:
+    except Exception:  # email policy parse failure; fallback to compat policy
         msg = email.message_from_string(mime_text)
 
     from_address = _extract_header(msg, "From") or ""
@@ -178,7 +178,7 @@ def _decode_part(part: EmailMessage) -> str:
     charset = part.get_content_charset() or "utf-8"
     try:
         return payload.decode(charset, errors="replace")
-    except Exception:
+    except Exception:  # charset decode failure; fallback to utf-8
         return payload.decode("utf-8", errors="replace")
 
 
@@ -194,7 +194,7 @@ class EmailAdapter:
         """Estimate the raw payload size in bytes."""
         try:
             return len(str(raw).encode("utf-8"))
-        except Exception:
+        except Exception:  # raw payload size calculation failure; default to 0
             return 0
 
     def _parse_sendgrid(self, raw: dict[str, Any]) -> InboundEmail:
@@ -233,7 +233,7 @@ class EmailAdapter:
                 import json
 
                 raw_attachments = json.loads(raw_attachments)
-            except Exception:
+            except Exception:  # malformed attachments JSON; degrade to empty list
                 raw_attachments = []
         for att in raw_attachments or []:
             if not isinstance(att, dict):

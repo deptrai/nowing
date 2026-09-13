@@ -19,7 +19,7 @@ from app.db import (
     SearchSourceConnectorType,
     async_session_maker,
 )
-from app.retriever.chunks_hybrid_search import ChucksHybridSearchRetriever
+from app.retriever.chunks_hybrid_search import ChunksHybridSearchRetriever
 from app.retriever.documents_hybrid_search import DocumentHybridSearchRetriever
 from app.utils.perf import get_perf_logger
 
@@ -54,7 +54,7 @@ class ConnectorSearchCore:
         return result.scalars().first()
     def __init__(self, session: AsyncSession, workspace_id: int | None = None):
         self.session = session
-        self.chunk_retriever = ChucksHybridSearchRetriever(session)
+        self.chunk_retriever = ChunksHybridSearchRetriever(session)
         self.document_retriever = DocumentHybridSearchRetriever(session)
         self.workspace_id = workspace_id
         self.source_id_counter = (
@@ -289,7 +289,7 @@ class ConnectorSearchCore:
         # so they don't contend on a shared AsyncSession connection.
         async def _run_chunk_search() -> list[dict[str, Any]]:
             async with async_session_maker() as session:
-                retriever = ChucksHybridSearchRetriever(session)
+                retriever = ChunksHybridSearchRetriever(session)
                 return await retriever.hybrid_search(**search_kwargs)
 
         async def _run_doc_search() -> list[dict[str, Any]]:

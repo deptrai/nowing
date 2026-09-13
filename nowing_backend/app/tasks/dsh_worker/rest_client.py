@@ -111,7 +111,7 @@ class DshRestClient:
                 output_schema=output_schema,
                 workspace_id=workspace_id,
             )
-        except Exception as exc:
+        except Exception as exc:  # invalid research input validation failure; wrap in DshTransientError
             raise DshTransientError(f"Invalid chainlens.research payload: {exc}") from exc
 
         output_obj = await _research_executor(payload, None)

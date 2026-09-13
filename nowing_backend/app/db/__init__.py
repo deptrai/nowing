@@ -159,6 +159,7 @@ from app.models.leads import (
     SocialPost,
     TelegramCheckpointMessage,
     VerifiedContact,
+    XActionsProxyBinding,
     ZaloConnection,
     ZaloMessageLog,
 )
@@ -173,6 +174,8 @@ from app.models.memory import (
     Model,
     Prompt,
 )
+from app.models.memory_review_queue import MemoryReviewQueue
+from app.models.memory_source_legal_tier import MemorySourceLegalTier
 from app.models.presentations import (
     MeetingMinutes,
     Report,
@@ -331,6 +334,8 @@ __all__ = [
     "Memory",
     "MemoryRelation",
     "MemoryRelationType",
+    "MemoryReviewQueue",
+    "MemorySourceLegalTier",
     "MemorySourceType",
     "MemoryType",
     "MemoryVersion",
@@ -404,6 +409,7 @@ __all__ = [
     "WorkspaceRole",
     "WorkspaceSkill",
     "WorkspaceTable",
+    "XActionsProxyBinding",
     "ZaloConnection",
     "ZaloMessageLog",
     "_enum_values",

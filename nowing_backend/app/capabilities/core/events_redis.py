@@ -42,9 +42,17 @@ class RedisRunEventBus:
         *,
         buffer_size: int = 500,
         subscriber_queue_size: int = 1000,
+        subscribe_max_retries: int = 5,
+        subscribe_backoff_base: float = 1.0,
+        subscribe_backoff_cap: float = 30.0,
+        publish_max_retries: int = 3,
     ) -> None:
         self._buffer_size = buffer_size
         self._subscriber_queue_size = subscriber_queue_size
+        self._subscribe_max_retries = subscribe_max_retries
+        self._subscribe_backoff_base = subscribe_backoff_base
+        self._subscribe_backoff_cap = subscribe_backoff_cap
+        self._publish_max_retries = publish_max_retries
         self._buffers: dict[str, deque[dict[str, Any]]] = {}
         self._subscribers: dict[str, set[asyncio.Queue[dict[str, Any]]]] = {}
         self._tasks: dict[str, asyncio.Task[Any]] = {}
@@ -53,6 +61,9 @@ class RedisRunEventBus:
         self._listener_task: asyncio.Task[None] | None = None
         self._ensure_task: asyncio.Task[None] | None = None
         self._listener_lock = asyncio.Lock()
+        # Per-channel subscribe retry state: run_id -> (retry_count, next_attempt_ts)
+        self._subscribe_retries: dict[str, tuple[int, float]] = {}
+        self._listener_retries: int = 0
 
     # -- Redis client ----------------------------------------------------
 
@@ -83,9 +94,9 @@ class RedisRunEventBus:
         """Log exceptions from fire-and-forget tasks to avoid asyncio swallowing them."""
         try:
             task.result()
-        except asyncio.CancelledError:
-            pass
-        except Exception:
+        except asyncio.CancelledError as exc:
+            logger.debug("Suppressed %r", exc)
+        except Exception:  # background task unhandled exception; log and prevent silent loss
             logger.exception("run_event_bus background task %r failed", task.get_name())
 
     def _fire(self, name: str, coro: Any) -> None:
@@ -104,19 +115,12 @@ class RedisRunEventBus:
                         await self._pubsub.close()
                 try:
                     self._pubsub = self._client().pubsub()
-                    # Re-subscribe to every channel that already has a subscriber.
-                    channels = [
-                        _channel(rid) for rid, subs in self._subscribers.items() if subs
-                    ]
-                    if channels:
-                        await asyncio.wait_for(
-                            self._pubsub.subscribe(*channels), timeout=5.0
-                        )
                     self._listener_task = asyncio.create_task(
                         self._listener(),
                         name="run_event_bus_redis_listener",
                     )
-                except Exception:
+                    self._listener_retries = 0
+                except Exception:  # pubsub listener initialization error; schedule error handler
                     logger.exception(
                         "run_event_bus _ensure_listener failed to start pubsub"
                     )
@@ -124,6 +128,14 @@ class RedisRunEventBus:
                         "run_event_bus_handle_listener_error",
                         self._handle_listener_error(),
                     )
+                    return
+
+            # Re-subscribe to every channel that already has a subscriber.
+            # Per-channel subscribe allows individual retry accounting and
+            # prevents a single failing channel from blocking the listener.
+            for rid in list(self._subscribers.keys()):
+                if self._subscribers.get(rid):
+                    self._subscribe_channel(rid)
 
         if self._ensure_task is not None and not self._ensure_task.done():
             with contextlib.suppress(Exception):
@@ -131,8 +143,13 @@ class RedisRunEventBus:
         self._ensure_task = self._get_loop().create_task(_start())
         self._ensure_task.add_done_callback(self._log_task_exception)
 
-    async def _handle_listener_error(self) -> None:
-        """Close the broken pub/sub, back off, and schedule a restart."""
+    async def _handle_listener_error(self, run_id: str | None = None) -> None:
+        """Close the broken pub/sub, back off, and schedule a restart.
+
+        If ``run_id`` is provided, tracks retry state for that channel and
+        removes it from ``_subscribers`` when retries are exhausted so it does
+        not block future resubscribes.
+        """
         async with self._listener_lock:
             pubsub = self._pubsub
             self._pubsub = None
@@ -142,7 +159,49 @@ class RedisRunEventBus:
             if pubsub is not None:
                 with contextlib.suppress(Exception):
                     await pubsub.close()
-        await asyncio.sleep(1.0)
+
+        # Per-channel retry accounting and state-leak cleanup.
+        if run_id is not None:
+            retries, _ = self._subscribe_retries.get(run_id, (0, 0.0))
+            retries += 1
+            if retries >= self._subscribe_max_retries:
+                logger.error(
+                    "run %s: redis subscribe retries exhausted after %d attempts",
+                    run_id,
+                    retries,
+                )
+                metrics.record_run_event_bus_subscribe_failure(
+                    reason="retries_exhausted"
+                )
+                self._subscribers.pop(run_id, None)
+                self._subscribe_retries.pop(run_id, None)
+            else:
+                delay = min(
+                    self._subscribe_backoff_base * (2 ** (retries - 1)),
+                    self._subscribe_backoff_cap,
+                )
+                self._subscribe_retries[run_id] = (retries, asyncio.get_event_loop().time() + delay)
+                logger.warning(
+                    "run %s: redis subscribe retry %d/%d in %.1fs",
+                    run_id,
+                    retries,
+                    self._subscribe_max_retries,
+                    delay,
+                )
+                metrics.record_run_event_bus_subscribe_failure(reason="retry_scheduled")
+        else:
+            self._listener_retries += 1
+            delay = min(
+                self._subscribe_backoff_base * (2 ** (self._listener_retries - 1)),
+                self._subscribe_backoff_cap,
+            )
+            logger.warning(
+                "run_event_bus redis listener connection error (attempt %d): reconnecting in %.1fs",
+                self._listener_retries,
+                delay,
+            )
+
+        await asyncio.sleep(delay)
         if any(subs for subs in self._subscribers.values()):
             self._ensure_listener()
 
@@ -154,7 +213,7 @@ class RedisRunEventBus:
                     ignore_subscribe_messages=True,
                     timeout=1.0,
                 )
-            except Exception:
+            except Exception:  # redis listener receive error; handle error and terminate listener loop
                 logger.exception("run_event_bus redis listener error")
                 await self._handle_listener_error()
                 return
@@ -192,14 +251,20 @@ class RedisRunEventBus:
                     return
                 try:
                     await asyncio.wait_for(self._pubsub.subscribe(channel), timeout=5.0)
-                except Exception:
+                except Exception:  # redis channel subscribe error; schedule retry handler
                     logger.warning(
                         "run %s: redis subscribe failed", run_id, exc_info=True
                     )
+                    metrics.record_run_event_bus_subscribe_failure(
+                        reason="subscribe_failed"
+                    )
                     self._fire(
                         "run_event_bus_handle_listener_error",
-                        self._handle_listener_error(),
+                        self._handle_listener_error(run_id),
                     )
+                else:
+                    # Clear retry state on successful subscribe.
+                    self._subscribe_retries.pop(run_id, None)
 
         self._ensure_listener()
         self._fire(f"run_event_bus_subscribe:{run_id}", _sub())
@@ -213,7 +278,7 @@ class RedisRunEventBus:
                         await asyncio.wait_for(
                             self._pubsub.unsubscribe(channel), timeout=5.0
                         )
-                    except Exception:
+                    except Exception:  # redis channel unsubscribe error; log warning and continue teardown
                         logger.warning(
                             "run %s: redis unsubscribe failed", run_id, exc_info=True
                         )
@@ -264,7 +329,7 @@ class RedisRunEventBus:
             client = self._client()
             payload = json.dumps(event)
             channel = _channel(run_id)
-            for attempt in range(2):
+            for attempt in range(self._publish_max_retries):
                 try:
                     await asyncio.wait_for(
                         client.publish(channel, payload), timeout=5.0
@@ -272,17 +337,28 @@ class RedisRunEventBus:
                     return
                 except TimeoutError:
                     logger.warning(
-                        "run %s: redis publish timed out (attempt %d/2)",
+                        "run %s: redis publish timed out (attempt %d/%d)",
                         run_id,
                         attempt + 1,
+                        self._publish_max_retries,
                     )
-                except Exception:
+                except Exception:  # redis publish error; retry or drop from cross-replica fanout
                     logger.warning(
-                        "run %s: redis publish failed (attempt %d/2)",
+                        "run %s: redis publish failed (attempt %d/%d)",
                         run_id,
                         attempt + 1,
+                        self._publish_max_retries,
                         exc_info=True,
                     )
+                if attempt + 1 < self._publish_max_retries:
+                    await asyncio.sleep(0.1 * (2**attempt))
+
+            logger.error(
+                "run %s: redis publish failed after %d attempts; event dropped from cross-replica fanout",
+                run_id,
+                self._publish_max_retries,
+            )
+            metrics.record_run_event_bus_dropped(reason="publish_failed")
 
         self._fire(f"run_event_bus_publish:{run_id}", _pub())
 
@@ -311,6 +387,7 @@ class RedisRunEventBus:
         self._buffers.pop(run_id, None)
         self._subscribers.pop(run_id, None)
         self._tasks.pop(run_id, None)
+        self._subscribe_retries.pop(run_id, None)
         self._unsubscribe_channel(run_id)
 
 

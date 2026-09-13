@@ -31,7 +31,7 @@ async def _impl(run_id: int) -> None:
     async with session_maker() as session:
         try:
             await execute_run(session, run_id)
-        except Exception:
+        except Exception:  # automation execution error; rollback and raise
             logger.exception("automation_run %d failed unexpectedly", run_id)
             await session.rollback()
             raise

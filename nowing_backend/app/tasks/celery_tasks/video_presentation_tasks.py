@@ -59,7 +59,7 @@ def generate_video_presentation_task(
                 user_prompt,
             )
         )
-    except Exception as e:
+    except Exception as e:  # task-level guard: log, attempt mark-failed, and return failure dict
         logger.error(f"Error generating video presentation: {e!s}")
         # Mark FAILED in a fresh loop — the previous loop is closed.
         # Swallow secondary failures; the row will simply stay in
@@ -68,7 +68,7 @@ def generate_video_presentation_task(
             run_async_celery_task(
                 lambda: _mark_video_presentation_failed(video_presentation_id)
             )
-        except Exception:
+        except Exception:  # best-effort mark-failed fallback; stale cleanup handles un-updated rows
             logger.exception(
                 "Failed to mark video presentation %s as failed",
                 video_presentation_id,
@@ -89,7 +89,7 @@ async def _mark_video_presentation_failed(video_presentation_id: int) -> None:
             if video_pres:
                 video_pres.status = VideoPresentationStatus.FAILED
                 await session.commit()
-        except Exception as e:
+        except Exception as e:  # mark-failed DB update failure → log error
             logger.error(f"Failed to mark video presentation as failed: {e}")
 
 
@@ -246,7 +246,7 @@ async def _generate_video_presentation(
                 "slide_count": len(serializable_slides),
             }
 
-        except Exception as e:
+        except Exception as e:  # video generation failure → mark presentation FAILED and re-raise
             logger.error(f"Error in _generate_video_presentation: {e!s}")
             video_pres.status = VideoPresentationStatus.FAILED
             await session.commit()

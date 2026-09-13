@@ -26,7 +26,18 @@ async function dismissOnboardingModal(page: Page) {
  * not implemented.
  */
 
+const getBackendUrl = () =>
+	process.env.NEXT_PUBLIC_FASTAPI_BACKEND_URL ??
+	process.env.NEXT_PUBLIC_BACKEND_URL ??
+	"http://localhost:8000";
+
 test.describe("Data retention workspace settings", () => {
+	test.beforeAll(async ({ request }) => {
+		const backendUrl = getBackendUrl();
+		const health = await request.get(`${backendUrl}/health`).catch(() => null);
+		test.skip(!health || !health.ok(), "Backend not running — skipping Data retention E2E tests");
+	});
+
 	test("owner can open data retention tab and configure retention policy", async ({
 		page,
 		request,

@@ -6,10 +6,11 @@ import type React from "react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { fastUnlockSessionAtom, makeFastUnlockKey } from "@/atoms/leads/leads-canvas.atoms";
-import { currentUserAtom } from "@/atoms/user/user-query.atoms";
+import { currentUserAtom, USER_QUERY_KEY } from "@/atoms/user/user-query.atoms";
 import { Button } from "@/components/ui/button";
 import type { Lead } from "@/contracts/types/leads.types";
 import { leadsApiService } from "@/lib/apis/leads-api.service";
+import { queryClient } from "@/lib/query-client/client";
 import { cn } from "@/lib/utils";
 import { SmartUnlockPopover } from "./SmartUnlockPopover";
 
@@ -134,6 +135,8 @@ export const FloatingBulkActionBar: React.FC<FloatingBulkActionBarProps> = ({
 			toast.success(
 				`Đã mở khóa ${success} SĐT -${(success * UNLOCK_COST_CREDITS).toFixed(1)} credits`
 			);
+			// Refetch user credits after successful unlock
+			queryClient.invalidateQueries({ queryKey: USER_QUERY_KEY });
 		}
 		if (failed > 0) {
 			toast.error(`${failed} SĐT không mở khóa được do lỗi server hoặc hết credits.`);

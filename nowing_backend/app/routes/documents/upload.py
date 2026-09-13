@@ -22,8 +22,10 @@ from app.db import (
     DocumentType,
     Folder,
     Permission,
+    WorkspaceMembership,
     get_async_session,
 )
+from app.dependencies.auth import RequirePermission, RequirePermissionFromBody
 from app.etl_pipeline.etl_document import ProcessingMode
 from app.file_storage.service import store_document_file
 from app.indexing_pipeline.document_hashing import compute_identifier_hash
@@ -44,7 +46,6 @@ from app.tasks.document_processors.base import (
 )
 from app.users import get_auth_context
 from app.utils.document_converters import generate_unique_identifier_hash
-from app.utils.rbac import check_permission
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,12 @@ async def create_documents(
     request: DocumentsCreate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromBody(
+            Permission.DOCUMENTS_CREATE.value,
+            "You don't have permission to create documents in this workspace",
+        )
+    ),
 ):
     user = auth.user
     """
@@ -62,15 +69,6 @@ async def create_documents(
     Requires DOCUMENTS_CREATE permission.
     """
     try:
-        # Check permission
-        await check_permission(
-            session,
-            auth,
-            request.workspace_id,
-            Permission.DOCUMENTS_CREATE.value,
-            "You don't have permission to create documents in this workspace",
-        )
-
         # Enforce workspace document limit (best-effort for EXTENSION; Celery
         # creates the actual Document rows asynchronously).
         await workspace_limit_service.check_document_limit(
@@ -124,6 +122,12 @@ async def create_documents_file_upload(
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
     dispatcher: TaskDispatcher = Depends(get_task_dispatcher),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.DOCUMENTS_CREATE.value,
+            "You don't have permission to create documents in this workspace",
+        )
+    ),
 ):
     user = auth.user
     """
@@ -142,14 +146,6 @@ async def create_documents_file_upload(
     validated_mode = ProcessingMode.coerce(processing_mode)
 
     try:
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.DOCUMENTS_CREATE.value,
-            "You don't have permission to create documents in this workspace",
-        )
-
         if not files:
             raise HTTPException(status_code=400, detail="No files provided")
 
@@ -335,20 +331,18 @@ async def folder_mtime_check(
     request: FolderMtimeCheckRequest,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromBody(
+            Permission.DOCUMENTS_CREATE.value,
+            "You don't have permission to create documents in this workspace",
+        )
+    ),
 ):
     """Pre-upload optimization: check which files need uploading based on mtime.
 
     Returns the subset of relative paths where the file is new or has a
     different mtime, so the client can skip reading/uploading unchanged files.
     """
-
-    await check_permission(
-        session,
-        auth,
-        request.workspace_id,
-        Permission.DOCUMENTS_CREATE.value,
-        "You don't have permission to create documents in this workspace",
-    )
 
     uid_hashes = {}
     for f in request.files:
@@ -358,6 +352,9 @@ async def folder_mtime_check(
         )
         uid_hashes[uid_hash] = f
 
+    # archived_at.is_(None) is required here: if a file still exists on disk but
+    # its DB document was soft-archived, we treat it as missing so that the client
+    # re-uploads and re-activates/re-indexes the document.
     existing_docs = (
         (
             await session.execute(
@@ -405,6 +402,12 @@ async def folder_upload(
     processing_mode: str = Form("basic"),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.DOCUMENTS_CREATE.value,
+            "You don't have permission to create documents in this workspace",
+        )
+    ),
 ):
     user = auth.user
     """Upload files from the desktop app for folder indexing.
@@ -416,14 +419,6 @@ async def folder_upload(
 
 
     validated_mode = ProcessingMode.coerce(processing_mode)
-
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.DOCUMENTS_CREATE.value,
-        "You don't have permission to create documents in this workspace",
-    )
 
     if not files:
         raise HTTPException(status_code=400, detail="No files provided")

@@ -671,3 +671,91 @@ async def test_admin_plan_definition_crud_and_grandfathering(
     await service.delete_plan_definition(db_session, "custom_tier")
     plan = await service.get_plan_definition(db_session, "custom_tier")
     assert plan is None
+
+@pytest.mark.asyncio
+async def test_reconcile_workspace_storage_cleans_orphaned_and_computes_total(
+    db_session: AsyncSession,
+    db_workspace: Workspace,
+) -> None:
+    from app.db import Document, DocumentType
+    from app.file_storage.persistence.enums import DocumentFileKind
+    from app.file_storage.persistence.models import DocumentFile
+
+    valid_doc = Document(
+        workspace_id=db_workspace.id,
+        title="Valid Doc",
+        document_type=DocumentType.FILE,
+        content_hash="dummy_hash_123",
+        content="Some content",
+    )
+    db_session.add(valid_doc)
+    await db_session.flush()
+
+    valid_file = DocumentFile(
+        document_id=valid_doc.id,
+        workspace_id=db_workspace.id,
+        kind=DocumentFileKind.ORIGINAL,
+        storage_backend="local",
+        storage_key="test/valid.pdf",
+        original_filename="valid.pdf",
+        size_bytes=5000,
+    )
+    db_session.add(valid_file)
+
+    corrupt_file = DocumentFile(
+        document_id=valid_doc.id,
+        workspace_id=db_workspace.id,
+        kind=DocumentFileKind.REDACTED,
+        storage_backend="local",
+        storage_key="test/corrupt.pdf",
+        original_filename="corrupt.pdf",
+        size_bytes=-100,
+    )
+    db_session.add(corrupt_file)
+    await db_session.flush()
+
+    res = await WorkspaceLimitService.reconcile_workspace_storage(
+        db_session, db_workspace.id, purge_orphans=True
+    )
+    assert res["reconciled_storage_bytes"] == 5000
+    assert res["orphaned_files_cleaned"] == 1
+
+
+@pytest.mark.asyncio
+async def test_reconcile_workspace_storage_dry_run_does_not_purge(
+    db_session: AsyncSession,
+    db_workspace: Workspace,
+) -> None:
+    from app.db import Document, DocumentType
+    from app.file_storage.persistence.enums import DocumentFileKind
+    from app.file_storage.persistence.models import DocumentFile
+
+    valid_doc = Document(
+        workspace_id=db_workspace.id,
+        title="Valid Doc",
+        document_type=DocumentType.FILE,
+        content_hash="dummy_hash_dry_run",
+        content="Some content",
+    )
+    db_session.add(valid_doc)
+    await db_session.flush()
+
+    corrupt_file = DocumentFile(
+        document_id=valid_doc.id,
+        workspace_id=db_workspace.id,
+        kind=DocumentFileKind.REDACTED,
+        storage_backend="local",
+        storage_key="test/corrupt_dry_run.pdf",
+        original_filename="corrupt.pdf",
+        size_bytes=-50,
+    )
+    db_session.add(corrupt_file)
+    await db_session.flush()
+
+    res = await WorkspaceLimitService.reconcile_workspace_storage(
+        db_session, db_workspace.id, purge_orphans=False
+    )
+    assert res["orphaned_files_cleaned"] == 0
+
+    check = await db_session.get(DocumentFile, corrupt_file.id)
+    assert check is not None

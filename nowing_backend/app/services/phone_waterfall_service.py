@@ -76,7 +76,7 @@ def get_redis() -> aioredis.Redis | None:
             _redis_client = aioredis.from_url(
                 config.REDIS_APP_URL, decode_responses=True
             )
-        except Exception as exc:
+        except Exception as exc:  # Redis init is best-effort; falls back to None
             logger.warning("Failed to initialize async Redis client: %s", exc)
             return None
     return _redis_client
@@ -247,7 +247,7 @@ class PhoneWaterfallService:
 
         try:
             account, creds = await rotator.get_credentials(wait=False, timeout=2.0)
-        except Exception as exc:
+        except Exception as exc:  # scraper credentials lookup failure; fall back to unauthenticated scraping
             logger.debug("Failed getting scraper platform credentials: %s", exc)
             account, creds = None, None
 
@@ -259,7 +259,7 @@ class PhoneWaterfallService:
             try:
                 # 10 second distributed lock
                 acquired_mutex = bool(await redis.set(mutex_key, "1", ex=10, nx=True))
-            except Exception as e:
+            except Exception as e:  # Redis mutex acquisition is best-effort; fall through on lock error
                 logger.warning("Failed to acquire Redis mutex %s: %s", mutex_key, e)
 
         # If redis mutex is held by another worker, do not collide on the same token session
@@ -297,7 +297,7 @@ class PhoneWaterfallService:
                 )
             if account:
                 await rotator.record_use(account, success=False, error_type="no_phone")
-        except Exception as exc:
+        except Exception as exc:  # Tier 1 Batdongsan scrape failure; fall through to Tier 2
             logger.warning("Tier 1 Batdongsan error for %s: %s", source_url, exc)
             if account:
                 await rotator.record_use(account, success=False, error_type="exception")
@@ -375,7 +375,7 @@ class PhoneWaterfallService:
                         "source": "chotot_rsa_api",
                     },
                 )
-        except Exception as exc:
+        except Exception as exc:  # Tier 2 Cho Tot scrape failure; fall through to Tier 3
             logger.warning(
                 "Tier 2 Chợ Tốt phone fetch error for %s: %s", listing_id, exc
             )
@@ -487,7 +487,7 @@ class PhoneWaterfallService:
                                 "legal_representative": corp_res.legal_representative,
                             },
                         )
-            except Exception as exc:
+            except Exception as exc:  # Tier 3 Masothue lookup failure; fall through to Tier 4
                 logger.warning(
                     "Tier 3 Masothue rep phone lookup error for %s: %s",
                     lead.company_name,
@@ -533,7 +533,7 @@ class PhoneWaterfallService:
         lock_key = f"{REDIS_PHONE_CACHE_PREFIX}lock:{lead_id}"
         try:
             acquired = await redis.set(lock_key, "1", nx=True, ex=30)
-        except Exception as exc:
+        except Exception as exc:  # Redis resolution lock acquisition error; treat as unacquired
             logger.warning("[PhoneWaterfall] Failed acquiring resolution lock: %s", exc)
             acquired = None
         if not acquired:
@@ -626,7 +626,7 @@ class PhoneWaterfallService:
                                     lead_id,
                                 )
                                 cached_phone = None
-                        except Exception as exc:
+                        except Exception as exc:  # cache decrypt failure; treat as cache miss
                             logger.warning(
                                 "Failed decrypting cached phone; treating as miss: %s",
                                 exc,
@@ -678,7 +678,7 @@ class PhoneWaterfallService:
                                     degradation_reason=dnc_result.reason
                                     or "blocked_by_dnc",
                                 )
-                        except Exception as exc:
+                        except Exception as exc:  # fail-closed: treat DNC check error on cached phone as blocked
                             logger.warning(
                                 "DNC re-validation of cached phone failed: %s. "
                                 "Failing closed.",
@@ -722,7 +722,7 @@ class PhoneWaterfallService:
                             if payload.get("contact_id")
                             else None,
                         )
-            except Exception as e:
+            except Exception as e:  # best-effort cache read; fall through to live waterfall resolution
                 logger.warning("Failed reading Redis phone cache: %s", e)
 
         # 3. Check Wallet Pre-balance (AD-42)
@@ -831,7 +831,7 @@ class PhoneWaterfallService:
                     degraded=True,
                     degradation_reason=dnc_result.reason or "blocked_by_dnc",
                 )
-        except Exception as exc:
+        except Exception as exc:  # fail-closed: treat DNC compliance check error as blocked
             logger.warning(
                 "DNC compliance check failed with exception: %s. Failing closed.", exc
             )
@@ -993,7 +993,7 @@ class PhoneWaterfallService:
                         cache_payload,
                         ex=PHONE_CACHE_TTL_SECONDS,
                     )
-            except Exception as e:
+            except Exception as e:  # best-effort cache write; resolution already successful
                 logger.warning("Failed setting Redis phone cache: %s", e)
 
         return PhoneResolutionResult(

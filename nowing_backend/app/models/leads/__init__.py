@@ -33,6 +33,7 @@ from .social import (
     OutcomeEvent,
     SocialMonitoredTarget,
     SocialPost,
+    XActionsProxyBinding,
     ZaloConnection,
     ZaloMessageLog,
 )
@@ -69,6 +70,7 @@ __all__ = [
     "SocialPost",
     "TelegramCheckpointMessage",
     "VerifiedContact",
+    "XActionsProxyBinding",
     "ZaloConnection",
     "ZaloMessageLog",
 ]

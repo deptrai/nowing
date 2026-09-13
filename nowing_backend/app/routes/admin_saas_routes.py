@@ -71,7 +71,7 @@ async def create_saas_plan(
         return PlanDefinitionRead.model_validate(plan)
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -99,7 +99,7 @@ async def update_saas_plan(
         return PlanDefinitionRead.model_validate(plan)
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -124,7 +124,7 @@ async def delete_saas_plan(
         return {"message": f"Plan '{plan_tier}' deleted successfully"}
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

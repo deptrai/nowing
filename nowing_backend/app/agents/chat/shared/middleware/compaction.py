@@ -113,7 +113,7 @@ def _sanitize_message_content(msg: AnyMessage) -> AnyMessage:
         new_msg = copy.copy(msg)
         try:
             new_msg.content = ""
-        except Exception:
+        except Exception:  # best-effort content sanitization; return unsanitized message
             logger.debug(
                 "Could not sanitize content=None on message of type %s",
                 type(msg).__name__,

@@ -25,7 +25,8 @@ from pydantic import TypeAdapter, ValidationError
 from app.automations.actions import get_action
 from app.automations.schemas.definition.plan_step import PlanStep
 
-_JINJA_PATTERN = re.compile(r"{{.*?}}", re.DOTALL)
+_JINJA_EXPR_PATTERN = re.compile(r"{{.*?}}", re.DOTALL)
+_JINJA_BLOCK_PATTERN = re.compile(r"{%.*?%}", re.DOTALL)
 
 
 class StepValidationError(ValueError):
@@ -95,15 +96,19 @@ def _validate_step(step: PlanStep) -> None:
 def _is_templated(value: Any) -> bool:
     """Detect a Jinja template anywhere in a string, list, or dict (B12).
 
-    A string containing ``{{`` or ``}}`` without a balanced pair is treated as
-    a malformed template and raises ``ValueError`` rather than passing static
-    validation silently.
+    Supports both expression tags ({{ ... }}) and control-flow blocks ({% ... %}).
+    A string containing unmatched {{, }}, {%, or %} is treated as a malformed
+    template and raises ValueError rather than passing static validation silently.
     """
 
     if isinstance(value, str):
-        if "{{" in value or "}}" in value:
-            if not _JINJA_PATTERN.search(value):
+        has_expr = "{{" in value or "}}" in value
+        has_block = "{%" in value or "%}" in value
+        if has_expr or has_block:
+            if has_expr and not _JINJA_EXPR_PATTERN.search(value):
                 raise ValueError(f"malformed Jinja template markers in {value!r}")
+            if has_block and not _JINJA_BLOCK_PATTERN.search(value):
+                raise ValueError(f"malformed Jinja control-flow markers in {value!r}")
             return True
         return False
     if isinstance(value, list):

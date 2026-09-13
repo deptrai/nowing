@@ -102,11 +102,17 @@ async def _fake_detect_signals(*_args: Any, **_kwargs: Any) -> dict[str, Any]:
 
 @pytest.fixture
 def client(monkeypatch, fake_session):
+    import app.dependencies.auth as auth_deps
     import app.routes.signals_routes as signals_routes
 
     monkeypatch.setattr(
         signals_routes,
         "require_workspace_member",
+        _fake_require_workspace_member,
+    )
+    monkeypatch.setattr(
+        auth_deps,
+        "check_workspace_access",
         _fake_require_workspace_member,
     )
 
@@ -171,7 +177,7 @@ def test_signals_routes_require_authentication(client, monkeypatch):
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     monkeypatch.setattr(
-        "app.routes.signals_routes.require_workspace_member",
+        "app.dependencies.auth.check_workspace_access",
         _reject_auth,
         raising=False,
     )

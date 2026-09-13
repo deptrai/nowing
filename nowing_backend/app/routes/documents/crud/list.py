@@ -19,6 +19,7 @@ from app.db import (
     WorkspaceMembership,
     get_async_session,
 )
+from app.dependencies.auth import RequirePermission
 from app.routes.documents.crud.router import router
 from app.schemas import (
     DocumentRead,
@@ -236,6 +237,12 @@ async def get_documents_status(
     document_ids: str,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.DOCUMENTS_READ.value,
+            "You don't have permission to read documents in this workspace",
+        )
+    ),
 ):
     """
     Batch status endpoint for documents in a workspace.
@@ -244,14 +251,6 @@ async def get_documents_status(
     polling async ETL progress in chat upload flows.
     """
     try:
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.DOCUMENTS_READ.value,
-            "You don't have permission to read documents in this workspace",
-        )
-
         # Parse comma-separated IDs (e.g. "1,2,3")
         parsed_ids = []
         for raw_id in document_ids.split(","):
@@ -369,16 +368,14 @@ async def get_watched_folders(
     workspace_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.DOCUMENTS_READ.value,
+            "You don't have permission to read documents in this workspace",
+        )
+    ),
 ):
     """Return root folders that are marked as watched (metadata->>'watched' = 'true')."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.DOCUMENTS_READ.value,
-        "You don't have permission to read documents in this workspace",
-    )
-
     folders = (
         (
             await session.execute(

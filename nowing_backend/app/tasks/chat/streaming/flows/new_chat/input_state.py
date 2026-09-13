@@ -209,7 +209,7 @@ async def _resolve_mentions_for_query(
                 continue
             try:
                 chip_objs.append(MentionedDocumentInfo.model_validate(raw))
-            except Exception:
+            except Exception:  # malformed mention chip payload; drop chip and continue
                 logger.debug("stream_new_chat: dropping malformed mention chip %r", raw)
 
     resolved = await resolve_mentions(

@@ -93,7 +93,7 @@ def create_multi_source_lead_gen_tool(
                 )
                 await session.commit()
                 return result
-        except Exception as exc:
+        except Exception as exc:  # lead generation service failure; rollback and return error string
             if session is not None:
                 with contextlib.suppress(Exception):
                     await session.rollback()

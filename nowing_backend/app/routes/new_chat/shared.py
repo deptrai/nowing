@@ -108,13 +108,15 @@ def _resolve_filesystem_selection(
 
 
 def _compute_turn_cancelling_retry_delay(attempt: int) -> int:
-    """Bounded exponential delay for TURN_CANCELLING retry hints."""
+    """Bounded exponential delay for TURN_CANCELLING retry hints with jitter."""
+    import random
     if attempt < 1:
         attempt = 1
     delay = TURN_CANCELLING_INITIAL_DELAY_MS * (
         TURN_CANCELLING_BACKOFF_FACTOR ** (attempt - 1)
     )
-    return min(delay, TURN_CANCELLING_MAX_DELAY_MS)
+    jitter = random.uniform(0.85, 1.15)
+    return int(min(delay * jitter, TURN_CANCELLING_MAX_DELAY_MS))
 
 
 def _build_turn_status_payload(thread_id: int) -> dict[str, object]:
@@ -212,7 +214,8 @@ def _find_pre_turn_checkpoint_id(
             return last_pre_turn_target
         try:
             last_pre_turn_target = cp_tuple.config["configurable"]["checkpoint_id"]
-        except (KeyError, TypeError):
+        except (KeyError, TypeError) as exc:
+            _logger.debug("Suppressed %r", exc)
             continue
     return last_pre_turn_target
 
@@ -401,7 +404,7 @@ async def _revert_turns_for_regenerate(
 
         try:
             await session.commit()
-        except Exception:
+        except Exception:  # rollback on batch commit failure
             _logger.exception(
                 "[regenerate-revert] Final commit failed; rolling back batch."
             )
@@ -441,7 +444,7 @@ def _try_delete_sandbox(thread_id: int) -> None:
     async def _bg() -> None:
         try:
             await delete_sandbox(thread_id)
-        except Exception:
+        except Exception:  # best-effort background sandbox delete; failure doesn't fail primary op
             _logger.warning(
                 "Background sandbox delete failed for thread %s",
                 thread_id,
@@ -449,7 +452,7 @@ def _try_delete_sandbox(thread_id: int) -> None:
             )
         try:
             delete_local_sandbox_files(thread_id)
-        except Exception:
+        except Exception:  # best-effort local sandbox file cleanup; failure doesn't fail primary op
             _logger.warning(
                 "Local sandbox file cleanup failed for thread %s",
                 thread_id,
@@ -461,8 +464,8 @@ def _try_delete_sandbox(thread_id: int) -> None:
         task = loop.create_task(_bg())
         _background_tasks.add(task)
         task.add_done_callback(_background_tasks.discard)
-    except RuntimeError:
-        pass
+    except RuntimeError as exc:
+        _logger.debug("Suppressed %r", exc)
 
 
 async def check_thread_access(

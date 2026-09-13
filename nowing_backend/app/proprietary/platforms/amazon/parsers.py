@@ -8,12 +8,15 @@ markup changes do not discard an otherwise usable product.
 from __future__ import annotations
 
 import json
+import logging
 import re
 from html import unescape
 from typing import Any
 from urllib.parse import parse_qs, urljoin, urlparse
 
 from scrapling.parser import Adaptor
+
+logger = logging.getLogger(__name__)
 
 _NUMBER_RE = re.compile(r"[\d,.]+")
 _ASIN_RE = re.compile(r"^[A-Z0-9]{10}$")
@@ -312,8 +315,8 @@ def parse_product(
                 for candidate in decoded:
                     if candidate not in high_res:
                         high_res.append(candidate)
-            except (json.JSONDecodeError, TypeError):
-                pass
+            except (json.JSONDecodeError, TypeError) as exc:
+                logger.debug("Suppressed %r", exc)
         zoom = _attr(image, "data-old-hires")
         if zoom and zoom not in high_res:
             high_res.append(zoom)

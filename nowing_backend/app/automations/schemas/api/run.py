@@ -19,6 +19,7 @@ class RunSummary(BaseModel):
     automation_id: int
     trigger_id: int | None = None
     status: RunStatus
+    idempotency_key: str | None = None
     started_at: datetime | None = None
     finished_at: datetime | None = None
     created_at: datetime

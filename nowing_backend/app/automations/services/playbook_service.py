@@ -391,7 +391,7 @@ class PlaybookService:
         )
         try:
             validate_inputs(definition, inputs)
-        except Exception as exc:
+        except Exception as exc:  # validation error → return degraded/422
             raise HTTPException(status_code=422, detail=f"inputs invalid: {exc}") from exc
 
         # INV-24.6 (Template Sandbox & AST Security): Hard limit max_leads_per_run <= 200

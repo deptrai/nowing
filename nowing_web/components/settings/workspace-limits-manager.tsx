@@ -670,3 +670,44 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 		</div>
 	);
 }
+
+export function isAffordanceDisabled(
+	limits:
+		| {
+				max_members?: number | null;
+				max_documents?: number | null;
+				max_storage_bytes?: number | null;
+				usage?: { members?: number; documents?: number; storage_bytes?: number };
+		  }
+		| null
+		| undefined,
+	affordance: "invite_member" | "upload_document"
+): { disabled: boolean; reason?: string } {
+	if (!limits) return { disabled: false };
+	if (affordance === "invite_member") {
+		if (
+			typeof limits.max_members === "number" &&
+			limits.max_members > 0 &&
+			(limits.usage?.members ?? 0) >= limits.max_members
+		) {
+			return { disabled: true, reason: "Member limit reached for this workspace plan" };
+		}
+	}
+	if (affordance === "upload_document") {
+		if (
+			typeof limits.max_documents === "number" &&
+			limits.max_documents > 0 &&
+			(limits.usage?.documents ?? 0) >= limits.max_documents
+		) {
+			return { disabled: true, reason: "Document limit reached for this workspace plan" };
+		}
+		if (
+			typeof limits.max_storage_bytes === "number" &&
+			limits.max_storage_bytes > 0 &&
+			(limits.usage?.storage_bytes ?? 0) >= limits.max_storage_bytes
+		) {
+			return { disabled: true, reason: "Storage limit reached for this workspace plan" };
+		}
+	}
+	return { disabled: false };
+}

@@ -254,7 +254,7 @@ def create_create_gmail_draft_tool(
                             .execute()
                         ),
                     )
-                except Exception as api_err:
+                except Exception as api_err:  # Gmail API call failure; inspect permission/auth error
                     from googleapiclient.errors import HttpError
 
                     if isinstance(api_err, HttpError) and api_err.resp.status == 403:
@@ -274,7 +274,7 @@ def create_create_gmail_draft_tool(
                                 _conn.config = {**_conn.config, "auth_expired": True}
                                 flag_modified(_conn, "config")
                                 await db_session.commit()
-                        except Exception:
+                        except Exception:  # best-effort auth_expired flag persistence; continue execution
                             logger.warning(
                                 "Failed to persist auth_expired for connector %s",
                                 actual_connector_id,
@@ -313,7 +313,7 @@ def create_create_gmail_draft_tool(
                     kb_message_suffix = " Your knowledge base has also been updated."
                 else:
                     kb_message_suffix = " This draft will be added to your knowledge base in the next scheduled sync."
-            except Exception as kb_err:
+            except Exception as kb_err:  # post-create KB sync failure; defer to scheduled sync
                 logger.warning(f"KB sync after create failed: {kb_err}")
                 kb_message_suffix = " This draft will be added to your knowledge base in the next scheduled sync."
 
@@ -323,7 +323,7 @@ def create_create_gmail_draft_tool(
                 "message": f"Successfully created Gmail draft with subject '{final_subject}'.{kb_message_suffix}",
             }
 
-        except Exception as e:
+        except Exception as e:  # tool execution failure → return error result
             from langgraph.errors import GraphInterrupt
 
             if isinstance(e, GraphInterrupt):

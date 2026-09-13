@@ -223,7 +223,7 @@ async def create_slide_audio(state: State, config: RunnableConfig) -> dict[str, 
                 duration_in_frames=max(duration_in_frames, DEFAULT_DURATION_IN_FRAMES),
             )
 
-        except Exception as e:
+        except Exception as e:  # slide audio generation failure; re-raise after temp cleanup
             logger.error(f"Error generating audio for slide {slide.slide_number}: {e!s}")
             raise
         finally:
@@ -360,7 +360,7 @@ async def _assign_themes_with_llm(
                 )
         return result
 
-    except Exception as e:
+    except Exception as e:  # LLM theme assignment failure; fall back to deterministic theme
         logger.warning(f"LLM theme assignment failed ({e!s}), using fallback")
         return {
             s.slide_number: pick_theme_and_mode_fallback(s.slide_number - 1, total)
@@ -478,8 +478,8 @@ def _extract_code_and_title(content: str) -> tuple[str, str | None]:
             parsed = json.loads(text)
             if isinstance(parsed, dict) and "code" in parsed:
                 return parsed["code"], parsed.get("title")
-        except (json.JSONDecodeError, ValueError):
-            pass
+        except (json.JSONDecodeError, ValueError) as exc:
+            logger.debug("Suppressed %r", exc)
 
         json_start = text.find("{")
         json_end = text.rfind("}") + 1
@@ -488,8 +488,8 @@ def _extract_code_and_title(content: str) -> tuple[str, str | None]:
                 parsed = json.loads(text[json_start:json_end])
                 if isinstance(parsed, dict) and "code" in parsed:
                     return parsed["code"], parsed.get("title")
-            except (json.JSONDecodeError, ValueError):
-                pass
+            except (json.JSONDecodeError, ValueError) as exc:
+                logger.debug("Suppressed %r", exc)
 
     return text, None
 

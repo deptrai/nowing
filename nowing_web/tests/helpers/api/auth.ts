@@ -11,7 +11,8 @@ import type { APIRequestContext } from "@playwright/test";
 
 export const BACKEND_URL = process.env.NEXT_PUBLIC_FASTAPI_BACKEND_URL || "http://localhost:8000";
 
-const FRONTEND_ORIGIN = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
+const FRONTEND_ORIGIN =
+	process.env.PLAYWRIGHT_AUTH_ORIGIN || process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
 
 const TEST_USER_EMAIL = process.env.PLAYWRIGHT_TEST_EMAIL || "e2e-test@nowing.net";
 const TEST_USER_PASSWORD = process.env.PLAYWRIGHT_TEST_PASSWORD || "E2eTestPassword123!";

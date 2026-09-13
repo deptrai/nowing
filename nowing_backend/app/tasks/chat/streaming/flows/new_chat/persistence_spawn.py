@@ -45,7 +45,7 @@ def spawn_set_ai_responding_bg(
         try:
             async with shielded_async_session() as s:
                 await set_ai_responding(s, chat_id, UUID(user_id))
-        except Exception:
+        except Exception:  # background ai_responding state update failure; log warning
             logger.warning(
                 "set_ai_responding failed (chat_id=%s)",
                 chat_id,
@@ -126,7 +126,7 @@ async def await_persist_task(
         return await asyncio.shield(task)
     except asyncio.CancelledError:
         raise
-    except Exception:
+    except Exception:  # shielded persistence task join failure; log and return None sentinel
         logger.exception(
             "%s failed (chat_id=%s, turn_id=%s)", log_label, chat_id, turn_id
         )

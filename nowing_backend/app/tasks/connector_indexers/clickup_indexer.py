@@ -356,7 +356,7 @@ async def index_clickup_tasks(
                         }
                     )
 
-                except Exception as e:
+                except Exception as e:  # per-task phase 1 preparation failure; mark failed, increment count, and continue
                     logger.error(
                         f"Error in Phase 1 for task {task.get('name', 'Unknown')}: {e!s}",
                         exc_info=True,
@@ -428,7 +428,7 @@ async def index_clickup_tasks(
                     )
                     await session.commit()
 
-            except Exception as e:
+            except Exception as e:  # per-task document indexing failure; mark failed and continue
                 logger.error(
                     f"Error processing task {item.get('task_name', 'Unknown')}: {e!s}",
                     exc_info=True,
@@ -440,7 +440,7 @@ async def index_clickup_tasks(
                     # Commit now so the failed status survives a later rollback or
                     # crash; otherwise the doc stays stuck in pending/processing.
                     await session.commit()
-                except Exception as status_error:
+                except Exception as status_error:  # failure updating document status; rollback and continue
                     logger.error(
                         f"Failed to update document status to failed: {status_error}"
                     )
@@ -462,7 +462,7 @@ async def index_clickup_tasks(
             logger.info(
                 "Successfully committed all ClickUp document changes to database"
             )
-        except Exception as e:
+        except Exception as e:  # DB final commit failure (e.g. duplicate key constraint); rollback or re-raise
             # Handle any remaining integrity errors gracefully (race conditions, etc.)
             if (
                 "duplicate key value violates unique constraint" in str(e).lower()
@@ -496,7 +496,7 @@ async def index_clickup_tasks(
         # Close client connection
         try:
             await clickup_client.close()
-        except Exception as e:
+        except Exception as e:  # best-effort client close; log warning
             logger.warning(f"Error closing ClickUp client: {e!s}")
 
         return total_processed, None
@@ -515,7 +515,7 @@ async def index_clickup_tasks(
         )
         logger.error(f"Database error: {db_error!s}", exc_info=True)
         return 0, f"Database error: {db_error!s}"
-    except Exception as e:
+    except Exception as e:  # connector task-level guard: rollback, log failure, and return error
         await session.rollback()
         # Clean up the connector in case of error
         if "clickup_client" in locals():

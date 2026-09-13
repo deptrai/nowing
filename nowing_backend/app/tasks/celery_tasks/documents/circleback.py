@@ -159,7 +159,7 @@ async def _process_circleback_meeting(
                         notification=notification,
                         error_message="Meeting already saved (duplicate)",
                     )
-        except Exception as e:
+        except Exception as e:  # circleback processing failure → log, update notification, and re-raise
             await task_logger.log_task_failure(
                 log_entry,
                 f"Failed to process Circleback meeting: {meeting_name}",
@@ -177,7 +177,7 @@ async def _process_circleback_meeting(
                         notification=notification,
                         error_message=str(e)[:100],
                     )
-                except Exception as notif_error:
+                except Exception as notif_error:  # best-effort notification update; doesn't fail error handler
                     logger.error(
                         f"Failed to update notification on failure: {notif_error!s}"
                     )

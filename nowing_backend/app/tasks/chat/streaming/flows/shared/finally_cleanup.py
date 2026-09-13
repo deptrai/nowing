@@ -34,11 +34,11 @@ async def close_session_and_clear_ai_responding(
     try:
         await session.rollback()
         await clear_ai_responding(session, chat_id)
-    except Exception:
+    except Exception:  # session rollback or clear_ai_responding failure; retry with fresh shielded session
         try:
             async with shielded_async_session() as fresh_session:
                 await clear_ai_responding(fresh_session, chat_id)
-        except Exception:
+        except Exception:  # fresh session clear_ai_responding failure; best-effort flag clear log warning
             logger.warning("Failed to clear AI responding state for thread %s", chat_id)
 
     with contextlib.suppress(Exception):

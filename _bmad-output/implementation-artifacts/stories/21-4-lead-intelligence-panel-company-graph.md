@@ -1,3 +1,8 @@
+---
+story_key: 21-4-outbound-prospecting-automation-panel
+status: done
+---
+
 # Story 21.4: Lead Intelligence Panel & Company Graph
 
 Status: done

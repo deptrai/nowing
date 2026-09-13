@@ -1,22 +1,24 @@
 # Sprint Priority — Dependency Order
 
 > Generated: 2026-08-22
-> Updated: 2026-08-30
+> Updated: 2026-09-10
 > Sorting: dependency impact (foundation first, standalone last)
 > Source: `_bmad-output/implementation-artifacts/sprint-status.yaml` + `planning-artifacts/epics.md` + architecture spine
 
 ## Next recommended work
 
-The next item to pick is **`td-2`** (Redis event bus subscribe failure state leak), then **`25-4`** (Realtime LLM Token Cost / Proxy Health / Celery Queue Telemetry). **After platform primitives are stable, Epic 29 (SaaS Operations & Admin Analytics) becomes the next business-critical stream.**
+All **198 stories across 29 epics are `done`** as of 2026-09-10. All **29 epic retrospectives are `done`**. The previous `backlog` stories (`12-7`, `12-8`, `14-3`, `14-4`, `15-3`, `15-4`, `16-3`, `16-4`, `17-3`, `17-4`) were identified as either `DROPPED` (per SCP 2026-08-08) or `MERGED` into completed stories `6.11` / `6.12`, and have been removed from active tracking.
 
-These two are platform primitives: every real-time event, async task, and LLM/scraper call depends on them. Fix them before taking on higher-level features. Epic 29 has been declared READY FOR CREATE-STORY and should enter Tier 2 once 29-1 (Custom Workspace Roles) is created.
+The retrospective phase is **complete**. Remaining work is **platform hardening, correctness, and technical-debt follow-ups** that were consolidated or deferred during the sprint.
+
+The next action is **Tier 0 — Platform primitives / correctness**, starting with **`30-2-redis-event-bus-subscribe-failure-state-leak`**, followed by **`30-5-title_gen-py-lacks-timeout-retry-on-litellm-acompletion`**. These are the highest-impact remaining items because they affect every chat turn and event-bus delivery.
 
 ---
 
 ## Tier 0 — Platform primitives / correctness (affects all epics)
 
-1. `td-2` — Redis event bus subscribe failure state leak (Epic 9.3, 6.8, 11, 12.9, 22.3)
-2. `td-5` — `title_gen.py` timeout/retry on `litellm.acompletion` (every chat turn)
+1. `30-2-redis-event-bus-subscribe-failure-state-leak` — Redis event bus subscribe failure state leak (Epic 9.3, 6.8, 11, 12.9, 22.3)
+2. `30-5-title_gen-py-lacks-timeout-retry-on-litellm-acompletion` — `title_gen.py` timeout/retry on `litellm.acompletion` (every chat turn)
 3. `25-4` — Realtime LLM Token Cost, Proxy Health & Celery Queue Telemetry
 4. `25-5` — Dynamic Scraper Rule Engine & ReDoS Sandbox
 5. `6-10` — Inbound Mail Gateway + Stateful Scheduled Tasks 2.0
@@ -30,45 +32,32 @@ These two are platform primitives: every real-time event, async task, and LLM/sc
 10. `6-12` — Narrative Report Engine for Indexed Data
 11. `8-11-followup` — Admin Global LLM Model Configuration (follow-up)
 12. `25-6` — Security Audit Trail Logs & In-App Broadcast Announcements
-13. `14-2` — News Entity Enrichment
+13. `14-2a` — News Entity Enrichment
 14. `24-8` — Browser Operator CDP capability (`browser_operator.execute`) + Human Live Takeover bridge
 15. `4-8c-followup` — Production Query Sampler (follow-up)
 16. `4-8d-followup` — Chat Quality LLM-as-Judge (follow-up)
 17. `4-8h-followup` — Mode-Aware Chat Policy (follow-up)
 
-## Tier 2 — Vertical data + dashboard + SaaS admin/analytics (affects one domain or UI)
 
-18. `29-1` — Custom Workspace Roles & Permissions Builder (Epic 29, FR-100) — **foundation for 29-2/29-4**
-19. `29-2` — Workspace Health & Adoption Analytics Dashboard (Epic 29, FR-101)
-20. `29-3` — Tenant Subscription Tier & Quota Management (Epic 29, FR-102)
-21. `29-4` — Admin Bulk Operations Console (Epic 29, FR-103) — depends on 29-1 and 29-3
-22. `29-5` — Memory Browser & Research Timeline for Analyst (Epic 29, FR-104)
-23. `29-6` — Data Governance & Retention Policy Console (Epic 29, FR-104)
-24. `16-2` — Official Business Registry (dangkykinhdoanh.gov.vn)
-25. `17-1` — Lazada Product Data
-26. `17-5` — TikTok Shop Product & Trending SKUs
-27. `8-14` — Cost & Auto-Extract Budget Dashboard
-28. `7-8` — Vietnamese i18n & Smart Geo-Locale Auto-Detection
+
+All Tier 2 implementation stories are now `done`, `merged` into 6.11/6.12, or `dropped` per SCP 2026-08-08. All 29 epic retrospectives are `done` (0 `optional` remaining).
+
+Epic retrospectives completed (29/29, 2026-09-10 or earlier):
+- `epic-1` through `epic-30` (minus epic-19 which was removed) — all `done`
+- `epic-26-retro-2026-09-06.md` — 17 stories, verdict accepted
+- All other retros dated 2026-09-10
 
 ## Tier 3 — New product surface / business-gated / post-MVP
 
-29. `27-1` — Full-Stack Web App Builder, 1-Click Hosting, Design Mark Tool
-30. `27-2` — Manus Slides + Speaker Diarization
-31. `28-1` — Workspace Memory & Research Data Export
-32. `28-2` — Encryption-at-Rest for Cloud Memory
-33. `28-3` — ToS / Legal Review & Retention Policy
-34. `28-4` — Self-Host OSS Onboarding in Under 10 Minutes
-35. `6-6a-playbook-reuse` — Playbook Reuse (business-gated)
-36. `6-7a-schema-form-ui` — Schema-Driven Form UI (business-gated)
-37. `6-9a-workspace-vertical` — Workspace Vertical & Playbook Library (business-gated)
-
-## Tech debt remaining (interleave with related epics)
-
-- `td-1` — Idempotency key for `POST /automations/{id}/run`
-- `td-3` — Storage sum does not reconcile deleted backend files
-- `td-4` — Concurrent notification preference merge race condition
-- `td-6` — `verify_chat_image_capability.py` lacks `num_retries`
-- `td-7` — No unit test coverage for `test_model` function
+28. `27-1` — Full-Stack Web App Builder, 1-Click Hosting, Design Mark Tool
+29. `27-2a` — Manus Slides + Speaker Diarization
+30. `28-1` — Workspace Memory & Research Data Export
+31. `28-2` — Encryption-at-Rest for Cloud Memory
+32. `28-3` — ToS / Legal Review & Retention Policy
+33. `28-4` — Self-Host OSS Onboarding in Under 10 Minutes
+34. `6-6a-playbook-reuse` — Playbook Reuse (business-gated)
+35. `6-7a-schema-form-ui` — Schema-Driven Form UI (business-gated)
+36. `6-9a-workspace-vertical` — Workspace Vertical & Playbook Library (business-gated)
 
 ---
 

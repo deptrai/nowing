@@ -43,7 +43,7 @@ def get_redis() -> aioredis.Redis | None:
             _redis_client = aioredis.from_url(
                 config.REDIS_APP_URL, decode_responses=True
             )
-        except Exception as exc:
+        except Exception as exc:  # Redis init is best-effort; client stays None
             logger.warning("Failed to initialize async Redis client: %s", exc)
             return None
     return _redis_client
@@ -189,7 +189,7 @@ class BillingService:
                 await redis.delete(f"enrich:phone:lead:{lead_id}")
                 if log_entry.phone_hash:
                     await redis.delete(f"enrich:phone:{log_entry.phone_hash}")
-            except Exception as e:
+            except Exception as e:  # best-effort cache cleanup; refund already committed
                 logger.warning("Failed deleting Redis cache during refund: %s", e)
 
         await self.session.commit()

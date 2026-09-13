@@ -363,7 +363,7 @@ async def fetch_listings(
                 await asyncio.sleep(_retry_delay(attempt))
                 continue
             raise
-        except Exception as exc:
+        except Exception as exc:  # request/proxy transport failure; retry or raise ChototBdsAccessBlockedError
             logger.warning("Chotot GET %s failed: %s", url, exc)
             if attempt >= _MAX_ROTATIONS:
                 raise ChototBdsAccessBlockedError(
@@ -389,7 +389,7 @@ async def fetch_phone(list_id: int) -> str | None:
         ciphertext = key.encrypt(str(list_id).encode(), padding.PKCS1v15())
         # The HTTP client URL-encodes query parameters, so pass the raw base64.
         e = base64.b64encode(ciphertext).decode()
-    except Exception as exc:
+    except Exception as exc:  # RSA encryption failure for list_id; phone unavailable
         logger.warning("Chotot phone encryption failed for %s: %s", list_id, exc)
         return None
 
@@ -429,7 +429,7 @@ async def fetch_phone(list_id: int) -> str | None:
                 continue
             logger.warning("Chotot phone fetch exhausted for %s: %s", list_id, exc)
             return None
-        except Exception as exc:
+        except Exception as exc:  # phone request/proxy error; retry or degrade to None
             logger.warning("Chotot phone fetch failed for %s: %s", list_id, exc)
             if attempt >= _MAX_ROTATIONS:
                 return None
@@ -472,7 +472,7 @@ async def load_regions() -> dict[str, Any]:
                     _REGIONS_CACHE = decoded
                     return _REGIONS_CACHE
                 _raise_for_status(page.status, REGIONS_URL)
-            except Exception as exc:
+            except Exception as exc:  # loadRegions GET failure; retry or raise ChototBdsAccessBlockedError
                 logger.warning("Chotot loadRegions failed: %s", exc)
                 if attempt >= _MAX_ROTATIONS:
                     raise ChototBdsAccessBlockedError(

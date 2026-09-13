@@ -117,12 +117,12 @@ def load_plugin_middlewares(
             continue
         try:
             factory = ep.load()
-        except Exception:
+        except Exception:  # plugin entry point load failure; skip plugin
             logger.exception("Failed to load plugin %s", ep.name)
             continue
         try:
             mw = factory(ctx)
-        except Exception:
+        except Exception:  # plugin factory invocation failure; skip plugin
             logger.exception("Plugin %s factory raised", ep.name)
             continue
         if not isinstance(mw, AgentMiddleware):

@@ -203,7 +203,7 @@ class CrmSyncService:
 
         try:
             result = await client.search_contacts(email=None, domain=lead.domain)
-        except Exception as e:
+        except Exception as e:  # lead intelligence operation fallback
             return self._error_log(
                 connection, lead_id, "lead", f"dedup search failed: {e!s}"
             )
@@ -237,7 +237,7 @@ class CrmSyncService:
         lead_data = self._map_lead(lead, mapping)
         try:
             await client.create_lead(lead_data)
-        except Exception as e:
+        except Exception as e:  # lead intelligence operation fallback
             return self._error_log(connection, lead_id, "lead", f"create failed: {e!s}")
 
         result = await self._success_log(connection, lead_id, "lead")

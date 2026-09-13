@@ -186,7 +186,7 @@ class GmailToolMetadataService:
                 None, lambda: service.users().getProfile(userId="me").execute()
             )
             return False
-        except Exception as e:
+        except Exception as e:  # catch connector health check failure, log and proceed to flag expired
             logger.warning(
                 "Gmail connector %s health check failed: %s",
                 connector_id,
@@ -208,7 +208,7 @@ class GmailToolMetadataService:
                 flag_modified(db_connector, "config")
                 await self._db_session.commit()
                 await self._db_session.refresh(db_connector)
-        except Exception:
+        except Exception:  # best-effort persistence of auth_expired flag to DB
             logger.warning(
                 "Failed to persist auth_expired for connector %s",
                 connector_id,
@@ -278,7 +278,7 @@ class GmailToolMetadataService:
                                 ),
                             )
                         acc_dict["email"] = profile.get("emailAddress", "")
-                except Exception:
+                except Exception:  # best-effort profile email fetch; continue with partial metadata
                     logger.warning(
                         "Failed to fetch email for Gmail connector %s",
                         acc.id,
@@ -383,7 +383,7 @@ class GmailToolMetadataService:
 
             payload = draft.get("message", {}).get("payload", {})
             return self._extract_body_from_payload(payload)
-        except Exception:
+        except Exception:  # best-effort draft body fetch; return empty fallback on error
             logger.warning(
                 "Failed to fetch draft body for message_id=%s",
                 message_id,
@@ -439,7 +439,7 @@ class GmailToolMetadataService:
                 if not page_token:
                     break
             return None
-        except Exception:
+        except Exception:  # best-effort draft lookup; return None on failure
             logger.warning(
                 "Failed to look up draft by message_id=%s", message_id, exc_info=True
             )

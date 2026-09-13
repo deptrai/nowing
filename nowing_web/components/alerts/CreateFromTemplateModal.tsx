@@ -2,11 +2,14 @@
 
 import {
 	AlertTriangle,
+	Bell,
 	Building2,
 	Clock,
 	Layers,
 	LineChart,
+	Mail,
 	Newspaper,
+	Send,
 	ShoppingBag,
 	Tag,
 } from "lucide-react";
@@ -53,7 +56,18 @@ export default function CreateFromTemplateModal({
 	const [ruleName, setRuleName] = useState("");
 	const [parameters, setParameters] = useState<Record<string, unknown>>({});
 	const [schedule, setSchedule] = useState<"daily" | "weekly" | "none">("daily");
+	const [channels, setChannels] = useState<("in_app" | "telegram" | "email")[]>(["in_app"]);
 	const [submitting, setSubmitting] = useState(false);
+
+	const toggleChannel = (channelId: "in_app" | "telegram" | "email") => {
+		setChannels((prev) => {
+			if (prev.includes(channelId)) {
+				if (prev.length === 1) return prev;
+				return prev.filter((c) => c !== channelId);
+			}
+			return [...prev, channelId];
+		});
+	};
 
 	const handleSelectTemplate = useCallback((template: AlertTemplateRead) => {
 		setSelectedTemplate(template);
@@ -103,7 +117,7 @@ export default function CreateFromTemplateModal({
 				name: ruleName.trim(),
 				parameters,
 				schedule,
-				notification_channels: ["in_app"],
+				notification_channels: channels,
 			});
 			toast.success(`Alert "${rule.name}" created successfully!`);
 			onCreated?.(rule);
@@ -320,6 +334,39 @@ export default function CreateFromTemplateModal({
 												</SelectItem>
 											</SelectContent>
 										</Select>
+									</div>
+
+									<div className="space-y-1.5 pt-1">
+										<Label className="text-xs flex items-center gap-1">
+											<Bell className="h-3 w-3 text-muted-foreground" />
+											Notification Channels
+										</Label>
+										<div className="flex items-center gap-2 pt-0.5">
+											{[
+												{ id: "in_app" as const, label: "In-App", icon: Bell },
+												{ id: "telegram" as const, label: "Telegram", icon: Send },
+												{ id: "email" as const, label: "Email", icon: Mail },
+											].map((ch) => {
+												const active = channels.includes(ch.id);
+												const Icon = ch.icon;
+												return (
+													<button
+														key={ch.id}
+														type="button"
+														onClick={() => toggleChannel(ch.id)}
+														className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium transition-all ${
+															active
+																? "border-primary bg-primary/10 text-primary"
+																: "border-border text-muted-foreground hover:border-border/80 hover:bg-muted/40"
+														}`}
+														data-testid={`channel-toggle-${ch.id}`}
+													>
+														<Icon className="h-3.5 w-3.5" />
+														<span>{ch.label}</span>
+													</button>
+												);
+											})}
+										</div>
 									</div>
 								</div>
 							</div>

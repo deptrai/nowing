@@ -1,4 +1,9 @@
 ---
+story_key: 10-5-anti-bot-captcha-screenshot-escalation
+status: done
+---
+
+---
 baseline_commit: 757eb0575cf2c0a65c074faf4e07796758b3f1e3
 ---
 

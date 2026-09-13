@@ -42,7 +42,7 @@ async def _byo_account_supervisor(account_id: int, token: str) -> None:
             await _run_telegram_account(account_id, token)
         except asyncio.CancelledError:
             raise
-        except Exception:
+        except Exception:  # BYO Telegram long-poll error; sleep and retry supervisor loop
             logger.exception(
                 "BYO Telegram long-poll failed account_id=%s; retrying in 30s",
                 account_id,
@@ -89,7 +89,7 @@ async def _whatsapp_baileys_supervisor() -> None:
                     )
         except asyncio.CancelledError:
             raise
-        except Exception:
+        except Exception:  # WhatsApp Baileys intake stream error; sleep and retry loop
             logger.exception("WhatsApp Baileys intake failed; retrying in 10s")
         await _sleep_or_shutdown(10)
 

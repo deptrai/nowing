@@ -16,9 +16,11 @@ from app.db import (
     NewChatThread,
     Permission,
     Workspace,
+    WorkspaceMembership,
     get_async_session,
     has_permission,
 )
+from app.dependencies.auth import RequirePermission
 from app.schemas import (
     ConnectionCreate,
     ConnectionRead,
@@ -758,14 +760,13 @@ async def get_model_roles(
     workspace_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LLM_CONFIGS_READ.value,
+            "You don't have permission to view model roles in this workspace",
+        )
+    ),
 ):
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LLM_CONFIGS_READ.value,
-        "You don't have permission to view model roles in this workspace",
-    )
     workspace = await _clear_invalid_roles(session, workspace_id)
     await session.commit()
     await session.refresh(workspace)
@@ -782,14 +783,13 @@ async def update_model_roles(
     data: ModelRolesUpdate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LLM_CONFIGS_UPDATE.value,
+            "You don't have permission to update model roles in this workspace",
+        )
+    ),
 ):
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LLM_CONFIGS_UPDATE.value,
-        "You don't have permission to update model roles in this workspace",
-    )
     workspace = await _get_workspace(session, workspace_id)
     updates = data.model_dump(exclude_unset=True)
     if "chat_model_id" in updates:

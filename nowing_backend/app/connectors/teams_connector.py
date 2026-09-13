@@ -109,7 +109,7 @@ class TeamsConnector:
                         "Decrypted Teams credentials for connector %s",
                         self._connector_id,
                     )
-                except Exception as e:
+                except Exception as e:  # credential decryption failure; raise ValueError
                     logger.error(
                         "Failed to decrypt Teams credentials for connector %s: %s",
                         self._connector_id,
@@ -121,7 +121,7 @@ class TeamsConnector:
 
             try:
                 self._credentials = TeamsAuthCredentialsBase.from_dict(config_data)
-            except Exception as e:
+            except Exception as e:  # credentials parsing failure; raise ValueError
                 raise ValueError(f"Invalid Teams credentials: {e!s}") from e
 
         # Check if token is expired and refreshable
@@ -168,7 +168,7 @@ class TeamsConnector:
                     "Successfully refreshed Teams token for connector %s",
                     self._connector_id,
                 )
-            except Exception as e:
+            except Exception as e:  # token refresh failure; raise ValueError
                 logger.error(
                     "Failed to refresh Teams token for connector %s: %s",
                     self._connector_id,

@@ -20,6 +20,7 @@ CONNECTOR_TYPE_TO_CONNECTOR_AGENT_MAPS: dict[str, str] = {
     "CONFLUENCE_CONNECTOR": "mcp_discovery",
     "MCP_CONNECTOR": "mcp_discovery",
     "EXA_MCP_CONNECTOR": "mcp_discovery",
+    "XACTIONS_MCP_CONNECTOR": "mcp_discovery",
     "GOOGLE_DRIVE_CONNECTOR": "google_drive",
     "COMPOSIO_GOOGLE_DRIVE_CONNECTOR": "google_drive",
     "DROPBOX_CONNECTOR": "dropbox",
@@ -62,6 +63,7 @@ SUBAGENT_TO_REQUIRED_CONNECTOR_MAP: dict[str, frozenset[str]] = {
             "GOOGLE_CALENDAR_CONNECTOR",
             "MCP_CONNECTOR",
             "EXA_MCP_CONNECTOR",
+            "XACTIONS_MCP_CONNECTOR",
         }
     ),
     "dropbox": frozenset({"DROPBOX_FILE"}),

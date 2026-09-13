@@ -14,6 +14,7 @@ from app.capabilities import (
     leads as _leads,  # noqa: F401
     masothue as _masothue,  # noqa: F401
     news as _news,  # noqa: F401
+    presentation as _presentation,  # noqa: F401
     procurement as _procurement,  # noqa: F401
     realestate as _realestate,  # noqa: F401
     recruitment as _recruitment,  # noqa: F401

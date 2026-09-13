@@ -33,7 +33,7 @@ def _extract_domain(url: str | None) -> str | None:
         if netloc.startswith("www."):
             netloc = netloc[4:]
         return netloc or None
-    except Exception:
+    except Exception:  # lead intelligence operation fallback
         return None
 
 
@@ -90,6 +90,7 @@ class VietnamWorksLeadAdapter(LeadSourceAdapter):
         """Call the VietnamWorks public job-search API."""
         min_price, max_price = extract_price_range(query)
 
+        location = (filters or {}).get("location") or (filters or {}).get("city")
         params: dict[str, Any] = {
             "keyword": query,
             "max_items": min(limit, 20),
@@ -99,6 +100,20 @@ class VietnamWorksLeadAdapter(LeadSourceAdapter):
             params["salary_min"] = min_price
         if max_price is not None:
             params["salary_max"] = max_price
+        if location:
+            from app.services.location_normalize import resolve_city_code
+            code = resolve_city_code(str(location))
+            _VN_LOCATION_IDS = {
+                "HN": 24,
+                "SG": 29,
+                "DN": 17,
+                "BD": 71,
+                "DNA": 19,
+                "HP": 2,
+                "CT": 13,
+            }
+            if code and code in _VN_LOCATION_IDS:
+                params["locationId"] = _VN_LOCATION_IDS[code]
 
         output = await scrape_vietnamworks(params)
 
@@ -109,7 +124,23 @@ class VietnamWorksLeadAdapter(LeadSourceAdapter):
             )
             self.last_execution_status = "degraded"
 
-        return [self._redact_job_text(item) for item in output.get("items", [])]
+        items = [self._redact_job_text(item) for item in output.get("items", [])]
+        if location:
+            loc_str = str(location).lower().strip()
+            from app.services.location_normalize import resolve_city_code
+            code = resolve_city_code(loc_str)
+            filtered = []
+            for it in items:
+                it_loc = (it.get("location") or "").lower()
+                it_code = resolve_city_code(it_loc)
+                if code and it_code:
+                    if code == it_code:
+                        filtered.append(it)
+                elif loc_str in it_loc or it_loc in loc_str:
+                    filtered.append(it)
+            if filtered:
+                items = filtered
+        return items
 
     async def search_leads(
         self,
@@ -135,7 +166,7 @@ class VietnamWorksLeadAdapter(LeadSourceAdapter):
                 )
                 for idx, item in enumerate(items)
             ]
-        except Exception as exc:
+        except Exception as exc:  # lead intelligence operation fallback
             logger.error("VietnamWorks search failed: %s", exc)
             self.last_execution_status = "degraded"
             return []

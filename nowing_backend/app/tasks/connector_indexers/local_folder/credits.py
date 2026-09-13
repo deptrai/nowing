@@ -11,7 +11,7 @@ def _estimate_pages_safe(etl_credit_service: EtlCreditService, file_path: str) -
     """Estimate page count with a file-size fallback."""
     try:
         return etl_credit_service.estimate_pages_before_processing(file_path)
-    except Exception:
+    except Exception:  # page count estimation failure; fallback to file-size heuristic
         file_size = os.path.getsize(file_path)
         return max(1, file_size // (80 * 1024))
 

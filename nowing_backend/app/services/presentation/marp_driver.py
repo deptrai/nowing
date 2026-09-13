@@ -124,7 +124,7 @@ async def render_marp_html(
             return False, "marp_render_failed"
 
         return True, None
-    except Exception as e:
+    except Exception as e:  # marp subprocess failure → kill lingering proc, return (False, reason)
         logger.warning("marp render exception: %s", e)
         if proc is not None and proc.returncode is None:
             proc.kill()

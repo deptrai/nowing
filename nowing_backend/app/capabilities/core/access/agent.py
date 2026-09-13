@@ -100,7 +100,7 @@ def _current_thread_id() -> str | None:
         cfg = get_config()
         tid = (cfg.get("configurable") or {}).get("thread_id")
         return str(tid) if tid is not None else None
-    except Exception:
+    except Exception:  # context extraction error; return None thread_id
         return None
 
 
@@ -122,7 +122,7 @@ def _current_research_mode() -> str | None:
 
         cfg = get_config()
         return (cfg.get("configurable") or {}).get("research_mode")
-    except Exception:
+    except Exception:  # context extraction error; return None research_mode
         return None
 
 
@@ -464,7 +464,7 @@ def _capability_tool(
                     output = await execute_with_context(
                         executor, payload=payload, ctx=ctx
                     )
-                except Exception as exc:
+                except Exception as exc:  # capability executor error → record run error and raise tool error
                     duration_ms = int((time.perf_counter() - started) * 1000)
                     async with async_session_maker() as rec_session:
                         await record_run(
@@ -495,7 +495,7 @@ def _capability_tool(
                             cost_micros=cost_micros,
                             call_kind=name,
                         )
-                except Exception:
+                except Exception:  # billing debit failure; best-effort usage telemetry
                     logger.exception("charge failed for agent run %s", name)
 
             # Story 20.2: if the research engine requested on-demand gap-fill
@@ -509,7 +509,7 @@ def _capability_tool(
                         query=payload.query,
                         correlation_id=sync_run_id,
                     )
-                except Exception:
+                except Exception:  # gap-fill trigger error; best-effort background indexing
                     logger.exception("gap-fill trigger failed for agent run")
 
             serialized = serialize_output(output)

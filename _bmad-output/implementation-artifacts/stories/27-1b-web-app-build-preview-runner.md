@@ -1,10 +1,10 @@
 ---
 baseline_commit: d06d121a0
-story_key: 27-1b
+story_key: 27-1b-web-app-build-preview-runner
 epic: epic-27
 story: "27.1b"
 title: "Web App Build & Preview Runner"
-status: "in-progress"
+status: done
 ---
 
 # Story 27.1b: Web App Build & Preview Runner

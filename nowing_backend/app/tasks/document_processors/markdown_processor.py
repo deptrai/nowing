@@ -267,7 +267,7 @@ async def add_received_markdown_file_document(
             {"error_type": "SQLAlchemyError"},
         )
         raise db_error
-    except Exception as e:
+    except Exception as e:  # markdown file processing failure; rollback, log task failure, and wrap in RuntimeError
         await session.rollback()
         await task_logger.log_task_failure(
             log_entry,

@@ -26,7 +26,7 @@ async def _run_health_probe_for_category(category: str) -> dict[str, Any]:
                 "degraded": sum(1 for r in results if r.status == "degraded"),
                 "unavailable": sum(1 for r in results if r.status == "unavailable"),
             }
-        except Exception as exc:
+        except Exception as exc:  # health probe category execution failure → return error dict
             logger.error("Error running health probe for category %s: %s", category, exc)
             return {"category": category, "error": str(exc)}
 
@@ -82,4 +82,10 @@ def health_probe_payment() -> dict[str, Any]:
 def health_probe_storage() -> dict[str, Any]:
     """Periodic probe for object storage (5m)."""
     return run_async_celery_task(lambda: _run_health_probe_for_category("storage"))
+
+
+@celery_app.task(name="health_probe_xactions")
+def health_probe_xactions() -> dict[str, Any]:
+    """Periodic probe for XActions MCP daemon (5m)."""
+    return run_async_celery_task(lambda: _run_health_probe_for_category("scraper"))
 

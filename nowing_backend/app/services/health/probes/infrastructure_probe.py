@@ -108,7 +108,7 @@ class InfrastructureHealthProbe(HealthProbe):
                                 suggested_action = "Inspect Caddy reverse proxy logs"
                             else:
                                 status = "healthy"
-                    except Exception as exc:
+                    except Exception as exc:  # per-check ping failure; mark unavailable, continue other checks
                         latency_ms = int((time.perf_counter() - start) * 1000)
                         status = "unavailable"
                         last_error = f"Caddy connect failure: {type(exc).__name__}"
@@ -131,7 +131,7 @@ class InfrastructureHealthProbe(HealthProbe):
                                 suggested_action = "Inspect Zero Cache service status"
                             else:
                                 status = "healthy"
-                    except Exception as exc:
+                    except Exception as exc:  # per-check ping failure; mark unavailable, continue other checks
                         latency_ms = int((time.perf_counter() - start) * 1000)
                         status = "unavailable"
                         last_error = f"Zero Cache connect failure: {type(exc).__name__}"
@@ -142,7 +142,7 @@ class InfrastructureHealthProbe(HealthProbe):
                 status = "not_configured"
                 suggested_action = f"Configure infrastructure probe for {self._component}"
 
-        except Exception as exc:
+        except Exception as exc:  # probe must not propagate: mark infrastructure check unavailable
             latency_ms = int((time.perf_counter() - start) * 1000)
             status = "unavailable"
             last_error = f"Infra probe error: {type(exc).__name__}"

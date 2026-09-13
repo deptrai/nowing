@@ -25,7 +25,7 @@ def _get_redis() -> Any | None:
             socket_connect_timeout=2,
             socket_timeout=2,
         )
-    except Exception:
+    except Exception:  # Redis connect failure → None so caller uses DB-only path
         return None
 
 
@@ -69,7 +69,7 @@ class OutlierDetector:
                 cached = await redis.get(cache_key)
                 if cached:
                     return float(cached)
-            except Exception as e:
+            except Exception as e:  # best-effort cache read; miss falls through to DB average
                 logger.debug(f"Redis get error: {e}")
 
         # Compute average from DB
@@ -95,7 +95,7 @@ class OutlierDetector:
         if redis:
             try:
                 await redis.setex(cache_key, 3600, str(avg_score))
-            except Exception as e:
+            except Exception as e:  # best-effort cache write; computed average still returned
                 logger.debug(f"Redis setex error: {e}")
 
         return avg_score

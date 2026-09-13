@@ -61,7 +61,7 @@ def _get_client():
             config.REDIS_APP_URL, socket_timeout=1, socket_connect_timeout=1
         )
         _client.ping()
-    except Exception as e:
+    except Exception as e:  # Redis connection failure; disable cross-process sharing
         logger.info("%s Redis unavailable; cross-process sharing off: %s", _LOG, e)
         _disabled = True
         _client = None
@@ -74,7 +74,7 @@ def _publish_sync(proxy: str, cookies: list[dict]) -> None:
         return
     try:
         c.set(_key(proxy), json.dumps({"proxy": proxy, "cookies": cookies}), ex=_TTL_S)
-    except Exception as e:
+    except Exception as e:  # Redis set failed; best-effort cache write
         logger.debug("%s publish failed: %s", _LOG, e)
 
 
@@ -91,7 +91,7 @@ def _adopt_sync(exclude: set[str]) -> tuple[str, list[dict]] | None:
             proxy = d.get("proxy")
             if proxy and proxy not in exclude:
                 return proxy, d.get("cookies") or []
-    except Exception as e:
+    except Exception as e:  # Redis scan failed; cannot adopt cross-process IP
         logger.debug("%s adopt failed: %s", _LOG, e)
     return None
 
@@ -102,7 +102,7 @@ def _evict_sync(proxy: str) -> None:
         return
     try:
         c.delete(_key(proxy))
-    except Exception as e:
+    except Exception as e:  # Redis delete failed; best-effort eviction
         logger.debug("%s evict failed: %s", _LOG, e)
 
 

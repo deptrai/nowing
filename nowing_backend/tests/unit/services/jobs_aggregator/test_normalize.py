@@ -810,3 +810,58 @@ def test_normalize_listing_missing_id_uses_hash():
     listing = normalize_listing("vietnamworks", raw)
     assert listing.id.startswith("vietnamworks:")
     assert listing._source_record_ids == {"vietnamworks": listing.id}
+
+
+def test_infer_salary_period_english_abbreviations():
+    """Verify inference for English salary abbreviations (hrly, daily, wkly, mo, yr, annum)."""
+    from app.services.jobs_aggregator.normalize import _infer_salary_period_from_text
+
+    assert _infer_salary_period_from_text("$25 hrly") == "hour"
+    assert _infer_salary_period_from_text("$20/hr") == "hour"
+    assert _infer_salary_period_from_text("500k daily") == "day"
+    assert _infer_salary_period_from_text("5M wkly") == "week"
+    assert _infer_salary_period_from_text("5M/wk") == "week"
+    assert _infer_salary_period_from_text("20M/mo") == "month"
+    assert _infer_salary_period_from_text("25M mo.") == "month"
+    assert _infer_salary_period_from_text("300M/yr") == "year"
+    assert _infer_salary_period_from_text("50k per annum") == "year"
+    assert _infer_salary_period_from_text("60k/annum") == "year"
+    assert _infer_salary_period_from_text("100k p.a.") == "year"
+
+
+def test_parse_salary_swaps_inverted_min_max():
+    """Verify that when raw salary_min > salary_max, min and max are swapped."""
+    raw = {
+        "title": "Senior Engineer",
+        "company": "VNG",
+        "salary_min": 50_000_000,
+        "salary_max": 30_000_000,
+        "salary_currency": "VND",
+        "salary_period_id": "month",
+    }
+    listing = normalize_listing("topcv", raw)
+    assert listing.salary.min == 30_000_000
+    assert listing.salary.max == 50_000_000
+
+
+def test_parse_post_date_full_iso_datetime():
+    """Verify that full-ISO datetimes with T, Z, or timezone offset are parsed."""
+    import datetime
+    from app.services.jobs_aggregator.normalize import _parse_post_date
+
+    assert _parse_post_date("2026-08-10T14:30:00Z") == datetime.date(2026, 8, 10)
+    assert _parse_post_date("2026-08-10T14:30:00+07:00") == datetime.date(2026, 8, 10)
+    assert _parse_post_date("2026-08-10T14:30:00.123456Z") == datetime.date(2026, 8, 10)
+
+
+def test_vietnamworks_salary_period_id_one_maps_to_month():
+    """VietnamWorks salary_period_id: 1 maps to month in aggregator schema."""
+    raw = {
+        "title": "Backend Dev",
+        "company": "VNG",
+        "salary_min": 30_000_000,
+        "salary_max": 40_000_000,
+        "salary_period_id": 1,
+    }
+    listing = normalize_listing("vietnamworks", raw)
+    assert listing.salary.period == "month"

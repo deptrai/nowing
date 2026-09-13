@@ -252,7 +252,7 @@ class ZnsClient:
                 else:
                     is_success = False
                     error_message = f"Zalo HTTP {api_res.status_code}"
-        except Exception as exc:
+        except Exception as exc:  # ZNS API HTTP/transport failure; handle mock or record failure
             # If in mock test mode, allow synthetic success
             if token == "mock_zalo_token":
                 logger.info(

@@ -204,8 +204,7 @@ class HybridLLMRouter:
             except HybridLLMError as exc:
                 last_exception = exc
                 continue
-            except Exception as exc:
-                # Unexpected model/provider errors: log and try next tier.
+            except Exception as exc:  # unexpected tier failure; log and fall through to next tier in chain
                 logger.warning("Hybrid tier %s failed: %s", attempt_tier, exc)
                 last_exception = exc
                 continue
@@ -224,9 +223,7 @@ class HybridLLMRouter:
             try:
                 result = redact_pii(text, context="default")
                 return bool(result.has_pii)
-            except Exception:
-                # If PII redaction is unavailable, treat unknown text as
-                # sensitive to avoid leaking data to free tiers.
+            except Exception:  # fail-safe: if PII detection errors, treat text as sensitive to avoid leak
                 return True
         return False
 
@@ -292,8 +289,7 @@ class HybridLLMRouter:
     async def _check_gemini_quota(self) -> bool:
         try:
             redis = await get_redis_client()
-        except Exception:
-            # Redis unreachable: fail-open so the route can still serve traffic.
+        except Exception:  # Redis unreachable: fail-open so route can still serve traffic
             return True
 
         now = datetime.now(UTC)
@@ -306,7 +302,7 @@ class HybridLLMRouter:
         try:
             rpm_val = await redis.get(rpm_key) or "0"
             rpd_val = await redis.get(rpd_key) or "0"
-        except Exception:
+        except Exception:  # Redis read failure: fail-open to allow traffic through
             return True
 
         try:
@@ -343,7 +339,7 @@ class HybridLLMRouter:
             await redis.expire(rpd_key, 86400)
             await redis.incr(rpm_key)
             await redis.expire(rpm_key, 60)
-        except Exception:
+        except Exception:  # best-effort RPM counter; quota enforcement already applied upstream
             logger.warning("Failed to consume Gemini quota", exc_info=True)
 
     async def _vllm_health(self) -> bool:
@@ -366,7 +362,7 @@ class HybridLLMRouter:
             try:
                 payload = models_resp.json()
                 data = payload.get("data", [])
-            except Exception:
+            except Exception:  # JSON parse error for vllm health check; treat as unhealthy
                 return False
 
             for entry in data:
@@ -374,7 +370,7 @@ class HybridLLMRouter:
                 if "qwen" in model_id or "qwen3.8" in model_id:
                     return True
             return False
-        except Exception:
+        except Exception:  # vllm connection or HTTP error; treat as unhealthy
             return False
         finally:
             await client.aclose()
@@ -554,7 +550,7 @@ class HybridLLMRouter:
             return response
         except HybridLLMJsonError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # wrap unexpected response parsing exception in HybridLLMError
             raise HybridLLMError(f"Failed to parse {tier} response: {exc}") from exc
 
     def _parse_json(self, content: Any) -> Any:
@@ -624,7 +620,7 @@ class HybridLLMRouter:
                     call_details=call_details,
                 )
                 await session.commit()
-        except Exception:
+        except Exception:  # best-effort token usage recording; never fail the free response
             logger.exception("Failed to record free hybrid token usage")
 
     def _add_cost_to_accumulator(
@@ -663,7 +659,7 @@ class HybridLLMRouter:
                 completion_tokens=completion_tokens,
                 call_type="completion",
             )
-        except Exception:
+        except Exception:  # litellm cost computation best-effort; zero cost keeps telemetry flowing
             prompt_cost = completion_cost = 0.0
 
         if prompt_cost or completion_cost:

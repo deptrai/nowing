@@ -6,7 +6,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.auth.context import AuthContext
-from app.db import Document, Folder, Permission, get_async_session
+from app.db import (
+    Document,
+    Folder,
+    Permission,
+    WorkspaceMembership,
+    get_async_session,
+)
+from app.dependencies.auth import (
+    RequirePermission,
+    RequirePermissionFromBody,
+    RequirePermissionFromEntity,
+)
 from app.schemas import (
     BulkDocumentMove,
     DocumentMove,
@@ -35,18 +46,16 @@ async def create_folder(
     request: FolderCreate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromBody(
+            Permission.DOCUMENTS_CREATE.value,
+            "You don't have permission to create folders in this workspace",
+        )
+    ),
 ):
     user = auth.user
     """Create a new folder. Requires DOCUMENTS_CREATE permission."""
     try:
-        await check_permission(
-            session,
-            auth,
-            request.workspace_id,
-            Permission.DOCUMENTS_CREATE.value,
-            "You don't have permission to create folders in this workspace",
-        )
-
         if request.parent_id is not None:
             parent = await session.get(Folder, request.parent_id)
             if not parent:
@@ -77,7 +86,7 @@ async def create_folder(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         if "uq_folder_space_parent_name" in str(e):
             raise HTTPException(
@@ -94,17 +103,15 @@ async def list_folders(
     workspace_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
-):
-    """List all folders in a workspace (flat). Requires DOCUMENTS_READ permission."""
-    try:
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
             Permission.DOCUMENTS_READ.value,
             "You don't have permission to read folders in this workspace",
         )
-
+    ),
+):
+    """List all folders in a workspace (flat). Requires DOCUMENTS_READ permission."""
+    try:
         result = await session.execute(
             select(Folder)
             .where(Folder.workspace_id == workspace_id)
@@ -114,7 +121,7 @@ async def list_folders(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500, detail=f"Failed to list folders: {e!s}"
         ) from e
@@ -125,6 +132,14 @@ async def get_folder(
     folder_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "Folder",
+            "folder_id",
+            Permission.DOCUMENTS_READ.value,
+            "You don't have permission to read folders in this workspace",
+        )
+    ),
 ):
     """Get a single folder. Requires DOCUMENTS_READ permission."""
     try:
@@ -132,19 +147,11 @@ async def get_folder(
         if not folder:
             raise HTTPException(status_code=404, detail="Folder not found")
 
-        await check_permission(
-            session,
-            auth,
-            folder.workspace_id,
-            Permission.DOCUMENTS_READ.value,
-            "You don't have permission to read folders in this workspace",
-        )
-
         return folder
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500, detail=f"Failed to get folder: {e!s}"
         ) from e
@@ -155,21 +162,17 @@ async def get_folder_breadcrumb(
     folder_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
-):
-    """Get ancestor chain for breadcrumb display. Requires DOCUMENTS_READ permission."""
-    try:
-        folder = await session.get(Folder, folder_id)
-        if not folder:
-            raise HTTPException(status_code=404, detail="Folder not found")
-
-        await check_permission(
-            session,
-            auth,
-            folder.workspace_id,
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "Folder",
+            "folder_id",
             Permission.DOCUMENTS_READ.value,
             "You don't have permission to read folders in this workspace",
         )
-
+    ),
+):
+    """Get ancestor chain for breadcrumb display. Requires DOCUMENTS_READ permission."""
+    try:
         result = await session.execute(
             text("""
                 WITH RECURSIVE ancestors AS (
@@ -188,7 +191,7 @@ async def get_folder_breadcrumb(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500, detail=f"Failed to get breadcrumb: {e!s}"
         ) from e
@@ -199,19 +202,19 @@ async def stop_watching_folder(
     folder_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "Folder",
+            "folder_id",
+            Permission.DOCUMENTS_UPDATE.value,
+            "You don't have permission to update folders in this workspace",
+        )
+    ),
 ):
     """Clear the watched flag from a folder's metadata."""
     folder = await session.get(Folder, folder_id)
     if not folder:
         raise HTTPException(status_code=404, detail="Folder not found")
-
-    await check_permission(
-        session,
-        auth,
-        folder.workspace_id,
-        Permission.DOCUMENTS_UPDATE.value,
-        "You don't have permission to update folders in this workspace",
-    )
 
     if folder.folder_metadata and isinstance(folder.folder_metadata, dict):
         updated = {**folder.folder_metadata, "watched": False}
@@ -227,20 +230,20 @@ async def update_folder(
     request: FolderUpdate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "Folder",
+            "folder_id",
+            Permission.DOCUMENTS_UPDATE.value,
+            "You don't have permission to update folders in this workspace",
+        )
+    ),
 ):
     """Rename a folder. Requires DOCUMENTS_UPDATE permission."""
     try:
         folder = await session.get(Folder, folder_id)
         if not folder:
             raise HTTPException(status_code=404, detail="Folder not found")
-
-        await check_permission(
-            session,
-            auth,
-            folder.workspace_id,
-            Permission.DOCUMENTS_UPDATE.value,
-            "You don't have permission to update folders in this workspace",
-        )
 
         folder.name = request.name
         await session.commit()
@@ -249,7 +252,7 @@ async def update_folder(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         if "uq_folder_space_parent_name" in str(e):
             raise HTTPException(
@@ -267,20 +270,20 @@ async def move_folder(
     request: FolderMove,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "Folder",
+            "folder_id",
+            Permission.DOCUMENTS_UPDATE.value,
+            "You don't have permission to move folders in this workspace",
+        )
+    ),
 ):
     """Move a folder to a new parent. Requires DOCUMENTS_UPDATE permission."""
     try:
         folder = await session.get(Folder, folder_id)
         if not folder:
             raise HTTPException(status_code=404, detail="Folder not found")
-
-        await check_permission(
-            session,
-            auth,
-            folder.workspace_id,
-            Permission.DOCUMENTS_UPDATE.value,
-            "You don't have permission to move folders in this workspace",
-        )
 
         if request.new_parent_id is not None:
             new_parent = await session.get(Folder, request.new_parent_id)
@@ -309,7 +312,7 @@ async def move_folder(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         if "uq_folder_space_parent_name" in str(e):
             raise HTTPException(
@@ -327,20 +330,20 @@ async def reorder_folder(
     request: FolderReorder,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "Folder",
+            "folder_id",
+            Permission.DOCUMENTS_UPDATE.value,
+            "You don't have permission to reorder folders in this workspace",
+        )
+    ),
 ):
     """Reorder a folder among its siblings via fractional indexing. Requires DOCUMENTS_UPDATE."""
     try:
         folder = await session.get(Folder, folder_id)
         if not folder:
             raise HTTPException(status_code=404, detail="Folder not found")
-
-        await check_permission(
-            session,
-            auth,
-            folder.workspace_id,
-            Permission.DOCUMENTS_UPDATE.value,
-            "You don't have permission to reorder folders in this workspace",
-        )
 
         position = await generate_folder_position(
             session,
@@ -356,7 +359,7 @@ async def reorder_folder(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to reorder folder: {e!s}"
@@ -368,21 +371,17 @@ async def delete_folder(
     folder_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
-):
-    """Mark documents for deletion and dispatch Celery to delete docs first, then folders."""
-    try:
-        folder = await session.get(Folder, folder_id)
-        if not folder:
-            raise HTTPException(status_code=404, detail="Folder not found")
-
-        await check_permission(
-            session,
-            auth,
-            folder.workspace_id,
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "Folder",
+            "folder_id",
             Permission.DOCUMENTS_DELETE.value,
             "You don't have permission to delete folders in this workspace",
         )
-
+    ),
+):
+    """Mark documents for deletion and dispatch Celery to delete docs first, then folders."""
+    try:
         subtree_ids = await get_folder_subtree_ids(session, folder_id)
 
         doc_result = await session.execute(
@@ -409,7 +408,7 @@ async def delete_folder(
             delete_folder_documents_task.delay(
                 document_ids, folder_subtree_ids=list(subtree_ids)
             )
-        except Exception as err:
+        except Exception as err:  # celery dispatch failure; revert doc moves on error
             if document_ids:
                 await session.execute(
                     Document.__table__.update()
@@ -429,7 +428,7 @@ async def delete_folder(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to delete folder: {e!s}"
@@ -442,6 +441,14 @@ async def move_document(
     request: DocumentMove,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "Document",
+            "document_id",
+            Permission.DOCUMENTS_UPDATE.value,
+            "You don't have permission to move documents in this workspace",
+        )
+    ),
 ):
     """Move a document to a folder (or root). Requires DOCUMENTS_UPDATE permission."""
     try:
@@ -454,14 +461,6 @@ async def move_document(
         document = result.scalars().first()
         if not document:
             raise HTTPException(status_code=404, detail="Document not found")
-
-        await check_permission(
-            session,
-            auth,
-            document.workspace_id,
-            Permission.DOCUMENTS_UPDATE.value,
-            "You don't have permission to move documents in this workspace",
-        )
 
         if request.folder_id is not None:
             target = await session.get(Folder, request.folder_id)
@@ -479,7 +478,7 @@ async def move_document(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to move document: {e!s}"
@@ -538,7 +537,7 @@ async def bulk_move_documents(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to move documents: {e!s}"

@@ -21,6 +21,7 @@ from app.db import (
     get_async_session,
     has_permission,
 )
+from app.dependencies.auth import RequireWorkspaceAccess
 from app.redis_client import get_redis_client
 from app.schemas.lead_pipeline import (
     BatchLeadAssignmentRequest,
@@ -41,7 +42,7 @@ from app.services.lead_assignment_service import (
 from app.services.workspace_credit_service import WorkspaceCreditService
 from app.tenant_context import set_request_tenant_context
 from app.users import get_auth_context
-from app.utils.rbac import check_workspace_access, is_workspace_owner
+from app.utils.rbac import is_workspace_owner
 
 router = APIRouter(
     prefix="/workspaces/{workspace_id}/leads",
@@ -161,9 +162,9 @@ async def list_pipeline_stages(
     workspace_id: int,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> list[LeadPipelineStage]:
     """Retrieve Kanban pipeline stages ordered by position."""
-    membership = await check_workspace_access(session, auth, workspace_id)
     await _set_lead_tenant_context(session, workspace_id, membership)
     stages = await _ensure_default_stages(session, workspace_id)
     return stages
@@ -179,9 +180,9 @@ async def create_pipeline_stage(
     payload: LeadPipelineStageCreate,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> LeadPipelineStage:
     """Create a custom Kanban stage for the workspace."""
-    membership = await check_workspace_access(session, auth, workspace_id)
     await _set_lead_tenant_context(session, workspace_id, membership)
 
     existing = await session.execute(
@@ -228,12 +229,12 @@ async def transition_lead_stage(
     payload: LeadStageTransitionRequest,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> LeadStageTransitionResponse | JSONResponse:
     """Move lead across Kanban stages with Optimistic Concurrency Control (OCC).
 
     Returns 409 Conflict if expected_version does not match current DB version.
     """
-    membership = await check_workspace_access(session, auth, workspace_id)
     await _set_lead_tenant_context(session, workspace_id, membership)
 
     # Fetch stage first (no update if invalid)
@@ -342,9 +343,9 @@ async def list_lead_activities(
     lead_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> list[LeadActivityLog]:
     """Chronological timeline of all interactions with the lead."""
-    membership = await check_workspace_access(session, auth, workspace_id)
     await _set_lead_tenant_context(session, workspace_id, membership)
 
     await _require_lead_visible(session, workspace_id, lead_id, membership)
@@ -372,9 +373,9 @@ async def create_lead_activity(
     payload: LeadActivityLogCreate,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> LeadActivityLog:
     """Record a manual internal note or interaction log."""
-    membership = await check_workspace_access(session, auth, workspace_id)
     await _set_lead_tenant_context(session, workspace_id, membership)
 
     await _require_lead_visible(session, workspace_id, lead_id, membership)
@@ -405,9 +406,9 @@ async def assign_or_reassign_lead(
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
     redis_client: Any = Depends(get_redis_client),
+    membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> dict[str, Any]:
     """Manually assign or reassign lead to a designated member."""
-    membership = await check_workspace_access(session, auth, workspace_id)
     await _set_lead_tenant_context(session, workspace_id, membership)
 
     await _require_lead_visible(session, workspace_id, lead_id, membership)
@@ -448,6 +449,7 @@ async def assign_leads_batch(
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
     redis_client: Any = Depends(get_redis_client),
+    membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> dict[str, Any]:
     """Batch round-robin distribution of newly imported leads."""
     if not payload.lead_ids:
@@ -461,7 +463,6 @@ async def assign_leads_batch(
             detail="lead_ids contains duplicates",
         )
 
-    membership = await check_workspace_access(session, auth, workspace_id)
     await _set_lead_tenant_context(session, workspace_id, membership)
 
     # Validate every requested lead exists in the workspace.
@@ -509,12 +510,12 @@ async def get_my_spend_status(
     workspace_id: int,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> dict[str, Any]:
     """Retrieve calling user's spend cap status in this workspace."""
     if not auth or not auth.user:
         raise HTTPException(status_code=401, detail="Authentication required")
 
-    membership = await check_workspace_access(session, auth, workspace_id)
     await _set_lead_tenant_context(session, workspace_id, membership)
 
     svc = WorkspaceCreditService(session=session)
@@ -547,9 +548,9 @@ async def update_member_spend_cap(
     payload: MemberSpendCapUpdateRequest,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> None:
     """Owner/Admin sets monthly spend cap for a workspace member."""
-    membership = await check_workspace_access(session, auth, workspace_id)
     await _set_lead_tenant_context(session, workspace_id, membership)
     if not await is_workspace_owner(session, auth.user.id, workspace_id):
         raise HTTPException(
@@ -581,9 +582,9 @@ async def update_member_lead_capacity(
     payload: MemberLeadCapacityUpdateRequest,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> None:
     """Configure lead acceptance toggle and max capacity for a member."""
-    membership = await check_workspace_access(session, auth, workspace_id)
     await _set_lead_tenant_context(session, workspace_id, membership)
     if not await is_workspace_owner(session, auth.user.id, workspace_id):
         raise HTTPException(

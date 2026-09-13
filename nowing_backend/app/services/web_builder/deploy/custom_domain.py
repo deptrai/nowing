@@ -200,16 +200,21 @@ async def verify_and_bind_custom_domain(
                             app_id,
                             raise_on_error=True,
                         )
+                        # Story 31.1: reuse the already-loaded workspace row
+                        # for tier-scoped container limits; a missing row
+                        # yields None -> free fallback inside deploy_container.
+                        plan_tier = ws.plan_tier if ws is not None else None
                         container_id, port = await service.deploy_container(
                             app_id=app_id,
                             workspace_id=workspace_id,
                             project_path=project_path,
                             slug=app_entity.slug,
                             custom_domain=clean_domain,
+                            plan_tier=plan_tier,
                         )
                         app_entity.container_id = container_id
                         app_entity.port = port
-                    except Exception as redeploy_err:
+                    except Exception as redeploy_err:  # redeploy failure → mark custom_domain_status failed below
                         logger.error(
                             "[WebAppDeployService] Container redeploy for custom domain failed: %s",
                             redeploy_err,
@@ -229,7 +234,7 @@ async def verify_and_bind_custom_domain(
                 # Rewrite the Caddy snippet with the new custom domain.
                 try:
                     await service._write_caddy_snippet_for_app(app_entity)
-                except Exception as caddy_err:
+                except Exception as caddy_err:  # snippet rewrite failure → mark custom_domain_status failed below
                     logger.error(
                         "[WebAppDeployService] Caddy snippet rewrite failed: %s", caddy_err
                     )

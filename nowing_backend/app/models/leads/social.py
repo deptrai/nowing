@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
+import sqlalchemy as sa
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     ARRAY,
@@ -71,12 +72,14 @@ class SocialMonitoredTarget(Base, TimestampMixin):
     last_polled_at = Column(TIMESTAMP(timezone=True), nullable=True)
     last_scraped_at = Column(TIMESTAMP(timezone=True), nullable=True)
     proxy_url = Column(Text, nullable=True)
+    account_id = Column(String(255), nullable=True)
 
     workspace = relationship("Workspace", back_populates="social_monitored_targets")
     posts = relationship(
         "SocialPost",
         back_populates="target",
         cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 class SocialPost(Base, TimestampMixin):
     """Ingested social post from Facebook or Twitter (Story 21.8 / AD-SOC-1 to AD-SOC-7)."""
@@ -84,7 +87,9 @@ class SocialPost(Base, TimestampMixin):
     __tablename__ = "social_posts"
 
     __table_args__ = (
-        UniqueConstraint("platform", "external_post_id", name="uq_social_post"),
+        UniqueConstraint(
+            "workspace_id", "platform", "external_post_id", name="uq_social_post"
+        ),
         Index("idx_social_posts_platform_ext", "platform", "external_post_id"),
         Index("idx_social_posts_published", "published_at"),
         Index("idx_social_posts_intent", "intent_tag"),
@@ -96,6 +101,18 @@ class SocialPost(Base, TimestampMixin):
         ),
         Index("idx_social_posts_gin_entities", "raw_entities", postgresql_using="gin"),
         Index(
+            "idx_social_posts_trgm_content",
+            "content",
+            postgresql_using="gin",
+            postgresql_ops={"content": "gin_trgm_ops"},
+        ),
+        Index(
+            "idx_social_posts_trgm_author",
+            "author_name",
+            postgresql_using="gin",
+            postgresql_ops={"author_name": "gin_trgm_ops"},
+        ),
+        Index(
             "idx_social_posts_embedding_hnsw",
             "embedding",
             postgresql_using="hnsw",
@@ -103,6 +120,7 @@ class SocialPost(Base, TimestampMixin):
             postgresql_where=text("embedding IS NOT NULL"),
         ),
         Index("idx_social_posts_workspace_id", "workspace_id"),
+        Index("idx_social_posts_target_id", "target_id"),
     )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -115,7 +133,6 @@ class SocialPost(Base, TimestampMixin):
         BigInteger,
         ForeignKey("social_monitored_targets.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     platform = Column(String(50), nullable=False)  # 'facebook', 'twitter'
     external_post_id = Column(String(255), nullable=False)
@@ -137,6 +154,12 @@ class SocialPost(Base, TimestampMixin):
     media_urls = Column(ARRAY(Text), nullable=True)
     embedding = Column(Vector(config.embedding_model_instance.dimension), nullable=True)
     published_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    # Extended fields for thin-event payload (Story 21.8a)
+    category = Column(String(50), nullable=True, server_default="general")
+    storage_ref = Column(Text, nullable=True)
+    scraper_id = Column(String(100), nullable=True)
+    benchmark_health = Column(String(10), nullable=True)
+    benchmark_alert = Column(Boolean, nullable=True, server_default=sa.false())
     updated_at = Column(
         TIMESTAMP(timezone=True),
         nullable=False,
@@ -148,6 +171,36 @@ class SocialPost(Base, TimestampMixin):
 
     workspace = relationship("Workspace", back_populates="social_posts")
     target = relationship("SocialMonitoredTarget", back_populates="posts")
+
+
+class XActionsProxyBinding(Base, TimestampMixin):
+    """Binds a Nowing workspace to an XActions account and proxy (Story 21.8e)."""
+
+    __tablename__ = "xactions_proxy_bindings"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id", "account_id", "platform",
+            name="uq_xactions_proxy_binding",
+        ),
+        Index("idx_xactions_proxy_bindings_workspace_id", "workspace_id"),
+        Index("idx_xactions_proxy_bindings_active", "is_active"),
+    )
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    account_id = Column(String(255), nullable=False)
+    proxy_url = Column(Text, nullable=True)
+    platform = Column(String(50), nullable=False)
+    is_active = Column(Boolean, nullable=False, default=True, server_default="true")
+    last_bound_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
+    workspace = relationship("Workspace", back_populates="xactions_proxy_bindings")
+
 class ZaloConnection(Base, TimestampMixin):
     """Zalo Official Account connection for a workspace (Story 21.6 / AD-41)."""
 

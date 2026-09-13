@@ -80,7 +80,7 @@ class ChainLensHealthProbe(HealthProbe):
             if resp.status_code >= 500:
                 return ("unavailable", f"ChainLens search returned HTTP {resp.status_code}", latency_ms)
             return ("degraded", f"ChainLens search returned HTTP {resp.status_code}", latency_ms)
-        except Exception as exc:
+        except Exception as exc:  # ChainLens search ping helper: report unavailable rather than raise
             latency_ms = int((time.perf_counter() - start) * 1000)
             return ("unavailable", f"ChainLens search failed: {type(exc).__name__}", latency_ms)
 
@@ -100,7 +100,7 @@ class ChainLensHealthProbe(HealthProbe):
             if resp.status_code >= 500:
                 return ("unavailable", f"Health check returned HTTP {resp.status_code}", latency_ms)
             return ("degraded", f"Health check returned HTTP {resp.status_code}", latency_ms)
-        except Exception as exc:
+        except Exception as exc:  # ping helper: report unavailable rather than raise
             latency_ms = int((time.perf_counter() - start) * 1000)
             return ("unavailable", f"{type(exc).__name__}: {exc}", latency_ms)
 
@@ -149,7 +149,7 @@ class ChainLensHealthProbe(HealthProbe):
                 status = "degraded"
                 last_error = "ChainLens latency above threshold"
 
-        except Exception as exc:
+        except Exception as exc:  # probe must not propagate: mark chainlens unavailable
             latency_ms = int((time.perf_counter() - start) * 1000)
             status = "unavailable"
             last_error = _sanitize_chainlens_error(f"{type(exc).__name__}: {exc}", api_key, base_url)

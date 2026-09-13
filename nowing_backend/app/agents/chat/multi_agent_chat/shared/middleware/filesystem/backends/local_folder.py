@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import fnmatch
+import logging
 import os
 import threading
 from collections import deque
@@ -24,6 +25,8 @@ from deepagents.backends.utils import (
     format_read_response,
     perform_string_replacement,
 )
+
+logger = logging.getLogger(__name__)
 
 _INVALID_PATH = "invalid_path"
 _FILE_NOT_FOUND = "file_not_found"
@@ -99,7 +102,8 @@ class LocalFolderBackend:
         for child in children:
             try:
                 stat_result = child.stat()
-            except OSError:
+            except OSError as exc:
+                logger.debug("Suppressed %r", exc)
                 continue
             entries.append(
                 {
@@ -410,8 +414,8 @@ class LocalFolderBackend:
                 return WriteResult(error=f"Error: '{dir_path}' is not a directory")
             try:
                 next(path.iterdir())
-            except StopIteration:
-                pass
+            except StopIteration as exc:
+                logger.debug("Suppressed %r", exc)
             else:
                 return WriteResult(
                     error=(
@@ -485,7 +489,8 @@ class LocalFolderBackend:
                 resolved = hit.resolve()
                 if not resolved.is_relative_to(self._root):
                     continue
-            except Exception:
+            except Exception as exc:  # path resolution or symlink cycle failure; skip candidate
+                logger.debug("Suppressed %r", exc)
                 continue
             matches.append(
                 FileInfo(
@@ -530,7 +535,8 @@ class LocalFolderBackend:
                 lines = file_path.read_text(
                     encoding="utf-8", errors="replace"
                 ).splitlines()
-            except Exception:
+            except Exception as exc:  # unreadable or corrupted file; skip file in grep
+                logger.debug("Suppressed %r", exc)
                 continue
             for idx, line in enumerate(lines, start=1):
                 if pattern in line:
@@ -566,7 +572,7 @@ class LocalFolderBackend:
                 responses.append(
                     FileUploadResponse(path=virtual_path, error=_IS_DIRECTORY)
                 )
-            except Exception:
+            except Exception:  # sandbox upload failure → surface typed error
                 responses.append(
                     FileUploadResponse(path=virtual_path, error=_INVALID_PATH)
                 )
@@ -601,7 +607,7 @@ class LocalFolderBackend:
                         path=virtual_path, content=target.read_bytes(), error=None
                     )
                 )
-            except Exception:
+            except Exception:  # sandbox download failure → surface typed error
                 responses.append(
                     FileDownloadResponse(
                         path=virtual_path, content=None, error=_INVALID_PATH

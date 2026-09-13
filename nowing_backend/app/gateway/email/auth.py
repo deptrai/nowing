@@ -9,8 +9,6 @@ import logging
 import time
 from typing import Any
 
-from app.config import config
-
 logger = logging.getLogger(__name__)
 
 
@@ -75,8 +73,8 @@ def verify_sendgrid_signature(
             logger.warning("SendGrid timestamp %s is outside replay window", timestamp)
             audit(action="email_webhook_verification_failed", provider="sendgrid")
             return False
-    except (TypeError, ValueError):
-        pass
+    except (TypeError, ValueError) as exc:
+        logger.debug("Suppressed %r", exc)
 
     if "BEGIN PUBLIC KEY" not in public_key:
         expected = hmac.new(
@@ -90,9 +88,9 @@ def verify_sendgrid_signature(
         return False
 
     try:
+        from cryptography.exceptions import InvalidSignature
         from cryptography.hazmat.primitives import hashes, serialization
         from cryptography.hazmat.primitives.asymmetric import padding
-        from cryptography.exceptions import InvalidSignature
 
         key = serialization.load_pem_public_key(public_key.encode())
         sig = base64.b64decode(signature)
@@ -101,7 +99,7 @@ def verify_sendgrid_signature(
         return True
     except InvalidSignature:
         logger.warning("SendGrid signature verification failed")
-    except Exception as exc:
+    except Exception as exc:  # SendGrid webhook crypto/key parse failure; reject signature
         logger.warning("SendGrid signature verification error: %s", exc)
 
     audit(action="email_webhook_verification_failed", provider="sendgrid")

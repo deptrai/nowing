@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import dataclasses
 import re
+from app.config import config
 
 
 @dataclasses.dataclass(frozen=True)
@@ -74,7 +75,11 @@ def _apply_redaction(text: str, redact_names: bool = True) -> RedactedText:
     )
 
 
-def redact_pii(text: str | None, context: str = "default") -> RedactedText:
+def redact_pii(
+    text: str | None,
+    context: str = "default",
+    min_confidence: float | None = None,
+) -> RedactedText:
     """Mask or drop phone numbers, emails, and person names.
 
     Args:
@@ -97,6 +102,14 @@ def redact_pii(text: str | None, context: str = "default") -> RedactedText:
         "default",
     }:
         raise ValueError(f"Unknown redaction context: {context}")
+
+    threshold = (
+        float(min_confidence)
+        if min_confidence is not None
+        else float(getattr(config, "PII_REDACTION_MIN_CONFIDENCE", 0.7) or 0.7)
+    )
+    if threshold > 1.0:
+        return RedactedText(text=text)
 
     return _apply_redaction(text, redact_names=(context != "news_ner"))
 

@@ -23,6 +23,7 @@ from app.db import (
     WorkspaceMembership,
     get_async_session,
 )
+from app.dependencies.auth import RequirePermission, RequirePermissionFromBody
 from app.routes.documents._shared import (
     SemanticSearchChunk,
     SemanticSearchHit,
@@ -223,6 +224,12 @@ async def search_documents_semantic(
     request: SemanticSearchRequest,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromBody(
+            Permission.DOCUMENTS_READ.value,
+            "You don't have permission to read documents in this workspace",
+        )
+    ),
 ):
     """Hybrid semantic + keyword search over a workspace's knowledge base.
 
@@ -232,14 +239,6 @@ async def search_documents_semantic(
     """
     # Local import: the retriever pulls in the embedding model + agent stack,
     # so keep it out of module import (mirrors the celery-task imports here).
-
-    await check_permission(
-        session,
-        auth,
-        request.workspace_id,
-        Permission.DOCUMENTS_READ.value,
-        "You don't have permission to read documents in this workspace",
-    )
 
     scope = SearchScope(
         document_types=tuple(request.document_types)
@@ -289,6 +288,12 @@ async def search_document_titles(
     page_size: int = 20,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.DOCUMENTS_READ.value,
+            "You don't have permission to read documents in this workspace",
+        )
+    ),
 ):
     """
     Lightweight document title search optimized for mention picker (@mentions).
@@ -311,15 +316,6 @@ async def search_document_titles(
     from sqlalchemy import desc, or_
 
     try:
-        # Check permission for the workspace
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.DOCUMENTS_READ.value,
-            "You don't have permission to read documents in this workspace",
-        )
-
         # Base query - only select lightweight fields
         query = select(
             Document.id,

@@ -140,7 +140,7 @@ def _find_or_create(thread_id: str) -> tuple[_TimeoutAwareSandbox, bool]:
             )
             try:
                 client.delete(sandbox)
-            except Exception:
+            except Exception:  # broken sandbox cleanup failure; proceed with recreation
                 logger.debug(
                     "Could not delete broken sandbox %s", sandbox.id, exc_info=True
                 )
@@ -214,14 +214,14 @@ def _schedule_sandbox_delete(sandbox: _TimeoutAwareSandbox) -> None:
             client = _get_client()
             client.delete(sandbox._sandbox)
             logger.info("Deleted evicted sandbox: %s", sandbox._sandbox.id)
-        except Exception:
+        except Exception:  # evicted sandbox background deletion failure; suppress debug log
             logger.debug("Could not delete evicted sandbox", exc_info=True)
 
     try:
         loop = asyncio.get_running_loop()
         loop.run_in_executor(None, _delete)
-    except RuntimeError:
-        pass
+    except RuntimeError as exc:
+        logger.debug("Suppressed %r", exc)
 
 
 async def sync_files_to_sandbox(
@@ -289,7 +289,7 @@ async def delete_sandbox(thread_id: int | str) -> None:
         try:
             client.delete(sandbox)
             logger.info("Sandbox deleted: %s", sandbox.id)
-        except Exception:
+        except Exception:  # thread sandbox cleanup failure; log warning and continue
             logger.warning(
                 "Failed to delete sandbox for thread %s",
                 thread_id,
@@ -356,7 +356,7 @@ async def persist_and_delete_sandbox(
 
         try:
             sandbox = client.find_one(labels=labels)
-        except Exception:
+        except Exception:  # sandbox lookup failure or missing; skip file persistence
             logger.info(
                 "No sandbox found for thread %s — nothing to persist", thread_id
             )
@@ -366,7 +366,7 @@ async def persist_and_delete_sandbox(
         if sandbox.state != SandboxState.STARTED:
             try:
                 sandbox.start(timeout=60)
-            except Exception:
+            except Exception:  # sandbox start failure before persistence; proceed to deletion
                 logger.warning(
                     "Could not start sandbox %s for file download — deleting anyway",
                     sandbox.id,
@@ -383,7 +383,7 @@ async def persist_and_delete_sandbox(
                 local.parent.mkdir(parents=True, exist_ok=True)
                 local.write_bytes(content)
                 logger.info("Persisted sandbox file %s → %s", path, local)
-            except Exception:
+            except Exception:  # sandbox file download/write failure; continue remaining files
                 logger.warning(
                     "Failed to persist sandbox file %s for thread %s",
                     path,
@@ -394,7 +394,7 @@ async def persist_and_delete_sandbox(
         try:
             client.delete(sandbox)
             logger.info("Sandbox deleted after file persistence: %s", sandbox.id)
-        except Exception:
+        except Exception:  # post-persistence sandbox deletion failure; log warning
             logger.warning(
                 "Failed to delete sandbox %s after persistence",
                 sandbox.id,

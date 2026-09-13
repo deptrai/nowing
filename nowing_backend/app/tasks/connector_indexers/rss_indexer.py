@@ -65,7 +65,7 @@ async def _persist_canonical_articles(
                 user_id=user_id,
                 article_link=article.link,
             )
-        except Exception:
+        except Exception:  # news entity extraction failure; degrade to empty entities list
             logger.warning(
                 "News entity extraction failed for article %s, degrading to empty",
                 article.link,
@@ -84,7 +84,7 @@ async def _persist_canonical_articles(
                 "PII redaction failed for news article %s, skipping", article.link
             )
             continue
-        except Exception:
+        except Exception:  # unexpected error during news redaction; log and skip article
             logger.exception(
                 "Unexpected error during news redaction for %s", article.link
             )
@@ -111,7 +111,7 @@ async def _persist_canonical_articles(
                     category="news_article",
                 )
             )
-        except Exception:
+        except Exception:  # RSS article chunk serialization failure; log and continue
             logger.exception("RSS article chunk serialization failed: %s", article.link)
 
     if not chunks:
@@ -156,7 +156,7 @@ async def _persist_canonical_articles(
                 )
                 session.add(job)
                 await session.commit()
-            except Exception:
+            except Exception:  # best-effort ingest job persistence; log warning
                 logger.warning(
                     "chainlens_ingest_job_persistence_failed workspace_id=%s",
                     workspace_id,
@@ -172,7 +172,7 @@ async def _persist_canonical_articles(
             status_val,
         )
         return 0, len(articles)
-    except Exception:
+    except Exception:  # RSS chainlens ingest failure; log exception and return 0
         logger.exception("RSS chainlens ingest failed")
         return 0, len(articles)
 
@@ -243,7 +243,7 @@ async def index_rss_feeds(
             try:
                 articles = await fetch_feed(url)
                 all_articles.extend(articles)
-            except Exception as exc:
+            except Exception as exc:  # single feed fetch error; log warning, record error, and continue
                 logger.warning("Failed to fetch feed %s: %s", url, exc, exc_info=True)
                 fetch_errors.append(f"{url}: {exc}")
 
@@ -330,7 +330,7 @@ async def index_rss_feeds(
 
         return indexed, len(unique_articles) - indexed, warning
 
-    except Exception as exc:
+    except Exception as exc:  # connector task-level guard: rollback, log failure, and return error
         logger.error("Failed to index RSS feeds: %s", exc, exc_info=True)
         await session.rollback()
         await task_logger.log_task_failure(

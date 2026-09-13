@@ -90,7 +90,7 @@ class ExecutiveDorker:
         except httpx.RequestError as exc:
             logger.error(f"HTTP error during SERP dorking for '{company_name}': {exc}")
             return []
-        except Exception as exc:
+        except Exception as exc:  # unexpected SERP dorking failure; return empty list
             logger.exception(f"Unexpected error during SERP dorking for '{company_name}': {exc}")
             return []
         finally:

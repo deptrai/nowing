@@ -96,6 +96,7 @@ from .gateway_webhook_routes import (
     config_router as gateway_config_router,
     router as gateway_router,
 )
+from .governance_routes import router as governance_router
 from .gateway_whatsapp_baileys_routes import router as gateway_whatsapp_baileys_router
 from .gateway_whatsapp_webhook_routes import router as gateway_whatsapp_webhook_router
 from .google_calendar_add_connector_route import (
@@ -120,6 +121,7 @@ from .luma_add_connector_route import router as luma_add_connector_router
 from .mcp_oauth_route import router as mcp_oauth_router
 from .meeting_minutes_routes import router as meeting_minutes_router
 from .memories_routes import router as memories_router
+from .memory_browser_routes import router as memory_browser_router
 from .memory_routes import router as memory_router
 from .model_connections_routes import router as model_connections_router
 from .model_list_routes import router as model_list_router
@@ -274,6 +276,9 @@ router.include_router(
     admin_bulk_ops_router
 )  # Platform admin bulk operations console (Story 29.4)
 router.include_router(
+    governance_router
+)  # Workspace governance console (Story 29.6)
+router.include_router(
     broadcasts_router
 )  # In-app active broadcast announcements (Story 25.6)
 router.include_router(model_connections_router)  # Connection-centric model catalog
@@ -297,6 +302,7 @@ router.include_router(
 )  # Research-thread continuity context (4.6)
 router.include_router(memory_router)  # User personal memory (memory.md style)
 router.include_router(team_memory_router)  # Workspace team memory
+router.include_router(memory_browser_router)  # Memory browser & review flag
 router.include_router(automations_router)  # Automations CRUD + run history
 router.include_router(file_storage_router)  # Original file metadata + download
 router.include_router(extract_entities_router)  # Test entity extraction (AC-1 / AD-107)

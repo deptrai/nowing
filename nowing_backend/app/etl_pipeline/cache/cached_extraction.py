@@ -63,7 +63,7 @@ async def _recall(key: ParseKey) -> EtlResult | None:
 
         async with get_celery_session_maker()() as session:
             return await EtlCacheService(session).recall(key)
-    except Exception:
+    except Exception:  # ETL cache recall failure; fallback to fresh extraction
         logger.warning("ETL cache recall failed; parsing fresh", exc_info=True)
         return None
 
@@ -74,7 +74,7 @@ async def _remember(key: ParseKey, result: EtlResult) -> None:
 
         async with get_celery_session_maker()() as session:
             await EtlCacheService(session).remember(key, result)
-    except Exception:
+    except Exception:  # ETL cache write failure; continue without caching
         logger.warning("ETL cache write failed; result not cached", exc_info=True)
 
 

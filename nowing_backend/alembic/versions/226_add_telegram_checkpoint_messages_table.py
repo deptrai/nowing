@@ -143,7 +143,10 @@ def upgrade() -> None:
         ["created_at"],
         unique=False,
     )
+    op.execute("ALTER TABLE telegram_checkpoint_messages ENABLE ROW LEVEL SECURITY;")
+    apply_publication(op.get_bind())
 
 
 def downgrade() -> None:
     op.drop_table("telegram_checkpoint_messages")
+    apply_publication(op.get_bind())

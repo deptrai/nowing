@@ -17,9 +17,12 @@ from __future__ import annotations
 
 import html
 import json
+import logging
 import re
 from datetime import UTC, datetime
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 _BASE = "https://www.instagram.com"
 _HASHTAG_RE = re.compile(r"#(\w+)")
@@ -420,7 +423,8 @@ def _relay_media(html: str, shortcode: str | None) -> dict[str, Any] | None:
             continue
         try:
             data = json.loads(raw)
-        except (ValueError, TypeError):
+        except (ValueError, TypeError) as exc:
+            logger.debug("Suppressed %r", exc)
             continue
         media = _find_media(data, shortcode)
         if media is not None:

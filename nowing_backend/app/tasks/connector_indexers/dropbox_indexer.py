@@ -747,7 +747,7 @@ async def index_dropbox_files(
                 )
                 if latest_cursor and not cursor_err:
                     folder_cursors[folder_path] = latest_cursor
-            except Exception as e:
+            except Exception as e:  # best-effort cursor retrieval; log warning and continue folder processing
                 logger.warning(f"Failed to get latest cursor for {folder_path}: {e}")
 
         # Persist folder cursors to connector config
@@ -788,7 +788,7 @@ async def index_dropbox_files(
         )
         logger.error(f"Database error: {db_error!s}", exc_info=True)
         return 0, 0, f"Database error: {db_error!s}", 0
-    except Exception as e:
+    except Exception as e:  # dropbox indexing failure; rollback, log failure, and return error tuple
         await session.rollback()
         await task_logger.log_task_failure(
             log_entry,

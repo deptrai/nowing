@@ -13,8 +13,10 @@ from app.db import (
     NewChatThread,
     Permission,
     Workspace,
+    WorkspaceMembership,
     get_async_session,
 )
+from app.dependencies.auth import RequirePermissionFromBody
 from app.routes.new_chat.shared import (
     _raise_if_thread_busy_for_start,
     _resolve_filesystem_selection,
@@ -28,7 +30,6 @@ from app.tasks.chat.streaming.flows import (
 )
 from app.tenant_context import set_request_tenant_context
 from app.users import get_auth_context
-from app.utils.rbac import check_permission
 
 router = APIRouter()
 
@@ -39,6 +40,12 @@ async def resume_chat(
     http_request: Request,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromBody(
+            Permission.CHATS_CREATE.value,
+            "You don't have permission to chat in this workspace",
+        )
+    ),
 ):
     user = auth.user
     try:
@@ -50,14 +57,6 @@ async def resume_chat(
 
         if not workspace:
             raise HTTPException(status_code=404, detail="Workspace not found")
-
-        await check_permission(
-            session,
-            auth,
-            workspace.id,
-            Permission.CHATS_CREATE.value,
-            "You don't have permission to chat in this workspace",
-        )
 
         # Set workspace + user GUC before the RLS-protected thread lookup.
         # client_id is not trusted before the thread is verified.
@@ -170,7 +169,7 @@ async def resume_chat(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         import traceback
 
         traceback.print_exc()

@@ -134,8 +134,8 @@ def _parse_area(text: str | None) -> float | None:
             return float(dim_match.group(1).replace(",", ".")) * float(
                 dim_match.group(2).replace(",", ".")
             )
-        except ValueError:
-            pass
+        except ValueError as exc:
+            logger.debug("Suppressed %r", exc)
 
     m = re.search(
         r"(\d+(?:[.,]\d+)?)\s*(m²|m2|mét\s*vuông|m\b|ha|hecta|héc\s*ta|hectare)",
@@ -192,7 +192,8 @@ def _parse_post_date(text: str | None) -> tuple[str | None, datetime | None]:
         try:
             parsed = datetime.strptime(raw, fmt).replace(tzinfo=UTC)
             return raw, parsed
-        except ValueError:
+        except ValueError as exc:
+            logger.debug("Suppressed %r", exc)
             continue
 
     return raw, None

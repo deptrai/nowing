@@ -63,7 +63,7 @@ def _decode_session_token(token: str) -> dict:
             algorithms=["HS256"],
             options={"verify_aud": False},
         )
-    except Exception:
+    except Exception:  # token decode failure → return empty payload fallback
         return {}
 
 
@@ -369,7 +369,7 @@ async def create_desktop_session(
             google_requests.Request(),
             config.GOOGLE_DESKTOP_CLIENT_ID,
         )
-    except Exception as exc:
+    except Exception as exc:  # token verification failure → surface as 401 HTTP error
         logger.warning("Desktop Google id_token verification failed: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

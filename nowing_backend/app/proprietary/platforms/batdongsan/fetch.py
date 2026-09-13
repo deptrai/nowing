@@ -85,7 +85,7 @@ def _access_token_expires_at(credentials: dict[str, Any] | None) -> float | None
         )
         exp = payload.get("exp")
         return float(exp) if exp is not None else None
-    except Exception:
+    except Exception:  # JWT decode error; expiration time unavailable
         return None
 
 
@@ -103,8 +103,8 @@ def _cookie_expires_at(credentials: dict[str, Any] | None, name: str) -> float |
                 expires = cookie.get("expires")
                 if expires is not None and expires >= 0:
                     return float(expires)
-    except Exception:
-        pass
+    except Exception as exc:  # cookie expiration inspection failure; fallback to None
+        logger.debug("Suppressed %r", exc)
     return None
 
 
@@ -141,7 +141,7 @@ async def _prewarm_batdongsan_session(page: Any) -> None:
             timeout=60_000,
         )
         await page.wait_for_timeout(2_000)
-    except Exception as exc:
+    except Exception as exc:  # session pre-warm navigation failure; best-effort
         logger.warning("Batdongsan session pre-warm failed: %s", exc)
 
 
@@ -177,7 +177,7 @@ def _extract_phone_from_xhr(phone_text: str, detail_url: str) -> str | None:
     if text.startswith(("{", "[")):
         try:
             payload = json.loads(text)
-        except Exception:
+        except Exception:  # phone payload not JSON or malformed; return raw text
             return text
         if isinstance(payload, dict):
             message = payload.get("message") or ""
@@ -218,27 +218,27 @@ def decode_response(raw: bytes) -> dict[str, Any]:
         try:
             decompressor = zlib.decompressobj(16 + zlib.MAX_WBITS)
             raw = decompressor.decompress(raw, _MAX_DECODED_BYTES + 1)
-        except Exception as exc:
+        except Exception as exc:  # gzip decompression error on response layer; raise BatdongsanDecodeError
             raise BatdongsanDecodeError("failed to decompress gzip layer") from exc
         if len(raw) > _MAX_DECODED_BYTES or decompressor.unconsumed_tail:
             raise BatdongsanDecodeError("gzip layer exceeds size cap")
 
     try:
         decoded = base64.b64decode(raw)
-    except Exception as exc:
+    except Exception as exc:  # base64 decode failure on response bytes; raise BatdongsanDecodeError
         raise BatdongsanDecodeError("failed to base64-decode response") from exc
 
     swapped = _nibble_swap(decoded)
     try:
         text = swapped.decode("latin-1")
-    except Exception as exc:
+    except Exception as exc:  # latin-1 decode failure on unswapped bytes; raise BatdongsanDecodeError
         raise BatdongsanDecodeError(
             "failed to latin-1 decode nibble-swapped bytes"
         ) from exc
 
     try:
         return json.loads(text)
-    except Exception as exc:
+    except Exception as exc:  # JSON parse failure on decoded response; raise BatdongsanDecodeError
         raise BatdongsanDecodeError(
             "failed to parse JSON from decoded response"
         ) from exc
@@ -320,7 +320,7 @@ async def fetch_listings(payload: dict[str, Any]) -> dict[str, Any]:
             raise
         except BatdongsanAccessBlockedError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # sync API POST failure; retry or raise BatdongsanAccessBlockedError
             logger.warning("Batdongsan POST %s failed: %s", P_SYNC_URL, exc)
             if attempt >= max_attempts:
                 raise BatdongsanAccessBlockedError(
@@ -425,14 +425,14 @@ async def fetch_web_listings_browser(
         items = parse_web_listings(html)
         more = "ok" if len(items) >= 20 else None
         return {"data": items, "m": more}
-    except Exception as exc:
+    except Exception as exc:  # browser listing fetch failure; raise BatdongsanAccessBlockedError
         logger.warning("Batdongsan browser web fetch %s failed: %s", url, exc)
         raise BatdongsanAccessBlockedError(f"{url} browser fetch failed") from exc
     finally:
         if hasattr(session, "close"):
             try:
                 await session.close()
-            except Exception as close_exc:
+            except Exception as close_exc:  # best-effort browser session close; suppress error
                 logger.warning("Batdongsan session close failed: %s", close_exc)
 
 
@@ -490,7 +490,7 @@ async def fetch_detail_phone(
                     });
                 }"""
             )
-        except Exception as click_exc:
+        except Exception as click_exc:  # phone button reveal click failure; continue with static content
             logger.debug("Batdongsan phone reveal failed: %s", click_exc)
 
     try:
@@ -529,14 +529,14 @@ async def fetch_detail_phone(
         # Account-level failures should be handled by the caller so it can
         # rotate to another cookie and apply rate-limit cooldowns.
         raise
-    except Exception as exc:
+    except Exception as exc:  # detail phone fetch failure; return (None, None) gracefully
         logger.warning("Batdongsan detail phone fetch %s failed: %s", detail_url, exc)
         return None, None
     finally:
         if hasattr(session, "close"):
             try:
                 await session.close()
-            except Exception as close_exc:
+            except Exception as close_exc:  # best-effort browser session close; suppress error
                 logger.warning("Batdongsan session close failed: %s", close_exc)
 
 
@@ -607,7 +607,7 @@ async def resolve_detail_urls(
             if not session and AsyncStealthySession is not None:
                 try:
                     session = await _open_stealth_session(credentials)
-                except Exception as exc:
+                except Exception as exc:  # stealth session creation failure; abort resolve loop
                     logger.warning("Batdongsan could not open stealth session: %s", exc)
                     break
 
@@ -623,7 +623,7 @@ async def resolve_detail_urls(
                     )
                     html = await _stealth_response_text(response)
                     items = parse_web_listings(html)
-                except Exception as exc:
+                except Exception as exc:  # browser resolve page fetch failure; abort resolve loop
                     logger.warning(
                         "Batdongsan browser resolve detail URLs page %s failed: %s",
                         page,
@@ -652,7 +652,7 @@ async def resolve_detail_urls(
     if session and hasattr(session, "close"):
         try:
             await session.close()
-        except Exception as close_exc:
+        except Exception as close_exc:  # best-effort browser session close; suppress error
             logger.warning("Batdongsan session close failed: %s", close_exc)
 
 
@@ -767,7 +767,7 @@ async def fetch_web_listings(payload: dict[str, Any]) -> dict[str, Any]:
             raise
         except BatdongsanAccessBlockedError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # web GET listing request failure; retry or raise BatdongsanAccessBlockedError
             logger.warning("Batdongsan web GET %s failed: %s", url, exc)
             if attempt >= max_attempts:
                 raise BatdongsanAccessBlockedError(

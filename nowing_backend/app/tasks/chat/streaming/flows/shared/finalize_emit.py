@@ -78,7 +78,7 @@ def iter_suggested_actions_frame(
         )
         if actions:
             yield streaming_service.format_suggested_actions(actions)
-    except Exception as exc:
+    except Exception as exc:  # suggested actions generation failure; best-effort frame emission log warning
         logger.warning(
             "[suggested_actions] Failed to generate suggested actions: %s", exc
         )

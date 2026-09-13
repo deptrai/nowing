@@ -100,7 +100,7 @@ class DedupHITLToolCallsMiddleware(AgentMiddleware):  # type: ignore[type-arg]
             if resolver is not None:
                 try:
                     arg_val = resolver(tc.get("args", {}) or {})
-                except Exception:
+                except Exception:  # tool argument resolver failure; keep call in dedup list
                     logger.exception(
                         "Dedup resolver for tool %s raised; keeping call", name
                     )

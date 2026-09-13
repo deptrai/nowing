@@ -109,7 +109,7 @@ async def fetch_search_page(
         )
     except TimeoutError as exc:
         raise MasothueTimeoutError(f"timeout for {url}") from exc
-    except Exception as exc:
+    except Exception as exc:  # search request/proxy failure; raise MasothueAccessBlockedError
         raise MasothueAccessBlockedError(f"{url} fetch failed: {exc}") from exc
 
     status = getattr(response, "status", 0)
@@ -165,7 +165,7 @@ async def fetch_detail_page(
         )
     except TimeoutError as exc:
         raise MasothueTimeoutError(f"timeout for {url}") from exc
-    except Exception as exc:
+    except Exception as exc:  # detail request/proxy failure; raise MasothueAccessBlockedError
         raise MasothueAccessBlockedError(f"{url} fetch failed: {exc}") from exc
 
     status = getattr(response, "status", 0)

@@ -7,7 +7,8 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.db import get_async_session
+from app.db import WorkspaceMembership, get_async_session
+from app.dependencies.auth import RequireWorkspaceAccess
 from app.services.memory import (
     MemoryRead,
     MemoryScope,
@@ -17,7 +18,6 @@ from app.services.memory import (
     save_memory,
 )
 from app.users import get_auth_context
-from app.utils.rbac import check_workspace_access
 
 router = APIRouter()
 
@@ -31,8 +31,8 @@ async def get_team_memory(
     workspace_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ):
-    await check_workspace_access(session, auth, workspace_id)
     memory_md = await read_memory(
         scope=MemoryScope.TEAM,
         target_id=workspace_id,
@@ -47,8 +47,8 @@ async def update_team_memory(
     body: TeamMemoryUpdate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ):
-    await check_workspace_access(session, auth, workspace_id)
     result = await save_memory(
         scope=MemoryScope.TEAM,
         target_id=workspace_id,
@@ -66,8 +66,8 @@ async def reset_team_memory(
     workspace_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ):
-    await check_workspace_access(session, auth, workspace_id)
     result = await reset_memory(
         scope=MemoryScope.TEAM,
         target_id=workspace_id,

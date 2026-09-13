@@ -37,7 +37,7 @@ def get_redis() -> aioredis.Redis | None:
             _redis_client = aioredis.from_url(
                 config.REDIS_APP_URL, decode_responses=True
             )
-        except Exception as exc:
+        except Exception as exc:  # DNC check fail-closed to protect compliance
             logger.warning("[DncService] Failed to init Redis client: %s", exc)
             return None
     return _redis_client
@@ -78,7 +78,7 @@ class DncComplianceService:
                 cached_members = await redis.smembers(redis_key)
                 if cached_members:
                     return {m for m in cached_members if m != "__EMPTY__"}
-            except Exception as exc:
+            except Exception as exc:  # DNC check fail-closed to protect compliance
                 logger.debug(
                     "[DncService] Redis lookup failed for %s DNC: %s",
                     record_type,
@@ -114,7 +114,7 @@ class DncComplianceService:
                 else:
                     await redis.sadd(redis_key, "__EMPTY__")
                 await redis.expire(redis_key, 3600)
-            except Exception as exc:
+            except Exception as exc:  # DNC check fail-closed to protect compliance
                 logger.debug("[DncService] Redis cache populate failed: %s", exc)
 
         return members
@@ -130,7 +130,7 @@ class DncComplianceService:
                 cached_members = await redis.smembers(redis_key)
                 if cached_members:
                     return {m for m in cached_members if m != "__EMPTY__"}
-            except Exception as exc:
+            except Exception as exc:  # DNC check fail-closed to protect compliance
                 logger.debug(
                     "[DncService] Global Redis lookup failed for %s DNC: %s",
                     record_type,
@@ -164,7 +164,7 @@ class DncComplianceService:
                 else:
                     await redis.sadd(redis_key, "__EMPTY__")
                 await redis.expire(redis_key, 3600)
-            except Exception as exc:
+            except Exception as exc:  # DNC check fail-closed to protect compliance
                 logger.debug("[DncService] Global Redis cache populate failed: %s", exc)
 
         return members
@@ -217,7 +217,7 @@ class DncComplianceService:
         try:
             for r_type in ("phone", "email", "domain", "tax_id"):
                 await redis.delete(self._get_redis_key(workspace_id, r_type))
-        except Exception as exc:
+        except Exception as exc:  # DNC check fail-closed to protect compliance
             logger.warning("[DncService] Cache invalidation failed: %s", exc)
 
     async def invalidate_global_cache(self) -> None:
@@ -228,7 +228,7 @@ class DncComplianceService:
         try:
             for r_type in ("phone", "email", "domain", "tax_id"):
                 await redis.delete(f"dnc:global:{r_type}")
-        except Exception as exc:
+        except Exception as exc:  # DNC check fail-closed to protect compliance
             logger.warning("[DncService] Global cache invalidation failed: %s", exc)
 
     async def is_blocked(
@@ -338,7 +338,7 @@ class DncComplianceService:
                         )
 
             return DncCheckResult(is_blocked=False)
-        except Exception as exc:
+        except Exception as exc:  # DNC check fail-closed to protect compliance
             logger.warning("[DncService] DNC check failed: %s", exc)
             return DncCheckResult(
                 is_blocked=True,
@@ -469,7 +469,7 @@ class DncComplianceService:
                 results.append(updated)
 
             return results
-        except Exception as exc:
+        except Exception as exc:  # DNC check fail-closed to protect compliance
             logger.warning("[DncService] Batch DNC check failed: %s", exc)
             return [
                 {

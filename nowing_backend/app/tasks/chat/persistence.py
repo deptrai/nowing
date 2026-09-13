@@ -285,7 +285,7 @@ async def persist_user_turn(
 
             await ws.commit()
             return resolved_id
-    except Exception:
+    except Exception:  # DB error in persist_user_turn; log and return None sentinel
         logger.exception(
             "persist_user_turn failed (chat_id=%s, turn_id=%s)",
             chat_id,
@@ -394,7 +394,7 @@ async def persist_assistant_shell(
 
             await ws.commit()
             return resolved_id
-    except Exception:
+    except Exception:  # DB error in persist_assistant_shell; log and return None sentinel
         logger.exception(
             "persist_assistant_shell failed (chat_id=%s, turn_id=%s)",
             chat_id,
@@ -551,7 +551,7 @@ async def finalize_assistant_turn(
 
             await ws.commit()
             outcome = "ok"
-    except Exception:
+    except Exception:  # DB error in finalize_assistant_turn; log and swallow
         logger.exception(
             "finalize_assistant_turn failed (chat_id=%s, message_id=%s, turn_id=%s)",
             chat_id,

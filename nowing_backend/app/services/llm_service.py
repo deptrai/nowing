@@ -263,7 +263,7 @@ async def validate_llm_config(
             )
             return False, "LLM returned an empty response"
 
-    except Exception as e:
+    except Exception as e:  # catch LLM validation errors and return False with error message
         error_msg = f"Failed to validate LLM configuration: {e!s}"
         logger.error(error_msg)
         return False, error_msg
@@ -375,7 +375,7 @@ async def get_workspace_llm_instance(
 
         return SanitizedChatLiteLLM(**litellm_kwargs)
 
-    except Exception as e:
+    except Exception as e:  # return None on LLM initialization failure
         logger.error(
             f"Error getting LLM instance for workspace {workspace_id}, role {role}: {e!s}"
         )
@@ -532,7 +532,7 @@ async def get_vision_llm(
 
         return SanitizedChatLiteLLM(**litellm_kwargs)
 
-    except Exception as e:
+    except Exception as e:  # return None on vision LLM initialization failure
         logger.error(f"Error getting vision LLM for workspace {workspace_id}: {e!s}")
         return None
 

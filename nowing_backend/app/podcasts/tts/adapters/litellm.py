@@ -57,7 +57,7 @@ class LiteLlmTextToSpeech(TextToSpeech):
 
         try:
             response = await aspeech(**kwargs)
-        except Exception as exc:
+        except Exception as exc:  # LiteLLM speech synthesis failure; wrap in TextToSpeechError
             raise TextToSpeechError(f"{self._model} synthesis failed: {exc}") from exc
 
         data = getattr(response, "content", None)

@@ -20,7 +20,7 @@ export const alertRule = z.object({
 	threshold: z.record(z.string(), z.unknown()).nullable().optional(),
 	target_sequence_id: z.string().uuid().nullable().optional(),
 	target_step_id: z.string().uuid().nullable().optional(),
-	notification_channels: z.array(z.enum(["in_app", "telegram"])),
+	notification_channels: z.array(z.enum(["in_app", "telegram", "email"])),
 	enabled: z.boolean(),
 	cron: z.string().nullable().optional(),
 	next_fire_at: z.string().nullable().optional(),
@@ -85,7 +85,7 @@ export const createAlertFromTemplateRequest = z.object({
 	name: z.string(),
 	parameters: z.record(z.string(), z.unknown()),
 	schedule: z.enum(["none", "daily", "weekly"]).optional(),
-	notification_channels: z.array(z.enum(["in_app", "telegram"])).optional(),
+	notification_channels: z.array(z.enum(["in_app", "telegram", "email"])).optional(),
 });
 
 export type AlertTemplateParameter = z.infer<typeof alertTemplateParameter>;

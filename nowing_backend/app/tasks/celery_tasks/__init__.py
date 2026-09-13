@@ -90,7 +90,7 @@ def _dispose_shared_db_engine(loop: asyncio.AbstractEventLoop) -> None:
         from app.db import engine as shared_engine
 
         loop.run_until_complete(shared_engine.dispose())
-    except Exception:
+    except Exception:  # best-effort DB engine dispose; failure logged, never propagated
         logger.warning("Shared DB engine dispose() failed", exc_info=True)
 
 
@@ -105,7 +105,7 @@ def _dispose_shared_checkpointer_pool(loop: asyncio.AbstractEventLoop) -> None:
         from app.agents.chat.runtime.checkpointer import close_checkpointer
 
         loop.run_until_complete(close_checkpointer())
-    except Exception:
+    except Exception:  # best-effort checkpointer pool dispose; failure logged, never propagated
         logger.warning("Shared checkpointer pool dispose() failed", exc_info=True)
 
 

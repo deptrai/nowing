@@ -66,7 +66,7 @@ async def _fetch_from_openrouter() -> list[dict] | None:
             response.raise_for_status()
             data = response.json()
             return data.get("data", [])
-    except Exception as e:
+    except Exception as e:  # OpenRouter API fetch failure; return None to trigger static fallback file
         logger.warning("Failed to fetch from OpenRouter API: %s", e)
         return None
 
@@ -77,7 +77,7 @@ def _load_fallback() -> list[dict]:
         with open(FALLBACK_FILE, encoding="utf-8") as f:
             data = json.load(f)
             return data.get("data", [])
-    except Exception as e:
+    except Exception as e:  # fallback JSON file read error; return empty list
         logger.error("Failed to load fallback model list: %s", e)
         return []
 

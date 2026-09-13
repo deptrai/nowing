@@ -174,7 +174,7 @@ class DshWorker:
                 [msg_id],
             )
             return True
-        except Exception as exc:
+        except Exception as exc:  # heartbeat refresh failure; log warning and return False
             logger.warning("Heartbeat failed for mission %s: %s", mission_id, exc)
             return False
 
@@ -255,8 +255,8 @@ class DshWorker:
                     )
                     executor_task.cancel()
                     break
-        except asyncio.CancelledError:
-            pass
+        except asyncio.CancelledError as exc:
+            logger.debug("Suppressed %r", exc)
 
     async def _handle_message(
         self,
@@ -297,7 +297,7 @@ class DshWorker:
             logger.error("Mission %s non-retryable load error: %s", mission_id, exc)
             try:
                 await self._dlq(redis_client, msg_id, mission_id, str(exc))
-            except Exception as dlq_exc:
+            except Exception as dlq_exc:  # dlq dispatch failure after non-retryable load; log exception and return False
                 logger.exception(
                     "Failed to DLQ mission %s after non-retryable load: %s",
                     mission_id,
@@ -305,7 +305,7 @@ class DshWorker:
                 )
                 return False
             return True
-        except Exception as exc:
+        except Exception as exc:  # mission load failure; log exception and return False
             logger.exception("Could not load mission %s: %s", mission_id, exc)
             return False
 
@@ -424,7 +424,7 @@ class DshWorker:
         except errors.DshNonRetryableError as exc:
             try:
                 mission = await self.rest_client.get_mission(mission_id)
-            except Exception as refresh_exc:
+            except Exception as refresh_exc:  # best-effort mission refresh before DLQ; log warning
                 logger.warning(
                     "Could not refresh mission %s before DLQ: %s",
                     mission_id,
@@ -433,17 +433,17 @@ class DshWorker:
             try:
                 await self._dlq(redis_client, msg_id, mission, str(exc))
                 return True
-            except Exception as dlq_exc:
+            except Exception as dlq_exc:  # dlq dispatch failure after non-retryable error; log exception and return False
                 logger.exception(
                     "Failed to DLQ mission %s after non-retryable error: %s",
                     mission_id,
                     dlq_exc,
                 )
                 return False
-        except Exception as exc:
+        except Exception as exc:  # mission execution error; attempt refresh and retry or DLQ
             try:
                 mission = await self.rest_client.get_mission(mission_id)
-            except Exception as refresh_exc:
+            except Exception as refresh_exc:  # best-effort mission refresh before retry; log warning
                 logger.warning(
                     "Could not refresh mission %s before retry: %s",
                     mission_id,
@@ -453,7 +453,7 @@ class DshWorker:
                 return await self._maybe_retry_or_dlq(
                     redis_client, msg_id, mission, str(exc)
                 )
-            except Exception as retry_exc:
+            except Exception as retry_exc:  # retry schedule failure; log exception and return False
                 logger.exception(
                     "Failed to schedule retry for mission %s: %s",
                     mission_id,
@@ -555,7 +555,7 @@ class DshWorker:
                 maxlen=10000,
                 approximate=True,
             )
-        except Exception as exc:
+        except Exception as exc:  # dlq redis stream write failure; log exception
             logger.exception("Failed to write mission %s to DLQ: %s", mission_id, exc)
             # The checkpoint is already dlq; a missing DLQ stream entry is logged.
         return True
@@ -599,7 +599,7 @@ class DshWorker:
                 try:
                     reclaimed = await self._autoclaim(redis_client)
                     consecutive_redis_errors = 0
-                except Exception as exc:
+                except Exception as exc:  # autoclaim iteration failure; log exception and backoff
                     logger.exception("XAUTOCLAIM failed: %s", exc)
                     consecutive_redis_errors += 1
                     await asyncio.sleep(min(30, 2**consecutive_redis_errors))
@@ -618,8 +618,8 @@ class DshWorker:
                                     mission_id_str,
                                 )
                                 continue
-                        except Exception:
-                            pass
+                        except Exception as exc:  # lock key existence check failure; log debug and proceed
+                            logger.debug("Suppressed %r", exc)
 
                     should_ack = await self._handle_message(
                         redis_client, msg_id, fields
@@ -627,7 +627,7 @@ class DshWorker:
                     if should_ack:
                         try:
                             await redis_client.xack(self.stream, self.group, msg_id)
-                        except Exception as exc:
+                        except Exception as exc:  # best-effort message XACK; log exception
                             logger.exception("Failed to XACK %s: %s", msg_id, exc)
 
                 last_autoclaim = now
@@ -635,7 +635,7 @@ class DshWorker:
             try:
                 messages = await self._read_new_messages(redis_client)
                 consecutive_redis_errors = 0
-            except Exception as exc:
+            except Exception as exc:  # stream read iteration failure; log exception and backoff
                 logger.exception("XREADGROUP failed: %s", exc)
                 consecutive_redis_errors += 1
                 await asyncio.sleep(min(30, 2**consecutive_redis_errors))
@@ -650,7 +650,7 @@ class DshWorker:
                 if should_ack:
                     try:
                         await redis_client.xack(self.stream, self.group, msg_id)
-                    except Exception as exc:
+                    except Exception as exc:  # best-effort message XACK; log exception
                         logger.exception("Failed to XACK %s: %s", msg_id, exc)
 
     def stop(self) -> None:

@@ -107,7 +107,7 @@ async def _async_lead_export(
                 "processed_rows": job.processed_rows,
             }
 
-        except Exception as e:
+        except Exception as e:  # export execution failure; mark job failed, commit, and re-raise
             logger.exception("Error executing export job %s: %s", export_job_id, e)
             job.status = "failed"
             job.error_message = str(e)
@@ -137,6 +137,6 @@ def run_lead_export_task(
                 target_config=target_config or {},
             )
         )
-    except Exception as exc:
+    except Exception as exc:  # retry-eligible export failure; retry with countdown
         logger.warning("Retrying export task %s due to %s", export_job_id, exc)
         raise self.retry(exc=exc, countdown=10) from exc

@@ -122,6 +122,8 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
         cost = 0 if degraded else total * rate
 
         # Feed scraper output to chainlens-research via the canonical scraper ingest contract.
+        ingest_job_id: str | None = None
+        ingest_status: str | None = "no_context" if ctx is None else None
         if ctx is not None:
             chunks: list[Any] = []
             fetched_at = datetime.now(UTC).isoformat()
@@ -137,20 +139,26 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
                             category="company",
                         )
                     )
-                except Exception:
+                except Exception:  # per-item serialization error; skip item and continue batch
                     logger.exception("masothue chunk serialization failed")
             if chunks:
                 try:
                     ingest_service = NowingIngestService()
-                    await ingest_service.ingest(
+                    ingest_res = await ingest_service.ingest(
                         scraper_id="masothue",
                         chunks=chunks,
                         workspace_id=ctx.workspace_id,
                         session=ctx.session,
                         run_id=ctx.run_id,
                     )
-                except Exception:
-                    logger.exception("masothue chainlens ingest failed")
+                    if ingest_res:
+                        ingest_job_id = ingest_res.ingest_job_id or ingest_res.parent_ingest_job_id
+                        ingest_status = ingest_res.status
+                except Exception as exc:  # chainlens ingest failure; record failed status and continue
+                    logger.exception("masothue chainlens ingest failed: %s", exc)
+                    ingest_status = "failed"
+            else:
+                ingest_status = "no_chunks" 
 
         emit_progress(
             "done",
@@ -165,6 +173,8 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
             cost_micros=cost,
             degraded=degraded,
             degradation_reason=result.get("degradation_reason"),
+            chainlens_ingest_job_id=locals().get("ingest_job_id"),
+            chainlens_ingest_status=locals().get("ingest_status"),
         )
 
     return execute

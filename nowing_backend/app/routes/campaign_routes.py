@@ -9,7 +9,8 @@ from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.db import Permission, get_async_session
+from app.db import Permission, WorkspaceMembership, get_async_session
+from app.dependencies.auth import RequirePermission
 from app.lead_intelligence.campaign.planner import LeadGenPlanner
 from app.lead_intelligence.campaign.presets import (
     VerticalPreset,
@@ -21,7 +22,6 @@ from app.lead_intelligence.campaign.schemas import (
     CampaignPlanResponse,
     CampaignSpec,
     SourcePlanAllocation,
-    SubTaskPlan,
 )
 from app.lead_intelligence.services.lead_gen_orchestrator import (
     LeadGenOrchestrator,
@@ -50,9 +50,11 @@ async def get_campaign_presets(
     workspace_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(require_session_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(Permission.LEADS_READ.value)
+    ),
 ) -> list[VerticalPreset]:
     """List all available vertical presets for Campaign Builder."""
-    await check_permission(session, auth, workspace_id, Permission.LEADS_READ)
     return list_vertical_presets()
 
 
@@ -62,9 +64,11 @@ async def get_single_campaign_preset(
     preset_id: str,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(require_session_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(Permission.LEADS_READ.value)
+    ),
 ) -> VerticalPreset:
     """Retrieve a specific vertical preset by identifier."""
-    await check_permission(session, auth, workspace_id, Permission.LEADS_READ)
     return get_vertical_preset(preset_id)
 
 
@@ -74,12 +78,14 @@ async def analyze_reverse_icp(
     request: ReverseIcpRequest,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(require_session_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(Permission.LEADS_READ.value)
+    ),
 ) -> dict[str, Any]:
     """
     Reverse-ICP Analyzer: Infer target vertical, ICP criteria, keywords, and recommended
     sources based on a customer website URL or business profile prompt.
     """
-    await check_permission(session, auth, workspace_id, Permission.LEADS_READ)
     return generate_reverse_icp(request.url, request.description)
 
 
@@ -89,9 +95,11 @@ async def plan_campaign(
     payload: dict[str, Any],
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(require_session_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(Permission.LEADS_READ.value)
+    ),
 ) -> CampaignPlanResponse:
     """Preview subtasks, budget splits, source adapter allocations, and cost estimates."""
-    await check_permission(session, auth, workspace_id, Permission.LEADS_READ)
     if payload.get("workspace_id") != workspace_id:
         payload["workspace_id"] = workspace_id
 
@@ -101,7 +109,7 @@ async def plan_campaign(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Cấu hình chiến dịch không hợp lệ: {exc}",
-        )
+        ) from exc
     planner = LeadGenPlanner()
     return planner.create_preflight_plan(spec)
 
@@ -132,7 +140,7 @@ async def execute_campaign(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Cấu hình chiến dịch không hợp lệ: {exc}",
-        )
+        ) from exc
     orchestrator = LeadGenOrchestrator()
 
     if persist:
@@ -159,10 +167,11 @@ async def get_campaign_sources_status(
     district_codes: list[str] = Query(default=[]),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(require_session_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(Permission.LEADS_READ.value)
+    ),
 ) -> list[SourcePlanAllocation]:
     """Retrieve operational status, latency, and location coverage across all registered scraper adapters."""
-    await check_permission(session, auth, workspace_id, Permission.LEADS_READ)
-
     location_profile = None
     if province_code:
         from app.lead_intelligence.schemas import LocationProfilePayload

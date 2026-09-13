@@ -63,7 +63,7 @@ def _memory_plaintext(memory: Memory) -> str:
             if encryption.is_enabled():
                 encryption.decrypt_memory(memory)
                 plaintext = memory.content or ""
-        except Exception:
+        except Exception:  # decrypt failure → fail-safe: export ciphertext rather than crash
             # Fail safe: return the stored ciphertext rather than crash export
             # if the key material for this legacy/rotated row is not available.
             plaintext = memory.content or ""

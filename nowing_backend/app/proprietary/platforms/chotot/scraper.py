@@ -90,8 +90,8 @@ def _resolve_region_v2(city: str, regions: dict[str, Any]) -> int:
     # Try direct numeric first.
     try:
         return int(city)
-    except (ValueError, OverflowError):
-        pass
+    except (ValueError, OverflowError) as exc:
+        logger.debug("Suppressed %r", exc)
 
     for region_id, region in regions.items():
         name = region.get("name", "")
@@ -100,7 +100,8 @@ def _resolve_region_v2(city: str, regions: dict[str, Any]) -> int:
         if _normalize_text(name) == city_norm:
             try:
                 return int(region_id)
-            except (ValueError, OverflowError):
+            except (ValueError, OverflowError) as exc:
+                logger.debug("Suppressed %r", exc)
                 continue
 
     raise ValueError(f"Unknown Chotot city: {city}")
@@ -114,7 +115,7 @@ def _resolve_area_v2(
 ) -> int | None:
     """Resolve a district name or numeric id to an ``area_v2`` code."""
     if district_id is not None:
-        if district_id >= 0:
+        if district_id < 0:
             raise ValueError(f"Invalid negative district_id: {district_id}")
         return district_id
     if not district_query:
@@ -125,8 +126,8 @@ def _resolve_area_v2(
         if parsed < 0:
             raise ValueError(f"Invalid negative district query: {district_query}")
         return parsed
-    except (ValueError, OverflowError):
-        pass
+    except (ValueError, OverflowError) as exc:
+        logger.debug("Suppressed %r", exc)
 
     region = regions.get(str(region_id), {})
     areas = region.get("area", {})
@@ -145,7 +146,8 @@ def _resolve_area_v2(
                 if parsed < 0:
                     continue
                 return parsed
-            except (ValueError, OverflowError):
+            except (ValueError, OverflowError) as exc:
+                logger.debug("Suppressed %r", exc)
                 continue
 
     raise ValueError(f"Unknown Chotot district: {district_query}")
@@ -207,7 +209,7 @@ async def scrape_chotot(
         ChototBdsDecodeError,
     ):
         raise
-    except Exception:
+    except Exception:  # loadRegions unexpected failure; return degraded api_error
         return ChototScrapeOutput(
             items=[],
             total_items=0,
@@ -292,7 +294,7 @@ async def scrape_chotot(
                 page_failed = True
                 degradation_reason = "bot_detected"
                 break
-            except (ChototBdsAccessBlockedError, Exception):
+            except (ChototBdsAccessBlockedError, Exception):  # access blocked or unexpected error; mark page failed and break
                 page_failed = True
                 break
 
@@ -343,7 +345,7 @@ async def scrape_chotot(
                 async with _phone_semaphore:
                     item.phone = await fetch_phone(item.listing_id)
                     await asyncio.sleep(_page_delay())
-            except Exception:
+            except Exception:  # per-item phone resolution failure; continue with item.phone as None
                 logger.exception(
                     "failed to resolve phone for list_id=%s", item.listing_id
                 )

@@ -46,7 +46,7 @@ class ProxyHealthProbe(HealthProbe):
         telemetry_service = AdminTelemetryService(session=None)  # type: ignore[arg-type]
         try:
             raw = await telemetry_service.get_proxy_health()
-        except Exception as exc:
+        except Exception as exc:  # probe must not propagate: return UNHEALTHY result for scheduler
             return HealthResult(
                 service_id=self._service_id,
                 service_name=self._service_name,

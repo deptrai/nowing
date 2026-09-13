@@ -27,7 +27,7 @@ async def _evaluate_sequences_impl() -> int:
     async with session_maker() as session:
         try:
             return await sequencer.evaluate_pending_enrollments(session)
-        except Exception:
+        except Exception:  # sequence evaluation failure; log and return 0
             logger.exception("Error evaluating pending sequence enrollments")
             return 0
 
@@ -54,7 +54,7 @@ async def _execute_sequence_step_impl(enrollment_id_str: str, workspace_id: int)
                 enrollment_id=enrollment_id,
                 workspace_id=workspace_id,
             )
-        except Exception:
+        except Exception:  # sequence step execution error; rollback and raise
             logger.exception("Error executing sequence step for enrollment %s", enrollment_id)
             await session.rollback()
             raise

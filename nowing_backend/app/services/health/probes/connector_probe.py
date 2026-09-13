@@ -134,7 +134,7 @@ class ConnectorHealthProbe(HealthProbe):
             if resp.status_code >= 500:
                 return ("unavailable", f"HTTP {resp.status_code} - upstream error")
             return ("degraded", f"HTTP {resp.status_code} - unexpected response")
-        except Exception as exc:
+        except Exception as exc:  # connector upstream ping helper: report unavailable rather than raise
             return ("unavailable", f"Upstream ping failed: {type(exc).__name__}: {exc}")
 
     async def probe(self) -> HealthResult:
@@ -189,7 +189,7 @@ class ConnectorHealthProbe(HealthProbe):
                     suggested_action = None
             else:
                 status = "healthy"
-        except Exception as exc:
+        except Exception as exc:  # probe must not propagate: mark connector unavailable
             latency_ms = int((time.perf_counter() - start) * 1000)
             status = "unavailable"
             last_error = f"Connector probe error: {type(exc).__name__}"

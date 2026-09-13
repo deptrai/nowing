@@ -107,7 +107,7 @@ class NotionToolMetadataService:
                         flag_modified(db_connector, "config")
                         await self._db_session.commit()
                         await self._db_session.refresh(db_connector)
-                except Exception:
+                except Exception:  # best-effort persistence of auth_expired flag to DB
                     logger.warning(
                         "Failed to persist auth_expired for connector %s",
                         acc.id,
@@ -185,7 +185,7 @@ class NotionToolMetadataService:
                     flag_modified(connector, "config")
                     await self._db_session.commit()
                     await self._db_session.refresh(connector)
-            except Exception:
+            except Exception:  # best-effort persistence of auth_expired flag to DB
                 logger.warning(
                     "Failed to persist auth_expired for connector %s",
                     connector.id,
@@ -235,7 +235,7 @@ class NotionToolMetadataService:
             client = await connector._get_client()
             await client.users.me()
             return False
-        except Exception as e:
+        except Exception as e:  # catch connector health check failure, log and proceed to flag expired
             logger.warning(
                 "Notion connector %s health check failed: %s", connector_id, e
             )

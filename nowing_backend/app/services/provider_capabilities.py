@@ -157,7 +157,7 @@ def derive_supports_image_input(
                 model=model_string, custom_llm_provider=custom_llm_provider
             ):
                 return True
-        except Exception as exc:
+        except Exception as exc:  # litellm capability probe raises broadly for unknown models → treat as unsupported
             logger.debug(
                 "litellm.supports_vision raised for model=%s provider=%s: %s",
                 model_string,
@@ -202,7 +202,7 @@ def is_known_text_only_chat_model(
             info = litellm.get_model_info(
                 model=model_string, custom_llm_provider=custom_llm_provider
             )
-        except Exception as exc:
+        except Exception as exc:  # litellm model-info probe raises broadly → treat capability as unknown
             logger.debug(
                 "litellm.get_model_info raised for model=%s provider=%s: %s",
                 model_string,

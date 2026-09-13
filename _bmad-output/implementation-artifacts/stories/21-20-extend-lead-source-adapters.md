@@ -1,5 +1,6 @@
 ---
-baseline_commit: 5389b069779e94702bfdeeef9dfc17205677f98f
+story_key: 21-20-extend-multi-source-lead-gen-adapters
+status: done
 ---
 
 # Story 21.20: Mở rộng Adapter Multi-Source Lead Gen

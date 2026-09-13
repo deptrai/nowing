@@ -243,7 +243,7 @@ class MemoryExtractionService:
                         client_id=effective_client_id,
                         agent_id=thread.agent_id,
                     )
-                except Exception as exc:
+                except Exception as exc:  # per-candidate persist failure; continue extracting remaining memories
                     logger.warning(
                         "Failed to persist extracted memory (embedding/service error): %s",
                         exc,

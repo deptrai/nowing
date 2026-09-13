@@ -26,7 +26,7 @@ class EmbeddingCacheService:
 
         try:
             embedding_set = await self._store.load(row.storage_key)
-        except Exception:
+        except Exception:  # cache store load failure; treat as cache miss and re-embed
             # Index points at a blob that is gone; treat as a miss and re-embed.
             logger.warning("Cache blob missing: %s", row.storage_key, exc_info=True)
             return None

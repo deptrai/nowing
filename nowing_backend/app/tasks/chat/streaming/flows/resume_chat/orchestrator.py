@@ -687,7 +687,7 @@ async def stream_resume_chat(
         for sse in iter_final_frames(streaming_service):
             yield sse
 
-    except Exception as exc:
+    except Exception as exc:  # top-level flow terminal exception; delegate to handle_terminal_exception
         frames, summary = handle_terminal_exception(
             exc,
             flow="resume",

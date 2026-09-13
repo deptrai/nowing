@@ -70,7 +70,7 @@ async def whatsapp_webhook(
     try:
         await _process_payload(session, payload)
         await session.commit()
-    except Exception:
+    except Exception:  # rollback on webhook processing failure
         await session.rollback()
         logger.exception("WhatsApp webhook processing failed")
         return Response(status_code=200)

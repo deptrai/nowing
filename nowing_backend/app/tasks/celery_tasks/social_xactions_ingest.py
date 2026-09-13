@@ -4,9 +4,9 @@ The meta-scheduler ``check_social_monitored_targets`` runs every minute and
 spawns ``ingest_social_target`` for each active ``SocialMonitoredTarget`` whose
 ``scrape_interval_minutes`` has elapsed since ``last_scraped_at``.
 
-The per-target task uses ``XActionsSocialAdapter`` to fetch posts and pushes
-each one to Redis Stream ``stream:social:raw_posts`` with the target's
-``workspace_id`` and internal ``target_id`` attached. Downstream
+The per-target task uses ``XActionsSocialAdapterV2`` (streamable-http MCP) to
+fetch posts and pushes each one to Redis Stream ``stream:social:raw_posts`` with
+the target's ``workspace_id`` and internal ``target_id`` attached. Downstream
 ``social_stream_worker`` picks up the stream, extracts entities, and UPSERTs
 into ``social_posts``.
 """
@@ -18,12 +18,13 @@ import logging
 from datetime import UTC, datetime, timedelta
 
 import redis.asyncio as aioredis
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from app.celery_app import CONNECTORS_QUEUE, celery_app
 from app.config import config
-from app.db import SocialMonitoredTarget
-from app.proprietary.platforms.xactions.adapter import XActionsSocialAdapter
+from app.db import SocialMonitoredTarget, XActionsProxyBinding
+from app.proprietary.platforms.xactions.adapter_v2 import XActionsSocialAdapterV2
+from app.proprietary.platforms.xactions.mcp_client import XActionsMcpError
 from app.tasks.celery_tasks import get_celery_session_maker, run_async_celery_task
 
 logger = logging.getLogger(__name__)
@@ -37,7 +38,18 @@ DEFAULT_FETCH_LIMIT = 20
 
 SUPPORTED_PLATFORMS = {
     "facebook_group",
+    "facebook_page",
     "twitter_keyword",
+    "twitter_user",
+    "tiktok_hashtag",
+    "chotot_category",
+    "shopee_keyword",
+    "topcv_search",
+    "vietnamworks_search",
+    "linkedin_company",
+    "batdongsan_category",
+    "masothue_lookup",
+    "b2b_registry_search",
 }
 
 
@@ -70,6 +82,34 @@ async def _release_target_lock(
         await redis_client.delete(_target_lock_key(target_id))
 
 
+async def _pause_target(
+    session,
+    target: SocialMonitoredTarget,
+    reason: str,
+    retry_after_seconds: int | None = None,  # pragma: no mutate
+) -> None:
+    """Pause a target after a transient scraping failure."""
+    target.status = "paused"
+    if retry_after_seconds:
+        target.last_scraped_at = datetime.now(UTC) + timedelta(
+            seconds=retry_after_seconds
+        )
+    await session.commit()
+    logger.warning("Paused social target %s: %s", target.id, reason)
+
+
+async def _halt_target(
+    session,
+    target: SocialMonitoredTarget,
+    reason: str,
+) -> None:
+    """Permanently halt a target after a fatal failure."""
+    target.status = "error"
+    target.is_active = False
+    await session.commit()
+    logger.error("Halted social target %s: %s", target.id, reason)
+
+
 @celery_app.task(
     name="ingest_social_target",
     bind=True,
@@ -79,10 +119,10 @@ async def _release_target_lock(
 )
 def ingest_social_target_task(self, target_id: int) -> int:
     """Celery task that fetches and streams posts for a single social target."""
-    return run_async_celery_task(lambda: _ingest_social_target(target_id))
+    return run_async_celery_task(lambda: _ingest_social_target(self, target_id))
 
 
-async def _ingest_social_target(target_id: int) -> int:
+async def _ingest_social_target(task, target_id: int) -> int:
     """Fetch posts for a target and push them to the raw-posts Redis stream."""
     redis_client = aioredis.from_url(config.REDIS_APP_URL, decode_responses=True)
     try:
@@ -92,7 +132,7 @@ async def _ingest_social_target(target_id: int) -> int:
                 logger.warning("Social target %s not found", target_id)
                 return 0
 
-            if not target.is_active or target.status != "active":
+            if not target.is_active or target.status == "error":
                 logger.info(
                     "Skipping inactive social target %s (active=%s status=%s)",
                     target_id,
@@ -101,73 +141,81 @@ async def _ingest_social_target(target_id: int) -> int:
                 )
                 return 0
 
+            # Resolve per-account proxy binding (AC 8): fall back to workspace
+            # binding in xactions_proxy_bindings when the target lacks
+            # explicit account_id/proxy_url.
+            if not target.account_id or not target.proxy_url:
+                binding = await session.execute(
+                    select(XActionsProxyBinding).where(
+                        XActionsProxyBinding.workspace_id == target.workspace_id,
+                        XActionsProxyBinding.platform == target.platform,
+                        XActionsProxyBinding.is_active.is_(True),
+                    ).limit(1)
+                )
+                row = binding.scalars().first()
+                if row:
+                    if not target.account_id:
+                        target.account_id = row.account_id
+                    if not target.proxy_url:
+                        target.proxy_url = row.proxy_url
+
             lock_ttl = _lock_ttl_for_target(target)
             if not await _acquire_target_lock(redis_client, target_id, lock_ttl):
                 logger.info("Social target %s is already being ingested", target_id)
                 return 0
 
             try:
-                adapter = XActionsSocialAdapter()
-                posts: list = []
-                proxy_url = getattr(target, "proxy_url", None) or None
+                async with XActionsSocialAdapterV2() as adapter:
+                    posts: list = []
 
-                if target.platform == "facebook_group":
-                    posts = await adapter.fetch_facebook_group_posts(
-                        group_id=target.target_id,
-                        limit=DEFAULT_FETCH_LIMIT,
-                        account_id=f"fb:{target.id}",
-                        auth_cookie=None,
-                        proxy=proxy_url,
-                    )
-                elif target.platform == "twitter_keyword":
-                    posts = await adapter.search_tweets(
-                        query=target.target_id,
-                        limit=DEFAULT_FETCH_LIMIT,
-                        account_id=f"tw:{target.id}",
-                        proxy=proxy_url,
-                    )
-                elif target.platform == "facebook_page":
-                    logger.warning(
-                        "facebook_page scraping is not yet supported (target %s)",
+                    try:
+                        posts = await adapter.fetch_posts_for_target(target)
+                    except XActionsMcpError as exc:
+                        if exc.code == "XACT_4291":
+                            retry_after = exc.retry_after or 30
+                            logger.info(
+                                "Rate limited by XActions for target %s; retry in %ss",
+                                target_id,
+                                retry_after,
+                            )
+                            raise task.retry(countdown=retry_after) from exc
+                        if exc.code in (
+                            "ACCOUNT_HIBERNATION",
+                            "PROXY_EXHAUSTED",
+                            "XACT_5030",
+                        ):
+                            await _pause_target(session, target, str(exc), exc.retry_after)
+                            return 0
+                        if exc.code == "XACT_4010":
+                            await _halt_target(session, target, str(exc))
+                            return 0
+                        if exc.code == "XACT_5000":
+                            # Signer crash — retry up to 3 times then DLQ/alert
+                            raise task.retry(countdown=60, max_retries=3) from exc
+                        raise
+
+                    ingested = 0
+                    for post in posts:
+                        post.target_id = target.id
+                        post.workspace_id = target.workspace_id
+                        await adapter.ingest_raw_post_to_stream(
+                            post,
+                            redis_client=redis_client,
+                        )
+                        ingested += 1
+
+                    target.last_scraped_at = datetime.now(UTC)
+                    await session.commit()
+
+                    logger.info(
+                        "Ingested %d posts for social target %s (%s)",
+                        ingested,
                         target_id,
-                    )
-                    posts = []
-                elif target.platform == "twitter_user":
-                    logger.warning(
-                        "twitter_user scraping is not yet supported (target %s)",
-                        target_id,
-                    )
-                    posts = []
-                else:
-                    logger.warning(
-                        "Unsupported social platform %r for target %s",
                         target.platform,
-                        target_id,
                     )
-                    posts = []
+                    return ingested
 
-                ingested = 0
-                for post in posts:
-                    post.target_id = target.id
-                    post.workspace_id = target.workspace_id
-                    await adapter.ingest_raw_post_to_stream(
-                        post,
-                        redis_client=redis_client,
-                    )
-                    ingested += 1
-
-                target.last_scraped_at = datetime.now(UTC)
-                await session.commit()
-
-                logger.info(
-                    "Ingested %d posts for social target %s (%s)",
-                    ingested,
-                    target_id,
-                    target.platform,
-                )
-                return ingested
-
-            except Exception:
+            except Exception:  # ingest failure → rollback and re-raise
                 await session.rollback()
                 raise
             finally:
@@ -192,7 +240,13 @@ async def _check_and_trigger_social_targets() -> int:
             result = await session.execute(
                 select(SocialMonitoredTarget).where(
                     SocialMonitoredTarget.is_active.is_(True),
-                    SocialMonitoredTarget.status == "active",
+                    or_(
+                        SocialMonitoredTarget.status == "active",
+                        # Allow paused targets whose cooldown has expired to
+                        # resume. `_pause_target` sets last_scraped_at into the
+                        # future, so once that time passes the target is due.
+                        SocialMonitoredTarget.status == "paused",
+                    ),
                 )
             )
             targets = result.scalars().all()
@@ -224,9 +278,6 @@ async def _check_and_trigger_social_targets() -> int:
                         )
                         continue
 
-                    # The per-target task will acquire its own Redis lock once it
-                    # starts, so a short pre-check here avoids piling up duplicate
-                    # tasks in the queue for a very slow/long-running ingest.
                     if await redis_client.exists(_target_lock_key(target.id)):
                         logger.debug(
                             "Social target %s is locked, skipping", target.id
@@ -240,7 +291,7 @@ async def _check_and_trigger_social_targets() -> int:
                     )
                     ingest_social_target_task.delay(target.id)
                     triggered += 1
-                except Exception:
+                except Exception:  # per-target schedule failure; continue scheduling remaining targets
                     logger.exception(
                         "Failed to schedule social ingest for target %s",
                         target.id,

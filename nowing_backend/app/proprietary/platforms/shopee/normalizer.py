@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 import re
 import unicodedata
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from urllib.parse import parse_qs, unquote, urlparse
+
+logger = logging.getLogger(__name__)
 
 # Shopee encodes VND prices scaled by 100,000 in raw JSON payloads.
 SHOPEE_PRICE_SCALE = Decimal("100000")
@@ -74,8 +77,8 @@ def normalize_discount(
             d_val = int(raw_discount)
             if 0 <= d_val <= 100:
                 return d_val
-        except (ValueError, TypeError):
-            pass
+        except (ValueError, TypeError) as exc:
+            logger.debug("Suppressed %r", exc)
 
     if (
         current_price is not None
@@ -138,8 +141,8 @@ def extract_ids_from_url(url: str) -> tuple[int | None, int | None]:
         if "itemid" in qs and "shopid" in qs:
             try:
                 return int(qs["shopid"][0]), int(qs["itemid"][0])
-            except (ValueError, IndexError):
-                pass
+            except (ValueError, IndexError) as exc:
+                logger.debug("Suppressed %r", exc)
 
     # Check path against known patterns
     path = parsed.path
@@ -150,7 +153,8 @@ def extract_ids_from_url(url: str) -> tuple[int | None, int | None]:
                 shop_id = int(match.group(1))
                 item_id = int(match.group(2))
                 return shop_id, item_id
-            except (ValueError, IndexError):
+            except (ValueError, IndexError) as exc:
+                logger.debug("Suppressed %r", exc)
                 continue
 
     return None, None

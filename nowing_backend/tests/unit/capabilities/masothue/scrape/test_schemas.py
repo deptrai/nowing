@@ -100,3 +100,17 @@ def test_scrape_output_computed_fields_and_defaults() -> None:
     dump2 = out2.model_dump()
     assert dump2["total_items"] == 1
     assert dump2["cost_micros"] == 3000
+
+
+def test_scrape_output_surfaces_chainlens_ingest_fields():
+    """Verify ScrapeOutput schema includes chainlens ingest fields."""
+    from app.capabilities.masothue.scrape.schemas import ScrapeOutput
+    output = ScrapeOutput(
+        items=[],
+        cost_micros=0,
+        degraded=False,
+        chainlens_ingest_job_id="job_123",
+        chainlens_ingest_status="completed",
+    )
+    assert output.chainlens_ingest_job_id == "job_123"
+    assert output.chainlens_ingest_status == "completed"

@@ -45,8 +45,8 @@ def _count_tokens(text: str, *, llm: BaseChatModel | None = None) -> int:
     if callable(count_fn):
         try:
             return int(count_fn([{"role": "user", "content": text}]))
-        except Exception:
-            pass
+        except Exception as exc:  # tokenizer count failure → fall through to approximate counter
+            logger.debug("Suppressed %r", exc)
 
     profile = getattr(llm, "profile", None)
     model_names: list[str] = []
@@ -75,7 +75,7 @@ def _count_tokens(text: str, *, llm: BaseChatModel | None = None) -> int:
                 model=model_name,
             )
         )
-    except Exception:
+    except Exception:  # tokenizer failure → approximate count keeps context budgeting functional
         return _approx_tokens(text)
 
 

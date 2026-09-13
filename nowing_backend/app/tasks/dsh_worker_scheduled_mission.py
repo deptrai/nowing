@@ -4,15 +4,12 @@ from __future__ import annotations
 
 import json
 import logging
-import uuid
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from app.automations.triggers.builtin.schedule import compute_next_fire_at
 from app.config import config
-from app.db import DshMission
 from app.exceptions import NowingError
-from app.services.dsh_mission_service import DshMissionService
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +114,7 @@ class ScheduledMissionWorker:
 
     def _advance_schedule(self) -> datetime:
         """Compute the next fire time from the schedule expression."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         schedule = self.schedule
 
         if schedule.get("type") == "interval":
@@ -130,7 +127,7 @@ class ScheduledMissionWorker:
                 return compute_next_fire_at(
                     schedule["expression"], tz, after=now
                 )
-            except Exception as exc:
+            except Exception as exc:  # schedule calculation failure; fallback to 1-hour default
                 logger.warning("Failed to compute next_fire_at: %s", exc)
 
         return now + timedelta(hours=1)
@@ -141,7 +138,7 @@ class ScheduledMissionWorker:
 
         try:
             ingested = self._ingest()
-        except Exception as exc:
+        except Exception as exc:  # scheduled mission ingestion failure; log, audit, mark error, and abort
             logger.exception("Scheduled mission %s ingestion failed", self.mission_id)
             audit(
                 action="scheduled_mission_ingestion_failed",
@@ -156,7 +153,7 @@ class ScheduledMissionWorker:
             "schedule_state": {
                 "last_run_sources": ingested,
                 "last_run_deliverables": [],
-                "last_fired_at": datetime.now(timezone.utc).isoformat(),
+                "last_fired_at": datetime.now(UTC).isoformat(),
             }
         }
 

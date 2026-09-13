@@ -40,7 +40,7 @@ async def log_public_call(
 
     try:
         logger.info("agent_chat.public_call", extra=extra)
-    except Exception:
+    except Exception:  # best-effort audit log; must never break the response path
         # Audit logging must never break the response path. Metrics still fire.
         logger.exception("agent_chat.audit_log_failed")
 

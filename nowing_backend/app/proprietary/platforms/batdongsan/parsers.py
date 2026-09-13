@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 import unicodedata
 from typing import Any
@@ -10,6 +11,8 @@ from bs4 import BeautifulSoup
 
 from .city_codes import CITY_SLUGS
 from .schemas import BatdongsanListing
+
+logger = logging.getLogger(__name__)
 
 # District/city prefixes seen in Vietnamese addresses. Quận = urban district,
 # Huyện = rural district, Thị xã = town, TP = city.
@@ -240,7 +243,8 @@ def parse_web_listings(html: str) -> list[dict[str, Any]]:
             continue
         try:
             listing_id = int(prid)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError) as exc:
+            logger.debug("Suppressed %r", exc)
             continue
 
         link = card.select_one("a.js__product-link-for-product-id")

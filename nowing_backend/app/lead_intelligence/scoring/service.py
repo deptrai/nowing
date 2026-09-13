@@ -435,7 +435,7 @@ class LeadScoringService:
                 user_id=user_id,
                 cost_micros=cost_micros,
             )
-        except Exception:
+        except Exception:  # lead processing failure; continue batch
             logger.exception(
                 "failed to record lead scoring billing for %s", lead_score_id
             )

@@ -191,7 +191,7 @@ async def index_google_calendar_events(
                     logger.info(
                         f"Decrypted Google Calendar credentials for connector {connector_id}"
                     )
-                except Exception as e:
+                except Exception as e:  # credential decryption failure; log failure and return error tuple
                     await task_logger.log_task_failure(
                         log_entry,
                         f"Failed to decrypt Google Calendar credentials for connector {connector_id}: {e!s}",
@@ -363,7 +363,7 @@ async def index_google_calendar_events(
 
             logger.info(f"Retrieved {len(events)} events from Google Calendar API")
 
-        except Exception as e:
+        except Exception as e:  # upstream API call failure (Google Calendar API); log error and return failure
             logger.error(f"Error fetching Google Calendar events: {e!s}", exc_info=True)
             return 0, 0, f"Error fetching Google Calendar events: {e!s}"
 
@@ -433,7 +433,7 @@ async def index_google_calendar_events(
 
                 connector_docs.append(doc)
 
-            except Exception as e:
+            except Exception as e:  # per-event document build failure; log error, increment skipped, and continue
                 logger.error(
                     f"Error building ConnectorDocument for event: {e!s}", exc_info=True
                 )
@@ -477,7 +477,7 @@ async def index_google_calendar_events(
             logger.info(
                 "Successfully committed all Google Calendar document changes to database"
             )
-        except Exception as e:
+        except Exception as e:  # final commit failure; rollback if duplicate hash, else re-raise
             if (
                 "duplicate key value violates unique constraint" in str(e).lower()
                 or "uniqueviolationerror" in str(e).lower()
@@ -528,7 +528,7 @@ async def index_google_calendar_events(
         )
         logger.error(f"Database error: {db_error!s}", exc_info=True)
         return 0, 0, f"Database error: {db_error!s}"
-    except Exception as e:
+    except Exception as e:  # calendar indexing failure; rollback, log failure, and return error tuple
         await session.rollback()
         await task_logger.log_task_failure(
             log_entry,

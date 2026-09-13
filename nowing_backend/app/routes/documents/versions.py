@@ -9,11 +9,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.auth.context import AuthContext
-from app.db import Document, DocumentVersion, Permission, get_async_session
+from app.db import (
+    Document,
+    DocumentVersion,
+    Permission,
+    WorkspaceMembership,
+    get_async_session,
+)
+from app.dependencies.auth import RequirePermissionFromEntity
 from app.tasks.celery_tasks.document_reindex_tasks import reindex_document_task
 from app.users import get_auth_context
 from app.utils.document_versioning import create_version_snapshot
-from app.utils.rbac import check_permission
 
 logger = logging.getLogger(__name__)
 
@@ -28,24 +34,15 @@ async def list_document_versions(
     document_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
-):
-    user = auth.user
-    """List all versions for a document, ordered by version_number descending."""
-    document = (
-        await session.execute(
-            select(Document).where(
-                Document.id == document_id,
-                Document.archived_at.is_(None),
-            )
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "Document",
+            "document_id",
+            Permission.DOCUMENTS_READ.value,
         )
-    ).scalar_one_or_none()
-    if not document:
-        raise HTTPException(status_code=404, detail="Document not found")
-
-    await check_permission(
-        session, user, document.workspace_id, Permission.DOCUMENTS_READ.value
-    )
-
+    ),
+):
+    """List all versions for a document, ordered by version_number descending."""
     versions = (
         (
             await session.execute(
@@ -75,24 +72,15 @@ async def get_document_version(
     version_number: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
-):
-    user = auth.user
-    """Get full version content including source_markdown."""
-    document = (
-        await session.execute(
-            select(Document).where(
-                Document.id == document_id,
-                Document.archived_at.is_(None),
-            )
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "Document",
+            "document_id",
+            Permission.DOCUMENTS_READ.value,
         )
-    ).scalar_one_or_none()
-    if not document:
-        raise HTTPException(status_code=404, detail="Document not found")
-
-    await check_permission(
-        session, user, document.workspace_id, Permission.DOCUMENTS_READ.value
-    )
-
+    ),
+):
+    """Get full version content including source_markdown."""
     version = (
         await session.execute(
             select(DocumentVersion).where(
@@ -119,6 +107,13 @@ async def restore_document_version(
     version_number: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "Document",
+            "document_id",
+            Permission.DOCUMENTS_UPDATE.value,
+        )
+    ),
 ):
     user = auth.user
     """Restore a previous version: snapshot current state, then overwrite document content."""
@@ -132,10 +127,6 @@ async def restore_document_version(
     ).scalar_one_or_none()
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
-
-    await check_permission(
-        session, user, document.workspace_id, Permission.DOCUMENTS_UPDATE.value
-    )
 
     version = (
         await session.execute(

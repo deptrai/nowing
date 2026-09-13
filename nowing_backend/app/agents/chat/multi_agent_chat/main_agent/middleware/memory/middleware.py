@@ -201,7 +201,7 @@ class MemoryInjectionMiddleware(AgentMiddleware):  # type: ignore[type-arg]
 
         try:
             query = _build_transcript_query(messages)
-        except Exception:
+        except Exception:  # transcript query rendering failure; abort memory injection
             logger.exception("memory injection transcript query rendering failed")
             record_memory_injection_failure(
                 scope=scope, stage="query", reason="render_error"
@@ -222,7 +222,7 @@ class MemoryInjectionMiddleware(AgentMiddleware):  # type: ignore[type-arg]
         cm = shielded_async_session()
         try:
             session = await cm.__aenter__()
-        except Exception:
+        except Exception:  # DB session acquisition failure; abort memory injection
             logger.exception("memory injection session enter failed")
             record_memory_injection_failure(
                 scope=scope, stage="session", reason="enter_error"
@@ -239,7 +239,7 @@ class MemoryInjectionMiddleware(AgentMiddleware):  # type: ignore[type-arg]
                     session, scope=scope, query=query, embedding=embedding
                 )
                 _validate_hits(hits)
-            except Exception as exc:
+            except Exception as exc:  # memory search execution failure; record metric and continue
                 logger.exception("memory injection search failed")
                 reason = (
                     "invalid_result" if isinstance(exc, ValueError) else "query_error"
@@ -253,13 +253,13 @@ class MemoryInjectionMiddleware(AgentMiddleware):  # type: ignore[type-arg]
                 try:
                     async with session.begin_nested():
                         display_name = await self._lookup_display_name(session)
-                except Exception:
+                except Exception:  # display name lookup failure; record metric and continue
                     logger.exception("memory injection display name lookup failed")
                     pending = ("display_name", "lookup_error")
         finally:
             try:
                 await cm.__aexit__(None, None, None)
-            except Exception:
+            except Exception:  # DB session exit failure; record metric
                 if not terminal:
                     logger.exception("memory injection session exit failed")
                     record_memory_injection_failure(
@@ -321,7 +321,7 @@ class MemoryInjectionMiddleware(AgentMiddleware):  # type: ignore[type-arg]
     async def _embed_query(self, query: str) -> Any:
         try:
             embeddings = await asyncio.to_thread(embed_texts, [query])
-        except Exception as exc:
+        except Exception as exc:  # embedding provider failure; wrap in VectorValidationError
             raise VectorValidationError("provider_error") from exc
         embedding = validate_single_embedding_result(embeddings)
         return validate_embedding_vector(

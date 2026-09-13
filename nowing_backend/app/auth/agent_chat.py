@@ -253,7 +253,7 @@ async def require_agent_chat_pat(
             workspace_id=workspace_id_raw,
         )
         raise
-    except Exception as _exc:
+    except Exception as _exc:  # auth context resolution failure; audit rejection and raise 401
         # Log the real exception internally; do not disclose it to the client.
         await _audit_rejection(
             request,

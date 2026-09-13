@@ -42,7 +42,7 @@ def create_update_memory_tool(
                 llm=llm,
             )
             return result.to_dict()
-        except Exception as e:
+        except Exception as e:  # user memory update failure; rollback and return error dict
             logger.exception("Failed to update user memory: %s", e)
             await db_session.rollback()
             return {"status": "error", "message": f"Failed to update memory: {e}"}
@@ -71,7 +71,7 @@ def create_update_team_memory_tool(
                 llm=llm,
             )
             return result.to_dict()
-        except Exception as e:
+        except Exception as e:  # team memory update failure; rollback and return error dict
             logger.exception("Failed to update team memory: %s", e)
             await db_session.rollback()
             return {

@@ -100,8 +100,13 @@ class _FakeClientSession(_StrictFakeMixin):
         return result
 
     async def call_tool(
-        self, tool_name: str, *, arguments: dict[str, Any] | None = None
+        self,
+        tool_name: str,
+        *,
+        arguments: dict[str, Any] | None = None,
+        **kwargs: Any,
     ) -> SimpleNamespace:
+        del kwargs
         result = self.handler.call_tool(tool_name, arguments or {})
         if inspect.isawaitable(result):
             result = await result
@@ -137,11 +142,19 @@ def install(active_patches: list[Any]) -> None:
     """Patch production MCP streamable-HTTP boundaries exactly once."""
     targets = [
         (
-            "app.agents.chat.multi_agent_chat.shared.tools.mcp.tool.streamablehttp_client",
+            "app.agents.chat.multi_agent_chat.shared.tools.mcp.tool.http.streamablehttp_client",
             _fake_streamablehttp_client,
         ),
         (
-            "app.agents.chat.multi_agent_chat.shared.tools.mcp.tool.ClientSession",
+            "app.agents.chat.multi_agent_chat.shared.tools.mcp.tool.http.ClientSession",
+            _FakeClientSession,
+        ),
+        (
+            "app.proprietary.platforms.xactions.mcp_client.streamablehttp_client",
+            _fake_streamablehttp_client,
+        ),
+        (
+            "app.proprietary.platforms.xactions.mcp_client.ClientSession",
             _FakeClientSession,
         ),
     ]
@@ -149,3 +162,8 @@ def install(active_patches: list[Any]) -> None:
         p = patch(target, replacement)
         p.start()
         active_patches.append(p)
+
+
+def reset() -> None:
+    """Reset the registered fake MCP handler registry between tests."""
+    _HANDLERS.clear()

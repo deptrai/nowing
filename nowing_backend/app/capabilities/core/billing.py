@@ -70,7 +70,7 @@ async def _debit_with_workspace_spend_cap(
 
     try:
         return await wallet_credit.apply_debit(session, user_id, cost_micros)
-    except Exception:
+    except Exception:  # billing debit failure → rollback spend and raise
         # Undo the monthly-spent increment if the wallet debit failed.
         await credit_svc.refund_member_spend(
             workspace_id=workspace_id,
@@ -356,10 +356,9 @@ async def _gate_vn_jobs_aggregate(
     if owner_user_id is None:
         return
 
-    sources = getattr(payload, "sources", list(_JOBS_BILLING_UNIT_MAP)) or list(
-        _JOBS_BILLING_UNIT_MAP
-    )
-    max_items = getattr(payload, "max_items_per_source", 10) or 0
+    raw_sources = getattr(payload, "sources", None)
+    sources = raw_sources if raw_sources else list(_JOBS_BILLING_UNIT_MAP)
+    max_items = max(1, getattr(payload, "max_items_per_source", 10) or 10)
 
     required_micros = int(
         getattr(config, "VN_JOBS_AGGREGATE_QUERY_MICROS_PER_QUERY", 5000)
@@ -612,7 +611,7 @@ async def _record_deep_research_token_usage(
             ttfb_ms=ttfb_ms,
             run_id=ctx.run_id,
         )
-    except Exception:
+    except Exception:  # best-effort usage telemetry; log and continue
         logger.exception("Failed to record deep_research token usage; continuing")
 
 
@@ -750,7 +749,7 @@ async def _record_chainlens_cost_allocation(
                 ttfb_ms=ttfb_ms,
                 run_id=ctx.run_id,
             )
-        except Exception:
+        except Exception:  # best-effort usage telemetry; log and continue
             logger.exception(
                 "Failed to record %s token usage for run %s; continuing",
                 usage_type,
@@ -838,6 +837,18 @@ async def _charge_vn_bds_aggregate(
     """
     service = PlatformScrapeCreditService(ctx.session)
     if not service.billing_enabled():
+        return 0
+
+    if getattr(output, "persistence_status", None) == "failed":
+        return 0
+
+    if getattr(output, "total_items", 0) == 0 and getattr(output, "degraded", False):
+        return 0
+
+    if getattr(output, "persistence_status", None) == "failed":
+        return 0
+
+    if getattr(output, "total_items", 0) == 0 and getattr(output, "degraded", False):
         return 0
 
     cost_micros = int(getattr(output, "cost_micros", 0) or 0)

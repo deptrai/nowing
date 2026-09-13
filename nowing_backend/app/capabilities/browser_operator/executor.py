@@ -122,7 +122,7 @@ def build_browser_operator_executor():
                 action=payload.action,
                 message="Timed out waiting for browser extension response (60s).",
             )
-        except Exception as exc:
+        except Exception as exc:  # capability executor error → structured failure response
             logger.error("CDP command execution error: %s", exc)
             return BrowserOperatorOutput(
                 success=False,

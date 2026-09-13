@@ -85,7 +85,7 @@ class LangGraphMissionExecutor:
         try:
             parsed = urlparse(url)
             return parsed.netloc if parsed.netloc else None
-        except Exception:
+        except Exception:  # malformed URL parse failure; return None
             return None
 
     @staticmethod
@@ -239,7 +239,7 @@ class LangGraphMissionExecutor:
             )
         except HumanInterventionRequired:
             raise
-        except Exception as exc:
+        except Exception as exc:  # crawl phase execution failure; record subtask failure, checkpoint error, and re-raise
             subtasks = list(state.get("subtasks", []))
             subtasks.append({"id": skip_subtask, "status": "failed", "error": str(exc)})
             checkpoint = dict(state.get("checkpoint") or {})
@@ -390,7 +390,7 @@ class LangGraphMissionExecutor:
                 status="success",
                 completed_at=datetime.now(UTC).isoformat(),
             )
-        except Exception as exc:
+        except Exception as exc:  # deliverable generation failure; record subtask failure, checkpoint error, and re-raise
             subtasks = list(state.get("subtasks", []))
             subtasks.append({"id": "deliver", "status": "failed", "error": str(exc)})
             checkpoint = dict(state.get("checkpoint") or {})
@@ -441,7 +441,7 @@ class LangGraphMissionExecutor:
         try:
             ingest_res = await rest_client.batch_ingest_leads(workspace_id, leads)
             await self._maybe_notify_high_fit(state, ingest_res)
-        except Exception as exc:
+        except Exception as exc:  # batch lead ingestion failure; record subtask failure, checkpoint error, and re-raise
             subtasks = list(state.get("subtasks", []))
             subtasks.append({"id": "ingestion", "status": "failed", "error": str(exc)})
             checkpoint = dict(state.get("checkpoint") or {})
@@ -514,7 +514,7 @@ class LangGraphMissionExecutor:
 
             if lead_id:
                 await self.rest_client.notify_high_fit_lead(mission_id, lead_id)
-        except Exception as notify_exc:
+        except Exception as notify_exc:  # best-effort high-fit lead notification; log warning and continue
             logger.warning(
                 "Failed to process high fit lead notification for mission %s: %s",
                 mission_id,

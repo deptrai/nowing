@@ -168,7 +168,7 @@ async def _merge_db_global_models(
         if own_session:
             await session.commit()
         return connections, models
-    except Exception:
+    except Exception:  # rollback session on catalog sync failure and re-raise
         if own_session:
             await session.rollback()
         raise
