@@ -211,7 +211,7 @@ class OutcomePricingService:
             self.session.add(plan)
             try:
                 await self.session.commit()
-            except Exception:
+            except Exception:  # rollback on concurrent insert race condition and re-query existing plan
                 await self.session.rollback()
                 stmt = select(PricingPlan).where(
                     PricingPlan.workspace_id == workspace_id

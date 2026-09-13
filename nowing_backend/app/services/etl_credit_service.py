@@ -135,7 +135,7 @@ class EtlCreditService:
             from app.services.auto_reload_service import maybe_trigger_auto_reload
 
             await maybe_trigger_auto_reload(user_id)
-        except Exception as exc:
+        except Exception as exc:  # best-effort auto-reload trigger after debit; never fail the debit
             logger.debug("Suppressed %r", exc)
 
         return user.credit_micros_balance
@@ -388,7 +388,7 @@ class EtlCreditService:
                 with open(file_path, "rb") as f:
                     pdf_reader = pypdf.PdfReader(f)
                     return len(pdf_reader.pages)
-            except Exception as exc:
+            except Exception as exc:  # best-effort PDF page count reading; falls back to metadata estimation
                 logger.debug("Suppressed %r", exc)
 
         return self.estimate_pages_from_metadata(file_ext, file_size)

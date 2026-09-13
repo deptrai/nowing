@@ -392,7 +392,7 @@ def _extract_cost_usd(
         value = float(litellm.completion_cost(completion_response=response_obj))
         if value > 0:
             return value
-    except Exception as exc:
+    except Exception as exc:  # litellm completion_cost fallback; try cost_per_token if completion_cost fails
         if is_image:
             logger.warning(
                 "[TokenTracking] completion_cost failed for image model=%s "
@@ -416,7 +416,7 @@ def _extract_cost_usd(
             value = float(prompt_cost) + float(completion_cost)
             if value > 0:
                 return value
-        except Exception as exc:
+        except Exception as exc:  # litellm cost_per_token fallback; return zero/fallback cost if unavailable
             logger.debug(
                 "[TokenTracking] cost_per_token failed for model=%s: %s", model, exc
             )
@@ -530,7 +530,7 @@ class TokenTrackingCallback(CustomLogger):
             if start_time is not None and end_time is not None:
                 delta = end_time - start_time
                 call_latency_s = getattr(delta, "total_seconds", lambda: float(delta))()
-        except Exception:
+        except (TypeError, ValueError, AttributeError, Exception):  # latency delta calculation fallback
             call_latency_s = None
 
         cache_hit_ratio: float | None = None
@@ -646,7 +646,7 @@ async def record_token_usage(
             cost_micros,
         )
         return record
-    except Exception:
+    except Exception:  # best-effort token usage telemetry; never abort the caller
         logger.warning(
             "[TokenTracking] failed to record %s token usage",
             usage_type,

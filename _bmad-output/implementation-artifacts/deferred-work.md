@@ -1518,9 +1518,27 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
     8. Conditional memory export (1 site): `export_routes:51` (chỉ check khi có memories).
     9. Internal helpers (3 sites): `lead_clipper_routes:171`, `obsidian_plugin_routes:198,247`.
 
+- source_spec: `_bmad-output/implementation-artifacts/spec-nowingerror-batch-1.md`
+  summary: NowingError & Exception Narrowing — Batch 1 (47 sites across 11 financial, credits & verification services)
+  resolved: >-
+    2026-09-13 — Refactor 47 call-sites `except Exception` trên 11 services P0:
+    corporate_verification_service (15), phone_waterfall_service (12), billable_calls (4),
+    token_tracking_service (4), contact_unlock_service (3), etl_credit_service (2),
+    pricing_registration (2), token_quota_service (2), auto_reload_service (1),
+    outcome_pricing_service (1), partner_service (1).
+    Phân loại rõ ràng: best-effort suppression có lý do (cache, telemetry, hooks) vs
+    critical path rollback/re-raise vs fail-closed security.
+    Fix patch target trong test_contact_unlock_billing.py. 94 unit tests pass 100%.
+
 - source_spec: none
-  summary: Migrate remaining ~1.794 `except Exception` toàn app sang typed exceptions / NowingError hierarchy — theo từng domain
-  evidence: Follow-up từ billing/credits pilot 2026-09-12 — nguyên tắc narrow-first đã chứng minh
+  summary: Migrate remaining ~1.747 `except Exception` toàn app sang typed exceptions / NowingError hierarchy — theo từng domain
+  evidence: >-
+    Đã hoàn thành Batch 1 (47 sites financial/credits/verification).
+    Các domain tiếp theo:
+    - LLM & Model Routing (~40 sites in app/services/llm_router, openrouter, hybrid_llm)
+    - External Integrations & Connectors (~90 sites in app/services/composio, news, google_*, etc.)
+    - Core services còn lại (~150 sites in app/services/health, web_builder, memory, etc.)
+    - Routes (~331 sites) và Tasks (~277 sites)
 
 - source_spec: none
   summary: Git history cleanup (git filter-repo xóa db.py.legacy + screenshots khỏi history) — destructive, force-push, cần team coordination
