@@ -15,6 +15,7 @@ import pytest
 from sqlalchemy import BindParameter
 
 from app.db import XActionsProxyBinding
+from app.proprietary.platforms.xactions.adapter_v2 import TargetUnsupportedError
 from app.proprietary.platforms.xactions.mcp_client import XActionsMcpError
 from app.proprietary.platforms.xactions.models import SocialPostData
 from app.tasks.celery_tasks import social_xactions_ingest
@@ -1286,3 +1287,71 @@ async def test_ingest_social_target_unexpected_exception_rolls_back(
         await social_xactions_ingest._ingest_social_target(task, target.id)
 
     assert session.rollbacks == 1
+
+
+@pytest.mark.asyncio
+async def test_ingest_social_target_marks_unsupported_on_target_unsupported_error(
+    monkeypatch,
+):
+    """TargetUnsupportedError sets status='unsupported', is_active=False, commits and does not retry."""
+    target = _fake_target(platform="shopee_keyword")
+    session = _FakeSession(target)
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "get_celery_session_maker",
+        lambda: session,
+    )
+
+    client = _fake_redis_client()
+    fake_aioredis = MagicMock()
+    fake_aioredis.from_url.return_value = client
+    monkeypatch.setattr(social_xactions_ingest, "aioredis", fake_aioredis)
+
+    mock_adapter = MagicMock()
+    mock_adapter.fetch_posts_for_target = AsyncMock(
+        side_effect=TargetUnsupportedError("Target lacks valid HTTP(S) URL for x_crawl_post fallback")
+    )
+    mock_adapter.ingest_raw_post_to_stream = AsyncMock()
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "XActionsSocialAdapterV2",
+        lambda: _FakeAdapterCtx(mock_adapter),
+    )
+
+    task = MagicMock()
+    with patch.object(social_xactions_ingest.logger, "warning") as log_warn:
+        ingested = await social_xactions_ingest._ingest_social_target(task, target.id)
+
+    assert ingested == 0
+    assert target.status == "unsupported"
+    assert target.is_active is False
+    assert session.commits >= 1
+    task.retry.assert_not_called()
+    log_warn.assert_called()
+
+
+@pytest.mark.asyncio
+async def test_ingest_social_target_status_unsupported_skips(monkeypatch):
+    """Target with status='unsupported' is skipped before any binding/lock logic."""
+    target = _fake_target(status="unsupported")
+    session = _FakeSession(target)
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "get_celery_session_maker",
+        lambda: session,
+    )
+
+    client = _fake_redis_client()
+    fake_aioredis = MagicMock()
+    fake_aioredis.from_url.return_value = client
+    monkeypatch.setattr(social_xactions_ingest, "aioredis", fake_aioredis)
+
+    task = MagicMock()
+    ingested = await social_xactions_ingest._ingest_social_target(task, target.id)
+
+    assert ingested == 0
+    assert session.commits == 0
+    client.set.assert_not_called()

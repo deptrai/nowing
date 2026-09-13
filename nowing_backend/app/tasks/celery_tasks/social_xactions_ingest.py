@@ -23,7 +23,10 @@ from sqlalchemy import or_, select
 from app.celery_app import CONNECTORS_QUEUE, celery_app
 from app.config import config
 from app.db import SocialMonitoredTarget, XActionsProxyBinding
-from app.proprietary.platforms.xactions.adapter_v2 import XActionsSocialAdapterV2
+from app.proprietary.platforms.xactions.adapter_v2 import (
+    TargetUnsupportedError,
+    XActionsSocialAdapterV2,
+)
 from app.proprietary.platforms.xactions.mcp_client import XActionsMcpError
 from app.tasks.celery_tasks import get_celery_session_maker, run_async_celery_task
 
@@ -110,6 +113,23 @@ async def _halt_target(
     logger.error("Halted social target %s: %s", target.id, reason)
 
 
+async def _mark_target_unsupported(
+    session,
+    target: SocialMonitoredTarget,
+    reason: str,
+) -> None:
+    """Permanently mark a target as unsupported after a fatal unsupported failure."""
+    target.status = "unsupported"
+    target.is_active = False
+    await session.commit()
+    logger.warning(
+        "Marked social target %s (%s) as unsupported: %s",
+        target.id,
+        target.platform,
+        reason,
+    )
+
+
 @celery_app.task(
     name="ingest_social_target",
     bind=True,
@@ -132,7 +152,7 @@ async def _ingest_social_target(task, target_id: int) -> int:
                 logger.warning("Social target %s not found", target_id)
                 return 0
 
-            if not target.is_active or target.status == "error":
+            if not target.is_active or target.status in ("error", "unsupported"):
                 logger.info(
                     "Skipping inactive social target %s (active=%s status=%s)",
                     target_id,
@@ -170,6 +190,9 @@ async def _ingest_social_target(task, target_id: int) -> int:
 
                     try:
                         posts = await adapter.fetch_posts_for_target(target)
+                    except TargetUnsupportedError as exc:
+                        await _mark_target_unsupported(session, target, str(exc))
+                        return 0
                     except XActionsMcpError as exc:
                         if exc.code == "XACT_4291":
                             retry_after = exc.retry_after or 30

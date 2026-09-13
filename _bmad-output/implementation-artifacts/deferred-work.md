@@ -1688,3 +1688,11 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   summary: Git history cleanup (git filter-repo xóa db.py.legacy + screenshots khỏi history) — destructive, force-push, cần team coordination
   resolved: 2026-09-13 — Đã hoàn thành: user đã phê duyệt explicit 'yes' thực thi git history cleanup. Đã chạy git-filter-repo thành công, xóa sạch db.py.legacy, dump.rdb, symdex dbs, screenshots và media rác khỏi toàn bộ git history; git gc --aggressive giải phóng >210 MB dung lượng git pack.
   evidence: Re-deferred từ "giải quyết hết defer work" round 2 — không tự ý chạy; chờ user chốt thời điểm + báo team
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-36-1-wire-x-crawl-post-fallback.md`
+  summary: Persist unsupported failure reason to a dedicated column on SocialMonitoredTarget for admin UI inspection
+  evidence: Review finding from Story 36.1 Blind Hunter; _mark_target_unsupported logs reason but social_monitored_targets table lacks a failure_reason column
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-36-1-wire-x-crawl-post-fallback.md`
+  summary: Return dispatched target telemetry instead of raw HTTP post count in _ingest_social_target when REDIS_STREAM_ENABLED
+  evidence: Review finding from Story 36.1; when XActions returns data: [] over MCP and pushes to Redis stream, task logging reports 0 posts ingested

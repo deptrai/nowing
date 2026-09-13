@@ -105,6 +105,32 @@ def _normalize_platform_for_post(platform: str) -> str:
     return platform.split("_")[0]
 
 
+class TargetUnsupportedError(RuntimeError):
+    """Raised when a target cannot be scraped because platform/URL is unsupported or fallback fails permanently."""
+
+
+def _is_tool_not_found_error(exc: XActionsMcpError) -> bool:
+    code_str = str(exc.code) if exc.code is not None else ""
+    if code_str in ("XACT_404", "tool_not_found", "404"):
+        return True
+    if isinstance(exc.message, str):
+        msg_lower = exc.message.lower()
+        if "tool_not_found" in msg_lower or "tool not found" in msg_lower:
+            return True
+    return False
+
+
+def _is_permanent_fallback_error(exc: XActionsMcpError) -> bool:
+    code_str = str(exc.code) if exc.code is not None else ""
+    if code_str in ("XACT_404", "XACT_4001", "tool_not_found", "404", "4001"):
+        return True
+    if isinstance(exc.message, str):
+        msg_lower = exc.message.lower()
+        if any(term in msg_lower for term in ("tool_not_found", "tool not found", "action not available", "unsupported")):
+            return True
+    return False
+
+
 class UniversalScrapeTargetMapper:
     """Map a Nowing social target to an XActions tool call.
 
@@ -128,12 +154,18 @@ class UniversalScrapeTargetMapper:
 
         Used when `x_scrape` is not yet exposed by XActions (AC 7).
         """
-        target_url = getattr(target, "target_url", None) or getattr(target, "target_id", "")
-        if not target_url:
-            raise ValueError("x_crawl_post fallback requires a target_url or target_id")
-        if not target_url.startswith(("http://", "https://")):
-            raise ValueError(f"x_crawl_post fallback requires a valid HTTP(S) URL, got {target_url!r}")
-        return "x_crawl_post", {"url": target_url}
+        platform = _normalize_platform_for_post(getattr(target, "platform", "") or "")
+        if not platform:
+            raise TargetUnsupportedError(
+                f"Target {getattr(target, 'id', None)} lacks valid platform for x_crawl_post fallback"
+            )
+        raw_url = getattr(target, "target_url", None) or getattr(target, "target_id", "")
+        target_url = str(raw_url or "").strip()
+        if not target_url.lower().startswith(("http://", "https://")):
+            raise TargetUnsupportedError(
+                f"Target {getattr(target, 'id', None)} lacks valid HTTP(S) URL for x_crawl_post fallback: {target_url!r}"
+            )
+        return "x_crawl_post", {"platform": platform, "url": target_url}
 
 
 class XActionsSocialAdapterV2:
@@ -172,6 +204,7 @@ class XActionsSocialAdapterV2:
         if "dryRun" not in arguments:
             arguments["dryRun"] = False
 
+        effective_tool = tool_name
         try:
             result = await client.call_tool(tool_name, arguments)
         except XActionsMcpError as exc:
@@ -182,14 +215,63 @@ class XActionsSocialAdapterV2:
                 exc.code,
                 exc.retry_after,
             )
-            raise
+            if _is_tool_not_found_error(exc):
+                logger.warning(
+                    "XActions primary tool %s not found (code=%s) for target %s (platform=%s). Attempting x_crawl_post fallback.",
+                    tool_name,
+                    exc.code,
+                    getattr(target, "id", None),
+                    getattr(target, "platform", None),
+                )
+                fallback_tool, fallback_args = UniversalScrapeTargetMapper.fallback_crawl_post(target)
+                if account_id:
+                    fallback_args["accountId"] = account_id
+                if getattr(target, "proxy_url", None):
+                    fallback_args["proxyUrl"] = target.proxy_url
+                if "dryRun" not in fallback_args:
+                    fallback_args["dryRun"] = False
+
+                effective_tool = fallback_tool
+                try:
+                    result = await client.call_tool(fallback_tool, fallback_args)
+                except XActionsMcpError as fallback_exc:
+                    logger.warning(
+                        "XActions fallback tool %s failed for target %s (platform=%s): %s (code=%s, retry_after=%s)",
+                        fallback_tool,
+                        getattr(target, "id", None),
+                        getattr(target, "platform", None),
+                        fallback_exc.message,
+                        fallback_exc.code,
+                        fallback_exc.retry_after,
+                    )
+                    if _is_permanent_fallback_error(fallback_exc):
+                        raise TargetUnsupportedError(
+                            f"Fallback {fallback_tool} failed permanently with code {fallback_exc.code} for target {getattr(target, 'id', None)}: {fallback_exc.message}"
+                        ) from fallback_exc
+                    raise
+            else:
+                raise
 
         if not result.get("success"):
+            err_msg = result.get("error") or "unknown error"
+            if effective_tool == "x_crawl_post":
+                raise TargetUnsupportedError(
+                    f"Fallback {effective_tool} returned success=False for target {getattr(target, 'id', None)}: {err_msg}"
+                )
             raise RuntimeError(
-                f"XActions tool {tool_name} returned success=False: {result.get('error')}"
+                f"XActions tool {effective_tool} returned success=False: {err_msg}"
             )
 
         data = result.get("data", [])
+        if isinstance(data, dict):
+            data = [data]
+        elif isinstance(data, list):
+            pass
+        elif hasattr(data, "__iter__") and not isinstance(data, (str, bytes)):
+            pass
+        else:
+            data = []
+
         posts: list[SocialPostData] = []
         for item in data:
             if not isinstance(item, dict):
@@ -198,16 +280,31 @@ class XActionsSocialAdapterV2:
             if isinstance(published_at, str):
                 try:
                     published_at = datetime.fromisoformat(published_at.replace("Z", "+00:00"))
-                except ValueError:
+                except (ValueError, TypeError):
                     published_at = None
+            elif isinstance(published_at, (int, float)):
+                try:
+                    published_at = datetime.fromtimestamp(published_at, tz=UTC)
+                except (ValueError, OSError, OverflowError):
+                    published_at = None
+
+            post_id = item.get("id") or item.get("externalId") or item.get("postId") or item.get("post_id")
+            post_url = item.get("postUrl") or item.get("post_url") or item.get("url")
+            if not post_id:
+                if post_url:
+                    post_id = post_url
+                else:
+                    logger.warning("Skipping post without identifiable external ID: %s", item)
+                    continue
+
             posts.append(
                 SocialPostData(
                     platform=_normalize_platform_for_post(target.platform),
-                    external_post_id=item.get("id") or item.get("externalId") or "",
+                    external_post_id=str(post_id),
                     author_id=item.get("authorId") or item.get("author_id"),
                     author_name=item.get("authorName") or item.get("author_name"),
                     author_url=item.get("authorUrl") or item.get("author_url"),
-                    post_url=item.get("postUrl") or item.get("post_url"),
+                    post_url=item.get("postUrl") or item.get("post_url") or item.get("url"),
                     content=item.get("content") or item.get("text") or "",
                     reactions_count=item.get("reactions") or item.get("reactionsCount") or 0,
                     comments_count=item.get("comments") or item.get("commentsCount") or 0,

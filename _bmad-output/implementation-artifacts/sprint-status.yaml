@@ -369,6 +369,12 @@ development_status:
   35-1-redis-consumer-group-xautoclaim-dlq-replay: backlog
   35-2-sub-quadratic-windowed-deduplication: backlog
   35-3-per-platform-scraper-failure-metrics-sse-heartbeat: backlog
+  36-1-wire-x-crawl-post-fallback-unsupported-marking: done
+  36-2-loop-scoped-mcp-client-cache: backlog
+  36-3-centralized-xact-error-map: backlog
+  36-4-single-writer-stream-cleanup: backlog
+  36-5-stream-consumer-schema-contract-dlq: backlog
+  36-6-canonical-action-matrix-legacy-deprecation: backlog
 validation_reports:
   - story: "3.18"
     type: "code-review"

@@ -26,6 +26,8 @@ inputDocuments:
   - "_bmad-output/planning-artifacts/pilot-plan-c-memo-2026-08-05.md (context)"
   - "_bmad-output/planning-artifacts/research/technical-spike-vietnamworks-api-2026-08-05.md (context)"
   - "_bmad-output/planning-artifacts/research/technical-spike-topcv-itviec-2026-08-05.md (context)"
+  - "_bmad-output/specs/spec-xactions-connection/SPEC.md (Epic 36 source)"
+  - "_bmad-output/planning-artifacts/architecture/architecture-Nowing-2026-09-13/ARCHITECTURE-SPINE.md (Epic 36 ADs)"
 ---
 
 # Nowing - Epic Breakdown
@@ -376,6 +378,9 @@ Public channel web preview, MTProto Userbot session pool, distributed mutex lock
 
 ### Epic 28: Self-Host Trust, Data Portability & Cloud GA Legal Readiness
 Người dùng self-host và cloud có thể tin tưởng Nowing với research memory dài hạn: dữ liệu có thể xuất, được mã hóa, quản lý bởi policy rõ ràng, và self-host chạy trong <10 phút. **FRs:** FR-95 (Data export & portability), FR-96 (Encryption-at-rest & key management), FR-97 (ToS/legal review + retention), FR-98 (Self-host OSS onboarding <10 min), **FR-99** (recall precision/noise gate — GA launch gate). **ARs:** AR-11, AR-12, AR-13, AR-14, AR-15. **UX-DRs:** UX-DR-PRFAQ-2 (self-host onboarding), UX-DR-PRFAQ-4 (cost control dashboard). **Stories:** 28.1–28.6 (28.6 = recall precision ratification, FR-99). **Dependencies:** Epic 1 (auth), Epic 3 (memory schema), Epic 8 (billing/cost). Post-MVP UX-DR-PRFAQ-1/3 (memory browser/correction) thuộc Epic 3.
+
+### Epic 36: XActions Unified Connection Contract (Nowing-side)
+Contract kết nối nowing↔XActions: MCP client loop-scoped, x_crawl_post fallback, error map tập trung, single-writer stream, dynamic action discovery. **FRs:** FR-XC1..XC6 (spec-xactions-connection CAP-1..6). **Governed by** `architecture-Nowing-2026-09-13` (AD-1..10). **XActions-side** giao qua XACTIONS-REQUIREMENTS-2026-09-13.md. **Stories:** 36.1–36.6. **Dependencies:** Epic 21 (lead-gen), Epic 35 (stream consumer), XActions-side REQ-X1..X4.
 
 ### Epic 29: SaaS Operations, Advanced Admin Governance & Analyst Workspace
 Nowing nâng cấp từ single-tenant ops lên SaaS operations console: superadmin quản lý workspace/tenant, subscription tier/quota, bulk operations, audit; owner/admin/analyst có dashboard health/adoption và memory browser/research timeline. **FRs:** FR-100 (Custom workspace roles & permissions builder), FR-101 (Workspace health & adoption analytics dashboard), FR-102 (Tenant subscription tier & quota management), FR-103 (Admin bulk operations console), FR-104 (Memory browser & research timeline for analyst). **ARs:** AR-17, AR-18. **UX-DRs:** UX-DR-PRFAQ-5 (SaaS admin operations console), UX-DR-PRFAQ-6 (analyst memory browser / research timeline). **Stories:** 29.1–29.6. **Dependencies:** Epic 1 (auth/RBAC), Epic 3 (memory schema/provenance), Epic 8 (billing/cost/wallet), Epic 25 (admin platform operations baseline), Epic 28 (retention/right-to-delete cho 29.6).
@@ -4777,3 +4782,100 @@ So that scraper failures are surfaced immediately on Prometheus and idle client 
 **Acceptance Criteria:**
 - **Given** an ingest failure from any platform scraper, **When** error occurs, **Then** `record_scraper_ingest_failure(platform, reason)` increments.
 - **And** long-running SSE connections emit keep-alive comments every 15 seconds.
+
+
+## Epic 36: XActions Unified Connection Contract (Nowing-side)
+
+*Status: backlog.* Governed by `ARCHITECTURE-SPINE.md` (AD-1..10, AD-SOC-1..11) and `spec-xactions-connection/SPEC.md` (CAP-1..6). Cross-repo: các yêu cầu phía XActions được đặc tả trong `_bmad-output/planning-artifacts/XACTIONS-REQUIREMENTS-2026-09-13.md` (nằm ngoài phạm vi epic này).
+
+> **Boundary:** Epic này chỉ chứa connection contract phía Nowing — MCP client, dispatch mapper, stream consumer, error mapping. Các story có trạng thái `blocked-by-external` (17.1 Lazada, 17.5 TikTok Shop và các `SocialMonitoredTarget` thuộc VN-domain) KHÔNG thuộc epic này; các story này sẽ được unblock khi Epic 36 và phần việc phía XActions hoàn tất.
+
+### Story Execution & Dependency Matrix
+
+| Story | Scope | Dependencies / Blockers | Phase |
+| --- | --- | --- | --- |
+| 36.1 | `x_crawl_post` fallback + graceful unsupported | None (local) | Phase 1 — immediate |
+| 36.2 | Loop-scoped MCP client cache | None (local) | Phase 1 — immediate |
+| 36.3 | Centralized `XACT_*` error map | None (local) | Phase 1 — immediate |
+| 36.4 | Single-writer stream cleanup | **Blocked by REQ-X2** (XActions stream hook); feature flag | Phase 2 — external |
+| 36.5 | Stream consumer schema contract + DLQ | Depends on 36.4 + REQ-X2 | Phase 2 — external |
+| 36.6 | Canonical action matrix + legacy tool deprecation | **Blocked by REQ-X1 + REQ-X3**; feature flag | Phase 2 — external |
+
+> **Deploy order (hard):** Phase-2 stories MUST NOT deploy before the matching XActions REQ ships and `health_probe_xactions` verifies it. All Phase-2 dispatch paths sit behind feature flags (`XACTIONS_USE_UNIFIED_DISPATCH`, `XACTIONS_STREAM_SINGLE_WRITER_ENABLED`) for rollback without redeploy. Phase-1 stories are safe to ship independently.
+
+### Story 36.1: Wire `x_crawl_post` Fallback & Graceful Unsupported Marking (P0 — unblock VN targets now)
+
+As a Backend Engineer,
+I want the XActions adapter to fall back to `x_crawl_post` when `x_scrape` is unavailable and to mark unserveable targets unsupported,
+So that VN-domain monitored targets return post-detail data instead of failing silently with XACT_404 (tool_not_found).
+
+**Acceptance Criteria:**
+- **Given** `fetch_posts_for_target` invokes a tool that fails with `XACT_404` (tool_not_found), **When** the adapter catches the error, **Then** it invokes `fallback_crawl_post(target)` and retries once via `x_crawl_post`.
+- **And** the `x_crawl_post` fallback arguments MUST include `platform` (mapped from `target.platform`) and `url`.
+- **And** when `target` has no valid `http(s)` `target_url`/`target_id`, **Then** `fallback_crawl_post` does not raise — the target is marked `unsupported` (`status='unsupported'`, `is_active=False`, committed) so the scheduler stops dispatching it.
+- **And** when `x_crawl_post` also fails (timeout, `XACT_4001`, `XACT_5000`), the failure routes through the centralized error map (Story 36.3) — transient errors pause/retry, permanent errors mark `unsupported` after a retry threshold rather than on the first hiccup.
+
+### Story 36.2: Loop-Scoped `XActionsMcpClient` Connection Cache
+
+As a Backend Engineer,
+I want the MCP client bound to the running asyncio loop with re-initialization on loop change and serialized calls,
+So that consecutive Celery tasks on the same worker reuse a live session without crashing or leaking.
+
+**Acceptance Criteria:**
+- **Given** `run_async_celery_task` creates a `new_event_loop()` per task and closes it, **When** two ingest tasks run on the same worker, **Then** each gets a working `XActionsMcpClient` session.
+- **And** the client keys its session cache by `asyncio.get_running_loop()` and calls `session.initialize()` whenever the current loop differs from the cached loop or is closed; failed initialize evicts the cache entry rather than leaving a half-initialized client.
+- **And** the cache is a `weakref.WeakKeyDictionary` keyed on the loop so dead loops and their clients are garbage-collected — no unbounded retention across thousands of tasks.
+- **And** `call_tool` is serialized through a lock so concurrent coroutines on one loop cannot interleave streamable-http frames.
+- **And** `accountId` and `proxyUrl` are passed per call via request arguments for multi-tenancy and are never stored on the session.
+
+### Story 36.3: Centralized `XACT_*` → Task-Behavior Error Map
+
+As a Backend Engineer,
+I want a single mapping from XActions error codes to task behavior, with the adapter returning a behavior enum and the Celery layer executing it,
+So that every caller handles rate-limit, hibernation, and fatal errors identically.
+
+**Acceptance Criteria:**
+- **Given** the adapter raises `XActionsMcpError` with a `code`, **When** the ingest task handles it, **Then** behavior is dispatched via one centralized map: `XACT_4291` → `retry(countdown=clamp(retry_after, 5..3600), max_retries=5)`; `ACCOUNT_HIBERNATION`/`PROXY_EXHAUSTED`/`XACT_5030` → pause target (set `last_scraped_at` into the future by `retry_after` or a default cooldown); `XACT_4010` → halt target; `XACT_5000` → retry up to 3 times then DLQ + halt; `XACT_4001` → log `suggestedAction` and pause.
+- **And** the adapter returns a `TaskBehavior` enum + metadata (never calls `task.retry` itself) so non-Celery callers (API routes, CLI, health probes) are not coupled to Celery primitives.
+- **And** an unmapped `code` or `code=None` falls through to a default `raise`/`pause` rather than a `KeyError`.
+- **And** `XACT_5000` exhausting retries writes to `stream:social:failed` and halts the target rather than crash-looping every interval.
+
+### Story 36.4: Single-Writer Stream — Stop Nowing Publishing to `stream:social:raw_posts`
+
+As a Backend Engineer,
+I want Nowing to consume `stream:social:raw_posts` only and never publish raw posts into it,
+So that XActions is the sole writer and the stream carries one canonical event schema.
+
+**Acceptance Criteria:**
+- **Given** `REDIS_STREAM_ENABLED` and the XActions stream hook (REQ-X2) is live, **When** Nowing ingests, **Then** it consumes exclusively via a consumer group and never executes `XADD` against `stream:social:raw_posts`.
+- **And** `adapter_v2.ingest_raw_post_to_stream` is removed from the external stream path; if Nowing needs an internal ingest channel it uses a distinct name (e.g. `stream:social:internal_raw_posts`).
+- **And** the cutover is gated by feature flag `XACTIONS_STREAM_SINGLE_WRITER_ENABLED`; while the flag is off the legacy dual-write path still runs so no data is lost during the transition.
+- **And** the story MUST NOT deploy until REQ-X2 is deployed and `health_probe_xactions` confirms XActions emits events for the target platforms — otherwise VN/non-social ingestion blacks out.
+
+### Story 36.5: Stream Consumer Schema Contract & DLQ Routing
+
+As a Data Pipeline Engineer,
+I want the stream consumer to validate the thin-event schema and route violations to a dead-letter queue with an explicit reason,
+So that malformed or context-less events never drop silently or wedge the pending-entries list.
+
+**Acceptance Criteria:**
+- **Given** an incoming thin event missing `workspace_id` or `content_snippet`, **When** the consumer parses the payload, **Then** it logs the schema-violation reason, routes the message to dead-letter queue `stream:social:failed`, and `XACK`s the original message so it does not sit in the PEL.
+- **And** `SocialPostEvent` accepts `content_snippet` as an alias for `content` (`validation_alias=AliasChoices('content','content_snippet')`) so the field XActions emits is not silently discarded.
+- **And** an event with `schema_version` above the supported max routes to DLQ with `UNSUPPORTED_SCHEMA_VERSION`; a payload that fails JSON serialization on the DLQ path falls back to `repr()` and still `XACK`s.
+- **And** a valid event produces a `social_post` with correct `workspace_id` and content for entity extraction (lead creation + `UNIQUE(workspace_id, platform, external_post_id)` dedup is owned by Epic 21/17 pipeline, out of scope here).
+- **And** the consumer exposes a lag probe (`XINFO GROUPS` /`XPENDING`) on `stream:social:raw_posts`; when consumer lag crosses a threshold it logs/alerts so ingestion stoppage is not silent while the stream approaches `MAXLEN` truncation.
+
+### Story 36.6: Canonical Action Matrix & Legacy Tool Deprecation
+
+As a Backend Engineer,
+I want target dispatch and validation driven by the XActions canonical action catalog instead of a hard-coded `PLATFORM_TOOL_MAP`,
+So that action-name or argument changes on XActions never require editing Nowing code.
+
+**Acceptance Criteria:**
+- **Given** `x_actions_list` returns canonical `ActionDescriptor[]` for all platforms, **When** `UniversalScrapeTargetMapper` or a `SocialMonitoredTarget` resolves, **Then** the dispatch `action` and payload `args` are derived from the descriptor's canonical `action`/`requiredArgs` and dispatched via `x_scrape` — not from hard-coded tool/action mappings.
+- **And** dispatch arguments are packaged as `x_scrape` nested form `{platform, action, args, context:{targetId, workspaceId}, accountId?, proxyUrl?}` — never flat top-level fields.
+- **And** the catalog is cached with a TTL; on refresh failure or an empty/partial catalog it serves the stale cache or a validated static fallback matrix rather than failing all mappings.
+- **And** `SocialMonitoredTarget` creation/update validates `platform`+`action` against the matrix (falling back to the static matrix when XActions is down) and rejects unsupported combinations with a `422` error.
+- **And** legacy per-platform tools migrate to `x_scrape` only behind feature flag `XACTIONS_USE_UNIFIED_DISPATCH` and only for platforms whose descriptor + stream routing are confirmed live — so working Facebook/Twitter monitoring does not regress.
+
+> **Cross-repo note:** `SocialMonitoredTarget.platform` values must equal XActions canonical platform keys; the shared matrix (REQ-X4) is the single source both sides validate against.
