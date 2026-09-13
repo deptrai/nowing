@@ -91,7 +91,7 @@ class CommentReplyNotificationHandler(BaseNotificationHandler):
                 f"Created comment_reply notification {notification.id} for user {user_id}"
             )
             return notification
-        except Exception as e:  # log error and fallback safely
+        except Exception as e:  # notification creation failure; rollback and handle duplicate or re-raise
             await session.rollback()
             if (
                 "duplicate key" in str(e).lower()
