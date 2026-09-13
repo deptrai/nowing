@@ -100,7 +100,7 @@ class ChatLiteLLMRouter(BaseChatModel):
                 self.streaming,
                 bound_tools is not None,
             )
-        except Exception as e:
+        except Exception as e:  # log error and re-raise on router initialization failure
             logger.error("Failed to initialize ChatLiteLLMRouter: %s", e)
             raise
 
@@ -149,7 +149,7 @@ class ChatLiteLLMRouter(BaseChatModel):
         for model_name in models:
             try:
                 counts.append(_tc(messages=messages, model=model_name))
-            except Exception as exc:
+            except Exception as exc:  # best-effort token count across candidate models; skip on error
                 logger.debug("Suppressed %r", exc)
                 continue
         return max(counts) if counts else None
@@ -297,7 +297,7 @@ class ChatLiteLLMRouter(BaseChatModel):
                 if new_msg_tokens is None:
                     continue
                 running_total = running_total - orig_msg_tokens + new_msg_tokens
-            except Exception as exc:
+            except Exception as exc:  # best-effort message compaction; continue fitting budget
                 logger.debug("Suppressed %r", exc)
 
         # Hard guarantee: if still over budget, replace remaining large
@@ -394,7 +394,7 @@ class ChatLiteLLMRouter(BaseChatModel):
                 # Convert using LangChain utility
                 try:
                     formatted_tools.append(convert_to_openai_tool(tool))
-                except Exception as e:
+                except Exception as e:  # tool conversion failure; log warning and skip incompatible tool
                     logger.warning("Failed to convert tool %s: %s", tool, e)
                     continue
 
@@ -801,7 +801,7 @@ def get_auto_mode_llm(
         instance = ChatLiteLLMRouter(streaming=streaming)
         _router_instance_cache[streaming] = instance
         return instance
-    except Exception as e:
+    except Exception as e:  # return None on router creation failure
         logger.error("Failed to create ChatLiteLLMRouter: %s", e)
         return None
 
