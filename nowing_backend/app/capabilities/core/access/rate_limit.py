@@ -88,7 +88,7 @@ def _incr(key: str, window_seconds: int) -> int:
         if count == 1:
             client.expire(key, window_seconds)
         return count
-    except Exception as exc:  # capability executor failure; return structured error
+    except Exception as exc:  # redis rate limit error; fallback to in-memory rate limiting
         _log_fallback_warning(key, exc)
         raw_worker_count = _incr_memory(key, window_seconds)
         return raw_worker_count * CAPABILITY_RATE_LIMIT_FALLBACK_DIVISOR

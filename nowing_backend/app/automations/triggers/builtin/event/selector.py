@@ -68,6 +68,6 @@ async def _start_one(
             run.id,
             event.event_id,
         )
-    except Exception:  # automation step error; record failure and continue
+    except Exception:  # trigger evaluation failure; skip trigger and rollback
         logger.exception("event fire failed for trigger %d", trigger.id)
         await session.rollback()

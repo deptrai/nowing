@@ -38,7 +38,7 @@ async def _impl(run_id: int) -> None:
     async with session_maker() as session:
         try:
             await send_automation_run_telegram_notification(session, run_id)
-        except Exception:  # automation step error; record failure and continue
+        except Exception:  # notification dispatch best-effort; log failure
             logger.exception(
                 "Failed to process automation run notification for run %d", run_id
             )

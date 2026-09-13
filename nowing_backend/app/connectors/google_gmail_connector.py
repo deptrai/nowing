@@ -47,7 +47,7 @@ def fetch_google_user_email(credentials: Credentials) -> str | None:
             logger.debug(f"Fetched Google user email: {email}")
             return email
         return None
-    except Exception as e:  # upstream connector API failure; mark degraded
+    except Exception as e:  # upstream API failure; return None for user email
         logger.warning(f"Error fetching Google user email: {e!s}")
         return None
 
@@ -163,7 +163,7 @@ class GoogleGmailConnector:
                     connector.config = creds_dict
                     flag_modified(connector, "config")
                     await self._session.commit()
-            except Exception as e:  # upstream connector API failure; mark degraded
+            except Exception as e:  # token refresh / config update failure; raise
                 error_str = str(e)
                 if (
                     "invalid_grant" in error_str.lower()
@@ -194,7 +194,7 @@ class GoogleGmailConnector:
             credentials = await self._get_credentials()
             self.service = build("gmail", "v1", credentials=credentials)
             return self.service
-        except Exception as e:  # upstream connector API failure; mark degraded
+        except Exception as e:  # Gmail service build failure; raise
             error_str = str(e)
             # If the error already contains a user-friendly re-authentication message, preserve it
             if (
@@ -222,7 +222,7 @@ class GoogleGmailConnector:
                 "history_id": profile.get("historyId"),
             }, None
 
-        except Exception as e:  # upstream connector API failure; mark degraded
+        except Exception as e:  # upstream API failure; return empty profile and error
             return {}, f"Error fetching user profile: {e!s}"
 
     async def get_messages_list(
@@ -263,7 +263,7 @@ class GoogleGmailConnector:
 
             return messages, None
 
-        except Exception as e:  # upstream connector API failure; mark degraded
+        except Exception as e:  # upstream API failure; return empty messages and error
             error_str = str(e)
             # If the error already contains a user-friendly re-authentication message, preserve it
             if (
@@ -297,7 +297,7 @@ class GoogleGmailConnector:
 
             return message, None
 
-        except Exception as e:  # upstream connector API failure; mark degraded
+        except Exception as e:  # upstream API failure; return empty details and error
             return {}, f"Error fetching message details: {e!s}"
 
     async def get_recent_messages(
@@ -367,7 +367,7 @@ class GoogleGmailConnector:
 
             return detailed_messages, None
 
-        except Exception as e:  # upstream connector API failure; mark degraded
+        except Exception as e:  # upstream API failure; return empty messages and error
             return [], f"Error fetching recent messages: {e!s}"
 
     @staticmethod
@@ -428,7 +428,7 @@ class GoogleGmailConnector:
 
             return text_content.strip()
 
-        except Exception as e:  # upstream connector API failure; mark degraded
+        except Exception as e:  # email body decode/extraction failure; return error string
             return f"Error extracting message text: {e!s}"
 
     def format_message_to_markdown(self, message: dict[str, Any]) -> str:
@@ -494,5 +494,5 @@ class GoogleGmailConnector:
 
             return markdown_content
 
-        except Exception as e:  # upstream connector API failure; mark degraded
+        except Exception as e:  # email formatting to markdown failure; return error string
             return f"Error formatting message to markdown: {e!s}"
