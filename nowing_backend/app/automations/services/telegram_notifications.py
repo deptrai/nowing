@@ -54,7 +54,7 @@ def _format_output_text(output: Any) -> str:
     if isinstance(output, (list, dict)):
         try:
             return json.dumps(output, ensure_ascii=False, indent=2, default=str)
-        except Exception as exc:  # automation step error; record failure and continue
+        except Exception as exc:  # JSON serialization error; fallback to str
             logger.debug("Suppressed %r", exc)
     return str(output)
 
@@ -238,6 +238,6 @@ async def send_automation_run_telegram_notification(
                 parse_mode="MarkdownV2",
             )
         record_gateway_outbound(platform="telegram", kind="send", status="sent")
-    except Exception:  # automation step error; record failure and continue
+    except Exception:  # notification dispatch best-effort; record metrics and log
         logger.exception("Failed to send Telegram notification for run %d", run_id)
         record_gateway_outbound(platform="telegram", kind="send", status="failed")
