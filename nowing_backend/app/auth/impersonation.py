@@ -85,7 +85,7 @@ class ImpersonationGuardMiddleware(BaseHTTPMiddleware):
                 algorithms=["HS256"],
                 options={"verify_aud": False},
             )
-        except Exception:  # auth/user operation error; surface or fallback
+        except Exception:  # impersonation token decode failure; return False
             return False
 
         return bool(payload.get("is_impersonation", False))
