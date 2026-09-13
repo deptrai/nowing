@@ -20,7 +20,7 @@ def _safe_read_text(path: Path) -> str:
                 raw = f.read(_MAX_SCAN_BYTES)
             return raw.decode("utf-8", errors="replace")
         return path.read_text(encoding="utf-8", errors="replace")
-    except Exception as e:
+    except Exception as e:  # read failure surfaces as sentinel string so validator reports it as an issue
         return f"__read_error:{e}__"
 
 
@@ -126,7 +126,7 @@ def validate_project_structure(project_dir: str | Path) -> tuple[bool, list[str]
                 issues.append("package.json missing 'next' dependency")
             if "react" not in deps:
                 issues.append("package.json missing 'react' dependency")
-        except Exception as e:
+        except Exception as e:  # malformed JSON → recorded as validation issue, not raised
             issues.append(f"Invalid package.json format: {e}")
 
     # 2. Check entrypoint page (app/page.tsx or app/page.jsx or pages/index.tsx)
@@ -183,7 +183,7 @@ def validate_project_security(project_dir: str | Path) -> tuple[bool, list[str]]
             try:
                 content = _safe_read_text(cfg_path)
                 _scan_text(content, cfg_name, issues)
-            except Exception as e:
+            except Exception as e:  # unreadable config file → recorded as security-check issue
                 issues.append(f"Could not read {cfg_name} for security check: {e}")
 
     # package.json: do not swallow parse errors; also validate scripts and bin scripts
@@ -213,7 +213,7 @@ def validate_project_security(project_dir: str | Path) -> tuple[bool, list[str]]
                         f"package.json bin '{bin_name}'",
                         issues,
                     )
-        except Exception as e:
+        except Exception as e:  # malformed package.json → recorded as security-check issue
             issues.append(f"Invalid package.json (security check failed): {e}")
 
     # package-lock.json: scan for suspicious content and validate JSON shape
@@ -228,7 +228,7 @@ def validate_project_security(project_dir: str | Path) -> tuple[bool, list[str]]
                 issues.append(
                     "Security violation: package-lock.json is not a valid JSON object"
                 )
-        except Exception as e:
+        except Exception as e:  # malformed lockfile → recorded as security-check issue
             issues.append(f"Invalid package-lock.json (security check failed): {e}")
 
     # Source code scan for dynamic import() and new Function across JS/TS files

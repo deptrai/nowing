@@ -177,7 +177,7 @@ class ModelHealthProbe(HealthProbe):
                         suggested_action = "Verify model provider endpoint and status page"
                     last_error = _sanitize_string(verify_res.message)
 
-        except Exception as exc:
+        except Exception as exc:  # probe must not propagate: mark model endpoint unavailable
             latency_ms = int((time.perf_counter() - start) * 1000)
             status = "unavailable"
             last_error = _sanitize_string(f"Probe execution error: {type(exc).__name__}")

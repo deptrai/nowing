@@ -245,7 +245,7 @@ class HealthProbeRegistry:
                 ).distinct()
                 res = await session.execute(stmt)
                 db_types = {str(row[0]).lower() for row in res.fetchall() if row[0]}
-        except Exception as exc:
+        except Exception as exc:  # best-effort dynamic connector probe discovery from DB; falls back to static seed
             logger.warning("Failed to discover connector probes from DB: %s", exc)
 
         seed_by_type = {t: (n, g) for t, n, g in CANONICAL_CONNECTORS}
@@ -281,11 +281,11 @@ class HealthProbeRegistry:
             cls.register(MessagingHealthProbe(provider=provider))
 
         # Discover payment provider from config
-        payment_provider = "stripe" if getattr(config, "STRIPE_SECRET_KEY", None) else "stripe"
+        payment_provider = "stripe"
         cls.register(PaymentHealthProbe(provider=payment_provider))
 
         # Discover storage provider from config
-        storage_provider = "s3" if getattr(config, "S3_BUCKET", None) or getattr(config, "AWS_S3_BUCKET", None) else "s3"
+        storage_provider = "s3"
         cls.register(StorageHealthProbe(provider=storage_provider))
 
         cls.register(XActionsHealthProbe())

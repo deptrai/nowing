@@ -40,7 +40,7 @@ class XActionsHealthProbe(HealthProbe):
                     if isinstance(metrics_data, list):
                         metrics_data = metrics_data[0] if metrics_data else {}
                         metrics_data = metrics_data.get("metrics") or metrics_data
-                except Exception:
+                except Exception:  # best-effort metrics fetch; empty metrics degrade probe detail only
                     metrics_data = {}
 
                 # AC 9: evaluate XActions stream alerts and trigger admin alerts
@@ -51,7 +51,7 @@ class XActionsHealthProbe(HealthProbe):
                     if isinstance(alerts, list):
                         first = alerts[0] if alerts else {}
                         alerts = first.get("alerts") if isinstance(first, dict) else first
-                except Exception:
+                except Exception:  # best-effort alerts fetch; empty list degrades probe detail only
                     alerts = []
 
                 # Determine status from governor health (XActions returns
@@ -100,7 +100,7 @@ class XActionsHealthProbe(HealthProbe):
                         microsecond=0
                     ) + timedelta(seconds=self.interval_seconds),
                 )
-        except Exception as exc:
+        except Exception as exc:  # probe must not propagate: return UNHEALTHY result for scheduler
             logger.exception("XActions health probe failed")
             return HealthResult(
                 service_id=self.service_id,
@@ -151,10 +151,10 @@ class XActionsHealthProbe(HealthProbe):
                             alert_rule=rule,
                             fired_at=fired_at,
                         )
-                    except Exception:
+                    except Exception:  # per-rule alert dispatch failure; continue evaluating other rules
                         logger.exception(
                             "Failed to fire XActions stream alert rule %s", rule.id
                         )
                 await session.commit()
-        except Exception:
+        except Exception:  # alert-rule evaluation is best-effort; never crash the probe
             logger.exception("Failed to evaluate XActions stream alert rules")

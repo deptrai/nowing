@@ -70,7 +70,7 @@ class HealthProbeScheduler:
                         interval_seconds=probe.interval_seconds,
                         next_probe_at=datetime.now(UTC) + timedelta(seconds=probe.interval_seconds),
                     )
-                except Exception as exc:
+                except Exception as exc:  # probe must not propagate: convert to UNHEALTHY result for scheduler
                     logger.error("Unhandled error probing %s: %s", probe.service_id, exc)
 
                     safe_err = f"Probe execution error: {type(exc).__name__}"
@@ -137,7 +137,7 @@ class HealthProbeScheduler:
                 interval_seconds=probe.interval_seconds,
                 next_probe_at=datetime.now(UTC) + timedelta(seconds=probe.interval_seconds),
             )
-        except Exception as exc:
+        except Exception as exc:  # probe must not propagate: convert to UNHEALTHY result
             logger.error("Probe error for %s: %s", service_id, exc)
 
             safe_err = f"Probe execution error: {type(exc).__name__}"
@@ -184,9 +184,9 @@ class HealthProbeScheduler:
                 await HealthResultStore.save_result(session, res)
                 await AdminHealthAlertEngine.evaluate_result(session, res)
                 await session.commit()
-            except Exception as exc:
+            except Exception as exc:  # DB store/alert failure for probe result; rollback and continue scheduler
                 logger.error("Failed to store/alert result for %s: %s", res.service_id, exc)
                 try:
                     await session.rollback()
-                except Exception as rb_exc:
+                except Exception as rb_exc:  # best-effort rollback on DB failure
                     logger.warning("Rollback error on %s: %s", res.service_id, rb_exc)

@@ -155,7 +155,7 @@ class StorageHealthProbe(HealthProbe):
             if resp.status_code >= 500:
                 return ("unavailable", f"S3 service returned HTTP {resp.status_code}")
             return ("degraded", f"S3 returned HTTP {resp.status_code}")
-        except Exception as exc:
+        except Exception as exc:  # S3 ping helper: report unavailable rather than raise
             return ("unavailable", f"S3 ping failed: {type(exc).__name__}: {exc}")
 
     async def probe(self) -> HealthResult:
@@ -175,7 +175,7 @@ class StorageHealthProbe(HealthProbe):
                     suggested_action = "Verify S3 endpoint, credentials, bucket name and network reachability"
 
             latency_ms = int((time.perf_counter() - start) * 1000)
-        except Exception as exc:
+        except Exception as exc:  # probe must not propagate: mark storage unavailable
             latency_ms = int((time.perf_counter() - start) * 1000)
             status = "unavailable"
             last_error = f"Storage probe error: {type(exc).__name__}"

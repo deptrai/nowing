@@ -59,7 +59,7 @@ class PaymentHealthProbe(HealthProbe):
             if resp.status_code >= 500:
                 return ("unavailable", f"Stripe API returned HTTP {resp.status_code}")
             return ("degraded", f"Stripe API returned HTTP {resp.status_code}")
-        except Exception as exc:
+        except Exception as exc:  # Stripe ping helper: report unavailable rather than raise
             return ("unavailable", f"Stripe ping failed: {type(exc).__name__}: {exc}")
 
     async def probe(self) -> HealthResult:
@@ -83,7 +83,7 @@ class PaymentHealthProbe(HealthProbe):
                 suggested_action = f"Configure credentials for payment provider {self._provider}"
 
             latency_ms = int((time.perf_counter() - start) * 1000)
-        except Exception as exc:
+        except Exception as exc:  # probe must not propagate: mark payment provider unavailable
             latency_ms = int((time.perf_counter() - start) * 1000)
             status = "unavailable"
             last_error = f"Payment probe error: {type(exc).__name__}"
