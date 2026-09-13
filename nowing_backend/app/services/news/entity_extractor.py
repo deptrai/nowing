@@ -32,7 +32,7 @@ from app.services.token_tracking_service import UsageType, scoped_turn
 
 try:
     import tiktoken
-except Exception:  # pragma: no cover
+except (ImportError, Exception):  # pragma: no cover - optional dependency import
     tiktoken = None  # type: ignore[assignment]
 
 if TYPE_CHECKING:
@@ -82,7 +82,7 @@ def _sanitize_prompt_text(text: str) -> str:
         return text
     try:
         return redact_pii(text, context="news_ner").text
-    except Exception:
+    except Exception:  # fallback to raw text if pre-redaction fails
         logger.warning("news_ner pre-redaction failed, using raw text")
         return text
 
@@ -109,7 +109,7 @@ def _get_cached_entities(cache_key: str) -> list[NewsEntity] | None:
         if raw is not None:
             data = json.loads(raw)
             return [NewsEntity(**item) for item in data]
-    except Exception:
+    except Exception:  # fallback to local memory cache if Redis unavailable
         now = time.monotonic()
         with _lock_mutex:
             if cache_key in _local_cache:
@@ -118,7 +118,7 @@ def _get_cached_entities(cache_key: str) -> list[NewsEntity] | None:
                     try:
                         data = json.loads(raw)
                         return [NewsEntity(**item) for item in data]
-                    except Exception as exc:
+                    except Exception as exc:  # best-effort local cache JSON deserialization
                         logger.debug("Suppressed %r", exc)
     return None
 
@@ -130,7 +130,7 @@ def _set_cached_entities(
     payload = json.dumps([e.model_dump() for e in entities], ensure_ascii=False)
     try:
         _redis_client().set(cache_key, payload, ex=ttl)
-    except Exception:
+    except Exception:  # fallback to local memory cache on Redis error
         now = time.monotonic()
         with _lock_mutex:
             _local_cache[cache_key] = (now + ttl, payload)
@@ -141,7 +141,7 @@ def _acquire_lock(lock_key: str, ttl: int = _LOCK_TTL_SECONDS) -> bool:
     try:
         res = _redis_client().set(lock_key, "1", ex=ttl, nx=True)
         return bool(res)
-    except Exception:
+    except Exception:  # fallback to local memory lock on Redis error
         now = time.monotonic()
         with _lock_mutex:
             if lock_key in _local_locks:
@@ -156,7 +156,7 @@ def _release_lock(lock_key: str) -> None:
     """Release extraction lock."""
     try:
         _redis_client().delete(lock_key)
-    except Exception:
+    except Exception:  # fallback to local memory lock release on Redis error
         with _lock_mutex:
             _local_locks.pop(lock_key, None)
 
@@ -250,7 +250,7 @@ def mask_person_entities_in_text(raw_text: str, entities: list[NewsEntity]) -> s
     try:
         redacted = redact_pii(masked_text, context="default")
         return redacted.text
-    except Exception as exc:
+    except Exception as exc:  # raise ChunkValidationError on PII redaction failure
         logger.exception("PII redaction failed for news text")
         raise ChunkValidationError(
             domain="news",
@@ -367,7 +367,7 @@ class NewsEntityExtractor:
                 )
                 if model is None:
                     model = await get_agent_llm(session, workspace_id)
-            except Exception as exc:
+            except Exception as exc:  # fallback to default agent LLM on role model load error
                 logger.warning(
                     "news_entity_extraction_degraded workspace_id=%s error=%s",
                     workspace_id,
@@ -413,7 +413,7 @@ class NewsEntityExtractor:
                     workspace_id,
                 )
                 return []
-            except Exception as exc:
+            except Exception as exc:  # log extraction error and return empty entities list
                 err_type = type(exc).__name__
                 if "RateLimit" in err_type:
                     logger.warning(
@@ -476,7 +476,7 @@ class NewsEntityExtractor:
                         json_str[:100],
                     )
                     return []
-            except Exception:
+            except Exception:  # log malformed JSON from LLM and return empty entities list
                 logger.info(
                     "news_entity_extraction_fallback workspace_id=%s reason=malformed_json snippet=%s",
                     workspace_id,
@@ -593,7 +593,7 @@ def clear_entity_cache() -> None:
         r = _redis_client()
         for key in r.scan_iter("news_entity*"):
             r.delete(key)
-    except Exception as exc:
+    except Exception as exc:  # best-effort cache flush
         logger.debug("Suppressed %r", exc)
 
 

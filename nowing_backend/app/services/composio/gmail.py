@@ -104,7 +104,7 @@ class ComposioGmailMixin(ComposioClientMixin):
 
             return messages, next_token, result_size_estimate, None
 
-        except Exception as e:
+        except Exception as e:  # catch Composio list Gmail messages error and return error tuple
             logger.error(f"Failed to list Gmail messages: {e!s}")
             return [], None, None, str(e)
 
@@ -131,7 +131,7 @@ class ComposioGmailMixin(ComposioClientMixin):
 
             return data, None
 
-        except Exception as e:
+        except Exception as e:  # catch Composio get Gmail message detail error and return error tuple
             logger.error(f"Failed to get Gmail message detail: {e!s}")
             return None, str(e)
 
@@ -191,7 +191,7 @@ class ComposioGmailMixin(ComposioClientMixin):
                 )
                 thread_id = payload.get("threadId") or payload.get("thread_id")
             return message_id, thread_id, None
-        except Exception as e:
+        except Exception as e:  # catch Composio send Gmail email error and return error tuple
             logger.error(f"Failed to send Gmail email: {e!s}")
             return None, None, str(e)
 
@@ -249,7 +249,7 @@ class ComposioGmailMixin(ComposioClientMixin):
                 if thread_id is None:
                     thread_id = payload.get("thread_id") or payload.get("threadId")
             return draft_id, message_id, thread_id, None
-        except Exception as e:
+        except Exception as e:  # catch Composio create Gmail draft error and return error tuple
             logger.error(f"Failed to create Gmail draft: {e!s}")
             return None, None, None, str(e)
 
@@ -306,7 +306,7 @@ class ComposioGmailMixin(ComposioClientMixin):
                 if message_id is None:
                     message_id = payload.get("message_id") or payload.get("messageId")
             return new_draft_id, message_id, None
-        except Exception as e:
+        except Exception as e:  # catch Composio update Gmail draft error and return error tuple
             logger.error(f"Failed to update Gmail draft: {e!s}")
             return None, None, str(e)
 
@@ -327,6 +327,6 @@ class ComposioGmailMixin(ComposioClientMixin):
             if not result.get("success"):
                 return result.get("error", "Unknown error")
             return None
-        except Exception as e:
+        except Exception as e:  # catch Composio trash Gmail message error and return error string
             logger.error(f"Failed to trash Gmail message: {e!s}")
             return str(e)

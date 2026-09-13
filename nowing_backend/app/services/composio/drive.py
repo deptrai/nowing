@@ -1,8 +1,10 @@
+
 """Composio Google Drive toolkit operations."""
 
 from __future__ import annotations
 
 import base64
+import binascii
 import logging
 from pathlib import Path
 from typing import Any
@@ -91,7 +93,7 @@ class ComposioDriveMixin(ComposioClientMixin):
 
             return files, next_token, None
 
-        except Exception as e:
+        except Exception as e:  # catch Composio list Drive files error and return error tuple
             logger.error(f"Failed to list Drive files: {e!s}")
             return [], None, str(e)
 
@@ -202,7 +204,7 @@ class ComposioDriveMixin(ComposioClientMixin):
                     try:
                         content = base64.b64decode(file_path)
                         return content, None
-                    except Exception:
+                    except (ValueError, binascii.Error, Exception):  # fallback to utf-8 encoding if base64 decode fails
                         return file_path.encode("utf-8"), None
 
             if isinstance(data, dict):
@@ -220,7 +222,7 @@ class ComposioDriveMixin(ComposioClientMixin):
 
             return None, f"Unexpected data type from Composio: {type(data).__name__}"
 
-        except Exception as e:
+        except Exception as e:  # catch Composio get Drive file content error and return error tuple
             logger.error(f"Failed to get Drive file content: {e!s}")
             return None, str(e)
 
@@ -262,7 +264,7 @@ class ComposioDriveMixin(ComposioClientMixin):
 
             return None, "Could not extract metadata from response"
 
-        except Exception as e:
+        except Exception as e:  # catch Composio get file metadata error and return error tuple
             logger.error(f"Failed to get file metadata: {e!s}")
             return None, str(e)
 
@@ -297,7 +299,7 @@ class ComposioDriveMixin(ComposioClientMixin):
             logger.warning(f"Could not extract start page token from response: {data}")
             return None, "No start page token in response"
 
-        except Exception as e:
+        except Exception as e:  # catch Composio get Drive start token error and return error tuple
             logger.error(f"Failed to get Drive start page token: {e!s}")
             return None, str(e)
 
@@ -351,7 +353,7 @@ class ComposioDriveMixin(ComposioClientMixin):
             )
             return changes, new_start_token, None
 
-        except Exception as e:
+        except Exception as e:  # catch Composio list Drive changes error and return error tuple
             logger.error(f"Failed to list Drive changes: {e!s}")
             return [], None, str(e)
 
@@ -430,7 +432,7 @@ class ComposioDriveMixin(ComposioClientMixin):
                 },
                 None,
             )
-        except Exception as e:
+        except Exception as e:  # catch Composio create Drive file error and return error tuple
             logger.error(f"Failed to create Drive file: {e!s}")
             return None, str(e)
 
@@ -451,6 +453,6 @@ class ComposioDriveMixin(ComposioClientMixin):
             if not result.get("success"):
                 return result.get("error", "Unknown error")
             return None
-        except Exception as e:
+        except Exception as e:  # catch Composio trash Drive file error and return error string
             logger.error(f"Failed to trash Drive file: {e!s}")
             return str(e)

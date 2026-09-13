@@ -136,7 +136,7 @@ class GoogleCalendarKBSyncService:
             )
             return {"status": "success"}
 
-        except Exception as e:
+        except Exception as e:  # catch DB duplicate key violation or unexpected error during document sync
             error_str = str(e).lower()
             if (
                 "duplicate key value violates unique constraint" in error_str
@@ -292,7 +292,7 @@ class GoogleCalendarKBSyncService:
             )
             return {"status": "success"}
 
-        except Exception as e:
+        except Exception as e:  # catch document sync error on update and rollback
             logger.error(
                 "KB sync after update failed for document %s: %s",
                 document_id,

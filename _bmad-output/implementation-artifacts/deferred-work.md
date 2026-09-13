@@ -1541,14 +1541,25 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
     fail-open quota checks, tool conversion fallback.
     101 unit tests + 13 integration tests pass 100%. Ruff clean.
 
+- source_spec: `_bmad-output/implementation-artifacts/spec-nowingerror-batch-3.md`
+  summary: NowingError & Exception Narrowing — Batch 3 (89 sites across 25 External Integrations & Connectors services)
+  resolved: >-
+    2026-09-13 — Refactor 89 call-sites `except Exception` trên 25 files tích hợp bên thứ ba:
+    kb_sync_service across 8 connectors (11 sites: duplicate key handling vs sync rollback),
+    tool_metadata_service across 6 connectors (23 sites: health check failure, auth_expired DB persistence, context fetch),
+    composio (25 sites across 5 files: drive, gmail, calendar, base, email — action execution error tuple mapping),
+    news (22 sites across 3 files: entity extraction, budget gates, rate limit Redis fallbacks),
+    chainlens (7 sites across 3 files: gap_fill, ingest, private_provider — worker safety, cost debit, memory search).
+    290 unit tests pass 100%. Ruff clean.
+
 - source_spec: none
-  summary: Migrate remaining ~1.707 `except Exception` toàn app sang typed exceptions / NowingError hierarchy — theo từng domain
+  summary: Migrate remaining ~1.618 `except Exception` toàn app sang typed exceptions / NowingError hierarchy — theo từng domain
   evidence: >-
-    Đã hoàn thành Batch 1 (47 sites financial/credits/verification) + Batch 2 (40 sites LLM/Model Routing).
-    Tổng đã giải quyết: 87 sites trong app/services/.
+    Đã hoàn thành Batch 1 (47 sites financial/credits/verification) + Batch 2 (40 sites LLM/Model Routing)
+    + Batch 3 (89 sites External Integrations & Connectors).
+    Tổng đã giải quyết: 176 sites trong app/services/ (~46% của app/services/).
     Các domain tiếp theo:
-    - External Integrations & Connectors (~90 sites in app/services/composio, news, google_*, etc.)
-    - Core services còn lại (~150 sites in app/services/health, web_builder, memory, etc.)
+    - Core services còn lại (~209 sites in app/services/health 38, web_builder 31, memory 20, admin_telemetry 12, root services ~100)
     - Routes (~331 sites) và Tasks (~277 sites)
 
 - source_spec: none

@@ -74,7 +74,7 @@ class ComposioCalendarMixin(ComposioClientMixin):
 
             return events, None
 
-        except Exception as e:
+        except Exception as e:  # catch Composio list Calendar events error and return error tuple
             logger.error(f"Failed to list Calendar events: {e!s}")
             return [], str(e)
 
@@ -124,7 +124,7 @@ class ComposioCalendarMixin(ComposioClientMixin):
                 event_id = payload.get("id") or payload.get("event_id")
                 html_link = payload.get("htmlLink") or payload.get("html_link")
             return event_id, html_link, None
-        except Exception as e:
+        except Exception as e:  # catch Composio create Calendar event error and return error tuple
             logger.error(f"Failed to create Calendar event: {e!s}")
             return None, None, str(e)
 
@@ -179,7 +179,7 @@ class ComposioCalendarMixin(ComposioClientMixin):
                 new_event_id = payload.get("id") or payload.get("event_id") or event_id
                 html_link = payload.get("htmlLink") or payload.get("html_link")
             return new_event_id, html_link, None
-        except Exception as e:
+        except Exception as e:  # catch Composio patch Calendar event error and return error tuple
             logger.error(f"Failed to patch Calendar event: {e!s}")
             return None, None, str(e)
 
@@ -204,6 +204,6 @@ class ComposioCalendarMixin(ComposioClientMixin):
             if not result.get("success"):
                 return result.get("error", "Unknown error")
             return None
-        except Exception as e:
+        except Exception as e:  # catch Composio delete Calendar event error and return error string
             logger.error(f"Failed to delete Calendar event: {e!s}")
             return str(e)
