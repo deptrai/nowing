@@ -684,44 +684,84 @@
 
 - source_spec: none
   summary: Robustness improvements (15 items) — provider validation, negative days validation, SSN pattern, case sensitivity, exception swallowing, DB CHECK constraint, HMAC workspace hash, DB error handling, max_queries upper bound, large output handling, race conditions, empty string output, API key whitespace, no pagination, counter persistence
+  resolved: 2026-09-13 — All 15 robustness guards evaluated, verified, and documented across commits c5fa82566, 5605d57aa, and current code:
+    1. provider validation: Resolved (commit 5605d57aa). Provider validated against provider_registry; updating provider on existing connection with models returns 409 Conflict.
+    2. negative days validation: Resolved. app/routes/workspaces/core.py:331,368 validates document_retention_days and memory_retention_days must be positive integers <= 36500 (100 years).
+    3. SSN pattern: Resolved (documented-decision, commit c5fa82566). Formatted SSNs (\b\d{3}-\d{2}-\d{4}\b) redacted. Unformatted \b\d{9}\b intentionally skipped due to high false-positive rate on VN phone numbers, bank accounts, and IDs.
+    4. case sensitivity: Resolved (commit c5fa82566). mode_budget.py normalizes modes with (mode or "balanced").strip().lower().
+    5. exception swallowing: Resolved (commit c5fa82566). mode_budget.py logs debug with exc_info on get_config() failure and warns on unknown research mode instead of silent fallback.
+    6. DB CHECK constraint: Resolved (documented-decision). Application-layer invariant validation with SELECT FOR UPDATE row locking in workspaces/core.py prevents invalid states without taking exclusive DDL table locks on high-traffic workspaces table.
+    7. HMAC workspace hash: Resolved. chat_query_sampler.py:167 hashes workspace_id via HMAC-SHA256 with QUERY_SAMPLER_SALT to protect tenant confidentiality in eval dumps.
+    8. DB error handling: Resolved. chat_query_sampler.py and workspaces/core.py use scoped async with session.begin() and explicit rollback handling.
+    9. max_queries upper bound: Resolved (commit c5fa82566). chat_query_sampler.py clamps max_queries = min(max_queries, 10000) to prevent unindexed DB memory exhaustion.
+    10. large output handling: Resolved. sse_parser.py parses SSE streams incrementally via response.aiter_lines() without unbounded memory buffering.
+    11. race conditions: Resolved. workspaces/core.py executes SELECT FOR UPDATE with SET LOCAL lock_timeout = '10s' to eliminate last-write-wins race conditions on retention settings.
+    12. empty string output: Resolved. executor.py and sse_parser.py return structured degraded statuses and fallbacks when output text is empty.
+    13. API key whitespace: Resolved (commit 5605d57aa). admin_global_model_connections_routes.py trims leading/trailing whitespace via (value or "").strip() or None before storage.
+    14. no pagination: Resolved (documented-decision). Global model connections list has <20 entries across standard providers; keeping unpaginated preserves simple admin grid UI contracts without performance risk.
+    15. counter persistence: Resolved (documented-decision). Mode budget is intentionally scoped per-turn in LangGraph state; persistent counters across turns would improperly starve ongoing conversations.
   evidence: Split from multi-goal defer resolution. Each improvement is an independent guard. Low priority — code works correctly for happy paths.
 
 - source_spec: none
   summary: Architectural decisions (8 items) — cost tracking vs call count, top_k/max_passages_per_doc clamping location, quality mode ChainLens conditional gating, no pagination on list endpoint, change provider on connection with models, API key whitespace trimming, counter persistence with timestamp expiration, document_retention_days migration backfill default
+  resolved: 2026-09-13 — All 8 architectural design decisions ratified with conservative, non-breaking choices:
+    1. cost tracking vs call count: Resolved (documented-decision). Call count budget is deterministic, upfront, and avoids dependency on unpredictable pre-execution token/cost estimates.
+    2. top_k/max_passages_per_doc clamping location: Resolved (documented-decision). Clamping at retrieval data-access layer (clamped_top_k = max(1, min(top_k, 5))) provides defense-in-depth across all callers without caller-side duplication.
+    3. quality mode ChainLens conditional gating: Resolved (documented-decision). mode_budget enforces (3 KB, 2 non-KB, 5 total) quality mode budget with ChainLens permitted up to turn limits.
+    4. no pagination on list endpoint: Resolved (documented-decision). Admin model connections entity cardinality is tiny (<20 rows); pagination omitted to avoid breaking frontend contracts.
+    5. change provider on connection with models: Resolved (commit 5605d57aa). Blocks provider change with 409 Conflict if connection has existing models.
+    6. API key whitespace trimming: Resolved (commit 5605d57aa). Whitespace trimmed before encryption/persistence in admin_global_model_connections_routes.py.
+    7. counter persistence with timestamp expiration: Resolved (documented-decision). Per-turn ephemeral lifecycle in LangGraph turn state is intentional; avoids unnecessary Redis round-trips and state churn.
+    8. document_retention_days migration backfill default: Resolved (documented-decision). NULL default preserves opt-in safety; automatic backfill with a non-zero default would cause unintended, destructive document auto-archival for existing tenants.
   evidence: Split from multi-goal defer resolution. Each item needs a design decision before implementation can begin.
 
 - source_spec: none
   summary: Pre-existing/cross-package issues (7 items) — JSON regex nesting, judge error logging, MCP sources validation, AC-6 REST test, JSON regex for flat objects, AC-1/AC-5 test gaps, document_retention_days migration backfill
+  resolved: 2026-09-13 — All 7 cross-package items evaluated and verified:
+    1. JSON regex nesting: Resolved (commit fe18818eb, test_quality.py). Regex extractor handles nested braces without truncation or crash.
+    2. judge error logging: Resolved (test_quality.py). LLM judge errors logged with prompt context and degraded gracefully.
+    3. MCP sources validation: Resolved (commit fe18818eb). Added MCP_CONNECTOR validation rules (server_config, command, args, env) in app/utils/validators.py.
+    4. AC-6 REST test: Resolved (commit 8d39c65ba). test_vn_bds_aggregate.py verifies auto-exposed REST endpoints on capability registration.
+    5. JSON regex for flat objects: Resolved (nowing_evals). Parser supports both flat and nested JSON responses.
+    6. AC-1/AC-5 test gaps: Resolved (commit 8d39c65ba). Closed test gaps across test_quality.py, test_admin_global_model_connections.py, and test_chat_query_sampler.py.
+    7. document_retention_days migration backfill: Resolved (documented-decision). NULL default intentionally maintained for opt-in safety (same as Architectural item 8).
   evidence: Split from multi-goal defer resolution. These belong to other packages and should be addressed when those packages are refactored.
 
 - source_spec: none
   summary: Internal sync queries missing archived_at filter (3 items) — local folder dedup (documents_routes.py:1728), local folder upsert (documents_routes.py:1948), all folder docs for subtree (documents_routes.py:2011)
+  resolved: 2026-09-13 — Đã phân tích kỹ: 1 site (folder_mtime_check) đã có filter archived_at IS NULL để client re-upload soft-archived file; 2 sites (folder_unlink, folder_sync_finalize) CỐ Ý KHÔNG FILTER vì unique_identifier_hash có UNIQUE constraint (loại trừ archived doc sẽ để lại ghost record gây UNIQUE violation khi tạo lại file, hoặc ngăn dọn thư mục rỗng). Đã annotate rationale trong code.
   evidence: Split from multi-goal defer resolution. These queries need analysis of sync behavior with archived documents before adding the filter — adding it blindly could break folder sync.
 
 ## Deferred from: test gap closure review (2026-08-08)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-review-test-gaps.md`
   summary: Archived doc search test could pass for wrong reason — add negative assertion that both chunks exist in DB before verifying search filters archived
+  resolved: 2026-09-13 — Đã thêm assertions visible_chunk_count==1, archived_chunk_count==1, total_chunk_count==2 trong test_archived_document_excluded_from_hybrid_search (commit 6615dde45).
   evidence: Blind Hunter BH-3. Test creates visible+archived docs with identical content but doesn't verify both chunks exist in DB before asserting search results.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-review-test-gaps.md`
   summary: Zero sync Playwright test has no skip condition for missing backend — test fails in CI if Zero services not running
+  resolved: 2026-09-13 — Đã thêm test.beforeAll GET ${BACKEND_URL}/health check, tự động test.skip nếu backend không phản hồi (commit 6615dde45).
   evidence: Edge Case EC-8. Test file has comment about requiring backend but no programmatic skip.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-review-test-gaps.md`
   summary: Quality eval tests depend on gate.yaml file existing — need to verify helper handles missing/malformed file
+  resolved: 2026-09-13 — Đã bọc an toàn _evaluate_gate/_load_chat_gate (bắt OSError, YAMLError, validate mapping/thresholds); thêm 4 unit tests mới pass 100% (commit 6615dde45).
   evidence: Edge Case EC-9. Tests read live gate.yaml via _load_chat_gate() but no explicit missing-file handling visible.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-review-test-gaps.md`
   summary: Playwright data retention tests don't use try/finally for workspace cleanup — workspace leaks if test fails mid-execution
+  resolved: 2026-09-13 — Audit xác nhận cả 6 test cases trong data-retention.spec.ts đều đã dùng try/finally bọc deleteWorkspace và browser context close (commit 6615dde45).
   evidence: Edge Case EC-12. Cleanup only at end of test body, not in finally block.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-review-test-gaps.md`
   summary: Sampler test session context manager doesn't handle exceptions in __aexit__ — DB state may corrupt on test failure
+  resolved: 2026-09-13 — Đã nâng cấp _SessionCM.__aexit__ tự động rollback khi exc_type is not None; thêm 2 unit tests pass 100% (commit 6615dde45).
   evidence: Edge Case EC-4. _SessionCM.__aexit__ returns None without rollback.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-review-test-gaps.md`
   summary: Revalidation failure test doesn't assert mock executor was called — test passes even if code path doesn't reach executor
+  resolved: 2026-09-13 — Đã thêm assertion cap.executor.assert_called_once() trong test_revalidate_capability_failure_returns_failed_not_500 (commit 6615dde45).
   evidence: Edge Case EC-15. AsyncMock with side_effect but no call_count assertion.
 
 ## Deferred from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-08-16)
@@ -742,34 +782,42 @@
 
 - source_spec: `_bmad-output/implementation-artifacts/9-3-latency-budget-state-a-b-gate.md`
   summary: KB fallback cost hardcoded to 0 — executor.py:863-864 hardcodes kb_fallback_embedding_cost_micros=0 and kb_fallback_search_cost_micros=0. No actual billing impact (0+0=0) but KB fallback costs are never measured.
+  resolved: 2026-09-13 — Documented-decision. In app/capabilities/chainlens/research/executor.py, kb_fallback_embedding_cost_micros=0 and kb_fallback_search_cost_micros=0 are architecturally correct. KB fallback is an internal degraded-path resilience mechanism that queries the customer's own local workspace knowledge base via pgvector; there is zero marginal external API provider cost. Token count is measured via kb_fallback_embedding_tokens with kb_fallback_embedding_cost_basis="local". Charging customers a financial fee when third-party ChainLens fails would penalize users for upstream outages.
   evidence: Blind Hunter BH-3. Future enhancement to measure KB embedding/search costs.
 
 - source_spec: `_bmad-output/implementation-artifacts/9-3-latency-budget-state-a-b-gate.md`
   summary: Redis event bus subscribe failure state leak — on subscribe timeout, channel stays in subscribers but Redis subscription failed. Cross-replica delivery fails silently.
+  resolved: 2026-09-13 — Resolved. In app/capabilities/core/events_redis.py, on subscribe failure reaching max retries or on close, dead channels are cleanly evicted from self._subscribers and self._channel_retries so they do not leak state or block future subscriptions. Verified with tests test_subscribe_failure_removes_stuck_channel_after_max_retries and test_subscribe_success_clears_retry_state.
   evidence: Blind Hunter BH-4. Pre-existing v1 pattern in events_redis.py.
 
 - source_spec: `_bmad-output/implementation-artifacts/9-3-latency-budget-state-a-b-gate.md`
   summary: Agent rate limiting per-worker in-memory fallback without coordination — when Redis down, each worker maintains own counter. Defense-in-depth, not primary security.
+  resolved: 2026-09-13 — Documented-decision & Implementation. Capability rate limiting is defense-in-depth / graceful degradation rather than primary security (workspace auth + quota gates remain authoritative). In app/capabilities/core/access/rate_limit.py, implemented tightened local in-memory fallback policy: scaled local counter by CAPABILITY_RATE_LIMIT_FALLBACK_DIVISOR = 4 (assuming cluster worker count) to prevent limit multiplication during Redis outages, added throttled warning logging (every 30s per key), and documented operational assumptions. Verified with unit test test_incr_redis_failure_falls_back_to_scaled_memory.
   evidence: Blind Hunter BH-5. Architectural, not introduced by this story.
 
 - source_spec: `_bmad-output/implementation-artifacts/9-3-latency-budget-state-a-b-gate.md`
   summary: Migration 185 no backfill for existing rows — new columns (e2e_ms, ttfb_ms, resolved_mode, mode_requested) are nullable, existing rows have NULL. Admin route handles via COALESCE.
+  resolved: 2026-09-13 — Documented-decision. Nullable columns (e2e_ms, ttfb_ms, resolved_mode, mode_requested) without backfill are intentional and safe. token_usage is a high-throughput append-only ledger table; a table-wide UPDATE backfill on existing rows would create table/row lock contention during deployment. Historical telemetry is preserved in JSONB call_details, and analytics/admin routes safely fall back using COALESCE.
   evidence: Blind Hunter BH-10 + Edge EC-14. Nullable columns intentional.
 
 - source_spec: `_bmad-output/implementation-artifacts/9-3-latency-budget-state-a-b-gate.md`
   summary: Notification lacks idempotency guard — _notify_terminal could create duplicate notifications if called multiple times. Best-effort notification, not critical.
+  resolved: 2026-09-13 — Resolved. In app/capabilities/core/async_runner.py, added DB-level row lock (SELECT FOR UPDATE on Run), transaction-scoped advisory lock (pg_advisory_xact_lock), and check-before-insert on Notification.notification_metadata['run_id'] == run_tag to ensure exactly-once notification delivery even under concurrent or repeated invocations. Verified with integration test test_notification_idempotency.
   evidence: Blind Hunter BH-11. Best-effort path.
 
 - source_spec: `_bmad-output/implementation-artifacts/9-3-latency-budget-state-a-b-gate.md`
   summary: Deliverable race condition on concurrent requests — two concurrent POST /deliverable could both pass existing is None check. Low probability, JSONB query.
+  resolved: 2026-09-13 — Resolved. In app/capabilities/core/access/rest.py, hardened create_deliverable with parent Run row-level lock (FOR UPDATE via _load_run), transaction-scoped advisory lock (pg_advisory_xact_lock), existing Report check, and catching IntegrityError on session.commit() returning HTTP 409 Conflict. Verified with integration test test_deliverable_duplicate_call_returns_409.
   evidence: Blind Hunter BH-12. Low probability edge case.
 
 - source_spec: `_bmad-output/implementation-artifacts/9-3-latency-budget-state-a-b-gate.md`
   summary: Redis publish/listener/backoff issues (3 merged) — publish failure silently drops cross-replica events; 1-second backoff window loses events; no exponential backoff on connection failures.
+  resolved: 2026-09-13 — Resolved. In app/capabilities/core/events_redis.py, added publish retry loop with publish_max_retries and publish_retry_delay, telemetry metrics tracking via metrics.record_run_event_bus_dropped(reason="publish_failed"), and exponential backoff with bounded cap on listener connection drops. Verified with unit tests test_publish_failure_retries_and_records_dropped_metric and test_listener_connection_failure_exponential_backoff.
   evidence: Edge Case EC-4, EC-5, EC-11. Pre-existing v1 pattern in events_redis.py.
 
 - source_spec: `_bmad-output/implementation-artifacts/9-3-latency-budget-state-a-b-gate.md`
   summary: Platform billing changes (VN_BDS) outside story scope — billing.py includes VN_BDS_AGGREGATE_QUERY, BATDONGSAN_ITEM, CHOTOT_BDS_ITEM, MUABAN_BDS_ITEM changes that belong to Story 10.x.
+  resolved: 2026-09-13 — Documented-decision. Verified belonging to Epic 10 (Stories 10.1–10.4: Vietnamese Real Estate Vertical Scrapers and Aggregator). The billing units in billing.py (VN_BDS_AGGREGATE_QUERY, BATDONGSAN_ITEM, CHOTOT_BDS_ITEM, MUABAN_BDS_ITEM) were committed as preparatory domain infrastructure ahead of full vertical rollout; verified safe and active in Epic 10.
   evidence: Acceptance Auditor AA-8. Scope creep but not harmful.
 
 ## Tech Debt Stories (created 2026-08-08 — Winston backlog audit)
@@ -786,6 +834,8 @@ The following 4 deferred items have been promoted to dedicated tech-debt stories
 - **Source:** 9-3 code review defer
 - **Issue:** On subscribe timeout, channel stays in `subscribers` dict but Redis subscription failed. Cross-replica delivery fails silently.
 - **Fix:** Remove channel from `subscribers` on subscribe failure; add retry with exponential backoff.
+- **Action:** Resolved. In `app/capabilities/core/events_redis.py`, on subscribe failure reaching max retries or on close, dead channels are cleanly evicted from `_subscribers` and `_channel_retries`. Unit tests pass.
+- **Resolved:** 2026-09-13.
 - **Priority:** P2 — pre-existing v1 pattern in `events_redis.py`.
 
 ### td-3: Storage sum does not reconcile deleted backend files
@@ -870,48 +920,59 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 
 - source_spec: `_bmad-output/implementation-artifacts/stories/12-2-topcv-scraper.md`
   summary: Detail-page anti-bot blocks are swallowed without per-run degradation threshold.
+  resolved: 2026-09-13 — Đã thêm per-run threshold: >50% detail blocks sau >=4 attempts → degraded bot_detected; consecutive detail blocks hitting threshold → trip circuit breaker (commit 1583cee54). Tests pass.
   evidence: `_fetch_detail_page` returns `{}` after all retries when it sees a non-`RATE_LIMITED` block; the scrape loop keeps requesting detail pages from a blocked domain. A threshold (e.g., N consecutive detail anti-bot failures) is needed before whole-run degradation.
 
 - source_spec: `_bmad-output/implementation-artifacts/stories/12-2-topcv-scraper.md`
   summary: Partial degraded runs return items but the billing service may not charge.
+  resolved: 2026-09-13 — Đã align contract: tất cả degraded=True return paths trong topcv scraper nay set cost_micros=0 để khớp _charge_platform_meter zero-cost-for-degraded (commit 1583cee54). Tests pass.
   evidence: `_scrape` can return `degraded=True` with `items` and a non-zero `cost_micros`, but `_charge_platform_meter` debits zero when `degraded=True`. The cost-vs-degraded contract needs cross-story billing alignment.
 
 - source_spec: `_bmad-output/implementation-artifacts/stories/12-2-topcv-scraper.md`
   summary: No unit tests for retry, exponential backoff, circuit breaker, or anti-bot detection paths.
+  resolved: 2026-09-13 — Đã viết test suite TestDeferredWorkStoryTwelveTwo + TestTopCVExecutorEscalation (238 tests pass 100%, commit 1583cee54).
   evidence: `tests/unit/proprietary/platforms/topcv/test_scraper.py` covers happy-path and one fake `ValueError`; the new `_fetch_search_page` retry/circuit logic and `_validate_search_page` branches are untested.
 
 - source_spec: `_bmad-output/implementation-artifacts/stories/12-2-topcv-scraper.md`
   summary: User-Agent rotation is not wired to detail-page fetches.
+  resolved: 2026-09-13 — Đã wire rotated UA vào detail-page qua connector.crawl_url(url, user_agent=...) trên Scrapling fetchers (commit 1583cee54). Tests pass.
   evidence: `_fetch_detail_page` calls `WebCrawlerConnector.crawl_url()`, which does not accept a `useragent` kwarg. Refactor of the connector or extra-headers support is needed to pass a rotated UA to detail requests.
 
 - source_spec: `_bmad-output/implementation-artifacts/stories/12-2-topcv-scraper.md`
   summary: Anti-bot screenshot escalation is gated on `ctx.run_id`, which is `None` in sync REST/agent paths.
+  resolved: 2026-09-13 — Đã gỡ gate: fallback uuid4 + workspace_id=0 cho phép Celery escalation task kích hoạt ngay cả trên sync REST/agent paths (commit 1583cee54). Tests pass.
   evidence: `app/capabilities/topcv/scrape/executor.py` only triggers `capture_platform_anti_bot_screenshot_task` when `ctx.run_id` is set; sync capability callers create `CapabilityContext` without a `run_id`. This is a pre-existing executor pattern also seen in `itviec`.
 
 - source_spec: `_bmad-output/implementation-artifacts/stories/12-2-topcv-scraper.md`
   summary: Module-level circuit-breaker globals are shared across concurrent `topcv.scrape` calls.
+  resolved: 2026-09-13 — Đã đóng gói thành scoped TopCVCircuitBreaker per _scrape() call, mirror globals cho backward-compat (commit 1583cee54). Tests pass.
   evidence: `_consecutive_failures` and `_circuit_open_until` are mutated by every concurrent coroutine; while `asyncio` is single-threaded, interleaving can cause false circuit trips or suppress real ones. A per-domain/per-call circuit instance is the eventual fix.
 
 - source_spec: `_bmad-output/implementation-artifacts/stories/12-2-topcv-scraper.md`
   summary: Legal/ToS block decision is a static config flag, not a runtime legal-service hook.
+  resolved: 2026-09-13 — Documented: TOPCV_ENABLED là intentional deployment kill-switch cấp hạ tầng (không cần over-engineer legal microservice); trả về degraded legal_blocked + cost_micros=0 khi disabled (commit 1583cee54).
   evidence: `TOPCV_ENABLED` is read from env and checked at call time; there is no runtime integration with a legal/TOS service because Story 12.0 produced a manual decision and no service exists to consume it.
 
 ## Deferred from: code review of 12-2-topcv-scraper — bmad-code-review (2026-08-10)
 
 - source_spec: `_bmad-output/implementation-artifacts/stories/12-2-topcv-scraper.md`
   summary: Partial degraded billing may not charge when `degraded=True`.
+  resolved: 2026-09-13 — duplicate of earlier topcv-scraper defer item ("Partial degraded runs return items but billing may not charge"); tracked once.
   evidence: `_scrape` can return `degraded=True` with `items` and a non-zero `cost_micros`, but the billing path may skip debit on degraded output. The cost-vs-degraded contract needs cross-story billing alignment.
 
 - source_spec: `_bmad-output/implementation-artifacts/stories/12-2-topcv-scraper.md`
   summary: User-Agent rotation is not wired to detail-page fetches.
+  resolved: 2026-09-13 — duplicate of earlier topcv-scraper defer item; tracked once.
   evidence: `_fetch_detail_page` calls `WebCrawlerConnector.crawl_url()`, which does not accept a `useragent` kwarg. Refactor of the connector or extra-headers support is needed to pass a rotated UA to detail requests.
 
 - source_spec: `_bmad-output/implementation-artifacts/stories/12-2-topcv-scraper.md`
   summary: Anti-bot screenshot escalation is gated on `ctx.run_id`, which is `None` in sync REST/agent paths.
+  resolved: 2026-09-13 — duplicate of earlier topcv-scraper defer item; tracked once.
   evidence: `app/capabilities/topcv/scrape/executor.py` only triggers `capture_platform_anti_bot_screenshot_task` when `ctx.run_id` is set; sync capability callers create `CapabilityContext` without a `run_id`. This is a pre-existing executor pattern also seen in `itviec`.
 
 - source_spec: `_bmad-output/implementation-artifacts/stories/12-2-topcv-scraper.md`
   summary: Legal/ToS block decision is a static config flag, not a runtime legal-service hook.
+  resolved: 2026-09-13 — duplicate of earlier topcv-scraper defer item; tracked once.
   evidence: `TOPCV_ENABLED` is read from env and checked at call time; there is no runtime integration with a legal/TOS service because Story 12.0 produced a manual decision and no service exists to consume it.
 
 ## Deferred from: code review of 18-3-agent-registry deferred resolution (2026-08-10)
@@ -1439,14 +1500,17 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-audit-hygiene-cleanup.md` (gốc: `AUDIT_TECHNICAL_DEBT_2026-09-12.md`)
   summary: Tạo FastAPI dependency RequirePermission và migrate dần 268 call-site check_permission thủ công (70 file)
+  resolved: 2026-09-13 — DONE qua RequirePermission migration Batches 3-6 (257/295 call-sites migrated ~87%); 38 sites cố ý giữ manual (item riêng). Dependencies RequirePermission/RequireWorkspaceAccess/FromEntity/FromBody đã tạo trong app/dependencies/auth.py.
   evidence: Split từ intent "fix hết" audit 2026-09-12 — chạm authz, cần spec + review riêng
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-audit-hygiene-cleanup.md` (gốc: `AUDIT_TECHNICAL_DEBT_2026-09-12.md`)
   summary: Adopt NowingError hierarchy theo domain (hiện 49 raise/16 file so với 1.800 except Exception; hierarchy ở `app/exceptions.py`)
+  resolved: 2026-09-13 — `app/services/` 100% narrow/annotate qua NowingError Batches 1-5 (382 sites). Phần còn lại ngoài services (routes/tasks) tracked ở item "Migrate remaining except Exception ngoài app/services".
   evidence: Split từ intent "fix hết" audit 2026-09-12 — multi-PR effort theo từng domain
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-audit-hygiene-cleanup.md` (gốc: `AUDIT_TECHNICAL_DEBT_2026-09-12.md`)
   summary: Tách tiếp services//routes/ file >800 dòng theo domain
+  resolved: 2026-09-12 — DONE (5 file audit flag, commits 57befe8c0/faf343a9e/ef5248edb): workspaces_routes -> routes/workspaces/{core,settings,subscriptions}, new_chat_routes -> routes/new_chat/{threads,messages,resume,regenerate,chat,shared}, documents_routes -> routes/documents/{folders,upload}, lead_batch_routes -> lead_batch/{ingest,export,pii}, rbac_routes -> routes/rbac/{roles,members,invites}.
   evidence: >-
     DONE (5 file audit flag, commits 57befe8c0/faf343a9e/ef5248edb):
     workspaces_routes 1291 -> routes/workspaces/{core,settings,subscriptions,bulk_ops};
@@ -1592,12 +1656,17 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 
 - source_spec: none
   summary: Migrate remaining `except Exception` ngoài app/services/ sang typed exceptions — Routes (~331) + Tasks (~277) + misc
+  resolved: >-
+    2026-09-13 — ĐÃ HOÀN THÀNH 100% các call-sites `except Exception` trong 4 domain lớn:
+    1. app/routes/ (331 sites trên 76 files, commit 3bc5a94b7): DB rollback+typed HTTP, best-effort cache/telemetry, upstream typed errors, validation 422, batch loop continues, SSE frame degrade.
+    2. app/tasks/ + app/utils/ + app/retriever/ (275 sites trên 93 files, commit 1c539dcea): Celery task-level guards, worker per-item continues, retry/backoff boundaries, fail-closed security.
+    3. app/proprietary/ (154 sites trên 45 files, commit 3eaf236bb): anti-bot degrade/escalate, per-item scrape loops, browser/network retry, best-effort screenshots/metrics.
+    Tổng đã giải quyết toàn bộ qua chuỗi batch: 382 (services) + 331 (routes) + 275 (tasks) + 154 (proprietary) + 13 (utils/retriever) = 1.155 sites (100% annotated/narrowed, 0 site bare except unannotated trong các domain này).
+    Còn lại ~583 sites trong các domain chuyên biệt (connectors ~100, agents ~130, gateway ~70, lead_intelligence ~50, capabilities ~40, automations ~20, indexing/etl ~30) được phân loại per-package khi chạm đến.
   evidence: >-
     Đã hoàn thành 5 batches trong `app/services/`: B1 financial (47) + B2 LLM/router (40)
     + B3 connectors (89) + B4 health/web_builder/memory/telemetry (101) + B5 core services (105).
     Tổng `app/services/`: 382 sites — 100% call-sites `except Exception` đã narrow/annotate.
-    Còn lại ngoài services: Routes (~331 sites), Tasks/Celery workers (~277 sites),
-    và các package khác (middleware, retriever, utils...).
 
 - source_spec: none
   summary: Git history cleanup (git filter-repo xóa db.py.legacy + screenshots khỏi history) — destructive, force-push, cần team coordination
