@@ -208,7 +208,11 @@ class CrawlOutcome:
 class WebCrawlerConnector:
     """Class for crawling web pages and extracting content."""
 
-    async def crawl_url(self, url: str) -> CrawlOutcome:
+    async def crawl_url(
+        self,
+        url: str,
+        user_agent: str | None = None,
+    ) -> CrawlOutcome:
         """
         Crawl a single URL and extract its content.
 
@@ -264,9 +268,14 @@ class WebCrawlerConnector:
             tier_start = time.perf_counter()
             try:
                 logger.info(f"[webcrawler] Using Scrapling AsyncFetcher for: {url}")
+                static_fn = (
+                    (lambda: self._crawl_with_async_fetcher(url, block_state, user_agent))
+                    if user_agent is not None
+                    else (lambda: self._crawl_with_async_fetcher(url, block_state))
+                )
                 result = await self._run_tier_with_proxy_retry(
                     "scrapling-static",
-                    lambda: self._crawl_with_async_fetcher(url, block_state),
+                    static_fn,
                 )
                 if result and result.pop("thin_static", False):
                     thin_static_result = result
@@ -303,11 +312,27 @@ class WebCrawlerConnector:
             tier_start = time.perf_counter()
             try:
                 logger.info(f"[webcrawler] Using Scrapling DynamicFetcher for: {url}")
+                dynamic_fn = (
+                    (
+                        lambda: self._crawl_with_dynamic(
+                            url,
+                            block_state,
+                            screenshot_state,
+                            user_agent,
+                        )
+                    )
+                    if user_agent is not None
+                    else (
+                        lambda: self._crawl_with_dynamic(
+                            url,
+                            block_state,
+                            screenshot_state,
+                        )
+                    )
+                )
                 result = await self._run_tier_with_proxy_retry(
                     "scrapling-dynamic",
-                    lambda: self._crawl_with_dynamic(
-                        url, block_state, screenshot_state
-                    ),
+                    dynamic_fn,
                 )
                 if result:
                     screenshot_png = result.pop("__screenshot_png", None)
@@ -348,11 +373,29 @@ class WebCrawlerConnector:
             tier_start = time.perf_counter()
             try:
                 logger.info(f"[webcrawler] Using Scrapling StealthyFetcher for: {url}")
+                stealthy_fn = (
+                    (
+                        lambda: self._crawl_with_stealthy(
+                            url,
+                            captcha_state,
+                            block_state,
+                            screenshot_state,
+                            user_agent,
+                        )
+                    )
+                    if user_agent is not None
+                    else (
+                        lambda: self._crawl_with_stealthy(
+                            url,
+                            captcha_state,
+                            block_state,
+                            screenshot_state,
+                        )
+                    )
+                )
                 result = await self._run_tier_with_proxy_retry(
                     "scrapling-stealthy",
-                    lambda: self._crawl_with_stealthy(
-                        url, captcha_state, block_state, screenshot_state
-                    ),
+                    stealthy_fn,
                 )
                 if result:
                     screenshot_png = result.pop("__screenshot_png", None)
@@ -502,7 +545,10 @@ class WebCrawlerConnector:
         )
 
     async def _crawl_with_async_fetcher(
-        self, url: str, block_state: dict[str, Any] | None = None
+        self,
+        url: str,
+        block_state: dict[str, Any] | None = None,
+        user_agent: str | None = None,
     ) -> dict[str, Any] | None:
         """
         Crawl URL using Scrapling's AsyncFetcher (static HTTP) + Trafilatura.
@@ -516,12 +562,17 @@ class WebCrawlerConnector:
         # ``impersonate="chrome"`` makes curl_cffi present a real Chrome TLS
         # ClientHello (JA3/JA4) instead of its default fingerprint, keeping the
         # static tier coherent with the browser tiers' UA (see 03e §2b).
+        async_fetch_kwargs: dict[str, Any] = {
+            "stealthy_headers": True,
+            "impersonate": "chrome",
+            "proxy": get_proxy_url(),
+            "timeout": 20,
+        }
+        if user_agent:
+            async_fetch_kwargs["headers"] = {"User-Agent": user_agent}
         page = await AsyncFetcher.get(
             url,
-            stealthy_headers=True,
-            impersonate="chrome",
-            proxy=get_proxy_url(),
-            timeout=20,
+            **async_fetch_kwargs,
         )
         fetch_ms = (time.perf_counter() - fetch_start) * 1000
 
@@ -570,6 +621,7 @@ class WebCrawlerConnector:
         url: str,
         block_state: dict[str, Any] | None = None,
         screenshot_state: dict[str, Any] | None = None,
+        user_agent: str | None = None,
     ) -> dict[str, Any] | None:
         """
         Crawl URL using Scrapling's DynamicFetcher (full browser) + Trafilatura.
@@ -578,7 +630,11 @@ class WebCrawlerConnector:
         including Windows ``SelectorEventLoop`` which cannot spawn subprocesses.
         """
         return await asyncio.to_thread(
-            self._crawl_with_dynamic_sync, url, block_state, screenshot_state
+            self._crawl_with_dynamic_sync,
+            url,
+            block_state,
+            screenshot_state,
+            user_agent=user_agent,
         )
 
     def _crawl_with_dynamic_sync(
@@ -586,6 +642,7 @@ class WebCrawlerConnector:
         url: str,
         block_state: dict[str, Any] | None = None,
         screenshot_state: dict[str, Any] | None = None,
+        user_agent: str | None = None,
     ) -> dict[str, Any] | None:
         """Synchronous DynamicFetcher crawl executed in a worker thread."""
         screenshot_state = screenshot_state or {"png": None}
@@ -606,13 +663,18 @@ class WebCrawlerConnector:
             return page
 
         fetch_start = time.perf_counter()
+        dynamic_fetch_kwargs: dict[str, Any] = {
+            "headless": True,
+            "network_idle": True,
+            "timeout": 30000,
+            "proxy": get_proxy_url(),
+            "page_action": _page_action,
+        }
+        if user_agent:
+            dynamic_fetch_kwargs["useragent"] = user_agent
         page = DynamicFetcher.fetch(
             url,
-            headless=True,
-            network_idle=True,
-            timeout=30000,
-            proxy=get_proxy_url(),
-            page_action=_page_action,
+            **dynamic_fetch_kwargs,
         )
         fetch_ms = (time.perf_counter() - fetch_start) * 1000
         result = self._build_result(
@@ -634,6 +696,7 @@ class WebCrawlerConnector:
         captcha_state: dict[str, Any] | None = None,
         block_state: dict[str, Any] | None = None,
         screenshot_state: dict[str, Any] | None = None,
+        user_agent: str | None = None,
     ) -> dict[str, Any] | None:
         """
         Crawl URL using Scrapling's StealthyFetcher (patchright-Chromium) + Trafilatura.
@@ -655,6 +718,7 @@ class WebCrawlerConnector:
             captcha_state,
             block_state,
             screenshot_state,
+            user_agent=user_agent,
         )
 
     def _crawl_with_stealthy_sync(
@@ -663,6 +727,7 @@ class WebCrawlerConnector:
         captcha_state: dict[str, Any] | None = None,
         block_state: dict[str, Any] | None = None,
         screenshot_state: dict[str, Any] | None = None,
+        user_agent: str | None = None,
     ) -> dict[str, Any] | None:
         """Synchronous StealthyFetcher crawl executed in a worker thread."""
         screenshot_state = screenshot_state or {"png": None}
@@ -716,6 +781,8 @@ class WebCrawlerConnector:
         # Keys never collide with the core kwargs above; defaults preserve
         # today's behavior and add no crawl-speed regression.
         fetch_kwargs.update(build_stealthy_kwargs(get_stealth_config()))
+        if user_agent:
+            fetch_kwargs["useragent"] = user_agent
         fetch_kwargs["page_action"] = _page_action
         page = StealthyFetcher.fetch(url, **fetch_kwargs)
         fetch_ms = (time.perf_counter() - fetch_start) * 1000

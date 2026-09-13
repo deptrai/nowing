@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from uuid import uuid4
+
 from app.capabilities.core import Executor
 from app.capabilities.core.progress import emit_progress
 from app.capabilities.core.types import CapabilityContext
@@ -38,15 +40,25 @@ def build_scrape_executor() -> Executor:
         if not raw.get("next_action") and raw.get("degraded"):
             raw["next_action"] = _next_action(raw.get("degradation_reason"))
         if (
-            ctx is not None
-            and ctx.run_id is not None
-            and raw.get("degraded")
+            raw.get("degraded")
             and raw.get("degradation_reason") in _BOT_DEGRADATION_REASONS
         ):
+            # Story 12-2, Item 5: Un-gate anti-bot escalation when ctx or ctx.run_id is None
+            # (e.g. in sync REST or direct agent tool invocations). Use a valid fallback UUID.
+            run_id = (
+                ctx.run_id
+                if ctx is not None and ctx.run_id is not None
+                else str(uuid4())
+            )
+            workspace_id = (
+                ctx.workspace_id
+                if ctx is not None and ctx.workspace_id is not None
+                else 0
+            )
             capture_platform_anti_bot_screenshot_task.delay(
                 url=f"https://{_DOMAIN}",
-                run_id=ctx.run_id,
-                workspace_id=ctx.workspace_id,
+                run_id=run_id,
+                workspace_id=workspace_id,
                 capability="topcv.scrape",
                 domain=_DOMAIN,
                 block_type=raw.get("degradation_reason") or "UNKNOWN",
