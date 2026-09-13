@@ -52,7 +52,7 @@ def get_redis() -> aioredis.Redis | None:
             _redis_client = aioredis.from_url(
                 config.REDIS_APP_URL, decode_responses=True
             )
-        except Exception as exc:
+        except Exception as exc:  # Redis init is best-effort; fallback to in-memory/None
             logger.warning(
                 "[CorporateVerification] Failed to init Redis client: %s", exc
             )
@@ -390,7 +390,7 @@ class CorporateVerificationService:
         try:
             if self.encryption.is_encrypted(cached):
                 return self.encryption.decrypt(cached)
-        except Exception as exc:
+        except Exception as exc:  # best-effort cache decrypt; returns unencrypted raw payload on failure
             logger.debug("[CorporateVerification] Cache decrypt failed: %s", exc)
         return cached
 
@@ -457,7 +457,7 @@ class CorporateVerificationService:
             except (TypeError, ValueError):
                 failures = self.__class__.consecutive_failures
             return val == "open" or failures >= CIRCUIT_BREAKER_THRESHOLD
-        except Exception as exc:
+        except Exception as exc:  # fail-closed: treat breaker as open if Redis error to protect upstream
             logger.debug("[CorporateVerification] Breaker check failed: %s", exc)
             # ponytail: fail-closed — when Redis is unavailable we cannot confirm the
             # breaker is closed, so treat it as open to protect upstream.
@@ -477,7 +477,7 @@ class CorporateVerificationService:
                 await redis.expire(
                     CIRCUIT_BREAKER_FAILURES_KEY, CIRCUIT_BREAKER_COOLDOWN_SECONDS
                 )
-            except Exception as exc:
+            except Exception as exc:  # best-effort breaker metric increment; circuit state remains safe
                 logger.debug(
                     "[CorporateVerification] Failed incrementing breaker counter: %s",
                     exc,
@@ -492,7 +492,7 @@ class CorporateVerificationService:
                     CIRCUIT_BREAKER_COOLDOWN_SECONDS,
                     failure_count,
                 )
-            except Exception as exc:
+            except Exception as exc:  # best-effort breaker state persistence in Redis
                 logger.debug(
                     "[CorporateVerification] Failed setting breaker key: %s", exc
                 )
@@ -504,7 +504,7 @@ class CorporateVerificationService:
         if redis is not None:
             try:
                 await redis.delete(CIRCUIT_BREAKER_FAILURES_KEY)
-            except Exception as exc:
+            except Exception as exc:  # best-effort breaker counter cleanup
                 logger.debug(
                     "[CorporateVerification] Failed resetting breaker counter: %s", exc
                 )
@@ -532,14 +532,14 @@ class CorporateVerificationService:
                     if decrypted is None:
                         decrypted = cached
                     return self._dict_to_profile(json.loads(decrypted))
-            except Exception as exc:
+            except Exception as exc:  # best-effort cache read; falls through to upstream registry
                 logger.debug("[CorporateVerification] Redis cache read failed: %s", exc)
 
         # 2. Query Upstream Registry with Failure & Circuit Breaker Tracking
         try:
             raw_data = await self.masothue_client.get_company_by_tax_id(clean_tax)
             await self._record_success()
-        except Exception as exc:
+        except Exception as exc:  # track circuit breaker failure on upstream error, then re-raise
             await self._record_failure_and_trip_if_needed()
             raise exc
 
@@ -556,7 +556,7 @@ class CorporateVerificationService:
                     self.encryption.encrypt(json.dumps(raw_data)),
                     ex=CORPORATE_CACHE_TTL_SECONDS,
                 )
-            except Exception as exc:
+            except Exception as exc:  # best-effort cache write; profile already resolved
                 logger.debug(
                     "[CorporateVerification] Redis cache write failed: %s", exc
                 )
@@ -598,7 +598,7 @@ class CorporateVerificationService:
                             profile=prof,
                             is_cached=True,
                         )
-                except Exception as exc:
+                except Exception as exc:  # best-effort cached profile fallback while circuit breaker is tripped
                     logger.debug("Suppressed %r", exc)
                 return CorporateMatchResult(
                     is_verified=False,
@@ -634,7 +634,7 @@ class CorporateVerificationService:
                         profile=profile,
                         is_cached=False,
                     )
-            except Exception as exc:
+            except Exception as exc:  # return degraded match result on upstream/internal verification failure
                 logger.warning(
                     "[CorporateVerification] Error verifying by tax_id %s: %s",
                     tax_id,
@@ -674,7 +674,7 @@ class CorporateVerificationService:
                             profile=prof,
                             is_cached=True,
                         )
-                except Exception as exc:
+                except Exception as exc:  # best-effort cached profile search fallback while breaker is open
                     logger.debug("Suppressed %r", exc)
             return CorporateMatchResult(
                 is_verified=False,
@@ -709,7 +709,7 @@ class CorporateVerificationService:
                         profile=prof,
                         is_cached=True,
                     )
-            except Exception as exc:
+            except Exception as exc:  # best-effort cache read for search candidates; falls through to upstream
                 logger.debug(
                     "[CorporateVerification] Redis cache lookup failed: %s", exc
                 )
@@ -719,7 +719,7 @@ class CorporateVerificationService:
             candidates = await self.masothue_client.search_company(
                 query=company_name, city=city, district=district
             )
-        except Exception as exc:
+        except Exception as exc:  # record breaker failure on upstream search error, return degraded match result
             await self._record_failure_and_trip_if_needed()
             logger.warning("[CorporateVerification] Upstream query failed: %s", exc)
             return CorporateMatchResult(
@@ -776,7 +776,7 @@ class CorporateVerificationService:
                         encrypted_payload,
                         ex=CORPORATE_CACHE_TTL_SECONDS,
                     )
-            except Exception as exc:
+            except Exception as exc:  # best-effort cache write; profile already resolved
                 logger.debug(
                     "[CorporateVerification] Redis cache write failed: %s", exc
                 )

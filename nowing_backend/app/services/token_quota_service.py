@@ -66,7 +66,7 @@ def estimate_call_reserve_micros(
         info = get_model_info(base_model) if base_model else {}
         input_cost = float(info.get("input_cost_per_token") or 0.0)
         output_cost = float(info.get("output_cost_per_token") or 0.0)
-    except Exception as exc:
+    except Exception as exc:  # best-effort token cost lookup; falls back to zero cost on failure
         logger.debug(
             "[quota_reserve] cost lookup failed for base_model=%s: %s",
             base_model,
@@ -645,7 +645,7 @@ class TokenQuotaService:
             from app.services.auto_reload_service import maybe_trigger_auto_reload
 
             await maybe_trigger_auto_reload(user_id)
-        except Exception as exc:
+        except Exception as exc:  # best-effort auto-reload trigger after debit; never fail the debit
             logger.debug("Suppressed %r", exc)
 
         return QuotaResult(

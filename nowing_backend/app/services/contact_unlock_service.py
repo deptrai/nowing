@@ -58,13 +58,13 @@ class ContactUnlockService:
         if self.enc.is_encrypted(value):
             try:
                 return self.enc.decrypt(value)
-            except Exception:
+            except Exception:  # best-effort decryption of contact field; return None on failure
                 return None
         try:
             decrypted = self.enc.decrypt(value)
             if decrypted is not None:
                 return decrypted
-        except Exception as exc:
+        except Exception as exc:  # best-effort decryption fallback; return raw value on failure
             logger.debug("Suppressed %r", exc)
         return value
 
