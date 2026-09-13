@@ -137,3 +137,47 @@ async def test_subscribe_success_clears_retry_state():
     assert queue in bus._subscribers["run-ok"]
     assert "run-ok" not in bus._subscribe_retries
     bus.unsubscribe("run-ok", queue)
+
+
+@pytest.mark.asyncio
+async def test_publish_failure_retries_and_records_dropped_metric():
+    """Item 5: Redis publish failure retries with backoff and records dropped event metric."""
+    bus = RedisRunEventBus(
+        buffer_size=10,
+        subscriber_queue_size=10,
+        publish_max_retries=2,
+    )
+    mock_redis = MagicMock()
+    mock_redis.publish = AsyncMock(side_effect=TimeoutError("publish timed out"))
+    bus._redis = mock_redis
+
+    event = {"type": "run.progress", "percent": 42}
+    with patch("app.capabilities.core.events_redis.metrics.record_run_event_bus_dropped") as mock_dropped:
+        bus.publish("run-pub-fail", event)
+        # Wait for fire-and-forget publish attempts
+        await asyncio.sleep(0.25)
+        assert mock_redis.publish.call_count == 2
+        mock_dropped.assert_called_with(reason="publish_failed")
+
+    # Verify local buffer still holds the event for local process replay
+    assert bus.replay("run-pub-fail") == [event]
+    bus.close("run-pub-fail")
+
+
+@pytest.mark.asyncio
+async def test_listener_connection_failure_exponential_backoff():
+    """Item 5: Listener connection failures increment retry counter and apply exponential backoff."""
+    bus = RedisRunEventBus(
+        subscribe_backoff_base=0.01,
+        subscribe_backoff_cap=0.1,
+    )
+    assert bus._listener_retries == 0
+
+    with patch.object(bus, "_ensure_listener"):
+        # Simulate connection error without run_id
+        await bus._handle_listener_error(run_id=None)
+        assert bus._listener_retries == 1
+
+        await bus._handle_listener_error(run_id=None)
+        assert bus._listener_retries == 2
+
