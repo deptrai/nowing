@@ -65,7 +65,7 @@ class KokoroTextToSpeech(TextToSpeech):
                 ),
             )
             segments = [audio for _gs, _ps, audio in generator]
-        except Exception as exc:  # safe fallback on unexpected exception
+        except Exception as exc:  # Kokoro speech synthesis failure; wrap in TextToSpeechError
             raise TextToSpeechError(f"Kokoro synthesis failed: {exc}") from exc
 
         if not segments:
