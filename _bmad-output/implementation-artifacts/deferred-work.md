@@ -1491,6 +1491,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-audit-hygiene-cleanup.md` (gốc: `AUDIT_TECHNICAL_DEBT_2026-09-12.md`)
   summary: Dọn git history (git-filter-repo/BFG) — `db.py.legacy` 7K dòng + screenshots đã git rm nhưng objects lớn vẫn nằm trong history
+  resolved: 2026-09-13 — Đã hoàn thành dọn sạch lịch sử git bằng git-filter-repo (xóa bỏ triệt để db.py.legacy, dump.rdb, .symdex/*, chat-*.png, saved-search-detail.png, lead-gen screenshots, và các GIF legacy lớn của surfsense_web/public/). Giảm dung lượng .git từ 536 MB xuống 323 MB (giảm >210 MB). Đã backup trước đó ra nowing-backup-before-filter-repo.bundle.
   evidence: Split từ intent "fix hết" audit 2026-09-12 — history rewrite là destructive, cần quyết định riêng của human
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-audit-hygiene-cleanup.md` (gốc: `AUDIT_TECHNICAL_DEBT_2026-09-12.md`)
@@ -1685,4 +1686,5 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 
 - source_spec: none
   summary: Git history cleanup (git filter-repo xóa db.py.legacy + screenshots khỏi history) — destructive, force-push, cần team coordination
+  resolved: 2026-09-13 — Đã hoàn thành: user đã phê duyệt explicit 'yes' thực thi git history cleanup. Đã chạy git-filter-repo thành công, xóa sạch db.py.legacy, dump.rdb, symdex dbs, screenshots và media rác khỏi toàn bộ git history; git gc --aggressive giải phóng >210 MB dung lượng git pack.
   evidence: Re-deferred từ "giải quyết hết defer work" round 2 — không tự ý chạy; chờ user chốt thời điểm + báo team
