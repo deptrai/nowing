@@ -96,7 +96,7 @@ def _extract_text(output: Any, capability_name: str) -> str:
                     for item in dump["items"]
                 )
             return json.dumps(dump, default=str, ensure_ascii=False)
-        except Exception as exc:
+        except Exception as exc:  # best-effort output serialization for text extraction; non-serializable → skip
             logger.debug("Suppressed %r", exc)
 
     if isinstance(output, dict):
@@ -197,7 +197,7 @@ class RevalidationService:
         ctx = CapabilityContext(session=self.session, workspace_id=memory.workspace_id)
         try:
             await gate_capability(payload, capability.billing_unit, ctx)
-        except Exception as exc:
+        except Exception as exc:  # billing gate errors become typed RevalidationError (fail-closed for quota)
             raise RevalidationError(
                 "gate_failed",
                 f"Re-validation was blocked by the billing gate: {exc}",
@@ -208,7 +208,7 @@ class RevalidationService:
             output = await execute_with_context(
                 capability.executor, payload=payload, ctx=ctx
             )
-        except Exception as exc:
+        except Exception as exc:  # capability execution failure → failed result, not HTTP 500
             # Upstream errors become failed revalidations, not 500s.
             logger.exception("re-validation capability %s failed", capability.name)
             return RevalidationResult(
@@ -223,7 +223,7 @@ class RevalidationService:
         cost_micros: int | None = None
         try:
             cost_micros = await charge_capability(output, capability.billing_unit, ctx)
-        except Exception:
+        except Exception:  # charge failure after execution → typed error so caller can surface billing issue
             logger.exception("charge failed for re-validation %s", memory_id)
             raise RevalidationError(
                 "charge_failed",
@@ -246,7 +246,7 @@ class RevalidationService:
                     duration_ms=duration_ms,
                     cost_micros=cost_micros,
                 )
-            except Exception:
+            except Exception:  # best-effort usage recording; never fail a completed re-validation
                 logger.exception("record_run failed for re-validation %s", memory_id)
 
         extracted_text = _extract_text(output, capability.name)

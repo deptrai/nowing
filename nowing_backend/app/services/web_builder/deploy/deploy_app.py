@@ -167,7 +167,7 @@ async def deploy_app(
                         project_path,
                         app_name=app_entity.name,
                     )
-            except Exception as e:
+            except Exception as e:  # render step failure → mark deploy_failed, stop pipeline
                 logger.error(
                     f"[WebAppDeployService] Rendering failed for app {app_id}: {e}"
                 )
@@ -196,7 +196,7 @@ async def deploy_app(
                         custom_domain=app_entity.custom_domain,
                         plan_tier=ws.plan_tier,
                     )
-                except Exception as e:
+                except Exception as e:  # container deploy failure → mark deploy_failed, stop pipeline
                     logger.error(
                         f"[WebAppDeployService] Container deploy failed for app {app_id}: {e}"
                     )
@@ -237,7 +237,7 @@ async def deploy_app(
                     cost_micros=app_config.WEB_BUILDER_DEPLOY_COST_MICROS,
                 )
                 await session.commit()
-            except Exception as e:
+            except Exception as e:  # DB publish failure → roll back container and mark deploy_failed
                 logger.error(
                     f"[WebAppDeployService] Database publish failed for app {app_id}: {e}"
                 )
@@ -257,7 +257,7 @@ async def deploy_app(
                 await service._write_caddy_snippet_for_app(
                     app_entity, container_id=container_id
                 )
-            except Exception as e:
+            except Exception as e:  # Caddy snippet failure → stop container and mark deploy_failed
                 logger.error(
                     f"[WebAppDeployService] Caddy snippet write failed for app {app_id}: {e}"
                 )
@@ -279,7 +279,7 @@ async def deploy_app(
             try:
                 snapshot_dir.mkdir(parents=True, exist_ok=True)
                 snapshot_file.write_text(static_html, encoding="utf-8")
-            except Exception as e:
+            except Exception as e:  # snapshot write failure → roll back published state and stop container
                 logger.error(
                     f"[WebAppDeployService] Snapshot file write failed for app {app_id}: {e}"
                 )
@@ -291,7 +291,7 @@ async def deploy_app(
                     app_entity.status = "deploy_failed"
                     app_entity.error_message = f"Snapshot write failed: {e}"
                     await session.commit()
-                except Exception as db_err:
+                except Exception as db_err:  # best-effort status flip; deploy already failed
                     logger.error(
                         f"[WebAppDeployService] Failed to mark app {app_id} as deploy_failed: {db_err}"
                     )

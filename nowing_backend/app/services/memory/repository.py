@@ -72,7 +72,7 @@ class MemoryRepository:
     ) -> np.ndarray:
         try:
             embeddings = await asyncio.to_thread(embed_texts, [content])
-        except Exception as exc:
+        except Exception as exc:  # embedding provider raises broadly; wrap as VectorValidationError
             raise VectorValidationError("provider_error") from exc
         embedding = validate_single_embedding_result(embeddings)
         embedding = _validate_vector(embedding)

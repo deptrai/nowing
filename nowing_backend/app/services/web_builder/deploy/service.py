@@ -564,7 +564,7 @@ class WebAppDeployService:
                 break
             except dns.resolver.NXDOMAIN:
                 return False
-            except Exception:
+            except Exception:  # DNS resolution failure → fail-closed: domain not verified
                 return False
 
         # No CNAME match; try A/AAAA for apex-style / ALIAS-like records.
@@ -592,7 +592,7 @@ class WebAppDeployService:
                     domain_ips.add(str(rdata))
 
             return bool(target_ips) and bool(domain_ips) and target_ips == domain_ips
-        except Exception:
+        except Exception:  # DNS A/AAAA resolution failure → fail-closed: domain not verified
             return False
 
     def _caddy_snippets_path(self) -> Path:
@@ -668,7 +668,7 @@ class WebAppDeployService:
 
                 text = text.rstrip() + f"\n\n{marker}\n{snippet}{end_marker}\n"
                 caddy_file.write_text(text, encoding="utf-8")
-            except Exception as e:
+            except Exception as e:  # file write can raise broadly; wrap as RuntimeError for caller
                 logger.error("Failed to write Caddy snippet for %s: %s", slug, e)
                 raise RuntimeError(f"Failed to write Caddy snippet: {e}") from e
 
@@ -748,7 +748,7 @@ class WebAppDeployService:
                 thread_local=False,
                 blocking_timeout=float(timeout_seconds) + 60.0,
             )
-        except Exception as e:
+        except Exception as e:  # Redis lock down → in-memory fallback keeps deploy scheduling alive
             logger.warning(
                 "Redis lock unavailable for %s; using in-memory fallback: %s",
                 lock_key,
@@ -936,7 +936,7 @@ class WebAppDeployService:
         if per_app_network:
             try:
                 await self._ensure_app_network(network, proxy_container)
-            except Exception:
+            except Exception:  # network ensure failure → cleanup partial network then re-raise
                 await self._cleanup_app_network(workspace_id, app_id)
                 raise
 

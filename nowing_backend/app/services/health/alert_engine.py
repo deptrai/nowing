@@ -159,7 +159,7 @@ class AdminHealthAlertEngine:
                     pattern = re.compile(rule.service_id_pattern)
                     if not pattern.search(result.service_id):
                         continue
-                except Exception as exc:
+                except Exception as exc:  # regex match failure against service_id; skip rule on error
                     logger.warning("Invalid regex pattern '%s' in rule %s: %s", rule.service_id_pattern, rule.id, exc)
                     continue
 
@@ -225,7 +225,7 @@ class AdminHealthAlertEngine:
             # Dispatch notification via Generic Alert Engine
             try:
                 await cls._dispatch_notification(session, rule, alert, result)
-            except Exception as dispatch_exc:
+            except Exception as dispatch_exc:  # notification dispatch failure for alert; continue evaluating other alerts
                 logger.warning("Notification dispatch failed for alert %s: %s", alert.id, dispatch_exc)
 
         if triggered_alerts:
@@ -445,7 +445,7 @@ class AdminHealthAlertEngine:
                                 "severity": rule.severity,
                             },
                         )
-                    except Exception as err:
+                    except Exception as err:  # best-effort in-app notification dispatch for superuser
                         logger.warning("Failed to create in-app notification for superuser %s: %s", su.id, err)
 
             if "email" in channels:
@@ -461,7 +461,7 @@ class AdminHealthAlertEngine:
                         if su.email:
                             try:
                                 await asyncio.to_thread(_send_email_smtp, su.email, subject, body)
-                            except Exception as err:
+                            except Exception as err:  # best-effort email alert dispatch via SMTP
                                 logger.warning("Failed to dispatch email alert to %s: %s", su.email, err)
                 else:
                     logger.warning("Email channel requested for health alert but SMTP_HOST is not configured")
@@ -483,7 +483,7 @@ class AdminHealthAlertEngine:
                             text=escaped_text,
                             parse_mode="MarkdownV2",
                         )
-                    except Exception as err:
+                    except Exception as err:  # best-effort Telegram alert dispatch via bot
                         logger.warning("Failed to dispatch telegram alert for superuser %s: %s", su.id, err)
 
             if "slack" in channels:
@@ -503,14 +503,14 @@ class AdminHealthAlertEngine:
                             external_peer_id=slack_alert_channel,
                             text=text,
                         )
-                    except Exception as err:
+                    except Exception as err:  # best-effort Slack webhook alert dispatch
                         logger.warning("Failed to dispatch slack alert: %s", err)
                 else:
                     logger.warning(
                         "Slack channel requested for health alert but SLACK_BOT_TOKEN and/or SLACK_ALERT_CHANNEL not configured"
                     )
 
-        except Exception as exc:
+        except Exception as exc:  # outer alert dispatch error handler; log and continue
             logger.warning("Error during alert dispatch: %s", exc)
 
     @classmethod

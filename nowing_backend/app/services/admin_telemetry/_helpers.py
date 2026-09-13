@@ -40,7 +40,7 @@ def _redact_url(url: str | None) -> str | None:
         return url
     try:
         parsed = urlparse(url)
-    except Exception:
+    except Exception:  # unparseable URL → return raw so caller still has something to display
         return url
     if not parsed.username and not parsed.password:
         return url
@@ -63,7 +63,7 @@ def _is_redis_broker(url: str) -> bool:
         return False
     try:
         return urlparse(url).scheme in {"redis", "rediss", "unixsocket"}
-    except Exception:
+    except Exception:  # unparseable URL → cheap prefix heuristic fallback
         return url.startswith(("redis://", "rediss://", "unixsocket://"))
 
 
@@ -133,10 +133,10 @@ async def _redis_queue_lengths(queue_names: list[str]) -> dict[str, int]:
         for name in queue_names:
             try:
                 lengths[name] = int(await redis_client.llen(name) or 0)
-            except Exception:
+            except Exception:  # non-list key (e.g. discovered Redis string) → report 0
                 # Non-list key (e.g. a discovered Redis string); report 0.
                 lengths[name] = 0
-    except Exception as exc:
+    except Exception as exc:  # Redis unavailable → return empty lengths; telemetry degrades to zeros
         logger.warning("Redis queue length query failed: %s", exc)
         lengths = {}
     finally:
@@ -172,7 +172,7 @@ async def _redis_queue_stalled_and_throughput(
         for name in queue_names:
             try:
                 queue_len = int(await redis_client.llen(name) or 0)
-            except Exception:
+            except Exception:  # non-list key → report 0 length
                 queue_len = 0
 
             stalled = 0
@@ -217,13 +217,13 @@ async def _redis_queue_stalled_and_throughput(
 
                     if sample_size < queue_len and sample_size > 0:
                         stalled = int(stalled * (queue_len / sample_size))
-                except Exception as exc:
+                except Exception as exc:  # per-queue stalled computation failure → report zeros for that queue
                     logger.warning(
                         "Error computing stalled stats for %s: %s", name, exc
                     )
 
             results[name] = (stalled, recent)
-    except Exception as exc:
+    except Exception as exc:  # Redis unavailable → return empty stalled stats; telemetry degrades to zeros
         logger.warning("Redis queue stalled query failed: %s", exc)
     finally:
         if redis_client is not None:

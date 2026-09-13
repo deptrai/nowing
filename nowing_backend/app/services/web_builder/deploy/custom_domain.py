@@ -214,7 +214,7 @@ async def verify_and_bind_custom_domain(
                         )
                         app_entity.container_id = container_id
                         app_entity.port = port
-                    except Exception as redeploy_err:
+                    except Exception as redeploy_err:  # redeploy failure → mark custom_domain_status failed below
                         logger.error(
                             "[WebAppDeployService] Container redeploy for custom domain failed: %s",
                             redeploy_err,
@@ -234,7 +234,7 @@ async def verify_and_bind_custom_domain(
                 # Rewrite the Caddy snippet with the new custom domain.
                 try:
                     await service._write_caddy_snippet_for_app(app_entity)
-                except Exception as caddy_err:
+                except Exception as caddy_err:  # snippet rewrite failure → mark custom_domain_status failed below
                     logger.error(
                         "[WebAppDeployService] Caddy snippet rewrite failed: %s", caddy_err
                     )

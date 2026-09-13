@@ -1552,14 +1552,37 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
     chainlens (7 sites across 3 files: gap_fill, ingest, private_provider — worker safety, cost debit, memory search).
     290 unit tests pass 100%. Ruff clean.
 
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-nowingerror-batch-4.md`
+  summary: NowingError & Exception Narrowing — Batch 4 (101 sites across 32 Health, Web Builder, Memory & Telemetry files)
+  resolved: >-
+    2026-09-13 — Refactor 101 call-sites `except Exception` trên 32 files dịch vụ hệ thống:
+    health/ (38 sites across 12 files: probes never propagate — convert to UNHEALTHY HealthResult;
+    alert_engine best-effort notification dispatch; scheduler rollback-and-continue;
+    registry DB discovery fallback to static seed; result_store Redis publish best-effort),
+    web_builder/ (31 sites across 6 files: tree-sitter parse → MarkToolError wrap;
+    validator file/JSON issues recorded not raised; LLM retry loop; deploy pipeline
+    mark deploy_failed + container rollback; DNS verification fail-closed; Redis lock
+    in-memory fallback),
+    memory/ (20 sites across 8 files: extract_budget fail-closed wallet/rate gates,
+    Redis in-memory fallbacks; revalidation gate/charge → typed RevalidationError;
+    encryption → DecryptionError wrap; repository embedding → VectorValidationError;
+    best-effort event bus, usage recording, run enqueue),
+    admin_telemetry/ (12 sites across 3 files: Celery/Redis degraded-to-zeros snapshots,
+    URL redaction fallbacks, queue purge zero-count reports).
+    Fixed 2 pre-existing RUF034 useless if-else in registry.py.
+    226 unit tests + 42 integration route tests pass 100%. Ruff clean.
+    (5 memory integration failures + 1 unit failure are pre-existing on baseline:
+    VectorValidationError invalid_dimension — embedding model env issue, unrelated.)
+
 - source_spec: none
-  summary: Migrate remaining ~1.618 `except Exception` toàn app sang typed exceptions / NowingError hierarchy — theo từng domain
+  summary: Migrate remaining ~1.517 `except Exception` toàn app sang typed exceptions / NowingError hierarchy — theo từng domain
   evidence: >-
     Đã hoàn thành Batch 1 (47 sites financial/credits/verification) + Batch 2 (40 sites LLM/Model Routing)
-    + Batch 3 (89 sites External Integrations & Connectors).
-    Tổng đã giải quyết: 176 sites trong app/services/ (~46% của app/services/).
+    + Batch 3 (89 sites External Integrations & Connectors) + Batch 4 (101 sites Health/Web Builder/Memory/Telemetry).
+    Tổng đã giải quyết: 277 sites trong app/services/ (~72% của app/services/).
     Các domain tiếp theo:
-    - Core services còn lại (~209 sites in app/services/health 38, web_builder 31, memory 20, admin_telemetry 12, root services ~100)
+    - Core services còn lại (~108 sites: root-level services + misc)
     - Routes (~331 sites) và Tasks (~277 sites)
 
 - source_spec: none

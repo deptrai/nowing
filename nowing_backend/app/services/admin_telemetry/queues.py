@@ -54,7 +54,7 @@ class QueueTelemetryMixin:
             active_queues = (
                 await _maybe_async(await asyncio.to_thread(inspect.active_queues)) or {}
             )
-        except Exception as exc:
+        except Exception as exc:  # Celery broker unready → degraded snapshot, not a 500
             logger.warning("Celery inspect failed: %s", exc)
             return {
                 "status": "unavailable",
@@ -93,7 +93,7 @@ class QueueTelemetryMixin:
                 async for key in redis_client.scan_iter(match="celery*"):
                     discovered_queues.add(key.decode())
                 await redis_client.aclose()
-            except Exception as exc:
+            except Exception as exc:  # Redis discovery best-effort; discovered set may stay empty
                 logger.warning("Redis queue discovery failed: %s", exc)
 
         queue_names = sorted(discovered_queues)
@@ -176,7 +176,7 @@ class QueueTelemetryMixin:
 
         try:
             redis_client = aioredis.from_url(broker_url, socket_connect_timeout=2)
-        except Exception as exc:
+        except Exception as exc:  # Redis connect failure → report zero purged with idempotency key
             logger.warning("Failed to connect to Redis for purge: %s", exc)
             return {
                 "queue_name": queue_name,
@@ -271,7 +271,7 @@ class QueueTelemetryMixin:
                 "purged_count": purged,
                 "idempotency_key": idempotency_key,
             }
-        except Exception as exc:
+        except Exception as exc:  # purge failure → report zero purged with idempotency key, not a 500
             logger.exception("Failed to purge dead queue: %s", exc)
             return {
                 "queue_name": queue_name,

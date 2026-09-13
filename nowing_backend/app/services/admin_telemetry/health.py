@@ -71,7 +71,7 @@ class ProxyHealthMixin:
                 else:
                     status = "dead"
                     last_error = f"HTTP {response.status_code}"
-        except Exception as exc:  # pragma: no cover - network failures
+        except Exception as exc:  # pragma: no cover - network failures; probe degrades to "dead" status
             status = "dead"
             last_error = _redact_error(f"{type(exc).__name__}: {exc}")
             latency_ms = int((time.perf_counter() - start) * 1000)
