@@ -17,9 +17,13 @@ test.describe("Chat UI smoke", () => {
 		const sendButton = page.getByRole("button", { name: "Send message" });
 		await sendButton.click();
 
-		await expect(
-			page.getByText("E2E fake assistant received:"),
-			"assistant should respond with the E2E fake message"
-		).toBeVisible({ timeout: 60_000 });
+		// On the e2e backend (tests/e2e/run_backend.py) the assistant reply is the
+		// deterministic "E2E fake assistant received: ..." string; on a plain
+		// `main.py` backend the real LLM responds. Assert on the assistant message
+		// container instead of the literal text so the test works in both modes.
+		const assistantMessage = page.locator('[data-role="assistant"]').first();
+		await expect(assistantMessage, "an assistant message should appear after sending").toBeVisible({
+			timeout: 90_000,
+		});
 	});
 });
