@@ -259,11 +259,11 @@ async def finalize_run(
         await _maybe_cleanup(session, "runs", RUNS_RETENTION_DAYS)
         await session.commit()
         return True
-    except Exception:  # capability executor failure; return structured error
+    except Exception:  # run finalization error; rollback session and return False
         logger.exception("finalize_run failed for run=%s", run_id)
         try:
             await session.rollback()
-        except Exception:  # capability executor failure; return structured error
+        except Exception:  # db rollback failure; suppress secondary error
             logger.exception("finalize_run rollback failed")
         return False
 
@@ -290,11 +290,11 @@ async def fail_stale_running_runs(session: AsyncSession) -> int:
         )
         await session.commit()
         return result.rowcount or 0
-    except Exception:  # capability executor failure; return structured error
+    except Exception:  # stale run cleanup error; rollback session and return 0
         logger.exception("fail_stale_running_runs failed")
         try:
             await session.rollback()
-        except Exception:  # capability executor failure; return structured error
+        except Exception:  # db rollback failure; suppress secondary error
             logger.exception("fail_stale_running_runs rollback failed")
         return 0
 
@@ -337,11 +337,11 @@ async def record_spill(
         await _maybe_cleanup(session, "tool_output_spills", SPILLS_RETENTION_DAYS)
         await session.commit()
         return spill_id
-    except Exception:  # capability executor failure; return structured error
+    except Exception:  # output spill persistence error; rollback session and return None
         logger.exception("record_spill failed")
         try:
             await session.rollback()
-        except Exception:  # capability executor failure; return structured error
+        except Exception:  # db rollback failure; suppress secondary error
             logger.exception("record_spill rollback failed")
         return None
 
