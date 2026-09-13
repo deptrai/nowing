@@ -110,7 +110,7 @@ async def add_luma_connector(
             status_code=409,
             detail="A Luma connector already exists for this user.",
         ) from e
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         logger.error(f"Unexpected error adding Luma connector: {e!s}", exc_info=True)
         raise HTTPException(
@@ -166,7 +166,7 @@ async def delete_luma_connector(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         logger.error(f"Unexpected error deleting Luma connector: {e!s}", exc_info=True)
         raise HTTPException(
@@ -250,7 +250,7 @@ async def test_luma_connector(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # upstream test failure → surface as typed HTTP error
         logger.error(f"Unexpected error testing Luma connector: {e!s}", exc_info=True)
         raise HTTPException(
             status_code=500,

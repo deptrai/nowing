@@ -161,7 +161,7 @@ async def search_memory(
     if body.query.strip():
         try:
             embeddings = await asyncio.to_thread(embed_texts, [body.query])
-        except Exception as exc:
+        except Exception as exc:  # provider error → surface as VectorValidationError
             raise VectorValidationError("provider_error") from exc
         query_embedding = validate_single_embedding_result(embeddings)
 

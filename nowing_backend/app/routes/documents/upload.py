@@ -352,6 +352,9 @@ async def folder_mtime_check(
         )
         uid_hashes[uid_hash] = f
 
+    # archived_at.is_(None) is required here: if a file still exists on disk but
+    # its DB document was soft-archived, we treat it as missing so that the client
+    # re-uploads and re-activates/re-indexes the document.
     existing_docs = (
         (
             await session.execute(

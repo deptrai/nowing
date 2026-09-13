@@ -237,7 +237,7 @@ async def stream_slide_audio(
 
     except HTTPException as he:
         raise he
-    except Exception as e:
+    except Exception as e:  # stream audio failure → surface as typed HTTP error
         raise HTTPException(
             status_code=500,
             detail=f"Error streaming slide audio: {e!s}",

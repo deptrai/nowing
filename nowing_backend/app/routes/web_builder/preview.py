@@ -499,7 +499,7 @@ async def get_workspace_app_files(
                     rel_path = str(entry.relative_to(project_dir))
                     try:
                         files_dict[rel_path] = entry.read_text(encoding="utf-8")
-                    except Exception as exc:
+                    except Exception as exc:  # per-item read failure; skip unreadable file
                         logger.debug("Suppressed %r", exc)
                         continue
         except (OSError, PermissionError) as exc:

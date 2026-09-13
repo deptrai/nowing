@@ -112,7 +112,7 @@ async def create_invite(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         logger.error(f"Failed to create invite: {e!s}", exc_info=True)
         raise HTTPException(
@@ -150,7 +150,7 @@ async def list_invites(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500, detail=f"Failed to fetch invites: {e!s}"
         ) from e
@@ -217,7 +217,7 @@ async def update_invite(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         logger.error(f"Failed to update invite: {e!s}", exc_info=True)
         raise HTTPException(
@@ -261,7 +261,7 @@ async def revoke_invite(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         logger.error(f"Failed to revoke invite: {e!s}", exc_info=True)
         raise HTTPException(
@@ -331,7 +331,7 @@ async def get_invite_info(
             is_valid=True,
         )
 
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         logger.error(f"Failed to get invite info: {e!s}", exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Failed to get invite info: {e!s}"
@@ -430,7 +430,7 @@ async def accept_invite(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         logger.error(f"Failed to accept invite: {e!s}", exc_info=True)
         raise HTTPException(

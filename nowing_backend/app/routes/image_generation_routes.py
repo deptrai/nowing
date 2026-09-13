@@ -323,7 +323,7 @@ async def create_image_generation(
 
             try:
                 await _execute_image_generation(session, db_image_gen, workspace)
-            except Exception as e:
+            except Exception as e:  # image generation execution failure; record error on DB entity
                 logger.exception("Image generation call failed")
                 db_image_gen.error_message = str(e)
 
@@ -355,7 +355,7 @@ async def create_image_generation(
         raise HTTPException(
             status_code=500, detail="Database error during image generation"
         ) from None
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         logger.exception("Failed to create image generation")
         raise HTTPException(
@@ -557,7 +557,7 @@ async def serve_generated_image(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         logger.exception("Failed to serve generated image")
         raise HTTPException(
             status_code=500, detail=f"Failed to serve image: {e!s}"

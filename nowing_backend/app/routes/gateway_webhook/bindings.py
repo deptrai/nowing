@@ -522,7 +522,7 @@ async def send_message_to_binding(
             external_peer_id=target_peer,
             text=body.text,
         )
-    except Exception as exc:
+    except Exception as exc:  # upstream failure → surface as typed HTTP error
         logger.error("Failed to send message via binding %s: %s", binding_id, exc)
         raise HTTPException(
             status_code=502,

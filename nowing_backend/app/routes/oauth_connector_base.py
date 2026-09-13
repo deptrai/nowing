@@ -202,7 +202,7 @@ class OAuthConnectorRoute:
             flag_modified(connector, "config")
             await session.commit()
             await session.refresh(connector)
-        except Exception:
+        except Exception:  # best-effort flag update on auth expiry
             logger.warning(
                 "Failed to persist auth_expired flag for connector %s",
                 connector.id,
@@ -262,7 +262,7 @@ class OAuthConnectorRoute:
         if is_encrypted and refresh_tok:
             try:
                 refresh_tok = encryption.decrypt_token(refresh_tok)
-            except Exception as e:
+            except Exception as e:  # decryption failure → surface as typed HTTP error
                 logger.error("Failed to decrypt refresh token: %s", e)
                 raise HTTPException(
                     status_code=500, detail="Failed to decrypt stored refresh token"
@@ -304,7 +304,7 @@ class OAuthConnectorRoute:
                 ej = resp.json()
                 error_detail = ej.get("error_description", error_detail)
                 error_code = ej.get("error", "")
-            except Exception:
+            except Exception:  # best-effort error response json parsing
                 error_code = ""
             combined = (error_detail + error_code).lower()
             if any(kw in combined for kw in ("invalid_grant", "expired", "revoked")):
@@ -482,7 +482,7 @@ class OAuthConnectorRoute:
                     try:
                         data = oauth._get_state_manager().validate_state(state)
                         space_id = data.get("space_id")
-                    except Exception as exc:
+                    except Exception as exc:  # best-effort state decode in error handler
                         logger.debug("Suppressed %r", exc)
                 return oauth._frontend_redirect(space_id, error=error_label)
 
@@ -496,7 +496,7 @@ class OAuthConnectorRoute:
             state_mgr = oauth._get_state_manager()
             try:
                 data = state_mgr.validate_state(state)
-            except Exception as e:
+            except Exception as e:  # malformed input → typed error / sentinel
                 raise HTTPException(
                     status_code=400, detail="Invalid or expired state parameter."
                 ) from e

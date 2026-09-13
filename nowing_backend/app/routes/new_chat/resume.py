@@ -169,7 +169,7 @@ async def resume_chat(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         import traceback
 
         traceback.print_exc()

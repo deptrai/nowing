@@ -248,7 +248,7 @@ async def create_role(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         logger.error(f"Failed to create role: {e!s}", exc_info=True)
         raise HTTPException(
@@ -284,7 +284,7 @@ async def list_roles(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500, detail=f"Failed to fetch roles: {e!s}"
         ) from e
@@ -327,7 +327,7 @@ async def get_role(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500, detail=f"Failed to fetch role: {e!s}"
         ) from e
@@ -456,7 +456,7 @@ async def update_role(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         logger.error(f"Failed to update role: {e!s}", exc_info=True)
         raise HTTPException(
@@ -518,7 +518,7 @@ async def delete_role(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         logger.error(f"Failed to delete role: {e!s}", exc_info=True)
         raise HTTPException(

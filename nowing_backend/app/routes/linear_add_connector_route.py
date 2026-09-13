@@ -126,7 +126,7 @@ async def connect_linear(
         logger.info(f"Generated Linear OAuth URL for user {user.id}, space {space_id}")
         return {"auth_url": auth_url}
 
-    except Exception as e:
+    except Exception as e:  # upstream failure → surface as typed HTTP error
         logger.error(f"Failed to initiate Linear OAuth: {e!s}", exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Failed to initiate Linear OAuth: {e!s}"
@@ -191,7 +191,7 @@ async def reauth_linear(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # upstream failure → surface as typed HTTP error
         logger.error(f"Failed to initiate Linear re-auth: {e!s}", exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Failed to initiate Linear re-auth: {e!s}"
@@ -230,7 +230,7 @@ async def linear_callback(
                     state_manager = get_state_manager()
                     data = state_manager.validate_state(state)
                     space_id = data.get("space_id")
-                except Exception:
+                except Exception:  # best-effort state decode in error handler
                     # If state is invalid, we'll redirect without space_id
                     logger.warning("Failed to validate state in error handler")
 
@@ -256,7 +256,7 @@ async def linear_callback(
             data = state_manager.validate_state(state)
         except HTTPException:
             raise
-        except Exception as e:
+        except Exception as e:  # malformed input → typed error / sentinel
             raise HTTPException(
                 status_code=400, detail=f"Invalid state parameter: {e!s}"
             ) from e
@@ -297,7 +297,7 @@ async def linear_callback(
             try:
                 error_json = token_response.json()
                 error_detail = error_json.get("error_description", error_detail)
-            except Exception as exc:
+            except Exception as exc:  # best-effort error response json parsing
                 logger.debug("Suppressed %r", exc)
             raise HTTPException(
                 status_code=400, detail=f"Token exchange failed: {error_detail}"
@@ -434,7 +434,7 @@ async def linear_callback(
                 status_code=409,
                 detail=f"Database integrity error: {e!s}",
             ) from e
-        except Exception as e:
+        except Exception as e:  # rollback + re-raise as typed HTTP error
             logger.error(f"Failed to create search source connector: {e!s}")
             await session.rollback()
             raise HTTPException(
@@ -444,7 +444,7 @@ async def linear_callback(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # OAuth callback completion failure → surface as typed HTTP error
         logger.error(f"Failed to complete Linear OAuth: {e!s}", exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Failed to complete Linear OAuth: {e!s}"
@@ -460,7 +460,7 @@ async def _mark_connector_auth_expired(
         flag_modified(connector, "config")
         await session.commit()
         await session.refresh(connector)
-    except Exception:
+    except Exception:  # best-effort flag update on auth expiry
         logger.warning(
             f"Failed to persist auth_expired flag for connector {connector.id}",
             exc_info=True,
@@ -493,7 +493,7 @@ async def refresh_linear_token(
         if is_encrypted and refresh_token:
             try:
                 refresh_token = token_encryption.decrypt_token(refresh_token)
-            except Exception as e:
+            except Exception as e:  # decryption failure → surface as typed HTTP error
                 logger.error(f"Failed to decrypt refresh token: {e!s}")
                 raise HTTPException(
                     status_code=500, detail="Failed to decrypt stored refresh token"
@@ -534,7 +534,7 @@ async def refresh_linear_token(
                 error_json = token_response.json()
                 error_detail = error_json.get("error_description", error_detail)
                 error_code = error_json.get("error", "")
-            except Exception as exc:
+            except Exception as exc:  # best-effort error response json parsing
                 logger.debug("Suppressed %r", exc)
             # Check if this is a token expiration/revocation error
             error_lower = (error_detail + error_code).lower()
@@ -598,7 +598,7 @@ async def refresh_linear_token(
         return connector
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # token refresh failure → surface as typed HTTP error
         logger.error(f"Failed to refresh Linear token: {e!s}", exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Failed to refresh Linear token: {e!s}"

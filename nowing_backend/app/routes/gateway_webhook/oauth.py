@@ -113,7 +113,7 @@ async def slack_gateway_callback(
         try:
             state_data = _get_state_manager().validate_state(state)
             space_id = int(state_data["space_id"])
-        except Exception:
+        except Exception:  # state validation failure → fallback to None
             state_data = None
     else:
         state_data = None
@@ -275,7 +275,7 @@ async def discord_gateway_callback(
         try:
             state_data = _get_state_manager().validate_state(state)
             space_id = int(state_data["space_id"])
-        except Exception:
+        except Exception:  # state validation failure → fallback to None
             state_data = None
     else:
         state_data = None

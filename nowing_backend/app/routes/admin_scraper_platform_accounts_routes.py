@@ -39,7 +39,7 @@ def _to_read(
     if include_credentials:
         try:
             credentials = decrypt_credentials(account.encrypted_credentials)
-        except Exception:
+        except Exception:  # decryption failure; continue with None credentials
             logger.exception("Failed to decrypt credentials for account %s", account.id)
     return ScraperPlatformAccountRead(
         id=account.id,
@@ -413,7 +413,7 @@ async def request_telegram_otp(
             phone=data.phone,
             message="OTP code sent via Telegram/SMS",
         )
-    except Exception as exc:
+    except Exception as exc:  # upstream failure → surface as typed HTTP error
         logger.exception("Failed to request Telegram OTP for %s: %s", data.phone, exc)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -445,7 +445,7 @@ async def verify_telegram_otp(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
-    except Exception as exc:
+    except Exception as exc:  # upstream failure → surface as typed HTTP error
         logger.exception("Failed to verify Telegram OTP for %s: %s", data.phone, exc)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -476,7 +476,7 @@ async def verify_telegram_2fa(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
-    except Exception as exc:
+    except Exception as exc:  # upstream failure → surface as typed HTTP error
         logger.exception("Failed to verify Telegram 2FA for %s: %s", data.phone, exc)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

@@ -524,7 +524,7 @@ async def regenerate_response(
                             await delete_affected_snapshots(
                                 cleanup_session, thread_id, message_ids_to_delete
                             )
-                    except Exception as cleanup_error:
+                    except Exception as cleanup_error:  # best-effort old messages cleanup; failure doesn't fail primary op
                         _logger.warning(
                             "[regenerate] Failed to delete old messages: %s",
                             cleanup_error,
@@ -543,7 +543,7 @@ async def regenerate_response(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         import traceback
 
         traceback.print_exc()

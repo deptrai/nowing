@@ -387,7 +387,7 @@ async def receive_inbound_email(
     try:
         form = await request.form()
         raw_payload = dict(form)
-    except Exception:
+    except Exception:  # form parsing fallback to empty dict
         raw_payload = {}
 
     # Some providers send JSON bodies for certain event types.
@@ -396,7 +396,7 @@ async def receive_inbound_email(
     ):
         try:
             raw_payload = await request.json()
-        except Exception:
+        except Exception:  # json parsing fallback to empty dict
             raw_payload = {}
 
     # If form parsing failed but we have a raw body, store it for raw_payload.
@@ -406,7 +406,7 @@ async def receive_inbound_email(
     try:
         adapter = EmailAdapter()
         inbound = adapter.parse_inbound_email(raw_payload)
-    except Exception as exc:
+    except Exception as exc:  # payload parsing failure → record metric and return 200 ack
         record_gateway_webhook_parse_error()
         logger.warning("Failed to parse inbound email: %s", exc)
         # Return 204 so providers do not retry malformed payloads.
@@ -451,7 +451,7 @@ async def receive_inbound_email(
             user,
             inbound.attachments,
         )
-    except Exception:
+    except Exception:  # best-effort attachment persistence; failure doesn't fail email delivery
         logger.exception("Failed to persist attachments for email %s", dedupe_key)
 
     # Create the recurring report mission.
@@ -465,7 +465,7 @@ async def receive_inbound_email(
         )
         if existing_event is not None:
             existing_event.status = InboundEmailEventStatus.MISSION_CREATED
-    except Exception:
+    except Exception:  # dsh mission creation failure; mark event status as failed
         logger.exception("Failed to create DSH mission for email %s", dedupe_key)
         if existing_event is not None:
             existing_event.status = InboundEmailEventStatus.FAILED

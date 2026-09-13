@@ -181,7 +181,7 @@ async def evaluate_affiliate_payout_risk(
 async def _release_payout_lock(redis_client, lock_key: str) -> None:
     try:
         await redis_client.delete(lock_key)
-    except Exception:
+    except Exception:  # best-effort redis lock release
         logger.exception("Failed to release Redis lock %s", lock_key)
 
 
@@ -284,7 +284,7 @@ async def approve_affiliate_payout(
                 account_name=account_holder,
                 memo="NUTX PAYOUT",
             )
-        except Exception as exc:
+        except Exception as exc:  # upstream failure; leave in processing for celery reconciliation
             logger.exception("VietQR initiate_payout failed for %s: %s", payout_id, exc)
             # Gateway could not be reached. Leave in 'processing' so Celery reconciliation
             # can recover or mark as failed after checking gateway status.

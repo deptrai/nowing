@@ -333,7 +333,7 @@ async def append_message(
         raise HTTPException(
             status_code=503, detail="Database operation failed. Please try again later."
         ) from None
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500,
@@ -398,7 +398,7 @@ async def list_messages(
         raise HTTPException(
             status_code=503, detail="Database operation failed. Please try again later."
         ) from None
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500,
             detail=f"An unexpected error occurred while fetching messages: {e!s}",

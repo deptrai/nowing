@@ -61,6 +61,9 @@ async def folder_unlink(
             request.workspace_id,
         )
 
+        # Intentional omission of archived_at filter: when a file is unlinked/deleted
+        # from the local disk, any corresponding Document row (active or soft-archived)
+        # must be deleted to prevent hash collisions and orphaned ghost records.
         existing = (
             await session.execute(
                 select(Document).where(Document.unique_identifier_hash == uid_hash)
@@ -116,6 +119,10 @@ async def folder_sync_finalize(
         )
         seen_hashes.add(uid_hash)
 
+    # Intentional omission of archived_at filter: all documents in the subtree
+    # (active and archived) must be checked against disk contents so that files
+    # removed from disk are deleted from DB, avoiding orphaned records and enabling
+    # directory pruning via _cleanup_empty_folders.
     all_folder_docs = (
         (
             await session.execute(

@@ -55,7 +55,7 @@ async def get_playlist_videos(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # upstream failure → surface as typed HTTP error
         logger.error("Error resolving playlist %s: %s", url, e)
         raise HTTPException(
             status_code=500,
@@ -95,7 +95,7 @@ async def _fetch_playlist_via_innertube(playlist_id: str) -> list[str]:
         data = page.json()
 
         return _extract_playlist_video_ids(data)
-    except Exception as e:
+    except Exception as e:  # upstream API failure → fallback to empty list
         logger.warning("Innertube API failed for playlist %s: %s", playlist_id, e)
         return []
 
@@ -144,7 +144,7 @@ async def _fetch_playlist_via_html(playlist_id: str) -> list[str]:
             return []
 
         return _extract_playlist_video_ids(yt_data)
-    except Exception as e:
+    except Exception as e:  # upstream scrape failure → fallback to empty list
         logger.warning("HTML fallback failed for playlist %s: %s", playlist_id, e)
         return []
 

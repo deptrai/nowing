@@ -142,7 +142,7 @@ def _map_lead_to_read(lead: Lead) -> LeadRead:
         if enc.is_encrypted(value):
             try:
                 return enc.decrypt(value)
-            except Exception:
+            except Exception:  # decryption failure → return None fallback
                 return None
         return value
 
@@ -401,7 +401,7 @@ async def reverse_icp_endpoint(
             )
     except HTTPException:
         raise
-    except Exception as rl_exc:
+    except Exception as rl_exc:  # best-effort rate limit check; continue on error
         logger.debug("[ReverseIcpRoute] Rate limiter check skipped: %s", rl_exc)
 
     service = ReverseIcpService()
@@ -426,7 +426,7 @@ async def reverse_icp_endpoint(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
-    except Exception as exc:
+    except Exception as exc:  # upstream failure → surface as typed HTTP error
         logger.exception(
             "[ReverseIcpRoute] Unexpected error analyzing URL %s: %s", body.url, exc
         )
@@ -551,7 +551,7 @@ async def get_company_graph(
         if enc.is_encrypted(value):
             try:
                 return enc.decrypt(value)
-            except Exception:
+            except Exception:  # decryption failure → return None fallback
                 return None
         return value
 
@@ -598,7 +598,7 @@ async def get_company_graph(
                             confidence=dm.confidence_score or 0.85,
                         )
                     )
-    except Exception as exc:
+    except Exception as exc:  # best-effort decision maker parsing
         logger.debug("Suppressed %r", exc)
 
     # Query LinkedIn job postings for this company safely with nested savepoint
@@ -616,7 +616,7 @@ async def get_company_graph(
         async with session.begin_nested():
             jobs_result = await session.execute(jobs_stmt)
             db_jobs = jobs_result.scalars().all()
-    except Exception:
+    except Exception:  # best-effort linkedin jobs query; fallback to empty list
         db_jobs = []
 
     active_jobs = [j for j in db_jobs if j.posted_at and j.posted_at >= thirty_days_ago]
