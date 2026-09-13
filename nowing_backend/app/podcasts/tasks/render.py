@@ -36,7 +36,7 @@ _WORKDIR_BASE = Path(tempfile.gettempdir()) / "nowing_podcasts"
 def render_audio_task(self, podcast_id: int) -> dict:
     try:
         return run_async_celery_task(lambda: _render_audio(podcast_id))
-    except Exception as exc:  # log error and fallback safely
+    except Exception as exc:  # podcast render task execution error; mark failed and return status
         logger.error("Podcast %s render failed: %s", podcast_id, exc)
         message = str(exc)
         run_async_celery_task(lambda: mark_failed(podcast_id, message))
