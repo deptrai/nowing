@@ -109,6 +109,30 @@ def _dispose_shared_checkpointer_pool(loop: asyncio.AbstractEventLoop) -> None:
         logger.warning("Shared checkpointer pool dispose() failed", exc_info=True)
 
 
+def _dispose_loop_mcp_client(loop: asyncio.AbstractEventLoop) -> None:
+    """Release any loop-scoped XActionsMcpClient bound to this loop."""
+    if loop.is_closed():
+        with contextlib.suppress(Exception):
+            from app.proprietary.platforms.xactions.mcp_client import (
+                _CLIENTS_LOCK,
+                _LOOP_CLIENTS,
+            )
+
+            with _CLIENTS_LOCK:
+                _LOOP_CLIENTS.pop(loop, None)
+        return
+    try:
+        from app.proprietary.platforms.xactions.mcp_client import (
+            release_shared_client_for_loop,
+        )
+
+        loop.run_until_complete(
+            asyncio.wait_for(release_shared_client_for_loop(loop), timeout=2.0)
+        )
+    except Exception:
+        logger.warning("Loop-scoped MCP client dispose() failed", exc_info=True)
+
+
 T = TypeVar("T")
 
 
@@ -145,10 +169,12 @@ def run_async_celery_task[T](coro_factory: Callable[[], Awaitable[T]]) -> T:
         # disposing. Idempotent — no-op if pool is already empty.
         _dispose_shared_db_engine(loop)
         _dispose_shared_checkpointer_pool(loop)
+        _dispose_loop_mcp_client(loop)
         return loop.run_until_complete(coro_factory())
     finally:
         # Drop any connections this task opened so they don't leak
         # into the next task's loop.
+        _dispose_loop_mcp_client(loop)
         _dispose_shared_db_engine(loop)
         _dispose_shared_checkpointer_pool(loop)
         with contextlib.suppress(Exception):

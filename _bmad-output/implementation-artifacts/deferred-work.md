@@ -1696,3 +1696,25 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - source_spec: `_bmad-output/implementation-artifacts/spec-36-1-wire-x-crawl-post-fallback.md`
   summary: Return dispatched target telemetry instead of raw HTTP post count in _ingest_social_target when REDIS_STREAM_ENABLED
   evidence: Review finding from Story 36.1; when XActions returns data: [] over MCP and pushes to Redis stream, task logging reports 0 posts ingested
+
+## Deferred from: code review of spec-36-1-wire-x-crawl-post-fallback (2026-09-13)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-36-1-wire-x-crawl-post-fallback.md`
+  summary: Unsupported-platform targets stay is_active=True and are re-evaluated every scheduler tick
+  evidence: Review finding; _check_and_trigger_social_targets skips platform-not-in-SUPPORTED_PLATFORMS with debug log only, never marks unsupported (social_xactions_ingest.py:296)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-36-1-wire-x-crawl-post-fallback.md`
+  summary: ingest_raw_post_to_stream pushes dict with None/list/dict values to xadd → redis DataError, silent failure
+  evidence: Review finding; post.to_dict() emits unencoded None/list/dict that aioredis xadd rejects (adapter_v2.py:335); pre-existing, AD-4 removes this writer in Phase 2
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-36-1-wire-x-crawl-post-fallback.md`
+  summary: code_str in _is_tool_not_found_error/_is_permanent_fallback_error not case-folded; alt MCP codes (-32601, "unknown tool") unrecognized
+  evidence: Review finding (adapter_v2.py:112-131); extension for non-XActions MCP servers
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-36-1-wire-x-crawl-post-fallback.md`
+  summary: Facebook ID-based targets (target_url=None) not resolved via _facebook_page_url/_facebook_group_url in fallback_crawl_post → marked unsupported
+  evidence: Review finding (adapter_v2.py:162-167); scope expansion beyond spec AC which requires HTTP URL
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-36-1-wire-x-crawl-post-fallback.md`
+  summary: Fallback tests pass URL via target_id with target_url=None; no coverage for production layout where target_url holds the HTTP URL and target_id is a slug
+  evidence: Review finding (test_xactions_adapter_v2.py); production-realism gap in test fixtures

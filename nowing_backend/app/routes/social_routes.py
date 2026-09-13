@@ -45,7 +45,7 @@ SUPPORTED_PLATFORMS = [
 
 _PLATFORM_PATTERN = f"^({'|'.join(SUPPORTED_PLATFORMS)})$"
 
-SocialTargetStatus = Literal["active", "paused", "error", "disabled"]
+SocialTargetStatus = Literal["active", "paused", "error", "disabled", "unsupported"]
 
 
 class SocialTargetCreate(BaseModel):

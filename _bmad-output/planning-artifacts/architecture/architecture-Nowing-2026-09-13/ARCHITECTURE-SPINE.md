@@ -90,6 +90,18 @@ Nguyên tắc: **lệnh đi MCP, data đi stream, file lớn đi artifact**. Kh�
 - **Binds:** `XActionsMcpClient`, `social_xactions_ingest`
 - **Prevents:** `async with` per-target → handshake `initialize` mỗi target (latency + session churn + leak khi scale)
 - **Rule:** **loop-scoped client cache**, KHÔNG proc-singleton — `run_async_celery_task` tạo `new_event_loop()` + `loop.close()` mỗi task, nên client phải bind theo `asyncio.get_running_loop()` và re-initialize khi loop đổi (vá C4: singleton trên loop đã đóng → `RuntimeError: Event loop is closed` ở task thứ 2). Trong cùng 1 task, mọi call share 1 session keep-alive; `call_tool` stateless; `accountId`/`proxyUrl` trong args (đa tenant), không phải session.
+  - **Implementation contract (clarified 2026-09-13, Story 36.2 adversarial review — 14 must-fix corrections in spec-36-2 §"Design Corrections"):**
+    - **Single ownership point** — cache sống trong `mcp_client.py`, KHÔNG rải rác per-consumer. `_LOOP_CLIENTS: weakref.WeakKeyDictionary[AbstractEventLoop, _LoopClientEntry]`.
+    - **WeakKey KHÔNG đủ** — `_LoopClientEntry` giữ `client`→transport→session→`asyncio.Lock`, các object ref ngược `loop` (key) → strong cycle → key không tự GC. `release_shared_client_for_loop` PHẢI `_LOOP_CLIENTS.pop(loop, None)` explicit.
+    - **`_LoopClientEntry`** = `{ client, ready: bool, connecting: asyncio.Lock }`; entry `setdefault` vào dict **đồng bộ TRƯỚC** `await connecting` (double-checked). Stranded waiter phải re-lookup `_LOOP_CLIENTS.get(loop) is entry` sau khi acquire — nếu đã evict thì re-resolve.
+    - **`get_shared_client()`** trả client chỉ khi `entry.ready` (init hoàn tất), KHÔNG chỉ `_session is not None`. Init-fail → `await client.__aexit__(suppress)` + evict + release `connecting` + propagate (không để half-init hay leak transport).
+    - **`call_tool`/`list_tools` serialization** qua `self._serialize_lock` **trên client instance** (không phải dict-lookup) → unmanaged client + test-inject vẫn serialize, không `KeyError`. `_fetch_artifact` (httpx riêng, không qua session) nằm NGOÀI lock.
+    - **Loop-bound cleanup hook (BẮT BUỘC):** `run_async_celery_task` là sync — `_dispose_loop_mcp_client(loop)` gọi `loop.run_until_complete(release_shared_client_for_loop(loop))` + `suppress` + timeout ~2s, TRƯỚC `shutdown_asyncgens()`/`loop.close()` (song song `_dispose_shared_db_engine`).
+    - **Consumer contract:** `_get_client()` → `get_shared_client()`; `close()`/`__aexit__` no-op CHỈ với shared client (injected vẫn đóng); adapter reuse phải re-resolve khi cached `self.client` thuộc loop đã đóng. Shared client được đánh dấu managed — `__aexit__` no-op khi managed (chống `async with` phá session).
+    - **Evict on fatal transport/cancel** — `call_tool` bắt `ConnectionError`/`ClosedResourceError`/`EndOfStream`/cancel → taint + pop để call sau re-init.
+    - **Thread-safety** — mutation `_LOOP_CLIENTS` bọc `threading.Lock` (WeakKeyDictionary không thread-safe).
+    - **Cache-key:** `(loop)` đủ cho `adapter_v2` (default config). Khi migrate `xactions_gateway` (per-connector `url`/`api_key`/`consumer_id`) phải key `(loop, url, consumer_id)` + FastAPI `lifespan` cleanup — story riêng.
+    - **Multi-tenant giữ nguyên AD-8:** 1 client/`nowing` consumer; `accountId`/`proxyUrl`/`context.workspaceId` trong args, không phải session.
 
 ### AD-6 — Discovery qua `x_actions_list` + fail-safe fallback
 

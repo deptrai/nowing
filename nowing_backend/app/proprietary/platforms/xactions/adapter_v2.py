@@ -11,7 +11,7 @@ XActions running with `MCP_TRANSPORT=http PORT=3001`.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from app.config import config
@@ -19,6 +19,7 @@ from app.proprietary.platforms.xactions.constants import STREAM_SOCIAL_RAW_POSTS
 from app.proprietary.platforms.xactions.mcp_client import (
     XActionsMcpClient,
     XActionsMcpError,
+    get_shared_client,
 )
 from app.proprietary.platforms.xactions.models import SocialPostData
 
@@ -159,8 +160,10 @@ class UniversalScrapeTargetMapper:
             raise TargetUnsupportedError(
                 f"Target {getattr(target, 'id', None)} lacks valid platform for x_crawl_post fallback"
             )
-        raw_url = getattr(target, "target_url", None) or getattr(target, "target_id", "")
-        target_url = str(raw_url or "").strip()
+        raw_url = str(getattr(target, "target_url", None) or "").strip() or str(
+            getattr(target, "target_id", "") or ""
+        ).strip()
+        target_url = raw_url
         if not target_url.lower().startswith(("http://", "https://")):
             raise TargetUnsupportedError(
                 f"Target {getattr(target, 'id', None)} lacks valid HTTP(S) URL for x_crawl_post fallback: {target_url!r}"
@@ -177,18 +180,18 @@ class XActionsSocialAdapterV2:
         default_account_id: str | None = None,
     ):
         self.client = client
-        self._owns_client = client is None
+        self._is_shared = client is None
+        self._owns_client = not self._is_shared
         self.default_account_id = (
             default_account_id or getattr(config, "XACTIONS_FACEBOOK_ACCOUNT_ID", None)
         )
 
     async def _get_client(self) -> XActionsMcpClient:
-        if self.client is None:
-            self.client = XActionsMcpClient()
-            await self.client.__aenter__()
-        return self.client
+        if not self._is_shared and self.client is not None:
+            return self.client
+        return await get_shared_client()
 
-    async def fetch_posts_for_target(self, target: Any) -> list[dict[str, Any]]:
+    async def fetch_posts_for_target(self, target: Any) -> list[SocialPostData]:
         """Fetch posts for a monitored target via XActions MCP."""
         client = await self._get_client()
         tool_name, arguments = UniversalScrapeTargetMapper.map(target)
@@ -255,9 +258,27 @@ class XActionsSocialAdapterV2:
         if not result.get("success"):
             err_msg = result.get("error") or "unknown error"
             if effective_tool == "x_crawl_post":
-                raise TargetUnsupportedError(
-                    f"Fallback {effective_tool} returned success=False for target {getattr(target, 'id', None)}: {err_msg}"
-                )
+                # Only a clean permanent failure should retire the target. A
+                # success=False envelope carries no MCP code, so classify by the
+                # error text; ambiguous/transient messages fall through to a
+                # RuntimeError so the existing retry/pause lifecycle handles them.
+                err_lower = str(err_msg).lower()
+                if any(
+                    term in err_lower
+                    for term in (
+                        "not found",
+                        "tool_not_found",
+                        "404",
+                        "4001",
+                        "unsupported",
+                        "action not available",
+                        "invalid url",
+                        "blocked",
+                    )
+                ):
+                    raise TargetUnsupportedError(
+                        f"Fallback {effective_tool} returned success=False for target {getattr(target, 'id', None)}: {err_msg}"
+                    )
             raise RuntimeError(
                 f"XActions tool {effective_tool} returned success=False: {err_msg}"
             )
@@ -284,23 +305,39 @@ class XActionsSocialAdapterV2:
                     published_at = None
             elif isinstance(published_at, (int, float)):
                 try:
-                    published_at = datetime.fromtimestamp(published_at, tz=UTC)
+                    # XActions/scrapers may emit millisecond epoch timestamps;
+                    # normalize anything beyond a plausible seconds range.
+                    ts = published_at / 1000 if published_at > 1e11 else published_at
+                    published_at = datetime.fromtimestamp(ts, tz=UTC)
                 except (ValueError, OSError, OverflowError):
                     published_at = None
 
-            post_id = item.get("id") or item.get("externalId") or item.get("postId") or item.get("post_id")
+            post_id = next(
+                (
+                    item[k]
+                    for k in ("id", "externalId", "postId", "post_id")
+                    if item.get(k) is not None
+                ),
+                None,
+            )
             post_url = item.get("postUrl") or item.get("post_url") or item.get("url")
-            if not post_id:
+            if post_id is None or post_id == "":
                 if post_url:
                     post_id = post_url
                 else:
                     logger.warning("Skipping post without identifiable external ID: %s", item)
                     continue
 
+            raw_entities = item.get("entities") or item.get("raw_entities") or {}
+            if not isinstance(raw_entities, dict):
+                # Scrapers may emit entities as a list of dicts; coerce to a
+                # dict keyed by "items" so consumers calling .get(...) don't crash.
+                raw_entities = {"items": raw_entities}
+
             posts.append(
                 SocialPostData(
-                    platform=_normalize_platform_for_post(target.platform),
-                    external_post_id=str(post_id),
+                    platform=_normalize_platform_for_post(getattr(target, "platform", "") or ""),
+                    external_post_id=str(post_id)[:255],
                     author_id=item.get("authorId") or item.get("author_id"),
                     author_name=item.get("authorName") or item.get("author_name"),
                     author_url=item.get("authorUrl") or item.get("author_url"),
@@ -310,7 +347,7 @@ class XActionsSocialAdapterV2:
                     comments_count=item.get("comments") or item.get("commentsCount") or 0,
                     shares_count=item.get("shares") or item.get("sharesCount") or 0,
                     media_urls=item.get("mediaUrls") or item.get("media_urls") or [],
-                    raw_entities=item.get("entities") or item.get("raw_entities") or {},
+                    raw_entities=raw_entities,
                     published_at=published_at,
                     category=item.get("category") or item.get("post_category"),
                     storage_ref=item.get("storageRef") or item.get("storage_ref"),
@@ -343,7 +380,7 @@ class XActionsSocialAdapterV2:
             return None
 
     async def close(self) -> None:
-        if self.client is not None and self._owns_client:
+        if not self._is_shared and self.client is not None:
             await self.client.__aexit__(None, None, None)
             self.client = None
 
